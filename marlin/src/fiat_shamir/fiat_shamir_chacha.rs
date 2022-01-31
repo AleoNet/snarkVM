@@ -43,26 +43,17 @@ impl<TargetField: PrimeField, BaseField: PrimeField, D: Digest + Clone + Debug> 
 {
     #[inline]
     fn next_u32(&mut self) -> u32 {
-        (&mut self.r)
-            .as_mut()
-            .map(|r| r.next_u32())
-            .expect("Rng was invoked in a non-hiding context")
+        (&mut self.r).as_mut().map(|r| r.next_u32()).expect("Rng was invoked in a non-hiding context")
     }
 
     #[inline]
     fn next_u64(&mut self) -> u64 {
-        (&mut self.r)
-            .as_mut()
-            .map(|r| r.next_u64())
-            .expect("Rng was invoked in a non-hiding context")
+        (&mut self.r).as_mut().map(|r| r.next_u64()).expect("Rng was invoked in a non-hiding context")
     }
 
     #[inline]
     fn fill_bytes(&mut self, dest: &mut [u8]) {
-        (&mut self.r)
-            .as_mut()
-            .map(|r| r.fill_bytes(dest))
-            .expect("Rng was invoked in a non-hiding context")
+        (&mut self.r).as_mut().map(|r| r.fill_bytes(dest)).expect("Rng was invoked in a non-hiding context")
     }
 
     #[inline]
@@ -82,11 +73,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField, D: Digest + Clone + Debug> 
     fn sample_params() -> Self::Parameters {}
 
     fn new() -> Self {
-        Self {
-            r: None,
-            seed: None,
-            _phantom: PhantomData,
-        }
+        Self { r: None, seed: None, _phantom: PhantomData }
     }
 
     fn with_parameters(_params: &Self::Parameters) -> Self {

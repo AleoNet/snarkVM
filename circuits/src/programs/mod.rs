@@ -72,9 +72,7 @@ pub struct Memory<E: Environment> {
 impl<E: Environment> Memory<E> {
     /// Initializes a new instance of memory.
     fn new() -> Self {
-        Self {
-            registers: Default::default(),
-        }
+        Self { registers: Default::default() }
     }
 
     /// Allocates a new register in memory, returning the new register locator.
@@ -181,10 +179,7 @@ pub struct Function<E: Environment> {
 impl<E: Environment> Function<E> {
     /// Initializes a new instance of a function.
     fn new() -> Self {
-        Self {
-            memory: Rc::new(RefCell::new(Memory::new())),
-            instructions: Vec::new(),
-        }
+        Self { memory: Rc::new(RefCell::new(Memory::new())), instructions: Vec::new() }
     }
 
     /// Allocates a new register in memory, returning the new register.

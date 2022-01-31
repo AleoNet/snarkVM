@@ -137,11 +137,9 @@ impl R1CStoQAP {
         drop(b);
 
         let mut c = vec![zero; domain_size];
-        cfg_iter_mut!(c[..prover.num_constraints()])
-            .enumerate()
-            .for_each(|(i, c)| {
-                *c = evaluate_constraint::<E>(&prover.ct[i], &full_input_assignment, num_inputs);
-            });
+        cfg_iter_mut!(c[..prover.num_constraints()]).enumerate().for_each(|(i, c)| {
+            *c = evaluate_constraint::<E>(&prover.ct[i], &full_input_assignment, num_inputs);
+        });
 
         domain.ifft_in_place(&mut c);
         domain.coset_fft_in_place(&mut c);

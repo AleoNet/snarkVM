@@ -44,10 +44,7 @@ fn test_record_ciphertext() {
 
         // Encrypt the record.
         let record_ciphertext = expected_record.ciphertext();
-        assert_eq!(
-            Testnet2::RECORD_CIPHERTEXT_SIZE_IN_BYTES,
-            (*record_ciphertext).to_bytes_le().unwrap().len()
-        );
+        assert_eq!(Testnet2::RECORD_CIPHERTEXT_SIZE_IN_BYTES, (*record_ciphertext).to_bytes_le().unwrap().len());
 
         // Decrypt the record.
         let account_view_key = ViewKey::from_private_key(account.private_key());

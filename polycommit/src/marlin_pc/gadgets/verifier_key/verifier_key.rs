@@ -112,10 +112,8 @@ where
             let mut sum_bound = zero_bound.clone();
             let mut found_shift_power = zero_shift_power;
 
-            for (i, (pir_gadget, (_, degree, shift_power))) in pir_vector_gadgets
-                .iter()
-                .zip(degree_bounds_and_shift_powers.iter())
-                .enumerate()
+            for (i, (pir_gadget, (_, degree, shift_power))) in
+                pir_vector_gadgets.iter().zip(degree_bounds_and_shift_powers.iter()).enumerate()
             {
                 let found_bound = FpGadget::<<BaseCurve as PairingEngine>::Fr>::conditionally_select(
                     cs.ns(|| format!("found_bound_coond_select{}", i)),
@@ -174,11 +172,7 @@ where
     ) -> Result<Self, SynthesisError> {
         let vk_orig = value_gen()?.borrow().clone();
 
-        let VerifierKey {
-            vk,
-            degree_bounds_and_shift_powers,
-            ..
-        } = vk_orig;
+        let VerifierKey { vk, degree_bounds_and_shift_powers, .. } = vk_orig;
 
         let degree_bounds_and_shift_powers = degree_bounds_and_shift_powers.map(|vec| {
             vec.iter()
@@ -198,22 +192,14 @@ where
                 .collect()
         });
 
-        let KZG10VerifierKey {
-            g, gamma_g, h, beta_h, ..
-        } = vk;
+        let KZG10VerifierKey { g, gamma_g, h, beta_h, .. } = vk;
 
         let g = PG::G1Gadget::alloc_constant(cs.ns(|| "g"), || Ok(g.into_projective()))?;
         let gamma_g = PG::G1Gadget::alloc_constant(cs.ns(|| "gamma_g"), || Ok(gamma_g.into_projective()))?;
         let h = PG::G2Gadget::alloc_constant(cs.ns(|| "h"), || Ok(h.into_projective()))?;
         let beta_h = PG::G2Gadget::alloc_constant(cs.ns(|| "beta_h"), || Ok(beta_h.into_projective()))?;
 
-        Ok(Self {
-            g,
-            gamma_g,
-            h,
-            beta_h,
-            degree_bounds_and_shift_powers,
-        })
+        Ok(Self { g, gamma_g, h, beta_h, degree_bounds_and_shift_powers })
     }
 
     fn alloc<
@@ -226,11 +212,7 @@ where
     ) -> Result<Self, SynthesisError> {
         let vk_orig = value_gen()?.borrow().clone();
 
-        let VerifierKey {
-            vk,
-            degree_bounds_and_shift_powers,
-            ..
-        } = vk_orig;
+        let VerifierKey { vk, degree_bounds_and_shift_powers, .. } = vk_orig;
 
         let degree_bounds_and_shift_powers = degree_bounds_and_shift_powers.map(|vec| {
             vec.iter()
@@ -249,22 +231,14 @@ where
                 .collect()
         });
 
-        let KZG10VerifierKey {
-            g, gamma_g, h, beta_h, ..
-        } = vk;
+        let KZG10VerifierKey { g, gamma_g, h, beta_h, .. } = vk;
 
         let g = PG::G1Gadget::alloc(cs.ns(|| "g"), || Ok(g.into_projective()))?;
         let gamma_g = PG::G1Gadget::alloc(cs.ns(|| "gamma_g"), || Ok(gamma_g.into_projective()))?;
         let h = PG::G2Gadget::alloc(cs.ns(|| "h"), || Ok(h.into_projective()))?;
         let beta_h = PG::G2Gadget::alloc(cs.ns(|| "beta_h"), || Ok(beta_h.into_projective()))?;
 
-        Ok(Self {
-            g,
-            gamma_g,
-            h,
-            beta_h,
-            degree_bounds_and_shift_powers,
-        })
+        Ok(Self { g, gamma_g, h, beta_h, degree_bounds_and_shift_powers })
     }
 
     fn alloc_input<
@@ -277,11 +251,7 @@ where
     ) -> Result<Self, SynthesisError> {
         let vk_orig = value_gen()?.borrow().clone();
 
-        let VerifierKey {
-            vk,
-            degree_bounds_and_shift_powers,
-            ..
-        } = vk_orig;
+        let VerifierKey { vk, degree_bounds_and_shift_powers, .. } = vk_orig;
 
         let degree_bounds_and_shift_powers = degree_bounds_and_shift_powers.map(|vec| {
             vec.iter()
@@ -300,22 +270,14 @@ where
                 .collect()
         });
 
-        let KZG10VerifierKey {
-            g, gamma_g, h, beta_h, ..
-        } = vk;
+        let KZG10VerifierKey { g, gamma_g, h, beta_h, .. } = vk;
 
         let g = PG::G1Gadget::alloc_input(cs.ns(|| "g"), || Ok(g.into_projective()))?;
         let gamma_g = PG::G1Gadget::alloc_constant(cs.ns(|| "gamma_g"), || Ok(gamma_g.into_projective()))?;
         let h = PG::G2Gadget::alloc_input(cs.ns(|| "h"), || Ok(h.into_projective()))?;
         let beta_h = PG::G2Gadget::alloc_input(cs.ns(|| "beta_h"), || Ok(beta_h.into_projective()))?;
 
-        Ok(Self {
-            g,
-            gamma_g,
-            h,
-            beta_h,
-            degree_bounds_and_shift_powers,
-        })
+        Ok(Self { g, gamma_g, h, beta_h, degree_bounds_and_shift_powers })
     }
 }
 
@@ -432,13 +394,9 @@ where
         let mut res = Vec::new();
 
         let mut g_gadget = self.g.to_constraint_field(cs.ns(|| "g_to_constraint_field"))?;
-        let mut gamma_g_gadget = self
-            .gamma_g
-            .to_constraint_field(cs.ns(|| "gamma_g_to_constraint_field"))?;
+        let mut gamma_g_gadget = self.gamma_g.to_constraint_field(cs.ns(|| "gamma_g_to_constraint_field"))?;
         let mut h_gadget = self.h.to_constraint_field(cs.ns(|| "h_to_constraint_field"))?;
-        let mut beta_h_gadget = self
-            .beta_h
-            .to_constraint_field(cs.ns(|| "beta_h_to_constraint_field"))?;
+        let mut beta_h_gadget = self.beta_h.to_constraint_field(cs.ns(|| "beta_h_to_constraint_field"))?;
 
         res.append(&mut g_gadget);
         res.append(&mut gamma_g_gadget);
@@ -521,27 +479,17 @@ mod tests {
         })
         .unwrap();
 
-        g_gadget
-            .enforce_equal(cs.ns(|| "enforce_equals_g"), &vk_gadget.g)
-            .unwrap();
-        h_gadget
-            .enforce_equal(cs.ns(|| "enforce_equals_h"), &vk_gadget.h)
-            .unwrap();
-        beta_h_gadget
-            .enforce_equal(cs.ns(|| "enforce_equals_beta_h"), &vk_gadget.beta_h)
-            .unwrap();
+        g_gadget.enforce_equal(cs.ns(|| "enforce_equals_g"), &vk_gadget.g).unwrap();
+        h_gadget.enforce_equal(cs.ns(|| "enforce_equals_h"), &vk_gadget.h).unwrap();
+        beta_h_gadget.enforce_equal(cs.ns(|| "enforce_equals_beta_h"), &vk_gadget.beta_h).unwrap();
 
         // Native check that degree bounds are equivalent.
 
-        assert_eq!(
-            vk.degree_bounds_and_shift_powers.is_some(),
-            vk_gadget.degree_bounds_and_shift_powers.is_some()
-        );
+        assert_eq!(vk.degree_bounds_and_shift_powers.is_some(), vk_gadget.degree_bounds_and_shift_powers.is_some());
 
-        if let (Some(native), Some(gadget)) = (
-            &vk.degree_bounds_and_shift_powers,
-            &vk_gadget.degree_bounds_and_shift_powers,
-        ) {
+        if let (Some(native), Some(gadget)) =
+            (&vk.degree_bounds_and_shift_powers, &vk_gadget.degree_bounds_and_shift_powers)
+        {
             // Check each degree bound and shift power.
             for (i, ((native_degree_bounds, native_shift_power), (degree_bounds, _fp_gadget, shift_power))) in
                 native.iter().zip(gadget).enumerate()
@@ -597,13 +545,9 @@ mod tests {
             })
             .unwrap();
 
-        let shift_power_gadget = vk_gadget
-            .get_shift_power(cs.ns(|| "get_shift_power"), &bound_gadget)
-            .unwrap();
+        let shift_power_gadget = vk_gadget.get_shift_power(cs.ns(|| "get_shift_power"), &bound_gadget).unwrap();
 
-        shift_power_gadget
-            .enforce_equal(cs.ns(|| "enforce_equals_shift_power"), &expected_shift_power)
-            .unwrap();
+        shift_power_gadget.enforce_equal(cs.ns(|| "enforce_equals_shift_power"), &expected_shift_power).unwrap();
 
         assert!(cs.is_satisfied());
     }

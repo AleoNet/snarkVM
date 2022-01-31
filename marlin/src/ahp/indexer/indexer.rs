@@ -115,17 +115,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         end_timer!(joint_arithmetization_time);
 
         end_timer!(index_time);
-        Ok(Circuit {
-            index_info,
-
-            a,
-            b,
-            c,
-
-            a_arith,
-            b_arith,
-            c_arith,
-            mode: PhantomData,
-        })
+        Ok(Circuit { index_info, a, b, c, a_arith, b_arith, c_arith, mode: PhantomData })
     }
 }

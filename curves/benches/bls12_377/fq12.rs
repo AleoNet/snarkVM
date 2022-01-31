@@ -28,9 +28,7 @@ pub(crate) fn bench_fq12_add_assign(c: &mut Criterion) {
 
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
-    let v: Vec<(Fq12, Fq12)> = (0..SAMPLES)
-        .map(|_| (Fq12::rand(&mut rng), Fq12::rand(&mut rng)))
-        .collect();
+    let v: Vec<(Fq12, Fq12)> = (0..SAMPLES).map(|_| (Fq12::rand(&mut rng), Fq12::rand(&mut rng))).collect();
 
     let mut count = 0;
     c.bench_function("bls12_377: fq12_add_assign", |c| {
@@ -48,9 +46,7 @@ pub(crate) fn bench_fq12_sub_assign(c: &mut Criterion) {
 
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
-    let v: Vec<(Fq12, Fq12)> = (0..SAMPLES)
-        .map(|_| (Fq12::rand(&mut rng), Fq12::rand(&mut rng)))
-        .collect();
+    let v: Vec<(Fq12, Fq12)> = (0..SAMPLES).map(|_| (Fq12::rand(&mut rng), Fq12::rand(&mut rng))).collect();
 
     let mut count = 0;
     c.bench_function("bls12_377: fq12_sub_assign", |c| {
@@ -68,9 +64,7 @@ pub(crate) fn bench_fq12_mul_assign(c: &mut Criterion) {
 
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
-    let v: Vec<(Fq12, Fq12)> = (0..SAMPLES)
-        .map(|_| (Fq12::rand(&mut rng), Fq12::rand(&mut rng)))
-        .collect();
+    let v: Vec<(Fq12, Fq12)> = (0..SAMPLES).map(|_| (Fq12::rand(&mut rng), Fq12::rand(&mut rng))).collect();
 
     let mut count = 0;
     c.bench_function("bls12_377: fq12_mul_assign", |c| {

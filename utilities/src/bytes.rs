@@ -354,11 +354,7 @@ pub fn from_bytes_le_to_bits_le(bytes: &[u8]) -> impl Iterator<Item = bool> + Do
 #[deprecated]
 #[inline]
 pub fn from_bits_le_to_bytes_le(bits: &[bool]) -> Vec<u8> {
-    let desired_size = if bits.len() % 8 == 0 {
-        bits.len() / 8
-    } else {
-        bits.len() / 8 + 1
-    };
+    let desired_size = if bits.len() % 8 == 0 { bits.len() / 8 } else { bits.len() / 8 + 1 };
 
     let mut bytes = Vec::with_capacity(desired_size);
     for bits in bits.chunks(8) {

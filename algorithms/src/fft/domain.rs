@@ -146,11 +146,7 @@ impl<F: FftField> EvaluationDomain<F> {
     /// having `num_coeffs` coefficients.
     pub fn compute_size_of_domain(num_coeffs: usize) -> Option<usize> {
         let size = num_coeffs.next_power_of_two();
-        if size.trailing_zeros() <= F::FftParameters::TWO_ADICITY {
-            Some(size)
-        } else {
-            None
-        }
+        if size.trailing_zeros() <= F::FftParameters::TWO_ADICITY { Some(size) } else { None }
     }
 
     /// Return the size of `self`.
@@ -243,16 +239,14 @@ impl<F: FftField> EvaluationDomain<F> {
         let num_cpus_available = max_available_threads();
         let num_elem_per_thread = core::cmp::max(coeffs.len() / num_cpus_available, min_parallel_chunk_size);
 
-        cfg_chunks_mut!(coeffs, num_elem_per_thread)
-            .enumerate()
-            .for_each(|(i, chunk)| {
-                let offset = c * g.pow([(i * num_elem_per_thread) as u64]);
-                let mut pow = offset;
-                chunk.iter_mut().for_each(|coeff| {
-                    *coeff *= pow;
-                    pow *= &g
-                })
-            });
+        cfg_chunks_mut!(coeffs, num_elem_per_thread).enumerate().for_each(|(i, chunk)| {
+            let offset = c * g.pow([(i * num_elem_per_thread) as u64]);
+            let mut pow = offset;
+            chunk.iter_mut().for_each(|coeff| {
+                *coeff *= pow;
+                pow *= &g
+            })
+        });
     }
 
     /// Evaluate all the lagrange polynomials defined by this domain at the point
@@ -307,21 +301,14 @@ impl<F: FftField> EvaluationDomain<F> {
 
     /// Return an iterator over the elements of the domain.
     pub fn elements(&self) -> Elements<F> {
-        Elements {
-            cur_elem: F::one(),
-            cur_pow: 0,
-            domain: *self,
-        }
+        Elements { cur_elem: F::one(), cur_pow: 0, domain: *self }
     }
 
     /// The target polynomial is the zero polynomial in our
     /// evaluation domain, so we must perform division over
     /// a coset.
     pub fn divide_by_vanishing_poly_on_coset_in_place(&self, evals: &mut [F]) {
-        let i = self
-            .evaluate_vanishing_polynomial(F::multiplicative_generator())
-            .inverse()
-            .unwrap();
+        let i = self.evaluate_vanishing_polynomial(F::multiplicative_generator()).inverse().unwrap();
 
         cfg_iter_mut!(evals).for_each(|eval| *eval *= &i);
     }
@@ -476,13 +463,11 @@ impl<F: FftField> EvaluationDomain<F> {
         );
         // 3. recombine halves
         // At this point, out is a blank slice.
-        out.par_chunks_mut(scr_lo.len())
-            .zip(&scr_hi)
-            .for_each(|(out_chunk, scr_hi)| {
-                for (out_elem, scr_lo) in out_chunk.iter_mut().zip(&scr_lo) {
-                    *out_elem = *scr_hi * scr_lo;
-                }
-            });
+        out.par_chunks_mut(scr_lo.len()).zip(&scr_hi).for_each(|(out_chunk, scr_hi)| {
+            for (out_elem, scr_lo) in out_chunk.iter_mut().zip(&scr_lo) {
+                *out_elem = *scr_hi * scr_lo;
+            }
+        });
     }
 
     #[inline(always)]
@@ -518,10 +503,7 @@ impl<F: FftField> EvaluationDomain<F> {
             // we parallelize the butterfly operation within the chunk.
 
             if gap > MIN_GAP_SIZE_FOR_PARALLELISATION && num_chunks < max_threads {
-                cfg_iter_mut!(lo)
-                    .zip(hi)
-                    .zip(cfg_iter!(roots).step_by(step))
-                    .for_each(g);
+                cfg_iter_mut!(lo).zip(hi).zip(cfg_iter!(roots).step_by(step)).for_each(g);
             } else {
                 lo.iter_mut().zip(hi).zip(roots.iter().step_by(step)).for_each(g);
             }
@@ -607,16 +589,7 @@ impl<F: FftField> EvaluationDomain<F> {
                 (&roots_cache[..], num_chunks)
             };
 
-            Self::apply_butterfly(
-                Self::butterfly_fn_oi,
-                xi,
-                roots,
-                step,
-                chunk_size,
-                num_chunks,
-                max_threads,
-                gap,
-            );
+            Self::apply_butterfly(Self::butterfly_fn_oi, xi, roots, step, chunk_size, num_chunks, max_threads, gap);
 
             gap *= 2;
         }

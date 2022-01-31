@@ -75,9 +75,7 @@ fn dpc_testnet2_integration_test() {
     let timestamp = Utc::now().timestamp();
     let difficulty_target =
         Blocks::<Testnet2>::compute_difficulty_target(previous_block.header(), timestamp, block_height);
-    let cumulative_weight = previous_block
-        .cumulative_weight()
-        .saturating_add((u64::MAX / difficulty_target) as u128);
+    let cumulative_weight = previous_block.cumulative_weight().saturating_add((u64::MAX / difficulty_target) as u128);
 
     // Construct the block template.
     let template = BlockTemplate::new(

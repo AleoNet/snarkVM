@@ -62,12 +62,7 @@ pub trait SNARKVerifierGadget<S: SNARK> {
         proof: &Self::ProofGadget,
     ) -> Result<(), SynthesisError> {
         let prepared_verification_key = verification_key.prepare(cs.ns(|| "prepare"))?;
-        Self::prepared_check_verify(
-            cs.ns(|| "prepared verification"),
-            &prepared_verification_key,
-            input,
-            proof,
-        )
+        Self::prepared_check_verify(cs.ns(|| "prepared verification"), &prepared_verification_key, input, proof)
     }
 
     fn prepared_check_verify<CS: ConstraintSystem<S::BaseField>>(

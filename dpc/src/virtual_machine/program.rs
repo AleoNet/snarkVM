@@ -107,12 +107,9 @@ impl<N: Network> Program<N> {
             return Err(MerkleError::Message(format!("Duplicate function {}", function.function_id())).into());
         }
 
-        self.tree = self
-            .tree
-            .rebuild(self.last_function_index as usize, &[function.function_id()])?;
+        self.tree = self.tree.rebuild(self.last_function_index as usize, &[function.function_id()])?;
 
-        self.functions
-            .insert(function.function_id(), (self.last_function_index, function));
+        self.functions.insert(function.function_id(), (self.last_function_index, function));
 
         self.last_function_index += 1;
         Ok(self.last_function_index - 1)
@@ -159,12 +156,10 @@ impl<N: Network> Program<N> {
 
     /// Returns the function given the function index, if it exists.
     pub fn find_function_by_index(&self, function_index: u8) -> Option<&Arc<dyn Function<N>>> {
-        self.functions
-            .iter()
-            .find_map(|(_, (index, function))| match *index == function_index {
-                true => Some(function),
-                false => None,
-            })
+        self.functions.iter().find_map(|(_, (index, function))| match *index == function_index {
+            true => Some(function),
+            false => None,
+        })
     }
 
     /// Returns the function index given the function ID, if it exists.

@@ -54,9 +54,7 @@ impl<N: Network> Blocks<N> {
         };
 
         blocks.ledger_tree.add(&genesis_block.hash())?;
-        blocks
-            .previous_hashes
-            .insert(height, genesis_block.previous_block_hash());
+        blocks.previous_hashes.insert(height, genesis_block.previous_block_hash());
         blocks.headers.insert(height, genesis_block.header().clone());
         blocks.transactions.insert(height, genesis_block.transactions().clone());
 
@@ -164,11 +162,7 @@ impl<N: Network> Blocks<N> {
     /// Returns `true` if the given ledger root exists.
     pub fn contains_ledger_root(&self, ledger_root: &N::LedgerRoot) -> bool {
         *ledger_root == self.latest_ledger_root()
-            || self
-                .headers
-                .values()
-                .map(BlockHeader::previous_ledger_root)
-                .any(|root| root == *ledger_root)
+            || self.headers.values().map(BlockHeader::previous_ledger_root).any(|root| root == *ledger_root)
     }
 
     /// Returns `true` if the given block hash exists.
@@ -178,10 +172,7 @@ impl<N: Network> Blocks<N> {
 
     /// Returns `true` if the given transaction exists.
     pub fn contains_transaction(&self, transaction: &Transaction<N>) -> bool {
-        self.transactions
-            .values()
-            .flat_map(|transactions| &**transactions)
-            .any(|tx| *tx == *transaction)
+        self.transactions.values().flat_map(|transactions| &**transactions).any(|tx| *tx == *transaction)
     }
 
     /// Returns `true` if the given serial number exists.
@@ -253,9 +244,8 @@ impl<N: Network> Blocks<N> {
         }
 
         // Ensure the expected cumulative weight is computed correctly.
-        let expected_cumulative_weight = current_block
-            .cumulative_weight()
-            .saturating_add((u64::MAX / expected_difficulty_target) as u128);
+        let expected_cumulative_weight =
+            current_block.cumulative_weight().saturating_add((u64::MAX / expected_difficulty_target) as u128);
         if block.cumulative_weight() != expected_cumulative_weight {
             return Err(anyhow!(
                 "The given cumulative weight is incorrect. Found {}, but expected {}",
@@ -349,12 +339,10 @@ impl<N: Network> Blocks<N> {
         let block_height = self
             .transactions
             .iter()
-            .filter_map(
-                |(block_height, transactions)| match transactions.transaction_ids().contains(&transaction_id) {
-                    true => Some(block_height),
-                    false => None,
-                },
-            )
+            .filter_map(|(block_height, transactions)| match transactions.transaction_ids().contains(&transaction_id) {
+                true => Some(block_height),
+                false => None,
+            })
             .collect::<Vec<_>>();
         assert_eq!(1, block_height.len()); // TODO (howardwu): Clean this up with a proper error handler.
         let block_height = *block_height[0];
@@ -639,10 +627,7 @@ mod tests {
                 // Only check the difficulty targets that naturally fall below u64::MAX,
                 // which is determined by approximating (flooring) the expected difficulty ratio
                 // and seeing if the new difficulty target overflows or not.
-                if anchor_difficulty_target
-                    .checked_mul(expected_difficulty_ratio as u64)
-                    .is_some()
-                {
+                if anchor_difficulty_target.checked_mul(expected_difficulty_ratio as u64).is_some() {
                     let percentage_difference =
                         100f64 * (expected_difficulty_ratio - difficulty_ratio).abs() / difficulty_ratio;
                     assert!(percentage_difference < 1f64);

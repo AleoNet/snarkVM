@@ -108,10 +108,7 @@ fn generate_cuda_binary<P: AsRef<Path>>(file_path: P, debug: bool) -> Result<(),
 
     // Generate the cuda fatbin.
     let mut command = Command::new("nvcc");
-    command
-        .arg(asm_cuda_path.as_os_str())
-        .arg(blst_377_ops_path.as_os_str())
-        .arg(msm_path.as_os_str());
+    command.arg(asm_cuda_path.as_os_str()).arg(blst_377_ops_path.as_os_str()).arg(msm_path.as_os_str());
 
     // Add the debug feature for tests.
     if debug {
@@ -135,11 +132,7 @@ fn generate_cuda_binary<P: AsRef<Path>>(file_path: P, debug: bool) -> Result<(),
         command.arg("--generate-code=arch=compute_86,code=sm_86");
     }
 
-    command
-        .arg("-fatbin")
-        .arg("-dlink")
-        .arg("-o")
-        .arg(file_path.as_ref().as_os_str());
+    command.arg("-fatbin").arg("-dlink").arg("-o").arg(file_path.as_ref().as_os_str());
 
     eprintln!("\nRunning command: {:?}", command);
 
@@ -158,9 +151,7 @@ fn generate_cuda_binary<P: AsRef<Path>>(file_path: P, debug: bool) -> Result<(),
 
     // Execute the command.
     if !status.success() {
-        return Err(GPUError::KernelNotFound(
-            "Could not generate a new msm kernel".to_string(),
-        ));
+        return Err(GPUError::KernelNotFound("Could not generate a new msm kernel".to_string()));
     }
 
     Ok(())
@@ -188,11 +179,7 @@ fn load_cuda_program() -> Result<Program, GPUError> {
         None => return Err(GPUError::DeviceNotFound),
     };
 
-    eprintln!(
-        "\nUsing '{}' as CUDA device with {} bytes of memory",
-        device.name(),
-        device.memory()
-    );
+    eprintln!("\nUsing '{}' as CUDA device with {} bytes of memory", device.name(), device.memory());
 
     let cuda_kernel = std::fs::read(file_path.clone())?;
 
@@ -211,17 +198,11 @@ fn load_cuda_program() -> Result<Program, GPUError> {
 
 /// Run the CUDA MSM operation for a given request.
 fn handle_cuda_request(context: &mut CudaContext, request: &CudaRequest) -> Result<G1Projective, GPUError> {
-    let mapped_bases: Vec<_> = crate::cfg_iter!(request.bases)
-        .map(|affine| CudaAffine {
-            x: affine.x,
-            y: affine.y,
-        })
-        .collect();
+    let mapped_bases: Vec<_> =
+        crate::cfg_iter!(request.bases).map(|affine| CudaAffine { x: affine.x, y: affine.y }).collect();
 
-    let mut window_lengths = (0..(request.scalars.len() as u32 / WINDOW_SIZE))
-        .into_iter()
-        .map(|_| WINDOW_SIZE)
-        .collect::<Vec<u32>>();
+    let mut window_lengths =
+        (0..(request.scalars.len() as u32 / WINDOW_SIZE)).into_iter().map(|_| WINDOW_SIZE).collect::<Vec<u32>>();
     let overflow_size = request.scalars.len() as u32 - window_lengths.len() as u32 * WINDOW_SIZE;
     if overflow_size > 0 {
         window_lengths.push(overflow_size);
@@ -249,11 +230,8 @@ fn handle_cuda_request(context: &mut CudaContext, request: &CudaRequest) -> Resu
         // let global_work_size =
         //     (window_lengths.len() * context.num_groups as usize + LOCAL_WORK_SIZE - 1) / LOCAL_WORK_SIZE;
 
-        let kernel_1 = program.create_kernel(
-            &context.pixel_func_name,
-            window_lengths.len(),
-            context.num_groups as usize,
-        )?;
+        let kernel_1 =
+            program.create_kernel(&context.pixel_func_name, window_lengths.len(), context.num_groups as usize)?;
 
         kernel_1
             .arg(&buckets_buffer)
@@ -265,11 +243,7 @@ fn handle_cuda_request(context: &mut CudaContext, request: &CudaRequest) -> Resu
 
         let kernel_2 = program.create_kernel(&context.row_func_name, 1, context.num_groups as usize)?;
 
-        kernel_2
-            .arg(&result_buffer)
-            .arg(&buckets_buffer)
-            .arg(&(window_lengths.len() as u32))
-            .run()?;
+        kernel_2.arg(&result_buffer).arg(&buckets_buffer).arg(&(window_lengths.len() as u32)).run()?;
 
         let mut results = vec![0u8; LIMB_COUNT as usize * 8 * context.num_groups as usize * 3];
         program.read_into_buffer(&result_buffer, &mut results)?;
@@ -293,17 +267,13 @@ fn handle_cuda_request(context: &mut CudaContext, request: &CudaRequest) -> Resu
     let lowest = windows.first().unwrap();
 
     // We're traversing windows from high to low.
-    let final_result = windows[1..]
-        .iter()
-        .rev()
-        .fold(G1Projective::zero(), |mut total, sum_i| {
-            total += sum_i;
-            for _ in 0..BIT_WIDTH {
-                total.double_in_place();
-            }
-            total
-        })
-        + lowest;
+    let final_result = windows[1..].iter().rev().fold(G1Projective::zero(), |mut total, sum_i| {
+        total += sum_i;
+        for _ in 0..BIT_WIDTH {
+            total.double_in_place();
+        }
+        total
+    }) + lowest;
     Ok(final_result)
 }
 
@@ -626,10 +596,7 @@ mod tests {
             .into_iter()
             .zip(affine_inputs.into_iter())
             .map(|(mut projective, mut affine)| {
-                vec![ProjectiveAffine {
-                    projective: projective.remove(0),
-                    affine: affine.remove(0),
-                }]
+                vec![ProjectiveAffine { projective: projective.remove(0), affine: affine.remove(0) }]
             })
             .collect::<Vec<_>>();
 
@@ -670,10 +637,7 @@ mod tests {
     #[serial]
     fn test_cuda_affine_add_infinity() {
         let infinite = G1Affine::new(Fq::zero(), Fq::one(), true);
-        let cuda_infinite = CudaAffine {
-            x: Fq::zero(),
-            y: Fq::one(),
-        };
+        let cuda_infinite = CudaAffine { x: Fq::zero(), y: Fq::one() };
 
         let inputs = vec![vec![cuda_infinite.clone(), cuda_infinite]];
         let output: Vec<G1Projective> = run_roundtrip("add_affine_test", &inputs[..]);
@@ -687,15 +651,9 @@ mod tests {
     fn test_cuda_projective_affine_add_infinity() {
         let mut projective = G1Projective::zero();
 
-        let cuda_infinite = CudaAffine {
-            x: Fq::zero(),
-            y: Fq::one(),
-        };
+        let cuda_infinite = CudaAffine { x: Fq::zero(), y: Fq::one() };
 
-        let inputs = vec![vec![ProjectiveAffine {
-            projective,
-            affine: cuda_infinite,
-        }]];
+        let inputs = vec![vec![ProjectiveAffine { projective, affine: cuda_infinite }]];
 
         let output: Vec<G1Projective> = run_roundtrip("add_projective_affine_test", &inputs[..]);
 

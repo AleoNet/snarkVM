@@ -106,9 +106,7 @@ impl<I, F: Field, A: AllocGadget<I, F>> AllocGadget<Vec<I>, F> for Vec<A> {
         let f = f()?;
         let mut vec = Vec::with_capacity(f.borrow().len());
         for (i, value) in f.borrow().iter().enumerate() {
-            vec.push(A::alloc_checked(&mut cs.ns(|| format!("alloc_checked_{}", i)), || {
-                Ok(value)
-            })?);
+            vec.push(A::alloc_checked(&mut cs.ns(|| format!("alloc_checked_{}", i)), || Ok(value))?);
         }
         Ok(vec)
     }
@@ -120,9 +118,7 @@ impl<I, F: Field, A: AllocGadget<I, F>> AllocGadget<Vec<I>, F> for Vec<A> {
         let f = f()?;
         let mut vec = Vec::with_capacity(f.borrow().len());
         for (i, value) in f.borrow().iter().enumerate() {
-            vec.push(A::alloc_input(&mut cs.ns(|| format!("alloc_input_{}", i)), || {
-                Ok(value)
-            })?);
+            vec.push(A::alloc_input(&mut cs.ns(|| format!("alloc_input_{}", i)), || Ok(value))?);
         }
         Ok(vec)
     }
@@ -134,10 +130,7 @@ impl<I, F: Field, A: AllocGadget<I, F>> AllocGadget<Vec<I>, F> for Vec<A> {
         let f = f()?;
         let mut vec = Vec::with_capacity(f.borrow().len());
         for (i, value) in f.borrow().iter().enumerate() {
-            vec.push(A::alloc_input_checked(
-                &mut cs.ns(|| format!("alloc_input_checked_{}", i)),
-                || Ok(value),
-            )?);
+            vec.push(A::alloc_input_checked(&mut cs.ns(|| format!("alloc_input_checked_{}", i)), || Ok(value))?);
         }
         Ok(vec)
     }

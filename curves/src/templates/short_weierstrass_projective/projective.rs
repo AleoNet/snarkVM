@@ -293,11 +293,7 @@ impl<P: Parameters> Neg for Projective<P> {
     type Output = Self;
 
     fn neg(self) -> Self {
-        if !self.is_zero() {
-            Self::new(self.x, -self.y, self.z)
-        } else {
-            self
-        }
+        if !self.is_zero() { Self::new(self.x, -self.y, self.z) } else { self }
     }
 }
 
@@ -413,10 +409,6 @@ impl<P: Parameters> MulAssign<P::ScalarField> for Projective<P> {
 // coordinates with Z = 1.
 impl<P: Parameters> From<Affine<P>> for Projective<P> {
     fn from(p: Affine<P>) -> Projective<P> {
-        if p.is_zero() {
-            Self::zero()
-        } else {
-            Self::new(p.x, p.y, P::BaseField::one())
-        }
+        if p.is_zero() { Self::zero() } else { Self::new(p.x, p.y, P::BaseField::one()) }
     }
 }

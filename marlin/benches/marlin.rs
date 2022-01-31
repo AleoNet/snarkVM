@@ -60,10 +60,7 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Benchmark<Constr
         )?;
 
         for i in 0..(self.num_variables - 3) {
-            let _ = cs.alloc(
-                || format!("var {}", i),
-                || self.a.ok_or(SynthesisError::AssignmentMissing),
-            )?;
+            let _ = cs.alloc(|| format!("var {}", i), || self.a.ok_or(SynthesisError::AssignmentMissing))?;
         }
 
         for i in 0..(self.num_constraints - 1) {
@@ -100,12 +97,7 @@ fn snark_circuit_setup(c: &mut Criterion) {
 
     c.bench_function("snark_circuit_setup", move |b| {
         b.iter(|| {
-            let circuit = Benchmark::<Fr> {
-                a: Some(x),
-                b: Some(y),
-                num_constraints,
-                num_variables,
-            };
+            let circuit = Benchmark::<Fr> { a: Some(x), b: Some(y), num_constraints, num_variables };
 
             MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap()
         })
@@ -123,28 +115,14 @@ fn snark_prove(c: &mut Criterion) {
     let max_degree = snarkvm_marlin::ahp::AHPForR1CS::<Fr, MarlinRecursiveMode>::max_degree(1000, 1000, 1000).unwrap();
     let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
 
-    let circuit = Benchmark::<Fr> {
-        a: Some(x),
-        b: Some(y),
-        num_constraints,
-        num_variables,
-    };
+    let circuit = Benchmark::<Fr> { a: Some(x), b: Some(y), num_constraints, num_variables };
 
     let params = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
 
     c.bench_function("snark_prove", move |b| {
         b.iter(|| {
-            MarlinInst::prove(
-                &params.0,
-                &Benchmark {
-                    a: Some(x),
-                    b: Some(y),
-                    num_constraints,
-                    num_variables,
-                },
-                rng,
-            )
-            .unwrap()
+            MarlinInst::prove(&params.0, &Benchmark { a: Some(x), b: Some(y), num_constraints, num_variables }, rng)
+                .unwrap()
         })
     });
 }
@@ -163,26 +141,13 @@ fn snark_verify(c: &mut Criterion) {
         snarkvm_marlin::ahp::AHPForR1CS::<Fr, MarlinRecursiveMode>::max_degree(1000000, 100000, 1000000).unwrap();
     let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
 
-    let circuit = Benchmark::<Fr> {
-        a: Some(x),
-        b: Some(y),
-        num_constraints,
-        num_variables,
-    };
+    let circuit = Benchmark::<Fr> { a: Some(x), b: Some(y), num_constraints, num_variables };
 
     let params = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
 
-    let proof = MarlinInst::prove(
-        &params.0,
-        &Benchmark {
-            a: Some(x),
-            b: Some(y),
-            num_constraints,
-            num_variables,
-        },
-        rng,
-    )
-    .unwrap();
+    let proof =
+        MarlinInst::prove(&params.0, &Benchmark { a: Some(x), b: Some(y), num_constraints, num_variables }, rng)
+            .unwrap();
 
     c.bench_function("snark_verify", move |b| {
         b.iter(|| {

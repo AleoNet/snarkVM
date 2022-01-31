@@ -26,10 +26,7 @@ pub struct OptionalVec<T> {
 
 impl<T> Default for OptionalVec<T> {
     fn default() -> Self {
-        Self {
-            values: Default::default(),
-            holes: Default::default(),
-        }
+        Self { values: Default::default(), holes: Default::default() }
     }
 }
 
@@ -37,10 +34,7 @@ impl<T> OptionalVec<T> {
     /// Creates a new `OptionalVec` with the given underlying capacity.
     #[inline]
     pub fn with_capacity(cap: usize) -> Self {
-        Self {
-            values: Vec::with_capacity(cap),
-            holes: Default::default(),
-        }
+        Self { values: Vec::with_capacity(cap), holes: Default::default() }
     }
 
     /// Inserts a new value either into the first existing hole or extending the vector

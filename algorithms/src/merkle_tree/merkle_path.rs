@@ -43,11 +43,7 @@ pub struct MerklePath<P: MerkleParameters> {
 impl<P: MerkleParameters> MerklePath<P> {
     /// Returns a new instance of a Merkle path.
     pub fn from(parameters: Arc<P>, path: Vec<MerkleTreeDigest<P>>, leaf_index: u64) -> Result<Self> {
-        Ok(Self {
-            parameters,
-            path,
-            leaf_index,
-        })
+        Ok(Self { parameters, path, leaf_index })
     }
 
     pub fn verify<L: ToBytes>(&self, root_hash: &MerkleTreeDigest<P>, leaf: &L) -> Result<bool, MerkleError> {
@@ -116,11 +112,7 @@ impl<P: MerkleParameters> Default for MerklePath<P> {
         for _i in 0..P::DEPTH {
             path.push(MerkleTreeDigest::<P>::default());
         }
-        Self {
-            parameters: Arc::new(P::setup("unsafe")),
-            path,
-            leaf_index: 0,
-        }
+        Self { parameters: Arc::new(P::setup("unsafe")), path, leaf_index: 0 }
     }
 }
 
@@ -152,11 +144,7 @@ impl<P: MerkleParameters> FromBytes for MerklePath<P> {
 
         let leaf_index: u64 = FromBytes::read_le(&mut reader)?;
 
-        Ok(Self {
-            parameters,
-            path,
-            leaf_index,
-        })
+        Ok(Self { parameters, path, leaf_index })
     }
 }
 

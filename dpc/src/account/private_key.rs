@@ -32,11 +32,7 @@ use rand::{CryptoRng, Rng};
 use std::{fmt, str::FromStr};
 
 #[derive(Derivative)]
-#[derivative(
-    Clone(bound = "N: Network"),
-    PartialEq(bound = "N: Network"),
-    Eq(bound = "N: Network")
-)]
+#[derivative(Clone(bound = "N: Network"), PartialEq(bound = "N: Network"), Eq(bound = "N: Network"))]
 pub struct PrivateKey<N: Network> {
     seed: N::AccountSeed,
     pub(super) sk_sig: N::ProgramScalarField,
@@ -57,9 +53,7 @@ impl<N: Network> PrivateKey<N> {
 
     /// Signs a message using the account private key.
     pub fn sign<R: Rng + CryptoRng>(&self, message: &[u8], rng: &mut R) -> Result<N::AccountSignature, AccountError> {
-        Ok(N::account_signature_scheme()
-            .sign(&(self.sk_sig, self.r_sig), message, rng)?
-            .into())
+        Ok(N::account_signature_scheme().sign(&(self.sk_sig, self.r_sig), message, rng)?.into())
     }
 
     /// Returns the address from the private key.
@@ -121,9 +115,7 @@ impl<N: Network> fmt::Display for PrivateKey<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut private_key = [0u8; 43];
         private_key[0..11].copy_from_slice(&account_format::PRIVATE_KEY_PREFIX);
-        self.seed
-            .write_le(&mut private_key[11..43])
-            .expect("seed formatting failed");
+        self.seed.write_le(&mut private_key[11..43]).expect("seed formatting failed");
 
         write!(f, "{}", private_key.to_base58())
     }

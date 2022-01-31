@@ -80,9 +80,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     }
 
     pub(crate) fn polynomial_labels() -> impl Iterator<Item = String> {
-        Self::indexer_polynomials()
-            .chain(Self::prover_polynomials())
-            .map(|s| s.to_string())
+        Self::indexer_polynomials().chain(Self::prover_polynomials()).map(|s| s.to_string())
     }
 
     /// Check that the (formatted) public input is of the form 2^n for some integer n.
@@ -109,11 +107,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         Ok(*[
             2 * constraint_domain_size + zk_bound - 2,
-            if MM::ZK {
-                3 * constraint_domain_size + 2 * zk_bound - 3
-            } else {
-                0
-            }, //  mask_poly
+            if MM::ZK { 3 * constraint_domain_size + 2 * zk_bound - 3 } else { 0 }, //  mask_poly
             constraint_domain_size,
             constraint_domain_size,
             non_zero_domain_size - 1,
@@ -150,10 +144,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         domain_b: EvaluationDomain<F>,
         domain_c: EvaluationDomain<F>,
     ) -> EvaluationDomain<F> {
-        [domain_a, domain_b, domain_c]
-            .into_iter()
-            .max_by_key(|d| d.size())
-            .unwrap()
+        [domain_a, domain_b, domain_c].into_iter().max_by_key(|d| d.size()).unwrap()
     }
 
     /// Construct the linear combinations that are checked by the AHP.
@@ -169,11 +160,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let non_zero_a_domain = state.non_zero_a_domain;
         let non_zero_b_domain = state.non_zero_b_domain;
         let non_zero_c_domain = state.non_zero_c_domain;
-        let largest_non_zero_domain = Self::max_non_zero_domain_helper(
-            state.non_zero_a_domain,
-            state.non_zero_b_domain,
-            state.non_zero_c_domain,
-        );
+        let largest_non_zero_domain =
+            Self::max_non_zero_domain_helper(state.non_zero_a_domain, state.non_zero_b_domain, state.non_zero_c_domain);
 
         let public_input = ProverConstraintSystem::format_public_input(public_input);
         if !Self::formatted_public_input_is_admissible(&public_input) {
@@ -290,10 +278,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         );
         inner_sumcheck += (r_c, &lhs_c);
 
-        inner_sumcheck -= &LinearCombination::new("h_2", vec![(
-            largest_non_zero_domain.evaluate_vanishing_polynomial(gamma),
-            "h_2",
-        )]);
+        inner_sumcheck -=
+            &LinearCombination::new("h_2", vec![(largest_non_zero_domain.evaluate_vanishing_polynomial(gamma), "h_2")]);
         debug_assert!(evals.get_lc_eval(&inner_sumcheck, gamma)?.is_zero());
 
         linear_combinations.push(g_a);
@@ -349,9 +335,7 @@ pub trait EvaluationsProvider<F: Field> {
 impl<'a, F: Field> EvaluationsProvider<F> for snarkvm_polycommit::Evaluations<'a, F> {
     fn get_lc_eval(&self, lc: &LinearCombination<F>, point: F) -> Result<F, AHPError> {
         let key = (lc.label.clone(), point);
-        self.get(&key)
-            .copied()
-            .ok_or_else(|| AHPError::MissingEval(lc.label.clone()))
+        self.get(&key).copied().ok_or_else(|| AHPError::MissingEval(lc.label.clone()))
     }
 }
 
@@ -439,10 +423,8 @@ mod tests {
     fn domain_unnormalized_bivariate_lagrange_poly() {
         for domain_size in 1..10 {
             let domain = EvaluationDomain::<Fr>::new(1 << domain_size).unwrap();
-            let manual: Vec<_> = domain
-                .elements()
-                .map(|elem| domain.eval_unnormalized_bivariate_lagrange_poly(elem, elem))
-                .collect();
+            let manual: Vec<_> =
+                domain.elements().map(|elem| domain.eval_unnormalized_bivariate_lagrange_poly(elem, elem)).collect();
             let fast = domain.batch_eval_unnormalized_bivariate_lagrange_poly_with_same_inputs();
             assert_eq!(fast, manual);
         }
@@ -454,10 +436,8 @@ mod tests {
         for domain_size in 1..10 {
             let domain = EvaluationDomain::<Fr>::new(1 << domain_size).unwrap();
             let x = Fr::rand(rng);
-            let manual: Vec<_> = domain
-                .elements()
-                .map(|y| domain.eval_unnormalized_bivariate_lagrange_poly(x, y))
-                .collect();
+            let manual: Vec<_> =
+                domain.elements().map(|y| domain.eval_unnormalized_bivariate_lagrange_poly(x, y)).collect();
             let fast = domain.batch_eval_unnormalized_bivariate_lagrange_poly_with_diff_inputs(x);
             assert_eq!(fast, manual);
         }
@@ -499,10 +479,7 @@ mod tests {
                         .collect();
                     Evaluations::from_vec_and_domain(evals, domain_i).interpolate()
                 };
-                assert_eq!(
-                    slow_selector.evaluate(point),
-                    domain_i.evaluate_selector_polynomial(domain_j, point)
-                );
+                assert_eq!(slow_selector.evaluate(point), domain_i.evaluate_selector_polynomial(domain_j, point));
 
                 for element in domain_i.elements() {
                     if j_elements.contains(&element) {

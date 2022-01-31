@@ -68,9 +68,7 @@ fn bls12_377_gadget_bilinearity_test() {
     };
 
     let (ans3_g, ans3_n) = {
-        let s_iter = BitIteratorBE::new(s.to_repr())
-            .map(Boolean::constant)
-            .collect::<Vec<_>>();
+        let s_iter = BitIteratorBE::new(s.to_repr()).map(Boolean::constant).collect::<Vec<_>>();
 
         let mut ans_g = Bls12PairingGadget::pairing(cs.ns(|| "pair(a, b)"), a_prep_g, b_prep_g).unwrap();
         let mut ans_n = Bls12_377::pairing(a, b);

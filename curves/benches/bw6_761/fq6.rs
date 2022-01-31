@@ -28,9 +28,7 @@ pub fn bench_fq6_add_assign(c: &mut Criterion) {
 
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
-    let v: Vec<(Fq6, Fq6)> = (0..SAMPLES)
-        .map(|_| (Fq6::rand(&mut rng), Fq6::rand(&mut rng)))
-        .collect();
+    let v: Vec<(Fq6, Fq6)> = (0..SAMPLES).map(|_| (Fq6::rand(&mut rng), Fq6::rand(&mut rng))).collect();
 
     let mut count = 0;
     c.bench_function("bw6_761: fq6_add_assign", |c| {
@@ -48,9 +46,7 @@ pub fn bench_fq6_sub_assign(c: &mut Criterion) {
 
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
-    let v: Vec<(Fq6, Fq6)> = (0..SAMPLES)
-        .map(|_| (Fq6::rand(&mut rng), Fq6::rand(&mut rng)))
-        .collect();
+    let v: Vec<(Fq6, Fq6)> = (0..SAMPLES).map(|_| (Fq6::rand(&mut rng), Fq6::rand(&mut rng))).collect();
 
     let mut count = 0;
     c.bench_function("bw6_761: fq6_sub_assign", |c| {
@@ -68,9 +64,7 @@ pub fn bench_fq6_mul_assign(c: &mut Criterion) {
 
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
-    let v: Vec<(Fq6, Fq6)> = (0..SAMPLES)
-        .map(|_| (Fq6::rand(&mut rng), Fq6::rand(&mut rng)))
-        .collect();
+    let v: Vec<(Fq6, Fq6)> = (0..SAMPLES).map(|_| (Fq6::rand(&mut rng), Fq6::rand(&mut rng))).collect();
 
     let mut count = 0;
     c.bench_function("bw6_761: fq6_mul_assign", |c| {

@@ -91,9 +91,7 @@ impl<N: Network> fmt::Display for ViewKey<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut view_key = [0u8; 39];
         view_key[0..7].copy_from_slice(&account_format::VIEW_KEY_PREFIX);
-        self.0
-            .write_le(&mut view_key[7..39])
-            .expect("view key formatting failed");
+        self.0.write_le(&mut view_key[7..39]).expect("view key formatting failed");
 
         write!(f, "{}", view_key.to_base58())
     }

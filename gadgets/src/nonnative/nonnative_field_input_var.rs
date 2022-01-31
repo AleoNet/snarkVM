@@ -188,9 +188,7 @@ where
         for field_gadget in field_allocation.iter() {
             wrapped_field_allocation.push(NonNativeFieldVar::Var(field_gadget.clone()));
         }
-        Ok(Self {
-            val: wrapped_field_allocation,
-        })
+        Ok(Self { val: wrapped_field_allocation })
     }
 }
 

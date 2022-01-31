@@ -105,11 +105,9 @@ pub enum Error {
 impl core::fmt::Display for Error {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            Error::MissingPolynomial { label } => write!(
-                f,
-                "`QuerySet` refers to polynomial \"{}\", but it was not provided.",
-                label
-            ),
+            Error::MissingPolynomial { label } => {
+                write!(f, "`QuerySet` refers to polynomial \"{}\", but it was not provided.", label)
+            }
             Error::MissingEvaluation { label } => write!(
                 f,
                 "`QuerySet` refers to polynomial \"{}\", but `Evaluations` does not contain an evaluation for it.",
@@ -118,20 +116,14 @@ impl core::fmt::Display for Error {
             Error::MissingLHS { label } => write!(f, "Equation \"{}\" does not have a LHS.", label),
             Error::MissingRng => write!(f, "hiding commitments require `Some(rng)`"),
             Error::DegreeIsZero => write!(f, "this scheme does not support committing to degree 0 polynomials"),
-            Error::TooManyCoefficients {
-                num_coefficients,
-                num_powers,
-            } => write!(
+            Error::TooManyCoefficients { num_coefficients, num_powers } => write!(
                 f,
                 "the number of coefficients in the polynomial ({:?}) is greater than\
                  the maximum number of powers in `Powers` ({:?})",
                 num_coefficients, num_powers
             ),
             Error::HidingBoundIsZero => write!(f, "this scheme does not support non-`None` hiding bounds that are 0"),
-            Error::HidingBoundToolarge {
-                hiding_poly_degree,
-                num_powers,
-            } => write!(
+            Error::HidingBoundToolarge { hiding_poly_degree, num_powers } => write!(
                 f,
                 "the degree of the hiding poly ({:?}) is not less than the maximum number of powers in `Powers` ({:?})",
                 hiding_poly_degree, num_powers
@@ -144,12 +136,7 @@ impl core::fmt::Display for Error {
             Error::UnsupportedDegreeBound(bound) => {
                 write!(f, "the degree bound ({:?}) is not supported by the parameters", bound,)
             }
-            Error::IncorrectDegreeBound {
-                poly_degree,
-                degree_bound,
-                supported_degree,
-                label,
-            } => write!(
+            Error::IncorrectDegreeBound { poly_degree, degree_bound, supported_degree, label } => write!(
                 f,
                 "the degree bound ({:?}) for the polynomial {} \
                  (having degree {:?}) is greater than the maximum \

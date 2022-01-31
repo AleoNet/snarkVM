@@ -94,13 +94,7 @@ impl<E: PairingEngine> PCCommitterKey for CommitterKey<E> {
 
 /// `VerifierKey` is used to check evaluation proofs for a given commitment.
 #[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
-#[derivative(
-    Default(bound = ""),
-    Clone(bound = ""),
-    Debug(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derivative(Default(bound = ""), Clone(bound = ""), Debug(bound = ""), PartialEq(bound = ""), Eq(bound = ""))]
 pub struct VerifierKey<E: PairingEngine> {
     /// The verification key for the underlying KZG10 scheme.
     pub vk: kzg10::VerifierKey<E>,
@@ -254,10 +248,7 @@ impl<E: PairingEngine> ToMinimalBits for Commitment<E> {
 impl<E: PairingEngine> PCCommitment for Commitment<E> {
     #[inline]
     fn empty() -> Self {
-        Self {
-            comm: kzg10::Commitment::empty(),
-            shifted_comm: Some(kzg10::Commitment::empty()),
-        }
+        Self { comm: kzg10::Commitment::empty(), shifted_comm: Some(kzg10::Commitment::empty()) }
     }
 
     fn has_degree_bound(&self) -> bool {
@@ -289,13 +280,7 @@ impl<E: PairingEngine> ToConstraintField<E::Fq> for Commitment<E> {
 
 /// Prepared commitment to a polynomial that optionally enforces a degree bound.
 #[derive(Derivative)]
-#[derivative(
-    Hash(bound = ""),
-    Clone(bound = ""),
-    Debug(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derivative(Hash(bound = ""), Clone(bound = ""), Debug(bound = ""), PartialEq(bound = ""), Eq(bound = ""))]
 pub struct PreparedCommitment<E: PairingEngine> {
     pub(crate) prepared_comm: kzg10::PreparedCommitment<E>,
     pub(crate) shifted_comm: Option<kzg10::Commitment<E>>,
@@ -307,10 +292,7 @@ impl<E: PairingEngine> Prepare<PreparedCommitment<E>> for Commitment<E> {
         let prepared_commitment = kzg10::PreparedCommitment::<E>::prepare(&self.comm);
         let shifted_commitment = self.shifted_comm;
 
-        PreparedCommitment::<E> {
-            prepared_comm: prepared_commitment,
-            shifted_comm: shifted_commitment,
-        }
+        PreparedCommitment::<E> { prepared_comm: prepared_commitment, shifted_comm: shifted_commitment }
     }
 }
 
@@ -377,21 +359,12 @@ impl<'a, E: PairingEngine> AddAssign<(E::Fr, &'a Randomness<E>)> for Randomness<
 
 impl<E: PairingEngine> PCRandomness for Randomness<E> {
     fn empty() -> Self {
-        Self {
-            rand: kzg10::Randomness::empty(),
-            shifted_rand: None,
-        }
+        Self { rand: kzg10::Randomness::empty(), shifted_rand: None }
     }
 
     fn rand<R: RngCore>(hiding_bound: usize, has_degree_bound: bool, rng: &mut R) -> Self {
-        let shifted_rand = if has_degree_bound {
-            Some(kzg10::Randomness::rand(hiding_bound, false, rng))
-        } else {
-            None
-        };
-        Self {
-            rand: kzg10::Randomness::rand(hiding_bound, false, rng),
-            shifted_rand,
-        }
+        let shifted_rand =
+            if has_degree_bound { Some(kzg10::Randomness::rand(hiding_bound, false, rng)) } else { None };
+        Self { rand: kzg10::Randomness::rand(hiding_bound, false, rng), shifted_rand }
     }
 }

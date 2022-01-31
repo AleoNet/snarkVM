@@ -30,9 +30,7 @@ pub struct ProgramPublicVariables<N: Network> {
 
 impl<N: Network> ProgramPublicVariables<N> {
     pub fn blank() -> Self {
-        Self {
-            transition_id: Default::default(),
-        }
+        Self { transition_id: Default::default() }
     }
 
     pub fn new(transition_id: N::TransitionID) -> Self {

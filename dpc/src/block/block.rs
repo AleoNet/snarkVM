@@ -56,10 +56,7 @@ pub struct Block<N: Network> {
 impl<N: Network> Block<N> {
     /// Initializes a new block.
     pub fn mine<R: Rng + CryptoRng>(template: &BlockTemplate<N>, terminator: &AtomicBool, rng: &mut R) -> Result<Self> {
-        assert!(
-            !(*(template.transactions())).is_empty(),
-            "Cannot create block with no transactions"
-        );
+        assert!(!(*(template.transactions())).is_empty(), "Cannot create block with no transactions");
 
         // Compute the block header.
         let header = BlockHeader::mine(template, terminator, rng)?;
@@ -115,17 +112,11 @@ impl<N: Network> Block<N> {
         assert!(!(*transactions).is_empty(), "Cannot create block with no transactions");
 
         // Compute the block hash.
-        let block_hash = N::block_hash_crh()
-            .hash(&to_bytes_le![previous_block_hash, header.to_header_root()?]?)?
-            .into();
+        let block_hash =
+            N::block_hash_crh().hash(&to_bytes_le![previous_block_hash, header.to_header_root()?]?)?.into();
 
         // Construct the block.
-        let block = Self {
-            block_hash,
-            previous_block_hash,
-            header,
-            transactions,
-        };
+        let block = Self { block_hash, previous_block_hash, header, transactions };
 
         // Ensure the block is valid.
         match block.is_valid() {
@@ -189,10 +180,7 @@ impl<N: Network> Block<N> {
         // Ensure the coinbase reward less transaction fees is less than or equal to the block reward.
         let candidate_block_reward = AleoAmount::ZERO.sub(self.transactions.net_value_balance()); // Make it a positive number.
         if candidate_block_reward > block_reward {
-            eprintln!(
-                "Block reward must be <= {}, found {}",
-                block_reward, candidate_block_reward
-            );
+            eprintln!("Block reward must be <= {}, found {}", block_reward, candidate_block_reward);
             return false;
         }
 
@@ -342,11 +330,7 @@ impl<N: Network> FromStr for Block<N> {
 
 impl<N: Network> fmt::Display for Block<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            serde_json::to_string(self).map_err::<fmt::Error, _>(serde::ser::Error::custom)?
-        )
+        write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(serde::ser::Error::custom)?)
     }
 }
 
@@ -425,10 +409,7 @@ mod tests {
 
         // Genesis
 
-        assert_eq!(
-            Block::<Testnet2>::block_reward(0).0,
-            Testnet2::ALEO_STARTING_SUPPLY_IN_CREDITS * 1_000_000
-        );
+        assert_eq!(Block::<Testnet2>::block_reward(0).0, Testnet2::ALEO_STARTING_SUPPLY_IN_CREDITS * 1_000_000);
 
         // Before block halving
 
@@ -480,18 +461,12 @@ mod tests {
 
         // Phase 1 - 100 credits per block.
         let phase_1_sum = AleoAmount::from_i64(
-            (0..=first_halving)
-                .into_par_iter()
-                .map(|i| Block::<Testnet2>::block_reward(i).0)
-                .sum::<i64>(),
+            (0..=first_halving).into_par_iter().map(|i| Block::<Testnet2>::block_reward(i).0).sum::<i64>(),
         );
 
         supply = supply.add(phase_1_sum);
 
-        assert_eq!(
-            supply,
-            AleoAmount::from_i64(supply_at_first_halving * AleoAmount::ONE_CREDIT.0)
-        );
+        assert_eq!(supply, AleoAmount::from_i64(supply_at_first_halving * AleoAmount::ONE_CREDIT.0));
 
         // Phase 2 - 50 credits per block.
         let phase_2_sum = AleoAmount::from_i64(
@@ -503,10 +478,7 @@ mod tests {
 
         supply = supply.add(phase_2_sum);
 
-        assert_eq!(
-            supply,
-            AleoAmount::from_i64(supply_at_second_halving * AleoAmount::ONE_CREDIT.0)
-        );
+        assert_eq!(supply, AleoAmount::from_i64(supply_at_second_halving * AleoAmount::ONE_CREDIT.0));
     }
 
     #[test]
@@ -518,11 +490,7 @@ mod tests {
         // Serialize
         let expected_string = expected_block.to_string();
         let candidate_string = serde_json::to_string(&expected_block).unwrap();
-        assert_eq!(
-            1008476,
-            candidate_string.len(),
-            "Update me if serialization has changed"
-        );
+        assert_eq!(1008476, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(expected_string, candidate_string);
 
         // Deserialize
@@ -560,18 +528,11 @@ mod tests {
         let sanitized_candidate_string = serde_json::Value::from_str(&candidate_string).unwrap();
         let sanitized_candidate_string = sanitized_candidate_string.as_str().unwrap();
         println!("{} == {}", expected_string, sanitized_candidate_string);
-        assert_eq!(
-            61,
-            sanitized_candidate_string.len(),
-            "Update me if serialization has changed"
-        );
+        assert_eq!(61, sanitized_candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(expected_string, sanitized_candidate_string);
 
         // Deserialize
-        assert_eq!(
-            expected_block_hash,
-            <Testnet2 as Network>::BlockHash::from_str(expected_string).unwrap()
-        );
+        assert_eq!(expected_block_hash, <Testnet2 as Network>::BlockHash::from_str(expected_string).unwrap());
         assert_eq!(expected_block_hash, serde_json::from_str(&candidate_string).unwrap());
     }
 
@@ -583,16 +544,10 @@ mod tests {
         // Serialize
         let expected_bytes = expected_block_hash.to_bytes_le().unwrap();
         assert_eq!(32, expected_bytes.len(), "Update me if serialization has changed");
-        assert_eq!(
-            &expected_bytes[..],
-            &bincode::serialize(&expected_block_hash).unwrap()[..]
-        );
+        assert_eq!(&expected_bytes[..], &bincode::serialize(&expected_block_hash).unwrap()[..]);
 
         // Deserialize
-        assert_eq!(
-            expected_block_hash,
-            <Testnet2 as Network>::BlockHash::read_le(&expected_bytes[..]).unwrap()
-        );
+        assert_eq!(expected_block_hash, <Testnet2 as Network>::BlockHash::read_le(&expected_bytes[..]).unwrap());
         assert_eq!(expected_block_hash, bincode::deserialize(&expected_bytes[..]).unwrap());
     }
 

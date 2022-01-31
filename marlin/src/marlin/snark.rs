@@ -128,10 +128,7 @@ pub mod test {
             )?;
 
             for i in 0..(self.num_variables - 3) {
-                let _ = cs.alloc(
-                    || format!("var {}", i),
-                    || self.a.ok_or(SynthesisError::AssignmentMissing),
-                )?;
+                let _ = cs.alloc(|| format!("var {}", i), || self.a.ok_or(SynthesisError::AssignmentMissing))?;
             }
 
             for i in 0..(self.num_constraints - 1) {
@@ -158,12 +155,7 @@ pub mod test {
             let mut c = a;
             c.mul_assign(&b);
 
-            let circ = Circuit {
-                a: Some(a),
-                b: Some(b),
-                num_constraints: 100,
-                num_variables: 25,
-            };
+            let circ = Circuit { a: Some(a), b: Some(b), num_constraints: 100, num_variables: 25 };
 
             // Generate the circuit parameters.
 
@@ -173,10 +165,7 @@ pub mod test {
 
             let proof = TestSNARK::prove(&pk, &circ, &mut rng).unwrap();
 
-            assert!(
-                TestSNARK::verify(&vk.clone(), &[c], &proof).unwrap(),
-                "The native verification check fails."
-            );
+            assert!(TestSNARK::verify(&vk.clone(), &[c], &proof).unwrap(), "The native verification check fails.");
         }
     }
 }

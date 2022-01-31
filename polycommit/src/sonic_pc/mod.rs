@@ -171,9 +171,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         };
 
         let powers_of_g = pp.powers_of_g[..=supported_degree].to_vec();
-        let powers_of_gamma_g = (0..=supported_hiding_bound + 1)
-            .map(|i| pp.powers_of_gamma_g[&i])
-            .collect();
+        let powers_of_gamma_g = (0..=supported_hiding_bound + 1).map(|i| pp.powers_of_gamma_g[&i]).collect();
 
         let ck = CommitterKey {
             powers: powers_of_g,
@@ -203,23 +201,14 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         };
 
         let degree_bounds_and_prepared_neg_powers_of_h =
-            degree_bounds_and_neg_powers_of_h
-                .as_ref()
-                .map(|degree_bounds_and_neg_powers_of_h| {
-                    degree_bounds_and_neg_powers_of_h
-                        .iter()
-                        .map(|(d, affine)| (*d, affine.prepare()))
-                        .collect::<Vec<(usize, <E::G2Affine as PairingCurve>::Prepared)>>()
-                });
+            degree_bounds_and_neg_powers_of_h.as_ref().map(|degree_bounds_and_neg_powers_of_h| {
+                degree_bounds_and_neg_powers_of_h
+                    .iter()
+                    .map(|(d, affine)| (*d, affine.prepare()))
+                    .collect::<Vec<(usize, <E::G2Affine as PairingCurve>::Prepared)>>()
+            });
 
-        let kzg10_vk = kzg10::VerifierKey::<E> {
-            g,
-            gamma_g,
-            h,
-            beta_h,
-            prepared_h,
-            prepared_beta_h,
-        };
+        let kzg10_vk = kzg10::VerifierKey::<E> { g, gamma_g, h, beta_h, prepared_h, prepared_beta_h };
 
         let vk = VerifierKey {
             vk: kzg10_vk,
@@ -286,13 +275,8 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
                     ck.powers()
                 };
 
-                let (comm, rand) = kzg10::KZG10::commit(
-                    &powers,
-                    polynomial,
-                    hiding_bound,
-                    terminator,
-                    rng.as_mut().map(|s| s as _),
-                )?;
+                let (comm, rand) =
+                    kzg10::KZG10::commit(&powers, polynomial, hiding_bound, terminator, rng.as_mut().map(|s| s as _))?;
                 end_timer!(commit_time);
                 Ok((LabeledCommitment::new(label.to_string(), comm, degree_bound), rand))
             });
@@ -398,9 +382,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         let mut query_to_labels_map = BTreeMap::new();
 
         for (label, (point_name, point)) in query_set.iter() {
-            let labels = query_to_labels_map
-                .entry(point_name)
-                .or_insert((point, BTreeSet::new()));
+            let labels = query_to_labels_map.entry(point_name).or_insert((point, BTreeSet::new()));
             labels.1.insert(label);
         }
 
@@ -416,13 +398,11 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
             let mut comms_to_combine: Vec<&'_ LabeledCommitment<_>> = Vec::new();
             let mut values_to_combine = Vec::new();
             for label in labels.into_iter() {
-                let commitment = commitments.get(label).ok_or(Error::MissingPolynomial {
-                    label: label.to_string(),
-                })?;
+                let commitment = commitments.get(label).ok_or(Error::MissingPolynomial { label: label.to_string() })?;
 
-                let v_i = values.get(&(label.clone(), *query)).ok_or(Error::MissingEvaluation {
-                    label: label.to_string(),
-                })?;
+                let v_i = values
+                    .get(&(label.clone(), *query))
+                    .ok_or(Error::MissingEvaluation { label: label.to_string() })?;
 
                 comms_to_combine.push(commitment);
                 values_to_combine.push(*v_i);
@@ -484,9 +464,8 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
             let num_polys = lc.len();
             for (coeff, label) in lc.iter().filter(|(_, l)| !l.is_one()) {
                 let label: &String = label.try_into().expect("cannot be one!");
-                let &(cur_poly, cur_rand, curr_comm) = label_map.get(label).ok_or(Error::MissingPolynomial {
-                    label: label.to_string(),
-                })?;
+                let &(cur_poly, cur_rand, curr_comm) =
+                    label_map.get(label).ok_or(Error::MissingPolynomial { label: label.to_string() })?;
 
                 if num_polys == 1 && cur_poly.degree_bound().is_some() {
                     assert!(coeff.is_one(), "Coefficient must be one for degree-bounded equations");
@@ -530,10 +509,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
             lc_randomness.iter(),
             rng,
         )?;
-        Ok(BatchLCProof {
-            proof,
-            evaluations: None,
-        })
+        Ok(BatchLCProof { proof, evaluations: None })
     }
 
     /// Checks that `values` are the true evaluations at `query_set` of the polynomials
@@ -552,10 +528,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         Self::Commitment: 'a,
     {
         let BatchLCProof { proof, .. } = proof;
-        let label_comm_map = commitments
-            .into_iter()
-            .map(|c| (c.label().to_owned(), c))
-            .collect::<BTreeMap<_, _>>();
+        let label_comm_map = commitments.into_iter().map(|c| (c.label().to_owned(), c)).collect::<BTreeMap<_, _>>();
 
         let mut lc_commitments = Vec::new();
         let mut lc_info = Vec::new();
@@ -576,9 +549,8 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
                     }
                 } else {
                     let label: String = label.to_owned().try_into().unwrap();
-                    let cur_comm = label_comm_map.get(&label).ok_or(Error::MissingPolynomial {
-                        label: label.to_string(),
-                    })?;
+                    let cur_comm =
+                        label_comm_map.get(&label).ok_or(Error::MissingPolynomial { label: label.to_string() })?;
 
                     if num_polys == 1 && cur_comm.degree_bound().is_some() {
                         assert!(coeff.is_one(), "Coefficient must be one for degree-bounded equations");
@@ -594,25 +566,12 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
             lc_info.push((lc_label, degree_bound));
         }
 
-        let comms = E::G1Projective::batch_normalization_into_affine(lc_commitments)
-            .into_iter()
-            .map(kzg10::Commitment);
+        let comms = E::G1Projective::batch_normalization_into_affine(lc_commitments).into_iter().map(kzg10::Commitment);
 
-        let lc_commitments: Vec<_> = lc_info
-            .into_iter()
-            .zip(comms)
-            .map(|((label, d), c)| LabeledCommitment::new(label, c, d))
-            .collect();
+        let lc_commitments: Vec<_> =
+            lc_info.into_iter().zip(comms).map(|((label, d), c)| LabeledCommitment::new(label, c, d)).collect();
 
-        Self::batch_check(
-            vk,
-            &lc_commitments,
-            query_set,
-            &evaluations,
-            proof,
-            opening_challenge,
-            rng,
-        )
+        Self::batch_check(vk, &lc_commitments, query_set, &evaluations, proof, opening_challenge, rng)
     }
 
     /// On input a list of polynomials, linear combinations of those polynomials,
@@ -655,9 +614,8 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
             let num_polys = lc.len();
             for (coeff, label) in lc.iter().filter(|(_, l)| !l.is_one()) {
                 let label: &String = label.try_into().expect("cannot be one!");
-                let &(cur_poly, cur_rand, cur_comm) = label_map.get(label).ok_or(Error::MissingPolynomial {
-                    label: label.to_string(),
-                })?;
+                let &(cur_poly, cur_rand, cur_comm) =
+                    label_map.get(label).ok_or(Error::MissingPolynomial { label: label.to_string() })?;
                 if num_polys == 1 && cur_poly.degree_bound().is_some() {
                     assert!(coeff.is_one(), "Coefficient must be one for degree-bounded equations");
                     degree_bound = cur_poly.degree_bound();
@@ -694,10 +652,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
             lc_randomness.iter(),
         )?;
 
-        Ok(BatchLCProof {
-            proof,
-            evaluations: None,
-        })
+        Ok(BatchLCProof { proof, evaluations: None })
     }
 
     /// Check combinations with individual challenges.
@@ -715,10 +670,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         Self::Commitment: 'a,
     {
         let BatchLCProof { proof, .. } = proof;
-        let label_comm_map = commitments
-            .into_iter()
-            .map(|c| (c.label(), c))
-            .collect::<BTreeMap<_, _>>();
+        let label_comm_map = commitments.into_iter().map(|c| (c.label(), c)).collect::<BTreeMap<_, _>>();
 
         let mut lc_commitments = Vec::new();
         let mut lc_info = Vec::new();
@@ -741,9 +693,8 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
                     }
                 } else {
                     let label: &String = label.try_into().unwrap();
-                    let &cur_comm = label_comm_map.get(label).ok_or(Error::MissingPolynomial {
-                        label: label.to_string(),
-                    })?;
+                    let &cur_comm =
+                        label_comm_map.get(label).ok_or(Error::MissingPolynomial { label: label.to_string() })?;
 
                     if num_polys == 1 && cur_comm.degree_bound().is_some() {
                         assert!(coeff.is_one(), "Coefficient must be one for degree-bounded equations");
@@ -853,9 +804,7 @@ impl<E: PairingEngine> SonicKZG10<E> {
         let mut query_to_labels_map = BTreeMap::new();
 
         for (label, (point_name, point)) in query_set.iter() {
-            let labels = query_to_labels_map
-                .entry(point_name)
-                .or_insert((point, BTreeSet::new()));
+            let labels = query_to_labels_map.entry(point_name).or_insert((point, BTreeSet::new()));
             labels.1.insert(label);
         }
 
@@ -867,9 +816,8 @@ impl<E: PairingEngine> SonicKZG10<E> {
                 Vec::new();
 
             for label in labels {
-                let (polynomial, rand, comm) = poly_rand_comm.get(label).ok_or(Error::MissingPolynomial {
-                    label: label.to_string(),
-                })?;
+                let (polynomial, rand, comm) =
+                    poly_rand_comm.get(label).ok_or(Error::MissingPolynomial { label: label.to_string() })?;
 
                 query_polys.push(polynomial);
                 query_rands.push(rand);
@@ -952,9 +900,7 @@ impl<E: PairingEngine> SonicKZG10<E> {
 
         let mut query_to_labels_map = BTreeMap::new();
         for (label, (point_name, point)) in query_set.iter() {
-            let labels = query_to_labels_map
-                .entry(point_name)
-                .or_insert((point, BTreeSet::new()));
+            let labels = query_to_labels_map.entry(point_name).or_insert((point, BTreeSet::new()));
             labels.1.insert(label);
         }
 
@@ -968,15 +914,11 @@ impl<E: PairingEngine> SonicKZG10<E> {
             let mut comms: Vec<&'_ LabeledCommitment<_>> = Vec::new();
             let mut values = Vec::new();
             for label in labels {
-                let commitment = commitments.get(label).ok_or(Error::MissingPolynomial {
-                    label: label.to_string(),
-                })?;
+                let commitment = commitments.get(label).ok_or(Error::MissingPolynomial { label: label.to_string() })?;
 
                 let v_i = evaluations
                     .get(&(label.clone(), *point))
-                    .ok_or(Error::MissingEvaluation {
-                        label: label.to_string(),
-                    })?;
+                    .ok_or(Error::MissingEvaluation { label: label.to_string() })?;
 
                 comms.push(commitment);
                 values.push(*v_i);
@@ -1113,8 +1055,7 @@ impl<E: PairingEngine> SonicKZG10<E> {
 
         for (degree_bound, comm) in combined_comms.into_iter() {
             let shift_power = if let Some(degree_bound) = degree_bound {
-                vk.get_prepared_shift_power(degree_bound)
-                    .ok_or(Error::UnsupportedDegreeBound(degree_bound))?
+                vk.get_prepared_shift_power(degree_bound).ok_or(Error::UnsupportedDegreeBound(degree_bound))?
             } else {
                 vk.vk.prepared_h.clone()
             };
