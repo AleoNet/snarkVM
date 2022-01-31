@@ -29,7 +29,7 @@ impl<E: Environment, I: IntegerType> DivChecked<Self> for Integer<E, I> {
                 None => E::halt("Integer overflow on division of two constants"),
             }
         } else {
-           todo!()
+            todo!()
         }
     }
 }

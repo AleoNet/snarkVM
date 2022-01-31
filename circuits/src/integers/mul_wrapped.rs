@@ -83,14 +83,14 @@ impl<E: Environment, I: IntegerType> MulWrapped<Self> for Integer<E, I> {
 mod tests {
     use super::*;
     use crate::Circuit;
-    use snarkvm_utilities::{UniformRand, from_bytes_le_to_bits_le, ToBytes};
+    use snarkvm_utilities::{UniformRand, from_bytes_le_to_bits_le};
 
     use num_traits::{One};
     use rand::thread_rng;
 
     const ITERATIONS: usize = 128;
 
-    fn check_mul_wrapped<I: IntegerType + ToBytes, IC: IntegerTrait<I>>(
+    fn check_mul_wrapped<I: IntegerType, IC: IntegerTrait<I>>(
         name: &str,
         expected: I,
         a: &IC,
