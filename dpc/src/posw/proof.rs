@@ -179,7 +179,7 @@ mod tests {
         let mut ledger = Ledger::<Testnet2>::new().unwrap();
 
         // Check the genesis block.
-        // This will use a hiding PoSW Marlin mode.
+        // This will use a non-hiding PoSW Marlin mode.
         {
             assert_eq!(0, ledger.latest_block_height());
             let latest_block_header = ledger.latest_block().unwrap().header().clone();
@@ -189,11 +189,11 @@ mod tests {
                 Testnet2::HEADER_PROOF_SIZE_IN_BYTES
             ); // NOTE: Marlin proofs use compressed serialization
             assert!(Testnet2::posw().verify_from_block_header(&latest_block_header));
-            assert!(latest_proof.is_hiding());
+            assert!(!latest_proof.is_hiding());
         }
 
         // Check block 1.
-        // This will use a hiding PoSW Marlin mode.
+        // This will use a non-hiding PoSW Marlin mode.
         {
             ledger.mine_next_block(recipient, true, &terminator, rng).unwrap();
             assert_eq!(1, ledger.latest_block_height());
@@ -205,7 +205,7 @@ mod tests {
                 Testnet2::HEADER_PROOF_SIZE_IN_BYTES
             ); // NOTE: Marlin proofs use compressed serialization
             assert!(Testnet2::posw().verify_from_block_header(&latest_block_header));
-            assert!(latest_proof.is_hiding());
+            assert!(!latest_proof.is_hiding());
         }
 
         // Check block 2.
@@ -260,7 +260,7 @@ mod tests {
             // Serialize
             let expected_string = proof.to_string();
             let candidate_string = serde_json::to_string(&proof).unwrap();
-            assert_eq!(1134, candidate_string.len(), "Update me if serialization has changed");
+            assert_eq!(1441, candidate_string.len(), "Update me if serialization has changed");
             assert_eq!(expected_string, candidate_string);
 
             // Deserialize
@@ -273,7 +273,7 @@ mod tests {
             // Serialize
             let expected_string = proof.to_string();
             let candidate_string = serde_json::to_string(&proof).unwrap();
-            assert_eq!(1258, candidate_string.len(), "Update me if serialization has changed");
+            assert_eq!(1441, candidate_string.len(), "Update me if serialization has changed");
             assert_eq!(expected_string, candidate_string);
 
             // Deserialize

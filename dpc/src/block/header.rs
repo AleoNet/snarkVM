@@ -448,7 +448,7 @@ mod tests {
         // Serialize
         let expected_string = block_header.to_string();
         let candidate_string = serde_json::to_string(&block_header).unwrap();
-        assert_eq!(1919, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(1795, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(expected_string, candidate_string);
 
         // Deserialize

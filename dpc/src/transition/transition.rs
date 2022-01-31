@@ -424,7 +424,7 @@ mod tests {
             let transaction = Testnet2::genesis_block().to_coinbase_transaction().unwrap();
             let transition = transaction.transitions().first().unwrap().clone();
             let transition_bytes = transition.to_bytes_le().unwrap();
-            assert_eq!(502671, transition_bytes.len(),);
+            assert_eq!(502926, transition_bytes.len(),);
         }
     }
 
