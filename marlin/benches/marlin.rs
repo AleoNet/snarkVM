@@ -20,7 +20,7 @@ extern crate criterion;
 use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
 use snarkvm_fields::Field;
 use snarkvm_marlin::{
-    marlin::{MarlinRecursiveMode, MarlinSNARK},
+    marlin::{MarlinHidingMode, MarlinSNARK},
     FiatShamirAlgebraicSpongeRng,
     PoseidonSponge,
 };
@@ -31,7 +31,7 @@ use snarkvm_utilities::{ops::MulAssign, UniformRand};
 use criterion::Criterion;
 use rand::{self, thread_rng};
 
-type MarlinInst = MarlinSNARK<Fr, Fq, PC, FS, MarlinRecursiveMode, Vec<Fr>>;
+type MarlinInst = MarlinSNARK<Fr, Fq, PC, FS, MarlinHidingMode, Vec<Fr>>;
 
 type PC = SonicKZG10<Bls12_377>;
 type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
@@ -74,7 +74,7 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Benchmark<Constr
 fn snark_universal_setup(c: &mut Criterion) {
     let rng = &mut thread_rng();
     let max_degree =
-        snarkvm_marlin::ahp::AHPForR1CS::<Fr, MarlinRecursiveMode>::max_degree(1000000, 1000000, 1000000).unwrap();
+        snarkvm_marlin::ahp::AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(1000000, 1000000, 1000000).unwrap();
 
     c.bench_function("snark_universal_setup", move |b| {
         b.iter(|| {
@@ -92,7 +92,7 @@ fn snark_circuit_setup(c: &mut Criterion) {
     let y = Fr::rand(rng);
 
     let max_degree =
-        snarkvm_marlin::ahp::AHPForR1CS::<Fr, MarlinRecursiveMode>::max_degree(100000, 100000, 100000).unwrap();
+        snarkvm_marlin::ahp::AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100000, 100000, 100000).unwrap();
     let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
 
     c.bench_function("snark_circuit_setup", move |b| {
@@ -112,7 +112,7 @@ fn snark_prove(c: &mut Criterion) {
     let x = Fr::rand(rng);
     let y = Fr::rand(rng);
 
-    let max_degree = snarkvm_marlin::ahp::AHPForR1CS::<Fr, MarlinRecursiveMode>::max_degree(1000, 1000, 1000).unwrap();
+    let max_degree = snarkvm_marlin::ahp::AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(1000, 1000, 1000).unwrap();
     let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
 
     let circuit = Benchmark::<Fr> { a: Some(x), b: Some(y), num_constraints, num_variables };
@@ -138,7 +138,7 @@ fn snark_verify(c: &mut Criterion) {
     z.mul_assign(&y);
 
     let max_degree =
-        snarkvm_marlin::ahp::AHPForR1CS::<Fr, MarlinRecursiveMode>::max_degree(1000000, 100000, 1000000).unwrap();
+        snarkvm_marlin::ahp::AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(1000000, 100000, 1000000).unwrap();
     let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
 
     let circuit = Benchmark::<Fr> { a: Some(x), b: Some(y), num_constraints, num_variables };

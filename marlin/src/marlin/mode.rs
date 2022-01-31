@@ -21,35 +21,18 @@ pub trait MarlinMode: Clone + Debug + 'static + Sync + Send {
     const ZK: bool;
 }
 
-/// TODO (howardwu): Combine all of the testnet configurations into an environment struct higher up.
-/// The Marlin testnet1 mode does not assume recursive proofs of any depth.
+/// The Marlin hiding mode produces a hiding Marlin proof.
 #[derive(Clone, Debug)]
-pub struct MarlinTestnet1Mode;
+pub struct MarlinHidingMode;
 
-impl MarlinMode for MarlinTestnet1Mode {
+impl MarlinMode for MarlinHidingMode {
     const ZK: bool = true;
 }
 
-/// The Marlin testnet2 mode does not assume recursive proofs of any depth.
+/// The Marlin non-hiding mode produces a non-hiding Marlin proof.
 #[derive(Clone, Debug)]
-pub struct MarlinTestnet2Mode;
+pub struct MarlinNonHidingMode;
 
-impl MarlinMode for MarlinTestnet2Mode {
-    const ZK: bool = true;
-}
-
-/// The Marlin default mode assumes a recursive proof of at least depth-1.
-#[derive(Clone, Debug)]
-pub struct MarlinRecursiveMode;
-
-impl MarlinMode for MarlinRecursiveMode {
-    const ZK: bool = true;
-}
-
-/// The Marlin POSW mode does not assume recursive proofs of any depth.
-#[derive(Clone, Debug)]
-pub struct MarlinPoswMode;
-
-impl MarlinMode for MarlinPoswMode {
+impl MarlinMode for MarlinNonHidingMode {
     const ZK: bool = false;
 }

@@ -55,7 +55,7 @@ use snarkvm_gadgets::{
     },
     curves::edwards_bls12::EdwardsBls12Gadget,
 };
-use snarkvm_marlin::{marlin::MarlinPoswMode, FiatShamirAlgebraicSpongeRng, MarlinSNARK, PoseidonSponge};
+use snarkvm_marlin::{marlin::MarlinNonHidingMode, FiatShamirAlgebraicSpongeRng, MarlinSNARK, PoseidonSponge};
 use snarkvm_parameters::{testnet1::*, Genesis};
 use snarkvm_polycommit::sonic_pc::SonicKZG10;
 use snarkvm_utilities::{FromBytes, ToMinimalBits};
@@ -144,7 +144,7 @@ impl Network for Testnet1 {
     type ProgramVerifyingKey = <Self::ProgramSNARK as SNARK>::VerifyingKey;
     type ProgramProof = AleoObject<<Self::ProgramSNARK as SNARK>::Proof, { Self::PROGRAM_PROOF_PREFIX }, { Self::PROGRAM_PROOF_SIZE_IN_BYTES }>;
 
-    type PoSWSNARK = MarlinSNARK<Self::InnerScalarField, Self::InnerBaseField, SonicKZG10<Self::InnerCurve>, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::InnerBaseField, PoseidonSponge<Self::InnerBaseField, 6, 1>>, MarlinPoswMode, Vec<Self::InnerScalarField>>;
+    type PoSWSNARK = MarlinSNARK<Self::InnerScalarField, Self::InnerBaseField, SonicKZG10<Self::InnerCurve>, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::InnerBaseField, PoseidonSponge<Self::InnerBaseField, 6, 1>>, MarlinNonHidingMode, Vec<Self::InnerScalarField>>;
     type PoSWProof = AleoObject<<Self::PoSWSNARK as SNARK>::Proof, { Self::HEADER_PROOF_PREFIX }, { Self::HEADER_PROOF_SIZE_IN_BYTES }>;
     type PoSW = PoSW<Self>;
 
