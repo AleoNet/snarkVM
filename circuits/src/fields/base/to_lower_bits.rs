@@ -40,13 +40,8 @@ impl<E: Environment> ToLowerBits for BaseField<E> {
         };
 
         // Construct a vector of `Boolean`s comprising the bits of the field value.
-        let bits = self
-            .eject_value()
-            .to_bits_le()
-            .iter()
-            .take(k)
-            .map(|bit| Boolean::new(mode, *bit))
-            .collect::<Vec<_>>();
+        let bits =
+            self.eject_value().to_bits_le().iter().take(k).map(|bit| Boolean::new(mode, *bit)).collect::<Vec<_>>();
 
         // Reconstruct the bits as a linear combination representing the original field value.
         let mut accumulator = BaseField::zero();

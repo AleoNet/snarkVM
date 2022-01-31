@@ -196,17 +196,12 @@ where
 
         let mut traversal = vec![];
         for (i, position) in merkle_path.position_list().enumerate() {
-            traversal.push(Boolean::alloc(cs.ns(|| format!("alloc_position_{}", i)), || {
-                Ok(position)
-            })?);
+            traversal.push(Boolean::alloc(cs.ns(|| format!("alloc_position_{}", i)), || Ok(position))?);
         }
 
         let mut path = Vec::with_capacity(merkle_path.path.len());
         for (i, node) in merkle_path.path.iter().enumerate() {
-            path.push(HGadget::OutputGadget::alloc(
-                &mut cs.ns(|| format!("alloc_node_{}", i)),
-                || Ok(*node),
-            )?);
+            path.push(HGadget::OutputGadget::alloc(&mut cs.ns(|| format!("alloc_node_{}", i)), || Ok(*node))?);
         }
 
         Ok(MerklePathGadget { traversal, path })
@@ -221,18 +216,14 @@ where
 
         let mut traversal = vec![];
         for (i, position) in merkle_path.position_list().enumerate() {
-            traversal.push(Boolean::alloc_input(
-                cs.ns(|| format!("alloc_input_position_{}", i)),
-                || Ok(position),
-            )?);
+            traversal.push(Boolean::alloc_input(cs.ns(|| format!("alloc_input_position_{}", i)), || Ok(position))?);
         }
 
         let mut path = Vec::with_capacity(merkle_path.path.len());
         for (i, node) in merkle_path.path.iter().enumerate() {
-            path.push(HGadget::OutputGadget::alloc_input(
-                &mut cs.ns(|| format!("alloc_input_node_{}", i)),
-                || Ok(*node),
-            )?);
+            path.push(HGadget::OutputGadget::alloc_input(&mut cs.ns(|| format!("alloc_input_node_{}", i)), || {
+                Ok(*node)
+            })?);
         }
 
         Ok(MerklePathGadget { traversal, path })

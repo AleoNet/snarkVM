@@ -548,11 +548,7 @@ impl<P: Fp384Parameters> FromStr for Fp384<P> {
             }
         }
 
-        if !res.is_valid() {
-            Err(FieldError::InvalidFieldElement)
-        } else {
-            Ok(res)
-        }
+        if !res.is_valid() { Err(FieldError::InvalidFieldElement) } else { Ok(res) }
     }
 }
 

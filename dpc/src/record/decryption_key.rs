@@ -18,11 +18,7 @@ use crate::{Network, ViewKey};
 use std::fmt;
 
 #[derive(Derivative)]
-#[derivative(
-    Clone(bound = "N: Network"),
-    PartialEq(bound = "N: Network"),
-    Eq(bound = "N: Network")
-)]
+#[derivative(Clone(bound = "N: Network"), PartialEq(bound = "N: Network"), Eq(bound = "N: Network"))]
 pub enum DecryptionKey<N: Network> {
     AccountViewKey(ViewKey<N>),
     RecordViewKey(N::RecordViewKey),

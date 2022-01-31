@@ -883,11 +883,7 @@ impl<P: Fp768Parameters> FromStr for Fp768<P> {
             }
         }
 
-        if !res.is_valid() {
-            Err(FieldError::InvalidFieldElement)
-        } else {
-            Ok(res)
-        }
+        if !res.is_valid() { Err(FieldError::InvalidFieldElement) } else { Ok(res) }
     }
 }
 

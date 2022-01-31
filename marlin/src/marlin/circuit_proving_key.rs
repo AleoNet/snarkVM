@@ -61,11 +61,6 @@ impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinM
         let circuit = CanonicalDeserialize::deserialize(&mut reader)?;
         let committer_key: PC::CommitterKey = FromBytes::read_le(&mut reader)?;
 
-        Ok(Self {
-            circuit_verifying_key,
-            circuit_commitment_randomness,
-            circuit,
-            committer_key,
-        })
+        Ok(Self { circuit_verifying_key, circuit_commitment_randomness, circuit, committer_key })
     }
 }

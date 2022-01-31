@@ -145,13 +145,8 @@ where
     C: ConstraintSynthesizer<E::Fr>,
 {
     let prover_time = start_timer!(|| "Prover");
-    let mut prover = ProvingAssignment {
-        at: vec![],
-        bt: vec![],
-        ct: vec![],
-        public_variables: vec![],
-        private_variables: vec![],
-    };
+    let mut prover =
+        ProvingAssignment { at: vec![], bt: vec![], ct: vec![], public_variables: vec![], private_variables: vec![] };
 
     // Allocate the "one" input variable
     prover.alloc_input(|| "", || Ok(E::Fr::one()))?;
@@ -165,16 +160,9 @@ where
     let h = R1CStoQAP::witness_map::<E>(&prover)?;
     end_timer!(witness_map_time);
 
-    let input_assignment = prover
-        .public_variables
-        .iter()
-        .skip(1)
-        .map(|s| s.to_repr())
-        .collect::<Vec<_>>();
+    let input_assignment = prover.public_variables.iter().skip(1).map(|s| s.to_repr()).collect::<Vec<_>>();
 
-    let aux_assignment = cfg_into_iter!(prover.private_variables)
-        .map(|s| s.to_repr())
-        .collect::<Vec<_>>();
+    let aux_assignment = cfg_into_iter!(prover.private_variables).map(|s| s.to_repr()).collect::<Vec<_>>();
 
     let assignment = [&input_assignment[..], &aux_assignment[..]].concat();
 
@@ -231,11 +219,7 @@ where
     });
     let results: Vec<_> = pool.execute_all();
 
-    let g1_b = if r != E::Fr::zero() {
-        results[0].into_g1()
-    } else {
-        E::G1Projective::zero()
-    };
+    let g1_b = if r != E::Fr::zero() { results[0].into_g1() } else { E::G1Projective::zero() };
     let g2_b = results[1].into_g2();
     let h_acc = results[2].into_g1();
     let l_aux_acc = results[3].into_g1();
@@ -253,12 +237,7 @@ where
 
     end_timer!(prover_time);
 
-    Ok(Proof {
-        a: g_a.into_affine(),
-        b: g2_b.into_affine(),
-        c: g_c.into_affine(),
-        compressed: true,
-    })
+    Ok(Proof { a: g_a.into_affine(), b: g2_b.into_affine(), c: g_c.into_affine(), compressed: true })
 }
 
 fn calculate_coeff<G: AffineCurve>(

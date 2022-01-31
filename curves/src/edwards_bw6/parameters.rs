@@ -143,11 +143,7 @@ impl FromStr for EdwardsAffine {
         }
         let point = EdwardsAffine::new(point[0], point[1]);
 
-        if !point.is_on_curve() {
-            Err(GroupError::InvalidGroupElement)
-        } else {
-            Ok(point)
-        }
+        if !point.is_on_curve() { Err(GroupError::InvalidGroupElement) } else { Ok(point) }
     }
 }
 

@@ -64,11 +64,7 @@ fn generate_merkle_tree<P: MerkleParameters, F: PrimeField, HG: CRHGadget<P::H, 
 
         // Allocate Merkle tree root
         let root = <HG as CRHGadget<_, _>>::OutputGadget::alloc(&mut cs.ns(|| format!("new_digest_{}", i)), || {
-            if use_bad_root {
-                Ok(<P::H as CRH>::Output::default())
-            } else {
-                Ok(*root)
-            }
+            if use_bad_root { Ok(<P::H as CRH>::Output::default()) } else { Ok(*root) }
         })
         .unwrap();
 
@@ -76,10 +72,9 @@ fn generate_merkle_tree<P: MerkleParameters, F: PrimeField, HG: CRHGadget<P::H, 
         println!("constraints from digest: {}", constraints_from_digest);
 
         // Allocate CRH
-        let crh_parameters = HG::alloc_constant(&mut cs.ns(|| format!("new_parameters_{}", i)), || {
-            Ok(parameters.crh().clone())
-        })
-        .unwrap();
+        let crh_parameters =
+            HG::alloc_constant(&mut cs.ns(|| format!("new_parameters_{}", i)), || Ok(parameters.crh().clone()))
+                .unwrap();
 
         let constraints_from_parameters = cs.num_constraints() - constraints_from_digest;
         println!("constraints from parameters: {}", constraints_from_parameters);
@@ -98,13 +93,8 @@ fn generate_merkle_tree<P: MerkleParameters, F: PrimeField, HG: CRHGadget<P::H, 
             cs.num_constraints() - constraints_from_parameters - constraints_from_digest - constraints_from_leaf;
         println!("constraints from path: {}", constraints_from_path);
         let leaf_g: &[UInt8] = leaf_g.as_slice();
-        cw.check_membership(
-            &mut cs.ns(|| format!("new_witness_check_{}", i)),
-            &crh_parameters,
-            &root,
-            &leaf_g,
-        )
-        .unwrap();
+        cw.check_membership(&mut cs.ns(|| format!("new_witness_check_{}", i)), &crh_parameters, &root, &leaf_g)
+            .unwrap();
         if !cs.is_satisfied() {
             satisfied = false;
             println!("Unsatisfied constraint: {}", cs.which_is_unsatisfied().unwrap());
@@ -161,20 +151,13 @@ fn generate_masked_merkle_tree<P: MaskedMerkleParameters, F: PrimeField, HG: Mas
     )
     .unwrap();
 
-    let given_root = if use_bad_root {
-        <P::H as CRH>::Output::default()
-    } else {
-        *root
-    };
+    let given_root = if use_bad_root { <P::H as CRH>::Output::default() } else { *root };
 
     let given_root_gadget =
         <HG as CRHGadget<_, _>>::OutputGadget::alloc(&mut cs.ns(|| "given root"), || Ok(given_root)).unwrap();
 
     computed_root
-        .enforce_equal(
-            &mut cs.ns(|| "Check that computed root matches provided root"),
-            &given_root_gadget,
-        )
+        .enforce_equal(&mut cs.ns(|| "Check that computed root matches provided root"), &given_root_gadget)
         .unwrap();
 
     if !cs.is_satisfied() {
@@ -218,15 +201,8 @@ fn update_merkle_tree<P: MerkleParameters, F: PrimeField, HG: CRHGadget<P::H, F>
         let leaf_gadget = UInt8::alloc_vec(cs.ns(|| "alloc_leaf"), &leaves[i]).unwrap();
         let new_leaf_gadget = UInt8::alloc_vec(cs.ns(|| "alloc_new_leaf"), &updated_leaves[i]).unwrap();
 
-        path.update_and_check(
-            cs.ns(|| "update_and_check"),
-            &crh,
-            &root,
-            &new_root,
-            &leaf_gadget,
-            &new_leaf_gadget,
-        )
-        .unwrap();
+        path.update_and_check(cs.ns(|| "update_and_check"), &crh, &root, &new_root, &leaf_gadget, &new_leaf_gadget)
+            .unwrap();
 
         if !cs.is_satisfied() {
             satisfied = false;

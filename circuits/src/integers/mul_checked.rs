@@ -78,9 +78,7 @@ impl<E: Environment, I: IntegerType> MulChecked<Self> for Integer<E, I> {
             // Check that the none of the carry bits are set.
             let overflow = bits_le[I::BITS..]
                 .into_iter()
-                .fold(Boolean::new(Mode::Constant, false), |bit, at_least_one_is_set| {
-                    bit.or(at_least_one_is_set)
-                });
+                .fold(Boolean::new(Mode::Constant, false), |bit, at_least_one_is_set| bit.or(at_least_one_is_set));
             E::assert_eq(overflow, E::zero());
 
             // Remove carry bits.
@@ -101,10 +99,7 @@ impl<E: Environment, I: IntegerType> MulChecked<Self> for Integer<E, I> {
             }
 
             // Return the product of `self` and `other`.
-            Integer {
-                bits_le,
-                phantom: Default::default(),
-            }
+            Integer { bits_le, phantom: Default::default() }
         }
     }
 }

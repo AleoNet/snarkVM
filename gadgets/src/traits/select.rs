@@ -44,12 +44,7 @@ impl<F: Field, T: CondSelectGadget<F>> CondSelectGadget<F> for Vec<T> {
 
         let mut res = Vec::<T>::with_capacity(first.len());
         for (i, (left, right)) in first.iter().zip(second.iter()).enumerate() {
-            res.push(T::conditionally_select(
-                cs.ns(|| format!("conditional_select_{}", i)),
-                cond,
-                left,
-                right,
-            )?)
+            res.push(T::conditionally_select(cs.ns(|| format!("conditional_select_{}", i)), cond, left, right)?)
         }
 
         Ok(res)

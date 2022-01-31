@@ -104,9 +104,7 @@ impl<F: Field> DensePolynomial<F> {
         }
         assert_eq!(powers_of_point.len(), self.coeffs.len());
         let zero = F::zero();
-        let mapping = crate::cfg_into_iter!(powers_of_point)
-            .zip(&self.coeffs)
-            .map(|(power, coeff)| power * coeff);
+        let mapping = crate::cfg_into_iter!(powers_of_point).zip(&self.coeffs).map(|(power, coeff)| power * coeff);
         crate::cfg_reduce!(mapping, || zero, |a, b| a + b)
     }
 
@@ -144,9 +142,7 @@ impl<F: PrimeField> DensePolynomial<F> {
     pub fn mul_by_vanishing_poly(&self, domain: EvaluationDomain<F>) -> DensePolynomial<F> {
         let mut shifted = vec![F::zero(); domain.size()];
         shifted.extend_from_slice(&self.coeffs);
-        crate::cfg_iter_mut!(shifted)
-            .zip(&self.coeffs)
-            .for_each(|(s, c)| *s -= c);
+        crate::cfg_iter_mut!(shifted).zip(&self.coeffs).for_each(|(s, c)| *s -= c);
         DensePolynomial::from_coefficients_vec(shifted)
     }
 
@@ -253,6 +249,16 @@ impl<F: PrimeField> DensePolynomial<F> {
     pub fn evaluate_over_domain(self, domain: EvaluationDomain<F>) -> Evaluations<F> {
         let poly: DenseOrSparsePolynomial<'_, F> = self.into();
         DenseOrSparsePolynomial::<F>::evaluate_over_domain(poly, domain)
+    }
+}
+
+impl<F: Field> From<super::SparsePolynomial<F>> for DensePolynomial<F> {
+    fn from(other: super::SparsePolynomial<F>) -> Self {
+        let mut result = vec![F::zero(); other.degree() + 1];
+        for (i, coeff) in other.coeffs {
+            result[i] = coeff;
+        }
+        DensePolynomial::from_coefficients_vec(result)
     }
 }
 
@@ -399,6 +405,18 @@ impl<'a, 'b, F: PrimeField> Mul<&'a DensePolynomial<F>> for &'b DensePolynomial<
     }
 }
 
+/// Multiplies `self` by `other: F`.
+impl<F: Field> Mul<F> for DensePolynomial<F> {
+    type Output = Self;
+
+    #[inline]
+    #[allow(clippy::suspicious_arithmetic_impl)]
+    fn mul(mut self, other: F) -> Self {
+        self.iter_mut().for_each(|c| *c *= other);
+        self
+    }
+}
+
 impl<F: Field> Deref for DensePolynomial<F> {
     type Target = [F];
 
@@ -494,6 +512,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::needless_borrow)]
     fn divide_polynomials_random() {
         let rng = &mut thread_rng();
 

@@ -41,10 +41,7 @@ impl<E: Environment> FromBits for BaseField<E> {
             &bits_le.iter().map(|bit| bit.eject_value()).collect::<Vec<_>>(),
         )) {
             Ok(value) => value,
-            Err(error) => E::halt(format!(
-                "Failed to convert a list of booleans into a base field element. {}",
-                error
-            )),
+            Err(error) => E::halt(format!("Failed to convert a list of booleans into a base field element. {}", error)),
         };
 
         let output = BaseField::new(mode, witness);

@@ -48,13 +48,7 @@ pub struct Record<N: Network> {
 impl<N: Network> Record<N> {
     /// Returns a new noop record.
     pub fn new_noop<R: Rng + CryptoRng>(owner: Address<N>, rng: &mut R) -> Result<Self, RecordError> {
-        Self::new(
-            owner,
-            AleoAmount::ZERO,
-            Payload::<N>::default(),
-            *N::noop_program_id(),
-            rng,
-        )
+        Self::new(owner, AleoAmount::ZERO, Payload::<N>::default(), *N::noop_program_id(), rng)
     }
 
     /// Returns a new record.
@@ -68,14 +62,7 @@ impl<N: Network> Record<N> {
         // Generate the ciphertext parameters.
         let (_randomness, randomizer, record_view_key) =
             N::account_encryption_scheme().generate_asymmetric_key(&*owner, rng);
-        Self::from(
-            owner,
-            value,
-            payload,
-            program_id,
-            randomizer.into(),
-            record_view_key.into(),
-        )
+        Self::from(owner, value, payload, program_id, randomizer.into(), record_view_key.into())
     }
 
     /// Returns a record from the given inputs.
@@ -93,20 +80,11 @@ impl<N: Network> Record<N> {
         // Encrypt the record bytes.
         let ciphertext = Ciphertext::<N>::from(
             randomizer,
-            N::account_encryption_scheme()
-                .generate_symmetric_key_commitment(&record_view_key)
-                .into(),
+            N::account_encryption_scheme().generate_symmetric_key_commitment(&record_view_key).into(),
             N::account_encryption_scheme().encrypt(&record_view_key, &plaintext)?,
         )?;
 
-        Ok(Self {
-            owner,
-            value,
-            payload,
-            program_id,
-            record_view_key,
-            ciphertext: ciphertext.into(),
-        })
+        Ok(Self { owner, value, payload, program_id, record_view_key, ciphertext: ciphertext.into() })
     }
 
     /// Returns a record from the given decryption key and ciphertext.
@@ -115,14 +93,7 @@ impl<N: Network> Record<N> {
         let (plaintext, record_view_key) = (*ciphertext).to_plaintext(decryption_key)?;
         let (owner, value, payload, program_id) = Self::decode_plaintext(&plaintext)?;
 
-        Ok(Self {
-            owner,
-            value,
-            payload,
-            program_id,
-            record_view_key,
-            ciphertext: ciphertext.clone(),
-        })
+        Ok(Self { owner, value, payload, program_id, record_view_key, ciphertext: ciphertext.clone() })
     }
 
     /// Returns `true` if the record is a dummy.
@@ -269,14 +240,7 @@ impl<N: Network> FromBytes for Record<N> {
         let randomizer: N::RecordRandomizer = FromBytes::read_le(&mut reader)?;
         let record_view_key: N::RecordViewKey = FromBytes::read_le(&mut reader)?;
 
-        Ok(Self::from(
-            owner,
-            value,
-            payload,
-            program_id,
-            randomizer,
-            record_view_key,
-        )?)
+        Ok(Self::from(owner, value, payload, program_id, randomizer, record_view_key)?)
     }
 }
 
@@ -290,11 +254,7 @@ impl<N: Network> FromStr for Record<N> {
 
 impl<N: Network> fmt::Display for Record<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            serde_json::to_string(self).map_err::<fmt::Error, _>(serde::ser::Error::custom)?
-        )
+        write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(serde::ser::Error::custom)?)
     }
 }
 
@@ -339,11 +299,10 @@ impl<'de, N: Network> Deserialize<'de> for Record<N> {
                 // Ensure the commitment matches.
                 match commitment == record.commitment() {
                     true => Ok(record),
-                    false => Err(RecordError::InvalidCommitment(
-                        commitment.to_string(),
-                        record.commitment().to_string(),
-                    ))
-                    .map_err(de::Error::custom)?,
+                    false => {
+                        Err(RecordError::InvalidCommitment(commitment.to_string(), record.commitment().to_string()))
+                            .map_err(de::Error::custom)?
+                    }
                 }
             }
             false => FromBytesDeserializer::<Self>::deserialize(deserializer, "record", N::RECORD_SIZE_IN_BYTES),

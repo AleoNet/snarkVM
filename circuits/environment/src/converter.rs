@@ -42,10 +42,7 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for R1CS<F> {
         &self,
         cs: &mut CS,
     ) -> Result<(), snarkvm_r1cs::SynthesisError> {
-        let mut converter = Converter {
-            public: Default::default(),
-            private: Default::default(),
-        };
+        let mut converter = Converter { public: Default::default(), private: Default::default() };
 
         // Ensure the given `cs` is starting off clean.
         assert_eq!(1, cs.num_public_variables());
@@ -71,10 +68,7 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for R1CS<F> {
 
                     let result = converter.public.insert(*index, gadget);
 
-                    assert!(
-                        result.is_none(),
-                        "Overwrote an existing public variable in the converter"
-                    );
+                    assert!(result.is_none(), "Overwrote an existing public variable in the converter");
                 }
                 _ => unreachable!("Public variables in the first system are not well-formed"),
             }
@@ -99,10 +93,7 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for R1CS<F> {
 
                     let result = converter.private.insert(*index, gadget);
 
-                    assert!(
-                        result.is_none(),
-                        "Overwrote an existing private variable in the converter"
-                    );
+                    assert!(result.is_none(), "Overwrote an existing private variable in the converter");
                 }
                 _ => unreachable!("Private variables in the first system are not well-formed"),
             }
@@ -145,10 +136,8 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for R1CS<F> {
                 }
 
                 // Finally, add the accumulated constant value to the linear combination.
-                linear_combination += (
-                    constant_accumulator,
-                    snarkvm_r1cs::Variable::new_unchecked(snarkvm_r1cs::Index::Public(0)),
-                );
+                linear_combination +=
+                    (constant_accumulator, snarkvm_r1cs::Variable::new_unchecked(snarkvm_r1cs::Index::Public(0)));
 
                 // Return the linear combination of the second system.
                 linear_combination
@@ -267,6 +256,7 @@ mod tests {
                 MultiPC,
                 FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>,
                 MarlinRecursiveMode,
+                Vec<Fr>,
             >;
 
             let rng = &mut test_rng();

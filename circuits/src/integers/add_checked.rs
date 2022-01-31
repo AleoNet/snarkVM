@@ -68,10 +68,7 @@ impl<E: Environment, I: IntegerType> AddChecked<Self> for Integer<E, I> {
             }
 
             // Return the sum of `self` and `other`.
-            Integer {
-                bits_le: bits_le.to_vec(),
-                phantom: Default::default(),
-            }
+            Integer { bits_le: bits_le.to_vec(), phantom: Default::default() }
         }
     }
 }

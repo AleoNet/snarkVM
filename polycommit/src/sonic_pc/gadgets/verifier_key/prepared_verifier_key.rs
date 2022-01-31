@@ -252,18 +252,15 @@ mod tests {
 
         assert!(pvk.degree_bounds_and_prepared_neg_powers_of_h.is_some());
 
-        let prepared_shift_power = pvk_gadget
-            .get_prepared_shift_power(cs.ns(|| "get_shift_power"), &bound_gadget)
-            .unwrap();
+        let prepared_shift_power =
+            pvk_gadget.get_prepared_shift_power(cs.ns(|| "get_shift_power"), &bound_gadget).unwrap();
         let expected_shift_power =
             <PG as PairingGadget<_, _>>::G2PreparedGadget::alloc(cs.ns(|| "allocate_native_shift_power"), || {
                 Ok(pvk.get_prepared_shift_power(bound).unwrap())
             })
             .unwrap();
 
-        prepared_shift_power
-            .enforce_equal(cs.ns(|| "enforce_equals_shift_power"), &expected_shift_power)
-            .unwrap();
+        prepared_shift_power.enforce_equal(cs.ns(|| "enforce_equals_shift_power"), &expected_shift_power).unwrap();
 
         assert!(cs.is_satisfied());
     }

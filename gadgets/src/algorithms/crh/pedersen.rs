@@ -55,11 +55,7 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS
         _cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        Ok(Self {
-            crh: value_gen()?.borrow().clone(),
-            _group: PhantomData,
-            _engine: PhantomData,
-        })
+        Ok(Self { crh: value_gen()?.borrow().clone(), _group: PhantomData, _engine: PhantomData })
     }
 
     fn alloc<

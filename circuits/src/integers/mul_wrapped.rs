@@ -70,10 +70,7 @@ impl<E: Environment, I: IntegerType> MulWrapped<Self> for Integer<E, I> {
             bits_le.truncate(I::BITS);
 
             // Return the product of `self` and `other`.
-            Integer {
-                bits_le,
-                phantom: Default::default(),
-            }
+            Integer { bits_le, phantom: Default::default() }
         }
     }
 }

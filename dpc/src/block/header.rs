@@ -61,12 +61,7 @@ impl BlockHeaderMetadata {
 
     /// Initializes a new instance of a genesis block header metadata.
     pub fn genesis() -> Self {
-        Self {
-            height: 0u32,
-            timestamp: 0i64,
-            difficulty_target: u64::MAX,
-            cumulative_weight: 0u128,
-        }
+        Self { height: 0u32, timestamp: 0i64, difficulty_target: u64::MAX, cumulative_weight: 0u128 }
     }
 
     /// Returns the size (in bytes) of a block header's metadata.
@@ -87,15 +82,15 @@ impl ToBytes for BlockHeaderMetadata {
 /// Block header.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BlockHeader<N: Network> {
-    /// The Merkle root representing the blocks in the ledger up to the previous block - 32 bytes
+    /// The Merkle root representing the blocks in the ledger up to the previous block
     previous_ledger_root: N::LedgerRoot,
-    /// The Merkle root representing the transactions in the block - 32 bytes
+    /// The Merkle root representing the transactions in the block
     transactions_root: N::TransactionsRoot,
-    /// The block header metadata - 36 bytes
+    /// The block header metadata
     metadata: BlockHeaderMetadata,
-    /// Nonce for Proof of Succinct Work - 32 bytes
+    /// Nonce for Proof of Succinct Work
     nonce: N::PoSWNonce,
-    /// Proof of Succinct Work - 691 bytes
+    /// Proof of Succinct Work
     proof: PoSWProof<N>,
 }
 
@@ -109,13 +104,7 @@ impl<N: Network> BlockHeader<N> {
         proof: PoSWProof<N>,
     ) -> Result<Self, BlockError> {
         // Construct the block header.
-        let block_header = Self {
-            previous_ledger_root,
-            transactions_root,
-            metadata,
-            nonce,
-            proof,
-        };
+        let block_header = Self { previous_ledger_root, transactions_root, metadata, nonce, proof };
 
         // Ensure the block header is well-formed.
         match block_header.is_valid() {
@@ -154,7 +143,7 @@ impl<N: Network> BlockHeader<N> {
 
         // Run one iteration of PoSW.
         // Warning: this operation is unchecked.
-        let proof = N::posw().prove_once_unchecked(&mut circuit, block_template, terminator, rng)?;
+        let proof = N::posw().prove_once_unchecked(&mut circuit, terminator, rng)?;
 
         // Construct a block header.
         Ok(Self {
@@ -305,13 +294,7 @@ impl<N: Network> FromBytes for BlockHeader<N> {
         let proof = FromBytes::read_le(&mut reader)?;
 
         // Construct the block header.
-        Ok(Self::from(
-            previous_ledger_root,
-            transactions_root,
-            metadata,
-            nonce,
-            proof,
-        )?)
+        Ok(Self::from(previous_ledger_root, transactions_root, metadata, nonce, proof)?)
     }
 }
 
@@ -345,11 +328,7 @@ impl<N: Network> FromStr for BlockHeader<N> {
 
 impl<N: Network> fmt::Display for BlockHeader<N> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            serde_json::to_string(self).map_err::<fmt::Error, _>(serde::ser::Error::custom)?
-        )
+        write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(serde::ser::Error::custom)?)
     }
 }
 
@@ -418,14 +397,8 @@ mod tests {
     #[test]
     fn test_block_header_genesis_size() {
         let block_header = Testnet2::genesis_block().header();
-        assert_eq!(
-            block_header.to_bytes_le().unwrap().len(),
-            Testnet2::HEADER_SIZE_IN_BYTES
-        );
-        assert_eq!(
-            bincode::serialize(&block_header).unwrap().len(),
-            Testnet2::HEADER_SIZE_IN_BYTES
-        );
+        assert_eq!(block_header.to_bytes_le().unwrap().len(), Testnet2::HEADER_SIZE_IN_BYTES);
+        assert_eq!(bincode::serialize(&block_header).unwrap().len(), Testnet2::HEADER_SIZE_IN_BYTES);
     }
 
     #[test]
@@ -448,7 +421,7 @@ mod tests {
         // Serialize
         let expected_string = block_header.to_string();
         let candidate_string = serde_json::to_string(&block_header).unwrap();
-        assert_eq!(1612, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(1795, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(expected_string, candidate_string);
 
         // Deserialize
@@ -499,9 +472,8 @@ mod tests {
         );
 
         // Construct a PoSW proof.
-        let mut block_header = Testnet2::posw()
-            .mine(&block_template, &AtomicBool::new(false), &mut thread_rng())
-            .unwrap();
+        let mut block_header =
+            Testnet2::posw().mine(&block_template, &AtomicBool::new(false), &mut thread_rng()).unwrap();
 
         // Check that the difficulty target is satisfied.
         assert!(Testnet2::posw().verify_from_block_header(&block_header));

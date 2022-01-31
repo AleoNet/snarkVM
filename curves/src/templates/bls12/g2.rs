@@ -99,17 +99,10 @@ impl<P: Bls12Parameters> G2Prepared<P> {
     pub fn from_affine(q: G2Affine<P>) -> Self {
         let two_inv = P::Fp::one().double().inverse().unwrap();
         if q.is_zero() {
-            return Self {
-                ell_coeffs: vec![],
-                infinity: true,
-            };
+            return Self { ell_coeffs: vec![], infinity: true };
         }
 
-        let mut r = G2HomProjective {
-            x: q.x,
-            y: q.y,
-            z: Fp2::one(),
-        };
+        let mut r = G2HomProjective { x: q.x, y: q.y, z: Fp2::one() };
 
         let bit_iterator = BitIteratorBE::new(P::X);
         let mut ell_coeffs = Vec::with_capacity(bit_iterator.len());
@@ -122,10 +115,7 @@ impl<P: Bls12Parameters> G2Prepared<P> {
             }
         }
 
-        Self {
-            ell_coeffs,
-            infinity: false,
-        }
+        Self { ell_coeffs, infinity: false }
     }
 }
 

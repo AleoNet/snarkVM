@@ -22,7 +22,7 @@ keywords = [
 categories = [ "cryptography::cryptocurrencies", "operating-systems" ]
 include = [ "Cargo.toml", "src", "README.md", "LICENSE" ]
 license = "GPL-3.0"
-edition = "2018"
+edition = "2021"
 
 [[bench]]
 name = "snark"
@@ -33,6 +33,7 @@ harness = false
 path = "../algorithms"
 version = "0.7.5"
 default-features = false
+features = [ "crypto_hash" ]
 
 [dependencies.snarkvm-curves]
 path = "../curves"
@@ -87,7 +88,7 @@ features = [ "use_core" ]
 version = "0.9"
 
 [dependencies.hashbrown]
-version = "0.11.2"
+version = "0.12.0"
 
 [dependencies.hex]
 version = "0.4.3"
@@ -110,6 +111,9 @@ optional = true
 [dependencies.serde]
 version = "1.0"
 features = [ "derive" ]
+
+[dependencies.serde_json]
+version = "1"
 
 [dependencies.smallvec]
 version = "1.8"

@@ -90,11 +90,7 @@ impl PoseidonGrainLFSR {
 
         let head = 0;
 
-        let mut res = Self {
-            prime_num_bits,
-            state,
-            head,
-        };
+        let mut res = Self { prime_num_bits, state, head };
         res.init();
         res
     }

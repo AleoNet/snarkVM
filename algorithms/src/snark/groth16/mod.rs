@@ -106,12 +106,7 @@ impl<E: PairingEngine> Proof<E> {
         let b: E::G2Affine = FromBytes::read_le(&mut reader)?;
         let c: E::G1Affine = FromBytes::read_le(&mut reader)?;
 
-        Ok(Self {
-            a,
-            b,
-            c,
-            compressed: false,
-        })
+        Ok(Self { a, b, c, compressed: false })
     }
 
     /// Deserialize a proof from compressed or uncompressed bytes.
@@ -220,12 +215,7 @@ impl<E: PairingEngine> PartialEq for Proof<E> {
 
 impl<E: PairingEngine> Default for Proof<E> {
     fn default() -> Self {
-        Self {
-            a: E::G1Affine::default(),
-            b: E::G2Affine::default(),
-            c: E::G1Affine::default(),
-            compressed: true,
-        }
+        Self { a: E::G1Affine::default(), b: E::G2Affine::default(), c: E::G1Affine::default(), compressed: true }
     }
 }
 
@@ -260,13 +250,7 @@ impl<E: PairingEngine> VerifyingKey<E> {
             gamma_abc_g1.push(gamma_abc_g1_element);
         }
 
-        Ok(Self {
-            alpha_g1,
-            beta_g2,
-            gamma_g2,
-            delta_g2,
-            gamma_abc_g1,
-        })
+        Ok(Self { alpha_g1, beta_g2, gamma_g2, delta_g2, gamma_abc_g1 })
     }
 }
 
@@ -302,14 +286,7 @@ impl<E: PairingEngine> ToMinimalBits for VerifyingKey<E> {
         let delta_g2_bits = self.delta_g2.to_minimal_bits();
         let gamma_abc_g1_bits = self.gamma_abc_g1.to_minimal_bits();
 
-        [
-            alpha_g1_bits,
-            beta_g2_bits,
-            gamma_g2_bits,
-            delta_g2_bits,
-            gamma_abc_g1_bits,
-        ]
-        .concat()
+        [alpha_g1_bits, beta_g2_bits, gamma_g2_bits, delta_g2_bits, gamma_abc_g1_bits].concat()
     }
 }
 
@@ -456,10 +433,7 @@ impl<E: PairingEngine> ProvingKey<E> {
             let g1_affine: E::G1Affine = FromBytes::read_le(&mut reader)?;
 
             if checked && !g1_affine.is_in_correct_subgroup_assuming_on_curve() {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "point is not in the correct subgroup",
-                ));
+                return Err(io::Error::new(io::ErrorKind::InvalidData, "point is not in the correct subgroup"));
             }
 
             Ok(g1_affine)
@@ -469,10 +443,7 @@ impl<E: PairingEngine> ProvingKey<E> {
             let g2_affine: E::G2Affine = FromBytes::read_le(&mut reader)?;
 
             if checked && !g2_affine.is_in_correct_subgroup_assuming_on_curve() {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidData,
-                    "point is not in the correct subgroup",
-                ));
+                return Err(io::Error::new(io::ErrorKind::InvalidData, "point is not in the correct subgroup"));
             }
 
             Ok(g2_affine)
@@ -514,16 +485,7 @@ impl<E: PairingEngine> ProvingKey<E> {
             l_query.push(read_g1_affine(&mut reader)?);
         }
 
-        Ok(Self {
-            vk,
-            beta_g1,
-            delta_g1,
-            a_query,
-            b_g1_query,
-            b_g2_query,
-            h_query,
-            l_query,
-        })
+        Ok(Self { vk, beta_g1, delta_g1, a_query, b_g1_query, b_g2_query, h_query, l_query })
     }
 }
 

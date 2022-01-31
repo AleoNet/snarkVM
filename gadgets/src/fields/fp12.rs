@@ -65,11 +65,7 @@ where
 {
     #[inline]
     pub fn new(c0: Fp6Gadget<P, F>, c1: Fp6Gadget<P, F>) -> Self {
-        Self {
-            c0,
-            c1,
-            _params: PhantomData,
-        }
+        Self { c0, c1, _params: PhantomData }
     }
 
     /// Multiply by quadratic nonresidue v.
@@ -132,10 +128,7 @@ where
 
         let c0 = c0.add(cs.ns(|| "c0 + d0"), d0)?;
         let c1 = d1;
-        let e = self
-            .c0
-            .add(cs.ns(|| "self.c0 + self.c1"), &self.c1)?
-            .mul_by_c0_c1_0(cs.ns(|| "compute e"), &c0, c1)?;
+        let e = self.c0.add(cs.ns(|| "self.c0 + self.c1"), &self.c1)?.mul_by_c0_c1_0(cs.ns(|| "compute e"), &c0, c1)?;
         let a_plus_b = a.add(cs.ns(|| "a + b"), &b)?;
         let c1 = e.sub(cs.ns(|| "e - (a + b)"), &a_plus_b)?;
         let c0 = Self::mul_fp6_by_nonresidue(cs.ns(|| "b *nr"), &b)?.add(cs.ns(|| "plus a"), &a)?;
@@ -160,12 +153,8 @@ where
             // (z0 + z1) * (z0 + (fp2_nr * z1)) - tmp - (tmp * fp2_nr);
             let mut cs = cs.ns(|| "t0");
             let tmp1 = z0.add(cs.ns(|| "tmp1"), z1)?;
-            let tmp2 = z1
-                .mul_by_constant(cs.ns(|| "tmp2.1"), &fp2_nr)?
-                .add(cs.ns(|| "tmp2.2"), z0)?;
-            let tmp4 = tmp
-                .mul_by_constant(cs.ns(|| "tmp4.1"), &fp2_nr)?
-                .add(cs.ns(|| "tmp4.2"), &tmp)?;
+            let tmp2 = z1.mul_by_constant(cs.ns(|| "tmp2.1"), &fp2_nr)?.add(cs.ns(|| "tmp2.2"), z0)?;
+            let tmp4 = tmp.mul_by_constant(cs.ns(|| "tmp4.1"), &fp2_nr)?.add(cs.ns(|| "tmp4.2"), &tmp)?;
             tmp1.mul(cs.ns(|| "tmp3.1"), &tmp2)?.sub(cs.ns(|| "tmp3.2"), &tmp4)?
         };
         let t1 = tmp.double(cs.ns(|| "t1"))?;
@@ -176,12 +165,8 @@ where
             // (z2 + z3) * (z2 + (fp2_nr * z3)) - tmp - (tmp * fp2_nr);
             let mut cs = cs.ns(|| "t2");
             let tmp1 = z2.add(cs.ns(|| "tmp1"), z3)?;
-            let tmp2 = z3
-                .mul_by_constant(cs.ns(|| "tmp2.1"), &fp2_nr)?
-                .add(cs.ns(|| "tmp2.2"), z2)?;
-            let tmp4 = tmp
-                .mul_by_constant(cs.ns(|| "tmp4.1"), &fp2_nr)?
-                .add(cs.ns(|| "tmp4.2"), &tmp)?;
+            let tmp2 = z3.mul_by_constant(cs.ns(|| "tmp2.1"), &fp2_nr)?.add(cs.ns(|| "tmp2.2"), z2)?;
+            let tmp4 = tmp.mul_by_constant(cs.ns(|| "tmp4.1"), &fp2_nr)?.add(cs.ns(|| "tmp4.2"), &tmp)?;
             tmp1.mul(cs.ns(|| "tmp3.1"), &tmp2)?.sub(cs.ns(|| "tmp3.2"), &tmp4)?
         };
         let t3 = tmp.double(cs.ns(|| "t3"))?;
@@ -192,12 +177,8 @@ where
             // (z4 + z5) * (z4 + (fp2_nr * z5)) - tmp - (tmp * fp2_nr);
             let mut cs = cs.ns(|| "t4");
             let tmp1 = z4.add(cs.ns(|| "tmp1"), z5)?;
-            let tmp2 = z5
-                .mul_by_constant(cs.ns(|| "tmp2.1"), &fp2_nr)?
-                .add(cs.ns(|| "tmp2.2"), z4)?;
-            let tmp4 = tmp
-                .mul_by_constant(cs.ns(|| "tmp4.1"), &fp2_nr)?
-                .add(cs.ns(|| "tmp4.2"), &tmp)?;
+            let tmp2 = z5.mul_by_constant(cs.ns(|| "tmp2.1"), &fp2_nr)?.add(cs.ns(|| "tmp2.2"), z4)?;
+            let tmp4 = tmp.mul_by_constant(cs.ns(|| "tmp4.1"), &fp2_nr)?.add(cs.ns(|| "tmp4.2"), &tmp)?;
             tmp1.mul(cs.ns(|| "tmp3.1"), &tmp2)?.sub(cs.ns(|| "tmp3.2"), &tmp4)?
         };
         let t5 = tmp.double(cs.ns(|| "t5"))?;
@@ -207,17 +188,13 @@ where
         // z0 = 3 * t0 - 2 * z0
         result.c0.c0 = {
             let mut cs = cs.ns(|| "result.c0.c0");
-            t0.sub(cs.ns(|| "1"), z0)?
-                .double(cs.ns(|| "2"))?
-                .add(cs.ns(|| "3"), &t0)?
+            t0.sub(cs.ns(|| "1"), z0)?.double(cs.ns(|| "2"))?.add(cs.ns(|| "3"), &t0)?
         };
 
         // z1 = 3 * t1 + 2 * z1
         result.c1.c1 = {
             let mut cs = cs.ns(|| "result.c1.c1");
-            t1.add(cs.ns(|| "1"), z1)?
-                .double(cs.ns(|| "2"))?
-                .add(cs.ns(|| "3"), &t1)?
+            t1.add(cs.ns(|| "1"), z1)?.double(cs.ns(|| "2"))?.add(cs.ns(|| "3"), &t1)?
         };
 
         // for B
@@ -226,17 +203,13 @@ where
         result.c1.c0 = {
             let mut cs = cs.ns(|| "result.c1.c0");
             let tmp = t5.mul_by_constant(cs.ns(|| "1"), &fp2_nr)?;
-            z2.add(cs.ns(|| "2"), &tmp)?
-                .double(cs.ns(|| "3"))?
-                .add(cs.ns(|| "4"), &tmp)?
+            z2.add(cs.ns(|| "2"), &tmp)?.double(cs.ns(|| "3"))?.add(cs.ns(|| "4"), &tmp)?
         };
 
         // z3 = 3 * t4 - 2 * z3
         result.c0.c2 = {
             let mut cs = cs.ns(|| "result.c0.c2");
-            t4.sub(cs.ns(|| "1"), z3)?
-                .double(cs.ns(|| "2"))?
-                .add(cs.ns(|| "3"), &t4)?
+            t4.sub(cs.ns(|| "1"), z3)?.double(cs.ns(|| "2"))?.add(cs.ns(|| "3"), &t4)?
         };
 
         // for C
@@ -244,17 +217,13 @@ where
         // z4 = 3 * t2 - 2 * z4
         result.c0.c1 = {
             let mut cs = cs.ns(|| "result.c0.c1");
-            t2.sub(cs.ns(|| "1"), z4)?
-                .double(cs.ns(|| "2"))?
-                .add(cs.ns(|| "3"), &t2)?
+            t2.sub(cs.ns(|| "1"), z4)?.double(cs.ns(|| "2"))?.add(cs.ns(|| "3"), &t2)?
         };
 
         // z5 = 3 * t3 + 2 * z5
         result.c1.c2 = {
             let mut cs = cs.ns(|| "result.c1.c2");
-            t3.add(cs.ns(|| "1"), z5)?
-                .double(cs.ns(|| "2"))?
-                .add(cs.ns(|| "3"), &t3)?
+            t3.add(cs.ns(|| "1"), z5)?.double(cs.ns(|| "2"))?.add(cs.ns(|| "3"), &t3)?
         };
 
         Ok(result)
@@ -390,9 +359,7 @@ where
             let a0_plus_a1 = self.c0.add(cs.ns(|| "a0 + a1"), &self.c1)?;
             let b0_plus_b1 = other.c0.add(cs.ns(|| "b0 + b1"), &other.c1)?;
             let a0_plus_a1_times_b0_plus_b1 = a0_plus_a1.mul(&mut cs.ns(|| "(a0 + a1) * (b0 + b1)"), &b0_plus_b1)?;
-            a0_plus_a1_times_b0_plus_b1
-                .sub(cs.ns(|| "res - v0"), &v0)?
-                .sub(cs.ns(|| "res - v0 - v1"), &v1)?
+            a0_plus_a1_times_b0_plus_b1.sub(cs.ns(|| "res - v0"), &v0)?.sub(cs.ns(|| "res - v0 - v1"), &v1)?
         };
 
         Ok(Self::new(c0, c1))
@@ -426,11 +393,7 @@ where
         v0.double_in_place(cs.ns(|| "2v0"))?;
         let c1 = v0;
 
-        Ok(Self {
-            c0,
-            c1,
-            _params: PhantomData,
-        })
+        Ok(Self { c0, c1, _params: PhantomData })
     }
 
     #[inline]
@@ -488,22 +451,15 @@ where
         self.c0.frobenius_map_in_place(cs.ns(|| "frob_map1"), power)?;
         self.c1.frobenius_map_in_place(cs.ns(|| "frob_map2"), power)?;
 
-        self.c1
-            .c0
-            .mul_by_constant_in_place(cs.ns(|| "mul1"), &P::FROBENIUS_COEFF_FP12_C1[power % 12])?;
-        self.c1
-            .c1
-            .mul_by_constant_in_place(cs.ns(|| "mul2"), &P::FROBENIUS_COEFF_FP12_C1[power % 12])?;
-        self.c1
-            .c2
-            .mul_by_constant_in_place(cs.ns(|| "mul3"), &P::FROBENIUS_COEFF_FP12_C1[power % 12])?;
+        self.c1.c0.mul_by_constant_in_place(cs.ns(|| "mul1"), &P::FROBENIUS_COEFF_FP12_C1[power % 12])?;
+        self.c1.c1.mul_by_constant_in_place(cs.ns(|| "mul2"), &P::FROBENIUS_COEFF_FP12_C1[power % 12])?;
+        self.c1.c2.mul_by_constant_in_place(cs.ns(|| "mul3"), &P::FROBENIUS_COEFF_FP12_C1[power % 12])?;
         Ok(self)
     }
 
     fn inverse<CS: ConstraintSystem<F>>(&self, mut cs: CS) -> Result<Self, SynthesisError> {
-        let inverse = Self::alloc(&mut cs.ns(|| "alloc inverse"), || {
-            self.get_value().and_then(|val| val.inverse()).get()
-        })?;
+        let inverse =
+            Self::alloc(&mut cs.ns(|| "alloc inverse"), || self.get_value().and_then(|val| val.inverse()).get())?;
 
         // Karatsuba multiplication for Fp2 with the inverse:
         //     v0 = A.c0 * B.c0
@@ -563,9 +519,7 @@ where
 
         // Perform second check
         let non_residue_times_v1 = Self::mul_fp6_by_nonresidue(mul_cs.ns(|| "nr * v1"), &v1)?;
-        let rhs = result
-            .c0
-            .sub(mul_cs.ns(|| "sub from result.c0"), &non_residue_times_v1)?;
+        let rhs = result.c0.sub(mul_cs.ns(|| "sub from result.c0"), &non_residue_times_v1)?;
         self.c0.mul_equals(mul_cs.ns(|| "second check"), &other.c0, &rhs)?;
 
         // Last check
@@ -637,10 +591,8 @@ where
         other: &Self,
         condition: &Boolean,
     ) -> Result<(), SynthesisError> {
-        self.c0
-            .conditional_enforce_equal(&mut cs.ns(|| "c0"), &other.c0, condition)?;
-        self.c1
-            .conditional_enforce_equal(&mut cs.ns(|| "c1"), &other.c1, condition)?;
+        self.c0.conditional_enforce_equal(&mut cs.ns(|| "c0"), &other.c0, condition)?;
+        self.c1.conditional_enforce_equal(&mut cs.ns(|| "c1"), &other.c1, condition)?;
         Ok(())
     }
 
@@ -824,10 +776,7 @@ where
                 let fe = *fe.borrow();
                 (Ok(fe.c0), Ok(fe.c1))
             }
-            Err(_) => (
-                Err(SynthesisError::AssignmentMissing),
-                Err(SynthesisError::AssignmentMissing),
-            ),
+            Err(_) => (Err(SynthesisError::AssignmentMissing), Err(SynthesisError::AssignmentMissing)),
         };
 
         let c0 = Fp6Gadget::<P, F>::alloc(&mut cs.ns(|| "c0"), || c0)?;
@@ -846,10 +795,7 @@ where
                 let fe = *fe.borrow();
                 (Ok(fe.c0), Ok(fe.c1))
             }
-            Err(_) => (
-                Err(SynthesisError::AssignmentMissing),
-                Err(SynthesisError::AssignmentMissing),
-            ),
+            Err(_) => (Err(SynthesisError::AssignmentMissing), Err(SynthesisError::AssignmentMissing)),
         };
 
         let c0 = Fp6Gadget::<P, F>::alloc_input(&mut cs.ns(|| "c0"), || c0)?;

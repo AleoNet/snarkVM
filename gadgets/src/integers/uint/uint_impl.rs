@@ -109,10 +109,7 @@ impl UInt8 {
         }
 
         // Chunk up slices of 8 bit into bytes.
-        Ok(allocated_bits[0..8 * values_len]
-            .chunks(8)
-            .map(Self::from_bits_le)
-            .collect())
+        Ok(allocated_bits[0..8 * values_len].chunks(8).map(Self::from_bits_le).collect())
     }
 }
 

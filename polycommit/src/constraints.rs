@@ -77,10 +77,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocGadget<LinearCombinati
             })
             .collect();
 
-        Ok(Self {
-            label,
-            terms: new_terms,
-        })
+        Ok(Self { label, terms: new_terms })
     }
 
     #[inline]
@@ -103,10 +100,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocGadget<LinearCombinati
             })
             .collect();
 
-        Ok(Self {
-            label,
-            terms: new_terms,
-        })
+        Ok(Self { label, terms: new_terms })
     }
 
     #[inline]
@@ -129,10 +123,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> AllocGadget<LinearCombinati
             })
             .collect();
 
-        Ok(Self {
-            label,
-            terms: new_terms,
-        })
+        Ok(Self { label, terms: new_terms })
     }
 }
 
@@ -243,10 +234,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField> EvaluationsVar<TargetField,
         lc_string: &str,
         point: &NonNativeFieldVar<TargetField, BaseField>,
     ) -> Result<NonNativeFieldVar<TargetField, BaseField>, SynthesisError> {
-        let key = LabeledPointVar::<TargetField, BaseField> {
-            name: String::from(lc_string),
-            value: point.clone(),
-        };
+        let key = LabeledPointVar::<TargetField, BaseField> { name: String::from(lc_string), value: point.clone() };
         Ok(self.0.get(&key).map(|v| (*v).clone()).unwrap())
     }
 }

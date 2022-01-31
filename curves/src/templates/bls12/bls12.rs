@@ -124,10 +124,7 @@ where
     fn miller_loop<'a, I>(i: I) -> Self::Fqk
     where
         I: Iterator<
-            Item = (
-                &'a <Self::G1Affine as PairingCurve>::Prepared,
-                &'a <Self::G2Affine as PairingCurve>::Prepared,
-            ),
+            Item = (&'a <Self::G1Affine as PairingCurve>::Prepared, &'a <Self::G2Affine as PairingCurve>::Prepared),
         >,
     {
         let mut pairs = vec![];
