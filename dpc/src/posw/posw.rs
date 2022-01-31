@@ -27,7 +27,7 @@ use crate::{
     PoSWScheme,
 };
 use snarkvm_algorithms::{traits::SNARK, SRS};
-use snarkvm_utilities::{FromBytes, ToBytes, UniformRand};
+use snarkvm_utilities::UniformRand;
 
 use chrono::Utc;
 use core::sync::atomic::AtomicBool;
@@ -112,7 +112,7 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
             }
 
             // Run one iteration of PoSW.
-            let proof = self.prove_once_unchecked(&mut circuit, block_template, terminator, rng)?;
+            let proof = self.prove_once_unchecked(&mut circuit, terminator, rng)?;
 
             // Check if the updated block header is valid.
             if self.verify(
@@ -143,7 +143,6 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
     fn prove_once_unchecked<R: Rng + CryptoRng>(
         &self,
         circuit: &mut PoSWCircuit<N>,
-        block_template: &BlockTemplate<N>,
         terminator: &AtomicBool,
         rng: &mut R,
     ) -> Result<PoSWProof<N>, PoSWError> {

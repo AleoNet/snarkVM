@@ -154,7 +154,7 @@ impl<N: Network> BlockHeader<N> {
 
         // Run one iteration of PoSW.
         // Warning: this operation is unchecked.
-        let proof = N::posw().prove_once_unchecked(&mut circuit, block_template, terminator, rng)?;
+        let proof = N::posw().prove_once_unchecked(&mut circuit, terminator, rng)?;
 
         // Construct a block header.
         Ok(Self {
