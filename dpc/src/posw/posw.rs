@@ -152,24 +152,10 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
         // Sample a random nonce.
         circuit.set_nonce(UniformRand::rand(rng));
 
-        // TODO (raychu86): TEMPORARY - Remove this after testnet2 period.
-        // Mine blocks with the deprecated PoSW mode for blocks behind `V12_UPGRADE_BLOCK_HEIGHT`.
-        if <N as Network>::NETWORK_ID == 2 && block_template.block_height() <= crate::testnet2::V12_UPGRADE_BLOCK_HEIGHT
-        {
-            let pk = <crate::testnet2::DeprecatedPoSWSNARK<N> as SNARK>::ProvingKey::from_bytes_le(&pk.to_bytes_le()?)?;
-            // Construct a PoSW proof.
-            Ok(PoSWProof::<N>::new_hiding(
-                <crate::testnet2::DeprecatedPoSWSNARK<N> as SNARK>::prove_with_terminator(
-                    &pk, circuit, terminator, rng,
-                )?
-                .into(),
-            ))
-        } else {
-            // Construct a PoSW proof.
-            Ok(PoSWProof::<N>::new(
-                <<N as Network>::PoSWSNARK as SNARK>::prove_with_terminator(pk, circuit, terminator, rng)?.into(),
-            ))
-        }
+        // Construct a PoSW proof.
+        Ok(PoSWProof::<N>::new(
+            <<N as Network>::PoSWSNARK as SNARK>::prove_with_terminator(pk, circuit, terminator, rng)?.into(),
+        ))
     }
 
     /// Verifies the Proof of Succinct Work against the nonce, root, and difficulty target.
@@ -208,18 +194,8 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
             }
         };
 
-        // TODO (raychu86): TEMPORARY - Remove this after testnet2 period.
-        // Verify blocks with the deprecated PoSW mode for blocks behind `V12_UPGRADE_BLOCK_HEIGHT`.
-        if <N as Network>::NETWORK_ID == 2 && block_height <= crate::testnet2::V12_UPGRADE_BLOCK_HEIGHT {
-            // Ensure the proof type is hiding.
-            if !proof.is_hiding() {
-                #[cfg(debug_assertions)]
-                eprintln!("[deprecated] PoSW proof for block {} should be hiding", block_height);
-                return false;
-            }
-        }
         // Ensure the proof type is not hiding.
-        else if proof.is_hiding() {
+        if proof.is_hiding() {
             #[cfg(debug_assertions)]
             eprintln!("PoSW proof for block {} should not be hiding", block_height);
             return false;

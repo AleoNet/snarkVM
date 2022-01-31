@@ -408,9 +408,8 @@ mod tests {
 
     #[test]
     fn test_block_header_size() {
-        // TODO (howardwu): TEMPORARY - Remove this 80 after removing the testnet2 v12 compatibility changes.
-        assert_eq!(get_expected_size::<Testnet1>() - 80, Testnet1::HEADER_SIZE_IN_BYTES);
-        assert_eq!(get_expected_size::<Testnet1>() - 80, Testnet1::HEADER_SIZE_IN_BYTES);
+        assert_eq!(get_expected_size::<Testnet1>(), Testnet1::HEADER_SIZE_IN_BYTES);
+        assert_eq!(get_expected_size::<Testnet1>(), Testnet1::HEADER_SIZE_IN_BYTES);
 
         assert_eq!(get_expected_size::<Testnet2>(), Testnet2::HEADER_SIZE_IN_BYTES);
         assert_eq!(get_expected_size::<Testnet2>(), Testnet2::HEADER_SIZE_IN_BYTES);

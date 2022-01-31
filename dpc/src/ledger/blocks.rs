@@ -243,14 +243,7 @@ impl<N: Network> Blocks<N> {
 
         // Ensure the expected difficulty target is met.
         let expected_difficulty_target =
-            if N::NETWORK_ID == 2 && block.height() <= crate::testnet2::V12_UPGRADE_BLOCK_HEIGHT {
-                Blocks::<N>::compute_difficulty_target(current_block.header(), block.timestamp(), block.height())
-            } else if N::NETWORK_ID == 2 {
-                let anchor_block_header = self.get_block_header(crate::testnet2::V12_UPGRADE_BLOCK_HEIGHT)?;
-                Blocks::<N>::compute_difficulty_target(anchor_block_header, block.timestamp(), block.height())
-            } else {
-                Blocks::<N>::compute_difficulty_target(N::genesis_block().header(), block.timestamp(), block.height())
-            };
+            Blocks::<N>::compute_difficulty_target(N::genesis_block().header(), block.timestamp(), block.height());
         if block.difficulty_target() != expected_difficulty_target {
             return Err(anyhow!(
                 "The given block difficulty target is incorrect. Found {}, but expected {}",
@@ -412,23 +405,14 @@ impl<N: Network> Blocks<N> {
         block_timestamp: i64,
         block_height: u32,
     ) -> u64 {
-        if N::NETWORK_ID == 2 && block_height <= crate::testnet2::V12_UPGRADE_BLOCK_HEIGHT {
-            Self::bitcoin_retarget(
-                anchor_block_header.timestamp(),
-                anchor_block_header.difficulty_target(),
-                block_timestamp,
-                N::ALEO_BLOCK_TIME_IN_SECS,
-            )
-        } else {
-            Self::asert_retarget(
-                anchor_block_header.timestamp(),
-                anchor_block_header.difficulty_target(),
-                anchor_block_header.height(),
-                block_timestamp,
-                block_height,
-                N::ALEO_BLOCK_TIME_IN_SECS,
-            )
-        }
+        Self::asert_retarget(
+            anchor_block_header.timestamp(),
+            anchor_block_header.difficulty_target(),
+            anchor_block_header.height(),
+            block_timestamp,
+            block_height,
+            N::ALEO_BLOCK_TIME_IN_SECS,
+        )
     }
 
     /// Bitcoin difficulty retarget algorithm.
