@@ -32,9 +32,6 @@ version = "1.0"
 [dependencies.bincode]
 version = "1.3.3"
 
-[dependencies.itertools]
-version = "0.10.3"
-
 [dependencies.num_cpus]
 version = "1"
 optional = true

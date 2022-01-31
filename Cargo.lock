@@ -2222,7 +2222,6 @@ dependencies = [
  "aleo-std",
  "anyhow",
  "bincode",
- "itertools",
  "num-bigint",
  "num_cpus",
  "rand",
