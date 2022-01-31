@@ -474,8 +474,7 @@ pub fn field_serialization_test<F: Field>() {
         {
             let mut serialized = vec![0; buf_size];
             assert!(matches!(
-                a.serialize_with_flags(&mut &mut serialized[..], DummyFlags)
-                    .unwrap_err(),
+                a.serialize_with_flags(&mut &mut serialized[..], DummyFlags).unwrap_err(),
                 SerializationError::NotEnoughSpace
             ));
             assert!(matches!(

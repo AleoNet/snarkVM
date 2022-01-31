@@ -38,13 +38,7 @@ impl Transcript {
                 };
 
                 // Save the current scope members.
-                self.parents.push((
-                    self.scope.clone(),
-                    self.constants,
-                    self.public,
-                    self.private,
-                    self.constraints,
-                ));
+                self.parents.push((self.scope.clone(), self.constants, self.public, self.private, self.constraints));
 
                 // Initialize the new scope members.
                 self.scope = scope.clone();

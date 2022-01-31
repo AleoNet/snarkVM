@@ -50,7 +50,7 @@ impl<N: Network> Transitions<N> {
         let transition_id = transition.transition_id();
         if self.contains_transition(&transition_id) {
             return Err(
-                MerkleError::Message(format!("{} already exists in the transitions tree", transition_id)).into(),
+                MerkleError::Message(format!("{} already exists in the transitions tree", transition_id)).into()
             );
         }
 
@@ -60,8 +60,7 @@ impl<N: Network> Transitions<N> {
         }
 
         self.tree = Arc::new(self.tree.rebuild(self.current_index as usize, &[transition_id])?);
-        self.transitions
-            .insert(transition_id, (self.current_index, transition.clone()));
+        self.transitions.insert(transition_id, (self.current_index, transition.clone()));
         self.current_index += 1;
 
         Ok(self.current_index - 1)

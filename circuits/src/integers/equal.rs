@@ -115,16 +115,7 @@ mod tests {
             let b = Integer::new(mode_b, second);
 
             let name = format!("Eq: a == b {}", i);
-            check_is_eq(
-                &name,
-                expected,
-                &a,
-                &b,
-                num_constants,
-                num_public,
-                num_private,
-                num_constraints,
-            );
+            check_is_eq(&name, expected, &a, &b, num_constants, num_public, num_private, num_constraints);
         }
     }
 

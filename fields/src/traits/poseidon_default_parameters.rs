@@ -42,13 +42,7 @@ impl PoseidonDefaultParametersEntry {
         partial_rounds: usize,
         skip_matrices: usize,
     ) -> Self {
-        Self {
-            rate,
-            alpha,
-            full_rounds,
-            partial_rounds,
-            skip_matrices,
-        }
+        Self { rate, alpha, full_rounds, partial_rounds, skip_matrices }
     }
 }
 

@@ -55,9 +55,7 @@ where
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
 {
     fn clone(&self) -> Self {
-        Self {
-            comm: self.comm.clone(),
-        }
+        Self { comm: self.comm.clone() }
     }
 }
 

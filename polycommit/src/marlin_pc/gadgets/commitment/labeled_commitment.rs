@@ -86,20 +86,14 @@ where
 
             let degree_bound = if let Some(degree_bound) = degree_bound {
                 FpGadget::<<BaseCurve as PairingEngine>::Fr>::alloc_constant(cs.ns(|| "degree_bound"), || {
-                    Ok(<<BaseCurve as PairingEngine>::Fr as From<u128>>::from(
-                        degree_bound as u128,
-                    ))
+                    Ok(<<BaseCurve as PairingEngine>::Fr as From<u128>>::from(degree_bound as u128))
                 })
                 .ok()
             } else {
                 None
             };
 
-            Ok(Self {
-                label,
-                commitment,
-                degree_bound,
-            })
+            Ok(Self { label, commitment, degree_bound })
         })
     }
 
@@ -121,20 +115,14 @@ where
 
             let degree_bound = if let Some(degree_bound) = degree_bound {
                 FpGadget::<<BaseCurve as PairingEngine>::Fr>::alloc(cs.ns(|| "degree_bound"), || {
-                    Ok(<<BaseCurve as PairingEngine>::Fr as From<u128>>::from(
-                        degree_bound as u128,
-                    ))
+                    Ok(<<BaseCurve as PairingEngine>::Fr as From<u128>>::from(degree_bound as u128))
                 })
                 .ok()
             } else {
                 None
             };
 
-            Ok(Self {
-                label,
-                commitment,
-                degree_bound,
-            })
+            Ok(Self { label, commitment, degree_bound })
         })
     }
 
@@ -156,20 +144,14 @@ where
 
             let degree_bound = if let Some(degree_bound) = degree_bound {
                 FpGadget::<<BaseCurve as PairingEngine>::Fr>::alloc_input(cs.ns(|| "degree_bound"), || {
-                    Ok(<<BaseCurve as PairingEngine>::Fr as From<u128>>::from(
-                        degree_bound as u128,
-                    ))
+                    Ok(<<BaseCurve as PairingEngine>::Fr as From<u128>>::from(degree_bound as u128))
                 })
                 .ok()
             } else {
                 None
             };
 
-            Ok(Self {
-                label,
-                commitment,
-                degree_bound,
-            })
+            Ok(Self { label, commitment, degree_bound })
         })
     }
 }
@@ -254,24 +236,17 @@ mod tests {
 
             // Check degree bound.
 
-            assert_eq!(
-                commitment.degree_bound().is_some(),
-                commitment_gadget.degree_bound.is_some()
-            );
+            assert_eq!(commitment.degree_bound().is_some(), commitment_gadget.degree_bound.is_some());
 
             if let (Some(degree_bound), Some(degree_bound_gadget)) =
                 (commitment.degree_bound(), commitment_gadget.degree_bound)
             {
-                let expected_degree_bound = FpGadget::alloc(cs.ns(|| format!("degree_bound_{}", i)), || {
-                    Ok(Fq::from(degree_bound as u32))
-                })
-                .unwrap();
+                let expected_degree_bound =
+                    FpGadget::alloc(cs.ns(|| format!("degree_bound_{}", i)), || Ok(Fq::from(degree_bound as u32)))
+                        .unwrap();
 
                 expected_degree_bound
-                    .enforce_equal(
-                        cs.ns(|| format!("degree_bound_enforce_equal_{}", i)),
-                        &degree_bound_gadget,
-                    )
+                    .enforce_equal(cs.ns(|| format!("degree_bound_enforce_equal_{}", i)), &degree_bound_gadget)
                     .unwrap();
             }
 
@@ -298,10 +273,9 @@ mod tests {
                 commitment_gadget.commitment.shifted_comm.is_some()
             );
 
-            if let (Some(shifted_comm), Some(shifted_comm_gadget)) = (
-                &commitment.commitment().shifted_comm,
-                commitment_gadget.commitment.shifted_comm,
-            ) {
+            if let (Some(shifted_comm), Some(shifted_comm_gadget)) =
+                (&commitment.commitment().shifted_comm, commitment_gadget.commitment.shifted_comm)
+            {
                 let expected_shifted_commitment_gadget = <PG as PairingGadget<_, _>>::G1Gadget::alloc(
                     cs.ns(|| format!("shifted_commitment_gadget_{}", i)),
                     || Ok(shifted_comm.0.into_projective()),
@@ -347,10 +321,8 @@ mod tests {
                 .unwrap();
 
             // Convert the gadget commitments to bytes
-            let _commitment_gadget_bytes = commitment_gadget
-                .commitment
-                .to_bytes(cs.ns(|| format!("commitment_to_bytes_{}", i)))
-                .unwrap();
+            let _commitment_gadget_bytes =
+                commitment_gadget.commitment.to_bytes(cs.ns(|| format!("commitment_to_bytes_{}", i))).unwrap();
         }
     }
 }

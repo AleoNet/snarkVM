@@ -35,13 +35,7 @@ impl<E: Environment, I: IntegerType> AddChecked<Self> for Integer<E, I> {
             let mut carry = Boolean::new(Mode::Constant, false);
 
             // Perform a ripple-carry adder on the bits.
-            for (index, (a, b)) in self
-                .bits_le
-                .iter()
-                .zip_eq(other.bits_le.iter())
-                .take(I::BITS)
-                .enumerate()
-            {
+            for (index, (a, b)) in self.bits_le.iter().zip_eq(other.bits_le.iter()).take(I::BITS).enumerate() {
                 // Perform a full-adder on `a` and `b`.
                 let (sum, next_carry) = a.adder(b, &carry);
                 bits_le.push(sum);
@@ -64,10 +58,7 @@ impl<E: Environment, I: IntegerType> AddChecked<Self> for Integer<E, I> {
             E::assert_eq(carry, E::zero());
 
             // Return the sum of `self` and `other`.
-            Integer {
-                bits_le,
-                phantom: Default::default(),
-            }
+            Integer { bits_le, phantom: Default::default() }
         }
     }
 }

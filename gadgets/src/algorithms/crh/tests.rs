@@ -81,19 +81,14 @@ fn primitive_crh_gadget_test<F: PrimeField, H: CRH, CG: CRHGadget<H, F>>(hash_co
     let crh_gadget = CG::alloc_constant(&mut cs.ns(|| "gadget_parameters"), || Ok(crh)).unwrap();
     assert_eq!(cs.num_constraints(), 1536);
 
-    let output_gadget = crh_gadget
-        .check_evaluation_gadget(&mut cs.ns(|| "gadget_evaluation"), input_bytes)
-        .unwrap();
+    let output_gadget = crh_gadget.check_evaluation_gadget(&mut cs.ns(|| "gadget_evaluation"), input_bytes).unwrap();
     assert_eq!(cs.num_constraints(), hash_constraints);
 
     let native_result_gadget =
         <CG as CRHGadget<_, _>>::OutputGadget::alloc(&mut cs.ns(|| "native_result"), || Ok(&native_result)).unwrap();
 
     output_gadget
-        .enforce_equal(
-            &mut cs.ns(|| "Check that computed crh matches provided output"),
-            &native_result_gadget,
-        )
+        .enforce_equal(&mut cs.ns(|| "Check that computed crh matches provided output"), &native_result_gadget)
         .unwrap();
 
     assert!(cs.is_satisfied());
@@ -132,10 +127,7 @@ fn masked_crh_gadget_test<F: PrimeField, H: CRH, CG: MaskedCRHGadget<H, F>>() {
         <CG as CRHGadget<_, _>>::OutputGadget::alloc(&mut cs.ns(|| "native_result"), || Ok(&native_result)).unwrap();
 
     masked_output_gadget
-        .enforce_equal(
-            &mut cs.ns(|| "Check that computed crh matches provided output"),
-            &native_result_gadget,
-        )
+        .enforce_equal(&mut cs.ns(|| "Check that computed crh matches provided output"), &native_result_gadget)
         .unwrap();
 
     assert!(cs.is_satisfied());

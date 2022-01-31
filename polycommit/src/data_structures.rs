@@ -128,12 +128,7 @@ impl<F: Field> LabeledPolynomial<F> {
         degree_bound: Option<usize>,
         hiding_bound: Option<usize>,
     ) -> Self {
-        Self {
-            label,
-            polynomial: Arc::new(polynomial),
-            degree_bound,
-            hiding_bound,
-        }
+        Self { label, polynomial: Arc::new(polynomial), degree_bound, hiding_bound }
     }
 
     /// Return the label for `self`.
@@ -194,11 +189,7 @@ impl<C: PCCommitment> ToBytes for LabeledCommitment<C> {
 impl<C: PCCommitment> LabeledCommitment<C> {
     /// Instantiate a new polynomial_context.
     pub fn new(label: PolynomialLabel, commitment: C, degree_bound: Option<usize>) -> Self {
-        Self {
-            label,
-            commitment,
-            degree_bound,
-        }
+        Self { label, commitment, degree_bound }
     }
 
     /// Return the label for `self`.
@@ -289,20 +280,14 @@ pub struct LinearCombination<F> {
 impl<F: Field> LinearCombination<F> {
     /// Construct an empty labeled linear combination.
     pub fn empty(label: impl Into<String>) -> Self {
-        Self {
-            label: label.into(),
-            terms: Vec::new(),
-        }
+        Self { label: label.into(), terms: Vec::new() }
     }
 
     /// Construct a new labeled linear combination.
     /// with the terms specified in `term`.
     pub fn new(label: impl Into<String>, terms: Vec<(F, impl Into<LCTerm>)>) -> Self {
         let terms = terms.into_iter().map(|(c, t)| (c, t.into())).collect();
-        Self {
-            label: label.into(),
-            terms,
-        }
+        Self { label: label.into(), terms }
     }
 
     /// Returns the label of the linear combination.
@@ -325,16 +310,14 @@ impl<F: Field> LinearCombination<F> {
 impl<'a, F: Field> AddAssign<(F, &'a LinearCombination<F>)> for LinearCombination<F> {
     #[allow(clippy::suspicious_op_assign_impl)]
     fn add_assign(&mut self, (coeff, other): (F, &'a LinearCombination<F>)) {
-        self.terms
-            .extend(other.terms.iter().map(|(c, t)| (coeff * c, t.clone())));
+        self.terms.extend(other.terms.iter().map(|(c, t)| (coeff * c, t.clone())));
     }
 }
 
 impl<'a, F: Field> SubAssign<(F, &'a LinearCombination<F>)> for LinearCombination<F> {
     #[allow(clippy::suspicious_op_assign_impl)]
     fn sub_assign(&mut self, (coeff, other): (F, &'a LinearCombination<F>)) {
-        self.terms
-            .extend(other.terms.iter().map(|(c, t)| (-coeff * c, t.clone())));
+        self.terms.extend(other.terms.iter().map(|(c, t)| (-coeff * c, t.clone())));
     }
 }
 

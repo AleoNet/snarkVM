@@ -32,13 +32,7 @@ impl<E: Environment, I: IntegerType> AddWrapped<Self> for Integer<E, I> {
             let mut carry = Boolean::new(Mode::Constant, false);
 
             // Perform a ripple-carry adder on the bits.
-            for (index, (a, b)) in self
-                .bits_le
-                .iter()
-                .zip_eq(other.bits_le.iter())
-                .take(I::BITS)
-                .enumerate()
-            {
+            for (index, (a, b)) in self.bits_le.iter().zip_eq(other.bits_le.iter()).take(I::BITS).enumerate() {
                 match index != (I::BITS - 1) {
                     // For all bits up to the penultimate bit, perform a full-adder on `a` and `b`.
                     true => {
@@ -55,10 +49,7 @@ impl<E: Environment, I: IntegerType> AddWrapped<Self> for Integer<E, I> {
             }
 
             // Return the sum of `self` and `other`.
-            Integer {
-                bits_le,
-                phantom: Default::default(),
-            }
+            Integer { bits_le, phantom: Default::default() }
         }
     }
 }

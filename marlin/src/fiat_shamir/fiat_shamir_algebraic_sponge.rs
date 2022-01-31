@@ -59,17 +59,11 @@ where
     }
 
     fn new() -> Self {
-        Self {
-            s: S::with_default_parameters(),
-            _phantom: PhantomData,
-        }
+        Self { s: S::with_default_parameters(), _phantom: PhantomData }
     }
 
     fn with_parameters(params: &Self::Parameters) -> Self {
-        Self {
-            s: S::with_parameters(params),
-            _phantom: PhantomData,
-        }
+        Self { s: S::with_parameters(params), _phantom: PhantomData }
     }
 
     fn absorb_nonnative_field_elements(&mut self, elems: &[TargetField], ty: OptimizationType) {
@@ -128,10 +122,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField, S: DefaultCapacityAlgebraic
     for FiatShamirAlgebraicSpongeRng<TargetField, BaseField, S>
 {
     fn next_u32(&mut self) -> u32 {
-        assert!(
-            BaseField::size_in_bits() > 128,
-            "The native field of the algebraic sponge is too small."
-        );
+        assert!(BaseField::size_in_bits() > 128, "The native field of the algebraic sponge is too small.");
 
         let mut dest = [0u8; 4];
         self.fill_bytes(&mut dest);
@@ -140,10 +131,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField, S: DefaultCapacityAlgebraic
     }
 
     fn next_u64(&mut self) -> u64 {
-        assert!(
-            BaseField::size_in_bits() > 128,
-            "The native field of the algebraic sponge is too small."
-        );
+        assert!(BaseField::size_in_bits() > 128, "The native field of the algebraic sponge is too small.");
 
         let mut dest = [0u8; 8];
         self.fill_bytes(&mut dest);
@@ -152,10 +140,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField, S: DefaultCapacityAlgebraic
     }
 
     fn fill_bytes(&mut self, dest: &mut [u8]) {
-        assert!(
-            BaseField::size_in_bits() > 128,
-            "The native field of the algebraic sponge is too small."
-        );
+        assert!(BaseField::size_in_bits() > 128, "The native field of the algebraic sponge is too small.");
 
         let capacity = BaseField::size_in_bits() - 128;
         let len = dest.len() * 8;
@@ -183,10 +168,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField, S: DefaultCapacityAlgebraic
     }
 
     fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), Error> {
-        assert!(
-            BaseField::size_in_bits() > 128,
-            "The native field of the algebraic sponge is too small."
-        );
+        assert!(BaseField::size_in_bits() > 128, "The native field of the algebraic sponge is too small.");
 
         self.fill_bytes(dest);
         Ok(())
@@ -305,19 +287,18 @@ impl<TargetField: PrimeField, BaseField: PrimeField, S: DefaultCapacityAlgebraic
         }
 
         let mut dest_elements = Vec::<TargetField>::new();
-        bits.chunks_exact(num_bits_per_nonnative)
-            .for_each(|per_nonnative_bits| {
-                // technically, this can be done via BigInterger::from_bits; here, we use this method for consistency with the gadget counterpart
-                let mut res = TargetField::zero();
+        bits.chunks_exact(num_bits_per_nonnative).for_each(|per_nonnative_bits| {
+            // technically, this can be done via BigInterger::from_bits; here, we use this method for consistency with the gadget counterpart
+            let mut res = TargetField::zero();
 
-                for (i, bit) in per_nonnative_bits.iter().rev().enumerate() {
-                    if *bit {
-                        res += &lookup_table[i];
-                    }
+            for (i, bit) in per_nonnative_bits.iter().rev().enumerate() {
+                if *bit {
+                    res += &lookup_table[i];
                 }
+            }
 
-                dest_elements.push(res);
-            });
+            dest_elements.push(res);
+        });
 
         dest_elements
     }

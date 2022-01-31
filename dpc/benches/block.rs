@@ -36,9 +36,7 @@ fn bench_serialization<T: Serialize + DeserializeOwned + ToBytes + FromBytes + C
     // snarkvm_utilities::ToBytes
     {
         let object = object.clone();
-        c.bench_function(&format!("{}::to_bytes_le", name), move |b| {
-            b.iter(|| object.to_bytes_le().unwrap())
-        });
+        c.bench_function(&format!("{}::to_bytes_le", name), move |b| b.iter(|| object.to_bytes_le().unwrap()));
     }
     // bincode::serialize
     {
@@ -62,9 +60,7 @@ fn bench_serialization<T: Serialize + DeserializeOwned + ToBytes + FromBytes + C
     // snarkvm_utilities::FromBytes
     {
         let buffer = object.to_bytes_le().unwrap();
-        c.bench_function(&format!("{}::from_bytes_le", name), move |b| {
-            b.iter(|| T::from_bytes_le(&buffer).unwrap())
-        });
+        c.bench_function(&format!("{}::from_bytes_le", name), move |b| b.iter(|| T::from_bytes_le(&buffer).unwrap()));
     }
     // bincode::deserialize
     {
@@ -103,11 +99,7 @@ fn transaction_serialization(c: &mut Criterion) {
 }
 
 fn transition_serialization(c: &mut Criterion) {
-    let transition = Testnet2::genesis_block()
-        .to_coinbase_transaction()
-        .unwrap()
-        .transitions()[0]
-        .clone();
+    let transition = Testnet2::genesis_block().to_coinbase_transaction().unwrap().transitions()[0].clone();
     bench_serialization(c, "Transition", transition);
 }
 

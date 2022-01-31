@@ -109,9 +109,7 @@ mod tests {
         )
         .unwrap();
 
-        candidate_output_gadget
-            .enforce_equal(&mut cs, &expected_output_gadget)
-            .unwrap();
+        candidate_output_gadget.enforce_equal(&mut cs, &expected_output_gadget).unwrap();
 
         if !cs.is_satisfied() {
             println!("which is unsatisfied: {:?}", cs.which_is_unsatisfied().unwrap());

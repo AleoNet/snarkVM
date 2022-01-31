@@ -56,12 +56,7 @@ impl<N: Network> Output<N> {
             None => *N::noop_program_id(),
         };
 
-        Ok(Self {
-            address,
-            value,
-            payload,
-            program_id,
-        })
+        Ok(Self { address, value, payload, program_id })
     }
 
     /// Returns `true` if the program ID is the noop program.

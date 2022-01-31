@@ -65,12 +65,7 @@ mod montgomery_affine_impl {
 
     impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> MontgomeryAffineGadget<P, F, FG> {
         pub fn new(x: FG, y: FG) -> Self {
-            Self {
-                x,
-                y,
-                _params: PhantomData,
-                _engine: PhantomData,
-            }
+            Self { x, y, _params: PhantomData, _engine: PhantomData }
         }
 
         pub fn from_edwards_to_coords(p: &TEAffine<P>) -> Result<(P::BaseField, P::BaseField), SynthesisError> {
@@ -206,12 +201,7 @@ pub struct AffineGadget<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P
 
 impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> AffineGadget<P, F, FG> {
     pub fn new(x: FG, y: FG) -> Self {
-        Self {
-            x,
-            y,
-            _params: PhantomData,
-            _engine: PhantomData,
-        }
+        Self { x, y, _params: PhantomData, _engine: PhantomData }
     }
 
     pub fn alloc_without_check<Fn, CS: ConstraintSystem<F>>(mut cs: CS, value_gen: Fn) -> Result<Self, SynthesisError>
@@ -220,10 +210,7 @@ impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> Af
     {
         let (x, y) = match value_gen() {
             Ok(fe) => (Ok(fe.x), Ok(fe.y)),
-            _ => (
-                Err(SynthesisError::AssignmentMissing),
-                Err(SynthesisError::AssignmentMissing),
-            ),
+            _ => (Err(SynthesisError::AssignmentMissing), Err(SynthesisError::AssignmentMissing)),
         };
 
         let x = FG::alloc(&mut cs.ns(|| "x"), || x)?;
@@ -282,10 +269,7 @@ mod affine_impl {
             let d = P::COEFF_D;
 
             // Compute U = (x1 + y1) * (x2 + y2)
-            let u1 = self
-                .x
-                .mul_by_constant(cs.ns(|| "-A * x1"), &a.neg())?
-                .add(cs.ns(|| "-A * x1 + y1"), &self.y)?;
+            let u1 = self.x.mul_by_constant(cs.ns(|| "-A * x1"), &a.neg())?.add(cs.ns(|| "-A * x1 + y1"), &self.y)?;
             let u2 = other.x.add(cs.ns(|| "x2 + y2"), &other.y)?;
 
             let u = u1.mul(cs.ns(|| "(-A * x1 + y1) * (x2 + y2)"), &u2)?;
@@ -297,9 +281,7 @@ mod affine_impl {
             let v1 = other.x.mul(&mut cs.ns(|| "v1"), &self.y)?;
 
             // Compute C = d*v0*v1
-            let v2 = v0
-                .mul(cs.ns(|| "v0 * v1"), &v1)?
-                .mul_by_constant(cs.ns(|| "D * v0 * v1"), &d)?;
+            let v2 = v0.mul(cs.ns(|| "v0 * v1"), &v1)?.mul_by_constant(cs.ns(|| "D * v0 * v1"), &d)?;
 
             // Compute x3 = (v0 + v1) / (1 + v2)
             let x3 = FG::alloc(&mut cs.ns(|| "x3"), || {
@@ -320,13 +302,9 @@ mod affine_impl {
                 Ok(t0 * t1.inverse().get()?)
             })?;
 
-            let one_minus_v2 = v2
-                .add_constant(cs.ns(|| "v2 - 1"), &(-one))?
-                .negate(cs.ns(|| "1 - v2"))?;
+            let one_minus_v2 = v2.add_constant(cs.ns(|| "v2 - 1"), &(-one))?.negate(cs.ns(|| "1 - v2"))?;
             let a_v0 = v0.mul_by_constant(cs.ns(|| "a * v0"), &a)?;
-            let u_plus_a_v0_minus_v1 = u
-                .add(cs.ns(|| "u + a * v0"), &a_v0)?
-                .sub(cs.ns(|| "u + a * v0 - v1"), &v1)?;
+            let u_plus_a_v0_minus_v1 = u.add(cs.ns(|| "u + a * v0"), &a_v0)?.sub(cs.ns(|| "u + a * v0 - v1"), &v1)?;
 
             y3.mul_equals(cs.ns(|| "check y3"), &one_minus_v2, &u_plus_a_v0_minus_v1)?;
 
@@ -344,10 +322,7 @@ mod affine_impl {
             let other_y = other.y;
 
             // Compute U = (x1 + y1) * (x2 + y2)
-            let u1 = self
-                .x
-                .mul_by_constant(cs.ns(|| "-A * x1"), &a.neg())?
-                .add(cs.ns(|| "-A * x1 + y1"), &self.y)?;
+            let u1 = self.x.mul_by_constant(cs.ns(|| "-A * x1"), &a.neg())?.add(cs.ns(|| "-A * x1 + y1"), &self.y)?;
             let u2 = other_x + other_y;
 
             let u = u1.mul_by_constant(cs.ns(|| "(-A * x1 + y1) * (x2 + y2)"), &u2)?;
@@ -359,9 +334,7 @@ mod affine_impl {
             let v1 = self.y.mul_by_constant(&mut cs.ns(|| "v1"), &other.x)?;
 
             // Compute C = d*v0*v1
-            let v2 = v0
-                .mul(cs.ns(|| "v0 * v1"), &v1)?
-                .mul_by_constant(cs.ns(|| "D * v0 * v1"), &d)?;
+            let v2 = v0.mul(cs.ns(|| "v0 * v1"), &v1)?.mul_by_constant(cs.ns(|| "D * v0 * v1"), &d)?;
 
             // Compute x3 = (v0 + v1) / (1 + v2)
             let x3 = FG::alloc(&mut cs.ns(|| "x3"), || {
@@ -382,13 +355,9 @@ mod affine_impl {
                 Ok(t0 * t1.inverse().get()?)
             })?;
 
-            let one_minus_v2 = v2
-                .add_constant(cs.ns(|| "v2 - 1"), &(-one))?
-                .negate(cs.ns(|| "1 - v2"))?;
+            let one_minus_v2 = v2.add_constant(cs.ns(|| "v2 - 1"), &(-one))?.negate(cs.ns(|| "1 - v2"))?;
             let a_v0 = v0.mul_by_constant(cs.ns(|| "a * v0"), &a)?;
-            let u_plus_a_v0_minus_v1 = u
-                .add(cs.ns(|| "u + a * v0"), &a_v0)?
-                .sub(cs.ns(|| "u + a * v0 - v1"), &v1)?;
+            let u_plus_a_v0_minus_v1 = u.add(cs.ns(|| "u + a * v0"), &a_v0)?.sub(cs.ns(|| "u + a * v0 - v1"), &v1)?;
 
             y3.mul_equals(cs.ns(|| "check y3"), &one_minus_v2, &u_plus_a_v0_minus_v1)?;
 
@@ -469,10 +438,7 @@ mod affine_impl {
                     let ge = *ge.borrow();
                     (Ok(ge.x), Ok(ge.y))
                 }
-                _ => (
-                    Err(SynthesisError::AssignmentMissing),
-                    Err(SynthesisError::AssignmentMissing),
-                ),
+                _ => (Err(SynthesisError::AssignmentMissing), Err(SynthesisError::AssignmentMissing)),
             };
 
             let d = P::COEFF_D;
@@ -487,13 +453,11 @@ mod affine_impl {
             let y2 = y.square(&mut cs.ns(|| "y^2"))?;
 
             let one = P::BaseField::one();
-            let d_x2_minus_one = x2
-                .mul_by_constant(cs.ns(|| "d * x^2"), &d)?
-                .add_constant(cs.ns(|| "d * x^2 - 1"), &one.neg())?;
+            let d_x2_minus_one =
+                x2.mul_by_constant(cs.ns(|| "d * x^2"), &d)?.add_constant(cs.ns(|| "d * x^2 - 1"), &one.neg())?;
 
-            let a_x2_minus_one = x2
-                .mul_by_constant(cs.ns(|| "a * x^2"), &a)?
-                .add_constant(cs.ns(|| "a * x^2 - 1"), &one.neg())?;
+            let a_x2_minus_one =
+                x2.mul_by_constant(cs.ns(|| "a * x^2"), &a)?.add_constant(cs.ns(|| "a * x^2 - 1"), &one.neg())?;
 
             d_x2_minus_one.mul_equals(cs.ns(|| "on curve check"), &y2, &a_x2_minus_one)?;
 
@@ -509,10 +473,7 @@ mod affine_impl {
                     let ge = *ge.borrow();
                     (Ok(ge.x), Ok(ge.y))
                 }
-                _ => (
-                    Err(SynthesisError::AssignmentMissing),
-                    Err(SynthesisError::AssignmentMissing),
-                ),
+                _ => (Err(SynthesisError::AssignmentMissing), Err(SynthesisError::AssignmentMissing)),
             };
 
             let d = P::COEFF_D;
@@ -527,13 +488,11 @@ mod affine_impl {
             let y2 = y.square(&mut cs.ns(|| "y^2"))?;
 
             let one = P::BaseField::one();
-            let d_x2_minus_one = x2
-                .mul_by_constant(cs.ns(|| "d * x^2"), &d)?
-                .add_constant(cs.ns(|| "d * x^2 - 1"), &one.neg())?;
+            let d_x2_minus_one =
+                x2.mul_by_constant(cs.ns(|| "d * x^2"), &d)?.add_constant(cs.ns(|| "d * x^2 - 1"), &one.neg())?;
 
-            let a_x2_minus_one = x2
-                .mul_by_constant(cs.ns(|| "a * x^2"), &a)?
-                .add_constant(cs.ns(|| "a * x^2 - 1"), &one.neg())?;
+            let a_x2_minus_one =
+                x2.mul_by_constant(cs.ns(|| "a * x^2"), &a)?.add_constant(cs.ns(|| "a * x^2 - 1"), &one.neg())?;
 
             d_x2_minus_one.mul_equals(cs.ns(|| "on curve check"), &y2, &a_x2_minus_one)?;
             Ok(Self::new(x, y))
@@ -556,9 +515,8 @@ mod affine_impl {
             // Else, we multiply by the scalar field's modulus and ensure that the result
             // is zero.
             if cofactor_weight < r_weight {
-                let ge = Self::alloc(cs.ns(|| "Alloc checked"), || {
-                    value_gen().map(|ge| ge.borrow().mul_by_cofactor_inv())
-                })?;
+                let ge =
+                    Self::alloc(cs.ns(|| "Alloc checked"), || value_gen().map(|ge| ge.borrow().mul_by_cofactor_inv()))?;
                 let mut seen_one = false;
                 let mut result = Self::zero(cs.ns(|| "result"))?;
                 for (i, b) in BitIteratorBE::new(P::COFACTOR).enumerate() {
@@ -572,11 +530,7 @@ mod affine_impl {
                     }
 
                     if b {
-                        result = if old_seen_one {
-                            result.add(cs.ns(|| "Add"), &ge)?
-                        } else {
-                            ge.clone()
-                        };
+                        result = if old_seen_one { result.add(cs.ns(|| "Add"), &ge)? } else { ge.clone() };
                     }
                 }
                 Ok(result)
@@ -596,11 +550,7 @@ mod affine_impl {
                     }
 
                     if b {
-                        result = if old_seen_one {
-                            result.add(cs.ns(|| "Add"), &ge)?
-                        } else {
-                            ge.clone()
-                        };
+                        result = if old_seen_one { result.add(cs.ns(|| "Add"), &ge)? } else { ge.clone() };
                     }
                 }
                 let neg_ge = ge.negate(cs.ns(|| "Negate ge"))?;
@@ -618,10 +568,7 @@ mod affine_impl {
                     let ge = *ge.borrow();
                     (Ok(ge.x), Ok(ge.y))
                 }
-                _ => (
-                    Err(SynthesisError::AssignmentMissing),
-                    Err(SynthesisError::AssignmentMissing),
-                ),
+                _ => (Err(SynthesisError::AssignmentMissing), Err(SynthesisError::AssignmentMissing)),
             };
 
             let d = P::COEFF_D;
@@ -636,13 +583,11 @@ mod affine_impl {
             let y2 = y.square(&mut cs.ns(|| "y^2"))?;
 
             let one = P::BaseField::one();
-            let d_x2_minus_one = x2
-                .mul_by_constant(cs.ns(|| "d * x^2"), &d)?
-                .add_constant(cs.ns(|| "d * x^2 - 1"), &one.neg())?;
+            let d_x2_minus_one =
+                x2.mul_by_constant(cs.ns(|| "d * x^2"), &d)?.add_constant(cs.ns(|| "d * x^2 - 1"), &one.neg())?;
 
-            let a_x2_minus_one = x2
-                .mul_by_constant(cs.ns(|| "a * x^2"), &a)?
-                .add_constant(cs.ns(|| "a * x^2 - 1"), &one.neg())?;
+            let a_x2_minus_one =
+                x2.mul_by_constant(cs.ns(|| "a * x^2"), &a)?.add_constant(cs.ns(|| "a * x^2 - 1"), &one.neg())?;
 
             d_x2_minus_one.mul_equals(cs.ns(|| "on curve check"), &y2, &a_x2_minus_one)?;
             Ok(Self::new(x, y))
@@ -717,10 +662,7 @@ mod projective_impl {
             let d = P::COEFF_D;
 
             // Compute U = (x1 + y1) * (x2 + y2)
-            let u1 = self
-                .x
-                .mul_by_constant(cs.ns(|| "-A * x1"), &a.neg())?
-                .add(cs.ns(|| "-A * x1 + y1"), &self.y)?;
+            let u1 = self.x.mul_by_constant(cs.ns(|| "-A * x1"), &a.neg())?.add(cs.ns(|| "-A * x1 + y1"), &self.y)?;
             let u2 = other.x.add(cs.ns(|| "x2 + y2"), &other.y)?;
 
             let u = u1.mul(cs.ns(|| "(-A * x1 + y1) * (x2 + y2)"), &u2)?;
@@ -732,9 +674,7 @@ mod projective_impl {
             let v1 = other.x.mul(&mut cs.ns(|| "v1"), &self.y)?;
 
             // Compute C = d*v0*v1
-            let v2 = v0
-                .mul(cs.ns(|| "v0 * v1"), &v1)?
-                .mul_by_constant(cs.ns(|| "D * v0 * v1"), &d)?;
+            let v2 = v0.mul(cs.ns(|| "v0 * v1"), &v1)?.mul_by_constant(cs.ns(|| "D * v0 * v1"), &d)?;
 
             // Compute x3 = (v0 + v1) / (1 + v2)
             let x3 = FG::alloc(&mut cs.ns(|| "x3"), || {
@@ -755,13 +695,9 @@ mod projective_impl {
                 Ok(t0 * t1.inverse().get()?)
             })?;
 
-            let one_minus_v2 = v2
-                .add_constant(cs.ns(|| "v2 - 1"), &(-one))?
-                .negate(cs.ns(|| "1 - v2"))?;
+            let one_minus_v2 = v2.add_constant(cs.ns(|| "v2 - 1"), &(-one))?.negate(cs.ns(|| "1 - v2"))?;
             let a_v0 = v0.mul_by_constant(cs.ns(|| "a * v0"), &a)?;
-            let u_plus_a_v0_minus_v1 = u
-                .add(cs.ns(|| "u + a * v0"), &a_v0)?
-                .sub(cs.ns(|| "u + a * v0 - v1"), &v1)?;
+            let u_plus_a_v0_minus_v1 = u.add(cs.ns(|| "u + a * v0"), &a_v0)?.sub(cs.ns(|| "u + a * v0 - v1"), &v1)?;
 
             y3.mul_equals(cs.ns(|| "check y3"), &one_minus_v2, &u_plus_a_v0_minus_v1)?;
 
@@ -780,10 +716,7 @@ mod projective_impl {
             let other_y = other.y;
 
             // Compute U = (x1 + y1) * (x2 + y2)
-            let u1 = self
-                .x
-                .mul_by_constant(cs.ns(|| "-A * x1"), &a.neg())?
-                .add(cs.ns(|| "-A * x1 + y1"), &self.y)?;
+            let u1 = self.x.mul_by_constant(cs.ns(|| "-A * x1"), &a.neg())?.add(cs.ns(|| "-A * x1 + y1"), &self.y)?;
             let u2 = other_x + other_y;
 
             let u = u1.mul_by_constant(cs.ns(|| "(-A * x1 + y1) * (x2 + y2)"), &u2)?;
@@ -795,9 +728,7 @@ mod projective_impl {
             let v1 = self.y.mul_by_constant(&mut cs.ns(|| "v1"), &other.x)?;
 
             // Compute C = d*v0*v1
-            let v2 = v0
-                .mul(cs.ns(|| "v0 * v1"), &v1)?
-                .mul_by_constant(cs.ns(|| "D * v0 * v1"), &d)?;
+            let v2 = v0.mul(cs.ns(|| "v0 * v1"), &v1)?.mul_by_constant(cs.ns(|| "D * v0 * v1"), &d)?;
 
             // Compute x3 = (v0 + v1) / (1 + v2)
             let x3 = FG::alloc(&mut cs.ns(|| "x3"), || {
@@ -818,13 +749,9 @@ mod projective_impl {
                 Ok(t0 * t1.inverse().get()?)
             })?;
 
-            let one_minus_v2 = v2
-                .add_constant(cs.ns(|| "v2 - 1"), &(-one))?
-                .negate(cs.ns(|| "1 - v2"))?;
+            let one_minus_v2 = v2.add_constant(cs.ns(|| "v2 - 1"), &(-one))?.negate(cs.ns(|| "1 - v2"))?;
             let a_v0 = v0.mul_by_constant(cs.ns(|| "a * v0"), &a)?;
-            let u_plus_a_v0_minus_v1 = u
-                .add(cs.ns(|| "u + a * v0"), &a_v0)?
-                .sub(cs.ns(|| "u + a * v0 - v1"), &v1)?;
+            let u_plus_a_v0_minus_v1 = u.add(cs.ns(|| "u + a * v0"), &a_v0)?.sub(cs.ns(|| "u + a * v0 - v1"), &v1)?;
 
             y3.mul_equals(cs.ns(|| "check y3"), &one_minus_v2, &u_plus_a_v0_minus_v1)?;
 
@@ -887,9 +814,8 @@ mod projective_impl {
             I: Iterator<Item = (B, &'a TEProjective<P>)>,
             B: Borrow<Boolean>,
         {
-            let scalar_bits_with_base_powers: Vec<_> = scalar_bits_with_base_powers
-                .map(|(bit, base)| (*bit.borrow(), *base))
-                .collect();
+            let scalar_bits_with_base_powers: Vec<_> =
+                scalar_bits_with_base_powers.map(|(bit, base)| (*bit.borrow(), *base)).collect();
             let zero = TEProjective::zero();
             for (i, bits_base_powers) in scalar_bits_with_base_powers.chunks(2).enumerate() {
                 let mut cs = cs.ns(|| format!("Chunk {}", i));
@@ -920,9 +846,8 @@ mod projective_impl {
             I: Iterator<Item = (B, &'a TEProjective<P>)>,
             B: Borrow<Boolean>,
         {
-            let scalar_bits_with_base_powers: Vec<_> = scalar_bits_with_base_powers
-                .map(|(bit, base)| (*bit.borrow(), *base))
-                .collect();
+            let scalar_bits_with_base_powers: Vec<_> =
+                scalar_bits_with_base_powers.map(|(bit, base)| (*bit.borrow(), *base)).collect();
             for (i, bits_base_powers) in scalar_bits_with_base_powers.chunks(2).enumerate() {
                 let mut cs = cs.ns(|| format!("Chunk {}", i));
                 if bits_base_powers.len() == 2 {
@@ -980,12 +905,7 @@ mod projective_impl {
                 //   3. g_i^-1*h_i if the input bit is 0 and the mask is 1.
                 //   4. h_i if the input bit is 1 and the mask is 1.
                 let bits = [*bit.borrow(), *mask.borrow()];
-                let table = [
-                    mask_base.neg(),
-                    mask_base.neg() + base,
-                    base.neg() + mask_base,
-                    *mask_base,
-                ];
+                let table = [mask_base.neg(), mask_base.neg() + base, base.neg() + mask_base, *mask_base];
                 let adder: Self = two_bit_lookup_helper(cs.ns(|| "two bit lookup"), bits, table)?;
                 *self = <Self as GroupGadget<TEProjective<P>, F>>::add(self, &mut cs.ns(|| "Add"), &adder)?;
             }
@@ -1054,11 +974,8 @@ mod projective_impl {
                         acc_power += base_power;
                     }
 
-                    let precomp = Boolean::and(
-                        cs.ns(|| format!("precomp in window {}, {}", segment_i, i)),
-                        &bits[0],
-                        &bits[1],
-                    )?;
+                    let precomp =
+                        Boolean::and(cs.ns(|| format!("precomp in window {}, {}", segment_i, i)), &bits[0], &bits[1])?;
 
                     let x = FG::zero(cs.ns(|| format!("x in window {}, {}", segment_i, i)))?
                         .conditionally_add_constant(
@@ -1149,10 +1066,7 @@ mod projective_impl {
                     let ge = ge.borrow().into_affine();
                     (Ok(ge.x), Ok(ge.y))
                 }
-                _ => (
-                    Err(SynthesisError::AssignmentMissing),
-                    Err(SynthesisError::AssignmentMissing),
-                ),
+                _ => (Err(SynthesisError::AssignmentMissing), Err(SynthesisError::AssignmentMissing)),
             };
 
             let d = P::COEFF_D;
@@ -1167,13 +1081,11 @@ mod projective_impl {
             let y2 = y.square(&mut cs.ns(|| "y^2"))?;
 
             let one = P::BaseField::one();
-            let d_x2_minus_one = x2
-                .mul_by_constant(cs.ns(|| "d * x^2"), &d)?
-                .add_constant(cs.ns(|| "d * x^2 - 1"), &one.neg())?;
+            let d_x2_minus_one =
+                x2.mul_by_constant(cs.ns(|| "d * x^2"), &d)?.add_constant(cs.ns(|| "d * x^2 - 1"), &one.neg())?;
 
-            let a_x2_minus_one = x2
-                .mul_by_constant(cs.ns(|| "a * x^2"), &a)?
-                .add_constant(cs.ns(|| "a * x^2 - 1"), &one.neg())?;
+            let a_x2_minus_one =
+                x2.mul_by_constant(cs.ns(|| "a * x^2"), &a)?.add_constant(cs.ns(|| "a * x^2 - 1"), &one.neg())?;
 
             d_x2_minus_one.mul_equals(cs.ns(|| "on curve check"), &y2, &a_x2_minus_one)?;
 
@@ -1190,10 +1102,7 @@ mod projective_impl {
                     let ge = ge.borrow().into_affine();
                     (Ok(ge.x), Ok(ge.y))
                 }
-                _ => (
-                    Err(SynthesisError::AssignmentMissing),
-                    Err(SynthesisError::AssignmentMissing),
-                ),
+                _ => (Err(SynthesisError::AssignmentMissing), Err(SynthesisError::AssignmentMissing)),
             };
 
             let d = P::COEFF_D;
@@ -1208,13 +1117,11 @@ mod projective_impl {
             let y2 = y.square(&mut cs.ns(|| "y^2"))?;
 
             let one = P::BaseField::one();
-            let d_x2_minus_one = x2
-                .mul_by_constant(cs.ns(|| "d * x^2"), &d)?
-                .add_constant(cs.ns(|| "d * x^2 - 1"), &one.neg())?;
+            let d_x2_minus_one =
+                x2.mul_by_constant(cs.ns(|| "d * x^2"), &d)?.add_constant(cs.ns(|| "d * x^2 - 1"), &one.neg())?;
 
-            let a_x2_minus_one = x2
-                .mul_by_constant(cs.ns(|| "a * x^2"), &a)?
-                .add_constant(cs.ns(|| "a * x^2 - 1"), &one.neg())?;
+            let a_x2_minus_one =
+                x2.mul_by_constant(cs.ns(|| "a * x^2"), &a)?.add_constant(cs.ns(|| "a * x^2 - 1"), &one.neg())?;
 
             d_x2_minus_one.mul_equals(cs.ns(|| "on curve check"), &y2, &a_x2_minus_one)?;
             Ok(Self::new(x, y))
@@ -1254,11 +1161,7 @@ mod projective_impl {
                     }
 
                     if b {
-                        result = if old_seen_one {
-                            result.add(cs.ns(|| "Add"), &ge)?
-                        } else {
-                            ge.clone()
-                        };
+                        result = if old_seen_one { result.add(cs.ns(|| "Add"), &ge)? } else { ge.clone() };
                     }
                 }
                 Ok(result)
@@ -1278,11 +1181,7 @@ mod projective_impl {
                     }
 
                     if b {
-                        result = if old_seen_one {
-                            result.add(cs.ns(|| "Add"), &ge)?
-                        } else {
-                            ge.clone()
-                        };
+                        result = if old_seen_one { result.add(cs.ns(|| "Add"), &ge)? } else { ge.clone() };
                     }
                 }
                 let neg_ge = ge.negate(cs.ns(|| "Negate ge"))?;
@@ -1301,10 +1200,7 @@ mod projective_impl {
                     let ge = ge.borrow().into_affine();
                     (Ok(ge.x), Ok(ge.y))
                 }
-                _ => (
-                    Err(SynthesisError::AssignmentMissing),
-                    Err(SynthesisError::AssignmentMissing),
-                ),
+                _ => (Err(SynthesisError::AssignmentMissing), Err(SynthesisError::AssignmentMissing)),
             };
 
             let d = P::COEFF_D;
@@ -1319,13 +1215,11 @@ mod projective_impl {
             let y2 = y.square(&mut cs.ns(|| "y^2"))?;
 
             let one = P::BaseField::one();
-            let d_x2_minus_one = x2
-                .mul_by_constant(cs.ns(|| "d * x^2"), &d)?
-                .add_constant(cs.ns(|| "d * x^2 - 1"), &one.neg())?;
+            let d_x2_minus_one =
+                x2.mul_by_constant(cs.ns(|| "d * x^2"), &d)?.add_constant(cs.ns(|| "d * x^2 - 1"), &one.neg())?;
 
-            let a_x2_minus_one = x2
-                .mul_by_constant(cs.ns(|| "a * x^2"), &a)?
-                .add_constant(cs.ns(|| "a * x^2 - 1"), &one.neg())?;
+            let a_x2_minus_one =
+                x2.mul_by_constant(cs.ns(|| "a * x^2"), &a)?.add_constant(cs.ns(|| "a * x^2 - 1"), &one.neg())?;
 
             d_x2_minus_one.mul_equals(cs.ns(|| "on curve check"), &y2, &a_x2_minus_one)?;
 
@@ -1373,10 +1267,8 @@ impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> Co
         other: &Self,
         condition: &Boolean,
     ) -> Result<(), SynthesisError> {
-        self.x
-            .conditional_enforce_equal(&mut cs.ns(|| "X Coordinate Conditional Equality"), &other.x, condition)?;
-        self.y
-            .conditional_enforce_equal(&mut cs.ns(|| "Y Coordinate Conditional Equality"), &other.y, condition)?;
+        self.x.conditional_enforce_equal(&mut cs.ns(|| "X Coordinate Conditional Equality"), &other.x, condition)?;
+        self.y.conditional_enforce_equal(&mut cs.ns(|| "Y Coordinate Conditional Equality"), &other.y, condition)?;
         Ok(())
     }
 
@@ -1388,10 +1280,8 @@ impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> Co
 impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> NEqGadget<F> for AffineGadget<P, F, FG> {
     #[inline]
     fn enforce_not_equal<CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &Self) -> Result<(), SynthesisError> {
-        self.x
-            .enforce_not_equal(&mut cs.ns(|| "X Coordinate Inequality"), &other.x)?;
-        self.y
-            .enforce_not_equal(&mut cs.ns(|| "Y Coordinate Inequality"), &other.y)?;
+        self.x.enforce_not_equal(&mut cs.ns(|| "X Coordinate Inequality"), &other.x)?;
+        self.y.enforce_not_equal(&mut cs.ns(|| "Y Coordinate Inequality"), &other.y)?;
         Ok(())
     }
 

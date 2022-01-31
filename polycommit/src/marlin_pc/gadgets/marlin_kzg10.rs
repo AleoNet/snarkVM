@@ -72,11 +72,7 @@ where
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
 {
     fn clone(&self) -> Self {
-        Self {
-            _target_curve: PhantomData,
-            _base_curve: PhantomData,
-            _pairing_gadget: PhantomData,
-        }
+        Self { _target_curve: PhantomData, _base_curve: PhantomData, _pairing_gadget: PhantomData }
     }
 }
 
@@ -147,9 +143,8 @@ where
         sorted_query_set_gadgets.sort_by(|a, b| a.0.cmp(&b.0));
 
         for (label, point) in sorted_query_set_gadgets.iter() {
-            let labels = query_to_labels_map
-                .entry(point.name.clone())
-                .or_insert((point.value.clone(), BTreeSet::new()));
+            let labels =
+                query_to_labels_map.entry(point.name.clone()).or_insert((point.value.clone(), BTreeSet::new()));
             labels.1.insert(label);
         }
 
@@ -176,13 +171,7 @@ where
             for label in labels.into_iter() {
                 let commitment_lc = commitment_lcs.get(label).unwrap().clone();
 
-                let v_i = evaluations
-                    .0
-                    .get(&LabeledPointVar {
-                        name: label.clone(),
-                        value: point.clone(),
-                    })
-                    .unwrap();
+                let v_i = evaluations.0.get(&LabeledPointVar { name: label.clone(), value: point.clone() }).unwrap();
 
                 comms_to_combine.push(commitment_lc.1.clone());
                 values_to_combine.push(v_i.clone());
@@ -301,10 +290,8 @@ where
                         let mut comm_times_challenge = PG::G1Gadget::zero(cs.ns(|| format!("zero_{}_{}_{}", i, j, k)))?;
                         let coeff = coeff.clone().unwrap();
 
-                        let challenge_times_coeff = challenge.mul(
-                            &mut cs.ns(|| format!("challenge_times_coeff_{}_{}_{}", i, j, k)),
-                            &coeff,
-                        )?;
+                        let challenge_times_coeff =
+                            challenge.mul(&mut cs.ns(|| format!("challenge_times_coeff_{}_{}_{}", i, j, k)), &coeff)?;
 
                         let challenge_times_coeff_bits = challenge_times_coeff
                             .to_bits_le(cs.ns(|| format!("challenge_times_coeff_to_bits_le_{}_{}_{}", i, j, k)))?;
@@ -383,19 +370,13 @@ where
                 <BaseCurve as PairingEngine>::Fr,
             >::zero(cs.ns(|| "zero_gamma_g_multiplier"))?;
 
-            for (i, (((c, z), v), proof)) in combined_comms
-                .iter()
-                .zip(combined_queries)
-                .zip(combined_evals)
-                .zip(proofs)
-                .enumerate()
+            for (i, (((c, z), v), proof)) in
+                combined_comms.iter().zip(combined_queries).zip(combined_evals).zip(proofs).enumerate()
             {
                 let z_bits = z.to_bits_le(cs.ns(|| format!("z_bits_to_le_{}", i)))?;
 
                 let w_times_z =
-                    proof
-                        .w
-                        .mul_bits(cs.ns(|| format!("w_times_z_mul_bits_{}", i)), &zero, z_bits.into_iter())?;
+                    proof.w.mul_bits(cs.ns(|| format!("w_times_z_mul_bits_{}", i)), &zero, z_bits.into_iter())?;
 
                 let mut c_plus_w_times_z = c.clone();
                 c_plus_w_times_z =
@@ -434,14 +415,10 @@ where
                         randomizer_bits.into_iter(),
                     )?;
 
-                    total_c = total_c.add(
-                        &mut cs.ns(|| format!("total_c_plus_c_times_randomizer_{}", i)),
-                        &c_times_randomizer,
-                    )?;
-                    total_w = total_w.add(
-                        &mut cs.ns(|| format!("total_w_plus_w_times_randomizer_{}", i)),
-                        &w_times_randomizer,
-                    )?;
+                    total_c = total_c
+                        .add(&mut cs.ns(|| format!("total_c_plus_c_times_randomizer_{}", i)), &c_times_randomizer)?;
+                    total_w = total_w
+                        .add(&mut cs.ns(|| format!("total_w_plus_w_times_randomizer_{}", i)), &w_times_randomizer)?;
                 } else {
                     g_multiplier_reduced =
                         g_multiplier_reduced.add(&mut cs.ns(|| format!("g_multiplier_reduced_plus_v_{}", i)), &v)?;
@@ -451,10 +428,8 @@ where
                             random_v,
                         )?;
                     }
-                    total_c = total_c.add(
-                        &mut cs.ns(|| format!("total_c_plus_c_plus_w_times_z_{}", i)),
-                        &c_plus_w_times_z,
-                    )?;
+                    total_c = total_c
+                        .add(&mut cs.ns(|| format!("total_c_plus_c_plus_w_times_z_{}", i)), &c_plus_w_times_z)?;
                     total_w = total_w.add(&mut cs.ns(|| format!("total_w_plus_proof_w{}", i)), &proof.w)?;
                 }
             }
@@ -474,10 +449,8 @@ where
 
                 let mut g_times_mul = PG::G1Gadget::zero(cs.ns(|| "g_times_mul_zero"))?;
                 {
-                    for (i, (bit, base_power)) in g_multiplier_bits
-                        .iter()
-                        .zip(&prepared_verification_key.prepared_g)
-                        .enumerate()
+                    for (i, (bit, base_power)) in
+                        g_multiplier_bits.iter().zip(&prepared_verification_key.prepared_g).enumerate()
                     {
                         let mut new_encoded = g_times_mul.clone();
                         new_encoded =
@@ -494,16 +467,12 @@ where
 
                 let mut gamma_g_times_mul = PG::G1Gadget::zero(cs.ns(|| "gamma_g_times_mul_zero"))?;
                 {
-                    for (i, (bit, base_power)) in gamma_g_multiplier_bits
-                        .iter()
-                        .zip(&prepared_verification_key.prepared_gamma_g)
-                        .enumerate()
+                    for (i, (bit, base_power)) in
+                        gamma_g_multiplier_bits.iter().zip(&prepared_verification_key.prepared_gamma_g).enumerate()
                     {
                         let mut new_encoded = gamma_g_times_mul.clone();
-                        new_encoded = new_encoded.add(
-                            cs.ns(|| format!("new_encoded_plus_base_power_{}_gamma_g", i)),
-                            base_power,
-                        )?;
+                        new_encoded = new_encoded
+                            .add(cs.ns(|| format!("new_encoded_plus_base_power_{}_gamma_g", i)), base_power)?;
 
                         gamma_g_times_mul = PG::G1Gadget::conditionally_select(
                             cs.ns(|| format!("gamma_g_times_mul_cond_select_{}", i)),
@@ -575,10 +544,7 @@ where
     ) -> Result<Boolean, SynthesisError> {
         let BatchLCProofVar { proofs, .. } = proof;
 
-        let label_comm_map = prepared_commitments
-            .iter()
-            .map(|c| (c.label.clone(), c))
-            .collect::<BTreeMap<_, _>>();
+        let label_comm_map = prepared_commitments.iter().map(|c| (c.label.clone(), c)).collect::<BTreeMap<_, _>>();
 
         let mut lc_info = Vec::new();
         let mut evaluations = evaluations.clone();
@@ -669,11 +635,7 @@ where
         commitment: Self::CommitmentVar,
         degree_bound: Option<FpGadget<<BaseCurve as PairingEngine>::Fr>>,
     ) -> Self::LabeledCommitmentVar {
-        Self::LabeledCommitmentVar {
-            label,
-            commitment,
-            degree_bound,
-        }
+        Self::LabeledCommitmentVar { label, commitment, degree_bound }
     }
 
     fn create_prepared_labeled_commitment(
@@ -681,10 +643,6 @@ where
         prepared_commitment: Self::PreparedCommitmentVar,
         degree_bound: Option<FpGadget<<BaseCurve as PairingEngine>::Fr>>,
     ) -> Self::PreparedLabeledCommitmentVar {
-        Self::PreparedLabeledCommitmentVar {
-            label,
-            prepared_commitment,
-            degree_bound,
-        }
+        Self::PreparedLabeledCommitmentVar { label, prepared_commitment, degree_bound }
     }
 }

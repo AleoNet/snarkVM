@@ -154,9 +154,8 @@ where
         let randomness: Self::ScalarRandomness = UniformRand::rand(rng);
 
         // Compute the randomizer := G^r
-        let ciphertext_randomizer = self
-            .generator
-            .mul_bits(BitIteratorBE::new_without_leading_zeros(randomness.to_repr()));
+        let ciphertext_randomizer =
+            self.generator.mul_bits(BitIteratorBE::new_without_leading_zeros(randomness.to_repr()));
 
         // Compute the ECDH value := public_key^r.
         // Note for twisted Edwards curves, only one of (x, y) or (x, -y) is in the prime-order subgroup.
@@ -164,10 +163,8 @@ where
 
         let mut batch = [ciphertext_randomizer, symmetric_key];
         Projective::<TE>::batch_normalization(&mut batch);
-        let (ciphertext_randomizer, symmetric_key) = (
-            batch[0].into_affine().to_x_coordinate(),
-            batch[1].into_affine().to_x_coordinate(),
-        );
+        let (ciphertext_randomizer, symmetric_key) =
+            (batch[0].into_affine().to_x_coordinate(), batch[1].into_affine().to_x_coordinate());
 
         (randomness, ciphertext_randomizer, symmetric_key)
     }
@@ -366,12 +363,7 @@ where
         let symmetric_key_commitment_domain = TE::BaseField::from_bytes_le_mod_order(b"AleoSymmetricKeyCommitment0");
         let symmetric_encryption_domain = TE::BaseField::from_bytes_le_mod_order(b"AleoSymmetricEncryption0");
 
-        Self {
-            generator,
-            poseidon_parameters,
-            symmetric_key_commitment_domain,
-            symmetric_encryption_domain,
-        }
+        Self { generator, poseidon_parameters, symmetric_key_commitment_domain, symmetric_encryption_domain }
     }
 }
 

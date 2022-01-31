@@ -44,10 +44,7 @@ impl<F: PrimeField> Evaluations<F> {
 
     /// Interpolate a polynomial from a list of evaluations
     pub fn interpolate(self) -> DensePolynomial<F> {
-        let Self {
-            evaluations: mut evals,
-            domain,
-        } = self;
+        let Self { evaluations: mut evals, domain } = self;
         domain.ifft_in_place(&mut evals);
         DensePolynomial::from_coefficients_vec(evals)
     }
@@ -76,10 +73,7 @@ impl<'a, F: PrimeField> MulAssign<&'a Evaluations<F>> for Evaluations<F> {
     #[inline]
     fn mul_assign(&mut self, other: &'a Evaluations<F>) {
         assert_eq!(self.domain, other.domain, "domains are unequal");
-        self.evaluations
-            .iter_mut()
-            .zip(&other.evaluations)
-            .for_each(|(a, b)| *a *= b);
+        self.evaluations.iter_mut().zip(&other.evaluations).for_each(|(a, b)| *a *= b);
     }
 }
 
@@ -98,10 +92,7 @@ impl<'a, F: PrimeField> AddAssign<&'a Evaluations<F>> for Evaluations<F> {
     #[inline]
     fn add_assign(&mut self, other: &'a Evaluations<F>) {
         assert_eq!(self.domain, other.domain, "domains are unequal");
-        self.evaluations
-            .iter_mut()
-            .zip(&other.evaluations)
-            .for_each(|(a, b)| *a += b);
+        self.evaluations.iter_mut().zip(&other.evaluations).for_each(|(a, b)| *a += b);
     }
 }
 
@@ -120,10 +111,7 @@ impl<'a, F: PrimeField> SubAssign<&'a Evaluations<F>> for Evaluations<F> {
     #[inline]
     fn sub_assign(&mut self, other: &'a Evaluations<F>) {
         assert_eq!(self.domain, other.domain, "domains are unequal");
-        self.evaluations
-            .iter_mut()
-            .zip(&other.evaluations)
-            .for_each(|(a, b)| *a -= b);
+        self.evaluations.iter_mut().zip(&other.evaluations).for_each(|(a, b)| *a -= b);
     }
 }
 
@@ -142,9 +130,6 @@ impl<'a, F: PrimeField> DivAssign<&'a Evaluations<F>> for Evaluations<F> {
     #[inline]
     fn div_assign(&mut self, other: &'a Evaluations<F>) {
         assert_eq!(self.domain, other.domain, "domains are unequal");
-        self.evaluations
-            .iter_mut()
-            .zip(&other.evaluations)
-            .for_each(|(a, b)| *a /= b);
+        self.evaluations.iter_mut().zip(&other.evaluations).for_each(|(a, b)| *a /= b);
     }
 }

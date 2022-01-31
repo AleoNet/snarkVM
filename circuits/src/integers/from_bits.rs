@@ -23,18 +23,11 @@ impl<E: Environment, I: IntegerType> FromBits for Integer<E, I> {
     fn from_bits_le(mode: Mode, bits_le: &[Self::Boolean]) -> Self {
         // Ensure the number of booleans is the correct capacity.
         if bits_le.len() != I::BITS {
-            E::halt(format!(
-                "Attempted to instantiate a {}-bit integer with {} bits",
-                I::BITS,
-                bits_le.len()
-            ))
+            E::halt(format!("Attempted to instantiate a {}-bit integer with {} bits", I::BITS, bits_le.len()))
         }
 
         // Construct a candidate integer.
-        let candidate = Integer {
-            bits_le: bits_le.to_vec(),
-            phantom: Default::default(),
-        };
+        let candidate = Integer { bits_le: bits_le.to_vec(), phantom: Default::default() };
 
         // Ensure the mode in the given bits are consistent, with the desired mode.
         // If they do not match, proceed to construct a new integer, and check that it is well-formed.

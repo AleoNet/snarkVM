@@ -143,21 +143,16 @@ impl<E: PairingEngine> KZG10<E> {
 
         // Reduce `beta^i G` and `gamma beta^i G` to affine representations.
         let powers_of_g = E::G1Projective::batch_normalization_into_affine(powers_of_g);
-        let powers_of_gamma_g = E::G1Projective::batch_normalization_into_affine(powers_of_gamma_g)
-            .into_iter()
-            .enumerate()
-            .collect();
+        let powers_of_gamma_g =
+            E::G1Projective::batch_normalization_into_affine(powers_of_gamma_g).into_iter().enumerate().collect();
 
         // Compute `inverse_powers_of_g`.
         //
         // This part is used to derive the universal verification parameters.
         let list = supported_degree_bounds_config.get_list::<E::Fr>(max_degree);
 
-        let supported_degree_bounds = if *supported_degree_bounds_config != KZG10DegreeBoundsConfig::NONE {
-            list.clone()
-        } else {
-            vec![]
-        };
+        let supported_degree_bounds =
+            if *supported_degree_bounds_config != KZG10DegreeBoundsConfig::NONE { list.clone() } else { vec![] };
 
         let inverse_powers_of_g = if *supported_degree_bounds_config != KZG10DegreeBoundsConfig::NONE {
             let mut map = BTreeMap::<usize, E::G1Affine>::new();
@@ -334,10 +329,7 @@ impl<E: PairingEngine> KZG10<E> {
             None
         };
 
-        Ok(Proof {
-            w: w.into_affine(),
-            random_v,
-        })
+        Ok(Proof { w: w.into_affine(), random_v })
     }
 
     /// On input a polynomial `p` and a point `point`, outputs a proof for the same.
@@ -433,12 +425,7 @@ impl<E: PairingEngine> KZG10<E> {
 
         let pairing_time = start_timer!(|| "Performing product of pairings");
         let result = E::product_of_pairings(
-            [
-                (&total_w.prepare(), &vk.prepared_beta_h),
-                (&total_c.prepare(), &vk.prepared_h),
-            ]
-            .iter()
-            .copied(),
+            [(&total_w.prepare(), &vk.prepared_beta_h), (&total_c.prepare(), &vk.prepared_h)].iter().copied(),
         )
         .is_one();
         end_timer!(pairing_time);
@@ -449,10 +436,7 @@ impl<E: PairingEngine> KZG10<E> {
     pub(crate) fn check_degree_is_too_large(degree: usize, num_powers: usize) -> Result<(), Error> {
         let num_coefficients = degree + 1;
         if num_coefficients > num_powers {
-            Err(Error::TooManyCoefficients {
-                num_coefficients,
-                num_powers,
-            })
+            Err(Error::TooManyCoefficients { num_coefficients, num_powers })
         } else {
             Ok(())
         }
@@ -464,10 +448,7 @@ impl<E: PairingEngine> KZG10<E> {
         } else if hiding_poly_degree >= num_powers {
             // The above check uses `>=` because committing to a hiding poly with
             // degree `hiding_poly_degree` requires `hiding_poly_degree + 1` powers.
-            Err(Error::HidingBoundToolarge {
-                hiding_poly_degree,
-                num_powers,
-            })
+            Err(Error::HidingBoundToolarge { hiding_poly_degree, num_powers })
         } else {
             Ok(())
         }
@@ -535,10 +516,8 @@ mod tests {
             let powers_of_g = pp.powers_of_g[..=supported_degree].to_vec();
             let powers_of_gamma_g = (0..=supported_degree).map(|i| pp.powers_of_gamma_g[&i]).collect();
 
-            let powers = Powers {
-                powers_of_g: Cow::Owned(powers_of_g),
-                powers_of_gamma_g: Cow::Owned(powers_of_gamma_g),
-            };
+            let powers =
+                Powers { powers_of_g: Cow::Owned(powers_of_g), powers_of_gamma_g: Cow::Owned(powers_of_gamma_g) };
             let vk = VerifierKey {
                 g: pp.powers_of_g[0],
                 gamma_g: pp.powers_of_gamma_g[&0],

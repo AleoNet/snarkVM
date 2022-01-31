@@ -156,10 +156,7 @@ pub struct Function<E: Environment> {
 impl<E: Environment> Function<E> {
     /// Initializes a new instance of a function.
     fn new() -> Self {
-        Self {
-            registers: Registers::default(),
-            instructions: Vec::new(),
-        }
+        Self { registers: Registers::default(), instructions: Vec::new() }
     }
 
     /// Allocates a new register in memory, returning the new register.

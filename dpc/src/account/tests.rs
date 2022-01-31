@@ -181,10 +181,7 @@ mod testnet1 {
             let signature_public_key = Testnet1::account_signature_scheme().generate_public_key(&signature_private_key);
 
             // Ensure the Aleo address matches the signature public key.
-            assert_eq!(
-                *address.to_bytes_le().unwrap(),
-                signature_public_key.to_x_coordinate().to_bytes_le().unwrap()
-            );
+            assert_eq!(*address.to_bytes_le().unwrap(), signature_public_key.to_x_coordinate().to_bytes_le().unwrap());
 
             // Prepare for signing.
             let rng = ChaChaRng::seed_from_u64(thread_rng().gen());
@@ -243,20 +240,11 @@ mod testnet1 {
             // Serialize
             let expected_string = &expected_signature.to_string();
             let candidate_string = serde_json::to_string(&expected_signature).unwrap();
-            assert_eq!(
-                expected_string,
-                serde_json::Value::from_str(&candidate_string)
-                    .unwrap()
-                    .as_str()
-                    .unwrap()
-            );
+            assert_eq!(expected_string, serde_json::Value::from_str(&candidate_string).unwrap().as_str().unwrap());
 
             // Deserialize
             assert_eq!(expected_signature, serde_json::from_str(&candidate_string).unwrap());
-            assert_eq!(
-                expected_signature,
-                <Testnet1 as Network>::AccountSignature::from_str(expected_string).unwrap()
-            );
+            assert_eq!(expected_signature, <Testnet1 as Network>::AccountSignature::from_str(expected_string).unwrap());
         }
     }
 
@@ -273,10 +261,7 @@ mod testnet1 {
             // Serialize
             let expected_bytes = expected_signature.to_bytes_le().unwrap();
             assert_eq!(Testnet1::SIGNATURE_SIZE_IN_BYTES, expected_bytes.len());
-            assert_eq!(
-                &expected_bytes[..],
-                &bincode::serialize(&expected_signature).unwrap()[..]
-            );
+            assert_eq!(&expected_bytes[..], &bincode::serialize(&expected_signature).unwrap()[..]);
 
             // Deserialize
             assert_eq!(expected_signature, bincode::deserialize(&expected_bytes[..]).unwrap());
@@ -456,10 +441,7 @@ mod testnet2 {
             let signature_public_key = Testnet2::account_signature_scheme().generate_public_key(&signature_private_key);
 
             // Ensure the Aleo address matches the signature public key.
-            assert_eq!(
-                *address.to_bytes_le().unwrap(),
-                signature_public_key.to_x_coordinate().to_bytes_le().unwrap()
-            );
+            assert_eq!(*address.to_bytes_le().unwrap(), signature_public_key.to_x_coordinate().to_bytes_le().unwrap());
 
             // Prepare for signing.
             let rng = ChaChaRng::seed_from_u64(thread_rng().gen());
@@ -518,20 +500,11 @@ mod testnet2 {
             // Serialize
             let expected_string = &expected_signature.to_string();
             let candidate_string = serde_json::to_string(&expected_signature).unwrap();
-            assert_eq!(
-                expected_string,
-                serde_json::Value::from_str(&candidate_string)
-                    .unwrap()
-                    .as_str()
-                    .unwrap()
-            );
+            assert_eq!(expected_string, serde_json::Value::from_str(&candidate_string).unwrap().as_str().unwrap());
 
             // Deserialize
             assert_eq!(expected_signature, serde_json::from_str(&candidate_string).unwrap());
-            assert_eq!(
-                expected_signature,
-                <Testnet2 as Network>::AccountSignature::from_str(expected_string).unwrap()
-            );
+            assert_eq!(expected_signature, <Testnet2 as Network>::AccountSignature::from_str(expected_string).unwrap());
         }
     }
 
@@ -548,10 +521,7 @@ mod testnet2 {
             // Serialize
             let expected_bytes = expected_signature.to_bytes_le().unwrap();
             assert_eq!(Testnet2::SIGNATURE_SIZE_IN_BYTES, expected_bytes.len());
-            assert_eq!(
-                &expected_bytes[..],
-                &bincode::serialize(&expected_signature).unwrap()[..]
-            );
+            assert_eq!(&expected_bytes[..], &bincode::serialize(&expected_signature).unwrap()[..]);
 
             // Deserialize
             assert_eq!(expected_signature, bincode::deserialize(&expected_bytes[..]).unwrap());

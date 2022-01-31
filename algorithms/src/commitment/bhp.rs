@@ -52,27 +52,18 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
             base.double_in_place();
         }
 
-        Self {
-            bhp_crh: bhp,
-            random_base,
-        }
+        Self { bhp_crh: bhp, random_base }
     }
 
     fn commit(&self, input: &[u8], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError> {
         let num_bits = input.len() * 8;
         // If the input is too long, return an error.
         if num_bits > WINDOW_SIZE * NUM_WINDOWS {
-            return Err(CommitmentError::IncorrectInputLength(
-                input.len(),
-                WINDOW_SIZE,
-                NUM_WINDOWS,
-            ));
+            return Err(CommitmentError::IncorrectInputLength(input.len(), WINDOW_SIZE, NUM_WINDOWS));
         }
 
         // Convert input bytes to bits.
-        let bits = input
-            .iter()
-            .flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8));
+        let bits = input.iter().flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8));
 
         let mut output = self.bhp_crh.hash_bits_inner(bits, num_bits)?;
 
@@ -98,10 +89,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Fro
     for BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn from((bases, random_base): (Arc<Vec<Vec<G>>>, Vec<G>)) -> Self {
-        Self {
-            bhp_crh: bases.into(),
-            random_base,
-        }
+        Self { bhp_crh: bases.into(), random_base }
     }
 }
 
@@ -134,10 +122,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Fro
             random_base.push(g);
         }
 
-        Ok(Self {
-            bhp_crh: bhp,
-            random_base,
-        })
+        Ok(Self { bhp_crh: bhp, random_base })
     }
 }
 

@@ -488,11 +488,7 @@ impl<P: Fp256Parameters> FromStr for Fp256<P> {
             }
         }
 
-        if !res.is_valid() {
-            Err(FieldError::InvalidFieldElement)
-        } else {
-            Ok(res)
-        }
+        if !res.is_valid() { Err(FieldError::InvalidFieldElement) } else { Ok(res) }
     }
 }
 

@@ -35,13 +35,7 @@ impl<E: Environment, I: IntegerType> SubChecked<Self> for Integer<E, I> {
             let mut borrow = Boolean::new(Mode::Constant, false);
 
             // Perform a ripple-borrow subtractor on the bits.
-            for (index, (a, b)) in self
-                .bits_le
-                .iter()
-                .zip_eq(other.bits_le.iter())
-                .take(I::BITS)
-                .enumerate()
-            {
+            for (index, (a, b)) in self.bits_le.iter().zip_eq(other.bits_le.iter()).take(I::BITS).enumerate() {
                 // Perform a full-subtractor on `a` and `b`.
                 let (sum, next_borrow) = a.subtractor(&b, &borrow);
                 bits_le.push(sum);
@@ -64,10 +58,7 @@ impl<E: Environment, I: IntegerType> SubChecked<Self> for Integer<E, I> {
             E::assert_eq(borrow, E::zero());
 
             // Return the difference of `self` and `other`.
-            Integer {
-                bits_le,
-                phantom: Default::default(),
-            }
+            Integer { bits_le, phantom: Default::default() }
         }
     }
 }

@@ -131,9 +131,7 @@ impl<
         mask_parameters: &Self::MaskParametersGadget,
         mask: Vec<UInt8>,
     ) -> Result<Self::OutputGadget, SynthesisError> {
-        let output = self
-            .crh_gadget
-            .check_evaluation_gadget_masked(cs, input, &mask_parameters.crh_gadget, mask)?;
+        let output = self.crh_gadget.check_evaluation_gadget_masked(cs, input, &mask_parameters.crh_gadget, mask)?;
         Ok(output.to_x_coordinate())
     }
 }

@@ -32,13 +32,7 @@ impl<E: Environment, I: IntegerType> SubWrapped<Self> for Integer<E, I> {
             let mut borrow = Boolean::new(Mode::Constant, false);
 
             // Perform a ripple-borrow subtractor on the bits.
-            for (index, (a, b)) in self
-                .bits_le
-                .iter()
-                .zip_eq(other.bits_le.iter())
-                .take(I::BITS)
-                .enumerate()
-            {
+            for (index, (a, b)) in self.bits_le.iter().zip_eq(other.bits_le.iter()).take(I::BITS).enumerate() {
                 match index != (I::BITS - 1) {
                     // For all bits up to the penultimate bit, perform a full-subtractor on `a` and `b`.
                     true => {
@@ -55,10 +49,7 @@ impl<E: Environment, I: IntegerType> SubWrapped<Self> for Integer<E, I> {
             }
 
             // Return the difference of `self` and `other`.
-            Integer {
-                bits_le,
-                phantom: Default::default(),
-            }
+            Integer { bits_le, phantom: Default::default() }
         }
     }
 }

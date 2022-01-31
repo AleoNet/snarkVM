@@ -38,11 +38,7 @@ macro_rules! to_bytes_impl {
                     .chunks(8)
                     .into_iter()
                     .zip(value_bytes)
-                    .map(|(chunk8, value)| UInt8 {
-                        bits: chunk8.to_vec(),
-                        negated: false,
-                        value,
-                    })
+                    .map(|(chunk8, value)| UInt8 { bits: chunk8.to_vec(), negated: false, value })
                     .collect())
             }
 
