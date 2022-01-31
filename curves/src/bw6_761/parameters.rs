@@ -54,20 +54,7 @@ impl BW6Parameters for BW6_761Parameters {
     ];
     const ATE_LOOP_COUNT_2_IS_NEGATIVE: bool = false;
     const TWIST_TYPE: TwistType = TwistType::M;
-    const X: BigInteger = BigInteger([
-        0x8508c00000000001,
-        0x0,
-        0x0,
-        0x0,
-        0x0,
-        0x0,
-        0x0,
-        0x0,
-        0x0,
-        0x0,
-        0x0,
-        0x0,
-    ]);
+    const X: BigInteger = BigInteger([0x8508c00000000001, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0]);
     /// `x` is positive.
     const X_IS_NEGATIVE: bool = false;
 }

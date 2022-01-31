@@ -59,11 +59,7 @@ impl<N: Network> From<PrivateKey<N>> for Account<N> {
         let view_key = ViewKey::from(&private_key);
         let address = Address::from(&private_key);
 
-        Self {
-            private_key,
-            view_key,
-            address,
-        }
+        Self { private_key, view_key, address }
     }
 }
 

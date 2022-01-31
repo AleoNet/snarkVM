@@ -21,10 +21,7 @@ impl<E: Environment> Zero for Affine<E> {
     type Output = Self::Boolean;
 
     fn zero() -> Self {
-        Affine {
-            x: BaseField::zero(),
-            y: BaseField::one(),
-        }
+        Affine { x: BaseField::zero(), y: BaseField::one() }
     }
 
     fn is_zero(&self) -> Self::Output {

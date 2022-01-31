@@ -160,11 +160,8 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
         cs: &mut CS,
         elem: &mut AllocatedNonNativeFieldVar<TargetField, BaseField>,
     ) -> Result<(), SynthesisError> {
-        let field_parameters = get_params(
-            TargetField::size_in_bits(),
-            BaseField::size_in_bits(),
-            elem.get_optimization_type(),
-        );
+        let field_parameters =
+            get_params(TargetField::size_in_bits(), BaseField::size_in_bits(), elem.get_optimization_type());
         let surfeit = overhead!(elem.num_of_additions_over_normal_form + BaseField::one()) + 1;
 
         if BaseField::size_in_bits() > 2 * field_parameters.bits_per_limb + surfeit + 1 {
@@ -182,11 +179,8 @@ impl<TargetField: PrimeField, BaseField: PrimeField> Reducer<TargetField, BaseFi
     ) -> Result<(), SynthesisError> {
         assert_eq!(elem.get_optimization_type(), elem_other.get_optimization_type());
 
-        let field_parameters = get_params(
-            TargetField::size_in_bits(),
-            BaseField::size_in_bits(),
-            elem.get_optimization_type(),
-        );
+        let field_parameters =
+            get_params(TargetField::size_in_bits(), BaseField::size_in_bits(), elem.get_optimization_type());
 
         if 2 * field_parameters.bits_per_limb + log_2(field_parameters.num_limbs) as usize
             > BaseField::size_in_bits() - 1

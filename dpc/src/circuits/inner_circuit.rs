@@ -46,10 +46,7 @@ pub struct InnerCircuit<N: Network> {
 
 impl<N: Network> InnerCircuit<N> {
     pub fn blank() -> Self {
-        Self {
-            public: InnerPublicVariables::blank(),
-            private: InnerPrivateVariables::blank(),
-        }
+        Self { public: InnerPublicVariables::blank(), private: InnerPrivateVariables::blank() }
     }
 
     pub fn new(public: InnerPublicVariables<N>, private: InnerPrivateVariables<N>) -> Self {
@@ -185,11 +182,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         let mut input_values = Vec::with_capacity(N::NUM_INPUT_RECORDS);
         let mut input_program_ids = Vec::with_capacity(N::NUM_INPUT_RECORDS);
 
-        for (i, (record, ledger_proof)) in private
-            .input_records
-            .iter()
-            .zip_eq(private.ledger_proofs.iter())
-            .enumerate()
+        for (i, (record, ledger_proof)) in private.input_records.iter().zip_eq(private.ledger_proofs.iter()).enumerate()
         {
             let cs = &mut cs.ns(|| format!("Process input record {}", i));
 
@@ -225,10 +218,8 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 let given_payload =
                     UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &record.payload().to_bytes_le()?)?;
 
-                let given_program_id = UInt8::alloc_vec(
-                    &mut declare_cs.ns(|| "given_program_id"),
-                    &record.program_id().to_bytes_le()?,
-                )?;
+                let given_program_id =
+                    UInt8::alloc_vec(&mut declare_cs.ns(|| "given_program_id"), &record.program_id().to_bytes_le()?)?;
 
                 let given_randomizer = <N::AccountEncryptionGadget as EncryptionGadget<
                     N::AccountEncryptionScheme,
@@ -521,11 +512,8 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         let mut output_values = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
         let mut output_program_ids = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
 
-        for (j, (record, encryption_randomness)) in private
-            .output_records
-            .iter()
-            .zip_eq(&private.encryption_randomness)
-            .enumerate()
+        for (j, (record, encryption_randomness)) in
+            private.output_records.iter().zip_eq(&private.encryption_randomness).enumerate()
         {
             let cs = &mut cs.ns(|| format!("Process output record {}", j));
 
@@ -546,10 +534,8 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 let given_payload =
                     UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &record.payload().to_bytes_le()?)?;
 
-                let given_program_id = UInt8::alloc_vec(
-                    &mut declare_cs.ns(|| "given_program_id"),
-                    &record.program_id().to_bytes_le()?,
-                )?;
+                let given_program_id =
+                    UInt8::alloc_vec(&mut declare_cs.ns(|| "given_program_id"), &record.program_id().to_bytes_le()?)?;
 
                 let given_randomizer = <N::AccountEncryptionGadget as EncryptionGadget<
                     N::AccountEncryptionScheme,
@@ -558,14 +544,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     &mut declare_cs.ns(|| "given_randomizer"), || Ok(record.randomizer())
                 )?;
 
-                (
-                    given_owner,
-                    given_is_dummy,
-                    given_value,
-                    given_payload,
-                    given_program_id,
-                    given_randomizer,
-                )
+                (given_owner, given_is_dummy, given_value, given_payload, given_program_id, given_randomizer)
             };
             // ********************************************************************
 
@@ -739,10 +718,8 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
                 let input_index = UInt8::constant(i as u8);
 
-                let requires_check = input_index.less_than(
-                    &mut input_cs.ns(|| format!("less than for input {}", i)),
-                    number_of_inputs,
-                )?;
+                let requires_check = input_index
+                    .less_than(&mut input_cs.ns(|| format!("less than for input {}", i)), number_of_inputs)?;
 
                 input_program_id_field_elements.conditional_enforce_equal(
                     &mut input_cs.ns(|| format!("Check input program ID, if not dummy - {}", i)),
@@ -765,10 +742,8 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
                 let output_index = UInt8::constant(j as u8);
 
-                let requires_check = output_index.less_than(
-                    &mut output_cs.ns(|| format!("less than for output {}", j)),
-                    number_of_outputs,
-                )?;
+                let requires_check = output_index
+                    .less_than(&mut output_cs.ns(|| format!("less than for output {}", j)), number_of_outputs)?;
 
                 output_program_id_field_elements.conditional_enforce_equal(
                     &mut output_cs.ns(|| format!("Check output program ID, if not dummy - {}", j)),

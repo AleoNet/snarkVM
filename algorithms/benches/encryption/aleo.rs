@@ -26,18 +26,14 @@ use rand::{self, thread_rng};
 type EncryptionScheme = ECIESPoseidonEncryption<EdwardsParameters>;
 
 fn aleo_encryption_setup(c: &mut Criterion) {
-    c.bench_function("Aleo Encryption Setup", move |b| {
-        b.iter(|| EncryptionScheme::setup("aleo_encryption_setup"))
-    });
+    c.bench_function("Aleo Encryption Setup", move |b| b.iter(|| EncryptionScheme::setup("aleo_encryption_setup")));
 }
 
 fn aleo_encryption_generate_private_key(c: &mut Criterion) {
     let rng = &mut thread_rng();
     let parameters = EncryptionScheme::setup("aleo_encryption_generate_private_key");
 
-    c.bench_function("Aleo Encryption Generate Private Key", move |b| {
-        b.iter(|| parameters.generate_private_key(rng))
-    });
+    c.bench_function("Aleo Encryption Generate Private Key", move |b| b.iter(|| parameters.generate_private_key(rng)));
 }
 
 fn aleo_encryption_generate_public_key(c: &mut Criterion) {
@@ -81,9 +77,7 @@ fn aleo_encryption_encrypt(c: &mut Criterion) {
     let (_, _, sym_key) = parameters.generate_asymmetric_key(&public_key, rng);
 
     let msg = b"aleo_encryption_encrypt_encrypt_encrypt_encrypt_encrypt_encrypt";
-    c.bench_function("Aleo Encryption Encrypt", move |b| {
-        b.iter(|| parameters.encrypt(&sym_key, msg))
-    });
+    c.bench_function("Aleo Encryption Encrypt", move |b| b.iter(|| parameters.encrypt(&sym_key, msg)));
 }
 
 fn aleo_encryption_decrypt(c: &mut Criterion) {
@@ -94,9 +88,7 @@ fn aleo_encryption_decrypt(c: &mut Criterion) {
     let (_, _, sym_key) = parameters.generate_asymmetric_key(&public_key, rng);
     let msg = b"aleo_encryption_encrypt_encrypt_encrypt_encrypt_encrypt_encrypt";
     let ct = parameters.encrypt(&sym_key, msg).unwrap();
-    c.bench_function("Aleo Encryption Decrypt", move |b| {
-        b.iter(|| parameters.decrypt(&sym_key, &ct))
-    });
+    c.bench_function("Aleo Encryption Decrypt", move |b| b.iter(|| parameters.decrypt(&sym_key, &ct)));
 }
 
 criterion_group! {

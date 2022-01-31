@@ -50,13 +50,7 @@ impl<N: Network> Response<N> {
         value_balance: AleoAmount,
         events: Vec<Event<N>>,
     ) -> Result<Self> {
-        Ok(Self {
-            transition_id,
-            records,
-            encryption_randomness,
-            value_balance,
-            events,
-        })
+        Ok(Self { transition_id, records, encryption_randomness, value_balance, events })
     }
 
     /// Returns `true` if the output records are the noop program.
@@ -71,11 +65,7 @@ impl<N: Network> Response<N> {
 
     /// Returns the commitments.
     pub fn commitments(&self) -> Vec<N::Commitment> {
-        self.records
-            .iter()
-            .take(N::NUM_OUTPUT_RECORDS)
-            .map(Record::commitment)
-            .collect()
+        self.records.iter().take(N::NUM_OUTPUT_RECORDS).map(Record::commitment).collect()
     }
 
     /// Returns a reference to the records.
@@ -85,12 +75,7 @@ impl<N: Network> Response<N> {
 
     /// Returns the ciphertexts.
     pub fn ciphertexts(&self) -> Vec<N::RecordCiphertext> {
-        self.records
-            .iter()
-            .take(N::NUM_OUTPUT_RECORDS)
-            .map(Record::ciphertext)
-            .cloned()
-            .collect()
+        self.records.iter().take(N::NUM_OUTPUT_RECORDS).map(Record::ciphertext).cloned().collect()
     }
 
     /// Returns a reference to the encryption randomness.
@@ -132,13 +117,7 @@ impl<N: Network> FromBytes for Response<N> {
             events.push(FromBytes::read_le(&mut reader)?);
         }
 
-        Ok(Self {
-            transition_id,
-            records,
-            encryption_randomness,
-            value_balance,
-            events,
-        })
+        Ok(Self { transition_id, records, encryption_randomness, value_balance, events })
     }
 }
 

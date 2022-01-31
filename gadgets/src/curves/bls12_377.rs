@@ -131,24 +131,16 @@ mod test {
         let ab_affine = ab.into_affine();
         let gadget_ab = gadget_a.add(&mut cs.ns(|| "ab"), &gadget_b).unwrap();
         let gadget_ba = gadget_b.add(&mut cs.ns(|| "ba"), &gadget_a).unwrap();
-        gadget_ba
-            .enforce_equal(&mut cs.ns(|| "b + a == a + b?"), &gadget_ab)
-            .unwrap();
+        gadget_ba.enforce_equal(&mut cs.ns(|| "b + a == a + b?"), &gadget_ab).unwrap();
 
-        let ab_val = gadget_ab
-            .get_value()
-            .expect("Doubling should be successful")
-            .into_affine();
+        let ab_val = gadget_ab.get_value().expect("Doubling should be successful").into_affine();
         assert_eq!(ab_val, ab_affine, "Result of addition is unequal");
 
         // Check doubling
         let aa = a.double();
         let aa_affine = aa.into_affine();
         gadget_a.double_in_place(&mut cs.ns(|| "2a")).unwrap();
-        let aa_val = gadget_a
-            .get_value()
-            .expect("Doubling should be successful")
-            .into_affine();
+        let aa_val = gadget_a.get_value().expect("Doubling should be successful").into_affine();
         assert_eq!(aa_val, aa_affine, "Gadget and native values are unequal after double.");
 
         // Check mul_bits
@@ -160,14 +152,9 @@ mod test {
         // Get the scalar bits into little-endian form.
         scalar.reverse();
         let input = Vec::<Boolean>::alloc(cs.ns(|| "Input"), || Ok(scalar)).unwrap();
-        let result = gadget_a
-            .mul_bits(cs.ns(|| "mul_bits"), &gadget_b, input.into_iter())
-            .unwrap();
+        let result = gadget_a.mul_bits(cs.ns(|| "mul_bits"), &gadget_b, input.into_iter()).unwrap();
         let result_val = result.get_value().unwrap().into_affine();
-        assert_eq!(
-            result_val, native_result,
-            "gadget & native values are diff. after scalar mul"
-        );
+        assert_eq!(result_val, native_result, "gadget & native values are diff. after scalar mul");
 
         if !cs.is_satisfied() {
             println!("{:?}", cs.which_is_unsatisfied().unwrap());
@@ -196,9 +183,7 @@ mod test {
         let ab_affine = ab.into_affine();
         let gadget_ab = gadget_a.add(&mut cs.ns(|| "ab"), &gadget_b).unwrap();
         let gadget_ba = gadget_b.add(&mut cs.ns(|| "ba"), &gadget_a).unwrap();
-        gadget_ba
-            .enforce_equal(&mut cs.ns(|| "b + a == a + b?"), &gadget_ab)
-            .unwrap();
+        gadget_ba.enforce_equal(&mut cs.ns(|| "b + a == a + b?"), &gadget_ab).unwrap();
         assert_eq!(gadget_ab.x.get_value().unwrap(), ab_affine.x);
         assert_eq!(gadget_ab.y.get_value().unwrap(), ab_affine.y);
 
@@ -231,12 +216,8 @@ mod test {
         let a_is_eq_b = a.is_eq(cs.ns(|| "a_is_eq_b"), &b).unwrap();
         let a_is_eq_c = a.is_eq(cs.ns(|| "a_is_eq_c"), &c).unwrap();
 
-        a_is_eq_b
-            .enforce_equal(cs.ns(|| " a_is_eq_b is true"), &Boolean::constant(true))
-            .unwrap();
-        a_is_eq_c
-            .enforce_equal(cs.ns(|| " a_is_eq_c is false"), &Boolean::constant(false))
-            .unwrap();
+        a_is_eq_b.enforce_equal(cs.ns(|| " a_is_eq_b is true"), &Boolean::constant(true)).unwrap();
+        a_is_eq_c.enforce_equal(cs.ns(|| " a_is_eq_c is false"), &Boolean::constant(false)).unwrap();
 
         assert!(cs.is_satisfied());
     }
@@ -256,12 +237,8 @@ mod test {
         let a_is_eq_b = a.is_eq(cs.ns(|| "a_is_eq_b"), &b).unwrap();
         let a_is_eq_c = a.is_eq(cs.ns(|| "a_is_eq_c"), &c).unwrap();
 
-        a_is_eq_b
-            .enforce_equal(cs.ns(|| " a_is_eq_b is true"), &Boolean::constant(true))
-            .unwrap();
-        a_is_eq_c
-            .enforce_equal(cs.ns(|| " a_is_eq_c is false"), &Boolean::constant(false))
-            .unwrap();
+        a_is_eq_b.enforce_equal(cs.ns(|| " a_is_eq_b is true"), &Boolean::constant(true)).unwrap();
+        a_is_eq_c.enforce_equal(cs.ns(|| " a_is_eq_c is false"), &Boolean::constant(false)).unwrap();
 
         assert!(cs.is_satisfied());
     }

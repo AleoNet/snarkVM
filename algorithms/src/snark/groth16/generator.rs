@@ -151,13 +151,8 @@ where
     C: ConstraintSynthesizer<E::Fr>,
     R: Rng,
 {
-    let mut assembly = KeypairAssembly {
-        num_public_variables: 0,
-        num_private_variables: 0,
-        at: vec![],
-        bt: vec![],
-        ct: vec![],
-    };
+    let mut assembly =
+        KeypairAssembly { num_public_variables: 0, num_private_variables: 0, at: vec![], bt: vec![], ct: vec![] };
 
     // Allocate the "one" input variable
     assembly.alloc_input(|| "", || Ok(E::Fr::one()))?;
@@ -182,13 +177,9 @@ where
     end_timer!(reduction_time);
 
     // Compute query densities
-    let non_zero_a: usize = cfg_into_iter!(0..qap_num_variables)
-        .map(|i| (!a[i].is_zero()) as usize)
-        .sum();
+    let non_zero_a: usize = cfg_into_iter!(0..qap_num_variables).map(|i| (!a[i].is_zero()) as usize).sum();
 
-    let non_zero_b: usize = cfg_into_iter!(0..qap_num_variables)
-        .map(|i| (!b[i].is_zero()) as usize)
-        .sum();
+    let non_zero_b: usize = cfg_into_iter!(0..qap_num_variables).map(|i| (!b[i].is_zero()) as usize).sum();
 
     let scalar_bits = E::Fr::size_in_bits();
 
@@ -252,9 +243,7 @@ where
         scalar_bits,
         g1_window,
         &g1_table,
-        &cfg_into_iter!(0..m_raw - 1)
-            .map(|i| zt * delta_inverse * t.pow([i as u64]))
-            .collect::<Vec<_>>(),
+        &cfg_into_iter!(0..m_raw - 1).map(|i| zt * delta_inverse * t.pow([i as u64])).collect::<Vec<_>>(),
     );
 
     end_timer!(h_time);

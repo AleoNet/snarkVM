@@ -63,8 +63,7 @@ impl<N: Network> ResponseBuilder<N> {
     pub fn add_output(mut self, output: Output<N>) -> Self {
         // Ensure the request is already set, or the output is a noop.
         if self.request.get().is_none() && !output.is_noop() {
-            self.errors
-                .push("Builder cannot add new outputs before adding a request".into());
+            self.errors.push("Builder cannot add new outputs before adding a request".into());
         }
 
         match self.outputs.len() < N::NUM_OUTPUT_RECORDS {
@@ -151,11 +150,7 @@ impl<N: Network> ResponseBuilder<N> {
             .unzip();
 
         // Ensure the input records have the correct program ID.
-        for (i, input_record) in input_records
-            .iter()
-            .enumerate()
-            .take(function_type.input_count() as usize)
-        {
+        for (i, input_record) in input_records.iter().enumerate().take(function_type.input_count() as usize) {
             if input_record.program_id() != program_id {
                 return Err(anyhow!("Program ID in input record {} is incorrect", i));
             }
@@ -170,11 +165,7 @@ impl<N: Network> ResponseBuilder<N> {
         // }
 
         // Compute the commitments.
-        let commitments: Vec<_> = output_records
-            .iter()
-            .take(N::NUM_OUTPUT_RECORDS)
-            .map(Record::commitment)
-            .collect();
+        let commitments: Vec<_> = output_records.iter().take(N::NUM_OUTPUT_RECORDS).map(Record::commitment).collect();
 
         // Compute the value balance.
         let mut value_balance = AleoAmount::ZERO;
@@ -198,13 +189,7 @@ impl<N: Network> ResponseBuilder<N> {
         let transition_id = Transition::<N>::compute_transition_id(&serial_numbers, &commitments)?;
 
         // Construct the response.
-        Response::new(
-            transition_id,
-            output_records,
-            encryption_randomness,
-            value_balance,
-            events,
-        )
+        Response::new(transition_id, output_records, encryption_randomness, value_balance, events)
     }
 }
 

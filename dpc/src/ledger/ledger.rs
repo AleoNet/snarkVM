@@ -34,11 +34,7 @@ pub struct Ledger<N: Network> {
 impl<N: Network> Ledger<N> {
     /// Initializes a new instance of the ledger.
     pub fn new() -> Result<Self> {
-        Ok(Self {
-            canon_blocks: Blocks::new()?,
-            orphan_blocks: Default::default(),
-            memory_pool: MemoryPool::new(),
-        })
+        Ok(Self { canon_blocks: Blocks::new()?, orphan_blocks: Default::default(), memory_pool: MemoryPool::new() })
     }
 
     /// Returns the latest block height.
@@ -165,9 +161,7 @@ impl<N: Network> Ledger<N> {
             Blocks::<N>::compute_difficulty_target(N::genesis_block().header(), block_timestamp, block_height);
 
         // Compute the cumulative weight.
-        let cumulative_weight = self
-            .latest_cumulative_weight()?
-            .saturating_add((u64::MAX / difficulty_target) as u128);
+        let cumulative_weight = self.latest_cumulative_weight()?.saturating_add((u64::MAX / difficulty_target) as u128);
 
         // Construct the new block transactions.
         let amount = Block::<N>::block_reward(block_height);
@@ -239,9 +233,7 @@ mod tests {
             let recipient = Account::<Testnet1>::new(rng);
 
             assert_eq!(0, ledger.latest_block_height());
-            ledger
-                .mine_next_block(recipient.address(), true, &AtomicBool::new(false), rng)
-                .unwrap();
+            ledger.mine_next_block(recipient.address(), true, &AtomicBool::new(false), rng).unwrap();
             assert_eq!(1, ledger.latest_block_height());
         }
         {
@@ -249,9 +241,7 @@ mod tests {
             let recipient = Account::<Testnet2>::new(rng);
 
             assert_eq!(0, ledger.latest_block_height());
-            ledger
-                .mine_next_block(recipient.address(), true, &AtomicBool::new(false), rng)
-                .unwrap();
+            ledger.mine_next_block(recipient.address(), true, &AtomicBool::new(false), rng).unwrap();
             assert_eq!(1, ledger.latest_block_height());
         }
     }

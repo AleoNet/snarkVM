@@ -215,11 +215,7 @@ impl<
         // TODO (raychu86): Assign optimization type properly.
         let optimization_type = OptimizationType::Weight;
 
-        let params = get_params(
-            TargetField::size_in_bits(),
-            BaseField::size_in_bits(),
-            optimization_type,
-        );
+        let params = get_params(TargetField::size_in_bits(), BaseField::size_in_bits(), optimization_type);
 
         let num_bits_per_nonnative = if outputs_short_elements {
             128
@@ -245,62 +241,56 @@ impl<
 
         let mut dest_gadgets = Vec::<NonNativeFieldVar<TargetField, BaseField>>::new();
         let mut dest_bits = Vec::<Vec<Boolean>>::new();
-        bits.chunks_exact(num_bits_per_nonnative)
-            .enumerate()
-            .for_each(|(i, per_nonnative_bits)| {
-                let mut val = vec![BaseField::zero(); params.num_limbs];
-                let mut lc = vec![LinearCombination::<BaseField>::zero(); params.num_limbs];
+        bits.chunks_exact(num_bits_per_nonnative).enumerate().for_each(|(i, per_nonnative_bits)| {
+            let mut val = vec![BaseField::zero(); params.num_limbs];
+            let mut lc = vec![LinearCombination::<BaseField>::zero(); params.num_limbs];
 
-                let mut per_nonnative_bits_le = per_nonnative_bits.to_vec();
-                per_nonnative_bits_le.reverse();
+            let mut per_nonnative_bits_le = per_nonnative_bits.to_vec();
+            per_nonnative_bits_le.reverse();
 
-                dest_bits.push(per_nonnative_bits_le.clone());
+            dest_bits.push(per_nonnative_bits_le.clone());
 
-                for (j, bit) in per_nonnative_bits_le.iter().enumerate() {
-                    if bit.get_value().unwrap_or_default() {
-                        for (k, val) in val.iter_mut().enumerate().take(params.num_limbs) {
-                            *val += &lookup_table[j][k];
-                        }
-                    }
-
-                    #[allow(clippy::needless_range_loop)]
-                    for k in 0..params.num_limbs {
-                        lc[k] = &lc[k] + bit.lc(CS::one(), BaseField::one()) * lookup_table[j][k];
+            for (j, bit) in per_nonnative_bits_le.iter().enumerate() {
+                if bit.get_value().unwrap_or_default() {
+                    for (k, val) in val.iter_mut().enumerate().take(params.num_limbs) {
+                        *val += &lookup_table[j][k];
                     }
                 }
 
-                let mut limbs = Vec::new();
+                #[allow(clippy::needless_range_loop)]
                 for k in 0..params.num_limbs {
-                    let gadget = AllocatedFp::alloc(cs.ns(|| format!("alloc_{}_{}", i, k)), || Ok(val[k])).unwrap();
+                    lc[k] = &lc[k] + bit.lc(CS::one(), BaseField::one()) * lookup_table[j][k];
+                }
+            }
 
-                    match &gadget.variable {
-                        ConstraintVariable::Var(var) => {
-                            lc[k] = lc[k].clone() - (BaseField::one(), *var);
-                        }
-                        ConstraintVariable::LC(linear_combination) => {
-                            lc[k] = &lc[k] - (BaseField::one(), linear_combination);
-                        }
+            let mut limbs = Vec::new();
+            for k in 0..params.num_limbs {
+                let gadget = AllocatedFp::alloc(cs.ns(|| format!("alloc_{}_{}", i, k)), || Ok(val[k])).unwrap();
+
+                match &gadget.variable {
+                    ConstraintVariable::Var(var) => {
+                        lc[k] = lc[k].clone() - (BaseField::one(), *var);
                     }
-
-                    cs.enforce(
-                        || format!("enforce_constraint_{}_{}", i, k),
-                        |lc| lc,
-                        |lc| lc,
-                        |_| lc[k].clone(),
-                    );
-
-                    limbs.push(FpGadget::<BaseField>::from(gadget));
+                    ConstraintVariable::LC(linear_combination) => {
+                        lc[k] = &lc[k] - (BaseField::one(), linear_combination);
+                    }
                 }
 
-                dest_gadgets.push(NonNativeFieldVar::<TargetField, BaseField>::Var(
-                    AllocatedNonNativeFieldVar::<TargetField, BaseField> {
-                        limbs,
-                        num_of_additions_over_normal_form: BaseField::zero(),
-                        is_in_the_normal_form: true,
-                        target_phantom: Default::default(),
-                    },
-                ));
-            });
+                cs.enforce(|| format!("enforce_constraint_{}_{}", i, k), |lc| lc, |lc| lc, |_| lc[k].clone());
+
+                limbs.push(FpGadget::<BaseField>::from(gadget));
+            }
+
+            dest_gadgets.push(NonNativeFieldVar::<TargetField, BaseField>::Var(AllocatedNonNativeFieldVar::<
+                TargetField,
+                BaseField,
+            > {
+                limbs,
+                num_of_additions_over_normal_form: BaseField::zero(),
+                is_in_the_normal_form: true,
+                target_phantom: Default::default(),
+            }));
+        });
 
         Ok((dest_gadgets, dest_bits))
     }
@@ -504,12 +494,10 @@ mod tests {
             fs_rng.absorb_bytes(absorbed_rand_byte_elem);
         }
 
-        let squeezed_fields_elems = fs_rng
-            .squeeze_nonnative_field_elements(NUM_SQUEEZED_FIELD_ELEMS, OptimizationType::Weight)
-            .unwrap();
-        let squeezed_short_fields_elems = fs_rng
-            .squeeze_128_bits_nonnative_field_elements(NUM_SQUEEZED_SHORT_FIELD_ELEMS)
-            .unwrap();
+        let squeezed_fields_elems =
+            fs_rng.squeeze_nonnative_field_elements(NUM_SQUEEZED_FIELD_ELEMS, OptimizationType::Weight).unwrap();
+        let squeezed_short_fields_elems =
+            fs_rng.squeeze_128_bits_nonnative_field_elements(NUM_SQUEEZED_SHORT_FIELD_ELEMS).unwrap();
 
         // fs_rng in the constraint world
         let mut cs = TestConstraintSystem::<Fq>::new();
@@ -546,20 +534,15 @@ mod tests {
                 .unwrap();
         }
 
-        let squeezed_fields_elems_gadgets = fs_rng_gadget
-            .squeeze_field_elements(cs.ns(|| "squeeze_fe"), NUM_SQUEEZED_FIELD_ELEMS)
-            .unwrap();
+        let squeezed_fields_elems_gadgets =
+            fs_rng_gadget.squeeze_field_elements(cs.ns(|| "squeeze_fe"), NUM_SQUEEZED_FIELD_ELEMS).unwrap();
 
         let squeezed_short_fields_elems_gadgets = fs_rng_gadget
             .squeeze_128_bits_field_elements(cs.ns(|| "squeeze_128_bits_fe"), NUM_SQUEEZED_SHORT_FIELD_ELEMS)
             .unwrap();
 
         // compare elems
-        for (i, (left, right)) in squeezed_fields_elems
-            .iter()
-            .zip(squeezed_fields_elems_gadgets.iter())
-            .enumerate()
-        {
+        for (i, (left, right)) in squeezed_fields_elems.iter().zip(squeezed_fields_elems_gadgets.iter()).enumerate() {
             assert_eq!(
                 left.to_repr(),
                 right.value().unwrap().to_repr(),
@@ -571,10 +554,8 @@ mod tests {
         }
 
         // compare short elems
-        for (i, (left, right)) in squeezed_short_fields_elems
-            .iter()
-            .zip(squeezed_short_fields_elems_gadgets.iter())
-            .enumerate()
+        for (i, (left, right)) in
+            squeezed_short_fields_elems.iter().zip(squeezed_short_fields_elems_gadgets.iter()).enumerate()
         {
             assert!(
                 left.to_repr().eq(&right.value().unwrap().to_repr()),
@@ -639,9 +620,7 @@ mod tests {
                     FpGadget::alloc(cs.ns(|| format!("alloc_field_{}_{}", i, j)), || Ok(element)).unwrap();
 
                 // Check that the elements are equivalent.
-                gadget
-                    .enforce_equal(cs.ns(|| format!("enforce_equal_element_{}_{}", i, j)), &alloc_element)
-                    .unwrap();
+                gadget.enforce_equal(cs.ns(|| format!("enforce_equal_element_{}_{}", i, j)), &alloc_element).unwrap();
             }
         }
     }
@@ -693,9 +672,7 @@ mod tests {
                     FpGadget::alloc(cs.ns(|| format!("alloc_field_{}_{}", i, j)), || Ok(element)).unwrap();
 
                 // Check that the elements are equivalent.
-                gadget
-                    .enforce_equal(cs.ns(|| format!("enforce_equal_element_{}_{}", i, j)), &alloc_element)
-                    .unwrap();
+                gadget.enforce_equal(cs.ns(|| format!("enforce_equal_element_{}_{}", i, j)), &alloc_element).unwrap();
             }
         }
     }
@@ -725,9 +702,7 @@ mod tests {
 
             // Absorb the bytes.
             fs_rng.absorb_bytes(&bytes);
-            fs_rng_gadget
-                .absorb_bytes(cs.ns(|| format!("absorb_bytes{}", i)), &byte_gadgets)
-                .unwrap();
+            fs_rng_gadget.absorb_bytes(cs.ns(|| format!("absorb_bytes{}", i)), &byte_gadgets).unwrap();
 
             // Get bits from the `fs_rng` and `fs_rng_gadget`.
             let num_bits = num_bytes * 8;
@@ -746,9 +721,7 @@ mod tests {
                     Boolean::alloc(cs.ns(|| format!("alloc_boolean_result_{}_{}", i, j)), || Ok(bit)).unwrap();
 
                 // Check that the boolean gadgets are equivalent.
-                bit_gadget
-                    .enforce_equal(cs.ns(|| format!("enforce_equal_bit_{}_{}", i, j)), &alloc_boolean)
-                    .unwrap();
+                bit_gadget.enforce_equal(cs.ns(|| format!("enforce_equal_bit_{}_{}", i, j)), &alloc_boolean).unwrap();
             }
         }
     }
@@ -794,15 +767,11 @@ mod tests {
             // Check that the squeeze results are equivalent.
             for (j, (gadget, element)) in gadget_squeeze_result.iter().zip(squeeze_result).enumerate() {
                 // Allocate the nonnative field gadget from the base element.
-                let alloc_element = FpGadget::alloc(cs.ns(|| format!("native_alloc_field_result{}_{}", i, j)), || {
-                    Ok(element)
-                })
-                .unwrap();
+                let alloc_element =
+                    FpGadget::alloc(cs.ns(|| format!("native_alloc_field_result{}_{}", i, j)), || Ok(element)).unwrap();
 
                 // Check that the elements are equivalent.
-                gadget
-                    .enforce_equal(cs.ns(|| format!("enforce_equal_element_{}_{}", i, j)), &alloc_element)
-                    .unwrap();
+                gadget.enforce_equal(cs.ns(|| format!("enforce_equal_element_{}_{}", i, j)), &alloc_element).unwrap();
             }
         }
     }
@@ -845,9 +814,8 @@ mod tests {
                 .unwrap();
 
             // Get the elements from the `fs_rng` and `fs_rng_gadget`.
-            let squeeze_result = fs_rng
-                .squeeze_nonnative_field_elements(num_elements, OptimizationType::Constraints)
-                .unwrap();
+            let squeeze_result =
+                fs_rng.squeeze_nonnative_field_elements(num_elements, OptimizationType::Constraints).unwrap();
             let gadget_squeeze_result = fs_rng_gadget
                 .squeeze_field_elements(cs.ns(|| format!("squeeze_field_elements_{}", i)), num_elements)
                 .unwrap();
@@ -862,9 +830,7 @@ mod tests {
                     .unwrap();
 
                 // Check that the elements are equivalent.
-                gadget
-                    .enforce_equal(cs.ns(|| format!("enforce_equal_element_{}_{}", i, j)), &alloc_element)
-                    .unwrap();
+                gadget.enforce_equal(cs.ns(|| format!("enforce_equal_element_{}_{}", i, j)), &alloc_element).unwrap();
             }
         }
     }
@@ -907,19 +873,15 @@ mod tests {
                 .unwrap();
 
             // Get the elements from the `fs_rng` and `fs_rng_gadget`.
-            let squeeze_result = fs_rng
-                .squeeze_nonnative_field_elements(num_elements, OptimizationType::Constraints)
-                .unwrap();
+            let squeeze_result =
+                fs_rng.squeeze_nonnative_field_elements(num_elements, OptimizationType::Constraints).unwrap();
             let (gadget_squeeze_result, gadget_squeeze_bits) = fs_rng_gadget
                 .squeeze_field_elements_and_bits(cs.ns(|| format!("squeeze_field_elements_{}", i)), num_elements)
                 .unwrap();
 
             // Check that the squeeze results are equivalent.
-            for (j, ((gadget, bits), element)) in gadget_squeeze_result
-                .iter()
-                .zip(gadget_squeeze_bits)
-                .zip(squeeze_result)
-                .enumerate()
+            for (j, ((gadget, bits), element)) in
+                gadget_squeeze_result.iter().zip(gadget_squeeze_bits).zip(squeeze_result).enumerate()
             {
                 // Allocate the nonnative field gadget from the base element.
                 let alloc_element =
@@ -929,14 +891,10 @@ mod tests {
                     .unwrap();
 
                 // Check that the elements are equivalent.
-                gadget
-                    .enforce_equal(cs.ns(|| format!("enforce_equal_element_{}_{}", i, j)), &alloc_element)
-                    .unwrap();
+                gadget.enforce_equal(cs.ns(|| format!("enforce_equal_element_{}_{}", i, j)), &alloc_element).unwrap();
 
                 // Check that the bits are equivalent.
-                let allocated_bits = alloc_element
-                    .to_bits_le(cs.ns(|| format!("to_bits_le_{}_{}", i, j)))
-                    .unwrap();
+                let allocated_bits = alloc_element.to_bits_le(cs.ns(|| format!("to_bits_le_{}_{}", i, j))).unwrap();
 
                 for (k, (allocated_bit, bit)) in allocated_bits.iter().zip(bits).enumerate() {
                     allocated_bit
@@ -1003,9 +961,7 @@ mod tests {
                     .unwrap();
 
                 // Check that the elements are equivalent.
-                gadget
-                    .enforce_equal(cs.ns(|| format!("enforce_equal_element_{}_{}", i, j)), &alloc_element)
-                    .unwrap();
+                gadget.enforce_equal(cs.ns(|| format!("enforce_equal_element_{}_{}", i, j)), &alloc_element).unwrap();
             }
         }
     }
@@ -1057,11 +1013,8 @@ mod tests {
                 .unwrap();
 
             // Check that the squeeze results are equivalent.
-            for (j, ((gadget, bits), element)) in gadget_squeeze_result
-                .iter()
-                .zip(gadget_squeeze_bits)
-                .zip(squeeze_result)
-                .enumerate()
+            for (j, ((gadget, bits), element)) in
+                gadget_squeeze_result.iter().zip(gadget_squeeze_bits).zip(squeeze_result).enumerate()
             {
                 // Allocate the nonnative field gadget from the base element.
                 let alloc_element =
@@ -1071,14 +1024,10 @@ mod tests {
                     .unwrap();
 
                 // Check that the elements are equivalent.
-                gadget
-                    .enforce_equal(cs.ns(|| format!("enforce_equal_element_{}_{}", i, j)), &alloc_element)
-                    .unwrap();
+                gadget.enforce_equal(cs.ns(|| format!("enforce_equal_element_{}_{}", i, j)), &alloc_element).unwrap();
 
                 // Check that the bits are equivalent.
-                let allocated_bits = alloc_element
-                    .to_bits_le(cs.ns(|| format!("to_bits_le_{}_{}", i, j)))
-                    .unwrap();
+                let allocated_bits = alloc_element.to_bits_le(cs.ns(|| format!("to_bits_le_{}_{}", i, j))).unwrap();
 
                 for (k, (allocated_bit, bit)) in allocated_bits.iter().zip(bits).enumerate() {
                     allocated_bit

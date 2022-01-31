@@ -57,10 +57,7 @@ where
     PG: PairingGadget<TargetCurve, <BaseCurve as PairingEngine>::Fr>,
 {
     fn clone(&self) -> Self {
-        Self {
-            comm: self.comm.clone(),
-            shifted_comm: self.shifted_comm.clone(),
-        }
+        Self { comm: self.comm.clone(), shifted_comm: self.shifted_comm.clone() }
     }
 }
 
@@ -108,18 +105,14 @@ where
 
             let shifted_comm = commitment.shifted_comm;
             let shifted_comm_gadget = if let Some(shifted_comm) = shifted_comm {
-                Some(PG::G1Gadget::alloc_constant(
-                    cs.ns(|| "alloc_constant_shifted_commitment"),
-                    || Ok(shifted_comm.0.into_projective()),
-                )?)
+                Some(PG::G1Gadget::alloc_constant(cs.ns(|| "alloc_constant_shifted_commitment"), || {
+                    Ok(shifted_comm.0.into_projective())
+                })?)
             } else {
                 None
             };
 
-            Ok(Self {
-                comm: comm_gadget,
-                shifted_comm: shifted_comm_gadget,
-            })
+            Ok(Self { comm: comm_gadget, shifted_comm: shifted_comm_gadget })
         })
     }
 
@@ -145,10 +138,7 @@ where
                 None
             };
 
-            Ok(Self {
-                comm: comm_gadget,
-                shifted_comm: shifted_comm_gadget,
-            })
+            Ok(Self { comm: comm_gadget, shifted_comm: shifted_comm_gadget })
         })
     }
 
@@ -168,18 +158,14 @@ where
 
             let shifted_comm = commitment.shifted_comm;
             let shifted_comm_gadget = if let Some(shifted_comm) = shifted_comm {
-                Some(PG::G1Gadget::alloc_input(
-                    cs.ns(|| "alloc_input_shifted_commitment"),
-                    || Ok(shifted_comm.0.into_projective()),
-                )?)
+                Some(PG::G1Gadget::alloc_input(cs.ns(|| "alloc_input_shifted_commitment"), || {
+                    Ok(shifted_comm.0.into_projective())
+                })?)
             } else {
                 None
             };
 
-            Ok(Self {
-                comm: comm_gadget,
-                shifted_comm: shifted_comm_gadget,
-            })
+            Ok(Self { comm: comm_gadget, shifted_comm: shifted_comm_gadget })
         })
     }
 }

@@ -85,9 +85,7 @@ pub(crate) fn make_matrices_square<F: Field, CS: ConstraintSystem<F>>(cs: &mut C
     } else {
         // Add dummy unconstrained variables
         for i in 0..matrix_padding {
-            let _ = cs
-                .alloc(|| format!("pad_variable_{}", i), || Ok(F::one()))
-                .expect("alloc failed");
+            let _ = cs.alloc(|| format!("pad_variable_{}", i), || Ok(F::one())).expect("alloc failed");
         }
     }
 }
@@ -201,12 +199,8 @@ pub(crate) fn arithmetize_matrix<F: PrimeField>(
 
     end_timer!(matrix_time);
 
-    let evals_on_K = MatrixEvals {
-        row: row_evals_on_K,
-        col: col_evals_on_K,
-        row_col: row_col_evals_on_K,
-        val: val_evals_on_K,
-    };
+    let evals_on_K =
+        MatrixEvals { row: row_evals_on_K, col: col_evals_on_K, row_col: row_col_evals_on_K, val: val_evals_on_K };
 
     MatrixArithmetization {
         row: LabeledPolynomial::new("row_".to_string() + label, row, None, None),
@@ -225,10 +219,7 @@ mod tests {
     use snarkvm_fields::{One, Zero};
 
     fn entry(matrix: &Matrix<F>, row: usize, col: usize) -> F {
-        matrix[row]
-            .iter()
-            .find_map(|(f, i)| (i == &col).then(|| *f))
-            .unwrap_or_else(F::zero)
+        matrix[row].iter().find_map(|(f, i)| (i == &col).then(|| *f)).unwrap_or_else(F::zero)
     }
 
     #[test]
@@ -255,24 +246,11 @@ mod tests {
             vec![(F::one(), 6)],
         ];
 
-        let c = vec![
-            vec![],
-            vec![(F::one(), 7)],
-            vec![],
-            vec![],
-            vec![],
-            vec![(F::one(), 3)],
-            vec![],
-            vec![],
-        ];
+        let c = vec![vec![], vec![(F::one(), 7)], vec![], vec![], vec![], vec![(F::one(), 3)], vec![], vec![]];
 
         let constraint_domain = EvaluationDomain::new(2 + 6).unwrap();
         let input_domain = EvaluationDomain::new(2).unwrap();
-        let inverse_map = constraint_domain
-            .elements()
-            .enumerate()
-            .map(|(i, e)| (e, i))
-            .collect::<HashMap<_, _>>();
+        let inverse_map = constraint_domain.elements().enumerate().map(|(i, e)| (e, i)).collect::<HashMap<_, _>>();
         let elements = constraint_domain.elements().collect::<Vec<_>>();
         let reindexed_inverse_map = (0..constraint_domain.size())
             .map(|i| {

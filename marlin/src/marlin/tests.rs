@@ -54,10 +54,7 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Circuit<Constrai
         )?;
 
         for i in 0..(self.num_variables - 3) {
-            let _ = cs.alloc(
-                || format!("var {}", i),
-                || self.a.ok_or(SynthesisError::AssignmentMissing),
-            )?;
+            let _ = cs.alloc(|| format!("var {}", i), || self.a.ok_or(SynthesisError::AssignmentMissing))?;
         }
 
         for i in 0..(self.num_constraints - 1) {
@@ -110,12 +107,7 @@ mod marlin {
                         let mut d = c;
                         d.mul_assign(&b);
 
-                        let circ = Circuit {
-                            a: Some(a),
-                            b: Some(b),
-                            num_constraints,
-                            num_variables,
-                        };
+                        let circ = Circuit { a: Some(a), b: Some(b), num_constraints, num_variables };
 
                         let (index_pk, index_vk) = $marlin_inst::circuit_setup(&universal_srs, &circ).unwrap();
                         println!("Called circuit setup");
@@ -138,12 +130,8 @@ mod marlin {
                     let max_degree = crate::ahp::AHPForR1CS::<Fr, $marlin_mode>::max_degree(100, 25, 300).unwrap();
                     let universal_srs = $marlin_inst::universal_setup(max_degree, rng).unwrap();
 
-                    let circ = Circuit {
-                        a: Some(Fr::rand(rng)),
-                        b: Some(Fr::rand(rng)),
-                        num_constraints,
-                        num_variables,
-                    };
+                    let circ =
+                        Circuit { a: Some(Fr::rand(rng)), b: Some(Fr::rand(rng)), num_constraints, num_variables };
 
                     let (_index_pk, index_vk) = $marlin_inst::circuit_setup(&universal_srs, &circ).unwrap();
                     println!("Called circuit setup");
@@ -153,17 +141,11 @@ mod marlin {
                     let candidate_string = serde_json::to_string(&index_vk).unwrap();
                     assert_eq!(
                         expected_string,
-                        serde_json::Value::from_str(&candidate_string)
-                            .unwrap()
-                            .as_str()
-                            .unwrap()
+                        serde_json::Value::from_str(&candidate_string).unwrap().as_str().unwrap()
                     );
 
                     // Deserialize
-                    assert_eq!(
-                        index_vk,
-                        crate::marlin::CircuitVerifyingKey::from_str(&expected_string).unwrap()
-                    );
+                    assert_eq!(index_vk, crate::marlin::CircuitVerifyingKey::from_str(&expected_string).unwrap());
                     assert_eq!(index_vk, serde_json::from_str(&candidate_string).unwrap());
                 }
 
@@ -175,12 +157,8 @@ mod marlin {
                     let max_degree = crate::ahp::AHPForR1CS::<Fr, $marlin_mode>::max_degree(100, 25, 300).unwrap();
                     let universal_srs = $marlin_inst::universal_setup(max_degree, rng).unwrap();
 
-                    let circ = Circuit {
-                        a: Some(Fr::rand(rng)),
-                        b: Some(Fr::rand(rng)),
-                        num_constraints,
-                        num_variables,
-                    };
+                    let circ =
+                        Circuit { a: Some(Fr::rand(rng)), b: Some(Fr::rand(rng)), num_constraints, num_variables };
 
                     let (_index_pk, index_vk) = $marlin_inst::circuit_setup(&universal_srs, &circ).unwrap();
                     println!("Called circuit setup");
@@ -192,10 +170,7 @@ mod marlin {
                     assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
 
                     // Deserialize
-                    assert_eq!(
-                        index_vk,
-                        crate::marlin::CircuitVerifyingKey::read_le(&expected_bytes[..]).unwrap()
-                    );
+                    assert_eq!(index_vk, crate::marlin::CircuitVerifyingKey::read_le(&expected_bytes[..]).unwrap());
                     assert_eq!(index_vk, bincode::deserialize(&candidate_bytes[..]).unwrap());
                 }
             }
@@ -338,12 +313,7 @@ mod marlin_recursion {
             let mut d = c;
             d.mul_assign(&b);
 
-            let circuit = Circuit {
-                a: Some(a),
-                b: Some(b),
-                num_constraints,
-                num_variables,
-            };
+            let circuit = Circuit { a: Some(a), b: Some(b), num_constraints, num_variables };
 
             let (index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
             println!("Called circuit setup");
@@ -364,12 +334,7 @@ mod marlin_recursion {
         let max_degree = crate::ahp::AHPForR1CS::<Fr, MarlinRecursiveMode>::max_degree(100, 25, 300).unwrap();
         let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
 
-        let circuit = Circuit {
-            a: Some(Fr::rand(rng)),
-            b: Some(Fr::rand(rng)),
-            num_constraints,
-            num_variables,
-        };
+        let circuit = Circuit { a: Some(Fr::rand(rng)), b: Some(Fr::rand(rng)), num_constraints, num_variables };
 
         let (_index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
         println!("Called circuit setup");
@@ -377,13 +342,7 @@ mod marlin_recursion {
         // Serialize
         let expected_string = index_vk.to_string();
         let candidate_string = serde_json::to_string(&index_vk).unwrap();
-        assert_eq!(
-            expected_string,
-            serde_json::Value::from_str(&candidate_string)
-                .unwrap()
-                .as_str()
-                .unwrap()
-        );
+        assert_eq!(expected_string, serde_json::Value::from_str(&candidate_string).unwrap().as_str().unwrap());
 
         // Deserialize
         assert_eq!(index_vk, CircuitVerifyingKey::from_str(&expected_string).unwrap());
@@ -396,12 +355,7 @@ mod marlin_recursion {
         let max_degree = crate::ahp::AHPForR1CS::<Fr, MarlinRecursiveMode>::max_degree(100, 25, 300).unwrap();
         let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
 
-        let circuit = Circuit {
-            a: Some(Fr::rand(rng)),
-            b: Some(Fr::rand(rng)),
-            num_constraints,
-            num_variables,
-        };
+        let circuit = Circuit { a: Some(Fr::rand(rng)), b: Some(Fr::rand(rng)), num_constraints, num_variables };
 
         let (_index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
         println!("Called circuit setup");
@@ -413,10 +367,7 @@ mod marlin_recursion {
         assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
 
         // Deserialize
-        assert_eq!(
-            index_vk,
-            crate::marlin::CircuitVerifyingKey::read_le(&expected_bytes[..]).unwrap()
-        );
+        assert_eq!(index_vk, crate::marlin::CircuitVerifyingKey::read_le(&expected_bytes[..]).unwrap());
         assert_eq!(index_vk, bincode::deserialize(&candidate_bytes[..]).unwrap());
     }
 

@@ -112,10 +112,8 @@ where
             let mut sum_bound = zero_bound.clone();
             let mut found_shift_power = Vec::new();
 
-            for (i, (pir_gadget, (_, degree, shift_power))) in pir_vector_gadgets
-                .iter()
-                .zip(prepared_degree_bounds_and_shift_powers.iter())
-                .enumerate()
+            for (i, (pir_gadget, (_, degree, shift_power))) in
+                pir_vector_gadgets.iter().zip(prepared_degree_bounds_and_shift_powers.iter()).enumerate()
             {
                 let found_bound = FpGadget::<<BaseCurve as PairingEngine>::Fr>::conditionally_select(
                     cs.ns(|| format!("found_bound_coond_select{}", i)),
@@ -202,9 +200,7 @@ where
             prepared_g.push(<PG::G1Gadget as AllocGadget<
                 <TargetCurve as PairingEngine>::G1Projective,
                 <BaseCurve as PairingEngine>::Fr,
-            >>::alloc_constant(cs.ns(|| format!("g_{}", i)), || {
-                Ok(g.into_projective())
-            })?);
+            >>::alloc_constant(cs.ns(|| format!("g_{}", i)), || Ok(g.into_projective()))?);
         }
 
         let mut prepared_gamma_g = Vec::<PG::G1Gadget>::new();
@@ -212,9 +208,9 @@ where
             prepared_gamma_g.push(<PG::G1Gadget as AllocGadget<
                 <TargetCurve as PairingEngine>::G1Projective,
                 <BaseCurve as PairingEngine>::Fr,
-            >>::alloc_constant(
-                cs.ns(|| format!("gamma_g_{}", i)), || Ok(gamma_g.into_projective())
-            )?);
+            >>::alloc_constant(cs.ns(|| format!("gamma_g_{}", i)), || {
+                Ok(gamma_g.into_projective())
+            })?);
         }
 
         let prepared_h = PG::G2PreparedGadget::alloc(cs.ns(|| "prepared_h"), || Ok(&obj.prepared_vk.prepared_h))?;
@@ -224,12 +220,8 @@ where
         let prepared_degree_bounds_and_shift_powers = if obj.degree_bounds_and_prepared_shift_powers.is_some() {
             let mut res = Vec::<(usize, FpGadget<<BaseCurve as PairingEngine>::Fr>, Vec<PG::G1Gadget>)>::new();
 
-            for (i, (d, shift_power_elems)) in obj
-                .degree_bounds_and_prepared_shift_powers
-                .as_ref()
-                .unwrap()
-                .iter()
-                .enumerate()
+            for (i, (d, shift_power_elems)) in
+                obj.degree_bounds_and_prepared_shift_powers.as_ref().unwrap().iter().enumerate()
             {
                 let mut gadgets = Vec::<PG::G1Gadget>::new();
                 for (j, shift_power_elem) in shift_power_elems.iter().enumerate() {
@@ -398,12 +390,8 @@ mod tests {
             })
             .unwrap();
 
-        for (i, (g_element, g_gadget_element)) in prepared_vk
-            .prepared_vk
-            .prepared_g
-            .iter()
-            .zip(prepared_vk_gadget.prepared_g)
-            .enumerate()
+        for (i, (g_element, g_gadget_element)) in
+            prepared_vk.prepared_vk.prepared_g.iter().zip(prepared_vk_gadget.prepared_g).enumerate()
         {
             let prepared_g_gadget = <PG as PairingGadget<_, _>>::G1Gadget::alloc(
                 cs.ns(|| format!("alloc_native_prepared_g_{}", i)),
@@ -416,14 +404,9 @@ mod tests {
                 .unwrap();
         }
 
-        prepared_h_gadget
-            .enforce_equal(cs.ns(|| "enforce_equals_prepared_h"), &prepared_vk_gadget.prepared_h)
-            .unwrap();
+        prepared_h_gadget.enforce_equal(cs.ns(|| "enforce_equals_prepared_h"), &prepared_vk_gadget.prepared_h).unwrap();
         prepared_beta_h_gadget
-            .enforce_equal(
-                cs.ns(|| "enforce_equals_prepared_beta_h"),
-                &prepared_vk_gadget.prepared_beta_h,
-            )
+            .enforce_equal(cs.ns(|| "enforce_equals_prepared_beta_h"), &prepared_vk_gadget.prepared_beta_h)
             .unwrap();
 
         // Native check that degree bounds are equivalent.
@@ -489,11 +472,8 @@ mod tests {
 
         // Enforce that the elements are equivalent.
 
-        for (i, (expected_g_element, g_element_gadget)) in expected_prepared_vk_gadget
-            .prepared_g
-            .iter()
-            .zip(prepared_vk_gadget.prepared_g)
-            .enumerate()
+        for (i, (expected_g_element, g_element_gadget)) in
+            expected_prepared_vk_gadget.prepared_g.iter().zip(prepared_vk_gadget.prepared_g).enumerate()
         {
             g_element_gadget
                 .enforce_equal(cs.ns(|| format!("enforce_equals_prepared_g_{}", i)), expected_g_element)
@@ -596,9 +576,8 @@ mod tests {
         assert!(pvk.degree_bounds_and_prepared_shift_powers.is_some());
         assert!(pvk_gadget.degree_bounds_and_prepared_shift_powers.is_some());
 
-        let prepared_shift_power = pvk_gadget
-            .get_prepared_shift_power(cs.ns(|| "get_shift_power"), &bound_gadget)
-            .unwrap();
+        let prepared_shift_power =
+            pvk_gadget.get_prepared_shift_power(cs.ns(|| "get_shift_power"), &bound_gadget).unwrap();
         let expected_shift_power = pvk.get_prepared_shift_power(bound).unwrap();
 
         for (i, (left_gadget, right)) in prepared_shift_power.iter().zip(expected_shift_power.iter()).enumerate() {
@@ -608,9 +587,7 @@ mod tests {
             )
             .unwrap();
 
-            left_gadget
-                .enforce_equal(cs.ns(|| format!("enforce_equals_shift_power_{}", i)), &right_gadget)
-                .unwrap();
+            left_gadget.enforce_equal(cs.ns(|| format!("enforce_equals_shift_power_{}", i)), &right_gadget).unwrap();
         }
 
         assert!(cs.is_satisfied());

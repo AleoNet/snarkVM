@@ -40,12 +40,7 @@ impl<E: Environment> ToBits for &BaseField<E> {
             false => Mode::Private,
         };
 
-        let bits = self
-            .eject_value()
-            .to_bits_le()
-            .iter()
-            .map(|bit| Boolean::new(mode, *bit))
-            .collect::<Vec<_>>();
+        let bits = self.eject_value().to_bits_le().iter().map(|bit| Boolean::new(mode, *bit)).collect::<Vec<_>>();
 
         let mut accumulator = BaseField::zero();
         let mut coefficient = BaseField::one();

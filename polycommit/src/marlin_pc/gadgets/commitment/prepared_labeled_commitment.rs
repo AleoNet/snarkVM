@@ -108,9 +108,8 @@ mod tests {
                 })
                 .unwrap();
 
-            let prepared_commitment_gadget = commitment_gadget
-                .prepare(cs.ns(|| format!("prepare_commitment_{}", i)))
-                .unwrap();
+            let prepared_commitment_gadget =
+                commitment_gadget.prepare(cs.ns(|| format!("prepare_commitment_{}", i))).unwrap();
 
             for (j, (comm_element, comm_element_gadget)) in prepared_commitment
                 .prepared_comm
@@ -141,10 +140,9 @@ mod tests {
                 prepared_commitment_gadget.prepared_commitment.shifted_comm.is_some()
             );
 
-            if let (Some(shifted_comm), Some(shifted_comm_gadget)) = (
-                &prepared_commitment.shifted_comm,
-                prepared_commitment_gadget.prepared_commitment.shifted_comm,
-            ) {
+            if let (Some(shifted_comm), Some(shifted_comm_gadget)) =
+                (&prepared_commitment.shifted_comm, prepared_commitment_gadget.prepared_commitment.shifted_comm)
+            {
                 let expected_shifted_commitment_gadget = <PG as PairingGadget<_, _>>::G1Gadget::alloc(
                     cs.ns(|| format!("shifted_commitment_gadget_{}", i)),
                     || Ok(shifted_comm.0.into_projective()),

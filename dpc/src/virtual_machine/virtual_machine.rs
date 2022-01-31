@@ -35,11 +35,7 @@ pub struct VirtualMachine<N: Network> {
 impl<N: Network> VirtualMachine<N> {
     /// Initializes a new instance of the virtual machine, with the given request.
     pub fn new(ledger_root: N::LedgerRoot) -> Result<Self> {
-        Ok(Self {
-            ledger_root,
-            local_transitions: Transitions::new()?,
-            transitions: Default::default(),
-        })
+        Ok(Self { ledger_root, local_transitions: Transitions::new()?, transitions: Default::default() })
     }
 
     /// Returns the local proof for a given commitment.
@@ -92,21 +88,15 @@ impl<N: Network> VirtualMachine<N> {
         let inner_circuit = InnerCircuit::<N>::new(inner_public, inner_private);
         let inner_proof = N::InnerSNARK::prove(N::inner_proving_key(), &inner_circuit, rng)?;
 
-        assert!(N::InnerSNARK::verify(
-            N::inner_verifying_key(),
-            &inner_public,
-            &inner_proof
-        )?);
+        assert!(N::InnerSNARK::verify(N::inner_verifying_key(), &inner_public, &inner_proof)?);
 
         // Compute the noop execution, for now.
         let execution = Execution::from(
             *N::noop_program_id(),
             N::noop_program_path().clone(),
             N::noop_circuit_verifying_key().clone(),
-            Noop::<N>::new().execute(
-                ProgramPublicVariables::new(transition_id),
-                &NoopPrivateVariables::<N>::new_blank()?,
-            )?,
+            Noop::<N>::new()
+                .execute(ProgramPublicVariables::new(transition_id), &NoopPrivateVariables::<N>::new_blank()?)?,
             inner_proof.into(),
         )?;
 
@@ -212,14 +202,12 @@ impl<N: Network> VirtualMachine<N> {
             return Err(VMError::BalanceInsufficient.into());
         }
 
-        let mut response_builder = ResponseBuilder::new()
-            .add_request(request.clone())
-            .add_output(Output::new(
-                function_inputs.recipient,
-                function_inputs.amount,
-                function_inputs.record_payload.clone(),
-                Some(program_id),
-            )?);
+        let mut response_builder = ResponseBuilder::new().add_request(request.clone()).add_output(Output::new(
+            function_inputs.recipient,
+            function_inputs.amount,
+            function_inputs.record_payload.clone(),
+            Some(program_id),
+        )?);
 
         // Add the change address if the balance is not zero.
         if !caller_balance.is_zero() {
@@ -265,15 +253,9 @@ impl<N: Network> VirtualMachine<N> {
         // Compute the operation.
         let operation = request.operation().clone();
         let response = match operation {
-            Operation::Evaluate(function_id, function_type, function_inputs) => self.evaluate(
-                request,
-                program_id,
-                &function_id,
-                &function_type,
-                &function_inputs,
-                custom_events,
-                rng,
-            )?,
+            Operation::Evaluate(function_id, function_type, function_inputs) => {
+                self.evaluate(request, program_id, &function_id, &function_type, &function_inputs, custom_events, rng)?
+            }
             _ => return Err(anyhow!("Invalid Operation")),
         };
 
@@ -299,11 +281,7 @@ impl<N: Network> VirtualMachine<N> {
         let inner_circuit = InnerCircuit::<N>::new(inner_public, inner_private);
         let inner_proof = N::InnerSNARK::prove(N::inner_proving_key(), &inner_circuit, rng)?;
 
-        assert!(N::InnerSNARK::verify(
-            N::inner_verifying_key(),
-            &inner_public,
-            &inner_proof
-        )?);
+        assert!(N::InnerSNARK::verify(N::inner_verifying_key(), &inner_public, &inner_proof)?);
 
         let execution = Execution::from(
             program_id,

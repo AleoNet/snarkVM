@@ -33,10 +33,7 @@ pub struct LinearCombination<F: PrimeField> {
 impl<F: PrimeField> LinearCombination<F> {
     /// Returns the `zero` constant.
     pub fn zero() -> Self {
-        Self {
-            constant: F::zero(),
-            terms: Default::default(),
-        }
+        Self { constant: F::zero(), terms: Default::default() }
     }
 
     /// Returns the `one` constant.
@@ -88,13 +85,7 @@ impl<F: PrimeField> LinearCombination<F> {
             }
 
             // Enforce property 2.
-            if self
-                .terms
-                .iter()
-                .filter(|(v, _)| !(v.value().is_zero() || v.value().is_one()))
-                .count()
-                > 0
-            {
+            if self.terms.iter().filter(|(v, _)| !(v.value().is_zero() || v.value().is_one())).count() > 0 {
                 eprintln!("Property 2 of the `Boolean` type was violated");
                 return false;
             }
@@ -129,16 +120,8 @@ impl<F: PrimeField> LinearCombination<F> {
         // Note that 200_000 is derived empirically.
         // The setup cost of Rayon is only worth it after sufficient size.
         let sum: F = match self.terms.len() > 200_000 {
-            true => self
-                .terms
-                .par_iter()
-                .map(|(variable, coefficient)| variable.value() * coefficient)
-                .sum(),
-            false => self
-                .terms
-                .iter()
-                .map(|(variable, coefficient)| variable.value() * coefficient)
-                .sum(),
+            true => self.terms.par_iter().map(|(variable, coefficient)| variable.value() * coefficient).sum(),
+            false => self.terms.iter().map(|(variable, coefficient)| variable.value() * coefficient).sum(),
         };
 
         self.constant + sum
@@ -214,10 +197,7 @@ impl<F: PrimeField> Neg for LinearCombination<F> {
     fn neg(self) -> Self::Output {
         let mut output = self;
         output.constant = -output.constant;
-        output
-            .terms
-            .iter_mut()
-            .for_each(|(_, coefficient)| *coefficient = -(*coefficient));
+        output.terms.iter_mut().for_each(|(_, coefficient)| *coefficient = -(*coefficient));
         output
     }
 }
@@ -368,10 +348,7 @@ impl<F: PrimeField> Mul<&F> for LinearCombination<F> {
     fn mul(self, coefficient: &F) -> Self::Output {
         let mut output = self;
         output.constant *= coefficient;
-        output
-            .terms
-            .iter_mut()
-            .for_each(|(_, current_coefficient)| *current_coefficient *= coefficient);
+        output.terms.iter_mut().for_each(|(_, current_coefficient)| *current_coefficient *= coefficient);
         output
     }
 }

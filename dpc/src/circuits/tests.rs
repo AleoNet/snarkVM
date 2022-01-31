@@ -61,22 +61,15 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize) 
     //////////////////////////////////////////////////////////////////////////
 
     // Construct the inner circuit public and private variables.
-    let inner_public = InnerPublicVariables::new(
-        transition_id,
-        value_balance,
-        ledger_root,
-        local_transitions_root,
-        Some(program_id),
-    );
+    let inner_public =
+        InnerPublicVariables::new(transition_id, value_balance, ledger_root, local_transitions_root, Some(program_id));
     let inner_private = InnerPrivateVariables::new(&request, &response).unwrap();
 
     // Check that the core check constraint system was satisfied.
     let mut inner_cs = TestConstraintSystem::<N::InnerScalarField>::new();
 
     let inner_circuit = InnerCircuit::new(inner_public, inner_private);
-    inner_circuit
-        .generate_constraints(&mut inner_cs.ns(|| "Inner circuit"))
-        .unwrap();
+    inner_circuit.generate_constraints(&mut inner_cs.ns(|| "Inner circuit")).unwrap();
 
     let candidate_inner_num_constraints = inner_cs.num_constraints();
 
@@ -120,27 +113,15 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize) 
         N::noop_program_path().clone(),
         N::noop_circuit_verifying_key().clone(),
         Noop::<N>::new()
-            .execute(
-                ProgramPublicVariables::new(transition_id),
-                &NoopPrivateVariables::<N>::new_blank().unwrap(),
-            )
+            .execute(ProgramPublicVariables::new(transition_id), &NoopPrivateVariables::<N>::new_blank().unwrap())
             .unwrap(),
         inner_proof.into(),
     )
     .unwrap();
-    assert_eq!(
-        N::PROGRAM_PROOF_SIZE_IN_BYTES,
-        N::ProgramProof::to_bytes_le(&execution.program_proof).unwrap().len()
-    );
+    assert_eq!(N::PROGRAM_PROOF_SIZE_IN_BYTES, N::ProgramProof::to_bytes_le(&execution.program_proof).unwrap().len());
 
     // Verify that the program proof passes.
-    assert!(execution.verify(
-        &inner_verifying_key,
-        transition_id,
-        value_balance,
-        ledger_root,
-        local_transitions_root,
-    ));
+    assert!(execution.verify(&inner_verifying_key, transition_id, value_balance, ledger_root, local_transitions_root,));
 }
 
 mod testnet1 {

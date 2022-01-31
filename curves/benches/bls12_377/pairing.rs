@@ -33,12 +33,7 @@ pub fn bench_pairing_miller_loop(c: &mut Criterion) {
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
     let v: Vec<(G1Prepared<Bls12_377Parameters>, G2Prepared<Bls12_377Parameters>)> = (0..SAMPLES)
-        .map(|_| {
-            (
-                G1Affine::from(G1::rand(&mut rng)).prepare(),
-                G2Affine::from(G2::rand(&mut rng)).prepare(),
-            )
-        })
+        .map(|_| (G1Affine::from(G1::rand(&mut rng)).prepare(), G2Affine::from(G2::rand(&mut rng)).prepare()))
         .collect();
 
     let mut count = 0;
@@ -57,12 +52,7 @@ pub fn bench_pairing_final_exponentiation(c: &mut Criterion) {
     let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
     let v: Vec<Fq12> = (0..SAMPLES)
-        .map(|_| {
-            (
-                G1Affine::from(G1::rand(&mut rng)).prepare(),
-                G2Affine::from(G2::rand(&mut rng)).prepare(),
-            )
-        })
+        .map(|_| (G1Affine::from(G1::rand(&mut rng)).prepare(), G2Affine::from(G2::rand(&mut rng)).prepare()))
         .map(|(ref p, ref q)| Bls12_377::miller_loop([(p, q)].iter().copied()))
         .collect();
 

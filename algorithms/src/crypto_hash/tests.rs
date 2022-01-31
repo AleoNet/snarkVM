@@ -56,37 +56,14 @@ fn test_poseidon_sponge_consistency() {
             let iteration_name = format!("Absorb {} and Squeeze {}", absorb, squeeze);
             let mut sponge = PoseidonSponge::<Fr, RATE, 1>::with_parameters(&sponge_param);
             sponge.absorb(&vec![Fr::from(1237812u64); absorb]);
-            let next_absorb_index = if absorb % RATE != 0 || absorb == 0 {
-                absorb % RATE
-            } else {
-                RATE
-            };
-            assert_eq!(
-                sponge.mode,
-                DuplexSpongeMode::Absorbing { next_absorb_index },
-                "{}",
-                iteration_name
-            );
+            let next_absorb_index = if absorb % RATE != 0 || absorb == 0 { absorb % RATE } else { RATE };
+            assert_eq!(sponge.mode, DuplexSpongeMode::Absorbing { next_absorb_index }, "{}", iteration_name);
             expect_file_with_name(&iteration_name, sponge.squeeze_field_elements(squeeze));
-            let next_squeeze_index = if squeeze % RATE != 0 || squeeze == 0 {
-                squeeze % RATE
-            } else {
-                RATE
-            };
+            let next_squeeze_index = if squeeze % RATE != 0 || squeeze == 0 { squeeze % RATE } else { RATE };
             if squeeze == 0 {
-                assert_eq!(
-                    sponge.mode,
-                    DuplexSpongeMode::Absorbing { next_absorb_index },
-                    "{}",
-                    iteration_name
-                );
+                assert_eq!(sponge.mode, DuplexSpongeMode::Absorbing { next_absorb_index }, "{}", iteration_name);
             } else {
-                assert_eq!(
-                    sponge.mode,
-                    DuplexSpongeMode::Squeezing { next_squeeze_index },
-                    "{}",
-                    iteration_name
-                );
+                assert_eq!(sponge.mode, DuplexSpongeMode::Squeezing { next_squeeze_index }, "{}", iteration_name);
             }
         }
     }

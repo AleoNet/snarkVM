@@ -17,20 +17,13 @@
 #[macro_export]
 macro_rules! field {
     ($name:ident, $c0:expr) => {
-        $name {
-            0: $c0,
-            1: std::marker::PhantomData,
-        }
+        $name { 0: $c0, 1: std::marker::PhantomData }
     };
     ($name:ident, $c0:expr, $c1:expr $(,)?) => {
         $name { c0: $c0, c1: $c1 }
     };
     ($name:ident, $c0:expr, $c1:expr, $c2:expr $(,)?) => {
-        $name {
-            c0: $c0,
-            c1: $c1,
-            c2: $c2,
-        }
+        $name { c0: $c0, c1: $c1, c2: $c2 }
     };
 }
 
@@ -53,10 +46,7 @@ macro_rules! impl_primefield_standard_sample {
                 loop {
                     let mut tmp = $field(rng.sample(rand::distributions::Standard), PhantomData);
                     // Mask away the unused bits at the beginning.
-                    tmp.0
-                        .as_mut()
-                        .last_mut()
-                        .map(|val| *val &= std::u64::MAX >> P::REPR_SHAVE_BITS);
+                    tmp.0.as_mut().last_mut().map(|val| *val &= std::u64::MAX >> P::REPR_SHAVE_BITS);
 
                     if tmp.is_valid() {
                         return tmp;

@@ -48,19 +48,12 @@ impl<N: Network> LedgerProof<N> {
             ));
         }
 
-        Ok(Self {
-            ledger_root,
-            ledger_root_inclusion_proof,
-            record_proof,
-        })
+        Ok(Self { ledger_root, ledger_root_inclusion_proof, record_proof })
     }
 
     /// Create a new dummy ledger proof.
     pub fn new_dummy(local_proof: LocalProof<N>) -> Result<Self> {
-        Ok(Self {
-            record_proof: RecordProof::new_dummy(local_proof)?,
-            ..Default::default()
-        })
+        Ok(Self { record_proof: RecordProof::new_dummy(local_proof)?, ..Default::default() })
     }
 
     /// Returns the ledger root used to prove inclusion of ledger-consumed records.
