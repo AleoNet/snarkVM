@@ -136,12 +136,7 @@ mod tests {
         let vectors: Vec<Case> = serde_json::from_str(include_str!("./resources/blake2-kat.json")).unwrap();
         for case in vectors.iter().filter(|v| &v.hash == "blake2s" && v.key.is_empty()) {
             let input = hex::decode(case.input.as_bytes()).unwrap();
-            let output = hex::encode(
-                blake2s_simd::Params::new()
-                    .personal(&0u64.to_le_bytes())
-                    .hash(&input)
-                    .as_bytes(),
-            );
+            let output = hex::encode(blake2s_simd::Params::new().personal(&0u64.to_le_bytes()).hash(&input).as_bytes());
             assert_eq!(output, case.output);
         }
     }
