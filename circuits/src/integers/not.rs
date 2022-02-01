@@ -66,20 +66,17 @@ mod tests {
                 case
             );
 
+            print!("Constants: {:?}, ", Circuit::num_constants_in_scope());
+            print!("Public: {:?}, ", Circuit::num_public_in_scope());
+            print!("Private: {:?}, ", Circuit::num_private_in_scope());
+            print!("Constraints: {:?}\n", Circuit::num_constraints_in_scope());
+
             assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
             assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
             assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
             assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
             assert!(Circuit::is_satisfied(), "{} (is_satisfied)", case);
         });
-    }
-
-    #[rustfmt::skip]
-    fn check_unsigned_halts<I: IntegerType + std::panic::UnwindSafe>(mode: Mode) {
-        let value: I = UniformRand::rand(&mut thread_rng());
-        let candidate = Integer::<Circuit, I>::new(mode, value);
-        let result = std::panic::catch_unwind(|| candidate.not());
-        assert!(result.is_err());
     }
 
     #[rustfmt::skip]
@@ -102,7 +99,7 @@ mod tests {
         // Check the 0 case.
         let name = format!("Not: {} zero", mode);
         let candidate = Integer::<Circuit, I>::new(mode, I::zero());
-        check_not::<I, Integer<Circuit, I>>(&name, I::zero(), candidate, num_constants, num_public, num_private, num_constraints);
+        check_not::<I, Integer<Circuit, I>>(&name, !I::zero(), candidate, num_constants, num_public, num_private, num_constraints);
 
         // Check the 1 case.
         let name = format!("Not: {} one", mode);
@@ -113,80 +110,80 @@ mod tests {
     #[test]
     fn test_u8_not() {
         type I = u8;
-        check_unsigned_halts::<I>(Mode::Constant);
-        check_unsigned_halts::<I>(Mode::Public);
-        check_unsigned_halts::<I>(Mode::Private);
+        run_test::<I>(Mode::Constant, 0, 0, 0, 0);
+        run_test::<I>(Mode::Public, 0, 0, 0, 0);
+        run_test::<I>(Mode::Private, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_i8_not() {
         type I = i8;
-        run_test::<I>(Mode::Constant, 16, 0, 0, 0);
-        run_test::<I>(Mode::Public, 9, 0, 15, 16);
-        run_test::<I>(Mode::Private, 9, 0, 15, 16);
+        run_test::<I>(Mode::Constant, 0, 0, 0, 0);
+        run_test::<I>(Mode::Public, 0, 0, 0, 0);
+        run_test::<I>(Mode::Private, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_u16_not() {
         type I = u16;
-        check_unsigned_halts::<I>(Mode::Constant);
-        check_unsigned_halts::<I>(Mode::Public);
-        check_unsigned_halts::<I>(Mode::Private);
+        run_test::<I>(Mode::Constant, 0, 0, 0, 0);
+        run_test::<I>(Mode::Public, 0, 0, 0, 0);
+        run_test::<I>(Mode::Private, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_i16_not() {
         type I = i16;
-        run_test::<I>(Mode::Constant, 32, 0, 0, 0);
-        run_test::<I>(Mode::Public, 17, 0, 31, 32);
-        run_test::<I>(Mode::Private, 17, 0, 31, 32);
+        run_test::<I>(Mode::Constant, 0, 0, 0, 0);
+        run_test::<I>(Mode::Public, 0, 0, 0, 0);
+        run_test::<I>(Mode::Private, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_u32_not() {
         type I = u32;
-        check_unsigned_halts::<I>(Mode::Constant);
-        check_unsigned_halts::<I>(Mode::Public);
-        check_unsigned_halts::<I>(Mode::Private);
+        run_test::<I>(Mode::Constant, 0, 0, 0, 0);
+        run_test::<I>(Mode::Public, 0, 0, 0, 0);
+        run_test::<I>(Mode::Private, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_i32_not() {
         type I = i32;
-        run_test::<I>(Mode::Constant, 64, 0, 0, 0);
-        run_test::<I>(Mode::Public, 33, 0, 63, 64);
-        run_test::<I>(Mode::Private, 33, 0, 63, 64);
+        run_test::<I>(Mode::Constant, 0, 0, 0, 0);
+        run_test::<I>(Mode::Public, 0, 0, 0, 0);
+        run_test::<I>(Mode::Private, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_u64_not() {
         type I = u64;
-        check_unsigned_halts::<I>(Mode::Constant);
-        check_unsigned_halts::<I>(Mode::Public);
-        check_unsigned_halts::<I>(Mode::Private);
+        run_test::<I>(Mode::Constant, 0, 0, 0, 0);
+        run_test::<I>(Mode::Public, 0, 0, 0, 0);
+        run_test::<I>(Mode::Private, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_i64_not() {
         type I = i64;
-        run_test::<I>(Mode::Constant, 128, 0, 0, 0);
-        run_test::<I>(Mode::Public, 65, 0, 127, 128);
-        run_test::<I>(Mode::Private, 65, 0, 127, 128);
+        run_test::<I>(Mode::Constant, 0, 0, 0, 0);
+        run_test::<I>(Mode::Public, 0, 0, 0, 0);
+        run_test::<I>(Mode::Private, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_u128_not() {
         type I = u128;
-        check_unsigned_halts::<I>(Mode::Constant);
-        check_unsigned_halts::<I>(Mode::Public);
-        check_unsigned_halts::<I>(Mode::Private);
+        run_test::<I>(Mode::Constant, 0, 0, 0, 0);
+        run_test::<I>(Mode::Public, 0, 0, 0, 0);
+        run_test::<I>(Mode::Private, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_i128_not() {
         type I = i128;
-        run_test::<I>(Mode::Constant, 256, 0, 0, 0);
-        run_test::<I>(Mode::Public, 129, 0, 255, 256);
-        run_test::<I>(Mode::Private, 129, 0, 255, 256);
+        run_test::<I>(Mode::Constant, 0, 0, 0, 0);
+        run_test::<I>(Mode::Public, 0, 0, 0, 0);
+        run_test::<I>(Mode::Private, 0, 0, 0, 0);
     }
 }
