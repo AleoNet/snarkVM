@@ -23,8 +23,8 @@ path = "benches/msm/variable_base.rs"
 harness = false
 
 [[bench]]
-name = "commitment-pedersen"
-path = "benches/commitment/pedersen.rs"
+name = "commitment-bhp"
+path = "benches/commitment/bhp.rs"
 harness = false
 
 [[bench]]
