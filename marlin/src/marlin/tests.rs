@@ -71,14 +71,11 @@ mod marlin {
         marlin::{MarlinHidingMode, MarlinNonHidingMode, MarlinSNARK},
     };
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
-    use snarkvm_polycommit::{marlin_pc::MarlinKZG10, sonic_pc::SonicKZG10};
+    use snarkvm_polycommit::sonic_pc::SonicKZG10;
     use snarkvm_utilities::rand::{test_rng, UniformRand};
 
     use blake2::Blake2s256;
     use core::ops::MulAssign;
-
-    type MultiPC = MarlinKZG10<Bls12_377>;
-    type MarlinInst = MarlinSNARK<Fr, Fq, MultiPC, FiatShamirChaChaRng<Fr, Fq, Blake2s256>, MarlinHidingMode, Vec<Fr>>;
 
     type MultiPCSonic = SonicKZG10<Bls12_377>;
     type MarlinSonicInst =
@@ -175,7 +172,6 @@ mod marlin {
         };
     }
 
-    impl_marlin_test!(MarlinPCTest, MarlinInst, MarlinHidingMode);
     impl_marlin_test!(SonicPCTest, MarlinSonicInst, MarlinHidingMode);
     impl_marlin_test!(SonicPCPoswTest, MarlinSonicPoswInst, MarlinNonHidingMode);
 
@@ -184,15 +180,12 @@ mod marlin {
         let num_constraints = 100;
         let num_variables = 25;
 
-        MarlinPCTest::test_circuit(num_constraints, num_variables);
         SonicPCTest::test_circuit(num_constraints, num_variables);
         SonicPCPoswTest::test_circuit(num_constraints, num_variables);
 
-        MarlinPCTest::test_serde_json(num_constraints, num_variables);
         SonicPCTest::test_serde_json(num_constraints, num_variables);
         SonicPCPoswTest::test_serde_json(num_constraints, num_variables);
 
-        MarlinPCTest::test_bincode(num_constraints, num_variables);
         SonicPCTest::test_bincode(num_constraints, num_variables);
         SonicPCPoswTest::test_bincode(num_constraints, num_variables);
     }
@@ -202,15 +195,12 @@ mod marlin {
         let num_constraints = 26;
         let num_variables = 25;
 
-        MarlinPCTest::test_circuit(num_constraints, num_variables);
         SonicPCTest::test_circuit(num_constraints, num_variables);
         SonicPCPoswTest::test_circuit(num_constraints, num_variables);
 
-        MarlinPCTest::test_serde_json(num_constraints, num_variables);
         SonicPCTest::test_serde_json(num_constraints, num_variables);
         SonicPCPoswTest::test_serde_json(num_constraints, num_variables);
 
-        MarlinPCTest::test_bincode(num_constraints, num_variables);
         SonicPCTest::test_bincode(num_constraints, num_variables);
         SonicPCPoswTest::test_bincode(num_constraints, num_variables);
     }
@@ -220,15 +210,12 @@ mod marlin {
         let num_constraints = 25;
         let num_variables = 100;
 
-        MarlinPCTest::test_circuit(num_constraints, num_variables);
         SonicPCTest::test_circuit(num_constraints, num_variables);
         SonicPCPoswTest::test_circuit(num_constraints, num_variables);
 
-        MarlinPCTest::test_serde_json(num_constraints, num_variables);
         SonicPCTest::test_serde_json(num_constraints, num_variables);
         SonicPCPoswTest::test_serde_json(num_constraints, num_variables);
 
-        MarlinPCTest::test_bincode(num_constraints, num_variables);
         SonicPCTest::test_bincode(num_constraints, num_variables);
         SonicPCPoswTest::test_bincode(num_constraints, num_variables);
     }
@@ -238,15 +225,12 @@ mod marlin {
         let num_constraints = 25;
         let num_variables = 26;
 
-        MarlinPCTest::test_circuit(num_constraints, num_variables);
         SonicPCTest::test_circuit(num_constraints, num_variables);
         SonicPCPoswTest::test_circuit(num_constraints, num_variables);
 
-        MarlinPCTest::test_serde_json(num_constraints, num_variables);
         SonicPCTest::test_serde_json(num_constraints, num_variables);
         SonicPCPoswTest::test_serde_json(num_constraints, num_variables);
 
-        MarlinPCTest::test_bincode(num_constraints, num_variables);
         SonicPCTest::test_bincode(num_constraints, num_variables);
         SonicPCPoswTest::test_bincode(num_constraints, num_variables);
     }
@@ -256,15 +240,12 @@ mod marlin {
         let num_constraints = 25;
         let num_variables = 25;
 
-        MarlinPCTest::test_circuit(num_constraints, num_variables);
         SonicPCTest::test_circuit(num_constraints, num_variables);
         SonicPCPoswTest::test_circuit(num_constraints, num_variables);
 
-        MarlinPCTest::test_serde_json(num_constraints, num_variables);
         SonicPCTest::test_serde_json(num_constraints, num_variables);
         SonicPCPoswTest::test_serde_json(num_constraints, num_variables);
 
-        MarlinPCTest::test_bincode(num_constraints, num_variables);
         SonicPCTest::test_bincode(num_constraints, num_variables);
         SonicPCPoswTest::test_bincode(num_constraints, num_variables);
     }

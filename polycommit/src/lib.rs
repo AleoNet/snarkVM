@@ -89,14 +89,6 @@ macro_rules! eprintln {
 /// [kzg]: http://cacr.uwaterloo.ca/techreports/2010/cacr2010-10.pdf
 pub mod kzg10;
 
-/// Polynomial commitment scheme from [[KZG10]][kzg] that enforces
-/// strict degree bounds and (optionally) enables hiding commitments by
-/// following the approach outlined in [[CHMMVW20, "Marlin"]][marlin].
-///
-/// [kzg]: http://cacr.uwaterloo.ca/techreports/2010/cacr2010-10.pdf
-/// [marlin]: https://eprint.iacr.org/2019/1047
-pub mod marlin_pc;
-
 /// Polynomial commitment scheme based on the construction in [[KZG10]][kzg],
 /// modified to obtain batching and to enforce strict
 /// degree bounds by following the approach outlined in [[MBKM19,

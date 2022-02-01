@@ -22,13 +22,10 @@
 //! This construction achieves extractability in the algebraic group model (AGM).
 
 use crate::{BTreeMap, Error, LabeledPolynomial, PCRandomness, Polynomial, ToString, Vec};
-use snarkvm_algorithms::{
-    cfg_iter,
-    msm::{FixedBaseMSM, VariableBaseMSM},
-};
+use snarkvm_algorithms::msm::{FixedBaseMSM, VariableBaseMSM};
 use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{Field, One, PrimeField, Zero};
-use snarkvm_utilities::rand::UniformRand;
+use snarkvm_utilities::{cfg_iter, rand::UniformRand};
 
 use core::{
     marker::PhantomData,
