@@ -16,7 +16,20 @@
 
 use super::*;
 
+// TODO (@pranav) Documentation.
 impl<E: Environment, I: IntegerType> Integer<E, I> {
+    pub(crate) fn add_bits_in_field(this_bits_le: &[Boolean<E>], that_bits_le: &[Boolean<E>]) -> Vec<Boolean<E>> {
+        // Instead of adding the bits of `self` and `other` directly, the integers are
+        // converted into a field elements, and summed, before being converted back to integers.
+        // Note: This is safe as the field is larger than the maximum integer type supported.
+        let this = BaseField::from_bits_le(Mode::Private, &this_bits_le);
+        let that = BaseField::from_bits_le(Mode::Private, &that_bits_le);
+        let sum = this + that;
+
+        // Extract the integer bits from the field element, with a carry bit.
+        sum.to_lower_bits_le(I::BITS + 1)
+    }
+
     pub(crate) fn multiply_bits_in_field(this_bits_le: &[Boolean<E>], that_bits_le: &[Boolean<E>]) -> Vec<Boolean<E>> {
         if 2 * I::BITS < E::BaseField::size_in_bits() - 1 {
             // Instead of multiplying the bits of `self` and `other` directly, the integers are
@@ -58,5 +71,17 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
             //   be handled by the code above.
             todo!()
         }
+    }
+
+    pub(crate) fn subtract_bits_in_field(this_bits_le: &[Boolean<E>], that_bits_le: &[Boolean<E>]) -> Vec<Boolean<E>> {
+        // Instead of subtracting the bits of `self` and `other` directly, the integers are
+        // converted into a field elements, and subtracted, before being converted back to integers.
+        // Note: This is safe as the field is larger than the maximum integer type supported.
+        let this = BaseField::from_bits_le(Mode::Private, &this_bits_le);
+        let that = BaseField::from_bits_le(Mode::Private, &that_bits_le.iter().map(|b| !b).collect::<Vec<_>>());
+        let difference = this + &that + BaseField::one();
+
+        // Extract the integer bits from the field element, with a carry bit.
+        difference.to_lower_bits_le(I::BITS + 1)
     }
 }

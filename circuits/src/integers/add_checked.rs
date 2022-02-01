@@ -29,15 +29,8 @@ impl<E: Environment, I: IntegerType> AddChecked<Self> for Integer<E, I> {
                 None => E::halt("Integer overflow on addition of two constants"),
             }
         } else {
-            // Instead of adding the bits of `self` and `other` directly, the integers are
-            // converted into a field elements, and summed, before being converted back to integers.
-            // Note: This is safe as the field is larger than the maximum integer type supported.
-            let this = BaseField::from_bits_le(Mode::Private, &self.bits_le);
-            let that = BaseField::from_bits_le(Mode::Private, &other.bits_le);
-            let sum = this + that;
+            let integer_bits = Self::add_bits_in_field(&self.bits_le, &other.bits_le);
 
-            // Extract the integer bits from the field element, with a carry bit.
-            let integer_bits = sum.to_lower_bits_le(I::BITS + 1);
             let (carry, bits_le) = match integer_bits.split_last() {
                 Some((carry, bits_le)) => (carry, bits_le),
                 None => E::halt("Malformed sum detected during integer addition"),
