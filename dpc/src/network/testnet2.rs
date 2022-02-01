@@ -27,7 +27,7 @@ use crate::{
     Program,
     ProgramPublicVariables,
 };
-use blake2::Blake2s;
+use blake2::Blake2s256;
 use snarkvm_algorithms::{
     crh::{PedersenCompressedCRH, PoseidonCRH, BHPCRH},
     encryption::ECIESPoseidonEncryption,
@@ -155,7 +155,7 @@ impl Network for Testnet2 {
     type ProgramVerifyingKey = <Self::ProgramSNARK as SNARK>::VerifyingKey;
     type ProgramProof = AleoObject<<Self::ProgramSNARK as SNARK>::Proof, { Self::PROGRAM_PROOF_PREFIX }, { Self::PROGRAM_PROOF_SIZE_IN_BYTES }>;
 
-    type PoSWSNARK = MarlinSNARK<Self::InnerScalarField, Self::OuterScalarField, SonicKZG10<Self::InnerCurve>, FiatShamirChaChaRng<Self::InnerScalarField, Self::OuterScalarField, Blake2s>, MarlinPoswMode, Vec<Self::InnerScalarField>>;
+    type PoSWSNARK = MarlinSNARK<Self::InnerScalarField, Self::OuterScalarField, SonicKZG10<Self::InnerCurve>, FiatShamirChaChaRng<Self::InnerScalarField, Self::OuterScalarField, Blake2s256>, MarlinPoswMode, Vec<Self::InnerScalarField>>;
     type PoSWProof = AleoObject<<Self::PoSWSNARK as SNARK>::Proof, { Self::HEADER_PROOF_PREFIX }, { Self::HEADER_PROOF_SIZE_IN_BYTES }>;
     type PoSW = PoSW<Self>;
 
