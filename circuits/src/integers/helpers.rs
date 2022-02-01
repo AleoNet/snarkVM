@@ -15,6 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use crate::Zero;
+use itertools::rev;
 
 // TODO (@pranav) Documentation.
 impl<E: Environment, I: IntegerType> Integer<E, I> {
@@ -34,12 +36,38 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
         // Instead of dividing the bits of `self` and `other` directly, the integers are
         // converted into a field elements, and divided, before being converted back to integers.
         // Note: This is safe as the field is larger than the maximum integer type supported.
-        let this = BaseField::from_bits_le(Mode::Private, &this_bits_le);
-        let that = BaseField::from_bits_le(Mode::Private, &that_bits_le);
-        let quotient = this / that;
+        let divisor = BaseField::from_bits_le(Mode::Private, &that_bits_le);
+        // Enforce that the divisor is not zero.
+        E::assert_eq(divisor.is_eq(&BaseField::zero()), E::zero());
 
-        // Extract the integer bits from the field element, with a carry bit.
-        quotient.to_lower_bits_le(I::BITS + 1)
+        let max = BaseField::from_bits_le(Mode::Constant, &vec![Boolean::new(Mode::Constant, true); I::BITS]);
+        let true_bit = Boolean::new(Mode::Constant, true);
+        let false_bit = Boolean::new(Mode::Constant, false);
+
+        let mut quotient_bits = Vec::with_capacity(I::BITS);
+        let mut remainder = BaseField::<E>::zero();
+
+        for (i, bit) in this_bits_le.iter().enumerate().rev() {
+            remainder = remainder.double();
+            remainder = remainder + BaseField::from(bit);
+
+            // Check that remainder is greater than or equal to divisor, via an unsigned overflow check.
+            //   - difference := I:MAX + (b - a).
+            //   - If difference > I::MAX, then b > a.
+            //   - If difference <= I::MAX, then a >= b.
+            //   - Note that difference > I::MAX if carry_bit is set.
+            let difference = &max + (&divisor - &remainder);
+            let bits = difference.to_lower_bits_le(I::BITS + 1);
+            // This is safe since we extract at least one bit from the difference.
+            let remainder_is_gte_divisor = !(bits.last().unwrap());
+
+            remainder = BaseField::ternary(&remainder_is_gte_divisor, &(&remainder - &divisor), &remainder);
+            quotient_bits.push(Boolean::ternary(&remainder_is_gte_divisor, &true_bit, &false_bit));
+        }
+
+        // Reverse and return the quotient bits.
+        quotient_bits.reverse();
+        quotient_bits
     }
 
     pub(crate) fn multiply_bits_in_field(
