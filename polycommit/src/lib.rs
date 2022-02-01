@@ -69,10 +69,6 @@ use std::{
 pub mod data_structures;
 pub use data_structures::*;
 
-/// R1CS constraints for polynomial constraints.
-mod constraints;
-pub use constraints::*;
-
 /// Errors pertaining to query sets.
 pub mod error;
 pub use error::*;
