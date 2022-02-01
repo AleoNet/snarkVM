@@ -74,6 +74,7 @@ pub trait IntegerTrait<I: IntegerType>:
     + MulChecked<Output = Self>
     + MulWrapped<Output = Self>
     + Neg<Output = Self>
+    + Not<Output = Self>
     + One
     + SubAssign
     + Sub<Output = Self>
