@@ -26,6 +26,7 @@ pub mod mul;
 pub mod mul_checked;
 pub mod mul_wrapped;
 pub mod neg;
+pub mod not;
 pub mod one;
 pub mod sub;
 pub mod sub_checked;
@@ -33,6 +34,8 @@ pub mod sub_wrapped;
 pub mod ternary;
 pub mod to_bits;
 pub mod zero;
+
+mod helpers;
 
 use crate::{
     boolean::Boolean,
@@ -44,10 +47,11 @@ use crate::{
     Mode,
 };
 
+use snarkvm_fields::PrimeField;
 use std::{
     fmt,
     marker::PhantomData,
-    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
+    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Not, Sub, SubAssign},
 };
 
 pub type I8<E> = Integer<E, i8>;
