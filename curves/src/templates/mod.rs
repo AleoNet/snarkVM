@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 pub mod bls12;
-pub mod bw6;
 pub mod short_weierstrass_jacobian;
 pub mod to_field_vec;
 pub mod twisted_edwards_extended;
