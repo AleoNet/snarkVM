@@ -14,12 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{ahp::prover::ProverMessage, Vec};
+use crate::{ahp::prover::ProverMessage, Read, Vec, Write};
 use snarkvm_fields::PrimeField;
 use snarkvm_polycommit::{BatchLCProof, PCCommitment, PolynomialCommitment};
 use snarkvm_utilities::{error, errors::SerializationError, serialize::*, FromBytes, ToBytes};
-
-use crate::{Read, Write};
 
 /// A zkSNARK proof.
 #[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]

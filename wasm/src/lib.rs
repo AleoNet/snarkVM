@@ -28,7 +28,7 @@ pub use snarkvm_algorithms::{
 };
 
 #[cfg(feature = "curves")]
-pub use snarkvm_curves::{bls12_377::*, bw6_761::*, edwards_bls12::*, edwards_bw6::*};
+pub use snarkvm_curves::{bls12_377::*, edwards_bls12::*, edwards_bw6::*};
 
 #[cfg(feature = "dpc")]
 pub use snarkvm_dpc::*;

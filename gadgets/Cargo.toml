@@ -56,20 +56,9 @@ version = "2"
 [dependencies.itertools]
 version = "0.10.3"
 
-[dependencies.num-bigint]
-version = "0.4.3"
-default-features = false
-optional = true
-
-[dependencies.num-integer]
-version = "0.1.44"
-default-features = false
-optional = true
-
 [dependencies.num-traits]
 version = "0.2"
 default-features = false
-optional = true
 
 [dependencies.thiserror]
 version = "1.0"
@@ -79,12 +68,6 @@ version = "0.10"
 
 [dev-dependencies.criterion]
 version = "0.3"
-
-[dev-dependencies.digest]
-version = "0.10"
-
-[dev-dependencies.paste]
-version = "1.0"
 
 [dev-dependencies.rand]
 version = "0.8"
@@ -106,7 +89,6 @@ default = [
   "snarkvm-r1cs/default",
   "snarkvm-utilities/default",
 ]
-full = [ "algorithms", "curves", "nonnative" ]
+full = [ "algorithms", "curves" ]
 algorithms = [ ]
 curves = [ ]
-nonnative = [ "num-bigint", "num-integer", "num-traits" ]

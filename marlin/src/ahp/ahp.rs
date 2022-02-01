@@ -24,8 +24,6 @@ use crate::{
 };
 use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_fields::{Field, PrimeField};
-use snarkvm_r1cs::errors::SynthesisError;
-
 use snarkvm_polycommit::{LCTerm, LabeledPolynomial, LinearCombination};
 
 use core::{borrow::Borrow, marker::PhantomData};
@@ -101,9 +99,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let padded_matrix_dim = matrices::padded_matrix_dim(num_variables, num_constraints);
         let zk_bound = 1;
         let constraint_domain_size = EvaluationDomain::<F>::compute_size_of_domain(padded_matrix_dim)
-            .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
-        let non_zero_domain_size = EvaluationDomain::<F>::compute_size_of_domain(num_non_zero)
-            .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+            .ok_or(AHPError::PolynomialDegreeTooLarge)?;
+        let non_zero_domain_size =
+            EvaluationDomain::<F>::compute_size_of_domain(num_non_zero).ok_or(AHPError::PolynomialDegreeTooLarge)?;
 
         Ok(*[
             2 * constraint_domain_size + zk_bound - 2,
@@ -167,7 +165,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         if !Self::formatted_public_input_is_admissible(&public_input) {
             return Err(AHPError::InvalidPublicInputLength);
         }
-        let input_domain = EvaluationDomain::new(public_input.len()).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        let input_domain = EvaluationDomain::new(public_input.len()).ok_or(AHPError::PolynomialDegreeTooLarge)?;
 
         let first_round_msg = state.first_round_message.unwrap();
         let alpha = first_round_msg.alpha;

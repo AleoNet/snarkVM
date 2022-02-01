@@ -29,6 +29,7 @@ use crate::{
 };
 use snarkvm_algorithms::{
     crh::{PedersenCompressedCRH, PoseidonCRH, BHPCRH},
+    crypto_hash::poseidon::PoseidonSponge,
     encryption::ECIESPoseidonEncryption,
     merkle_tree::{MaskedMerkleTreeParameters, MerklePath, MerkleTreeParameters},
     prelude::*,
@@ -55,7 +56,7 @@ use snarkvm_gadgets::{
     },
     curves::edwards_bls12::EdwardsBls12Gadget,
 };
-use snarkvm_marlin::{marlin::MarlinNonHidingMode, FiatShamirAlgebraicSpongeRng, MarlinSNARK, PoseidonSponge};
+use snarkvm_marlin::{marlin::MarlinNonHidingMode, FiatShamirAlgebraicSpongeRng, MarlinSNARK};
 use snarkvm_parameters::{testnet1::*, Genesis};
 use snarkvm_polycommit::sonic_pc::SonicKZG10;
 use snarkvm_utilities::{FromBytes, ToMinimalBits};

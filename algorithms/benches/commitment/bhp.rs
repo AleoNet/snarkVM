@@ -17,7 +17,7 @@
 #[macro_use]
 extern crate criterion;
 
-use snarkvm_algorithms::{commitment::pedersen::PedersenCommitment, traits::CommitmentScheme};
+use snarkvm_algorithms::{commitment::bhp::BHPCommitment, traits::CommitmentScheme};
 use snarkvm_curves::edwards_bls12::EdwardsProjective;
 use snarkvm_utilities::rand::UniformRand;
 
@@ -27,33 +27,31 @@ use rand::{
     {self},
 };
 
-const NUM_WINDOWS: usize = 8;
-const WINDOW_SIZE: usize = 256;
+const NUM_WINDOWS: usize = 16;
+const WINDOW_SIZE: usize = 32;
 
-fn pedersen_commitment_setup(c: &mut Criterion) {
-    c.bench_function("Pedersen Commitment Setup", move |b| {
+fn bhp_commitment_setup(c: &mut Criterion) {
+    c.bench_function("BHP Commitment Setup", move |b| {
         b.iter(|| {
-            <PedersenCommitment<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CommitmentScheme>::setup(
-                "pedersen_commitment_benchmark",
+            <BHPCommitment<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CommitmentScheme>::setup(
+                "bhp_commitment_benchmark",
             )
         })
     });
 }
 
-fn pedersen_commitment_evaluation(c: &mut Criterion) {
+fn bhp_commitment_evaluation(c: &mut Criterion) {
     let rng = &mut thread_rng();
-    let parameters = <PedersenCommitment<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CommitmentScheme>::setup(
-        "pedersen_commitment_benchmark",
+    let parameters = <BHPCommitment<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CommitmentScheme>::setup(
+        "bhp_commitment_benchmark",
     );
     let input = vec![127u8; 256];
 
-    c.bench_function("Pedersen Commitment Evaluation", move |b| {
+    c.bench_function("BHP Commitment Evaluation", move |b| {
         b.iter(|| {
             let randomness =
-                <PedersenCommitment<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CommitmentScheme>::Randomness::rand(
-                    rng,
-                );
-            <PedersenCommitment<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CommitmentScheme>::commit(
+                <BHPCommitment<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CommitmentScheme>::Randomness::rand(rng);
+            <BHPCommitment<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CommitmentScheme>::commit(
                 &parameters,
                 &input,
                 &randomness,
@@ -66,13 +64,13 @@ fn pedersen_commitment_evaluation(c: &mut Criterion) {
 criterion_group! {
     name = commitment_setup;
     config = Criterion::default().sample_size(50);
-    targets = pedersen_commitment_setup
+    targets = bhp_commitment_setup
 }
 
 criterion_group! {
     name = commitment_evaluation;
     config = Criterion::default().sample_size(50);
-    targets = pedersen_commitment_evaluation
+    targets = bhp_commitment_evaluation
 }
 
 criterion_main!(commitment_setup, commitment_evaluation);

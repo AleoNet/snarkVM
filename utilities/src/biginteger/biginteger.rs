@@ -31,13 +31,28 @@ use rand::{
 };
 use std::fmt::{Debug, Display};
 
-biginteger!(BigInteger64, 1);
-biginteger!(BigInteger128, 2);
 biginteger!(BigInteger256, 4);
-biginteger!(BigInteger320, 5);
 biginteger!(BigInteger384, 6);
-biginteger!(BigInteger768, 12);
-biginteger!(BigInteger832, 13);
+
+impl BigInteger256 {
+    pub fn from_u128(num: u128) -> Self {
+        // Takes a 256 bit buffer
+        let mut bytes = [0u8; 32];
+
+        num.write_le(bytes.as_mut()).unwrap();
+
+        Self::read_le(&bytes[..]).unwrap()
+    }
+
+    pub fn to_u128(&self) -> u128 {
+        let mut bytes = [0u8; 32];
+
+        self.write_le(bytes.as_mut()).unwrap();
+
+        // We cut off the last 128 bits here
+        u128::read_le(&bytes[..16]).unwrap()
+    }
+}
 
 /// TODO (howardwu): Update to use ToBits.
 /// This defines a `BigInteger`, a smart wrapper around a
@@ -141,25 +156,5 @@ pub mod arithmetic {
         *carry = (tmp >> 64) as u64;
 
         tmp as u64
-    }
-}
-
-impl BigInteger256 {
-    pub fn from_u128(num: u128) -> Self {
-        // Takes a 256 bit buffer
-        let mut bytes = [0u8; 32];
-
-        num.write_le(bytes.as_mut()).unwrap();
-
-        Self::read_le(&bytes[..]).unwrap()
-    }
-
-    pub fn to_u128(&self) -> u128 {
-        let mut bytes = [0u8; 32];
-
-        self.write_le(bytes.as_mut()).unwrap();
-
-        // We cut off the last 128 bits here
-        u128::read_le(&bytes[..16]).unwrap()
     }
 }

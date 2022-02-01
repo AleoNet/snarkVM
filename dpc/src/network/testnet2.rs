@@ -27,9 +27,9 @@ use crate::{
     Program,
     ProgramPublicVariables,
 };
-use blake2::Blake2s256;
 use snarkvm_algorithms::{
     crh::{PedersenCompressedCRH, PoseidonCRH, BHPCRH},
+    crypto_hash::poseidon::PoseidonSponge,
     encryption::ECIESPoseidonEncryption,
     merkle_tree::{MaskedMerkleTreeParameters, MerklePath, MerkleTreeParameters},
     prelude::*,
@@ -60,12 +60,12 @@ use snarkvm_marlin::{
     marlin::{MarlinHidingMode, MarlinNonHidingMode, MarlinSNARK},
     FiatShamirAlgebraicSpongeRng,
     FiatShamirChaChaRng,
-    PoseidonSponge,
 };
 use snarkvm_parameters::{testnet2::*, Genesis};
 use snarkvm_polycommit::sonic_pc::SonicKZG10;
 use snarkvm_utilities::{FromBytes, ToMinimalBits};
 
+use blake2::Blake2s256;
 use once_cell::sync::OnceCell;
 use rand::{CryptoRng, Rng};
 use serde::{Deserialize, Serialize};

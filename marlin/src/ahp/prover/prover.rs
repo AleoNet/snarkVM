@@ -32,12 +32,16 @@ use crate::{
     ToString,
     Vec,
 };
-use snarkvm_algorithms::fft::{EvaluationDomain, Evaluations as EvaluationsOnDomain, SparsePolynomial};
+use snarkvm_algorithms::fft::{
+    DensePolynomial,
+    EvaluationDomain,
+    Evaluations as EvaluationsOnDomain,
+    SparsePolynomial,
+};
 use snarkvm_fields::{batch_inversion, Field, PrimeField};
-use snarkvm_utilities::{cfg_into_iter, cfg_iter, cfg_iter_mut};
-
 use snarkvm_polycommit::{LabeledPolynomial, Polynomial};
 use snarkvm_r1cs::ConstraintSynthesizer;
+use snarkvm_utilities::{cfg_into_iter, cfg_iter, cfg_iter_mut};
 
 use rand_core::RngCore;
 
@@ -46,7 +50,6 @@ use snarkvm_utilities::println;
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
-use snarkvm_algorithms::fft::DensePolynomial;
 
 /// The first set of prover oracles.
 #[derive(Debug)]

@@ -14,13 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{fiat_shamir::FiatShamirError, Vec};
-use smallvec::SmallVec;
+use crate::{fiat_shamir::FiatShamirError, params::OptimizationType, Vec};
 use snarkvm_fields::{PrimeField, ToConstraintField};
-use snarkvm_gadgets::nonnative::params::OptimizationType;
 
 use core::fmt::Debug;
 use rand_core::RngCore;
+use smallvec::SmallVec;
 
 // TODO (raychu86): Remove unnecessary Result types
 

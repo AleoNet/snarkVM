@@ -15,9 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_fields::Field;
-use snarkvm_r1cs::errors::SynthesisError;
-
-use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem};
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 
 #[derive(Copy, Clone)]
 pub struct Circuit<F: Field> {
@@ -275,9 +273,10 @@ mod marlin {
 mod marlin_recursion {
     use super::*;
     use crate::{
-        fiat_shamir::{FiatShamirAlgebraicSpongeRng, PoseidonSponge},
+        fiat_shamir::FiatShamirAlgebraicSpongeRng,
         marlin::{CircuitVerifyingKey, MarlinHidingMode, MarlinSNARK},
     };
+    use snarkvm_algorithms::crypto_hash::poseidon::PoseidonSponge;
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
     use snarkvm_polycommit::sonic_pc::SonicKZG10;
     use snarkvm_utilities::{

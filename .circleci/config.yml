@@ -55,9 +55,6 @@ jobs:
           name: Build and run tests
           no_output_timeout: 60m
           command: cd .integration && RUST_MIN_STACK=67108864 cargo test testnet1
-      - persist_to_workspace:
-          root: ~/
-          paths: project/
       - clear_environment:
           cache_key: snarkvm-stable-testnet1-cache
 

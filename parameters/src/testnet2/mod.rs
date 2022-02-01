@@ -30,10 +30,6 @@ impl_local!(NoopVerifyingKeyBytes, "./resources/", "noop", "verifying");
 impl_remote!(InnerProvingKeyBytes, REMOTE_URL, "./resources/", "inner", "proving");
 impl_local!(InnerVerifyingKeyBytes, "./resources/", "inner", "verifying");
 
-// Outer Circuit
-impl_remote!(OuterProvingKeyBytes, REMOTE_URL, "./resources/", "outer", "proving");
-impl_local!(OuterVerifyingKeyBytes, "./resources/", "outer", "verifying");
-
 // PoSW Circuit
 impl_remote!(PoSWProvingKeyBytes, REMOTE_URL, "./resources/", "posw", "proving");
 impl_local!(PoSWVerifyingKeyBytes, "./resources/", "posw", "verifying");
