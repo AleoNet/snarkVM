@@ -76,16 +76,12 @@ version = "1.0.52"
 [dependencies.bincode]
 version = "1.3"
 
-[dependencies.blake2]
-version = "0.9"
-default-features = false
-
 [dependencies.derivative]
 version = "2"
 features = [ "use_core" ]
 
 [dependencies.digest]
-version = "0.9"
+version = "0.10"
 
 [dependencies.hashbrown]
 version = "0.12.0"
@@ -116,6 +112,10 @@ features = [ "derive" ]
 version = "1.8"
 default-features = false
 features = [ "const_generics", "const_new" ]
+
+[dev-dependencies.blake2]
+version = "0.10"
+default-features = false
 
 [dev-dependencies.criterion]
 version = "0.3.5"

@@ -29,9 +29,9 @@ use crate::{
 use snarkvm_algorithms::{traits::SNARK, SRS};
 use snarkvm_utilities::UniformRand;
 
-use chrono::Utc;
 use core::sync::atomic::AtomicBool;
 use rand::{CryptoRng, Rng};
+use time::OffsetDateTime;
 
 /// A Proof of Succinct Work miner and verifier.
 #[derive(Clone)]
@@ -101,7 +101,8 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
         loop {
             // Every 100 iterations, check that the miner is still within the allowed mining duration.
             if iteration % 100 == 0
-                && Utc::now().timestamp() >= block_template.block_timestamp() + MAXIMUM_MINING_DURATION
+                && OffsetDateTime::now_utc().unix_timestamp()
+                    >= block_template.block_timestamp() + MAXIMUM_MINING_DURATION
             {
                 return Err(PoSWError::Message("Failed mine block in the allowed mining duration".to_string()));
             }

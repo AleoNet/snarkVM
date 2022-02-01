@@ -73,7 +73,7 @@ version = "2"
 features = [ "use_core" ]
 
 [dependencies.digest]
-version = "0.9"
+version = "0.10"
 
 [dependencies.hashbrown]
 version = "0.12.0"
@@ -93,10 +93,6 @@ features = [ "std_rng" ]
 [dependencies.rayon]
 version = "1"
 optional = true
-
-[dev-dependencies.blake2]
-version = "0.9"
-default-features = false
 
 [dev-dependencies.snarkvm-marlin]
 path = "../marlin"

@@ -76,18 +76,18 @@ mod marlin {
     use snarkvm_polycommit::{marlin_pc::MarlinKZG10, sonic_pc::SonicKZG10};
     use snarkvm_utilities::rand::{test_rng, UniformRand};
 
-    use blake2::Blake2s;
+    use blake2::Blake2s256;
     use core::ops::MulAssign;
 
     type MultiPC = MarlinKZG10<Bls12_377>;
-    type MarlinInst = MarlinSNARK<Fr, Fq, MultiPC, FiatShamirChaChaRng<Fr, Fq, Blake2s>, MarlinHidingMode, Vec<Fr>>;
+    type MarlinInst = MarlinSNARK<Fr, Fq, MultiPC, FiatShamirChaChaRng<Fr, Fq, Blake2s256>, MarlinHidingMode, Vec<Fr>>;
 
     type MultiPCSonic = SonicKZG10<Bls12_377>;
     type MarlinSonicInst =
-        MarlinSNARK<Fr, Fq, MultiPCSonic, FiatShamirChaChaRng<Fr, Fq, Blake2s>, MarlinHidingMode, Vec<Fr>>;
+        MarlinSNARK<Fr, Fq, MultiPCSonic, FiatShamirChaChaRng<Fr, Fq, Blake2s256>, MarlinHidingMode, Vec<Fr>>;
 
     type MarlinSonicPoswInst =
-        MarlinSNARK<Fr, Fq, MultiPCSonic, FiatShamirChaChaRng<Fr, Fq, Blake2s>, MarlinNonHidingMode, Vec<Fr>>;
+        MarlinSNARK<Fr, Fq, MultiPCSonic, FiatShamirChaChaRng<Fr, Fq, Blake2s256>, MarlinNonHidingMode, Vec<Fr>>;
 
     macro_rules! impl_marlin_test {
         ($test_struct: ident, $marlin_inst: tt, $marlin_mode: tt) => {
