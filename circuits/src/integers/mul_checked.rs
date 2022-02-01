@@ -41,7 +41,7 @@ impl<E: Environment, I: IntegerType> MulChecked<Self> for Integer<E, I> {
                 let self_absolute_value = Self::ternary(self_msb, &(!self).add_wrapped(&Self::one()), self);
                 let other_absolute_value = Self::ternary(other_msb, &(!other).add_wrapped(&Self::one()), other);
                 let mut bits_le =
-                    Self::multiply_bits_in_field(&self_absolute_value.bits_le, &other_absolute_value.bits_le);
+                    Self::multiply_bits_in_field(&self_absolute_value.bits_le, &other_absolute_value.bits_le, true);
 
                 let bits_are_nonzero = |bits: &[Boolean<E>]| {
                     bits.into_iter().fold(Boolean::new(Mode::Constant, false), |bit, at_least_one_is_set| {
@@ -76,7 +76,7 @@ impl<E: Environment, I: IntegerType> MulChecked<Self> for Integer<E, I> {
                 // Return the product of `self` and `other` with the appropriate sign.
                 Self::ternary(operands_same_sign, &result, &(!&result).add_wrapped(&Self::one()))
             } else {
-                let mut bits_le = Self::multiply_bits_in_field(&self.bits_le, &other.bits_le);
+                let mut bits_le = Self::multiply_bits_in_field(&self.bits_le, &other.bits_le, true);
 
                 // For unsigned multiplication, check that the none of the carry bits are set.
                 let overflow = bits_le[I::BITS..]

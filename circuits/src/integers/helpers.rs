@@ -30,7 +30,11 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
         sum.to_lower_bits_le(I::BITS + 1)
     }
 
-    pub(crate) fn multiply_bits_in_field(this_bits_le: &[Boolean<E>], that_bits_le: &[Boolean<E>]) -> Vec<Boolean<E>> {
+    pub(crate) fn multiply_bits_in_field(
+        this_bits_le: &[Boolean<E>],
+        that_bits_le: &[Boolean<E>],
+        extract_upper_bits: bool,
+    ) -> Vec<Boolean<E>> {
         if 2 * I::BITS < E::BaseField::size_in_bits() - 1 {
             // Instead of multiplying the bits of `self` and `other` directly, the integers are
             // converted into a field elements, and multiplied, before being converted back to integers.
@@ -54,7 +58,6 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
 
             let z_0 = &x_0 * &y_0;
             let z_1 = (&x_1 * &y_0) + (&x_0 * &y_1);
-            let z_2 = &x_1 * &y_1;
 
             let mut b_m_bits = vec![Boolean::new(Mode::Constant, false); I::BITS / 2];
             b_m_bits.push(Boolean::new(Mode::Constant, true));
@@ -63,7 +66,12 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
             let z_0_plus_z_1 = &z_0 + (&z_1 * &b_m);
 
             let mut bits_le = z_0_plus_z_1.to_lower_bits_le(I::BITS + I::BITS / 2 + 1);
-            bits_le.append(&mut z_2.to_lower_bits_le(I::BITS));
+
+            // Only `mul_checked` requires these bits to perform overflow/underflow checks.
+            if extract_upper_bits {
+                let z_2 = &x_1 * &y_1;
+                bits_le.append(&mut z_2.to_lower_bits_le(I::BITS));
+            }
 
             bits_le
         } else {
