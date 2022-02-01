@@ -59,9 +59,9 @@ impl<E: Environment, I: IntegerType> MulChecked<Self> for Integer<E, I> {
                 let positive_product_overflows = operands_same_sign.and(&product_msb);
 
                 // If the product should be negative, then it cannot exceed the absolute value of the signed minimum.
-                let lower_product_bits_nonzero = &bits_are_nonzero(&bits_le[..I::BITS - 1]);
+                let lower_product_bits_nonzero = &bits_are_nonzero(&bits_le[..(I::BITS - 1)]);
                 let negative_product_lt_or_eq_signed_min =
-                    &!product_msb.or(&product_msb.and(&!lower_product_bits_nonzero));
+                    (!product_msb).or(&product_msb.and(&!lower_product_bits_nonzero));
                 let negative_product_underflows = (!operands_same_sign).and(&!negative_product_lt_or_eq_signed_min);
 
                 let overflow = carry_bits_nonzero.or(&positive_product_overflows).or(&negative_product_underflows);
@@ -128,17 +128,13 @@ mod tests {
                 case
             );
 
-            print!("Constants: {:?}, ", Circuit::num_constants_in_scope());
-            print!("Public: {:?}, ", Circuit::num_public_in_scope());
-            print!("Private: {:?}, ", Circuit::num_private_in_scope());
-            print!("Constraints: {:?}\n", Circuit::num_constraints_in_scope());
-
             assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
             assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
             assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
             assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
             assert!(Circuit::is_satisfied(), "{} (is_satisfied)", case);
         });
+        Circuit::reset()
     }
 
     #[rustfmt::skip]
@@ -172,8 +168,14 @@ mod tests {
             Circuit::scoped(&name, || {
                 let case = format!("({} * {})", a.eject_value(), b.eject_value());
                 let _candidate = a.mul_checked(&b);
+
+                assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
+                assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
+                assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
+                assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
                 assert!(!Circuit::is_satisfied(), "{} (!is_satisfied)", case);
             });
+            Circuit::reset()
         }
         {
             let name = format!("Mul: {} * {} overflows", value_b, value_a);
@@ -183,17 +185,13 @@ mod tests {
                 let case = format!("({} * {})", a.eject_value(), b.eject_value());
                 let _candidate = a.mul_checked(&b);
 
-                print!("Constants: {:?}, ", Circuit::num_constants_in_scope());
-                print!("Public: {:?}, ", Circuit::num_public_in_scope());
-                print!("Private: {:?}, ", Circuit::num_private_in_scope());
-                print!("Constraints: {:?}\n", Circuit::num_constraints_in_scope());
-
                 assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
                 assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
                 assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
                 assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
                 assert!(!Circuit::is_satisfied(), "{} (!is_satisfied)", case);
             });
+            Circuit::reset();
         }
     }
 
@@ -225,28 +223,40 @@ mod tests {
                 Some(expected) => check_mul_checked::<I, Integer<Circuit, I>>(&name, expected, &a, &b, num_constants, num_public, num_private, num_constraints),
                 None => check_overflow(first, second),
             }
-
-            Circuit::reset()
         }
 
-        // TODO (@pranav) Check boundary conditions. i.e -1 * 128 for i8, etc.
-        // match I::is_signed() {
-        //     true => {
-        //         // Overflow
-        //         check_overflow(I::MAX, I::one());
-        //         check_overflow(I::one(), I::MAX);
-        //
-        //         // Underflow
-        //         check_overflow(I::MIN, I::zero() - I::one());
-        //         check_overflow(I::zero() - I::one(), I::MIN);
-        //
-        //     },
-        //     false => {
-        //         Overflow
-        //         check_overflow(I::MAX, I::one());
-        //         check_overflow(I::one(), I::MAX);
-        //     }
-        // }
+        let check_case = |expected: I, first: I, second: I| {
+            let name = format!("Mul: {} * {}", mode_a, mode_b);
+            let a = Integer::<Circuit, I>::new(mode_a, first);
+            let b = Integer::new(mode_b, second);
+            check_mul_checked::<I, Integer<Circuit, I>>(&name, expected, &a, &b, num_constants, num_public, num_private, num_constraints)
+        };
+
+        // Check specific cases common to signed and unsigned integers.
+        check_case(I::MAX, I::one(), I::MAX);
+        check_case(I::MAX, I::MAX, I::one());
+        check_case(I::MIN, I::one(), I::MIN);
+        check_case(I::MIN, I::MIN, I::one());
+        check_case(I::zero(), I::zero(), I::MAX);
+        check_case(I::zero(), I::MAX, I::zero());
+        check_case(I::zero(), I::zero(), I::MIN);
+        check_case(I::zero(), I::MIN, I::zero());
+        check_case(I::one(), I::one(), I::one());
+
+        // Check common overflow cases.
+        check_overflow(I::MAX, I::one() + I::one());
+        check_overflow(I::one() + I::one(), I::MAX);
+
+        // Check additional corner cases for signed integers.
+        if I::is_signed() {
+            check_case(I::MIN + I::one(), I::MAX, I::zero() - I::one());
+            check_case(I::MIN + I::one(), I::zero() - I::one(), I::MAX);
+
+            check_overflow(I::MIN, I::zero() - I::one());
+            check_overflow(I::zero() - I::one(), I::MIN);
+            check_overflow(I::MIN, I::zero() - I::one() - I::one());
+            check_overflow(I::zero() - I::one() - I::one(), I::MIN);
+        }
     }
 
     #[test]

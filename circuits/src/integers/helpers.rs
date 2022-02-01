@@ -30,6 +30,18 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
         sum.to_lower_bits_le(I::BITS + 1)
     }
 
+    pub(crate) fn divide_bits_in_field(this_bits_le: &[Boolean<E>], that_bits_le: &[Boolean<E>]) -> Vec<Boolean<E>> {
+        // Instead of dividing the bits of `self` and `other` directly, the integers are
+        // converted into a field elements, and divided, before being converted back to integers.
+        // Note: This is safe as the field is larger than the maximum integer type supported.
+        let this = BaseField::from_bits_le(Mode::Private, &this_bits_le);
+        let that = BaseField::from_bits_le(Mode::Private, &that_bits_le);
+        let quotient = this / that;
+
+        // Extract the integer bits from the field element, with a carry bit.
+        quotient.to_lower_bits_le(I::BITS + 1)
+    }
+
     pub(crate) fn multiply_bits_in_field(
         this_bits_le: &[Boolean<E>],
         that_bits_le: &[Boolean<E>],

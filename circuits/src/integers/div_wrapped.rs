@@ -29,7 +29,13 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
                 _ => Integer::new(Mode::Constant, self.eject_value().wrapping_div(&other.eject_value())),
             }
         } else {
-            todo!()
+            let mut bits_le = Self::divide_bits_in_field(&self.bits_le, &other.bits_le);
+
+            // Remove carry bits.
+            bits_le.truncate(I::BITS);
+
+            // Return the product of `self` and `other`.
+            Integer { bits_le, phantom: Default::default() }
         }
     }
 }

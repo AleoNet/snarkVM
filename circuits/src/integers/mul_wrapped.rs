@@ -86,6 +86,7 @@ mod tests {
             assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
             assert!(Circuit::is_satisfied(), "{} (is_satisfied)", case);
         });
+        Circuit::reset();
     }
 
     fn check_overflow<I: IntegerType>(
@@ -126,19 +127,15 @@ mod tests {
             check_mul_wrapped::<I, Integer<Circuit, I>>(&name, expected, &a, &b, num_constants, num_public, num_private, num_constraints);
         }
 
-        //TODO (@pranav) Overflow checks
-        // match I::is_signed() {
-        //     true => {
-        //         check_overflow::<I>(I::MAX, I::one(), I::MIN, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
-        //         check_overflow::<I>(I::one(), I::MAX, I::MIN, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
-        //         check_overflow::<I>(I::MIN, I::zero() - I::one(), I::MAX, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
-        //         check_overflow::<I>(I::zero() - I::one(), I::MIN, I::MAX, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
-        //     },
-        //     false => {
-        //         check_overflow::<I>(I::MAX, I::one(), I::zero(), mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
-        //         check_overflow::<I>(I::one(), I::MAX, I::zero(), mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
-        //     }
-        // }
+        // Check common overflow cases.
+        check_overflow(I::MAX, I::one() + I::one(), I::MAX.wrapping_add(&I::MAX), mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+        check_overflow(I::one() + I::one(), I::MAX, I::MAX.wrapping_add(&I::MAX), mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+
+        // Check additional corner cases for signed integers.
+        if I::is_signed() {
+            check_overflow(I::MIN, I::zero() - I::one(), I::MIN, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+            check_overflow(I::zero() - I::one(), I::MIN, I::MIN, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+        }
     }
 
     #[test]

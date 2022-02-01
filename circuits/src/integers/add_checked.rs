@@ -106,6 +106,7 @@ mod tests {
             assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
             assert!(Circuit::is_satisfied(), "{} (is_satisfied)", case);
         });
+        Circuit::reset()
     }
 
     #[rustfmt::skip]
@@ -132,6 +133,7 @@ mod tests {
                 let _candidate = a.add_checked(&b);
                 assert!(!Circuit::is_satisfied(), "{} (!is_satisfied)", case);
             });
+            Circuit::reset()
         }
         {
             let name = format!("Add: {} + {} overflows", value_b, value_a);
@@ -142,6 +144,7 @@ mod tests {
                 let _candidate = a.add_checked(&b);
                 assert!(!Circuit::is_satisfied(), "{} (!is_satisfied)", case);
             });
+            Circuit::reset()
         }
     }
 
@@ -172,7 +175,7 @@ mod tests {
                 None => check_overflow(first, second),
             }
 
-            Circuit::reset()
+
         }
 
         match I::is_signed() {
