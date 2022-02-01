@@ -17,9 +17,9 @@
 use crate::prelude::*;
 
 use anyhow::{anyhow, Result};
-use chrono::Utc;
 use rand::{CryptoRng, Rng};
 use std::{collections::HashMap, sync::atomic::AtomicBool};
+use time::OffsetDateTime;
 
 #[derive(Clone, Debug)]
 pub struct Ledger<N: Network> {
@@ -154,7 +154,8 @@ impl<N: Network> Ledger<N> {
         let block_height = self.latest_block_height() + 1;
 
         // Ensure that the new timestamp is ahead of the previous timestamp.
-        let block_timestamp = std::cmp::max(Utc::now().timestamp(), self.latest_block_timestamp()?.saturating_add(1));
+        let block_timestamp =
+            std::cmp::max(OffsetDateTime::now_utc().unix_timestamp(), self.latest_block_timestamp()?.saturating_add(1));
 
         // Compute the block difficulty target.
         let difficulty_target =
