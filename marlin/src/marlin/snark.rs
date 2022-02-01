@@ -93,7 +93,7 @@ pub mod test {
     use super::*;
     use crate::{
         fiat_shamir::{FiatShamirAlgebraicSpongeRng, PoseidonSponge},
-        marlin::{MarlinRecursiveMode, MarlinSNARK},
+        marlin::{MarlinHidingMode, MarlinSNARK},
     };
     use snarkvm_algorithms::SRS;
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
@@ -141,7 +141,7 @@ pub mod test {
 
     type PC = SonicKZG10<Bls12_377>;
     type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
-    type TestSNARK = MarlinSNARK<Fr, Fq, PC, FS, MarlinRecursiveMode, Vec<Fr>>;
+    type TestSNARK = MarlinSNARK<Fr, Fq, PC, FS, MarlinHidingMode, Vec<Fr>>;
 
     #[test]
     fn marlin_snark_test() {

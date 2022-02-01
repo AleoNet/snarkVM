@@ -38,7 +38,6 @@ use snarkvm_algorithms::{
 };
 use snarkvm_curves::{
     bls12_377::Bls12_377,
-    bw6_761::BW6_761,
     edwards_bls12::{
         EdwardsAffine as EdwardsBls12Affine,
         EdwardsParameters,
@@ -54,9 +53,9 @@ use snarkvm_gadgets::{
         prf::PoseidonPRFGadget,
         signature::AleoSignatureSchemeGadget,
     },
-    curves::{edwards_bls12::EdwardsBls12Gadget, edwards_bw6::EdwardsBW6Gadget},
+    curves::edwards_bls12::EdwardsBls12Gadget,
 };
-use snarkvm_marlin::{marlin::MarlinPoswMode, FiatShamirAlgebraicSpongeRng, MarlinSNARK, PoseidonSponge};
+use snarkvm_marlin::{marlin::MarlinNonHidingMode, FiatShamirAlgebraicSpongeRng, MarlinSNARK, PoseidonSponge};
 use snarkvm_parameters::{testnet1::*, Genesis};
 use snarkvm_polycommit::sonic_pc::SonicKZG10;
 use snarkvm_utilities::{FromBytes, ToMinimalBits};
@@ -128,10 +127,7 @@ impl Network for Testnet1 {
 
     type InnerCurve = Bls12_377;
     type InnerScalarField = <Self::InnerCurve as PairingEngine>::Fr;
-    
-    type OuterCurve = BW6_761;
-    type OuterBaseField = <Self::OuterCurve as PairingEngine>::Fq;
-    type OuterScalarField = <Self::OuterCurve as PairingEngine>::Fr;
+    type InnerBaseField = <Self::InnerCurve as PairingEngine>::Fq;
 
     type ProgramAffineCurve = EdwardsBls12Affine;
     type ProgramAffineCurveGadget = EdwardsBls12Gadget;
@@ -148,7 +144,7 @@ impl Network for Testnet1 {
     type ProgramVerifyingKey = <Self::ProgramSNARK as SNARK>::VerifyingKey;
     type ProgramProof = AleoObject<<Self::ProgramSNARK as SNARK>::Proof, { Self::PROGRAM_PROOF_PREFIX }, { Self::PROGRAM_PROOF_SIZE_IN_BYTES }>;
 
-    type PoSWSNARK = MarlinSNARK<Self::InnerScalarField, Self::OuterScalarField, SonicKZG10<Self::InnerCurve>, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::OuterScalarField, PoseidonSponge<Self::OuterScalarField, 6, 1>>, MarlinPoswMode, Vec<Self::InnerScalarField>>;
+    type PoSWSNARK = MarlinSNARK<Self::InnerScalarField, Self::InnerBaseField, SonicKZG10<Self::InnerCurve>, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::InnerBaseField, PoseidonSponge<Self::InnerBaseField, 6, 1>>, MarlinNonHidingMode, Vec<Self::InnerScalarField>>;
     type PoSWProof = AleoObject<<Self::PoSWSNARK as SNARK>::Proof, { Self::HEADER_PROOF_PREFIX }, { Self::HEADER_PROOF_SIZE_IN_BYTES }>;
     type PoSW = PoSW<Self>;
 
@@ -176,8 +172,8 @@ impl Network for Testnet1 {
     type CommitmentGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 41, 63>;
     type Commitment = AleoLocator<<Self::CommitmentScheme as CRH>::Output, { Self::COMMITMENT_PREFIX }>;
 
-    type FunctionIDCRH = PoseidonCRH<Self::OuterScalarField, 34>;
-    type FunctionIDCRHGadget = PoseidonCRHGadget<Self::OuterScalarField, 34>;
+    type FunctionIDCRH = PoseidonCRH<Self::InnerBaseField, 34>;
+    type FunctionIDCRHGadget = PoseidonCRHGadget<Self::InnerBaseField, 34>;
     type FunctionID = AleoLocator<<Self::FunctionIDCRH as CRH>::Output, { Self::FUNCTION_ID_PREFIX }>;
 
     type FunctionInputsCRH = PoseidonCRH<Self::InnerScalarField, 128>;
@@ -185,7 +181,6 @@ impl Network for Testnet1 {
     type FunctionInputsHash = AleoLocator<<Self::FunctionInputsCRH as CRH>::Output, { Self::FUNCTION_INPUTS_HASH_PREFIX }>;
 
     type InnerCircuitIDCRH = BHPCRH<EdwardsBW6, 85, 63>;
-    type InnerCircuitIDCRHGadget = BHPCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 85, 63>;
     type InnerCircuitID = AleoLocator<<Self::InnerCircuitIDCRH as CRH>::Output, { Self::INNER_CIRCUIT_ID_PREFIX }>;
 
     type LedgerRootCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
@@ -198,7 +193,6 @@ impl Network for Testnet1 {
     type PoSWNonce = AleoLocator<Self::InnerScalarField, { Self::HEADER_NONCE_PREFIX }>;
 
     type ProgramIDCRH = BHPCRH<EdwardsBW6, 16, 48>;
-    type ProgramIDCRHGadget = BHPCRHGadget<EdwardsBW6, Self::OuterScalarField, EdwardsBW6Gadget, 16, 48>;
     type ProgramIDParameters = MerkleTreeParameters<Self::ProgramIDCRH, { Self::PROGRAM_TREE_DEPTH }>;
     type ProgramID = AleoLocator<<Self::ProgramIDCRH as CRH>::Output, { Self::PROGRAM_ID_PREFIX }>;
 

@@ -70,7 +70,7 @@ mod marlin {
     use super::*;
     use crate::{
         fiat_shamir::FiatShamirChaChaRng,
-        marlin::{MarlinPoswMode, MarlinSNARK, MarlinTestnet1Mode},
+        marlin::{MarlinHidingMode, MarlinNonHidingMode, MarlinSNARK},
     };
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
     use snarkvm_polycommit::{marlin_pc::MarlinKZG10, sonic_pc::SonicKZG10};
@@ -80,15 +80,14 @@ mod marlin {
     use core::ops::MulAssign;
 
     type MultiPC = MarlinKZG10<Bls12_377>;
-    type MarlinInst =
-        MarlinSNARK<Fr, Fq, MultiPC, FiatShamirChaChaRng<Fr, Fq, Blake2s256>, MarlinTestnet1Mode, Vec<Fr>>;
+    type MarlinInst = MarlinSNARK<Fr, Fq, MultiPC, FiatShamirChaChaRng<Fr, Fq, Blake2s256>, MarlinHidingMode, Vec<Fr>>;
 
     type MultiPCSonic = SonicKZG10<Bls12_377>;
     type MarlinSonicInst =
-        MarlinSNARK<Fr, Fq, MultiPCSonic, FiatShamirChaChaRng<Fr, Fq, Blake2s256>, MarlinTestnet1Mode, Vec<Fr>>;
+        MarlinSNARK<Fr, Fq, MultiPCSonic, FiatShamirChaChaRng<Fr, Fq, Blake2s256>, MarlinHidingMode, Vec<Fr>>;
 
     type MarlinSonicPoswInst =
-        MarlinSNARK<Fr, Fq, MultiPCSonic, FiatShamirChaChaRng<Fr, Fq, Blake2s256>, MarlinPoswMode, Vec<Fr>>;
+        MarlinSNARK<Fr, Fq, MultiPCSonic, FiatShamirChaChaRng<Fr, Fq, Blake2s256>, MarlinNonHidingMode, Vec<Fr>>;
 
     macro_rules! impl_marlin_test {
         ($test_struct: ident, $marlin_inst: tt, $marlin_mode: tt) => {
@@ -178,9 +177,9 @@ mod marlin {
         };
     }
 
-    impl_marlin_test!(MarlinPCTest, MarlinInst, MarlinTestnet1Mode);
-    impl_marlin_test!(SonicPCTest, MarlinSonicInst, MarlinTestnet1Mode);
-    impl_marlin_test!(SonicPCPoswTest, MarlinSonicPoswInst, MarlinPoswMode);
+    impl_marlin_test!(MarlinPCTest, MarlinInst, MarlinHidingMode);
+    impl_marlin_test!(SonicPCTest, MarlinSonicInst, MarlinHidingMode);
+    impl_marlin_test!(SonicPCPoswTest, MarlinSonicPoswInst, MarlinNonHidingMode);
 
     #[test]
     fn prove_and_verify_with_tall_matrix_big() {
@@ -277,7 +276,7 @@ mod marlin_recursion {
     use super::*;
     use crate::{
         fiat_shamir::{FiatShamirAlgebraicSpongeRng, PoseidonSponge},
-        marlin::{CircuitVerifyingKey, MarlinRecursiveMode, MarlinSNARK},
+        marlin::{CircuitVerifyingKey, MarlinHidingMode, MarlinSNARK},
     };
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
     use snarkvm_polycommit::sonic_pc::SonicKZG10;
@@ -296,14 +295,14 @@ mod marlin_recursion {
         Fq,
         MultiPC,
         FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>,
-        MarlinRecursiveMode,
+        MarlinHidingMode,
         Vec<Fr>,
     >;
 
     fn test_circuit(num_constraints: usize, num_variables: usize) {
         let rng = &mut test_rng();
 
-        let max_degree = crate::ahp::AHPForR1CS::<Fr, MarlinRecursiveMode>::max_degree(100, 25, 300).unwrap();
+        let max_degree = crate::ahp::AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 25, 300).unwrap();
         let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
 
         for _ in 0..100 {
@@ -332,7 +331,7 @@ mod marlin_recursion {
     fn test_serde_json(num_constraints: usize, num_variables: usize) {
         let rng = &mut test_rng();
 
-        let max_degree = crate::ahp::AHPForR1CS::<Fr, MarlinRecursiveMode>::max_degree(100, 25, 300).unwrap();
+        let max_degree = crate::ahp::AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 25, 300).unwrap();
         let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
 
         let circuit = Circuit { a: Some(Fr::rand(rng)), b: Some(Fr::rand(rng)), num_constraints, num_variables };
@@ -353,7 +352,7 @@ mod marlin_recursion {
     fn test_bincode(num_constraints: usize, num_variables: usize) {
         let rng = &mut test_rng();
 
-        let max_degree = crate::ahp::AHPForR1CS::<Fr, MarlinRecursiveMode>::max_degree(100, 25, 300).unwrap();
+        let max_degree = crate::ahp::AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 25, 300).unwrap();
         let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
 
         let circuit = Circuit { a: Some(Fr::rand(rng)), b: Some(Fr::rand(rng)), num_constraints, num_variables };

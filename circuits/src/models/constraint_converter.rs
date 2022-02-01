@@ -232,7 +232,7 @@ mod tests {
             use snarkvm_curves::bls12_377::{Bls12_377, Fq};
             use snarkvm_marlin::{
                 fiat_shamir::{FiatShamirAlgebraicSpongeRng, PoseidonSponge},
-                marlin::{MarlinRecursiveMode, MarlinSNARK},
+                marlin::{MarlinHidingMode, MarlinSNARK},
             };
             use snarkvm_polycommit::sonic_pc::SonicKZG10;
             use snarkvm_utilities::rand::test_rng;
@@ -243,14 +243,14 @@ mod tests {
                 Fq,
                 MultiPC,
                 FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>,
-                MarlinRecursiveMode,
+                MarlinHidingMode,
                 Vec<Fr>,
             >;
 
             let rng = &mut test_rng();
 
             let max_degree =
-                snarkvm_marlin::ahp::AHPForR1CS::<Fr, MarlinRecursiveMode>::max_degree(200, 200, 300).unwrap();
+                snarkvm_marlin::ahp::AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(200, 200, 300).unwrap();
             let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
 
             let (index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &*Circuit::cs().cs.borrow()).unwrap();
