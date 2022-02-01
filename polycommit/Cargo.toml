@@ -47,19 +47,8 @@ path = "../fields"
 version = "0.7.5"
 default-features = false
 
-[dependencies.snarkvm-gadgets]
-path = "../gadgets"
-version = "0.7.5"
-default-features = false
-features = [ "nonnative" ]
-
 [dependencies.snarkvm-profiler]
 path = "../profiler"
-version = "0.7.5"
-default-features = false
-
-[dependencies.snarkvm-r1cs]
-path = "../r1cs"
 version = "0.7.5"
 default-features = false
 
@@ -103,8 +92,6 @@ default = [
   "snarkvm-algorithms/default",
   "snarkvm-curves/default",
   "snarkvm-fields/default",
-  "snarkvm-gadgets/default",
-  "snarkvm-r1cs/default",
   "snarkvm-utilities/default"
 ]
 std = [ ]
