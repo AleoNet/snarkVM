@@ -30,6 +30,7 @@ pub mod one;
 pub mod sub;
 pub mod sub_checked;
 pub mod sub_wrapped;
+pub mod ternary;
 pub mod to_bits;
 pub mod zero;
 
@@ -88,15 +89,28 @@ impl<E: Environment, I: IntegerType> Eject for Integer<E, I> {
     ///
     fn eject_mode(&self) -> Mode {
         let mut integer_mode = Mode::Constant;
+
         for bit_mode in self.bits_le.iter().map(Eject::eject_mode) {
-            // Check if the mode in the current iteration matches the integer mode.
-            if integer_mode != bit_mode {
-                // If they do not match, the integer mode must be a constant.
-                // Otherwise, this is a malformed integer, and the program should halt.
-                match integer_mode == Mode::Constant {
-                    true => integer_mode = bit_mode,
-                    false => E::halt("Detected an integer with a malformed mode"),
+            // // Check if the mode in the current iteration matches the integer mode.
+            // if integer_mode != bit_mode {
+            //     // If they do not match, the integer mode must be a constant.
+            //     // Otherwise, this is a malformed integer, and the program should halt.
+            //     match integer_mode == Mode::Constant {
+            //         true => integer_mode = bit_mode,
+            //         false => E::halt("Detected an integer with a malformed mode"),
+            //     }
+            // }
+            // TODO (@pranav) verify that this logic is safe.
+            // The mode of an integer is determined by the following cases:
+            //   - If there exists a bit with Mode::Private, then the integer's mode is Mode::Private.
+            //   - If there exists no bits with Mode::Private and there exists one bit with Mode::Public,
+            //     then the integer's mode is Mode::Public.
+            //   - Otherwise, the integer's mode is Mode::Constant
+            match (integer_mode, bit_mode) {
+                (Mode::Constant, Mode::Public) | (Mode::Constant, Mode::Private) | (Mode::Public, Mode::Private) => {
+                    integer_mode = bit_mode
                 }
+                (_, _) => (), // Do nothing.
             }
         }
         integer_mode

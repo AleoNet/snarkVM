@@ -79,11 +79,11 @@ pub trait IntegerTrait<I: IntegerType>:
     + Sub<Output = Self>
     + SubChecked<Output = Self>
     + SubWrapped<Output = Self>
+    + Ternary
     + ToBits
     + Zero // + Div
 // + DivAssign
 // + Square
-// + Ternary
 {
     ///
     /// Initializes a new integer.
