@@ -22,14 +22,12 @@ use crate::{
         AHPForR1CS,
     },
     marlin::MarlinMode,
+    num_non_zero,
 };
 use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_fields::PrimeField;
-use snarkvm_r1cs::errors::SynthesisError;
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 
-use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem};
-
-use crate::num_non_zero;
 use core::marker::PhantomData;
 
 #[cfg(not(feature = "std"))]

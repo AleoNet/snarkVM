@@ -15,22 +15,18 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    fiat_shamir::{DefaultCapacityAlgebraicSponge, FiatShamirError, FiatShamirRng},
+    fiat_shamir::{FiatShamirError, FiatShamirRng},
+    overhead,
+    params::{get_params, OptimizationType},
     PhantomData,
     Vec,
 };
-use smallvec::SmallVec;
+use snarkvm_algorithms::traits::DefaultCapacityAlgebraicSponge;
 use snarkvm_fields::{FieldParameters, PrimeField, ToConstraintField};
-use snarkvm_gadgets::{
-    nonnative::{
-        params::{get_params, OptimizationType},
-        AllocatedNonNativeFieldVar,
-    },
-    overhead,
-};
-use snarkvm_utilities::{FromBits, ToBits};
+use snarkvm_utilities::{BigInteger, FromBits, ToBits};
 
 use rand_core::{Error, RngCore};
+use smallvec::SmallVec;
 
 /// An RNG from any algebraic sponge
 #[derive(Clone, Debug)]
@@ -229,13 +225,45 @@ impl<TargetField: PrimeField, BaseField: PrimeField, S: DefaultCapacityAlgebraic
         dest_limbs
     }
 
+    /// Convert a `TargetField` element into limbs (not constraints)
+    /// This is an internal function that would be reused by a number of other functions
+    pub fn get_limbs_representations(
+        elem: &TargetField,
+        optimization_type: OptimizationType,
+    ) -> Result<Vec<BaseField>, FiatShamirError> {
+        Self::get_limbs_representations_from_big_integer(&elem.to_repr(), optimization_type)
+    }
+
+    /// Obtain the limbs directly from a big int
+    pub fn get_limbs_representations_from_big_integer(
+        elem: &<TargetField as PrimeField>::BigInteger,
+        optimization_type: OptimizationType,
+    ) -> Result<Vec<BaseField>, FiatShamirError> {
+        let params = get_params(TargetField::size_in_bits(), BaseField::size_in_bits(), optimization_type);
+
+        // Push the lower limbs first
+        let mut limbs: Vec<BaseField> = Vec::new();
+        let mut cur = *elem;
+        for _ in 0..params.num_limbs {
+            let cur_bits = cur.to_bits_be(); // `to_bits` is big endian
+            let cur_mod_r =
+                <BaseField as PrimeField>::BigInteger::from_bits_be(&cur_bits[cur_bits.len() - params.bits_per_limb..]); // therefore, the lowest `bits_per_non_top_limb` bits is what we want.
+            limbs.push(BaseField::from_repr(cur_mod_r).unwrap());
+            cur.divn(params.bits_per_limb as u32);
+        }
+
+        // then we reserve, so that the limbs are ``big limb first''
+        limbs.reverse();
+
+        Ok(limbs)
+    }
+
     /// Push elements to sponge, treated in the non-native field representations.
     pub fn push_elements_to_sponge(sponge: &mut S, src: &[TargetField], ty: OptimizationType) {
         let mut src_limbs = Vec::<(BaseField, BaseField)>::new();
 
         for elem in src.iter() {
-            let limbs =
-                AllocatedNonNativeFieldVar::<TargetField, BaseField>::get_limbs_representations(elem, ty).unwrap();
+            let limbs = Self::get_limbs_representations(elem, ty).unwrap();
             for limb in limbs.iter() {
                 src_limbs.push((*limb, BaseField::one()));
                 // specifically set to one, since most gadgets in the constraint world would not have zero noise (due to the relatively weak normal form testing in `alloc`)

@@ -14,15 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{fiat_shamir::FiatShamirRng, FiatShamirError, PhantomData, Vec};
-use smallvec::SmallVec;
+use crate::{fiat_shamir::FiatShamirRng, params::OptimizationType, FiatShamirError, PhantomData, Vec};
 use snarkvm_fields::{PrimeField, ToConstraintField};
-use snarkvm_gadgets::nonnative::params::OptimizationType;
 
 use core::{fmt::Debug, num::NonZeroU32};
 use digest::Digest;
 use rand_chacha::ChaChaRng;
 use rand_core::{Error, RngCore, SeedableRng};
+use smallvec::SmallVec;
 
 /// Implements a Fiat-Shamir based Rng that allows one to incrementally update
 /// the seed based on new messages in the proof transcript.

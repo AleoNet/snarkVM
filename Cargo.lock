@@ -2106,7 +2106,6 @@ dependencies = [
  "snarkvm-algorithms",
  "snarkvm-curves",
  "snarkvm-fields",
- "snarkvm-gadgets",
  "snarkvm-polycommit",
  "snarkvm-profiler",
  "snarkvm-r1cs",
