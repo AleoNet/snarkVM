@@ -41,11 +41,6 @@ pub use fp_768::*;
 mod fp2;
 pub use fp2::*;
 
-mod fp3;
-pub use fp3::*;
-
-pub mod fp6_2over3;
-
 pub mod fp6_3over2;
 
 mod fp12_2over3over2;
