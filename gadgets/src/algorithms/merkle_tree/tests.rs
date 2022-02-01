@@ -16,7 +16,7 @@
 
 use std::sync::Arc;
 
-use blake2::{digest::Digest, Blake2s};
+use blake2::{digest::Digest, Blake2s256};
 use rand::{thread_rng, Rng};
 
 use snarkvm_algorithms::{
@@ -128,7 +128,7 @@ fn generate_masked_merkle_tree<P: MaskedMerkleParameters, F: PrimeField, HG: Mas
     let mut root_bytes = [0u8; 32];
     root.write_le(&mut root_bytes[..]).unwrap();
 
-    let mut h = Blake2s::new();
+    let mut h = Blake2s256::new();
     h.update(nonce.as_ref());
     h.update(&root_bytes);
     let mask = h.finalize().to_vec();

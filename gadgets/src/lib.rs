@@ -42,9 +42,6 @@ pub use fields::*;
 pub mod integers;
 pub use integers::*;
 
-#[cfg(feature = "nonnative")]
-pub mod nonnative;
-
 pub mod traits;
 pub use traits::*;
 

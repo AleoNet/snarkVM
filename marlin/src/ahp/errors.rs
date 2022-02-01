@@ -31,6 +31,8 @@ pub enum AHPError {
     MissingEval(String),
     /// Currently we only support square constraint matrices.
     NonSquareMatrix,
+    /// During synthesis, our polynomials ended up being too high of degree
+    PolynomialDegreeTooLarge,
 }
 
 impl From<crate::fiat_shamir::FiatShamirError> for AHPError {

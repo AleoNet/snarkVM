@@ -26,13 +26,6 @@ pub use fiat_shamir_algebraic_sponge::*;
 mod fiat_shamir_chacha;
 pub use fiat_shamir_chacha::*;
 
-/// Constraints for the Fiat-Shamir RNG.
-mod fiat_shamir_algebraic_sponge_gadget;
-pub use fiat_shamir_algebraic_sponge_gadget::*;
-
-pub use snarkvm_algorithms::crypto_hash::poseidon::*;
-pub use snarkvm_gadgets::algorithms::crypto_hash::poseidon::*;
-
 /// Traits for the Fiat-Shamir RNG.
 pub mod traits;
 pub use traits::*;

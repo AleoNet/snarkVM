@@ -26,7 +26,6 @@
 | snarkvm-dpc        | ![crates.io](https://img.shields.io/crates/v/snarkvm-dpc.svg?color=neon)      | :white_check_mark: | :white_check_mark: |
 | snarkvm-fields     | ![crates.io](https://img.shields.io/crates/v/snarkvm-fields.svg?color=neon)   | :white_check_mark: | :white_check_mark: |
 | snarkvm-gadgets    | ![crates.io](https://img.shields.io/crates/v/snarkvm-gadgets.svg?color=neon)  | :white_check_mark: | :white_check_mark: |
-| snarkvm-ledger     | ![crates.io](https://img.shields.io/crates/v/snarkvm-ledger.svg?color=neon)   | :white_check_mark: |   :construction:   |
 | snarkvm-marlin     | ![crates.io](https://img.shields.io/crates/v/snarkvm-marlin.svg?color=neon)   | :white_check_mark: |   :construction:   |
 | snarkvm-parameters |![crates.io](https://img.shields.io/crates/v/snarkvm-parameters.svg?color=neon)| :white_check_mark: | :white_check_mark: |
 | snarkvm-polycommit |![crates.io](https://img.shields.io/crates/v/snarkvm-polycommit.svg?color=neon)| :white_check_mark: |   :construction:   |

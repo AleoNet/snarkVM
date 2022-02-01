@@ -27,7 +27,10 @@ use std::{path::PathBuf, sync::Arc};
 #[track_caller]
 fn expect_file_with_name(name: impl ToString, val: impl std::fmt::Debug) {
     let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR").to_string());
-    path.push(".snapshot");
+    path.push("src");
+    path.push("crypto_hash");
+    path.push("resources");
+    path.push("poseidon");
     if !path.exists() {
         std::fs::create_dir_all(&path).expect("failed to create directory");
     }

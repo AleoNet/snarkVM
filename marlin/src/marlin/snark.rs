@@ -14,17 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use rand::{CryptoRng, Rng};
-
 use crate::{
     fiat_shamir::FiatShamirRng,
     marlin::{CircuitProvingKey, CircuitVerifyingKey, MarlinMode, PreparedCircuitVerifyingKey, Proof},
 };
-use core::sync::atomic::AtomicBool;
 use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, SNARKError, SNARK, SRS};
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_polycommit::PolynomialCommitment;
 use snarkvm_r1cs::ConstraintSynthesizer;
+
+use core::sync::atomic::AtomicBool;
+use rand::{CryptoRng, Rng};
 
 impl<TargetField, BaseField, PC, FS, MM, Input> SNARK
     for crate::marlin::MarlinSNARK<TargetField, BaseField, PC, FS, MM, Input>
@@ -92,10 +92,10 @@ pub mod test {
 
     use super::*;
     use crate::{
-        fiat_shamir::{FiatShamirAlgebraicSpongeRng, PoseidonSponge},
-        marlin::{MarlinRecursiveMode, MarlinSNARK},
+        fiat_shamir::FiatShamirAlgebraicSpongeRng,
+        marlin::{MarlinHidingMode, MarlinSNARK},
     };
-    use snarkvm_algorithms::SRS;
+    use snarkvm_algorithms::{crypto_hash::poseidon::PoseidonSponge, SRS};
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
     use snarkvm_fields::Field;
     use snarkvm_polycommit::sonic_pc::SonicKZG10;
@@ -141,7 +141,7 @@ pub mod test {
 
     type PC = SonicKZG10<Bls12_377>;
     type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
-    type TestSNARK = MarlinSNARK<Fr, Fq, PC, FS, MarlinRecursiveMode, Vec<Fr>>;
+    type TestSNARK = MarlinSNARK<Fr, Fq, PC, FS, MarlinHidingMode, Vec<Fr>>;
 
     #[test]
     fn marlin_snark_test() {

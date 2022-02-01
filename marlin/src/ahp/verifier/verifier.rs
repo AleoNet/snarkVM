@@ -24,13 +24,11 @@ use crate::{
         AHPForR1CS,
     },
     marlin::MarlinMode,
+    params::OptimizationType,
     traits::FiatShamirRng,
 };
 use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_fields::PrimeField;
-use snarkvm_gadgets::nonnative::params::OptimizationType;
-use snarkvm_r1cs::errors::SynthesisError;
-
 use snarkvm_polycommit::QuerySet;
 
 use rand_core::RngCore;
@@ -47,15 +45,15 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         }
 
         let constraint_domain =
-            EvaluationDomain::new(index_info.num_constraints).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+            EvaluationDomain::new(index_info.num_constraints).ok_or(AHPError::PolynomialDegreeTooLarge)?;
 
         let non_zero_a_domain =
-            EvaluationDomain::new(index_info.num_non_zero_a).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+            EvaluationDomain::new(index_info.num_non_zero_a).ok_or(AHPError::PolynomialDegreeTooLarge)?;
 
         let non_zero_b_domain =
-            EvaluationDomain::new(index_info.num_non_zero_b).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+            EvaluationDomain::new(index_info.num_non_zero_b).ok_or(AHPError::PolynomialDegreeTooLarge)?;
         let non_zero_c_domain =
-            EvaluationDomain::new(index_info.num_non_zero_c).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+            EvaluationDomain::new(index_info.num_non_zero_c).ok_or(AHPError::PolynomialDegreeTooLarge)?;
 
         let elems = fs_rng.squeeze_nonnative_field_elements(3, OptimizationType::Weight)?;
         let alpha = elems[0];

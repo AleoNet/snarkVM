@@ -17,7 +17,16 @@
 use crate::{
     ahp::{AHPError, AHPForR1CS, EvaluationsProvider},
     fiat_shamir::traits::FiatShamirRng,
-    marlin::{CircuitProvingKey, CircuitVerifyingKey, MarlinError, MarlinMode, Proof, UniversalSRS},
+    marlin::{
+        CircuitProvingKey,
+        CircuitVerifyingKey,
+        MarlinError,
+        MarlinMode,
+        PreparedCircuitVerifyingKey,
+        Proof,
+        UniversalSRS,
+    },
+    params::OptimizationType,
     prover::{ProverConstraintSystem, ProverMessage},
     String,
     ToString,
@@ -25,7 +34,6 @@ use crate::{
 };
 use snarkvm_algorithms::fft::EvaluationDomain;
 use snarkvm_fields::{PrimeField, ToConstraintField};
-use snarkvm_gadgets::nonnative::params::OptimizationType;
 use snarkvm_polycommit::{
     Evaluations,
     LabeledCommitment,
@@ -40,7 +48,6 @@ use snarkvm_utilities::{to_bytes_le, ToBytes};
 #[cfg(not(feature = "std"))]
 use snarkvm_utilities::println;
 
-use crate::marlin::PreparedCircuitVerifyingKey;
 use core::{
     marker::PhantomData,
     sync::atomic::{AtomicBool, Ordering},

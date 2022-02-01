@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::ToString;
+
 use core::fmt;
 
 /// A `enum` specifying the possible failure modes of `FiatShamir`.

@@ -14,15 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{ahp::indexer::*, marlin::CircuitVerifyingKey, Vec};
+use crate::{
+    ahp::indexer::*,
+    marlin::{CircuitVerifyingKey, MarlinMode},
+    IoResult,
+    Read,
+    Vec,
+    Write,
+};
 use snarkvm_fields::PrimeField;
 use snarkvm_polycommit::PolynomialCommitment;
 use snarkvm_utilities::{serialize::*, FromBytes, ToBytes};
 
-use crate::{IoResult, Read, Write};
 use derivative::Derivative;
-
-use super::MarlinMode;
 
 /// Proving key for a specific circuit (i.e., R1CS matrices).
 #[derive(Derivative)]

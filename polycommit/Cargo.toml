@@ -47,19 +47,8 @@ path = "../fields"
 version = "0.7.5"
 default-features = false
 
-[dependencies.snarkvm-gadgets]
-path = "../gadgets"
-version = "0.7.5"
-default-features = false
-features = [ "nonnative" ]
-
 [dependencies.snarkvm-profiler]
 path = "../profiler"
-version = "0.7.5"
-default-features = false
-
-[dependencies.snarkvm-r1cs]
-path = "../r1cs"
 version = "0.7.5"
 default-features = false
 
@@ -73,7 +62,7 @@ version = "2"
 features = [ "use_core" ]
 
 [dependencies.digest]
-version = "0.9"
+version = "0.10"
 
 [dependencies.hashbrown]
 version = "0.12.0"
@@ -94,10 +83,6 @@ features = [ "std_rng" ]
 version = "1"
 optional = true
 
-[dev-dependencies.blake2]
-version = "0.9"
-default-features = false
-
 [dev-dependencies.snarkvm-marlin]
 path = "../marlin"
 
@@ -107,8 +92,6 @@ default = [
   "snarkvm-algorithms/default",
   "snarkvm-curves/default",
   "snarkvm-fields/default",
-  "snarkvm-gadgets/default",
-  "snarkvm-r1cs/default",
   "snarkvm-utilities/default"
 ]
 std = [ ]

@@ -14,14 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    commitment::{BHPCommitment, PedersenCommitment, PedersenCompressedCommitment},
-    traits::CommitmentScheme,
-};
+use crate::{commitment::BHPCommitment, traits::CommitmentScheme};
 use snarkvm_curves::edwards_bls12::EdwardsProjective;
-
-const PEDERSEN_NUM_WINDOWS: usize = 8;
-const PEDERSEN_WINDOW_SIZE: usize = 128;
 
 const BHP_NUM_WINDOWS: usize = 32;
 const BHP_WINDOW_SIZE: usize = 48;
@@ -35,18 +29,4 @@ fn commitment_parameters_serialization<C: CommitmentScheme>() {
 #[test]
 fn bhp_commitment_parameters_serialization() {
     commitment_parameters_serialization::<BHPCommitment<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>>();
-}
-
-#[test]
-fn pedersen_commitment_parameters_serialization() {
-    commitment_parameters_serialization::<
-        PedersenCommitment<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>,
-    >();
-}
-
-#[test]
-fn pedersen_compressed_commitment_parameters_serialization() {
-    commitment_parameters_serialization::<
-        PedersenCompressedCommitment<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>,
-    >();
 }
