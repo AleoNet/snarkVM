@@ -18,7 +18,22 @@ use crate::{helpers::integers::IntegerType, Mode};
 
 use core::{
     fmt::{Debug, Display},
-    ops::{Add, AddAssign, BitAnd, BitAndAssign, Div, DivAssign, Mul, MulAssign, Neg, Not, Sub, SubAssign},
+    ops::{
+        Add,
+        AddAssign,
+        BitAnd,
+        BitAndAssign,
+        BitOr,
+        BitOrAssign,
+        Div,
+        DivAssign,
+        Mul,
+        MulAssign,
+        Neg,
+        Not,
+        Sub,
+        SubAssign,
+    },
 };
 use num_traits::Inv;
 
@@ -60,8 +75,10 @@ pub trait IntegerTrait<I: IntegerType>:
     + Add<Output = Self>
     + AddChecked<Output = Self>
     + AddWrapped<Output = Self>
-    + BitAnd
+    + BitAndAssign
     + BitAnd<Output = Self>
+    + BitOrAssign
+    + BitOr<Output = Self>
     + Clone
     + Debug
     + DivAssign
