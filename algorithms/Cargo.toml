@@ -123,6 +123,12 @@ version = "0.5"
 version = "2"
 features = [ "use_core" ]
 
+[dependencies.digest]
+version = "0.10"
+
+[dependencies.hashbrown]
+version = "0.12.0"
+
 [dependencies.hex]
 version = "0.4"
 
@@ -187,6 +193,10 @@ version = "1.1.0"
 
 [dev-dependencies.bincode]
 version = "1"
+
+[dev-dependencies.blake2]
+version = "0.10"
+default-features = false
 
 [dev-dependencies.criterion]
 version = "0.3.5"
@@ -259,36 +269,3 @@ snark = [ "fft", "msm" ]
 parallel = [ "rayon", "num_cpus", "snarkvm-utilities/parallel" ]
 print-trace = [ "snarkvm-profiler/print-trace" ]
 cuda = [ "rust-gpu-tools" ]
-
-#[dependencies.rand]
-#version = "0.8"
-#default-features = false
-#features = [ "std_rng" ]
-
-#####
-
-#[dependencies.rand]
-#version = "0.8"
-
-#[dependencies.rand_chacha]
-#version = "0.3"
-#default-features = false
-#
-#[dependencies.rand_core]
-#version = "0.6"
-#features = [ "getrandom" ]
-#
-#[dependencies.smallvec]
-#version = "1.8"
-#default-features = false
-#features = [ "const_generics", "const_new" ]
-
-[dependencies.digest]
-version = "0.10"
-
-[dependencies.hashbrown]
-version = "0.12.0"
-
-[dev-dependencies.blake2]
-version = "0.10"
-default-features = false
