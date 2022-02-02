@@ -26,7 +26,6 @@ members = [
   "dpc",
   "fields",
   "gadgets",
-  "marlin", # excluded from [features], to be merged in `algorithms` and `gadgets` once stable
   "parameters",
   "profiler", # excluded from [features], for internal use primarily
   "r1cs",

@@ -14,6 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod groth16;
+use snarkvm_fields::Field;
+use snarkvm_utilities::{error, errors::SerializationError, serialize::*, ToBytes, Write};
 
-pub mod marlin;
+/// Each prover message that is not a list of oracles is a list of field elements.
+#[repr(transparent)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
+pub struct ProverMessage<F: Field> {
+    /// The field elements that make up the message
+    pub field_elements: Vec<F>,
+}
+
+impl<F: Field> ToBytes for ProverMessage<F> {
+    fn write_le<W: Write>(&self, mut w: W) -> io::Result<()> {
+        CanonicalSerialize::serialize(self, &mut w).map_err(|_| error("Could not serialize ProverMsg"))
+    }
+}

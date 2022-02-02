@@ -72,6 +72,11 @@ name = "snark-groth16"
 path = "benches/snark/groth16.rs"
 harness = false
 
+[[bench]]
+name = "snark-marlin"
+path = "benches/snark/marlin.rs"
+harness = false
+
 [[example]]
 name = "groth16"
 path = "examples/snark/groth16.rs"
@@ -119,7 +124,7 @@ version = "2"
 features = [ "use_core" ]
 
 [dependencies.hex]
-version = "0.4.3"
+version = "0.4"
 
 [dependencies.itertools]
 version = "0.10.3"
@@ -189,9 +194,6 @@ version = "0.3.5"
 [dev-dependencies.csv]
 version = "1"
 
-[dev-dependencies.hex]
-version = "0.4"
-
 [dev-dependencies.rand_xorshift]
 version = "0.3"
 
@@ -258,13 +260,35 @@ parallel = [ "rayon", "num_cpus", "snarkvm-utilities/parallel" ]
 print-trace = [ "snarkvm-profiler/print-trace" ]
 cuda = [ "rust-gpu-tools" ]
 
-#[dependencies.digest]
-#version = "0.10"
-#
-#[dependencies.hashbrown]
-#version = "0.12.0"
-#
 #[dependencies.rand]
 #version = "0.8"
 #default-features = false
 #features = [ "std_rng" ]
+
+#####
+
+#[dependencies.rand]
+#version = "0.8"
+
+#[dependencies.rand_chacha]
+#version = "0.3"
+#default-features = false
+#
+#[dependencies.rand_core]
+#version = "0.6"
+#features = [ "getrandom" ]
+#
+#[dependencies.smallvec]
+#version = "1.8"
+#default-features = false
+#features = [ "const_generics", "const_new" ]
+
+[dependencies.digest]
+version = "0.10"
+
+[dependencies.hashbrown]
+version = "0.12.0"
+
+[dev-dependencies.blake2]
+version = "0.10"
+default-features = false

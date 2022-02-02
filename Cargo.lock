@@ -1902,13 +1902,16 @@ dependencies = [
  "aleo-std",
  "anyhow",
  "bincode",
+ "blake2",
  "blake2s_simd",
  "criterion",
  "crossbeam-channel",
  "csv",
  "derivative",
+ "digest 0.10.1",
  "expect-test",
  "getrandom",
+ "hashbrown 0.12.0",
  "hex",
  "itertools",
  "lazy_static",
@@ -1954,7 +1957,6 @@ dependencies = [
  "snarkvm-algorithms",
  "snarkvm-curves",
  "snarkvm-fields",
- "snarkvm-marlin",
  "snarkvm-r1cs",
  "snarkvm-utilities",
  "thiserror",
@@ -2010,7 +2012,6 @@ dependencies = [
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-gadgets",
- "snarkvm-marlin",
  "snarkvm-parameters",
  "snarkvm-profiler",
  "snarkvm-r1cs",
@@ -2080,33 +2081,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "snarkvm-marlin"
-version = "0.7.5"
-dependencies = [
- "anyhow",
- "bincode",
- "blake2",
- "criterion",
- "derivative",
- "digest 0.10.1",
- "hashbrown 0.12.0",
- "hex",
- "rand",
- "rand_chacha",
- "rand_core",
- "rayon",
- "serde",
- "serde_json",
- "smallvec",
- "snarkvm-algorithms",
- "snarkvm-curves",
- "snarkvm-fields",
- "snarkvm-profiler",
- "snarkvm-r1cs",
- "snarkvm-utilities",
-]
-
-[[package]]
 name = "snarkvm-parameters"
 version = "0.7.5"
 dependencies = [
@@ -2123,8 +2097,6 @@ dependencies = [
  "snarkvm-algorithms",
  "snarkvm-curves",
  "snarkvm-dpc",
- "snarkvm-fields",
- "snarkvm-marlin",
  "snarkvm-utilities",
  "thiserror",
  "wasm-bindgen-futures",
@@ -2183,7 +2155,6 @@ dependencies = [
  "snarkvm-dpc",
  "snarkvm-fields",
  "snarkvm-gadgets",
- "snarkvm-marlin",
  "snarkvm-r1cs",
  "snarkvm-utilities",
  "wasm-bindgen",

@@ -36,7 +36,16 @@ use snarkvm_algorithms::{
     prelude::*,
     prf::PoseidonPRF,
     signature::AleoSignatureScheme,
-    snark::groth16::Groth16,
+    snark::{
+        groth16::Groth16,
+        marlin::{
+            FiatShamirAlgebraicSpongeRng,
+            FiatShamirChaChaRng,
+            MarlinHidingMode,
+            MarlinNonHidingMode,
+            MarlinSNARK,
+        },
+    },
 };
 use snarkvm_curves::{
     bls12_377::Bls12_377,
@@ -56,11 +65,6 @@ use snarkvm_gadgets::{
         signature::AleoSignatureSchemeGadget,
     },
     curves::edwards_bls12::EdwardsBls12Gadget,
-};
-use snarkvm_marlin::{
-    marlin::{MarlinHidingMode, MarlinNonHidingMode, MarlinSNARK},
-    FiatShamirAlgebraicSpongeRng,
-    FiatShamirChaChaRng,
 };
 use snarkvm_parameters::{testnet2::*, Genesis};
 use snarkvm_utilities::{FromBytes, ToMinimalBits};

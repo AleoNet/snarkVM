@@ -72,14 +72,6 @@ default-features = false
 [dev-dependencies.snarkvm-dpc]
 path = "../dpc"
 
-[dev-dependencies.snarkvm-fields]
-path = "../fields"
-default-features = false
-
-[dev-dependencies.snarkvm-marlin]
-path = "../marlin"
-default-features = false
-
 [dev-dependencies.curl]
 version = "0.4.34"
 

@@ -52,13 +52,6 @@ version = "0.7.5"
 optional = true
 default-features = false
 
-[dependencies.snarkvm-marlin]
-path = "../marlin"
-version = "0.7.5"
-optional = true
-default-features = false
-features = ["wasm"]
-
 [dependencies.snarkvm-r1cs]
 path = "../r1cs"
 version = "0.7.5"
@@ -104,7 +97,6 @@ full = [
   "dpc",
   "fields",
   "gadgets",
-  "marlin",
   "r1cs"
 ]
 algorithms = [ "snarkvm-algorithms" ]
@@ -112,5 +104,4 @@ curves = [ "snarkvm-curves" ]
 dpc = ["snarkvm-dpc"]
 fields = [ "snarkvm-fields" ]
 gadgets = [ "snarkvm-gadgets" ]
-marlin = [ "snarkvm-marlin" ]
 r1cs = [ "snarkvm-r1cs" ]
