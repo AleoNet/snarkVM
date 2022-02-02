@@ -16,23 +16,32 @@
 
 use super::*;
 use snarkvm_utilities::{FromBytes, ToBytes};
+use num_traits::NumCast;
 
 impl<E: Environment, I: IntegerType> DivChecked<Self> for Integer<E, I> {
     type Output = Self;
 
     #[inline]
     fn div_checked(&self, other: &Integer<E, I>) -> Self::Output {
+        // Halt on division by zero as there is no sound way to perform
+        // this operation.
+        if other.eject_value() == I::zero() {
+            E::halt("Division by zero error")
+        }
+
         // Determine the variable mode.
         if self.is_constant() && other.is_constant() {
             // Compute the quotient and return the new constant.
-            match other.eject_value() {
-                value if value == I::zero() => E::halt("Division by zero error on division of two constants"),
-                _ => match self.eject_value().checked_mul(&other.eject_value()) {
-                    Some(value) => Integer::new(Mode::Constant, value),
-                    None => E::halt("Integer overflow on division of two constants"),
-                },
+            match self.eject_value().checked_mul(&other.eject_value()) {
+                Some(value) => Integer::new(Mode::Constant, value),
+                None => E::halt("Integer overflow on division of two constants"),
             }
         } else {
+            let (dividend_value, divisor_value) = match I::is_signed() {
+                false => (self.eject_value(), other.eject_value()),
+                true => (NumCast::from(self.eject_value()).unwrap(), NumCast::from(self.eject_value()).unwrap()),
+            };
+
             if I::is_signed() {
                 // This is safe since I::BITS is always greater than 0.
                 let dividend_msb = self.bits_le.last().unwrap();
