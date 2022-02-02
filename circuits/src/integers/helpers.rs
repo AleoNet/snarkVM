@@ -40,14 +40,13 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
         // Enforce that the divisor is not zero.
         E::assert_eq(divisor.is_eq(&BaseField::zero()), E::zero());
 
+        // Unsigned maximum of size I::BITS
         let max = BaseField::from_bits_le(Mode::Constant, &vec![Boolean::new(Mode::Constant, true); I::BITS]);
-        let true_bit = Boolean::new(Mode::Constant, true);
-        let false_bit = Boolean::new(Mode::Constant, false);
 
         let mut quotient_bits = Vec::with_capacity(I::BITS);
         let mut remainder = BaseField::<E>::zero();
 
-        for (i, bit) in this_bits_le.iter().enumerate().rev() {
+        for bit in this_bits_le.into_iter().rev() {
             remainder = remainder.double();
             remainder = remainder + BaseField::from(bit);
 
@@ -58,11 +57,12 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
             //   - Note that difference > I::MAX if carry_bit is set.
             let difference = &max + (&divisor - &remainder);
             let bits = difference.to_lower_bits_le(I::BITS + 1);
+            let carry_bit = bits.last().unwrap();
             // This is safe since we extract at least one bit from the difference.
-            let remainder_is_gte_divisor = !(bits.last().unwrap());
+            let remainder_is_gte_divisor = carry_bit.not();
 
             remainder = BaseField::ternary(&remainder_is_gte_divisor, &(&remainder - &divisor), &remainder);
-            quotient_bits.push(Boolean::ternary(&remainder_is_gte_divisor, &true_bit, &false_bit));
+            quotient_bits.push(remainder_is_gte_divisor);
         }
 
         // Reverse and return the quotient bits.
