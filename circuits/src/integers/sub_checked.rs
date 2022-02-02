@@ -100,17 +100,13 @@ mod tests {
                 case
             );
 
-            print!("Constants: {:?}, ", Circuit::num_constants_in_scope());
-            print!("Public: {:?}, ", Circuit::num_public_in_scope());
-            print!("Private: {:?}, ", Circuit::num_private_in_scope());
-            print!("Constraints: {:?}\n", Circuit::num_constraints_in_scope());
-
             assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
             assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
             assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
             assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
             assert!(Circuit::is_satisfied(), "{} (is_satisfied)", case);
         });
+        Circuit::reset();
     }
 
     #[rustfmt::skip]
@@ -122,15 +118,29 @@ mod tests {
     }
 
     #[rustfmt::skip]
-    fn check_underflow_fails<I: IntegerType + std::panic::RefUnwindSafe>(mode_a: Mode, mode_b: Mode, value_a: I, value_b: I) {
+    fn check_underflow_fails<I: IntegerType + std::panic::RefUnwindSafe>(
+        mode_a: Mode,
+        mode_b: Mode,
+        value_a: I,
+        value_b: I,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize
+    ) {
         let name = format!("Sub: {} - {} underflows", value_a, value_b);
         let a = Integer::<Circuit, I>::new(mode_a, value_a);
         let b = Integer::new(mode_b, value_b);
         Circuit::scoped(&name, || {
             let case = format!("({} - {})", a.eject_value(), b.eject_value());
             let _candidate = a.sub_checked(&b);
+            assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
+            assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
+            assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
+            assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
             assert!(!Circuit::is_satisfied(), "{} (!is_satisfied)", case);
         });
+        Circuit::reset();
     }
 
     #[rustfmt::skip]
@@ -144,7 +154,7 @@ mod tests {
     ) {
         let check_underflow = |value_a, value_b| match (mode_a, mode_b) {
             (Mode::Constant, Mode::Constant) => check_underflow_halts::<I>(mode_a, mode_b, value_a, value_b),
-            (_,_) => check_underflow_fails::<I>(mode_a, mode_b, value_a, value_b),
+            (_,_) => check_underflow_fails::<I>(mode_a, mode_b, value_a, value_b, num_constants, num_public, num_private, num_constraints),
         };
 
         for i in 0..ITERATIONS {
@@ -159,8 +169,6 @@ mod tests {
                 Some(expected) => check_sub_checked::<I, Integer<Circuit, I>>(&name, expected, &a, &b, num_constants, num_public, num_private, num_constraints),
                 None => check_underflow(first, second),
             }
-
-            Circuit::reset()
         }
 
 
