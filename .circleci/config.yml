@@ -77,6 +77,7 @@ jobs:
     docker:
       - image: cimg/rust:1.58
     resource_class: 2xlarge
+    parallelism: 20
     steps:
       - checkout
       - setup_environment:
@@ -84,7 +85,14 @@ jobs:
       - run:
           name: Build and run tests
           no_output_timeout: 35m
-          command: cd algorithms && RUST_MIN_STACK=67108864 cargo test
+          command: |
+            cd algorithms
+            cargo test -- --list --format terse | sed 's/: test//' > test_names.txt
+            TEST_NAMES=$(circleci tests split test_names.txt)
+            for i in $(echo $TEST_NAMES | sed "s/ / /g")
+            do
+                RUST_MIN_STACK=67108864 cargo test $i
+            done
       - clear_environment:
           cache_key: snarkvm-algorithms-cache
 
@@ -159,32 +167,9 @@ jobs:
       - run:
           name: Build and run tests
           no_output_timeout: 35m
-          command: cd gadgets && RUST_MIN_STACK=67108864 cargo test
+          command: cd gadgets && RUST_MIN_STACK=67108864 cargo test --features core,nonnative
       - clear_environment:
           cache_key: snarkvm-gadgets-cache
-
-  marlin:
-    docker:
-      - image: cimg/rust:1.58
-    resource_class: 2xlarge
-    parallelism: 10
-    steps:
-      - checkout
-      - setup_environment:
-          cache_key: snarkvm-marlin-cache
-      - run:
-          name: Build and run tests
-          no_output_timeout: 35m
-          command: |
-            cd marlin
-            cargo test -- --list --format terse | sed 's/: test//' > test_names.txt
-            TEST_NAMES=$(circleci tests split test_names.txt)
-            for i in $(echo $TEST_NAMES | sed "s/ / /g")
-            do
-                RUST_MIN_STACK=67108864 cargo test $i
-            done
-      - clear_environment:
-          cache_key: snarkvm-marlin-cache
 
   parameters:
     docker:
@@ -200,21 +185,6 @@ jobs:
           command: cd parameters && RUST_MIN_STACK=67108864 cargo test
       - clear_environment:
           cache_key: snarkvm-parameters-cache
-
-  polycommit:
-    docker:
-      - image: cimg/rust:1.58
-    resource_class: 2xlarge
-    steps:
-      - checkout
-      - setup_environment:
-          cache_key: snarkvm-polycommit-cache
-      - run:
-          name: Build and run tests
-          no_output_timeout: 35m
-          command: cd polycommit && RUST_MIN_STACK=67108864 cargo test
-      - clear_environment:
-          cache_key: snarkvm-polycommit-cache
 
   profiler:
     docker:
@@ -288,9 +258,7 @@ workflows:
       - dpc
       - fields
       - gadgets
-      - marlin
       - parameters
-      - polycommit
       - profiler
       - r1cs
       - utilities

@@ -14,9 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::{crh::sha256::sha256, CRH, SNARK, SRS};
+use snarkvm_algorithms::{
+    crh::sha256::sha256,
+    snark::marlin::{ahp::AHPForR1CS, MarlinHidingMode},
+    CRH,
+    SNARK,
+    SRS,
+};
 use snarkvm_dpc::{InnerCircuit, Network, PoSWScheme, SynthesizedCircuit};
-use snarkvm_marlin::{ahp::AHPForR1CS, marlin::MarlinHidingMode};
 use snarkvm_utilities::{FromBytes, ToBytes, ToMinimalBits};
 
 use anyhow::Result;

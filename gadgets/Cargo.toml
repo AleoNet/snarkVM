@@ -56,6 +56,16 @@ version = "2"
 [dependencies.itertools]
 version = "0.10.3"
 
+[dependencies.num-bigint]
+version = "0.4.3"
+default-features = false
+optional = true
+
+[dependencies.num-integer]
+version = "0.1.44"
+default-features = false
+optional = true
+
 [dependencies.num-traits]
 version = "0.2"
 default-features = false
@@ -82,13 +92,14 @@ default-features = false
 
 [features]
 default = [
-  "full",
+  "core",
   "snarkvm-algorithms/default",
   "snarkvm-curves/default",
   "snarkvm-fields/default",
   "snarkvm-r1cs/default",
   "snarkvm-utilities/default",
 ]
-full = [ "algorithms", "curves" ]
+core = [ "algorithms", "curves" ]
 algorithms = [ ]
 curves = [ ]
+nonnative = [ "num-bigint", "num-integer" ]

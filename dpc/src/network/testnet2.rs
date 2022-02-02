@@ -32,10 +32,20 @@ use snarkvm_algorithms::{
     crypto_hash::poseidon::PoseidonSponge,
     encryption::ECIESPoseidonEncryption,
     merkle_tree::{MaskedMerkleTreeParameters, MerklePath, MerkleTreeParameters},
+    polycommit::sonic_pc::SonicKZG10,
     prelude::*,
     prf::PoseidonPRF,
     signature::AleoSignatureScheme,
-    snark::groth16::Groth16,
+    snark::{
+        groth16::Groth16,
+        marlin::{
+            FiatShamirAlgebraicSpongeRng,
+            FiatShamirChaChaRng,
+            MarlinHidingMode,
+            MarlinNonHidingMode,
+            MarlinSNARK,
+        },
+    },
 };
 use snarkvm_curves::{
     bls12_377::Bls12_377,
@@ -56,13 +66,7 @@ use snarkvm_gadgets::{
     },
     curves::edwards_bls12::EdwardsBls12Gadget,
 };
-use snarkvm_marlin::{
-    marlin::{MarlinHidingMode, MarlinNonHidingMode, MarlinSNARK},
-    FiatShamirAlgebraicSpongeRng,
-    FiatShamirChaChaRng,
-};
 use snarkvm_parameters::{testnet2::*, Genesis};
-use snarkvm_polycommit::sonic_pc::SonicKZG10;
 use snarkvm_utilities::{FromBytes, ToMinimalBits};
 
 use blake2::Blake2s256;

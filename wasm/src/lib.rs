@@ -22,6 +22,7 @@ pub use snarkvm_algorithms::{
     fft::*,
     merkle_tree::*,
     msm::*,
+    polycommit::*,
     prf::*,
     signature::*,
     snark::*,
@@ -41,9 +42,6 @@ pub use snarkvm_gadgets::*;
 
 #[cfg(feature = "marlin")]
 pub use snarkvm_marlin::*;
-
-#[cfg(feature = "polycommit")]
-pub use snarkvm_polycommit::*;
 
 #[cfg(feature = "r1cs")]
 pub use snarkvm_r1cs::*;

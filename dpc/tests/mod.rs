@@ -22,10 +22,13 @@ use std::{
     time::Duration,
 };
 
-use snarkvm_algorithms::{SNARKError, SRS};
+use snarkvm_algorithms::{
+    snark::marlin::{ahp::AHPForR1CS, CircuitProvingKey, MarlinHidingMode, MarlinNonHidingMode},
+    SNARKError,
+    SRS,
+};
 use snarkvm_curves::bls12_377::Fr;
 use snarkvm_dpc::{testnet2::Testnet2, BlockTemplate, Network, PoSWError, PoSWScheme};
-use snarkvm_marlin::marlin::{CircuitProvingKey, MarlinHidingMode, MarlinNonHidingMode};
 
 use rand::{rngs::ThreadRng, thread_rng};
 
@@ -89,7 +92,7 @@ fn test_posw_setup_vs_load_weak_sanity_check() {
         // Load the PoSW Marlin parameters.
         let rng = &mut thread_rng();
         // Run the universal setup.
-        let max_degree = snarkvm_marlin::AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(40000, 40000, 60000).unwrap();
+        let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(40000, 40000, 60000).unwrap();
         let universal_srs = <Testnet2 as Network>::PoSWSNARK::universal_setup(max_degree, rng).unwrap();
         // Run the circuit setup.
         <<Testnet2 as Network>::PoSW as PoSWScheme<Testnet2>>::setup::<ThreadRng>(&mut SRS::<ThreadRng, _>::Universal(

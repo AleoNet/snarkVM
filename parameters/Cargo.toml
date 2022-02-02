@@ -72,18 +72,6 @@ default-features = false
 [dev-dependencies.snarkvm-dpc]
 path = "../dpc"
 
-[dev-dependencies.snarkvm-fields]
-path = "../fields"
-default-features = false
-
-[dev-dependencies.snarkvm-marlin]
-path = "../marlin"
-default-features = false
-
-[dev-dependencies.snarkvm-polycommit]
-path = "../polycommit"
-default-features = false
-
 [dev-dependencies.curl]
 version = "0.4.34"
 
@@ -98,4 +86,3 @@ default = [ "remote", "snarkvm-algorithms/default" ]
 no_std_out = []
 remote = [ "curl" ]
 wasm = [ "snarkvm-algorithms/wasm", "reqwest", "wasm-bindgen-futures", "parking_lot" ]
-
