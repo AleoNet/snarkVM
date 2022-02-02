@@ -105,6 +105,13 @@ impl<E: Environment, I: IntegerType> IntegerTrait<I> for Integer<E, I> {
     }
 }
 
+// TODO (@pranav) Document
+impl<E: Environment, I: IntegerType> Integer<E, I> {
+    fn cast_as_dual(self) -> Integer<E, I::Dual> {
+        Integer::<E, I::Dual> { bits_le: self.bits_le, phantom: Default::default() }
+    }
+}
+
 impl<E: Environment, I: IntegerType> Eject for Integer<E, I> {
     type Primitive = I;
 

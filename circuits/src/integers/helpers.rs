@@ -18,58 +18,8 @@ use super::*;
 use crate::Zero;
 use itertools::rev;
 
-// TODO (@pranav) Documentation.
 impl<E: Environment, I: IntegerType> Integer<E, I> {
-    pub(crate) fn add_bits_in_field(this_bits_le: &[Boolean<E>], that_bits_le: &[Boolean<E>]) -> Vec<Boolean<E>> {
-        // Instead of adding the bits of `self` and `other` directly, the integers are
-        // converted into a field elements, and summed, before being converted back to integers.
-        // Note: This is safe as the field is larger than the maximum integer type supported.
-        let this = BaseField::from_bits_le(Mode::Private, &this_bits_le);
-        let that = BaseField::from_bits_le(Mode::Private, &that_bits_le);
-        let sum = this + that;
-
-        // Extract the integer bits from the field element, with a carry bit.
-        sum.to_lower_bits_le(I::BITS + 1)
-    }
-
-    pub(crate) fn divide_bits_in_field(this_bits_le: &[Boolean<E>], that_bits_le: &[Boolean<E>]) -> Vec<Boolean<E>> {
-        // Instead of dividing the bits of `self` and `other` directly, the integers are
-        // converted into a field elements, and divided, before being converted back to integers.
-        // Note: This is safe as the field is larger than the maximum integer type supported.
-        let divisor = BaseField::from_bits_le(Mode::Private, &that_bits_le);
-        // Enforce that the divisor is not zero.
-        E::assert_eq(divisor.is_eq(&BaseField::zero()), E::zero());
-
-        // Unsigned maximum of size I::BITS
-        let max = BaseField::from_bits_le(Mode::Constant, &vec![Boolean::new(Mode::Constant, true); I::BITS]);
-
-        let mut quotient_bits = Vec::with_capacity(I::BITS);
-        let mut remainder = BaseField::<E>::zero();
-
-        for bit in this_bits_le.into_iter().rev() {
-            remainder = remainder.double();
-            remainder = remainder + BaseField::from(bit);
-
-            // Check that remainder is greater than or equal to divisor, via an unsigned overflow check.
-            //   - difference := I:MAX + (b - a).
-            //   - If difference > I::MAX, then b > a.
-            //   - If difference <= I::MAX, then a >= b.
-            //   - Note that difference > I::MAX if carry_bit is set.
-            let difference = &max + (&divisor - &remainder);
-            let bits = difference.to_lower_bits_le(I::BITS + 1);
-            let carry_bit = bits.last().unwrap();
-            // This is safe since we extract at least one bit from the difference.
-            let remainder_is_gte_divisor = carry_bit.not();
-
-            remainder = BaseField::ternary(&remainder_is_gte_divisor, &(&remainder - &divisor), &remainder);
-            quotient_bits.push(remainder_is_gte_divisor);
-        }
-
-        // Reverse and return the quotient bits.
-        quotient_bits.reverse();
-        quotient_bits
-    }
-
+    // TODO (@pranav) Documentation. There may also be a better place for this helper function.
     pub(crate) fn multiply_bits_in_field(
         this_bits_le: &[Boolean<E>],
         that_bits_le: &[Boolean<E>],
@@ -119,17 +69,5 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
             //   be handled by the code above.
             todo!()
         }
-    }
-
-    pub(crate) fn subtract_bits_in_field(this_bits_le: &[Boolean<E>], that_bits_le: &[Boolean<E>]) -> Vec<Boolean<E>> {
-        // Instead of subtracting the bits of `self` and `other` directly, the integers are
-        // converted into a field elements, and subtracted, before being converted back to integers.
-        // Note: This is safe as the field is larger than the maximum integer type supported.
-        let this = BaseField::from_bits_le(Mode::Private, &this_bits_le);
-        let that = BaseField::from_bits_le(Mode::Private, &that_bits_le.iter().map(|b| !b).collect::<Vec<_>>());
-        let difference = this + &that + BaseField::one();
-
-        // Extract the integer bits from the field element, with a carry bit.
-        difference.to_lower_bits_le(I::BITS + 1)
     }
 }
