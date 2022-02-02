@@ -304,7 +304,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 plaintext.extend_from_slice(&given_is_dummy_bytes);
                 plaintext.extend_from_slice(&given_value_bytes);
                 plaintext.extend_from_slice(&given_payload);
-                plaintext.extend_from_slice(&given_program_id);
 
                 let ciphertext = account_encryption_parameters.check_encryption_from_symmetric_key(
                     &mut commitment_cs.ns(|| format!("input record {} check_encryption_gadget", i)),
@@ -328,6 +327,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 commitment_input.extend_from_slice(&given_randomizer_bytes);
                 commitment_input.extend_from_slice(&record_view_key_commitment_bytes);
                 commitment_input.extend_from_slice(&ciphertext);
+                commitment_input.extend_from_slice(&given_program_id);
 
                 let candidate_commitment = record_commitment_parameters
                     .check_evaluation_gadget(&mut commitment_cs.ns(|| "Compute record commitment"), commitment_input)?;
@@ -605,7 +605,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 plaintext.extend_from_slice(&given_is_dummy_bytes);
                 plaintext.extend_from_slice(&given_value_bytes);
                 plaintext.extend_from_slice(&given_payload);
-                plaintext.extend_from_slice(&given_program_id);
 
                 let encryption_randomness = <N::AccountEncryptionGadget as EncryptionGadget<
                     N::AccountEncryptionScheme,
@@ -649,6 +648,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 commitment_input.extend_from_slice(&given_randomizer_bytes);
                 commitment_input.extend_from_slice(&record_view_key_commitment_bytes);
                 commitment_input.extend_from_slice(&ciphertext);
+                commitment_input.extend_from_slice(&given_program_id);
 
                 let candidate_commitment = record_commitment_parameters
                     .check_evaluation_gadget(&mut commitment_cs.ns(|| "Compute record commitment"), commitment_input)?;
