@@ -157,7 +157,7 @@ mod tests {
         check_bitand(I::MIN, I::zero(), I::zero());
 
         // Check cases specific to signed and unsigned integers respectively.
-        for i in 0..ITERATIONS {
+        for _i in 0..ITERATIONS {
             let other: I = UniformRand::rand(&mut thread_rng());
             if I::is_signed() {
                 check_bitand(I::zero() - I::one(), other, other);

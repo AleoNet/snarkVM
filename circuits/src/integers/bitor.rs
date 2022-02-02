@@ -157,7 +157,7 @@ mod tests {
         check_bitor(I::MIN, I::zero(), I::MIN);
 
         // Check cases specific to signed and unsigned integers respectively.
-        for i in 0..ITERATIONS {
+        for _i in 0..ITERATIONS {
             let other: I = UniformRand::rand(&mut thread_rng());
             if I::is_signed() {
                 check_bitor(I::zero() - I::one(), other, I::zero() - I::one());

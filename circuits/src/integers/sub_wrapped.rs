@@ -26,7 +26,16 @@ impl<E: Environment, I: IntegerType> SubWrapped<Self> for Integer<E, I> {
             // Compute the difference and return the new constant.
             Integer::new(Mode::Constant, self.eject_value().wrapping_sub(&other.eject_value()))
         } else {
-            let mut bits_le = Self::subtract_bits_in_field(&self.bits_le, &other.bits_le);
+            // Instead of subtracting the bits of `self` and `other` directly, the integers are
+            // converted into a field elements, and subtracted, before being converted back to integers.
+            // Note: This is safe as the field is larger than the maximum integer type supported.
+            let minuend = BaseField::from_bits_le(Mode::Private, &self.bits_le);
+            let subtrahend =
+                BaseField::from_bits_le(Mode::Private, &other.bits_le.iter().map(|b| !b).collect::<Vec<_>>());
+            let difference = minuend + &subtrahend + BaseField::one();
+
+            // Extract the integer bits from the field element, with a carry bit.
+            let mut bits_le = difference.to_lower_bits_le(I::BITS + 1);
             // Drop the carry bit as the operation is wrapped subtraction.
             bits_le.pop();
 
