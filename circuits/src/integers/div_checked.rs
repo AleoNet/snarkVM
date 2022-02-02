@@ -28,9 +28,9 @@ impl<E: Environment, I: IntegerType> DivChecked<Self> for Integer<E, I> {
             match other.eject_value() {
                 value if value == I::zero() => E::halt("Division by zero error on division of two constants"),
                 _ => match self.eject_value().checked_mul(&other.eject_value()) {
-                        Some(value) => Integer::new(Mode::Constant, value),
-                        None => E::halt("Integer overflow on division of two constants"),
-                    }
+                    Some(value) => Integer::new(Mode::Constant, value),
+                    None => E::halt("Integer overflow on division of two constants"),
+                },
             }
         } else {
             if I::is_signed() {
@@ -44,7 +44,6 @@ impl<E: Environment, I: IntegerType> DivChecked<Self> for Integer<E, I> {
                 let neg_one = Self::new(Mode::Constant, I::zero() - I::one());
                 let division_overflows = self.is_eq(&min).and(&other.is_eq(&neg_one));
                 E::assert_eq(division_overflows, E::zero());
-
 
                 // Divide the absolute value of `self` and `other` in the base field.
                 let dividend_absolute_value = Self::ternary(dividend_msb, &(!self).add_checked(&Self::one()), self);

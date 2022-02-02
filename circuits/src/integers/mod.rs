@@ -17,6 +17,7 @@
 pub mod add;
 pub mod add_checked;
 pub mod add_wrapped;
+pub mod bitand;
 pub mod div;
 pub mod div_checked;
 pub mod div_wrapped;
@@ -51,7 +52,7 @@ use snarkvm_fields::PrimeField;
 use std::{
     fmt,
     marker::PhantomData,
-    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Not, Sub, SubAssign},
+    ops::{Add, AddAssign, BitAnd, BitAndAssign, Div, DivAssign, Mul, MulAssign, Neg, Not, Sub, SubAssign},
 };
 
 pub type I8<E> = Integer<E, i8>;
