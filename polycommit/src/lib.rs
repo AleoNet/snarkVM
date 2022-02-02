@@ -189,7 +189,7 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
 
     /// Constructs public parameters when given as input the maximum degree `degree`
     /// for the polynomial commitment scheme.
-    fn setup<R: RngCore>(max_degree: usize, rng: &mut R) -> Result<Self::UniversalParams, Error>;
+    fn setup<R: RngCore>(max_degree: usize, rng: &mut R) -> Result<Self::UniversalParams, PCError>;
 
     /// Specializes the public parameters for polynomials up to the given `supported_degree`
     /// and for enforcing degree bounds in the range `1..=supported_degree`.
@@ -198,7 +198,7 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
         supported_degree: usize,
         supported_hiding_bound: usize,
         enforced_degree_bounds: Option<&[usize]>,
-    ) -> Result<(Self::CommitterKey, Self::VerifierKey), Error>;
+    ) -> Result<(Self::CommitterKey, Self::VerifierKey), PCError>;
 
     /// Outputs a commitments to `polynomials`. If `polynomials[i].is_hiding()`,
     /// then the `i`-th commitment is hiding up to `polynomials.hiding_bound()` queries.
@@ -214,7 +214,7 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
         ck: &Self::CommitterKey,
         polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<F>>,
         rng: Option<&mut dyn RngCore>,
-    ) -> Result<(Vec<LabeledCommitment<Self::Commitment>>, Vec<Self::Randomness>), Error> {
+    ) -> Result<(Vec<LabeledCommitment<Self::Commitment>>, Vec<Self::Randomness>), PCError> {
         Self::commit_with_terminator(ck, polynomials, &AtomicBool::new(false), rng)
     }
 
@@ -225,7 +225,7 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
         polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<F>>,
         terminator: &AtomicBool,
         rng: Option<&mut dyn RngCore>,
-    ) -> Result<(Vec<LabeledCommitment<Self::Commitment>>, Vec<Self::Randomness>), Error>;
+    ) -> Result<(Vec<LabeledCommitment<Self::Commitment>>, Vec<Self::Randomness>), PCError>;
 
     /// On input a list of labeled polynomials and a query point, `open` outputs a proof of evaluation
     /// of the polynomials at the query point.
@@ -237,7 +237,7 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
         opening_challenge: F,
         rands: impl IntoIterator<Item = &'a Self::Randomness>,
         rng: Option<&mut dyn RngCore>,
-    ) -> Result<Self::Proof, Error>
+    ) -> Result<Self::Proof, PCError>
     where
         Self::Randomness: 'a,
         Self::Commitment: 'a;
@@ -252,7 +252,7 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
         opening_challenge: F,
         rands: impl IntoIterator<Item = &'a Self::Randomness>,
         _rng: Option<&mut dyn RngCore>,
-    ) -> Result<Self::BatchProof, Error>
+    ) -> Result<Self::BatchProof, PCError>
     where
         Self::Randomness: 'a,
         Self::Commitment: 'a,
@@ -285,7 +285,7 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
 
             for label in labels {
                 let (polynomial, rand, comm) =
-                    poly_rand_comm.get(label).ok_or(Error::MissingPolynomial { label: label.to_string() })?;
+                    poly_rand_comm.get(label).ok_or(PCError::MissingPolynomial { label: label.to_string() })?;
 
                 query_polys.push(*polynomial);
                 query_rands.push(*rand);
@@ -316,7 +316,7 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
         proof: &Self::Proof,
         opening_challenge: F,
         rng: &mut R,
-    ) -> Result<bool, Error>
+    ) -> Result<bool, PCError>
     where
         Self::Commitment: 'a;
 
@@ -330,7 +330,7 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
         proof: &Self::BatchProof,
         opening_challenge: F,
         rng: &mut R,
-    ) -> Result<bool, Error>
+    ) -> Result<bool, PCError>
     where
         Self::Commitment: 'a,
     {
@@ -351,11 +351,12 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
             let mut comms: Vec<&'_ LabeledCommitment<_>> = Vec::with_capacity(labels.len());
             let mut values = Vec::with_capacity(labels.len());
             for label in labels.into_iter() {
-                let commitment = commitments.get(label).ok_or(Error::MissingPolynomial { label: label.to_string() })?;
+                let commitment =
+                    commitments.get(label).ok_or(PCError::MissingPolynomial { label: label.to_string() })?;
 
                 let v_i = evaluations
                     .get(&(label.clone(), *query))
-                    .ok_or(Error::MissingEvaluation { label: label.to_string() })?;
+                    .ok_or(PCError::MissingEvaluation { label: label.to_string() })?;
 
                 comms.push(commitment);
                 values.push(*v_i);
@@ -381,7 +382,7 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
         opening_challenge: F,
         rands: impl IntoIterator<Item = &'a Self::Randomness>,
         rng: Option<&mut dyn RngCore>,
-    ) -> Result<BatchLCProof<F, CF, Self>, Error>
+    ) -> Result<BatchLCProof<F, CF, Self>, PCError>
     where
         Self::Randomness: 'a,
         Self::Commitment: 'a,
@@ -406,7 +407,7 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
         proof: &BatchLCProof<F, CF, Self>,
         opening_challenge: F,
         rng: &mut R,
-    ) -> Result<bool, Error>
+    ) -> Result<bool, PCError>
     where
         Self::Commitment: 'a,
     {
@@ -422,16 +423,16 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
             if let Some(lc) = lc_s.get(lc_label) {
                 let claimed_rhs = *eqn_evaluations
                     .get(&(lc_label.clone(), point))
-                    .ok_or(Error::MissingEvaluation { label: lc_label.to_string() })?;
+                    .ok_or(PCError::MissingEvaluation { label: lc_label.to_string() })?;
 
                 let mut actual_rhs = F::zero();
 
                 for (coeff, label) in lc.iter() {
                     let eval = match label {
                         LCTerm::One => F::one(),
-                        LCTerm::PolyLabel(l) => {
-                            *poly_evals.get(&(l.clone(), point)).ok_or(Error::MissingEvaluation { label: l.clone() })?
-                        }
+                        LCTerm::PolyLabel(l) => *poly_evals
+                            .get(&(l.clone(), point))
+                            .ok_or(PCError::MissingEvaluation { label: l.clone() })?,
                     };
 
                     actual_rhs += &(*coeff * eval);
@@ -464,7 +465,7 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
         query_set: &QuerySet<F>,
         opening_challenges: &dyn Fn(u64) -> F,
         rands: impl IntoIterator<Item = &'a Self::Randomness>,
-    ) -> Result<BatchLCProof<F, CF, Self>, Error>
+    ) -> Result<BatchLCProof<F, CF, Self>, PCError>
     where
         Self::Randomness: 'a,
         Self::Commitment: 'a;
@@ -479,7 +480,7 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
         proof: &BatchLCProof<F, CF, Self>,
         opening_challenges: &dyn Fn(u64) -> F,
         rng: &mut R,
-    ) -> Result<bool, Error>
+    ) -> Result<bool, PCError>
     where
         Self::Commitment: 'a;
 }
@@ -546,7 +547,7 @@ pub mod tests {
         pub randomness: Vec<PC::Randomness>,
     }
 
-    pub fn bad_degree_bound_test<F, CF, PC>() -> Result<(), Error>
+    pub fn bad_degree_bound_test<F, CF, PC>() -> Result<(), PCError>
     where
         F: PrimeField,
         CF: PrimeField,
@@ -600,7 +601,7 @@ pub mod tests {
         Ok(())
     }
 
-    fn test_template<F, CF, PC>(info: TestInfo) -> Result<Vec<TestComponents<F, CF, PC>>, Error>
+    fn test_template<F, CF, PC>(info: TestInfo) -> Result<Vec<TestComponents<F, CF, PC>>, PCError>
     where
         F: PrimeField,
         CF: PrimeField,
@@ -720,7 +721,7 @@ pub mod tests {
         Ok(test_components)
     }
 
-    fn equation_test_template<F, CF, PC>(info: TestInfo) -> Result<Vec<TestComponents<F, CF, PC>>, Error>
+    fn equation_test_template<F, CF, PC>(info: TestInfo) -> Result<Vec<TestComponents<F, CF, PC>>, PCError>
     where
         F: PrimeField,
         CF: PrimeField,
@@ -892,7 +893,7 @@ pub mod tests {
         Ok(test_components)
     }
 
-    pub fn single_poly_test<F, CF, PC>() -> Result<Vec<TestComponents<F, CF, PC>>, Error>
+    pub fn single_poly_test<F, CF, PC>() -> Result<Vec<TestComponents<F, CF, PC>>, PCError>
     where
         F: PrimeField,
         CF: PrimeField,
@@ -910,7 +911,7 @@ pub mod tests {
         test_template::<F, CF, PC>(info)
     }
 
-    pub fn linear_poly_degree_bound_test<F, CF, PC>() -> Result<Vec<TestComponents<F, CF, PC>>, Error>
+    pub fn linear_poly_degree_bound_test<F, CF, PC>() -> Result<Vec<TestComponents<F, CF, PC>>, PCError>
     where
         F: PrimeField,
         CF: PrimeField,
@@ -928,7 +929,7 @@ pub mod tests {
         test_template::<F, CF, PC>(info)
     }
 
-    pub fn single_poly_degree_bound_test<F, CF, PC>() -> Result<Vec<TestComponents<F, CF, PC>>, Error>
+    pub fn single_poly_degree_bound_test<F, CF, PC>() -> Result<Vec<TestComponents<F, CF, PC>>, PCError>
     where
         F: PrimeField,
         CF: PrimeField,
@@ -947,7 +948,7 @@ pub mod tests {
     }
 
     pub fn quadratic_poly_degree_bound_multiple_queries_test<F, CF, PC>()
-    -> Result<Vec<TestComponents<F, CF, PC>>, Error>
+    -> Result<Vec<TestComponents<F, CF, PC>>, PCError>
     where
         F: PrimeField,
         CF: PrimeField,
@@ -965,7 +966,7 @@ pub mod tests {
         test_template::<F, CF, PC>(info)
     }
 
-    pub fn single_poly_degree_bound_multiple_queries_test<F, CF, PC>() -> Result<Vec<TestComponents<F, CF, PC>>, Error>
+    pub fn single_poly_degree_bound_multiple_queries_test<F, CF, PC>() -> Result<Vec<TestComponents<F, CF, PC>>, PCError>
     where
         F: PrimeField,
         CF: PrimeField,
@@ -983,7 +984,7 @@ pub mod tests {
         test_template::<F, CF, PC>(info)
     }
 
-    pub fn two_polys_degree_bound_single_query_test<F, CF, PC>() -> Result<Vec<TestComponents<F, CF, PC>>, Error>
+    pub fn two_polys_degree_bound_single_query_test<F, CF, PC>() -> Result<Vec<TestComponents<F, CF, PC>>, PCError>
     where
         F: PrimeField,
         CF: PrimeField,
@@ -1001,7 +1002,7 @@ pub mod tests {
         test_template::<F, CF, PC>(info)
     }
 
-    pub fn full_end_to_end_test<F, CF, PC>() -> Result<Vec<TestComponents<F, CF, PC>>, Error>
+    pub fn full_end_to_end_test<F, CF, PC>() -> Result<Vec<TestComponents<F, CF, PC>>, PCError>
     where
         F: PrimeField,
         CF: PrimeField,
@@ -1019,7 +1020,7 @@ pub mod tests {
         test_template::<F, CF, PC>(info)
     }
 
-    pub fn full_end_to_end_equation_test<F, CF, PC>() -> Result<Vec<TestComponents<F, CF, PC>>, Error>
+    pub fn full_end_to_end_equation_test<F, CF, PC>() -> Result<Vec<TestComponents<F, CF, PC>>, PCError>
     where
         F: PrimeField,
         CF: PrimeField,
@@ -1037,7 +1038,7 @@ pub mod tests {
         equation_test_template::<F, CF, PC>(info)
     }
 
-    pub fn single_equation_test<F, CF, PC>() -> Result<Vec<TestComponents<F, CF, PC>>, Error>
+    pub fn single_equation_test<F, CF, PC>() -> Result<Vec<TestComponents<F, CF, PC>>, PCError>
     where
         F: PrimeField,
         CF: PrimeField,
@@ -1055,7 +1056,7 @@ pub mod tests {
         equation_test_template::<F, CF, PC>(info)
     }
 
-    pub fn two_equation_test<F, CF, PC>() -> Result<Vec<TestComponents<F, CF, PC>>, Error>
+    pub fn two_equation_test<F, CF, PC>() -> Result<Vec<TestComponents<F, CF, PC>>, PCError>
     where
         F: PrimeField,
         CF: PrimeField,
@@ -1073,7 +1074,7 @@ pub mod tests {
         equation_test_template::<F, CF, PC>(info)
     }
 
-    pub fn two_equation_degree_bound_test<F, CF, PC>() -> Result<Vec<TestComponents<F, CF, PC>>, Error>
+    pub fn two_equation_degree_bound_test<F, CF, PC>() -> Result<Vec<TestComponents<F, CF, PC>>, PCError>
     where
         F: PrimeField,
         CF: PrimeField,

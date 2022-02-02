@@ -18,7 +18,7 @@ use crate::String;
 
 /// The error type for `PolynomialCommitment`.
 #[derive(Debug)]
-pub enum Error {
+pub enum PCError {
     /// The query set contains a label for a polynomial that was not provided as
     /// input to the `PC::open`.
     MissingPolynomial {
@@ -102,52 +102,52 @@ pub enum Error {
     Terminated,
 }
 
-impl core::fmt::Display for Error {
+impl core::fmt::Display for PCError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
-            Error::MissingPolynomial { label } => {
+            PCError::MissingPolynomial { label } => {
                 write!(f, "`QuerySet` refers to polynomial \"{}\", but it was not provided.", label)
             }
-            Error::MissingEvaluation { label } => write!(
+            PCError::MissingEvaluation { label } => write!(
                 f,
                 "`QuerySet` refers to polynomial \"{}\", but `Evaluations` does not contain an evaluation for it.",
                 label
             ),
-            Error::MissingLHS { label } => write!(f, "Equation \"{}\" does not have a LHS.", label),
-            Error::MissingRng => write!(f, "hiding commitments require `Some(rng)`"),
-            Error::DegreeIsZero => write!(f, "this scheme does not support committing to degree 0 polynomials"),
-            Error::TooManyCoefficients { num_coefficients, num_powers } => write!(
+            PCError::MissingLHS { label } => write!(f, "Equation \"{}\" does not have a LHS.", label),
+            PCError::MissingRng => write!(f, "hiding commitments require `Some(rng)`"),
+            PCError::DegreeIsZero => write!(f, "this scheme does not support committing to degree 0 polynomials"),
+            PCError::TooManyCoefficients { num_coefficients, num_powers } => write!(
                 f,
                 "the number of coefficients in the polynomial ({:?}) is greater than\
                  the maximum number of powers in `Powers` ({:?})",
                 num_coefficients, num_powers
             ),
-            Error::HidingBoundIsZero => write!(f, "this scheme does not support non-`None` hiding bounds that are 0"),
-            Error::HidingBoundToolarge { hiding_poly_degree, num_powers } => write!(
+            PCError::HidingBoundIsZero => write!(f, "this scheme does not support non-`None` hiding bounds that are 0"),
+            PCError::HidingBoundToolarge { hiding_poly_degree, num_powers } => write!(
                 f,
                 "the degree of the hiding poly ({:?}) is not less than the maximum number of powers in `Powers` ({:?})",
                 hiding_poly_degree, num_powers
             ),
-            Error::TrimmingDegreeTooLarge => write!(f, "the degree provided to `trim` was too large"),
-            Error::EmptyDegreeBounds => write!(f, "provided `enforced_degree_bounds` was `Some<&[]>`"),
-            Error::EquationHasDegreeBounds(e) => {
+            PCError::TrimmingDegreeTooLarge => write!(f, "the degree provided to `trim` was too large"),
+            PCError::EmptyDegreeBounds => write!(f, "provided `enforced_degree_bounds` was `Some<&[]>`"),
+            PCError::EquationHasDegreeBounds(e) => {
                 write!(f, "the eqaution \"{}\" contained degree-bounded polynomials", e)
             }
-            Error::UnsupportedDegreeBound(bound) => {
+            PCError::UnsupportedDegreeBound(bound) => {
                 write!(f, "the degree bound ({:?}) is not supported by the parameters", bound,)
             }
-            Error::IncorrectDegreeBound { poly_degree, degree_bound, supported_degree, label } => write!(
+            PCError::IncorrectDegreeBound { poly_degree, degree_bound, supported_degree, label } => write!(
                 f,
                 "the degree bound ({:?}) for the polynomial {} \
                  (having degree {:?}) is greater than the maximum \
                  supported degree ({:?})",
                 degree_bound, label, poly_degree, supported_degree
             ),
-            Error::IncorrectInputLength(err) => write!(f, "{}", err),
-            Error::MalformedCommitment(err) => write!(f, "{}", err),
-            Error::Terminated => write!(f, "terminated"),
+            PCError::IncorrectInputLength(err) => write!(f, "{}", err),
+            PCError::MalformedCommitment(err) => write!(f, "{}", err),
+            PCError::Terminated => write!(f, "terminated"),
         }
     }
 }
 
-impl snarkvm_utilities::error::Error for Error {}
+impl snarkvm_utilities::error::Error for PCError {}

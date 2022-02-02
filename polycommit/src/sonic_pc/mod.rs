@@ -19,12 +19,12 @@ use crate::{
     BTreeMap,
     BTreeSet,
     BatchLCProof,
-    Error,
     Evaluations,
     LabeledCommitment,
     LabeledPolynomial,
     LinearCombination,
     PCCommitterKey,
+    PCError,
     PCRandomness,
     PCUniversalParams,
     Polynomial,
@@ -102,7 +102,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
     type UniversalParams = UniversalParams<E>;
     type VerifierKey = VerifierKey<E>;
 
-    fn setup<R: RngCore>(max_degree: usize, rng: &mut R) -> Result<Self::UniversalParams, Error> {
+    fn setup<R: RngCore>(max_degree: usize, rng: &mut R) -> Result<Self::UniversalParams, PCError> {
         kzg10::KZG10::setup(max_degree, &kzg10::KZG10DegreeBoundsConfig::MARLIN, true, rng).map_err(Into::into)
     }
 
@@ -111,11 +111,11 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         supported_degree: usize,
         supported_hiding_bound: usize,
         enforced_degree_bounds: Option<&[usize]>,
-    ) -> Result<(Self::CommitterKey, Self::VerifierKey), Error> {
+    ) -> Result<(Self::CommitterKey, Self::VerifierKey), PCError> {
         let trim_time = start_timer!(|| "Trimming public parameters");
         let max_degree = pp.max_degree();
         if supported_degree > max_degree {
-            return Err(Error::TrimmingDegreeTooLarge);
+            return Err(PCError::TrimmingDegreeTooLarge);
         }
 
         let enforced_degree_bounds = enforced_degree_bounds.map(|bounds| {
@@ -133,7 +133,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
             } else {
                 let highest_enforced_degree_bound = *enforced_degree_bounds.last().unwrap();
                 if highest_enforced_degree_bound > supported_degree {
-                    return Err(Error::UnsupportedDegreeBound(highest_enforced_degree_bound));
+                    return Err(PCError::UnsupportedDegreeBound(highest_enforced_degree_bound));
                 }
 
                 let lowest_shift_degree = max_degree - highest_enforced_degree_bound;
@@ -226,7 +226,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<E::Fr>>,
         terminator: &AtomicBool,
         rng: Option<&mut dyn RngCore>,
-    ) -> Result<(Vec<LabeledCommitment<Self::Commitment>>, Vec<Self::Randomness>), Error> {
+    ) -> Result<(Vec<LabeledCommitment<Self::Commitment>>, Vec<Self::Randomness>), PCError> {
         let rng = &mut crate::optional_rng::OptionalRng(rng);
         let commit_time = start_timer!(|| "Committing to polynomials");
         let mut labeled_comms: Vec<LabeledCommitment<Self::Commitment>> = Vec::new();
@@ -237,7 +237,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         let enforced_degree_bounds: Option<&[usize]> = ck.enforced_degree_bounds.as_deref();
         for labeled_polynomial in polynomials {
             if terminator.load(Ordering::Relaxed) {
-                return Err(Error::Terminated);
+                return Err(PCError::Terminated);
             }
             let seed = rng.0.as_mut().map(|r| {
                 let mut seed = [0u8; 32];
@@ -297,7 +297,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         opening_challenge: E::Fr,
         rands: impl IntoIterator<Item = &'a Self::Randomness>,
         _rng: Option<&mut dyn RngCore>,
-    ) -> Result<Self::Proof, Error>
+    ) -> Result<Self::Proof, PCError>
     where
         Self::Randomness: 'a,
         Self::Commitment: 'a,
@@ -336,7 +336,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         proof: &Self::Proof,
         opening_challenge: E::Fr,
         _rng: &mut R,
-    ) -> Result<bool, Error>
+    ) -> Result<bool, PCError>
     where
         Self::Commitment: 'a,
     {
@@ -371,7 +371,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         proof: &Self::BatchProof,
         opening_challenge: E::Fr,
         rng: &mut R,
-    ) -> Result<bool, Error>
+    ) -> Result<bool, PCError>
     where
         Self::Commitment: 'a,
     {
@@ -395,11 +395,12 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
             let mut comms_to_combine: Vec<&'_ LabeledCommitment<_>> = Vec::new();
             let mut values_to_combine = Vec::new();
             for label in labels.into_iter() {
-                let commitment = commitments.get(label).ok_or(Error::MissingPolynomial { label: label.to_string() })?;
+                let commitment =
+                    commitments.get(label).ok_or(PCError::MissingPolynomial { label: label.to_string() })?;
 
                 let v_i = values
                     .get(&(label.clone(), *query))
-                    .ok_or(Error::MissingEvaluation { label: label.to_string() })?;
+                    .ok_or(PCError::MissingEvaluation { label: label.to_string() })?;
 
                 comms_to_combine.push(commitment);
                 values_to_combine.push(*v_i);
@@ -433,7 +434,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         opening_challenge: E::Fr,
         rands: impl IntoIterator<Item = &'a Self::Randomness>,
         rng: Option<&mut dyn RngCore>,
-    ) -> Result<BatchLCProof<E::Fr, E::Fq, Self>, Error>
+    ) -> Result<BatchLCProof<E::Fr, E::Fq, Self>, PCError>
     where
         Self::Randomness: 'a,
         Self::Commitment: 'a,
@@ -462,14 +463,14 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
             for (coeff, label) in lc.iter().filter(|(_, l)| !l.is_one()) {
                 let label: &String = label.try_into().expect("cannot be one!");
                 let &(cur_poly, cur_rand, curr_comm) =
-                    label_map.get(label).ok_or(Error::MissingPolynomial { label: label.to_string() })?;
+                    label_map.get(label).ok_or(PCError::MissingPolynomial { label: label.to_string() })?;
 
                 if num_polys == 1 && cur_poly.degree_bound().is_some() {
                     assert!(coeff.is_one(), "Coefficient must be one for degree-bounded equations");
                     degree_bound = cur_poly.degree_bound();
                 } else if cur_poly.degree_bound().is_some() {
                     eprintln!("Degree bound when number of equations is non-zero");
-                    return Err(Error::EquationHasDegreeBounds(lc_label));
+                    return Err(PCError::EquationHasDegreeBounds(lc_label));
                 }
 
                 // Some(_) > None, always.
@@ -520,7 +521,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         proof: &BatchLCProof<E::Fr, E::Fq, Self>,
         opening_challenge: E::Fr,
         rng: &mut R,
-    ) -> Result<bool, Error>
+    ) -> Result<bool, PCError>
     where
         Self::Commitment: 'a,
     {
@@ -547,13 +548,13 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
                 } else {
                     let label: String = label.to_owned().try_into().unwrap();
                     let cur_comm =
-                        label_comm_map.get(&label).ok_or(Error::MissingPolynomial { label: label.to_string() })?;
+                        label_comm_map.get(&label).ok_or(PCError::MissingPolynomial { label: label.to_string() })?;
 
                     if num_polys == 1 && cur_comm.degree_bound().is_some() {
                         assert!(coeff.is_one(), "Coefficient must be one for degree-bounded equations");
                         degree_bound = cur_comm.degree_bound();
                     } else if cur_comm.degree_bound().is_some() {
-                        return Err(Error::EquationHasDegreeBounds(lc_label));
+                        return Err(PCError::EquationHasDegreeBounds(lc_label));
                     }
                     combined_comm += &cur_comm.commitment().0.mul(*coeff).into();
                 }
@@ -582,7 +583,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         query_set: &QuerySet<E::Fr>,
         opening_challenges: &dyn Fn(u64) -> E::Fr,
         rands: impl IntoIterator<Item = &'a Self::Randomness>,
-    ) -> Result<BatchLCProof<E::Fr, E::Fq, Self>, Error>
+    ) -> Result<BatchLCProof<E::Fr, E::Fq, Self>, PCError>
     where
         Self::Randomness: 'a,
         Self::Commitment: 'a,
@@ -612,12 +613,12 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
             for (coeff, label) in lc.iter().filter(|(_, l)| !l.is_one()) {
                 let label: &String = label.try_into().expect("cannot be one!");
                 let &(cur_poly, cur_rand, cur_comm) =
-                    label_map.get(label).ok_or(Error::MissingPolynomial { label: label.to_string() })?;
+                    label_map.get(label).ok_or(PCError::MissingPolynomial { label: label.to_string() })?;
                 if num_polys == 1 && cur_poly.degree_bound().is_some() {
                     assert!(coeff.is_one(), "Coefficient must be one for degree-bounded equations");
                     degree_bound = cur_poly.degree_bound();
                 } else if cur_poly.degree_bound().is_some() {
-                    return Err(Error::EquationHasDegreeBounds(lc_label));
+                    return Err(PCError::EquationHasDegreeBounds(lc_label));
                 }
                 // Some(_) > None, always.
                 hiding_bound = core::cmp::max(hiding_bound, cur_poly.hiding_bound());
@@ -662,7 +663,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         proof: &BatchLCProof<E::Fr, E::Fq, Self>,
         opening_challenges: &dyn Fn(u64) -> E::Fr,
         rng: &mut R,
-    ) -> Result<bool, Error>
+    ) -> Result<bool, PCError>
     where
         Self::Commitment: 'a,
     {
@@ -691,13 +692,13 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
                 } else {
                     let label: &String = label.try_into().unwrap();
                     let &cur_comm =
-                        label_comm_map.get(label).ok_or(Error::MissingPolynomial { label: label.to_string() })?;
+                        label_comm_map.get(label).ok_or(PCError::MissingPolynomial { label: label.to_string() })?;
 
                     if num_polys == 1 && cur_comm.degree_bound().is_some() {
                         assert!(coeff.is_one(), "Coefficient must be one for degree-bounded equations");
                         degree_bound = cur_comm.degree_bound();
                     } else if cur_comm.degree_bound().is_some() {
-                        return Err(Error::EquationHasDegreeBounds(lc_label));
+                        return Err(PCError::EquationHasDegreeBounds(lc_label));
                     }
                     coeffs_and_comms.push((*coeff, cur_comm.commitment()));
                 }
@@ -739,7 +740,7 @@ impl<E: PairingEngine> SonicKZG10<E> {
         point: &'a E::Fr,
         opening_challenges: &dyn Fn(u64) -> E::Fr,
         rands: impl IntoIterator<Item = &'a <Self as PolynomialCommitment<E::Fr, E::Fq>>::Randomness>,
-    ) -> Result<<Self as PolynomialCommitment<E::Fr, E::Fq>>::Proof, Error>
+    ) -> Result<<Self as PolynomialCommitment<E::Fr, E::Fq>>::Proof, PCError>
     where
         <Self as PolynomialCommitment<E::Fr, E::Fq>>::Randomness: 'a,
         <Self as PolynomialCommitment<E::Fr, E::Fq>>::Commitment: 'a,
@@ -780,7 +781,7 @@ impl<E: PairingEngine> SonicKZG10<E> {
         query_set: &QuerySet<E::Fr>,
         opening_challenges: &dyn Fn(u64) -> E::Fr,
         rands: impl IntoIterator<Item = &'a <Self as PolynomialCommitment<E::Fr, E::Fq>>::Randomness>,
-    ) -> Result<<Self as PolynomialCommitment<E::Fr, E::Fq>>::BatchProof, Error>
+    ) -> Result<<Self as PolynomialCommitment<E::Fr, E::Fq>>::BatchProof, PCError>
     where
         <Self as PolynomialCommitment<E::Fr, E::Fq>>::Randomness: 'a,
         <Self as PolynomialCommitment<E::Fr, E::Fq>>::Commitment: 'a,
@@ -814,7 +815,7 @@ impl<E: PairingEngine> SonicKZG10<E> {
 
             for label in labels {
                 let (polynomial, rand, comm) =
-                    poly_rand_comm.get(label).ok_or(Error::MissingPolynomial { label: label.to_string() })?;
+                    poly_rand_comm.get(label).ok_or(PCError::MissingPolynomial { label: label.to_string() })?;
 
                 query_polys.push(polynomial);
                 query_rands.push(rand);
@@ -851,7 +852,7 @@ impl<E: PairingEngine> SonicKZG10<E> {
         values: impl IntoIterator<Item = E::Fr>,
         proof: &<Self as PolynomialCommitment<E::Fr, E::Fq>>::Proof,
         opening_challenges: &dyn Fn(u64) -> E::Fr,
-    ) -> Result<bool, Error>
+    ) -> Result<bool, PCError>
     where
         <Self as PolynomialCommitment<E::Fr, E::Fq>>::Commitment: 'a,
     {
@@ -889,7 +890,7 @@ impl<E: PairingEngine> SonicKZG10<E> {
         proof: &<Self as PolynomialCommitment<E::Fr, E::Fq>>::BatchProof,
         opening_challenges: &dyn Fn(u64) -> E::Fr,
         _rng: &mut R,
-    ) -> Result<bool, Error>
+    ) -> Result<bool, PCError>
     where
         <Self as PolynomialCommitment<E::Fr, E::Fq>>::Commitment: 'a,
     {
@@ -911,11 +912,12 @@ impl<E: PairingEngine> SonicKZG10<E> {
             let mut comms: Vec<&'_ LabeledCommitment<_>> = Vec::new();
             let mut values = Vec::new();
             for label in labels {
-                let commitment = commitments.get(label).ok_or(Error::MissingPolynomial { label: label.to_string() })?;
+                let commitment =
+                    commitments.get(label).ok_or(PCError::MissingPolynomial { label: label.to_string() })?;
 
                 let v_i = evaluations
                     .get(&(label.clone(), *point))
-                    .ok_or(Error::MissingEvaluation { label: label.to_string() })?;
+                    .ok_or(PCError::MissingEvaluation { label: label.to_string() })?;
 
                 comms.push(commitment);
                 values.push(*v_i);
@@ -1045,14 +1047,14 @@ impl<E: PairingEngine> SonicKZG10<E> {
         combined_witness: E::G1Projective,
         combined_adjusted_witness: E::G1Projective,
         vk: &VerifierKey<E>,
-    ) -> Result<bool, Error> {
+    ) -> Result<bool, PCError> {
         let check_time = start_timer!(|| "Checking elems");
         let mut g1_projective_elems = Vec::with_capacity(combined_comms.len() + 2);
         let mut g2_prepared_elems = Vec::with_capacity(combined_comms.len() + 2);
 
         for (degree_bound, comm) in combined_comms.into_iter() {
             let shift_power = if let Some(degree_bound) = degree_bound {
-                vk.get_prepared_shift_power(degree_bound).ok_or(Error::UnsupportedDegreeBound(degree_bound))?
+                vk.get_prepared_shift_power(degree_bound).ok_or(PCError::UnsupportedDegreeBound(degree_bound))?
             } else {
                 vk.vk.prepared_h.clone()
             };

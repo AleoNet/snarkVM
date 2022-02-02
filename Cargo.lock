@@ -2147,7 +2147,6 @@ dependencies = [
  "snarkvm-algorithms",
  "snarkvm-curves",
  "snarkvm-fields",
- "snarkvm-marlin",
  "snarkvm-profiler",
  "snarkvm-utilities",
 ]
