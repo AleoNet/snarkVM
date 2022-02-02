@@ -25,6 +25,8 @@ use core::{
         BitAndAssign,
         BitOr,
         BitOrAssign,
+        BitXor,
+        BitXorAssign,
         Div,
         DivAssign,
         Mul,
@@ -79,6 +81,8 @@ pub trait IntegerTrait<I: IntegerType>:
     + BitAnd<Output = Self>
     + BitOrAssign
     + BitOr<Output = Self>
+    + BitXorAssign
+    + BitXor<Output = Self>
     + Clone
     + Debug
     + DivAssign

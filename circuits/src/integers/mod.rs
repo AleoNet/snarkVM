@@ -19,6 +19,7 @@ pub mod add_checked;
 pub mod add_wrapped;
 pub mod bitand;
 pub mod bitor;
+pub mod bitxor;
 pub mod div;
 pub mod div_checked;
 pub mod div_wrapped;
@@ -60,6 +61,8 @@ use std::{
         BitAndAssign,
         BitOr,
         BitOrAssign,
+        BitXor,
+        BitXorAssign,
         Div,
         DivAssign,
         Mul,

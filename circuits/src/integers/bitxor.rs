@@ -18,55 +18,55 @@ use super::*;
 
 use itertools::Itertools;
 
-impl<E: Environment, I: IntegerType> BitOr<Integer<E, I>> for Integer<E, I> {
+impl<E: Environment, I: IntegerType> BitXor<Integer<E, I>> for Integer<E, I> {
     type Output = Self;
 
-    fn bitor(self, other: Self) -> Self::Output {
-        self | &other
+    fn bitxor(self, other: Self) -> Self::Output {
+        self ^ &other
     }
 }
 
-impl<E: Environment, I: IntegerType> BitOr<Integer<E, I>> for &Integer<E, I> {
+impl<E: Environment, I: IntegerType> BitXor<Integer<E, I>> for &Integer<E, I> {
     type Output = Integer<E, I>;
 
-    fn bitor(self, other: Integer<E, I>) -> Self::Output {
-        self | &other
+    fn bitxor(self, other: Integer<E, I>) -> Self::Output {
+        self ^ &other
     }
 }
 
-impl<E: Environment, I: IntegerType> BitOr<&Integer<E, I>> for Integer<E, I> {
+impl<E: Environment, I: IntegerType> BitXor<&Integer<E, I>> for Integer<E, I> {
     type Output = Self;
 
-    fn bitor(self, other: &Self) -> Self::Output {
-        &self | other
+    fn bitxor(self, other: &Self) -> Self::Output {
+        &self ^ other
     }
 }
 
-impl<E: Environment, I: IntegerType> BitOr<&Integer<E, I>> for &Integer<E, I> {
+impl<E: Environment, I: IntegerType> BitXor<&Integer<E, I>> for &Integer<E, I> {
     type Output = Integer<E, I>;
 
-    fn bitor(self, other: &Integer<E, I>) -> Self::Output {
+    fn bitxor(self, other: &Integer<E, I>) -> Self::Output {
         let mut output = self.clone();
-        output |= other;
+        output ^= other;
         output
     }
 }
 
-impl<E: Environment, I: IntegerType> BitOrAssign<Integer<E, I>> for Integer<E, I> {
-    fn bitor_assign(&mut self, other: Integer<E, I>) {
-        *self |= &other;
+impl<E: Environment, I: IntegerType> BitXorAssign<Integer<E, I>> for Integer<E, I> {
+    fn bitxor_assign(&mut self, other: Integer<E, I>) {
+        *self ^= &other;
     }
 }
 
-impl<E: Environment, I: IntegerType> BitOrAssign<&Integer<E, I>> for Integer<E, I> {
-    fn bitor_assign(&mut self, other: &Integer<E, I>) {
-        // Stores the bitwise OR of `self` and `other` in `self`.
+impl<E: Environment, I: IntegerType> BitXorAssign<&Integer<E, I>> for Integer<E, I> {
+    fn bitxor_assign(&mut self, other: &Integer<E, I>) {
+        // Stores the bitwise XOR of `self` and `other` in `self`.
         *self = Self {
             bits_le: self
                 .bits_le
                 .iter()
                 .zip_eq(other.bits_le.iter())
-                .map(|(self_bit, other_bit)| self_bit.or(other_bit))
+                .map(|(self_bit, other_bit)| self_bit.xor(other_bit))
                 .collect(),
             phantom: Default::default(),
         }
@@ -84,7 +84,7 @@ mod tests {
     const ITERATIONS: usize = 128;
 
     #[rustfmt::skip]
-    fn check_bitor<I: IntegerType, IC: IntegerTrait<I>>(
+    fn check_bitxor<I: IntegerType, IC: IntegerTrait<I>>(
         name: &str,
         expected: I,
         a: IC,
@@ -95,9 +95,9 @@ mod tests {
         num_constraints: usize,
     ) {
         Circuit::scoped(name, || {
-            let case = format!("({} | {})", a.eject_value(), b.eject_value());
+            let case = format!("({} ^ {})", a.eject_value(), b.eject_value());
 
-            let candidate = a | b;
+            let candidate = a ^ b;
             assert_eq!(
                 expected,
                 candidate.eject_value(),
@@ -121,7 +121,7 @@ mod tests {
     }
 
     #[rustfmt::skip]
-    fn run_test<I: IntegerType + BitOr<Output = I>>(
+    fn run_test<I: IntegerType + BitXor<Output = I>>(
         mode_a: Mode,
         mode_b: Mode,
         num_constants: usize,
@@ -130,39 +130,39 @@ mod tests {
         num_constraints: usize,
     ) {
         for i in 0..ITERATIONS {
-            let name = format!("BitOr: ({} | {}) {}", mode_a, mode_b, i);
+            let name = format!("BitXor: ({} ^ {}) {}", mode_a, mode_b, i);
             let first : I = UniformRand::rand(&mut thread_rng());
             let second : I = UniformRand::rand(&mut thread_rng());
 
-            let expected = first | second;
+            let expected = first ^ second;
             let a = Integer::<Circuit, I>::new(mode_a, first);
             let b = Integer::<Circuit, I>::new(mode_b, second);
 
-            check_bitor::<I, Integer<Circuit, I>>(&name, expected, a, b, num_constants, num_public, num_private, num_constraints);
+            check_bitxor::<I, Integer<Circuit, I>>(&name, expected, a, b, num_constants, num_public, num_private, num_constraints);
         }
 
         // Closure for checking particular corner cases.
-        let check_bitor = | first, second, expected | {
-            let name = format!("BitOr: ({} | {})", first, second);
+        let check_bitxor = | first, second, expected | {
+            let name = format!("BitXor: ({} ^ {})", first, second);
             let a = Integer::<Circuit, I>::new(mode_a, first);
             let b = Integer::<Circuit, I>::new(mode_b, second);
 
-            check_bitor::<I, Integer<Circuit, I>>(&name, expected, a, b, num_constants, num_public, num_private, num_constraints);
+            check_bitxor::<I, Integer<Circuit, I>>(&name, expected, a, b, num_constants, num_public, num_private, num_constraints);
         };
 
         // Check cases common to signed and unsigned integers.
-        check_bitor(I::zero(), I::MAX, I::MAX);
-        check_bitor(I::MAX, I::zero(), I::MAX);
-        check_bitor(I::zero(), I::MIN, I::MIN);
-        check_bitor(I::MIN, I::zero(), I::MIN);
+        check_bitxor(I::zero(), I::MAX, I::MAX);
+        check_bitxor(I::MAX, I::zero(), I::MAX);
+        check_bitxor(I::zero(), I::MIN, I::MIN);
+        check_bitxor(I::MIN, I::zero(), I::MIN);
 
         // Check cases specific to signed and unsigned integers respectively.
         for i in 0..ITERATIONS {
             let other: I = UniformRand::rand(&mut thread_rng());
             if I::is_signed() {
-                check_bitor(I::zero() - I::one(), other, I::zero() - I::one());
+                check_bitxor(I::zero() - I::one(), other, !other);
             } else {
-                check_bitor(I::MAX, other, I::MAX);
+                check_bitxor(I::MAX, other, !other);
             }
         }
     }
@@ -170,55 +170,55 @@ mod tests {
     // Tests for u8
 
     #[test]
-    fn test_u8_constant_bitor_constant() {
+    fn test_u8_constant_bitxor_constant() {
         type I = u8;
         run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_u8_constant_bitor_public() {
+    fn test_u8_constant_bitxor_public() {
         type I = u8;
         run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_u8_constant_bitor_private() {
+    fn test_u8_constant_bitxor_private() {
         type I = u8;
         run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_u8_public_bitor_constant() {
+    fn test_u8_public_bitxor_constant() {
         type I = u8;
         run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_u8_private_bitor_constant() {
+    fn test_u8_private_bitxor_constant() {
         type I = u8;
         run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_u8_public_bitor_public() {
+    fn test_u8_public_bitxor_public() {
         type I = u8;
         run_test::<I>(Mode::Public, Mode::Public, 0, 0, 8, 8);
     }
 
     #[test]
-    fn test_u8_public_bitor_private() {
+    fn test_u8_public_bitxor_private() {
         type I = u8;
         run_test::<I>(Mode::Public, Mode::Private, 0, 0, 8, 8);
     }
 
     #[test]
-    fn test_u8_private_bitor_public() {
+    fn test_u8_private_bitxor_public() {
         type I = u8;
         run_test::<I>(Mode::Private, Mode::Public, 0, 0, 8, 8);
     }
 
     #[test]
-    fn test_u8_private_bitor_private() {
+    fn test_u8_private_bitxor_private() {
         type I = u8;
         run_test::<I>(Mode::Private, Mode::Private, 0, 0, 8, 8);
     }
@@ -226,55 +226,55 @@ mod tests {
     // Tests for i8
 
     #[test]
-    fn test_i8_constant_bitor_constant() {
+    fn test_i8_constant_bitxor_constant() {
         type I = i8;
         run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_i8_constant_bitor_public() {
+    fn test_i8_constant_bitxor_public() {
         type I = i8;
         run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_i8_constant_bitor_private() {
+    fn test_i8_constant_bitxor_private() {
         type I = i8;
         run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_i8_public_bitor_constant() {
+    fn test_i8_public_bitxor_constant() {
         type I = i8;
         run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_i8_private_bitor_constant() {
+    fn test_i8_private_bitxor_constant() {
         type I = i8;
         run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_i8_public_bitor_public() {
+    fn test_i8_public_bitxor_public() {
         type I = i8;
         run_test::<I>(Mode::Public, Mode::Public, 0, 0, 8, 8);
     }
 
     #[test]
-    fn test_i8_public_bitor_private() {
+    fn test_i8_public_bitxor_private() {
         type I = i8;
         run_test::<I>(Mode::Public, Mode::Private, 0, 0, 8, 8);
     }
 
     #[test]
-    fn test_i8_private_bitor_public() {
+    fn test_i8_private_bitxor_public() {
         type I = i8;
         run_test::<I>(Mode::Private, Mode::Public, 0, 0, 8, 8);
     }
 
     #[test]
-    fn test_i8_private_bitor_private() {
+    fn test_i8_private_bitxor_private() {
         type I = i8;
         run_test::<I>(Mode::Private, Mode::Private, 0, 0, 8, 8);
     }
@@ -282,55 +282,55 @@ mod tests {
     // Tests for u16
 
     #[test]
-    fn test_u16_constant_bitor_constant() {
+    fn test_u16_constant_bitxor_constant() {
         type I = u16;
         run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_u16_constant_bitor_public() {
+    fn test_u16_constant_bitxor_public() {
         type I = u16;
         run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_u16_constant_bitor_private() {
+    fn test_u16_constant_bitxor_private() {
         type I = u16;
         run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_u16_public_bitor_constant() {
+    fn test_u16_public_bitxor_constant() {
         type I = u16;
         run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_u16_private_bitor_constant() {
+    fn test_u16_private_bitxor_constant() {
         type I = u16;
         run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_u16_public_bitor_public() {
+    fn test_u16_public_bitxor_public() {
         type I = u16;
         run_test::<I>(Mode::Public, Mode::Public, 0, 0, 16, 16);
     }
 
     #[test]
-    fn test_u16_public_bitor_private() {
+    fn test_u16_public_bitxor_private() {
         type I = u16;
         run_test::<I>(Mode::Public, Mode::Private, 0, 0, 16, 16);
     }
 
     #[test]
-    fn test_u16_private_bitor_public() {
+    fn test_u16_private_bitxor_public() {
         type I = u16;
         run_test::<I>(Mode::Private, Mode::Public, 0, 0, 16, 16);
     }
 
     #[test]
-    fn test_u16_private_bitor_private() {
+    fn test_u16_private_bitxor_private() {
         type I = u16;
         run_test::<I>(Mode::Private, Mode::Private, 0, 0, 16, 16);
     }
@@ -338,55 +338,55 @@ mod tests {
     // Tests for i16
 
     #[test]
-    fn test_i16_constant_bitor_constant() {
+    fn test_i16_constant_bitxor_constant() {
         type I = i16;
         run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_i16_constant_bitor_public() {
+    fn test_i16_constant_bitxor_public() {
         type I = i16;
         run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_i16_constant_bitor_private() {
+    fn test_i16_constant_bitxor_private() {
         type I = i16;
         run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_i16_public_bitor_constant() {
+    fn test_i16_public_bitxor_constant() {
         type I = i16;
         run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_i16_private_bitor_constant() {
+    fn test_i16_private_bitxor_constant() {
         type I = i16;
         run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_i16_public_bitor_public() {
+    fn test_i16_public_bitxor_public() {
         type I = i16;
         run_test::<I>(Mode::Public, Mode::Public, 0, 0, 16, 16);
     }
 
     #[test]
-    fn test_i16_public_bitor_private() {
+    fn test_i16_public_bitxor_private() {
         type I = i16;
         run_test::<I>(Mode::Public, Mode::Private, 0, 0, 16, 16);
     }
 
     #[test]
-    fn test_i16_private_bitor_public() {
+    fn test_i16_private_bitxor_public() {
         type I = i16;
         run_test::<I>(Mode::Private, Mode::Public, 0, 0, 16, 16);
     }
 
     #[test]
-    fn test_i16_private_bitor_private() {
+    fn test_i16_private_bitxor_private() {
         type I = i16;
         run_test::<I>(Mode::Private, Mode::Private, 0, 0, 16, 16);
     }
@@ -394,55 +394,55 @@ mod tests {
     // Tests for u32
 
     #[test]
-    fn test_u32_constant_bitor_constant() {
+    fn test_u32_constant_bitxor_constant() {
         type I = u32;
         run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_u32_constant_bitor_public() {
+    fn test_u32_constant_bitxor_public() {
         type I = u32;
         run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_u32_constant_bitor_private() {
+    fn test_u32_constant_bitxor_private() {
         type I = u32;
         run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_u32_public_bitor_constant() {
+    fn test_u32_public_bitxor_constant() {
         type I = u32;
         run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_u32_private_bitor_constant() {
+    fn test_u32_private_bitxor_constant() {
         type I = u32;
         run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_u32_public_bitor_public() {
+    fn test_u32_public_bitxor_public() {
         type I = u32;
         run_test::<I>(Mode::Public, Mode::Public, 0, 0, 32, 32);
     }
 
     #[test]
-    fn test_u32_public_bitor_private() {
+    fn test_u32_public_bitxor_private() {
         type I = u32;
         run_test::<I>(Mode::Public, Mode::Private, 0, 0, 32, 32);
     }
 
     #[test]
-    fn test_u32_private_bitor_public() {
+    fn test_u32_private_bitxor_public() {
         type I = u32;
         run_test::<I>(Mode::Private, Mode::Public, 0, 0, 32, 32);
     }
 
     #[test]
-    fn test_u32_private_bitor_private() {
+    fn test_u32_private_bitxor_private() {
         type I = u32;
         run_test::<I>(Mode::Private, Mode::Private, 0, 0, 32, 32);
     }
@@ -450,55 +450,55 @@ mod tests {
     // Tests for i32
 
     #[test]
-    fn test_i32_constant_bitor_constant() {
+    fn test_i32_constant_bitxor_constant() {
         type I = i32;
         run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_i32_constant_bitor_public() {
+    fn test_i32_constant_bitxor_public() {
         type I = i32;
         run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_i32_constant_bitor_private() {
+    fn test_i32_constant_bitxor_private() {
         type I = i32;
         run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_i32_public_bitor_constant() {
+    fn test_i32_public_bitxor_constant() {
         type I = i32;
         run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_i32_private_bitor_constant() {
+    fn test_i32_private_bitxor_constant() {
         type I = i32;
         run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_i32_public_bitor_public() {
+    fn test_i32_public_bitxor_public() {
         type I = i32;
         run_test::<I>(Mode::Public, Mode::Public, 0, 0, 32, 32);
     }
 
     #[test]
-    fn test_i32_public_bitor_private() {
+    fn test_i32_public_bitxor_private() {
         type I = i32;
         run_test::<I>(Mode::Public, Mode::Private, 0, 0, 32, 32);
     }
 
     #[test]
-    fn test_i32_private_bitor_public() {
+    fn test_i32_private_bitxor_public() {
         type I = i32;
         run_test::<I>(Mode::Private, Mode::Public, 0, 0, 32, 32);
     }
 
     #[test]
-    fn test_i32_private_bitor_private() {
+    fn test_i32_private_bitxor_private() {
         type I = i32;
         run_test::<I>(Mode::Private, Mode::Private, 0, 0, 32, 32);
     }
@@ -506,55 +506,55 @@ mod tests {
     // Tests for u64
 
     #[test]
-    fn test_u64_constant_bitor_constant() {
+    fn test_u64_constant_bitxor_constant() {
         type I = u64;
         run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_u64_constant_bitor_public() {
+    fn test_u64_constant_bitxor_public() {
         type I = u64;
         run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_u64_constant_bitor_private() {
+    fn test_u64_constant_bitxor_private() {
         type I = u64;
         run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_u64_public_bitor_constant() {
+    fn test_u64_public_bitxor_constant() {
         type I = u64;
         run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_u64_private_bitor_constant() {
+    fn test_u64_private_bitxor_constant() {
         type I = u64;
         run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_u64_public_bitor_public() {
+    fn test_u64_public_bitxor_public() {
         type I = u64;
         run_test::<I>(Mode::Public, Mode::Public, 0, 0, 64, 64);
     }
 
     #[test]
-    fn test_u64_public_bitor_private() {
+    fn test_u64_public_bitxor_private() {
         type I = u64;
         run_test::<I>(Mode::Public, Mode::Private, 0, 0, 64, 64);
     }
 
     #[test]
-    fn test_u64_private_bitor_public() {
+    fn test_u64_private_bitxor_public() {
         type I = u64;
         run_test::<I>(Mode::Private, Mode::Public, 0, 0, 64, 64);
     }
 
     #[test]
-    fn test_u64_private_bitor_private() {
+    fn test_u64_private_bitxor_private() {
         type I = u64;
         run_test::<I>(Mode::Private, Mode::Private, 0, 0, 64, 64);
     }
@@ -562,55 +562,55 @@ mod tests {
     // Tests for i64
 
     #[test]
-    fn test_i64_constant_bitor_constant() {
+    fn test_i64_constant_bitxor_constant() {
         type I = i64;
         run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_i64_constant_bitor_public() {
+    fn test_i64_constant_bitxor_public() {
         type I = i64;
         run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_i64_constant_bitor_private() {
+    fn test_i64_constant_bitxor_private() {
         type I = i64;
         run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_i64_public_bitor_constant() {
+    fn test_i64_public_bitxor_constant() {
         type I = i64;
         run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_i64_private_bitor_constant() {
+    fn test_i64_private_bitxor_constant() {
         type I = i64;
         run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_i64_public_bitor_public() {
+    fn test_i64_public_bitxor_public() {
         type I = i64;
         run_test::<I>(Mode::Public, Mode::Public, 0, 0, 64, 64);
     }
 
     #[test]
-    fn test_i64_public_bitor_private() {
+    fn test_i64_public_bitxor_private() {
         type I = i64;
         run_test::<I>(Mode::Public, Mode::Private, 0, 0, 64, 64);
     }
 
     #[test]
-    fn test_i64_private_bitor_public() {
+    fn test_i64_private_bitxor_public() {
         type I = i64;
         run_test::<I>(Mode::Private, Mode::Public, 0, 0, 64, 64);
     }
 
     #[test]
-    fn test_i64_private_bitor_private() {
+    fn test_i64_private_bitxor_private() {
         type I = i64;
         run_test::<I>(Mode::Private, Mode::Private, 0, 0, 64, 64);
     }
@@ -618,55 +618,55 @@ mod tests {
     // Tests for u128
 
     #[test]
-    fn test_u128_constant_bitor_constant() {
+    fn test_u128_constant_bitxor_constant() {
         type I = u128;
         run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_u128_constant_bitor_public() {
+    fn test_u128_constant_bitxor_public() {
         type I = u128;
         run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_u128_constant_bitor_private() {
+    fn test_u128_constant_bitxor_private() {
         type I = u128;
         run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_u128_public_bitor_constant() {
+    fn test_u128_public_bitxor_constant() {
         type I = u128;
         run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_u128_private_bitor_constant() {
+    fn test_u128_private_bitxor_constant() {
         type I = u128;
         run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_u128_public_bitor_public() {
+    fn test_u128_public_bitxor_public() {
         type I = u128;
         run_test::<I>(Mode::Public, Mode::Public, 0, 0, 128, 128);
     }
 
     #[test]
-    fn test_u128_public_bitor_private() {
+    fn test_u128_public_bitxor_private() {
         type I = u128;
         run_test::<I>(Mode::Public, Mode::Private, 0, 0, 128, 128);
     }
 
     #[test]
-    fn test_u128_private_bitor_public() {
+    fn test_u128_private_bitxor_public() {
         type I = u128;
         run_test::<I>(Mode::Private, Mode::Public, 0, 0, 128, 128);
     }
 
     #[test]
-    fn test_u128_private_bitor_private() {
+    fn test_u128_private_bitxor_private() {
         type I = u128;
         run_test::<I>(Mode::Private, Mode::Private, 0, 0, 128, 128);
     }
@@ -674,55 +674,55 @@ mod tests {
     // Tests for i128
 
     #[test]
-    fn test_i128_constant_bitor_constant() {
+    fn test_i128_constant_bitxor_constant() {
         type I = i128;
         run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_i128_constant_bitor_public() {
+    fn test_i128_constant_bitxor_public() {
         type I = i128;
         run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_i128_constant_bitor_private() {
+    fn test_i128_constant_bitxor_private() {
         type I = i128;
         run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_i128_public_bitor_constant() {
+    fn test_i128_public_bitxor_constant() {
         type I = i128;
         run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_i128_private_bitor_constant() {
+    fn test_i128_private_bitxor_constant() {
         type I = i128;
         run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_i128_public_bitor_public() {
+    fn test_i128_public_bitxor_public() {
         type I = i128;
         run_test::<I>(Mode::Public, Mode::Public, 0, 0, 128, 128);
     }
 
     #[test]
-    fn test_i128_public_bitor_private() {
+    fn test_i128_public_bitxor_private() {
         type I = i128;
         run_test::<I>(Mode::Public, Mode::Private, 0, 0, 128, 128);
     }
 
     #[test]
-    fn test_i128_private_bitor_public() {
+    fn test_i128_private_bitxor_public() {
         type I = i128;
         run_test::<I>(Mode::Private, Mode::Public, 0, 0, 128, 128);
     }
 
     #[test]
-    fn test_i128_private_bitor_private() {
+    fn test_i128_private_bitxor_private() {
         type I = i128;
         run_test::<I>(Mode::Private, Mode::Private, 0, 0, 128, 128);
     }
