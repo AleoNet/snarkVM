@@ -2042,6 +2042,8 @@ dependencies = [
  "criterion",
  "derivative",
  "itertools",
+ "num-bigint",
+ "num-integer",
  "num-traits",
  "rand",
  "rand_chacha",
