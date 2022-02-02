@@ -32,14 +32,11 @@ use crate::{
     ToString,
     Vec,
 };
-use snarkvm_algorithms::fft::{
-    DensePolynomial,
-    EvaluationDomain,
-    Evaluations as EvaluationsOnDomain,
-    SparsePolynomial,
+use snarkvm_algorithms::{
+    fft::{DensePolynomial, EvaluationDomain, Evaluations as EvaluationsOnDomain, SparsePolynomial},
+    polycommit::LabeledPolynomial,
 };
 use snarkvm_fields::{batch_inversion, Field, PrimeField};
-use snarkvm_polycommit::{LabeledPolynomial, Polynomial};
 use snarkvm_r1cs::ConstraintSynthesizer;
 use snarkvm_utilities::{cfg_into_iter, cfg_iter, cfg_iter_mut};
 
@@ -274,19 +271,19 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             end_timer!(z_b_poly_time);
             z_b_poly
         });
-        let [w_poly, z_a_poly, z_b_poly]: [Polynomial<F>; 3] = job_pool.execute_all().try_into().unwrap();
+        let [w_poly, z_a_poly, z_b_poly]: [DensePolynomial<F>; 3] = job_pool.execute_all().try_into().unwrap();
 
         let mask_poly = if MM::ZK {
             let mask_poly_time = start_timer!(|| "Computing mask polynomial");
             // We'll use the masking technique from Lunar (https://eprint.iacr.org/2020/1069.pdf, pgs 20-22).
-            let h_1_mask = Polynomial::rand(3, rng).coeffs; // selected arbitrarily.
-            let h_1_mask: Polynomial<_> =
+            let h_1_mask = DensePolynomial::rand(3, rng).coeffs; // selected arbitrarily.
+            let h_1_mask: DensePolynomial<_> =
                 SparsePolynomial::from_coefficients_vec(h_1_mask.into_iter().enumerate().collect())
                     .mul(&constraint_domain.vanishing_polynomial())
                     .into();
             assert_eq!(h_1_mask.degree(), constraint_domain.size() + 3);
             // multiply g_1_mask by X
-            let mut g_1_mask = Polynomial::rand(5, rng);
+            let mut g_1_mask = DensePolynomial::rand(5, rng);
             g_1_mask.coeffs[0] = F::zero();
 
             let mut mask_poly = h_1_mask;
@@ -333,7 +330,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         input_domain: EvaluationDomain<F>,
         constraint_domain: EvaluationDomain<F>,
         r_alpha_x_on_h: &[F],
-    ) -> Polynomial<F> {
+    ) -> DensePolynomial<F> {
         let mut t_evals_on_h = vec![F::zero(); constraint_domain.size()];
         for (matrix, eta) in matrices.zip(matrix_randomizers) {
             for (r, row) in matrix.iter().enumerate() {
@@ -448,14 +445,14 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 .zip(&z_b_poly.polynomial().coeffs)
                 .for_each(|((c, a), b)| *c += eta_b * b + a);
 
-            let summed_z_m = Polynomial::from_coefficients_vec(summed_z_m_coeffs);
+            let summed_z_m = DensePolynomial::from_coefficients_vec(summed_z_m_coeffs);
             end_timer!(summed_z_m_poly_time);
             summed_z_m
         });
 
         job_pool.add_job(|| {
             let r_alpha_poly_time = start_timer!(|| "Compute r_alpha_x poly");
-            let r_alpha_poly = Polynomial::from_coefficients_vec(constraint_domain.ifft(&r_alpha_x_evals));
+            let r_alpha_poly = DensePolynomial::from_coefficients_vec(constraint_domain.ifft(&r_alpha_x_evals));
             end_timer!(r_alpha_poly_time);
             r_alpha_poly
         });
@@ -472,7 +469,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             end_timer!(t_poly_time);
             t_poly
         });
-        let [summed_z_m, r_alpha_poly, t_poly]: [Polynomial<F>; 3] = job_pool.execute_all().try_into().unwrap();
+        let [summed_z_m, r_alpha_poly, t_poly]: [DensePolynomial<F>; 3] = job_pool.execute_all().try_into().unwrap();
 
         let z_poly_time = start_timer!(|| "Compute z poly");
 
@@ -515,13 +512,13 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 *a -= &(c * d);
             });
         let mut rhs = r_alpha_evals.interpolate();
-        rhs += mask_poly.map_or(&Polynomial::zero(), |p| p.polynomial());
+        rhs += mask_poly.map_or(&DensePolynomial::zero(), |p| p.polynomial());
         let q_1 = rhs;
         end_timer!(q_1_time);
 
         let sumcheck_time = start_timer!(|| "Compute sumcheck h and g polys");
         let (h_1, x_g_1) = q_1.divide_by_vanishing_poly(constraint_domain).unwrap();
-        let g_1 = Polynomial::from_coefficients_slice(&x_g_1.coeffs[1..]);
+        let g_1 = DensePolynomial::from_coefficients_slice(&x_g_1.coeffs[1..]);
         end_timer!(sumcheck_time);
 
         let msg = ProverMessage::default();

@@ -19,9 +19,11 @@ use crate::{
     marlin::MarlinMode,
     Vec,
 };
-use snarkvm_algorithms::fft::EvaluationDomain;
+use snarkvm_algorithms::{
+    fft::{DensePolynomial, EvaluationDomain},
+    polycommit::LabeledPolynomial,
+};
 use snarkvm_fields::PrimeField;
-use snarkvm_polycommit::{LabeledPolynomial, Polynomial};
 use snarkvm_r1cs::SynthesisError;
 
 /// State for the AHP prover.
@@ -61,7 +63,7 @@ pub struct ProverState<'a, F: PrimeField, MM: MarlinMode> {
     pub(super) non_zero_c_domain: EvaluationDomain<F>,
 
     /// Polynomials involved in the holographic sumcheck.
-    pub(super) lhs_polynomials: Option<[Polynomial<F>; 3]>,
+    pub(super) lhs_polynomials: Option<[DensePolynomial<F>; 3]>,
     /// Polynomials involved in the holographic sumcheck.
     pub(super) sums: Option<[F; 3]>,
 }

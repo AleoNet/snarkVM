@@ -22,9 +22,8 @@ use crate::{
     Vec,
     Write,
 };
-use snarkvm_algorithms::{fft::EvaluationDomain, Prepare};
+use snarkvm_algorithms::{fft::EvaluationDomain, polycommit::PolynomialCommitment, Prepare};
 use snarkvm_fields::{ConstraintFieldError, PrimeField, ToConstraintField};
-use snarkvm_polycommit::PolynomialCommitment;
 use snarkvm_r1cs::SynthesisError;
 use snarkvm_utilities::{
     error,

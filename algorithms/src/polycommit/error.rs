@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::String;
-
 /// The error type for `PolynomialCommitment`.
 #[derive(Debug)]
 pub enum PCError {
@@ -30,12 +28,6 @@ pub enum PCError {
     /// `label` at a particular query.
     MissingEvaluation {
         /// The label of the missing polynomial.
-        label: String,
-    },
-
-    /// The LHS of the equation is empty.
-    MissingLHS {
-        /// The label of the equation.
         label: String,
     },
 
@@ -69,9 +61,6 @@ pub enum PCError {
     /// The degree provided to `trim` was too large.
     TrimmingDegreeTooLarge,
 
-    /// The provided `enforced_degree_bounds` was `Some<&[]>`.
-    EmptyDegreeBounds,
-
     /// The provided equation contained multiple polynomials, of which least one
     /// had a strict degree bound.
     EquationHasDegreeBounds(String),
@@ -93,14 +82,10 @@ pub enum PCError {
         label: String,
     },
 
-    /// The inputs to `commit`, `open` or `verify` had incorrect lengths.
-    IncorrectInputLength(String),
-
-    /// The commitment was generated incorrectly, tampered with, or doesn't support the polynomial.
-    MalformedCommitment(String),
-
     Terminated,
 }
+
+impl snarkvm_utilities::error::Error for PCError {}
 
 impl core::fmt::Display for PCError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
@@ -113,7 +98,6 @@ impl core::fmt::Display for PCError {
                 "`QuerySet` refers to polynomial \"{}\", but `Evaluations` does not contain an evaluation for it.",
                 label
             ),
-            PCError::MissingLHS { label } => write!(f, "Equation \"{}\" does not have a LHS.", label),
             PCError::MissingRng => write!(f, "hiding commitments require `Some(rng)`"),
             PCError::DegreeIsZero => write!(f, "this scheme does not support committing to degree 0 polynomials"),
             PCError::TooManyCoefficients { num_coefficients, num_powers } => write!(
@@ -129,7 +113,6 @@ impl core::fmt::Display for PCError {
                 hiding_poly_degree, num_powers
             ),
             PCError::TrimmingDegreeTooLarge => write!(f, "the degree provided to `trim` was too large"),
-            PCError::EmptyDegreeBounds => write!(f, "provided `enforced_degree_bounds` was `Some<&[]>`"),
             PCError::EquationHasDegreeBounds(e) => {
                 write!(f, "the eqaution \"{}\" contained degree-bounded polynomials", e)
             }
@@ -143,11 +126,7 @@ impl core::fmt::Display for PCError {
                  supported degree ({:?})",
                 degree_bound, label, poly_degree, supported_degree
             ),
-            PCError::IncorrectInputLength(err) => write!(f, "{}", err),
-            PCError::MalformedCommitment(err) => write!(f, "{}", err),
             PCError::Terminated => write!(f, "terminated"),
         }
     }
 }
-
-impl snarkvm_utilities::error::Error for PCError {}

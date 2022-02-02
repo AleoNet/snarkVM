@@ -17,8 +17,8 @@
 use core::marker::PhantomData;
 
 use crate::{ahp::matrices::MatrixArithmetization, marlin::MarlinMode, CircuitInfo, Matrix};
+use snarkvm_algorithms::polycommit::LabeledPolynomial;
 use snarkvm_fields::PrimeField;
-use snarkvm_polycommit::LabeledPolynomial;
 use snarkvm_utilities::{errors::SerializationError, serialize::*};
 
 #[derive(derivative::Derivative)]

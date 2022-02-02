@@ -32,6 +32,7 @@ use snarkvm_algorithms::{
     crypto_hash::poseidon::PoseidonSponge,
     encryption::ECIESPoseidonEncryption,
     merkle_tree::{MaskedMerkleTreeParameters, MerklePath, MerkleTreeParameters},
+    polycommit::sonic_pc::SonicKZG10,
     prelude::*,
     prf::PoseidonPRF,
     signature::AleoSignatureScheme,
@@ -62,7 +63,6 @@ use snarkvm_marlin::{
     FiatShamirChaChaRng,
 };
 use snarkvm_parameters::{testnet2::*, Genesis};
-use snarkvm_polycommit::sonic_pc::SonicKZG10;
 use snarkvm_utilities::{FromBytes, ToMinimalBits};
 
 use blake2::Blake2s256;

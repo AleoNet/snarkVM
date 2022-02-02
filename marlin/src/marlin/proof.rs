@@ -15,8 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{ahp::prover::ProverMessage, Read, Vec, Write};
+use snarkvm_algorithms::polycommit::{BatchLCProof, PCCommitment, PolynomialCommitment};
 use snarkvm_fields::PrimeField;
-use snarkvm_polycommit::{BatchLCProof, PCCommitment, PolynomialCommitment};
 use snarkvm_utilities::{error, errors::SerializationError, serialize::*, FromBytes, ToBytes};
 
 /// A zkSNARK proof.

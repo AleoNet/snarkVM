@@ -31,7 +31,7 @@ pub enum MarlinError {
     /// There was a synthesis error.
     R1CSError(snarkvm_r1cs::SynthesisError),
     /// There was an error in the underlying polynomial commitment.
-    PolynomialCommitmentError(snarkvm_polycommit::PCError),
+    PolynomialCommitmentError(snarkvm_algorithms::polycommit::PCError),
     Terminated,
 }
 
@@ -53,10 +53,10 @@ impl From<snarkvm_r1cs::SynthesisError> for MarlinError {
     }
 }
 
-impl From<snarkvm_polycommit::PCError> for MarlinError {
-    fn from(err: snarkvm_polycommit::PCError) -> Self {
+impl From<snarkvm_algorithms::polycommit::PCError> for MarlinError {
+    fn from(err: snarkvm_algorithms::polycommit::PCError) -> Self {
         match err {
-            snarkvm_polycommit::PCError::Terminated => MarlinError::Terminated,
+            snarkvm_algorithms::polycommit::PCError::Terminated => MarlinError::Terminated,
             err => MarlinError::PolynomialCommitmentError(err),
         }
     }

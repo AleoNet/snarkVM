@@ -18,9 +18,14 @@ use crate::{
     fiat_shamir::FiatShamirRng,
     marlin::{CircuitProvingKey, CircuitVerifyingKey, MarlinMode, PreparedCircuitVerifyingKey, Proof},
 };
-use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, SNARKError, SNARK, SRS};
+use snarkvm_algorithms::{
+    crypto_hash::PoseidonDefaultParametersField,
+    polycommit::PolynomialCommitment,
+    SNARKError,
+    SNARK,
+    SRS,
+};
 use snarkvm_fields::{PrimeField, ToConstraintField};
-use snarkvm_polycommit::PolynomialCommitment;
 use snarkvm_r1cs::ConstraintSynthesizer;
 
 use core::sync::atomic::AtomicBool;
@@ -95,10 +100,9 @@ pub mod test {
         fiat_shamir::FiatShamirAlgebraicSpongeRng,
         marlin::{MarlinHidingMode, MarlinSNARK},
     };
-    use snarkvm_algorithms::{crypto_hash::poseidon::PoseidonSponge, SRS};
+    use snarkvm_algorithms::{crypto_hash::poseidon::PoseidonSponge, polycommit::sonic_pc::SonicKZG10, SRS};
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
     use snarkvm_fields::Field;
-    use snarkvm_polycommit::sonic_pc::SonicKZG10;
     use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
     use snarkvm_utilities::{test_rng, UniformRand};
 

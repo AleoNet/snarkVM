@@ -70,8 +70,8 @@ mod marlin {
         fiat_shamir::FiatShamirChaChaRng,
         marlin::{MarlinHidingMode, MarlinNonHidingMode, MarlinSNARK},
     };
+    use snarkvm_algorithms::polycommit::sonic_pc::SonicKZG10;
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
-    use snarkvm_polycommit::sonic_pc::SonicKZG10;
     use snarkvm_utilities::rand::{test_rng, UniformRand};
 
     use blake2::Blake2s256;
@@ -257,9 +257,8 @@ mod marlin_recursion {
         fiat_shamir::FiatShamirAlgebraicSpongeRng,
         marlin::{CircuitVerifyingKey, MarlinHidingMode, MarlinSNARK},
     };
-    use snarkvm_algorithms::crypto_hash::poseidon::PoseidonSponge;
+    use snarkvm_algorithms::{crypto_hash::poseidon::PoseidonSponge, polycommit::sonic_pc::SonicKZG10};
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
-    use snarkvm_polycommit::sonic_pc::SonicKZG10;
     use snarkvm_utilities::{
         rand::{test_rng, UniformRand},
         FromBytes,

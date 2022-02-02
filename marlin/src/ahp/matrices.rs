@@ -23,9 +23,9 @@ use crate::{
 use snarkvm_algorithms::{
     cfg_iter_mut,
     fft::{EvaluationDomain, Evaluations as EvaluationsOnDomain},
+    polycommit::LabeledPolynomial,
 };
 use snarkvm_fields::{batch_inversion, Field, PrimeField};
-use snarkvm_polycommit::LabeledPolynomial;
 use snarkvm_r1cs::{ConstraintSystem, Index as VarIndex};
 use snarkvm_utilities::{errors::SerializationError, serialize::*};
 

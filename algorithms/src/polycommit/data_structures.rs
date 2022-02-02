@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Arc, Polynomial, String, Vec};
+use crate::fft::DensePolynomial;
 use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
 use snarkvm_utilities::{error as error_fn, errors::SerializationError, serialize::*, FromBytes, ToBytes};
 
@@ -24,6 +24,7 @@ use core::{
     ops::{AddAssign, MulAssign, SubAssign},
 };
 use rand_core::RngCore;
+use std::{io, sync::Arc};
 
 /// Labels a `LabeledPolynomial` or a `LabeledCommitment`.
 pub type PolynomialLabel = String;
@@ -106,13 +107,13 @@ impl<P: PCProof> PCProof for Vec<P> {
 #[derive(Debug, Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct LabeledPolynomial<F: Field> {
     label: PolynomialLabel,
-    polynomial: Arc<Polynomial<F>>,
+    polynomial: Arc<DensePolynomial<F>>,
     degree_bound: Option<usize>,
     hiding_bound: Option<usize>,
 }
 
 impl<F: Field> core::ops::Deref for LabeledPolynomial<F> {
-    type Target = Polynomial<F>;
+    type Target = DensePolynomial<F>;
 
     fn deref(&self) -> &Self::Target {
         &self.polynomial
@@ -123,7 +124,7 @@ impl<F: Field> LabeledPolynomial<F> {
     /// Construct a new labeled polynomial by consuming `polynomial`.
     pub fn new(
         label: PolynomialLabel,
-        polynomial: Polynomial<F>,
+        polynomial: DensePolynomial<F>,
         degree_bound: Option<usize>,
         hiding_bound: Option<usize>,
     ) -> Self {
@@ -136,7 +137,7 @@ impl<F: Field> LabeledPolynomial<F> {
     }
 
     /// Retrieve the polynomial from `self`.
-    pub fn polynomial(&self) -> &Polynomial<F> {
+    pub fn polynomial(&self) -> &DensePolynomial<F> {
         &self.polynomial
     }
 
@@ -356,22 +357,4 @@ impl<F: Field> core::ops::Deref for LinearCombination<F> {
     fn deref(&self) -> &Self::Target {
         &self.terms
     }
-}
-
-/// Helper macro to forward all derived implementations to the ToBytes and FromBytes traits
-#[macro_export]
-macro_rules! impl_bytes {
-    ($ty: ident) => {
-        impl<E: PairingEngine> FromBytes for $ty<E> {
-            fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
-                CanonicalDeserialize::deserialize(&mut reader).map_err(|_| error("could not deserialize struct"))
-            }
-        }
-
-        impl<E: PairingEngine> ToBytes for $ty<E> {
-            fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
-                CanonicalSerialize::serialize(self, &mut writer).map_err(|_| error("could not serialize struct"))
-            }
-        }
-    };
 }

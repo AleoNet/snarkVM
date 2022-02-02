@@ -22,9 +22,11 @@ use crate::{
     ToString,
     Vec,
 };
-use snarkvm_algorithms::fft::EvaluationDomain;
+use snarkvm_algorithms::{
+    fft::EvaluationDomain,
+    polycommit::{LCTerm, LabeledPolynomial, LinearCombination},
+};
 use snarkvm_fields::{Field, PrimeField};
-use snarkvm_polycommit::{LCTerm, LabeledPolynomial, LinearCombination};
 
 use core::{borrow::Borrow, marker::PhantomData};
 
@@ -330,7 +332,7 @@ pub trait EvaluationsProvider<F: Field> {
     fn get_lc_eval(&self, lc: &LinearCombination<F>, point: F) -> Result<F, AHPError>;
 }
 
-impl<'a, F: Field> EvaluationsProvider<F> for snarkvm_polycommit::Evaluations<'a, F> {
+impl<'a, F: Field> EvaluationsProvider<F> for snarkvm_algorithms::polycommit::Evaluations<'a, F> {
     fn get_lc_eval(&self, lc: &LinearCombination<F>, point: F) -> Result<F, AHPError> {
         let key = (lc.label.clone(), point);
         self.get(&key).copied().ok_or_else(|| AHPError::MissingEval(lc.label.clone()))

@@ -27,9 +27,8 @@ use crate::{
     params::OptimizationType,
     traits::FiatShamirRng,
 };
-use snarkvm_algorithms::fft::EvaluationDomain;
+use snarkvm_algorithms::{fft::EvaluationDomain, polycommit::QuerySet};
 use snarkvm_fields::PrimeField;
-use snarkvm_polycommit::QuerySet;
 
 use rand_core::RngCore;
 

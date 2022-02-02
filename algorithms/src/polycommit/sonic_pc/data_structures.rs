@@ -14,14 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{impl_bytes, kzg10, BTreeMap, PCCommitterKey, PCVerifierKey, Vec};
-use snarkvm_algorithms::{crh::sha256::sha256, Prepare};
+use crate::{
+    crh::sha256::sha256,
+    polycommit::{kzg10, PCCommitterKey, PCVerifierKey},
+    Prepare,
+};
 use snarkvm_curves::{
     traits::{PairingCurve, PairingEngine},
     Group,
 };
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::{error, errors::SerializationError, serialize::*, FromBytes, ToBytes};
+
+use std::collections::BTreeMap;
 
 /// `UniversalParams` are the universal parameters for the KZG10 scheme.
 pub type UniversalParams<E> = kzg10::UniversalParams<E>;
@@ -337,7 +342,18 @@ pub struct VerifierKey<E: PairingEngine> {
     /// from.
     pub max_degree: usize,
 }
-impl_bytes!(VerifierKey);
+
+impl<E: PairingEngine> FromBytes for VerifierKey<E> {
+    fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
+        CanonicalDeserialize::deserialize(&mut reader).map_err(|_| error("could not deserialize VerifierKey"))
+    }
+}
+
+impl<E: PairingEngine> ToBytes for VerifierKey<E> {
+    fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
+        CanonicalSerialize::serialize(self, &mut writer).map_err(|_| error("could not serialize VerifierKey"))
+    }
+}
 
 impl<E: PairingEngine> VerifierKey<E> {
     /// Find the appropriate shift for the degree bound.

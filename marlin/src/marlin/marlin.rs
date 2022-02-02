@@ -32,16 +32,11 @@ use crate::{
     ToString,
     Vec,
 };
-use snarkvm_algorithms::fft::EvaluationDomain;
-use snarkvm_fields::{PrimeField, ToConstraintField};
-use snarkvm_polycommit::{
-    Evaluations,
-    LabeledCommitment,
-    PCProof,
-    PCRandomness,
-    PCUniversalParams,
-    PolynomialCommitment,
+use snarkvm_algorithms::{
+    fft::EvaluationDomain,
+    polycommit::{Evaluations, LabeledCommitment, PCProof, PCRandomness, PCUniversalParams, PolynomialCommitment},
 };
+use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_r1cs::ConstraintSynthesizer;
 use snarkvm_utilities::{to_bytes_le, ToBytes};
 

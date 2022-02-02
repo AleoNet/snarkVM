@@ -18,8 +18,8 @@ use crate::{
     marlin::{CircuitVerifyingKey, MarlinMode},
     Vec,
 };
+use snarkvm_algorithms::polycommit::PolynomialCommitment;
 use snarkvm_fields::PrimeField;
-use snarkvm_polycommit::PolynomialCommitment;
 
 /// Verification key, prepared (preprocessed) for use in pairings.
 

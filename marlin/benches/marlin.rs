@@ -17,14 +17,13 @@
 #[macro_use]
 extern crate criterion;
 
-use snarkvm_algorithms::crypto_hash::poseidon::PoseidonSponge;
+use snarkvm_algorithms::{crypto_hash::poseidon::PoseidonSponge, polycommit::sonic_pc::SonicKZG10};
 use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
 use snarkvm_fields::Field;
 use snarkvm_marlin::{
     marlin::{MarlinHidingMode, MarlinSNARK},
     FiatShamirAlgebraicSpongeRng,
 };
-use snarkvm_polycommit::sonic_pc::SonicKZG10;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 use snarkvm_utilities::{ops::MulAssign, UniformRand};
 

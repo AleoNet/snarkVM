@@ -116,6 +116,7 @@ version = "0.5"
 
 [dependencies.derivative]
 version = "2"
+features = [ "use_core" ]
 
 [dependencies.hex]
 version = "0.4.3"
@@ -140,6 +141,11 @@ default-features = false
 
 [dependencies.num_cpus]
 version = "1"
+optional = true
+
+[dependencies.rand_core]
+version = "0.6"
+default-features = false
 optional = true
 
 [dependencies.rand_chacha]
@@ -216,6 +222,7 @@ full = [
   "hash_to_curve",
   "merkle_tree",
   "msm",
+  "polycommit",
   "prf",
   "signature",
   "snark"
@@ -229,6 +236,7 @@ wasm = [
   "hash_to_curve",
   "merkle_tree",
   "msm",
+  "polycommit",
   "prf",
   "signature",
   "snark",
@@ -242,9 +250,21 @@ fft = [ ]
 hash_to_curve = [ "crypto_hash" ]
 merkle_tree = [ ]
 msm = [ ]
+polycommit = [ "rand_core" ]
 prf = [ ]
 signature = [ "encryption", "crypto_hash" ]
 snark = [ "fft", "msm" ]
 parallel = [ "rayon", "num_cpus", "snarkvm-utilities/parallel" ]
 print-trace = [ "snarkvm-profiler/print-trace" ]
 cuda = [ "rust-gpu-tools" ]
+
+#[dependencies.digest]
+#version = "0.10"
+#
+#[dependencies.hashbrown]
+#version = "0.12.0"
+#
+#[dependencies.rand]
+#version = "0.8"
+#default-features = false
+#features = [ "std_rng" ]

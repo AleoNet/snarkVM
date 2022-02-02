@@ -33,7 +33,7 @@ harness = false
 path = "../algorithms"
 version = "0.7.5"
 default-features = false
-features = [ "crypto_hash" ]
+features = [ "crypto_hash", "polycommit" ]
 
 [dependencies.snarkvm-curves]
 path = "../curves"
@@ -42,11 +42,6 @@ default-features = false
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "0.7.5"
-default-features = false
-
-[dependencies.snarkvm-polycommit]
-path = "../polycommit"
 version = "0.7.5"
 default-features = false
 
@@ -125,7 +120,6 @@ default = [
   "snarkvm-algorithms/default",
   "snarkvm-curves/default",
   "snarkvm-fields/default",
-  "snarkvm-polycommit/default",
   "snarkvm-r1cs/default",
   "snarkvm-utilities/default"
 ]

@@ -14,21 +14,29 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{impl_bytes, BTreeMap, *};
+use crate::{
+    fft::DensePolynomial,
+    polycommit::{PCCommitment, PCProof, PCRandomness, PCUniversalParams},
+};
 use snarkvm_curves::{
     traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve},
     Group,
 };
 use snarkvm_fields::{ConstraintFieldError, PrimeField, ToConstraintField, Zero};
 use snarkvm_utilities::{
+    borrow::Cow,
     error,
     errors::SerializationError,
+    io::{Read, Write},
     serialize::{CanonicalDeserialize, CanonicalSerialize},
     FromBytes,
     ToBytes,
+    ToMinimalBits,
 };
 
 use core::ops::{Add, AddAssign, Mul};
+use rand_core::RngCore;
+use std::{collections::BTreeMap, io};
 
 /// `UniversalParams` are the universal parameters for the KZG10 scheme.
 #[derive(Derivative)]
@@ -231,7 +239,18 @@ pub struct VerifierKey<E: PairingEngine> {
     #[derivative(Debug = "ignore")]
     pub prepared_beta_h: <E::G2Affine as PairingCurve>::Prepared,
 }
-impl_bytes!(VerifierKey);
+
+impl<E: PairingEngine> FromBytes for VerifierKey<E> {
+    fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
+        CanonicalDeserialize::deserialize(&mut reader).map_err(|_| error("could not deserialize VerifierKey"))
+    }
+}
+
+impl<E: PairingEngine> ToBytes for VerifierKey<E> {
+    fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
+        CanonicalSerialize::serialize(self, &mut writer).map_err(|_| error("could not serialize VerifierKey"))
+    }
+}
 
 impl<E: PairingEngine> ToConstraintField<E::Fq> for VerifierKey<E> {
     fn to_field_elements(&self) -> Result<Vec<E::Fq>, ConstraintFieldError> {
@@ -306,7 +325,17 @@ pub struct Commitment<E: PairingEngine>(
     pub E::G1Affine,
 );
 
-impl_bytes!(Commitment);
+impl<E: PairingEngine> FromBytes for Commitment<E> {
+    fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
+        CanonicalDeserialize::deserialize(&mut reader).map_err(|_| error("could not deserialize Commitment"))
+    }
+}
+
+impl<E: PairingEngine> ToBytes for Commitment<E> {
+    fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
+        CanonicalSerialize::serialize(self, &mut writer).map_err(|_| error("could not serialize Commitment"))
+    }
+}
 
 impl<E: PairingEngine> ToMinimalBits for Commitment<E> {
     fn to_minimal_bits(&self) -> Vec<bool> {
@@ -389,9 +418,19 @@ impl<E: PairingEngine> PreparedCommitment<E> {
 #[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct Randomness<E: PairingEngine> {
     /// For KZG10, the commitment randomness is a random polynomial.
-    pub blinding_polynomial: Polynomial<E::Fr>,
+    pub blinding_polynomial: DensePolynomial<E::Fr>,
 }
-impl_bytes!(Randomness);
+impl<E: PairingEngine> FromBytes for Randomness<E> {
+    fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
+        CanonicalDeserialize::deserialize(&mut reader).map_err(|_| error("could not deserialize Randomness"))
+    }
+}
+
+impl<E: PairingEngine> ToBytes for Randomness<E> {
+    fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
+        CanonicalSerialize::serialize(self, &mut writer).map_err(|_| error("could not serialize Randomness"))
+    }
+}
 
 impl<E: PairingEngine> Randomness<E> {
     /// Does `self` provide any hiding properties to the corresponding commitment?
@@ -410,13 +449,13 @@ impl<E: PairingEngine> Randomness<E> {
 
 impl<E: PairingEngine> PCRandomness for Randomness<E> {
     fn empty() -> Self {
-        Self { blinding_polynomial: Polynomial::zero() }
+        Self { blinding_polynomial: DensePolynomial::zero() }
     }
 
     fn rand<R: RngCore>(hiding_bound: usize, _: bool, rng: &mut R) -> Self {
         let mut randomness = Randomness::empty();
         let hiding_poly_degree = Self::calculate_hiding_polynomial_degree(hiding_bound);
-        randomness.blinding_polynomial = Polynomial::rand(hiding_poly_degree, rng);
+        randomness.blinding_polynomial = DensePolynomial::rand(hiding_poly_degree, rng);
         randomness
     }
 }
@@ -474,7 +513,17 @@ pub struct Proof<E: PairingEngine> {
     /// the evaluation proof was produced.
     pub random_v: Option<E::Fr>,
 }
-impl_bytes!(Proof);
+impl<E: PairingEngine> FromBytes for Proof<E> {
+    fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
+        CanonicalDeserialize::deserialize(&mut reader).map_err(|_| error("could not deserialize proof"))
+    }
+}
+
+impl<E: PairingEngine> ToBytes for Proof<E> {
+    fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
+        CanonicalSerialize::serialize(self, &mut writer).map_err(|_| error("could not serialize proof"))
+    }
+}
 
 impl<E: PairingEngine> PCProof for Proof<E> {
     fn is_hiding(&self) -> bool {

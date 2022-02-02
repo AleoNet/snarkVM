@@ -21,8 +21,11 @@
 //! proposed by Kate, Zaverucha, and Goldberg ([KZG11](http://cacr.uwaterloo.ca/techreports/2010/cacr2010-10.pdf)).
 //! This construction achieves extractability in the algebraic group model (AGM).
 
-use crate::{BTreeMap, LabeledPolynomial, PCError, PCRandomness, Polynomial, ToString, Vec};
-use snarkvm_algorithms::msm::{FixedBaseMSM, VariableBaseMSM};
+use crate::{
+    fft::DensePolynomial,
+    msm::{FixedBaseMSM, VariableBaseMSM},
+    polycommit::{LabeledPolynomial, PCError, PCRandomness},
+};
 use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{Field, One, PrimeField, Zero};
 use snarkvm_utilities::{cfg_iter, rand::UniformRand};
@@ -33,6 +36,7 @@ use core::{
     sync::atomic::{AtomicBool, Ordering},
 };
 use rand_core::RngCore;
+use std::collections::BTreeMap;
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -216,7 +220,7 @@ impl<E: PairingEngine> KZG10<E> {
     /// Outputs a commitment to `polynomial`.
     pub fn commit(
         powers: &Powers<E>,
-        polynomial: &Polynomial<E::Fr>,
+        polynomial: &DensePolynomial<E::Fr>,
         hiding_bound: Option<usize>,
         terminator: &AtomicBool,
         rng: Option<&mut dyn RngCore>,
@@ -273,11 +277,11 @@ impl<E: PairingEngine> KZG10<E> {
     /// p(z) is the remainder term. We can therefore omit p(z) when computing the quotient.
     #[allow(clippy::type_complexity)]
     pub fn compute_witness_polynomial(
-        polynomial: &Polynomial<E::Fr>,
+        polynomial: &DensePolynomial<E::Fr>,
         point: E::Fr,
         randomness: &Randomness<E>,
-    ) -> Result<(Polynomial<E::Fr>, Option<Polynomial<E::Fr>>), PCError> {
-        let divisor = Polynomial::from_coefficients_vec(vec![-point, E::Fr::one()]);
+    ) -> Result<(DensePolynomial<E::Fr>, Option<DensePolynomial<E::Fr>>), PCError> {
+        let divisor = DensePolynomial::from_coefficients_vec(vec![-point, E::Fr::one()]);
 
         let witness_time = start_timer!(|| "Computing witness polynomial");
         let witness_polynomial = polynomial / &divisor;
@@ -301,8 +305,8 @@ impl<E: PairingEngine> KZG10<E> {
         powers: &Powers<E>,
         point: E::Fr,
         randomness: &Randomness<E>,
-        witness_polynomial: &Polynomial<E::Fr>,
-        hiding_witness_polynomial: Option<&Polynomial<E::Fr>>,
+        witness_polynomial: &DensePolynomial<E::Fr>,
+        hiding_witness_polynomial: Option<&DensePolynomial<E::Fr>>,
     ) -> Result<Proof<E>, PCError> {
         Self::check_degree_is_too_large(witness_polynomial.degree(), powers.size())?;
         let (num_leading_zeros, witness_coeffs) = skip_leading_zeros_and_convert_to_bigints(witness_polynomial);
@@ -332,7 +336,7 @@ impl<E: PairingEngine> KZG10<E> {
     /// On input a polynomial `p` and a point `point`, outputs a proof for the same.
     pub(crate) fn open(
         powers: &Powers<E>,
-        polynomial: &Polynomial<E::Fr>,
+        polynomial: &DensePolynomial<E::Fr>,
         point: E::Fr,
         rand: &Randomness<E>,
     ) -> Result<Proof<E>, PCError> {
@@ -478,7 +482,7 @@ impl<E: PairingEngine> KZG10<E> {
     }
 }
 
-fn skip_leading_zeros_and_convert_to_bigints<F: PrimeField>(p: &Polynomial<F>) -> (usize, Vec<F::BigInteger>) {
+fn skip_leading_zeros_and_convert_to_bigints<F: PrimeField>(p: &DensePolynomial<F>) -> (usize, Vec<F::BigInteger>) {
     let mut num_leading_zeros = 0;
     while p.coeffs[num_leading_zeros].is_zero() && num_leading_zeros < p.coeffs.len() {
         num_leading_zeros += 1;
@@ -497,9 +501,12 @@ fn convert_to_bigints<F: PrimeField>(p: &[F]) -> Vec<F::BigInteger> {
 #[cfg(test)]
 mod tests {
     #![allow(non_camel_case_types)]
-    use crate::{kzg10::*, *};
+    use super::*;
+    use crate::polycommit::data_structures::PCCommitment;
     use snarkvm_curves::bls12_377::{Bls12_377, Fr};
-    use snarkvm_utilities::rand::test_rng;
+    use snarkvm_utilities::{rand::test_rng, FromBytes, ToBytes};
+
+    use std::borrow::Cow;
 
     type KZG_Bls12_377 = KZG10<Bls12_377>;
 
@@ -528,7 +535,7 @@ mod tests {
     }
 
     #[test]
-    fn kzg10_universal_params_serialization_test() {
+    fn test_kzg10_universal_params_serialization() {
         let rng = &mut test_rng();
 
         let degree = 4;
@@ -542,9 +549,9 @@ mod tests {
     }
 
     #[test]
-    fn add_commitments_test() {
+    fn test_add_commitments() {
         let rng = &mut test_rng();
-        let p = Polynomial::from_coefficients_slice(&[
+        let p = DensePolynomial::from_coefficients_slice(&[
             Fr::rand(rng),
             Fr::rand(rng),
             Fr::rand(rng),
@@ -552,7 +559,7 @@ mod tests {
             Fr::rand(rng),
         ]);
         let f = Fr::rand(rng);
-        let mut f_p = Polynomial::zero();
+        let mut f_p = DensePolynomial::zero();
         f_p += (f, &p);
 
         let degree = 4;
@@ -577,7 +584,7 @@ mod tests {
             }
             let pp = KZG10::<E>::setup(degree, &KZG10DegreeBoundsConfig::NONE, false, rng)?;
             let (ck, vk) = KZG10::trim(&pp, degree);
-            let p = Polynomial::rand(degree, rng);
+            let p = DensePolynomial::rand(degree, rng);
             let hiding_bound = Some(1);
             let (comm, rand) = KZG10::<E>::commit(&ck, &p, hiding_bound, &AtomicBool::new(false), Some(rng))?;
             let point = E::Fr::rand(rng);
@@ -600,7 +607,7 @@ mod tests {
             let degree = 50;
             let pp = KZG10::<E>::setup(degree, &KZG10DegreeBoundsConfig::NONE, false, rng)?;
             let (ck, vk) = KZG10::trim(&pp, 2);
-            let p = Polynomial::rand(1, rng);
+            let p = DensePolynomial::rand(1, rng);
             let hiding_bound = Some(1);
             let (comm, rand) = KZG10::<E>::commit(&ck, &p, hiding_bound, &AtomicBool::new(false), Some(rng))?;
             let point = E::Fr::rand(rng);
@@ -633,7 +640,7 @@ mod tests {
             let mut proofs = Vec::new();
 
             for _ in 0..10 {
-                let p = Polynomial::rand(degree, rng);
+                let p = DensePolynomial::rand(degree, rng);
                 let hiding_bound = Some(1);
                 let (comm, rand) = KZG10::<E>::commit(&ck, &p, hiding_bound, &AtomicBool::new(false), Some(rng))?;
                 let point = E::Fr::rand(rng);
@@ -652,17 +659,17 @@ mod tests {
     }
 
     #[test]
-    fn end_to_end_test() {
+    fn test_end_to_end() {
         end_to_end_test_template::<Bls12_377>().expect("test failed for bls12-377");
     }
 
     #[test]
-    fn linear_polynomial_test() {
+    fn test_linear_polynomial() {
         linear_polynomial_test_template::<Bls12_377>().expect("test failed for bls12-377");
     }
 
     #[test]
-    fn batch_check_test() {
+    fn test_batch_check() {
         batch_check_test_template::<Bls12_377>().expect("test failed for bls12-377");
     }
 
@@ -674,7 +681,7 @@ mod tests {
         let pp = KZG_Bls12_377::setup(max_degree, &KZG10DegreeBoundsConfig::NONE, false, rng).unwrap();
         let (powers, _) = KZG_Bls12_377::trim(&pp, max_degree);
 
-        let p = Polynomial::<Fr>::rand(max_degree + 1, rng);
+        let p = DensePolynomial::<Fr>::rand(max_degree + 1, rng);
         assert!(p.degree() > max_degree);
         assert!(KZG_Bls12_377::check_degree_is_too_large(p.degree(), powers.size()).is_err());
     }

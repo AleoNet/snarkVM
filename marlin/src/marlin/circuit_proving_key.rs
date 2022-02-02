@@ -22,8 +22,8 @@ use crate::{
     Vec,
     Write,
 };
+use snarkvm_algorithms::polycommit::PolynomialCommitment;
 use snarkvm_fields::PrimeField;
-use snarkvm_polycommit::PolynomialCommitment;
 use snarkvm_utilities::{serialize::*, FromBytes, ToBytes};
 
 use derivative::Derivative;

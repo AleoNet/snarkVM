@@ -1916,6 +1916,7 @@ dependencies = [
  "once_cell",
  "rand",
  "rand_chacha",
+ "rand_core",
  "rand_xorshift",
  "rayon",
  "rust-gpu-tools",
@@ -1954,7 +1955,6 @@ dependencies = [
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-marlin",
- "snarkvm-polycommit",
  "snarkvm-r1cs",
  "snarkvm-utilities",
  "thiserror",
@@ -2012,7 +2012,6 @@ dependencies = [
  "snarkvm-gadgets",
  "snarkvm-marlin",
  "snarkvm-parameters",
- "snarkvm-polycommit",
  "snarkvm-profiler",
  "snarkvm-r1cs",
  "snarkvm-utilities",
@@ -2102,7 +2101,6 @@ dependencies = [
  "snarkvm-algorithms",
  "snarkvm-curves",
  "snarkvm-fields",
- "snarkvm-polycommit",
  "snarkvm-profiler",
  "snarkvm-r1cs",
  "snarkvm-utilities",
@@ -2127,28 +2125,9 @@ dependencies = [
  "snarkvm-dpc",
  "snarkvm-fields",
  "snarkvm-marlin",
- "snarkvm-polycommit",
  "snarkvm-utilities",
  "thiserror",
  "wasm-bindgen-futures",
-]
-
-[[package]]
-name = "snarkvm-polycommit"
-version = "0.7.5"
-dependencies = [
- "derivative",
- "digest 0.10.1",
- "hashbrown 0.12.0",
- "itertools",
- "rand",
- "rand_core",
- "rayon",
- "snarkvm-algorithms",
- "snarkvm-curves",
- "snarkvm-fields",
- "snarkvm-profiler",
- "snarkvm-utilities",
 ]
 
 [[package]]
@@ -2205,7 +2184,6 @@ dependencies = [
  "snarkvm-fields",
  "snarkvm-gadgets",
  "snarkvm-marlin",
- "snarkvm-polycommit",
  "snarkvm-r1cs",
  "snarkvm-utilities",
  "wasm-bindgen",

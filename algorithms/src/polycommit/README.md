@@ -1,10 +1,6 @@
-# snarkvm-polycommit
+# snarkvm-algorithms/polycommit
 
-[![Crates.io](https://img.shields.io/crates/v/snarkvm-polycommit.svg?color=neon)](https://crates.io/crates/snarkvm-polycommit)
-[![Authors](https://img.shields.io/badge/authors-Aleo-orange.svg)](https://aleo.org)
-[![License](https://img.shields.io/badge/License-GPLv3-blue.svg)](./LICENSE.md)
-
-`snarkvm-polycommit` is a Rust library that implements (univariate) *polynomial commitment schemes*. This library was initially developed as part of the [Marlin paper][marlin].
+This module implements (univariate) *polynomial commitment schemes*. This library was initially developed as part of the [Marlin paper][marlin].
 
 ## Overview
 
@@ -13,7 +9,6 @@ A (univariate) polynomial commitment scheme is a cryptographic primitive that en
 This library provides various constructions of polynomial commitment schemes. These constructions support committing to multiple polynomials at a time with differing degree bounds, batching multiple evaluation proofs for the same evaluation point into a single one, and batch verification of proofs.
 
 The key properties satisfied by the polynomial commitment schemes are **succinctness**, **extractability**, and **hiding**. See [the Marlin paper][marlin] for definitions of these properties.
-
 
 [kzg10]: http://cacr.uwaterloo.ca/techreports/2010/cacr2010-10.pdf
 
