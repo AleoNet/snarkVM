@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{impl_bytes, BTreeMap, *};
-use core::ops::{Add, AddAssign};
 use snarkvm_curves::{
     traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve},
     Group,
@@ -29,7 +28,7 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
-use core::ops::Mul;
+use core::ops::{Add, AddAssign, Mul};
 
 /// `UniversalParams` are the universal parameters for the KZG10 scheme.
 #[derive(Derivative)]

@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Arc, String, Vec};
-pub use snarkvm_algorithms::fft::DensePolynomial as Polynomial;
+use crate::{Arc, Polynomial, String, Vec};
 use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
 use snarkvm_utilities::{error as error_fn, errors::SerializationError, serialize::*, FromBytes, ToBytes};
 
