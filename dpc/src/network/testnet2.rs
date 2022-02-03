@@ -203,7 +203,7 @@ impl Network for Testnet2 {
     type PoSWMaskPRFGadget = PoseidonPRFGadget<Self::InnerScalarField, 4, false>;
     type PoSWNonce = AleoLocator<Self::InnerScalarField, { Self::HEADER_NONCE_PREFIX }>;
 
-    type ProgramIDCRH = BHPCRH<EdwardsBW6, 16, 48>;
+    type ProgramIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 48>;
     type ProgramIDParameters = MerkleTreeParameters<Self::ProgramIDCRH, { Self::PROGRAM_TREE_DEPTH }>;
     type ProgramID = AleoLocator<<Self::ProgramIDCRH as CRH>::Output, { Self::PROGRAM_ID_PREFIX }>;
 

@@ -233,7 +233,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type PoSWNonce: Bech32Locator<Self::InnerScalarField>;
 
     /// CRH for deriving program IDs. Invoked only over `Self::OuterScalarField`.
-    type ProgramIDCRH: CRH<Output = Self::InnerBaseField>;
+    type ProgramIDCRH: CRH<Output = Self::InnerScalarField>;
     type ProgramIDParameters: MerkleParameters<H = Self::ProgramIDCRH>;
     type ProgramID: Bech32Locator<<Self::ProgramIDCRH as CRH>::Output>;
 
