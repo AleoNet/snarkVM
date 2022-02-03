@@ -25,7 +25,7 @@ path = "../algorithms"
 version = "0.7.5"
 optional = true
 default-features = false
-features = [ "wasm", "parallel" ]
+features = [ "wasm" ]
 
 [dependencies.snarkvm-curves]
 path = "../curves"
@@ -103,7 +103,7 @@ features = [ "js" ]
 version = "0.3.29"
 
 [features]
-default = [ "full" ]
+default = [ "full", "parallel" ]
 full = [
   "algorithms",
   "curves",
@@ -120,5 +120,6 @@ dpc = ["snarkvm-dpc"]
 fields = [ "snarkvm-fields" ]
 gadgets = [ "snarkvm-gadgets" ]
 marlin = [ "snarkvm-marlin" ]
+parallel = [ "snarkvm-algorithms/parallel" ]
 polycommit = [ "snarkvm-polycommit" ]
 r1cs = [ "snarkvm-r1cs" ]
