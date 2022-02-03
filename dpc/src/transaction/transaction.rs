@@ -471,7 +471,7 @@ mod tests {
         // Serialize
         let expected_string = expected_transaction.to_string();
         let candidate_string = serde_json::to_string(&expected_transaction).unwrap();
-        assert_eq!(1006460, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(1006027, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(expected_string, candidate_string);
 
         // Deserialize
@@ -491,7 +491,7 @@ mod tests {
         // Serialize
         let expected_bytes = expected_transaction.to_bytes_le().unwrap();
         let candidate_bytes = bincode::serialize(&expected_transaction).unwrap();
-        assert_eq!(503008, expected_bytes.len(), "Update me if serialization has changed");
+        assert_eq!(502864, expected_bytes.len(), "Update me if serialization has changed");
         // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
         assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
 

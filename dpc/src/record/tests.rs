@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{testnet2::*, Account, AccountScheme, AleoAmount, Network, Payload, Record, ViewKey};
+use crate::{testnet2::*, Account, AccountScheme, AleoAmount, Bech32Locator, Network, Payload, Record, ViewKey};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use rand::{Rng, SeedableRng};
@@ -44,7 +44,11 @@ fn test_record_ciphertext() {
 
         // Encrypt the record.
         let record_ciphertext = expected_record.ciphertext();
-        assert_eq!(Testnet2::RECORD_CIPHERTEXT_SIZE_IN_BYTES, (*record_ciphertext).to_bytes_le().unwrap().len());
+        // TODO (raychu86): Make sure the program id size is included.
+        assert_eq!(
+            Testnet2::RECORD_CIPHERTEXT_SIZE_IN_BYTES + <Testnet2 as Network>::ProgramID::data_size_in_bytes(),
+            (*record_ciphertext).to_bytes_le().unwrap().len()
+        );
 
         // Decrypt the record.
         let account_view_key = ViewKey::from_private_key(account.private_key());
