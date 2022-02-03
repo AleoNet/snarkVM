@@ -322,7 +322,10 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     .to_bytes(&mut commitment_cs.ns(|| "Convert record_view_key_commitment to bytes"))?;
 
                 let mut commitment_input = Vec::with_capacity(
-                    given_randomizer_bytes.len() + record_view_key_commitment_bytes.len() + ciphertext.len(),
+                    given_randomizer_bytes.len()
+                        + record_view_key_commitment_bytes.len()
+                        + ciphertext.len()
+                        + given_program_id.len(),
                 );
                 commitment_input.extend_from_slice(&given_randomizer_bytes);
                 commitment_input.extend_from_slice(&record_view_key_commitment_bytes);
@@ -643,7 +646,10 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     .to_bytes(&mut commitment_cs.ns(|| "Convert record_view_key_commitment to bytes"))?;
 
                 let mut commitment_input = Vec::with_capacity(
-                    given_randomizer_bytes.len() + record_view_key_commitment_bytes.len() + ciphertext.len(),
+                    given_randomizer_bytes.len()
+                        + record_view_key_commitment_bytes.len()
+                        + ciphertext.len()
+                        + given_program_id.len(),
                 );
                 commitment_input.extend_from_slice(&given_randomizer_bytes);
                 commitment_input.extend_from_slice(&record_view_key_commitment_bytes);
