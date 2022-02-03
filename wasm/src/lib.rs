@@ -45,3 +45,6 @@ pub use snarkvm_marlin::*;
 
 #[cfg(feature = "r1cs")]
 pub use snarkvm_r1cs::*;
+
+#[cfg(test)]
+mod tests;
