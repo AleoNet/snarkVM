@@ -73,7 +73,7 @@ mod tests {
     use super::*;
     use crate::testnet2::Testnet2;
 
-    use crate::{Account, AccountScheme, AleoAmount, Transaction};
+    use crate::{Account, AleoAmount, Transaction};
     use rand::thread_rng;
 
     #[test]
