@@ -76,6 +76,7 @@ impl<E: Environment, I: IntegerType> DivChecked<Self> for Integer<E, I> {
                 //  This is implicitly true since the dividend <= abs(I::MIN) and 0 <= quotient <= dividend.
                 let quotient_integer = Self { bits_le: quotient_unsigned_integer.bits_le, phantom: Default::default() };
                 let operands_same_sign = &dividend_msb.is_eq(divisor_msb);
+
                 Self::ternary(operands_same_sign, &quotient_integer, &(!&quotient_integer).add_wrapped(&Self::one()))
             } else {
                 let dividend_value = self.eject_value();
@@ -137,11 +138,6 @@ mod tests {
                 case
             );
 
-            print!("Constants: {:?}, ", Circuit::num_constants_in_scope());
-            print!("Public: {:?}, ", Circuit::num_public_in_scope());
-            print!("Private: {:?}, ", Circuit::num_private_in_scope());
-            print!("Constraints: {:?}\n", Circuit::num_constraints_in_scope());
-
             assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
             assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
             assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
@@ -176,11 +172,6 @@ mod tests {
         Circuit::scoped(&name, || {
             let case = format!("({} / {})", a.eject_value(), b.eject_value());
             let _candidate = a.div_checked(&b);
-
-            print!("Constants: {:?}, ", Circuit::num_constants_in_scope());
-            print!("Public: {:?}, ", Circuit::num_public_in_scope());
-            print!("Private: {:?}, ", Circuit::num_private_in_scope());
-            print!("Constraints: {:?}\n", Circuit::num_constraints_in_scope());
 
             assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
             assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);

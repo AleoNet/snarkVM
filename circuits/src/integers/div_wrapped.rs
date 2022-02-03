@@ -76,12 +76,6 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
                     &quotient_integer,
                     &(!&quotient_integer).add_wrapped(&Self::one()),
                 );
-                println!(
-                    "Operands Same Sign: {:?}, Quotient: {:?}, Signed Result: {:?}",
-                    operands_same_sign,
-                    quotient_integer.eject_value(),
-                    signed_result.eject_value()
-                );
 
                 Self::ternary(&division_wraps, &min, &signed_result)
             } else {
@@ -142,11 +136,6 @@ mod tests {
                 candidate.eject_value(),
                 case
             );
-
-            print!("Constants: {:?}, ", Circuit::num_constants_in_scope());
-            print!("Public: {:?}, ", Circuit::num_public_in_scope());
-            print!("Private: {:?}, ", Circuit::num_private_in_scope());
-            print!("Constraints: {:?}\n", Circuit::num_constraints_in_scope());
 
             assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
             assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);

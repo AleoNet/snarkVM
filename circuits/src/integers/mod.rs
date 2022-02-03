@@ -107,6 +107,21 @@ impl<E: Environment, I: IntegerType> IntegerTrait<I> for Integer<E, I> {
     }
 }
 
+// TODO (@pranav) Is there a better place for this?
+/// Sealed trait pattern to prevent abuse of Magnitude.
+mod private {
+    use crate::helpers::integers::IntegerType;
+    use num_traits::{ToPrimitive, Unsigned};
+
+    /// Trait for integers that can be used as an unsigned magnitude.
+    /// `Magnitude`s are either used to represent an integer exponent
+    /// or the right operand in integer shift operations.
+    pub trait Magnitude: IntegerType + ToPrimitive + Unsigned {}
+    impl Magnitude for u8 {}
+    impl Magnitude for u16 {}
+    impl Magnitude for u32 {}
+}
+
 // TODO (@pranav) Document
 impl<E: Environment, I: IntegerType> Integer<E, I> {
     fn cast_as_dual(self) -> Integer<E, I::Dual> {

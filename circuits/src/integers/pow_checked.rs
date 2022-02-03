@@ -16,8 +16,8 @@
 
 use super::*;
 
-impl<E: Environment, I: IntegerType> PowChecked for Integer<E, I> {
-    type Exponent = Integer<E, u32>;
+impl<E: Environment, I: IntegerType, M: private::Magnitude> PowChecked<M> for Integer<E, I> {
+    type Exponent = Integer<E, M>;
     type Output = Self;
 
     #[inline]
@@ -25,7 +25,8 @@ impl<E: Environment, I: IntegerType> PowChecked for Integer<E, I> {
         // Determine the variable mode.
         if self.is_constant() && other.is_constant() {
             // Compute the result and return the new constant.
-            match self.eject_value().checked_pow(other.eject_value()) {
+            // This cast is safe since `Magnitude`s can only be `u8`, `u16`, or `u32`.
+            match self.eject_value().checked_pow(other.eject_value().to_u32().unwrap()) {
                 Some(value) => Integer::new(Mode::Constant, value),
                 None => E::halt("Integer overflow on exponentiation of two constants"),
             }
@@ -36,8 +37,6 @@ impl<E: Environment, I: IntegerType> PowChecked for Integer<E, I> {
             //  yet we know that in the first step, we do not need to check and
             //  in general we do not need to check for overflow until we have found
             //  the second bit that has been set. Optimize.
-            // TODO (@pranav) Is there a constraint advantage in using the square operation
-            //   in the field?
             for bit in other.bits_le.iter().rev() {
                 result = (&result).mul_checked(&result);
                 // TODO (@pranav) Confirm that this mul_checked won't always fail.
@@ -60,11 +59,11 @@ mod tests {
     const ITERATIONS: usize = 128;
 
     #[rustfmt::skip]
-    fn check_pow_checked<I: IntegerType>(
+    fn check_pow_checked<I: IntegerType, M: private::Magnitude>(
         name: &str,
         expected: I,
         a: &Integer<Circuit, I>,
-        b: &Integer<Circuit, u32>,
+        b: &Integer<Circuit, M>,
         num_constants: usize,
         num_public: usize,
         num_private: usize,
@@ -98,7 +97,7 @@ mod tests {
     }
 
     #[rustfmt::skip]
-    fn check_overflow_halts<I: IntegerType + std::panic::RefUnwindSafe>(mode_a: Mode, mode_b: Mode, value_a: I, value_b: u32) {
+    fn check_overflow_halts<I: IntegerType + std::panic::RefUnwindSafe, M: private::Magnitude + std::panic::RefUnwindSafe>(mode_a: Mode, mode_b: Mode, value_a: I, value_b: M) {
         let a = Integer::<Circuit, I>::new(mode_a, value_a);
         let b = Integer::new(mode_b, value_b);
         let result = std::panic::catch_unwind(|| a.pow_checked(&b));
@@ -106,11 +105,11 @@ mod tests {
     }
 
     #[rustfmt::skip]
-    fn check_overflow_fails<I: IntegerType + std::panic::RefUnwindSafe>(
+    fn check_overflow_fails<I: IntegerType + std::panic::RefUnwindSafe, M: private::Magnitude + std::panic::RefUnwindSafe>(
         mode_a: Mode,
         mode_b: Mode,
         value_a: I,
-        value_b: u32,
+        value_b: M,
         num_constants: usize,
         num_public: usize,
         num_private: usize,
@@ -140,7 +139,7 @@ mod tests {
     }
 
     #[rustfmt::skip]
-    fn run_test<I: IntegerType + std::panic::RefUnwindSafe>(
+    fn run_test<I: IntegerType + std::panic::RefUnwindSafe, M: private::Magnitude + std::panic::RefUnwindSafe>(
         mode_a: Mode,
         mode_b: Mode,
         num_constants: usize,
@@ -149,8 +148,8 @@ mod tests {
         num_constraints: usize,
     ) {
         let check_overflow = |value_a, value_b| match (mode_a, mode_b) {
-            (Mode::Constant, Mode::Constant) => check_overflow_halts::<I>(mode_a, mode_b, value_a, value_b),
-            (_,_) => check_overflow_fails::<I>(mode_a, mode_b, value_a, value_b, num_constants, num_public, num_private, num_constraints),
+            (Mode::Constant, Mode::Constant) => check_overflow_halts::<I, M>(mode_a, mode_b, value_a, value_b),
+            (_,_) => check_overflow_fails::<I, M>(mode_a, mode_b, value_a, value_b, num_constants, num_public, num_private, num_constraints),
         };
 
         for i in 0..ITERATIONS {
@@ -158,13 +157,13 @@ mod tests {
             // TODO (@pranav) Uniform random sampling almost always produces arguments that result in an overflow.
             //  Is there a better method for sampling arguments?
             let first: I = UniformRand::rand(&mut thread_rng());
-            let second: u32 = UniformRand::rand(&mut thread_rng());
+            let second: M = UniformRand::rand(&mut thread_rng());
 
             let a = Integer::<Circuit, I>::new(mode_a, first);
             let b = Integer::new(mode_b, second);
 
-            match first.checked_pow(second) {
-                Some(expected) => check_pow_checked::<I>(&name, expected, &a, &b, num_constants, num_public, num_private, num_constraints),
+            match first.checked_pow(second.to_u32().unwrap()) {
+                Some(expected) => check_pow_checked::<I, M>(&name, expected, &a, &b, num_constants, num_public, num_private, num_constraints),
                 None => check_overflow(first, second),
             }
         }
@@ -206,55 +205,64 @@ mod tests {
     #[test]
     fn test_u8_constant_pow_constant() {
         type I = u8;
-        run_test::<I>(Mode::Constant, Mode::Constant, 8, 0, 0, 0);
+        type M = u8;
+        run_test::<I, M>(Mode::Constant, Mode::Constant, 8, 0, 0, 0);
     }
 
     #[test]
     fn test_u8_constant_pow_public() {
         type I = u8;
-        run_test::<I>(Mode::Constant, Mode::Public, 3, 0, 26, 28);
+        type M = u8;
+        run_test::<I, M>(Mode::Constant, Mode::Public, 3, 0, 26, 28);
     }
 
     #[test]
     fn test_u8_constant_pow_private() {
         type I = u8;
-        run_test::<I>(Mode::Constant, Mode::Private, 3, 0, 26, 28);
+        type M = u8;
+        run_test::<I, M>(Mode::Constant, Mode::Private, 3, 0, 26, 28);
     }
 
     #[test]
     fn test_u8_public_pow_constant() {
         type I = u8;
-        run_test::<I>(Mode::Public, Mode::Constant, 3, 0, 26, 28);
+        type M = u8;
+        run_test::<I, M>(Mode::Public, Mode::Constant, 3, 0, 26, 28);
     }
 
     #[test]
     fn test_u8_private_pow_constant() {
         type I = u8;
-        run_test::<I>(Mode::Private, Mode::Constant, 3, 0, 26, 28);
+        type M = u8;
+        run_test::<I, M>(Mode::Private, Mode::Constant, 3, 0, 26, 28);
     }
 
     #[test]
     fn test_u8_public_pow_public() {
         type I = u8;
-        run_test::<I>(Mode::Public, Mode::Public, 3, 0, 26, 28);
+        type M = u8;
+        run_test::<I, M>(Mode::Public, Mode::Public, 3, 0, 26, 28);
     }
 
     #[test]
     fn test_u8_public_pow_private() {
         type I = u8;
-        run_test::<I>(Mode::Public, Mode::Private, 3, 0, 26, 28);
+        type M = u8;
+        run_test::<I, M>(Mode::Public, Mode::Private, 3, 0, 26, 28);
     }
 
     #[test]
     fn test_u8_private_pow_public() {
         type I = u8;
-        run_test::<I>(Mode::Private, Mode::Public, 3, 0, 26, 28);
+        type M = u8;
+        run_test::<I, M>(Mode::Private, Mode::Public, 3, 0, 26, 28);
     }
 
     #[test]
     fn test_u8_private_pow_private() {
         type I = u8;
-        run_test::<I>(Mode::Private, Mode::Private, 3, 0, 26, 28);
+        type M = u8;
+        run_test::<I, M>(Mode::Private, Mode::Private, 3, 0, 26, 28);
     }
 
     // Tests for i8
@@ -262,55 +270,64 @@ mod tests {
     #[test]
     fn test_i8_constant_pow_constant() {
         type I = i8;
-        run_test::<I>(Mode::Constant, Mode::Constant, 8, 0, 0, 0);
+        type M = u8;
+        run_test::<I, M>(Mode::Constant, Mode::Constant, 8, 0, 0, 0);
     }
 
     #[test]
     fn test_i8_constant_pow_public() {
         type I = i8;
-        run_test::<I>(Mode::Constant, Mode::Public, 40, 0, 76, 80);
+        type M = u8;
+        run_test::<I, M>(Mode::Constant, Mode::Public, 40, 0, 76, 80);
     }
 
     #[test]
     fn test_i8_constant_pow_private() {
         type I = i8;
-        run_test::<I>(Mode::Constant, Mode::Private, 40, 0, 76, 80);
+        type M = u8;
+        run_test::<I, M>(Mode::Constant, Mode::Private, 40, 0, 76, 80);
     }
 
     #[test]
     fn test_i8_public_pow_constant() {
         type I = i8;
-        run_test::<I>(Mode::Public, Mode::Constant, 40, 0, 76, 80);
+        type M = u8;
+        run_test::<I, M>(Mode::Public, Mode::Constant, 40, 0, 76, 80);
     }
 
     #[test]
     fn test_i8_private_pow_constant() {
         type I = i8;
-        run_test::<I>(Mode::Private, Mode::Constant, 40, 0, 76, 80);
+        type M = u8;
+        run_test::<I, M>(Mode::Private, Mode::Constant, 40, 0, 76, 80);
     }
 
     #[test]
     fn test_i8_public_pow_public() {
         type I = i8;
-        run_test::<I>(Mode::Public, Mode::Public, 34, 0, 96, 101);
+        type M = u8;
+        run_test::<I, M>(Mode::Public, Mode::Public, 34, 0, 96, 101);
     }
 
     #[test]
     fn test_i8_public_pow_private() {
         type I = i8;
-        run_test::<I>(Mode::Public, Mode::Private, 34, 0, 96, 101);
+        type M = u8;
+        run_test::<I, M>(Mode::Public, Mode::Private, 34, 0, 96, 101);
     }
 
     #[test]
     fn test_i8_private_pow_public() {
         type I = i8;
-        run_test::<I>(Mode::Private, Mode::Public, 34, 0, 96, 101);
+        type M = u8;
+        run_test::<I, M>(Mode::Private, Mode::Public, 34, 0, 96, 101);
     }
 
     #[test]
     fn test_i8_private_pow_private() {
         type I = i8;
-        run_test::<I>(Mode::Private, Mode::Private, 34, 0, 96, 101);
+        type M = u8;
+        run_test::<I, M>(Mode::Private, Mode::Private, 34, 0, 96, 101);
     }
 
     // Tests for u16
@@ -318,55 +335,64 @@ mod tests {
     #[test]
     fn test_u16_constant_pow_constant() {
         type I = u16;
-        run_test::<I>(Mode::Constant, Mode::Constant, 16, 0, 0, 0);
+        type M = u8;
+        run_test::<I, M>(Mode::Constant, Mode::Constant, 16, 0, 0, 0);
     }
 
     #[test]
     fn test_u16_constant_pow_public() {
         type I = u16;
-        run_test::<I>(Mode::Constant, Mode::Public, 3, 0, 50, 52);
+        type M = u8;
+        run_test::<I, M>(Mode::Constant, Mode::Public, 3, 0, 50, 52);
     }
 
     #[test]
     fn test_u16_constant_pow_private() {
         type I = u16;
-        run_test::<I>(Mode::Constant, Mode::Private, 3, 0, 50, 52);
+        type M = u8;
+        run_test::<I, M>(Mode::Constant, Mode::Private, 3, 0, 50, 52);
     }
 
     #[test]
     fn test_u16_public_pow_constant() {
         type I = u16;
-        run_test::<I>(Mode::Public, Mode::Constant, 3, 0, 50, 52);
+        type M = u8;
+        run_test::<I, M>(Mode::Public, Mode::Constant, 3, 0, 50, 52);
     }
 
     #[test]
     fn test_u16_private_pow_constant() {
         type I = u16;
-        run_test::<I>(Mode::Private, Mode::Constant, 3, 0, 50, 52);
+        type M = u8;
+        run_test::<I, M>(Mode::Private, Mode::Constant, 3, 0, 50, 52);
     }
 
     #[test]
     fn test_u16_public_pow_public() {
         type I = u16;
-        run_test::<I>(Mode::Public, Mode::Public, 3, 0, 50, 52);
+        type M = u8;
+        run_test::<I, M>(Mode::Public, Mode::Public, 3, 0, 50, 52);
     }
 
     #[test]
     fn test_u16_public_pow_private() {
         type I = u16;
-        run_test::<I>(Mode::Public, Mode::Private, 3, 0, 50, 52);
+        type M = u8;
+        run_test::<I, M>(Mode::Public, Mode::Private, 3, 0, 50, 52);
     }
 
     #[test]
     fn test_u16_private_pow_public() {
         type I = u16;
-        run_test::<I>(Mode::Private, Mode::Public, 3, 0, 50, 52);
+        type M = u8;
+        run_test::<I, M>(Mode::Private, Mode::Public, 3, 0, 50, 52);
     }
 
     #[test]
     fn test_u16_private_pow_private() {
         type I = u16;
-        run_test::<I>(Mode::Private, Mode::Private, 3, 0, 50, 52);
+        type M = u8;
+        run_test::<I, M>(Mode::Private, Mode::Private, 3, 0, 50, 52);
     }
 
     // Tests for i16
@@ -374,55 +400,64 @@ mod tests {
     #[test]
     fn test_i16_constant_pow_constant() {
         type I = i16;
-        run_test::<I>(Mode::Constant, Mode::Constant, 16, 0, 0, 0);
+        type M = u8;
+        run_test::<I, M>(Mode::Constant, Mode::Constant, 16, 0, 0, 0);
     }
 
     #[test]
     fn test_i16_constant_pow_public() {
         type I = i16;
-        run_test::<I>(Mode::Constant, Mode::Public, 72, 0, 140, 144);
+        type M = u8;
+        run_test::<I, M>(Mode::Constant, Mode::Public, 72, 0, 140, 144);
     }
 
     #[test]
     fn test_i16_constant_pow_private() {
         type I = i16;
-        run_test::<I>(Mode::Constant, Mode::Private, 72, 0, 140, 144);
+        type M = u8;
+        run_test::<I, M>(Mode::Constant, Mode::Private, 72, 0, 140, 144);
     }
 
     #[test]
     fn test_i16_public_pow_constant() {
         type I = i16;
-        run_test::<I>(Mode::Public, Mode::Constant, 72, 0, 140, 144);
+        type M = u8;
+        run_test::<I, M>(Mode::Public, Mode::Constant, 72, 0, 140, 144);
     }
 
     #[test]
     fn test_i16_private_pow_constant() {
         type I = i16;
-        run_test::<I>(Mode::Private, Mode::Constant, 72, 0, 140, 144);
+        type M = u8;
+        run_test::<I, M>(Mode::Private, Mode::Constant, 72, 0, 140, 144);
     }
 
     #[test]
     fn test_i16_public_pow_public() {
         type I = i16;
-        run_test::<I>(Mode::Public, Mode::Public, 58, 0, 176, 181);
+        type M = u8;
+        run_test::<I, M>(Mode::Public, Mode::Public, 58, 0, 176, 181);
     }
 
     #[test]
     fn test_i16_public_pow_private() {
         type I = i16;
-        run_test::<I>(Mode::Public, Mode::Private, 58, 0, 176, 181);
+        type M = u8;
+        run_test::<I, M>(Mode::Public, Mode::Private, 58, 0, 176, 181);
     }
 
     #[test]
     fn test_i16_private_pow_public() {
         type I = i16;
-        run_test::<I>(Mode::Private, Mode::Public, 58, 0, 176, 181);
+        type M = u8;
+        run_test::<I, M>(Mode::Private, Mode::Public, 58, 0, 176, 181);
     }
 
     #[test]
     fn test_i16_private_pow_private() {
         type I = i16;
-        run_test::<I>(Mode::Private, Mode::Private, 58, 0, 176, 181);
+        type M = u8;
+        run_test::<I, M>(Mode::Private, Mode::Private, 58, 0, 176, 181);
     }
 
     // Tests for u32
@@ -430,55 +465,64 @@ mod tests {
     #[test]
     fn test_u32_constant_pow_constant() {
         type I = u32;
-        run_test::<I>(Mode::Constant, Mode::Constant, 32, 0, 0, 0);
+        type M = u8;
+        run_test::<I, M>(Mode::Constant, Mode::Constant, 32, 0, 0, 0);
     }
 
     #[test]
     fn test_u32_constant_pow_public() {
         type I = u32;
-        run_test::<I>(Mode::Constant, Mode::Public, 3, 0, 98, 100);
+        type M = u8;
+        run_test::<I, M>(Mode::Constant, Mode::Public, 3, 0, 98, 100);
     }
 
     #[test]
     fn test_u32_constant_pow_private() {
         type I = u32;
-        run_test::<I>(Mode::Constant, Mode::Private, 3, 0, 98, 100);
+        type M = u8;
+        run_test::<I, M>(Mode::Constant, Mode::Private, 3, 0, 98, 100);
     }
 
     #[test]
     fn test_u32_public_pow_constant() {
         type I = u32;
-        run_test::<I>(Mode::Public, Mode::Constant, 3, 0, 98, 100);
+        type M = u8;
+        run_test::<I, M>(Mode::Public, Mode::Constant, 3, 0, 98, 100);
     }
 
     #[test]
     fn test_u32_private_pow_constant() {
         type I = u32;
-        run_test::<I>(Mode::Private, Mode::Constant, 3, 0, 98, 100);
+        type M = u8;
+        run_test::<I, M>(Mode::Private, Mode::Constant, 3, 0, 98, 100);
     }
 
     #[test]
     fn test_u32_public_pow_public() {
         type I = u32;
-        run_test::<I>(Mode::Public, Mode::Public, 3, 0, 98, 100);
+        type M = u8;
+        run_test::<I, M>(Mode::Public, Mode::Public, 3, 0, 98, 100);
     }
 
     #[test]
     fn test_u32_public_pow_private() {
         type I = u32;
-        run_test::<I>(Mode::Public, Mode::Private, 3, 0, 98, 100);
+        type M = u8;
+        run_test::<I, M>(Mode::Public, Mode::Private, 3, 0, 98, 100);
     }
 
     #[test]
     fn test_u32_private_pow_public() {
         type I = u32;
-        run_test::<I>(Mode::Private, Mode::Public, 3, 0, 98, 100);
+        type M = u8;
+        run_test::<I, M>(Mode::Private, Mode::Public, 3, 0, 98, 100);
     }
 
     #[test]
     fn test_u32_private_pow_private() {
         type I = u32;
-        run_test::<I>(Mode::Private, Mode::Private, 3, 0, 98, 100);
+        type M = u8;
+        run_test::<I, M>(Mode::Private, Mode::Private, 3, 0, 98, 100);
     }
 
     // Tests for i32
@@ -486,55 +530,64 @@ mod tests {
     #[test]
     fn test_i32_constant_pow_constant() {
         type I = i32;
-        run_test::<I>(Mode::Constant, Mode::Constant, 32, 0, 0, 0);
+        type M = u8;
+        run_test::<I, M>(Mode::Constant, Mode::Constant, 32, 0, 0, 0);
     }
 
     #[test]
     fn test_i32_constant_pow_public() {
         type I = i32;
-        run_test::<I>(Mode::Constant, Mode::Public, 136, 0, 268, 272);
+        type M = u8;
+        run_test::<I, M>(Mode::Constant, Mode::Public, 136, 0, 268, 272);
     }
 
     #[test]
     fn test_i32_constant_pow_private() {
         type I = i32;
-        run_test::<I>(Mode::Constant, Mode::Private, 136, 0, 268, 272)
+        type M = u8;
+        run_test::<I, M>(Mode::Constant, Mode::Private, 136, 0, 268, 272)
     }
 
     #[test]
     fn test_i32_public_pow_constant() {
         type I = i32;
-        run_test::<I>(Mode::Public, Mode::Constant, 136, 0, 268, 272);
+        type M = u8;
+        run_test::<I, M>(Mode::Public, Mode::Constant, 136, 0, 268, 272);
     }
 
     #[test]
     fn test_i32_private_pow_constant() {
         type I = i32;
-        run_test::<I>(Mode::Private, Mode::Constant, 136, 0, 268, 272);
+        type M = u8;
+        run_test::<I, M>(Mode::Private, Mode::Constant, 136, 0, 268, 272);
     }
 
     #[test]
     fn test_i32_public_pow_public() {
         type I = i32;
-        run_test::<I>(Mode::Public, Mode::Public, 106, 0, 336, 341);
+        type M = u8;
+        run_test::<I, M>(Mode::Public, Mode::Public, 106, 0, 336, 341);
     }
 
     #[test]
     fn test_i32_public_pow_private() {
         type I = i32;
-        run_test::<I>(Mode::Public, Mode::Private, 106, 0, 336, 341);
+        type M = u8;
+        run_test::<I, M>(Mode::Public, Mode::Private, 106, 0, 336, 341);
     }
 
     #[test]
     fn test_i32_private_pow_public() {
         type I = i32;
-        run_test::<I>(Mode::Private, Mode::Public, 106, 0, 336, 341);
+        type M = u8;
+        run_test::<I, M>(Mode::Private, Mode::Public, 106, 0, 336, 341);
     }
 
     #[test]
     fn test_i32_private_pow_private() {
         type I = i32;
-        run_test::<I>(Mode::Private, Mode::Private, 106, 0, 336, 341);
+        type M = u8;
+        run_test::<I, M>(Mode::Private, Mode::Private, 106, 0, 336, 341);
     }
 
     // Tests for u64
@@ -542,55 +595,64 @@ mod tests {
     #[test]
     fn test_u64_constant_pow_constant() {
         type I = u64;
-        run_test::<I>(Mode::Constant, Mode::Constant, 64, 0, 0, 0);
+        type M = u8;
+        run_test::<I, M>(Mode::Constant, Mode::Constant, 64, 0, 0, 0);
     }
 
     #[test]
     fn test_u64_constant_pow_public() {
         type I = u64;
-        run_test::<I>(Mode::Constant, Mode::Public, 3, 0, 194, 196);
+        type M = u8;
+        run_test::<I, M>(Mode::Constant, Mode::Public, 3, 0, 194, 196);
     }
 
     #[test]
     fn test_u64_constant_pow_private() {
         type I = u64;
-        run_test::<I>(Mode::Constant, Mode::Private, 3, 0, 194, 196);
+        type M = u8;
+        run_test::<I, M>(Mode::Constant, Mode::Private, 3, 0, 194, 196);
     }
 
     #[test]
     fn test_u64_public_pow_constant() {
         type I = u64;
-        run_test::<I>(Mode::Public, Mode::Constant, 3, 0, 194, 196);
+        type M = u8;
+        run_test::<I, M>(Mode::Public, Mode::Constant, 3, 0, 194, 196);
     }
 
     #[test]
     fn test_u64_private_pow_constant() {
         type I = u64;
-        run_test::<I>(Mode::Private, Mode::Constant, 3, 0, 194, 196);
+        type M = u8;
+        run_test::<I, M>(Mode::Private, Mode::Constant, 3, 0, 194, 196);
     }
 
     #[test]
     fn test_u64_public_pow_public() {
         type I = u64;
-        run_test::<I>(Mode::Public, Mode::Public, 3, 0, 194, 196);
+        type M = u8;
+        run_test::<I, M>(Mode::Public, Mode::Public, 3, 0, 194, 196);
     }
 
     #[test]
     fn test_u64_public_pow_private() {
         type I = u64;
-        run_test::<I>(Mode::Public, Mode::Private, 3, 0, 194, 196);
+        type M = u8;
+        run_test::<I, M>(Mode::Public, Mode::Private, 3, 0, 194, 196);
     }
 
     #[test]
     fn test_u64_private_pow_public() {
         type I = u64;
-        run_test::<I>(Mode::Private, Mode::Public, 3, 0, 194, 196);
+        type M = u8;
+        run_test::<I, M>(Mode::Private, Mode::Public, 3, 0, 194, 196);
     }
 
     #[test]
     fn test_u64_private_pow_private() {
         type I = u64;
-        run_test::<I>(Mode::Private, Mode::Private, 3, 0, 194, 196);
+        type M = u8;
+        run_test::<I, M>(Mode::Private, Mode::Private, 3, 0, 194, 196);
     }
 
     // Tests for i64
@@ -598,55 +660,64 @@ mod tests {
     #[test]
     fn test_i64_constant_pow_constant() {
         type I = i64;
-        run_test::<I>(Mode::Constant, Mode::Constant, 64, 0, 0, 0);
+        type M = u8;
+        run_test::<I, M>(Mode::Constant, Mode::Constant, 64, 0, 0, 0);
     }
 
     #[test]
     fn test_i64_constant_pow_public() {
         type I = i64;
-        run_test::<I>(Mode::Constant, Mode::Public, 264, 0, 524, 528);
+        type M = u8;
+        run_test::<I, M>(Mode::Constant, Mode::Public, 264, 0, 524, 528);
     }
 
     #[test]
     fn test_i64_constant_pow_private() {
         type I = i64;
-        run_test::<I>(Mode::Constant, Mode::Private, 264, 0, 524, 528);
+        type M = u8;
+        run_test::<I, M>(Mode::Constant, Mode::Private, 264, 0, 524, 528);
     }
 
     #[test]
     fn test_i64_public_pow_constant() {
         type I = i64;
-        run_test::<I>(Mode::Public, Mode::Constant, 264, 0, 524, 528);
+        type M = u8;
+        run_test::<I, M>(Mode::Public, Mode::Constant, 264, 0, 524, 528);
     }
 
     #[test]
     fn test_i64_private_pow_constant() {
         type I = i64;
-        run_test::<I>(Mode::Private, Mode::Constant, 264, 0, 524, 528);
+        type M = u8;
+        run_test::<I, M>(Mode::Private, Mode::Constant, 264, 0, 524, 528);
     }
 
     #[test]
     fn test_i64_public_pow_public() {
         type I = i64;
-        run_test::<I>(Mode::Public, Mode::Public, 202, 0, 656, 661);
+        type M = u8;
+        run_test::<I, M>(Mode::Public, Mode::Public, 202, 0, 656, 661);
     }
 
     #[test]
     fn test_i64_public_pow_private() {
         type I = i64;
-        run_test::<I>(Mode::Public, Mode::Private, 202, 0, 656, 661);
+        type M = u8;
+        run_test::<I, M>(Mode::Public, Mode::Private, 202, 0, 656, 661);
     }
 
     #[test]
     fn test_i64_private_pow_public() {
         type I = i64;
-        run_test::<I>(Mode::Private, Mode::Public, 202, 0, 656, 661);
+        type M = u8;
+        run_test::<I, M>(Mode::Private, Mode::Public, 202, 0, 656, 661);
     }
 
     #[test]
     fn test_i64_private_pow_private() {
         type I = i64;
-        run_test::<I>(Mode::Private, Mode::Private, 202, 0, 656, 661);
+        type M = u8;
+        run_test::<I, M>(Mode::Private, Mode::Private, 202, 0, 656, 661);
     }
 
     // Tests for u128
@@ -654,55 +725,64 @@ mod tests {
     #[test]
     fn test_u128_constant_pow_constant() {
         type I = u128;
-        run_test::<I>(Mode::Constant, Mode::Constant, 128, 0, 0, 0);
+        type M = u8;
+        run_test::<I, M>(Mode::Constant, Mode::Constant, 128, 0, 0, 0);
     }
 
     #[test]
     fn test_u128_constant_pow_public() {
         type I = u128;
-        run_test::<I>(Mode::Constant, Mode::Public, 9, 0, 521, 524);
+        type M = u8;
+        run_test::<I, M>(Mode::Constant, Mode::Public, 9, 0, 521, 524);
     }
 
     #[test]
     fn test_u128_constant_pow_private() {
         type I = u128;
-        run_test::<I>(Mode::Constant, Mode::Private, 9, 0, 521, 524);
+        type M = u8;
+        run_test::<I, M>(Mode::Constant, Mode::Private, 9, 0, 521, 524);
     }
 
     #[test]
     fn test_u128_public_pow_constant() {
         type I = u128;
-        run_test::<I>(Mode::Public, Mode::Constant, 9, 0, 521, 524);
+        type M = u8;
+        run_test::<I, M>(Mode::Public, Mode::Constant, 9, 0, 521, 524);
     }
 
     #[test]
     fn test_u128_private_pow_constant() {
         type I = u128;
-        run_test::<I>(Mode::Private, Mode::Constant, 9, 0, 521, 524);
+        type M = u8;
+        run_test::<I, M>(Mode::Private, Mode::Constant, 9, 0, 521, 524);
     }
 
     #[test]
     fn test_u128_public_pow_public() {
         type I = u128;
-        run_test::<I>(Mode::Public, Mode::Public, 9, 0, 521, 524);
+        type M = u8;
+        run_test::<I, M>(Mode::Public, Mode::Public, 9, 0, 521, 524);
     }
 
     #[test]
     fn test_u128_public_pow_private() {
         type I = u128;
-        run_test::<I>(Mode::Public, Mode::Private, 9, 0, 521, 524);
+        type M = u8;
+        run_test::<I, M>(Mode::Public, Mode::Private, 9, 0, 521, 524);
     }
 
     #[test]
     fn test_u128_private_pow_public() {
         type I = u128;
-        run_test::<I>(Mode::Private, Mode::Public, 9, 0, 521, 524);
+        type M = u8;
+        run_test::<I, M>(Mode::Private, Mode::Public, 9, 0, 521, 524);
     }
 
     #[test]
     fn test_u128_private_pow_private() {
         type I = u128;
-        run_test::<I>(Mode::Private, Mode::Private, 9, 0, 521, 524);
+        type M = u8;
+        run_test::<I, M>(Mode::Private, Mode::Private, 9, 0, 521, 524);
     }
 
     // Tests for i128
@@ -710,54 +790,63 @@ mod tests {
     #[test]
     fn test_i128_constant_pow_constant() {
         type I = i128;
-        run_test::<I>(Mode::Constant, Mode::Constant, 128, 0, 0, 0);
+        type M = u8;
+        run_test::<I, M>(Mode::Constant, Mode::Constant, 128, 0, 0, 0);
     }
 
     #[test]
     fn test_i128_constant_pow_public() {
         type I = i128;
-        run_test::<I>(Mode::Constant, Mode::Public, 526, 0, 1171, 1176);
+        type M = u8;
+        run_test::<I, M>(Mode::Constant, Mode::Public, 526, 0, 1171, 1176);
     }
 
     #[test]
     fn test_i128_constant_pow_private() {
         type I = i128;
-        run_test::<I>(Mode::Constant, Mode::Private, 526, 0, 1171, 1176);
+        type M = u8;
+        run_test::<I, M>(Mode::Constant, Mode::Private, 526, 0, 1171, 1176);
     }
 
     #[test]
     fn test_i128_public_pow_constant() {
         type I = i128;
-        run_test::<I>(Mode::Public, Mode::Constant, 526, 0, 1171, 1176);
+        type M = u8;
+        run_test::<I, M>(Mode::Public, Mode::Constant, 526, 0, 1171, 1176);
     }
 
     #[test]
     fn test_i128_private_pow_constant() {
         type I = i128;
-        run_test::<I>(Mode::Private, Mode::Constant, 526, 0, 1171, 1176);
+        type M = u8;
+        run_test::<I, M>(Mode::Private, Mode::Constant, 526, 0, 1171, 1176);
     }
 
     #[test]
     fn test_i128_public_pow_public() {
         type I = i128;
-        run_test::<I>(Mode::Public, Mode::Public, 400, 0, 1431, 1437);
+        type M = u8;
+        run_test::<I, M>(Mode::Public, Mode::Public, 400, 0, 1431, 1437);
     }
 
     #[test]
     fn test_i128_public_pow_private() {
         type I = i128;
-        run_test::<I>(Mode::Public, Mode::Private, 400, 0, 1431, 1437);
+        type M = u8;
+        run_test::<I, M>(Mode::Public, Mode::Private, 400, 0, 1431, 1437);
     }
 
     #[test]
     fn test_i128_private_pow_public() {
         type I = i128;
-        run_test::<I>(Mode::Private, Mode::Public, 400, 0, 1431, 1437);
+        type M = u8;
+        run_test::<I, M>(Mode::Private, Mode::Public, 400, 0, 1431, 1437);
     }
 
     #[test]
     fn test_i128_private_pow_private() {
         type I = i128;
-        run_test::<I>(Mode::Private, Mode::Private, 400, 0, 1431, 1437);
+        type M = u8;
+        run_test::<I, M>(Mode::Private, Mode::Private, 400, 0, 1431, 1437);
     }
 }

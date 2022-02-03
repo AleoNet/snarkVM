@@ -41,7 +41,7 @@ impl<E: Environment, I: IntegerType> MulChecked<Self> for Integer<E, I> {
                     Self::multiply_bits_in_field(&self_absolute_value.bits_le, &other_absolute_value.bits_le, true);
 
                 let bits_are_nonzero = |bits: &[Boolean<E>]| {
-                    bits.into_iter().fold(Boolean::new(Mode::Constant, false), |bit, at_least_one_is_set| {
+                    bits.iter().fold(Boolean::new(Mode::Constant, false), |bit, at_least_one_is_set| {
                         bit.or(at_least_one_is_set)
                     })
                 };
@@ -77,7 +77,7 @@ impl<E: Environment, I: IntegerType> MulChecked<Self> for Integer<E, I> {
 
                 // For unsigned multiplication, check that the none of the carry bits are set.
                 let overflow = bits_le[I::BITS..]
-                    .into_iter()
+                    .iter()
                     .fold(Boolean::new(Mode::Constant, false), |bit, at_least_one_is_set| bit.or(at_least_one_is_set));
                 E::assert_eq(overflow, E::zero());
 

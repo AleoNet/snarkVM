@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{helpers::integers::IntegerType, Integer, Mode};
+use crate::{helpers::integers::IntegerType, Environment, Integer, Mode, U16, U32, U8};
 
 use core::{
     fmt::{Debug, Display},
@@ -103,8 +103,12 @@ pub trait IntegerTrait<I: IntegerType>:
     + Neg<Output = Self>
     + Not<Output = Self>
     + One
-    + PowChecked<Output = Self>
-    + PowWrapped<Output = Self>
+    + PowChecked<u8, Output = Self>
+    + PowChecked<u16, Output = Self>
+    + PowChecked<u32, Output = Self>
+    + PowWrapped<u8, Output = Self>
+    + PowWrapped<u16, Output = Self>
+    + PowWrapped<u32, Output = Self>
     + SubAssign
     + Sub<Output = Self>
     + SubChecked<Output = Self>
@@ -316,7 +320,7 @@ pub trait MulWrapped<Rhs: ?Sized = Self> {
 }
 
 /// Binary operator for exponentiating two values, enforcing an overflow never occurs.
-pub trait PowChecked {
+pub trait PowChecked<M: ?Sized> {
     type Exponent;
     type Output;
 
@@ -324,7 +328,7 @@ pub trait PowChecked {
 }
 
 /// Binary operator for exponentiating two values, wrapping the result if an overflow occurs.
-pub trait PowWrapped {
+pub trait PowWrapped<M: ?Sized> {
     type Exponent;
     type Output;
 
