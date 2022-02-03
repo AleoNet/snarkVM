@@ -398,7 +398,7 @@ impl<'de, N: Network> Deserialize<'de> for Block<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{testnet2::Testnet2, Account, AccountScheme};
+    use crate::{testnet2::Testnet2, Account};
     use snarkvm_utilities::UniformRand;
 
     use rand::{thread_rng, Rng};
