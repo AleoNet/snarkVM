@@ -15,8 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::Zero;
-use itertools::rev;
 
 impl<E: Environment, I: IntegerType> Integer<E, I> {
     // TODO (@pranav) Documentation. There may also be a better place for this helper function.

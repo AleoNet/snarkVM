@@ -31,6 +31,8 @@ pub mod mul_wrapped;
 pub mod neg;
 pub mod not;
 pub mod one;
+pub mod pow_checked;
+pub mod pow_wrapped;
 pub mod sub;
 pub mod sub_checked;
 pub mod sub_wrapped;

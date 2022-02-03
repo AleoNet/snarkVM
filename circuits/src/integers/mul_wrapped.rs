@@ -15,9 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_fields::PrimeField;
-
-use std::iter::repeat;
 
 impl<E: Environment, I: IntegerType> MulWrapped<Self> for Integer<E, I> {
     type Output = Self;
@@ -45,7 +42,7 @@ impl<E: Environment, I: IntegerType> MulWrapped<Self> for Integer<E, I> {
 mod tests {
     use super::*;
     use crate::Circuit;
-    use snarkvm_utilities::{UniformRand, from_bytes_le_to_bits_le};
+    use snarkvm_utilities::{UniformRand};
 
     use num_traits::{One};
     use rand::thread_rng;
