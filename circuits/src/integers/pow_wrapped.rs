@@ -46,7 +46,7 @@ mod tests {
 
     use rand::thread_rng;
 
-    // Lowered to 32, since we run (~5 * ITERATIONS) cases for most tests.
+    // Lowered to 32, since we run (~6 * ITERATIONS) cases for most tests.
     const ITERATIONS: usize = 32;
 
     #[rustfmt::skip]
@@ -116,7 +116,6 @@ mod tests {
         // constants, public variables, private variables, and constraints.
         for _i in 0..ITERATIONS {
             let first: I = UniformRand::rand(&mut thread_rng());
-            // By uniformly sampling the exponent, we are likely to test some overflow cases.
             let second: M = UniformRand::rand(&mut thread_rng());
             let expected = first.wrapping_pow(second.to_u32().unwrap());
             check_pow_without_expected_parameters(first, second, expected);
@@ -124,7 +123,7 @@ mod tests {
             check_pow_without_expected_parameters(first, M::zero(), I::one());
             check_pow_without_expected_parameters(first, M::one(), first);
 
-            // Explicitly check an overflow case.
+            // Attempt to force an overflow.
             let second: M = M::MAX;
             let expected = first.wrapping_pow(second.to_u32().unwrap());
             check_pow_without_expected_parameters(first, second, expected);
@@ -150,16 +149,28 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
+        let check_pow = | name: String, first: I, second: M | {
+            let expected = first.wrapping_pow(second.to_u32().unwrap());
+            let a = Integer::<Circuit, I>::new(mode_a, first);
+            let b = Integer::<Circuit, M>::new(mode_b, second);
+
+            check_pow_wrapped::<I, M>(&name, expected, &a, &b, num_constants, num_public, num_private, num_constraints)
+        };
+
         for i in 0..ITERATIONS {
             let name = format!("Pow: {} ** {} {}", mode_a, mode_b, i);
             let first: I = UniformRand::rand(&mut thread_rng());
             let second: M = UniformRand::rand(&mut thread_rng());
-            let expected = first.wrapping_pow(second.to_u32().unwrap());
 
-            let a = Integer::<Circuit, I>::new(mode_a, first);
-            let b = Integer::new(mode_b, second);
+            check_pow(name, first, second);
 
-            check_pow_wrapped::<I, M>(&name, expected, &a, &b, num_constants, num_public, num_private, num_constraints)
+            // Check that the square is computed correctly.
+            let name = format!("Square: {} ** {} {}", mode_a, mode_b, i);
+            check_pow(name, first, M::one() + M::one());
+
+            // Check that the cube is computed correctly.
+            let name = format!("Cube: {} ** {} {}", mode_a, mode_b, i);
+            check_pow(name, first, M::one() + M::one() + M::one());
         }
     }
 
