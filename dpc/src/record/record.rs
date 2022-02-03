@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Address, AleoAmount, Bech32Locator, Ciphertext, ComputeKey, DecryptionKey, Network, Payload, RecordError};
+use crate::{Address, AleoAmount, Ciphertext, ComputeKey, DecryptionKey, Network, Payload, RecordError};
 use snarkvm_algorithms::traits::{EncryptionScheme, PRF};
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{to_bytes_le, FromBits, FromBytes, FromBytesDeserializer, ToBits, ToBytes, ToBytesSerializer};
