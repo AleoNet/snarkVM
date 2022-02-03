@@ -109,6 +109,18 @@ pub trait IntegerTrait<I: IntegerType>:
     + PowWrapped<u8, Output = Self>
     + PowWrapped<u16, Output = Self>
     + PowWrapped<u32, Output = Self>
+    + ShlChecked<u8, Output = Self>
+    + ShlChecked<u16, Output = Self>
+    + ShlChecked<u32, Output = Self>
+    + ShlSaturated<u8, Output = Self>
+    + ShlSaturated<u16, Output = Self>
+    + ShlSaturated<u32, Output = Self>
+    + ShrChecked<u8, Output = Self>
+    + ShrChecked<u16, Output = Self>
+    + ShrChecked<u32, Output = Self>
+    + ShrSaturated<u8, Output = Self>
+    + ShrSaturated<u16, Output = Self>
+    + ShrSaturated<u32, Output = Self>
     + SubAssign
     + Sub<Output = Self>
     + SubChecked<Output = Self>
@@ -333,6 +345,38 @@ pub trait PowWrapped<M: ?Sized> {
     type Output;
 
     fn pow_wrapped(&self, rhs: &Self::Exponent) -> Self::Output;
+}
+
+/// Binary operator for left shifting a value, enforcing an overflow never occurs.
+pub trait ShlChecked<M: ?Sized> {
+    type Magnitude;
+    type Output;
+
+    fn shl_checked(&self, rhs: &Self::Magnitude) -> Self::Output;
+}
+
+/// Binary operator for left shifting a value, saturating the result if an overflow occurs.
+pub trait ShlSaturated<M: ?Sized> {
+    type Magnitude;
+    type Output;
+
+    fn shl_saturated(&self, rhs: &Self::Magnitude) -> Self::Output;
+}
+
+/// Binary operator for right shifting a value, enforcing an overflow never occurs.
+pub trait ShrChecked<M: ?Sized> {
+    type Magnitude;
+    type Output;
+
+    fn shr_checked(&self, rhs: &Self::Magnitude) -> Self::Output;
+}
+
+/// Binary operator for right shifting a value, saturating the result if an overflow occurs.
+pub trait ShrSaturated<M: ?Sized> {
+    type Magnitude;
+    type Output;
+
+    fn shr_saturated(&self, rhs: &Self::Magnitude) -> Self::Output;
 }
 
 /// Binary operator for subtracting two values, enforcing an underflow never occurs.

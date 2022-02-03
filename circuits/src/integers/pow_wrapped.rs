@@ -21,7 +21,7 @@ impl<E: Environment, I: IntegerType, M: private::Magnitude> PowWrapped<M> for In
     type Output = Self;
 
     #[inline]
-    fn pow_wrapped(&self, other: &Integer<E, M>) -> Self::Output {
+    fn pow_wrapped(&self, other: &Self::Exponent) -> Self::Output {
         // Determine the variable mode.
         if self.is_constant() && other.is_constant() {
             // Compute the result and return the new constant.
