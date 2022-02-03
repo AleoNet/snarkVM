@@ -74,6 +74,7 @@ default-features = false
 [dependencies.snarkvm-utilities]
 path = "../utilities"
 version = "0.7.5"
+default-features = false
 
 [dependencies.derivative]
 version = "2"
@@ -114,12 +115,20 @@ full = [
   "polycommit",
   "r1cs"
 ]
+parallel = [
+  "snarkvm-algorithms/parallel",
+  "snarkvm-dpc/parallel",
+  "snarkvm-fields/parallel",
+  "snarkvm-marlin/parallel",
+  "snarkvm-polycommit/parallel",
+  "snarkvm-utilities/parallel"
+]
+
 algorithms = [ "snarkvm-algorithms" ]
 curves = [ "snarkvm-curves" ]
 dpc = ["snarkvm-dpc"]
 fields = [ "snarkvm-fields" ]
 gadgets = [ "snarkvm-gadgets" ]
 marlin = [ "snarkvm-marlin" ]
-parallel = [ "snarkvm-algorithms/parallel" ]
 polycommit = [ "snarkvm-polycommit" ]
 r1cs = [ "snarkvm-r1cs" ]
