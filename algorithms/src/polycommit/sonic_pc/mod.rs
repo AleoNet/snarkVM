@@ -123,7 +123,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
             v
         });
 
-        let (shifted_powers_of_g, shifted_powers_of_gamma_g) = if let Some(enforced_degree_bounds) =
+        let (shifted_powers_of_beta_g, shifted_powers_of_beta_times_gamma_g) = if let Some(enforced_degree_bounds) =
             enforced_degree_bounds.as_ref()
         {
             if enforced_degree_bounds.is_empty() {
@@ -137,58 +137,59 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
                 let lowest_shift_degree = max_degree - highest_enforced_degree_bound;
 
                 let shifted_ck_time = start_timer!(|| format!(
-                    "Constructing `shifted_powers` of size {}",
+                    "Constructing `shifted_powers_of_beta_g` of size {}",
                     max_degree - lowest_shift_degree + 1
                 ));
 
-                let shifted_powers_of_g = pp.powers_of_g[lowest_shift_degree..].to_vec();
-                let mut shifted_powers_of_gamma_g = BTreeMap::new();
+                let shifted_powers_of_beta_g = pp.powers_of_beta_g[lowest_shift_degree..].to_vec();
+                let mut shifted_powers_of_beta_times_gamma_g = BTreeMap::new();
                 // Also add degree 0.
-                let _max_gamma_g = pp.powers_of_gamma_g.keys().last().unwrap();
+                let _max_gamma_g = pp.powers_of_beta_times_gamma_g.keys().last().unwrap();
                 for degree_bound in enforced_degree_bounds {
                     let shift_degree = max_degree - degree_bound;
                     let mut powers_for_degree_bound = Vec::with_capacity((max_degree + 2).saturating_sub(shift_degree));
                     for i in 0..=supported_hiding_bound + 1 {
-                        // We have an additional degree in `powers_of_gamma_g` beyond `powers_of_g`.
+                        // We have an additional degree in `powers_of_beta_times_gamma_g` beyond `powers_of_beta_g`.
                         if shift_degree + i < max_degree + 2 {
-                            powers_for_degree_bound.push(pp.powers_of_gamma_g[&(shift_degree + i)]);
+                            powers_for_degree_bound.push(pp.powers_of_beta_times_gamma_g[&(shift_degree + i)]);
                         }
                     }
-                    shifted_powers_of_gamma_g.insert(*degree_bound, powers_for_degree_bound);
+                    shifted_powers_of_beta_times_gamma_g.insert(*degree_bound, powers_for_degree_bound);
                 }
 
                 end_timer!(shifted_ck_time);
 
-                (Some(shifted_powers_of_g), Some(shifted_powers_of_gamma_g))
+                (Some(shifted_powers_of_beta_g), Some(shifted_powers_of_beta_times_gamma_g))
             }
         } else {
             (None, None)
         };
 
-        let powers_of_g = pp.powers_of_g[..=supported_degree].to_vec();
-        let powers_of_gamma_g = (0..=supported_hiding_bound + 1).map(|i| pp.powers_of_gamma_g[&i]).collect();
+        let powers_of_beta_g = pp.powers_of_beta_g[..=supported_degree].to_vec();
+        let powers_of_beta_times_gamma_g =
+            (0..=supported_hiding_bound + 1).map(|i| pp.powers_of_beta_times_gamma_g[&i]).collect();
 
         let ck = CommitterKey {
-            powers: powers_of_g,
-            powers_of_gamma_g,
-            shifted_powers: shifted_powers_of_g,
-            shifted_powers_of_gamma_g,
+            powers_of_beta_g,
+            powers_of_beta_times_gamma_g,
+            shifted_powers_of_beta_g,
+            shifted_powers_of_beta_times_gamma_g,
             enforced_degree_bounds,
             max_degree,
         };
 
-        let g = pp.powers_of_g[0];
+        let g = pp.powers_of_beta_g[0];
         let h = pp.h;
         let beta_h = pp.beta_h;
-        let gamma_g = pp.powers_of_gamma_g[&0];
+        let gamma_g = pp.powers_of_beta_times_gamma_g[&0];
         let prepared_h = pp.prepared_h.clone();
         let prepared_beta_h = pp.prepared_beta_h.clone();
 
-        let degree_bounds_and_neg_powers_of_h = if pp.inverse_neg_powers_of_h.is_empty() {
+        let degree_bounds_and_neg_powers_of_h = if pp.inverse_neg_powers_of_beta_h.is_empty() {
             None
         } else {
             Some(
-                pp.inverse_neg_powers_of_h
+                pp.inverse_neg_powers_of_beta_h
                     .iter()
                     .map(|(d, affine)| (*d, *affine))
                     .collect::<Vec<(usize, E::G2Affine)>>(),
@@ -265,7 +266,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
                 ));
 
                 let powers = if let Some(degree_bound) = degree_bound {
-                    ck.shifted_powers(degree_bound).unwrap()
+                    ck.shifted_powers_of_beta_g(degree_bound).unwrap()
                 } else {
                     ck.powers()
                 };

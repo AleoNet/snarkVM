@@ -124,14 +124,14 @@ impl<E: PairingEngine> KZG10<E> {
         let window_size = FixedBaseMSM::get_mul_window_size(max_degree + 1);
         let g_time = start_timer!(|| "Generating powers of G");
         let g_table = FixedBaseMSM::get_window_table(scalar_bits, window_size, g);
-        let powers_of_g =
+        let powers_of_beta_g =
             FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(scalar_bits, window_size, &g_table, &powers_of_beta);
         end_timer!(g_time);
 
         // Compute `gamma beta^i G`.
         let gamma_g_time = start_timer!(|| "Generating powers of gamma * G");
         let gamma_g_table = FixedBaseMSM::get_window_table(scalar_bits, window_size, gamma_g);
-        let mut powers_of_gamma_g = FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(
+        let mut powers_of_beta_times_gamma_g = FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(
             scalar_bits,
             window_size,
             &gamma_g_table,
@@ -139,35 +139,26 @@ impl<E: PairingEngine> KZG10<E> {
         );
         // Add an additional power of gamma_g, because we want to be able to support
         // up to D queries.
-        powers_of_gamma_g.push(powers_of_gamma_g.last().unwrap().mul(beta));
+        powers_of_beta_times_gamma_g.push(powers_of_beta_times_gamma_g.last().unwrap().mul(beta));
         end_timer!(gamma_g_time);
 
         // Reduce `beta^i G` and `gamma beta^i G` to affine representations.
-        let powers_of_g = E::G1Projective::batch_normalization_into_affine(powers_of_g);
-        let powers_of_gamma_g =
-            E::G1Projective::batch_normalization_into_affine(powers_of_gamma_g).into_iter().enumerate().collect();
+        let powers_of_beta_g = E::G1Projective::batch_normalization_into_affine(powers_of_beta_g);
+        let powers_of_beta_times_gamma_g =
+            E::G1Projective::batch_normalization_into_affine(powers_of_beta_times_gamma_g)
+                .into_iter()
+                .enumerate()
+                .collect();
 
-        // Compute `inverse_powers_of_g`.
-        //
         // This part is used to derive the universal verification parameters.
         let list = supported_degree_bounds_config.get_list::<E::Fr>(max_degree);
 
         let supported_degree_bounds =
             if *supported_degree_bounds_config != KZG10DegreeBoundsConfig::NONE { list.clone() } else { vec![] };
 
-        let inverse_powers_of_g = if *supported_degree_bounds_config != KZG10DegreeBoundsConfig::NONE {
-            let mut map = BTreeMap::<usize, E::G1Affine>::new();
-            for i in list.iter() {
-                map.insert(*i, powers_of_g[max_degree - i]);
-            }
-            map
-        } else {
-            BTreeMap::new()
-        };
-
         // Compute `neg_powers_of_h`.
-        let inverse_neg_powers_of_h_time = start_timer!(|| "Generating negative powers of h in G2");
-        let inverse_neg_powers_of_h =
+        let inverse_neg_powers_of_beta_h_time = start_timer!(|| "Generating negative powers of h in G2");
+        let inverse_neg_powers_of_beta_h =
             if produce_g2_powers && *supported_degree_bounds_config != KZG10DegreeBoundsConfig::NONE {
                 let mut map = BTreeMap::<usize, E::G2Affine>::new();
 
@@ -195,7 +186,7 @@ impl<E: PairingEngine> KZG10<E> {
             } else {
                 BTreeMap::new()
             };
-        end_timer!(inverse_neg_powers_of_h_time);
+        end_timer!(inverse_neg_powers_of_beta_h_time);
 
         let beta_h = h.mul(beta).into_affine();
         let h = h.into_affine();
@@ -203,13 +194,12 @@ impl<E: PairingEngine> KZG10<E> {
         let prepared_beta_h = beta_h.prepare();
 
         let pp = UniversalParams {
-            powers_of_g,
-            powers_of_gamma_g,
+            powers_of_beta_g,
+            powers_of_beta_times_gamma_g,
             h,
             beta_h,
             supported_degree_bounds,
-            inverse_powers_of_g,
-            inverse_neg_powers_of_h,
+            inverse_neg_powers_of_beta_h,
             prepared_h,
             prepared_beta_h,
         };
@@ -236,7 +226,8 @@ impl<E: PairingEngine> KZG10<E> {
         let (num_leading_zeros, plain_coeffs) = skip_leading_zeros_and_convert_to_bigints(polynomial);
 
         let msm_time = start_timer!(|| "MSM to compute commitment to plaintext poly");
-        let mut commitment = VariableBaseMSM::multi_scalar_mul(&powers.powers_of_g[num_leading_zeros..], &plain_coeffs);
+        let mut commitment =
+            VariableBaseMSM::multi_scalar_mul(&powers.powers_of_beta_g[num_leading_zeros..], &plain_coeffs);
         end_timer!(msm_time);
 
         if terminator.load(Ordering::Relaxed) {
@@ -250,14 +241,18 @@ impl<E: PairingEngine> KZG10<E> {
                 start_timer!(|| format!("Sampling a random polynomial of degree {}", hiding_degree));
 
             randomness = Randomness::rand(hiding_degree, false, &mut rng);
-            Self::check_hiding_bound(randomness.blinding_polynomial.degree(), powers.powers_of_gamma_g.len())?;
+            Self::check_hiding_bound(
+                randomness.blinding_polynomial.degree(),
+                powers.powers_of_beta_times_gamma_g.len(),
+            )?;
             end_timer!(sample_random_poly_time);
         }
 
         let random_ints = convert_to_bigints(&randomness.blinding_polynomial.coeffs);
         let msm_time = start_timer!(|| "MSM to compute commitment to random poly");
         let random_commitment =
-            VariableBaseMSM::multi_scalar_mul(&powers.powers_of_gamma_g, random_ints.as_slice()).into_affine();
+            VariableBaseMSM::multi_scalar_mul(&powers.powers_of_beta_times_gamma_g, random_ints.as_slice())
+                .into_affine();
         end_timer!(msm_time);
 
         if terminator.load(Ordering::Relaxed) {
@@ -312,7 +307,7 @@ impl<E: PairingEngine> KZG10<E> {
         let (num_leading_zeros, witness_coeffs) = skip_leading_zeros_and_convert_to_bigints(witness_polynomial);
 
         let witness_comm_time = start_timer!(|| "Computing commitment to witness polynomial");
-        let mut w = VariableBaseMSM::multi_scalar_mul(&powers.powers_of_g[num_leading_zeros..], &witness_coeffs);
+        let mut w = VariableBaseMSM::multi_scalar_mul(&powers.powers_of_beta_g[num_leading_zeros..], &witness_coeffs);
         end_timer!(witness_comm_time);
 
         let random_v = if let Some(hiding_witness_polynomial) = hiding_witness_polynomial {
@@ -323,7 +318,7 @@ impl<E: PairingEngine> KZG10<E> {
 
             let random_witness_coeffs = convert_to_bigints(&hiding_witness_polynomial.coeffs);
             let witness_comm_time = start_timer!(|| "Computing commitment to random witness polynomial");
-            w += &VariableBaseMSM::multi_scalar_mul(&powers.powers_of_gamma_g, &random_witness_coeffs);
+            w += &VariableBaseMSM::multi_scalar_mul(&powers.powers_of_beta_times_gamma_g, &random_witness_coeffs);
             end_timer!(witness_comm_time);
             Some(blinding_evaluation)
         } else {
@@ -517,14 +512,17 @@ mod tests {
             if supported_degree == 1 {
                 supported_degree += 1;
             }
-            let powers_of_g = pp.powers_of_g[..=supported_degree].to_vec();
-            let powers_of_gamma_g = (0..=supported_degree).map(|i| pp.powers_of_gamma_g[&i]).collect();
+            let powers_of_beta_g = pp.powers_of_beta_g[..=supported_degree].to_vec();
+            let powers_of_beta_times_gamma_g =
+                (0..=supported_degree).map(|i| pp.powers_of_beta_times_gamma_g[&i]).collect();
 
-            let powers =
-                Powers { powers_of_g: Cow::Owned(powers_of_g), powers_of_gamma_g: Cow::Owned(powers_of_gamma_g) };
+            let powers = Powers {
+                powers_of_beta_g: Cow::Owned(powers_of_beta_g),
+                powers_of_beta_times_gamma_g: Cow::Owned(powers_of_beta_times_gamma_g),
+            };
             let vk = VerifierKey {
-                g: pp.powers_of_g[0],
-                gamma_g: pp.powers_of_gamma_g[&0],
+                g: pp.powers_of_beta_g[0],
+                gamma_g: pp.powers_of_beta_times_gamma_g[&0],
                 h: pp.h,
                 beta_h: pp.beta_h,
                 prepared_h: pp.prepared_h.clone(),
