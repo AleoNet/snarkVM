@@ -221,7 +221,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
                 // Use the noop program id if the record does not have one. // TODO (raychu86): Remove this use of noop program id.
                 let program_id =
-                    if let Some(program_id) = record.program_id().clone() { program_id } else { *N::noop_program_id() };
+                    if let Some(program_id) = record.program_id() { program_id } else { *N::noop_program_id() };
                 let given_program_id =
                     UInt8::alloc_vec(&mut declare_cs.ns(|| "given_program_id"), &program_id.to_bytes_le()?)?;
 
@@ -544,7 +544,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
                 // Use the noop program id if the record does not have one. // TODO (raychu86): Remove this use of noop program id.
                 let program_id =
-                    if let Some(program_id) = record.program_id().clone() { program_id } else { *N::noop_program_id() };
+                    if let Some(program_id) = record.program_id() { program_id } else { *N::noop_program_id() };
                 let given_program_id =
                     UInt8::alloc_vec(&mut declare_cs.ns(|| "given_program_id"), &program_id.to_bytes_le()?)?;
 
