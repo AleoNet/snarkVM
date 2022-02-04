@@ -82,6 +82,8 @@ impl<N: Network> ToConstraintField<N::InnerScalarField> for InnerPublicVariables
 
         if let Some(program_id) = &self.program_id {
             v.extend_from_slice(&program_id.to_bytes_le()?.to_field_elements()?);
+        } else {
+            v.extend_from_slice(&vec![0u8; N::PROGRAM_ID_SIZE_IN_BYTES].to_field_elements()?);
         }
 
         v.extend_from_slice(&self.value_balance.to_bytes_le()?.to_field_elements()?);

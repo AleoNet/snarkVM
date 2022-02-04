@@ -62,9 +62,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         let public = &self.public;
         let private = &self.private;
 
-        // In the inner circuit, this variable must be allocated as public input.
-        debug_assert!(public.program_id.is_some());
-
         let (
             account_encryption_parameters,
             account_signature_parameters,
@@ -688,9 +685,14 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
             // Allocate the program ID.
             let executable_program_id_field_elements = {
+                let program_id_bytes = if let Some(program_id) = public.program_id {
+                    program_id.to_bytes_le()?
+                } else {
+                    vec![0u8; N::PROGRAM_ID_SIZE_IN_BYTES]
+                };
                 let executable_program_id_bytes = UInt8::alloc_input_vec_le(
                     &mut program_cs.ns(|| "Allocate executable_program_id"),
-                    &public.program_id.as_ref().unwrap().to_bytes_le()?,
+                    &program_id_bytes,
                 )?;
                 executable_program_id_bytes
                     .to_constraint_field(&mut program_cs.ns(|| "convert executable program ID to field elements"))?
