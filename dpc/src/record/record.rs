@@ -189,6 +189,11 @@ impl<N: Network> Record<N> {
             );
         } else {
             assert_eq!(1 + N::ADDRESS_SIZE_IN_BYTES + 8, plaintext.len(), "Update me if the plaintext design changes.");
+
+            // TODO (raychu86): Remove this from the native encryption. Currently it is re-padded because it's required in
+            //  the inner circuit.
+            // Total = 41 + 128 = 169 bytes
+            plaintext.extend(vec![0u8; N::RECORD_PAYLOAD_SIZE_IN_BYTES]); // 1024 bits = 128 bytes
         }
 
         // Ensure the record bytes are within the permitted size.
