@@ -16,14 +16,74 @@
 
 use super::*;
 
-impl<E: Environment, I: IntegerType, M: private::Magnitude> Shr<M> for Integer<E, I> {
-    type Magnitude = Integer<E, M>;
+impl<E: Environment, I: IntegerType, M: private::Magnitude> Shr<Integer<E, M>> for Integer<E, I> {
     type Output = Self;
 
-    #[inline]
-    fn shr(&self, other: &Self::Magnitude) -> Self::Output {
-        todo!()
+    fn shr(self, rhs: Integer<E, M>) -> Self::Output {
+        self >> &rhs
     }
+}
+
+impl<E: Environment, I: IntegerType, M: private::Magnitude> Shr<Integer<E, M>> for &Integer<E, I> {
+    type Output = Integer<E, I>;
+
+    fn shr(self, rhs: Integer<E, M>) -> Self::Output {
+        self >> &rhs
+    }
+}
+
+impl<E: Environment, I: IntegerType, M: private::Magnitude> Shr<&Integer<E, M>> for Integer<E, I> {
+    type Output = Self;
+
+    fn shr(self, rhs: &Integer<E, M>) -> Self::Output {
+        &self >> rhs
+    }
+}
+
+impl<E: Environment, I: IntegerType, M: private::Magnitude> Shr<&Integer<E, M>> for &Integer<E, I> {
+    type Output = Integer<E, I>;
+
+    fn shr(self, rhs: &Integer<E, M>) -> Self::Output {
+        let mut output = self.clone();
+        output >> rhs;
+        output
+    }
+}
+
+impl<E: Environment, I: IntegerType, M: private::Magnitude> ShrAssign<Integer<E, M>> for Integer<E, I> {
+
+    fn shr_assign(&mut self, rhs: Integer<E, M>) {
+        *self >>= &rhs
+    }
+}
+
+impl<E: Environment, I: IntegerType, M: private::Magnitude> ShrAssign<&Integer<E, M>> for Integer<E, I> {
+
+    fn shr_assign(&mut self, rhs: &Integer<E, M>) {
+        // Determine the variable mode.
+        if rhs.is_constant() {
+            // Compute the result and return the new constant.
+            let shift_amount = rhs.eject_value();
+            let mut bits_le = vec![Boolean::new(self.eject_mode(), false)];
+            bits_le.append(&mut self.bits_le);
+            self.bits_le = bits_le;
+
+        } else {
+            todo!()
+
+        };
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Circuit;
+    use snarkvm_utilities::UniformRand;
+
+    use rand::thread_rng;
+
+    const ITERATIONS: usize = 128;
 }
 
 #[cfg(test)]

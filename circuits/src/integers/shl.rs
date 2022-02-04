@@ -16,13 +16,62 @@
 
 use super::*;
 
-impl<E: Environment, I: IntegerType, M: private::Magnitude> Shl<M> for Integer<E, I> {
-    type Magnitude = Integer<E, M>;
+impl<E: Environment, I: IntegerType, M: private::Magnitude> Shl<Integer<E, M>> for Integer<E, I> {
     type Output = Self;
 
-    #[inline]
-    fn shl(&self, rhs: &Self::Magnitude) -> Self::Output {
-        todo!()
+    fn shl(self, rhs: Integer<E, M>) -> Self::Output {
+        self << &rhs
+    }
+}
+
+impl<E: Environment, I: IntegerType, M: private::Magnitude> Shl<Integer<E, M>> for &Integer<E, I> {
+    type Output = Integer<E, I>;
+
+    fn shl(self, rhs: Integer<E, M>) -> Self::Output {
+        self << &rhs
+    }
+}
+
+impl<E: Environment, I: IntegerType, M: private::Magnitude> Shl<&Integer<E, M>> for Integer<E, I> {
+    type Output = Self;
+
+    fn shl(self, rhs: &Integer<E, M>) -> Self::Output {
+        &self << rhs
+    }
+}
+
+impl<E: Environment, I: IntegerType, M: private::Magnitude> Shl<&Integer<E, M>> for &Integer<E, I> {
+    type Output = Integer<E, I>;
+
+    fn shl(self, rhs: &Integer<E, M>) -> Self::Output {
+        let mut output = self.clone();
+        output << rhs;
+        output
+    }
+}
+
+impl<E: Environment, I: IntegerType, M: private::Magnitude> ShlAssign<Integer<E, M>> for Integer<E, I> {
+
+    fn shl_assign(&mut self, rhs: Integer<E, M>) {
+        *self <<= &rhs
+    }
+}
+
+impl<E: Environment, I: IntegerType, M: private::Magnitude> ShlAssign<&Integer<E, M>> for Integer<E, I> {
+
+    fn shl_assign(&mut self, rhs: &Integer<E, M>) {
+        // Determine the variable mode.
+        if rhs.is_constant() {
+            // Compute the result and return the new constant.
+            let shift_amount = rhs.eject_value();
+            let mut bits_le = vec![Boolean::new(self.eject_mode(), false)];
+            bits_le.append(&mut self.bits_le);
+            self.bits_le = bits_le;
+
+        } else {
+            todo!()
+
+       };
     }
 }
 

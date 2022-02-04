@@ -34,6 +34,10 @@ use core::{
         Neg,
         Not,
         Sub,
+        Shl,
+        ShlAssign,
+        Shr,
+        ShrAssign,
         SubAssign,
     },
 };
@@ -72,7 +76,7 @@ pub trait BaseFieldTrait:
 }
 
 /// Representation of an integer.
-pub trait IntegerTrait<I: IntegerType>:
+pub trait IntegerTrait<E: Environment, I: IntegerType>:
     AddAssign
     + Add<Output = Self>
     + AddChecked<Output = Self>
@@ -105,12 +109,18 @@ pub trait IntegerTrait<I: IntegerType>:
     + PowWrapped<u8, Output = Self>
     + PowWrapped<u16, Output = Self>
     + PowWrapped<u32, Output = Self>
-    + Shl<u8, Output = Self>
-    + Shl<u16, Output = Self>
-    + Shl<u32, Output = Self>
-    + Shr<u8, Output = Self>
-    + Shr<u16, Output = Self>
-    + Shr<u32, Output = Self>
+    + Shl<U8<E>, Output = Self>
+    + Shl<U16<E>, Output = Self>
+    + Shl<U32<E>, Output = Self>
+    + ShlAssign<U8<E>>
+    + ShlAssign<U16<E>>
+    + ShlAssign<U32<E>>
+    + Shr<U8<E>, Output = Self>
+    + Shr<U16<E>, Output = Self>
+    + Shr<U32<E>, Output = Self>
+    + ShrAssign<U8<E>>
+    + ShrAssign<U16<E>>
+    + ShrAssign<U32<E>>
     + SubAssign
     + Sub<Output = Self>
     + SubChecked<Output = Self>
@@ -335,22 +345,6 @@ pub trait PowWrapped<M: ?Sized> {
     type Output;
 
     fn pow_wrapped(&self, rhs: &Self::Exponent) -> Self::Output;
-}
-
-/// Binary operator for left shifting a value.
-pub trait Shl<M: ?Sized> {
-    type Magnitude;
-    type Output;
-
-    fn shl(&self, rhs: &Self::Magnitude) -> Self::Output;
-}
-
-/// Binary operator for right shifting a value, enforcing an overflow never occurs.
-pub trait Shr<M: ?Sized> {
-    type Magnitude;
-    type Output;
-
-    fn shr(&self, rhs: &Self::Magnitude) -> Self::Output;
 }
 
 /// Binary operator for right shifting a value, saturating the result if an overflow occurs.

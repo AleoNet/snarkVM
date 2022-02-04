@@ -73,6 +73,10 @@ use std::{
         MulAssign,
         Neg,
         Not,
+        Shl,
+        ShlAssign,
+        Shr,
+        ShrAssign,
         Sub,
         SubAssign,
     },
@@ -96,7 +100,7 @@ pub struct Integer<E: Environment, I: IntegerType> {
     phantom: PhantomData<I>,
 }
 
-impl<E: Environment, I: IntegerType> IntegerTrait<I> for Integer<E, I> {
+impl<E: Environment, I: IntegerType> IntegerTrait<E, I> for Integer<E, I> {
     /// Initializes a new integer.
     fn new(mode: Mode, value: I) -> Self {
         let mut bits_le = Vec::with_capacity(I::BITS);
