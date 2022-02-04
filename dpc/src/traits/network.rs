@@ -127,7 +127,6 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const INNER_PROOF_SIZE_IN_BYTES: usize;
     const PROGRAM_PROOF_SIZE_IN_BYTES: usize;
     const PROGRAM_ID_SIZE_IN_BYTES: usize;
-    const RECORD_SIZE_IN_BYTES: usize;
     const RECORD_CIPHERTEXT_SIZE_IN_BYTES: usize;
     const RECORD_PAYLOAD_SIZE_IN_BYTES: usize;
     const RECORD_VIEW_KEY_SIZE_IN_BYTES: usize;

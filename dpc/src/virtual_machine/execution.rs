@@ -185,6 +185,7 @@ impl<N: Network> Serialize for Execution<N> {
             true => {
                 let mut execution = serializer.serialize_struct("Execution", 2)?;
                 execution.serialize_field("program_execution", &self.program_execution)?;
+                execution.serialize_field("inner_proof", &self.inner_proof)?;
                 execution.end()
             }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),

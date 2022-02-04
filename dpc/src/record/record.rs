@@ -324,7 +324,7 @@ impl<N: Network> Serialize for Record<N> {
                 record.serialize_field("commitment", &self.commitment())?;
                 record.end()
             }
-            false => ToBytesSerializer::serialize(self, serializer),
+            false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
         }
     }
 }
@@ -357,7 +357,7 @@ impl<'de, N: Network> Deserialize<'de> for Record<N> {
                     }
                 }
             }
-            false => FromBytesDeserializer::<Self>::deserialize(deserializer, "record", N::RECORD_SIZE_IN_BYTES),
+            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "record"),
         }
     }
 }
@@ -431,11 +431,13 @@ mod tests {
 
         // Serialize
         let expected_bytes = expected_record.to_bytes_le().unwrap();
-        assert_eq!(&expected_bytes[..], &bincode::serialize(&expected_record).unwrap()[..]);
+        let candidate_bytes = bincode::serialize(&expected_record).unwrap();
+        // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
+        assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
 
         // Deserialize
         assert_eq!(expected_record, Record::read_le(&expected_bytes[..]).unwrap());
-        assert_eq!(expected_record, bincode::deserialize(&expected_bytes[..]).unwrap());
+        assert_eq!(expected_record, bincode::deserialize(&candidate_bytes[..]).unwrap());
     }
 
     #[test]
@@ -457,10 +459,12 @@ mod tests {
 
         // Serialize
         let expected_bytes = expected_record.to_bytes_le().unwrap();
-        assert_eq!(&expected_bytes[..], &bincode::serialize(&expected_record).unwrap()[..]);
+        let candidate_bytes = bincode::serialize(&expected_record).unwrap();
+        // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
+        assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
 
         // Deserialize
         assert_eq!(expected_record, Record::read_le(&expected_bytes[..]).unwrap());
-        assert_eq!(expected_record, bincode::deserialize(&expected_bytes[..]).unwrap());
+        assert_eq!(expected_record, bincode::deserialize(&candidate_bytes[..]).unwrap());
     }
 }
