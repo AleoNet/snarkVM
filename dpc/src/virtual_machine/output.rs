@@ -29,7 +29,7 @@ pub struct Output<N: Network> {
     /// The balance of the recipient.
     value: AleoAmount,
     /// The program data of the recipient.
-    payload: Payload<N>,
+    payload: Option<Payload<N>>,
     /// The program that was run.
     program_id: N::ProgramID,
 }
@@ -40,14 +40,14 @@ impl<N: Network> Output<N> {
         let noop_private_key = PrivateKey::new(rng);
         let noop_address = noop_private_key.try_into()?;
 
-        Self::new(noop_address, AleoAmount::from_i64(0), Payload::default(), None)
+        Self::new(noop_address, AleoAmount::from_i64(0), None, None)
     }
 
     /// Initializes a new instance of `Output`.
     pub fn new(
         address: Address<N>,
         value: AleoAmount,
-        payload: Payload<N>,
+        payload: Option<Payload<N>>,
         program_id: Option<N::ProgramID>,
     ) -> Result<Self> {
         // Retrieve the program ID. If `None` is provided, construct the noop program ID.
@@ -91,7 +91,7 @@ impl<N: Network> Output<N> {
     }
 
     /// Returns a reference to the payload.
-    pub fn payload(&self) -> &Payload<N> {
+    pub fn payload(&self) -> &Option<Payload<N>> {
         &self.payload
     }
 

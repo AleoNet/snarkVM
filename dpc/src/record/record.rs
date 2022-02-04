@@ -39,7 +39,7 @@ use std::{
 pub struct Record<N: Network> {
     owner: Address<N>,
     value: AleoAmount,
-    payload: Payload<N>,
+    payload: Option<Payload<N>>,
     record_view_key: N::RecordViewKey,
     ciphertext: N::RecordCiphertext,
 }
@@ -47,14 +47,14 @@ pub struct Record<N: Network> {
 impl<N: Network> Record<N> {
     /// Returns a new noop record.
     pub fn new_noop<R: Rng + CryptoRng>(owner: Address<N>, rng: &mut R) -> Result<Self, RecordError> {
-        Self::new(owner, AleoAmount::ZERO, Payload::<N>::default(), *N::noop_program_id(), rng)
+        Self::new(owner, AleoAmount::ZERO, None, *N::noop_program_id(), rng)
     }
 
     /// Returns a new record.
     pub fn new<R: Rng + CryptoRng>(
         owner: Address<N>,
         value: AleoAmount,
-        payload: Payload<N>,
+        payload: Option<Payload<N>>,
         program_id: N::ProgramID,
         rng: &mut R,
     ) -> Result<Self, RecordError> {
@@ -68,7 +68,7 @@ impl<N: Network> Record<N> {
     pub fn from(
         owner: Address<N>,
         value: AleoAmount,
-        payload: Payload<N>,
+        payload: Option<Payload<N>>,
         program_id: N::ProgramID,
         randomizer: N::RecordRandomizer,
         record_view_key: N::RecordViewKey,
@@ -98,7 +98,7 @@ impl<N: Network> Record<N> {
 
     /// Returns `true` if the record is a dummy.
     pub fn is_dummy(&self) -> bool {
-        self.value.is_zero() && self.payload.is_empty() && self.program_id() == *N::noop_program_id()
+        self.value.is_zero() && self.payload.is_none() && self.program_id() == *N::noop_program_id()
     }
 
     /// Returns the record owner.
@@ -112,7 +112,7 @@ impl<N: Network> Record<N> {
     }
 
     /// Returns the record payload.
-    pub fn payload(&self) -> &Payload<N> {
+    pub fn payload(&self) -> &Option<Payload<N>> {
         &self.payload
     }
 
@@ -165,25 +165,31 @@ impl<N: Network> Record<N> {
     fn encode_plaintext(
         owner: Address<N>,
         value: AleoAmount,
-        payload: &Payload<N>,
+        payload: &Option<Payload<N>>,
         program_id: N::ProgramID,
     ) -> Result<Vec<u8>, RecordError> {
         // Determine if the record is a dummy.
-        let is_dummy = value.is_zero() && payload.is_empty() && program_id == *N::noop_program_id();
+        let is_dummy = value.is_zero() && payload.is_none() && program_id == *N::noop_program_id();
 
-        // Total = 32 + 1 + 8 + 128 = 169 bytes
-        let plaintext = to_bytes_le![
+        // Total = 32 + 1 + 8 = 41 bytes
+        let mut plaintext = to_bytes_le![
             owner,    // 256 bits = 32 bytes
-            is_dummy, // 1 bit = 1 byte
-            value,    // 64 bits = 8 bytes
-            payload   // 1024 bits = 128 bytes
+            is_dummy, // 1 bit = 1 byte // TODO (raychu86): Remove this.
+            value     // 64 bits = 8 bytes
         ]?;
 
-        assert_eq!(
-            1 + N::ADDRESS_SIZE_IN_BYTES + 8 + N::RECORD_PAYLOAD_SIZE_IN_BYTES,
-            plaintext.len(),
-            "Update me if the plaintext design changes."
-        );
+        if let Some(payload) = payload {
+            // Total = 41 + 128 = 169 bytes
+            plaintext.extend(payload.to_bytes_le()?); // 1024 bits = 128 bytes
+
+            assert_eq!(
+                1 + N::ADDRESS_SIZE_IN_BYTES + 8 + N::RECORD_PAYLOAD_SIZE_IN_BYTES,
+                plaintext.len(),
+                "Update me if the plaintext design changes."
+            );
+        } else {
+            assert_eq!(1 + N::ADDRESS_SIZE_IN_BYTES + 8, plaintext.len(), "Update me if the plaintext design changes.");
+        }
 
         // Ensure the record bytes are within the permitted size.
         match plaintext.len() <= u16::MAX as usize {
@@ -196,22 +202,36 @@ impl<N: Network> Record<N> {
     fn decode_plaintext(
         plaintext: &[u8],
         program_id: &N::ProgramID,
-    ) -> Result<(Address<N>, AleoAmount, Payload<N>), RecordError> {
+    ) -> Result<(Address<N>, AleoAmount, Option<Payload<N>>), RecordError> {
         assert_eq!(
             1 + N::ADDRESS_SIZE_IN_BYTES + 8 + N::RECORD_PAYLOAD_SIZE_IN_BYTES,
             plaintext.len(),
             "Update me if the plaintext design changes."
         );
 
+        // Check that the plaintext size is valid.
+
+        let empty_payload_size = 1 + N::ADDRESS_SIZE_IN_BYTES + 8;
+        let payload_exists_size = empty_payload_size + N::RECORD_PAYLOAD_SIZE_IN_BYTES;
+
+        let payload_exists = if plaintext.len() == empty_payload_size {
+            false
+        } else if plaintext.len() == payload_exists_size {
+            true
+        } else {
+            return Err(anyhow!("Invalid plaintext size").into());
+        };
+
         // Decode the plaintext bytes.
         let mut cursor = Cursor::new(plaintext);
         let owner = Address::<N>::read_le(&mut cursor)?;
         let is_dummy = u8::read_le(&mut cursor)?;
         let value = AleoAmount::read_le(&mut cursor)?;
-        let payload = Payload::read_le(&mut cursor)?;
+
+        let payload = if payload_exists { Some(Payload::read_le(&mut cursor)?) } else { None };
 
         // Ensure the dummy flag in the record is correct.
-        let expected_dummy = value.is_zero() && payload.is_empty() && program_id == N::noop_program_id();
+        let expected_dummy = value.is_zero() && payload.is_none() && program_id == N::noop_program_id();
         match is_dummy == expected_dummy as u8 {
             true => Ok((owner, value, payload)),
             false => Err(anyhow!("Decoded incorrect is_dummy flag in record plaintext bytes").into()),
@@ -224,7 +244,15 @@ impl<N: Network> ToBytes for Record<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.owner.write_le(&mut writer)?;
         self.value.write_le(&mut writer)?;
-        self.payload.write_le(&mut writer)?;
+
+        match &self.payload {
+            Some(payload) => {
+                true.write_le(&mut writer)?;
+                payload.write_le(&mut writer)?;
+            }
+            None => false.write_le(&mut writer)?,
+        }
+
         self.program_id().write_le(&mut writer)?;
         self.randomizer().write_le(&mut writer)?;
         self.record_view_key.write_le(&mut writer)
@@ -236,7 +264,13 @@ impl<N: Network> FromBytes for Record<N> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let owner: Address<N> = FromBytes::read_le(&mut reader)?;
         let value: AleoAmount = FromBytes::read_le(&mut reader)?;
-        let payload: Payload<N> = FromBytes::read_le(&mut reader)?;
+
+        let payload_exists: bool = FromBytes::read_le(&mut reader)?;
+        let payload: Option<Payload<N>> = match payload_exists {
+            true => Some(FromBytes::read_le(&mut reader)?),
+            false => None,
+        };
+
         let program_id: N::ProgramID = FromBytes::read_le(&mut reader)?;
         let randomizer: N::RecordRandomizer = FromBytes::read_le(&mut reader)?;
         let record_view_key: N::RecordViewKey = FromBytes::read_le(&mut reader)?;
@@ -316,7 +350,7 @@ impl<N: Network> Default for Record<N> {
         Self::from(
             Default::default(),
             AleoAmount::ZERO,
-            Default::default(),
+            None,
             *N::noop_program_id(),
             Default::default(),
             Default::default(),
@@ -361,7 +395,7 @@ mod tests {
         let expected_record = Record::new(
             address,
             AleoAmount::from_i64(1234),
-            Payload::from_bytes_le(&payload).unwrap(),
+            Some(Payload::from_bytes_le(&payload).unwrap()),
             *Testnet2::noop_program_id(),
             rng,
         )
@@ -405,7 +439,7 @@ mod tests {
         let expected_record = Record::new(
             address,
             AleoAmount::from_i64(1234),
-            Payload::from_bytes_le(&payload).unwrap(),
+            Some(Payload::from_bytes_le(&payload).unwrap()),
             *Testnet2::noop_program_id(),
             rng,
         )

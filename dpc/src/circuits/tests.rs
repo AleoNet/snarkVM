@@ -29,7 +29,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize) 
     let request = Request::new_coinbase(recipient.address(), amount, false, rng).unwrap();
     let response = ResponseBuilder::new()
         .add_request(request.clone())
-        .add_output(Output::new(recipient.address(), amount, Default::default(), None).unwrap())
+        .add_output(Output::new(recipient.address(), amount, None, None).unwrap())
         .build(rng)
         .unwrap();
 

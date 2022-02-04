@@ -129,7 +129,7 @@ impl<N: Network> VirtualMachine<N> {
     ) -> Result<Response<N>> {
         ResponseBuilder::new()
             .add_request(request.clone())
-            .add_output(Output::new(recipient, amount, Default::default(), None)?)
+            .add_output(Output::new(recipient, amount, None, None)?)
             .build(rng)
     }
 
@@ -160,8 +160,8 @@ impl<N: Network> VirtualMachine<N> {
 
         ResponseBuilder::new()
             .add_request(request.clone())
-            .add_output(Output::new(caller, caller_balance, Default::default(), None)?)
-            .add_output(Output::new(recipient, amount, Default::default(), None)?)
+            .add_output(Output::new(caller, caller_balance, None, None)?)
+            .add_output(Output::new(recipient, amount, None, None)?)
             .build(rng)
     }
 
@@ -205,18 +205,14 @@ impl<N: Network> VirtualMachine<N> {
         let mut response_builder = ResponseBuilder::new().add_request(request.clone()).add_output(Output::new(
             function_inputs.recipient,
             function_inputs.amount,
-            function_inputs.record_payload.clone(),
+            Some(function_inputs.record_payload.clone()),
             Some(program_id),
         )?);
 
         // Add the change address if the balance is not zero.
         if !caller_balance.is_zero() {
-            response_builder = response_builder.add_output(Output::new(
-                function_inputs.caller,
-                caller_balance,
-                Default::default(),
-                None,
-            )?)
+            response_builder =
+                response_builder.add_output(Output::new(function_inputs.caller, caller_balance, None, None)?)
         }
 
         // Add custom events to the response.
