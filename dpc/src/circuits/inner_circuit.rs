@@ -219,8 +219,11 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 let payload = if let Some(payload) = record.payload().clone() { payload } else { Payload::default() };
                 let given_payload = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &payload.to_bytes_le()?)?;
 
+                // Use the noop program id if the record does not have one. // TODO (raychu86): Remove this use of noop program id.
+                let program_id =
+                    if let Some(program_id) = record.program_id().clone() { program_id } else { *N::noop_program_id() };
                 let given_program_id =
-                    UInt8::alloc_vec(&mut declare_cs.ns(|| "given_program_id"), &record.program_id().to_bytes_le()?)?;
+                    UInt8::alloc_vec(&mut declare_cs.ns(|| "given_program_id"), &program_id.to_bytes_le()?)?;
 
                 let given_randomizer = <N::AccountEncryptionGadget as EncryptionGadget<
                     N::AccountEncryptionScheme,
@@ -539,8 +542,11 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 let payload = if let Some(payload) = record.payload().clone() { payload } else { Payload::default() };
                 let given_payload = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &payload.to_bytes_le()?)?;
 
+                // Use the noop program id if the record does not have one. // TODO (raychu86): Remove this use of noop program id.
+                let program_id =
+                    if let Some(program_id) = record.program_id().clone() { program_id } else { *N::noop_program_id() };
                 let given_program_id =
-                    UInt8::alloc_vec(&mut declare_cs.ns(|| "given_program_id"), &record.program_id().to_bytes_le()?)?;
+                    UInt8::alloc_vec(&mut declare_cs.ns(|| "given_program_id"), &program_id.to_bytes_le()?)?;
 
                 let given_randomizer = <N::AccountEncryptionGadget as EncryptionGadget<
                     N::AccountEncryptionScheme,

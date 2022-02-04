@@ -35,8 +35,8 @@ use std::{
     Eq(bound = "N: Network")
 )]
 pub struct Execution<N: Network> {
-    pub program_id: N::ProgramID,
-    pub program_path: MerklePath<N::ProgramIDParameters>,
+    pub program_id: Option<N::ProgramID>,
+    pub program_path: MerklePath<N::ProgramIDParameters>, // TODO (raychu86): Make the "noop" program path, vk, and proof optional.
     #[derivative(Debug = "ignore")]
     pub verifying_key: N::ProgramVerifyingKey,
     pub program_proof: N::ProgramProof,
@@ -45,7 +45,7 @@ pub struct Execution<N: Network> {
 
 impl<N: Network> Execution<N> {
     pub fn from(
-        program_id: N::ProgramID,
+        program_id: Option<N::ProgramID>,
         program_path: MerklePath<N::ProgramIDParameters>,
         verifying_key: N::ProgramVerifyingKey,
         program_proof: N::ProgramProof,
@@ -72,7 +72,7 @@ impl<N: Network> Execution<N> {
                 value_balance,
                 ledger_root,
                 local_transitions_root,
-                Some(self.program_id),
+                self.program_id,
             ),
             &self.inner_proof,
         ) {
@@ -112,7 +112,12 @@ impl<N: Network> Execution<N> {
 impl<N: Network> FromBytes for Execution<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let program_id = FromBytes::read_le(&mut reader)?;
+        let program_id_exists: bool = FromBytes::read_le(&mut reader)?;
+        let program_id: Option<N::ProgramID> = match program_id_exists {
+            true => Some(FromBytes::read_le(&mut reader)?),
+            false => None,
+        };
+
         let program_path = FromBytes::read_le(&mut reader)?;
         let verifying_key = FromBytes::read_le(&mut reader)?;
         let program_proof = FromBytes::read_le(&mut reader)?;
@@ -126,7 +131,14 @@ impl<N: Network> FromBytes for Execution<N> {
 impl<N: Network> ToBytes for Execution<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.program_id.write_le(&mut writer)?;
+        match &self.program_id {
+            Some(program_id) => {
+                true.write_le(&mut writer)?;
+                program_id.write_le(&mut writer)?;
+            }
+            None => false.write_le(&mut writer)?,
+        }
+
         self.program_path.write_le(&mut writer)?;
         self.verifying_key.write_le(&mut writer)?;
         self.program_proof.write_le(&mut writer)?;

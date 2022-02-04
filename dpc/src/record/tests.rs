@@ -37,7 +37,7 @@ fn test_record_ciphertext() {
             account.address(),
             AleoAmount::from_i64(value),
             Some(Payload::from_bytes_le(&payload).unwrap()),
-            *Testnet2::noop_program_id(),
+            None,
             rng,
         )
         .unwrap();

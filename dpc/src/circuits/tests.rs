@@ -62,7 +62,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize) 
 
     // Construct the inner circuit public and private variables.
     let inner_public =
-        InnerPublicVariables::new(transition_id, value_balance, ledger_root, local_transitions_root, Some(program_id));
+        InnerPublicVariables::new(transition_id, value_balance, ledger_root, local_transitions_root, program_id);
     let inner_private = InnerPrivateVariables::new(&request, &response).unwrap();
 
     // Check that the core check constraint system was satisfied.
@@ -109,7 +109,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize) 
 
     // Compute the noop execution.
     let execution = Execution::<N>::from(
-        *N::noop_program_id(),
+        None,
         N::noop_program_path().clone(),
         N::noop_circuit_verifying_key().clone(),
         Noop::<N>::new()

@@ -47,7 +47,7 @@ pub struct Record<N: Network> {
 impl<N: Network> Record<N> {
     /// Returns a new noop record.
     pub fn new_noop<R: Rng + CryptoRng>(owner: Address<N>, rng: &mut R) -> Result<Self, RecordError> {
-        Self::new(owner, AleoAmount::ZERO, None, *N::noop_program_id(), rng)
+        Self::new(owner, AleoAmount::ZERO, None, None, rng)
     }
 
     /// Returns a new record.
@@ -55,7 +55,7 @@ impl<N: Network> Record<N> {
         owner: Address<N>,
         value: AleoAmount,
         payload: Option<Payload<N>>,
-        program_id: N::ProgramID,
+        program_id: Option<N::ProgramID>,
         rng: &mut R,
     ) -> Result<Self, RecordError> {
         // Generate the ciphertext parameters.
@@ -69,7 +69,7 @@ impl<N: Network> Record<N> {
         owner: Address<N>,
         value: AleoAmount,
         payload: Option<Payload<N>>,
-        program_id: N::ProgramID,
+        program_id: Option<N::ProgramID>,
         randomizer: N::RecordRandomizer,
         record_view_key: N::RecordViewKey,
     ) -> Result<Self, RecordError> {
@@ -98,7 +98,7 @@ impl<N: Network> Record<N> {
 
     /// Returns `true` if the record is a dummy.
     pub fn is_dummy(&self) -> bool {
-        self.value.is_zero() && self.payload.is_none() && self.program_id() == *N::noop_program_id()
+        self.value.is_zero() && self.payload.is_none() && self.program_id() == None
     }
 
     /// Returns the record owner.
@@ -117,7 +117,7 @@ impl<N: Network> Record<N> {
     }
 
     /// Returns the program id of this record.
-    pub fn program_id(&self) -> N::ProgramID {
+    pub fn program_id(&self) -> Option<N::ProgramID> {
         self.ciphertext.deref().program_id()
     }
 
@@ -166,10 +166,10 @@ impl<N: Network> Record<N> {
         owner: Address<N>,
         value: AleoAmount,
         payload: &Option<Payload<N>>,
-        program_id: N::ProgramID,
+        program_id: Option<N::ProgramID>,
     ) -> Result<Vec<u8>, RecordError> {
         // Determine if the record is a dummy.
-        let is_dummy = value.is_zero() && payload.is_none() && program_id == *N::noop_program_id();
+        let is_dummy = value.is_zero() && payload.is_none() && program_id == None;
 
         // Total = 32 + 1 + 8 = 41 bytes
         let mut plaintext = to_bytes_le![
@@ -201,7 +201,7 @@ impl<N: Network> Record<N> {
     /// Decode the plaintext bytes into the record contents.
     fn decode_plaintext(
         plaintext: &[u8],
-        program_id: &N::ProgramID,
+        program_id: &Option<N::ProgramID>,
     ) -> Result<(Address<N>, AleoAmount, Option<Payload<N>>), RecordError> {
         assert_eq!(
             1 + N::ADDRESS_SIZE_IN_BYTES + 8 + N::RECORD_PAYLOAD_SIZE_IN_BYTES,
@@ -231,7 +231,7 @@ impl<N: Network> Record<N> {
         let payload = if payload_exists { Some(Payload::read_le(&mut cursor)?) } else { None };
 
         // Ensure the dummy flag in the record is correct.
-        let expected_dummy = value.is_zero() && payload.is_none() && program_id == N::noop_program_id();
+        let expected_dummy = value.is_zero() && payload.is_none() && program_id == &None;
         match is_dummy == expected_dummy as u8 {
             true => Ok((owner, value, payload)),
             false => Err(anyhow!("Decoded incorrect is_dummy flag in record plaintext bytes").into()),
@@ -253,7 +253,14 @@ impl<N: Network> ToBytes for Record<N> {
             None => false.write_le(&mut writer)?,
         }
 
-        self.program_id().write_le(&mut writer)?;
+        match &self.program_id() {
+            Some(program_id) => {
+                true.write_le(&mut writer)?;
+                program_id.write_le(&mut writer)?;
+            }
+            None => false.write_le(&mut writer)?,
+        }
+
         self.randomizer().write_le(&mut writer)?;
         self.record_view_key.write_le(&mut writer)
     }
@@ -271,7 +278,12 @@ impl<N: Network> FromBytes for Record<N> {
             false => None,
         };
 
-        let program_id: N::ProgramID = FromBytes::read_le(&mut reader)?;
+        let program_id_exists: bool = FromBytes::read_le(&mut reader)?;
+        let program_id: Option<N::ProgramID> = match program_id_exists {
+            true => Some(FromBytes::read_le(&mut reader)?),
+            false => None,
+        };
+
         let randomizer: N::RecordRandomizer = FromBytes::read_le(&mut reader)?;
         let record_view_key: N::RecordViewKey = FromBytes::read_le(&mut reader)?;
 
@@ -347,15 +359,8 @@ impl<'de, N: Network> Deserialize<'de> for Record<N> {
 
 impl<N: Network> Default for Record<N> {
     fn default() -> Self {
-        Self::from(
-            Default::default(),
-            AleoAmount::ZERO,
-            None,
-            *N::noop_program_id(),
-            Default::default(),
-            Default::default(),
-        )
-        .expect("Failed to initialize Record::default()")
+        Self::from(Default::default(), AleoAmount::ZERO, None, None, Default::default(), Default::default())
+            .expect("Failed to initialize Record::default()")
     }
 }
 
@@ -396,7 +401,7 @@ mod tests {
             address,
             AleoAmount::from_i64(1234),
             Some(Payload::from_bytes_le(&payload).unwrap()),
-            *Testnet2::noop_program_id(),
+            None,
             rng,
         )
         .unwrap();
@@ -440,7 +445,7 @@ mod tests {
             address,
             AleoAmount::from_i64(1234),
             Some(Payload::from_bytes_le(&payload).unwrap()),
-            *Testnet2::noop_program_id(),
+            None,
             rng,
         )
         .unwrap();

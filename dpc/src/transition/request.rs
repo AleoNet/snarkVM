@@ -183,16 +183,16 @@ impl<N: Network> Request<N> {
         let program_id = {
             let program_id = OnceCell::new();
             for record in &self.records {
-                if record.program_id() != *N::noop_program_id() && program_id.set(record.program_id()).is_err() {
+                if record.program_id() != None && program_id.set(record.program_id()).is_err() {
                     eprintln!("Request records contains more than 1 distinct program ID");
                     return false;
                 }
             }
-            *program_id.get_or_init(|| *N::noop_program_id())
+            *program_id.get_or_init(|| None)
         };
 
         // If the program ID is the noop program ID, ensure the function ID is the noop function ID.
-        if program_id == *N::noop_program_id() && self.function_id() != *N::noop_function_id() {
+        if program_id == None && self.function_id() != *N::noop_function_id() {
             eprintln!("Request contains mismatching program ID and function ID");
             return false;
         }
@@ -225,7 +225,7 @@ impl<N: Network> Request<N> {
 
     /// Returns `true` if the request calls the noop program and function.
     pub fn is_noop(&self) -> bool {
-        self.to_program_id().unwrap() == *N::noop_program_id() && self.function_id() == *N::noop_function_id()
+        self.to_program_id().unwrap() == None && self.function_id() == *N::noop_function_id()
     }
 
     /// Returns a reference to the records.
@@ -288,14 +288,14 @@ impl<N: Network> Request<N> {
     }
 
     /// Returns the program ID.
-    pub fn to_program_id(&self) -> Result<N::ProgramID> {
+    pub fn to_program_id(&self) -> Result<Option<N::ProgramID>> {
         let program_id = OnceCell::new();
         for record in &self.records {
-            if record.program_id() != *N::noop_program_id() && program_id.set(record.program_id()).is_err() {
+            if record.program_id() != None && program_id.set(record.program_id()).is_err() {
                 return Err(anyhow!("Request records contains more than 1 distinct program ID"));
             }
         }
-        Ok(*program_id.get_or_init(|| *N::noop_program_id()))
+        Ok(*program_id.get_or_init(|| None))
     }
 
     /// Returns the serial numbers.

@@ -40,7 +40,7 @@ pub struct Ciphertext<N: Network> {
     randomizer: N::RecordRandomizer,
     record_view_key_commitment: N::RecordViewKeyCommitment,
     record_bytes: Vec<u8>,
-    program_id: N::ProgramID,
+    program_id: Option<N::ProgramID>,
 }
 
 impl<N: Network> Ciphertext<N> {
@@ -49,11 +49,16 @@ impl<N: Network> Ciphertext<N> {
         randomizer: N::RecordRandomizer,
         record_view_key_commitment: N::RecordViewKeyCommitment,
         record_bytes: Vec<u8>,
-        program_id: N::ProgramID,
+        program_id: Option<N::ProgramID>,
     ) -> Result<Self, RecordError> {
+        let program_id_bytes = match program_id {
+            Some(program_id) => program_id.to_bytes_le()?,
+            None => vec![0u8; N::PROGRAM_ID_SIZE_IN_BYTES],
+        };
+
         // Compute the commitment.
         let commitment = N::commitment_scheme()
-            .hash(&to_bytes_le![randomizer, record_view_key_commitment, record_bytes, program_id]?)?
+            .hash(&to_bytes_le![randomizer, record_view_key_commitment, record_bytes, program_id_bytes]?)?
             .into();
 
         Ok(Self { commitment, randomizer, record_view_key_commitment, record_bytes, program_id })
@@ -92,12 +97,15 @@ impl<N: Network> Ciphertext<N> {
     }
 
     /// Returns the program id of this record.
-    pub fn program_id(&self) -> N::ProgramID {
+    pub fn program_id(&self) -> Option<N::ProgramID> {
         self.program_id
     }
 
     /// Returns the plaintext and record view key corresponding to the record ciphertext.
-    pub fn to_plaintext(&self, decryption_key: &DecryptionKey<N>) -> Result<(Vec<u8>, N::RecordViewKey, N::ProgramID)> {
+    pub fn to_plaintext(
+        &self,
+        decryption_key: &DecryptionKey<N>,
+    ) -> Result<(Vec<u8>, N::RecordViewKey, Option<N::ProgramID>)> {
         let record_view_key = match decryption_key {
             DecryptionKey::AccountViewKey(account_view_key) => {
                 // Compute the candidate record view key.
@@ -147,7 +155,11 @@ impl<N: Network> FromBytes for Ciphertext<N> {
         ];
         cursor.read_exact(&mut record_bytes)?;
 
-        let program_id: N::ProgramID = FromBytes::read_le(&mut reader)?;
+        let program_id_exists: bool = FromBytes::read_le(&mut reader)?;
+        let program_id: Option<N::ProgramID> = match program_id_exists {
+            true => Some(FromBytes::read_le(&mut reader)?),
+            false => None,
+        };
 
         Ok(Self::from(ciphertext_randomizer, record_view_key_commitment, record_bytes, program_id)?)
     }
@@ -159,7 +171,14 @@ impl<N: Network> ToBytes for Ciphertext<N> {
         self.randomizer.write_le(&mut writer)?;
         self.record_view_key_commitment.write_le(&mut writer)?;
         self.record_bytes.write_le(&mut writer)?;
-        self.program_id.write_le(&mut writer)
+
+        match &self.program_id {
+            Some(program_id) => {
+                true.write_le(&mut writer)?;
+                program_id.write_le(&mut writer)
+            }
+            None => false.write_le(&mut writer),
+        }
     }
 }
 

@@ -82,7 +82,7 @@ impl<N: Network> VirtualMachine<N> {
             value_balance,
             self.ledger_root,
             self.local_transitions.root(),
-            Some(program_id),
+            program_id,
         );
         let inner_private = InnerPrivateVariables::new(request, &response)?;
         let inner_circuit = InnerCircuit::<N>::new(inner_public, inner_private);
@@ -92,7 +92,7 @@ impl<N: Network> VirtualMachine<N> {
 
         // Compute the noop execution, for now.
         let execution = Execution::from(
-            *N::noop_program_id(),
+            None,
             N::noop_program_path().clone(),
             N::noop_circuit_verifying_key().clone(),
             Noop::<N>::new()
@@ -169,7 +169,7 @@ impl<N: Network> VirtualMachine<N> {
     fn evaluate<R: Rng + CryptoRng>(
         &self,
         request: &Request<N>,
-        program_id: N::ProgramID,
+        program_id: Option<N::ProgramID>,
         function_id: &N::FunctionID,
         _function_type: &FunctionType,
         function_inputs: &FunctionInputs<N>,
@@ -206,7 +206,7 @@ impl<N: Network> VirtualMachine<N> {
             function_inputs.recipient,
             function_inputs.amount,
             Some(function_inputs.record_payload.clone()),
-            Some(program_id),
+            program_id,
         )?);
 
         // Add the change address if the balance is not zero.
@@ -249,9 +249,15 @@ impl<N: Network> VirtualMachine<N> {
         // Compute the operation.
         let operation = request.operation().clone();
         let response = match operation {
-            Operation::Evaluate(function_id, function_type, function_inputs) => {
-                self.evaluate(request, program_id, &function_id, &function_type, &function_inputs, custom_events, rng)?
-            }
+            Operation::Evaluate(function_id, function_type, function_inputs) => self.evaluate(
+                request,
+                Some(program_id),
+                &function_id,
+                &function_type,
+                &function_inputs,
+                custom_events,
+                rng,
+            )?,
             _ => return Err(anyhow!("Invalid Operation")),
         };
 
@@ -280,7 +286,7 @@ impl<N: Network> VirtualMachine<N> {
         assert!(N::InnerSNARK::verify(N::inner_verifying_key(), &inner_public, &inner_proof)?);
 
         let execution = Execution::from(
-            program_id,
+            Some(program_id),
             function_path.clone(),
             function_verifying_key,
             program_proof,

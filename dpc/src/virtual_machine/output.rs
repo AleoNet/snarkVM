@@ -31,7 +31,7 @@ pub struct Output<N: Network> {
     /// The program data of the recipient.
     payload: Option<Payload<N>>,
     /// The program that was run.
-    program_id: N::ProgramID,
+    program_id: Option<N::ProgramID>,
 }
 
 impl<N: Network> Output<N> {
@@ -50,18 +50,12 @@ impl<N: Network> Output<N> {
         payload: Option<Payload<N>>,
         program_id: Option<N::ProgramID>,
     ) -> Result<Self> {
-        // Retrieve the program ID. If `None` is provided, construct the noop program ID.
-        let program_id = match program_id {
-            Some(program_id) => program_id,
-            None => *N::noop_program_id(),
-        };
-
         Ok(Self { address, value, payload, program_id })
     }
 
     /// Returns `true` if the program ID is the noop program.
     pub fn is_noop(&self) -> bool {
-        self.program_id == *N::noop_program_id()
+        self.program_id == None
     }
 
     /// Returns the output record, given the previous serial number.
@@ -96,7 +90,7 @@ impl<N: Network> Output<N> {
     }
 
     /// Returns a reference to the program ID.
-    pub fn program_id(&self) -> N::ProgramID {
+    pub fn program_id(&self) -> Option<N::ProgramID> {
         self.program_id
     }
 }
