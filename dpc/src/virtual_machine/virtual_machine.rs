@@ -174,7 +174,7 @@ impl<N: Network> VirtualMachine<N> {
         // Check that the function id exists in the program.
 
         // Check that the function id is the same as the request.
-        if function_id != &request.function_id() {
+        if Some(*function_id) != request.function_id() {
             return Err(anyhow!("Invalid function id"));
         }
 

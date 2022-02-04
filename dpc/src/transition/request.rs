@@ -191,8 +191,8 @@ impl<N: Network> Request<N> {
             *program_id.get_or_init(|| None)
         };
 
-        // If the program ID is the noop program ID, ensure the function ID is the noop function ID.
-        if program_id == None && self.function_id() != *N::noop_function_id() {
+        // If there is no program id, ensure there is no function ID.
+        if program_id == None && self.function_id() != None {
             eprintln!("Request contains mismatching program ID and function ID");
             return false;
         }
@@ -223,11 +223,6 @@ impl<N: Network> Request<N> {
         }
     }
 
-    /// Returns `true` if the request calls the noop program and function.
-    pub fn is_noop(&self) -> bool {
-        self.to_program_id().unwrap() == None && self.function_id() == *N::noop_function_id()
-    }
-
     /// Returns a reference to the records.
     pub fn records(&self) -> &Vec<Record<N>> {
         &self.records
@@ -244,7 +239,7 @@ impl<N: Network> Request<N> {
     }
 
     /// Returns the function ID.
-    pub fn function_id(&self) -> N::FunctionID {
+    pub fn function_id(&self) -> Option<N::FunctionID> {
         self.operation.function_id()
     }
 

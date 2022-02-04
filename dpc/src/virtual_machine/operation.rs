@@ -58,10 +58,10 @@ impl<N: Network> Operation<N> {
         }
     }
 
-    pub fn function_id(&self) -> N::FunctionID {
+    pub fn function_id(&self) -> Option<N::FunctionID> {
         match self {
-            Self::Noop | Self::Coinbase(..) | Self::Transfer(..) => *N::noop_function_id(),
-            Self::Evaluate(function_id, _, _) => *function_id,
+            Self::Noop | Self::Coinbase(..) | Self::Transfer(..) => None,
+            Self::Evaluate(function_id, _, _) => Some(*function_id),
         }
     }
 
