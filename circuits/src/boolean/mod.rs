@@ -35,6 +35,9 @@ pub use not::*;
 pub mod or;
 pub use or::*;
 
+pub mod sign_extend;
+pub use sign_extend::*;
+
 pub mod subtractor;
 pub use subtractor::*;
 
