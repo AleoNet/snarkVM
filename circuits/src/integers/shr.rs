@@ -16,12 +16,12 @@
 
 use super::*;
 
-impl<E: Environment, I: IntegerType, M: private::Magnitude> ShrChecked<M> for Integer<E, I> {
+impl<E: Environment, I: IntegerType, M: private::Magnitude> Shr<M> for Integer<E, I> {
     type Magnitude = Integer<E, M>;
     type Output = Self;
 
     #[inline]
-    fn shr_checked(&self, other: &Self::Magnitude) -> Self::Output {
+    fn shr(&self, other: &Self::Magnitude) -> Self::Output {
         todo!()
     }
 }

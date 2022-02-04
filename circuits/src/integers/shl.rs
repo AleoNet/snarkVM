@@ -16,12 +16,12 @@
 
 use super::*;
 
-impl<E: Environment, I: IntegerType, M: private::Magnitude> ShrSaturated<M> for Integer<E, I> {
+impl<E: Environment, I: IntegerType, M: private::Magnitude> Shl<M> for Integer<E, I> {
     type Magnitude = Integer<E, M>;
     type Output = Self;
 
     #[inline]
-    fn shr_saturated(&self, other: &Self::Magnitude) -> Self::Output {
+    fn shl(&self, rhs: &Self::Magnitude) -> Self::Output {
         todo!()
     }
 }
