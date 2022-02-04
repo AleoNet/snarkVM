@@ -102,7 +102,7 @@ mod tests {
     const ITERATIONS: usize = 128;
 
     #[rustfmt::skip]
-    fn check_mul_checked<I: IntegerType, IC: IntegerTrait<I>>(
+    fn check_mul_checked<I: IntegerType, IC: IntegerTrait<Circuit, I>>(
         name: &str,
         expected: I,
         a: &IC,

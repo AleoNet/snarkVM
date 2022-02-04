@@ -67,7 +67,7 @@ mod tests {
     const ITERATIONS: usize = 100;
 
     #[rustfmt::skip]
-    fn check_is_eq<I: IntegerType, IC: IntegerTrait<I>>(
+    fn check_is_eq<I: IntegerType, IC: IntegerTrait<Circuit, I>>(
         name: &str,
         expected: bool,
         a: &IC,

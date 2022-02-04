@@ -115,7 +115,7 @@ mod tests {
 
     const ITERATIONS: usize = 1024;
 
-    fn check_div_checked<I: IntegerType, IC: IntegerTrait<I>>(
+    fn check_div_checked<I: IntegerType, IC: IntegerTrait<Circuit, I>>(
         name: &str,
         expected: I,
         a: &IC,

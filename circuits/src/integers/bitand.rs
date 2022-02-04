@@ -84,7 +84,7 @@ mod tests {
     const ITERATIONS: usize = 128;
 
     #[rustfmt::skip]
-    fn check_bitand<I: IntegerType, IC: IntegerTrait<I>>(
+    fn check_bitand<I: IntegerType, IC: IntegerTrait<Circuit, I>>(
         name: &str,
         expected: I,
         a: IC,

@@ -85,7 +85,7 @@ mod tests {
 
     const ITERATIONS: usize = 128;
 
-    fn check_div_wrapped<I: IntegerType, IC: IntegerTrait<I>>(
+    fn check_div_wrapped<I: IntegerType, IC: IntegerTrait<Circuit, I>>(
         name: &str,
         expected: I,
         a: &IC,

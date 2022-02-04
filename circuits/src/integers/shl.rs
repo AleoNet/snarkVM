@@ -45,20 +45,18 @@ impl<E: Environment, I: IntegerType, M: private::Magnitude> Shl<&Integer<E, M>> 
 
     fn shl(self, rhs: &Integer<E, M>) -> Self::Output {
         let mut output = self.clone();
-        output << rhs;
+        output <<= rhs;
         output
     }
 }
 
 impl<E: Environment, I: IntegerType, M: private::Magnitude> ShlAssign<Integer<E, M>> for Integer<E, I> {
-
     fn shl_assign(&mut self, rhs: Integer<E, M>) {
         *self <<= &rhs
     }
 }
 
 impl<E: Environment, I: IntegerType, M: private::Magnitude> ShlAssign<&Integer<E, M>> for Integer<E, I> {
-
     fn shl_assign(&mut self, rhs: &Integer<E, M>) {
         // Determine the variable mode.
         if rhs.is_constant() {
@@ -67,11 +65,9 @@ impl<E: Environment, I: IntegerType, M: private::Magnitude> ShlAssign<&Integer<E
             let mut bits_le = vec![Boolean::new(self.eject_mode(), false)];
             bits_le.append(&mut self.bits_le);
             self.bits_le = bits_le;
-
         } else {
             todo!()
-
-       };
+        };
     }
 }
 

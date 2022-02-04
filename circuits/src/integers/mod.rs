@@ -216,14 +216,14 @@ mod tests {
 
     const ITERATIONS: usize = 1000;
 
-    fn check_new<I: IntegerType, IC: IntegerTrait<I>>(mode: Mode) {
+    fn check_new<I: IntegerType, IC: IntegerTrait<Circuit, I>>(mode: Mode) {
         let expected: I = UniformRand::rand(&mut thread_rng());
         let candidate = IC::new(mode, expected);
         assert_eq!(mode.is_constant(), candidate.is_constant());
         assert_eq!(candidate.eject_value(), expected);
     }
 
-    fn check_min_max<I: IntegerType, IC: IntegerTrait<I>>(mode: Mode) {
+    fn check_min_max<I: IntegerType, IC: IntegerTrait<Circuit, I>>(mode: Mode) {
         assert_eq!(I::MIN, IC::new(mode, I::MIN).eject_value());
         assert_eq!(I::MAX, IC::new(mode, I::MAX).eject_value());
     }

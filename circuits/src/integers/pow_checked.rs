@@ -16,12 +16,11 @@
 
 use super::*;
 
-impl<E: Environment, I: IntegerType, M: private::Magnitude> PowChecked<M> for Integer<E, I> {
-    type Exponent = Integer<E, M>;
+impl<E: Environment, I: IntegerType, M: private::Magnitude> PowChecked<Integer<E, M>> for Integer<E, I> {
     type Output = Self;
 
     #[inline]
-    fn pow_checked(&self, other: &Self::Exponent) -> Self::Output {
+    fn pow_checked(&self, other: &Integer<E, M>) -> Self::Output {
         // Determine the variable mode.
         if self.is_constant() && other.is_constant() {
             // Compute the result and return the new constant.

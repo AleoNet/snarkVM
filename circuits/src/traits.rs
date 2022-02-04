@@ -33,11 +33,11 @@ use core::{
         MulAssign,
         Neg,
         Not,
-        Sub,
         Shl,
         ShlAssign,
         Shr,
         ShrAssign,
+        Sub,
         SubAssign,
     },
 };
@@ -103,12 +103,12 @@ pub trait IntegerTrait<E: Environment, I: IntegerType>:
     + Neg<Output = Self>
     + Not<Output = Self>
     + One
-    + PowChecked<u8, Output = Self>
-    + PowChecked<u16, Output = Self>
-    + PowChecked<u32, Output = Self>
-    + PowWrapped<u8, Output = Self>
-    + PowWrapped<u16, Output = Self>
-    + PowWrapped<u32, Output = Self>
+    + PowChecked<U8<E>, Output = Self>
+    + PowChecked<U16<E>, Output = Self>
+    + PowChecked<U32<E>, Output = Self>
+    + PowWrapped<U8<E>, Output = Self>
+    + PowWrapped<U16<E>, Output = Self>
+    + PowWrapped<U32<E>, Output = Self>
     + Shl<U8<E>, Output = Self>
     + Shl<U16<E>, Output = Self>
     + Shl<U32<E>, Output = Self>
@@ -332,19 +332,17 @@ pub trait MulWrapped<Rhs: ?Sized = Self> {
 }
 
 /// Binary operator for exponentiating two values, enforcing an overflow never occurs.
-pub trait PowChecked<M: ?Sized> {
-    type Exponent;
+pub trait PowChecked<Rhs = Self> {
     type Output;
 
-    fn pow_checked(&self, rhs: &Self::Exponent) -> Self::Output;
+    fn pow_checked(&self, rhs: &Rhs) -> Self::Output;
 }
 
 /// Binary operator for exponentiating two values, wrapping the result if an overflow occurs.
-pub trait PowWrapped<M: ?Sized> {
-    type Exponent;
+pub trait PowWrapped<Rhs = Self> {
     type Output;
 
-    fn pow_wrapped(&self, rhs: &Self::Exponent) -> Self::Output;
+    fn pow_wrapped(&self, rhs: &Rhs) -> Self::Output;
 }
 
 /// Binary operator for right shifting a value, saturating the result if an overflow occurs.
