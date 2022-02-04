@@ -91,14 +91,7 @@ impl<N: Network> VirtualMachine<N> {
         assert!(N::InnerSNARK::verify(N::inner_verifying_key(), &inner_public, &inner_proof)?);
 
         // Compute the noop execution, for now.
-        let execution = Execution::from(
-            None,
-            N::noop_program_path().clone(),
-            N::noop_circuit_verifying_key().clone(),
-            Noop::<N>::new()
-                .execute(ProgramPublicVariables::new(transition_id), &NoopPrivateVariables::<N>::new_blank()?)?,
-            inner_proof.into(),
-        )?;
+        let execution = Execution::from(None, inner_proof.into())?;
 
         // Construct the transition.
         let transition = Transition::<N>::new(request, &response, execution)?;
@@ -286,10 +279,7 @@ impl<N: Network> VirtualMachine<N> {
         assert!(N::InnerSNARK::verify(N::inner_verifying_key(), &inner_public, &inner_proof)?);
 
         let execution = Execution::from(
-            Some(program_id),
-            function_path.clone(),
-            function_verifying_key,
-            program_proof,
+            Some(ProgramExecution::from(program_id, function_path.clone(), function_verifying_key, program_proof)?),
             inner_proof.into(),
         )?;
 
