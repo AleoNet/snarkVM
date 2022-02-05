@@ -34,6 +34,8 @@ pub mod one;
 pub mod pow_checked;
 pub mod pow_wrapped;
 pub mod shl;
+pub mod shl_checked;
+pub mod shl_wrapped;
 pub mod shr;
 pub mod sub;
 pub mod sub_checked;
@@ -54,6 +56,7 @@ use crate::{
     Mode,
 };
 
+use crate::integers::private::Magnitude;
 use snarkvm_fields::PrimeField;
 use std::{
     fmt,
@@ -175,8 +178,8 @@ impl<E: Environment, I: IntegerType> Eject for Integer<E, I> {
     ///
     fn eject_value(&self) -> Self::Primitive {
         self.bits_le.iter().rev().fold(I::zero(), |value, bit| match bit.eject_value() {
-            true => (value << 1) ^ I::one(),
-            false => (value << 1) ^ I::zero(),
+            true => (value.wrapping_shl(1)) ^ I::one(),
+            false => (value.wrapping_shl(1)) ^ I::zero(),
         })
     }
 }

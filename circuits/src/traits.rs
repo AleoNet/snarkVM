@@ -115,6 +115,12 @@ pub trait IntegerTrait<E: Environment, I: IntegerType>:
     + ShlAssign<U8<E>>
     + ShlAssign<U16<E>>
     + ShlAssign<U32<E>>
+    + ShlChecked<U8<E>, Output = Self>
+    + ShlChecked<U16<E>, Output = Self>
+    + ShlChecked<U32<E>, Output = Self>
+    + ShlWrapped<U8<E>, Output = Self>
+    + ShlWrapped<U16<E>, Output = Self>
+    + ShlWrapped<U32<E>, Output = Self>
     + Shr<U8<E>, Output = Self>
     + Shr<U16<E>, Output = Self>
     + Shr<U32<E>, Output = Self>
@@ -127,9 +133,7 @@ pub trait IntegerTrait<E: Environment, I: IntegerType>:
     + SubWrapped<Output = Self>
     + Ternary
     + ToBits
-    + Zero // + Div
-// + DivAssign
-// + Square
+    + Zero // + Square
 {
     ///
     /// Initializes a new integer.
@@ -332,25 +336,33 @@ pub trait MulWrapped<Rhs: ?Sized = Self> {
 }
 
 /// Binary operator for exponentiating two values, enforcing an overflow never occurs.
-pub trait PowChecked<Rhs = Self> {
+pub trait PowChecked<Rhs: ?Sized = Self> {
     type Output;
 
     fn pow_checked(&self, rhs: &Rhs) -> Self::Output;
 }
 
 /// Binary operator for exponentiating two values, wrapping the result if an overflow occurs.
-pub trait PowWrapped<Rhs = Self> {
+pub trait PowWrapped<Rhs: ?Sized = Self> {
     type Output;
 
     fn pow_wrapped(&self, rhs: &Rhs) -> Self::Output;
 }
 
-/// Binary operator for right shifting a value, saturating the result if an overflow occurs.
-pub trait ShrSaturated<M: ?Sized> {
-    type Magnitude;
+/// Binary operator for left shifting a value, checking that the rhs is less than the number
+/// of bits in self.
+pub trait ShlChecked<Rhs: ?Sized = Self> {
     type Output;
 
-    fn shr_saturated(&self, rhs: &Self::Magnitude) -> Self::Output;
+    fn shl_checked(&self, rhs: &Rhs) -> Self::Output;
+}
+
+/// Binary operator for left shifting a value, checking that the rhs is less than the number
+/// of bits in self.
+pub trait ShlWrapped<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn shl_wrapped(&self, rhs: &Rhs) -> Self::Output;
 }
 
 /// Binary operator for subtracting two values, enforcing an underflow never occurs.
