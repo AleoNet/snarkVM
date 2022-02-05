@@ -37,6 +37,8 @@ pub mod shl;
 pub mod shl_checked;
 pub mod shl_wrapped;
 pub mod shr;
+pub mod shr_checked;
+pub mod shr_wrapped;
 pub mod sub;
 pub mod sub_checked;
 pub mod sub_wrapped;
@@ -110,7 +112,7 @@ impl<E: Environment, I: IntegerType> IntegerTrait<E, I> for Integer<E, I> {
         let mut value = value.to_le();
         for _ in 0..I::BITS {
             bits_le.push(Boolean::new(mode, value & I::one() == I::one()));
-            value = value >> 1;
+            value = value.wrapping_shr(1u32);
         }
         Self::from_bits_le(mode, &bits_le)
     }

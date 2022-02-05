@@ -24,6 +24,7 @@ pub(crate) mod integers {
     use num_traits::{
         CheckedNeg,
         CheckedShl,
+        CheckedShr,
         One as NumOne,
         PrimInt,
         ToPrimitive,
@@ -43,6 +44,7 @@ pub(crate) mod integers {
         + CheckedNeg
         + CheckedPow
         + CheckedShl
+        + CheckedShr
         + Debug
         + Display
         + NumZero

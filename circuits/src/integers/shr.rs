@@ -58,26 +58,7 @@ impl<E: Environment, I: IntegerType, M: private::Magnitude> ShrAssign<Integer<E,
 
 impl<E: Environment, I: IntegerType, M: private::Magnitude> ShrAssign<&Integer<E, M>> for Integer<E, I> {
     fn shr_assign(&mut self, rhs: &Integer<E, M>) {
-        // Determine the variable mode.
-        if rhs.is_constant() {
-            // Compute the result and return the new constant.
-            let shift_amount = rhs.eject_value();
-            let mut bits_le = vec![Boolean::new(self.eject_mode(), false)];
-            bits_le.append(&mut self.bits_le);
-            self.bits_le = bits_le;
-        } else {
-            todo!()
-        };
+        // Stores the result of `self` >> `other` in `self`.
+        *self = self.shr_checked(rhs);
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::Circuit;
-    use snarkvm_utilities::UniformRand;
-
-    use rand::thread_rng;
-
-    const ITERATIONS: usize = 128;
 }

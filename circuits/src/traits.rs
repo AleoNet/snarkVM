@@ -127,6 +127,12 @@ pub trait IntegerTrait<E: Environment, I: IntegerType>:
     + ShrAssign<U8<E>>
     + ShrAssign<U16<E>>
     + ShrAssign<U32<E>>
+    + ShrChecked<U8<E>, Output = Self>
+    + ShrChecked<U16<E>, Output = Self>
+    + ShrChecked<U32<E>, Output = Self>
+    + ShrWrapped<U8<E>, Output = Self>
+    + ShrWrapped<U16<E>, Output = Self>
+    + ShrWrapped<U32<E>, Output = Self>
     + SubAssign
     + Sub<Output = Self>
     + SubChecked<Output = Self>
@@ -363,6 +369,22 @@ pub trait ShlWrapped<Rhs: ?Sized = Self> {
     type Output;
 
     fn shl_wrapped(&self, rhs: &Rhs) -> Self::Output;
+}
+
+/// Binary operator for right shifting a value, checking that the rhs is less than the number
+/// of bits in self.
+pub trait ShrChecked<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn shr_checked(&self, rhs: &Rhs) -> Self::Output;
+}
+
+/// Binary operator for right shifting a value, checking that the rhs is less than the number
+/// of bits in self.
+pub trait ShrWrapped<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn shr_wrapped(&self, rhs: &Rhs) -> Self::Output;
 }
 
 /// Binary operator for subtracting two values, enforcing an underflow never occurs.

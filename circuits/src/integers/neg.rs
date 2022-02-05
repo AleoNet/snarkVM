@@ -75,6 +75,11 @@ mod tests {
                 case
             );
 
+            print!("Constants: {:?}, ", Circuit::num_constants_in_scope());
+            print!("Public: {:?}, ", Circuit::num_public_in_scope());
+            print!("Private: {:?}, ", Circuit::num_private_in_scope());
+            print!("Constraints: {:?}\n", Circuit::num_constraints_in_scope());
+
             assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
             assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
             assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
@@ -198,7 +203,7 @@ mod tests {
     fn test_i128_neg() {
         type I = i128;
         run_test::<I>(Mode::Constant, 256, 0, 0, 0);
-        run_test::<I>(Mode::Public, 129, 0, 255, 256);
-        run_test::<I>(Mode::Private, 129, 0, 255, 256);
+        run_test::<I>(Mode::Public, 130, 0, 132, 134);
+        run_test::<I>(Mode::Private, 130, 0, 132, 134);
     }
 }

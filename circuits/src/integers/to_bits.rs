@@ -78,7 +78,7 @@ mod tests {
                 let mut expected = expected.to_le();
                 for candidate_bit in candidate {
                     assert_eq!(expected & I::one() == I::one(), candidate_bit.eject_value());
-                    expected = expected >> 1;
+                    expected = expected.wrapping_shr( 1);
                 }
 
                 assert_eq!(num_constants, Circuit::num_constants_in_scope(), "(num_constants)");
@@ -111,7 +111,7 @@ mod tests {
                 let mut expected = expected.to_le();
                 for candidate_bit in candidate.iter().rev() {
                     assert_eq!(expected & I::one() == I::one(), candidate_bit.eject_value());
-                    expected = expected >> 1;
+                    expected = expected.wrapping_shr(1);
                 }
 
                 assert_eq!(num_constants, Circuit::num_constants_in_scope(), "(num_constants)");
