@@ -190,7 +190,7 @@ impl<N: Network> Record<N> {
         } else {
             assert_eq!(1 + N::ADDRESS_SIZE_IN_BYTES + 8, plaintext.len(), "Update me if the plaintext design changes.");
 
-            // TODO (raychu86): Remove this from the native encryption. Currently it is re-padded because it's required in
+            // TODO (raychu86): (encrpytion) Remove this from the native encryption. Currently it is re-padded because it's required in
             //  the inner circuit.
             // Total = 41 + 128 = 169 bytes
             plaintext.extend(vec![0u8; N::RECORD_PAYLOAD_SIZE_IN_BYTES]); // 1024 bits = 128 bytes
@@ -233,10 +233,16 @@ impl<N: Network> Record<N> {
         let is_dummy = u8::read_le(&mut cursor)?;
         let value = AleoAmount::read_le(&mut cursor)?;
 
-        let payload = if payload_exists { Some(Payload::read_le(&mut cursor)?) } else { None };
+        // TODO (raychu86): Remove padded payload.
+        let mut payload = if payload_exists { Some(Payload::read_le(&mut cursor)?) } else { None };
 
         // Ensure the dummy flag in the record is correct.
-        let expected_dummy = value.is_zero() && payload.is_none() && program_id == &None;
+        // let expected_dummy = value.is_zero() && payload.is_none() && program_id == &None; // TODO (raychu86): Use this after encryption scheme is updated.
+        let expected_dummy = value.is_zero() && program_id == &None;
+        if is_dummy == expected_dummy as u8 && payload == Some(Payload::default()) {
+            payload = None;
+        }
+
         match is_dummy == expected_dummy as u8 {
             true => Ok((owner, value, payload)),
             false => Err(anyhow!("Decoded incorrect is_dummy flag in record plaintext bytes").into()),
