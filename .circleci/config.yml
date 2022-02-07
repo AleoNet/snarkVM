@@ -292,7 +292,7 @@ jobs:
           name: Benchmark "cargo bench --features cuda --bench posw"
           command: |
             echo "In this directory: $(pwd)"
-            cd dpc && cargo bench --features cuda  --bench posw
+            cd dpc && cargo bench  --bench posw
 
 
 workflows:
