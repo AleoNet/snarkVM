@@ -646,7 +646,7 @@ impl<
 
         let gamma = gamma_ref;
 
-        let mut query_set_gadget = QuerySetVar::<TargetField, BaseField> { 0: HashSet::new() };
+        let mut query_set_gadget = QuerySetVar::<TargetField, BaseField>(HashSet::new());
 
         query_set_gadget.0.insert(("g_1".to_string(), LabeledPointVar {
             name: "beta".to_string(),
@@ -695,7 +695,7 @@ impl<
                 value: gamma.clone(),
             }));
 
-        let mut evaluations_gadget = EvaluationsVar::<TargetField, BaseField> { 0: HashMap::new() };
+        let mut evaluations_gadget = EvaluationsVar::<TargetField, BaseField>(HashMap::new());
 
         let zero = NonNativeFieldVar::<TargetField, BaseField>::zero(cs.ns(|| "nonnative_zero"))?;
 
@@ -861,6 +861,7 @@ impl<
 }
 
 #[cfg(test)]
+#[allow(clippy::upper_case_acronyms)]
 mod test {
     use core::ops::MulAssign;
 
@@ -995,7 +996,7 @@ mod test {
 
         let verification = MarlinInst::verify(&circuit_vk, &public_input, &proof).unwrap();
 
-        assert_eq!(verification, true);
+        assert!(verification);
 
         (circuit_pk, circuit_vk, proof, public_input.to_vec())
     }
@@ -1039,7 +1040,7 @@ mod test {
         let first_commitments = &proof.commitments[0];
 
         // Construct the gadget components
-        let fs_rng_gadget = &mut FSG::constant(cs.ns(|| "alloc_rng"), &fs_rng);
+        let fs_rng_gadget = &mut FSG::constant(cs.ns(|| "alloc_rng"), fs_rng);
 
         let mut comm_gadgets = Vec::new();
         let mut message_gadgets = Vec::new();
@@ -1047,7 +1048,7 @@ mod test {
         for (i, comm) in first_commitments.iter().enumerate() {
             let commitment_gagdet = CommitmentVar::<Bls12_377, BW6_761, Bls12_377PairingGadget>::alloc(
                 cs.ns(|| format!("alloc_comm_{}", i)),
-                || Ok(comm.clone()),
+                || Ok(*comm),
             )
             .unwrap();
             comm_gadgets.push(commitment_gagdet);
@@ -1062,7 +1063,7 @@ mod test {
 
         // Insert randomness.
         if is_recursion {
-            fs_rng.absorb_native_field_elements(&first_commitments);
+            fs_rng.absorb_native_field_elements(first_commitments);
             if !proof.prover_messages[0].field_elements.is_empty() {
                 fs_rng.absorb_nonnative_field_elements(
                     &proof.prover_messages[0].field_elements,
@@ -1074,11 +1075,8 @@ mod test {
         }
         // Execute the verifier first round.
         let (first_round_message, first_round_state) =
-            AHPForR1CSNative::<_, MarlinRecursiveMode>::verifier_first_round(
-                circuit_pk.circuit.index_info.clone(),
-                fs_rng,
-            )
-            .unwrap();
+            AHPForR1CSNative::<_, MarlinRecursiveMode>::verifier_first_round(circuit_pk.circuit.index_info, fs_rng)
+                .unwrap();
 
         // Execute the verifier first round gadget.
         let (first_round_message_gadget, first_round_state_gadget) =
@@ -1175,7 +1173,7 @@ mod test {
         let first_commitments = &proof.commitments[0];
 
         // Construct the gadget components
-        let fs_rng_gadget = &mut FSG::constant(cs.ns(|| "alloc_rng"), &fs_rng);
+        let fs_rng_gadget = &mut FSG::constant(cs.ns(|| "alloc_rng"), fs_rng);
 
         let mut comm_gadgets = Vec::new();
         let mut message_gadgets = Vec::new();
@@ -1183,7 +1181,7 @@ mod test {
         for (i, comm) in first_commitments.iter().enumerate() {
             let commitment_gagdet = CommitmentVar::<Bls12_377, BW6_761, Bls12_377PairingGadget>::alloc(
                 cs.ns(|| format!("alloc_comm_{}", i)),
-                || Ok(comm.clone()),
+                || Ok(*comm),
             )
             .unwrap();
             comm_gadgets.push(commitment_gagdet);
@@ -1196,7 +1194,7 @@ mod test {
 
         // Insert randomness.
         if is_recursion {
-            fs_rng.absorb_native_field_elements(&first_commitments);
+            fs_rng.absorb_native_field_elements(first_commitments);
             if !proof.prover_messages[0].field_elements.is_empty() {
                 fs_rng.absorb_nonnative_field_elements(
                     &proof.prover_messages[0].field_elements,
@@ -1208,11 +1206,8 @@ mod test {
         }
         // Execute the verifier first round.
         let (_first_round_message, first_round_state) =
-            AHPForR1CSNative::<_, MarlinRecursiveMode>::verifier_first_round(
-                circuit_pk.circuit.index_info.clone(),
-                fs_rng,
-            )
-            .unwrap();
+            AHPForR1CSNative::<_, MarlinRecursiveMode>::verifier_first_round(circuit_pk.circuit.index_info, fs_rng)
+                .unwrap();
 
         // Execute the verifier first round gadget.
         let (_first_round_message_gadget, first_round_state_gadget) =
@@ -1238,7 +1233,7 @@ mod test {
         for (i, comm) in second_commitments.iter().enumerate() {
             let commitment_gagdet = CommitmentVar::<Bls12_377, BW6_761, Bls12_377PairingGadget>::alloc(
                 cs.ns(|| format!("alloc_second_round_comm_{}", i)),
-                || Ok(comm.clone()),
+                || Ok(*comm),
             )
             .unwrap();
             second_round_comm_gadgets.push(commitment_gagdet);
@@ -1251,7 +1246,7 @@ mod test {
         }
 
         if is_recursion {
-            fs_rng.absorb_native_field_elements(&second_commitments);
+            fs_rng.absorb_native_field_elements(second_commitments);
             if !proof.prover_messages[1].field_elements.is_empty() {
                 fs_rng.absorb_nonnative_field_elements(
                     &proof.prover_messages[1].field_elements,
@@ -1346,7 +1341,7 @@ mod test {
         let first_commitments = &proof.commitments[0];
 
         // Construct the gadget components
-        let fs_rng_gadget = &mut FSG::constant(cs.ns(|| "alloc_rng"), &fs_rng);
+        let fs_rng_gadget = &mut FSG::constant(cs.ns(|| "alloc_rng"), fs_rng);
 
         let mut comm_gadgets = Vec::new();
         let mut message_gadgets = Vec::new();
@@ -1354,7 +1349,7 @@ mod test {
         for (i, comm) in first_commitments.iter().enumerate() {
             let commitment_gagdet = CommitmentVar::<Bls12_377, BW6_761, Bls12_377PairingGadget>::alloc(
                 cs.ns(|| format!("alloc_comm_{}", i)),
-                || Ok(comm.clone()),
+                || Ok(*comm),
             )
             .unwrap();
             comm_gadgets.push(commitment_gagdet);
@@ -1367,7 +1362,7 @@ mod test {
 
         // Insert randomness.
         if is_recursion {
-            fs_rng.absorb_native_field_elements(&first_commitments);
+            fs_rng.absorb_native_field_elements(first_commitments);
             if !proof.prover_messages[0].field_elements.is_empty() {
                 fs_rng.absorb_nonnative_field_elements(
                     &proof.prover_messages[0].field_elements,
@@ -1379,11 +1374,8 @@ mod test {
         }
         // Execute the verifier first round.
         let (_first_round_message, first_round_state) =
-            AHPForR1CSNative::<_, MarlinRecursiveMode>::verifier_first_round(
-                circuit_pk.circuit.index_info.clone(),
-                fs_rng,
-            )
-            .unwrap();
+            AHPForR1CSNative::<_, MarlinRecursiveMode>::verifier_first_round(circuit_pk.circuit.index_info, fs_rng)
+                .unwrap();
 
         // Execute the verifier first round gadget.
         let (_first_round_message_gadget, first_round_state_gadget) =
@@ -1409,7 +1401,7 @@ mod test {
         for (i, comm) in second_commitments.iter().enumerate() {
             let commitment_gagdet = CommitmentVar::<Bls12_377, BW6_761, Bls12_377PairingGadget>::alloc(
                 cs.ns(|| format!("alloc_second_round_comm_{}", i)),
-                || Ok(comm.clone()),
+                || Ok(*comm),
             )
             .unwrap();
             second_round_comm_gadgets.push(commitment_gagdet);
@@ -1422,7 +1414,7 @@ mod test {
         }
 
         if is_recursion {
-            fs_rng.absorb_native_field_elements(&second_commitments);
+            fs_rng.absorb_native_field_elements(second_commitments);
             if !proof.prover_messages[1].field_elements.is_empty() {
                 fs_rng.absorb_nonnative_field_elements(
                     &proof.prover_messages[1].field_elements,
@@ -1460,7 +1452,7 @@ mod test {
         for (i, comm) in third_commitments.iter().enumerate() {
             let commitment_gagdet = CommitmentVar::<Bls12_377, BW6_761, Bls12_377PairingGadget>::alloc(
                 cs.ns(|| format!("alloc_third_round_comm_{}", i)),
-                || Ok(comm.clone()),
+                || Ok(*comm),
             )
             .unwrap();
             third_round_comm_gadgets.push(commitment_gagdet);
@@ -1473,7 +1465,7 @@ mod test {
         }
 
         if is_recursion {
-            fs_rng.absorb_native_field_elements(&third_commitments);
+            fs_rng.absorb_native_field_elements(third_commitments);
             if !proof.prover_messages[2].field_elements.is_empty() {
                 fs_rng.absorb_nonnative_field_elements(
                     &proof.prover_messages[2].field_elements,
@@ -1571,7 +1563,7 @@ mod test {
         let first_commitments = &proof.commitments[0];
 
         // Construct the gadget components
-        let fs_rng_gadget = &mut FSG::constant(cs.ns(|| "alloc_rng"), &fs_rng);
+        let fs_rng_gadget = &mut FSG::constant(cs.ns(|| "alloc_rng"), fs_rng);
 
         let mut comm_gadgets = Vec::new();
         let mut message_gadgets = Vec::new();
@@ -1579,7 +1571,7 @@ mod test {
         for (i, comm) in first_commitments.iter().enumerate() {
             let commitment_gagdet = CommitmentVar::<Bls12_377, BW6_761, Bls12_377PairingGadget>::alloc(
                 cs.ns(|| format!("alloc_comm_{}", i)),
-                || Ok(comm.clone()),
+                || Ok(*comm),
             )
             .unwrap();
             comm_gadgets.push(commitment_gagdet);
@@ -1592,7 +1584,7 @@ mod test {
 
         // Insert randomness.
         if is_recursion {
-            fs_rng.absorb_native_field_elements(&first_commitments);
+            fs_rng.absorb_native_field_elements(first_commitments);
             if !proof.prover_messages[0].field_elements.is_empty() {
                 fs_rng.absorb_nonnative_field_elements(
                     &proof.prover_messages[0].field_elements,
@@ -1604,11 +1596,8 @@ mod test {
         }
         // Execute the verifier first round.
         let (_first_round_message, first_round_state) =
-            AHPForR1CSNative::<_, MarlinRecursiveMode>::verifier_first_round(
-                circuit_pk.circuit.index_info.clone(),
-                fs_rng,
-            )
-            .unwrap();
+            AHPForR1CSNative::<_, MarlinRecursiveMode>::verifier_first_round(circuit_pk.circuit.index_info, fs_rng)
+                .unwrap();
 
         let (domain_h_size, domain_k_size) = {
             let domain_h = EvaluationDomain::<Fr>::new(circuit_vk.circuit_info.num_constraints)
@@ -1645,7 +1634,7 @@ mod test {
         for (i, comm) in second_commitments.iter().enumerate() {
             let commitment_gagdet = CommitmentVar::<Bls12_377, BW6_761, Bls12_377PairingGadget>::alloc(
                 cs.ns(|| format!("alloc_second_round_comm_{}", i)),
-                || Ok(comm.clone()),
+                || Ok(*comm),
             )
             .unwrap();
             second_round_comm_gadgets.push(commitment_gagdet);
@@ -1658,7 +1647,7 @@ mod test {
         }
 
         if is_recursion {
-            fs_rng.absorb_native_field_elements(&second_commitments);
+            fs_rng.absorb_native_field_elements(second_commitments);
             if !proof.prover_messages[1].field_elements.is_empty() {
                 fs_rng.absorb_nonnative_field_elements(
                     &proof.prover_messages[1].field_elements,
@@ -1696,7 +1685,7 @@ mod test {
         for (i, comm) in third_commitments.iter().enumerate() {
             let commitment_gagdet = CommitmentVar::<Bls12_377, BW6_761, Bls12_377PairingGadget>::alloc(
                 cs.ns(|| format!("alloc_third_round_comm_{}", i)),
-                || Ok(comm.clone()),
+                || Ok(*comm),
             )
             .unwrap();
             third_round_comm_gadgets.push(commitment_gagdet);
@@ -1709,7 +1698,7 @@ mod test {
         }
 
         if is_recursion {
-            fs_rng.absorb_native_field_elements(&third_commitments);
+            fs_rng.absorb_native_field_elements(third_commitments);
             if !proof.prover_messages[2].field_elements.is_empty() {
                 fs_rng.absorb_nonnative_field_elements(
                     &proof.prover_messages[2].field_elements,
@@ -1795,7 +1784,7 @@ mod test {
             cs.ns(|| "verifier_decision"),
             &formatted_public_input,
             &proof_gadget.evaluations,
-            third_round_state_gadget.clone(),
+            third_round_state_gadget,
             &vk_gadget.domain_k_size_gadget,
         )
         .unwrap();
@@ -1818,7 +1807,7 @@ mod test {
                     (LinearCombinationCoeffVar::One, LinearCombinationCoeffVar::One) => {}
                     (LinearCombinationCoeffVar::Var(expected_coeff), LinearCombinationCoeffVar::Var(coeff)) => {
                         expected_coeff
-                            .enforce_equal(cs.ns(|| format!("enforce_eq_coeff_{}_{}", i, j)), &coeff)
+                            .enforce_equal(cs.ns(|| format!("enforce_eq_coeff_{}_{}", i, j)), coeff)
                             .unwrap();
                     }
                     (LinearCombinationCoeffVar::Var(expected_coeff), LinearCombinationCoeffVar::One) => {
@@ -1882,7 +1871,7 @@ mod test {
         let first_commitments = &proof.commitments[0];
 
         // Construct the gadget components
-        let fs_rng_gadget = &mut FSG::constant(cs.ns(|| "alloc_rng"), &fs_rng);
+        let fs_rng_gadget = &mut FSG::constant(cs.ns(|| "alloc_rng"), fs_rng);
 
         let mut comm_gadgets = Vec::new();
         let mut message_gadgets = Vec::new();
@@ -1890,7 +1879,7 @@ mod test {
         for (i, comm) in first_commitments.iter().enumerate() {
             let commitment_gagdet = CommitmentVar::<Bls12_377, BW6_761, Bls12_377PairingGadget>::alloc(
                 cs.ns(|| format!("alloc_comm_{}", i)),
-                || Ok(comm.clone()),
+                || Ok(*comm),
             )
             .unwrap();
             comm_gadgets.push(commitment_gagdet);
@@ -1903,7 +1892,7 @@ mod test {
 
         // Insert randomness.
         if is_recursion {
-            fs_rng.absorb_native_field_elements(&first_commitments);
+            fs_rng.absorb_native_field_elements(first_commitments);
             if !proof.prover_messages[0].field_elements.is_empty() {
                 fs_rng.absorb_nonnative_field_elements(
                     &proof.prover_messages[0].field_elements,
@@ -1915,11 +1904,8 @@ mod test {
         }
         // Execute the verifier first round.
         let (_first_round_message, first_round_state) =
-            AHPForR1CSNative::<_, MarlinRecursiveMode>::verifier_first_round(
-                circuit_pk.circuit.index_info.clone(),
-                fs_rng,
-            )
-            .unwrap();
+            AHPForR1CSNative::<_, MarlinRecursiveMode>::verifier_first_round(circuit_pk.circuit.index_info, fs_rng)
+                .unwrap();
 
         let (domain_h_size, domain_k_size) = {
             let domain_h = EvaluationDomain::<Fr>::new(circuit_vk.circuit_info.num_constraints)
@@ -1956,7 +1942,7 @@ mod test {
         for (i, comm) in second_commitments.iter().enumerate() {
             let commitment_gagdet = CommitmentVar::<Bls12_377, BW6_761, Bls12_377PairingGadget>::alloc(
                 cs.ns(|| format!("alloc_second_round_comm_{}", i)),
-                || Ok(comm.clone()),
+                || Ok(*comm),
             )
             .unwrap();
             second_round_comm_gadgets.push(commitment_gagdet);
@@ -1969,7 +1955,7 @@ mod test {
         }
 
         if is_recursion {
-            fs_rng.absorb_native_field_elements(&second_commitments);
+            fs_rng.absorb_native_field_elements(second_commitments);
             if !proof.prover_messages[1].field_elements.is_empty() {
                 fs_rng.absorb_nonnative_field_elements(
                     &proof.prover_messages[1].field_elements,
@@ -2007,7 +1993,7 @@ mod test {
         for (i, comm) in third_commitments.iter().enumerate() {
             let commitment_gagdet = CommitmentVar::<Bls12_377, BW6_761, Bls12_377PairingGadget>::alloc(
                 cs.ns(|| format!("alloc_third_round_comm_{}", i)),
-                || Ok(comm.clone()),
+                || Ok(*comm),
             )
             .unwrap();
             third_round_comm_gadgets.push(commitment_gagdet);
@@ -2020,7 +2006,7 @@ mod test {
         }
 
         if is_recursion {
-            fs_rng.absorb_native_field_elements(&third_commitments);
+            fs_rng.absorb_native_field_elements(third_commitments);
             if !proof.prover_messages[2].field_elements.is_empty() {
                 fs_rng.absorb_nonnative_field_elements(
                     &proof.prover_messages[2].field_elements,
@@ -2217,7 +2203,7 @@ mod test {
                 .unwrap();
 
             expected_eval_value
-                .enforce_equal(cs.ns(|| format!("enforce_eq_eval_value_{}", i)), &evaluation_gadget.1)
+                .enforce_equal(cs.ns(|| format!("enforce_eq_eval_value_{}", i)), evaluation_gadget.1)
                 .unwrap();
         }
 

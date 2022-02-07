@@ -556,7 +556,7 @@ mod tests {
                 .unwrap();
 
                 shift_power_gadget
-                    .enforce_equal(cs.ns(|| format!("enforce_equals_shift_power_{}", i)), &shift_power)
+                    .enforce_equal(cs.ns(|| format!("enforce_equals_shift_power_{}", i)), shift_power)
                     .unwrap();
             }
         }
@@ -584,7 +584,7 @@ mod tests {
         let bound_gadget = FpGadget::alloc(cs.ns(|| "alloc_bound"), || Ok(bound_field)).unwrap();
 
         // Construct the verifying key.
-        let (_committer_key, vk) = PC::trim(&pp, SUPPORTED_DEGREE, SUPPORTED_HIDING_BOUND, Some(&vec![bound])).unwrap();
+        let (_committer_key, vk) = PC::trim(&pp, SUPPORTED_DEGREE, SUPPORTED_HIDING_BOUND, Some(&[bound])).unwrap();
 
         // Allocate the vk gadget.
         let vk_gadget = VerifierKeyVar::<_, BaseCurve, PG>::alloc(cs.ns(|| "alloc_vk"), || Ok(vk.clone())).unwrap();

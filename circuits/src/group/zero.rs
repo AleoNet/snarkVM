@@ -77,6 +77,6 @@ mod tests {
 
         // Should equal 0.
         let candidate_boolean = candidate.is_zero();
-        assert_eq!(true, candidate_boolean.eject_value());
+        assert!(candidate_boolean.eject_value());
     }
 }

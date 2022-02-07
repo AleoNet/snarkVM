@@ -25,7 +25,7 @@ path = "../algorithms"
 version = "0.7.5"
 optional = true
 default-features = false
-features = [ "wasm", "parallel" ]
+features = [ "wasm" ]
 
 [dependencies.snarkvm-curves]
 path = "../curves"
@@ -74,6 +74,7 @@ default-features = false
 [dependencies.snarkvm-utilities]
 path = "../utilities"
 version = "0.7.5"
+default-features = false
 
 [dependencies.derivative]
 version = "2"
@@ -87,7 +88,7 @@ version = "0.3"
 default-features = false
 
 [dependencies.serde]
-version = "1.0.132"
+version = "1.0.136"
 default-features = false
 features = [ "derive" ]
 
@@ -100,10 +101,10 @@ version = "0.2"
 features = [ "js" ]
 
 [dev-dependencies.wasm-bindgen-test]
-version = "0.3.28"
+version = "0.3.29"
 
 [features]
-default = [ "full" ]
+default = [ "full", "parallel" ]
 full = [
   "algorithms",
   "curves",
@@ -114,6 +115,15 @@ full = [
   "polycommit",
   "r1cs"
 ]
+parallel = [
+  "snarkvm-algorithms/parallel",
+  "snarkvm-dpc/parallel",
+  "snarkvm-fields/parallel",
+  "snarkvm-marlin/parallel",
+  "snarkvm-polycommit/parallel",
+  "snarkvm-utilities/parallel"
+]
+
 algorithms = [ "snarkvm-algorithms" ]
 curves = [ "snarkvm-curves" ]
 dpc = ["snarkvm-dpc"]

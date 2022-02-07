@@ -323,7 +323,7 @@ mod test {
         for i in 0..1 {
             let field_element = Fr::rand(rng);
             let field_element_gadget =
-                FpGadget::alloc(cs.ns(|| format!("field element_{}", i)), || Ok(field_element.clone())).unwrap();
+                FpGadget::alloc(cs.ns(|| format!("field element_{}", i)), || Ok(field_element)).unwrap();
 
             field_elements.push(field_element);
             field_element_gadgets.push(field_element_gadget);

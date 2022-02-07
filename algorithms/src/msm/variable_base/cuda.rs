@@ -16,27 +16,29 @@
 
 use snarkvm_curves::{
     bls12_377::{Fq, Fr, G1Affine, G1Projective},
-    traits::{AffineCurve, Group, ProjectiveCurve},
+    traits::{AffineCurve, Group},
 };
 use snarkvm_fields::{PrimeField, Zero};
 use snarkvm_utilities::BitIteratorBE;
 
-use cuda_oxide::*;
-use std::{any::TypeId, rc::Rc};
+use rust_gpu_tools::{cuda, program_closures, Device, GPUError, Program};
+
+use std::{any::TypeId, path::Path, process::Command};
+
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
 
 pub struct CudaRequest {
     bases: Vec<G1Affine>,
     scalars: Vec<Fr>,
-    response: crossbeam_channel::Sender<Result<G1Projective, ErrorCode>>,
+    response: crossbeam_channel::Sender<Result<G1Projective, GPUError>>,
 }
 
-struct CudaContext<'a, 'b, 'c> {
-    handle: &'b Rc<Handle<'a>>,
-    stream: &'b mut Stream<'a>,
+struct CudaContext {
     num_groups: u32,
-    output_buf: DeviceBox<'a>,
-    pixel_func: Function<'a, 'c>,
-    row_func: Function<'a, 'c>,
+    pixel_func_name: String,
+    row_func_name: String,
+    program: Program,
 }
 
 const SCALAR_BITS: usize = 253;
@@ -52,10 +54,164 @@ struct CudaAffine {
     y: Fq,
 }
 
-fn handle_cuda_request(context: &mut CudaContext, request: &CudaRequest) -> Result<G1Projective, ErrorCode> {
-    let mapped_bases: Vec<_> = request
-        .bases
-        .iter()
+/// Generates the cuda msm binary.
+fn generate_cuda_binary<P: AsRef<Path>>(file_path: P, debug: bool) -> Result<(), GPUError> {
+    // Find the latest compute code values.
+    let nvcc_help = Command::new("nvcc").arg("-h").output()?.stdout;
+    let nvcc_output =
+        std::str::from_utf8(&nvcc_help).map_err(|_| GPUError::Generic("Missing nvcc command".to_string()))?;
+
+    // Generate the parent directory.
+    let mut resource_path = aleo_std::aleo_dir();
+    resource_path.push("resources/cuda/");
+    std::fs::create_dir_all(resource_path)?;
+
+    // TODO (raychu86): Fix this approach to generating files. Should just read all files in the `blst_377_cuda` directory.
+    // Store the `.cu` and `.h` files temporarily for fatbin generation
+    let mut asm_cuda_path = aleo_std::aleo_dir();
+    let mut asm_cuda_h_path = aleo_std::aleo_dir();
+    asm_cuda_path.push("resources/cuda/asm_cuda.cu");
+    asm_cuda_h_path.push("resources/cuda/asm_cuda.h");
+
+    let mut blst_377_ops_path = aleo_std::aleo_dir();
+    let mut blst_377_ops_h_path = aleo_std::aleo_dir();
+    blst_377_ops_path.push("resources/cuda/blst_377_ops.cu");
+    blst_377_ops_h_path.push("resources/cuda/blst_377_ops.h");
+
+    let mut msm_path = aleo_std::aleo_dir();
+    msm_path.push("resources/cuda/msm.cu");
+
+    let mut types_path = aleo_std::aleo_dir();
+    types_path.push("resources/cuda/types.h");
+
+    let mut tests_path = aleo_std::aleo_dir();
+    tests_path.push("resources/cuda/tests.cu");
+
+    // Write all the files to the relative path.
+    {
+        let asm_cuda = include_bytes!("./blst_377_cuda/asm_cuda.cu");
+        let asm_cuda_h = include_bytes!("./blst_377_cuda/asm_cuda.h");
+        std::fs::write(&asm_cuda_path, asm_cuda)?;
+        std::fs::write(&asm_cuda_h_path, asm_cuda_h)?;
+
+        let blst_377_ops = include_bytes!("./blst_377_cuda/blst_377_ops.cu");
+        let blst_377_ops_h = include_bytes!("./blst_377_cuda/blst_377_ops.h");
+        std::fs::write(&blst_377_ops_path, blst_377_ops)?;
+        std::fs::write(&blst_377_ops_h_path, blst_377_ops_h)?;
+
+        let msm = include_bytes!("./blst_377_cuda/msm.cu");
+        std::fs::write(&msm_path, msm)?;
+
+        let types = include_bytes!("./blst_377_cuda/types.h");
+        std::fs::write(&types_path, types)?;
+    }
+
+    // Generate the cuda fatbin.
+    let mut command = Command::new("nvcc");
+    command
+        .arg(asm_cuda_path.as_os_str())
+        .arg(blst_377_ops_path.as_os_str())
+        .arg(msm_path.as_os_str());
+
+    // Add the debug feature for tests.
+    if debug {
+        let tests = include_bytes!("./blst_377_cuda/tests.cu");
+        std::fs::write(&tests_path, tests)?;
+
+        command.arg(tests_path.as_os_str()).arg("--device-debug");
+    }
+
+    // Add supported gencodes
+    command
+        .arg("--generate-code=arch=compute_60,code=sm_60")
+        .arg("--generate-code=arch=compute_70,code=sm_70")
+        .arg("--generate-code=arch=compute_75,code=sm_75");
+
+    if nvcc_output.contains("compute_80") {
+        command.arg("--generate-code=arch=compute_80,code=sm_80");
+    }
+
+    if nvcc_output.contains("compute_86") {
+        command.arg("--generate-code=arch=compute_86,code=sm_86");
+    }
+
+    command
+        .arg("-fatbin")
+        .arg("-dlink")
+        .arg("-o")
+        .arg(file_path.as_ref().as_os_str());
+
+    eprintln!("\nRunning command: {:?}", command);
+
+    let status = command.status()?;
+
+    // Delete all the temporary .cu and .h files.
+    {
+        let _ = std::fs::remove_file(asm_cuda_path);
+        let _ = std::fs::remove_file(asm_cuda_h_path);
+        let _ = std::fs::remove_file(blst_377_ops_path);
+        let _ = std::fs::remove_file(blst_377_ops_h_path);
+        let _ = std::fs::remove_file(msm_path);
+        let _ = std::fs::remove_file(types_path);
+        let _ = std::fs::remove_file(tests_path);
+    }
+
+    // Execute the command.
+    if !status.success() {
+        return Err(GPUError::KernelNotFound(
+            "Could not generate a new msm kernel".to_string(),
+        ));
+    }
+
+    Ok(())
+}
+
+/// Loads the msm.fatbin into an executable CUDA program.
+fn load_cuda_program() -> Result<Program, GPUError> {
+    let devices: Vec<_> = Device::all();
+    let device = match devices.first() {
+        Some(device) => device,
+        None => return Err(GPUError::DeviceNotFound),
+    };
+
+    // Find the path to the msm fatbin kernel
+    let mut file_path = aleo_std::aleo_dir();
+    file_path.push("resources/cuda/msm.fatbin");
+
+    // If the file does not exist, regenerate the fatbin.
+    if !file_path.exists() {
+        generate_cuda_binary(&file_path, false)?;
+    }
+
+    let cuda_device = match device.cuda_device() {
+        Some(device) => device,
+        None => return Err(GPUError::DeviceNotFound),
+    };
+
+    eprintln!(
+        "\nUsing '{}' as CUDA device with {} bytes of memory",
+        device.name(),
+        device.memory()
+    );
+
+    let cuda_kernel = std::fs::read(file_path.clone())?;
+
+    // Load the cuda program from the kernel bytes.
+    let cuda_program = match cuda::Program::from_bytes(cuda_device, &cuda_kernel) {
+        Ok(program) => program,
+        Err(err) => {
+            // Delete the failing cuda kernel.
+            std::fs::remove_file(file_path)?;
+            return Err(err);
+        }
+    };
+
+    Ok(Program::Cuda(cuda_program))
+}
+
+/// Run the CUDA MSM operation for a given request.
+fn handle_cuda_request(context: &mut CudaContext, request: &CudaRequest) -> Result<G1Projective, GPUError> {
+    let mapped_bases: Vec<_> = crate::cfg_iter!(request.bases)
         .map(|affine| CudaAffine {
             x: affine.x,
             y: affine.y,
@@ -71,51 +227,57 @@ fn handle_cuda_request(context: &mut CudaContext, request: &CudaRequest) -> Resu
         window_lengths.push(overflow_size);
     }
 
-    let window_lengths_buf = DeviceBox::new_ffi(&context.handle, &window_lengths[..])?;
-    let bases_in_buf = DeviceBox::new_ffi(&context.handle, &mapped_bases[..])?;
-    let scalars_in_buf = DeviceBox::new_ffi(&context.handle, &request.scalars[..])?;
-    context.output_buf.memset_d32_stream(0, context.stream)?;
+    let closures = program_closures!(|program, _arg| -> Result<Vec<u8>, GPUError> {
+        let window_lengths_buffer = program.create_buffer_from_slice(&window_lengths)?;
+        let base_buffer = program.create_buffer_from_slice(&mapped_bases)?;
+        let scalars_buffer = program.create_buffer_from_slice(&request.scalars)?;
 
-    let buckets = DeviceBox::alloc(
-        &context.handle,
-        context.num_groups as u64 * window_lengths.len() as u64 * 8 * LIMB_COUNT as u64 * 3,
-    )?;
+        let buckets_buffer = program.create_buffer_from_slice(&vec![
+            0u8;
+            context.num_groups as usize
+                * window_lengths.len() as usize
+                * 8
+                * LIMB_COUNT as usize
+                * 3
+        ])?;
+        let result_buffer =
+            program.create_buffer_from_slice(&vec![0u8; LIMB_COUNT as usize * 8 * context.num_groups as usize * 3])?;
 
-    // let start = Instant::now();
+        // // The global work size follows CUDA's definition and is the number of
+        // // `LOCAL_WORK_SIZE` sized thread groups.
+        // const LOCAL_WORK_SIZE: usize = 256;
+        // let global_work_size =
+        //     (window_lengths.len() * context.num_groups as usize + LOCAL_WORK_SIZE - 1) / LOCAL_WORK_SIZE;
 
-    context.stream.launch(
-        &context.pixel_func,
-        window_lengths.len() as u32,
-        context.num_groups,
-        0,
-        (
-            &buckets,
-            &bases_in_buf,
-            &scalars_in_buf,
-            &window_lengths_buf,
-            window_lengths.len() as u32,
-        ),
-    )?;
+        let kernel_1 = program.create_kernel(
+            &context.pixel_func_name,
+            window_lengths.len(),
+            context.num_groups as usize,
+        )?;
 
-    context.stream.sync()?;
+        kernel_1
+            .arg(&buckets_buffer)
+            .arg(&base_buffer)
+            .arg(&scalars_buffer)
+            .arg(&window_lengths_buffer)
+            .arg(&(window_lengths.len() as u32))
+            .run()?;
 
-    // let time = (start.elapsed().as_micros() as f64) / 1000.0;
-    // println!("msm-pixel took {} ms", time);
+        let kernel_2 = program.create_kernel(&context.row_func_name, 1, context.num_groups as usize)?;
 
-    context.stream.launch(
-        &context.row_func,
-        1,
-        context.num_groups,
-        0,
-        (&context.output_buf, &buckets, window_lengths.len() as u32),
-    )?;
+        kernel_2
+            .arg(&result_buffer)
+            .arg(&buckets_buffer)
+            .arg(&(window_lengths.len() as u32))
+            .run()?;
 
-    context.stream.sync()?;
+        let mut results = vec![0u8; LIMB_COUNT as usize * 8 * context.num_groups as usize * 3];
+        program.read_into_buffer(&result_buffer, &mut results)?;
 
-    // let time = (start.elapsed().as_micros() as f64) / 1000.0;
-    // println!("msm-row took {} ms", time);
+        Ok(results)
+    });
 
-    let mut out = context.output_buf.load()?;
+    let mut out = context.program.run(closures, ())?;
 
     let base_size = std::mem::size_of::<<<G1Affine as AffineCurve>::BaseField as PrimeField>::BigInteger>();
 
@@ -131,7 +293,7 @@ fn handle_cuda_request(context: &mut CudaContext, request: &CudaRequest) -> Resu
     let lowest = windows.first().unwrap();
 
     // We're traversing windows from high to low.
-    let out = windows[1..]
+    let final_result = windows[1..]
         .iter()
         .rev()
         .fold(G1Projective::zero(), |mut total, sum_i| {
@@ -142,76 +304,43 @@ fn handle_cuda_request(context: &mut CudaContext, request: &CudaRequest) -> Resu
             total
         })
         + lowest;
-    Ok(out)
+    Ok(final_result)
 }
 
-fn cuda_thread(input: crossbeam_channel::Receiver<CudaRequest>) {
-    let num_groups = (SCALAR_BITS + BIT_WIDTH - 1) / BIT_WIDTH;
-    Cuda::init().unwrap();
+/// Initialize the cuda request handler.
+fn initialize_cuda_request_handler(input: crossbeam_channel::Receiver<CudaRequest>) {
+    match load_cuda_program() {
+        Ok(program) => {
+            let num_groups = (SCALAR_BITS + BIT_WIDTH - 1) / BIT_WIDTH;
 
-    let mut devices = Cuda::list_devices().unwrap();
-    if devices.is_empty() {
-        eprintln!("CUDA enabled but no CUDA devices were found");
-        return;
-    }
-    let device = devices.remove(0);
-    let compute_capability = device.compute_capability().unwrap();
-    eprintln!(
-        "Using '{}' as CUDA device with compute capability {}",
-        device.name().unwrap(),
-        compute_capability
-    );
-    let mut ctx = Context::new(&device).unwrap();
-    #[cfg(debug_assertions)]
-    ctx.set_limit(LimitType::PrintfFifoSize, 1024 * 1024 * 16).unwrap();
-    let handle = ctx.enter().unwrap();
-    let linker = Linker::new(&handle, compute_capability, LinkerOptions::default())
-        .unwrap()
-        .add(
-            "asm_cuda.release.ptx",
-            LinkerInputType::Ptx,
-            include_bytes!("./blst_377_cuda/asm_cuda.release.ptx"),
-        )
-        .unwrap()
-        .add(
-            "blst_377_ops.release.ptx",
-            LinkerInputType::Ptx,
-            include_bytes!("./blst_377_cuda/blst_377_ops.release.ptx"),
-        )
-        .unwrap()
-        .add(
-            "msm.release.ptx",
-            LinkerInputType::Ptx,
-            include_bytes!("./blst_377_cuda/msm.release.ptx"),
-        )
-        .unwrap();
-    let module = linker.build_module().unwrap();
-    let pixel_func = module.get_function("msm6_pixel").unwrap();
-    let row_func = module.get_function("msm6_collapse_rows").unwrap();
-    let mut stream = Stream::new(&handle).unwrap();
+            let mut context = CudaContext {
+                num_groups: num_groups as u32,
+                pixel_func_name: "msm6_pixel".to_string(),
+                row_func_name: "msm6_collapse_rows".to_string(),
+                program,
+            };
 
-    let output_buf = DeviceBox::alloc(&handle, LIMB_COUNT as u64 * 8 * num_groups as u64 * 3).unwrap();
+            // Handle each cuda request received from the channel.
+            while let Ok(request) = input.recv() {
+                let out = handle_cuda_request(&mut context, &request);
 
-    let mut context = CudaContext {
-        handle: &handle,
-        stream: &mut stream,
-        num_groups: num_groups as u32,
-        output_buf,
-        pixel_func,
-        row_func,
-    };
-
-    while let Ok(request) = input.recv() {
-        let out = handle_cuda_request(&mut context, &request);
-
-        request.response.send(out).ok();
+                request.response.send(out).ok();
+            }
+        }
+        Err(err) => {
+            eprintln!("Error loading cuda program: {:?}", err);
+            // If the cuda program fails to load, notify the cuda request dispatcher.
+            while let Ok(request) = input.recv() {
+                request.response.send(Err(GPUError::DeviceNotFound)).ok();
+            }
+        }
     }
 }
 
 lazy_static::lazy_static! {
     static ref CUDA_DISPATCH: crossbeam_channel::Sender<CudaRequest> = {
-        let (sender, receiver) = crossbeam_channel::bounded(16);
-        std::thread::spawn(move || cuda_thread(receiver));
+        let (sender, receiver) = crossbeam_channel::bounded(4096);
+        std::thread::spawn(move || initialize_cuda_request_handler(receiver));
         sender
     };
 }
@@ -219,15 +348,14 @@ lazy_static::lazy_static! {
 pub(super) fn msm_cuda<G: AffineCurve>(
     mut bases: &[G],
     mut scalars: &[<G::ScalarField as PrimeField>::BigInteger],
-) -> Result<G::Projective, ErrorCode> {
+) -> Result<G::Projective, GPUError> {
     if TypeId::of::<G>() != TypeId::of::<G1Affine>() {
         unimplemented!("trying to use cuda for unsupported curve");
     }
 
-    if bases.len() < scalars.len() {
-        scalars = &scalars[..bases.len()];
-    } else if bases.len() > scalars.len() {
-        bases = &bases[..scalars.len()];
+    match bases.len() < scalars.len() {
+        true => scalars = &scalars[..bases.len()],
+        false => bases = &bases[..scalars.len()],
     }
 
     if scalars.len() < 4 {
@@ -246,22 +374,23 @@ pub(super) fn msm_cuda<G: AffineCurve>(
             scalars: unsafe { std::mem::transmute(scalars.to_vec()) },
             response: sender,
         })
-        .map_err(|_| ErrorCode::NoDevice)?;
+        .map_err(|_| GPUError::DeviceNotFound)?;
     match receiver.recv() {
         Ok(x) => unsafe { std::mem::transmute_copy(&x) },
-        Err(_) => Err(ErrorCode::NoDevice),
+        Err(_) => Err(GPUError::DeviceNotFound),
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use rand::SeedableRng;
-    use rand_xorshift::XorShiftRng;
-    use snarkvm_curves::bls12_377::Fq;
-    use snarkvm_fields::{Field, PrimeField};
+    use super::*;
+    use snarkvm_curves::{bls12_377::Fq, ProjectiveCurve};
+    use snarkvm_fields::{Field, One, PrimeField};
     use snarkvm_utilities::UniformRand;
 
-    use super::*;
+    use rand::SeedableRng;
+    use rand_xorshift::XorShiftRng;
+    use serial_test::serial;
 
     #[repr(C)]
     struct ProjectiveAffine {
@@ -270,63 +399,58 @@ mod tests {
     }
 
     fn run_roundtrip<T, Y: Clone>(name: &str, inputs: &[Vec<T>]) -> Vec<Y> {
-        Cuda::init().unwrap();
-        let device = Cuda::list_devices().unwrap().remove(0);
-        let mut ctx = Context::new(&device).unwrap();
-        ctx.set_limit(LimitType::PrintfFifoSize, 1024 * 1024 * 16).unwrap();
-        let handle = ctx.enter().unwrap();
-        let linker = Linker::new(&handle, device.compute_capability().unwrap(), LinkerOptions::default())
-            .unwrap()
-            .add(
-                "asm_cuda.debug.ptx",
-                LinkerInputType::Ptx,
-                include_bytes!("./blst_377_cuda/asm_cuda.debug.ptx"),
-            )
-            .unwrap()
-            .add(
-                "blst_377_ops.debug.ptx",
-                LinkerInputType::Ptx,
-                include_bytes!("./blst_377_cuda/blst_377_ops.debug.ptx"),
-            )
-            .unwrap()
-            .add(
-                "msm.debug.ptx",
-                LinkerInputType::Ptx,
-                include_bytes!("./blst_377_cuda/msm.debug.ptx"),
-            )
-            .unwrap()
-            .add(
-                "tests.debug.ptx",
-                LinkerInputType::Ptx,
-                include_bytes!("./blst_377_cuda/tests.debug.ptx"),
-            )
-            .unwrap();
-        let module = linker.build_module().unwrap();
-        let func = module.get_function(name).unwrap();
-        let mut stream = Stream::new(&handle).unwrap();
-
         let out_size = std::mem::size_of::<Y>();
-        let mut out = vec![];
 
-        let first_len = inputs.first().unwrap().len();
-        assert!(inputs.iter().all(|x| x.len() == first_len));
+        let closures = program_closures!(|program, _arg| -> Result<Vec<Y>, GPUError> {
+            let mut out = vec![];
 
-        for input in inputs {
-            let output_buf = DeviceBox::alloc(&handle, out_size as u64).unwrap();
-            output_buf.memset_d32(0).unwrap();
+            let first_len = inputs.first().unwrap().len();
+            assert!(inputs.iter().all(|x| x.len() == first_len));
 
-            let input_buf = DeviceBox::new_ffi(&handle, &input[..]).unwrap();
+            for input in inputs {
+                let output_buf = program.create_buffer_from_slice(&vec![0u8; out_size]).unwrap();
 
-            stream.launch(&func, 1, 1, 0, (&output_buf, &input_buf)).unwrap();
+                let input_buf = program.create_buffer_from_slice(input).unwrap();
 
-            stream.sync().unwrap();
+                let kernel = program.create_kernel(name, 1, 1).unwrap();
+                kernel.arg(&output_buf).arg(&input_buf).run().unwrap();
 
-            let output = output_buf.load().unwrap();
-            let output = unsafe { (output.as_ptr() as *const Y).as_ref() }.unwrap();
-            out.push(output.clone());
+                let mut output = vec![0u8; out_size];
+
+                program.read_into_buffer(&output_buf, &mut output).unwrap();
+
+                let output_value = unsafe { (output.as_ptr() as *const Y).as_ref() }.unwrap();
+
+                out.push(output_value.clone());
+            }
+
+            Ok(out)
+        });
+
+        // Find the path to the msm test fatbin kernel
+        let mut file_path = aleo_std::aleo_dir();
+        file_path.push("resources/cuda/msm_test.fatbin");
+
+        // If the file does not exist, regenerate the fatbin.
+        if !file_path.exists() {
+            generate_cuda_binary(&file_path, true).unwrap();
         }
 
-        out
+        let cuda_kernel = std::fs::read(file_path.clone()).unwrap();
+        let cuda_device = Device::all().first().unwrap().cuda_device().unwrap();
+
+        let cuda_program = match cuda::Program::from_bytes(cuda_device, &cuda_kernel) {
+            Ok(program) => program,
+            Err(_err) => {
+                // Delete the failing cuda kernel.
+                std::fs::remove_file(file_path).unwrap();
+                panic!("Failed to load cuda program");
+            }
+        };
+
+        let program = Program::Cuda(cuda_program);
+
+        program.run(closures, ()).unwrap()
     }
 
     fn make_tests(count: usize, cardinality: usize) -> Vec<Vec<Fq>> {
@@ -370,12 +494,13 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_cuda_mul() {
         let inputs = make_tests(1000, 2);
 
         let output: Vec<Fq> = run_roundtrip("mul_test", &inputs[..]);
         for (input, output) in inputs.iter().zip(output.iter()) {
-            let rust_out = input[0] * &input[1];
+            let rust_out = input[0] * input[1];
             let output = output.to_repr_unchecked();
             let rust_out = rust_out.to_repr_unchecked();
 
@@ -392,6 +517,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_cuda_square() {
         let inputs = make_tests(1000, 1);
 
@@ -410,13 +536,14 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_cuda_add() {
         let inputs = make_tests(1000, 2);
 
         let output: Vec<Fq> = run_roundtrip("add_test", &inputs[..]);
 
         for (input, output) in inputs.iter().zip(output.iter()) {
-            let rust_out = input[0] + &input[1];
+            let rust_out = input[0] + input[1];
             let output = output.to_repr_unchecked();
             let rust_out = rust_out.to_repr_unchecked();
 
@@ -433,19 +560,21 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_cuda_projective_add() {
         let inputs = make_projective_tests(1000, 2);
 
         let output = run_roundtrip("add_projective_test", &inputs[..]);
 
         for (input, output) in inputs.iter().zip(output.iter()) {
-            let rust_out = input[0] + &input[1];
+            let rust_out = input[0] + input[1];
 
             assert_eq!(&rust_out, output);
         }
     }
 
     #[test]
+    #[serial]
     fn test_cuda_projective_double() {
         let inputs = make_projective_tests(1000, 1);
 
@@ -459,6 +588,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_cuda_affine_round_trip() {
         let inputs = make_affine_tests(1000, 1);
 
@@ -472,6 +602,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_cuda_affine_add() {
         let inputs = make_affine_tests(1000, 2);
 
@@ -480,12 +611,13 @@ mod tests {
         for (input, output) in inputs.iter().zip(output.iter()) {
             let a = G1Affine::new(input[0].x, input[0].y, false);
             let b = G1Affine::new(input[1].x, input[1].y, false);
-            let rust_out: G1Projective = a.into_projective() + &b.into_projective();
+            let rust_out: G1Projective = a.into_projective() + b.into_projective();
             assert_eq!(&rust_out, output);
         }
     }
 
     #[test]
+    #[serial]
     fn test_cuda_projective_affine_add() {
         let affine_inputs = make_affine_tests(1000, 1);
         let projective_inputs = make_projective_tests(1000, 1);
@@ -512,13 +644,14 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_cuda_sub() {
         let inputs = make_tests(1000, 2);
 
         let output: Vec<Fq> = run_roundtrip("sub_test", &inputs[..]);
 
         for (input, output) in inputs.iter().zip(output.iter()) {
-            let rust_out = input[0] - &input[1];
+            let rust_out = input[0] - input[1];
             let output = output.to_repr_unchecked();
             let rust_out = rust_out.to_repr_unchecked();
             if rust_out != output {
@@ -531,5 +664,42 @@ mod tests {
                 assert_eq!(rust_out.as_ref(), output.as_ref());
             }
         }
+    }
+
+    #[test]
+    #[serial]
+    fn test_cuda_affine_add_infinity() {
+        let infinite = G1Affine::new(Fq::zero(), Fq::one(), true);
+        let cuda_infinite = CudaAffine {
+            x: Fq::zero(),
+            y: Fq::one(),
+        };
+
+        let inputs = vec![vec![cuda_infinite.clone(), cuda_infinite]];
+        let output: Vec<G1Projective> = run_roundtrip("add_affine_test", &inputs[..]);
+
+        let rust_out: G1Projective = infinite.into_projective() + infinite.into_projective();
+        assert_eq!(rust_out, output[0]);
+    }
+
+    #[test]
+    #[serial]
+    fn test_cuda_projective_affine_add_infinity() {
+        let mut projective = G1Projective::zero();
+
+        let cuda_infinite = CudaAffine {
+            x: Fq::zero(),
+            y: Fq::one(),
+        };
+
+        let inputs = vec![vec![ProjectiveAffine {
+            projective,
+            affine: cuda_infinite,
+        }]];
+
+        let output: Vec<G1Projective> = run_roundtrip("add_projective_affine_test", &inputs[..]);
+
+        projective.add_assign_mixed(&G1Affine::new(Fq::zero(), Fq::one(), true));
+        assert_eq!(projective, output[0]);
     }
 }

@@ -106,6 +106,7 @@ pub trait ProjectiveCurve:
     + CanonicalSerialize
     + ConstantSerializedSize
     + CanonicalDeserialize
+    + iter::Sum
     + From<<Self as ProjectiveCurve>::Affine>
 {
     type BaseField: Field;

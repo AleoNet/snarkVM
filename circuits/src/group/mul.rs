@@ -167,6 +167,7 @@ impl<E: Environment, const N: usize> MulAssign<[Boolean<E>; N]> for Affine<E> {
 }
 
 impl<E: Environment> MulAssign<&[Boolean<E>]> for Affine<E> {
+    #[allow(clippy::suspicious_op_assign_impl)]
     fn mul_assign(&mut self, other: &[Boolean<E>]) {
         let base = self.clone();
 

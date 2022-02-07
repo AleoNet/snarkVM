@@ -35,7 +35,7 @@ fn absorb_test() {
     let absorb_var: Vec<_> = absorb
         .iter()
         .enumerate()
-        .map(|(i, v)| FpGadget::<Fr>::alloc_input(cs.ns(|| format!("alloc input {}", i)), || Ok((*v).clone())).unwrap())
+        .map(|(i, v)| FpGadget::<Fr>::alloc_input(cs.ns(|| format!("alloc input {}", i)), || Ok(*v)).unwrap())
         .collect();
 
     let sponge_params = Arc::new(Fr::get_default_poseidon_parameters::<2>(false).unwrap());

@@ -16,7 +16,7 @@
 
 #[cfg(test)]
 mod testnet1 {
-    use crate::{testnet1::Testnet1, Account, AccountScheme, Address, Network, PrivateKey, ViewKey};
+    use crate::{testnet1::Testnet1, Account, Address, Network, PrivateKey, ViewKey};
     use snarkvm_algorithms::prelude::*;
     use snarkvm_curves::AffineCurve;
     use snarkvm_utilities::{FromBytes, ToBytes};
@@ -163,7 +163,7 @@ mod testnet1 {
             let message = "Hi, I'm an Aleo account signature!".as_bytes();
             let incorrect_message: Vec<u8> = (0..(32 * i)).map(|_| rand::random::<u8>()).collect();
 
-            let signature = private_key.sign(&message, &mut thread_rng()).unwrap();
+            let signature = private_key.sign(message, &mut thread_rng()).unwrap();
             let verification = address.verify_signature(&incorrect_message, &signature).unwrap();
             assert!(!verification);
         }
@@ -255,7 +255,7 @@ mod testnet1 {
             assert_eq!(expected_signature, serde_json::from_str(&candidate_string).unwrap());
             assert_eq!(
                 expected_signature,
-                <Testnet1 as Network>::AccountSignature::from_str(&expected_string).unwrap()
+                <Testnet1 as Network>::AccountSignature::from_str(expected_string).unwrap()
             );
         }
     }
@@ -290,7 +290,7 @@ mod testnet1 {
 
 #[cfg(test)]
 mod testnet2 {
-    use crate::{testnet2::Testnet2, Account, AccountScheme, Address, Network, PrivateKey, ViewKey};
+    use crate::{testnet2::Testnet2, Account, Address, Network, PrivateKey, ViewKey};
     use snarkvm_algorithms::prelude::*;
     use snarkvm_curves::AffineCurve;
     use snarkvm_utilities::{FromBytes, ToBytes};
@@ -438,7 +438,7 @@ mod testnet2 {
             let message = "Hi, I'm an Aleo account signature!".as_bytes();
             let incorrect_message: Vec<u8> = (0..(32 * i)).map(|_| rand::random::<u8>()).collect();
 
-            let signature = private_key.sign(&message, &mut thread_rng()).unwrap();
+            let signature = private_key.sign(message, &mut thread_rng()).unwrap();
             let verification = address.verify_signature(&incorrect_message, &signature).unwrap();
             assert!(!verification);
         }
@@ -530,7 +530,7 @@ mod testnet2 {
             assert_eq!(expected_signature, serde_json::from_str(&candidate_string).unwrap());
             assert_eq!(
                 expected_signature,
-                <Testnet2 as Network>::AccountSignature::from_str(&expected_string).unwrap()
+                <Testnet2 as Network>::AccountSignature::from_str(expected_string).unwrap()
             );
         }
     }

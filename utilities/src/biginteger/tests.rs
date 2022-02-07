@@ -25,7 +25,7 @@ fn biginteger_arithmetic_test<B: BigInteger>(a: B, b: B, zero: B) {
     assert!(zero == zero);
 
     // zero.is_zero() == true
-    assert_eq!(zero.is_zero(), true);
+    assert!(zero.is_zero());
 
     // a == a
     assert!(a == a);

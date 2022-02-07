@@ -189,7 +189,10 @@ impl<N: Network> Block<N> {
         // Ensure the coinbase reward less transaction fees is less than or equal to the block reward.
         let candidate_block_reward = AleoAmount::ZERO.sub(self.transactions.net_value_balance()); // Make it a positive number.
         if candidate_block_reward > block_reward {
-            eprintln!("Block reward must be <= {}", block_reward);
+            eprintln!(
+                "Block reward must be <= {}, found {}",
+                block_reward, candidate_block_reward
+            );
             return false;
         }
 
@@ -395,7 +398,7 @@ impl<'de, N: Network> Deserialize<'de> for Block<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{testnet2::Testnet2, Account, AccountScheme};
+    use crate::{testnet2::Testnet2, Account};
     use snarkvm_utilities::UniformRand;
 
     use rand::{thread_rng, Rng};
@@ -563,7 +566,7 @@ mod tests {
         // Deserialize
         assert_eq!(
             expected_block_hash,
-            <Testnet2 as Network>::BlockHash::from_str(&expected_string).unwrap()
+            <Testnet2 as Network>::BlockHash::from_str(expected_string).unwrap()
         );
         assert_eq!(expected_block_hash, serde_json::from_str(&candidate_string).unwrap());
     }

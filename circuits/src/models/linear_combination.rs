@@ -212,7 +212,7 @@ impl<F: PrimeField> Neg for LinearCombination<F> {
 
     #[inline]
     fn neg(self) -> Self::Output {
-        let mut output = self.clone();
+        let mut output = self;
         output.constant = -output.constant;
         output
             .terms
@@ -234,6 +234,7 @@ impl<F: PrimeField> Neg for &LinearCombination<F> {
 impl<F: PrimeField> Add<Variable<F>> for LinearCombination<F> {
     type Output = Self;
 
+    #[allow(clippy::op_ref)]
     fn add(self, other: Variable<F>) -> Self::Output {
         self + &other
     }
@@ -314,6 +315,7 @@ impl<F: PrimeField> AddAssign<&LinearCombination<F>> for LinearCombination<F> {
 impl<F: PrimeField> Sub<Variable<F>> for LinearCombination<F> {
     type Output = Self;
 
+    #[allow(clippy::op_ref)]
     fn sub(self, other: Variable<F>) -> Self::Output {
         self - &other
     }
@@ -354,6 +356,7 @@ impl<F: PrimeField> Sub<&LinearCombination<F>> for &LinearCombination<F> {
 impl<F: PrimeField> Mul<F> for LinearCombination<F> {
     type Output = Self;
 
+    #[allow(clippy::op_ref)]
     fn mul(self, coefficient: F) -> Self::Output {
         self * &coefficient
     }
@@ -363,8 +366,8 @@ impl<F: PrimeField> Mul<&F> for LinearCombination<F> {
     type Output = Self;
 
     fn mul(self, coefficient: &F) -> Self::Output {
-        let mut output = self.clone();
-        output.constant = output.constant * coefficient;
+        let mut output = self;
+        output.constant *= coefficient;
         output
             .terms
             .iter_mut()
@@ -401,7 +404,7 @@ mod tests {
     #[test]
     fn test_two() {
         let one = <Circuit as Environment>::BaseField::one();
-        let two = one + &one;
+        let two = one + one;
 
         let candidate = LinearCombination::one() + LinearCombination::one();
         assert_eq!(two, candidate.constant);

@@ -71,6 +71,10 @@ pub use iterator::*;
 pub mod math;
 pub use math::*;
 
+#[macro_use]
+pub mod parallel;
+pub use parallel::*;
+
 pub mod rand;
 pub use self::rand::*;
 

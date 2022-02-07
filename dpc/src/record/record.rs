@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Address, AleoAmount, Bech32Locator, Ciphertext, ComputeKey, Network, Payload, RecordError, ViewKey};
+use crate::{Address, AleoAmount, Bech32Locator, Ciphertext, ComputeKey, DecryptionKey, Network, Payload, RecordError};
 use snarkvm_algorithms::traits::{EncryptionScheme, PRF};
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{to_bytes_le, FromBits, FromBytes, FromBytesDeserializer, ToBits, ToBytes, ToBytesSerializer};
@@ -109,45 +109,10 @@ impl<N: Network> Record<N> {
         })
     }
 
-    /// Returns a record from the given account view key and ciphertext.
-    pub fn from_account_view_key(
-        account_view_key: &ViewKey<N>,
-        ciphertext: &N::RecordCiphertext,
-    ) -> Result<Self, RecordError> {
-        // Compute the record view key.
-        let record_view_key = match N::account_encryption_scheme()
-            .generate_symmetric_key(&*account_view_key, *ciphertext.deref().randomizer())
-        {
-            Some(record_view_key) => record_view_key.into(),
-            None => return Err(anyhow!("Failed to compute record view key due to malformed account view key").into()),
-        };
-
+    /// Returns a record from the given decryption key and ciphertext.
+    pub fn decrypt(decryption_key: &DecryptionKey<N>, ciphertext: &N::RecordCiphertext) -> Result<Self, RecordError> {
         // Decrypt the record ciphertext.
-        let plaintext = ciphertext.deref().to_plaintext(&record_view_key)?;
-        let (owner, value, payload, program_id) = Self::decode_plaintext(&plaintext)?;
-
-        // Ensure the record owner matches.
-        let expected_owner = Address::from_view_key(account_view_key);
-        match owner == expected_owner {
-            true => Ok(Self {
-                owner,
-                value,
-                payload,
-                program_id,
-                record_view_key,
-                ciphertext: ciphertext.clone(),
-            }),
-            false => Err(anyhow!("Decoded incorrect record owner from ciphertext").into()),
-        }
-    }
-
-    /// Returns a record from the given record view key and ciphertext.
-    pub fn from_record_view_key(
-        record_view_key: N::RecordViewKey,
-        ciphertext: &N::RecordCiphertext,
-    ) -> Result<Self, RecordError> {
-        // Decrypt the record ciphertext.
-        let plaintext = ciphertext.deref().to_plaintext(&record_view_key)?;
+        let (plaintext, record_view_key) = (*ciphertext).to_plaintext(decryption_key)?;
         let (owner, value, payload, program_id) = Self::decode_plaintext(&plaintext)?;
 
         Ok(Self {
@@ -244,6 +209,12 @@ impl<N: Network> Record<N> {
             program_id  // 384 bits = 48 bytes
         ]?;
 
+        assert_eq!(
+            1 + N::ADDRESS_SIZE_IN_BYTES + 8 + N::RECORD_PAYLOAD_SIZE_IN_BYTES + N::ProgramID::data_size_in_bytes(),
+            plaintext.len(),
+            "Update me if the plaintext design changes."
+        );
+
         // Ensure the record bytes are within the permitted size.
         match plaintext.len() <= u16::MAX as usize {
             true => Ok(plaintext),
@@ -255,7 +226,8 @@ impl<N: Network> Record<N> {
     fn decode_plaintext(plaintext: &[u8]) -> Result<(Address<N>, AleoAmount, Payload<N>, N::ProgramID), RecordError> {
         assert_eq!(
             1 + N::ADDRESS_SIZE_IN_BYTES + 8 + N::RECORD_PAYLOAD_SIZE_IN_BYTES + N::ProgramID::data_size_in_bytes(),
-            plaintext.len()
+            plaintext.len(),
+            "Update me if the plaintext design changes."
         );
 
         // Decode the plaintext bytes.

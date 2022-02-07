@@ -32,7 +32,7 @@ path = "../utilities"
 version = "0.7.5"
 
 [dependencies.anyhow]
-version = "1.0.52"
+version = "1.0.53"
 
 [dependencies.cfg-if]
 version = "1.0.0"
@@ -41,7 +41,7 @@ version = "1.0.0"
 version = "0.2.1"
 
 [dependencies.indexmap]
-version = "1.7.0"
+version = "1.8.0"
 
 [dependencies.itertools]
 version = "0.10.3"

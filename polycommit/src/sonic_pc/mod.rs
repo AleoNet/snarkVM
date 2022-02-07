@@ -45,7 +45,7 @@ use core::{
     ops::Mul,
     sync::atomic::{AtomicBool, Ordering},
 };
-use rand_core::RngCore;
+use rand_core::{RngCore, SeedableRng};
 
 mod data_structures;
 pub use data_structures::*;
@@ -90,7 +90,7 @@ impl<E: PairingEngine> SonicKZG10<E> {
             comms.push(comm);
         }
         let comms = E::G1Projective::batch_normalization_into_affine(comms);
-        comms.into_iter().map(|c| Commitment { 0: c })
+        comms.into_iter().map(|c| kzg10::Commitment(c))
     }
 }
 
@@ -246,12 +246,18 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         let mut labeled_comms: Vec<LabeledCommitment<Self::Commitment>> = Vec::new();
         let mut randomness: Vec<Self::Randomness> = Vec::new();
 
-        for labeled_polynomial in polynomials {
-            let enforced_degree_bounds: Option<&[usize]> = ck.enforced_degree_bounds.as_deref();
+        let mut pool = snarkvm_utilities::ExecutionPool::<Result<_, _>>::new();
 
+        let enforced_degree_bounds: Option<&[usize]> = ck.enforced_degree_bounds.as_deref();
+        for labeled_polynomial in polynomials {
             if terminator.load(Ordering::Relaxed) {
                 return Err(Error::Terminated);
             }
+            let seed = rng.0.as_mut().map(|r| {
+                let mut seed = [0u8; 32];
+                r.fill_bytes(&mut seed);
+                seed
+            });
 
             kzg10::KZG10::<E>::check_degrees_and_bounds(
                 ck.supported_degree(),
@@ -259,31 +265,43 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
                 enforced_degree_bounds,
                 labeled_polynomial,
             )?;
-
             let polynomial = labeled_polynomial.polynomial();
             let degree_bound = labeled_polynomial.degree_bound();
             let hiding_bound = labeled_polynomial.hiding_bound();
-            let label = labeled_polynomial.label();
+            let label = labeled_polynomial.label().clone();
+            pool.add_job(move || {
+                let mut rng = seed.map(rand::rngs::StdRng::from_seed);
 
-            let commit_time = start_timer!(|| format!(
-                "Polynomial {} of degree {}, degree bound {:?}, and hiding bound {:?}",
-                label,
-                polynomial.degree(),
-                degree_bound,
-                hiding_bound,
-            ));
+                let commit_time = start_timer!(|| format!(
+                    "Polynomial {} of degree {}, degree bound {:?}, and hiding bound {:?}",
+                    label,
+                    polynomial.degree(),
+                    degree_bound,
+                    hiding_bound,
+                ));
 
-            let powers = if let Some(degree_bound) = degree_bound {
-                ck.shifted_powers(degree_bound).unwrap()
-            } else {
-                ck.powers()
-            };
+                let powers = if let Some(degree_bound) = degree_bound {
+                    ck.shifted_powers(degree_bound).unwrap()
+                } else {
+                    ck.powers()
+                };
 
-            let (comm, rand) = kzg10::KZG10::commit(&powers, polynomial, hiding_bound, terminator, Some(rng))?;
-
-            labeled_comms.push(LabeledCommitment::new(label.to_string(), comm, degree_bound));
+                let (comm, rand) = kzg10::KZG10::commit(
+                    &powers,
+                    polynomial,
+                    hiding_bound,
+                    terminator,
+                    rng.as_mut().map(|s| s as _),
+                )?;
+                end_timer!(commit_time);
+                Ok((LabeledCommitment::new(label.to_string(), comm, degree_bound), rand))
+            });
+        }
+        let results: Vec<Result<_, _>> = pool.execute_all();
+        for result in results {
+            let (comm, rand) = result?;
+            labeled_comms.push(comm);
             randomness.push(rand);
-            end_timer!(commit_time);
         }
 
         end_timer!(commit_time);

@@ -36,7 +36,7 @@ impl Circuit {
             cb.get_or_init(|| {
                 let scope = CircuitScope::<<Self as Environment>::BaseField>::new(
                     Rc::new(RefCell::new(ConstraintSystem::new())),
-                    format!("Circuit::new"),
+                    "Circuit::new".to_string(),
                     None,
                 );
                 RefCell::new(Circuit(scope))
@@ -52,7 +52,7 @@ impl Circuit {
         CB.with(|cb| {
             (*cb.get().unwrap().borrow_mut()).0 = CircuitScope::<<Self as Environment>::BaseField>::new(
                 Rc::new(RefCell::new(ConstraintSystem::new())),
-                format!("Circuit::new"),
+                "Circuit::new".to_string(),
                 None,
             );
         });
@@ -106,7 +106,7 @@ impl Environment for Circuit {
     {
         CB.with(|cb| {
             // Fetch a copy of the current environment.
-            let current = Self::cs().clone();
+            let current = Self::cs();
 
             // Set the entire environment to the new scope, and run the logic.
             let scope = current.clone().new_scope(name);

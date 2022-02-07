@@ -33,13 +33,13 @@ pub fn parse(command: Command) -> anyhow::Result<String> {
                             } else if status.updated() {
                                 Ok(format!("\nsnarkVM has updated to version {}", status.version()))
                             } else {
-                                Ok(format!(""))
+                                Ok("".to_string())
                             }
                         }
                         Err(e) => Ok(format!("\nFailed to update snarkVM to the latest version\n{}\n", e)),
                     }
                 } else {
-                    Ok(format!(""))
+                    Ok("".to_string())
                 }
             }
         }, // _ => Err(anyhow!("\nUnknown command\n")),
