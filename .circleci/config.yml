@@ -277,6 +277,7 @@ jobs:
       # resource_class: gpu.nvidia.small
       image: ubuntu-2004-cuda-11.4:202110-01
       # image: ubuntu-2004:202101-01
+      resource_class: gpu.nvidia.medium
     steps:
       - checkout
       - run:
@@ -291,7 +292,7 @@ jobs:
           name: Benchmark "cargo bench --features cuda --bench posw"
           command: |
             echo "In this directory: $(pwd)"
-            cd dpc && cargo bench --bench posw
+            cd dpc && cargo bench --features cuda  --bench posw
 
 
 workflows:
