@@ -60,9 +60,10 @@ mod tests {
     use super::*;
     use snarkvm_curves::bls12_377::Fr;
     use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
+    use snarkvm_utilities::rand::test_rng;
 
     use num_traits::PrimInt;
-    use rand::{thread_rng, Rng};
+    use rand::Rng;
 
     const ITERATIONS: usize = 100_000;
 
@@ -84,25 +85,27 @@ mod tests {
             }
         }
 
+        let mut rng = test_rng();
+
         for _ in 0..ITERATIONS {
             // 8-bit signed integer
-            let expected: i8 = thread_rng().gen();
+            let expected: i8 = rng.gen();
             int_to_bytes_test::<Fr, i8, Int8>(expected, &expected.to_le_bytes());
 
             // 16-bit signed integer
-            let expected: i16 = thread_rng().gen();
+            let expected: i16 = rng.gen();
             int_to_bytes_test::<Fr, i16, Int16>(expected, &expected.to_le_bytes());
 
             // 32-bit signed integer
-            let expected: i32 = thread_rng().gen();
+            let expected: i32 = rng.gen();
             int_to_bytes_test::<Fr, i32, Int32>(expected, &expected.to_le_bytes());
 
             // 64-bit signed integer
-            let expected: i64 = thread_rng().gen();
+            let expected: i64 = rng.gen();
             int_to_bytes_test::<Fr, i64, Int64>(expected, &expected.to_le_bytes());
 
             // 128-bit signed integer
-            let expected: i128 = thread_rng().gen();
+            let expected: i128 = rng.gen();
             int_to_bytes_test::<Fr, i128, Int128>(expected, &expected.to_le_bytes());
         }
     }

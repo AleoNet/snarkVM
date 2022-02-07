@@ -16,14 +16,12 @@
 
 use crate::traits::Group;
 use snarkvm_fields::{One, Zero};
-use snarkvm_utilities::rand::UniformRand;
-
-use rand::SeedableRng;
-use rand_xorshift::XorShiftRng;
+use snarkvm_utilities::rand::{test_rng, UniformRand};
 
 #[allow(clippy::eq_op)]
 pub fn group_test<G: Group>(a: G, mut b: G) {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
+
     let zero = G::zero();
     let fr_zero = G::ScalarField::zero();
     let fr_one = G::ScalarField::one();
