@@ -139,8 +139,8 @@ mod tests {
     fn test_i8_neg() {
         type I = i8;
         run_test::<I>(Mode::Constant, 16, 0, 0, 0);
-        run_test::<I>(Mode::Public, 9, 0, 15, 16);
-        run_test::<I>(Mode::Private, 9, 0, 15, 16);
+        run_test::<I>(Mode::Public, 10, 0, 12, 14);
+        run_test::<I>(Mode::Private, 10, 0, 12, 14);
     }
 
     #[test]
@@ -155,8 +155,8 @@ mod tests {
     fn test_i16_neg() {
         type I = i16;
         run_test::<I>(Mode::Constant, 32, 0, 0, 0);
-        run_test::<I>(Mode::Public, 17, 0, 31, 32);
-        run_test::<I>(Mode::Private, 17, 0, 31, 32);
+        run_test::<I>(Mode::Public, 18, 0, 20, 22);
+        run_test::<I>(Mode::Private, 18, 0, 20, 22);
     }
 
     #[test]
@@ -171,8 +171,8 @@ mod tests {
     fn test_i32_neg() {
         type I = i32;
         run_test::<I>(Mode::Constant, 64, 0, 0, 0);
-        run_test::<I>(Mode::Public, 33, 0, 63, 64);
-        run_test::<I>(Mode::Private, 33, 0, 63, 64);
+        run_test::<I>(Mode::Public, 34, 0, 36, 38);
+        run_test::<I>(Mode::Private, 34, 0, 36, 38);
     }
 
     #[test]
@@ -187,8 +187,8 @@ mod tests {
     fn test_i64_neg() {
         type I = i64;
         run_test::<I>(Mode::Constant, 128, 0, 0, 0);
-        run_test::<I>(Mode::Public, 65, 0, 127, 128);
-        run_test::<I>(Mode::Private, 65, 0, 127, 128);
+        run_test::<I>(Mode::Public, 66, 0, 68, 70);
+        run_test::<I>(Mode::Private, 66, 0, 68, 70);
     }
 
     #[test]
