@@ -38,41 +38,11 @@ mod tests {
     use super::*;
     use crate::Circuit;
     use snarkvm_utilities::UniformRand;
+    use test_utilities::*;
 
     use rand::thread_rng;
 
     const ITERATIONS: usize = 128;
-
-    #[rustfmt::skip]
-    fn check_not<I: IntegerType, IC: IntegerTrait<Circuit, I>>(
-        name: &str,
-        expected: I,
-        candidate: IC,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        Circuit::scoped(name, || {
-            let case = format!("!{}", candidate.eject_value());
-
-            let candidate = !candidate;
-            assert_eq!(
-                expected,
-                candidate.eject_value(),
-                "{} != {} := {}",
-                expected,
-                candidate.eject_value(),
-                case
-            );
-
-            assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
-            assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
-            assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
-            assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
-            assert!(Circuit::is_satisfied(), "{} (is_satisfied)", case);
-        });
-    }
 
     #[rustfmt::skip]
     fn run_test<I: IntegerType + Not<Output = I>>(
@@ -82,24 +52,27 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
-        for i in 0..ITERATIONS {
-            let name = format!("Not: {} {}", mode, i);
-            let value: I = UniformRand::rand(&mut thread_rng());
-            let expected = !value;
-            let candidate = Integer::<Circuit, I>::new(mode, value);
+        let check_not = | name: &str, first: I | {
+            let a = Integer::<Circuit, I>::new(mode, first);
+            let case = format!("(!{})", a.eject_value());
+            let expected = !first;
+            check_unary_operation_passes(name, &case, expected, &a, |a: &Integer<Circuit, I> | { a.not() }, num_constants, num_public, num_private, num_constraints);
+        };
 
-            check_not::<I, Integer<Circuit, I>>(&name, expected, candidate, num_constants, num_public, num_private, num_constraints);
+        for i in 0..ITERATIONS {
+            let value: I = UniformRand::rand(&mut thread_rng());
+
+            let name = format!("Not: {} {}", mode, i);
+            check_not(&name, value)
         }
 
         // Check the 0 case.
         let name = format!("Not: {} zero", mode);
-        let candidate = Integer::<Circuit, I>::new(mode, I::zero());
-        check_not::<I, Integer<Circuit, I>>(&name, !I::zero(), candidate, num_constants, num_public, num_private, num_constraints);
+        check_not(&name, I::zero());
 
         // Check the 1 case.
         let name = format!("Not: {} one", mode);
-        let candidate = Integer::<Circuit, I>::new(mode, I::one());
-        check_not::<I, Integer<Circuit, I>>(&name, !I::one(), candidate, num_constants, num_public, num_private, num_constraints);
+        check_not(&name, I::one());
     }
 
     #[test]

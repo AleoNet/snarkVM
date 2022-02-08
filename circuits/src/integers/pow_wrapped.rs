@@ -42,6 +42,7 @@ mod tests {
     use super::*;
     use crate::Circuit;
     use snarkvm_utilities::UniformRand;
+    use test_utilities::*;
 
     use rand::thread_rng;
 
@@ -49,94 +50,40 @@ mod tests {
     const ITERATIONS: usize = 32;
 
     #[rustfmt::skip]
-    fn check_pow_wrapped<I: IntegerType, M: private::Magnitude>(
-        name: &str,
-        expected: I,
-        a: &Integer<Circuit, I>,
-        b: &Integer<Circuit, M>,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        Circuit::scoped(name, || {
-            let case = format!("({} ** {})", a.eject_value(), b.eject_value());
-
-            let candidate = a.pow_wrapped(b);
-            assert_eq!(
-                expected,
-                candidate.eject_value(),
-                "{} != {} := {}",
-                expected,
-                candidate.eject_value(),
-                case
-            );
-
-            print!("Constants: {:?}, ", Circuit::num_constants_in_scope());
-            print!("Public: {:?}, ", Circuit::num_public_in_scope());
-            print!("Private: {:?}, ", Circuit::num_private_in_scope());
-            print!("Constraints: {:?}\n", Circuit::num_constraints_in_scope());
-
-            assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
-            assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
-            assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
-            assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
-            assert!(Circuit::is_satisfied(), "{} (is_satisfied)", case);
-        });
-        Circuit::reset()
-    }
-
-    #[rustfmt::skip]
-    fn run_overflow_and_corner_case_test<I: IntegerType, M: private::Magnitude>(
+    fn run_overflow_and_corner_case_test<I: IntegerType + std::panic::RefUnwindSafe, M: private::Magnitude + std::panic::RefUnwindSafe>(
         mode_a: Mode,
         mode_b: Mode,
     ) {
-        let check_pow_without_expected_parameters = |first: I, second: M, expected: I | {
-            Circuit::scoped("Pow(No Expected Parameters)", || {
-                let a = Integer::<Circuit, I>::new(mode_a, first);
-                let b = Integer::<Circuit, M>::new(mode_b, second);
-
-                let case = format!("({} ** {})", a.eject_value(), b.eject_value());
-                let candidate = a.pow_wrapped(&b);
-                assert_eq!(
-                    expected,
-                    candidate.eject_value(),
-                    "{} != {} := {}",
-                    expected,
-                    candidate.eject_value(),
-                    case
-                );
-                assert!(Circuit::is_satisfied(), "{} (is_satisfied)", case);
-            });
-            Circuit::reset()
+        let check_pow = | name: &str, first: I, second: M | {
+            let a = Integer::<Circuit, I>::new(mode_a, first);
+            let b = Integer::<Circuit, M>::new(mode_b, second);
+            let case = format!("({} ** {})", a.eject_value(), b.eject_value());
+            let expected = first.wrapping_pow(second.to_u32().unwrap());
+            check_binary_operation_passes_without_expected_numbers(name, &case, expected, &a, &b, Integer::pow_checked);
         };
 
         // Test operation without checking for the expected number of
         // constants, public variables, private variables, and constraints.
-        for _i in 0..ITERATIONS {
+        for i in 0..ITERATIONS {
             let first: I = UniformRand::rand(&mut thread_rng());
             let second: M = UniformRand::rand(&mut thread_rng());
-            let expected = first.wrapping_pow(second.to_u32().unwrap());
-            check_pow_without_expected_parameters(first, second, expected);
 
-            check_pow_without_expected_parameters(first, M::zero(), I::one());
-            check_pow_without_expected_parameters(first, M::one(), first);
+            let name = format!("Pow: {} ** {} {}", mode_a, mode_b, i);
+            check_pow(&name, first, second);
 
-            // Attempt to force an overflow.
-            let second: M = M::MAX;
-            let expected = first.wrapping_pow(second.to_u32().unwrap());
-            check_pow_without_expected_parameters(first, second, expected);
+            let name = format!("Pow Zero: {} ** {} {}", mode_a, mode_b, i);
+            check_pow(&name, first, M::zero());
 
+            let name = format!("Pow One: {} ** {} {}", mode_a, mode_b, i);
+            check_pow(&name, first, M::one());
         }
 
         // Test corner cases for exponentiation.
-        check_pow_without_expected_parameters(I::MIN, M::zero(), I::one());
-        check_pow_without_expected_parameters(I::MAX, M::zero(), I::one());
-        check_pow_without_expected_parameters(I::MIN, M::one(), I::MIN);
-        check_pow_without_expected_parameters(I::MAX, M::one(), I::MAX);
-
-
-
+        check_pow("MAX ** MAX", I::MAX, M::MAX);
+        check_pow("MIN ** 0", I::MIN, M::zero());
+        check_pow("MAX ** 0", I::MAX, M::zero());
+        check_pow("MIN ** 1", I::MIN, M::one());
+        check_pow("MAX ** 1", I::MAX, M::one());
     }
 
     #[rustfmt::skip]
@@ -148,28 +95,28 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
-        let check_pow = | name: String, first: I, second: M | {
-            let expected = first.wrapping_pow(second.to_u32().unwrap());
+        let check_pow = | name: &str, first: I, second: M | {
             let a = Integer::<Circuit, I>::new(mode_a, first);
             let b = Integer::<Circuit, M>::new(mode_b, second);
-
-            check_pow_wrapped::<I, M>(&name, expected, &a, &b, num_constants, num_public, num_private, num_constraints)
+            let case = format!("({} ** {})", a.eject_value(), b.eject_value());
+            let expected = first.wrapping_pow(second.to_u32().unwrap());
+            check_binary_operation_passes(name, &case, expected, &a, &b, Integer::pow_checked, num_constants, num_public, num_private, num_constraints);
         };
 
         for i in 0..ITERATIONS {
-            let name = format!("Pow: {} ** {} {}", mode_a, mode_b, i);
             let first: I = UniformRand::rand(&mut thread_rng());
             let second: M = UniformRand::rand(&mut thread_rng());
 
-            check_pow(name, first, second);
+            let name = format!("Pow: {} ** {} {}", mode_a, mode_b, i);
+            check_pow(&name, first, second);
 
             // Check that the square is computed correctly.
             let name = format!("Square: {} ** {} {}", mode_a, mode_b, i);
-            check_pow(name, first, M::one() + M::one());
+            check_pow(&name, first, M::one() + M::one());
 
             // Check that the cube is computed correctly.
             let name = format!("Cube: {} ** {} {}", mode_a, mode_b, i);
-            check_pow(name, first, M::one() + M::one() + M::one());
+            check_pow(&name, first, M::one() + M::one() + M::one());
         }
     }
 

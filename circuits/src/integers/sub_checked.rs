@@ -79,77 +79,11 @@ mod tests {
     use super::*;
     use crate::Circuit;
     use snarkvm_utilities::UniformRand;
+    use test_utilities::*;
 
     use rand::thread_rng;
 
     const ITERATIONS: usize = 128;
-
-    #[rustfmt::skip]
-    fn check_sub_checked<I: IntegerType, IC: IntegerTrait<Circuit, I>>(
-        name: &str,
-        expected: I,
-        a: &IC,
-        b: &IC,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        Circuit::scoped(name, || {
-            let case = format!("({} - {})", a.eject_value(), b.eject_value());
-
-            let candidate = a.sub_checked(b);
-            assert_eq!(
-                expected,
-                candidate.eject_value(),
-                "{} != {} := {}",
-                expected,
-                candidate.eject_value(),
-                case
-            );
-
-            assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
-            assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
-            assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
-            assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
-            assert!(Circuit::is_satisfied(), "{} (is_satisfied)", case);
-        });
-        Circuit::reset();
-    }
-
-    #[rustfmt::skip]
-    fn check_underflow_halts<I: IntegerType + std::panic::RefUnwindSafe>(mode_a: Mode, mode_b: Mode, value_a: I, value_b: I) {
-        let a = Integer::<Circuit, I>::new(mode_a, value_a);
-        let b = Integer::new(mode_b, value_b);
-        let result = std::panic::catch_unwind(|| a.sub_checked(&b));
-        assert!(result.is_err());
-    }
-
-    #[rustfmt::skip]
-    fn check_underflow_fails<I: IntegerType + std::panic::RefUnwindSafe>(
-        mode_a: Mode,
-        mode_b: Mode,
-        value_a: I,
-        value_b: I,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize
-    ) {
-        let name = format!("Sub: {} - {} underflows", value_a, value_b);
-        let a = Integer::<Circuit, I>::new(mode_a, value_a);
-        let b = Integer::new(mode_b, value_b);
-        Circuit::scoped(&name, || {
-            let case = format!("({} - {})", a.eject_value(), b.eject_value());
-            let _candidate = a.sub_checked(&b);
-            assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
-            assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
-            assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
-            assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
-            assert!(!Circuit::is_satisfied(), "{} (!is_satisfied)", case);
-        });
-        Circuit::reset();
-    }
 
     #[rustfmt::skip]
     fn run_test<I: IntegerType + std::panic::RefUnwindSafe>(
@@ -160,23 +94,27 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
-        let check_underflow = |value_a, value_b| match (mode_a, mode_b) {
-            (Mode::Constant, Mode::Constant) => check_underflow_halts::<I>(mode_a, mode_b, value_a, value_b),
-            (_,_) => check_underflow_fails::<I>(mode_a, mode_b, value_a, value_b, num_constants, num_public, num_private, num_constraints),
+        let check_sub = | name: &str, first: I, second: I | {
+            let a = Integer::<Circuit, I>::new(mode_a, first);
+            let b = Integer::<Circuit, I>::new(mode_b, second);
+            let case = format!("({} - {})", a.eject_value(), b.eject_value());
+            match first.checked_sub(&second) {
+                Some(value) => check_binary_operation_passes(name, &case, value, &a, &b, Integer::sub_checked, num_constants, num_public, num_private, num_constraints),
+                None => {
+                    match (mode_a, mode_b) {
+                        (Mode::Constant, Mode::Constant) => check_binary_operation_halts(&a, &b, Integer::sub_checked),
+                        _ => check_binary_operation_fails(name, &case, &a, &b, Integer::sub_checked, num_constants, num_public, num_private, num_constraints)
+                    }
+                }
+            }
         };
 
         for i in 0..ITERATIONS {
-            let name = format!("Sub: a - b {}", i);
             let first: I = UniformRand::rand(&mut thread_rng());
             let second: I = UniformRand::rand(&mut thread_rng());
 
-            let a = Integer::<Circuit, I>::new(mode_a, first);
-            let b = Integer::new(mode_b, second);
-
-            match first.checked_sub(&second) {
-                Some(expected) => check_sub_checked::<I, Integer<Circuit, I>>(&name, expected, &a, &b, num_constants, num_public, num_private, num_constraints),
-                None => check_underflow(first, second),
-            }
+            let name = format!("Sub: a - b {}", i);
+            check_sub(&name, first, second);
         }
 
 
@@ -184,14 +122,14 @@ mod tests {
             // Check overflow and underflow conditions for signed integers
             true => {
                 // Overflow
-                check_underflow(I::MAX, I::zero() - I::one());
+                check_sub("MAX - (-1)", I::MAX, I::zero() - I::one());
 
                 // Underflow
-                check_underflow(I::MIN, I::one());
+                check_sub("MIN - 1", I::MIN, I::one());
             },
             false => {
                 // Underflow
-                check_underflow(I::MIN, I::one());
+                check_sub("MIN - 1", I::MIN, I::one());
             }
         }
     }

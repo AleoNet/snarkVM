@@ -47,84 +47,53 @@ mod tests {
     use super::*;
     use crate::Circuit;
     use snarkvm_utilities::UniformRand;
+    use test_utilities::*;
 
     use rand::thread_rng;
 
     const ITERATIONS: usize = 128;
 
     #[rustfmt::skip]
-    fn check_neg<I: IntegerType, IC: IntegerTrait<Circuit, I>>(
-        name: &str,
-        expected: I,
-        candidate: IC,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        Circuit::scoped(name, || {
-            let case = format!("-{}", candidate.eject_value());
-
-            let candidate = -candidate;
-            assert_eq!(
-                expected,
-                candidate.eject_value(),
-                "{} != {} := {}",
-                expected,
-                candidate.eject_value(),
-                case
-            );
-
-            print!("Constants: {:?}, ", Circuit::num_constants_in_scope());
-            print!("Public: {:?}, ", Circuit::num_public_in_scope());
-            print!("Private: {:?}, ", Circuit::num_private_in_scope());
-            print!("Constraints: {:?}\n", Circuit::num_constraints_in_scope());
-
-            assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
-            assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
-            assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
-            assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
-            assert!(Circuit::is_satisfied(), "{} (is_satisfied)", case);
-        });
-    }
-
-    #[rustfmt::skip]
     fn check_unsigned_halts<I: IntegerType + std::panic::UnwindSafe>(mode: Mode) {
         let value: I = UniformRand::rand(&mut thread_rng());
-        let candidate = Integer::<Circuit, I>::new(mode, value);
-        let result = std::panic::catch_unwind(|| candidate.neg());
-        assert!(result.is_err());
+        check_unary_operation_halts(Integer::<Circuit, I>::new(mode, value), |a: Integer<Circuit, I> | { a.neg() })
     }
 
     #[rustfmt::skip]
-    fn run_test<I: IntegerType + Neg<Output = I>>(
+    fn run_test<I: IntegerType + std::panic::RefUnwindSafe + Neg<Output = I> >(
         mode: Mode,
         num_constants: usize,
         num_public: usize,
         num_private: usize,
         num_constraints: usize,
     ) {
+        let check_neg = | name: &str, first: I | {
+            let a = Integer::<Circuit, I>::new(mode, first);
+            let case = format!("(-{})", a.eject_value());
+            match first.checked_neg() {
+                Some(value) => check_unary_operation_passes(name, &case, value, &a, |a: &Integer<Circuit, I> | { a.neg() }, num_constants, num_public, num_private, num_constraints),
+                None => {
+                    match (mode) {
+                        (Mode::Constant) => check_unary_operation_halts(&a, |a: &Integer<Circuit, I> | { a.neg() }),
+                        _ => check_unary_operation_fails(name, &case, &a, |a: &Integer<Circuit, I> | { a.neg() }, num_constants, num_public, num_private, num_constraints),
+                    }
+                }
+            }
+        };
+
         for i in 0..ITERATIONS {
-            let name = format!("Neg: {} {}", mode, i);
             let value: I = UniformRand::rand(&mut thread_rng());
-            let expected = match value.checked_neg() {
-                Some(negated) => negated,
-                None => continue
-            };
-            let candidate = Integer::<Circuit, I>::new(mode, value);
+            let name = format!("Neg: {} {}", mode, i);
+            check_neg(&name, value);
 
-            check_neg::<I, Integer<Circuit, I>>(&name, expected, candidate, num_constants, num_public, num_private, num_constraints);
+            // Check the 0 case.
+            let name = format!("Neg: {} zero", mode);
+            check_neg(&name, I::zero());
+
+            // Check the 1 case.
+            let name = format!("Neg: {} one", mode);
+            check_neg(&name, -I::one())
         }
-
-        // Check the 0 case.
-        let name = format!("Neg: {} zero", mode);
-        let candidate = Integer::<Circuit, I>::new(mode, I::zero());
-        check_neg::<I, Integer<Circuit, I>>(&name, I::zero(), candidate, num_constants, num_public, num_private, num_constraints);
-
-        // Check the 1 case.
-        let name = format!("Neg: {} one", mode);
-        let candidate = Integer::<Circuit, I>::new(mode, I::one());
-        check_neg::<I, Integer<Circuit, I>>(&name, -I::one(), candidate, num_constants, num_public, num_private, num_constraints);
     }
 
     #[test]

@@ -78,42 +78,11 @@ mod tests {
     use super::*;
     use crate::Circuit;
     use snarkvm_utilities::UniformRand;
+    use test_utilities::*;
 
     use rand::thread_rng;
 
     const ITERATIONS: usize = 128;
-
-    #[rustfmt::skip]
-    fn check_bitxor<I: IntegerType, IC: IntegerTrait<Circuit, I>>(
-        name: &str,
-        expected: I,
-        a: IC,
-        b: IC,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        Circuit::scoped(name, || {
-            let case = format!("({} ^ {})", a.eject_value(), b.eject_value());
-
-            let candidate = a ^ b;
-            assert_eq!(
-                expected,
-                candidate.eject_value(),
-                "{} != {} := {}",
-                expected,
-                candidate.eject_value(),
-                case
-            );
-
-            assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
-            assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
-            assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
-            assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
-            assert!(Circuit::is_satisfied(), "{} (is_satisfied)", case);
-        });
-    }
 
     #[rustfmt::skip]
     fn run_test<I: IntegerType + BitXor<Output = I>>(
@@ -124,42 +93,39 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
+        let check_bitxor = | name: &str, first: I, second: I | {
+            let a = Integer::<Circuit, I>::new(mode_a, first);
+            let b = Integer::<Circuit, I>::new(mode_b, second);
+            let case = format!("BitXor: ({} ^ {})", first, second);
+            let expected = first ^ second;
+            check_binary_operation_passes(name, &case, expected, &a, &b, | a: &Integer<Circuit, I>, b: &Integer<Circuit, I> | { a.bitxor(b) }, num_constants, num_public, num_private, num_constraints);
+            // Commute the operation.
+            let a = Integer::<Circuit, I>::new(mode_a, second);
+            let b = Integer::<Circuit, I>::new(mode_b, first);
+            check_binary_operation_passes(name, &case, expected, &a, &b, | a: &Integer<Circuit, I>, b: &Integer<Circuit, I> | { a.bitxor(b) }, num_constants, num_public, num_private, num_constraints);
+        };
+
         for i in 0..ITERATIONS {
-            let name = format!("BitXor: ({} ^ {}) {}", mode_a, mode_b, i);
             let first : I = UniformRand::rand(&mut thread_rng());
             let second : I = UniformRand::rand(&mut thread_rng());
 
-            let expected = first ^ second;
-            let a = Integer::<Circuit, I>::new(mode_a, first);
-            let b = Integer::<Circuit, I>::new(mode_b, second);
+            let name = format!("BitOr: ({} ^ {}) {}", mode_a, mode_b, i);
+            check_bitxor(&name, first, second);
 
-            check_bitxor::<I, Integer<Circuit, I>>(&name, expected, a, b, num_constants, num_public, num_private, num_constraints);
+            let name = format!("BitOr Identity: ({} ^ {}) {}", mode_a, mode_b, i);
+            check_bitxor(&name, I::zero(), first);
+
+            let name = format!("BitOr Inverse Identity: ({} ^ {}) {}", mode_a, mode_b, i);
+            let inverse = if I::is_signed() { I::zero() - I::one() } else { I::MAX };
+            check_bitxor(&name, inverse, first);
         }
 
-        // Closure for checking particular corner cases.
-        let check_bitxor = | first, second, expected | {
-            let name = format!("BitXor: ({} ^ {})", first, second);
-            let a = Integer::<Circuit, I>::new(mode_a, first);
-            let b = Integer::<Circuit, I>::new(mode_b, second);
-
-            check_bitxor::<I, Integer<Circuit, I>>(&name, expected, a, b, num_constants, num_public, num_private, num_constraints);
-        };
 
         // Check cases common to signed and unsigned integers.
-        check_bitxor(I::zero(), I::MAX, I::MAX);
-        check_bitxor(I::MAX, I::zero(), I::MAX);
-        check_bitxor(I::zero(), I::MIN, I::MIN);
-        check_bitxor(I::MIN, I::zero(), I::MIN);
-
-        // Check cases specific to signed and unsigned integers respectively.
-        for _i in 0..ITERATIONS {
-            let other: I = UniformRand::rand(&mut thread_rng());
-            if I::is_signed() {
-                check_bitxor(I::zero() - I::one(), other, !other);
-            } else {
-                check_bitxor(I::MAX, other, !other);
-            }
-        }
+        check_bitxor("0 ^ MAX", I::zero(), I::MAX);
+        check_bitxor("MAX ^ 0", I::MAX, I::zero());
+        check_bitxor("0 ^ MIN", I::zero(), I::MIN);
+        check_bitxor("MIN ^ 0", I::MIN, I::zero());
     }
 
     // Tests for u8

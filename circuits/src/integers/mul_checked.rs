@@ -26,7 +26,7 @@ impl<E: Environment, I: IntegerType> MulChecked<Self> for Integer<E, I> {
             // Compute the product and return the new constant.
             match self.eject_value().checked_mul(&other.eject_value()) {
                 Some(value) => Integer::new(Mode::Constant, value),
-                None => E::halt("Integer overflow on addition of two constants"),
+                None => E::halt("Integer overflow on multiplication of two constants"),
             }
         } else {
             if I::is_signed() {
@@ -96,101 +96,11 @@ mod tests {
     use super::*;
     use crate::Circuit;
     use snarkvm_utilities::UniformRand;
+    use test_utilities::*;
 
     use rand::thread_rng;
 
     const ITERATIONS: usize = 128;
-
-    #[rustfmt::skip]
-    fn check_mul_checked<I: IntegerType, IC: IntegerTrait<Circuit, I>>(
-        name: &str,
-        expected: I,
-        a: &IC,
-        b: &IC,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        Circuit::scoped(name, || {
-            let case = format!("({} * {})", a.eject_value(), b.eject_value());
-
-            let candidate = a.mul_checked(b);
-            assert_eq!(
-                expected,
-                candidate.eject_value(),
-                "{} != {} := {}",
-                expected,
-                candidate.eject_value(),
-                case
-            );
-
-            assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
-            assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
-            assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
-            assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
-            assert!(Circuit::is_satisfied(), "{} (is_satisfied)", case);
-        });
-        Circuit::reset()
-    }
-
-    #[rustfmt::skip]
-    fn check_overflow_halts<I: IntegerType + std::panic::RefUnwindSafe>(mode_a: Mode, mode_b: Mode, value_a: I, value_b: I) {
-        let a = Integer::<Circuit, I>::new(mode_a, value_a);
-        let b = Integer::new(mode_b, value_b);
-        let result = std::panic::catch_unwind(|| a.mul_checked(&b));
-        assert!(result.is_err());
-
-        let a = Integer::<Circuit, I>::new(mode_a, value_b);
-        let b = Integer::new(mode_b, value_a);
-        let result = std::panic::catch_unwind(|| a.mul_checked(&b));
-        assert!(result.is_err());
-    }
-
-    #[rustfmt::skip]
-    fn check_overflow_fails<I: IntegerType + std::panic::RefUnwindSafe>(
-        mode_a: Mode,
-        mode_b: Mode,
-        value_a: I,
-        value_b: I,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize
-    ) {
-        {
-            let name = format!("Mul: {} * {} overflows", value_a, value_b);
-            let a = Integer::<Circuit, I>::new(mode_a, value_a);
-            let b = Integer::new(mode_b, value_b);
-            Circuit::scoped(&name, || {
-                let case = format!("({} * {})", a.eject_value(), b.eject_value());
-                let _candidate = a.mul_checked(&b);
-
-                assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
-                assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
-                assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
-                assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
-                assert!(!Circuit::is_satisfied(), "{} (!is_satisfied)", case);
-            });
-            Circuit::reset()
-        }
-        {
-            let name = format!("Mul: {} * {} overflows", value_b, value_a);
-            let a = Integer::<Circuit, I>::new(mode_a, value_b);
-            let b = Integer::new(mode_b, value_a);
-            Circuit::scoped(&name, || {
-                let case = format!("({} * {})", a.eject_value(), b.eject_value());
-                let _candidate = a.mul_checked(&b);
-
-                assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
-                assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
-                assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
-                assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
-                assert!(!Circuit::is_satisfied(), "{} (!is_satisfied)", case);
-            });
-            Circuit::reset();
-        }
-    }
 
     #[rustfmt::skip]
     fn run_test<I: IntegerType + std::panic::RefUnwindSafe>(
@@ -201,58 +111,79 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
-        let check_overflow = |value_a, value_b| match (mode_a, mode_b) {
-            (Mode::Constant, Mode::Constant) => check_overflow_halts::<I>(mode_a, mode_b, value_a, value_b),
-            (_,_) => check_overflow_fails::<I>(mode_a, mode_b, value_a, value_b, num_constants, num_public, num_private, num_constraints),
+        let check_mul = | name: &str, first: I, second: I | {
+            let a = Integer::<Circuit, I>::new(mode_a, first);
+            let b = Integer::<Circuit, I>::new(mode_b, second);
+            let case = format!("({} * {})", a.eject_value(), b.eject_value());
+            match first.checked_mul(&second) {
+                Some(value) => {
+                    check_binary_operation_passes(name, &case, value, &a, &b, Integer::mul_checked, num_constants, num_public, num_private, num_constraints);
+                    // Commute the operation.
+                    let a = Integer::<Circuit, I>::new(mode_a, second);
+                    let b = Integer::<Circuit, I>::new(mode_b, first);
+                    check_binary_operation_passes(name, &case, value, &a, &b, Integer::mul_checked, num_constants, num_public, num_private, num_constraints);
+                },
+                None => {
+                    match (mode_a, mode_b) {
+                        (Mode::Constant, Mode::Constant) => {
+                            check_binary_operation_halts(&a, &b, Integer::mul_checked);
+                            // Commute the operation.
+                            let a = Integer::<Circuit, I>::new(mode_a, second);
+                            let b = Integer::<Circuit, I>::new(mode_b, first);
+                            check_binary_operation_halts(&a, &b, Integer::mul_checked);
+                        },
+                        _ => {
+                            check_binary_operation_fails(name, &case, &a, &b, Integer::mul_checked, num_constants, num_public, num_private, num_constraints);
+                            // Commute the operation.
+                            let a = Integer::<Circuit, I>::new(mode_a, second);
+                            let b = Integer::<Circuit, I>::new(mode_b, first);
+                            check_binary_operation_fails(name, &case, &a, &b, Integer::mul_checked, num_constants, num_public, num_private, num_constraints);
+                        }
+                    }
+                }
+            }
         };
 
         for i in 0..ITERATIONS {
-            let name = format!("Mul: {} * {} {}", mode_a, mode_b, i);
             // TODO (@pranav) Uniform random sampling almost always produces arguments that result in an overflow.
             //  Is there a better method for sampling arguments?
             let first: I = UniformRand::rand(&mut thread_rng());
             let second: I = UniformRand::rand(&mut thread_rng());
 
-            let a = Integer::<Circuit, I>::new(mode_a, first);
-            let b = Integer::new(mode_b, second);
+            let name = format!("Mul: {} * {} {}", mode_a, mode_b, i);
+            check_mul(&name, first, second);
 
-            match first.checked_mul(&second) {
-                Some(expected) => check_mul_checked::<I, Integer<Circuit, I>>(&name, expected, &a, &b, num_constants, num_public, num_private, num_constraints),
-                None => check_overflow(first, second),
-            }
+            let name = format!("Double: {} * {} {}", mode_a, mode_b, i);
+            check_mul(&name, first, I::one() + I::one());
+
+            let name = format!("Square: {} * {} {}", mode_a, mode_b, i);
+            check_mul(&name, first, first);
         }
 
-        let check_case = |expected: I, first: I, second: I| {
-            let name = format!("Mul: {} * {}", mode_a, mode_b);
-            let a = Integer::<Circuit, I>::new(mode_a, first);
-            let b = Integer::new(mode_b, second);
-            check_mul_checked::<I, Integer<Circuit, I>>(&name, expected, &a, &b, num_constants, num_public, num_private, num_constraints)
-        };
-
         // Check specific cases common to signed and unsigned integers.
-        check_case(I::MAX, I::one(), I::MAX);
-        check_case(I::MAX, I::MAX, I::one());
-        check_case(I::MIN, I::one(), I::MIN);
-        check_case(I::MIN, I::MIN, I::one());
-        check_case(I::zero(), I::zero(), I::MAX);
-        check_case(I::zero(), I::MAX, I::zero());
-        check_case(I::zero(), I::zero(), I::MIN);
-        check_case(I::zero(), I::MIN, I::zero());
-        check_case(I::one(), I::one(), I::one());
+        check_mul("1 * MAX", I::one(), I::MAX);
+        check_mul("MAX * 1", I::MAX, I::one());
+        check_mul("1 * MIN",I::one(), I::MIN);
+        check_mul("MIN * 1",I::MIN, I::one());
+        check_mul("0 * MAX", I::zero(), I::MAX);
+        check_mul( "MAX * 0", I::MAX, I::zero());
+        check_mul( "0 * MIN", I::zero(), I::MIN);
+        check_mul( "MIN * 0", I::MIN, I::zero());
+        check_mul("1 * 1", I::one(), I::one());
 
         // Check common overflow cases.
-        check_overflow(I::MAX, I::one() + I::one());
-        check_overflow(I::one() + I::one(), I::MAX);
+        check_mul("MAX * 2", I::MAX, I::one() + I::one());
+        check_mul("2 * MAX", I::one() + I::one(), I::MAX);
 
         // Check additional corner cases for signed integers.
         if I::is_signed() {
-            check_case(I::MIN + I::one(), I::MAX, I::zero() - I::one());
-            check_case(I::MIN + I::one(), I::zero() - I::one(), I::MAX);
+            check_mul("MAX * -1", I::MAX, I::zero() - I::one());
+            check_mul("-1 * MAX", I::zero() - I::one(), I::MAX);
 
-            check_overflow(I::MIN, I::zero() - I::one());
-            check_overflow(I::zero() - I::one(), I::MIN);
-            check_overflow(I::MIN, I::zero() - I::one() - I::one());
-            check_overflow(I::zero() - I::one() - I::one(), I::MIN);
+            check_mul("MIN * -1", I::MIN, I::zero() - I::one());
+            check_mul("-1 * MIN", I::zero() - I::one(), I::MIN);
+            check_mul("MIN * -2", I::MIN, I::zero() - I::one() - I::one());
+            check_mul("-2 * MIN", I::zero() - I::one() - I::one(), I::MIN);
         }
     }
 

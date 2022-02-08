@@ -49,62 +49,14 @@ impl<E: Environment, I: IntegerType> AddWrapped<Self> for Integer<E, I> {
 mod tests {
     use super::*;
     use crate::Circuit;
+    use test_utilities::*;
     use snarkvm_utilities::UniformRand;
 
     use rand::thread_rng;
 
     const ITERATIONS: usize = 128;
 
-    fn check_add_wrapped<I: IntegerType, IC: IntegerTrait<Circuit, I>>(
-        name: &str,
-        expected: I,
-        a: &IC,
-        b: &IC,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        Circuit::scoped(name, || {
-            let case = format!("({} + {})", a.eject_value(), b.eject_value());
-
-            let candidate = a.add_wrapped(b);
-            assert_eq!(
-                expected,
-                candidate.eject_value(),
-                "{} != {} := {}",
-                expected,
-                candidate.eject_value(),
-                case
-            );
-
-            assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
-            assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
-            assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
-            assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
-            assert!(Circuit::is_satisfied(), "{} (is_satisfied)", case);
-        });
-        Circuit::reset();
-    }
-
-    fn check_overflow<I: IntegerType>(
-        first: I,
-        second: I,
-        expected: I,
-        mode_a: Mode,
-        mode_b: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        let a = Integer::<Circuit, I>::new(mode_a, first);
-        let b = Integer::new(mode_b, second);
-
-        let name = format!("Add: {} + {} ({})", first, second, expected);
-        check_add_wrapped::<I, Integer<Circuit, I>>(&name, expected, &a, &b, num_constants, num_public, num_private, num_constraints);
-    }
-
+    #[rustfmt::skip]
     fn run_test<I: IntegerType>(
         mode_a: Mode,
         mode_b: Mode,
@@ -113,28 +65,40 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
+        let check_add = | name: &str, first: I, second: I | {
+            let a = Integer::<Circuit, I>::new(mode_a, first);
+            let b = Integer::<Circuit, I>::new(mode_b, second);
+            let case = format!("({} + {})", a.eject_value(), b.eject_value());
+            let expected = first.wrapping_add(&second);
+            check_binary_operation_passes(name, &case, expected, &a, &b, Integer::add_wrapped, num_constants, num_public, num_private, num_constraints);
+            // Commute the operation.
+            let a = Integer::<Circuit, I>::new(mode_a, second);
+            let b = Integer::<Circuit, I>::new(mode_b, first);
+            check_binary_operation_passes(name, &case, expected, &a, &b, Integer::add_wrapped, num_constants, num_public, num_private, num_constraints);
+        };
+
         for i in 0..ITERATIONS {
             let first: I = UniformRand::rand(&mut thread_rng());
             let second: I = UniformRand::rand(&mut thread_rng());
-            let expected = first.wrapping_add(&second);
 
-            let a = Integer::<Circuit, I>::new(mode_a, first);
-            let b = Integer::new(mode_b, second);
-
-            let name = format!("Add: a + b {}", i);
-            check_add_wrapped::<I, Integer<Circuit, I>>(&name, expected, &a, &b, num_constants, num_public, num_private, num_constraints);
+            let name = format!("Add: {} + {} {}", mode_a, mode_b, i);
+            check_add(&name, first, second);
         }
 
         match I::is_signed() {
             true => {
-                check_overflow::<I>(I::MAX, I::one(), I::MIN, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
-                check_overflow::<I>(I::one(), I::MAX, I::MIN, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
-                check_overflow::<I>(I::MIN, I::zero() - I::one(), I::MAX, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
-                check_overflow::<I>(I::zero() - I::one(), I::MIN, I::MAX, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+                // Overflow
+                check_add("MAX + 1", I::MAX, I::one());
+                check_add("1 + MAX", I::one(), I::MAX);
+
+                // Underflow
+                check_add("MIN + (-1)", I::MIN, I::zero() - I::one());
+                check_add("-1 + MIN", I::zero() - I::one(), I::MIN);
             },
             false => {
-                check_overflow::<I>(I::MAX, I::one(), I::zero(), mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
-                check_overflow::<I>(I::one(), I::MAX, I::zero(), mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+                // Overflow
+                check_add("MAX + 1", I::MAX, I::one());
+                check_add("1 + MAX", I::one(), I::MAX);
             }
         }
     }

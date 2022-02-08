@@ -50,93 +50,51 @@ impl<E: Environment, I: IntegerType> SubWrapped<Self> for Integer<E, I> {
 mod tests {
     use super::*;
     use crate::Circuit;
+    use test_utilities::*;
     use snarkvm_utilities::UniformRand;
 
     use rand::thread_rng;
 
     const ITERATIONS: usize = 128;
 
-    fn check_sub_wrapped<I: IntegerType, IC: IntegerTrait<Circuit, I>>(
-        name: &str,
-        expected: I,
-        a: &IC,
-        b: &IC,
+    #[rustfmt::skip]
+    fn run_test<I: IntegerType + std::panic::RefUnwindSafe>(
+        mode_a: Mode,
+        mode_b: Mode,
         num_constants: usize,
         num_public: usize,
         num_private: usize,
         num_constraints: usize,
     ) {
-        Circuit::scoped(name, || {
+        let check_sub = | name: &str, first: I, second: I | {
+            let a = Integer::<Circuit, I>::new(mode_a, first);
+            let b = Integer::<Circuit, I>::new(mode_b, second);
             let case = format!("({} - {})", a.eject_value(), b.eject_value());
+            let expected = first.wrapping_sub(&second);
+            check_binary_operation_passes(name, &case, expected, &a, &b, Integer::sub_wrapped, num_constants, num_public, num_private, num_constraints);
+        };
 
-            let candidate = a.sub_wrapped(b);
-            assert_eq!(
-                expected,
-                candidate.eject_value(),
-                "{} != {} := {}",
-                expected,
-                candidate.eject_value(),
-                case
-            );
-
-            assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
-            assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
-            assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
-            assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
-            assert!(Circuit::is_satisfied(), "{} (is_satisfied)", case);
-        });
-        Circuit::reset()
-    }
-
-    fn check_underflow<I: IntegerType>(
-        first: I,
-        second: I,
-        expected: I,
-        mode_a: Mode,
-        mode_b: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        let a = Integer::<Circuit, I>::new(mode_a, first);
-        let b = Integer::new(mode_b, second);
-
-        let name = format!("Sub: {} - {} ({})", first, second, expected);
-        check_sub_wrapped::<I, Integer<Circuit, I>>(&name, expected, &a, &b, num_constants, num_public, num_private, num_constraints);
-    }
-
-    fn run_test<I: IntegerType>(
-        mode_a: Mode,
-        mode_b: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
         for i in 0..ITERATIONS {
             let first: I = UniformRand::rand(&mut thread_rng());
             let second: I = UniformRand::rand(&mut thread_rng());
-            let expected = first.wrapping_sub(&second);
-
-            let a = Integer::<Circuit, I>::new(mode_a, first);
-            let b = Integer::new(mode_b, second);
 
             let name = format!("Sub: a - b {}", i);
-            check_sub_wrapped::<I, Integer<Circuit, I>>(&name, expected, &a, &b, num_constants, num_public, num_private, num_constraints);
+            check_sub(&name, first, second);
         }
 
+
         match I::is_signed() {
+            // Check overflow and underflow conditions for signed integers
             true => {
                 // Overflow
-                check_underflow::<I>(I::MAX, I::zero() - I::one(), I::MIN, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+                check_sub("MAX - (-1)", I::MAX, I::zero() - I::one());
 
                 // Underflow
-                check_underflow::<I>(I::MIN, I::one(), I::MAX, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+                check_sub("MIN - 1", I::MIN, I::one());
             },
             false => {
-                // Overflow
-                check_underflow::<I>(I::MIN, I::one(), I::MAX, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+                // Underflow
+                check_sub("MIN - 1", I::MIN, I::one());
             }
         }
     }

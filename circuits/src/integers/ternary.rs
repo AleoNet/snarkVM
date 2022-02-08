@@ -50,49 +50,12 @@ mod tests {
     use super::*;
     use crate::Circuit;
     use snarkvm_utilities::UniformRand;
+    use test_utilities::*;
 
     use rand::thread_rng;
 
     #[rustfmt::skip]
-    fn check_ternary<I: IntegerType>(
-        name: &str,
-        expected: I,
-        condition: &Boolean<Circuit>,
-        a: &Integer<Circuit, I>,
-        b: &Integer<Circuit, I>,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        Circuit::scoped(name, || {
-            let case = format!("if ({}) then ({}) else ({})", condition.eject_value(), a.eject_value(), b.eject_value());
-
-            let candidate = Integer::ternary(condition, a, b);
-            assert_eq!(
-                expected,
-                candidate.eject_value(),
-                "{} != {} := {}",
-                expected,
-                candidate.eject_value(),
-                case
-            );
-
-            print!("Constants: {:?}, ", Circuit::num_constants_in_scope());
-            print!("Public: {:?}, ", Circuit::num_public_in_scope());
-            print!("Private: {:?}, ", Circuit::num_private_in_scope());
-            print!("Constraints: {:?}\n", Circuit::num_constraints_in_scope());
-
-            assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
-            assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
-            assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
-            assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
-            assert!(Circuit::is_satisfied(), "{} (is_satisfied)", case);
-        });
-    }
-
-    #[rustfmt::skip]
-    fn run_test<I: IntegerType + std::panic::RefUnwindSafe>(
+    fn run_test<I: IntegerType>(
         mode_condition: Mode,
         mode_a: Mode,
         mode_b: Mode,
@@ -102,17 +65,19 @@ mod tests {
         num_constraints: usize,
     ) {
         for flag in vec![true, false] {
-            let name = format!("Ternary({}): if ({}) then ({}) else ({})", flag, mode_condition, mode_a, mode_b);
             let first: I = UniformRand::rand(&mut thread_rng());
             let second: I = UniformRand::rand(&mut thread_rng());
+
+            let name = format!("Ternary({}): if ({}) then ({}) else ({})", flag, mode_condition, mode_a, mode_b);
+            let case = format!("if ({}) then ({}) else ({})", flag, first, second);
 
             let condition = Boolean::<Circuit>::new(mode_condition, flag);
             let a = Integer::<Circuit, I>::new(mode_a, first);
             let b = Integer::new(mode_b, second);
 
-            check_ternary::<I>(&name, if flag { first } else { second }, &condition, &a, &b, num_constants, num_public, num_private, num_constraints);
-
-            Circuit::reset()
+            // Capture the condition in a closure and use the binary operation check.
+            let operation = | a: &Integer<Circuit, I>, b: &Integer<Circuit, I> | { Integer::ternary(&condition, a, b) };
+            check_binary_operation_passes(&name, &case, if flag { first } else { second }, &a, &b, operation, num_constants, num_public, num_private, num_constraints);
         }
     }
 

@@ -61,42 +61,11 @@ mod tests {
     use super::*;
     use crate::Circuit;
     use snarkvm_utilities::UniformRand;
+    use test_utilities::*;
 
     use rand::thread_rng;
 
     const ITERATIONS: usize = 100;
-
-    #[rustfmt::skip]
-    fn check_is_eq<I: IntegerType, IC: IntegerTrait<Circuit, I>>(
-        name: &str,
-        expected: bool,
-        a: &IC,
-        b: &IC,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        Circuit::scoped(name, || {
-            let case = format!("({} == {})", a.eject_value(), b.eject_value());
-
-            let candidate = a.is_eq(b);
-            assert_eq!(
-                expected,
-                candidate.eject_value(),
-                "{} != {} := {}",
-                expected,
-                candidate.eject_value(),
-                case
-            );
-
-            assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
-            assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
-            assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
-            assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
-            assert!(Circuit::is_satisfied(), "{} (is_satisfied)", case);
-        });
-    }
 
     fn run_test<I: IntegerType>(
         mode_a: Mode,
@@ -111,11 +80,39 @@ mod tests {
             let second: I = UniformRand::rand(&mut thread_rng());
             let expected = first == second;
 
-            let a = Integer::<Circuit, I>::new(mode_a, first);
-            let b = Integer::new(mode_b, second);
+            let name = format!("Eq: {} == {} {}", mode_a, mode_b, i);
+            let case = format!("({} == {})", first, second);
 
-            let name = format!("Eq: a == b {}", i);
-            check_is_eq(&name, expected, &a, &b, num_constants, num_public, num_private, num_constraints);
+            let a = Integer::<Circuit, I>::new(mode_a, first);
+            let b = Integer::<Circuit, I>::new(mode_b, second);
+            check_binary_operation_passes(
+                &name,
+                &case,
+                expected,
+                &a,
+                &b,
+                Integer::is_eq,
+                num_constants,
+                num_public,
+                num_private,
+                num_constraints,
+            );
+
+            // Commute the operation.
+            let a = Integer::<Circuit, I>::new(mode_a, second);
+            let b = Integer::<Circuit, I>::new(mode_b, first);
+            check_binary_operation_passes(
+                &name,
+                &case,
+                expected,
+                &a,
+                &b,
+                Integer::is_eq,
+                num_constants,
+                num_public,
+                num_private,
+                num_constraints,
+            );
         }
     }
 

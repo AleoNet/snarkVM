@@ -42,90 +42,74 @@ impl<E: Environment, I: IntegerType> MulWrapped<Self> for Integer<E, I> {
 mod tests {
     use super::*;
     use crate::Circuit;
+    use test_utilities::*;
     use snarkvm_utilities::{UniformRand};
 
     use rand::thread_rng;
 
     const ITERATIONS: usize = 128;
 
-    fn check_mul_wrapped<I: IntegerType, IC: IntegerTrait<Circuit, I>>(
-        name: &str,
-        expected: I,
-        a: &IC,
-        b: &IC,
+    #[rustfmt::skip]
+    fn run_test<I: IntegerType + std::panic::RefUnwindSafe>(
+        mode_a: Mode,
+        mode_b: Mode,
         num_constants: usize,
         num_public: usize,
         num_private: usize,
         num_constraints: usize,
     ) {
-        Circuit::scoped(name, || {
+        let check_mul = | name: &str, first: I, second: I | {
+            let a = Integer::<Circuit, I>::new(mode_a, first);
+            let b = Integer::<Circuit, I>::new(mode_b, second);
             let case = format!("({} * {})", a.eject_value(), b.eject_value());
+            let expected = first.wrapping_mul(&second);
+            check_binary_operation_passes(name, &case, expected, &a, &b, Integer::mul_wrapped, num_constants, num_public, num_private, num_constraints);
+            // Commute the operation.
+            let a = Integer::<Circuit, I>::new(mode_a, second);
+            let b = Integer::<Circuit, I>::new(mode_b, first);
+            check_binary_operation_passes(name, &case, expected, &a, &b, Integer::mul_wrapped, num_constants, num_public, num_private, num_constraints);
+        };
 
-            let candidate = a.mul_wrapped(b);
-            assert_eq!(
-                expected,
-                candidate.eject_value(),
-                "{} != {} := {}",
-                expected,
-                candidate.eject_value(),
-                case
-            );
-
-            assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
-            assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
-            assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
-            assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
-            assert!(Circuit::is_satisfied(), "{} (is_satisfied)", case);
-        });
-        Circuit::reset();
-    }
-
-    fn check_overflow<I: IntegerType>(
-        first: I,
-        second: I,
-        expected: I,
-        mode_a: Mode,
-        mode_b: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        let a = Integer::<Circuit, I>::new(mode_a, first);
-        let b = Integer::new(mode_b, second);
-
-        let name = format!("Mul: {} * {} ({})", first, second, expected);
-        check_mul_wrapped::<I, Integer<Circuit, I>>(&name, expected, &a, &b, num_constants, num_public, num_private, num_constraints);
-    }
-
-    fn run_test<I: IntegerType>(
-        mode_a: Mode,
-        mode_b: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
         for i in 0..ITERATIONS {
+            // TODO (@pranav) Uniform random sampling almost always produces arguments that result in an overflow.
+            //  Is there a better method for sampling arguments?
             let first: I = UniformRand::rand(&mut thread_rng());
             let second: I = UniformRand::rand(&mut thread_rng());
-            let expected = first.wrapping_mul(&second);
 
-            let a = Integer::<Circuit, I>::new(mode_a, first);
-            let b = Integer::new(mode_b, second);
+            let name = format!("Mul: {} * {} {}", mode_a, mode_b, i);
+            check_mul(&name, first, second);
 
-            let name = format!("Mul: a * b {}", i);
-            check_mul_wrapped::<I, Integer<Circuit, I>>(&name, expected, &a, &b, num_constants, num_public, num_private, num_constraints);
+            let name = format!("Double: {} * {} {}", mode_a, mode_b, i);
+            check_mul(&name, first, I::one() + I::one());
+
+            let name = format!("Square: {} * {} {}", mode_a, mode_a, i);
+            check_mul(&name, first, first);
         }
 
+        // Check specific cases common to signed and unsigned integers.
+        check_mul("1 * MAX", I::one(), I::MAX);
+        check_mul("MAX * 1", I::MAX, I::one());
+        check_mul("1 * MIN",I::one(), I::MIN);
+        check_mul("MIN * 1",I::MIN, I::one());
+        check_mul("0 * MAX", I::zero(), I::MAX);
+        check_mul( "MAX * 0", I::MAX, I::zero());
+        check_mul( "0 * MIN", I::zero(), I::MIN);
+        check_mul( "MIN * 0", I::MIN, I::zero());
+        check_mul("1 * 1", I::one(), I::one());
+
         // Check common overflow cases.
-        check_overflow(I::MAX, I::one() + I::one(), I::MAX.wrapping_add(&I::MAX), mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
-        check_overflow(I::one() + I::one(), I::MAX, I::MAX.wrapping_add(&I::MAX), mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+        check_mul("MAX * 2", I::MAX, I::one() + I::one());
+        check_mul("2 * MAX", I::one() + I::one(), I::MAX);
 
         // Check additional corner cases for signed integers.
         if I::is_signed() {
-            check_overflow(I::MIN, I::zero() - I::one(), I::MIN, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
-            check_overflow(I::zero() - I::one(), I::MIN, I::MIN, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+            check_mul("MAX * -1", I::MAX, I::zero() - I::one());
+            check_mul("-1 * MAX", I::zero() - I::one(), I::MAX);
+
+            check_mul("MIN * -1", I::MIN, I::zero() - I::one());
+            check_mul("-1 * MIN", I::zero() - I::one(), I::MIN);
+            check_mul("MIN * -2", I::MIN, I::zero() - I::one() - I::one());
+            check_mul("-2 * MIN", I::zero() - I::one() - I::one(), I::MIN);
         }
     }
 

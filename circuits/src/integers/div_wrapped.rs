@@ -105,84 +105,67 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
 mod tests {
     use super::*;
     use crate::Circuit;
+    use test_utilities::*;
     use snarkvm_utilities::UniformRand;
 
     use rand::thread_rng;
 
-    const ITERATIONS: usize = 1024;
+    const ITERATIONS: usize = 128;
 
-    fn check_div_wrapped<I: IntegerType, IC: IntegerTrait<Circuit, I>>(
-        name: &str,
-        expected: I,
-        a: &IC,
-        b: &IC,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
+    #[rustfmt::skip]
+    fn run_overflow_and_corner_case_test<I: IntegerType + std::panic::RefUnwindSafe>(
+        mode_a: Mode,
+        mode_b: Mode,
     ) {
-        Circuit::scoped(name, || {
+
+        let check_div = | name: &str, first: I, second: I | {
+            let a = Integer::<Circuit, I>::new(mode_a, first);
+            let b = Integer::<Circuit, I>::new(mode_b, second);
             let case = format!("({} / {})", a.eject_value(), b.eject_value());
+            if second == I::zero() {
+                check_binary_operation_halts(&a, &b, Integer::div_wrapped);
+            } else {
+                let expected = first.wrapping_div(&second);
+                check_binary_operation_passes_without_expected_numbers(name, &case, expected, &a, &b, Integer::div_wrapped);
+            }
+        };
 
-            let candidate = a.div_wrapped(b);
-            assert_eq!(
-                expected,
-                candidate.eject_value(),
-                "{} != {} := {}",
-                expected,
-                candidate.eject_value(),
-                case
-            );
+        for i in 0..ITERATIONS {
+            let first: I = UniformRand::rand(&mut thread_rng());
+            let second: I = UniformRand::rand(&mut thread_rng());
 
-            assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
-            assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
-            assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
-            assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
-            assert!(Circuit::is_satisfied(), "{} (is_satisfied)", case);
-        });
-        Circuit::reset();
+            let name = format!("Div: {} / {}", first, second);
+            check_div(&name, first, second);
+
+            let name = format!("Div by One: {} / {}", first, second);
+            check_div(&name, first, I::one());
+
+            let name = format!("Div by Self: {} / {}", first, second);
+            check_div(&name, first, first);
+
+            let name = format!("Div by Zero: {} / {}", first, second);
+            check_div(&name, first, I::zero());
+        }
+
+        // Check standard division properties and corner cases.
+        check_div("MAX / 1", I::MAX, I::one());
+        check_div("MIN / 1", I::MIN, I::one());
+        check_div("1 / 1", I::one(), I::one());
+        check_div("0 / 1", I::zero(), I::one());
+        check_div("MAX / 0", I::MAX, I::zero());
+        check_div("MIN / 0", I::MIN, I::zero());
+        check_div("1 / 0", I::one(), I::zero());
+        check_div("0 / 0", I::zero(),I::zero());
+
+        // Check some additional corner cases for signed integer division.
+        if I::is_signed() {
+            check_div("MAX / -1", I::MAX, I::zero() - I::one());
+            check_div("MIN / -1", I::MIN, I::zero() - I::one());
+            check_div("1 / -1", I::one(), I::zero() - I::one());
+        }
     }
 
     #[rustfmt::skip]
-    fn check_division_by_zero_halts<I: IntegerType + std::panic::RefUnwindSafe>(mode_a: Mode, mode_b: Mode, value_a: I, value_b: I) {
-        let a = Integer::<Circuit, I>::new(mode_a, value_a);
-        let b = Integer::new(mode_b, value_b);
-        let result = std::panic::catch_unwind(|| a.div_wrapped(&b));
-        assert!(result.is_err());
-    }
-
-    // Note that only signed division can overflow.
-    fn run_overflow_and_halt_test<I: IntegerType + std::panic::RefUnwindSafe>(
-        mode_a: Mode,
-        mode_b: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        for _i in 0..ITERATIONS {
-            let first: I = UniformRand::rand(&mut thread_rng());
-            let second: I = I::zero();
-
-            check_division_by_zero_halts(mode_a, mode_b, first, second);
-        }
-
-        check_division_by_zero_halts(mode_a, mode_b, I::MAX, I::zero());
-        check_division_by_zero_halts(mode_a, mode_b, I::MIN, I::zero());
-        check_division_by_zero_halts(mode_a, mode_b, I::one(), I::zero());
-        check_division_by_zero_halts(mode_a, mode_b, I::zero(), I::zero());
-
-        // Check overflow case.
-        let first = I::MIN;
-        let second = I::zero() - I::one();
-
-        let expected = first.wrapping_div(&second);
-        let a = Integer::<Circuit, I>::new(mode_a, first);
-        let b = Integer::new(mode_b, second);
-        let name = format!("Div Overflow: {} / {}", first, second);
-        check_div_wrapped::<I, Integer<Circuit, I>>(&name, expected, &a, &b, num_constants, num_public, num_private, num_constraints);
-    }
-
     fn run_test<I: IntegerType + std::panic::RefUnwindSafe>(
         mode_a: Mode,
         mode_b: Mode,
@@ -191,53 +174,59 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
+
+        let check_div = | name: &str, first: I, second: I | {
+            let a = Integer::<Circuit, I>::new(mode_a, first);
+            let b = Integer::<Circuit, I>::new(mode_b, second);
+            let case = format!("({} / {})", a.eject_value(), b.eject_value());
+            if second == I::zero() {
+                check_binary_operation_halts(&a, &b, Integer::div_wrapped);
+            } else {
+                let expected = first.wrapping_div(&second);
+                check_binary_operation_passes(name, &case, expected, &a, &b, Integer::div_wrapped, num_constants, num_public, num_private, num_constraints);
+            }
+        };
+
         for i in 0..ITERATIONS {
             let first: I = UniformRand::rand(&mut thread_rng());
             let second: I = UniformRand::rand(&mut thread_rng());
 
-            match (first, second) {
-                (_, divisor) if divisor == I::zero() => check_division_by_zero_halts(mode_a, mode_b, first, second),
-                _ => {
-                    let expected = first.wrapping_div(&second);
-                    let a = Integer::<Circuit, I>::new(mode_a, first);
-                    let b = Integer::new(mode_b, second);
+            let name = format!("Div: {} / {}", first, second);
+            check_div(&name, first, second);
 
-                    let name = format!("Div: a / b {}", i);
-                    check_div_wrapped::<I, Integer<Circuit, I>>(&name, expected, &a, &b, num_constants, num_public, num_private, num_constraints);
-                }
-            }
+            let name = format!("Div by One: {} / {}", first, second);
+            check_div(&name, first, I::one());
+
+            let name = format!("Div by Self: {} / {}", first, second);
+            check_div(&name, first, first);
+
+            let name = format!("Div by Zero: {} / {}", first, second);
+            check_div(&name, first, I::zero());
         }
 
-        let check_div = |first, second, expected| {
-            let a = Integer::<Circuit, I>::new(mode_a, first);
-            let b = Integer::new(mode_b, second);
-
-            let name = format!("Div: {} / {}", first, second);
-            check_div_wrapped::<I, Integer<Circuit, I>>(&name, expected, &a, &b, num_constants, num_public, num_private, num_constraints);
-        };
-
         // Check standard division properties and corner cases.
-        check_div(I::MAX, I::one(), I::MAX);
-        check_div(I::MIN, I::one(), I::MIN);
-        check_div(I::one(), I::one(), I::one());
-        check_div(I::zero(), I::one(), I::zero());
-        check_division_by_zero_halts(mode_a, mode_b, I::MAX, I::zero());
-        check_division_by_zero_halts(mode_a, mode_b, I::MIN, I::zero());
-        check_division_by_zero_halts(mode_a, mode_b, I::one(), I::zero());
-        check_division_by_zero_halts(mode_a, mode_b, I::zero(),I::zero());
+        check_div("MAX / 1", I::MAX, I::one());
+        check_div("MIN / 1", I::MIN, I::one());
+        check_div("1 / 1", I::one(), I::one());
+        check_div("0 / 1", I::zero(), I::one());
+        check_div("MAX / 0", I::MAX, I::zero());
+        check_div("MIN / 0", I::MIN, I::zero());
+        check_div("1 / 0", I::one(), I::zero());
+        check_div("0 / 0", I::zero(),I::zero());
 
         // Check some additional corner cases for signed integer division.
         if I::is_signed() {
-            check_div(I::MAX, I::zero() - I::one(), I::MIN + I::one());
-            check_div(I::MIN, I::zero() - I::one(), I::MIN);
-            check_div(I::one(), I::zero() - I::one(), I::zero() - I::one());
+            check_div("MAX / -1", I::MAX, I::zero() - I::one());
+            check_div("MIN / -1", I::MIN, I::zero() - I::one());
+            check_div("1 / -1", I::one(), I::zero() - I::one());
         }
     }
 
     #[test]
     fn test_u8_constant_div_constant() {
         type I = u8;
-        run_test::<I>(Mode::Constant, Mode::Constant, 8, 0, 0, 0);
+        run_overflow_and_corner_case_test::<I>(Mode::Constant, Mode::Constant);
+		run_test::<I>(Mode::Constant, Mode::Constant, 8, 0, 0, 0);
     }
 
     #[test]
@@ -267,25 +256,29 @@ mod tests {
     #[test]
     fn test_u8_public_div_public() {
         type I = u8;
-        run_test::<I>(Mode::Public, Mode::Public, 4, 0, 21, 22);
+        run_overflow_and_corner_case_test::<I>(Mode::Public, Mode::Public);
+		run_test::<I>(Mode::Public, Mode::Public, 4, 0, 21, 22);
     }
 
     #[test]
     fn test_u8_public_div_private() {
         type I = u8;
-        run_test::<I>(Mode::Public, Mode::Private, 4, 0, 21, 22);
+        run_overflow_and_corner_case_test::<I>(Mode::Public, Mode::Private);
+		run_test::<I>(Mode::Public, Mode::Private, 4, 0, 21, 22);
     }
 
     #[test]
     fn test_u8_private_div_public() {
         type I = u8;
-        run_test::<I>(Mode::Private, Mode::Public, 4, 0, 21, 22);
+        run_overflow_and_corner_case_test::<I>(Mode::Private, Mode::Public);
+		run_test::<I>(Mode::Private, Mode::Public, 4, 0, 21, 22);
     }
 
     #[test]
     fn test_u8_private_div_private() {
         type I = u8;
-        run_test::<I>(Mode::Private, Mode::Private, 4, 0, 21, 22);
+        run_overflow_and_corner_case_test::<I>(Mode::Private, Mode::Private);
+		run_test::<I>(Mode::Private, Mode::Private, 4, 0, 21, 22);
     }
 
     // Tests for i8
@@ -293,55 +286,60 @@ mod tests {
     #[test]
     fn test_i8_constant_div_constant() {
         type I = i8;
-        run_test::<I>(Mode::Constant, Mode::Constant, 8, 0, 0, 0);
+        run_overflow_and_corner_case_test::<I>(Mode::Constant, Mode::Constant);
+		run_test::<I>(Mode::Constant, Mode::Constant, 8, 0, 0, 0);
     }
 
     #[test]
     fn test_i8_constant_div_public() {
         type I = i8;
-        run_overflow_and_halt_test::<I>(Mode::Constant, Mode::Public, 59, 0, 71, 75);
+        run_overflow_and_corner_case_test::<I>(Mode::Constant, Mode::Public);
     }
 
     #[test]
     fn test_i8_constant_div_private() {
         type I = i8;
-        run_overflow_and_halt_test::<I>(Mode::Constant, Mode::Private, 59, 0, 71, 75);
+        run_overflow_and_corner_case_test::<I>(Mode::Constant, Mode::Private);
     }
 
     #[test]
     fn test_i8_public_div_constant() {
         type I = i8;
-        run_overflow_and_halt_test::<I>(Mode::Public, Mode::Constant, 59, 0, 71, 75);
+        run_overflow_and_corner_case_test::<I>(Mode::Public, Mode::Constant);
     }
 
     #[test]
     fn test_i8_private_div_constant() {
         type I = i8;
-        run_overflow_and_halt_test::<I>(Mode::Private, Mode::Constant, 59, 0, 71, 75);
+        run_overflow_and_corner_case_test::<I>(Mode::Private, Mode::Constant);
     }
 
     #[test]
     fn test_i8_public_div_public() {
         type I = i8;
-        run_test::<I>(Mode::Public, Mode::Public, 54, 0, 96, 102);
+        run_overflow_and_corner_case_test::<I>(Mode::Public, Mode::Public);
+		run_test::<I>(Mode::Public, Mode::Public, 54, 0, 96, 102);
     }
 
     #[test]
     fn test_i8_public_div_private() {
         type I = i8;
-        run_test::<I>(Mode::Public, Mode::Private, 54, 0, 96, 102);
+        run_overflow_and_corner_case_test::<I>(Mode::Public, Mode::Private);
+		run_test::<I>(Mode::Public, Mode::Private, 54, 0, 96, 102);
     }
 
     #[test]
     fn test_i8_private_div_public() {
         type I = i8;
-        run_test::<I>(Mode::Private, Mode::Public, 54, 0, 96, 102);
+        run_overflow_and_corner_case_test::<I>(Mode::Private, Mode::Public);
+		run_test::<I>(Mode::Private, Mode::Public, 54, 0, 96, 102);
     }
 
     #[test]
     fn test_i8_private_div_private() {
         type I = i8;
-        run_test::<I>(Mode::Private, Mode::Private, 54, 0, 96, 102);
+        run_overflow_and_corner_case_test::<I>(Mode::Private, Mode::Private);
+		run_test::<I>(Mode::Private, Mode::Private, 54, 0, 96, 102);
     }
 
     // Tests for u16
@@ -349,7 +347,8 @@ mod tests {
     #[test]
     fn test_u16_constant_div_constant() {
         type I = u16;
-        run_test::<I>(Mode::Constant, Mode::Constant, 16, 0, 0, 0);
+        run_overflow_and_corner_case_test::<I>(Mode::Constant, Mode::Constant);
+		run_test::<I>(Mode::Constant, Mode::Constant, 16, 0, 0, 0);
     }
 
     #[test]
@@ -379,25 +378,29 @@ mod tests {
     #[test]
     fn test_u16_public_div_public() {
         type I = u16;
-        run_test::<I>(Mode::Public, Mode::Public, 4, 0, 37, 38);
+        run_overflow_and_corner_case_test::<I>(Mode::Public, Mode::Public);
+		run_test::<I>(Mode::Public, Mode::Public, 4, 0, 37, 38);
     }
 
     #[test]
     fn test_u16_public_div_private() {
         type I = u16;
-        run_test::<I>(Mode::Public, Mode::Private, 4, 0, 37, 38);
+        run_overflow_and_corner_case_test::<I>(Mode::Public, Mode::Private);
+		run_test::<I>(Mode::Public, Mode::Private, 4, 0, 37, 38);
     }
 
     #[test]
     fn test_u16_private_div_public() {
         type I = u16;
-        run_test::<I>(Mode::Private, Mode::Public, 4, 0, 37, 38);
+        run_overflow_and_corner_case_test::<I>(Mode::Private, Mode::Public);
+		run_test::<I>(Mode::Private, Mode::Public, 4, 0, 37, 38);
     }
 
     #[test]
     fn test_u16_private_div_private() {
         type I = u16;
-        run_test::<I>(Mode::Private, Mode::Private, 4, 0, 37, 38);
+        run_overflow_and_corner_case_test::<I>(Mode::Private, Mode::Private);
+		run_test::<I>(Mode::Private, Mode::Private, 4, 0, 37, 38);
     }
 
     // Tests for i16
@@ -405,55 +408,60 @@ mod tests {
     #[test]
     fn test_i16_constant_div_constant() {
         type I = i16;
-        run_test::<I>(Mode::Constant, Mode::Constant, 16, 0, 0, 0);
+        run_overflow_and_corner_case_test::<I>(Mode::Constant, Mode::Constant);
+		run_test::<I>(Mode::Constant, Mode::Constant, 16, 0, 0, 0);
     }
 
     #[test]
     fn test_i16_constant_div_public() {
         type I = i16;
-        run_overflow_and_halt_test::<I>(Mode::Constant, Mode::Public, 107, 0, 127, 131);
+        run_overflow_and_corner_case_test::<I>(Mode::Constant, Mode::Public);
     }
 
     #[test]
     fn test_i16_constant_div_private() {
         type I = i16;
-        run_overflow_and_halt_test::<I>(Mode::Constant, Mode::Private, 107, 0, 127, 131);
+        run_overflow_and_corner_case_test::<I>(Mode::Constant, Mode::Private);
     }
 
     #[test]
     fn test_i16_public_div_constant() {
         type I = i16;
-        run_overflow_and_halt_test::<I>(Mode::Public, Mode::Constant, 107, 0, 127, 131);
+        run_overflow_and_corner_case_test::<I>(Mode::Public, Mode::Constant);
     }
 
     #[test]
     fn test_i16_private_div_constant() {
         type I = i16;
-        run_overflow_and_halt_test::<I>(Mode::Private, Mode::Constant, 107, 0, 127, 131);
+        run_overflow_and_corner_case_test::<I>(Mode::Private, Mode::Constant);
     }
 
     #[test]
     fn test_i16_public_div_public() {
         type I = i16;
-        run_test::<I>(Mode::Public, Mode::Public, 94, 0, 168, 174);
+        run_overflow_and_corner_case_test::<I>(Mode::Public, Mode::Public);
+		run_test::<I>(Mode::Public, Mode::Public, 94, 0, 168, 174);
     }
 
     #[test]
     fn test_i16_public_div_private() {
         type I = i16;
-        run_test::<I>(Mode::Public, Mode::Private, 94, 0, 168, 174);
+        run_overflow_and_corner_case_test::<I>(Mode::Public, Mode::Private);
+		run_test::<I>(Mode::Public, Mode::Private, 94, 0, 168, 174);
     }
 
     #[test]
     fn test_i16_private_div_public() {
         type I = i16;
-        run_test::<I>(Mode::Private, Mode::Public, 94, 0, 168, 174);
+        run_overflow_and_corner_case_test::<I>(Mode::Private, Mode::Public);
+		run_test::<I>(Mode::Private, Mode::Public, 94, 0, 168, 174);
     }
 
     #[test]
     fn test_i16_private_div_private() {
         type I = i16;
-        run_test::<I>(Mode::Private, Mode::Private, 94, 0, 168, 174);
+        run_overflow_and_corner_case_test::<I>(Mode::Private, Mode::Private);
+		run_test::<I>(Mode::Private, Mode::Private, 94, 0, 168, 174);
     }
 
     // Tests for u32
@@ -461,7 +469,8 @@ mod tests {
     #[test]
     fn test_u32_constant_div_constant() {
         type I = u32;
-        run_test::<I>(Mode::Constant, Mode::Constant, 32, 0, 0, 0);
+        run_overflow_and_corner_case_test::<I>(Mode::Constant, Mode::Constant);
+		run_test::<I>(Mode::Constant, Mode::Constant, 32, 0, 0, 0);
     }
 
     #[test]
@@ -491,25 +500,29 @@ mod tests {
     #[test]
     fn test_u32_public_div_public() {
         type I = u32;
-        run_test::<I>(Mode::Public, Mode::Public, 4, 0, 69, 70);
+        run_overflow_and_corner_case_test::<I>(Mode::Public, Mode::Public);
+		run_test::<I>(Mode::Public, Mode::Public, 4, 0, 69, 70);
     }
 
     #[test]
     fn test_u32_public_div_private() {
         type I = u32;
-        run_test::<I>(Mode::Public, Mode::Private, 4, 0, 69, 70);
+        run_overflow_and_corner_case_test::<I>(Mode::Public, Mode::Private);
+		run_test::<I>(Mode::Public, Mode::Private, 4, 0, 69, 70);
     }
 
     #[test]
     fn test_u32_private_div_public() {
         type I = u32;
-        run_test::<I>(Mode::Private, Mode::Public, 4, 0, 69, 70);
+        run_overflow_and_corner_case_test::<I>(Mode::Private, Mode::Public);
+		run_test::<I>(Mode::Private, Mode::Public, 4, 0, 69, 70);
     }
 
     #[test]
     fn test_u32_private_div_private() {
         type I = u32;
-        run_test::<I>(Mode::Private, Mode::Private, 4, 0, 69, 70);
+        run_overflow_and_corner_case_test::<I>(Mode::Private, Mode::Private);
+		run_test::<I>(Mode::Private, Mode::Private, 4, 0, 69, 70);
     }
 
     // Tests for i32
@@ -517,55 +530,60 @@ mod tests {
     #[test]
     fn test_i32_constant_div_constant() {
         type I = i32;
-        run_test::<I>(Mode::Constant, Mode::Constant, 32, 0, 0, 0);
+        run_overflow_and_corner_case_test::<I>(Mode::Constant, Mode::Constant);
+		run_test::<I>(Mode::Constant, Mode::Constant, 32, 0, 0, 0);
     }
 
     #[test]
     fn test_i32_constant_div_public() {
         type I = i32;
-        run_overflow_and_halt_test::<I>(Mode::Constant, Mode::Public, 203, 0, 239, 243);
+        run_overflow_and_corner_case_test::<I>(Mode::Constant, Mode::Public);
     }
 
     #[test]
     fn test_i32_constant_div_private() {
         type I = i32;
-        run_overflow_and_halt_test::<I>(Mode::Constant, Mode::Private, 203, 0, 239, 243);
+        run_overflow_and_corner_case_test::<I>(Mode::Constant, Mode::Private);
     }
 
     #[test]
     fn test_i32_public_div_constant() {
         type I = i32;
-        run_overflow_and_halt_test::<I>(Mode::Public, Mode::Constant, 203, 0, 239, 243);
+        run_overflow_and_corner_case_test::<I>(Mode::Public, Mode::Constant);
     }
 
     #[test]
     fn test_i32_private_div_constant() {
         type I = i32;
-        run_overflow_and_halt_test::<I>(Mode::Constant, Mode::Private, 203, 0, 239, 243);
+        run_overflow_and_corner_case_test::<I>(Mode::Constant, Mode::Private);
     }
 
     #[test]
     fn test_i32_public_div_public() {
         type I = i32;
-        run_test::<I>(Mode::Public, Mode::Public, 174, 0, 312, 318);
+        run_overflow_and_corner_case_test::<I>(Mode::Public, Mode::Public);
+		run_test::<I>(Mode::Public, Mode::Public, 174, 0, 312, 318);
     }
 
     #[test]
     fn test_i32_public_div_private() {
         type I = i32;
-        run_test::<I>(Mode::Public, Mode::Private, 174, 0, 312, 318);
+        run_overflow_and_corner_case_test::<I>(Mode::Public, Mode::Private);
+		run_test::<I>(Mode::Public, Mode::Private, 174, 0, 312, 318);
     }
 
     #[test]
     fn test_i32_private_div_public() {
         type I = i32;
-        run_test::<I>(Mode::Private, Mode::Public, 174, 0, 312, 318);
+        run_overflow_and_corner_case_test::<I>(Mode::Private, Mode::Public);
+		run_test::<I>(Mode::Private, Mode::Public, 174, 0, 312, 318);
     }
 
     #[test]
     fn test_i32_private_div_private() {
         type I = i32;
-        run_test::<I>(Mode::Private, Mode::Private, 174, 0, 312, 318);
+        run_overflow_and_corner_case_test::<I>(Mode::Private, Mode::Private);
+		run_test::<I>(Mode::Private, Mode::Private, 174, 0, 312, 318);
     }
 
     // Tests for u64
@@ -573,7 +591,8 @@ mod tests {
     #[test]
     fn test_u64_constant_div_constant() {
         type I = u64;
-        run_test::<I>(Mode::Constant, Mode::Constant, 64, 0, 0, 0);
+        run_overflow_and_corner_case_test::<I>(Mode::Constant, Mode::Constant);
+		run_test::<I>(Mode::Constant, Mode::Constant, 64, 0, 0, 0);
     }
 
     #[test]
@@ -603,25 +622,29 @@ mod tests {
     #[test]
     fn test_u64_public_div_public() {
         type I = u64;
-        run_test::<I>(Mode::Public, Mode::Public, 4, 0, 133, 134);
+        run_overflow_and_corner_case_test::<I>(Mode::Public, Mode::Public);
+		run_test::<I>(Mode::Public, Mode::Public, 4, 0, 133, 134);
     }
 
     #[test]
     fn test_u64_public_div_private() {
         type I = u64;
-        run_test::<I>(Mode::Public, Mode::Private, 4, 0, 133, 134);
+        run_overflow_and_corner_case_test::<I>(Mode::Public, Mode::Private);
+		run_test::<I>(Mode::Public, Mode::Private, 4, 0, 133, 134);
     }
 
     #[test]
     fn test_u64_private_div_public() {
         type I = u64;
-        run_test::<I>(Mode::Private, Mode::Public, 4, 0, 133, 134);
+        run_overflow_and_corner_case_test::<I>(Mode::Private, Mode::Public);
+		run_test::<I>(Mode::Private, Mode::Public, 4, 0, 133, 134);
     }
 
     #[test]
     fn test_u64_private_div_private() {
         type I = u64;
-        run_test::<I>(Mode::Private, Mode::Private, 4, 0, 133, 134);
+        run_overflow_and_corner_case_test::<I>(Mode::Private, Mode::Private);
+		run_test::<I>(Mode::Private, Mode::Private, 4, 0, 133, 134);
     }
 
     // Tests for i64
@@ -629,55 +652,60 @@ mod tests {
     #[test]
     fn test_i64_constant_div_constant() {
         type I = i64;
-        run_test::<I>(Mode::Constant, Mode::Constant, 64, 0, 0, 0);
+        run_overflow_and_corner_case_test::<I>(Mode::Constant, Mode::Constant);
+		run_test::<I>(Mode::Constant, Mode::Constant, 64, 0, 0, 0);
     }
 
     #[test]
     fn test_i64_constant_div_public() {
         type I = i64;
-        run_overflow_and_halt_test::<I>(Mode::Constant, Mode::Public, 395, 0, 463, 467);
+        run_overflow_and_corner_case_test::<I>(Mode::Constant, Mode::Public);
     }
 
     #[test]
     fn test_i64_constant_div_private() {
         type I = i64;
-        run_overflow_and_halt_test::<I>(Mode::Constant, Mode::Private, 395, 0, 463, 467);
+        run_overflow_and_corner_case_test::<I>(Mode::Constant, Mode::Private);
     }
 
     #[test]
     fn test_i64_public_div_constant() {
         type I = i64;
-        run_overflow_and_halt_test::<I>(Mode::Public, Mode::Constant, 395, 0, 463, 467);
+        run_overflow_and_corner_case_test::<I>(Mode::Public, Mode::Constant);
     }
 
     #[test]
     fn test_i64_private_div_constant() {
         type I = i64;
-        run_overflow_and_halt_test::<I>(Mode::Private, Mode::Constant, 395, 0, 463, 467);
+        run_overflow_and_corner_case_test::<I>(Mode::Private, Mode::Constant);
     }
 
     #[test]
     fn test_i64_public_div_public() {
         type I = i64;
-        run_test::<I>(Mode::Public, Mode::Public, 334, 0, 600, 606);
+        run_overflow_and_corner_case_test::<I>(Mode::Public, Mode::Public);
+		run_test::<I>(Mode::Public, Mode::Public, 334, 0, 600, 606);
     }
 
     #[test]
     fn test_i64_public_div_private() {
         type I = i64;
-        run_test::<I>(Mode::Public, Mode::Private, 334, 0, 600, 606);
+        run_overflow_and_corner_case_test::<I>(Mode::Public, Mode::Private);
+		run_test::<I>(Mode::Public, Mode::Private, 334, 0, 600, 606);
     }
 
     #[test]
     fn test_i64_private_div_public() {
         type I = i64;
-        run_test::<I>(Mode::Private, Mode::Public, 334, 0, 600, 606);
+        run_overflow_and_corner_case_test::<I>(Mode::Private, Mode::Public);
+		run_test::<I>(Mode::Private, Mode::Public, 334, 0, 600, 606);
     }
 
     #[test]
     fn test_i64_private_div_private() {
         type I = i64;
-        run_test::<I>(Mode::Private, Mode::Private, 334, 0, 600, 606);
+        run_overflow_and_corner_case_test::<I>(Mode::Private, Mode::Private);
+		run_test::<I>(Mode::Private, Mode::Private, 334, 0, 600, 606);
     }
 
     // Tests for u128
@@ -685,7 +713,8 @@ mod tests {
     #[test]
     fn test_u128_constant_div_constant() {
         type I = u128;
-        run_test::<I>(Mode::Constant, Mode::Constant, 128, 0, 0, 0);
+        run_overflow_and_corner_case_test::<I>(Mode::Constant, Mode::Constant);
+		run_test::<I>(Mode::Constant, Mode::Constant, 128, 0, 0, 0);
     }
 
     #[test]
@@ -715,25 +744,29 @@ mod tests {
     #[test]
     fn test_u128_public_div_public() {
         type I = u128;
-        run_test::<I>(Mode::Public, Mode::Public, 4, 0, 261, 262);
+        run_overflow_and_corner_case_test::<I>(Mode::Public, Mode::Public);
+		run_test::<I>(Mode::Public, Mode::Public, 4, 0, 261, 262);
     }
 
     #[test]
     fn test_u128_public_div_private() {
         type I = u128;
-        run_test::<I>(Mode::Public, Mode::Private, 4, 0, 261, 262);
+        run_overflow_and_corner_case_test::<I>(Mode::Public, Mode::Private);
+		run_test::<I>(Mode::Public, Mode::Private, 4, 0, 261, 262);
     }
 
     #[test]
     fn test_u128_private_div_public() {
         type I = u128;
-        run_test::<I>(Mode::Private, Mode::Public, 4, 0, 261, 262);
+        run_overflow_and_corner_case_test::<I>(Mode::Private, Mode::Public);
+		run_test::<I>(Mode::Private, Mode::Public, 4, 0, 261, 262);
     }
 
     #[test]
     fn test_u128_private_div_private() {
         type I = u128;
-        run_test::<I>(Mode::Private, Mode::Private, 4, 0, 261, 262);
+        run_overflow_and_corner_case_test::<I>(Mode::Private, Mode::Private);
+		run_test::<I>(Mode::Private, Mode::Private, 4, 0, 261, 262);
     }
 
     // Tests for i128
@@ -741,54 +774,59 @@ mod tests {
     #[test]
     fn test_i128_constant_div_constant() {
         type I = i128;
-        run_test::<I>(Mode::Constant, Mode::Constant, 128, 0, 0, 0);
+        run_overflow_and_corner_case_test::<I>(Mode::Constant, Mode::Constant);
+		run_test::<I>(Mode::Constant, Mode::Constant, 128, 0, 0, 0);
     }
 
     #[test]
     fn test_i128_constant_div_public() {
         type I = i128;
-        run_overflow_and_halt_test::<I>(Mode::Constant, Mode::Public, 779, 0, 911, 915);
+        run_overflow_and_corner_case_test::<I>(Mode::Constant, Mode::Public);
     }
 
     #[test]
     fn test_i128_constant_div_private() {
         type I = i128;
-        run_overflow_and_halt_test::<I>(Mode::Constant, Mode::Private, 779, 0, 911, 915);
+        run_overflow_and_corner_case_test::<I>(Mode::Constant, Mode::Private);
     }
 
     #[test]
     fn test_i128_public_div_constant() {
         type I = i128;
-        run_overflow_and_halt_test::<I>(Mode::Public, Mode::Constant, 779, 0, 911, 915);
+        run_overflow_and_corner_case_test::<I>(Mode::Public, Mode::Constant);
     }
 
     #[test]
     fn test_i128_private_div_constant() {
         type I = i128;
-        run_overflow_and_halt_test::<I>(Mode::Private, Mode::Constant, 779, 0, 911, 915);
+        run_overflow_and_corner_case_test::<I>(Mode::Private, Mode::Constant);
     }
 
     #[test]
     fn test_i128_public_div_public() {
         type I = i128;
-        run_test::<I>(Mode::Public, Mode::Public, 654, 0, 1176, 1182);
+        run_overflow_and_corner_case_test::<I>(Mode::Public, Mode::Public);
+		run_test::<I>(Mode::Public, Mode::Public, 654, 0, 1176, 1182);
     }
 
     #[test]
     fn test_i128_public_div_private() {
         type I = i128;
-        run_test::<I>(Mode::Public, Mode::Private, 654, 0, 1176, 1182);
+        run_overflow_and_corner_case_test::<I>(Mode::Public, Mode::Private);
+		run_test::<I>(Mode::Public, Mode::Private, 654, 0, 1176, 1182);
     }
 
     #[test]
     fn test_i128_private_div_public() {
         type I = i128;
-        run_test::<I>(Mode::Private, Mode::Public, 654, 0, 1176, 1182);
+        run_overflow_and_corner_case_test::<I>(Mode::Private, Mode::Public);
+		run_test::<I>(Mode::Private, Mode::Public, 654, 0, 1176, 1182);
     }
 
     #[test]
     fn test_i128_private_div_private() {
         type I = i128;
-        run_test::<I>(Mode::Private, Mode::Private, 654, 0, 1176, 1182);
+        run_overflow_and_corner_case_test::<I>(Mode::Private, Mode::Private);
+		run_test::<I>(Mode::Private, Mode::Private, 654, 0, 1176, 1182);
     }
 }

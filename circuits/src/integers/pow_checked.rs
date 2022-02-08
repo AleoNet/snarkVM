@@ -674,7 +674,7 @@ mod tests {
         type I = u64;
         type M = u8;
         run_overflow_and_corner_case_test::<I, M>(Mode::Public, Mode::Public);
-        run_test::<I, M>(Mode::Public, Mode::Public, 158, 0, 2477, 2492);
+        run_test::<I, M>(Mode::Public, Mode::Public, 173, 0, 3430, 3460);
     }
 
     #[test]
@@ -682,7 +682,7 @@ mod tests {
         type I = u64;
         type M = u8;
         run_overflow_and_corner_case_test::<I, M>(Mode::Public, Mode::Private);
-        run_test::<I, M>(Mode::Public, Mode::Private, 158, 0, 2477, 2492);
+        run_test::<I, M>(Mode::Public, Mode::Private, 173, 0, 3430, 3460);
     }
 
     #[test]
@@ -690,7 +690,7 @@ mod tests {
         type I = u64;
         type M = u8;
         run_overflow_and_corner_case_test::<I, M>(Mode::Private, Mode::Public);
-        run_test::<I, M>(Mode::Private, Mode::Public, 158, 0, 2477, 2492);
+        run_test::<I, M>(Mode::Private, Mode::Public, 173, 0, 3430, 3460);
     }
 
     #[test]
@@ -698,7 +698,7 @@ mod tests {
         type I = u64;
         type M = u8;
         run_overflow_and_corner_case_test::<I, M>(Mode::Private, Mode::Private);
-        run_test::<I, M>(Mode::Private, Mode::Private, 158, 0, 2477, 2492);
+        run_test::<I, M>(Mode::Private, Mode::Private, 173, 0, 3430, 3460);
     }
 
     // Tests for i64, where exponent is u8
@@ -2074,7 +2074,7 @@ mod tests {
         type I = u64;
         type M = u32;
         run_overflow_and_corner_case_test::<I, M>(Mode::Public, Mode::Public);
-        run_test::<I, M>(Mode::Public, Mode::Public, 254, 0, 10301, 10364);
+        run_test::<I, M>(Mode::Public, Mode::Public, 317, 0, 14302, 14428);
     }
 
     #[test]
@@ -2082,7 +2082,7 @@ mod tests {
         type I = u64;
         type M = u32;
         run_overflow_and_corner_case_test::<I, M>(Mode::Public, Mode::Private);
-        run_test::<I, M>(Mode::Public, Mode::Private, 254, 0, 10301, 10364);
+        run_test::<I, M>(Mode::Public, Mode::Private, 317, 0, 14302, 14428);
     }
 
     #[test]
@@ -2090,7 +2090,7 @@ mod tests {
         type I = u64;
         type M = u32;
         run_overflow_and_corner_case_test::<I, M>(Mode::Private, Mode::Public);
-        run_test::<I, M>(Mode::Private, Mode::Public, 254, 0, 10301, 10364);
+        run_test::<I, M>(Mode::Private, Mode::Public, 317, 0, 14302, 14428);
     }
 
     #[test]
@@ -2098,7 +2098,7 @@ mod tests {
         type I = u64;
         type M = u32;
         run_overflow_and_corner_case_test::<I, M>(Mode::Private, Mode::Private);
-        run_test::<I, M>(Mode::Private, Mode::Private, 254, 0, 10301, 10364);
+        run_test::<I, M>(Mode::Private, Mode::Private, 317, 0, 14302, 14428);
     }
 
     // Tests for i64, where exponent is u32
