@@ -37,7 +37,6 @@ impl<E: Environment, I: IntegerType> Ternary for Integer<E, I> {
                 .map(|(first_bit, second_bit)| Self::Boolean::ternary(&condition, first_bit, second_bit))
                 .collect::<Vec<_>>();
 
-            // TODO (@pranav) Check that this is safe.
             // Directly instantiate the integer, rather than invoking `from_bits_le`
             // since the modes of each individual bit varies depending on the modes
             // and values of `condition`, `first_bit`, and `second_bit`.

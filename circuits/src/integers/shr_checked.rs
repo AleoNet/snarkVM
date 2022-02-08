@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::SignExtend;
+use crate::{SignExtend, ZeroExtend};
 
 impl<E: Environment, I: IntegerType, M: private::Magnitude> ShrChecked<Integer<E, M>> for Integer<E, I> {
     type Output = Self;
@@ -58,16 +58,11 @@ impl<E: Environment, I: IntegerType, M: private::Magnitude> ShrChecked<Integer<E
 
             if rhs_as_u8.is_constant() {
                 // If the shift amount is a constant, then we can manually shift in bits and truncate the result.
-                // TODO (@pranav) Verify the mode of the bits that we shift in.
                 let shift_amount = rhs_as_u8.eject_value() as usize;
                 let mut bits_le = if I::is_signed() {
                     Boolean::sign_extend(&self.bits_le, I::BITS + shift_amount)
                 } else {
-                    // TODO: (@pranav) Zero extend gadget.
-                    let mut bits = Vec::with_capacity(I::BITS + shift_amount);
-                    bits.extend_from_slice(&self.bits_le);
-                    bits.resize(I::BITS + shift_amount, Boolean::new(Mode::Constant, false));
-                    bits
+                    Boolean::zero_extend(&self.bits_le, I::BITS + shift_amount)
                 };
 
                 bits_le.reverse();
@@ -141,10 +136,10 @@ mod tests {
             print!("Constraints: {:?}\n", Circuit::num_constraints_in_scope());
             println!("Circuit: {}", Circuit);
 
-            // assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
-            // assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
-            // assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
-            // assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
+            assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
+            assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
+            assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
+            assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
             assert!(Circuit::is_satisfied(), "{} (is_satisfied)", case);
         });
         Circuit::reset()

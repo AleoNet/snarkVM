@@ -15,8 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use num_traits::NumCast;
-use snarkvm_utilities::{FromBytes, ToBytes};
 
 impl<E: Environment, I: IntegerType> DivChecked<Self> for Integer<E, I> {
     type Output = Self;
@@ -110,7 +108,6 @@ mod tests {
     use crate::Circuit;
     use snarkvm_utilities::UniformRand;
 
-    use num_traits::{One, Signed};
     use rand::thread_rng;
 
     const ITERATIONS: usize = 1024;
@@ -183,7 +180,7 @@ mod tests {
     }
 
     // Note that only signed division can overflow.
-    fn run_overflow_and_halt_test<I: IntegerType + Signed + std::panic::RefUnwindSafe>(
+    fn run_overflow_and_halt_test<I: IntegerType + std::panic::RefUnwindSafe>(
         mode_a: Mode,
         mode_b: Mode,
         num_constants: usize,

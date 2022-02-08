@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{helpers::integers::IntegerType, Environment, Integer, Mode, U16, U32, U8};
+use crate::{helpers::integers::IntegerType, Environment, Mode, U16, U32, U8};
 
 use core::{
     fmt::{Debug, Display},
