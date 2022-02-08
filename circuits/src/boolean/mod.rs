@@ -47,6 +47,11 @@ pub use ternary::*;
 pub mod xor;
 pub use xor::*;
 
+pub mod zero_extend;
+pub use zero_extend::*;
+
+pub use xor::*;
+
 use crate::{traits::*, Environment, LinearCombination, Mode, Variable};
 use snarkvm_fields::{One as O, Zero as Z};
 
