@@ -50,7 +50,10 @@ impl<E: Environment, I: IntegerType, M: private::Magnitude> ShlChecked<Integer<E
             // By masking the upper bits, we have that rhs < I::BITS.
             // Therefore, 2^{rhs} < I::MAX.
             // Use U8 for the exponent as it costs fewer constraints.
-            let rhs_as_u8 = U8 { bits_le: Boolean::zero_extend(&rhs.bits_le[..first_upper_bit_index], 8), phantom: Default::default() };
+            let rhs_as_u8 = U8 {
+                bits_le: Boolean::zero_extend(&rhs.bits_le[..first_upper_bit_index], 8),
+                phantom: Default::default(),
+            };
 
             if rhs_as_u8.is_constant() {
                 // If the shift amount is a constant, then we can manually shift in bits and truncate the result.

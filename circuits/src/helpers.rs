@@ -19,7 +19,7 @@ pub(crate) mod integers {
 
     use core::{
         fmt::{Debug, Display},
-        ops::{Div, Mul, Rem},
+        ops::{Div, Rem},
     };
     use num_traits::{
         CheckedNeg,
@@ -28,7 +28,6 @@ pub(crate) mod integers {
         One as NumOne,
         PrimInt,
         ToPrimitive,
-        Unsigned,
         WrappingAdd,
         WrappingMul,
         WrappingNeg,

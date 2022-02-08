@@ -155,7 +155,7 @@ impl<E: Environment, I: IntegerType> Eject for Integer<E, I> {
             //     // Otherwise, this is a malformed integer, and the program should halt.
             //     match integer_mode == Mode::Constant {
             //         true => integer_mode = bit_mode,
-            //         false => E::halt("Detected an integer with a malformed mode"),
+            //         false => Circuit::halt("Detected an integer with a malformed mode"),
             //     }
             // }
             // TODO (@pranav) verify that this logic is safe.
@@ -297,12 +297,13 @@ mod tests {
 
 #[cfg(test)]
 mod test_utilities {
-    use crate::{IntegerTrait, Circuit, Environment, Eject};
-    use crate::helpers::integers::IntegerType;
-    use std::fmt::{Display, Debug};
-    use std::panic::UnwindSafe;
+    use crate::{helpers::integers::IntegerType, Circuit, Eject, Environment, IntegerTrait};
+    use std::{
+        fmt::{Debug, Display},
+        panic::UnwindSafe,
+    };
 
-    pub fn check_binary_operation<E: Environment, V: Debug + Display + PartialEq, LHS, RHS, OUT: Eject<Primitive=V>>(
+    pub fn check_binary_operation_passes<V: Debug + Display + PartialEq, LHS, RHS, OUT: Eject<Primitive = V>>(
         name: &str,
         case: &str,
         expected: V,
@@ -313,61 +314,74 @@ mod test_utilities {
         num_public: usize,
         num_private: usize,
         num_constraints: usize,
-        check_expected_numbers: bool,
-        check_circuit_satisfied: bool,
     ) {
-        E::scoped(name, || {
+        Circuit::scoped(name, || {
             let candidate = operation(a, b);
-            assert_eq!(
-                expected,
-                candidate.eject_value(),
-                "{} != {} := {}",
-                expected,
-                candidate.eject_value(),
-                case
-            );
+            assert_eq!(expected, candidate.eject_value(), "{} != {} := {}", expected, candidate.eject_value(), case);
 
-            if check_expected_numbers {
-                assert_eq!(num_constants, E::num_constants_in_scope(), "{} (num_constants)", case);
-                assert_eq!(num_public, E::num_public_in_scope(), "{} (num_public)", case);
-                assert_eq!(num_private, E::num_private_in_scope(), "{} (num_private)", case);
-                assert_eq!(num_constraints, E::num_constraints_in_scope(), "{} (num_constraints)", case);
-            }
-            if check_circuit_satisfied {
-                assert!(E::is_satisfied(), "{} (is_satisfied)", case);
-            } else {
-                assert!(!E::is_satisfied(), "{} (!is_satisfied)", case);
-            }
+            assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
+            assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
+            assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
+            assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
+            assert!(Circuit::is_satisfied(), "{} (is_satisfied)", case);
         });
-        E::reset();
+        Circuit::reset();
     }
 
-    pub fn check_binary_operation_without_expected_numbers<E: Environment, V: Debug + Display + PartialEq, LHS, RHS, OUT: Eject<Primitive=V>>(
+    pub fn check_binary_operation_passes_without_expected_numbers<
+        V: Debug + Display + PartialEq,
+        LHS,
+        RHS,
+        OUT: Eject<Primitive = V>,
+    >(
         name: &str,
         case: &str,
         expected: V,
         a: LHS,
         b: RHS,
         operation: impl FnOnce(LHS, RHS) -> OUT,
-        check_circuit_satisfied: bool,
     ) {
-        E::scoped(name, || {
+        Circuit::scoped(name, || {
             let candidate = operation(a, b);
-            assert_eq!(
-                expected,
-                candidate.eject_value(),
-                "{} != {} := {}",
-                expected,
-                candidate.eject_value(),
-                case
-            );
-            if check_circuit_satisfied {
-                assert!(E::is_satisfied(), "{} (is_satisfied)", case);
-            } else {
-                assert!(!E::is_satisfied(), "{} (!is_satisfied)", case);
-            }
+            assert_eq!(expected, candidate.eject_value(), "{} != {} := {}", expected, candidate.eject_value(), case);
         });
-        E::reset();
+        Circuit::reset();
+    }
+
+    pub fn check_binary_operation_fails<LHS, RHS, OUT>(
+        name: &str,
+        case: &str,
+        a: LHS,
+        b: RHS,
+        operation: impl FnOnce(LHS, RHS) -> OUT,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) {
+        Circuit::scoped(name, || {
+            let candidate = operation(a, b);
+            assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
+            assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
+            assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
+            assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
+            assert!(!Circuit::is_satisfied(), "{} (!is_satisfied)", case);
+        });
+        Circuit::reset();
+    }
+
+    pub fn check_binary_operation_fails_without_expected_numbers<LHS, RHS, OUT>(
+        name: &str,
+        case: &str,
+        a: LHS,
+        b: RHS,
+        operation: impl FnOnce(LHS, RHS) -> OUT,
+    ) {
+        Circuit::scoped(name, || {
+            let candidate = operation(a, b);
+            assert!(!Circuit::is_satisfied(), "{} (!is_satisfied)", case);
+        });
+        Circuit::reset();
     }
 
     pub fn check_binary_operation_halts<LHS: UnwindSafe, RHS: UnwindSafe, OUT>(
@@ -379,7 +393,7 @@ mod test_utilities {
         assert!(result.is_err());
     }
 
-    pub fn check_unary_operation<E: Environment, V: Debug + Display + PartialEq, IN, OUT: Eject<Primitive=V>>(
+    pub fn check_unary_operation_passes<V: Debug + Display + PartialEq, IN, OUT: Eject<Primitive = V>>(
         name: &str,
         case: &str,
         expected: V,
@@ -389,69 +403,75 @@ mod test_utilities {
         num_public: usize,
         num_private: usize,
         num_constraints: usize,
-        check_expected_numbers: bool,
-        check_circuit_satisfied: bool,
     ) {
-        E::scoped(name, || {
+        Circuit::scoped(name, || {
             let candidate = operation(input);
-            assert_eq!(
-                expected,
-                candidate.eject_value(),
-                "{} != {} := {}",
-                expected,
-                candidate.eject_value(),
-                case
-            );
+            assert_eq!(expected, candidate.eject_value(), "{} != {} := {}", expected, candidate.eject_value(), case);
 
-            if check_expected_numbers {
-                assert_eq!(num_constants, E::num_constants_in_scope(), "{} (num_constants)", case);
-                assert_eq!(num_public, E::num_public_in_scope(), "{} (num_public)", case);
-                assert_eq!(num_private, E::num_private_in_scope(), "{} (num_private)", case);
-                assert_eq!(num_constraints, E::num_constraints_in_scope(), "{} (num_constraints)", case);
-            }
-            if check_circuit_satisfied {
-                assert!(E::is_satisfied(), "{} (is_satisfied)", case);
-            } else {
-                assert!(!E::is_satisfied(), "{} (!is_satisfied)", case);
-            }
+            assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
+            assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
+            assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
+            assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
+            assert!(Circuit::is_satisfied(), "{} (is_satisfied)", case);
         });
-        E::reset();
+        Circuit::reset();
     }
 
-    pub fn check_unary_operation_without_expected_numbers<E: Environment, V: Debug + Display + PartialEq, IN, OUT: Eject<Primitive=V>>(
+    pub fn check_unary_operation_passes_without_expected_numbers<
+        V: Debug + Display + PartialEq,
+        IN,
+        OUT: Eject<Primitive = V>,
+    >(
         name: &str,
         case: &str,
         expected: V,
         input: IN,
         operation: impl FnOnce(IN) -> OUT,
-        check_circuit_satisfied: bool,
     ) {
-        E::scoped(name, || {
+        Circuit::scoped(name, || {
             let candidate = operation(input);
-            assert_eq!(
-                expected,
-                candidate.eject_value(),
-                "{} != {} := {}",
-                expected,
-                candidate.eject_value(),
-                case
-            );
-            if check_circuit_satisfied {
-                assert!(E::is_satisfied(), "{} (is_satisfied)", case);
-            } else {
-                assert!(!E::is_satisfied(), "{} (!is_satisfied)", case);
-            }
+            assert_eq!(expected, candidate.eject_value(), "{} != {} := {}", expected, candidate.eject_value(), case);
+            assert!(Circuit::is_satisfied(), "{} (is_satisfied)", case);
         });
-        E::reset();
+        Circuit::reset();
     }
 
-    pub fn check_unary_operation_halts<IN: UnwindSafe, OUT>(
+    pub fn check_unary_operation_fails<IN, OUT>(
+        name: &str,
+        case: &str,
         input: IN,
-        operation: impl FnOnce(IN) -> OUT + UnwindSafe,
+        operation: impl FnOnce(IN) -> OUT,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
     ) {
+        Circuit::scoped(name, || {
+            let candidate = operation(input);
+            assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
+            assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
+            assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
+            assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
+            assert!(!Circuit::is_satisfied(), "{} (!is_satisfied)", case);
+        });
+        Circuit::reset();
+    }
+
+    pub fn check_unary_operation_fails_without_expected_numbers<IN, OUT>(
+        name: &str,
+        case: &str,
+        input: IN,
+        operation: impl FnOnce(IN) -> OUT,
+    ) {
+        Circuit::scoped(name, || {
+            let candidate = operation(input);
+            assert!(!Circuit::is_satisfied(), "{} (!is_satisfied)", case);
+        });
+        Circuit::reset();
+    }
+
+    pub fn check_unary_operation_halts<IN: UnwindSafe, OUT>(input: IN, operation: impl FnOnce(IN) -> OUT + UnwindSafe) {
         let result = std::panic::catch_unwind(|| operation(input));
         assert!(result.is_err());
     }
-
-
 }
