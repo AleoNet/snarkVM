@@ -94,52 +94,19 @@ mod tests {
     use super::*;
     use crate::Circuit;
     use snarkvm_utilities::UniformRand;
+    use test_utilities::*;
 
     use num_traits::CheckedShr;
     use rand::thread_rng;
+    use std::ops::Range;
 
     const ITERATIONS: usize = 128;
 
     #[rustfmt::skip]
-    fn check_shr_wrapped<I: IntegerType, M: private::Magnitude>(
+    fn check_shr<I: CheckedShr + IntegerType, M: private::Magnitude>(
         name: &str,
-        expected: I,
-        a: &Integer<Circuit, I>,
-        b: &Integer<Circuit, M>,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        Circuit::scoped(name, || {
-            let case = format!("({} >> {})", a.eject_value(), b.eject_value());
-
-            let candidate = a.shr_wrapped(b);
-            assert_eq!(
-                expected,
-                candidate.eject_value(),
-                "{} != {} := {}",
-                expected,
-                candidate.eject_value(),
-                case
-            );
-
-            print!("Constants: {:?}, ", Circuit::num_constants_in_scope());
-            print!("Public: {:?}, ", Circuit::num_public_in_scope());
-            print!("Private: {:?}, ", Circuit::num_private_in_scope());
-            print!("Constraints: {:?}\n", Circuit::num_constraints_in_scope());
-
-            assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
-            assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
-            assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
-            assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
-            assert!(Circuit::is_satisfied(), "{} (is_satisfied)", case);
-        });
-        Circuit::reset()
-    }
-
-    #[rustfmt::skip]
-    fn run_test<I: CheckedShr + IntegerType + std::panic::RefUnwindSafe, M: private::Magnitude + std::panic::RefUnwindSafe>(
+        first: I,
+        second: M,
         mode_a: Mode,
         mode_b: Mode,
         num_constants: usize,
@@ -147,24 +114,54 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
-        let check_shr = | name: String, first: I, second: M | {
-            let expected = first.wrapping_shr(second.to_u32().unwrap());
-            let a = Integer::<Circuit, I>::new(mode_a, first);
-            let b = Integer::<Circuit, M>::new(mode_b, second);
+        let expected = first.wrapping_shr(second.to_u32().unwrap());
+        let a = Integer::<Circuit, I>::new(mode_a, first);
+        let b = Integer::<Circuit, M>::new(mode_b, second);
+        let case = format!("({} >> {})", a.eject_value(), b.eject_value());
+        check_binary_operation_passes(name, &case, expected, &a, &b, Integer::shr_wrapped, num_constants, num_public, num_private, num_constraints);
+    }
 
-            check_shr_wrapped::<I, M>(&name, expected, &a, &b, num_constants, num_public, num_private, num_constraints)
-        };
+    #[rustfmt::skip]
+    fn run_test<I: CheckedShr + IntegerType, M: private::Magnitude>(
+        mode_a: Mode,
+        mode_b: Mode,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) {
+        let check_shr = | name: &str, first: I, second: M | check_shr(name, first, second, mode_a, mode_a, num_constants, num_public, num_private, num_constraints);
 
         for i in 0..ITERATIONS {
-            let name = format!("Shr: {} >> {} {}", mode_a, mode_b, i);
             let first: I = UniformRand::rand(&mut thread_rng());
             let second: M = UniformRand::rand(&mut thread_rng());
 
-            check_shr(name, first, second);
+            let name = format!("Shr: {} >> {} {}", mode_a, mode_b, i);
+            check_shr(&name, first, second);
 
             // Check that shift right by one is computed correctly.
             let name = format!("Half: {} >> {} {}", mode_a, mode_b, i);
-            check_shr(name, first, M::one());
+            check_shr(&name, first, M::one());
+        }
+    }
+
+    #[rustfmt::skip]
+    fn run_exhaustive_test<I: IntegerType, M: private::Magnitude>(
+        mode_a: Mode,
+        mode_b: Mode,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) where
+        Range<I>: Iterator<Item = I>,
+        Range<M>: Iterator<Item = M>
+    {
+        for first in I::MIN..I::MAX {
+            for second in M::MIN..M::MAX {
+                let name = format!("Shl: ({} >> {})", first, second);
+                check_shr(&name, first, second, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+            }
         }
     }
 
@@ -2116,5 +2113,153 @@ mod tests {
         type I = i128;
         type M = u32;
         run_test::<I, M>(Mode::Private, Mode::Private, 760, 0, 16696, 16759);
+    }
+
+    // Exhaustive tests for u8, where shift magnitude is u8
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_constant_shr_u8_constant() {
+        type I = u8;
+        type M = u8;
+        run_exhaustive_test::<I, M>(Mode::Constant, Mode::Constant, 8, 0, 0, 0);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_constant_shr_u8_public() {
+        type I = u8;
+        type M = u8;
+        run_exhaustive_test::<I, M>(Mode::Constant, Mode::Public, 8, 0, 0, 0);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_constant_shr_u8_private() {
+        type I = u8;
+        type M = u8;
+        run_exhaustive_test::<I, M>(Mode::Constant, Mode::Private, 8, 0, 0, 0);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_public_shr_u8_constant() {
+        type I = u8;
+        type M = u8;
+        run_exhaustive_test::<I, M>(Mode::Public, Mode::Constant, 8, 0, 0, 0);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_private_shr_u8_constant() {
+        type I = u8;
+        type M = u8;
+        run_exhaustive_test::<I, M>(Mode::Private, Mode::Constant, 8, 0, 0, 0);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_public_shr_u8_public() {
+        type I = u8;
+        type M = u8;
+        run_exhaustive_test::<I, M>(Mode::Public, Mode::Public, 46, 0, 349, 364);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_public_shr_u8_private() {
+        type I = u8;
+        type M = u8;
+        run_exhaustive_test::<I, M>(Mode::Public, Mode::Private, 46, 0, 349, 364);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_private_shr_u8_public() {
+        type I = u8;
+        type M = u8;
+        run_exhaustive_test::<I, M>(Mode::Private, Mode::Public, 46, 0, 349, 364);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_private_shr_u8_private() {
+        type I = u8;
+        type M = u8;
+        run_exhaustive_test::<I, M>(Mode::Private, Mode::Private, 46, 0, 349, 364);
+    }
+
+    // Exhaustive tests for i8, where shift magnitude is u8
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_constant_shr_u8_constant() {
+        type I = i8;
+        type M = u8;
+        run_exhaustive_test::<I, M>(Mode::Constant, Mode::Constant, 8, 0, 0, 0);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_constant_shr_u8_public() {
+        type I = i8;
+        type M = u8;
+        run_exhaustive_test::<I, M>(Mode::Constant, Mode::Public, 8, 0, 0, 0);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_constant_shr_u8_private() {
+        type I = i8;
+        type M = u8;
+        run_exhaustive_test::<I, M>(Mode::Constant, Mode::Private, 8, 0, 0, 0);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_public_shr_u8_constant() {
+        type I = i8;
+        type M = u8;
+        run_exhaustive_test::<I, M>(Mode::Public, Mode::Constant, 8, 0, 0, 0);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_private_shr_u8_constant() {
+        type I = i8;
+        type M = u8;
+        run_exhaustive_test::<I, M>(Mode::Private, Mode::Constant, 8, 0, 0, 0);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_public_shr_u8_public() {
+        type I = i8;
+        type M = u8;
+        run_exhaustive_test::<I, M>(Mode::Public, Mode::Public, 46, 0, 349, 364);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_public_shr_u8_private() {
+        type I = i8;
+        type M = u8;
+        run_exhaustive_test::<I, M>(Mode::Public, Mode::Private, 46, 0, 349, 364);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_private_shr_u8_public() {
+        type I = i8;
+        type M = u8;
+        run_exhaustive_test::<I, M>(Mode::Private, Mode::Public, 46, 0, 349, 364);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_private_shr_u8_private() {
+        type I = i8;
+        type M = u8;
+        run_exhaustive_test::<I, M>(Mode::Private, Mode::Private, 46, 0, 349, 364);
     }
 }
