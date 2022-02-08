@@ -123,74 +123,475 @@ mod tests {
         }
     }
 
+    /// Checks that the field element, when converted to little-endian bits, is well-formed.
+    fn check_individual_bits_le<I: IntegerType>(candidate: Integer<Circuit, I>) {
+        for (i, bit) in candidate.to_bits_le().iter().enumerate() {
+            match i == 0 {
+                true => assert!(bit.eject_value()),
+                false => assert!(!bit.eject_value()),
+            }
+        }
+    }
+
+    /// Checks that the field element, when converted to big-endian bits, is well-formed.
+    fn check_individual_bits_be<I: IntegerType>(candidate: Integer<Circuit, I>) {
+        for (i, bit) in candidate.to_bits_be().iter().rev().enumerate() {
+            match i == 0 {
+                true => assert!(bit.eject_value()),
+                false => assert!(!bit.eject_value()),
+            }
+        }
+    }
+
+    fn test_individual_bits<I: IntegerType>(value: I) {
+        // Constant
+        check_individual_bits_le(Integer::<Circuit, I>::new(Mode::Constant, value));
+        check_individual_bits_be(Integer::<Circuit, I>::new(Mode::Constant, value));
+        // Public
+        check_individual_bits_le(Integer::<Circuit, I>::new(Mode::Public, value));
+        check_individual_bits_be(Integer::<Circuit, I>::new(Mode::Public, value));
+        // Private
+        check_individual_bits_le(Integer::<Circuit, I>::new(Mode::Private, value));
+        check_individual_bits_be(Integer::<Circuit, I>::new(Mode::Private, value));
+    }
+
+    // Tests for u8.
+
     #[test]
-    fn test_to_bits_le_constant() {
+    fn test_u8_to_bits_le_constant() {
+        type I = u8;
+        check_to_bits_le::<I>(Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u8_to_bits_le_public() {
+        type I = u8;
+        check_to_bits_le::<I>(Mode::Public, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u8_to_bits_le_private() {
+        type I = u8;
+        check_to_bits_le::<I>(Mode::Private, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u8_to_bits_be_constant() {
+        type I = u8;
+        check_to_bits_be::<I>(Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u8_to_bits_be_public() {
+        type I = u8;
+        check_to_bits_be::<I>(Mode::Public, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u8_to_bits_be_private() {
+        type I = u8;
+        check_to_bits_be::<I>(Mode::Private, 0, 0, 0, 0);
+    }
+
+    // Tests for i8.
+
+    #[test]
+    fn test_i8_to_bits_le_constant() {
+        type I = i8;
+        check_to_bits_le::<I>(Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i8_to_bits_le_public() {
+        type I = i8;
+        check_to_bits_le::<I>(Mode::Public, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i8_to_bits_le_private() {
+        type I = i8;
+        check_to_bits_le::<I>(Mode::Private, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i8_to_bits_be_constant() {
+        type I = i8;
+        check_to_bits_be::<I>(Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i8_to_bits_be_public() {
+        type I = i8;
+        check_to_bits_be::<I>(Mode::Public, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i8_to_bits_be_private() {
+        type I = i8;
+        check_to_bits_be::<I>(Mode::Private, 0, 0, 0, 0);
+    }
+
+    // Tests for u16.
+
+    #[test]
+    fn test_u16_to_bits_le_constant() {
+        type I = u16;
+        check_to_bits_le::<I>(Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u16_to_bits_le_public() {
+        type I = u16;
+        check_to_bits_le::<I>(Mode::Public, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u16_to_bits_le_private() {
+        type I = u16;
+        check_to_bits_le::<I>(Mode::Private, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u16_to_bits_be_constant() {
+        type I = u16;
+        check_to_bits_be::<I>(Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u16_to_bits_be_public() {
+        type I = u16;
+        check_to_bits_be::<I>(Mode::Public, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u16_to_bits_be_private() {
+        type I = u16;
+        check_to_bits_be::<I>(Mode::Private, 0, 0, 0, 0);
+    }
+
+    // Tests for i16.
+
+    #[test]
+    fn test_i16_to_bits_le_constant() {
+        type I = i16;
+        check_to_bits_le::<I>(Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i16_to_bits_le_public() {
+        type I = i16;
+        check_to_bits_le::<I>(Mode::Public, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i16_to_bits_le_private() {
+        type I = i16;
+        check_to_bits_le::<I>(Mode::Private, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i16_to_bits_be_constant() {
+        type I = i16;
+        check_to_bits_be::<I>(Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i16_to_bits_be_public() {
+        type I = i16;
+        check_to_bits_be::<I>(Mode::Public, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i16_to_bits_be_private() {
+        type I = i16;
+        check_to_bits_be::<I>(Mode::Private, 0, 0, 0, 0);
+    }
+
+    // Tests for u32.
+
+    #[test]
+    fn test_u32_to_bits_le_constant() {
+        type I = u32;
+        check_to_bits_le::<I>(Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u32_to_bits_le_public() {
+        type I = u32;
+        check_to_bits_le::<I>(Mode::Public, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u32_to_bits_le_private() {
+        type I = u32;
+        check_to_bits_le::<I>(Mode::Private, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u32_to_bits_be_constant() {
+        type I = u32;
+        check_to_bits_be::<I>(Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u32_to_bits_be_public() {
+        type I = u32;
+        check_to_bits_be::<I>(Mode::Public, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u32_to_bits_be_private() {
+        type I = u32;
+        check_to_bits_be::<I>(Mode::Private, 0, 0, 0, 0);
+    }
+
+    // Tests for i32.
+
+    #[test]
+    fn test_i32_to_bits_le_constant() {
+        type I = i32;
+        check_to_bits_le::<I>(Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i32_to_bits_le_public() {
+        type I = i32;
+        check_to_bits_le::<I>(Mode::Public, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i32_to_bits_le_private() {
+        type I = i32;
+        check_to_bits_le::<I>(Mode::Private, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i32_to_bits_be_constant() {
+        type I = i32;
+        check_to_bits_be::<I>(Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i32_to_bits_be_public() {
+        type I = i32;
+        check_to_bits_be::<I>(Mode::Public, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i32_to_bits_be_private() {
+        type I = i32;
+        check_to_bits_be::<I>(Mode::Private, 0, 0, 0, 0);
+    }
+
+    // Tests for u64.
+
+    #[test]
+    fn test_u64_to_bits_le_constant() {
+        type I = u64;
+        check_to_bits_le::<I>(Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u64_to_bits_le_public() {
+        type I = u64;
+        check_to_bits_le::<I>(Mode::Public, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u64_to_bits_le_private() {
+        type I = u64;
+        check_to_bits_le::<I>(Mode::Private, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u64_to_bits_be_constant() {
+        type I = u64;
+        check_to_bits_be::<I>(Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u64_to_bits_be_public() {
+        type I = u64;
+        check_to_bits_be::<I>(Mode::Public, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u64_to_bits_be_private() {
+        type I = u64;
+        check_to_bits_be::<I>(Mode::Private, 0, 0, 0, 0);
+    }
+
+    // Tests for i64.
+
+    #[test]
+    fn test_i64_to_bits_le_constant() {
         type I = i64;
         check_to_bits_le::<I>(Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_to_bits_le_public() {
+    fn test_i64_to_bits_le_public() {
         type I = i64;
         check_to_bits_le::<I>(Mode::Public, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_to_bits_le_private() {
+    fn test_i64_to_bits_le_private() {
         type I = i64;
         check_to_bits_le::<I>(Mode::Private, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_to_bits_be_constant() {
+    fn test_i64_to_bits_be_constant() {
         type I = i64;
         check_to_bits_be::<I>(Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_to_bits_be_public() {
+    fn test_i64_to_bits_be_public() {
         type I = i64;
         check_to_bits_be::<I>(Mode::Public, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_to_bits_be_private() {
+    fn test_i64_to_bits_be_private() {
         type I = i64;
         check_to_bits_be::<I>(Mode::Private, 0, 0, 0, 0);
     }
 
+    // Tests for u128.
+
     #[test]
-    fn test_one() {
-        /// Checks that the field element, when converted to little-endian bits, is well-formed.
-        fn check_bits_le<I: IntegerType>(candidate: Integer<Circuit, I>) {
-            for (i, bit) in candidate.to_bits_le().iter().enumerate() {
-                match i == 0 {
-                    true => assert!(bit.eject_value()),
-                    false => assert!(!bit.eject_value()),
-                }
-            }
-        }
+    fn test_u128_to_bits_le_constant() {
+        type I = u128;
+        check_to_bits_le::<I>(Mode::Constant, 0, 0, 0, 0);
+    }
 
-        /// Checks that the field element, when converted to big-endian bits, is well-formed.
-        fn check_bits_be<I: IntegerType>(candidate: Integer<Circuit, I>) {
-            for (i, bit) in candidate.to_bits_be().iter().rev().enumerate() {
-                match i == 0 {
-                    true => assert!(bit.eject_value()),
-                    false => assert!(!bit.eject_value()),
-                }
-            }
-        }
+    #[test]
+    fn test_u128_to_bits_le_public() {
+        type I = u128;
+        check_to_bits_le::<I>(Mode::Public, 0, 0, 0, 0);
+    }
 
+    #[test]
+    fn test_u128_to_bits_le_private() {
+        type I = u128;
+        check_to_bits_le::<I>(Mode::Private, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u128_to_bits_be_constant() {
+        type I = u128;
+        check_to_bits_be::<I>(Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u128_to_bits_be_public() {
+        type I = u128;
+        check_to_bits_be::<I>(Mode::Public, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u128_to_bits_be_private() {
+        type I = u128;
+        check_to_bits_be::<I>(Mode::Private, 0, 0, 0, 0);
+    }
+
+    // Tests for i128.
+
+    #[test]
+    fn test_i128_to_bits_le_constant() {
+        type I = i128;
+        check_to_bits_le::<I>(Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i128_to_bits_le_public() {
+        type I = i128;
+        check_to_bits_le::<I>(Mode::Public, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i128_to_bits_le_private() {
+        type I = i128;
+        check_to_bits_le::<I>(Mode::Private, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i128_to_bits_be_constant() {
+        type I = i128;
+        check_to_bits_be::<I>(Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i128_to_bits_be_public() {
+        type I = i128;
+        check_to_bits_be::<I>(Mode::Public, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i128_to_bits_be_private() {
+        type I = i128;
+        check_to_bits_be::<I>(Mode::Private, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u8_one() {
+        type I = u8;
+        test_individual_bits(I::one());
+    }
+
+    #[test]
+    fn test_i8_one() {
+        type I = i8;
+        test_individual_bits(I::one());
+    }
+
+    #[test]
+    fn test_u16_one() {
+        type I = u16;
+        test_individual_bits(I::one());
+    }
+
+    #[test]
+    fn test_i16_one() {
+        type I = i16;
+        test_individual_bits(I::one());
+    }
+
+    #[test]
+    fn test_u32_one() {
+        type I = u32;
+        test_individual_bits(I::one());
+    }
+
+    #[test]
+    fn test_i32_one() {
+        type I = i32;
+        test_individual_bits(I::one());
+    }
+
+    #[test]
+    fn test_u64_one() {
+        type I = u64;
+        test_individual_bits(I::one());
+    }
+
+    #[test]
+    fn test_i64_one() {
         type I = i64;
+        test_individual_bits(I::one());
+    }
 
-        // Constant
-        check_bits_le(Integer::<Circuit, I>::new(Mode::Constant, I::one()));
-        check_bits_be(Integer::<Circuit, I>::new(Mode::Constant, I::one()));
-        // Public
-        check_bits_le(Integer::<Circuit, I>::new(Mode::Public, I::one()));
-        check_bits_be(Integer::<Circuit, I>::new(Mode::Public, I::one()));
-        // Private
-        check_bits_le(Integer::<Circuit, I>::new(Mode::Private, I::one()));
-        check_bits_be(Integer::<Circuit, I>::new(Mode::Private, I::one()));
+    #[test]
+    fn test_u128_one() {
+        type I = u128;
+        test_individual_bits(I::one());
+    }
+
+    #[test]
+    fn test_i128_one() {
+        type I = i128;
+        test_individual_bits(I::one());
     }
 }
