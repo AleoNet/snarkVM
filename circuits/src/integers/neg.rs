@@ -60,6 +60,29 @@ mod tests {
     }
 
     #[rustfmt::skip]
+    fn check_neg<I: IntegerType + std::panic::RefUnwindSafe + Neg<Output = I> >(
+        name: &str,
+        first: I,
+        mode: Mode,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) {
+        let a = Integer::<Circuit, I>::new(mode, first);
+        let case = format!("(-{})", a.eject_value());
+        match first.checked_neg() {
+            Some(value) => check_unary_operation_passes(name, &case, value, &a, |a: &Integer<Circuit, I> | { a.neg() }, num_constants, num_public, num_private, num_constraints),
+            None => {
+                match (mode) {
+                    (Mode::Constant) => check_unary_operation_halts(&a, |a: &Integer<Circuit, I> | { a.neg() }),
+                    _ => check_unary_operation_fails(name, &case, &a, |a: &Integer<Circuit, I> | { a.neg() }, num_constants, num_public, num_private, num_constraints),
+                }
+            }
+        }
+    }
+
+    #[rustfmt::skip]
     fn run_test<I: IntegerType + std::panic::RefUnwindSafe + Neg<Output = I> >(
         mode: Mode,
         num_constants: usize,
@@ -67,19 +90,8 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
-        let check_neg = | name: &str, first: I | {
-            let a = Integer::<Circuit, I>::new(mode, first);
-            let case = format!("(-{})", a.eject_value());
-            match first.checked_neg() {
-                Some(value) => check_unary_operation_passes(name, &case, value, &a, |a: &Integer<Circuit, I> | { a.neg() }, num_constants, num_public, num_private, num_constraints),
-                None => {
-                    match (mode) {
-                        (Mode::Constant) => check_unary_operation_halts(&a, |a: &Integer<Circuit, I> | { a.neg() }),
-                        _ => check_unary_operation_fails(name, &case, &a, |a: &Integer<Circuit, I> | { a.neg() }, num_constants, num_public, num_private, num_constraints),
-                    }
-                }
-            }
-        };
+        let check_neg = | name: &str, first: I | check_neg(name, first, mode, num_constants, num_public, num_private, num_constraints);
+
 
         for i in 0..ITERATIONS {
             let value: I = UniformRand::rand(&mut thread_rng());
@@ -174,5 +186,21 @@ mod tests {
         run_test::<I>(Mode::Constant, 256, 0, 0, 0);
         run_test::<I>(Mode::Public, 130, 0, 132, 134);
         run_test::<I>(Mode::Private, 130, 0, 132, 134);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_neg() {
+        type I = i8;
+        for value in I::MIN..I::MAX {
+            let name = format!("Neg: {}", Mode::Constant);
+            check_neg(&name, value, Mode::Constant, 16, 0, 0, 0);
+
+            let name = format!("Neg: {}", Mode::Public);
+            check_neg(&name, value, Mode::Public, 10, 0, 12, 14);
+
+            let name = format!("Neg: {}", Mode::Private);
+            check_neg(&name, value, Mode::Private, 10, 0, 12, 14);
+        }
     }
 }

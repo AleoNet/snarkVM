@@ -109,26 +109,59 @@ mod tests {
     use snarkvm_utilities::UniformRand;
 
     use rand::thread_rng;
+    use std::panic::RefUnwindSafe;
+    use std::ops::Range;
 
     const ITERATIONS: usize = 128;
+
+    #[rustfmt::skip]
+    fn check_div_without_expected_numbers<I: IntegerType + std::panic::RefUnwindSafe>(
+        name: &str,
+        first: I,
+        second: I,
+        mode_a: Mode,
+        mode_b: Mode,
+    ) {
+        let a = Integer::<Circuit, I>::new(mode_a, first);
+        let b = Integer::<Circuit, I>::new(mode_b, second);
+        let case = format!("({} / {})", a.eject_value(), b.eject_value());
+        if second == I::zero() {
+            check_binary_operation_halts(&a, &b, Integer::div_wrapped);
+        } else {
+            let expected = first.wrapping_div(&second);
+            check_binary_operation_passes_without_expected_numbers(name, &case, expected, &a, &b, Integer::div_checked);
+        }
+    }
+
+    #[rustfmt::skip]
+    fn check_div<I: IntegerType + std::panic::RefUnwindSafe>(
+        name: &str,
+        first: I,
+        second: I,
+        mode_a: Mode,
+        mode_b: Mode,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) {
+        let a = Integer::<Circuit, I>::new(mode_a, first);
+        let b = Integer::<Circuit, I>::new(mode_b, second);
+        let case = format!("({} / {})", a.eject_value(), b.eject_value());
+        if second == I::zero() {
+            check_binary_operation_halts(&a, &b, Integer::div_checked);
+        } else {
+            let expected = first.wrapping_div(&second);
+            check_binary_operation_passes(name, &case, expected, &a, &b, Integer::div_checked, num_constants, num_public, num_private, num_constraints);
+        }
+    }
 
     #[rustfmt::skip]
     fn run_overflow_and_corner_case_test<I: IntegerType + std::panic::RefUnwindSafe>(
         mode_a: Mode,
         mode_b: Mode,
     ) {
-
-        let check_div = | name: &str, first: I, second: I | {
-            let a = Integer::<Circuit, I>::new(mode_a, first);
-            let b = Integer::<Circuit, I>::new(mode_b, second);
-            let case = format!("({} / {})", a.eject_value(), b.eject_value());
-            if second == I::zero() {
-                check_binary_operation_halts(&a, &b, Integer::div_wrapped);
-            } else {
-                let expected = first.wrapping_div(&second);
-                check_binary_operation_passes_without_expected_numbers(name, &case, expected, &a, &b, Integer::div_wrapped);
-            }
-        };
+        let check_div = | name: &str, first: I, second: I | check_div_without_expected_numbers(name, first, second, mode_a, mode_b);
 
         for i in 0..ITERATIONS {
             let first: I = UniformRand::rand(&mut thread_rng());
@@ -174,18 +207,7 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
-
-        let check_div = | name: &str, first: I, second: I | {
-            let a = Integer::<Circuit, I>::new(mode_a, first);
-            let b = Integer::<Circuit, I>::new(mode_b, second);
-            let case = format!("({} / {})", a.eject_value(), b.eject_value());
-            if second == I::zero() {
-                check_binary_operation_halts(&a, &b, Integer::div_wrapped);
-            } else {
-                let expected = first.wrapping_div(&second);
-                check_binary_operation_passes(name, &case, expected, &a, &b, Integer::div_wrapped, num_constants, num_public, num_private, num_constraints);
-            }
-        };
+        let check_div = | name: &str, first: I, second: I | check_div(name, first, second, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
 
         for i in 0..ITERATIONS {
             let first: I = UniformRand::rand(&mut thread_rng());
@@ -219,6 +241,40 @@ mod tests {
             check_div("MAX / -1", I::MAX, I::zero() - I::one());
             check_div("MIN / -1", I::MIN, I::zero() - I::one());
             check_div("1 / -1", I::one(), I::zero() - I::one());
+        }
+    }
+
+    #[rustfmt::skip]
+    fn run_exhaustive_test_without_expected_numbers<I: IntegerType + RefUnwindSafe>(
+        mode_a: Mode,
+        mode_b: Mode
+    ) where
+        Range<I>: Iterator<Item = I>
+    {
+        for first in I::MIN..I::MAX {
+            for second in I::MIN..I::MAX {
+                let name = format!("Div: ({} / {})", first, second);
+                check_div_without_expected_numbers(&name, first, second, mode_a, mode_b);
+            }
+        }
+    }
+
+    #[rustfmt::skip]
+    fn run_exhaustive_test<I: IntegerType + RefUnwindSafe>(
+        mode_a: Mode,
+        mode_b: Mode,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) where
+        Range<I>: Iterator<Item = I>
+    {
+        for first in I::MIN..I::MAX {
+            for second in I::MIN..I::MAX {
+                let name = format!("Div: ({} / {})", first, second);
+                check_div(&name, first, second, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+            }
         }
     }
 
@@ -828,5 +884,135 @@ mod tests {
         type I = i128;
         run_overflow_and_corner_case_test::<I>(Mode::Private, Mode::Private);
 		run_test::<I>(Mode::Private, Mode::Private, 654, 0, 1176, 1182);
+    }
+
+    // Exhaustive tests for u8.
+
+    #[test]
+    #[ignore]
+	fn test_exhaustive_u8_constant_div_constant() {
+        type I = u8;
+        run_exhaustive_test::<I>(Mode::Constant, Mode::Constant, 8, 0, 0, 0);
+    }
+
+    #[test]
+    #[ignore]
+	fn test_exhaustive_u8_constant_div_public() {
+        type I = u8;
+        run_exhaustive_test::<I>(Mode::Constant, Mode::Private, 4, 0, 21, 22);
+    }
+
+    #[test]
+    #[ignore]
+	fn test_exhaustive_u8_constant_div_private() {
+        type I = u8;
+        run_exhaustive_test::<I>(Mode::Constant, Mode::Private, 4, 0, 21, 22);
+    }
+
+    #[test]
+    #[ignore]
+	fn test_exhaustive_u8_public_div_constant() {
+        type I = u8;
+        run_exhaustive_test::<I>(Mode::Public, Mode::Constant, 4, 0, 21, 22);
+    }
+
+    #[test]
+    #[ignore]
+	fn test_exhaustive_u8_private_div_constant() {
+        type I = u8;
+        run_exhaustive_test::<I>(Mode::Private, Mode::Constant, 4, 0, 21, 22);
+    }
+
+    #[test]
+    #[ignore]
+	fn test_exhaustive_u8_public_div_public() {
+        type I = u8;
+        run_exhaustive_test::<I>(Mode::Public, Mode::Public, 4, 0, 21, 22);
+    }
+
+    #[test]
+    #[ignore]
+	fn test_exhaustive_u8_public_div_private() {
+        type I = u8;
+        run_exhaustive_test::<I>(Mode::Public, Mode::Private, 4, 0, 21, 22);
+    }
+
+    #[test]
+    #[ignore]
+	fn test_exhaustive_u8_private_div_public() {
+        type I = u8;
+        run_exhaustive_test::<I>(Mode::Private, Mode::Public, 4, 0, 21, 22);
+    }
+
+    #[test]
+    #[ignore]
+	fn test_exhaustive_u8_private_div_private() {
+        type I = u8;
+        run_exhaustive_test::<I>(Mode::Private, Mode::Private, 4, 0, 21, 22);
+    }
+
+    // Tests for i8
+
+    #[test]
+    #[ignore]
+	fn test_exhaustive_i8_constant_div_constant() {
+        type I = i8;
+        run_exhaustive_test::<I>(Mode::Constant, Mode::Constant, 8, 0, 0, 0);
+    }
+
+    #[test]
+    #[ignore]
+	fn test_exhaustive_i8_constant_div_public() {
+        type I = i8;
+        run_exhaustive_test_without_expected_numbers::<I>(Mode::Constant, Mode::Public);
+    }
+
+    #[test]
+    #[ignore]
+	fn test_exhaustive_i8_constant_div_private() {
+        type I = i8;
+        run_exhaustive_test_without_expected_numbers::<I>(Mode::Constant, Mode::Private);
+    }
+
+    #[test]
+    #[ignore]
+	fn test_exhaustive_i8_public_div_constant() {
+        type I = i8;
+        run_exhaustive_test_without_expected_numbers::<I>(Mode::Public, Mode::Constant);
+    }
+
+    #[test]
+    #[ignore]
+	fn test_exhaustive_i8_private_div_constant() {
+        type I = i8;
+        run_exhaustive_test_without_expected_numbers::<I>(Mode::Private, Mode::Constant);
+    }
+
+    #[test]
+    #[ignore]
+	fn test_exhaustive_i8_public_div_public() {
+        type I = i8;
+        run_exhaustive_test::<I>(Mode::Public, Mode::Public, 54, 0, 96, 102);
+    }
+
+    #[test]
+    #[ignore]
+	fn test_exhaustive_i8_public_div_private() {
+        type I = i8;
+        run_exhaustive_test::<I>(Mode::Public, Mode::Private, 54, 0, 96, 102);
+    }
+
+    #[test]
+    #[ignore]
+	fn test_exhaustive_i8_private_div_public() {
+        type I = i8;
+        run_exhaustive_test::<I>(Mode::Private, Mode::Public, 54, 0, 96, 102);
+    }
+
+    #[test]
+    #[ignore]
+	fn test_exhaustive_i8_private_div_private() {
+        type I = i8;
+        run_exhaustive_test::<I>(Mode::Private, Mode::Private, 54, 0, 96, 102);
     }
 }

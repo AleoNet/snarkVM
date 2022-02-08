@@ -81,8 +81,32 @@ mod tests {
     use test_utilities::*;
 
     use rand::thread_rng;
+    use std::ops::Range;
 
     const ITERATIONS: usize = 128;
+
+    #[rustfmt::skip]
+    fn check_bitand<I: IntegerType + BitAnd<Output = I>>(
+        name: &str,
+        first: I,
+        second: I,
+        mode_a: Mode,
+        mode_b: Mode,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) {
+        let a = Integer::<Circuit, I>::new(mode_a, first);
+        let b = Integer::<Circuit, I>::new(mode_b, second);
+        let case = format!("BitAnd: ({} & {})", first, second);
+        let expected = first & second;
+        check_binary_operation_passes(name, &case, expected, &a, &b, | a: &Integer<Circuit, I>, b: &Integer<Circuit, I> | { a.bitand(b) }, num_constants, num_public, num_private, num_constraints);
+        // Commute the operation.
+        let a = Integer::<Circuit, I>::new(mode_a, second);
+        let b = Integer::<Circuit, I>::new(mode_b, first);
+        check_binary_operation_passes(name, &case, expected, &a, &b, | a: &Integer<Circuit, I>, b: &Integer<Circuit, I> | { a.bitand(b) }, num_constants, num_public, num_private, num_constraints);
+    }
 
     #[rustfmt::skip]
     fn run_test<I: IntegerType + BitAnd<Output = I>>(
@@ -93,17 +117,7 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
-        let check_bitand = | name: &str, first: I, second: I | {
-            let a = Integer::<Circuit, I>::new(mode_a, first);
-            let b = Integer::<Circuit, I>::new(mode_b, second);
-            let case = format!("BitAnd: ({} & {})", first, second);
-            let expected = first & second;
-            check_binary_operation_passes(name, &case, expected, &a, &b, | a: &Integer<Circuit, I>, b: &Integer<Circuit, I> | { a.bitand(b) }, num_constants, num_public, num_private, num_constraints);
-            // Commute the operation.
-            let a = Integer::<Circuit, I>::new(mode_a, second);
-            let b = Integer::<Circuit, I>::new(mode_b, first);
-            check_binary_operation_passes(name, &case, expected, &a, &b, | a: &Integer<Circuit, I>, b: &Integer<Circuit, I> | { a.bitand(b) }, num_constants, num_public, num_private, num_constraints);
-        };
+        let check_bitand = | name: &str, first: I, second: I | check_bitand(name, first, second, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
 
         for i in 0..ITERATIONS {
             let first : I = UniformRand::rand(&mut thread_rng());
@@ -122,6 +136,34 @@ mod tests {
         check_bitand("MAX & 0", I::MAX, I::zero());
         check_bitand("0 & MIN", I::zero(), I::MIN);
         check_bitand("MIN & 0", I::MIN, I::zero());
+    }
+
+    fn run_exhaustive_test<I: IntegerType + BitAnd<Output = I>>(
+        mode_a: Mode,
+        mode_b: Mode,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) where
+        Range<I>: Iterator<Item = I>,
+    {
+        for first in I::MIN..I::MAX {
+            for second in I::MIN..I::MAX {
+                let name = format!("BitAnd: ({} & {})", first, second);
+                check_bitand(
+                    &name,
+                    first,
+                    second,
+                    mode_a,
+                    mode_b,
+                    num_constants,
+                    num_public,
+                    num_private,
+                    num_constraints,
+                );
+            }
+        }
     }
 
     // Tests for u8
@@ -682,5 +724,135 @@ mod tests {
     fn test_i128_private_bitand_private() {
         type I = i128;
         run_test::<I>(Mode::Private, Mode::Private, 0, 0, 128, 128);
+    }
+
+    // Exhaustive tests for u8
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_constant_bitand_constant() {
+        type I = u8;
+        run_exhaustive_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_constant_bitand_public() {
+        type I = u8;
+        run_exhaustive_test::<I>(Mode::Constant, Mode::Public, 0, 0, 0, 0);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_constant_bitand_private() {
+        type I = u8;
+        run_exhaustive_test::<I>(Mode::Constant, Mode::Private, 0, 0, 0, 0);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_public_bitand_constant() {
+        type I = u8;
+        run_exhaustive_test::<I>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_private_bitand_constant() {
+        type I = u8;
+        run_exhaustive_test::<I>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_public_bitand_public() {
+        type I = u8;
+        run_exhaustive_test::<I>(Mode::Public, Mode::Public, 0, 0, 8, 8);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_public_bitand_private() {
+        type I = u8;
+        run_exhaustive_test::<I>(Mode::Public, Mode::Private, 0, 0, 8, 8);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_private_bitand_public() {
+        type I = u8;
+        run_exhaustive_test::<I>(Mode::Private, Mode::Public, 0, 0, 8, 8);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_private_bitand_private() {
+        type I = u8;
+        run_exhaustive_test::<I>(Mode::Private, Mode::Private, 0, 0, 8, 8);
+    }
+
+    // Exhaustive tests for i8
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_constant_bitand_constant() {
+        type I = i8;
+        run_exhaustive_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_constant_bitand_public() {
+        type I = i8;
+        run_exhaustive_test::<I>(Mode::Constant, Mode::Public, 0, 0, 0, 0);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_constant_bitand_private() {
+        type I = i8;
+        run_exhaustive_test::<I>(Mode::Constant, Mode::Private, 0, 0, 0, 0);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_public_bitand_constant() {
+        type I = i8;
+        run_exhaustive_test::<I>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_private_bitand_constant() {
+        type I = i8;
+        run_exhaustive_test::<I>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_public_bitand_public() {
+        type I = i8;
+        run_exhaustive_test::<I>(Mode::Public, Mode::Public, 0, 0, 8, 8);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_public_bitand_private() {
+        type I = i8;
+        run_exhaustive_test::<I>(Mode::Public, Mode::Private, 0, 0, 8, 8);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_private_bitand_public() {
+        type I = i8;
+        run_exhaustive_test::<I>(Mode::Private, Mode::Public, 0, 0, 8, 8);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_private_bitand_private() {
+        type I = i8;
+        run_exhaustive_test::<I>(Mode::Private, Mode::Private, 0, 0, 8, 8);
     }
 }

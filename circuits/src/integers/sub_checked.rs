@@ -82,8 +82,35 @@ mod tests {
     use test_utilities::*;
 
     use rand::thread_rng;
+    use std::{ops::Range, panic::RefUnwindSafe};
 
     const ITERATIONS: usize = 128;
+
+    #[rustfmt::skip]
+    fn check_sub<I: IntegerType + std::panic::RefUnwindSafe>(
+        name: &str,
+        first: I,
+        second: I,
+        mode_a: Mode,
+        mode_b: Mode,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) {
+        let a = Integer::<Circuit, I>::new(mode_a, first);
+        let b = Integer::<Circuit, I>::new(mode_b, second);
+        let case = format!("({} - {})", a.eject_value(), b.eject_value());
+        match first.checked_sub(&second) {
+            Some(value) => check_binary_operation_passes(name, &case, value, &a, &b, Integer::sub_checked, num_constants, num_public, num_private, num_constraints),
+            None => {
+                match (mode_a, mode_b) {
+                    (Mode::Constant, Mode::Constant) => check_binary_operation_halts(&a, &b, Integer::sub_checked),
+                    _ => check_binary_operation_fails(name, &case, &a, &b, Integer::sub_checked, num_constants, num_public, num_private, num_constraints)
+                }
+            }
+        }
+    }
 
     #[rustfmt::skip]
     fn run_test<I: IntegerType + std::panic::RefUnwindSafe>(
@@ -94,20 +121,7 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
-        let check_sub = | name: &str, first: I, second: I | {
-            let a = Integer::<Circuit, I>::new(mode_a, first);
-            let b = Integer::<Circuit, I>::new(mode_b, second);
-            let case = format!("({} - {})", a.eject_value(), b.eject_value());
-            match first.checked_sub(&second) {
-                Some(value) => check_binary_operation_passes(name, &case, value, &a, &b, Integer::sub_checked, num_constants, num_public, num_private, num_constraints),
-                None => {
-                    match (mode_a, mode_b) {
-                        (Mode::Constant, Mode::Constant) => check_binary_operation_halts(&a, &b, Integer::sub_checked),
-                        _ => check_binary_operation_fails(name, &case, &a, &b, Integer::sub_checked, num_constants, num_public, num_private, num_constraints)
-                    }
-                }
-            }
-        };
+        let check_sub = | name: &str, first: I, second: I | check_sub(name, first, second, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
 
         for i in 0..ITERATIONS {
             let first: I = UniformRand::rand(&mut thread_rng());
@@ -116,7 +130,6 @@ mod tests {
             let name = format!("Sub: a - b {}", i);
             check_sub(&name, first, second);
         }
-
 
         match I::is_signed() {
             // Check overflow and underflow conditions for signed integers
@@ -133,6 +146,36 @@ mod tests {
             }
         }
     }
+
+    fn run_exhaustive_test<I: IntegerType + RefUnwindSafe>(
+        mode_a: Mode,
+        mode_b: Mode,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) where
+        Range<I>: Iterator<Item = I>,
+    {
+        for first in I::MIN..I::MAX {
+            for second in I::MIN..I::MAX {
+                let name = format!("Sub: ({} - {})", first, second);
+                check_sub(
+                    &name,
+                    first,
+                    second,
+                    mode_a,
+                    mode_b,
+                    num_constants,
+                    num_public,
+                    num_private,
+                    num_constraints,
+                );
+            }
+        }
+    }
+
+    // Tests for u8.
 
     #[test]
     fn test_u8_constant_minus_constant() {
@@ -690,5 +733,135 @@ mod tests {
     fn test_i128_private_minus_private() {
         type I = i128;
         run_test::<I>(Mode::Private, Mode::Private, 2, 0, 134, 136);
+    }
+
+    // Exhaustive tests for u8.
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_constant_minus_constant() {
+        type I = u8;
+        run_exhaustive_test::<I>(Mode::Constant, Mode::Constant, 8, 0, 0, 0);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_constant_minus_public() {
+        type I = u8;
+        run_exhaustive_test::<I>(Mode::Constant, Mode::Public, 2, 0, 11, 13);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_constant_minus_private() {
+        type I = u8;
+        run_exhaustive_test::<I>(Mode::Constant, Mode::Private, 2, 0, 11, 13);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_public_minus_constant() {
+        type I = u8;
+        run_exhaustive_test::<I>(Mode::Public, Mode::Constant, 2, 0, 11, 13);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_private_minus_constant() {
+        type I = u8;
+        run_exhaustive_test::<I>(Mode::Private, Mode::Constant, 2, 0, 11, 13);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_public_minus_public() {
+        type I = u8;
+        run_exhaustive_test::<I>(Mode::Public, Mode::Public, 2, 0, 11, 13);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_public_minus_private() {
+        type I = u8;
+        run_exhaustive_test::<I>(Mode::Public, Mode::Private, 2, 0, 11, 13);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_private_minus_public() {
+        type I = u8;
+        run_exhaustive_test::<I>(Mode::Private, Mode::Public, 2, 0, 11, 13);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_private_minus_private() {
+        type I = u8;
+        run_exhaustive_test::<I>(Mode::Private, Mode::Private, 2, 0, 11, 13);
+    }
+
+    // Tests for i8
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_constant_minus_constant() {
+        type I = i8;
+        run_exhaustive_test::<I>(Mode::Constant, Mode::Constant, 8, 0, 0, 0);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_constant_minus_public() {
+        type I = i8;
+        run_exhaustive_test::<I>(Mode::Constant, Mode::Public, 2, 0, 13, 15);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_constant_minus_private() {
+        type I = i8;
+        run_exhaustive_test::<I>(Mode::Constant, Mode::Private, 2, 0, 13, 15);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_public_minus_constant() {
+        type I = i8;
+        run_exhaustive_test::<I>(Mode::Public, Mode::Constant, 2, 0, 12, 14);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_private_minus_constant() {
+        type I = i8;
+        run_exhaustive_test::<I>(Mode::Private, Mode::Constant, 2, 0, 12, 14);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_public_minus_public() {
+        type I = i8;
+        run_exhaustive_test::<I>(Mode::Public, Mode::Public, 2, 0, 14, 16);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_public_minus_private() {
+        type I = i8;
+        run_exhaustive_test::<I>(Mode::Public, Mode::Private, 2, 0, 14, 16);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_private_minus_public() {
+        type I = i8;
+        run_exhaustive_test::<I>(Mode::Private, Mode::Public, 2, 0, 14, 16);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_private_minus_private() {
+        type I = i8;
+        run_exhaustive_test::<I>(Mode::Private, Mode::Private, 2, 0, 14, 16);
     }
 }

@@ -44,23 +44,53 @@ mod tests {
     use snarkvm_utilities::UniformRand;
     use test_utilities::*;
 
+    use num_traits::checked_pow;
     use rand::thread_rng;
+    use std::ops::Range;
 
     // Lowered to 32, since we run (~6 * ITERATIONS) cases for most tests.
     const ITERATIONS: usize = 32;
+
+    #[rustfmt::skip]
+    fn check_pow_without_expected_numbers<I: IntegerType + std::panic::RefUnwindSafe, M: private::Magnitude + std::panic::RefUnwindSafe>(
+        name: &str,
+        first: I,
+        second: M,
+        mode_a: Mode,
+        mode_b: Mode,
+    ) {
+        let a = Integer::<Circuit, I>::new(mode_a, first);
+        let b = Integer::<Circuit, M>::new(mode_b, second);
+        let case = format!("({} ** {})", a.eject_value(), b.eject_value());
+        let expected = first.wrapping_pow(second.to_u32().unwrap());
+        check_binary_operation_passes_without_expected_numbers(name, &case, expected, &a, &b, Integer::pow_checked);
+    }
+
+    #[rustfmt::skip]
+    fn check_pow<I: IntegerType + std::panic::RefUnwindSafe, M: private::Magnitude + std::panic::RefUnwindSafe>(
+        name: &str,
+        first: I,
+        second: M,
+        mode_a: Mode,
+        mode_b: Mode,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) {
+        let a = Integer::<Circuit, I>::new(mode_a, first);
+        let b = Integer::<Circuit, M>::new(mode_b, second);
+        let case = format!("({} ** {})", a.eject_value(), b.eject_value());
+        let expected = first.wrapping_pow(second.to_u32().unwrap());
+        check_binary_operation_passes(name, &case, expected, &a, &b, Integer::pow_checked, num_constants, num_public, num_private, num_constraints);
+    }
 
     #[rustfmt::skip]
     fn run_overflow_and_corner_case_test<I: IntegerType + std::panic::RefUnwindSafe, M: private::Magnitude + std::panic::RefUnwindSafe>(
         mode_a: Mode,
         mode_b: Mode,
     ) {
-        let check_pow = | name: &str, first: I, second: M | {
-            let a = Integer::<Circuit, I>::new(mode_a, first);
-            let b = Integer::<Circuit, M>::new(mode_b, second);
-            let case = format!("({} ** {})", a.eject_value(), b.eject_value());
-            let expected = first.wrapping_pow(second.to_u32().unwrap());
-            check_binary_operation_passes_without_expected_numbers(name, &case, expected, &a, &b, Integer::pow_checked);
-        };
+        let check_pow = | name: &str, first: I, second: M | check_pow_without_expected_numbers(name, first, second, mode_a, mode_b);
 
         // Test operation without checking for the expected number of
         // constants, public variables, private variables, and constraints.
@@ -95,13 +125,7 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
-        let check_pow = | name: &str, first: I, second: M | {
-            let a = Integer::<Circuit, I>::new(mode_a, first);
-            let b = Integer::<Circuit, M>::new(mode_b, second);
-            let case = format!("({} ** {})", a.eject_value(), b.eject_value());
-            let expected = first.wrapping_pow(second.to_u32().unwrap());
-            check_binary_operation_passes(name, &case, expected, &a, &b, Integer::pow_checked, num_constants, num_public, num_private, num_constraints);
-        };
+        let check_pow = | name: &str, first: I, second: M | check_pow(name, first, second, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
 
         for i in 0..ITERATIONS {
             let first: I = UniformRand::rand(&mut thread_rng());
@@ -117,6 +141,42 @@ mod tests {
             // Check that the cube is computed correctly.
             let name = format!("Cube: {} ** {} {}", mode_a, mode_b, i);
             check_pow(&name, first, M::one() + M::one() + M::one());
+        }
+    }
+
+    #[rustfmt::skip]
+    fn run_exhaustive_test_without_expected_numbers<I: IntegerType + std::panic::RefUnwindSafe, M: private::Magnitude + std::panic::RefUnwindSafe>(
+        mode_a: Mode,
+        mode_b: Mode
+    ) where
+        Range<I>: Iterator<Item = I>,
+        Range<M>: Iterator<Item = M>
+    {
+        for first in I::MIN..I::MAX {
+            for second in M::MIN..M::MAX {
+                let name = format!("Pow: ({} ** {})", first, second);
+                check_pow_without_expected_numbers(&name, first, second, mode_a, mode_b);
+            }
+        }
+    }
+
+    #[rustfmt::skip]
+    fn run_exhaustive_test<I: IntegerType + std::panic::RefUnwindSafe, M: private::Magnitude + std::panic::RefUnwindSafe>(
+        mode_a: Mode,
+        mode_b: Mode,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) where
+        Range<I>: Iterator<Item = I>,
+        Range<M>: Iterator<Item = M>
+    {
+        for first in I::MIN..I::MAX {
+            for second in M::MIN..M::MAX {
+                let name = format!("Pow: ({} ** {})", first, second);
+                check_pow(&name, first, second, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+            }
         }
     }
 
@@ -2218,5 +2278,153 @@ mod tests {
         type M = u32;
         run_overflow_and_corner_case_test::<I, M>(Mode::Private, Mode::Private);
         run_test::<I, M>(Mode::Private, Mode::Private, 760, 0, 16696, 16759);
+    }
+
+    // Exhaustive tests for u8, where exponent is u8
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_constant_pow_u8_constant() {
+        type I = u8;
+        type M = u8;
+        run_exhaustive_test::<I, M>(Mode::Constant, Mode::Constant, 8, 0, 0, 0);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_constant_pow_u8_public() {
+        type I = u8;
+        type M = u8;
+        run_exhaustive_test_without_expected_numbers::<I, M>(Mode::Constant, Mode::Public);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_constant_pow_u8_private() {
+        type I = u8;
+        type M = u8;
+        run_exhaustive_test_without_expected_numbers::<I, M>(Mode::Constant, Mode::Private);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_public_pow_u8_constant() {
+        type I = u8;
+        type M = u8;
+        run_exhaustive_test_without_expected_numbers::<I, M>(Mode::Public, Mode::Constant);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_private_pow_u8_constant() {
+        type I = u8;
+        type M = u8;
+        run_exhaustive_test_without_expected_numbers::<I, M>(Mode::Private, Mode::Constant);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_public_pow_u8_public() {
+        type I = u8;
+        type M = u8;
+        run_exhaustive_test::<I, M>(Mode::Public, Mode::Public, 46, 0, 349, 364);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_public_pow_u8_private() {
+        type I = u8;
+        type M = u8;
+        run_exhaustive_test::<I, M>(Mode::Public, Mode::Private, 46, 0, 349, 364);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_private_pow_u8_public() {
+        type I = u8;
+        type M = u8;
+        run_exhaustive_test::<I, M>(Mode::Private, Mode::Public, 46, 0, 349, 364);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_private_pow_u8_private() {
+        type I = u8;
+        type M = u8;
+        run_exhaustive_test::<I, M>(Mode::Private, Mode::Private, 46, 0, 349, 364);
+    }
+
+    // Exhaustive tests for i8, where exponent is u8
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_constant_pow_u8_constant() {
+        type I = i8;
+        type M = u8;
+        run_exhaustive_test::<I, M>(Mode::Constant, Mode::Constant, 8, 0, 0, 0);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_constant_pow_u8_public() {
+        type I = i8;
+        type M = u8;
+        run_exhaustive_test_without_expected_numbers::<I, M>(Mode::Constant, Mode::Constant);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_constant_pow_u8_private() {
+        type I = i8;
+        type M = u8;
+        run_exhaustive_test_without_expected_numbers::<I, M>(Mode::Constant, Mode::Private);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_public_pow_u8_constant() {
+        type I = i8;
+        type M = u8;
+        run_exhaustive_test_without_expected_numbers::<I, M>(Mode::Public, Mode::Constant);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_private_pow_u8_constant() {
+        type I = i8;
+        type M = u8;
+        run_exhaustive_test_without_expected_numbers::<I, M>(Mode::Private, Mode::Constant);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_public_pow_u8_public() {
+        type I = i8;
+        type M = u8;
+        run_exhaustive_test::<I, M>(Mode::Public, Mode::Public, 46, 0, 349, 364);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_public_pow_u8_private() {
+        type I = i8;
+        type M = u8;
+        run_exhaustive_test::<I, M>(Mode::Public, Mode::Private, 46, 0, 349, 364);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_private_pow_u8_public() {
+        type I = i8;
+        type M = u8;
+        run_exhaustive_test::<I, M>(Mode::Private, Mode::Public, 46, 0, 349, 364);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_private_pow_u8_private() {
+        type I = i8;
+        type M = u8;
+        run_exhaustive_test::<I, M>(Mode::Private, Mode::Private, 46, 0, 349, 364);
     }
 }

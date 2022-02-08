@@ -458,7 +458,7 @@ mod test_utilities {
         num_constraints: usize,
     ) {
         Circuit::scoped(name, || {
-            let candidate = operation(input);
+            let _candidate = operation(input);
             assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
             assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
             assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
@@ -475,7 +475,7 @@ mod test_utilities {
         operation: impl FnOnce(IN) -> OUT,
     ) {
         Circuit::scoped(name, || {
-            let candidate = operation(input);
+            let _candidate = operation(input);
             assert!(!Circuit::is_satisfied(), "{} (!is_satisfied)", case);
         });
         Circuit::reset();

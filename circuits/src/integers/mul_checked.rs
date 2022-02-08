@@ -99,8 +99,53 @@ mod tests {
     use test_utilities::*;
 
     use rand::thread_rng;
+    use std::{ops::Range, panic::RefUnwindSafe};
 
     const ITERATIONS: usize = 128;
+
+    #[rustfmt::skip]
+    fn check_mul<I: IntegerType + std::panic::RefUnwindSafe>(
+        name: &str,
+        first: I,
+        second: I,
+        mode_a: Mode,
+        mode_b: Mode,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) {
+        let a = Integer::<Circuit, I>::new(mode_a, first);
+        let b = Integer::<Circuit, I>::new(mode_b, second);
+        let case = format!("({} * {})", a.eject_value(), b.eject_value());
+        match first.checked_mul(&second) {
+            Some(value) => {
+                check_binary_operation_passes(name, &case, value, &a, &b, Integer::mul_checked, num_constants, num_public, num_private, num_constraints);
+                // Commute the operation.
+                let a = Integer::<Circuit, I>::new(mode_a, second);
+                let b = Integer::<Circuit, I>::new(mode_b, first);
+                check_binary_operation_passes(name, &case, value, &a, &b, Integer::mul_checked, num_constants, num_public, num_private, num_constraints);
+            },
+            None => {
+                match (mode_a, mode_b) {
+                    (Mode::Constant, Mode::Constant) => {
+                        check_binary_operation_halts(&a, &b, Integer::mul_checked);
+                        // Commute the operation.
+                        let a = Integer::<Circuit, I>::new(mode_a, second);
+                        let b = Integer::<Circuit, I>::new(mode_b, first);
+                        check_binary_operation_halts(&a, &b, Integer::mul_checked);
+                    },
+                    _ => {
+                        check_binary_operation_fails(name, &case, &a, &b, Integer::mul_checked, num_constants, num_public, num_private, num_constraints);
+                        // Commute the operation.
+                        let a = Integer::<Circuit, I>::new(mode_a, second);
+                        let b = Integer::<Circuit, I>::new(mode_b, first);
+                        check_binary_operation_fails(name, &case, &a, &b, Integer::mul_checked, num_constants, num_public, num_private, num_constraints);
+                    }
+                }
+            }
+        }
+    }
 
     #[rustfmt::skip]
     fn run_test<I: IntegerType + std::panic::RefUnwindSafe>(
@@ -111,38 +156,7 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
-        let check_mul = | name: &str, first: I, second: I | {
-            let a = Integer::<Circuit, I>::new(mode_a, first);
-            let b = Integer::<Circuit, I>::new(mode_b, second);
-            let case = format!("({} * {})", a.eject_value(), b.eject_value());
-            match first.checked_mul(&second) {
-                Some(value) => {
-                    check_binary_operation_passes(name, &case, value, &a, &b, Integer::mul_checked, num_constants, num_public, num_private, num_constraints);
-                    // Commute the operation.
-                    let a = Integer::<Circuit, I>::new(mode_a, second);
-                    let b = Integer::<Circuit, I>::new(mode_b, first);
-                    check_binary_operation_passes(name, &case, value, &a, &b, Integer::mul_checked, num_constants, num_public, num_private, num_constraints);
-                },
-                None => {
-                    match (mode_a, mode_b) {
-                        (Mode::Constant, Mode::Constant) => {
-                            check_binary_operation_halts(&a, &b, Integer::mul_checked);
-                            // Commute the operation.
-                            let a = Integer::<Circuit, I>::new(mode_a, second);
-                            let b = Integer::<Circuit, I>::new(mode_b, first);
-                            check_binary_operation_halts(&a, &b, Integer::mul_checked);
-                        },
-                        _ => {
-                            check_binary_operation_fails(name, &case, &a, &b, Integer::mul_checked, num_constants, num_public, num_private, num_constraints);
-                            // Commute the operation.
-                            let a = Integer::<Circuit, I>::new(mode_a, second);
-                            let b = Integer::<Circuit, I>::new(mode_b, first);
-                            check_binary_operation_fails(name, &case, &a, &b, Integer::mul_checked, num_constants, num_public, num_private, num_constraints);
-                        }
-                    }
-                }
-            }
-        };
+        let check_mul = | name: &str, first: I, second: I | check_mul(name, first, second, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
 
         for i in 0..ITERATIONS {
             // TODO (@pranav) Uniform random sampling almost always produces arguments that result in an overflow.
@@ -184,6 +198,34 @@ mod tests {
             check_mul("-1 * MIN", I::zero() - I::one(), I::MIN);
             check_mul("MIN * -2", I::MIN, I::zero() - I::one() - I::one());
             check_mul("-2 * MIN", I::zero() - I::one() - I::one(), I::MIN);
+        }
+    }
+
+    fn run_exhaustive_test<I: IntegerType + RefUnwindSafe>(
+        mode_a: Mode,
+        mode_b: Mode,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) where
+        Range<I>: Iterator<Item = I>,
+    {
+        for first in I::MIN..I::MAX {
+            for second in I::MIN..I::MAX {
+                let name = format!("Mul: ({} * {})", first, second);
+                check_mul(
+                    &name,
+                    first,
+                    second,
+                    mode_a,
+                    mode_b,
+                    num_constants,
+                    num_public,
+                    num_private,
+                    num_constraints,
+                );
+            }
         }
     }
 
@@ -743,5 +785,135 @@ mod tests {
     fn test_i128_private_times_private() {
         type I = i128;
         run_test::<I>(Mode::Private, Mode::Private, 400, 0, 1431, 1437);
+    }
+
+    // Exhaustive tests for u8.
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_constant_times_constant() {
+        type I = u8;
+        run_exhaustive_test::<I>(Mode::Constant, Mode::Constant, 8, 0, 0, 0);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_constant_times_public() {
+        type I = u8;
+        run_exhaustive_test::<I>(Mode::Constant, Mode::Public, 3, 0, 26, 28);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_constant_times_private() {
+        type I = u8;
+        run_exhaustive_test::<I>(Mode::Constant, Mode::Private, 3, 0, 26, 28);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_public_times_constant() {
+        type I = u8;
+        run_exhaustive_test::<I>(Mode::Public, Mode::Constant, 3, 0, 26, 28);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_private_times_constant() {
+        type I = u8;
+        run_exhaustive_test::<I>(Mode::Private, Mode::Constant, 3, 0, 26, 28);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_public_times_public() {
+        type I = u8;
+        run_exhaustive_test::<I>(Mode::Public, Mode::Public, 3, 0, 26, 28);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_public_times_private() {
+        type I = u8;
+        run_exhaustive_test::<I>(Mode::Public, Mode::Private, 3, 0, 26, 28);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_private_times_public() {
+        type I = u8;
+        run_exhaustive_test::<I>(Mode::Private, Mode::Public, 3, 0, 26, 28);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_u8_private_times_private() {
+        type I = u8;
+        run_exhaustive_test::<I>(Mode::Private, Mode::Private, 3, 0, 26, 28);
+    }
+
+    // Tests for i8
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_constant_times_constant() {
+        type I = i8;
+        run_exhaustive_test::<I>(Mode::Constant, Mode::Constant, 8, 0, 0, 0);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_constant_times_public() {
+        type I = i8;
+        run_exhaustive_test::<I>(Mode::Constant, Mode::Public, 40, 0, 76, 80);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_constant_times_private() {
+        type I = i8;
+        run_exhaustive_test::<I>(Mode::Constant, Mode::Private, 40, 0, 76, 80);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_public_times_constant() {
+        type I = i8;
+        run_exhaustive_test::<I>(Mode::Public, Mode::Constant, 40, 0, 76, 80);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_private_times_constant() {
+        type I = i8;
+        run_exhaustive_test::<I>(Mode::Private, Mode::Constant, 40, 0, 76, 80);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_public_times_public() {
+        type I = i8;
+        run_exhaustive_test::<I>(Mode::Public, Mode::Public, 34, 0, 96, 101);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_public_times_private() {
+        type I = i8;
+        run_exhaustive_test::<I>(Mode::Public, Mode::Private, 34, 0, 96, 101);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_private_times_public() {
+        type I = i8;
+        run_exhaustive_test::<I>(Mode::Private, Mode::Public, 34, 0, 96, 101);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_private_times_private() {
+        type I = i8;
+        run_exhaustive_test::<I>(Mode::Private, Mode::Private, 34, 0, 96, 101);
     }
 }
