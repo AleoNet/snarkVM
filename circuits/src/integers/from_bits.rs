@@ -60,6 +60,7 @@ mod tests {
     use super::*;
     use crate::Circuit;
     use snarkvm_utilities::UniformRand;
+    use test_utilities::*;
 
     use rand::thread_rng;
 
@@ -76,18 +77,9 @@ mod tests {
         for i in 0..ITERATIONS {
             // Sample a random element.
             let expected: I = UniformRand::rand(&mut thread_rng());
-            let candidate = Integer::<Circuit, I>::new(mode, expected).to_bits_le();
-
-            Circuit::scoped(&format!("{} {}", mode, i), || {
-                let candidate = Integer::<Circuit, I>::from_bits_le(mode, &candidate);
-                assert_eq!(expected, candidate.eject_value());
-
-                assert_eq!(num_constants, Circuit::num_constants_in_scope(), "(num_constants)");
-                assert_eq!(num_public, Circuit::num_public_in_scope(), "(num_public)");
-                assert_eq!(num_private, Circuit::num_private_in_scope(), "(num_private)");
-                assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "(num_constraints)");
-                assert!(Circuit::is_satisfied(), "(is_satisfied)");
-            });
+            let a = Integer::<Circuit, I>::new(mode, expected).to_bits_le();
+            let name = format!("From BitsLE: {} {}", mode, i);
+            check_unary_operation_passes(&name, "", expected, &a[..], | a: &[Boolean<Circuit>] | Integer::from_bits_le(mode, a), num_constraints, num_public, num_private, num_constraints);
         }
     }
 
@@ -102,54 +94,389 @@ mod tests {
         for i in 0..ITERATIONS {
             // Sample a random element.
             let expected: I = UniformRand::rand(&mut thread_rng());
-            let candidate = Integer::<Circuit, I>::new(mode, expected).to_bits_be();
-
-            Circuit::scoped(&format!("{} {}", mode, i), || {
-                let candidate = Integer::<Circuit, I>::from_bits_be(mode, &candidate);
-                assert_eq!(expected, candidate.eject_value());
-
-                assert_eq!(num_constants, Circuit::num_constants_in_scope(), "(num_constants)");
-                assert_eq!(num_public, Circuit::num_public_in_scope(), "(num_public)");
-                assert_eq!(num_private, Circuit::num_private_in_scope(), "(num_private)");
-                assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "(num_constraints)");
-                assert!(Circuit::is_satisfied(), "(is_satisfied)");
-            });
+            let a = Integer::<Circuit, I>::new(mode, expected).to_bits_be();
+            let name = format!("From BitsBE: {} {}", mode, i);
+            check_unary_operation_passes(&name, "", expected, &a[..], | a: &[Boolean<Circuit>] | Integer::from_bits_be(mode, a), num_constraints, num_public, num_private, num_constraints);
         }
     }
 
+    // Tests for u8.
+
     #[test]
-    fn test_from_bits_le_constant() {
+    fn test_u8_from_bits_le_constant() {
+        type I = u8;
+        check_from_bits_le::<I>(Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u8_from_bits_le_public() {
+        type I = u8;
+        check_from_bits_le::<I>(Mode::Public, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u8_from_bits_le_private() {
+        type I = u8;
+        check_from_bits_le::<I>(Mode::Private, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u8_from_bits_be_constant() {
+        type I = u8;
+        check_from_bits_be::<I>(Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u8_from_bits_be_public() {
+        type I = u8;
+        check_from_bits_be::<I>(Mode::Public, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u8_from_bits_be_private() {
+        type I = u8;
+        check_from_bits_be::<I>(Mode::Private, 0, 0, 0, 0);
+    }
+
+    // Tests for i8.
+
+    #[test]
+    fn test_i8_from_bits_le_constant() {
+        type I = i8;
+        check_from_bits_le::<I>(Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i8_from_bits_le_public() {
+        type I = i8;
+        check_from_bits_le::<I>(Mode::Public, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i8_from_bits_le_private() {
+        type I = i8;
+        check_from_bits_le::<I>(Mode::Private, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i8_from_bits_be_constant() {
+        type I = i8;
+        check_from_bits_be::<I>(Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i8_from_bits_be_public() {
+        type I = i8;
+        check_from_bits_be::<I>(Mode::Public, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i8_from_bits_be_private() {
+        type I = i8;
+        check_from_bits_be::<I>(Mode::Private, 0, 0, 0, 0);
+    }
+
+    // Tests for u16.
+
+    #[test]
+    fn test_u16_from_bits_le_constant() {
+        type I = u16;
+        check_from_bits_le::<I>(Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u16_from_bits_le_public() {
+        type I = u16;
+        check_from_bits_le::<I>(Mode::Public, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u16_from_bits_le_private() {
+        type I = u16;
+        check_from_bits_le::<I>(Mode::Private, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u16_from_bits_be_constant() {
+        type I = u16;
+        check_from_bits_be::<I>(Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u16_from_bits_be_public() {
+        type I = u16;
+        check_from_bits_be::<I>(Mode::Public, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u16_from_bits_be_private() {
+        type I = u16;
+        check_from_bits_be::<I>(Mode::Private, 0, 0, 0, 0);
+    }
+
+    // Tests for i16.
+
+    #[test]
+    fn test_i16_from_bits_le_constant() {
+        type I = i16;
+        check_from_bits_le::<I>(Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i16_from_bits_le_public() {
+        type I = i16;
+        check_from_bits_le::<I>(Mode::Public, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i16_from_bits_le_private() {
+        type I = i16;
+        check_from_bits_le::<I>(Mode::Private, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i16_from_bits_be_constant() {
+        type I = i16;
+        check_from_bits_be::<I>(Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i16_from_bits_be_public() {
+        type I = i16;
+        check_from_bits_be::<I>(Mode::Public, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i16_from_bits_be_private() {
+        type I = i16;
+        check_from_bits_be::<I>(Mode::Private, 0, 0, 0, 0);
+    }
+
+    // Tests for u32.
+
+    #[test]
+    fn test_u32_from_bits_le_constant() {
+        type I = u32;
+        check_from_bits_le::<I>(Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u32_from_bits_le_public() {
+        type I = u32;
+        check_from_bits_le::<I>(Mode::Public, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u32_from_bits_le_private() {
+        type I = u32;
+        check_from_bits_le::<I>(Mode::Private, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u32_from_bits_be_constant() {
+        type I = u32;
+        check_from_bits_be::<I>(Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u32_from_bits_be_public() {
+        type I = u32;
+        check_from_bits_be::<I>(Mode::Public, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u32_from_bits_be_private() {
+        type I = u32;
+        check_from_bits_be::<I>(Mode::Private, 0, 0, 0, 0);
+    }
+
+    // Tests for i32.
+
+    #[test]
+    fn test_i32_from_bits_le_constant() {
+        type I = i32;
+        check_from_bits_le::<I>(Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i32_from_bits_le_public() {
+        type I = i32;
+        check_from_bits_le::<I>(Mode::Public, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i32_from_bits_le_private() {
+        type I = i32;
+        check_from_bits_le::<I>(Mode::Private, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i32_from_bits_be_constant() {
+        type I = i32;
+        check_from_bits_be::<I>(Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i32_from_bits_be_public() {
+        type I = i32;
+        check_from_bits_be::<I>(Mode::Public, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i32_from_bits_be_private() {
+        type I = i32;
+        check_from_bits_be::<I>(Mode::Private, 0, 0, 0, 0);
+    }
+
+    // Tests for u64.
+
+    #[test]
+    fn test_u64_from_bits_le_constant() {
+        type I = u64;
+        check_from_bits_le::<I>(Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u64_from_bits_le_public() {
+        type I = u64;
+        check_from_bits_le::<I>(Mode::Public, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u64_from_bits_le_private() {
+        type I = u64;
+        check_from_bits_le::<I>(Mode::Private, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u64_from_bits_be_constant() {
+        type I = u64;
+        check_from_bits_be::<I>(Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u64_from_bits_be_public() {
+        type I = u64;
+        check_from_bits_be::<I>(Mode::Public, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u64_from_bits_be_private() {
+        type I = u64;
+        check_from_bits_be::<I>(Mode::Private, 0, 0, 0, 0);
+    }
+
+    // Tests for i64.
+
+    #[test]
+    fn test_i64_from_bits_le_constant() {
         type I = i64;
         check_from_bits_le::<I>(Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_from_bits_le_public() {
+    fn test_i64_from_bits_le_public() {
         type I = i64;
         check_from_bits_le::<I>(Mode::Public, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_from_bits_le_private() {
+    fn test_i64_from_bits_le_private() {
         type I = i64;
         check_from_bits_le::<I>(Mode::Private, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_from_bits_be_constant() {
+    fn test_i64_from_bits_be_constant() {
         type I = i64;
         check_from_bits_be::<I>(Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_from_bits_be_public() {
+    fn test_i64_from_bits_be_public() {
         type I = i64;
         check_from_bits_be::<I>(Mode::Public, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_from_bits_be_private() {
+    fn test_i64_from_bits_be_private() {
         type I = i64;
+        check_from_bits_be::<I>(Mode::Private, 0, 0, 0, 0);
+    }
+
+    // Tests for u128.
+
+    #[test]
+    fn test_u128_from_bits_le_constant() {
+        type I = u128;
+        check_from_bits_le::<I>(Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u128_from_bits_le_public() {
+        type I = u128;
+        check_from_bits_le::<I>(Mode::Public, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u128_from_bits_le_private() {
+        type I = u128;
+        check_from_bits_le::<I>(Mode::Private, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u128_from_bits_be_constant() {
+        type I = u128;
+        check_from_bits_be::<I>(Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u128_from_bits_be_public() {
+        type I = u128;
+        check_from_bits_be::<I>(Mode::Public, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_u128_from_bits_be_private() {
+        type I = u128;
+        check_from_bits_be::<I>(Mode::Private, 0, 0, 0, 0);
+    }
+
+    // Tests for i128.
+
+    #[test]
+    fn test_i128_from_bits_le_constant() {
+        type I = i128;
+        check_from_bits_le::<I>(Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i128_from_bits_le_public() {
+        type I = i128;
+        check_from_bits_le::<I>(Mode::Public, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i128_from_bits_le_private() {
+        type I = i128;
+        check_from_bits_le::<I>(Mode::Private, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i128_from_bits_be_constant() {
+        type I = i128;
+        check_from_bits_be::<I>(Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i128_from_bits_be_public() {
+        type I = i128;
+        check_from_bits_be::<I>(Mode::Public, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_i128_from_bits_be_private() {
+        type I = i128;
         check_from_bits_be::<I>(Mode::Private, 0, 0, 0, 0);
     }
 }
