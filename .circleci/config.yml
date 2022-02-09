@@ -102,7 +102,7 @@ jobs:
       - run:
           name: Build and run tests
           no_output_timeout: 35m
-          command: cd circuits && RUST_MIN_STACK=67108864 cargo test
+          command: cd circuits && RUST_MIN_STACK=67108864 cargo test -- --include-ignored
       - clear_environment:
           cache_key: snarkvm-circuits-cache
 
