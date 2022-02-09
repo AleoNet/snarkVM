@@ -113,6 +113,7 @@ mod tests {
         }
     }
 
+    #[rustfmt::skip]
     fn run_exhaustive_test<I: IntegerType>(
         mode_a: Mode,
         mode_b: Mode,

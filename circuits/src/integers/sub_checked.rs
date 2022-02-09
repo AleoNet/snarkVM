@@ -147,6 +147,7 @@ mod tests {
         }
     }
 
+    #[rustfmt::skip]
     fn run_exhaustive_test<I: IntegerType + RefUnwindSafe>(
         mode_a: Mode,
         mode_b: Mode,
@@ -160,17 +161,7 @@ mod tests {
         for first in I::MIN..I::MAX {
             for second in I::MIN..I::MAX {
                 let name = format!("Sub: ({} - {})", first, second);
-                check_sub(
-                    &name,
-                    first,
-                    second,
-                    mode_a,
-                    mode_b,
-                    num_constants,
-                    num_public,
-                    num_private,
-                    num_constraints,
-                );
+                check_sub(&name, first, second, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
             }
         }
     }

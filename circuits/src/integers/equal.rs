@@ -68,6 +68,7 @@ mod tests {
 
     const ITERATIONS: usize = 100;
 
+    #[rustfmt::skip]
     fn check_equals<I: IntegerType>(
         name: &str,
         first: I,
@@ -84,34 +85,12 @@ mod tests {
 
         let a = Integer::<Circuit, I>::new(mode_a, first);
         let b = Integer::<Circuit, I>::new(mode_b, second);
-        check_binary_operation_passes(
-            &name,
-            &case,
-            expected,
-            &a,
-            &b,
-            Integer::is_eq,
-            num_constants,
-            num_public,
-            num_private,
-            num_constraints,
-        );
+        check_binary_operation_passes(&name, &case, expected, &a, &b, Integer::is_eq, num_constants, num_public, num_private, num_constraints);
 
         // Commute the operation.
         let a = Integer::<Circuit, I>::new(mode_a, second);
         let b = Integer::<Circuit, I>::new(mode_b, first);
-        check_binary_operation_passes(
-            &name,
-            &case,
-            expected,
-            &a,
-            &b,
-            Integer::is_eq,
-            num_constants,
-            num_public,
-            num_private,
-            num_constraints,
-        );
+        check_binary_operation_passes(&name, &case, expected, &a, &b, Integer::is_eq, num_constants, num_public, num_private, num_constraints);
     }
 
     #[rustfmt::skip]

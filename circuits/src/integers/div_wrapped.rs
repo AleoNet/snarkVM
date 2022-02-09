@@ -129,7 +129,7 @@ mod tests {
             check_binary_operation_halts(&a, &b, Integer::div_wrapped);
         } else {
             let expected = first.wrapping_div(&second);
-            check_binary_operation_passes_without_expected_numbers(name, &case, expected, &a, &b, Integer::div_checked);
+            check_binary_operation_passes_without_expected_numbers(name, &case, expected, &a, &b, Integer::div_wrapped);
         }
     }
 
@@ -149,10 +149,10 @@ mod tests {
         let b = Integer::<Circuit, I>::new(mode_b, second);
         let case = format!("({} / {})", a.eject_value(), b.eject_value());
         if second == I::zero() {
-            check_binary_operation_halts(&a, &b, Integer::div_checked);
+            check_binary_operation_halts(&a, &b, Integer::div_wrapped);
         } else {
             let expected = first.wrapping_div(&second);
-            check_binary_operation_passes(name, &case, expected, &a, &b, Integer::div_checked, num_constants, num_public, num_private, num_constraints);
+            check_binary_operation_passes(name, &case, expected, &a, &b, Integer::div_wrapped, num_constants, num_public, num_private, num_constraints);
         }
     }
 
