@@ -14,9 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::{crh::sha256::sha256, CRH, SNARK, SRS};
+use snarkvm_algorithms::{
+    crh::sha256::sha256,
+    snark::marlin::{ahp::AHPForR1CS, MarlinHidingMode},
+    CRH,
+    SNARK,
+    SRS,
+};
 use snarkvm_dpc::{InnerCircuit, Network, PoSWScheme, SynthesizedCircuit};
-use snarkvm_marlin::{ahp::AHPForR1CS, marlin::MarlinTestnet1Mode};
 use snarkvm_utilities::{FromBytes, ToBytes, ToMinimalBits};
 
 use anyhow::Result;
@@ -66,7 +71,7 @@ pub fn universal_setup<N: Network>() -> Result<()> {
     const UNIVERSAL_SRS: &str = "universal.srs";
 
     let max_degree =
-        AHPForR1CS::<<N as Network>::InnerScalarField, MarlinTestnet1Mode>::max_degree(2000000, 4000000, 8000000)
+        AHPForR1CS::<<N as Network>::InnerScalarField, MarlinHidingMode>::max_degree(2000000, 4000000, 8000000)
             .unwrap();
     let universal_srs = <<N as Network>::ProgramSNARK as SNARK>::universal_setup(&max_degree, &mut thread_rng())?;
     let universal_srs = universal_srs.to_bytes_le()?;
@@ -154,7 +159,7 @@ pub fn posw_setup<N: Network>() -> Result<()> {
 
     // TODO: decide the size of the universal setup
     let max_degree =
-        AHPForR1CS::<<N as Network>::InnerScalarField, MarlinTestnet1Mode>::max_degree(40000, 40000, 60000).unwrap();
+        AHPForR1CS::<<N as Network>::InnerScalarField, MarlinHidingMode>::max_degree(40000, 40000, 60000).unwrap();
     let universal_srs = <<N as Network>::PoSWSNARK as SNARK>::universal_setup(&max_degree, &mut thread_rng())?;
     let srs_bytes = universal_srs.to_bytes_le()?;
     println!("srs\n\tsize - {}", srs_bytes.len());

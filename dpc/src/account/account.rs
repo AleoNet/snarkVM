@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AccountScheme, Address, Network, PrivateKey, ViewKey};
+use crate::{Address, Network, PrivateKey, ViewKey};
 
 use rand::{CryptoRng, Rng};
 use std::fmt;
@@ -27,28 +27,24 @@ pub struct Account<N: Network> {
     address: Address<N>,
 }
 
-impl<N: Network> AccountScheme for Account<N> {
-    type Address = Address<N>;
-    type PrivateKey = PrivateKey<N>;
-    type ViewKey = ViewKey<N>;
-
+impl<N: Network> Account<N> {
     /// Creates a new account.
-    fn new<R: Rng + CryptoRng>(rng: &mut R) -> Self {
+    pub fn new<R: Rng + CryptoRng>(rng: &mut R) -> Self {
         PrivateKey::new(rng).into()
     }
 
     /// Returns a reference to the private key.
-    fn private_key(&self) -> &Self::PrivateKey {
+    pub fn private_key(&self) -> &PrivateKey<N> {
         &self.private_key
     }
 
     /// Returns a reference to the view key.
-    fn view_key(&self) -> &Self::ViewKey {
+    pub fn view_key(&self) -> &ViewKey<N> {
         &self.view_key
     }
 
     /// Returns a reference to the address.
-    fn address(&self) -> Self::Address {
+    pub fn address(&self) -> Address<N> {
         self.address
     }
 }

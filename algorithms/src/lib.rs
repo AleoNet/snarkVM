@@ -55,6 +55,9 @@ pub mod merkle_tree;
 #[cfg(feature = "msm")]
 pub mod msm;
 
+#[cfg(feature = "polycommit")]
+pub mod polycommit;
+
 #[cfg(feature = "prf")]
 pub mod prf;
 

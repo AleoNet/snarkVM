@@ -19,9 +19,9 @@ use std::sync::atomic::AtomicBool;
 use snarkvm_dpc::{prelude::*, testnet2::*};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
-use chrono::Utc;
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
+use time::OffsetDateTime;
 
 #[test]
 fn test_testnet2_inner_circuit_id_sanity_check() {
@@ -72,7 +72,7 @@ fn dpc_testnet2_integration_test() {
     let transactions = Transactions::from(&[coinbase_transaction]).unwrap();
 
     let previous_ledger_root = ledger.latest_ledger_root();
-    let timestamp = Utc::now().timestamp();
+    let timestamp = OffsetDateTime::now_utc().unix_timestamp();
     let difficulty_target =
         Blocks::<Testnet2>::compute_difficulty_target(previous_block.header(), timestamp, block_height);
     let cumulative_weight = previous_block.cumulative_weight().saturating_add((u64::MAX / difficulty_target) as u128);

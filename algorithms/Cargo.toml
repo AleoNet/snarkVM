@@ -15,7 +15,7 @@ keywords = [
 categories = [ "cryptography::cryptocurrencies", "operating-systems" ]
 include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
-edition = "2018"
+edition = "2021"
 
 [[bench]]
 name = "msm-variable-base"
@@ -23,8 +23,8 @@ path = "benches/msm/variable_base.rs"
 harness = false
 
 [[bench]]
-name = "commitment-pedersen"
-path = "benches/commitment/pedersen.rs"
+name = "commitment-bhp"
+path = "benches/commitment/bhp.rs"
 harness = false
 
 [[bench]]
@@ -72,6 +72,11 @@ name = "snark-groth16"
 path = "benches/snark/groth16.rs"
 harness = false
 
+[[bench]]
+name = "snark-marlin"
+path = "benches/snark/marlin.rs"
+harness = false
+
 [[example]]
 name = "groth16"
 path = "examples/snark/groth16.rs"
@@ -107,24 +112,25 @@ version = "0.1.8"
 [dependencies.anyhow]
 version = "1.0"
 
-[dependencies.blake2]
-version = "0.9"
-optional = true
-
 [dependencies.blake2s_simd]
 version = "1.0"
+optional = true
 
 [dependencies.crossbeam-channel]
 version = "0.5"
 
 [dependencies.derivative]
 version = "2"
+features = [ "use_core" ]
 
 [dependencies.digest]
-version = "0.9"
+version = "0.10"
+
+[dependencies.hashbrown]
+version = "0.12.0"
 
 [dependencies.hex]
-version = "0.4.3"
+version = "0.4"
 
 [dependencies.itertools]
 version = "0.10.3"
@@ -146,6 +152,11 @@ default-features = false
 
 [dependencies.num_cpus]
 version = "1"
+optional = true
+
+[dependencies.rand_core]
+version = "0.6"
+default-features = false
 optional = true
 
 [dependencies.rand_chacha]
@@ -183,14 +194,15 @@ version = "1.1.0"
 [dev-dependencies.bincode]
 version = "1"
 
+[dev-dependencies.blake2]
+version = "0.10"
+default-features = false
+
 [dev-dependencies.criterion]
 version = "0.3.5"
 
 [dev-dependencies.csv]
 version = "1"
-
-[dev-dependencies.hex]
-version = "0.4"
 
 [dev-dependencies.rand_xorshift]
 version = "0.3"
@@ -222,6 +234,7 @@ full = [
   "hash_to_curve",
   "merkle_tree",
   "msm",
+  "polycommit",
   "prf",
   "signature",
   "snark"
@@ -235,22 +248,25 @@ wasm = [
   "hash_to_curve",
   "merkle_tree",
   "msm",
+  "polycommit",
   "prf",
   "signature",
   "snark",
   "getrandom"
 ]
+parallel = [ "rayon", "num_cpus", "snarkvm-fields/parallel", "snarkvm-utilities/parallel" ]
+print-trace = [ "snarkvm-profiler/print-trace" ]
+cuda = [ "rust-gpu-tools" ]
+
 commitment = [ "crh" ]
 crh = [ "hash_to_curve" ]
-crypto_hash = [ "blake2" ]
+crypto_hash = [ "blake2s_simd" ]
 encryption = [ "signature" ]
 fft = [ ]
 hash_to_curve = [ "crypto_hash" ]
 merkle_tree = [ ]
 msm = [ ]
+polycommit = [ "rand_core" ]
 prf = [ ]
 signature = [ "encryption", "crypto_hash" ]
 snark = [ "fft", "msm" ]
-parallel = [ "rayon", "num_cpus", "snarkvm-utilities/parallel" ]
-print-trace = [ "snarkvm-profiler/print-trace" ]
-cuda = [ "rust-gpu-tools" ]

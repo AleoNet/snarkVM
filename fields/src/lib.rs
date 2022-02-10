@@ -35,16 +35,8 @@ pub use fp_256::*;
 mod fp_384;
 pub use fp_384::*;
 
-mod fp_768;
-pub use fp_768::*;
-
 mod fp2;
 pub use fp2::*;
-
-mod fp3;
-pub use fp3::*;
-
-pub mod fp6_2over3;
 
 pub mod fp6_3over2;
 
@@ -75,11 +67,9 @@ use snarkvm_utilities::{
 
 impl_field_into_biginteger!(Fp256, BigInteger256, Fp256Parameters);
 impl_field_into_biginteger!(Fp384, BigInteger384, Fp384Parameters);
-impl_field_into_biginteger!(Fp768, BigInteger768, Fp768Parameters);
 
 impl_primefield_serializer!(Fp256, Fp256Parameters, 32);
 impl_primefield_serializer!(Fp384, Fp384Parameters, 48);
-impl_primefield_serializer!(Fp768, Fp768Parameters, 96);
 
 // Given a vector of field elements {v_i}, compute the vector {v_i^(-1)}
 pub fn batch_inversion<F: Field>(v: &mut [F]) {

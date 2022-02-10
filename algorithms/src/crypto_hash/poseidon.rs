@@ -19,16 +19,7 @@ use crate::{
     traits::{AlgebraicSponge, DefaultCapacityAlgebraicSponge, DuplexSpongeMode, SpongeParameters},
     CryptoHash,
 };
-use snarkvm_fields::{
-    Fp256,
-    Fp256Parameters,
-    Fp384,
-    Fp384Parameters,
-    Fp768,
-    Fp768Parameters,
-    PoseidonDefaultParameters,
-    PrimeField,
-};
+use snarkvm_fields::{Fp256, Fp256Parameters, Fp384, Fp384Parameters, PoseidonDefaultParameters, PrimeField};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use smallvec::SmallVec;
@@ -595,4 +586,3 @@ macro_rules! impl_poseidon_default_parameters_field {
 
 impl_poseidon_default_parameters_field!(Fp256, Fp256Parameters);
 impl_poseidon_default_parameters_field!(Fp384, Fp384Parameters);
-impl_poseidon_default_parameters_field!(Fp768, Fp768Parameters);
