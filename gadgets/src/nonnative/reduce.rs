@@ -14,29 +14,25 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::{cmp::min, marker::PhantomData, vec, vec::Vec};
-
-use num_bigint::BigUint;
-use num_integer::Integer;
-use num_traits::identities::{One, Zero};
-
 use crate::{
     bits::Boolean,
     fields::FpGadget,
+    nonnative::AllocatedNonNativeFieldVar,
     traits::{
         alloc::AllocGadget,
         eq::{ConditionalEqGadget, EqGadget},
         fields::FieldGadget,
     },
 };
+use snarkvm_algorithms::{overhead, snark::marlin::params::get_params};
 use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{BigInteger, BitIteratorBE, ToBits};
 
-use crate::{
-    nonnative::{params::get_params, AllocatedNonNativeFieldVar},
-    overhead,
-};
+use core::{cmp::min, marker::PhantomData};
+use num_bigint::BigUint;
+use num_integer::Integer;
+use num_traits::identities::{One, Zero};
 
 const fn num_bits<T>() -> usize {
     std::mem::size_of::<T>() * 8

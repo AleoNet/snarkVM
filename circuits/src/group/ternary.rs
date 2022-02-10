@@ -36,7 +36,6 @@ mod tests {
 
     use rand::thread_rng;
 
-    #[rustfmt::skip]
     fn check_ternary(
         name: &str,
         expected: <Circuit as Environment>::Affine,

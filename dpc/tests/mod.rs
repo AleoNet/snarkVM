@@ -22,10 +22,13 @@ use std::{
     time::Duration,
 };
 
-use snarkvm_algorithms::{SNARKError, SRS};
+use snarkvm_algorithms::{
+    snark::marlin::{ahp::AHPForR1CS, CircuitProvingKey, MarlinHidingMode, MarlinNonHidingMode},
+    SNARKError,
+    SRS,
+};
 use snarkvm_curves::bls12_377::Fr;
 use snarkvm_dpc::{testnet2::Testnet2, BlockTemplate, Network, PoSWError, PoSWScheme};
-use snarkvm_marlin::marlin::{CircuitProvingKey, MarlinPoswMode, MarlinTestnet1Mode};
 
 use rand::{rngs::ThreadRng, thread_rng};
 
@@ -89,7 +92,7 @@ fn test_posw_setup_vs_load_weak_sanity_check() {
         // Load the PoSW Marlin parameters.
         let rng = &mut thread_rng();
         // Run the universal setup.
-        let max_degree = snarkvm_marlin::AHPForR1CS::<Fr, MarlinTestnet1Mode>::max_degree(40000, 40000, 60000).unwrap();
+        let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(40000, 40000, 60000).unwrap();
         let universal_srs = <Testnet2 as Network>::PoSWSNARK::universal_setup(max_degree, rng).unwrap();
         // Run the circuit setup.
         <<Testnet2 as Network>::PoSW as PoSWScheme<Testnet2>>::setup::<ThreadRng>(&mut SRS::<ThreadRng, _>::Universal(
@@ -99,9 +102,10 @@ fn test_posw_setup_vs_load_weak_sanity_check() {
     };
     let loaded_posw = Testnet2::posw().clone();
 
-    let generated_proving_key: &CircuitProvingKey<Fr, _, _, MarlinPoswMode> =
+    let generated_proving_key: &CircuitProvingKey<Fr, _, _, MarlinNonHidingMode> =
         generated_posw.proving_key().as_ref().unwrap();
-    let loaded_proving_key: &CircuitProvingKey<Fr, _, _, MarlinPoswMode> = loaded_posw.proving_key().as_ref().unwrap();
+    let loaded_proving_key: &CircuitProvingKey<Fr, _, _, MarlinNonHidingMode> =
+        loaded_posw.proving_key().as_ref().unwrap();
 
     let a = generated_proving_key.committer_key.max_degree;
     let b = loaded_proving_key.committer_key.max_degree;
@@ -142,8 +146,8 @@ fn test_posw_setup_vs_load_weak_sanity_check() {
     println!("{:?} == {:?}? {}", a, b, a == b);
     assert_eq!(a, b);
 
-    let a = generated_proving_key.circuit.index_info.max_degree::<MarlinTestnet1Mode>();
-    let b = loaded_proving_key.circuit.index_info.max_degree::<MarlinTestnet1Mode>();
+    let a = generated_proving_key.circuit.index_info.max_degree::<MarlinHidingMode>();
+    let b = loaded_proving_key.circuit.index_info.max_degree::<MarlinHidingMode>();
     println!("{:?} == {:?}? {}", a, b, a == b);
     assert_eq!(a, b);
 

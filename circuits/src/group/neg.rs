@@ -42,7 +42,6 @@ mod tests {
 
     const ITERATIONS: usize = 100;
 
-    #[rustfmt::skip]
     fn check_neg(
         name: &str,
         expected: <Circuit as Environment>::Affine,

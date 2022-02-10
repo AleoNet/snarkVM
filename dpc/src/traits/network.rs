@@ -149,13 +149,9 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const ALEO_MAXIMUM_FORK_DEPTH: u32;
 
     /// Inner curve type declarations.
-    type InnerCurve: PairingEngine<Fr = Self::InnerScalarField, Fq = Self::OuterScalarField>;
+    type InnerCurve: PairingEngine<Fr = Self::InnerScalarField, Fq = Self::InnerBaseField>;
     type InnerScalarField: PrimeField + PoseidonDefaultParametersField;
-
-    /// Outer curve type declarations.
-    type OuterCurve: PairingEngine;
-    type OuterBaseField: PrimeField;
-    type OuterScalarField: PrimeField + PoseidonDefaultParametersField;
+    type InnerBaseField: PrimeField + PoseidonDefaultParametersField;
 
     /// Program curve type declarations.
     type ProgramAffineCurve: AffineCurve<BaseField = Self::ProgramBaseField>;
@@ -166,17 +162,17 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type ProgramScalarField: PrimeField;
 
     /// SNARK for inner circuit proof generation.
-    type InnerSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::OuterScalarField, VerifierInput = InnerPublicVariables<Self>>;
+    type InnerSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::InnerBaseField, VerifierInput = InnerPublicVariables<Self>>;
     type InnerProof: Bech32Object<<Self::InnerSNARK as SNARK>::Proof>;
 
     /// SNARK for Aleo program functions.
-    type ProgramSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::OuterScalarField, VerifierInput = ProgramPublicVariables<Self>, ProvingKey = Self::ProgramProvingKey, VerifyingKey = Self::ProgramVerifyingKey, UniversalSetupConfig = usize>;
+    type ProgramSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::InnerBaseField, VerifierInput = ProgramPublicVariables<Self>, ProvingKey = Self::ProgramProvingKey, VerifyingKey = Self::ProgramVerifyingKey, UniversalSetupConfig = usize>;
     type ProgramProvingKey: Clone + ToBytes + FromBytes + Send + Sync;
-    type ProgramVerifyingKey: ToConstraintField<Self::OuterScalarField> + Clone + PartialEq + Eq + ToBytes + FromBytes + Serialize + DeserializeOwned + ToMinimalBits + Send + Sync;
+    type ProgramVerifyingKey: ToConstraintField<Self::InnerBaseField> + Clone + PartialEq + Eq + ToBytes + FromBytes + Serialize + DeserializeOwned + ToMinimalBits + Send + Sync;
     type ProgramProof: Bech32Object<<Self::ProgramSNARK as SNARK>::Proof>;
 
     /// SNARK for PoSW.
-    type PoSWSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::OuterScalarField, VerifierInput = Vec<Self::InnerScalarField>, UniversalSetupConfig = usize>;
+    type PoSWSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::InnerBaseField, VerifierInput = Vec<Self::InnerScalarField>, UniversalSetupConfig = usize>;
     type PoSWProof: Bech32Object<<Self::PoSWSNARK as SNARK>::Proof>;
     type PoSW: PoSWScheme<Self>;
 
@@ -212,8 +208,8 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type Commitment: Bech32Locator<<Self::CommitmentScheme as CRH>::Output>;
 
     /// CRH for deriving function IDs. Invoked only over `Self::OuterScalarField`.
-    type FunctionIDCRH: CRH<Output = Self::OuterScalarField>;
-    type FunctionIDCRHGadget: CRHGadget<Self::FunctionIDCRH, Self::OuterScalarField>;
+    type FunctionIDCRH: CRH<Output = Self::InnerBaseField>;
+    type FunctionIDCRHGadget: CRHGadget<Self::FunctionIDCRH, Self::InnerBaseField>;
     type FunctionID: Bech32Locator<<Self::FunctionIDCRH as CRH>::Output>;
 
     /// Crypto hash for deriving the function inputs hash. Invoked only over `Self::InnerScalarField`.
@@ -222,8 +218,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type FunctionInputsHash: Bech32Locator<<Self::FunctionInputsCRH as CRH>::Output>;
 
     /// CRH for hash of the `Self::InnerSNARK` verifying keys. Invoked only over `Self::OuterScalarField`.
-    type InnerCircuitIDCRH: CRH<Output = Self::OuterScalarField>;
-    type InnerCircuitIDCRHGadget: CRHGadget<Self::InnerCircuitIDCRH, Self::OuterScalarField>;
+    type InnerCircuitIDCRH: CRH<Output = Self::InnerBaseField>;
     type InnerCircuitID: Bech32Locator<<Self::InnerCircuitIDCRH as CRH>::Output>;
 
     /// Merkle scheme for computing the ledger root. Invoked only over `Self::InnerScalarField`.
@@ -238,8 +233,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type PoSWNonce: Bech32Locator<Self::InnerScalarField>;
 
     /// CRH for deriving program IDs. Invoked only over `Self::OuterScalarField`.
-    type ProgramIDCRH: CRH<Output = Self::OuterScalarField>;
-    type ProgramIDCRHGadget: CRHGadget<Self::ProgramIDCRH, Self::OuterScalarField>;
+    type ProgramIDCRH: CRH<Output = Self::InnerBaseField>;
     type ProgramIDParameters: MerkleParameters<H = Self::ProgramIDCRH>;
     type ProgramID: Bech32Locator<<Self::ProgramIDCRH as CRH>::Output>;
 

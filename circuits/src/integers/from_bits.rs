@@ -66,7 +66,6 @@ mod tests {
 
     const ITERATIONS: usize = 128;
 
-    #[rustfmt::skip]
     fn check_from_bits_le<I: IntegerType>(
         mode: Mode,
         num_constants: usize,
@@ -79,11 +78,20 @@ mod tests {
             let expected: I = UniformRand::rand(&mut thread_rng());
             let a = Integer::<Circuit, I>::new(mode, expected).to_bits_le();
             let name = format!("From BitsLE: {} {}", mode, i);
-            check_unary_operation_passes(&name, "", expected, &a[..], | a: &[Boolean<Circuit>] | Integer::from_bits_le(mode, a), num_constraints, num_public, num_private, num_constraints);
+            check_unary_operation_passes(
+                &name,
+                "",
+                expected,
+                &a[..],
+                |a: &[Boolean<Circuit>]| Integer::from_bits_le(mode, a),
+                num_constraints,
+                num_public,
+                num_private,
+                num_constraints,
+            );
         }
     }
 
-    #[rustfmt::skip]
     fn check_from_bits_be<I: IntegerType>(
         mode: Mode,
         num_constants: usize,
@@ -96,7 +104,17 @@ mod tests {
             let expected: I = UniformRand::rand(&mut thread_rng());
             let a = Integer::<Circuit, I>::new(mode, expected).to_bits_be();
             let name = format!("From BitsBE: {} {}", mode, i);
-            check_unary_operation_passes(&name, "", expected, &a[..], | a: &[Boolean<Circuit>] | Integer::from_bits_be(mode, a), num_constraints, num_public, num_private, num_constraints);
+            check_unary_operation_passes(
+                &name,
+                "",
+                expected,
+                &a[..],
+                |a: &[Boolean<Circuit>]| Integer::from_bits_be(mode, a),
+                num_constraints,
+                num_public,
+                num_private,
+                num_constraints,
+            );
         }
     }
 

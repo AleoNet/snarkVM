@@ -29,9 +29,9 @@ use crate::{
 use snarkvm_algorithms::{traits::SNARK, SRS};
 use snarkvm_utilities::UniformRand;
 
-use chrono::Utc;
 use core::sync::atomic::AtomicBool;
 use rand::{CryptoRng, Rng};
+use time::OffsetDateTime;
 
 /// A Proof of Succinct Work miner and verifier.
 #[derive(Clone)]
@@ -101,7 +101,8 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
         loop {
             // Every 100 iterations, check that the miner is still within the allowed mining duration.
             if iteration % 100 == 0
-                && Utc::now().timestamp() >= block_template.block_timestamp() + MAXIMUM_MINING_DURATION
+                && OffsetDateTime::now_utc().unix_timestamp()
+                    >= block_template.block_timestamp() + MAXIMUM_MINING_DURATION
             {
                 return Err(PoSWError::Message("Failed mine block in the allowed mining duration".to_string()));
             }
@@ -110,12 +111,7 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
             let proof = self.prove_once_unchecked(&mut circuit, terminator, rng)?;
 
             // Check if the updated block header is valid.
-            if self.verify(
-                block_template.block_height(),
-                block_template.difficulty_target(),
-                &circuit.to_public_inputs(),
-                &proof,
-            ) {
+            if self.verify(block_template.difficulty_target(), &circuit.to_public_inputs(), &proof) {
                 // Construct a block header.
                 return Ok(BlockHeader::from(
                     block_template.previous_ledger_root(),
@@ -155,7 +151,6 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
     /// Verifies the Proof of Succinct Work against the nonce, root, and difficulty target.
     fn verify_from_block_header(&self, block_header: &BlockHeader<N>) -> bool {
         self.verify(
-            block_header.height(),
             block_header.difficulty_target(),
             &[*block_header.to_header_root().unwrap(), *block_header.nonce()],
             block_header.proof(),
@@ -163,13 +158,7 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
     }
 
     /// Verifies the Proof of Succinct Work against the nonce, root, and difficulty target.
-    fn verify(
-        &self,
-        block_height: u32,
-        difficulty_target: u64,
-        inputs: &[N::InnerScalarField],
-        proof: &PoSWProof<N>,
-    ) -> bool {
+    fn verify(&self, difficulty_target: u64, inputs: &[N::InnerScalarField], proof: &PoSWProof<N>) -> bool {
         // Ensure the difficulty target is met.
         match proof.to_proof_difficulty() {
             Ok(proof_difficulty) => {
@@ -191,7 +180,7 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
         // Ensure the proof type is not hiding.
         if proof.is_hiding() {
             #[cfg(debug_assertions)]
-            eprintln!("PoSW proof for block {} should not be hiding", block_height);
+            eprintln!("PoSW proof should be non-hiding");
             return false;
         }
 

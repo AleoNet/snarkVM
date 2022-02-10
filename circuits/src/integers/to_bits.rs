@@ -57,7 +57,6 @@ mod tests {
 
     const ITERATIONS: usize = 128;
 
-    #[rustfmt::skip]
     fn check_to_bits_le<I: IntegerType>(
         mode: Mode,
         num_constants: usize,
@@ -78,7 +77,7 @@ mod tests {
                 let mut expected = expected.to_le();
                 for candidate_bit in candidate {
                     assert_eq!(expected & I::one() == I::one(), candidate_bit.eject_value());
-                    expected = expected.wrapping_shr( 1);
+                    expected = expected.wrapping_shr(1);
                 }
 
                 assert_eq!(num_constants, Circuit::num_constants_in_scope(), "(num_constants)");
@@ -90,7 +89,6 @@ mod tests {
         }
     }
 
-    #[rustfmt::skip]
     fn check_to_bits_be<I: IntegerType>(
         mode: Mode,
         num_constants: usize,

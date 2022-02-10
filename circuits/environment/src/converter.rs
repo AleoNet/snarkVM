@@ -241,12 +241,17 @@ mod tests {
 
         // Marlin setup, prove, and verify.
         {
-            use snarkvm_curves::bls12_377::{Bls12_377, Fq};
-            use snarkvm_marlin::{
-                fiat_shamir::{FiatShamirAlgebraicSpongeRng, PoseidonSponge},
-                marlin::{MarlinRecursiveMode, MarlinSNARK},
+            use snarkvm_algorithms::{
+                crypto_hash::poseidon::PoseidonSponge,
+                polycommit::sonic_pc::SonicKZG10,
+                snark::marlin::{
+                    ahp::AHPForR1CS,
+                    fiat_shamir::FiatShamirAlgebraicSpongeRng,
+                    MarlinHidingMode,
+                    MarlinSNARK,
+                },
             };
-            use snarkvm_polycommit::sonic_pc::SonicKZG10;
+            use snarkvm_curves::bls12_377::{Bls12_377, Fq};
             use snarkvm_utilities::rand::test_rng;
 
             type MultiPC = SonicKZG10<Bls12_377>;
@@ -255,14 +260,13 @@ mod tests {
                 Fq,
                 MultiPC,
                 FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>,
-                MarlinRecursiveMode,
+                MarlinHidingMode,
                 Vec<Fr>,
             >;
 
             let rng = &mut test_rng();
 
-            let max_degree =
-                snarkvm_marlin::ahp::AHPForR1CS::<Fr, MarlinRecursiveMode>::max_degree(200, 200, 300).unwrap();
+            let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(200, 200, 300).unwrap();
             let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
 
             let (index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &Circuit).unwrap();

@@ -16,10 +16,6 @@ path = "../../fields"
 version = "0.7.5"
 default-features = false
 
-[dev-dependencies.snarkvm-marlin]
-path = "../../marlin"
-version = "0.7.5"
-
 [dependencies.snarkvm-r1cs]
 path = "../../r1cs"
 version = "0.7.5"
@@ -35,13 +31,10 @@ version = "1"
 path = "../../algorithms"
 version = "0.7.5"
 default-features = false
+features = ["polycommit", "snark"]
 
 [dev-dependencies.snarkvm-circuits]
 path = "../../circuits"
-version = "0.7.5"
-
-[dev-dependencies.snarkvm-polycommit]
-path = "../../polycommit"
 version = "0.7.5"
 
 [dev-dependencies.snarkvm-utilities]
