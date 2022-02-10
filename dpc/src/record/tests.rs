@@ -26,10 +26,8 @@ pub(crate) const ITERATIONS: usize = 25;
 fn test_record_ciphertext() {
     let rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
 
-    for i in 0..ITERATIONS {
+    for _ in 0..ITERATIONS {
         let account = Account::<Testnet2>::new(rng);
-
-        println!("i: {:?}", i);
 
         let value: i64 = rng.gen();
         let mut payload = [0u8; Testnet2::RECORD_PAYLOAD_SIZE_IN_BYTES];

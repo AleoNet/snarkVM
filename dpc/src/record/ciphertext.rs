@@ -49,8 +49,8 @@ impl<N: Network> Ciphertext<N> {
             None => vec![0u8; N::PROGRAM_ID_SIZE_IN_BYTES],
         };
 
-        let mut flattened_record_bytes = record_bytes.iter().flatten().collect::<Vec<&u8>>();
-        flattened_record_bytes.resize(N::RECORD_CIPHERTEXT_SIZE_IN_BYTES, &0u8);
+        let mut flattened_record_bytes = record_bytes.iter().flatten().copied().collect::<Vec<u8>>();
+        flattened_record_bytes.resize(N::RECORD_CIPHERTEXT_SIZE_IN_BYTES, 0u8);
 
         // Compute the commitment.
         let commitment = N::commitment_scheme()
