@@ -22,13 +22,14 @@ pub use snarkvm_algorithms::{
     fft::*,
     merkle_tree::*,
     msm::*,
+    polycommit::*,
     prf::*,
     signature::*,
     snark::*,
 };
 
 #[cfg(feature = "curves")]
-pub use snarkvm_curves::{bls12_377::*, bw6_761::*, edwards_bls12::*, edwards_bw6::*};
+pub use snarkvm_curves::{bls12_377::*, edwards_bls12::*, edwards_bw6::*};
 
 #[cfg(feature = "dpc")]
 pub use snarkvm_dpc::*;
@@ -39,11 +40,8 @@ pub use snarkvm_fields::*;
 #[cfg(feature = "gadgets")]
 pub use snarkvm_gadgets::*;
 
-#[cfg(feature = "marlin")]
-pub use snarkvm_marlin::*;
-
-#[cfg(feature = "polycommit")]
-pub use snarkvm_polycommit::*;
-
 #[cfg(feature = "r1cs")]
 pub use snarkvm_r1cs::*;
+
+#[cfg(test)]
+mod tests;

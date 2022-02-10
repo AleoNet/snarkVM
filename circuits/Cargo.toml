@@ -54,7 +54,7 @@ version = "1.0.43"
 version = "2"
 
 [dependencies.digest]
-version = "0.9"
+version = "0.10"
 
 [dependencies.itertools]
 version = "0.10.1"
@@ -82,17 +82,6 @@ version = "1"
 
 [dependencies.thiserror]
 version = "1.0"
-
-[dev-dependencies.snarkvm-marlin]
-path = "../marlin"
-version = "0.7.5"
-
-[dev-dependencies.snarkvm-polycommit]
-path = "../polycommit"
-version = "0.7.5"
-
-[dev-dependencies.blake2]
-version = "0.9"
 
 [dev-dependencies.criterion]
 version = "0.3"

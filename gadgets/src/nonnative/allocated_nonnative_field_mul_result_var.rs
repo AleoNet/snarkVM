@@ -14,26 +14,24 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::marker::PhantomData;
-
-use num_bigint::BigUint;
-
 use crate::{
     bits::Boolean,
     fields::FpGadget,
+    nonnative::{
+        reduce::{bigint_to_basefield, limbs_to_bigint, Reducer},
+        AllocatedNonNativeFieldVar,
+    },
     traits::{alloc::AllocGadget, fields::FieldGadget},
+};
+use snarkvm_algorithms::{
+    overhead,
+    snark::marlin::params::{get_params, OptimizationType},
 };
 use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
-use crate::{
-    nonnative::{
-        params::{get_params, OptimizationType},
-        reduce::{bigint_to_basefield, limbs_to_bigint, Reducer},
-        AllocatedNonNativeFieldVar,
-    },
-    overhead,
-};
+use core::marker::PhantomData;
+use num_bigint::BigUint;
 
 /// The allocated form of `NonNativeFieldMulResultVar` (introduced below)
 #[derive(Debug)]

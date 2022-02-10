@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_fields::{Field, Zero};
+use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 
 struct MySillyCircuit<F: Field> {
@@ -174,133 +174,6 @@ mod bls12_377 {
         // Deserialize
         assert_eq!(verifying_key, bincode::deserialize(&candidate_bytes[..]).unwrap());
         assert_eq!(verifying_key, VerifyingKey::<Bls12_377>::read_le(&expected_bytes[..]).unwrap());
-    }
-}
-
-mod bw6_761 {
-    use super::*;
-    use crate::snark::groth16::{
-        create_random_proof,
-        generate_random_parameters,
-        prepare_verifying_key,
-        verify_proof,
-        Proof,
-        VerifyingKey,
-    };
-    use snarkvm_curves::bw6_761::{Fr, BW6_761};
-    use snarkvm_utilities::{rand::UniformRand, str::FromStr, FromBytes, ToBytes};
-
-    use rand::thread_rng;
-
-    #[test]
-    fn prove_and_verify() {
-        let rng = &mut thread_rng();
-        let parameters =
-            generate_random_parameters::<BW6_761, _, _>(&MySillyCircuit { a: None, b: None }, rng).unwrap();
-
-        let (a, b) = (Fr::rand(rng), Fr::rand(rng));
-        let c = a * b;
-
-        let proof = create_random_proof(&MySillyCircuit { a: Some(a), b: Some(b) }, &parameters, rng).unwrap();
-        let pvk = prepare_verifying_key::<BW6_761>(parameters.vk);
-
-        assert!(verify_proof(&pvk, &proof, &[c]).unwrap());
-        assert!(!verify_proof(&pvk, &proof, &[Fr::zero()]).unwrap());
-    }
-
-    #[test]
-    fn test_serde_json() {
-        let expected_proof = {
-            let rng = &mut thread_rng();
-            let parameters =
-                generate_random_parameters::<BW6_761, _, _>(&MySillyCircuit { a: None, b: None }, rng).unwrap();
-
-            let (a, b) = (Fr::rand(rng), Fr::rand(rng));
-            create_random_proof(&MySillyCircuit { a: Some(a), b: Some(b) }, &parameters, rng).unwrap()
-        };
-
-        // Serialize
-        let expected_string = &expected_proof.to_string();
-        let candidate_string = serde_json::to_string(&expected_proof).unwrap();
-        assert_eq!(580, candidate_string.len(), "Update me if serialization has changed");
-        assert_eq!(expected_string, serde_json::Value::from_str(&candidate_string).unwrap().as_str().unwrap());
-
-        // Deserialize
-        assert_eq!(expected_proof, serde_json::from_str(&candidate_string).unwrap());
-        assert_eq!(expected_proof, Proof::from_str(expected_string).unwrap());
-    }
-
-    #[test]
-    fn test_bincode_compressed() {
-        let expected_proof = {
-            let rng = &mut thread_rng();
-            let parameters =
-                generate_random_parameters::<BW6_761, _, _>(&MySillyCircuit { a: None, b: None }, rng).unwrap();
-
-            let (a, b) = (Fr::rand(rng), Fr::rand(rng));
-            create_random_proof(&MySillyCircuit { a: Some(a), b: Some(b) }, &parameters, rng).unwrap()
-        };
-
-        // Serialize
-        let expected_bytes = expected_proof.to_bytes_le().unwrap();
-        assert_eq!(&expected_bytes[..], &bincode::serialize(&expected_proof).unwrap()[..]);
-
-        // Deserialize
-        assert_eq!(expected_proof, bincode::deserialize(&expected_bytes[..]).unwrap());
-        assert_eq!(expected_proof, Proof::read_le(&expected_bytes[..]).unwrap());
-    }
-
-    #[test]
-    fn test_bincode_uncompressed() {
-        let expected_proof = {
-            let rng = &mut thread_rng();
-            let parameters =
-                generate_random_parameters::<BW6_761, _, _>(&MySillyCircuit { a: None, b: None }, rng).unwrap();
-
-            let (a, b) = (Fr::rand(rng), Fr::rand(rng));
-            create_random_proof(&MySillyCircuit { a: Some(a), b: Some(b) }, &parameters, rng).unwrap()
-        };
-
-        // Uncompressed bytes.
-        let mut expected_bytes = Vec::new();
-        expected_proof.write_uncompressed(&mut expected_bytes).unwrap();
-
-        // Deserialize
-        assert_eq!(expected_proof, bincode::deserialize(&expected_bytes[..]).unwrap());
-        assert_eq!(expected_proof, Proof::read_le(&expected_bytes[..]).unwrap());
-    }
-
-    #[test]
-    fn test_verifying_key_serde_json() {
-        let rng = &mut thread_rng();
-        let verifying_key =
-            generate_random_parameters::<BW6_761, _, _>(&MySillyCircuit { a: None, b: None }, rng).unwrap().vk;
-
-        // Serialize
-        let expected_string = &verifying_key.to_string();
-        let candidate_string = serde_json::to_string(&verifying_key).unwrap();
-        assert_eq!(expected_string, serde_json::Value::from_str(&candidate_string).unwrap().as_str().unwrap());
-
-        // Deserialize
-        assert_eq!(verifying_key, serde_json::from_str(&candidate_string).unwrap());
-        assert_eq!(verifying_key, VerifyingKey::<BW6_761>::from_str(expected_string).unwrap());
-    }
-
-    #[test]
-    fn test_verifying_key_bincode() {
-        let rng = &mut thread_rng();
-        let verifying_key =
-            generate_random_parameters::<BW6_761, _, _>(&MySillyCircuit { a: None, b: None }, rng).unwrap().vk;
-
-        // Serialize
-        let expected_bytes = verifying_key.to_bytes_le().unwrap();
-        let candidate_bytes = bincode::serialize(&verifying_key).unwrap();
-        // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
-        assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
-
-        // Deserialize
-        assert_eq!(verifying_key, bincode::deserialize(&candidate_bytes[..]).unwrap());
-        assert_eq!(verifying_key, VerifyingKey::<BW6_761>::read_le(&expected_bytes[..]).unwrap());
     }
 }
 

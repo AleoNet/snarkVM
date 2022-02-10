@@ -14,14 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::{
-    borrow::Borrow,
-    hash::{Hash, Hasher},
-};
-
 use crate::{
     bits::{Boolean, ToBitsBEGadget, ToBitsLEGadget, ToBytesGadget},
     integers::uint::UInt8,
+    nonnative::{AllocatedNonNativeFieldVar, NonNativeFieldMulResultVar},
     traits::{
         alloc::AllocGadget,
         eq::{ConditionalEqGadget, EqGadget, NEqGadget},
@@ -37,7 +33,10 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
-use crate::nonnative::{AllocatedNonNativeFieldVar, NonNativeFieldMulResultVar};
+use core::{
+    borrow::Borrow,
+    hash::{Hash, Hasher},
+};
 
 /// A gadget for representing non-native (`TargetField`) field elements over the constraint field (`BaseField`).
 #[derive(Clone, Debug)]
