@@ -24,7 +24,7 @@
 use crate::{
     fft::DensePolynomial,
     msm::{FixedBaseMSM, VariableBaseMSM},
-    polycommit::{LabeledPolynomial, PCError, PCRandomness},
+    polycommit::{PCError, PCRandomness},
 };
 use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{Field, One, PrimeField, Zero};
@@ -43,6 +43,8 @@ use rayon::prelude::*;
 
 mod data_structures;
 pub use data_structures::*;
+
+use super::LabeledPolynomialWithBasis;
 
 #[derive(Debug, PartialEq, Eq)]
 #[allow(deprecated)]
@@ -128,6 +130,14 @@ impl<E: PairingEngine> KZG10<E> {
             FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(scalar_bits, window_size, &g_table, &powers_of_beta);
         end_timer!(g_time);
 
+        let max_power_of_two = {
+            let lagrange_size = max_degree + 1;
+            if lagrange_size.is_power_of_two() { lagrange_size } else { lagrange_size.next_power_of_two() >> 1 }
+        };
+        let domain = crate::fft::domain::EvaluationDomain::new(max_power_of_two).unwrap();
+        let lagrange_basis_at_beta_g = domain.ifft(&powers_of_beta_g[..domain.size()]);
+        let lagrange_basis_at_beta_g = E::G1Projective::batch_normalization_into_affine(lagrange_basis_at_beta_g);
+
         // Compute `gamma beta^i G`.
         let gamma_g_time = start_timer!(|| "Generating powers of gamma * G");
         let gamma_g_table = FixedBaseMSM::get_window_table(scalar_bits, window_size, gamma_g);
@@ -195,6 +205,7 @@ impl<E: PairingEngine> KZG10<E> {
 
         let pp = UniversalParams {
             powers_of_beta_g,
+            lagrange_basis_at_beta_g,
             powers_of_beta_times_gamma_g,
             h,
             beta_h,
@@ -252,6 +263,62 @@ impl<E: PairingEngine> KZG10<E> {
         let msm_time = start_timer!(|| "MSM to compute commitment to random poly");
         let random_commitment =
             VariableBaseMSM::multi_scalar_mul(&powers.powers_of_beta_times_gamma_g, random_ints.as_slice())
+                .into_affine();
+        end_timer!(msm_time);
+
+        if terminator.load(Ordering::Relaxed) {
+            return Err(PCError::Terminated);
+        }
+
+        commitment.add_assign_mixed(&random_commitment);
+
+        end_timer!(commit_time);
+        Ok((Commitment(commitment.into()), randomness))
+    }
+
+    /// Outputs a commitment to `polynomial`.
+    pub fn commit_lagrange(
+        lagrange_basis: &LagrangeBasis<E>,
+        evaluations: &[E::Fr],
+        hiding_bound: Option<usize>,
+        terminator: &AtomicBool,
+        rng: Option<&mut dyn RngCore>,
+    ) -> Result<(Commitment<E>, Randomness<E>), PCError> {
+        Self::check_degree_is_too_large(evaluations.len() - 1, lagrange_basis.size())?;
+
+        let commit_time = start_timer!(|| format!(
+            "Committing to polynomial of degree {} with hiding_bound: {:?}",
+            evaluations.len() - 1,
+            hiding_bound,
+        ));
+
+        let evaluations = evaluations.iter().map(|e| e.to_repr()).collect::<Vec<_>>();
+        let msm_time = start_timer!(|| "MSM to compute commitment to plaintext poly");
+        let mut commitment = VariableBaseMSM::multi_scalar_mul(&lagrange_basis.lagrange_basis_at_beta_g, &evaluations);
+        end_timer!(msm_time);
+
+        if terminator.load(Ordering::Relaxed) {
+            return Err(PCError::Terminated);
+        }
+
+        let mut randomness = Randomness::empty();
+        if let Some(hiding_degree) = hiding_bound {
+            let mut rng = rng.ok_or(PCError::MissingRng)?;
+            let sample_random_poly_time =
+                start_timer!(|| format!("Sampling a random polynomial of degree {}", hiding_degree));
+
+            randomness = Randomness::rand(hiding_degree, false, &mut rng);
+            Self::check_hiding_bound(
+                randomness.blinding_polynomial.degree(),
+                lagrange_basis.powers_of_beta_times_gamma_g.len(),
+            )?;
+            end_timer!(sample_random_poly_time);
+        }
+
+        let random_ints = convert_to_bigints(&randomness.blinding_polynomial.coeffs);
+        let msm_time = start_timer!(|| "MSM to compute commitment to random poly");
+        let random_commitment =
+            VariableBaseMSM::multi_scalar_mul(&lagrange_basis.powers_of_beta_times_gamma_g, random_ints.as_slice())
                 .into_affine();
         end_timer!(msm_time);
 
@@ -450,12 +517,13 @@ impl<E: PairingEngine> KZG10<E> {
         }
     }
 
-    pub(crate) fn check_degrees_and_bounds(
+    pub(crate) fn check_degrees_and_bounds<'a>(
         supported_degree: usize,
         max_degree: usize,
         enforced_degree_bounds: Option<&[usize]>,
-        p: &LabeledPolynomial<E::Fr>,
+        p: impl Into<LabeledPolynomialWithBasis<'a, E::Fr>>,
     ) -> Result<(), PCError> {
+        let p = p.into();
         if let Some(bound) = p.degree_bound() {
             let enforced_degree_bounds = enforced_degree_bounds.ok_or(PCError::UnsupportedDegreeBound(bound))?;
 

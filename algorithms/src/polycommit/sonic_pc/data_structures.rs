@@ -16,6 +16,7 @@
 
 use crate::{
     crh::sha256::sha256,
+    fft::EvaluationDomain,
     polycommit::{kzg10, PCCommitterKey, PCVerifierKey},
     Prepare,
 };
@@ -24,7 +25,7 @@ use snarkvm_curves::{
     Group,
 };
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
-use snarkvm_utilities::{error, errors::SerializationError, serialize::*, FromBytes, ToBytes};
+use snarkvm_utilities::{error, serialize::*, FromBytes, ToBytes};
 
 use std::collections::BTreeMap;
 
@@ -63,6 +64,9 @@ pub struct CommitterKey<E: PairingEngine> {
     /// The key used to commit to polynomials.
     pub powers_of_beta_g: Vec<E::G1Affine>,
 
+    /// The key used to commit to polynomials in lagrange basis.
+    pub lagrange_basis_at_beta_g: Vec<E::G1Affine>,
+
     /// The key used to commit to hiding polynomials.
     pub powers_of_beta_times_gamma_g: Vec<E::G1Affine>,
 
@@ -91,6 +95,14 @@ impl<E: PairingEngine> FromBytes for CommitterKey<E> {
         for _ in 0..powers_len {
             let power: E::G1Affine = FromBytes::read_le(&mut reader)?;
             powers_of_beta_g.push(power);
+        }
+
+        // Deserialize `powers`.
+        let lagrange_basis_at_beta_len: u32 = FromBytes::read_le(&mut reader)?;
+        let mut lagrange_basis_at_beta_g = Vec::with_capacity(lagrange_basis_at_beta_len as usize);
+        for _ in 0..lagrange_basis_at_beta_len {
+            let power: E::G1Affine = FromBytes::read_le(&mut reader)?;
+            lagrange_basis_at_beta_g.push(power);
         }
 
         // Deserialize `powers_of_beta_times_gamma_g`.
@@ -196,6 +208,7 @@ impl<E: PairingEngine> FromBytes for CommitterKey<E> {
 
         Ok(Self {
             powers_of_beta_g,
+            lagrange_basis_at_beta_g,
             powers_of_beta_times_gamma_g,
             shifted_powers_of_beta_g,
             shifted_powers_of_beta_times_gamma_g,
@@ -210,6 +223,12 @@ impl<E: PairingEngine> ToBytes for CommitterKey<E> {
         // Serialize `powers`.
         (self.powers_of_beta_g.len() as u32).write_le(&mut writer)?;
         for power in &self.powers_of_beta_g {
+            power.write_le(&mut writer)?;
+        }
+
+        // Serialize `powers`.
+        (self.lagrange_basis_at_beta_g.len() as u32).write_le(&mut writer)?;
+        for power in &self.lagrange_basis_at_beta_g {
             power.write_le(&mut writer)?;
         }
 
@@ -315,6 +334,23 @@ impl<E: PairingEngine> CommitterKey<E> {
             }
 
             (_, _) => None,
+        }
+    }
+
+    /// Obtain elements of the SRS in the lagrange basis powers, for use with the underlying
+    /// KZG10 construction.
+    pub fn lagrange_basis(&self, domain: EvaluationDomain<E::Fr>) -> kzg10::LagrangeBasis<E> {
+        let full_domain = EvaluationDomain::new(self.lagrange_basis_at_beta_g.len()).unwrap();
+        let lagrange_basis_at_beta_g = (0..domain.size())
+            .map(|i| {
+                let reindexed = full_domain.reindex_by_subdomain(domain, i);
+                self.lagrange_basis_at_beta_g[reindexed]
+            })
+            .collect();
+        kzg10::LagrangeBasis {
+            lagrange_basis_at_beta_g,
+            domain,
+            powers_of_beta_times_gamma_g: self.powers_of_beta_times_gamma_g.as_slice().into(),
         }
     }
 }

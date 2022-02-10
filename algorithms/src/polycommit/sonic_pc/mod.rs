@@ -29,6 +29,7 @@ use crate::{
         PCRandomness,
         PCUniversalParams,
         PolynomialCommitment,
+        PolynomialWithBasis,
         QuerySet,
     },
 };
@@ -48,7 +49,9 @@ use std::collections::{BTreeMap, BTreeSet};
 mod data_structures;
 pub use data_structures::*;
 
-/// Polynomial commitment based on [[KZG10]][kzg], with degree enforcement and
+use super::LabeledPolynomialWithBasis;
+
+/// Polynomial commitment based on [\[KZG10\]][kzg], with degree enforcement and
 /// batching taken from [[MBKM19, “Sonic”]][sonic] (more precisely, their
 /// counterparts in [[Gabizon19, “AuroraLight”]][al] that avoid negative G1 powers).
 /// The (optional) hiding property of the commitment scheme follows the approach
@@ -169,8 +172,13 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         let powers_of_beta_times_gamma_g =
             (0..=supported_hiding_bound + 1).map(|i| pp.powers_of_beta_times_gamma_g[&i]).collect();
 
+        let lagrange_size = supported_degree.next_power_of_two().min(pp.lagrange_basis_at_beta_g.len());
+        let domain = crate::fft::EvaluationDomain::new(lagrange_size).unwrap();
+        let lagrange_basis_at_beta_g = pp.lagrange_basis(domain);
+
         let ck = CommitterKey {
             powers_of_beta_g,
+            lagrange_basis_at_beta_g,
             powers_of_beta_times_gamma_g,
             shifted_powers_of_beta_g,
             shifted_powers_of_beta_times_gamma_g,
@@ -222,7 +230,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
     #[allow(clippy::type_complexity)]
     fn commit_with_terminator<'a>(
         ck: &Self::CommitterKey,
-        polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<E::Fr>>,
+        polynomials: impl IntoIterator<Item = LabeledPolynomialWithBasis<'a, E::Fr>>,
         terminator: &AtomicBool,
         rng: Option<&mut dyn RngCore>,
     ) -> Result<(Vec<LabeledCommitment<Self::Commitment>>, Vec<Self::Randomness>), PCError> {
@@ -232,9 +240,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         let mut randomness: Vec<Self::Randomness> = Vec::new();
 
         let mut pool = snarkvm_utilities::ExecutionPool::<Result<_, _>>::new();
-
-        let enforced_degree_bounds: Option<&[usize]> = ck.enforced_degree_bounds.as_deref();
-        for labeled_polynomial in polynomials {
+        for p in polynomials {
             if terminator.load(Ordering::Relaxed) {
                 return Err(PCError::Terminated);
             }
@@ -247,32 +253,48 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
             kzg10::KZG10::<E>::check_degrees_and_bounds(
                 ck.supported_degree(),
                 ck.max_degree,
-                enforced_degree_bounds,
-                labeled_polynomial,
+                ck.enforced_degree_bounds.as_deref(),
+                p.clone(),
             )?;
-            let polynomial = labeled_polynomial.polynomial();
-            let degree_bound = labeled_polynomial.degree_bound();
-            let hiding_bound = labeled_polynomial.hiding_bound();
-            let label = labeled_polynomial.label().clone();
+            let degree_bound = p.degree_bound();
+            let hiding_bound = p.hiding_bound();
+            let label = p.label().clone();
+
             pool.add_job(move || {
                 let mut rng = seed.map(rand::rngs::StdRng::from_seed);
+                let rng_ref = rng.as_mut().map(|s| s as _);
 
                 let commit_time = start_timer!(|| format!(
                     "Polynomial {} of degree {}, degree bound {:?}, and hiding bound {:?}",
                     label,
-                    polynomial.degree(),
+                    p.degree(),
                     degree_bound,
                     hiding_bound,
                 ));
 
-                let powers = if let Some(degree_bound) = degree_bound {
-                    ck.shifted_powers_of_beta_g(degree_bound).unwrap()
-                } else {
-                    ck.powers()
+                let (comm, rand) = match p.polynomial {
+                    PolynomialWithBasis::Lagrange { evaluations } => {
+                        let domain = crate::fft::EvaluationDomain::new(evaluations.evaluations.len()).unwrap();
+                        let lagrange_basis = ck.lagrange_basis(domain);
+                        kzg10::KZG10::commit_lagrange(
+                            &lagrange_basis,
+                            &evaluations.evaluations,
+                            hiding_bound,
+                            terminator,
+                            rng_ref,
+                        )?
+                    }
+                    PolynomialWithBasis::Monomial { polynomial, degree_bound } => {
+                        let powers = if let Some(degree_bound) = degree_bound {
+                            ck.shifted_powers_of_beta_g(degree_bound).unwrap()
+                        } else {
+                            ck.powers()
+                        };
+
+                        kzg10::KZG10::commit(&powers, &polynomial, hiding_bound, terminator, rng_ref)?
+                    }
                 };
 
-                let (comm, rand) =
-                    kzg10::KZG10::commit(&powers, polynomial, hiding_bound, terminator, rng.as_mut().map(|s| s as _))?;
                 end_timer!(commit_time);
                 Ok((LabeledCommitment::new(label.to_string(), comm, degree_bound), rand))
             });
@@ -1175,6 +1197,13 @@ mod tests {
     #[should_panic]
     fn test_bad_degree_bound() {
         bad_degree_bound_test::<_, _, PC_Bls12_377>().expect("test failed for bls12-377");
+        println!("Finished bls12-377");
+    }
+
+    #[test]
+    fn test_lagrange_commitment() {
+        crate::polycommit::test_templates::lagrange_test_template::<_, _, PC_Bls12_377>()
+            .expect("test failed for bls12-377");
         println!("Finished bls12-377");
     }
 }

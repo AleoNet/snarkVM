@@ -20,7 +20,7 @@ use snarkvm_curves::traits::{PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{Field, One, PrimeField, Zero};
 use snarkvm_profiler::{end_timer, start_timer};
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, SynthesisError, Variable};
-use snarkvm_utilities::{errors::SerializationError, rand::UniformRand, serialize::*};
+use snarkvm_utilities::{rand::UniformRand, serialize::*};
 
 use core::ops::Mul;
 use rand::Rng;

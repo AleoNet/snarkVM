@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    fft::DensePolynomial,
+    fft::{DensePolynomial, EvaluationDomain},
     polycommit::{PCCommitment, PCProof, PCRandomness, PCUniversalParams},
 };
 use snarkvm_curves::{
@@ -26,7 +26,6 @@ use snarkvm_fields::{ConstraintFieldError, PrimeField, ToConstraintField, Zero};
 use snarkvm_utilities::{
     borrow::Cow,
     error,
-    errors::SerializationError,
     io::{Read, Write},
     serialize::{CanonicalDeserialize, CanonicalSerialize},
     FromBytes,
@@ -46,9 +45,10 @@ pub struct UniversalParams<E: PairingEngine> {
     /// Group elements of the form `{ \beta^i G }`, where `i` ranges from 0 to `degree`.
     /// These represent the monomial basis evaluated at `beta`.
     pub powers_of_beta_g: Vec<E::G1Affine>,
-    // /// Group elements of the form `{ \beta^i G }`, where `i` ranges from 0 to `degree`.
-    // /// These represent the Lagrange basis of a given size, evaluated at `beta`.
-    // pub lagrange_basis_at_beta_g: Vec<E::G1Affine>,
+    /// Group elements of the form `{ \beta^i G }`, where `i` ranges from 0 to `degree`.
+    /// These represent the Lagrange basis of a given size, evaluated at `beta`.
+    /// The length of this vector must be a power of two.
+    pub lagrange_basis_at_beta_g: Vec<E::G1Affine>,
     /// Group elements of the form `{ \beta^i \gamma G }`, where `i` ranges from 0 to `degree`.
     /// These are used for hiding.
     pub powers_of_beta_times_gamma_g: BTreeMap<usize, E::G1Affine>,
@@ -58,8 +58,6 @@ pub struct UniversalParams<E: PairingEngine> {
     pub beta_h: E::G2Affine,
     /// Supported degree bounds.
     pub supported_degree_bounds: Vec<usize>,
-    // /// The largest multiplicative subgroup supported by `Self`.
-    // pub max_subgroup_size: usize,
     /// Group elements of the form `{ \beta^{max_degree -i} G2 }`, where `i` is the supported degree bound.
     /// This one is used for deriving the verifying key.
     pub inverse_neg_powers_of_beta_h: BTreeMap<usize, E::G2Affine>,
@@ -71,6 +69,20 @@ pub struct UniversalParams<E: PairingEngine> {
     pub prepared_beta_h: <E::G2Affine as PairingCurve>::Prepared,
 }
 
+impl<E: PairingEngine> UniversalParams<E> {
+    /// Obtain elements of the SRS in the lagrange basis powers, for use with the underlying
+    /// KZG10 construction.
+    pub fn lagrange_basis(&self, domain: EvaluationDomain<E::Fr>) -> Vec<E::G1Affine> {
+        let full_domain = EvaluationDomain::new(self.lagrange_basis_at_beta_g.len()).unwrap();
+        (0..domain.size())
+            .map(|i| {
+                let reindexed = full_domain.reindex_by_subdomain(domain, i);
+                self.lagrange_basis_at_beta_g[reindexed]
+            })
+            .collect()
+    }
+}
+
 impl<E: PairingEngine> FromBytes for UniversalParams<E> {
     fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
         // Deserialize `powers_of_g`.
@@ -79,6 +91,12 @@ impl<E: PairingEngine> FromBytes for UniversalParams<E> {
         for _ in 0..powers_of_beta_g_len {
             let power_of_g: E::G1Affine = FromBytes::read_le(&mut reader)?;
             powers_of_beta_g.push(power_of_g);
+        }
+        let lagrange_basis_len: u32 = FromBytes::read_le(&mut reader)?;
+        let mut lagrange_basis_at_beta_g = Vec::with_capacity(lagrange_basis_len as usize);
+        for _ in 0..powers_of_beta_g_len {
+            let power_of_g: E::G1Affine = FromBytes::read_le(&mut reader)?;
+            lagrange_basis_at_beta_g.push(power_of_g);
         }
 
         // Deserialize `powers_of_gamma_g`.
@@ -123,6 +141,7 @@ impl<E: PairingEngine> FromBytes for UniversalParams<E> {
 
         Ok(Self {
             powers_of_beta_g,
+            lagrange_basis_at_beta_g,
             powers_of_beta_times_gamma_g,
             h,
             beta_h,
@@ -136,13 +155,19 @@ impl<E: PairingEngine> FromBytes for UniversalParams<E> {
 
 impl<E: PairingEngine> ToBytes for UniversalParams<E> {
     fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
-        // Serialize `powers_of_g`.
+        // Serialize `powers_of_beta_g`.
         (self.powers_of_beta_g.len() as u32).write_le(&mut writer)?;
         for power in &self.powers_of_beta_g {
             power.write_le(&mut writer)?;
         }
 
-        // Serialize `powers_of_gamma_g`.
+        // Serialize the lagrange basis elements
+        (self.lagrange_basis_at_beta_g.len() as u32).write_le(&mut writer)?;
+        for power in &self.lagrange_basis_at_beta_g {
+            power.write_le(&mut writer)?;
+        }
+
+        // Serialize `powers_of_beta_times_gamma_g`.
         (self.powers_of_beta_times_gamma_g.len() as u32).write_le(&mut writer)?;
         for (key, power_of_gamma_g) in &self.powers_of_beta_times_gamma_g {
             (*key as u32).write_le(&mut writer)?;
@@ -203,6 +228,26 @@ impl<E: PairingEngine> Powers<'_, E> {
     /// The number of powers in `self`.
     pub fn size(&self) -> usize {
         self.powers_of_beta_g.len()
+    }
+}
+/// `LagrangeBasis` is used to commit to and create evaluation proofs for a given
+/// polynomial.
+#[derive(Derivative)]
+#[derivative(Hash(bound = ""), Clone(bound = ""), Debug(bound = ""))]
+pub struct LagrangeBasis<'a, E: PairingEngine> {
+    /// Group elements of the form `β^i G`, for different values of `i`.
+    pub lagrange_basis_at_beta_g: Cow<'a, [E::G1Affine]>,
+    /// Group elements of the form `β^i γG`, for different values of `i`.
+    pub powers_of_beta_times_gamma_g: Cow<'a, [E::G1Affine]>,
+    /// Domain representing the multiplicative subgroup the powers
+    /// in `self.lagrange_basis_at_beta_g` are defined over.
+    pub domain: EvaluationDomain<E::Fr>,
+}
+
+impl<E: PairingEngine> LagrangeBasis<'_, E> {
+    /// The number of powers in `self`.
+    pub fn size(&self) -> usize {
+        self.lagrange_basis_at_beta_g.len()
     }
 }
 
@@ -493,7 +538,9 @@ impl<'a, E: PairingEngine> AddAssign<(E::Fr, &'a Randomness<E>)> for Randomness<
 )]
 #[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct Proof<E: PairingEngine> {
-    /// This is a commitment to the witness polynomial; see [KZG10] for more details.
+    /// This is a commitment to the witness polynomial; see [\[KZG10\]][kzg] for more details.
+    ///
+    /// [kzg]: http://cacr.uwaterloo.ca/techreports/2010/cacr2010-10.pdf
     pub w: E::G1Affine,
     /// This is the evaluation of the random polynomial at the point for which
     /// the evaluation proof was produced.

@@ -21,7 +21,7 @@ use crate::{
     snark::marlin::{ahp::matrices::MatrixArithmetization, CircuitInfo, MarlinMode, Matrix},
 };
 use snarkvm_fields::PrimeField;
-use snarkvm_utilities::{errors::SerializationError, serialize::*};
+use snarkvm_utilities::serialize::*;
 
 #[derive(derivative::Derivative)]
 #[derivative(Clone(bound = "F: PrimeField"))]

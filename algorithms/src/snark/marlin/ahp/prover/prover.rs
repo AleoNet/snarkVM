@@ -18,7 +18,7 @@ use core::convert::TryInto;
 
 use crate::{
     fft::{DensePolynomial, EvaluationDomain, Evaluations as EvaluationsOnDomain, SparsePolynomial},
-    polycommit::LabeledPolynomial,
+    polycommit::{LabeledPolynomial, LabeledPolynomialWithBasis},
     snark::marlin::{
         ahp::{
             indexer::{Circuit, CircuitInfo, Matrix},
@@ -34,7 +34,7 @@ use crate::{
         MarlinMode,
     },
 };
-use snarkvm_fields::{batch_inversion, Field, PrimeField};
+use snarkvm_fields::{batch_inversion, PrimeField};
 use snarkvm_r1cs::ConstraintSynthesizer;
 use snarkvm_utilities::{cfg_into_iter, cfg_iter, cfg_iter_mut};
 
@@ -48,35 +48,53 @@ use snarkvm_utilities::println;
 use rayon::prelude::*;
 
 /// The first set of prover oracles.
-#[derive(Debug)]
-pub struct ProverFirstOracles<F: Field> {
-    /// The LDE of `w`.
-    pub w: LabeledPolynomial<F>,
-    /// The LDE of `Az`.
-    pub z_a: LabeledPolynomial<F>,
-    /// The LDE of `Bz`.
-    pub z_b: LabeledPolynomial<F>,
+#[derive(Debug, Clone)]
+pub struct ProverFirstOracles<'a, F: PrimeField> {
+    /// The evaluations of `Az`.
+    pub z_a: LabeledPolynomialWithBasis<'a, F>,
+    /// The evaluations of `Bz`.
+    pub z_b: LabeledPolynomialWithBasis<'a, F>,
     /// The sum-check hiding polynomial.
     pub mask_poly: Option<LabeledPolynomial<F>>,
+    /// The LDE of `w`.
+    pub w_poly: LabeledPolynomial<F>,
+    /// The LDE of `Az`.
+    pub z_a_poly: LabeledPolynomial<F>,
+    /// The LDE of `Bz`.
+    pub z_b_poly: LabeledPolynomial<F>,
 }
 
-impl<F: Field> ProverFirstOracles<F> {
+impl<'a, F: PrimeField> ProverFirstOracles<'a, F> {
     /// Iterate over the polynomials output by the prover in the first round.
-    pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
-        [Some(&self.w), Some(&self.z_a), Some(&self.z_b), self.mask_poly.as_ref()].into_iter().flatten()
+    /// Intended for use when committing.
+    pub fn iter_for_commit(&'a self) -> impl Iterator<Item = LabeledPolynomialWithBasis<'a, F>> {
+        [
+            Some(&self.w_poly).map(Into::into),
+            Some(self.z_a.clone()),
+            Some(self.z_b.clone()),
+            self.mask_poly.as_ref().map(Into::into),
+        ]
+        .into_iter()
+        .flatten()
+    }
+
+    /// Iterate over the polynomials output by the prover in the first round.
+    /// Intended for use when opening.
+    pub fn iter_for_open(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
+        [Some(&self.w_poly), Some(&self.z_a_poly), Some(&self.z_b_poly), self.mask_poly.as_ref()].into_iter().flatten()
     }
 }
 
 /// The second set of prover oracles.
 #[derive(Debug)]
-pub struct ProverSecondOracles<F: Field> {
+pub struct ProverSecondOracles<F: PrimeField> {
     /// The polynomial `g` resulting from the first sumcheck.
     pub g_1: LabeledPolynomial<F>,
     /// The polynomial `h` resulting from the first sumcheck.
     pub h_1: LabeledPolynomial<F>,
 }
 
-impl<F: Field> ProverSecondOracles<F> {
+impl<F: PrimeField> ProverSecondOracles<F> {
     /// Iterate over the polynomials output by the prover in the second round.
     pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
         [&self.g_1, &self.h_1].into_iter()
@@ -85,7 +103,7 @@ impl<F: Field> ProverSecondOracles<F> {
 
 /// The third set of prover oracles.
 #[derive(Debug)]
-pub struct ProverThirdOracles<F: Field> {
+pub struct ProverThirdOracles<F: PrimeField> {
     /// The polynomial `g_a` resulting from the second sumcheck.
     pub g_a: LabeledPolynomial<F>,
     /// The polynomial `g_b` resulting from the second sumcheck.
@@ -94,7 +112,7 @@ pub struct ProverThirdOracles<F: Field> {
     pub g_c: LabeledPolynomial<F>,
 }
 
-impl<F: Field> ProverThirdOracles<F> {
+impl<F: PrimeField> ProverThirdOracles<F> {
     /// Iterate over the polynomials output by the prover in the third round.
     pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
         [&self.g_a, &self.g_b, &self.g_c].into_iter()
@@ -102,12 +120,12 @@ impl<F: Field> ProverThirdOracles<F> {
 }
 
 #[derive(Debug)]
-pub struct ProverFourthOracles<F: Field> {
+pub struct ProverFourthOracles<F: PrimeField> {
     /// The polynomial `h_2` resulting from the second sumcheck.
     pub h_2: LabeledPolynomial<F>,
 }
 
-impl<F: Field> ProverFourthOracles<F> {
+impl<F: PrimeField> ProverFourthOracles<F> {
     /// Iterate over the polynomials output by the prover in the third round.
     pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
         [&self.h_2].into_iter()
@@ -208,7 +226,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     pub fn prover_first_round<'a, R: RngCore>(
         mut state: ProverState<'a, F, MM>,
         rng: &mut R,
-    ) -> Result<(ProverMessage<F>, ProverFirstOracles<F>, ProverState<'a, F, MM>), AHPError> {
+    ) -> Result<(ProverMessage<F>, ProverFirstOracles<'a, F>, ProverState<'a, F, MM>), AHPError> {
         let round_time = start_timer!(|| "AHP::Prover::FirstRound");
         let constraint_domain = state.constraint_domain;
         let zk_bound = state.zk_bound;
@@ -298,24 +316,30 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let msg = ProverMessage::default();
 
+        let hiding_bound = if MM::ZK { Some(1) } else { None };
+
+        let w_poly = LabeledPolynomial::new("w".to_string(), w_poly, None, hiding_bound);
+        let z_a_poly = LabeledPolynomial::new("z_a".to_string(), z_a_poly, None, hiding_bound);
+        let z_b_poly = LabeledPolynomial::new("z_b".to_string(), z_b_poly, None, hiding_bound);
+
         assert!(w_poly.degree() < constraint_domain.size() - input_domain.size() + zk_bound);
         assert!(z_a_poly.degree() < constraint_domain.size() + zk_bound);
         assert!(z_b_poly.degree() < constraint_domain.size() + zk_bound);
 
-        let hiding_bound = if MM::ZK { Some(1) } else { None };
-
-        let w = LabeledPolynomial::new("w".to_string(), w_poly, None, hiding_bound);
-        let z_a = LabeledPolynomial::new("z_a".to_string(), z_a_poly, None, hiding_bound);
-        let z_b = LabeledPolynomial::new("z_b".to_string(), z_b_poly, None, hiding_bound);
-
         let mask_poly =
             mask_poly.map(|mask_poly| LabeledPolynomial::new("mask_poly".to_string(), mask_poly, None, None));
 
-        let oracles =
-            ProverFirstOracles { w: w.clone(), z_a: z_a.clone(), z_b: z_b.clone(), mask_poly: mask_poly.clone() };
+        let z_a_evals = EvaluationsOnDomain::from_vec_and_domain(state.z_a.unwrap(), constraint_domain);
+        let z_a = LabeledPolynomialWithBasis::new_lagrange_basis("z_a".to_string(), z_a_evals, hiding_bound);
 
-        state.w_poly = Some(w);
-        state.mz_polys = Some((z_a, z_b));
+        let z_b_evals = EvaluationsOnDomain::from_vec_and_domain(state.z_b.unwrap(), constraint_domain);
+        let z_b = LabeledPolynomialWithBasis::new_lagrange_basis("z_b".to_string(), z_b_evals, hiding_bound);
+        let oracles = ProverFirstOracles { z_a, z_b, mask_poly: mask_poly.clone(), z_a_poly, z_b_poly, w_poly };
+        state.z_a = None;
+        state.z_b = None;
+
+        state.w_poly = Some(oracles.w_poly.clone());
+        state.mz_polys = Some((oracles.z_a_poly.clone(), oracles.z_b_poly.clone()));
         state.mz_poly_randomizer = Some((r_a, r_b));
         state.mask_poly = mask_poly;
         end_timer!(round_time);
