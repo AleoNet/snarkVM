@@ -2141,7 +2141,7 @@ mod tests {
     fn test_exhaustive_u8_constant_shl_u8_public() {
         type I = u8;
         type M = u8;
-        run_exhaustive_test::<I, M>(Mode::Public, Mode::Public, 3, 0, 37, 40);
+        run_exhaustive_test::<I, M>(Mode::Constant, Mode::Public, 3, 0, 37, 40);
     }
 
     #[test]
@@ -2149,7 +2149,7 @@ mod tests {
     fn test_exhaustive_u8_constant_shl_u8_private() {
         type I = u8;
         type M = u8;
-        run_exhaustive_test::<I, M>(Mode::Public, Mode::Public, 3, 0, 37, 40);
+        run_exhaustive_test::<I, M>(Mode::Constant, Mode::Private, 3, 0, 37, 40);
     }
 
     #[test]
@@ -2215,7 +2215,7 @@ mod tests {
     fn test_exhaustive_i8_constant_shl_u8_public() {
         type I = i8;
         type M = u8;
-        run_exhaustive_test::<I, M>(Mode::Public, Mode::Public, 3, 0, 37, 40);
+        run_exhaustive_test::<I, M>(Mode::Constant, Mode::Public, 3, 0, 37, 40);
     }
 
     #[test]
@@ -2223,7 +2223,7 @@ mod tests {
     fn test_exhaustive_i8_constant_shl_u8_private() {
         type I = i8;
         type M = u8;
-        run_exhaustive_test::<I, M>(Mode::Public, Mode::Public, 3, 0, 37, 40);
+        run_exhaustive_test::<I, M>(Mode::Constant, Mode::Private, 3, 0, 37, 40);
     }
 
     #[test]

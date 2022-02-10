@@ -354,7 +354,7 @@ mod tests {
     fn test_i8_constant_pow_u8_public() {
         type I = i8;
         type M = u8;
-        run_overflow_and_corner_case_test::<I, M>(Mode::Constant, Mode::Constant);
+        run_overflow_and_corner_case_test::<I, M>(Mode::Constant, Mode::Public);
     }
 
     #[test]
@@ -1054,7 +1054,7 @@ mod tests {
     fn test_i8_constant_pow_u16_public() {
         type I = i8;
         type M = u16;
-        run_overflow_and_corner_case_test::<I, M>(Mode::Constant, Mode::Constant);
+        run_overflow_and_corner_case_test::<I, M>(Mode::Constant, Mode::Public);
     }
 
     #[test]
@@ -1754,7 +1754,7 @@ mod tests {
     fn test_i8_constant_pow_u32_public() {
         type I = i8;
         type M = u32;
-        run_overflow_and_corner_case_test::<I, M>(Mode::Constant, Mode::Constant);
+        run_overflow_and_corner_case_test::<I, M>(Mode::Constant, Mode::Public);
     }
 
     #[test]
@@ -2459,7 +2459,7 @@ mod tests {
     fn test_exhaustive_i8_constant_pow_u8_public() {
         type I = i8;
         type M = u8;
-        run_exhaustive_test_without_expected_numbers::<I, M>(Mode::Constant, Mode::Constant);
+        run_exhaustive_test_without_expected_numbers::<I, M>(Mode::Constant, Mode::Public);
     }
 
     #[test]
@@ -2491,7 +2491,7 @@ mod tests {
     fn test_exhaustive_i8_public_pow_u8_public() {
         type I = i8;
         type M = u8;
-        run_exhaustive_test::<I, M>(Mode::Public, Mode::Public, 46, 0, 349, 364);
+        run_exhaustive_test::<I, M>(Mode::Public, Mode::Public, 532, 0, 1492, 1566);
     }
 
     #[test]
@@ -2499,7 +2499,7 @@ mod tests {
     fn test_exhaustive_i8_public_pow_u8_private() {
         type I = i8;
         type M = u8;
-        run_exhaustive_test::<I, M>(Mode::Public, Mode::Private, 46, 0, 349, 364);
+        run_exhaustive_test::<I, M>(Mode::Public, Mode::Private, 532, 0, 1492, 1566);
     }
 
     #[test]
@@ -2507,7 +2507,7 @@ mod tests {
     fn test_exhaustive_i8_private_pow_u8_public() {
         type I = i8;
         type M = u8;
-        run_exhaustive_test::<I, M>(Mode::Private, Mode::Public, 46, 0, 349, 364);
+        run_exhaustive_test::<I, M>(Mode::Private, Mode::Public, 532, 0, 1492, 1566);
     }
 
     #[test]
@@ -2515,6 +2515,6 @@ mod tests {
     fn test_exhaustive_i8_private_pow_u8_private() {
         type I = i8;
         type M = u8;
-        run_exhaustive_test::<I, M>(Mode::Private, Mode::Private, 46, 0, 349, 364);
+        run_exhaustive_test::<I, M>(Mode::Private, Mode::Private, 532, 0, 1492, 1566);
     }
 }

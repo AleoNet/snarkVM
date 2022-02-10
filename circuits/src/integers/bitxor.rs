@@ -117,7 +117,7 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
-        let check_bitxor = | name: &str, first: I, second: I | check_bitxor(name, first, second, mode_b, mode_b, num_constants, num_public, num_private, num_constraints);
+        let check_bitxor = | name: &str, first: I, second: I | check_bitxor(name, first, second, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
 
         for i in 0..ITERATIONS {
             let first : I = UniformRand::rand(&mut thread_rng());

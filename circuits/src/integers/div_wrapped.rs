@@ -52,6 +52,7 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
                 let dividend_unsigned_value = dividend_unsigned_integer.eject_value();
                 let divisor_unsigned_value = divisor_unsigned_integer.eject_value();
 
+                // Overflow is not possible for unsigned integers so we use wrapping operations.
                 let quotient_unsigned_value = dividend_unsigned_value.wrapping_div(&divisor_unsigned_value);
                 let remainder_unsigned_value = dividend_unsigned_value.wrapping_rem(&divisor_unsigned_value);
 
@@ -80,6 +81,7 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
                 let dividend_value = self.eject_value();
                 let divisor_value = other.eject_value();
 
+                // Overflow is not possible for unsigned integers so we use wrapping operations.
                 let quotient_value = dividend_value.wrapping_div(&divisor_value);
                 let remainder_value = dividend_value.wrapping_rem(&divisor_value);
 
