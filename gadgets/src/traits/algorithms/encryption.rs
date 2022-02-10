@@ -73,8 +73,8 @@ pub trait EncryptionGadget<E: EncryptionScheme, F: PrimeField>: AllocGadget<E, F
         cs: CS,
         randomness: &Self::ScalarRandomnessGadget,
         public_key: &Self::PublicKeyGadget,
-        input: &[UInt8],
-    ) -> Result<(Self::CiphertextRandomizer, Vec<UInt8>, Self::SymmetricKeyGadget), SynthesisError>;
+        input: &[Vec<UInt8>],
+    ) -> Result<(Self::CiphertextRandomizer, Vec<Vec<UInt8>>, Self::SymmetricKeyGadget), SynthesisError>;
 
     /// Assumes symmetric key is committed before hand.
     /// Otherwise, this allows the decrypter to open the ciphertext to any
@@ -86,14 +86,14 @@ pub trait EncryptionGadget<E: EncryptionScheme, F: PrimeField>: AllocGadget<E, F
         &self,
         cs: CS,
         symmetric_key: &Self::SymmetricKeyGadget,
-        plaintext: &[UInt8],
-    ) -> Result<Vec<UInt8>, SynthesisError>;
+        plaintext: &[Vec<UInt8>],
+    ) -> Result<Vec<Vec<UInt8>>, SynthesisError>;
 
     fn check_encryption_from_ciphertext_randomizer<CS: ConstraintSystem<F>>(
         &self,
         cs: CS,
         ciphertext_randomizer: &Self::CiphertextRandomizer,
         private_key: &Self::PrivateKeyGadget,
-        message: &[UInt8],
-    ) -> Result<Vec<UInt8>, SynthesisError>;
+        message: &[Vec<UInt8>],
+    ) -> Result<Vec<Vec<UInt8>>, SynthesisError>;
 }
