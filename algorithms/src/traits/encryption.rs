@@ -51,9 +51,14 @@ pub trait EncryptionScheme:
 
     fn generate_symmetric_key_commitment(&self, symmetric_key: &Self::SymmetricKey) -> Self::SymmetricKeyCommitment;
 
-    fn encrypt(&self, symmetric_key: &Self::SymmetricKey, message: &[u8]) -> Result<Vec<u8>, EncryptionError>;
+    fn encrypt(&self, symmetric_key: &Self::SymmetricKey, message: &[Vec<u8>])
+    -> Result<Vec<Vec<u8>>, EncryptionError>;
 
-    fn decrypt(&self, symmetric_key: &Self::SymmetricKey, ciphertext: &[u8]) -> Result<Vec<u8>, EncryptionError>;
+    fn decrypt(
+        &self,
+        symmetric_key: &Self::SymmetricKey,
+        ciphertext: &[Vec<u8>],
+    ) -> Result<Vec<Vec<u8>>, EncryptionError>;
 
     fn parameters(&self) -> &<Self as EncryptionScheme>::Parameters;
 
