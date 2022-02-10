@@ -324,19 +324,19 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 ///
 /// Intended to provide a common interface for both the prover and the verifier
 /// when constructing linear combinations via `AHPForR1CS::construct_linear_combinations`.
-pub trait EvaluationsProvider<F: Field> {
+pub trait EvaluationsProvider<F: PrimeField> {
     /// Get the evaluation of linear combination `lc` at `point`.
     fn get_lc_eval(&self, lc: &LinearCombination<F>, point: F) -> Result<F, AHPError>;
 }
 
-impl<'a, F: Field> EvaluationsProvider<F> for crate::polycommit::Evaluations<'a, F> {
+impl<'a, F: PrimeField> EvaluationsProvider<F> for crate::polycommit::Evaluations<'a, F> {
     fn get_lc_eval(&self, lc: &LinearCombination<F>, point: F) -> Result<F, AHPError> {
         let key = (lc.label.clone(), point);
         self.get(&key).copied().ok_or_else(|| AHPError::MissingEval(lc.label.clone()))
     }
 }
 
-impl<F: Field, T: Borrow<LabeledPolynomial<F>>> EvaluationsProvider<F> for Vec<T> {
+impl<F: PrimeField, T: Borrow<LabeledPolynomial<F>>> EvaluationsProvider<F> for Vec<T> {
     fn get_lc_eval(&self, lc: &LinearCombination<F>, point: F) -> Result<F, AHPError> {
         let mut eval = F::zero();
         for (coeff, term) in lc.iter() {

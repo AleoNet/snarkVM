@@ -36,7 +36,7 @@ use crate::{
 use snarkvm_fields::{batch_inversion, FftField, FftParameters, Field};
 #[cfg(feature = "parallel")]
 use snarkvm_utilities::max_available_threads;
-use snarkvm_utilities::{errors::SerializationError, execute_with_max_available_threads, serialize::*};
+use snarkvm_utilities::{execute_with_max_available_threads, serialize::*};
 
 use rand::Rng;
 use std::fmt;

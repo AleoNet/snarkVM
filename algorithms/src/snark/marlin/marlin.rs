@@ -106,7 +106,7 @@ impl<
 
         let commit_time = start_timer!(|| "Commit to index polynomials");
         let (circuit_commitments, circuit_commitment_randomness): (_, _) =
-            PC::commit(&committer_key, circuit.iter(), None)?;
+            PC::commit(&committer_key, circuit.iter().map(Into::into), None)?;
         end_timer!(commit_time);
 
         let circuit_commitments = circuit_commitments.into_iter().map(|c| c.commitment().clone()).collect();
@@ -156,7 +156,7 @@ impl<
 
         let commit_time = start_timer!(|| "Commit to index polynomials");
         let (circuit_commitments, circuit_commitment_randomness): (_, _) =
-            PC::commit(&committer_key, index.iter(), None)?;
+            PC::commit(&committer_key, index.iter().map(Into::into), None)?;
         end_timer!(commit_time);
 
         let circuit_commitments = circuit_commitments.into_iter().map(|c| c.commitment().clone()).collect();
@@ -192,7 +192,7 @@ impl<
         if terminator.load(Ordering::Relaxed) { Err(MarlinError::Terminated) } else { Ok(()) }
     }
 
-    /// Same as [`prove`] with an added termination flag, [`terminator`].
+    /// Same as [`Self::prove`] with an added termination flag, `terminator`.
     pub fn prove_with_terminator<C: ConstraintSynthesizer<TargetField>, R: RngCore>(
         circuit_proving_key: &CircuitProvingKey<TargetField, BaseField, PC, MM>,
         circuit: &C,
@@ -223,7 +223,7 @@ impl<
 
         let first_round_comm_time = start_timer!(|| "Committing to first round polys");
         let (first_commitments, first_commitment_randomnesses) =
-            PC::commit(&circuit_proving_key.committer_key, prover_first_oracles.iter(), Some(zk_rng))?;
+            PC::commit(&circuit_proving_key.committer_key, prover_first_oracles.iter_for_commit(), Some(zk_rng))?;
         end_timer!(first_round_comm_time);
 
         Self::verifier_absorb_labeled(&first_commitments, &prover_first_message, &mut fs_rng);
@@ -246,7 +246,7 @@ impl<
         let second_round_comm_time = start_timer!(|| "Committing to second round polys");
         let (second_commitments, second_commitment_randomnesses) = PC::commit_with_terminator(
             &circuit_proving_key.committer_key,
-            prover_second_oracles.iter(),
+            prover_second_oracles.iter().map(Into::into),
             terminator,
             Some(zk_rng),
         )?;
@@ -271,7 +271,7 @@ impl<
         let third_round_comm_time = start_timer!(|| "Committing to third round polys");
         let (third_commitments, third_commitment_randomnesses) = PC::commit_with_terminator(
             &circuit_proving_key.committer_key,
-            prover_third_oracles.iter(),
+            prover_third_oracles.iter().map(Into::into),
             terminator,
             Some(zk_rng),
         )?;
@@ -295,7 +295,7 @@ impl<
         let fourth_round_comm_time = start_timer!(|| "Committing to fourth round polys");
         let (fourth_commitments, fourth_commitment_randomnesses) = PC::commit_with_terminator(
             &circuit_proving_key.committer_key,
-            prover_fourth_oracles.iter(),
+            prover_fourth_oracles.iter().map(Into::into),
             terminator,
             Some(zk_rng),
         )?;
@@ -312,7 +312,7 @@ impl<
         let polynomials: Vec<_> = circuit_proving_key
             .circuit
             .iter() // 12 items
-            .chain(prover_first_oracles.iter()) // 3 or 4 items
+            .chain(prover_first_oracles.iter_for_open()) // 3 or 4 items
             .chain(prover_second_oracles.iter())// 2 items
             .chain(prover_third_oracles.iter())// 3 items
             .chain(prover_fourth_oracles.iter())// 1 item

@@ -25,7 +25,6 @@ use snarkvm_fields::{ConstraintFieldError, PrimeField, ToConstraintField};
 use snarkvm_r1cs::SynthesisError;
 use snarkvm_utilities::{
     error,
-    errors::SerializationError,
     io::{self, Read, Write},
     serialize::*,
     string::String,

@@ -21,7 +21,6 @@ use crate::{
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{
     error,
-    errors::SerializationError,
     io::{self, Read, Write},
     serialize::*,
     FromBytes,

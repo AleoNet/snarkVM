@@ -23,7 +23,7 @@ use crate::{
 };
 use snarkvm_fields::{batch_inversion, Field, PrimeField};
 use snarkvm_r1cs::{ConstraintSystem, Index as VarIndex};
-use snarkvm_utilities::{cfg_iter, cfg_iter_mut, errors::SerializationError, serialize::*};
+use snarkvm_utilities::{cfg_iter, cfg_iter_mut, serialize::*};
 
 use hashbrown::HashMap;
 
