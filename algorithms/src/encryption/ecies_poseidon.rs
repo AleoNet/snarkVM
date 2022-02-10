@@ -226,10 +226,10 @@ where
     ///     ciphertext := to_bytes_le![C_1, ..., C_n], where C_i := R_i + M_i, and R_i := H_i(G^ar)
     /// ```
     ///
-    fn encrypt(
+    fn encrypt<T: AsRef<[u8]>>(
         &self,
         symmetric_key: &Self::SymmetricKey,
-        message: &[Vec<u8>],
+        message: &[T],
     ) -> Result<Vec<Vec<u8>>, EncryptionError> {
         // Initialize the sponge state.
         let mut sponge = PoseidonSponge::with_parameters(&self.poseidon_parameters);
@@ -237,7 +237,7 @@ where
 
         let mut result = Vec::new();
 
-        for element in message.iter() {
+        for element in message.iter().map(|x| x.as_ref()) {
             // Convert the message into bits.
             let mut plaintext_bits = Vec::<bool>::with_capacity(element.len() * 8 + 1);
             for byte in element.iter() {
@@ -280,17 +280,17 @@ where
     ///
     /// Decrypts the given ciphertext with the given symmetric key.
     ///
-    fn decrypt(
+    fn decrypt<T: AsRef<[u8]>>(
         &self,
         symmetric_key: &Self::SymmetricKey,
-        ciphertext: &[Vec<u8>],
+        ciphertext: &[T],
     ) -> Result<Vec<Vec<u8>>, EncryptionError> {
         // Initialize sponge state.
         let mut sponge = PoseidonSponge::with_parameters(&self.poseidon_parameters);
         sponge.absorb(&[self.symmetric_encryption_domain, *symmetric_key]);
 
         let mut result = Vec::new();
-        for element in ciphertext.iter() {
+        for element in ciphertext.iter().map(|x| x.as_ref()) {
             let per_field_element_bytes = TE::BaseField::zero().to_bytes_le()?.len();
             assert!(element.len() >= per_field_element_bytes);
 
