@@ -58,6 +58,11 @@ impl<F: PrimeField, MM: MarlinMode> Circuit<F, MM> {
         self.index_info.max_degree::<MM>()
     }
 
+    /// The number of constraints in this R1CS instance.
+    pub fn num_constraints(&self) -> usize {
+        self.index_info.num_constraints
+    }
+
     /// Iterate over the indexed polynomials.
     pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
         [

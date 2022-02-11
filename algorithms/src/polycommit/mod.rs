@@ -155,6 +155,7 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
     fn trim(
         parameters: &Self::UniversalParams,
         supported_degree: usize,
+        supported_lagrange_sizes: impl IntoIterator<Item = usize>,
         supported_hiding_bound: usize,
         enforced_degree_bounds: Option<&[usize]>,
     ) -> Result<(Self::CommitterKey, Self::VerifierKey), PCError>;
