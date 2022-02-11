@@ -62,12 +62,7 @@ impl<E: Environment, I: IntegerType> BitXorAssign<&Integer<E, I>> for Integer<E,
     fn bitxor_assign(&mut self, other: &Integer<E, I>) {
         // Stores the bitwise XOR of `self` and `other` in `self`.
         *self = Self {
-            bits_le: self
-                .bits_le
-                .iter()
-                .zip_eq(other.bits_le.iter())
-                .map(|(self_bit, other_bit)| self_bit.xor(other_bit))
-                .collect(),
+            bits_le: self.bits_le.iter().zip_eq(other.bits_le.iter()).map(|(this, that)| this.xor(that)).collect(),
             phantom: Default::default(),
         }
     }

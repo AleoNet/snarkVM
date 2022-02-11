@@ -62,12 +62,7 @@ impl<E: Environment, I: IntegerType> BitAndAssign<&Integer<E, I>> for Integer<E,
     fn bitand_assign(&mut self, other: &Integer<E, I>) {
         // Stores the bitwise AND of `self` and `other` in `self`.
         *self = Self {
-            bits_le: self
-                .bits_le
-                .iter()
-                .zip_eq(other.bits_le.iter())
-                .map(|(self_bit, other_bit)| self_bit.and(other_bit))
-                .collect(),
+            bits_le: self.bits_le.iter().zip_eq(other.bits_le.iter()).map(|(this, that)| this.and(that)).collect(),
             phantom: Default::default(),
         }
     }
