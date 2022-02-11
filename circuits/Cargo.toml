@@ -1,16 +1,16 @@
 [package]
 name = "snarkvm-circuits"
-version = "0.7.5"
+version = "0.8.0"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Circuits for a decentralized virtual machine"
 homepage = "https://aleo.org"
 repository = "https://github.com/AleoHQ/snarkVM"
 keywords = [
-    "aleo",
-    "cryptography",
-    "blockchain",
-    "decentralized",
-    "zero-knowledge"
+  "aleo",
+  "cryptography",
+  "blockchain",
+  "decentralized",
+  "zero-knowledge"
 ]
 categories = [ "cryptography::cryptocurrencies", "operating-systems" ]
 include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
@@ -24,27 +24,27 @@ harness = false
 
 [dependencies.snarkvm-algorithms]
 path = "../algorithms"
-version = "0.7.5"
+version = "0.8.0"
 default-features = false
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.7.5"
+version = "0.8.0"
 default-features = false
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "0.7.5"
+version = "0.8.0"
 default-features = false
 
 [dependencies.snarkvm-r1cs]
 path = "../r1cs"
-version = "0.7.5"
+version = "0.8.0"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.7.5"
+version = "0.8.0"
 default-features = false
 
 [dependencies.anyhow]
@@ -85,11 +85,11 @@ version = "1.0"
 
 [dev-dependencies.snarkvm-marlin]
 path = "../marlin"
-version = "0.7.5"
+version = "0.8.0"
 
 [dev-dependencies.snarkvm-polycommit]
 path = "../polycommit"
-version = "0.7.5"
+version = "0.8.0"
 
 [dev-dependencies.blake2]
 version = "0.9"
@@ -113,12 +113,12 @@ default-features = false
 
 [features]
 default = [
-    "full",
-    "snarkvm-algorithms/default",
-    "snarkvm-curves/default",
-    "snarkvm-fields/default",
-    "snarkvm-r1cs/default",
-    "snarkvm-utilities/default",
+  "full",
+  "snarkvm-algorithms/default",
+  "snarkvm-curves/default",
+  "snarkvm-fields/default",
+  "snarkvm-r1cs/default",
+  "snarkvm-utilities/default"
 ]
 full = [ "algorithms", "curves", "nonnative" ]
 algorithms = [ ]

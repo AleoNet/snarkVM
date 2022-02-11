@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-algorithms"
-version = "0.7.5"
+version = "0.8.0"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Algorithms for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -78,27 +78,27 @@ path = "examples/snark/groth16.rs"
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.7.5"
+version = "0.8.0"
 default-features = false
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "0.7.5"
+version = "0.8.0"
 default-features = false
 
 [dependencies.snarkvm-profiler]
 path = "../profiler"
-version = "0.7.5"
+version = "0.8.0"
 default-features = false
 
 [dependencies.snarkvm-r1cs]
 path = "../r1cs"
-version = "0.7.5"
+version = "0.8.0"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.7.5"
+version = "0.8.0"
 default-features = false
 
 [dependencies.aleo-std]
@@ -163,7 +163,7 @@ optional = true
 [dependencies.serde]
 version = "1.0"
 default-features = false
-features = ["derive"]
+features = [ "derive" ]
 
 [dependencies.sha2]
 version = "0.10"
@@ -177,7 +177,7 @@ features = [ "const_generics", "const_new" ]
 [dependencies.thiserror]
 version = "1.0"
 
-[dev-dependencies.expect-test ]
+[dev-dependencies.expect-test]
 version = "1.1.0"
 
 [dev-dependencies.bincode]
@@ -197,7 +197,7 @@ version = "0.3"
 
 [dev-dependencies.serde]
 version = "1"
-features = ["derive"]
+features = [ "derive" ]
 
 [dev-dependencies.serde_json]
 version = "1"
@@ -240,10 +240,14 @@ wasm = [
   "snark",
   "getrandom"
 ]
-parallel = [ "rayon", "num_cpus", "snarkvm-fields/parallel", "snarkvm-utilities/parallel" ]
+parallel = [
+  "rayon",
+  "num_cpus",
+  "snarkvm-fields/parallel",
+  "snarkvm-utilities/parallel"
+]
 print-trace = [ "snarkvm-profiler/print-trace" ]
 cuda = [ "rust-gpu-tools" ]
-
 commitment = [ "crh" ]
 crh = [ ]
 crypto_hash = [ "blake2" ]

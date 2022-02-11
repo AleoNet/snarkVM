@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm"
-version = "0.7.5"
+version = "0.8.0"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "A decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -22,18 +22,18 @@ members = [
   "algorithms",
   "circuits",
   "curves",
-  "derives", # excluded from [features], for internal use primarily
+  "derives",
   "dpc",
   "fields",
   "gadgets",
-  "marlin", # excluded from [features], to be merged in `algorithms` and `gadgets` once stable
+  "marlin",
   "parameters",
-  "polycommit", # excluded from [features], to be merged in `algorithms` and `gadgets` once stable
-  "profiler", # excluded from [features], for internal use primarily
+  "polycommit",
+  "profiler",
   "r1cs",
   "utilities",
-  "wasm", # excluded from [features], WASM contexts will typically import this crate directly
-  ".integration" # excluded from [features], for CI only
+  "wasm",
+  ".integration"
 ]
 
 [lib]
@@ -42,76 +42,72 @@ path = "snarkvm/lib.rs"
 [[bin]]
 name = "snarkvm"
 path = "snarkvm/cli/main.rs"
-required-features = ["cli"]
+required-features = [ "cli" ]
 
 [features]
-default = ["core"]
-#
-# `core` is defined as the commonly-used members of snarkVM with default features.
-#
-# If you need more granular control of members and/or member features,
-# please import the requisite crates directly and enable features as needed.
-core = ["dpc", "utilities"]
-full = ["algorithms", "curves", "dpc", "fields", "gadgets", "parameters", "r1cs", "utilities"]
-
-## snarkVM workspace ##
-algorithms = ["snarkvm-algorithms"]
-curves = ["snarkvm-curves"]
-dpc = ["snarkvm-dpc"]
-fields = ["snarkvm-fields"]
-gadgets = ["snarkvm-gadgets"]
-parameters = ["snarkvm-parameters"]
-r1cs = ["snarkvm-r1cs"]
-utilities = ["snarkvm-utilities"]
-
-## snarkVM workspace specific ##
-cuda = ["snarkvm-algorithms/cuda"]
-parameters_no_std_out = ["snarkvm-parameters/no_std_out"]
-
-## snarkVM CLI ##
-cli = ["anyhow", "colored", "self_update", "structopt", "thiserror"]
-
-## CI ##
-noconfig = []
+default = [ "core" ]
+core = [ "dpc", "utilities" ]
+full = [
+  "algorithms",
+  "curves",
+  "dpc",
+  "fields",
+  "gadgets",
+  "parameters",
+  "r1cs",
+  "utilities"
+]
+algorithms = [ "snarkvm-algorithms" ]
+curves = [ "snarkvm-curves" ]
+dpc = [ "snarkvm-dpc" ]
+fields = [ "snarkvm-fields" ]
+gadgets = [ "snarkvm-gadgets" ]
+parameters = [ "snarkvm-parameters" ]
+r1cs = [ "snarkvm-r1cs" ]
+utilities = [ "snarkvm-utilities" ]
+cuda = [ "snarkvm-algorithms/cuda" ]
+parameters_no_std_out = [ "snarkvm-parameters/no_std_out" ]
+cli = [ "anyhow", "colored", "self_update", "structopt", "thiserror" ]
+noconfig = [ ]
 
 [dependencies.snarkvm-algorithms]
 path = "./algorithms"
-version = "0.7.5"
+version = "0.8.0"
 optional = true
 
 [dependencies.snarkvm-curves]
 path = "./curves"
-version = "0.7.5"
+version = "0.8.0"
 optional = true
 
 [dependencies.snarkvm-dpc]
 path = "./dpc"
-version = "0.7.5"
+version = "0.8.0"
 optional = true
 
 [dependencies.snarkvm-fields]
 path = "./fields"
-version = "0.7.5"
+version = "0.8.0"
 optional = true
 
 [dependencies.snarkvm-gadgets]
 path = "./gadgets"
-version = "0.7.5"
+version = "0.8.0"
 optional = true
 
 [dependencies.snarkvm-parameters]
 path = "./parameters"
-version = "0.7.5"
+version = "0.8.0"
 optional = true
 
 [dependencies.snarkvm-r1cs]
 path = "./r1cs"
-version = "0.7.5"
+version = "0.8.0"
 optional = true
 
 [dependencies.snarkvm-utilities]
 path = "./utilities"
-version = "0.7.5"
+version = "0.8.0"
 optional = true
 
 [dependencies.anyhow]

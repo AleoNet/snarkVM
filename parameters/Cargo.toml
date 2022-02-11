@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-parameters"
-version = "0.7.5"
+version = "0.8.0"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Parameters for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -19,12 +19,12 @@ edition = "2018"
 
 [dependencies.snarkvm-algorithms]
 path = "../algorithms"
-version = "0.7.5"
+version = "0.8.0"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.7.5"
+version = "0.8.0"
 default-features = false
 
 [dependencies.aleo-std]
@@ -35,10 +35,6 @@ version = "1"
 
 [dependencies.cfg-if]
 version = "1.0"
-
-[target.'cfg(not(target_family = "wasm"))'.dependencies.curl]
-version = "0.4.42"
-optional = true
 
 [dependencies.hex]
 version = "0.4.3"
@@ -63,6 +59,10 @@ optional = true
 [dependencies.parking_lot]
 version = "0.11"
 features = [ "wasm-bindgen" ]
+optional = true
+
+[target."cfg(not(target_family = \"wasm\"))".dependencies.curl]
+version = "0.4.42"
 optional = true
 
 [dev-dependencies.snarkvm-curves]
@@ -95,7 +95,11 @@ version = "0.8"
 
 [features]
 default = [ "remote", "snarkvm-algorithms/default" ]
-no_std_out = []
+no_std_out = [ ]
 remote = [ "curl" ]
-wasm = [ "snarkvm-algorithms/wasm", "reqwest", "wasm-bindgen-futures", "parking_lot" ]
-
+wasm = [
+  "snarkvm-algorithms/wasm",
+  "reqwest",
+  "wasm-bindgen-futures",
+  "parking_lot"
+]

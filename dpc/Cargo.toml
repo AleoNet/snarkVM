@@ -1,6 +1,6 @@
 [package]
 name = "snarkvm-dpc"
-version = "0.7.5"
+version = "0.8.0"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "DPC for a decentralized virtual machine"
 homepage = "https://aleo.org"
@@ -44,52 +44,52 @@ harness = false
 
 [dependencies.snarkvm-algorithms]
 path = "../algorithms"
-version = "0.7.5"
+version = "0.8.0"
 default-features = false
 
 [dependencies.snarkvm-curves]
 path = "../curves"
-version = "0.7.5"
+version = "0.8.0"
 default-features = false
 
 [dependencies.snarkvm-fields]
 path = "../fields"
-version = "0.7.5"
+version = "0.8.0"
 default-features = false
 
 [dependencies.snarkvm-gadgets]
 path = "../gadgets"
-version = "0.7.5"
+version = "0.8.0"
 default-features = false
 
 [dependencies.snarkvm-marlin]
 path = "../marlin"
-version = "0.7.5"
+version = "0.8.0"
 default-features = false
 
 [dependencies.snarkvm-parameters]
 path = "../parameters"
-version = "0.7.5"
+version = "0.8.0"
 default-features = false
 
 [dependencies.snarkvm-polycommit]
 path = "../polycommit"
-version = "0.7.5"
+version = "0.8.0"
 default-features = false
 
 [dependencies.snarkvm-profiler]
 path = "../profiler"
-version = "0.7.5"
+version = "0.8.0"
 default-features = false
 
 [dependencies.snarkvm-r1cs]
 path = "../r1cs"
-version = "0.7.5"
+version = "0.8.0"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
-version = "0.7.5"
+version = "0.8.0"
 default-features = false
 
 [dependencies.anyhow]
@@ -133,7 +133,7 @@ version = "1"
 
 [dependencies.serde]
 version = "1.0"
-features = ["derive"]
+features = [ "derive" ]
 
 [dependencies.serde_json]
 version = "1.0"
@@ -160,7 +160,13 @@ default = [
   "snarkvm-utilities/default"
 ]
 full = [ "testnet1", "testnet2" ]
-wasm = [ "testnet2", "snarkvm-algorithms/wasm", "snarkvm-gadgets/full", "snarkvm-marlin/wasm", "snarkvm-parameters/wasm" ]
+wasm = [
+  "testnet2",
+  "snarkvm-algorithms/wasm",
+  "snarkvm-gadgets/full",
+  "snarkvm-marlin/wasm",
+  "snarkvm-parameters/wasm"
+]
 parallel = [
   "snarkvm-algorithms/parallel",
   "snarkvm-fields/parallel",
@@ -169,6 +175,5 @@ parallel = [
   "snarkvm-utilities/parallel"
 ]
 print-trace = [ "snarkvm-profiler/print-trace" ]
-
-testnet1 = []
-testnet2 = []
+testnet1 = [ ]
+testnet2 = [ ]
