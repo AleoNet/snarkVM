@@ -17,9 +17,7 @@
 pub mod add;
 pub mod add_checked;
 pub mod add_wrapped;
-pub mod bitand;
-pub mod bitor;
-pub mod bitxor;
+pub mod and;
 pub mod div;
 pub mod div_checked;
 pub mod div_wrapped;
@@ -31,6 +29,7 @@ pub mod mul_wrapped;
 pub mod neg;
 pub mod not;
 pub mod one;
+pub mod or;
 pub mod pow_checked;
 pub mod pow_wrapped;
 pub mod shl;
@@ -44,6 +43,7 @@ pub mod sub_checked;
 pub mod sub_wrapped;
 pub mod ternary;
 pub mod to_bits;
+pub mod xor;
 pub mod zero;
 
 mod helpers;
