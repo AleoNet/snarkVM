@@ -56,14 +56,12 @@ mod test {
     };
     use snarkvm_fields::PrimeField;
     use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
-    use snarkvm_utilities::{bititerator::BitIteratorBE, rand::UniformRand};
+    use snarkvm_utilities::{
+        bititerator::BitIteratorBE,
+        rand::{test_rng, UniformRand},
+    };
 
     use core::ops::Mul;
-    use rand::{
-        SeedableRng,
-        {self},
-    };
-    use rand_xorshift::XorShiftRng;
 
     #[test]
     fn bls12_g1_constraint_costs() {
@@ -111,7 +109,7 @@ mod test {
 
     #[test]
     fn bls12_g1_gadget_test() {
-        let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+        let mut rng = test_rng();
 
         let mut cs = TestConstraintSystem::<Fq>::new();
 
