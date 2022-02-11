@@ -22,12 +22,9 @@ use crate::traits::{
 use snarkvm_fields::Zero;
 use snarkvm_utilities::{
     io::Cursor,
-    rand::UniformRand,
+    rand::{test_rng, UniformRand},
     serialize::{CanonicalDeserialize, CanonicalSerialize},
 };
-
-use rand::SeedableRng;
-use rand_xorshift::XorShiftRng;
 
 pub const ITERATIONS: usize = 10;
 
@@ -39,7 +36,7 @@ pub fn sw_tests<P: ShortWeierstrassParameters>() {
 pub fn sw_curve_serialization_test<P: ShortWeierstrassParameters>() {
     let buf_size = Affine::<P>::zero().serialized_size();
 
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..10 {
         let a = Projective::<P>::rand(&mut rng);
@@ -122,7 +119,7 @@ pub fn sw_curve_serialization_test<P: ShortWeierstrassParameters>() {
 pub fn sw_from_random_bytes<P: ShortWeierstrassParameters>() {
     let buf_size = Affine::<P>::zero().serialized_size();
 
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..ITERATIONS {
         let a = Projective::<P>::rand(&mut rng);

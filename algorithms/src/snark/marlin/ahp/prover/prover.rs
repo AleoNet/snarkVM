@@ -261,8 +261,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(3);
         let w_rand = F::rand(rng);
         job_pool.add_job(|| {
-            let w_poly = &EvaluationsOnDomain::from_vec_and_domain(w_poly_evals, constraint_domain).interpolate()
-                + &(&v_H * w_rand).into();
+            let mut w_poly = EvaluationsOnDomain::from_vec_and_domain(w_poly_evals, constraint_domain).interpolate();
+            if MM::ZK {
+                w_poly += &(&v_H * w_rand);
+            }
             let (w_poly, remainder) = w_poly.divide_by_vanishing_poly(input_domain).unwrap();
             assert!(remainder.is_zero());
             w_poly

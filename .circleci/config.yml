@@ -46,7 +46,7 @@ jobs:
   integration-testnet1:
     docker:
       - image: cimg/rust:1.58
-    resource_class: 2xlarge
+    resource_class: xlarge
     steps:
       - checkout
       - setup_environment:
@@ -61,7 +61,7 @@ jobs:
   integration-testnet2:
     docker:
       - image: cimg/rust:1.58
-    resource_class: 2xlarge
+    resource_class: xlarge
     steps:
       - checkout
       - setup_environment:
@@ -76,7 +76,7 @@ jobs:
   algorithms:
     docker:
       - image: cimg/rust:1.58
-    resource_class: 2xlarge
+    resource_class: xlarge
     parallelism: 20
     steps:
       - checkout
@@ -99,7 +99,7 @@ jobs:
   curves:
     docker:
       - image: cimg/rust:1.58
-    resource_class: 2xlarge
+    resource_class: xlarge
     steps:
       - checkout
       - setup_environment:
@@ -114,7 +114,7 @@ jobs:
   derives:
     docker:
       - image: cimg/rust:1.58
-    resource_class: 2xlarge
+    resource_class: xlarge
     steps:
       - checkout
       - setup_environment:
@@ -129,7 +129,7 @@ jobs:
   dpc:
     docker:
       - image: cimg/rust:1.58
-    resource_class: 2xlarge
+    resource_class: xlarge
     steps:
       - checkout
       - setup_environment:
@@ -144,7 +144,7 @@ jobs:
   fields:
     docker:
       - image: cimg/rust:1.58
-    resource_class: 2xlarge
+    resource_class: xlarge
     steps:
       - checkout
       - setup_environment:
@@ -174,7 +174,7 @@ jobs:
   parameters:
     docker:
       - image: cimg/rust:1.58
-    resource_class: 2xlarge
+    resource_class: xlarge
     steps:
       - checkout
       - setup_environment:
@@ -189,7 +189,7 @@ jobs:
   profiler:
     docker:
       - image: cimg/rust:1.58
-    resource_class: 2xlarge
+    resource_class: xlarge
     steps:
       - checkout
       - setup_environment:
@@ -204,7 +204,7 @@ jobs:
   r1cs:
     docker:
       - image: cimg/rust:1.58
-    resource_class: 2xlarge
+    resource_class: xlarge
     steps:
       - checkout
       - setup_environment:
@@ -219,7 +219,7 @@ jobs:
   utilities:
     docker:
       - image: cimg/rust:1.58
-    resource_class: 2xlarge
+    resource_class: xlarge
     steps:
       - checkout
       - setup_environment:
@@ -234,7 +234,7 @@ jobs:
   fmt:
     docker:
       - image: howardwu/aleo-ci:2022-01-27
-    resource_class: 2xlarge
+    resource_class: xlarge
     steps:
       - checkout
       - setup_environment:

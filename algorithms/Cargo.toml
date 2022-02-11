@@ -255,6 +255,10 @@ wasm = [
   "snark",
   "getrandom"
 ]
+parallel = [ "rayon", "num_cpus", "snarkvm-fields/parallel", "snarkvm-utilities/parallel" ]
+print-trace = [ "snarkvm-profiler/print-trace" ]
+cuda = [ "rust-gpu-tools" ]
+
 commitment = [ "crh" ]
 crh = [ "hash_to_curve" ]
 crypto_hash = [ "blake2s_simd" ]
@@ -267,6 +271,3 @@ polycommit = [ "rand_core", "fft", "crh", "msm" ]
 prf = [ ]
 signature = [ "encryption", "crypto_hash" ]
 snark = [ "fft", "msm" ]
-parallel = [ "rayon", "num_cpus", "snarkvm-utilities/parallel" ]
-print-trace = [ "snarkvm-profiler/print-trace" ]
-cuda = [ "rust-gpu-tools" ]
