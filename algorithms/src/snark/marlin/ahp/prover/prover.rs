@@ -253,6 +253,11 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             .map(|k| if k % ratio == 0 { F::zero() } else { w_extended[k - (k / ratio) - 1] - x_evals[k] })
             .collect();
 
+        let z_a_evals = EvaluationsOnDomain::from_vec_and_domain(state.z_a.unwrap(), constraint_domain);
+        let z_b_evals = EvaluationsOnDomain::from_vec_and_domain(state.z_b.unwrap(), constraint_domain);
+        state.z_a = None;
+        state.z_b = None;
+
         let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(3);
         let w_rand = F::rand(rng);
         job_pool.add_job(|| {
@@ -268,10 +273,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         end_timer!(w_poly_time);
 
         let r_a = F::rand(rng);
-        let z_a = state.z_a.clone().unwrap();
         job_pool.add_job(|| {
             let z_a_poly_time = start_timer!(|| "Computing z_A polynomial");
-            let mut z_a_poly = EvaluationsOnDomain::from_vec_and_domain(z_a, constraint_domain).interpolate();
+            let mut z_a_poly = z_a_evals.interpolate_by_ref();
             if MM::ZK {
                 z_a_poly += &(&v_H * r_a);
             }
@@ -280,10 +284,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         });
 
         let r_b = F::rand(rng);
-        let z_b = state.z_b.clone().unwrap();
         job_pool.add_job(|| {
             let z_b_poly_time = start_timer!(|| "Computing z_B polynomial");
-            let mut z_b_poly = EvaluationsOnDomain::from_vec_and_domain(z_b, constraint_domain).interpolate();
+            let mut z_b_poly = z_b_evals.interpolate_by_ref();
             if MM::ZK {
                 z_b_poly += &(&v_H * r_b);
             }
@@ -331,14 +334,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let mask_poly =
             mask_poly.map(|mask_poly| LabeledPolynomial::new("mask_poly".to_string(), mask_poly, None, None));
 
-        let z_a_evals = EvaluationsOnDomain::from_vec_and_domain(state.z_a.unwrap(), constraint_domain);
         let z_a = LabeledPolynomialWithBasis::new_lagrange_basis("z_a".to_string(), z_a_evals, hiding_bound);
 
-        let z_b_evals = EvaluationsOnDomain::from_vec_and_domain(state.z_b.unwrap(), constraint_domain);
         let z_b = LabeledPolynomialWithBasis::new_lagrange_basis("z_b".to_string(), z_b_evals, hiding_bound);
         let oracles = ProverFirstOracles { z_a, z_b, mask_poly: mask_poly.clone(), z_a_poly, z_b_poly, w_poly };
-        state.z_a = None;
-        state.z_b = None;
 
         state.w_poly = Some(oracles.w_poly.clone());
         state.mz_polys = Some((oracles.z_a_poly.clone(), oracles.z_b_poly.clone()));

@@ -27,7 +27,7 @@ use snarkvm_curves::{
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::{error, serialize::*, FromBytes, ToBytes};
 
-use std::collections::BTreeMap;
+use std::{borrow::Cow, collections::BTreeMap};
 
 /// `UniversalParams` are the universal parameters for the KZG10 scheme.
 pub type UniversalParams<E> = kzg10::UniversalParams<E>;
@@ -64,8 +64,8 @@ pub struct CommitterKey<E: PairingEngine> {
     /// The key used to commit to polynomials.
     pub powers_of_beta_g: Vec<E::G1Affine>,
 
-    /// The key used to commit to polynomials in lagrange basis.
-    pub lagrange_basis_at_beta_g: Vec<E::G1Affine>,
+    /// The key used to commit to polynomials.
+    pub lagrange_bases_at_beta_g: BTreeMap<usize, Vec<E::G1Affine>>,
 
     /// The key used to commit to hiding polynomials.
     pub powers_of_beta_times_gamma_g: Vec<E::G1Affine>,
@@ -97,12 +97,17 @@ impl<E: PairingEngine> FromBytes for CommitterKey<E> {
             powers_of_beta_g.push(power);
         }
 
-        // Deserialize `powers`.
-        let lagrange_basis_at_beta_len: u32 = FromBytes::read_le(&mut reader)?;
-        let mut lagrange_basis_at_beta_g = Vec::with_capacity(lagrange_basis_at_beta_len as usize);
-        for _ in 0..lagrange_basis_at_beta_len {
-            let power: E::G1Affine = FromBytes::read_le(&mut reader)?;
-            lagrange_basis_at_beta_g.push(power);
+        // Deserialize `lagrange_basis_at_beta`.
+        let lagrange_bases_at_beta_len: u32 = FromBytes::read_le(&mut reader)?;
+        let mut lagrange_bases_at_beta_g = BTreeMap::new();
+        for _ in 0..lagrange_bases_at_beta_len {
+            let size: u32 = FromBytes::read_le(&mut reader)?;
+            let mut basis = Vec::with_capacity(size as usize);
+            for _ in 0..size {
+                let power: E::G1Affine = FromBytes::read_le(&mut reader)?;
+                basis.push(power);
+            }
+            lagrange_bases_at_beta_g.insert(size as usize, basis);
         }
 
         // Deserialize `powers_of_beta_times_gamma_g`.
@@ -208,7 +213,7 @@ impl<E: PairingEngine> FromBytes for CommitterKey<E> {
 
         Ok(Self {
             powers_of_beta_g,
-            lagrange_basis_at_beta_g,
+            lagrange_bases_at_beta_g,
             powers_of_beta_times_gamma_g,
             shifted_powers_of_beta_g,
             shifted_powers_of_beta_times_gamma_g,
@@ -227,9 +232,12 @@ impl<E: PairingEngine> ToBytes for CommitterKey<E> {
         }
 
         // Serialize `powers`.
-        (self.lagrange_basis_at_beta_g.len() as u32).write_le(&mut writer)?;
-        for power in &self.lagrange_basis_at_beta_g {
-            power.write_le(&mut writer)?;
+        (self.lagrange_bases_at_beta_g.len() as u32).write_le(&mut writer)?;
+        for (size, powers) in &self.lagrange_bases_at_beta_g {
+            (*size as u32).write_le(&mut writer)?;
+            for power in powers {
+                power.write_le(&mut writer)?;
+            }
         }
 
         // Serialize `powers_of_beta_times_gamma_g`.
@@ -339,19 +347,12 @@ impl<E: PairingEngine> CommitterKey<E> {
 
     /// Obtain elements of the SRS in the lagrange basis powers, for use with the underlying
     /// KZG10 construction.
-    pub fn lagrange_basis(&self, domain: EvaluationDomain<E::Fr>) -> kzg10::LagrangeBasis<E> {
-        let full_domain = EvaluationDomain::new(self.lagrange_basis_at_beta_g.len()).unwrap();
-        let lagrange_basis_at_beta_g = (0..domain.size())
-            .map(|i| {
-                let reindexed = full_domain.reindex_by_subdomain(domain, i);
-                self.lagrange_basis_at_beta_g[reindexed]
-            })
-            .collect();
-        kzg10::LagrangeBasis {
-            lagrange_basis_at_beta_g,
+    pub fn lagrange_basis(&self, domain: EvaluationDomain<E::Fr>) -> Option<kzg10::LagrangeBasis<E>> {
+        self.lagrange_bases_at_beta_g.get(&domain.size()).map(|basis| kzg10::LagrangeBasis {
+            lagrange_basis_at_beta_g: Cow::Borrowed(basis),
+            powers_of_beta_times_gamma_g: Cow::Borrowed(&self.powers_of_beta_times_gamma_g),
             domain,
-            powers_of_beta_times_gamma_g: self.powers_of_beta_times_gamma_g.as_slice().into(),
-        }
+        })
     }
 }
 

@@ -104,6 +104,15 @@ impl<E: PairingEngine> KZG10<E> {
         if max_degree < 1 {
             return Err(PCError::DegreeIsZero);
         }
+        let max_lagrange_size =
+            if max_degree.is_power_of_two() { max_degree } else { max_degree.next_power_of_two() >> 1 };
+
+        if !max_lagrange_size.is_power_of_two() {
+            return Err(PCError::LagrangeBasisSizeIsNotPowerOfTwo);
+        }
+        if max_lagrange_size > max_degree + 1 {
+            return Err(PCError::LagrangeBasisSizeIsTooLarge);
+        }
         let setup_time = start_timer!(|| format!("KZG10::Setup with degree {}", max_degree));
         let scalar_bits = E::Fr::size_in_bits();
 
@@ -129,14 +138,6 @@ impl<E: PairingEngine> KZG10<E> {
         let powers_of_beta_g =
             FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(scalar_bits, window_size, &g_table, &powers_of_beta);
         end_timer!(g_time);
-
-        let max_power_of_two = {
-            let lagrange_size = max_degree + 1;
-            if lagrange_size.is_power_of_two() { lagrange_size } else { lagrange_size.next_power_of_two() >> 1 }
-        };
-        let domain = crate::fft::domain::EvaluationDomain::new(max_power_of_two).unwrap();
-        let lagrange_basis_at_beta_g = domain.ifft(&powers_of_beta_g[..domain.size()]);
-        let lagrange_basis_at_beta_g = E::G1Projective::batch_normalization_into_affine(lagrange_basis_at_beta_g);
 
         // Compute `gamma beta^i G`.
         let gamma_g_time = start_timer!(|| "Generating powers of gamma * G");
@@ -205,7 +206,6 @@ impl<E: PairingEngine> KZG10<E> {
 
         let pp = UniversalParams {
             powers_of_beta_g,
-            lagrange_basis_at_beta_g,
             powers_of_beta_times_gamma_g,
             h,
             beta_h,
@@ -285,6 +285,7 @@ impl<E: PairingEngine> KZG10<E> {
         rng: Option<&mut dyn RngCore>,
     ) -> Result<(Commitment<E>, Randomness<E>), PCError> {
         Self::check_degree_is_too_large(evaluations.len() - 1, lagrange_basis.size())?;
+        assert_eq!(evaluations.len().next_power_of_two(), lagrange_basis.size());
 
         let commit_time = start_timer!(|| format!(
             "Committing to polynomial of degree {} with hiding_bound: {:?}",
@@ -546,12 +547,16 @@ impl<E: PairingEngine> KZG10<E> {
 }
 
 fn skip_leading_zeros_and_convert_to_bigints<F: PrimeField>(p: &DensePolynomial<F>) -> (usize, Vec<F::BigInteger>) {
-    let mut num_leading_zeros = 0;
-    while p.coeffs[num_leading_zeros].is_zero() && num_leading_zeros < p.coeffs.len() {
-        num_leading_zeros += 1;
+    if p.coeffs.is_empty() {
+        (0, vec![])
+    } else {
+        let mut num_leading_zeros = 0;
+        while p.coeffs[num_leading_zeros].is_zero() && num_leading_zeros < p.coeffs.len() {
+            num_leading_zeros += 1;
+        }
+        let coeffs = convert_to_bigints(&p.coeffs[num_leading_zeros..]);
+        (num_leading_zeros, coeffs)
     }
-    let coeffs = convert_to_bigints(&p.coeffs[num_leading_zeros..]);
-    (num_leading_zeros, coeffs)
 }
 
 fn convert_to_bigints<F: PrimeField>(p: &[F]) -> Vec<F::BigInteger> {

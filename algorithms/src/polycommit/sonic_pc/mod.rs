@@ -110,6 +110,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
     fn trim(
         pp: &Self::UniversalParams,
         supported_degree: usize,
+        supported_lagrange_sizes: impl IntoIterator<Item = usize>,
         supported_hiding_bound: usize,
         enforced_degree_bounds: Option<&[usize]>,
     ) -> Result<(Self::CommitterKey, Self::VerifierKey), PCError> {
@@ -172,13 +173,23 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         let powers_of_beta_times_gamma_g =
             (0..=supported_hiding_bound + 1).map(|i| pp.powers_of_beta_times_gamma_g[&i]).collect();
 
-        let lagrange_size = supported_degree.next_power_of_two().min(pp.lagrange_basis_at_beta_g.len());
-        let domain = crate::fft::EvaluationDomain::new(lagrange_size).unwrap();
-        let lagrange_basis_at_beta_g = pp.lagrange_basis(domain);
+        let mut lagrange_bases_at_beta_g = BTreeMap::new();
+        for size in supported_lagrange_sizes {
+            if !size.is_power_of_two() {
+                return Err(PCError::LagrangeBasisSizeIsNotPowerOfTwo);
+            }
+            if size > pp.powers_of_beta_g.len() {
+                return Err(PCError::LagrangeBasisSizeIsTooLarge);
+            }
+            let domain = crate::fft::EvaluationDomain::new(size).unwrap();
+            let lagrange_basis_at_beta_g = pp.lagrange_basis(domain);
+            assert!(lagrange_basis_at_beta_g.len().is_power_of_two());
+            lagrange_bases_at_beta_g.insert(domain.size(), lagrange_basis_at_beta_g);
+        }
 
         let ck = CommitterKey {
             powers_of_beta_g,
-            lagrange_basis_at_beta_g,
+            lagrange_bases_at_beta_g,
             powers_of_beta_times_gamma_g,
             shifted_powers_of_beta_g,
             shifted_powers_of_beta_times_gamma_g,
@@ -275,7 +286,10 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
                 let (comm, rand) = match p.polynomial {
                     PolynomialWithBasis::Lagrange { evaluations } => {
                         let domain = crate::fft::EvaluationDomain::new(evaluations.evaluations.len()).unwrap();
-                        let lagrange_basis = ck.lagrange_basis(domain);
+                        let lagrange_basis =
+                            ck.lagrange_basis(domain).ok_or(PCError::UnsupportedLagrangeBasisSize(domain.size()))?;
+                        assert!(domain.size().is_power_of_two());
+                        assert!(lagrange_basis.size().is_power_of_two());
                         kzg10::KZG10::commit_lagrange(
                             &lagrange_basis,
                             &evaluations.evaluations,
@@ -1122,9 +1136,11 @@ mod tests {
         let max_degree = rand::distributions::Uniform::from(8..=64).sample(rng);
         let supported_degree = rand::distributions::Uniform::from(1..=max_degree).sample(rng);
 
+        let lagrange_size = |d: usize| if d.is_power_of_two() { d } else { d.next_power_of_two() >> 1 };
+
         let pp = PC_Bls12_377::setup(max_degree, rng).unwrap();
 
-        let (ck, _vk) = PC_Bls12_377::trim(&pp, supported_degree, 0, None).unwrap();
+        let (ck, _vk) = PC_Bls12_377::trim(&pp, supported_degree, [lagrange_size(supported_degree)], 0, None).unwrap();
 
         let ck_bytes = ck.to_bytes_le().unwrap();
         let ck_recovered: CommitterKey<Bls12_377> = FromBytes::read_le(&ck_bytes[..]).unwrap();

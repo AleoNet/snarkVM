@@ -77,6 +77,24 @@ impl<P: Parameters> PartialEq for Projective<P> {
     }
 }
 
+impl<P: Parameters> PartialEq<Affine<P>> for Projective<P> {
+    fn eq(&self, other: &Affine<P>) -> bool {
+        if self.is_zero() {
+            return other.is_zero();
+        }
+
+        if other.is_zero() {
+            return false;
+        }
+
+        // The points (X, Y, Z) and (X', Y', Z')
+        // are equal when (X * Z^2) = (X' * Z'^2)
+        // and (Y * Z^3) = (Y' * Z'^3).
+        let z1 = self.z.square();
+        (self.x == other.x * z1) & (self.y == other.y * z1 * self.z)
+    }
+}
+
 impl<P: Parameters> Distribution<Projective<P>> for Standard {
     #[inline]
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Projective<P> {

@@ -73,7 +73,7 @@ where
         }
 
         println!("supported degree: {:?}", supported_degree);
-        let (ck, vk) = PC::trim(&pp, supported_degree, supported_degree, Some(degree_bounds.as_slice()))?;
+        let (ck, vk) = PC::trim(&pp, supported_degree, None, supported_degree, Some(degree_bounds.as_slice()))?;
         println!("Trimmed");
 
         let (comms, rands) = PC::commit(&ck, polynomials.iter().map(Into::into), Some(rng))?;
@@ -104,9 +104,10 @@ where
     PC::Commitment: Eq,
 {
     let num_iters = 10;
-    let max_degree = 128;
-    let supported_degree = 128;
-    let num_polynomials = 10;
+    let max_degree = 256;
+    let supported_degree = 127;
+    let eval_size: usize = 128;
+    let num_polynomials = 1;
     let max_num_queries = 2;
     let mut test_components = Vec::new();
 
@@ -116,8 +117,8 @@ where
     for _ in 0..num_iters {
         assert!(max_degree >= supported_degree, "max_degree < supported_degree");
         let mut polynomials = Vec::new();
-        let mut evaluations = Vec::new();
         let mut lagrange_polynomials = Vec::new();
+        let mut supported_lagrange_sizes = Vec::new();
         let degree_bounds = None;
 
         let mut labels = Vec::new();
@@ -128,20 +129,20 @@ where
         for i in 0..num_polynomials {
             let label = format!("Test{}", i);
             labels.push(label.clone());
-            let degree =
-                dbg!(rand::distributions::Uniform::from(1..supported_degree).sample(rng)).next_power_of_two() - 1;
-            let mut evals = vec![F::zero(); supported_degree + 1];
-            for e in 0..degree {
-                evals[i] = F::rand(rng);
+            let eval_size: usize = rand::distributions::Uniform::from(1..eval_size).sample(rng).next_power_of_two();
+            let mut evals = vec![F::zero(); eval_size];
+            for e in &mut evals {
+                *e = F::rand(rng);
             }
             let domain = crate::fft::EvaluationDomain::new(evals.len()).unwrap();
             let evals = crate::fft::Evaluations::from_vec_and_domain(evals, domain);
-            let poly = evals.clone().interpolate();
-            evaluations.push(evals.clone());
+            let poly = evals.interpolate_by_ref();
+            supported_lagrange_sizes.push(domain.size());
+            assert_eq!(poly.evaluate_over_domain_by_ref(domain), evals);
 
             let degree_bound = None;
 
-            let hiding_bound = None;
+            let hiding_bound = Some(1);
             polynomials.push(LabeledPolynomial::new(label.clone(), poly, degree_bound, hiding_bound));
             lagrange_polynomials.push(LabeledPolynomialWithBasis::new_lagrange_basis(label, evals, hiding_bound))
         }
@@ -149,12 +150,11 @@ where
         println!("supported degree: {:?}", supported_degree);
         println!("supported hiding bound: {:?}", supported_hiding_bound);
         println!("num_points_in_query_set: {:?}", num_points_in_query_set);
-        let (ck, vk) = PC::trim(&pp, supported_degree, supported_hiding_bound, degree_bounds)?;
+        let (ck, vk) =
+            PC::trim(&pp, supported_degree, supported_lagrange_sizes, supported_hiding_bound, degree_bounds)?;
         println!("Trimmed");
 
-        let (comms_to_compare, _) = PC::commit(&ck, polynomials.iter().map(Into::into), Some(rng))?;
-        let (comms, rands) = PC::commit(&ck, lagrange_polynomials, Some(rng))?;
-        assert_eq!(comms_to_compare, comms);
+        let (comms, rands) = PC::commit(&ck, lagrange_polynomials, Some(rng)).unwrap();
 
         // Construct query set
         let mut query_set = QuerySet::new();
@@ -271,7 +271,7 @@ where
         println!("supported degree: {:?}", supported_degree);
         println!("supported hiding bound: {:?}", supported_hiding_bound);
         println!("num_points_in_query_set: {:?}", num_points_in_query_set);
-        let (ck, vk) = PC::trim(&pp, supported_degree, supported_hiding_bound, degree_bounds.as_deref())?;
+        let (ck, vk) = PC::trim(&pp, supported_degree, None, supported_hiding_bound, degree_bounds.as_deref())?;
         println!("Trimmed");
 
         let (comms, rands) = PC::commit(&ck, polynomials.iter().map(Into::into), Some(rng))?;
@@ -395,7 +395,7 @@ where
         println!("{}", num_polynomials);
         println!("{}", enforce_degree_bounds);
 
-        let (ck, vk) = PC::trim(&pp, supported_degree, supported_hiding_bound, degree_bounds.as_deref())?;
+        let (ck, vk) = PC::trim(&pp, supported_degree, None, supported_hiding_bound, degree_bounds.as_deref())?;
         println!("Trimmed");
 
         let (comms, rands) = PC::commit(&ck, polynomials.iter().map(Into::into), Some(rng))?;

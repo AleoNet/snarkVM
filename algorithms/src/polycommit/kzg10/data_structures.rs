@@ -45,10 +45,6 @@ pub struct UniversalParams<E: PairingEngine> {
     /// Group elements of the form `{ \beta^i G }`, where `i` ranges from 0 to `degree`.
     /// These represent the monomial basis evaluated at `beta`.
     pub powers_of_beta_g: Vec<E::G1Affine>,
-    /// Group elements of the form `{ \beta^i G }`, where `i` ranges from 0 to `degree`.
-    /// These represent the Lagrange basis of a given size, evaluated at `beta`.
-    /// The length of this vector must be a power of two.
-    pub lagrange_basis_at_beta_g: Vec<E::G1Affine>,
     /// Group elements of the form `{ \beta^i \gamma G }`, where `i` ranges from 0 to `degree`.
     /// These are used for hiding.
     pub powers_of_beta_times_gamma_g: BTreeMap<usize, E::G1Affine>,
@@ -70,16 +66,10 @@ pub struct UniversalParams<E: PairingEngine> {
 }
 
 impl<E: PairingEngine> UniversalParams<E> {
-    /// Obtain elements of the SRS in the lagrange basis powers, for use with the underlying
-    /// KZG10 construction.
     pub fn lagrange_basis(&self, domain: EvaluationDomain<E::Fr>) -> Vec<E::G1Affine> {
-        let full_domain = EvaluationDomain::new(self.lagrange_basis_at_beta_g.len()).unwrap();
-        (0..domain.size())
-            .map(|i| {
-                let reindexed = full_domain.reindex_by_subdomain(domain, i);
-                self.lagrange_basis_at_beta_g[reindexed]
-            })
-            .collect()
+        let basis = domain
+            .ifft(&self.powers_of_beta_g[..domain.size()].iter().map(|e| e.into_projective()).collect::<Vec<_>>());
+        E::G1Projective::batch_normalization_into_affine(basis)
     }
 }
 
@@ -91,12 +81,6 @@ impl<E: PairingEngine> FromBytes for UniversalParams<E> {
         for _ in 0..powers_of_beta_g_len {
             let power_of_g: E::G1Affine = FromBytes::read_le(&mut reader)?;
             powers_of_beta_g.push(power_of_g);
-        }
-        let lagrange_basis_len: u32 = FromBytes::read_le(&mut reader)?;
-        let mut lagrange_basis_at_beta_g = Vec::with_capacity(lagrange_basis_len as usize);
-        for _ in 0..powers_of_beta_g_len {
-            let power_of_g: E::G1Affine = FromBytes::read_le(&mut reader)?;
-            lagrange_basis_at_beta_g.push(power_of_g);
         }
 
         // Deserialize `powers_of_gamma_g`.
@@ -141,7 +125,6 @@ impl<E: PairingEngine> FromBytes for UniversalParams<E> {
 
         Ok(Self {
             powers_of_beta_g,
-            lagrange_basis_at_beta_g,
             powers_of_beta_times_gamma_g,
             h,
             beta_h,
@@ -158,12 +141,6 @@ impl<E: PairingEngine> ToBytes for UniversalParams<E> {
         // Serialize `powers_of_beta_g`.
         (self.powers_of_beta_g.len() as u32).write_le(&mut writer)?;
         for power in &self.powers_of_beta_g {
-            power.write_le(&mut writer)?;
-        }
-
-        // Serialize the lagrange basis elements
-        (self.lagrange_basis_at_beta_g.len() as u32).write_le(&mut writer)?;
-        for power in &self.lagrange_basis_at_beta_g {
             power.write_le(&mut writer)?;
         }
 
