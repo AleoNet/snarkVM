@@ -34,7 +34,7 @@ use crate::{
         MarlinMode,
     },
 };
-use snarkvm_fields::{batch_inversion, PrimeField};
+use snarkvm_fields::{batch_inversion_and_mul, PrimeField};
 use snarkvm_r1cs::ConstraintSynthesizer;
 use snarkvm_utilities::{cfg_into_iter, cfg_iter, cfg_iter_mut};
 
@@ -688,11 +688,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let f_evals_time = start_timer!(|| "Computing f evals on K");
         let mut inverses: Vec<_> =
             cfg_iter!(row_on_K.evaluations).zip(&col_on_K.evaluations).map(|(r, c)| (beta - r) * (alpha - c)).collect();
-        batch_inversion(&mut inverses);
+        batch_inversion_and_mul(&mut inverses, &v_H_alpha_v_H_beta);
 
-        cfg_iter_mut!(inverses)
-            .zip(&arithmetization.evals_on_K.val.evaluations)
-            .for_each(|(inv, a)| *inv *= v_H_alpha_v_H_beta * a);
+        cfg_iter_mut!(inverses).zip(&arithmetization.evals_on_K.val.evaluations).for_each(|(inv, a)| *inv *= a);
         let f_evals_on_K = inverses;
         end_timer!(f_evals_time);
 
