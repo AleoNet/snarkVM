@@ -469,10 +469,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             z_a_poly * z_b_poly
         };
 
-        let r_alpha_x_evals_time = start_timer!(|| "Compute r_alpha_x evals");
-        let r_alpha_x_evals = constraint_domain.batch_eval_unnormalized_bivariate_lagrange_poly_with_diff_inputs(alpha);
-        end_timer!(r_alpha_x_evals_time);
-
         let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(2);
         job_pool.add_job(|| {
             let mut summed_z_m_coeffs = z_c_poly.coeffs;
@@ -489,16 +485,11 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             end_timer!(summed_z_m_poly_time);
             summed_z_m
         });
-
-        job_pool.add_job(|| {
-            let r_alpha_poly_time = start_timer!(|| "Compute r_alpha_x poly");
-            let r_alpha_poly = DensePolynomial::from_coefficients_vec(constraint_domain.ifft(&r_alpha_x_evals));
-            end_timer!(r_alpha_poly_time);
-            r_alpha_poly
-        });
-
         job_pool.add_job(|| {
             let t_poly_time = start_timer!(|| "Compute t poly");
+
+            let r_alpha_x_evals =
+                constraint_domain.batch_eval_unnormalized_bivariate_lagrange_poly_with_diff_inputs(alpha);
             let t_poly = Self::calculate_t(
                 &[&state.index.a, &state.index.b, &state.index.c],
                 [F::one(), eta_b, eta_c],
@@ -509,7 +500,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             end_timer!(t_poly_time);
             t_poly
         });
-        let [summed_z_m, r_alpha_poly, t_poly]: [DensePolynomial<F>; 3] = job_pool.execute_all().try_into().unwrap();
+        let [summed_z_m, t_poly]: [DensePolynomial<F>; 2] = job_pool.execute_all().try_into().unwrap();
 
         let z_poly_time = start_timer!(|| "Compute z poly");
 
@@ -527,7 +518,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let mul_domain_size = *[
             mask_poly.map_or(0, |p| p.degree() + 1),
-            r_alpha_poly.coeffs.len() + summed_z_m.coeffs.len(),
+            constraint_domain.size() + summed_z_m.coeffs.len(),
             t_poly.coeffs.len() + z_poly.len(),
         ]
         .iter()
@@ -536,7 +527,11 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let mul_domain =
             EvaluationDomain::new(mul_domain_size).expect("field is not smooth enough to construct domain");
         let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(4);
-        job_pool.add_job(|| r_alpha_poly.evaluate_over_domain_by_ref(mul_domain));
+        job_pool.add_job(|| {
+            let r_alpha_x_evals = constraint_domain
+                .batch_eval_unnormalized_bivariate_lagrange_poly_with_diff_inputs_over_domain(alpha, &mul_domain);
+            EvaluationsOnDomain::from_vec_and_domain(r_alpha_x_evals, mul_domain)
+        });
         job_pool.add_job(|| summed_z_m.evaluate_over_domain_by_ref(mul_domain));
         job_pool.add_job(|| z_poly.evaluate_over_domain_by_ref(mul_domain));
         job_pool.add_job(|| t_poly.evaluate_over_domain_by_ref(mul_domain));
@@ -552,7 +547,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 *a -= &(c * d);
             });
         let mut rhs = r_alpha_evals.interpolate();
-        rhs += &mask_poly.map_or(DensePolynomial::zero(), |p| p.polynomial().into_dense());
+        rhs += mask_poly.map_or(&SparsePolynomial::zero(), |p| p.polynomial().as_sparse().unwrap());
         let q_1 = rhs;
         end_timer!(q_1_time);
 
@@ -767,4 +762,21 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     pub fn prover_fourth_round_degree_bounds(_: &CircuitInfo<F>) -> impl Iterator<Item = Option<usize>> {
         [None].into_iter()
     }
+}
+
+#[test]
+fn check_division_by_vanishing_poly_preserve_sparseness() {
+    use snarkvm_curves::bls12_377::Fr;
+    use snarkvm_fields::{Field, One, Zero};
+    let domain = EvaluationDomain::new(16).unwrap();
+    let small_domain = EvaluationDomain::new(4).unwrap();
+    let val = Fr::one().double().double().double() - Fr::one();
+    let mut evals = (0..16).map(|pow| val.pow([pow])).collect::<Vec<_>>();
+    for i in 0..4 {
+        evals[4 * i] = Fr::zero();
+    }
+    let p = EvaluationsOnDomain::from_vec_and_domain(evals, domain).interpolate();
+    let (p_div_v, p_mod_v) = p.divide_by_vanishing_poly(small_domain).unwrap();
+    assert!(p_mod_v.is_zero());
+    dbg!(p_div_v.evaluate_over_domain(domain));
 }

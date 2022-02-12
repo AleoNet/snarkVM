@@ -675,6 +675,7 @@ pub(crate) fn compute_powers<F: Field>(size: usize, g: F) -> Vec<F> {
 }
 
 /// An iterator over the elements of the domain.
+#[derive(Clone)]
 pub struct Elements<F: FftField> {
     cur_elem: F,
     cur_pow: u64,

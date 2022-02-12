@@ -166,6 +166,14 @@ impl<'a, F: Field> DenseOrSparsePolynomial<'a, F> {
     }
 
     #[inline]
+    pub fn as_sparse(&self) -> Option<&SparsePolynomial<F>> {
+        match self {
+            SPolynomial(p) => Some(p.as_ref()),
+            _ => None,
+        }
+    }
+
+    #[inline]
     pub fn into_dense(&self) -> DensePolynomial<F> {
         self.clone().into()
     }
