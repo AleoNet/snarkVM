@@ -125,6 +125,7 @@ impl<N: Network> Execution<N> {
                 }
             }
         } else {
+            // TODO (howardwu): CRITICAL - Check the program ID is a noop. (Also rearchitect program ID out of ProgramExecution)
             true
         }
     }
