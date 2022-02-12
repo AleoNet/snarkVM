@@ -75,7 +75,7 @@ impl<E: PairingEngine> UniversalParams<E> {
 
 impl<E: PairingEngine> FromBytes for UniversalParams<E> {
     fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
-        // Deserialize `powers_of_g`.
+        // Deserialize `powers_of_beta_g`.
         let powers_of_beta_g_len: u32 = FromBytes::read_le(&mut reader)?;
         let mut powers_of_beta_g = Vec::with_capacity(powers_of_beta_g_len as usize);
         for _ in 0..powers_of_beta_g_len {
@@ -83,7 +83,7 @@ impl<E: PairingEngine> FromBytes for UniversalParams<E> {
             powers_of_beta_g.push(power_of_g);
         }
 
-        // Deserialize `powers_of_gamma_g`.
+        // Deserialize `powers_of_beta_times_gamma_g`.
         let mut powers_of_beta_times_gamma_g = BTreeMap::new();
         let powers_of_gamma_g_num_elements: u32 = FromBytes::read_le(&mut reader)?;
         for _ in 0..powers_of_gamma_g_num_elements {
@@ -107,7 +107,7 @@ impl<E: PairingEngine> FromBytes for UniversalParams<E> {
             supported_degree_bounds.push(degree_bound as usize);
         }
 
-        // Deserialize `inverse_neg_powers_of_h`.
+        // Deserialize `inverse_neg_powers_of_beta_h`.
         let mut inverse_neg_powers_of_beta_h = BTreeMap::new();
         let inverse_neg_powers_of_h_num_elements: u32 = FromBytes::read_le(&mut reader)?;
         for _ in 0..inverse_neg_powers_of_h_num_elements {
@@ -163,7 +163,7 @@ impl<E: PairingEngine> ToBytes for UniversalParams<E> {
             (*degree_bound as u32).write_le(&mut writer)?;
         }
 
-        // Serialize `inverse_neg_powers_of_h`.
+        // Serialize `inverse_neg_powers_of_beta_h`.
         (self.inverse_neg_powers_of_beta_h.len() as u32).write_le(&mut writer)?;
         for (key, inverse_neg_power_of_g) in &self.inverse_neg_powers_of_beta_h {
             (*key as u32).write_le(&mut writer)?;
