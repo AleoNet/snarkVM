@@ -132,7 +132,7 @@ impl<F: Field> TryInto<SparsePolynomial<F>> for DenseOrSparsePolynomial<'_, F> {
     }
 }
 
-impl<F: Field> DenseOrSparsePolynomial<'_, F> {
+impl<'a, F: Field> DenseOrSparsePolynomial<'a, F> {
     /// Checks if the given polynomial is zero.
     pub fn is_zero(&self) -> bool {
         match self {
@@ -175,6 +175,13 @@ impl<F: Field> DenseOrSparsePolynomial<'_, F> {
         match self {
             SPolynomial(p) => p.evaluate(point),
             DPolynomial(p) => p.evaluate(point),
+        }
+    }
+
+    pub fn coeffs(&'a self) -> Box<dyn Iterator<Item = (usize, &'a F)> + 'a> {
+        match self {
+            SPolynomial(p) => Box::new(p.coeffs.iter().map(|(c, f)| (*c, f))),
+            DPolynomial(p) => Box::new(p.coeffs.iter().enumerate()),
         }
     }
 
