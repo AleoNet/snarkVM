@@ -281,6 +281,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
                     hiding_bound,
                 ));
 
+                #[allow(clippy::or_fun_call)]
                 let (comm, rand) = p
                     .sum()
                     .map(move |p| {
