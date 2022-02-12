@@ -157,6 +157,17 @@ impl<'a, F: PrimeField> core::ops::AddAssign<&'a Self> for SparsePolynomial<F> {
     }
 }
 
+impl<'a, F: PrimeField> core::ops::AddAssign<(F, &'a Self)> for SparsePolynomial<F> {
+    fn add_assign(&mut self, (f, other): (F, &'a Self)) {
+        let mut result = std::collections::BTreeMap::from_iter(other.coeffs.iter().copied());
+        for (i, coeff) in self.coeffs.iter() {
+            let cur_coeff = result.entry(*i).or_insert_with(F::zero);
+            *cur_coeff += f * coeff;
+        }
+        *self = SparsePolynomial::from_coefficients_vec(result.into_iter().filter(|(_, f)| !f.is_zero()).collect())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::fft::{DensePolynomial, EvaluationDomain, SparsePolynomial};

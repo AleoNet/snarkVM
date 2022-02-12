@@ -59,8 +59,8 @@ impl<F: PrimeField, MM: MarlinMode> Circuit<F, MM> {
     }
 
     /// The number of constraints in this R1CS instance.
-    pub fn num_constraints(&self) -> usize {
-        self.index_info.num_constraints
+    pub fn constraint_domain_size(&self) -> usize {
+        crate::fft::EvaluationDomain::<F>::new(self.index_info.num_constraints).unwrap().size()
     }
 
     /// Iterate over the indexed polynomials.

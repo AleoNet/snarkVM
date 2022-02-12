@@ -127,7 +127,7 @@ impl<
         let (committer_key, verifier_key) = PC::trim(
             universal_srs,
             index.max_degree(),
-            [index.num_constraints()],
+            [index.constraint_domain_size()],
             supported_hiding_bound,
             Some(&coefficient_support),
         )?;
