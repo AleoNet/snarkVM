@@ -299,14 +299,15 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let mask_poly_time = start_timer!(|| "Computing mask polynomial");
             // We'll use the masking technique from Lunar (https://eprint.iacr.org/2020/1069.pdf, pgs 20-22).
             let h_1_mask = DensePolynomial::rand(3, rng).coeffs; // selected arbitrarily.
-            let h_1_mask: DensePolynomial<_> =
-                SparsePolynomial::from_coefficients_vec(h_1_mask.into_iter().enumerate().collect())
-                    .mul(&constraint_domain.vanishing_polynomial())
-                    .into();
+            let h_1_mask = SparsePolynomial::from_coefficients_vec(h_1_mask.into_iter().enumerate().collect())
+                .mul(&constraint_domain.vanishing_polynomial());
             assert_eq!(h_1_mask.degree(), constraint_domain.size() + 3);
             // multiply g_1_mask by X
             let mut g_1_mask = DensePolynomial::rand(5, rng);
             g_1_mask.coeffs[0] = F::zero();
+            let g_1_mask = SparsePolynomial::from_coefficients_vec(
+                g_1_mask.iter().enumerate().filter_map(|(i, coeff)| (!coeff.is_zero()).then(|| (i, *coeff))).collect(),
+            );
 
             let mut mask_poly = h_1_mask;
             mask_poly += &g_1_mask;
@@ -404,13 +405,15 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         }
         let (z_a_poly, z_b_poly) = state.mz_polys.as_ref().unwrap();
         let (r_a, r_b) = state.mz_poly_randomizer.as_ref().unwrap();
+        let z_a_poly = z_a_poly.polynomial().as_dense().unwrap();
+        let z_b_poly = z_b_poly.polynomial().as_dense().unwrap();
 
         let z_c_poly = if MM::ZK {
             let v_H = constraint_domain.vanishing_polynomial();
             let r_a_v_H = v_H.mul(&SparsePolynomial::from_coefficients_slice(&[(0, *r_a)]));
             let r_b_v_H = v_H.mul(&SparsePolynomial::from_coefficients_slice(&[(0, *r_b)]));
-            let z_a_poly_det = z_a_poly.polynomial().clone() - &r_a_v_H;
-            let z_b_poly_det = z_b_poly.polynomial().clone() - &r_b_v_H;
+            let z_a_poly_det = z_a_poly.clone() - &r_a_v_H;
+            let z_b_poly_det = z_b_poly.clone() - &r_b_v_H;
             // z_c = (z_a + r_a * v_H) * (z_b + r_b * v_H);
             // z_c = z_a * z_b + r_a * z_b * v_H + r_b * z_a * v_H + r_a * r_b * v_H^2;
             let mut z_c = &z_a_poly_det * &z_b_poly_det;
@@ -450,7 +453,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 });
             z_c
         } else {
-            z_a_poly.polynomial() * z_b_poly.polynomial()
+            z_a_poly * z_b_poly
         };
 
         let r_alpha_x_evals_time = start_timer!(|| "Compute r_alpha_x evals");
@@ -465,8 +468,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             // the `zip`s.
             cfg_iter_mut!(summed_z_m_coeffs).for_each(|c| *c *= &eta_c);
             cfg_iter_mut!(summed_z_m_coeffs)
-                .zip(&z_a_poly.polynomial().coeffs)
-                .zip(&z_b_poly.polynomial().coeffs)
+                .zip(&z_a_poly.coeffs)
+                .zip(&z_b_poly.coeffs)
                 .for_each(|((c, a), b)| *c += eta_b * b + a);
 
             let summed_z_m = DensePolynomial::from_coefficients_vec(summed_z_m_coeffs);
@@ -500,8 +503,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let x_poly =
             EvaluationsOnDomain::from_vec_and_domain(state.padded_public_variables.clone(), state.input_domain)
                 .interpolate();
-        let w_poly = state.w_poly.as_ref().unwrap();
-        let mut z_poly = w_poly.polynomial().mul_by_vanishing_poly(state.input_domain);
+        let w_poly = state.w_poly.as_ref().and_then(|p| p.polynomial().as_dense()).unwrap();
+        let mut z_poly = w_poly.mul_by_vanishing_poly(state.input_domain);
         cfg_iter_mut!(z_poly.coeffs).zip(&x_poly.coeffs).for_each(|(z, x)| *z += x);
         assert!(z_poly.degree() < constraint_domain.size() + zk_bound);
 
@@ -510,7 +513,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let q_1_time = start_timer!(|| "Compute q_1 poly");
 
         let mul_domain_size = *[
-            mask_poly.map_or(0, |p| p.len()),
+            mask_poly.map_or(0, |p| p.degree() + 1),
             r_alpha_poly.coeffs.len() + summed_z_m.coeffs.len(),
             t_poly.coeffs.len() + z_poly.len(),
         ]
@@ -536,7 +539,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 *a -= &(c * d);
             });
         let mut rhs = r_alpha_evals.interpolate();
-        rhs += mask_poly.map_or(&DensePolynomial::zero(), |p| p.polynomial());
+        rhs += &mask_poly.map_or(DensePolynomial::zero(), |p| p.polynomial().into_dense());
         let q_1 = rhs;
         end_timer!(q_1_time);
 
@@ -646,7 +649,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         job_pool.add_job(|| {
             let a_poly_time = start_timer!(|| "Computing a poly");
             let a_poly = {
-                let coeffs = cfg_iter!(arithmetization.val.coeffs()).map(|a| v_H_alpha_v_H_beta * a).collect();
+                let coeffs = cfg_iter!(arithmetization.val.as_dense().unwrap().coeffs())
+                    .map(|a| v_H_alpha_v_H_beta * a)
+                    .collect();
                 DensePolynomial::from_coefficients_vec(coeffs)
             };
             end_timer!(a_poly_time);

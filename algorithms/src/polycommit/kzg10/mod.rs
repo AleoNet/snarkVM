@@ -22,13 +22,13 @@
 //! This construction achieves extractability in the algebraic group model (AGM).
 
 use crate::{
-    fft::DensePolynomial,
+    fft::{DenseOrSparsePolynomial, DensePolynomial},
     msm::{FixedBaseMSM, VariableBaseMSM},
     polycommit::{PCError, PCRandomness},
 };
 use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{Field, One, PrimeField, Zero};
-use snarkvm_utilities::{cfg_iter, rand::UniformRand};
+use snarkvm_utilities::{cfg_iter, rand::UniformRand, BitIteratorBE};
 
 use core::{
     marker::PhantomData,
@@ -221,7 +221,7 @@ impl<E: PairingEngine> KZG10<E> {
     /// Outputs a commitment to `polynomial`.
     pub fn commit(
         powers: &Powers<E>,
-        polynomial: &DensePolynomial<E::Fr>,
+        polynomial: &DenseOrSparsePolynomial<'_, E::Fr>,
         hiding_bound: Option<usize>,
         terminator: &AtomicBool,
         rng: Option<&mut dyn RngCore>,
@@ -234,16 +234,28 @@ impl<E: PairingEngine> KZG10<E> {
             hiding_bound,
         ));
 
-        let (num_leading_zeros, plain_coeffs) = skip_leading_zeros_and_convert_to_bigints(polynomial);
+        let mut commitment = match polynomial {
+            DenseOrSparsePolynomial::DPolynomial(polynomial) => {
+                let (num_leading_zeros, plain_coeffs) = skip_leading_zeros_and_convert_to_bigints(polynomial);
 
-        let msm_time = start_timer!(|| "MSM to compute commitment to plaintext poly");
-        let mut commitment =
-            VariableBaseMSM::multi_scalar_mul(&powers.powers_of_beta_g[num_leading_zeros..], &plain_coeffs);
-        end_timer!(msm_time);
+                let msm_time = start_timer!(|| "MSM to compute commitment to plaintext poly");
+                let commitment =
+                    VariableBaseMSM::multi_scalar_mul(&powers.powers_of_beta_g[num_leading_zeros..], &plain_coeffs);
+                end_timer!(msm_time);
 
-        if terminator.load(Ordering::Relaxed) {
-            return Err(PCError::Terminated);
-        }
+                if terminator.load(Ordering::Relaxed) {
+                    return Err(PCError::Terminated);
+                }
+                commitment
+            }
+            DenseOrSparsePolynomial::SPolynomial(polynomial) => polynomial
+                .coeffs
+                .iter()
+                .map(|(i, coeff)| {
+                    powers.powers_of_beta_g[*i].mul_bits(BitIteratorBE::new_without_leading_zeros(coeff.to_repr()))
+                })
+                .sum(),
+        };
 
         let mut randomness = Randomness::empty();
         if let Some(hiding_degree) = hiding_bound {
@@ -638,8 +650,9 @@ mod tests {
         let (powers, _) = KZG_Bls12_377::trim(&pp, degree);
 
         let hiding_bound = None;
-        let (comm, _) = KZG10::commit(&powers, &p, hiding_bound, &AtomicBool::new(false), Some(rng)).unwrap();
-        let (f_comm, _) = KZG10::commit(&powers, &f_p, hiding_bound, &AtomicBool::new(false), Some(rng)).unwrap();
+        let (comm, _) = KZG10::commit(&powers, &(&p).into(), hiding_bound, &AtomicBool::new(false), Some(rng)).unwrap();
+        let (f_comm, _) =
+            KZG10::commit(&powers, &(&f_p).into(), hiding_bound, &AtomicBool::new(false), Some(rng)).unwrap();
         let mut f_comm_2 = Commitment::empty();
         f_comm_2 += (f, &comm);
 
@@ -657,7 +670,7 @@ mod tests {
             let (ck, vk) = KZG10::trim(&pp, degree);
             let p = DensePolynomial::rand(degree, rng);
             let hiding_bound = Some(1);
-            let (comm, rand) = KZG10::<E>::commit(&ck, &p, hiding_bound, &AtomicBool::new(false), Some(rng))?;
+            let (comm, rand) = KZG10::<E>::commit(&ck, &(&p).into(), hiding_bound, &AtomicBool::new(false), Some(rng))?;
             let point = E::Fr::rand(rng);
             let value = p.evaluate(point);
             let proof = KZG10::<E>::open(&ck, &p, point, &rand)?;
@@ -680,7 +693,7 @@ mod tests {
             let (ck, vk) = KZG10::trim(&pp, 2);
             let p = DensePolynomial::rand(1, rng);
             let hiding_bound = Some(1);
-            let (comm, rand) = KZG10::<E>::commit(&ck, &p, hiding_bound, &AtomicBool::new(false), Some(rng))?;
+            let (comm, rand) = KZG10::<E>::commit(&ck, &(&p).into(), hiding_bound, &AtomicBool::new(false), Some(rng))?;
             let point = E::Fr::rand(rng);
             let value = p.evaluate(point);
             let proof = KZG10::<E>::open(&ck, &p, point, &rand)?;
@@ -713,7 +726,8 @@ mod tests {
             for _ in 0..10 {
                 let p = DensePolynomial::rand(degree, rng);
                 let hiding_bound = Some(1);
-                let (comm, rand) = KZG10::<E>::commit(&ck, &p, hiding_bound, &AtomicBool::new(false), Some(rng))?;
+                let (comm, rand) =
+                    KZG10::<E>::commit(&ck, &(&p).into(), hiding_bound, &AtomicBool::new(false), Some(rng))?;
                 let point = E::Fr::rand(rng);
                 let value = p.evaluate(point);
                 let proof = KZG10::<E>::open(&ck, &p, point, &rand)?;
