@@ -538,7 +538,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 let given_value = Int64::alloc(&mut declare_cs.ns(|| "given_value"), || Ok(record.value().as_i64()))?;
 
                 // Use an empty payload if the record does not have one.
-                let payload = if let Some(payload) = record.payload().clone() { payload } else { Payload::default() };
+                let payload = record.payload().unwrap_or(&Payload::default());
                 let given_payload = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &payload.to_bytes_le()?)?;
 
                 // Use an empty program id if the record does not have one.
