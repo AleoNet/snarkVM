@@ -112,12 +112,10 @@ impl<N: Network> Execution<N> {
                 &ProgramPublicVariables::new(transition_id),
                 &program_execution.program_proof,
             ) {
-                Ok(is_valid) => match is_valid {
-                    true => true,
-                    false => {
-                        eprintln!("Program proof failed to verify");
-                        false
-                    }
+                Ok(true) => true,
+                Ok(false) => {
+                    eprintln!("Program proof failed to verify");
+                    false
                 },
                 Err(error) => {
                     eprintln!("Failed to validate the program proof: {:?}", error);
