@@ -281,38 +281,45 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
                     hiding_bound,
                 ));
 
-                let (comm, rand) = p.sum().map(move|p| {
-                    let rng_ref = rng.as_mut().map(|s| s as _);
-                    match p {
-                        PolynomialWithBasis::Lagrange { evaluations } => {
-                            let domain = crate::fft::EvaluationDomain::new(evaluations.evaluations.len()).unwrap();
-                            let lagrange_basis =
-                            ck.lagrange_basis(domain).ok_or(PCError::UnsupportedLagrangeBasisSize(domain.size()))?;
-                            assert!(domain.size().is_power_of_two());
-                            assert!(lagrange_basis.size().is_power_of_two());
-                            kzg10::KZG10::commit_lagrange(
-                                &lagrange_basis,
-                                &evaluations.evaluations,
-                                hiding_bound,
-                                terminator,
-                                rng_ref,
-                            )
+                let (comm, rand) = p
+                    .sum()
+                    .map(move |p| {
+                        let rng_ref = rng.as_mut().map(|s| s as _);
+                        match p {
+                            PolynomialWithBasis::Lagrange { evaluations } => {
+                                let domain = crate::fft::EvaluationDomain::new(evaluations.evaluations.len()).unwrap();
+                                let lagrange_basis = ck
+                                    .lagrange_basis(domain)
+                                    .ok_or(PCError::UnsupportedLagrangeBasisSize(domain.size()))?;
+                                assert!(domain.size().is_power_of_two());
+                                assert!(lagrange_basis.size().is_power_of_two());
+                                kzg10::KZG10::commit_lagrange(
+                                    &lagrange_basis,
+                                    &evaluations.evaluations,
+                                    hiding_bound,
+                                    terminator,
+                                    rng_ref,
+                                )
+                            }
+                            PolynomialWithBasis::Monomial { polynomial, degree_bound } => {
+                                let powers = if let Some(degree_bound) = degree_bound {
+                                    ck.shifted_powers_of_beta_g(degree_bound).unwrap()
+                                } else {
+                                    ck.powers()
+                                };
+
+                                kzg10::KZG10::commit(&powers, &polynomial, hiding_bound, terminator, rng_ref)
+                            }
                         }
-                        PolynomialWithBasis::Monomial { polynomial, degree_bound } => {
-                            let powers = if let Some(degree_bound) = degree_bound {
-                                ck.shifted_powers_of_beta_g(degree_bound).unwrap()
-                            } else {
-                                ck.powers()
-                            };
-                            
-                            kzg10::KZG10::commit(&powers, &polynomial, hiding_bound, terminator, rng_ref)
-                        }
-                    }
-                }).collect::<Result<Vec<_>, _>>()?.into_iter().reduce(|mut a, b| {
-                    a.0 += (E::Fr::one(), &b.0); 
-                    a.1 += (E::Fr::one(), &b.1);
-                    a
-                }).unwrap();
+                    })
+                    .collect::<Result<Vec<_>, _>>()?
+                    .into_iter()
+                    .reduce(|mut a, b| {
+                        a.0 += (E::Fr::one(), &b.0);
+                        a.1 += (E::Fr::one(), &b.1);
+                        a
+                    })
+                    .unwrap();
 
                 end_timer!(commit_time);
                 Ok((LabeledCommitment::new(label.to_string(), comm, degree_bound), rand))
