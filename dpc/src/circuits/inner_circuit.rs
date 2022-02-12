@@ -62,9 +62,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         let public = &self.public;
         let private = &self.private;
 
-        // In the inner circuit, this variable must be allocated as public input.
-        debug_assert!(public.program_id.is_some());
-
         let (
             account_encryption_parameters,
             account_signature_parameters,
@@ -140,8 +137,8 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         let zero_value = UInt8::constant_vec(&(0u64).to_bytes_le()?);
         // Declares a constant for an empty payload in a record.
         let empty_payload = UInt8::constant_vec(&Payload::<N>::default().to_bytes_le()?);
-        // Declare the noop program ID as bytes.
-        let noop_program_id_bytes = UInt8::constant_vec(&N::noop_program_id().to_bytes_le()?);
+        // Declare the empty program ID as bytes.
+        let empty_program_id_bytes = UInt8::constant_vec(&vec![0u8; N::PROGRAM_ID_SIZE_IN_BYTES]);
 
         // TODO: directly allocate these as the appropriate number of constant zero field elements
         // (i.e., no constraints)
@@ -149,8 +146,8 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             zero_value.to_constraint_field(&mut cs.ns(|| "convert zero value to field elements"))?;
         let empty_payload_field_elements =
             empty_payload.to_constraint_field(&mut cs.ns(|| "convert empty payload to field elements"))?;
-        let noop_program_id_field_elements =
-            noop_program_id_bytes.to_constraint_field(&mut cs.ns(|| "convert noop program ID to field elements"))?;
+        let empty_program_id_field_elements =
+            empty_program_id_bytes.to_constraint_field(&mut cs.ns(|| "convert empty program ID to field elements"))?;
 
         // Declare the ledger root.
         let ledger_root = <N::LedgerRootCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
@@ -215,11 +212,17 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
                 let given_value = Int64::alloc(&mut declare_cs.ns(|| "given_value"), || Ok(record.value().as_i64()))?;
 
-                let given_payload =
-                    UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &record.payload().to_bytes_le()?)?;
+                // Use an empty payload if the record does not have one.
+                let payload = if let Some(payload) = record.payload().clone() { payload } else { Payload::default() };
+                let given_payload = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &payload.to_bytes_le()?)?;
 
-                let given_program_id =
-                    UInt8::alloc_vec(&mut declare_cs.ns(|| "given_program_id"), &record.program_id().to_bytes_le()?)?;
+                // Use an empty program id if the record does not have one.
+                let program_id_bytes = if let Some(program_id) = record.program_id() {
+                    program_id.to_bytes_le()?
+                } else {
+                    vec![0u8; N::PROGRAM_ID_SIZE_IN_BYTES]
+                };
+                let given_program_id = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_program_id"), &program_id_bytes)?;
 
                 let given_randomizer = <N::AccountEncryptionGadget as EncryptionGadget<
                     N::AccountEncryptionScheme,
@@ -287,8 +290,8 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     )?;
                     given_program_id_field_elements.conditional_enforce_equal(
                         &mut commitment_cs
-                            .ns(|| format!("If the input record {} is empty, enforce it has a noop program ID", i)),
-                        &noop_program_id_field_elements,
+                            .ns(|| format!("If the input record {} is empty, enforce it has an empty program ID", i)),
+                        &empty_program_id_field_elements,
                         &given_is_dummy,
                     )?;
 
@@ -534,11 +537,15 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
                 let given_value = Int64::alloc(&mut declare_cs.ns(|| "given_value"), || Ok(record.value().as_i64()))?;
 
-                let given_payload =
-                    UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &record.payload().to_bytes_le()?)?;
+                // Use an empty payload if the record does not have one.
+                let payload = record.payload().clone().unwrap_or_default();
+                let given_payload = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &payload.to_bytes_le()?)?;
 
-                let given_program_id =
-                    UInt8::alloc_vec(&mut declare_cs.ns(|| "given_program_id"), &record.program_id().to_bytes_le()?)?;
+                // Use an empty program id if the record does not have one.
+                let program_id_bytes = record
+                    .program_id()
+                    .map_or(Ok(vec![0u8; N::PROGRAM_ID_SIZE_IN_BYTES]), |program_id| program_id.to_bytes_le())?;
+                let given_program_id = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_program_id"), &program_id_bytes)?;
 
                 let given_randomizer = <N::AccountEncryptionGadget as EncryptionGadget<
                     N::AccountEncryptionScheme,
@@ -591,8 +598,8 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     )?;
                     given_program_id_field_elements.conditional_enforce_equal(
                         &mut commitment_cs
-                            .ns(|| format!("If the output record {} is empty, enforce it has a noop program ID", j)),
-                        &noop_program_id_field_elements,
+                            .ns(|| format!("If the output record {} is empty, enforce it has an empty program ID", j)),
+                        &empty_program_id_field_elements,
                         &given_is_dummy,
                     )?;
 
@@ -676,9 +683,12 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
             // Allocate the program ID.
             let executable_program_id_field_elements = {
+                let program_id_bytes = public
+                    .program_id
+                    .map_or(Ok(vec![0u8; N::PROGRAM_ID_SIZE_IN_BYTES]), |program_id| program_id.to_bytes_le())?;
                 let executable_program_id_bytes = UInt8::alloc_input_vec_le(
                     &mut program_cs.ns(|| "Allocate executable_program_id"),
-                    &public.program_id.as_ref().unwrap().to_bytes_le()?,
+                    &program_id_bytes,
                 )?;
                 executable_program_id_bytes
                     .to_constraint_field(&mut program_cs.ns(|| "convert executable program ID to field elements"))?
@@ -735,8 +745,8 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
                 input_program_id_field_elements.conditional_enforce_equal(
                     &mut input_cs
-                        .ns(|| format!("If the input record {} is beyond, enforce it has a noop program ID", i)),
-                    &noop_program_id_field_elements,
+                        .ns(|| format!("If the input record {} is beyond, enforce it has an empty program ID", i)),
+                    &empty_program_id_field_elements,
                     &requires_check.not(),
                 )?;
             }
@@ -759,8 +769,8 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
                 output_program_id_field_elements.conditional_enforce_equal(
                     &mut output_cs
-                        .ns(|| format!("If the output record {} is beyond, enforce it has a noop program ID", j)),
-                    &noop_program_id_field_elements,
+                        .ns(|| format!("If the output record {} is beyond, enforce it has an empty program ID", j)),
+                    &empty_program_id_field_elements,
                     &requires_check.not(),
                 )?;
             }

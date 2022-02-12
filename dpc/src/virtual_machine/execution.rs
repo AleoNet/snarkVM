@@ -34,24 +34,41 @@ use std::{
     PartialEq(bound = "N: Network"),
     Eq(bound = "N: Network")
 )]
-pub struct Execution<N: Network> {
+pub struct ProgramExecution<N: Network> {
     pub program_id: N::ProgramID,
     pub program_path: MerklePath<N::ProgramIDParameters>,
     #[derivative(Debug = "ignore")]
     pub verifying_key: N::ProgramVerifyingKey,
     pub program_proof: N::ProgramProof,
-    pub inner_proof: N::InnerProof,
 }
 
-impl<N: Network> Execution<N> {
+impl<N: Network> ProgramExecution<N> {
     pub fn from(
         program_id: N::ProgramID,
         program_path: MerklePath<N::ProgramIDParameters>,
         verifying_key: N::ProgramVerifyingKey,
         program_proof: N::ProgramProof,
-        inner_proof: N::InnerProof,
     ) -> Result<Self> {
-        Ok(Self { program_id, program_path, verifying_key, program_proof, inner_proof })
+        Ok(Self { program_id, program_path, verifying_key, program_proof })
+    }
+}
+
+/// Program execution and inner proof.
+#[derive(Derivative)]
+#[derivative(
+    Clone(bound = "N: Network"),
+    Debug(bound = "N: Network"),
+    PartialEq(bound = "N: Network"),
+    Eq(bound = "N: Network")
+)]
+pub struct Execution<N: Network> {
+    pub program_execution: Option<ProgramExecution<N>>,
+    pub inner_proof: N::InnerProof,
+}
+
+impl<N: Network> Execution<N> {
+    pub fn from(program_execution: Option<ProgramExecution<N>>, inner_proof: N::InnerProof) -> Result<Self> {
+        Ok(Self { program_execution, inner_proof })
     }
 
     /// Returns `true` if the program execution is valid.
@@ -72,7 +89,7 @@ impl<N: Network> Execution<N> {
                 value_balance,
                 ledger_root,
                 local_transitions_root,
-                Some(self.program_id),
+                self.program_execution.as_ref().map(|x| x.program_id),
             ),
             &self.inner_proof,
         ) {
@@ -88,23 +105,26 @@ impl<N: Network> Execution<N> {
             }
         };
 
-        // Returns `false` if the program proof is invalid.
-        match N::ProgramSNARK::verify(
-            &self.verifying_key,
-            &ProgramPublicVariables::new(transition_id),
-            &self.program_proof,
-        ) {
-            Ok(is_valid) => match is_valid {
-                true => true,
-                false => {
+        if let Some(program_execution) = &self.program_execution {
+            // Returns `false` if the program proof is invalid.
+            match N::ProgramSNARK::verify(
+                &program_execution.verifying_key,
+                &ProgramPublicVariables::new(transition_id),
+                &program_execution.program_proof,
+            ) {
+                Ok(true) => true,
+                Ok(false) => {
                     eprintln!("Program proof failed to verify");
                     false
                 }
-            },
-            Err(error) => {
-                eprintln!("Failed to validate the program proof: {:?}", error);
-                false
+                Err(error) => {
+                    eprintln!("Failed to validate the program proof: {:?}", error);
+                    false
+                }
             }
+        } else {
+            // TODO (howardwu): CRITICAL - Check the program ID is a noop. (Also rearchitect program ID out of ProgramExecution)
+            true
         }
     }
 }
@@ -112,24 +132,32 @@ impl<N: Network> Execution<N> {
 impl<N: Network> FromBytes for Execution<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let program_id = FromBytes::read_le(&mut reader)?;
-        let program_path = FromBytes::read_le(&mut reader)?;
-        let verifying_key = FromBytes::read_le(&mut reader)?;
-        let program_proof = FromBytes::read_le(&mut reader)?;
+        let program_execution_exists: bool = FromBytes::read_le(&mut reader)?;
+        let program_execution: Option<ProgramExecution<N>> = match program_execution_exists {
+            true => Some(FromBytes::read_le(&mut reader)?),
+            false => None,
+        };
+
         let inner_proof = FromBytes::read_le(&mut reader)?;
 
-        Self::from(program_id, program_path, verifying_key, program_proof, inner_proof)
-            .map_err(|error| Error::new(ErrorKind::Other, format!("{}", error)))
+        Self::from(program_execution, inner_proof).map_err(|error| Error::new(ErrorKind::Other, format!("{}", error)))
     }
 }
 
 impl<N: Network> ToBytes for Execution<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.program_id.write_le(&mut writer)?;
-        self.program_path.write_le(&mut writer)?;
-        self.verifying_key.write_le(&mut writer)?;
-        self.program_proof.write_le(&mut writer)?;
+        match &self.program_execution {
+            Some(program_execution) => {
+                true.write_le(&mut writer)?;
+                program_execution.program_id.write_le(&mut writer)?;
+                program_execution.program_path.write_le(&mut writer)?;
+                program_execution.verifying_key.write_le(&mut writer)?;
+                program_execution.program_proof.write_le(&mut writer)?;
+            }
+            None => false.write_le(&mut writer)?,
+        }
+
         self.inner_proof.write_le(&mut writer)
     }
 }
@@ -154,11 +182,8 @@ impl<N: Network> Serialize for Execution<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut execution = serializer.serialize_struct("Execution", 5)?;
-                execution.serialize_field("program_id", &self.program_id)?;
-                execution.serialize_field("program_path", &self.program_path)?;
-                execution.serialize_field("verifying_key", &self.verifying_key)?;
-                execution.serialize_field("program_proof", &self.program_proof)?;
+                let mut execution = serializer.serialize_struct("Execution", 2)?;
+                execution.serialize_field("program_execution", &self.program_execution)?;
                 execution.serialize_field("inner_proof", &self.inner_proof)?;
                 execution.end()
             }
@@ -174,15 +199,87 @@ impl<'de, N: Network> Deserialize<'de> for Execution<N> {
                 let execution = serde_json::Value::deserialize(deserializer)?;
                 // Recover the execution.
                 Self::from(
-                    serde_json::from_value(execution["program_id"].clone()).map_err(de::Error::custom)?,
-                    serde_json::from_value(execution["program_path"].clone()).map_err(de::Error::custom)?,
-                    serde_json::from_value(execution["verifying_key"].clone()).map_err(de::Error::custom)?,
-                    serde_json::from_value(execution["program_proof"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(execution["program_execution"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(execution["inner_proof"].clone()).map_err(de::Error::custom)?,
                 )
                 .map_err(de::Error::custom)
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "execution"),
+        }
+    }
+}
+
+impl<N: Network> FromBytes for ProgramExecution<N> {
+    #[inline]
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let program_id = FromBytes::read_le(&mut reader)?;
+        let program_path = FromBytes::read_le(&mut reader)?;
+        let verifying_key = FromBytes::read_le(&mut reader)?;
+        let program_proof = FromBytes::read_le(&mut reader)?;
+
+        Ok(Self { program_id, program_path, verifying_key, program_proof })
+    }
+}
+
+// TODO (raychu86): Create a new rust file for programExecution or move inner_proof up to the transition level.
+
+impl<N: Network> ToBytes for ProgramExecution<N> {
+    #[inline]
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.program_id.write_le(&mut writer)?;
+        self.program_path.write_le(&mut writer)?;
+        self.verifying_key.write_le(&mut writer)?;
+        self.program_proof.write_le(&mut writer)
+    }
+}
+
+impl<N: Network> FromStr for ProgramExecution<N> {
+    type Err = anyhow::Error;
+
+    #[inline]
+    fn from_str(program_execution: &str) -> Result<Self, Self::Err> {
+        Ok(serde_json::from_str(program_execution)?)
+    }
+}
+
+impl<N: Network> fmt::Display for ProgramExecution<N> {
+    #[inline]
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", serde_json::to_string(self).map_err::<fmt::Error, _>(serde::ser::Error::custom)?)
+    }
+}
+
+impl<N: Network> Serialize for ProgramExecution<N> {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match serializer.is_human_readable() {
+            true => {
+                let mut execution = serializer.serialize_struct("ProgramExecution", 4)?;
+                execution.serialize_field("program_id", &self.program_id)?;
+                execution.serialize_field("program_path", &self.program_path)?;
+                execution.serialize_field("verifying_key", &self.verifying_key)?;
+                execution.serialize_field("program_proof", &self.program_proof)?;
+                execution.end()
+            }
+            false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
+        }
+    }
+}
+
+impl<'de, N: Network> Deserialize<'de> for ProgramExecution<N> {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        match deserializer.is_human_readable() {
+            true => {
+                let program_execution = serde_json::Value::deserialize(deserializer)?;
+                // Recover the program execution.
+                Self::from(
+                    serde_json::from_value(program_execution["program_id"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(program_execution["program_path"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(program_execution["verifying_key"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(program_execution["program_proof"].clone()).map_err(de::Error::custom)?,
+                )
+                .map_err(de::Error::custom)
+            }
+            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "program_execution"),
         }
     }
 }

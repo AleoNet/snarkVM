@@ -82,7 +82,7 @@ impl<N: Network> VirtualMachine<N> {
             value_balance,
             self.ledger_root,
             self.local_transitions.root(),
-            Some(program_id),
+            program_id,
         );
         let inner_private = InnerPrivateVariables::new(request, &response)?;
         let inner_circuit = InnerCircuit::<N>::new(inner_public, inner_private);
@@ -91,14 +91,7 @@ impl<N: Network> VirtualMachine<N> {
         assert!(N::InnerSNARK::verify(N::inner_verifying_key(), &inner_public, &inner_proof)?);
 
         // Compute the noop execution, for now.
-        let execution = Execution::from(
-            *N::noop_program_id(),
-            N::noop_program_path().clone(),
-            N::noop_circuit_verifying_key().clone(),
-            Noop::<N>::new()
-                .execute(ProgramPublicVariables::new(transition_id), &NoopPrivateVariables::<N>::new_blank()?)?,
-            inner_proof.into(),
-        )?;
+        let execution = Execution::from(None, inner_proof.into())?;
 
         // Construct the transition.
         let transition = Transition::<N>::new(request, &response, execution)?;
@@ -129,7 +122,7 @@ impl<N: Network> VirtualMachine<N> {
     ) -> Result<Response<N>> {
         ResponseBuilder::new()
             .add_request(request.clone())
-            .add_output(Output::new(recipient, amount, Default::default(), None)?)
+            .add_output(Output::new(recipient, amount, None, None)?)
             .build(rng)
     }
 
@@ -160,8 +153,8 @@ impl<N: Network> VirtualMachine<N> {
 
         ResponseBuilder::new()
             .add_request(request.clone())
-            .add_output(Output::new(caller, caller_balance, Default::default(), None)?)
-            .add_output(Output::new(recipient, amount, Default::default(), None)?)
+            .add_output(Output::new(caller, caller_balance, None, None)?)
+            .add_output(Output::new(recipient, amount, None, None)?)
             .build(rng)
     }
 
@@ -169,7 +162,7 @@ impl<N: Network> VirtualMachine<N> {
     fn evaluate<R: Rng + CryptoRng>(
         &self,
         request: &Request<N>,
-        program_id: N::ProgramID,
+        program_id: Option<N::ProgramID>,
         function_id: &N::FunctionID,
         _function_type: &FunctionType,
         function_inputs: &FunctionInputs<N>,
@@ -181,7 +174,7 @@ impl<N: Network> VirtualMachine<N> {
         // Check that the function id exists in the program.
 
         // Check that the function id is the same as the request.
-        if function_id != &request.function_id() {
+        if Some(*function_id) != request.function_id() {
             return Err(anyhow!("Invalid function id"));
         }
 
@@ -205,18 +198,14 @@ impl<N: Network> VirtualMachine<N> {
         let mut response_builder = ResponseBuilder::new().add_request(request.clone()).add_output(Output::new(
             function_inputs.recipient,
             function_inputs.amount,
-            function_inputs.record_payload.clone(),
-            Some(program_id),
+            Some(function_inputs.record_payload.clone()),
+            program_id,
         )?);
 
         // Add the change address if the balance is not zero.
         if !caller_balance.is_zero() {
-            response_builder = response_builder.add_output(Output::new(
-                function_inputs.caller,
-                caller_balance,
-                Default::default(),
-                None,
-            )?)
+            response_builder =
+                response_builder.add_output(Output::new(function_inputs.caller, caller_balance, None, None)?)
         }
 
         // Add custom events to the response.
@@ -253,9 +242,15 @@ impl<N: Network> VirtualMachine<N> {
         // Compute the operation.
         let operation = request.operation().clone();
         let response = match operation {
-            Operation::Evaluate(function_id, function_type, function_inputs) => {
-                self.evaluate(request, program_id, &function_id, &function_type, &function_inputs, custom_events, rng)?
-            }
+            Operation::Evaluate(function_id, function_type, function_inputs) => self.evaluate(
+                request,
+                Some(program_id),
+                &function_id,
+                &function_type,
+                &function_inputs,
+                custom_events,
+                rng,
+            )?,
             _ => return Err(anyhow!("Invalid Operation")),
         };
 
@@ -284,10 +279,7 @@ impl<N: Network> VirtualMachine<N> {
         assert!(N::InnerSNARK::verify(N::inner_verifying_key(), &inner_public, &inner_proof)?);
 
         let execution = Execution::from(
-            program_id,
-            function_path.clone(),
-            function_verifying_key,
-            program_proof,
+            Some(ProgramExecution::from(program_id, function_path.clone(), function_verifying_key, program_proof)?),
             inner_proof.into(),
         )?;
 
