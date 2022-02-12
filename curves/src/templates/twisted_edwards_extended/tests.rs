@@ -18,7 +18,7 @@ use super::{Affine, Projective};
 
 use snarkvm_utilities::{
     io::Cursor,
-    rand::UniformRand,
+    rand::{test_rng, UniformRand},
     serialize::{CanonicalDeserialize, CanonicalSerialize},
     to_bytes_le,
     ToBytes,
@@ -30,9 +30,6 @@ use crate::traits::{
     TwistedEdwardsParameters,
 };
 use snarkvm_fields::{Field, One, PrimeField, Zero};
-
-use rand::SeedableRng;
-use rand_xorshift::XorShiftRng;
 
 pub const ITERATIONS: usize = 10;
 
@@ -61,7 +58,7 @@ where
 pub fn edwards_curve_serialization_test<P: TwistedEdwardsParameters>() {
     let buf_size = Affine::<P>::zero().serialized_size();
 
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..10 {
         let a = Projective::<P>::rand(&mut rng);
@@ -127,7 +124,7 @@ where
 {
     let buf_size = Affine::<P>::zero().serialized_size();
 
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..ITERATIONS {
         let a = Projective::<P>::rand(&mut rng);
@@ -160,7 +157,7 @@ pub fn edwards_from_x_and_y_coordinates<P: TwistedEdwardsParameters>()
 where
     P::BaseField: PrimeField,
 {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..ITERATIONS {
         let a = Projective::<P>::rand(&mut rng);

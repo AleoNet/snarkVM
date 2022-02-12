@@ -16,8 +16,11 @@
 
 use rand::{
     distributions::{Distribution, Standard},
+    rngs::StdRng,
     Rng,
+    SeedableRng,
 };
+use rand_xorshift::XorShiftRng;
 
 pub trait UniformRand: Sized {
     fn rand<R: Rng + ?Sized>(rng: &mut R) -> Self;
@@ -33,11 +36,16 @@ where
     }
 }
 
-/// Should be used only for tests, not for any real world usage.
-pub fn test_rng() -> rand::rngs::StdRng {
-    use rand::SeedableRng;
+/// A fast Rng which should be used only in tests or benchmarks, but not for any real world purposes.
+pub fn test_rng() -> XorShiftRng {
+    // Obtain the initial seed using entropy provided by the OS.
+    let seed = StdRng::from_entropy().gen();
 
-    // arbitrary seed
-    let seed = [1, 0, 0, 0, 23, 0, 0, 0, 200, 1, 0, 0, 210, 30, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
-    rand::rngs::StdRng::from_seed(seed)
+    // Use the seed to initialize a fast, non-cryptographic Rng.
+    XorShiftRng::seed_from_u64(seed)
+}
+
+/// An Rng which can be used in tests or benchmarks requiring a CryptoRng.
+pub fn test_crypto_rng() -> StdRng {
+    StdRng::from_entropy()
 }
