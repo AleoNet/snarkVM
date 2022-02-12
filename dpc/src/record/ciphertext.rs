@@ -48,6 +48,7 @@ impl<N: Network> Ciphertext<N> {
             program_id.map_or(Ok(vec![0u8; N::PROGRAM_ID_SIZE_IN_BYTES]), |program_id| program_id.to_bytes_le())?;
 
         let mut flattened_record_bytes = record_bytes.iter().flatten().copied().collect::<Vec<u8>>();
+        // TODO (raychu86): Fix this padding size: I believe it should be 32 (owner) + 32 (is_dummy) + 32 (value) + 128 (payload).
         flattened_record_bytes.resize(N::RECORD_CIPHERTEXT_SIZE_IN_BYTES, 0u8);
 
         // Compute the commitment.
