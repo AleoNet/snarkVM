@@ -542,11 +542,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 let given_payload = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &payload.to_bytes_le()?)?;
 
                 // Use an empty program id if the record does not have one.
-                let program_id_bytes = if let Some(program_id) = record.program_id() {
-                    program_id.to_bytes_le()?
-                } else {
-                    vec![0u8; N::PROGRAM_ID_SIZE_IN_BYTES]
-                };
+                let program_id_bytes = record.program_id().map_or(Ok(vec![0u8; N::PROGRAM_ID_SIZE_IN_BYTES]), |program_id| program_id.to_bytes_le())?;
                 let given_program_id = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_program_id"), &program_id_bytes)?;
 
                 let given_randomizer = <N::AccountEncryptionGadget as EncryptionGadget<
