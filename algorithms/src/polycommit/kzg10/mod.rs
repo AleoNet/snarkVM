@@ -167,7 +167,7 @@ impl<E: PairingEngine> KZG10<E> {
         let supported_degree_bounds =
             if *supported_degree_bounds_config != KZG10DegreeBoundsConfig::NONE { list.clone() } else { vec![] };
 
-        // Compute `neg_powers_of_h`.
+        // Compute `neg_powers_of_beta_h`.
         let inverse_neg_powers_of_beta_h_time = start_timer!(|| "Generating negative powers of h in G2");
         let inverse_neg_powers_of_beta_h =
             if produce_g2_powers && *supported_degree_bounds_config != KZG10DegreeBoundsConfig::NONE {
