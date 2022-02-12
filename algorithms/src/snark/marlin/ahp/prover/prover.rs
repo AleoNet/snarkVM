@@ -337,13 +337,19 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let z_a_evals = PolynomialWithBasis::new_lagrange_basis(z_a_evals);
         let r_a_v_H = PolynomialWithBasis::new_sparse_monomial_basis(&v_H * r_a, None);
-        let z_a = LabeledPolynomialWithBasis::new_linear_combination("z_a".to_string(), vec![(F::one(), z_a_evals), (F::one(), r_a_v_H)], hiding_bound);
-
+        let z_a = LabeledPolynomialWithBasis::new_linear_combination(
+            "z_a".to_string(),
+            vec![(F::one(), z_a_evals), (F::one(), r_a_v_H)],
+            hiding_bound,
+        );
 
         let z_b_evals = PolynomialWithBasis::new_lagrange_basis(z_b_evals);
         let r_b_v_H = PolynomialWithBasis::new_sparse_monomial_basis(&v_H * r_b, None);
-        let z_b = LabeledPolynomialWithBasis::new_linear_combination("z_b".to_string(), vec![(F::one(), z_b_evals), (F::one(), r_b_v_H)], hiding_bound);
-
+        let z_b = LabeledPolynomialWithBasis::new_linear_combination(
+            "z_b".to_string(),
+            vec![(F::one(), z_b_evals), (F::one(), r_b_v_H)],
+            hiding_bound,
+        );
 
         let oracles = ProverFirstOracles { z_a, z_b, mask_poly: mask_poly.clone(), z_a_poly, z_b_poly, w_poly };
 
