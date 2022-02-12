@@ -215,7 +215,7 @@ impl<N: Network> FromStr for Operation<N> {
                 let program_functions = serde_json::from_value(operation["functions"].clone())?;
                 Ok(Self::Deploy(caller, amount, program_id, program_functions))
             }
-            _ => unreachable!(format!("Invalid operation id {}", operation_id)),
+            _ => unreachable!("Invalid operation id {}", operation_id),
         }
     }
 }

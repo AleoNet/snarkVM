@@ -264,7 +264,7 @@ impl<N: Network> Deref for Transactions<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{testnet2::Testnet2, Account, AccountScheme};
+    use crate::{testnet2::Testnet2, Account};
     use rand::thread_rng;
 
     #[test]
