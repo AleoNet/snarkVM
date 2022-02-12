@@ -315,6 +315,7 @@ lazy_static::lazy_static! {
     };
 }
 
+#[allow(clippy::transmute_undefined_repr)]
 pub(super) fn msm_cuda<G: AffineCurve>(
     mut bases: &[G],
     mut scalars: &[<G::ScalarField as PrimeField>::BigInteger],
@@ -356,10 +357,8 @@ mod tests {
     use super::*;
     use snarkvm_curves::{bls12_377::Fq, ProjectiveCurve};
     use snarkvm_fields::{Field, One, PrimeField};
-    use snarkvm_utilities::UniformRand;
+    use snarkvm_utilities::rand::{test_rng, UniformRand};
 
-    use rand::SeedableRng;
-    use rand_xorshift::XorShiftRng;
     use serial_test::serial;
 
     #[repr(C)]
@@ -424,7 +423,7 @@ mod tests {
     }
 
     fn make_tests(count: usize, cardinality: usize) -> Vec<Vec<Fq>> {
-        let mut rng = XorShiftRng::seed_from_u64(234832847u64);
+        let mut rng = test_rng();
         let mut inputs = vec![];
         for _ in 0..count {
             let mut out = vec![];
@@ -437,7 +436,7 @@ mod tests {
     }
 
     fn make_projective_tests(count: usize, cardinality: usize) -> Vec<Vec<G1Projective>> {
-        let mut rng = XorShiftRng::seed_from_u64(234832847u64);
+        let mut rng = test_rng();
         let mut inputs = vec![];
         for _ in 0..count {
             let mut out = vec![];
@@ -450,7 +449,7 @@ mod tests {
     }
 
     fn make_affine_tests(count: usize, cardinality: usize) -> Vec<Vec<CudaAffine>> {
-        let mut rng = XorShiftRng::seed_from_u64(23483281023u64);
+        let mut rng = test_rng();
         let mut inputs = vec![];
         for _ in 0..count {
             let mut out = vec![];

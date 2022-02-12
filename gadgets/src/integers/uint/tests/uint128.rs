@@ -16,11 +16,11 @@
 
 use std::convert::TryInto;
 
-use rand::{Rng, SeedableRng};
-use rand_xorshift::XorShiftRng;
+use rand::Rng;
 
 use snarkvm_fields::{One, Zero};
 use snarkvm_r1cs::{ConstraintSystem, Fr, TestConstraintChecker, TestConstraintSystem};
+use snarkvm_utilities::rand::test_rng;
 
 use crate::{
     bits::Boolean,
@@ -61,7 +61,7 @@ fn check_all_allocated_bits(mut expected: u128, actual: UInt128) {
 
 #[test]
 fn test_uint128_from_bits() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..1000 {
         let v = (0..128).map(|_| Boolean::constant(rng.gen())).collect::<Vec<_>>();
@@ -91,7 +91,7 @@ fn test_uint128_from_bits() {
 
 #[test]
 fn test_uint128_rotr() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     let mut num = rng.gen();
 
@@ -120,7 +120,7 @@ fn test_uint128_rotr() {
 
 #[test]
 fn test_uint128_xor() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
@@ -162,7 +162,7 @@ fn test_uint128_xor() {
 
 #[test]
 fn test_uint128_addmany_constants() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
@@ -187,7 +187,7 @@ fn test_uint128_addmany_constants() {
 
 #[test]
 fn test_uint128_addmany() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
@@ -221,7 +221,7 @@ fn test_uint128_addmany() {
 
 #[test]
 fn test_uint128_sub_constants() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
@@ -244,7 +244,7 @@ fn test_uint128_sub_constants() {
 
 #[test]
 fn test_uint128_sub() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
@@ -279,7 +279,7 @@ fn test_uint128_sub() {
 
 #[test]
 fn test_uint128_mul_constants() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
@@ -302,7 +302,7 @@ fn test_uint128_mul_constants() {
 
 #[test]
 fn test_uint128_mul() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..10 {
         let mut cs = TestConstraintSystem::<Fr>::new();
@@ -339,7 +339,7 @@ fn test_uint128_mul() {
 
 #[test]
 fn test_uint128_div_constants() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
@@ -362,7 +362,7 @@ fn test_uint128_div_constants() {
 
 #[test]
 fn test_uint128_div() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..2 {
         let mut cs = TestConstraintChecker::<Fr>::new();
@@ -402,7 +402,7 @@ fn test_uint128_div() {
 
 #[test]
 fn test_uint128_pow_constants() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..100 {
         let mut cs = TestConstraintSystem::<Fr>::new();
@@ -425,7 +425,7 @@ fn test_uint128_pow_constants() {
 
 #[test]
 fn test_uint128_pow() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     let mut cs = TestConstraintChecker::<Fr>::new();
 

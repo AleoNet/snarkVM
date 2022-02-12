@@ -16,16 +16,14 @@
 
 use crate::traits::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::Zero;
-use snarkvm_utilities::rand::UniformRand;
+use snarkvm_utilities::rand::{test_rng, UniformRand};
 
-use rand::SeedableRng;
-use rand_xorshift::XorShiftRng;
 use std::ops::{AddAssign, Mul};
 
 pub const ITERATIONS: usize = 5;
 
 fn random_addition_test<G: ProjectiveCurve>() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..ITERATIONS {
         let a = G::rand(&mut rng);
@@ -100,7 +98,7 @@ fn random_addition_test<G: ProjectiveCurve>() {
 }
 
 fn random_multiplication_test<G: ProjectiveCurve>() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..ITERATIONS {
         let mut a = G::rand(&mut rng);
@@ -132,7 +130,7 @@ fn random_multiplication_test<G: ProjectiveCurve>() {
 }
 
 fn random_doubling_test<G: ProjectiveCurve>() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..ITERATIONS {
         let mut a = G::rand(&mut rng);
@@ -159,7 +157,7 @@ fn random_doubling_test<G: ProjectiveCurve>() {
 }
 
 fn random_negation_test<G: ProjectiveCurve>() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..ITERATIONS {
         let r = G::rand(&mut rng);
@@ -189,7 +187,7 @@ fn random_negation_test<G: ProjectiveCurve>() {
 }
 
 fn random_transformation_test<G: ProjectiveCurve>() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..ITERATIONS {
         let g = G::rand(&mut rng);
@@ -229,7 +227,7 @@ fn random_transformation_test<G: ProjectiveCurve>() {
 }
 
 pub fn curve_tests<G: ProjectiveCurve>() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     // Negation edge case with zero.
     {

@@ -183,7 +183,7 @@ impl<N: Network> Request<N> {
         let program_id = {
             let program_id = OnceCell::new();
             for record in &self.records {
-                if record.program_id() != None && program_id.set(record.program_id()).is_err() {
+                if record.program_id().is_some() && program_id.set(record.program_id()).is_err() {
                     eprintln!("Request records contains more than 1 distinct program ID");
                     return false;
                 }
@@ -286,7 +286,7 @@ impl<N: Network> Request<N> {
     pub fn to_program_id(&self) -> Result<Option<N::ProgramID>> {
         let program_id = OnceCell::new();
         for record in &self.records {
-            if record.program_id() != None && program_id.set(record.program_id()).is_err() {
+            if record.program_id().is_some() && program_id.set(record.program_id()).is_err() {
                 return Err(anyhow!("Request records contains more than 1 distinct program ID"));
             }
         }

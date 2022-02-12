@@ -44,10 +44,8 @@ impl<N: Network> Ciphertext<N> {
         record_bytes: Vec<Vec<u8>>,
         program_id: Option<N::ProgramID>,
     ) -> Result<Self, RecordError> {
-        let program_id_bytes = match program_id {
-            Some(program_id) => program_id.to_bytes_le()?,
-            None => vec![0u8; N::PROGRAM_ID_SIZE_IN_BYTES],
-        };
+        let program_id_bytes =
+            program_id.map_or(Ok(vec![0u8; N::PROGRAM_ID_SIZE_IN_BYTES]), |program_id| program_id.to_bytes_le())?;
 
         let mut flattened_record_bytes = record_bytes.iter().flatten().copied().collect::<Vec<u8>>();
         flattened_record_bytes.resize(N::RECORD_CIPHERTEXT_SIZE_IN_BYTES, 0u8);
