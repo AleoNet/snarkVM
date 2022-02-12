@@ -681,11 +681,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
             // Allocate the program ID.
             let executable_program_id_field_elements = {
-                let program_id_bytes = if let Some(program_id) = public.program_id {
-                    program_id.to_bytes_le()?
-                } else {
-                    vec![0u8; N::PROGRAM_ID_SIZE_IN_BYTES]
-                };
+            let program_id_bytes = record.program_id().map_or(Ok(vec![0u8; N::PROGRAM_ID_SIZE_IN_BYTES]), |program_id| program_id.to_bytes_le())?;
                 let executable_program_id_bytes = UInt8::alloc_input_vec_le(
                     &mut program_cs.ns(|| "Allocate executable_program_id"),
                     &program_id_bytes,
