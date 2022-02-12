@@ -283,6 +283,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
                     hiding_bound,
                 ));
 
+                #[allow(clippy::or_fun_call)]
                 let (comm, rand) = match p.polynomial {
                     PolynomialWithBasis::Lagrange { evaluations } => {
                         let domain = crate::fft::EvaluationDomain::new(evaluations.evaluations.len()).unwrap();

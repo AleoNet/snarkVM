@@ -24,6 +24,7 @@ use std::fmt;
 
 /// Stores a sparse polynomial in coefficient form.
 #[derive(Clone, PartialEq, Eq, Hash, Default, CanonicalSerialize, CanonicalDeserialize)]
+#[must_use]
 pub struct SparsePolynomial<F: Field> {
     /// The coefficient a_i of `x^i` is stored as (i, a_i) in `self.coeffs`.
     /// the entries in `self.coeffs` are sorted in increasing order of `i`.
@@ -100,16 +101,14 @@ impl<F: Field> SparsePolynomial<F> {
         if self.is_zero() || other.is_zero() {
             SparsePolynomial::zero()
         } else {
-            let mut result = std::collections::HashMap::new();
+            let mut result = std::collections::BTreeMap::new();
             for (i, self_coeff) in self.coeffs.iter() {
                 for (j, other_coeff) in other.coeffs.iter() {
                     let cur_coeff = result.entry(i + j).or_insert_with(F::zero);
                     *cur_coeff += *self_coeff * other_coeff;
                 }
             }
-            let mut result = result.into_iter().collect::<Vec<_>>();
-            result.sort_by(|a, b| a.0.cmp(&b.0));
-            SparsePolynomial::from_coefficients_vec(result)
+            SparsePolynomial::from_coefficients_vec(result.into_iter().collect())
         }
     }
 }
@@ -144,6 +143,17 @@ impl<'a, F: PrimeField> core::ops::Mul<F> for &'a SparsePolynomial<F> {
         let mut result = self.clone();
         result *= other;
         result
+    }
+}
+
+impl<'a, F: PrimeField> core::ops::AddAssign<&'a Self> for SparsePolynomial<F> {
+    fn add_assign(&mut self, other: &'a Self) {
+        let mut result = std::collections::BTreeMap::from_iter(other.coeffs.iter().copied());
+        for (i, coeff) in self.coeffs.iter() {
+            let cur_coeff = result.entry(*i).or_insert_with(F::zero);
+            *cur_coeff += coeff;
+        }
+        *self = SparsePolynomial::from_coefficients_vec(result.into_iter().collect())
     }
 }
 

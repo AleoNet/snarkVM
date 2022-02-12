@@ -31,6 +31,7 @@ use rayon::prelude::*;
 
 /// Stores a polynomial in coefficient form.
 #[derive(Clone, PartialEq, Eq, Hash, Default, CanonicalSerialize, CanonicalDeserialize)]
+#[must_use]
 pub struct DensePolynomial<F: Field> {
     /// The coefficient of `x^i` is stored at location `i` in `self.coeffs`.
     pub coeffs: Vec<F>,
@@ -207,6 +208,24 @@ impl<'a, 'b, F: Field> AddAssign<&'a DensePolynomial<F>> for DensePolynomial<F> 
             while self.coeffs.last().unwrap().is_zero() {
                 self.coeffs.pop();
             }
+        }
+    }
+}
+
+impl<'a, 'b, F: Field> AddAssign<&'a DenseOrSparsePolynomial<'a, F>> for DensePolynomial<F> {
+    fn add_assign(&mut self, other: &'a DenseOrSparsePolynomial<F>) {
+        match other {
+            DenseOrSparsePolynomial::SPolynomial(p) => *self += &Self::from(p.to_owned().into_owned()),
+            DenseOrSparsePolynomial::DPolynomial(p) => *self += p.as_ref(),
+        }
+    }
+}
+
+impl<'a, 'b, F: Field> AddAssign<(F, &'a DenseOrSparsePolynomial<'a, F>)> for DensePolynomial<F> {
+    fn add_assign(&mut self, (f, other): (F, &'a DenseOrSparsePolynomial<F>)) {
+        match other {
+            DenseOrSparsePolynomial::SPolynomial(p) => *self += (f, &Self::from(p.to_owned().into_owned())),
+            DenseOrSparsePolynomial::DPolynomial(p) => *self += (f, p.as_ref()),
         }
     }
 }
