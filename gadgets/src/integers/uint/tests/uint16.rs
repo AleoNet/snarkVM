@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use rand::{Rng, SeedableRng};
-use rand_xorshift::XorShiftRng;
+use rand::Rng;
 
 use snarkvm_fields::{One, Zero};
 use snarkvm_r1cs::{ConstraintSystem, Fr, TestConstraintSystem};
+use snarkvm_utilities::rand::test_rng;
 
 use crate::{
     bits::Boolean,
@@ -58,7 +58,7 @@ fn check_all_allocated_bits(mut expected: u16, actual: UInt16) {
 
 #[test]
 fn test_uint16_from_bits() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..1000 {
         let v = (0..16).map(|_| Boolean::constant(rng.gen())).collect::<Vec<_>>();
@@ -88,7 +88,7 @@ fn test_uint16_from_bits() {
 
 #[test]
 fn test_uint16_rotr() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     let mut num = rng.gen();
 
@@ -117,7 +117,7 @@ fn test_uint16_rotr() {
 
 #[test]
 fn test_uint16_xor() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
@@ -159,7 +159,7 @@ fn test_uint16_xor() {
 
 #[test]
 fn test_uint16_addmany_constants() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
@@ -185,7 +185,7 @@ fn test_uint16_addmany_constants() {
 #[test]
 #[allow(clippy::many_single_char_names)]
 fn test_uint16_addmany() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
@@ -224,7 +224,7 @@ fn test_uint16_addmany() {
 
 #[test]
 fn test_uint16_sub_constants() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
@@ -247,7 +247,7 @@ fn test_uint16_sub_constants() {
 
 #[test]
 fn test_uint16_sub() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
@@ -282,7 +282,7 @@ fn test_uint16_sub() {
 
 #[test]
 fn test_uint16_mul_constants() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
@@ -305,7 +305,7 @@ fn test_uint16_mul_constants() {
 
 #[test]
 fn test_uint16_mul() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..100 {
         let mut cs = TestConstraintSystem::<Fr>::new();
@@ -340,7 +340,7 @@ fn test_uint16_mul() {
 
 #[test]
 fn test_uint16_div_constants() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
@@ -363,7 +363,7 @@ fn test_uint16_div_constants() {
 
 #[test]
 fn test_uint16_div() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
@@ -398,7 +398,7 @@ fn test_uint16_div() {
 
 #[test]
 fn test_uint16_pow_constants() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..100 {
         let mut cs = TestConstraintSystem::<Fr>::new();
@@ -421,7 +421,7 @@ fn test_uint16_pow_constants() {
 
 #[test]
 fn test_uint16_pow() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..10 {
         let mut cs = TestConstraintSystem::<Fr>::new();

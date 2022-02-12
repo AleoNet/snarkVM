@@ -40,8 +40,8 @@ pub use snarkvm_fields::*;
 #[cfg(feature = "gadgets")]
 pub use snarkvm_gadgets::*;
 
-#[cfg(feature = "marlin")]
-pub use snarkvm_marlin::*;
-
 #[cfg(feature = "r1cs")]
 pub use snarkvm_r1cs::*;
+
+#[cfg(test)]
+mod tests;

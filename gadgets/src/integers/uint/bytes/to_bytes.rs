@@ -56,9 +56,10 @@ mod tests {
     use super::*;
     use snarkvm_curves::bls12_377::Fr;
     use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
+    use snarkvm_utilities::rand::test_rng;
 
     use num_traits::PrimInt;
-    use rand::{thread_rng, Rng};
+    use rand::Rng;
 
     const ITERATIONS: usize = 100_000;
 
@@ -80,25 +81,27 @@ mod tests {
             }
         }
 
+        let mut rng = test_rng();
+
         for _ in 0..ITERATIONS {
             // 8-bit unsigned integer
-            let expected: u8 = thread_rng().gen();
+            let expected: u8 = rng.gen();
             uint_to_bytes_test::<Fr, u8, UInt8>(expected, &expected.to_le_bytes());
 
             // 16-bit unsigned integer
-            let expected: u16 = thread_rng().gen();
+            let expected: u16 = rng.gen();
             uint_to_bytes_test::<Fr, u16, UInt16>(expected, &expected.to_le_bytes());
 
             // 32-bit unsigned integer
-            let expected: u32 = thread_rng().gen();
+            let expected: u32 = rng.gen();
             uint_to_bytes_test::<Fr, u32, UInt32>(expected, &expected.to_le_bytes());
 
             // 64-bit unsigned integer
-            let expected: u64 = thread_rng().gen();
+            let expected: u64 = rng.gen();
             uint_to_bytes_test::<Fr, u64, UInt64>(expected, &expected.to_le_bytes());
 
             // 128-bit unsigned integer
-            let expected: u128 = thread_rng().gen();
+            let expected: u128 = rng.gen();
             uint_to_bytes_test::<Fr, u128, UInt128>(expected, &expected.to_le_bytes());
         }
     }

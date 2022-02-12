@@ -14,16 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use rand::{
-    thread_rng,
-    SeedableRng,
-    {self},
-};
-use rand_xorshift::XorShiftRng;
+use rand::thread_rng;
 
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
-use snarkvm_utilities::{bititerator::BitIteratorBE, rand::UniformRand};
+use snarkvm_utilities::{
+    bititerator::BitIteratorBE,
+    rand::{test_rng, UniformRand},
+};
 
 use crate::{
     bits::Boolean,
@@ -174,7 +172,8 @@ fn random_frobenius_tests<NativeF: Field, F: Field, FG: FieldGadget<NativeF, F>,
     mut cs: CS,
     maxpower: usize,
 ) {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
+
     for i in 0..(maxpower + 1) {
         let mut a = NativeF::rand(&mut rng);
         let mut a_gadget = FG::alloc(cs.ns(|| format!("a_gadget_{:?}", i)), || Ok(a)).unwrap();
@@ -192,7 +191,7 @@ fn bls12_377_field_gadgets_test() {
 
     let mut cs = TestConstraintSystem::<Fq>::new();
 
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     let a = FqGadget::alloc(&mut cs.ns(|| "generate_a"), || Ok(Fq::rand(&mut rng))).unwrap();
     let b = FqGadget::alloc(&mut cs.ns(|| "generate_b"), || Ok(Fq::rand(&mut rng))).unwrap();

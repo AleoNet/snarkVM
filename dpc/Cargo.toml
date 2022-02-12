@@ -133,6 +133,7 @@ version = "0.3"
 [features]
 default = [
   "full",
+  "parallel",
   "snarkvm-algorithms/default",
   "snarkvm-curves/default",
   "snarkvm-fields/default",
@@ -140,8 +141,14 @@ default = [
   "snarkvm-parameters/default",
   "snarkvm-utilities/default"
 ]
-wasm = [ "full", "snarkvm-algorithms/wasm", "snarkvm-gadgets/core", "snarkvm-parameters/wasm" ]
 full = [ "testnet1", "testnet2" ]
+wasm = [ "testnet2", "snarkvm-algorithms/wasm", "snarkvm-gadgets/core", "snarkvm-parameters/wasm" ]
+parallel = [
+  "snarkvm-algorithms/parallel",
+  "snarkvm-fields/parallel",
+  "snarkvm-utilities/parallel"
+]
 print-trace = [ "snarkvm-profiler/print-trace" ]
+
 testnet1 = []
 testnet2 = []

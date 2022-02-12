@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use rand::{Rng, SeedableRng};
-use rand_xorshift::XorShiftRng;
+use rand::Rng;
 
 use snarkvm_fields::{One, Zero};
 use snarkvm_r1cs::{ConstraintSystem, Fr, TestConstraintSystem};
+use snarkvm_utilities::rand::test_rng;
 
 use crate::{
     bits::Boolean,
@@ -67,7 +67,7 @@ fn check_all_allocated_bits(expected: i8, actual: Int8) {
 
 #[test]
 fn test_int8_constant_and_alloc() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
@@ -91,7 +91,7 @@ fn test_int8_constant_and_alloc() {
 
 #[test]
 fn test_int8_add_constants() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
@@ -117,7 +117,7 @@ fn test_int8_add_constants() {
 
 #[test]
 fn test_int8_add() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
@@ -154,7 +154,7 @@ fn test_int8_add() {
 
 #[test]
 fn test_int8_sub_constants() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
@@ -185,7 +185,7 @@ fn test_int8_sub_constants() {
 
 #[test]
 fn test_int8_sub() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
@@ -227,7 +227,7 @@ fn test_int8_sub() {
 
 #[test]
 fn test_int8_mul_constants() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
@@ -253,7 +253,7 @@ fn test_int8_mul_constants() {
 
 #[test]
 fn test_int8_mul() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
@@ -290,7 +290,7 @@ fn test_int8_mul() {
 
 #[test]
 fn test_int8_div_constants() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..1000 {
         let mut cs = TestConstraintSystem::<Fr>::new();
@@ -320,7 +320,7 @@ fn test_int8_div_constants() {
 
 #[test]
 fn test_int8_div() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..100 {
         let mut cs = TestConstraintSystem::<Fr>::new();
@@ -407,7 +407,7 @@ fn test_int8_div_setup_mode() {
 
 #[test]
 fn test_int8_pow_constants() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..10 {
         let mut cs = TestConstraintSystem::<Fr>::new();
@@ -433,7 +433,7 @@ fn test_int8_pow_constants() {
 
 #[test]
 fn test_int8_pow() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..10 {
         let mut cs = TestConstraintSystem::<Fr>::new();
