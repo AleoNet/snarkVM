@@ -36,6 +36,8 @@ pub struct Blocks<N: Network> {
     headers: HashMap<u32, BlockHeader<N>>,
     /// The chain of block transactions.
     transactions: HashMap<u32, Transactions<N>>,
+    /// The registry of deployed programs.
+    program_registry: ProgramRegistry<N>,
 }
 
 impl<N: Network> Blocks<N> {
@@ -51,6 +53,7 @@ impl<N: Network> Blocks<N> {
             previous_hashes: Default::default(),
             headers: Default::default(),
             transactions: Default::default(),
+            program_registry: ProgramRegistry::new()?,
         };
 
         blocks.ledger_tree.add(&genesis_block.hash())?;
@@ -254,6 +257,8 @@ impl<N: Network> Blocks<N> {
             ));
         }
 
+        let mut deployed_programs = Vec::new();
+
         for transaction in block.transactions().iter() {
             // Ensure the transaction in the block do not already exist.
             if self.contains_transaction(transaction) {
@@ -265,6 +270,26 @@ impl<N: Network> Blocks<N> {
                     "The given transaction references a non-existent ledger root {}",
                     &transaction.ledger_root()
                 ));
+            }
+
+            for transition in transaction.transitions().iter() {
+                // Add the deployed programs to the registry.
+                if let Some(deployed_program) = &transition.execution().deployed_program {
+                    // Check that the deployment transition is not executing another program.
+                    if transition.execution().program_execution.is_some() {
+                        return Err(anyhow!("Program deployment should not have a program execution"));
+                    }
+
+                    // Check that there are no duplicate deployed programs
+                    if deployed_programs.contains(deployed_program) {}
+                    deployed_programs.push(deployed_program.clone());
+                }
+                // Ensure that every executed program exists in the program registry.
+                else if let Some(program_execution) = &transition.execution().program_execution {
+                    if !self.program_registry.contains_program(&program_execution.program_id) {
+                        return Err(anyhow!("Program does not exist in the registry"));
+                    }
+                }
             }
         }
 
@@ -292,6 +317,7 @@ impl<N: Network> Blocks<N> {
             blocks.previous_hashes.insert(height, block.previous_block_hash());
             blocks.headers.insert(height, block.header().clone());
             blocks.transactions.insert(height, block.transactions().clone());
+            blocks.program_registry.add_all(deployed_programs)?;
 
             *self = blocks;
         }

@@ -131,6 +131,12 @@ impl<N: Network> Transition<N> {
         )
     }
 
+    /// Returns `true` if the transition deploys a transaction.
+    #[inline]
+    pub fn is_deployment(&self) -> bool {
+        self.execution.deployed_program.is_some()
+    }
+
     /// Returns `true` if the given serial number exists.
     pub fn contains_serial_number(&self, serial_number: &N::SerialNumber) -> bool {
         self.serial_numbers.contains(serial_number)

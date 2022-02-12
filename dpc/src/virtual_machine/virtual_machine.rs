@@ -61,7 +61,7 @@ impl<N: Network> VirtualMachine<N> {
             Operation::Noop => Self::noop(request, rng)?,
             Operation::Coinbase(recipient, amount) => Self::coinbase(request, recipient, amount, rng)?,
             Operation::Transfer(caller, recipient, amount) => Self::transfer(request, caller, recipient, amount, rng)?,
-            Operation::Evaluate(function_id, function_type, function_inputs) => self.evaluate(
+            Operation::Evaluate(function_id, function_type, function_inputs) => Self::evaluate(
                 request,
                 request.to_program_id()?,
                 &function_id,
@@ -70,6 +70,9 @@ impl<N: Network> VirtualMachine<N> {
                 vec![], // custom_events
                 rng,
             )?,
+            Operation::Deploy(caller, amount, program_id, functions) => {
+                Self::deploy(request, caller, amount, program_id, functions, vec![], rng)?
+            }
         };
 
         let program_id = request.to_program_id()?;
@@ -90,8 +93,10 @@ impl<N: Network> VirtualMachine<N> {
 
         assert!(N::InnerSNARK::verify(N::inner_verifying_key(), &inner_public, &inner_proof)?);
 
-        // Compute the noop execution, for now.
-        let execution = Execution::from(None, inner_proof.into())?;
+        // TODO (raychu86): Update the execution to include the deployed programs.
+
+        // Compute the execution.
+        let execution = Execution::from(None, inner_proof.into(), None)?;
 
         // Construct the transition.
         let transition = Transition::<N>::new(request, &response, execution)?;
@@ -159,8 +164,59 @@ impl<N: Network> VirtualMachine<N> {
     }
 
     /// Returns a response based on the current state of the virtual machine.
+    fn deploy<R: Rng + CryptoRng>(
+        request: &Request<N>,
+        caller: Address<N>,
+        amount: AleoAmount,
+        _program_id: N::ProgramID, // TODO (raychu86): Enforce that the program id and functions are valid.
+        _functions: ProgramFunctions<N>,
+        custom_events: Vec<Vec<u8>>,
+        rng: &mut R,
+    ) -> Result<Response<N>> {
+        // TODO (raychu86): Do function type checks.
+
+        // Check that the function ids exists in the program.
+        {}
+
+        // Fetch the caller.
+        if request.caller()? != caller {
+            return Err(anyhow!("Caller in instruction does not match request caller"));
+        }
+
+        // Compute the starting balance of the caller.
+        let starting_balance = request.to_balance().sub(request.fee());
+        if starting_balance.is_negative() {
+            return Err(VMError::BalanceInsufficient.into());
+        }
+
+        // Compute the final balance of the caller.
+        let caller_balance = starting_balance.sub(amount);
+        if caller_balance.is_negative() {
+            return Err(VMError::BalanceInsufficient.into());
+        }
+
+        let mut response_builder = ResponseBuilder::new().add_request(request.clone()).add_output(Output::new(
+            caller,
+            caller_balance,
+            Default::default(),
+            None,
+        )?);
+
+        // Add custom events to the response.
+        for event in custom_events {
+            response_builder = response_builder.add_event(Event::Custom(event));
+        }
+
+        // Add the operation event to the response builder.
+        if request.is_public() {
+            response_builder = response_builder.add_event(Event::Operation(request.operation().clone()));
+        }
+
+        response_builder.build(rng)
+    }
+
+    /// Returns a response based on the current state of the virtual machine.
     fn evaluate<R: Rng + CryptoRng>(
-        &self,
         request: &Request<N>,
         program_id: Option<N::ProgramID>,
         function_id: &N::FunctionID,
@@ -242,7 +298,7 @@ impl<N: Network> VirtualMachine<N> {
         // Compute the operation.
         let operation = request.operation().clone();
         let response = match operation {
-            Operation::Evaluate(function_id, function_type, function_inputs) => self.evaluate(
+            Operation::Evaluate(function_id, function_type, function_inputs) => Self::evaluate(
                 request,
                 Some(program_id),
                 &function_id,
@@ -281,6 +337,7 @@ impl<N: Network> VirtualMachine<N> {
         let execution = Execution::from(
             Some(ProgramExecution::from(program_id, function_path.clone(), function_verifying_key, program_proof)?),
             inner_proof.into(),
+            response.program_deployment().clone(),
         )?;
 
         // Construct the transition.

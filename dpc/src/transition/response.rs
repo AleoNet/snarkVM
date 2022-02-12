@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AleoAmount, Event, Network, Record};
+use crate::{AleoAmount, Event, Network, ProgramFunctions, Record};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::Result;
@@ -39,6 +39,8 @@ pub struct Response<N: Network> {
     value_balance: AleoAmount,
     /// The events emitted from the execution.
     events: Vec<Event<N>>,
+    /// The fields used for a program deployment transaction.
+    program_deployment: Option<(N::ProgramID, ProgramFunctions<N>)>,
 }
 
 impl<N: Network> Response<N> {
@@ -49,8 +51,9 @@ impl<N: Network> Response<N> {
         encryption_randomness: Vec<EncryptionRandomness<N>>,
         value_balance: AleoAmount,
         events: Vec<Event<N>>,
+        program_deployment: Option<(N::ProgramID, ProgramFunctions<N>)>,
     ) -> Result<Self> {
-        Ok(Self { transition_id, records, encryption_randomness, value_balance, events })
+        Ok(Self { transition_id, records, encryption_randomness, value_balance, events, program_deployment })
     }
 
     /// Returns `true` if the output records are the noop program.
@@ -92,6 +95,11 @@ impl<N: Network> Response<N> {
     pub fn events(&self) -> &Vec<Event<N>> {
         &self.events
     }
+
+    /// Returns the program deployment if it exists.
+    pub fn program_deployment(&self) -> &Option<(N::ProgramID, ProgramFunctions<N>)> {
+        &self.program_deployment
+    }
 }
 
 impl<N: Network> FromBytes for Response<N> {
@@ -117,7 +125,18 @@ impl<N: Network> FromBytes for Response<N> {
             events.push(FromBytes::read_le(&mut reader)?);
         }
 
-        Ok(Self { transition_id, records, encryption_randomness, value_balance, events })
+        let is_deployment: bool = FromBytes::read_le(&mut reader)?;
+        let program_deployment = match is_deployment {
+            true => {
+                let program_id: N::ProgramID = FromBytes::read_le(&mut reader)?;
+                let functions: ProgramFunctions<N> = FromBytes::read_le(&mut reader)?;
+
+                Some((program_id, functions))
+            }
+            false => None,
+        };
+
+        Ok(Self { transition_id, records, encryption_randomness, value_balance, events, program_deployment })
     }
 }
 
@@ -129,7 +148,15 @@ impl<N: Network> ToBytes for Response<N> {
         self.encryption_randomness.write_le(&mut writer)?;
         self.value_balance.write_le(&mut writer)?;
         (self.events.len() as u16).write_le(&mut writer)?;
-        self.events.write_le(&mut writer)
+        self.events.write_le(&mut writer)?;
+        match &self.program_deployment {
+            Some((program_id, functions)) => {
+                true.write_le(&mut writer)?;
+                program_id.write_le(&mut writer)?;
+                functions.write_le(&mut writer)
+            }
+            None => false.write_le(&mut writer),
+        }
     }
 }
 

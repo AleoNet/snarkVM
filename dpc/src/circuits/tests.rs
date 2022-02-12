@@ -108,7 +108,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize) 
     //////////////////////////////////////////////////////////////////////////
 
     // Construct the execution.
-    let execution = Execution::<N>::from(None, inner_proof.into()).unwrap();
+    let execution = Execution::<N>::from(None, inner_proof.into(), None).unwrap();
 
     // Verify that the program proof passes.
     assert!(execution.verify(&inner_verifying_key, transition_id, value_balance, ledger_root, local_transitions_root,));
