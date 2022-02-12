@@ -116,7 +116,7 @@ impl<N: Network> Execution<N> {
                 Ok(false) => {
                     eprintln!("Program proof failed to verify");
                     false
-                },
+                }
                 Err(error) => {
                     eprintln!("Failed to validate the program proof: {:?}", error);
                     false
