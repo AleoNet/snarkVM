@@ -30,6 +30,9 @@ pub use dense::DensePolynomial;
 mod sparse;
 pub use sparse::SparsePolynomial;
 
+mod multiplier;
+pub use multiplier::*;
+
 /// Represents either a sparse polynomial or a dense one.
 #[derive(Clone, Debug)]
 pub enum DenseOrSparsePolynomial<'a, F: Field> {

@@ -29,6 +29,8 @@ use std::{
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
+use super::PolyMultiplier;
+
 /// Stores a polynomial in coefficient form.
 #[derive(Clone, PartialEq, Eq, Hash, Default, CanonicalSerialize, CanonicalDeserialize)]
 #[must_use]
@@ -414,12 +416,10 @@ impl<'a, 'b, F: PrimeField> Mul<&'a DensePolynomial<F>> for &'b DensePolynomial<
         if self.is_zero() || other.is_zero() {
             DensePolynomial::zero()
         } else {
-            let domain = EvaluationDomain::new(self.coeffs.len() + other.coeffs.len())
-                .expect("field is not smooth enough to construct domain");
-            let mut self_evals = self.evaluate_over_domain_by_ref(domain);
-            let other_evals = other.evaluate_over_domain_by_ref(domain);
-            self_evals *= &other_evals;
-            self_evals.interpolate()
+            let mut m = PolyMultiplier::new();
+            m.add_polynomial_ref(self);
+            m.add_polynomial_ref(other);
+            m.multiply().unwrap()
         }
     }
 }
@@ -567,6 +567,8 @@ mod tests {
         let rng = &mut thread_rng();
         for a_degree in 0..70 {
             for b_degree in 0..70 {
+                dbg!(a_degree);
+                dbg!(b_degree);
                 let a = DensePolynomial::<Fr>::rand(a_degree, rng);
                 let b = DensePolynomial::<Fr>::rand(b_degree, rng);
                 assert_eq!(&a * &b, a.naive_mul(&b))

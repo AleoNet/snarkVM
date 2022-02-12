@@ -358,8 +358,17 @@ impl<F: FftField> EvaluationDomain<F> {
         self.fft_helper_in_place(x_s, FFTOrder::II)
     }
 
+    pub(crate) fn fft_in_place_with_out_order<T: DomainCoeff<F>>(&self, x_s: &mut [T]) {
+        self.fft_helper_in_place(x_s, FFTOrder::IO)
+    }
+
     pub(crate) fn in_order_ifft_in_place<T: DomainCoeff<F>>(&self, x_s: &mut [T]) {
         self.ifft_helper_in_place(x_s, FFTOrder::II);
+        cfg_iter_mut!(x_s).for_each(|val| *val *= self.size_inv);
+    }
+
+    pub(crate) fn out_order_ifft_in_place<T: DomainCoeff<F>>(&self, x_s: &mut [T]) {
+        self.ifft_helper_in_place(x_s, FFTOrder::OI);
         cfg_iter_mut!(x_s).for_each(|val| *val *= self.size_inv);
     }
 
@@ -381,7 +390,7 @@ impl<F: FftField> EvaluationDomain<F> {
         }
 
         if ord == II {
-            derange(x_s, log_len);
+            derange_helper(x_s, log_len);
         }
     }
 
@@ -394,7 +403,7 @@ impl<F: FftField> EvaluationDomain<F> {
         let log_len = log2(x_s.len());
 
         if ord == II {
-            derange(x_s, log_len);
+            derange_helper(x_s, log_len);
         }
 
         if ord == IO {
@@ -613,7 +622,11 @@ pub(super) fn bitrev(a: u64, log_len: u32) -> u64 {
     a.reverse_bits() >> (64 - log_len)
 }
 
-fn derange<T>(xi: &mut [T], log_len: u32) {
+pub(crate) fn derange<T>(xi: &mut [T]) {
+    derange_helper(xi, log2(xi.len()))
+}
+
+fn derange_helper<T>(xi: &mut [T], log_len: u32) {
     for idx in 1..(xi.len() as u64 - 1) {
         let ridx = bitrev(idx, log_len);
         if idx < ridx {
