@@ -538,7 +538,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 let given_value = Int64::alloc(&mut declare_cs.ns(|| "given_value"), || Ok(record.value().as_i64()))?;
 
                 // Use an empty payload if the record does not have one.
-                let payload = record.payload().unwrap_or(&Payload::default());
+                let payload = record.payload().clone().unwrap_or(Payload::default());
                 let given_payload = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &payload.to_bytes_le()?)?;
 
                 // Use an empty program id if the record does not have one.
@@ -681,7 +681,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
             // Allocate the program ID.
             let executable_program_id_field_elements = {
-            let program_id_bytes = record.program_id().map_or(Ok(vec![0u8; N::PROGRAM_ID_SIZE_IN_BYTES]), |program_id| program_id.to_bytes_le())?;
+            let program_id_bytes = public.program_id.map_or(Ok(vec![0u8; N::PROGRAM_ID_SIZE_IN_BYTES]), |program_id| program_id.to_bytes_le())?;
                 let executable_program_id_bytes = UInt8::alloc_input_vec_le(
                     &mut program_cs.ns(|| "Allocate executable_program_id"),
                     &program_id_bytes,
