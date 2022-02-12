@@ -367,6 +367,12 @@ pub trait UnnormalizedBivariateLagrangePoly<F: PrimeField> {
     /// Evaluate over a batch of inputs
     fn batch_eval_unnormalized_bivariate_lagrange_poly_with_diff_inputs(&self, x: F) -> Vec<F>;
 
+    fn batch_eval_unnormalized_bivariate_lagrange_poly_with_diff_inputs_over_domain(
+        &self,
+        x: F,
+        domain: &EvaluationDomain<F>,
+    ) -> Vec<F>;
+
     /// Evaluate the magic polynomial over `self`
     fn batch_eval_unnormalized_bivariate_lagrange_poly_with_same_inputs(&self) -> Vec<F>;
 }
@@ -380,11 +386,37 @@ impl<F: PrimeField> UnnormalizedBivariateLagrangePoly<F> for EvaluationDomain<F>
         }
     }
 
-    fn batch_eval_unnormalized_bivariate_lagrange_poly_with_diff_inputs(&self, x: F) -> Vec<F> {
+    fn batch_eval_unnormalized_bivariate_lagrange_poly_with_diff_inputs_over_domain(
+        &self,
+        x: F,
+        domain: &EvaluationDomain<F>,
+    ) -> Vec<F> {
+        #[cfg(feature = "parallel")]
+        use rayon::prelude::*;
+        use snarkvm_utilities::{cfg_iter, cfg_iter_mut};
+
         let vanish_x = self.evaluate_vanishing_polynomial(x);
-        let mut inverses: Vec<F> = self.elements().map(|y| x - y).collect();
-        snarkvm_fields::batch_inversion_and_mul(&mut inverses, &vanish_x);
-        inverses
+        let elements = domain.elements().collect::<Vec<_>>();
+
+        let mut denoms = cfg_iter!(elements).map(|e| x - e).collect::<Vec<_>>();
+        if domain.size() <= self.size() {
+            snarkvm_fields::batch_inversion_and_mul(&mut denoms, &vanish_x);
+        } else {
+            snarkvm_fields::batch_inversion(&mut denoms);
+            let ratio = domain.size() / self.size();
+            let mut numerators = vec![vanish_x; domain.size()];
+            cfg_iter_mut!(numerators).zip(elements).enumerate().for_each(|(i, (n, e))| {
+                if i % ratio != 0 {
+                    *n -= self.evaluate_vanishing_polynomial(e);
+                }
+            });
+            cfg_iter_mut!(denoms).zip(numerators).for_each(|(d, e)| *d *= e);
+        }
+        denoms
+    }
+
+    fn batch_eval_unnormalized_bivariate_lagrange_poly_with_diff_inputs(&self, x: F) -> Vec<F> {
+        self.batch_eval_unnormalized_bivariate_lagrange_poly_with_diff_inputs_over_domain(x, self)
     }
 
     fn batch_eval_unnormalized_bivariate_lagrange_poly_with_same_inputs(&self) -> Vec<F> {
@@ -437,6 +469,23 @@ mod tests {
                 domain.elements().map(|y| domain.eval_unnormalized_bivariate_lagrange_poly(x, y)).collect();
             let fast = domain.batch_eval_unnormalized_bivariate_lagrange_poly_with_diff_inputs(x);
             assert_eq!(fast, manual);
+        }
+    }
+
+    #[test]
+    fn domain_unnormalized_bivariate_lagrange_poly_diff_inputs_over_domain() {
+        let rng = &mut test_rng();
+        for domain_size in 1..10 {
+            let domain = EvaluationDomain::<Fr>::new(1 << domain_size).unwrap();
+            let x = Fr::rand(rng);
+            for other_domain_size in 1..10 {
+                let other = EvaluationDomain::<Fr>::new(1 << other_domain_size).unwrap();
+                let manual: Vec<_> =
+                    other.elements().map(|y| domain.eval_unnormalized_bivariate_lagrange_poly(x, y)).collect();
+                let fast =
+                    domain.batch_eval_unnormalized_bivariate_lagrange_poly_with_diff_inputs_over_domain(x, &other);
+                assert_eq!(fast, manual, "failed for self {:?} and other {:?}", domain, other);
+            }
         }
     }
 
