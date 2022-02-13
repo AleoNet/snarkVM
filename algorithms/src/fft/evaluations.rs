@@ -18,7 +18,7 @@
 
 use crate::fft::{DensePolynomial, EvaluationDomain};
 use snarkvm_fields::PrimeField;
-use snarkvm_utilities::{errors::SerializationError, serialize::*};
+use snarkvm_utilities::serialize::*;
 
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
 
@@ -47,6 +47,10 @@ impl<F: PrimeField> Evaluations<F> {
         let Self { evaluations: mut evals, domain } = self;
         domain.ifft_in_place(&mut evals);
         DensePolynomial::from_coefficients_vec(evals)
+    }
+
+    pub fn domain(&self) -> EvaluationDomain<F> {
+        self.domain
     }
 }
 

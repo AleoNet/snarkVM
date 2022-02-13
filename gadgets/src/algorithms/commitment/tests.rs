@@ -23,16 +23,16 @@ use crate::{
 use snarkvm_algorithms::{commitment::BHPCommitment, CommitmentScheme};
 use snarkvm_curves::edwards_bls12::{EdwardsProjective, Fq};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
-use snarkvm_utilities::rand::UniformRand;
+use snarkvm_utilities::rand::{test_rng, UniformRand};
 
-use rand::{thread_rng, Rng};
+use rand::Rng;
+use rand_xorshift::XorShiftRng;
 
 const ITERATIONS: usize = 1000;
 
-fn native_and_gadget_equivalence_test<Native: CommitmentScheme, Gadget: CommitmentGadget<Native, Fq>>()
--> (<Native as CommitmentScheme>::Output, <Gadget as CommitmentGadget<Native, Fq>>::OutputGadget) {
-    let rng = &mut thread_rng();
-
+fn native_and_gadget_equivalence_test<Native: CommitmentScheme, Gadget: CommitmentGadget<Native, Fq>>(
+    rng: &mut XorShiftRng,
+) -> (<Native as CommitmentScheme>::Output, <Gadget as CommitmentGadget<Native, Fq>>::OutputGadget) {
     // Generate the input message and randomness.
     let input: [u8; 32] = rng.gen();
     let randomness = <Native as CommitmentScheme>::Randomness::rand(rng);
@@ -68,9 +68,11 @@ fn bhp_commitment_gadget_test() {
     type TestCommitment = BHPCommitment<EdwardsProjective, 32, 48>;
     type TestCommitmentGadget = BHPCommitmentGadget<EdwardsProjective, Fq, EdwardsBls12Gadget, 32, 48>;
 
+    let mut rng = test_rng();
+
     for _ in 0..ITERATIONS {
         let (native_output, gadget_output) =
-            native_and_gadget_equivalence_test::<TestCommitment, TestCommitmentGadget>();
+            native_and_gadget_equivalence_test::<TestCommitment, TestCommitmentGadget>(&mut rng);
         assert_eq!(native_output, gadget_output.get_value().unwrap());
     }
 }

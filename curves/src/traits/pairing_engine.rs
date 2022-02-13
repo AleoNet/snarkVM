@@ -92,6 +92,7 @@ pub trait PairingEngine: Sized + 'static + Copy + Debug + PartialEq + Eq + Sync 
 /// in the correct prime order subgroup.
 pub trait ProjectiveCurve:
     Group
+    + PartialEq<Self::Affine>
     + Sized
     + CanonicalSerialize
     + ConstantSerializedSize
@@ -147,6 +148,7 @@ pub trait ProjectiveCurve:
 #[allow(clippy::wrong_self_convention)]
 pub trait AffineCurve:
     Group
+    + PartialEq<Self::Projective>
     + Sized
     + Serialize
     + DeserializeOwned

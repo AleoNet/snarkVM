@@ -21,7 +21,7 @@ use crate::{
     snark::marlin::{ahp::matrices::MatrixArithmetization, CircuitInfo, MarlinMode, Matrix},
 };
 use snarkvm_fields::PrimeField;
-use snarkvm_utilities::{errors::SerializationError, serialize::*};
+use snarkvm_utilities::serialize::*;
 
 #[derive(derivative::Derivative)]
 #[derivative(Clone(bound = "F: PrimeField"))]
@@ -56,6 +56,11 @@ impl<F: PrimeField, MM: MarlinMode> Circuit<F, MM> {
     /// The maximum degree required to represent polynomials of this index.
     pub fn max_degree(&self) -> usize {
         self.index_info.max_degree::<MM>()
+    }
+
+    /// The number of constraints in this R1CS instance.
+    pub fn constraint_domain_size(&self) -> usize {
+        crate::fft::EvaluationDomain::<F>::new(self.index_info.num_constraints).unwrap().size()
     }
 
     /// Iterate over the indexed polynomials.
