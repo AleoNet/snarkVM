@@ -35,9 +35,6 @@ pub use not::*;
 pub mod or;
 pub use or::*;
 
-pub mod sign_extend;
-pub use sign_extend::*;
-
 pub mod subtractor;
 pub use subtractor::*;
 
@@ -45,11 +42,6 @@ pub mod ternary;
 pub use ternary::*;
 
 pub mod xor;
-pub use xor::*;
-
-pub mod zero_extend;
-pub use zero_extend::*;
-
 pub use xor::*;
 
 use crate::{traits::*, Environment, LinearCombination, Mode, Variable};
