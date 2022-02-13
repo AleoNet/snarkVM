@@ -37,7 +37,8 @@ impl<E: Environment, I: IntegerType> DivChecked<Self> for Integer<E, I> {
             if I::is_signed() {
                 // Signed integer division wraps when the dividend is I::MIN and when the divisor is -1.
                 let min = Self::new(Mode::Constant, I::MIN);
-                let neg_one = Integer::zero() - Integer::one();
+                // let neg_one = Integer::zero() - Integer::one();
+                let neg_one = Self::new(Mode::Constant, I::zero() - I::one());
                 let overflows = self.is_eq(&min).and(&other.is_eq(&neg_one));
                 E::assert_eq(overflows, E::zero());
 
@@ -46,13 +47,13 @@ impl<E: Environment, I: IntegerType> DivChecked<Self> for Integer<E, I> {
                 let divisor_msb = other.bits_le.last().unwrap();
 
                 // Divide the absolute value of `self` and `other` in the base field.
-                let dividend_unsigned_integer =
+                let unsigned_dividend =
                     Self::ternary(dividend_msb, &(!self).add_wrapped(&Self::one()), self).cast_as_dual();
-                let divisor_unsigned_integer =
+                let unsigned_divisor =
                     Self::ternary(divisor_msb, &(!other).add_wrapped(&Self::one()), other).cast_as_dual();
 
-                let dividend_unsigned_value = dividend_unsigned_integer.eject_value();
-                let divisor_unsigned_value = divisor_unsigned_integer.eject_value();
+                let dividend_unsigned_value = unsigned_dividend.eject_value();
+                let divisor_unsigned_value = unsigned_divisor.eject_value();
 
                 // Overflow is not possible for unsigned integers so we use wrapping operations.
                 let quotient_unsigned_value = dividend_unsigned_value.wrapping_div(&divisor_unsigned_value);
@@ -61,11 +62,10 @@ impl<E: Environment, I: IntegerType> DivChecked<Self> for Integer<E, I> {
                 let quotient_unsigned_integer = Integer::<E, I::Dual>::new(Mode::Private, quotient_unsigned_value);
                 let remainder_unsigned_integer = Integer::<E, I::Dual>::new(Mode::Private, remainder_unsigned_value);
 
-                let dividend_field = BaseField::from_bits_le(Mode::Private, &dividend_unsigned_integer.bits_le);
-                let divisor_field = BaseField::from_bits_le(Mode::Private, &divisor_unsigned_integer.bits_le);
+                let dividend_field = BaseField::from_bits_le(Mode::Private, &unsigned_dividend.bits_le);
+                let divisor_field = BaseField::from_bits_le(Mode::Private, &unsigned_divisor.bits_le);
                 let quotient_field = BaseField::from_bits_le(Mode::Private, &quotient_unsigned_integer.bits_le);
                 let remainder_field = BaseField::from_bits_le(Mode::Private, &remainder_unsigned_integer.bits_le);
-
                 E::assert_eq(dividend_field, quotient_field * divisor_field + remainder_field);
 
                 // TODO (@pranav) Do we need to check that the quotient cannot exceed abs(I::MIN)?
