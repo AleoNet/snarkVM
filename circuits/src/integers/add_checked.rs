@@ -37,10 +37,8 @@ impl<E: Environment, I: IntegerType> AddChecked<Self> for Integer<E, I> {
             let sum = this + that;
 
             // Extract the integer bits from the field element, with a carry bit.
-            let field_bits = sum.to_lower_bits_le(I::BITS + 1);
-
-            let (carry, bits_le) = match field_bits.split_last() {
-                Some((carry, bits_le)) => (carry, bits_le),
+            let (carry, bits_le) = match sum.to_lower_bits_le(I::BITS + 1).split_last() {
+                Some((carry, bits_le)) => (carry.clone(), bits_le.to_vec()),
                 None => E::halt("Malformed sum detected during integer addition"),
             };
 
@@ -64,7 +62,7 @@ impl<E: Environment, I: IntegerType> AddChecked<Self> for Integer<E, I> {
             }
 
             // Return the sum of `self` and `other`.
-            Integer { bits_le: bits_le.to_vec(), phantom: Default::default() }
+            Integer { bits_le, phantom: Default::default() }
         }
     }
 }
