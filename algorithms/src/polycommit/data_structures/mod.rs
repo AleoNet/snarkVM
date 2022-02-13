@@ -14,9 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::fft::DensePolynomial;
 use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
-use snarkvm_utilities::{error as error_fn, errors::SerializationError, serialize::*, FromBytes, ToBytes};
+use snarkvm_utilities::{error as error_fn, serialize::*, FromBytes, ToBytes};
 
 use core::{
     borrow::Borrow,
@@ -24,7 +23,10 @@ use core::{
     ops::{AddAssign, MulAssign, SubAssign},
 };
 use rand_core::RngCore;
-use std::{io, sync::Arc};
+use std::io;
+
+mod polynomial;
+pub use polynomial::*;
 
 /// Labels a `LabeledPolynomial` or a `LabeledCommitment`.
 pub type PolynomialLabel = String;
@@ -101,69 +103,8 @@ impl<P: PCProof> PCProof for Vec<P> {
     }
 }
 
-/// A polynomial along with information about its degree bound (if any), and the
-/// maximum number of queries that will be made to it. This latter number determines
-/// the amount of protection that will be provided to a commitment for this polynomial.
-#[derive(Debug, Clone, CanonicalSerialize, CanonicalDeserialize)]
-pub struct LabeledPolynomial<F: Field> {
-    label: PolynomialLabel,
-    polynomial: Arc<DensePolynomial<F>>,
-    degree_bound: Option<usize>,
-    hiding_bound: Option<usize>,
-}
-
-impl<F: Field> core::ops::Deref for LabeledPolynomial<F> {
-    type Target = DensePolynomial<F>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.polynomial
-    }
-}
-
-impl<F: Field> LabeledPolynomial<F> {
-    /// Construct a new labeled polynomial by consuming `polynomial`.
-    pub fn new(
-        label: PolynomialLabel,
-        polynomial: DensePolynomial<F>,
-        degree_bound: Option<usize>,
-        hiding_bound: Option<usize>,
-    ) -> Self {
-        Self { label, polynomial: Arc::new(polynomial), degree_bound, hiding_bound }
-    }
-
-    /// Return the label for `self`.
-    pub fn label(&self) -> &String {
-        &self.label
-    }
-
-    /// Retrieve the polynomial from `self`.
-    pub fn polynomial(&self) -> &DensePolynomial<F> {
-        &self.polynomial
-    }
-
-    /// Evaluate the polynomial in `self`.
-    pub fn evaluate(&self, point: F) -> F {
-        self.polynomial.evaluate(point)
-    }
-
-    /// Retrieve the degree bound in `self`.
-    pub fn degree_bound(&self) -> Option<usize> {
-        self.degree_bound
-    }
-
-    /// Retrieve whether the polynomial in `self` should be hidden.
-    pub fn is_hiding(&self) -> bool {
-        self.hiding_bound.is_some()
-    }
-
-    /// Retrieve the hiding bound for the polynomial in `self`.
-    pub fn hiding_bound(&self) -> Option<usize> {
-        self.hiding_bound
-    }
-}
-
 /// A commitment along with information about its degree bound (if any).
-#[derive(Clone, Debug, CanonicalSerialize)]
+#[derive(Clone, Debug, CanonicalSerialize, PartialEq, Eq)]
 pub struct LabeledCommitment<C: PCCommitment> {
     label: PolynomialLabel,
     commitment: C,

@@ -20,12 +20,12 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::type_complexity)]
 
-/// The core [[KZG10]][kzg] construction.
+/// The core [\[KZG10\]][kzg] construction.
 ///
 /// [kzg]: http://cacr.uwaterloo.ca/techreports/2010/cacr2010-10.pdf
 pub mod kzg10;
 
-/// Polynomial commitment scheme based on the construction in [[KZG10]][kzg],
+/// Polynomial commitment scheme based on the construction in [\[KZG10\]][kzg],
 /// modified to obtain batching and to enforce strict
 /// degree bounds by following the approach outlined in [[MBKM19,
 /// “Sonic”]][sonic] (more precisely, via the variant in
@@ -53,15 +53,8 @@ pub mod optional_rng;
 pub mod test_templates;
 
 use crate::Prepare;
-use snarkvm_fields::{Field, PrimeField, ToConstraintField};
-use snarkvm_utilities::{
-    error as error_fn,
-    errors::SerializationError,
-    serialize::*,
-    FromBytes,
-    ToBytes,
-    ToMinimalBits,
-};
+use snarkvm_fields::{PrimeField, ToConstraintField};
+use snarkvm_utilities::{error as error_fn, serialize::*, FromBytes, ToBytes, ToMinimalBits};
 
 use core::{fmt::Debug, sync::atomic::AtomicBool};
 use rand_core::RngCore;
@@ -162,6 +155,7 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
     fn trim(
         parameters: &Self::UniversalParams,
         supported_degree: usize,
+        supported_lagrange_sizes: impl IntoIterator<Item = usize>,
         supported_hiding_bound: usize,
         enforced_degree_bounds: Option<&[usize]>,
     ) -> Result<(Self::CommitterKey, Self::VerifierKey), PCError>;
@@ -178,17 +172,17 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
     #[allow(clippy::type_complexity)]
     fn commit<'a>(
         ck: &Self::CommitterKey,
-        polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<F>>,
+        polynomials: impl IntoIterator<Item = LabeledPolynomialWithBasis<'a, F>>,
         rng: Option<&mut dyn RngCore>,
     ) -> Result<(Vec<LabeledCommitment<Self::Commitment>>, Vec<Self::Randomness>), PCError> {
         Self::commit_with_terminator(ck, polynomials, &AtomicBool::new(false), rng)
     }
 
-    /// Like [`commit`] but with an added early termination signal, [`terminator`].
+    /// Like [`Self::commit`] but with an added early termination signal.
     #[allow(clippy::type_complexity)]
     fn commit_with_terminator<'a>(
         ck: &Self::CommitterKey,
-        polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<F>>,
+        polynomials: impl IntoIterator<Item = LabeledPolynomialWithBasis<'a, F>>,
         terminator: &AtomicBool,
         rng: Option<&mut dyn RngCore>,
     ) -> Result<(Vec<LabeledCommitment<Self::Commitment>>, Vec<Self::Randomness>), PCError>;
@@ -452,7 +446,7 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
 }
 
 /// Evaluate the given polynomials at `query_set`.
-pub fn evaluate_query_set<'a, F: Field>(
+pub fn evaluate_query_set<'a, F: PrimeField>(
     polys: impl IntoIterator<Item = &'a LabeledPolynomial<F>>,
     query_set: &QuerySet<'a, F>,
 ) -> Evaluations<'a, F> {
@@ -466,7 +460,7 @@ pub fn evaluate_query_set<'a, F: Field>(
     evaluations
 }
 
-fn lc_query_set_to_poly_query_set<'a, F: 'a + Field>(
+fn lc_query_set_to_poly_query_set<'a, F: 'a + PrimeField>(
     linear_combinations: impl IntoIterator<Item = &'a LinearCombination<F>>,
     query_set: &QuerySet<F>,
 ) -> QuerySet<'a, F> {
