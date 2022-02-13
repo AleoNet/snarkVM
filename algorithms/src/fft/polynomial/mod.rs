@@ -18,6 +18,7 @@
 
 use crate::fft::{EvaluationDomain, Evaluations};
 use snarkvm_fields::{Field, PrimeField};
+use snarkvm_utilities::{serialize::*, SerializationError};
 
 use std::{borrow::Cow, convert::TryInto};
 
@@ -30,12 +31,60 @@ mod sparse;
 pub use sparse::SparsePolynomial;
 
 /// Represents either a sparse polynomial or a dense one.
-#[derive(Clone)]
-pub enum DenseOrSparsePolynomial<'a, F: 'a + Field> {
+#[derive(Clone, Debug)]
+pub enum DenseOrSparsePolynomial<'a, F: Field> {
     /// Represents the case where `self` is a sparse polynomial
     SPolynomial(Cow<'a, SparsePolynomial<F>>),
     /// Represents the case where `self` is a dense polynomial
     DPolynomial(Cow<'a, DensePolynomial<F>>),
+}
+
+impl<'a, F: Field> CanonicalSerialize for DenseOrSparsePolynomial<'a, F> {
+    #[allow(unused_mut, unused_variables)]
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), SerializationError> {
+        match self {
+            SPolynomial(p) => {
+                let p: DensePolynomial<F> = p.to_owned().into_owned().into();
+                CanonicalSerialize::serialize(&p.coeffs, writer)?;
+            }
+            DPolynomial(p) => {
+                CanonicalSerialize::serialize(&p.coeffs, writer)?;
+            }
+        }
+        Ok(())
+    }
+
+    #[allow(unused_mut, unused_variables)]
+    fn serialized_size(&self) -> usize {
+        match self {
+            SPolynomial(p) => {
+                let p: DensePolynomial<F> = p.to_owned().into_owned().into();
+                p.serialized_size()
+            }
+            DPolynomial(p) => p.serialized_size(),
+        }
+    }
+
+    #[allow(unused_mut, unused_variables)]
+    fn serialize_uncompressed<W: Write>(&self, writer: &mut W) -> Result<(), SerializationError> {
+        self.serialize(writer)
+    }
+
+    #[allow(unused_mut, unused_variables)]
+    fn uncompressed_size(&self) -> usize {
+        self.serialized_size()
+    }
+}
+impl<'a, F: Field> CanonicalDeserialize for DenseOrSparsePolynomial<'a, F> {
+    #[allow(unused_mut, unused_variables)]
+    fn deserialize<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
+        CanonicalDeserialize::deserialize(reader).map(Self::DPolynomial)
+    }
+
+    #[allow(unused_mut, unused_variables)]
+    fn deserialize_uncompressed<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
+        Self::deserialize(reader)
+    }
 }
 
 impl<F: Field> From<DensePolynomial<F>> for DenseOrSparsePolynomial<'_, F> {
@@ -44,7 +93,7 @@ impl<F: Field> From<DensePolynomial<F>> for DenseOrSparsePolynomial<'_, F> {
     }
 }
 
-impl<'a, F: 'a + Field> From<&'a DensePolynomial<F>> for DenseOrSparsePolynomial<'a, F> {
+impl<'a, F: Field> From<&'a DensePolynomial<F>> for DenseOrSparsePolynomial<'a, F> {
     fn from(other: &'a DensePolynomial<F>) -> Self {
         DPolynomial(Cow::Borrowed(other))
     }
@@ -83,7 +132,7 @@ impl<F: Field> TryInto<SparsePolynomial<F>> for DenseOrSparsePolynomial<'_, F> {
     }
 }
 
-impl<F: Field> DenseOrSparsePolynomial<'_, F> {
+impl<'a, F: Field> DenseOrSparsePolynomial<'a, F> {
     /// Checks if the given polynomial is zero.
     pub fn is_zero(&self) -> bool {
         match self {
@@ -101,10 +150,46 @@ impl<F: Field> DenseOrSparsePolynomial<'_, F> {
     }
 
     #[inline]
-    fn leading_coefficient(&self) -> Option<&F> {
+    pub fn leading_coefficient(&self) -> Option<&F> {
         match self {
             SPolynomial(p) => p.coeffs.last().map(|(_, c)| c),
             DPolynomial(p) => p.last(),
+        }
+    }
+
+    #[inline]
+    pub fn as_dense(&self) -> Option<&DensePolynomial<F>> {
+        match self {
+            DPolynomial(p) => Some(p.as_ref()),
+            _ => None,
+        }
+    }
+
+    #[inline]
+    pub fn as_sparse(&self) -> Option<&SparsePolynomial<F>> {
+        match self {
+            SPolynomial(p) => Some(p.as_ref()),
+            _ => None,
+        }
+    }
+
+    #[inline]
+    pub fn into_dense(&self) -> DensePolynomial<F> {
+        self.clone().into()
+    }
+
+    #[inline]
+    pub fn evaluate(&self, point: F) -> F {
+        match self {
+            SPolynomial(p) => p.evaluate(point),
+            DPolynomial(p) => p.evaluate(point),
+        }
+    }
+
+    pub fn coeffs(&'a self) -> Box<dyn Iterator<Item = (usize, &'a F)> + 'a> {
+        match self {
+            SPolynomial(p) => Box::new(p.coeffs.iter().map(|(c, f)| (*c, f))),
+            DPolynomial(p) => Box::new(p.coeffs.iter().enumerate()),
         }
     }
 

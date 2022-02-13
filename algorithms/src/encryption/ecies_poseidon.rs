@@ -36,7 +36,6 @@ use snarkvm_utilities::{
     FromBits,
     FromBytes,
     Read,
-    SerializationError,
     ToBits,
     ToBytes,
     UniformRand,

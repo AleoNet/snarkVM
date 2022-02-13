@@ -26,10 +26,8 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
-use derivative::Derivative;
-
 /// Proving key for a specific circuit (i.e., R1CS matrices).
-#[derive(Derivative)]
+#[derive(derivative::Derivative)]
 #[derivative(Clone(bound = ""))]
 #[derive(Debug)]
 pub struct CircuitProvingKey<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinMode> {

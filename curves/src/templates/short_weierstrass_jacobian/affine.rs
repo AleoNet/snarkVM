@@ -84,6 +84,12 @@ impl<P: Parameters> Display for Affine<P> {
     }
 }
 
+impl<P: Parameters> PartialEq<Projective<P>> for Affine<P> {
+    fn eq(&self, other: &Projective<P>) -> bool {
+        other.eq(self)
+    }
+}
+
 impl<P: Parameters> AffineCurve for Affine<P> {
     type BaseField = P::BaseField;
     type Projective = Projective<P>;

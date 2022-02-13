@@ -17,8 +17,8 @@
 ///!
 ///! Blake2Xs function
 ///!
-///! This implementation is based on the BLAKE2Xs specification in Section 2 of:
-///! https://www.blake2.net/blake2x.pdf
+///! This implementation is based on the BLAKE2Xs specification in Section 2 of
+///! <https://www.blake2.net/blake2x.pdf>
 ///!
 
 #[rustfmt::skip]
