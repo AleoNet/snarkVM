@@ -20,7 +20,7 @@ use std::{borrow::Borrow, collections::BTreeMap};
 use super::*;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
-use snarkvm_utilities::{cfg_into_iter, cfg_iter, cfg_iter_mut};
+use snarkvm_utilities::{cfg_into_iter, cfg_iter, cfg_iter_mut, ExecutionPool};
 
 #[derive(Default)]
 pub struct PolyMultiplier<'a, F: PrimeField> {
@@ -29,22 +29,27 @@ pub struct PolyMultiplier<'a, F: PrimeField> {
 }
 
 impl<'a, F: PrimeField> PolyMultiplier<'a, F> {
+    #[inline]
     pub fn new() -> Self {
         Self { polynomials: Vec::new(), evaluations: Vec::new() }
     }
 
+    #[inline]
     pub fn add_polynomial(&mut self, poly: DensePolynomial<F>, label: impl ToString) {
         self.polynomials.push((label.to_string(), Cow::Owned(poly)))
     }
 
+    #[inline]
     pub fn add_evaluation(&mut self, evals: Evaluations<F>, label: impl ToString) {
         self.evaluations.push((label.to_string(), Cow::Owned(evals)))
     }
 
+    #[inline]
     pub fn add_polynomial_ref(&mut self, poly: &'a DensePolynomial<F>, label: impl ToString) {
         self.polynomials.push((label.to_string(), Cow::Borrowed(poly)))
     }
 
+    #[inline]
     pub fn add_evaluation_ref(&mut self, evals: &'a Evaluations<F>, label: impl ToString) {
         self.evaluations.push((label.to_string(), Cow::Borrowed(evals)))
     }
@@ -63,29 +68,33 @@ impl<'a, F: PrimeField> PolyMultiplier<'a, F> {
             if !self.evaluations.iter().all(|(_, e)| e.domain() == domain) {
                 None
             } else {
-                let p = cfg_into_iter!(self.polynomials).map(|(_, p)| {
-                    let mut p = p.to_owned().into_owned().coeffs;
-                    p.resize(domain.size(), F::zero());
-                    domain.fft_in_place_with_out_order(&mut p);
-                    p
-                });
-                let e = cfg_into_iter!(self.evaluations).map(|(_, e)| {
-                    let mut e = e.to_owned().into_owned().evaluations;
-                    e.resize(domain.size(), F::zero());
-                    crate::fft::domain::derange(&mut e);
-                    e
-                });
+                let mut pool = ExecutionPool::new();
+                for (_, p) in self.polynomials {
+                    pool.add_job(move || {
+                        let mut p = p.to_owned().into_owned().coeffs;
+                        p.resize(domain.size(), F::zero());
+                        domain.fft_in_place_with_out_order(&mut p);
+                        p
+                    })
+                }
+                for (_, e) in self.evaluations {
+                    pool.add_job(move || {
+                        let mut e = e.to_owned().into_owned().evaluations;
+                        e.resize(domain.size(), F::zero());
+                        crate::fft::domain::derange(&mut e);
+                        e
+                    })
+                }
+                let results = pool.execute_all();
                 #[cfg(feature = "parallel")]
-                let mut result = p
-                    .chain(e)
+                let mut result = cfg_into_iter!(results)
                     .reduce_with(|mut a, b| {
                         cfg_iter_mut!(a).zip(b).for_each(|(a, b)| *a *= b);
                         a
                     })
                     .unwrap();
                 #[cfg(not(feature = "parallel"))]
-                let mut result = p
-                    .chain(e)
+                let mut result = results
                     .reduce(|mut a, b| {
                         cfg_iter_mut!(a).zip(b).for_each(|(a, b)| *a *= b);
                         a
@@ -103,20 +112,24 @@ impl<'a, F: PrimeField> PolyMultiplier<'a, F> {
         labels: [T; 4],
         f: impl Fn(F, F, F, F) -> F + Sync,
     ) -> Option<DensePolynomial<F>> {
-        let p = cfg_into_iter!(self.polynomials)
-            .map(|(label, p)| {
+        let mut pool = ExecutionPool::new();
+        for (l, p) in self.polynomials {
+            pool.add_job(move || {
                 let mut p = p.to_owned().into_owned().coeffs;
                 p.resize(domain.size(), F::zero());
                 domain.fft_in_place_with_out_order(&mut p);
-                (label, p)
+                (l, p)
             })
-            .chain(cfg_into_iter!(self.evaluations).map(|(label, e)| {
+        }
+        for (l, e) in self.evaluations {
+            pool.add_job(move || {
                 let mut e = e.to_owned().into_owned().evaluations;
                 e.resize(domain.size(), F::zero());
                 crate::fft::domain::derange(&mut e);
-                (label, e)
-            }))
-            .collect::<BTreeMap<_, _>>();
+                (l, e)
+            })
+        }
+        let p = pool.execute_all().into_iter().collect::<BTreeMap<_, _>>();
         assert_eq!(p.len(), 4);
         let mut result = cfg_iter!(p[labels[0].borrow()])
             .zip(&p[labels[1].borrow()])
