@@ -92,6 +92,12 @@ impl<P: Parameters> Affine<P> {
     }
 }
 
+impl<P: Parameters> PartialEq<Projective<P>> for Affine<P> {
+    fn eq(&self, other: &Projective<P>) -> bool {
+        other.eq(self)
+    }
+}
+
 impl<P: Parameters> Zero for Affine<P> {
     fn zero() -> Self {
         Self::new(P::BaseField::zero(), P::BaseField::one())

@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_fields::Field;
-use snarkvm_utilities::{error, errors::SerializationError, serialize::*, ToBytes, Write};
+use snarkvm_utilities::{error, serialize::*, ToBytes, Write};
 
 /// Each prover message that is not a list of oracles is a list of field elements.
 #[repr(transparent)]

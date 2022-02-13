@@ -16,7 +16,7 @@
 
 use crate::snark::marlin::{ahp::AHPForR1CS, MarlinMode};
 use snarkvm_fields::PrimeField;
-use snarkvm_utilities::{errors::SerializationError, serialize::*, ToBytes};
+use snarkvm_utilities::{serialize::*, ToBytes};
 
 use core::marker::PhantomData;
 

@@ -22,7 +22,7 @@ use crate::{
     traits::pairing_engine::AffineCurve,
 };
 use snarkvm_fields::Zero;
-use snarkvm_utilities::{errors::SerializationError, serialize::*, FromBytes, ToBytes};
+use snarkvm_utilities::{serialize::*, FromBytes, ToBytes};
 
 use std::io::{Read, Result as IoResult, Write};
 
