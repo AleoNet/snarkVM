@@ -21,8 +21,7 @@ impl<E: Environment, I: IntegerType> DivChecked<Self> for Integer<E, I> {
 
     #[inline]
     fn div_checked(&self, other: &Integer<E, I>) -> Self::Output {
-        // Halt on division by zero as there is no sound way to perform
-        // this operation.
+        // Halt on division by zero as there is no sound way to perform this operation.
         if other.eject_value() == I::zero() {
             E::halt("Division by zero error")
         }
@@ -32,21 +31,19 @@ impl<E: Environment, I: IntegerType> DivChecked<Self> for Integer<E, I> {
             // Compute the quotient and return the new constant.
             match self.eject_value().checked_div(&other.eject_value()) {
                 Some(value) => Integer::new(Mode::Constant, value),
-                None => E::halt("Integer overflow on division of two constants"),
+                None => E::halt("Overflow or underflow on division of two integer constants"),
             }
         } else {
             if I::is_signed() {
+                // Signed integer division wraps when the dividend is I::MIN and when the divisor is -1.
+                let min = Self::new(Mode::Constant, I::MIN);
+                let neg_one = Integer::zero() - Integer::one();
+                let overflows = self.is_eq(&min).and(&other.is_eq(&neg_one));
+                E::assert_eq(overflows, E::zero());
+
                 // This is safe since I::BITS is always greater than 0.
                 let dividend_msb = self.bits_le.last().unwrap();
                 let divisor_msb = other.bits_le.last().unwrap();
-
-                // Signed integer division wraps when the dividend is I::MIN
-                // and when the divisor is -1.
-                let min = Self::new(Mode::Constant, I::MIN);
-                let neg_one = Self::new(Mode::Constant, I::zero() - I::one());
-                let overflows = self.is_eq(&min).and(&other.is_eq(&neg_one));
-
-                E::assert_eq(overflows, E::zero());
 
                 // Divide the absolute value of `self` and `other` in the base field.
                 let dividend_unsigned_integer =

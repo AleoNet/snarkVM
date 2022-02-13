@@ -100,7 +100,7 @@ jobs:
     docker:
       - image: cimg/rust:1.56.1
     resource_class: 2xlarge
-    parallelism: 200
+    parallelism: 50
     steps:
       - checkout
       - setup_environment:
