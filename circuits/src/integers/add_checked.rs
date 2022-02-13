@@ -44,28 +44,23 @@ impl<E: Environment, I: IntegerType> AddChecked<Self> for Integer<E, I> {
                 None => E::halt("Malformed sum detected during integer addition"),
             };
 
-            // Overflow checks are different for signed and unsigned addition.
+            // Check for overflow.
             match I::is_signed() {
-                true => {
-                    // This is safe since I::BITS is always greater than 0.
-                    let self_msb = self.bits_le.last().unwrap();
-                    let other_msb = other.bits_le.last().unwrap();
-                    let sum_msb = bits_le.last().unwrap();
-
-                    let is_same_sign = self_msb.is_eq(other_msb);
-                    let is_overflow = is_same_sign.and(&sum_msb.is_neq(self_msb));
-
-                    // For signed addition, overflow and underflow conditions are:
-                    //   - a > 0 && b > 0 && a + b < 0 (Overflow)
-                    //   - a < 0 && b < 0 && a + b > 0 (Underflow)
-                    //   - Note: if sign(a) != sign(b) then over/underflow is impossible.
-                    //   - Note: the result of an overflow and underflow must be negative and positive, respectively.
-                    E::assert_eq(is_overflow, E::zero());
-                }
-                false => {
-                    // For unsigned addition, ensure the carry bit is zero.
-                    E::assert_eq(carry, E::zero());
-                }
+                // For signed addition, overflow and underflow conditions are:
+                //   - a > 0 && b > 0 && a + b < 0 (Overflow)
+                //   - a < 0 && b < 0 && a + b > 0 (Underflow)
+                //   - Note: if sign(a) != sign(b) then over/underflow is impossible.
+                //   - Note: the result of an overflow and underflow must be negative and positive, respectively.
+                true => match self.bits_le.last().zip(other.bits_le.last()).zip(bits_le.last()) {
+                    Some(((self_msb, other_msb), sum_msb)) => {
+                        let is_same_sign = self_msb.is_eq(other_msb);
+                        let is_overflow = is_same_sign.and(&sum_msb.is_neq(self_msb));
+                        E::assert_eq(is_overflow, E::zero());
+                    }
+                    _ => E::halt("Malformed integer detected during integer addition"),
+                },
+                // For unsigned addition, ensure the carry bit is zero.
+                false => E::assert_eq(carry, E::zero()),
             }
 
             // Return the sum of `self` and `other`.
@@ -170,6 +165,7 @@ mod tests {
         }
     }
 
+    #[rustfmt::skip]
     fn run_exhaustive_test<I: IntegerType + RefUnwindSafe>(
         mode_a: Mode,
         mode_b: Mode,
@@ -183,17 +179,7 @@ mod tests {
         for first in I::MIN..I::MAX {
             for second in I::MIN..I::MAX {
                 let name = format!("Add: ({} + {})", first, second);
-                check_add(
-                    &name,
-                    first,
-                    second,
-                    mode_a,
-                    mode_b,
-                    num_constants,
-                    num_public,
-                    num_private,
-                    num_constraints,
-                );
+                check_add(&name, first, second, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
             }
         }
     }
