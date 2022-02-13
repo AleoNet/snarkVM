@@ -17,7 +17,6 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::module_inception)]
 // #![cfg_attr(nightly, feature(doc_cfg, external_doc))]
-// TODO (howardwu): Reenable after completing documentation in snarkVM-models.
 // #![cfg_attr(nightly, warn(missing_docs))]
 #![doc = include_str!("../documentation/the_aleo_curves/00_overview.md")]
 
@@ -28,8 +27,6 @@ extern crate derivative;
 extern crate thiserror;
 
 pub mod bls12_377;
-
-pub mod bw6_761;
 
 pub mod edwards_bls12;
 

@@ -65,7 +65,6 @@ mod tests {
 
     const ITERATIONS: usize = 128;
 
-    #[rustfmt::skip]
     fn check_from_bits_le<I: IntegerType>(
         mode: Mode,
         num_constants: usize,
@@ -91,7 +90,6 @@ mod tests {
         }
     }
 
-    #[rustfmt::skip]
     fn check_from_bits_be<I: IntegerType>(
         mode: Mode,
         num_constants: usize,

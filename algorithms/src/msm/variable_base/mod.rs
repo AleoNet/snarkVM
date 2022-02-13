@@ -69,27 +69,28 @@ impl VariableBaseMSM {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::SeedableRng;
     use rand_xorshift::XorShiftRng;
     use snarkvm_curves::{
         bls12_377::{Fr, G1Affine, G1Projective},
         traits::ProjectiveCurve,
     };
     use snarkvm_fields::PrimeField;
-    use snarkvm_utilities::{rand::UniformRand, BigInteger256};
+    use snarkvm_utilities::{
+        rand::{test_rng, UniformRand},
+        BigInteger256,
+    };
 
-    fn test_data(seed: u64, samples: usize) -> (Vec<G1Affine>, Vec<BigInteger256>) {
-        let mut rng = XorShiftRng::seed_from_u64(seed);
-
-        let v = (0..samples).map(|_| Fr::rand(&mut rng).to_repr()).collect::<Vec<_>>();
-        let g = (0..samples).map(|_| G1Projective::rand(&mut rng).into_affine()).collect::<Vec<_>>();
+    fn test_data(rng: &mut XorShiftRng, samples: usize) -> (Vec<G1Affine>, Vec<BigInteger256>) {
+        let v = (0..samples).map(|_| Fr::rand(rng).to_repr()).collect::<Vec<_>>();
+        let g = (0..samples).map(|_| G1Projective::rand(rng).into_affine()).collect::<Vec<_>>();
 
         (g, v)
     }
 
     #[test]
     fn test_naive() {
-        let (bases, scalars) = test_data(334563456, 100);
+        let mut rng = test_rng();
+        let (bases, scalars) = test_data(&mut rng, 100);
         let rust = standard::msm_standard(bases.as_slice(), scalars.as_slice());
         let naive = VariableBaseMSM::msm_naive(bases.as_slice(), scalars.as_slice());
         assert_eq!(rust, naive);
@@ -98,8 +99,9 @@ mod tests {
     #[cfg(all(feature = "cuda", target_arch = "x86_64"))]
     #[test]
     fn test_msm_cuda() {
-        for i in 0..100 {
-            let (bases, scalars) = test_data(334563456 + i as u64, 1 << 10);
+        let mut rng = test_rng();
+        for _ in 0..100 {
+            let (bases, scalars) = test_data(&mut rng, 1 << 10);
             let rust = standard::msm_standard(bases.as_slice(), scalars.as_slice());
 
             let cuda = cuda::msm_cuda(bases.as_slice(), scalars.as_slice()).unwrap();

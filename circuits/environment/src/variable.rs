@@ -94,6 +94,7 @@ impl<F: PrimeField> Variable<F> {
     }
 }
 
+#[allow(clippy::op_ref)]
 impl<F: PrimeField> Add<Variable<F>> for Variable<F> {
     type Output = LinearCombination<F>;
 
@@ -102,6 +103,7 @@ impl<F: PrimeField> Add<Variable<F>> for Variable<F> {
     }
 }
 
+#[allow(clippy::op_ref)]
 impl<F: PrimeField> Add<Variable<F>> for &Variable<F> {
     type Output = LinearCombination<F>;
 
@@ -110,6 +112,7 @@ impl<F: PrimeField> Add<Variable<F>> for &Variable<F> {
     }
 }
 
+#[allow(clippy::op_ref)]
 impl<F: PrimeField> Add<&Variable<F>> for Variable<F> {
     type Output = LinearCombination<F>;
 
@@ -129,6 +132,7 @@ impl<F: PrimeField> Add<&Variable<F>> for &Variable<F> {
     }
 }
 
+#[allow(clippy::op_ref)]
 impl<F: PrimeField> Sub<Variable<F>> for Variable<F> {
     type Output = LinearCombination<F>;
 
@@ -137,6 +141,7 @@ impl<F: PrimeField> Sub<Variable<F>> for Variable<F> {
     }
 }
 
+#[allow(clippy::op_ref)]
 impl<F: PrimeField> Sub<Variable<F>> for &Variable<F> {
     type Output = LinearCombination<F>;
 
@@ -145,6 +150,7 @@ impl<F: PrimeField> Sub<Variable<F>> for &Variable<F> {
     }
 }
 
+#[allow(clippy::op_ref)]
 impl<F: PrimeField> Sub<&Variable<F>> for Variable<F> {
     type Output = LinearCombination<F>;
 

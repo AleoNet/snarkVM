@@ -74,7 +74,6 @@ mod tests {
 
     const ITERATIONS: usize = 128;
 
-    #[rustfmt::skip]
     fn check_add_checked<I: IntegerType, IC: IntegerTrait<I>>(
         name: &str,
         expected: I,
@@ -89,14 +88,7 @@ mod tests {
             let case = format!("({} + {})", a.eject_value(), b.eject_value());
 
             let candidate = a.add_checked(b);
-            assert_eq!(
-                expected,
-                candidate.eject_value(),
-                "{} != {} := {}",
-                expected,
-                candidate.eject_value(),
-                case
-            );
+            assert_eq!(expected, candidate.eject_value(), "{} != {} := {}", expected, candidate.eject_value(), case);
 
             assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
             assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
@@ -106,8 +98,12 @@ mod tests {
         });
     }
 
-    #[rustfmt::skip]
-    fn check_overflow_halts<I: IntegerType + std::panic::RefUnwindSafe>(mode_a: Mode, mode_b: Mode, value_a: I, value_b: I) {
+    fn check_overflow_halts<I: IntegerType + std::panic::RefUnwindSafe>(
+        mode_a: Mode,
+        mode_b: Mode,
+        value_a: I,
+        value_b: I,
+    ) {
         let a = Integer::<Circuit, I>::new(mode_a, value_a);
         let b = Integer::new(mode_b, value_b);
         let result = std::panic::catch_unwind(|| a.add_checked(&b));
@@ -119,8 +115,12 @@ mod tests {
         assert!(result.is_err());
     }
 
-    #[rustfmt::skip]
-    fn check_overflow_fails<I: IntegerType + std::panic::RefUnwindSafe>(mode_a: Mode, mode_b: Mode, value_a: I, value_b: I) {
+    fn check_overflow_fails<I: IntegerType + std::panic::RefUnwindSafe>(
+        mode_a: Mode,
+        mode_b: Mode,
+        value_a: I,
+        value_b: I,
+    ) {
         {
             let name = format!("Add: {} + {} overflows", value_a, value_b);
             let a = Integer::<Circuit, I>::new(mode_a, value_a);

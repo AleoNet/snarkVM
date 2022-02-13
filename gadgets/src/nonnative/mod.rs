@@ -44,55 +44,6 @@ pub use nonnative_field_input_var::*;
 mod nonnative_field_mul_result_var;
 pub use nonnative_field_mul_result_var::*;
 
-/// example parameters of non-native field gadget
-///
-/// Sample parameters for non-native field gadgets
-/// - `BaseField`:              the constraint field
-/// - `TargetField`:            the field being simulated
-/// - `num_limbs`:              how many limbs are used
-/// - `bits_per_limb`:          the size of the limbs
-///
-pub mod params;
 /// a submodule for reducing the representations
 #[doc(hidden)]
 pub mod reduce;
-
-use std::fmt::Debug;
-
-/// A macro for computing ceil(log2(x))+1 for a field element x
-#[doc(hidden)]
-#[macro_export]
-macro_rules! overhead {
-    ($x:expr) => {{
-        use snarkvm_utilities::ToBits;
-        let num = $x;
-        let num_bits = num.to_repr().to_bits_be();
-        let mut skipped_bits = 0;
-        for b in num_bits.iter() {
-            if *b == false {
-                skipped_bits += 1;
-            } else {
-                break;
-            }
-        }
-
-        let mut is_power_of_2 = true;
-        for b in num_bits.iter().skip(skipped_bits + 1) {
-            if *b == true {
-                is_power_of_2 = false;
-            }
-        }
-
-        if is_power_of_2 { num_bits.len() - skipped_bits } else { num_bits.len() - skipped_bits + 1 }
-    }};
-}
-
-/// Parameters for a specific `NonNativeFieldVar` instantiation
-#[derive(Clone, Debug)]
-pub struct NonNativeFieldParams {
-    /// The number of limbs (`BaseField` elements) used to represent a `TargetField` element. Highest limb first.
-    pub num_limbs: usize,
-
-    /// The number of bits of the limb
-    pub bits_per_limb: usize,
-}

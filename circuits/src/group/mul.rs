@@ -190,7 +190,6 @@ mod tests {
 
     const ITERATIONS: usize = 10;
 
-    #[rustfmt::skip]
     fn check_mul(
         name: &str,
         expected: &<Circuit as Environment>::Affine,
@@ -221,7 +220,6 @@ mod tests {
         });
     }
 
-    #[rustfmt::skip]
     fn check_mul_assign(
         name: &str,
         expected: &<Circuit as Environment>::Affine,

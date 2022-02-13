@@ -36,7 +36,7 @@ use crate::{
 use snarkvm_fields::{batch_inversion, FftField, FftParameters, Field};
 #[cfg(feature = "parallel")]
 use snarkvm_utilities::max_available_threads;
-use snarkvm_utilities::{errors::SerializationError, execute_with_max_available_threads, serialize::*};
+use snarkvm_utilities::{execute_with_max_available_threads, serialize::*};
 
 use rand::Rng;
 use std::fmt;
@@ -675,6 +675,7 @@ pub(crate) fn compute_powers<F: Field>(size: usize, g: F) -> Vec<F> {
 }
 
 /// An iterator over the elements of the domain.
+#[derive(Clone)]
 pub struct Elements<F: FftField> {
     cur_elem: F,
     cur_pow: u64,

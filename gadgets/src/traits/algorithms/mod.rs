@@ -34,6 +34,3 @@ pub use prf::*;
 
 pub mod signature;
 pub use signature::*;
-
-pub mod snark;
-pub use snark::*;

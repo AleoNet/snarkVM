@@ -120,16 +120,6 @@ fn test_biginteger<B: BigInteger>(zero: B) {
 }
 
 #[test]
-fn test_biginteger64() {
-    test_biginteger(BigInteger64::new([0u64; 1]));
-}
-
-#[test]
-fn test_biginteger128() {
-    test_biginteger(BigInteger128::new([0u64; 2]));
-}
-
-#[test]
 fn test_biginteger256() {
     test_biginteger(BigInteger256::new([0u64; 4]));
 }
@@ -137,14 +127,4 @@ fn test_biginteger256() {
 #[test]
 fn test_biginteger384() {
     test_biginteger(BigInteger384::new([0u64; 6]));
-}
-
-#[test]
-fn test_biginteger768() {
-    test_biginteger(BigInteger768::new([0u64; 12]));
-}
-
-#[test]
-fn test_biginteger832() {
-    test_biginteger(BigInteger832::new([0u64; 13]));
 }

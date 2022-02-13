@@ -63,7 +63,6 @@ mod tests {
     use super::*;
     use crate::Circuit;
 
-    #[rustfmt::skip]
     fn check_or(
         name: &str,
         expected: bool,

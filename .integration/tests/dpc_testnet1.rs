@@ -19,14 +19,14 @@ use std::sync::atomic::AtomicBool;
 use snarkvm_dpc::{prelude::*, testnet1::*};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
-use chrono::Utc;
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
+use time::OffsetDateTime;
 
 #[test]
 fn test_testnet1_inner_circuit_id_sanity_check() {
     let expected_inner_circuit_id =
-        "ic192ykwfa4yx2jm66pnycf490qwq7yzlh8yqzmzzehgfs6mppsuguuja8739409rzx439cdru2f38qzxey7s8".to_string();
+        "ic18ge7tu7kp5ygqz6xhqnghrlv6c0gcqx5q8qmemmr2k35elepp6j7fjl8awfhfls90q9zf2yr3drqzsfsz6q".to_string();
     let candidate_inner_circuit_id = <Testnet1 as Network>::inner_circuit_id().to_string();
     assert_eq!(expected_inner_circuit_id, candidate_inner_circuit_id);
 }
@@ -72,7 +72,7 @@ fn dpc_testnet1_integration_test() {
     let transactions = Transactions::from(&[coinbase_transaction]).unwrap();
 
     let previous_ledger_root = ledger.latest_ledger_root();
-    let timestamp = Utc::now().timestamp();
+    let timestamp = OffsetDateTime::now_utc().unix_timestamp();
     let difficulty_target =
         Blocks::<Testnet1>::compute_difficulty_target(previous_block.header(), timestamp, block_height);
     let cumulative_weight = previous_block.cumulative_weight().saturating_add((u64::MAX / difficulty_target) as u128);

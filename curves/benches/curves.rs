@@ -17,7 +17,6 @@
 use criterion::{criterion_group, criterion_main};
 
 mod bls12_377;
-mod bw6_761;
 
 criterion_group!(
     bls12_377_ec,
@@ -99,97 +98,4 @@ criterion_group!(
     bls12_377::pairing::bench_pairing_full,
 );
 
-criterion_group!(
-    bw6_761_ec,
-    bw6_761::ec::g1::bench_g1_rand,
-    bw6_761::ec::g1::bench_g1_mul_assign,
-    bw6_761::ec::g1::bench_g1_add_assign,
-    bw6_761::ec::g1::bench_g1_add_assign_mixed,
-    bw6_761::ec::g1::bench_g1_double,
-    bw6_761::ec::g2::bench_g2_rand,
-    bw6_761::ec::g2::bench_g2_mul_assign,
-    bw6_761::ec::g2::bench_g2_add_assign,
-    bw6_761::ec::g2::bench_g2_add_assign_mixed,
-    bw6_761::ec::g2::bench_g2_double,
-);
-
-criterion_group!(
-    bw6_761_fq,
-    bw6_761::fq::bench_fq_repr_add_nocarry,
-    bw6_761::fq::bench_fq_repr_sub_noborrow,
-    bw6_761::fq::bench_fq_repr_num_bits,
-    bw6_761::fq::bench_fq_repr_mul2,
-    bw6_761::fq::bench_fq_repr_div2,
-    bw6_761::fq::bench_fq_add_assign,
-    bw6_761::fq::bench_fq_sub_assign,
-    bw6_761::fq::bench_fq_mul_assign,
-    bw6_761::fq::bench_fq_double,
-    bw6_761::fq::bench_fq_square,
-    bw6_761::fq::bench_fq_inverse,
-    bw6_761::fq::bench_fq_negate,
-    bw6_761::fq::bench_fq_sqrt,
-    bw6_761::fq::bench_fq_into_repr,
-    bw6_761::fq::bench_fq_from_repr,
-);
-
-criterion_group!(
-    bw6_761_fq3,
-    bw6_761::fq3::bench_fq3_add_assign,
-    bw6_761::fq3::bench_fq3_sub_assign,
-    bw6_761::fq3::bench_fq3_mul_assign,
-    bw6_761::fq3::bench_fq3_double,
-    bw6_761::fq3::bench_fq3_square,
-    bw6_761::fq3::bench_fq3_inverse,
-    bw6_761::fq3::bench_fq3_sqrt,
-);
-
-criterion_group!(
-    bw6_761_fq6,
-    bw6_761::fq6::bench_fq6_add_assign,
-    bw6_761::fq6::bench_fq6_sub_assign,
-    bw6_761::fq6::bench_fq6_mul_assign,
-    bw6_761::fq6::bench_fq6_double,
-    bw6_761::fq6::bench_fq6_square,
-    bw6_761::fq6::bench_fq6_inverse,
-);
-
-criterion_group!(
-    bw6_761_fr,
-    bw6_761::fr::bench_fr_repr_add_nocarry,
-    bw6_761::fr::bench_fr_repr_sub_noborrow,
-    bw6_761::fr::bench_fr_repr_num_bits,
-    bw6_761::fr::bench_fr_repr_mul2,
-    bw6_761::fr::bench_fr_repr_div2,
-    bw6_761::fr::bench_fr_add_assign,
-    bw6_761::fr::bench_fr_sub_assign,
-    bw6_761::fr::bench_fr_mul_assign,
-    bw6_761::fr::bench_fr_double,
-    bw6_761::fr::bench_fr_square,
-    bw6_761::fr::bench_fr_inverse,
-    bw6_761::fr::bench_fr_negate,
-    bw6_761::fr::bench_fr_sqrt,
-    bw6_761::fr::bench_fr_into_repr,
-    bw6_761::fr::bench_fr_from_repr,
-);
-
-criterion_group!(
-    bw6_761_pairing,
-    bw6_761::pairing::bench_pairing_miller_loop,
-    bw6_761::pairing::bench_pairing_final_exponentiation,
-    bw6_761::pairing::bench_pairing_full,
-);
-
-criterion_main!(
-    bls12_377_ec,
-    bls12_377_fq,
-    bls12_377_fq12,
-    bls12_377_fq2,
-    bls12_377_fr,
-    bls12_377_pairing,
-    bw6_761_ec,
-    bw6_761_fq,
-    bw6_761_fq3,
-    bw6_761_fq6,
-    bw6_761_fr,
-    bw6_761_pairing,
-);
+criterion_main!(bls12_377_ec, bls12_377_fq, bls12_377_fq12, bls12_377_fq2, bls12_377_fr, bls12_377_pairing,);

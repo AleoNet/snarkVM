@@ -17,11 +17,11 @@
 use snarkvm_fields::{traits::FftParameters, FftField, Field, LegendreSymbol, PrimeField, SquareRootField};
 use snarkvm_utilities::{
     io::Cursor,
+    rand::test_rng,
     serialize::{CanonicalDeserialize, CanonicalSerialize, Flags, SWFlags},
 };
 
-use rand::{Rng, SeedableRng};
-use rand_xorshift::XorShiftRng;
+use rand::Rng;
 
 pub const ITERATIONS: u32 = 10;
 
@@ -172,7 +172,7 @@ fn random_expansion_tests<F: Field, R: Rng>(rng: &mut R) {
 }
 
 fn random_string_tests<F: PrimeField>() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     {
         let a = "84395729384759238745923745892374598234705297301958723458712394587103249587213984572934750213947582345792304758273458972349582734958273495872304598234";
@@ -212,7 +212,7 @@ fn random_string_tests<F: PrimeField>() {
 }
 
 fn random_sqrt_tests<F: SquareRootField>() {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..ITERATIONS {
         let a = F::rand(&mut rng);
@@ -302,7 +302,7 @@ pub fn field_test<F: Field>(a: F, b: F) {
     // (a - b)^2 = (-(b - a))^2
     assert_eq!((a - b).square(), (-(b - a)).square());
 
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
     random_negation_tests::<F, _>(&mut rng);
     random_addition_tests::<F, _>(&mut rng);
     random_subtraction_tests::<F, _>(&mut rng);
@@ -388,7 +388,7 @@ pub fn sqrt_field_test<F: SquareRootField>(elem: F) {
 }
 
 pub fn frobenius_test<F: Field, C: AsRef<[u64]>>(characteristic: C, maxpower: usize) {
-    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+    let mut rng = test_rng();
 
     for _ in 0..ITERATIONS {
         let a = F::rand(&mut rng);

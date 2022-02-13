@@ -29,9 +29,7 @@ members = [
   "fields",
   "gadgets",
   "instructions",
-  "marlin", # excluded from [features], to be merged in `algorithms` and `gadgets` once stable
   "parameters",
-  "polycommit", # excluded from [features], to be merged in `algorithms` and `gadgets` once stable
   "profiler", # excluded from [features], for internal use primarily
   "r1cs",
   "utilities",
