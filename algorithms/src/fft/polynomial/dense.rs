@@ -417,8 +417,8 @@ impl<'a, 'b, F: PrimeField> Mul<&'a DensePolynomial<F>> for &'b DensePolynomial<
             DensePolynomial::zero()
         } else {
             let mut m = PolyMultiplier::new();
-            m.add_polynomial_ref(self);
-            m.add_polynomial_ref(other);
+            m.add_polynomial_ref(self, "");
+            m.add_polynomial_ref(other, "");
             m.multiply().unwrap()
         }
     }
