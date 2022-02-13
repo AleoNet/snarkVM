@@ -581,6 +581,7 @@ fn convert_to_bigints<F: PrimeField>(p: &[F]) -> Vec<F::BigInteger> {
 #[cfg(test)]
 mod tests {
     #![allow(non_camel_case_types)]
+    #![allow(clippy::needless_borrow)]
     use super::*;
     use crate::polycommit::data_structures::PCCommitment;
     use snarkvm_curves::bls12_377::{Bls12_377, Fr};
