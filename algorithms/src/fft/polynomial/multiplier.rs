@@ -22,6 +22,7 @@ use super::*;
 use rayon::prelude::*;
 use snarkvm_utilities::{cfg_into_iter, cfg_iter, cfg_iter_mut};
 
+#[derive(Default)]
 pub struct PolyMultiplier<'a, F: PrimeField> {
     polynomials: Vec<(String, Cow<'a, DensePolynomial<F>>)>,
     evaluations: Vec<(String, Cow<'a, crate::fft::Evaluations<F>>)>,
@@ -60,7 +61,7 @@ impl<'a, F: PrimeField> PolyMultiplier<'a, F> {
             let degree = self.polynomials.iter().map(|(_, p)| p.degree() + 1).sum::<usize>();
             let domain = EvaluationDomain::new(degree)?;
             if !self.evaluations.iter().all(|(_, e)| e.domain() == domain) {
-                return None;
+                None
             } else {
                 let p = cfg_into_iter!(self.polynomials).map(|(_, p)| {
                     let mut p = p.to_owned().into_owned().coeffs;
