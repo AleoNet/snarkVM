@@ -89,19 +89,14 @@ mod tests {
     ) {
         let check_neg = | name: &str, first: I | check_neg(name, first, mode, num_constants, num_public, num_private, num_constraints);
 
-
+        // Check the 0 case.
+        check_neg(&format!("Neg: {} zero", mode), I::zero());
+        // Check the 1 case.
+        check_neg(&format!("Neg: {} one", mode), -I::one());
+        // Check random values.
         for i in 0..ITERATIONS {
             let value: I = UniformRand::rand(&mut thread_rng());
-            let name = format!("Neg: {} {}", mode, i);
-            check_neg(&name, value);
-
-            // Check the 0 case.
-            let name = format!("Neg: {} zero", mode);
-            check_neg(&name, I::zero());
-
-            // Check the 1 case.
-            let name = format!("Neg: {} one", mode);
-            check_neg(&name, -I::one())
+            check_neg(&format!("Neg: {} {}", mode, i), value);
         }
     }
 

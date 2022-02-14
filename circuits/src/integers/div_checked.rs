@@ -149,13 +149,13 @@ mod tests {
             let name = format!("Div: {} / {}", first, second);
             check_div(&name, first, second);
 
-            let name = format!("Div by One: {} / {}", first, second);
+            let name = format!("Div by One: {} / {}", first, I::one());
             check_div(&name, first, I::one());
 
-            let name = format!("Div by Self: {} / {}", first, second);
+            let name = format!("Div by Self: {} / {}", first, first);
             check_div(&name, first, first);
 
-            let name = format!("Div by Zero: {} / {}", first, second);
+            let name = format!("Div by Zero: {} / {}", first, I::zero());
             check_div(&name, first, I::zero());
         }
 
@@ -195,13 +195,13 @@ mod tests {
             let name = format!("Div: {} / {}", first, second);
             check_div(&name, first, second);
 
-            let name = format!("Div by One: {} / {}", first, second);
+            let name = format!("Div by One: {} / {}", first, I::one());
             check_div(&name, first, I::one());
 
-            let name = format!("Div by Self: {} / {}", first, second);
+            let name = format!("Div by Self: {} / {}", first, first);
             check_div(&name, first, first);
 
-            let name = format!("Div by Zero: {} / {}", first, second);
+            let name = format!("Div by Zero: {} / {}", first, I::zero());
             check_div(&name, first, I::zero());
         }
 
