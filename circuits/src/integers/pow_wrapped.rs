@@ -44,7 +44,6 @@ mod tests {
     use snarkvm_utilities::UniformRand;
     use test_utilities::*;
 
-    use num_traits::checked_pow;
     use rand::thread_rng;
     use std::ops::Range;
 

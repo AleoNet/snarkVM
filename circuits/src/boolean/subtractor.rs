@@ -23,8 +23,8 @@ impl<E: Environment> Subtractor for Boolean<E> {
     /// Returns the difference of `self` and `other` as a difference bit and borrow bit.
     fn subtractor(&self, other: &Self, borrow: &Self) -> (Self::Difference, Self::Borrow) {
         // Compute the difference bit.
-        let c0 = self.xor(other);
-        let difference = c0.xor(borrow);
+        let c0 = self ^ other;
+        let difference = &c0 ^ borrow;
 
         // Compute the borrow bit.
         let c1 = !self & other;

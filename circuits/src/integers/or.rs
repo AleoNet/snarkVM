@@ -19,10 +19,10 @@ use super::*;
 use itertools::Itertools;
 
 impl<E: Environment, I: IntegerType> BitOr<Integer<E, I>> for Integer<E, I> {
-    type Output = Self;
+    type Output = Integer<E, I>;
 
     /// Returns `(self OR other)`.
-    fn bitor(self, other: Self) -> Self::Output {
+    fn bitor(self, other: Integer<E, I>) -> Self::Output {
         self | &other
     }
 }
@@ -37,10 +37,10 @@ impl<E: Environment, I: IntegerType> BitOr<Integer<E, I>> for &Integer<E, I> {
 }
 
 impl<E: Environment, I: IntegerType> BitOr<&Integer<E, I>> for Integer<E, I> {
-    type Output = Self;
+    type Output = Integer<E, I>;
 
     /// Returns `(self OR other)`.
-    fn bitor(self, other: &Self) -> Self::Output {
+    fn bitor(self, other: &Integer<E, I>) -> Self::Output {
         &self | other
     }
 }

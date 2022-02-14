@@ -51,6 +51,8 @@ pub trait BooleanTrait:
     + BitAnd<Output = Self>
     + BitOrAssign
     + BitOr<Output = Self>
+    + BitXorAssign
+    + BitXor<Output = Self>
     + Clone
     + Debug
     + Eject<Primitive = bool>
@@ -60,7 +62,6 @@ pub trait BooleanTrait:
     + Not
     + Subtractor
     + Ternary
-    + Xor
 {
 }
 
@@ -257,15 +258,6 @@ pub trait Nor<Rhs: ?Sized = Self> {
 
     /// Returns `(NOT a) AND (NOT b)`.
     fn nor(&self, other: &Rhs) -> Self::Output;
-}
-
-/// Binary operator for performing `(a != b)`.
-pub trait Xor<Rhs: ?Sized = Self> {
-    type Boolean: BooleanTrait;
-    type Output;
-
-    /// Returns `(a != b)`.
-    fn xor(&self, other: &Rhs) -> Self::Output;
 }
 
 /// Trait for ternary operations.
