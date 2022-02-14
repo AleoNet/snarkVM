@@ -52,7 +52,7 @@ impl<E: Environment, I: IntegerType> SubChecked<Self> for Integer<E, I> {
                     let result_msb = bits_le.last().unwrap();
 
                     let is_different_signs = minuend_msb.is_neq(subtrahend_msb);
-                    let is_underflow = is_different_signs.and(&result_msb.is_eq(subtrahend_msb));
+                    let is_underflow = is_different_signs & result_msb.is_eq(subtrahend_msb);
 
                     // For signed subtraction, overflow and underflow conditions are:
                     //   - a > 0 && b < 0 && a - b > 0 (Overflow)

@@ -52,7 +52,7 @@ impl<E: Environment, I: IntegerType> AddChecked<Self> for Integer<E, I> {
                 true => match self.bits_le.last().zip(other.bits_le.last()).zip(bits_le.last()) {
                     Some(((self_msb, other_msb), sum_msb)) => {
                         let is_same_sign = self_msb.is_eq(other_msb);
-                        let is_overflow = is_same_sign.and(&sum_msb.is_neq(self_msb));
+                        let is_overflow = is_same_sign & sum_msb.is_neq(self_msb);
                         E::assert_eq(is_overflow, E::zero());
                     }
                     _ => E::halt("Malformed integer detected during integer addition"),

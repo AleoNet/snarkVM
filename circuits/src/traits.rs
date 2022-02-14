@@ -46,8 +46,9 @@ use num_traits::Inv;
 /// Representation of a boolean.
 pub trait BooleanTrait:
     Adder
-    + And
     + AsRef<Self>
+    + BitAndAssign
+    + BitAnd<Output = Self>
     + Clone
     + Debug
     + Eject<Primitive = bool>
@@ -237,15 +238,6 @@ pub trait LessThan<Rhs: ?Sized = Self> {
 
     /// Returns `true` if `self` is less than `other`.
     fn is_lt(&self, other: &Rhs) -> Self::Boolean;
-}
-
-/// Binary operator for performing `a AND b`.
-pub trait And<Rhs: ?Sized = Self> {
-    type Boolean: BooleanTrait;
-    type Output;
-
-    /// Returns `(a AND b)`.
-    fn and(&self, other: &Rhs) -> Self::Output;
 }
 
 /// Binary operator for performing `a OR b`.

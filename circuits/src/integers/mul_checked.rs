@@ -52,13 +52,13 @@ impl<E: Environment, I: IntegerType> MulChecked<Self> for Integer<E, I> {
                 let operands_same_sign = &self_msb.is_eq(other_msb);
 
                 // If the product should be positive, then it cannot exceed the signed maximum.
-                let positive_product_overflows = operands_same_sign.and(&product_msb);
+                let positive_product_overflows = operands_same_sign & product_msb;
 
                 // If the product should be negative, then it cannot exceed the absolute value of the signed minimum.
                 let lower_product_bits_nonzero = &bits_are_nonzero(&bits_le[..(I::BITS - 1)]);
                 let negative_product_lt_or_eq_signed_min =
-                    (!product_msb).or(&product_msb.and(&!lower_product_bits_nonzero));
-                let negative_product_underflows = (!operands_same_sign).and(&!negative_product_lt_or_eq_signed_min);
+                    (!product_msb).or(&(product_msb & !lower_product_bits_nonzero));
+                let negative_product_underflows = !operands_same_sign & !negative_product_lt_or_eq_signed_min;
 
                 let overflow = carry_bits_nonzero.or(&positive_product_overflows).or(&negative_product_underflows);
                 E::assert_eq(overflow, E::zero());

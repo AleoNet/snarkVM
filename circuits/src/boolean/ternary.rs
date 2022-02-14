@@ -33,14 +33,14 @@ impl<E: Environment> Ternary for Boolean<E> {
         else if first.is_constant() {
             match first.eject_value() {
                 true => condition.or(second),
-                false => (!condition).and(second),
+                false => !condition & second,
             }
         }
         // Constant `second`
         else if second.is_constant() {
             match second.eject_value() {
                 true => (!condition).or(first),
-                false => condition.and(first),
+                false => condition & first,
             }
         }
         // Variables

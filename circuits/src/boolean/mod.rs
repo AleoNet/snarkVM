@@ -49,7 +49,7 @@ use snarkvm_fields::{One as O, Zero as Z};
 
 use core::{
     fmt,
-    ops::{Deref, Not},
+    ops::{BitAnd, BitAndAssign, Deref, Not},
 };
 
 #[derive(Clone)]

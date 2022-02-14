@@ -33,7 +33,7 @@ impl<E: Environment, I: IntegerType> Equal<Self> for Integer<E, I> {
                 .iter()
                 .zip_eq(other.bits_le.iter())
                 .map(|(this, that)| this.is_eq(that))
-                .fold(Boolean::new(Mode::Constant, true), |a, b| Boolean::and(&a, &b)),
+                .fold(Boolean::new(Mode::Constant, true), |a, b| a & b),
             false => {
                 // Instead of comparing the bits of `self` and `other` directly, the integers are
                 // converted into a field elements, and checked if they are equivalent as field elements.

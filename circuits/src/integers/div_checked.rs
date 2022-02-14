@@ -39,7 +39,7 @@ impl<E: Environment, I: IntegerType> DivChecked<Self> for Integer<E, I> {
                 // Signed integer division wraps when the dividend is I::MIN and the divisor is -1.
                 let min = Self::new(Mode::Constant, I::MIN);
                 let neg_one = Self::new(Mode::Constant, I::zero() - I::one());
-                let overflows = self.is_eq(&min).and(&other.is_eq(&neg_one));
+                let overflows = self.is_eq(&min) & other.is_eq(&neg_one);
                 E::assert_eq(overflows, E::zero());
 
                 // This is safe since I::BITS is always greater than 0.

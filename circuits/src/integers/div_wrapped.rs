@@ -54,7 +54,7 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
                 // Signed integer division wraps when the dividend is I::MIN and the divisor is -1.
                 let min = Self::new(Mode::Constant, I::MIN);
                 let neg_one = Self::new(Mode::Constant, I::zero() - I::one());
-                let overflows = self.is_eq(&min).and(&other.is_eq(&neg_one));
+                let overflows = self.is_eq(&min) & other.is_eq(&neg_one);
                 Self::ternary(&overflows, &min, &signed_quotient)
             } else {
                 // Eject the dividend and divisor, to compute the quotient as a witness.

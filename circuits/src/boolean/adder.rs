@@ -27,8 +27,8 @@ impl<E: Environment> Adder for Boolean<E> {
         let sum = c0.xor(carry);
 
         // Compute the carry bit.
-        let c1 = self.and(other);
-        let c2 = carry.and(&c0);
+        let c1 = self & other;
+        let c2 = carry & c0;
         let carry = c1.or(&c2);
 
         (sum, carry)
