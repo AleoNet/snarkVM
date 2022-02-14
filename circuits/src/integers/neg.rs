@@ -21,12 +21,7 @@ impl<E: Environment, I: IntegerType> Neg for Integer<E, I> {
 
     /// Performs the unary `-` operation.
     fn neg(self) -> Self::Output {
-        match I::is_signed() {
-            // Negate each bit in the representation of the `other` integer, and add `1` to the negated value.
-            // Note: This addition must be checked as `-I::MIN` is an invalid operation.
-            true => Integer::one().add_checked(&!self),
-            false => E::halt("Attempted to negate an unsigned integer"),
-        }
+        (&self).neg()
     }
 }
 
@@ -35,7 +30,10 @@ impl<E: Environment, I: IntegerType> Neg for &Integer<E, I> {
 
     /// Performs the unary `-` operation.
     fn neg(self) -> Self::Output {
-        -(self.clone())
+        match I::is_signed() {
+            true => Integer::zero().sub_wrapped(self),
+            false => E::halt("Attempted to negate an unsigned integer"),
+        }
     }
 }
 
@@ -112,8 +110,8 @@ mod tests {
     fn test_i8_neg() {
         type I = i8;
         run_test::<I>(Mode::Constant, 16, 0, 0, 0);
-        run_test::<I>(Mode::Public, 10, 0, 12, 14);
-        run_test::<I>(Mode::Private, 10, 0, 12, 14);
+        run_test::<I>(Mode::Public, 10, 0, 11, 12);
+        run_test::<I>(Mode::Private, 10, 0, 11, 12);
     }
 
     #[test]
@@ -128,8 +126,8 @@ mod tests {
     fn test_i16_neg() {
         type I = i16;
         run_test::<I>(Mode::Constant, 32, 0, 0, 0);
-        run_test::<I>(Mode::Public, 18, 0, 20, 22);
-        run_test::<I>(Mode::Private, 18, 0, 20, 22);
+        run_test::<I>(Mode::Public, 18, 0, 19, 20);
+        run_test::<I>(Mode::Private, 18, 0, 19, 20);
     }
 
     #[test]
@@ -144,8 +142,8 @@ mod tests {
     fn test_i32_neg() {
         type I = i32;
         run_test::<I>(Mode::Constant, 64, 0, 0, 0);
-        run_test::<I>(Mode::Public, 34, 0, 36, 38);
-        run_test::<I>(Mode::Private, 34, 0, 36, 38);
+        run_test::<I>(Mode::Public, 34, 0, 35, 36);
+        run_test::<I>(Mode::Private, 34, 0, 35, 36);
     }
 
     #[test]
@@ -160,8 +158,8 @@ mod tests {
     fn test_i64_neg() {
         type I = i64;
         run_test::<I>(Mode::Constant, 128, 0, 0, 0);
-        run_test::<I>(Mode::Public, 66, 0, 68, 70);
-        run_test::<I>(Mode::Private, 66, 0, 68, 70);
+        run_test::<I>(Mode::Public, 66, 0, 67, 68);
+        run_test::<I>(Mode::Private, 66, 0, 67, 68);
     }
 
     #[test]
@@ -176,8 +174,8 @@ mod tests {
     fn test_i128_neg() {
         type I = i128;
         run_test::<I>(Mode::Constant, 256, 0, 0, 0);
-        run_test::<I>(Mode::Public, 130, 0, 132, 134);
-        run_test::<I>(Mode::Private, 130, 0, 132, 134);
+        run_test::<I>(Mode::Public, 130, 0, 131, 132);
+        run_test::<I>(Mode::Private, 130, 0, 131, 132);
     }
 
     #[test]
@@ -189,10 +187,10 @@ mod tests {
             check_neg(&name, value, Mode::Constant, 16, 0, 0, 0);
 
             let name = format!("Neg: {}", Mode::Public);
-            check_neg(&name, value, Mode::Public, 10, 0, 12, 14);
+            check_neg(&name, value, Mode::Public, 10, 0, 11, 12);
 
             let name = format!("Neg: {}", Mode::Private);
-            check_neg(&name, value, Mode::Private, 10, 0, 12, 14);
+            check_neg(&name, value, Mode::Private, 10, 0, 11, 12);
         }
     }
 }
