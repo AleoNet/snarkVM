@@ -18,12 +18,12 @@
 
 use crate::fft::{DenseOrSparsePolynomial, EvaluationDomain, Evaluations};
 use snarkvm_fields::{Field, PrimeField};
-use snarkvm_utilities::serialize::*;
+use snarkvm_utilities::{cfg_iter_mut, serialize::*};
 
 use rand::Rng;
 use std::{
     fmt,
-    ops::{Add, AddAssign, Deref, DerefMut, Div, Mul, Neg, Sub, SubAssign},
+    ops::{Add, AddAssign, Deref, DerefMut, Div, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
 #[cfg(feature = "parallel")]
@@ -433,6 +433,15 @@ impl<F: Field> Mul<F> for DensePolynomial<F> {
     fn mul(mut self, other: F) -> Self {
         self.iter_mut().for_each(|c| *c *= other);
         self
+    }
+}
+
+/// Multiplies `self` by `other: F`.
+impl<F: Field> MulAssign<F> for DensePolynomial<F> {
+    #[inline]
+    #[allow(clippy::suspicious_arithmetic_impl)]
+    fn mul_assign(&mut self, other: F) {
+        cfg_iter_mut!(self).for_each(|c| *c *= other);
     }
 }
 

@@ -652,7 +652,7 @@ impl<F: FftField> EvaluationDomain<F> {
                     .for_each(|(a, b)| *a = *b);
                 (&compacted_roots[..gap], 1)
             } else {
-                (&roots_cache[..], num_chunks)
+                (roots_cache, num_chunks)
             };
 
             Self::apply_butterfly(Self::butterfly_fn_oi, xi, roots, step, chunk_size, num_chunks, max_threads, gap);

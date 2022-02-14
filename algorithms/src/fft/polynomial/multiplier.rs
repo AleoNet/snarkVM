@@ -22,7 +22,7 @@ use crate::fft::domain::{FFTPrecomputation, IFFTPrecomputation};
 use super::*;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
-use snarkvm_utilities::{cfg_into_iter, cfg_iter, cfg_iter_mut, ExecutionPool};
+use snarkvm_utilities::{cfg_iter, cfg_iter_mut, ExecutionPool};
 
 #[derive(Default)]
 pub struct PolyMultiplier<'a, F: PrimeField> {
@@ -39,7 +39,7 @@ impl<'a, F: PrimeField> PolyMultiplier<'a, F> {
     }
 
     #[inline]
-    pub fn add_precomputation(&'a mut self, fft_pc: &'a FFTPrecomputation<F>, ifft_pc: &'a IFFTPrecomputation<F>) {
+    pub fn add_precomputation(&mut self, fft_pc: &'a FFTPrecomputation<F>, ifft_pc: &'a IFFTPrecomputation<F>) {
         self.fft_precomputation = Some(Cow::Borrowed(fft_pc));
         self.ifft_precomputation = Some(Cow::Borrowed(ifft_pc));
     }
@@ -106,7 +106,8 @@ impl<'a, F: PrimeField> PolyMultiplier<'a, F> {
                 }
                 let results = pool.execute_all();
                 #[cfg(feature = "parallel")]
-                let mut result = cfg_into_iter!(results)
+                let mut result = results
+                    .into_par_iter()
                     .reduce_with(|mut a, b| {
                         cfg_iter_mut!(a).zip(b).for_each(|(a, b)| *a *= b);
                         a
@@ -114,12 +115,13 @@ impl<'a, F: PrimeField> PolyMultiplier<'a, F> {
                     .unwrap();
                 #[cfg(not(feature = "parallel"))]
                 let mut result = results
+                    .into_iter()
                     .reduce(|mut a, b| {
                         cfg_iter_mut!(a).zip(b).for_each(|(a, b)| *a *= b);
                         a
                     })
                     .unwrap();
-                domain.out_order_ifft_in_place_with_pc(&mut result, &ifft_pc);
+                domain.out_order_ifft_in_place_with_pc(&mut result, ifft_pc);
                 Some(DensePolynomial::from_coefficients_vec(result))
             }
         }

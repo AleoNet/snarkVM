@@ -18,6 +18,7 @@ use core::convert::TryInto;
 
 use crate::{
     fft::{
+        domain::{FFTPrecomputation, IFFTPrecomputation},
         polynomial::PolyMultiplier,
         DensePolynomial,
         EvaluationDomain,
@@ -267,7 +268,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(3);
         let w_rand = F::rand(rng);
         job_pool.add_job(|| {
-            let mut w_poly = EvaluationsOnDomain::from_vec_and_domain(w_poly_evals, constraint_domain).interpolate();
+            let mut w_poly = EvaluationsOnDomain::from_vec_and_domain(w_poly_evals, constraint_domain)
+                .interpolate_with_pc(&state.ifft_precomputation);
             if MM::ZK {
                 w_poly += &(&v_H * w_rand);
             }
@@ -281,7 +283,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let r_a = F::rand(rng);
         job_pool.add_job(|| {
             let z_a_poly_time = start_timer!(|| "Computing z_A polynomial");
-            let mut z_a_poly = z_a_evals.interpolate_by_ref();
+            let mut z_a_poly = z_a_evals.interpolate_with_pc_by_ref(&state.ifft_precomputation);
             if MM::ZK {
                 z_a_poly += &(&v_H * r_a);
             }
@@ -292,7 +294,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let r_b = F::rand(rng);
         job_pool.add_job(|| {
             let z_b_poly_time = start_timer!(|| "Computing z_B polynomial");
-            let mut z_b_poly = z_b_evals.interpolate_by_ref();
+            let mut z_b_poly = z_b_evals.interpolate_with_pc_by_ref(&state.ifft_precomputation);
             if MM::ZK {
                 z_b_poly += &(&v_H * r_b);
             }
@@ -374,6 +376,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         input_domain: EvaluationDomain<F>,
         constraint_domain: EvaluationDomain<F>,
         r_alpha_x_on_h: &[F],
+        ifft_precomputation: &IFFTPrecomputation<F>,
     ) -> DensePolynomial<F> {
         let mut t_evals_on_h = vec![F::zero(); constraint_domain.size()];
         for (matrix, eta) in matrices.iter().zip_eq(matrix_randomizers) {
@@ -384,7 +387,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 }
             }
         }
-        EvaluationsOnDomain::from_vec_and_domain(t_evals_on_h, constraint_domain).interpolate()
+        EvaluationsOnDomain::from_vec_and_domain(t_evals_on_h, constraint_domain)
+            .interpolate_with_pc(ifft_precomputation)
     }
 
     /// Output the number of oracles sent by the prover in the first round.
@@ -435,7 +439,13 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let z_b_poly_det = z_b_poly.clone() - &r_b_v_H;
             // z_c = (z_a + r_a * v_H) * (z_b + r_b * v_H);
             // z_c = z_a * z_b + r_a * z_b * v_H + r_b * z_a * v_H + r_a * r_b * v_H^2;
-            let mut z_c = &z_a_poly_det * &z_b_poly_det;
+            let mut z_c = {
+                let mut multiplier = PolyMultiplier::new();
+                multiplier.add_polynomial_ref(&z_a_poly_det, "z_a_poly");
+                multiplier.add_polynomial_ref(&z_b_poly_det, "z_b_poly");
+                multiplier.add_precomputation(&state.fft_precomputation, &state.ifft_precomputation);
+                multiplier.multiply().unwrap()
+            };
             z_c += &r_a_v_H.mul(&r_b_v_H);
             assert_eq!(z_c.degree(), 2 * constraint_domain.size());
             #[cfg(not(feature = "parallel"))]
@@ -472,7 +482,11 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 });
             z_c
         } else {
-            z_a_poly * z_b_poly
+            let mut multiplier = PolyMultiplier::new();
+            multiplier.add_polynomial_ref(z_a_poly, "z_a_poly");
+            multiplier.add_polynomial_ref(z_b_poly, "z_b_poly");
+            multiplier.add_precomputation(&state.fft_precomputation, &state.ifft_precomputation);
+            multiplier.multiply().unwrap()
         };
 
         let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(2);
@@ -502,6 +516,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 state.input_domain,
                 state.constraint_domain,
                 &r_alpha_x_evals,
+                &state.ifft_precomputation,
             );
             end_timer!(t_poly_time);
             t_poly
@@ -512,7 +527,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let x_poly =
             EvaluationsOnDomain::from_vec_and_domain(state.padded_public_variables.clone(), state.input_domain)
-                .interpolate();
+                .interpolate_with_pc(&state.ifft_precomputation);
         let w_poly = state.w_poly.as_ref().and_then(|p| p.polynomial().as_dense()).unwrap();
         let mut z_poly = w_poly.mul_by_vanishing_poly(state.input_domain);
         cfg_iter_mut!(z_poly.coeffs).zip(&x_poly.coeffs).for_each(|(z, x)| *z += x);
@@ -555,6 +570,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let sumcheck_time = start_timer!(|| "Compute sumcheck h and g polys");
         let (h_1, x_g_1) = q_1.divide_by_vanishing_poly(constraint_domain).unwrap();
         let g_1 = DensePolynomial::from_coefficients_slice(&x_g_1.coeffs[1..]);
+        drop(x_g_1);
         end_timer!(sumcheck_time);
 
         let msg = ProverMessage::default();
@@ -615,6 +631,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             beta,
             v_H_alpha_v_H_beta,
             largest_non_zero_domain_size,
+            &state.fft_precomputation,
+            &state.ifft_precomputation,
         );
         let (sum_b, lhs_b, g_b) = Self::third_round_helper(
             "b",
@@ -624,6 +642,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             beta,
             v_H_alpha_v_H_beta,
             largest_non_zero_domain_size,
+            &state.fft_precomputation,
+            &state.ifft_precomputation,
         );
         let (sum_c, lhs_c, g_c) = Self::third_round_helper(
             "c",
@@ -633,6 +653,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             beta,
             v_H_alpha_v_H_beta,
             largest_non_zero_domain_size,
+            &state.fft_precomputation,
+            &state.ifft_precomputation,
         );
 
         let msg = ProverMessage { field_elements: vec![sum_a, sum_b, sum_c] };
@@ -645,6 +667,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         Ok((msg, oracles, state))
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn third_round_helper(
         label: &str,
         non_zero_domain: EvaluationDomain<F>,
@@ -653,6 +676,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         beta: F,
         v_H_alpha_v_H_beta: F,
         largest_non_zero_domain_size: F,
+        fft_precomputation: &FFTPrecomputation<F>,
+        ifft_precomputation: &IFFTPrecomputation<F>,
     ) -> (F, DensePolynomial<F>, LabeledPolynomial<F>) {
         let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(2);
         job_pool.add_job(|| {
@@ -679,7 +704,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     .zip(&row_col_on_K.evaluations)
                     .map(|((r, c), r_c)| alpha_beta - alpha * r - beta * c + r_c)
                     .collect();
-                EvaluationsOnDomain::from_vec_and_domain(evals, non_zero_domain).interpolate()
+                EvaluationsOnDomain::from_vec_and_domain(evals, non_zero_domain)
+                    .interpolate_with_pc(ifft_precomputation)
             };
             end_timer!(b_poly_time);
             b_poly
@@ -696,10 +722,18 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         end_timer!(f_evals_time);
 
         let f_poly_time = start_timer!(|| "Computing f poly");
-        let f = EvaluationsOnDomain::from_vec_and_domain(f_evals_on_K, non_zero_domain).interpolate();
+        let f = EvaluationsOnDomain::from_vec_and_domain(f_evals_on_K, non_zero_domain)
+            .interpolate_with_pc(ifft_precomputation);
         end_timer!(f_poly_time);
         let g = DensePolynomial::from_coefficients_slice(&f.coeffs[1..]);
-        let mut h = &a_poly - &(&b_poly * &f);
+        let mut h = &a_poly
+            - &{
+                let mut multiplier = PolyMultiplier::new();
+                multiplier.add_polynomial_ref(&b_poly, "b");
+                multiplier.add_polynomial_ref(&f, "f");
+                multiplier.add_precomputation(fft_precomputation, ifft_precomputation);
+                multiplier.multiply().unwrap()
+            };
         // Let K_max = largest_non_zero_domain;
         // Let K = non_zero_domain;
         // Let s := K_max.selector_polynomial(K);
@@ -744,8 +778,12 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         _r: &mut R,
     ) -> Result<(ProverMessage<F>, ProverFourthOracles<F>), AHPError> {
         let VerifierThirdMessage { r_b, r_c, .. } = verifier_message;
-        let [mut lhs_a, lhs_b, lhs_c] = state.lhs_polynomials.unwrap();
-        lhs_a += &(&(lhs_b * *r_b) + &(lhs_c * *r_c));
+        let [mut lhs_a, mut lhs_b, mut lhs_c] = state.lhs_polynomials.unwrap();
+        lhs_b *= *r_b;
+        lhs_c *= *r_c;
+
+        lhs_a += &lhs_b;
+        lhs_a += &lhs_c;
         let msg = ProverMessage::default();
         let h_2 = LabeledPolynomial::new("h_2".into(), lhs_a, None, None);
         let oracles = ProverFourthOracles { h_2 };

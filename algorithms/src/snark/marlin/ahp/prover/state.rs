@@ -15,7 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    fft::{DensePolynomial, EvaluationDomain},
+    fft::{
+        domain::{FFTPrecomputation, IFFTPrecomputation},
+        DensePolynomial,
+        EvaluationDomain,
+    },
     polycommit::LabeledPolynomial,
     snark::marlin::{
         ahp::{indexer::Circuit, prover::ProverConstraintSystem, verifier::VerifierFirstMessage},
@@ -30,6 +34,8 @@ use snarkvm_r1cs::SynthesisError;
 pub struct ProverState<'a, F: PrimeField, MM: MarlinMode> {
     pub(super) padded_public_variables: Vec<F>,
     pub(super) private_variables: Vec<F>,
+    pub(super) fft_precomputation: FFTPrecomputation<F>,
+    pub(super) ifft_precomputation: IFFTPrecomputation<F>,
     /// Query bound b
     pub(super) zk_bound: usize,
     /// Az.
@@ -88,6 +94,21 @@ impl<'a, F: PrimeField, MM: MarlinMode> ProverState<'a, F, MM> {
 
         let input_domain =
             EvaluationDomain::new(padded_public_input.len()).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+
+        let largest_domain_size = [
+            3 * constraint_domain.size(),
+            non_zero_a_domain.size() * 2,
+            non_zero_b_domain.size() * 2,
+            non_zero_c_domain.size() * 2,
+        ]
+        .into_iter()
+        .max()
+        .unwrap();
+        let largest_mul_domain =
+            EvaluationDomain::new(largest_domain_size).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+
+        let fft_precomputation = largest_mul_domain.precompute_fft();
+        let ifft_precomputation = fft_precomputation.to_ifft_precomputation();
         Ok(Self {
             padded_public_variables: padded_public_input,
             private_variables,
@@ -98,6 +119,8 @@ impl<'a, F: PrimeField, MM: MarlinMode> ProverState<'a, F, MM> {
             non_zero_a_domain,
             non_zero_b_domain,
             non_zero_c_domain,
+            fft_precomputation,
+            ifft_precomputation,
             mask_poly: None,
             verifier_first_message: None,
             w_poly: None,
