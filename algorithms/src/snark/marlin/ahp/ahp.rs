@@ -405,12 +405,12 @@ impl<F: PrimeField> UnnormalizedBivariateLagrangePoly<F> for EvaluationDomain<F>
             snarkvm_fields::batch_inversion(&mut denoms);
             let ratio = domain.size() / self.size();
             let mut numerators = vec![vanish_x; domain.size()];
-            cfg_iter_mut!(numerators).zip(elements).enumerate().for_each(|(i, (n, e))| {
+            cfg_iter_mut!(numerators).zip_eq(elements).enumerate().for_each(|(i, (n, e))| {
                 if i % ratio != 0 {
                     *n -= self.evaluate_vanishing_polynomial(e);
                 }
             });
-            cfg_iter_mut!(denoms).zip(numerators).for_each(|(d, e)| *d *= e);
+            cfg_iter_mut!(denoms).zip_eq(numerators).for_each(|(d, e)| *d *= e);
         }
         denoms
     }

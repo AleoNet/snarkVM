@@ -44,6 +44,7 @@ pub use data_structures::*;
 /// Errors pertaining to query sets.
 pub mod error;
 pub use error::*;
+use itertools::Itertools;
 
 /// A random number generator that bypasses some limitations of the Rust borrow
 /// checker.
@@ -219,8 +220,8 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
     {
         let poly_rand_comm: BTreeMap<_, _> = labeled_polynomials
             .into_iter()
-            .zip(rands)
-            .zip(commitments.into_iter())
+            .zip_eq(rands)
+            .zip_eq(commitments.into_iter())
             .map(|((poly, r), comm)| (poly.label(), (poly, r, comm)))
             .collect();
 
@@ -307,7 +308,7 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
         assert_eq!(proofs.len(), query_to_labels_map.len());
 
         let mut result = true;
-        for ((_point_name, (query, labels)), proof) in query_to_labels_map.into_iter().zip(proofs) {
+        for ((_point_name, (query, labels)), proof) in query_to_labels_map.into_iter().zip_eq(proofs) {
             let mut comms: Vec<&'_ LabeledCommitment<_>> = Vec::with_capacity(labels.len());
             let mut values = Vec::with_capacity(labels.len());
             for label in labels.into_iter() {
@@ -377,7 +378,7 @@ pub trait PolynomialCommitment<F: PrimeField, CF: PrimeField>: Sized + Clone + D
 
         let poly_query_set = lc_query_set_to_poly_query_set(lc_s.values().copied(), eqn_query_set);
         let poly_evals: Evaluations<_> =
-            poly_query_set.iter().map(|(_, point)| point).cloned().zip(evals.clone().unwrap()).collect();
+            poly_query_set.iter().map(|(_, point)| point).cloned().zip_eq(evals.clone().unwrap()).collect();
 
         for &(ref lc_label, (_, point)) in eqn_query_set {
             if let Some(lc) = lc_s.get(lc_label) {

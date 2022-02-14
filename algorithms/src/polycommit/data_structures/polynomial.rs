@@ -183,6 +183,8 @@ impl<'a, F: PrimeField> LabeledPolynomialWithBasis<'a, F> {
                         match polynomial.as_ref() {
                             DPolynomial(p) => {
                                 if let Some(e) = dense_polys.get_mut(degree_bound) {
+                                    // Zip safety: `p` could be of smaller degree than `e` (or vice versa),
+                                    // so it's okay to just use `zip` here.
                                     cfg_iter_mut!(e).zip(&p.coeffs).for_each(|(e, f)| *e += *c * f)
                                 } else {
                                     let mut e: DensePolynomial<F> = p.to_owned().into_owned();
@@ -196,7 +198,7 @@ impl<'a, F: PrimeField> LabeledPolynomialWithBasis<'a, F> {
                     Lagrange { evaluations } => {
                         let domain = evaluations.domain().size();
                         if let Some(e) = lagrange_polys.get_mut(&domain) {
-                            cfg_iter_mut!(e).zip(&evaluations.evaluations).for_each(|(e, f)| *e += *c * f)
+                            cfg_iter_mut!(e).zip_eq(&evaluations.evaluations).for_each(|(e, f)| *e += *c * f)
                         } else {
                             let mut e = evaluations.to_owned().into_owned().evaluations;
                             cfg_iter_mut!(e).for_each(|e| *e *= c);
@@ -346,8 +348,8 @@ impl<'a, F: PrimeField> PolynomialWithBasis<'a, F> {
                 let mut denominators = cfg_iter!(powers).map(|pow| point - pow).collect::<Vec<_>>();
                 snarkvm_fields::batch_inversion(&mut denominators);
                 cfg_iter_mut!(denominators)
-                    .zip(powers)
-                    .zip(&evaluations.evaluations)
+                    .zip_eq(powers)
+                    .zip_eq(&evaluations.evaluations)
                     .map(|((denom, power), coeff)| *denom * power * coeff)
                     .sum::<F>()
                     * multiplier

@@ -21,6 +21,7 @@ use crate::{
     polycommit::LabeledPolynomial,
     snark::marlin::ahp::{indexer::Matrix, UnnormalizedBivariateLagrangePoly},
 };
+use itertools::Itertools;
 use snarkvm_fields::{batch_inversion, Field, PrimeField};
 use snarkvm_r1cs::{ConstraintSystem, Index as VarIndex};
 use snarkvm_utilities::{cfg_iter, cfg_iter_mut, serialize::*};
@@ -142,7 +143,7 @@ pub(crate) fn arithmetize_matrix<F: PrimeField>(
     let eq_poly_vals_time = start_timer!(|| "Precomputing eq_poly_vals");
     let eq_poly_vals: HashMap<F, F> = constraint_domain
         .elements()
-        .zip(constraint_domain.batch_eval_unnormalized_bivariate_lagrange_poly_with_same_inputs())
+        .zip_eq(constraint_domain.batch_eval_unnormalized_bivariate_lagrange_poly_with_same_inputs())
         .collect();
     end_timer!(eq_poly_vals_time);
 
@@ -172,7 +173,7 @@ pub(crate) fn arithmetize_matrix<F: PrimeField>(
     batch_inversion::<F>(&mut inverses);
     drop(eq_poly_vals);
 
-    cfg_iter_mut!(val_vec).zip(inverses).for_each(|(v, inv)| *v *= inv);
+    cfg_iter_mut!(val_vec).zip_eq(inverses).for_each(|(v, inv)| *v *= inv);
     end_timer!(lde_evals_time);
 
     for _ in count..non_zero_domain.size() {
@@ -181,7 +182,7 @@ pub(crate) fn arithmetize_matrix<F: PrimeField>(
         val_vec.push(F::zero());
     }
 
-    let row_col_vec: Vec<_> = row_vec.iter().zip(&col_vec).map(|(row, col)| *row * col).collect();
+    let row_col_vec: Vec<_> = row_vec.iter().zip_eq(&col_vec).map(|(row, col)| *row * col).collect();
 
     let interpolate_time = start_timer!(|| "Interpolating on K");
     let row_evals_on_K = EvaluationsOnDomain::from_vec_and_domain(row_vec, non_zero_domain);
@@ -259,7 +260,7 @@ mod tests {
             .collect::<HashMap<_, _>>();
         let eq_poly_vals: HashMap<F, F> = constraint_domain
             .elements()
-            .zip(constraint_domain.batch_eval_unnormalized_bivariate_lagrange_poly_with_same_inputs())
+            .zip_eq(constraint_domain.batch_eval_unnormalized_bivariate_lagrange_poly_with_same_inputs())
             .collect();
 
         for (matrix, label) in [(a, "a"), (b, "b"), (c, "c")] {
