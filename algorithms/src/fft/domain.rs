@@ -380,6 +380,7 @@ impl<F: FftField> EvaluationDomain<F> {
         Self::distribute_powers_and_mul_by_const(x_s, coset_shift, self.size_inv);
     }
 
+    #[allow(unused)]
     pub(crate) fn in_order_fft_in_place_with_pc<T: DomainCoeff<F>>(
         &self,
         x_s: &mut [T],
@@ -414,6 +415,7 @@ impl<F: FftField> EvaluationDomain<F> {
         cfg_iter_mut!(x_s).for_each(|val| *val *= self.size_inv);
     }
 
+    #[allow(unused)]
     pub(crate) fn in_order_coset_ifft_in_place_with_pc<T: DomainCoeff<F>>(
         &self,
         x_s: &mut [T],
