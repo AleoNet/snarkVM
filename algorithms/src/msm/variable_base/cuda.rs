@@ -315,6 +315,7 @@ lazy_static::lazy_static! {
     };
 }
 
+#[allow(clippy::transmute_undefined_repr)]
 pub(super) fn msm_cuda<G: AffineCurve>(
     mut bases: &[G],
     mut scalars: &[<G::ScalarField as PrimeField>::BigInteger],
@@ -532,7 +533,7 @@ mod tests {
     fn test_cuda_projective_add() {
         let inputs = make_projective_tests(1000, 2);
 
-        let output = run_roundtrip("add_projective_test", &inputs[..]);
+        let output: Vec<G1Projective> = run_roundtrip("add_projective_test", &inputs[..]);
 
         for (input, output) in inputs.iter().zip(output.iter()) {
             let rust_out = input[0] + input[1];
@@ -546,7 +547,7 @@ mod tests {
     fn test_cuda_projective_double() {
         let inputs = make_projective_tests(1000, 1);
 
-        let output = run_roundtrip("double_projective_test", &inputs[..]);
+        let output: Vec<G1Projective> = run_roundtrip("double_projective_test", &inputs[..]);
 
         for (input, output) in inputs.iter().zip(output.iter()) {
             let rust_out = input[0].double();
