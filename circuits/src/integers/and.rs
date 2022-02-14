@@ -96,11 +96,11 @@ mod tests {
         let b = Integer::<Circuit, I>::new(mode_b, second);
         let case = format!("BitAnd: ({} & {})", first, second);
         let expected = first & second;
-        check_binary_operation_passes(name, &case, expected, &a, &b, | a: &Integer<Circuit, I>, b: &Integer<Circuit, I> | { a.bitand(b) }, num_constants, num_public, num_private, num_constraints);
+        check_operation_passes(name, &case, expected, &a, &b, |a: &Integer<Circuit, I>, b: &Integer<Circuit, I> | { a.bitand(b) }, num_constants, num_public, num_private, num_constraints);
         // Commute the operation.
         let a = Integer::<Circuit, I>::new(mode_a, second);
         let b = Integer::<Circuit, I>::new(mode_b, first);
-        check_binary_operation_passes(name, &case, expected, &a, &b, | a: &Integer<Circuit, I>, b: &Integer<Circuit, I> | { a.bitand(b) }, num_constants, num_public, num_private, num_constraints);
+        check_operation_passes(name, &case, expected, &a, &b, |a: &Integer<Circuit, I>, b: &Integer<Circuit, I> | { a.bitand(b) }, num_constants, num_public, num_private, num_constraints);
     }
 
     #[rustfmt::skip]

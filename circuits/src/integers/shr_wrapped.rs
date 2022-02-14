@@ -154,7 +154,7 @@ mod tests {
             _ =>  (num_constants, num_public, num_private, num_constraints),
         };
 
-        check_binary_operation_passes(name, &case, expected, &a, &b, Integer::shr_wrapped, num_constants, num_public, num_private, num_constraints);
+        check_operation_passes(name, &case, expected, &a, &b, Integer::shr_wrapped, num_constants, num_public, num_private, num_constraints);
     }
 
     #[rustfmt::skip]

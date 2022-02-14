@@ -72,10 +72,7 @@ mod tests {
     use crate::Circuit;
     use snarkvm_utilities::UniformRand;
 
-    use crate::integers::test_utilities::{
-        check_binary_operation_passes,
-        check_binary_operation_passes_without_expected_numbers,
-    };
+    use crate::integers::test_utilities::{check_operation_passes, check_operation_passes_without_counts};
     use num_traits::CheckedShl;
     use rand::thread_rng;
     use std::ops::Range;
@@ -105,7 +102,7 @@ mod tests {
             (Mode::Private, Mode::Constant) => ( 1, 0, 1, 1),
             _ =>  (num_constants, num_public, num_private, num_constraints),
         };
-        check_binary_operation_passes(name, &case, expected, &a, &b, Integer::shl_wrapped, num_constants, num_public, num_private, num_constraints);
+        check_operation_passes(name, &case, expected, &a, &b, Integer::shl_wrapped, num_constants, num_public, num_private, num_constraints);
     }
 
     #[rustfmt::skip]

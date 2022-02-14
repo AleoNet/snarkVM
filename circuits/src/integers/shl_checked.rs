@@ -119,11 +119,11 @@ mod tests {
 
         match first.checked_shl(second.to_u32().unwrap()) {
             Some(value) => {
-                check_binary_operation_passes(name, &case, value, &a, &b, Integer::shl_checked, num_constants, num_public, num_private, num_constraints);
+                check_operation_passes(name, &case, value, &a, &b, Integer::shl_checked, num_constants, num_public, num_private, num_constraints);
             }
             None => match (mode_a, mode_b) {
-                (_, Mode::Constant) => check_binary_operation_halts(&a, &b, Integer::shl_checked),
-                _ => check_binary_operation_fails(name, &case, &a, &b, Integer::shl_checked, num_constants, num_public, num_private, num_constraints),
+                (_, Mode::Constant) => check_operation_halts(&a, &b, Integer::shl_checked),
+                _ => check_operation_fails(name, &case, &a, &b, Integer::shl_checked, num_constants, num_public, num_private, num_constraints),
             },
         };
     }

@@ -101,11 +101,11 @@ mod tests {
         let b = Integer::<Circuit, I>::new(mode_b, second);
         let case = format!("({} - {})", a.eject_value(), b.eject_value());
         match first.checked_sub(&second) {
-            Some(value) => check_binary_operation_passes(name, &case, value, &a, &b, Integer::sub_checked, num_constants, num_public, num_private, num_constraints),
+            Some(value) => check_operation_passes(name, &case, value, &a, &b, Integer::sub_checked, num_constants, num_public, num_private, num_constraints),
             None => {
                 match (mode_a, mode_b) {
-                    (Mode::Constant, Mode::Constant) => check_binary_operation_halts(&a, &b, Integer::sub_checked),
-                    _ => check_binary_operation_fails(name, &case, &a, &b, Integer::sub_checked, num_constants, num_public, num_private, num_constraints)
+                    (Mode::Constant, Mode::Constant) => check_operation_halts(&a, &b, Integer::sub_checked),
+                    _ => check_operation_fails(name, &case, &a, &b, Integer::sub_checked, num_constants, num_public, num_private, num_constraints)
                 }
             }
         }

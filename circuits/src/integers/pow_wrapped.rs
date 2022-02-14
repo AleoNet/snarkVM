@@ -63,7 +63,7 @@ mod tests {
         let b = Integer::<Circuit, M>::new(mode_b, second);
         let case = format!("({} ** {})", a.eject_value(), b.eject_value());
         let expected = first.wrapping_pow(second.to_u32().unwrap());
-        check_binary_operation_passes_without_expected_numbers(name, &case, expected, &a, &b, Integer::pow_wrapped);
+        check_operation_passes_without_counts(name, &case, expected, &a, &b, Integer::pow_wrapped);
     }
 
     #[rustfmt::skip]
@@ -82,7 +82,7 @@ mod tests {
         let b = Integer::<Circuit, M>::new(mode_b, second);
         let case = format!("({} ** {})", a.eject_value(), b.eject_value());
         let expected = first.wrapping_pow(second.to_u32().unwrap());
-        check_binary_operation_passes(name, &case, expected, &a, &b, Integer::pow_wrapped, num_constants, num_public, num_private, num_constraints);
+        check_operation_passes(name, &case, expected, &a, &b, Integer::pow_wrapped, num_constants, num_public, num_private, num_constraints);
     }
 
     #[rustfmt::skip]

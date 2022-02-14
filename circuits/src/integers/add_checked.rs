@@ -99,27 +99,27 @@ mod tests {
         let case = format!("({} + {})", a.eject_value(), b.eject_value());
         match first.checked_add(&second) {
             Some(value) => {
-                check_binary_operation_passes(name, &case, value, &a, &b, Integer::add_checked, num_constants, num_public, num_private, num_constraints);
+                check_operation_passes(name, &case, value, &a, &b, Integer::add_checked, num_constants, num_public, num_private, num_constraints);
                 // Commute the operation.
                 let a = Integer::<Circuit, I>::new(mode_a, second);
                 let b = Integer::<Circuit, I>::new(mode_b, first);
-                check_binary_operation_passes(name, &case, value, &a, &b, Integer::add_checked, num_constants, num_public, num_private, num_constraints);
+                check_operation_passes(name, &case, value, &a, &b, Integer::add_checked, num_constants, num_public, num_private, num_constraints);
             },
             None => {
                 match (mode_a, mode_b) {
                     (Mode::Constant, Mode::Constant) => {
-                        check_binary_operation_halts(&a, &b, Integer::add_checked);
+                        check_operation_halts(&a, &b, Integer::add_checked);
                         // Commute the operation.
                         let a = Integer::<Circuit, I>::new(mode_a, second);
                         let b = Integer::<Circuit, I>::new(mode_b, first);
-                        check_binary_operation_halts(&a, &b, Integer::add_checked);
+                        check_operation_halts(&a, &b, Integer::add_checked);
                     },
                     _ => {
-                        check_binary_operation_fails(name, &case, &a, &b, Integer::add_checked, num_constants, num_public, num_private, num_constraints);
+                        check_operation_fails(name, &case, &a, &b, Integer::add_checked, num_constants, num_public, num_private, num_constraints);
                         // Commute the operation.
                         let a = Integer::<Circuit, I>::new(mode_a, second);
                         let b = Integer::<Circuit, I>::new(mode_b, first);
-                        check_binary_operation_fails(name, &case, &a, &b, Integer::add_checked, num_constants, num_public, num_private, num_constraints);
+                        check_operation_fails(name, &case, &a, &b, Integer::add_checked, num_constants, num_public, num_private, num_constraints);
                     }
                 }
             }

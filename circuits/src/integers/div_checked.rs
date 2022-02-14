@@ -91,14 +91,14 @@ mod tests {
         let b = Integer::<Circuit, I>::new(mode_b, second);
         let case = format!("({} / {})", a.eject_value(), b.eject_value());
         if second == I::zero() {
-            check_binary_operation_halts(&a, &b, Integer::div_checked);
+            check_operation_halts(&a, &b, Integer::div_checked);
         } else {
             match first.checked_div(&second) {
-                Some(value) => check_binary_operation_passes_without_expected_numbers(name, &case, value, &a, &b, Integer::div_checked),
+                Some(value) => check_operation_passes_without_counts(name, &case, value, &a, &b, Integer::div_checked),
                 None => {
                     match (mode_a, mode_b) {
-                        (Mode::Constant, Mode::Constant) => check_binary_operation_halts(&a, &b, Integer::div_checked),
-                        _ => check_binary_operation_fails_without_expected_numbers(name, &case, &a, &b, Integer::div_checked)
+                        (Mode::Constant, Mode::Constant) => check_operation_halts(&a, &b, Integer::div_checked),
+                        _ => check_operation_fails_without_counts(name, &case, &a, &b, Integer::div_checked)
                     }
                 }
             }
@@ -121,14 +121,14 @@ mod tests {
         let b = Integer::<Circuit, I>::new(mode_b, second);
         let case = format!("({} / {})", a.eject_value(), b.eject_value());
         if second == I::zero() {
-            check_binary_operation_halts(&a, &b, Integer::div_checked);
+            check_operation_halts(&a, &b, Integer::div_checked);
         } else {
             match first.checked_div(&second) {
-                Some(value) => check_binary_operation_passes(name, &case, value, &a, &b, Integer::div_checked, num_constants, num_public, num_private, num_constraints),
+                Some(value) => check_operation_passes(name, &case, value, &a, &b, Integer::div_checked, num_constants, num_public, num_private, num_constraints),
                 None => {
                     match (mode_a, mode_b) {
-                        (Mode::Constant, Mode::Constant) => check_binary_operation_halts(&a, &b, Integer::div_checked),
-                        _ => check_binary_operation_fails(name, &case, &a, &b, Integer::div_checked, num_constants, num_public, num_private, num_constraints)
+                        (Mode::Constant, Mode::Constant) => check_operation_halts(&a, &b, Integer::div_checked),
+                        _ => check_operation_fails(name, &case, &a, &b, Integer::div_checked, num_constants, num_public, num_private, num_constraints)
                     }
                 }
             }

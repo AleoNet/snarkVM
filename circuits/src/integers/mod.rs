@@ -309,7 +309,7 @@ mod test_utilities {
         panic::UnwindSafe,
     };
 
-    pub fn check_binary_operation_passes<V: Debug + Display + PartialEq, LHS, RHS, OUT: Eject<Primitive = V>>(
+    pub fn check_operation_passes<V: Debug + Display + PartialEq, LHS, RHS, OUT: Eject<Primitive = V>>(
         name: &str,
         case: &str,
         expected: V,
@@ -339,7 +339,7 @@ mod test_utilities {
         Circuit::reset();
     }
 
-    pub fn check_binary_operation_passes_without_expected_numbers<
+    pub fn check_operation_passes_without_counts<
         V: Debug + Display + PartialEq,
         LHS,
         RHS,
@@ -359,7 +359,7 @@ mod test_utilities {
         Circuit::reset();
     }
 
-    pub fn check_binary_operation_fails<LHS, RHS, OUT>(
+    pub fn check_operation_fails<LHS, RHS, OUT>(
         name: &str,
         case: &str,
         a: LHS,
@@ -387,7 +387,7 @@ mod test_utilities {
         Circuit::reset();
     }
 
-    pub fn check_binary_operation_fails_without_expected_numbers<LHS, RHS, OUT>(
+    pub fn check_operation_fails_without_counts<LHS, RHS, OUT>(
         name: &str,
         case: &str,
         a: LHS,
@@ -401,7 +401,7 @@ mod test_utilities {
         Circuit::reset();
     }
 
-    pub fn check_binary_operation_halts<LHS: UnwindSafe, RHS: UnwindSafe, OUT>(
+    pub fn check_operation_halts<LHS: UnwindSafe, RHS: UnwindSafe, OUT>(
         a: LHS,
         b: RHS,
         operation: impl FnOnce(LHS, RHS) -> OUT + UnwindSafe,
@@ -434,7 +434,7 @@ mod test_utilities {
         Circuit::reset();
     }
 
-    pub fn check_unary_operation_passes_without_expected_numbers<
+    pub fn check_unary_operation_passes_without_counts<
         V: Debug + Display + PartialEq,
         IN,
         OUT: Eject<Primitive = V>,
@@ -474,7 +474,7 @@ mod test_utilities {
         Circuit::reset();
     }
 
-    pub fn check_unary_operation_fails_without_expected_numbers<IN, OUT>(
+    pub fn check_unary_operation_fails_without_counts<IN, OUT>(
         name: &str,
         case: &str,
         input: IN,

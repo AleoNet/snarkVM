@@ -80,7 +80,7 @@ mod tests {
 
             // Capture the condition in a closure and use the binary operation check.
             let operation = | a: &Integer<Circuit, I>, b: &Integer<Circuit, I> | { Integer::ternary(&condition, a, b) };
-            check_binary_operation_passes(&name, &case, if flag { first } else { second }, &a, &b, operation, num_constants, num_public, num_private, num_constraints);
+            check_operation_passes(&name, &case, if flag { first } else { second }, &a, &b, operation, num_constants, num_public, num_private, num_constraints);
         }
     }
 

@@ -138,11 +138,11 @@ mod tests {
         let b = Integer::<Circuit, M>::new(mode_b, second);
         let case = format!("({} ** {})", a.eject_value(), b.eject_value());
         match first.checked_pow(second.to_u32().unwrap()) {
-            Some(value) => check_binary_operation_passes_without_expected_numbers(name, &case, value, &a, &b, Integer::pow_checked),
+            Some(value) => check_operation_passes_without_counts(name, &case, value, &a, &b, Integer::pow_checked),
             None => {
                 match (mode_a, mode_b) {
-                    (Mode::Constant, Mode::Constant) => check_binary_operation_halts(&a, &b, Integer::pow_checked),
-                    _ => check_binary_operation_fails_without_expected_numbers(name, &case, &a, &b, Integer::pow_checked)
+                    (Mode::Constant, Mode::Constant) => check_operation_halts(&a, &b, Integer::pow_checked),
+                    _ => check_operation_fails_without_counts(name, &case, &a, &b, Integer::pow_checked)
                 }
             }
         }
@@ -164,11 +164,11 @@ mod tests {
         let b = Integer::<Circuit, M>::new(mode_b, second);
         let case = format!("({} ** {})", a.eject_value(), b.eject_value());
         match first.checked_pow(second.to_u32().unwrap()) {
-            Some(value) => check_binary_operation_passes(name, &case, value, &a, &b, Integer::pow_checked, num_constants, num_public, num_private, num_constraints),
+            Some(value) => check_operation_passes(name, &case, value, &a, &b, Integer::pow_checked, num_constants, num_public, num_private, num_constraints),
             None => {
                 match (mode_a, mode_b) {
-                    (Mode::Constant, Mode::Constant) => check_binary_operation_halts(&a, &b, Integer::pow_checked),
-                    _ => check_binary_operation_fails(name, &case, &a, &b, Integer::pow_checked, num_constants, num_public, num_private, num_constraints)
+                    (Mode::Constant, Mode::Constant) => check_operation_halts(&a, &b, Integer::pow_checked),
+                    _ => check_operation_fails(name, &case, &a, &b, Integer::pow_checked, num_constants, num_public, num_private, num_constraints)
                 }
             }
         }
