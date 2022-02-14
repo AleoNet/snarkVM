@@ -54,6 +54,13 @@ impl<F: PrimeField> Variable<F> {
     }
 
     ///
+    /// Returns the `zero` constant.
+    ///
+    pub fn zero() -> Self {
+        Self::Constant(F::zero())
+    }
+
+    ///
     /// Returns the `one` constant.
     ///
     pub fn one() -> Self {
