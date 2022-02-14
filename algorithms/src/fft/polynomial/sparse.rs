@@ -129,8 +129,12 @@ impl<F: PrimeField> SparsePolynomial<F> {
 }
 impl<F: PrimeField> core::ops::MulAssign<F> for SparsePolynomial<F> {
     fn mul_assign(&mut self, other: F) {
-        for (_, coeff) in &mut self.coeffs {
-            *coeff *= other;
+        if other.is_zero() {
+            *self = Self::zero()
+        } else {
+            for coeff in self.coeffs.values_mut() {
+                *coeff *= other;
+            }
         }
     }
 }
