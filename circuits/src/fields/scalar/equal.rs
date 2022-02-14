@@ -28,7 +28,7 @@ impl<E: Environment> Equal<Self> for ScalarField<E> {
         let mut output = Boolean::new(Mode::Constant, true);
 
         for (a, b) in self.0.iter().zip_eq(other.0.iter()) {
-            output = output & a.is_eq(b);
+            output &= a.is_eq(b);
         }
 
         output

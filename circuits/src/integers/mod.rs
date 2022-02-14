@@ -309,7 +309,7 @@ mod tests {
 
 #[cfg(test)]
 mod test_utilities {
-    use crate::{helpers::integers::IntegerType, Circuit, Eject, Environment, IntegerTrait};
+    use crate::{Circuit, Eject, Environment, IntegerTrait};
     use std::{
         fmt::{Debug, Display},
         panic::UnwindSafe,

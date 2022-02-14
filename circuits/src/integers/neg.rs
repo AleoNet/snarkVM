@@ -69,8 +69,8 @@ mod tests {
         match first.checked_neg() {
             Some(value) => check_unary_operation_passes(name, &case, value, &a, |a: &Integer<Circuit, I> | { a.neg() }, num_constants, num_public, num_private, num_constraints),
             None => {
-                match (mode) {
-                    (Mode::Constant) => check_unary_operation_halts(&a, |a: &Integer<Circuit, I> | { a.neg() }),
+                match mode {
+                    Mode::Constant => check_unary_operation_halts(&a, |a: &Integer<Circuit, I> | { a.neg() }),
                     _ => check_unary_operation_fails(name, &case, &a, |a: &Integer<Circuit, I> | { a.neg() }, num_constants, num_public, num_private, num_constraints),
                 }
             }

@@ -53,7 +53,7 @@ impl<E: Environment, I: IntegerType, M: private::Magnitude> ShlWrapped<Integer<E
                 // Since 2^{rhs} < I::MAX, we know that the operation will not overflow I::MAX or the field modulus.
                 let two = BaseField::one() + BaseField::one();
                 let mut shift_in_field = BaseField::one();
-                for bit in rhs.bits_le[..first_upper_bit_index].into_iter().rev() {
+                for bit in rhs.bits_le[..first_upper_bit_index].iter().rev() {
                     shift_in_field = &shift_in_field * &shift_in_field;
                     shift_in_field = BaseField::ternary(bit, &(&shift_in_field * &two), &shift_in_field);
                 }
@@ -72,7 +72,7 @@ mod tests {
     use crate::Circuit;
     use snarkvm_utilities::UniformRand;
 
-    use crate::integers::test_utilities::{check_operation_passes, check_operation_passes_without_counts};
+    use crate::integers::test_utilities::check_operation_passes;
     use num_traits::CheckedShl;
     use rand::thread_rng;
     use std::ops::Range;

@@ -75,10 +75,7 @@ mod tests {
     use test_utilities::*;
 
     use rand::thread_rng;
-    use std::{
-        ops::{Range, RangeBounds},
-        panic::RefUnwindSafe,
-    };
+    use std::{ops::Range, panic::RefUnwindSafe};
 
     const ITERATIONS: usize = 128;
 
