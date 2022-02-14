@@ -23,7 +23,7 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
     fn div_wrapped(&self, other: &Integer<E, I>) -> Self::Output {
         // Halt on division by zero as there is no sound way to perform
         // this operation.
-        if other.eject_value() == I::zero() {
+        if other.eject_value().is_zero() {
             E::halt("Division by zero error")
         }
 
@@ -37,66 +37,43 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
                 let dividend_msb = self.bits_le.last().unwrap();
                 let divisor_msb = other.bits_le.last().unwrap();
 
-                // Signed integer division wraps when the dividend is I::MIN
-                // and when the divisor is -1.
-                let min = Self::new(Mode::Constant, I::MIN);
-                let neg_one = Self::new(Mode::Constant, I::zero() - I::one());
-                let division_wraps = self.is_eq(&min).and(&other.is_eq(&neg_one));
-
                 // Divide the absolute value of `self` and `other` in the base field.
-                let dividend_unsigned_integer =
-                    Self::ternary(dividend_msb, &(!self).add_wrapped(&Self::one()), self).cast_as_dual();
-                let divisor_unsigned_integer =
-                    Self::ternary(divisor_msb, &(!other).add_wrapped(&Self::one()), other).cast_as_dual();
-
-                let dividend_unsigned_value = dividend_unsigned_integer.eject_value();
-                let divisor_unsigned_value = divisor_unsigned_integer.eject_value();
-
-                // Overflow is not possible for unsigned integers so we use wrapping operations.
-                let quotient_unsigned_value = dividend_unsigned_value.wrapping_div(&divisor_unsigned_value);
-                let remainder_unsigned_value = dividend_unsigned_value.wrapping_rem(&divisor_unsigned_value);
-
-                let quotient_unsigned_integer = Integer::<E, I::Dual>::new(Mode::Private, quotient_unsigned_value);
-                let remainder_unsigned_integer = Integer::<E, I::Dual>::new(Mode::Private, remainder_unsigned_value);
-
-                let dividend_field = BaseField::from_bits_le(Mode::Private, &dividend_unsigned_integer.bits_le);
-                let divisor_field = BaseField::from_bits_le(Mode::Private, &divisor_unsigned_integer.bits_le);
-                let quotient_field = BaseField::from_bits_le(Mode::Private, &quotient_unsigned_integer.bits_le);
-                let remainder_field = BaseField::from_bits_le(Mode::Private, &remainder_unsigned_integer.bits_le);
-
-                E::assert_eq(dividend_field, quotient_field * divisor_field + remainder_field);
+                let unsigned_dividend =
+                    Self::ternary(dividend_msb, &Self::zero().sub_wrapped(self), self).cast_as_dual();
+                let unsigned_divisor =
+                    Self::ternary(divisor_msb, &Self::zero().sub_wrapped(other), other).cast_as_dual();
+                let unsigned_quotient = unsigned_dividend.div_wrapped(&unsigned_divisor);
 
                 // TODO (@pranav) Do we need to check that the quotient cannot exceed abs(I::MIN)?
                 //  This is implicitly true since the dividend <= abs(I::MIN) and 0 <= quotient <= dividend.
-                let quotient_integer = Self { bits_le: quotient_unsigned_integer.bits_le, phantom: Default::default() };
+                let signed_quotient = Self { bits_le: unsigned_quotient.bits_le, phantom: Default::default() };
                 let operands_same_sign = &dividend_msb.is_eq(divisor_msb);
-                let signed_result = Self::ternary(
-                    operands_same_sign,
-                    &quotient_integer,
-                    &(!&quotient_integer).add_wrapped(&Self::one()),
-                );
+                let signed_quotient =
+                    Self::ternary(operands_same_sign, &signed_quotient, &Self::zero().sub_wrapped(&signed_quotient));
 
-                Self::ternary(&division_wraps, &min, &signed_result)
+                // Signed integer division wraps when the dividend is I::MIN and the divisor is -1.
+                let min = Self::new(Mode::Constant, I::MIN);
+                let neg_one = Self::new(Mode::Constant, I::zero() - I::one());
+                let overflows = self.is_eq(&min).and(&other.is_eq(&neg_one));
+                Self::ternary(&overflows, &min, &signed_quotient)
             } else {
+                // Eject the dividend and divisor, to compute the quotient as a witness.
                 let dividend_value = self.eject_value();
                 let divisor_value = other.eject_value();
 
                 // Overflow is not possible for unsigned integers so we use wrapping operations.
-                let quotient_value = dividend_value.wrapping_div(&divisor_value);
-                let remainder_value = dividend_value.wrapping_rem(&divisor_value);
+                let quotient = Integer::new(Mode::Private, dividend_value.wrapping_div(&divisor_value));
+                let remainder = Integer::new(Mode::Private, dividend_value.wrapping_rem(&divisor_value));
 
-                let quotient_integer = Integer::new(Mode::Private, quotient_value);
-                let remainder_integer = Integer::new(Mode::Private, remainder_value);
-
+                // Ensure that Euclidean division holds for these values in the base field.
                 let dividend_field = BaseField::from_bits_le(Mode::Private, &self.bits_le);
                 let divisor_field = BaseField::from_bits_le(Mode::Private, &other.bits_le);
-                let quotient_field = BaseField::from_bits_le(Mode::Private, &quotient_integer.bits_le);
-                let remainder_field = BaseField::from_bits_le(Mode::Private, &remainder_integer.bits_le);
-
+                let quotient_field = BaseField::from_bits_le(Mode::Private, &quotient.bits_le);
+                let remainder_field = BaseField::from_bits_le(Mode::Private, &remainder.bits_le);
                 E::assert_eq(dividend_field, quotient_field * divisor_field + remainder_field);
 
                 // Return the quotient of `self` and `other`.
-                quotient_integer
+                quotient
             }
         }
     }

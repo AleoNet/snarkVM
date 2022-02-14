@@ -30,8 +30,7 @@ impl<E: Environment, I: IntegerType> SubWrapped<Self> for Integer<E, I> {
             // converted into a field elements, and subtracted, before being converted back to integers.
             // Note: This is safe as the field is larger than the maximum integer type supported.
             let minuend = BaseField::from_bits_le(Mode::Private, &self.bits_le);
-            let subtrahend =
-                BaseField::from_bits_le(Mode::Private, &other.bits_le.iter().map(|b| !b).collect::<Vec<_>>());
+            let subtrahend = BaseField::from_bits_le(Mode::Private, &(!other).bits_le);
             let difference = minuend + &subtrahend + BaseField::one();
 
             // Extract the integer bits from the field element, with a carry bit.
