@@ -289,8 +289,8 @@ impl<F: FftField> EvaluationDomain<F> {
 
     /// Return the sparse vanishing polynomial.
     pub fn vanishing_polynomial(&self) -> SparsePolynomial<F> {
-        let coeffs = vec![(0, -F::one()), (self.size(), F::one())];
-        SparsePolynomial::from_coefficients_vec(coeffs)
+        let coeffs = [(0, -F::one()), (self.size(), F::one())];
+        SparsePolynomial::from_coefficients(coeffs)
     }
 
     /// This evaluates the vanishing polynomial for this domain at tau.

@@ -249,8 +249,7 @@ impl<E: PairingEngine> KZG10<E> {
                 commitment
             }
             DenseOrSparsePolynomial::SPolynomial(polynomial) => polynomial
-                .coeffs
-                .iter()
+                .coeffs()
                 .map(|(i, coeff)| {
                     powers.powers_of_beta_g[*i].mul_bits(BitIteratorBE::new_without_leading_zeros(coeff.to_repr()))
                 })

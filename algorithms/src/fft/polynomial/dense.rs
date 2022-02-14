@@ -274,8 +274,8 @@ impl<F: PrimeField> DensePolynomial<F> {
 impl<F: Field> From<super::SparsePolynomial<F>> for DensePolynomial<F> {
     fn from(other: super::SparsePolynomial<F>) -> Self {
         let mut result = vec![F::zero(); other.degree() + 1];
-        for (i, coeff) in other.coeffs {
-            result[i] = coeff;
+        for (i, coeff) in other.coeffs() {
+            result[*i] = *coeff;
         }
         DensePolynomial::from_coefficients_vec(result)
     }
@@ -364,7 +364,7 @@ impl<'a, F: Field> AddAssign<&'a super::SparsePolynomial<F>> for DensePolynomial
         if self.degree() < other.degree() {
             self.coeffs.resize(other.degree() + 1, F::zero());
         }
-        for (i, b) in &other.coeffs {
+        for (i, b) in other.coeffs() {
             self.coeffs[*i] += b;
         }
         // If the leading coefficient ends up being zero, pop it off.
@@ -382,7 +382,7 @@ impl<'a, F: Field> Sub<&'a super::SparsePolynomial<F>> for DensePolynomial<F> {
         if self.degree() < other.degree() {
             self.coeffs.resize(other.degree() + 1, F::zero());
         }
-        for (i, b) in &other.coeffs {
+        for (i, b) in other.coeffs() {
             self.coeffs[*i] -= b;
         }
         // If the leading coefficient ends up being zero, pop it off.

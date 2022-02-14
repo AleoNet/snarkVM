@@ -152,7 +152,7 @@ impl<'a, F: Field> DenseOrSparsePolynomial<'a, F> {
     #[inline]
     pub fn leading_coefficient(&self) -> Option<&F> {
         match self {
-            SPolynomial(p) => p.coeffs.last().map(|(_, c)| c),
+            SPolynomial(p) => p.coeffs().last().map(|(_, c)| c),
             DPolynomial(p) => p.last(),
         }
     }
@@ -188,7 +188,7 @@ impl<'a, F: Field> DenseOrSparsePolynomial<'a, F> {
 
     pub fn coeffs(&'a self) -> Box<dyn Iterator<Item = (usize, &'a F)> + 'a> {
         match self {
-            SPolynomial(p) => Box::new(p.coeffs.iter().map(|(c, f)| (*c, f))),
+            SPolynomial(p) => Box::new(p.coeffs().map(|(c, f)| (*c, f))),
             DPolynomial(p) => Box::new(p.coeffs.iter().enumerate()),
         }
     }
@@ -213,7 +213,7 @@ impl<'a, F: Field> DenseOrSparsePolynomial<'a, F> {
                 quotient[cur_q_degree] = cur_q_coeff;
 
                 if let SPolynomial(p) = divisor {
-                    for (i, div_coeff) in &p.coeffs {
+                    for (i, div_coeff) in p.coeffs() {
                         remainder[cur_q_degree + i] -= &(cur_q_coeff * div_coeff);
                     }
                 } else if let DPolynomial(p) = divisor {

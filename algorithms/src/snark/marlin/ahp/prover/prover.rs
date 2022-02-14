@@ -299,14 +299,14 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let mask_poly_time = start_timer!(|| "Computing mask polynomial");
             // We'll use the masking technique from Lunar (https://eprint.iacr.org/2020/1069.pdf, pgs 20-22).
             let h_1_mask = DensePolynomial::rand(3, rng).coeffs; // selected arbitrarily.
-            let h_1_mask = SparsePolynomial::from_coefficients_vec(h_1_mask.into_iter().enumerate().collect())
+            let h_1_mask = SparsePolynomial::from_coefficients(h_1_mask.into_iter().enumerate())
                 .mul(&constraint_domain.vanishing_polynomial());
             assert_eq!(h_1_mask.degree(), constraint_domain.size() + 3);
             // multiply g_1_mask by X
             let mut g_1_mask = DensePolynomial::rand(5, rng);
             g_1_mask.coeffs[0] = F::zero();
-            let g_1_mask = SparsePolynomial::from_coefficients_vec(
-                g_1_mask.iter().enumerate().filter_map(|(i, coeff)| (!coeff.is_zero()).then(|| (i, *coeff))).collect(),
+            let g_1_mask = SparsePolynomial::from_coefficients(
+                g_1_mask.coeffs.into_iter().enumerate().filter(|(_, coeff)| !coeff.is_zero()),
             );
 
             let mut mask_poly = h_1_mask;
