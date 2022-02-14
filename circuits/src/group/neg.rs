@@ -19,6 +19,7 @@ use super::*;
 impl<E: Environment> Neg for Affine<E> {
     type Output = Self;
 
+    /// Performs the unary `-` operation.
     fn neg(self) -> Self::Output {
         Affine { x: -self.x, y: self.y }
     }
@@ -27,6 +28,7 @@ impl<E: Environment> Neg for Affine<E> {
 impl<E: Environment> Neg for &Affine<E> {
     type Output = Affine<E>;
 
+    /// Performs the unary `-` operation.
     fn neg(self) -> Self::Output {
         -(self.clone())
     }

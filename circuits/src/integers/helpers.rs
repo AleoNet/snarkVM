@@ -18,7 +18,7 @@ use super::*;
 
 impl<E: Environment, I: IntegerType> Integer<E, I> {
     // TODO (@pranav) Documentation. There may also be a better place for this helper function.
-    pub(crate) fn multiply_bits_in_field(
+    pub(crate) fn mul_bits(
         this_bits_le: &[Boolean<E>],
         that_bits_le: &[Boolean<E>],
         extract_upper_bits: bool,
@@ -34,11 +34,9 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
             // Extract the integer bits from the field element, with the carry bits.
             product.to_lower_bits_le(2 * I::BITS)
         } else if (I::BITS + I::BITS / 2) < E::BaseField::size_in_bits() - 1 {
-            // Perform multiplication by decomposing it into separate operations on its
-            // upper and lower bits.
+            // Perform multiplication by decomposing it into operations on its upper and lower bits.
             // See this page for reference: https://en.wikipedia.org/wiki/Karatsuba_algorithm.
-            // Note that we follow the naming convention given in the `Basic Step` section of
-            // the above page.
+            // Note: We follow the naming convention given in the `Basic Step` section of the cited page.
             let x_1 = BaseField::from_bits_le(Mode::Private, &this_bits_le[(I::BITS / 2)..]);
             let x_0 = BaseField::from_bits_le(Mode::Private, &this_bits_le[..(I::BITS / 2)]);
             let y_1 = BaseField::from_bits_le(Mode::Private, &that_bits_le[(I::BITS / 2)..]);

@@ -26,7 +26,8 @@ impl<E: Environment, I: IntegerType> MulWrapped<Self> for Integer<E, I> {
             // Compute the product and return the new constant.
             Integer::new(Mode::Constant, self.eject_value().wrapping_mul(&other.eject_value()))
         } else {
-            let mut bits_le = Self::multiply_bits_in_field(&self.bits_le, &other.bits_le, false);
+            // Multiply the integer bits of `self` and `other` in the base field.
+            let mut bits_le = Self::mul_bits(&self.bits_le, &other.bits_le, false);
 
             // Remove carry bits.
             bits_le.truncate(I::BITS);

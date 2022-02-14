@@ -51,11 +51,8 @@ impl<E: Environment, I: IntegerType, M: private::Magnitude> PowChecked<Integer<E
                     let result_absolute_value =
                         Self::ternary(result_msb, &(!&result).add_wrapped(&Self::one()), &result);
                     let self_absolute_value = Self::ternary(self_msb, &(!self).add_wrapped(&Self::one()), self);
-                    let mut bits_le = Self::multiply_bits_in_field(
-                        &result_absolute_value.bits_le,
-                        &self_absolute_value.bits_le,
-                        true,
-                    );
+                    let mut bits_le =
+                        Self::mul_bits(&result_absolute_value.bits_le, &self_absolute_value.bits_le, true);
 
                     let bits_are_nonzero = |bits: &[Boolean<E>]| {
                         bits.iter().fold(Boolean::new(Mode::Constant, false), |bit, at_least_one_is_set| {
@@ -90,7 +87,7 @@ impl<E: Environment, I: IntegerType, M: private::Magnitude> PowChecked<Integer<E
                     // Return the product of `self` and `other` with the appropriate sign.
                     Self::ternary(operands_same_sign, &value, &(!&value).add_wrapped(&Self::one()))
                 } else {
-                    let mut bits_le = Self::multiply_bits_in_field(&result.bits_le, &self.bits_le, true);
+                    let mut bits_le = Self::mul_bits(&result.bits_le, &self.bits_le, true);
 
                     // For unsigned multiplication, check that the none of the carry bits are set.
                     let overflow = bits_le[I::BITS..]

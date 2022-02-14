@@ -19,6 +19,7 @@ use super::*;
 impl<E: Environment> Neg for BaseField<E> {
     type Output = Self;
 
+    /// Performs the unary `-` operation.
     fn neg(self) -> Self::Output {
         Self(-self.0)
     }
@@ -27,6 +28,7 @@ impl<E: Environment> Neg for BaseField<E> {
 impl<E: Environment> Neg for &BaseField<E> {
     type Output = BaseField<E>;
 
+    /// Performs the unary `-` operation.
     fn neg(self) -> Self::Output {
         BaseField(-&(self.0))
     }
