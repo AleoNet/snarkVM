@@ -22,12 +22,12 @@ use core::{
     ops::{Add, AddAssign, Mul, Neg, Sub},
 };
 use rayon::prelude::*;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 #[derive(Clone)]
 pub struct LinearCombination<F: PrimeField> {
     constant: F,
-    terms: HashMap<Variable<F>, F>,
+    terms: BTreeMap<Variable<F>, F>,
 }
 
 impl<F: PrimeField> LinearCombination<F> {
@@ -134,7 +134,7 @@ impl<F: PrimeField> LinearCombination<F> {
     }
 
     /// Returns the terms (excluding the constant value) in the linear combination.
-    pub(super) fn to_terms(&self) -> &HashMap<Variable<F>, F> {
+    pub(super) fn to_terms(&self) -> &BTreeMap<Variable<F>, F> {
         &self.terms
     }
 }
@@ -385,6 +385,24 @@ impl<F: PrimeField> fmt::Display for LinearCombination<F> {
 mod tests {
     use super::*;
     use snarkvm_fields::{One as O, Zero as Z};
+
+    #[test]
+    fn test_debug_ordering() {
+        let one_public = Circuit::new_variable(Mode::Public, <Circuit as Environment>::BaseField::one());
+        let one_private = Circuit::new_variable(Mode::Private, <Circuit as Environment>::BaseField::one());
+
+        let candidate = LinearCombination::one() + one_public + one_private;
+        assert_eq!("Constant 1 + (1 * Public(1) 1) + (1 * Private(0) 1)", format!("{:?}", candidate));
+
+        let candidate = one_private + one_public + LinearCombination::one();
+        assert_eq!("Constant 1 + (1 * Public(1) 1) + (1 * Private(0) 1)", format!("{:?}", candidate));
+
+        let candidate = one_private + LinearCombination::one() + one_public;
+        assert_eq!("Constant 1 + (1 * Public(1) 1) + (1 * Private(0) 1)", format!("{:?}", candidate));
+
+        let candidate = one_public + LinearCombination::one() + one_private;
+        assert_eq!("Constant 1 + (1 * Public(1) 1) + (1 * Private(0) 1)", format!("{:?}", candidate));
+    }
 
     #[test]
     fn test_zero() {
