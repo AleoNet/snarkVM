@@ -285,20 +285,26 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             end_timer!(z_b_poly_time);
             z_b_poly
         });
-        let [w_poly, z_a_poly, z_b_poly]: [Polynomial<F>; 3] = job_pool.execute_all().try_into().unwrap();
+        let [w_poly, z_a_poly, z_b_poly]: [DensePolynomial<F>; 3] = job_pool.execute_all().try_into().unwrap();
 
         let mask_poly = if MM::ZK {
             let mask_poly_time = start_timer!(|| "Computing mask polynomial");
             // We'll use the masking technique from Lunar (https://eprint.iacr.org/2020/1069.pdf, pgs 20-22).
-            let h_1_mask = Polynomial::rand(3, rng).coeffs; // selected arbitrarily.
-            let h_1_mask: Polynomial<_> =
-                SparsePolynomial::from_coefficients_vec(h_1_mask.into_iter().enumerate().collect())
-                    .mul(&domain_h.vanishing_polynomial())
-                    .into();
+            let h_1_mask = DensePolynomial::<F>::rand(3, rng).coeffs; // selected arbitrarily.
+            let h_1_mask: DensePolynomial<_> = SparsePolynomial::from_coefficients(h_1_mask.into_iter().enumerate())
+                .mul(&domain_h.vanishing_polynomial())
+                .into();
             assert_eq!(h_1_mask.degree(), domain_h.size() + 3);
             // multiply g_1_mask by X
-            let mut g_1_mask = Polynomial::rand(5, rng);
+            let mut g_1_mask = DensePolynomial::rand(5, rng);
             g_1_mask.coeffs[0] = F::zero();
+            let g_1_mask = SparsePolynomial::from_coefficients(
+                g_1_mask
+                    .coeffs
+                    .into_iter()
+                    .enumerate()
+                    .filter(|(_, coeff)| !coeff.is_zero()),
+            );
 
             let mut mask_poly = h_1_mask;
             mask_poly += &g_1_mask;
