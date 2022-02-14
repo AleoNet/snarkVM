@@ -191,6 +191,12 @@ impl<E: Environment, I: IntegerType> Eject for Integer<E, I> {
     }
 }
 
+impl<E: Environment, I: IntegerType> AsRef<Integer<E, I>> for Integer<E, I> {
+    fn as_ref(&self) -> &Integer<E, I> {
+        &self
+    }
+}
+
 impl<E: Environment, I: IntegerType> fmt::Debug for Integer<E, I> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self.eject_value())

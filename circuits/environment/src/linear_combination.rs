@@ -356,6 +356,12 @@ impl<F: PrimeField> Mul<&F> for LinearCombination<F> {
     }
 }
 
+impl<F: PrimeField> AsRef<LinearCombination<F>> for LinearCombination<F> {
+    fn as_ref(&self) -> &LinearCombination<F> {
+        &self
+    }
+}
+
 impl<F: PrimeField> fmt::Debug for LinearCombination<F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         let mut output = format!("Constant {}", self.constant);

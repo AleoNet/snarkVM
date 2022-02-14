@@ -34,3 +34,9 @@ pub struct Record<E: Environment> {
 //         Self(value)
 //     }
 // }
+
+impl<E: Environment> AsRef<Record<E>> for Record<E> {
+    fn as_ref(&self) -> &Record<E> {
+        &self
+    }
+}

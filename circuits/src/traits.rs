@@ -45,7 +45,20 @@ use num_traits::Inv;
 
 /// Representation of a boolean.
 pub trait BooleanTrait:
-    Adder + And + Clone + Debug + Eject<Primitive = bool> + Equal + Nand + Nor + Not + Or + Subtractor + Ternary + Xor
+    Adder
+    + And
+    + AsRef<Self>
+    + Clone
+    + Debug
+    + Eject<Primitive = bool>
+    + Equal
+    + Nand
+    + Nor
+    + Not
+    + Or
+    + Subtractor
+    + Ternary
+    + Xor
 {
 }
 
@@ -53,6 +66,7 @@ pub trait BooleanTrait:
 pub trait BaseFieldTrait:
     Add
     + AddAssign
+    + AsRef<Self>
     + Clone
     + Debug
     + Div
@@ -81,6 +95,7 @@ pub trait IntegerTrait<E: Environment, I: IntegerType>:
     + Add<Output = Self>
     + AddChecked<Output = Self>
     + AddWrapped<Output = Self>
+    + AsRef<Self>
     + BitAndAssign
     + BitAnd<Output = Self>
     + BitOrAssign
