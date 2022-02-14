@@ -113,13 +113,7 @@ impl<N: Network> PoSWScheme<N> for PoSW<N> {
             // Check if the updated block header is valid.
             if self.verify(block_template.difficulty_target(), &circuit.to_public_inputs(), &proof) {
                 // Construct a block header.
-                return Ok(BlockHeader::from(
-                    block_template.previous_ledger_root(),
-                    block_template.transactions().transactions_root(),
-                    BlockHeaderMetadata::new(block_template),
-                    circuit.nonce(),
-                    proof,
-                )?);
+                return Ok(BlockHeader::from(BlockHeaderMetadata::new(block_template), circuit.nonce(), proof)?);
             }
 
             // Increment the iteration by one.

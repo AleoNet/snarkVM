@@ -110,11 +110,7 @@ impl<N: Network> BlockTemplate<N> {
 
     /// Returns an instance of the block header tree.
     pub fn to_header_tree(&self) -> Result<MerkleTree<N::BlockHeaderRootParameters>> {
-        Self::compute_block_header_tree(
-            self.previous_ledger_root,
-            self.transactions.transactions_root(),
-            &BlockHeaderMetadata::new(self),
-        )
+        Self::compute_block_header_tree(&BlockHeaderMetadata::new(self))
     }
 
     /// Returns the block header root.
@@ -124,14 +120,12 @@ impl<N: Network> BlockTemplate<N> {
 
     /// Returns an instance of the block header tree.
     pub fn compute_block_header_tree(
-        previous_ledger_root: N::LedgerRoot,
-        transactions_root: N::TransactionsRoot,
-        metadata: &BlockHeaderMetadata,
+        metadata: &BlockHeaderMetadata<N>,
     ) -> Result<MerkleTree<N::BlockHeaderRootParameters>> {
-        let previous_ledger_root = previous_ledger_root.to_bytes_le()?;
+        let previous_ledger_root = metadata.previous_ledger_root().to_bytes_le()?;
         assert_eq!(previous_ledger_root.len(), 32);
 
-        let transactions_root = transactions_root.to_bytes_le()?;
+        let transactions_root = metadata.transactions_root().to_bytes_le()?;
         assert_eq!(transactions_root.len(), 32);
 
         let metadata = metadata.to_bytes_le()?;

@@ -34,7 +34,11 @@ use std::{mem::size_of, sync::atomic::AtomicBool};
 
 /// Block header metadata.
 #[derive(Clone, Debug, Eq, PartialEq, Serialize, Deserialize)]
-pub struct BlockHeaderMetadata {
+pub struct BlockHeaderMetadata<N: Network> {
+    /// The Merkle root representing the blocks in the ledger up to the previous block
+    previous_ledger_root: N::LedgerRoot,
+    /// The Merkle root representing the transactions in the block
+    transactions_root: N::TransactionsRoot,
     /// The height of this block - 4 bytes.
     height: u32,
     /// The block timestamp is a Unix epoch time (UTC) (according to the miner) - 8 bytes
@@ -45,12 +49,14 @@ pub struct BlockHeaderMetadata {
     cumulative_weight: u128,
 }
 
-impl BlockHeaderMetadata {
+impl<N: Network> BlockHeaderMetadata<N> {
     /// Initializes a new instance of a block header metadata.
-    pub fn new<N: Network>(template: &BlockTemplate<N>) -> Self {
+    pub fn new(template: &BlockTemplate<N>) -> Self {
         match template.block_height() == 0 {
-            true => Self::genesis(),
+            true => Self::genesis(template),
             false => Self {
+                previous_ledger_root: template.previous_ledger_root(),
+                transactions_root: template.transactions().transactions_root(),
                 height: template.block_height(),
                 timestamp: template.block_timestamp(),
                 difficulty_target: template.difficulty_target(),
@@ -60,17 +66,59 @@ impl BlockHeaderMetadata {
     }
 
     /// Initializes a new instance of a genesis block header metadata.
-    pub fn genesis() -> Self {
-        Self { height: 0u32, timestamp: 0i64, difficulty_target: u64::MAX, cumulative_weight: 0u128 }
+    pub fn genesis(template: &BlockTemplate<N>) -> Self {
+        Self {
+            previous_ledger_root: template.previous_ledger_root(),
+            transactions_root: template.transactions().transactions_root(),
+            height: 0u32,
+            timestamp: 0i64,
+            difficulty_target: u64::MAX,
+            cumulative_weight: 0u128,
+        }
     }
 
     /// Returns the size (in bytes) of a block header's metadata.
     pub fn size() -> usize {
-        size_of::<u32>() + size_of::<i64>() + size_of::<u64>() + size_of::<u128>()
+        size_of::<N::LedgerRoot>()
+            + size_of::<N::TransactionsRoot>()
+            + size_of::<u32>()
+            + size_of::<i64>()
+            + size_of::<u64>()
+            + size_of::<u128>()
+    }
+
+    /// Returns the previous ledger root from the block header.
+    pub fn previous_ledger_root(&self) -> N::LedgerRoot {
+        self.previous_ledger_root
+    }
+
+    /// Returns the transactions root in the block header.
+    pub fn transactions_root(&self) -> N::TransactionsRoot {
+        self.transactions_root
+    }
+
+    /// Returns the block height.
+    pub fn height(&self) -> u32 {
+        self.height
+    }
+
+    /// Returns the block timestamp.
+    pub fn timestamp(&self) -> i64 {
+        self.timestamp
+    }
+
+    /// Returns the block difficulty target.
+    pub fn difficulty_target(&self) -> u64 {
+        self.difficulty_target
+    }
+
+    /// Returns the cumulative weight up to this block (inclusive).
+    pub fn cumulative_weight(&self) -> u128 {
+        self.cumulative_weight
     }
 }
 
-impl ToBytes for BlockHeaderMetadata {
+impl<N: Network> ToBytes for BlockHeaderMetadata<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.height.to_le_bytes().write_le(&mut writer)?;
         self.timestamp.to_le_bytes().write_le(&mut writer)?;
@@ -82,12 +130,8 @@ impl ToBytes for BlockHeaderMetadata {
 /// Block header.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BlockHeader<N: Network> {
-    /// The Merkle root representing the blocks in the ledger up to the previous block
-    previous_ledger_root: N::LedgerRoot,
-    /// The Merkle root representing the transactions in the block
-    transactions_root: N::TransactionsRoot,
     /// The block header metadata
-    metadata: BlockHeaderMetadata,
+    metadata: BlockHeaderMetadata<N>,
     /// Nonce for Proof of Succinct Work
     nonce: N::PoSWNonce,
     /// Proof of Succinct Work
@@ -97,14 +141,12 @@ pub struct BlockHeader<N: Network> {
 impl<N: Network> BlockHeader<N> {
     /// Initializes a new instance of a block header.
     pub fn from(
-        previous_ledger_root: N::LedgerRoot,
-        transactions_root: N::TransactionsRoot,
-        metadata: BlockHeaderMetadata,
+        metadata: BlockHeaderMetadata<N>,
         nonce: N::PoSWNonce,
         proof: PoSWProof<N>,
     ) -> Result<Self, BlockError> {
         // Construct the block header.
-        let block_header = Self { previous_ledger_root, transactions_root, metadata, nonce, proof };
+        let block_header = Self { metadata, nonce, proof };
 
         // Ensure the block header is well-formed.
         match block_header.is_valid() {
@@ -146,25 +188,19 @@ impl<N: Network> BlockHeader<N> {
         let proof = N::posw().prove_once_unchecked(&mut circuit, terminator, rng)?;
 
         // Construct a block header.
-        Ok(Self {
-            previous_ledger_root: block_template.previous_ledger_root(),
-            transactions_root: block_template.transactions().transactions_root(),
-            metadata: BlockHeaderMetadata::new(block_template),
-            nonce: circuit.nonce(),
-            proof,
-        })
+        Ok(Self { metadata: BlockHeaderMetadata::new(block_template), nonce: circuit.nonce(), proof })
     }
 
     /// Returns `true` if the block header is well-formed.
     pub fn is_valid(&self) -> bool {
         // Ensure the ledger root is nonzero.
-        if self.previous_ledger_root == Default::default() {
+        if self.metadata.previous_ledger_root == Default::default() {
             eprintln!("Invalid ledger root in block header");
             return false;
         }
 
         // Ensure the transactions root is nonzero.
-        if self.transactions_root == Default::default() {
+        if self.metadata.transactions_root == Default::default() {
             eprintln!("Invalid transactions root in block header");
             return false;
         }
@@ -203,17 +239,17 @@ impl<N: Network> BlockHeader<N> {
 
     /// Returns the previous ledger root from the block header.
     pub fn previous_ledger_root(&self) -> N::LedgerRoot {
-        self.previous_ledger_root
+        self.metadata.previous_ledger_root
     }
 
     /// Returns the transactions root in the block header.
     pub fn transactions_root(&self) -> N::TransactionsRoot {
-        self.transactions_root
+        self.metadata.transactions_root
     }
 
     /// Returns the block height.
     pub fn height(&self) -> u32 {
-        self.metadata.height
+        self.metadata.height()
     }
 
     /// Returns the block timestamp.
@@ -248,7 +284,7 @@ impl<N: Network> BlockHeader<N> {
 
     /// Returns an instance of the block header tree.
     pub fn to_header_tree(&self) -> Result<MerkleTree<N::BlockHeaderRootParameters>> {
-        BlockTemplate::<N>::compute_block_header_tree(self.previous_ledger_root, self.transactions_root, &self.metadata)
+        BlockTemplate::<N>::compute_block_header_tree(&self.metadata)
     }
 
     /// Returns an instance of the block header tree.
@@ -272,16 +308,16 @@ impl<N: Network> BlockHeader<N> {
 impl<N: Network> FromBytes for BlockHeader<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        // Read the header core variables.
+        // Read the header metadata.
         let previous_ledger_root = FromBytes::read_le(&mut reader)?;
         let transactions_root = FromBytes::read_le(&mut reader)?;
-
-        // Read the header metadata.
         let height = <[u8; 4]>::read_le(&mut reader)?;
         let timestamp = <[u8; 8]>::read_le(&mut reader)?;
         let difficulty_target = <[u8; 8]>::read_le(&mut reader)?;
         let cumulative_weight = <[u8; 16]>::read_le(&mut reader)?;
         let metadata = BlockHeaderMetadata {
+            previous_ledger_root,
+            transactions_root,
             height: u32::from_le_bytes(height),
             timestamp: i64::from_le_bytes(timestamp),
             difficulty_target: u64::from_le_bytes(difficulty_target),
@@ -294,18 +330,16 @@ impl<N: Network> FromBytes for BlockHeader<N> {
         let proof = FromBytes::read_le(&mut reader)?;
 
         // Construct the block header.
-        Ok(Self::from(previous_ledger_root, transactions_root, metadata, nonce, proof)?)
+        Ok(Self::from(metadata, nonce, proof)?)
     }
 }
 
 impl<N: Network> ToBytes for BlockHeader<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        // Write the header core variables.
-        self.previous_ledger_root.write_le(&mut writer)?;
-        self.transactions_root.write_le(&mut writer)?;
-
         // Write the header metadata.
+        self.metadata.previous_ledger_root.write_le(&mut writer)?;
+        self.metadata.transactions_root.write_le(&mut writer)?;
         self.metadata.height.to_le_bytes().write_le(&mut writer)?;
         self.metadata.timestamp.to_le_bytes().write_le(&mut writer)?;
         self.metadata.difficulty_target.to_le_bytes().write_le(&mut writer)?;
@@ -337,8 +371,6 @@ impl<N: Network> Serialize for BlockHeader<N> {
         match serializer.is_human_readable() {
             true => {
                 let mut header = serializer.serialize_struct("BlockHeader", 4)?;
-                header.serialize_field("previous_ledger_root", &self.previous_ledger_root)?;
-                header.serialize_field("transactions_root", &self.transactions_root)?;
                 header.serialize_field("metadata", &self.metadata)?;
                 header.serialize_field("nonce", &self.nonce)?;
                 header.serialize_field("proof", &self.proof)?;
@@ -355,8 +387,6 @@ impl<'de, N: Network> Deserialize<'de> for BlockHeader<N> {
             true => {
                 let header = serde_json::Value::deserialize(deserializer)?;
                 Ok(Self::from(
-                    serde_json::from_value(header["previous_ledger_root"].clone()).map_err(de::Error::custom)?,
-                    serde_json::from_value(header["transactions_root"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(header["metadata"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(header["nonce"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(header["proof"].clone()).map_err(de::Error::custom)?,
@@ -378,9 +408,7 @@ mod tests {
     /// Returns the expected block header size by summing its expected subcomponents.
     /// Update this method if the contents of a block header have changed.
     fn get_expected_size<N: Network>() -> usize {
-        32 // LedgerRoot
-            + 32 // TransactionsRoot
-            + BlockHeaderMetadata::size()
+        BlockHeaderMetadata::<N>::size()
             + 32 // N::InnerScalarField
             + N::HEADER_PROOF_SIZE_IN_BYTES
     }
@@ -452,8 +480,8 @@ mod tests {
         assert_eq!(block_header.metadata.cumulative_weight, 0);
 
         // Ensure the genesis block does *not* contain the following.
-        assert_ne!(block_header.previous_ledger_root, Default::default());
-        assert_ne!(block_header.transactions_root, Default::default());
+        assert_ne!(block_header.metadata.previous_ledger_root, Default::default());
+        assert_ne!(block_header.metadata.transactions_root, Default::default());
     }
 
     #[test]
