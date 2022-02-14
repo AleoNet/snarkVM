@@ -71,7 +71,7 @@ mod tests {
     use test_utilities::*;
 
     use rand::thread_rng;
-    use std::{ops::Range, panic::RefUnwindSafe};
+    use std::{ops::RangeInclusive, panic::RefUnwindSafe};
 
     const ITERATIONS: usize = 128;
 
@@ -224,10 +224,10 @@ mod tests {
         mode_a: Mode,
         mode_b: Mode
     ) where
-        Range<I>: Iterator<Item = I>
+        RangeInclusive<I>: Iterator<Item = I>
     {
-        for first in I::MIN..I::MAX {
-            for second in I::MIN..I::MAX {
+        for first in I::MIN..=I::MAX {
+            for second in I::MIN..=I::MAX {
                 let name = format!("Div: ({} / {})", first, second);
                 check_div_without_expected_numbers(&name, first, second, mode_a, mode_b);
             }
@@ -243,10 +243,10 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) where
-        Range<I>: Iterator<Item = I>
+        RangeInclusive<I>: Iterator<Item = I>
     {
-        for first in I::MIN..I::MAX {
-            for second in I::MIN..I::MAX {
+        for first in I::MIN..=I::MAX {
+            for second in I::MIN..=I::MAX {
                 let name = format!("Div: ({} / {})", first, second);
                 check_div(&name, first, second, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
             }

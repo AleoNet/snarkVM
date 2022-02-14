@@ -170,7 +170,7 @@ mod tests {
     #[ignore]
     fn test_exhaustive_u8_not() {
         type I = u8;
-        for value in I::MIN..I::MAX {
+        for value in I::MIN..=I::MAX {
             let name = format!("Not: {}", Mode::Constant);
             check_not(&name, value, Mode::Constant, 0, 0, 0, 0);
 
@@ -186,7 +186,7 @@ mod tests {
     #[ignore]
     fn test_exhaustive_i8_not() {
         type I = i8;
-        for value in I::MIN..I::MAX {
+        for value in I::MIN..=I::MAX {
             let name = format!("Not: {}", Mode::Constant);
             check_not(&name, value, Mode::Constant, 0, 0, 0, 0);
 

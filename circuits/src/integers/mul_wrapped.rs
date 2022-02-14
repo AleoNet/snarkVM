@@ -47,7 +47,7 @@ mod tests {
     use snarkvm_utilities::{UniformRand};
 
     use rand::thread_rng;
-    use std::ops::Range;
+    use std::ops::RangeInclusive;
 
     const ITERATIONS: usize = 128;
 
@@ -136,10 +136,10 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) where
-        Range<I>: Iterator<Item = I>
+        RangeInclusive<I>: Iterator<Item = I>
     {
-        for first in I::MIN..I::MAX {
-            for second in I::MIN..I::MAX {
+        for first in I::MIN..=I::MAX {
+            for second in I::MIN..=I::MAX {
                 let name = format!("Mul: ({} * {})", first, second);
                 check_mul(&name, first, second, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
             }

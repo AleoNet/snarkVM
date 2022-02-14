@@ -117,7 +117,7 @@ mod tests {
     use snarkvm_utilities::UniformRand;
 
     use rand::thread_rng;
-    use std::ops::Range;
+    use std::ops::RangeInclusive;
 
     // Lowered to 32, since we run (~5 * ITERATIONS) cases for most tests.
     const ITERATIONS: usize = 32;
@@ -235,11 +235,11 @@ mod tests {
         mode_a: Mode,
         mode_b: Mode
     ) where
-        Range<I>: Iterator<Item = I>,
-        Range<M>: Iterator<Item = M>
+        RangeInclusive<I>: Iterator<Item = I>,
+        RangeInclusive<M>: Iterator<Item = M>
     {
-        for first in I::MIN..I::MAX {
-            for second in M::MIN..M::MAX {
+        for first in I::MIN..=I::MAX {
+            for second in M::MIN..=M::MAX {
                 let name = format!("Pow: ({} ** {})", first, second);
                 check_pow_without_expected_numbers(&name, first, second, mode_a, mode_b);
             }
@@ -255,11 +255,11 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) where
-        Range<I>: Iterator<Item = I>,
-        Range<M>: Iterator<Item = M>
+        RangeInclusive<I>: Iterator<Item = I>,
+        RangeInclusive<M>: Iterator<Item = M>
     {
-        for first in I::MIN..I::MAX {
-            for second in M::MIN..M::MAX {
+        for first in I::MIN..=I::MAX {
+            for second in M::MIN..=M::MAX {
                 let name = format!("Pow: ({} ** {})", first, second);
                 check_pow(&name, first, second, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
             }

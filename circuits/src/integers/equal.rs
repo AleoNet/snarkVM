@@ -64,7 +64,7 @@ mod tests {
     use test_utilities::*;
 
     use rand::thread_rng;
-    use std::ops::Range;
+    use std::ops::RangeInclusive;
 
     const ITERATIONS: usize = 100;
 
@@ -119,10 +119,10 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) where
-        Range<I>: Iterator<Item = I>,
+        RangeInclusive<I>: Iterator<Item = I>,
     {
-        for first in I::MIN..I::MAX {
-            for second in I::MIN..I::MAX {
+        for first in I::MIN..=I::MAX {
+            for second in I::MIN..=I::MAX {
                 let name = format!("Equals: ({} == {})", first, second);
                 check_equals(
                     &name,

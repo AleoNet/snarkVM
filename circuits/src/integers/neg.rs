@@ -183,15 +183,15 @@ mod tests {
     #[ignore]
     fn test_exhaustive_i8_neg() {
         type I = i8;
-        for value in I::MIN..I::MAX {
+        for value in I::MIN..=I::MAX {
             let name = format!("Neg: {}", Mode::Constant);
             check_neg(&name, value, Mode::Constant, 16, 0, 0, 0);
 
             let name = format!("Neg: {}", Mode::Public);
-            check_neg(&name, value, Mode::Public, 10, 0, 12, 12);
+            check_neg(&name, value, Mode::Public, 10, 0, 12, 14);
 
             let name = format!("Neg: {}", Mode::Private);
-            check_neg(&name, value, Mode::Private, 10, 0, 12, 12);
+            check_neg(&name, value, Mode::Private, 10, 0, 12, 14);
         }
     }
 }

@@ -75,7 +75,7 @@ mod tests {
     use crate::integers::test_utilities::check_operation_passes;
     use num_traits::CheckedShl;
     use rand::thread_rng;
-    use std::ops::Range;
+    use std::ops::RangeInclusive;
 
     const ITERATIONS: usize = 128;
 
@@ -142,11 +142,11 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) where
-        Range<I>: Iterator<Item = I>,
-        Range<M>: Iterator<Item = M>
+        RangeInclusive<I>: Iterator<Item = I>,
+        RangeInclusive<M>: Iterator<Item = M>
     {
-        for first in I::MIN..I::MAX {
-            for second in M::MIN..M::MAX {
+        for first in I::MIN..=I::MAX {
+            for second in M::MIN..=M::MAX {
                 let name = format!("Shl: ({} << {})", first, second);
                 check_shl(&name, first, second, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
             }
