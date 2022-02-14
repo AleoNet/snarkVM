@@ -548,6 +548,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let mul_domain =
             EvaluationDomain::new(mul_domain_size).expect("field is not smooth enough to construct domain");
         let mut multiplier = PolyMultiplier::new();
+        multiplier.add_precomputation(&state.fft_precomputation, &state.ifft_precomputation);
         multiplier.add_polynomial(summed_z_m, "summed_z_m");
         multiplier.add_polynomial(z_poly, "z");
         multiplier.add_polynomial(t_poly, "t");
