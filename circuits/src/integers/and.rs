@@ -21,6 +21,7 @@ use itertools::Itertools;
 impl<E: Environment, I: IntegerType> BitAnd<Integer<E, I>> for Integer<E, I> {
     type Output = Self;
 
+    /// Returns `(self AND other)`.
     fn bitand(self, other: Self) -> Self::Output {
         self & &other
     }
@@ -29,6 +30,7 @@ impl<E: Environment, I: IntegerType> BitAnd<Integer<E, I>> for Integer<E, I> {
 impl<E: Environment, I: IntegerType> BitAnd<Integer<E, I>> for &Integer<E, I> {
     type Output = Integer<E, I>;
 
+    /// Returns `(self AND other)`.
     fn bitand(self, other: Integer<E, I>) -> Self::Output {
         self & &other
     }
@@ -37,6 +39,7 @@ impl<E: Environment, I: IntegerType> BitAnd<Integer<E, I>> for &Integer<E, I> {
 impl<E: Environment, I: IntegerType> BitAnd<&Integer<E, I>> for Integer<E, I> {
     type Output = Self;
 
+    /// Returns `(self AND other)`.
     fn bitand(self, other: &Self) -> Self::Output {
         &self & other
     }
@@ -45,6 +48,7 @@ impl<E: Environment, I: IntegerType> BitAnd<&Integer<E, I>> for Integer<E, I> {
 impl<E: Environment, I: IntegerType> BitAnd<&Integer<E, I>> for &Integer<E, I> {
     type Output = Integer<E, I>;
 
+    /// Returns `(self AND other)`.
     fn bitand(self, other: &Integer<E, I>) -> Self::Output {
         let mut output = self.clone();
         output &= other;
@@ -53,12 +57,14 @@ impl<E: Environment, I: IntegerType> BitAnd<&Integer<E, I>> for &Integer<E, I> {
 }
 
 impl<E: Environment, I: IntegerType> BitAndAssign<Integer<E, I>> for Integer<E, I> {
+    /// Sets `self` as `(self AND other)`.
     fn bitand_assign(&mut self, other: Integer<E, I>) {
         *self &= &other;
     }
 }
 
 impl<E: Environment, I: IntegerType> BitAndAssign<&Integer<E, I>> for Integer<E, I> {
+    /// Sets `self` as `(self AND other)`.
     fn bitand_assign(&mut self, other: &Integer<E, I>) {
         // Stores the bitwise AND of `self` and `other` in `self`.
         *self = Self {

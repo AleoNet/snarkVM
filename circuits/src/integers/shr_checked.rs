@@ -37,7 +37,7 @@ impl<E: Environment, I: IntegerType, M: private::Magnitude> ShrChecked<Integer<E
 
             let upper_bits_are_nonzero = rhs.bits_le[first_upper_bit_index..]
                 .iter()
-                .fold(Boolean::new(Mode::Private, false), |at_least_one_is_set, bit| at_least_one_is_set.or(&bit));
+                .fold(Boolean::new(Mode::Private, false), |at_least_one_is_set, bit| at_least_one_is_set | bit);
 
             // The below constraint is not enforced if it is a constant.
             if upper_bits_are_nonzero.is_constant() {

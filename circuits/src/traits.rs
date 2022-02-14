@@ -49,6 +49,8 @@ pub trait BooleanTrait:
     + AsRef<Self>
     + BitAndAssign
     + BitAnd<Output = Self>
+    + BitOrAssign
+    + BitOr<Output = Self>
     + Clone
     + Debug
     + Eject<Primitive = bool>
@@ -56,7 +58,6 @@ pub trait BooleanTrait:
     + Nand
     + Nor
     + Not
-    + Or
     + Subtractor
     + Ternary
     + Xor
@@ -238,15 +239,6 @@ pub trait LessThan<Rhs: ?Sized = Self> {
 
     /// Returns `true` if `self` is less than `other`.
     fn is_lt(&self, other: &Rhs) -> Self::Boolean;
-}
-
-/// Binary operator for performing `a OR b`.
-pub trait Or<Rhs: ?Sized = Self> {
-    type Boolean: BooleanTrait;
-    type Output;
-
-    /// Returns `(a OR b)`.
-    fn or(&self, other: &Rhs) -> Self::Output;
 }
 
 /// Binary operator for performing `NOT (a AND b)`.

@@ -29,7 +29,7 @@ impl<E: Environment> Adder for Boolean<E> {
         // Compute the carry bit.
         let c1 = self & other;
         let c2 = carry & c0;
-        let carry = c1.or(&c2);
+        let carry = c1 | c2;
 
         (sum, carry)
     }

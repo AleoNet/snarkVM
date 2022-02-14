@@ -29,7 +29,7 @@ impl<E: Environment> Subtractor for Boolean<E> {
         // Compute the borrow bit.
         let c1 = !self & other;
         let c2 = borrow & !c0;
-        let borrow = c1.or(&c2);
+        let borrow = c1 | c2;
 
         (difference, borrow)
     }

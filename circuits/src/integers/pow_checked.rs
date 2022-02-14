@@ -56,7 +56,7 @@ impl<E: Environment, I: IntegerType, M: private::Magnitude> PowChecked<Integer<E
 
                     let bits_are_nonzero = |bits: &[Boolean<E>]| {
                         bits.iter().fold(Boolean::new(Mode::Constant, false), |bit, at_least_one_is_set| {
-                            bit.or(at_least_one_is_set)
+                            bit | at_least_one_is_set
                         })
                     };
 
@@ -72,10 +72,10 @@ impl<E: Environment, I: IntegerType, M: private::Magnitude> PowChecked<Integer<E
                     // If the product should be negative, then it cannot exceed the absolute value of the signed minimum.
                     let lower_product_bits_nonzero = &bits_are_nonzero(&bits_le[..(I::BITS - 1)]);
                     let negative_product_lt_or_eq_signed_min =
-                        (!product_msb).or(&(product_msb & !lower_product_bits_nonzero));
+                        !product_msb | (product_msb & !lower_product_bits_nonzero);
                     let negative_product_underflows = !operands_same_sign & !negative_product_lt_or_eq_signed_min;
 
-                    let overflow = carry_bits_nonzero.or(&positive_product_overflows).or(&negative_product_underflows);
+                    let overflow = carry_bits_nonzero | positive_product_overflows | negative_product_underflows;
                     E::assert_eq(overflow & bit, E::zero());
 
                     // Remove carry bits.
@@ -92,7 +92,7 @@ impl<E: Environment, I: IntegerType, M: private::Magnitude> PowChecked<Integer<E
                     let overflow = bits_le[I::BITS..]
                         .iter()
                         .fold(Boolean::new(Mode::Constant, false), |bit, at_least_one_is_set| {
-                            bit.or(at_least_one_is_set)
+                            bit | at_least_one_is_set
                         });
                     E::assert_eq(overflow & bit, E::zero());
 
