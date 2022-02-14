@@ -17,7 +17,6 @@
 use core::convert::TryInto;
 
 use crate::{
-<<<<<<< HEAD
     fft::{
         polynomial::PolyMultiplier,
         DensePolynomial,
@@ -25,9 +24,6 @@ use crate::{
         Evaluations as EvaluationsOnDomain,
         SparsePolynomial,
     },
-=======
-    fft::{DensePolynomial, EvaluationDomain, Evaluations as EvaluationsOnDomain, SparsePolynomial},
->>>>>>> testnet3
     polycommit::{LabeledPolynomial, LabeledPolynomialWithBasis, PolynomialWithBasis},
     snark::marlin::{
         ahp::{
@@ -352,7 +348,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             z_a.push((F::one(), r_a_v_H));
         }
         let z_a = LabeledPolynomialWithBasis::new_linear_combination("z_a".to_string(), z_a, hiding_bound);
-<<<<<<< HEAD
 
         let z_b_evals = PolynomialWithBasis::new_lagrange_basis(z_b_evals);
         let mut z_b = vec![(F::one(), z_b_evals)];
@@ -362,17 +357,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         }
         let z_b = LabeledPolynomialWithBasis::new_linear_combination("z_b".to_string(), z_b, hiding_bound);
 
-=======
-
-        let z_b_evals = PolynomialWithBasis::new_lagrange_basis(z_b_evals);
-        let mut z_b = vec![(F::one(), z_b_evals)];
-        if MM::ZK {
-            let r_b_v_H = PolynomialWithBasis::new_sparse_monomial_basis(&v_H * r_b, None);
-            z_b.push((F::one(), r_b_v_H));
-        }
-        let z_b = LabeledPolynomialWithBasis::new_linear_combination("z_b".to_string(), z_b, hiding_bound);
-
->>>>>>> testnet3
         let oracles = ProverFirstOracles { z_a, z_b, mask_poly: mask_poly.clone(), z_a_poly, z_b_poly, w_poly };
 
         state.w_poly = Some(oracles.w_poly.clone());
@@ -548,7 +532,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         .unwrap();
         let mul_domain =
             EvaluationDomain::new(mul_domain_size).expect("field is not smooth enough to construct domain");
-<<<<<<< HEAD
         let mut multiplier = PolyMultiplier::new();
         multiplier.add_polynomial(summed_z_m, "summed_z_m");
         multiplier.add_polynomial(z_poly, "z");
@@ -565,29 +548,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             })
             .unwrap();
 
-=======
-        let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(4);
-        job_pool.add_job(|| {
-            let r_alpha_x_evals = constraint_domain
-                .batch_eval_unnormalized_bivariate_lagrange_poly_with_diff_inputs_over_domain(alpha, &mul_domain);
-            EvaluationsOnDomain::from_vec_and_domain(r_alpha_x_evals, mul_domain)
-        });
-        job_pool.add_job(|| summed_z_m.evaluate_over_domain_by_ref(mul_domain));
-        job_pool.add_job(|| z_poly.evaluate_over_domain_by_ref(mul_domain));
-        job_pool.add_job(|| t_poly.evaluate_over_domain_by_ref(mul_domain));
-        let [mut r_alpha_evals, summed_z_m_evals, z_poly_evals, t_poly_m_evals]: [_; 4] =
-            job_pool.execute_all().try_into().unwrap();
-
-        cfg_iter_mut!(r_alpha_evals.evaluations)
-            .zip(&summed_z_m_evals.evaluations)
-            .zip(&z_poly_evals.evaluations)
-            .zip(&t_poly_m_evals.evaluations)
-            .for_each(|(((a, b), &c), d)| {
-                *a *= b;
-                *a -= &(c * d);
-            });
-        let mut rhs = r_alpha_evals.interpolate();
->>>>>>> testnet3
         rhs += mask_poly.map_or(&SparsePolynomial::zero(), |p| p.polynomial().as_sparse().unwrap());
         let q_1 = rhs;
         end_timer!(q_1_time);
