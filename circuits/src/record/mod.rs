@@ -16,7 +16,7 @@
 
 use crate::{Address, BaseField, Boolean, Environment, I64};
 
-#[derive(Clone, Debug)]
+// #[derive(Clone, Debug)]
 pub struct Record<E: Environment> {
     owner: Address<E>,
     value: I64<E>,

@@ -33,36 +33,32 @@ impl<E: Environment, I: IntegerType> DivChecked<Self> for Integer<E, I> {
                 Some(value) => Integer::new(Mode::Constant, value),
                 None => E::halt("Overflow or underflow on division of two integer constants"),
             }
+        } else if I::is_signed() {
+            // Ensure that overflow cannot occur in this division.
+            // Signed integer division wraps when the dividend is I::MIN and the divisor is -1.
+            let min = Self::new(Mode::Constant, I::MIN);
+            let neg_one = Self::new(Mode::Constant, I::zero() - I::one());
+            let overflows = self.is_eq(&min) & other.is_eq(&neg_one);
+            E::assert_eq(overflows, E::zero());
+
+            // This is safe since I::BITS is always greater than 0.
+            let dividend_msb = self.bits_le.last().unwrap();
+            let divisor_msb = other.bits_le.last().unwrap();
+
+            // Divide the absolute value of `self` and `other` in the base field.
+            let unsigned_dividend = Self::ternary(dividend_msb, &Self::zero().sub_wrapped(self), self).cast_as_dual();
+            let unsigned_divisor = Self::ternary(divisor_msb, &Self::zero().sub_wrapped(other), other).cast_as_dual();
+            let unsigned_quotient = unsigned_dividend.div_wrapped(&unsigned_divisor);
+
+            // TODO (@pranav) Do we need to check that the quotient cannot exceed abs(I::MIN)?
+            //  This is implicitly true since the dividend <= abs(I::MIN) and 0 <= quotient <= dividend.
+            let signed_quotient = Integer { bits_le: unsigned_quotient.bits_le, phantom: Default::default() };
+            let operands_same_sign = &dividend_msb.is_eq(divisor_msb);
+
+            Self::ternary(operands_same_sign, &signed_quotient, &Self::zero().sub_wrapped(&signed_quotient))
         } else {
-            if I::is_signed() {
-                // Ensure that overflow cannot occur in this division.
-                // Signed integer division wraps when the dividend is I::MIN and the divisor is -1.
-                let min = Self::new(Mode::Constant, I::MIN);
-                let neg_one = Self::new(Mode::Constant, I::zero() - I::one());
-                let overflows = self.is_eq(&min) & other.is_eq(&neg_one);
-                E::assert_eq(overflows, E::zero());
-
-                // This is safe since I::BITS is always greater than 0.
-                let dividend_msb = self.bits_le.last().unwrap();
-                let divisor_msb = other.bits_le.last().unwrap();
-
-                // Divide the absolute value of `self` and `other` in the base field.
-                let unsigned_dividend =
-                    Self::ternary(dividend_msb, &Self::zero().sub_wrapped(self), self).cast_as_dual();
-                let unsigned_divisor =
-                    Self::ternary(divisor_msb, &Self::zero().sub_wrapped(other), other).cast_as_dual();
-                let unsigned_quotient = unsigned_dividend.div_wrapped(&unsigned_divisor);
-
-                // TODO (@pranav) Do we need to check that the quotient cannot exceed abs(I::MIN)?
-                //  This is implicitly true since the dividend <= abs(I::MIN) and 0 <= quotient <= dividend.
-                let signed_quotient = Integer { bits_le: unsigned_quotient.bits_le, phantom: Default::default() };
-                let operands_same_sign = &dividend_msb.is_eq(divisor_msb);
-
-                Self::ternary(operands_same_sign, &signed_quotient, &Self::zero().sub_wrapped(&signed_quotient))
-            } else {
-                // Return the quotient of `self` and `other`.
-                self.div_wrapped(&other)
-            }
+            // Return the quotient of `self` and `other`.
+            self.div_wrapped(&other)
         }
     }
 }

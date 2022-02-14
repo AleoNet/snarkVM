@@ -31,50 +31,46 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
         if self.is_constant() && other.is_constant() {
             // Compute the quotient and return the new constant.
             Integer::new(Mode::Constant, self.eject_value().wrapping_div(&other.eject_value()))
+        } else if I::is_signed() {
+            // This is safe since I::BITS is always greater than 0.
+            let dividend_msb = self.bits_le.last().unwrap();
+            let divisor_msb = other.bits_le.last().unwrap();
+
+            // Divide the absolute value of `self` and `other` in the base field.
+            let unsigned_dividend = Self::ternary(dividend_msb, &Self::zero().sub_wrapped(self), self).cast_as_dual();
+            let unsigned_divisor = Self::ternary(divisor_msb, &Self::zero().sub_wrapped(other), other).cast_as_dual();
+            let unsigned_quotient = unsigned_dividend.div_wrapped(&unsigned_divisor);
+
+            // TODO (@pranav) Do we need to check that the quotient cannot exceed abs(I::MIN)?
+            //  This is implicitly true since the dividend <= abs(I::MIN) and 0 <= quotient <= dividend.
+            let signed_quotient = Self { bits_le: unsigned_quotient.bits_le, phantom: Default::default() };
+            let operands_same_sign = &dividend_msb.is_eq(divisor_msb);
+            let signed_quotient =
+                Self::ternary(operands_same_sign, &signed_quotient, &Self::zero().sub_wrapped(&signed_quotient));
+
+            // Signed integer division wraps when the dividend is I::MIN and the divisor is -1.
+            let min = Self::new(Mode::Constant, I::MIN);
+            let neg_one = Self::new(Mode::Constant, I::zero() - I::one());
+            let overflows = self.is_eq(&min) & other.is_eq(&neg_one);
+            Self::ternary(&overflows, &min, &signed_quotient)
         } else {
-            if I::is_signed() {
-                // This is safe since I::BITS is always greater than 0.
-                let dividend_msb = self.bits_le.last().unwrap();
-                let divisor_msb = other.bits_le.last().unwrap();
+            // Eject the dividend and divisor, to compute the quotient as a witness.
+            let dividend_value = self.eject_value();
+            let divisor_value = other.eject_value();
 
-                // Divide the absolute value of `self` and `other` in the base field.
-                let unsigned_dividend =
-                    Self::ternary(dividend_msb, &Self::zero().sub_wrapped(self), self).cast_as_dual();
-                let unsigned_divisor =
-                    Self::ternary(divisor_msb, &Self::zero().sub_wrapped(other), other).cast_as_dual();
-                let unsigned_quotient = unsigned_dividend.div_wrapped(&unsigned_divisor);
+            // Overflow is not possible for unsigned integers so we use wrapping operations.
+            let quotient = Integer::new(Mode::Private, dividend_value.wrapping_div(&divisor_value));
+            let remainder = Integer::new(Mode::Private, dividend_value.wrapping_rem(&divisor_value));
 
-                // TODO (@pranav) Do we need to check that the quotient cannot exceed abs(I::MIN)?
-                //  This is implicitly true since the dividend <= abs(I::MIN) and 0 <= quotient <= dividend.
-                let signed_quotient = Self { bits_le: unsigned_quotient.bits_le, phantom: Default::default() };
-                let operands_same_sign = &dividend_msb.is_eq(divisor_msb);
-                let signed_quotient =
-                    Self::ternary(operands_same_sign, &signed_quotient, &Self::zero().sub_wrapped(&signed_quotient));
+            // Ensure that Euclidean division holds for these values in the base field.
+            let dividend_field = BaseField::from_bits_le(Mode::Private, &self.bits_le);
+            let divisor_field = BaseField::from_bits_le(Mode::Private, &other.bits_le);
+            let quotient_field = BaseField::from_bits_le(Mode::Private, &quotient.bits_le);
+            let remainder_field = BaseField::from_bits_le(Mode::Private, &remainder.bits_le);
+            E::assert_eq(dividend_field, quotient_field * divisor_field + remainder_field);
 
-                // Signed integer division wraps when the dividend is I::MIN and the divisor is -1.
-                let min = Self::new(Mode::Constant, I::MIN);
-                let neg_one = Self::new(Mode::Constant, I::zero() - I::one());
-                let overflows = self.is_eq(&min) & other.is_eq(&neg_one);
-                Self::ternary(&overflows, &min, &signed_quotient)
-            } else {
-                // Eject the dividend and divisor, to compute the quotient as a witness.
-                let dividend_value = self.eject_value();
-                let divisor_value = other.eject_value();
-
-                // Overflow is not possible for unsigned integers so we use wrapping operations.
-                let quotient = Integer::new(Mode::Private, dividend_value.wrapping_div(&divisor_value));
-                let remainder = Integer::new(Mode::Private, dividend_value.wrapping_rem(&divisor_value));
-
-                // Ensure that Euclidean division holds for these values in the base field.
-                let dividend_field = BaseField::from_bits_le(Mode::Private, &self.bits_le);
-                let divisor_field = BaseField::from_bits_le(Mode::Private, &other.bits_le);
-                let quotient_field = BaseField::from_bits_le(Mode::Private, &quotient.bits_le);
-                let remainder_field = BaseField::from_bits_le(Mode::Private, &remainder.bits_le);
-                E::assert_eq(dividend_field, quotient_field * divisor_field + remainder_field);
-
-                // Return the quotient of `self` and `other`.
-                quotient
-            }
+            // Return the quotient of `self` and `other`.
+            quotient
         }
     }
 }
