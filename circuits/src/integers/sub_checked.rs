@@ -16,6 +16,53 @@
 
 use super::*;
 
+impl<E: Environment, I: IntegerType> Sub<Integer<E, I>> for Integer<E, I> {
+    type Output = Self;
+
+    fn sub(self, other: Self) -> Self::Output {
+        self - &other
+    }
+}
+
+impl<E: Environment, I: IntegerType> Sub<Integer<E, I>> for &Integer<E, I> {
+    type Output = Integer<E, I>;
+
+    fn sub(self, other: Integer<E, I>) -> Self::Output {
+        self - &other
+    }
+}
+
+impl<E: Environment, I: IntegerType> Sub<&Integer<E, I>> for Integer<E, I> {
+    type Output = Self;
+
+    fn sub(self, other: &Self) -> Self::Output {
+        &self - other
+    }
+}
+
+impl<E: Environment, I: IntegerType> Sub<&Integer<E, I>> for &Integer<E, I> {
+    type Output = Integer<E, I>;
+
+    fn sub(self, other: &Integer<E, I>) -> Self::Output {
+        let mut output = self.clone();
+        output -= other;
+        output
+    }
+}
+
+impl<E: Environment, I: IntegerType> SubAssign<Integer<E, I>> for Integer<E, I> {
+    fn sub_assign(&mut self, other: Integer<E, I>) {
+        *self -= &other;
+    }
+}
+
+impl<E: Environment, I: IntegerType> SubAssign<&Integer<E, I>> for Integer<E, I> {
+    fn sub_assign(&mut self, other: &Integer<E, I>) {
+        // Stores the difference of `self` and `other` in `self`.
+        *self = self.sub_checked(other);
+    }
+}
+
 impl<E: Environment, I: IntegerType> SubChecked<Self> for Integer<E, I> {
     type Output = Self;
 

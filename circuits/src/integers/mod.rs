@@ -14,16 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod add;
 pub mod add_checked;
 pub mod add_wrapped;
 pub mod and;
-pub mod div;
 pub mod div_checked;
 pub mod div_wrapped;
 pub mod equal;
 pub mod from_bits;
-pub mod mul;
 pub mod mul_checked;
 pub mod mul_wrapped;
 pub mod neg;
@@ -32,13 +29,10 @@ pub mod one;
 pub mod or;
 pub mod pow_checked;
 pub mod pow_wrapped;
-pub mod shl;
 pub mod shl_checked;
 pub mod shl_wrapped;
-pub mod shr;
 pub mod shr_checked;
 pub mod shr_wrapped;
-pub mod sub;
 pub mod sub_checked;
 pub mod sub_wrapped;
 pub mod ternary;
@@ -309,7 +303,7 @@ mod tests {
 
 #[cfg(test)]
 mod test_utilities {
-    use crate::{Circuit, Eject, Environment, IntegerTrait};
+    use crate::{Circuit, Eject, Environment};
     use std::{
         fmt::{Debug, Display},
         panic::UnwindSafe,

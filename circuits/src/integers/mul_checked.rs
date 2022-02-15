@@ -16,6 +16,53 @@
 
 use super::*;
 
+impl<E: Environment, I: IntegerType> Mul<Integer<E, I>> for Integer<E, I> {
+    type Output = Self;
+
+    fn mul(self, other: Self) -> Self::Output {
+        self * &other
+    }
+}
+
+impl<E: Environment, I: IntegerType> Mul<Integer<E, I>> for &Integer<E, I> {
+    type Output = Integer<E, I>;
+
+    fn mul(self, other: Integer<E, I>) -> Self::Output {
+        self * &other
+    }
+}
+
+impl<E: Environment, I: IntegerType> Mul<&Integer<E, I>> for Integer<E, I> {
+    type Output = Self;
+
+    fn mul(self, other: &Self) -> Self::Output {
+        &self * other
+    }
+}
+
+impl<E: Environment, I: IntegerType> Mul<&Integer<E, I>> for &Integer<E, I> {
+    type Output = Integer<E, I>;
+
+    fn mul(self, other: &Integer<E, I>) -> Self::Output {
+        let mut output = self.clone();
+        output *= other;
+        output
+    }
+}
+
+impl<E: Environment, I: IntegerType> MulAssign<Integer<E, I>> for Integer<E, I> {
+    fn mul_assign(&mut self, other: Integer<E, I>) {
+        *self *= &other;
+    }
+}
+
+impl<E: Environment, I: IntegerType> MulAssign<&Integer<E, I>> for Integer<E, I> {
+    fn mul_assign(&mut self, other: &Integer<E, I>) {
+        // Stores the product of `self` and `other` in `self`.
+        *self = self.mul_checked(other);
+    }
+}
+
 impl<E: Environment, I: IntegerType> MulChecked<Self> for Integer<E, I> {
     type Output = Self;
 

@@ -17,6 +17,53 @@
 use super::*;
 use crate::{SignExtend, ZeroExtend};
 
+impl<E: Environment, I: IntegerType, M: private::Magnitude> Shr<Integer<E, M>> for Integer<E, I> {
+    type Output = Self;
+
+    fn shr(self, rhs: Integer<E, M>) -> Self::Output {
+        self >> &rhs
+    }
+}
+
+impl<E: Environment, I: IntegerType, M: private::Magnitude> Shr<Integer<E, M>> for &Integer<E, I> {
+    type Output = Integer<E, I>;
+
+    fn shr(self, rhs: Integer<E, M>) -> Self::Output {
+        self >> &rhs
+    }
+}
+
+impl<E: Environment, I: IntegerType, M: private::Magnitude> Shr<&Integer<E, M>> for Integer<E, I> {
+    type Output = Self;
+
+    fn shr(self, rhs: &Integer<E, M>) -> Self::Output {
+        &self >> rhs
+    }
+}
+
+impl<E: Environment, I: IntegerType, M: private::Magnitude> Shr<&Integer<E, M>> for &Integer<E, I> {
+    type Output = Integer<E, I>;
+
+    fn shr(self, rhs: &Integer<E, M>) -> Self::Output {
+        let mut output = self.clone();
+        output >>= rhs;
+        output
+    }
+}
+
+impl<E: Environment, I: IntegerType, M: private::Magnitude> ShrAssign<Integer<E, M>> for Integer<E, I> {
+    fn shr_assign(&mut self, rhs: Integer<E, M>) {
+        *self >>= &rhs
+    }
+}
+
+impl<E: Environment, I: IntegerType, M: private::Magnitude> ShrAssign<&Integer<E, M>> for Integer<E, I> {
+    fn shr_assign(&mut self, rhs: &Integer<E, M>) {
+        // Stores the result of `self` >> `other` in `self`.
+        *self = self.shr_checked(rhs);
+    }
+}
+
 impl<E: Environment, I: IntegerType, M: private::Magnitude> ShrChecked<Integer<E, M>> for Integer<E, I> {
     type Output = Self;
 

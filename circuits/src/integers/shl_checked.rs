@@ -17,6 +17,53 @@
 use super::*;
 use crate::ZeroExtend;
 
+impl<E: Environment, I: IntegerType, M: private::Magnitude> Shl<Integer<E, M>> for Integer<E, I> {
+    type Output = Self;
+
+    fn shl(self, rhs: Integer<E, M>) -> Self::Output {
+        self << &rhs
+    }
+}
+
+impl<E: Environment, I: IntegerType, M: private::Magnitude> Shl<Integer<E, M>> for &Integer<E, I> {
+    type Output = Integer<E, I>;
+
+    fn shl(self, rhs: Integer<E, M>) -> Self::Output {
+        self << &rhs
+    }
+}
+
+impl<E: Environment, I: IntegerType, M: private::Magnitude> Shl<&Integer<E, M>> for Integer<E, I> {
+    type Output = Self;
+
+    fn shl(self, rhs: &Integer<E, M>) -> Self::Output {
+        &self << rhs
+    }
+}
+
+impl<E: Environment, I: IntegerType, M: private::Magnitude> Shl<&Integer<E, M>> for &Integer<E, I> {
+    type Output = Integer<E, I>;
+
+    fn shl(self, rhs: &Integer<E, M>) -> Self::Output {
+        let mut output = self.clone();
+        output <<= rhs;
+        output
+    }
+}
+
+impl<E: Environment, I: IntegerType, M: private::Magnitude> ShlAssign<Integer<E, M>> for Integer<E, I> {
+    fn shl_assign(&mut self, rhs: Integer<E, M>) {
+        *self <<= &rhs
+    }
+}
+
+impl<E: Environment, I: IntegerType, M: private::Magnitude> ShlAssign<&Integer<E, M>> for Integer<E, I> {
+    fn shl_assign(&mut self, rhs: &Integer<E, M>) {
+        // Stores the result of `self` << `other` in `self`.
+        *self = self.shl_checked(rhs);
+    }
+}
+
 impl<E: Environment, I: IntegerType, M: private::Magnitude> ShlChecked<Integer<E, M>> for Integer<E, I> {
     type Output = Self;
 

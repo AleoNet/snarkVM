@@ -16,6 +16,53 @@
 
 use super::*;
 
+impl<E: Environment, I: IntegerType> Div<Integer<E, I>> for Integer<E, I> {
+    type Output = Self;
+
+    fn div(self, other: Self) -> Self::Output {
+        self / &other
+    }
+}
+
+impl<E: Environment, I: IntegerType> Div<Integer<E, I>> for &Integer<E, I> {
+    type Output = Integer<E, I>;
+
+    fn div(self, other: Integer<E, I>) -> Self::Output {
+        self / &other
+    }
+}
+
+impl<E: Environment, I: IntegerType> Div<&Integer<E, I>> for Integer<E, I> {
+    type Output = Self;
+
+    fn div(self, other: &Self) -> Self::Output {
+        &self / other
+    }
+}
+
+impl<E: Environment, I: IntegerType> Div<&Integer<E, I>> for &Integer<E, I> {
+    type Output = Integer<E, I>;
+
+    fn div(self, other: &Integer<E, I>) -> Self::Output {
+        let mut output = self.clone();
+        output /= other;
+        output
+    }
+}
+
+impl<E: Environment, I: IntegerType> DivAssign<Integer<E, I>> for Integer<E, I> {
+    fn div_assign(&mut self, other: Integer<E, I>) {
+        *self /= &other;
+    }
+}
+
+impl<E: Environment, I: IntegerType> DivAssign<&Integer<E, I>> for Integer<E, I> {
+    fn div_assign(&mut self, other: &Integer<E, I>) {
+        // Stores the quotient of `self` and `other` in `self`.
+        *self = self.div_checked(other);
+    }
+}
+
 impl<E: Environment, I: IntegerType> DivChecked<Self> for Integer<E, I> {
     type Output = Self;
 
