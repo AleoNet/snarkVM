@@ -355,11 +355,17 @@ impl<F: FftField> EvaluationDomain<F> {
 
 impl<F: FftField> EvaluationDomain<F> {
     pub fn precompute_fft(&self) -> FFTPrecomputation<F> {
-        FFTPrecomputation { roots: self.roots_of_unity(self.group_gen), domain: *self }
+        execute_with_max_available_threads(|| FFTPrecomputation {
+            roots: self.roots_of_unity(self.group_gen),
+            domain: *self,
+        })
     }
 
     pub fn precompute_ifft(&self) -> IFFTPrecomputation<F> {
-        IFFTPrecomputation { inverse_roots: self.roots_of_unity(self.group_gen_inv), domain: *self }
+        execute_with_max_available_threads(|| IFFTPrecomputation {
+            inverse_roots: self.roots_of_unity(self.group_gen_inv),
+            domain: *self,
+        })
     }
 
     pub(crate) fn in_order_fft_in_place<T: DomainCoeff<F>>(&self, x_s: &mut [T]) {
@@ -389,7 +395,7 @@ impl<F: FftField> EvaluationDomain<F> {
         self.fft_helper_in_place_with_pc(x_s, FFTOrder::II, pre_comp)
     }
 
-    pub(crate) fn fft_in_place_with_out_order_pc<T: DomainCoeff<F>>(
+    pub(crate) fn out_order_fft_in_place_with_pc<T: DomainCoeff<F>>(
         &self,
         x_s: &mut [T],
         pre_comp: &FFTPrecomputation<F>,
@@ -432,20 +438,22 @@ impl<F: FftField> EvaluationDomain<F> {
         ord: FFTOrder,
         pre_comp: &FFTPrecomputation<F>,
     ) {
-        use FFTOrder::*;
-        let pc = pre_comp.precomputation_for_subdomain(self).unwrap();
+        execute_with_max_available_threads(|| {
+            use FFTOrder::*;
+            let pc = pre_comp.precomputation_for_subdomain(self).unwrap();
 
-        let log_len = log2(x_s.len());
+            let log_len = log2(x_s.len());
 
-        if ord == OI {
-            self.oi_helper_with_roots(x_s, &pc.roots);
-        } else {
-            self.io_helper_with_roots(x_s, &pc.roots);
-        }
+            if ord == OI {
+                self.oi_helper_with_roots(x_s, &pc.roots);
+            } else {
+                self.io_helper_with_roots(x_s, &pc.roots);
+            }
 
-        if ord == II {
-            derange_helper(x_s, log_len);
-        }
+            if ord == II {
+                derange_helper(x_s, log_len);
+            }
+        })
     }
 
     // Handles doing an IFFT with handling of being in order and out of order.
@@ -457,20 +465,22 @@ impl<F: FftField> EvaluationDomain<F> {
         ord: FFTOrder,
         pre_comp: &IFFTPrecomputation<F>,
     ) {
-        use FFTOrder::*;
-        let pc = pre_comp.precomputation_for_subdomain(self).unwrap();
+        execute_with_max_available_threads(|| {
+            use FFTOrder::*;
+            let pc = pre_comp.precomputation_for_subdomain(self).unwrap();
 
-        let log_len = log2(x_s.len());
+            let log_len = log2(x_s.len());
 
-        if ord == II {
-            derange_helper(x_s, log_len);
-        }
+            if ord == II {
+                derange_helper(x_s, log_len);
+            }
 
-        if ord == IO {
-            self.io_helper_with_roots(x_s, &pc.inverse_roots);
-        } else {
-            self.oi_helper_with_roots(x_s, &pc.inverse_roots);
-        }
+            if ord == IO {
+                self.io_helper_with_roots(x_s, &pc.inverse_roots);
+            } else {
+                self.oi_helper_with_roots(x_s, &pc.inverse_roots);
+            }
+        })
     }
 
     /// Computes the first `self.size / 2` roots of unity for the entire domain.

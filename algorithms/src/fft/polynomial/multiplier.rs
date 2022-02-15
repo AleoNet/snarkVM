@@ -92,7 +92,7 @@ impl<'a, F: PrimeField> PolyMultiplier<'a, F> {
                     pool.add_job(move || {
                         let mut p = p.to_owned().into_owned().coeffs;
                         p.resize(domain.size(), F::zero());
-                        domain.fft_in_place_with_out_order_pc(&mut p, fft_pc);
+                        domain.out_order_fft_in_place_with_pc(&mut p, fft_pc);
                         p
                     })
                 }
@@ -146,7 +146,7 @@ impl<'a, F: PrimeField> PolyMultiplier<'a, F> {
             pool.add_job(move || {
                 let mut p = p.to_owned().into_owned().coeffs;
                 p.resize(domain.size(), F::zero());
-                domain.fft_in_place_with_out_order_pc(&mut p, fft_pc);
+                domain.out_order_fft_in_place_with_pc(&mut p, fft_pc);
                 (l, p)
             })
         }

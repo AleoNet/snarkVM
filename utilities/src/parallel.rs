@@ -75,15 +75,15 @@ pub fn max_available_threads() -> usize {
 }
 
 #[inline(always)]
-pub fn execute_with_max_available_threads(f: impl FnOnce() + Send) {
-    #[cfg(feature = "parallel")]
-    {
-        execute_with_threads(f, max_available_threads())
-    }
-    #[cfg(not(feature = "parallel"))]
-    {
-        f();
-    }
+#[cfg(feature = "parallel")]
+pub fn execute_with_max_available_threads<T: Sync + Send>(f: impl FnOnce() -> T + Send) -> T {
+    execute_with_threads(f, max_available_threads())
+}
+
+#[inline(always)]
+#[cfg(not(feature = "parallel"))]
+pub fn execute_with_max_available_threads<T>(f: impl FnOnce() -> T + Send) -> T {
+    f()
 }
 
 #[cfg(feature = "parallel")]
