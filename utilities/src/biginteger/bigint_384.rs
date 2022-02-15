@@ -266,9 +266,10 @@ impl Ord for BigInteger384 {
     #[inline]
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         for (a, b) in self.0.iter().rev().zip(other.0.iter().rev()) {
-            match a.cmp(b) {
-                std::cmp::Ordering::Equal => continue,
-                c => return c,
+            if a < b {
+                return std::cmp::Ordering::Less;
+            } else if a > b {
+                return std::cmp::Ordering::Greater;
             }
         }
         std::cmp::Ordering::Equal
