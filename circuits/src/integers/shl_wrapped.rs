@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::ZeroExtend;
 
 impl<E: Environment, I: IntegerType, M: private::Magnitude> ShlWrapped<Integer<E, M>> for Integer<E, I> {
     type Output = Self;
@@ -33,11 +32,13 @@ impl<E: Environment, I: IntegerType, M: private::Magnitude> ShlWrapped<Integer<E
             // Perform the left shift operation by exponentiation and multiplication.
             // By masking the upper bits, we have that rhs < I::BITS.
             // Therefore, 2^{rhs} < I::MAX.
+
+            // Zero-extend `rhs` by `8`.
+            let mut bits_le = rhs.bits_le[..first_upper_bit_index].to_vec();
+            bits_le.extend(core::iter::repeat(Boolean::new(Mode::Constant, false)).take(8));
+
             // Use U8 for the exponent as it costs fewer constraints.
-            let rhs_as_u8 = U8 {
-                bits_le: Boolean::zero_extend(&rhs.bits_le[..first_upper_bit_index], 8),
-                phantom: Default::default(),
-            };
+            let rhs_as_u8 = U8 { bits_le, phantom: Default::default() };
 
             if rhs_as_u8.is_constant() {
                 // If the shift amount is a constant, then we can manually shift in bits and truncate the result.

@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::ZeroExtend;
 
 impl<E: Environment, I: IntegerType, M: private::Magnitude> Shr<Integer<E, M>> for Integer<E, I> {
     type Output = Self;
@@ -82,9 +81,8 @@ impl<E: Environment, I: IntegerType, M: private::Magnitude> ShrChecked<Integer<E
             // Therefore there is at least one trailing zero.
             let first_upper_bit_index = I::BITS.trailing_zeros() as usize;
 
-            let upper_bits_are_nonzero = rhs.bits_le[first_upper_bit_index..]
-                .iter()
-                .fold(Boolean::new(Mode::Private, false), |at_least_one_is_set, bit| at_least_one_is_set | bit);
+            let upper_bits_are_nonzero =
+                rhs.bits_le[first_upper_bit_index..].iter().fold(Boolean::new(Mode::Private, false), |a, b| a | b);
 
             // The below constraint is not enforced if it is a constant.
             if upper_bits_are_nonzero.is_constant() {

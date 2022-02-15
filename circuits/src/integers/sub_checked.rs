@@ -84,9 +84,8 @@ impl<E: Environment, I: IntegerType> SubChecked<Self> for Integer<E, I> {
             let difference = minuend + &subtrahend + BaseField::one();
 
             // Extract the integer bits from the field element, with a carry bit.
-            let field_bits = difference.to_lower_bits_le(I::BITS + 1);
-            let (difference, carry) = match field_bits.split_last() {
-                Some((carry, bits_le)) => (Integer::from_bits_le(Mode::Private, bits_le), carry),
+            let (difference, carry) = match difference.to_lower_bits_le(I::BITS + 1).split_last() {
+                Some((carry, bits_le)) => (Integer::from_bits_le(Mode::Private, bits_le), carry.clone()),
                 None => E::halt("Malformed difference detected during integer subtraction"),
             };
 

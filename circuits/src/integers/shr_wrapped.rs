@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::ZeroExtend;
 
 impl<E: Environment, I: IntegerType, M: private::Magnitude> ShrWrapped<Integer<E, M>> for Integer<E, I> {
     type Output = Self;

@@ -39,37 +39,29 @@ impl<E: Environment, I: IntegerType, M: private::Magnitude> PowChecked<Integer<E
             for bit in other.bits_le.iter().rev() {
                 result = (&result).mul_checked(&result);
 
-                // TODO (@pranav) We explicitly inline the implementation for mul_checked
-                //  since we only want to check for overflow if the bit of the exponent is set.
-                //  Dedup this code.
                 let result_times_self = if I::is_signed() {
                     // Multiply the absolute value of `self` and `other` in the base field.
-                    let result_absolute_value =
-                        Self::ternary(result.msb(), &(!&result).add_wrapped(&Self::one()), &result);
-                    let self_absolute_value = Self::ternary(self.msb(), &(!self).add_wrapped(&Self::one()), self);
-                    let mut bits_le =
-                        Self::mul_bits(&result_absolute_value.bits_le, &self_absolute_value.bits_le, true);
-
-                    let bits_are_nonzero = |bits: &[Boolean<E>]| {
-                        bits.iter().fold(Boolean::new(Mode::Constant, false), |bit, at_least_one_is_set| {
-                            bit | at_least_one_is_set
-                        })
-                    };
+                    let absolute_result = Self::ternary(result.msb(), &&Self::zero().sub_wrapped(&result), &result);
+                    let absolute_self = Self::ternary(self.msb(), &Self::zero().sub_wrapped(self), self);
+                    let mut bits_le = Self::mul_bits(&absolute_result.bits_le, &absolute_self.bits_le, true);
 
                     // We need to check that the abs(a) * abs(b) did not exceed the unsigned maximum.
-                    let carry_bits_nonzero = bits_are_nonzero(&bits_le[I::BITS..]);
-
-                    let product_msb = &bits_le[I::BITS - 1];
-                    let operands_same_sign = &result.msb().is_eq(self.msb());
+                    let carry_bits_nonzero =
+                        bits_le[I::BITS..].iter().fold(Boolean::new(Mode::Constant, false), |a, b| a | b);
 
                     // If the product should be positive, then it cannot exceed the signed maximum.
+                    let product_msb = &bits_le[I::BITS - 1];
+                    let operands_same_sign = &result.msb().is_eq(self.msb());
                     let positive_product_overflows = operands_same_sign & product_msb;
 
                     // If the product should be negative, then it cannot exceed the absolute value of the signed minimum.
-                    let lower_product_bits_nonzero = &bits_are_nonzero(&bits_le[..(I::BITS - 1)]);
-                    let negative_product_lt_or_eq_signed_min =
-                        !product_msb | (product_msb & !lower_product_bits_nonzero);
-                    let negative_product_underflows = !operands_same_sign & !negative_product_lt_or_eq_signed_min;
+                    let negative_product_underflows = {
+                        let lower_product_bits_nonzero =
+                            bits_le[..(I::BITS - 1)].iter().fold(Boolean::new(Mode::Constant, false), |a, b| a | b);
+                        let negative_product_lt_or_eq_signed_min =
+                            !product_msb | (product_msb & !lower_product_bits_nonzero);
+                        !operands_same_sign & !negative_product_lt_or_eq_signed_min
+                    };
 
                     let overflow = carry_bits_nonzero | positive_product_overflows | negative_product_underflows;
                     E::assert_eq(overflow & bit, E::zero());
@@ -85,11 +77,7 @@ impl<E: Environment, I: IntegerType, M: private::Magnitude> PowChecked<Integer<E
                     let mut bits_le = Self::mul_bits(&result.bits_le, &self.bits_le, true);
 
                     // For unsigned multiplication, check that the none of the carry bits are set.
-                    let overflow = bits_le[I::BITS..]
-                        .iter()
-                        .fold(Boolean::new(Mode::Constant, false), |bit, at_least_one_is_set| {
-                            bit | at_least_one_is_set
-                        });
+                    let overflow = bits_le[I::BITS..].iter().fold(Boolean::new(Mode::Constant, false), |a, b| a | b);
                     E::assert_eq(overflow & bit, E::zero());
 
                     // Remove carry bits.

@@ -43,9 +43,6 @@ pub mod zero;
 
 mod helpers;
 
-pub mod zero_extend;
-pub use zero_extend::*;
-
 use crate::{
     boolean::Boolean,
     fields::BaseField,
