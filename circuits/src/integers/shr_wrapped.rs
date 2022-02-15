@@ -43,14 +43,15 @@ impl<E: Environment, I: IntegerType, M: private::Magnitude> ShrWrapped<Integer<E
             if rhs_as_u8.is_constant() {
                 // If the shift amount is a constant, then we can manually shift in bits and truncate the result.
                 let shift_amount = rhs_as_u8.eject_value() as usize;
-                let mut bits_le = if I::is_signed() {
-                    // Sign extend `self` by `shift_amount`.
-                    let mut result = Vec::with_capacity(I::BITS + shift_amount);
-                    result.extend_from_slice(&self.bits_le);
-                    result.extend(core::iter::repeat(self.msb().clone()).take(shift_amount));
-                    result
-                } else {
-                    Boolean::zero_extend(&self.bits_le, I::BITS + shift_amount)
+
+                let mut bits_le = Vec::with_capacity(I::BITS + shift_amount);
+                bits_le.extend_from_slice(&self.bits_le);
+
+                match I::is_signed() {
+                    // Sign-extend `self` by `shift_amount`.
+                    true => bits_le.extend(core::iter::repeat(self.msb().clone()).take(shift_amount)),
+                    // Zero-extend `self` by `shift_amount`.
+                    false => bits_le.extend(core::iter::repeat(Boolean::new(Mode::Constant, false)).take(shift_amount)),
                 };
 
                 bits_le.reverse();
