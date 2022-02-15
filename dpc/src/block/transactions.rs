@@ -16,10 +16,12 @@
 
 use crate::{AleoAmount, BlockError, DecryptionKey, Network, Record, Transaction};
 use snarkvm_algorithms::merkle_tree::*;
-use snarkvm_utilities::{has_duplicates, FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
+use snarkvm_utilities::{cfg_iter, has_duplicates, FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
+
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
 
 use anyhow::{anyhow, Result};
-use rayon::prelude::*;
 use serde::{
     de,
     ser::{self, SerializeStruct},
@@ -82,12 +84,7 @@ impl<N: Network> Transactions<N> {
         }
 
         // Ensure each transaction is well-formed.
-        if !self
-            .transactions
-            .as_parallel_slice()
-            .par_iter()
-            .all(Transaction::is_valid)
-        {
+        if !cfg_iter!(self.transactions.as_slice()).all(Transaction::is_valid) {
             eprintln!("Invalid transaction found in the transactions list");
             return false;
         }
