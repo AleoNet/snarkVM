@@ -26,14 +26,79 @@ impl<E: Environment, I: IntegerType> MulWrapped<Self> for Integer<E, I> {
             // Compute the product and return the new constant.
             Integer::new(Mode::Constant, self.eject_value().wrapping_mul(&other.eject_value()))
         } else {
-            // Multiply the integer bits of `self` and `other` in the base field.
-            let mut bits_le = Self::mul_bits(&self.bits_le, &other.bits_le, false);
-
-            // Remove carry bits.
-            bits_le.truncate(I::BITS);
-
+            // Compute the product of `self` and `other`.
+            let (product, _) = Self::mul_with_carry(&self, &other, false);
             // Return the product of `self` and `other`.
-            Integer { bits_le, phantom: Default::default() }
+            product
+        }
+    }
+}
+
+impl<E: Environment, I: IntegerType> Integer<E, I> {
+    /// Multiply the integer bits of `this` and `that` in the base field.
+    #[inline]
+    pub(super) fn mul_with_carry(
+        this: &Integer<E, I>,
+        that: &Integer<E, I>,
+        include_carry_bits: bool,
+    ) -> (Integer<E, I>, Vec<Boolean<E>>) {
+        if 2 * I::BITS < E::BaseField::size_in_bits() - 1 {
+            // Instead of multiplying the bits of `self` and `other` directly, the integers are
+            // converted into a field elements, and multiplied, before being converted back to integers.
+            // Note: This is safe as the field is larger than the maximum integer type supported.
+            let this = BaseField::from_bits_le(Mode::Private, &this.bits_le);
+            let that = BaseField::from_bits_le(Mode::Private, &that.bits_le);
+            let product = (this * that).to_lower_bits_le(2 * I::BITS);
+
+            // Split the integer bits into product bits and carry bits.
+            let (bits_le, carry) = product.split_at(I::BITS);
+
+            // Return the product of `self` and `other`, along with the carry bits.
+            (Integer::from_bits_le(Mode::Private, bits_le), carry.to_vec())
+        } else if (I::BITS + I::BITS / 2) < E::BaseField::size_in_bits() - 1 {
+            // Perform multiplication by decomposing it into operations on its upper and lower bits.
+            // See this page for reference: https://en.wikipedia.org/wiki/Karatsuba_algorithm.
+            // Note: We follow the naming convention given in the `Basic Step` section of the cited page.
+            let x_1 = BaseField::from_bits_le(Mode::Private, &this.bits_le[(I::BITS / 2)..]);
+            let x_0 = BaseField::from_bits_le(Mode::Private, &this.bits_le[..(I::BITS / 2)]);
+            let y_1 = BaseField::from_bits_le(Mode::Private, &that.bits_le[(I::BITS / 2)..]);
+            let y_0 = BaseField::from_bits_le(Mode::Private, &that.bits_le[..(I::BITS / 2)]);
+
+            let z_0 = &x_0 * &y_0;
+            let z_1 = (&x_1 * &y_0) + (&x_0 * &y_1);
+
+            let mut b_m_bits = vec![Boolean::new(Mode::Constant, false); I::BITS / 2];
+            b_m_bits.push(Boolean::new(Mode::Constant, true));
+
+            let b_m = BaseField::from_bits_le(Mode::Constant, &b_m_bits);
+            let z_0_plus_z_1 = &z_0 + (&z_1 * &b_m);
+
+            let mut bits_le = z_0_plus_z_1.to_lower_bits_le(I::BITS + I::BITS / 2 + 1);
+
+            match include_carry_bits {
+                // Only `mul_checked` requires these bits to perform overflow/underflow checks.
+                true => {
+                    let z_2 = &x_1 * &y_1;
+                    bits_le.append(&mut z_2.to_lower_bits_le(I::BITS));
+
+                    // Split the integer bits into product bits and carry bits.
+                    let (bits_le, carry) = bits_le.split_at(I::BITS);
+
+                    // Return the product of `self` and `other`, along with the carry bits.
+                    (Integer::from_bits_le(Mode::Private, bits_le), carry.to_vec())
+                }
+                false => {
+                    // Remove any carry bits.
+                    bits_le.truncate(I::BITS);
+
+                    // Return the product of `self` and `other`, without the carry bits.
+                    (Integer { bits_le, phantom: Default::default() }, vec![])
+                }
+            }
+        } else {
+            // TODO (@pranav) Do we need to handle this case? The current integers can
+            //   be handled by the code above.
+            todo!()
         }
     }
 }

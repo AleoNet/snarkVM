@@ -41,8 +41,6 @@ pub mod to_bits;
 pub mod xor;
 pub mod zero;
 
-mod helpers;
-
 use crate::{
     boolean::Boolean,
     fields::BaseField,
