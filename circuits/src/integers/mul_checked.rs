@@ -75,61 +75,58 @@ impl<E: Environment, I: IntegerType> MulChecked<Self> for Integer<E, I> {
                 Some(value) => Integer::new(Mode::Constant, value),
                 None => E::halt("Integer overflow on multiplication of two constants"),
             }
-        } else {
-            if I::is_signed() {
-                // This is safe since I::BITS is always greater than 0.
-                let self_msb = self.bits_le.last().unwrap();
-                let other_msb = other.bits_le.last().unwrap();
+        } else if I::is_signed() {
+            // This is safe since I::BITS is always greater than 0.
+            let self_msb = self.bits_le.last().unwrap();
+            let other_msb = other.bits_le.last().unwrap();
 
-                // Multiply the absolute value of `self` and `other` in the base field.
-                let absolute_self = Self::ternary(self_msb, &Self::zero().sub_wrapped(self), self);
-                let absolute_other = Self::ternary(other_msb, &Self::zero().sub_wrapped(other), other);
-                let mut bits_le = Self::mul_bits(&absolute_self.bits_le, &absolute_other.bits_le, true);
+            // Multiply the absolute value of `self` and `other` in the base field.
+            let absolute_self = Self::ternary(self_msb, &Self::zero().sub_wrapped(self), self);
+            let absolute_other = Self::ternary(other_msb, &Self::zero().sub_wrapped(other), other);
+            let mut bits_le = Self::mul_bits(&absolute_self.bits_le, &absolute_other.bits_le, true);
 
-                let bits_are_nonzero = |bits: &[Boolean<E>]| {
-                    bits.iter()
-                        .fold(Boolean::new(Mode::Constant, false), |bit, at_least_one_is_set| bit | at_least_one_is_set)
-                };
+            // We need to check that the abs(a) * abs(b) did not exceed the unsigned maximum.
+            let carry_bits_nonzero = bits_le[I::BITS..]
+                .iter()
+                .fold(Boolean::new(Mode::Constant, false), |bit, at_least_one_is_set| bit | at_least_one_is_set);
 
-                // We need to check that the abs(a) * abs(b) did not exceed the unsigned maximum.
-                let carry_bits_nonzero = bits_are_nonzero(&bits_le[I::BITS..]);
+            // If the product should be positive, then it cannot exceed the signed maximum.
+            let product_msb = &bits_le[I::BITS - 1];
+            let operands_same_sign = &self_msb.is_eq(other_msb);
+            let positive_product_overflows = operands_same_sign & product_msb;
 
-                let product_msb = &bits_le[I::BITS - 1];
-                let operands_same_sign = &self_msb.is_eq(other_msb);
-
-                // If the product should be positive, then it cannot exceed the signed maximum.
-                let positive_product_overflows = operands_same_sign & product_msb;
-
-                // If the product should be negative, then it cannot exceed the absolute value of the signed minimum.
-                let lower_product_bits_nonzero = &bits_are_nonzero(&bits_le[..(I::BITS - 1)]);
-                let negative_product_lt_or_eq_signed_min = !product_msb | (product_msb & !lower_product_bits_nonzero);
-                let negative_product_underflows = !operands_same_sign & !negative_product_lt_or_eq_signed_min;
-
-                let overflow = carry_bits_nonzero | positive_product_overflows | negative_product_underflows;
-                E::assert_eq(overflow, E::zero());
-
-                // Remove carry bits.
-                bits_le.truncate(I::BITS);
-
-                let product = Integer { bits_le, phantom: Default::default() };
-
-                // Return the product of `self` and `other` with the appropriate sign.
-                Self::ternary(operands_same_sign, &product, &Self::zero().sub_wrapped(&product))
-            } else {
-                let mut bits_le = Self::mul_bits(&self.bits_le, &other.bits_le, true);
-
-                // For unsigned multiplication, check that the none of the carry bits are set.
-                let overflow = bits_le[I::BITS..]
+            // If the product should be negative, then it cannot exceed the absolute value of the signed minimum.
+            let negative_product_underflows = {
+                let lower_product_bits_nonzero = bits_le[..(I::BITS - 1)]
                     .iter()
                     .fold(Boolean::new(Mode::Constant, false), |bit, at_least_one_is_set| bit | at_least_one_is_set);
-                E::assert_eq(overflow, E::zero());
+                let negative_product_lt_or_eq_signed_min = !product_msb | (product_msb & !lower_product_bits_nonzero);
+                !operands_same_sign & !negative_product_lt_or_eq_signed_min
+            };
 
-                // Remove carry bits.
-                bits_le.truncate(I::BITS);
+            let overflow = carry_bits_nonzero | positive_product_overflows | negative_product_underflows;
+            E::assert_eq(overflow, E::zero());
 
-                // Return the product of `self` and `other`.
-                Integer { bits_le, phantom: Default::default() }
-            }
+            // Remove carry bits.
+            bits_le.truncate(I::BITS);
+
+            // Return the product of `self` and `other` with the appropriate sign.
+            let product = Integer { bits_le, phantom: Default::default() };
+            Self::ternary(operands_same_sign, &product, &Self::zero().sub_wrapped(&product))
+        } else {
+            let mut bits_le = Self::mul_bits(&self.bits_le, &other.bits_le, true);
+
+            // For unsigned multiplication, check that none of the carry bits are set.
+            let overflow = bits_le[I::BITS..]
+                .iter()
+                .fold(Boolean::new(Mode::Constant, false), |bit, at_least_one_is_set| bit | at_least_one_is_set);
+            E::assert_eq(overflow, E::zero());
+
+            // Remove carry bits.
+            bits_le.truncate(I::BITS);
+
+            // Return the product of `self` and `other`.
+            Integer { bits_le, phantom: Default::default() }
         }
     }
 }
