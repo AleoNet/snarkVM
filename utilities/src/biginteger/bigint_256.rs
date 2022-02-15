@@ -45,7 +45,7 @@ impl crate::biginteger::BigInteger for BigInteger256 {
     #[inline]
     fn add_nocarry(&mut self, other: &Self) -> bool {
         let mut carry = 0;
-        #[cfg(target_arch = "x86_64")]
+        #[cfg(all(target_arch = "x86_64", target_feature = "adx"))]
         #[allow(unsafe_code)]
         unsafe {
             use core::arch::x86_64::_addcarry_u64;
@@ -54,7 +54,7 @@ impl crate::biginteger::BigInteger for BigInteger256 {
             carry = _addcarry_u64(carry, self.0[2], other.0[2], &mut self.0[2]);
             carry = _addcarry_u64(carry, self.0[3], other.0[3], &mut self.0[3]);
         };
-        #[cfg(not(target_arch = "x86_64"))]
+        #[cfg(not(all(target_arch = "x86_64", target_feature = "adx")))]
         {
             self.0[0] = super::arithmetic::adc(self.0[0], other.0[0], &mut carry);
             self.0[1] = super::arithmetic::adc(self.0[1], other.0[1], &mut carry);
@@ -67,7 +67,7 @@ impl crate::biginteger::BigInteger for BigInteger256 {
     #[inline]
     fn sub_noborrow(&mut self, other: &Self) -> bool {
         let mut borrow = 0;
-        #[cfg(target_arch = "x86_64")]
+        #[cfg(all(target_arch = "x86_64", target_feature = "adx"))]
         #[allow(unsafe_code)]
         unsafe {
             use core::arch::x86_64::_subborrow_u64;
@@ -76,7 +76,7 @@ impl crate::biginteger::BigInteger for BigInteger256 {
             borrow = _subborrow_u64(borrow, self.0[2], other.0[2], &mut self.0[2]);
             borrow = _subborrow_u64(borrow, self.0[3], other.0[3], &mut self.0[3]);
         };
-        #[cfg(not(target_arch = "x86_64"))]
+        #[cfg(not(all(target_arch = "x86_64", target_feature = "adx")))]
         {
             self.0[0] = crate::arithmetic::sbb(self.0[0], other.0[0], &mut borrow);
             self.0[1] = crate::arithmetic::sbb(self.0[1], other.0[1], &mut borrow);
@@ -294,7 +294,7 @@ impl Ord for BigInteger256 {
     #[inline]
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         for (a, b) in self.0.iter().rev().zip(other.0.iter().rev()) {
-            match a.cmp(&b) {
+            match a.cmp(b) {
                 std::cmp::Ordering::Equal => continue,
                 c => return c,
             }

@@ -285,21 +285,20 @@ impl<P: Parameters> ProjectiveCurve for Projective<P> {
             // X3 = r^2 - J - 2*V
             self.x = r.square();
             self.x -= &j;
-            self.x -= &v;
-            self.x -= &v;
+            self.x -= &v.double();
 
             // Y3 = r*(V-X3)-2*Y1*J
             j *= &self.y; // J = 2*Y1*J
             j.double_in_place();
             self.y = v - self.x;
-            self.y *= &r;
-            self.y -= &j;
+            self.y *= r;
+            self.y -= j;
 
             // Z3 = (Z1+H)^2-Z1Z1-HH
-            self.z += &h;
+            self.z += h;
             self.z.square_in_place();
-            self.z -= &z1z1;
-            self.z -= &hh;
+            self.z -= z1z1;
+            self.z -= hh;
         }
     }
 
@@ -387,7 +386,7 @@ impl<P: Parameters> Group for Projective<P> {
             let s = ((self.x + yy).square() - xx - yyyy).double();
 
             // M = 3*XX+a*ZZ^2
-            let m = xx + xx + xx + P::mul_by_a(&zz.square());
+            let m = xx.double() + xx + P::mul_by_a(&zz.square());
 
             // T = M^2-2*S
             let t = m.square() - s.double();
@@ -520,16 +519,8 @@ impl<P: Parameters> Mul<P::ScalarField> for Projective<P> {
     #[inline]
     fn mul(self, other: P::ScalarField) -> Self {
         let mut res = Self::zero();
-
-        let mut found_one = false;
-
-        for i in BitIteratorBE::new(other.to_repr()) {
-            if found_one {
-                res.double_in_place();
-            } else {
-                found_one = i;
-            }
-
+        for i in BitIteratorBE::new_without_leading_zeros(other.to_repr()) {
+            res.double_in_place();
             if i {
                 res += self;
             }
