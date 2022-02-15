@@ -44,7 +44,7 @@ impl BigInteger for BigInteger384 {
 
     #[inline]
     fn add_nocarry(&mut self, other: &Self) -> bool {
-        #[cfg(all(target_arch = "x86_64", target_feature = "adx"))]
+        #[cfg(target_arch = "x86_64")]
         unsafe {
             use core::arch::x86_64::_addcarry_u64;
             let mut carry = 0;
@@ -56,7 +56,7 @@ impl BigInteger for BigInteger384 {
             carry = _addcarry_u64(carry, self.0[5], other.0[5], &mut self.0[5]);
             carry != 0
         }
-        #[cfg(not(all(target_arch = "x86_64", target_feature = "adx")))]
+        #[cfg(not(target_arch = "x86_64"))]
         {
             let mut carry = 0;
             carry = super::arithmetic::adc(&mut self.0[0], other.0[0], carry);
@@ -71,7 +71,7 @@ impl BigInteger for BigInteger384 {
 
     #[inline]
     fn sub_noborrow(&mut self, other: &Self) -> bool {
-        #[cfg(all(target_arch = "x86_64", target_feature = "adx"))]
+        #[cfg(target_arch = "x86_64")]
         unsafe {
             use core::arch::x86_64::_subborrow_u64;
             let mut borrow = 0;
@@ -83,7 +83,7 @@ impl BigInteger for BigInteger384 {
             borrow = _subborrow_u64(borrow, self.0[5], other.0[5], &mut self.0[5]);
             borrow != 0
         }
-        #[cfg(not(all(target_arch = "x86_64", target_feature = "adx")))]
+        #[cfg(not(target_arch = "x86_64"))]
         {
             let mut borrow = 0;
             borrow = super::arithmetic::sbb(&mut self.0[0], other.0[0], borrow);
