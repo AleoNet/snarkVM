@@ -438,22 +438,20 @@ impl<F: FftField> EvaluationDomain<F> {
         ord: FFTOrder,
         pre_comp: &FFTPrecomputation<F>,
     ) {
-        execute_with_max_available_threads(|| {
-            use FFTOrder::*;
-            let pc = pre_comp.precomputation_for_subdomain(self).unwrap();
+        use FFTOrder::*;
+        let pc = pre_comp.precomputation_for_subdomain(self).unwrap();
 
-            let log_len = log2(x_s.len());
+        let log_len = log2(x_s.len());
 
-            if ord == OI {
-                self.oi_helper_with_roots(x_s, &pc.roots);
-            } else {
-                self.io_helper_with_roots(x_s, &pc.roots);
-            }
+        if ord == OI {
+            self.oi_helper_with_roots(x_s, &pc.roots);
+        } else {
+            self.io_helper_with_roots(x_s, &pc.roots);
+        }
 
-            if ord == II {
-                derange_helper(x_s, log_len);
-            }
-        })
+        if ord == II {
+            derange_helper(x_s, log_len);
+        }
     }
 
     // Handles doing an IFFT with handling of being in order and out of order.
@@ -465,22 +463,20 @@ impl<F: FftField> EvaluationDomain<F> {
         ord: FFTOrder,
         pre_comp: &IFFTPrecomputation<F>,
     ) {
-        execute_with_max_available_threads(|| {
-            use FFTOrder::*;
-            let pc = pre_comp.precomputation_for_subdomain(self).unwrap();
+        use FFTOrder::*;
+        let pc = pre_comp.precomputation_for_subdomain(self).unwrap();
 
-            let log_len = log2(x_s.len());
+        let log_len = log2(x_s.len());
 
-            if ord == II {
-                derange_helper(x_s, log_len);
-            }
+        if ord == II {
+            derange_helper(x_s, log_len);
+        }
 
-            if ord == IO {
-                self.io_helper_with_roots(x_s, &pc.inverse_roots);
-            } else {
-                self.oi_helper_with_roots(x_s, &pc.inverse_roots);
-            }
-        })
+        if ord == IO {
+            self.io_helper_with_roots(x_s, &pc.inverse_roots);
+        } else {
+            self.oi_helper_with_roots(x_s, &pc.inverse_roots);
+        }
     }
 
     /// Computes the first `self.size / 2` roots of unity for the entire domain.
@@ -596,7 +592,7 @@ impl<F: FftField> EvaluationDomain<F> {
         let mut first = true;
 
         #[cfg(feature = "parallel")]
-        let max_threads = rayon::current_num_threads();
+        let max_threads = snarkvm_utilities::parallel::max_available_threads();
         #[cfg(not(feature = "parallel"))]
         let max_threads = 1;
 
@@ -645,7 +641,7 @@ impl<F: FftField> EvaluationDomain<F> {
         let mut compacted_roots = vec![F::default(); compaction_max_size];
 
         #[cfg(feature = "parallel")]
-        let max_threads = rayon::current_num_threads();
+        let max_threads = snarkvm_utilities::parallel::max_available_threads();
         #[cfg(not(feature = "parallel"))]
         let max_threads = 1;
 
