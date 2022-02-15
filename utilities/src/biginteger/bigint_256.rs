@@ -23,7 +23,7 @@ use crate::{
     ToBytes,
 };
 
-use crate::biginteger::{arithmetic, BigInteger};
+use crate::biginteger::BigInteger;
 use num_bigint::BigUint;
 use rand::{
     distributions::{Distribution, Standard},
@@ -56,10 +56,10 @@ impl crate::biginteger::BigInteger for BigInteger256 {
         };
         #[cfg(not(target_arch = "x86_64"))]
         {
-            self.0[0] = arithmetic::adc(self.0[0], other.0[0], &mut carry);
-            self.0[1] = arithmetic::adc(self.0[1], other.0[1], &mut carry);
-            self.0[2] = arithmetic::adc(self.0[2], other.0[2], &mut carry);
-            self.0[3] = arithmetic::adc(self.0[3], other.0[3], &mut carry);
+            self.0[0] = super::arithmetic::adc(self.0[0], other.0[0], &mut carry);
+            self.0[1] = super::arithmetic::adc(self.0[1], other.0[1], &mut carry);
+            self.0[2] = super::arithmetic::adc(self.0[2], other.0[2], &mut carry);
+            self.0[3] = super::arithmetic::adc(self.0[3], other.0[3], &mut carry);
         }
         carry != 0
     }
@@ -78,10 +78,10 @@ impl crate::biginteger::BigInteger for BigInteger256 {
         };
         #[cfg(not(target_arch = "x86_64"))]
         {
-            self.0[0] = arithmetic::sbb(self.0[0], other.0[0], &mut borrow);
-            self.0[1] = arithmetic::sbb(self.0[1], other.0[1], &mut borrow);
-            self.0[2] = arithmetic::sbb(self.0[2], other.0[2], &mut borrow);
-            self.0[3] = arithmetic::sbb(self.0[3], other.0[3], &mut borrow);
+            self.0[0] = crate::arithmetic::sbb(self.0[0], other.0[0], &mut borrow);
+            self.0[1] = crate::arithmetic::sbb(self.0[1], other.0[1], &mut borrow);
+            self.0[2] = crate::arithmetic::sbb(self.0[2], other.0[2], &mut borrow);
+            self.0[3] = crate::arithmetic::sbb(self.0[3], other.0[3], &mut borrow);
         }
         borrow != 0
     }
@@ -211,7 +211,7 @@ impl crate::biginteger::BigInteger for BigInteger256 {
     #[inline]
     fn find_wnaf(&self) -> Vec<i64> {
         let mut res = crate::vec::Vec::new();
-        let mut e = self.clone();
+        let mut e = *self;
         while !e.is_zero() {
             let z: i64;
             if e.is_odd() {
@@ -294,10 +294,9 @@ impl Ord for BigInteger256 {
     #[inline]
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         for (a, b) in self.0.iter().rev().zip(other.0.iter().rev()) {
-            if a < b {
-                return std::cmp::Ordering::Less;
-            } else if a > b {
-                return std::cmp::Ordering::Greater;
+            match a.cmp(&b) {
+                std::cmp::Ordering::Equal => continue,
+                c => return c,
             }
         }
         std::cmp::Ordering::Equal

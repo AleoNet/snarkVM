@@ -23,7 +23,7 @@ use crate::{
     ToBytes,
 };
 
-use crate::biginteger::{arithmetic, BigInteger};
+use crate::biginteger::BigInteger;
 use num_bigint::BigUint;
 use rand::{
     distributions::{Distribution, Standard},
@@ -58,12 +58,12 @@ impl BigInteger for BigInteger384 {
         };
         #[cfg(not(target_arch = "x86_64"))]
         {
-            self.0[0] = arithmetic::adc(self.0[0], other.0[0], &mut carry);
-            self.0[1] = arithmetic::adc(self.0[1], other.0[1], &mut carry);
-            self.0[2] = arithmetic::adc(self.0[2], other.0[2], &mut carry);
-            self.0[3] = arithmetic::adc(self.0[3], other.0[3], &mut carry);
-            self.0[4] = arithmetic::adc(self.0[4], other.0[4], &mut carry);
-            self.0[5] = arithmetic::adc(self.0[5], other.0[5], &mut carry);
+            self.0[0] = super::arithmetic::adc(self.0[0], other.0[0], &mut carry);
+            self.0[1] = super::arithmetic::adc(self.0[1], other.0[1], &mut carry);
+            self.0[2] = super::arithmetic::adc(self.0[2], other.0[2], &mut carry);
+            self.0[3] = super::arithmetic::adc(self.0[3], other.0[3], &mut carry);
+            self.0[4] = super::arithmetic::adc(self.0[4], other.0[4], &mut carry);
+            self.0[5] = super::arithmetic::adc(self.0[5], other.0[5], &mut carry);
         }
         carry != 0
     }
@@ -84,12 +84,12 @@ impl BigInteger for BigInteger384 {
         };
         #[cfg(not(target_arch = "x86_64"))]
         {
-            self.0[0] = arithmetic::sbb(self.0[0], other.0[0], &mut borrow);
-            self.0[1] = arithmetic::sbb(self.0[1], other.0[1], &mut borrow);
-            self.0[2] = arithmetic::sbb(self.0[2], other.0[2], &mut borrow);
-            self.0[3] = arithmetic::sbb(self.0[3], other.0[3], &mut borrow);
-            self.0[4] = arithmetic::sbb(self.0[4], other.0[4], &mut borrow);
-            self.0[5] = arithmetic::sbb(self.0[5], other.0[5], &mut borrow);
+            self.0[0] = super::arithmetic::sbb(self.0[0], other.0[0], &mut borrow);
+            self.0[1] = super::arithmetic::sbb(self.0[1], other.0[1], &mut borrow);
+            self.0[2] = super::arithmetic::sbb(self.0[2], other.0[2], &mut borrow);
+            self.0[3] = super::arithmetic::sbb(self.0[3], other.0[3], &mut borrow);
+            self.0[4] = super::arithmetic::sbb(self.0[4], other.0[4], &mut borrow);
+            self.0[5] = super::arithmetic::sbb(self.0[5], other.0[5], &mut borrow);
         }
         borrow != 0
     }
@@ -310,10 +310,9 @@ impl Ord for BigInteger384 {
     #[inline]
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         for (a, b) in self.0.iter().rev().zip(other.0.iter().rev()) {
-            if a < b {
-                return std::cmp::Ordering::Less;
-            } else if a > b {
-                return std::cmp::Ordering::Greater;
+            match a.cmp(&b) {
+                std::cmp::Ordering::Equal => continue,
+                c => return c,
             }
         }
         std::cmp::Ordering::Equal
