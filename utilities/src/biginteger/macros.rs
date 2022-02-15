@@ -31,9 +31,33 @@ macro_rules! biginteger {
             #[inline]
             fn add_nocarry(&mut self, other: &Self) -> bool {
                 let mut carry = 0;
+                #[cfg(target_arch = "x86_64")]
+                #[allow(unsafe_code)]
+                unsafe {
+                    use core::arch::x86_64::_addcarry_u64;
+                    carry = _addcarry_u64(carry, self.0[0], other.0[0], &mut self.0[0]);
+                    carry = _addcarry_u64(carry, self.0[1], other.0[1], &mut self.0[1]);
+                    carry = _addcarry_u64(carry, self.0[2], other.0[2], &mut self.0[2]);
+                    carry = _addcarry_u64(carry, self.0[3], other.0[3], &mut self.0[3]);
+                    if $num_limbs == 6 {
+                        const I: usize = $num_limbs - 4;
+                        carry = _addcarry_u64(carry, self.0[2 + I], other.0[2 + I], &mut self.0[2 + I]);
+                        carr = _addcarry_u64(carry, self.0[3 + I], other.0[3 + I], &mut self.0[3 + I]);
+                    }
+                };
 
-                for (a, b) in self.0.iter_mut().zip(other.0.iter()) {
-                    *a = arithmetic::adc(*a, *b, &mut carry);
+                #[cfg(not(target_arch = "x86_64"))]
+                {
+                    self.0[0] = arithmetic::adc(self.0[0], other.0[0], &mut carry);
+                    self.0[1] = arithmetic::adc(self.0[1], other.0[1], &mut carry);
+                    self.0[2] = arithmetic::adc(self.0[2], other.0[2], &mut carry);
+                    self.0[3] = arithmetic::adc(self.0[3], other.0[3], &mut carry);
+
+                    if $num_limbs == 6 {
+                        const I: usize = $num_limbs - 4;
+                        self.0[2 + I] = arithmetic::adc(self.0[2 + I], other.0[2 + I], &mut carry);
+                        self.0[3 + I] = arithmetic::adc(self.0[3 + I], other.0[3 + I], &mut carry);
+                    }
                 }
 
                 carry != 0
@@ -43,8 +67,33 @@ macro_rules! biginteger {
             fn sub_noborrow(&mut self, other: &Self) -> bool {
                 let mut borrow = 0;
 
-                for (a, b) in self.0.iter_mut().zip(other.0.iter()) {
-                    *a = arithmetic::sbb(*a, *b, &mut borrow);
+                #[cfg(target_arch = "x86_64")]
+                #[allow(unsafe_code)]
+                unsafe {
+                    use core::arch::x86_64::_addborrow_u64;
+                    borrow = _subborrow_u64(borrow, self.0[0], other.0[0], &mut self.0[0]);
+                    borrow = _subborrow_u64(borrow, self.0[1], other.0[1], &mut self.0[1]);
+                    borrow = _subborrow_u64(borrow, self.0[2], other.0[2], &mut self.0[2]);
+                    borrow = _subborrow_u64(borrow, self.0[3], other.0[3], &mut self.0[3]);
+                    if $num_limbs == 6 {
+                        const I: usize = $num_limbs - 4;
+                        borrow = _subborrow_u64(borrow, self.0[2 + I], other.0[2 + I], &mut self.0[2 + I]);
+                        borrow = _subborrow_u64(borrow, self.0[3 + I], other.0[3 + I], &mut self.0[3 + I]);
+                    }
+                };
+
+                #[cfg(not(target_arch = "x86_64"))]
+                {
+                    self.0[0] = arithmetic::sbb(self.0[0], other.0[0], &mut borrow);
+                    self.0[1] = arithmetic::sbb(self.0[1], other.0[1], &mut borrow);
+                    self.0[2] = arithmetic::sbb(self.0[2], other.0[2], &mut borrow);
+                    self.0[3] = arithmetic::sbb(self.0[3], other.0[3], &mut borrow);
+
+                    if $num_limbs == 6 {
+                        const I: usize = $num_limbs - 4;
+                        self.0[2 + I] = arithmetic::sbb(self.0[2 + I], other.0[2 + I], &mut borrow);
+                        self.0[3 + I] = arithmetic::sbb(self.0[3 + I], other.0[3 + I], &mut borrow);
+                    }
                 }
 
                 borrow != 0
