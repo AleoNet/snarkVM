@@ -85,8 +85,8 @@ impl<E: Environment, I: IntegerType> SubChecked<Self> for Integer<E, I> {
 
             // Extract the integer bits from the field element, with a carry bit.
             let field_bits = difference.to_lower_bits_le(I::BITS + 1);
-            let (carry, bits_le) = match field_bits.split_last() {
-                Some((carry, bits_le)) => (carry, bits_le),
+            let (difference, carry) = match field_bits.split_last() {
+                Some((carry, bits_le)) => (Integer::from_bits_le(Mode::Private, bits_le), carry),
                 None => E::halt("Malformed difference detected during integer subtraction"),
             };
 
@@ -97,20 +97,17 @@ impl<E: Environment, I: IntegerType> SubChecked<Self> for Integer<E, I> {
                 //   - a < 0 && b > 0 && a - b < 0 (Underflow)
                 //   - Note: if sign(a) == sign(b) then over/underflow is impossible.
                 //   - Note: the result of an overflow and underflow must be negative and positive, respectively.
-                true => match self.bits_le.last().zip(other.bits_le.last()).zip(bits_le.last()) {
-                    Some(((minuend_msb, subtrahend_msb), difference_msb)) => {
-                        let is_different_signs = minuend_msb.is_neq(subtrahend_msb);
-                        let is_underflow = is_different_signs & difference_msb.is_eq(subtrahend_msb);
-                        E::assert_eq(is_underflow, E::zero());
-                    }
-                    _ => E::halt("Malformed integer detected during integer addition"),
-                },
+                true => {
+                    let is_different_signs = self.msb().is_neq(other.msb());
+                    let is_underflow = is_different_signs & difference.msb().is_eq(other.msb());
+                    E::assert_eq(is_underflow, E::zero());
+                }
                 // For unsigned subtraction, ensure the carry bit is one.
                 false => E::assert_eq(carry, E::one()),
             }
 
             // Return the difference of `self` and `other`.
-            Integer { bits_le: bits_le.to_vec(), phantom: Default::default() }
+            difference
         }
     }
 }

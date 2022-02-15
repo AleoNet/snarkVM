@@ -69,12 +69,9 @@ impl<E: Environment, I: IntegerType, M: private::Magnitude> ShrWrapped<Integer<E
                     Self { bits_le: shift_in_field.to_lower_bits_le(I::BITS), phantom: Default::default() };
 
                 if I::is_signed() {
-                    // This is safe as I::BITS is always greater than zero.
-                    let self_is_negative = self.bits_le.last().unwrap();
-
                     // Divide the absolute value of `self` and `shift` (as a divisor) in the base field.
                     let dividend_unsigned_integer =
-                        Self::ternary(self_is_negative, &(!self).add_wrapped(&Self::one()), self).cast_as_dual();
+                        Self::ternary(self.msb(), &(!self).add_wrapped(&Self::one()), self).cast_as_dual();
                     let divisor_unsigned_integer = shift_as_divisor.cast_as_dual();
 
                     let dividend_unsigned_value = dividend_unsigned_integer.eject_value();
@@ -108,7 +105,7 @@ impl<E: Environment, I: IntegerType, M: private::Magnitude> ShrWrapped<Integer<E
                         &(&negated_quotient).sub_wrapped(&Self::one()),
                     );
 
-                    Self::ternary(&self_is_negative, &rounded_negated_quotient, &quotient_integer)
+                    Self::ternary(self.msb(), &rounded_negated_quotient, &quotient_integer)
                 } else {
                     self.div_wrapped(&shift_as_divisor)
                 }

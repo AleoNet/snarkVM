@@ -76,13 +76,9 @@ impl<E: Environment, I: IntegerType> MulChecked<Self> for Integer<E, I> {
                 None => E::halt("Integer overflow on multiplication of two constants"),
             }
         } else if I::is_signed() {
-            // This is safe since I::BITS is always greater than 0.
-            let self_msb = self.bits_le.last().unwrap();
-            let other_msb = other.bits_le.last().unwrap();
-
             // Multiply the absolute value of `self` and `other` in the base field.
-            let absolute_self = Self::ternary(self_msb, &Self::zero().sub_wrapped(self), self);
-            let absolute_other = Self::ternary(other_msb, &Self::zero().sub_wrapped(other), other);
+            let absolute_self = Self::ternary(self.msb(), &Self::zero().sub_wrapped(self), self);
+            let absolute_other = Self::ternary(other.msb(), &Self::zero().sub_wrapped(other), other);
             let mut bits_le = Self::mul_bits(&absolute_self.bits_le, &absolute_other.bits_le, true);
 
             // We need to check that the abs(a) * abs(b) did not exceed the unsigned maximum.
@@ -92,7 +88,7 @@ impl<E: Environment, I: IntegerType> MulChecked<Self> for Integer<E, I> {
 
             // If the product should be positive, then it cannot exceed the signed maximum.
             let product_msb = &bits_le[I::BITS - 1];
-            let operands_same_sign = &self_msb.is_eq(other_msb);
+            let operands_same_sign = &self.msb().is_eq(other.msb());
             let positive_product_overflows = operands_same_sign & product_msb;
 
             // If the product should be negative, then it cannot exceed the absolute value of the signed minimum.

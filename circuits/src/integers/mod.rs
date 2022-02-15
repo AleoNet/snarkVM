@@ -21,6 +21,7 @@ pub mod div_checked;
 pub mod div_wrapped;
 pub mod equal;
 pub mod from_bits;
+pub mod msb;
 pub mod mul_checked;
 pub mod mul_wrapped;
 pub mod neg;

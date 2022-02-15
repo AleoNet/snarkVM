@@ -413,6 +413,14 @@ pub trait Square {
     fn square(&self) -> Self::Output;
 }
 
+/// Unary operator for retrieving the most-significant bit.
+pub trait MSB {
+    type Boolean: BooleanTrait;
+
+    /// Returns the MSB of the value.
+    fn msb(&self) -> &Self::Boolean;
+}
+
 /// Unary operator for instantiating from bits.
 pub trait FromBits {
     type Boolean: BooleanTrait;

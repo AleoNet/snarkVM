@@ -37,20 +37,16 @@ impl<E: Environment, I: IntegerType, M: private::Magnitude> PowChecked<Integer<E
             //  in general we do not need to check for overflow until we have found
             //  the second bit that has been set. Optimize.
             for bit in other.bits_le.iter().rev() {
-                println!("Result: {:?}", result.eject_value());
                 result = (&result).mul_checked(&result);
+
                 // TODO (@pranav) We explicitly inline the implementation for mul_checked
                 //  since we only want to check for overflow if the bit of the exponent is set.
                 //  Dedup this code.
                 let result_times_self = if I::is_signed() {
-                    // This is safe since I::BITS is always greater than 0.
-                    let result_msb = result.bits_le.last().unwrap();
-                    let self_msb = self.bits_le.last().unwrap();
-
                     // Multiply the absolute value of `self` and `other` in the base field.
                     let result_absolute_value =
-                        Self::ternary(result_msb, &(!&result).add_wrapped(&Self::one()), &result);
-                    let self_absolute_value = Self::ternary(self_msb, &(!self).add_wrapped(&Self::one()), self);
+                        Self::ternary(result.msb(), &(!&result).add_wrapped(&Self::one()), &result);
+                    let self_absolute_value = Self::ternary(self.msb(), &(!self).add_wrapped(&Self::one()), self);
                     let mut bits_le =
                         Self::mul_bits(&result_absolute_value.bits_le, &self_absolute_value.bits_le, true);
 
@@ -64,7 +60,7 @@ impl<E: Environment, I: IntegerType, M: private::Magnitude> PowChecked<Integer<E
                     let carry_bits_nonzero = bits_are_nonzero(&bits_le[I::BITS..]);
 
                     let product_msb = &bits_le[I::BITS - 1];
-                    let operands_same_sign = &result_msb.is_eq(self_msb);
+                    let operands_same_sign = &result.msb().is_eq(self.msb());
 
                     // If the product should be positive, then it cannot exceed the signed maximum.
                     let positive_product_overflows = operands_same_sign & product_msb;

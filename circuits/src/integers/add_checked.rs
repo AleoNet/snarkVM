@@ -84,8 +84,8 @@ impl<E: Environment, I: IntegerType> AddChecked<Self> for Integer<E, I> {
             let sum = this + that;
 
             // Extract the integer bits from the field element, with a carry bit.
-            let (carry, bits_le) = match sum.to_lower_bits_le(I::BITS + 1).split_last() {
-                Some((carry, bits_le)) => (carry.clone(), bits_le.to_vec()),
+            let (sum, carry) = match sum.to_lower_bits_le(I::BITS + 1).split_last() {
+                Some((carry, bits_le)) => (Integer::from_bits_le(Mode::Private, bits_le), carry.clone()),
                 None => E::halt("Malformed sum detected during integer addition"),
             };
 
@@ -96,20 +96,17 @@ impl<E: Environment, I: IntegerType> AddChecked<Self> for Integer<E, I> {
                 //   - a < 0 && b < 0 && a + b > 0 (Underflow)
                 //   - Note: if sign(a) != sign(b) then over/underflow is impossible.
                 //   - Note: the result of an overflow and underflow must be negative and positive, respectively.
-                true => match self.bits_le.last().zip(other.bits_le.last()).zip(bits_le.last()) {
-                    Some(((self_msb, other_msb), sum_msb)) => {
-                        let is_same_sign = self_msb.is_eq(other_msb);
-                        let is_overflow = is_same_sign & sum_msb.is_neq(self_msb);
-                        E::assert_eq(is_overflow, E::zero());
-                    }
-                    _ => E::halt("Malformed integer detected during integer addition"),
-                },
+                true => {
+                    let is_same_sign = self.msb().is_eq(other.msb());
+                    let is_overflow = is_same_sign & sum.msb().is_neq(self.msb());
+                    E::assert_eq(is_overflow, E::zero());
+                }
                 // For unsigned addition, ensure the carry bit is zero.
                 false => E::assert_eq(carry, E::zero()),
             }
 
             // Return the sum of `self` and `other`.
-            Integer { bits_le, phantom: Default::default() }
+            sum
         }
     }
 }
