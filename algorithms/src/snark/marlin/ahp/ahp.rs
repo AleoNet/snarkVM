@@ -15,7 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    fft::EvaluationDomain,
+    fft::{
+        domain::{FFTPrecomputation, IFFTPrecomputation},
+        EvaluationDomain,
+    },
     polycommit::{LCTerm, LabeledPolynomial, LinearCombination},
     snark::marlin::{
         ahp::{matrices, prover::ProverConstraintSystem, verifier, AHPError, CircuitInfo},
@@ -142,6 +145,27 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         domain_c: EvaluationDomain<F>,
     ) -> EvaluationDomain<F> {
         [domain_a, domain_b, domain_c].into_iter().max_by_key(|d| d.size()).unwrap()
+    }
+
+    pub fn fft_precomputation(
+        constraint_domain_size: usize,
+        non_zero_a_domain_size: usize,
+        non_zero_b_domain_size: usize,
+        non_zero_c_domain_size: usize,
+    ) -> Option<(FFTPrecomputation<F>, IFFTPrecomputation<F>)> {
+        let largest_domain_size = [
+            3 * constraint_domain_size,
+            non_zero_a_domain_size * 2,
+            non_zero_b_domain_size * 2,
+            non_zero_c_domain_size * 2,
+        ]
+        .into_iter()
+        .max()?;
+        let largest_mul_domain = EvaluationDomain::new(largest_domain_size)?;
+
+        let fft_precomputation = largest_mul_domain.precompute_fft();
+        let ifft_precomputation = fft_precomputation.to_ifft_precomputation();
+        Some((fft_precomputation, ifft_precomputation))
     }
 
     /// Construct the linear combinations that are checked by the AHP.

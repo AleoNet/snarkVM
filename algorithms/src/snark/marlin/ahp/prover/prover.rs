@@ -249,11 +249,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let ratio = constraint_domain.size() / input_domain.size();
 
-        let mut w_extended = state.private_variables.clone();
-        w_extended.extend(
-            core::iter::repeat(F::zero())
-                .take(constraint_domain.size() - input_domain.size() - state.private_variables.len()),
-        );
+        let mut w_extended = state.private_variables;
+        w_extended.resize(constraint_domain.size() - input_domain.size(), F::zero());
+        state.private_variables = vec![];
 
         let w_poly_time = start_timer!(|| "Computing w polynomial");
         let w_poly_evals = cfg_into_iter!(0..constraint_domain.size())
@@ -269,7 +267,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let w_rand = F::rand(rng);
         job_pool.add_job(|| {
             let mut w_poly = EvaluationsOnDomain::from_vec_and_domain(w_poly_evals, constraint_domain)
-                .interpolate_with_pc(&state.ifft_precomputation);
+                .interpolate_with_pc(state.ifft_precomputation());
             if MM::ZK {
                 w_poly += &(&v_H * w_rand);
             }
@@ -283,7 +281,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let r_a = F::rand(rng);
         job_pool.add_job(|| {
             let z_a_poly_time = start_timer!(|| "Computing z_A polynomial");
-            let mut z_a_poly = z_a_evals.interpolate_with_pc_by_ref(&state.ifft_precomputation);
+            let mut z_a_poly = z_a_evals.interpolate_with_pc_by_ref(state.ifft_precomputation());
             if MM::ZK {
                 z_a_poly += &(&v_H * r_a);
             }
@@ -294,7 +292,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let r_b = F::rand(rng);
         job_pool.add_job(|| {
             let z_b_poly_time = start_timer!(|| "Computing z_B polynomial");
-            let mut z_b_poly = z_b_evals.interpolate_with_pc_by_ref(&state.ifft_precomputation);
+            let mut z_b_poly = z_b_evals.interpolate_with_pc_by_ref(state.ifft_precomputation());
             if MM::ZK {
                 z_b_poly += &(&v_H * r_b);
             }
@@ -443,7 +441,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 let mut multiplier = PolyMultiplier::new();
                 multiplier.add_polynomial_ref(&z_a_poly_det, "z_a_poly");
                 multiplier.add_polynomial_ref(&z_b_poly_det, "z_b_poly");
-                multiplier.add_precomputation(&state.fft_precomputation, &state.ifft_precomputation);
+                multiplier.add_precomputation(state.fft_precomputation(), state.ifft_precomputation());
                 multiplier.multiply().unwrap()
             };
             z_c += &r_a_v_H.mul(&r_b_v_H);
@@ -485,7 +483,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let mut multiplier = PolyMultiplier::new();
             multiplier.add_polynomial_ref(z_a_poly, "z_a_poly");
             multiplier.add_polynomial_ref(z_b_poly, "z_b_poly");
-            multiplier.add_precomputation(&state.fft_precomputation, &state.ifft_precomputation);
+            multiplier.add_precomputation(state.fft_precomputation(), state.ifft_precomputation());
             multiplier.multiply().unwrap()
         };
 
@@ -516,7 +514,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 state.input_domain,
                 state.constraint_domain,
                 &r_alpha_x_evals,
-                &state.ifft_precomputation,
+                state.ifft_precomputation(),
             );
             end_timer!(t_poly_time);
             t_poly
@@ -527,7 +525,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let x_poly =
             EvaluationsOnDomain::from_vec_and_domain(state.padded_public_variables.clone(), state.input_domain)
-                .interpolate_with_pc(&state.ifft_precomputation);
+                .interpolate_with_pc(state.ifft_precomputation());
         let w_poly = state.w_poly.as_ref().and_then(|p| p.polynomial().as_dense()).unwrap();
         let mut z_poly = w_poly.mul_by_vanishing_poly(state.input_domain);
         cfg_iter_mut!(z_poly.coeffs).zip(&x_poly.coeffs).for_each(|(z, x)| *z += x);
@@ -548,7 +546,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let mul_domain =
             EvaluationDomain::new(mul_domain_size).expect("field is not smooth enough to construct domain");
         let mut multiplier = PolyMultiplier::new();
-        multiplier.add_precomputation(&state.fft_precomputation, &state.ifft_precomputation);
+        multiplier.add_precomputation(state.fft_precomputation(), state.ifft_precomputation());
         multiplier.add_polynomial(summed_z_m, "summed_z_m");
         multiplier.add_polynomial(z_poly, "z");
         multiplier.add_polynomial(t_poly, "t");
@@ -632,8 +630,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             beta,
             v_H_alpha_v_H_beta,
             largest_non_zero_domain_size,
-            &state.fft_precomputation,
-            &state.ifft_precomputation,
+            state.fft_precomputation(),
+            state.ifft_precomputation(),
         );
         let (sum_b, lhs_b, g_b) = Self::third_round_helper(
             "b",
@@ -643,8 +641,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             beta,
             v_H_alpha_v_H_beta,
             largest_non_zero_domain_size,
-            &state.fft_precomputation,
-            &state.ifft_precomputation,
+            state.fft_precomputation(),
+            state.ifft_precomputation(),
         );
         let (sum_c, lhs_c, g_c) = Self::third_round_helper(
             "c",
@@ -654,8 +652,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             beta,
             v_H_alpha_v_H_beta,
             largest_non_zero_domain_size,
-            &state.fft_precomputation,
-            &state.ifft_precomputation,
+            state.fft_precomputation(),
+            state.ifft_precomputation(),
         );
 
         let msg = ProverMessage { field_elements: vec![sum_a, sum_b, sum_c] };
@@ -814,7 +812,9 @@ fn check_division_by_vanishing_poly_preserve_sparseness() {
         evals[4 * i] = Fr::zero();
     }
     let p = EvaluationsOnDomain::from_vec_and_domain(evals, domain).interpolate();
+    assert_eq!(p.degree(), 15);
     let (p_div_v, p_mod_v) = p.divide_by_vanishing_poly(small_domain).unwrap();
     assert!(p_mod_v.is_zero());
+    dbg!(p_div_v.degree());
     dbg!(p_div_v.evaluate_over_domain(domain));
 }
