@@ -263,7 +263,8 @@ impl<P: Parameters> ProjectiveCurve for Projective<P> {
             // If we're adding -a and a together, self.z becomes zero as H becomes zero.
 
             // H = U2-X1
-            let h = u2 - &self.x;
+            let mut h = u2;
+            h -= &self.x;
 
             // HH = H^2
             let hh = h.square();
@@ -274,13 +275,17 @@ impl<P: Parameters> ProjectiveCurve for Projective<P> {
             i.double_in_place();
 
             // J = H*I
-            let mut j = h * &i;
+            let mut j = h;
+            j *= &i;
 
             // r = 2*(S2-Y1)
-            let r = (s2 - &self.y).double();
+            let mut r = s2;
+            r -= &self.y;
+            r.double_in_place();
 
             // V = X1*I
-            let v = self.x * &i;
+            let mut v = self.x;
+            v *= &i;
 
             // X3 = r^2 - J - 2*V
             self.x = r.square();
@@ -290,7 +295,8 @@ impl<P: Parameters> ProjectiveCurve for Projective<P> {
             // Y3 = r*(V-X3)-2*Y1*J
             j *= &self.y; // J = 2*Y1*J
             j.double_in_place();
-            self.y = v - self.x;
+            self.y = v;
+            self.y -= self.x;
             self.y *= &r;
             self.y -= &j;
 

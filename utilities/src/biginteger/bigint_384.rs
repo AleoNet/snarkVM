@@ -294,6 +294,7 @@ impl Display for BigInteger384 {
 }
 impl Ord for BigInteger384 {
     #[inline]
+    #[allow(clippy::comparison_chain)]
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         for (a, b) in self.0.iter().rev().zip(other.0.iter().rev()) {
             if a < b {
