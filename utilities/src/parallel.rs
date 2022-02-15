@@ -49,7 +49,7 @@ impl<'a, T> ExecutionPool<'a, T> {
         #[cfg(feature = "parallel")]
         {
             use rayon::prelude::*;
-            self.jobs.into_par_iter().map(|job| execute_with_threads(job, max_available_threads())).collect()
+            self.jobs.into_par_iter().map(execute_with_max_available_threads).collect()
         }
         #[cfg(not(feature = "parallel"))]
         {
@@ -68,9 +68,16 @@ impl<'a, T> Default for ExecutionPool<'a, T> {
 pub fn max_available_threads() -> usize {
     use aleo_std::Cpu;
     let rayon_threads = rayon::current_num_threads();
+
     match aleo_std::get_cpu() {
-        Cpu::Intel | Cpu::Unknown => num_cpus::get_physical().min(rayon_threads),
-        Cpu::AMD => rayon_threads,
+        Cpu::Intel => {
+            if cfg!(target_os = "macos") {
+                num_cpus::get_physical().min(rayon_threads)
+            } else {
+                rayon_threads
+            }
+        }
+        Cpu::AMD | Cpu::Unknown => rayon_threads,
     }
 }
 
