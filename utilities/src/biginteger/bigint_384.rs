@@ -44,26 +44,56 @@ impl BigInteger for BigInteger384 {
 
     #[inline]
     fn add_nocarry(&mut self, other: &Self) -> bool {
-        let mut carry = 0;
-        carry = super::arithmetic::adc(&mut self.0[0], other.0[0], carry);
-        carry = super::arithmetic::adc(&mut self.0[1], other.0[1], carry);
-        carry = super::arithmetic::adc(&mut self.0[2], other.0[2], carry);
-        carry = super::arithmetic::adc(&mut self.0[3], other.0[3], carry);
-        carry = super::arithmetic::adc(&mut self.0[4], other.0[4], carry);
-        carry = super::arithmetic::adc(&mut self.0[5], other.0[5], carry);
-        carry != 0
+        #[cfg(all(target_arch = "x86_64", target_feature = "adx"))]
+        unsafe {
+            use core::arch::x86_64::_addcarry_u64;
+            let mut carry = 0;
+            carry = _addcarry_u64(carry, self.0[0], other.0[0], &mut self.0[0]);
+            carry = _addcarry_u64(carry, self.0[1], other.0[1], &mut self.0[1]);
+            carry = _addcarry_u64(carry, self.0[2], other.0[2], &mut self.0[2]);
+            carry = _addcarry_u64(carry, self.0[3], other.0[3], &mut self.0[3]);
+            carry = _addcarry_u64(carry, self.0[4], other.0[4], &mut self.0[4]);
+            carry = _addcarry_u64(carry, self.0[5], other.0[5], &mut self.0[5]);
+            carry != 0
+        }
+        #[cfg(not(all(target_arch = "x86_64", target_feature = "adx")))]
+        {
+            let mut carry = 0;
+            carry = super::arithmetic::adc(&mut self.0[0], other.0[0], carry);
+            carry = super::arithmetic::adc(&mut self.0[1], other.0[1], carry);
+            carry = super::arithmetic::adc(&mut self.0[2], other.0[2], carry);
+            carry = super::arithmetic::adc(&mut self.0[3], other.0[3], carry);
+            carry = super::arithmetic::adc(&mut self.0[4], other.0[4], carry);
+            carry = super::arithmetic::adc(&mut self.0[5], other.0[5], carry);
+            carry != 0
+        }
     }
 
     #[inline]
     fn sub_noborrow(&mut self, other: &Self) -> bool {
-        let mut borrow = 0;
-        borrow = super::arithmetic::sbb(&mut self.0[0], other.0[0], borrow);
-        borrow = super::arithmetic::sbb(&mut self.0[1], other.0[1], borrow);
-        borrow = super::arithmetic::sbb(&mut self.0[2], other.0[2], borrow);
-        borrow = super::arithmetic::sbb(&mut self.0[3], other.0[3], borrow);
-        borrow = super::arithmetic::sbb(&mut self.0[4], other.0[4], borrow);
-        borrow = super::arithmetic::sbb(&mut self.0[5], other.0[5], borrow);
-        borrow != 0
+        #[cfg(all(target_arch = "x86_64", target_feature = "adx"))]
+        unsafe {
+            use core::arch::x86_64::_subborrow_u64;
+            let mut borrow = 0;
+            borrow = _subborrow_u64(borrow, self.0[0], other.0[0], &mut self.0[0]);
+            borrow = _subborrow_u64(borrow, self.0[1], other.0[1], &mut self.0[1]);
+            borrow = _subborrow_u64(borrow, self.0[2], other.0[2], &mut self.0[2]);
+            borrow = _subborrow_u64(borrow, self.0[3], other.0[3], &mut self.0[3]);
+            borrow = _subborrow_u64(borrow, self.0[4], other.0[4], &mut self.0[4]);
+            borrow = _subborrow_u64(borrow, self.0[5], other.0[5], &mut self.0[5]);
+            borrow != 0
+        }
+        #[cfg(not(all(target_arch = "x86_64", target_feature = "adx")))]
+        {
+            let mut borrow = 0;
+            borrow = super::arithmetic::sbb(&mut self.0[0], other.0[0], borrow);
+            borrow = super::arithmetic::sbb(&mut self.0[1], other.0[1], borrow);
+            borrow = super::arithmetic::sbb(&mut self.0[2], other.0[2], borrow);
+            borrow = super::arithmetic::sbb(&mut self.0[3], other.0[3], borrow);
+            borrow = super::arithmetic::sbb(&mut self.0[4], other.0[4], borrow);
+            borrow = super::arithmetic::sbb(&mut self.0[5], other.0[5], borrow);
+            borrow != 0
+        }
     }
 
     #[inline]
