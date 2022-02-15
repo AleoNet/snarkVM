@@ -653,6 +653,7 @@ impl<'a, P: Fp256Parameters> MulAssign<&'a Self> for Fp256<P> {
         r[3] = carry1 + carry2;
 
         (self.0).0 = r;
+        self.reduce();
 
         // let mut carry = 0;
         // let r0 = fa::mac_with_carry(0, (self.0).0[0], (other.0).0[0], &mut carry);
