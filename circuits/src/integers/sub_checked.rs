@@ -90,28 +90,23 @@ impl<E: Environment, I: IntegerType> SubChecked<Self> for Integer<E, I> {
                 None => E::halt("Malformed difference detected during integer subtraction"),
             };
 
-            // Underflow conditions are different for signed and unsigned integers.
+            // Check for underflow.
             match I::is_signed() {
-                true => {
-                    // This is safe since I::BITS is always greater than 0.
-                    let minuend_msb = self.bits_le.last().unwrap();
-                    let subtrahend_msb = other.bits_le.last().unwrap();
-                    let result_msb = bits_le.last().unwrap();
-
-                    let is_different_signs = minuend_msb.is_neq(subtrahend_msb);
-                    let is_underflow = is_different_signs & result_msb.is_eq(subtrahend_msb);
-
-                    // For signed subtraction, overflow and underflow conditions are:
-                    //   - a > 0 && b < 0 && a - b > 0 (Overflow)
-                    //   - a < 0 && b > 0 && a - b < 0 (Underflow)
-                    //   - Note: if sign(a) == sign(b) then over/underflow is impossible.
-                    //   - Note: the result of an overflow and underflow must be negative and positive, respectively.
-                    E::assert_eq(is_underflow, E::zero());
-                }
-                false => {
-                    // For unsigned subtraction, ensure the carry bit is one.
-                    E::assert_eq(carry, E::one());
-                }
+                // For signed subtraction, overflow and underflow conditions are:
+                //   - a > 0 && b < 0 && a - b > 0 (Overflow)
+                //   - a < 0 && b > 0 && a - b < 0 (Underflow)
+                //   - Note: if sign(a) == sign(b) then over/underflow is impossible.
+                //   - Note: the result of an overflow and underflow must be negative and positive, respectively.
+                true => match self.bits_le.last().zip(other.bits_le.last()).zip(bits_le.last()) {
+                    Some(((minuend_msb, subtrahend_msb), difference_msb)) => {
+                        let is_different_signs = minuend_msb.is_neq(subtrahend_msb);
+                        let is_underflow = is_different_signs & difference_msb.is_eq(subtrahend_msb);
+                        E::assert_eq(is_underflow, E::zero());
+                    }
+                    _ => E::halt("Malformed integer detected during integer addition"),
+                },
+                // For unsigned subtraction, ensure the carry bit is one.
+                false => E::assert_eq(carry, E::one()),
             }
 
             // Return the difference of `self` and `other`.

@@ -126,12 +126,12 @@ mod tests {
 
     use num_traits::CheckedShr;
     use rand::thread_rng;
-    use std::ops::RangeInclusive;
+    use std::{ops::RangeInclusive, panic::RefUnwindSafe};
 
     const ITERATIONS: usize = 128;
 
     #[rustfmt::skip]
-    fn check_shr<I: CheckedShr + IntegerType + std::panic::RefUnwindSafe, M: private::Magnitude + std::panic::RefUnwindSafe>(
+    fn check_shr<I: CheckedShr + IntegerType + RefUnwindSafe, M: private::Magnitude + RefUnwindSafe>(
         name: &str,
         first: I,
         second: M,
@@ -158,7 +158,7 @@ mod tests {
     }
 
     #[rustfmt::skip]
-    fn run_test<I: CheckedShr + IntegerType + std::panic::RefUnwindSafe, M: private::Magnitude + std::panic::RefUnwindSafe>(
+    fn run_test<I: CheckedShr + IntegerType + RefUnwindSafe, M: private::Magnitude + RefUnwindSafe>(
         mode_a: Mode,
         mode_b: Mode,
         num_constants: usize,
@@ -182,7 +182,7 @@ mod tests {
     }
 
     #[rustfmt::skip]
-    fn run_exhaustive_test<I: IntegerType + std::panic::RefUnwindSafe, M: private::Magnitude + std::panic::RefUnwindSafe>(
+    fn run_exhaustive_test<I: IntegerType + RefUnwindSafe, M: private::Magnitude + RefUnwindSafe>(
         mode_a: Mode,
         mode_b: Mode,
         num_constants: usize,

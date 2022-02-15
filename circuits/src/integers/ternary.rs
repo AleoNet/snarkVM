@@ -67,20 +67,20 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
-        for flag in vec![true, false] {
+        for flag in &[true, false] {
             let first: I = UniformRand::rand(&mut thread_rng());
             let second: I = UniformRand::rand(&mut thread_rng());
 
             let name = format!("Ternary({}): if ({}) then ({}) else ({})", flag, mode_condition, mode_a, mode_b);
             let case = format!("if ({}) then ({}) else ({})", flag, first, second);
 
-            let condition = Boolean::<Circuit>::new(mode_condition, flag);
+            let condition = Boolean::<Circuit>::new(mode_condition, *flag);
             let a = Integer::<Circuit, I>::new(mode_a, first);
             let b = Integer::new(mode_b, second);
 
             // Capture the condition in a closure and use the binary operation check.
             let operation = | a: &Integer<Circuit, I>, b: &Integer<Circuit, I> | { Integer::ternary(&condition, a, b) };
-            check_operation_passes(&name, &case, if flag { first } else { second }, &a, &b, operation, num_constants, num_public, num_private, num_constraints);
+            check_operation_passes(&name, &case, if *flag { first } else { second }, &a, &b, operation, num_constants, num_public, num_private, num_constraints);
         }
     }
 

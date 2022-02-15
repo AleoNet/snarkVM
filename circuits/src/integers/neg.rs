@@ -31,7 +31,7 @@ impl<E: Environment, I: IntegerType> Neg for &Integer<E, I> {
     /// Performs the unary `-` operation.
     fn neg(self) -> Self::Output {
         match I::is_signed() {
-            // Note: This addition must be checked as `-I::MAX` is an invalid operation.
+            // Note: This addition must be checked as `-I::MIN` is an invalid operation.
             true => Integer::one().add_checked(&!self),
             false => E::halt("Attempted to negate an unsigned integer"),
         }

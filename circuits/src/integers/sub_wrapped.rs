@@ -27,7 +27,7 @@ impl<E: Environment, I: IntegerType> SubWrapped<Self> for Integer<E, I> {
             Integer::new(Mode::Constant, self.eject_value().wrapping_sub(&other.eject_value()))
         } else {
             // Instead of subtracting the bits of `self` and `other` directly, the integers are
-            // converted into a field elements, and subtracted, before being converted back to integers.
+            // converted into field elements to perform the operation, before being converted back to integers.
             // Note: This is safe as the field is larger than the maximum integer type supported.
             let minuend = BaseField::from_bits_le(Mode::Private, &self.bits_le);
             let subtrahend = BaseField::from_bits_le(Mode::Private, &(!other).bits_le);

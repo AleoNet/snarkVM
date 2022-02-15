@@ -117,13 +117,13 @@ mod tests {
     use snarkvm_utilities::UniformRand;
 
     use rand::thread_rng;
-    use std::ops::RangeInclusive;
+    use std::{ops::RangeInclusive, panic::RefUnwindSafe};
 
     // Lowered to 32, since we run (~5 * ITERATIONS) cases for most tests.
     const ITERATIONS: usize = 32;
 
     #[rustfmt::skip]
-    fn check_pow_without_expected_numbers<I: IntegerType + std::panic::RefUnwindSafe, M: private::Magnitude + std::panic::RefUnwindSafe>(
+    fn check_pow_without_expected_numbers<I: IntegerType + RefUnwindSafe, M: private::Magnitude + RefUnwindSafe>(
         name: &str,
         first: I,
         second: M,
@@ -145,7 +145,7 @@ mod tests {
     }
 
     #[rustfmt::skip]
-    fn check_pow<I: IntegerType + std::panic::RefUnwindSafe, M: private::Magnitude + std::panic::RefUnwindSafe>(
+    fn check_pow<I: IntegerType + RefUnwindSafe, M: private::Magnitude + RefUnwindSafe>(
         name: &str,
         first: I,
         second: M,
@@ -171,7 +171,7 @@ mod tests {
     }
 
     #[rustfmt::skip]
-    fn run_overflow_and_corner_case_test<I: IntegerType + std::panic::RefUnwindSafe, M: private::Magnitude + std::panic::RefUnwindSafe>(
+    fn run_overflow_and_corner_case_test<I: IntegerType + RefUnwindSafe, M: private::Magnitude + RefUnwindSafe>(
         mode_a: Mode,
         mode_b: Mode,
     ) {
@@ -202,7 +202,7 @@ mod tests {
     }
 
     #[rustfmt::skip]
-    fn run_test<I: IntegerType + std::panic::RefUnwindSafe, M: private::Magnitude + std::panic::RefUnwindSafe>(
+    fn run_test<I: IntegerType + RefUnwindSafe, M: private::Magnitude + RefUnwindSafe>(
         mode_a: Mode,
         mode_b: Mode,
         num_constants: usize,
@@ -231,7 +231,7 @@ mod tests {
     }
 
     #[rustfmt::skip]
-    fn run_exhaustive_test_without_expected_numbers<I: IntegerType + std::panic::RefUnwindSafe, M: private::Magnitude + std::panic::RefUnwindSafe>(
+    fn run_exhaustive_test_without_expected_numbers<I: IntegerType + RefUnwindSafe, M: private::Magnitude + RefUnwindSafe>(
         mode_a: Mode,
         mode_b: Mode
     ) where
@@ -247,7 +247,7 @@ mod tests {
     }
 
     #[rustfmt::skip]
-    fn run_exhaustive_test<I: IntegerType + std::panic::RefUnwindSafe, M: private::Magnitude + std::panic::RefUnwindSafe>(
+    fn run_exhaustive_test<I: IntegerType + RefUnwindSafe, M: private::Magnitude + RefUnwindSafe>(
         mode_a: Mode,
         mode_b: Mode,
         num_constants: usize,
