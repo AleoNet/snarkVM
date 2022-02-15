@@ -43,9 +43,6 @@ pub mod zero;
 
 mod helpers;
 
-pub mod sign_extend;
-pub use sign_extend::*;
-
 pub mod zero_extend;
 pub use zero_extend::*;
 

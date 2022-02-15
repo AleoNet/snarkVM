@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::{SignExtend, ZeroExtend};
+use crate::ZeroExtend;
 
 impl<E: Environment, I: IntegerType, M: private::Magnitude> ShrWrapped<Integer<E, M>> for Integer<E, I> {
     type Output = Self;
@@ -44,7 +44,11 @@ impl<E: Environment, I: IntegerType, M: private::Magnitude> ShrWrapped<Integer<E
                 // If the shift amount is a constant, then we can manually shift in bits and truncate the result.
                 let shift_amount = rhs_as_u8.eject_value() as usize;
                 let mut bits_le = if I::is_signed() {
-                    Boolean::sign_extend(&self.bits_le, I::BITS + shift_amount)
+                    // Sign extend `self` by `shift_amount`.
+                    let mut result = Vec::with_capacity(I::BITS + shift_amount);
+                    result.extend_from_slice(&self.bits_le);
+                    result.extend(core::iter::repeat(self.msb().clone()).take(shift_amount));
+                    result
                 } else {
                     Boolean::zero_extend(&self.bits_le, I::BITS + shift_amount)
                 };
