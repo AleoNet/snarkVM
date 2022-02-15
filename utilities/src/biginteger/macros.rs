@@ -42,7 +42,7 @@ macro_rules! biginteger {
                     if $num_limbs == 6 {
                         const I: usize = $num_limbs - 4;
                         carry = _addcarry_u64(carry, self.0[2 + I], other.0[2 + I], &mut self.0[2 + I]);
-                        carr = _addcarry_u64(carry, self.0[3 + I], other.0[3 + I], &mut self.0[3 + I]);
+                        carry = _addcarry_u64(carry, self.0[3 + I], other.0[3 + I], &mut self.0[3 + I]);
                     }
                 };
 
@@ -70,7 +70,7 @@ macro_rules! biginteger {
                 #[cfg(target_arch = "x86_64")]
                 #[allow(unsafe_code)]
                 unsafe {
-                    use core::arch::x86_64::_addborrow_u64;
+                    use core::arch::x86_64::_subborrow_u64;
                     borrow = _subborrow_u64(borrow, self.0[0], other.0[0], &mut self.0[0]);
                     borrow = _subborrow_u64(borrow, self.0[1], other.0[1], &mut self.0[1]);
                     borrow = _subborrow_u64(borrow, self.0[2], other.0[2], &mut self.0[2]);
