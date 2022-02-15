@@ -282,7 +282,7 @@ impl FromBytes for BigInteger384 {
 impl Debug for BigInteger384 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         for i in self.0.iter().rev() {
-            write!(f, "{}", i)?;
+            write!(f, "{:016X}", *i)?;
         }
         Ok(())
     }
