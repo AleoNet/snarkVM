@@ -45,64 +45,32 @@ impl crate::biginteger::BigInteger for BigInteger256 {
     #[inline]
     fn add_nocarry(&mut self, other: &Self) -> bool {
         let mut carry = 0;
-        #[cfg(all(target_arch = "x86_64", target_feature = "adx"))]
-        #[allow(unsafe_code)]
-        unsafe {
-            use core::arch::x86_64::_addcarry_u64;
-            carry = _addcarry_u64(carry, self.0[0], other.0[0], &mut self.0[0]);
-            carry = _addcarry_u64(carry, self.0[1], other.0[1], &mut self.0[1]);
-            carry = _addcarry_u64(carry, self.0[2], other.0[2], &mut self.0[2]);
-            carry = _addcarry_u64(carry, self.0[3], other.0[3], &mut self.0[3]);
-        };
-        #[cfg(not(all(target_arch = "x86_64", target_feature = "adx")))]
-        {
-            self.0[0] = super::arithmetic::adc(self.0[0], other.0[0], &mut carry);
-            self.0[1] = super::arithmetic::adc(self.0[1], other.0[1], &mut carry);
-            self.0[2] = super::arithmetic::adc(self.0[2], other.0[2], &mut carry);
-            self.0[3] = super::arithmetic::adc(self.0[3], other.0[3], &mut carry);
-        }
+        carry = super::arithmetic::adc(&mut self.0[0], other.0[0], carry);
+        carry = super::arithmetic::adc(&mut self.0[1], other.0[1], carry);
+        carry = super::arithmetic::adc(&mut self.0[2], other.0[2], carry);
+        carry = super::arithmetic::adc(&mut self.0[3], other.0[3], carry);
         carry != 0
     }
 
     #[inline]
     fn sub_noborrow(&mut self, other: &Self) -> bool {
         let mut borrow = 0;
-        #[cfg(all(target_arch = "x86_64", target_feature = "adx"))]
-        #[allow(unsafe_code)]
-        unsafe {
-            use core::arch::x86_64::_subborrow_u64;
-            borrow = _subborrow_u64(borrow, self.0[0], other.0[0], &mut self.0[0]);
-            borrow = _subborrow_u64(borrow, self.0[1], other.0[1], &mut self.0[1]);
-            borrow = _subborrow_u64(borrow, self.0[2], other.0[2], &mut self.0[2]);
-            borrow = _subborrow_u64(borrow, self.0[3], other.0[3], &mut self.0[3]);
-        };
-        #[cfg(not(all(target_arch = "x86_64", target_feature = "adx")))]
-        {
-            self.0[0] = crate::arithmetic::sbb(self.0[0], other.0[0], &mut borrow);
-            self.0[1] = crate::arithmetic::sbb(self.0[1], other.0[1], &mut borrow);
-            self.0[2] = crate::arithmetic::sbb(self.0[2], other.0[2], &mut borrow);
-            self.0[3] = crate::arithmetic::sbb(self.0[3], other.0[3], &mut borrow);
-        }
+        borrow = crate::arithmetic::sbb(&mut self.0[0], other.0[0], borrow);
+        borrow = crate::arithmetic::sbb(&mut self.0[1], other.0[1], borrow);
+        borrow = crate::arithmetic::sbb(&mut self.0[2], other.0[2], borrow);
+        borrow = crate::arithmetic::sbb(&mut self.0[3], other.0[3], borrow);
         borrow != 0
     }
 
     #[inline]
     fn mul2(&mut self) {
         let mut last = 0;
-        let tmp = self.0[0] >> 63;
-        self.0[0] <<= 1;
-        self.0[0] |= last;
-        last = tmp;
-        let tmp = self.0[1] >> 63;
-        self.0[1] <<= 1;
-        self.0[1] |= last;
-        last = tmp;
-        let tmp = self.0[2] >> 63;
-        self.0[2] <<= 1;
-        self.0[2] |= last;
-        last = tmp;
-        self.0[3] <<= 1;
-        self.0[3] |= last;
+        for i in &mut self.0 {
+            let tmp = *i >> 63;
+            *i <<= 1;
+            *i |= last;
+            last = tmp;
+        }
     }
 
     #[inline]

@@ -102,23 +102,36 @@ pub mod arithmetic {
     /// Calculate a + b + carry, returning the sum and modifying the
     /// carry value.
     #[inline(always)]
-    pub fn adc(a: u64, b: u64, carry: &mut u64) -> u64 {
-        let tmp = u128::from(a) + u128::from(b) + u128::from(*carry);
-
-        *carry = (tmp >> 64) as u64;
-
-        tmp as u64
+    pub fn adc(a: &mut u64, b: u64, carry: u64) -> u64 {
+        #[cfg(all(target_arch = "x86_64", target_feature = "adx"))]
+        #[allow(unsafe_code)]
+        unsafe {
+            _addcarry_u64(carry, *a, b, &mut a)
+        }
+        #[cfg(not(all(target_arch = "x86_64", target_feature = "adx")))]
+        {
+            let tmp = u128::from(*a) + u128::from(b) + u128::from(carry);
+            *a = tmp as u64;
+            (tmp >> 64) as u64
+        }
     }
 
-    /// Calculate a - b - borrow, returning the result and modifying
-    /// the borrow value.
+    /// set a = a - b - borrow, and returning the borrow value.
     #[inline(always)]
-    pub fn sbb(a: u64, b: u64, borrow: &mut u64) -> u64 {
-        let tmp = (1u128 << 64) + u128::from(a) - u128::from(b) - u128::from(*borrow);
-
-        *borrow = if tmp >> 64 == 0 { 1 } else { 0 };
-
-        tmp as u64
+    pub fn sbb(a: &mut u64, b: u64, borrow: u64) -> u64 {
+        #[cfg(all(target_arch = "x86_64", target_feature = "adx"))]
+        #[allow(unsafe_code)]
+        unsafe {
+            _subborrow_u64(borrow, *a, b, &mut a)
+        }
+        #[cfg(not(all(target_arch = "x86_64", target_feature = "adx")))]
+        {
+            let tmp = (1u128 << 64) + u128::from(*a) - u128::from(b) - u128::from(borrow);
+            let carry = if tmp >> 64 == 0 { 1 } else { 0 };
+            *a = tmp as u64;
+            carry
+            
+        }
     }
 
     /// Calculate a + (b * c) + carry, returning the least significant digit
