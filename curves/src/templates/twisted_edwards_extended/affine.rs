@@ -41,6 +41,47 @@ use std::{
     ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
+macro_rules! batch_add_loop_1 {
+    ($a: ident, $b: ident, $inversion_tmp: ident) => {
+        if $a.is_zero() || $b.is_zero() {
+            continue;
+        } else {
+            let y1y2 = $a.y * &$b.y;
+            let x1x2 = $a.x * &$b.x;
+
+            $a.x = ($a.x + &$a.y) * &($b.x + &$b.y) - &y1y2 - &x1x2;
+            $a.y = y1y2;
+            if !P::COEFF_A.is_zero() {
+                $a.y -= &P::mul_by_a(&x1x2);
+            }
+
+            let dx1x2y1y2 = P::COEFF_D * &y1y2 * &x1x2;
+
+            let inversion_mul_d = $inversion_tmp * &dx1x2y1y2;
+
+            $a.x *= &($inversion_tmp - &inversion_mul_d);
+            $a.y *= &($inversion_tmp + &inversion_mul_d);
+
+            $b.x = P::BaseField::one() - &dx1x2y1y2.square();
+
+            $inversion_tmp *= &$b.x;
+        }
+    };
+}
+
+macro_rules! batch_add_loop_2 {
+    ($a: ident, $b: ident, $inversion_tmp: ident) => {
+        if $a.is_zero() {
+            *$a = $b;
+        } else if !$b.is_zero() {
+            $a.x *= &$inversion_tmp;
+            $a.y *= &$inversion_tmp;
+
+            $inversion_tmp *= &$b.x;
+        }
+    };
+}
+
 #[derive(Derivative)]
 #[derivative(
     Copy(bound = "P: MontgomeryParameters"),
@@ -215,6 +256,69 @@ impl<P: Parameters> AffineCurve for Affine<P> {
         let rhs = P::BaseField::one() + (P::COEFF_D * (x2 * y2));
 
         lhs == rhs
+    }
+
+    // Total cost: 12 mul. Projective formulas: 11 mul.
+    fn batch_add_in_place_same_slice(bases: &mut [Self], index: &[(u32, u32)]) {
+        let mut inversion_tmp = P::BaseField::one();
+        // We run two loops over the data separated by an inversion
+        for (idx, idy) in index.iter() {
+            let (mut a, mut b) = if idx < idy {
+                let (x, y) = bases.split_at_mut(*idy as usize);
+                (&mut x[*idx as usize], &mut y[0])
+            } else {
+                let (x, y) = bases.split_at_mut(*idx as usize);
+                (&mut y[0], &mut x[*idy as usize])
+            };
+            batch_add_loop_1!(a, b, inversion_tmp);
+        }
+
+        inversion_tmp = inversion_tmp.inverse().unwrap(); // this is always in Fp*
+
+        for (idx, idy) in index.iter().rev() {
+            let (a, b) = if idx < idy {
+                let (x, y) = bases.split_at_mut(*idy as usize);
+                (&mut x[*idx as usize], y[0])
+            } else {
+                let (x, y) = bases.split_at_mut(*idx as usize);
+                (&mut y[0], x[*idy as usize])
+            };
+            batch_add_loop_2!(a, b, inversion_tmp);
+        }
+    }
+
+    fn batch_add_write(
+        lookup: &[Self],
+        index: &[(u32, u32)],
+        new_elems: &mut Vec<Self>,
+        scratch_space: &mut Vec<Option<Self>>,
+    ) {
+        let mut inversion_tmp = P::BaseField::one();
+
+        for (idx, idy) in index.iter() {
+            if *idy == !0u32 {
+                new_elems.push(lookup[*idx as usize]);
+                scratch_space.push(None);
+            } else {
+                let (mut a, mut b) = (lookup[*idx as usize], lookup[*idy as usize]);
+                batch_add_loop_1!(a, b, inversion_tmp);
+                new_elems.push(a);
+                scratch_space.push(Some(b));
+            }
+        }
+
+        inversion_tmp = inversion_tmp.inverse().unwrap(); // this is always in Fp*
+
+        for (a, op_b) in new_elems.iter_mut().rev().zip(scratch_space.iter().rev()) {
+            match op_b {
+                Some(b) => {
+                    let b_ = *b;
+                    batch_add_loop_2!(a, b_, inversion_tmp);
+                }
+                None => (),
+            };
+        }
+        scratch_space.clear();
     }
 }
 

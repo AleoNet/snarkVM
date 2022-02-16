@@ -16,7 +16,7 @@
 
 use snarkvm_curves::traits::ProjectiveCurve;
 use snarkvm_fields::{FieldParameters, PrimeField};
-use snarkvm_utilities::{cfg_into_iter, cfg_iter_mut, ToBits};
+use snarkvm_utilities::{cfg_into_iter, cfg_iter, cfg_iter_mut, ToBits};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -25,7 +25,10 @@ pub struct FixedBaseMSM;
 
 impl FixedBaseMSM {
     pub fn get_mul_window_size(num_scalars: usize) -> usize {
-        if num_scalars < 32 { 3 } else { (f64::from(num_scalars as u32)).ln().ceil() as usize }
+        match num_scalars < 32 {
+            true => 3,
+            false => super::ln_without_floats(num_scalars),
+        }
     }
 
     pub fn get_window_table<T: ProjectiveCurve>(scalar_size: usize, window: usize, g: T) -> Vec<Vec<T>> {
@@ -64,8 +67,7 @@ impl FixedBaseMSM {
         multiples_of_g: &[Vec<T>],
         scalar: &T::ScalarField,
     ) -> T {
-        let mut scalar_val = scalar.to_repr().to_bits_be();
-        scalar_val.reverse();
+        let scalar_val = scalar.to_repr().to_bits_le();
 
         cfg_into_iter!(0..outerc)
             .map(|outer| {
@@ -92,6 +94,6 @@ impl FixedBaseMSM {
         let outerc = (scalar_size + window - 1) / window;
         assert!(outerc <= table.len());
 
-        crate::cfg_iter!(v).map(|e| Self::windowed_mul::<T>(outerc, window, table, e)).collect::<Vec<_>>()
+        cfg_iter!(v).map(|e| Self::windowed_mul::<T>(outerc, window, table, e)).collect::<Vec<_>>()
     }
 }

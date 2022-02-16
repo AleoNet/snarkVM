@@ -1933,6 +1933,7 @@ dependencies = [
  "snarkvm-r1cs",
  "snarkvm-utilities",
  "thiserror",
+ "voracious_radix_sort",
 ]
 
 [[package]]
@@ -2487,6 +2488,12 @@ name = "version_check"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
+
+[[package]]
+name = "voracious_radix_sort"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bab7eab8dbabec3c2735b3ed3e02d76ac62efeba35e7c461f3104fbc704d535e"
 
 [[package]]
 name = "walkdir"

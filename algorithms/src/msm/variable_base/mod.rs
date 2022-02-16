@@ -62,7 +62,9 @@ impl VariableBaseMSM {
                 }
             }
         }
-        standard::msm_standard(bases, scalars)
+        // standard::msm_standard(bases, scalars)
+        standard::msm_standard_batched(bases, scalars, 0) // Option A
+        // standard::msm_standard_batched(bases, scalars, 1) // Option B
     }
 }
 
