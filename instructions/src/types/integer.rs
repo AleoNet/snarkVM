@@ -16,10 +16,10 @@
 
 use crate::ParserResult;
 use snarkvm_circuits::{
-    helpers::integers::IntegerType,
     traits::{Eject, IntegerTrait},
     Environment,
     Integer as IntegerCircuit,
+    IntegerType,
     Mode,
 };
 

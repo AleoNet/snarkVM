@@ -40,6 +40,7 @@ pub mod group;
 pub use group::*;
 
 pub mod helpers;
+pub use helpers::integers::IntegerType;
 
 pub mod integers;
 pub use integers::*;
