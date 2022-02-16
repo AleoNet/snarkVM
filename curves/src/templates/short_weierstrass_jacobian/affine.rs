@@ -16,6 +16,7 @@
 
 use crate::{
     impl_sw_curve_serializer,
+    prefetch,
     templates::short_weierstrass_jacobian::Projective,
     traits::{AffineCurve, Group, ProjectiveCurve, ShortWeierstrassParameters as Parameters},
 };
@@ -40,6 +41,45 @@ use std::{
     io::{Error, ErrorKind, Read, Result as IoResult, Write},
     ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
+
+#[cfg(feature = "prefetch")]
+macro_rules! prefetch_slice {
+    ($slice_1: ident, $slice_2: ident, $prefetch_iter: ident) => {
+        if let Some((idp_1, idp_2)) = $prefetch_iter.next() {
+            prefetch::<Self>(&mut $slice_1[*idp_1 as usize]);
+            prefetch::<Self>(&mut $slice_2[*idp_2 as usize]);
+        }
+    };
+
+    ($slice_1: ident, $prefetch_iter: ident) => {
+        if let Some((idp_1, _)) = $prefetch_iter.next() {
+            prefetch::<Self>(&mut $slice_1[*idp_1 as usize]);
+        }
+    };
+}
+
+#[cfg(feature = "prefetch")]
+macro_rules! prefetch_slice_endo {
+    ($slice_1: ident, $slice_2: ident, $prefetch_iter: ident) => {
+        if let Some((idp_1, idp_2)) = $prefetch_iter.next() {
+            let (idp_2, _) = decode_endo_from_u32(*idp_2);
+            prefetch::<Self>(&mut $slice_1[*idp_1 as usize]);
+            prefetch::<Self>(&$slice_2[idp_2]);
+        }
+    };
+}
+
+#[cfg(feature = "prefetch")]
+macro_rules! prefetch_slice_write {
+    ($slice_1: ident, $slice_2: ident, $prefetch_iter: ident) => {
+        if let Some((idp_1, idp_2)) = $prefetch_iter.next() {
+            prefetch::<Self>(&$slice_1[*idp_1 as usize]);
+            if *idp_2 != !0u32 {
+                prefetch::<Self>(&$slice_2[*idp_2 as usize]);
+            }
+        }
+    };
+}
 
 macro_rules! batch_add_loop_1 {
     ($a: ident, $b: ident, $half: ident, $inversion_tmp: ident) => {
