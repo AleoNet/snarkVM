@@ -38,10 +38,18 @@ mod ecies {
         let message = (0..5)
             .map(|_| (0..number_of_bytes).map(|_| rand::random::<u8>()).collect::<Vec<u8>>())
             .collect::<Vec<Vec<u8>>>();
-        let ciphertext = encryption.encrypt(&symmetric_key, &message).unwrap();
+        let encoded_message = message
+            .iter()
+            .map(|message_bytes| TestEncryptionScheme::encode_message(&message_bytes).unwrap())
+            .collect::<Vec<_>>();
+        let ciphertext = encryption.encrypt(&symmetric_key, &encoded_message).unwrap();
         dbg!(ciphertext.len());
         let candidate_message = encryption.decrypt(&symmetric_key, &ciphertext).unwrap();
-        assert_eq!(message, candidate_message);
+        let decoded_message = candidate_message
+            .iter()
+            .map(|encoded_message_bytes| TestEncryptionScheme::decode_message(&encoded_message_bytes).unwrap())
+            .collect::<Vec<Vec<u8>>>();
+        assert_eq!(message, decoded_message);
     }
 
     #[test]
@@ -117,9 +125,17 @@ mod ecies {
         let message = (0..5)
             .map(|_| (0..number_of_bytes).map(|_| rand::random::<u8>()).collect::<Vec<u8>>())
             .collect::<Vec<Vec<u8>>>();
-        let ciphertext = encryption.encrypt(&symmetric_key, &message).unwrap();
+        let encoded_message = message
+            .iter()
+            .map(|message_bytes| TestEncryptionScheme::encode_message(&message_bytes).unwrap())
+            .collect::<Vec<_>>();
+        let ciphertext = encryption.encrypt(&symmetric_key, &encoded_message).unwrap();
         let candidate_message = encryption.decrypt(&symmetric_key, &ciphertext).unwrap();
-        assert_eq!(message, candidate_message);
+        let decoded_message = candidate_message
+            .iter()
+            .map(|encoded_message_bytes| TestEncryptionScheme::decode_message(&encoded_message_bytes).unwrap())
+            .collect::<Vec<Vec<u8>>>();
+        assert_eq!(message, decoded_message);
 
         // Ensure any mutation fails to match the original message.
         for _ in 0..ITERATIONS {
@@ -133,7 +149,11 @@ mod ecies {
 
             // This should fail.
             let candidate_message = encryption.decrypt(&symmetric_key, &ciphertext).unwrap();
-            assert_ne!(message, candidate_message);
+            let decoded_message = candidate_message
+                .iter()
+                .map(|encoded_message_bytes| TestEncryptionScheme::decode_message(&encoded_message_bytes).unwrap())
+                .collect::<Vec<Vec<u8>>>();
+            assert_ne!(message, decoded_message);
         }
     }
 }

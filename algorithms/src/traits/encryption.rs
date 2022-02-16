@@ -24,6 +24,7 @@ pub trait EncryptionScheme:
     Sized + ToBytes + FromBytes + Debug + Clone + Eq + From<<Self as EncryptionScheme>::Parameters>
 {
     type CiphertextRandomizer: Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + ToBits;
+    type MessageType: Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + ToBits;
     type Parameters: Clone + Debug + Eq;
     type PrivateKey: Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + ToBits + UniformRand;
     type PublicKey: Copy + Clone + Debug + Default + Eq + ToBytes + FromBytes;
@@ -51,7 +52,11 @@ pub trait EncryptionScheme:
 
     fn generate_symmetric_key_commitment(&self, symmetric_key: &Self::SymmetricKey) -> Self::SymmetricKeyCommitment;
 
-    fn encrypt<T: AsRef<[u8]>>(
+    fn encode_message(message: &[u8]) -> Result<Vec<Self::MessageType>, EncryptionError>;
+
+    fn decode_message(encoded_message: &[Self::MessageType]) -> Result<Vec<u8>, EncryptionError>;
+
+    fn encrypt<T: AsRef<[Self::MessageType]>>(
         &self,
         symmetric_key: &Self::SymmetricKey,
         message: &[T],
@@ -61,7 +66,7 @@ pub trait EncryptionScheme:
         &self,
         symmetric_key: &Self::SymmetricKey,
         ciphertext: &[T],
-    ) -> Result<Vec<Vec<u8>>, EncryptionError>;
+    ) -> Result<Vec<Vec<Self::MessageType>>, EncryptionError>;
 
     fn parameters(&self) -> &<Self as EncryptionScheme>::Parameters;
 

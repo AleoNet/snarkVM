@@ -91,7 +91,11 @@ mod ecies_poseidon {
 
         let message =
             (0..5).map(|_| (0..32).map(|_| rand::random::<u8>()).collect::<Vec<u8>>()).collect::<Vec<Vec<u8>>>();
-        let ciphertext = encryption_scheme.encrypt(&symmetric_key, &message).unwrap();
+        let encoded_message = message
+            .iter()
+            .map(|message_bytes| TestEncryptionScheme::encode_message(&message_bytes).unwrap())
+            .collect::<Vec<_>>();
+        let ciphertext = encryption_scheme.encrypt(&symmetric_key, &encoded_message).unwrap();
 
         // Alloc parameters, public key, plaintext, randomness, and blinding exponents
         let encryption =
@@ -186,7 +190,11 @@ mod ecies_poseidon {
 
         let message =
             (0..5).map(|_| (0..32).map(|_| rand::random::<u8>()).collect::<Vec<u8>>()).collect::<Vec<Vec<u8>>>();
-        let ciphertext = encryption_scheme.encrypt(&symmetric_key, &message).unwrap();
+        let encoded_message = message
+            .iter()
+            .map(|message_bytes| TestEncryptionScheme::encode_message(&message_bytes).unwrap())
+            .collect::<Vec<_>>();
+        let ciphertext = encryption_scheme.encrypt(&symmetric_key, &encoded_message).unwrap();
 
         // Alloc parameters, public key, plaintext, randomness, and blinding exponents
         let encryption =

@@ -116,6 +116,7 @@ where
     TE::BaseField: PoseidonDefaultParametersField,
 {
     type CiphertextRandomizer = TE::BaseField;
+    type MessageType = TE::BaseField;
     type Parameters = TEAffine<TE>;
     type PrivateKey = TE::ScalarField;
     type PublicKey = TEAffine<TE>;
@@ -220,13 +221,85 @@ where
     }
 
     ///
+    /// Encode the message bytes into field elements.
+    ///
+    fn encode_message(message: &[u8]) -> Result<Vec<Self::MessageType>, EncryptionError> {
+        // Convert the message into bits.
+        let mut plaintext_bits = Vec::<bool>::with_capacity(message.len() * 8 + 1);
+        for byte in message.iter() {
+            let mut byte = *byte;
+            for _ in 0..8 {
+                plaintext_bits.push(byte & 1 == 1);
+                byte >>= 1;
+            }
+        }
+        // The final bit serves as a terminus indicator,
+        // and is used during decryption to ensure the length is correct.
+        plaintext_bits.push(true);
+
+        // Determine the number of ciphertext elements.
+        let capacity = <<TE::BaseField as PrimeField>::Parameters as FieldParameters>::CAPACITY as usize;
+
+        // Pack the bits into field elements and add the random field elements to the packed bits.
+        let ciphertext = plaintext_bits
+            .chunks(capacity)
+            .map(|chunk| {
+                TE::BaseField::from_repr(<TE::BaseField as PrimeField>::BigInteger::from_bits_le(chunk)).unwrap()
+            })
+            .collect();
+
+        Ok(ciphertext)
+    }
+
+    ///
+    /// Decode the field elements into bytes.
+    ///
+    fn decode_message(encoded_message: &[Self::MessageType]) -> Result<Vec<u8>, EncryptionError> {
+        let capacity = <<TE::BaseField as PrimeField>::Parameters as FieldParameters>::CAPACITY as usize;
+
+        let mut bits = Vec::<bool>::with_capacity(encoded_message.len() * capacity);
+        for elem in encoded_message.iter() {
+            let elem_bits = elem.to_repr().to_bits_le();
+            bits.extend_from_slice(&elem_bits[..capacity]); // only keep `capacity` bits, discarding the highest bit.
+        }
+
+        // Drop all the ending zeros and the last "1" bit.
+        //
+        // Note that there must be at least one "1" bit because the last element is not zero.
+        loop {
+            if let Some(true) = bits.pop() {
+                break;
+            }
+        }
+
+        if bits.len() % 8 != 0 {
+            return Err(EncryptionError::Message(
+                "The number of bits in the packed field elements is not a multiple of 8.".to_string(),
+            ));
+        }
+        // Here we do not use assertion since it can cause Rust panicking.
+
+        let mut message = Vec::with_capacity(bits.len() / 8);
+        for chunk in bits.chunks_exact(8) {
+            let mut byte = 0u8;
+            for bit in chunk.iter().rev() {
+                byte <<= 1;
+                byte += *bit as u8;
+            }
+            message.push(byte);
+        }
+
+        Ok(message)
+    }
+
+    ///
     /// Encrypts the given message, and returns the following:
     ///
     /// ```ignore
     ///     ciphertext := to_bytes_le![C_1, ..., C_n], where C_i := R_i + M_i, and R_i := H_i(G^ar)
     /// ```
     ///
-    fn encrypt<T: AsRef<[u8]>>(
+    fn encrypt<T: AsRef<[Self::MessageType]>>(
         &self,
         symmetric_key: &Self::SymmetricKey,
         message: &[T],
@@ -236,38 +309,16 @@ where
         sponge.absorb(&[self.symmetric_encryption_domain, *symmetric_key]);
 
         let mut result = Vec::new();
-
-        for element in message.iter().map(|x| x.as_ref()) {
-            // Convert the message into bits.
-            let mut plaintext_bits = Vec::<bool>::with_capacity(element.len() * 8 + 1);
-            for byte in element.iter() {
-                let mut byte = *byte;
-                for _ in 0..8 {
-                    plaintext_bits.push(byte & 1 == 1);
-                    byte >>= 1;
-                }
-            }
-            // The final bit serves as a terminus indicator,
-            // and is used during decryption to ensure the length is correct.
-            plaintext_bits.push(true);
-
-            // Determine the number of ciphertext elements.
-            let capacity = <<TE::BaseField as PrimeField>::Parameters as FieldParameters>::CAPACITY as usize;
-            let num_ciphertext_elements = (plaintext_bits.len() + capacity - 1) / capacity;
-
+        for plaintext_elements in message.iter().map(|x| x.as_ref()) {
             // Obtain random field elements from Poseidon.
-            let sponge_randomizers = sponge.squeeze_field_elements(num_ciphertext_elements);
-            assert_eq!(sponge_randomizers.len(), num_ciphertext_elements);
+            let sponge_randomizers = sponge.squeeze_field_elements(plaintext_elements.len());
 
-            // Pack the bits into field elements and add the random field elements to the packed bits.
-            let ciphertext = plaintext_bits
-                .chunks(capacity)
+            // Add the random field elements to the encoded message.
+            let ciphertext = plaintext_elements
+                .iter()
                 .zip_eq(sponge_randomizers.iter())
-                .flat_map(|(chunk, sponge_randomizer)| {
-                    let plaintext_element =
-                        TE::BaseField::from_repr(<TE::BaseField as PrimeField>::BigInteger::from_bits_le(chunk))
-                            .unwrap();
-                    (plaintext_element + sponge_randomizer).to_bytes_le().unwrap()
+                .flat_map(|(plaintext_element, sponge_randomizer)| {
+                    (*plaintext_element + sponge_randomizer).to_bytes_le().unwrap()
                 })
                 .collect();
 
@@ -284,7 +335,7 @@ where
         &self,
         symmetric_key: &Self::SymmetricKey,
         ciphertext: &[T],
-    ) -> Result<Vec<Vec<u8>>, EncryptionError> {
+    ) -> Result<Vec<Vec<Self::MessageType>>, EncryptionError> {
         // Initialize sponge state.
         let mut sponge = PoseidonSponge::with_parameters(&self.poseidon_parameters);
         sponge.absorb(&[self.symmetric_encryption_domain, *symmetric_key]);
@@ -323,41 +374,7 @@ where
                 ));
             }
 
-            let capacity = <<TE::BaseField as PrimeField>::Parameters as FieldParameters>::CAPACITY as usize;
-
-            let mut bits = Vec::<bool>::with_capacity(plaintext_elements.len() * capacity);
-            for elem in plaintext_elements.iter() {
-                let elem_bits = elem.to_repr().to_bits_le();
-                bits.extend_from_slice(&elem_bits[..capacity]); // only keep `capacity` bits, discarding the highest bit.
-            }
-
-            // Drop all the ending zeros and the last "1" bit.
-            //
-            // Note that there must be at least one "1" bit because the last element is not zero.
-            loop {
-                if let Some(true) = bits.pop() {
-                    break;
-                }
-            }
-
-            if bits.len() % 8 != 0 {
-                return Err(EncryptionError::Message(
-                    "The number of bits in the packed field elements is not a multiple of 8.".to_string(),
-                ));
-            }
-            // Here we do not use assertion since it can cause Rust panicking.
-
-            let mut message = Vec::with_capacity(bits.len() / 8);
-            for chunk in bits.chunks_exact(8) {
-                let mut byte = 0u8;
-                for bit in chunk.iter().rev() {
-                    byte <<= 1;
-                    byte += *bit as u8;
-                }
-                message.push(byte);
-            }
-
-            result.push(message);
+            result.push(plaintext_elements);
         }
 
         Ok(result)
