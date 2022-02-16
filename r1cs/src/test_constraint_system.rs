@@ -248,6 +248,19 @@ impl<F: Field> TestConstraintSystem<F> {
     }
 
     #[inline]
+    pub fn num_non_zero(&self) -> (usize, usize, usize) {
+        let mut non_zero_a = 0;
+        let mut non_zero_b = 0;
+        let mut non_zero_c = 0;
+        for TestConstraint { a, b, c, .. } in self.constraints.iter() {
+            non_zero_a += a.len();
+            non_zero_b += b.len();
+            non_zero_c += c.len();
+        }
+        (non_zero_a, non_zero_b, non_zero_c)
+    }
+
+    #[inline]
     pub fn num_constraints(&self) -> usize {
         self.constraints.len()
     }
