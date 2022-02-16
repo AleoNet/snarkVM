@@ -16,7 +16,6 @@
 
 use crate::{
     impl_sw_curve_serializer,
-    prefetch,
     templates::short_weierstrass_jacobian::Projective,
     traits::{AffineCurve, Group, ProjectiveCurve, ShortWeierstrassParameters as Parameters},
 };
@@ -42,44 +41,8 @@ use std::{
     ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
-#[cfg(feature = "prefetch")]
-macro_rules! prefetch_slice {
-    ($slice_1: ident, $slice_2: ident, $prefetch_iter: ident) => {
-        if let Some((idp_1, idp_2)) = $prefetch_iter.next() {
-            prefetch::<Self>(&mut $slice_1[*idp_1 as usize]);
-            prefetch::<Self>(&mut $slice_2[*idp_2 as usize]);
-        }
-    };
-
-    ($slice_1: ident, $prefetch_iter: ident) => {
-        if let Some((idp_1, _)) = $prefetch_iter.next() {
-            prefetch::<Self>(&mut $slice_1[*idp_1 as usize]);
-        }
-    };
-}
-
-#[cfg(feature = "prefetch")]
-macro_rules! prefetch_slice_endo {
-    ($slice_1: ident, $slice_2: ident, $prefetch_iter: ident) => {
-        if let Some((idp_1, idp_2)) = $prefetch_iter.next() {
-            let (idp_2, _) = decode_endo_from_u32(*idp_2);
-            prefetch::<Self>(&mut $slice_1[*idp_1 as usize]);
-            prefetch::<Self>(&$slice_2[idp_2]);
-        }
-    };
-}
-
-#[cfg(feature = "prefetch")]
-macro_rules! prefetch_slice_write {
-    ($slice_1: ident, $slice_2: ident, $prefetch_iter: ident) => {
-        if let Some((idp_1, idp_2)) = $prefetch_iter.next() {
-            prefetch::<Self>(&$slice_1[*idp_1 as usize]);
-            if *idp_2 != !0u32 {
-                prefetch::<Self>(&$slice_2[*idp_2 as usize]);
-            }
-        }
-    };
-}
+#[cfg(target_arch = "x86_64")]
+use crate::prefetch_slice;
 
 macro_rules! batch_add_loop_1 {
     ($a: ident, $b: ident, $half: ident, $inversion_tmp: ident) => {
@@ -290,16 +253,16 @@ impl<P: Parameters> AffineCurve for Affine<P> {
         let mut inversion_tmp = P::BaseField::one();
         let mut half = None;
 
-        #[cfg(feature = "prefetch")]
+        #[cfg(target_arch = "x86_64")]
         let mut prefetch_iter = index.iter();
-        #[cfg(feature = "prefetch")]
+        #[cfg(target_arch = "x86_64")]
         {
             prefetch_iter.next();
         }
 
         // We run two loops over the data separated by an inversion
         for (idx, idy) in index.iter() {
-            #[cfg(feature = "prefetch")]
+            #[cfg(target_arch = "x86_64")]
             prefetch_slice!(bases, bases, prefetch_iter);
             let (mut a, mut b) = if idx < idy {
                 let (x, y) = bases.split_at_mut(*idy as usize);
@@ -313,15 +276,15 @@ impl<P: Parameters> AffineCurve for Affine<P> {
 
         inversion_tmp = inversion_tmp.inverse().unwrap(); // this is always in Fp*
 
-        #[cfg(feature = "prefetch")]
+        #[cfg(target_arch = "x86_64")]
         let mut prefetch_iter = index.iter().rev();
-        #[cfg(feature = "prefetch")]
+        #[cfg(target_arch = "x86_64")]
         {
             prefetch_iter.next();
         }
 
         for (idx, idy) in index.iter().rev() {
-            #[cfg(feature = "prefetch")]
+            #[cfg(target_arch = "x86_64")]
             prefetch_slice!(bases, bases, prefetch_iter);
             let (mut a, b) = if idx < idy {
                 let (x, y) = bases.split_at_mut(*idy as usize);
@@ -332,52 +295,6 @@ impl<P: Parameters> AffineCurve for Affine<P> {
             };
             batch_add_loop_2!(a, b, inversion_tmp);
         }
-    }
-
-    fn batch_add_write(
-        lookup: &[Self],
-        index: &[(u32, u32)],
-        new_elems: &mut Vec<Self>,
-        scratch_space: &mut Vec<Option<Self>>,
-    ) {
-        let mut inversion_tmp = P::BaseField::one();
-        let mut half = None;
-
-        #[cfg(feature = "prefetch")]
-        let mut prefetch_iter = index.iter();
-        #[cfg(feature = "prefetch")]
-        {
-            prefetch_iter.next();
-        }
-
-        // We run two loops over the data separated by an inversion
-        for (idx, idy) in index.iter() {
-            #[cfg(feature = "prefetch")]
-            prefetch_slice_write!(lookup, lookup, prefetch_iter);
-
-            if *idy == !0u32 {
-                new_elems.push(lookup[*idx as usize]);
-                scratch_space.push(None);
-            } else {
-                let (mut a, mut b) = (lookup[*idx as usize], lookup[*idy as usize]);
-                batch_add_loop_1!(a, b, half, inversion_tmp);
-                new_elems.push(a);
-                scratch_space.push(Some(b));
-            }
-        }
-
-        inversion_tmp = inversion_tmp.inverse().unwrap(); // this is always in Fp*
-
-        for (a, op_b) in new_elems.iter_mut().rev().zip(scratch_space.iter().rev()) {
-            match op_b {
-                Some(b) => {
-                    let b_ = *b;
-                    batch_add_loop_2!(a, b_, inversion_tmp);
-                }
-                None => (),
-            };
-        }
-        scratch_space.clear();
     }
 }
 

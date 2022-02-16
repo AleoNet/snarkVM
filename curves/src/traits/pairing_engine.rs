@@ -226,16 +226,6 @@ pub trait AffineCurve:
     /// Mutates bases in place and stores result in the first operand.
     /// The element corresponding to the second operand becomes junk data.
     fn batch_add_in_place_same_slice(bases: &mut [Self], index: &[(u32, u32)]);
-
-    /// Lookups up group elements according to index, and either adds and writes or simply
-    /// writes them to new_elems, using scratch space to store intermediate values. Scratch
-    /// space is always cleared after use.
-    fn batch_add_write(
-        lookup: &[Self],
-        index: &[(u32, u32)],
-        new_elems: &mut Vec<Self>,
-        scratch_space: &mut Vec<Option<Self>>,
-    );
 }
 
 pub trait PairingCurve: AffineCurve {

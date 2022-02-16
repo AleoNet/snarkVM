@@ -64,5 +64,4 @@ default-features = false
 rustc_version = "0.4"
 
 [features]
-default = [ "prefetch", "snarkvm-fields/default", "snarkvm-utilities/default" ]
-prefetch = []
+default = [ "snarkvm-fields/default", "snarkvm-utilities/default" ]

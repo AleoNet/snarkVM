@@ -14,21 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use snarkvm_algorithms::msm::*;
+use snarkvm_curves::traits::ProjectiveCurve;
+use snarkvm_fields::PrimeField;
+use snarkvm_utilities::rand::UniformRand;
+
 use criterion::Criterion;
 use rand::SeedableRng;
 use rand_xorshift::XorShiftRng;
-use snarkvm_algorithms::msm::*;
-use snarkvm_curves::{
-    bls12_377::{Fr, G1Projective},
-    traits::ProjectiveCurve,
-};
-use snarkvm_fields::PrimeField;
-use snarkvm_utilities::rand::UniformRand;
 
 #[macro_use]
 extern crate criterion;
 
-fn variable_base(c: &mut Criterion) {
+fn variable_base_bls12_377(c: &mut Criterion) {
+    use snarkvm_curves::bls12_377::{Fr, G1Projective};
+
     const SAMPLES: usize = 200000;
 
     let mut rng = XorShiftRng::seed_from_u64(234872845u64);
@@ -43,10 +43,27 @@ fn variable_base(c: &mut Criterion) {
     });
 }
 
+fn variable_base_edwards_bls12(c: &mut Criterion) {
+    use snarkvm_curves::edwards_bls12::{EdwardsProjective, Fr};
+
+    const SAMPLES: usize = 200000;
+
+    let mut rng = XorShiftRng::seed_from_u64(234872845u64);
+
+    let v = (0..SAMPLES).map(|_| Fr::rand(&mut rng).to_repr()).collect::<Vec<_>>();
+    let g = (0..SAMPLES).map(|_| EdwardsProjective::rand(&mut rng).into_affine()).collect::<Vec<_>>();
+
+    c.bench_function("MSM Variable Base", move |b| {
+        b.iter(|| {
+            VariableBaseMSM::multi_scalar_mul(g.as_slice(), v.as_slice());
+        })
+    });
+}
+
 criterion_group! {
     name = variable_base_group;
     config = Criterion::default().sample_size(10);
-    targets = variable_base
+    targets = variable_base_bls12_377, variable_base_edwards_bls12
 }
 
 criterion_main!(variable_base_group);
