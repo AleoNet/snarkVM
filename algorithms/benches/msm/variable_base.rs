@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_algorithms::msm::*;
-use snarkvm_curves::traits::ProjectiveCurve;
+use snarkvm_curves::{traits::ProjectiveCurve, AffineCurve};
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::rand::UniformRand;
 
@@ -26,36 +26,31 @@ use rand_xorshift::XorShiftRng;
 #[macro_use]
 extern crate criterion;
 
-fn variable_base_bls12_377(c: &mut Criterion) {
-    use snarkvm_curves::bls12_377::{Fr, G1Projective};
-
-    const SAMPLES: usize = 200000;
-
+fn create_scalar_bases<G: AffineCurve, F: PrimeField>(size: usize) -> (Vec<G>, Vec<F::BigInteger>) {
     let mut rng = XorShiftRng::seed_from_u64(234872845u64);
+    let g = (0..size).map(|_| G::rand(&mut rng)).collect::<Vec<_>>();
+    let s = (0..size).map(|_| F::rand(&mut rng).to_repr()).collect::<Vec<_>>();
+    (g, s)
+}
 
-    let v = (0..SAMPLES).map(|_| Fr::rand(&mut rng).to_repr()).collect::<Vec<_>>();
-    let g = (0..SAMPLES).map(|_| G1Projective::rand(&mut rng).into_affine()).collect::<Vec<_>>();
+fn variable_base_bls12_377(c: &mut Criterion) {
+    use snarkvm_curves::bls12_377::{Fr, G1Affine};
 
     c.bench_function("MSM Variable Base", move |b| {
+        let (bases, scalars) = create_scalar_bases::<G1Affine, Fr>(200000);
         b.iter(|| {
-            VariableBaseMSM::multi_scalar_mul(g.as_slice(), v.as_slice());
+            VariableBaseMSM::multi_scalar_mul(&bases, &scalars);
         })
     });
 }
 
 fn variable_base_edwards_bls12(c: &mut Criterion) {
-    use snarkvm_curves::edwards_bls12::{EdwardsProjective, Fr};
-
-    const SAMPLES: usize = 200000;
-
-    let mut rng = XorShiftRng::seed_from_u64(234872845u64);
-
-    let v = (0..SAMPLES).map(|_| Fr::rand(&mut rng).to_repr()).collect::<Vec<_>>();
-    let g = (0..SAMPLES).map(|_| EdwardsProjective::rand(&mut rng).into_affine()).collect::<Vec<_>>();
+    use snarkvm_curves::edwards_bls12::{EdwardsAffine, Fr};
 
     c.bench_function("MSM Variable Base", move |b| {
+        let (bases, scalars) = create_scalar_bases::<EdwardsAffine, Fr>(200000);
         b.iter(|| {
-            VariableBaseMSM::multi_scalar_mul(g.as_slice(), v.as_slice());
+            VariableBaseMSM::multi_scalar_mul(&bases, &scalars);
         })
     });
 }

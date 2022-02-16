@@ -112,7 +112,7 @@ pub(super) fn msm_standard_batched<G: AffineCurve>(
     scalars: &[<G::ScalarField as PrimeField>::BigInteger],
 ) -> G::Projective {
     let c = match scalars.len() < 32 {
-        true => 1,
+        true => 3,
         false => crate::msm::ln_without_floats(scalars.len()) + 2,
     };
 
