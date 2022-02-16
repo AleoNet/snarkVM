@@ -84,7 +84,7 @@ impl<N: Network> Transactions<N> {
         }
 
         // Ensure each transaction is well-formed.
-        if !cfg_iter!(self.transactions.as_slice()).all(Transaction::is_valid) {
+        if !cfg_iter!(self.transactions).all(Transaction::is_valid) {
             eprintln!("Invalid transaction found in the transactions list");
             return false;
         }
