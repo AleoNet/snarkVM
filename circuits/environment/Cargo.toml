@@ -4,7 +4,7 @@ version = "0.7.5"
 authors = [ "The Aleo Team <hello@aleo.org>" ]
 description = "Circuit environment for a decentralized virtual machine"
 license = "GPL-3.0"
-edition = "2018"
+edition = "2021"
 
 [dependencies.snarkvm-curves]
 path = "../../curves"

@@ -23,13 +23,13 @@ impl<E: Environment> Adder for Boolean<E> {
     /// Returns the sum of `self` and `other` as a sum bit and carry bit.
     fn adder(&self, other: &Self, carry: &Self) -> (Self::Sum, Self::Carry) {
         // Compute the sum bit.
-        let c0 = self.xor(other);
-        let sum = c0.xor(carry);
+        let c0 = self ^ other;
+        let sum = &c0 ^ carry;
 
         // Compute the carry bit.
-        let c1 = self.and(other);
-        let c2 = carry.and(&c0);
-        let carry = c1.or(&c2);
+        let c1 = self & other;
+        let c2 = carry & c0;
+        let carry = c1 | c2;
 
         (sum, carry)
     }

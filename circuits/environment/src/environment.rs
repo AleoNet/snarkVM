@@ -116,6 +116,9 @@ pub trait Environment: Clone + fmt::Display {
     /// Returns the number of constraints in the entire environment.
     fn num_constraints() -> usize;
 
+    /// Returns the number of gates in the entire environment.
+    fn num_gates() -> usize;
+
     /// Returns the number of constants for the current scope.
     fn num_constants_in_scope() -> usize;
 
@@ -127,6 +130,9 @@ pub trait Environment: Clone + fmt::Display {
 
     /// Returns the number of constraints for the current scope.
     fn num_constraints_in_scope() -> usize;
+
+    /// Returns the number of gates for the current scope.
+    fn num_gates_in_scope() -> usize;
 
     fn affine_from_x_coordinate(x: Self::BaseField) -> Self::Affine;
 

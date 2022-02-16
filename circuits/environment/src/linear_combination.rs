@@ -22,12 +22,12 @@ use core::{
     ops::{Add, AddAssign, Mul, Neg, Sub},
 };
 use rayon::prelude::*;
-use std::collections::HashMap;
+use std::collections::{btree_map::Entry, BTreeMap};
 
 #[derive(Clone)]
 pub struct LinearCombination<F: PrimeField> {
     constant: F,
-    terms: HashMap<Variable<F>, F>,
+    terms: BTreeMap<Variable<F>, F>,
 }
 
 impl<F: PrimeField> LinearCombination<F> {
@@ -134,8 +134,17 @@ impl<F: PrimeField> LinearCombination<F> {
     }
 
     /// Returns the terms (excluding the constant value) in the linear combination.
-    pub(super) fn to_terms(&self) -> &HashMap<Variable<F>, F> {
+    pub(super) fn to_terms(&self) -> &BTreeMap<Variable<F>, F> {
         &self.terms
+    }
+
+    /// Returns the number of addition gates in the linear combination.
+    pub(super) fn num_additions(&self) -> usize {
+        // Increment by one if the constant is nonzero and the number of terms is nonzero.
+        match !self.constant.is_zero() && self.terms.len() > 0 {
+            true => self.terms.len(),
+            false => self.terms.len().saturating_sub(1),
+        }
     }
 }
 
@@ -275,21 +284,34 @@ impl<F: PrimeField> AddAssign<LinearCombination<F>> for LinearCombination<F> {
 
 impl<F: PrimeField> AddAssign<&LinearCombination<F>> for LinearCombination<F> {
     fn add_assign(&mut self, other: &Self) {
+        // If `other` is empty, return immediately.
         if other.constant.is_zero() && other.terms.is_empty() {
             return;
         }
 
+        // Add the constant value from `other` to `self`.
         self.constant += other.constant;
 
-        for (variable, other_coefficient) in other.terms.iter() {
+        // Add the terms from `other` to the terms of `self`.
+        for (variable, coefficient) in other.terms.iter() {
             match variable.is_constant() {
                 true => self.constant += variable.value(),
-                false => match self.terms.get_mut(variable) {
-                    Some(coefficient) => *coefficient += *other_coefficient,
-                    None => {
-                        self.terms.insert(*variable, *other_coefficient);
+                false => {
+                    match self.terms.entry(*variable) {
+                        Entry::Occupied(mut entry) => {
+                            // Add the coefficient to the existing coefficient for this term.
+                            *entry.get_mut() += *coefficient;
+                            // If the coefficient of the term is now zero, remove the entry.
+                            if entry.get().is_zero() {
+                                entry.remove_entry();
+                            }
+                        }
+                        Entry::Vacant(entry) => {
+                            // Insert the variable and coefficient as a new term.
+                            entry.insert(*coefficient);
+                        }
                     }
-                },
+                }
             }
         }
     }
@@ -356,13 +378,20 @@ impl<F: PrimeField> Mul<&F> for LinearCombination<F> {
     }
 }
 
+impl<F: PrimeField> AsRef<LinearCombination<F>> for LinearCombination<F> {
+    fn as_ref(&self) -> &LinearCombination<F> {
+        &self
+    }
+}
+
 impl<F: PrimeField> fmt::Debug for LinearCombination<F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        let mut output = format!("Constant {}", self.constant);
+        let mut output = format!("Constant({})", self.constant);
         for (variable, coefficient) in &self.terms {
-            output += &match variable.mode() {
-                Mode::Constant => format!(" + ({} * {} {})", coefficient, variable.mode(), variable.value()),
-                _ => format!(" + ({} * {}({}) {})", coefficient, variable.mode(), variable.index(), variable.value()),
+            output += &match (variable.mode(), coefficient.is_one()) {
+                (Mode::Constant, _) => panic!("Malformed linear combination at: ({} * {:?})", coefficient, variable),
+                (_, true) => format!(" + {:?}", variable),
+                _ => format!(" + {} * {:?}", coefficient, variable),
             };
         }
         write!(f, "{}", output)
@@ -448,5 +477,183 @@ mod tests {
         assert!(candidate_variable.is_public());
         assert_eq!(one, candidate_variable.value());
         assert_eq!(four, *candidate_coefficient);
+    }
+
+    #[test]
+    fn test_debug() {
+        let one_public = Circuit::new_variable(Mode::Public, <Circuit as Environment>::BaseField::one());
+        let one_private = Circuit::new_variable(Mode::Private, <Circuit as Environment>::BaseField::one());
+        {
+            let expected = "Constant(1) + Public(1, 1) + Private(0, 1)";
+
+            let candidate = LinearCombination::one() + one_public + one_private;
+            assert_eq!(expected, format!("{:?}", candidate));
+
+            let candidate = one_private + one_public + LinearCombination::one();
+            assert_eq!(expected, format!("{:?}", candidate));
+
+            let candidate = one_private + LinearCombination::one() + one_public;
+            assert_eq!(expected, format!("{:?}", candidate));
+
+            let candidate = one_public + LinearCombination::one() + one_private;
+            assert_eq!(expected, format!("{:?}", candidate));
+        }
+        {
+            let expected = "Constant(1) + 2 * Public(1, 1) + Private(0, 1)";
+
+            let candidate = LinearCombination::one() + one_public + one_public + one_private;
+            assert_eq!(expected, format!("{:?}", candidate));
+
+            let candidate = one_private + one_public + LinearCombination::one() + one_public;
+            assert_eq!(expected, format!("{:?}", candidate));
+
+            let candidate = one_public + one_private + LinearCombination::one() + one_public;
+            assert_eq!(expected, format!("{:?}", candidate));
+
+            let candidate = one_public + LinearCombination::one() + one_private + one_public;
+            assert_eq!(expected, format!("{:?}", candidate));
+        }
+        {
+            let expected = "Constant(1) + Public(1, 1) + 2 * Private(0, 1)";
+
+            let candidate = LinearCombination::one() + one_public + one_private + one_private;
+            assert_eq!(expected, format!("{:?}", candidate));
+
+            let candidate = one_private + one_public + LinearCombination::one() + one_private;
+            assert_eq!(expected, format!("{:?}", candidate));
+
+            let candidate = one_private + one_private + LinearCombination::one() + one_public;
+            assert_eq!(expected, format!("{:?}", candidate));
+
+            let candidate = one_public + LinearCombination::one() + one_private + one_private;
+            assert_eq!(expected, format!("{:?}", candidate));
+        }
+        {
+            let expected = "Constant(1) + Public(1, 1)";
+
+            let candidate = LinearCombination::one() + one_public + one_private - one_private;
+            assert_eq!(expected, format!("{:?}", candidate));
+
+            let candidate = one_private + one_public + LinearCombination::one() - one_private;
+            assert_eq!(expected, format!("{:?}", candidate));
+
+            let candidate = one_private - one_private + LinearCombination::one() + one_public;
+            assert_eq!(expected, format!("{:?}", candidate));
+
+            let candidate = one_public + LinearCombination::one() + one_private - one_private;
+            assert_eq!(expected, format!("{:?}", candidate));
+        }
+    }
+
+    #[rustfmt::skip]
+    #[test]
+    fn test_num_additions() {
+        let one_public = Circuit::new_variable(Mode::Public, <Circuit as Environment>::BaseField::one());
+        let one_private = Circuit::new_variable(Mode::Private, <Circuit as Environment>::BaseField::one());
+        let two_private = one_private + one_private;
+
+        let candidate = LinearCombination::<<Circuit as Environment>::BaseField>::zero();
+        assert_eq!(0, candidate.num_additions());
+
+        let candidate = LinearCombination::<<Circuit as Environment>::BaseField>::one();
+        assert_eq!(0, candidate.num_additions());
+
+        let candidate = LinearCombination::zero() + one_public;
+        assert_eq!(0, candidate.num_additions());
+
+        let candidate = LinearCombination::one() + one_public;
+        assert_eq!(1, candidate.num_additions());
+
+        let candidate = LinearCombination::zero() + one_public + one_public;
+        assert_eq!(0, candidate.num_additions());
+
+        let candidate = LinearCombination::one() + one_public + one_public;
+        assert_eq!(1, candidate.num_additions());
+
+        let candidate = LinearCombination::zero() + one_public + one_private;
+        assert_eq!(1, candidate.num_additions());
+
+        let candidate = LinearCombination::one() + one_public + one_private;
+        assert_eq!(2, candidate.num_additions());
+
+        let candidate = LinearCombination::zero() + one_public + one_private + one_public;
+        assert_eq!(1, candidate.num_additions());
+
+        let candidate = LinearCombination::one() + one_public + one_private + one_public;
+        assert_eq!(2, candidate.num_additions());
+
+        let candidate = LinearCombination::zero() + one_public + one_private + one_public + one_private;
+        assert_eq!(1, candidate.num_additions());
+
+        let candidate = LinearCombination::one() + one_public + one_private + one_public + one_private;
+        assert_eq!(2, candidate.num_additions());
+
+        let candidate = LinearCombination::zero() + LinearCombination::zero() + one_public + one_private + one_public + one_private;
+        assert_eq!(1, candidate.num_additions());
+
+        let candidate = LinearCombination::one() + LinearCombination::zero() + one_public + one_private + one_public + one_private;
+        assert_eq!(2, candidate.num_additions());
+
+        let candidate = LinearCombination::one() + LinearCombination::zero() + LinearCombination::one() + one_public + one_private + one_public + one_private;
+        assert_eq!(2, candidate.num_additions());
+
+        let candidate = LinearCombination::zero() + LinearCombination::zero() + one_public + one_private + one_public + one_private + &two_private;
+        assert_eq!(1, candidate.num_additions());
+
+        let candidate = LinearCombination::one() + LinearCombination::zero() + one_public + one_private + one_public + one_private + &two_private;
+        assert_eq!(2, candidate.num_additions());
+
+        let candidate = LinearCombination::one() + LinearCombination::zero() + LinearCombination::one() + one_public + one_private + one_public + one_private + &two_private;
+        assert_eq!(2, candidate.num_additions());
+
+        // Now check with subtractions.
+
+        let candidate = LinearCombination::zero() - one_public;
+        assert_eq!(0, candidate.num_additions());
+
+        let candidate = LinearCombination::one() - one_public;
+        assert_eq!(1, candidate.num_additions());
+
+        let candidate = LinearCombination::zero() + one_public - one_public;
+        assert_eq!(0, candidate.num_additions());
+
+        let candidate = LinearCombination::one() + one_public - one_public;
+        assert_eq!(0, candidate.num_additions());
+
+        let candidate = LinearCombination::zero() + one_public - one_private;
+        assert_eq!(1, candidate.num_additions());
+
+        let candidate = LinearCombination::one() + one_public - one_private;
+        assert_eq!(2, candidate.num_additions());
+
+        let candidate = LinearCombination::zero() + one_public + one_private - one_public;
+        assert_eq!(0, candidate.num_additions());
+
+        let candidate = LinearCombination::one() + one_public + one_private - one_public;
+        assert_eq!(1, candidate.num_additions());
+
+        let candidate = LinearCombination::zero() + one_public + one_private + one_public - one_private;
+        assert_eq!(0, candidate.num_additions());
+
+        let candidate = LinearCombination::one() + one_public + one_private + one_public - one_private;
+        assert_eq!(1, candidate.num_additions());
+
+        let candidate = LinearCombination::zero() + LinearCombination::zero() + one_public + one_private + one_public - one_private;
+        assert_eq!(0, candidate.num_additions());
+
+        let candidate = LinearCombination::one() + LinearCombination::zero() + one_public + one_private + one_public - one_private;
+        assert_eq!(1, candidate.num_additions());
+
+        let candidate = LinearCombination::one() + LinearCombination::zero() + LinearCombination::one() + one_public + one_private + one_public - one_private;
+        assert_eq!(1, candidate.num_additions());
+
+        let candidate = LinearCombination::zero() + LinearCombination::zero() + one_public + one_private + one_public + one_private - &two_private;
+        assert_eq!(0, candidate.num_additions());
+
+        let candidate = LinearCombination::one() + LinearCombination::zero() + one_public + one_private + one_public + one_private - &two_private;
+        assert_eq!(1, candidate.num_additions());
+
+        let candidate = LinearCombination::one() + LinearCombination::zero() + LinearCombination::one() + one_public + one_private + one_public + one_private - &two_private;
+        assert_eq!(1, candidate.num_additions());
     }
 }

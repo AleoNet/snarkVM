@@ -14,17 +14,54 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{helpers::integers::IntegerType, Mode};
+use crate::{helpers::integers::IntegerType, Environment, Mode, U16, U32, U8};
 
 use core::{
     fmt::{Debug, Display},
-    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Not, Sub, SubAssign},
+    ops::{
+        Add,
+        AddAssign,
+        BitAnd,
+        BitAndAssign,
+        BitOr,
+        BitOrAssign,
+        BitXor,
+        BitXorAssign,
+        Div,
+        DivAssign,
+        Mul,
+        MulAssign,
+        Neg,
+        Not,
+        Shl,
+        ShlAssign,
+        Shr,
+        ShrAssign,
+        Sub,
+        SubAssign,
+    },
 };
 use num_traits::Inv;
 
 /// Representation of a boolean.
 pub trait BooleanTrait:
-    Adder + And + Clone + Debug + Eject<Primitive = bool> + Equal + Nand + Nor + Not + Or + Subtractor + Ternary + Xor
+    Adder
+    + AsRef<Self>
+    + BitAndAssign
+    + BitAnd<Output = Self>
+    + BitOrAssign
+    + BitOr<Output = Self>
+    + BitXorAssign
+    + BitXor<Output = Self>
+    + Clone
+    + Debug
+    + Eject<Primitive = bool>
+    + Equal
+    + Nand
+    + Nor
+    + Not
+    + Subtractor
+    + Ternary
 {
 }
 
@@ -32,6 +69,7 @@ pub trait BooleanTrait:
 pub trait BaseFieldTrait:
     Add
     + AddAssign
+    + AsRef<Self>
     + Clone
     + Debug
     + Div
@@ -55,29 +93,71 @@ pub trait BaseFieldTrait:
 }
 
 /// Representation of an integer.
-pub trait IntegerTrait<I: IntegerType>:
+pub trait IntegerTrait<E: Environment, I: IntegerType>:
     AddAssign
     + Add<Output = Self>
     + AddChecked<Output = Self>
     + AddWrapped<Output = Self>
+    + AsRef<Self>
+    + BitAndAssign
+    + BitAnd<Output = Self>
+    + BitOrAssign
+    + BitOr<Output = Self>
+    + BitXorAssign
+    + BitXor<Output = Self>
     + Clone
     + Debug
+    + DivAssign
+    + Div<Output = Self>
+    + DivChecked<Output = Self>
+    + DivWrapped<Output = Self>
     + Eject<Primitive = I>
     + Equal
     + FromBits
+    + MulAssign
+    + Mul<Output = Self>
+    + MulChecked<Output = Self>
+    + MulWrapped<Output = Self>
     + Neg<Output = Self>
+    + Not<Output = Self>
     + One
+    + PowChecked<U8<E>, Output = Self>
+    + PowChecked<U16<E>, Output = Self>
+    + PowChecked<U32<E>, Output = Self>
+    + PowWrapped<U8<E>, Output = Self>
+    + PowWrapped<U16<E>, Output = Self>
+    + PowWrapped<U32<E>, Output = Self>
+    + Shl<U8<E>, Output = Self>
+    + Shl<U16<E>, Output = Self>
+    + Shl<U32<E>, Output = Self>
+    + ShlAssign<U8<E>>
+    + ShlAssign<U16<E>>
+    + ShlAssign<U32<E>>
+    + ShlChecked<U8<E>, Output = Self>
+    + ShlChecked<U16<E>, Output = Self>
+    + ShlChecked<U32<E>, Output = Self>
+    + ShlWrapped<U8<E>, Output = Self>
+    + ShlWrapped<U16<E>, Output = Self>
+    + ShlWrapped<U32<E>, Output = Self>
+    + Shr<U8<E>, Output = Self>
+    + Shr<U16<E>, Output = Self>
+    + Shr<U32<E>, Output = Self>
+    + ShrAssign<U8<E>>
+    + ShrAssign<U16<E>>
+    + ShrAssign<U32<E>>
+    + ShrChecked<U8<E>, Output = Self>
+    + ShrChecked<U16<E>, Output = Self>
+    + ShrChecked<U32<E>, Output = Self>
+    + ShrWrapped<U8<E>, Output = Self>
+    + ShrWrapped<U16<E>, Output = Self>
+    + ShrWrapped<U32<E>, Output = Self>
     + SubAssign
     + Sub<Output = Self>
     + SubChecked<Output = Self>
     + SubWrapped<Output = Self>
+    + Ternary
     + ToBits
-    + Zero // + Div
-// + DivAssign
-// + Mul
-// + MulAssign
-// + Square
-// + Ternary
+    + Zero // + Square
 {
     ///
     /// Initializes a new integer.
@@ -157,28 +237,9 @@ pub trait Equal<Rhs: ?Sized = Self> {
 
 pub trait LessThan<Rhs: ?Sized = Self> {
     type Boolean: BooleanTrait;
-    type Output;
 
     /// Returns `true` if `self` is less than `other`.
-    fn is_lt(&self, other: &Rhs) -> Self::Output;
-}
-
-/// Binary operator for performing `a AND b`.
-pub trait And<Rhs: ?Sized = Self> {
-    type Boolean: BooleanTrait;
-    type Output;
-
-    /// Returns `(a AND b)`.
-    fn and(&self, other: &Rhs) -> Self::Output;
-}
-
-/// Binary operator for performing `a OR b`.
-pub trait Or<Rhs: ?Sized = Self> {
-    type Boolean: BooleanTrait;
-    type Output;
-
-    /// Returns `(a OR b)`.
-    fn or(&self, other: &Rhs) -> Self::Output;
+    fn is_lt(&self, other: &Rhs) -> Self::Boolean;
 }
 
 /// Binary operator for performing `NOT (a AND b)`.
@@ -197,15 +258,6 @@ pub trait Nor<Rhs: ?Sized = Self> {
 
     /// Returns `(NOT a) AND (NOT b)`.
     fn nor(&self, other: &Rhs) -> Self::Output;
-}
-
-/// Binary operator for performing `(a != b)`.
-pub trait Xor<Rhs: ?Sized = Self> {
-    type Boolean: BooleanTrait;
-    type Output;
-
-    /// Returns `(a != b)`.
-    fn xor(&self, other: &Rhs) -> Self::Output;
 }
 
 /// Trait for ternary operations.
@@ -236,6 +288,94 @@ pub trait AddWrapped<Rhs: ?Sized = Self> {
     type Output;
 
     fn add_wrapped(&self, rhs: &Rhs) -> Self::Output;
+}
+
+/// Binary operator for dividing two values, enforcing an overflow never occurs.
+pub trait DivChecked<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn div_checked(&self, rhs: &Rhs) -> Self::Output;
+}
+
+/// Binary operator for dividing two values, bounding the quotient to `MAX` or `MIN` if an overflow occurs.
+pub trait DivSaturating<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn div_saturating(&self, rhs: &Rhs) -> Self::Output;
+}
+
+/// Binary operator for dividing two values, wrapping the quotient if an overflow occurs.
+pub trait DivWrapped<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn div_wrapped(&self, rhs: &Rhs) -> Self::Output;
+}
+
+/// Binary operator for multiplying two values, enforcing an overflow never occurs.
+pub trait MulChecked<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn mul_checked(&self, rhs: &Rhs) -> Self::Output;
+}
+
+/// Binary operator for multiplying two values, bounding the product to `MAX` if an overflow occurs.
+pub trait MulSaturating<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn mul_saturating(&self, rhs: &Rhs) -> Self::Output;
+}
+
+/// Binary operator for multiplying two values, wrapping the product if an overflow occurs.
+pub trait MulWrapped<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn mul_wrapped(&self, rhs: &Rhs) -> Self::Output;
+}
+
+/// Binary operator for exponentiating two values, enforcing an overflow never occurs.
+pub trait PowChecked<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn pow_checked(&self, rhs: &Rhs) -> Self::Output;
+}
+
+/// Binary operator for exponentiating two values, wrapping the result if an overflow occurs.
+pub trait PowWrapped<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn pow_wrapped(&self, rhs: &Rhs) -> Self::Output;
+}
+
+/// Binary operator for left shifting a value, checking that the rhs is less than the number
+/// of bits in self.
+pub trait ShlChecked<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn shl_checked(&self, rhs: &Rhs) -> Self::Output;
+}
+
+/// Binary operator for left shifting a value, checking that the rhs is less than the number
+/// of bits in self.
+pub trait ShlWrapped<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn shl_wrapped(&self, rhs: &Rhs) -> Self::Output;
+}
+
+/// Binary operator for right shifting a value, checking that the rhs is less than the number
+/// of bits in self.
+pub trait ShrChecked<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn shr_checked(&self, rhs: &Rhs) -> Self::Output;
+}
+
+/// Binary operator for right shifting a value, checking that the rhs is less than the number
+/// of bits in self.
+pub trait ShrWrapped<Rhs: ?Sized = Self> {
+    type Output;
+
+    fn shr_wrapped(&self, rhs: &Rhs) -> Self::Output;
 }
 
 /// Binary operator for subtracting two values, enforcing an underflow never occurs.
@@ -273,13 +413,12 @@ pub trait Square {
     fn square(&self) -> Self::Output;
 }
 
-/// Unary operator for converting to bits.
-pub trait ToBits {
+/// Unary operator for retrieving the most-significant bit.
+pub trait MSB {
     type Boolean: BooleanTrait;
 
-    fn to_bits_le(&self) -> Vec<Self::Boolean>;
-
-    fn to_bits_be(&self) -> Vec<Self::Boolean>;
+    /// Returns the MSB of the value.
+    fn msb(&self) -> &Self::Boolean;
 }
 
 /// Unary operator for instantiating from bits.
@@ -289,6 +428,49 @@ pub trait FromBits {
     fn from_bits_le(mode: Mode, bits_le: &[Self::Boolean]) -> Self;
 
     fn from_bits_be(mode: Mode, bits_be: &[Self::Boolean]) -> Self;
+}
+
+/// Unary operator for converting to bits.
+pub trait ToBits {
+    type Boolean: BooleanTrait;
+
+    fn to_bits_le(&self) -> Vec<Self::Boolean>;
+
+    fn to_bits_be(&self) -> Vec<Self::Boolean>;
+}
+
+/// Unary operator for converting to `k` number of bits.
+pub trait ToLowerBits {
+    type Boolean: BooleanTrait;
+
+    ///
+    /// Outputs the lower `k` bits of an `n`-bit element in little-endian representation.
+    /// Enforces that the upper `n - k` bits are zero.
+    ///
+    fn to_lower_bits_le(&self, k: usize) -> Vec<Self::Boolean>;
+
+    ///
+    /// Outputs the lower `k` bits of an `n`-bit element in big-endian representation.
+    /// Enforces that the upper `n - k` bits are zero.
+    ///
+    fn to_lower_bits_be(&self, k: usize) -> Vec<Self::Boolean>;
+}
+
+/// Unary operator for converting to `k` number of bits.
+pub trait ToUpperBits {
+    type Boolean: BooleanTrait;
+
+    ///
+    /// Outputs the upper `k` bits of an `n`-bit element in little-endian representation.
+    /// Enforces that the lower `n - k` bits are zero.
+    ///
+    fn to_upper_bits_le(&self, k: usize) -> Vec<Self::Boolean>;
+
+    ///
+    /// Outputs the upper `k` bits of an `n`-bit element in big-endian representation.
+    /// Enforces that the lower `n - k` bits are zero.
+    ///
+    fn to_upper_bits_be(&self, k: usize) -> Vec<Self::Boolean>;
 }
 
 ///

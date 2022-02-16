@@ -47,9 +47,9 @@ pub use xor::*;
 use crate::{traits::*, Environment, LinearCombination, Mode, Variable};
 use snarkvm_fields::{One as O, Zero as Z};
 
-use std::{
+use core::{
     fmt,
-    ops::{Deref, Not},
+    ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Deref, Not},
 };
 
 #[derive(Clone)]
@@ -96,6 +96,12 @@ impl<E: Environment> Eject for Boolean<E> {
         let value = self.0.to_value();
         debug_assert!(value.is_zero() || value.is_one());
         value.is_one()
+    }
+}
+
+impl<E: Environment> AsRef<Boolean<E>> for Boolean<E> {
+    fn as_ref(&self) -> &Boolean<E> {
+        &self
     }
 }
 

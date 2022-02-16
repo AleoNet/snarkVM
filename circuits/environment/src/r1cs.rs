@@ -28,6 +28,7 @@ pub(super) struct R1CS<F: PrimeField> {
     private: Vec<Variable<F>>,
     constraints: Vec<(Scope, (LinearCombination<F>, LinearCombination<F>, LinearCombination<F>))>,
     counter: Transcript,
+    gates: usize,
 }
 
 impl<F: PrimeField> R1CS<F> {
@@ -39,6 +40,7 @@ impl<F: PrimeField> R1CS<F> {
             private: Default::default(),
             constraints: Default::default(),
             counter: Default::default(),
+            gates: 0,
         }
     }
 
@@ -89,8 +91,13 @@ impl<F: PrimeField> R1CS<F> {
 
         // Ensure the constraint is not comprised of constants.
         if !(a.is_constant() && b.is_constant() && c.is_constant()) {
+            let num_additions = a.num_additions() + b.num_additions() + c.num_additions();
+            let num_gates = 1 + num_additions;
+
             self.constraints.push((self.counter.scope(), (a, b, c)));
             self.counter.increment_constraints();
+            self.counter.increment_gates_by(num_gates);
+            self.gates += num_gates;
         }
     }
 
@@ -129,6 +136,11 @@ impl<F: PrimeField> R1CS<F> {
         self.constraints.len()
     }
 
+    /// Returns the number of gates in the constraint system.
+    pub(super) fn num_gates(&self) -> usize {
+        self.gates
+    }
+
     /// Returns the number of constants for the current scope.
     pub(super) fn num_constants_in_scope(&self) -> usize {
         self.counter.num_constants_in_scope()
@@ -147,6 +159,11 @@ impl<F: PrimeField> R1CS<F> {
     /// Returns the number of constraints for the current scope.
     pub(super) fn num_constraints_in_scope(&self) -> usize {
         self.counter.num_constraints_in_scope()
+    }
+
+    /// Returns the number of gates for the current scope.
+    pub(super) fn num_gates_in_scope(&self) -> usize {
+        self.counter.num_gates_in_scope()
     }
 
     /// Returns the public variables in the constraint system.

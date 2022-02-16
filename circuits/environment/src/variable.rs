@@ -24,7 +24,7 @@ use core::{
 
 pub type Index = u64;
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Variable<F: PrimeField> {
     Constant(F),
     Public(Index, F),
@@ -51,6 +51,13 @@ impl<F: PrimeField> Variable<F> {
     ///
     pub fn is_private(&self) -> bool {
         matches!(self, Self::Private(..))
+    }
+
+    ///
+    /// Returns the `zero` constant.
+    ///
+    pub fn zero() -> Self {
+        Self::Constant(F::zero())
     }
 
     ///
@@ -133,6 +140,41 @@ impl<F: PrimeField> Add<&Variable<F>> for &Variable<F> {
 }
 
 #[allow(clippy::op_ref)]
+impl<F: PrimeField> Add<LinearCombination<F>> for Variable<F> {
+    type Output = LinearCombination<F>;
+
+    fn add(self, other: LinearCombination<F>) -> Self::Output {
+        self + &other
+    }
+}
+
+#[allow(clippy::op_ref)]
+impl<F: PrimeField> Add<LinearCombination<F>> for &Variable<F> {
+    type Output = LinearCombination<F>;
+
+    fn add(self, other: LinearCombination<F>) -> Self::Output {
+        self + &other
+    }
+}
+
+#[allow(clippy::op_ref)]
+impl<F: PrimeField> Add<&LinearCombination<F>> for Variable<F> {
+    type Output = LinearCombination<F>;
+
+    fn add(self, other: &LinearCombination<F>) -> Self::Output {
+        &self + other
+    }
+}
+
+impl<F: PrimeField> Add<&LinearCombination<F>> for &Variable<F> {
+    type Output = LinearCombination<F>;
+
+    fn add(self, other: &LinearCombination<F>) -> Self::Output {
+        LinearCombination::from(self) + other
+    }
+}
+
+#[allow(clippy::op_ref)]
 impl<F: PrimeField> Sub<Variable<F>> for Variable<F> {
     type Output = LinearCombination<F>;
 
@@ -170,12 +212,47 @@ impl<F: PrimeField> Sub<&Variable<F>> for &Variable<F> {
     }
 }
 
+#[allow(clippy::op_ref)]
+impl<F: PrimeField> Sub<LinearCombination<F>> for Variable<F> {
+    type Output = LinearCombination<F>;
+
+    fn sub(self, other: LinearCombination<F>) -> Self::Output {
+        self - &other
+    }
+}
+
+#[allow(clippy::op_ref)]
+impl<F: PrimeField> Sub<LinearCombination<F>> for &Variable<F> {
+    type Output = LinearCombination<F>;
+
+    fn sub(self, other: LinearCombination<F>) -> Self::Output {
+        self - &other
+    }
+}
+
+#[allow(clippy::op_ref)]
+impl<F: PrimeField> Sub<&LinearCombination<F>> for Variable<F> {
+    type Output = LinearCombination<F>;
+
+    fn sub(self, other: &LinearCombination<F>) -> Self::Output {
+        &self - other
+    }
+}
+
+impl<F: PrimeField> Sub<&LinearCombination<F>> for &Variable<F> {
+    type Output = LinearCombination<F>;
+
+    fn sub(self, other: &LinearCombination<F>) -> Self::Output {
+        LinearCombination::from(self) - other
+    }
+}
+
 impl<F: PrimeField> fmt::Debug for Variable<F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", match self {
-            Self::Constant(value) => format!("Constant {}", value),
-            Self::Public(index, value) => format!("Public({}) {}", index, value),
-            Self::Private(index, value) => format!("Private({}) {}", index, value),
+            Self::Constant(value) => format!("Constant({})", value),
+            Self::Public(index, value) => format!("Public({}, {})", index, value),
+            Self::Private(index, value) => format!("Private({}, {})", index, value),
         })
     }
 }

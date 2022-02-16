@@ -19,26 +19,22 @@ use super::*;
 impl<E: Environment, I: IntegerType> Neg for Integer<E, I> {
     type Output = Integer<E, I>;
 
+    /// Performs the unary `-` operation.
     fn neg(self) -> Self::Output {
-        match I::is_signed() {
-            true => {
-                // Negate each bit in the representation of the `other` integer.
-                let negated =
-                    Integer { bits_le: self.bits_le.iter().map(|b| !b).collect(), phantom: Default::default() };
-                // Add `1` to the negated value.
-                // Note: This addition must be checked as `-I::MIN` is an invalid operation.
-                Integer::one().add_checked(&negated)
-            }
-            false => E::halt("Attempted to negate an unsigned integer"),
-        }
+        (&self).neg()
     }
 }
 
 impl<E: Environment, I: IntegerType> Neg for &Integer<E, I> {
     type Output = Integer<E, I>;
 
+    /// Performs the unary `-` operation.
     fn neg(self) -> Self::Output {
-        -(self.clone())
+        match I::is_signed() {
+            // Note: This addition must be checked as `-I::MIN` is an invalid operation.
+            true => Integer::one().add_checked(&!self),
+            false => E::halt("Attempted to negate an unsigned integer"),
+        }
     }
 }
 
@@ -47,70 +43,60 @@ mod tests {
     use super::*;
     use crate::Circuit;
     use snarkvm_utilities::UniformRand;
+    use test_utilities::*;
 
     use rand::thread_rng;
 
     const ITERATIONS: usize = 128;
 
-    fn check_neg<I: IntegerType, IC: IntegerTrait<I>>(
-        name: &str,
-        expected: I,
-        candidate: IC,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        Circuit::scoped(name, || {
-            let case = format!("-{}", candidate.eject_value());
-
-            let candidate = -candidate;
-            assert_eq!(expected, candidate.eject_value(), "{} != {} := {}", expected, candidate.eject_value(), case);
-
-            assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
-            assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
-            assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
-            assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
-            assert!(Circuit::is_satisfied(), "{} (is_satisfied)", case);
-        });
-    }
-
+    #[rustfmt::skip]
     fn check_unsigned_halts<I: IntegerType + std::panic::UnwindSafe>(mode: Mode) {
         let value: I = UniformRand::rand(&mut thread_rng());
-        let candidate = Integer::<Circuit, I>::new(mode, value);
-        let result = std::panic::catch_unwind(|| candidate.neg());
-        assert!(result.is_err());
+        check_unary_operation_halts(Integer::<Circuit, I>::new(mode, value), |a: Integer<Circuit, I> | { a.neg() })
     }
 
     #[rustfmt::skip]
-    fn run_test<I: IntegerType + Neg<Output = I>>(
+    fn check_neg<I: IntegerType + std::panic::RefUnwindSafe + Neg<Output = I> >(
+        name: &str,
+        first: I,
         mode: Mode,
         num_constants: usize,
         num_public: usize,
         num_private: usize,
         num_constraints: usize,
     ) {
-        for i in 0..ITERATIONS {
-            let name = format!("Neg: {} {}", mode, i);
-            let value: I = UniformRand::rand(&mut thread_rng());
-            let expected = match value.checked_neg() {
-                Some(negated) => negated,
-                None => continue
-            };
-            let candidate = Integer::<Circuit, I>::new(mode, value);
-
-            check_neg::<I, Integer<Circuit, I>>(&name, expected, candidate, num_constants, num_public, num_private, num_constraints);
+        let a = Integer::<Circuit, I>::new(mode, first);
+        let case = format!("(-{})", a.eject_value());
+        match first.checked_neg() {
+            Some(value) => check_unary_operation_passes(name, &case, value, &a, |a: &Integer<Circuit, I> | { a.neg() }, num_constants, num_public, num_private, num_constraints),
+            None => {
+                match mode {
+                    Mode::Constant => check_unary_operation_halts(&a, |a: &Integer<Circuit, I> | { a.neg() }),
+                    _ => check_unary_operation_fails(name, &case, &a, |a: &Integer<Circuit, I> | { a.neg() }, num_constants, num_public, num_private, num_constraints),
+                }
+            }
         }
+    }
+
+    #[rustfmt::skip]
+    fn run_test<I: IntegerType + std::panic::RefUnwindSafe + Neg<Output = I> >(
+        mode: Mode,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) {
+        let check_neg = | name: &str, first: I | check_neg(name, first, mode, num_constants, num_public, num_private, num_constraints);
 
         // Check the 0 case.
-        let name = format!("Neg: {} zero", mode);
-        let candidate = Integer::<Circuit, I>::new(mode, I::zero());
-        check_neg::<I, Integer<Circuit, I>>(&name, I::zero(), candidate, num_constants, num_public, num_private, num_constraints);
-
+        check_neg(&format!("Neg: {} zero", mode), I::zero());
         // Check the 1 case.
-        let name = format!("Neg: {} one", mode);
-        let candidate = Integer::<Circuit, I>::new(mode, I::one());
-        check_neg::<I, Integer<Circuit, I>>(&name, -I::one(), candidate, num_constants, num_public, num_private, num_constraints);
+        check_neg(&format!("Neg: {} one", mode), -I::one());
+        // Check random values.
+        for i in 0..ITERATIONS {
+            let value: I = UniformRand::rand(&mut thread_rng());
+            check_neg(&format!("Neg: {} {}", mode, i), value);
+        }
     }
 
     #[test]
@@ -125,8 +111,8 @@ mod tests {
     fn test_i8_neg() {
         type I = i8;
         run_test::<I>(Mode::Constant, 16, 0, 0, 0);
-        run_test::<I>(Mode::Public, 9, 0, 15, 16);
-        run_test::<I>(Mode::Private, 9, 0, 15, 16);
+        run_test::<I>(Mode::Public, 10, 0, 12, 14);
+        run_test::<I>(Mode::Private, 10, 0, 12, 14);
     }
 
     #[test]
@@ -141,8 +127,8 @@ mod tests {
     fn test_i16_neg() {
         type I = i16;
         run_test::<I>(Mode::Constant, 32, 0, 0, 0);
-        run_test::<I>(Mode::Public, 17, 0, 31, 32);
-        run_test::<I>(Mode::Private, 17, 0, 31, 32);
+        run_test::<I>(Mode::Public, 18, 0, 20, 22);
+        run_test::<I>(Mode::Private, 18, 0, 20, 22);
     }
 
     #[test]
@@ -157,8 +143,8 @@ mod tests {
     fn test_i32_neg() {
         type I = i32;
         run_test::<I>(Mode::Constant, 64, 0, 0, 0);
-        run_test::<I>(Mode::Public, 33, 0, 63, 64);
-        run_test::<I>(Mode::Private, 33, 0, 63, 64);
+        run_test::<I>(Mode::Public, 34, 0, 36, 38);
+        run_test::<I>(Mode::Private, 34, 0, 36, 38);
     }
 
     #[test]
@@ -173,8 +159,8 @@ mod tests {
     fn test_i64_neg() {
         type I = i64;
         run_test::<I>(Mode::Constant, 128, 0, 0, 0);
-        run_test::<I>(Mode::Public, 65, 0, 127, 128);
-        run_test::<I>(Mode::Private, 65, 0, 127, 128);
+        run_test::<I>(Mode::Public, 66, 0, 68, 70);
+        run_test::<I>(Mode::Private, 66, 0, 68, 70);
     }
 
     #[test]
@@ -189,7 +175,23 @@ mod tests {
     fn test_i128_neg() {
         type I = i128;
         run_test::<I>(Mode::Constant, 256, 0, 0, 0);
-        run_test::<I>(Mode::Public, 129, 0, 255, 256);
-        run_test::<I>(Mode::Private, 129, 0, 255, 256);
+        run_test::<I>(Mode::Public, 130, 0, 132, 134);
+        run_test::<I>(Mode::Private, 130, 0, 132, 134);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_exhaustive_i8_neg() {
+        type I = i8;
+        for value in I::MIN..=I::MAX {
+            let name = format!("Neg: {}", Mode::Constant);
+            check_neg(&name, value, Mode::Constant, 16, 0, 0, 0);
+
+            let name = format!("Neg: {}", Mode::Public);
+            check_neg(&name, value, Mode::Public, 10, 0, 12, 14);
+
+            let name = format!("Neg: {}", Mode::Private);
+            check_neg(&name, value, Mode::Private, 10, 0, 12, 14);
+        }
     }
 }
