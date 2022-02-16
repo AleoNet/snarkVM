@@ -130,6 +130,7 @@ version = "0.8"
 
 [dependencies.rayon]
 version = "1"
+optional = true
 
 [dependencies.serde]
 version = "1.0"
@@ -168,6 +169,7 @@ wasm = [
   "snarkvm-parameters/wasm"
 ]
 parallel = [
+  "rayon",
   "snarkvm-algorithms/parallel",
   "snarkvm-fields/parallel",
   "snarkvm-marlin/parallel",
