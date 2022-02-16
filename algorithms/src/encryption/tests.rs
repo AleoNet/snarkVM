@@ -40,7 +40,7 @@ mod ecies {
             .collect::<Vec<Vec<u8>>>();
         let encoded_message = message
             .iter()
-            .map(|message_bytes| TestEncryptionScheme::encode_message(&message_bytes).unwrap())
+            .map(|message_bytes| TestEncryptionScheme::encode_message(message_bytes).unwrap())
             .collect::<Vec<_>>();
         let ciphertext = encryption.encrypt(&symmetric_key, &encoded_message).unwrap();
         dbg!(ciphertext.len());
@@ -127,7 +127,7 @@ mod ecies {
             .collect::<Vec<Vec<u8>>>();
         let encoded_message = message
             .iter()
-            .map(|message_bytes| TestEncryptionScheme::encode_message(&message_bytes).unwrap())
+            .map(|message_bytes| TestEncryptionScheme::encode_message(message_bytes).unwrap())
             .collect::<Vec<_>>();
         let ciphertext = encryption.encrypt(&symmetric_key, &encoded_message).unwrap();
         let candidate_message = encryption.decrypt(&symmetric_key, &ciphertext).unwrap();

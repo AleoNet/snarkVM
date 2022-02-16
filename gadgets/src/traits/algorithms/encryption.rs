@@ -22,6 +22,7 @@ use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use crate::{
     bits::ToBytesGadget,
     traits::{alloc::AllocGadget, eq::EqGadget},
+    FpGadget,
     UInt8,
 };
 use snarkvm_fields::PrimeField;
@@ -62,6 +63,8 @@ pub trait EncryptionGadget<E: EncryptionScheme, F: PrimeField>: AllocGadget<E, F
         private_key: &Self::PrivateKeyGadget,
     ) -> Result<Self::PublicKeyGadget, SynthesisError>;
 
+    fn encode_message<CS: ConstraintSystem<F>>(cs: CS, message: &[UInt8]) -> Result<Vec<FpGadget<F>>, SynthesisError>;
+
     fn check_symmetric_key_commitment<CS: ConstraintSystem<F>>(
         &self,
         cs: CS,
@@ -73,7 +76,7 @@ pub trait EncryptionGadget<E: EncryptionScheme, F: PrimeField>: AllocGadget<E, F
         cs: CS,
         randomness: &Self::ScalarRandomnessGadget,
         public_key: &Self::PublicKeyGadget,
-        input: &[Vec<UInt8>],
+        encoded_message: &[Vec<FpGadget<F>>],
     ) -> Result<(Self::CiphertextRandomizer, Vec<Vec<UInt8>>, Self::SymmetricKeyGadget), SynthesisError>;
 
     /// Assumes symmetric key is committed before hand.
@@ -86,7 +89,7 @@ pub trait EncryptionGadget<E: EncryptionScheme, F: PrimeField>: AllocGadget<E, F
         &self,
         cs: CS,
         symmetric_key: &Self::SymmetricKeyGadget,
-        plaintext: &[Vec<UInt8>],
+        plaintext: &[Vec<FpGadget<F>>],
     ) -> Result<Vec<Vec<UInt8>>, SynthesisError>;
 
     fn check_encryption_from_ciphertext_randomizer<CS: ConstraintSystem<F>>(
@@ -94,6 +97,6 @@ pub trait EncryptionGadget<E: EncryptionScheme, F: PrimeField>: AllocGadget<E, F
         cs: CS,
         ciphertext_randomizer: &Self::CiphertextRandomizer,
         private_key: &Self::PrivateKeyGadget,
-        message: &[Vec<UInt8>],
+        encoded_message: &[Vec<FpGadget<F>>],
     ) -> Result<Vec<Vec<UInt8>>, SynthesisError>;
 }

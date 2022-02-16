@@ -93,7 +93,7 @@ mod ecies_poseidon {
             (0..5).map(|_| (0..32).map(|_| rand::random::<u8>()).collect::<Vec<u8>>()).collect::<Vec<Vec<u8>>>();
         let encoded_message = message
             .iter()
-            .map(|message_bytes| TestEncryptionScheme::encode_message(&message_bytes).unwrap())
+            .map(|message_bytes| TestEncryptionScheme::encode_message(message_bytes).unwrap())
             .collect::<Vec<_>>();
         let ciphertext = encryption_scheme.encrypt(&symmetric_key, &encoded_message).unwrap();
 
@@ -110,8 +110,15 @@ mod ecies_poseidon {
         let message_gadget = message
             .iter()
             .enumerate()
-            .map(|(i, bytes)| UInt8::alloc_vec(&mut cs.ns(|| format!("plaintext_gadget_{}", i)), bytes).unwrap())
-            .collect::<Vec<Vec<UInt8>>>();
+            .map(|(i, bytes)| {
+                let message = UInt8::alloc_vec(&mut cs.ns(|| format!("plaintext_gadget_{}", i)), bytes).unwrap();
+                <TestEncryptionSchemeGadget as EncryptionGadget<TestEncryptionScheme, _>>::encode_message(
+                    &mut cs.ns(|| format!("encode_plaintext_gadget_{}", i)),
+                    &message,
+                )
+                .unwrap()
+            })
+            .collect::<Vec<Vec<_>>>();
         let randomness_gadget =
             <TestEncryptionSchemeGadget as EncryptionGadget<TestEncryptionScheme, _>>::ScalarRandomnessGadget::alloc(
                 &mut cs.ns(|| "randomness_gadget"),
@@ -192,7 +199,7 @@ mod ecies_poseidon {
             (0..5).map(|_| (0..32).map(|_| rand::random::<u8>()).collect::<Vec<u8>>()).collect::<Vec<Vec<u8>>>();
         let encoded_message = message
             .iter()
-            .map(|message_bytes| TestEncryptionScheme::encode_message(&message_bytes).unwrap())
+            .map(|message_bytes| TestEncryptionScheme::encode_message(message_bytes).unwrap())
             .collect::<Vec<_>>();
         let ciphertext = encryption_scheme.encrypt(&symmetric_key, &encoded_message).unwrap();
 
@@ -211,8 +218,15 @@ mod ecies_poseidon {
         let message_gadget = message
             .iter()
             .enumerate()
-            .map(|(i, bytes)| UInt8::alloc_vec(&mut cs.ns(|| format!("plaintext_gadget_{}", i)), bytes).unwrap())
-            .collect::<Vec<Vec<UInt8>>>();
+            .map(|(i, bytes)| {
+                let message = UInt8::alloc_vec(&mut cs.ns(|| format!("plaintext_gadget_{}", i)), bytes).unwrap();
+                <TestEncryptionSchemeGadget as EncryptionGadget<TestEncryptionScheme, _>>::encode_message(
+                    &mut cs.ns(|| format!("encode_plaintext_gadget_{}", i)),
+                    &message,
+                )
+                .unwrap()
+            })
+            .collect::<Vec<Vec<_>>>();
 
         let ciphertext_randomizer_gadget =
             <TestEncryptionSchemeGadget as EncryptionGadget<TestEncryptionScheme, _>>::CiphertextRandomizer::alloc(
