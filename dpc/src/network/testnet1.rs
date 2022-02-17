@@ -110,7 +110,7 @@ impl Network for Testnet1 {
     const INNER_PROOF_SIZE_IN_BYTES: usize = 193;
     const PROGRAM_PROOF_SIZE_IN_BYTES: usize = 193;
     const PROGRAM_ID_SIZE_IN_BYTES: usize = 32;
-    const RECORD_CIPHERTEXT_SIZE_IN_BYTES: usize = 372;
+    const RECORD_CIPHERTEXT_SIZE_IN_BYTES: usize = 304;
     const RECORD_PAYLOAD_SIZE_IN_BYTES: usize = 128;
     const RECORD_VIEW_KEY_SIZE_IN_BYTES: usize = 32;
     const SIGNATURE_SIZE_IN_BYTES: usize = 128;
@@ -170,8 +170,8 @@ impl Network for Testnet1 {
     type BlockHeaderRootParameters = MaskedMerkleTreeParameters<Self::BlockHeaderRootCRH, { Self::HEADER_TREE_DEPTH }>;
     type BlockHeaderRoot = AleoLocator<<Self::BlockHeaderRootCRH as CRH>::Output, { Self::HEADER_ROOT_PREFIX }>;
 
-    type CommitmentScheme = BHPCRH<Self::ProgramProjectiveCurve, 60, 63>;
-    type CommitmentGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 60, 63>;
+    type CommitmentScheme = BHPCRH<Self::ProgramProjectiveCurve, 41, 63>;
+    type CommitmentGadget = BHPCRHGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 41, 63>;
     type Commitment = AleoLocator<<Self::CommitmentScheme as CRH>::Output, { Self::COMMITMENT_PREFIX }>;
 
     type FunctionIDCRH = PoseidonCRH<Self::InnerBaseField, 34>;

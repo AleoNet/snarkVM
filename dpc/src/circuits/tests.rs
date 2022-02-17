@@ -120,7 +120,7 @@ mod testnet1 {
 
     #[test]
     fn test_dpc_execute_circuits() {
-        dpc_execute_circuits_test::<Testnet1>(280246);
+        dpc_execute_circuits_test::<Testnet1>(267986);
     }
 }
 
@@ -130,6 +130,6 @@ mod testnet2 {
 
     #[test]
     fn test_dpc_execute_circuits() {
-        dpc_execute_circuits_test::<Testnet2>(280246);
+        dpc_execute_circuits_test::<Testnet2>(267986);
     }
 }

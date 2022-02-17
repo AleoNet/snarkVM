@@ -167,32 +167,32 @@ impl<N: Network> Record<N> {
         value: AleoAmount,
         payload: &Option<Payload<N>>,
         program_id: Option<N::ProgramID>,
-    ) -> Result<Vec<Vec<u8>>, RecordError> {
+    ) -> Result<Vec<Vec<<N::AccountEncryptionScheme as EncryptionScheme>::MessageType>>, RecordError> {
         // Determine if the record is a dummy.
         let is_dummy = value.is_zero() && payload.is_none() && program_id == None;
 
-        // Total = 32 + 1 + 8 = 41 bytes
-        let mut plaintext = vec![
-            owner.to_bytes_le()?,    // 256 bits = 32 bytes
+        let mut plaintext = Vec::with_capacity(3);
+
+        plaintext.push(vec![FromBytes::read_le(&owner.to_bytes_le()?[..])?]); // 32 bytes
+
+        let is_dummy_and_value_bytes = vec![
             is_dummy.to_bytes_le()?, // 1 bit = 1 byte
             value.to_bytes_le()?,    // 64 bits = 8 bytes
-        ];
+        ]
+        .concat();
+
+        plaintext.push(<N::AccountEncryptionScheme as EncryptionScheme>::encode_message(&is_dummy_and_value_bytes)?);
 
         if let Some(payload) = payload {
-            // Total = 41 + 128 = 169 bytes
-            plaintext.push(payload.to_bytes_le()?); // 1024 bits = 128 bytes
+            plaintext.push(<N::AccountEncryptionScheme as EncryptionScheme>::encode_message(&payload.to_bytes_le()?)?);
         }
 
-        // Ensure the record bytes are within the permitted size.
-        match plaintext.iter().map(|x| x.len()).sum::<usize>() <= u16::MAX as usize {
-            true => Ok(plaintext),
-            false => Err(anyhow!("Records must be <= 65535 bytes, found {} bytes", plaintext.len()).into()),
-        }
+        Ok(plaintext)
     }
 
     /// Decode the plaintext bytes into the record contents.
     fn decode_plaintext(
-        plaintext: &[Vec<u8>],
+        plaintext: &[Vec<<N::AccountEncryptionScheme as EncryptionScheme>::MessageType>],
         program_id: &Option<N::ProgramID>,
     ) -> Result<(Address<N>, AleoAmount, Option<Payload<N>>), RecordError> {
         if plaintext.len() < 3 {
@@ -200,18 +200,23 @@ impl<N: Network> Record<N> {
         }
 
         let (owner, is_dummy, value, payload) = match plaintext.len() {
-            3 => {
-                let owner = Address::<N>::read_le(&plaintext[0][..])?;
-                let is_dummy = u8::read_le(&plaintext[1][..])?;
-                let value = AleoAmount::read_le(&plaintext[2][..])?;
+            2 => {
+                let owner = Address::<N>::read_le(&plaintext[0].to_bytes_le()?[..])?;
+
+                let is_dummy_and_value_bytes = N::AccountEncryptionScheme::decode_message(&plaintext[1][..])?;
+                let is_dummy = u8::read_le(&is_dummy_and_value_bytes[..])?;
+                let value = AleoAmount::read_le(&is_dummy_and_value_bytes[1..])?;
 
                 (owner, is_dummy, value, None)
             }
-            4 => {
-                let owner = Address::<N>::read_le(&plaintext[0][..])?;
-                let is_dummy = u8::read_le(&plaintext[1][..])?;
-                let value = AleoAmount::read_le(&plaintext[2][..])?;
-                let payload = Payload::read_le(&plaintext[3][..])?;
+            3 => {
+                let owner = Address::<N>::read_le(&plaintext[0].to_bytes_le()?[..])?;
+
+                let is_dummy_and_value_bytes = N::AccountEncryptionScheme::decode_message(&plaintext[1][..])?;
+                let is_dummy = u8::read_le(&is_dummy_and_value_bytes[..])?;
+                let value = AleoAmount::read_le(&is_dummy_and_value_bytes[1..])?;
+
+                let payload = Payload::read_le(&N::AccountEncryptionScheme::decode_message(&plaintext[2][..])?[..])?;
 
                 (owner, is_dummy, value, Some(payload))
             }

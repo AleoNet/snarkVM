@@ -49,7 +49,11 @@ impl<N: Network> Ciphertext<N> {
 
         let mut flattened_record_bytes = record_bytes.iter().flatten().copied().collect::<Vec<u8>>();
         // TODO (raychu86): Fix this padding size: I believe it should be 32 (owner) + 32 (is_dummy) + 32 (value) + 128 (payload).
-        flattened_record_bytes.resize(N::RECORD_CIPHERTEXT_SIZE_IN_BYTES, 0u8);
+
+        const RECORD_BYTES_FULL_SIZE: usize = 224; // 7 field elements = 224 bytes
+        if flattened_record_bytes.len() < RECORD_BYTES_FULL_SIZE {
+            flattened_record_bytes.resize(RECORD_BYTES_FULL_SIZE, 0u8);
+        }
 
         // Compute the commitment.
         let commitment = N::commitment_scheme()
@@ -100,7 +104,11 @@ impl<N: Network> Ciphertext<N> {
     pub fn to_plaintext(
         &self,
         decryption_key: &DecryptionKey<N>,
-    ) -> Result<(Vec<Vec<u8>>, N::RecordViewKey, Option<N::ProgramID>)> {
+    ) -> Result<(
+        Vec<Vec<<N::AccountEncryptionScheme as EncryptionScheme>::MessageType>>,
+        N::RecordViewKey,
+        Option<N::ProgramID>,
+    )> {
         let record_view_key = match decryption_key {
             DecryptionKey::AccountViewKey(account_view_key) => {
                 // Compute the candidate record view key.

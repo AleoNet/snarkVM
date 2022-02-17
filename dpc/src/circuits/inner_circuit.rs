@@ -29,11 +29,12 @@ use snarkvm_gadgets::{
     },
     ComparatorGadget,
     EvaluateLtGadget,
+    FpGadget,
     ToBitsLEGadget,
     ToConstraintFieldGadget,
 };
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
-use snarkvm_utilities::ToBytes;
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use itertools::Itertools;
 use snarkvm_gadgets::algorithms::merkle_tree::compute_root;
@@ -266,8 +267,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 // Convert the owner, dummy flag, value, payload, program ID, and randomizer into bits.
                 // *******************************************************************
 
-                let given_owner_bytes =
-                    given_owner.to_bytes(&mut commitment_cs.ns(|| "Convert given_owner to bytes"))?;
                 let given_is_dummy_bytes =
                     given_is_dummy.to_bytes(&mut commitment_cs.ns(|| "Convert given_is_dummy to bytes"))?;
                 let given_value_bytes =
@@ -308,7 +307,28 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 // Compute the record commitment and check that it matches the declared commitment.
                 // *******************************************************************
 
-                let plaintext = vec![given_owner_bytes, given_is_dummy_bytes, given_value_bytes, given_payload];
+                let owner_fe = FromBytes::read_le(&record.owner().to_bytes_le()?[..])?;
+                let given_owner_gadget =
+                    FpGadget::alloc(&mut commitment_cs.ns(|| format!("Field element {}", i)), || Ok(&owner_fe))?;
+
+                let given_is_dummy_and_value_bytes = [given_is_dummy_bytes, given_value_bytes].concat();
+                let encoded_given_is_dummy_and_value = <N::AccountEncryptionGadget as EncryptionGadget<
+                    N::AccountEncryptionScheme,
+                    N::InnerScalarField,
+                >>::encode_message(
+                    &mut commitment_cs.ns(|| format!("encode is_dummy and value {}", i)),
+                    &given_is_dummy_and_value_bytes,
+                )?;
+
+                let encoded_given_payload = <N::AccountEncryptionGadget as EncryptionGadget<
+                    N::AccountEncryptionScheme,
+                    N::InnerScalarField,
+                >>::encode_message(
+                    &mut commitment_cs.ns(|| format!("encode payload {}", i)),
+                    &given_payload,
+                )?;
+
+                let plaintext = vec![vec![given_owner_gadget], encoded_given_is_dummy_and_value, encoded_given_payload];
 
                 let mut ciphertext = account_encryption_parameters.check_encryption_from_symmetric_key(
                     &mut commitment_cs.ns(|| format!("input record {} check_encryption_gadget", i)),
@@ -316,13 +336,13 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     &plaintext,
                 )?;
 
-                let padded_ciphertext = UInt8::constant_vec(&vec![0u8; ciphertext[3].len()]);
+                let padded_ciphertext = UInt8::constant_vec(&vec![0u8; ciphertext[2].len()]);
 
                 // Set the ciphertext payload values to 0 if the payload does not exist.
-                ciphertext[3] = Vec::<UInt8>::conditionally_select(
+                ciphertext[2] = Vec::<UInt8>::conditionally_select(
                     &mut commitment_cs.ns(|| format!("cond_select_payload_{}", i)),
                     &given_has_payload,
-                    &ciphertext[3],
+                    &ciphertext[2],
                     &padded_ciphertext,
                 )?;
 
@@ -600,8 +620,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 // Convert the owner, dummy flag, value, payload, program ID, and randomizer into bits.
                 // *******************************************************************
 
-                let given_owner_bytes =
-                    given_owner.to_bytes(&mut commitment_cs.ns(|| "Convert given_owner to bytes"))?;
                 let given_is_dummy_bytes =
                     given_is_dummy.to_bytes(&mut commitment_cs.ns(|| "Convert given_is_dummy to bytes"))?;
                 let given_value_bytes =
@@ -642,7 +660,28 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 // Check that the record ciphertext and commitment are well-formed.
                 // *******************************************************************
 
-                let plaintext = vec![given_owner_bytes, given_is_dummy_bytes, given_value_bytes, given_payload];
+                let owner_fe = FromBytes::read_le(&record.owner().to_bytes_le()?[..])?;
+                let given_owner_gadget =
+                    FpGadget::alloc(&mut commitment_cs.ns(|| format!("Field element {}", j)), || Ok(&owner_fe))?;
+
+                let given_is_dummy_and_value_bytes = [given_is_dummy_bytes, given_value_bytes].concat();
+                let encoded_given_is_dummy_and_value = <N::AccountEncryptionGadget as EncryptionGadget<
+                    N::AccountEncryptionScheme,
+                    N::InnerScalarField,
+                >>::encode_message(
+                    &mut commitment_cs.ns(|| format!("encode is_dummy and value {}", j)),
+                    &given_is_dummy_and_value_bytes,
+                )?;
+
+                let encoded_given_payload = <N::AccountEncryptionGadget as EncryptionGadget<
+                    N::AccountEncryptionScheme,
+                    N::InnerScalarField,
+                >>::encode_message(
+                    &mut commitment_cs.ns(|| format!("encode payload {}", j)),
+                    &given_payload,
+                )?;
+
+                let plaintext = vec![vec![given_owner_gadget], encoded_given_is_dummy_and_value, encoded_given_payload];
 
                 let encryption_randomness = <N::AccountEncryptionGadget as EncryptionGadget<
                     N::AccountEncryptionScheme,
@@ -660,13 +699,13 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                         &plaintext,
                     )?;
 
-                let padded_ciphertext = UInt8::constant_vec(&vec![0u8; ciphertext[3].len()]);
+                let padded_ciphertext = UInt8::constant_vec(&vec![0u8; ciphertext[2].len()]);
 
                 // Set the ciphertext payload values to 0 if the payload does not exist.
-                ciphertext[3] = Vec::<UInt8>::conditionally_select(
+                ciphertext[2] = Vec::<UInt8>::conditionally_select(
                     &mut commitment_cs.ns(|| format!("cond_select_payload_{}", j)),
                     &given_has_payload,
-                    &ciphertext[3],
+                    &ciphertext[2],
                     &padded_ciphertext,
                 )?;
 
