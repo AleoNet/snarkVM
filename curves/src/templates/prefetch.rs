@@ -30,6 +30,7 @@ macro_rules! prefetch_slice {
     };
 }
 
+#[macro_export]
 macro_rules! prefetch_slice_write {
     ($slice_1: ident, $slice_2: ident, $prefetch_iter: ident) => {
         if let Some((idp_1, idp_2)) = $prefetch_iter.next() {

@@ -42,7 +42,7 @@ use std::{
 };
 
 #[cfg(target_arch = "x86_64")]
-use crate::prefetch_slice;
+use crate::{prefetch_slice, prefetch_slice_write};
 
 macro_rules! batch_add_loop_1 {
     ($a: ident, $b: ident, $half: ident, $inversion_tmp: ident) => {
