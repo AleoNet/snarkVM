@@ -263,7 +263,7 @@ pub fn batch_add_a<G: AffineCurve>(num_buckets: usize, bases: &[G], bucket_posit
         }
         global_counter += 1;
     }
-    if instr.len() > 0 {
+    if !instr.is_empty() {
         G::batch_add_write(&bases[..], &instr[..], &mut new_bases, &mut scratch_space);
         instr.clear();
     }
@@ -331,9 +331,8 @@ pub fn batch_add_a<G: AffineCurve>(num_buckets: usize, bases: &[G], bucket_posit
     }
 
     let mut res = vec![G::zero(); num_buckets];
-    for i in 0..num_scalars {
-        let (pos, buc) = (bucket_positions[i].scalar_index, bucket_positions[i].bucket_index);
-        res[buc as usize] = new_bases[pos as usize];
+    for bucket_position in bucket_positions.iter().take(num_scalars) {
+        res[bucket_position.bucket_index as usize] = new_bases[bucket_position.scalar_index as usize];
     }
     res
 }

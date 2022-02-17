@@ -306,7 +306,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
     }
 
     fn batch_add_write(
-        lookup: &[Self],
+        bases: &[Self],
         index: &[(u32, u32)],
         new_bases: &mut Vec<Self>,
         scratch_space: &mut Vec<Option<Self>>,
@@ -315,10 +315,10 @@ impl<P: Parameters> AffineCurve for Affine<P> {
 
         for (idx, idy) in index.iter() {
             if *idy == !0u32 {
-                new_bases.push(lookup[*idx as usize]);
+                new_bases.push(bases[*idx as usize]);
                 scratch_space.push(None);
             } else {
-                let (mut a, mut b) = (lookup[*idx as usize], lookup[*idy as usize]);
+                let (mut a, mut b) = (bases[*idx as usize], bases[*idy as usize]);
                 batch_add_loop_1!(a, b, inversion_tmp);
                 new_bases.push(a);
                 scratch_space.push(Some(b));
