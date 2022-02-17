@@ -13,14 +13,18 @@
 
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
-pub mod immediates;
-pub use immediates::*;
 
-pub mod instructions;
-pub use instructions::*;
+pub mod base;
+pub use base::*;
 
-pub mod registers;
-pub use registers::*;
+pub mod boolean;
+pub use boolean::*;
 
-pub mod utilities;
-pub use utilities::*;
+pub mod group;
+pub use group::*;
+
+pub mod integer;
+pub use integer::*;
+
+pub mod scalar;
+pub use scalar::*;
