@@ -195,7 +195,7 @@ impl<N: Network> Record<N> {
         plaintext: &[Vec<<N::AccountEncryptionScheme as EncryptionScheme>::MessageType>],
         program_id: &Option<N::ProgramID>,
     ) -> Result<(Address<N>, AleoAmount, Option<Payload<N>>), RecordError> {
-        if plaintext.len() < 3 {
+        if plaintext.len() < 2 {
             return Err(anyhow!("Invalid plaintext size").into());
         }
 

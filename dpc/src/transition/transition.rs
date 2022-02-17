@@ -392,13 +392,13 @@ mod tests {
             let transaction = Testnet1::genesis_block().to_coinbase_transaction().unwrap();
             let transition = transaction.transitions().first().unwrap().clone();
             let transition_bytes = transition.to_bytes_le().unwrap();
-            assert_eq!(786, transition_bytes.len(),);
+            assert_eq!(650, transition_bytes.len(),);
         }
         {
             let transaction = Testnet2::genesis_block().to_coinbase_transaction().unwrap();
             let transition = transaction.transitions().first().unwrap().clone();
             let transition_bytes = transition.to_bytes_le().unwrap();
-            assert_eq!(786, transition_bytes.len(),);
+            assert_eq!(650, transition_bytes.len(),);
         }
     }
 
@@ -410,7 +410,7 @@ mod tests {
         // Serialize
         let expected_string = expected_transition.to_string();
         let candidate_string = serde_json::to_string(&expected_transition).unwrap();
-        assert_eq!(1713, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(1495, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(expected_string, candidate_string);
 
         // Deserialize
@@ -426,7 +426,7 @@ mod tests {
         // Serialize
         let expected_bytes = expected_transition.to_bytes_le().unwrap();
         let candidate_bytes = bincode::serialize(&expected_transition).unwrap();
-        assert_eq!(786, expected_bytes.len(), "Update me if serialization has changed");
+        assert_eq!(650, expected_bytes.len(), "Update me if serialization has changed");
         // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
         assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
 
