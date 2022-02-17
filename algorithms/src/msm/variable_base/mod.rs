@@ -20,7 +20,7 @@ use std::any::TypeId;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use snarkvm_curves::{bls12_377::G1Affine, traits::AffineCurve};
-use snarkvm_fields::{PrimeField};
+use snarkvm_fields::PrimeField;
 
 mod standard;
 
@@ -85,8 +85,8 @@ impl VariableBaseMSM {
 
     #[cfg(test)]
     fn msm_naive<G: AffineCurve>(bases: &[G], scalars: &[<G::ScalarField as PrimeField>::BigInteger]) -> G::Projective {
-        use snarkvm_utilities::BitIteratorBE;
         use snarkvm_fields::Zero;
+        use snarkvm_utilities::BitIteratorBE;
 
         let mut acc = G::Projective::zero();
         for (base, scalar) in bases.iter().zip(scalars.iter()) {
@@ -96,10 +96,13 @@ impl VariableBaseMSM {
     }
 
     #[cfg(test)]
-    fn msm_naive_parallel<G: AffineCurve>(bases: &[G], scalars: &[<G::ScalarField as PrimeField>::BigInteger]) -> G::Projective {
-        use snarkvm_utilities::BitIteratorBE;
-        use snarkvm_fields::Zero;
+    fn msm_naive_parallel<G: AffineCurve>(
+        bases: &[G],
+        scalars: &[<G::ScalarField as PrimeField>::BigInteger],
+    ) -> G::Projective {
         use rayon::prelude::*;
+        use snarkvm_fields::Zero;
+        use snarkvm_utilities::BitIteratorBE;
 
         bases
             .par_iter()

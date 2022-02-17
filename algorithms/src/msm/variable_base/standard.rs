@@ -106,9 +106,9 @@ fn batched_window<G: AffineCurve>(
         .collect();
 
     let buckets = match strategy {
-        MSMStrategy::BatchedA => batch_bucketed_add_option_a::<G>(n_buckets, &bases[..], &mut bucket_positions[..]),
-        MSMStrategy::BatchedB => batch_add_bucket::<G>(n_buckets, &bases[..], &mut bucket_positions[..]),
-        _ => panic!("Invalid MSM strategy provided, use either BatchedA or BatchedB")
+        MSMStrategy::BatchedA => batch_add_a::<G>(n_buckets, &bases[..], &mut bucket_positions[..]),
+        MSMStrategy::BatchedB => batch_add_b::<G>(n_buckets, &bases[..], &mut bucket_positions[..]),
+        _ => panic!("Invalid MSM strategy provided, use either BatchedA or BatchedB"),
     };
 
     let mut res = G::Projective::zero();
@@ -137,39 +137,25 @@ pub(super) fn msm<G: AffineCurve>(
     // Each window is of size `c`.
     // We divide up the bits 0..num_bits into windows of size `c`, and
     // in parallel process each such window.
-    let window_sums: Vec<_> =
-        cfg_into_iter!(0..num_bits).step_by(c).map(|w_start| match strategy {
+    let window_sums: Vec<_> = cfg_into_iter!(0..num_bits)
+        .step_by(c)
+        .map(|w_start| match strategy {
             MSMStrategy::Standard => standard_window(bases, scalars, w_start, c),
             _ => batched_window(bases, scalars, w_start, c, strategy),
-        }).collect();
-
-    // // We store the sum for the lowest window.
-    // let (lowest, window_sums) = window_sums.split_first().unwrap();
-    //
-    // // We're traversing windows from high to low.
-    // window_sums.iter().rev().fold(G::Projective::zero(), |mut total, (sum_i, window_size)| {
-    //     total += sum_i;
-    //     for _ in 0..*window_size {
-    //         total.double_in_place();
-    //     }
-    //     total
-    // }) + lowest.0
+        })
+        .collect();
 
     // We store the sum for the lowest window.
-    let lowest = window_sums.first().unwrap().0;
+    let (lowest, window_sums) = window_sums.split_first().unwrap();
 
     // We're traversing windows from high to low.
-    lowest
-        + &window_sums[1..].iter().rev().fold(
-        G::Projective::zero(),
-        |total: G::Projective, (sum_i, window_size): &(G::Projective, usize)| {
-            let mut total = total + sum_i;
-            for _ in 0..*window_size {
-                total.double_in_place();
-            }
-            total
-        },
-    )
+    window_sums.iter().rev().fold(G::Projective::zero(), |mut total, (sum_i, window_size)| {
+        total += sum_i;
+        for _ in 0..*window_size {
+            total.double_in_place();
+        }
+        total
+    }) + lowest.0
 }
 
 /// We use a batch size that is big enough to amortise the cost of the actual inversion
@@ -211,11 +197,7 @@ impl PartialEq for BucketPosition {
 }
 
 #[inline]
-pub fn batch_bucketed_add_option_a<G: AffineCurve>(
-    num_buckets: usize,
-    bases: &[G],
-    bucket_positions: &mut [BucketPosition],
-) -> Vec<G> {
+pub fn batch_add_a<G: AffineCurve>(num_buckets: usize, bases: &[G], bucket_positions: &mut [BucketPosition]) -> Vec<G> {
     // assert_eq!(elems.len(), bucket_positions.len());
     assert!(bases.len() > 0);
 
@@ -375,7 +357,7 @@ fn get_chunked_instr<T: Clone>(instr: &[T], batch_size: usize) -> Vec<Vec<T>> {
     res
 }
 
-pub fn batch_add_bucket<G: AffineCurve>(buckets: usize, bases: &[G], bucket_assign: &[BucketPosition]) -> Vec<G> {
+pub fn batch_add_b<G: AffineCurve>(buckets: usize, bases: &[G], bucket_assign: &[BucketPosition]) -> Vec<G> {
     let mut bases = bases.to_vec();
     let num_split = 2i32.pow(log2(buckets) / 2 + 2) as usize;
     let split_size = (buckets - 1) / num_split + 1;

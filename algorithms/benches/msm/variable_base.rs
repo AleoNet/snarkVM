@@ -15,8 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_algorithms::msm::*;
-use snarkvm_curves::{AffineCurve};
-use snarkvm_fields::{PrimeField};
+use snarkvm_curves::AffineCurve;
+use snarkvm_fields::PrimeField;
 
 use criterion::Criterion;
 use rand::SeedableRng;
