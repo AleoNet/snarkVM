@@ -180,6 +180,11 @@ mod tests {
         ];
 
         #[test]
+        fn test_gate_conversion() {
+            TEST_AMOUNTS.iter().for_each(|amounts| test_from_i64(amounts.gate, AleoAmount(amounts.gate)));
+        }
+
+        #[test]
         fn test_aleo_conversion() {
             TEST_AMOUNTS.iter().for_each(|amounts| test_from_aleo(amounts.aleo, AleoAmount(amounts.gate)));
         }
