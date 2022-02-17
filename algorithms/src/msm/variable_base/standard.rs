@@ -161,7 +161,7 @@ pub(super) fn msm<G: AffineCurve>(
     // We're traversing windows from high to low.
     lowest
         + &window_sums[1..].iter().rev().fold(
-        zero,
+        G::Projective::zero(),
         |total: G::Projective, (sum_i, window_size): &(G::Projective, usize)| {
             let mut total = total + sum_i;
             for _ in 0..*window_size {
