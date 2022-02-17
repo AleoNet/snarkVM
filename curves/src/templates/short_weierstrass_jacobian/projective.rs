@@ -77,6 +77,24 @@ impl<P: Parameters> PartialEq for Projective<P> {
     }
 }
 
+impl<P: Parameters> PartialEq<Affine<P>> for Projective<P> {
+    fn eq(&self, other: &Affine<P>) -> bool {
+        if self.is_zero() {
+            return other.is_zero();
+        }
+
+        if other.is_zero() {
+            return false;
+        }
+
+        // The points (X, Y, Z) and (X', Y', Z')
+        // are equal when (X * Z^2) = (X' * Z'^2)
+        // and (Y * Z^3) = (Y' * Z'^3).
+        let z1 = self.z.square();
+        (self.x == other.x * z1) & (self.y == other.y * z1 * self.z)
+    }
+}
+
 impl<P: Parameters> Distribution<Projective<P>> for Standard {
     #[inline]
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Projective<P> {
@@ -245,7 +263,8 @@ impl<P: Parameters> ProjectiveCurve for Projective<P> {
             // If we're adding -a and a together, self.z becomes zero as H becomes zero.
 
             // H = U2-X1
-            let h = u2 - self.x;
+            let mut h = u2;
+            h -= &self.x;
 
             // HH = H^2
             let hh = h.square();
@@ -256,24 +275,28 @@ impl<P: Parameters> ProjectiveCurve for Projective<P> {
             i.double_in_place();
 
             // J = H*I
-            let mut j = h * i;
+            let mut j = h;
+            j *= &i;
 
             // r = 2*(S2-Y1)
-            let r = (s2 - self.y).double();
+            let mut r = s2;
+            r -= &self.y;
+            r.double_in_place();
 
             // V = X1*I
-            let v = self.x * i;
+            let mut v = self.x;
+            v *= &i;
 
             // X3 = r^2 - J - 2*V
             self.x = r.square();
             self.x -= &j;
-            self.x -= &v;
-            self.x -= &v;
+            self.x -= &v.double();
 
             // Y3 = r*(V-X3)-2*Y1*J
             j *= &self.y; // J = 2*Y1*J
             j.double_in_place();
-            self.y = v - self.x;
+            self.y = v;
+            self.y -= self.x;
             self.y *= &r;
             self.y -= &j;
 
@@ -369,7 +392,7 @@ impl<P: Parameters> Group for Projective<P> {
             let s = ((self.x + yy).square() - xx - yyyy).double();
 
             // M = 3*XX+a*ZZ^2
-            let m = xx + xx + xx + P::mul_by_a(&zz.square());
+            let m = xx.double() + xx + P::mul_by_a(&zz.square());
 
             // T = M^2-2*S
             let t = m.square() - s.double();
@@ -502,16 +525,8 @@ impl<P: Parameters> Mul<P::ScalarField> for Projective<P> {
     #[inline]
     fn mul(self, other: P::ScalarField) -> Self {
         let mut res = Self::zero();
-
-        let mut found_one = false;
-
-        for i in BitIteratorBE::new(other.to_repr()) {
-            if found_one {
-                res.double_in_place();
-            } else {
-                found_one = i;
-            }
-
+        for i in BitIteratorBE::new_without_leading_zeros(other.to_repr()) {
+            res.double_in_place();
             if i {
                 res += self;
             }

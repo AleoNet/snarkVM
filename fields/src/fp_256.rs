@@ -80,7 +80,7 @@ impl<P: Fp256Parameters> Fp256<P> {
         }
     }
 
-    #[inline]
+    #[inline(always)]
     #[allow(clippy::too_many_arguments)]
     fn mont_reduce(
         &mut self,
@@ -103,7 +103,7 @@ impl<P: Fp256Parameters> Fp256<P> {
         r1 = fa::mac_with_carry(r1, k, P::MODULUS.0[1], &mut carry);
         r2 = fa::mac_with_carry(r2, k, P::MODULUS.0[2], &mut carry);
         r3 = fa::mac_with_carry(r3, k, P::MODULUS.0[3], &mut carry);
-        r4 = fa::adc(r4, 0, &mut carry);
+        carry = fa::adc(&mut r4, 0, carry);
         let carry2 = carry;
         let k = r1.wrapping_mul(P::INV);
         let mut carry = 0;
@@ -111,7 +111,7 @@ impl<P: Fp256Parameters> Fp256<P> {
         r2 = fa::mac_with_carry(r2, k, P::MODULUS.0[1], &mut carry);
         r3 = fa::mac_with_carry(r3, k, P::MODULUS.0[2], &mut carry);
         r4 = fa::mac_with_carry(r4, k, P::MODULUS.0[3], &mut carry);
-        r5 = fa::adc(r5, carry2, &mut carry);
+        carry = fa::adc(&mut r5, carry2, carry);
         let carry2 = carry;
         let k = r2.wrapping_mul(P::INV);
         let mut carry = 0;
@@ -119,7 +119,7 @@ impl<P: Fp256Parameters> Fp256<P> {
         r3 = fa::mac_with_carry(r3, k, P::MODULUS.0[1], &mut carry);
         r4 = fa::mac_with_carry(r4, k, P::MODULUS.0[2], &mut carry);
         r5 = fa::mac_with_carry(r5, k, P::MODULUS.0[3], &mut carry);
-        r6 = fa::adc(r6, carry2, &mut carry);
+        carry = fa::adc(&mut r6, carry2, carry);
         let carry2 = carry;
         let k = r3.wrapping_mul(P::INV);
         let mut carry = 0;
@@ -127,7 +127,7 @@ impl<P: Fp256Parameters> Fp256<P> {
         r4 = fa::mac_with_carry(r4, k, P::MODULUS.0[1], &mut carry);
         r5 = fa::mac_with_carry(r5, k, P::MODULUS.0[2], &mut carry);
         r6 = fa::mac_with_carry(r6, k, P::MODULUS.0[3], &mut carry);
-        r7 = fa::adc(r7, carry2, &mut carry);
+        fa::adc(&mut r7, carry2, carry);
         (self.0).0[0] = r4;
         (self.0).0[1] = r5;
         (self.0).0[2] = r6;
@@ -193,6 +193,7 @@ impl<P: Fp256Parameters> Field for Fp256<P> {
 
     #[inline]
     fn square_in_place(&mut self) -> &mut Self {
+        // i = 0
         let mut carry = 0;
         let r1 = fa::mac_with_carry(0, (self.0).0[0], (self.0).0[1], &mut carry);
         let r2 = fa::mac_with_carry(0, (self.0).0[0], (self.0).0[2], &mut carry);
@@ -206,23 +207,23 @@ impl<P: Fp256Parameters> Field for Fp256<P> {
         let r5 = fa::mac_with_carry(r5, (self.0).0[2], (self.0).0[3], &mut carry);
         let r6 = carry;
 
-        let r7 = r6 >> 63;
+        let mut r7 = r6 >> 63;
         let r6 = (r6 << 1) | (r5 >> 63);
-        let r5 = (r5 << 1) | (r4 >> 63);
+        let mut r5 = (r5 << 1) | (r4 >> 63);
         let r4 = (r4 << 1) | (r3 >> 63);
-        let r3 = (r3 << 1) | (r2 >> 63);
+        let mut r3 = (r3 << 1) | (r2 >> 63);
         let r2 = (r2 << 1) | (r1 >> 63);
-        let r1 = r1 << 1;
+        let mut r1 = r1 << 1;
 
         let mut carry = 0;
         let r0 = fa::mac_with_carry(0, (self.0).0[0], (self.0).0[0], &mut carry);
-        let r1 = fa::adc(r1, 0, &mut carry);
+        carry = fa::adc(&mut r1, 0, carry);
         let r2 = fa::mac_with_carry(r2, (self.0).0[1], (self.0).0[1], &mut carry);
-        let r3 = fa::adc(r3, 0, &mut carry);
+        carry = fa::adc(&mut r3, 0, carry);
         let r4 = fa::mac_with_carry(r4, (self.0).0[2], (self.0).0[2], &mut carry);
-        let r5 = fa::adc(r5, 0, &mut carry);
+        carry = fa::adc(&mut r5, 0, carry);
         let r6 = fa::mac_with_carry(r6, (self.0).0[3], (self.0).0[3], &mut carry);
-        let r7 = fa::adc(r7, 0, &mut carry);
+        fa::adc(&mut r7, 0, carry);
 
         self.mont_reduce(r0, r1, r2, r3, r4, r5, r6, r7);
         self
@@ -315,9 +316,43 @@ impl<P: Fp256Parameters> PrimeField for Fp256<P> {
 
     #[inline]
     fn to_repr(&self) -> BigInteger {
-        let mut r = *self;
-        r.mont_reduce((self.0).0[0], (self.0).0[1], (self.0).0[2], (self.0).0[3], 0, 0, 0, 0);
-        r.0
+        let mut tmp = self.0;
+        let mut r = tmp.0;
+        // Montgomery Reduction
+        let k = r[0].wrapping_mul(P::INV);
+        let mut carry = 0;
+        fa::mac_with_carry(r[0], k, P::MODULUS.0[0], &mut carry);
+        r[1] = fa::mac_with_carry(r[1], k, P::MODULUS.0[1], &mut carry);
+        r[2] = fa::mac_with_carry(r[2], k, P::MODULUS.0[2], &mut carry);
+        r[3] = fa::mac_with_carry(r[3], k, P::MODULUS.0[3], &mut carry);
+        r[0] = carry;
+
+        let k = r[1].wrapping_mul(P::INV);
+        let mut carry = 0;
+        fa::mac_with_carry(r[1], k, P::MODULUS.0[0], &mut carry);
+        r[2] = fa::mac_with_carry(r[2], k, P::MODULUS.0[1], &mut carry);
+        r[3] = fa::mac_with_carry(r[3], k, P::MODULUS.0[2], &mut carry);
+        r[0] = fa::mac_with_carry(r[0], k, P::MODULUS.0[3], &mut carry);
+        r[1] = carry;
+
+        let k = r[2].wrapping_mul(P::INV);
+        let mut carry = 0;
+        fa::mac_with_carry(r[2], k, P::MODULUS.0[0], &mut carry);
+        r[3] = fa::mac_with_carry(r[3], k, P::MODULUS.0[1], &mut carry);
+        r[0] = fa::mac_with_carry(r[0], k, P::MODULUS.0[2], &mut carry);
+        r[1] = fa::mac_with_carry(r[1], k, P::MODULUS.0[3], &mut carry);
+        r[2] = carry;
+
+        let k = r[3].wrapping_mul(P::INV);
+        let mut carry = 0;
+        fa::mac_with_carry(r[3], k, P::MODULUS.0[0], &mut carry);
+        r[0] = fa::mac_with_carry(r[0], k, P::MODULUS.0[1], &mut carry);
+        r[1] = fa::mac_with_carry(r[1], k, P::MODULUS.0[2], &mut carry);
+        r[2] = fa::mac_with_carry(r[2], k, P::MODULUS.0[3], &mut carry);
+        r[3] = carry;
+
+        tmp.0 = r;
+        tmp
     }
 
     #[inline]
@@ -592,31 +627,68 @@ impl<'a, P: Fp256Parameters> SubAssign<&'a Self> for Fp256<P> {
 impl<'a, P: Fp256Parameters> MulAssign<&'a Self> for Fp256<P> {
     #[inline]
     fn mul_assign(&mut self, other: &Self) {
-        let mut carry = 0;
-        let r0 = fa::mac_with_carry(0, (self.0).0[0], (other.0).0[0], &mut carry);
-        let r1 = fa::mac_with_carry(0, (self.0).0[0], (other.0).0[1], &mut carry);
-        let r2 = fa::mac_with_carry(0, (self.0).0[0], (other.0).0[2], &mut carry);
-        let r3 = fa::mac_with_carry(0, (self.0).0[0], (other.0).0[3], &mut carry);
-        let r4 = carry;
-        let mut carry = 0;
-        let r1 = fa::mac_with_carry(r1, (self.0).0[1], (other.0).0[0], &mut carry);
-        let r2 = fa::mac_with_carry(r2, (self.0).0[1], (other.0).0[1], &mut carry);
-        let r3 = fa::mac_with_carry(r3, (self.0).0[1], (other.0).0[2], &mut carry);
-        let r4 = fa::mac_with_carry(r4, (self.0).0[1], (other.0).0[3], &mut carry);
-        let r5 = carry;
-        let mut carry = 0;
-        let r2 = fa::mac_with_carry(r2, (self.0).0[2], (other.0).0[0], &mut carry);
-        let r3 = fa::mac_with_carry(r3, (self.0).0[2], (other.0).0[1], &mut carry);
-        let r4 = fa::mac_with_carry(r4, (self.0).0[2], (other.0).0[2], &mut carry);
-        let r5 = fa::mac_with_carry(r5, (self.0).0[2], (other.0).0[3], &mut carry);
-        let r6 = carry;
-        let mut carry = 0;
-        let r3 = fa::mac_with_carry(r3, (self.0).0[3], (other.0).0[0], &mut carry);
-        let r4 = fa::mac_with_carry(r4, (self.0).0[3], (other.0).0[1], &mut carry);
-        let r5 = fa::mac_with_carry(r5, (self.0).0[3], (other.0).0[2], &mut carry);
-        let r6 = fa::mac_with_carry(r6, (self.0).0[3], (other.0).0[3], &mut carry);
-        let r7 = carry;
-        self.mont_reduce(r0, r1, r2, r3, r4, r5, r6, r7);
+        let mut r = [0u64; 4];
+        let mut carry1 = 0u64;
+        let mut carry2 = 0u64;
+
+        // Iteration 0.
+        r[0] = fa::mac(r[0], (self.0).0[0], (other.0).0[0], &mut carry1);
+        let k = r[0].wrapping_mul(P::INV);
+        fa::mac_discard(r[0], k, P::MODULUS.0[0], &mut carry2);
+        r[1] = fa::mac_with_carry(r[1], (self.0).0[1], (other.0).0[0], &mut carry1);
+        r[0] = fa::mac_with_carry(r[1], k, P::MODULUS.0[1], &mut carry2);
+
+        r[2] = fa::mac_with_carry(r[2], (self.0).0[2], (other.0).0[0], &mut carry1);
+        r[1] = fa::mac_with_carry(r[2], k, P::MODULUS.0[2], &mut carry2);
+
+        r[3] = fa::mac_with_carry(r[3], (self.0).0[3], (other.0).0[0], &mut carry1);
+        r[2] = fa::mac_with_carry(r[3], k, P::MODULUS.0[3], &mut carry2);
+        r[3] = carry1 + carry2;
+
+        // Iteration 1.
+        r[0] = fa::mac(r[0], (self.0).0[0], (other.0).0[1], &mut carry1);
+        let k = r[0].wrapping_mul(P::INV);
+        fa::mac_discard(r[0], k, P::MODULUS.0[0], &mut carry2);
+        r[1] = fa::mac_with_carry(r[1], (self.0).0[1], (other.0).0[1], &mut carry1);
+        r[0] = fa::mac_with_carry(r[1], k, P::MODULUS.0[1], &mut carry2);
+
+        r[2] = fa::mac_with_carry(r[2], (self.0).0[2], (other.0).0[1], &mut carry1);
+        r[1] = fa::mac_with_carry(r[2], k, P::MODULUS.0[2], &mut carry2);
+
+        r[3] = fa::mac_with_carry(r[3], (self.0).0[3], (other.0).0[1], &mut carry1);
+        r[2] = fa::mac_with_carry(r[3], k, P::MODULUS.0[3], &mut carry2);
+        r[3] = carry1 + carry2;
+
+        // Iteration 2.
+        r[0] = fa::mac(r[0], (self.0).0[0], (other.0).0[2], &mut carry1);
+        let k = r[0].wrapping_mul(P::INV);
+        fa::mac_discard(r[0], k, P::MODULUS.0[0], &mut carry2);
+        r[1] = fa::mac_with_carry(r[1], (self.0).0[1], (other.0).0[2], &mut carry1);
+        r[0] = fa::mac_with_carry(r[1], k, P::MODULUS.0[1], &mut carry2);
+
+        r[2] = fa::mac_with_carry(r[2], (self.0).0[2], (other.0).0[2], &mut carry1);
+        r[1] = fa::mac_with_carry(r[2], k, P::MODULUS.0[2], &mut carry2);
+
+        r[3] = fa::mac_with_carry(r[3], (self.0).0[3], (other.0).0[2], &mut carry1);
+        r[2] = fa::mac_with_carry(r[3], k, P::MODULUS.0[3], &mut carry2);
+        r[3] = carry1 + carry2;
+
+        // Iteration 3.
+        r[0] = fa::mac(r[0], (self.0).0[0], (other.0).0[3], &mut carry1);
+        let k = r[0].wrapping_mul(P::INV);
+        fa::mac_discard(r[0], k, P::MODULUS.0[0], &mut carry2);
+        r[1] = fa::mac_with_carry(r[1], (self.0).0[1], (other.0).0[3], &mut carry1);
+        r[0] = fa::mac_with_carry(r[1], k, P::MODULUS.0[1], &mut carry2);
+
+        r[2] = fa::mac_with_carry(r[2], (self.0).0[2], (other.0).0[3], &mut carry1);
+        r[1] = fa::mac_with_carry(r[2], k, P::MODULUS.0[2], &mut carry2);
+
+        r[3] = fa::mac_with_carry(r[3], (self.0).0[3], (other.0).0[3], &mut carry1);
+        r[2] = fa::mac_with_carry(r[3], k, P::MODULUS.0[3], &mut carry2);
+        r[3] = carry1 + carry2;
+
+        (self.0).0 = r;
+        self.reduce();
     }
 }
 

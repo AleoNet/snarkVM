@@ -124,6 +124,7 @@ pub trait Field:
 
     /// Exponentiates this element by a number represented with `u64` limbs,
     /// least significant limb first.
+    #[must_use]
     fn pow<S: AsRef<[u64]>>(&self, exp: S) -> Self {
         let mut res = Self::one();
 

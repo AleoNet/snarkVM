@@ -80,6 +80,7 @@ harness = false
 [[example]]
 name = "groth16"
 path = "examples/snark/groth16.rs"
+required-features = ["snark"]
 
 [dependencies.snarkvm-curves]
 path = "../curves"
@@ -266,7 +267,7 @@ fft = [ ]
 hash_to_curve = [ "crypto_hash" ]
 merkle_tree = [ ]
 msm = [ ]
-polycommit = [ "rand_core" ]
+polycommit = [ "rand_core", "fft", "crh", "msm" ]
 prf = [ ]
 signature = [ "encryption", "crypto_hash" ]
-snark = [ "fft", "msm" ]
+snark = [ "fft", "msm", "polycommit" ]
