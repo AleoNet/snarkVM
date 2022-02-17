@@ -47,7 +47,7 @@ mod ecies {
         let candidate_message = encryption.decrypt(&symmetric_key, &ciphertext).unwrap();
         let decoded_message = candidate_message
             .iter()
-            .map(|encoded_message_bytes| TestEncryptionScheme::decode_message(&encoded_message_bytes).unwrap())
+            .map(|encoded_message_bytes| TestEncryptionScheme::decode_message(encoded_message_bytes).unwrap())
             .collect::<Vec<Vec<u8>>>();
         assert_eq!(message, decoded_message);
     }
@@ -133,7 +133,7 @@ mod ecies {
         let candidate_message = encryption.decrypt(&symmetric_key, &ciphertext).unwrap();
         let decoded_message = candidate_message
             .iter()
-            .map(|encoded_message_bytes| TestEncryptionScheme::decode_message(&encoded_message_bytes).unwrap())
+            .map(|encoded_message_bytes| TestEncryptionScheme::decode_message(encoded_message_bytes).unwrap())
             .collect::<Vec<Vec<u8>>>();
         assert_eq!(message, decoded_message);
 
@@ -151,7 +151,7 @@ mod ecies {
             let candidate_message = encryption.decrypt(&symmetric_key, &ciphertext).unwrap();
             let decoded_message = candidate_message
                 .iter()
-                .map(|encoded_message_bytes| TestEncryptionScheme::decode_message(&encoded_message_bytes).unwrap())
+                .map(|encoded_message_bytes| TestEncryptionScheme::decode_message(encoded_message_bytes).unwrap())
                 .collect::<Vec<Vec<u8>>>();
             assert_ne!(message, decoded_message);
         }
