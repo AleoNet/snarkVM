@@ -44,28 +44,32 @@ use std::{
 #[cfg(target_arch = "x86_64")]
 use crate::{prefetch_slice, prefetch_slice_write};
 
+/// A macro which computes:
+///     `lambda` := `(y2 - y1) / (x2 - x1)`,
+/// for two given affine points.
 macro_rules! batch_add_loop_1 {
     ($a: ident, $b: ident, $half: ident, $inversion_tmp: ident) => {
         if $a.is_zero() || $b.is_zero() {
             ();
         } else if $a.x == $b.x {
-            $half = match $half {
-                None => P::BaseField::one().double().inverse(),
-                _ => $half,
-            };
-            let h = $half.unwrap();
-
             // Double
             // In our model, we consider self additions rare.
             // So we consider it inconsequential to make them more expensive
             // This costs 1 modular mul more than a standard squaring,
             // and one amortised inversion
             if $a.y == $b.y {
+                // Compute one half (1/2) and cache it.
+                $half = match $half {
+                    None => P::BaseField::one().double().inverse(),
+                    _ => $half,
+                };
+                let h = $half.unwrap();
+
                 let x_sq = $b.x.square();
                 $b.x -= &$b.y; // x - y
                 $a.x = $b.y.double(); // denominator = 2y
                 $a.y = x_sq.double() + &x_sq + &P::COEFF_A; // numerator = 3x^2 + a
-                $b.y -= &(h * &$a.y); // y - (3x^2 + $a./2
+                $b.y -= &(h * &$a.y); // y - (3x^2 + a)/2
                 $a.y *= &$inversion_tmp; // (3x^2 + a) * tmp
                 $inversion_tmp *= &$a.x; // update tmp
             } else {
@@ -83,6 +87,9 @@ macro_rules! batch_add_loop_1 {
     };
 }
 
+/// A macro which computes:
+///     `x3` := `lambda^2 - x1 - x2`
+///     `y3` := `lambda * (x1 - x3) - y1`.
 macro_rules! batch_add_loop_2 {
     ($a: ident, $b: ident, $inversion_tmp: ident) => {
         if $a.is_zero() {
@@ -293,10 +300,11 @@ impl<P: Parameters> AffineCurve for Affine<P> {
         }
     }
 
+    // #[timed]
     fn batch_add_write(
         lookup: &[Self],
         index: &[(u32, u32)],
-        new_elems: &mut Vec<Self>,
+        new_bases: &mut Vec<Self>,
         scratch_space: &mut Vec<Option<Self>>,
     ) {
         let mut inversion_tmp = P::BaseField::one();
@@ -313,19 +321,19 @@ impl<P: Parameters> AffineCurve for Affine<P> {
             prefetch_slice_write!(lookup, lookup, prefetch_iter);
 
             if *idy == !0u32 {
-                new_elems.push(lookup[*idx as usize]);
+                new_bases.push(lookup[*idx as usize]);
                 scratch_space.push(None);
             } else {
                 let (mut a, mut b) = (lookup[*idx as usize], lookup[*idy as usize]);
                 batch_add_loop_1!(a, b, half, inversion_tmp);
-                new_elems.push(a);
+                new_bases.push(a);
                 scratch_space.push(Some(b));
             }
         }
 
         inversion_tmp = inversion_tmp.inverse().unwrap(); // this is always in Fp*
 
-        for (a, op_b) in new_elems.iter_mut().rev().zip(scratch_space.iter().rev()) {
+        for (a, op_b) in new_bases.iter_mut().rev().zip(scratch_space.iter().rev()) {
             match op_b {
                 Some(b) => {
                     let b_ = *b;

@@ -278,7 +278,9 @@ pub fn batch_add_a<G: AffineCurve>(num_buckets: usize, bases: &[G], bucket_posit
         all_ones = true;
         while global_counter < num_scalars {
             let current_bucket = bucket_positions[global_counter].bucket_index;
-            while global_counter + 1 < num_scalars && bucket_positions[global_counter + 1].bucket_index == current_bucket {
+            while global_counter + 1 < num_scalars
+                && bucket_positions[global_counter + 1].bucket_index == current_bucket
+            {
                 global_counter += 1;
                 local_counter += 1;
             }

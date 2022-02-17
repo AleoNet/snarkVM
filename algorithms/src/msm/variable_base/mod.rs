@@ -149,7 +149,7 @@ mod tests {
         let mut rng = test_rng();
         for _ in 0..100 {
             let (bases, scalars) = test_data(&mut rng, 1 << 10);
-            let rust = standard::msm(bases.as_slice(), scalars.as_slice());
+            let rust = standard::msm(bases.as_slice(), scalars.as_slice(), MSMStrategy::BatchedA);
 
             let cuda = cuda::msm_cuda(bases.as_slice(), scalars.as_slice()).unwrap();
             assert_eq!(rust, cuda);

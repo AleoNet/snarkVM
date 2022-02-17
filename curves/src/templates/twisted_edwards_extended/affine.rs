@@ -308,26 +308,26 @@ impl<P: Parameters> AffineCurve for Affine<P> {
     fn batch_add_write(
         lookup: &[Self],
         index: &[(u32, u32)],
-        new_elems: &mut Vec<Self>,
+        new_bases: &mut Vec<Self>,
         scratch_space: &mut Vec<Option<Self>>,
     ) {
         let mut inversion_tmp = P::BaseField::one();
 
         for (idx, idy) in index.iter() {
             if *idy == !0u32 {
-                new_elems.push(lookup[*idx as usize]);
+                new_bases.push(lookup[*idx as usize]);
                 scratch_space.push(None);
             } else {
                 let (mut a, mut b) = (lookup[*idx as usize], lookup[*idy as usize]);
                 batch_add_loop_1!(a, b, inversion_tmp);
-                new_elems.push(a);
+                new_bases.push(a);
                 scratch_space.push(Some(b));
             }
         }
 
         inversion_tmp = inversion_tmp.inverse().unwrap(); // this is always in Fp*
 
-        for (a, op_b) in new_elems.iter_mut().rev().zip(scratch_space.iter().rev()) {
+        for (a, op_b) in new_bases.iter_mut().rev().zip(scratch_space.iter().rev()) {
             match op_b {
                 Some(b) => {
                     let b_ = *b;
