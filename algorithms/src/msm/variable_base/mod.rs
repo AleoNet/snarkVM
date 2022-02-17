@@ -58,7 +58,7 @@ impl VariableBaseMSM {
                 }
             }
         }
-        standard::msm(bases, scalars, MSMStrategy::Standard)
+        standard::msm(bases, scalars, MSMStrategy::BatchedA)
     }
 
     pub fn msm<G: AffineCurve>(
@@ -138,7 +138,7 @@ mod tests {
     fn test_naive() {
         let mut rng = test_rng();
         let (bases, scalars) = test_data(&mut rng, 100);
-        let rust = standard::msm(bases.as_slice(), scalars.as_slice());
+        let rust = standard::msm(bases.as_slice(), scalars.as_slice(), MSMStrategy::BatchedA);
         let naive = VariableBaseMSM::msm_naive(bases.as_slice(), scalars.as_slice());
         assert_eq!(rust, naive);
     }

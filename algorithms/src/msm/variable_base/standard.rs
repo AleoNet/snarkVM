@@ -86,28 +86,28 @@ fn batched_window<G: AffineCurve>(
     strategy: MSMStrategy,
 ) -> (G::Projective, usize) {
     // We don't need the "zero" bucket, so we only have 2^c - 1 buckets
-    let log2_n_bucket = if (w_start % c) != 0 { w_start % c } else { c };
-    let n_buckets = (1 << log2_n_bucket) - 1;
+    let window_size = if (w_start % c) != 0 { w_start % c } else { c };
+    let num_buckets = (1 << window_size) - 1;
 
     let mut bucket_positions: Vec<_> = scalars
         .iter()
         .enumerate()
-        .map(|(pos, &scalar)| {
+        .map(|(scalar_index, &scalar)| {
             let mut scalar = scalar;
 
-            // We right-shift by w_start, thus getting rid of the
-            // lower bits.
+            // We right-shift by w_start, thus getting rid of the lower bits.
             scalar.divn(w_start as u32);
 
             // We mod the remaining bits by the window size.
-            let res = (scalar.as_ref()[0] % (1 << c)) as i32;
-            BucketPosition { bucket: (res - 1) as u32, position: pos as u32 }
+            let scalar = (scalar.as_ref()[0] % (1 << c)) as i32;
+
+            BucketPosition { bucket_index: (scalar - 1) as u32, scalar_index: scalar_index as u32 }
         })
         .collect();
 
     let buckets = match strategy {
-        MSMStrategy::BatchedA => batch_add_a::<G>(n_buckets, &bases[..], &mut bucket_positions[..]),
-        MSMStrategy::BatchedB => batch_add_b::<G>(n_buckets, &bases[..], &mut bucket_positions[..]),
+        MSMStrategy::BatchedA => batch_add_a::<G>(num_buckets, &bases[..], &mut bucket_positions[..]),
+        MSMStrategy::BatchedB => batch_add_b::<G>(num_buckets, &bases[..], &mut bucket_positions[..]),
         _ => panic!("Invalid MSM strategy provided, use either BatchedA or BatchedB"),
     };
 
@@ -118,7 +118,7 @@ fn batched_window<G: AffineCurve>(
         res += &running_sum;
     }
 
-    (res, log2_n_bucket)
+    (res, window_size)
 }
 
 pub(super) fn msm<G: AffineCurve>(
@@ -171,13 +171,13 @@ use crate::fft::domain::log2;
 
 #[derive(Copy, Clone, Debug)]
 pub struct BucketPosition {
-    pub bucket: u32,
-    pub position: u32,
+    pub bucket_index: u32,
+    pub scalar_index: u32,
 }
 
 impl PartialOrd for BucketPosition {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.bucket.partial_cmp(&other.bucket)
+        self.bucket_index.partial_cmp(&other.bucket_index)
     }
 }
 
@@ -186,13 +186,13 @@ impl Radixable<u32> for BucketPosition {
 
     #[inline]
     fn key(&self) -> Self::Key {
-        self.bucket
+        self.bucket_index
     }
 }
 
 impl PartialEq for BucketPosition {
     fn eq(&self, other: &Self) -> bool {
-        self.bucket == other.bucket
+        self.bucket_index == other.bucket_index
     }
 }
 
@@ -209,17 +209,15 @@ pub fn batch_add_a<G: AffineCurve>(num_buckets: usize, bases: &[G], bucket_posit
     let mut global_counter = 0; // global counters
     let mut local_counter = 1; // local counter
     let mut batch = 0; // batch counter
-    let mut instr = Vec::<(u32, u32)>::with_capacity(BATCH_SIZE);
-    let mut new_elems = Vec::<G>::with_capacity(bases.len() * 3 / 8);
 
+    let mut instr = Vec::<(u32, u32)>::with_capacity(BATCH_SIZE);
+    let mut new_bases = Vec::<G>::with_capacity(bases.len() * 3 / 8);
     let mut scratch_space = Vec::<Option<G>>::with_capacity(BATCH_SIZE / 2);
 
-    // In the first loop, we copy the results of the first in place addition tree
-    // to a local vector, new_elems
-    // Subsequently, we perform all the operations in place
+    // In the first loop, copy the results of the first in-place addition tree to the vector `new_bases`.
     while global_counter < num_scalars {
-        let current_bucket = bucket_positions[global_counter].bucket;
-        while global_counter + 1 < num_scalars && bucket_positions[global_counter + 1].bucket == current_bucket {
+        let current_bucket = bucket_positions[global_counter].bucket_index;
+        while global_counter + 1 < num_scalars && bucket_positions[global_counter + 1].bucket_index == current_bucket {
             global_counter += 1;
             local_counter += 1;
         }
@@ -234,16 +232,16 @@ pub fn batch_add_a<G: AffineCurve>(num_buckets: usize, bases: &[G], bucket_posit
             let half = local_counter / 2;
             for i in 0..half {
                 instr.push((
-                    bucket_positions[global_counter - (local_counter - 1) + 2 * i].position,
-                    bucket_positions[global_counter - (local_counter - 1) + 2 * i + 1].position,
+                    bucket_positions[global_counter - (local_counter - 1) + 2 * i].scalar_index,
+                    bucket_positions[global_counter - (local_counter - 1) + 2 * i + 1].scalar_index,
                 ));
                 bucket_positions[new_len + i] =
-                    BucketPosition { bucket: current_bucket, position: (new_len + i) as u32 };
+                    BucketPosition { bucket_index: current_bucket, scalar_index: (new_len + i) as u32 };
             }
             if is_odd {
-                instr.push((bucket_positions[global_counter].position, !0u32));
+                instr.push((bucket_positions[global_counter].scalar_index, !0u32));
                 bucket_positions[new_len + half] =
-                    BucketPosition { bucket: current_bucket, position: (new_len + half) as u32 };
+                    BucketPosition { bucket_index: current_bucket, scalar_index: (new_len + half) as u32 };
             }
             // Reset the local_counter and update state
             new_len += half + (local_counter % 2);
@@ -253,20 +251,20 @@ pub fn batch_add_a<G: AffineCurve>(num_buckets: usize, bases: &[G], bucket_posit
             if batch >= BATCH_SIZE / 2 {
                 // We need instructions for copying data in the case
                 // of noops. We encode noops/copies as !0u32
-                G::batch_add_write(&bases[..], &instr[..], &mut new_elems, &mut scratch_space);
+                G::batch_add_write(&bases[..], &instr[..], &mut new_bases, &mut scratch_space);
 
                 instr.clear();
                 batch = 0;
             }
         } else {
-            instr.push((bucket_positions[global_counter].position, !0u32));
-            bucket_positions[new_len] = BucketPosition { bucket: current_bucket, position: new_len as u32 };
+            instr.push((bucket_positions[global_counter].scalar_index, !0u32));
+            bucket_positions[new_len] = BucketPosition { bucket_index: current_bucket, scalar_index: new_len as u32 };
             new_len += 1;
         }
         global_counter += 1;
     }
     if instr.len() > 0 {
-        G::batch_add_write(&bases[..], &instr[..], &mut new_elems, &mut scratch_space);
+        G::batch_add_write(&bases[..], &instr[..], &mut new_bases, &mut scratch_space);
         instr.clear();
     }
     global_counter = 0;
@@ -275,11 +273,12 @@ pub fn batch_add_a<G: AffineCurve>(num_buckets: usize, bases: &[G], bucket_posit
     num_scalars = new_len;
     new_len = 0;
 
+    // Next, perform all the updates in place.
     while !all_ones {
         all_ones = true;
         while global_counter < num_scalars {
-            let current_bucket = bucket_positions[global_counter].bucket;
-            while global_counter + 1 < num_scalars && bucket_positions[global_counter + 1].bucket == current_bucket {
+            let current_bucket = bucket_positions[global_counter].bucket_index;
+            while global_counter + 1 < num_scalars && bucket_positions[global_counter + 1].bucket_index == current_bucket {
                 global_counter += 1;
                 local_counter += 1;
             }
@@ -294,8 +293,8 @@ pub fn batch_add_a<G: AffineCurve>(num_buckets: usize, bases: &[G], bucket_posit
                 let half = local_counter / 2;
                 for i in 0..half {
                     instr.push((
-                        bucket_positions[global_counter - (local_counter - 1) + 2 * i].position,
-                        bucket_positions[global_counter - (local_counter - 1) + 2 * i + 1].position,
+                        bucket_positions[global_counter - (local_counter - 1) + 2 * i].scalar_index,
+                        bucket_positions[global_counter - (local_counter - 1) + 2 * i + 1].scalar_index,
                     ));
                     bucket_positions[new_len + i] = bucket_positions[global_counter - (local_counter - 1) + 2 * i];
                 }
@@ -308,7 +307,7 @@ pub fn batch_add_a<G: AffineCurve>(num_buckets: usize, bases: &[G], bucket_posit
                 local_counter = 1;
 
                 if batch >= BATCH_SIZE / 2 {
-                    G::batch_add_in_place_same_slice(&mut new_elems[..], &instr[..]);
+                    G::batch_add_in_place_same_slice(&mut new_bases[..], &instr[..]);
                     instr.clear();
                     batch = 0;
                 }
@@ -319,7 +318,7 @@ pub fn batch_add_a<G: AffineCurve>(num_buckets: usize, bases: &[G], bucket_posit
             global_counter += 1;
         }
         if instr.len() > 0 {
-            G::batch_add_in_place_same_slice(&mut new_elems[..], &instr[..]);
+            G::batch_add_in_place_same_slice(&mut new_bases[..], &instr[..]);
             instr.clear();
         }
         global_counter = 0;
@@ -330,10 +329,9 @@ pub fn batch_add_a<G: AffineCurve>(num_buckets: usize, bases: &[G], bucket_posit
     }
 
     let mut res = vec![G::zero(); num_buckets];
-
     for i in 0..num_scalars {
-        let (pos, buc) = (bucket_positions[i].position, bucket_positions[i].bucket);
-        res[buc as usize] = new_elems[pos as usize];
+        let (pos, buc) = (bucket_positions[i].scalar_index, bucket_positions[i].bucket_index);
+        res[buc as usize] = new_bases[pos as usize];
     }
     res
 }
@@ -368,11 +366,11 @@ pub fn batch_add_b<G: AffineCurve>(buckets: usize, bases: &[G], bucket_assign: &
     let mut index = vec![Vec::with_capacity(ratio); buckets];
 
     for bucket_pos in bucket_assign.iter() {
-        let (bucket, position) = (bucket_pos.bucket as usize, bucket_pos.position as usize);
+        let (bucket_index, scalar_index) = (bucket_pos.bucket_index as usize, bucket_pos.scalar_index as usize);
         // Check the bucket assignment is valid
-        if bucket < buckets {
+        if bucket_index < buckets {
             // index[bucket].push(position);
-            bucket_split[bucket / split_size].push((bucket, position));
+            bucket_split[bucket_index / split_size].push((bucket_index, scalar_index));
         }
     }
 
