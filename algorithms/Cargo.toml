@@ -127,6 +127,12 @@ features = [ "use_core" ]
 [dependencies.digest]
 version = "0.10"
 
+[dependencies.getrandom]
+version = "0.2"
+optional = true
+features = [ "js" ]
+default-features = false
+
 [dependencies.hashbrown]
 version = "0.12.0"
 
@@ -139,21 +145,18 @@ version = "0.10.3"
 [dependencies.lazy_static]
 version = "1.4"
 
+[dependencies.num_cpus]
+version = "1"
+optional = true
+
 [dependencies.once_cell]
 version = "1.9"
 
 [dependencies.rand]
 version = "0.8"
 
-[dependencies.getrandom]
-version = "0.2"
-optional = true
-features = [ "js" ]
-default-features = false
-
-[dependencies.num_cpus]
-version = "1"
-optional = true
+[dependencies.voracious_radix_sort]
+version = "1.1"
 
 [dependencies.rand_core]
 version = "0.6"
