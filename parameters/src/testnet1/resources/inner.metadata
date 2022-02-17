@@ -1,14 +1,7 @@
 {
-<<<<<<< HEAD
-  "circuit_id": "51b5d7de144cc4b9eed5fa7a88b643887428708e4f92ae5c9c00a6c8b8a73ee8bab2039258c6270ae3426b9a733d7c00",
-  "proving_checksum": "9059260da0c39920c2f8a4c01a8474e300716353ed8d9b0a08697a762e85ae33",
-  "proving_size": 189577909,
-  "verifying_checksum": "5cd8b2b9cb98c9e756bfc2f8e875082f9b6ebc98a8c4dc8edf413ab45a3ea24d",
-=======
-  "circuit_id": "0b9b3a011a32bd94e58de3261566eaccc504ca7d73fd314d052da07ca5c7dfd5e04e03849f3d57690487e7e4ab088e00",
-  "proving_checksum": "29f2d5525b8fbd03ceae3b634b5411b580b67698283f2fbd22d3b702a1122a88",
-  "proving_size": 154895861,
-  "verifying_checksum": "35eb5bbdf118ae58ac12d69331c5c92f22a0d413d52d66493e95b2aad39da3c5",
->>>>>>> 234ebc5c7e0037c87d773467457d8a314c7c8db5
+  "circuit_id": "00869194a00ac9dce823615c9b93e95d9fc7a26ff369adf4b04d514564bf42f8074e022273ecef159080f31847404301",
+  "proving_checksum": "2522fa0f50daaa28909a178a36efc79024cffde5e2bbb63339a0723f743bbbc4",
+  "proving_size": 183156197,
+  "verifying_checksum": "ed84d94ee96ea893f459dff8777b861585f849580391ee18a32a685253180a12",
   "verifying_size": 1359
 }
