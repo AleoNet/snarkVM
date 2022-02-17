@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::msm::MSMStrategy;
 use snarkvm_curves::{traits::AffineCurve, Group, ProjectiveCurve};
 use snarkvm_fields::{One, PrimeField, Zero};
 use snarkvm_utilities::{cfg_into_iter, BigInteger};
@@ -41,12 +42,12 @@ fn update_buckets<G: AffineCurve>(
     }
 }
 
-fn process_window<G: AffineCurve>(
+fn standard_window<G: AffineCurve>(
     bases: &[G],
     scalars: &[<G::ScalarField as PrimeField>::BigInteger],
     w_start: usize,
     c: usize,
-) -> G::Projective {
+) -> (G::Projective, usize) {
     let mut res = G::Projective::zero();
     let fr_one = G::ScalarField::one().to_repr();
 
@@ -58,7 +59,8 @@ fn process_window<G: AffineCurve>(
     }
 
     // We don't need the "zero" bucket, so we only have 2^c - 1 buckets
-    let mut buckets = vec![G::Projective::zero(); (1 << c) - 1];
+    let window_size = if (w_start % c) != 0 { w_start % c } else { c };
+    let mut buckets = vec![G::Projective::zero(); (1 << window_size) - 1];
     scalars
         .iter()
         .zip(bases)
@@ -73,12 +75,56 @@ fn process_window<G: AffineCurve>(
         res += running_sum;
     }
 
-    res
+    (res, window_size)
 }
 
-pub(super) fn msm_standard<G: AffineCurve>(
+fn batched_window<G: AffineCurve>(
     bases: &[G],
     scalars: &[<G::ScalarField as PrimeField>::BigInteger],
+    w_start: usize,
+    c: usize,
+    strategy: MSMStrategy,
+) -> (G::Projective, usize) {
+    // We don't need the "zero" bucket, so we only have 2^c - 1 buckets
+    let log2_n_bucket = if (w_start % c) != 0 { w_start % c } else { c };
+    let n_buckets = (1 << log2_n_bucket) - 1;
+
+    let mut bucket_positions: Vec<_> = scalars
+        .iter()
+        .enumerate()
+        .map(|(pos, &scalar)| {
+            let mut scalar = scalar;
+
+            // We right-shift by w_start, thus getting rid of the
+            // lower bits.
+            scalar.divn(w_start as u32);
+
+            // We mod the remaining bits by the window size.
+            let res = (scalar.as_ref()[0] % (1 << c)) as i32;
+            BucketPosition { bucket: (res - 1) as u32, position: pos as u32 }
+        })
+        .collect();
+
+    let buckets = match strategy {
+        MSMStrategy::BatchedA => batch_bucketed_add_option_a::<G>(n_buckets, &bases[..], &mut bucket_positions[..]),
+        MSMStrategy::BatchedB => batch_add_bucket::<G>(n_buckets, &bases[..], &mut bucket_positions[..]),
+        _ => panic!("Invalid MSM strategy provided, use either BatchedA or BatchedB")
+    };
+
+    let mut res = G::Projective::zero();
+    let mut running_sum = G::Projective::zero();
+    for b in buckets.into_iter().rev() {
+        running_sum.add_assign_mixed(&b);
+        res += &running_sum;
+    }
+
+    (res, log2_n_bucket)
+}
+
+pub(super) fn msm<G: AffineCurve>(
+    bases: &[G],
+    scalars: &[<G::ScalarField as PrimeField>::BigInteger],
+    strategy: MSMStrategy,
 ) -> G::Projective {
     // Determine the bucket size `c` (chosen empirically).
     let c = match scalars.len() < 32 {
@@ -92,155 +138,22 @@ pub(super) fn msm_standard<G: AffineCurve>(
     // We divide up the bits 0..num_bits into windows of size `c`, and
     // in parallel process each such window.
     let window_sums: Vec<_> =
-        cfg_into_iter!(0..num_bits).step_by(c).map(|w_start| process_window(bases, scalars, w_start, c)).collect();
+        cfg_into_iter!(0..num_bits).step_by(c).map(|w_start| match strategy {
+            MSMStrategy::Standard => standard_window(bases, scalars, w_start, c),
+            _ => batched_window(bases, scalars, w_start, c, strategy),
+        }).collect();
 
     // We store the sum for the lowest window.
     let (lowest, window_sums) = window_sums.split_first().unwrap();
 
     // We're traversing windows from high to low.
-    window_sums.iter().rev().fold(G::Projective::zero(), |mut total, sum_i| {
+    window_sums.iter().rev().fold(G::Projective::zero(), |mut total, (sum_i, window_size)| {
         total += sum_i;
-        for _ in 0..c {
+        for _ in 0..*window_size {
             total.double_in_place();
         }
         total
-    }) + lowest
-}
-
-pub(super) fn msm_batched_a<G: AffineCurve>(
-    bases: &[G],
-    scalars: &[<G::ScalarField as PrimeField>::BigInteger],
-) -> G::Projective {
-    let c = match scalars.len() < 32 {
-        true => 3,
-        false => crate::msm::ln_without_floats(scalars.len()) + 2,
-    };
-
-    let num_bits = <G::ScalarField as PrimeField>::size_in_bits();
-    let zero = G::Projective::zero();
-
-    // Each window is of size `c`.
-    // We divide up the bits 0..num_bits into windows of size `c`, and
-    // in parallel process each such window.
-    let window_sums: Vec<_> = cfg_into_iter!(0..num_bits)
-        .step_by(c)
-        .map(|w_start| {
-            // We don't need the "zero" bucket, so we only have 2^c - 1 buckets
-            let log2_n_bucket = if (w_start % c) != 0 { w_start % c } else { c };
-            let n_buckets = (1 << log2_n_bucket) - 1;
-
-            let mut bucket_positions: Vec<_> = scalars
-                .iter()
-                .enumerate()
-                .map(|(pos, &scalar)| {
-                    let mut scalar = scalar;
-
-                    // We right-shift by w_start, thus getting rid of the
-                    // lower bits.
-                    scalar.divn(w_start as u32);
-
-                    // We mod the remaining bits by the window size.
-                    let res = (scalar.as_ref()[0] % (1 << c)) as i32;
-                    BucketPosition { bucket: (res - 1) as u32, position: pos as u32 }
-                })
-                .collect();
-
-            let buckets = batch_bucketed_add_option_a::<G>(n_buckets, &bases[..], &mut bucket_positions[..]);
-
-            let mut res = zero;
-            let mut running_sum = G::Projective::zero();
-            for b in buckets.into_iter().rev() {
-                running_sum.add_assign_mixed(&b);
-                res += &running_sum;
-            }
-
-            (res, log2_n_bucket)
-        })
-        .collect();
-
-    // We store the sum for the lowest window.
-    let lowest = window_sums.first().unwrap().0;
-
-    // We're traversing windows from high to low.
-    lowest
-        + &window_sums[1..].iter().rev().fold(
-            zero,
-            |total: G::Projective, (sum_i, window_size): &(G::Projective, usize)| {
-                let mut total = total + sum_i;
-                for _ in 0..*window_size {
-                    total.double_in_place();
-                }
-                total
-            },
-        )
-}
-
-pub(super) fn msm_batched_b<G: AffineCurve>(
-    bases: &[G],
-    scalars: &[<G::ScalarField as PrimeField>::BigInteger],
-) -> G::Projective {
-    let c = match scalars.len() < 32 {
-        true => 3,
-        false => crate::msm::ln_without_floats(scalars.len()) + 2,
-    };
-
-    let num_bits = <G::ScalarField as PrimeField>::size_in_bits();
-    let zero = G::Projective::zero();
-
-    // Each window is of size `c`.
-    // We divide up the bits 0..num_bits into windows of size `c`, and
-    // in parallel process each such window.
-    let window_sums: Vec<_> = cfg_into_iter!(0..num_bits)
-        .step_by(c)
-        .map(|w_start| {
-            // We don't need the "zero" bucket, so we only have 2^c - 1 buckets
-            let log2_n_bucket = if (w_start % c) != 0 { w_start % c } else { c };
-            let n_buckets = (1 << log2_n_bucket) - 1;
-
-            let mut bucket_positions: Vec<_> = scalars
-                .iter()
-                .enumerate()
-                .map(|(pos, &scalar)| {
-                    let mut scalar = scalar;
-
-                    // We right-shift by w_start, thus getting rid of the
-                    // lower bits.
-                    scalar.divn(w_start as u32);
-
-                    // We mod the remaining bits by the window size.
-                    let res = (scalar.as_ref()[0] % (1 << c)) as i32;
-                    BucketPosition { bucket: (res - 1) as u32, position: pos as u32 }
-                })
-                .collect();
-
-            let buckets = batch_add_bucket::<G>(n_buckets, &bases[..], &mut bucket_positions[..]);
-
-            let mut res = zero;
-            let mut running_sum = G::Projective::zero();
-            for b in buckets.into_iter().rev() {
-                running_sum.add_assign_mixed(&b);
-                res += &running_sum;
-            }
-
-            (res, log2_n_bucket)
-        })
-        .collect();
-
-    // We store the sum for the lowest window.
-    let lowest = window_sums.first().unwrap().0;
-
-    // We're traversing windows from high to low.
-    lowest
-        + &window_sums[1..].iter().rev().fold(
-            zero,
-            |total: G::Projective, (sum_i, window_size): &(G::Projective, usize)| {
-                let mut total = total + sum_i;
-                for _ in 0..*window_size {
-                    total.double_in_place();
-                }
-                total
-            },
-        )
+    }) + lowest.0
 }
 
 /// We use a batch size that is big enough to amortise the cost of the actual inversion
@@ -292,11 +205,11 @@ pub fn batch_bucketed_add_option_a<G: AffineCurve>(
 
     dlsd_radixsort(bucket_positions, 8);
 
-    let mut len = bucket_positions.len();
+    let mut num_scalars = bucket_positions.len();
     let mut all_ones = true;
     let mut new_len = 0; // len counter
-    let mut glob = 0; // global counters
-    let mut loc = 1; // local counter
+    let mut global_counter = 0; // global counters
+    let mut local_counter = 1; // local counter
     let mut batch = 0; // batch counter
     let mut instr = Vec::<(u32, u32)>::with_capacity(BATCH_SIZE);
     let mut new_elems = Vec::<G>::with_capacity(bases.len() * 3 / 8);
@@ -306,38 +219,38 @@ pub fn batch_bucketed_add_option_a<G: AffineCurve>(
     // In the first loop, we copy the results of the first in place addition tree
     // to a local vector, new_elems
     // Subsequently, we perform all the operations in place
-    while glob < len {
-        let current_bucket = bucket_positions[glob].bucket;
-        while glob + 1 < len && bucket_positions[glob + 1].bucket == current_bucket {
-            glob += 1;
-            loc += 1;
+    while global_counter < num_scalars {
+        let current_bucket = bucket_positions[global_counter].bucket;
+        while global_counter + 1 < num_scalars && bucket_positions[global_counter + 1].bucket == current_bucket {
+            global_counter += 1;
+            local_counter += 1;
         }
         if current_bucket >= num_buckets as u32 {
-            loc = 1;
-        } else if loc > 1 {
+            local_counter = 1;
+        } else if local_counter > 1 {
             // all ones is false if next len is not 1
-            if loc > 2 {
+            if local_counter > 2 {
                 all_ones = false;
             }
-            let is_odd = loc % 2 == 1;
-            let half = loc / 2;
+            let is_odd = local_counter % 2 == 1;
+            let half = local_counter / 2;
             for i in 0..half {
                 instr.push((
-                    bucket_positions[glob - (loc - 1) + 2 * i].position,
-                    bucket_positions[glob - (loc - 1) + 2 * i + 1].position,
+                    bucket_positions[global_counter - (local_counter - 1) + 2 * i].position,
+                    bucket_positions[global_counter - (local_counter - 1) + 2 * i + 1].position,
                 ));
                 bucket_positions[new_len + i] =
                     BucketPosition { bucket: current_bucket, position: (new_len + i) as u32 };
             }
             if is_odd {
-                instr.push((bucket_positions[glob].position, !0u32));
+                instr.push((bucket_positions[global_counter].position, !0u32));
                 bucket_positions[new_len + half] =
                     BucketPosition { bucket: current_bucket, position: (new_len + half) as u32 };
             }
             // Reset the local_counter and update state
-            new_len += half + (loc % 2);
+            new_len += half + (local_counter % 2);
             batch += half;
-            loc = 1;
+            local_counter = 1;
 
             if batch >= BATCH_SIZE / 2 {
                 // We need instructions for copying data in the case
@@ -348,53 +261,53 @@ pub fn batch_bucketed_add_option_a<G: AffineCurve>(
                 batch = 0;
             }
         } else {
-            instr.push((bucket_positions[glob].position, !0u32));
+            instr.push((bucket_positions[global_counter].position, !0u32));
             bucket_positions[new_len] = BucketPosition { bucket: current_bucket, position: new_len as u32 };
             new_len += 1;
         }
-        glob += 1;
+        global_counter += 1;
     }
     if instr.len() > 0 {
         G::batch_add_write(&bases[..], &instr[..], &mut new_elems, &mut scratch_space);
         instr.clear();
     }
-    glob = 0;
+    global_counter = 0;
     batch = 0;
-    loc = 1;
-    len = new_len;
+    local_counter = 1;
+    num_scalars = new_len;
     new_len = 0;
 
     while !all_ones {
         all_ones = true;
-        while glob < len {
-            let current_bucket = bucket_positions[glob].bucket;
-            while glob + 1 < len && bucket_positions[glob + 1].bucket == current_bucket {
-                glob += 1;
-                loc += 1;
+        while global_counter < num_scalars {
+            let current_bucket = bucket_positions[global_counter].bucket;
+            while global_counter + 1 < num_scalars && bucket_positions[global_counter + 1].bucket == current_bucket {
+                global_counter += 1;
+                local_counter += 1;
             }
             if current_bucket >= num_buckets as u32 {
-                loc = 1;
-            } else if loc > 1 {
+                local_counter = 1;
+            } else if local_counter > 1 {
                 // all ones is false if next len is not 1
-                if loc != 2 {
+                if local_counter != 2 {
                     all_ones = false;
                 }
-                let is_odd = loc % 2 == 1;
-                let half = loc / 2;
+                let is_odd = local_counter % 2 == 1;
+                let half = local_counter / 2;
                 for i in 0..half {
                     instr.push((
-                        bucket_positions[glob - (loc - 1) + 2 * i].position,
-                        bucket_positions[glob - (loc - 1) + 2 * i + 1].position,
+                        bucket_positions[global_counter - (local_counter - 1) + 2 * i].position,
+                        bucket_positions[global_counter - (local_counter - 1) + 2 * i + 1].position,
                     ));
-                    bucket_positions[new_len + i] = bucket_positions[glob - (loc - 1) + 2 * i];
+                    bucket_positions[new_len + i] = bucket_positions[global_counter - (local_counter - 1) + 2 * i];
                 }
                 if is_odd {
-                    bucket_positions[new_len + half] = bucket_positions[glob];
+                    bucket_positions[new_len + half] = bucket_positions[global_counter];
                 }
                 // Reset the local_counter and update state
-                new_len += half + (loc % 2);
+                new_len += half + (local_counter % 2);
                 batch += half;
-                loc = 1;
+                local_counter = 1;
 
                 if batch >= BATCH_SIZE / 2 {
                     G::batch_add_in_place_same_slice(&mut new_elems[..], &instr[..]);
@@ -402,25 +315,25 @@ pub fn batch_bucketed_add_option_a<G: AffineCurve>(
                     batch = 0;
                 }
             } else {
-                bucket_positions[new_len] = bucket_positions[glob];
+                bucket_positions[new_len] = bucket_positions[global_counter];
                 new_len += 1;
             }
-            glob += 1;
+            global_counter += 1;
         }
         if instr.len() > 0 {
             G::batch_add_in_place_same_slice(&mut new_elems[..], &instr[..]);
             instr.clear();
         }
-        glob = 0;
+        global_counter = 0;
         batch = 0;
-        loc = 1;
-        len = new_len;
+        local_counter = 1;
+        num_scalars = new_len;
         new_len = 0;
     }
 
     let mut res = vec![G::zero(); num_buckets];
 
-    for i in 0..len {
+    for i in 0..num_scalars {
         let (pos, buc) = (bucket_positions[i].position, bucket_positions[i].bucket);
         res[buc as usize] = new_elems[pos as usize];
     }

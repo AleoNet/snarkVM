@@ -58,7 +58,7 @@ impl VariableBaseMSM {
                 }
             }
         }
-        standard::msm_standard(bases, scalars)
+        standard::msm(bases, scalars, MSMStrategy::Standard)
     }
 
     pub fn msm<G: AffineCurve>(
@@ -80,12 +80,7 @@ impl VariableBaseMSM {
                 }
             }
         }
-
-        match strategy {
-            MSMStrategy::Standard => standard::msm_standard(bases, scalars),
-            MSMStrategy::BatchedA => standard::msm_batched_a(bases, scalars),
-            MSMStrategy::BatchedB => standard::msm_batched_b(bases, scalars),
-        }
+        standard::msm(bases, scalars, strategy)
     }
 
     #[cfg(test)]
@@ -140,7 +135,7 @@ mod tests {
     fn test_naive() {
         let mut rng = test_rng();
         let (bases, scalars) = test_data(&mut rng, 100);
-        let rust = standard::msm_standard(bases.as_slice(), scalars.as_slice());
+        let rust = standard::msm(bases.as_slice(), scalars.as_slice());
         let naive = VariableBaseMSM::msm_naive(bases.as_slice(), scalars.as_slice());
         assert_eq!(rust, naive);
     }
@@ -151,7 +146,7 @@ mod tests {
         let mut rng = test_rng();
         for _ in 0..100 {
             let (bases, scalars) = test_data(&mut rng, 1 << 10);
-            let rust = standard::msm_standard(bases.as_slice(), scalars.as_slice());
+            let rust = standard::msm(bases.as_slice(), scalars.as_slice());
 
             let cuda = cuda::msm_cuda(bases.as_slice(), scalars.as_slice()).unwrap();
             assert_eq!(rust, cuda);
