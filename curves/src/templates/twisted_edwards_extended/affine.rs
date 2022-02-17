@@ -16,7 +16,6 @@
 
 use crate::{
     impl_edwards_curve_serializer,
-    prefetch_slice,
     templates::twisted_edwards_extended::Projective,
     traits::{AffineCurve, Group, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters as Parameters},
 };
@@ -41,6 +40,9 @@ use std::{
     io::{Read, Result as IoResult, Write},
     ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
+
+#[cfg(target_arch = "x86_64")]
+use crate::prefetch_slice;
 
 macro_rules! batch_add_loop_1 {
     ($a: ident, $b: ident, $inversion_tmp: ident) => {
