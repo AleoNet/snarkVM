@@ -34,9 +34,9 @@ macro_rules! prefetch_slice {
 macro_rules! prefetch_slice_write {
     ($slice_1: ident, $slice_2: ident, $prefetch_iter: ident) => {
         if let Some((idp_1, idp_2)) = $prefetch_iter.next() {
-            prefetch::<Self>(&$slice_1[*idp_1 as usize]);
+            crate::templates::prefetch::prefetch::<Self>(&$slice_1[*idp_1 as usize]);
             if *idp_2 != !0u32 {
-                prefetch::<Self>(&$slice_2[*idp_2 as usize]);
+                crate::templates::prefetch::prefetch::<Self>(&$slice_2[*idp_2 as usize]);
             }
         }
     };
