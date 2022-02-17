@@ -18,7 +18,7 @@ license = "GPL-3.0"
 edition = "2021"
 
 [[bench]]
-name = "msm-variable-base"
+name = "variable_base"
 path = "benches/msm/variable_base.rs"
 harness = false
 

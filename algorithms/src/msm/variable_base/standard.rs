@@ -107,7 +107,76 @@ pub(super) fn msm_standard<G: AffineCurve>(
     }) + lowest
 }
 
-pub(super) fn msm_standard_batched<G: AffineCurve>(
+pub(super) fn msm_batched_a<G: AffineCurve>(
+    bases: &[G],
+    scalars: &[<G::ScalarField as PrimeField>::BigInteger],
+) -> G::Projective {
+    let c = match scalars.len() < 32 {
+        true => 3,
+        false => crate::msm::ln_without_floats(scalars.len()) + 2,
+    };
+
+    let num_bits = <G::ScalarField as PrimeField>::size_in_bits();
+    let zero = G::Projective::zero();
+
+    // Each window is of size `c`.
+    // We divide up the bits 0..num_bits into windows of size `c`, and
+    // in parallel process each such window.
+    let window_sums: Vec<_> = cfg_into_iter!(0..num_bits)
+        .step_by(c)
+        .map(|w_start| {
+            // We don't need the "zero" bucket, so we only have 2^c - 1 buckets
+            let log2_n_bucket = if (w_start % c) != 0 { w_start % c } else { c };
+            let n_buckets = (1 << log2_n_bucket) - 1;
+
+            let mut bucket_positions: Vec<_> = scalars
+                .iter()
+                .enumerate()
+                .map(|(pos, &scalar)| {
+                    let mut scalar = scalar;
+
+                    // We right-shift by w_start, thus getting rid of the
+                    // lower bits.
+                    scalar.divn(w_start as u32);
+
+                    // We mod the remaining bits by the window size.
+                    let res = (scalar.as_ref()[0] % (1 << c)) as i32;
+                    BucketPosition { bucket: (res - 1) as u32, position: pos as u32 }
+                })
+                .collect();
+
+            let buckets = batch_bucketed_add_option_a::<G>(n_buckets, &bases[..], &mut bucket_positions[..]);
+
+            let mut res = zero;
+            let mut running_sum = G::Projective::zero();
+            for b in buckets.into_iter().rev() {
+                running_sum.add_assign_mixed(&b);
+                res += &running_sum;
+            }
+
+            (res, log2_n_bucket)
+        })
+        .collect();
+
+    // We store the sum for the lowest window.
+    let lowest = window_sums.first().unwrap().0;
+
+    // We're traversing windows from high to low.
+    lowest
+        + &window_sums[1..].iter().rev().fold(
+            zero,
+            |total: G::Projective, (sum_i, window_size): &(G::Projective, usize)| {
+                let mut total = total + sum_i;
+                for _ in 0..*window_size {
+                    total.double_in_place();
+                }
+                total
+            },
+        )
+}
+
+
+pub(super) fn msm_batched_b<G: AffineCurve>(
     bases: &[G],
     scalars: &[<G::ScalarField as PrimeField>::BigInteger],
 ) -> G::Projective {
@@ -164,15 +233,15 @@ pub(super) fn msm_standard_batched<G: AffineCurve>(
     // We're traversing windows from high to low.
     lowest
         + &window_sums[1..].iter().rev().fold(
-            zero,
-            |total: G::Projective, (sum_i, window_size): &(G::Projective, usize)| {
-                let mut total = total + sum_i;
-                for _ in 0..*window_size {
-                    total.double_in_place();
-                }
-                total
-            },
-        )
+        zero,
+        |total: G::Projective, (sum_i, window_size): &(G::Projective, usize)| {
+            let mut total = total + sum_i;
+            for _ in 0..*window_size {
+                total.double_in_place();
+            }
+            total
+        },
+    )
 }
 
 /// We use a batch size that is big enough to amortise the cost of the actual inversion
@@ -214,13 +283,13 @@ impl PartialEq for BucketPosition {
 }
 
 #[inline]
-pub fn batch_bucketed_add_option_a<C: AffineCurve>(
-    buckets: usize,
-    elems: &[C],
+pub fn batch_bucketed_add_option_a<G: AffineCurve>(
+    num_buckets: usize,
+    bases: &[G],
     bucket_positions: &mut [BucketPosition],
-) -> Vec<C> {
+) -> Vec<G> {
     // assert_eq!(elems.len(), bucket_positions.len());
-    assert!(elems.len() > 0);
+    assert!(bases.len() > 0);
 
     dlsd_radixsort(bucket_positions, 8);
 
@@ -231,9 +300,9 @@ pub fn batch_bucketed_add_option_a<C: AffineCurve>(
     let mut loc = 1; // local counter
     let mut batch = 0; // batch counter
     let mut instr = Vec::<(u32, u32)>::with_capacity(BATCH_SIZE);
-    let mut new_elems = Vec::<C>::with_capacity(elems.len() * 3 / 8);
+    let mut new_elems = Vec::<G>::with_capacity(bases.len() * 3 / 8);
 
-    let mut scratch_space = Vec::<Option<C>>::with_capacity(BATCH_SIZE / 2);
+    let mut scratch_space = Vec::<Option<G>>::with_capacity(BATCH_SIZE / 2);
 
     // In the first loop, we copy the results of the first in place addition tree
     // to a local vector, new_elems
@@ -244,7 +313,7 @@ pub fn batch_bucketed_add_option_a<C: AffineCurve>(
             glob += 1;
             loc += 1;
         }
-        if current_bucket >= buckets as u32 {
+        if current_bucket >= num_buckets as u32 {
             loc = 1;
         } else if loc > 1 {
             // all ones is false if next len is not 1
@@ -274,7 +343,7 @@ pub fn batch_bucketed_add_option_a<C: AffineCurve>(
             if batch >= BATCH_SIZE / 2 {
                 // We need instructions for copying data in the case
                 // of noops. We encode noops/copies as !0u32
-                C::batch_add_write(&elems[..], &instr[..], &mut new_elems, &mut scratch_space);
+                G::batch_add_write(&bases[..], &instr[..], &mut new_elems, &mut scratch_space);
 
                 instr.clear();
                 batch = 0;
@@ -287,7 +356,7 @@ pub fn batch_bucketed_add_option_a<C: AffineCurve>(
         glob += 1;
     }
     if instr.len() > 0 {
-        C::batch_add_write(&elems[..], &instr[..], &mut new_elems, &mut scratch_space);
+        G::batch_add_write(&bases[..], &instr[..], &mut new_elems, &mut scratch_space);
         instr.clear();
     }
     glob = 0;
@@ -304,7 +373,7 @@ pub fn batch_bucketed_add_option_a<C: AffineCurve>(
                 glob += 1;
                 loc += 1;
             }
-            if current_bucket >= buckets as u32 {
+            if current_bucket >= num_buckets as u32 {
                 loc = 1;
             } else if loc > 1 {
                 // all ones is false if next len is not 1
@@ -329,7 +398,7 @@ pub fn batch_bucketed_add_option_a<C: AffineCurve>(
                 loc = 1;
 
                 if batch >= BATCH_SIZE / 2 {
-                    C::batch_add_in_place_same_slice(&mut new_elems[..], &instr[..]);
+                    G::batch_add_in_place_same_slice(&mut new_elems[..], &instr[..]);
                     instr.clear();
                     batch = 0;
                 }
@@ -340,7 +409,7 @@ pub fn batch_bucketed_add_option_a<C: AffineCurve>(
             glob += 1;
         }
         if instr.len() > 0 {
-            C::batch_add_in_place_same_slice(&mut new_elems[..], &instr[..]);
+            G::batch_add_in_place_same_slice(&mut new_elems[..], &instr[..]);
             instr.clear();
         }
         glob = 0;
@@ -350,8 +419,7 @@ pub fn batch_bucketed_add_option_a<C: AffineCurve>(
         new_len = 0;
     }
 
-    let zero = C::zero();
-    let mut res = vec![zero; buckets];
+    let mut res = vec![G::zero(); num_buckets];
 
     for i in 0..len {
         let (pos, buc) = (bucket_positions[i].position, bucket_positions[i].bucket);
@@ -379,11 +447,12 @@ fn get_chunked_instr<T: Clone>(instr: &[T], batch_size: usize) -> Vec<Vec<T>> {
     res
 }
 
-pub fn batch_add_bucket<C: AffineCurve>(buckets: usize, elems: &[C], bucket_assign: &[BucketPosition]) -> Vec<C> {
-    let mut elems = elems.to_vec();
+pub fn batch_add_bucket<G: AffineCurve>(buckets: usize, bases: &[G], bucket_assign: &[BucketPosition]) -> Vec<G> {
+    let mut bases = bases.to_vec();
     let num_split = 2i32.pow(log2(buckets) / 2 + 2) as usize;
     let split_size = (buckets - 1) / num_split + 1;
-    let ratio = elems.len() / buckets * 2;
+    let ratio = bases.len() / buckets * 2;
+
     // Get the inverted index for the positions assigning to each bucket
     let mut bucket_split = vec![vec![]; num_split];
     let mut index = vec![Vec::with_capacity(ratio); buckets];
@@ -433,15 +502,15 @@ pub fn batch_add_bucket<C: AffineCurve>(buckets: usize, elems: &[C], bucket_assi
 
     for instr_row in instr.iter() {
         for instr in get_chunked_instr::<(u32, u32)>(&instr_row[..], BATCH_SIZE).iter() {
-            C::batch_add_in_place_same_slice(&mut elems[..], &instr[..]);
+            G::batch_add_in_place_same_slice(&mut bases[..], &instr[..]);
         }
     }
 
-    let mut res = vec![C::zero(); buckets];
+    let mut res = vec![G::zero(); buckets];
 
     for (i, to_add) in index.iter().enumerate() {
         if to_add.len() == 1 {
-            res[i] = elems[to_add[0] as usize];
+            res[i] = bases[to_add[0] as usize];
         } else if to_add.len() > 1 {
             debug_assert!(false, "Did not successfully reduce to_add");
         }

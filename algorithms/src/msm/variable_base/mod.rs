@@ -31,6 +31,13 @@ mod cuda;
 #[cfg(all(feature = "cuda", target_arch = "x86_64"))]
 static HAS_CUDA_FAILED: AtomicBool = AtomicBool::new(false);
 
+#[derive(Copy, Clone, Debug)]
+pub enum MSMStrategy {
+    Standard,
+    BatchedA,
+    BatchedB
+}
+
 pub struct VariableBaseMSM;
 
 impl VariableBaseMSM {
@@ -62,8 +69,34 @@ impl VariableBaseMSM {
                 }
             }
         }
-        // standard::msm_standard(bases, scalars)
-        standard::msm_standard_batched(bases, scalars)
+        standard::msm_standard(bases, scalars)
+    }
+
+    pub fn msm<G: AffineCurve>(
+        bases: &[G],
+        scalars: &[<G::ScalarField as PrimeField>::BigInteger],
+        strategy: MSMStrategy
+    ) -> G::Projective {
+        if TypeId::of::<G>() == TypeId::of::<G1Affine>() {
+            #[cfg(all(feature = "cuda", target_arch = "x86_64"))]
+                {
+                    if !HAS_CUDA_FAILED.load(Ordering::SeqCst) {
+                        match cuda::msm_cuda(bases, scalars) {
+                            Ok(x) => return x,
+                            Err(_e) => {
+                                HAS_CUDA_FAILED.store(true, Ordering::SeqCst);
+                                eprintln!("CUDA failed, moving to next msm method.");
+                            }
+                        }
+                    }
+                }
+        }
+
+        match strategy {
+            MSMStrategy::Standard => standard::msm_standard(bases, scalars),
+            MSMStrategy::BatchedA => standard::msm_batched_a(bases, scalars),
+            MSMStrategy::BatchedB => standard::msm_batched_b(bases, scalars),
+        }
     }
 }
 

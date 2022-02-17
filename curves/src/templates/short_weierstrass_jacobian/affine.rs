@@ -256,9 +256,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
         #[cfg(target_arch = "x86_64")]
         let mut prefetch_iter = index.iter();
         #[cfg(target_arch = "x86_64")]
-        {
-            prefetch_iter.next();
-        }
+        prefetch_iter.next();
 
         // We run two loops over the data separated by an inversion
         for (idx, idy) in index.iter() {
@@ -279,9 +277,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
         #[cfg(target_arch = "x86_64")]
         let mut prefetch_iter = index.iter().rev();
         #[cfg(target_arch = "x86_64")]
-        {
-            prefetch_iter.next();
-        }
+        prefetch_iter.next();
 
         for (idx, idy) in index.iter().rev() {
             #[cfg(target_arch = "x86_64")]
@@ -295,6 +291,50 @@ impl<P: Parameters> AffineCurve for Affine<P> {
             };
             batch_add_loop_2!(a, b, inversion_tmp);
         }
+    }
+
+    fn batch_add_write(
+        lookup: &[Self],
+        index: &[(u32, u32)],
+        new_elems: &mut Vec<Self>,
+        scratch_space: &mut Vec<Option<Self>>,
+    ) {
+        let mut inversion_tmp = P::BaseField::one();
+        let mut half = None;
+
+        #[cfg(target_arch = "x86_64")]
+        let mut prefetch_iter = index.iter();
+        #[cfg(target_arch = "x86_64")]
+        prefetch_iter.next();
+
+        // We run two loops over the data separated by an inversion
+        for (idx, idy) in index.iter() {
+            #[cfg(target_arch = "x86_64")]
+            prefetch_slice_write!(lookup, lookup, prefetch_iter);
+
+            if *idy == !0u32 {
+                new_elems.push(lookup[*idx as usize]);
+                scratch_space.push(None);
+            } else {
+                let (mut a, mut b) = (lookup[*idx as usize], lookup[*idy as usize]);
+                batch_add_loop_1!(a, b, half, inversion_tmp);
+                new_elems.push(a);
+                scratch_space.push(Some(b));
+            }
+        }
+
+        inversion_tmp = inversion_tmp.inverse().unwrap(); // this is always in Fp*
+
+        for (a, op_b) in new_elems.iter_mut().rev().zip(scratch_space.iter().rev()) {
+            match op_b {
+                Some(b) => {
+                    let b_ = *b;
+                    batch_add_loop_2!(a, b_, inversion_tmp);
+                }
+                None => (),
+            };
+        }
+        scratch_space.clear();
     }
 }
 
