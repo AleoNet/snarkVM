@@ -258,9 +258,10 @@ wasm = [
   "snark",
   "getrandom"
 ]
+
+cuda = [ "rust-gpu-tools" ]
 parallel = [ "rayon", "num_cpus", "snarkvm-fields/parallel", "snarkvm-utilities/parallel" ]
 print-trace = [ "snarkvm-profiler/print-trace" ]
-cuda = [ "rust-gpu-tools" ]
 
 commitment = [ "crh" ]
 crh = [ "hash_to_curve" ]

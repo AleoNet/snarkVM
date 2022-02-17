@@ -20,8 +20,7 @@ use std::any::TypeId;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use snarkvm_curves::{bls12_377::G1Affine, traits::AffineCurve};
-use snarkvm_fields::{PrimeField, Zero};
-use snarkvm_utilities::BitIteratorBE;
+use snarkvm_fields::{PrimeField};
 
 mod standard;
 
@@ -35,22 +34,12 @@ static HAS_CUDA_FAILED: AtomicBool = AtomicBool::new(false);
 pub enum MSMStrategy {
     Standard,
     BatchedA,
-    BatchedB
+    BatchedB,
 }
 
 pub struct VariableBaseMSM;
 
 impl VariableBaseMSM {
-    #[allow(unused)]
-    fn msm_naive<G: AffineCurve>(bases: &[G], scalars: &[<G::ScalarField as PrimeField>::BigInteger]) -> G::Projective {
-        let mut acc = G::Projective::zero();
-
-        for (base, scalar) in bases.iter().zip(scalars.iter()) {
-            acc += base.mul_bits(BitIteratorBE::new(*scalar));
-        }
-        acc
-    }
-
     pub fn multi_scalar_mul<G: AffineCurve>(
         bases: &[G],
         scalars: &[<G::ScalarField as PrimeField>::BigInteger],
@@ -75,21 +64,21 @@ impl VariableBaseMSM {
     pub fn msm<G: AffineCurve>(
         bases: &[G],
         scalars: &[<G::ScalarField as PrimeField>::BigInteger],
-        strategy: MSMStrategy
+        strategy: MSMStrategy,
     ) -> G::Projective {
         if TypeId::of::<G>() == TypeId::of::<G1Affine>() {
             #[cfg(all(feature = "cuda", target_arch = "x86_64"))]
-                {
-                    if !HAS_CUDA_FAILED.load(Ordering::SeqCst) {
-                        match cuda::msm_cuda(bases, scalars) {
-                            Ok(x) => return x,
-                            Err(_e) => {
-                                HAS_CUDA_FAILED.store(true, Ordering::SeqCst);
-                                eprintln!("CUDA failed, moving to next msm method.");
-                            }
+            {
+                if !HAS_CUDA_FAILED.load(Ordering::SeqCst) {
+                    match cuda::msm_cuda(bases, scalars) {
+                        Ok(x) => return x,
+                        Err(_e) => {
+                            HAS_CUDA_FAILED.store(true, Ordering::SeqCst);
+                            eprintln!("CUDA failed, moving to next msm method.");
                         }
                     }
                 }
+            }
         }
 
         match strategy {
@@ -97,6 +86,32 @@ impl VariableBaseMSM {
             MSMStrategy::BatchedA => standard::msm_batched_a(bases, scalars),
             MSMStrategy::BatchedB => standard::msm_batched_b(bases, scalars),
         }
+    }
+
+    #[cfg(test)]
+    fn msm_naive<G: AffineCurve>(bases: &[G], scalars: &[<G::ScalarField as PrimeField>::BigInteger]) -> G::Projective {
+        use snarkvm_utilities::BitIteratorBE;
+        use snarkvm_fields::Zero;
+
+        let mut acc = G::Projective::zero();
+        for (base, scalar) in bases.iter().zip(scalars.iter()) {
+            acc += base.mul_bits(BitIteratorBE::new(*scalar));
+        }
+        acc
+    }
+
+    #[cfg(test)]
+    fn msm_naive_parallel<G: AffineCurve>(bases: &[G], scalars: &[<G::ScalarField as PrimeField>::BigInteger]) -> G::Projective {
+        use snarkvm_utilities::BitIteratorBE;
+        use snarkvm_fields::Zero;
+        use rayon::prelude::*;
+
+        bases
+            .par_iter()
+            .zip_eq(scalars.par_iter())
+            .map(|(base, scalar)| base.mul_bits(BitIteratorBE::new(*scalar)))
+            .fold(|| G::Projective::zero(), |a, b| a + b)
+            .sum()
     }
 }
 

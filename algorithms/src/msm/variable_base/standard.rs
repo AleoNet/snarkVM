@@ -175,7 +175,6 @@ pub(super) fn msm_batched_a<G: AffineCurve>(
         )
 }
 
-
 pub(super) fn msm_batched_b<G: AffineCurve>(
     bases: &[G],
     scalars: &[<G::ScalarField as PrimeField>::BigInteger],
@@ -233,15 +232,15 @@ pub(super) fn msm_batched_b<G: AffineCurve>(
     // We're traversing windows from high to low.
     lowest
         + &window_sums[1..].iter().rev().fold(
-        zero,
-        |total: G::Projective, (sum_i, window_size): &(G::Projective, usize)| {
-            let mut total = total + sum_i;
-            for _ in 0..*window_size {
-                total.double_in_place();
-            }
-            total
-        },
-    )
+            zero,
+            |total: G::Projective, (sum_i, window_size): &(G::Projective, usize)| {
+                let mut total = total + sum_i;
+                for _ in 0..*window_size {
+                    total.double_in_place();
+                }
+                total
+            },
+        )
 }
 
 /// We use a batch size that is big enough to amortise the cost of the actual inversion
