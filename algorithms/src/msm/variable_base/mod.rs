@@ -116,31 +116,38 @@ impl VariableBaseMSM {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand_xorshift::XorShiftRng;
-    use snarkvm_curves::{
-        bls12_377::{Fr, G1Affine, G1Projective},
-        traits::ProjectiveCurve,
-    };
+    use snarkvm_curves::bls12_377::{Fr, G1Affine};
     use snarkvm_fields::PrimeField;
-    use snarkvm_utilities::{
-        rand::{test_rng, UniformRand},
-        BigInteger256,
-    };
+    use snarkvm_utilities::rand::test_rng;
 
-    fn test_data(rng: &mut XorShiftRng, samples: usize) -> (Vec<G1Affine>, Vec<BigInteger256>) {
-        let v = (0..samples).map(|_| Fr::rand(rng).to_repr()).collect::<Vec<_>>();
-        let g = (0..samples).map(|_| G1Projective::rand(rng).into_affine()).collect::<Vec<_>>();
+    use rand_xorshift::XorShiftRng;
 
-        (g, v)
+    fn create_scalar_bases<G: AffineCurve<ScalarField = F>, F: PrimeField>(
+        rng: &mut XorShiftRng,
+        size: usize,
+    ) -> (Vec<G>, Vec<F::BigInteger>) {
+        let bases = (0..size).map(|_| G::rand(rng)).collect::<Vec<_>>();
+        let scalars = (0..size).map(|_| F::rand(rng).to_repr()).collect::<Vec<_>>();
+        (bases, scalars)
     }
 
     #[test]
-    fn test_naive() {
+    fn test_msm() {
         let mut rng = test_rng();
-        let (bases, scalars) = test_data(&mut rng, 100);
-        let rust = standard::msm(bases.as_slice(), scalars.as_slice(), MSMStrategy::BatchedA);
-        let naive = VariableBaseMSM::msm_naive(bases.as_slice(), scalars.as_slice());
-        assert_eq!(rust, naive);
+        let (bases, scalars) = create_scalar_bases::<G1Affine, Fr>(&mut rng, 1000);
+
+        let naive_a = VariableBaseMSM::msm_naive(bases.as_slice(), scalars.as_slice());
+        let naive_b = VariableBaseMSM::msm_naive_parallel(bases.as_slice(), scalars.as_slice());
+        assert_eq!(naive_a, naive_b);
+
+        let candidate = standard::msm(bases.as_slice(), scalars.as_slice(), MSMStrategy::Standard);
+        assert_eq!(naive_a, candidate);
+
+        let candidate = standard::msm(bases.as_slice(), scalars.as_slice(), MSMStrategy::BatchedA);
+        assert_eq!(naive_a, candidate);
+
+        let candidate = standard::msm(bases.as_slice(), scalars.as_slice(), MSMStrategy::BatchedB);
+        assert_eq!(naive_a, candidate);
     }
 
     #[cfg(all(feature = "cuda", target_arch = "x86_64"))]
@@ -148,7 +155,7 @@ mod tests {
     fn test_msm_cuda() {
         let mut rng = test_rng();
         for _ in 0..100 {
-            let (bases, scalars) = test_data(&mut rng, 1 << 10);
+            let (bases, scalars) = create_scalar_bases::<G1Affine, Fr>(&mut rng, 1 << 10);
             let rust = standard::msm(bases.as_slice(), scalars.as_slice(), MSMStrategy::BatchedA);
 
             let cuda = cuda::msm_cuda(bases.as_slice(), scalars.as_slice()).unwrap();

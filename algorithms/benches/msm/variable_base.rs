@@ -26,7 +26,7 @@ use rand_xorshift::XorShiftRng;
 extern crate criterion;
 
 fn create_scalar_bases<G: AffineCurve<ScalarField = F>, F: PrimeField>(size: usize) -> (Vec<G>, Vec<F::BigInteger>) {
-    let mut rng = XorShiftRng::seed_from_u64(234872845u64);
+    let mut rng = XorShiftRng::seed_from_u64(123u64);
     let bases = (0..size).map(|_| G::rand(&mut rng)).collect::<Vec<_>>();
     let scalars = (0..size).map(|_| F::rand(&mut rng).to_repr()).collect::<Vec<_>>();
     (bases, scalars)
