@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::ParserResult;
+use crate::{ParserResult, RegisterType};
 
 use core::num::ParseIntError;
 use nom::{
@@ -25,16 +25,25 @@ use nom::{
     sequence::terminated,
 };
 
-pub struct Register(u64);
+///
+/// Typed registers have the syntactic form <RegisterType>.r<N>
+///
+pub struct TypedRegister(RegisterType, u64);
 
-impl Register {
+impl TypedRegister {
     pub fn new(input: &str) -> ParserResult<Result<Self, ParseIntError>> {
-        let (input, _) = tag("r")(input)?;
+        let (input, typ) = RegisterType::new(input)?;
+        let (input, _) = tag(".r")(input)?;
+        // TODO: (@pranav) Should remove underscores from register numbers.
         let (input, value) = recognize(many1(terminated(one_of("0123456789"), many0(char('_')))))(input)?;
-        Ok((input, value.replace("_", "").parse::<u64>().and_then(|v| Ok(Self(v)))))
+        Ok((input, value.replace("_", "").parse::<u64>().and_then(|v| Ok(Self(typ?, v)))))
     }
 
-    pub fn to_id(&self) -> u64 {
+    pub fn get_id(&self) -> u64 {
+        self.1
+    }
+
+    pub fn get_type(&self) -> RegisterType {
         self.0
     }
 }
@@ -45,20 +54,27 @@ mod tests {
 
     #[test]
     fn test_register_new() {
-        assert_eq!(1, Register::new("r1").unwrap().1.unwrap().to_id());
-        assert_eq!(12, Register::new("r12").unwrap().1.unwrap().to_id());
-        assert_eq!(123, Register::new("r123").unwrap().1.unwrap().to_id());
-        assert_eq!(1234, Register::new("r1_234").unwrap().1.unwrap().to_id());
-        assert_eq!(12345, Register::new("r12_345").unwrap().1.unwrap().to_id());
-        assert_eq!(123456, Register::new("r123_456").unwrap().1.unwrap().to_id());
-        assert_eq!(1234567, Register::new("r1_2_3_4_5_6_7").unwrap().1.unwrap().to_id());
-        assert_eq!(1234567, Register::new("r1_2_3_4_5_67_").unwrap().1.unwrap().to_id());
+        assert_eq!(1, TypedRegister::new("bf.r1").unwrap().1.unwrap().get_id());
+        assert_eq!(12, TypedRegister::new("b.r12").unwrap().1.unwrap().get_id());
+        assert_eq!(123, TypedRegister::new("g.r123").unwrap().1.unwrap().get_id());
+        assert_eq!(1234, TypedRegister::new("i8.r1_234").unwrap().1.unwrap().get_id());
+        assert_eq!(12345, TypedRegister::new("i16.r12_345").unwrap().1.unwrap().get_id());
+        assert_eq!(123456, TypedRegister::new("i32.r123_456").unwrap().1.unwrap().get_id());
+        assert_eq!(1234567, TypedRegister::new("i64.r1_2_3_4_5_6_7").unwrap().1.unwrap().get_id());
+        assert_eq!(1, TypedRegister::new("i128.r1").unwrap().1.unwrap().get_id());
+        assert_eq!(12, TypedRegister::new("sf.r12").unwrap().1.unwrap().get_id());
+        assert_eq!(123, TypedRegister::new("u8.r123").unwrap().1.unwrap().get_id());
+        assert_eq!(1234, TypedRegister::new("u16.r1_234").unwrap().1.unwrap().get_id());
+        assert_eq!(12345, TypedRegister::new("u32.r12_345").unwrap().1.unwrap().get_id());
+        assert_eq!(123456, TypedRegister::new("u64.r123_456").unwrap().1.unwrap().get_id());
+        assert_eq!(1234567, TypedRegister::new("u128.r1_2_3_4_5_6_7").unwrap().1.unwrap().get_id());
     }
 
     #[test]
     fn test_malformed_register() {
-        assert!(Register::new("r_123").is_err());
-        // assert!(Register::new("r123_").is_err());
-        assert!(Register::new("5u_8").is_err());
+        // TODO: Check that you cannot have leading zeros for register numbers.
+        assert!(TypedRegister::new("r_123").is_err());
+        // assert!(TypedRegister::new("r123_").is_err());
+        assert!(TypedRegister::new("5u_8").is_err());
     }
 }

@@ -19,7 +19,8 @@ use crate::ParserResult;
 use core::num::ParseIntError;
 use nom::{branch::alt, bytes::complete::tag};
 
-enum RegisterType {
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum RegisterType {
     BaseField,
     Boolean,
     Group,
@@ -133,4 +134,22 @@ mod tests {
     use super::*;
 
     // TODO (@pranav)
+    //  This is just a sanity check. Need to construct a comprehensive test framework.
+    #[test]
+    fn test_type_new() {
+        assert_eq!(RegisterType::BaseField, RegisterType::new("bf").unwrap().1.unwrap());
+        assert_eq!(RegisterType::Boolean, RegisterType::new("b").unwrap().1.unwrap());
+        assert_eq!(RegisterType::Group, RegisterType::new("g").unwrap().1.unwrap());
+        assert_eq!(RegisterType::I8, RegisterType::new("i8").unwrap().1.unwrap());
+        assert_eq!(RegisterType::I16, RegisterType::new("i16").unwrap().1.unwrap());
+        assert_eq!(RegisterType::I32, RegisterType::new("i32").unwrap().1.unwrap());
+        assert_eq!(RegisterType::I64, RegisterType::new("i64").unwrap().1.unwrap());
+        assert_eq!(RegisterType::I128, RegisterType::new("i128").unwrap().1.unwrap());
+        assert_eq!(RegisterType::ScalarField, RegisterType::new("sf").unwrap().1.unwrap());
+        assert_eq!(RegisterType::U8, RegisterType::new("u8").unwrap().1.unwrap());
+        assert_eq!(RegisterType::U16, RegisterType::new("u16").unwrap().1.unwrap());
+        assert_eq!(RegisterType::U32, RegisterType::new("u32").unwrap().1.unwrap());
+        assert_eq!(RegisterType::U64, RegisterType::new("u64").unwrap().1.unwrap());
+        assert_eq!(RegisterType::U128, RegisterType::new("u128").unwrap().1.unwrap());
+    }
 }
