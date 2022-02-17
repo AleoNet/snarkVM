@@ -143,17 +143,33 @@ pub(super) fn msm<G: AffineCurve>(
             _ => batched_window(bases, scalars, w_start, c, strategy),
         }).collect();
 
+    // // We store the sum for the lowest window.
+    // let (lowest, window_sums) = window_sums.split_first().unwrap();
+    //
+    // // We're traversing windows from high to low.
+    // window_sums.iter().rev().fold(G::Projective::zero(), |mut total, (sum_i, window_size)| {
+    //     total += sum_i;
+    //     for _ in 0..*window_size {
+    //         total.double_in_place();
+    //     }
+    //     total
+    // }) + lowest.0
+
     // We store the sum for the lowest window.
-    let (lowest, window_sums) = window_sums.split_first().unwrap();
+    let lowest = window_sums.first().unwrap().0;
 
     // We're traversing windows from high to low.
-    window_sums.iter().rev().fold(G::Projective::zero(), |mut total, (sum_i, window_size)| {
-        total += sum_i;
-        for _ in 0..*window_size {
-            total.double_in_place();
-        }
-        total
-    }) + lowest.0
+    lowest
+        + &window_sums[1..].iter().rev().fold(
+        zero,
+        |total: G::Projective, (sum_i, window_size): &(G::Projective, usize)| {
+            let mut total = total + sum_i;
+            for _ in 0..*window_size {
+                total.double_in_place();
+            }
+            total
+        },
+    )
 }
 
 /// We use a batch size that is big enough to amortise the cost of the actual inversion
