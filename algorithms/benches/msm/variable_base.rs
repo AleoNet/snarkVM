@@ -19,31 +19,71 @@ use snarkvm_curves::AffineCurve;
 use snarkvm_fields::PrimeField;
 
 use criterion::Criterion;
-use rand::SeedableRng;
-use rand_xorshift::XorShiftRng;
+use rand::thread_rng;
+use rayon::prelude::*;
 
 #[macro_use]
 extern crate criterion;
 
 fn create_scalar_bases<G: AffineCurve<ScalarField = F>, F: PrimeField>(size: usize) -> (Vec<G>, Vec<F::BigInteger>) {
-    let mut rng = XorShiftRng::seed_from_u64(123u64);
-    let bases = (0..size).map(|_| G::rand(&mut rng)).collect::<Vec<_>>();
-    let scalars = (0..size).map(|_| F::rand(&mut rng).to_repr()).collect::<Vec<_>>();
+    let bases = (0..size).into_par_iter().map(|_| G::rand(&mut thread_rng())).collect::<Vec<_>>();
+    let scalars = (0..size).into_par_iter().map(|_| F::rand(&mut thread_rng()).to_repr()).collect::<Vec<_>>();
     (bases, scalars)
 }
 
 fn variable_base_bls12_377(c: &mut Criterion) {
     use snarkvm_curves::bls12_377::{Fr, G1Affine};
-    let (bases, scalars) = create_scalar_bases::<G1Affine, Fr>(100000);
+    let (bases, scalars) = create_scalar_bases::<G1Affine, Fr>(2000000);
 
-    c.bench_function("Variable MSM on BLS12-377", |b| b.iter(|| VariableBase::msm(&bases, &scalars)));
+    let size = 10000;
+    c.bench_function("Variable MSM on BLS12-377 (10,000)", |b| {
+        b.iter(|| VariableBase::msm(&bases[..size], &scalars[..size]))
+    });
+
+    let size = 100000;
+    c.bench_function("Variable MSM on BLS12-377 (100,000)", |b| {
+        b.iter(|| VariableBase::msm(&bases[..size], &scalars[..size]))
+    });
+
+    let size = 200000;
+    c.bench_function("Variable MSM on BLS12-377 (200,000)", |b| {
+        b.iter(|| VariableBase::msm(&bases[..size], &scalars[..size]))
+    });
+
+    let size = 500000;
+    c.bench_function("Variable MSM on BLS12-377 (500,000)", |b| {
+        b.iter(|| VariableBase::msm(&bases[..size], &scalars[..size]))
+    });
+
+    let size = 1000000;
+    c.bench_function("Variable MSM on BLS12-377 (1,000,000)", |b| {
+        b.iter(|| VariableBase::msm(&bases[..size], &scalars[..size]))
+    });
+
+    let size = 2000000;
+    c.bench_function("Variable MSM on BLS12-377 (2,000,000)", |b| {
+        b.iter(|| VariableBase::msm(&bases[..size], &scalars[..size]))
+    });
 }
 
 fn variable_base_edwards_bls12(c: &mut Criterion) {
     use snarkvm_curves::edwards_bls12::{EdwardsAffine, Fr};
-    let (bases, scalars) = create_scalar_bases::<EdwardsAffine, Fr>(100000);
+    let (bases, scalars) = create_scalar_bases::<EdwardsAffine, Fr>(1000000);
 
-    c.bench_function("Variable MSM on Edwards-BLS12", |b| b.iter(|| VariableBase::msm(&bases, &scalars)));
+    let size = 10000;
+    c.bench_function("Variable MSM on Edwards-BLS12 (10,000)", |b| {
+        b.iter(|| VariableBase::msm(&bases[..size], &scalars[..size]))
+    });
+
+    let size = 100000;
+    c.bench_function("Variable MSM on Edwards-BLS12 (100,000)", |b| {
+        b.iter(|| VariableBase::msm(&bases[..size], &scalars[..size]))
+    });
+
+    let size = 1000000;
+    c.bench_function("Variable MSM on Edwards-BLS12 (1,000,000)", |b| {
+        b.iter(|| VariableBase::msm(&bases[..size], &scalars[..size]))
+    });
 }
 
 criterion_group! {
