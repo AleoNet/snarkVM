@@ -19,6 +19,9 @@ pub use immediates::*;
 pub mod instructions;
 pub use instructions::*;
 
+pub mod program;
+pub use program::*;
+
 pub mod registers;
 pub use registers::*;
 
