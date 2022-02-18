@@ -23,6 +23,9 @@ pub use add_checked::*;
 pub mod add_wrapped;
 pub use add_wrapped::*;
 
+pub mod and;
+pub use and::*;
+
 pub mod eq;
 pub use eq::*;
 
