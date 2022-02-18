@@ -106,8 +106,8 @@ fn batched_window<G: AffineCurve>(
         .collect();
 
     let buckets = match strategy {
-        MSMStrategy::BatchedA => batch_add_a::<G>(num_buckets, &bases[..], &mut bucket_positions[..]),
-        MSMStrategy::BatchedB => batch_add_b::<G>(num_buckets, &bases[..], &mut bucket_positions[..]),
+        MSMStrategy::BatchedA => batch_add_a::<G>(num_buckets, &bases[..], &mut bucket_positions),
+        MSMStrategy::BatchedB => batch_add_b::<G>(num_buckets, &bases[..], &mut bucket_positions),
         _ => panic!("Invalid MSM strategy provided, use either BatchedA or BatchedB"),
     };
 
@@ -161,7 +161,7 @@ pub(super) fn msm<G: AffineCurve>(
 /// We use a batch size that is big enough to amortise the cost of the actual inversion
 /// close to zero while not straining the CPU cache by generating and fetching from
 /// large w-NAF tables and slices [G]
-pub const BATCH_SIZE: usize = 4096;
+pub const BATCH_SIZE: usize = 300;
 
 use core::cmp::Ordering;
 use voracious_radix_sort::*;
@@ -199,7 +199,7 @@ impl PartialEq for BucketPosition {
 #[inline]
 pub fn batch_add_a<G: AffineCurve>(num_buckets: usize, bases: &[G], bucket_positions: &mut [BucketPosition]) -> Vec<G> {
     // assert_eq!(elems.len(), bucket_positions.len());
-    assert!(bases.len() > 0);
+    assert!(!bases.is_empty());
 
     dlsd_radixsort(bucket_positions, 8);
 
@@ -208,7 +208,7 @@ pub fn batch_add_a<G: AffineCurve>(num_buckets: usize, bases: &[G], bucket_posit
     let mut new_len = 0; // len counter
     let mut global_counter = 0; // global counters
     let mut local_counter = 1; // local counter
-    let mut batch = 0; // batch counter
+    let mut number_of_bases_in_batch = 0;
 
     let mut instr = Vec::<(u32, u32)>::with_capacity(BATCH_SIZE);
     let mut new_bases = Vec::<G>::with_capacity(bases.len() * 3 / 8);
@@ -245,16 +245,17 @@ pub fn batch_add_a<G: AffineCurve>(num_buckets: usize, bases: &[G], bucket_posit
             }
             // Reset the local_counter and update state
             new_len += half + (local_counter % 2);
-            batch += half;
+            number_of_bases_in_batch += half;
             local_counter = 1;
 
-            if batch >= BATCH_SIZE / 2 {
-                // We need instructions for copying data in the case
-                // of noops. We encode noops/copies as !0u32
-                G::batch_add_write(&bases[..], &instr[..], &mut new_bases, &mut scratch_space);
+            // When the number of bases in a batch crosses the threshold, perform a batch addition.
+            if number_of_bases_in_batch >= BATCH_SIZE / 2 {
+                // We need instructions for copying data in the case of noops.
+                // We encode noops/copies as !0u32
+                G::batch_add_write(&bases, &instr, &mut new_bases, &mut scratch_space);
 
                 instr.clear();
-                batch = 0;
+                number_of_bases_in_batch = 0;
             }
         } else {
             instr.push((bucket_positions[global_counter].scalar_index, !0u32));
@@ -264,11 +265,11 @@ pub fn batch_add_a<G: AffineCurve>(num_buckets: usize, bases: &[G], bucket_posit
         global_counter += 1;
     }
     if !instr.is_empty() {
-        G::batch_add_write(&bases[..], &instr[..], &mut new_bases, &mut scratch_space);
+        G::batch_add_write(&bases, &instr, &mut new_bases, &mut scratch_space);
         instr.clear();
     }
     global_counter = 0;
-    batch = 0;
+    number_of_bases_in_batch = 0;
     local_counter = 1;
     num_scalars = new_len;
     new_len = 0;
@@ -305,13 +306,13 @@ pub fn batch_add_a<G: AffineCurve>(num_buckets: usize, bases: &[G], bucket_posit
                 }
                 // Reset the local_counter and update state
                 new_len += half + (local_counter % 2);
-                batch += half;
+                number_of_bases_in_batch += half;
                 local_counter = 1;
 
-                if batch >= BATCH_SIZE / 2 {
-                    G::batch_add_in_place_same_slice(&mut new_bases[..], &instr[..]);
+                if number_of_bases_in_batch >= BATCH_SIZE / 2 {
+                    G::batch_add_in_place_same_slice(&mut new_bases, &instr);
                     instr.clear();
-                    batch = 0;
+                    number_of_bases_in_batch = 0;
                 }
             } else {
                 bucket_positions[new_len] = bucket_positions[global_counter];
@@ -319,12 +320,13 @@ pub fn batch_add_a<G: AffineCurve>(num_buckets: usize, bases: &[G], bucket_posit
             }
             global_counter += 1;
         }
-        if instr.len() > 0 {
-            G::batch_add_in_place_same_slice(&mut new_bases[..], &instr[..]);
+        // If there are any remaining unprocessed instructions, proceed to perform batch addition.
+        if !instr.is_empty() {
+            G::batch_add_in_place_same_slice(&mut new_bases, &instr);
             instr.clear();
         }
         global_counter = 0;
-        batch = 0;
+        number_of_bases_in_batch = 0;
         local_counter = 1;
         num_scalars = new_len;
         new_len = 0;
@@ -342,15 +344,15 @@ pub fn batch_add_a<G: AffineCurve>(num_buckets: usize, bases: &[G], bucket_posit
 fn get_chunked_instr<T: Clone>(instr: &[T], batch_size: usize) -> Vec<Vec<T>> {
     let mut res = Vec::new();
 
-    let rem = instr.chunks_exact(batch_size).remainder();
+    let remainder = instr.chunks_exact(batch_size).remainder();
     let mut chunks = instr.chunks_exact(batch_size).peekable();
 
     if chunks.len() == 0 {
-        res.push(rem.to_vec());
+        res.push(remainder.to_vec());
     }
 
     while let Some(chunk) = chunks.next() {
-        let chunk = if chunks.peek().is_none() { [chunk, rem].concat() } else { chunk.to_vec() };
+        let chunk = if chunks.peek().is_none() { [chunk, remainder].concat() } else { chunk.to_vec() };
         res.push(chunk);
     }
     res
