@@ -54,6 +54,8 @@ mod tests {
 
     #[test]
     fn test_register_new() {
+        // TODO (@pranav)
+        //  This is just a sanity check. Need to construct a comprehensive test framework.
         assert_eq!(1, TypedRegister::new("bf.r1").unwrap().1.unwrap().get_id());
         assert_eq!(12, TypedRegister::new("b.r12").unwrap().1.unwrap().get_id());
         assert_eq!(123, TypedRegister::new("g.r123").unwrap().1.unwrap().get_id());
