@@ -63,13 +63,13 @@ mod tests {
     fn test_and_new() {
         // TODO (@pranav)
         //  This is just a sanity check. Need to construct a comprehensive test framework.
-        let (_, and_instruction) = And::new("and b.r3, b.r2, b.r1;").unwrap();
-        assert_eq!(3, and_instruction.rd.get_id());
-        assert_eq!(2, and_instruction.rs1.get_id());
-        assert_eq!(1, and_instruction.rs2.get_id());
-        assert_eq!(RegisterType::Boolean, and_instruction.rd.get_type());
-        assert_eq!(RegisterType::Boolean, and_instruction.rs1.get_type());
-        assert_eq!(RegisterType::Boolean, and_instruction.rs2.get_type());
+        let (_, load_immediate_instruction) = And::new("and b.r3, b.r2, b.r1;").unwrap();
+        assert_eq!(3, load_immediate_instruction.rd.get_id());
+        assert_eq!(2, load_immediate_instruction.rs1.get_id());
+        assert_eq!(1, load_immediate_instruction.rs2.get_id());
+        assert_eq!(RegisterType::Boolean, load_immediate_instruction.rd.get_type());
+        assert_eq!(RegisterType::Boolean, load_immediate_instruction.rs1.get_type());
+        assert_eq!(RegisterType::Boolean, load_immediate_instruction.rs2.get_type());
     }
 
     #[test]

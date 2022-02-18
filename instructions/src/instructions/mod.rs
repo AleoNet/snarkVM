@@ -29,6 +29,9 @@ pub use and::*;
 pub mod eq;
 pub use eq::*;
 
+pub mod load_immediate;
+pub use load_immediate::*;
+
 pub mod sub;
 pub use sub::*;
 
