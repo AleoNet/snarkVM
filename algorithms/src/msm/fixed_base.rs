@@ -21,9 +21,9 @@ use snarkvm_utilities::{cfg_into_iter, cfg_iter, cfg_iter_mut, ToBits};
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-pub struct FixedBaseMSM;
+pub struct FixedBase;
 
-impl FixedBaseMSM {
+impl FixedBase {
     pub fn get_mul_window_size(num_scalars: usize) -> usize {
         match num_scalars < 32 {
             true => 3,
@@ -85,7 +85,7 @@ impl FixedBaseMSM {
             + multiples_of_g[0][0]
     }
 
-    pub fn multi_scalar_mul<T: ProjectiveCurve>(
+    pub fn msm<T: ProjectiveCurve>(
         scalar_size: usize,
         window: usize,
         table: &[Vec<T>],

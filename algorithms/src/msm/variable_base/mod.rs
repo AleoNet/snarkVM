@@ -14,35 +14,28 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::any::TypeId;
-
-#[cfg(all(feature = "cuda", target_arch = "x86_64"))]
-use std::sync::atomic::{AtomicBool, Ordering};
-
-use snarkvm_curves::{bls12_377::G1Affine, traits::AffineCurve};
-use snarkvm_fields::PrimeField;
-
+mod batched;
 mod standard;
 
 #[cfg(all(feature = "cuda", target_arch = "x86_64"))]
 mod cuda;
 
+use snarkvm_curves::{bls12_377::G1Affine, traits::AffineCurve};
+use snarkvm_fields::PrimeField;
+
+use core::any::TypeId;
+
+#[cfg(all(feature = "cuda", target_arch = "x86_64"))]
+use core::sync::atomic::{AtomicBool, Ordering};
+
 #[cfg(all(feature = "cuda", target_arch = "x86_64"))]
 static HAS_CUDA_FAILED: AtomicBool = AtomicBool::new(false);
 
-#[derive(Copy, Clone, Debug)]
-pub enum MSMStrategy {
-    Standard,
-    BatchedA,
-}
+pub struct VariableBase;
 
-pub struct VariableBaseMSM;
-
-impl VariableBaseMSM {
-    pub fn multi_scalar_mul<G: AffineCurve>(
-        bases: &[G],
-        scalars: &[<G::ScalarField as PrimeField>::BigInteger],
-    ) -> G::Projective {
+impl VariableBase {
+    pub fn msm<G: AffineCurve>(bases: &[G], scalars: &[<G::ScalarField as PrimeField>::BigInteger]) -> G::Projective {
+        // For BLS12-377, we perform variable base MSM using a batched addition technique.
         if TypeId::of::<G>() == TypeId::of::<G1Affine>() {
             #[cfg(all(feature = "cuda", target_arch = "x86_64"))]
             if !HAS_CUDA_FAILED.load(Ordering::SeqCst) {
@@ -50,32 +43,16 @@ impl VariableBaseMSM {
                     Ok(x) => return x,
                     Err(_e) => {
                         HAS_CUDA_FAILED.store(true, Ordering::SeqCst);
-                        eprintln!("CUDA failed, moving to next msm method.");
+                        eprintln!("CUDA failed, moving to the next MSM method");
                     }
                 }
             }
+            batched::msm(bases, scalars)
         }
-        standard::msm(bases, scalars, MSMStrategy::BatchedA)
-    }
-
-    pub fn msm<G: AffineCurve>(
-        bases: &[G],
-        scalars: &[<G::ScalarField as PrimeField>::BigInteger],
-        strategy: MSMStrategy,
-    ) -> G::Projective {
-        if TypeId::of::<G>() == TypeId::of::<G1Affine>() {
-            #[cfg(all(feature = "cuda", target_arch = "x86_64"))]
-            if !HAS_CUDA_FAILED.load(Ordering::SeqCst) {
-                match cuda::msm_cuda(bases, scalars) {
-                    Ok(x) => return x,
-                    Err(_e) => {
-                        HAS_CUDA_FAILED.store(true, Ordering::SeqCst);
-                        eprintln!("CUDA failed, moving to next msm method.");
-                    }
-                }
-            }
+        // For all other curves, we perform variable base MSM using Pippenger's algorithm.
+        else {
+            standard::msm(bases, scalars)
         }
-        standard::msm(bases, scalars, strategy)
     }
 
     #[cfg(test)]
@@ -129,14 +106,14 @@ mod tests {
         let mut rng = test_rng();
         let (bases, scalars) = create_scalar_bases::<G1Affine, Fr>(&mut rng, 1000);
 
-        let naive_a = VariableBaseMSM::msm_naive(bases.as_slice(), scalars.as_slice());
-        let naive_b = VariableBaseMSM::msm_naive_parallel(bases.as_slice(), scalars.as_slice());
+        let naive_a = VariableBase::msm_naive(bases.as_slice(), scalars.as_slice());
+        let naive_b = VariableBase::msm_naive_parallel(bases.as_slice(), scalars.as_slice());
         assert_eq!(naive_a, naive_b);
 
-        let candidate = standard::msm(bases.as_slice(), scalars.as_slice(), MSMStrategy::Standard);
+        let candidate = standard::msm(bases.as_slice(), scalars.as_slice());
         assert_eq!(naive_a, candidate);
 
-        let candidate = standard::msm(bases.as_slice(), scalars.as_slice(), MSMStrategy::BatchedA);
+        let candidate = batched::msm(bases.as_slice(), scalars.as_slice());
         assert_eq!(naive_a, candidate);
     }
 
@@ -146,7 +123,7 @@ mod tests {
         let mut rng = test_rng();
         for _ in 0..100 {
             let (bases, scalars) = create_scalar_bases::<G1Affine, Fr>(&mut rng, 1 << 10);
-            let rust = standard::msm(bases.as_slice(), scalars.as_slice(), MSMStrategy::Standard);
+            let rust = standard::msm(bases.as_slice(), scalars.as_slice());
 
             let cuda = cuda::msm_cuda(bases.as_slice(), scalars.as_slice()).unwrap();
             assert_eq!(rust, cuda);
