@@ -42,6 +42,8 @@ impl Eq {
         let (input, _) = tag(";")(input)?;
         match rd.as_ref().unwrap().get_type() {
             RegisterType::Boolean => {
+                // TODO (@pranav) Return a custom error.
+                assert_eq!(rs1.as_ref().unwrap().get_type(), rs2.as_ref().unwrap().get_type());
                 let instruction = Self { rd: rd.unwrap(), rs1: rs1.unwrap(), rs2: rs2.unwrap() };
                 Ok((input, instruction))
             }
