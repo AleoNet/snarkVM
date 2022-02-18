@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::polycommit::PCError;
 use anyhow::Result;
 use snarkvm_curves::traits::PairingEngine;
 use snarkvm_utilities::{CanonicalDeserialize, ConstantSerializedSize};
@@ -36,7 +37,7 @@ pub struct PowersOfG<E: PairingEngine> {
     /// A handle to the file on disk containing the powers of G.
     file: File,
     /// The degree up to which we currently have powers.
-    degree: usize,
+    degree: u64,
     _phantom_data: PhantomData<E>,
 }
 
@@ -59,7 +60,7 @@ impl<E: PairingEngine> PowersOfG<E> {
     }
 
     /// Return the degree of the current powers of G.
-    pub fn len(&self) -> usize {
+    pub fn len(&self) -> u64 {
         self.degree
     }
 
@@ -67,14 +68,61 @@ impl<E: PairingEngine> PowersOfG<E> {
     /// NOTE: `std::ops::Index` was not used here as the trait requires
     /// that we return a reference. We can not return a reference to
     /// something that does not exist when this function is called.
-    pub fn index(&self, index: usize) -> E::G1Affine {
-        let mut reader = BufReader::new(&self.file);
+    pub fn index(&self, index: u64) -> Result<E::G1Affine> {
+        let index_start = self.get_starting_index(index)?;
+
         // Move our offset to the start of the desired element.
-        reader.seek(SeekFrom::Start(index.checked_mul(E::G1Affine::SERIALIZED_SIZE + 1).unwrap() as u64));
+        let mut reader = BufReader::new(&self.file);
+        reader.seek(SeekFrom::Start(index_start));
 
         // Now read it out, deserialize it, and return it.
         let mut buf = String::new();
-        reader.read_line(&mut buf).unwrap();
-        E::G1Affine::deserialize(&mut Cursor::new(buf)).unwrap()
+        reader.read_line(&mut buf)?;
+        Ok(E::G1Affine::deserialize(&mut Cursor::new(buf))?)
+    }
+
+    /// Slices the underlying file to return a vector of affine elements
+    /// between `lower` and `upper`.
+    pub fn slice(&self, lower: u64, upper: u64) -> Result<Vec<E::G1Affine>> {
+        if upper.checked_mul((E::G1Affine::SERIALIZED_SIZE + 1) as u64).ok_or(PCError::IndexOverflowed)?
+            > self.file.metadata()?.len()
+        {
+            let degree = upper.next_power_of_two();
+            self.download_up_to(degree)?;
+        }
+
+        let index_start = self.get_starting_index(lower)?;
+
+        // Move our offset to the start of the desired element.
+        let mut reader = BufReader::new(&self.file);
+        reader.seek(SeekFrom::Start(index_start));
+
+        // Now iterate until we fill a vector with all desired elements.
+        let mut powers = Vec::with_capacity((upper - lower) as usize);
+        for _ in lower..upper {
+            let mut buf = String::new();
+            reader.read_line(&mut buf)?;
+            powers.push(E::G1Affine::deserialize(&mut Cursor::new(buf))?);
+        }
+
+        Ok(powers)
+    }
+
+    /// This function returns the starting byte of the file in which we're indexing
+    /// our powers of G.
+    fn get_starting_index(&self, index: u64) -> Result<u64> {
+        let index_start =
+            index.checked_mul((E::G1Affine::SERIALIZED_SIZE + 1) as u64).ok_or(PCError::IndexOverflowed)?;
+        if index_start > self.file.metadata()?.len() {
+            let degree = index.next_power_of_two();
+            self.download_up_to(degree)?;
+        }
+
+        Ok(index_start)
+    }
+
+    /// Download the transcript up to `degree`.
+    fn download_up_to(&self, degree: u64) -> Result<()> {
+        unimplemented!()
     }
 }
