@@ -207,11 +207,9 @@ impl<P: Fp384Parameters> Field for Fp384<P> {
     fn half() -> Self {
         // Compute 1/2 as `(p+1)/2`.
         // This is cheaper than `P::BaseField::one().double().inverse()`
-        let mut two_inv = P::MODULUS;
-        // This doesn't result in a carry since `MODULUS` is at most 383 bits.
-        two_inv.add_nocarry(&1u64.into());
-        two_inv.div2();
-        Self::from_repr(two_inv).unwrap()
+        let mut two_inv = Self::one();
+        two_inv.0.div2();
+        two_inv
     }
 
     #[inline]
