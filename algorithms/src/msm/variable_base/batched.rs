@@ -77,7 +77,7 @@ const fn batch_size(msm_size: usize) -> usize {
 #[inline]
 fn batch_add_in_place_same_slice<G: AffineCurve>(bases: &mut [G], index: &[(u32, u32)]) {
     let mut inversion_tmp = G::BaseField::one();
-    let mut half = None;
+    let half = G::BaseField::half();
 
     #[cfg(target_arch = "x86_64")]
     let mut prefetch_iter = index.iter();
@@ -96,7 +96,7 @@ fn batch_add_in_place_same_slice<G: AffineCurve>(bases: &mut [G], index: &[(u32,
             let (x, y) = bases.split_at_mut(*idx as usize);
             (&mut y[0], &mut x[*idy as usize])
         };
-        G::batch_add_loop_1(a, b, &mut half, &mut inversion_tmp);
+        G::batch_add_loop_1(a, b, &half, &mut inversion_tmp);
     }
 
     inversion_tmp = inversion_tmp.inverse().unwrap(); // this is always in Fp*
@@ -135,7 +135,7 @@ fn batch_add_write<G: AffineCurve>(
     scratch_space: &mut Vec<Option<G>>,
 ) {
     let mut inversion_tmp = G::BaseField::one();
-    let mut half = None;
+    let half = G::BaseField::half();
 
     #[cfg(target_arch = "x86_64")]
     let mut prefetch_iter = index.iter();
@@ -152,7 +152,7 @@ fn batch_add_write<G: AffineCurve>(
             scratch_space.push(None);
         } else {
             let (mut a, mut b) = (bases[*idx as usize], bases[*idy as usize]);
-            G::batch_add_loop_1(&mut a, &mut b, &mut half, &mut inversion_tmp);
+            G::batch_add_loop_1(&mut a, &mut b, &half, &mut inversion_tmp);
             addition_result.push(a);
             scratch_space.push(Some(b));
         }

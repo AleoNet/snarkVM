@@ -227,7 +227,7 @@ pub trait AffineCurve:
     fn batch_add_loop_1(
         a: &mut Self,
         b: &mut Self,
-        _half: &mut Option<Self::BaseField>,
+        half: &Self::BaseField, // The value 2.inverse().
         inversion_tmp: &mut Self::BaseField,
     );
 

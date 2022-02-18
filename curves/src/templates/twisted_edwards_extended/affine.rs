@@ -218,12 +218,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
     }
 
     /// Performs the first half of batch addition in-place.
-    fn batch_add_loop_1(
-        a: &mut Self,
-        b: &mut Self,
-        _half: &mut Option<Self::BaseField>,
-        inversion_tmp: &mut Self::BaseField,
-    ) {
+    fn batch_add_loop_1(a: &mut Self, b: &mut Self, _half: &Self::BaseField, inversion_tmp: &mut Self::BaseField) {
         if !a.is_zero() && !b.is_zero() {
             let y1y2 = a.y * b.y;
             let x1x2 = a.x * b.x;

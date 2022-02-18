@@ -191,12 +191,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
     /// Performs the first half of batch addition in-place:
     ///     `lambda` := `(y2 - y1) / (x2 - x1)`,
     /// for two given affine points.
-    fn batch_add_loop_1(
-        a: &mut Self,
-        b: &mut Self,
-        half: &mut Option<Self::BaseField>,
-        inversion_tmp: &mut Self::BaseField,
-    ) {
+    fn batch_add_loop_1(a: &mut Self, b: &mut Self, half: &Self::BaseField, inversion_tmp: &mut Self::BaseField) {
         if a.is_zero() || b.is_zero() {
         } else if a.x == b.x {
             // Double
@@ -206,17 +201,12 @@ impl<P: Parameters> AffineCurve for Affine<P> {
             // and one amortised inversion
             if a.y == b.y {
                 // Compute one half (1/2) and cache it.
-                *half = match half {
-                    None => Self::BaseField::one().double().inverse(),
-                    _ => *half,
-                };
-                let h = half.unwrap();
 
                 let x_sq = b.x.square();
                 b.x -= &b.y; // x - y
                 a.x = b.y.double(); // denominator = 2y
                 a.y = x_sq.double() + x_sq + P::COEFF_A; // numerator = 3x^2 + a
-                b.y -= &(h * a.y); // y - (3x^2 + a)/2
+                b.y -= &(a.y * half); // y - (3x^2 + a)/2
                 a.y *= *inversion_tmp; // (3x^2 + a) * tmp
                 *inversion_tmp *= &a.x; // update tmp
             } else {
