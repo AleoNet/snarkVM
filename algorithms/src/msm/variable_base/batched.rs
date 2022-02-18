@@ -127,6 +127,7 @@ fn batch_add_in_place_same_slice<G: AffineCurve>(bases: &mut [G], index: &[(u32,
 /// * `addition_result[i] = bases[j];
 ///
 /// It uses `scratch_space` to store intermediate values, and clears it after use.
+#[inline]
 fn batch_add_write<G: AffineCurve>(
     bases: &[G],
     index: &[(u32, u32)],
@@ -176,7 +177,7 @@ pub(super) fn batch_add<G: AffineCurve>(
     bases: &[G],
     bucket_positions: &mut [BucketPosition],
 ) -> Vec<G> {
-    // assert_eq!(elems.len(), bucket_positions.len());
+    // assert_eq!(bases.len(), bucket_positions.len());
     assert!(!bases.is_empty());
 
     // Fetch the ideal batch size for the number of bases.
@@ -187,9 +188,9 @@ pub(super) fn batch_add<G: AffineCurve>(
 
     let mut num_scalars = bucket_positions.len();
     let mut all_ones = true;
-    let mut new_len = 0; // len counter
-    let mut global_counter = 0; // global counters
-    let mut local_counter = 1; // local counter
+    let mut new_scalar_length = 0;
+    let mut global_counter = 0;
+    let mut local_counter = 1;
     let mut number_of_bases_in_batch = 0;
 
     let mut instr = Vec::<(u32, u32)>::with_capacity(batch_size);
@@ -217,16 +218,16 @@ pub(super) fn batch_add<G: AffineCurve>(
                     bucket_positions[global_counter - (local_counter - 1) + 2 * i].scalar_index,
                     bucket_positions[global_counter - (local_counter - 1) + 2 * i + 1].scalar_index,
                 ));
-                bucket_positions[new_len + i] =
-                    BucketPosition { bucket_index: current_bucket, scalar_index: (new_len + i) as u32 };
+                bucket_positions[new_scalar_length + i] =
+                    BucketPosition { bucket_index: current_bucket, scalar_index: (new_scalar_length + i) as u32 };
             }
             if is_odd {
                 instr.push((bucket_positions[global_counter].scalar_index, !0u32));
-                bucket_positions[new_len + half] =
-                    BucketPosition { bucket_index: current_bucket, scalar_index: (new_len + half) as u32 };
+                bucket_positions[new_scalar_length + half] =
+                    BucketPosition { bucket_index: current_bucket, scalar_index: (new_scalar_length + half) as u32 };
             }
             // Reset the local_counter and update state
-            new_len += half + (local_counter % 2);
+            new_scalar_length += half + (local_counter % 2);
             number_of_bases_in_batch += half;
             local_counter = 1;
 
@@ -241,8 +242,9 @@ pub(super) fn batch_add<G: AffineCurve>(
             }
         } else {
             instr.push((bucket_positions[global_counter].scalar_index, !0u32));
-            bucket_positions[new_len] = BucketPosition { bucket_index: current_bucket, scalar_index: new_len as u32 };
-            new_len += 1;
+            bucket_positions[new_scalar_length] =
+                BucketPosition { bucket_index: current_bucket, scalar_index: new_scalar_length as u32 };
+            new_scalar_length += 1;
         }
         global_counter += 1;
     }
@@ -253,8 +255,8 @@ pub(super) fn batch_add<G: AffineCurve>(
     global_counter = 0;
     number_of_bases_in_batch = 0;
     local_counter = 1;
-    num_scalars = new_len;
-    new_len = 0;
+    num_scalars = new_scalar_length;
+    new_scalar_length = 0;
 
     // Next, perform all the updates in place.
     while !all_ones {
@@ -281,13 +283,14 @@ pub(super) fn batch_add<G: AffineCurve>(
                         bucket_positions[global_counter - (local_counter - 1) + 2 * i].scalar_index,
                         bucket_positions[global_counter - (local_counter - 1) + 2 * i + 1].scalar_index,
                     ));
-                    bucket_positions[new_len + i] = bucket_positions[global_counter - (local_counter - 1) + 2 * i];
+                    bucket_positions[new_scalar_length + i] =
+                        bucket_positions[global_counter - (local_counter - 1) + 2 * i];
                 }
                 if is_odd {
-                    bucket_positions[new_len + half] = bucket_positions[global_counter];
+                    bucket_positions[new_scalar_length + half] = bucket_positions[global_counter];
                 }
                 // Reset the local_counter and update state
-                new_len += half + (local_counter % 2);
+                new_scalar_length += half + (local_counter % 2);
                 number_of_bases_in_batch += half;
                 local_counter = 1;
 
@@ -297,8 +300,8 @@ pub(super) fn batch_add<G: AffineCurve>(
                     number_of_bases_in_batch = 0;
                 }
             } else {
-                bucket_positions[new_len] = bucket_positions[global_counter];
-                new_len += 1;
+                bucket_positions[new_scalar_length] = bucket_positions[global_counter];
+                new_scalar_length += 1;
             }
             global_counter += 1;
         }
@@ -310,8 +313,8 @@ pub(super) fn batch_add<G: AffineCurve>(
         global_counter = 0;
         number_of_bases_in_batch = 0;
         local_counter = 1;
-        num_scalars = new_len;
-        new_len = 0;
+        num_scalars = new_scalar_length;
+        new_scalar_length = 0;
     }
 
     let mut res = vec![Zero::zero(); num_buckets];
