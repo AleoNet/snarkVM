@@ -28,6 +28,9 @@ use nom::{
 ///
 /// Typed registers have the syntactic form <RegisterType>.r<N>
 ///
+// TODO (@pranav) Instead of a single typed register, consider having explicit
+//  register structs for each of the types. This would result in stronger type
+//  restrictions for instructions.
 pub struct TypedRegister(RegisterType, u64);
 
 impl TypedRegister {
