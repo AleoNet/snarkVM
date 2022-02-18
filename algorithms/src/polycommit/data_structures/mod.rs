@@ -28,6 +28,8 @@ use std::io;
 mod polynomial;
 pub use polynomial::*;
 
+mod powers;
+
 /// Labels a `LabeledPolynomial` or a `LabeledCommitment`.
 pub type PolynomialLabel = String;
 
