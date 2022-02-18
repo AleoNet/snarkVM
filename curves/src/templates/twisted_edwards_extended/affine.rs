@@ -225,23 +225,23 @@ impl<P: Parameters> AffineCurve for Affine<P> {
         inversion_tmp: &mut Self::BaseField,
     ) {
         if !a.is_zero() && !b.is_zero() {
-            let y1y2 = a.y * &b.y;
-            let x1x2 = a.x * &b.x;
+            let y1y2 = a.y * b.y;
+            let x1x2 = a.x * b.x;
 
-            a.x = (a.x + &a.y) * &(b.x + &b.y) - &y1y2 - &x1x2;
+            a.x = (a.x + a.y) * (b.x + b.y) - y1y2 - x1x2;
             a.y = y1y2;
             if !P::COEFF_A.is_zero() {
                 a.y -= &P::mul_by_a(&x1x2);
             }
 
-            let dx1x2y1y2 = P::COEFF_D * &y1y2 * &x1x2;
+            let dx1x2y1y2 = P::COEFF_D * y1y2 * x1x2;
 
-            let inversion_mul_d = *inversion_tmp * &dx1x2y1y2;
+            let inversion_mul_d = *inversion_tmp * dx1x2y1y2;
 
-            a.x *= &(*inversion_tmp - &inversion_mul_d);
-            a.y *= &(*inversion_tmp + &inversion_mul_d);
+            a.x *= &(*inversion_tmp - inversion_mul_d);
+            a.y *= &(*inversion_tmp + inversion_mul_d);
 
-            b.x = Self::BaseField::one() - &dx1x2y1y2.square();
+            b.x = Self::BaseField::one() - dx1x2y1y2.square();
 
             *inversion_tmp *= &b.x;
         }

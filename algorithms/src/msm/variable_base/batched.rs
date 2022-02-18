@@ -87,14 +87,14 @@ fn batch_add_in_place_same_slice<G: AffineCurve>(bases: &mut [G], index: &[(u32,
         #[cfg(target_arch = "x86_64")]
         prefetch_slice!(G, bases, bases, prefetch_iter);
 
-        let (mut a, mut b) = if idx < idy {
+        let (a, b) = if idx < idy {
             let (x, y) = bases.split_at_mut(*idy as usize);
             (&mut x[*idx as usize], &mut y[0])
         } else {
             let (x, y) = bases.split_at_mut(*idx as usize);
             (&mut y[0], &mut x[*idy as usize])
         };
-        G::batch_add_loop_1(&mut a, &mut b, &mut half, &mut inversion_tmp);
+        G::batch_add_loop_1(a, b, &mut half, &mut inversion_tmp);
     }
 
     inversion_tmp = inversion_tmp.inverse().unwrap(); // this is always in Fp*
@@ -108,7 +108,7 @@ fn batch_add_in_place_same_slice<G: AffineCurve>(bases: &mut [G], index: &[(u32,
         #[cfg(target_arch = "x86_64")]
         prefetch_slice!(G, bases, bases, prefetch_iter);
 
-        let (mut a, b) = if idx < idy {
+        let (a, b) = if idx < idy {
             let (x, y) = bases.split_at_mut(*idy as usize);
             (&mut x[*idx as usize], y[0])
         } else {
@@ -340,7 +340,7 @@ fn batched_window<G: AffineCurve>(
         })
         .collect();
 
-    let buckets = batch_add(num_buckets, &bases, &mut bucket_positions);
+    let buckets = batch_add(num_buckets, bases, &mut bucket_positions);
 
     let mut res = G::Projective::zero();
     let mut running_sum = G::Projective::zero();

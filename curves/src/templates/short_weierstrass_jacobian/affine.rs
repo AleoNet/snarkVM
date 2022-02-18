@@ -198,7 +198,6 @@ impl<P: Parameters> AffineCurve for Affine<P> {
         inversion_tmp: &mut Self::BaseField,
     ) {
         if a.is_zero() || b.is_zero() {
-            ();
         } else if a.x == b.x {
             // Double
             // In our model, we consider self additions rare.
@@ -216,8 +215,8 @@ impl<P: Parameters> AffineCurve for Affine<P> {
                 let x_sq = b.x.square();
                 b.x -= &b.y; // x - y
                 a.x = b.y.double(); // denominator = 2y
-                a.y = x_sq.double() + &x_sq + &P::COEFF_A; // numerator = 3x^2 + a
-                b.y -= &(h * &a.y); // y - (3x^2 + a)/2
+                a.y = x_sq.double() + x_sq + P::COEFF_A; // numerator = 3x^2 + a
+                b.y -= &(h * a.y); // y - (3x^2 + a)/2
                 a.y *= *inversion_tmp; // (3x^2 + a) * tmp
                 *inversion_tmp *= &a.x; // update tmp
             } else {
@@ -246,10 +245,10 @@ impl<P: Parameters> AffineCurve for Affine<P> {
 
             // x3 = l^2 - x1 - x2 or for squaring: 2y + l^2 + 2x - 2y = l^2 - 2x
             a.x += &b.x.double();
-            a.x = lambda.square() - &a.x;
+            a.x = lambda.square() - a.x;
             // y3 = l*(x2 - x3) - y2 or
             // for squaring: (3x^2 + a)/2y(x - y - x3) - (y - (3x^2 + a)/2) = l*(x - x3) - y
-            a.y = lambda * &(b.x - &a.x) - &b.y;
+            a.y = lambda * (b.x - a.x) - b.y;
         }
     }
 }
