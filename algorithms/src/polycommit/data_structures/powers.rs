@@ -53,10 +53,9 @@ impl<E: PairingEngine> PowersOfG<E> {
     pub fn new(file_path: PathBuf) -> Result<Self> {
         // Open the given file, creating it if it doesn't yet exist.
         let file = OpenOptions::new().read(true).create(true).open(file_path)?;
+        let degree = (file.metadata()?.len() / (E::G1Affine::SERIALIZED_SIZE as u64 + 1)).next_power_of_two();
 
-        // TODO: Check the degree we're on.
-
-        Ok(Self { file, degree: 0, _phantom_data: PhantomData })
+        Ok(Self { file, degree, _phantom_data: PhantomData })
     }
 
     /// Return the degree of the current powers of G.
@@ -84,7 +83,7 @@ impl<E: PairingEngine> PowersOfG<E> {
     /// Slices the underlying file to return a vector of affine elements
     /// between `lower` and `upper`.
     pub fn slice(&self, lower: u64, upper: u64) -> Result<Vec<E::G1Affine>> {
-        if upper.checked_mul((E::G1Affine::SERIALIZED_SIZE + 1) as u64).ok_or(PCError::IndexOverflowed)?
+        if upper.checked_mul(E::G1Affine::SERIALIZED_SIZE as u64 + 1).ok_or(PCError::IndexOverflowed)?
             > self.file.metadata()?.len()
         {
             let degree = upper.next_power_of_two();
@@ -111,8 +110,7 @@ impl<E: PairingEngine> PowersOfG<E> {
     /// This function returns the starting byte of the file in which we're indexing
     /// our powers of G.
     fn get_starting_index(&self, index: u64) -> Result<u64> {
-        let index_start =
-            index.checked_mul((E::G1Affine::SERIALIZED_SIZE + 1) as u64).ok_or(PCError::IndexOverflowed)?;
+        let index_start = index.checked_mul(E::G1Affine::SERIALIZED_SIZE as u64 + 1).ok_or(PCError::IndexOverflowed)?;
         if index_start > self.file.metadata()?.len() {
             let degree = index.next_power_of_two();
             self.download_up_to(degree)?;
