@@ -18,14 +18,14 @@
 macro_rules! prefetch_slice {
     ($slice_1: ident, $slice_2: ident, $prefetch_iter: ident) => {
         if let Some((idp_1, idp_2)) = $prefetch_iter.next() {
-            crate::templates::prefetch::prefetch::<Self>(&mut $slice_1[*idp_1 as usize]);
-            crate::templates::prefetch::prefetch::<Self>(&mut $slice_2[*idp_2 as usize]);
+            crate::templates::prefetch::prefetch::<Self>(&$slice_1[*idp_1 as usize]);
+            crate::templates::prefetch::prefetch::<Self>(&$slice_2[*idp_2 as usize]);
         }
     };
 
     ($slice_1: ident, $prefetch_iter: ident) => {
         if let Some((idp_1, _)) = $prefetch_iter.next() {
-            crate::templates::prefetch::prefetch::<Self>(&mut $slice_1[*idp_1 as usize]);
+            crate::templates::prefetch::prefetch::<Self>(&$slice_1[*idp_1 as usize]);
         }
     };
 }
