@@ -14,9 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use anyhow::Result;
 use snarkvm_curves::traits::PairingEngine;
+use snarkvm_utilities::{CanonicalDeserialize, ConstantSerializedSize};
 
-use std::{marker::PhantomData, ops::Index, path::PathBuf, slice::SliceIndex};
+use std::{
+    fs::{File, OpenOptions},
+    io::{BufRead, BufReader, Cursor, Seek, SeekFrom},
+    marker::PhantomData,
+    path::PathBuf,
+};
 
 lazy_static::lazy_static! {
     static ref DEFAULT_PATH: PathBuf = PathBuf::from("~/.aleo/powers_of_g");
@@ -26,8 +33,8 @@ lazy_static::lazy_static! {
 /// An abstraction over a vector of powers of G, meant to reduce
 /// memory burden when handling universal setup parameters.
 pub struct PowersOfG<E: PairingEngine> {
-    /// The file on disk where the powers are stored.
-    file_path: PathBuf,
+    /// A handle to the file on disk containing the powers of G.
+    file: File,
     /// The degree up to which we currently have powers.
     degree: usize,
     _phantom_data: PhantomData<E>,
@@ -35,26 +42,39 @@ pub struct PowersOfG<E: PairingEngine> {
 
 impl<E: PairingEngine> Default for PowersOfG<E> {
     fn default() -> Self {
-        Self::new(DEFAULT_PATH.clone())
-    }
-}
-
-// Make our abstraction indexable, just like a vector would be, to make
-// it easier to work with.
-// NOTE: We do not implement IndexMut since the API user shouldn't mutate
-// the underlying data in any case.
-impl<E: PairingEngine, I: SliceIndex<[E::G1Affine]>> Index<I> for PowersOfG<E> {
-    type Output = I::Output;
-
-    fn index(&self, index: I) -> &Self::Output {
-        unimplemented!()
+        Self::new(DEFAULT_PATH.clone()).unwrap()
     }
 }
 
 impl<E: PairingEngine> PowersOfG<E> {
     /// Returns a new instance of PowersOfG, which will store its
     /// powers in a file at `file_path`.
-    pub fn new(file_path: PathBuf) -> Self {
-        Self { file_path, degree: 0, _phantom_data: PhantomData }
+    pub fn new(file_path: PathBuf) -> Result<Self> {
+        // Open the given file, creating it if it doesn't yet exist.
+        let file = OpenOptions::new().read(true).create(true).open(file_path)?;
+
+        // TODO: Check the degree we're on.
+
+        Ok(Self { file, degree: 0, _phantom_data: PhantomData })
+    }
+
+    /// Return the degree of the current powers of G.
+    pub fn len(&self) -> usize {
+        self.degree
+    }
+
+    /// Returns an element at `index`.
+    /// NOTE: `std::ops::Index` was not used here as the trait requires
+    /// that we return a reference. We can not return a reference to
+    /// something that does not exist when this function is called.
+    pub fn index(&self, index: usize) -> E::G1Affine {
+        let mut reader = BufReader::new(&self.file);
+        // Move our offset to the start of the desired element.
+        reader.seek(SeekFrom::Start(index.checked_mul(E::G1Affine::SERIALIZED_SIZE + 1).unwrap() as u64));
+
+        // Now read it out, deserialize it, and return it.
+        let mut buf = String::new();
+        reader.read_line(&mut buf).unwrap();
+        E::G1Affine::deserialize(&mut Cursor::new(buf)).unwrap()
     }
 }
