@@ -20,11 +20,10 @@ use nom::{
     character::complete::{char, one_of},
     combinator::verify,
     error::{make_error, ErrorKind, VerboseError, VerboseErrorKind},
-    multi::{many0, many1},
+    multi::{many0, many1, separated_list0},
     sequence::terminated,
 };
 use snarkvm_circuits::{Environment, IntegerType};
-use nom::multi::separated_list0;
 
 pub struct Program<E: Environment> {
     instructions: Vec<Instruction<E>>,
@@ -49,7 +48,8 @@ mod tests {
         // TODO (@pranav)
         //  This is just a sanity check. Need to construct a comprehensive test framework.
         type E = Circuit;
-        let (input, program) = Program::<E>::new("loadi u8.r1, 1u8; loadi u8.r2, 2u8; addw u8.r3, u8.r2, u8.r1;").unwrap();
+        let (input, program) =
+            Program::<E>::new("loadi u8.r1, 1u8; loadi u8.r2, 2u8; addw u8.r3, u8.r2, u8.r1;").unwrap();
         println!("{:?}", input);
         assert_eq!(3, program.instructions.len());
     }

@@ -29,6 +29,7 @@ members = [
   "fields",
   "gadgets",
   "instructions",
+  "machine",
   "parameters",
   "profiler", # excluded from [features], for internal use primarily
   "r1cs",

@@ -1,0 +1,29 @@
+[package]
+name = "snarkvm-machine"
+version = "0.7.5"
+authors = [ "The Aleo Team <hello@aleo.org>" ]
+description = "Machine state and execution for a decentralized virtual machine"
+homepage = "https://aleo.org"
+repository = "https://github.com/AleoHQ/snarkVM"
+keywords = [
+    "aleo",
+    "cryptography",
+    "blockchain",
+    "decentralized",
+    "zero-knowledge"
+]
+categories = [ "cryptography::cryptocurrencies", "operating-systems" ]
+include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
+license = "GPL-3.0"
+edition = "2018"
+
+[dependencies]
+nom = "7.1"
+
+[dependencies.snarkvm-circuits]
+path = "../circuits"
+version = "0.7.5"
+
+[dependencies.snarkvm-instructions]
+path = "../instructions"
+version = "0.7.5"
