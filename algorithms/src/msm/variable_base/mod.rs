@@ -101,14 +101,12 @@ impl VariableBaseMSM {
         scalars: &[<G::ScalarField as PrimeField>::BigInteger],
     ) -> G::Projective {
         use rayon::prelude::*;
-        use snarkvm_fields::Zero;
         use snarkvm_utilities::BitIteratorBE;
 
         bases
             .par_iter()
             .zip_eq(scalars.par_iter())
             .map(|(base, scalar)| base.mul_bits(BitIteratorBE::new(*scalar)))
-            .fold(|| G::Projective::zero(), |a, b| a + b)
             .sum()
     }
 }
