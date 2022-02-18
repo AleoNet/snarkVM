@@ -20,8 +20,14 @@ pub use add::*;
 pub mod add_checked;
 pub use add_checked::*;
 
+pub mod add_wrapped;
+pub use add_wrapped::*;
+
 pub mod sub;
 pub use sub::*;
 
 pub mod sub_checked;
 pub use sub_checked::*;
+
+pub mod sub_wrapped;
+pub use sub_wrapped::*;
