@@ -16,7 +16,7 @@
 
 use snarkvm_curves::traits::PairingEngine;
 
-use std::{marker::PhantomData, ops::Index, path::PathBuf};
+use std::{marker::PhantomData, ops::Index, path::PathBuf, slice::SliceIndex};
 
 lazy_static::lazy_static! {
     static ref DEFAULT_PATH: PathBuf = PathBuf::from("~/.aleo/powers_of_g");
@@ -28,6 +28,8 @@ lazy_static::lazy_static! {
 pub struct PowersOfG<E: PairingEngine> {
     /// The file on disk where the powers are stored.
     file_path: PathBuf,
+    /// The degree up to which we currently have powers.
+    degree: usize,
     _phantom_data: PhantomData<E>,
 }
 
@@ -39,10 +41,12 @@ impl<E: PairingEngine> Default for PowersOfG<E> {
 
 // Make our abstraction indexable, just like a vector would be, to make
 // it easier to work with.
-impl<E: PairingEngine> Index<usize> for PowersOfG<E> {
-    type Output = E::G1Affine;
+// NOTE: We do not implement IndexMut since the API user shouldn't mutate
+// the underlying data in any case.
+impl<E: PairingEngine, I: SliceIndex<[E::G1Affine]>> Index<I> for PowersOfG<E> {
+    type Output = I::Output;
 
-    fn index(&self, index: usize) -> &Self::Output {
+    fn index(&self, index: I) -> &Self::Output {
         unimplemented!()
     }
 }
@@ -51,6 +55,6 @@ impl<E: PairingEngine> PowersOfG<E> {
     /// Returns a new instance of PowersOfG, which will store its
     /// powers in a file at `file_path`.
     pub fn new(file_path: PathBuf) -> Self {
-        Self { file_path, _phantom_data: PhantomData }
+        Self { file_path, degree: 0, _phantom_data: PhantomData }
     }
 }
