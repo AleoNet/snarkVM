@@ -23,11 +23,6 @@ use core::cmp::Ordering;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-/// We use a batch size that is big enough to amortise the cost of the actual inversion
-/// close to zero while not straining the CPU cache by generating and fetching from
-/// large w-NAF tables and slices [G]
-pub const BATCH_SIZE: usize = 300;
-
 #[derive(Copy, Clone, Debug)]
 pub struct BucketPosition {
     pub bucket_index: u32,
@@ -54,11 +49,37 @@ impl PartialOrd for BucketPosition {
     }
 }
 
+/// Returns a batch size of sufficient size to amortise the cost of an inversion,
+/// while attempting to reduce strain to the CPU cache.
+#[inline]
+pub const fn batch_size(msm_size: usize) -> usize {
+    // These values are determined empirically based on performance benchmarks
+    // on Intel, AMD, and M1 machines. These values are determined by taking the
+    // L1 and L2 cache sizes and dividing them by the size of group elements (i.e. 96 bytes).
+    //
+    // As the algorithm itself requires caching additional values beyond the group elements,
+    // the ideal batch size is less than expectations, to accommodate those values.
+    // In general, it was found that undershooting is better than overshooting this heuristic.
+    if msm_size < 500_000 {
+        // Assumes an L1 cache size of 32KiB. Note that larger cache sizes
+        // are not negatively impacted by this value, however smaller L1 cache sizes are.
+        300
+    } else {
+        // Assumes an L2 cache size of 1MiB. Note that larger cache sizes
+        // are not negatively impacted by this value, however smaller L2 cache sizes are.
+        3000
+    }
+}
+
 #[inline]
 pub fn batch_add<G: AffineCurve>(num_buckets: usize, bases: &[G], bucket_positions: &mut [BucketPosition]) -> Vec<G> {
     // assert_eq!(elems.len(), bucket_positions.len());
     assert!(!bases.is_empty());
 
+    // Fetch the ideal batch size for the number of bases.
+    let batch_size = batch_size(bases.len());
+
+    // Sort the buckets by their bucket index (not scalar index).
     bucket_positions.sort_unstable();
 
     let mut num_scalars = bucket_positions.len();
@@ -68,9 +89,9 @@ pub fn batch_add<G: AffineCurve>(num_buckets: usize, bases: &[G], bucket_positio
     let mut local_counter = 1; // local counter
     let mut number_of_bases_in_batch = 0;
 
-    let mut instr = Vec::<(u32, u32)>::with_capacity(BATCH_SIZE);
+    let mut instr = Vec::<(u32, u32)>::with_capacity(batch_size);
     let mut new_bases = Vec::<G>::with_capacity(bases.len() * 3 / 8);
-    let mut scratch_space = Vec::<Option<G>>::with_capacity(BATCH_SIZE / 2);
+    let mut scratch_space = Vec::<Option<G>>::with_capacity(batch_size / 2);
 
     // In the first loop, copy the results of the first in-place addition tree to the vector `new_bases`.
     while global_counter < num_scalars {
@@ -107,7 +128,7 @@ pub fn batch_add<G: AffineCurve>(num_buckets: usize, bases: &[G], bucket_positio
             local_counter = 1;
 
             // When the number of bases in a batch crosses the threshold, perform a batch addition.
-            if number_of_bases_in_batch >= BATCH_SIZE / 2 {
+            if number_of_bases_in_batch >= batch_size / 2 {
                 // We need instructions for copying data in the case of noops.
                 // We encode noops/copies as !0u32
                 G::batch_add_write(bases, &instr, &mut new_bases, &mut scratch_space);
@@ -167,7 +188,7 @@ pub fn batch_add<G: AffineCurve>(num_buckets: usize, bases: &[G], bucket_positio
                 number_of_bases_in_batch += half;
                 local_counter = 1;
 
-                if number_of_bases_in_batch >= BATCH_SIZE / 2 {
+                if number_of_bases_in_batch >= batch_size / 2 {
                     G::batch_add_in_place_same_slice(&mut new_bases, &instr);
                     instr.clear();
                     number_of_bases_in_batch = 0;
