@@ -83,7 +83,6 @@ fn batched_window<G: AffineCurve>(
     scalars: &[<G::ScalarField as PrimeField>::BigInteger],
     w_start: usize,
     c: usize,
-    strategy: MSMStrategy,
 ) -> (G::Projective, usize) {
     // We don't need the "zero" bucket, so we only have 2^c - 1 buckets
     let window_size = if (w_start % c) != 0 { w_start % c } else { c };
@@ -105,11 +104,7 @@ fn batched_window<G: AffineCurve>(
         })
         .collect();
 
-    let buckets = match strategy {
-        MSMStrategy::BatchedA => batch_add_a::<G>(num_buckets, &bases[..], &mut bucket_positions),
-        MSMStrategy::BatchedB => batch_add_b::<G>(num_buckets, &bases[..], &mut bucket_positions),
-        _ => panic!("Invalid MSM strategy provided, use either BatchedA or BatchedB"),
-    };
+    let buckets = batch_add_a::<G>(num_buckets, bases, &mut bucket_positions);
 
     let mut res = G::Projective::zero();
     let mut running_sum = G::Projective::zero();
@@ -128,7 +123,7 @@ pub(super) fn msm<G: AffineCurve>(
 ) -> G::Projective {
     // Determine the bucket size `c` (chosen empirically).
     let c = match scalars.len() < 32 {
-        true => 3,
+        true => 1,
         false => crate::msm::ln_without_floats(scalars.len()) + 2,
     };
 
@@ -141,7 +136,7 @@ pub(super) fn msm<G: AffineCurve>(
         .step_by(c)
         .map(|w_start| match strategy {
             MSMStrategy::Standard => standard_window(bases, scalars, w_start, c),
-            _ => batched_window(bases, scalars, w_start, c, strategy),
+            MSMStrategy::BatchedA => batched_window(bases, scalars, w_start, c),
         })
         .collect();
 
@@ -165,9 +160,6 @@ pub const BATCH_SIZE: usize = 300;
 
 use core::cmp::Ordering;
 use voracious_radix_sort::*;
-
-#[cfg(not(feature = "std"))]
-use crate::fft::domain::log2;
 
 #[derive(Copy, Clone, Debug)]
 pub struct BucketPosition {
@@ -335,96 +327,6 @@ pub fn batch_add_a<G: AffineCurve>(num_buckets: usize, bases: &[G], bucket_posit
     let mut res = vec![G::zero(); num_buckets];
     for bucket_position in bucket_positions.iter().take(num_scalars) {
         res[bucket_position.bucket_index as usize] = new_bases[bucket_position.scalar_index as usize];
-    }
-    res
-}
-
-/// Chunks vectorised instructions into a size that does not require
-/// storing a lot of intermediate state
-fn get_chunked_instr<T: Clone>(instr: &[T], batch_size: usize) -> Vec<Vec<T>> {
-    let mut res = Vec::new();
-
-    let remainder = instr.chunks_exact(batch_size).remainder();
-    let mut chunks = instr.chunks_exact(batch_size).peekable();
-
-    if chunks.len() == 0 {
-        res.push(remainder.to_vec());
-    }
-
-    while let Some(chunk) = chunks.next() {
-        let chunk = if chunks.peek().is_none() { [chunk, remainder].concat() } else { chunk.to_vec() };
-        res.push(chunk);
-    }
-    res
-}
-
-pub fn batch_add_b<G: AffineCurve>(buckets: usize, bases: &[G], bucket_assign: &[BucketPosition]) -> Vec<G> {
-    let mut bases = bases.to_vec();
-    let num_split = 2i32.pow(log2(buckets) / 2 + 2) as usize;
-    let split_size = (buckets - 1) / num_split + 1;
-    let ratio = bases.len() / buckets * 2;
-
-    // Get the inverted index for the positions assigning to each bucket
-    let mut bucket_split = vec![vec![]; num_split];
-    let mut index = vec![Vec::with_capacity(ratio); buckets];
-
-    for bucket_pos in bucket_assign.iter() {
-        let (bucket_index, scalar_index) = (bucket_pos.bucket_index as usize, bucket_pos.scalar_index as usize);
-        // Check the bucket assignment is valid
-        if bucket_index < buckets {
-            // index[bucket].push(position);
-            bucket_split[bucket_index / split_size].push((bucket_index, scalar_index));
-        }
-    }
-
-    for split in bucket_split {
-        for (bucket, position) in split {
-            index[bucket].push(position as u32);
-        }
-    }
-
-    // Instructions for indexes for the in place addition tree
-    let mut instr: Vec<Vec<(u32, u32)>> = vec![];
-    // Find the maximum depth of the addition tree
-    let max_depth = index.iter()
-        // log_2
-        .map(|x| log2(x.len()))
-        .max().unwrap();
-
-    // Generate in-place addition instructions that implement the addition tree
-    // for each bucket from the leaves to the root
-    for i in 0..max_depth {
-        let mut instr_row = Vec::<(u32, u32)>::with_capacity(buckets);
-        for to_add in index.iter_mut() {
-            if to_add.len() > 1 << (max_depth - i - 1) {
-                let mut new_to_add = vec![];
-                for j in 0..(to_add.len() / 2) {
-                    new_to_add.push(to_add[2 * j]);
-                    instr_row.push((to_add[2 * j], to_add[2 * j + 1]));
-                }
-                if to_add.len() % 2 == 1 {
-                    new_to_add.push(*to_add.last().unwrap());
-                }
-                *to_add = new_to_add;
-            }
-        }
-        instr.push(instr_row);
-    }
-
-    for instr_row in instr.iter() {
-        for instr in get_chunked_instr::<(u32, u32)>(&instr_row[..], BATCH_SIZE).iter() {
-            G::batch_add_in_place_same_slice(&mut bases[..], &instr[..]);
-        }
-    }
-
-    let mut res = vec![G::zero(); buckets];
-
-    for (i, to_add) in index.iter().enumerate() {
-        if to_add.len() == 1 {
-            res[i] = bases[to_add[0] as usize];
-        } else if to_add.len() > 1 {
-            debug_assert!(false, "Did not successfully reduce to_add");
-        }
     }
     res
 }

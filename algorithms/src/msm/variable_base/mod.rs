@@ -34,7 +34,6 @@ static HAS_CUDA_FAILED: AtomicBool = AtomicBool::new(false);
 pub enum MSMStrategy {
     Standard,
     BatchedA,
-    BatchedB,
 }
 
 pub struct VariableBaseMSM;
@@ -46,14 +45,12 @@ impl VariableBaseMSM {
     ) -> G::Projective {
         if TypeId::of::<G>() == TypeId::of::<G1Affine>() {
             #[cfg(all(feature = "cuda", target_arch = "x86_64"))]
-            {
-                if !HAS_CUDA_FAILED.load(Ordering::SeqCst) {
-                    match cuda::msm_cuda(bases, scalars) {
-                        Ok(x) => return x,
-                        Err(_e) => {
-                            HAS_CUDA_FAILED.store(true, Ordering::SeqCst);
-                            eprintln!("CUDA failed, moving to next msm method.");
-                        }
+            if !HAS_CUDA_FAILED.load(Ordering::SeqCst) {
+                match cuda::msm_cuda(bases, scalars) {
+                    Ok(x) => return x,
+                    Err(_e) => {
+                        HAS_CUDA_FAILED.store(true, Ordering::SeqCst);
+                        eprintln!("CUDA failed, moving to next msm method.");
                     }
                 }
             }
@@ -68,14 +65,12 @@ impl VariableBaseMSM {
     ) -> G::Projective {
         if TypeId::of::<G>() == TypeId::of::<G1Affine>() {
             #[cfg(all(feature = "cuda", target_arch = "x86_64"))]
-            {
-                if !HAS_CUDA_FAILED.load(Ordering::SeqCst) {
-                    match cuda::msm_cuda(bases, scalars) {
-                        Ok(x) => return x,
-                        Err(_e) => {
-                            HAS_CUDA_FAILED.store(true, Ordering::SeqCst);
-                            eprintln!("CUDA failed, moving to next msm method.");
-                        }
+            if !HAS_CUDA_FAILED.load(Ordering::SeqCst) {
+                match cuda::msm_cuda(bases, scalars) {
+                    Ok(x) => return x,
+                    Err(_e) => {
+                        HAS_CUDA_FAILED.store(true, Ordering::SeqCst);
+                        eprintln!("CUDA failed, moving to next msm method.");
                     }
                 }
             }
@@ -143,9 +138,6 @@ mod tests {
 
         let candidate = standard::msm(bases.as_slice(), scalars.as_slice(), MSMStrategy::BatchedA);
         assert_eq!(naive_a, candidate);
-
-        let candidate = standard::msm(bases.as_slice(), scalars.as_slice(), MSMStrategy::BatchedB);
-        assert_eq!(naive_a, candidate);
     }
 
     #[cfg(all(feature = "cuda", target_arch = "x86_64"))]
@@ -154,7 +146,7 @@ mod tests {
         let mut rng = test_rng();
         for _ in 0..100 {
             let (bases, scalars) = create_scalar_bases::<G1Affine, Fr>(&mut rng, 1 << 10);
-            let rust = standard::msm(bases.as_slice(), scalars.as_slice(), MSMStrategy::BatchedA);
+            let rust = standard::msm(bases.as_slice(), scalars.as_slice(), MSMStrategy::Standard);
 
             let cuda = cuda::msm_cuda(bases.as_slice(), scalars.as_slice()).unwrap();
             assert_eq!(rust, cuda);

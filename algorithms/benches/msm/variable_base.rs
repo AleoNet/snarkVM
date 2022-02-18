@@ -39,11 +39,8 @@ fn variable_base_bls12_377(c: &mut Criterion) {
     c.bench_function("Variable MSM on BLS12-377 (Standard)", |b| {
         b.iter(|| VariableBaseMSM::msm(&bases, &scalars, MSMStrategy::Standard))
     });
-    c.bench_function("Variable MSM on BLS12-377 (BatchedA)", |b| {
+    c.bench_function("Variable MSM on BLS12-377 (Batched)", |b| {
         b.iter(|| VariableBaseMSM::msm(&bases, &scalars, MSMStrategy::BatchedA))
-    });
-    c.bench_function("Variable MSM on BLS12-377 (BatchedB)", |b| {
-        b.iter(|| VariableBaseMSM::msm(&bases, &scalars, MSMStrategy::BatchedB))
     });
 }
 
@@ -54,11 +51,8 @@ fn variable_base_edwards_bls12(c: &mut Criterion) {
     c.bench_function("Variable MSM on Edwards-BLS12 (Standard)", |b| {
         b.iter(|| VariableBaseMSM::msm(&bases, &scalars, MSMStrategy::Standard))
     });
-    c.bench_function("Variable MSM on Edwards-BLS12 (BatchedA)", |b| {
+    c.bench_function("Variable MSM on Edwards-BLS12 (Batched)", |b| {
         b.iter(|| VariableBaseMSM::msm(&bases, &scalars, MSMStrategy::BatchedA))
-    });
-    c.bench_function("Variable MSM on Edwards-BLS12 (BatchedB)", |b| {
-        b.iter(|| VariableBaseMSM::msm(&bases, &scalars, MSMStrategy::BatchedB))
     });
 }
 
