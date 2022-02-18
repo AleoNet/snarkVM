@@ -109,21 +109,264 @@ impl<E: Environment> LoadGroup<E> {
     }
 }
 
-pub struct LoadInteger<E: Environment, I: IntegerType> {
+pub struct LoadU8<E: Environment> {
     rd: TypedRegister,
-    imm: Integer<E, I>,
+    imm: Integer<E, u8>,
 }
 
-impl<E: Environment, I: IntegerType> LoadInteger<E, I> {
+impl<E: Environment> LoadU8<E> {
     pub fn new(input: &str) -> ParserResult<Self> {
         let (input, _) = tag("loadi ")(input)?;
         let (input, rd) = TypedRegister::new(input)?;
         let (input, _) = tag(", ")(input)?;
-        let (input, imm) = Integer::<E, I>::new(input)?;
+        let (input, imm) = Integer::<E, u8>::new(input)?;
         let (input, _) = tag(";")(input)?;
         match rd.as_ref().unwrap().get_type() {
             // TODO (@pranav) Temporary until we paramaterize the integer register type
             (RegisterType::U8) => {
+                let instruction = Self { rd: rd.unwrap(), imm };
+                Ok((input, instruction))
+            }
+            _ => {
+                // TODO (@pranav) Invoking a nonsensical error kind while prototyping.
+                //   Replace with an appropriate error type.
+                Err(nom::Err::Error(VerboseError { errors: vec![(input, VerboseErrorKind::Nom(ErrorKind::Fail))] }))
+            }
+        }
+    }
+}
+
+pub struct LoadU16<E: Environment> {
+    rd: TypedRegister,
+    imm: Integer<E, u16>,
+}
+
+impl<E: Environment> LoadU16<E> {
+    pub fn new(input: &str) -> ParserResult<Self> {
+        let (input, _) = tag("loadi ")(input)?;
+        let (input, rd) = TypedRegister::new(input)?;
+        let (input, _) = tag(", ")(input)?;
+        let (input, imm) = Integer::<E, u16>::new(input)?;
+        let (input, _) = tag(";")(input)?;
+        match rd.as_ref().unwrap().get_type() {
+            // TODO (@pranav) Temporary until we paramaterize the integer register type
+            (RegisterType::U16) => {
+                let instruction = Self { rd: rd.unwrap(), imm };
+                Ok((input, instruction))
+            }
+            _ => {
+                // TODO (@pranav) Invoking a nonsensical error kind while prototyping.
+                //   Replace with an appropriate error type.
+                Err(nom::Err::Error(VerboseError { errors: vec![(input, VerboseErrorKind::Nom(ErrorKind::Fail))] }))
+            }
+        }
+    }
+}
+
+pub struct LoadU32<E: Environment> {
+    rd: TypedRegister,
+    imm: Integer<E, u32>,
+}
+
+impl<E: Environment> LoadU32<E> {
+    pub fn new(input: &str) -> ParserResult<Self> {
+        let (input, _) = tag("loadi ")(input)?;
+        let (input, rd) = TypedRegister::new(input)?;
+        let (input, _) = tag(", ")(input)?;
+        let (input, imm) = Integer::<E, u32>::new(input)?;
+        let (input, _) = tag(";")(input)?;
+        match rd.as_ref().unwrap().get_type() {
+            // TODO (@pranav) Temporary until we paramaterize the integer register type
+            (RegisterType::U32) => {
+                let instruction = Self { rd: rd.unwrap(), imm };
+                Ok((input, instruction))
+            }
+            _ => {
+                // TODO (@pranav) Invoking a nonsensical error kind while prototyping.
+                //   Replace with an appropriate error type.
+                Err(nom::Err::Error(VerboseError { errors: vec![(input, VerboseErrorKind::Nom(ErrorKind::Fail))] }))
+            }
+        }
+    }
+}
+
+pub struct LoadU64<E: Environment> {
+    rd: TypedRegister,
+    imm: Integer<E, u64>,
+}
+
+impl<E: Environment> LoadU64<E> {
+    pub fn new(input: &str) -> ParserResult<Self> {
+        let (input, _) = tag("loadi ")(input)?;
+        let (input, rd) = TypedRegister::new(input)?;
+        let (input, _) = tag(", ")(input)?;
+        let (input, imm) = Integer::<E, u64>::new(input)?;
+        let (input, _) = tag(";")(input)?;
+        match rd.as_ref().unwrap().get_type() {
+            // TODO (@pranav) Temporary until we paramaterize the integer register type
+            (RegisterType::U64) => {
+                let instruction = Self { rd: rd.unwrap(), imm };
+                Ok((input, instruction))
+            }
+            _ => {
+                // TODO (@pranav) Invoking a nonsensical error kind while prototyping.
+                //   Replace with an appropriate error type.
+                Err(nom::Err::Error(VerboseError { errors: vec![(input, VerboseErrorKind::Nom(ErrorKind::Fail))] }))
+            }
+        }
+    }
+}
+
+pub struct LoadU128<E: Environment> {
+    rd: TypedRegister,
+    imm: Integer<E, u128>,
+}
+
+impl<E: Environment> LoadU128<E> {
+    pub fn new(input: &str) -> ParserResult<Self> {
+        let (input, _) = tag("loadi ")(input)?;
+        let (input, rd) = TypedRegister::new(input)?;
+        let (input, _) = tag(", ")(input)?;
+        let (input, imm) = Integer::<E, u128>::new(input)?;
+        let (input, _) = tag(";")(input)?;
+        match rd.as_ref().unwrap().get_type() {
+            // TODO (@pranav) Temporary until we paramaterize the integer register type
+            (RegisterType::U128) => {
+                let instruction = Self { rd: rd.unwrap(), imm };
+                Ok((input, instruction))
+            }
+            _ => {
+                // TODO (@pranav) Invoking a nonsensical error kind while prototyping.
+                //   Replace with an appropriate error type.
+                Err(nom::Err::Error(VerboseError { errors: vec![(input, VerboseErrorKind::Nom(ErrorKind::Fail))] }))
+            }
+        }
+    }
+}
+
+pub struct LoadI8<E: Environment> {
+    rd: TypedRegister,
+    imm: Integer<E, i8>,
+}
+
+impl<E: Environment> LoadI8<E> {
+    pub fn new(input: &str) -> ParserResult<Self> {
+        let (input, _) = tag("loadi ")(input)?;
+        let (input, rd) = TypedRegister::new(input)?;
+        let (input, _) = tag(", ")(input)?;
+        let (input, imm) = Integer::<E, i8>::new(input)?;
+        let (input, _) = tag(";")(input)?;
+        match rd.as_ref().unwrap().get_type() {
+            // TODO (@pranav) Temporary until we paramaterize the integer register type
+            (RegisterType::I8) => {
+                let instruction = Self { rd: rd.unwrap(), imm };
+                Ok((input, instruction))
+            }
+            _ => {
+                // TODO (@pranav) Invoking a nonsensical error kind while prototyping.
+                //   Replace with an appropriate error type.
+                Err(nom::Err::Error(VerboseError { errors: vec![(input, VerboseErrorKind::Nom(ErrorKind::Fail))] }))
+            }
+        }
+    }
+}
+
+pub struct LoadI16<E: Environment> {
+    rd: TypedRegister,
+    imm: Integer<E, i16>,
+}
+
+impl<E: Environment> LoadI16<E> {
+    pub fn new(input: &str) -> ParserResult<Self> {
+        let (input, _) = tag("loadi ")(input)?;
+        let (input, rd) = TypedRegister::new(input)?;
+        let (input, _) = tag(", ")(input)?;
+        let (input, imm) = Integer::<E, i16>::new(input)?;
+        let (input, _) = tag(";")(input)?;
+        match rd.as_ref().unwrap().get_type() {
+            // TODO (@pranav) Temporary until we paramaterize the integer register type
+            (RegisterType::I16) => {
+                let instruction = Self { rd: rd.unwrap(), imm };
+                Ok((input, instruction))
+            }
+            _ => {
+                // TODO (@pranav) Invoking a nonsensical error kind while prototyping.
+                //   Replace with an appropriate error type.
+                Err(nom::Err::Error(VerboseError { errors: vec![(input, VerboseErrorKind::Nom(ErrorKind::Fail))] }))
+            }
+        }
+    }
+}
+
+pub struct LoadI32<E: Environment> {
+    rd: TypedRegister,
+    imm: Integer<E, i32>,
+}
+
+impl<E: Environment> LoadI32<E> {
+    pub fn new(input: &str) -> ParserResult<Self> {
+        let (input, _) = tag("loadi ")(input)?;
+        let (input, rd) = TypedRegister::new(input)?;
+        let (input, _) = tag(", ")(input)?;
+        let (input, imm) = Integer::<E, i32>::new(input)?;
+        let (input, _) = tag(";")(input)?;
+        match rd.as_ref().unwrap().get_type() {
+            // TODO (@pranav) Temporary until we paramaterize the integer register type
+            (RegisterType::I32) => {
+                let instruction = Self { rd: rd.unwrap(), imm };
+                Ok((input, instruction))
+            }
+            _ => {
+                // TODO (@pranav) Invoking a nonsensical error kind while prototyping.
+                //   Replace with an appropriate error type.
+                Err(nom::Err::Error(VerboseError { errors: vec![(input, VerboseErrorKind::Nom(ErrorKind::Fail))] }))
+            }
+        }
+    }
+}
+
+pub struct LoadI64<E: Environment> {
+    rd: TypedRegister,
+    imm: Integer<E, i64>,
+}
+
+impl<E: Environment> LoadI64<E> {
+    pub fn new(input: &str) -> ParserResult<Self> {
+        let (input, _) = tag("loadi ")(input)?;
+        let (input, rd) = TypedRegister::new(input)?;
+        let (input, _) = tag(", ")(input)?;
+        let (input, imm) = Integer::<E, i64>::new(input)?;
+        let (input, _) = tag(";")(input)?;
+        match rd.as_ref().unwrap().get_type() {
+            // TODO (@pranav) Temporary until we paramaterize the integer register type
+            (RegisterType::I64) => {
+                let instruction = Self { rd: rd.unwrap(), imm };
+                Ok((input, instruction))
+            }
+            _ => {
+                // TODO (@pranav) Invoking a nonsensical error kind while prototyping.
+                //   Replace with an appropriate error type.
+                Err(nom::Err::Error(VerboseError { errors: vec![(input, VerboseErrorKind::Nom(ErrorKind::Fail))] }))
+            }
+        }
+    }
+}
+
+pub struct LoadI128<E: Environment> {
+    rd: TypedRegister,
+    imm: Integer<E, i128>,
+}
+
+impl<E: Environment> LoadI128<E> {
+    pub fn new(input: &str) -> ParserResult<Self> {
+        let (input, _) = tag("loadi ")(input)?;
+        let (input, rd) = TypedRegister::new(input)?;
+        let (input, _) = tag(", ")(input)?;
+        let (input, imm) = Integer::<E, i128>::new(input)?;
+        let (input, _) = tag(";")(input)?;
+        match rd.as_ref().unwrap().get_type() {
+            // TODO (@pranav) Temporary until we paramaterize the integer register type
+            (RegisterType::I128) => {
                 let instruction = Self { rd: rd.unwrap(), imm };
                 Ok((input, instruction))
             }
@@ -185,7 +428,7 @@ mod tests {
         assert_eq!(3, load_instruction.rd.get_id());
         assert_eq!(RegisterType::Group, load_instruction.rd.get_type());
 
-        let (_, load_instruction) = LoadInteger::<E, u8>::new("loadi u8.r3, 255u8;").unwrap();
+        let (_, load_instruction) = LoadU8::<E>::new("loadi u8.r3, 255u8;").unwrap();
         assert_eq!(3, load_instruction.rd.get_id());
         assert_eq!(RegisterType::U8, load_instruction.rd.get_type());
 
@@ -195,7 +438,7 @@ mod tests {
     }
 
     #[test]
-    fn test_malformed_add() {
+    fn test_malformed_load() {
         todo!()
     }
 }

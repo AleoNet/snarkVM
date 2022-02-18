@@ -24,14 +24,17 @@ use nom::{
     sequence::terminated,
 };
 use snarkvm_circuits::{Environment, IntegerType};
+use nom::multi::separated_list0;
 
-pub struct Program<E: Environment, I: IntegerType> {
-    instructions: Vec<Instruction<E, I>>,
+pub struct Program<E: Environment> {
+    instructions: Vec<Instruction<E>>,
 }
 
-impl<E: Environment, I: IntegerType> Program<E, I> {
+// TODO (@pranav) More robustness in the parser. Generally true all over the codebase.
+impl<E: Environment> Program<E> {
     pub fn new(input: &str) -> ParserResult<Self> {
-        todo!()
+        let (input, instructions) = separated_list0(tag(" "), Instruction::new)(input)?;
+        Ok((input, Self { instructions }))
     }
 }
 
@@ -39,10 +42,15 @@ impl<E: Environment, I: IntegerType> Program<E, I> {
 mod tests {
     use super::*;
     use core::str::FromStr;
+    use snarkvm_circuits::Circuit;
 
     #[test]
     fn test_program_new() {
         // TODO (@pranav)
         //  This is just a sanity check. Need to construct a comprehensive test framework.
+        type E = Circuit;
+        let (input, program) = Program::<E>::new("loadi u8.r1, 1u8; loadi u8.r2, 2u8; addw u8.r3, u8.r2, u8.r1;").unwrap();
+        println!("{:?}", input);
+        assert_eq!(3, program.instructions.len());
     }
 }
