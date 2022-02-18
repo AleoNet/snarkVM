@@ -50,6 +50,16 @@ fn variable_base_bls12_377(c: &mut Criterion) {
         b.iter(|| VariableBase::msm(&bases[..size], &scalars[..size]))
     });
 
+    let size = 300000;
+    c.bench_function("Variable MSM on BLS12-377 (300,000)", |b| {
+        b.iter(|| VariableBase::msm(&bases[..size], &scalars[..size]))
+    });
+
+    let size = 400000;
+    c.bench_function("Variable MSM on BLS12-377 (400,000)", |b| {
+        b.iter(|| VariableBase::msm(&bases[..size], &scalars[..size]))
+    });
+
     let size = 500000;
     c.bench_function("Variable MSM on BLS12-377 (500,000)", |b| {
         b.iter(|| VariableBase::msm(&bases[..size], &scalars[..size]))

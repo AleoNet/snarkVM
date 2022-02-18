@@ -22,3 +22,6 @@ pub mod twisted_edwards_extended;
 /// Macros for implementing serialization and deserialization
 #[macro_use]
 pub mod macros;
+
+#[cfg(target_arch = "x86_64")]
+pub mod prefetch;
