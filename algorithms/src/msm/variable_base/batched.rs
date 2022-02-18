@@ -19,7 +19,6 @@ use snarkvm_fields::{PrimeField, Zero};
 use snarkvm_utilities::{cfg_into_iter, BigInteger};
 
 use core::cmp::Ordering;
-use voracious_radix_sort::*;
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -35,24 +34,23 @@ pub struct BucketPosition {
     pub scalar_index: u32,
 }
 
-impl PartialOrd for BucketPosition {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.bucket_index.partial_cmp(&other.bucket_index)
-    }
-}
-
-impl Radixable<u32> for BucketPosition {
-    type Key = u32;
-
-    #[inline]
-    fn key(&self) -> Self::Key {
-        self.bucket_index
-    }
-}
+impl Eq for BucketPosition {}
 
 impl PartialEq for BucketPosition {
     fn eq(&self, other: &Self) -> bool {
         self.bucket_index == other.bucket_index
+    }
+}
+
+impl Ord for BucketPosition {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.bucket_index.cmp(&other.bucket_index)
+    }
+}
+
+impl PartialOrd for BucketPosition {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        self.bucket_index.partial_cmp(&other.bucket_index)
     }
 }
 
@@ -61,7 +59,7 @@ pub fn batch_add<G: AffineCurve>(num_buckets: usize, bases: &[G], bucket_positio
     // assert_eq!(elems.len(), bucket_positions.len());
     assert!(!bases.is_empty());
 
-    dlsd_radixsort(bucket_positions, 8);
+    bucket_positions.sort_unstable();
 
     let mut num_scalars = bucket_positions.len();
     let mut all_ones = true;

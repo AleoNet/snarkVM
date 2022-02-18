@@ -155,9 +155,6 @@ version = "1.9"
 [dependencies.rand]
 version = "0.8"
 
-[dependencies.voracious_radix_sort]
-version = "1.1"
-
 [dependencies.rand_core]
 version = "0.6"
 default-features = false
