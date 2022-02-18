@@ -211,7 +211,7 @@ impl<P: Fp384Parameters> Field for Fp384<P> {
         // This doesn't result in a carry since `MODULUS` is at most 383 bits.
         two_inv.add_nocarry(&1u64.into());
         two_inv.div2();
-        -Self::from_repr(two_inv).unwrap()
+        Self::from_repr(two_inv).unwrap()
     }
 
     #[inline]

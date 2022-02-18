@@ -154,6 +154,11 @@ fn test_fq_repr_is_zero() {
 }
 
 #[test]
+fn test_fq_is_half() {
+    assert_eq!(Fq::half(), Fq::one().double().inverse().unwrap());
+}
+
+#[test]
 fn test_fq_repr_num_bits() {
     let mut a = BigInteger384::from(0);
     assert_eq!(0, a.num_bits());
