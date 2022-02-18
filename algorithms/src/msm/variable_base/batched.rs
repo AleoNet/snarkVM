@@ -72,6 +72,8 @@ const fn batch_size(msm_size: usize) -> usize {
     }
 }
 
+/// If `(j, k)` is the `i`-th entry in `index`, then this method sets
+/// `bases[j] = bases[j] + bases[k]`. The state of `bases[k]` becomes unspecified.
 #[inline]
 fn batch_add_in_place_same_slice<G: AffineCurve>(bases: &mut [G], index: &[(u32, u32)]) {
     let mut inversion_tmp = G::BaseField::one();
@@ -119,10 +121,16 @@ fn batch_add_in_place_same_slice<G: AffineCurve>(bases: &mut [G], index: &[(u32,
     }
 }
 
+/// If `(j, k)` is the `i`-th entry in `index`, then this method performs one of
+/// two actions:
+/// * `addition_result[i] = bases[j] + bases[k]`
+/// * `addition_result[i] = bases[j];
+///
+/// It uses `scratch_space` to store intermediate values, and clears it after use.
 fn batch_add_write<G: AffineCurve>(
     bases: &[G],
     index: &[(u32, u32)],
-    new_bases: &mut Vec<G>,
+    addition_result: &mut Vec<G>,
     scratch_space: &mut Vec<Option<G>>,
 ) {
     let mut inversion_tmp = G::BaseField::one();
@@ -139,19 +147,19 @@ fn batch_add_write<G: AffineCurve>(
         prefetch_slice_write!(G, bases, bases, prefetch_iter);
 
         if *idy == !0u32 {
-            new_bases.push(bases[*idx as usize]);
+            addition_result.push(bases[*idx as usize]);
             scratch_space.push(None);
         } else {
             let (mut a, mut b) = (bases[*idx as usize], bases[*idy as usize]);
             G::batch_add_loop_1(&mut a, &mut b, &mut half, &mut inversion_tmp);
-            new_bases.push(a);
+            addition_result.push(a);
             scratch_space.push(Some(b));
         }
     }
 
     inversion_tmp = inversion_tmp.inverse().unwrap(); // this is always in Fp*
 
-    for (a, op_b) in new_bases.iter_mut().rev().zip(scratch_space.iter().rev()) {
+    for (a, op_b) in addition_result.iter_mut().rev().zip(scratch_space.iter().rev()) {
         match op_b {
             Some(b) => {
                 G::batch_add_loop_2(a, *b, &mut inversion_tmp);
