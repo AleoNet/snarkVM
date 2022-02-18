@@ -15,13 +15,14 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_curves::{traits::AffineCurve, Group, ProjectiveCurve};
-use snarkvm_fields::{PrimeField, Zero};
+use snarkvm_fields::{Field, One, PrimeField, Zero};
 use snarkvm_utilities::{cfg_into_iter, BigInteger};
-
-use core::cmp::Ordering;
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
+
+#[cfg(target_arch = "x86_64")]
+use crate::{prefetch_slice, prefetch_slice_write};
 
 #[derive(Copy, Clone, Debug)]
 pub struct BucketPosition {
@@ -38,13 +39,13 @@ impl PartialEq for BucketPosition {
 }
 
 impl Ord for BucketPosition {
-    fn cmp(&self, other: &Self) -> Ordering {
+    fn cmp(&self, other: &Self) -> core::cmp::Ordering {
         self.bucket_index.cmp(&other.bucket_index)
     }
 }
 
 impl PartialOrd for BucketPosition {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
         self.bucket_index.partial_cmp(&other.bucket_index)
     }
 }
@@ -52,15 +53,15 @@ impl PartialOrd for BucketPosition {
 /// Returns a batch size of sufficient size to amortise the cost of an inversion,
 /// while attempting to reduce strain to the CPU cache.
 #[inline]
-pub const fn batch_size(msm_size: usize) -> usize {
-    // These values are determined empirically based on performance benchmarks
+const fn batch_size(msm_size: usize) -> usize {
+    // These values are determined empirically using performance benchmarks for BLS12-377
     // on Intel, AMD, and M1 machines. These values are determined by taking the
     // L1 and L2 cache sizes and dividing them by the size of group elements (i.e. 96 bytes).
     //
     // As the algorithm itself requires caching additional values beyond the group elements,
     // the ideal batch size is less than expectations, to accommodate those values.
     // In general, it was found that undershooting is better than overshooting this heuristic.
-    if msm_size < 500_000 {
+    if cfg!(target_arch = "x86_64") && msm_size < 500_000 {
         // Assumes an L1 cache size of 32KiB. Note that larger cache sizes
         // are not negatively impacted by this value, however smaller L1 cache sizes are.
         300
@@ -72,7 +73,101 @@ pub const fn batch_size(msm_size: usize) -> usize {
 }
 
 #[inline]
-pub fn batch_add<G: AffineCurve>(num_buckets: usize, bases: &[G], bucket_positions: &mut [BucketPosition]) -> Vec<G> {
+fn batch_add_in_place_same_slice<G: AffineCurve>(bases: &mut [G], index: &[(u32, u32)]) {
+    let mut inversion_tmp = G::BaseField::one();
+    let mut half = None;
+
+    #[cfg(target_arch = "x86_64")]
+    let mut prefetch_iter = index.iter();
+    #[cfg(target_arch = "x86_64")]
+    prefetch_iter.next();
+
+    // We run two loops over the data separated by an inversion
+    for (idx, idy) in index.iter() {
+        #[cfg(target_arch = "x86_64")]
+        prefetch_slice!(G, bases, bases, prefetch_iter);
+
+        let (mut a, mut b) = if idx < idy {
+            let (x, y) = bases.split_at_mut(*idy as usize);
+            (&mut x[*idx as usize], &mut y[0])
+        } else {
+            let (x, y) = bases.split_at_mut(*idx as usize);
+            (&mut y[0], &mut x[*idy as usize])
+        };
+        G::batch_add_loop_1(&mut a, &mut b, &mut half, &mut inversion_tmp);
+    }
+
+    inversion_tmp = inversion_tmp.inverse().unwrap(); // this is always in Fp*
+
+    #[cfg(target_arch = "x86_64")]
+    let mut prefetch_iter = index.iter().rev();
+    #[cfg(target_arch = "x86_64")]
+    prefetch_iter.next();
+
+    for (idx, idy) in index.iter().rev() {
+        #[cfg(target_arch = "x86_64")]
+        prefetch_slice!(G, bases, bases, prefetch_iter);
+
+        let (mut a, b) = if idx < idy {
+            let (x, y) = bases.split_at_mut(*idy as usize);
+            (&mut x[*idx as usize], y[0])
+        } else {
+            let (x, y) = bases.split_at_mut(*idx as usize);
+            (&mut y[0], x[*idy as usize])
+        };
+        G::batch_add_loop_2(a, b, &mut inversion_tmp);
+    }
+}
+
+fn batch_add_write<G: AffineCurve>(
+    bases: &[G],
+    index: &[(u32, u32)],
+    new_bases: &mut Vec<G>,
+    scratch_space: &mut Vec<Option<G>>,
+) {
+    let mut inversion_tmp = G::BaseField::one();
+    let mut half = None;
+
+    #[cfg(target_arch = "x86_64")]
+    let mut prefetch_iter = index.iter();
+    #[cfg(target_arch = "x86_64")]
+    prefetch_iter.next();
+
+    // We run two loops over the data separated by an inversion
+    for (idx, idy) in index.iter() {
+        #[cfg(target_arch = "x86_64")]
+        prefetch_slice_write!(G, bases, bases, prefetch_iter);
+
+        if *idy == !0u32 {
+            new_bases.push(bases[*idx as usize]);
+            scratch_space.push(None);
+        } else {
+            let (mut a, mut b) = (bases[*idx as usize], bases[*idy as usize]);
+            G::batch_add_loop_1(&mut a, &mut b, &mut half, &mut inversion_tmp);
+            new_bases.push(a);
+            scratch_space.push(Some(b));
+        }
+    }
+
+    inversion_tmp = inversion_tmp.inverse().unwrap(); // this is always in Fp*
+
+    for (a, op_b) in new_bases.iter_mut().rev().zip(scratch_space.iter().rev()) {
+        match op_b {
+            Some(b) => {
+                G::batch_add_loop_2(a, *b, &mut inversion_tmp);
+            }
+            None => (),
+        };
+    }
+    scratch_space.clear();
+}
+
+#[inline]
+pub(super) fn batch_add<G: AffineCurve>(
+    num_buckets: usize,
+    bases: &[G],
+    bucket_positions: &mut [BucketPosition],
+) -> Vec<G> {
     // assert_eq!(elems.len(), bucket_positions.len());
     assert!(!bases.is_empty());
 
@@ -90,8 +185,8 @@ pub fn batch_add<G: AffineCurve>(num_buckets: usize, bases: &[G], bucket_positio
     let mut number_of_bases_in_batch = 0;
 
     let mut instr = Vec::<(u32, u32)>::with_capacity(batch_size);
-    let mut new_bases = Vec::<G>::with_capacity(bases.len() * 3 / 8);
-    let mut scratch_space = Vec::<Option<G>>::with_capacity(batch_size / 2);
+    let mut new_bases = Vec::with_capacity(bases.len() * 3 / 8);
+    let mut scratch_space = Vec::with_capacity(batch_size / 2);
 
     // In the first loop, copy the results of the first in-place addition tree to the vector `new_bases`.
     while global_counter < num_scalars {
@@ -131,7 +226,7 @@ pub fn batch_add<G: AffineCurve>(num_buckets: usize, bases: &[G], bucket_positio
             if number_of_bases_in_batch >= batch_size / 2 {
                 // We need instructions for copying data in the case of noops.
                 // We encode noops/copies as !0u32
-                G::batch_add_write(bases, &instr, &mut new_bases, &mut scratch_space);
+                batch_add_write(bases, &instr, &mut new_bases, &mut scratch_space);
 
                 instr.clear();
                 number_of_bases_in_batch = 0;
@@ -144,7 +239,7 @@ pub fn batch_add<G: AffineCurve>(num_buckets: usize, bases: &[G], bucket_positio
         global_counter += 1;
     }
     if !instr.is_empty() {
-        G::batch_add_write(bases, &instr, &mut new_bases, &mut scratch_space);
+        batch_add_write(bases, &instr, &mut new_bases, &mut scratch_space);
         instr.clear();
     }
     global_counter = 0;
@@ -189,7 +284,7 @@ pub fn batch_add<G: AffineCurve>(num_buckets: usize, bases: &[G], bucket_positio
                 local_counter = 1;
 
                 if number_of_bases_in_batch >= batch_size / 2 {
-                    G::batch_add_in_place_same_slice(&mut new_bases, &instr);
+                    batch_add_in_place_same_slice(&mut new_bases, &instr);
                     instr.clear();
                     number_of_bases_in_batch = 0;
                 }
@@ -201,7 +296,7 @@ pub fn batch_add<G: AffineCurve>(num_buckets: usize, bases: &[G], bucket_positio
         }
         // If there are any remaining unprocessed instructions, proceed to perform batch addition.
         if !instr.is_empty() {
-            G::batch_add_in_place_same_slice(&mut new_bases, &instr);
+            batch_add_in_place_same_slice(&mut new_bases, &instr);
             instr.clear();
         }
         global_counter = 0;
@@ -211,7 +306,7 @@ pub fn batch_add<G: AffineCurve>(num_buckets: usize, bases: &[G], bucket_positio
         new_len = 0;
     }
 
-    let mut res = vec![G::zero(); num_buckets];
+    let mut res = vec![Zero::zero(); num_buckets];
     for bucket_position in bucket_positions.iter().take(num_scalars) {
         res[bucket_position.bucket_index as usize] = new_bases[bucket_position.scalar_index as usize];
     }
@@ -245,7 +340,7 @@ fn batched_window<G: AffineCurve>(
         })
         .collect();
 
-    let buckets = batch_add::<G>(num_buckets, bases, &mut bucket_positions);
+    let buckets = batch_add(num_buckets, &bases, &mut bucket_positions);
 
     let mut res = G::Projective::zero();
     let mut running_sum = G::Projective::zero();

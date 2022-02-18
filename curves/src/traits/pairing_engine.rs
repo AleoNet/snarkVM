@@ -223,19 +223,16 @@ pub trait AffineCurve:
     /// Checks that the current point is on the elliptic curve.
     fn is_on_curve(&self) -> bool;
 
-    /// Mutates bases in place and stores result in the first operand.
-    /// The element corresponding to the second operand becomes junk data.
-    fn batch_add_in_place_same_slice(bases: &mut [Self], index: &[(u32, u32)]);
-
-    /// Lookups up group elements according to index, and either adds and writes or simply
-    /// writes them to new_bases, using scratch space to store intermediate values. Scratch
-    /// space is always cleared after use.
-    fn batch_add_write(
-        bases: &[Self],
-        index: &[(u32, u32)],
-        new_bases: &mut Vec<Self>,
-        scratch_space: &mut Vec<Option<Self>>,
+    /// Performs the first half of batch addition in-place.
+    fn batch_add_loop_1(
+        a: &mut Self,
+        b: &mut Self,
+        _half: &mut Option<Self::BaseField>,
+        inversion_tmp: &mut Self::BaseField,
     );
+
+    /// Performs the second half of batch addition in-place.
+    fn batch_add_loop_2(a: &mut Self, b: Self, inversion_tmp: &mut Self::BaseField);
 }
 
 pub trait PairingCurve: AffineCurve {

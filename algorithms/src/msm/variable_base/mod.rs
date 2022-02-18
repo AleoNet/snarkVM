@@ -20,6 +20,9 @@ mod standard;
 #[cfg(all(feature = "cuda", target_arch = "x86_64"))]
 mod cuda;
 
+#[cfg(target_arch = "x86_64")]
+pub mod prefetch;
+
 use snarkvm_curves::{bls12_377::G1Affine, traits::AffineCurve};
 use snarkvm_fields::PrimeField;
 

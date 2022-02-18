@@ -41,73 +41,6 @@ use std::{
     ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
-#[cfg(target_arch = "x86_64")]
-use crate::{prefetch_slice, prefetch_slice_write};
-
-/// A macro which computes:
-///     `lambda` := `(y2 - y1) / (x2 - x1)`,
-/// for two given affine points.
-macro_rules! batch_add_loop_1 {
-    ($a: ident, $b: ident, $half: ident, $inversion_tmp: ident) => {
-        if $a.is_zero() || $b.is_zero() {
-            ();
-        } else if $a.x == $b.x {
-            // Double
-            // In our model, we consider self additions rare.
-            // So we consider it inconsequential to make them more expensive
-            // This costs 1 modular mul more than a standard squaring,
-            // and one amortised inversion
-            if $a.y == $b.y {
-                // Compute one half (1/2) and cache it.
-                $half = match $half {
-                    None => P::BaseField::one().double().inverse(),
-                    _ => $half,
-                };
-                let h = $half.unwrap();
-
-                let x_sq = $b.x.square();
-                $b.x -= &$b.y; // x - y
-                $a.x = $b.y.double(); // denominator = 2y
-                $a.y = x_sq.double() + &x_sq + &P::COEFF_A; // numerator = 3x^2 + a
-                $b.y -= &(h * &$a.y); // y - (3x^2 + a)/2
-                $a.y *= &$inversion_tmp; // (3x^2 + a) * tmp
-                $inversion_tmp *= &$a.x; // update tmp
-            } else {
-                // No inversions take place if either operand is zero
-                $a.infinity = true;
-                $b.infinity = true;
-            }
-        } else {
-            // We can recover x1 + x2 from this. Note this is never 0.
-            $a.x -= &$b.x; // denominator = x1 - x2
-            $a.y -= &$b.y; // numerator = y1 - y2
-            $a.y *= &$inversion_tmp; // (y1 - y2)*tmp
-            $inversion_tmp *= &$a.x // update tmp
-        }
-    };
-}
-
-/// A macro which computes:
-///     `x3` := `lambda^2 - x1 - x2`
-///     `y3` := `lambda * (x1 - x3) - y1`.
-macro_rules! batch_add_loop_2 {
-    ($a: ident, $b: ident, $inversion_tmp: ident) => {
-        if $a.is_zero() {
-            *$a = $b;
-        } else if !$b.is_zero() {
-            let lambda = $a.y * &$inversion_tmp;
-            $inversion_tmp *= &$a.x; // Remove the top layer of the denominator
-
-            // x3 = l^2 - x1 - x2 or for squaring: 2y + l^2 + 2x - 2y = l^2 - 2x
-            $a.x += &$b.x.double();
-            $a.x = lambda.square() - &$a.x;
-            // y3 = l*(x2 - x3) - y2 or
-            // for squaring: (3x^2 + a)/2y(x - y - x3) - (y - (3x^2 + a)/2) = l*(x - x3) - y
-            $a.y = lambda * &($b.x - &$a.x) - &$b.y;
-        }
-    };
-}
-
 #[derive(Derivative, Serialize, Deserialize)]
 #[derivative(
     Copy(bound = "P: Parameters"),
@@ -255,95 +188,69 @@ impl<P: Parameters> AffineCurve for Affine<P> {
         }
     }
 
-    #[inline]
-    fn batch_add_in_place_same_slice(bases: &mut [Self], index: &[(u32, u32)]) {
-        let mut inversion_tmp = P::BaseField::one();
-        let mut half = None;
+    /// Performs the first half of batch addition in-place:
+    ///     `lambda` := `(y2 - y1) / (x2 - x1)`,
+    /// for two given affine points.
+    fn batch_add_loop_1(
+        a: &mut Self,
+        b: &mut Self,
+        half: &mut Option<Self::BaseField>,
+        inversion_tmp: &mut Self::BaseField,
+    ) {
+        if a.is_zero() || b.is_zero() {
+            ();
+        } else if a.x == b.x {
+            // Double
+            // In our model, we consider self additions rare.
+            // So we consider it inconsequential to make them more expensive
+            // This costs 1 modular mul more than a standard squaring,
+            // and one amortised inversion
+            if a.y == b.y {
+                // Compute one half (1/2) and cache it.
+                *half = match half {
+                    None => Self::BaseField::one().double().inverse(),
+                    _ => *half,
+                };
+                let h = half.unwrap();
 
-        #[cfg(target_arch = "x86_64")]
-        let mut prefetch_iter = index.iter();
-        #[cfg(target_arch = "x86_64")]
-        prefetch_iter.next();
-
-        // We run two loops over the data separated by an inversion
-        for (idx, idy) in index.iter() {
-            #[cfg(target_arch = "x86_64")]
-            prefetch_slice!(bases, bases, prefetch_iter);
-
-            let (mut a, mut b) = if idx < idy {
-                let (x, y) = bases.split_at_mut(*idy as usize);
-                (&mut x[*idx as usize], &mut y[0])
+                let x_sq = b.x.square();
+                b.x -= &b.y; // x - y
+                a.x = b.y.double(); // denominator = 2y
+                a.y = x_sq.double() + &x_sq + &P::COEFF_A; // numerator = 3x^2 + a
+                b.y -= &(h * &a.y); // y - (3x^2 + a)/2
+                a.y *= *inversion_tmp; // (3x^2 + a) * tmp
+                *inversion_tmp *= &a.x; // update tmp
             } else {
-                let (x, y) = bases.split_at_mut(*idx as usize);
-                (&mut y[0], &mut x[*idy as usize])
-            };
-            batch_add_loop_1!(a, b, half, inversion_tmp);
-        }
-
-        inversion_tmp = inversion_tmp.inverse().unwrap(); // this is always in Fp*
-
-        #[cfg(target_arch = "x86_64")]
-        let mut prefetch_iter = index.iter().rev();
-        #[cfg(target_arch = "x86_64")]
-        prefetch_iter.next();
-
-        for (idx, idy) in index.iter().rev() {
-            #[cfg(target_arch = "x86_64")]
-            prefetch_slice!(bases, bases, prefetch_iter);
-
-            let (mut a, b) = if idx < idy {
-                let (x, y) = bases.split_at_mut(*idy as usize);
-                (&mut x[*idx as usize], y[0])
-            } else {
-                let (x, y) = bases.split_at_mut(*idx as usize);
-                (&mut y[0], x[*idy as usize])
-            };
-            batch_add_loop_2!(a, b, inversion_tmp);
+                // No inversions take place if either operand is zero
+                a.infinity = true;
+                b.infinity = true;
+            }
+        } else {
+            // We can recover x1 + x2 from this. Note this is never 0.
+            a.x -= &b.x; // denominator = x1 - x2
+            a.y -= &b.y; // numerator = y1 - y2
+            a.y *= *inversion_tmp; // (y1 - y2)*tmp
+            *inversion_tmp *= &a.x // update tmp
         }
     }
 
-    fn batch_add_write(
-        bases: &[Self],
-        index: &[(u32, u32)],
-        new_bases: &mut Vec<Self>,
-        scratch_space: &mut Vec<Option<Self>>,
-    ) {
-        let mut inversion_tmp = P::BaseField::one();
-        let mut half = None;
+    /// Performs the second half of batch addition in-place:
+    ///     `x3` := `lambda^2 - x1 - x2`
+    ///     `y3` := `lambda * (x1 - x3) - y1`.
+    fn batch_add_loop_2(a: &mut Self, b: Self, inversion_tmp: &mut Self::BaseField) {
+        if a.is_zero() {
+            *a = b;
+        } else if !b.is_zero() {
+            let lambda = a.y * *inversion_tmp;
+            *inversion_tmp *= &a.x; // Remove the top layer of the denominator
 
-        #[cfg(target_arch = "x86_64")]
-        let mut prefetch_iter = index.iter();
-        #[cfg(target_arch = "x86_64")]
-        prefetch_iter.next();
-
-        // We run two loops over the data separated by an inversion
-        for (idx, idy) in index.iter() {
-            #[cfg(target_arch = "x86_64")]
-            prefetch_slice_write!(bases, bases, prefetch_iter);
-
-            if *idy == !0u32 {
-                new_bases.push(bases[*idx as usize]);
-                scratch_space.push(None);
-            } else {
-                let (mut a, mut b) = (bases[*idx as usize], bases[*idy as usize]);
-                batch_add_loop_1!(a, b, half, inversion_tmp);
-                new_bases.push(a);
-                scratch_space.push(Some(b));
-            }
+            // x3 = l^2 - x1 - x2 or for squaring: 2y + l^2 + 2x - 2y = l^2 - 2x
+            a.x += &b.x.double();
+            a.x = lambda.square() - &a.x;
+            // y3 = l*(x2 - x3) - y2 or
+            // for squaring: (3x^2 + a)/2y(x - y - x3) - (y - (3x^2 + a)/2) = l*(x - x3) - y
+            a.y = lambda * &(b.x - &a.x) - &b.y;
         }
-
-        inversion_tmp = inversion_tmp.inverse().unwrap(); // this is always in Fp*
-
-        for (a, op_b) in new_bases.iter_mut().rev().zip(scratch_space.iter().rev()) {
-            match op_b {
-                Some(b) => {
-                    let b_ = *b;
-                    batch_add_loop_2!(a, b_, inversion_tmp);
-                }
-                None => (),
-            };
-        }
-        scratch_space.clear();
     }
 }
 
