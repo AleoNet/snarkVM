@@ -36,15 +36,14 @@ fn variable_base_bls12_377(c: &mut Criterion) {
     use snarkvm_curves::bls12_377::{Fr, G1Affine};
     let (bases, scalars) = create_scalar_bases::<G1Affine, Fr>(100000);
 
-    c.bench_function("Variable MSM on BLS12-377 (Standard)", |b| b.iter(|| VariableBase::msm(&bases, &scalars)));
-    c.bench_function("Variable MSM on BLS12-377 (Batched)", |b| b.iter(|| VariableBase::msm(&bases, &scalars)));
+    c.bench_function("Variable MSM on BLS12-377", |b| b.iter(|| VariableBase::msm(&bases, &scalars)));
 }
 
 fn variable_base_edwards_bls12(c: &mut Criterion) {
     use snarkvm_curves::edwards_bls12::{EdwardsAffine, Fr};
     let (bases, scalars) = create_scalar_bases::<EdwardsAffine, Fr>(100000);
 
-    c.bench_function("Variable MSM on Edwards-BLS12 (Standard)", |b| b.iter(|| VariableBase::msm(&bases, &scalars)));
+    c.bench_function("Variable MSM on Edwards-BLS12", |b| b.iter(|| VariableBase::msm(&bases, &scalars)));
 }
 
 criterion_group! {

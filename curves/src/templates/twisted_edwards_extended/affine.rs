@@ -41,9 +41,6 @@ use std::{
     ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
-#[cfg(target_arch = "x86_64")]
-use crate::prefetch_slice;
-
 macro_rules! batch_add_loop_1 {
     ($a: ident, $b: ident, $inversion_tmp: ident) => {
         if $a.is_zero() || $b.is_zero() {
@@ -265,15 +262,8 @@ impl<P: Parameters> AffineCurve for Affine<P> {
     fn batch_add_in_place_same_slice(bases: &mut [Self], index: &[(u32, u32)]) {
         let mut inversion_tmp = P::BaseField::one();
 
-        #[cfg(target_arch = "x86_64")]
-        let mut prefetch_iter = index.iter();
-        #[cfg(target_arch = "x86_64")]
-        prefetch_iter.next();
-
         // We run two loops over the data separated by an inversion
         for (idx, idy) in index.iter() {
-            #[cfg(target_arch = "x86_64")]
-            prefetch_slice!(bases, bases, prefetch_iter);
             let (mut a, mut b) = if idx < idy {
                 let (x, y) = bases.split_at_mut(*idy as usize);
                 (&mut x[*idx as usize], &mut y[0])
@@ -286,15 +276,8 @@ impl<P: Parameters> AffineCurve for Affine<P> {
 
         inversion_tmp = inversion_tmp.inverse().unwrap(); // this is always in Fp*
 
-        #[cfg(target_arch = "x86_64")]
-        let mut prefetch_iter = index.iter().rev();
-        #[cfg(target_arch = "x86_64")]
-        prefetch_iter.next();
-
         for (idx, idy) in index.iter().rev() {
-            #[cfg(target_arch = "x86_64")]
-            prefetch_slice!(bases, bases, prefetch_iter);
-            let (mut a, b) = if idx < idy {
+            let (a, b) = if idx < idy {
                 let (x, y) = bases.split_at_mut(*idy as usize);
                 (&mut x[*idx as usize], y[0])
             } else {

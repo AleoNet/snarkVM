@@ -77,10 +77,7 @@ fn standard_window<G: AffineCurve>(
     (res, window_size)
 }
 
-pub(super) fn msm<G: AffineCurve>(
-    bases: &[G],
-    scalars: &[<G::ScalarField as PrimeField>::BigInteger],
-) -> G::Projective {
+pub fn msm<G: AffineCurve>(bases: &[G], scalars: &[<G::ScalarField as PrimeField>::BigInteger]) -> G::Projective {
     // Determine the bucket size `c` (chosen empirically).
     let c = match scalars.len() < 32 {
         true => 1,

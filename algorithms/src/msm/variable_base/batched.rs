@@ -112,7 +112,7 @@ pub fn batch_add<G: AffineCurve>(num_buckets: usize, bases: &[G], bucket_positio
             if number_of_bases_in_batch >= BATCH_SIZE / 2 {
                 // We need instructions for copying data in the case of noops.
                 // We encode noops/copies as !0u32
-                G::batch_add_write(&bases, &instr, &mut new_bases, &mut scratch_space);
+                G::batch_add_write(bases, &instr, &mut new_bases, &mut scratch_space);
 
                 instr.clear();
                 number_of_bases_in_batch = 0;
@@ -125,7 +125,7 @@ pub fn batch_add<G: AffineCurve>(num_buckets: usize, bases: &[G], bucket_positio
         global_counter += 1;
     }
     if !instr.is_empty() {
-        G::batch_add_write(&bases, &instr, &mut new_bases, &mut scratch_space);
+        G::batch_add_write(bases, &instr, &mut new_bases, &mut scratch_space);
         instr.clear();
     }
     global_counter = 0;
@@ -199,6 +199,7 @@ pub fn batch_add<G: AffineCurve>(num_buckets: usize, bases: &[G], bucket_positio
     res
 }
 
+#[inline]
 fn batched_window<G: AffineCurve>(
     bases: &[G],
     scalars: &[<G::ScalarField as PrimeField>::BigInteger],
@@ -237,10 +238,7 @@ fn batched_window<G: AffineCurve>(
     (res, window_size)
 }
 
-pub(super) fn msm<G: AffineCurve>(
-    bases: &[G],
-    scalars: &[<G::ScalarField as PrimeField>::BigInteger],
-) -> G::Projective {
+pub fn msm<G: AffineCurve>(bases: &[G], scalars: &[<G::ScalarField as PrimeField>::BigInteger]) -> G::Projective {
     // Determine the bucket size `c` (chosen empirically).
     let c = match scalars.len() < 32 {
         true => 1,
