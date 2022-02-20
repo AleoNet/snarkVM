@@ -280,6 +280,7 @@ pub fn field_test<F: Field>(a: F, b: F) {
     assert_eq!((a + b) + a, a + (b + a));
     // (a + b).double() = (a + b) + (b + a)
     assert_eq!((a + b).double(), (a + b) + (b + a));
+    assert_eq!(F::half(), F::one().double().inverse().unwrap());
 
     // a * 0 = 0
     assert_eq!(a * zero, zero);

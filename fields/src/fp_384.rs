@@ -195,8 +195,18 @@ impl<P: Fp384Parameters> One for Fp384<P> {
 }
 
 impl<P: Fp384Parameters> Field for Fp384<P> {
+    type BasePrimeField = Self;
+
     // 384/64 = 6 limbs.
     impl_field_from_random_bytes_with_flags!(6);
+
+    fn from_base_prime_field(other: Self::BasePrimeField) -> Self {
+        other
+    }
+
+    fn half() -> Self {
+        Self::one().double().inverse().unwrap()
+    }
 
     #[inline]
     fn double(&self) -> Self {

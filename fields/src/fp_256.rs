@@ -161,8 +161,19 @@ impl<P: Fp256Parameters> One for Fp256<P> {
 }
 
 impl<P: Fp256Parameters> Field for Fp256<P> {
+    type BasePrimeField = Self;
+
     // 256/64 = 4 limbs.
     impl_field_from_random_bytes_with_flags!(4);
+
+    fn from_base_prime_field(other: Self::BasePrimeField) -> Self {
+        other
+    }
+
+    /// Returns the constant 2^{-1}.
+    fn half() -> Self {
+        Self::one().double().inverse().unwrap()
+    }
 
     #[inline]
     fn double(&self) -> Self {
