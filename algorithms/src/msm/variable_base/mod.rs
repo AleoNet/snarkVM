@@ -63,11 +63,11 @@ impl VariableBase {
         use snarkvm_fields::Zero;
         use snarkvm_utilities::BitIteratorBE;
 
-        let mut acc = G::Projective::zero();
-        for (base, scalar) in bases.iter().zip(scalars.iter()) {
-            acc += base.mul_bits(BitIteratorBE::new(*scalar));
-        }
-        acc
+        bases
+            .iter()
+            .zip_eq(scalars)
+            .map(|(base, scalar)| base.mul_bits(BitIteratorBE::new(*scalar)))
+            .sum()
     }
 
     #[cfg(test)]
