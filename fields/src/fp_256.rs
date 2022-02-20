@@ -170,12 +170,9 @@ impl<P: Fp256Parameters> Field for Fp256<P> {
         other
     }
 
+    /// Returns the constant 2^{-1}.
     fn half() -> Self {
-        // Compute 1/2 as `(p+1)/2`.
-        // This is cheaper than `P::BaseField::one().double().inverse()`
-        let mut two_inv = Self::one();
-        two_inv.0.div2();
-        two_inv
+        Self::one().double().inverse().unwrap()
     }
 
     #[inline]
