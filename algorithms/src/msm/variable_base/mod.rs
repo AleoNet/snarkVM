@@ -80,7 +80,7 @@ impl VariableBase {
 
         bases
             .par_iter()
-            .zip_eq(scalars.par_iter())
+            .zip_eq(scalars)
             .map(|(base, scalar)| base.mul_bits(BitIteratorBE::new(*scalar)))
             .sum()
     }
