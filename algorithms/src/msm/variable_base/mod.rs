@@ -60,14 +60,10 @@ impl VariableBase {
 
     #[cfg(test)]
     fn msm_naive<G: AffineCurve>(bases: &[G], scalars: &[<G::ScalarField as PrimeField>::BigInteger]) -> G::Projective {
-        use snarkvm_fields::Zero;
+        use itertools::Itertools;
         use snarkvm_utilities::BitIteratorBE;
 
-        let mut acc = G::Projective::zero();
-        for (base, scalar) in bases.iter().zip(scalars.iter()) {
-            acc += base.mul_bits(BitIteratorBE::new(*scalar));
-        }
-        acc
+        bases.iter().zip_eq(scalars).map(|(base, scalar)| base.mul_bits(BitIteratorBE::new(*scalar))).sum()
     }
 
     #[cfg(test)]
@@ -78,11 +74,7 @@ impl VariableBase {
         use rayon::prelude::*;
         use snarkvm_utilities::BitIteratorBE;
 
-        bases
-            .par_iter()
-            .zip_eq(scalars.par_iter())
-            .map(|(base, scalar)| base.mul_bits(BitIteratorBE::new(*scalar)))
-            .sum()
+        bases.par_iter().zip_eq(scalars).map(|(base, scalar)| base.mul_bits(BitIteratorBE::new(*scalar))).sum()
     }
 }
 
