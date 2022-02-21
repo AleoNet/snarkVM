@@ -68,23 +68,16 @@ impl<N: Network> Record<N> {
         randomizer: N::RecordRandomizer,
         record_view_key: N::RecordViewKey,
     ) -> Result<Self, RecordError> {
-        // Determine if the record is a dummy.
-        let is_dummy = value.is_zero() && payload.is_none() && program_id == None;
-
         // Encode the record contents into plaintext bytes.
         let mut plaintext = Vec::with_capacity(3);
         plaintext.push(vec![FromBytes::read_le(&owner.to_bytes_le()?[..])?]); // 32 bytes
-        plaintext.push(<N::AccountEncryptionScheme as EncryptionScheme>::encode_message(
-            &[
-                is_dummy.to_bytes_le()?, // 1 bit = 1 byte
-                value.to_bytes_le()?,    // 64 bits = 8 bytes
-            ]
-            .concat(),
-        )?);
-
+        plaintext.push(<N::AccountEncryptionScheme as EncryptionScheme>::encode_message(&value.to_bytes_le()?)?); // 64 bits = 8 bytes
         if let Some(ref payload) = payload {
             plaintext.push(<N::AccountEncryptionScheme as EncryptionScheme>::encode_message(&payload.to_bytes_le()?)?);
         }
+
+        // Determine if the record is a dummy.
+        let is_dummy = value.is_zero() && payload.is_none() && program_id == None;
 
         // Encrypt the record bytes.
         let ciphertext = Ciphertext::<N>::from(
@@ -92,6 +85,7 @@ impl<N: Network> Record<N> {
             N::account_encryption_scheme().generate_symmetric_key_commitment(&record_view_key).into(),
             N::account_encryption_scheme().encrypt(&record_view_key, &plaintext)?,
             program_id,
+            is_dummy,
         )?
         .into();
 
@@ -101,8 +95,16 @@ impl<N: Network> Record<N> {
     /// Returns a record from the given decryption key and ciphertext.
     pub fn decrypt(decryption_key: &DecryptionKey<N>, ciphertext: &N::RecordCiphertext) -> Result<Self, RecordError> {
         // Decrypt the record ciphertext.
-        let (plaintext, record_view_key, program_id) = (*ciphertext).to_plaintext(decryption_key)?;
-        let (owner, value, payload) = Self::decode_plaintext(&plaintext, &program_id)?;
+        let (plaintext, record_view_key) = (*ciphertext).to_plaintext(decryption_key)?;
+
+        // Decode the plaintext bytes into the record contents.
+        let owner = Address::<N>::read_le(&plaintext[0].to_bytes_le()?[..])?;
+        let value = AleoAmount::read_le(&N::AccountEncryptionScheme::decode_message(&plaintext[1][..])?[..])?;
+        let payload = match plaintext.len() {
+            2 => None,
+            3 => Some(Payload::read_le(&N::AccountEncryptionScheme::decode_message(&plaintext[2][..])?[..])?),
+            _ => return Err(anyhow!("Invalid plaintext size").into()),
+        };
 
         Ok(Self { owner, value, payload, record_view_key, ciphertext: ciphertext.clone() })
     }
@@ -169,48 +171,6 @@ impl<N: Network> Record<N> {
         let serial_number = N::SerialNumberPRF::evaluate(&seed, &input.into())?.into();
 
         Ok(serial_number)
-    }
-
-    /// Decode the plaintext bytes into the record contents.
-    fn decode_plaintext(
-        plaintext: &[Vec<<N::AccountEncryptionScheme as EncryptionScheme>::MessageType>],
-        program_id: &Option<N::ProgramID>,
-    ) -> Result<(Address<N>, AleoAmount, Option<Payload<N>>), RecordError> {
-        if plaintext.len() < 2 {
-            return Err(anyhow!("Invalid plaintext size").into());
-        }
-
-        let (owner, is_dummy, value, payload) = match plaintext.len() {
-            2 => {
-                let owner = Address::<N>::read_le(&plaintext[0].to_bytes_le()?[..])?;
-
-                let is_dummy_and_value_bytes = N::AccountEncryptionScheme::decode_message(&plaintext[1][..])?;
-                let is_dummy = u8::read_le(&is_dummy_and_value_bytes[..])?;
-                let value = AleoAmount::read_le(&is_dummy_and_value_bytes[1..])?;
-
-                (owner, is_dummy, value, None)
-            }
-            3 => {
-                let owner = Address::<N>::read_le(&plaintext[0].to_bytes_le()?[..])?;
-
-                let is_dummy_and_value_bytes = N::AccountEncryptionScheme::decode_message(&plaintext[1][..])?;
-                let is_dummy = u8::read_le(&is_dummy_and_value_bytes[..])?;
-                let value = AleoAmount::read_le(&is_dummy_and_value_bytes[1..])?;
-
-                let payload = Payload::read_le(&N::AccountEncryptionScheme::decode_message(&plaintext[2][..])?[..])?;
-
-                (owner, is_dummy, value, Some(payload))
-            }
-            _ => return Err(anyhow!("Invalid plaintext size").into()),
-        };
-
-        // Ensure the dummy flag in the record is correct.
-        let expected_dummy = value.is_zero() && payload.is_none() && program_id.is_none();
-
-        match is_dummy == expected_dummy as u8 {
-            true => Ok((owner, value, payload)),
-            false => Err(anyhow!("Decoded incorrect is_dummy flag in record plaintext bytes").into()),
-        }
     }
 }
 

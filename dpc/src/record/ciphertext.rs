@@ -28,6 +28,7 @@ pub struct Ciphertext<N: Network> {
     record_view_key_commitment: N::RecordViewKeyCommitment,
     record_bytes: Vec<Vec<u8>>,
     program_id: Option<N::ProgramID>,
+    is_dummy: bool,
 }
 
 impl<N: Network> Ciphertext<N> {
@@ -37,6 +38,7 @@ impl<N: Network> Ciphertext<N> {
         record_view_key_commitment: N::RecordViewKeyCommitment,
         record_bytes: Vec<Vec<u8>>,
         program_id: Option<N::ProgramID>,
+        is_dummy: bool,
     ) -> Result<Self, RecordError> {
         let program_id_bytes =
             program_id.map_or(Ok(vec![0u8; N::PROGRAM_ID_SIZE_IN_BYTES]), |program_id| program_id.to_bytes_le())?;
@@ -51,10 +53,16 @@ impl<N: Network> Ciphertext<N> {
 
         // Compute the commitment.
         let commitment = N::commitment_scheme()
-            .hash(&to_bytes_le![randomizer, record_view_key_commitment, flattened_record_bytes, program_id_bytes]?)?
+            .hash(&to_bytes_le![
+                randomizer,
+                record_view_key_commitment,
+                flattened_record_bytes,
+                program_id_bytes,
+                is_dummy
+            ]?)?
             .into();
 
-        Ok(Self { commitment, randomizer, record_view_key_commitment, record_bytes, program_id })
+        Ok(Self { commitment, randomizer, record_view_key_commitment, record_bytes, program_id, is_dummy })
     }
 
     /// Returns `true` if this ciphertext belongs to the given account view key.
@@ -98,11 +106,7 @@ impl<N: Network> Ciphertext<N> {
     pub fn to_plaintext(
         &self,
         decryption_key: &DecryptionKey<N>,
-    ) -> Result<(
-        Vec<Vec<<N::AccountEncryptionScheme as EncryptionScheme>::MessageType>>,
-        N::RecordViewKey,
-        Option<N::ProgramID>,
-    )> {
+    ) -> Result<(Vec<Vec<<N::AccountEncryptionScheme as EncryptionScheme>::MessageType>>, N::RecordViewKey)> {
         let record_view_key = match decryption_key {
             DecryptionKey::AccountViewKey(account_view_key) => {
                 // Compute the candidate record view key.
@@ -125,7 +129,7 @@ impl<N: Network> Ciphertext<N> {
             // Decrypt the record ciphertext.
             true => {
                 let plaintext = N::account_encryption_scheme().decrypt(&record_view_key, &self.record_bytes)?;
-                Ok((plaintext, record_view_key, self.program_id))
+                Ok((plaintext, record_view_key))
             }
             false => Err(anyhow!("The given record view key does not correspond to this ciphertext")),
         }
@@ -172,7 +176,9 @@ impl<N: Network> FromBytes for Ciphertext<N> {
             false => None,
         };
 
-        Ok(Self::from(ciphertext_randomizer, record_view_key_commitment, record_bytes, program_id)?)
+        let is_dummy: bool = FromBytes::read_le(&mut reader)?;
+
+        Ok(Self::from(ciphertext_randomizer, record_view_key_commitment, record_bytes, program_id, is_dummy)?)
     }
 }
 
@@ -191,10 +197,12 @@ impl<N: Network> ToBytes for Ciphertext<N> {
         match &self.program_id {
             Some(program_id) => {
                 true.write_le(&mut writer)?;
-                program_id.write_le(&mut writer)
+                program_id.write_le(&mut writer)?
             }
-            None => false.write_le(&mut writer),
+            None => false.write_le(&mut writer)?,
         }
+
+        self.is_dummy.write_le(&mut writer)
     }
 }
 

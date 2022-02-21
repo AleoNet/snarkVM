@@ -311,13 +311,12 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 let given_owner_gadget =
                     FpGadget::alloc(&mut commitment_cs.ns(|| format!("Field element {}", i)), || Ok(&owner_fe))?;
 
-                let given_is_dummy_and_value_bytes = [given_is_dummy_bytes, given_value_bytes].concat();
-                let encoded_given_is_dummy_and_value = <N::AccountEncryptionGadget as EncryptionGadget<
+                let encoded_given_value = <N::AccountEncryptionGadget as EncryptionGadget<
                     N::AccountEncryptionScheme,
                     N::InnerScalarField,
                 >>::encode_message(
-                    &mut commitment_cs.ns(|| format!("encode is_dummy and value {}", i)),
-                    &given_is_dummy_and_value_bytes,
+                    &mut commitment_cs.ns(|| format!("encode value {}", i)),
+                    &given_value_bytes,
                 )?;
 
                 let encoded_given_payload = <N::AccountEncryptionGadget as EncryptionGadget<
@@ -328,7 +327,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     &given_payload,
                 )?;
 
-                let plaintext = vec![vec![given_owner_gadget], encoded_given_is_dummy_and_value, encoded_given_payload];
+                let plaintext = vec![vec![given_owner_gadget], encoded_given_value, encoded_given_payload];
 
                 let mut ciphertext = account_encryption_parameters.check_encryption_from_symmetric_key(
                     &mut commitment_cs.ns(|| format!("input record {} check_encryption_gadget", i)),
@@ -360,13 +359,15 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     given_randomizer_bytes.len()
                         + record_view_key_commitment_bytes.len()
                         + ciphertext.iter().map(|x| x.len()).sum::<usize>()
-                        + given_program_id.len(),
+                        + given_program_id.len()
+                        + given_is_dummy_bytes.len(),
                 );
 
                 commitment_input.extend_from_slice(&given_randomizer_bytes);
                 commitment_input.extend_from_slice(&record_view_key_commitment_bytes);
                 commitment_input.extend_from_slice(&ciphertext.into_iter().flatten().collect::<Vec<UInt8>>());
                 commitment_input.extend_from_slice(&given_program_id);
+                commitment_input.extend_from_slice(&given_is_dummy_bytes);
 
                 let candidate_commitment = record_commitment_parameters
                     .check_evaluation_gadget(&mut commitment_cs.ns(|| "Compute record commitment"), commitment_input)?;
@@ -664,13 +665,12 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 let given_owner_gadget =
                     FpGadget::alloc(&mut commitment_cs.ns(|| format!("Field element {}", j)), || Ok(&owner_fe))?;
 
-                let given_is_dummy_and_value_bytes = [given_is_dummy_bytes, given_value_bytes].concat();
-                let encoded_given_is_dummy_and_value = <N::AccountEncryptionGadget as EncryptionGadget<
+                let encoded_given_value = <N::AccountEncryptionGadget as EncryptionGadget<
                     N::AccountEncryptionScheme,
                     N::InnerScalarField,
                 >>::encode_message(
-                    &mut commitment_cs.ns(|| format!("encode is_dummy and value {}", j)),
-                    &given_is_dummy_and_value_bytes,
+                    &mut commitment_cs.ns(|| format!("encode value {}", j)),
+                    &given_value_bytes,
                 )?;
 
                 let encoded_given_payload = <N::AccountEncryptionGadget as EncryptionGadget<
@@ -681,7 +681,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     &given_payload,
                 )?;
 
-                let plaintext = vec![vec![given_owner_gadget], encoded_given_is_dummy_and_value, encoded_given_payload];
+                let plaintext = vec![vec![given_owner_gadget], encoded_given_value, encoded_given_payload];
 
                 let encryption_randomness = <N::AccountEncryptionGadget as EncryptionGadget<
                     N::AccountEncryptionScheme,
@@ -733,12 +733,14 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     given_randomizer_bytes.len()
                         + record_view_key_commitment_bytes.len()
                         + ciphertext.iter().map(|x| x.len()).sum::<usize>()
-                        + given_program_id.len(),
+                        + given_program_id.len()
+                        + given_is_dummy_bytes.len(),
                 );
                 commitment_input.extend_from_slice(&given_randomizer_bytes);
                 commitment_input.extend_from_slice(&record_view_key_commitment_bytes);
                 commitment_input.extend_from_slice(&ciphertext.into_iter().flatten().collect::<Vec<UInt8>>());
                 commitment_input.extend_from_slice(&given_program_id);
+                commitment_input.extend_from_slice(&given_is_dummy_bytes);
 
                 let candidate_commitment = record_commitment_parameters
                     .check_evaluation_gadget(&mut commitment_cs.ns(|| "Compute record commitment"), commitment_input)?;
