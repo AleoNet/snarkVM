@@ -31,8 +31,7 @@ use base58::{FromBase58, ToBase58};
 use rand::{CryptoRng, Rng};
 use std::{fmt, str::FromStr};
 
-#[derive(Derivative)]
-#[derivative(Clone(bound = "N: Network"), PartialEq(bound = "N: Network"), Eq(bound = "N: Network"))]
+#[derive(Clone, PartialEq, Eq)]
 pub struct PrivateKey<N: Network> {
     seed: N::AccountSeed,
     pub(super) sk_sig: N::ProgramScalarField,

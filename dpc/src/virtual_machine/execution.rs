@@ -27,13 +27,8 @@ use std::{
 };
 
 /// Program ID, program path, verifying key, and proof.
-#[derive(Derivative)]
-#[derivative(
-    Clone(bound = "N: Network"),
-    Debug(bound = "N: Network"),
-    PartialEq(bound = "N: Network"),
-    Eq(bound = "N: Network")
-)]
+#[derive(Clone, Derivative)]
+#[derivative(Debug(bound = "N: Network"), PartialEq(bound = "N: Network"), Eq(bound = "N: Network"))]
 pub struct ProgramExecution<N: Network> {
     pub program_id: N::ProgramID,
     pub program_path: MerklePath<N::ProgramIDParameters>,
@@ -54,13 +49,7 @@ impl<N: Network> ProgramExecution<N> {
 }
 
 /// Program execution and inner proof.
-#[derive(Derivative)]
-#[derivative(
-    Clone(bound = "N: Network"),
-    Debug(bound = "N: Network"),
-    PartialEq(bound = "N: Network"),
-    Eq(bound = "N: Network")
-)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Execution<N: Network> {
     pub program_execution: Option<ProgramExecution<N>>,
     pub inner_proof: N::InnerProof,

@@ -29,13 +29,7 @@ use std::{
 type Caller<N> = Address<N>;
 type Recipient<N> = Address<N>;
 
-#[derive(Derivative)]
-#[derivative(
-    Clone(bound = "N: Network"),
-    Debug(bound = "N: Network"),
-    PartialEq(bound = "N: Network"),
-    Eq(bound = "N: Network")
-)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Operation<N: Network> {
     /// Noop.
     Noop,

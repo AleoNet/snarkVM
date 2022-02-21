@@ -17,13 +17,7 @@
 use crate::Network;
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 
-#[derive(Derivative)]
-#[derivative(
-    Copy(bound = "N: Network"),
-    Clone(bound = "N: Network"),
-    Debug(bound = "N: Network"),
-    Default(bound = "N: Network")
-)]
+#[derive(Copy, Clone, Debug, Default)]
 pub struct ProgramPublicVariables<N: Network> {
     pub transition_id: N::TransitionID,
 }

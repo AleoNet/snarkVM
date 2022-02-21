@@ -26,13 +26,7 @@ use std::{
     str::FromStr,
 };
 
-#[derive(Derivative)]
-#[derivative(
-    Clone(bound = "N: Network"),
-    Default(bound = "N: Network"),
-    PartialEq(bound = "N: Network"),
-    Eq(bound = "N: Network")
-)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct ViewKey<N: Network>(<N::AccountEncryptionScheme as EncryptionScheme>::PrivateKey);
 
 impl<N: Network> ViewKey<N> {

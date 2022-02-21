@@ -29,17 +29,9 @@ use snarkvm_utilities::{
 };
 
 use bech32::{self, FromBase32, ToBase32};
+use core::hash::{Hash, Hasher};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
-#[derive(Derivative)]
-#[derivative(
-    Default(bound = "N: Network"),
-    Copy(bound = "N: Network"),
-    Clone(bound = "N: Network"),
-    PartialEq(bound = "N: Network"),
-    Eq(bound = "N: Network"),
-    Hash(bound = "N: Network")
-)]
 pub struct Address<N: Network>(<N::AccountEncryptionScheme as EncryptionScheme>::PublicKey);
 
 impl<N: Network> Address<N> {
@@ -200,6 +192,35 @@ impl<'de, N: Network> Deserialize<'de> for Address<N> {
             true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
             false => FromBytesDeserializer::<Self>::deserialize(deserializer, "address", N::ADDRESS_SIZE_IN_BYTES),
         }
+    }
+}
+
+impl<N: Network> Copy for Address<N> {}
+
+impl<N: Network> Clone for Address<N> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<N: Network> PartialEq for Address<N> {
+    fn eq(&self, other: &Self) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl<N: Network> Eq for Address<N> {}
+
+impl<N: Network> Hash for Address<N> {
+    #[inline]
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.hash(state);
+    }
+}
+
+impl<N: Network> Default for Address<N> {
+    fn default() -> Self {
+        Self(Default::default())
     }
 }
 

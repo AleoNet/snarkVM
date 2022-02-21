@@ -47,13 +47,7 @@ use itertools::Itertools;
 use rand::{CryptoRng, Rng};
 use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
 
-#[derive(Derivative)]
-#[derivative(
-    Clone(bound = "N: Network"),
-    Debug(bound = "N: Network"),
-    PartialEq(bound = "N: Network"),
-    Eq(bound = "N: Network")
-)]
+#[derive(Clone, Debug)]
 pub struct Transaction<N: Network> {
     /// The ID of this transaction.
     transaction_id: N::TransactionID,
@@ -316,6 +310,14 @@ impl<N: Network> Transaction<N> {
         Ok(transitions_tree.root())
     }
 }
+
+impl<N: Network> PartialEq for Transaction<N> {
+    fn eq(&self, other: &Self) -> bool {
+        self.transaction_id == other.transaction_id
+    }
+}
+
+impl<N: Network> Eq for Transaction<N> {}
 
 impl<N: Network> Hash for Transaction<N> {
     #[inline]

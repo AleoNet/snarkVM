@@ -21,8 +21,7 @@ use anyhow::{anyhow, Result};
 use rand::{CryptoRng, Rng};
 use std::sync::Arc;
 
-#[derive(Derivative)]
-#[derivative(Clone(bound = "N: Network"), Debug(bound = "N: Network"))]
+#[derive(Clone, Debug)]
 pub struct VirtualMachine<N: Network> {
     /// The root of the ledger tree used to prove inclusion of ledger-consumed records.
     ledger_root: N::LedgerRoot,

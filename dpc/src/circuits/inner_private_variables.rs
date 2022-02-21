@@ -19,8 +19,7 @@ use snarkvm_algorithms::traits::{EncryptionScheme, SignatureScheme};
 
 use anyhow::Result;
 
-#[derive(Derivative)]
-#[derivative(Clone(bound = "N: Network"))]
+#[derive(Clone)]
 pub struct InnerPrivateVariables<N: Network> {
     // Inputs.
     pub(super) input_records: Vec<Record<N>>,

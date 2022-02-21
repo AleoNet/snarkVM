@@ -36,13 +36,8 @@ use std::{
     sync::Arc,
 };
 
-#[derive(Derivative)]
-#[derivative(
-    Clone(bound = "N: Network"),
-    Debug(bound = "N: Network"),
-    PartialEq(bound = "N: Network"),
-    Eq(bound = "N: Network")
-)]
+#[derive(Clone, Derivative)]
+#[derivative(Debug(bound = "N: Network"), PartialEq(bound = "N: Network"), Eq(bound = "N: Network"))]
 pub struct Transactions<N: Network> {
     /// The list of transactions included in a block.
     transactions: Vec<Transaction<N>>,

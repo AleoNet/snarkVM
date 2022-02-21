@@ -28,13 +28,7 @@ use std::{
     sync::Arc,
 };
 
-#[derive(Derivative)]
-#[derivative(
-    Clone(bound = "N: Network"),
-    Debug(bound = "N: Network"),
-    PartialEq(bound = "N: Network"),
-    Eq(bound = "N: Network")
-)]
+#[derive(Clone, Debug)]
 pub struct Transition<N: Network> {
     /// The ID of this transition.
     transition_id: N::TransitionID,
@@ -281,6 +275,21 @@ impl<N: Network> Transition<N> {
     }
 }
 
+impl<N: Network> PartialEq for Transition<N> {
+    fn eq(&self, other: &Self) -> bool {
+        self.transition_id == other.transition_id
+    }
+}
+
+impl<N: Network> Eq for Transition<N> {}
+
+impl<N: Network> Hash for Transition<N> {
+    #[inline]
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.transition_id.hash(state);
+    }
+}
+
 impl<N: Network> FromBytes for Transition<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
@@ -375,13 +384,6 @@ impl<'de, N: Network> Deserialize<'de> for Transition<N> {
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "transition"),
         }
-    }
-}
-
-impl<N: Network> Hash for Transition<N> {
-    #[inline]
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.transition_id.hash(state);
     }
 }
 

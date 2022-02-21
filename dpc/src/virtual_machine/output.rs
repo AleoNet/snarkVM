@@ -21,8 +21,7 @@ use anyhow::Result;
 use rand::{CryptoRng, Rng};
 use std::convert::TryInto;
 
-#[derive(Derivative)]
-#[derivative(Clone(bound = "N: Network"))]
+#[derive(Clone)]
 pub struct Output<N: Network> {
     /// The address of the recipient.
     address: Address<N>,

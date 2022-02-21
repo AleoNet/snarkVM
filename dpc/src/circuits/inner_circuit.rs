@@ -35,8 +35,7 @@ use snarkvm_utilities::{FromBytes, ToBytes};
 
 use itertools::Itertools;
 
-#[derive(Derivative)]
-#[derivative(Clone(bound = "N: Network"))]
+#[derive(Clone)]
 pub struct InnerCircuit<N: Network> {
     public: InnerPublicVariables<N>,
     private: InnerPrivateVariables<N>,
