@@ -151,9 +151,8 @@ impl<N: Network> Record<N> {
         // Compute the serial number.
         // First, convert the program scalar field element to bytes,
         // and interpret these bytes as a program base field element
-        // For our choice of scalar field and base field (i.e., on TE curves)
-        // scalar field is always smaller than base field, so the bytes always fit without
-        // wraparound.
+        // For our choice of scalar field and base field (i.e. a TE curve), the scalar field
+        // is always smaller than base field, so the bytes always fit without wraparound.
         let seed = N::InnerScalarField::from_repr(FromBits::from_bits_le(&compute_key.sk_prf().to_bits_le())).unwrap();
         let input = self.commitment();
         let serial_number = N::SerialNumberPRF::evaluate(&seed, &input.into())?.into();
@@ -175,13 +174,13 @@ impl<N: Network> Record<N> {
 
         plaintext.push(vec![FromBytes::read_le(&owner.to_bytes_le()?[..])?]); // 32 bytes
 
-        let is_dummy_and_value_bytes = vec![
-            is_dummy.to_bytes_le()?, // 1 bit = 1 byte
-            value.to_bytes_le()?,    // 64 bits = 8 bytes
-        ]
-        .concat();
-
-        plaintext.push(<N::AccountEncryptionScheme as EncryptionScheme>::encode_message(&is_dummy_and_value_bytes)?);
+        plaintext.push(<N::AccountEncryptionScheme as EncryptionScheme>::encode_message(
+            &[
+                is_dummy.to_bytes_le()?, // 1 bit = 1 byte
+                value.to_bytes_le()?,    // 64 bits = 8 bytes
+            ]
+            .concat(),
+        )?);
 
         if let Some(payload) = payload {
             plaintext.push(<N::AccountEncryptionScheme as EncryptionScheme>::encode_message(&payload.to_bytes_le()?)?);

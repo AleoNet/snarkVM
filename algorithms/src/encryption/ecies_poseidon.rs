@@ -298,10 +298,10 @@ where
     ///     ciphertext := to_bytes_le![C_1, ..., C_n], where C_i := R_i + M_i, and R_i := H_i(G^ar)
     /// ```
     ///
-    fn encrypt<T: AsRef<[Self::MessageType]>>(
+    fn encrypt<F: AsRef<[Self::MessageType]>>(
         &self,
         symmetric_key: &Self::SymmetricKey,
-        message: &[T],
+        message: &[F],
     ) -> Result<Vec<Vec<u8>>, EncryptionError> {
         // Initialize the sponge state.
         let mut sponge = PoseidonSponge::with_parameters(&self.poseidon_parameters);
@@ -330,10 +330,10 @@ where
     ///
     /// Decrypts the given ciphertext with the given symmetric key.
     ///
-    fn decrypt<T: AsRef<[u8]>>(
+    fn decrypt<B: AsRef<[u8]>>(
         &self,
         symmetric_key: &Self::SymmetricKey,
-        ciphertext: &[T],
+        ciphertext: &[B],
     ) -> Result<Vec<Vec<Self::MessageType>>, EncryptionError> {
         // Initialize sponge state.
         let mut sponge = PoseidonSponge::with_parameters(&self.poseidon_parameters);
