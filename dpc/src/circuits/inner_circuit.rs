@@ -36,7 +36,6 @@ use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSyst
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use itertools::Itertools;
-use snarkvm_gadgets::algorithms::merkle_tree::compute_root;
 
 #[derive(Derivative)]
 #[derivative(Clone(bound = "N: Network"))]
@@ -174,13 +173,13 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         /* ///////////////////////////// INPUT RECORDS //////////////////////////////// */
         /* //////////////////////////////////////////////////////////////////////////// */
 
-        let mut input_serial_numbers_bytes = Vec::with_capacity(N::NUM_INPUT_RECORDS);
         let mut input_commitments_bytes = Vec::with_capacity(N::NUM_INPUT_RECORDS * 32);
         let mut input_owners = Vec::with_capacity(N::NUM_INPUT_RECORDS);
         let mut input_values = Vec::with_capacity(N::NUM_INPUT_RECORDS);
         let mut input_program_ids = Vec::with_capacity(N::NUM_INPUT_RECORDS);
 
-        for (i, (record, ledger_proof)) in private.input_records.iter().zip_eq(private.ledger_proofs.iter()).enumerate()
+        for (i, ((record, ledger_proof), serial_number)) in
+            private.input_records.iter().zip_eq(&private.ledger_proofs).zip_eq(public.serial_numbers()).enumerate()
         {
             let cs = &mut cs.ns(|| format!("Process input record {}", i));
 
@@ -405,11 +404,18 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     &vec![commitment.clone()],
                 )?;
 
-                // Convert input serial numbers to bytes.
-                let candidate_serial_number_bytes = candidate_serial_number
-                    .to_bytes(&mut sn_cs.ns(|| format!("Convert {}-th serial number to bytes", i)))?;
+                let given_serial_number = <N::SerialNumberPRFGadget as PRFGadget<
+                    N::SerialNumberPRF,
+                    N::InnerScalarField,
+                >>::Output::alloc_input(
+                    &mut sn_cs.ns(|| format!("Allocate given input serial number {}", i)),
+                    || Ok(*serial_number),
+                )?;
 
-                input_serial_numbers_bytes.push(candidate_serial_number_bytes);
+                candidate_serial_number.enforce_equal(
+                    &mut sn_cs.ns(|| format!("Check that the {}-th input serial number is valid", i)),
+                    &given_serial_number,
+                )?;
             };
 
             // **********************************************************************************
@@ -545,12 +551,15 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         /* //////////////////////////// OUTPUT RECORDS //////////////////////////////// */
         /* //////////////////////////////////////////////////////////////////////////// */
 
-        let mut output_commitments_bytes = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
         let mut output_values = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
         let mut output_program_ids = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
 
-        for (j, (record, encryption_randomness)) in
-            private.output_records.iter().zip_eq(&private.encryption_randomness).enumerate()
+        for (j, ((record, encryption_randomness), commitment)) in private
+            .output_records
+            .iter()
+            .zip_eq(&private.encryption_randomness)
+            .zip_eq(public.commitments())
+            .enumerate()
         {
             let cs = &mut cs.ns(|| format!("Process output record {}", j));
 
@@ -726,10 +735,19 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 let candidate_commitment = record_commitment_parameters
                     .check_evaluation_gadget(&mut commitment_cs.ns(|| "Compute record commitment"), commitment_input)?;
 
-                let candidate_commitment_bytes =
-                    candidate_commitment.to_bytes(&mut commitment_cs.ns(|| "Convert candidate_commitment to bytes"))?;
+                let given_commitment = <N::CommitmentGadget as CRHGadget<
+                    N::CommitmentScheme,
+                    N::InnerScalarField,
+                >>::OutputGadget::alloc_input(
+                    &mut commitment_cs.ns(|| format!("Allocate given output commitment {}", j)),
+                    || Ok(*commitment),
+                )?;
 
-                output_commitments_bytes.push(candidate_commitment_bytes);
+                candidate_commitment.enforce_equal(
+                    &mut commitment_cs.ns(|| format!("Check that the {}-th output commitment is valid", j)),
+                    &given_commitment,
+                )?;
+
                 output_values.push(given_value);
             };
         }
@@ -889,52 +907,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 &given_value_balance_field_elements,
             )?;
         };
-
-        // ********************************************************************
-        // Check the transition ID is well-formed.
-        // ********************************************************************
-        {
-            let mut cs = cs.ns(|| "Check that the transition ID is valid.");
-
-            // Encode the leaves for the transition ID.
-            let mut transition_leaves = vec![];
-            transition_leaves.extend_from_slice(&input_serial_numbers_bytes);
-            transition_leaves.extend_from_slice(&output_commitments_bytes);
-
-            // Sanity check that the correct number of leaves are allocated.
-            // Note: This is *not* enforced in the circuit.
-            assert_eq!(usize::pow(2, N::TRANSITION_TREE_DEPTH as u32), transition_leaves.len());
-
-            // Allocate the hashed leaves.
-            let hashed_transition_leaves = transition_leaves
-                .iter()
-                .enumerate()
-                .map(|(i, leaf)| {
-                    transition_id_crh.check_evaluation_gadget(
-                        &mut cs.ns(|| format!("Compute the transition leaf {}", i)),
-                        leaf.clone(),
-                    )
-                })
-                .collect::<Result<Vec<_>, _>>()?;
-
-            let candidate_transition_id =
-                compute_root::<<N::TransitionIDParameters as MerkleParameters>::H, N::TransitionIDCRHGadget, _, _>(
-                    &mut cs.ns(|| "Compute the transition ID"),
-                    &transition_id_crh,
-                    &hashed_transition_leaves,
-                )?;
-
-            let given_transition_id = <N::TransitionIDCRHGadget as CRHGadget<
-                N::TransitionIDCRH,
-                N::InnerScalarField,
-            >>::OutputGadget::alloc_input(
-                &mut cs.ns(|| "Allocate given transition ID"),
-                || Ok(public.transition_id()),
-            )?;
-
-            candidate_transition_id
-                .enforce_equal(&mut cs.ns(|| "Check that transition ID is valid"), &given_transition_id)?;
-        }
 
         Ok(())
     }

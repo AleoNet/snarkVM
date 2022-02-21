@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::prelude::*;
+use crate::{circuits::InnerPublicVariables, prelude::*};
 use snarkvm_algorithms::merkle_tree::{MerklePath, MerkleTree};
 use snarkvm_utilities::{FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
 
@@ -124,10 +124,15 @@ impl<N: Network> Transition<N> {
         // Returns `false` if the execution is invalid.
         self.execution.verify(
             N::inner_verifying_key(),
+            &InnerPublicVariables::new(
+                self.serial_numbers.clone(),
+                self.commitments.clone(),
+                self.value_balance,
+                ledger_root,
+                local_transitions_root,
+                self.execution.program_execution.as_ref().map(|x| x.program_id),
+            ),
             self.transition_id,
-            self.value_balance,
-            ledger_root,
-            local_transitions_root,
         )
     }
 

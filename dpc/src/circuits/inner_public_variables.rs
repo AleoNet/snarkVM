@@ -20,10 +20,13 @@ use snarkvm_utilities::ToBytes;
 
 use anyhow::Result;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct InnerPublicVariables<N: Network> {
-    /// Transition ID
-    transition_id: N::TransitionID,
+    /// The serial numbers of the input records.
+    serial_numbers: Vec<N::SerialNumber>,
+    /// The commitments of the output records.
+    commitments: Vec<N::Commitment>,
+    /// A value balance is the difference between the input and output record values.
     value_balance: AleoAmount,
     ledger_root: N::LedgerRoot,
     local_transitions_root: N::TransactionID,
@@ -36,7 +39,8 @@ pub struct InnerPublicVariables<N: Network> {
 impl<N: Network> InnerPublicVariables<N> {
     pub(crate) fn blank() -> Self {
         Self {
-            transition_id: Default::default(),
+            serial_numbers: vec![Default::default(); N::NUM_INPUT_RECORDS],
+            commitments: vec![Default::default(); N::NUM_INPUT_RECORDS],
             value_balance: AleoAmount::ZERO,
             ledger_root: N::LedgerRoot::default(),
             local_transitions_root: Default::default(),
@@ -45,18 +49,24 @@ impl<N: Network> InnerPublicVariables<N> {
     }
 
     pub(crate) fn new(
-        transition_id: N::TransitionID,
+        serial_numbers: Vec<N::SerialNumber>,
+        commitments: Vec<N::Commitment>,
         value_balance: AleoAmount,
         ledger_root: N::LedgerRoot,
         local_transitions_root: N::TransactionID,
         program_id: Option<N::ProgramID>,
     ) -> Self {
-        Self { transition_id, value_balance, ledger_root, local_transitions_root, program_id }
+        Self { serial_numbers, commitments, value_balance, ledger_root, local_transitions_root, program_id }
     }
 
-    /// Returns the transition ID.
-    pub(crate) fn transition_id(&self) -> N::TransitionID {
-        self.transition_id
+    /// Returns a reference to the serial numbers.
+    pub(crate) fn serial_numbers(&self) -> &Vec<N::SerialNumber> {
+        &self.serial_numbers
+    }
+
+    /// Returns a reference to the commitments.
+    pub(crate) fn commitments(&self) -> &Vec<N::Commitment> {
+        &self.commitments
     }
 
     /// Returns the value balance of the transition.
@@ -80,6 +90,13 @@ impl<N: Network> ToConstraintField<N::InnerScalarField> for InnerPublicVariables
         v.extend_from_slice(&self.ledger_root.to_field_elements()?);
         v.extend_from_slice(&self.local_transitions_root.to_field_elements()?);
 
+        for serial_number in &self.serial_numbers {
+            v.extend_from_slice(&serial_number.to_field_elements()?);
+        }
+        for commitment in &self.commitments {
+            v.extend_from_slice(&commitment.to_field_elements()?);
+        }
+
         if let Some(program_id) = &self.program_id {
             v.extend_from_slice(&program_id.to_bytes_le()?.to_field_elements()?);
         } else {
@@ -87,7 +104,6 @@ impl<N: Network> ToConstraintField<N::InnerScalarField> for InnerPublicVariables
         }
 
         v.extend_from_slice(&self.value_balance.to_bytes_le()?.to_field_elements()?);
-        v.extend_from_slice(&self.transition_id.to_field_elements()?);
 
         Ok(v)
     }

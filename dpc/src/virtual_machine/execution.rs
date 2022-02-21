@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AleoAmount, InnerPublicVariables, Network, ProgramPublicVariables};
+use crate::{Network, ProgramPublicVariables};
 use snarkvm_algorithms::{merkle_tree::MerklePath, SNARK};
 use snarkvm_utilities::{FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
 
@@ -76,23 +76,11 @@ impl<N: Network> Execution<N> {
     pub fn verify(
         &self,
         inner_verifying_key: &<N::InnerSNARK as SNARK>::VerifyingKey,
+        inner_public_variables: &<N::InnerSNARK as SNARK>::VerifierInput,
         transition_id: N::TransitionID,
-        value_balance: AleoAmount,
-        ledger_root: N::LedgerRoot,
-        local_transitions_root: N::TransactionID,
     ) -> bool {
         // Returns `false` if the inner proof is invalid.
-        match N::InnerSNARK::verify(
-            inner_verifying_key,
-            &InnerPublicVariables::new(
-                transition_id,
-                value_balance,
-                ledger_root,
-                local_transitions_root,
-                self.program_execution.as_ref().map(|x| x.program_id),
-            ),
-            &self.inner_proof,
-        ) {
+        match N::InnerSNARK::verify(inner_verifying_key, inner_public_variables, &self.inner_proof) {
             Ok(is_valid) => {
                 if !is_valid {
                     eprintln!("Inner proof failed to verify");

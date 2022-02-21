@@ -73,19 +73,19 @@ impl<N: Network> VirtualMachine<N> {
         };
 
         let program_id = request.to_program_id()?;
-        let transition_id = response.transition_id();
         let value_balance = response.value_balance();
 
         // Compute the inner circuit proof, and verify that the inner proof passes.
         let inner_public = InnerPublicVariables::new(
-            transition_id,
+            request.to_serial_numbers()?,
+            response.commitments(),
             value_balance,
             self.ledger_root,
             self.local_transitions.root(),
             program_id,
         );
         let inner_private = InnerPrivateVariables::new(request, &response)?;
-        let inner_circuit = InnerCircuit::<N>::new(inner_public, inner_private);
+        let inner_circuit = InnerCircuit::<N>::new(inner_public.clone(), inner_private);
         let inner_proof = N::InnerSNARK::prove(N::inner_proving_key(), &inner_circuit, rng)?;
 
         assert!(N::InnerSNARK::verify(N::inner_verifying_key(), &inner_public, &inner_proof)?);
@@ -266,14 +266,15 @@ impl<N: Network> VirtualMachine<N> {
 
         // Compute the inner circuit proof, and verify that the inner proof passes.
         let inner_public = InnerPublicVariables::new(
-            transition_id,
+            request.to_serial_numbers()?,
+            response.commitments(),
             value_balance,
             self.ledger_root,
             self.local_transitions.root(),
             Some(program_id),
         );
         let inner_private = InnerPrivateVariables::new(request, &response)?;
-        let inner_circuit = InnerCircuit::<N>::new(inner_public, inner_private);
+        let inner_circuit = InnerCircuit::<N>::new(inner_public.clone(), inner_private);
         let inner_proof = N::InnerSNARK::prove(N::inner_proving_key(), &inner_circuit, rng)?;
 
         assert!(N::InnerSNARK::verify(N::inner_verifying_key(), &inner_public, &inner_proof)?);
