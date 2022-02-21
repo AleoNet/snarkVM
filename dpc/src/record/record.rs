@@ -17,7 +17,7 @@
 use crate::{Address, AleoAmount, Ciphertext, ComputeKey, DecryptionKey, Network, Payload, RecordError};
 use snarkvm_algorithms::traits::{EncryptionScheme, PRF};
 use snarkvm_fields::PrimeField;
-use snarkvm_utilities::{to_bytes_le, FromBits, FromBytes, FromBytesDeserializer, ToBits, ToBytes, ToBytesSerializer};
+use snarkvm_utilities::{FromBits, FromBytes, FromBytesDeserializer, ToBits, ToBytes, ToBytesSerializer};
 
 use anyhow::anyhow;
 use core::hash::{Hash, Hasher};
@@ -25,7 +25,7 @@ use rand::{CryptoRng, Rng};
 use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     fmt,
-    io::{Cursor, Read, Result as IoResult, Write},
+    io::{Read, Result as IoResult, Write},
     ops::Deref,
     str::FromStr,
 };
@@ -72,63 +72,30 @@ impl<N: Network> Record<N> {
         let is_dummy = value.is_zero() && payload.is_none() && program_id == None;
 
         // Encode the record contents into plaintext bytes.
-        let plaintext = match payload {
-            // Total = 32 + 1 + 8 + 128 = 169 bytes
-            Some(ref payload) => {
-                let plaintext = to_bytes_le![
-                    owner,    // 256 bits = 32 bytes
-                    is_dummy, // 1 bit = 1 byte // TODO (raychu86): Remove this.
-                    value,    // 64 bits = 8 bytes
-                    payload   // 1024 bits = 128 bytes
-                ]?;
+        let mut plaintext = Vec::with_capacity(3);
+        plaintext.push(vec![FromBytes::read_le(&owner.to_bytes_le()?[..])?]); // 32 bytes
+        plaintext.push(<N::AccountEncryptionScheme as EncryptionScheme>::encode_message(
+            &[
+                is_dummy.to_bytes_le()?, // 1 bit = 1 byte
+                value.to_bytes_le()?,    // 64 bits = 8 bytes
+            ]
+            .concat(),
+        )?);
 
-                assert_eq!(
-                    1 + N::ADDRESS_SIZE_IN_BYTES + 8 + N::RECORD_PAYLOAD_SIZE_IN_BYTES,
-                    plaintext.len(),
-                    "Update me if the plaintext design changes."
-                );
-
-                plaintext
-            }
-            // Total = 32 + 1 + 8 = 41 bytes
-            None => {
-                let mut plaintext = to_bytes_le![
-                    owner,    // 256 bits = 32 bytes
-                    is_dummy, // 1 bit = 1 byte // TODO (raychu86): Remove this.
-                    value     // 64 bits = 8 bytes
-                ]?;
-
-                assert_eq!(
-                    1 + N::ADDRESS_SIZE_IN_BYTES + 8,
-                    plaintext.len(),
-                    "Update me if the plaintext design changes."
-                );
-
-                // TODO (raychu86): (encrpytion) Remove this from the native encryption. Currently it is re-padded because it's required in
-                //  the inner circuit.
-                // Total = 41 + 128 = 169 bytes
-                plaintext.extend(vec![0u8; N::RECORD_PAYLOAD_SIZE_IN_BYTES]); // 1024 bits = 128 bytes
-
-                plaintext
-            }
-        };
-
-        // Ensure the record bytes are within the permitted size.
-        match plaintext.len() <= u16::MAX as usize {
-            true => {
-                // Encrypt the record bytes.
-                let ciphertext = Ciphertext::<N>::from(
-                    randomizer,
-                    N::account_encryption_scheme().generate_symmetric_key_commitment(&record_view_key).into(),
-                    N::account_encryption_scheme().encrypt(&record_view_key, &plaintext)?,
-                    program_id,
-                )?
-                .into();
-
-                Ok(Self { owner, value, payload, record_view_key, ciphertext })
-            }
-            false => Err(anyhow!("Records must be <= 65535 bytes, found {} bytes", plaintext.len()).into()),
+        if let Some(ref payload) = payload {
+            plaintext.push(<N::AccountEncryptionScheme as EncryptionScheme>::encode_message(&payload.to_bytes_le()?)?);
         }
+
+        // Encrypt the record bytes.
+        let ciphertext = Ciphertext::<N>::from(
+            randomizer,
+            N::account_encryption_scheme().generate_symmetric_key_commitment(&record_view_key).into(),
+            N::account_encryption_scheme().encrypt(&record_view_key, &plaintext)?,
+            program_id,
+        )?
+        .into();
+
+        Ok(Self { owner, value, payload, record_view_key, ciphertext })
     }
 
     /// Returns a record from the given decryption key and ciphertext.
@@ -195,9 +162,8 @@ impl<N: Network> Record<N> {
         // Compute the serial number.
         // First, convert the program scalar field element to bytes,
         // and interpret these bytes as a program base field element
-        // For our choice of scalar field and base field (i.e., on TE curves)
-        // scalar field is always smaller than base field, so the bytes always fit without
-        // wraparound.
+        // For our choice of scalar field and base field (i.e. a TE curve), the scalar field
+        // is always smaller than base field, so the bytes always fit without wraparound.
         let seed = N::InnerScalarField::from_repr(FromBits::from_bits_le(&compute_key.sk_prf().to_bits_le())).unwrap();
         let input = self.commitment();
         let serial_number = N::SerialNumberPRF::evaluate(&seed, &input.into())?.into();
@@ -207,43 +173,39 @@ impl<N: Network> Record<N> {
 
     /// Decode the plaintext bytes into the record contents.
     fn decode_plaintext(
-        plaintext: &[u8],
+        plaintext: &[Vec<<N::AccountEncryptionScheme as EncryptionScheme>::MessageType>],
         program_id: &Option<N::ProgramID>,
     ) -> Result<(Address<N>, AleoAmount, Option<Payload<N>>), RecordError> {
-        assert_eq!(
-            1 + N::ADDRESS_SIZE_IN_BYTES + 8 + N::RECORD_PAYLOAD_SIZE_IN_BYTES,
-            plaintext.len(),
-            "Update me if the plaintext design changes."
-        );
-
-        // Check that the plaintext size is valid.
-
-        let empty_payload_size = 1 + N::ADDRESS_SIZE_IN_BYTES + 8;
-        let payload_exists_size = empty_payload_size + N::RECORD_PAYLOAD_SIZE_IN_BYTES;
-
-        let payload_exists = if plaintext.len() == empty_payload_size {
-            false
-        } else if plaintext.len() == payload_exists_size {
-            true
-        } else {
+        if plaintext.len() < 2 {
             return Err(anyhow!("Invalid plaintext size").into());
+        }
+
+        let (owner, is_dummy, value, payload) = match plaintext.len() {
+            2 => {
+                let owner = Address::<N>::read_le(&plaintext[0].to_bytes_le()?[..])?;
+
+                let is_dummy_and_value_bytes = N::AccountEncryptionScheme::decode_message(&plaintext[1][..])?;
+                let is_dummy = u8::read_le(&is_dummy_and_value_bytes[..])?;
+                let value = AleoAmount::read_le(&is_dummy_and_value_bytes[1..])?;
+
+                (owner, is_dummy, value, None)
+            }
+            3 => {
+                let owner = Address::<N>::read_le(&plaintext[0].to_bytes_le()?[..])?;
+
+                let is_dummy_and_value_bytes = N::AccountEncryptionScheme::decode_message(&plaintext[1][..])?;
+                let is_dummy = u8::read_le(&is_dummy_and_value_bytes[..])?;
+                let value = AleoAmount::read_le(&is_dummy_and_value_bytes[1..])?;
+
+                let payload = Payload::read_le(&N::AccountEncryptionScheme::decode_message(&plaintext[2][..])?[..])?;
+
+                (owner, is_dummy, value, Some(payload))
+            }
+            _ => return Err(anyhow!("Invalid plaintext size").into()),
         };
 
-        // Decode the plaintext bytes.
-        let mut cursor = Cursor::new(plaintext);
-        let owner = Address::<N>::read_le(&mut cursor)?;
-        let is_dummy = u8::read_le(&mut cursor)?;
-        let value = AleoAmount::read_le(&mut cursor)?;
-
-        // TODO (raychu86): Remove padded payload.
-        let mut payload = if payload_exists { Some(Payload::read_le(&mut cursor)?) } else { None };
-
         // Ensure the dummy flag in the record is correct.
-        // let expected_dummy = value.is_zero() && payload.is_none() && program_id == &None; // TODO (raychu86): Use this after encryption scheme is updated.
-        let expected_dummy = value.is_zero() && program_id == &None;
-        if is_dummy == expected_dummy as u8 && payload == Some(Payload::default()) {
-            payload = None;
-        }
+        let expected_dummy = value.is_zero() && payload.is_none() && program_id.is_none();
 
         match is_dummy == expected_dummy as u8 {
             true => Ok((owner, value, payload)),

@@ -14,16 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Bech32Locator, DecryptionKey, Network, RecordError, ViewKey};
+use crate::{DecryptionKey, Network, RecordError, ViewKey};
 use snarkvm_algorithms::traits::{EncryptionScheme, CRH};
-use snarkvm_utilities::{
-    io::{Cursor, Result as IoResult},
-    to_bytes_le,
-    FromBytes,
-    Read,
-    ToBytes,
-    Write,
-};
+use snarkvm_utilities::{io::Result as IoResult, to_bytes_le, FromBytes, Read, ToBytes, Write};
 
 use anyhow::{anyhow, Result};
 use core::hash::{Hash, Hasher};
@@ -33,7 +26,7 @@ pub struct Ciphertext<N: Network> {
     commitment: N::Commitment,
     randomizer: N::RecordRandomizer,
     record_view_key_commitment: N::RecordViewKeyCommitment,
-    record_bytes: Vec<u8>,
+    record_bytes: Vec<Vec<u8>>,
     program_id: Option<N::ProgramID>,
 }
 
@@ -42,15 +35,23 @@ impl<N: Network> Ciphertext<N> {
     pub fn from(
         randomizer: N::RecordRandomizer,
         record_view_key_commitment: N::RecordViewKeyCommitment,
-        record_bytes: Vec<u8>,
+        record_bytes: Vec<Vec<u8>>,
         program_id: Option<N::ProgramID>,
     ) -> Result<Self, RecordError> {
         let program_id_bytes =
             program_id.map_or(Ok(vec![0u8; N::PROGRAM_ID_SIZE_IN_BYTES]), |program_id| program_id.to_bytes_le())?;
 
+        let mut flattened_record_bytes = record_bytes.iter().flatten().copied().collect::<Vec<u8>>();
+        // TODO (raychu86): Fix this padding size: I believe it should be 32 (owner) + 32 (is_dummy) + 32 (value) + 128 (payload).
+
+        const RECORD_BYTES_FULL_SIZE: usize = 224; // 7 field elements = 224 bytes
+        if flattened_record_bytes.len() < RECORD_BYTES_FULL_SIZE {
+            flattened_record_bytes.resize(RECORD_BYTES_FULL_SIZE, 0u8);
+        }
+
         // Compute the commitment.
         let commitment = N::commitment_scheme()
-            .hash(&to_bytes_le![randomizer, record_view_key_commitment, record_bytes, program_id_bytes]?)?
+            .hash(&to_bytes_le![randomizer, record_view_key_commitment, flattened_record_bytes, program_id_bytes]?)?
             .into();
 
         Ok(Self { commitment, randomizer, record_view_key_commitment, record_bytes, program_id })
@@ -97,7 +98,11 @@ impl<N: Network> Ciphertext<N> {
     pub fn to_plaintext(
         &self,
         decryption_key: &DecryptionKey<N>,
-    ) -> Result<(Vec<u8>, N::RecordViewKey, Option<N::ProgramID>)> {
+    ) -> Result<(
+        Vec<Vec<<N::AccountEncryptionScheme as EncryptionScheme>::MessageType>>,
+        N::RecordViewKey,
+        Option<N::ProgramID>,
+    )> {
         let record_view_key = match decryption_key {
             DecryptionKey::AccountViewKey(account_view_key) => {
                 // Compute the candidate record view key.
@@ -146,21 +151,20 @@ impl<N: Network> FromBytes for Ciphertext<N> {
     /// Decode the ciphertext into the ciphertext randomizer, record view key commitment, and record ciphertext.
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let mut ciphertext = vec![0u8; N::RECORD_CIPHERTEXT_SIZE_IN_BYTES];
-        reader.read_exact(&mut ciphertext)?;
-
         // Decode the ciphertext bytes.
-        let mut cursor = Cursor::new(ciphertext);
-        let ciphertext_randomizer = N::RecordRandomizer::read_le(&mut cursor)?;
-        let record_view_key_commitment = N::RecordViewKeyCommitment::read_le(&mut cursor)?;
+        let ciphertext_randomizer = N::RecordRandomizer::read_le(&mut reader)?;
+        let record_view_key_commitment = N::RecordViewKeyCommitment::read_le(&mut reader)?;
 
-        let mut record_bytes = vec![
-            0u8;
-            N::RECORD_CIPHERTEXT_SIZE_IN_BYTES
-                - N::RecordRandomizer::data_size_in_bytes()
-                - N::RecordViewKeyCommitment::data_size_in_bytes()
-        ];
-        cursor.read_exact(&mut record_bytes)?;
+        let num_elements: u32 = FromBytes::read_le(&mut reader)?;
+        let mut record_bytes = Vec::with_capacity(num_elements as usize);
+
+        for _ in 0..num_elements {
+            let bytes_len: u32 = FromBytes::read_le(&mut reader)?;
+            let mut bytes = vec![0u8; bytes_len as usize];
+            reader.read_exact(&mut bytes)?;
+
+            record_bytes.push(bytes);
+        }
 
         let program_id_exists: bool = FromBytes::read_le(&mut reader)?;
         let program_id: Option<N::ProgramID> = match program_id_exists {
@@ -177,7 +181,12 @@ impl<N: Network> ToBytes for Ciphertext<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.randomizer.write_le(&mut writer)?;
         self.record_view_key_commitment.write_le(&mut writer)?;
-        self.record_bytes.write_le(&mut writer)?;
+
+        (self.record_bytes.len() as u32).write_le(&mut writer)?;
+        for bytes in &self.record_bytes {
+            (bytes.len() as u32).write_le(&mut writer)?;
+            bytes.write_le(&mut writer)?;
+        }
 
         match &self.program_id {
             Some(program_id) => {

@@ -89,8 +89,13 @@ mod ecies_poseidon {
             encryption_scheme.generate_asymmetric_key(&public_key, rng);
         let symmetric_key_commitment = encryption_scheme.generate_symmetric_key_commitment(&symmetric_key);
 
-        let message = (0..32).map(|_| rand::random::<u8>()).collect::<Vec<u8>>();
-        let ciphertext = encryption_scheme.encrypt(&symmetric_key, &message).unwrap();
+        let message =
+            (0..5).map(|_| (0..32).map(|_| rand::random::<u8>()).collect::<Vec<u8>>()).collect::<Vec<Vec<u8>>>();
+        let encoded_message = message
+            .iter()
+            .map(|message_bytes| TestEncryptionScheme::encode_message(message_bytes).unwrap())
+            .collect::<Vec<_>>();
+        let ciphertext = encryption_scheme.encrypt(&symmetric_key, &encoded_message).unwrap();
 
         // Alloc parameters, public key, plaintext, randomness, and blinding exponents
         let encryption =
@@ -102,8 +107,18 @@ mod ecies_poseidon {
                 || Ok(&public_key),
             )
             .unwrap();
-        let message_gadget = UInt8::alloc_vec(&mut cs.ns(|| "plaintext_gadget"), &message).unwrap();
-
+        let message_gadget = message
+            .iter()
+            .enumerate()
+            .map(|(i, bytes)| {
+                let message = UInt8::alloc_vec(&mut cs.ns(|| format!("plaintext_gadget_{}", i)), bytes).unwrap();
+                <TestEncryptionSchemeGadget as EncryptionGadget<TestEncryptionScheme, _>>::encode_message(
+                    &mut cs.ns(|| format!("encode_plaintext_gadget_{}", i)),
+                    &message,
+                )
+                .unwrap()
+            })
+            .collect::<Vec<Vec<_>>>();
         let randomness_gadget =
             <TestEncryptionSchemeGadget as EncryptionGadget<TestEncryptionScheme, _>>::ScalarRandomnessGadget::alloc(
                 &mut cs.ns(|| "randomness_gadget"),
@@ -112,7 +127,11 @@ mod ecies_poseidon {
             .unwrap();
 
         // Expected ciphertext gadget
-        let expected_ciphertext_gadget = UInt8::alloc_vec(&mut cs.ns(|| "ciphertext_gadget"), &ciphertext).unwrap();
+        let expected_ciphertext_gadget = ciphertext
+            .iter()
+            .enumerate()
+            .map(|(i, bytes)| UInt8::alloc_vec(&mut cs.ns(|| format!("ciphertext_gadget_{}", i)), bytes).unwrap())
+            .collect::<Vec<Vec<UInt8>>>();
 
         println!("number of constraints for inputs: {}", cs.num_constraints());
 
@@ -176,8 +195,13 @@ mod ecies_poseidon {
         let (_randomness, ciphertext_randomizer, symmetric_key) =
             encryption_scheme.generate_asymmetric_key(&public_key, rng);
 
-        let message = (0..32).map(|_| rand::random::<u8>()).collect::<Vec<u8>>();
-        let ciphertext = encryption_scheme.encrypt(&symmetric_key, &message).unwrap();
+        let message =
+            (0..5).map(|_| (0..32).map(|_| rand::random::<u8>()).collect::<Vec<u8>>()).collect::<Vec<Vec<u8>>>();
+        let encoded_message = message
+            .iter()
+            .map(|message_bytes| TestEncryptionScheme::encode_message(message_bytes).unwrap())
+            .collect::<Vec<_>>();
+        let ciphertext = encryption_scheme.encrypt(&symmetric_key, &encoded_message).unwrap();
 
         // Alloc parameters, public key, plaintext, randomness, and blinding exponents
         let encryption =
@@ -189,7 +213,20 @@ mod ecies_poseidon {
                 || Ok(&private_key),
             )
             .unwrap();
-        let message_gadget = UInt8::alloc_vec(&mut cs.ns(|| "plaintext_gadget"), &message).unwrap();
+
+        // Expected ciphertext gadget
+        let message_gadget = message
+            .iter()
+            .enumerate()
+            .map(|(i, bytes)| {
+                let message = UInt8::alloc_vec(&mut cs.ns(|| format!("plaintext_gadget_{}", i)), bytes).unwrap();
+                <TestEncryptionSchemeGadget as EncryptionGadget<TestEncryptionScheme, _>>::encode_message(
+                    &mut cs.ns(|| format!("encode_plaintext_gadget_{}", i)),
+                    &message,
+                )
+                .unwrap()
+            })
+            .collect::<Vec<Vec<_>>>();
 
         let ciphertext_randomizer_gadget =
             <TestEncryptionSchemeGadget as EncryptionGadget<TestEncryptionScheme, _>>::CiphertextRandomizer::alloc(
@@ -199,7 +236,11 @@ mod ecies_poseidon {
             .unwrap();
 
         // Expected ciphertext gadget
-        let expected_ciphertext_gadget = UInt8::alloc_vec(&mut cs.ns(|| "ciphertext_gadget"), &ciphertext).unwrap();
+        let expected_ciphertext_gadget = ciphertext
+            .iter()
+            .enumerate()
+            .map(|(i, bytes)| UInt8::alloc_vec(&mut cs.ns(|| format!("ciphertext_gadget_{}", i)), bytes).unwrap())
+            .collect::<Vec<Vec<UInt8>>>();
 
         println!("number of constraints for inputs: {}", cs.num_constraints());
 
@@ -208,7 +249,7 @@ mod ecies_poseidon {
                 &mut cs.ns(|| "ciphertext_gadget_evaluation"),
                 &ciphertext_randomizer_gadget,
                 &private_key_gadget,
-                &message_gadget,
+                message_gadget.as_slice(),
             )
             .unwrap();
 

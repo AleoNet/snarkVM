@@ -118,7 +118,7 @@ impl Network for Testnet2 {
     const INNER_PROOF_SIZE_IN_BYTES: usize = 193;
     const PROGRAM_PROOF_SIZE_IN_BYTES: usize = 963;
     const PROGRAM_ID_SIZE_IN_BYTES: usize = 32;
-    const RECORD_CIPHERTEXT_SIZE_IN_BYTES: usize = 256;
+    const RECORD_CIPHERTEXT_SIZE_IN_BYTES: usize = 304;
     const RECORD_PAYLOAD_SIZE_IN_BYTES: usize = 128;
     const RECORD_VIEW_KEY_SIZE_IN_BYTES: usize = 32;
     const SIGNATURE_SIZE_IN_BYTES: usize = 128;
