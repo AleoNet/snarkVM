@@ -241,6 +241,12 @@ impl<P: Fp12Parameters> One for Fp12<P> {
 }
 
 impl<P: Fp12Parameters> Field for Fp12<P> {
+    type BasePrimeField = <Fp6<P::Fp6Params> as Field>::BasePrimeField;
+
+    fn from_base_prime_field(other: Self::BasePrimeField) -> Self {
+        Self::new(Fp6::from_base_prime_field(other), Fp6::zero())
+    }
+
     #[inline]
     fn characteristic<'a>() -> &'a [u64] {
         Fp6::<P::Fp6Params>::characteristic()
