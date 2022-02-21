@@ -176,7 +176,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type PoSW: PoSWScheme<Self>;
 
     /// Encryption scheme for accounts. Invoked only over `Self::InnerScalarField`.
-    type AccountEncryptionScheme: EncryptionScheme<PrivateKey = Self::ProgramScalarField, PublicKey = Self::ProgramAffineCurve, CiphertextRandomizer = Self::InnerScalarField, SymmetricKeyCommitment = Self::InnerScalarField>;
+    type AccountEncryptionScheme: EncryptionScheme<PrivateKey = Self::ProgramScalarField, PublicKey = Self::ProgramAffineCurve, MessageType = Self::InnerScalarField, CiphertextRandomizer = Self::InnerScalarField, SymmetricKeyCommitment = Self::InnerScalarField>;
     type AccountEncryptionGadget: EncryptionGadget<Self::AccountEncryptionScheme, Self::InnerScalarField>;
 
     /// PRF for deriving the account private key from a seed.

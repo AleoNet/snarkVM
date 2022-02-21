@@ -480,8 +480,8 @@ fn symmetric_key_commitment<F: PoseidonDefaultParametersField>(
 fn symmetric_encryption<F: PoseidonDefaultParametersField>(
     mut cs: impl ConstraintSystem<F>,
     symmetric_key: &FpGadget<F>,
-    encoded_message: &[Vec<FpGadget<F>>],
-) -> Result<Vec<Vec<UInt8>>, SynthesisError> {
+    encoded_message: &[FpGadget<F>],
+) -> Result<Vec<FpGadget<F>>, SynthesisError> {
     // Prepare the sponge.
     let params = Arc::new(F::get_default_poseidon_parameters::<4>(false).unwrap());
     let mut sponge = PoseidonSpongeGadget::with_parameters(cs.ns(|| "sponge"), &params);
@@ -490,26 +490,16 @@ fn symmetric_encryption<F: PoseidonDefaultParametersField>(
     })?;
     sponge.absorb(cs.ns(|| "absorb"), IntoIterator::into_iter([&domain_separator, symmetric_key]))?;
 
-    let mut result = Vec::new();
+    // Obtain random field elements from Poseidon.
+    let sponge_randomizers =
+        sponge.squeeze_field_elements(cs.ns(|| "squeeze for random elements"), encoded_message.len())?;
 
-    let mut encoded_message = encoded_message.to_vec();
-    for (i, element) in encoded_message.iter_mut().enumerate() {
-        // Obtain random field elements from Poseidon.
-        let sponge_randomizers =
-            sponge.squeeze_field_elements(cs.ns(|| format!("squeeze for random elements {}", i)), element.len())?;
-
+    let mut ciphertext = encoded_message.to_vec();
+    for (i, (element, randomizer)) in ciphertext.iter_mut().zip_eq(sponge_randomizers).enumerate() {
         // Add the random field elements to the packed bits.
-        for (j, sponge_randomizer) in sponge_randomizers.iter().enumerate() {
-            element[j]
-                .add_in_place(cs.ns(|| format!("add the sponge field element {} {}", i, j)), sponge_randomizer)?;
-        }
-
-        let ciphertext = element.to_bytes(cs.ns(|| format!("convert the masked results into bytes {}", i)))?;
-
-        result.push(ciphertext);
+        element.add_in_place(cs.ns(|| format!("add the sponge field element {}", i)), &randomizer)?;
     }
-
-    Ok(result)
+    Ok(ciphertext)
 }
 
 impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaultParametersField>
@@ -596,8 +586,8 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         &self,
         cs: CS,
         symmetric_key: &Self::SymmetricKeyGadget,
-        plaintext: &[Vec<FpGadget<F>>],
-    ) -> Result<Vec<Vec<UInt8>>, SynthesisError> {
+        plaintext: &[FpGadget<F>],
+    ) -> Result<Vec<FpGadget<F>>, SynthesisError> {
         symmetric_encryption(cs, &symmetric_key.0, plaintext)
     }
 
@@ -606,8 +596,8 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         mut cs: CS,
         randomness: &Self::ScalarRandomnessGadget,
         public_key: &Self::PublicKeyGadget,
-        encoded_message: &[Vec<FpGadget<F>>],
-    ) -> Result<(Self::CiphertextRandomizer, Vec<Vec<UInt8>>, Self::SymmetricKeyGadget), SynthesisError> {
+        encoded_message: &[FpGadget<F>],
+    ) -> Result<(Self::CiphertextRandomizer, Vec<FpGadget<F>>, Self::SymmetricKeyGadget), SynthesisError> {
         let zero: TEAffineGadget<TE, F> =
             <TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::zero(cs.ns(|| "affine zero")).unwrap();
 
@@ -644,8 +634,8 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         mut cs: CS,
         ciphertext_randomizer: &Self::CiphertextRandomizer,
         private_key: &Self::PrivateKeyGadget,
-        encoded_message: &[Vec<FpGadget<F>>],
-    ) -> Result<Vec<Vec<UInt8>>, SynthesisError> {
+        encoded_message: &[FpGadget<F>],
+    ) -> Result<Vec<FpGadget<F>>, SynthesisError> {
         let zero: TEAffineGadget<TE, F> =
             <TEAffineGadget<TE, F> as GroupGadget<TEAffine<TE>, F>>::zero(cs.ns(|| "affine zero")).unwrap();
 

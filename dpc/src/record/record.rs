@@ -16,6 +16,7 @@
 
 use crate::{Address, AleoAmount, Ciphertext, ComputeKey, DecryptionKey, Network, Payload, RecordError};
 use snarkvm_algorithms::traits::{EncryptionScheme, PRF};
+use snarkvm_curves::AffineCurve;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{FromBits, FromBytes, FromBytesDeserializer, ToBits, ToBytes, ToBytesSerializer};
 
@@ -69,12 +70,18 @@ impl<N: Network> Record<N> {
         record_view_key: N::RecordViewKey,
     ) -> Result<Self, RecordError> {
         // Encode the record contents into plaintext bytes.
-        let mut plaintext = Vec::with_capacity(3);
-        plaintext.push(vec![FromBytes::read_le(&owner.to_bytes_le()?[..])?]); // 32 bytes
-        plaintext.push(<N::AccountEncryptionScheme as EncryptionScheme>::encode_message(&value.to_bytes_le()?)?); // 64 bits = 8 bytes
-        if let Some(ref payload) = payload {
-            plaintext.push(<N::AccountEncryptionScheme as EncryptionScheme>::encode_message(&payload.to_bytes_le()?)?);
-        }
+        let mut plaintext = Vec::with_capacity(7);
+        plaintext.push((*owner).to_x_coordinate()); // 32 bytes
+        plaintext.extend_from_slice(
+            <N::AccountEncryptionScheme as EncryptionScheme>::encode_message(&value.to_bytes_le()?)?.as_slice(),
+        ); // 64 bits = 8 bytes
+        plaintext.extend_from_slice(
+            <N::AccountEncryptionScheme as EncryptionScheme>::encode_message(&match payload {
+                Some(ref payload) => payload.to_bytes_le()?,
+                None => Payload::<N>::default().to_bytes_le()?,
+            })?
+            .as_slice(),
+        );
 
         // Determine if the record is a dummy.
         let is_dummy = value.is_zero() && payload.is_none() && program_id == None;
@@ -83,7 +90,7 @@ impl<N: Network> Record<N> {
         let ciphertext = Ciphertext::<N>::from(
             randomizer,
             N::account_encryption_scheme().generate_symmetric_key_commitment(&record_view_key).into(),
-            N::account_encryption_scheme().encrypt(&record_view_key, &plaintext)?,
+            N::account_encryption_scheme().encrypt(&record_view_key, &plaintext),
             program_id,
             is_dummy,
         )?
@@ -99,10 +106,10 @@ impl<N: Network> Record<N> {
 
         // Decode the plaintext bytes into the record contents.
         let owner = Address::<N>::read_le(&plaintext[0].to_bytes_le()?[..])?;
-        let value = AleoAmount::read_le(&N::AccountEncryptionScheme::decode_message(&plaintext[1][..])?[..])?;
+        let value = AleoAmount::read_le(&*N::AccountEncryptionScheme::decode_message(&[plaintext[1]])?)?;
         let payload = match plaintext.len() {
             2 => None,
-            3 => Some(Payload::read_le(&N::AccountEncryptionScheme::decode_message(&plaintext[2][..])?[..])?),
+            3 => Some(Payload::read_le(&*N::AccountEncryptionScheme::decode_message(&plaintext[2..])?)?),
             _ => return Err(anyhow!("Invalid plaintext size").into()),
         };
 

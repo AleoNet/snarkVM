@@ -56,17 +56,9 @@ pub trait EncryptionScheme:
 
     fn decode_message(encoded_message: &[Self::MessageType]) -> Result<Vec<u8>, EncryptionError>;
 
-    fn encrypt<T: AsRef<[Self::MessageType]>>(
-        &self,
-        symmetric_key: &Self::SymmetricKey,
-        message: &[T],
-    ) -> Result<Vec<Vec<u8>>, EncryptionError>;
+    fn encrypt(&self, symmetric_key: &Self::SymmetricKey, message: &[Self::MessageType]) -> Vec<Self::MessageType>;
 
-    fn decrypt<T: AsRef<[u8]>>(
-        &self,
-        symmetric_key: &Self::SymmetricKey,
-        ciphertext: &[T],
-    ) -> Result<Vec<Vec<Self::MessageType>>, EncryptionError>;
+    fn decrypt(&self, symmetric_key: &Self::SymmetricKey, ciphertext: &[Self::MessageType]) -> Vec<Self::MessageType>;
 
     fn parameters(&self) -> &<Self as EncryptionScheme>::Parameters;
 

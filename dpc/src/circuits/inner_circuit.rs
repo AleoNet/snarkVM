@@ -25,7 +25,6 @@ use snarkvm_gadgets::{
         alloc::AllocGadget,
         eq::{ConditionalEqGadget, EqGadget},
         integers::{add::Add, integer::Integer, sub::Sub},
-        select::CondSelectGadget,
     },
     ComparatorGadget,
     EvaluateLtGadget,
@@ -191,7 +190,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 given_is_dummy,
                 given_value,
                 given_payload,
-                given_has_payload,
                 given_program_id,
                 given_randomizer,
                 given_record_view_key,
@@ -218,9 +216,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 // Use an empty payload if the record does not have one.
                 let payload = if let Some(payload) = record.payload().clone() { payload } else { Payload::default() };
                 let given_payload = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &payload.to_bytes_le()?)?;
-
-                let given_has_payload =
-                    Boolean::alloc(&mut declare_cs.ns(|| "given_has_payload"), || Ok(record.payload().is_some()))?;
 
                 // Use an empty program id if the record does not have one.
                 let program_id_bytes = if let Some(program_id) = record.program_id() {
@@ -250,7 +245,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     given_is_dummy,
                     given_value,
                     given_payload,
-                    given_has_payload,
                     given_program_id,
                     given_randomizer,
                     given_record_view_key,
@@ -315,7 +309,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     N::AccountEncryptionScheme,
                     N::InnerScalarField,
                 >>::encode_message(
-                    &mut commitment_cs.ns(|| format!("encode value {}", i)),
+                    &mut commitment_cs.ns(|| format!("encode input value {}", i)),
                     &given_value_bytes,
                 )?;
 
@@ -323,26 +317,19 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     N::AccountEncryptionScheme,
                     N::InnerScalarField,
                 >>::encode_message(
-                    &mut commitment_cs.ns(|| format!("encode payload {}", i)),
+                    &mut commitment_cs.ns(|| format!("encode input payload {}", i)),
                     &given_payload,
                 )?;
 
-                let plaintext = vec![vec![given_owner_gadget], encoded_given_value, encoded_given_payload];
+                let mut plaintext = Vec::with_capacity(1 + encoded_given_value.len() + encoded_given_payload.len());
+                plaintext.push(given_owner_gadget);
+                plaintext.extend_from_slice(&encoded_given_value);
+                plaintext.extend_from_slice(&encoded_given_payload);
 
-                let mut ciphertext = account_encryption_parameters.check_encryption_from_symmetric_key(
+                let ciphertext = account_encryption_parameters.check_encryption_from_symmetric_key(
                     &mut commitment_cs.ns(|| format!("input record {} check_encryption_gadget", i)),
                     &given_record_view_key,
                     &plaintext,
-                )?;
-
-                let padded_ciphertext = UInt8::constant_vec(&vec![0u8; ciphertext[2].len()]);
-
-                // Set the ciphertext payload values to 0 if the payload does not exist.
-                ciphertext[2] = Vec::<UInt8>::conditionally_select(
-                    &mut commitment_cs.ns(|| format!("cond_select_payload_{}", i)),
-                    &given_has_payload,
-                    &ciphertext[2],
-                    &padded_ciphertext,
                 )?;
 
                 let record_view_key_commitment = account_encryption_parameters.check_symmetric_key_commitment(
@@ -355,17 +342,27 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 let record_view_key_commitment_bytes = record_view_key_commitment
                     .to_bytes(&mut commitment_cs.ns(|| "Convert record_view_key_commitment to bytes"))?;
 
+                let ciphertext_bytes = ciphertext
+                    .iter()
+                    .enumerate()
+                    .flat_map(|(i, element)| {
+                        element
+                            .to_bytes(&mut commitment_cs.ns(|| format!("Convert input ciphertext {} to bytes", i)))
+                            .unwrap()
+                    })
+                    .collect::<Vec<_>>();
+
                 let mut commitment_input = Vec::with_capacity(
                     given_randomizer_bytes.len()
                         + record_view_key_commitment_bytes.len()
-                        + ciphertext.iter().map(|x| x.len()).sum::<usize>()
+                        + ciphertext_bytes.len()
                         + given_program_id.len()
                         + given_is_dummy_bytes.len(),
                 );
 
                 commitment_input.extend_from_slice(&given_randomizer_bytes);
                 commitment_input.extend_from_slice(&record_view_key_commitment_bytes);
-                commitment_input.extend_from_slice(&ciphertext.into_iter().flatten().collect::<Vec<UInt8>>());
+                commitment_input.extend_from_slice(&ciphertext_bytes);
                 commitment_input.extend_from_slice(&given_program_id);
                 commitment_input.extend_from_slice(&given_is_dummy_bytes);
 
@@ -557,15 +554,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         {
             let cs = &mut cs.ns(|| format!("Process output record {}", j));
 
-            let (
-                given_owner,
-                given_is_dummy,
-                given_value,
-                given_payload,
-                given_has_payload,
-                given_program_id,
-                given_randomizer,
-            ) = {
+            let (given_owner, given_is_dummy, given_value, given_payload, given_program_id, given_randomizer) = {
                 let declare_cs = &mut cs.ns(|| "Declare output record");
 
                 let given_owner = <N::AccountEncryptionGadget as EncryptionGadget<
@@ -583,9 +572,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 let payload = record.payload().clone().unwrap_or_default();
                 let given_payload = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &payload.to_bytes_le()?)?;
 
-                let given_has_payload =
-                    Boolean::alloc(&mut declare_cs.ns(|| "given_has_payload"), || Ok(record.payload().is_some()))?;
-
                 // Use an empty program id if the record does not have one.
                 let program_id_bytes = record
                     .program_id()
@@ -599,15 +585,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     &mut declare_cs.ns(|| "given_randomizer"), || Ok(record.randomizer())
                 )?;
 
-                (
-                    given_owner,
-                    given_is_dummy,
-                    given_value,
-                    given_payload,
-                    given_has_payload,
-                    given_program_id,
-                    given_randomizer,
-                )
+                (given_owner, given_is_dummy, given_value, given_payload, given_program_id, given_randomizer)
             };
             // ********************************************************************
 
@@ -669,7 +647,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     N::AccountEncryptionScheme,
                     N::InnerScalarField,
                 >>::encode_message(
-                    &mut commitment_cs.ns(|| format!("encode value {}", j)),
+                    &mut commitment_cs.ns(|| format!("encode input value {}", j)),
                     &given_value_bytes,
                 )?;
 
@@ -677,11 +655,14 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     N::AccountEncryptionScheme,
                     N::InnerScalarField,
                 >>::encode_message(
-                    &mut commitment_cs.ns(|| format!("encode payload {}", j)),
+                    &mut commitment_cs.ns(|| format!("encode input payload {}", j)),
                     &given_payload,
                 )?;
 
-                let plaintext = vec![vec![given_owner_gadget], encoded_given_value, encoded_given_payload];
+                let mut plaintext = Vec::with_capacity(1 + encoded_given_value.len() + encoded_given_payload.len());
+                plaintext.push(given_owner_gadget);
+                plaintext.extend_from_slice(&encoded_given_value);
+                plaintext.extend_from_slice(&encoded_given_payload);
 
                 let encryption_randomness = <N::AccountEncryptionGadget as EncryptionGadget<
                     N::AccountEncryptionScheme,
@@ -691,23 +672,13 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     || Ok(encryption_randomness),
                 )?;
 
-                let (candidate_ciphertext_randomizer, mut ciphertext, record_view_key) = account_encryption_parameters
+                let (candidate_ciphertext_randomizer, ciphertext, record_view_key) = account_encryption_parameters
                     .check_encryption_from_scalar_randomness(
                         &mut commitment_cs.ns(|| format!("output record {} check_encryption_gadget", j)),
                         &encryption_randomness,
                         &given_owner,
                         &plaintext,
                     )?;
-
-                let padded_ciphertext = UInt8::constant_vec(&vec![0u8; ciphertext[2].len()]);
-
-                // Set the ciphertext payload values to 0 if the payload does not exist.
-                ciphertext[2] = Vec::<UInt8>::conditionally_select(
-                    &mut commitment_cs.ns(|| format!("cond_select_payload_{}", j)),
-                    &given_has_payload,
-                    &ciphertext[2],
-                    &padded_ciphertext,
-                )?;
 
                 // Ensure the given randomizer is correct.
                 candidate_ciphertext_randomizer.enforce_equal(
@@ -729,16 +700,26 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 let record_view_key_commitment_bytes = record_view_key_commitment
                     .to_bytes(&mut commitment_cs.ns(|| "Convert record_view_key_commitment to bytes"))?;
 
+                let ciphertext_bytes = ciphertext
+                    .iter()
+                    .enumerate()
+                    .flat_map(|(i, element)| {
+                        element
+                            .to_bytes(&mut commitment_cs.ns(|| format!("Convert output ciphertext {} to bytes", i)))
+                            .unwrap()
+                    })
+                    .collect::<Vec<_>>();
+
                 let mut commitment_input = Vec::with_capacity(
                     given_randomizer_bytes.len()
                         + record_view_key_commitment_bytes.len()
-                        + ciphertext.iter().map(|x| x.len()).sum::<usize>()
+                        + ciphertext_bytes.len()
                         + given_program_id.len()
                         + given_is_dummy_bytes.len(),
                 );
                 commitment_input.extend_from_slice(&given_randomizer_bytes);
                 commitment_input.extend_from_slice(&record_view_key_commitment_bytes);
-                commitment_input.extend_from_slice(&ciphertext.into_iter().flatten().collect::<Vec<UInt8>>());
+                commitment_input.extend_from_slice(&ciphertext_bytes);
                 commitment_input.extend_from_slice(&given_program_id);
                 commitment_input.extend_from_slice(&given_is_dummy_bytes);
 
