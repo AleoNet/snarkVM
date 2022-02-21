@@ -26,15 +26,9 @@ use snarkvm_utilities::{
 };
 
 use anyhow::{anyhow, Result};
+use core::hash::{Hash, Hasher};
 
-#[derive(Derivative)]
-#[derivative(
-    Clone(bound = "N: Network"),
-    Debug(bound = "N: Network"),
-    PartialEq(bound = "N: Network"),
-    Eq(bound = "N: Network"),
-    Hash(bound = "N: Network")
-)]
+#[derive(Clone, Debug)]
 pub struct Ciphertext<N: Network> {
     commitment: N::Commitment,
     randomizer: N::RecordRandomizer,
@@ -130,6 +124,21 @@ impl<N: Network> Ciphertext<N> {
             }
             false => Err(anyhow!("The given record view key does not correspond to this ciphertext")),
         }
+    }
+}
+
+impl<N: Network> PartialEq for Ciphertext<N> {
+    fn eq(&self, other: &Self) -> bool {
+        self.commitment == other.commitment
+    }
+}
+
+impl<N: Network> Eq for Ciphertext<N> {}
+
+impl<N: Network> Hash for Ciphertext<N> {
+    #[inline]
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.commitment.hash(state);
     }
 }
 

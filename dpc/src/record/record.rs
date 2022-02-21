@@ -20,6 +20,7 @@ use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{to_bytes_le, FromBits, FromBytes, FromBytesDeserializer, ToBits, ToBytes, ToBytesSerializer};
 
 use anyhow::anyhow;
+use core::hash::{Hash, Hasher};
 use rand::{CryptoRng, Rng};
 use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
@@ -29,13 +30,7 @@ use std::{
     str::FromStr,
 };
 
-#[derive(Derivative)]
-#[derivative(
-    Debug(bound = "N: Network"),
-    Clone(bound = "N: Network"),
-    PartialEq(bound = "N: Network"),
-    Eq(bound = "N: Network")
-)]
+#[derive(Clone, Debug)]
 pub struct Record<N: Network> {
     owner: Address<N>,
     value: AleoAmount,
@@ -73,18 +68,67 @@ impl<N: Network> Record<N> {
         randomizer: N::RecordRandomizer,
         record_view_key: N::RecordViewKey,
     ) -> Result<Self, RecordError> {
+        // Determine if the record is a dummy.
+        let is_dummy = value.is_zero() && payload.is_none() && program_id == None;
+
         // Encode the record contents into plaintext bytes.
-        let plaintext = Self::encode_plaintext(owner, value, &payload, program_id)?;
+        let plaintext = match payload {
+            // Total = 32 + 1 + 8 + 128 = 169 bytes
+            Some(ref payload) => {
+                let plaintext = to_bytes_le![
+                    owner,    // 256 bits = 32 bytes
+                    is_dummy, // 1 bit = 1 byte // TODO (raychu86): Remove this.
+                    value,    // 64 bits = 8 bytes
+                    payload   // 1024 bits = 128 bytes
+                ]?;
 
-        // Encrypt the record bytes.
-        let ciphertext = Ciphertext::<N>::from(
-            randomizer,
-            N::account_encryption_scheme().generate_symmetric_key_commitment(&record_view_key).into(),
-            N::account_encryption_scheme().encrypt(&record_view_key, &plaintext)?,
-            program_id,
-        )?;
+                assert_eq!(
+                    1 + N::ADDRESS_SIZE_IN_BYTES + 8 + N::RECORD_PAYLOAD_SIZE_IN_BYTES,
+                    plaintext.len(),
+                    "Update me if the plaintext design changes."
+                );
 
-        Ok(Self { owner, value, payload, record_view_key, ciphertext: ciphertext.into() })
+                plaintext
+            }
+            // Total = 32 + 1 + 8 = 41 bytes
+            None => {
+                let mut plaintext = to_bytes_le![
+                    owner,    // 256 bits = 32 bytes
+                    is_dummy, // 1 bit = 1 byte // TODO (raychu86): Remove this.
+                    value     // 64 bits = 8 bytes
+                ]?;
+
+                assert_eq!(
+                    1 + N::ADDRESS_SIZE_IN_BYTES + 8,
+                    plaintext.len(),
+                    "Update me if the plaintext design changes."
+                );
+
+                // TODO (raychu86): (encrpytion) Remove this from the native encryption. Currently it is re-padded because it's required in
+                //  the inner circuit.
+                // Total = 41 + 128 = 169 bytes
+                plaintext.extend(vec![0u8; N::RECORD_PAYLOAD_SIZE_IN_BYTES]); // 1024 bits = 128 bytes
+
+                plaintext
+            }
+        };
+
+        // Ensure the record bytes are within the permitted size.
+        match plaintext.len() <= u16::MAX as usize {
+            true => {
+                // Encrypt the record bytes.
+                let ciphertext = Ciphertext::<N>::from(
+                    randomizer,
+                    N::account_encryption_scheme().generate_symmetric_key_commitment(&record_view_key).into(),
+                    N::account_encryption_scheme().encrypt(&record_view_key, &plaintext)?,
+                    program_id,
+                )?
+                .into();
+
+                Ok(Self { owner, value, payload, record_view_key, ciphertext })
+            }
+            false => Err(anyhow!("Records must be <= 65535 bytes, found {} bytes", plaintext.len()).into()),
+        }
     }
 
     /// Returns a record from the given decryption key and ciphertext.
@@ -161,48 +205,6 @@ impl<N: Network> Record<N> {
         Ok(serial_number)
     }
 
-    /// Encode the record contents into plaintext bytes.
-    fn encode_plaintext(
-        owner: Address<N>,
-        value: AleoAmount,
-        payload: &Option<Payload<N>>,
-        program_id: Option<N::ProgramID>,
-    ) -> Result<Vec<u8>, RecordError> {
-        // Determine if the record is a dummy.
-        let is_dummy = value.is_zero() && payload.is_none() && program_id == None;
-
-        // Total = 32 + 1 + 8 = 41 bytes
-        let mut plaintext = to_bytes_le![
-            owner,    // 256 bits = 32 bytes
-            is_dummy, // 1 bit = 1 byte // TODO (raychu86): Remove this.
-            value     // 64 bits = 8 bytes
-        ]?;
-
-        if let Some(payload) = payload {
-            // Total = 41 + 128 = 169 bytes
-            plaintext.extend(payload.to_bytes_le()?); // 1024 bits = 128 bytes
-
-            assert_eq!(
-                1 + N::ADDRESS_SIZE_IN_BYTES + 8 + N::RECORD_PAYLOAD_SIZE_IN_BYTES,
-                plaintext.len(),
-                "Update me if the plaintext design changes."
-            );
-        } else {
-            assert_eq!(1 + N::ADDRESS_SIZE_IN_BYTES + 8, plaintext.len(), "Update me if the plaintext design changes.");
-
-            // TODO (raychu86): (encrpytion) Remove this from the native encryption. Currently it is re-padded because it's required in
-            //  the inner circuit.
-            // Total = 41 + 128 = 169 bytes
-            plaintext.extend(vec![0u8; N::RECORD_PAYLOAD_SIZE_IN_BYTES]); // 1024 bits = 128 bytes
-        }
-
-        // Ensure the record bytes are within the permitted size.
-        match plaintext.len() <= u16::MAX as usize {
-            true => Ok(plaintext),
-            false => Err(anyhow!("Records must be <= 65535 bytes, found {} bytes", plaintext.len()).into()),
-        }
-    }
-
     /// Decode the plaintext bytes into the record contents.
     fn decode_plaintext(
         plaintext: &[u8],
@@ -247,6 +249,21 @@ impl<N: Network> Record<N> {
             true => Ok((owner, value, payload)),
             false => Err(anyhow!("Decoded incorrect is_dummy flag in record plaintext bytes").into()),
         }
+    }
+}
+
+impl<N: Network> PartialEq for Record<N> {
+    fn eq(&self, other: &Self) -> bool {
+        self.commitment() == other.commitment()
+    }
+}
+
+impl<N: Network> Eq for Record<N> {}
+
+impl<N: Network> Hash for Record<N> {
+    #[inline]
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.commitment().hash(state);
     }
 }
 

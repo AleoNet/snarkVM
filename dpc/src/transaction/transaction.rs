@@ -38,14 +38,14 @@ use snarkvm_utilities::{
 };
 
 use anyhow::{anyhow, Result};
-use itertools::Itertools;
-use rand::{CryptoRng, Rng};
-use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
-use std::{
+use core::{
     fmt,
     hash::{Hash, Hasher},
     str::FromStr,
 };
+use itertools::Itertools;
+use rand::{CryptoRng, Rng};
+use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
 
 #[derive(Derivative)]
 #[derivative(
@@ -317,6 +317,13 @@ impl<N: Network> Transaction<N> {
     }
 }
 
+impl<N: Network> Hash for Transaction<N> {
+    #[inline]
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.transaction_id.hash(state);
+    }
+}
+
 impl<N: Network> FromBytes for Transaction<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
@@ -402,13 +409,6 @@ impl<'de, N: Network> Deserialize<'de> for Transaction<N> {
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "transaction"),
         }
-    }
-}
-
-impl<N: Network> Hash for Transaction<N> {
-    #[inline]
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.transaction_id.hash(state);
     }
 }
 
