@@ -101,6 +101,7 @@ impl<N: Network> Transition<N> {
         }
     }
 
+    /// TODO (howardwu): Enforce the program IDs are matching (or pass it into the signature message for verification).
     /// Returns `true` if the transition ID is well-formed and the transition proof is valid.
     #[inline]
     pub fn verify(

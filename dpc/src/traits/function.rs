@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{FunctionType, Network, ProgramPublicVariables};
+use crate::{Network, ProgramPublicVariables};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError, ToConstraintField};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -24,9 +24,6 @@ use std::fmt::Debug;
 pub trait Function<N: Network>: Send + Sync {
     /// Returns the function ID.
     fn function_id(&self) -> N::FunctionID;
-
-    /// Returns the circuit type.
-    fn function_type(&self) -> FunctionType;
 
     /// Executes the function, returning an proof.
     fn execute(

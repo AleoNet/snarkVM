@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Address, AleoAmount, ComputeKey, FunctionType, LedgerProof, Network, Operation, PrivateKey, Record};
+use crate::{Address, AleoAmount, ComputeKey, LedgerProof, Network, Operation, PrivateKey, Record};
 use snarkvm_algorithms::SignatureScheme;
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
@@ -114,7 +114,8 @@ impl<N: Network> Request<N> {
             commitments.push(record.commitment());
         }
 
-        let message = to_bytes_le![commitments /*operation_id, fee*/]?;
+        let message =
+            to_bytes_le![commitments, records[0].program_id().unwrap_or_default() /*operation_id, fee*/]?;
         let signature = caller.sign(&message, rng)?;
 
         Self::from(records, ledger_proofs, operation, fee, signature, is_public)
@@ -205,7 +206,7 @@ impl<N: Network> Request<N> {
 
         // Prepare for signature verification.
         let commitments: Vec<_> = self.records.iter().map(|record| record.commitment()).collect();
-        let message = match to_bytes_le![commitments /*operation_id, self.fee*/] {
+        let message = match to_bytes_le![commitments, program_id.unwrap_or_default() /*operation_id, self.fee*/] {
             Ok(signature_message) => signature_message,
             Err(error) => {
                 eprintln!("Failed to construct request signature message: {}", error);
@@ -241,11 +242,6 @@ impl<N: Network> Request<N> {
     /// Returns the function ID.
     pub fn function_id(&self) -> Option<N::FunctionID> {
         self.operation.function_id()
-    }
-
-    /// Returns the function type.
-    pub fn function_type(&self) -> FunctionType {
-        self.operation.function_type()
     }
 
     /// Returns a reference to the operation.

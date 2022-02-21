@@ -29,9 +29,6 @@ pub use execution::*;
 pub mod function_inputs;
 pub use function_inputs::*;
 
-pub mod function_type;
-pub use function_type::*;
-
 pub mod noop;
 pub use noop::*;
 

@@ -61,11 +61,10 @@ impl<N: Network> VirtualMachine<N> {
             Operation::Noop => Self::noop(request, rng)?,
             Operation::Coinbase(recipient, amount) => Self::coinbase(request, recipient, amount, rng)?,
             Operation::Transfer(caller, recipient, amount) => Self::transfer(request, caller, recipient, amount, rng)?,
-            Operation::Evaluate(function_id, function_type, function_inputs) => self.evaluate(
+            Operation::Evaluate(function_id, function_inputs) => self.evaluate(
                 request,
                 request.to_program_id()?,
                 &function_id,
-                &function_type,
                 &function_inputs,
                 vec![], // custom_events
                 rng,
@@ -164,7 +163,6 @@ impl<N: Network> VirtualMachine<N> {
         request: &Request<N>,
         program_id: Option<N::ProgramID>,
         function_id: &N::FunctionID,
-        _function_type: &FunctionType,
         function_inputs: &FunctionInputs<N>,
         custom_events: Vec<Vec<u8>>,
         rng: &mut R,
@@ -242,15 +240,9 @@ impl<N: Network> VirtualMachine<N> {
         // Compute the operation.
         let operation = request.operation().clone();
         let response = match operation {
-            Operation::Evaluate(function_id, function_type, function_inputs) => self.evaluate(
-                request,
-                Some(program_id),
-                &function_id,
-                &function_type,
-                &function_inputs,
-                custom_events,
-                rng,
-            )?,
+            Operation::Evaluate(function_id, function_inputs) => {
+                self.evaluate(request, Some(program_id), &function_id, &function_inputs, custom_events, rng)?
+            }
             _ => return Err(anyhow!("Invalid Operation")),
         };
 
