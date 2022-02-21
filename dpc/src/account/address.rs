@@ -113,7 +113,7 @@ impl<N: Network> FromBytes for Address<N> {
     /// Reads in an account address buffer.
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let x_coordinate = N::ProgramBaseField::read_le(&mut reader)?;
+        let x_coordinate = N::InnerScalarField::read_le(&mut reader)?;
 
         if let Some(element) = N::ProgramAffineCurve::from_x_coordinate(x_coordinate, true) {
             if element.is_in_correct_subgroup_assuming_on_curve() {

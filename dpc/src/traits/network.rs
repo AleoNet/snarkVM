@@ -154,11 +154,10 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type InnerBaseField: PrimeField + PoseidonDefaultParametersField;
 
     /// Program curve type declarations.
-    type ProgramAffineCurve: AffineCurve<BaseField = Self::ProgramBaseField>;
+    type ProgramAffineCurve: AffineCurve<BaseField = Self::InnerScalarField>;
     type ProgramAffineCurveGadget: GroupGadget<Self::ProgramAffineCurve, Self::InnerScalarField>;
-    type ProgramProjectiveCurve: ProjectiveCurve<BaseField = Self::ProgramBaseField>;
+    type ProgramProjectiveCurve: ProjectiveCurve<BaseField = Self::InnerScalarField>;
     type ProgramCurveParameters: TwistedEdwardsParameters;
-    type ProgramBaseField: PrimeField;
     type ProgramScalarField: PrimeField;
 
     /// SNARK for inner circuit proof generation.
@@ -177,7 +176,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type PoSW: PoSWScheme<Self>;
 
     /// Encryption scheme for accounts. Invoked only over `Self::InnerScalarField`.
-    type AccountEncryptionScheme: EncryptionScheme<PrivateKey = Self::ProgramScalarField, PublicKey = Self::ProgramAffineCurve, CiphertextRandomizer = Self::ProgramBaseField, SymmetricKeyCommitment = Self::ProgramBaseField>;
+    type AccountEncryptionScheme: EncryptionScheme<PrivateKey = Self::ProgramScalarField, PublicKey = Self::ProgramAffineCurve, CiphertextRandomizer = Self::InnerScalarField, SymmetricKeyCommitment = Self::InnerScalarField>;
     type AccountEncryptionGadget: EncryptionGadget<Self::AccountEncryptionScheme, Self::InnerScalarField>;
 
     /// PRF for deriving the account private key from a seed.
@@ -186,7 +185,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
 
     /// Signature scheme for transaction authorizations. Invoked only over `Self::InnerScalarField`.
     type AccountSignatureScheme: SignatureScheme<PrivateKey = (Self::ProgramScalarField, Self::ProgramScalarField), PublicKey = Self::ProgramAffineCurve>
-        + SignatureSchemeOperations<AffineCurve = Self::ProgramAffineCurve, BaseField = Self::ProgramBaseField, ScalarField = Self::ProgramScalarField, Signature = <Self::AccountSignatureScheme as SignatureScheme>::Signature>;
+        + SignatureSchemeOperations<AffineCurve = Self::ProgramAffineCurve, BaseField = Self::InnerScalarField, ScalarField = Self::ProgramScalarField, Signature = <Self::AccountSignatureScheme as SignatureScheme>::Signature>;
     type AccountSignatureGadget: SignatureGadget<Self::AccountSignatureScheme, Self::InnerScalarField>;
     type AccountSignaturePublicKey: ToConstraintField<Self::InnerScalarField> + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
     type AccountSignature: Bech32Object<<Self::AccountSignatureScheme as SignatureScheme>::Signature>;

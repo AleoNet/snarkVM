@@ -143,7 +143,6 @@ impl Network for Testnet2 {
     type ProgramAffineCurveGadget = EdwardsBls12Gadget;
     type ProgramProjectiveCurve = EdwardsBls12Projective;
     type ProgramCurveParameters = EdwardsParameters;
-    type ProgramBaseField = <Self::ProgramCurveParameters as ModelParameters>::BaseField;
     type ProgramScalarField = <Self::ProgramCurveParameters as ModelParameters>::ScalarField;
 
     type InnerSNARK = Groth16<Self::InnerCurve, InnerPublicVariables<Testnet2>>;
