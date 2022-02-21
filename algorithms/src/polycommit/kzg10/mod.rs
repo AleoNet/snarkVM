@@ -22,13 +22,13 @@
 //! This construction achieves extractability in the algebraic group model (AGM).
 
 use crate::{
-    fft::DensePolynomial,
-    msm::{FixedBaseMSM, VariableBaseMSM},
-    polycommit::{LabeledPolynomial, PCError, PCRandomness},
+    fft::{DenseOrSparsePolynomial, DensePolynomial},
+    msm::{FixedBase, VariableBase},
+    polycommit::{PCError, PCRandomness},
 };
 use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{Field, One, PrimeField, Zero};
-use snarkvm_utilities::{cfg_iter, rand::UniformRand};
+use snarkvm_utilities::{cfg_iter, rand::UniformRand, BitIteratorBE};
 
 use core::{
     marker::PhantomData,
@@ -43,6 +43,8 @@ use rayon::prelude::*;
 
 mod data_structures;
 pub use data_structures::*;
+
+use super::LabeledPolynomialWithBasis;
 
 #[derive(Debug, PartialEq, Eq)]
 #[allow(deprecated)]
@@ -102,6 +104,15 @@ impl<E: PairingEngine> KZG10<E> {
         if max_degree < 1 {
             return Err(PCError::DegreeIsZero);
         }
+        let max_lagrange_size =
+            if max_degree.is_power_of_two() { max_degree } else { max_degree.next_power_of_two() >> 1 };
+
+        if !max_lagrange_size.is_power_of_two() {
+            return Err(PCError::LagrangeBasisSizeIsNotPowerOfTwo);
+        }
+        if max_lagrange_size > max_degree + 1 {
+            return Err(PCError::LagrangeBasisSizeIsTooLarge);
+        }
         let setup_time = start_timer!(|| format!("KZG10::Setup with degree {}", max_degree));
         let scalar_bits = E::Fr::size_in_bits();
 
@@ -121,53 +132,39 @@ impl<E: PairingEngine> KZG10<E> {
             }
             powers_of_beta
         };
-        let window_size = FixedBaseMSM::get_mul_window_size(max_degree + 1);
+        let window_size = FixedBase::get_mul_window_size(max_degree + 1);
         let g_time = start_timer!(|| "Generating powers of G");
-        let g_table = FixedBaseMSM::get_window_table(scalar_bits, window_size, g);
-        let powers_of_g =
-            FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(scalar_bits, window_size, &g_table, &powers_of_beta);
+        let g_table = FixedBase::get_window_table(scalar_bits, window_size, g);
+        let powers_of_beta_g = FixedBase::msm::<E::G1Projective>(scalar_bits, window_size, &g_table, &powers_of_beta);
         end_timer!(g_time);
 
         // Compute `gamma beta^i G`.
         let gamma_g_time = start_timer!(|| "Generating powers of gamma * G");
-        let gamma_g_table = FixedBaseMSM::get_window_table(scalar_bits, window_size, gamma_g);
-        let mut powers_of_gamma_g = FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(
-            scalar_bits,
-            window_size,
-            &gamma_g_table,
-            &powers_of_beta,
-        );
+        let gamma_g_table = FixedBase::get_window_table(scalar_bits, window_size, gamma_g);
+        let mut powers_of_beta_times_gamma_g =
+            FixedBase::msm::<E::G1Projective>(scalar_bits, window_size, &gamma_g_table, &powers_of_beta);
         // Add an additional power of gamma_g, because we want to be able to support
         // up to D queries.
-        powers_of_gamma_g.push(powers_of_gamma_g.last().unwrap().mul(beta));
+        powers_of_beta_times_gamma_g.push(powers_of_beta_times_gamma_g.last().unwrap().mul(beta));
         end_timer!(gamma_g_time);
 
         // Reduce `beta^i G` and `gamma beta^i G` to affine representations.
-        let powers_of_g = E::G1Projective::batch_normalization_into_affine(powers_of_g);
-        let powers_of_gamma_g =
-            E::G1Projective::batch_normalization_into_affine(powers_of_gamma_g).into_iter().enumerate().collect();
+        let powers_of_beta_g = E::G1Projective::batch_normalization_into_affine(powers_of_beta_g);
+        let powers_of_beta_times_gamma_g =
+            E::G1Projective::batch_normalization_into_affine(powers_of_beta_times_gamma_g)
+                .into_iter()
+                .enumerate()
+                .collect();
 
-        // Compute `inverse_powers_of_g`.
-        //
         // This part is used to derive the universal verification parameters.
         let list = supported_degree_bounds_config.get_list::<E::Fr>(max_degree);
 
         let supported_degree_bounds =
             if *supported_degree_bounds_config != KZG10DegreeBoundsConfig::NONE { list.clone() } else { vec![] };
 
-        let inverse_powers_of_g = if *supported_degree_bounds_config != KZG10DegreeBoundsConfig::NONE {
-            let mut map = BTreeMap::<usize, E::G1Affine>::new();
-            for i in list.iter() {
-                map.insert(*i, powers_of_g[max_degree - i]);
-            }
-            map
-        } else {
-            BTreeMap::new()
-        };
-
-        // Compute `neg_powers_of_h`.
-        let inverse_neg_powers_of_h_time = start_timer!(|| "Generating negative powers of h in G2");
-        let inverse_neg_powers_of_h =
+        // Compute `neg_powers_of_beta_h`.
+        let inverse_neg_powers_of_beta_h_time = start_timer!(|| "Generating negative powers of h in G2");
+        let inverse_neg_powers_of_beta_h =
             if produce_g2_powers && *supported_degree_bounds_config != KZG10DegreeBoundsConfig::NONE {
                 let mut map = BTreeMap::<usize, E::G2Affine>::new();
 
@@ -176,14 +173,10 @@ impl<E: PairingEngine> KZG10<E> {
                     neg_powers_of_beta.push(beta.pow(&[(max_degree - *i) as u64]).inverse().unwrap());
                 }
 
-                let window_size = FixedBaseMSM::get_mul_window_size(neg_powers_of_beta.len());
-                let neg_h_table = FixedBaseMSM::get_window_table(scalar_bits, window_size, h);
-                let neg_powers_of_h = FixedBaseMSM::multi_scalar_mul::<E::G2Projective>(
-                    scalar_bits,
-                    window_size,
-                    &neg_h_table,
-                    &neg_powers_of_beta,
-                );
+                let window_size = FixedBase::get_mul_window_size(neg_powers_of_beta.len());
+                let neg_h_table = FixedBase::get_window_table(scalar_bits, window_size, h);
+                let neg_powers_of_h =
+                    FixedBase::msm::<E::G2Projective>(scalar_bits, window_size, &neg_h_table, &neg_powers_of_beta);
 
                 let affines = E::G2Projective::batch_normalization_into_affine(neg_powers_of_h);
 
@@ -195,7 +188,7 @@ impl<E: PairingEngine> KZG10<E> {
             } else {
                 BTreeMap::new()
             };
-        end_timer!(inverse_neg_powers_of_h_time);
+        end_timer!(inverse_neg_powers_of_beta_h_time);
 
         let beta_h = h.mul(beta).into_affine();
         let h = h.into_affine();
@@ -203,13 +196,12 @@ impl<E: PairingEngine> KZG10<E> {
         let prepared_beta_h = beta_h.prepare();
 
         let pp = UniversalParams {
-            powers_of_g,
-            powers_of_gamma_g,
+            powers_of_beta_g,
+            powers_of_beta_times_gamma_g,
             h,
             beta_h,
             supported_degree_bounds,
-            inverse_powers_of_g,
-            inverse_neg_powers_of_h,
+            inverse_neg_powers_of_beta_h,
             prepared_h,
             prepared_beta_h,
         };
@@ -220,7 +212,7 @@ impl<E: PairingEngine> KZG10<E> {
     /// Outputs a commitment to `polynomial`.
     pub fn commit(
         powers: &Powers<E>,
-        polynomial: &DensePolynomial<E::Fr>,
+        polynomial: &DenseOrSparsePolynomial<'_, E::Fr>,
         hiding_bound: Option<usize>,
         terminator: &AtomicBool,
         rng: Option<&mut dyn RngCore>,
@@ -233,10 +225,78 @@ impl<E: PairingEngine> KZG10<E> {
             hiding_bound,
         ));
 
-        let (num_leading_zeros, plain_coeffs) = skip_leading_zeros_and_convert_to_bigints(polynomial);
+        let mut commitment = match polynomial {
+            DenseOrSparsePolynomial::DPolynomial(polynomial) => {
+                let (num_leading_zeros, plain_coeffs) = skip_leading_zeros_and_convert_to_bigints(polynomial);
 
+                let msm_time = start_timer!(|| "MSM to compute commitment to plaintext poly");
+                let commitment = VariableBase::msm(&powers.powers_of_beta_g[num_leading_zeros..], &plain_coeffs);
+                end_timer!(msm_time);
+
+                if terminator.load(Ordering::Relaxed) {
+                    return Err(PCError::Terminated);
+                }
+                commitment
+            }
+            DenseOrSparsePolynomial::SPolynomial(polynomial) => polynomial
+                .coeffs
+                .iter()
+                .map(|(i, coeff)| {
+                    powers.powers_of_beta_g[*i].mul_bits(BitIteratorBE::new_without_leading_zeros(coeff.to_repr()))
+                })
+                .sum(),
+        };
+
+        let mut randomness = Randomness::empty();
+        if let Some(hiding_degree) = hiding_bound {
+            let mut rng = rng.ok_or(PCError::MissingRng)?;
+            let sample_random_poly_time =
+                start_timer!(|| format!("Sampling a random polynomial of degree {}", hiding_degree));
+
+            randomness = Randomness::rand(hiding_degree, false, &mut rng);
+            Self::check_hiding_bound(
+                randomness.blinding_polynomial.degree(),
+                powers.powers_of_beta_times_gamma_g.len(),
+            )?;
+            end_timer!(sample_random_poly_time);
+        }
+
+        let random_ints = convert_to_bigints(&randomness.blinding_polynomial.coeffs);
+        let msm_time = start_timer!(|| "MSM to compute commitment to random poly");
+        let random_commitment =
+            VariableBase::msm(&powers.powers_of_beta_times_gamma_g, random_ints.as_slice()).into_affine();
+        end_timer!(msm_time);
+
+        if terminator.load(Ordering::Relaxed) {
+            return Err(PCError::Terminated);
+        }
+
+        commitment.add_assign_mixed(&random_commitment);
+
+        end_timer!(commit_time);
+        Ok((Commitment(commitment.into()), randomness))
+    }
+
+    /// Outputs a commitment to `polynomial`.
+    pub fn commit_lagrange(
+        lagrange_basis: &LagrangeBasis<E>,
+        evaluations: &[E::Fr],
+        hiding_bound: Option<usize>,
+        terminator: &AtomicBool,
+        rng: Option<&mut dyn RngCore>,
+    ) -> Result<(Commitment<E>, Randomness<E>), PCError> {
+        Self::check_degree_is_too_large(evaluations.len() - 1, lagrange_basis.size())?;
+        assert_eq!(evaluations.len().next_power_of_two(), lagrange_basis.size());
+
+        let commit_time = start_timer!(|| format!(
+            "Committing to polynomial of degree {} with hiding_bound: {:?}",
+            evaluations.len() - 1,
+            hiding_bound,
+        ));
+
+        let evaluations = evaluations.iter().map(|e| e.to_repr()).collect::<Vec<_>>();
         let msm_time = start_timer!(|| "MSM to compute commitment to plaintext poly");
-        let mut commitment = VariableBaseMSM::multi_scalar_mul(&powers.powers_of_g[num_leading_zeros..], &plain_coeffs);
+        let mut commitment = VariableBase::msm(&lagrange_basis.lagrange_basis_at_beta_g, &evaluations);
         end_timer!(msm_time);
 
         if terminator.load(Ordering::Relaxed) {
@@ -250,14 +310,17 @@ impl<E: PairingEngine> KZG10<E> {
                 start_timer!(|| format!("Sampling a random polynomial of degree {}", hiding_degree));
 
             randomness = Randomness::rand(hiding_degree, false, &mut rng);
-            Self::check_hiding_bound(randomness.blinding_polynomial.degree(), powers.powers_of_gamma_g.len())?;
+            Self::check_hiding_bound(
+                randomness.blinding_polynomial.degree(),
+                lagrange_basis.powers_of_beta_times_gamma_g.len(),
+            )?;
             end_timer!(sample_random_poly_time);
         }
 
         let random_ints = convert_to_bigints(&randomness.blinding_polynomial.coeffs);
         let msm_time = start_timer!(|| "MSM to compute commitment to random poly");
         let random_commitment =
-            VariableBaseMSM::multi_scalar_mul(&powers.powers_of_gamma_g, random_ints.as_slice()).into_affine();
+            VariableBase::msm(&lagrange_basis.powers_of_beta_times_gamma_g, random_ints.as_slice()).into_affine();
         end_timer!(msm_time);
 
         if terminator.load(Ordering::Relaxed) {
@@ -312,7 +375,7 @@ impl<E: PairingEngine> KZG10<E> {
         let (num_leading_zeros, witness_coeffs) = skip_leading_zeros_and_convert_to_bigints(witness_polynomial);
 
         let witness_comm_time = start_timer!(|| "Computing commitment to witness polynomial");
-        let mut w = VariableBaseMSM::multi_scalar_mul(&powers.powers_of_g[num_leading_zeros..], &witness_coeffs);
+        let mut w = VariableBase::msm(&powers.powers_of_beta_g[num_leading_zeros..], &witness_coeffs);
         end_timer!(witness_comm_time);
 
         let random_v = if let Some(hiding_witness_polynomial) = hiding_witness_polynomial {
@@ -323,7 +386,7 @@ impl<E: PairingEngine> KZG10<E> {
 
             let random_witness_coeffs = convert_to_bigints(&hiding_witness_polynomial.coeffs);
             let witness_comm_time = start_timer!(|| "Computing commitment to random witness polynomial");
-            w += &VariableBaseMSM::multi_scalar_mul(&powers.powers_of_gamma_g, &random_witness_coeffs);
+            w += &VariableBase::msm(&powers.powers_of_beta_times_gamma_g, &random_witness_coeffs);
             end_timer!(witness_comm_time);
             Some(blinding_evaluation)
         } else {
@@ -455,12 +518,13 @@ impl<E: PairingEngine> KZG10<E> {
         }
     }
 
-    pub(crate) fn check_degrees_and_bounds(
+    pub(crate) fn check_degrees_and_bounds<'a>(
         supported_degree: usize,
         max_degree: usize,
         enforced_degree_bounds: Option<&[usize]>,
-        p: &LabeledPolynomial<E::Fr>,
+        p: impl Into<LabeledPolynomialWithBasis<'a, E::Fr>>,
     ) -> Result<(), PCError> {
+        let p = p.into();
         if let Some(bound) = p.degree_bound() {
             let enforced_degree_bounds = enforced_degree_bounds.ok_or(PCError::UnsupportedDegreeBound(bound))?;
 
@@ -483,12 +547,16 @@ impl<E: PairingEngine> KZG10<E> {
 }
 
 fn skip_leading_zeros_and_convert_to_bigints<F: PrimeField>(p: &DensePolynomial<F>) -> (usize, Vec<F::BigInteger>) {
-    let mut num_leading_zeros = 0;
-    while p.coeffs[num_leading_zeros].is_zero() && num_leading_zeros < p.coeffs.len() {
-        num_leading_zeros += 1;
+    if p.coeffs.is_empty() {
+        (0, vec![])
+    } else {
+        let mut num_leading_zeros = 0;
+        while p.coeffs[num_leading_zeros].is_zero() && num_leading_zeros < p.coeffs.len() {
+            num_leading_zeros += 1;
+        }
+        let coeffs = convert_to_bigints(&p.coeffs[num_leading_zeros..]);
+        (num_leading_zeros, coeffs)
     }
-    let coeffs = convert_to_bigints(&p.coeffs[num_leading_zeros..]);
-    (num_leading_zeros, coeffs)
 }
 
 fn convert_to_bigints<F: PrimeField>(p: &[F]) -> Vec<F::BigInteger> {
@@ -501,6 +569,7 @@ fn convert_to_bigints<F: PrimeField>(p: &[F]) -> Vec<F::BigInteger> {
 #[cfg(test)]
 mod tests {
     #![allow(non_camel_case_types)]
+    #![allow(clippy::needless_borrow)]
     use super::*;
     use crate::polycommit::data_structures::PCCommitment;
     use snarkvm_curves::bls12_377::{Bls12_377, Fr};
@@ -517,14 +586,17 @@ mod tests {
             if supported_degree == 1 {
                 supported_degree += 1;
             }
-            let powers_of_g = pp.powers_of_g[..=supported_degree].to_vec();
-            let powers_of_gamma_g = (0..=supported_degree).map(|i| pp.powers_of_gamma_g[&i]).collect();
+            let powers_of_beta_g = pp.powers_of_beta_g[..=supported_degree].to_vec();
+            let powers_of_beta_times_gamma_g =
+                (0..=supported_degree).map(|i| pp.powers_of_beta_times_gamma_g[&i]).collect();
 
-            let powers =
-                Powers { powers_of_g: Cow::Owned(powers_of_g), powers_of_gamma_g: Cow::Owned(powers_of_gamma_g) };
+            let powers = Powers {
+                powers_of_beta_g: Cow::Owned(powers_of_beta_g),
+                powers_of_beta_times_gamma_g: Cow::Owned(powers_of_beta_times_gamma_g),
+            };
             let vk = VerifierKey {
-                g: pp.powers_of_g[0],
-                gamma_g: pp.powers_of_gamma_g[&0],
+                g: pp.powers_of_beta_g[0],
+                gamma_g: pp.powers_of_beta_times_gamma_g[&0],
                 h: pp.h,
                 beta_h: pp.beta_h,
                 prepared_h: pp.prepared_h.clone(),
@@ -567,8 +639,9 @@ mod tests {
         let (powers, _) = KZG_Bls12_377::trim(&pp, degree);
 
         let hiding_bound = None;
-        let (comm, _) = KZG10::commit(&powers, &p, hiding_bound, &AtomicBool::new(false), Some(rng)).unwrap();
-        let (f_comm, _) = KZG10::commit(&powers, &f_p, hiding_bound, &AtomicBool::new(false), Some(rng)).unwrap();
+        let (comm, _) = KZG10::commit(&powers, &(&p).into(), hiding_bound, &AtomicBool::new(false), Some(rng)).unwrap();
+        let (f_comm, _) =
+            KZG10::commit(&powers, &(&f_p).into(), hiding_bound, &AtomicBool::new(false), Some(rng)).unwrap();
         let mut f_comm_2 = Commitment::empty();
         f_comm_2 += (f, &comm);
 
@@ -586,7 +659,7 @@ mod tests {
             let (ck, vk) = KZG10::trim(&pp, degree);
             let p = DensePolynomial::rand(degree, rng);
             let hiding_bound = Some(1);
-            let (comm, rand) = KZG10::<E>::commit(&ck, &p, hiding_bound, &AtomicBool::new(false), Some(rng))?;
+            let (comm, rand) = KZG10::<E>::commit(&ck, &(&p).into(), hiding_bound, &AtomicBool::new(false), Some(rng))?;
             let point = E::Fr::rand(rng);
             let value = p.evaluate(point);
             let proof = KZG10::<E>::open(&ck, &p, point, &rand)?;
@@ -609,7 +682,7 @@ mod tests {
             let (ck, vk) = KZG10::trim(&pp, 2);
             let p = DensePolynomial::rand(1, rng);
             let hiding_bound = Some(1);
-            let (comm, rand) = KZG10::<E>::commit(&ck, &p, hiding_bound, &AtomicBool::new(false), Some(rng))?;
+            let (comm, rand) = KZG10::<E>::commit(&ck, &(&p).into(), hiding_bound, &AtomicBool::new(false), Some(rng))?;
             let point = E::Fr::rand(rng);
             let value = p.evaluate(point);
             let proof = KZG10::<E>::open(&ck, &p, point, &rand)?;
@@ -642,7 +715,8 @@ mod tests {
             for _ in 0..10 {
                 let p = DensePolynomial::rand(degree, rng);
                 let hiding_bound = Some(1);
-                let (comm, rand) = KZG10::<E>::commit(&ck, &p, hiding_bound, &AtomicBool::new(false), Some(rng))?;
+                let (comm, rand) =
+                    KZG10::<E>::commit(&ck, &(&p).into(), hiding_bound, &AtomicBool::new(false), Some(rng))?;
                 let point = E::Fr::rand(rng);
                 let value = p.evaluate(point);
                 let proof = KZG10::<E>::open(&ck, &p, point, &rand)?;

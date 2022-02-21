@@ -18,19 +18,22 @@
 
 use crate::fft::{DenseOrSparsePolynomial, EvaluationDomain, Evaluations};
 use snarkvm_fields::{Field, PrimeField};
-use snarkvm_utilities::{errors::SerializationError, serialize::*};
+use snarkvm_utilities::{cfg_iter_mut, serialize::*};
 
 use rand::Rng;
 use std::{
     fmt,
-    ops::{Add, AddAssign, Deref, DerefMut, Div, Mul, Neg, Sub, SubAssign},
+    ops::{Add, AddAssign, Deref, DerefMut, Div, Mul, MulAssign, Neg, Sub, SubAssign},
 };
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
+use super::PolyMultiplier;
+
 /// Stores a polynomial in coefficient form.
 #[derive(Clone, PartialEq, Eq, Hash, Default, CanonicalSerialize, CanonicalDeserialize)]
+#[must_use]
 pub struct DensePolynomial<F: Field> {
     /// The coefficient of `x^i` is stored at location `i` in `self.coeffs`.
     pub coeffs: Vec<F>,
@@ -207,6 +210,24 @@ impl<'a, 'b, F: Field> AddAssign<&'a DensePolynomial<F>> for DensePolynomial<F> 
             while self.coeffs.last().unwrap().is_zero() {
                 self.coeffs.pop();
             }
+        }
+    }
+}
+
+impl<'a, 'b, F: Field> AddAssign<&'a DenseOrSparsePolynomial<'a, F>> for DensePolynomial<F> {
+    fn add_assign(&mut self, other: &'a DenseOrSparsePolynomial<F>) {
+        match other {
+            DenseOrSparsePolynomial::SPolynomial(p) => *self += &Self::from(p.to_owned().into_owned()),
+            DenseOrSparsePolynomial::DPolynomial(p) => *self += p.as_ref(),
+        }
+    }
+}
+
+impl<'a, 'b, F: Field> AddAssign<(F, &'a DenseOrSparsePolynomial<'a, F>)> for DensePolynomial<F> {
+    fn add_assign(&mut self, (f, other): (F, &'a DenseOrSparsePolynomial<F>)) {
+        match other {
+            DenseOrSparsePolynomial::SPolynomial(p) => *self += (f, &Self::from(p.to_owned().into_owned())),
+            DenseOrSparsePolynomial::DPolynomial(p) => *self += (f, p.as_ref()),
         }
     }
 }
@@ -395,12 +416,10 @@ impl<'a, 'b, F: PrimeField> Mul<&'a DensePolynomial<F>> for &'b DensePolynomial<
         if self.is_zero() || other.is_zero() {
             DensePolynomial::zero()
         } else {
-            let domain = EvaluationDomain::new(self.coeffs.len() + other.coeffs.len())
-                .expect("field is not smooth enough to construct domain");
-            let mut self_evals = self.evaluate_over_domain_by_ref(domain);
-            let other_evals = other.evaluate_over_domain_by_ref(domain);
-            self_evals *= &other_evals;
-            self_evals.interpolate()
+            let mut m = PolyMultiplier::new();
+            m.add_polynomial_ref(self, "");
+            m.add_polynomial_ref(other, "");
+            m.multiply().unwrap()
         }
     }
 }
@@ -414,6 +433,15 @@ impl<F: Field> Mul<F> for DensePolynomial<F> {
     fn mul(mut self, other: F) -> Self {
         self.iter_mut().for_each(|c| *c *= other);
         self
+    }
+}
+
+/// Multiplies `self` by `other: F`.
+impl<F: Field> MulAssign<F> for DensePolynomial<F> {
+    #[inline]
+    #[allow(clippy::suspicious_arithmetic_impl)]
+    fn mul_assign(&mut self, other: F) {
+        cfg_iter_mut!(self).for_each(|c| *c *= other);
     }
 }
 
@@ -548,6 +576,8 @@ mod tests {
         let rng = &mut thread_rng();
         for a_degree in 0..70 {
             for b_degree in 0..70 {
+                dbg!(a_degree);
+                dbg!(b_degree);
                 let a = DensePolynomial::<Fr>::rand(a_degree, rng);
                 let b = DensePolynomial::<Fr>::rand(b_degree, rng);
                 assert_eq!(&a * &b, a.naive_mul(&b))

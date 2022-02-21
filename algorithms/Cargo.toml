@@ -18,7 +18,7 @@ license = "GPL-3.0"
 edition = "2021"
 
 [[bench]]
-name = "msm-variable-base"
+name = "variable_base"
 path = "benches/msm/variable_base.rs"
 harness = false
 
@@ -80,6 +80,7 @@ harness = false
 [[example]]
 name = "groth16"
 path = "examples/snark/groth16.rs"
+required-features = ["snark"]
 
 [dependencies.snarkvm-curves]
 path = "../curves"
@@ -126,6 +127,12 @@ features = [ "use_core" ]
 [dependencies.digest]
 version = "0.10"
 
+[dependencies.getrandom]
+version = "0.2"
+optional = true
+features = [ "js" ]
+default-features = false
+
 [dependencies.hashbrown]
 version = "0.12.0"
 
@@ -138,21 +145,15 @@ version = "0.10.3"
 [dependencies.lazy_static]
 version = "1.4"
 
+[dependencies.num_cpus]
+version = "1"
+optional = true
+
 [dependencies.once_cell]
 version = "1.9"
 
 [dependencies.rand]
 version = "0.8"
-
-[dependencies.getrandom]
-version = "0.2"
-optional = true
-features = [ "js" ]
-default-features = false
-
-[dependencies.num_cpus]
-version = "1"
-optional = true
 
 [dependencies.rand_core]
 version = "0.6"
@@ -254,9 +255,10 @@ wasm = [
   "snark",
   "getrandom"
 ]
+
+cuda = [ "rust-gpu-tools" ]
 parallel = [ "rayon", "num_cpus", "snarkvm-fields/parallel", "snarkvm-utilities/parallel" ]
 print-trace = [ "snarkvm-profiler/print-trace" ]
-cuda = [ "rust-gpu-tools" ]
 
 commitment = [ "crh" ]
 crh = [ "hash_to_curve" ]
@@ -266,7 +268,7 @@ fft = [ ]
 hash_to_curve = [ "crypto_hash" ]
 merkle_tree = [ ]
 msm = [ ]
-polycommit = [ "rand_core" ]
+polycommit = [ "rand_core", "fft", "crh", "msm" ]
 prf = [ ]
 signature = [ "encryption", "crypto_hash" ]
-snark = [ "fft", "msm" ]
+snark = [ "fft", "msm", "polycommit" ]

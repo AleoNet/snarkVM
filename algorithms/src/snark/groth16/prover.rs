@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::{push_constraints, r1cs_to_qap::R1CStoQAP, Proof, ProvingKey};
-use crate::{cfg_into_iter, msm::VariableBaseMSM};
+use crate::{cfg_into_iter, msm::VariableBase};
 use snarkvm_curves::traits::{AffineCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{One, PrimeField, Zero};
 use snarkvm_r1cs::errors::SynthesisError;
@@ -208,13 +208,13 @@ where
 
     pool.add_job(|| {
         let h_query = &params.h_query;
-        let res = VariableBaseMSM::multi_scalar_mul(h_query, &h_assignment);
+        let res = VariableBase::msm(h_query, &h_assignment);
         ResultWrapper::from_g1(res)
     });
 
     pool.add_job(|| {
         let l_aux_source = &params.l_query;
-        let res = VariableBaseMSM::multi_scalar_mul(l_aux_source, &aux_assignment);
+        let res = VariableBase::msm(l_aux_source, &aux_assignment);
         ResultWrapper::from_g1(res)
     });
     let results: Vec<_> = pool.execute_all();
@@ -247,7 +247,7 @@ fn calculate_coeff<G: AffineCurve>(
     assignment: &[<G::ScalarField as PrimeField>::BigInteger],
 ) -> G::Projective {
     let el = query[0];
-    let acc = VariableBaseMSM::multi_scalar_mul(&query[1..], assignment);
+    let acc = VariableBase::msm(&query[1..], assignment);
 
     let mut res = initial;
     res.add_assign_mixed(&el);

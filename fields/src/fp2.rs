@@ -99,6 +99,12 @@ impl<P: Fp2Parameters> One for Fp2<P> {
 }
 
 impl<P: Fp2Parameters> Field for Fp2<P> {
+    type BasePrimeField = P::Fp;
+
+    fn from_base_prime_field(other: Self::BasePrimeField) -> Self {
+        Self::new(other, P::Fp::zero())
+    }
+
     #[inline]
     fn characteristic<'a>() -> &'a [u64] {
         P::Fp::characteristic()
@@ -207,7 +213,7 @@ where
             Zero => Some(*self),
             QuadraticNonResidue => None,
             QuadraticResidue => {
-                let two_inv = P::Fp::one().double().inverse().expect("Two should always have an inverse");
+                let two_inv = P::Fp::half();
                 let alpha = self.norm().sqrt().expect("We are in the QR case, the norm should have a square root");
                 let mut delta = (alpha + self.c0) * two_inv;
                 if delta.legendre().is_qnr() {

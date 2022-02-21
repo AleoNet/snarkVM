@@ -72,6 +72,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize) 
     inner_circuit.generate_constraints(&mut inner_cs.ns(|| "Inner circuit")).unwrap();
 
     let candidate_inner_num_constraints = inner_cs.num_constraints();
+    let (num_non_zero_a, num_non_zero_b, num_non_zero_c) = inner_cs.num_non_zero();
 
     if !inner_cs.is_satisfied() {
         println!("=========================================================");
@@ -83,6 +84,12 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize) 
     println!("=========================================================");
     println!("Inner circuit num constraints: {}", candidate_inner_num_constraints);
     assert_eq!(expected_inner_num_constraints, candidate_inner_num_constraints);
+    println!("=========================================================");
+
+    println!("=========================================================");
+    println!("Inner circuit num non_zero_a: {}", num_non_zero_a);
+    println!("Inner circuit num non_zero_b: {}", num_non_zero_b);
+    println!("Inner circuit num non_zero_c: {}", num_non_zero_c);
     println!("=========================================================");
 
     assert!(inner_cs.is_satisfied());

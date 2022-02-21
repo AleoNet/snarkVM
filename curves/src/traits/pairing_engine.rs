@@ -92,6 +92,7 @@ pub trait PairingEngine: Sized + 'static + Copy + Debug + PartialEq + Eq + Sync 
 /// in the correct prime order subgroup.
 pub trait ProjectiveCurve:
     Group
+    + PartialEq<Self::Affine>
     + Sized
     + CanonicalSerialize
     + ConstantSerializedSize
@@ -147,6 +148,7 @@ pub trait ProjectiveCurve:
 #[allow(clippy::wrong_self_convention)]
 pub trait AffineCurve:
     Group
+    + PartialEq<Self::Projective>
     + Sized
     + Serialize
     + DeserializeOwned
@@ -220,6 +222,17 @@ pub trait AffineCurve:
 
     /// Checks that the current point is on the elliptic curve.
     fn is_on_curve(&self) -> bool;
+
+    /// Performs the first half of batch addition in-place.
+    fn batch_add_loop_1(
+        a: &mut Self,
+        b: &mut Self,
+        half: &Self::BaseField, // The value 2.inverse().
+        inversion_tmp: &mut Self::BaseField,
+    );
+
+    /// Performs the second half of batch addition in-place.
+    fn batch_add_loop_2(a: &mut Self, b: Self, inversion_tmp: &mut Self::BaseField);
 }
 
 pub trait PairingCurve: AffineCurve {

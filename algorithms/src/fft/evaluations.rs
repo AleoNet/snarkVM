@@ -18,9 +18,11 @@
 
 use crate::fft::{DensePolynomial, EvaluationDomain};
 use snarkvm_fields::PrimeField;
-use snarkvm_utilities::{errors::SerializationError, serialize::*};
+use snarkvm_utilities::serialize::*;
 
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
+
+use super::domain::IFFTPrecomputation;
 
 /// Stores a polynomial in evaluation form.
 #[derive(Clone, PartialEq, Eq, Hash, Debug, CanonicalSerialize, CanonicalDeserialize)]
@@ -43,10 +45,30 @@ impl<F: PrimeField> Evaluations<F> {
     }
 
     /// Interpolate a polynomial from a list of evaluations
+    pub fn interpolate_with_pc_by_ref(&self, pc: &IFFTPrecomputation<F>) -> DensePolynomial<F> {
+        let mut evals = self.evaluations.clone();
+        evals.resize(self.domain.size(), F::zero());
+        self.domain.in_order_ifft_in_place_with_pc(&mut evals, pc);
+        DensePolynomial::from_coefficients_vec(evals)
+    }
+
+    /// Interpolate a polynomial from a list of evaluations
     pub fn interpolate(self) -> DensePolynomial<F> {
         let Self { evaluations: mut evals, domain } = self;
         domain.ifft_in_place(&mut evals);
         DensePolynomial::from_coefficients_vec(evals)
+    }
+
+    /// Interpolate a polynomial from a list of evaluations
+    pub fn interpolate_with_pc(self, pc: &IFFTPrecomputation<F>) -> DensePolynomial<F> {
+        let Self { evaluations: mut evals, domain } = self;
+        evals.resize(self.domain.size(), F::zero());
+        domain.in_order_ifft_in_place_with_pc(&mut evals, pc);
+        DensePolynomial::from_coefficients_vec(evals)
+    }
+
+    pub fn domain(&self) -> EvaluationDomain<F> {
+        self.domain
     }
 }
 

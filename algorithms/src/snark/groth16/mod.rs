@@ -22,7 +22,6 @@ use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine};
 use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
 use snarkvm_r1cs::{Index, LinearCombination};
 use snarkvm_utilities::{
-    errors::SerializationError,
     fmt,
     serialize::*,
     str::FromStr,

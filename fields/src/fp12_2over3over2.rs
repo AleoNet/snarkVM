@@ -54,6 +54,7 @@ pub trait Fp12Parameters: 'static + Send + Sync + Copy {
     PartialEq(bound = "P: Fp12Parameters"),
     Eq(bound = "P: Fp12Parameters")
 )]
+#[must_use]
 pub struct Fp12<P: Fp12Parameters> {
     pub c0: Fp6<P::Fp6Params>,
     pub c1: Fp6<P::Fp6Params>,
@@ -240,6 +241,12 @@ impl<P: Fp12Parameters> One for Fp12<P> {
 }
 
 impl<P: Fp12Parameters> Field for Fp12<P> {
+    type BasePrimeField = <Fp6<P::Fp6Params> as Field>::BasePrimeField;
+
+    fn from_base_prime_field(other: Self::BasePrimeField) -> Self {
+        Self::new(Fp6::from_base_prime_field(other), Fp6::zero())
+    }
+
     #[inline]
     fn characteristic<'a>() -> &'a [u64] {
         Fp6::<P::Fp6Params>::characteristic()
@@ -342,7 +349,6 @@ impl<P: Fp12Parameters> Neg for Fp12<P> {
     type Output = Self;
 
     #[inline]
-    #[must_use]
     fn neg(self) -> Self {
         let mut copy = Self::zero();
         copy.c0 = self.c0.neg();

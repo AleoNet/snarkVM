@@ -15,12 +15,12 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::{push_constraints, r1cs_to_qap::R1CStoQAP, ProvingKey, VerifyingKey};
-use crate::{cfg_into_iter, cfg_iter, fft::EvaluationDomain, msm::FixedBaseMSM};
+use crate::{cfg_into_iter, cfg_iter, fft::EvaluationDomain, msm::FixedBase};
 use snarkvm_curves::traits::{PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{Field, One, PrimeField, Zero};
 use snarkvm_profiler::{end_timer, start_timer};
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, SynthesisError, Variable};
-use snarkvm_utilities::{errors::SerializationError, rand::UniformRand, serialize::*};
+use snarkvm_utilities::{rand::UniformRand, serialize::*};
 
 use core::ops::Mul;
 use rand::Rng;
@@ -203,8 +203,8 @@ where
 
     // Compute G window table
     let g1_window_time = start_timer!(|| "Compute G1 window table");
-    let g1_window = FixedBaseMSM::get_mul_window_size(non_zero_a + non_zero_b + qap_num_variables + m_raw + 1);
-    let g1_table = FixedBaseMSM::get_window_table::<E::G1Projective>(scalar_bits, g1_window, g1_generator);
+    let g1_window = FixedBase::get_mul_window_size(non_zero_a + non_zero_b + qap_num_variables + m_raw + 1);
+    let g1_table = FixedBase::get_window_table::<E::G1Projective>(scalar_bits, g1_window, g1_generator);
     end_timer!(g1_window_time);
 
     // Generate the R1CS proving key
@@ -218,28 +218,28 @@ where
 
     // Compute the A-query
     let a_time = start_timer!(|| "Calculate A");
-    let mut a_query = FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(scalar_bits, g1_window, &g1_table, &a);
+    let mut a_query = FixedBase::msm::<E::G1Projective>(scalar_bits, g1_window, &g1_table, &a);
     end_timer!(a_time);
 
     // Compute the B-query in G1
     let b_g1_time = start_timer!(|| "Calculate B G1");
-    let mut b_g1_query = FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(scalar_bits, g1_window, &g1_table, &b);
+    let mut b_g1_query = FixedBase::msm::<E::G1Projective>(scalar_bits, g1_window, &g1_table, &b);
     end_timer!(b_g1_time);
 
     // Compute B window table
     let g2_time = start_timer!(|| "Compute G2 table");
-    let g2_window = FixedBaseMSM::get_mul_window_size(non_zero_b);
-    let g2_table = FixedBaseMSM::get_window_table::<E::G2Projective>(scalar_bits, g2_window, g2_generator);
+    let g2_window = FixedBase::get_mul_window_size(non_zero_b);
+    let g2_table = FixedBase::get_window_table::<E::G2Projective>(scalar_bits, g2_window, g2_generator);
     end_timer!(g2_time);
 
     // Compute the B-query in G2
     let b_g2_time = start_timer!(|| "Calculate B G2");
-    let mut b_g2_query = FixedBaseMSM::multi_scalar_mul::<E::G2Projective>(scalar_bits, g2_window, &g2_table, &b);
+    let mut b_g2_query = FixedBase::msm::<E::G2Projective>(scalar_bits, g2_window, &g2_table, &b);
     end_timer!(b_g2_time);
 
     // Compute the H-query
     let h_time = start_timer!(|| "Calculate H");
-    let mut h_query = FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(
+    let mut h_query = FixedBase::msm::<E::G1Projective>(
         scalar_bits,
         g1_window,
         &g1_table,
@@ -250,7 +250,7 @@ where
 
     // Compute the L-query
     let l_time = start_timer!(|| "Calculate L");
-    let l_query = FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(scalar_bits, g1_window, &g1_table, &l);
+    let l_query = FixedBase::msm::<E::G1Projective>(scalar_bits, g1_window, &g1_table, &l);
     let mut l_query = l_query[assembly.num_public_variables..].to_vec();
     end_timer!(l_time);
 
@@ -259,7 +259,7 @@ where
     // Generate R1CS verification key
     let verifying_key_time = start_timer!(|| "Generate the R1CS verification key");
     let gamma_g2 = g2_generator.mul(gamma);
-    let gamma_abc_g1 = FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(scalar_bits, g1_window, &g1_table, &gamma_abc);
+    let gamma_abc_g1 = FixedBase::msm::<E::G1Projective>(scalar_bits, g1_window, &g1_table, &gamma_abc);
 
     drop(g1_table);
 
