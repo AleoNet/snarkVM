@@ -77,7 +77,10 @@ fn aleo_encryption_encrypt(c: &mut Criterion) {
     let (_, _, sym_key) = parameters.generate_asymmetric_key(&public_key, rng);
 
     let msg = b"aleo_encryption_encrypt_encrypt_encrypt_encrypt_encrypt_encrypt";
-    c.bench_function("Aleo Encryption Encrypt", move |b| b.iter(|| parameters.encrypt(&sym_key, msg)));
+    let encoded_message = EncryptionScheme::encode_message(msg).unwrap();
+    c.bench_function("Aleo Encryption Encrypt", move |b| {
+        b.iter(|| parameters.encrypt(&sym_key, &[encoded_message.to_vec()]))
+    });
 }
 
 fn aleo_encryption_decrypt(c: &mut Criterion) {
@@ -87,7 +90,8 @@ fn aleo_encryption_decrypt(c: &mut Criterion) {
     let public_key = parameters.generate_public_key(&private_key);
     let (_, _, sym_key) = parameters.generate_asymmetric_key(&public_key, rng);
     let msg = b"aleo_encryption_encrypt_encrypt_encrypt_encrypt_encrypt_encrypt";
-    let ct = parameters.encrypt(&sym_key, msg).unwrap();
+    let encoded_message = EncryptionScheme::encode_message(msg).unwrap();
+    let ct = parameters.encrypt(&sym_key, &[encoded_message]).unwrap();
     c.bench_function("Aleo Encryption Decrypt", move |b| b.iter(|| parameters.decrypt(&sym_key, &ct)));
 }
 

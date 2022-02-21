@@ -17,7 +17,7 @@
 mod ecies {
     use crate::{encryption::ECIESPoseidonEncryption, EncryptionScheme};
     use snarkvm_curves::edwards_bls12::EdwardsParameters;
-    use snarkvm_utilities::{FromBytes, ToBytes, UniformRand};
+    use snarkvm_utilities::{FromBytes, ToBytes};
 
     use rand::{thread_rng, Rng};
 
@@ -35,11 +35,21 @@ mod ecies {
         let (_randomness, _ciphertext_randomizer, symmetric_key) = encryption.generate_asymmetric_key(&public_key, rng);
 
         let number_of_bytes = 320;
-        let message = (0..number_of_bytes).map(|_| u8::rand(rng)).collect::<Vec<u8>>();
-        let ciphertext = encryption.encrypt(&symmetric_key, &message).unwrap();
+        let message = (0..5)
+            .map(|_| (0..number_of_bytes).map(|_| rand::random::<u8>()).collect::<Vec<u8>>())
+            .collect::<Vec<Vec<u8>>>();
+        let encoded_message = message
+            .iter()
+            .map(|message_bytes| TestEncryptionScheme::encode_message(message_bytes).unwrap())
+            .collect::<Vec<_>>();
+        let ciphertext = encryption.encrypt(&symmetric_key, &encoded_message).unwrap();
         dbg!(ciphertext.len());
         let candidate_message = encryption.decrypt(&symmetric_key, &ciphertext).unwrap();
-        assert_eq!(message, candidate_message);
+        let decoded_message = candidate_message
+            .iter()
+            .map(|encoded_message_bytes| TestEncryptionScheme::decode_message(encoded_message_bytes).unwrap())
+            .collect::<Vec<Vec<u8>>>();
+        assert_eq!(message, decoded_message);
     }
 
     #[test]
@@ -112,10 +122,20 @@ mod ecies {
         let (_randomness, _ciphertext_randomizer, symmetric_key) = encryption.generate_asymmetric_key(&public_key, rng);
 
         let number_of_bytes = 320;
-        let message = (0..number_of_bytes).map(|_| u8::rand(rng)).collect::<Vec<u8>>();
-        let ciphertext = encryption.encrypt(&symmetric_key, &message).unwrap();
+        let message = (0..5)
+            .map(|_| (0..number_of_bytes).map(|_| rand::random::<u8>()).collect::<Vec<u8>>())
+            .collect::<Vec<Vec<u8>>>();
+        let encoded_message = message
+            .iter()
+            .map(|message_bytes| TestEncryptionScheme::encode_message(message_bytes).unwrap())
+            .collect::<Vec<_>>();
+        let ciphertext = encryption.encrypt(&symmetric_key, &encoded_message).unwrap();
         let candidate_message = encryption.decrypt(&symmetric_key, &ciphertext).unwrap();
-        assert_eq!(message, candidate_message);
+        let decoded_message = candidate_message
+            .iter()
+            .map(|encoded_message_bytes| TestEncryptionScheme::decode_message(encoded_message_bytes).unwrap())
+            .collect::<Vec<Vec<u8>>>();
+        assert_eq!(message, decoded_message);
 
         // Ensure any mutation fails to match the original message.
         for _ in 0..ITERATIONS {
@@ -123,12 +143,17 @@ mod ecies {
             let mut ciphertext = ciphertext.clone();
 
             // Mutate one byte in the first 30 bytes of the ciphertext.
-            let idx = rng.gen_range(0..30);
-            ciphertext[idx] = ciphertext[idx].wrapping_add(rng.gen_range(1..u8::MAX));
+            let x = rng.gen_range(0..5);
+            let y = rng.gen_range(0..30);
+            ciphertext[x][y] = ciphertext[x][y].wrapping_add(rng.gen_range(1..u8::MAX));
 
             // This should fail.
             let candidate_message = encryption.decrypt(&symmetric_key, &ciphertext).unwrap();
-            assert_ne!(message, candidate_message);
+            let decoded_message = candidate_message
+                .iter()
+                .map(|encoded_message_bytes| TestEncryptionScheme::decode_message(encoded_message_bytes).unwrap())
+                .collect::<Vec<Vec<u8>>>();
+            assert_ne!(message, decoded_message);
         }
     }
 }
