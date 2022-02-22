@@ -28,6 +28,9 @@ extern crate thiserror;
 
 pub use snarkvm_utilities::{cfg_chunks, cfg_chunks_mut, cfg_into_iter, cfg_iter, cfg_iter_mut, cfg_reduce};
 
+#[cfg(feature = "binding_signature")]
+pub mod binding_signature;
+
 #[cfg(feature = "commitment")]
 pub mod commitment;
 

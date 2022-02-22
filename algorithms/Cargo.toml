@@ -112,6 +112,10 @@ version = "0.1.8"
 [dependencies.anyhow]
 version = "1.0"
 
+[dependencies.blake2]
+version = "0.10"
+default-features = false
+
 [dependencies.blake2s_simd]
 version = "1.0"
 optional = true
@@ -194,10 +198,6 @@ version = "1.1.0"
 [dev-dependencies.bincode]
 version = "1"
 
-[dev-dependencies.blake2]
-version = "0.10"
-default-features = false
-
 [dev-dependencies.criterion]
 version = "0.3.5"
 
@@ -227,6 +227,7 @@ default = [
   "snarkvm-utilities/default"
 ]
 full = [
+  "binding_signature",
   "commitment",
   "crh",
   "encryption",
@@ -240,6 +241,7 @@ full = [
   "snark"
 ]
 wasm = [
+  "binding_signature",
   "commitment",
   "crh",
   "crypto_hash",
@@ -254,6 +256,8 @@ wasm = [
   "snark",
   "getrandom"
 ]
+
+binding_signature = [ ]
 commitment = [ "crh" ]
 crh = [ "hash_to_curve" ]
 crypto_hash = [ "blake2s_simd" ]
