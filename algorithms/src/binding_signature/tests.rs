@@ -16,7 +16,12 @@
 
 #[cfg(test)]
 mod tests {
-    use crate::{binding_signature::*, commitment::BHPCommitment, errors::BindingSignatureError, CommitmentScheme};
+    use crate::{
+        binding_signature::*,
+        commitment::PedersenCompressedCommitment,
+        errors::BindingSignatureError,
+        CommitmentScheme,
+    };
 
     use snarkvm_curves::edwards_bls12::EdwardsProjective;
     use snarkvm_utilities::{rand::UniformRand, to_bytes_le, FromBytes, ToBytes};
@@ -24,7 +29,7 @@ mod tests {
     use rand::Rng;
 
     type G = EdwardsProjective;
-    type ValueCommitment = BHPCommitment<G, 24, 63>;
+    type ValueCommitment = PedersenCompressedCommitment<G, 4, 350>;
 
     fn generate_random_binding_signature<C: CommitmentScheme, R: Rng>(
         value_comm_pp: &C,
@@ -147,191 +152,5 @@ mod tests {
             FromBytes::read_le(&binding_signature_bytes[..]).unwrap();
 
         assert_eq!(binding_signature, reconstructed_binding_signature);
-    }
-
-    #[test]
-    fn test_homomorphism() {
-        use snarkvm_curves::{Group, ProjectiveCurve};
-
-        use std::ops::{Add, Neg};
-
-        let rng = &mut rand::thread_rng();
-
-        // Setup parameters
-
-        let value_comm_pp = ValueCommitment::setup("binding_signature_test");
-
-        let mut value_balance = 0;
-
-        let input_amounts = vec![0, 0];
-        let output_amounts = vec![0, 0];
-
-        let mut input_value_commitment_randomness = vec![];
-        let mut input_value_commitments = vec![];
-
-        let mut output_value_commitment_randomness = vec![];
-        let mut output_value_commitments = vec![];
-
-        for input_amount in input_amounts {
-            value_balance += input_amount as i64;
-
-            let value_commit_randomness = <ValueCommitment as CommitmentScheme>::Randomness::rand(rng);
-            let value_commitment =
-                value_comm_pp.commit(&input_amount.to_bytes_le().unwrap(), &value_commit_randomness).unwrap();
-
-            input_value_commitment_randomness.push(value_commit_randomness);
-            input_value_commitments.push(value_commitment);
-        }
-
-        for output_amount in output_amounts {
-            value_balance -= output_amount as i64;
-
-            let value_commit_randomness = <ValueCommitment as CommitmentScheme>::Randomness::rand(rng);
-            let value_commitment =
-                value_comm_pp.commit(&output_amount.to_bytes_le().unwrap(), &value_commit_randomness).unwrap();
-
-            output_value_commitment_randomness.push(value_commit_randomness);
-            output_value_commitments.push(value_commitment);
-        }
-
-        /////////////////
-
-        // Calculate the bsk and bvk
-        let mut bsk = <G as Group>::ScalarField::default();
-        let mut bvk = <G as ProjectiveCurve>::Affine::default();
-
-        for input_vc_randomness in input_value_commitment_randomness {
-            let randomness: <G as Group>::ScalarField =
-                FromBytes::read_le(&to_bytes_le![input_vc_randomness].unwrap()[..]).unwrap();
-            bsk = bsk.add(&randomness);
-        }
-
-        for output_vc_randomness in output_value_commitment_randomness {
-            let randomness: <G as Group>::ScalarField =
-                FromBytes::read_le(&to_bytes_le![output_vc_randomness].unwrap()[..]).unwrap();
-            bsk = bsk.add(&randomness.neg());
-        }
-
-        for vc_input in input_value_commitments {
-            let recovered_input_value_commitment: <G as ProjectiveCurve>::Affine =
-                recover_affine_from_x_coord::<G>(&to_bytes_le![vc_input].unwrap()[..]).unwrap();
-            bvk = bvk.add(&recovered_input_value_commitment);
-        }
-
-        for vc_output in output_value_commitments {
-            let recovered_output_value_commitment: <G as ProjectiveCurve>::Affine =
-                recover_affine_from_x_coord::<G>(&to_bytes_le![vc_output].unwrap()[..]).unwrap();
-            bvk = bvk.add(&recovered_output_value_commitment.neg());
-        }
-
-        // Calculate Value balance commitment
-        let value_balance_commitment: <G as ProjectiveCurve>::Affine =
-            calculate_value_balance_commitment::<ValueCommitment, G>(&value_comm_pp, value_balance).unwrap();
-
-        bvk = bvk.add(&value_balance_commitment.neg());
-
-        // Make sure bvk can be derived from bsk
-        let zero: i64 = 0;
-        let comm_bsk: <ValueCommitment as CommitmentScheme>::Randomness =
-            FromBytes::read_le(&to_bytes_le![bsk].unwrap()[..]).unwrap();
-        let expected_bvk_x = to_bytes_le![value_comm_pp.commit(&zero.to_le_bytes(), &comm_bsk).unwrap()].unwrap();
-        let expected_bvk = recover_affine_from_x_coord::<G>(&expected_bvk_x).unwrap();
-        assert_eq!(bvk, expected_bvk);
-    }
-
-    #[test]
-    fn test_homomorphism_simple() {
-        use snarkvm_curves::{Group, ProjectiveCurve};
-
-        use std::ops::{Add, Neg};
-
-        let rng = &mut rand::thread_rng();
-
-        // Setup parameters
-
-        let value_comm_pp = ValueCommitment::setup("binding_signature_test");
-
-        // Values
-        let input_value = 100i64;
-        let output_value = 100i64;
-        let value_balance = 0i64;
-
-        // Input
-        let input_value_commit_randomness = <ValueCommitment as CommitmentScheme>::Randomness::rand(rng);
-        let input_value_commitment =
-            value_comm_pp.commit(&input_value.to_bytes_le().unwrap(), &input_value_commit_randomness).unwrap();
-
-        // Output
-        let output_value_commit_randomness = <ValueCommitment as CommitmentScheme>::Randomness::rand(rng);
-        let output_value_commitment =
-            value_comm_pp.commit(&output_value.to_bytes_le().unwrap(), &output_value_commit_randomness).unwrap();
-
-        // Calculate Value balance commitment
-        let value_balance_commitment: <G as ProjectiveCurve>::Affine =
-            calculate_value_balance_commitment::<ValueCommitment, G>(&value_comm_pp, value_balance).unwrap();
-
-        // BVK
-        let mut bvk = <G as ProjectiveCurve>::Affine::default();
-        bvk = bvk.add(&recover_affine_from_x_coord::<G>(&to_bytes_le![input_value_commitment].unwrap()[..]).unwrap());
-        bvk = bvk
-            .add(&recover_affine_from_x_coord::<G>(&to_bytes_le![output_value_commitment].unwrap()[..]).unwrap().neg());
-        bvk = bvk.add(
-            &recover_affine_from_x_coord::<G>(&to_bytes_le![value_balance_commitment].unwrap()[..]).unwrap().neg(),
-        );
-
-        // BSK
-        let mut bsk = <G as Group>::ScalarField::default();
-        bsk = bsk.add(&input_value_commit_randomness);
-        bsk = bsk.add(&output_value_commit_randomness.neg());
-
-        // Make sure bvk can be derived from bsk
-        let zero: i64 = 0;
-        let expected_bvk_x = to_bytes_le![value_comm_pp.commit(&zero.to_le_bytes(), &bsk).unwrap()].unwrap();
-        let expected_bvk = recover_affine_from_x_coord::<G>(&expected_bvk_x).unwrap();
-        assert_eq!(bvk, expected_bvk);
-    }
-
-    #[test]
-    fn test_homomorphism_simplest() {
-        use snarkvm_curves::{Group, ProjectiveCurve};
-        use snarkvm_fields::Zero;
-        use std::ops::{Add, Neg};
-
-        // Setup parameters
-        let value_comm_pp = BHPCommitment::<EdwardsProjective, 24, 63>::setup("binding_signature_test");
-
-        // Values
-        let input_value = 0i64;
-        let output_value = 0i64;
-        let value_balance = 0i64;
-
-        let zero_randomness = <ValueCommitment as CommitmentScheme>::Randomness::zero();
-
-        // Input
-        let input_value_commitment =
-            value_comm_pp.commit(&input_value.to_bytes_le().unwrap(), &zero_randomness).unwrap();
-
-        // Output
-        let output_value_commitment =
-            value_comm_pp.commit(&output_value.to_bytes_le().unwrap(), &zero_randomness).unwrap();
-
-        // Calculate Value balance commitment
-        // let value_balance_commitment =
-        //     value_comm_pp.commit(&value_balance.to_bytes_le().unwrap(), &zero_randomness).unwrap();
-
-        // BVK
-        let mut bvk = <G as ProjectiveCurve>::Affine::default();
-        bvk = bvk.add(&recover_affine_from_x_coord::<G>(&to_bytes_le![input_value_commitment].unwrap()[..]).unwrap());
-        bvk = bvk.add(&recover_affine_from_x_coord::<G>(&to_bytes_le![output_value_commitment].unwrap()[..]).unwrap());
-        // bvk = bvk.add(
-        //     &recover_affine_from_x_coord::<G>(&to_bytes_le![value_balance_commitment].unwrap()[..]).unwrap().neg(),
-        // );
-
-        // Make sure bvk can be derived from bsk
-        // let zero: i64 = 0;
-        let expected_bvk_x =
-            to_bytes_le![value_comm_pp.commit(&value_balance.to_le_bytes(), &zero_randomness).unwrap()].unwrap();
-        let expected_bvk = recover_affine_from_x_coord::<G>(&expected_bvk_x).unwrap();
-        assert_eq!(bvk, expected_bvk);
     }
 }
