@@ -154,7 +154,7 @@ pub fn create_binding_signature<C: CommitmentScheme, G: Group + ProjectiveCurve,
     input_value_commitment_randomness: &Vec<C::Randomness>,
     output_value_commitment_randomness: &Vec<C::Randomness>,
     value_balance: i64,
-    input: &Vec<u8>,
+    input: &[u8],
     rng: &mut R,
 ) -> Result<BindingSignature, BindingSignatureError> {
     // Calculate the bsk and bvk
@@ -224,7 +224,7 @@ pub fn verify_binding_signature<C: CommitmentScheme, G: Group + ProjectiveCurve>
     input_value_commitments: &Vec<C::Output>,
     output_value_commitments: &Vec<C::Output>,
     value_balance: i64,
-    input: &Vec<u8>,
+    input: &[u8],
     signature: &BindingSignature,
 ) -> Result<bool, BindingSignatureError> {
     // Craft verifying key
@@ -288,7 +288,7 @@ pub fn gadget_verification_setup<C: CommitmentScheme, G: Group + ProjectiveCurve
     parameters: &C,
     input_value_commitments: &[C::Output],
     output_value_commitments: &[C::Output],
-    input: &Vec<u8>,
+    input: &[u8],
     signature: &BindingSignature,
 ) -> Result<(C::Randomness, G, G, G), BindingSignatureError> {
     // Craft the partial verifying key

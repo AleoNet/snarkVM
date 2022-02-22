@@ -30,7 +30,7 @@ mod tests {
         value_comm_pp: &C,
         input_amounts: Vec<u64>,
         output_amounts: Vec<u64>,
-        sighash: &Vec<u8>,
+        sighash: &[u8],
         rng: &mut R,
     ) -> Result<(Vec<C::Output>, Vec<C::Output>, i64, BindingSignature), BindingSignatureError> {
         let mut value_balance: i64 = 0;
