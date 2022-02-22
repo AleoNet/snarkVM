@@ -37,7 +37,7 @@ pub struct PedersenCompressedCommitmentGadget<
     const NUM_WINDOWS: usize,
     const WINDOW_SIZE: usize,
 > {
-    pedersen: PedersenCommitmentGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>,
+    pub(crate) pedersen: PedersenCommitmentGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>,
 }
 
 impl<

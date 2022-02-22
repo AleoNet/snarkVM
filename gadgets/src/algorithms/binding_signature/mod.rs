@@ -14,26 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod algebraic_sponge;
-pub use algebraic_sponge::*;
-
 pub mod binding_signature;
 pub use binding_signature::*;
 
-pub mod commitment;
-pub use commitment::*;
-
-pub mod crh;
-pub use crh::*;
-
-pub mod crypto_hash;
-pub use crypto_hash::*;
-
-pub mod encryption;
-pub use encryption::*;
-
-pub mod prf;
-pub use prf::*;
-
-pub mod signature;
-pub use signature::*;
+#[cfg(test)]
+pub mod tests;
