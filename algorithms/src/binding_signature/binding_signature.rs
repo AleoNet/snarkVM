@@ -144,7 +144,7 @@ impl Default for BindingSignature {
 }
 
 pub fn create_binding_signature<C: CommitmentScheme, G: Group + ProjectiveCurve, R: Rng>(
-    parameters: &C,
+    value_commitment: &C,
     input_value_commitments: &Vec<C::Output>,
     output_value_commitments: &Vec<C::Output>,
     input_value_commitment_randomness: &Vec<C::Randomness>,
@@ -181,14 +181,14 @@ pub fn create_binding_signature<C: CommitmentScheme, G: Group + ProjectiveCurve,
 
     // Calculate Value balance commitment
     let value_balance_commitment: <G as ProjectiveCurve>::Affine =
-        calculate_value_balance_commitment::<C, G>(parameters, value_balance)?;
+        calculate_value_balance_commitment::<C, G>(value_commitment, value_balance)?;
 
     bvk = bvk.add(&value_balance_commitment.neg());
 
     // Make sure bvk can be derived from bsk
     let zero: i64 = 0;
     let comm_bsk: C::Randomness = FromBytes::read_le(&to_bytes_le![bsk]?[..])?;
-    let expected_bvk_x = to_bytes_le![parameters.commit(&zero.to_le_bytes(), &comm_bsk)?]?;
+    let expected_bvk_x = to_bytes_le![value_commitment.commit(&zero.to_le_bytes(), &comm_bsk)?]?;
     let expected_bvk = recover_affine_from_x_coord::<G>(&expected_bvk_x)?;
     assert_eq!(bvk, expected_bvk);
 
@@ -200,7 +200,7 @@ pub fn create_binding_signature<C: CommitmentScheme, G: Group + ProjectiveCurve,
 
     let r_edwards: <G as Group>::ScalarField = hash_into_field::<G>(&sig_rand[..], input);
     let r: C::Randomness = FromBytes::read_le(&to_bytes_le![r_edwards]?[..])?;
-    let r_g = parameters.commit(&zero.to_le_bytes(), &r)?;
+    let r_g = value_commitment.commit(&zero.to_le_bytes(), &r)?;
 
     let mut rbar = [0u8; 32];
     r_g.write_le(&mut rbar[..])?;
@@ -216,7 +216,7 @@ pub fn create_binding_signature<C: CommitmentScheme, G: Group + ProjectiveCurve,
 }
 
 pub fn verify_binding_signature<C: CommitmentScheme, G: Group + ProjectiveCurve>(
-    parameters: &C,
+    value_commitment: &C,
     input_value_commitments: &Vec<C::Output>,
     output_value_commitments: &Vec<C::Output>,
     value_balance: i64,
@@ -240,7 +240,7 @@ pub fn verify_binding_signature<C: CommitmentScheme, G: Group + ProjectiveCurve>
 
     // Calculate Value balance commitment
     let value_balance_commitment: <G as ProjectiveCurve>::Affine =
-        calculate_value_balance_commitment::<C, G>(parameters, value_balance)?;
+        calculate_value_balance_commitment::<C, G>(value_commitment, value_balance)?;
 
     bvk = bvk.add(&value_balance_commitment.neg());
 
@@ -250,7 +250,7 @@ pub fn verify_binding_signature<C: CommitmentScheme, G: Group + ProjectiveCurve>
 
     let zero: i64 = 0;
     let s: C::Randomness = FromBytes::read_le(&signature.sbar[..])?;
-    let recommit = to_bytes_le![parameters.commit(&zero.to_le_bytes(), &s)?]?;
+    let recommit = to_bytes_le![value_commitment.commit(&zero.to_le_bytes(), &s)?]?;
     let recovered_recommit = recover_affine_from_x_coord::<G>(&recommit).unwrap();
 
     let check_verification = bvk.mul(c).add(&affine_r).add(&recovered_recommit.neg());
@@ -259,7 +259,7 @@ pub fn verify_binding_signature<C: CommitmentScheme, G: Group + ProjectiveCurve>
 }
 
 pub fn calculate_value_balance_commitment<C: CommitmentScheme, G: Group + ProjectiveCurve>(
-    parameters: &C,
+    value_commitment: &C,
     value_balance: i64,
 ) -> Result<<G as ProjectiveCurve>::Affine, BindingSignatureError> {
     let value_balance_as_u64 = match value_balance.checked_abs() {
@@ -269,7 +269,7 @@ pub fn calculate_value_balance_commitment<C: CommitmentScheme, G: Group + Projec
 
     let zero_randomness = C::Randomness::default();
     let value_balance_commitment =
-        to_bytes_le![parameters.commit(&value_balance_as_u64.to_le_bytes(), &zero_randomness)?]?;
+        to_bytes_le![value_commitment.commit(&value_balance_as_u64.to_le_bytes(), &zero_randomness)?]?;
 
     let recovered_value_balance_commitment: <G as ProjectiveCurve>::Affine =
         recover_affine_from_x_coord::<G>(&value_balance_commitment)?;
@@ -281,7 +281,7 @@ pub fn calculate_value_balance_commitment<C: CommitmentScheme, G: Group + Projec
 }
 
 pub fn gadget_verification_setup<C: CommitmentScheme, G: Group + ProjectiveCurve>(
-    parameters: &C,
+    value_commitment: &C,
     input_value_commitments: &[C::Output],
     output_value_commitments: &[C::Output],
     input: &[u8],
@@ -309,7 +309,7 @@ pub fn gadget_verification_setup<C: CommitmentScheme, G: Group + ProjectiveCurve
 
     let zero: i64 = 0;
     let s: C::Randomness = FromBytes::read_le(&signature.sbar[..])?;
-    let recommit = to_bytes_le![parameters.commit(&zero.to_le_bytes(), &s)?]?;
+    let recommit = to_bytes_le![value_commitment.commit(&zero.to_le_bytes(), &s)?]?;
     let recovered_recommit = recover_affine_from_x_coord::<G>(&recommit).unwrap();
 
     let partial_bvk: G = FromBytes::read_le(&to_bytes_le![partial_bvk.into_projective()]?[..])?;
