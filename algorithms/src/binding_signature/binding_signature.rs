@@ -69,16 +69,12 @@ pub fn recover_affine_from_x_coord<G: Group + ProjectiveCurve>(
 
     if let Some(affine) = <G as ProjectiveCurve>::Affine::from_x_coordinate(x, false) {
         if affine.is_in_correct_subgroup_assuming_on_curve() {
-            let affine: <G as ProjectiveCurve>::Affine = FromBytes::read_le(&to_bytes_le![affine]?[..])?;
-
             return Ok(affine);
         }
     }
 
     if let Some(affine) = <G as ProjectiveCurve>::Affine::from_x_coordinate(x, true) {
         if affine.is_in_correct_subgroup_assuming_on_curve() {
-            let affine: <G as ProjectiveCurve>::Affine = FromBytes::read_le(&to_bytes_le![affine]?[..])?;
-
             return Ok(affine);
         }
     }
