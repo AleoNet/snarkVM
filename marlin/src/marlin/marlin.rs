@@ -17,7 +17,15 @@
 use crate::{
     ahp::{AHPError, AHPForR1CS, EvaluationsProvider},
     fiat_shamir::traits::FiatShamirRng,
-    marlin::{CircuitProvingKey, CircuitVerifyingKey, MarlinError, MarlinMode, Proof, UniversalSRS},
+    marlin::{
+        CircuitProvingKey,
+        CircuitVerifyingKey,
+        MarlinError,
+        MarlinMode,
+        PreparedCircuitVerifyingKey,
+        Proof,
+        UniversalSRS,
+    },
     prover::ProverConstraintSystem,
     String,
     ToString,
@@ -41,11 +49,11 @@ use snarkvm_utilities::{to_bytes_le, ToBytes};
 #[cfg(not(feature = "std"))]
 use snarkvm_utilities::println;
 
-use crate::marlin::PreparedCircuitVerifyingKey;
 use core::{
     marker::PhantomData,
     sync::atomic::{AtomicBool, Ordering},
 };
+use itertools::Itertools;
 use rand_core::RngCore;
 
 /// The Marlin proof system.
@@ -465,7 +473,7 @@ impl<
             .circuit_verifying_key
             .iter()
             .cloned()
-            .zip(indexer_polynomials)
+            .zip_eq(indexer_polynomials)
             .map(|(c, l)| LabeledCommitment::new(l.to_string(), c, None))
             .chain(first_commitments.into_iter())
             .chain(second_commitments.into_iter())
@@ -709,8 +717,8 @@ impl<
             .chain(second_commitments)
             .chain(third_commitments)
             .cloned()
-            .zip(polynomial_labels)
-            .zip(degree_bounds)
+            .zip_eq(polynomial_labels)
+            .zip_eq(degree_bounds)
             .map(|((c, l), d)| LabeledCommitment::new(l, c, d))
             .collect();
 
@@ -734,7 +742,7 @@ impl<
             }
         }
         evaluation_labels.sort_by(|a, b| a.0.cmp(&b.0));
-        for (q, eval) in evaluation_labels.into_iter().zip(&proof.evaluations) {
+        for (q, eval) in evaluation_labels.into_iter().zip_eq(&proof.evaluations) {
             evaluations.insert(q, *eval);
         }
 

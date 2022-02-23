@@ -35,6 +35,7 @@ use core::{
     ops::Mul,
     sync::atomic::{AtomicBool, Ordering},
 };
+use itertools::Itertools;
 use rand_core::RngCore;
 
 #[cfg(feature = "parallel")]
@@ -191,7 +192,7 @@ impl<E: PairingEngine> KZG10<E> {
 
                 let affines = E::G2Projective::batch_normalization_into_affine(neg_powers_of_h);
 
-                for (i, affine) in list.iter().zip(affines.iter()) {
+                for (i, affine) in list.iter().zip_eq(affines.iter()) {
                     map.insert(*i, *affine);
                 }
 
@@ -407,7 +408,7 @@ impl<E: PairingEngine> KZG10<E> {
         // their coefficients and perform a final multiplication at the end.
         let mut g_multiplier = E::Fr::zero();
         let mut gamma_g_multiplier = E::Fr::zero();
-        for (((c, z), v), proof) in commitments.iter().zip(points).zip(values).zip(proofs) {
+        for (((c, z), v), proof) in commitments.iter().zip_eq(points).zip_eq(values).zip_eq(proofs) {
             let w = proof.w;
             let mut temp = w.mul(*z).into_projective();
             temp.add_assign_mixed(&c.0);

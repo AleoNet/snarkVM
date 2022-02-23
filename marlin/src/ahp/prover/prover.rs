@@ -30,14 +30,18 @@ use crate::{
     ToString,
     Vec,
 };
-use snarkvm_algorithms::fft::{EvaluationDomain, Evaluations as EvaluationsOnDomain, SparsePolynomial};
+use snarkvm_algorithms::fft::{
+    DensePolynomial,
+    EvaluationDomain,
+    Evaluations as EvaluationsOnDomain,
+    SparsePolynomial,
+};
 use snarkvm_fields::{batch_inversion, Field, PrimeField};
-use snarkvm_r1cs::errors::SynthesisError;
+use snarkvm_polycommit::{LabeledPolynomial, Polynomial};
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer};
 use snarkvm_utilities::{cfg_into_iter, cfg_iter, cfg_iter_mut};
 
-use snarkvm_polycommit::{LabeledPolynomial, Polynomial};
-use snarkvm_r1cs::ConstraintSynthesizer;
-
+use itertools::Itertools;
 use rand_core::RngCore;
 
 #[cfg(not(feature = "std"))]
@@ -45,7 +49,6 @@ use snarkvm_utilities::println;
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
-use snarkvm_algorithms::fft::DensePolynomial;
 
 /// The first set of prover oracles.
 pub struct ProverFirstOracles<F: Field> {
@@ -350,7 +353,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         r_alpha_x_on_h: &[F],
     ) -> Polynomial<F> {
         let mut t_evals_on_h = vec![F::zero(); domain_h.size()];
-        for (matrix, eta) in matrices.zip(matrix_randomizers) {
+        for (matrix, eta) in matrices.zip_eq(matrix_randomizers) {
             for (r, row) in matrix.iter().enumerate() {
                 for (coeff, c) in row.iter() {
                     let index = domain_h.reindex_by_subdomain(input_domain, *c);
@@ -424,6 +427,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             #[cfg(feature = "parallel")]
             use rayon::iter::repeat;
 
+            // Zip safety: here `constraint_domain.size() + z_a_poly_det.coeffs.len()` could
+            // have size smaller than `z_c.coeffs`, so `zip_eq` would be incorrect.
             let zero = F::zero();
             repeat(&zero)
                 .take(domain_h.size())
@@ -438,6 +443,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     };
                     *z_c += t * r_b;
                 });
+
+            // Zip safety: here `constraint_domain.size() + z_b_poly_det.coeffs.len()` could
+            // have size smaller than `z_c.coeffs`, so `zip_eq` would be incorrect.
             repeat(&zero)
                 .take(domain_h.size())
                 .chain(&z_b_poly_det.coeffs)
@@ -504,6 +512,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             .interpolate();
         let w_poly = state.w_poly.as_ref().unwrap();
         let mut z_poly = w_poly.polynomial().mul_by_vanishing_poly(state.domain_x);
+        // Zip safety: `x_poly` is smaller than `z_poly`.
         cfg_iter_mut!(z_poly.coeffs)
             .zip(&x_poly.coeffs)
             .for_each(|(z, x)| *z += x);
@@ -649,8 +658,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let alpha_beta = alpha * beta;
             let b_poly = {
                 let evals: Vec<F> = cfg_iter!(row_on_K.evaluations)
-                    .zip(&col_on_K.evaluations)
-                    .zip(&row_col_on_K.evaluations)
+                    .zip_eq(&col_on_K.evaluations)
+                    .zip_eq(&row_col_on_K.evaluations)
                     .map(|((r, c), r_c)| alpha_beta - alpha * r - beta * c + r_c)
                     .collect();
                 EvaluationsOnDomain::from_vec_and_domain(evals, domain_k).interpolate()
@@ -672,10 +681,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             &joint_arith.evals_on_K.val_c,
         );
         cfg_iter_mut!(&mut inverses)
-            .zip(
+            .zip_eq(
                 cfg_iter!(&val_a_on_K.evaluations)
-                    .zip(&val_b_on_K.evaluations)
-                    .zip(&val_c_on_K.evaluations),
+                    .zip_eq(&val_b_on_K.evaluations)
+                    .zip_eq(&val_c_on_K.evaluations),
             )
             .for_each(|(inv, ((a, b), c))| {
                 *inv *= eta_a_times_v_H_alpha_v_H_beta * a
