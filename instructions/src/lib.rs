@@ -25,6 +25,9 @@ pub use opcode::*;
 pub mod operand;
 pub use operand::*;
 
+pub mod operation;
+pub use operation::*;
+
 pub mod program;
 pub use program::*;
 

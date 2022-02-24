@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Opcode, Operand, ParserResult, Register, Type};
+use crate::{Operand, Operation, ParserResult, Register, Type};
 use snarkvm_circuits::Environment;
 
 use core::num::ParseIntError;
@@ -29,7 +29,7 @@ use nom::{
 ///
 ///
 pub struct Instruction<E: Environment> {
-    op: Opcode,
+    operation: Operation,
     sources: Vec<Operand<E>>,
     destinations: Vec<Register>,
 }
@@ -38,11 +38,11 @@ impl<E: Environment> Instruction<E> {
     pub fn new(input: &str) -> ParserResult<Self> {
         let (input, destinations) = separated_list0(tag(", "), Register::new)(input)?;
         let (input, _) = tag(" := ")(input)?;
-        let (input, op) = Opcode::new(input)?;
+        let (input, operation) = Operation::new(input)?;
         let (input, _) = tag(" ")(input)?;
         let (input, sources) = separated_list0(tag(", "), Operand::<E>::new)(input)?;
         let (input, _) = tag(";")(input)?;
-        Ok((input, Self { op, sources, destinations }))
+        Ok((input, Self { operation, sources, destinations }))
     }
 }
 
