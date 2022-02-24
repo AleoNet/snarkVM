@@ -361,9 +361,7 @@ fn parent(index: usize) -> Option<usize> {
 
 #[inline]
 fn convert_index_to_last_level(index: usize, tree_depth: usize) -> Result<usize, MerkleError> {
-    let shifted = 1u32
-        .checked_shl(tree_depth as u32)
-        .ok_or(MerkleError::IncorrectLeafIndex(index))?;
+    let shifted = 1u32.checked_shl(tree_depth as u32).ok_or(MerkleError::IncorrectLeafIndex(index))?;
     Ok(index.saturating_add(shifted as usize).saturating_sub(1))
 }
 
