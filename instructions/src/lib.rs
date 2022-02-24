@@ -13,17 +13,26 @@
 
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
-pub mod immediates;
-pub use immediates::*;
+pub mod immediate;
+pub use immediate::*;
 
-pub mod instructions;
-pub use instructions::*;
+pub mod instruction;
+pub use instruction::*;
+
+pub mod opcode;
+pub use opcode::*;
+
+pub mod operand;
+pub use operand::*;
 
 pub mod program;
 pub use program::*;
 
-pub mod registers;
-pub use registers::*;
+pub mod register;
+pub use register::*;
+
+pub mod types;
+pub use types::*;
 
 pub mod utilities;
 pub use utilities::*;

@@ -14,17 +14,35 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![no_main]
-#[macro_use] extern crate libfuzzer_sys;
+use crate::{Immediate, ParserResult, Register};
+use snarkvm_circuits::Environment;
 
-use snarkvm_instructions::Integer;
+use core::num::ParseIntError;
+use nom::{
+    branch::alt,
+    bytes::complete::tag,
+    character::complete::{char, one_of},
+    combinator::{map, recognize},
+    multi::{many0, many1},
+    sequence::terminated,
+    Parser,
+};
 
-fuzz_target!(|data: &[u8]| {
-    // let input = format!("{}u_8", data[0]);
-    // let _ = Integer::new(input.as_str()).unwrap();
+// TODO: Documentation
+pub enum Operand<E: Environment> {
+    Immediate(Immediate<E>),
+    Register(Register),
+}
 
-    let _ = Integer::new("123u8").unwrap();
+impl<E: Environment> Operand<E> {
+    pub fn new(input: &str) -> ParserResult<Self> {
+        alt((map(Immediate::<E>::new, |imm| Self::Immediate(imm)), map(Register::new, |reg| Self::Register(reg))))(
+            input,
+        )
+    }
+}
 
-    // if let Ok(s) = std::str::from_utf8(data) {
-    // }
-});
+#[cfg(test)]
+mod tests {
+    use super::*;
+}

@@ -14,16 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{ParserResult, RegisterType};
+use crate::{ParserResult, Type};
 
 use core::num::ParseIntError;
 use nom::{
+    branch::alt,
     bytes::complete::tag,
-    character::complete::{char, one_of},
-    combinator::recognize,
-    multi::{many0, many1},
-    sequence::terminated,
+    character::complete::one_of,
+    combinator::{map_res, recognize},
+    multi::many0,
+    sequence::pair,
 };
+use std::iter::FromIterator;
 
 ///
 /// Typed registers have the syntactic form <RegisterType>.r<N>
@@ -31,23 +33,21 @@ use nom::{
 // TODO (@pranav) Instead of a single typed register, consider having explicit
 //  register structs for each of the types. This would result in stronger type
 //  restrictions for instructions.
-pub struct TypedRegister(RegisterType, u64);
+pub struct Register {
+    index: u64,
+    typ: Type,
+}
 
-impl TypedRegister {
-    pub fn new(input: &str) -> ParserResult<Result<Self, ParseIntError>> {
-        let (input, typ) = RegisterType::new(input)?;
-        let (input, _) = tag(".r")(input)?;
-        // TODO: (@pranav) Should remove underscores from register numbers.
-        let (input, value) = recognize(many1(terminated(one_of("0123456789"), many0(char('_')))))(input)?;
-        Ok((input, value.replace("_", "").parse::<u64>().and_then(|v| Ok(Self(typ?, v)))))
-    }
+impl Register {
+    pub fn new(input: &str) -> ParserResult<Self> {
+        let parse_zero = recognize(tag("0"));
+        let parse_nonzero = recognize(pair(one_of("123456789"), many0(one_of("0123456789"))));
 
-    pub fn get_id(&self) -> u64 {
-        self.1
-    }
-
-    pub fn get_type(&self) -> RegisterType {
-        self.0
+        let (input, _) = tag("r")(input)?;
+        let (input, index) = map_res(alt((parse_zero, parse_nonzero)), |v| String::from(v).parse::<u64>())(input)?;
+        let (input, _) = tag(".")(input)?;
+        let (input, typ) = Type::new(input)?;
+        Ok((input, Self { index, typ }))
     }
 }
 

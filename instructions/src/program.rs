@@ -16,6 +16,7 @@
 
 use crate::{Instruction, ParserResult};
 use nom::{
+    branch::alt,
     bytes::complete::tag,
     character::complete::{char, one_of},
     combinator::verify,
@@ -29,10 +30,10 @@ pub struct Program<E: Environment> {
     instructions: Vec<Instruction<E>>,
 }
 
-// TODO (@pranav) More robustness in the parser. Generally true all over the codebase.
+// TODO (@pranav) Accept more separators as needed.
 impl<E: Environment> Program<E> {
     pub fn new(input: &str) -> ParserResult<Self> {
-        let (input, instructions) = separated_list0(tag(" "), Instruction::new)(input)?;
+        let (input, instructions) = separated_list0(alt((tag(" "), tag("\n"))), Instruction::new)(input)?;
         Ok((input, Self { instructions }))
     }
 }

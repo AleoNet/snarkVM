@@ -13,8 +13,28 @@
 
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
-pub mod register;
-pub use register::*;
 
-pub mod types;
-pub use types::*;
+use crate::{Immediate, ParserResult, Register};
+
+use core::num::ParseIntError;
+use nom::{
+    bytes::complete::tag,
+    character::complete::{char, one_of},
+    combinator::recognize,
+    multi::{many0, many1},
+    sequence::terminated,
+};
+
+// TODO: Documentation
+pub enum Opcode {}
+
+impl Opcode {
+    pub fn new(input: &str) -> ParserResult<Opcode> {
+        todo!()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+}
