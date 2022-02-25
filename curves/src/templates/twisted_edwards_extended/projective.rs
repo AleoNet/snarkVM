@@ -73,6 +73,21 @@ impl<P: Parameters> PartialEq for Projective<P> {
     }
 }
 
+impl<P: Parameters> PartialEq<Affine<P>> for Projective<P> {
+    fn eq(&self, other: &Affine<P>) -> bool {
+        if self.is_zero() {
+            return other.is_zero();
+        }
+
+        if other.is_zero() {
+            return false;
+        }
+
+        // x1/z1 == x2/z2  <==> x1 * z2 == x2 * z1
+        self.x == (other.x * self.z) && self.y == (other.y * self.z)
+    }
+}
+
 impl<P: Parameters> Distribution<Projective<P>> for Standard {
     #[inline]
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Projective<P> {

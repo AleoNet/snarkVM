@@ -944,12 +944,12 @@ impl<F: PrimeField> ToConstraintFieldGadget<F> for Vec<Boolean> {
 mod test {
     use std::str::FromStr;
 
-    use rand::SeedableRng;
-    use rand_xorshift::XorShiftRng;
-
     use snarkvm_fields::{Field, One, PrimeField, Zero};
     use snarkvm_r1cs::{Fr, TestConstraintSystem};
-    use snarkvm_utilities::{bititerator::BitIteratorBE, rand::UniformRand};
+    use snarkvm_utilities::{
+        bititerator::BitIteratorBE,
+        rand::{test_rng, UniformRand},
+    };
 
     use super::*;
 
@@ -1643,7 +1643,7 @@ mod test {
             assert!(!cs.is_satisfied());
         }
 
-        let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
+        let mut rng = test_rng();
 
         for _ in 0..1000 {
             let r = Fr::rand(&mut rng);

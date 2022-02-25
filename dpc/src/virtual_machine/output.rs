@@ -40,7 +40,7 @@ impl<N: Network> Output<N> {
         let noop_private_key = PrivateKey::new(rng);
         let noop_address = noop_private_key.try_into()?;
 
-        Self::new(noop_address, AleoAmount::from_i64(0), Payload::default(), None)
+        Self::new(noop_address, AleoAmount::from_gate(0), Payload::default(), None)
     }
 
     /// Initializes a new instance of `Output`.

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{One, Zero};
+use crate::{One, PrimeField, Zero};
 use snarkvm_utilities::{
     bititerator::BitIteratorBE,
     rand::UniformRand,
@@ -94,6 +94,17 @@ pub trait Field:
     + Serialize
     + for<'a> Deserialize<'a>
 {
+    type BasePrimeField: PrimeField;
+
+    /// Constructs an element of `Self` from an element of the base
+    /// prime field.
+    fn from_base_prime_field(other: Self::BasePrimeField) -> Self;
+
+    /// Returns the constant 2^{-1}.
+    fn half() -> Self {
+        Self::from_base_prime_field(Self::BasePrimeField::half())
+    }
+
     /// Returns the characteristic of the field.
     fn characteristic<'a>() -> &'a [u64];
 
@@ -124,6 +135,7 @@ pub trait Field:
 
     /// Exponentiates this element by a number represented with `u64` limbs,
     /// least significant limb first.
+    #[must_use]
     fn pow<S: AsRef<[u64]>>(&self, exp: S) -> Self {
         let mut res = Self::one();
 

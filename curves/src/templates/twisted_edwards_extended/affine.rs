@@ -92,6 +92,12 @@ impl<P: Parameters> Affine<P> {
     }
 }
 
+impl<P: Parameters> PartialEq<Projective<P>> for Affine<P> {
+    fn eq(&self, other: &Projective<P>) -> bool {
+        other.eq(self)
+    }
+}
+
 impl<P: Parameters> Zero for Affine<P> {
     fn zero() -> Self {
         Self::new(P::BaseField::zero(), P::BaseField::one())
@@ -209,6 +215,42 @@ impl<P: Parameters> AffineCurve for Affine<P> {
         let rhs = P::BaseField::one() + (P::COEFF_D * (x2 * y2));
 
         lhs == rhs
+    }
+
+    /// Performs the first half of batch addition in-place.
+    fn batch_add_loop_1(a: &mut Self, b: &mut Self, _half: &Self::BaseField, inversion_tmp: &mut Self::BaseField) {
+        if !a.is_zero() && !b.is_zero() {
+            let y1y2 = a.y * b.y;
+            let x1x2 = a.x * b.x;
+
+            a.x = (a.x + a.y) * (b.x + b.y) - y1y2 - x1x2;
+            a.y = y1y2;
+            if !P::COEFF_A.is_zero() {
+                a.y -= &P::mul_by_a(&x1x2);
+            }
+
+            let dx1x2y1y2 = P::COEFF_D * y1y2 * x1x2;
+
+            let inversion_mul_d = *inversion_tmp * dx1x2y1y2;
+
+            a.x *= &(*inversion_tmp - inversion_mul_d);
+            a.y *= &(*inversion_tmp + inversion_mul_d);
+
+            b.x = Self::BaseField::one() - dx1x2y1y2.square();
+
+            *inversion_tmp *= &b.x;
+        }
+    }
+
+    /// Performs the second half of batch addition in-place.
+    fn batch_add_loop_2(a: &mut Self, b: Self, inversion_tmp: &mut Self::BaseField) {
+        if a.is_zero() {
+            *a = b;
+        } else if !b.is_zero() {
+            a.x *= *inversion_tmp;
+            a.y *= *inversion_tmp;
+            *inversion_tmp *= &b.x;
+        }
     }
 }
 

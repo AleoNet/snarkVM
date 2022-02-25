@@ -15,7 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    fft::EvaluationDomain,
+    fft::{
+        domain::{FFTPrecomputation, IFFTPrecomputation},
+        EvaluationDomain,
+    },
     polycommit::{LCTerm, LabeledPolynomial, LinearCombination},
     snark::marlin::{
         ahp::{matrices, prover::ProverConstraintSystem, verifier, AHPError, CircuitInfo},
@@ -142,6 +145,27 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         domain_c: EvaluationDomain<F>,
     ) -> EvaluationDomain<F> {
         [domain_a, domain_b, domain_c].into_iter().max_by_key(|d| d.size()).unwrap()
+    }
+
+    pub fn fft_precomputation(
+        constraint_domain_size: usize,
+        non_zero_a_domain_size: usize,
+        non_zero_b_domain_size: usize,
+        non_zero_c_domain_size: usize,
+    ) -> Option<(FFTPrecomputation<F>, IFFTPrecomputation<F>)> {
+        let largest_domain_size = [
+            3 * constraint_domain_size,
+            non_zero_a_domain_size * 2,
+            non_zero_b_domain_size * 2,
+            non_zero_c_domain_size * 2,
+        ]
+        .into_iter()
+        .max()?;
+        let largest_mul_domain = EvaluationDomain::new(largest_domain_size)?;
+
+        let fft_precomputation = largest_mul_domain.precompute_fft();
+        let ifft_precomputation = fft_precomputation.to_ifft_precomputation();
+        Some((fft_precomputation, ifft_precomputation))
     }
 
     /// Construct the linear combinations that are checked by the AHP.
@@ -324,19 +348,19 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 ///
 /// Intended to provide a common interface for both the prover and the verifier
 /// when constructing linear combinations via `AHPForR1CS::construct_linear_combinations`.
-pub trait EvaluationsProvider<F: Field> {
+pub trait EvaluationsProvider<F: PrimeField> {
     /// Get the evaluation of linear combination `lc` at `point`.
     fn get_lc_eval(&self, lc: &LinearCombination<F>, point: F) -> Result<F, AHPError>;
 }
 
-impl<'a, F: Field> EvaluationsProvider<F> for crate::polycommit::Evaluations<'a, F> {
+impl<'a, F: PrimeField> EvaluationsProvider<F> for crate::polycommit::Evaluations<'a, F> {
     fn get_lc_eval(&self, lc: &LinearCombination<F>, point: F) -> Result<F, AHPError> {
         let key = (lc.label.clone(), point);
         self.get(&key).copied().ok_or_else(|| AHPError::MissingEval(lc.label.clone()))
     }
 }
 
-impl<F: Field, T: Borrow<LabeledPolynomial<F>>> EvaluationsProvider<F> for Vec<T> {
+impl<F: PrimeField, T: Borrow<LabeledPolynomial<F>>> EvaluationsProvider<F> for Vec<T> {
     fn get_lc_eval(&self, lc: &LinearCombination<F>, point: F) -> Result<F, AHPError> {
         let mut eval = F::zero();
         for (coeff, term) in lc.iter() {
@@ -367,6 +391,12 @@ pub trait UnnormalizedBivariateLagrangePoly<F: PrimeField> {
     /// Evaluate over a batch of inputs
     fn batch_eval_unnormalized_bivariate_lagrange_poly_with_diff_inputs(&self, x: F) -> Vec<F>;
 
+    fn batch_eval_unnormalized_bivariate_lagrange_poly_with_diff_inputs_over_domain(
+        &self,
+        x: F,
+        domain: &EvaluationDomain<F>,
+    ) -> Vec<F>;
+
     /// Evaluate the magic polynomial over `self`
     fn batch_eval_unnormalized_bivariate_lagrange_poly_with_same_inputs(&self) -> Vec<F>;
 }
@@ -380,11 +410,37 @@ impl<F: PrimeField> UnnormalizedBivariateLagrangePoly<F> for EvaluationDomain<F>
         }
     }
 
-    fn batch_eval_unnormalized_bivariate_lagrange_poly_with_diff_inputs(&self, x: F) -> Vec<F> {
+    fn batch_eval_unnormalized_bivariate_lagrange_poly_with_diff_inputs_over_domain(
+        &self,
+        x: F,
+        domain: &EvaluationDomain<F>,
+    ) -> Vec<F> {
+        #[cfg(feature = "parallel")]
+        use rayon::prelude::*;
+        use snarkvm_utilities::{cfg_iter, cfg_iter_mut};
+
         let vanish_x = self.evaluate_vanishing_polynomial(x);
-        let mut inverses: Vec<F> = self.elements().map(|y| x - y).collect();
-        snarkvm_fields::batch_inversion_and_mul(&mut inverses, &vanish_x);
-        inverses
+        let elements = domain.elements().collect::<Vec<_>>();
+
+        let mut denoms = cfg_iter!(elements).map(|e| x - e).collect::<Vec<_>>();
+        if domain.size() <= self.size() {
+            snarkvm_fields::batch_inversion_and_mul(&mut denoms, &vanish_x);
+        } else {
+            snarkvm_fields::batch_inversion(&mut denoms);
+            let ratio = domain.size() / self.size();
+            let mut numerators = vec![vanish_x; domain.size()];
+            cfg_iter_mut!(numerators).zip_eq(elements).enumerate().for_each(|(i, (n, e))| {
+                if i % ratio != 0 {
+                    *n -= self.evaluate_vanishing_polynomial(e);
+                }
+            });
+            cfg_iter_mut!(denoms).zip_eq(numerators).for_each(|(d, e)| *d *= e);
+        }
+        denoms
+    }
+
+    fn batch_eval_unnormalized_bivariate_lagrange_poly_with_diff_inputs(&self, x: F) -> Vec<F> {
+        self.batch_eval_unnormalized_bivariate_lagrange_poly_with_diff_inputs_over_domain(x, self)
     }
 
     fn batch_eval_unnormalized_bivariate_lagrange_poly_with_same_inputs(&self) -> Vec<F> {
@@ -437,6 +493,23 @@ mod tests {
                 domain.elements().map(|y| domain.eval_unnormalized_bivariate_lagrange_poly(x, y)).collect();
             let fast = domain.batch_eval_unnormalized_bivariate_lagrange_poly_with_diff_inputs(x);
             assert_eq!(fast, manual);
+        }
+    }
+
+    #[test]
+    fn domain_unnormalized_bivariate_lagrange_poly_diff_inputs_over_domain() {
+        let rng = &mut test_rng();
+        for domain_size in 1..10 {
+            let domain = EvaluationDomain::<Fr>::new(1 << domain_size).unwrap();
+            let x = Fr::rand(rng);
+            for other_domain_size in 1..10 {
+                let other = EvaluationDomain::<Fr>::new(1 << other_domain_size).unwrap();
+                let manual: Vec<_> =
+                    other.elements().map(|y| domain.eval_unnormalized_bivariate_lagrange_poly(x, y)).collect();
+                let fast =
+                    domain.batch_eval_unnormalized_bivariate_lagrange_poly_with_diff_inputs_over_domain(x, &other);
+                assert_eq!(fast, manual, "failed for self {:?} and other {:?}", domain, other);
+            }
         }
     }
 

@@ -58,6 +58,12 @@ pub enum PCError {
         num_powers: usize,
     },
 
+    /// The lagrange basis is not a power of two.
+    LagrangeBasisSizeIsNotPowerOfTwo,
+
+    /// The lagrange basis is larger than the supported degree,
+    LagrangeBasisSizeIsTooLarge,
+
     /// The degree provided to `trim` was too large.
     TrimmingDegreeTooLarge,
 
@@ -67,6 +73,10 @@ pub enum PCError {
 
     /// The required degree bound is not supported by ck/vk
     UnsupportedDegreeBound(usize),
+
+    /// The provided equation contained multiple polynomials, of which least one
+    /// had a strict degree bound.
+    UnsupportedLagrangeBasisSize(usize),
 
     /// The degree bound for the `index`-th polynomial passed to `commit`, `open`
     /// or `check` was incorrect, that is, `degree_bound >= poly_degree` or
@@ -117,7 +127,16 @@ impl core::fmt::Display for PCError {
                 write!(f, "the eqaution \"{}\" contained degree-bounded polynomials", e)
             }
             PCError::UnsupportedDegreeBound(bound) => {
-                write!(f, "the degree bound ({:?}) is not supported by the parameters", bound,)
+                write!(f, "the degree bound ({:?}) is not supported by the parameters", bound)
+            }
+            PCError::LagrangeBasisSizeIsNotPowerOfTwo => {
+                write!(f, "the Lagrange Basis size is not a power of two")
+            }
+            PCError::UnsupportedLagrangeBasisSize(size) => {
+                write!(f, "the Lagrange basis size ({:?}) is not supported by the parameters", size)
+            }
+            PCError::LagrangeBasisSizeIsTooLarge => {
+                write!(f, "the Lagrange Basis size larger than max supported degree")
             }
             PCError::IncorrectDegreeBound { poly_degree, degree_bound, supported_degree, label } => write!(
                 f,

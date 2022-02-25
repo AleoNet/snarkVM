@@ -73,10 +73,10 @@ where
         }
 
         println!("supported degree: {:?}", supported_degree);
-        let (ck, vk) = PC::trim(&pp, supported_degree, supported_degree, Some(degree_bounds.as_slice()))?;
+        let (ck, vk) = PC::trim(&pp, supported_degree, None, supported_degree, Some(degree_bounds.as_slice()))?;
         println!("Trimmed");
 
-        let (comms, rands) = PC::commit(&ck, &polynomials, Some(rng))?;
+        let (comms, rands) = PC::commit(&ck, polynomials.iter().map(Into::into), Some(rng))?;
 
         let mut query_set = QuerySet::new();
         let mut values = Evaluations::new();
@@ -94,6 +94,109 @@ where
         assert!(result, "proof was incorrect, Query set: {:#?}", query_set);
     }
     Ok(())
+}
+
+pub fn lagrange_test_template<F, CF, PC>() -> Result<Vec<TestComponents<F, CF, PC>>, PCError>
+where
+    F: PrimeField,
+    CF: PrimeField,
+    PC: PolynomialCommitment<F, CF>,
+    PC::Commitment: Eq,
+{
+    let num_iters = 10;
+    let max_degree = 256;
+    let supported_degree = 127;
+    let eval_size: usize = 128;
+    let num_polynomials = 1;
+    let max_num_queries = 2;
+    let mut test_components = Vec::new();
+
+    let rng = &mut test_rng();
+    let pp = PC::setup(max_degree, rng)?;
+
+    for _ in 0..num_iters {
+        assert!(max_degree >= supported_degree, "max_degree < supported_degree");
+        let mut polynomials = Vec::new();
+        let mut lagrange_polynomials = Vec::new();
+        let mut supported_lagrange_sizes = Vec::new();
+        let degree_bounds = None;
+
+        let mut labels = Vec::new();
+        println!("Sampled supported degree");
+
+        // Generate polynomials
+        let num_points_in_query_set = rand::distributions::Uniform::from(1..=max_num_queries).sample(rng);
+        for i in 0..num_polynomials {
+            let label = format!("Test{}", i);
+            labels.push(label.clone());
+            let eval_size: usize = rand::distributions::Uniform::from(1..eval_size).sample(rng).next_power_of_two();
+            let mut evals = vec![F::zero(); eval_size];
+            for e in &mut evals {
+                *e = F::rand(rng);
+            }
+            let domain = crate::fft::EvaluationDomain::new(evals.len()).unwrap();
+            let evals = crate::fft::Evaluations::from_vec_and_domain(evals, domain);
+            let poly = evals.interpolate_by_ref();
+            supported_lagrange_sizes.push(domain.size());
+            assert_eq!(poly.evaluate_over_domain_by_ref(domain), evals);
+
+            let degree_bound = None;
+
+            let hiding_bound = Some(1);
+            polynomials.push(LabeledPolynomial::new(label.clone(), poly, degree_bound, hiding_bound));
+            lagrange_polynomials.push(LabeledPolynomialWithBasis::new_lagrange_basis(label, evals, hiding_bound))
+        }
+        let supported_hiding_bound = polynomials.iter().map(|p| p.hiding_bound().unwrap_or(0)).max().unwrap_or(0);
+        println!("supported degree: {:?}", supported_degree);
+        println!("supported hiding bound: {:?}", supported_hiding_bound);
+        println!("num_points_in_query_set: {:?}", num_points_in_query_set);
+        let (ck, vk) =
+            PC::trim(&pp, supported_degree, supported_lagrange_sizes, supported_hiding_bound, degree_bounds)?;
+        println!("Trimmed");
+
+        let (comms, rands) = PC::commit(&ck, lagrange_polynomials, Some(rng)).unwrap();
+
+        // Construct query set
+        let mut query_set = QuerySet::new();
+        let mut values = Evaluations::new();
+        // let mut point = F::one();
+        for point_id in 0..num_points_in_query_set {
+            let point = F::rand(rng);
+            for (polynomial, label) in polynomials.iter().zip_eq(labels.iter()) {
+                query_set.insert((label.clone(), (format!("rand_{}", point_id), point)));
+                let value = polynomial.evaluate(point);
+                values.insert((label.clone(), point), value);
+            }
+        }
+        println!("Generated query set");
+
+        let opening_challenge = F::rand(rng);
+        let proof = PC::batch_open(&ck, &polynomials, &comms, &query_set, opening_challenge, &rands, Some(rng))?;
+        let result = PC::batch_check(&vk, &comms, &query_set, &values, &proof, opening_challenge, rng)?;
+        if !result {
+            println!(
+                "Failed with {} polynomials, num_points_in_query_set: {:?}",
+                num_polynomials, num_points_in_query_set
+            );
+            println!("Degree of polynomials:",);
+            for poly in polynomials {
+                println!("Degree: {:?}", poly.degree());
+            }
+        }
+        assert!(result, "proof was incorrect, Query set: {:#?}", query_set);
+
+        test_components.push(TestComponents {
+            verification_key: vk,
+            commitments: comms,
+            query_set,
+            evaluations: values,
+            batch_lc_proof: None,
+            batch_proof: Some(proof),
+            opening_challenge,
+            randomness: rands,
+        });
+    }
+    Ok(test_components)
 }
 
 fn test_template<F, CF, PC>(info: TestInfo) -> Result<Vec<TestComponents<F, CF, PC>>, PCError>
@@ -168,10 +271,10 @@ where
         println!("supported degree: {:?}", supported_degree);
         println!("supported hiding bound: {:?}", supported_hiding_bound);
         println!("num_points_in_query_set: {:?}", num_points_in_query_set);
-        let (ck, vk) = PC::trim(&pp, supported_degree, supported_hiding_bound, degree_bounds.as_deref())?;
+        let (ck, vk) = PC::trim(&pp, supported_degree, None, supported_hiding_bound, degree_bounds.as_deref())?;
         println!("Trimmed");
 
-        let (comms, rands) = PC::commit(&ck, &polynomials, Some(rng))?;
+        let (comms, rands) = PC::commit(&ck, polynomials.iter().map(Into::into), Some(rng))?;
 
         // Construct query set
         let mut query_set = QuerySet::new();
@@ -179,7 +282,7 @@ where
         // let mut point = F::one();
         for point_id in 0..num_points_in_query_set {
             let point = F::rand(rng);
-            for (polynomial, label) in polynomials.iter().zip(labels.iter()) {
+            for (polynomial, label) in polynomials.iter().zip_eq(labels.iter()) {
                 query_set.insert((label.clone(), (format!("rand_{}", point_id), point)));
                 let value = polynomial.evaluate(point);
                 values.insert((label.clone(), point), value);
@@ -292,10 +395,10 @@ where
         println!("{}", num_polynomials);
         println!("{}", enforce_degree_bounds);
 
-        let (ck, vk) = PC::trim(&pp, supported_degree, supported_hiding_bound, degree_bounds.as_deref())?;
+        let (ck, vk) = PC::trim(&pp, supported_degree, None, supported_hiding_bound, degree_bounds.as_deref())?;
         println!("Trimmed");
 
-        let (comms, rands) = PC::commit(&ck, &polynomials, Some(rng))?;
+        let (comms, rands) = PC::commit(&ck, polynomials.iter().map(Into::into), Some(rng))?;
 
         // Let's construct our equations
         let mut linear_combinations = Vec::new();

@@ -125,7 +125,7 @@ fn impl_canonical_serialize(ast: &syn::DeriveInput) -> TokenStream {
     let gen = quote! {
         impl #impl_generics CanonicalSerialize for #name #ty_generics #where_clause {
             #[allow(unused_mut, unused_variables)]
-            fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), SerializationError> {
+            fn serialize<W: snarkvm_utilities::Write>(&self, writer: &mut W) -> Result<(), snarkvm_utilities::SerializationError> {
                 #(#serialize_body)*
                 Ok(())
             }
@@ -136,7 +136,7 @@ fn impl_canonical_serialize(ast: &syn::DeriveInput) -> TokenStream {
                 size
             }
             #[allow(unused_mut, unused_variables)]
-            fn serialize_uncompressed<W: Write>(&self, writer: &mut W) -> Result<(), SerializationError> {
+            fn serialize_uncompressed<W: snarkvm_utilities::Write>(&self, writer: &mut W) -> Result<(), snarkvm_utilities::SerializationError> {
                 #(#serialize_uncompressed_body)*
                 Ok(())
             }
@@ -234,11 +234,11 @@ fn impl_canonical_deserialize(ast: &syn::DeriveInput) -> TokenStream {
     let gen = quote! {
         impl #impl_generics CanonicalDeserialize for #name #ty_generics #where_clause {
             #[allow(unused_mut,unused_variables)]
-            fn deserialize<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
+            fn deserialize<R: snarkvm_utilities::Read>(reader: &mut R) -> Result<Self, snarkvm_utilities::SerializationError> {
                 #deserialize_body
             }
             #[allow(unused_mut,unused_variables)]
-            fn deserialize_uncompressed<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
+            fn deserialize_uncompressed<R: snarkvm_utilities::Read>(reader: &mut R) -> Result<Self, snarkvm_utilities::SerializationError> {
                 #deserialize_uncompressed_body
             }
         }

@@ -149,7 +149,7 @@ impl<'de, N: Network> Deserialize<'de> for Event<N> {
                     2 => Ok(Self::Operation(
                         serde_json::from_value(event["operation"].clone()).map_err(de::Error::custom)?,
                     )),
-                    _ => unreachable!(format!("Invalid event id {}", event_id)),
+                    _ => unreachable!("Invalid event id {}", event_id),
                 }
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "event"),
