@@ -28,8 +28,6 @@ use std::{
 pub struct AleoAmount(pub i64);
 
 pub enum Denomination {
-    /// AB
-    BYTE,
     /// AG
     GATE,
     /// ALEO
@@ -40,8 +38,7 @@ impl Denomination {
     /// The number of decimal places more than a Unit.
     fn precision(self) -> u32 {
         match self {
-            Denomination::BYTE => 0,
-            Denomination::GATE => 3,
+            Denomination::GATE => 0,
             Denomination::CREDIT => 6,
         }
     }
@@ -50,7 +47,6 @@ impl Denomination {
 impl fmt::Display for Denomination {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", match self {
-            Denomination::BYTE => "AB",
             Denomination::GATE => "AG",
             Denomination::CREDIT => "ALEO",
         })
@@ -58,40 +54,33 @@ impl fmt::Display for Denomination {
 }
 
 impl AleoAmount {
-    /// Exactly one Aleo byte (AB).
-    pub const ONE_BYTE: AleoAmount = AleoAmount(1i64);
     /// Exactly one Aleo credit (ALEO).
     pub const ONE_CREDIT: AleoAmount = AleoAmount(1_000_000i64);
     /// Exactly one Aleo gate (AG).
-    pub const ONE_GATE: AleoAmount = AleoAmount(1_000i64);
+    pub const ONE_GATE: AleoAmount = AleoAmount(1i64);
     /// The zero amount.
     pub const ZERO: AleoAmount = AleoAmount(0i64);
 
-    /// Create an `AleoAmount` given a number of bytes.
-    pub fn from_i64(bytes: i64) -> Self {
-        Self(bytes)
-    }
-
     /// Create an `AleoAmount` given a number of gates.
-    pub fn from_gates(gate_value: i64) -> Self {
-        Self::from_i64(gate_value * 10_i64.pow(Denomination::GATE.precision()))
+    pub fn from_gate(gates: i64) -> Self {
+        Self(gates)
     }
 
     /// Create an `AleoAmount` given a number of credits.
     pub fn from_aleo(aleo_value: i64) -> Self {
-        Self::from_i64(aleo_value * 10_i64.pow(Denomination::CREDIT.precision()))
+        Self::from_gate(aleo_value * 10_i64.pow(Denomination::CREDIT.precision()))
     }
 
     /// Add the values of two `AleoAmount`s
     #[allow(clippy::should_implement_trait)]
     pub fn add(self, b: Self) -> Self {
-        Self::from_i64(self.0 + b.0)
+        Self::from_gate(self.0 + b.0)
     }
 
     /// Subtract the value of two `AleoAmounts`
     #[allow(clippy::should_implement_trait)]
     pub fn sub(self, b: AleoAmount) -> Self {
-        Self::from_i64(self.0 - b.0)
+        Self::from_gate(self.0 - b.0)
     }
 
     /// Returns `true` the amount is positive and `false` if the amount is zero or
@@ -148,13 +137,8 @@ impl fmt::Display for AleoAmount {
 mod tests {
     use super::*;
 
-    fn test_from_i64(byte_value: i64, expected_amount: AleoAmount) {
-        let amount = AleoAmount::from_i64(byte_value);
-        assert_eq!(expected_amount, amount)
-    }
-
     fn test_from_gate(gate_value: i64, expected_amount: AleoAmount) {
-        let amount = AleoAmount::from_gates(gate_value);
+        let amount = AleoAmount::from_gate(gate_value);
         assert_eq!(expected_amount, amount)
     }
 
@@ -164,23 +148,22 @@ mod tests {
     }
 
     fn test_addition(a: &i64, b: &i64, result: &i64) {
-        let a = AleoAmount::from_i64(*a);
-        let b = AleoAmount::from_i64(*b);
-        let result = AleoAmount::from_i64(*result);
+        let a = AleoAmount::from_gate(*a);
+        let b = AleoAmount::from_gate(*b);
+        let result = AleoAmount::from_gate(*result);
 
         assert_eq!(result, a.add(b));
     }
 
     fn test_subtraction(a: &i64, b: &i64, result: &i64) {
-        let a = AleoAmount::from_i64(*a);
-        let b = AleoAmount::from_i64(*b);
-        let result = AleoAmount::from_i64(*result);
+        let a = AleoAmount::from_gate(*a);
+        let b = AleoAmount::from_gate(*b);
+        let result = AleoAmount::from_gate(*result);
 
         assert_eq!(result, a.sub(b));
     }
 
     pub(crate) struct AmountDenominationTestCase {
-        byte: i64,
         gate: i64,
         aleo: i64,
     }
@@ -189,30 +172,21 @@ mod tests {
         use super::*;
 
         const TEST_AMOUNTS: [AmountDenominationTestCase; 5] = [
-            AmountDenominationTestCase { byte: 0, gate: 0, aleo: 0 },
-            AmountDenominationTestCase { byte: 1_000_000, gate: 1_000, aleo: 1 },
-            AmountDenominationTestCase { byte: 1_000_000_000, gate: 1_000_000, aleo: 1_000 },
-            AmountDenominationTestCase { byte: 1_234_567_000_000_000, gate: 1_234_567_000_000, aleo: 1_234_567_000 },
-            AmountDenominationTestCase {
-                byte: 1_000_000_000_000_000_000,
-                gate: 1_000_000_000_000_000,
-                aleo: 1_000_000_000_000,
-            },
+            AmountDenominationTestCase { gate: 0, aleo: 0 },
+            AmountDenominationTestCase { gate: 1_000_000, aleo: 1 },
+            AmountDenominationTestCase { gate: 1_000_000_000, aleo: 1_000 },
+            AmountDenominationTestCase { gate: 1_234_567_000_000_000, aleo: 1_234_567_000 },
+            AmountDenominationTestCase { gate: 1_000_000_000_000_000_000, aleo: 1_000_000_000_000 },
         ];
 
         #[test]
-        fn test_byte_conversion() {
-            TEST_AMOUNTS.iter().for_each(|amounts| test_from_i64(amounts.byte, AleoAmount(amounts.byte)));
-        }
-
-        #[test]
         fn test_gate_conversion() {
-            TEST_AMOUNTS.iter().for_each(|amounts| test_from_gate(amounts.gate, AleoAmount(amounts.byte)));
+            TEST_AMOUNTS.iter().for_each(|amounts| test_from_gate(amounts.gate, AleoAmount(amounts.gate)));
         }
 
         #[test]
         fn test_aleo_conversion() {
-            TEST_AMOUNTS.iter().for_each(|amounts| test_from_aleo(amounts.aleo, AleoAmount(amounts.byte)));
+            TEST_AMOUNTS.iter().for_each(|amounts| test_from_aleo(amounts.aleo, AleoAmount(amounts.gate)));
         }
     }
 
@@ -247,26 +221,22 @@ mod tests {
             use super::*;
 
             const INVALID_TEST_AMOUNTS: [AmountDenominationTestCase; 4] = [
-                AmountDenominationTestCase { byte: 1, gate: 1, aleo: 1 },
-                AmountDenominationTestCase { byte: 10, gate: 10000, aleo: 100000000 },
-                AmountDenominationTestCase { byte: 1234567, gate: 123, aleo: 1 },
-                AmountDenominationTestCase {
-                    byte: 1_000_000_000_000_000_000,
-                    gate: 1_000_000_000_000_000,
-                    aleo: 999_999_999_999,
-                },
+                AmountDenominationTestCase { gate: 1, aleo: 1 },
+                AmountDenominationTestCase { gate: 10, aleo: 100000000 },
+                AmountDenominationTestCase { gate: 1234567, aleo: 1 },
+                AmountDenominationTestCase { gate: 1_000_000_000_000_000_000, aleo: 999_999_999_999 },
             ];
 
             #[should_panic]
             #[test]
             fn test_invalid_gate_conversion() {
-                INVALID_TEST_AMOUNTS.iter().for_each(|amounts| test_from_gate(amounts.gate, AleoAmount(amounts.byte)));
+                INVALID_TEST_AMOUNTS.iter().for_each(|amounts| test_from_gate(amounts.aleo, AleoAmount(amounts.gate)));
             }
 
             #[should_panic]
             #[test]
             fn test_invalid_aleo_conversion() {
-                INVALID_TEST_AMOUNTS.iter().for_each(|amounts| test_from_aleo(amounts.aleo, AleoAmount(amounts.byte)));
+                INVALID_TEST_AMOUNTS.iter().for_each(|amounts| test_from_aleo(amounts.aleo, AleoAmount(amounts.gate)));
             }
         }
 
