@@ -26,12 +26,12 @@ use nom::{
 };
 use snarkvm_circuits::{Environment, IntegerType};
 
-pub struct Program<E: Environment> {
-    instructions: Vec<Instruction<E>>,
+pub struct Program {
+    instructions: Vec<Instruction>,
 }
 
 // TODO (@pranav) Accept more separators as needed.
-impl<E: Environment> Program<E> {
+impl Program {
     pub fn new(input: &str) -> ParserResult<Self> {
         let (input, instructions) = separated_list0(alt((tag(" "), tag("\n"))), Instruction::new)(input)?;
         Ok((input, Self { instructions }))
@@ -46,14 +46,13 @@ mod tests {
 
     #[test]
     fn test_program_new() {
-        type E = Circuit;
-        let (input, program) = Program::<E>::new(
+        let (input, program) = Program::new(
             "u8.r3 := addw.u8 u8.r2, u8.r1; u8.r6 := addw.u8 u8.r5, u8.r4; bool.r1 := eq.u8 u8.r5, u8.r6;",
         )
         .unwrap();
         assert_eq!(3, program.instructions.len());
 
-        let (input, program) = Program::<E>::new(
+        let (input, program) = Program::new(
             "u8.r3 := addw.u8 u8.r2, u8.r1;\n\
                    u8.r6 := addw.u8 u8.r5, u8.r4;\n\
                    bool.r1 := eq.u8 u8.r5, u8.r6;",

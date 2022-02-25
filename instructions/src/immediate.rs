@@ -52,88 +52,37 @@ use std::iter::FromIterator;
 ///
 /// Immediate
 ///
-pub enum Immediate<E: Environment> {
-    BaseField(BaseFieldCircuit<E>),
-    Boolean(BooleanCircuit<E>),
-    Group(Affine<E>),
-    U8(IntegerCircuit<E, u8>),
-    U16(IntegerCircuit<E, u16>),
-    U32(IntegerCircuit<E, u32>),
-    U64(IntegerCircuit<E, u64>),
-    U128(IntegerCircuit<E, u128>),
-    I8(IntegerCircuit<E, i8>),
-    I16(IntegerCircuit<E, i16>),
-    I32(IntegerCircuit<E, i32>),
-    I64(IntegerCircuit<E, i64>),
-    I128(IntegerCircuit<E, i128>),
-    ScalarField(ScalarFieldCircuit<E>),
+// TODO (@pranav) Need a Circuit trait to store immediates.
+//   Using Strings for simplicity.
+//   Note that this implementation will accept invalid value strings and report an error at a later stage.
+pub struct Immediate {
+    value: String,
+    typ: Type,
 }
 
-// TODO (@pranav) Consider an different representation that makes it easier to access the internal circuit.
-// pub struct Immediate {
-//     value: str, (parse as needed?)
-//     typ: Type,
-// }
-
-impl<E: Environment> Immediate<E> {
+impl Immediate {
     pub fn new(input: &str) -> ParserResult<Self> {
         // Parse the digits from the input.
         alt((Self::parse_boolean, Self::parse_numerical_immediate))(input)
     }
 
     pub fn get_type(&self) -> Type {
-        match self {
-            Immediate::BaseField(_) => Type::BaseField,
-            Immediate::Boolean(_) => Type::Boolean,
-            Immediate::Group(_) => Type::Group,
-            Immediate::U8(_) => Type::U8,
-            Immediate::U16(_) => Type::U16,
-            Immediate::U32(_) => Type::U32,
-            Immediate::U64(_) => Type::U64,
-            Immediate::U128(_) => Type::U128,
-            Immediate::I8(_) => Type::I8,
-            Immediate::I16(_) => Type::I16,
-            Immediate::I32(_) => Type::I32,
-            Immediate::I64(_) => Type::I64,
-            Immediate::I128(_) => Type::I128,
-            Immediate::ScalarField(_) => Type::ScalarField,
-        }
+        self.typ
     }
 
     fn parse_boolean(input: &str) -> ParserResult<Self> {
         // Parse the boolean from the input.
-        let (input, boolean) = alt((value(true, keyword("true")), value(false, keyword("false"))))(input)?;
+        let (input, value) = alt((tag("true"), tag("false")))(input)?;
         // Output the remaining input and the initialized boolean.
-        Ok((input, Self::Boolean(BooleanCircuit::new(Mode::Constant, boolean))))
+        Ok((input, Self { value: String::from(value), typ: Type::Boolean }))
     }
 
-    // TODO (@pranav) Replace unwraps with better error messages.
     fn parse_numerical_immediate(input: &str) -> ParserResult<Self> {
         // Parse the digits from the input.
         let (input, value) = recognize(many1(terminated(one_of("0123456789"), many0(char('_')))))(input)?;
         // Parse the integer type from the input.
-        let mut parse_type = alt((
-            map(tag("base"), |_| {
-                Self::BaseField(BaseFieldCircuit::new(Mode::Constant, value.parse::<E::BaseField>().unwrap()))
-            }),
-            map(tag("group"), |_| {
-                Self::Group(Affine::new(Mode::Constant, value.parse::<E::BaseField>().unwrap(), None))
-            }),
-            map(tag("i8"), |_| Self::I8(I8::new(Mode::Constant, value.parse::<i8>().unwrap()))),
-            map(tag("i16"), |_| Self::I16(I16::new(Mode::Constant, value.parse::<i16>().unwrap()))),
-            map(tag("i32"), |_| Self::I32(I32::new(Mode::Constant, value.parse::<i32>().unwrap()))),
-            map(tag("i64"), |_| Self::I64(I64::new(Mode::Constant, value.parse::<i64>().unwrap()))),
-            map(tag("i128"), |_| Self::I128(I128::new(Mode::Constant, value.parse::<i128>().unwrap()))),
-            map(tag("u8"), |_| Self::U8(U8::new(Mode::Constant, value.parse::<u8>().unwrap()))),
-            map(tag("u16"), |_| Self::U16(U16::new(Mode::Constant, value.parse::<u16>().unwrap()))),
-            map(tag("u32"), |_| Self::U32(U32::new(Mode::Constant, value.parse::<u32>().unwrap()))),
-            map(tag("u64"), |_| Self::U64(U64::new(Mode::Constant, value.parse::<u64>().unwrap()))),
-            map(tag("u128"), |_| Self::U128(U128::new(Mode::Constant, value.parse::<u128>().unwrap()))),
-            map(tag("scalar"), |_| {
-                Self::ScalarField(ScalarFieldCircuit::new(Mode::Constant, value.parse::<E::ScalarField>().unwrap()))
-            }),
-        ));
-        parse_type(input)
+        let (input, typ) = Type::new(input)?;
+        Ok((input, Self { value: String::from(value), typ }))
     }
 }
 
@@ -144,134 +93,83 @@ mod tests {
     use snarkvm_circuits::Circuit;
 
     use core::str::FromStr;
-    use std::matches;
 
-    //#[test]
-    //fn test_base_new() {
-    //    type E = Circuit;
-    //    let (_, imm) = Immediate::<E>::new("5base").unwrap();
-    //    assert!(matches!(imm, Immediate::BaseField(_)));
-    //    assert_eq!(
-    //        <E as Environment>::BaseField::from_str("5").unwrap(),
-    //        imm.get_value()
-    //    );
+    #[test]
+    fn test_base_new() {
+        let (_, imm) = Immediate::new("5base").unwrap();
+        assert_eq!(imm.get_type(), Type::BaseField);
 
-    //    let (_, imm) = Immediate::<E>::new("5_base").unwrap();
-    //    assert!(matches!(imm, Immediate::BaseField(_)));
-    //    assert_eq!(
-    //        <E as Environment>::BaseField::from_str("5").unwrap(),
-    //        imm.get_value()
-    //    );
+        let (_, imm) = Immediate::new("5_base").unwrap();
+        assert_eq!(imm.get_type(), Type::BaseField);
 
-    //    let (_, imm) = Immediate::<E>::new("1_5_base").unwrap();
-    //    assert!(matches!(imm, Immediate::BaseField(_)));
-    //    assert_eq!(
-    //        <E as Environment>::BaseField::from_str("15").unwrap(),
-    //        imm.get_value()
-    //    );
-    //}
+        let (_, imm) = Immediate::new("1_5_base").unwrap();
+        assert_eq!(imm.get_type(), Type::BaseField);
+    }
 
-    //#[test]
-    //fn test_malformed_base() {
-    //    type E = Circuit;
-    //    assert!(Immediate::<E>::new("5ba_se").is_err());
-    //}
+    #[test]
+    fn test_malformed_base() {
+        assert!(Immediate::new("5ba_se").is_err());
+    }
 
-    //#[test]
-    //fn test_boolean_new() {
-    //    type E = Circuit;
-    //    let (_, imm) = Immediate::<E>::new("true").unwrap();
-    //    assert!(matches!(imm, Immediate::Boolean(_)));
-    //    assert_eq!(true, imm.get_value());
+    #[test]
+    fn test_boolean_new() {
+        let (_, imm) = Immediate::new("true").unwrap();
+        assert_eq!(imm.get_type(), Type::Boolean);
 
-    //    let (_, imm) = Immediate::<E>::new("false").unwrap();
-    //    assert!(matches!(imm, Immediate::Boolean(_)));
-    //    assert_eq!(false, imm.get_value());
-    //}
+        let (_, imm) = Immediate::new("false").unwrap();
+        assert_eq!(imm.get_type(), Type::Boolean);
+    }
 
-    //#[test]
-    //fn test_malformed_boolean() {
-    //    type E = Circuit;
-    //    assert!(Immediate::<E>::new("maybe").is_err());
-    //    assert!(Immediate::<E>::new("truee").is_err());
-    //    assert!(Immediate::<E>::new("truefalse").is_err());
-    //    assert!(Immediate::<E>::new("falsetrue").is_err());
-    //}
+    #[test]
+    fn test_malformed_boolean() {
+        assert!(Immediate::new("maybe").is_err());
+    }
 
-    //#[test]
-    //fn test_group_new() {
-    //    type E = Circuit;
-    //    let (_, imm) = Immediate::<E>::new("0group").unwrap();
-    //    assert!(matches!(imm, Immediate::Group(_)));
-    //    assert_eq!(
-    //        E::affine_from_x_coordinate(<E as Environment>::BaseField::from_str("0").unwrap()),
-    //        imm.get_value()
-    //    );
+    #[test]
+    fn test_group_new() {
+        let (_, imm) = Immediate::new("0group").unwrap();
+        assert_eq!(imm.get_type(), Type::Group);
 
-    //    let (_, imm) = Immediate::<E>::new("0_group").unwrap();
-    //    assert!(matches!(imm, Immediate::Group(_)));
-    //    assert_eq!(
-    //        E::affine_from_x_coordinate(<E as Environment>::BaseField::from_str("0").unwrap()),
-    //        imm.get_value()
-    //    );
-    //}
+        let (_, imm) = Immediate::new("0_group").unwrap();
+        assert_eq!(imm.get_type(), Type::Group);
+    }
 
-    //#[test]
-    //fn test_malformed_group() {
-    //    type E = Circuit;
-    //    assert!(Immediate::<E>::new("0grou_p").is_err());
-    //}
+    #[test]
+    fn test_malformed_group() {
+        assert!(Immediate::new("0grou_p").is_err());
+    }
 
-    //#[test]
-    //fn test_u8() {
-    //    type E = Circuit;
-    //    let (_, imm) = Immediate::<E>::new("5u8").unwrap();
-    //    assert!(matches!(imm, Immediate::U8(_)));
-    //    assert_eq!(5u8, imm.get_value());
+    #[test]
+    fn test_u8() {
+        let (_, imm) = Immediate::new("5u8").unwrap();
+        assert_eq!(imm.get_type(), Type::U8);
 
-    //    let (_, imm) = Immediate::<E>::new("5_u8").unwrap();
-    //    assert!(matches!(imm, Immediate::U8(_)));
-    //    assert_eq!(5u8, imm.get_value());
+        let (_, imm) = Immediate::new("5_u8").unwrap();
+        assert_eq!(imm.get_type(), Type::U8);
 
-    //    let (_, imm) = Immediate::<E>::new("1_5_u8").unwrap();
-    //    assert!(matches!(imm, Immediate::U8(_)));
-    //    assert_eq!(15u8, imm.get_value());
-    //}
+        let (_, imm) = Immediate::new("1_5_u8").unwrap();
+        assert_eq!(imm.get_type(), Type::U8);
+    }
 
-    //#[test]
-    //fn test_malformed_integer() {
-    //    type E = Circuit;
-    //    assert!(Immediate::<E>::new("5u_8").is_err());
-    //}
+    #[test]
+    fn test_malformed_integer() {
+        assert!(Immediate::new("5u_8").is_err());
+    }
 
-    //#[test]
-    //fn test_scalar_new() {
-    //    type E = Circuit;
-    //    let (_, imm) = Immediate::<E>::new("5scalar").unwrap();
-    //    assert!(matches!(imm, Immediate::ScalarField(_)));
-    //    assert_eq!(
-    //        <E as Environment>::ScalarField::from_str("5").unwrap(),
-    //        imm.get_value()
-    //    );
+    #[test]
+    fn test_scalar_new() {
+        let (_, imm) = Immediate::new("5scalar").unwrap();
+        assert_eq!(imm.get_type(), Type::ScalarField);
 
-    //    let (_, imm) = Immediate::<E>::new("5_scalar").unwrap();
-    //    assert!(matches!(imm, Immediate::ScalarField(_)));
-    //    assert_eq!(
-    //        <E as Environment>::ScalarField::from_str("5").unwrap(),
-    //        imm.get_value()
-    //    );
+        let (_, imm) = Immediate::new("5_scalar").unwrap();
+        assert_eq!(imm.get_type(), Type::ScalarField);
 
-    //    let (_, imm) = Immediate::<E>::new("1_5_scalar").unwrap();
-    //    assert!(matches!(imm, Immediate::ScalarField(_)));
-    //    assert_eq!(
-    //        <E as Environment>::ScalarField::from_str("5").unwrap(),
-    //        imm.get_value()
-    //    );
-    //}
+        let (_, imm) = Immediate::new("1_5_scalar").unwrap();
+        assert_eq!(imm.get_type(), Type::ScalarField);
+    }
 
-    //#[test]
-    //fn test_malformed_scalar() {
-    //    type E = Circuit;
-    //    assert!(Immediate::<E>::new("5scala_r").is_err());
-    //}
+    #[test]
+    fn test_malformed_scalar() {
+        assert!(Immediate::new("5scala_r").is_err());
+    }
 }

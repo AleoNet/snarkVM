@@ -29,16 +29,14 @@ use nom::{
 };
 
 // TODO: Documentation
-pub enum Operand<E: Environment> {
-    Immediate(Immediate<E>),
+pub enum Operand {
+    Immediate(Immediate),
     Register(Register),
 }
 
-impl<E: Environment> Operand<E> {
+impl Operand {
     pub fn new(input: &str) -> ParserResult<Self> {
-        alt((map(Immediate::<E>::new, |imm| Self::Immediate(imm)), map(Register::new, |reg| Self::Register(reg))))(
-            input,
-        )
+        alt((map(Immediate::new, |imm| Self::Immediate(imm)), map(Register::new, |reg| Self::Register(reg))))(input)
     }
 }
 

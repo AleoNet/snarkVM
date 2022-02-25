@@ -28,19 +28,19 @@ use nom::{
 
 ///
 ///
-pub struct Instruction<E: Environment> {
+pub struct Instruction {
     operation: Operation,
-    sources: Vec<Operand<E>>,
+    sources: Vec<Operand>,
     destinations: Vec<Register>,
 }
 
-impl<E: Environment> Instruction<E> {
+impl Instruction {
     pub fn new(input: &str) -> ParserResult<Self> {
         let (input, destinations) = separated_list0(tag(", "), Register::new)(input)?;
         let (input, _) = tag(" := ")(input)?;
         let (input, operation) = Operation::new(input)?;
         let (input, _) = tag(" ")(input)?;
-        let (input, sources) = separated_list0(tag(", "), Operand::<E>::new)(input)?;
+        let (input, sources) = separated_list0(tag(", "), Operand::new)(input)?;
         let (input, _) = tag(";")(input)?;
         Ok((input, Self { operation, sources, destinations }))
     }
@@ -55,8 +55,7 @@ mod tests {
 
     #[test]
     fn test_add_instruction() {
-        type E = Circuit;
-        let (_, instruction) = Instruction::<E>::new("base.r3 := add.base base.r2, base.r1;").unwrap();
+        let (_, instruction) = Instruction::new("base.r3 := add.base base.r2, base.r1;").unwrap();
         assert_eq!(instruction.operation.get_opcode(), Opcode::Add);
     }
 }
