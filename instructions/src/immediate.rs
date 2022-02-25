@@ -56,8 +56,8 @@ use std::iter::FromIterator;
 //   Using Strings for simplicity.
 //   Note that this implementation will accept invalid value strings and report an error at a later stage.
 pub struct Immediate {
-    value: String,
-    typ: Type,
+    pub(crate) value: String,
+    pub(crate) typ: Type,
 }
 
 impl Immediate {
@@ -93,13 +93,13 @@ mod tests {
     #[test]
     fn test_base_new() {
         let (_, imm) = Immediate::new("5base").unwrap();
-        assert_eq!(imm.get_type(), Type::BaseField);
+        assert_eq!(imm.typ, Type::BaseField);
 
         let (_, imm) = Immediate::new("5_base").unwrap();
-        assert_eq!(imm.get_type(), Type::BaseField);
+        assert_eq!(imm.typ, Type::BaseField);
 
         let (_, imm) = Immediate::new("1_5_base").unwrap();
-        assert_eq!(imm.get_type(), Type::BaseField);
+        assert_eq!(imm.typ, Type::BaseField);
     }
 
     #[test]
@@ -110,10 +110,10 @@ mod tests {
     #[test]
     fn test_boolean_new() {
         let (_, imm) = Immediate::new("true").unwrap();
-        assert_eq!(imm.get_type(), Type::Boolean);
+        assert_eq!(imm.typ, Type::Boolean);
 
         let (_, imm) = Immediate::new("false").unwrap();
-        assert_eq!(imm.get_type(), Type::Boolean);
+        assert_eq!(imm.typ, Type::Boolean);
     }
 
     #[test]
@@ -124,10 +124,10 @@ mod tests {
     #[test]
     fn test_group_new() {
         let (_, imm) = Immediate::new("0group").unwrap();
-        assert_eq!(imm.get_type(), Type::Group);
+        assert_eq!(imm.typ, Type::Group);
 
         let (_, imm) = Immediate::new("0_group").unwrap();
-        assert_eq!(imm.get_type(), Type::Group);
+        assert_eq!(imm.typ, Type::Group);
     }
 
     #[test]
@@ -138,13 +138,13 @@ mod tests {
     #[test]
     fn test_u8() {
         let (_, imm) = Immediate::new("5u8").unwrap();
-        assert_eq!(imm.get_type(), Type::U8);
+        assert_eq!(imm.typ, Type::U8);
 
         let (_, imm) = Immediate::new("5_u8").unwrap();
-        assert_eq!(imm.get_type(), Type::U8);
+        assert_eq!(imm.typ, Type::U8);
 
         let (_, imm) = Immediate::new("1_5_u8").unwrap();
-        assert_eq!(imm.get_type(), Type::U8);
+        assert_eq!(imm.typ, Type::U8);
     }
 
     #[test]
@@ -155,13 +155,13 @@ mod tests {
     #[test]
     fn test_scalar_new() {
         let (_, imm) = Immediate::new("5scalar").unwrap();
-        assert_eq!(imm.get_type(), Type::ScalarField);
+        assert_eq!(imm.typ, Type::ScalarField);
 
         let (_, imm) = Immediate::new("5_scalar").unwrap();
-        assert_eq!(imm.get_type(), Type::ScalarField);
+        assert_eq!(imm.typ, Type::ScalarField);
 
         let (_, imm) = Immediate::new("1_5_scalar").unwrap();
-        assert_eq!(imm.get_type(), Type::ScalarField);
+        assert_eq!(imm.typ, Type::ScalarField);
     }
 
     #[test]

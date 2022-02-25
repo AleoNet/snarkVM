@@ -30,7 +30,7 @@ use nom::{
 ///
 pub struct Instruction {
     operation: Operation,
-    sources: Vec<Operand>,
+    pub(crate) sources: Vec<Operand>,
     pub(crate) destinations: Vec<Register>,
 }
 

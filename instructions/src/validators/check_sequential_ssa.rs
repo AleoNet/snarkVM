@@ -33,7 +33,6 @@ pub fn check_sequential_ssa(program: Program) {
     let mut next_u128_register: u64 = 0;
     let mut next_scalar_field_register: u64 = 0;
 
-
     for instruction in program.instructions {
         for register in instruction.destinations {
             match register.typ {
