@@ -14,34 +14,89 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Operand, Program, Type};
+use crate::{Immediate, Operand, Program, Type};
 
 use snarkvm_circuits::{Boolean, Environment};
+
+use std::{fmt, fmt::Formatter, iter};
+
+// TODO (@pranav) Consider aggregating errors in an enum.
+#[derive(Debug, Clone)]
+pub struct ImmediateParsingError {
+    instruction_id: usize,
+    typ: Type,
+    value: String,
+}
+
+impl fmt::Display for ImmediateParsingError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "Unable to parse `{:?}` as {:?} at instruction #{:?}", self.value, self.typ, self.instruction_id)
+    }
+}
 
 // TODO (@pranav) Clean up implementation. Currently a rough prototype.
 //  - if-let vs match
 //  - Error handling
-pub fn check_immediates<E: Environment>(program: Program) {
-    for instruction in program.instructions {
-        for operand in instruction.sources {
+pub fn check_immediates<E: Environment>(program: &Program) -> Result<(), ImmediateParsingError> {
+    for (i, instruction) in program.instructions.iter().enumerate() {
+        for operand in &instruction.sources {
             if let Operand::Immediate(immediate) = operand {
-                match immediate.typ {
-                    Type::BaseField => assert!(immediate.value.parse::<E::BaseField>().is_ok()),
-                    Type::Boolean => assert!(immediate.value.parse::<bool>().is_ok()),
-                    Type::Group => assert!(immediate.value.parse::<E::BaseField>().is_ok()),
-                    Type::I8 => assert!(immediate.value.parse::<i8>().is_ok()),
-                    Type::I16 => assert!(immediate.value.parse::<i16>().is_ok()),
-                    Type::I32 => assert!(immediate.value.parse::<i32>().is_ok()),
-                    Type::I64 => assert!(immediate.value.parse::<i64>().is_ok()),
-                    Type::I128 => assert!(immediate.value.parse::<i128>().is_ok()),
-                    Type::ScalarField => assert!(immediate.value.parse::<E::ScalarField>().is_ok()),
-                    Type::U8 => assert!(immediate.value.parse::<u8>().is_ok()),
-                    Type::U16 => assert!(immediate.value.parse::<u16>().is_ok()),
-                    Type::U32 => assert!(immediate.value.parse::<u32>().is_ok()),
-                    Type::U64 => assert!(immediate.value.parse::<u64>().is_ok()),
-                    Type::U128 => assert!(immediate.value.parse::<u128>().is_ok()),
+                if match immediate.typ {
+                    Type::BaseField => immediate.value.parse::<E::BaseField>().is_err(),
+                    Type::Boolean => immediate.value.parse::<bool>().is_err(),
+                    Type::Group => immediate.value.parse::<E::BaseField>().is_err(),
+                    Type::I8 => immediate.value.parse::<i8>().is_err(),
+                    Type::I16 => immediate.value.parse::<i16>().is_err(),
+                    Type::I32 => immediate.value.parse::<i32>().is_err(),
+                    Type::I64 => immediate.value.parse::<i64>().is_err(),
+                    Type::I128 => immediate.value.parse::<i128>().is_err(),
+                    Type::ScalarField => immediate.value.parse::<E::ScalarField>().is_err(),
+                    Type::U8 => immediate.value.parse::<u8>().is_err(),
+                    Type::U16 => immediate.value.parse::<u16>().is_err(),
+                    Type::U32 => immediate.value.parse::<u32>().is_err(),
+                    Type::U64 => immediate.value.parse::<u64>().is_err(),
+                    Type::U128 => immediate.value.parse::<u128>().is_err(),
+                } {
+                    // TODO (@pranav) Consider aggregating all errors.
+                    return Err(ImmediateParsingError {
+                        instruction_id: i,
+                        typ: immediate.typ,
+                        value: immediate.value.clone(),
+                    })?;
                 }
             }
         }
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use core::str::FromStr;
+    use snarkvm_circuits::Circuit;
+
+    #[test]
+    fn test_immediates_valid() {
+        type E = Circuit;
+        let (input, program) = Program::new(
+            "u8.r0 := addw.u8 0u8, 1u8;\n\
+                   u8.r1 := addw.u8 0u8, 2u8;\n\
+                   bool.r0 := eq.u8 u8.r0, u8.r1;",
+        )
+        .unwrap();
+        assert!(check_immediates::<E>(&program).is_ok());
+    }
+
+    #[test]
+    fn test_immediates_invalid() {
+        type E = Circuit;
+        let (input, program) = Program::new(
+            "u8.r0 := addw.u8 0u8, 256u8;\n\
+                   u8.r1 := addw.u8 0u8, 2u8;\n\
+                   bool.r0 := eq.u8 u8.r0, u8.r1;",
+        )
+        .unwrap();
+        assert!(check_immediates::<E>(&program).is_err());
     }
 }

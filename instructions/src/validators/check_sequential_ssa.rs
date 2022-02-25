@@ -17,6 +17,7 @@
 use crate::{Instruction, Program, Type};
 use std::{fmt, fmt::Formatter};
 
+// TODO (@pranav) Consider aggregating errors in an enum.
 #[derive(Debug, Clone)]
 pub struct SSAError {
     instruction_id: usize,
