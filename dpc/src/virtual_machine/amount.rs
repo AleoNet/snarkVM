@@ -62,25 +62,25 @@ impl AleoAmount {
     pub const ZERO: AleoAmount = AleoAmount(0i64);
 
     /// Create an `AleoAmount` given a number of gates.
-    pub fn from_i64(bytes: i64) -> Self {
-        Self(bytes)
+    pub fn from_gate(gates: i64) -> Self {
+        Self(gates)
     }
 
     /// Create an `AleoAmount` given a number of credits.
     pub fn from_aleo(aleo_value: i64) -> Self {
-        Self::from_i64(aleo_value * 10_i64.pow(Denomination::CREDIT.precision()))
+        Self::from_gate(aleo_value * 10_i64.pow(Denomination::CREDIT.precision()))
     }
 
     /// Add the values of two `AleoAmount`s
     #[allow(clippy::should_implement_trait)]
     pub fn add(self, b: Self) -> Self {
-        Self::from_i64(self.0 + b.0)
+        Self::from_gate(self.0 + b.0)
     }
 
     /// Subtract the value of two `AleoAmounts`
     #[allow(clippy::should_implement_trait)]
     pub fn sub(self, b: AleoAmount) -> Self {
-        Self::from_i64(self.0 - b.0)
+        Self::from_gate(self.0 - b.0)
     }
 
     /// Returns `true` the amount is positive and `false` if the amount is zero or
@@ -137,8 +137,8 @@ impl fmt::Display for AleoAmount {
 mod tests {
     use super::*;
 
-    fn test_from_i64(gate_value: i64, expected_amount: AleoAmount) {
-        let amount = AleoAmount::from_i64(gate_value);
+    fn test_from_gate(gate_value: i64, expected_amount: AleoAmount) {
+        let amount = AleoAmount::from_gate(gate_value);
         assert_eq!(expected_amount, amount)
     }
 
@@ -148,17 +148,17 @@ mod tests {
     }
 
     fn test_addition(a: &i64, b: &i64, result: &i64) {
-        let a = AleoAmount::from_i64(*a);
-        let b = AleoAmount::from_i64(*b);
-        let result = AleoAmount::from_i64(*result);
+        let a = AleoAmount::from_gate(*a);
+        let b = AleoAmount::from_gate(*b);
+        let result = AleoAmount::from_gate(*result);
 
         assert_eq!(result, a.add(b));
     }
 
     fn test_subtraction(a: &i64, b: &i64, result: &i64) {
-        let a = AleoAmount::from_i64(*a);
-        let b = AleoAmount::from_i64(*b);
-        let result = AleoAmount::from_i64(*result);
+        let a = AleoAmount::from_gate(*a);
+        let b = AleoAmount::from_gate(*b);
+        let result = AleoAmount::from_gate(*result);
 
         assert_eq!(result, a.sub(b));
     }
@@ -181,7 +181,7 @@ mod tests {
 
         #[test]
         fn test_gate_conversion() {
-            TEST_AMOUNTS.iter().for_each(|amounts| test_from_i64(amounts.gate, AleoAmount(amounts.gate)));
+            TEST_AMOUNTS.iter().for_each(|amounts| test_from_gate(amounts.gate, AleoAmount(amounts.gate)));
         }
 
         #[test]
@@ -226,6 +226,12 @@ mod tests {
                 AmountDenominationTestCase { gate: 1234567, aleo: 1 },
                 AmountDenominationTestCase { gate: 1_000_000_000_000_000_000, aleo: 999_999_999_999 },
             ];
+
+            #[should_panic]
+            #[test]
+            fn test_invalid_gate_conversion() {
+                INVALID_TEST_AMOUNTS.iter().for_each(|amounts| test_from_gate(amounts.aleo, AleoAmount(amounts.gate)));
+            }
 
             #[should_panic]
             #[test]

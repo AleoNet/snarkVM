@@ -359,7 +359,7 @@ mod tests {
         rng.fill(&mut payload);
         let expected_record = Record::new(
             address,
-            AleoAmount::from_i64(1234),
+            AleoAmount::from_gate(1234),
             Payload::from_bytes_le(&payload).unwrap(),
             *Testnet2::noop_program_id(),
             rng,
@@ -403,7 +403,7 @@ mod tests {
         rng.fill(&mut payload);
         let expected_record = Record::new(
             address,
-            AleoAmount::from_i64(1234),
+            AleoAmount::from_gate(1234),
             Payload::from_bytes_le(&payload).unwrap(),
             *Testnet2::noop_program_id(),
             rng,
