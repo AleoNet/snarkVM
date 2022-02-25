@@ -39,7 +39,7 @@ pub struct MerklePath<P: MerkleParameters> {
 impl<P: MerkleParameters> MerklePath<P> {
     pub fn verify<L: ToBytes>(&self, root_hash: &MerkleTreeDigest<P>, leaf: &L) -> Result<bool, MerkleError> {
         // Check that the given leaf matches the leaf in the membership proof.
-        if self.path.len() != P::DEPTH - 1 {
+        if self.path.len() == P::DEPTH {
             let claimed_leaf_hash = self.parameters.hash_leaf::<L>(leaf)?;
 
             let mut index = self.leaf_index;
