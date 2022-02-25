@@ -66,10 +66,6 @@ impl Immediate {
         alt((Self::parse_boolean, Self::parse_numerical_immediate))(input)
     }
 
-    pub fn get_type(&self) -> Type {
-        self.typ
-    }
-
     fn parse_boolean(input: &str) -> ParserResult<Self> {
         // Parse the boolean from the input.
         let (input, value) = alt((tag("true"), tag("false")))(input)?;

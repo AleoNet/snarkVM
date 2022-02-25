@@ -34,8 +34,8 @@ use std::iter::FromIterator;
 //  register structs for each of the types. This would result in stronger type
 //  restrictions for instructions.
 pub struct Register {
-    typ: Type,
-    id: u64,
+    pub(crate) typ: Type,
+    pub(crate) id: u64,
 }
 
 impl Register {

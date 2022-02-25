@@ -27,7 +27,7 @@ use nom::{
 use snarkvm_circuits::{Environment, IntegerType};
 
 pub struct Program {
-    instructions: Vec<Instruction>,
+    pub(crate) instructions: Vec<Instruction>,
 }
 
 // TODO (@pranav) Accept more separators as needed.

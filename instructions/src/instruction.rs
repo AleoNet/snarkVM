@@ -31,7 +31,7 @@ use nom::{
 pub struct Instruction {
     operation: Operation,
     sources: Vec<Operand>,
-    destinations: Vec<Register>,
+    pub(crate) destinations: Vec<Register>,
 }
 
 impl Instruction {
