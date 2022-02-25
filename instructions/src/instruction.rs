@@ -49,4 +49,14 @@ impl<E: Environment> Instruction<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    use crate::Opcode;
+    use snarkvm_circuits::Circuit;
+
+    #[test]
+    fn test_add_instruction() {
+        type E = Circuit;
+        let (_, instruction) = Instruction::<E>::new("base.r3 := add.base base.r2, base.r1;").unwrap();
+        assert_eq!(instruction.operation.get_opcode(), Opcode::Add);
+    }
 }

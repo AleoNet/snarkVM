@@ -34,8 +34,8 @@ use std::iter::FromIterator;
 //  register structs for each of the types. This would result in stronger type
 //  restrictions for instructions.
 pub struct Register {
-    index: u64,
     typ: Type,
+    id: u64,
 }
 
 impl Register {
@@ -43,11 +43,12 @@ impl Register {
         let parse_zero = recognize(tag("0"));
         let parse_nonzero = recognize(pair(one_of("123456789"), many0(one_of("0123456789"))));
 
-        let (input, _) = tag("r")(input)?;
-        let (input, index) = map_res(alt((parse_zero, parse_nonzero)), |v| String::from(v).parse::<u64>())(input)?;
-        let (input, _) = tag(".")(input)?;
         let (input, typ) = Type::new(input)?;
-        Ok((input, Self { index, typ }))
+        let (input, _) = tag(".")(input)?;
+        let (input, _) = tag("r")(input)?;
+        let (input, id) = map_res(alt((parse_zero, parse_nonzero)), |v| String::from(v).parse::<u64>())(input)?;
+
+        Ok((input, Self { typ, id }))
     }
 }
 
@@ -57,29 +58,21 @@ mod tests {
 
     #[test]
     fn test_register_new() {
-        // TODO (@pranav)
-        //  This is just a sanity check. Need to construct a comprehensive test framework.
-        assert_eq!(1, TypedRegister::new("bf.r1").unwrap().1.unwrap().get_id());
-        assert_eq!(12, TypedRegister::new("b.r12").unwrap().1.unwrap().get_id());
-        assert_eq!(123, TypedRegister::new("g.r123").unwrap().1.unwrap().get_id());
-        assert_eq!(1234, TypedRegister::new("i8.r1_234").unwrap().1.unwrap().get_id());
-        assert_eq!(12345, TypedRegister::new("i16.r12_345").unwrap().1.unwrap().get_id());
-        assert_eq!(123456, TypedRegister::new("i32.r123_456").unwrap().1.unwrap().get_id());
-        assert_eq!(1234567, TypedRegister::new("i64.r1_2_3_4_5_6_7").unwrap().1.unwrap().get_id());
-        assert_eq!(1, TypedRegister::new("i128.r1").unwrap().1.unwrap().get_id());
-        assert_eq!(12, TypedRegister::new("sf.r12").unwrap().1.unwrap().get_id());
-        assert_eq!(123, TypedRegister::new("u8.r123").unwrap().1.unwrap().get_id());
-        assert_eq!(1234, TypedRegister::new("u16.r1_234").unwrap().1.unwrap().get_id());
-        assert_eq!(12345, TypedRegister::new("u32.r12_345").unwrap().1.unwrap().get_id());
-        assert_eq!(123456, TypedRegister::new("u64.r123_456").unwrap().1.unwrap().get_id());
-        assert_eq!(1234567, TypedRegister::new("u128.r1_2_3_4_5_6_7").unwrap().1.unwrap().get_id());
+        assert_eq!(0, Register::new("scalar.r0").unwrap().1.id);
+        assert_eq!(1, Register::new("base.r1").unwrap().1.id);
+        assert_eq!(12, Register::new("bool.r12").unwrap().1.id);
+        assert_eq!(123, Register::new("group.r123").unwrap().1.id);
+        assert_eq!(1234, Register::new("i8.r1234").unwrap().1.id);
+        assert_eq!(12345, Register::new("i16.r12345").unwrap().1.id);
+        assert_eq!(123456, Register::new("i32.r123456").unwrap().1.id);
+        assert_eq!(1234567, Register::new("i64.r1234567").unwrap().1.id);
     }
 
     #[test]
     fn test_malformed_register() {
-        // TODO: Check that you cannot have leading zeros for register numbers.
-        assert!(TypedRegister::new("r_123").is_err());
-        // assert!(TypedRegister::new("r123_").is_err());
-        assert!(TypedRegister::new("5u_8").is_err());
+        assert!(Register::new("r_123").is_err());
+        assert!(Register::new("r123_").is_err());
+        assert!(Register::new("5u_8").is_err());
+        assert!(Register::new("u8.r_123").is_err());
     }
 }

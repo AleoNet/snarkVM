@@ -46,12 +46,19 @@ mod tests {
 
     #[test]
     fn test_program_new() {
-        // TODO (@pranav)
-        //  This is just a sanity check. Need to construct a comprehensive test framework.
         type E = Circuit;
-        let (input, program) =
-            Program::<E>::new("loadi u8.r1, 1u8; loadi u8.r2, 2u8; addw u8.r3, u8.r2, u8.r1;").unwrap();
-        println!("{:?}", input);
+        let (input, program) = Program::<E>::new(
+            "u8.r3 := addw.u8 u8.r2, u8.r1; u8.r6 := addw.u8 u8.r5, u8.r4; bool.r1 := eq.u8 u8.r5, u8.r6;",
+        )
+        .unwrap();
+        assert_eq!(3, program.instructions.len());
+
+        let (input, program) = Program::<E>::new(
+            "u8.r3 := addw.u8 u8.r2, u8.r1;\n\
+                   u8.r6 := addw.u8 u8.r5, u8.r4;\n\
+                   bool.r1 := eq.u8 u8.r5, u8.r6;",
+        )
+        .unwrap();
         assert_eq!(3, program.instructions.len());
     }
 }

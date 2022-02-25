@@ -62,23 +62,21 @@ impl Type {
 mod tests {
     use super::*;
 
-    // TODO (@pranav)
-    //  This is just a sanity check. Need to construct a comprehensive test framework.
     #[test]
     fn test_type_new() {
-        assert_eq!(Type::BaseField, Type::new("bf").unwrap().1.unwrap());
-        assert_eq!(Type::Boolean, Type::new("b").unwrap().1.unwrap());
-        assert_eq!(Type::Group, Type::new("g").unwrap().1.unwrap());
-        assert_eq!(Type::I8, Type::new("i8").unwrap().1.unwrap());
-        assert_eq!(Type::I16, Type::new("i16").unwrap().1.unwrap());
-        assert_eq!(Type::I32, Type::new("i32").unwrap().1.unwrap());
-        assert_eq!(Type::I64, Type::new("i64").unwrap().1.unwrap());
-        assert_eq!(Type::I128, Type::new("i128").unwrap().1.unwrap());
-        assert_eq!(Type::ScalarField, Type::new("sf").unwrap().1.unwrap());
-        assert_eq!(Type::U8, Type::new("u8").unwrap().1.unwrap());
-        assert_eq!(Type::U16, Type::new("u16").unwrap().1.unwrap());
-        assert_eq!(Type::U32, Type::new("u32").unwrap().1.unwrap());
-        assert_eq!(Type::U64, Type::new("u64").unwrap().1.unwrap());
-        assert_eq!(Type::U128, Type::new("u128").unwrap().1.unwrap());
+        assert_eq!(Type::BaseField, Type::new("base").unwrap().1);
+        assert_eq!(Type::Boolean, Type::new("bool").unwrap().1);
+        assert_eq!(Type::Group, Type::new("group").unwrap().1);
+        assert_eq!(Type::I8, Type::new("i8").unwrap().1);
+        assert_eq!(Type::I16, Type::new("i16").unwrap().1);
+        assert_eq!(Type::I32, Type::new("i32").unwrap().1);
+        assert_eq!(Type::I64, Type::new("i64").unwrap().1);
+        assert_eq!(Type::I128, Type::new("i128").unwrap().1);
+        assert_eq!(Type::ScalarField, Type::new("scalar").unwrap().1);
+        assert_eq!(Type::U8, Type::new("u8").unwrap().1);
+        assert_eq!(Type::U16, Type::new("u16").unwrap().1);
+        assert_eq!(Type::U32, Type::new("u32").unwrap().1);
+        assert_eq!(Type::U64, Type::new("u64").unwrap().1);
+        assert_eq!(Type::U128, Type::new("u128").unwrap().1);
     }
 }

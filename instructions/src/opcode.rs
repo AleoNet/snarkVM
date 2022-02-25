@@ -27,6 +27,7 @@ use nom::{
 };
 
 // TODO: Documentation
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum Opcode {
     Add,
     AddChecked,
@@ -42,14 +43,15 @@ pub enum Opcode {
 impl Opcode {
     pub fn new(input: &str) -> ParserResult<Opcode> {
         alt((
-            map(tag("add"), |_| Opcode::Add),
+            // Note that order of the individual parsers matters.
             map(tag("addc"), |_| Opcode::AddChecked),
-            map(tag("addw"), |_| Opcode::AddChecked),
+            map(tag("addw"), |_| Opcode::AddWrapped),
+            map(tag("add"), |_| Opcode::Add),
             map(tag("and"), |_| Opcode::And),
             map(tag("eq"), |_| Opcode::Eq),
-            map(tag("sub"), |_| Opcode::Sub),
             map(tag("subc"), |_| Opcode::SubChecked),
             map(tag("subw"), |_| Opcode::SubWrapped),
+            map(tag("sub"), |_| Opcode::Sub),
             map(tag("ter"), |_| Opcode::Ternary),
         ))(input)
     }
@@ -61,15 +63,15 @@ mod tests {
 
     #[test]
     fn test_opcode_new() {
-        assert_eq!(Opcode::new("add").unwrap(), Opcode::Add);
-        assert_eq!(Opcode::new("addc").unwrap(), Opcode::AddChecked);
-        assert_eq!(Opcode::new("addw").unwrap(), Opcode::AddWrapped);
-        assert_eq!(Opcode::new("and").unwrap(), Opcode::And);
-        assert_eq!(Opcode::new("eq").unwrap(), Opcode::Eq);
-        assert_eq!(Opcode::new("sub").unwrap(), Opcode::Sub);
-        assert_eq!(Opcode::new("subc").unwrap(), Opcode::SubChecked);
-        assert_eq!(Opcode::new("subw").unwrap(), Opcode::SubWrapped);
-        assert_eq!(Opcode::new("ter").unwrap(), Opcode::Ternary);
+        assert_eq!(Opcode::new("add").unwrap().1, Opcode::Add);
+        assert_eq!(Opcode::new("addc").unwrap().1, Opcode::AddChecked);
+        assert_eq!(Opcode::new("addw").unwrap().1, Opcode::AddWrapped);
+        assert_eq!(Opcode::new("and").unwrap().1, Opcode::And);
+        assert_eq!(Opcode::new("eq").unwrap().1, Opcode::Eq);
+        assert_eq!(Opcode::new("sub").unwrap().1, Opcode::Sub);
+        assert_eq!(Opcode::new("subc").unwrap().1, Opcode::SubChecked);
+        assert_eq!(Opcode::new("subw").unwrap().1, Opcode::SubWrapped);
+        assert_eq!(Opcode::new("ter").unwrap().1, Opcode::Ternary);
     }
 
     #[test]

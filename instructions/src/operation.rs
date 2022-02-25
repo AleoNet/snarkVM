@@ -39,6 +39,10 @@ impl Operation {
         let (input, typ) = Type::new(input)?;
         Ok((input, Self { opcode, typ }))
     }
+
+    pub fn get_opcode(&self) -> Opcode {
+        self.opcode
+    }
 }
 
 #[cfg(test)]
@@ -56,7 +60,7 @@ mod tests {
         assert_eq!(operation.typ, Type::U8);
 
         let (_, operation) = Operation::new("addw.i8").unwrap();
-        assert_eq!(operation.opcode, Opcode::AddChecked);
+        assert_eq!(operation.opcode, Opcode::AddWrapped);
         assert_eq!(operation.typ, Type::I8);
 
         let (_, operation) = Operation::new("and.bool").unwrap();
@@ -68,7 +72,7 @@ mod tests {
         assert_eq!(operation.typ, Type::Group);
 
         let (_, operation) = Operation::new("sub.u128").unwrap();
-        assert_eq!(operation.opcode, Opcode::AddChecked);
+        assert_eq!(operation.opcode, Opcode::Sub);
         assert_eq!(operation.typ, Type::U128);
 
         let (_, operation) = Operation::new("subc.u16").unwrap();
