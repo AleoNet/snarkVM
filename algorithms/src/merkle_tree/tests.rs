@@ -294,9 +294,8 @@ mod pedersen_compressed_crh_on_projective {
         };
 
         // Ensure that the proof is invalid because the path length is not P::DEPTH - 1.
-        assert_eq!(
-            false,
-            invalid_proof
+        assert!(
+            !invalid_proof
                 .verify(merkle_tree_root, &to_bytes_le![leaf1, leaf2].unwrap())
                 .unwrap()
         );
