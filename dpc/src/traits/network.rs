@@ -272,7 +272,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
 
     /// Commitment scheme for value commitments. Invoked only over `Self::InnerScalarField`.
     type ValueCommitment: CommitmentScheme<Randomness = Self::ProgramScalarField, Output = Self::ProgramAffineCurve>;
-    type ValueCommitmentGadget: CommitmentGadget<Self::ValueCommitment, Self::InnerScalarField>;
+    type ValueCommitmentGadget: CommitmentGadget<Self::ValueCommitment, Self::InnerScalarField, OutputGadget = Self::ProgramAffineCurveGadget>;
 
     fn account_encryption_scheme() -> &'static Self::AccountEncryptionScheme;
     fn account_signature_scheme() -> &'static Self::AccountSignatureScheme;

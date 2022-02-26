@@ -17,6 +17,8 @@
 use crate::{
     integers::uint::UInt8,
     traits::{algorithms::CommitmentGadget, alloc::AllocGadget, curves::CurveGadget, integers::Integer},
+    Boolean,
+    ToBitsLEGadget,
     ToBytesGadget,
 };
 use snarkvm_algorithms::commitment::PedersenCommitment;
@@ -31,7 +33,7 @@ use std::{
 };
 
 #[derive(Clone, Debug)]
-pub struct PedersenRandomnessGadget<G: ProjectiveCurve>(pub Vec<UInt8>, pub(crate) PhantomData<G>);
+pub struct PedersenRandomnessGadget<G: ProjectiveCurve>(Vec<UInt8>, pub(crate) PhantomData<G>);
 
 impl<G: ProjectiveCurve, F: PrimeField> AllocGadget<G::ScalarField, F> for PedersenRandomnessGadget<G> {
     fn alloc_constant<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<G::ScalarField>, CS: ConstraintSystem<F>>(
@@ -66,6 +68,16 @@ impl<G: ProjectiveCurve, F: PrimeField> ToBytesGadget<F> for PedersenRandomnessG
 
     fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         self.0.to_bytes_strict(cs)
+    }
+}
+
+impl<G: ProjectiveCurve, F: PrimeField> ToBitsLEGadget<F> for PedersenRandomnessGadget<G> {
+    fn to_bits_le<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        self.0.to_bits_le(cs)
+    }
+
+    fn to_bits_le_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        self.0.to_bits_le(cs)
     }
 }
 

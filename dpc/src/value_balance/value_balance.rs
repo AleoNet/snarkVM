@@ -237,10 +237,7 @@ pub(crate) mod tests {
         output_amounts: Vec<u64>,
         sighash: &[u8],
         rng: &mut R,
-    ) -> Result<
-        (Vec<N::ProgramAffineCurve>, Vec<N::ProgramAffineCurve>, i64, ValueBalanceCommitment<N>),
-        ValueBalanceCommitmentError,
-    > {
+    ) -> (Vec<N::ProgramAffineCurve>, Vec<N::ProgramAffineCurve>, i64, ValueBalanceCommitment<N>) {
         let mut value_balance: i64 = 0;
 
         let mut input_value_commitment_randomness = vec![];
@@ -282,11 +279,11 @@ pub(crate) mod tests {
         )
         .unwrap();
 
-        Ok((input_value_commitments, output_value_commitments, value_balance, value_balance_commitment))
+        (input_value_commitments, output_value_commitments, value_balance, value_balance_commitment)
     }
 
     #[test]
-    fn test_value_commitment_commitment() {
+    fn test_value_balance_commitment() {
         let rng = &mut rand::thread_rng();
 
         let input_amount: u64 = rng.gen_range(0..100000000);
@@ -301,8 +298,7 @@ pub(crate) mod tests {
                 vec![output_amount, output_amount_2],
                 &sighash,
                 rng,
-            )
-            .unwrap();
+            );
 
         // Verify the value balance commitment
         assert!(
@@ -332,8 +328,7 @@ pub(crate) mod tests {
             vec![output_amount, output_amount_2],
             &sighash,
             rng,
-        )
-        .unwrap();
+        );
 
         let reconstructed_value_balance_commitment: ValueBalanceCommitment<_> =
             FromBytes::read_le(&*value_balance_commitment.to_bytes_le().unwrap()).unwrap();

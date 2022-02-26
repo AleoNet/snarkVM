@@ -29,6 +29,7 @@ use crate::{
         select::CondSelectGadget,
     },
     ToBitsBEGadget,
+    ToBitsLEGadget,
 };
 
 pub trait CommitmentGadget<C: CommitmentScheme, F: Field>: AllocGadget<C, F> + Clone + Sized {
@@ -41,7 +42,7 @@ pub trait CommitmentGadget<C: CommitmentScheme, F: Field>: AllocGadget<C, F> + C
         + Clone
         + Sized
         + Debug;
-    type RandomnessGadget: AllocGadget<C::Randomness, F> + ToBytesGadget<F> + Clone;
+    type RandomnessGadget: AllocGadget<C::Randomness, F> + ToBytesGadget<F> + ToBitsLEGadget<F> + Clone;
 
     fn randomness_from_bytes<CS: ConstraintSystem<F>>(
         cs: CS,
