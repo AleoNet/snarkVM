@@ -154,7 +154,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type InnerBaseField: PrimeField + PoseidonDefaultParametersField;
 
     /// Program curve type declarations.
-    type ProgramAffineCurve: AffineCurve<BaseField = Self::ProgramBaseField>;
+    type ProgramAffineCurve: AffineCurve<BaseField = Self::ProgramBaseField, ScalarField = Self::ProgramScalarField>;
     type ProgramAffineCurveGadget: GroupGadget<Self::ProgramAffineCurve, Self::InnerScalarField>;
     type ProgramProjectiveCurve: ProjectiveCurve<BaseField = Self::ProgramBaseField>;
     type ProgramCurveParameters: TwistedEdwardsParameters;
@@ -272,7 +272,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type TransitionID: Bech32Locator<<Self::TransitionIDCRH as CRH>::Output>;
 
     /// Commitment scheme for value commitments. Invoked only over `Self::InnerScalarField`.
-    type ValueCommitment: CommitmentScheme<Output = Self::ProgramAffineCurve>;
+    type ValueCommitment: CommitmentScheme<Randomness = Self::ProgramScalarField, Output = Self::ProgramAffineCurve>;
     type ValueCommitmentGadget: CommitmentGadget<Self::ValueCommitment, Self::InnerScalarField>;
 
     fn account_encryption_scheme() -> &'static Self::AccountEncryptionScheme;

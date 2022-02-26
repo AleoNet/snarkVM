@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::error::ValueBalanceCommitmentError;
+use crate::{error::ValueBalanceCommitmentError, Network};
 use snarkvm_algorithms::CommitmentScheme;
-use snarkvm_curves::{AffineCurve, Group, ProjectiveCurve};
+use snarkvm_curves::AffineCurve;
 use snarkvm_fields::{Field, One, Zero};
 use snarkvm_utilities::{
     bititerator::BitIteratorLE,
@@ -34,9 +34,7 @@ use std::{
     ops::{Add, Mul, Neg},
 };
 
-// TODO (raychu86): Refactor all of this into formal structs and add documentation.
-
-pub fn hash_into_field<G: Group + ProjectiveCurve>(a: &[u8], b: &[u8]) -> <G as Group>::ScalarField {
+pub fn hash_into_field<N: Network>(a: &[u8], b: &[u8]) -> N::ProgramScalarField {
     let mut hasher = Blake2bVar::new(64).unwrap();
     hasher.update(a);
     hasher.update(b);
@@ -54,7 +52,7 @@ pub fn hash_into_field<G: Group + ProjectiveCurve>(a: &[u8], b: &[u8]) -> <G as 
         .collect();
 
     // Scaling by random cofactor for the scalar field
-    let mut res = <G as Group>::ScalarField::one();
+    let mut res = N::ProgramScalarField::one();
     for bit in BitIteratorLE::new(hash_u64_repr) {
         res.double_in_place();
         if bit {
@@ -65,94 +63,76 @@ pub fn hash_into_field<G: Group + ProjectiveCurve>(a: &[u8], b: &[u8]) -> <G as 
     res
 }
 
-pub fn recover_affine_from_x_coord<G: Group + ProjectiveCurve>(
-    x_bytes: &[u8],
-) -> Result<<G as ProjectiveCurve>::Affine, ValueBalanceCommitmentError> {
-    let x: <<G as ProjectiveCurve>::Affine as AffineCurve>::BaseField = FromBytes::read_le(x_bytes)?;
-
-    if let Some(affine) = <G as ProjectiveCurve>::Affine::from_x_coordinate(x, false) {
-        if affine.is_in_correct_subgroup_assuming_on_curve() {
-            return Ok(affine);
-        }
-    }
-
-    if let Some(affine) = <G as ProjectiveCurve>::Affine::from_x_coordinate(x, true) {
-        if affine.is_in_correct_subgroup_assuming_on_curve() {
-            return Ok(affine);
-        }
-    }
-
-    Err(ValueBalanceCommitmentError::NotInCorrectSubgroupOnCurve(to_bytes_le![x]?))
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
-pub struct ValueBalanceCommitment<G: Group + ProjectiveCurve> {
-    pub rbar: <<G as ProjectiveCurve>::Affine as AffineCurve>::BaseField,
-    pub sbar: <G as Group>::ScalarField,
+pub struct ValueBalanceCommitment<N: Network> {
+    pub rbar: N::ProgramAffineCurve,
+    pub sbar: N::ProgramScalarField,
 }
 
-impl<G: Group + ProjectiveCurve> ToBytes for ValueBalanceCommitment<G> {
+impl<N: Network> ToBytes for ValueBalanceCommitment<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.rbar.write_le(&mut writer)?;
+        self.rbar.to_x_coordinate().write_le(&mut writer)?;
         self.sbar.write_le(&mut writer)
     }
 }
 
-impl<G: Group + ProjectiveCurve> FromBytes for ValueBalanceCommitment<G> {
+impl<N: Network> FromBytes for ValueBalanceCommitment<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        Ok(Self { rbar: FromBytes::read_le(&mut reader)?, sbar: FromBytes::read_le(&mut reader)? })
+        let x_coordinate = <N::ProgramAffineCurve as AffineCurve>::BaseField::read_le(&mut reader)?;
+
+        if let Some(rbar) = N::ProgramAffineCurve::from_x_coordinate(x_coordinate, false) {
+            if rbar.is_in_correct_subgroup_assuming_on_curve() {
+                return Ok(Self { rbar, sbar: FromBytes::read_le(&mut reader)? });
+            }
+        }
+
+        if let Some(rbar) = N::ProgramAffineCurve::from_x_coordinate(x_coordinate, true) {
+            if rbar.is_in_correct_subgroup_assuming_on_curve() {
+                return Ok(Self { rbar, sbar: FromBytes::read_le(&mut reader)? });
+            }
+        }
+
+        Err(ValueBalanceCommitmentError::NotInCorrectSubgroupOnCurve.into())
     }
 }
 
-pub fn commit_value_balance<C: CommitmentScheme, G: Group + ProjectiveCurve, R: Rng>(
-    value_commitment: &C,
-    input_value_commitments: &Vec<C::Output>,
-    output_value_commitments: &Vec<C::Output>,
-    input_value_commitment_randomness: &Vec<C::Randomness>,
-    output_value_commitment_randomness: &Vec<C::Randomness>,
+pub fn commit_value_balance<N: Network, R: Rng>(
+    input_value_commitments: &Vec<N::ProgramAffineCurve>,
+    output_value_commitments: &Vec<N::ProgramAffineCurve>,
+    input_value_commitment_randomness: &Vec<N::ProgramScalarField>,
+    output_value_commitment_randomness: &Vec<N::ProgramScalarField>,
     value_balance: i64,
     input: &[u8],
     rng: &mut R,
-) -> Result<ValueBalanceCommitment<G>, ValueBalanceCommitmentError> {
+) -> Result<ValueBalanceCommitment<N>, ValueBalanceCommitmentError> {
     // Calculate the bsk and bvk
-    let mut bsk = <G as Group>::ScalarField::default();
-    let mut bvk = <G as ProjectiveCurve>::Affine::default();
+    let mut bsk = N::ProgramScalarField::zero();
 
     for input_vc_randomness in input_value_commitment_randomness {
-        let randomness: <G as Group>::ScalarField = FromBytes::read_le(&to_bytes_le![input_vc_randomness]?[..])?;
-        bsk = bsk.add(&randomness);
+        bsk += input_vc_randomness;
     }
 
     for output_vc_randomness in output_value_commitment_randomness {
-        let randomness: <G as Group>::ScalarField = FromBytes::read_le(&to_bytes_le![output_vc_randomness]?[..])?;
-        bsk = bsk.add(&randomness.neg());
+        bsk -= output_vc_randomness;
     }
 
+    let mut bvk = N::ProgramAffineCurve::zero();
+
     for vc_input in input_value_commitments {
-        let recovered_input_value_commitment: <G as ProjectiveCurve>::Affine =
-            recover_affine_from_x_coord::<G>(&to_bytes_le![vc_input]?[..])?;
-        bvk = bvk.add(&recovered_input_value_commitment);
+        bvk += vc_input;
     }
 
     for vc_output in output_value_commitments {
-        let recovered_output_value_commitment: <G as ProjectiveCurve>::Affine =
-            recover_affine_from_x_coord::<G>(&to_bytes_le![vc_output]?[..])?;
-        bvk = bvk.add(&recovered_output_value_commitment.neg());
+        bvk -= vc_output;
     }
 
-    // Calculate Value balance commitment
-    let value_balance_commitment: <G as ProjectiveCurve>::Affine =
-        calculate_value_balance_commitment::<C, G>(value_commitment, value_balance)?;
-
-    bvk = bvk.add(&value_balance_commitment.neg());
+    // Calculate the value balance commitment.
+    bvk -= calculate_value_balance_commitment::<N>(value_balance)?;
 
     // Make sure bvk can be derived from bsk
-    let zero: i64 = 0;
-    let comm_bsk: C::Randomness = FromBytes::read_le(&to_bytes_le![bsk]?[..])?;
-    let expected_bvk_x = to_bytes_le![value_commitment.commit(&zero.to_le_bytes(), &comm_bsk)?]?;
-    let expected_bvk = recover_affine_from_x_coord::<G>(&expected_bvk_x)?;
+    let expected_bvk = N::value_commitment().commit(&0i64.to_le_bytes(), &bsk)?;
     assert_eq!(bvk, expected_bvk);
 
     // Generate randomness
@@ -161,14 +141,13 @@ pub fn commit_value_balance<C: CommitmentScheme, G: Group + ProjectiveCurve, R: 
 
     // Generate signature using message
 
-    let r_edwards: <G as Group>::ScalarField = hash_into_field::<G>(&sig_rand[..], input);
-    let r: C::Randomness = FromBytes::read_le(&to_bytes_le![r_edwards]?[..])?;
-    let r_g = value_commitment.commit(&zero.to_le_bytes(), &r)?;
+    let r_edwards = hash_into_field::<N>(&sig_rand[..], input);
+    let r_g = N::value_commitment().commit(&0i64.to_le_bytes(), &r_edwards)?;
 
     let mut rbar = [0u8; 32];
     r_g.write_le(&mut rbar[..])?;
 
-    let mut s: <G as Group>::ScalarField = hash_into_field::<G>(&rbar[..], input);
+    let mut s = hash_into_field::<N>(&rbar[..], input);
     s = s.mul(&bsk);
     s = s.add(&r_edwards);
 
@@ -178,130 +157,100 @@ pub fn commit_value_balance<C: CommitmentScheme, G: Group + ProjectiveCurve, R: 
     Ok(FromBytes::from_bytes_le(&[rbar, sbar].concat())?)
 }
 
-pub fn verify_value_balance_commitment<C: CommitmentScheme, G: Group + ProjectiveCurve>(
-    value_commitment: &C,
-    input_value_commitments: &Vec<C::Output>,
-    output_value_commitments: &Vec<C::Output>,
+pub fn verify_value_balance_commitment<N: Network>(
+    input_value_commitments: &Vec<N::ProgramAffineCurve>,
+    output_value_commitments: &Vec<N::ProgramAffineCurve>,
     value_balance: i64,
     input: &[u8],
-    signature: &ValueBalanceCommitment<G>,
+    signature: &ValueBalanceCommitment<N>,
 ) -> Result<bool, ValueBalanceCommitmentError> {
     // Craft verifying key
-    let mut bvk: <G as ProjectiveCurve>::Affine = <G as ProjectiveCurve>::Affine::default();
+    let mut bvk = N::ProgramAffineCurve::zero();
 
     for vc_input in input_value_commitments {
-        let recovered_input_value_commitment: <G as ProjectiveCurve>::Affine =
-            recover_affine_from_x_coord::<G>(&to_bytes_le![vc_input]?[..])?;
-        bvk = bvk.add(&recovered_input_value_commitment);
+        bvk += vc_input;
     }
 
     for vc_output in output_value_commitments {
-        let recovered_output_value_commitment: <G as ProjectiveCurve>::Affine =
-            recover_affine_from_x_coord::<G>(&to_bytes_le![vc_output]?[..])?;
-        bvk = bvk.add(&recovered_output_value_commitment.neg());
+        bvk -= vc_output;
     }
 
-    // Calculate Value balance commitment
-    let value_balance_commitment: <G as ProjectiveCurve>::Affine =
-        calculate_value_balance_commitment::<C, G>(value_commitment, value_balance)?;
-
-    bvk = bvk.add(&value_balance_commitment.neg());
+    // Calculate the value balance commitment.
+    bvk += calculate_value_balance_commitment::<N>(value_balance)?;
 
     // Verify the signature
-    let c: <G as Group>::ScalarField = hash_into_field::<G>(&signature.rbar.to_bytes_le()?, input);
-    let affine_r = recover_affine_from_x_coord::<G>(&signature.rbar.to_bytes_le()?)?;
+    let c = hash_into_field::<N>(&signature.rbar.to_bytes_le()?, input);
 
-    let zero: i64 = 0;
-    let s: C::Randomness = FromBytes::read_le(&*signature.sbar.to_bytes_le()?)?;
-    let recommit = to_bytes_le![value_commitment.commit(&zero.to_le_bytes(), &s)?]?;
-    let recovered_recommit = recover_affine_from_x_coord::<G>(&recommit)?;
+    let recommit = N::value_commitment().commit(&0i64.to_le_bytes(), &signature.sbar)?;
 
-    let check_verification = bvk.mul(c).add(&affine_r).add(&recovered_recommit.neg());
-
-    Ok(check_verification.is_zero())
+    Ok((bvk.mul(c) + signature.rbar - recommit).is_zero())
 }
 
 /// Returns the value balance commitment as `value_balance.sign() * Commit(value_balance.abs(), randomness)`.
-pub fn calculate_value_balance_commitment<C: CommitmentScheme, G: Group + ProjectiveCurve>(
-    value_commitment: &C,
+pub fn calculate_value_balance_commitment<N: Network>(
     value_balance: i64,
-) -> Result<<G as ProjectiveCurve>::Affine, ValueBalanceCommitmentError> {
+) -> Result<N::ProgramAffineCurve, ValueBalanceCommitmentError> {
+    // Convert the value balance to an absolute u64.
     let value_balance_as_u64 = match value_balance.checked_abs() {
         Some(val) => val as u64,
         None => return Err(ValueBalanceCommitmentError::OutOfBounds(value_balance)),
     };
 
-    let zero_randomness = C::Randomness::default();
+    // Compute the value balance commitment.
+    let zero_randomness = Zero::zero();
     let value_balance_commitment =
-        to_bytes_le![value_commitment.commit(&value_balance_as_u64.to_le_bytes(), &zero_randomness)?]?;
-
-    let recovered_value_balance_commitment: <G as ProjectiveCurve>::Affine =
-        recover_affine_from_x_coord::<G>(&value_balance_commitment)?;
+        N::value_commitment().commit(&value_balance_as_u64.to_le_bytes(), &zero_randomness)?;
 
     match value_balance.is_negative() {
-        true => Ok(recovered_value_balance_commitment.neg()),
-        false => Ok(recovered_value_balance_commitment),
+        true => Ok(value_balance_commitment.neg()),
+        false => Ok(value_balance_commitment),
     }
 }
 
-pub fn gadget_verification_setup<C: CommitmentScheme, G: Group + ProjectiveCurve>(
-    value_commitment: &C,
-    input_value_commitments: &[C::Output],
-    output_value_commitments: &[C::Output],
+pub fn gadget_verification_setup<N: Network>(
+    input_value_commitments: &[N::ProgramAffineCurve],
+    output_value_commitments: &[N::ProgramAffineCurve],
     input: &[u8],
-    signature: &ValueBalanceCommitment<G>,
-) -> Result<(C::Randomness, G, G, G), ValueBalanceCommitmentError> {
+    signature: &ValueBalanceCommitment<N>,
+) -> Result<
+    (N::ProgramScalarField, N::ProgramAffineCurve, N::ProgramAffineCurve, N::ProgramAffineCurve),
+    ValueBalanceCommitmentError,
+> {
     // Craft the partial verifying key
-    let mut partial_bvk = <G as ProjectiveCurve>::Affine::default();
+    let mut partial_bvk = N::ProgramAffineCurve::zero();
 
     for vc_input in input_value_commitments {
-        let recovered_input_value_commitment: <G as ProjectiveCurve>::Affine =
-            recover_affine_from_x_coord::<G>(&to_bytes_le![vc_input]?[..])?;
-        partial_bvk = partial_bvk.add(&recovered_input_value_commitment);
+        partial_bvk += vc_input;
     }
 
     for vc_output in output_value_commitments {
-        let recovered_output_value_commitment: <G as ProjectiveCurve>::Affine =
-            recover_affine_from_x_coord::<G>(&to_bytes_le![vc_output]?[..])?;
-        partial_bvk = partial_bvk.add(&recovered_output_value_commitment.neg());
+        partial_bvk -= vc_output;
     }
 
-    let c_field: <G as Group>::ScalarField = hash_into_field::<G>(&signature.rbar.to_bytes_le()?, input);
-    let c: C::Randomness = FromBytes::read_le(&to_bytes_le![c_field]?[..])?;
+    let c = hash_into_field::<N>(&signature.rbar.to_bytes_le()?, input);
+    let recommit = N::value_commitment().commit(&0i64.to_le_bytes(), &signature.sbar)?;
 
-    let affine_r = recover_affine_from_x_coord::<G>(&signature.rbar.to_bytes_le()?)?;
-
-    let zero: i64 = 0;
-    let s: C::Randomness = FromBytes::read_le(&*signature.sbar.to_bytes_le()?)?;
-    let recommit = to_bytes_le![value_commitment.commit(&zero.to_le_bytes(), &s)?]?;
-    let recovered_recommit = recover_affine_from_x_coord::<G>(&recommit).unwrap();
-
-    let partial_bvk: G = FromBytes::read_le(&to_bytes_le![partial_bvk.into_projective()]?[..])?;
-    let affine_r: G = FromBytes::read_le(&to_bytes_le![affine_r.into_projective()]?[..])?;
-    let recovered_recommit: G = FromBytes::read_le(&to_bytes_le![recovered_recommit.into_projective()]?[..])?;
-
-    Ok((c, partial_bvk, affine_r, recovered_recommit))
+    Ok((c, partial_bvk, signature.rbar, recommit))
 }
 
 #[cfg(test)]
-mod value_balance_commitment_tests {
+pub(crate) mod tests {
     use super::*;
-    use snarkvm_algorithms::{commitment::PedersenCompressedCommitment, CommitmentScheme};
-    use snarkvm_curves::edwards_bls12::EdwardsProjective;
+    use crate::testnet2::Testnet2;
+    use snarkvm_algorithms::CommitmentScheme;
     use snarkvm_utilities::{rand::UniformRand, to_bytes_le, FromBytes, ToBytes};
 
     use rand::Rng;
 
-    type G = EdwardsProjective;
-    type ValueCommitment = PedersenCompressedCommitment<G, 4, 350>;
-
-    fn generate_random_value_balance_commitment<C: CommitmentScheme, R: Rng>(
-        value_comm_pp: &C,
+    pub(crate) fn generate_random_value_balance_commitment<N: Network, R: Rng>(
         input_amounts: Vec<u64>,
         output_amounts: Vec<u64>,
         sighash: &[u8],
         rng: &mut R,
-    ) -> Result<(Vec<C::Output>, Vec<C::Output>, i64, ValueBalanceCommitment<G>), ValueBalanceCommitmentError> {
+    ) -> Result<
+        (Vec<N::ProgramAffineCurve>, Vec<N::ProgramAffineCurve>, i64, ValueBalanceCommitment<N>),
+        ValueBalanceCommitmentError,
+    > {
         let mut value_balance: i64 = 0;
 
         let mut input_value_commitment_randomness = vec![];
@@ -313,9 +262,9 @@ mod value_balance_commitment_tests {
         for input_amount in input_amounts {
             value_balance += input_amount as i64;
 
-            let value_commit_randomness = C::Randomness::rand(rng);
+            let value_commit_randomness = UniformRand::rand(rng);
             let value_commitment =
-                value_comm_pp.commit(&input_amount.to_bytes_le().unwrap(), &value_commit_randomness).unwrap();
+                N::value_commitment().commit(&input_amount.to_le_bytes(), &value_commit_randomness).unwrap();
 
             input_value_commitment_randomness.push(value_commit_randomness);
             input_value_commitments.push(value_commitment);
@@ -324,16 +273,15 @@ mod value_balance_commitment_tests {
         for output_amount in output_amounts {
             value_balance -= output_amount as i64;
 
-            let value_commit_randomness = C::Randomness::rand(rng);
+            let value_commit_randomness = UniformRand::rand(rng);
             let value_commitment =
-                value_comm_pp.commit(&output_amount.to_bytes_le().unwrap(), &value_commit_randomness).unwrap();
+                N::value_commitment().commit(&output_amount.to_le_bytes(), &value_commit_randomness).unwrap();
 
             output_value_commitment_randomness.push(value_commit_randomness);
             output_value_commitments.push(value_commitment);
         }
 
-        let value_balance_commitment = commit_value_balance::<_, G, _>(
-            value_comm_pp,
+        let value_balance_commitment = commit_value_balance::<N, _>(
             &input_value_commitments,
             &output_value_commitments,
             &input_value_commitment_randomness,
@@ -351,20 +299,14 @@ mod value_balance_commitment_tests {
     fn test_value_commitment_commitment() {
         let rng = &mut rand::thread_rng();
 
-        // Setup parameters
-
-        let value_comm_pp = ValueCommitment::setup("value_balance_commitment_test");
-
         let input_amount: u64 = rng.gen_range(0..100000000);
         let input_amount_2: u64 = rng.gen_range(0..100000000);
         let output_amount: u64 = rng.gen_range(0..100000000);
         let output_amount_2: u64 = rng.gen_range(0..100000000);
-
         let sighash = [1u8; 64].to_vec();
 
         let (input_value_commitments, output_value_commitments, value_balance, value_balance_commitment) =
-            generate_random_value_balance_commitment::<ValueCommitment, _>(
-                &value_comm_pp,
+            generate_random_value_balance_commitment::<Testnet2, _>(
                 vec![input_amount, input_amount_2],
                 vec![output_amount, output_amount_2],
                 &sighash,
@@ -373,37 +315,29 @@ mod value_balance_commitment_tests {
             .unwrap();
 
         // Verify the value balance commitment
-
-        let verified = verify_value_balance_commitment::<ValueCommitment, G>(
-            &value_comm_pp,
-            &input_value_commitments,
-            &output_value_commitments,
-            value_balance,
-            &sighash,
-            &value_balance_commitment,
-        )
-        .unwrap();
-
-        assert!(verified);
+        assert!(
+            verify_value_balance_commitment::<Testnet2>(
+                &input_value_commitments,
+                &output_value_commitments,
+                value_balance,
+                &sighash,
+                &value_balance_commitment,
+            )
+            .unwrap()
+        );
     }
 
     #[test]
     fn test_value_balance_commitment_serialization() {
         let rng = &mut rand::thread_rng();
 
-        // Setup parameters
-
-        let value_comm_pp = ValueCommitment::setup("value_balance_commitment_test");
-
         let input_amount: u64 = rng.gen_range(0..100000000);
         let input_amount_2: u64 = rng.gen_range(0..100000000);
         let output_amount: u64 = rng.gen_range(0..100000000);
         let output_amount_2: u64 = rng.gen_range(0..100000000);
-
         let sighash = [1u8; 64].to_vec();
 
-        let (_, _, _, value_balance_commitment) = generate_random_value_balance_commitment::<ValueCommitment, _>(
-            &value_comm_pp,
+        let (_, _, _, value_balance_commitment) = generate_random_value_balance_commitment::<Testnet2, _>(
             vec![input_amount, input_amount_2],
             vec![output_amount, output_amount_2],
             &sighash,

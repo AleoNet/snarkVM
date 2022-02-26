@@ -30,8 +30,8 @@ pub enum ValueBalanceCommitmentError {
     #[error("{}", _0)]
     Message(String),
 
-    #[error("Affine point is not in the correct subgroup on curve {:?}", _0)]
-    NotInCorrectSubgroupOnCurve(Vec<u8>),
+    #[error("Affine point is not in the correct subgroup on curve")]
+    NotInCorrectSubgroupOnCurve,
 
     #[error("The value balance is out of bounds: {}", _0)]
     OutOfBounds(i64),
