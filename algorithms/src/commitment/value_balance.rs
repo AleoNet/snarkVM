@@ -33,6 +33,8 @@ use std::{
     ops::{Add, Mul, Neg},
 };
 
+// TODO (raychu86): Refactor all of this into formal structs and add documentation.
+
 pub fn hash_into_field<G: Group + ProjectiveCurve>(a: &[u8], b: &[u8]) -> <G as Group>::ScalarField {
     let mut hasher = Blake2bVar::new(64).unwrap();
     hasher.update(a);
