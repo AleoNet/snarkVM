@@ -12,10 +12,10 @@ keywords = [
   "decentralized",
   "zero-knowledge"
 ]
-categories = [ "cryptography::cryptocurrencies", "operating-systems" ]
+categories = [ "compilers", "cryptography", "mathematics", "wasm", "web-programming" ]
 include = [ "Cargo.toml", "snarkvm", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
-edition = "2018"
+edition = "2021"
 
 [workspace]
 members = [
@@ -27,7 +27,6 @@ members = [
   "fields",
   "gadgets",
   "parameters",
-  "profiler", # excluded from [features], for internal use primarily
   "r1cs",
   "utilities",
   "wasm", # excluded from [features], WASM contexts will typically import this crate directly

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -18,10 +18,14 @@ use super::{push_constraints, r1cs_to_qap::R1CStoQAP, Proof, ProvingKey};
 use crate::{cfg_into_iter, msm::VariableBase};
 use snarkvm_curves::traits::{AffineCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{One, PrimeField, Zero};
-use snarkvm_r1cs::errors::SynthesisError;
-
-use snarkvm_profiler::{end_timer, start_timer};
-use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, Variable};
+use snarkvm_r1cs::{
+    errors::SynthesisError,
+    ConstraintSynthesizer,
+    ConstraintSystem,
+    Index,
+    LinearCombination,
+    Variable,
+};
 use snarkvm_utilities::rand::UniformRand;
 
 use core::ops::Mul;

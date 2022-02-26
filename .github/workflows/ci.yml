@@ -80,7 +80,7 @@ jobs:
     name: Windows
     strategy:
       matrix:
-        library: [algorithms, curves, derives, dpc, fields, gadgets, parameters, profiler, r1cs, utilities]
+        library: [algorithms, curves, derives, dpc, fields, gadgets, parameters, r1cs, utilities]
     runs-on: windows-latest
     
     steps:

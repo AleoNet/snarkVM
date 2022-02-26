@@ -12,7 +12,7 @@ keywords = [
   "decentralized",
   "zero-knowledge"
 ]
-categories = [ "cryptography::cryptocurrencies", "operating-systems" ]
+categories = [ "compilers", "cryptography", "mathematics", "wasm", "web-programming" ]
 include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
 edition = "2021"
@@ -92,11 +92,6 @@ path = "../fields"
 version = "0.7.5"
 default-features = false
 
-[dependencies.snarkvm-profiler]
-path = "../profiler"
-version = "0.7.5"
-default-features = false
-
 [dependencies.snarkvm-r1cs]
 path = "../r1cs"
 version = "0.7.5"
@@ -108,7 +103,7 @@ version = "0.7.5"
 default-features = false
 
 [dependencies.aleo-std]
-version = "0.1.8"
+version = "0.1.10"
 
 [dependencies.anyhow]
 version = "1.0"
@@ -258,7 +253,7 @@ wasm = [
 
 cuda = [ "rust-gpu-tools" ]
 parallel = [ "rayon", "num_cpus", "snarkvm-fields/parallel", "snarkvm-utilities/parallel" ]
-print-trace = [ "snarkvm-profiler/print-trace" ]
+profiler = [ "aleo-std/profiler" ]
 
 commitment = [ "crh" ]
 crh = [ "hash_to_curve" ]
