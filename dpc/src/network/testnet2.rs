@@ -28,6 +28,7 @@ use crate::{
     ProgramPublicVariables,
 };
 use snarkvm_algorithms::{
+    commitment::PedersenCommitment,
     crh::{PedersenCompressedCRH, PoseidonCRH, BHPCRH},
     crypto_hash::poseidon::PoseidonSponge,
     encryption::ECIESPoseidonEncryption,
@@ -59,6 +60,7 @@ use snarkvm_curves::{
 };
 use snarkvm_gadgets::{
     algorithms::{
+        commitment::PedersenCommitmentGadget,
         crh::{BHPCRHGadget, PedersenCompressedCRHGadget, PoseidonCRHGadget},
         encryption::ECIESPoseidonEncryptionGadget,
         prf::PoseidonPRFGadget,
@@ -231,6 +233,9 @@ impl Network for Testnet2 {
     type TransitionIDParameters = MerkleTreeParameters<Self::TransitionIDCRH, { Self::TRANSITION_TREE_DEPTH }>;
     type TransitionID = AleoLocator<<Self::TransitionIDCRH as CRH>::Output, { Self::TRANSITION_ID_PREFIX }>;
 
+    type ValueCommitment = PedersenCommitment<Self::ProgramProjectiveCurve, 16, 32>;
+    type ValueCommitmentGadget = PedersenCommitmentGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 16, 32>;
+
     dpc_setup!{Testnet2, account_encryption_scheme, AccountEncryptionScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
     dpc_setup!{Testnet2, account_signature_scheme, AccountSignatureScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
     dpc_setup!{Testnet2, block_hash_crh, BlockHashCRH, "AleoBlockHashCRH0"}
@@ -243,6 +248,7 @@ impl Network for Testnet2 {
     dpc_setup!{Testnet2, transactions_root_parameters, TransactionsRootParameters, "AleoTransactionsRootCRH0"}
     dpc_setup!{Testnet2, transaction_id_parameters, TransactionIDParameters, "AleoTransactionIDCRH0"}
     dpc_setup!{Testnet2, transition_id_parameters, TransitionIDParameters, "AleoTransitionIDCRH0"}
+    dpc_setup!{Testnet2, value_commitment, ValueCommitment, "AleoValueCommitment0"}
 
     dpc_snark_setup!{Testnet2, inner_proving_key, InnerSNARK, ProvingKey, InnerProvingKeyBytes, "inner circuit proving key"}
     dpc_snark_setup!{Testnet2, inner_verifying_key, InnerSNARK, VerifyingKey, InnerVerifyingKeyBytes, "inner circuit verifying key"}

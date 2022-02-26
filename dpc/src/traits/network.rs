@@ -19,7 +19,7 @@ use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, merkle_tre
 use snarkvm_curves::{AffineCurve, PairingEngine, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{Field, PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
-    traits::algorithms::{CRHGadget, EncryptionGadget, PRFGadget, SignatureGadget},
+    traits::algorithms::{CRHGadget, CommitmentGadget, EncryptionGadget, PRFGadget, SignatureGadget},
     FpGadget,
     GroupGadget,
     MaskedCRHGadget,
@@ -271,6 +271,10 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type TransitionIDParameters: MerkleParameters<H = Self::TransitionIDCRH>;
     type TransitionID: Bech32Locator<<Self::TransitionIDCRH as CRH>::Output>;
 
+    /// Commitment scheme for value commitments. Invoked only over `Self::InnerScalarField`.
+    type ValueCommitment: CommitmentScheme<Output = Self::ProgramAffineCurve>;
+    type ValueCommitmentGadget: CommitmentGadget<Self::ValueCommitment, Self::InnerScalarField>;
+
     fn account_encryption_scheme() -> &'static Self::AccountEncryptionScheme;
     fn account_signature_scheme() -> &'static Self::AccountSignatureScheme;
     fn block_hash_crh() -> &'static Self::BlockHashCRH;
@@ -283,6 +287,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     fn transactions_root_parameters() -> &'static Self::TransactionsRootParameters;
     fn transaction_id_parameters() -> &'static Self::TransactionIDParameters;
     fn transition_id_parameters() -> &'static Self::TransitionIDParameters;
+    fn value_commitment() -> &'static Self::ValueCommitment;
 
     fn inner_circuit_id() -> &'static Self::InnerCircuitID;
     fn inner_proving_key() -> &'static <Self::InnerSNARK as SNARK>::ProvingKey;
