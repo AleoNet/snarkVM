@@ -144,7 +144,7 @@ mod value_balance_commitment_gadget_tests {
         output_amounts: Vec<u64>,
         sighash: &[u8],
         rng: &mut R,
-    ) -> (Vec<C::Output>, Vec<C::Output>, i64, ValueBalanceCommitment) {
+    ) -> (Vec<C::Output>, Vec<C::Output>, i64, ValueBalanceCommitment<G>) {
         let mut value_balance: i64 = 0;
 
         let mut input_value_commitment_randomness = vec![];
