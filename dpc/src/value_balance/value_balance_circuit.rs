@@ -32,7 +32,7 @@ use std::marker::PhantomData;
 pub struct ValueBalanceCommitmentGadget<N: Network>(PhantomData<N>);
 
 impl<N: Network> ValueBalanceCommitmentGadget<N> {
-    fn check_value_commitment_gadget<CS: ConstraintSystem<N::InnerScalarField>>(
+    pub fn check_value_commitment_gadget<CS: ConstraintSystem<N::InnerScalarField>>(
         mut cs: CS,
         commitment_scheme: &N::ValueCommitmentGadget,
         input: &[UInt8],
@@ -45,12 +45,13 @@ impl<N: Network> ValueBalanceCommitmentGadget<N> {
             || Ok(N::ProgramScalarField::zero()),
         )?;
 
-        Ok(commitment_scheme.check_commitment_gadget(cs, input, &zero_randomness)?)
+        commitment_scheme.check_commitment_gadget(cs, input, &zero_randomness)
     }
 
-    fn check_value_balance_commitment_gadget<CS: ConstraintSystem<N::InnerScalarField>>(
+    pub fn check_value_balance_commitment_gadget<CS: ConstraintSystem<N::InnerScalarField>>(
         mut cs: CS,
         partial_bvk: &<N::ValueCommitmentGadget as CommitmentGadget<N::ValueCommitment, N::InnerScalarField>>::OutputGadget,
+        
         value_balance_comm: &<N::ValueCommitmentGadget as CommitmentGadget<
             N::ValueCommitment,
             N::InnerScalarField,
