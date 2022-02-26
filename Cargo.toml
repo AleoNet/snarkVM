@@ -27,7 +27,6 @@ members = [
   "fields",
   "gadgets",
   "parameters",
-  "profiler", # excluded from [features], for internal use primarily
   "r1cs",
   "utilities",
   "wasm", # excluded from [features], WASM contexts will typically import this crate directly

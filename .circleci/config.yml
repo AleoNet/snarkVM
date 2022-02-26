@@ -186,21 +186,6 @@ jobs:
       - clear_environment:
           cache_key: snarkvm-parameters-cache
 
-  profiler:
-    docker:
-      - image: cimg/rust:1.58
-    resource_class: xlarge
-    steps:
-      - checkout
-      - setup_environment:
-          cache_key: snarkvm-profiler-cache
-      - run:
-          name: Build and run tests
-          no_output_timeout: 35m
-          command: cd profiler && RUST_MIN_STACK=67108864 cargo test
-      - clear_environment:
-          cache_key: snarkvm-profiler-cache
-
   r1cs:
     docker:
       - image: cimg/rust:1.58
@@ -259,7 +244,6 @@ workflows:
       - fields
       - gadgets
       - parameters
-      - profiler
       - r1cs
       - utilities
       - fmt

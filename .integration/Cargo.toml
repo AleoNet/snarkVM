@@ -33,10 +33,6 @@ version = "0.7.5"
 path = "../fields"
 version = "0.7.5"
 
-[dependencies.snarkvm-profiler]
-path = "../profiler"
-version = "0.7.5"
-
 [dependencies.snarkvm-r1cs]
 path = "../r1cs"
 version = "0.7.5"
@@ -45,6 +41,10 @@ version = "0.7.5"
 path = "../utilities"
 version = "0.7.5"
 default-features = false
+
+[dependencies.aleo-std]
+version = "0.1.9"
+optional = true
 
 [dependencies.anyhow]
 version = "1.0.55"
@@ -86,4 +86,5 @@ version = "1.0"
 version = "0.3.7"
 
 [features]
-print-trace = [ "snarkvm-profiler/print-trace" ]
+default = [ ]
+profiler = [ "aleo-std/profiler" ]

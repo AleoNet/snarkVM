@@ -18,11 +18,9 @@
 #![allow(clippy::type_complexity)]
 
 #[macro_use]
-extern crate derivative;
-
+extern crate aleo_std;
 #[macro_use]
-extern crate snarkvm_profiler;
-
+extern crate derivative;
 #[macro_use]
 extern crate thiserror;
 

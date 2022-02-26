@@ -18,7 +18,6 @@ use super::{push_constraints, r1cs_to_qap::R1CStoQAP, ProvingKey, VerifyingKey};
 use crate::{cfg_into_iter, cfg_iter, fft::EvaluationDomain, msm::FixedBase};
 use snarkvm_curves::traits::{PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{Field, One, PrimeField, Zero};
-use snarkvm_profiler::{end_timer, start_timer};
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, SynthesisError, Variable};
 use snarkvm_utilities::{rand::UniformRand, serialize::*};
 
