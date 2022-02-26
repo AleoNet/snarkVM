@@ -15,15 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{fp6_3over2::*, Field, Fp2, Fp2Parameters, One, Zero};
-use snarkvm_utilities::{
-    bititerator::BitIteratorBE,
-    errors::SerializationError,
-    rand::UniformRand,
-    serialize::*,
-    FromBytes,
-    ToBits,
-    ToBytes,
-};
+use snarkvm_utilities::{bititerator::BitIteratorBE, rand::UniformRand, serialize::*, FromBytes, ToBits, ToBytes};
 
 use rand::{
     distributions::{Distribution, Standard},

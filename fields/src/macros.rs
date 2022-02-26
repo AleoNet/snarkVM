@@ -148,13 +148,13 @@ macro_rules! impl_primefield_serializer {
                 &self,
                 writer: &mut W,
                 flags: F,
-            ) -> Result<(), snarkvm_utilities::errors::SerializationError> {
+            ) -> Result<(), snarkvm_utilities::serialize::SerializationError> {
                 const BYTE_SIZE: usize = $byte_size;
 
                 let (output_bit_size, output_byte_size) =
                     snarkvm_utilities::serialize::number_of_bits_and_bytes($field::<P>::size_in_bits());
                 if F::num_bits() > (output_bit_size - P::MODULUS_BITS as usize) {
-                    return Err(snarkvm_utilities::errors::SerializationError::NotEnoughSpace);
+                    return Err(snarkvm_utilities::serialize::SerializationError::NotEnoughSpace);
                 }
 
                 let mut bytes = [0u8; BYTE_SIZE];
@@ -180,7 +180,7 @@ macro_rules! impl_primefield_serializer {
             fn serialize<W: snarkvm_utilities::io::Write>(
                 &self,
                 writer: &mut W,
-            ) -> Result<(), snarkvm_utilities::errors::SerializationError> {
+            ) -> Result<(), snarkvm_utilities::serialize::SerializationError> {
                 self.serialize_with_flags(writer, snarkvm_utilities::serialize::EmptyFlags)
             }
 
@@ -194,13 +194,13 @@ macro_rules! impl_primefield_serializer {
             #[allow(unused_qualifications)]
             fn deserialize_with_flags<R: snarkvm_utilities::io::Read, F: snarkvm_utilities::Flags>(
                 reader: &mut R,
-            ) -> Result<(Self, F), snarkvm_utilities::errors::SerializationError> {
+            ) -> Result<(Self, F), snarkvm_utilities::serialize::SerializationError> {
                 const BYTE_SIZE: usize = $byte_size;
 
                 let (output_bit_size, output_byte_size) =
                     snarkvm_utilities::serialize::number_of_bits_and_bytes($field::<P>::size_in_bits());
                 if F::num_bits() > (output_bit_size - P::MODULUS_BITS as usize) {
-                    return Err(snarkvm_utilities::errors::SerializationError::NotEnoughSpace);
+                    return Err(snarkvm_utilities::serialize::SerializationError::NotEnoughSpace);
                 }
 
                 let mut masked_bytes = [0; BYTE_SIZE];

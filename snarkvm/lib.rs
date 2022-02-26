@@ -75,9 +75,6 @@ pub mod errors {
 
     #[cfg(feature = "r1cs")]
     pub use crate::r1cs::errors::*;
-
-    #[cfg(feature = "utilities")]
-    pub use crate::utilities::errors::*;
 }
 
 pub mod traits {

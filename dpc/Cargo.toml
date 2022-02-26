@@ -73,7 +73,7 @@ version = "0.7.5"
 default-features = false
 
 [dependencies.aleo-std]
-version = "0.1.9"
+version = "0.1.10"
 optional = true
 
 [dependencies.anyhow]

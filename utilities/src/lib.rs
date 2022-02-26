@@ -62,14 +62,8 @@ pub use bytes::*;
 pub mod error;
 pub use error::*;
 
-pub mod errors;
-pub use errors::*;
-
 pub mod iterator;
 pub use iterator::*;
-
-pub mod math;
-pub use math::*;
 
 #[macro_use]
 pub mod parallel;
@@ -92,36 +86,6 @@ pub fn error(_msg: &'static str) -> io::Error {
 #[cfg(feature = "std")]
 pub fn error(msg: &'static str) -> io::Error {
     io::Error::new(io::ErrorKind::Other, msg)
-}
-
-#[macro_export]
-macro_rules! unwrap_option_or_continue {
-    ( $e:expr ) => {
-        match $e {
-            Some(x) => x,
-            None => continue,
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! unwrap_result_or_continue {
-    ( $e:expr ) => {
-        match $e {
-            Ok(x) => x,
-            Err(_) => continue,
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! unwrap_option_or_error {
-    ($e:expr; $err:expr) => {
-        match $e {
-            Some(val) => val,
-            None => return Err($err),
-        }
-    };
 }
 
 use std::sync::atomic::{AtomicBool, AtomicU64};
