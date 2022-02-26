@@ -26,19 +26,16 @@ use snarkvm_gadgets::{
         eq::{ConditionalEqGadget, EqGadget},
         integers::{add::Add, integer::Integer, sub::Sub},
     },
-    ComparatorGadget,
-    EvaluateLtGadget,
+    FpGadget,
     ToBitsLEGadget,
     ToConstraintFieldGadget,
 };
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
-use snarkvm_utilities::ToBytes;
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use itertools::Itertools;
-use snarkvm_gadgets::algorithms::merkle_tree::compute_root;
 
-#[derive(Derivative)]
-#[derivative(Clone(bound = "N: Network"))]
+#[derive(Clone)]
 pub struct InnerCircuit<N: Network> {
     public: InnerPublicVariables<N>,
     private: InnerPrivateVariables<N>,
@@ -61,9 +58,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
     ) -> Result<(), SynthesisError> {
         let public = &self.public;
         let private = &self.private;
-
-        // In the inner circuit, this variable must be allocated as public input.
-        debug_assert!(public.program_id.is_some());
 
         let (
             account_encryption_parameters,
@@ -140,8 +134,8 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         let zero_value = UInt8::constant_vec(&(0u64).to_bytes_le()?);
         // Declares a constant for an empty payload in a record.
         let empty_payload = UInt8::constant_vec(&Payload::<N>::default().to_bytes_le()?);
-        // Declare the noop program ID as bytes.
-        let noop_program_id_bytes = UInt8::constant_vec(&N::noop_program_id().to_bytes_le()?);
+        // Declare the empty program ID as bytes.
+        let empty_program_id_bytes = UInt8::constant_vec(&vec![0u8; N::PROGRAM_ID_SIZE_IN_BYTES]);
 
         // TODO: directly allocate these as the appropriate number of constant zero field elements
         // (i.e., no constraints)
@@ -149,8 +143,8 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             zero_value.to_constraint_field(&mut cs.ns(|| "convert zero value to field elements"))?;
         let empty_payload_field_elements =
             empty_payload.to_constraint_field(&mut cs.ns(|| "convert empty payload to field elements"))?;
-        let noop_program_id_field_elements =
-            noop_program_id_bytes.to_constraint_field(&mut cs.ns(|| "convert noop program ID to field elements"))?;
+        let empty_program_id_field_elements =
+            empty_program_id_bytes.to_constraint_field(&mut cs.ns(|| "convert empty program ID to field elements"))?;
 
         // Declare the ledger root.
         let ledger_root = <N::LedgerRootCRHGadget as CRHGadget<_, _>>::OutputGadget::alloc_input(
@@ -164,6 +158,17 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             || Ok(public.local_transitions_root()),
         )?;
 
+        // Declare the program ID.
+        let program_id_fe = {
+            let program_id_bytes = public
+                .program_id
+                .map_or(Ok(vec![0u8; N::PROGRAM_ID_SIZE_IN_BYTES]), |program_id| program_id.to_bytes_le())?;
+            let executable_program_id_bytes =
+                UInt8::alloc_input_vec_le(&mut cs.ns(|| "Allocate executable_program_id"), &program_id_bytes)?;
+            executable_program_id_bytes
+                .to_constraint_field(&mut cs.ns(|| "convert executable program ID to field elements"))?
+        };
+
         // Declare the transition signature .
         let signature = <N::AccountSignatureGadget as SignatureGadget<
             N::AccountSignatureScheme,
@@ -176,13 +181,13 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         /* ///////////////////////////// INPUT RECORDS //////////////////////////////// */
         /* //////////////////////////////////////////////////////////////////////////// */
 
-        let mut input_serial_numbers_bytes = Vec::with_capacity(N::NUM_INPUT_RECORDS);
         let mut input_commitments_bytes = Vec::with_capacity(N::NUM_INPUT_RECORDS * 32);
         let mut input_owners = Vec::with_capacity(N::NUM_INPUT_RECORDS);
         let mut input_values = Vec::with_capacity(N::NUM_INPUT_RECORDS);
-        let mut input_program_ids = Vec::with_capacity(N::NUM_INPUT_RECORDS);
+        let mut input_program_id_bytes = Vec::with_capacity(N::NUM_INPUT_RECORDS * 32);
 
-        for (i, (record, ledger_proof)) in private.input_records.iter().zip_eq(private.ledger_proofs.iter()).enumerate()
+        for (i, ((record, ledger_proof), serial_number)) in
+            private.input_records.iter().zip_eq(&private.ledger_proofs).zip_eq(public.serial_numbers()).enumerate()
         {
             let cs = &mut cs.ns(|| format!("Process input record {}", i));
 
@@ -215,11 +220,17 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
                 let given_value = Int64::alloc(&mut declare_cs.ns(|| "given_value"), || Ok(record.value().as_i64()))?;
 
-                let given_payload =
-                    UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &record.payload().to_bytes_le()?)?;
+                // Use an empty payload if the record does not have one.
+                let payload = if let Some(payload) = record.payload().clone() { payload } else { Payload::default() };
+                let given_payload = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &payload.to_bytes_le()?)?;
 
-                let given_program_id =
-                    UInt8::alloc_vec(&mut declare_cs.ns(|| "given_program_id"), &record.program_id().to_bytes_le()?)?;
+                // Use an empty program id if the record does not have one.
+                let program_id_bytes = if let Some(program_id) = record.program_id() {
+                    program_id.to_bytes_le()?
+                } else {
+                    vec![0u8; N::PROGRAM_ID_SIZE_IN_BYTES]
+                };
+                let given_program_id = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_program_id"), &program_id_bytes)?;
 
                 let given_randomizer = <N::AccountEncryptionGadget as EncryptionGadget<
                     N::AccountEncryptionScheme,
@@ -257,14 +268,11 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 // Convert the owner, dummy flag, value, payload, program ID, and randomizer into bits.
                 // *******************************************************************
 
-                let given_owner_bytes =
-                    given_owner.to_bytes(&mut commitment_cs.ns(|| "Convert given_owner to bytes"))?;
                 let given_is_dummy_bytes =
                     given_is_dummy.to_bytes(&mut commitment_cs.ns(|| "Convert given_is_dummy to bytes"))?;
                 let given_value_bytes =
                     given_value.to_bytes(&mut commitment_cs.ns(|| "Convert given_value to bytes"))?;
 
-                // Perform noop safety checks.
                 {
                     let given_value_field_elements = given_value_bytes
                         .to_constraint_field(&mut commitment_cs.ns(|| "convert given value to field elements"))?;
@@ -273,6 +281,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     let given_program_id_field_elements = given_program_id
                         .to_constraint_field(&mut commitment_cs.ns(|| "convert given program ID to field elements"))?;
 
+                    // Perform noop safety checks.
                     given_value_field_elements.conditional_enforce_equal(
                         &mut commitment_cs
                             .ns(|| format!("If the input record {} is empty, enforce it has a value of 0", i)),
@@ -287,24 +296,50 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     )?;
                     given_program_id_field_elements.conditional_enforce_equal(
                         &mut commitment_cs
-                            .ns(|| format!("If the input record {} is empty, enforce it has a noop program ID", i)),
-                        &noop_program_id_field_elements,
+                            .ns(|| format!("If the input record {} is empty, enforce it has an empty program ID", i)),
+                        &empty_program_id_field_elements,
                         &given_is_dummy,
                     )?;
 
-                    input_program_ids.push(given_program_id_field_elements);
+                    // Ensure the program ID matches the declared program ID (conditionally).
+                    given_program_id_field_elements.conditional_enforce_equal(
+                        &mut commitment_cs.ns(|| format!("Check the {}-th input program ID matches", i)),
+                        &program_id_fe,
+                        &given_is_dummy.not(),
+                    )?;
+
+                    input_program_id_bytes.push(given_program_id.clone());
                 }
 
                 // *******************************************************************
                 // Compute the record commitment and check that it matches the declared commitment.
                 // *******************************************************************
 
-                let mut plaintext = Vec::new();
-                plaintext.extend_from_slice(&given_owner_bytes);
-                plaintext.extend_from_slice(&given_is_dummy_bytes);
-                plaintext.extend_from_slice(&given_value_bytes);
-                plaintext.extend_from_slice(&given_payload);
-                plaintext.extend_from_slice(&given_program_id);
+                // TODO (howardwu): CRITICAL - Use given_owner by exposing the FpGadget in the signature trait.
+                let owner_fe = FromBytes::read_le(&record.owner().to_bytes_le()?[..])?;
+                let given_owner_gadget =
+                    FpGadget::alloc(&mut commitment_cs.ns(|| format!("Field element {}", i)), || Ok(&owner_fe))?;
+
+                let encoded_given_value = <N::AccountEncryptionGadget as EncryptionGadget<
+                    N::AccountEncryptionScheme,
+                    N::InnerScalarField,
+                >>::encode_message(
+                    &mut commitment_cs.ns(|| format!("encode input value {}", i)),
+                    &given_value_bytes,
+                )?;
+
+                let encoded_given_payload = <N::AccountEncryptionGadget as EncryptionGadget<
+                    N::AccountEncryptionScheme,
+                    N::InnerScalarField,
+                >>::encode_message(
+                    &mut commitment_cs.ns(|| format!("encode input payload {}", i)),
+                    &given_payload,
+                )?;
+
+                let mut plaintext = Vec::with_capacity(1 + encoded_given_value.len() + encoded_given_payload.len());
+                plaintext.push(given_owner_gadget);
+                plaintext.extend_from_slice(&encoded_given_value);
+                plaintext.extend_from_slice(&encoded_given_payload);
 
                 let ciphertext = account_encryption_parameters.check_encryption_from_symmetric_key(
                     &mut commitment_cs.ns(|| format!("input record {} check_encryption_gadget", i)),
@@ -322,12 +357,29 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 let record_view_key_commitment_bytes = record_view_key_commitment
                     .to_bytes(&mut commitment_cs.ns(|| "Convert record_view_key_commitment to bytes"))?;
 
+                let ciphertext_bytes = ciphertext
+                    .iter()
+                    .enumerate()
+                    .flat_map(|(i, element)| {
+                        element
+                            .to_bytes(&mut commitment_cs.ns(|| format!("Convert input ciphertext {} to bytes", i)))
+                            .unwrap()
+                    })
+                    .collect::<Vec<_>>();
+
                 let mut commitment_input = Vec::with_capacity(
-                    given_randomizer_bytes.len() + record_view_key_commitment_bytes.len() + ciphertext.len(),
+                    given_randomizer_bytes.len()
+                        + record_view_key_commitment_bytes.len()
+                        + ciphertext_bytes.len()
+                        + given_program_id.len()
+                        + given_is_dummy_bytes.len(),
                 );
+
                 commitment_input.extend_from_slice(&given_randomizer_bytes);
                 commitment_input.extend_from_slice(&record_view_key_commitment_bytes);
-                commitment_input.extend_from_slice(&ciphertext);
+                commitment_input.extend_from_slice(&ciphertext_bytes);
+                commitment_input.extend_from_slice(&given_program_id);
+                commitment_input.extend_from_slice(&given_is_dummy_bytes);
 
                 let candidate_commitment = record_commitment_parameters
                     .check_evaluation_gadget(&mut commitment_cs.ns(|| "Compute record commitment"), commitment_input)?;
@@ -368,11 +420,18 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     &vec![commitment.clone()],
                 )?;
 
-                // Convert input serial numbers to bytes.
-                let candidate_serial_number_bytes = candidate_serial_number
-                    .to_bytes(&mut sn_cs.ns(|| format!("Convert {}-th serial number to bytes", i)))?;
+                let given_serial_number = <N::SerialNumberPRFGadget as PRFGadget<
+                    N::SerialNumberPRF,
+                    N::InnerScalarField,
+                >>::Output::alloc_input(
+                    &mut sn_cs.ns(|| format!("Allocate given input serial number {}", i)),
+                    || Ok(*serial_number),
+                )?;
 
-                input_serial_numbers_bytes.push(candidate_serial_number_bytes);
+                candidate_serial_number.enforce_equal(
+                    &mut sn_cs.ns(|| format!("Check that the {}-th input serial number is valid", i)),
+                    &given_serial_number,
+                )?;
             };
 
             // **********************************************************************************
@@ -491,6 +550,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
             let mut signature_message = Vec::new();
             signature_message.extend_from_slice(&input_commitments_bytes);
+            signature_message.extend_from_slice(&input_program_id_bytes[0]);
             // signature_message.extend_from_slice(&inputs_digest);
             // signature_message.extend_from_slice(&fee);
 
@@ -508,12 +568,14 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         /* //////////////////////////// OUTPUT RECORDS //////////////////////////////// */
         /* //////////////////////////////////////////////////////////////////////////// */
 
-        let mut output_commitments_bytes = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
         let mut output_values = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
-        let mut output_program_ids = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
 
-        for (j, (record, encryption_randomness)) in
-            private.output_records.iter().zip_eq(&private.encryption_randomness).enumerate()
+        for (j, ((record, encryption_randomness), commitment)) in private
+            .output_records
+            .iter()
+            .zip_eq(&private.encryption_randomness)
+            .zip_eq(public.commitments())
+            .enumerate()
         {
             let cs = &mut cs.ns(|| format!("Process output record {}", j));
 
@@ -531,11 +593,15 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
                 let given_value = Int64::alloc(&mut declare_cs.ns(|| "given_value"), || Ok(record.value().as_i64()))?;
 
-                let given_payload =
-                    UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &record.payload().to_bytes_le()?)?;
+                // Use an empty payload if the record does not have one.
+                let payload = record.payload().clone().unwrap_or_default();
+                let given_payload = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_payload"), &payload.to_bytes_le()?)?;
 
-                let given_program_id =
-                    UInt8::alloc_vec(&mut declare_cs.ns(|| "given_program_id"), &record.program_id().to_bytes_le()?)?;
+                // Use an empty program id if the record does not have one.
+                let program_id_bytes = record
+                    .program_id()
+                    .map_or(Ok(vec![0u8; N::PROGRAM_ID_SIZE_IN_BYTES]), |program_id| program_id.to_bytes_le())?;
+                let given_program_id = UInt8::alloc_vec(&mut declare_cs.ns(|| "given_program_id"), &program_id_bytes)?;
 
                 let given_randomizer = <N::AccountEncryptionGadget as EncryptionGadget<
                     N::AccountEncryptionScheme,
@@ -558,14 +624,11 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 // Convert the owner, dummy flag, value, payload, program ID, and randomizer into bits.
                 // *******************************************************************
 
-                let given_owner_bytes =
-                    given_owner.to_bytes(&mut commitment_cs.ns(|| "Convert given_owner to bytes"))?;
                 let given_is_dummy_bytes =
                     given_is_dummy.to_bytes(&mut commitment_cs.ns(|| "Convert given_is_dummy to bytes"))?;
                 let given_value_bytes =
                     given_value.to_bytes(&mut commitment_cs.ns(|| "Convert given_value to bytes"))?;
 
-                // Perform noop safety checks.
                 {
                     let given_value_field_elements = given_value_bytes
                         .to_constraint_field(&mut commitment_cs.ns(|| "convert given value to field elements"))?;
@@ -574,6 +637,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     let given_program_id_field_elements = given_program_id
                         .to_constraint_field(&mut commitment_cs.ns(|| "convert given program ID to field elements"))?;
 
+                    // Perform noop safety checks.
                     given_value_field_elements.conditional_enforce_equal(
                         &mut commitment_cs
                             .ns(|| format!("If the output record {} is empty, enforce it has a value of 0", j)),
@@ -588,24 +652,48 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     )?;
                     given_program_id_field_elements.conditional_enforce_equal(
                         &mut commitment_cs
-                            .ns(|| format!("If the output record {} is empty, enforce it has a noop program ID", j)),
-                        &noop_program_id_field_elements,
+                            .ns(|| format!("If the output record {} is empty, enforce it has an empty program ID", j)),
+                        &empty_program_id_field_elements,
                         &given_is_dummy,
                     )?;
 
-                    output_program_ids.push(given_program_id_field_elements);
+                    // Ensure the program ID matches the declared program ID (conditionally).
+                    given_program_id_field_elements.conditional_enforce_equal(
+                        &mut commitment_cs.ns(|| format!("Check the {}-th output program ID matches", j)),
+                        &program_id_fe,
+                        &given_is_dummy.not(),
+                    )?;
                 }
 
                 // *******************************************************************
                 // Check that the record ciphertext and commitment are well-formed.
                 // *******************************************************************
 
-                let mut plaintext = Vec::new();
-                plaintext.extend_from_slice(&given_owner_bytes);
-                plaintext.extend_from_slice(&given_is_dummy_bytes);
-                plaintext.extend_from_slice(&given_value_bytes);
-                plaintext.extend_from_slice(&given_payload);
-                plaintext.extend_from_slice(&given_program_id);
+                // TODO (howardwu): CRITICAL - Use given_owner by exposing the FpGadget in the signature trait.
+                let owner_fe = FromBytes::read_le(&record.owner().to_bytes_le()?[..])?;
+                let given_owner_gadget =
+                    FpGadget::alloc(&mut commitment_cs.ns(|| format!("Field element {}", j)), || Ok(&owner_fe))?;
+
+                let encoded_given_value = <N::AccountEncryptionGadget as EncryptionGadget<
+                    N::AccountEncryptionScheme,
+                    N::InnerScalarField,
+                >>::encode_message(
+                    &mut commitment_cs.ns(|| format!("encode input value {}", j)),
+                    &given_value_bytes,
+                )?;
+
+                let encoded_given_payload = <N::AccountEncryptionGadget as EncryptionGadget<
+                    N::AccountEncryptionScheme,
+                    N::InnerScalarField,
+                >>::encode_message(
+                    &mut commitment_cs.ns(|| format!("encode input payload {}", j)),
+                    &given_payload,
+                )?;
+
+                let mut plaintext = Vec::with_capacity(1 + encoded_given_value.len() + encoded_given_payload.len());
+                plaintext.push(given_owner_gadget);
+                plaintext.extend_from_slice(&encoded_given_value);
+                plaintext.extend_from_slice(&encoded_given_payload);
 
                 let encryption_randomness = <N::AccountEncryptionGadget as EncryptionGadget<
                     N::AccountEncryptionScheme,
@@ -643,123 +731,49 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 let record_view_key_commitment_bytes = record_view_key_commitment
                     .to_bytes(&mut commitment_cs.ns(|| "Convert record_view_key_commitment to bytes"))?;
 
+                let ciphertext_bytes = ciphertext
+                    .iter()
+                    .enumerate()
+                    .flat_map(|(i, element)| {
+                        element
+                            .to_bytes(&mut commitment_cs.ns(|| format!("Convert output ciphertext {} to bytes", i)))
+                            .unwrap()
+                    })
+                    .collect::<Vec<_>>();
+
                 let mut commitment_input = Vec::with_capacity(
-                    given_randomizer_bytes.len() + record_view_key_commitment_bytes.len() + ciphertext.len(),
+                    given_randomizer_bytes.len()
+                        + record_view_key_commitment_bytes.len()
+                        + ciphertext_bytes.len()
+                        + given_program_id.len()
+                        + given_is_dummy_bytes.len(),
                 );
                 commitment_input.extend_from_slice(&given_randomizer_bytes);
                 commitment_input.extend_from_slice(&record_view_key_commitment_bytes);
-                commitment_input.extend_from_slice(&ciphertext);
+                commitment_input.extend_from_slice(&ciphertext_bytes);
+                commitment_input.extend_from_slice(&given_program_id);
+                commitment_input.extend_from_slice(&given_is_dummy_bytes);
 
                 let candidate_commitment = record_commitment_parameters
                     .check_evaluation_gadget(&mut commitment_cs.ns(|| "Compute record commitment"), commitment_input)?;
 
-                let candidate_commitment_bytes =
-                    candidate_commitment.to_bytes(&mut commitment_cs.ns(|| "Convert candidate_commitment to bytes"))?;
+                let given_commitment = <N::CommitmentGadget as CRHGadget<
+                    N::CommitmentScheme,
+                    N::InnerScalarField,
+                >>::OutputGadget::alloc_input(
+                    &mut commitment_cs.ns(|| format!("Allocate given output commitment {}", j)),
+                    || Ok(*commitment),
+                )?;
 
-                output_commitments_bytes.push(candidate_commitment_bytes);
+                candidate_commitment.enforce_equal(
+                    &mut commitment_cs.ns(|| format!("Check that the {}-th output commitment is valid", j)),
+                    &given_commitment,
+                )?;
+
                 output_values.push(given_value);
             };
         }
         // *******************************************************************
-
-        // *******************************************************************
-        // Check that program ID is declared by the input and output records.
-        // *******************************************************************
-        {
-            let program_cs = &mut cs.ns(|| "Check that program ID is well-formed");
-
-            // Allocate the program ID.
-            let executable_program_id_field_elements = {
-                let executable_program_id_bytes = UInt8::alloc_input_vec_le(
-                    &mut program_cs.ns(|| "Allocate executable_program_id"),
-                    &public.program_id.as_ref().unwrap().to_bytes_le()?,
-                )?;
-                executable_program_id_bytes
-                    .to_constraint_field(&mut program_cs.ns(|| "convert executable program ID to field elements"))?
-            };
-
-            // Declare the required number of inputs for this function type.
-            let number_of_inputs =
-                &UInt8::alloc_vec(&mut program_cs.ns(|| "number_of_inputs for executable"), &[private
-                    .function_type
-                    .input_count()])?[0];
-            {
-                let number_of_input_records = UInt8::constant(N::NUM_INPUT_RECORDS as u8);
-                let is_inputs_size_correct = number_of_inputs.less_than_or_equal(
-                    &mut program_cs.ns(|| "Check number of inputs is less than or equal to input records size"),
-                    &number_of_input_records,
-                )?;
-                is_inputs_size_correct.enforce_equal(
-                    &mut program_cs.ns(|| "Enforce number of inputs is less than or equal to input records size"),
-                    &Boolean::constant(true),
-                )?;
-            }
-
-            // Declare the required number of outputs for this function type.
-            let number_of_outputs =
-                &UInt8::alloc_vec(&mut program_cs.ns(|| "number_of_outputs for executable"), &[private
-                    .function_type
-                    .output_count()])?[0];
-            {
-                let number_of_output_records = UInt8::constant(N::NUM_OUTPUT_RECORDS as u8);
-                let is_outputs_size_correct = number_of_outputs.less_than_or_equal(
-                    &mut program_cs.ns(|| "Check number of outputs is less than or equal to output records size"),
-                    &number_of_output_records,
-                )?;
-                is_outputs_size_correct.enforce_equal(
-                    &mut program_cs.ns(|| "Enforce number of outputs is less than or equal to output records size"),
-                    &Boolean::constant(true),
-                )?;
-            }
-
-            for (i, input_program_id_field_elements) in input_program_ids.iter().take(N::NUM_INPUT_RECORDS).enumerate()
-            {
-                let input_cs = &mut program_cs.ns(|| format!("Check input record {} on executable", i));
-
-                let input_index = UInt8::constant(i as u8);
-
-                let requires_check = input_index
-                    .less_than(&mut input_cs.ns(|| format!("less than for input {}", i)), number_of_inputs)?;
-
-                input_program_id_field_elements.conditional_enforce_equal(
-                    &mut input_cs.ns(|| format!("Check input program ID, if not dummy - {}", i)),
-                    &executable_program_id_field_elements,
-                    &requires_check,
-                )?;
-
-                input_program_id_field_elements.conditional_enforce_equal(
-                    &mut input_cs
-                        .ns(|| format!("If the input record {} is beyond, enforce it has a noop program ID", i)),
-                    &noop_program_id_field_elements,
-                    &requires_check.not(),
-                )?;
-            }
-
-            for (j, output_program_id_field_elements) in
-                output_program_ids.iter().take(N::NUM_OUTPUT_RECORDS).enumerate()
-            {
-                let output_cs = &mut program_cs.ns(|| format!("Check output record {} on executable", j));
-
-                let output_index = UInt8::constant(j as u8);
-
-                let requires_check = output_index
-                    .less_than(&mut output_cs.ns(|| format!("less than for output {}", j)), number_of_outputs)?;
-
-                output_program_id_field_elements.conditional_enforce_equal(
-                    &mut output_cs.ns(|| format!("Check output program ID, if not dummy - {}", j)),
-                    &executable_program_id_field_elements,
-                    &requires_check,
-                )?;
-
-                output_program_id_field_elements.conditional_enforce_equal(
-                    &mut output_cs
-                        .ns(|| format!("If the output record {} is beyond, enforce it has a noop program ID", j)),
-                    &noop_program_id_field_elements,
-                    &requires_check.not(),
-                )?;
-            }
-        }
-        // ********************************************************************
 
         // *******************************************************************
         // Check that the value balance is valid.
@@ -813,52 +827,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 &given_value_balance_field_elements,
             )?;
         };
-
-        // ********************************************************************
-        // Check the transition ID is well-formed.
-        // ********************************************************************
-        {
-            let mut cs = cs.ns(|| "Check that the transition ID is valid.");
-
-            // Encode the leaves for the transition ID.
-            let mut transition_leaves = vec![];
-            transition_leaves.extend_from_slice(&input_serial_numbers_bytes);
-            transition_leaves.extend_from_slice(&output_commitments_bytes);
-
-            // Sanity check that the correct number of leaves are allocated.
-            // Note: This is *not* enforced in the circuit.
-            assert_eq!(usize::pow(2, N::TRANSITION_TREE_DEPTH as u32), transition_leaves.len());
-
-            // Allocate the hashed leaves.
-            let hashed_transition_leaves = transition_leaves
-                .iter()
-                .enumerate()
-                .map(|(i, leaf)| {
-                    transition_id_crh.check_evaluation_gadget(
-                        &mut cs.ns(|| format!("Compute the transition leaf {}", i)),
-                        leaf.clone(),
-                    )
-                })
-                .collect::<Result<Vec<_>, _>>()?;
-
-            let candidate_transition_id =
-                compute_root::<<N::TransitionIDParameters as MerkleParameters>::H, N::TransitionIDCRHGadget, _, _>(
-                    &mut cs.ns(|| "Compute the transition ID"),
-                    &transition_id_crh,
-                    &hashed_transition_leaves,
-                )?;
-
-            let given_transition_id = <N::TransitionIDCRHGadget as CRHGadget<
-                N::TransitionIDCRH,
-                N::InnerScalarField,
-            >>::OutputGadget::alloc_input(
-                &mut cs.ns(|| "Allocate given transition ID"),
-                || Ok(public.transition_id()),
-            )?;
-
-            candidate_transition_id
-                .enforce_equal(&mut cs.ns(|| "Check that transition ID is valid"), &given_transition_id)?;
-        }
 
         Ok(())
     }

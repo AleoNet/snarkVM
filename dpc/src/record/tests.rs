@@ -36,14 +36,15 @@ fn test_record_ciphertext() {
         let expected_record = Record::new(
             account.address(),
             AleoAmount::from_gate(value),
-            Payload::from_bytes_le(&payload).unwrap(),
-            *Testnet2::noop_program_id(),
+            Some(Payload::from_bytes_le(&payload).unwrap()),
+            None,
             rng,
         )
         .unwrap();
 
         // Encrypt the record.
         let record_ciphertext = expected_record.ciphertext();
+        // TODO (raychu86): Make sure the program id size is included.
         assert_eq!(Testnet2::RECORD_CIPHERTEXT_SIZE_IN_BYTES, (*record_ciphertext).to_bytes_le().unwrap().len());
 
         // Decrypt the record.

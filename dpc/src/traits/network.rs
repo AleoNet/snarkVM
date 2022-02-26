@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Block, Ciphertext, InnerPublicVariables, PoSWScheme, Program, ProgramPublicVariables};
-use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, merkle_tree::MerklePath, prelude::*};
+use crate::{Block, Ciphertext, InnerPublicVariables, PoSWScheme, ProgramPublicVariables};
+use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, prelude::*};
 use snarkvm_curves::{AffineCurve, PairingEngine, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{Field, PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
@@ -62,8 +62,8 @@ pub trait Bech32Locator<F: Field>:
     + Send
 {
     fn prefix() -> String;
-    fn data_size_in_bytes() -> usize;
-    fn data_string_length() -> usize;
+    fn size_in_bytes() -> usize;
+    fn number_of_data_characters() -> usize;
 }
 
 pub trait Bech32Object<T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send>:
@@ -126,7 +126,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const HEADER_PROOF_SIZE_IN_BYTES: usize;
     const INNER_PROOF_SIZE_IN_BYTES: usize;
     const PROGRAM_PROOF_SIZE_IN_BYTES: usize;
-    const RECORD_SIZE_IN_BYTES: usize;
+    const PROGRAM_ID_SIZE_IN_BYTES: usize;
     const RECORD_CIPHERTEXT_SIZE_IN_BYTES: usize;
     const RECORD_PAYLOAD_SIZE_IN_BYTES: usize;
     const RECORD_VIEW_KEY_SIZE_IN_BYTES: usize;
@@ -154,11 +154,10 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type InnerBaseField: PrimeField + PoseidonDefaultParametersField;
 
     /// Program curve type declarations.
-    type ProgramAffineCurve: AffineCurve<BaseField = Self::ProgramBaseField>;
+    type ProgramAffineCurve: AffineCurve<BaseField = Self::InnerScalarField>;
     type ProgramAffineCurveGadget: GroupGadget<Self::ProgramAffineCurve, Self::InnerScalarField>;
-    type ProgramProjectiveCurve: ProjectiveCurve<BaseField = Self::ProgramBaseField>;
+    type ProgramProjectiveCurve: ProjectiveCurve<BaseField = Self::InnerScalarField>;
     type ProgramCurveParameters: TwistedEdwardsParameters;
-    type ProgramBaseField: PrimeField;
     type ProgramScalarField: PrimeField;
 
     /// SNARK for inner circuit proof generation.
@@ -177,7 +176,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type PoSW: PoSWScheme<Self>;
 
     /// Encryption scheme for accounts. Invoked only over `Self::InnerScalarField`.
-    type AccountEncryptionScheme: EncryptionScheme<PrivateKey = Self::ProgramScalarField, PublicKey = Self::ProgramAffineCurve, CiphertextRandomizer = Self::ProgramBaseField, SymmetricKeyCommitment = Self::ProgramBaseField>;
+    type AccountEncryptionScheme: EncryptionScheme<PrivateKey = Self::ProgramScalarField, PublicKey = Self::ProgramAffineCurve, MessageType = Self::InnerScalarField, CiphertextRandomizer = Self::InnerScalarField, SymmetricKeyCommitment = Self::InnerScalarField>;
     type AccountEncryptionGadget: EncryptionGadget<Self::AccountEncryptionScheme, Self::InnerScalarField>;
 
     /// PRF for deriving the account private key from a seed.
@@ -186,7 +185,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
 
     /// Signature scheme for transaction authorizations. Invoked only over `Self::InnerScalarField`.
     type AccountSignatureScheme: SignatureScheme<PrivateKey = (Self::ProgramScalarField, Self::ProgramScalarField), PublicKey = Self::ProgramAffineCurve>
-        + SignatureSchemeOperations<AffineCurve = Self::ProgramAffineCurve, BaseField = Self::ProgramBaseField, ScalarField = Self::ProgramScalarField, Signature = <Self::AccountSignatureScheme as SignatureScheme>::Signature>;
+        + SignatureSchemeOperations<AffineCurve = Self::ProgramAffineCurve, BaseField = Self::InnerScalarField, ScalarField = Self::ProgramScalarField, Signature = <Self::AccountSignatureScheme as SignatureScheme>::Signature>;
     type AccountSignatureGadget: SignatureGadget<Self::AccountSignatureScheme, Self::InnerScalarField>;
     type AccountSignaturePublicKey: ToConstraintField<Self::InnerScalarField> + Clone + Default + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Sync + Send;
     type AccountSignature: Bech32Object<<Self::AccountSignatureScheme as SignatureScheme>::Signature>;
@@ -233,7 +232,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type PoSWNonce: Bech32Locator<Self::InnerScalarField>;
 
     /// CRH for deriving program IDs. Invoked only over `Self::OuterScalarField`.
-    type ProgramIDCRH: CRH<Output = Self::InnerBaseField>;
+    type ProgramIDCRH: CRH<Output = Self::InnerScalarField>;
     type ProgramIDParameters: MerkleParameters<H = Self::ProgramIDCRH>;
     type ProgramID: Bech32Locator<<Self::ProgramIDCRH as CRH>::Output>;
 
@@ -287,14 +286,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     fn inner_circuit_id() -> &'static Self::InnerCircuitID;
     fn inner_proving_key() -> &'static <Self::InnerSNARK as SNARK>::ProvingKey;
     fn inner_verifying_key() -> &'static <Self::InnerSNARK as SNARK>::VerifyingKey;
-
-    fn noop_program() -> &'static Program<Self>;
-    fn noop_program_id() -> &'static Self::ProgramID;
-    fn noop_program_path() -> &'static MerklePath<Self::ProgramIDParameters>;
-    fn noop_function_id() -> &'static Self::FunctionID;
-    fn noop_circuit_proving_key() -> &'static <Self::ProgramSNARK as SNARK>::ProvingKey;
-    fn noop_circuit_verifying_key() -> &'static <Self::ProgramSNARK as SNARK>::VerifyingKey;
-
+    
     fn posw_proving_key() -> &'static <Self::PoSWSNARK as SNARK>::ProvingKey;
     fn posw_verifying_key() -> &'static <Self::PoSWSNARK as SNARK>::VerifyingKey;
     fn posw() -> &'static Self::PoSW;

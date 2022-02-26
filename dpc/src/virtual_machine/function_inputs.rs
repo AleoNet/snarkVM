@@ -30,8 +30,7 @@ use std::{
 type Caller<N> = Address<N>;
 type Recipient<N> = Address<N>;
 
-#[derive(Derivative)]
-#[derivative(Clone(bound = "N: Network"), Debug(bound = "N: Network"), PartialEq(bound = "N: Network"))]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FunctionInputs<N: Network> {
     pub(crate) caller: Caller<N>,
     pub(crate) recipient: Recipient<N>,

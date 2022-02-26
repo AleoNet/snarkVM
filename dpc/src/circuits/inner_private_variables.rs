@@ -14,19 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{FunctionType, LedgerProof, Network, Record, Request, Response};
+use crate::{LedgerProof, Network, Record, Request, Response};
 use snarkvm_algorithms::traits::{EncryptionScheme, SignatureScheme};
 
 use anyhow::Result;
 
-#[derive(Derivative)]
-#[derivative(Clone(bound = "N: Network"))]
+#[derive(Clone)]
 pub struct InnerPrivateVariables<N: Network> {
     // Inputs.
     pub(super) input_records: Vec<Record<N>>,
     pub(super) ledger_proofs: Vec<LedgerProof<N>>,
     pub(super) signature: N::AccountSignature,
-    pub(super) function_type: FunctionType,
 
     // Outputs.
     pub(super) output_records: Vec<Record<N>>,
@@ -39,7 +37,6 @@ impl<N: Network> InnerPrivateVariables<N> {
             input_records: vec![Record::default(); N::NUM_INPUT_RECORDS],
             ledger_proofs: vec![Default::default(); N::NUM_INPUT_RECORDS],
             signature: <N::AccountSignatureScheme as SignatureScheme>::Signature::default().into(),
-            function_type: FunctionType::Noop,
             output_records: vec![Record::default(); N::NUM_OUTPUT_RECORDS],
             encryption_randomness: vec![
                 <N::AccountEncryptionScheme as EncryptionScheme>::ScalarRandomness::default();
@@ -53,7 +50,6 @@ impl<N: Network> InnerPrivateVariables<N> {
             input_records: request.records().clone(),
             ledger_proofs: request.ledger_proofs().clone(),
             signature: request.signature().clone(),
-            function_type: request.function_type(),
             output_records: response.records().clone(),
             encryption_randomness: response.encryption_randomness().clone(),
         })

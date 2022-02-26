@@ -55,7 +55,7 @@ type TEAffineGadget<TE, F> = crate::curves::templates::twisted_edwards::AffineGa
     Debug(bound = "TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField")
 )]
 pub struct AleoSignaturePublicKeyGadget<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField>(
-    TEAffineGadget<TE, F>,
+    pub TEAffineGadget<TE, F>,
 );
 
 impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> AllocGadget<TEAffine<TE>, F>

@@ -24,14 +24,13 @@ use crate::{
     InnerPublicVariables,
     Network,
     PoSWScheme,
-    Program,
     ProgramPublicVariables,
 };
 use snarkvm_algorithms::{
     crh::{PedersenCompressedCRH, PoseidonCRH, BHPCRH},
     crypto_hash::poseidon::PoseidonSponge,
     encryption::ECIESPoseidonEncryption,
-    merkle_tree::{MaskedMerkleTreeParameters, MerklePath, MerkleTreeParameters},
+    merkle_tree::{MaskedMerkleTreeParameters, MerkleTreeParameters},
     polycommit::sonic_pc::SonicKZG10,
     prelude::*,
     prf::PoseidonPRF,
@@ -118,8 +117,8 @@ impl Network for Testnet2 {
     const HEADER_PROOF_SIZE_IN_BYTES: usize = 883;
     const INNER_PROOF_SIZE_IN_BYTES: usize = 193;
     const PROGRAM_PROOF_SIZE_IN_BYTES: usize = 963;
-    const RECORD_SIZE_IN_BYTES: usize = 280;
-    const RECORD_CIPHERTEXT_SIZE_IN_BYTES: usize = 288;
+    const PROGRAM_ID_SIZE_IN_BYTES: usize = 32;
+    const RECORD_CIPHERTEXT_SIZE_IN_BYTES: usize = 294;
     const RECORD_PAYLOAD_SIZE_IN_BYTES: usize = 128;
     const RECORD_VIEW_KEY_SIZE_IN_BYTES: usize = 32;
     const SIGNATURE_SIZE_IN_BYTES: usize = 128;
@@ -144,7 +143,6 @@ impl Network for Testnet2 {
     type ProgramAffineCurveGadget = EdwardsBls12Gadget;
     type ProgramProjectiveCurve = EdwardsBls12Projective;
     type ProgramCurveParameters = EdwardsParameters;
-    type ProgramBaseField = <Self::ProgramCurveParameters as ModelParameters>::BaseField;
     type ProgramScalarField = <Self::ProgramCurveParameters as ModelParameters>::ScalarField;
 
     type InnerSNARK = Groth16<Self::InnerCurve, InnerPublicVariables<Testnet2>>;
@@ -191,7 +189,7 @@ impl Network for Testnet2 {
     type FunctionInputsCRHGadget = PoseidonCRHGadget<Self::InnerScalarField, 128>;
     type FunctionInputsHash = AleoLocator<<Self::FunctionInputsCRH as CRH>::Output, { Self::FUNCTION_INPUTS_HASH_PREFIX }>;
 
-    type InnerCircuitIDCRH = BHPCRH<EdwardsBW6, 85, 63>;
+    type InnerCircuitIDCRH = BHPCRH<EdwardsBW6, 103, 63>;
     type InnerCircuitID = AleoLocator<<Self::InnerCircuitIDCRH as CRH>::Output, { Self::INNER_CIRCUIT_ID_PREFIX }>;
 
     type LedgerRootCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
@@ -203,7 +201,7 @@ impl Network for Testnet2 {
     type PoSWMaskPRFGadget = PoseidonPRFGadget<Self::InnerScalarField, 4, false>;
     type PoSWNonce = AleoLocator<Self::InnerScalarField, { Self::HEADER_NONCE_PREFIX }>;
 
-    type ProgramIDCRH = BHPCRH<EdwardsBW6, 16, 48>;
+    type ProgramIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 48>;
     type ProgramIDParameters = MerkleTreeParameters<Self::ProgramIDCRH, { Self::PROGRAM_TREE_DEPTH }>;
     type ProgramID = AleoLocator<<Self::ProgramIDCRH as CRH>::Output, { Self::PROGRAM_ID_PREFIX }>;
 
@@ -247,9 +245,6 @@ impl Network for Testnet2 {
     dpc_snark_setup!{Testnet2, inner_proving_key, InnerSNARK, ProvingKey, InnerProvingKeyBytes, "inner circuit proving key"}
     dpc_snark_setup!{Testnet2, inner_verifying_key, InnerSNARK, VerifyingKey, InnerVerifyingKeyBytes, "inner circuit verifying key"}
 
-    dpc_snark_setup!{Testnet2, noop_circuit_proving_key, ProgramSNARK, ProvingKey, NoopProvingKeyBytes, "noop circuit proving key"}
-    dpc_snark_setup!{Testnet2, noop_circuit_verifying_key, ProgramSNARK, VerifyingKey, NoopVerifyingKeyBytes, "noop circuit verifying key"}
-
     dpc_snark_setup!{Testnet2, posw_proving_key, PoSWSNARK, ProvingKey, PoSWProvingKeyBytes, "posw proving key"}
     dpc_snark_setup!{Testnet2, posw_verifying_key, PoSWSNARK, VerifyingKey, PoSWVerifyingKeyBytes, "posw verifying key"}
 
@@ -258,26 +253,6 @@ impl Network for Testnet2 {
         INNER_CIRCUIT_ID.get_or_init(|| Self::inner_circuit_id_crh()
             .hash_bits(&Self::inner_verifying_key().to_minimal_bits())
             .expect("Failed to hash inner circuit verifying key elements").into())
-    }
-    
-    fn noop_program() -> &'static Program<Self> {
-        static NOOP_PROGRAM: OnceCell<Program<Testnet2>> = OnceCell::new();
-        NOOP_PROGRAM.get_or_init(|| Program::<Testnet2>::new_noop().expect("Failed to fetch the noop program"))
-    }
-
-    fn noop_program_id() -> &'static Self::ProgramID {
-        static NOOP_PROGRAM_ID: OnceCell<<Testnet2 as Network>::ProgramID> = OnceCell::new();
-        NOOP_PROGRAM_ID.get_or_init(|| Testnet2::noop_program().program_id())
-    }
-
-    fn noop_program_path() -> &'static MerklePath<Self::ProgramIDParameters> {
-        static NOOP_PROGRAM_PATH: OnceCell<MerklePath<<Testnet2 as Network>::ProgramIDParameters>> = OnceCell::new();
-        NOOP_PROGRAM_PATH.get_or_init(|| Self::noop_program().to_program_path(Self::noop_function_id()).expect("Failed to fetch the noop program path"))
-    }
-    
-    fn noop_function_id() -> &'static Self::FunctionID {
-        static NOOP_FUNCTION_ID: OnceCell<<Testnet2 as Network>::FunctionID> = OnceCell::new();
-        NOOP_FUNCTION_ID.get_or_init(|| Self::function_id(Self::noop_circuit_verifying_key()).expect("Failed to hash noop circuit verifying key"))
     }
 
     fn posw() -> &'static Self::PoSW {

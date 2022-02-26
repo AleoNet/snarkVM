@@ -22,8 +22,7 @@ use anyhow::{anyhow, Result};
 use std::io::{Read, Result as IoResult, Write};
 
 /// A ledger proof of inclusion.
-#[derive(Derivative)]
-#[derivative(Clone(bound = "N: Network"), Debug(bound = "N: Network"))]
+#[derive(Clone, Debug)]
 pub struct LedgerProof<N: Network> {
     ledger_root: N::LedgerRoot,
     ledger_root_inclusion_proof: MerklePath<N::LedgerRootParameters>,

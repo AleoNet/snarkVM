@@ -52,6 +52,7 @@ impl<N: Network> Program<N> {
         Ok(program)
     }
 
+    // TODO (raychu86): Remove this. Left in for now as an example of how programs are constructed.
     /// Initializes an instance of the noop program.
     pub fn new_noop() -> Result<Self> {
         // Initialize a new functions tree, and add all functions to the tree.
@@ -63,7 +64,7 @@ impl<N: Network> Program<N> {
             functions: Default::default(),
             last_function_index: 0,
         };
-        program.add(Arc::new(Noop::<N>::new()))?;
+        program.add(Arc::new(Noop::<N>::setup()?))?;
 
         Ok(program)
     }

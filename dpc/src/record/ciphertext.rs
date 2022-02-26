@@ -14,32 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Bech32Locator, DecryptionKey, Network, RecordError, ViewKey};
+use crate::{DecryptionKey, Network, RecordError, ViewKey};
 use snarkvm_algorithms::traits::{EncryptionScheme, CRH};
-use snarkvm_utilities::{
-    io::{Cursor, Result as IoResult},
-    to_bytes_le,
-    FromBytes,
-    Read,
-    ToBytes,
-    Write,
-};
+use snarkvm_utilities::{io::Result as IoResult, to_bytes_le, FromBytes, Read, ToBytes, Write};
 
 use anyhow::{anyhow, Result};
+use core::hash::{Hash, Hasher};
 
-#[derive(Derivative)]
-#[derivative(
-    Clone(bound = "N: Network"),
-    Debug(bound = "N: Network"),
-    PartialEq(bound = "N: Network"),
-    Eq(bound = "N: Network"),
-    Hash(bound = "N: Network")
-)]
+#[derive(Clone, Debug)]
 pub struct Ciphertext<N: Network> {
     commitment: N::Commitment,
     randomizer: N::RecordRandomizer,
     record_view_key_commitment: N::RecordViewKeyCommitment,
-    record_bytes: Vec<u8>,
+    record_elements: Vec<N::InnerScalarField>,
+    program_id: Option<N::ProgramID>,
+    is_dummy: bool,
 }
 
 impl<N: Network> Ciphertext<N> {
@@ -47,13 +36,19 @@ impl<N: Network> Ciphertext<N> {
     pub fn from(
         randomizer: N::RecordRandomizer,
         record_view_key_commitment: N::RecordViewKeyCommitment,
-        record_bytes: Vec<u8>,
+        record_elements: Vec<N::InnerScalarField>,
+        program_id: Option<N::ProgramID>,
+        is_dummy: bool,
     ) -> Result<Self, RecordError> {
-        // Compute the commitment.
-        let commitment =
-            N::commitment_scheme().hash(&to_bytes_le![randomizer, record_view_key_commitment, record_bytes]?)?.into();
+        let program_id_bytes =
+            program_id.map_or(Ok(vec![0u8; N::PROGRAM_ID_SIZE_IN_BYTES]), |program_id| program_id.to_bytes_le())?;
 
-        Ok(Self { commitment, randomizer, record_view_key_commitment, record_bytes })
+        // Compute the commitment.
+        let commitment = N::commitment_scheme()
+            .hash(&to_bytes_le![randomizer, record_view_key_commitment, record_elements, program_id_bytes, is_dummy]?)?
+            .into();
+
+        Ok(Self { commitment, randomizer, record_view_key_commitment, record_elements, program_id, is_dummy })
     }
 
     /// Returns `true` if this ciphertext belongs to the given account view key.
@@ -88,16 +83,22 @@ impl<N: Network> Ciphertext<N> {
         &self.record_view_key_commitment
     }
 
+    /// Returns the program id of this record.
+    pub fn program_id(&self) -> Option<N::ProgramID> {
+        self.program_id
+    }
+
     /// Returns the plaintext and record view key corresponding to the record ciphertext.
-    pub fn to_plaintext(&self, decryption_key: &DecryptionKey<N>) -> Result<(Vec<u8>, N::RecordViewKey)> {
+    pub fn to_plaintext(
+        &self,
+        decryption_key: &DecryptionKey<N>,
+    ) -> Result<(Vec<N::InnerScalarField>, N::RecordViewKey)> {
         let record_view_key = match decryption_key {
             DecryptionKey::AccountViewKey(account_view_key) => {
                 // Compute the candidate record view key.
                 match N::account_encryption_scheme().generate_symmetric_key(account_view_key, *self.randomizer) {
                     Some(candidate_record_view_key) => candidate_record_view_key.into(),
-                    None => {
-                        return Err(anyhow!("The given account view key does not correspond to this ciphertext"));
-                    }
+                    None => return Err(anyhow!("The given account view key does not correspond to this ciphertext")),
                 }
             }
             DecryptionKey::RecordViewKey(record_view_key) => record_view_key.clone(),
@@ -111,7 +112,7 @@ impl<N: Network> Ciphertext<N> {
         match *self.record_view_key_commitment == candidate_record_view_key_commitment {
             // Decrypt the record ciphertext.
             true => {
-                let plaintext = N::account_encryption_scheme().decrypt(&record_view_key, &self.record_bytes)?;
+                let plaintext = N::account_encryption_scheme().decrypt(&record_view_key, &self.record_elements);
                 Ok((plaintext, record_view_key))
             }
             false => Err(anyhow!("The given record view key does not correspond to this ciphertext")),
@@ -119,27 +120,44 @@ impl<N: Network> Ciphertext<N> {
     }
 }
 
+impl<N: Network> PartialEq for Ciphertext<N> {
+    fn eq(&self, other: &Self) -> bool {
+        self.commitment == other.commitment
+    }
+}
+
+impl<N: Network> Eq for Ciphertext<N> {}
+
+impl<N: Network> Hash for Ciphertext<N> {
+    #[inline]
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.commitment.hash(state);
+    }
+}
+
 impl<N: Network> FromBytes for Ciphertext<N> {
     /// Decode the ciphertext into the ciphertext randomizer, record view key commitment, and record ciphertext.
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let mut ciphertext = vec![0u8; N::RECORD_CIPHERTEXT_SIZE_IN_BYTES];
-        reader.read_exact(&mut ciphertext)?;
-
         // Decode the ciphertext bytes.
-        let mut cursor = Cursor::new(ciphertext);
-        let ciphertext_randomizer = N::RecordRandomizer::read_le(&mut cursor)?;
-        let record_view_key_commitment = N::RecordViewKeyCommitment::read_le(&mut cursor)?;
+        let ciphertext_randomizer = N::RecordRandomizer::read_le(&mut reader)?;
+        let record_view_key_commitment = N::RecordViewKeyCommitment::read_le(&mut reader)?;
 
-        let mut record_bytes = vec![
-            0u8;
-            N::RECORD_CIPHERTEXT_SIZE_IN_BYTES
-                - N::RecordRandomizer::data_size_in_bytes()
-                - N::RecordViewKeyCommitment::data_size_in_bytes()
-        ];
-        cursor.read_exact(&mut record_bytes)?;
+        let num_elements: u32 = FromBytes::read_le(&mut reader)?;
+        let mut record_elements = Vec::with_capacity(num_elements as usize);
+        for _ in 0..num_elements {
+            record_elements.push(FromBytes::read_le(&mut reader)?);
+        }
 
-        Ok(Self::from(ciphertext_randomizer, record_view_key_commitment, record_bytes)?)
+        let program_id_exists: bool = FromBytes::read_le(&mut reader)?;
+        let program_id: Option<N::ProgramID> = match program_id_exists {
+            true => Some(FromBytes::read_le(&mut reader)?),
+            false => None,
+        };
+
+        let is_dummy: bool = FromBytes::read_le(&mut reader)?;
+
+        Ok(Self::from(ciphertext_randomizer, record_view_key_commitment, record_elements, program_id, is_dummy)?)
     }
 }
 
@@ -148,7 +166,21 @@ impl<N: Network> ToBytes for Ciphertext<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.randomizer.write_le(&mut writer)?;
         self.record_view_key_commitment.write_le(&mut writer)?;
-        self.record_bytes.write_le(&mut writer)
+
+        (self.record_elements.len() as u32).write_le(&mut writer)?;
+        for element in &self.record_elements {
+            element.write_le(&mut writer)?;
+        }
+
+        match &self.program_id {
+            Some(program_id) => {
+                true.write_le(&mut writer)?;
+                program_id.write_le(&mut writer)?
+            }
+            None => false.write_le(&mut writer)?,
+        }
+
+        self.is_dummy.write_le(&mut writer)
     }
 }
 
