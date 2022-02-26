@@ -51,7 +51,6 @@ impl<N: Network> ValueBalanceCommitmentGadget<N> {
     pub fn check_value_balance_commitment_gadget<CS: ConstraintSystem<N::InnerScalarField>>(
         mut cs: CS,
         partial_bvk: &<N::ValueCommitmentGadget as CommitmentGadget<N::ValueCommitment, N::InnerScalarField>>::OutputGadget,
-        
         value_balance_comm: &<N::ValueCommitmentGadget as CommitmentGadget<
             N::ValueCommitment,
             N::InnerScalarField,
