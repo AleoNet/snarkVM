@@ -22,7 +22,7 @@ pub enum ValueBalanceCommitmentError {
     AnyhowError(#[from] anyhow::Error),
 
     #[error("{}", _0)]
-    CommitmentError(#[from] crate::CommitmentError),
+    CommitmentError(#[from] snarkvm_algorithms::CommitmentError),
 
     #[error("{}: {}", _0, _1)]
     Crate(&'static str, String),

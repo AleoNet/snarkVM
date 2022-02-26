@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{errors::ValueBalanceCommitmentError, CommitmentScheme};
+use crate::error::ValueBalanceCommitmentError;
+use snarkvm_algorithms::CommitmentScheme;
 use snarkvm_curves::{AffineCurve, Group, ProjectiveCurve};
 use snarkvm_fields::{Field, One, Zero};
 use snarkvm_utilities::{
@@ -317,12 +318,8 @@ pub fn gadget_verification_setup<C: CommitmentScheme, G: Group + ProjectiveCurve
 
 #[cfg(test)]
 mod value_balance_commitment_tests {
-    use crate::{
-        commitment::{value_balance::*, PedersenCompressedCommitment},
-        errors::ValueBalanceCommitmentError,
-        CommitmentScheme,
-    };
-
+    use super::*;
+    use snarkvm_algorithms::{commitment::PedersenCompressedCommitment, CommitmentScheme};
     use snarkvm_curves::edwards_bls12::EdwardsProjective;
     use snarkvm_utilities::{rand::UniformRand, to_bytes_le, FromBytes, ToBytes};
 
