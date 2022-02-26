@@ -25,8 +25,7 @@ use std::{
     io::{Read, Result as IoResult, Write},
 };
 
-#[derive(Derivative)]
-#[derivative(Clone(bound = "N: Network"), PartialEq(bound = "N: Network"), Eq(bound = "N: Network"))]
+#[derive(Clone, PartialEq, Eq)]
 pub struct ComputeKey<N: Network> {
     /// pk_sig := G^sk_sig.
     pk_sig: N::ProgramAffineCurve,

@@ -22,8 +22,8 @@ use anyhow::{anyhow, Result};
 use std::{collections::HashMap, sync::Arc};
 
 /// A local transitions tree contains all the transitions for one transaction.
-#[derive(Derivative)]
-#[derivative(Clone(bound = "N: Network"), Debug(bound = "N: Network"))]
+#[derive(Clone, Derivative)]
+#[derivative(Debug(bound = "N: Network"))]
 pub(crate) struct Transitions<N: Network> {
     #[derivative(Debug = "ignore")]
     tree: Arc<MerkleTree<N::TransactionIDParameters>>,

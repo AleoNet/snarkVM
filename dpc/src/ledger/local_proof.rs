@@ -22,8 +22,7 @@ use anyhow::{anyhow, Result};
 use std::io::{Read, Result as IoResult, Write};
 
 /// A local proof of inclusion.
-#[derive(Derivative)]
-#[derivative(Clone(bound = "N: Network"), Debug(bound = "N: Network"))]
+#[derive(Clone, Debug)]
 pub struct LocalProof<N: Network> {
     transaction_id: N::TransactionID,
     transaction_inclusion_proof: MerklePath<N::TransactionIDParameters>,

@@ -19,8 +19,7 @@ use crate::{Address, Network, PrivateKey, ViewKey};
 use rand::{CryptoRng, Rng};
 use std::fmt;
 
-#[derive(Derivative)]
-#[derivative(Clone(bound = "N: Network"))]
+#[derive(Clone)]
 pub struct Account<N: Network> {
     private_key: PrivateKey<N>,
     view_key: ViewKey<N>,

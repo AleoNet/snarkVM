@@ -27,7 +27,7 @@ use snarkvm_curves::{
     ProjectiveCurve,
     TwistedEdwardsParameters,
 };
-use snarkvm_fields::{ConstraintFieldError, FieldParameters, PrimeField, ToConstraintField, Zero};
+use snarkvm_fields::{ConstraintFieldError, FieldParameters, PrimeField, ToConstraintField};
 use snarkvm_utilities::{
     io::Result as IoResult,
     ops::Mul,
@@ -115,6 +115,7 @@ where
     TE::BaseField: PoseidonDefaultParametersField,
 {
     type CiphertextRandomizer = TE::BaseField;
+    type MessageType = TE::BaseField;
     type Parameters = TEAffine<TE>;
     type PrivateKey = TE::ScalarField;
     type PublicKey = TEAffine<TE>;
@@ -219,17 +220,9 @@ where
     }
 
     ///
-    /// Encrypts the given message, and returns the following:
+    /// Encode the message bytes into field elements.
     ///
-    /// ```ignore
-    ///     ciphertext := to_bytes_le![C_1, ..., C_n], where C_i := R_i + M_i, and R_i := H_i(G^ar)
-    /// ```
-    ///
-    fn encrypt(&self, symmetric_key: &Self::SymmetricKey, message: &[u8]) -> Result<Vec<u8>, EncryptionError> {
-        // Initialize the sponge state.
-        let mut sponge = PoseidonSponge::with_parameters(&self.poseidon_parameters);
-        sponge.absorb(&[self.symmetric_encryption_domain, *symmetric_key]);
-
+    fn encode_message(message: &[u8]) -> Result<Vec<Self::MessageType>, EncryptionError> {
         // Convert the message into bits.
         let mut plaintext_bits = Vec::<bool>::with_capacity(message.len() * 8 + 1);
         for byte in message.iter() {
@@ -239,82 +232,36 @@ where
                 byte >>= 1;
             }
         }
+
         // The final bit serves as a terminus indicator,
         // and is used during decryption to ensure the length is correct.
         plaintext_bits.push(true);
 
         // Determine the number of ciphertext elements.
         let capacity = <<TE::BaseField as PrimeField>::Parameters as FieldParameters>::CAPACITY as usize;
-        let num_ciphertext_elements = (plaintext_bits.len() + capacity - 1) / capacity;
 
-        // Obtain random field elements from Poseidon.
-        let sponge_randomizers = sponge.squeeze_field_elements(num_ciphertext_elements);
-        assert_eq!(sponge_randomizers.len(), num_ciphertext_elements);
-
-        // Pack the bits into field elements and add the random field elements to the packed bits.
-        let ciphertext = plaintext_bits
+        // Pack the bits into field elements.
+        Ok(plaintext_bits
             .chunks(capacity)
-            .zip_eq(sponge_randomizers.iter())
-            .flat_map(|(chunk, sponge_randomizer)| {
-                let plaintext_element =
-                    TE::BaseField::from_repr(<TE::BaseField as PrimeField>::BigInteger::from_bits_le(chunk)).unwrap();
-                (plaintext_element + sponge_randomizer).to_bytes_le().unwrap()
+            .map(|chunk| {
+                TE::BaseField::from_repr(<TE::BaseField as PrimeField>::BigInteger::from_bits_le(chunk)).unwrap()
             })
-            .collect();
-
-        Ok(ciphertext)
+            .collect())
     }
 
     ///
-    /// Decrypts the given ciphertext with the given symmetric key.
+    /// Decode the field elements into bytes.
     ///
-    fn decrypt(&self, symmetric_key: &Self::SymmetricKey, ciphertext: &[u8]) -> Result<Vec<u8>, EncryptionError> {
-        // Initialize sponge state.
-        let mut sponge = PoseidonSponge::with_parameters(&self.poseidon_parameters);
-        sponge.absorb(&[self.symmetric_encryption_domain, *symmetric_key]);
-
-        let per_field_element_bytes = TE::BaseField::zero().to_bytes_le()?.len();
-        assert!(ciphertext.len() >= per_field_element_bytes);
-
-        // Compute the number of sponge elements needed.
-        let num_field_elements = ciphertext.len() / per_field_element_bytes;
-
-        // Obtain random field elements from Poseidon.
-        let sponge_randomizers = sponge.squeeze_field_elements(num_field_elements);
-
-        // Subtract the random field elements to the packed bits.
-        let mut plaintext_elements = Vec::with_capacity(num_field_elements);
-        for i in 0..num_field_elements {
-            plaintext_elements.push(TE::BaseField::from_bytes_le(
-                &ciphertext[(i * per_field_element_bytes)..((i + 1) * per_field_element_bytes)],
-            )?);
-        }
-        for (i, sponge_randomizer) in sponge_randomizers.iter().enumerate() {
-            plaintext_elements[i] -= sponge_randomizer;
-        }
-
-        // Unpack the packed bits.
-        if plaintext_elements.is_empty() {
-            return Err(EncryptionError::Message(
-                "The packed field elements must consist of at least one field element.".to_string(),
-            ));
-        }
-        if plaintext_elements.last().unwrap().is_zero() {
-            return Err(EncryptionError::Message(
-                "The packed field elements must end with a non-zero element.".to_string(),
-            ));
-        }
-
+    fn decode_message(encoded_message: &[Self::MessageType]) -> Result<Vec<u8>, EncryptionError> {
         let capacity = <<TE::BaseField as PrimeField>::Parameters as FieldParameters>::CAPACITY as usize;
 
-        let mut bits = Vec::<bool>::with_capacity(plaintext_elements.len() * capacity);
-        for elem in plaintext_elements.iter() {
-            let elem_bits = elem.to_repr().to_bits_le();
-            bits.extend_from_slice(&elem_bits[..capacity]); // only keep `capacity` bits, discarding the highest bit.
+        let mut bits = Vec::<bool>::with_capacity(encoded_message.len() * capacity);
+        for element in encoded_message.iter() {
+            // Only keep `capacity` bits, discarding the highest bit.
+            bits.extend_from_slice(&element.to_repr().to_bits_le()[..capacity]);
         }
 
         // Drop all the ending zeros and the last "1" bit.
-        //
         // Note that there must be at least one "1" bit because the last element is not zero.
         loop {
             if let Some(true) = bits.pop() {
@@ -327,8 +274,8 @@ where
                 "The number of bits in the packed field elements is not a multiple of 8.".to_string(),
             ));
         }
-        // Here we do not use assertion since it can cause Rust panicking.
 
+        // Convert the bits into bytes.
         let mut message = Vec::with_capacity(bits.len() / 8);
         for chunk in bits.chunks_exact(8) {
             let mut byte = 0u8;
@@ -340,6 +287,40 @@ where
         }
 
         Ok(message)
+    }
+
+    ///
+    /// Encrypts the given message, and returns the following:
+    ///
+    /// ```ignore
+    ///     ciphertext := to_bytes_le![C_1, ..., C_n], where C_i := R_i + M_i, and R_i := H_i(G^ar)
+    /// ```
+    ///
+    fn encrypt(&self, symmetric_key: &Self::SymmetricKey, message: &[Self::MessageType]) -> Vec<Self::MessageType> {
+        // Initialize the sponge state.
+        let mut sponge = PoseidonSponge::with_parameters(&self.poseidon_parameters);
+        sponge.absorb(&[self.symmetric_encryption_domain, *symmetric_key]);
+
+        // Obtain random field elements from Poseidon.
+        let sponge_randomizers = sponge.squeeze_field_elements(message.len());
+
+        // Add the random field elements to the plaintext elements.
+        message.iter().zip_eq(sponge_randomizers).map(|(plaintext, randomizer)| *plaintext + randomizer).collect()
+    }
+
+    ///
+    /// Decrypts the given ciphertext with the given symmetric key.
+    ///
+    fn decrypt(&self, symmetric_key: &Self::SymmetricKey, ciphertext: &[Self::MessageType]) -> Vec<Self::MessageType> {
+        // Initialize sponge state.
+        let mut sponge = PoseidonSponge::with_parameters(&self.poseidon_parameters);
+        sponge.absorb(&[self.symmetric_encryption_domain, *symmetric_key]);
+
+        // Obtain random field elements from Poseidon.
+        let sponge_randomizers = sponge.squeeze_field_elements(ciphertext.len());
+
+        // Subtract the random field elements to the ciphertext elements.
+        ciphertext.iter().zip_eq(sponge_randomizers).map(|(ciphertext, randomizer)| *ciphertext - randomizer).collect()
     }
 
     fn parameters(&self) -> &<Self as EncryptionScheme>::Parameters {

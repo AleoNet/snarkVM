@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Address, AleoAmount, ComputeKey, FunctionType, LedgerProof, Network, Operation, PrivateKey, Record};
+use crate::{Address, AleoAmount, ComputeKey, LedgerProof, Network, Operation, PrivateKey, Record};
 use snarkvm_algorithms::SignatureScheme;
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
@@ -114,7 +114,8 @@ impl<N: Network> Request<N> {
             commitments.push(record.commitment());
         }
 
-        let message = to_bytes_le![commitments /*operation_id, fee*/]?;
+        let message =
+            to_bytes_le![commitments, records[0].program_id().unwrap_or_default() /*operation_id, fee*/]?;
         let signature = caller.sign(&message, rng)?;
 
         Self::from(records, ledger_proofs, operation, fee, signature, is_public)
@@ -183,16 +184,16 @@ impl<N: Network> Request<N> {
         let program_id = {
             let program_id = OnceCell::new();
             for record in &self.records {
-                if record.program_id() != *N::noop_program_id() && program_id.set(record.program_id()).is_err() {
+                if record.program_id().is_some() && program_id.set(record.program_id()).is_err() {
                     eprintln!("Request records contains more than 1 distinct program ID");
                     return false;
                 }
             }
-            *program_id.get_or_init(|| *N::noop_program_id())
+            *program_id.get_or_init(|| None)
         };
 
-        // If the program ID is the noop program ID, ensure the function ID is the noop function ID.
-        if program_id == *N::noop_program_id() && self.function_id() != *N::noop_function_id() {
+        // If there is no program id, ensure there is no function ID.
+        if program_id == None && self.function_id() != None {
             eprintln!("Request contains mismatching program ID and function ID");
             return false;
         }
@@ -205,7 +206,7 @@ impl<N: Network> Request<N> {
 
         // Prepare for signature verification.
         let commitments: Vec<_> = self.records.iter().map(|record| record.commitment()).collect();
-        let message = match to_bytes_le![commitments /*operation_id, self.fee*/] {
+        let message = match to_bytes_le![commitments, program_id.unwrap_or_default() /*operation_id, self.fee*/] {
             Ok(signature_message) => signature_message,
             Err(error) => {
                 eprintln!("Failed to construct request signature message: {}", error);
@@ -221,11 +222,6 @@ impl<N: Network> Request<N> {
                 false
             }
         }
-    }
-
-    /// Returns `true` if the request calls the noop program and function.
-    pub fn is_noop(&self) -> bool {
-        self.to_program_id().unwrap() == *N::noop_program_id() && self.function_id() == *N::noop_function_id()
     }
 
     /// Returns a reference to the records.
@@ -244,13 +240,8 @@ impl<N: Network> Request<N> {
     }
 
     /// Returns the function ID.
-    pub fn function_id(&self) -> N::FunctionID {
+    pub fn function_id(&self) -> Option<N::FunctionID> {
         self.operation.function_id()
-    }
-
-    /// Returns the function type.
-    pub fn function_type(&self) -> FunctionType {
-        self.operation.function_type()
     }
 
     /// Returns a reference to the operation.
@@ -288,14 +279,14 @@ impl<N: Network> Request<N> {
     }
 
     /// Returns the program ID.
-    pub fn to_program_id(&self) -> Result<N::ProgramID> {
+    pub fn to_program_id(&self) -> Result<Option<N::ProgramID>> {
         let program_id = OnceCell::new();
         for record in &self.records {
-            if record.program_id() != *N::noop_program_id() && program_id.set(record.program_id()).is_err() {
+            if record.program_id().is_some() && program_id.set(record.program_id()).is_err() {
                 return Err(anyhow!("Request records contains more than 1 distinct program ID"));
             }
         }
-        Ok(*program_id.get_or_init(|| *N::noop_program_id()))
+        Ok(*program_id.get_or_init(|| None))
     }
 
     /// Returns the serial numbers.

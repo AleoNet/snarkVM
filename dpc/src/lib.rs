@@ -55,9 +55,6 @@ pub use traits::*;
 pub mod transaction;
 pub use transaction::*;
 
-pub mod transition;
-pub use transition::*;
-
 pub mod value_balance;
 pub use value_balance::*;
 
@@ -73,7 +70,6 @@ pub mod prelude {
         record::*,
         traits::*,
         transaction::*,
-        transition::*,
         value_balance::*,
         virtual_machine::*,
     };
