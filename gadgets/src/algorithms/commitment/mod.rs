@@ -23,5 +23,8 @@ pub use pedersen::*;
 pub mod pedersen_compressed;
 pub use pedersen_compressed::*;
 
+pub mod value_balance;
+pub use value_balance::*;
+
 #[cfg(test)]
 pub mod tests;

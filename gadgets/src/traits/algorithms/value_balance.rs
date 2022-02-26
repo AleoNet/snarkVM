@@ -28,18 +28,18 @@ use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
 use std::fmt::Debug;
 
-pub trait BindingSignatureGadget<C: CommitmentScheme, F: Field, G: Group + ProjectiveCurve> {
+pub trait ValueBalanceCommitmentGadget<C: CommitmentScheme, F: Field, G: Group + ProjectiveCurve> {
     type CommitmentGadget: CommitmentGadget<C, F> + Clone;
     type OutputGadget: EqGadget<F> + ToBytesGadget<F> + AllocGadget<G, F> + Clone + Sized + Debug;
     type RandomnessGadget: AllocGadget<C::Randomness, F> + Clone;
 
-    fn check_value_balance_commitment_gadget<CS: ConstraintSystem<F>>(
+    fn check_value_commitment_gadget<CS: ConstraintSystem<F>>(
         cs: CS,
         commitment_scheme: &Self::CommitmentGadget,
         input: &[UInt8],
     ) -> Result<Self::OutputGadget, SynthesisError>;
 
-    fn check_binding_signature_gadget<CS: ConstraintSystem<F>>(
+    fn check_value_balance_commitment_gadget<CS: ConstraintSystem<F>>(
         cs: CS,
         partial_bvk: &Self::OutputGadget,
         value_balance_comm: &Self::OutputGadget,

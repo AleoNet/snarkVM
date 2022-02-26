@@ -18,7 +18,13 @@ use crate::{
     algorithms::commitment::{pedersen::*, PedersenCompressedCommitmentGadget},
     bits::Boolean,
     integers::uint::UInt8,
-    traits::{alloc::AllocGadget, integers::Integer, BindingSignatureGadget, CommitmentGadget, CompressedGroupGadget},
+    traits::{
+        alloc::AllocGadget,
+        integers::Integer,
+        CommitmentGadget,
+        CompressedGroupGadget,
+        ValueBalanceCommitmentGadget,
+    },
 };
 
 use snarkvm_algorithms::commitment::PedersenCompressedCommitment;
@@ -28,11 +34,11 @@ use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use std::marker::PhantomData;
 
-pub struct BindingSignatureVerificationGadget<G: Group + ProjectiveCurve, F: Field, GG: CompressedGroupGadget<G, F>>(
-    PhantomData<G>,
-    PhantomData<GG>,
-    PhantomData<F>,
-);
+pub struct ValueBalanceCommitmentVerificationGadget<
+    G: Group + ProjectiveCurve,
+    F: Field,
+    GG: CompressedGroupGadget<G, F>,
+>(PhantomData<G>, PhantomData<GG>, PhantomData<F>);
 
 impl<
     F: PrimeField,
@@ -40,14 +46,14 @@ impl<
     GG: CompressedGroupGadget<G, F>,
     const NUM_WINDOWS: usize,
     const WINDOW_SIZE: usize,
-> BindingSignatureGadget<PedersenCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>, F, G>
-    for BindingSignatureVerificationGadget<G, F, GG>
+> ValueBalanceCommitmentGadget<PedersenCompressedCommitment<G, NUM_WINDOWS, WINDOW_SIZE>, F, G>
+    for ValueBalanceCommitmentVerificationGadget<G, F, GG>
 {
     type CommitmentGadget = PedersenCompressedCommitmentGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>;
     type OutputGadget = GG;
     type RandomnessGadget = PedersenRandomnessGadget<G>;
 
-    fn check_value_balance_commitment_gadget<CS: ConstraintSystem<F>>(
+    fn check_value_commitment_gadget<CS: ConstraintSystem<F>>(
         mut cs: CS,
         commitment_scheme: &Self::CommitmentGadget,
         input: &[UInt8],
@@ -60,7 +66,7 @@ impl<
         Ok(output)
     }
 
-    fn check_binding_signature_gadget<CS: ConstraintSystem<F>>(
+    fn check_value_balance_commitment_gadget<CS: ConstraintSystem<F>>(
         mut cs: CS,
         partial_bvk: &Self::OutputGadget,
         value_balance_comm: &Self::OutputGadget,
@@ -91,7 +97,7 @@ impl<
             &negative_result,
         )?;
 
-        result.enforce_equal(&mut cs.ns(|| "Check that the binding signature verifies"), &zero)?;
+        result.enforce_equal(&mut cs.ns(|| "Check that the value balance commitment verifies"), &zero)?;
 
         Ok(())
     }

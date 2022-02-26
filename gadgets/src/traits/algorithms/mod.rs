@@ -17,9 +17,6 @@
 pub mod algebraic_sponge;
 pub use algebraic_sponge::*;
 
-pub mod binding_signature;
-pub use binding_signature::*;
-
 pub mod commitment;
 pub use commitment::*;
 
@@ -37,3 +34,6 @@ pub use prf::*;
 
 pub mod signature;
 pub use signature::*;
+
+pub mod value_balance;
+pub use value_balance::*;
