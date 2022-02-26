@@ -315,6 +315,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 // Compute the record commitment and check that it matches the declared commitment.
                 // *******************************************************************
 
+                // TODO (howardwu): CRITICAL - Use given_owner by exposing the FpGadget in the signature trait.
                 let owner_fe = FromBytes::read_le(&record.owner().to_bytes_le()?[..])?;
                 let given_owner_gadget =
                     FpGadget::alloc(&mut commitment_cs.ns(|| format!("Field element {}", i)), || Ok(&owner_fe))?;
@@ -668,6 +669,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 // Check that the record ciphertext and commitment are well-formed.
                 // *******************************************************************
 
+                // TODO (howardwu): CRITICAL - Use given_owner by exposing the FpGadget in the signature trait.
                 let owner_fe = FromBytes::read_le(&record.owner().to_bytes_le()?[..])?;
                 let given_owner_gadget =
                     FpGadget::alloc(&mut commitment_cs.ns(|| format!("Field element {}", j)), || Ok(&owner_fe))?;
