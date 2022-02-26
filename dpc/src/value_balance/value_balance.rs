@@ -18,10 +18,7 @@ use crate::{error::ValueBalanceCommitmentError, Network};
 use snarkvm_algorithms::CommitmentScheme;
 use snarkvm_curves::AffineCurve;
 use snarkvm_fields::{Field, One, Zero};
-use snarkvm_utilities::{
-    BitIteratorLE,
-    FromBytes, ToBytes,
-};
+use snarkvm_utilities::{BitIteratorLE, FromBytes, ToBytes};
 
 use blake2::{
     digest::{Update, VariableOutput},
@@ -231,7 +228,7 @@ pub(crate) mod tests {
     use super::*;
     use crate::testnet2::Testnet2;
     use snarkvm_algorithms::CommitmentScheme;
-    use snarkvm_utilities::{UniformRand, FromBytes, ToBytes};
+    use snarkvm_utilities::{FromBytes, ToBytes, UniformRand};
 
     use rand::Rng;
 
