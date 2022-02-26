@@ -19,9 +19,8 @@ use snarkvm_algorithms::CommitmentScheme;
 use snarkvm_curves::AffineCurve;
 use snarkvm_fields::{Field, One, Zero};
 use snarkvm_utilities::{
-    bititerator::BitIteratorLE,
-    bytes::{FromBytes, ToBytes},
-    to_bytes_le,
+    BitIteratorLE,
+    FromBytes, ToBytes,
 };
 
 use blake2::{
@@ -142,19 +141,13 @@ pub fn commit_value_balance<N: Network, R: Rng>(
     // Generate signature using message
 
     let r_edwards = hash_into_field::<N>(&sig_rand[..], input);
-    let r_g = N::value_commitment().commit(&0i64.to_le_bytes(), &r_edwards)?;
+    let rbar = N::value_commitment().commit(&0i64.to_le_bytes(), &r_edwards)?;
 
-    let mut rbar = [0u8; 32];
-    r_g.write_le(&mut rbar[..])?;
+    let mut sbar = hash_into_field::<N>(&rbar.to_x_coordinate().to_bytes_le()?, input);
+    sbar = sbar.mul(&bsk);
+    sbar = sbar.add(&r_edwards);
 
-    let mut s = hash_into_field::<N>(&rbar[..], input);
-    s = s.mul(&bsk);
-    s = s.add(&r_edwards);
-
-    let mut sbar = [0u8; 32];
-    sbar.copy_from_slice(&to_bytes_le![s]?[..]);
-
-    Ok(FromBytes::from_bytes_le(&[rbar, sbar].concat())?)
+    Ok(ValueBalanceCommitment { rbar, sbar })
 }
 
 pub fn verify_value_balance_commitment<N: Network>(
@@ -176,10 +169,10 @@ pub fn verify_value_balance_commitment<N: Network>(
     }
 
     // Calculate the value balance commitment.
-    bvk += calculate_value_balance_commitment::<N>(value_balance)?;
+    bvk -= calculate_value_balance_commitment::<N>(value_balance)?;
 
     // Verify the signature
-    let c = hash_into_field::<N>(&signature.rbar.to_bytes_le()?, input);
+    let c = hash_into_field::<N>(&signature.rbar.to_x_coordinate().to_bytes_le()?, input);
 
     let recommit = N::value_commitment().commit(&0i64.to_le_bytes(), &signature.sbar)?;
 
@@ -227,7 +220,7 @@ pub fn gadget_verification_setup<N: Network>(
         partial_bvk -= vc_output;
     }
 
-    let c = hash_into_field::<N>(&signature.rbar.to_bytes_le()?, input);
+    let c = hash_into_field::<N>(&signature.rbar.to_x_coordinate().to_bytes_le()?, input);
     let recommit = N::value_commitment().commit(&0i64.to_le_bytes(), &signature.sbar)?;
 
     Ok((c, partial_bvk, signature.rbar, recommit))
@@ -238,7 +231,7 @@ pub(crate) mod tests {
     use super::*;
     use crate::testnet2::Testnet2;
     use snarkvm_algorithms::CommitmentScheme;
-    use snarkvm_utilities::{rand::UniformRand, to_bytes_le, FromBytes, ToBytes};
+    use snarkvm_utilities::{UniformRand, FromBytes, ToBytes};
 
     use rand::Rng;
 
@@ -345,9 +338,8 @@ pub(crate) mod tests {
         )
         .unwrap();
 
-        let value_balance_commitment_bytes = to_bytes_le![value_balance_commitment].unwrap();
         let reconstructed_value_balance_commitment: ValueBalanceCommitment<_> =
-            FromBytes::read_le(&value_balance_commitment_bytes[..]).unwrap();
+            FromBytes::read_le(&*value_balance_commitment.to_bytes_le().unwrap()).unwrap();
 
         assert_eq!(value_balance_commitment, reconstructed_value_balance_commitment);
     }
