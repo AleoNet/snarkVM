@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{errors::BindingSignatureError, CommitmentScheme};
+use crate::{errors::ValueBalanceCommitmentError, CommitmentScheme};
 use snarkvm_curves::{AffineCurve, Group, ProjectiveCurve};
 use snarkvm_fields::{Field, One, Zero};
 use snarkvm_utilities::{
@@ -64,7 +64,7 @@ pub fn hash_into_field<G: Group + ProjectiveCurve>(a: &[u8], b: &[u8]) -> <G as 
 
 pub fn recover_affine_from_x_coord<G: Group + ProjectiveCurve>(
     x_bytes: &[u8],
-) -> Result<<G as ProjectiveCurve>::Affine, BindingSignatureError> {
+) -> Result<<G as ProjectiveCurve>::Affine, ValueBalanceCommitmentError> {
     let x: <<G as ProjectiveCurve>::Affine as AffineCurve>::BaseField = FromBytes::read_le(x_bytes)?;
 
     if let Some(affine) = <G as ProjectiveCurve>::Affine::from_x_coordinate(x, false) {
@@ -79,18 +79,18 @@ pub fn recover_affine_from_x_coord<G: Group + ProjectiveCurve>(
         }
     }
 
-    Err(BindingSignatureError::NotInCorrectSubgroupOnCurve(to_bytes_le![x]?))
+    Err(ValueBalanceCommitmentError::NotInCorrectSubgroupOnCurve(to_bytes_le![x]?))
 }
 
 // Binding signature scheme derived from Zcash's redDSA
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct BindingSignature {
+pub struct ValueBalanceCommitment {
     pub rbar: Vec<u8>,
     pub sbar: Vec<u8>,
 }
 
-impl BindingSignature {
-    pub fn new(rbar: Vec<u8>, sbar: Vec<u8>) -> Result<Self, BindingSignatureError> {
+impl ValueBalanceCommitment {
+    pub fn new(rbar: Vec<u8>, sbar: Vec<u8>) -> Result<Self, ValueBalanceCommitmentError> {
         assert_eq!(rbar.len(), 32);
         assert_eq!(sbar.len(), 32);
 
@@ -105,7 +105,9 @@ impl BindingSignature {
         bytes
     }
 
-    pub fn from_bytes<G: Group + ProjectiveCurve>(signature_bytes: Vec<u8>) -> Result<Self, BindingSignatureError> {
+    pub fn from_bytes<G: Group + ProjectiveCurve>(
+        signature_bytes: Vec<u8>,
+    ) -> Result<Self, ValueBalanceCommitmentError> {
         assert_eq!(signature_bytes.len(), 64);
 
         let rbar = signature_bytes[0..32].to_vec();
@@ -118,7 +120,7 @@ impl BindingSignature {
     }
 }
 
-impl ToBytes for BindingSignature {
+impl ToBytes for ValueBalanceCommitment {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.rbar.write_le(&mut writer)?;
@@ -126,7 +128,7 @@ impl ToBytes for BindingSignature {
     }
 }
 
-impl FromBytes for BindingSignature {
+impl FromBytes for ValueBalanceCommitment {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let rbar: [u8; 32] = FromBytes::read_le(&mut reader)?;
@@ -136,14 +138,14 @@ impl FromBytes for BindingSignature {
     }
 }
 
-impl Default for BindingSignature {
+impl Default for ValueBalanceCommitment {
     #[inline]
     fn default() -> Self {
         Self { rbar: [0u8; 32].to_vec(), sbar: [0u8; 32].to_vec() }
     }
 }
 
-pub fn create_binding_signature<C: CommitmentScheme, G: Group + ProjectiveCurve, R: Rng>(
+pub fn commit_value_balance<C: CommitmentScheme, G: Group + ProjectiveCurve, R: Rng>(
     value_commitment: &C,
     input_value_commitments: &Vec<C::Output>,
     output_value_commitments: &Vec<C::Output>,
@@ -152,7 +154,7 @@ pub fn create_binding_signature<C: CommitmentScheme, G: Group + ProjectiveCurve,
     value_balance: i64,
     input: &[u8],
     rng: &mut R,
-) -> Result<BindingSignature, BindingSignatureError> {
+) -> Result<ValueBalanceCommitment, ValueBalanceCommitmentError> {
     // Calculate the bsk and bvk
     let mut bsk = <G as Group>::ScalarField::default();
     let mut bvk = <G as ProjectiveCurve>::Affine::default();
@@ -212,17 +214,17 @@ pub fn create_binding_signature<C: CommitmentScheme, G: Group + ProjectiveCurve,
     let mut sbar = [0u8; 32];
     sbar.copy_from_slice(&to_bytes_le![s]?[..]);
 
-    BindingSignature::new(rbar.to_vec(), sbar.to_vec())
+    ValueBalanceCommitment::new(rbar.to_vec(), sbar.to_vec())
 }
 
-pub fn verify_binding_signature<C: CommitmentScheme, G: Group + ProjectiveCurve>(
+pub fn verify_value_balance_commitment<C: CommitmentScheme, G: Group + ProjectiveCurve>(
     value_commitment: &C,
     input_value_commitments: &Vec<C::Output>,
     output_value_commitments: &Vec<C::Output>,
     value_balance: i64,
     input: &[u8],
-    signature: &BindingSignature,
-) -> Result<bool, BindingSignatureError> {
+    signature: &ValueBalanceCommitment,
+) -> Result<bool, ValueBalanceCommitmentError> {
     // Craft verifying key
     let mut bvk: <G as ProjectiveCurve>::Affine = <G as ProjectiveCurve>::Affine::default();
 
@@ -261,10 +263,10 @@ pub fn verify_binding_signature<C: CommitmentScheme, G: Group + ProjectiveCurve>
 pub fn calculate_value_balance_commitment<C: CommitmentScheme, G: Group + ProjectiveCurve>(
     value_commitment: &C,
     value_balance: i64,
-) -> Result<<G as ProjectiveCurve>::Affine, BindingSignatureError> {
+) -> Result<<G as ProjectiveCurve>::Affine, ValueBalanceCommitmentError> {
     let value_balance_as_u64 = match value_balance.checked_abs() {
         Some(val) => val as u64,
-        None => return Err(BindingSignatureError::OutOfBounds(value_balance)),
+        None => return Err(ValueBalanceCommitmentError::OutOfBounds(value_balance)),
     };
 
     let zero_randomness = C::Randomness::default();
@@ -285,8 +287,8 @@ pub fn gadget_verification_setup<C: CommitmentScheme, G: Group + ProjectiveCurve
     input_value_commitments: &[C::Output],
     output_value_commitments: &[C::Output],
     input: &[u8],
-    signature: &BindingSignature,
-) -> Result<(C::Randomness, G, G, G), BindingSignatureError> {
+    signature: &ValueBalanceCommitment,
+) -> Result<(C::Randomness, G, G, G), ValueBalanceCommitmentError> {
     // Craft the partial verifying key
     let mut partial_bvk = <G as ProjectiveCurve>::Affine::default();
 

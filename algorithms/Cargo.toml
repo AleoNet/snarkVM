@@ -228,7 +228,6 @@ default = [
   "snarkvm-utilities/default"
 ]
 full = [
-  "binding_signature",
   "commitment",
   "crh",
   "encryption",
@@ -242,7 +241,6 @@ full = [
   "snark"
 ]
 wasm = [
-  "binding_signature",
   "commitment",
   "crh",
   "crypto_hash",
@@ -262,7 +260,6 @@ cuda = [ "rust-gpu-tools" ]
 parallel = [ "rayon", "num_cpus", "snarkvm-fields/parallel", "snarkvm-utilities/parallel" ]
 print-trace = [ "snarkvm-profiler/print-trace" ]
 
-binding_signature = [ ]
 commitment = [ "crh" ]
 crh = [ "hash_to_curve" ]
 crypto_hash = [ "blake2s_simd" ]

@@ -17,7 +17,7 @@
 use std::io::{Error, ErrorKind};
 
 #[derive(Debug, Error)]
-pub enum BindingSignatureError {
+pub enum ValueBalanceCommitmentError {
     #[error("{}", _0)]
     AnyhowError(#[from] anyhow::Error),
 
@@ -37,14 +37,14 @@ pub enum BindingSignatureError {
     OutOfBounds(i64),
 }
 
-impl From<Error> for BindingSignatureError {
+impl From<Error> for ValueBalanceCommitmentError {
     fn from(error: Error) -> Self {
-        BindingSignatureError::Crate("std::io", format!("{:?}", error))
+        ValueBalanceCommitmentError::Crate("std::io", format!("{:?}", error))
     }
 }
 
-impl From<BindingSignatureError> for Error {
-    fn from(error: BindingSignatureError) -> Error {
+impl From<ValueBalanceCommitmentError> for Error {
+    fn from(error: ValueBalanceCommitmentError) -> Error {
         Error::new(ErrorKind::Other, error.to_string())
     }
 }
