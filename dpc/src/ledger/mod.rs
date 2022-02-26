@@ -26,5 +26,14 @@ pub use ledger_proof::*;
 pub mod ledger_tree;
 pub use ledger_tree::*;
 
+pub(crate) mod local_proof;
+pub(crate) use local_proof::*;
+
 pub mod memory_pool;
 pub use memory_pool::*;
+
+pub(crate) mod record_proof;
+pub(crate) use record_proof::*;
+
+pub(crate) mod transitions;
+pub(crate) use transitions::*;
