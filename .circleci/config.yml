@@ -56,7 +56,7 @@ commands:
             TEST_NAMES=$(circleci tests split test_names.txt)
             for i in $(echo $TEST_NAMES | sed "s/ / /g")
             do
-                RUST_MIN_STACK=67108864 cargo test --workspace $i
+                RUST_MIN_STACK=67108864 cargo test $i
             done
 
 jobs:
