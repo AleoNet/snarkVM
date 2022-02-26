@@ -35,7 +35,7 @@ fn test_record_ciphertext() {
 
         let expected_record = Record::new(
             account.address(),
-            AleoAmount::from_i64(value),
+            AleoAmount::from_gate(value),
             Some(Payload::from_bytes_le(&payload).unwrap()),
             None,
             rng,

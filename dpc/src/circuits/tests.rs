@@ -25,7 +25,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize) 
     let rng = &mut thread_rng();
 
     let recipient = Account::new(rng);
-    let amount = AleoAmount::from_i64(10);
+    let amount = AleoAmount::from_gate(10);
     let request = Request::new_coinbase(recipient.address(), amount, false, rng).unwrap();
     let response = ResponseBuilder::new()
         .add_request(request.clone())
