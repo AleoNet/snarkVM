@@ -84,7 +84,6 @@ pub fn recover_affine_from_x_coord<G: Group + ProjectiveCurve>(
     Err(ValueBalanceCommitmentError::NotInCorrectSubgroupOnCurve(to_bytes_le![x]?))
 }
 
-// Binding signature scheme derived from Zcash's redDSA
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct ValueBalanceCommitment {
     pub rbar: Vec<u8>,
@@ -97,14 +96,6 @@ impl ValueBalanceCommitment {
         assert_eq!(sbar.len(), 32);
 
         Ok(Self { rbar, sbar })
-    }
-
-    pub fn to_bytes(&self) -> Vec<u8> {
-        let mut bytes = Vec::new();
-        bytes.extend_from_slice(&self.rbar[..]);
-        bytes.extend_from_slice(&self.sbar[..]);
-
-        bytes
     }
 
     pub fn from_bytes<G: Group + ProjectiveCurve>(
@@ -255,7 +246,7 @@ pub fn verify_value_balance_commitment<C: CommitmentScheme, G: Group + Projectiv
     let zero: i64 = 0;
     let s: C::Randomness = FromBytes::read_le(&signature.sbar[..])?;
     let recommit = to_bytes_le![value_commitment.commit(&zero.to_le_bytes(), &s)?]?;
-    let recovered_recommit = recover_affine_from_x_coord::<G>(&recommit).unwrap();
+    let recovered_recommit = recover_affine_from_x_coord::<G>(&recommit)?;
 
     let check_verification = bvk.mul(c).add(&affine_r).add(&recovered_recommit.neg());
 
