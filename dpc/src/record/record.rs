@@ -20,7 +20,6 @@ use snarkvm_curves::AffineCurve;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{FromBits, FromBytes, FromBytesDeserializer, ToBits, ToBytes, ToBytesSerializer};
 
-use anyhow::anyhow;
 use core::hash::{Hash, Hasher};
 use rand::{CryptoRng, Rng};
 use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
@@ -107,11 +106,14 @@ impl<N: Network> Record<N> {
         // Decode the plaintext bytes into the record contents.
         let owner = Address::<N>::read_le(&plaintext[0].to_bytes_le()?[..])?;
         let value = AleoAmount::read_le(&*N::AccountEncryptionScheme::decode_message(&[plaintext[1]])?)?;
-        let payload = match plaintext.len() {
-            2 => None,
-            3 => Some(Payload::read_le(&*N::AccountEncryptionScheme::decode_message(&plaintext[2..])?)?),
-            _ => return Err(anyhow!("Invalid plaintext size").into()),
-        };
+        let payload = Some(Payload::read_le(&*N::AccountEncryptionScheme::decode_message(&plaintext[2..])?)?);
+
+        // TODO (howardwu): TEMPORARY - Reintroduce this logic.
+        // let payload = match plaintext.len() {
+        //     2 => None,
+        //     3 => Some(Payload::read_le(&*N::AccountEncryptionScheme::decode_message(&plaintext[2..])?)?),
+        //     _ => return Err(anyhow!("Invalid plaintext size").into()),
+        // };
 
         Ok(Self { owner, value, payload, record_view_key, ciphertext: ciphertext.clone() })
     }

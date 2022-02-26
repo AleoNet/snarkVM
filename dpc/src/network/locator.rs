@@ -48,13 +48,13 @@ impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> Bech32Locator<F> f
     }
 
     #[inline]
-    fn data_size_in_bytes() -> usize {
+    fn size_in_bytes() -> usize {
         (F::size_in_bits() + 7) / 8
     }
 
     #[inline]
-    fn data_string_length() -> usize {
-        ((Self::data_size_in_bytes() * 8) + 4) / 5
+    fn number_of_data_characters() -> usize {
+        ((Self::size_in_bytes() * 8) + 4) / 5
     }
 }
 
@@ -88,7 +88,7 @@ impl<F: PrimeField + ToConstraintField<F>, const PREFIX: u16> FromStr for AleoLo
     #[inline]
     fn from_str(string: &str) -> Result<Self, Self::Err> {
         const CHECKSUM_STRING_LENGTH: usize = 6;
-        if string.len() != 3 + Self::data_string_length() + CHECKSUM_STRING_LENGTH {
+        if string.len() != 3 + Self::number_of_data_characters() + CHECKSUM_STRING_LENGTH {
             return Err(Bech32mError::InvalidCharacterLength(string.len()));
         }
 
@@ -143,9 +143,7 @@ impl<'de, F: PrimeField + ToConstraintField<F>, const PREFIX: u16> Deserialize<'
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
-            false => {
-                FromBytesDeserializer::<Self>::deserialize(deserializer, &Self::prefix(), Self::data_size_in_bytes())
-            }
+            false => FromBytesDeserializer::<Self>::deserialize(deserializer, &Self::prefix(), Self::size_in_bytes()),
         }
     }
 }

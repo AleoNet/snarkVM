@@ -62,8 +62,8 @@ pub trait Bech32Locator<F: Field>:
     + Send
 {
     fn prefix() -> String;
-    fn data_size_in_bytes() -> usize;
-    fn data_string_length() -> usize;
+    fn size_in_bytes() -> usize;
+    fn number_of_data_characters() -> usize;
 }
 
 pub trait Bech32Object<T: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Sync + Send>:
