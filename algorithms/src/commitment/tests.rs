@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    commitment::{BHPCommitment, PedersenCommitment, PedersenCompressedCommitment},
+    commitment::{BHPCommitment, PedersenCommitment},
     traits::CommitmentScheme,
 };
 use snarkvm_curves::edwards_bls12::EdwardsProjective;
@@ -41,12 +41,5 @@ fn bhp_commitment_parameters_serialization() {
 fn pedersen_commitment_parameters_serialization() {
     commitment_parameters_serialization::<
         PedersenCommitment<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>,
-    >();
-}
-
-#[test]
-fn pedersen_compressed_commitment_parameters_serialization() {
-    commitment_parameters_serialization::<
-        PedersenCompressedCommitment<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>,
     >();
 }

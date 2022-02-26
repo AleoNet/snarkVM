@@ -20,8 +20,5 @@ pub use bhp::*;
 pub mod pedersen;
 pub use pedersen::*;
 
-pub mod pedersen_compressed;
-pub use pedersen_compressed::*;
-
 #[cfg(test)]
 mod tests;
