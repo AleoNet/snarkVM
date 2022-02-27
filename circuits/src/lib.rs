@@ -44,6 +44,9 @@ pub mod helpers;
 pub mod integers;
 pub use integers::*;
 
+pub mod macros;
+pub use macros::*;
+
 // TODO (howardwu): This is temporary until the programs interface is stabilized.
 #[allow(unused)]
 pub mod programs;
