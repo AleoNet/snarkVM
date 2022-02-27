@@ -193,7 +193,7 @@ mod tests {
     use rand::thread_rng;
     use std::{ops::RangeInclusive, panic::RefUnwindSafe};
 
-    const ITERATIONS: usize = 128;
+    const ITERATIONS: usize = 64;
 
     #[rustfmt::skip]
     fn check_shr<I: IntegerType + RefUnwindSafe, M: private::Magnitude + RefUnwindSafe>(

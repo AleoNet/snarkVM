@@ -83,7 +83,7 @@ mod tests {
     use std::panic::RefUnwindSafe;
     use std::ops::RangeInclusive;
 
-    const ITERATIONS: usize = 128;
+    const ITERATIONS: usize = 64;
 
     #[rustfmt::skip]
     fn check_div_without_expected_numbers<I: IntegerType + std::panic::RefUnwindSafe>(

@@ -78,7 +78,7 @@ mod tests {
                 expected = expected.square();
                 candidate = candidate.square();
                 assert_eq!(expected, candidate.eject_value());
-                assert_circuit!(0, 1, i + 2, i + 1);
+                assert_circuit!(0, 0, i + 2, i + 1);
             }
         });
     }

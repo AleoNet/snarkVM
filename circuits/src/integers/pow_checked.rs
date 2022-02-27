@@ -89,13 +89,12 @@ impl<E: Environment, I: IntegerType, M: private::Magnitude> PowChecked<Integer<E
 mod tests {
     use super::*;
     use crate::{integers::test_utilities::*, Circuit};
-    use snarkvm_utilities::UniformRand;
+    use snarkvm_utilities::{test_rng, UniformRand};
 
-    use rand::thread_rng;
     use std::{ops::RangeInclusive, panic::RefUnwindSafe};
 
-    // Lowered to 32, since we run (~5 * ITERATIONS) cases for most tests.
-    const ITERATIONS: usize = 32;
+    // Lowered to 16, since we run (~5 * ITERATIONS) cases for most tests.
+    const ITERATIONS: usize = 16;
 
     #[rustfmt::skip]
     fn check_pow_without_expected_numbers<I: IntegerType + RefUnwindSafe, M: private::Magnitude + RefUnwindSafe>(
@@ -152,11 +151,13 @@ mod tests {
     ) {
         let check_pow = | name: &str, first: I, second: M | check_pow_without_expected_numbers(name, first, second, mode_a, mode_b);
 
+        let rng = &mut test_rng();
+
         // Test operation without checking for the expected number of
         // constants, public variables, private variables, and constraints.
         for i in 0..ITERATIONS {
-            let first: I = UniformRand::rand(&mut thread_rng());
-            let second: M = UniformRand::rand(&mut thread_rng());
+            let first: I = UniformRand::rand(rng);
+            let second: M = UniformRand::rand(rng);
 
             let name = format!("Pow: {} ** {} {}", mode_a, mode_b, i);
             check_pow(&name, first, second);
@@ -187,9 +188,11 @@ mod tests {
     ) {
         let check_pow = | name: &str, first: I, second: M | check_pow(name, first, second, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
 
+        let rng = &mut test_rng();
+
         for i in 0..ITERATIONS {
-            let first: I = UniformRand::rand(&mut thread_rng());
-            let second: M = UniformRand::rand(&mut thread_rng());
+            let first: I = UniformRand::rand(rng);
+            let second: M = UniformRand::rand(rng);
 
             let name = format!("Pow: {} ** {} {}", mode_a, mode_b, i);
             check_pow(&name, first, second);
