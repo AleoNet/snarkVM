@@ -22,12 +22,16 @@ use crate::fft::{
     Evaluations as EvaluationsOnDomain,
     SparsePolynomial,
 };
-use hashbrown::HashMap;
-#[cfg(feature = "parallel")]
-use rayon::prelude::*;
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_utilities::{cfg_iter, cfg_iter_mut, CanonicalDeserialize, CanonicalSerialize};
+
+use hashbrown::HashMap;
 use std::borrow::Cow;
+
+#[cfg(not(feature = "parallel"))]
+use itertools::Itertools;
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
 
 /// A polynomial along with information about its degree bound (if any), and the
 /// maximum number of queries that will be made to it. This latter number determines
