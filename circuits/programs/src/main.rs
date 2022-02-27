@@ -14,11 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_circuits::{traits::*, Affine, BaseField, Boolean, Circuit, Environment};
+use snarkvm_circuits::{traits::*, BaseField, Circuit, Environment};
 use snarkvm_circuits_programs::{Function, Immediate, Instruction, Operand, Registers};
-
-use once_cell::unsync::OnceCell;
-use std::{cell::RefCell, rc::Rc};
 
 pub struct HelloWorld<E: Environment> {
     function: Function<E>,
