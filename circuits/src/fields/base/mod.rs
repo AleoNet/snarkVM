@@ -269,4 +269,22 @@ mod tests {
         assert_eq!(Primitive::from_str("15").unwrap(), candidate.eject_value());
         assert!(candidate.is_private());
     }
+
+    #[test]
+    fn test_display() {
+        let one = <Circuit as Environment>::BaseField::one();
+        let two = one + one;
+
+        // Constant
+        let candidate = BaseField::<Circuit>::new(Mode::Constant, two);
+        assert_eq!("Constant(2base)", &format!("{}", candidate));
+
+        // Public
+        let candidate = BaseField::<Circuit>::new(Mode::Public, two);
+        assert_eq!("Public(2base)", &format!("{}", candidate));
+
+        // Private
+        let candidate = BaseField::<Circuit>::new(Mode::Private, two);
+        assert_eq!("Private(2base)", &format!("{}", candidate));
+    }
 }
