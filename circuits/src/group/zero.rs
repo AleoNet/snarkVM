@@ -33,7 +33,7 @@ impl<E: Environment> Zero for Affine<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
+    use crate::{assert_circuit, Circuit};
 
     #[test]
     fn test_zero() {
@@ -41,36 +41,17 @@ mod tests {
         let one = <Circuit as Environment>::BaseField::one();
 
         Circuit::scoped("Zero", || {
-            assert_eq!(0, Circuit::num_constants());
-            assert_eq!(1, Circuit::num_public());
-            assert_eq!(0, Circuit::num_private());
-            assert_eq!(0, Circuit::num_constraints());
-
-            assert_eq!(0, Circuit::num_constants_in_scope());
-            assert_eq!(0, Circuit::num_public_in_scope());
-            assert_eq!(0, Circuit::num_private_in_scope());
-            assert_eq!(0, Circuit::num_constraints_in_scope());
-
+            assert_circuit!(0, 0, 0, 0);
             let candidate = Affine::<Circuit>::zero().eject_value();
             assert_eq!(zero, candidate.to_x_coordinate());
             assert_eq!(one, candidate.to_y_coordinate());
-
-            assert_eq!(0, Circuit::num_constants_in_scope());
-            assert_eq!(0, Circuit::num_public_in_scope());
-            assert_eq!(0, Circuit::num_private_in_scope());
-            assert_eq!(0, Circuit::num_constraints_in_scope());
-
-            assert_eq!(0, Circuit::num_constants());
-            assert_eq!(1, Circuit::num_public());
-            assert_eq!(0, Circuit::num_private());
-            assert_eq!(0, Circuit::num_constraints());
+            assert_circuit!(0, 0, 0, 0);
         });
     }
 
     #[test]
     fn test_is_zero() {
         let candidate = Affine::<Circuit>::zero();
-
         // Should equal 0.
         assert!(candidate.is_zero().eject_value());
     }

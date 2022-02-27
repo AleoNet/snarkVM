@@ -48,13 +48,9 @@ mod tests {
     #[test]
     fn test_is_zero() {
         let candidate = ScalarField::<Circuit>::zero();
-
         // Should equal 0.
-        let candidate_boolean = candidate.is_zero();
-        assert!(candidate_boolean.eject_value());
-
+        assert!(candidate.is_zero().eject_value());
         // Should not equal 1.
-        let candidate_boolean = candidate.is_one();
-        assert!(!candidate_boolean.eject_value());
+        assert!(!candidate.is_one().eject_value());
     }
 }
