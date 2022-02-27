@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -114,7 +114,29 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let c_arith = arithmetize_matrix(&c, "c", non_zero_c_domain, constraint_domain, input_domain);
         end_timer!(joint_arithmetization_time);
 
+        let fft_precomp_time = start_timer!(|| "Precomputing roots of unity");
+
+        let (fft_precomputation, ifft_precomputation) = Self::fft_precomputation(
+            constraint_domain.size(),
+            non_zero_a_domain.size(),
+            non_zero_b_domain.size(),
+            non_zero_c_domain.size(),
+        )
+        .ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+        end_timer!(fft_precomp_time);
+
         end_timer!(index_time);
-        Ok(Circuit { index_info, a, b, c, a_arith, b_arith, c_arith, mode: PhantomData })
+        Ok(Circuit {
+            index_info,
+            a,
+            b,
+            c,
+            a_arith,
+            b_arith,
+            c_arith,
+            fft_precomputation,
+            ifft_precomputation,
+            mode: PhantomData,
+        })
     }
 }

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -22,8 +22,7 @@ use anyhow::{anyhow, Result};
 use std::io::{Read, Result as IoResult, Write};
 
 /// A proof of inclusion for a record in a block.
-#[derive(Derivative)]
-#[derivative(Clone(bound = "N: Network"), Debug(bound = "N: Network"))]
+#[derive(Clone, Debug)]
 pub struct RecordProof<N: Network> {
     block_hash: N::BlockHash,
     previous_block_hash: N::BlockHash,

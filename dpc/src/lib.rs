@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -55,9 +55,6 @@ pub use traits::*;
 pub mod transaction;
 pub use transaction::*;
 
-pub mod transition;
-pub use transition::*;
-
 pub mod virtual_machine;
 pub use virtual_machine::*;
 
@@ -70,7 +67,6 @@ pub mod prelude {
         record::*,
         traits::*,
         transaction::*,
-        transition::*,
         virtual_machine::*,
     };
 }

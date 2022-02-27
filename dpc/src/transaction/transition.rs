@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::prelude::*;
+use crate::{circuits::InnerPublicVariables, prelude::*};
 use snarkvm_algorithms::merkle_tree::{MerklePath, MerkleTree};
 use snarkvm_utilities::{FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
 
@@ -28,13 +28,7 @@ use std::{
     sync::Arc,
 };
 
-#[derive(Derivative)]
-#[derivative(
-    Clone(bound = "N: Network"),
-    Debug(bound = "N: Network"),
-    PartialEq(bound = "N: Network"),
-    Eq(bound = "N: Network")
-)]
+#[derive(Clone, Debug)]
 pub struct Transition<N: Network> {
     /// The ID of this transition.
     transition_id: N::TransitionID,
@@ -124,10 +118,15 @@ impl<N: Network> Transition<N> {
         // Returns `false` if the execution is invalid.
         self.execution.verify(
             N::inner_verifying_key(),
+            &InnerPublicVariables::new(
+                self.serial_numbers.clone(),
+                self.commitments.clone(),
+                self.value_balance,
+                ledger_root,
+                local_transitions_root,
+                self.execution.program_execution.as_ref().map(|x| x.program_id),
+            ),
             self.transition_id,
-            self.value_balance,
-            ledger_root,
-            local_transitions_root,
         )
     }
 
@@ -276,6 +275,21 @@ impl<N: Network> Transition<N> {
     }
 }
 
+impl<N: Network> PartialEq for Transition<N> {
+    fn eq(&self, other: &Self) -> bool {
+        self.transition_id == other.transition_id
+    }
+}
+
+impl<N: Network> Eq for Transition<N> {}
+
+impl<N: Network> Hash for Transition<N> {
+    #[inline]
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.transition_id.hash(state);
+    }
+}
+
 impl<N: Network> FromBytes for Transition<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
@@ -373,13 +387,6 @@ impl<'de, N: Network> Deserialize<'de> for Transition<N> {
     }
 }
 
-impl<N: Network> Hash for Transition<N> {
-    #[inline]
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.transition_id.hash(state);
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -392,13 +399,13 @@ mod tests {
             let transaction = Testnet1::genesis_block().to_coinbase_transaction().unwrap();
             let transition = transaction.transitions().first().unwrap().clone();
             let transition_bytes = transition.to_bytes_le().unwrap();
-            assert_eq!(2580, transition_bytes.len(),);
+            assert_eq!(956, transition_bytes.len(),);
         }
         {
             let transaction = Testnet2::genesis_block().to_coinbase_transaction().unwrap();
             let transition = transaction.transitions().first().unwrap().clone();
             let transition_bytes = transition.to_bytes_le().unwrap();
-            assert_eq!(502926, transition_bytes.len(),);
+            assert_eq!(956, transition_bytes.len(),);
         }
     }
 
@@ -410,7 +417,7 @@ mod tests {
         // Serialize
         let expected_string = expected_transition.to_string();
         let candidate_string = serde_json::to_string(&expected_transition).unwrap();
-        assert_eq!(1006187, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(1985, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(expected_string, candidate_string);
 
         // Deserialize
@@ -426,7 +433,7 @@ mod tests {
         // Serialize
         let expected_bytes = expected_transition.to_bytes_le().unwrap();
         let candidate_bytes = bincode::serialize(&expected_transition).unwrap();
-        assert_eq!(502926, expected_bytes.len(), "Update me if serialization has changed");
+        assert_eq!(956, expected_bytes.len(), "Update me if serialization has changed");
         // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
         assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
 

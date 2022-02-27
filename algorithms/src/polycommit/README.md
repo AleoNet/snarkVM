@@ -14,7 +14,7 @@ The key properties satisfied by the polynomial commitment schemes are **succinct
 
 ## Profiling
 
-This library is instrumented with profiling infrastructure that prints detailed traces of execution time. To enable this, compile with `cargo build --features print-trace`.
+This library is instrumented with profiling infrastructure that prints detailed traces of execution time. To enable this, compile with `cargo build --features profiler`.
 
 [marlin]: https://ia.cr/2019/1047
 [sonic]: https://ia.cr/2019/099

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -47,7 +47,7 @@ fn variable_base_test_with_bls12() {
     let g = (0..SAMPLES).map(|_| G1Projective::rand(&mut rng).into_affine()).collect::<Vec<_>>();
 
     let naive = naive_variable_base_msm(g.as_slice(), v.as_slice());
-    let fast = VariableBaseMSM::multi_scalar_mul(g.as_slice(), v.as_slice());
+    let fast = VariableBase::msm(g.as_slice(), v.as_slice());
 
     assert_eq!(naive.into_affine(), fast.into_affine());
 }
@@ -62,7 +62,7 @@ fn variable_base_test_with_bls12_unequal_numbers() {
     let g = (0..SAMPLES).map(|_| G1Projective::rand(&mut rng).into_affine()).collect::<Vec<_>>();
 
     let naive = naive_variable_base_msm(g.as_slice(), v.as_slice());
-    let fast = VariableBaseMSM::multi_scalar_mul(g.as_slice(), v.as_slice());
+    let fast = VariableBase::msm(g.as_slice(), v.as_slice());
 
     assert_eq!(naive.into_affine(), fast.into_affine());
 }

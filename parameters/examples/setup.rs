@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -21,7 +21,7 @@ use snarkvm_algorithms::{
     SNARK,
     SRS,
 };
-use snarkvm_dpc::{InnerCircuit, Network, PoSWScheme, SynthesizedCircuit};
+use snarkvm_dpc::{InnerCircuit, Network, PoSWScheme};
 use snarkvm_utilities::{FromBytes, ToBytes, ToMinimalBits};
 
 use anyhow::Result;
@@ -85,37 +85,6 @@ pub fn universal_setup<N: Network>() -> Result<()> {
     println!("{}", serde_json::to_string_pretty(&universal_metadata)?);
     write_metadata(UNIVERSAL_METADATA, &universal_metadata)?;
     write_remote(UNIVERSAL_SRS, &universal_checksum, &universal_srs)?;
-
-    Ok(())
-}
-
-/// Runs the noop circuit setup.
-pub fn noop_setup<N: Network>() -> Result<()> {
-    const NOOP_CIRCUIT_METADATA: &str = "noop.metadata";
-    const NOOP_PROVING_KEY: &str = "noop.proving";
-    const NOOP_VERIFYING_KEY: &str = "noop.verifying";
-
-    let (proving_key, verifying_key) = <N::ProgramSNARK as SNARK>::setup(
-        &SynthesizedCircuit::<N>::Noop(Default::default()),
-        &mut *N::program_srs(&mut thread_rng()).borrow_mut(),
-    )?;
-
-    let noop_function_id = hex::encode(<N as Network>::function_id(&verifying_key)?.to_bytes_le()?);
-    let noop_proving_key = proving_key.to_bytes_le()?;
-    let noop_verifying_key = verifying_key.to_bytes_le()?;
-
-    let noop_metadata = json!({
-        "proving_checksum": checksum(&noop_proving_key),
-        "proving_size": noop_proving_key.len(),
-        "verifying_checksum": checksum(&noop_verifying_key),
-        "verifying_size": noop_verifying_key.len(),
-        "circuit_id": noop_function_id,
-    });
-
-    println!("{}", serde_json::to_string_pretty(&noop_metadata)?);
-    write_metadata(NOOP_CIRCUIT_METADATA, &noop_metadata)?;
-    write_local(NOOP_PROVING_KEY, &noop_proving_key)?;
-    write_local(NOOP_VERIFYING_KEY, &noop_verifying_key)?;
 
     Ok(())
 }
@@ -200,11 +169,6 @@ pub fn main() -> Result<()> {
         "inner" => match args[2].as_str() {
             "testnet1" => inner_setup::<snarkvm_dpc::testnet1::Testnet1>()?,
             "testnet2" => inner_setup::<snarkvm_dpc::testnet2::Testnet2>()?,
-            _ => panic!("Invalid network"),
-        },
-        "noop" => match args[2].as_str() {
-            "testnet1" => noop_setup::<snarkvm_dpc::testnet1::Testnet1>()?,
-            "testnet2" => noop_setup::<snarkvm_dpc::testnet2::Testnet2>()?,
             _ => panic!("Invalid network"),
         },
         "posw" => match args[2].as_str() {
