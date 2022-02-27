@@ -31,23 +31,13 @@ impl<E: Environment, I: IntegerType> One for Integer<E, I> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
+    use crate::{assert_circuit, Circuit};
 
     fn check_one<I: IntegerType>() {
         Circuit::scoped("One", || {
-            assert_eq!(0, Circuit::num_constants_in_scope());
-            assert_eq!(0, Circuit::num_public_in_scope());
-            assert_eq!(0, Circuit::num_private_in_scope());
-            assert_eq!(0, Circuit::num_constraints_in_scope());
-
+            assert_circuit!(0, 0, 0, 0);
             assert_eq!(I::one(), Integer::<Circuit, I>::one().eject_value());
-
-            assert_eq!(I::BITS, Circuit::num_constants_in_scope(), "(num_constants)");
-            assert_eq!(0, Circuit::num_public_in_scope(), "(num_public)");
-            assert_eq!(0, Circuit::num_private_in_scope(), "(num_private)");
-            assert_eq!(0, Circuit::num_constraints_in_scope(), "(num_constraints)");
-
-            assert!(Circuit::is_satisfied(), "(is_satisfied)");
+            assert_circuit!(I::BITS, 0, 0, 0);
         });
 
         let candidate = Integer::<Circuit, I>::one();
