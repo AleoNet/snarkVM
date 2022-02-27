@@ -50,6 +50,7 @@ use snarkvm_fields::{One as O, Zero as Z};
 use core::{
     fmt,
     ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Deref, Not},
+    str::FromStr,
 };
 
 #[derive(Clone)]
@@ -99,15 +100,44 @@ impl<E: Environment> Eject for Boolean<E> {
     }
 }
 
-impl<E: Environment> AsRef<Boolean<E>> for Boolean<E> {
-    fn as_ref(&self) -> &Boolean<E> {
-        &self
+impl<E: Environment> Parser for Boolean<E> {
+    type Output = Boolean<E>;
+
+    ///
+    /// Parses a string into a circuit type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use snarkvm_circuits::{Parser, Circuit, Eject, Boolean};
+    ///
+    /// let candidate = Boolean::<Circuit>::parse("true");
+    /// assert_eq!(true, candidate.eject_value());
+    /// assert!(candidate.is_constant());
+    ///
+    /// let candidate = Boolean::<Circuit>::parse("false");
+    /// assert_eq!(false, candidate.eject_value());
+    /// assert!(candidate.is_constant());
+    /// ```
+    #[inline]
+    fn parse(boolean: &str) -> Self::Output {
+        match boolean {
+            "true" => Boolean::new(Mode::Constant, true),
+            "false" => Boolean::new(Mode::Constant, false),
+            _ => E::halt(format!("Parser failed on 'boolean' type: {}", boolean)),
+        }
     }
 }
 
 impl<E: Environment> fmt::Debug for Boolean<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.eject_value())
+    }
+}
+
+impl<E: Environment> fmt::Display for Boolean<E> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}({})", self.eject_mode(), self.eject_value())
     }
 }
 

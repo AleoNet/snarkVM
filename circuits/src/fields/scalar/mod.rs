@@ -85,12 +85,6 @@ impl<E: Environment> Eject for ScalarField<E> {
     }
 }
 
-impl<E: Environment> AsRef<ScalarField<E>> for ScalarField<E> {
-    fn as_ref(&self) -> &ScalarField<E> {
-        &self
-    }
-}
-
 impl<E: Environment> fmt::Debug for ScalarField<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.eject_value())

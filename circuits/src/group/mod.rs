@@ -119,12 +119,6 @@ impl<E: Environment> Eject for Affine<E> {
     }
 }
 
-impl<E: Environment> AsRef<Affine<E>> for Affine<E> {
-    fn as_ref(&self) -> &Affine<E> {
-        &self
-    }
-}
-
 impl<E: Environment> fmt::Debug for Affine<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "({}, {})", self.x.eject_value(), self.y.eject_value())

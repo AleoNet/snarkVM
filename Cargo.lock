@@ -1966,6 +1966,7 @@ version = "0.7.5"
 dependencies = [
  "criterion",
  "itertools",
+ "nom",
  "num-traits",
  "once_cell",
  "rand",

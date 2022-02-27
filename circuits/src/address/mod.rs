@@ -48,12 +48,6 @@ impl<E: Environment> Eject for Address<E> {
     }
 }
 
-impl<E: Environment> AsRef<Address<E>> for Address<E> {
-    fn as_ref(&self) -> &Address<E> {
-        &self
-    }
-}
-
 impl<E: Environment> fmt::Debug for Address<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.eject_value())

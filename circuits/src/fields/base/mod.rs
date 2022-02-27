@@ -83,12 +83,6 @@ impl<E: Environment> Eject for BaseField<E> {
     }
 }
 
-impl<E: Environment> AsRef<BaseField<E>> for BaseField<E> {
-    fn as_ref(&self) -> &BaseField<E> {
-        &self
-    }
-}
-
 impl<E: Environment> fmt::Debug for BaseField<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.eject_value())

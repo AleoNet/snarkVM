@@ -46,7 +46,6 @@ use num_traits::Inv;
 /// Representation of a boolean.
 pub trait BooleanTrait:
     Adder
-    + AsRef<Self>
     + BitAndAssign
     + BitAnd<Output = Self>
     + BitOrAssign
@@ -60,6 +59,7 @@ pub trait BooleanTrait:
     + Nand
     + Nor
     + Not
+    + Parser<Output = Self>
     + Subtractor
     + Ternary
 {
@@ -69,7 +69,6 @@ pub trait BooleanTrait:
 pub trait BaseFieldTrait:
     Add
     + AddAssign
-    + AsRef<Self>
     + Clone
     + Debug
     + Div
@@ -98,7 +97,6 @@ pub trait IntegerTrait<E: Environment, I: IntegerType>:
     + Add<Output = Self>
     + AddChecked<Output = Self>
     + AddWrapped<Output = Self>
-    + AsRef<Self>
     + BitAndAssign
     + BitAnd<Output = Self>
     + BitOrAssign
@@ -157,7 +155,7 @@ pub trait IntegerTrait<E: Environment, I: IntegerType>:
     + SubWrapped<Output = Self>
     + Ternary
     + ToBits
-    + Zero // + Square
+    + Zero
 {
     ///
     /// Initializes a new integer.
@@ -201,7 +199,16 @@ pub trait Eject {
     }
 }
 
-// TODO why not use num_traits::Zero?
+/// Operations to parse a string literal into a circuit type.
+pub trait Parser: Display {
+    type Output;
+
+    ///
+    /// Parses a string literal into a circuit type.
+    ///
+    fn parse(s: &str) -> Self::Output;
+}
+
 /// Representation of the zero value.
 pub trait Zero {
     type Boolean: BooleanTrait;
