@@ -19,6 +19,15 @@ use snarkvm_curves::{AffineCurve, TwistedEdwardsParameters};
 use snarkvm_fields::traits::*;
 
 use core::fmt;
+use nom::{
+    branch::alt,
+    bytes::complete::tag,
+    combinator::map,
+    error::VerboseError,
+    IResult
+};
+
+pub type ParserResult<'a, O> = IResult<&'a str, O, VerboseError<&'a str>>;
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Mode {
@@ -42,14 +51,23 @@ impl Mode {
     pub fn is_private(&self) -> bool {
         matches!(self, Self::Private)
     }
+
+    /// Parses the string for the mode.
+    pub fn parse(string: &str) -> ParserResult<Self> {
+        alt((
+            map(tag("Constant"), |_| Self::Constant),
+            map(tag("Public"), |_| Self::Public),
+            map(tag("Private"), |_| Self::Private),
+        ))(string)
+    }
 }
 
 impl fmt::Display for Mode {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match self {
-            Mode::Constant => write!(f, "Constant"),
-            Mode::Public => write!(f, "Public"),
-            Mode::Private => write!(f, "Private"),
+            Self::Constant => write!(f, "Constant"),
+            Self::Public => write!(f, "Public"),
+            Self::Private => write!(f, "Private"),
         }
     }
 }

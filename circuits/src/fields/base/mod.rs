@@ -31,18 +31,25 @@ pub mod to_lower_bits;
 pub mod to_upper_bits;
 pub mod zero;
 
-use crate::{traits::*, Boolean, Environment, LinearCombination, Mode};
+use crate::{traits::*, Boolean, Environment, LinearCombination, Mode, ParserResult};
 use snarkvm_fields::{Field as F, One as O};
 use snarkvm_utilities::ToBits as TBits;
 
 #[cfg(test)]
 use snarkvm_fields::Zero as Z;
 
-use num_traits::Inv;
-use std::{
+use core::{
     fmt,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign},
 };
+use nom::{
+    bytes::complete::tag,
+    character::complete::{char, one_of},
+    combinator::{map_res, recognize},
+    multi::{many0, many1},
+    sequence::terminated,
+};
+use num_traits::Inv;
 
 #[derive(Clone)]
 pub struct BaseField<E: Environment>(LinearCombination<E::BaseField>);
@@ -83,34 +90,26 @@ impl<E: Environment> Eject for BaseField<E> {
     }
 }
 
-// impl<E: Environment> Parser for BaseField<E> {
-//     type Output = BaseField<E>;
-//
-//     ///
-//     /// Parses a string into a circuit type.
-//     ///
-//     /// # Examples
-//     ///
-//     /// ```
-//     /// use snarkvm_circuits::{Parser, Circuit, Eject, Boolean};
-//     ///
-//     /// let candidate = Boolean::<Circuit>::parse("true");
-//     /// assert_eq!(true, candidate.eject_value());
-//     /// assert!(candidate.is_constant());
-//     ///
-//     /// let candidate = Boolean::<Circuit>::parse("false");
-//     /// assert_eq!(false, candidate.eject_value());
-//     /// assert!(candidate.is_constant());
-//     /// ```
-//     #[inline]
-//     fn parse(boolean: &str) -> Self::Output {
-//         match boolean {
-//             "true" => Boolean::new(Mode::Constant, true),
-//             "false" => Boolean::new(Mode::Constant, false),
-//             _ => E::halt(format!("Parser failed on 'boolean' type: {}", boolean)),
-//         }
-//     }
-// }
+impl<E: Environment> Parser for BaseField<E> {
+    type Output = BaseField<E>;
+
+    /// Parses a string into a base field circuit.
+    #[inline]
+    fn parse(string: &str) -> ParserResult<Self::Output> {
+        // Parse the mode from the string.
+        let (string, mode) = Mode::parse(string)?;
+        // Parse the open parenthesis from the string.
+        let (string, _) = tag("(")(string)?;
+        // Parse the digits from the string.
+        let (string, primitive) = recognize(many1(terminated(one_of("0123456789"), many0(char('_')))))(string)?;
+        // Parse the value from the string.
+        let (string, value) = map_res(tag("base"), |_| primitive.parse())(string)?;
+        // Parse the close parenthesis from the string.
+        let (string, _) = tag(")")(string)?;
+
+        Ok((string, BaseField::new(mode, value)))
+    }
+}
 
 impl<E: Environment> fmt::Debug for BaseField<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

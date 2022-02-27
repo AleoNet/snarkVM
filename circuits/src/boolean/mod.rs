@@ -44,13 +44,14 @@ pub use ternary::*;
 pub mod xor;
 pub use xor::*;
 
-use crate::{traits::*, Environment, LinearCombination, Mode, Variable};
+use crate::{traits::*, Environment, LinearCombination, Mode, ParserResult, Variable};
 use snarkvm_fields::{One as O, Zero as Z};
 
 use core::{
     fmt,
     ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Deref, Not},
 };
+use nom::{branch::alt, bytes::complete::tag, combinator::map};
 
 #[derive(Clone)]
 pub struct Boolean<E: Environment>(LinearCombination<E::BaseField>);
@@ -102,20 +103,19 @@ impl<E: Environment> Eject for Boolean<E> {
 impl<E: Environment> Parser for Boolean<E> {
     type Output = Boolean<E>;
 
-    /// Parses a string into a circuit type.
+    /// Parses a string into a boolean circuit.
     #[inline]
-    fn parse(boolean: &str) -> Self::Output {
-        match boolean {
-            "true" => Boolean::new(Mode::Constant, true),
-            "false" => Boolean::new(Mode::Constant, false),
-            "Constant(true)" => Boolean::new(Mode::Constant, true),
-            "Constant(false)" => Boolean::new(Mode::Constant, false),
-            "Public(true)" => Boolean::new(Mode::Public, true),
-            "Public(false)" => Boolean::new(Mode::Public, false),
-            "Private(true)" => Boolean::new(Mode::Private, true),
-            "Private(false)" => Boolean::new(Mode::Private, false),
-            _ => E::halt(format!("Parser failed on 'boolean' type: {}", boolean)),
-        }
+    fn parse(string: &str) -> ParserResult<Self::Output> {
+        // Parse the mode from the string.
+        let (string, mode) = Mode::parse(string)?;
+        // Parse the open parenthesis from the string.
+        let (string, _) = tag("(")(string)?;
+        // Parse the boolean from the string.
+        let (string, value) = alt((map(tag("true"), |_| true), map(tag("false"), |_| false)))(string)?;
+        // Parse the close parenthesis from the string.
+        let (string, _) = tag(")")(string)?;
+
+        Ok((string, Boolean::new(mode, value)))
     }
 }
 
@@ -233,35 +233,27 @@ mod tests {
 
     #[test]
     fn test_parser() {
-        let candidate = Boolean::<Circuit>::parse("true");
+        let (_, candidate) = Boolean::<Circuit>::parse("Constant(true)").unwrap();
         assert_eq!(true, candidate.eject_value());
         assert!(candidate.is_constant());
 
-        let candidate = Boolean::<Circuit>::parse("false");
+        let (_, candidate) = Boolean::<Circuit>::parse("Constant(false)").unwrap();
         assert_eq!(false, candidate.eject_value());
         assert!(candidate.is_constant());
 
-        let candidate = Boolean::<Circuit>::parse("Constant(true)");
-        assert_eq!(true, candidate.eject_value());
-        assert!(candidate.is_constant());
-
-        let candidate = Boolean::<Circuit>::parse("Constant(false)");
-        assert_eq!(false, candidate.eject_value());
-        assert!(candidate.is_constant());
-
-        let candidate = Boolean::<Circuit>::parse("Public(true)");
+        let (_, candidate) = Boolean::<Circuit>::parse("Public(true)").unwrap();
         assert_eq!(true, candidate.eject_value());
         assert!(candidate.is_public());
 
-        let candidate = Boolean::<Circuit>::parse("Public(false)");
+        let (_, candidate) = Boolean::<Circuit>::parse("Public(false)").unwrap();
         assert_eq!(false, candidate.eject_value());
         assert!(candidate.is_public());
 
-        let candidate = Boolean::<Circuit>::parse("Private(true)");
+        let (_, candidate) = Boolean::<Circuit>::parse("Private(true)").unwrap();
         assert_eq!(true, candidate.eject_value());
         assert!(candidate.is_private());
 
-        let candidate = Boolean::<Circuit>::parse("Private(false)");
+        let (_, candidate) = Boolean::<Circuit>::parse("Private(false)").unwrap();
         assert_eq!(false, candidate.eject_value());
         assert!(candidate.is_private());
     }
