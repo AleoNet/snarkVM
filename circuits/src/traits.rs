@@ -82,6 +82,7 @@ pub trait BaseFieldTrait:
     + MulAssign
     + Neg
     + One
+    + Parser<Output = Self>
     + Square
     + Sub
     + SubAssign
