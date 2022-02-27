@@ -44,11 +44,6 @@ pub use integers::*;
 pub mod macros;
 pub use macros::*;
 
-// TODO (howardwu): This is temporary until the programs interface is stabilized.
-#[allow(unused)]
-pub mod programs;
-pub use programs::*;
-
 // pub mod record;
 // pub use record::*;
 

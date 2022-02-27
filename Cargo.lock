@@ -1990,6 +1990,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "snarkvm-circuits-programs"
+version = "0.7.5"
+dependencies = [
+ "once_cell",
+ "rayon",
+ "snarkvm-algorithms",
+ "snarkvm-circuits",
+ "snarkvm-curves",
+ "snarkvm-fields",
+ "snarkvm-r1cs",
+ "snarkvm-utilities",
+]
+
+[[package]]
 name = "snarkvm-curves"
 version = "0.7.5"
 dependencies = [

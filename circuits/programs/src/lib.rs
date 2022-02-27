@@ -14,27 +14,34 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{traits::*, Affine, BaseField, Boolean, Environment};
+use snarkvm_circuits::{traits::*, Affine, BaseField, Boolean, Environment};
 
 use once_cell::unsync::OnceCell;
 use std::{cell::RefCell, rc::Rc};
 
 #[derive(Clone)]
-pub enum Value<E: Environment> {
+pub enum Immediate<E: Environment> {
+    Boolean(Boolean<E>),
+    BaseField(BaseField<E>),
+    Group(Affine<E>),
+}
+
+#[derive(Clone)]
+pub enum Operand<E: Environment> {
     Boolean(Boolean<E>),
     BaseField(BaseField<E>),
     Group(Affine<E>),
     Register(Register<E>),
 }
 
-impl<E: Environment> Value<E> {
+impl<E: Environment> Operand<E> {
     /// Returns `true` if the value type is a register.
     fn is_register(&self) -> bool {
         matches!(self, Self::Register(..))
     }
 
-    /// Returns the value from a register, otherwise passes the loaded value through.
-    fn to_value(&self) -> Value<E> {
+    /// Returns the value from a register, otherwise passes the immediate through.
+    fn to_value(&self) -> Operand<E> {
         match self {
             Self::Register(register) => register.load(),
             value => value.clone(),
@@ -43,7 +50,7 @@ impl<E: Environment> Value<E> {
 }
 
 #[derive(Clone)]
-pub struct Register<E: Environment>(u32, Rc<RefCell<OnceCell<Value<E>>>>);
+pub struct Register<E: Environment>(u32, Rc<RefCell<OnceCell<Operand<E>>>>);
 
 impl<E: Environment> Register<E> {
     /// Returns a new instance of a register.
@@ -57,7 +64,7 @@ impl<E: Environment> Register<E> {
     }
 
     /// Attempts to store value into the register.
-    fn store(&self, value: &Value<E>) {
+    fn store(&self, value: &Operand<E>) {
         match self.1.borrow().get().is_some() {
             true => panic!("Register {} is already set", self.0),
             false => {
@@ -69,7 +76,7 @@ impl<E: Environment> Register<E> {
     }
 
     /// Attempts to load the value from the register.
-    fn load(&self) -> Value<E> {
+    fn load(&self) -> Operand<E> {
         match self.1.borrow().get() {
             Some(value) => value.clone(),
             None => panic!("Register {} is not set", self.0),
@@ -81,11 +88,11 @@ pub type Registers<E> = Vec<Register<E>>;
 
 pub enum Instruction<E: Environment> {
     /// Stores `value` into `register`, if `register` is not already set.
-    Store(Value<E>, Register<E>),
+    Store(Operand<E>, Register<E>),
     /// Adds `first` with `second`, storing the outcome in `register`.
-    Add(Value<E>, Value<E>, Register<E>),
+    Add(Register<E>, Operand<E>, Operand<E>),
     /// Subtracts `first` from `second`, storing the outcome in `register`.
-    Sub(Value<E>, Value<E>, Register<E>),
+    Sub(Register<E>, Operand<E>, Operand<E>),
 }
 
 impl<E: Environment> Instruction<E> {
@@ -118,15 +125,15 @@ impl<E: Environment> Instruction<E> {
     /// Adds `first` with `second`, storing the outcome in `register`.
     fn add(&self) {
         // Load the values and register.
-        let (first, second, register) = match self {
-            Self::Add(first, second, register) => (first, second, register),
+        let (register, first, second) = match self {
+            Self::Add(register, first, second) => (register, first, second),
             _ => unreachable!(),
         };
 
         // Perform the operation.
         match (first.to_value(), second.to_value()) {
-            (Value::BaseField(a), Value::BaseField(b)) => register.store(&Value::BaseField(a + b)),
-            (Value::Group(a), Value::Group(b)) => register.store(&Value::Group(a + b)),
+            (Operand::BaseField(a), Operand::BaseField(b)) => register.store(&Operand::BaseField(a + b)),
+            (Operand::Group(a), Operand::Group(b)) => register.store(&Operand::Group(a + b)),
             _ => unreachable!(),
         }
     }
@@ -134,15 +141,15 @@ impl<E: Environment> Instruction<E> {
     /// Subtracts `first` from `second`, storing the outcome in `register`.
     fn sub(&self) {
         // Load the values and register.
-        let (first, second, register) = match self {
-            Self::Sub(first, second, register) => (first, second, register),
+        let (register, first, second) = match self {
+            Self::Sub(register, first, second) => (register, first, second),
             _ => unreachable!(),
         };
 
         // Perform the operation.
         match (first.to_value(), second.to_value()) {
-            (Value::BaseField(a), Value::BaseField(b)) => register.store(&Value::BaseField(a - b)),
-            (Value::Group(a), Value::Group(b)) => register.store(&Value::Group(a - b)),
+            (Operand::BaseField(a), Operand::BaseField(b)) => register.store(&Operand::BaseField(a - b)),
+            (Operand::Group(a), Operand::Group(b)) => register.store(&Operand::Group(a - b)),
             _ => unreachable!(),
         }
     }
@@ -167,7 +174,7 @@ impl<E: Environment> Function<E> {
     }
 
     /// Allocates a new register, adds an instruction to store the given input, and returns the new register.
-    fn new_input(&mut self, input: Value<E>) -> Register<E> {
+    fn new_input(&mut self, input: Operand<E>) -> Register<E> {
         let register = self.new_register();
         self.push_instruction(Instruction::Store(input, register.clone()));
         register
@@ -198,7 +205,7 @@ pub struct HelloWorld<E: Environment> {
 
 impl<E: Environment> HelloWorld<E> {
     /// Initializes a new instance of `HelloWorld` with the given inputs.
-    pub fn new(inputs: [Value<E>; 2]) -> Self {
+    pub fn new(inputs: [Operand<E>; 2]) -> Self {
         let mut function = Function::new();
         let mut outputs = Registers::new();
 
@@ -210,11 +217,11 @@ impl<E: Environment> HelloWorld<E> {
 
         // Add the values in the registers, storing the result in a newly allocated register.
         for pair in registers.chunks(2) {
-            let first = Value::Register(pair[0].clone());
-            let second = Value::Register(pair[1].clone());
+            let first = Operand::Register(pair[0].clone());
+            let second = Operand::Register(pair[1].clone());
             let output = function.new_register();
 
-            let instruction = Instruction::Add(first, second, output.clone());
+            let instruction = Instruction::Add(output.clone(), first, second);
 
             function.push_instruction(instruction);
             outputs.push(output);
@@ -231,19 +238,19 @@ impl<E: Environment> HelloWorld<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
+    use snarkvm_circuits::Circuit;
 
     #[test]
     fn test_hello_world() {
-        let first = Value::BaseField(BaseField::<Circuit>::one());
-        let second = Value::BaseField(BaseField::one());
+        let first = Operand::BaseField(BaseField::<Circuit>::one());
+        let second = Operand::BaseField(BaseField::one());
 
         let function = HelloWorld::new([first, second]);
         function.run();
 
         let expected = BaseField::one() + BaseField::one();
         match function.outputs[0].load() {
-            Value::BaseField(output) => assert!(output.is_eq(&expected).eject_value()),
+            Operand::BaseField(output) => assert!(output.is_eq(&expected).eject_value()),
             _ => panic!("Failed to load output"),
         }
     }
