@@ -103,7 +103,7 @@ impl<E: Environment> Parser for BaseField<E> {
         // Parse the digits from the string.
         let (string, primitive) = recognize(many1(terminated(one_of("0123456789"), many0(char('_')))))(string)?;
         // Parse the value from the string.
-        let (string, value) = map_res(tag("base"), |_| primitive.parse())(string)?;
+        let (string, value) = map_res(tag("base"), |_| primitive.replace("_", "").parse())(string)?;
         // Parse the close parenthesis from the string.
         let (string, _) = tag(")")(string)?;
 
@@ -221,5 +221,52 @@ mod tests {
         // Private
         let candidate = BaseField::<Circuit>::new(Mode::Private, two);
         assert_eq!("2", &format!("{:?}", candidate));
+    }
+
+    #[test]
+    fn test_parser() {
+        type Primitive = <Circuit as Environment>::BaseField;
+
+        // Constant
+
+        let (_, candidate) = BaseField::<Circuit>::parse("Constant(5base)").unwrap();
+        assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
+        assert!(candidate.is_constant());
+
+        let (_, candidate) = BaseField::<Circuit>::parse("Constant(5_base)").unwrap();
+        assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
+        assert!(candidate.is_constant());
+
+        let (_, candidate) = BaseField::<Circuit>::parse("Constant(1_5_base)").unwrap();
+        assert_eq!(Primitive::from_str("15").unwrap(), candidate.eject_value());
+        assert!(candidate.is_constant());
+
+        // Public
+
+        let (_, candidate) = BaseField::<Circuit>::parse("Public(5base)").unwrap();
+        assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
+        assert!(candidate.is_public());
+
+        let (_, candidate) = BaseField::<Circuit>::parse("Public(5_base)").unwrap();
+        assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
+        assert!(candidate.is_public());
+
+        let (_, candidate) = BaseField::<Circuit>::parse("Public(1_5_base)").unwrap();
+        assert_eq!(Primitive::from_str("15").unwrap(), candidate.eject_value());
+        assert!(candidate.is_public());
+
+        // Private
+
+        let (_, candidate) = BaseField::<Circuit>::parse("Private(5base)").unwrap();
+        assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
+        assert!(candidate.is_private());
+
+        let (_, candidate) = BaseField::<Circuit>::parse("Private(5_base)").unwrap();
+        assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
+        assert!(candidate.is_private());
+
+        let (_, candidate) = BaseField::<Circuit>::parse("Private(1_5_base)").unwrap();
+        assert_eq!(Primitive::from_str("15").unwrap(), candidate.eject_value());
+        assert!(candidate.is_private());
     }
 }
