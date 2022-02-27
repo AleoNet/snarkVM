@@ -54,24 +54,9 @@ mod tests {
     ) {
         Circuit::scoped(name, || {
             let case = format!("({} SUB {} WITH {})", a.eject_value(), b.eject_value(), c.eject_value());
-
             let (candidate_difference, candidate_borrow) = a.subtractor(&b, &c);
-            assert_eq!(
-                expected_difference,
-                candidate_difference.eject_value(),
-                "DIFF {} != {} := {}",
-                expected_difference,
-                candidate_difference.eject_value(),
-                case
-            );
-            assert_eq!(
-                expected_borrow,
-                candidate_borrow.eject_value(),
-                "BORROW {} != {} := {}",
-                expected_borrow,
-                candidate_borrow.eject_value(),
-                case
-            );
+            assert_eq!(expected_difference, candidate_difference.eject_value(), "DIFF {}", case);
+            assert_eq!(expected_borrow, candidate_borrow.eject_value(), "BORROW {}", case);
             assert_circuit!(case, num_constants, num_public, num_private, num_constraints);
         });
     }

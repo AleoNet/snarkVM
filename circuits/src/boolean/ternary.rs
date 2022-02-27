@@ -95,17 +95,9 @@ mod tests {
         num_constraints: usize,
     ) {
         Circuit::scoped(name, || {
+            let case = format!("({} ? {} : {})", condition.eject_value(), a.eject_value(), b.eject_value());
             let candidate = Boolean::ternary(&condition, &a, &b);
-            assert_eq!(
-                expected,
-                candidate.eject_value(),
-                "{} != {} := ({} ? {} : {})",
-                expected,
-                candidate.eject_value(),
-                condition.eject_value(),
-                a.eject_value(),
-                b.eject_value()
-            );
+            assert_eq!(expected, candidate.eject_value(), "{case}");
             assert_circuit!(num_constants, num_public, num_private, num_constraints);
         });
     }

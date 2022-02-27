@@ -75,15 +75,7 @@ mod tests {
     ) {
         Circuit::scoped(name, || {
             let candidate = a.nor(&b);
-            assert_eq!(
-                expected,
-                candidate.eject_value(),
-                "{} != {} := ({} NOR {})",
-                expected,
-                candidate.eject_value(),
-                a.eject_value(),
-                b.eject_value()
-            );
+            assert_eq!(expected, candidate.eject_value(), "({} NOR {})", a.eject_value(), b.eject_value());
             assert_circuit!(num_constants, num_public, num_private, num_constraints);
         });
     }
