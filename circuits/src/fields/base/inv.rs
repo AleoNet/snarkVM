@@ -48,7 +48,7 @@ impl<E: Environment> Inv for &BaseField<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
+    use crate::{assert_circuit, Circuit};
 
     const ITERATIONS: usize = 1_000;
 
@@ -64,11 +64,7 @@ mod tests {
                 let expected = accumulator.inverse().expect("Failed to compute the accumulator inverse");
                 let candidate = BaseField::<Circuit>::new(Mode::Constant, accumulator).inv();
                 assert_eq!(expected, candidate.eject_value());
-
-                assert_eq!((i + 1) * 2, Circuit::num_constants_in_scope());
-                assert_eq!(0, Circuit::num_public_in_scope());
-                assert_eq!(0, Circuit::num_private_in_scope());
-                assert_eq!(0, Circuit::num_constraints_in_scope());
+                assert_circuit!((i + 1) * 2, 0, 0, 0);
 
                 accumulator += one;
             }
@@ -82,12 +78,7 @@ mod tests {
                 let expected = accumulator.inverse().expect("Failed to compute the accumulator inverse");
                 let candidate = BaseField::<Circuit>::new(Mode::Public, accumulator).inv();
                 assert_eq!(expected, candidate.eject_value());
-
-                assert_eq!(0, Circuit::num_constants_in_scope());
-                assert_eq!(i + 1, Circuit::num_public_in_scope());
-                assert_eq!(i + 1, Circuit::num_private_in_scope());
-                assert_eq!(i + 1, Circuit::num_constraints_in_scope());
-                assert!(Circuit::is_satisfied());
+                assert_circuit!(0, i + 1, i + 1, i + 1);
 
                 accumulator += one;
             }
@@ -101,12 +92,7 @@ mod tests {
                 let expected = accumulator.inverse().expect("Failed to compute the accumulator inverse");
                 let candidate = BaseField::<Circuit>::new(Mode::Private, accumulator).inv();
                 assert_eq!(expected, candidate.eject_value());
-
-                assert_eq!(0, Circuit::num_constants_in_scope());
-                assert_eq!(0, Circuit::num_public_in_scope());
-                assert_eq!((i + 1) * 2, Circuit::num_private_in_scope());
-                assert_eq!(i + 1, Circuit::num_constraints_in_scope());
-                assert!(Circuit::is_satisfied());
+                assert_circuit!(0, 0, (i + 1) * 2, i + 1);
 
                 accumulator += one;
             }

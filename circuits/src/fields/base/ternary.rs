@@ -95,7 +95,7 @@ impl<E: Environment> Ternary for BaseField<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
+    use crate::{Circuit, assert_circuit};
     use snarkvm_utilities::UniformRand;
 
     use rand::thread_rng;
@@ -110,10 +110,7 @@ mod tests {
             let condition = Boolean::new(Mode::Constant, true);
             Circuit::scoped("Constant(true) ? Constant : Constant", || {
                 let output = BaseField::ternary(&condition, &a, &b);
-                assert_eq!(0, Circuit::num_constants_in_scope());
-                assert_eq!(0, Circuit::num_public_in_scope());
-                assert_eq!(0, Circuit::num_private_in_scope());
-                assert_eq!(0, Circuit::num_constraints_in_scope());
+                assert_circuit!(0, 0, 0, 0);
 
                 assert!(output.is_eq(&a).eject_value());
                 assert!(!output.is_eq(&b).eject_value());
@@ -122,10 +119,7 @@ mod tests {
             let condition = Boolean::new(Mode::Constant, false);
             Circuit::scoped("Constant(false) ? Constant : Constant", || {
                 let output = BaseField::ternary(&condition, &a, &b);
-                assert_eq!(0, Circuit::num_constants_in_scope());
-                assert_eq!(0, Circuit::num_public_in_scope());
-                assert_eq!(0, Circuit::num_private_in_scope());
-                assert_eq!(0, Circuit::num_constraints_in_scope());
+                assert_circuit!(0, 0, 0, 0);
 
                 assert!(!output.is_eq(&a).eject_value());
                 assert!(output.is_eq(&b).eject_value());
@@ -140,10 +134,7 @@ mod tests {
             let condition = Boolean::new(Mode::Constant, true);
             Circuit::scoped("Constant(true) ? Public : Private", || {
                 let output = BaseField::ternary(&condition, &a, &b);
-                assert_eq!(0, Circuit::num_constants_in_scope());
-                assert_eq!(0, Circuit::num_public_in_scope());
-                assert_eq!(0, Circuit::num_private_in_scope());
-                assert_eq!(0, Circuit::num_constraints_in_scope());
+                assert_circuit!(0, 0, 0, 0);
 
                 assert!(output.is_eq(&a).eject_value());
                 assert!(!output.is_eq(&b).eject_value());
@@ -152,10 +143,7 @@ mod tests {
             let condition = Boolean::new(Mode::Constant, false);
             Circuit::scoped("Constant(false) ? Public : Private", || {
                 let output = BaseField::ternary(&condition, &a, &b);
-                assert_eq!(0, Circuit::num_constants_in_scope());
-                assert_eq!(0, Circuit::num_public_in_scope());
-                assert_eq!(0, Circuit::num_private_in_scope());
-                assert_eq!(0, Circuit::num_constraints_in_scope());
+                assert_circuit!(0, 0, 0, 0);
 
                 assert!(!output.is_eq(&a).eject_value());
                 assert!(output.is_eq(&b).eject_value());
@@ -170,10 +158,7 @@ mod tests {
             let condition = Boolean::new(Mode::Public, true);
             Circuit::scoped("Public(true) ? Constant : Constant", || {
                 let output = BaseField::ternary(&condition, &a, &b);
-                assert_eq!(0, Circuit::num_constants_in_scope());
-                assert_eq!(0, Circuit::num_public_in_scope());
-                assert_eq!(0, Circuit::num_private_in_scope());
-                assert_eq!(0, Circuit::num_constraints_in_scope());
+                assert_circuit!(0, 0, 0, 0);
 
                 assert!(output.is_eq(&a).eject_value());
                 assert!(!output.is_eq(&b).eject_value());
@@ -182,10 +167,7 @@ mod tests {
             let condition = Boolean::new(Mode::Public, false);
             Circuit::scoped("Public(false) ? Constant : Constant", || {
                 let output = BaseField::ternary(&condition, &a, &b);
-                assert_eq!(0, Circuit::num_constants_in_scope());
-                assert_eq!(0, Circuit::num_public_in_scope());
-                assert_eq!(0, Circuit::num_private_in_scope());
-                assert_eq!(0, Circuit::num_constraints_in_scope());
+                assert_circuit!(0, 0, 0, 0);
 
                 assert!(!output.is_eq(&a).eject_value());
                 assert!(output.is_eq(&b).eject_value());
@@ -200,10 +182,7 @@ mod tests {
             let condition = Boolean::new(Mode::Private, true);
             Circuit::scoped("Private(true) ? Constant : Constant", || {
                 let output = BaseField::ternary(&condition, &a, &b);
-                assert_eq!(0, Circuit::num_constants_in_scope());
-                assert_eq!(0, Circuit::num_public_in_scope());
-                assert_eq!(0, Circuit::num_private_in_scope());
-                assert_eq!(0, Circuit::num_constraints_in_scope());
+                assert_circuit!(0, 0, 0, 0);
 
                 assert!(output.is_eq(&a).eject_value());
                 assert!(!output.is_eq(&b).eject_value());
@@ -212,10 +191,7 @@ mod tests {
             let condition = Boolean::new(Mode::Private, false);
             Circuit::scoped("Private(false) ? Constant : Constant", || {
                 let output = BaseField::ternary(&condition, &a, &b);
-                assert_eq!(0, Circuit::num_constants_in_scope());
-                assert_eq!(0, Circuit::num_public_in_scope());
-                assert_eq!(0, Circuit::num_private_in_scope());
-                assert_eq!(0, Circuit::num_constraints_in_scope());
+                assert_circuit!(0, 0, 0, 0);
 
                 assert!(!output.is_eq(&a).eject_value());
                 assert!(output.is_eq(&b).eject_value());
@@ -230,11 +206,7 @@ mod tests {
             let condition = Boolean::new(Mode::Private, true);
             Circuit::scoped("Private(true) ? Public : Constant", || {
                 let output = BaseField::ternary(&condition, &a, &b);
-                assert_eq!(0, Circuit::num_constants_in_scope());
-                assert_eq!(0, Circuit::num_public_in_scope());
-                assert_eq!(1, Circuit::num_private_in_scope());
-                assert_eq!(1, Circuit::num_constraints_in_scope());
-                assert!(Circuit::is_satisfied());
+                assert_circuit!(0, 0, 1, 1);
 
                 assert!(output.is_eq(&a).eject_value());
                 assert!(!output.is_eq(&b).eject_value());
@@ -243,11 +215,7 @@ mod tests {
             let condition = Boolean::new(Mode::Private, false);
             Circuit::scoped("Private(false) ? Public : Constant", || {
                 let output = BaseField::ternary(&condition, &a, &b);
-                assert_eq!(0, Circuit::num_constants_in_scope());
-                assert_eq!(0, Circuit::num_public_in_scope());
-                assert_eq!(1, Circuit::num_private_in_scope());
-                assert_eq!(1, Circuit::num_constraints_in_scope());
-                assert!(Circuit::is_satisfied());
+                assert_circuit!(0, 0, 1, 1);
 
                 assert!(!output.is_eq(&a).eject_value());
                 assert!(output.is_eq(&b).eject_value());
@@ -262,11 +230,7 @@ mod tests {
             let condition = Boolean::new(Mode::Private, true);
             Circuit::scoped("Private(true) ? Constant : Public", || {
                 let output = BaseField::ternary(&condition, &a, &b);
-                assert_eq!(0, Circuit::num_constants_in_scope());
-                assert_eq!(0, Circuit::num_public_in_scope());
-                assert_eq!(1, Circuit::num_private_in_scope());
-                assert_eq!(1, Circuit::num_constraints_in_scope());
-                assert!(Circuit::is_satisfied());
+                assert_circuit!(0, 0, 1, 1);
 
                 assert!(output.is_eq(&a).eject_value());
                 assert!(!output.is_eq(&b).eject_value());
@@ -275,11 +239,7 @@ mod tests {
             let condition = Boolean::new(Mode::Private, false);
             Circuit::scoped("Private(false) ? Constant : Public", || {
                 let output = BaseField::ternary(&condition, &a, &b);
-                assert_eq!(0, Circuit::num_constants_in_scope());
-                assert_eq!(0, Circuit::num_public_in_scope());
-                assert_eq!(1, Circuit::num_private_in_scope());
-                assert_eq!(1, Circuit::num_constraints_in_scope());
-                assert!(Circuit::is_satisfied());
+                assert_circuit!(0, 0, 1, 1);
 
                 assert!(!output.is_eq(&a).eject_value());
                 assert!(output.is_eq(&b).eject_value());
@@ -294,11 +254,7 @@ mod tests {
             let condition = Boolean::new(Mode::Private, true);
             Circuit::scoped("Private(true) ? Private : Public", || {
                 let output = BaseField::ternary(&condition, &a, &b);
-                assert_eq!(0, Circuit::num_constants_in_scope());
-                assert_eq!(0, Circuit::num_public_in_scope());
-                assert_eq!(1, Circuit::num_private_in_scope());
-                assert_eq!(1, Circuit::num_constraints_in_scope());
-                assert!(Circuit::is_satisfied());
+                assert_circuit!(0, 0, 1, 1);
 
                 assert!(output.is_eq(&a).eject_value());
                 assert!(!output.is_eq(&b).eject_value());
@@ -307,11 +263,7 @@ mod tests {
             let condition = Boolean::new(Mode::Private, false);
             Circuit::scoped("Private(false) ? Private : Public", || {
                 let output = BaseField::ternary(&condition, &a, &b);
-                assert_eq!(0, Circuit::num_constants_in_scope());
-                assert_eq!(0, Circuit::num_public_in_scope());
-                assert_eq!(1, Circuit::num_private_in_scope());
-                assert_eq!(1, Circuit::num_constraints_in_scope());
-                assert!(Circuit::is_satisfied());
+                assert_circuit!(0, 0, 1, 1);
 
                 assert!(!output.is_eq(&a).eject_value());
                 assert!(output.is_eq(&b).eject_value());

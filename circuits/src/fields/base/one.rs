@@ -32,45 +32,25 @@ impl<E: Environment> One for BaseField<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
+    use crate::{assert_circuit, Circuit};
 
     #[test]
     fn test_one() {
         let one = <Circuit as Environment>::BaseField::one();
 
         Circuit::scoped("One", || {
-            assert_eq!(0, Circuit::num_constants());
-            assert_eq!(1, Circuit::num_public());
-            assert_eq!(0, Circuit::num_private());
-            assert_eq!(0, Circuit::num_constraints());
-
-            assert_eq!(0, Circuit::num_constants_in_scope());
-            assert_eq!(0, Circuit::num_public_in_scope());
-            assert_eq!(0, Circuit::num_private_in_scope());
-            assert_eq!(0, Circuit::num_constraints_in_scope());
-
+            assert_circuit!(0, 0, 0, 0);
             let candidate = BaseField::<Circuit>::one();
             assert_eq!(one, candidate.eject_value());
-
-            assert_eq!(0, Circuit::num_constants_in_scope());
-            assert_eq!(0, Circuit::num_public_in_scope());
-            assert_eq!(0, Circuit::num_private_in_scope());
-            assert_eq!(0, Circuit::num_constraints_in_scope());
-
-            assert_eq!(0, Circuit::num_constants());
-            assert_eq!(1, Circuit::num_public());
-            assert_eq!(0, Circuit::num_private());
-            assert_eq!(0, Circuit::num_constraints());
+            assert_circuit!(0, 0, 0, 0);
         });
     }
 
     #[test]
     fn test_is_one() {
         let candidate = BaseField::<Circuit>::one();
-
         // Should equal 1.
         assert!(candidate.is_one().eject_value());
-
         // Should not equal 0.
         assert!(!candidate.is_zero().eject_value());
     }
