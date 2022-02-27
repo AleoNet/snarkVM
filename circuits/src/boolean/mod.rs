@@ -154,69 +154,45 @@ impl<E: Environment> From<&Boolean<E>> for LinearCombination<E::BaseField> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
+    use crate::{assert_circuit, Circuit};
 
     #[test]
     fn test_new_constant() {
-        assert_eq!(0, Circuit::num_constants());
-        assert_eq!(1, Circuit::num_public());
-        assert_eq!(0, Circuit::num_private());
-        assert_eq!(0, Circuit::num_constraints());
+        Circuit::scoped("test_new_constant", || {
+            let candidate = Boolean::<Circuit>::new(Mode::Constant, false);
+            assert!(!candidate.eject_value()); // false
+            assert_circuit!(1, 0, 0, 0);
 
-        let candidate = Boolean::<Circuit>::new(Mode::Constant, false);
-        assert!(!candidate.eject_value()); // false
-        assert!(Circuit::is_satisfied());
-
-        let candidate = Boolean::<Circuit>::new(Mode::Constant, true);
-        assert!(candidate.eject_value()); // true
-        assert!(Circuit::is_satisfied());
-
-        assert_eq!(2, Circuit::num_constants());
-        assert_eq!(1, Circuit::num_public());
-        assert_eq!(0, Circuit::num_private());
-        assert_eq!(0, Circuit::num_constraints());
+            let candidate = Boolean::<Circuit>::new(Mode::Constant, true);
+            assert!(candidate.eject_value()); // true
+            assert_circuit!(2, 0, 0, 0);
+        });
     }
 
     #[test]
     fn test_new_public() {
-        assert_eq!(0, Circuit::num_constants());
-        assert_eq!(1, Circuit::num_public());
-        assert_eq!(0, Circuit::num_private());
-        assert_eq!(0, Circuit::num_constraints());
+        Circuit::scoped("test_new_public", || {
+            let candidate = Boolean::<Circuit>::new(Mode::Public, false);
+            assert!(!candidate.eject_value()); // false
+            assert_circuit!(0, 1, 0, 1);
 
-        let candidate = Boolean::<Circuit>::new(Mode::Public, false);
-        assert!(!candidate.eject_value()); // false
-        assert!(Circuit::is_satisfied());
-
-        let candidate = Boolean::<Circuit>::new(Mode::Public, true);
-        assert!(candidate.eject_value()); // true
-        assert!(Circuit::is_satisfied());
-
-        assert_eq!(0, Circuit::num_constants());
-        assert_eq!(3, Circuit::num_public());
-        assert_eq!(0, Circuit::num_private());
-        assert_eq!(2, Circuit::num_constraints());
+            let candidate = Boolean::<Circuit>::new(Mode::Public, true);
+            assert!(candidate.eject_value()); // true
+            assert_circuit!(0, 2, 0, 2);
+        });
     }
 
     #[test]
     fn test_new_private() {
-        assert_eq!(0, Circuit::num_constants());
-        assert_eq!(1, Circuit::num_public());
-        assert_eq!(0, Circuit::num_private());
-        assert_eq!(0, Circuit::num_constraints());
+        Circuit::scoped("test_new_private", || {
+            let candidate = Boolean::<Circuit>::new(Mode::Private, false);
+            assert!(!candidate.eject_value()); // false
+            assert_circuit!(0, 0, 1, 1);
 
-        let candidate = Boolean::<Circuit>::new(Mode::Private, false);
-        assert!(!candidate.eject_value()); // false
-        assert!(Circuit::is_satisfied());
-
-        let candidate = Boolean::<Circuit>::new(Mode::Private, true);
-        assert!(candidate.eject_value()); // true
-        assert!(Circuit::is_satisfied());
-
-        assert_eq!(0, Circuit::num_constants());
-        assert_eq!(1, Circuit::num_public());
-        assert_eq!(2, Circuit::num_private());
-        assert_eq!(2, Circuit::num_constraints());
+            let candidate = Boolean::<Circuit>::new(Mode::Private, true);
+            assert!(candidate.eject_value()); // true
+            assert_circuit!(0, 0, 2, 2);
+        });
     }
 
     #[test]
@@ -257,13 +233,13 @@ mod tests {
 
     #[test]
     fn test_parser() {
-         let candidate = Boolean::<Circuit>::parse("true");
-         assert_eq!(true, candidate.eject_value());
-         assert!(candidate.is_constant());
+        let candidate = Boolean::<Circuit>::parse("true");
+        assert_eq!(true, candidate.eject_value());
+        assert!(candidate.is_constant());
 
-         let candidate = Boolean::<Circuit>::parse("false");
-         assert_eq!(false, candidate.eject_value());
-         assert!(candidate.is_constant());
+        let candidate = Boolean::<Circuit>::parse("false");
+        assert_eq!(false, candidate.eject_value());
+        assert!(candidate.is_constant());
 
         let candidate = Boolean::<Circuit>::parse("Constant(true)");
         assert_eq!(true, candidate.eject_value());
