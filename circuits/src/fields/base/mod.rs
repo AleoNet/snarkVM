@@ -119,7 +119,7 @@ impl<E: Environment> fmt::Debug for BaseField<E> {
 
 impl<E: Environment> fmt::Display for BaseField<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}({})", self.eject_mode(), self.eject_value())
+        write!(f, "{}({}base)", self.eject_mode(), self.eject_value())
     }
 }
 
@@ -268,6 +268,19 @@ mod tests {
         let (_, candidate) = BaseField::<Circuit>::parse("Private(1_5_base)").unwrap();
         assert_eq!(Primitive::from_str("15").unwrap(), candidate.eject_value());
         assert!(candidate.is_private());
+
+        // Random
+
+        for mode in [Mode::Constant, Mode::Public, Mode::Private] {
+            for _ in 0..ITERATIONS {
+                let value: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
+                let expected = BaseField::<Circuit>::new(mode, value);
+
+                let (_, candidate) = BaseField::<Circuit>::parse(&format!("{expected}")).unwrap();
+                assert_eq!(expected.eject_value(), candidate.eject_value());
+                assert_eq!(mode, candidate.eject_mode());
+            }
+        }
     }
 
     #[test]

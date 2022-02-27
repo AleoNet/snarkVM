@@ -232,6 +232,27 @@ mod tests {
     }
 
     #[test]
+    fn test_debug() {
+        let candidate = Boolean::<Circuit>::new(Mode::Constant, false);
+        assert_eq!("false", format!("{:?}", candidate));
+
+        let candidate = Boolean::<Circuit>::new(Mode::Constant, true);
+        assert_eq!("true", format!("{:?}", candidate));
+
+        let candidate = Boolean::<Circuit>::new(Mode::Public, false);
+        assert_eq!("false", format!("{:?}", candidate));
+
+        let candidate = Boolean::<Circuit>::new(Mode::Public, true);
+        assert_eq!("true", format!("{:?}", candidate));
+
+        let candidate = Boolean::<Circuit>::new(Mode::Private, false);
+        assert_eq!("false", format!("{:?}", candidate));
+
+        let candidate = Boolean::<Circuit>::new(Mode::Private, true);
+        assert_eq!("true", format!("{:?}", candidate));
+    }
+
+    #[test]
     fn test_parser() {
         let (_, candidate) = Boolean::<Circuit>::parse("Constant(true)").unwrap();
         assert_eq!(true, candidate.eject_value());
@@ -256,27 +277,16 @@ mod tests {
         let (_, candidate) = Boolean::<Circuit>::parse("Private(false)").unwrap();
         assert_eq!(false, candidate.eject_value());
         assert!(candidate.is_private());
-    }
 
-    #[test]
-    fn test_debug() {
-        let candidate = Boolean::<Circuit>::new(Mode::Constant, false);
-        assert_eq!("false", format!("{:?}", candidate));
+        for mode in [Mode::Constant, Mode::Public, Mode::Private] {
+            for value in [true, false] {
+                let expected = Boolean::<Circuit>::new(mode, value);
 
-        let candidate = Boolean::<Circuit>::new(Mode::Constant, true);
-        assert_eq!("true", format!("{:?}", candidate));
-
-        let candidate = Boolean::<Circuit>::new(Mode::Public, false);
-        assert_eq!("false", format!("{:?}", candidate));
-
-        let candidate = Boolean::<Circuit>::new(Mode::Public, true);
-        assert_eq!("true", format!("{:?}", candidate));
-
-        let candidate = Boolean::<Circuit>::new(Mode::Private, false);
-        assert_eq!("false", format!("{:?}", candidate));
-
-        let candidate = Boolean::<Circuit>::new(Mode::Private, true);
-        assert_eq!("true", format!("{:?}", candidate));
+                let (_, candidate) = Boolean::<Circuit>::parse(&format!("{expected}")).unwrap();
+                assert_eq!(expected.eject_value(), candidate.eject_value());
+                assert_eq!(mode, candidate.eject_mode());
+            }
+        }
     }
 
     #[test]

@@ -24,16 +24,23 @@ pub mod sub;
 pub mod ternary;
 pub mod zero;
 
-use crate::{traits::*, BaseField, Boolean, Environment, Mode, ScalarField};
+use crate::{traits::*, BaseField, Boolean, Environment, Mode, Parser, ParserResult, ScalarField};
 use snarkvm_curves::{AffineCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{Field as F, One as O};
 
 #[cfg(test)]
 use snarkvm_fields::Zero as Z;
 
-use std::{
+use core::{
     fmt,
     ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
+};
+use nom::{
+    bytes::complete::tag,
+    character::complete::{char, one_of},
+    combinator::{map_res, recognize},
+    multi::{many0, many1},
+    sequence::terminated,
 };
 
 #[derive(Clone)]
@@ -119,21 +126,49 @@ impl<E: Environment> Eject for Affine<E> {
     }
 }
 
+impl<E: Environment> Parser for Affine<E> {
+    type Output = Affine<E>;
+
+    /// Parses a string into an affine group circuit.
+    #[inline]
+    fn parse(string: &str) -> ParserResult<Self::Output> {
+        // Parse the mode from the string.
+        let (string, mode) = Mode::parse(string)?;
+        // Parse the open parenthesis from the string.
+        let (string, _) = tag("(")(string)?;
+        // Parse the digits from the string.
+        let (string, primitive) = recognize(many1(terminated(one_of("0123456789"), many0(char('_')))))(string)?;
+        // Parse the x-coordinate from the string.
+        let (string, x_coordinate) = map_res(tag("group"), |_| primitive.replace("_", "").parse())(string)?;
+        // Parse the close parenthesis from the string.
+        let (string, _) = tag(")")(string)?;
+
+        Ok((string, Affine::new(mode, x_coordinate, None)))
+    }
+}
+
 impl<E: Environment> fmt::Debug for Affine<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "({}, {})", self.x.eject_value(), self.y.eject_value())
     }
 }
 
+impl<E: Environment> fmt::Display for Affine<E> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}({}group)", self.eject_mode(), self.x.eject_value())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
+    use crate::{assert_circuit, Circuit};
     use snarkvm_utilities::UniformRand;
 
+    use core::str::FromStr;
     use rand::thread_rng;
 
-    const ITERATIONS: usize = 250;
+    const ITERATIONS: usize = 128;
 
     /// Attempts to construct an affine group element from the given x-coordinate and mode.
     fn check_debug(mode: Mode, x: <Circuit as Environment>::BaseField, y: <Circuit as Environment>::BaseField) {
@@ -147,23 +182,16 @@ mod tests {
         for i in 0..ITERATIONS {
             // Sample a random element.
             let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
-            let x_coordinate = point.to_x_coordinate();
-            let y_coordinate = point.to_y_coordinate();
-            {
-                // Verify the recovery method is behaving correctly.
-                let recovered = Circuit::affine_from_x_coordinate(x_coordinate);
-                assert_eq!(x_coordinate, recovered.to_x_coordinate());
-                assert_eq!(y_coordinate, recovered.to_y_coordinate());
-            }
+
+            // Verify the recovery method is behaving correctly.
+            let recovered = Circuit::affine_from_x_coordinate(point.to_x_coordinate());
+            assert_eq!(point.to_x_coordinate(), recovered.to_x_coordinate());
+            assert_eq!(point.to_y_coordinate(), recovered.to_y_coordinate());
 
             Circuit::scoped(&format!("Constant {}", i), || {
-                let affine = Affine::<Circuit>::new(Mode::Constant, x_coordinate, None);
+                let affine = Affine::<Circuit>::new(Mode::Constant, point.to_x_coordinate(), None);
                 assert_eq!(point, affine.eject_value());
-
-                assert_eq!(4, Circuit::num_constants_in_scope());
-                assert_eq!(0, Circuit::num_public_in_scope());
-                assert_eq!(0, Circuit::num_private_in_scope());
-                assert_eq!(0, Circuit::num_constraints_in_scope());
+                assert_circuit!(4, 0, 0, 0);
             });
         }
 
@@ -171,17 +199,11 @@ mod tests {
         for i in 0..ITERATIONS {
             // Sample a random element.
             let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
-            let x_coordinate = point.to_x_coordinate();
 
             Circuit::scoped(&format!("Public {}", i), || {
-                let affine = Affine::<Circuit>::new(Mode::Public, x_coordinate, None);
+                let affine = Affine::<Circuit>::new(Mode::Public, point.to_x_coordinate(), None);
                 assert_eq!(point, affine.eject_value());
-
-                assert_eq!(2, Circuit::num_constants_in_scope());
-                assert_eq!(2, Circuit::num_public_in_scope());
-                assert_eq!(2, Circuit::num_private_in_scope());
-                assert_eq!(3, Circuit::num_constraints_in_scope());
-                assert!(Circuit::is_satisfied());
+                assert_circuit!(2, 2, 2, 3);
             });
         }
 
@@ -189,17 +211,11 @@ mod tests {
         for i in 0..ITERATIONS {
             // Sample a random element.
             let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
-            let x_coordinate = point.to_x_coordinate();
 
             Circuit::scoped(&format!("Private {}", i), || {
-                let affine = Affine::<Circuit>::new(Mode::Private, x_coordinate, None);
+                let affine = Affine::<Circuit>::new(Mode::Private, point.to_x_coordinate(), None);
                 assert_eq!(point, affine.eject_value());
-
-                assert_eq!(2, Circuit::num_constants_in_scope());
-                assert_eq!(0, Circuit::num_public_in_scope());
-                assert_eq!(4, Circuit::num_private_in_scope());
-                assert_eq!(3, Circuit::num_constraints_in_scope());
-                assert!(Circuit::is_satisfied());
+                assert_circuit!(2, 0, 4, 3);
             });
         }
     }
@@ -236,5 +252,104 @@ mod tests {
         // Private
         let candidate = Affine::<Circuit>::new(Mode::Private, zero, None);
         assert_eq!("(0, 1)", &format!("{:?}", candidate));
+    }
+
+    #[test]
+    fn test_parser() {
+        type Primitive = <Circuit as Environment>::BaseField;
+
+        // Constant
+
+        let (_, candidate) = Affine::<Circuit>::parse("Constant(2group)").unwrap();
+        assert_eq!(Primitive::from_str("2").unwrap(), candidate.eject_value().to_x_coordinate());
+        assert!(candidate.is_constant());
+
+        let (_, candidate) = Affine::<Circuit>::parse("Constant(2_group)").unwrap();
+        assert_eq!(Primitive::from_str("2").unwrap(), candidate.eject_value().to_x_coordinate());
+        assert!(candidate.is_constant());
+
+        let (_, candidate) = Affine::<Circuit>::parse(
+            "Constant(6124_8679069_09631996143302_21072113214281104_6555821040_573308695_4291647607832_31_group)",
+        )
+        .unwrap();
+        assert_eq!(
+            Primitive::from_str("6124867906909631996143302210721132142811046555821040573308695429164760783231")
+                .unwrap(),
+            candidate.eject_value().to_x_coordinate()
+        );
+        assert!(candidate.is_constant());
+
+        // Public
+
+        let (_, candidate) = Affine::<Circuit>::parse("Public(2group)").unwrap();
+        assert_eq!(Primitive::from_str("2").unwrap(), candidate.eject_value().to_x_coordinate());
+        assert!(candidate.is_public());
+
+        let (_, candidate) = Affine::<Circuit>::parse("Public(2_group)").unwrap();
+        assert_eq!(Primitive::from_str("2").unwrap(), candidate.eject_value().to_x_coordinate());
+        assert!(candidate.is_public());
+
+        let (_, candidate) = Affine::<Circuit>::parse(
+            "Public(6124_8679069_09631996143302_21072113214281104_6555821040_573308695_4291647607832_31_group)",
+        )
+        .unwrap();
+        assert_eq!(
+            Primitive::from_str("6124867906909631996143302210721132142811046555821040573308695429164760783231")
+                .unwrap(),
+            candidate.eject_value().to_x_coordinate()
+        );
+        assert!(candidate.is_public());
+
+        // Private
+
+        let (_, candidate) = Affine::<Circuit>::parse("Private(2group)").unwrap();
+        assert_eq!(Primitive::from_str("2").unwrap(), candidate.eject_value().to_x_coordinate());
+        assert!(candidate.is_private());
+
+        let (_, candidate) = Affine::<Circuit>::parse("Private(2_group)").unwrap();
+        assert_eq!(Primitive::from_str("2").unwrap(), candidate.eject_value().to_x_coordinate());
+        assert!(candidate.is_private());
+
+        let (_, candidate) = Affine::<Circuit>::parse(
+            "Private(6124_8679069_09631996143302_21072113214281104_6555821040_573308695_4291647607832_31_group)",
+        )
+        .unwrap();
+        assert_eq!(
+            Primitive::from_str("6124867906909631996143302210721132142811046555821040573308695429164760783231")
+                .unwrap(),
+            candidate.eject_value().to_x_coordinate()
+        );
+        assert!(candidate.is_private());
+
+        // Random
+
+        for mode in [Mode::Constant, Mode::Public, Mode::Private] {
+            for _ in 0..ITERATIONS {
+                let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
+                let expected = Affine::<Circuit>::new(mode, point.to_x_coordinate(), None);
+
+                let (_, candidate) = Affine::<Circuit>::parse(&format!("{expected}")).unwrap();
+                assert_eq!(expected.eject_value(), candidate.eject_value());
+                assert_eq!(mode, candidate.eject_mode());
+            }
+        }
+    }
+
+    #[test]
+    fn test_display() {
+        let one = <Circuit as Environment>::BaseField::one();
+        let two = one + one;
+
+        // Constant
+        let candidate = Affine::<Circuit>::new(Mode::Constant, two, None);
+        assert_eq!("Constant(2group)", &format!("{}", candidate));
+
+        // Public
+        let candidate = Affine::<Circuit>::new(Mode::Public, two, None);
+        assert_eq!("Public(2group)", &format!("{}", candidate));
+
+        // Private
+        let candidate = Affine::<Circuit>::new(Mode::Private, two, None);
+        assert_eq!("Private(2group)", &format!("{}", candidate));
     }
 }
