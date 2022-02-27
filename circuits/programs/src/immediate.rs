@@ -14,11 +14,36 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_circuits::{Affine, BaseField, Boolean, Environment};
+use snarkvm_circuits::{Affine, BaseField, Boolean, Environment, Parser, ParserResult};
+
+use core::fmt;
+use nom::{branch::alt, bytes::complete::tag, combinator::map};
 
 #[derive(Clone)]
 pub enum Immediate<E: Environment> {
-    Boolean(Boolean<E>),
     BaseField(BaseField<E>),
-    Group(Affine<E>),
+    Boolean(Boolean<E>),
+    // Group(Affine<E>),
+}
+
+impl<E: Environment> Parser for Immediate<E> {
+    type Output = Immediate<E>;
+
+    /// Parses a string into an immediate.
+    #[inline]
+    fn parse(string: &str) -> ParserResult<Self::Output> {
+        alt((
+            map(BaseField::parse, |base| Self::BaseField(base)),
+            map(Boolean::parse, |boolean| Self::Boolean(boolean)),
+        ))(string)
+    }
+}
+
+impl<E: Environment> fmt::Display for Immediate<E> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::BaseField(base) => base.fmt(f),
+            Self::Boolean(boolean) => boolean.fmt(f),
+        }
+    }
 }
