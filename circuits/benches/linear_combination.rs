@@ -17,7 +17,13 @@
 #[macro_use]
 extern crate criterion;
 
-use snarkvm_circuits::{traits::One, BaseField, Circuit, Environment, Mode};
+use snarkvm_circuits::{
+    traits::{Eject, One},
+    BaseField,
+    Circuit,
+    Environment,
+    Mode,
+};
 use snarkvm_fields::One as O;
 
 use criterion::Criterion;

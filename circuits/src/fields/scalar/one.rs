@@ -18,13 +18,12 @@ use super::*;
 
 impl<E: Environment> One for ScalarField<E> {
     type Boolean = Boolean<E>;
-    type Output = Self::Boolean;
 
     fn one() -> Self {
         Self::new(Mode::Constant, <E as Environment>::ScalarField::one())
     }
 
-    fn is_one(&self) -> Self::Output {
+    fn is_one(&self) -> Self::Boolean {
         self.is_eq(&Self::one())
     }
 }
@@ -32,48 +31,26 @@ impl<E: Environment> One for ScalarField<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
+    use crate::{assert_circuit, Circuit};
 
     #[test]
     fn test_one() {
         let one = <Circuit as Environment>::ScalarField::one();
 
-        Circuit::scoped("One", |scope| {
-            assert_eq!(0, Circuit::num_constants());
-            assert_eq!(1, Circuit::num_public());
-            assert_eq!(0, Circuit::num_private());
-            assert_eq!(0, Circuit::num_constraints());
-
-            assert_eq!(0, scope.num_constants_in_scope());
-            assert_eq!(0, scope.num_public_in_scope());
-            assert_eq!(0, scope.num_private_in_scope());
-            assert_eq!(0, scope.num_constraints_in_scope());
-
+        Circuit::scoped("One", || {
+            assert_circuit!(0, 0, 0, 0);
             let candidate = ScalarField::<Circuit>::one();
             assert_eq!(one, candidate.eject_value());
-
-            assert_eq!(251, scope.num_constants_in_scope());
-            assert_eq!(0, scope.num_public_in_scope());
-            assert_eq!(0, scope.num_private_in_scope());
-            assert_eq!(0, scope.num_constraints_in_scope());
-
-            assert_eq!(251, Circuit::num_constants());
-            assert_eq!(1, Circuit::num_public());
-            assert_eq!(0, Circuit::num_private());
-            assert_eq!(0, Circuit::num_constraints());
+            assert_circuit!(251, 0, 0, 0);
         });
     }
 
     #[test]
     fn test_is_one() {
         let candidate = ScalarField::<Circuit>::one();
-
         // Should equal 1.
-        let candidate_boolean = candidate.is_one();
-        assert!(candidate_boolean.eject_value());
-
+        assert!(candidate.is_one().eject_value());
         // Should not equal 0.
-        let candidate_boolean = candidate.is_zero();
-        assert!(!candidate_boolean.eject_value());
+        assert!(!candidate.is_zero().eject_value());
     }
 }

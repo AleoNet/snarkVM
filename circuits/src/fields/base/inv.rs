@@ -33,12 +33,10 @@ impl<E: Environment> Inv for &BaseField<E> {
             false => Mode::Private,
         };
 
-        let inverse = match self.eject_value().inverse() {
+        let inverse = BaseField::new(mode, match self.eject_value().inverse() {
             Some(inverse) => inverse,
             None => E::halt("Failed to compute the inverse for a base field element"),
-        };
-
-        let inverse = BaseField::new(mode, inverse);
+        });
 
         // Ensure self * self^(-1) == 1.
         E::enforce(|| (self, &inverse, E::one()));
@@ -50,7 +48,7 @@ impl<E: Environment> Inv for &BaseField<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
+    use crate::{assert_circuit, Circuit};
 
     const ITERATIONS: usize = 1_000;
 
@@ -59,56 +57,42 @@ mod tests {
         let one = <Circuit as Environment>::BaseField::one();
 
         // Constant variables
-        Circuit::scoped("Constant", |scope| {
+        Circuit::scoped("Constant", || {
             let mut accumulator = one;
 
             for i in 0..ITERATIONS {
-                let expected = accumulator.inverse().unwrap();
+                let expected = accumulator.inverse().expect("Failed to compute the accumulator inverse");
                 let candidate = BaseField::<Circuit>::new(Mode::Constant, accumulator).inv();
                 assert_eq!(expected, candidate.eject_value());
-
-                assert_eq!((i + 1) * 2, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(0, scope.num_private_in_scope());
-                assert_eq!(0, scope.num_constraints_in_scope());
+                assert_circuit!((i + 1) * 2, 0, 0, 0);
 
                 accumulator += one;
             }
         });
 
         // Public variables
-        Circuit::scoped("Public", |scope| {
+        Circuit::scoped("Public", || {
             let mut accumulator = one;
 
             for i in 0..ITERATIONS {
-                let expected = accumulator.inverse().unwrap();
+                let expected = accumulator.inverse().expect("Failed to compute the accumulator inverse");
                 let candidate = BaseField::<Circuit>::new(Mode::Public, accumulator).inv();
                 assert_eq!(expected, candidate.eject_value());
-
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(i + 1, scope.num_public_in_scope());
-                assert_eq!(i + 1, scope.num_private_in_scope());
-                assert_eq!(i + 1, scope.num_constraints_in_scope());
-                assert!(scope.is_satisfied());
+                assert_circuit!(0, i + 1, i + 1, i + 1);
 
                 accumulator += one;
             }
         });
 
         // Private variables
-        Circuit::scoped("Private", |scope| {
+        Circuit::scoped("Private", || {
             let mut accumulator = one;
 
             for i in 0..ITERATIONS {
-                let expected = accumulator.inverse().unwrap();
+                let expected = accumulator.inverse().expect("Failed to compute the accumulator inverse");
                 let candidate = BaseField::<Circuit>::new(Mode::Private, accumulator).inv();
                 assert_eq!(expected, candidate.eject_value());
-
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!((i + 1) * 2, scope.num_private_in_scope());
-                assert_eq!(i + 1, scope.num_constraints_in_scope());
-                assert!(scope.is_satisfied());
+                assert_circuit!(0, 0, (i + 1) * 2, i + 1);
 
                 accumulator += one;
             }

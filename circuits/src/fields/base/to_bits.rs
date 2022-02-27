@@ -40,18 +40,19 @@ impl<E: Environment> ToBits for &BaseField<E> {
             false => Mode::Private,
         };
 
+        // Construct a vector of `Boolean`s comprising the bits of the field value.
         let bits = self.eject_value().to_bits_le().iter().map(|bit| Boolean::new(mode, *bit)).collect::<Vec<_>>();
 
+        // Reconstruct the bits as a linear combination representing the original field value.
         let mut accumulator = BaseField::zero();
         let mut coefficient = BaseField::one();
-
         for bit in &bits {
             accumulator += BaseField::from(bit) * &coefficient;
             coefficient = coefficient.double();
         }
 
         // Ensure value * 1 == (2^i * b_i + ... + 2^0 * b_0)
-        E::enforce(|| (*self, E::one(), accumulator));
+        E::assert_eq(*self, accumulator);
 
         bits
     }
@@ -67,7 +68,7 @@ impl<E: Environment> ToBits for &BaseField<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
+    use crate::{assert_circuit, Circuit};
     use snarkvm_fields::PrimeField;
     use snarkvm_utilities::UniformRand;
 
@@ -76,140 +77,88 @@ mod tests {
 
     const ITERATIONS: usize = 100;
 
-    #[test]
-    fn test_to_bits_le() {
+    fn check_to_bits_le(
+        mode: Mode,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) {
         let expected_number_of_bits = <<Circuit as Environment>::BaseField as PrimeField>::size_in_bits();
 
-        // Constant
         for i in 0..ITERATIONS {
             // Sample a random element.
             let expected: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
-            let candidate = BaseField::<Circuit>::new(Mode::Constant, expected);
+            let candidate = BaseField::<Circuit>::new(mode, expected);
 
-            Circuit::scoped(&format!("Constant {}", i), |scope| {
+            Circuit::scoped(&format!("{} {}", mode, i), || {
                 let candidate = candidate.to_bits_le();
                 assert_eq!(expected_number_of_bits, candidate.len());
                 for (expected_bit, candidate_bit) in expected.to_bits_le().iter().zip_eq(candidate.iter()) {
                     assert_eq!(*expected_bit, candidate_bit.eject_value());
                 }
-
-                assert_eq!(253, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(0, scope.num_private_in_scope());
-                assert_eq!(0, scope.num_constraints_in_scope());
+                assert_circuit!(num_constants, num_public, num_private, num_constraints);
             });
         }
+    }
 
-        // Public
+    fn check_to_bits_be(
+        mode: Mode,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) {
+        let expected_number_of_bits = <<Circuit as Environment>::BaseField as PrimeField>::size_in_bits();
+
         for i in 0..ITERATIONS {
             // Sample a random element.
             let expected: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
-            let candidate = BaseField::<Circuit>::new(Mode::Public, expected);
+            let candidate = BaseField::<Circuit>::new(mode, expected);
 
-            Circuit::scoped(&format!("Public {}", i), |scope| {
-                let candidate = candidate.to_bits_le();
+            Circuit::scoped(&format!("{} {}", mode, i), || {
+                let candidate = candidate.to_bits_be();
                 assert_eq!(expected_number_of_bits, candidate.len());
-                for (expected_bit, candidate_bit) in expected.to_bits_le().iter().zip_eq(candidate.iter()) {
+                for (expected_bit, candidate_bit) in expected.to_bits_be().iter().zip_eq(candidate.iter()) {
                     assert_eq!(*expected_bit, candidate_bit.eject_value());
                 }
-
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(253, scope.num_private_in_scope());
-                assert_eq!(254, scope.num_constraints_in_scope());
-            });
-        }
-
-        // Private
-        for i in 0..ITERATIONS {
-            // Sample a random element.
-            let expected: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
-            let candidate = BaseField::<Circuit>::new(Mode::Private, expected);
-
-            Circuit::scoped(&format!("Private {}", i), |scope| {
-                let candidate = candidate.to_bits_le();
-                assert_eq!(expected_number_of_bits, candidate.len());
-                for (expected_bit, candidate_bit) in expected.to_bits_le().iter().zip_eq(candidate.iter()) {
-                    assert_eq!(*expected_bit, candidate_bit.eject_value());
-                }
-
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(253, scope.num_private_in_scope());
-                assert_eq!(254, scope.num_constraints_in_scope());
+                assert_circuit!(num_constants, num_public, num_private, num_constraints);
             });
         }
     }
 
     #[test]
-    fn test_to_bits_be() {
-        let expected_number_of_bits = <<Circuit as Environment>::BaseField as PrimeField>::size_in_bits();
+    fn test_to_bits_le_constant() {
+        check_to_bits_le(Mode::Constant, 253, 0, 0, 0);
+    }
 
-        // Constant
-        for i in 0..ITERATIONS {
-            // Sample a random element.
-            let expected: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
-            let candidate = BaseField::<Circuit>::new(Mode::Constant, expected);
+    #[test]
+    fn test_to_bits_le_public() {
+        check_to_bits_le(Mode::Public, 0, 0, 253, 254);
+    }
 
-            Circuit::scoped(&format!("Constant {}", i), |scope| {
-                let candidate = candidate.to_bits_be();
-                assert_eq!(expected_number_of_bits, candidate.len());
-                for (expected_bit, candidate_bit) in expected.to_bits_be().iter().zip_eq(candidate.iter()) {
-                    assert_eq!(*expected_bit, candidate_bit.eject_value());
-                }
+    #[test]
+    fn test_to_bits_le_private() {
+        check_to_bits_le(Mode::Private, 0, 0, 253, 254);
+    }
 
-                assert_eq!(253, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(0, scope.num_private_in_scope());
-                assert_eq!(0, scope.num_constraints_in_scope());
-            });
-        }
+    #[test]
+    fn test_to_bits_be_constant() {
+        check_to_bits_be(Mode::Constant, 253, 0, 0, 0);
+    }
 
-        // Public
-        for i in 0..ITERATIONS {
-            // Sample a random element.
-            let expected: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
-            let candidate = BaseField::<Circuit>::new(Mode::Public, expected);
+    #[test]
+    fn test_to_bits_be_public() {
+        check_to_bits_be(Mode::Public, 0, 0, 253, 254);
+    }
 
-            Circuit::scoped(&format!("Public {}", i), |scope| {
-                let candidate = candidate.to_bits_be();
-                assert_eq!(expected_number_of_bits, candidate.len());
-                for (expected_bit, candidate_bit) in expected.to_bits_be().iter().zip_eq(candidate.iter()) {
-                    assert_eq!(*expected_bit, candidate_bit.eject_value());
-                }
-
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(253, scope.num_private_in_scope());
-                assert_eq!(254, scope.num_constraints_in_scope());
-            });
-        }
-
-        // Private
-        for i in 0..ITERATIONS {
-            // Sample a random element.
-            let expected: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
-            let candidate = BaseField::<Circuit>::new(Mode::Private, expected);
-
-            Circuit::scoped(&format!("Private {}", i), |scope| {
-                let candidate = candidate.to_bits_be();
-                assert_eq!(expected_number_of_bits, candidate.len());
-                for (expected_bit, candidate_bit) in expected.to_bits_be().iter().zip_eq(candidate.iter()) {
-                    assert_eq!(*expected_bit, candidate_bit.eject_value());
-                }
-
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(253, scope.num_private_in_scope());
-                assert_eq!(254, scope.num_constraints_in_scope());
-            });
-        }
+    #[test]
+    fn test_to_bits_be_private() {
+        check_to_bits_be(Mode::Private, 0, 0, 253, 254);
     }
 
     #[test]
     fn test_one() {
-        let one = <Circuit as Environment>::BaseField::one();
-
         /// Checks that the field element, when converted to little-endian bits, is well-formed.
         fn check_bits_le(candidate: BaseField<Circuit>) {
             for (i, bit) in candidate.to_bits_le().iter().enumerate() {
@@ -229,6 +178,8 @@ mod tests {
                 }
             }
         }
+
+        let one = <Circuit as Environment>::BaseField::one();
 
         // Constant
         check_bits_le(BaseField::<Circuit>::new(Mode::Constant, one));

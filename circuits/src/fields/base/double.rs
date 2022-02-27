@@ -35,7 +35,7 @@ impl<E: Environment> Double for &BaseField<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
+    use crate::{assert_circuit, Circuit};
 
     const ITERATIONS: usize = 10_000;
 
@@ -44,7 +44,7 @@ mod tests {
         let one = <Circuit as Environment>::BaseField::one();
 
         // Constant variables
-        Circuit::scoped("Constant", |scope| {
+        Circuit::scoped("Constant", || {
             let mut expected = one;
             let mut candidate = BaseField::<Circuit>::new(Mode::Constant, one);
 
@@ -52,16 +52,12 @@ mod tests {
                 expected = expected.double();
                 candidate = candidate.double();
                 assert_eq!(expected, candidate.eject_value());
-
-                assert_eq!(1, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(0, scope.num_private_in_scope());
-                assert_eq!(0, scope.num_constraints_in_scope());
+                assert_circuit!(1, 0, 0, 0);
             }
         });
 
         // Public variables
-        Circuit::scoped("Public", |scope| {
+        Circuit::scoped("Public", || {
             let mut expected = one;
             let mut candidate = BaseField::<Circuit>::new(Mode::Public, one);
 
@@ -69,16 +65,12 @@ mod tests {
                 expected = expected.double();
                 candidate = candidate.double();
                 assert_eq!(expected, candidate.eject_value());
-
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(1, scope.num_public_in_scope());
-                assert_eq!(0, scope.num_private_in_scope());
-                assert_eq!(0, scope.num_constraints_in_scope());
+                assert_circuit!(0, 1, 0, 0);
             }
         });
 
         // Private variables
-        Circuit::scoped("Private", |scope| {
+        Circuit::scoped("Private", || {
             let mut expected = one;
             let mut candidate = BaseField::<Circuit>::new(Mode::Private, one);
 
@@ -86,11 +78,7 @@ mod tests {
                 expected = expected.double();
                 candidate = candidate.double();
                 assert_eq!(expected, candidate.eject_value());
-
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(1, scope.num_private_in_scope());
-                assert_eq!(0, scope.num_constraints_in_scope());
+                assert_circuit!(0, 0, 1, 0);
             }
         });
     }

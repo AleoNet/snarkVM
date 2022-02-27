@@ -18,17 +18,16 @@ use super::*;
 
 impl<E: Environment> Equal<Self> for Affine<E> {
     type Boolean = Boolean<E>;
-    type Output = Boolean<E>;
 
     ///
     /// Returns `true` if `self` and `other` are equal.
     ///
     /// This method costs 8 constraints.
     ///
-    fn is_eq(&self, other: &Self) -> Self::Output {
+    fn is_eq(&self, other: &Self) -> Self::Boolean {
         let is_x_eq = self.x.is_eq(&other.x);
         let is_y_eq = self.y.is_eq(&other.y);
-        is_x_eq.and(&is_y_eq)
+        is_x_eq & is_y_eq
     }
 
     ///
@@ -39,7 +38,7 @@ impl<E: Environment> Equal<Self> for Affine<E> {
     ///
     /// This method costs 8 constraints.
     ///
-    fn is_neq(&self, other: &Self) -> Self::Output {
+    fn is_neq(&self, other: &Self) -> Self::Boolean {
         !self.is_eq(other)
     }
 }
@@ -47,7 +46,7 @@ impl<E: Environment> Equal<Self> for Affine<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
+    use crate::{assert_circuit, Circuit};
     use snarkvm_utilities::UniformRand;
 
     use rand::thread_rng;
@@ -65,24 +64,16 @@ mod tests {
             let a = Affine::<Circuit>::new(Mode::Constant, a.to_x_coordinate(), Some(a.to_y_coordinate()));
             let b = Affine::<Circuit>::new(Mode::Constant, b.to_x_coordinate(), Some(b.to_y_coordinate()));
 
-            Circuit::scoped(&format!("Constant Equals {}", i), |scope| {
+            Circuit::scoped(&format!("Constant Equals {}", i), || {
                 let equals = a.is_eq(&b);
                 assert!(!equals.eject_value());
-
-                assert_eq!(2, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(0, scope.num_private_in_scope());
-                assert_eq!(0, scope.num_constraints_in_scope());
+                assert_circuit!(2, 0, 0, 0);
             });
 
-            Circuit::scoped(&format!("Constant Not Equals {}", i), |scope| {
+            Circuit::scoped(&format!("Constant Not Equals {}", i), || {
                 let equals = a.is_neq(&b);
                 assert!(equals.eject_value());
-
-                assert_eq!(2, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(0, scope.num_private_in_scope());
-                assert_eq!(0, scope.num_constraints_in_scope());
+                assert_circuit!(2, 0, 0, 0);
             });
         }
 
@@ -95,26 +86,16 @@ mod tests {
             let a = Affine::<Circuit>::new(Mode::Constant, a.to_x_coordinate(), Some(a.to_y_coordinate()));
             let b = Affine::<Circuit>::new(Mode::Public, b.to_x_coordinate(), Some(b.to_y_coordinate()));
 
-            Circuit::scoped(&format!("Constant and Public Equals {}", i), |scope| {
+            Circuit::scoped(&format!("Constant and Public Equals {}", i), || {
                 let equals = a.is_eq(&b);
                 assert!(!equals.eject_value());
-
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(5, scope.num_private_in_scope());
-                assert_eq!(8, scope.num_constraints_in_scope());
-                assert!(scope.is_satisfied());
+                assert_circuit!(0, 0, 5, 7);
             });
 
-            Circuit::scoped(&format!("Constant and Public Not Equals {}", i), |scope| {
+            Circuit::scoped(&format!("Constant and Public Not Equals {}", i), || {
                 let equals = a.is_neq(&b);
                 assert!(equals.eject_value());
-
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(5, scope.num_private_in_scope());
-                assert_eq!(8, scope.num_constraints_in_scope());
-                assert!(scope.is_satisfied());
+                assert_circuit!(0, 0, 5, 7);
             });
         }
 
@@ -127,26 +108,16 @@ mod tests {
             let a = Affine::<Circuit>::new(Mode::Public, a.to_x_coordinate(), Some(a.to_y_coordinate()));
             let b = Affine::<Circuit>::new(Mode::Constant, b.to_x_coordinate(), Some(b.to_y_coordinate()));
 
-            Circuit::scoped(&format!("Public and Constant Equals {}", i), |scope| {
+            Circuit::scoped(&format!("Public and Constant Equals {}", i), || {
                 let equals = a.is_eq(&b);
                 assert!(!equals.eject_value());
-
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(5, scope.num_private_in_scope());
-                assert_eq!(8, scope.num_constraints_in_scope());
-                assert!(scope.is_satisfied());
+                assert_circuit!(0, 0, 5, 7);
             });
 
-            Circuit::scoped(&format!("Public and Constant Not Equals {}", i), |scope| {
+            Circuit::scoped(&format!("Public and Constant Not Equals {}", i), || {
                 let equals = a.is_neq(&b);
                 assert!(equals.eject_value());
-
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(5, scope.num_private_in_scope());
-                assert_eq!(8, scope.num_constraints_in_scope());
-                assert!(scope.is_satisfied());
+                assert_circuit!(0, 0, 5, 7);
             });
         }
 
@@ -159,26 +130,16 @@ mod tests {
             let a = Affine::<Circuit>::new(Mode::Public, a.to_x_coordinate(), Some(a.to_y_coordinate()));
             let b = Affine::<Circuit>::new(Mode::Public, b.to_x_coordinate(), Some(b.to_y_coordinate()));
 
-            Circuit::scoped(&format!("Public Equals {}", i), |scope| {
+            Circuit::scoped(&format!("Public Equals {}", i), || {
                 let equals = a.is_eq(&b);
                 assert!(!equals.eject_value());
-
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(5, scope.num_private_in_scope());
-                assert_eq!(8, scope.num_constraints_in_scope());
-                assert!(scope.is_satisfied());
+                assert_circuit!(0, 0, 5, 7);
             });
 
-            Circuit::scoped(&format!("Public Not Equals {}", i), |scope| {
+            Circuit::scoped(&format!("Public Not Equals {}", i), || {
                 let equals = a.is_neq(&b);
                 assert!(equals.eject_value());
-
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(5, scope.num_private_in_scope());
-                assert_eq!(8, scope.num_constraints_in_scope());
-                assert!(scope.is_satisfied());
+                assert_circuit!(0, 0, 5, 7);
             });
         }
 
@@ -191,26 +152,16 @@ mod tests {
             let a = Affine::<Circuit>::new(Mode::Private, a.to_x_coordinate(), Some(a.to_y_coordinate()));
             let b = Affine::<Circuit>::new(Mode::Private, b.to_x_coordinate(), Some(b.to_y_coordinate()));
 
-            Circuit::scoped(&format!("Private Equals {}", i), |scope| {
+            Circuit::scoped(&format!("Private Equals {}", i), || {
                 let equals = a.is_eq(&b);
                 assert!(!equals.eject_value());
-
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(5, scope.num_private_in_scope());
-                assert_eq!(8, scope.num_constraints_in_scope());
-                assert!(scope.is_satisfied());
+                assert_circuit!(0, 0, 5, 7);
             });
 
-            Circuit::scoped(&format!("Private Not Equals {}", i), |scope| {
+            Circuit::scoped(&format!("Private Not Equals {}", i), || {
                 let equals = a.is_neq(&b);
                 assert!(equals.eject_value());
-
-                assert_eq!(0, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(5, scope.num_private_in_scope());
-                assert_eq!(8, scope.num_constraints_in_scope());
-                assert!(scope.is_satisfied());
+                assert_circuit!(0, 0, 5, 7);
             });
         }
     }

@@ -21,6 +21,7 @@ edition = "2021"
 members = [
   "algorithms",
   "circuits",
+  "circuits/environment",
   "curves",
   "derives", # excluded from [features], for internal use primarily
   "dpc",

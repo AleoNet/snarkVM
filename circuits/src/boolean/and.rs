@@ -16,43 +16,96 @@
 
 use super::*;
 
-impl<E: Environment> And<Self> for Boolean<E> {
-    type Boolean = Boolean<E>;
+impl<E: Environment> BitAnd<Boolean<E>> for Boolean<E> {
     type Output = Boolean<E>;
 
-    /// Returns `(a AND b)`.
-    fn and(&self, other: &Self) -> Self::Output {
-        // Constant `self`
-        if self.is_constant() {
-            match self.eject_value() {
-                true => other.clone(),
-                false => self.clone(),
-            }
-        }
-        // Constant `other`
-        else if other.is_constant() {
-            match other.eject_value() {
-                true => self.clone(),
-                false => other.clone(),
-            }
-        }
-        // Variable AND Variable
-        else {
-            let output = Boolean::<E>::new(Mode::Private, self.eject_value() & other.eject_value());
+    /// Returns `(self AND other)`.
+    fn bitand(self, other: Boolean<E>) -> Self::Output {
+        self & &other
+    }
+}
 
-            // Ensure `self` * `other` = `output`
-            // `output` is `1` iff `self` AND `other` are both `1`.
-            E::enforce(|| (self, other, &output));
+impl<E: Environment> BitAnd<Boolean<E>> for &Boolean<E> {
+    type Output = Boolean<E>;
 
-            Self(output.into())
-        }
+    /// Returns `(self AND other)`.
+    fn bitand(self, other: Boolean<E>) -> Self::Output {
+        self & &other
+    }
+}
+
+impl<E: Environment> BitAnd<&Boolean<E>> for Boolean<E> {
+    type Output = Boolean<E>;
+
+    /// Returns `(self AND other)`.
+    fn bitand(self, other: &Boolean<E>) -> Self::Output {
+        &self & other
+    }
+}
+
+impl<E: Environment> BitAnd<&Boolean<E>> for &Boolean<E> {
+    type Output = Boolean<E>;
+
+    /// Returns `(self AND other)`.
+    fn bitand(self, other: &Boolean<E>) -> Self::Output {
+        let mut output = self.clone();
+        output &= other;
+        output
+    }
+}
+
+impl<E: Environment> BitAndAssign<Boolean<E>> for Boolean<E> {
+    /// Sets `self` as `(self AND other)`.
+    fn bitand_assign(&mut self, other: Boolean<E>) {
+        *self &= &other;
+    }
+}
+
+impl<E: Environment> BitAndAssign<&Boolean<E>> for Boolean<E> {
+    /// Sets `self` as `(self AND other)`.
+    fn bitand_assign(&mut self, other: &Boolean<E>) {
+        // Stores the bitwise AND of `self` and `other` in `self`.
+        *self =
+            // Constant `self`
+            if self.is_constant() {
+                match self.eject_value() {
+                    true => other.clone(),
+                    false => self.clone(),
+                }
+            }
+            // Constant `other`
+            else if other.is_constant() {
+                match other.eject_value() {
+                    true => self.clone(),
+                    false => other.clone(),
+                }
+            }
+            // Variable AND Variable
+            else {
+                // Declare a new variable with the expected output as witness.
+                // Note: The constraint below will ensure `output` is either 0 or 1,
+                // assuming `self` and `other` are well-formed (they are either 0 or 1).
+                let output = Boolean(
+                    E::new_variable(Mode::Private, match self.eject_value() & other.eject_value() {
+                        true => E::BaseField::one(),
+                        false => E::BaseField::zero(),
+                    })
+                        .into(),
+                );
+
+                // Ensure `self` * `other` = `output`
+                // `output` is `1` iff `self` AND `other` are both `1`.
+                E::enforce(|| (self.clone(), other, &output));
+
+                output
+            }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
+    use crate::{assert_circuit, Circuit};
 
     fn check_and(
         name: &str,
@@ -64,23 +117,10 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
-        Circuit::scoped(name, |scope| {
-            let candidate = a.and(&b);
-            assert_eq!(
-                expected,
-                candidate.eject_value(),
-                "{} != {} := ({} AND {})",
-                expected,
-                candidate.eject_value(),
-                a.eject_value(),
-                b.eject_value()
-            );
-
-            assert_eq!(num_constants, scope.num_constants_in_scope());
-            assert_eq!(num_public, scope.num_public_in_scope());
-            assert_eq!(num_private, scope.num_private_in_scope());
-            assert_eq!(num_constraints, scope.num_constraints_in_scope());
-            assert!(Circuit::is_satisfied());
+        Circuit::scoped(name, || {
+            let candidate = &a & &b;
+            assert_eq!(expected, candidate.eject_value(), "({} AND {})", a.eject_value(), b.eject_value());
+            assert_circuit!(num_constants, num_public, num_private, num_constraints);
         });
     }
 
@@ -171,25 +211,25 @@ mod tests {
         let expected = false;
         let a = Boolean::<Circuit>::new(Mode::Public, false);
         let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_and("false AND false", expected, a, b, 0, 0, 1, 2);
+        check_and("false AND false", expected, a, b, 0, 0, 1, 1);
 
         // false AND true
         let expected = false;
         let a = Boolean::<Circuit>::new(Mode::Public, false);
         let b = Boolean::<Circuit>::new(Mode::Public, true);
-        check_and("false AND true", expected, a, b, 0, 0, 1, 2);
+        check_and("false AND true", expected, a, b, 0, 0, 1, 1);
 
         // true AND false
         let expected = false;
         let a = Boolean::<Circuit>::new(Mode::Public, true);
         let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_and("true AND false", expected, a, b, 0, 0, 1, 2);
+        check_and("true AND false", expected, a, b, 0, 0, 1, 1);
 
         // true AND true
         let expected = true;
         let a = Boolean::<Circuit>::new(Mode::Public, true);
         let b = Boolean::<Circuit>::new(Mode::Public, true);
-        check_and("true AND true", expected, a, b, 0, 0, 1, 2);
+        check_and("true AND true", expected, a, b, 0, 0, 1, 1);
     }
 
     #[test]
@@ -198,25 +238,25 @@ mod tests {
         let expected = false;
         let a = Boolean::<Circuit>::new(Mode::Public, false);
         let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_and("false AND false", expected, a, b, 0, 0, 1, 2);
+        check_and("false AND false", expected, a, b, 0, 0, 1, 1);
 
         // false AND true
         let expected = false;
         let a = Boolean::<Circuit>::new(Mode::Public, false);
         let b = Boolean::<Circuit>::new(Mode::Private, true);
-        check_and("false AND true", expected, a, b, 0, 0, 1, 2);
+        check_and("false AND true", expected, a, b, 0, 0, 1, 1);
 
         // true AND false
         let expected = false;
         let a = Boolean::<Circuit>::new(Mode::Public, true);
         let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_and("true AND false", expected, a, b, 0, 0, 1, 2);
+        check_and("true AND false", expected, a, b, 0, 0, 1, 1);
 
         // true AND true
         let expected = true;
         let a = Boolean::<Circuit>::new(Mode::Public, true);
         let b = Boolean::<Circuit>::new(Mode::Private, true);
-        check_and("true AND true", expected, a, b, 0, 0, 1, 2);
+        check_and("true AND true", expected, a, b, 0, 0, 1, 1);
     }
 
     #[test]
@@ -225,24 +265,24 @@ mod tests {
         let expected = false;
         let a = Boolean::<Circuit>::new(Mode::Private, false);
         let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_and("false AND false", expected, a, b, 0, 0, 1, 2);
+        check_and("false AND false", expected, a, b, 0, 0, 1, 1);
 
         // false AND true
         let expected = false;
         let a = Boolean::<Circuit>::new(Mode::Private, false);
         let b = Boolean::<Circuit>::new(Mode::Private, true);
-        check_and("false AND true", expected, a, b, 0, 0, 1, 2);
+        check_and("false AND true", expected, a, b, 0, 0, 1, 1);
 
         // true AND false
         let expected = false;
         let a = Boolean::<Circuit>::new(Mode::Private, true);
         let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_and("true AND false", expected, a, b, 0, 0, 1, 2);
+        check_and("true AND false", expected, a, b, 0, 0, 1, 1);
 
         // true AND true
         let expected = true;
         let a = Boolean::<Circuit>::new(Mode::Private, true);
         let b = Boolean::<Circuit>::new(Mode::Private, true);
-        check_and("true AND true", expected, a, b, 0, 0, 1, 2);
+        check_and("true AND true", expected, a, b, 0, 0, 1, 1);
     }
 }

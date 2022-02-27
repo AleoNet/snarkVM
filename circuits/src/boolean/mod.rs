@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+pub mod adder;
+pub use adder::*;
+
 pub mod and;
 pub use and::*;
 
@@ -32,6 +35,9 @@ pub use not::*;
 pub mod or;
 pub use or::*;
 
+pub mod subtractor;
+pub use subtractor::*;
+
 pub mod ternary;
 pub use ternary::*;
 
@@ -41,13 +47,15 @@ pub use xor::*;
 use crate::{traits::*, Environment, LinearCombination, Mode, Variable};
 use snarkvm_fields::{One as O, Zero as Z};
 
-use std::{
+use core::{
     fmt,
-    ops::{Deref, Not},
+    ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Deref, Not},
 };
 
 #[derive(Clone)]
 pub struct Boolean<E: Environment>(LinearCombination<E::BaseField>);
+
+impl<E: Environment> BooleanTrait for Boolean<E> {}
 
 impl<E: Environment> Boolean<E> {
     ///
@@ -65,14 +73,18 @@ impl<E: Environment> Boolean<E> {
 
         Self(variable.into())
     }
+}
+
+impl<E: Environment> Eject for Boolean<E> {
+    type Primitive = bool;
 
     ///
-    /// Returns `true` if the boolean is a constant.    
+    /// Ejects the mode of the boolean.
     ///
-    pub fn is_constant(&self) -> bool {
+    fn eject_mode(&self) -> Mode {
         // Perform a software-level safety check that the boolean is well-formed.
         match self.0.is_boolean_type() {
-            true => self.0.is_constant(),
+            true => self.0.to_mode(),
             false => E::halt("Boolean variable is not well-formed"),
         }
     }
@@ -80,10 +92,16 @@ impl<E: Environment> Boolean<E> {
     ///
     /// Ejects the boolean as a constant boolean value.
     ///
-    pub fn eject_value(&self) -> bool {
+    fn eject_value(&self) -> Self::Primitive {
         let value = self.0.to_value();
         debug_assert!(value.is_zero() || value.is_one());
         value.is_one()
+    }
+}
+
+impl<E: Environment> AsRef<Boolean<E>> for Boolean<E> {
+    fn as_ref(&self) -> &Boolean<E> {
+        &self
     }
 }
 
@@ -92,8 +110,6 @@ impl<E: Environment> fmt::Debug for Boolean<E> {
         write!(f, "{}", self.eject_value())
     }
 }
-
-impl<E: Environment> BooleanTrait for Boolean<E> {}
 
 impl<E: Environment> Deref for Boolean<E> {
     type Target = LinearCombination<E::BaseField>;
@@ -195,7 +211,7 @@ mod tests {
             Circuit::enforce(|| (Circuit::one() - candidate, candidate, Circuit::zero()));
             assert_eq!(0, Circuit::num_constraints());
 
-            Circuit::reset_circuit();
+            Circuit::reset();
         }
         {
             let candidate = Circuit::new_variable(Mode::Public, two);
@@ -205,7 +221,7 @@ mod tests {
             Circuit::enforce(|| (Circuit::one() - candidate, candidate, Circuit::zero()));
             assert!(!Circuit::is_satisfied());
 
-            Circuit::reset_circuit();
+            Circuit::reset();
         }
         {
             let candidate = Circuit::new_variable(Mode::Private, two);
@@ -215,7 +231,7 @@ mod tests {
             Circuit::enforce(|| (Circuit::one() - candidate, candidate, Circuit::zero()));
             assert!(!Circuit::is_satisfied());
 
-            Circuit::reset_circuit();
+            Circuit::reset();
         }
     }
 

@@ -18,62 +18,41 @@ use super::*;
 
 impl<E: Environment> Zero for Affine<E> {
     type Boolean = Boolean<E>;
-    type Output = Self::Boolean;
 
     fn zero() -> Self {
         Affine { x: BaseField::zero(), y: BaseField::one() }
     }
 
-    fn is_zero(&self) -> Self::Output {
+    fn is_zero(&self) -> Self::Boolean {
         let is_x_zero = self.x.is_eq(&BaseField::zero());
         let is_y_one = self.y.is_eq(&BaseField::one());
-        is_x_zero.and(&is_y_one)
+        is_x_zero & is_y_one
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
+    use crate::{assert_circuit, Circuit};
 
     #[test]
     fn test_zero() {
         let zero = <Circuit as Environment>::BaseField::zero();
         let one = <Circuit as Environment>::BaseField::one();
 
-        Circuit::scoped("Zero", |scope| {
-            assert_eq!(0, Circuit::num_constants());
-            assert_eq!(1, Circuit::num_public());
-            assert_eq!(0, Circuit::num_private());
-            assert_eq!(0, Circuit::num_constraints());
-
-            assert_eq!(0, scope.num_constants_in_scope());
-            assert_eq!(0, scope.num_public_in_scope());
-            assert_eq!(0, scope.num_private_in_scope());
-            assert_eq!(0, scope.num_constraints_in_scope());
-
+        Circuit::scoped("Zero", || {
+            assert_circuit!(0, 0, 0, 0);
             let candidate = Affine::<Circuit>::zero().eject_value();
             assert_eq!(zero, candidate.to_x_coordinate());
             assert_eq!(one, candidate.to_y_coordinate());
-
-            assert_eq!(0, scope.num_constants_in_scope());
-            assert_eq!(0, scope.num_public_in_scope());
-            assert_eq!(0, scope.num_private_in_scope());
-            assert_eq!(0, scope.num_constraints_in_scope());
-
-            assert_eq!(0, Circuit::num_constants());
-            assert_eq!(1, Circuit::num_public());
-            assert_eq!(0, Circuit::num_private());
-            assert_eq!(0, Circuit::num_constraints());
+            assert_circuit!(0, 0, 0, 0);
         });
     }
 
     #[test]
     fn test_is_zero() {
         let candidate = Affine::<Circuit>::zero();
-
         // Should equal 0.
-        let candidate_boolean = candidate.is_zero();
-        assert!(candidate_boolean.eject_value());
+        assert!(candidate.is_zero().eject_value());
     }
 }

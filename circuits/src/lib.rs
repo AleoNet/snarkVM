@@ -21,8 +21,10 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::type_complexity)]
 
-pub mod address;
-pub use address::*;
+pub use snarkvm_circuits_environment::*;
+
+// pub mod address;
+// pub use address::*;
 
 pub mod boolean;
 pub use boolean::*;
@@ -33,15 +35,21 @@ pub use fields::*;
 pub mod group;
 pub use group::*;
 
-// TODO (howardwu): This is temporary until the models interface is stabilized.
-#[allow(unused)]
-pub mod models;
-pub use models::*;
+pub mod helpers;
+
+pub mod integers;
+pub use integers::*;
+
+pub mod macros;
+pub use macros::*;
 
 // TODO (howardwu): This is temporary until the programs interface is stabilized.
 #[allow(unused)]
 pub mod programs;
 pub use programs::*;
+
+// pub mod record;
+// pub use record::*;
 
 pub mod traits;
 pub use traits::*;

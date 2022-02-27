@@ -16,63 +16,114 @@
 
 use super::*;
 
-impl<E: Environment> Xor<Self> for Boolean<E> {
-    type Boolean = Boolean<E>;
+impl<E: Environment> BitXor<Boolean<E>> for Boolean<E> {
     type Output = Boolean<E>;
 
-    /// Returns `(a != b)`.
-    fn xor(&self, other: &Self) -> Self::Output {
-        // Constant `self`
-        if self.is_constant() {
-            match self.eject_value() {
-                true => !other.clone(),
-                false => other.clone(),
+    /// Returns `(self != other)`.
+    fn bitxor(self, other: Boolean<E>) -> Self::Output {
+        self ^ &other
+    }
+}
+
+impl<E: Environment> BitXor<Boolean<E>> for &Boolean<E> {
+    type Output = Boolean<E>;
+
+    /// Returns `(self != other)`.
+    fn bitxor(self, other: Boolean<E>) -> Self::Output {
+        self ^ &other
+    }
+}
+
+impl<E: Environment> BitXor<&Boolean<E>> for Boolean<E> {
+    type Output = Boolean<E>;
+
+    /// Returns `(self != other)`.
+    fn bitxor(self, other: &Boolean<E>) -> Self::Output {
+        &self ^ other
+    }
+}
+
+impl<E: Environment> BitXor<&Boolean<E>> for &Boolean<E> {
+    type Output = Boolean<E>;
+
+    /// Returns `(self != other)`.
+    fn bitxor(self, other: &Boolean<E>) -> Self::Output {
+        let mut output = self.clone();
+        output ^= other;
+        output
+    }
+}
+
+impl<E: Environment> BitXorAssign<Boolean<E>> for Boolean<E> {
+    /// Sets `self` as `(self != other)`.
+    fn bitxor_assign(&mut self, other: Boolean<E>) {
+        *self ^= &other;
+    }
+}
+
+impl<E: Environment> BitXorAssign<&Boolean<E>> for Boolean<E> {
+    /// Sets `self` as `(self != other)`.
+    fn bitxor_assign(&mut self, other: &Boolean<E>) {
+        // Stores the bitwise XOR of `self` and `other` in `self`.
+        *self =
+            // Constant `self`
+            if self.is_constant() {
+                match self.eject_value() {
+                    true => !other.clone(),
+                    false => other.clone(),
+                }
             }
-        }
-        // Constant `other`
-        else if other.is_constant() {
-            match other.eject_value() {
-                true => !self.clone(),
-                false => self.clone(),
+            // Constant `other`
+            else if other.is_constant() {
+                match other.eject_value() {
+                    true => !self.clone(),
+                    false => self.clone(),
+                }
             }
-        }
-        // Variable != Variable
-        else {
-            let output = Boolean::<E>::new(Mode::Private, self.eject_value() ^ other.eject_value());
+            // Variable != Variable
+            else {
+                // Declare a new variable with the expected output as witness.
+                // Note: The constraint below will ensure `output` is either 0 or 1,
+                // assuming `self` and `other` are well-formed (they are either 0 or 1).
+                let output = Boolean(
+                    E::new_variable(Mode::Private, match self.eject_value() ^ other.eject_value() {
+                        true => E::BaseField::one(),
+                        false => E::BaseField::zero(),
+                    })
+                        .into(),
+                );
 
-            // Ensure `self` * `other` = `output`
-            // `output` is `1` iff `self` != `other`.
+                //
+                // Ensure (`self` + `self`) * (`other`) = (`self` + `other` - `output`)
+                // `output` is `1` iff `self` != `other`.
+                //
+                // As `self` and `other` are enforced to be `Boolean` types,
+                // if they are equal, then the `output` is 0,
+                // and if they are different, then `output` must be 1.
+                //
+                // ¬(a ∧ b) ∧ ¬(¬a ∧ ¬b) = c
+                //
+                // (1 - (a * b)) * (1 - ((1 - a) * (1 - b))) = c
+                // (1 - ab) * (1 - (1 - a - b + ab)) = c
+                // (1 - ab) * (a + b - ab) = c
+                // a + b - ab - (a^2)b - (b^2)a + (a^2)(b^2) = c
+                // a + b - ab - ab - ab + ab = c
+                // a + b - 2ab = c
+                // -2a * b = c - a - b
+                // 2a * b = a + b - c
+                // (a + a) * b = a + b - c
+                //
+                E::enforce(|| ((self.0.clone() + self.0.clone()), other, (self.0.clone() + &other.0 - &output.0)));
 
-            //
-            // Ensure (`self` + `self`) * (`other`) = (`self` + `other` - `output`)
-            //
-            // As `self` and `other` are enforced to be `Boolean` types,
-            // if they are equal, then the `output` is 0,
-            // and if they are different, then `output` must be 1.
-            //
-            // ¬(a ∧ b) ∧ ¬(¬a ∧ ¬b) = c
-            //
-            // (1 - (a * b)) * (1 - ((1 - a) * (1 - b))) = c
-            // (1 - ab) * (1 - (1 - a - b + ab)) = c
-            // (1 - ab) * (a + b - ab) = c
-            // a + b - ab - (a^2)b - (b^2)a + (a^2)(b^2) = c
-            // a + b - ab - ab - ab + ab = c
-            // a + b - 2ab = c
-            // -2a * b = c - a - b
-            // 2a * b = a + b - c
-            // (a + a) * b = a + b - c
-            //
-            E::enforce(|| ((&self.0 + &self.0), other, (&self.0 + &other.0 - &output.0)));
-
-            Self(output.into())
-        }
+                output
+            }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
+    use crate::{assert_circuit, Circuit};
 
     fn check_xor(
         name: &str,
@@ -84,23 +135,10 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
-        Circuit::scoped(name, |scope| {
-            let candidate = a.xor(&b);
-            assert_eq!(
-                expected,
-                candidate.eject_value(),
-                "{} != {} := ({} != {})",
-                expected,
-                candidate.eject_value(),
-                a.eject_value(),
-                b.eject_value()
-            );
-
-            assert_eq!(num_constants, scope.num_constants_in_scope());
-            assert_eq!(num_public, scope.num_public_in_scope());
-            assert_eq!(num_private, scope.num_private_in_scope());
-            assert_eq!(num_constraints, scope.num_constraints_in_scope());
-            assert!(Circuit::is_satisfied());
+        Circuit::scoped(name, || {
+            let candidate = &a ^ &b;
+            assert_eq!(expected, candidate.eject_value(), "({} != {})", a.eject_value(), b.eject_value());
+            assert_circuit!(num_constants, num_public, num_private, num_constraints);
         });
     }
 
@@ -191,25 +229,25 @@ mod tests {
         let expected = false;
         let a = Boolean::<Circuit>::new(Mode::Public, false);
         let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_xor("false != false", expected, a, b, 0, 0, 1, 2);
+        check_xor("false != false", expected, a, b, 0, 0, 1, 1);
 
         // false != true
         let expected = true;
         let a = Boolean::<Circuit>::new(Mode::Public, false);
         let b = Boolean::<Circuit>::new(Mode::Public, true);
-        check_xor("false != true", expected, a, b, 0, 0, 1, 2);
+        check_xor("false != true", expected, a, b, 0, 0, 1, 1);
 
         // true != false
         let expected = true;
         let a = Boolean::<Circuit>::new(Mode::Public, true);
         let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_xor("true != false", expected, a, b, 0, 0, 1, 2);
+        check_xor("true != false", expected, a, b, 0, 0, 1, 1);
 
         // true != true
         let expected = false;
         let a = Boolean::<Circuit>::new(Mode::Public, true);
         let b = Boolean::<Circuit>::new(Mode::Public, true);
-        check_xor("true != true", expected, a, b, 0, 0, 1, 2);
+        check_xor("true != true", expected, a, b, 0, 0, 1, 1);
     }
 
     #[test]
@@ -218,25 +256,25 @@ mod tests {
         let expected = false;
         let a = Boolean::<Circuit>::new(Mode::Public, false);
         let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_xor("false != false", expected, a, b, 0, 0, 1, 2);
+        check_xor("false != false", expected, a, b, 0, 0, 1, 1);
 
         // false != true
         let expected = true;
         let a = Boolean::<Circuit>::new(Mode::Public, false);
         let b = Boolean::<Circuit>::new(Mode::Private, true);
-        check_xor("false != true", expected, a, b, 0, 0, 1, 2);
+        check_xor("false != true", expected, a, b, 0, 0, 1, 1);
 
         // true != false
         let expected = true;
         let a = Boolean::<Circuit>::new(Mode::Public, true);
         let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_xor("true != false", expected, a, b, 0, 0, 1, 2);
+        check_xor("true != false", expected, a, b, 0, 0, 1, 1);
 
         // true != true
         let expected = false;
         let a = Boolean::<Circuit>::new(Mode::Public, true);
         let b = Boolean::<Circuit>::new(Mode::Private, true);
-        check_xor("true != true", expected, a, b, 0, 0, 1, 2);
+        check_xor("true != true", expected, a, b, 0, 0, 1, 1);
     }
 
     #[test]
@@ -245,24 +283,24 @@ mod tests {
         let expected = false;
         let a = Boolean::<Circuit>::new(Mode::Private, false);
         let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_xor("false != false", expected, a, b, 0, 0, 1, 2);
+        check_xor("false != false", expected, a, b, 0, 0, 1, 1);
 
         // false != true
         let expected = true;
         let a = Boolean::<Circuit>::new(Mode::Private, false);
         let b = Boolean::<Circuit>::new(Mode::Private, true);
-        check_xor("false != true", expected, a, b, 0, 0, 1, 2);
+        check_xor("false != true", expected, a, b, 0, 0, 1, 1);
 
         // true != false
         let expected = true;
         let a = Boolean::<Circuit>::new(Mode::Private, true);
         let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_xor("true != false", expected, a, b, 0, 0, 1, 2);
+        check_xor("true != false", expected, a, b, 0, 0, 1, 1);
 
         // true != true
         let expected = false;
         let a = Boolean::<Circuit>::new(Mode::Private, true);
         let b = Boolean::<Circuit>::new(Mode::Private, true);
-        check_xor("true != true", expected, a, b, 0, 0, 1, 2);
+        check_xor("true != true", expected, a, b, 0, 0, 1, 1);
     }
 }

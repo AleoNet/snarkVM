@@ -19,6 +19,7 @@ use super::*;
 impl<E: Environment> Neg for Affine<E> {
     type Output = Self;
 
+    /// Performs the unary `-` operation.
     fn neg(self) -> Self::Output {
         Affine { x: -self.x, y: self.y }
     }
@@ -27,6 +28,7 @@ impl<E: Environment> Neg for Affine<E> {
 impl<E: Environment> Neg for &Affine<E> {
     type Output = Affine<E>;
 
+    /// Performs the unary `-` operation.
     fn neg(self) -> Self::Output {
         -(self.clone())
     }
@@ -35,7 +37,7 @@ impl<E: Environment> Neg for &Affine<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
+    use crate::{assert_circuit, Circuit};
     use snarkvm_utilities::UniformRand;
 
     use rand::thread_rng;
@@ -51,15 +53,10 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
-        Circuit::scoped(name, |scope| {
+        Circuit::scoped(name, || {
             let candidate_output = -candidate_input;
             assert_eq!(expected, candidate_output.eject_value());
-
-            assert_eq!(num_constants, scope.num_constants_in_scope());
-            assert_eq!(num_public, scope.num_public_in_scope());
-            assert_eq!(num_private, scope.num_private_in_scope());
-            assert_eq!(num_constraints, scope.num_constraints_in_scope());
-            assert!(Circuit::is_satisfied());
+            assert_circuit!(num_constants, num_public, num_private, num_constraints);
         });
     }
 

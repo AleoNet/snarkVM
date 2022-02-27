@@ -1,0 +1,46 @@
+[package]
+name = "snarkvm-circuits-environment"
+version = "0.7.5"
+authors = [ "The Aleo Team <hello@aleo.org>" ]
+description = "Circuit environment for a decentralized virtual machine"
+license = "GPL-3.0"
+edition = "2021"
+
+[dependencies.snarkvm-curves]
+path = "../../curves"
+version = "0.7.5"
+default-features = false
+
+[dependencies.snarkvm-fields]
+path = "../../fields"
+version = "0.7.5"
+default-features = false
+
+[dependencies.snarkvm-r1cs]
+path = "../../r1cs"
+version = "0.7.5"
+default-features = false
+
+[dependencies.once_cell]
+version = "1.8.0"
+
+[dependencies.rayon]
+version = "1"
+
+[dev-dependencies.snarkvm-algorithms]
+path = "../../algorithms"
+version = "0.7.5"
+default-features = false
+features = ["polycommit", "snark"]
+
+[dev-dependencies.snarkvm-circuits]
+path = "../../circuits"
+version = "0.7.5"
+
+[dev-dependencies.snarkvm-utilities]
+path = "../../utilities"
+version = "0.7.5"
+default-features = false
+
+[features]
+default = ["snarkvm-curves/default", "snarkvm-r1cs/default"]

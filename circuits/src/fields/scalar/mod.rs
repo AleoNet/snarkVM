@@ -47,18 +47,34 @@ impl<E: Environment> ScalarField<E> {
 
         Self(bits)
     }
+}
+
+impl<E: Environment> Eject for ScalarField<E> {
+    type Primitive = E::ScalarField;
 
     ///
-    /// Returns `true` if the scalar field is a constant.
+    /// Ejects the mode of the scalar field.
     ///
-    pub fn is_constant(&self) -> bool {
-        self.0.get(0).unwrap().is_constant()
+    fn eject_mode(&self) -> Mode {
+        let mut scalar_mode = Mode::Constant;
+        for bit_mode in self.0.iter().map(Eject::eject_mode) {
+            // Check if the mode in the current iteration matches the scalar mode.
+            if scalar_mode != bit_mode {
+                // If they do not match, the scalar mode must be a constant.
+                // Otherwise, this is a malformed scalar, and the program should halt.
+                match scalar_mode == Mode::Constant {
+                    true => scalar_mode = bit_mode,
+                    false => E::halt("Detected an scalar field with a malformed mode"),
+                }
+            }
+        }
+        scalar_mode
     }
 
     ///
     /// Ejects the scalar field as a constant scalar field value.
     ///
-    pub fn eject_value(&self) -> E::ScalarField {
+    fn eject_value(&self) -> Self::Primitive {
         let bits = self.0.iter().map(Boolean::eject_value).collect::<Vec<_>>();
         let biginteger = <E::ScalarField as PrimeField>::BigInteger::from_bits_le(&bits[..]);
         let scalar = <E::ScalarField as PrimeField>::from_repr(biginteger);
@@ -66,6 +82,12 @@ impl<E: Environment> ScalarField<E> {
             Some(scalar) => scalar,
             None => E::halt("Failed to eject scalar field value"),
         }
+    }
+}
+
+impl<E: Environment> AsRef<ScalarField<E>> for ScalarField<E> {
+    fn as_ref(&self) -> &ScalarField<E> {
+        &self
     }
 }
 
@@ -78,7 +100,7 @@ impl<E: Environment> fmt::Debug for ScalarField<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
+    use crate::{assert_circuit, Circuit};
     use snarkvm_utilities::UniformRand;
 
     use rand::thread_rng;
@@ -95,15 +117,10 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
-        Circuit::scoped(name, |scope| {
+        Circuit::scoped(name, || {
             let candidate = ScalarField::<Circuit>::new(mode, expected);
             assert_eq!(expected, candidate.eject_value());
-
-            assert_eq!(num_constants, scope.num_constants_in_scope());
-            assert_eq!(num_public, scope.num_public_in_scope());
-            assert_eq!(num_private, scope.num_private_in_scope());
-            assert_eq!(num_constraints, scope.num_constraints_in_scope());
-            assert!(Circuit::is_satisfied());
+            assert_circuit!(num_constants, num_public, num_private, num_constraints);
         });
     }
 

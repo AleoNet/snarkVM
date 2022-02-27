@@ -18,6 +18,7 @@ pub mod add;
 pub mod div;
 pub mod double;
 pub mod equal;
+pub mod from_bits;
 pub mod inv;
 pub mod mul;
 pub mod neg;
@@ -26,6 +27,8 @@ pub mod square;
 pub mod sub;
 pub mod ternary;
 pub mod to_bits;
+pub mod to_lower_bits;
+pub mod to_upper_bits;
 pub mod zero;
 
 use crate::{traits::*, Boolean, Environment, LinearCombination, Mode};
@@ -44,6 +47,8 @@ use std::{
 #[derive(Clone)]
 pub struct BaseField<E: Environment>(LinearCombination<E::BaseField>);
 
+impl<E: Environment> BaseFieldTrait for BaseField<E> {}
+
 impl<E: Environment> BaseField<E> {
     ///
     /// Initializes a new instance of a base field from a constant base field value.
@@ -58,19 +63,29 @@ impl<E: Environment> BaseField<E> {
     pub fn from(boolean: &Boolean<E>) -> Self {
         Self((**boolean).clone())
     }
+}
+
+impl<E: Environment> Eject for BaseField<E> {
+    type Primitive = E::BaseField;
 
     ///
-    /// Returns `true` if the base field is a constant.
+    /// Ejects the mode of the base field.
     ///
-    pub fn is_constant(&self) -> bool {
-        self.0.is_constant()
+    fn eject_mode(&self) -> Mode {
+        self.0.to_mode()
     }
 
     ///
     /// Ejects the base field as a constant base field value.
     ///
-    pub fn eject_value(&self) -> E::BaseField {
+    fn eject_value(&self) -> Self::Primitive {
         self.0.to_value()
+    }
+}
+
+impl<E: Environment> AsRef<BaseField<E>> for BaseField<E> {
+    fn as_ref(&self) -> &BaseField<E> {
+        &self
     }
 }
 
@@ -80,11 +95,9 @@ impl<E: Environment> fmt::Debug for BaseField<E> {
     }
 }
 
-impl<E: Environment> BaseFieldTrait for BaseField<E> {}
-
 impl<E: Environment> From<BaseField<E>> for LinearCombination<E::BaseField> {
     fn from(field: BaseField<E>) -> Self {
-        field.0
+        From::from(&field)
     }
 }
 

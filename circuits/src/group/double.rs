@@ -89,7 +89,7 @@ impl<E: Environment> Double for &Affine<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
+    use crate::{assert_circuit, Circuit};
     use snarkvm_curves::Group;
     use snarkvm_utilities::UniformRand;
 
@@ -107,14 +107,10 @@ mod tests {
 
             let affine = Affine::<Circuit>::new(Mode::Constant, point.to_x_coordinate(), Some(point.to_y_coordinate()));
 
-            Circuit::scoped(&format!("Constant {}", i), |scope| {
+            Circuit::scoped(&format!("Constant {}", i), || {
                 let candidate = affine.double();
                 assert_eq!(expected, candidate.eject_value());
-
-                assert_eq!(3, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(0, scope.num_private_in_scope());
-                assert_eq!(0, scope.num_constraints_in_scope());
+                assert_circuit!(3, 0, 0, 0);
             });
         }
 
@@ -126,15 +122,10 @@ mod tests {
 
             let affine = Affine::<Circuit>::new(Mode::Public, point.to_x_coordinate(), Some(point.to_y_coordinate()));
 
-            Circuit::scoped(&format!("Public {}", i), |scope| {
+            Circuit::scoped(&format!("Public {}", i), || {
                 let candidate = affine.double();
                 assert_eq!(expected, candidate.eject_value());
-
-                assert_eq!(1, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(5, scope.num_private_in_scope());
-                assert_eq!(5, scope.num_constraints_in_scope());
-                assert!(scope.is_satisfied());
+                assert_circuit!(1, 0, 5, 5);
             });
         }
 
@@ -146,15 +137,10 @@ mod tests {
 
             let affine = Affine::<Circuit>::new(Mode::Private, point.to_x_coordinate(), Some(point.to_y_coordinate()));
 
-            Circuit::scoped(&format!("Private {}", i), |scope| {
+            Circuit::scoped(&format!("Private {}", i), || {
                 let candidate = affine.double();
                 assert_eq!(expected, candidate.eject_value());
-
-                assert_eq!(1, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(5, scope.num_private_in_scope());
-                assert_eq!(5, scope.num_constraints_in_scope());
-                assert!(scope.is_satisfied());
+                assert_circuit!(1, 0, 5, 5);
             });
         }
     }

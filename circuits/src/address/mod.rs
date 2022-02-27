@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Affine, Environment};
+use crate::{traits::*, Affine, Environment, Mode};
 
 use std::{fmt, ops::Deref};
 
@@ -28,19 +28,29 @@ impl<E: Environment> Address<E> {
     pub fn new(value: Affine<E>) -> Self {
         Self(value)
     }
+}
+
+impl<E: Environment> Eject for Address<E> {
+    type Primitive = E::Affine;
 
     ///
-    /// Returns `true` if the address is a constant.    
+    /// Ejects the mode of the group element.
     ///
-    pub fn is_constant(&self) -> bool {
-        self.0.is_constant()
+    fn eject_mode(&self) -> Mode {
+        self.0.eject_mode()
     }
 
     ///
     /// Ejects the address as a constant affine group element.
     ///
-    pub fn eject_value(&self) -> E::Affine {
+    fn eject_value(&self) -> Self::Primitive {
         self.0.eject_value()
+    }
+}
+
+impl<E: Environment> AsRef<Address<E>> for Address<E> {
+    fn as_ref(&self) -> &Address<E> {
+        &self
     }
 }
 

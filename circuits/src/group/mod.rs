@@ -93,21 +93,35 @@ impl<E: Environment> Affine<E> {
 
         Self { x, y }
     }
+}
+
+impl<E: Environment> Eject for Affine<E> {
+    type Primitive = E::Affine;
 
     ///
-    /// Returns `true` if the group is a constant.
+    /// Ejects the mode of the group element.
     ///
-    pub fn is_constant(&self) -> bool {
-        self.x.is_constant() && self.y.is_constant()
+    fn eject_mode(&self) -> Mode {
+        match (self.x.eject_mode(), self.y.eject_mode()) {
+            (Mode::Constant, mode) | (mode, Mode::Constant) => mode,
+            (Mode::Public, Mode::Public) => Mode::Public,
+            (Mode::Private, mode) | (mode, Mode::Private) => mode,
+        }
     }
 
     ///
     /// Ejects the group as a constant group element.
     ///
-    pub fn eject_value(&self) -> E::Affine {
+    fn eject_value(&self) -> E::Affine {
         let value = E::affine_from_x_coordinate(self.x.eject_value());
         assert_eq!(value.to_y_coordinate(), self.y.eject_value());
         value
+    }
+}
+
+impl<E: Environment> AsRef<Affine<E>> for Affine<E> {
+    fn as_ref(&self) -> &Affine<E> {
+        &self
     }
 }
 
@@ -148,14 +162,14 @@ mod tests {
                 assert_eq!(y_coordinate, recovered.to_y_coordinate());
             }
 
-            Circuit::scoped(&format!("Constant {}", i), |scope| {
+            Circuit::scoped(&format!("Constant {}", i), || {
                 let affine = Affine::<Circuit>::new(Mode::Constant, x_coordinate, None);
                 assert_eq!(point, affine.eject_value());
 
-                assert_eq!(4, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(0, scope.num_private_in_scope());
-                assert_eq!(0, scope.num_constraints_in_scope());
+                assert_eq!(4, Circuit::num_constants_in_scope());
+                assert_eq!(0, Circuit::num_public_in_scope());
+                assert_eq!(0, Circuit::num_private_in_scope());
+                assert_eq!(0, Circuit::num_constraints_in_scope());
             });
         }
 
@@ -165,15 +179,15 @@ mod tests {
             let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
             let x_coordinate = point.to_x_coordinate();
 
-            Circuit::scoped(&format!("Public {}", i), |scope| {
+            Circuit::scoped(&format!("Public {}", i), || {
                 let affine = Affine::<Circuit>::new(Mode::Public, x_coordinate, None);
                 assert_eq!(point, affine.eject_value());
 
-                assert_eq!(2, scope.num_constants_in_scope());
-                assert_eq!(2, scope.num_public_in_scope());
-                assert_eq!(2, scope.num_private_in_scope());
-                assert_eq!(3, scope.num_constraints_in_scope());
-                assert!(scope.is_satisfied());
+                assert_eq!(2, Circuit::num_constants_in_scope());
+                assert_eq!(2, Circuit::num_public_in_scope());
+                assert_eq!(2, Circuit::num_private_in_scope());
+                assert_eq!(3, Circuit::num_constraints_in_scope());
+                assert!(Circuit::is_satisfied());
             });
         }
 
@@ -183,15 +197,15 @@ mod tests {
             let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
             let x_coordinate = point.to_x_coordinate();
 
-            Circuit::scoped(&format!("Private {}", i), |scope| {
+            Circuit::scoped(&format!("Private {}", i), || {
                 let affine = Affine::<Circuit>::new(Mode::Private, x_coordinate, None);
                 assert_eq!(point, affine.eject_value());
 
-                assert_eq!(2, scope.num_constants_in_scope());
-                assert_eq!(0, scope.num_public_in_scope());
-                assert_eq!(4, scope.num_private_in_scope());
-                assert_eq!(3, scope.num_constraints_in_scope());
-                assert!(scope.is_satisfied());
+                assert_eq!(2, Circuit::num_constants_in_scope());
+                assert_eq!(0, Circuit::num_public_in_scope());
+                assert_eq!(4, Circuit::num_private_in_scope());
+                assert_eq!(3, Circuit::num_constraints_in_scope());
+                assert!(Circuit::is_satisfied());
             });
         }
     }

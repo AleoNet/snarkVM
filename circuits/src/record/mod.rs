@@ -14,33 +14,29 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-/**
-Add,
-    Div,
-    Double,
-    Inv,
-    IsEq,
-    IsNeq,
-    Mul,
-    Neg,
-    One,
-    Square,
-    Sub,
-    Ternary,
-    ToBitsLE,
-    ToBitsBE,
-    Zero,
+use crate::{Address, BaseField, Boolean, Environment, I64};
 
- */
+// #[derive(Clone, Debug)]
+pub struct Record<E: Environment> {
+    owner: Address<E>,
+    value: I64<E>,
+    payload: Vec<Boolean<E>>,
+    program_id: Vec<Boolean<E>>,
+    randomizer: BaseField<E>,
+    record_view_key: BaseField<E>,
+}
 
-pub enum BooleanOp {
-    And,
-    IsEq,
-    IsNeq,
-    Nand,
-    Nor,
-    Not,
-    Or,
-    Ternary,
-    Xor,
+// impl<E: Environment> Record<E> {
+//     ///
+//     /// Initializes a new instance of a record.
+//     ///
+//     pub fn new(value: Affine<E>) -> Self {
+//         Self(value)
+//     }
+// }
+
+impl<E: Environment> AsRef<Record<E>> for Record<E> {
+    fn as_ref(&self) -> &Record<E> {
+        &self
+    }
 }

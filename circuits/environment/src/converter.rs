@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::models::{ConstraintSystem, LinearCombination, Variable};
+use crate::{Circuit, LinearCombination, Variable, R1CS};
+use snarkvm_curves::edwards_bls12::Fq;
 use snarkvm_fields::PrimeField;
 
 use std::collections::HashMap;
@@ -25,7 +26,18 @@ struct Converter {
     private: HashMap<u64, snarkvm_r1cs::Variable>,
 }
 
-impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for ConstraintSystem<F> {
+impl snarkvm_r1cs::ConstraintSynthesizer<Fq> for Circuit {
+    /// Synthesizes the constraints from the environment into a `snarkvm_r1cs`-compliant constraint system.
+    fn generate_constraints<CS: snarkvm_r1cs::ConstraintSystem<Fq>>(
+        &self,
+        cs: &mut CS,
+    ) -> Result<(), snarkvm_r1cs::SynthesisError> {
+        crate::circuit::CIRCUIT.with(|circuit| (*(**circuit).borrow()).generate_constraints(cs))
+    }
+}
+
+impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for R1CS<F> {
+    /// Synthesizes the constraints from the environment into a `snarkvm_r1cs`-compliant constraint system.
     fn generate_constraints<CS: snarkvm_r1cs::ConstraintSystem<F>>(
         &self,
         cs: &mut CS,
@@ -88,7 +100,7 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for ConstraintSystem<
         }
 
         // Enforce all of the constraints.
-        for (i, (a, b, c)) in self.to_constraints().iter().enumerate() {
+        for (i, (_, (a, b, c))) in self.to_constraints().iter().enumerate() {
             // Converts terms from one linear combination in the first system to the second system.
             let convert_linear_combination = |lc: &LinearCombination<F>| -> snarkvm_r1cs::LinearCombination<F> {
                 // Initialize a linear combination for the second system.
@@ -150,7 +162,7 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for ConstraintSystem<
 
 #[cfg(test)]
 mod tests {
-    use crate::{BaseField, Circuit, Environment, Mode, One};
+    use snarkvm_circuits::{traits::Eject, BaseField, Circuit, Environment, Mode, One};
     use snarkvm_curves::bls12_377::Fr;
     use snarkvm_fields::One as O;
     use snarkvm_r1cs::ConstraintSynthesizer;
@@ -184,7 +196,7 @@ mod tests {
         let _candidate_output = create_example_circuit::<Circuit>();
 
         let mut cs = snarkvm_r1cs::TestConstraintSystem::new();
-        Circuit::cs().cs.borrow().generate_constraints(&mut cs).unwrap();
+        Circuit.generate_constraints(&mut cs).unwrap();
         {
             use snarkvm_r1cs::ConstraintSystem;
             assert_eq!(Circuit::num_public() + 1, cs.num_public_variables());
@@ -212,9 +224,9 @@ mod tests {
 
             let rng = &mut test_rng();
 
-            let parameters = generate_random_parameters::<Bls12_377, _, _>(&*Circuit::cs().cs.borrow(), rng).unwrap();
+            let parameters = generate_random_parameters::<Bls12_377, _, _>(&Circuit, rng).unwrap();
 
-            let proof = create_random_proof(&*Circuit::cs().cs.borrow(), &parameters, rng).unwrap();
+            let proof = create_random_proof(&Circuit, &parameters, rng).unwrap();
             let pvk = prepare_verifying_key::<Bls12_377>(parameters.vk.clone());
 
             assert!(verify_proof(&pvk, &proof, &[one, one]).unwrap());
@@ -257,10 +269,10 @@ mod tests {
             let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(200, 200, 300).unwrap();
             let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
 
-            let (index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &*Circuit::cs().cs.borrow()).unwrap();
+            let (index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &Circuit).unwrap();
             println!("Called circuit setup");
 
-            let proof = MarlinInst::prove(&index_pk, &*Circuit::cs().cs.borrow(), rng).unwrap();
+            let proof = MarlinInst::prove(&index_pk, &Circuit, rng).unwrap();
             println!("Called prover");
 
             assert!(MarlinInst::verify(&index_vk, &[one, one], &proof).unwrap());
