@@ -83,9 +83,44 @@ impl<E: Environment> Eject for BaseField<E> {
     }
 }
 
+// impl<E: Environment> Parser for BaseField<E> {
+//     type Output = BaseField<E>;
+//
+//     ///
+//     /// Parses a string into a circuit type.
+//     ///
+//     /// # Examples
+//     ///
+//     /// ```
+//     /// use snarkvm_circuits::{Parser, Circuit, Eject, Boolean};
+//     ///
+//     /// let candidate = Boolean::<Circuit>::parse("true");
+//     /// assert_eq!(true, candidate.eject_value());
+//     /// assert!(candidate.is_constant());
+//     ///
+//     /// let candidate = Boolean::<Circuit>::parse("false");
+//     /// assert_eq!(false, candidate.eject_value());
+//     /// assert!(candidate.is_constant());
+//     /// ```
+//     #[inline]
+//     fn parse(boolean: &str) -> Self::Output {
+//         match boolean {
+//             "true" => Boolean::new(Mode::Constant, true),
+//             "false" => Boolean::new(Mode::Constant, false),
+//             _ => E::halt(format!("Parser failed on 'boolean' type: {}", boolean)),
+//         }
+//     }
+// }
+
 impl<E: Environment> fmt::Debug for BaseField<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.eject_value())
+    }
+}
+
+impl<E: Environment> fmt::Display for BaseField<E> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}({})", self.eject_mode(), self.eject_value())
     }
 }
 
