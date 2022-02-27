@@ -72,11 +72,10 @@ impl<E: Environment> ToLowerBits for BaseField<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
+    use crate::{assert_circuit, helpers::integers::IntegerType, Circuit};
     use snarkvm_fields::PrimeField;
     use snarkvm_utilities::{from_bits_le_to_bytes_le, from_bytes_le_to_bits_le, FromBytes, ToBytes, UniformRand};
 
-    use crate::helpers::integers::IntegerType;
     use itertools::Itertools;
     use num_traits::Unsigned;
     use rand::thread_rng;
@@ -112,12 +111,7 @@ mod tests {
                 for (i, (expected_bit, candidate_bit)) in expected.iter().zip_eq(candidate.iter()).enumerate() {
                     assert_eq!(*expected_bit, candidate_bit.eject_value(), "LSB+{}", i);
                 }
-
-                assert_eq!(num_constants, Circuit::num_constants_in_scope(), "(num_constants)");
-                assert_eq!(num_public, Circuit::num_public_in_scope(), "(num_public)");
-                assert_eq!(num_private, Circuit::num_private_in_scope(), "(num_private)");
-                assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "(num_constraints)");
-                assert!(Circuit::is_satisfied(), "(is_satisfied)");
+                assert_circuit!(num_constants, num_public, num_private, num_constraints);
             });
         }
     }

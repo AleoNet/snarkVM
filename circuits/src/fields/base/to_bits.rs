@@ -68,7 +68,7 @@ impl<E: Environment> ToBits for &BaseField<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
+    use crate::{assert_circuit, Circuit};
     use snarkvm_fields::PrimeField;
     use snarkvm_utilities::UniformRand;
 
@@ -97,12 +97,7 @@ mod tests {
                 for (expected_bit, candidate_bit) in expected.to_bits_le().iter().zip_eq(candidate.iter()) {
                     assert_eq!(*expected_bit, candidate_bit.eject_value());
                 }
-
-                assert_eq!(num_constants, Circuit::num_constants_in_scope(), "(num_constants)");
-                assert_eq!(num_public, Circuit::num_public_in_scope(), "(num_public)");
-                assert_eq!(num_private, Circuit::num_private_in_scope(), "(num_private)");
-                assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "(num_constraints)");
-                assert!(Circuit::is_satisfied(), "(is_satisfied)");
+                assert_circuit!(num_constants, num_public, num_private, num_constraints);
             });
         }
     }
@@ -127,12 +122,7 @@ mod tests {
                 for (expected_bit, candidate_bit) in expected.to_bits_be().iter().zip_eq(candidate.iter()) {
                     assert_eq!(*expected_bit, candidate_bit.eject_value());
                 }
-
-                assert_eq!(num_constants, Circuit::num_constants_in_scope(), "(num_constants)");
-                assert_eq!(num_public, Circuit::num_public_in_scope(), "(num_public)");
-                assert_eq!(num_private, Circuit::num_private_in_scope(), "(num_private)");
-                assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "(num_constraints)");
-                assert!(Circuit::is_satisfied(), "(is_satisfied)");
+                assert_circuit!(num_constants, num_public, num_private, num_constraints);
             });
         }
     }

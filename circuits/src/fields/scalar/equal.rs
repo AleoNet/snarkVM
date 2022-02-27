@@ -45,7 +45,7 @@ impl<E: Environment> Equal<Self> for ScalarField<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
+    use crate::{assert_circuit, Circuit};
     use snarkvm_utilities::UniformRand;
 
     use rand::thread_rng;
@@ -71,12 +71,7 @@ mod tests {
                 a.eject_value(),
                 b.eject_value()
             );
-
-            assert_eq!(num_constants, Circuit::num_constants_in_scope(), "(num_constants)");
-            assert_eq!(num_public, Circuit::num_public_in_scope(), "(num_public)");
-            assert_eq!(num_private, Circuit::num_private_in_scope(), "(num_private)");
-            assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "(num_constraints)");
-            assert!(Circuit::is_satisfied(), "(is_satisfied)");
+            assert_circuit!(num_constants, num_public, num_private, num_constraints);
         });
     }
 
