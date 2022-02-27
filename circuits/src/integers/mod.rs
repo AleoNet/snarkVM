@@ -427,25 +427,6 @@ mod test_utilities {
         Circuit::reset();
     }
 
-    pub fn check_unary_operation_passes_without_counts<
-        V: Debug + Display + PartialEq,
-        IN,
-        OUT: Eject<Primitive = V>,
-    >(
-        name: &str,
-        case: &str,
-        expected: V,
-        input: IN,
-        operation: impl FnOnce(IN) -> OUT,
-    ) {
-        Circuit::scoped(name, || {
-            let candidate = operation(input);
-            assert_eq!(expected, candidate.eject_value(), "{} != {} := {}", expected, candidate.eject_value(), case);
-            assert!(Circuit::is_satisfied(), "{} (is_satisfied)", case);
-        });
-        Circuit::reset();
-    }
-
     pub fn check_unary_operation_fails<IN, OUT>(
         name: &str,
         case: &str,
@@ -465,23 +446,5 @@ mod test_utilities {
             assert!(!Circuit::is_satisfied(), "{} (!is_satisfied)", case);
         });
         Circuit::reset();
-    }
-
-    pub fn check_unary_operation_fails_without_counts<IN, OUT>(
-        name: &str,
-        case: &str,
-        input: IN,
-        operation: impl FnOnce(IN) -> OUT,
-    ) {
-        Circuit::scoped(name, || {
-            let _candidate = operation(input);
-            assert!(!Circuit::is_satisfied(), "{} (!is_satisfied)", case);
-        });
-        Circuit::reset();
-    }
-
-    pub fn check_unary_operation_halts<IN: UnwindSafe, OUT>(input: IN, operation: impl FnOnce(IN) -> OUT + UnwindSafe) {
-        let result = std::panic::catch_unwind(|| operation(input));
-        assert!(result.is_err());
     }
 }

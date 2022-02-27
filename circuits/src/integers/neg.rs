@@ -42,44 +42,48 @@ impl<E: Environment, I: IntegerType> Neg for &Integer<E, I> {
 mod tests {
     use super::*;
     use crate::Circuit;
-    use snarkvm_utilities::UniformRand;
+    use snarkvm_utilities::{test_rng, UniformRand};
     use test_utilities::*;
-
-    use rand::thread_rng;
 
     const ITERATIONS: usize = 128;
 
-    #[rustfmt::skip]
-    fn check_unsigned_halts<I: IntegerType + std::panic::UnwindSafe>(mode: Mode) {
-        let value: I = UniformRand::rand(&mut thread_rng());
-        check_unary_operation_halts(Integer::<Circuit, I>::new(mode, value), |a: Integer<Circuit, I> | { a.neg() })
+    fn check_unsigned_neg_halts<I: IntegerType + std::panic::UnwindSafe>(mode: Mode, value: I) {
+        let candidate = Integer::<Circuit, I>::new(mode, value);
+        let operation = std::panic::catch_unwind(|| candidate.neg());
+        assert!(operation.is_err());
     }
 
     #[rustfmt::skip]
-    fn check_neg<I: IntegerType + std::panic::RefUnwindSafe + Neg<Output = I> >(
+    fn check_neg<I: IntegerType + std::panic::UnwindSafe + Neg<Output = I> >(
         name: &str,
-        first: I,
+        value: I,
         mode: Mode,
         num_constants: usize,
         num_public: usize,
         num_private: usize,
         num_constraints: usize,
     ) {
-        let a = Integer::<Circuit, I>::new(mode, first);
+        let a = Integer::<Circuit, I>::new(mode, value);
         let case = format!("(-{})", a.eject_value());
-        match first.checked_neg() {
+        match value.checked_neg() {
             Some(value) => check_unary_operation_passes(name, &case, value, &a, |a: &Integer<Circuit, I> | { a.neg() }, num_constants, num_public, num_private, num_constraints),
             None => {
                 match mode {
-                    Mode::Constant => check_unary_operation_halts(&a, |a: &Integer<Circuit, I> | { a.neg() }),
+                    Mode::Constant => check_unsigned_neg_halts(mode, value),
                     _ => check_unary_operation_fails(name, &case, &a, |a: &Integer<Circuit, I> | { a.neg() }, num_constants, num_public, num_private, num_constraints),
                 }
             }
         }
     }
 
+    fn assert_unsigned_neg_halts<I: IntegerType + std::panic::UnwindSafe>(mode: Mode) {
+        let candidate = Integer::<Circuit, I>::new(mode, UniformRand::rand(&mut test_rng()));
+        let operation = std::panic::catch_unwind(|| candidate.neg());
+        assert!(operation.is_err());
+    }
+
     #[rustfmt::skip]
-    fn run_test<I: IntegerType + std::panic::RefUnwindSafe + Neg<Output = I> >(
+    fn run_test<I: IntegerType + std::panic::UnwindSafe + Neg<Output = I> >(
         mode: Mode,
         num_constants: usize,
         num_public: usize,
@@ -94,7 +98,7 @@ mod tests {
         check_neg(&format!("Neg: {} one", mode), -I::one());
         // Check random values.
         for i in 0..ITERATIONS {
-            let value: I = UniformRand::rand(&mut thread_rng());
+            let value: I = UniformRand::rand(&mut test_rng());
             check_neg(&format!("Neg: {} {}", mode, i), value);
         }
     }
@@ -102,9 +106,9 @@ mod tests {
     #[test]
     fn test_u8_neg() {
         type I = u8;
-        check_unsigned_halts::<I>(Mode::Constant);
-        check_unsigned_halts::<I>(Mode::Public);
-        check_unsigned_halts::<I>(Mode::Private);
+        assert_unsigned_neg_halts::<I>(Mode::Constant);
+        assert_unsigned_neg_halts::<I>(Mode::Public);
+        assert_unsigned_neg_halts::<I>(Mode::Private);
     }
 
     #[test]
@@ -118,9 +122,9 @@ mod tests {
     #[test]
     fn test_u16_neg() {
         type I = u16;
-        check_unsigned_halts::<I>(Mode::Constant);
-        check_unsigned_halts::<I>(Mode::Public);
-        check_unsigned_halts::<I>(Mode::Private);
+        assert_unsigned_neg_halts::<I>(Mode::Constant);
+        assert_unsigned_neg_halts::<I>(Mode::Public);
+        assert_unsigned_neg_halts::<I>(Mode::Private);
     }
 
     #[test]
@@ -134,9 +138,9 @@ mod tests {
     #[test]
     fn test_u32_neg() {
         type I = u32;
-        check_unsigned_halts::<I>(Mode::Constant);
-        check_unsigned_halts::<I>(Mode::Public);
-        check_unsigned_halts::<I>(Mode::Private);
+        assert_unsigned_neg_halts::<I>(Mode::Constant);
+        assert_unsigned_neg_halts::<I>(Mode::Public);
+        assert_unsigned_neg_halts::<I>(Mode::Private);
     }
 
     #[test]
@@ -150,9 +154,9 @@ mod tests {
     #[test]
     fn test_u64_neg() {
         type I = u64;
-        check_unsigned_halts::<I>(Mode::Constant);
-        check_unsigned_halts::<I>(Mode::Public);
-        check_unsigned_halts::<I>(Mode::Private);
+        assert_unsigned_neg_halts::<I>(Mode::Constant);
+        assert_unsigned_neg_halts::<I>(Mode::Public);
+        assert_unsigned_neg_halts::<I>(Mode::Private);
     }
 
     #[test]
@@ -166,9 +170,9 @@ mod tests {
     #[test]
     fn test_u128_neg() {
         type I = u128;
-        check_unsigned_halts::<I>(Mode::Constant);
-        check_unsigned_halts::<I>(Mode::Public);
-        check_unsigned_halts::<I>(Mode::Private);
+        assert_unsigned_neg_halts::<I>(Mode::Constant);
+        assert_unsigned_neg_halts::<I>(Mode::Public);
+        assert_unsigned_neg_halts::<I>(Mode::Private);
     }
 
     #[test]
