@@ -95,7 +95,7 @@ impl<E: Environment> Ternary for BaseField<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Circuit, assert_circuit};
+    use crate::{assert_circuit, Circuit};
     use snarkvm_utilities::UniformRand;
 
     use rand::thread_rng;

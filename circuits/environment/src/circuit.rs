@@ -243,4 +243,19 @@ mod tests {
         let output = format!("{}", Circuit);
         println!("{}", output);
     }
+
+    #[test]
+    fn test_circuit_scoped() {
+        Circuit::scoped("test_circuit_scoped", || {
+            assert_eq!(0, Circuit::num_constants());
+            assert_eq!(1, Circuit::num_public());
+            assert_eq!(0, Circuit::num_private());
+            assert_eq!(0, Circuit::num_constraints());
+
+            assert_eq!(0, Circuit::num_constants_in_scope());
+            assert_eq!(0, Circuit::num_public_in_scope());
+            assert_eq!(0, Circuit::num_private_in_scope());
+            assert_eq!(0, Circuit::num_constraints_in_scope());
+        })
+    }
 }

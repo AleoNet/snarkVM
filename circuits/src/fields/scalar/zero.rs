@@ -31,35 +31,17 @@ impl<E: Environment> Zero for ScalarField<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
+    use crate::{assert_circuit, Circuit};
 
     #[test]
     fn test_zero() {
         let zero = <Circuit as Environment>::ScalarField::zero();
 
         Circuit::scoped("Zero", || {
-            assert_eq!(0, Circuit::num_constants());
-            assert_eq!(1, Circuit::num_public());
-            assert_eq!(0, Circuit::num_private());
-            assert_eq!(0, Circuit::num_constraints());
-
-            assert_eq!(0, Circuit::num_constants_in_scope());
-            assert_eq!(0, Circuit::num_public_in_scope());
-            assert_eq!(0, Circuit::num_private_in_scope());
-            assert_eq!(0, Circuit::num_constraints_in_scope());
-
+            assert_circuit!(0, 0, 0, 0);
             let candidate = ScalarField::<Circuit>::zero();
             assert_eq!(zero, candidate.eject_value());
-
-            assert_eq!(251, Circuit::num_constants_in_scope());
-            assert_eq!(0, Circuit::num_public_in_scope());
-            assert_eq!(0, Circuit::num_private_in_scope());
-            assert_eq!(0, Circuit::num_constraints_in_scope());
-
-            assert_eq!(251, Circuit::num_constants());
-            assert_eq!(1, Circuit::num_public());
-            assert_eq!(0, Circuit::num_private());
-            assert_eq!(0, Circuit::num_constraints());
+            assert_circuit!(251, 0, 0, 0);
         });
     }
 

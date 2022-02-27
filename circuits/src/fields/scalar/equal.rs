@@ -62,15 +62,7 @@ mod tests {
     ) {
         Circuit::scoped(name, || {
             let candidate = a.is_eq(&b);
-            assert_eq!(
-                expected,
-                candidate.eject_value(),
-                "{} == {} := ({} == {})",
-                expected,
-                candidate.eject_value(),
-                a.eject_value(),
-                b.eject_value()
-            );
+            assert_eq!(expected, candidate.eject_value(), "({} == {})", a.eject_value(), b.eject_value());
             assert_circuit!(num_constants, num_public, num_private, num_constraints);
         });
     }

@@ -32,7 +32,7 @@ impl<E: Environment> Zero for BaseField<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Circuit, assert_circuit};
+    use crate::{assert_circuit, Circuit};
 
     #[test]
     fn test_zero() {
