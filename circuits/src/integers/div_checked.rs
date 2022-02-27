@@ -181,7 +181,7 @@ mod tests {
     ) {
         let check_div = | name: &str, first: I, second: I | check_div_without_expected_numbers(name, first, second, mode_a, mode_b);
 
-        for i in 0..ITERATIONS {
+        for _ in 0..ITERATIONS {
             let first: I = UniformRand::rand(&mut thread_rng());
             let second: I = UniformRand::rand(&mut thread_rng());
 
@@ -227,7 +227,7 @@ mod tests {
     ) {
         let check_div = | name: &str, first: I, second: I | check_div(name, first, second, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
 
-        for i in 0..ITERATIONS {
+        for _ in 0..ITERATIONS {
             let first: I = UniformRand::rand(&mut thread_rng());
             let second: I = UniformRand::rand(&mut thread_rng());
 

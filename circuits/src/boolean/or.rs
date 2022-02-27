@@ -61,6 +61,7 @@ impl<E: Environment> BitOrAssign<Boolean<E>> for Boolean<E> {
     }
 }
 
+#[allow(clippy::suspicious_op_assign_impl)]
 impl<E: Environment> BitOrAssign<&Boolean<E>> for Boolean<E> {
     /// Sets `self` as `(self OR other)`.
     fn bitor_assign(&mut self, other: &Boolean<E>) {

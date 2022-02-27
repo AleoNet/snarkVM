@@ -141,7 +141,7 @@ impl<F: PrimeField> LinearCombination<F> {
     /// Returns the number of addition gates in the linear combination.
     pub(super) fn num_additions(&self) -> usize {
         // Increment by one if the constant is nonzero and the number of terms is nonzero.
-        match !self.constant.is_zero() && self.terms.len() > 0 {
+        match !self.constant.is_zero() && !self.terms.is_empty() {
             true => self.terms.len(),
             false => self.terms.len().saturating_sub(1),
         }
@@ -380,7 +380,7 @@ impl<F: PrimeField> Mul<&F> for LinearCombination<F> {
 
 impl<F: PrimeField> AsRef<LinearCombination<F>> for LinearCombination<F> {
     fn as_ref(&self) -> &LinearCombination<F> {
-        &self
+        self
     }
 }
 

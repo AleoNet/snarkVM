@@ -354,7 +354,7 @@ mod test_utilities {
         num_constraints: usize,
     ) {
         Circuit::scoped(name, || {
-            let candidate = operation(a, b);
+            let _candidate = operation(a, b);
             assert_circuit_fails!(case, num_constants, num_public, num_private, num_constraints);
         });
         Circuit::reset();
@@ -368,7 +368,7 @@ mod test_utilities {
         operation: impl FnOnce(LHS, RHS) -> OUT,
     ) {
         Circuit::scoped(name, || {
-            let candidate = operation(a, b);
+            let _candidate = operation(a, b);
             assert!(!Circuit::is_satisfied(), "{} (!is_satisfied)", case);
         });
         Circuit::reset();

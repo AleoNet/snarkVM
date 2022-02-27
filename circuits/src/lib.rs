@@ -27,8 +27,8 @@ extern crate snarkvm_circuits_scope;
 
 pub use snarkvm_circuits_environment::*;
 
-pub mod address;
-pub use address::*;
+// pub mod address;
+// pub use address::*;
 
 pub mod boolean;
 pub use boolean::*;
@@ -52,8 +52,8 @@ pub use macros::*;
 pub mod programs;
 pub use programs::*;
 
-pub mod record;
-pub use record::*;
+// pub mod record;
+// pub use record::*;
 
 pub mod traits;
 pub use traits::*;

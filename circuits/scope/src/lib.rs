@@ -44,11 +44,7 @@ fn get_scope_name(metadata: proc_macro::TokenStream, function_name: &str) -> (Ty
     // (commas come through as TokenTree::Punct(_)).
     let macro_arguments: Vec<proc_macro::TokenTree> = metadata
         .into_iter()
-        .filter(|token| match token {
-            proc_macro::TokenTree::Ident(_) => true,
-            proc_macro::TokenTree::Literal(_) => true,
-            _ => false,
-        })
+        .filter(|token| matches!(token, proc_macro::TokenTree::Ident(_) | proc_macro::TokenTree::Literal(_)))
         .collect();
 
     if macro_arguments.is_empty() {
