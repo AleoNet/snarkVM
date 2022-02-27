@@ -28,9 +28,7 @@ pub enum Immediate<E: Environment> {
 
 #[derive(Clone)]
 pub enum Operand<E: Environment> {
-    Boolean(Boolean<E>),
-    BaseField(BaseField<E>),
-    Group(Affine<E>),
+    Immediate(Immediate<E>),
     Register(Register<E>),
 }
 
@@ -40,17 +38,41 @@ impl<E: Environment> Operand<E> {
         matches!(self, Self::Register(..))
     }
 
-    /// Returns the value from a register, otherwise passes the immediate through.
-    fn to_value(&self) -> Operand<E> {
+    /// Returns the value from a register, otherwise passes the loaded value through.
+    fn to_value(&self) -> Immediate<E> {
         match self {
+            Self::Immediate(value) => value.clone(),
             Self::Register(register) => register.load(),
-            value => value.clone(),
         }
     }
 }
 
+impl<E: Environment> From<Immediate<E>> for Operand<E> {
+    fn from(immediate: Immediate<E>) -> Operand<E> {
+        Operand::Immediate(immediate)
+    }
+}
+
+impl<E: Environment> From<&Immediate<E>> for Operand<E> {
+    fn from(immediate: &Immediate<E>) -> Operand<E> {
+        Operand::from(immediate.clone())
+    }
+}
+
+impl<E: Environment> From<Register<E>> for Operand<E> {
+    fn from(register: Register<E>) -> Operand<E> {
+        Operand::Register(register)
+    }
+}
+
+impl<E: Environment> From<&Register<E>> for Operand<E> {
+    fn from(register: &Register<E>) -> Operand<E> {
+        Operand::from(register.clone())
+    }
+}
+
 #[derive(Clone)]
-pub struct Register<E: Environment>(u32, Rc<RefCell<OnceCell<Operand<E>>>>);
+pub struct Register<E: Environment>(u32, Rc<RefCell<OnceCell<Immediate<E>>>>);
 
 impl<E: Environment> Register<E> {
     /// Returns a new instance of a register.
@@ -64,11 +86,11 @@ impl<E: Environment> Register<E> {
     }
 
     /// Attempts to store value into the register.
-    fn store(&self, value: &Operand<E>) {
+    fn store(&self, value: Immediate<E>) {
         match self.1.borrow().get().is_some() {
             true => panic!("Register {} is already set", self.0),
             false => {
-                if self.1.borrow().set(value.clone()).is_err() {
+                if self.1.borrow().set(value).is_err() {
                     panic!("Register {} failed to store value", self.0);
                 }
             }
@@ -76,7 +98,7 @@ impl<E: Environment> Register<E> {
     }
 
     /// Attempts to load the value from the register.
-    fn load(&self) -> Operand<E> {
+    fn load(&self) -> Immediate<E> {
         match self.1.borrow().get() {
             Some(value) => value.clone(),
             None => panic!("Register {} is not set", self.0),
@@ -87,8 +109,8 @@ impl<E: Environment> Register<E> {
 pub type Registers<E> = Vec<Register<E>>;
 
 pub enum Instruction<E: Environment> {
-    /// Stores `value` into `register`, if `register` is not already set.
-    Store(Operand<E>, Register<E>),
+    /// Stores `operand` into `register`, if `register` is not already set.
+    Store(Register<E>, Operand<E>),
     /// Adds `first` with `second`, storing the outcome in `register`.
     Add(Register<E>, Operand<E>, Operand<E>),
     /// Subtracts `first` from `second`, storing the outcome in `register`.
@@ -114,10 +136,10 @@ impl<E: Environment> Instruction<E> {
         }
     }
 
-    /// Stores `value` into `register`, if `register` is not already set.
+    /// Stores `operand` into `register`, if `register` is not already set.
     fn store(&self) {
         match self {
-            Self::Store(value, register) => register.store(value),
+            Self::Store(register, operand) => register.store(operand.to_value()),
             _ => unreachable!(),
         };
     }
@@ -132,8 +154,8 @@ impl<E: Environment> Instruction<E> {
 
         // Perform the operation.
         match (first.to_value(), second.to_value()) {
-            (Operand::BaseField(a), Operand::BaseField(b)) => register.store(&Operand::BaseField(a + b)),
-            (Operand::Group(a), Operand::Group(b)) => register.store(&Operand::Group(a + b)),
+            (Immediate::BaseField(a), Immediate::BaseField(b)) => register.store(Immediate::BaseField(a + b)),
+            (Immediate::Group(a), Immediate::Group(b)) => register.store(Immediate::Group(a + b)),
             _ => unreachable!(),
         }
     }
@@ -148,8 +170,8 @@ impl<E: Environment> Instruction<E> {
 
         // Perform the operation.
         match (first.to_value(), second.to_value()) {
-            (Operand::BaseField(a), Operand::BaseField(b)) => register.store(&Operand::BaseField(a - b)),
-            (Operand::Group(a), Operand::Group(b)) => register.store(&Operand::Group(a - b)),
+            (Immediate::BaseField(a), Immediate::BaseField(b)) => register.store(Immediate::BaseField(a - b)),
+            (Immediate::Group(a), Immediate::Group(b)) => register.store(Immediate::Group(a - b)),
             _ => unreachable!(),
         }
     }
@@ -176,7 +198,7 @@ impl<E: Environment> Function<E> {
     /// Allocates a new register, adds an instruction to store the given input, and returns the new register.
     fn new_input(&mut self, input: Operand<E>) -> Register<E> {
         let register = self.new_register();
-        self.push_instruction(Instruction::Store(input, register.clone()));
+        self.push_instruction(Instruction::Store(register.clone(), input));
         register
     }
 
@@ -242,15 +264,15 @@ mod tests {
 
     #[test]
     fn test_hello_world() {
-        let first = Operand::BaseField(BaseField::<Circuit>::one());
-        let second = Operand::BaseField(BaseField::one());
+        let first = Immediate::BaseField(BaseField::<Circuit>::one());
+        let second = Immediate::BaseField(BaseField::one());
 
-        let function = HelloWorld::new([first, second]);
+        let function = HelloWorld::new([first.into(), second.into()]);
         function.run();
 
         let expected = BaseField::one() + BaseField::one();
         match function.outputs[0].load() {
-            Operand::BaseField(output) => assert!(output.is_eq(&expected).eject_value()),
+            Immediate::BaseField(output) => assert!(output.is_eq(&expected).eject_value()),
             _ => panic!("Failed to load output"),
         }
     }
