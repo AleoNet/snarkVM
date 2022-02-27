@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -55,7 +55,7 @@ type TEAffineGadget<TE, F> = crate::curves::templates::twisted_edwards::AffineGa
     Debug(bound = "TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField")
 )]
 pub struct AleoSignaturePublicKeyGadget<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField>(
-    TEAffineGadget<TE, F>,
+    pub TEAffineGadget<TE, F>,
 );
 
 impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> AllocGadget<TEAffine<TE>, F>

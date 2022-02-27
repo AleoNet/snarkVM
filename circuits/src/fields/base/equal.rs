@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -136,7 +136,7 @@ impl<E: Environment> Equal<Self> for BaseField<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
+    use crate::{assert_circuit, Circuit};
 
     const ITERATIONS: usize = 200;
 
@@ -179,11 +179,7 @@ mod tests {
 
                 let is_eq = a.is_eq(&b);
                 assert!(is_eq.eject_value());
-
-                assert_eq!((i + 1) * 3, Circuit::num_constants_in_scope());
-                assert_eq!(0, Circuit::num_public_in_scope());
-                assert_eq!(0, Circuit::num_private_in_scope());
-                assert_eq!(0, Circuit::num_constraints_in_scope());
+                assert_circuit!((i + 1) * 3, 0, 0, 0);
 
                 accumulator += one;
             }
@@ -198,12 +194,7 @@ mod tests {
                 let b = BaseField::<Circuit>::new(Mode::Public, accumulator);
                 let is_eq = a.is_eq(&b);
                 assert!(is_eq.eject_value());
-
-                assert_eq!(0, Circuit::num_constants_in_scope());
-                assert_eq!((i + 1) * 2, Circuit::num_public_in_scope());
-                assert_eq!((i + 1) * 2, Circuit::num_private_in_scope());
-                assert_eq!((i + 1) * 3, Circuit::num_constraints_in_scope());
-                assert!(Circuit::is_satisfied());
+                assert_circuit!(0, (i + 1) * 2, (i + 1) * 2, (i + 1) * 3);
 
                 accumulator += one;
             }
@@ -218,12 +209,7 @@ mod tests {
                 let b = BaseField::<Circuit>::new(Mode::Private, accumulator);
                 let is_eq = a.is_eq(&b);
                 assert!(is_eq.eject_value());
-
-                assert_eq!(0, Circuit::num_constants_in_scope());
-                assert_eq!(i + 1, Circuit::num_public_in_scope());
-                assert_eq!((i + 1) * 3, Circuit::num_private_in_scope());
-                assert_eq!((i + 1) * 3, Circuit::num_constraints_in_scope());
-                assert!(Circuit::is_satisfied());
+                assert_circuit!(0, i + 1, (i + 1) * 3, (i + 1) * 3);
 
                 accumulator += one;
             }
@@ -239,11 +225,7 @@ mod tests {
                 let is_eq = a.is_eq(&b);
                 assert!(is_eq.eject_value());
                 assert!(Circuit::is_satisfied());
-
-                assert_eq!(0, Circuit::num_constants_in_scope());
-                assert_eq!(0, Circuit::num_public_in_scope());
-                assert_eq!((i + 1) * 4, Circuit::num_private_in_scope());
-                assert_eq!((i + 1) * 3, Circuit::num_constraints_in_scope());
+                assert_circuit!(0, 0, (i + 1) * 4, (i + 1) * 3);
 
                 accumulator += one;
             }

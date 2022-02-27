@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -89,7 +89,7 @@ impl<E: Environment> Double for &Affine<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
+    use crate::{assert_circuit, Circuit};
     use snarkvm_curves::Group;
     use snarkvm_utilities::UniformRand;
 
@@ -110,11 +110,7 @@ mod tests {
             Circuit::scoped(&format!("Constant {}", i), || {
                 let candidate = affine.double();
                 assert_eq!(expected, candidate.eject_value());
-
-                assert_eq!(3, Circuit::num_constants_in_scope());
-                assert_eq!(0, Circuit::num_public_in_scope());
-                assert_eq!(0, Circuit::num_private_in_scope());
-                assert_eq!(0, Circuit::num_constraints_in_scope());
+                assert_circuit!(3, 0, 0, 0);
             });
         }
 
@@ -129,12 +125,7 @@ mod tests {
             Circuit::scoped(&format!("Public {}", i), || {
                 let candidate = affine.double();
                 assert_eq!(expected, candidate.eject_value());
-
-                assert_eq!(1, Circuit::num_constants_in_scope());
-                assert_eq!(0, Circuit::num_public_in_scope());
-                assert_eq!(5, Circuit::num_private_in_scope());
-                assert_eq!(5, Circuit::num_constraints_in_scope());
-                assert!(Circuit::is_satisfied());
+                assert_circuit!(1, 0, 5, 5);
             });
         }
 
@@ -149,12 +140,7 @@ mod tests {
             Circuit::scoped(&format!("Private {}", i), || {
                 let candidate = affine.double();
                 assert_eq!(expected, candidate.eject_value());
-
-                assert_eq!(1, Circuit::num_constants_in_scope());
-                assert_eq!(0, Circuit::num_public_in_scope());
-                assert_eq!(5, Circuit::num_private_in_scope());
-                assert_eq!(5, Circuit::num_constraints_in_scope());
-                assert!(Circuit::is_satisfied());
+                assert_circuit!(1, 0, 5, 5);
             });
         }
     }

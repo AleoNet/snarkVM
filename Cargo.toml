@@ -12,17 +12,16 @@ keywords = [
   "decentralized",
   "zero-knowledge"
 ]
-categories = [ "cryptography::cryptocurrencies", "operating-systems" ]
+categories = [ "compilers", "cryptography", "mathematics", "wasm", "web-programming" ]
 include = [ "Cargo.toml", "snarkvm", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
-edition = "2018"
+edition = "2021"
 
 [workspace]
 members = [
   "algorithms",
   "circuits",
   "circuits/environment",
-  "circuits/scope",
   "curves",
   "derives", # excluded from [features], for internal use primarily
   "dpc",
@@ -31,7 +30,6 @@ members = [
   "instructions",
   "machine",
   "parameters",
-  "profiler", # excluded from [features], for internal use primarily
   "r1cs",
   "utilities",
   "wasm", # excluded from [features], WASM contexts will typically import this crate directly
@@ -117,7 +115,7 @@ version = "0.7.5"
 optional = true
 
 [dependencies.anyhow]
-version = "1.0.52"
+version = "1.0.55"
 optional = true
 
 [dependencies.colored]

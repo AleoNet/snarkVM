@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -31,23 +31,13 @@ impl<E: Environment, I: IntegerType> Zero for Integer<E, I> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
+    use crate::{assert_circuit, Circuit};
 
     fn check_zero<I: IntegerType>() {
         Circuit::scoped("Zero", || {
-            assert_eq!(0, Circuit::num_constants_in_scope());
-            assert_eq!(0, Circuit::num_public_in_scope());
-            assert_eq!(0, Circuit::num_private_in_scope());
-            assert_eq!(0, Circuit::num_constraints_in_scope());
-
+            assert_circuit!(0, 0, 0, 0);
             assert_eq!(I::zero(), Integer::<Circuit, I>::zero().eject_value());
-
-            assert_eq!(I::BITS, Circuit::num_constants_in_scope(), "(num_constants)");
-            assert_eq!(0, Circuit::num_public_in_scope(), "(num_public)");
-            assert_eq!(0, Circuit::num_private_in_scope(), "(num_private)");
-            assert_eq!(0, Circuit::num_constraints_in_scope(), "(num_constraints)");
-
-            assert!(Circuit::is_satisfied(), "(is_satisfied)");
+            assert_circuit!(I::BITS, 0, 0, 0);
         });
 
         let candidate = Integer::<Circuit, I>::zero();

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -296,7 +296,7 @@ mod tests {
 
 #[cfg(test)]
 mod test_utilities {
-    use crate::{Circuit, Eject, Environment};
+    use crate::{assert_circuit, assert_circuit_fails, Circuit, Eject, Environment};
     use std::{
         fmt::{Debug, Display},
         panic::UnwindSafe,
@@ -317,17 +317,7 @@ mod test_utilities {
         Circuit::scoped(name, || {
             let candidate = operation(a, b);
             assert_eq!(expected, candidate.eject_value(), "{} != {} := {}", expected, candidate.eject_value(), case);
-
-            print!("Constants: {:?}, ", Circuit::num_constants_in_scope());
-            print!("Public: {:?}, ", Circuit::num_public_in_scope());
-            print!("Private: {:?}, ", Circuit::num_private_in_scope());
-            print!("Constraints: {:?}\n", Circuit::num_constraints_in_scope());
-
-            assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
-            assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
-            assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
-            assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
-            assert!(Circuit::is_satisfied(), "{} (is_satisfied)", case);
+            assert_circuit!(case, num_constants, num_public, num_private, num_constraints);
         });
         Circuit::reset();
     }
@@ -364,18 +354,8 @@ mod test_utilities {
         num_constraints: usize,
     ) {
         Circuit::scoped(name, || {
-            let candidate = operation(a, b);
-
-            print!("Constants: {:?}, ", Circuit::num_constants_in_scope());
-            print!("Public: {:?}, ", Circuit::num_public_in_scope());
-            print!("Private: {:?}, ", Circuit::num_private_in_scope());
-            print!("Constraints: {:?}\n", Circuit::num_constraints_in_scope());
-
-            assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
-            assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
-            assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
-            assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
-            assert!(!Circuit::is_satisfied(), "{} (!is_satisfied)", case);
+            let _candidate = operation(a, b);
+            assert_circuit_fails!(case, num_constants, num_public, num_private, num_constraints);
         });
         Circuit::reset();
     }
@@ -388,7 +368,7 @@ mod test_utilities {
         operation: impl FnOnce(LHS, RHS) -> OUT,
     ) {
         Circuit::scoped(name, || {
-            let candidate = operation(a, b);
+            let _candidate = operation(a, b);
             assert!(!Circuit::is_satisfied(), "{} (!is_satisfied)", case);
         });
         Circuit::reset();
@@ -417,31 +397,7 @@ mod test_utilities {
         Circuit::scoped(name, || {
             let candidate = operation(input);
             assert_eq!(expected, candidate.eject_value(), "{} != {} := {}", expected, candidate.eject_value(), case);
-
-            assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
-            assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
-            assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
-            assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
-            assert!(Circuit::is_satisfied(), "{} (is_satisfied)", case);
-        });
-        Circuit::reset();
-    }
-
-    pub fn check_unary_operation_passes_without_counts<
-        V: Debug + Display + PartialEq,
-        IN,
-        OUT: Eject<Primitive = V>,
-    >(
-        name: &str,
-        case: &str,
-        expected: V,
-        input: IN,
-        operation: impl FnOnce(IN) -> OUT,
-    ) {
-        Circuit::scoped(name, || {
-            let candidate = operation(input);
-            assert_eq!(expected, candidate.eject_value(), "{} != {} := {}", expected, candidate.eject_value(), case);
-            assert!(Circuit::is_satisfied(), "{} (is_satisfied)", case);
+            assert_circuit!(case, num_constants, num_public, num_private, num_constraints);
         });
         Circuit::reset();
     }
@@ -458,30 +414,8 @@ mod test_utilities {
     ) {
         Circuit::scoped(name, || {
             let _candidate = operation(input);
-            assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
-            assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
-            assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
-            assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
-            assert!(!Circuit::is_satisfied(), "{} (!is_satisfied)", case);
+            assert_circuit_fails!(case, num_constants, num_public, num_private, num_constraints);
         });
         Circuit::reset();
-    }
-
-    pub fn check_unary_operation_fails_without_counts<IN, OUT>(
-        name: &str,
-        case: &str,
-        input: IN,
-        operation: impl FnOnce(IN) -> OUT,
-    ) {
-        Circuit::scoped(name, || {
-            let _candidate = operation(input);
-            assert!(!Circuit::is_satisfied(), "{} (!is_satisfied)", case);
-        });
-        Circuit::reset();
-    }
-
-    pub fn check_unary_operation_halts<IN: UnwindSafe, OUT>(input: IN, operation: impl FnOnce(IN) -> OUT + UnwindSafe) {
-        let result = std::panic::catch_unwind(|| operation(input));
-        assert!(result.is_err());
     }
 }

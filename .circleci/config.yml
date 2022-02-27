@@ -26,6 +26,7 @@ commands:
       - restore_cache:
           keys:
             - << parameters.cache_key >>
+
   clear_environment:
     description: "Clear environment"
     parameters:
@@ -41,11 +42,28 @@ commands:
             - .cache/sccache
             - .cargo
 
+  run_parallel:
+    description: "Build and run tests (in parallel)"
+    parameters:
+      workspace_member:
+        type: string
+    steps:
+      - run:
+          no_output_timeout: 30m
+          command: |
+            cd << parameters.workspace_member >>
+            cargo test -- --list --format terse | sed 's/: test//' > test_names.txt
+            TEST_NAMES=$(circleci tests split test_names.txt)
+            for i in $(echo $TEST_NAMES | sed "s/ / /g")
+            do
+                RUST_MIN_STACK=67108864 cargo test $i
+            done
+
 jobs:
 
   integration-testnet1:
     docker:
-      - image: cimg/rust:1.58
+      - image: cimg/rust:1.59
     resource_class: xlarge
     steps:
       - checkout
@@ -60,7 +78,7 @@ jobs:
 
   integration-testnet2:
     docker:
-      - image: cimg/rust:1.58
+      - image: cimg/rust:1.59
     resource_class: xlarge
     steps:
       - checkout
@@ -75,53 +93,35 @@ jobs:
 
   algorithms:
     docker:
-      - image: cimg/rust:1.58
+      - image: cimg/rust:1.59
     resource_class: xlarge
     parallelism: 20
     steps:
       - checkout
       - setup_environment:
           cache_key: snarkvm-algorithms-cache
-      - run:
-          name: Build and run tests
-          no_output_timeout: 35m
-          command: |
-            cd algorithms
-            cargo test -- --list --format terse | sed 's/: test//' > test_names.txt
-            TEST_NAMES=$(circleci tests split test_names.txt)
-            for i in $(echo $TEST_NAMES | sed "s/ / /g")
-            do
-                RUST_MIN_STACK=67108864 cargo test $i
-            done
+      - run_parallel:
+          workspace_member: algorithms
       - clear_environment:
           cache_key: snarkvm-algorithms-cache
 
   circuits:
     docker:
-      - image: cimg/rust:1.56.1
+      - image: cimg/rust:1.59
     resource_class: 2xlarge
     parallelism: 50
     steps:
       - checkout
       - setup_environment:
           cache_key: snarkvm-circuits-cache
-      - run:
-          name: Build and run tests
-          no_output_timeout: 35m
-          command: |
-            cd circuits
-            cargo test -- --include-ignored --list --format terse | sed 's/: test//' > test_names.txt
-            TEST_NAMES=$(circleci tests split test_names.txt)
-            for i in $(echo $TEST_NAMES | sed "s/ / /g")
-            do
-                RUST_MIN_STACK=67108864 cargo test $i -- --include-ignored
-            done
+      - run_parallel:
+          workspace_member: circuits
       - clear_environment:
           cache_key: snarkvm-circuits-cache
 
   circuits-environment:
     docker:
-      - image: cimg/rust:1.56.1
+      - image: cimg/rust:1.59
     resource_class: 2xlarge
     steps:
       - checkout
@@ -136,7 +136,7 @@ jobs:
 
   curves:
     docker:
-      - image: cimg/rust:1.58
+      - image: cimg/rust:1.59
     resource_class: xlarge
     steps:
       - checkout
@@ -151,7 +151,7 @@ jobs:
 
   derives:
     docker:
-      - image: cimg/rust:1.58
+      - image: cimg/rust:1.59
     resource_class: xlarge
     steps:
       - checkout
@@ -166,22 +166,21 @@ jobs:
 
   dpc:
     docker:
-      - image: cimg/rust:1.58
+      - image: cimg/rust:1.59
     resource_class: xlarge
+    parallelism: 20
     steps:
       - checkout
       - setup_environment:
           cache_key: snarkvm-dpc-cache
-      - run:
-          name: Build and run tests
-          no_output_timeout: 35m
-          command: cd dpc && RUST_MIN_STACK=67108864 cargo test
+      - run_parallel:
+          workspace_member: dpc
       - clear_environment:
           cache_key: snarkvm-dpc-cache
 
   fields:
     docker:
-      - image: cimg/rust:1.58
+      - image: cimg/rust:1.59
     resource_class: xlarge
     steps:
       - checkout
@@ -196,7 +195,7 @@ jobs:
 
   gadgets:
     docker:
-      - image: cimg/rust:1.58
+      - image: cimg/rust:1.59
     resource_class: 2xlarge
     steps:
       - checkout
@@ -211,7 +210,7 @@ jobs:
 
   parameters:
     docker:
-      - image: cimg/rust:1.58
+      - image: cimg/rust:1.59
     resource_class: xlarge
     steps:
       - checkout
@@ -224,24 +223,9 @@ jobs:
       - clear_environment:
           cache_key: snarkvm-parameters-cache
 
-  profiler:
-    docker:
-      - image: cimg/rust:1.58
-    resource_class: xlarge
-    steps:
-      - checkout
-      - setup_environment:
-          cache_key: snarkvm-profiler-cache
-      - run:
-          name: Build and run tests
-          no_output_timeout: 35m
-          command: cd profiler && RUST_MIN_STACK=67108864 cargo test
-      - clear_environment:
-          cache_key: snarkvm-profiler-cache
-
   r1cs:
     docker:
-      - image: cimg/rust:1.58
+      - image: cimg/rust:1.59
     resource_class: xlarge
     steps:
       - checkout
@@ -256,7 +240,7 @@ jobs:
 
   utilities:
     docker:
-      - image: cimg/rust:1.58
+      - image: cimg/rust:1.59
     resource_class: xlarge
     steps:
       - checkout
@@ -299,7 +283,6 @@ workflows:
       - fields
       - gadgets
       - parameters
-      - profiler
       - r1cs
       - utilities
       - fmt

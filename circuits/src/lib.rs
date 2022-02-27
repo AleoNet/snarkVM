@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -21,14 +21,10 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::type_complexity)]
 
-#[cfg(feature = "scope")]
-#[macro_use]
-extern crate snarkvm_circuits_scope;
-
 pub use snarkvm_circuits_environment::*;
 
-pub mod address;
-pub use address::*;
+// pub mod address;
+// pub use address::*;
 
 pub mod boolean;
 pub use boolean::*;
@@ -45,13 +41,16 @@ pub use helpers::integers::IntegerType;
 pub mod integers;
 pub use integers::*;
 
+pub mod macros;
+pub use macros::*;
+
 // TODO (howardwu): This is temporary until the programs interface is stabilized.
 #[allow(unused)]
 pub mod programs;
 pub use programs::*;
 
-pub mod record;
-pub use record::*;
+// pub mod record;
+// pub use record::*;
 
 pub mod traits;
 pub use traits::*;

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -38,7 +38,7 @@ impl<E: Environment> Subtractor for Boolean<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Circuit, Mode};
+    use crate::{assert_circuit, Circuit, Mode};
 
     fn check_subtractor(
         name: &str,
@@ -54,30 +54,10 @@ mod tests {
     ) {
         Circuit::scoped(name, || {
             let case = format!("({} SUB {} WITH {})", a.eject_value(), b.eject_value(), c.eject_value());
-
             let (candidate_difference, candidate_borrow) = a.subtractor(&b, &c);
-            assert_eq!(
-                expected_difference,
-                candidate_difference.eject_value(),
-                "DIFF {} != {} := {}",
-                expected_difference,
-                candidate_difference.eject_value(),
-                case
-            );
-            assert_eq!(
-                expected_borrow,
-                candidate_borrow.eject_value(),
-                "BORROW {} != {} := {}",
-                expected_borrow,
-                candidate_borrow.eject_value(),
-                case
-            );
-
-            assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
-            assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
-            assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
-            assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
-            assert!(Circuit::is_satisfied(), "{} (is_satisfied)", case);
+            assert_eq!(expected_difference, candidate_difference.eject_value(), "DIFF {}", case);
+            assert_eq!(expected_borrow, candidate_borrow.eject_value(), "BORROW {}", case);
+            assert_circuit!(case, num_constants, num_public, num_private, num_constraints);
         });
     }
 

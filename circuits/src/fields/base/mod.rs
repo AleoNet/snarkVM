@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -53,7 +53,6 @@ impl<E: Environment> BaseField<E> {
     ///
     /// Initializes a new instance of a base field from a constant base field value.
     ///
-    #[scope(circuit = "BaseField")]
     pub fn new(mode: Mode, value: E::BaseField) -> Self {
         Self(E::new_variable(mode, value).into())
     }
@@ -61,7 +60,6 @@ impl<E: Environment> BaseField<E> {
     ///
     /// Initializes a new instance of a base field from a boolean.
     ///
-    #[scope(circuit = "BaseField")]
     pub fn from(boolean: &Boolean<E>) -> Self {
         Self((**boolean).clone())
     }

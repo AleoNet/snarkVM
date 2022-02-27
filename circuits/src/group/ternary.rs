@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -31,7 +31,7 @@ impl<E: Environment> Ternary for Affine<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
+    use crate::{assert_circuit, Circuit};
     use snarkvm_utilities::UniformRand;
 
     use rand::thread_rng;
@@ -48,23 +48,10 @@ mod tests {
         num_constraints: usize,
     ) {
         Circuit::scoped(name, || {
+            let case = format!("({} ? {} : {})", condition.eject_value(), a.eject_value(), b.eject_value());
             let candidate = Affine::ternary(&condition, &a, &b);
-            assert_eq!(
-                expected,
-                candidate.eject_value(),
-                "{} != {} := ({} ? {} : {})",
-                expected,
-                candidate.eject_value(),
-                condition.eject_value(),
-                a.eject_value(),
-                b.eject_value()
-            );
-
-            assert_eq!(num_constants, Circuit::num_constants_in_scope(), "(num_constants)");
-            assert_eq!(num_public, Circuit::num_public_in_scope(), "(num_public)");
-            assert_eq!(num_private, Circuit::num_private_in_scope(), "(num_private)");
-            assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "(num_constraints)");
-            assert!(Circuit::is_satisfied(), "(is_satisfied)");
+            assert_eq!(expected, candidate.eject_value(), "{case}");
+            assert_circuit!(case, num_constants, num_public, num_private, num_constraints);
         });
     }
 

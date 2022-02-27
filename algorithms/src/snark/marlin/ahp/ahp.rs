@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -15,7 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    fft::EvaluationDomain,
+    fft::{
+        domain::{FFTPrecomputation, IFFTPrecomputation},
+        EvaluationDomain,
+    },
     polycommit::{LCTerm, LabeledPolynomial, LinearCombination},
     snark::marlin::{
         ahp::{matrices, prover::ProverConstraintSystem, verifier, AHPError, CircuitInfo},
@@ -142,6 +145,27 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         domain_c: EvaluationDomain<F>,
     ) -> EvaluationDomain<F> {
         [domain_a, domain_b, domain_c].into_iter().max_by_key(|d| d.size()).unwrap()
+    }
+
+    pub fn fft_precomputation(
+        constraint_domain_size: usize,
+        non_zero_a_domain_size: usize,
+        non_zero_b_domain_size: usize,
+        non_zero_c_domain_size: usize,
+    ) -> Option<(FFTPrecomputation<F>, IFFTPrecomputation<F>)> {
+        let largest_domain_size = [
+            3 * constraint_domain_size,
+            non_zero_a_domain_size * 2,
+            non_zero_b_domain_size * 2,
+            non_zero_c_domain_size * 2,
+        ]
+        .into_iter()
+        .max()?;
+        let largest_mul_domain = EvaluationDomain::new(largest_domain_size)?;
+
+        let fft_precomputation = largest_mul_domain.precompute_fft();
+        let ifft_precomputation = fft_precomputation.to_ifft_precomputation();
+        Some((fft_precomputation, ifft_precomputation))
     }
 
     /// Construct the linear combinations that are checked by the AHP.
@@ -391,9 +415,12 @@ impl<F: PrimeField> UnnormalizedBivariateLagrangePoly<F> for EvaluationDomain<F>
         x: F,
         domain: &EvaluationDomain<F>,
     ) -> Vec<F> {
+        use snarkvm_utilities::{cfg_iter, cfg_iter_mut};
+
+        #[cfg(not(feature = "parallel"))]
+        use itertools::Itertools;
         #[cfg(feature = "parallel")]
         use rayon::prelude::*;
-        use snarkvm_utilities::{cfg_iter, cfg_iter_mut};
 
         let vanish_x = self.evaluate_vanishing_polynomial(x);
         let elements = domain.elements().collect::<Vec<_>>();
@@ -405,12 +432,12 @@ impl<F: PrimeField> UnnormalizedBivariateLagrangePoly<F> for EvaluationDomain<F>
             snarkvm_fields::batch_inversion(&mut denoms);
             let ratio = domain.size() / self.size();
             let mut numerators = vec![vanish_x; domain.size()];
-            cfg_iter_mut!(numerators).zip(elements).enumerate().for_each(|(i, (n, e))| {
+            cfg_iter_mut!(numerators).zip_eq(elements).enumerate().for_each(|(i, (n, e))| {
                 if i % ratio != 0 {
                     *n -= self.evaluate_vanishing_polynomial(e);
                 }
             });
-            cfg_iter_mut!(denoms).zip(numerators).for_each(|(d, e)| *d *= e);
+            cfg_iter_mut!(denoms).zip_eq(numerators).for_each(|(d, e)| *d *= e);
         }
         denoms
     }

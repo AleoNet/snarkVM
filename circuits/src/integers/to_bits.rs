@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -49,7 +49,7 @@ impl<E: Environment, I: IntegerType> ToBits for &Integer<E, I> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
+    use crate::{assert_circuit, Circuit};
     use snarkvm_utilities::UniformRand;
 
     use num_traits::One;
@@ -79,12 +79,7 @@ mod tests {
                     assert_eq!(expected & I::one() == I::one(), candidate_bit.eject_value());
                     expected = expected.wrapping_shr(1);
                 }
-
-                assert_eq!(num_constants, Circuit::num_constants_in_scope(), "(num_constants)");
-                assert_eq!(num_public, Circuit::num_public_in_scope(), "(num_public)");
-                assert_eq!(num_private, Circuit::num_private_in_scope(), "(num_private)");
-                assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "(num_constraints)");
-                assert!(Circuit::is_satisfied(), "(is_satisfied)");
+                assert_circuit!(num_constants, num_public, num_private, num_constraints);
             });
         }
     }
@@ -111,12 +106,7 @@ mod tests {
                     assert_eq!(expected & I::one() == I::one(), candidate_bit.eject_value());
                     expected = expected.wrapping_shr(1);
                 }
-
-                assert_eq!(num_constants, Circuit::num_constants_in_scope(), "(num_constants)");
-                assert_eq!(num_public, Circuit::num_public_in_scope(), "(num_public)");
-                assert_eq!(num_private, Circuit::num_private_in_scope(), "(num_private)");
-                assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "(num_constraints)");
-                assert!(Circuit::is_satisfied(), "(is_satisfied)");
+                assert_circuit!(num_constants, num_public, num_private, num_constraints);
             });
         }
     }

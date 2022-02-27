@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -46,7 +46,7 @@ impl<E: Environment> Equal<Self> for Affine<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
+    use crate::{assert_circuit, Circuit};
     use snarkvm_utilities::UniformRand;
 
     use rand::thread_rng;
@@ -67,21 +67,13 @@ mod tests {
             Circuit::scoped(&format!("Constant Equals {}", i), || {
                 let equals = a.is_eq(&b);
                 assert!(!equals.eject_value());
-
-                assert_eq!(2, Circuit::num_constants_in_scope());
-                assert_eq!(0, Circuit::num_public_in_scope());
-                assert_eq!(0, Circuit::num_private_in_scope());
-                assert_eq!(0, Circuit::num_constraints_in_scope());
+                assert_circuit!(2, 0, 0, 0);
             });
 
             Circuit::scoped(&format!("Constant Not Equals {}", i), || {
                 let equals = a.is_neq(&b);
                 assert!(equals.eject_value());
-
-                assert_eq!(2, Circuit::num_constants_in_scope());
-                assert_eq!(0, Circuit::num_public_in_scope());
-                assert_eq!(0, Circuit::num_private_in_scope());
-                assert_eq!(0, Circuit::num_constraints_in_scope());
+                assert_circuit!(2, 0, 0, 0);
             });
         }
 
@@ -97,23 +89,13 @@ mod tests {
             Circuit::scoped(&format!("Constant and Public Equals {}", i), || {
                 let equals = a.is_eq(&b);
                 assert!(!equals.eject_value());
-
-                assert_eq!(0, Circuit::num_constants_in_scope());
-                assert_eq!(0, Circuit::num_public_in_scope());
-                assert_eq!(5, Circuit::num_private_in_scope());
-                assert_eq!(7, Circuit::num_constraints_in_scope());
-                assert!(Circuit::is_satisfied());
+                assert_circuit!(0, 0, 5, 7);
             });
 
             Circuit::scoped(&format!("Constant and Public Not Equals {}", i), || {
                 let equals = a.is_neq(&b);
                 assert!(equals.eject_value());
-
-                assert_eq!(0, Circuit::num_constants_in_scope());
-                assert_eq!(0, Circuit::num_public_in_scope());
-                assert_eq!(5, Circuit::num_private_in_scope());
-                assert_eq!(7, Circuit::num_constraints_in_scope());
-                assert!(Circuit::is_satisfied());
+                assert_circuit!(0, 0, 5, 7);
             });
         }
 
@@ -129,23 +111,13 @@ mod tests {
             Circuit::scoped(&format!("Public and Constant Equals {}", i), || {
                 let equals = a.is_eq(&b);
                 assert!(!equals.eject_value());
-
-                assert_eq!(0, Circuit::num_constants_in_scope());
-                assert_eq!(0, Circuit::num_public_in_scope());
-                assert_eq!(5, Circuit::num_private_in_scope());
-                assert_eq!(7, Circuit::num_constraints_in_scope());
-                assert!(Circuit::is_satisfied());
+                assert_circuit!(0, 0, 5, 7);
             });
 
             Circuit::scoped(&format!("Public and Constant Not Equals {}", i), || {
                 let equals = a.is_neq(&b);
                 assert!(equals.eject_value());
-
-                assert_eq!(0, Circuit::num_constants_in_scope());
-                assert_eq!(0, Circuit::num_public_in_scope());
-                assert_eq!(5, Circuit::num_private_in_scope());
-                assert_eq!(7, Circuit::num_constraints_in_scope());
-                assert!(Circuit::is_satisfied());
+                assert_circuit!(0, 0, 5, 7);
             });
         }
 
@@ -161,23 +133,13 @@ mod tests {
             Circuit::scoped(&format!("Public Equals {}", i), || {
                 let equals = a.is_eq(&b);
                 assert!(!equals.eject_value());
-
-                assert_eq!(0, Circuit::num_constants_in_scope());
-                assert_eq!(0, Circuit::num_public_in_scope());
-                assert_eq!(5, Circuit::num_private_in_scope());
-                assert_eq!(7, Circuit::num_constraints_in_scope());
-                assert!(Circuit::is_satisfied());
+                assert_circuit!(0, 0, 5, 7);
             });
 
             Circuit::scoped(&format!("Public Not Equals {}", i), || {
                 let equals = a.is_neq(&b);
                 assert!(equals.eject_value());
-
-                assert_eq!(0, Circuit::num_constants_in_scope());
-                assert_eq!(0, Circuit::num_public_in_scope());
-                assert_eq!(5, Circuit::num_private_in_scope());
-                assert_eq!(7, Circuit::num_constraints_in_scope());
-                assert!(Circuit::is_satisfied());
+                assert_circuit!(0, 0, 5, 7);
             });
         }
 
@@ -193,23 +155,13 @@ mod tests {
             Circuit::scoped(&format!("Private Equals {}", i), || {
                 let equals = a.is_eq(&b);
                 assert!(!equals.eject_value());
-
-                assert_eq!(0, Circuit::num_constants_in_scope());
-                assert_eq!(0, Circuit::num_public_in_scope());
-                assert_eq!(5, Circuit::num_private_in_scope());
-                assert_eq!(7, Circuit::num_constraints_in_scope());
-                assert!(Circuit::is_satisfied());
+                assert_circuit!(0, 0, 5, 7);
             });
 
             Circuit::scoped(&format!("Private Not Equals {}", i), || {
                 let equals = a.is_neq(&b);
                 assert!(equals.eject_value());
-
-                assert_eq!(0, Circuit::num_constants_in_scope());
-                assert_eq!(0, Circuit::num_public_in_scope());
-                assert_eq!(5, Circuit::num_private_in_scope());
-                assert_eq!(7, Circuit::num_constraints_in_scope());
-                assert!(Circuit::is_satisfied());
+                assert_circuit!(0, 0, 5, 7);
             });
         }
     }

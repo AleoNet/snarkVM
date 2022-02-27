@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -270,7 +270,7 @@ impl<N: Network> Block<N> {
         match height == 0 {
             true => {
                 // Output the starting supply as the genesis block reward.
-                AleoAmount::from_i64(N::ALEO_STARTING_SUPPLY_IN_CREDITS * AleoAmount::ONE_CREDIT.0)
+                AleoAmount::from_gate(N::ALEO_STARTING_SUPPLY_IN_CREDITS * AleoAmount::ONE_CREDIT.0)
             }
             false => {
                 // The initial blocks that aren't taken into account with the halving calculation.
@@ -288,7 +288,7 @@ impl<N: Network> Block<N> {
                 let num_halves = u32::min(height.saturating_sub(1) / block_segments, 2);
                 let reward = initial_reward / (2_u64.pow(num_halves)) as i64;
 
-                AleoAmount::from_i64(reward)
+                AleoAmount::from_gate(reward)
             }
         }
     }
@@ -454,22 +454,22 @@ mod tests {
 
         assert_eq!(
             Block::<Testnet2>::block_reward(0),
-            AleoAmount::from_i64(Testnet2::ALEO_STARTING_SUPPLY_IN_CREDITS * AleoAmount::ONE_CREDIT.0)
+            AleoAmount::from_gate(Testnet2::ALEO_STARTING_SUPPLY_IN_CREDITS * AleoAmount::ONE_CREDIT.0)
         );
 
         let mut supply = AleoAmount::ZERO;
 
         // Phase 1 - 100 credits per block.
-        let phase_1_sum = AleoAmount::from_i64(
+        let phase_1_sum = AleoAmount::from_gate(
             (0..=first_halving).into_par_iter().map(|i| Block::<Testnet2>::block_reward(i).0).sum::<i64>(),
         );
 
         supply = supply.add(phase_1_sum);
 
-        assert_eq!(supply, AleoAmount::from_i64(supply_at_first_halving * AleoAmount::ONE_CREDIT.0));
+        assert_eq!(supply, AleoAmount::from_gate(supply_at_first_halving * AleoAmount::ONE_CREDIT.0));
 
         // Phase 2 - 50 credits per block.
-        let phase_2_sum = AleoAmount::from_i64(
+        let phase_2_sum = AleoAmount::from_gate(
             ((first_halving + 1)..=second_halving)
                 .into_par_iter()
                 .map(|i| Block::<Testnet2>::block_reward(i).0)
@@ -478,7 +478,7 @@ mod tests {
 
         supply = supply.add(phase_2_sum);
 
-        assert_eq!(supply, AleoAmount::from_i64(supply_at_second_halving * AleoAmount::ONE_CREDIT.0));
+        assert_eq!(supply, AleoAmount::from_gate(supply_at_second_halving * AleoAmount::ONE_CREDIT.0));
     }
 
     #[test]
@@ -490,7 +490,7 @@ mod tests {
         // Serialize
         let expected_string = expected_block.to_string();
         let candidate_string = serde_json::to_string(&expected_block).unwrap();
-        assert_eq!(1008476, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(4274, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(expected_string, candidate_string);
 
         // Deserialize
@@ -507,7 +507,7 @@ mod tests {
         // Serialize
         let expected_bytes = expected_block.to_bytes_le().unwrap();
         let candidate_bytes = bincode::serialize(&expected_block).unwrap();
-        assert_eq!(504089, expected_bytes.len(), "Update me if serialization has changed");
+        assert_eq!(2119, expected_bytes.len(), "Update me if serialization has changed");
         // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
         assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
 

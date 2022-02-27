@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -116,7 +116,6 @@ impl<N: Network> ResponseBuilder<N> {
         let mut events = self.events.clone();
 
         // Construct the state.
-        let function_type = request.function_type();
         let program_id = request.to_program_id()?;
 
         // Construct the inputs.
@@ -150,7 +149,7 @@ impl<N: Network> ResponseBuilder<N> {
             .unzip();
 
         // Ensure the input records have the correct program ID.
-        for (i, input_record) in input_records.iter().enumerate().take(function_type.input_count() as usize) {
+        for (i, input_record) in input_records.iter().enumerate().take(N::NUM_INPUT_RECORDS) {
             if input_record.program_id() != program_id {
                 return Err(anyhow!("Program ID in input record {} is incorrect", i));
             }

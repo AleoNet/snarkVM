@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -23,9 +23,10 @@
 
 use crate::{
     fft::{DenseOrSparsePolynomial, DensePolynomial},
-    msm::{FixedBaseMSM, VariableBaseMSM},
+    msm::{FixedBase, VariableBase},
     polycommit::{PCError, PCRandomness},
 };
+use itertools::Itertools;
 use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{Field, One, PrimeField, Zero};
 use snarkvm_utilities::{cfg_iter, rand::UniformRand, BitIteratorBE};
@@ -132,22 +133,17 @@ impl<E: PairingEngine> KZG10<E> {
             }
             powers_of_beta
         };
-        let window_size = FixedBaseMSM::get_mul_window_size(max_degree + 1);
+        let window_size = FixedBase::get_mul_window_size(max_degree + 1);
         let g_time = start_timer!(|| "Generating powers of G");
-        let g_table = FixedBaseMSM::get_window_table(scalar_bits, window_size, g);
-        let powers_of_beta_g =
-            FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(scalar_bits, window_size, &g_table, &powers_of_beta);
+        let g_table = FixedBase::get_window_table(scalar_bits, window_size, g);
+        let powers_of_beta_g = FixedBase::msm::<E::G1Projective>(scalar_bits, window_size, &g_table, &powers_of_beta);
         end_timer!(g_time);
 
         // Compute `gamma beta^i G`.
         let gamma_g_time = start_timer!(|| "Generating powers of gamma * G");
-        let gamma_g_table = FixedBaseMSM::get_window_table(scalar_bits, window_size, gamma_g);
-        let mut powers_of_beta_times_gamma_g = FixedBaseMSM::multi_scalar_mul::<E::G1Projective>(
-            scalar_bits,
-            window_size,
-            &gamma_g_table,
-            &powers_of_beta,
-        );
+        let gamma_g_table = FixedBase::get_window_table(scalar_bits, window_size, gamma_g);
+        let mut powers_of_beta_times_gamma_g =
+            FixedBase::msm::<E::G1Projective>(scalar_bits, window_size, &gamma_g_table, &powers_of_beta);
         // Add an additional power of gamma_g, because we want to be able to support
         // up to D queries.
         powers_of_beta_times_gamma_g.push(powers_of_beta_times_gamma_g.last().unwrap().mul(beta));
@@ -178,18 +174,14 @@ impl<E: PairingEngine> KZG10<E> {
                     neg_powers_of_beta.push(beta.pow(&[(max_degree - *i) as u64]).inverse().unwrap());
                 }
 
-                let window_size = FixedBaseMSM::get_mul_window_size(neg_powers_of_beta.len());
-                let neg_h_table = FixedBaseMSM::get_window_table(scalar_bits, window_size, h);
-                let neg_powers_of_h = FixedBaseMSM::multi_scalar_mul::<E::G2Projective>(
-                    scalar_bits,
-                    window_size,
-                    &neg_h_table,
-                    &neg_powers_of_beta,
-                );
+                let window_size = FixedBase::get_mul_window_size(neg_powers_of_beta.len());
+                let neg_h_table = FixedBase::get_window_table(scalar_bits, window_size, h);
+                let neg_powers_of_h =
+                    FixedBase::msm::<E::G2Projective>(scalar_bits, window_size, &neg_h_table, &neg_powers_of_beta);
 
                 let affines = E::G2Projective::batch_normalization_into_affine(neg_powers_of_h);
 
-                for (i, affine) in list.iter().zip(affines.iter()) {
+                for (i, affine) in list.iter().zip_eq(affines.iter()) {
                     map.insert(*i, *affine);
                 }
 
@@ -239,8 +231,7 @@ impl<E: PairingEngine> KZG10<E> {
                 let (num_leading_zeros, plain_coeffs) = skip_leading_zeros_and_convert_to_bigints(polynomial);
 
                 let msm_time = start_timer!(|| "MSM to compute commitment to plaintext poly");
-                let commitment =
-                    VariableBaseMSM::multi_scalar_mul(&powers.powers_of_beta_g[num_leading_zeros..], &plain_coeffs);
+                let commitment = VariableBase::msm(&powers.powers_of_beta_g[num_leading_zeros..], &plain_coeffs);
                 end_timer!(msm_time);
 
                 if terminator.load(Ordering::Relaxed) {
@@ -274,8 +265,7 @@ impl<E: PairingEngine> KZG10<E> {
         let random_ints = convert_to_bigints(&randomness.blinding_polynomial.coeffs);
         let msm_time = start_timer!(|| "MSM to compute commitment to random poly");
         let random_commitment =
-            VariableBaseMSM::multi_scalar_mul(&powers.powers_of_beta_times_gamma_g, random_ints.as_slice())
-                .into_affine();
+            VariableBase::msm(&powers.powers_of_beta_times_gamma_g, random_ints.as_slice()).into_affine();
         end_timer!(msm_time);
 
         if terminator.load(Ordering::Relaxed) {
@@ -307,7 +297,7 @@ impl<E: PairingEngine> KZG10<E> {
 
         let evaluations = evaluations.iter().map(|e| e.to_repr()).collect::<Vec<_>>();
         let msm_time = start_timer!(|| "MSM to compute commitment to plaintext poly");
-        let mut commitment = VariableBaseMSM::multi_scalar_mul(&lagrange_basis.lagrange_basis_at_beta_g, &evaluations);
+        let mut commitment = VariableBase::msm(&lagrange_basis.lagrange_basis_at_beta_g, &evaluations);
         end_timer!(msm_time);
 
         if terminator.load(Ordering::Relaxed) {
@@ -331,8 +321,7 @@ impl<E: PairingEngine> KZG10<E> {
         let random_ints = convert_to_bigints(&randomness.blinding_polynomial.coeffs);
         let msm_time = start_timer!(|| "MSM to compute commitment to random poly");
         let random_commitment =
-            VariableBaseMSM::multi_scalar_mul(&lagrange_basis.powers_of_beta_times_gamma_g, random_ints.as_slice())
-                .into_affine();
+            VariableBase::msm(&lagrange_basis.powers_of_beta_times_gamma_g, random_ints.as_slice()).into_affine();
         end_timer!(msm_time);
 
         if terminator.load(Ordering::Relaxed) {
@@ -387,7 +376,7 @@ impl<E: PairingEngine> KZG10<E> {
         let (num_leading_zeros, witness_coeffs) = skip_leading_zeros_and_convert_to_bigints(witness_polynomial);
 
         let witness_comm_time = start_timer!(|| "Computing commitment to witness polynomial");
-        let mut w = VariableBaseMSM::multi_scalar_mul(&powers.powers_of_beta_g[num_leading_zeros..], &witness_coeffs);
+        let mut w = VariableBase::msm(&powers.powers_of_beta_g[num_leading_zeros..], &witness_coeffs);
         end_timer!(witness_comm_time);
 
         let random_v = if let Some(hiding_witness_polynomial) = hiding_witness_polynomial {
@@ -398,7 +387,7 @@ impl<E: PairingEngine> KZG10<E> {
 
             let random_witness_coeffs = convert_to_bigints(&hiding_witness_polynomial.coeffs);
             let witness_comm_time = start_timer!(|| "Computing commitment to random witness polynomial");
-            w += &VariableBaseMSM::multi_scalar_mul(&powers.powers_of_beta_times_gamma_g, &random_witness_coeffs);
+            w += &VariableBase::msm(&powers.powers_of_beta_times_gamma_g, &random_witness_coeffs);
             end_timer!(witness_comm_time);
             Some(blinding_evaluation)
         } else {
@@ -475,7 +464,7 @@ impl<E: PairingEngine> KZG10<E> {
         // their coefficients and perform a final multiplication at the end.
         let mut g_multiplier = E::Fr::zero();
         let mut gamma_g_multiplier = E::Fr::zero();
-        for (((c, z), v), proof) in commitments.iter().zip(points).zip(values).zip(proofs) {
+        for (((c, z), v), proof) in commitments.iter().zip_eq(points).zip_eq(values).zip_eq(proofs) {
             let w = proof.w;
             let mut temp = w.mul(*z).into_projective();
             temp.add_assign_mixed(&c.0);

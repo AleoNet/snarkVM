@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -17,8 +17,7 @@
 use crate::{Network, ViewKey};
 use std::fmt;
 
-#[derive(Derivative)]
-#[derivative(Clone(bound = "N: Network"), PartialEq(bound = "N: Network"), Eq(bound = "N: Network"))]
+#[derive(Clone, PartialEq, Eq)]
 pub enum DecryptionKey<N: Network> {
     AccountViewKey(ViewKey<N>),
     RecordViewKey(N::RecordViewKey),

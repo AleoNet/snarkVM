@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -35,7 +35,7 @@ impl<E: Environment> Square for &BaseField<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
+    use crate::{assert_circuit, Circuit};
 
     const ITERATIONS: usize = 500;
 
@@ -52,11 +52,7 @@ mod tests {
                 expected = expected.square();
                 candidate = candidate.square();
                 assert_eq!(expected, candidate.eject_value());
-
-                assert_eq!(1, Circuit::num_constants_in_scope());
-                assert_eq!(0, Circuit::num_public_in_scope());
-                assert_eq!(0, Circuit::num_private_in_scope());
-                assert_eq!(0, Circuit::num_constraints_in_scope());
+                assert_circuit!(1, 0, 0, 0);
             }
         });
 
@@ -69,12 +65,7 @@ mod tests {
                 expected = expected.square();
                 candidate = candidate.square();
                 assert_eq!(expected, candidate.eject_value());
-
-                assert_eq!(0, Circuit::num_constants_in_scope());
-                assert_eq!(1, Circuit::num_public_in_scope());
-                assert_eq!(i + 1, Circuit::num_private_in_scope());
-                assert_eq!(i + 1, Circuit::num_constraints_in_scope());
-                assert!(Circuit::is_satisfied());
+                assert_circuit!(0, 1, i + 1, i + 1);
             }
         });
 
@@ -87,12 +78,7 @@ mod tests {
                 expected = expected.square();
                 candidate = candidate.square();
                 assert_eq!(expected, candidate.eject_value());
-
-                assert_eq!(0, Circuit::num_constants_in_scope());
-                assert_eq!(0, Circuit::num_public_in_scope());
-                assert_eq!(i + 2, Circuit::num_private_in_scope());
-                assert_eq!(i + 1, Circuit::num_constraints_in_scope());
-                assert!(Circuit::is_satisfied());
+                assert_circuit!(0, 0, i + 2, i + 1);
             }
         });
     }

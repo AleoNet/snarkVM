@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -31,6 +31,7 @@ use snarkvm_r1cs::{
 use snarkvm_utilities::{
     bititerator::{BitIteratorBE, BitIteratorLE},
     to_bytes_le,
+    BigInteger,
     ToBytes,
 };
 
@@ -654,11 +655,32 @@ impl<F: PrimeField> ThreeBitCondNegLookupGadget<F> for AllocatedFp<F> {
             + b[0].lc(one, c[1] - c[0])
             + b[1].lc(one, c[2] - c[0])
             + (c[0], one);
+
+        // Conditional negation:
+        // We want to set the result to be a conditional negation of y_lc as follows:
+        // if b[2] == 0, result := y_lc
+        // if b[2] == 1, result := -y_lc
+        //
+        // We write this as follows:
+        // result = (b[2] - 1/2) * (-2 * y_lc);
+        //
+        // This works because
+        // * b[2] == 0 -> result = -1/2 * -2 * y_lc =  y_lc
+        // * b[2] == 1 -> result =  1/2 * -2 * y_lc = -y_lc
+        // We take this approach because it reduces the number of non-zero entries in
+        // the constraint, which makes it more efficient for Marlin.
+
+        // Compute 1/2 `(p+1)/2` as `1/2`.
+        // This is cheaper than `P::BaseField::one().double().inverse()`
+        let mut two_inv = F::Parameters::MODULUS;
+        two_inv.add_nocarry(&1u64.into());
+        two_inv.div2();
+        let neg_two_inv = -F::from_repr(two_inv).unwrap();
         cs.enforce(
             || "Enforce lookup",
-            |_| y_lc.clone() + y_lc.clone(),
-            |lc| lc + b[2].lc(one, F::one()),
-            |_| -result.get_variable() + y_lc.clone(),
+            |_| b[2].lc(one, F::one()) + &LinearCombination::from((neg_two_inv, one)),
+            |_| -(y_lc.clone() + y_lc.clone()),
+            |lc| result.get_variable() + lc,
         );
 
         Ok(result)

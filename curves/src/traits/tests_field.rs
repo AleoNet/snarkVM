@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -280,6 +280,7 @@ pub fn field_test<F: Field>(a: F, b: F) {
     assert_eq!((a + b) + a, a + (b + a));
     // (a + b).double() = (a + b) + (b + a)
     assert_eq!((a + b).double(), (a + b) + (b + a));
+    assert_eq!(F::half(), F::one().double().inverse().unwrap());
 
     // a * 0 = 0
     assert_eq!(a * zero, zero);
@@ -470,7 +471,7 @@ pub fn field_serialization_test<F: Field>() {
             }
         }
 
-        use snarkvm_utilities::errors::SerializationError;
+        use snarkvm_utilities::serialize::SerializationError;
         {
             let mut serialized = vec![0; buf_size];
             assert!(matches!(

@@ -12,7 +12,7 @@ keywords = [
     "decentralized",
     "zero-knowledge"
 ]
-categories = [ "cryptography::cryptocurrencies", "operating-systems" ]
+categories = [ "compilers", "cryptography", "mathematics", "wasm", "web-programming" ]
 include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
 edition = "2021"
@@ -24,10 +24,6 @@ harness = false
 
 [dependencies.snarkvm-circuits-environment]
 path = "./environment"
-version = "0.7.5"
-
-[dependencies.snarkvm-circuits-scope]
-path = "./scope"
 version = "0.7.5"
 
 [dependencies.snarkvm-curves]
@@ -63,10 +59,7 @@ version = "0.8"
 
 [features]
 default = [
-    "full",
     "snarkvm-curves/default",
     "snarkvm-fields/default",
     "snarkvm-utilities/default",
 ]
-full = ["scope"]
-scope = ["snarkvm-circuits-scope/scope"]

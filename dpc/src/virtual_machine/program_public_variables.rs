@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -17,13 +17,7 @@
 use crate::Network;
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 
-#[derive(Derivative)]
-#[derivative(
-    Copy(bound = "N: Network"),
-    Clone(bound = "N: Network"),
-    Debug(bound = "N: Network"),
-    Default(bound = "N: Network")
-)]
+#[derive(Copy, Clone, Debug, Default)]
 pub struct ProgramPublicVariables<N: Network> {
     pub transition_id: N::TransitionID,
 }
