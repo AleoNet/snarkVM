@@ -107,7 +107,7 @@ jobs:
 
   circuits:
     docker:
-      - image: cimg/rust:1.56.1
+      - image: cimg/rust:1.59
     resource_class: 2xlarge
     parallelism: 50
     steps:
@@ -121,7 +121,7 @@ jobs:
 
   circuits-environment:
     docker:
-      - image: cimg/rust:1.56.1
+      - image: cimg/rust:1.59
     resource_class: 2xlarge
     steps:
       - checkout
