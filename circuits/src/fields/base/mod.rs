@@ -27,6 +27,8 @@ pub mod square;
 pub mod sub;
 pub mod ternary;
 pub mod to_bits;
+pub mod to_lower_bits;
+pub mod to_upper_bits;
 pub mod zero;
 
 use crate::{traits::*, Boolean, Environment, LinearCombination, Mode};
@@ -80,6 +82,12 @@ impl<E: Environment> Eject for BaseField<E> {
     ///
     fn eject_value(&self) -> Self::Primitive {
         self.0.to_value()
+    }
+}
+
+impl<E: Environment> AsRef<BaseField<E>> for BaseField<E> {
+    fn as_ref(&self) -> &BaseField<E> {
+        &self
     }
 }
 

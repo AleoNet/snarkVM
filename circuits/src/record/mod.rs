@@ -16,7 +16,7 @@
 
 use crate::{Address, BaseField, Boolean, Environment, I64};
 
-#[derive(Clone, Debug)]
+// #[derive(Clone, Debug)]
 pub struct Record<E: Environment> {
     owner: Address<E>,
     value: I64<E>,
@@ -34,3 +34,9 @@ pub struct Record<E: Environment> {
 //         Self(value)
 //     }
 // }
+
+impl<E: Environment> AsRef<Record<E>> for Record<E> {
+    fn as_ref(&self) -> &Record<E> {
+        &self
+    }
+}

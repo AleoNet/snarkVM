@@ -27,7 +27,7 @@ impl<E: Environment> Equal<Self> for Affine<E> {
     fn is_eq(&self, other: &Self) -> Self::Boolean {
         let is_x_eq = self.x.is_eq(&other.x);
         let is_y_eq = self.y.is_eq(&other.y);
-        is_x_eq.and(&is_y_eq)
+        is_x_eq & is_y_eq
     }
 
     ///

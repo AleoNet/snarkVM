@@ -61,7 +61,7 @@ mod tests {
             let mut accumulator = one;
 
             for i in 0..ITERATIONS {
-                let expected = accumulator.inverse().unwrap();
+                let expected = accumulator.inverse().expect("Failed to compute the accumulator inverse");
                 let candidate = BaseField::<Circuit>::new(Mode::Constant, accumulator).inv();
                 assert_eq!(expected, candidate.eject_value());
 
@@ -79,7 +79,7 @@ mod tests {
             let mut accumulator = one;
 
             for i in 0..ITERATIONS {
-                let expected = accumulator.inverse().unwrap();
+                let expected = accumulator.inverse().expect("Failed to compute the accumulator inverse");
                 let candidate = BaseField::<Circuit>::new(Mode::Public, accumulator).inv();
                 assert_eq!(expected, candidate.eject_value());
 
@@ -98,7 +98,7 @@ mod tests {
             let mut accumulator = one;
 
             for i in 0..ITERATIONS {
-                let expected = accumulator.inverse().unwrap();
+                let expected = accumulator.inverse().expect("Failed to compute the accumulator inverse");
                 let candidate = BaseField::<Circuit>::new(Mode::Private, accumulator).inv();
                 assert_eq!(expected, candidate.eject_value());
 

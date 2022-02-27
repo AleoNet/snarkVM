@@ -137,6 +137,11 @@ impl Environment for Circuit {
         CIRCUIT.with(|circuit| (**circuit).borrow().num_constraints())
     }
 
+    /// Returns the number of gates in the entire circuit.
+    fn num_gates() -> usize {
+        CIRCUIT.with(|circuit| (**circuit).borrow().num_gates())
+    }
+
     /// Returns the number of constants for the current scope.
     fn num_constants_in_scope() -> usize {
         CIRCUIT.with(|circuit| (**circuit).borrow().num_constants_in_scope())
@@ -155,6 +160,11 @@ impl Environment for Circuit {
     /// Returns the number of constraints for the current scope.
     fn num_constraints_in_scope() -> usize {
         CIRCUIT.with(|circuit| (**circuit).borrow().num_constraints_in_scope())
+    }
+
+    /// Returns the number of gates for the current scope.
+    fn num_gates_in_scope() -> usize {
+        CIRCUIT.with(|circuit| (**circuit).borrow().num_gates_in_scope())
     }
 
     fn affine_from_x_coordinate(x: Self::BaseField) -> Self::Affine {

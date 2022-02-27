@@ -16,45 +16,89 @@
 
 use super::*;
 
-impl<E: Environment> Or<Self> for Boolean<E> {
-    type Boolean = Boolean<E>;
+impl<E: Environment> BitOr<Boolean<E>> for Boolean<E> {
     type Output = Boolean<E>;
 
-    /// Returns `(a OR b)`.
-    fn or(&self, other: &Self) -> Self::Output {
-        // Constant `self`
-        if self.is_constant() {
-            match self.eject_value() {
-                true => self.clone(),
-                false => other.clone(),
-            }
-        }
-        // Constant `other`
-        else if other.is_constant() {
-            match other.eject_value() {
-                true => other.clone(),
-                false => self.clone(),
-            }
-        }
-        // Variable OR Variable
-        else {
-            // Declare a new variable with the expected output as witness.
-            // Note: The constraint below will ensure `output` is either 0 or 1,
-            // assuming `self` and `other` are well-formed (they are either 0 or 1).
-            let output = Boolean(
-                E::new_variable(Mode::Private, match self.eject_value() | other.eject_value() {
-                    true => E::BaseField::one(),
-                    false => E::BaseField::zero(),
-                })
-                .into(),
-            );
+    /// Returns `(self OR other)`.
+    fn bitor(self, other: Boolean<E>) -> Self::Output {
+        self | &other
+    }
+}
 
-            // Ensure (1 - `self`) * (1 - `other`) = (1 - `output`)
-            // `output` is `1` iff `self` OR `other` is `1`.
-            E::enforce(|| (E::one() - &self.0, E::one() - &other.0, E::one() - &output.0));
+impl<E: Environment> BitOr<Boolean<E>> for &Boolean<E> {
+    type Output = Boolean<E>;
 
-            output
-        }
+    /// Returns `(self OR other)`.
+    fn bitor(self, other: Boolean<E>) -> Self::Output {
+        self | &other
+    }
+}
+
+impl<E: Environment> BitOr<&Boolean<E>> for Boolean<E> {
+    type Output = Boolean<E>;
+
+    /// Returns `(self OR other)`.
+    fn bitor(self, other: &Boolean<E>) -> Self::Output {
+        &self | other
+    }
+}
+
+impl<E: Environment> BitOr<&Boolean<E>> for &Boolean<E> {
+    type Output = Boolean<E>;
+
+    /// Returns `(self OR other)`.
+    fn bitor(self, other: &Boolean<E>) -> Self::Output {
+        let mut output = self.clone();
+        output |= other;
+        output
+    }
+}
+
+impl<E: Environment> BitOrAssign<Boolean<E>> for Boolean<E> {
+    /// Sets `self` as `(self OR other)`.
+    fn bitor_assign(&mut self, other: Boolean<E>) {
+        *self |= &other;
+    }
+}
+
+impl<E: Environment> BitOrAssign<&Boolean<E>> for Boolean<E> {
+    /// Sets `self` as `(self OR other)`.
+    fn bitor_assign(&mut self, other: &Boolean<E>) {
+        // Stores the bitwise OR of `self` and `other` in `self`.
+        *self =
+            // Constant `self`
+            if self.is_constant() {
+                match self.eject_value() {
+                    true => self.clone(),
+                    false => other.clone(),
+                }
+            }
+            // Constant `other`
+            else if other.is_constant() {
+                match other.eject_value() {
+                    true => other.clone(),
+                    false => self.clone(),
+                }
+            }
+            // Variable OR Variable
+            else {
+                // Declare a new variable with the expected output as witness.
+                // Note: The constraint below will ensure `output` is either 0 or 1,
+                // assuming `self` and `other` are well-formed (they are either 0 or 1).
+                let output = Boolean(
+                    E::new_variable(Mode::Private, match self.eject_value() | other.eject_value() {
+                        true => E::BaseField::one(),
+                        false => E::BaseField::zero(),
+                    })
+                        .into(),
+                );
+
+                // Ensure (1 - `self`) * (1 - `other`) = (1 - `output`)
+                // `output` is `1` iff `self` OR `other` is `1`.
+                E::enforce(|| (E::one() - &self.0, E::one() - &other.0, E::one() - &output.0));
+
+                output
+            }
     }
 }
 
@@ -74,7 +118,7 @@ mod tests {
         num_constraints: usize,
     ) {
         Circuit::scoped(name, || {
-            let candidate = a.or(&b);
+            let candidate = &a | &b;
             assert_eq!(
                 expected,
                 candidate.eject_value(),

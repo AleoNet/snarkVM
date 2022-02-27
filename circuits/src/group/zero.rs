@@ -26,7 +26,7 @@ impl<E: Environment> Zero for Affine<E> {
     fn is_zero(&self) -> Self::Boolean {
         let is_x_zero = self.x.is_eq(&BaseField::zero());
         let is_y_one = self.y.is_eq(&BaseField::one());
-        is_x_zero.and(&is_y_one)
+        is_x_zero & is_y_one
     }
 }
 

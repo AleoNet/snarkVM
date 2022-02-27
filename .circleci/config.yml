@@ -109,6 +109,7 @@ jobs:
     docker:
       - image: cimg/rust:1.56.1
     resource_class: 2xlarge
+    parallelism: 50
     steps:
       - checkout
       - setup_environment:
@@ -116,7 +117,14 @@ jobs:
       - run:
           name: Build and run tests
           no_output_timeout: 35m
-          command: cd circuits && RUST_MIN_STACK=67108864 cargo test
+          command: |
+            cd circuits
+            cargo test -- --include-ignored --list --format terse | sed 's/: test//' > test_names.txt
+            TEST_NAMES=$(circleci tests split test_names.txt)
+            for i in $(echo $TEST_NAMES | sed "s/ / /g")
+            do
+                RUST_MIN_STACK=67108864 cargo test $i -- --include-ignored
+            done
       - clear_environment:
           cache_key: snarkvm-circuits-cache
 

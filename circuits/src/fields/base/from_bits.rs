@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-
+use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{from_bits_le_to_bytes_le, FromBytes};
 
 impl<E: Environment> FromBits for BaseField<E> {
@@ -24,15 +24,16 @@ impl<E: Environment> FromBits for BaseField<E> {
     /// Initializes a new base field element from a list of little-endian bits *without* trailing zeros.
     #[scope(circuit = "BaseField")]
     fn from_bits_le(mode: Mode, bits_le: &[Self::Boolean]) -> Self {
-        // TODO (howardwu): Genericize this size check.
         // TODO (howardwu): Contemplate how to handle the CAPACITY vs. BITS case.
         // Ensure the list of booleans is within the allowed capacity.
         let mut bits_le = bits_le.to_vec();
-        match bits_le.len() <= 253 {
-            true => bits_le.resize(253, Boolean::new(Mode::Constant, false)),
-            false => {
-                E::halt(format!("Attempted to instantiate a 253-bit base field element with {} bits", bits_le.len()))
-            }
+        match bits_le.len() <= E::BaseField::size_in_bits() {
+            true => bits_le.resize(E::BaseField::size_in_bits(), Boolean::new(Mode::Constant, false)),
+            false => E::halt(format!(
+                "Attempted to instantiate a {}-bit base field element with {} bits",
+                E::BaseField::size_in_bits(),
+                bits_le.len()
+            )),
         }
 
         // Construct the field value from the given bits.

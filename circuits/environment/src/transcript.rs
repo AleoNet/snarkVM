@@ -23,7 +23,8 @@ pub(super) struct Transcript {
     public: usize,
     private: usize,
     constraints: usize,
-    parents: Vec<(Scope, usize, usize, usize, usize)>,
+    gates: usize,
+    parents: Vec<(Scope, usize, usize, usize, usize, usize)>,
 }
 
 impl Transcript {
@@ -38,7 +39,14 @@ impl Transcript {
                 };
 
                 // Save the current scope members.
-                self.parents.push((self.scope.clone(), self.constants, self.public, self.private, self.constraints));
+                self.parents.push((
+                    self.scope.clone(),
+                    self.constants,
+                    self.public,
+                    self.private,
+                    self.constraints,
+                    self.gates,
+                ));
 
                 // Initialize the new scope members.
                 self.scope = scope;
@@ -46,6 +54,7 @@ impl Transcript {
                 self.public = 0;
                 self.private = 0;
                 self.constraints = 0;
+                self.gates = 0;
 
                 Ok(())
             }
@@ -54,7 +63,7 @@ impl Transcript {
 
     pub(super) fn pop(&mut self, name: &str) -> Result<(), String> {
         // Pop the current scope from the full scope.
-        let (previous_scope, current_scope) = match self.scope.rsplit_once('.') {
+        let (_previous_scope, current_scope) = match self.scope.rsplit_once('.') {
             Some((previous_scope, current_scope)) => (previous_scope, current_scope),
             None => ("", self.scope.as_str()),
         };
@@ -62,12 +71,13 @@ impl Transcript {
         // Ensure the current scope is the last pushed scope.
         match current_scope == name {
             true => {
-                if let Some((scope, constants, public, private, constraints)) = self.parents.pop() {
+                if let Some((scope, constants, public, private, constraints, gates)) = self.parents.pop() {
                     self.scope = scope;
                     self.constants = constants;
                     self.public = public;
                     self.private = private;
                     self.constraints = constraints;
+                    self.gates = gates;
                 }
             }
             false => {
@@ -103,6 +113,11 @@ impl Transcript {
         self.constraints += 1;
     }
 
+    /// Increments the number of constraints by the given amount.
+    pub(super) fn increment_gates_by(&mut self, amount: usize) {
+        self.gates += amount;
+    }
+
     /// Returns the number of constants.
     pub(super) fn num_constants_in_scope(&self) -> usize {
         self.constants
@@ -121,5 +136,10 @@ impl Transcript {
     /// Returns the number of constraints.
     pub(super) fn num_constraints_in_scope(&self) -> usize {
         self.constraints
+    }
+
+    /// Returns the number of gates.
+    pub(super) fn num_gates_in_scope(&self) -> usize {
+        self.gates
     }
 }

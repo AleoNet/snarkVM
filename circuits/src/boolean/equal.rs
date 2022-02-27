@@ -26,7 +26,7 @@ impl<E: Environment> Equal<Self> for Boolean<E> {
 
     /// Returns `true` if `self` and `other` are *not* equal.
     fn is_neq(&self, other: &Self) -> Self::Boolean {
-        self.xor(other)
+        self ^ other
     }
 }
 
