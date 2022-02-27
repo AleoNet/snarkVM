@@ -22,7 +22,6 @@ members = [
   "algorithms",
   "circuits",
   "circuits/environment",
-  "circuits/scope",
   "curves",
   "derives", # excluded from [features], for internal use primarily
   "dpc",

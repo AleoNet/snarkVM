@@ -57,7 +57,6 @@ impl<E: Environment> MulAssign<BaseField<E>> for BaseField<E> {
 }
 
 impl<E: Environment> MulAssign<&BaseField<E>> for BaseField<E> {
-    #[scope(method = "mul")]
     fn mul_assign(&mut self, other: &BaseField<E>) {
         match (self.is_constant(), other.is_constant()) {
             (true, true) => self.0 = self.0.clone() * other.eject_value(),

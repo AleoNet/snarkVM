@@ -26,10 +26,6 @@ harness = false
 path = "./environment"
 version = "0.7.5"
 
-[dependencies.snarkvm-circuits-scope]
-path = "./scope"
-version = "0.7.5"
-
 [dependencies.snarkvm-curves]
 path = "../curves"
 version = "0.7.5"
@@ -63,10 +59,7 @@ version = "0.8"
 
 [features]
 default = [
-    "full",
     "snarkvm-curves/default",
     "snarkvm-fields/default",
     "snarkvm-utilities/default",
 ]
-full = ["scope"]
-scope = ["snarkvm-circuits-scope/scope"]

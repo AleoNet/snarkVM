@@ -21,10 +21,6 @@
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::type_complexity)]
 
-#[cfg(feature = "scope")]
-#[macro_use]
-extern crate snarkvm_circuits_scope;
-
 pub use snarkvm_circuits_environment::*;
 
 // pub mod address;

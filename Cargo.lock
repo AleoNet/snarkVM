@@ -1953,7 +1953,6 @@ dependencies = [
  "once_cell",
  "rand",
  "snarkvm-circuits-environment",
- "snarkvm-circuits-scope",
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-utilities",
@@ -1971,16 +1970,6 @@ dependencies = [
  "snarkvm-fields",
  "snarkvm-r1cs",
  "snarkvm-utilities",
-]
-
-[[package]]
-name = "snarkvm-circuits-scope"
-version = "0.7.5"
-dependencies = [
- "proc-macro2 0.4.30",
- "quote 0.6.13",
- "snarkvm-circuits-environment",
- "syn 0.15.44",
 ]
 
 [[package]]

@@ -19,7 +19,6 @@ use super::*;
 impl<E: Environment> Zero for BaseField<E> {
     type Boolean = Boolean<E>;
 
-    #[scope(circuit = "BaseField")]
     fn zero() -> Self {
         BaseField(E::zero())
     }
