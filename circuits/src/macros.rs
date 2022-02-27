@@ -50,3 +50,40 @@ macro_rules! assert_circuit {
         assert!(Circuit::is_satisfied(), "{} (is_satisfied)", $case);
     };
 }
+
+#[cfg(test)]
+#[macro_export]
+macro_rules! assert_circuit_fails {
+    () => {
+        println!("Constants: {:?}", Circuit::num_constants_in_scope());
+        println!("Public: {:?}", Circuit::num_public_in_scope());
+        println!("Private: {:?}", Circuit::num_private_in_scope());
+        println!("Constraints: {:?}", Circuit::num_constraints_in_scope());
+
+        assert!(!Circuit::is_satisfied(), "(!is_satisfied)");
+    };
+    ($num_constants:expr, $num_public:expr, $num_private:expr, $num_constraints:expr) => {
+        println!("Constants: {:?}", Circuit::num_constants_in_scope());
+        println!("Public: {:?}", Circuit::num_public_in_scope());
+        println!("Private: {:?}", Circuit::num_private_in_scope());
+        println!("Constraints: {:?}", Circuit::num_constraints_in_scope());
+
+        assert_eq!($num_constants, Circuit::num_constants_in_scope(), "(num_constants)");
+        assert_eq!($num_public, Circuit::num_public_in_scope(), "(num_public)");
+        assert_eq!($num_private, Circuit::num_private_in_scope(), "(num_private)");
+        assert_eq!($num_constraints, Circuit::num_constraints_in_scope(), "(num_constraints)");
+        assert!(!Circuit::is_satisfied(), "(!is_satisfied)");
+    };
+    ($case:expr, $num_constants:expr, $num_public:expr, $num_private:expr, $num_constraints:expr) => {
+        println!("Constants: {:?}", Circuit::num_constants_in_scope());
+        println!("Public: {:?}", Circuit::num_public_in_scope());
+        println!("Private: {:?}", Circuit::num_private_in_scope());
+        println!("Constraints: {:?}", Circuit::num_constraints_in_scope());
+
+        assert_eq!($num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", $case);
+        assert_eq!($num_public, Circuit::num_public_in_scope(), "{} (num_public)", $case);
+        assert_eq!($num_private, Circuit::num_private_in_scope(), "{} (num_private)", $case);
+        assert_eq!($num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", $case);
+        assert!(!Circuit::is_satisfied(), "{} (!is_satisfied)", $case);
+    };
+}
