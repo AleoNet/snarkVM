@@ -95,13 +95,11 @@ mod tests {
             check_sub(&name, first, second);
         }
 
-
         match I::is_signed() {
             // Check overflow and underflow conditions for signed integers
             true => {
                 // Overflow
                 check_sub("MAX - (-1)", I::MAX, I::zero() - I::one());
-
                 // Underflow
                 check_sub("MIN - 1", I::MIN, I::one());
             },

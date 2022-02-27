@@ -100,7 +100,7 @@ impl<E: Environment> fmt::Debug for ScalarField<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
+    use crate::{assert_circuit, Circuit};
     use snarkvm_utilities::UniformRand;
 
     use rand::thread_rng;
@@ -120,12 +120,7 @@ mod tests {
         Circuit::scoped(name, || {
             let candidate = ScalarField::<Circuit>::new(mode, expected);
             assert_eq!(expected, candidate.eject_value());
-
-            assert_eq!(num_constants, Circuit::num_constants_in_scope());
-            assert_eq!(num_public, Circuit::num_public_in_scope());
-            assert_eq!(num_private, Circuit::num_private_in_scope());
-            assert_eq!(num_constraints, Circuit::num_constraints_in_scope());
-            assert!(Circuit::is_satisfied());
+            assert_circuit!(num_constants, num_public, num_private, num_constraints);
         });
     }
 

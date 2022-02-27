@@ -296,7 +296,7 @@ mod tests {
 
 #[cfg(test)]
 mod test_utilities {
-    use crate::{Circuit, Eject, Environment};
+    use crate::{assert_circuit, Circuit, Eject, Environment};
     use std::{
         fmt::{Debug, Display},
         panic::UnwindSafe,
@@ -317,17 +317,7 @@ mod test_utilities {
         Circuit::scoped(name, || {
             let candidate = operation(a, b);
             assert_eq!(expected, candidate.eject_value(), "{} != {} := {}", expected, candidate.eject_value(), case);
-
-            print!("Constants: {:?}, ", Circuit::num_constants_in_scope());
-            print!("Public: {:?}, ", Circuit::num_public_in_scope());
-            print!("Private: {:?}, ", Circuit::num_private_in_scope());
-            print!("Constraints: {:?}\n", Circuit::num_constraints_in_scope());
-
-            assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
-            assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
-            assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
-            assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
-            assert!(Circuit::is_satisfied(), "{} (is_satisfied)", case);
+            assert_circuit!(case, num_constants, num_public, num_private, num_constraints);
         });
         Circuit::reset();
     }
@@ -417,12 +407,7 @@ mod test_utilities {
         Circuit::scoped(name, || {
             let candidate = operation(input);
             assert_eq!(expected, candidate.eject_value(), "{} != {} := {}", expected, candidate.eject_value(), case);
-
-            assert_eq!(num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", case);
-            assert_eq!(num_public, Circuit::num_public_in_scope(), "{} (num_public)", case);
-            assert_eq!(num_private, Circuit::num_private_in_scope(), "{} (num_private)", case);
-            assert_eq!(num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", case);
-            assert!(Circuit::is_satisfied(), "{} (is_satisfied)", case);
+            assert_circuit!(case, num_constants, num_public, num_private, num_constraints);
         });
         Circuit::reset();
     }

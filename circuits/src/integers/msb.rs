@@ -31,7 +31,7 @@ impl<E: Environment, I: IntegerType> MSB for Integer<E, I> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
+    use crate::{assert_circuit, Circuit};
 
     fn check_msb<I: IntegerType>() {
         // Set the value to check to I::MAX.
@@ -42,22 +42,12 @@ mod tests {
         let expected_unsigned = true;
 
         Circuit::scoped("MSB", || {
-            assert_eq!(0, Circuit::num_constants_in_scope());
-            assert_eq!(0, Circuit::num_public_in_scope());
-            assert_eq!(0, Circuit::num_private_in_scope());
-            assert_eq!(0, Circuit::num_constraints_in_scope());
-
+            assert_circuit!(0, 0, 0, 0);
             match I::is_signed() {
                 true => assert_eq!(expected_signed, value.msb().eject_value()),
                 false => assert_eq!(expected_unsigned, value.msb().eject_value()),
             }
-
-            assert_eq!(0, Circuit::num_constants_in_scope(), "(num_constants)");
-            assert_eq!(0, Circuit::num_public_in_scope(), "(num_public)");
-            assert_eq!(0, Circuit::num_private_in_scope(), "(num_private)");
-            assert_eq!(0, Circuit::num_constraints_in_scope(), "(num_constraints)");
-
-            assert!(Circuit::is_satisfied(), "(is_satisfied)");
+            assert_circuit!(0, 0, 0, 0);
         });
     }
 
