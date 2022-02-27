@@ -130,49 +130,32 @@ impl<E: Environment> Instruction<E> {
     /// Evaluates the instruction.
     fn evaluate(&self) {
         match self {
-            Self::Store(..) => self.store(),
-            Self::Add(..) => self.add(),
-            Self::Sub(..) => self.sub(),
+            Self::Store(register, operand) => Self::store(register, operand),
+            Self::Add(register, first, second) => Self::add(register, first, second),
+            Self::Sub(register, first, second) => Self::sub(register, first, second),
         }
     }
 
     /// Stores `operand` into `register`, if `register` is not already set.
-    fn store(&self) {
-        match self {
-            Self::Store(register, operand) => register.store(operand.to_value()),
-            _ => unreachable!(),
-        };
+    fn store(register: &Register<E>, operand: &Operand<E>) {
+        register.store(operand.to_value())
     }
 
     /// Adds `first` with `second`, storing the outcome in `register`.
-    fn add(&self) {
-        // Load the values and register.
-        let (register, first, second) = match self {
-            Self::Add(register, first, second) => (register, first, second),
-            _ => unreachable!(),
-        };
-
-        // Perform the operation.
+    fn add(register: &Register<E>, first: &Operand<E>, second: &Operand<E>) {
         match (first.to_value(), second.to_value()) {
             (Immediate::BaseField(a), Immediate::BaseField(b)) => register.store(Immediate::BaseField(a + b)),
             (Immediate::Group(a), Immediate::Group(b)) => register.store(Immediate::Group(a + b)),
-            _ => unreachable!(),
+            _ => E::halt("Invalid 'add' instruction"),
         }
     }
 
     /// Subtracts `first` from `second`, storing the outcome in `register`.
-    fn sub(&self) {
-        // Load the values and register.
-        let (register, first, second) = match self {
-            Self::Sub(register, first, second) => (register, first, second),
-            _ => unreachable!(),
-        };
-
-        // Perform the operation.
+    fn sub(register: &Register<E>, first: &Operand<E>, second: &Operand<E>) {
         match (first.to_value(), second.to_value()) {
             (Immediate::BaseField(a), Immediate::BaseField(b)) => register.store(Immediate::BaseField(a - b)),
             (Immediate::Group(a), Immediate::Group(b)) => register.store(Immediate::Group(a - b)),
-            _ => unreachable!(),
+            _ => E::halt("Invalid 'sub' instruction"),
         }
     }
 }
