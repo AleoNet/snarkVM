@@ -114,17 +114,8 @@ jobs:
       - checkout
       - setup_environment:
           cache_key: snarkvm-circuits-cache
-      - run:
-          name: Build and run tests
-          no_output_timeout: 35m
-          command: |
-            cd circuits
-            cargo test -- --include-ignored --list --format terse | sed 's/: test//' > test_names.txt
-            TEST_NAMES=$(circleci tests split test_names.txt)
-            for i in $(echo $TEST_NAMES | sed "s/ / /g")
-            do
-                RUST_MIN_STACK=67108864 cargo test $i -- --include-ignored
-            done
+      - run_parallel:
+          workspace_member: circuits
       - clear_environment:
           cache_key: snarkvm-circuits-cache
 
