@@ -98,7 +98,7 @@ impl<E: Environment> Register<E> {
     }
 
     /// Attempts to load the value from the register.
-    fn load(&self) -> Immediate<E> {
+    pub fn load(&self) -> Immediate<E> {
         match self.1.borrow().get() {
             Some(value) => value.clone(),
             None => panic!("Register {} is not set", self.0),
@@ -167,38 +167,38 @@ pub struct Function<E: Environment> {
 
 impl<E: Environment> Function<E> {
     /// Initializes a new instance of a function.
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self { registers: Registers::default(), instructions: Vec::new() }
     }
 
     /// Allocates a new register in memory, returning the new register.
-    fn new_register(&mut self) -> Register<E> {
+    pub fn new_register(&mut self) -> Register<E> {
         let register = Register::new(self.registers.len() as u32);
         self.registers.push(register.clone());
         register
     }
 
     /// Allocates a new register, adds an instruction to store the given input, and returns the new register.
-    fn new_input(&mut self, input: Operand<E>) -> Register<E> {
+    pub fn new_input(&mut self, input: Operand<E>) -> Register<E> {
         let register = self.new_register();
         self.push_instruction(Instruction::Store(register.clone(), input));
         register
     }
 
     /// Adds the given instruction.
-    fn push_instruction(&mut self, instruction: Instruction<E>) {
+    pub fn push_instruction(&mut self, instruction: Instruction<E>) {
         self.instructions.push(instruction);
     }
 
     /// Evaluates the function.
-    fn evaluate(&self) {
+    pub fn evaluate(&self) {
         for instruction in &self.instructions {
             instruction.evaluate();
         }
     }
 
     /// Returns the number of registers allocated.
-    fn num_registers(&self) -> u32 {
+    pub fn num_registers(&self) -> u32 {
         self.registers.len() as u32
     }
 }
