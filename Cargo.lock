@@ -1980,6 +1980,7 @@ dependencies = [
 name = "snarkvm-circuits-environment"
 version = "0.7.5"
 dependencies = [
+ "nom",
  "once_cell",
  "rayon",
  "snarkvm-algorithms",

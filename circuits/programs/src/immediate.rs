@@ -14,17 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod function;
-pub use function::*;
+use snarkvm_circuits::{Affine, BaseField, Boolean, Environment};
 
-pub mod immediate;
-pub use immediate::*;
-
-pub mod instruction;
-pub use instruction::*;
-
-pub mod operand;
-pub use operand::*;
-
-pub mod register;
-pub use register::*;
+#[derive(Clone)]
+pub enum Immediate<E: Environment> {
+    Boolean(Boolean<E>),
+    BaseField(BaseField<E>),
+    Group(Affine<E>),
+}
