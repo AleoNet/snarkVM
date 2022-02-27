@@ -37,11 +37,9 @@ impl<E: Environment> Register<E> {
     /// Attempts to store value into the register.
     pub(super) fn store(&self, value: Immediate<E>) {
         match self.1.borrow().get().is_some() {
-            true => panic!("Register {} is already set", self.0),
-            false => {
-                if self.1.borrow().set(value).is_err() {
-                    panic!("Register {} failed to store value", self.0);
-                }
+            true => E::halt(format!("Register {} is already set", self.0)),
+            false => if self.1.borrow().set(value).is_err() {
+                E::halt(format!("Register {} failed to store value", self.0))
             }
         }
     }
@@ -50,7 +48,7 @@ impl<E: Environment> Register<E> {
     pub fn load(&self) -> Immediate<E> {
         match self.1.borrow().get() {
             Some(value) => value.clone(),
-            None => panic!("Register {} is not set", self.0),
+            None => E::halt(format!("Register {} is not set", self.0)),
         }
     }
 }

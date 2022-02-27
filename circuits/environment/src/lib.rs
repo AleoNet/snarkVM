@@ -22,6 +22,9 @@ pub use circuit::*;
 
 mod converter;
 
+mod counter;
+use counter::*;
+
 pub mod environment;
 pub use environment::*;
 
@@ -30,9 +33,6 @@ pub use linear_combination::*;
 
 mod r1cs;
 use r1cs::*;
-
-mod transcript;
-use transcript::*;
 
 pub mod variable;
 pub use variable::*;

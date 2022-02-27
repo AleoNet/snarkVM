@@ -14,17 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod function;
-pub use function::*;
+use super::*;
 
-pub mod immediate;
-pub use immediate::*;
-
-pub mod instructions;
-pub use instructions::*;
-
-pub mod operand;
-pub use operand::*;
-
-pub mod register;
-pub use register::*;
+impl<E: Environment> Instruction<E> {
+    /// Stores `operand` into `register`, if `register` is not already set.
+    pub(super) fn store(register: &Register<E>, operand: &Operand<E>) {
+        register.store(operand.to_value())
+    }
+}
