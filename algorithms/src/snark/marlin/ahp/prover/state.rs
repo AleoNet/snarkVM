@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -15,7 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    fft::{DensePolynomial, EvaluationDomain},
+    fft::{
+        domain::{FFTPrecomputation, IFFTPrecomputation},
+        DensePolynomial,
+        EvaluationDomain,
+    },
     polycommit::LabeledPolynomial,
     snark::marlin::{
         ahp::{indexer::Circuit, prover::ProverConstraintSystem, verifier::VerifierFirstMessage},
@@ -88,6 +92,7 @@ impl<'a, F: PrimeField, MM: MarlinMode> ProverState<'a, F, MM> {
 
         let input_domain =
             EvaluationDomain::new(padded_public_input.len()).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+
         Ok(Self {
             padded_public_variables: padded_public_input,
             private_variables,
@@ -118,5 +123,13 @@ impl<'a, F: PrimeField, MM: MarlinMode> ProverState<'a, F, MM> {
     /// Get the padded public input.
     pub fn padded_public_input(&self) -> &[F] {
         &self.padded_public_variables
+    }
+
+    pub fn fft_precomputation(&self) -> &FFTPrecomputation<F> {
+        &self.index.fft_precomputation
+    }
+
+    pub fn ifft_precomputation(&self) -> &IFFTPrecomputation<F> {
+        &self.index.ifft_precomputation
     }
 }

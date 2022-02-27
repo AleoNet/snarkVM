@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -27,7 +27,7 @@ macro_rules! impl_sw_curve_serializer {
             fn serialize<W: snarkvm_utilities::io::Write>(
                 &self,
                 writer: &mut W,
-            ) -> Result<(), snarkvm_utilities::errors::SerializationError> {
+            ) -> Result<(), snarkvm_utilities::serialize::SerializationError> {
                 CanonicalSerialize::serialize(&Affine::<P>::from(*self), writer)
             }
 
@@ -35,7 +35,7 @@ macro_rules! impl_sw_curve_serializer {
             fn serialize_uncompressed<W: snarkvm_utilities::io::Write>(
                 &self,
                 writer: &mut W,
-            ) -> Result<(), snarkvm_utilities::errors::SerializationError> {
+            ) -> Result<(), snarkvm_utilities::serialize::SerializationError> {
                 CanonicalSerialize::serialize_uncompressed(&Affine::<P>::from(*self), writer)
             }
 
@@ -54,7 +54,7 @@ macro_rules! impl_sw_curve_serializer {
             #[allow(unused_qualifications)]
             fn deserialize<R: snarkvm_utilities::io::Read>(
                 reader: &mut R,
-            ) -> Result<Self, snarkvm_utilities::errors::SerializationError> {
+            ) -> Result<Self, snarkvm_utilities::serialize::SerializationError> {
                 let el: Affine<P> = CanonicalDeserialize::deserialize(reader)?;
                 Ok(el.into())
             }
@@ -62,7 +62,7 @@ macro_rules! impl_sw_curve_serializer {
             #[allow(unused_qualifications)]
             fn deserialize_uncompressed<R: snarkvm_utilities::io::Read>(
                 reader: &mut R,
-            ) -> Result<Self, snarkvm_utilities::errors::SerializationError> {
+            ) -> Result<Self, snarkvm_utilities::serialize::SerializationError> {
                 let el: Affine<P> = CanonicalDeserialize::deserialize_uncompressed(reader)?;
                 Ok(el.into())
             }
@@ -79,7 +79,7 @@ macro_rules! impl_sw_curve_serializer {
             fn serialize<W: snarkvm_utilities::io::Write>(
                 &self,
                 writer: &mut W,
-            ) -> Result<(), snarkvm_utilities::errors::SerializationError> {
+            ) -> Result<(), snarkvm_utilities::serialize::SerializationError> {
                 if self.is_zero() {
                     let flags = snarkvm_utilities::serialize::SWFlags::infinity();
                     // Serialize 0.
@@ -100,7 +100,7 @@ macro_rules! impl_sw_curve_serializer {
             fn serialize_uncompressed<W: snarkvm_utilities::io::Write>(
                 &self,
                 writer: &mut W,
-            ) -> Result<(), snarkvm_utilities::errors::SerializationError> {
+            ) -> Result<(), snarkvm_utilities::serialize::SerializationError> {
                 let flags = if self.is_zero() {
                     snarkvm_utilities::serialize::SWFlags::infinity()
                 } else {
@@ -126,19 +126,19 @@ macro_rules! impl_sw_curve_serializer {
             #[allow(unused_qualifications)]
             fn deserialize<R: snarkvm_utilities::io::Read>(
                 reader: &mut R,
-            ) -> Result<Self, snarkvm_utilities::errors::SerializationError> {
+            ) -> Result<Self, snarkvm_utilities::serialize::SerializationError> {
                 let (x, flags): (P::BaseField, snarkvm_utilities::serialize::SWFlags) =
                     CanonicalDeserializeWithFlags::deserialize_with_flags(reader)?;
                 if flags.is_infinity() {
                     Ok(Self::zero())
                 } else {
                     let p = Affine::<P>::from_x_coordinate(x, flags.is_positive().unwrap())
-                        .ok_or(snarkvm_utilities::errors::SerializationError::InvalidData)?;
+                        .ok_or(snarkvm_utilities::serialize::SerializationError::InvalidData)?;
                     if !snarkvm_utilities::PROCESSING_SNARK_PARAMS
                         .with(|p| p.load(std::sync::atomic::Ordering::Relaxed))
                     {
                         if !p.is_in_correct_subgroup_assuming_on_curve() {
-                            return Err(snarkvm_utilities::errors::SerializationError::InvalidData);
+                            return Err(snarkvm_utilities::serialize::SerializationError::InvalidData);
                         }
                     } else {
                         snarkvm_utilities::SNARK_PARAMS_AFFINE_COUNT
@@ -151,14 +151,14 @@ macro_rules! impl_sw_curve_serializer {
             #[allow(unused_qualifications)]
             fn deserialize_uncompressed<R: snarkvm_utilities::io::Read>(
                 reader: &mut R,
-            ) -> Result<Self, snarkvm_utilities::errors::SerializationError> {
+            ) -> Result<Self, snarkvm_utilities::serialize::SerializationError> {
                 let x: P::BaseField = CanonicalDeserialize::deserialize(reader)?;
                 let (y, flags): (P::BaseField, snarkvm_utilities::serialize::SWFlags) =
                     CanonicalDeserializeWithFlags::deserialize_with_flags(reader)?;
 
                 let p = Affine::<P>::new(x, y, flags.is_infinity());
                 if !p.is_in_correct_subgroup_assuming_on_curve() {
-                    return Err(snarkvm_utilities::errors::SerializationError::InvalidData);
+                    return Err(snarkvm_utilities::serialize::SerializationError::InvalidData);
                 }
                 Ok(p)
             }
@@ -175,7 +175,7 @@ macro_rules! impl_edwards_curve_serializer {
             fn serialize<W: snarkvm_utilities::io::Write>(
                 &self,
                 writer: &mut W,
-            ) -> Result<(), snarkvm_utilities::errors::SerializationError> {
+            ) -> Result<(), snarkvm_utilities::serialize::SerializationError> {
                 CanonicalSerialize::serialize(&Affine::<P>::from(*self), writer)
             }
 
@@ -183,7 +183,7 @@ macro_rules! impl_edwards_curve_serializer {
             fn serialize_uncompressed<W: snarkvm_utilities::io::Write>(
                 &self,
                 writer: &mut W,
-            ) -> Result<(), snarkvm_utilities::errors::SerializationError> {
+            ) -> Result<(), snarkvm_utilities::serialize::SerializationError> {
                 CanonicalSerialize::serialize_uncompressed(&Affine::<P>::from(*self), writer)
             }
 
@@ -207,7 +207,7 @@ macro_rules! impl_edwards_curve_serializer {
             #[allow(unused_qualifications)]
             fn deserialize<R: snarkvm_utilities::io::Read>(
                 reader: &mut R,
-            ) -> Result<Self, snarkvm_utilities::errors::SerializationError> {
+            ) -> Result<Self, snarkvm_utilities::serialize::SerializationError> {
                 let el: Affine<P> = CanonicalDeserialize::deserialize(reader)?;
                 Ok(el.into())
             }
@@ -215,7 +215,7 @@ macro_rules! impl_edwards_curve_serializer {
             #[allow(unused_qualifications)]
             fn deserialize_uncompressed<R: snarkvm_utilities::io::Read>(
                 reader: &mut R,
-            ) -> Result<Self, snarkvm_utilities::errors::SerializationError> {
+            ) -> Result<Self, snarkvm_utilities::serialize::SerializationError> {
                 let el: Affine<P> = CanonicalDeserialize::deserialize_uncompressed(reader)?;
                 Ok(el.into())
             }
@@ -227,7 +227,7 @@ macro_rules! impl_edwards_curve_serializer {
             fn serialize<W: snarkvm_utilities::io::Write>(
                 &self,
                 writer: &mut W,
-            ) -> Result<(), snarkvm_utilities::errors::SerializationError> {
+            ) -> Result<(), snarkvm_utilities::serialize::SerializationError> {
                 if self.is_zero() {
                     let flags = snarkvm_utilities::serialize::EdwardsFlags::default();
                     // Serialize 0.
@@ -248,7 +248,7 @@ macro_rules! impl_edwards_curve_serializer {
             fn serialize_uncompressed<W: snarkvm_utilities::io::Write>(
                 &self,
                 writer: &mut W,
-            ) -> Result<(), snarkvm_utilities::errors::SerializationError> {
+            ) -> Result<(), snarkvm_utilities::serialize::SerializationError> {
                 self.x.serialize_uncompressed(writer)?;
                 self.y.serialize_uncompressed(writer)?;
                 Ok(())
@@ -269,16 +269,16 @@ macro_rules! impl_edwards_curve_serializer {
             #[allow(unused_qualifications)]
             fn deserialize<R: snarkvm_utilities::io::Read>(
                 reader: &mut R,
-            ) -> Result<Self, snarkvm_utilities::errors::SerializationError> {
+            ) -> Result<Self, snarkvm_utilities::serialize::SerializationError> {
                 let (x, flags): (P::BaseField, snarkvm_utilities::serialize::EdwardsFlags) =
                     CanonicalDeserializeWithFlags::deserialize_with_flags(reader)?;
                 if x == P::BaseField::zero() {
                     Ok(Self::zero())
                 } else {
                     let p = Affine::<P>::from_x_coordinate(x, flags.is_positive())
-                        .ok_or(snarkvm_utilities::errors::SerializationError::InvalidData)?;
+                        .ok_or(snarkvm_utilities::serialize::SerializationError::InvalidData)?;
                     if !p.is_in_correct_subgroup_assuming_on_curve() {
-                        return Err(snarkvm_utilities::errors::SerializationError::InvalidData);
+                        return Err(snarkvm_utilities::serialize::SerializationError::InvalidData);
                     }
                     Ok(p)
                 }
@@ -287,13 +287,13 @@ macro_rules! impl_edwards_curve_serializer {
             #[allow(unused_qualifications)]
             fn deserialize_uncompressed<R: snarkvm_utilities::io::Read>(
                 reader: &mut R,
-            ) -> Result<Self, snarkvm_utilities::errors::SerializationError> {
+            ) -> Result<Self, snarkvm_utilities::serialize::SerializationError> {
                 let x: P::BaseField = CanonicalDeserialize::deserialize(reader)?;
                 let y: P::BaseField = CanonicalDeserialize::deserialize(reader)?;
 
                 let p = Affine::<P>::new(x, y);
                 if !p.is_in_correct_subgroup_assuming_on_curve() {
-                    return Err(snarkvm_utilities::errors::SerializationError::InvalidData);
+                    return Err(snarkvm_utilities::serialize::SerializationError::InvalidData);
                 }
                 Ok(p)
             }

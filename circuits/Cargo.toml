@@ -12,10 +12,10 @@ keywords = [
     "decentralized",
     "zero-knowledge"
 ]
-categories = [ "cryptography::cryptocurrencies", "operating-systems" ]
+categories = [ "compilers", "cryptography", "mathematics", "wasm", "web-programming" ]
 include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
-edition = "2018"
+edition = "2021"
 
 [[bench]]
 name = "linear_combination"
@@ -48,7 +48,7 @@ version = "0.7.5"
 default-features = false
 
 [dependencies.anyhow]
-version = "1.0.43"
+version = "1.0.55"
 
 [dependencies.derivative]
 version = "2"

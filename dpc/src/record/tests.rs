@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -35,15 +35,16 @@ fn test_record_ciphertext() {
 
         let expected_record = Record::new(
             account.address(),
-            AleoAmount::from_i64(value),
-            Payload::from_bytes_le(&payload).unwrap(),
-            *Testnet2::noop_program_id(),
+            AleoAmount::from_gate(value),
+            Some(Payload::from_bytes_le(&payload).unwrap()),
+            None,
             rng,
         )
         .unwrap();
 
         // Encrypt the record.
         let record_ciphertext = expected_record.ciphertext();
+        // TODO (raychu86): Make sure the program id size is included.
         assert_eq!(Testnet2::RECORD_CIPHERTEXT_SIZE_IN_BYTES, (*record_ciphertext).to_bytes_le().unwrap().len());
 
         // Decrypt the record.

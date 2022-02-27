@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -18,11 +18,9 @@
 #![allow(clippy::type_complexity)]
 
 #[macro_use]
-extern crate derivative;
-
+extern crate aleo_std;
 #[macro_use]
-extern crate snarkvm_profiler;
-
+extern crate derivative;
 #[macro_use]
 extern crate thiserror;
 

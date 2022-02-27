@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -245,6 +245,19 @@ impl<F: Field> TestConstraintSystem<F> {
     #[inline]
     pub fn is_satisfied(&self) -> bool {
         self.which_is_unsatisfied().is_none()
+    }
+
+    #[inline]
+    pub fn num_non_zero(&self) -> (usize, usize, usize) {
+        let mut non_zero_a = 0;
+        let mut non_zero_b = 0;
+        let mut non_zero_c = 0;
+        for TestConstraint { a, b, c, .. } in self.constraints.iter() {
+            non_zero_a += a.len();
+            non_zero_b += b.len();
+            non_zero_c += c.len();
+        }
+        (non_zero_a, non_zero_b, non_zero_c)
     }
 
     #[inline]

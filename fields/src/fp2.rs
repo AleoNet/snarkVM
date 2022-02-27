@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Field, LegendreSymbol, One, PrimeField, SquareRootField, Zero};
-use snarkvm_utilities::{errors::SerializationError, rand::UniformRand, serialize::*, FromBytes, ToBits, ToBytes};
+use snarkvm_utilities::{rand::UniformRand, serialize::*, FromBytes, ToBits, ToBytes};
 
 use rand::{
     distributions::{Distribution, Standard},
@@ -99,6 +99,12 @@ impl<P: Fp2Parameters> One for Fp2<P> {
 }
 
 impl<P: Fp2Parameters> Field for Fp2<P> {
+    type BasePrimeField = P::Fp;
+
+    fn from_base_prime_field(other: Self::BasePrimeField) -> Self {
+        Self::new(other, P::Fp::zero())
+    }
+
     #[inline]
     fn characteristic<'a>() -> &'a [u64] {
         P::Fp::characteristic()
@@ -207,7 +213,7 @@ where
             Zero => Some(*self),
             QuadraticNonResidue => None,
             QuadraticResidue => {
-                let two_inv = P::Fp::one().double().inverse().expect("Two should always have an inverse");
+                let two_inv = P::Fp::half();
                 let alpha = self.norm().sqrt().expect("We are in the QR case, the norm should have a square root");
                 let mut delta = (alpha + self.c0) * two_inv;
                 if delta.legendre().is_qnr() {
