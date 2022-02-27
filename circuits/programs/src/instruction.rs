@@ -54,7 +54,7 @@ impl<E: Environment> Instruction<E> {
     fn add(register: &Register<E>, first: &Operand<E>, second: &Operand<E>) {
         match (first.to_value(), second.to_value()) {
             (Immediate::BaseField(a), Immediate::BaseField(b)) => register.store(Immediate::BaseField(a + b)),
-            // (Immediate::Group(a), Immediate::Group(b)) => register.store(Immediate::Group(a + b)),
+            (Immediate::Group(a), Immediate::Group(b)) => register.store(Immediate::Group(a + b)),
             _ => E::halt("Invalid 'add' instruction"),
         }
     }
@@ -63,7 +63,7 @@ impl<E: Environment> Instruction<E> {
     fn sub(register: &Register<E>, first: &Operand<E>, second: &Operand<E>) {
         match (first.to_value(), second.to_value()) {
             (Immediate::BaseField(a), Immediate::BaseField(b)) => register.store(Immediate::BaseField(a - b)),
-            // (Immediate::Group(a), Immediate::Group(b)) => register.store(Immediate::Group(a - b)),
+            (Immediate::Group(a), Immediate::Group(b)) => register.store(Immediate::Group(a - b)),
             _ => E::halt("Invalid 'sub' instruction"),
         }
     }

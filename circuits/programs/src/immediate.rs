@@ -23,7 +23,7 @@ use nom::{branch::alt, bytes::complete::tag, combinator::map};
 pub enum Immediate<E: Environment> {
     BaseField(BaseField<E>),
     Boolean(Boolean<E>),
-    // Group(Affine<E>),
+    Group(Affine<E>),
 }
 
 impl<E: Environment> Parser for Immediate<E> {
@@ -35,6 +35,7 @@ impl<E: Environment> Parser for Immediate<E> {
         alt((
             map(BaseField::parse, |base| Self::BaseField(base)),
             map(Boolean::parse, |boolean| Self::Boolean(boolean)),
+            map(Affine::parse, |group| Self::Group(group)),
         ))(string)
     }
 }
@@ -44,6 +45,7 @@ impl<E: Environment> fmt::Display for Immediate<E> {
         match self {
             Self::BaseField(base) => base.fmt(f),
             Self::Boolean(boolean) => boolean.fmt(f),
+            Self::Group(group) => group.fmt(f),
         }
     }
 }
