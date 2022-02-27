@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -15,15 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{fp6_3over2::*, Field, Fp2, Fp2Parameters, One, Zero};
-use snarkvm_utilities::{
-    bititerator::BitIteratorBE,
-    errors::SerializationError,
-    rand::UniformRand,
-    serialize::*,
-    FromBytes,
-    ToBits,
-    ToBytes,
-};
+use snarkvm_utilities::{bititerator::BitIteratorBE, rand::UniformRand, serialize::*, FromBytes, ToBits, ToBytes};
 
 use rand::{
     distributions::{Distribution, Standard},
@@ -241,6 +233,12 @@ impl<P: Fp12Parameters> One for Fp12<P> {
 }
 
 impl<P: Fp12Parameters> Field for Fp12<P> {
+    type BasePrimeField = <Fp6<P::Fp6Params> as Field>::BasePrimeField;
+
+    fn from_base_prime_field(other: Self::BasePrimeField) -> Self {
+        Self::new(Fp6::from_base_prime_field(other), Fp6::zero())
+    }
+
     #[inline]
     fn characteristic<'a>() -> &'a [u64] {
         Fp6::<P::Fp6Params>::characteristic()

@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -151,6 +151,11 @@ fn test_fq_repr_is_zero() {
     assert!(BigInteger384::from(0).is_zero());
     assert!(!BigInteger384::from(1).is_zero());
     assert!(!BigInteger384([0, 0, 0, 0, 1, 0]).is_zero());
+}
+
+#[test]
+fn test_fq_is_half() {
+    assert_eq!(Fq::half(), Fq::one().double().inverse().unwrap());
 }
 
 #[test]

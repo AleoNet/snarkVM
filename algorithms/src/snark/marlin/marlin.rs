@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -31,6 +31,7 @@ use crate::{
         UniversalSRS,
     },
 };
+use itertools::Itertools;
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_r1cs::ConstraintSynthesizer;
 use snarkvm_utilities::{to_bytes_le, ToBytes};
@@ -317,7 +318,7 @@ impl<
             .circuit_verifying_key
             .iter()
             .cloned()
-            .zip(indexer_polynomials)
+            .zip_eq(indexer_polynomials)
             .map(|(c, l)| LabeledCommitment::new(l.to_string(), c, None))
             .chain(first_commitments.into_iter())
             .chain(second_commitments.into_iter())
@@ -526,8 +527,8 @@ impl<
             .chain(third_commitments)
             .chain(fourth_commitments)
             .cloned()
-            .zip(polynomial_labels)
-            .zip(degree_bounds)
+            .zip_eq(polynomial_labels)
+            .zip_eq(degree_bounds)
             .map(|((c, l), d)| LabeledCommitment::new(l, c, d))
             .collect();
 
@@ -547,7 +548,7 @@ impl<
             }
         }
         evaluation_labels.sort_by(|a, b| a.0.cmp(&b.0));
-        for (q, eval) in evaluation_labels.into_iter().zip(&proof.evaluations) {
+        for (q, eval) in evaluation_labels.into_iter().zip_eq(&proof.evaluations) {
             evaluations.insert(q, *eval);
         }
 

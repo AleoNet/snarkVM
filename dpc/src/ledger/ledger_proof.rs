@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -22,8 +22,7 @@ use anyhow::{anyhow, Result};
 use std::io::{Read, Result as IoResult, Write};
 
 /// A ledger proof of inclusion.
-#[derive(Derivative)]
-#[derivative(Clone(bound = "N: Network"), Debug(bound = "N: Network"))]
+#[derive(Clone, Debug)]
 pub struct LedgerProof<N: Network> {
     ledger_root: N::LedgerRoot,
     ledger_root_inclusion_proof: MerklePath<N::LedgerRootParameters>,

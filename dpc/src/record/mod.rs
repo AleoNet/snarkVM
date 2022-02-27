@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -25,9 +25,6 @@ pub use payload::*;
 
 pub mod record;
 pub use record::*;
-
-pub mod record_proof;
-pub use record_proof::*;
 
 #[cfg(test)]
 mod tests;

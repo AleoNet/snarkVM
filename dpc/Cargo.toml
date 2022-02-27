@@ -12,10 +12,10 @@ keywords = [
   "decentralized",
   "zero-knowledge"
 ]
-categories = [ "cryptography::cryptocurrencies", "operating-systems" ]
+categories = [ "compilers", "cryptography", "mathematics", "wasm", "web-programming" ]
 include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
-edition = "2018"
+edition = "2021"
 
 [[bench]]
 name = "account"
@@ -25,11 +25,6 @@ harness = false
 [[bench]]
 name = "block"
 path = "benches/block.rs"
-harness = false
-
-[[bench]]
-name = "noop_program"
-path = "benches/noop_program.rs"
 harness = false
 
 [[bench]]
@@ -67,11 +62,6 @@ path = "../parameters"
 version = "0.7.5"
 default-features = false
 
-[dependencies.snarkvm-profiler]
-path = "../profiler"
-version = "0.7.5"
-default-features = false
-
 [dependencies.snarkvm-r1cs]
 path = "../r1cs"
 version = "0.7.5"
@@ -82,8 +72,12 @@ path = "../utilities"
 version = "0.7.5"
 default-features = false
 
+[dependencies.aleo-std]
+version = "0.1.12"
+optional = true
+
 [dependencies.anyhow]
-version = "1.0.52"
+version = "1.0.55"
 
 [dependencies.base58]
 version = "0.2"
@@ -153,7 +147,7 @@ parallel = [
   "snarkvm-fields/parallel",
   "snarkvm-utilities/parallel"
 ]
-print-trace = [ "snarkvm-profiler/print-trace" ]
+profiler = [ "aleo-std/profiler" ]
 
 testnet1 = []
 testnet2 = []

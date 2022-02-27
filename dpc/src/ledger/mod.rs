@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -26,5 +26,14 @@ pub use ledger_proof::*;
 pub mod ledger_tree;
 pub use ledger_tree::*;
 
+pub(crate) mod local_proof;
+pub(crate) use local_proof::*;
+
 pub mod memory_pool;
 pub use memory_pool::*;
+
+pub(crate) mod record_proof;
+pub(crate) use record_proof::*;
+
+pub(crate) mod transitions;
+pub(crate) use transitions::*;
