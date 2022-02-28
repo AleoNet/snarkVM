@@ -17,14 +17,11 @@
 pub mod function;
 pub use function::*;
 
-pub mod immediate;
-pub use immediate::*;
-
 pub mod instructions;
 pub use instructions::*;
 
+pub mod memory;
+pub use memory::*;
+
 pub mod operand;
 pub use operand::*;
-
-pub mod register;
-pub use register::*;

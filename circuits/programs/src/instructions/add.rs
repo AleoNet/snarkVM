@@ -16,13 +16,13 @@
 
 use super::*;
 
-impl<E: Environment> Instruction<E> {
+impl<M: Memory> Instruction<M> {
     /// Adds `first` with `second`, storing the outcome in `register`.
-    pub(super) fn add(register: &Register<E>, first: &Operand<E>, second: &Operand<E>) {
+    pub(super) fn add(register: &Register, first: &Operand<M>, second: &Operand<M>) {
         match (first.to_value(), second.to_value()) {
-            (Immediate::BaseField(a), Immediate::BaseField(b)) => register.store(Immediate::BaseField(a + b)),
-            (Immediate::Group(a), Immediate::Group(b)) => register.store(Immediate::Group(a + b)),
-            _ => E::halt("Invalid 'add' instruction"),
+            (Immediate::BaseField(a), Immediate::BaseField(b)) => M::store(register, Immediate::BaseField(a + b)),
+            (Immediate::Group(a), Immediate::Group(b)) => M::store(register, Immediate::Group(a + b)),
+            _ => M::halt("Invalid 'add' instruction"),
         }
     }
 }

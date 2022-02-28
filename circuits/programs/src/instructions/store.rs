@@ -16,9 +16,9 @@
 
 use super::*;
 
-impl<E: Environment> Instruction<E> {
+impl<M: Memory> Instruction<M> {
     /// Stores `operand` into `register`, if `register` is not already set.
-    pub(super) fn store(register: &Register<E>, operand: &Operand<E>) {
-        register.store(operand.to_value())
+    pub(super) fn store(register: &Register, operand: &Operand<M>) {
+        M::store(register, operand.to_value())
     }
 }

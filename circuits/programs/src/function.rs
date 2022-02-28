@@ -14,38 +14,36 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Instruction, Operand, Register};
+use crate::{Immediate, Instruction, Memory, Operand, Register};
 use snarkvm_circuits::Environment;
 
-pub type Registers<E> = Vec<Register<E>>;
-
-pub struct Function<E: Environment> {
-    registers: Registers<E>,
-    instructions: Vec<Instruction<E>>,
+pub struct Function<M: Memory> {
+    instructions: Vec<Instruction<M>>,
+    outputs: Vec<Register>,
 }
 
-impl<E: Environment> Function<E> {
+impl<M: Memory> Function<M> {
     /// Initializes a new instance of a function.
     pub fn new() -> Self {
-        Self { registers: Registers::default(), instructions: Vec::new() }
-    }
-
-    /// Allocates a new register in memory, returning the new register.
-    pub fn new_register(&mut self) -> Register<E> {
-        let register = Register::new(self.registers.len() as u32);
-        self.registers.push(register.clone());
-        register
+        Self { instructions: Vec::new(), outputs: Vec::new() }
     }
 
     /// Allocates a new register, adds an instruction to store the given input, and returns the new register.
-    pub fn new_input(&mut self, input: Operand<E>) -> Register<E> {
-        let register = self.new_register();
-        self.push_instruction(Instruction::Store(register.clone(), input));
+    pub fn new_input(&mut self, input: Immediate<M::Environment>) -> Register {
+        let register = M::new_register();
+        self.push_instruction(Instruction::Store(register, input.into()));
+        register
+    }
+
+    /// Allocates a new register, adds an instruction to store the given output, and returns the new register.
+    pub fn new_output(&mut self) -> Register {
+        let register = M::new_register();
+        self.outputs.push(register);
         register
     }
 
     /// Adds the given instruction.
-    pub fn push_instruction(&mut self, instruction: Instruction<E>) {
+    pub fn push_instruction(&mut self, instruction: Instruction<M>) {
         self.instructions.push(instruction);
     }
 
@@ -56,40 +54,8 @@ impl<E: Environment> Function<E> {
         }
     }
 
-    /// Returns the number of registers allocated.
-    pub fn num_registers(&self) -> u32 {
-        self.registers.len() as u32
+    /// Returns the output registers.
+    pub fn outputs(&self) -> &Vec<Register> {
+        &self.outputs
     }
 }
-
-// pub struct Memory<E: Environment> {
-//     registers: Registers<E>,
-// }
-//
-// impl<E: Environment> Memory<E> {
-//     /// Allocates a new register in memory, returning the new register.
-//     fn new_register(&mut self) -> Register<E> {
-//         let register = Register::new(self.registers.len() as u32);
-//         self.registers.push(register.clone());
-//         register
-//     }
-//
-//     /// Returns the number of registers allocated.
-//     fn num_registers(&self) -> u32 {
-//         self.registers.len() as u32
-//     }
-// }
-//
-// impl<E: Environment> From<Registers<E>> for Memory<E> {
-//     /// Returns an instance of memory from registers.
-//     fn from(registers: Registers<E>) -> Self {
-//         Self { registers }
-//     }
-// }
-//
-// impl<E: Environment> Default for Memory<E> {
-//     /// Returns a new instance of memory.
-//     fn default() -> Self {
-//         Self::from(Registers::<E>::default())
-//     }
-// }

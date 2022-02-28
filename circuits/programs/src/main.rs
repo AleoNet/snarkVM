@@ -15,21 +15,19 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_circuits::{traits::*, BaseField, Circuit, Environment};
-use snarkvm_circuits_programs::{Function, Immediate, Instruction, Operand, Registers};
+use snarkvm_circuits_programs::{Function, Immediate, Instruction, Memory, Operand, Register, Registers};
 
-pub struct HelloWorld<E: Environment> {
-    function: Function<E>,
-    outputs: Registers<E>,
+pub struct HelloWorld<M: Memory> {
+    function: Function<M>,
 }
 
-impl<E: Environment> HelloWorld<E> {
+impl<M: Memory> HelloWorld<M> {
     /// Initializes a new instance of `HelloWorld` with the given inputs.
-    pub fn new(inputs: [Operand<E>; 2]) -> Self {
+    pub fn new(inputs: [Immediate<M::Environment>; 2]) -> Self {
         let mut function = Function::new();
-        let mut outputs = Registers::new();
 
         // Allocate a new register for each input, and store each input in the register.
-        let mut registers = Registers::with_capacity(2);
+        let mut registers = Vec::with_capacity(2);
         for input in inputs {
             registers.push(function.new_input(input));
         }
@@ -38,19 +36,20 @@ impl<E: Environment> HelloWorld<E> {
         for pair in registers.chunks(2) {
             let first = Operand::Register(pair[0].clone());
             let second = Operand::Register(pair[1].clone());
-            let output = function.new_register();
+            let output = function.new_output();
 
-            let instruction = Instruction::Add(output.clone(), first, second);
-
-            function.push_instruction(instruction);
-            outputs.push(output);
+            function.push_instruction(Instruction::Add(output, first, second));
         }
 
-        Self { function, outputs }
+        Self { function }
     }
 
     pub fn run(&self) {
         self.function.evaluate();
+    }
+
+    pub fn outputs(&self) -> &Vec<Register> {
+        self.function.outputs()
     }
 }
 
@@ -58,11 +57,11 @@ fn main() {
     let first = Immediate::BaseField(BaseField::<Circuit>::one());
     let second = Immediate::BaseField(BaseField::one());
 
-    let function = HelloWorld::new([first.into(), second.into()]);
+    let function = HelloWorld::<Registers>::new([first, second]);
     function.run();
 
     let expected = BaseField::one() + BaseField::one();
-    match function.outputs[0].load() {
+    match Registers::load(&function.outputs()[0]) {
         Immediate::BaseField(output) => assert!(output.is_eq(&expected).eject_value()),
         _ => panic!("Failed to load output"),
     }
@@ -73,11 +72,11 @@ fn test_hello_world() {
     let first = Immediate::BaseField(BaseField::<Circuit>::one());
     let second = Immediate::BaseField(BaseField::one());
 
-    let function = HelloWorld::new([first.into(), second.into()]);
+    let function = HelloWorld::<Registers>::new([first, second]);
     function.run();
 
     let expected = BaseField::one() + BaseField::one();
-    match function.outputs[0].load() {
+    match Registers::load(&function.outputs()[0]) {
         Immediate::BaseField(output) => assert!(output.is_eq(&expected).eject_value()),
         _ => panic!("Failed to load output"),
     }

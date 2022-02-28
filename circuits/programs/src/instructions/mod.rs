@@ -18,19 +18,19 @@ mod add;
 mod store;
 mod sub;
 
-use crate::{Immediate, Operand, Register};
+use crate::{Immediate, Memory, Operand, Register};
 use snarkvm_circuits::Environment;
 
-pub enum Instruction<E: Environment> {
+pub enum Instruction<M: Memory> {
     /// Stores `operand` into `register`, if `register` is not already set.
-    Store(Register<E>, Operand<E>),
+    Store(Register, Operand<M>),
     /// Adds `first` with `second`, storing the outcome in `register`.
-    Add(Register<E>, Operand<E>, Operand<E>),
+    Add(Register, Operand<M>, Operand<M>),
     /// Subtracts `first` from `second`, storing the outcome in `register`.
-    Sub(Register<E>, Operand<E>, Operand<E>),
+    Sub(Register, Operand<M>, Operand<M>),
 }
 
-impl<E: Environment> Instruction<E> {
+impl<M: Memory> Instruction<M> {
     /// Returns the opcode of the instruction.
     pub fn opcode(&self) -> u16 {
         match self {

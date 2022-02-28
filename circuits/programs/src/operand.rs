@@ -14,50 +14,50 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Immediate, Register};
+use crate::{Immediate, Memory, Register};
 use snarkvm_circuits::Environment;
 
 #[derive(Clone)]
-pub enum Operand<E: Environment> {
-    Immediate(Immediate<E>),
-    Register(Register<E>),
+pub enum Operand<M: Memory> {
+    Immediate(Immediate<M::Environment>),
+    Register(Register),
 }
 
-impl<E: Environment> Operand<E> {
+impl<M: Memory> Operand<M> {
     /// Returns `true` if the value type is a register.
     pub(super) fn is_register(&self) -> bool {
         matches!(self, Self::Register(..))
     }
 
     /// Returns the value from a register, otherwise passes the loaded value through.
-    pub(super) fn to_value(&self) -> Immediate<E> {
+    pub(super) fn to_value(&self) -> Immediate<M::Environment> {
         match self {
             Self::Immediate(value) => value.clone(),
-            Self::Register(register) => register.load(),
+            Self::Register(register) => M::load(register),
         }
     }
 }
 
-impl<E: Environment> From<Immediate<E>> for Operand<E> {
-    fn from(immediate: Immediate<E>) -> Operand<E> {
+impl<M: Memory> From<Immediate<M::Environment>> for Operand<M> {
+    fn from(immediate: Immediate<M::Environment>) -> Operand<M> {
         Operand::Immediate(immediate)
     }
 }
 
-impl<E: Environment> From<&Immediate<E>> for Operand<E> {
-    fn from(immediate: &Immediate<E>) -> Operand<E> {
+impl<M: Memory> From<&Immediate<M::Environment>> for Operand<M> {
+    fn from(immediate: &Immediate<M::Environment>) -> Operand<M> {
         Operand::from(immediate.clone())
     }
 }
 
-impl<E: Environment> From<Register<E>> for Operand<E> {
-    fn from(register: Register<E>) -> Operand<E> {
+impl<M: Memory> From<Register> for Operand<M> {
+    fn from(register: Register) -> Operand<M> {
         Operand::Register(register)
     }
 }
 
-impl<E: Environment> From<&Register<E>> for Operand<E> {
-    fn from(register: &Register<E>) -> Operand<E> {
+impl<M: Memory> From<&Register> for Operand<M> {
+    fn from(register: &Register) -> Operand<M> {
         Operand::from(register.clone())
     }
 }
