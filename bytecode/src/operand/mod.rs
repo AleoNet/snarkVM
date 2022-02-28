@@ -77,7 +77,7 @@ impl<M: Memory> From<Register<M::Environment>> for Operand<M> {
 
 impl<M: Memory> From<&Register<M::Environment>> for Operand<M> {
     fn from(register: &Register<M::Environment>) -> Operand<M> {
-        Operand::from(register)
+        Operand::from(*register)
     }
 }
 

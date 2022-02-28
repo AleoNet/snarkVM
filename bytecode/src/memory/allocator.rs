@@ -17,12 +17,11 @@
 use crate::{Immediate, Register};
 use snarkvm_circuits::Environment;
 
-use core::cell::RefCell;
 use once_cell::unsync::OnceCell;
-use std::{collections::HashMap, rc::Rc};
+use std::collections::HashMap;
 
 pub(super) struct Allocator<E: Environment> {
-    registers: HashMap<Register<E>, Rc<RefCell<OnceCell<Immediate<E>>>>>,
+    registers: HashMap<Register<E>, OnceCell<Immediate<E>>>,
 }
 
 impl<E: Environment> Allocator<E> {
@@ -38,7 +37,7 @@ impl<E: Environment> Allocator<E> {
         // Attempt to retrieve the specified register from memory.
         match self.registers.get(register) {
             // Check if the register is set.
-            Some(memory) => memory.borrow().get().is_some(),
+            Some(memory) => memory.get().is_some(),
             None => false,
         }
     }
@@ -52,7 +51,7 @@ impl<E: Environment> Allocator<E> {
         };
 
         // Attempt to retrieve the value the specified register.
-        match memory.borrow().get() {
+        match memory.get() {
             Some(value) => value.clone(),
             None => E::halt(format!("Register {} is not set", register)),
         }
@@ -67,13 +66,8 @@ impl<E: Environment> Allocator<E> {
         };
 
         // Attempt to set the specified register with the given value.
-        match memory.borrow().get().is_some() {
-            true => E::halt(format!("Register {} is already set", register)),
-            false => {
-                if memory.borrow().set(value).is_err() {
-                    E::halt(format!("Register {} failed to store value", register))
-                }
-            }
+        if memory.set(value).is_err() {
+            E::halt(format!("Register {} is already set", register))
         }
     }
 
