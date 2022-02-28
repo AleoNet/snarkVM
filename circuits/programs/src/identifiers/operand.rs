@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Immediate, Memory, Register};
-use snarkvm_circuits::{Parser, ParserResult};
+use snarkvm_circuits::{Mode, Parser, ParserResult};
 
 use core::fmt;
 use nom::{branch::alt, combinator::map};
@@ -27,6 +27,11 @@ pub enum Operand<M: Memory> {
 }
 
 impl<M: Memory> Operand<M> {
+    /// Returns `true` if the value type is an immediate.
+    pub(crate) fn is_immediate(&self) -> bool {
+        matches!(self, Self::Immediate(..))
+    }
+
     /// Returns `true` if the value type is a register.
     pub(crate) fn is_register(&self) -> bool {
         matches!(self, Self::Register(..))
@@ -42,12 +47,17 @@ impl<M: Memory> Operand<M> {
 }
 
 impl<M: Memory> From<Immediate<M::Environment>> for Operand<M> {
+    /// Ensures that the given immediate is a constant.
     fn from(immediate: Immediate<M::Environment>) -> Operand<M> {
-        Operand::Immediate(immediate)
+        match immediate.mode() {
+            Mode::Constant => Operand::Immediate(immediate),
+            mode => M::halt(format!("Attempted to assign a {} as an immediate", mode)),
+        }
     }
 }
 
 impl<M: Memory> From<&Immediate<M::Environment>> for Operand<M> {
+    /// Ensures that the given immediate is a constant.
     fn from(immediate: &Immediate<M::Environment>) -> Operand<M> {
         Operand::from(immediate.clone())
     }

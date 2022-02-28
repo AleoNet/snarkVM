@@ -15,27 +15,33 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Immediate, Instruction, Memory, Register};
+use snarkvm_circuits::Environment;
 
-pub struct Function<M: Memory> {
-    inputs: Vec<Instruction<M>>,
+use core::cell::RefCell;
+use once_cell::unsync::OnceCell;
+use std::{collections::HashMap, rc::Rc};
+
+pub(super) struct Local<M: Memory> {
+    inputs: Vec<Register<M::Environment>>,
     instructions: Vec<Instruction<M>>,
     outputs: Vec<Register<M::Environment>>,
 }
 
-impl<M: Memory> Function<M> {
-    /// Initializes a new instance of a function.
-    pub fn new() -> Self {
-        Self { inputs: Vec::new(), instructions: Vec::new(), outputs: Vec::new() }
-    }
-
-    /// Allocates a new register, adds an instruction to store the given input, and returns the new register.
+impl<M: Memory> Local<M> {
+    /// Allocates a new register, stores the given input, and returns the new register.
     pub fn new_input(&mut self, input: Immediate<M::Environment>) -> Register<M::Environment> {
-        let register = M::new_register();
-        self.inputs.push(Instruction::Store(register, input.into()));
-        register
+        match input.is_constant() {
+            true => M::halt("Attempted to assign a constant value as an input"),
+            false => {
+                let register = M::new_register();
+                self.inputs.push(register);
+                M::store(&register, input);
+                register
+            }
+        }
     }
 
-    /// Allocates a new register, adds an instruction to store the given output, and returns the new register.
+    /// Allocates a new register, stores the given output, and returns the new register.
     pub fn new_output(&mut self) -> Register<M::Environment> {
         let register = M::new_register();
         self.outputs.push(register);
@@ -47,18 +53,22 @@ impl<M: Memory> Function<M> {
         self.instructions.push(instruction);
     }
 
-    /// Evaluates the function.
-    pub fn evaluate(&self) {
-        for instruction in &self.inputs {
-            instruction.evaluate();
-        }
+    /// Evaluates the function, returning the outputs.
+    pub fn evaluate(&self) -> Vec<Immediate<M::Environment>> {
         for instruction in &self.instructions {
             instruction.evaluate();
         }
-    }
 
-    /// Returns the output registers.
-    pub fn outputs(&self) -> &Vec<Register<M::Environment>> {
-        &self.outputs
+        let mut outputs = Vec::with_capacity(self.outputs.len());
+        for output in &self.outputs {
+            outputs.push(M::load(output));
+        }
+        outputs
+    }
+}
+
+impl<M: Memory> Default for Local<M> {
+    fn default() -> Self {
+        Self { inputs: Default::default(), instructions: Default::default(), outputs: Default::default() }
     }
 }

@@ -14,10 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod allocator;
+use crate::{Immediate, Operand, Opcode, Register};
+use snarkvm_circuits::{Parser, Environment, ParserResult};
 
-pub mod stack;
-pub use stack::*;
+pub(super) struct Unary<E: Environment>(Opcode<E>, Register<E>, Operand<E>);
 
-pub mod traits;
-pub use traits::*;
+impl<E: Environment> Unary<E> {
+    pub(super) fn new(register: Register<M::Environment>, operand: Operand<M::Environment>) -> Self {
+        Unary(register, operand)
+    }
+}

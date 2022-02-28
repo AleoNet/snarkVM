@@ -22,13 +22,19 @@ use crate::{Immediate, Memory, Operand, Register};
 use snarkvm_circuits::{Parser, ParserResult};
 
 use core::fmt;
-use nom::{branch::alt, combinator::map};
+use nom::{
+    branch::alt,
+    bytes::complete::tag,
+    character::complete::one_of,
+    combinator::{map, map_res, recognize},
+    multi::many1,
+};
 
 pub enum Instruction<M: Memory> {
-    /// Stores `operand` into `register`, if `register` is not already set.
-    Store(Register<M::Environment>, Operand<M>),
     /// Adds `first` with `second`, storing the outcome in `register`.
     Add(Register<M::Environment>, Operand<M>, Operand<M>),
+    /// Stores `operand` into `register`, if `register` is not already set.
+    Store(Register<M::Environment>, Operand<M>),
     /// Subtracts `first` from `second`, storing the outcome in `register`.
     Sub(Register<M::Environment>, Operand<M>, Operand<M>),
 }
@@ -37,8 +43,8 @@ impl<M: Memory> Instruction<M> {
     /// Returns the opcode of the instruction.
     pub fn opcode(&self) -> u16 {
         match self {
-            Self::Store(..) => 0,
-            Self::Add(..) => 1,
+            Self::Add(..) => 0,
+            Self::Store(..) => 1,
             Self::Sub(..) => 2,
         }
     }
@@ -46,9 +52,49 @@ impl<M: Memory> Instruction<M> {
     /// Evaluates the instruction.
     pub fn evaluate(&self) {
         match self {
-            Self::Store(register, operand) => Self::store(register, operand),
             Self::Add(register, first, second) => Self::add(register, first, second),
+            Self::Store(register, operand) => Self::store(register, operand),
             Self::Sub(register, first, second) => Self::sub(register, first, second),
+        }
+    }
+}
+
+// impl<M: Memory> Parser for Instruction<M> {
+//     type Environment = M::Environment;
+//     type Output = Instruction<M>;
+//
+//     /// Parses a string into an instruction.
+//     #[inline]
+//     fn parse(string: &str) -> ParserResult<Self::Output> {
+//         alt((
+//             map(|string: &str| -> ParserResult<Self::Output> {
+//                 // Parse the 'let ' from the string.
+//                 let (string, _) = tag("let ")(string)?;
+//                 // Parse the register from the string.
+//                 let (string, register) = Register::parse(string)?;
+//                 // Parse the ' = ' from the string.
+//                 let (string, _) = tag(" = ")(string)?;
+//                 // Parse the first operand from the string.
+//                 let (string, first) = Operand::parse(string)?;
+//                 // Parse the ' + ' from the string.
+//                 let (string, _) = tag(" + ")(string)?;
+//                 // Parse the second operand from the string.
+//                 let (string, second) = Operand::parse(string)?;
+//                 // Parse the semicolon from the string.
+//                 let (string, _) = tag(";")(string)?;
+//
+//                 Ok((string, Self::Add(register, first, second)))
+//             }, |instruction| instruction),
+//         ))(string)
+//     }
+// }
+
+impl<M: Memory> fmt::Display for Instruction<M> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Add(register, first, second) => write!(f, "let {} = {} + {};", register, first, second),
+            Self::Store(register, operand) => write!(f, "let {} = {};", register, operand),
+            Self::Sub(register, first, second) => write!(f, "let {} = {} - {};", register, first, second),
         }
     }
 }

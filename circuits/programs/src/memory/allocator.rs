@@ -14,18 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Immediate, Register};
+use crate::{Immediate, Instruction, Register};
 use snarkvm_circuits::Environment;
 
 use core::cell::RefCell;
 use once_cell::unsync::OnceCell;
 use std::{collections::HashMap, rc::Rc};
 
-pub(super) struct Registry<E: Environment> {
+pub(super) struct Allocator<E: Environment> {
     registers: HashMap<Register<E>, Rc<RefCell<OnceCell<Immediate<E>>>>>,
 }
 
-impl<E: Environment> Registry<E> {
+impl<E: Environment> Allocator<E> {
     /// Allocates a new register in memory, returning the new register.
     pub(super) fn new_register(&mut self) -> Register<E> {
         let register = Register::new(self.registers.len() as u64);
@@ -40,6 +40,21 @@ impl<E: Environment> Registry<E> {
             // Check if the register is set.
             Some(memory) => memory.borrow().get().is_some(),
             None => return false,
+        }
+    }
+
+    /// Attempts to load the value from the register.
+    pub(super) fn load(&self, register: &Register<E>) -> Immediate<E> {
+        // Attempt to retrieve the specified register from memory.
+        let memory = match self.registers.get(register) {
+            Some(memory) => memory,
+            None => E::halt(format!("Register {} does not exist", register)),
+        };
+
+        // Attempt to retrieve the value the specified register.
+        match memory.borrow().get() {
+            Some(value) => value.clone(),
+            None => E::halt(format!("Register {} is not set", register)),
         }
     }
 
@@ -62,28 +77,13 @@ impl<E: Environment> Registry<E> {
         }
     }
 
-    /// Attempts to load the value from the register.
-    pub(super) fn load(&self, register: &Register<E>) -> Immediate<E> {
-        // Attempt to retrieve the specified register from memory.
-        let memory = match self.registers.get(register) {
-            Some(memory) => memory,
-            None => E::halt(format!("Register {} does not exist", register)),
-        };
-
-        // Attempt to retrieve the value the specified register.
-        match memory.borrow().get() {
-            Some(value) => value.clone(),
-            None => E::halt(format!("Register {} is not set", register)),
-        }
-    }
-
     /// Returns the number of registers allocated.
     pub(super) fn num_registers(&self) -> u64 {
         self.registers.len() as u64
     }
 }
 
-impl<E: Environment> Default for Registry<E> {
+impl<E: Environment> Default for Allocator<E> {
     fn default() -> Self {
         Self { registers: Default::default() }
     }
