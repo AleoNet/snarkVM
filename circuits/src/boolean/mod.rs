@@ -101,6 +101,7 @@ impl<E: Environment> Eject for Boolean<E> {
 }
 
 impl<E: Environment> Parser for Boolean<E> {
+    type Environment = E;
     type Output = Boolean<E>;
 
     /// Parses a string into a boolean circuit.

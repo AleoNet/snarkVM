@@ -18,7 +18,7 @@ use crate::*;
 use snarkvm_curves::{AffineCurve, TwistedEdwardsParameters};
 use snarkvm_fields::traits::*;
 
-use core::fmt;
+use core::{fmt, hash};
 use nom::{
     branch::alt,
     bytes::complete::tag,
@@ -72,7 +72,7 @@ impl fmt::Display for Mode {
     }
 }
 
-pub trait Environment: Clone + fmt::Display {
+pub trait Environment: Copy + Clone + fmt::Display + Eq + PartialEq + hash::Hash {
     type Affine: AffineCurve<BaseField = Self::BaseField>;
     type AffineParameters: TwistedEdwardsParameters<BaseField = Self::BaseField>;
     type BaseField: PrimeField + Copy;

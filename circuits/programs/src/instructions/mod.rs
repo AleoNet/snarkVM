@@ -19,14 +19,18 @@ mod store;
 mod sub;
 
 use crate::{Immediate, Memory, Operand, Register};
+use snarkvm_circuits::{Parser, ParserResult};
+
+use core::fmt;
+use nom::{branch::alt, combinator::map};
 
 pub enum Instruction<M: Memory> {
     /// Stores `operand` into `register`, if `register` is not already set.
-    Store(Register, Operand<M>),
+    Store(Register<M::Environment>, Operand<M>),
     /// Adds `first` with `second`, storing the outcome in `register`.
-    Add(Register, Operand<M>, Operand<M>),
+    Add(Register<M::Environment>, Operand<M>, Operand<M>),
     /// Subtracts `first` from `second`, storing the outcome in `register`.
-    Sub(Register, Operand<M>, Operand<M>),
+    Sub(Register<M::Environment>, Operand<M>, Operand<M>),
 }
 
 impl<M: Memory> Instruction<M> {

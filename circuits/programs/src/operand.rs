@@ -23,7 +23,7 @@ use nom::{branch::alt, combinator::map};
 #[derive(Clone)]
 pub enum Operand<M: Memory> {
     Immediate(Immediate<M::Environment>),
-    Register(Register),
+    Register(Register<M::Environment>),
 }
 
 impl<M: Memory> Operand<M> {
@@ -53,19 +53,20 @@ impl<M: Memory> From<&Immediate<M::Environment>> for Operand<M> {
     }
 }
 
-impl<M: Memory> From<Register> for Operand<M> {
-    fn from(register: Register) -> Operand<M> {
+impl<M: Memory> From<Register<M::Environment>> for Operand<M> {
+    fn from(register: Register<M::Environment>) -> Operand<M> {
         Operand::Register(register)
     }
 }
 
-impl<M: Memory> From<&Register> for Operand<M> {
-    fn from(register: &Register) -> Operand<M> {
+impl<M: Memory> From<&Register<M::Environment>> for Operand<M> {
+    fn from(register: &Register<M::Environment>) -> Operand<M> {
         Operand::from(register.clone())
     }
 }
 
 impl<M: Memory> Parser for Operand<M> {
+    type Environment = M::Environment;
     type Output = Operand<M>;
 
     /// Parses a string into an operand.

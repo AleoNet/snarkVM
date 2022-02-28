@@ -24,28 +24,29 @@ thread_local! {
     static REGISTERS: Lazy<RefCell<Registry<Circuit>>> = Lazy::new(|| RefCell::new(Default::default()));
 }
 
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub struct Registers;
 
 impl Memory for Registers {
     type Environment = Circuit;
 
     /// Allocates a new register in memory, returning the new register.
-    fn new_register() -> Register {
+    fn new_register() -> Register<Self::Environment> {
         REGISTERS.with(|registers| (**registers).borrow_mut().new_register())
     }
 
     /// Returns `true` if the given register is already set.
-    fn is_set(register: &Register) -> bool {
+    fn is_set(register: &Register<Self::Environment>) -> bool {
         REGISTERS.with(|registers| (**registers).borrow().is_set(register))
     }
 
     /// Attempts to store value into the register.
-    fn store(register: &Register, value: Immediate<Self::Environment>) {
+    fn store(register: &Register<Self::Environment>, value: Immediate<Self::Environment>) {
         REGISTERS.with(|registers| (**registers).borrow().store(register, value))
     }
 
     /// Attempts to load the value from the register.
-    fn load(register: &Register) -> Immediate<Self::Environment> {
+    fn load(register: &Register<Self::Environment>) -> Immediate<Self::Environment> {
         REGISTERS.with(|registers| (**registers).borrow().load(register))
     }
 

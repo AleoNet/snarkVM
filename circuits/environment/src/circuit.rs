@@ -27,7 +27,7 @@ thread_local! {
     pub(super) static CIRCUIT: Lazy<RefCell<R1CS<Fq>>> = Lazy::new(|| RefCell::new(R1CS::<Fq>::new()));
 }
 
-#[derive(Clone)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub struct Circuit;
 
 impl Environment for Circuit {

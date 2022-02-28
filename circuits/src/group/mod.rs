@@ -127,6 +127,7 @@ impl<E: Environment> Eject for Affine<E> {
 }
 
 impl<E: Environment> Parser for Affine<E> {
+    type Environment = E;
     type Output = Affine<E>;
 
     /// Parses a string into an affine group circuit.

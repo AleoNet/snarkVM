@@ -18,7 +18,7 @@ use super::*;
 
 impl<M: Memory> Instruction<M> {
     /// Adds `first` with `second`, storing the outcome in `register`.
-    pub(super) fn add(register: &Register, first: &Operand<M>, second: &Operand<M>) {
+    pub(super) fn add(register: &Register<M::Environment>, first: &Operand<M>, second: &Operand<M>) {
         match (first.to_value(), second.to_value()) {
             (Immediate::BaseField(a), Immediate::BaseField(b)) => M::store(register, Immediate::BaseField(a + b)),
             (Immediate::Group(a), Immediate::Group(b)) => M::store(register, Immediate::Group(a + b)),

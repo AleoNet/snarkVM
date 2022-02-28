@@ -19,7 +19,7 @@ use crate::{Immediate, Instruction, Memory, Register};
 pub struct Function<M: Memory> {
     inputs: Vec<Instruction<M>>,
     instructions: Vec<Instruction<M>>,
-    outputs: Vec<Register>,
+    outputs: Vec<Register<M::Environment>>,
 }
 
 impl<M: Memory> Function<M> {
@@ -29,14 +29,14 @@ impl<M: Memory> Function<M> {
     }
 
     /// Allocates a new register, adds an instruction to store the given input, and returns the new register.
-    pub fn new_input(&mut self, input: Immediate<M::Environment>) -> Register {
+    pub fn new_input(&mut self, input: Immediate<M::Environment>) -> Register<M::Environment> {
         let register = M::new_register();
         self.inputs.push(Instruction::Store(register, input.into()));
         register
     }
 
     /// Allocates a new register, adds an instruction to store the given output, and returns the new register.
-    pub fn new_output(&mut self) -> Register {
+    pub fn new_output(&mut self) -> Register<M::Environment> {
         let register = M::new_register();
         self.outputs.push(register);
         register
@@ -58,7 +58,7 @@ impl<M: Memory> Function<M> {
     }
 
     /// Returns the output registers.
-    pub fn outputs(&self) -> &Vec<Register> {
+    pub fn outputs(&self) -> &Vec<Register<M::Environment>> {
         &self.outputs
     }
 }

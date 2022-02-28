@@ -53,6 +53,7 @@ impl<E: Environment> Immediate<E> {
 }
 
 impl<E: Environment> Parser for Immediate<E> {
+    type Environment = E;
     type Output = Immediate<E>;
 
     /// Parses a string into an immediate.

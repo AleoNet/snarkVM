@@ -202,12 +202,23 @@ pub trait Eject {
 
 /// Operations to parse a string literal into a circuit type.
 pub trait Parser: Display {
+    type Environment: Environment;
     type Output;
 
     ///
     /// Parses a string literal into a circuit type.
     ///
     fn parse(s: &str) -> ParserResult<Self::Output>;
+
+    ///
+    /// Returns a circuit type from a string literal.
+    ///
+    fn from_str(string: &str) -> Self::Output {
+        match Self::parse(string) {
+            Ok((_, circuit)) => circuit,
+            Err(error) => Self::Environment::halt(format!("Failed to parse: {}", error)),
+        }
+    }
 }
 
 /// Representation of the zero value.

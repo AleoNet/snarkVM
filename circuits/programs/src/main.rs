@@ -49,14 +49,14 @@ impl<M: Memory> HelloWorld<M> {
         self.function.evaluate();
     }
 
-    pub fn outputs(&self) -> &Vec<Register> {
+    pub fn outputs(&self) -> &Vec<Register<M::Environment>> {
         self.function.outputs()
     }
 }
 
 fn main() {
-    let first = Immediate::BaseField(BaseField::<Circuit>::parse("Public(1base)").unwrap().1);
-    let second = Immediate::BaseField(BaseField::parse("Private(1base)").unwrap().1);
+    let first = Immediate::BaseField(BaseField::<Circuit>::from_str("Public(1base)"));
+    let second = Immediate::BaseField(BaseField::from_str("Private(1base)"));
 
     let function = HelloWorld::<Registers>::new([first, second]);
     function.run();
@@ -70,8 +70,8 @@ fn main() {
 
 #[test]
 fn test_hello_world() {
-    let first = Immediate::BaseField(BaseField::<Circuit>::parse("Public(1base)").unwrap().1);
-    let second = Immediate::BaseField(BaseField::parse("Private(1base)").unwrap().1);
+    let first = Immediate::BaseField(BaseField::<Circuit>::from_str("Public(1base)"));
+    let second = Immediate::BaseField(BaseField::from_str("Private(1base)"));
 
     let function = HelloWorld::<Registers>::new([first, second]);
     function.run();

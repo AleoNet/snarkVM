@@ -91,6 +91,7 @@ impl<E: Environment> Eject for BaseField<E> {
 }
 
 impl<E: Environment> Parser for BaseField<E> {
+    type Environment = E;
     type Output = BaseField<E>;
 
     /// Parses a string into a base field circuit.

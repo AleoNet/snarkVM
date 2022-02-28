@@ -22,19 +22,19 @@ use once_cell::unsync::OnceCell;
 use std::{collections::HashMap, rc::Rc};
 
 pub(super) struct Registry<E: Environment> {
-    registers: HashMap<Register, Rc<RefCell<OnceCell<Immediate<E>>>>>,
+    registers: HashMap<Register<E>, Rc<RefCell<OnceCell<Immediate<E>>>>>,
 }
 
 impl<E: Environment> Registry<E> {
     /// Allocates a new register in memory, returning the new register.
-    pub(super) fn new_register(&mut self) -> Register {
+    pub(super) fn new_register(&mut self) -> Register<E> {
         let register = Register::new(self.registers.len() as u64);
         self.registers.insert(register.clone(), Default::default());
         register
     }
 
     /// Returns `true` if the given register is already set.
-    pub(super) fn is_set(&self, register: &Register) -> bool {
+    pub(super) fn is_set(&self, register: &Register<E>) -> bool {
         // Attempt to retrieve the specified register from memory.
         match self.registers.get(register) {
             // Check if the register is set.
@@ -44,7 +44,7 @@ impl<E: Environment> Registry<E> {
     }
 
     /// Attempts to store value into the register.
-    pub(super) fn store(&self, register: &Register, value: Immediate<E>) {
+    pub(super) fn store(&self, register: &Register<E>, value: Immediate<E>) {
         // Attempt to retrieve the specified register from memory.
         let memory = match self.registers.get(register) {
             Some(memory) => memory,
@@ -63,7 +63,7 @@ impl<E: Environment> Registry<E> {
     }
 
     /// Attempts to load the value from the register.
-    pub(super) fn load(&self, register: &Register) -> Immediate<E> {
+    pub(super) fn load(&self, register: &Register<E>) -> Immediate<E> {
         // Attempt to retrieve the specified register from memory.
         let memory = match self.registers.get(register) {
             Some(memory) => memory,

@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_circuits::{Parser, ParserResult};
+use snarkvm_circuits::{Environment, Parser, ParserResult};
 
-use core::fmt;
+use core::{fmt, marker::PhantomData};
 use nom::{
     bytes::complete::tag,
     character::complete::one_of,
@@ -25,17 +25,18 @@ use nom::{
 };
 
 #[derive(Copy, Clone, Eq, Hash, PartialEq)]
-pub struct Register(u64);
+pub struct Register<E: Environment>(u64, PhantomData<E>);
 
-impl Register {
+impl<E: Environment> Register<E> {
     /// Returns a new instance of a register.
-    pub(super) fn new(locator: u64) -> Register {
-        Self(locator)
+    pub(super) fn new(locator: u64) -> Register<E> {
+        Self(locator, PhantomData)
     }
 }
 
-impl Parser for Register {
-    type Output = Register;
+impl<E: Environment> Parser for Register<E> {
+    type Environment = E;
+    type Output = Register<E>;
 
     /// Parses a string into a register.
     #[inline]
@@ -46,11 +47,11 @@ impl Parser for Register {
         let (string, locator) =
             map_res(recognize(many1(one_of("0123456789"))), |locator: &str| locator.parse::<u64>())(string)?;
 
-        Ok((string, Register(locator)))
+        Ok((string, Register::new(locator)))
     }
 }
 
-impl fmt::Display for Register {
+impl<E: Environment> fmt::Display for Register<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "r{}", self.0)
     }
