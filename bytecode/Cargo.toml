@@ -1,0 +1,21 @@
+[package]
+name = "snarkvm-bytecode"
+version = "0.7.5"
+authors = [ "The Aleo Team <hello@aleo.org>" ]
+description = "Bytecode for a decentralized virtual machine"
+license = "GPL-3.0"
+edition = "2021"
+
+[dependencies.snarkvm-circuits]
+path = "../circuits"
+version = "0.7.5"
+default-features = false
+
+[dependencies.nom]
+version = "7.1"
+
+[dependencies.once_cell]
+version = "1.8.0"
+
+[features]
+default = ["snarkvm-circuits/default"]

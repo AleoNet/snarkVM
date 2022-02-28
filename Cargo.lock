@@ -1961,6 +1961,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "snarkvm-bytecode"
+version = "0.7.5"
+dependencies = [
+ "nom",
+ "once_cell",
+ "snarkvm-circuits",
+]
+
+[[package]]
 name = "snarkvm-circuits"
 version = "0.7.5"
 dependencies = [
@@ -1981,20 +1990,6 @@ name = "snarkvm-circuits-environment"
 version = "0.7.5"
 dependencies = [
  "nom",
- "once_cell",
- "rayon",
- "snarkvm-algorithms",
- "snarkvm-circuits",
- "snarkvm-curves",
- "snarkvm-fields",
- "snarkvm-r1cs",
- "snarkvm-utilities",
-]
-
-[[package]]
-name = "snarkvm-circuits-programs"
-version = "0.7.5"
-dependencies = [
  "once_cell",
  "rayon",
  "snarkvm-algorithms",

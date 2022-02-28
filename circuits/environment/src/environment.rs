@@ -19,13 +19,7 @@ use snarkvm_curves::{AffineCurve, TwistedEdwardsParameters};
 use snarkvm_fields::traits::*;
 
 use core::{fmt, hash};
-use nom::{
-    branch::alt,
-    bytes::complete::tag,
-    combinator::map,
-    error::VerboseError,
-    IResult
-};
+use nom::{branch::alt, bytes::complete::tag, combinator::map, error::VerboseError, IResult};
 
 pub type ParserResult<'a, O> = IResult<&'a str, O, VerboseError<&'a str>>;
 
