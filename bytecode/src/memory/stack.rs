@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{memory::allocator::Allocator, Immediate, Memory, Register};
-use snarkvm_circuits::Circuit;
+use snarkvm_circuits::{Circuit, Environment};
 
 use core::cell::RefCell;
 use once_cell::unsync::Lazy;
@@ -57,6 +57,7 @@ impl Memory for Stack {
 
     /// Clears and initializes an empty memory layout.
     fn reset() {
+        Self::Environment::reset();
         STACK.with(|stack| *(**stack).borrow_mut() = Default::default());
     }
 }

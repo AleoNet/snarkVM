@@ -52,6 +52,7 @@ impl Function for Global {
 
     /// Clears and initializes a new function layout.
     fn reset() {
+        Self::Memory::reset();
         FUNCTION.with(|function| *(**function).borrow_mut() = Default::default());
     }
 }
