@@ -15,6 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Immediate, Memory, Register};
+use snarkvm_circuits::{Parser, ParserResult};
+
+use core::fmt;
+use nom::{branch::alt, combinator::map};
 
 #[derive(Clone)]
 pub enum Operand<M: Memory> {
@@ -58,5 +62,27 @@ impl<M: Memory> From<Register> for Operand<M> {
 impl<M: Memory> From<&Register> for Operand<M> {
     fn from(register: &Register) -> Operand<M> {
         Operand::from(register.clone())
+    }
+}
+
+impl<M: Memory> Parser for Operand<M> {
+    type Output = Operand<M>;
+
+    /// Parses a string into an operand.
+    #[inline]
+    fn parse(string: &str) -> ParserResult<Self::Output> {
+        alt((
+            map(Immediate::parse, |immediate| Self::Immediate(immediate)),
+            map(Register::parse, |register| Self::Register(register)),
+        ))(string)
+    }
+}
+
+impl<M: Memory> fmt::Display for Operand<M> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Immediate(immediate) => immediate.fmt(f),
+            Self::Register(register) => register.fmt(f),
+        }
     }
 }
