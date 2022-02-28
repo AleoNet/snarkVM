@@ -29,7 +29,7 @@ impl<E: Environment> Allocator<E> {
     /// Allocates a new register in memory, returning the new register.
     pub(super) fn new_register(&mut self) -> Register<E> {
         let register = Register::new(self.registers.len() as u64);
-        self.registers.insert(register.clone(), Default::default());
+        self.registers.insert(register, Default::default());
         register
     }
 
@@ -39,7 +39,7 @@ impl<E: Environment> Allocator<E> {
         match self.registers.get(register) {
             // Check if the register is set.
             Some(memory) => memory.borrow().get().is_some(),
-            None => return false,
+            None => false,
         }
     }
 

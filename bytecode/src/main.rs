@@ -30,8 +30,8 @@ impl HelloWorld {
 
         // Add the values in the registers, storing the result in a newly allocated register.
         for pair in registers.chunks(2) {
-            let first = Operand::Register(pair[0].clone());
-            let second = Operand::Register(pair[1].clone());
+            let first = Operand::Register(pair[0]);
+            let second = Operand::Register(pair[1]);
             let output = F::new_output();
             F::push_instruction(Instruction::Add(output, first, second));
         }
