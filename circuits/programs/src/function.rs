@@ -18,6 +18,7 @@ use crate::{Immediate, Instruction, Memory, Operand, Register};
 use snarkvm_circuits::Environment;
 
 pub struct Function<M: Memory> {
+    inputs: Vec<Instruction<M>>,
     instructions: Vec<Instruction<M>>,
     outputs: Vec<Register>,
 }
@@ -25,13 +26,13 @@ pub struct Function<M: Memory> {
 impl<M: Memory> Function<M> {
     /// Initializes a new instance of a function.
     pub fn new() -> Self {
-        Self { instructions: Vec::new(), outputs: Vec::new() }
+        Self { inputs: Vec::new(), instructions: Vec::new(), outputs: Vec::new() }
     }
 
     /// Allocates a new register, adds an instruction to store the given input, and returns the new register.
     pub fn new_input(&mut self, input: Immediate<M::Environment>) -> Register {
         let register = M::new_register();
-        self.push_instruction(Instruction::Store(register, input.into()));
+        self.inputs.push(Instruction::Store(register, input.into()));
         register
     }
 
@@ -49,6 +50,9 @@ impl<M: Memory> Function<M> {
 
     /// Evaluates the function.
     pub fn evaluate(&self) {
+        for instruction in &self.inputs {
+            instruction.evaluate();
+        }
         for instruction in &self.instructions {
             instruction.evaluate();
         }
