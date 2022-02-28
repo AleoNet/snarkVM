@@ -19,5 +19,27 @@ pub use global::*;
 
 pub mod local;
 
-pub mod traits;
-pub use traits::*;
+use crate::{Immediate, Instruction, Memory, Register};
+use snarkvm_circuits::Environment;
+
+use core::hash;
+
+pub trait Function: Copy + Clone + Eq + PartialEq + hash::Hash {
+    type Environment: Environment;
+    type Memory: Memory<Environment = Self::Environment>;
+
+    /// Allocates a new register, stores the given input, and returns the new register.
+    fn new_input(input: Immediate<Self::Environment>) -> Register<Self::Environment>;
+
+    /// Allocates a new register, stores the given output, and returns the new register.
+    fn new_output() -> Register<Self::Environment>;
+
+    /// Adds the given instruction.
+    fn push_instruction(instruction: Instruction<Self::Memory>);
+
+    /// Evaluates the function, returning the outputs.
+    fn evaluate() -> Vec<Immediate<Self::Environment>>;
+
+    /// Clears and initializes a new function layout.
+    fn reset();
+}

@@ -15,11 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Immediate, Instruction, Memory, Register};
-use snarkvm_circuits::Environment;
-
-use core::cell::RefCell;
-use once_cell::unsync::OnceCell;
-use std::{collections::HashMap, rc::Rc};
 
 pub(super) struct Local<M: Memory> {
     inputs: Vec<Register<M::Environment>>,

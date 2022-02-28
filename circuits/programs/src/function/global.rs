@@ -49,4 +49,9 @@ impl Function for Global {
     fn evaluate() -> Vec<Immediate<Self::Environment>> {
         FUNCTION.with(|function| (**function).borrow().evaluate())
     }
+
+    /// Clears and initializes a new function layout.
+    fn reset() {
+        FUNCTION.with(|function| *(**function).borrow_mut() = Default::default());
+    }
 }

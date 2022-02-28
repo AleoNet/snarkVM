@@ -14,7 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Immediate, Memory, Register};
+pub mod immediate;
+pub use immediate::*;
+
+pub mod register;
+pub use register::*;
+
+use crate::Memory;
 use snarkvm_circuits::{Mode, Parser, ParserResult};
 
 use core::fmt;
