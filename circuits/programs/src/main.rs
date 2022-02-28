@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_circuits::{traits::*, BaseField, Circuit, Environment};
+use snarkvm_circuits::{traits::*, BaseField, Circuit};
 use snarkvm_circuits_programs::{Function, Immediate, Instruction, Memory, Operand, Register, Registers};
 
 pub struct HelloWorld<M: Memory> {
@@ -29,6 +29,7 @@ impl<M: Memory> HelloWorld<M> {
         // Allocate a new register for each input, and store each input in the register.
         let mut registers = Vec::with_capacity(2);
         for input in inputs {
+            assert!(!input.is_constant());
             registers.push(function.new_input(input));
         }
 
@@ -54,8 +55,8 @@ impl<M: Memory> HelloWorld<M> {
 }
 
 fn main() {
-    let first = Immediate::BaseField(BaseField::<Circuit>::one());
-    let second = Immediate::BaseField(BaseField::one());
+    let first = Immediate::BaseField(BaseField::<Circuit>::parse("Public(1base)").unwrap().1);
+    let second = Immediate::BaseField(BaseField::parse("Private(1base)").unwrap().1);
 
     let function = HelloWorld::<Registers>::new([first, second]);
     function.run();
@@ -69,8 +70,8 @@ fn main() {
 
 #[test]
 fn test_hello_world() {
-    let first = Immediate::BaseField(BaseField::<Circuit>::one());
-    let second = Immediate::BaseField(BaseField::one());
+    let first = Immediate::BaseField(BaseField::<Circuit>::parse("Public(1base)").unwrap().1);
+    let second = Immediate::BaseField(BaseField::parse("Private(1base)").unwrap().1);
 
     let function = HelloWorld::<Registers>::new([first, second]);
     function.run();

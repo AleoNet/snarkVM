@@ -14,16 +14,42 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_circuits::{Affine, BaseField, Boolean, Environment, Parser, ParserResult};
+use snarkvm_circuits::{Affine, BaseField, Boolean, Eject, Environment, Mode, Parser, ParserResult};
 
 use core::fmt;
-use nom::{branch::alt, bytes::complete::tag, combinator::map};
+use nom::{branch::alt, combinator::map};
 
 #[derive(Clone)]
 pub enum Immediate<E: Environment> {
     BaseField(BaseField<E>),
     Boolean(Boolean<E>),
     Group(Affine<E>),
+}
+
+impl<E: Environment> Immediate<E> {
+    /// Returns the mode of the immediate.
+    pub fn mode(&self) -> Mode {
+        match self {
+            Self::BaseField(base) => base.eject_mode(),
+            Self::Boolean(boolean) => boolean.eject_mode(),
+            Self::Group(group) => group.eject_mode(),
+        }
+    }
+
+    /// Returns `true` if the immediate is a constant.
+    pub fn is_constant(&self) -> bool {
+        self.mode().is_constant()
+    }
+
+    /// Returns `true` if the immediate is public.
+    pub fn is_public(&self) -> bool {
+        self.mode().is_public()
+    }
+
+    /// Returns `true` if the immediate is private.
+    pub fn is_private(&self) -> bool {
+        self.mode().is_private()
+    }
 }
 
 impl<E: Environment> Parser for Immediate<E> {

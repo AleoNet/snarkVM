@@ -19,7 +19,6 @@ mod store;
 mod sub;
 
 use crate::{Immediate, Memory, Operand, Register};
-use snarkvm_circuits::Environment;
 
 pub enum Instruction<M: Memory> {
     /// Stores `operand` into `register`, if `register` is not already set.

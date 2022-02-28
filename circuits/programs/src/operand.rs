@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Immediate, Memory, Register};
-use snarkvm_circuits::Environment;
 
 #[derive(Clone)]
 pub enum Operand<M: Memory> {

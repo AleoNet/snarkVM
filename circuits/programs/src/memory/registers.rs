@@ -14,12 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{memory::Registry, Immediate, Instruction, Memory, Register};
-use snarkvm_circuits::{Circuit, Environment};
+use crate::{memory::registry::Registry, Immediate, Memory, Register};
+use snarkvm_circuits::Circuit;
 
-use core::{cell::RefCell, fmt};
-use once_cell::unsync::{Lazy, OnceCell};
-use std::{collections::HashMap, rc::Rc};
+use core::cell::RefCell;
+use once_cell::unsync::Lazy;
 
 thread_local! {
     static REGISTERS: Lazy<RefCell<Registry<Circuit>>> = Lazy::new(|| RefCell::new(Default::default()));

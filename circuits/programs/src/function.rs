@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Immediate, Instruction, Memory, Operand, Register};
-use snarkvm_circuits::Environment;
+use crate::{Immediate, Instruction, Memory, Register};
 
 pub struct Function<M: Memory> {
     inputs: Vec<Instruction<M>>,

@@ -24,7 +24,6 @@ pub mod registers;
 pub use registers::*;
 
 pub mod registry;
-pub use registry::*;
 
 pub mod traits;
 pub use traits::*;

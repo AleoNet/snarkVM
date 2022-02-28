@@ -15,11 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Immediate, Memory};
-use snarkvm_circuits::{Environment, Parser, ParserResult};
+use snarkvm_circuits::{Parser, ParserResult};
 
 use core::fmt;
-use once_cell::unsync::OnceCell;
-use std::{cell::RefCell, rc::Rc};
 
 #[derive(Copy, Clone, Eq, Hash, PartialEq)]
 pub struct Register(u64);
