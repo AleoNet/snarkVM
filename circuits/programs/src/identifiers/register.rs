@@ -29,7 +29,7 @@ pub struct Register<E: Environment>(u64, PhantomData<E>);
 
 impl<E: Environment> Register<E> {
     /// Returns a new instance of a register.
-    pub(super) fn new(locator: u64) -> Register<E> {
+    pub(crate) fn new(locator: u64) -> Register<E> {
         Self(locator, PhantomData)
     }
 }

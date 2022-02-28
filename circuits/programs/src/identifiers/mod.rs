@@ -14,10 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod registers;
-pub use registers::*;
+pub mod immediate;
+pub use immediate::*;
 
-pub mod registry;
+pub mod operand;
+pub use operand::*;
 
-pub mod traits;
-pub use traits::*;
+pub mod register;
+pub use register::*;

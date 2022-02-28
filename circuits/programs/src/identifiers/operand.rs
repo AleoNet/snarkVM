@@ -28,12 +28,12 @@ pub enum Operand<M: Memory> {
 
 impl<M: Memory> Operand<M> {
     /// Returns `true` if the value type is a register.
-    pub(super) fn is_register(&self) -> bool {
+    pub(crate) fn is_register(&self) -> bool {
         matches!(self, Self::Register(..))
     }
 
     /// Returns the value from a register, otherwise passes the loaded value through.
-    pub(super) fn to_value(&self) -> Immediate<M::Environment> {
+    pub(crate) fn to_value(&self) -> Immediate<M::Environment> {
         match self {
             Self::Immediate(value) => value.clone(),
             Self::Register(register) => M::load(register),
