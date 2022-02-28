@@ -14,10 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Immediate, Memory};
 use snarkvm_circuits::{Parser, ParserResult};
 
 use core::fmt;
+use nom::{
+    bytes::complete::tag,
+    character::complete::one_of,
+    combinator::{map_res, recognize},
+    multi::many1,
+};
 
 #[derive(Copy, Clone, Eq, Hash, PartialEq)]
 pub struct Register(u64);
@@ -29,19 +34,21 @@ impl Register {
     }
 }
 
-// impl Parser for Register {
-//     type Output = Register;
-//
-//     /// Parses a string into a register.
-//     #[inline]
-//     fn parse(string: &str) -> ParserResult<Self::Output> {
-//         alt((
-//             map(BaseField::parse, |base| Self::BaseField(base)),
-//             map(Boolean::parse, |boolean| Self::Boolean(boolean)),
-//             map(Affine::parse, |group| Self::Group(group)),
-//         ))(string)
-//     }
-// }
+impl Parser for Register {
+    type Output = Register;
+
+    /// Parses a string into a register.
+    #[inline]
+    fn parse(string: &str) -> ParserResult<Self::Output> {
+        // Parse the open parenthesis from the string.
+        let (string, _) = tag("r")(string)?;
+        // Parse the locator from the string.
+        let (string, locator) =
+            map_res(recognize(many1(one_of("0123456789"))), |locator: &str| locator.parse::<u64>())(string)?;
+
+        Ok((string, Register(locator)))
+    }
+}
 
 impl fmt::Display for Register {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
