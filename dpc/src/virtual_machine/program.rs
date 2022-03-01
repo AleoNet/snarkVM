@@ -149,9 +149,7 @@ impl<N: Network> Program<N> {
 
         // Ensure that the number of functions does not exceed the u8 bounds of `self.last_function_index`.
         if (self.last_function_index as usize).saturating_add(num_functions) > u8::MAX as usize {
-            return Err(anyhow!(
-                "The list of given functions exceeds the maximum number of allowed functions."
-            ));
+            return Err(anyhow!("The program tree will reach its maximum size."));
         }
 
         self.functions.extend(

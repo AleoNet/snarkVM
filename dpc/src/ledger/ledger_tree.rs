@@ -87,9 +87,7 @@ impl<N: Network> LedgerTreeScheme<N> for LedgerTree<N> {
 
         // Ensure that the number of block hashes does not exceed the u32 bounds of `self.current_index`.
         if (self.current_index as usize).saturating_add(num_block_hashes) > u32::MAX as usize {
-            return Err(anyhow!(
-                "The list of given block hashes exceeds the maximum number of allowed block hashes."
-            ));
+            return Err(anyhow!("The ledger tree will reach its maximum size."));
         }
 
         // Add the block hashes to the tree. Start the tree from scratch if the tree is currently empty.
