@@ -58,7 +58,9 @@ impl<N: Network> LedgerTreeScheme<N> for LedgerTree<N> {
         self.block_hashes.insert(*block_hash, self.current_index);
 
         let current_index = self.current_index;
-        self.current_index = current_index.checked_add(1).ok_or(anyhow!("Integer overflow."))?;
+        self.current_index = current_index
+            .checked_add(1)
+            .ok_or(anyhow!("The index exceeds the maximum number of allowed block hashes."))?;
 
         Ok(current_index)
     }
@@ -85,7 +87,9 @@ impl<N: Network> LedgerTreeScheme<N> for LedgerTree<N> {
 
         // Ensure that the number of block hashes does not exceed the u32 bounds of `self.current_index`.
         if (self.current_index as usize).saturating_add(num_block_hashes) > u32::MAX as usize {
-            return Err(anyhow!("Integer overflow."));
+            return Err(anyhow!(
+                "The list of given block hashes exceeds the maximum number of allowed block hashes."
+            ));
         }
 
         // Add the block hashes to the tree. Start the tree from scratch if the tree is currently empty.
@@ -104,7 +108,7 @@ impl<N: Network> LedgerTreeScheme<N> for LedgerTree<N> {
         self.current_index = self
             .current_index
             .checked_add(num_block_hashes as u32)
-            .ok_or(anyhow!("Integer overflow."))?;
+            .ok_or(anyhow!("The index exceeds the maximum number of allowed block hashes."))?;
         let end_index = self.current_index.checked_sub(1).ok_or(anyhow!("Integer underflow."))?;
 
         Ok((start_index, end_index))
