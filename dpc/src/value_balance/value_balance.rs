@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{error::ValueBalanceCommitmentError, Network};
+use crate::{error::ValueBalanceCommitmentError, AleoAmount, Network};
 use snarkvm_algorithms::CommitmentScheme;
 use snarkvm_curves::AffineCurve;
-use snarkvm_fields::{Field, One, PrimeField, Zero};
-use snarkvm_utilities::{BitIteratorLE, FromBytes, ToBytes};
+use snarkvm_fields::{PrimeField, Zero};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use blake2::{
     digest::{Update, VariableOutput},
@@ -79,7 +79,7 @@ impl<N: Network> ValueBalanceCommitment<N> {
         output_value_commitments: &Vec<N::ProgramAffineCurve>,
         input_value_commitment_randomness: &Vec<N::ProgramScalarField>,
         output_value_commitment_randomness: &Vec<N::ProgramScalarField>,
-        value_balance: i64,
+        value_balance: AleoAmount,
         input: &[u8],
         rng: &mut R,
     ) -> Result<ValueBalanceCommitment<N>, ValueBalanceCommitmentError> {
@@ -133,7 +133,7 @@ impl<N: Network> ValueBalanceCommitment<N> {
         &self,
         input_value_commitments: &Vec<N::ProgramAffineCurve>,
         output_value_commitments: &Vec<N::ProgramAffineCurve>,
-        value_balance: i64,
+        value_balance: AleoAmount,
         input: &[u8],
     ) -> Result<bool, ValueBalanceCommitmentError> {
         // Craft the combined value commitments (verifying key).
@@ -156,12 +156,12 @@ impl<N: Network> ValueBalanceCommitment<N> {
     }
 
     /// Returns a commitment on the value balance with a randomness of zero.
-    /// `value_balance.sign() * Commit(value_balance.abs(), 0)`.
-    fn commit_without_randomness(value: i64) -> Result<N::ProgramAffineCurve, ValueBalanceCommitmentError> {
+    /// `value_balance.sign() * Commit(value.abs(), 0)`.
+    fn commit_without_randomness(value: AleoAmount) -> Result<N::ProgramAffineCurve, ValueBalanceCommitmentError> {
         // Convert the value balance to an absolute u64.
-        let value_as_u64 = match value.checked_abs() {
+        let value_as_u64 = match value.0.checked_abs() {
             Some(val) => val as u64,
-            None => return Err(ValueBalanceCommitmentError::OutOfBounds(value)),
+            None => return Err(ValueBalanceCommitmentError::OutOfBounds(value.0)),
         };
 
         // Compute commitment of the value with a zero randomness.
@@ -248,12 +248,12 @@ pub(crate) mod tests {
     use rand::Rng;
 
     pub(crate) fn generate_random_value_balance_commitment<N: Network, R: Rng>(
-        input_amounts: Vec<u64>,
-        output_amounts: Vec<u64>,
+        input_amounts: Vec<AleoAmount>,
+        output_amounts: Vec<AleoAmount>,
         sighash: &[u8],
         rng: &mut R,
-    ) -> (Vec<N::ProgramAffineCurve>, Vec<N::ProgramAffineCurve>, i64, ValueBalanceCommitment<N>) {
-        let mut value_balance: i64 = 0;
+    ) -> (Vec<N::ProgramAffineCurve>, Vec<N::ProgramAffineCurve>, AleoAmount, ValueBalanceCommitment<N>) {
+        let mut value_balance = AleoAmount::ZERO;
 
         let mut input_value_commitment_randomness = vec![];
         let mut input_value_commitments = vec![];
@@ -262,22 +262,22 @@ pub(crate) mod tests {
         let mut output_value_commitments = vec![];
 
         for input_amount in input_amounts {
-            value_balance += input_amount as i64;
+            value_balance = value_balance.add(input_amount);
 
             let value_commit_randomness = UniformRand::rand(rng);
             let value_commitment =
-                N::value_commitment().commit(&input_amount.to_le_bytes(), &value_commit_randomness).unwrap();
+                N::value_commitment().commit(&input_amount.to_bytes_le().unwrap(), &value_commit_randomness).unwrap();
 
             input_value_commitment_randomness.push(value_commit_randomness);
             input_value_commitments.push(value_commitment);
         }
 
         for output_amount in output_amounts {
-            value_balance -= output_amount as i64;
+            value_balance = value_balance.sub(output_amount);
 
             let value_commit_randomness = UniformRand::rand(rng);
             let value_commitment =
-                N::value_commitment().commit(&output_amount.to_le_bytes(), &value_commit_randomness).unwrap();
+                N::value_commitment().commit(&output_amount.to_bytes_le().unwrap(), &value_commit_randomness).unwrap();
 
             output_value_commitment_randomness.push(value_commit_randomness);
             output_value_commitments.push(value_commitment);
@@ -301,10 +301,10 @@ pub(crate) mod tests {
     fn test_value_balance_commitment() {
         let rng = &mut rand::thread_rng();
 
-        let input_amount: u64 = rng.gen_range(0..100000000);
-        let input_amount_2: u64 = rng.gen_range(0..100000000);
-        let output_amount: u64 = rng.gen_range(0..100000000);
-        let output_amount_2: u64 = rng.gen_range(0..100000000);
+        let input_amount = AleoAmount::from_gate(rng.gen_range(0..100000000));
+        let input_amount_2 = AleoAmount::from_gate(rng.gen_range(0..100000000));
+        let output_amount = AleoAmount::from_gate(rng.gen_range(0..100000000));
+        let output_amount_2 = AleoAmount::from_gate(rng.gen_range(0..100000000));
         let sighash = [1u8; 64].to_vec();
 
         let (input_value_commitments, output_value_commitments, value_balance, value_balance_commitment) =
@@ -332,10 +332,10 @@ pub(crate) mod tests {
     fn test_value_balance_commitment_serialization() {
         let rng = &mut rand::thread_rng();
 
-        let input_amount: u64 = rng.gen_range(0..100000000);
-        let input_amount_2: u64 = rng.gen_range(0..100000000);
-        let output_amount: u64 = rng.gen_range(0..100000000);
-        let output_amount_2: u64 = rng.gen_range(0..100000000);
+        let input_amount = AleoAmount::from_gate(rng.gen_range(0..100000000));
+        let input_amount_2 = AleoAmount::from_gate(rng.gen_range(0..100000000));
+        let output_amount = AleoAmount::from_gate(rng.gen_range(0..100000000));
+        let output_amount_2 = AleoAmount::from_gate(rng.gen_range(0..100000000));
         let sighash = [1u8; 64].to_vec();
 
         let (_, _, _, value_balance_commitment) = generate_random_value_balance_commitment::<Testnet2, _>(
