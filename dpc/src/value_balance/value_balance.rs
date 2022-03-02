@@ -17,7 +17,7 @@
 use crate::{error::ValueBalanceCommitmentError, Network};
 use snarkvm_algorithms::CommitmentScheme;
 use snarkvm_curves::AffineCurve;
-use snarkvm_fields::{Field, One, Zero};
+use snarkvm_fields::{Field, One, PrimeField, Zero};
 use snarkvm_utilities::{BitIteratorLE, FromBytes, ToBytes};
 
 use blake2::{
@@ -30,6 +30,7 @@ use std::{
     ops::{Add, Mul, Neg},
 };
 
+/// Returns a scalar field derived from a hashed input.
 pub fn hash_into_field<N: Network>(a: &[u8], b: &[u8]) -> N::ProgramScalarField {
     let mut hasher = Blake2bVar::new(64).unwrap();
     hasher.update(a);
@@ -38,38 +39,181 @@ pub fn hash_into_field<N: Network>(a: &[u8], b: &[u8]) -> N::ProgramScalarField 
     let mut hash = [0u8; 64];
     hasher.finalize_variable(&mut hash).unwrap();
 
-    let hash_u64_repr: Vec<u64> = hash
-        .chunks(8)
-        .map(|chunk| {
-            let mut fixed_size = [0u8; 8];
-            fixed_size.copy_from_slice(chunk);
-            u64::from_le_bytes(fixed_size)
-        })
-        .collect();
+    N::ProgramScalarField::from_bytes_le_mod_order(&hash)
+}
 
-    // Scaling by random cofactor for the scalar field
-    let mut res = N::ProgramScalarField::one();
-    for bit in BitIteratorLE::new(hash_u64_repr) {
-        res.double_in_place();
-        if bit {
-            res = res.add(&res)
+///
+/// The value balance commitment scheme used to enforce value conservation.
+/// Derived from the Zcash binding signature scheme - https://github.com/zcash/zips/blob/main/protocol/protocol.pdf
+///
+/// The scheme relies on the homomorphic properties of the commitment scheme
+/// to enforce that the attributes of `ValueBalanceCommitment` can hold the following:
+///
+/// vb = value_balance
+/// combined_randomness = signing key = input_value_commitment_randomness - output_value_commitment_randomness
+/// combined_commitments = validating key = (input_value_commitments - output_value_commitments) - commitment(vb, 0)
+/// vb_c = value balance commitment
+/// vb_c.derive_public(combined_randomness) = combined_commitments
+///
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
+pub struct ValueBalanceCommitment<N: Network> {
+    /// Commitment = Commit(0, Hash( rng || message)).
+    pub commitment: N::ProgramAffineCurve,
+    /// Blinding factor = `randomness` * `combined_randomness` + Hash( rng || message).
+    pub blinding_factor: N::ProgramScalarField,
+}
+
+impl<N: Network> ValueBalanceCommitment<N> {
+    ///
+    /// Returns the value balance commitment given:
+    ///  - `input_value_commitments` are the commitments on the input record values,
+    ///  - `output_value_commitments` are the commitments on the output record values,
+    ///  - `input_value_commitment_randomness` are the random scalars used for the `input_value_commitments`,
+    ///  - `output_value_commitment_randomness` are the random scalars used for the `output_value_commitments`,
+    ///  - `value_balance` is the final balance (total input values - total output values),
+    ///  - `input` is the message that is being signed. i.e. a checkpoint, transition id, etc,
+    ///  - `rng` is the randomness used to generate the final commitment.
+    ///
+    pub fn new<R: Rng>(
+        input_value_commitments: &Vec<N::ProgramAffineCurve>,
+        output_value_commitments: &Vec<N::ProgramAffineCurve>,
+        input_value_commitment_randomness: &Vec<N::ProgramScalarField>,
+        output_value_commitment_randomness: &Vec<N::ProgramScalarField>,
+        value_balance: i64,
+        input: &[u8],
+        rng: &mut R,
+    ) -> Result<ValueBalanceCommitment<N>, ValueBalanceCommitmentError> {
+        // Calculate the `combined_randomness`.
+        let mut combined_randomness = N::ProgramScalarField::zero();
+
+        for input_vc_randomness in input_value_commitment_randomness {
+            combined_randomness += input_vc_randomness;
+        }
+
+        for output_vc_randomness in output_value_commitment_randomness {
+            combined_randomness -= output_vc_randomness;
+        }
+
+        // Calculate the `combined_commitments`.
+        let mut combined_commitments = N::ProgramAffineCurve::zero();
+
+        for vc_input in input_value_commitments {
+            combined_commitments += vc_input;
+        }
+
+        for vc_output in output_value_commitments {
+            combined_commitments -= vc_output;
+        }
+
+        combined_commitments -= Self::commit_without_randomness(value_balance)?;
+
+        // Make sure bvk can be derived from the cumulative randomness.
+        let expected_combined_commitments = N::value_commitment().commit(&0i64.to_le_bytes(), &combined_randomness)?;
+        assert_eq!(combined_commitments, expected_combined_commitments);
+
+        // Generate final commitment randomness.
+        let mut sig_rand = [0u8; 80];
+        rng.fill(&mut sig_rand[..]);
+
+        // Construct `c` to use as randomness.
+        let c = hash_into_field::<N>(&sig_rand[..], input);
+
+        // Commit to 0 with `c`as randomness.
+        let commitment = N::value_commitment().commit(&0i64.to_le_bytes(), &c)?;
+
+        let mut blinding_factor = hash_into_field::<N>(&commitment.to_x_coordinate().to_bytes_le()?, input);
+        blinding_factor = blinding_factor.mul(&combined_randomness);
+        blinding_factor = blinding_factor.add(&c);
+
+        Ok(ValueBalanceCommitment { commitment, blinding_factor })
+    }
+
+    /// Returns `true` if the value balance commitment is valid.
+    pub fn verify_value_balance_commitment(
+        &self,
+        input_value_commitments: &Vec<N::ProgramAffineCurve>,
+        output_value_commitments: &Vec<N::ProgramAffineCurve>,
+        value_balance: i64,
+        input: &[u8],
+    ) -> Result<bool, ValueBalanceCommitmentError> {
+        // Craft the combined value commitments (verifying key).
+        let mut combined_commitments = N::ProgramAffineCurve::zero();
+
+        for vc_input in input_value_commitments {
+            combined_commitments += vc_input;
+        }
+
+        for vc_output in output_value_commitments {
+            combined_commitments -= vc_output;
+        }
+
+        combined_commitments -= Self::commit_without_randomness(value_balance)?;
+
+        let c = hash_into_field::<N>(&self.commitment.to_x_coordinate().to_bytes_le()?, input);
+        let recommit = N::value_commitment().commit(&0i64.to_le_bytes(), &self.blinding_factor)?;
+
+        Ok((combined_commitments.mul(c) + self.commitment - recommit).is_zero())
+    }
+
+    /// Returns a commitment on the value balance with a randomness of zero.
+    /// `value_balance.sign() * Commit(value_balance.abs(), 0)`.
+    fn commit_without_randomness(value: i64) -> Result<N::ProgramAffineCurve, ValueBalanceCommitmentError> {
+        // Convert the value balance to an absolute u64.
+        let value_as_u64 = match value.checked_abs() {
+            Some(val) => val as u64,
+            None => return Err(ValueBalanceCommitmentError::OutOfBounds(value)),
+        };
+
+        // Compute commitment of the value with a zero randomness.
+        let zero_randomness = Zero::zero();
+        let commitment = N::value_commitment().commit(&value_as_u64.to_le_bytes(), &zero_randomness)?;
+
+        match value.is_negative() {
+            true => Ok(commitment.neg()),
+            false => Ok(commitment),
         }
     }
 
-    res
-}
+    ///
+    /// Returns the broken down components used for gadget verification.
+    ///
+    /// `c` - The hash of `commitment` || input
+    /// `partial_combined_commitments` - The combined value commitments excluding the value balance
+    /// `commitment` - Commit(0, Hash( rng || message)).
+    /// `blinded_commitment` - Commit(0, `blinding_factor`)
+    ///
+    pub(crate) fn gadget_verification_setup(
+        &self,
+        input_value_commitments: &[N::ProgramAffineCurve],
+        output_value_commitments: &[N::ProgramAffineCurve],
+        input: &[u8],
+    ) -> Result<
+        (N::ProgramScalarField, N::ProgramAffineCurve, N::ProgramAffineCurve, N::ProgramAffineCurve),
+        ValueBalanceCommitmentError,
+    > {
+        // Craft the partial combined value commitments (partial verifying key).
+        let mut partial_combined_commitments = N::ProgramAffineCurve::zero();
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
-pub struct ValueBalanceCommitment<N: Network> {
-    pub rbar: N::ProgramAffineCurve,
-    pub sbar: N::ProgramScalarField,
+        for vc_input in input_value_commitments {
+            partial_combined_commitments += vc_input;
+        }
+
+        for vc_output in output_value_commitments {
+            partial_combined_commitments -= vc_output;
+        }
+
+        let c = hash_into_field::<N>(&self.commitment.to_x_coordinate().to_bytes_le()?, input);
+        let blinded_commitment = N::value_commitment().commit(&0i64.to_le_bytes(), &self.blinding_factor)?;
+
+        Ok((c, partial_combined_commitments, self.commitment, blinded_commitment))
+    }
 }
 
 impl<N: Network> ToBytes for ValueBalanceCommitment<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.rbar.to_x_coordinate().write_le(&mut writer)?;
-        self.sbar.write_le(&mut writer)
+        self.commitment.to_x_coordinate().write_le(&mut writer)?;
+        self.blinding_factor.write_le(&mut writer)
     }
 }
 
@@ -78,149 +222,20 @@ impl<N: Network> FromBytes for ValueBalanceCommitment<N> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let x_coordinate = <N::ProgramAffineCurve as AffineCurve>::BaseField::read_le(&mut reader)?;
 
-        if let Some(rbar) = N::ProgramAffineCurve::from_x_coordinate(x_coordinate, false) {
-            if rbar.is_in_correct_subgroup_assuming_on_curve() {
-                return Ok(Self { rbar, sbar: FromBytes::read_le(&mut reader)? });
+        if let Some(commitment) = N::ProgramAffineCurve::from_x_coordinate(x_coordinate, false) {
+            if commitment.is_in_correct_subgroup_assuming_on_curve() {
+                return Ok(Self { commitment, blinding_factor: FromBytes::read_le(&mut reader)? });
             }
         }
 
-        if let Some(rbar) = N::ProgramAffineCurve::from_x_coordinate(x_coordinate, true) {
-            if rbar.is_in_correct_subgroup_assuming_on_curve() {
-                return Ok(Self { rbar, sbar: FromBytes::read_le(&mut reader)? });
+        if let Some(commitment) = N::ProgramAffineCurve::from_x_coordinate(x_coordinate, true) {
+            if commitment.is_in_correct_subgroup_assuming_on_curve() {
+                return Ok(Self { commitment, blinding_factor: FromBytes::read_le(&mut reader)? });
             }
         }
 
         Err(ValueBalanceCommitmentError::NotInCorrectSubgroupOnCurve.into())
     }
-}
-
-pub fn commit_value_balance<N: Network, R: Rng>(
-    input_value_commitments: &Vec<N::ProgramAffineCurve>,
-    output_value_commitments: &Vec<N::ProgramAffineCurve>,
-    input_value_commitment_randomness: &Vec<N::ProgramScalarField>,
-    output_value_commitment_randomness: &Vec<N::ProgramScalarField>,
-    value_balance: i64,
-    input: &[u8],
-    rng: &mut R,
-) -> Result<ValueBalanceCommitment<N>, ValueBalanceCommitmentError> {
-    // Calculate the bsk and bvk
-    let mut bsk = N::ProgramScalarField::zero();
-
-    for input_vc_randomness in input_value_commitment_randomness {
-        bsk += input_vc_randomness;
-    }
-
-    for output_vc_randomness in output_value_commitment_randomness {
-        bsk -= output_vc_randomness;
-    }
-
-    let mut bvk = N::ProgramAffineCurve::zero();
-
-    for vc_input in input_value_commitments {
-        bvk += vc_input;
-    }
-
-    for vc_output in output_value_commitments {
-        bvk -= vc_output;
-    }
-
-    // Calculate the value balance commitment.
-    bvk -= calculate_value_balance_commitment::<N>(value_balance)?;
-
-    // Make sure bvk can be derived from bsk
-    let expected_bvk = N::value_commitment().commit(&0i64.to_le_bytes(), &bsk)?;
-    assert_eq!(bvk, expected_bvk);
-
-    // Generate randomness
-    let mut sig_rand = [0u8; 80];
-    rng.fill(&mut sig_rand[..]);
-
-    // Generate signature using message
-
-    let r_edwards = hash_into_field::<N>(&sig_rand[..], input);
-    let rbar = N::value_commitment().commit(&0i64.to_le_bytes(), &r_edwards)?;
-
-    let mut sbar = hash_into_field::<N>(&rbar.to_x_coordinate().to_bytes_le()?, input);
-    sbar = sbar.mul(&bsk);
-    sbar = sbar.add(&r_edwards);
-
-    Ok(ValueBalanceCommitment { rbar, sbar })
-}
-
-pub fn verify_value_balance_commitment<N: Network>(
-    input_value_commitments: &Vec<N::ProgramAffineCurve>,
-    output_value_commitments: &Vec<N::ProgramAffineCurve>,
-    value_balance: i64,
-    input: &[u8],
-    signature: &ValueBalanceCommitment<N>,
-) -> Result<bool, ValueBalanceCommitmentError> {
-    // Craft verifying key
-    let mut bvk = N::ProgramAffineCurve::zero();
-
-    for vc_input in input_value_commitments {
-        bvk += vc_input;
-    }
-
-    for vc_output in output_value_commitments {
-        bvk -= vc_output;
-    }
-
-    // Calculate the value balance commitment.
-    bvk -= calculate_value_balance_commitment::<N>(value_balance)?;
-
-    // Verify the signature
-    let c = hash_into_field::<N>(&signature.rbar.to_x_coordinate().to_bytes_le()?, input);
-
-    let recommit = N::value_commitment().commit(&0i64.to_le_bytes(), &signature.sbar)?;
-
-    Ok((bvk.mul(c) + signature.rbar - recommit).is_zero())
-}
-
-/// Returns the value balance commitment as `value_balance.sign() * Commit(value_balance.abs(), randomness)`.
-pub fn calculate_value_balance_commitment<N: Network>(
-    value_balance: i64,
-) -> Result<N::ProgramAffineCurve, ValueBalanceCommitmentError> {
-    // Convert the value balance to an absolute u64.
-    let value_balance_as_u64 = match value_balance.checked_abs() {
-        Some(val) => val as u64,
-        None => return Err(ValueBalanceCommitmentError::OutOfBounds(value_balance)),
-    };
-
-    // Compute the value balance commitment.
-    let zero_randomness = Zero::zero();
-    let value_balance_commitment =
-        N::value_commitment().commit(&value_balance_as_u64.to_le_bytes(), &zero_randomness)?;
-
-    match value_balance.is_negative() {
-        true => Ok(value_balance_commitment.neg()),
-        false => Ok(value_balance_commitment),
-    }
-}
-
-pub fn gadget_verification_setup<N: Network>(
-    input_value_commitments: &[N::ProgramAffineCurve],
-    output_value_commitments: &[N::ProgramAffineCurve],
-    input: &[u8],
-    signature: &ValueBalanceCommitment<N>,
-) -> Result<
-    (N::ProgramScalarField, N::ProgramAffineCurve, N::ProgramAffineCurve, N::ProgramAffineCurve),
-    ValueBalanceCommitmentError,
-> {
-    // Craft the partial verifying key
-    let mut partial_bvk = N::ProgramAffineCurve::zero();
-
-    for vc_input in input_value_commitments {
-        partial_bvk += vc_input;
-    }
-
-    for vc_output in output_value_commitments {
-        partial_bvk -= vc_output;
-    }
-
-    let c = hash_into_field::<N>(&signature.rbar.to_x_coordinate().to_bytes_le()?, input);
-    let recommit = N::value_commitment().commit(&0i64.to_le_bytes(), &signature.sbar)?;
-
-    Ok((c, partial_bvk, signature.rbar, recommit))
 }
 
 #[cfg(test)]
@@ -268,7 +283,7 @@ pub(crate) mod tests {
             output_value_commitments.push(value_commitment);
         }
 
-        let value_balance_commitment = commit_value_balance::<N, _>(
+        let value_balance_commitment = ValueBalanceCommitment::<N>::new(
             &input_value_commitments,
             &output_value_commitments,
             &input_value_commitment_randomness,
@@ -302,14 +317,14 @@ pub(crate) mod tests {
 
         // Verify the value balance commitment
         assert!(
-            verify_value_balance_commitment::<Testnet2>(
-                &input_value_commitments,
-                &output_value_commitments,
-                value_balance,
-                &sighash,
-                &value_balance_commitment,
-            )
-            .unwrap()
+            value_balance_commitment
+                .verify_value_balance_commitment(
+                    &input_value_commitments,
+                    &output_value_commitments,
+                    value_balance,
+                    &sighash,
+                )
+                .unwrap()
         );
     }
 
