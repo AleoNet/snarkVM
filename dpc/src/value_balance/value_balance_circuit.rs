@@ -32,7 +32,8 @@ use std::marker::PhantomData;
 pub struct ValueBalanceCommitmentGadget<N: Network>(PhantomData<N>);
 
 impl<N: Network> ValueBalanceCommitmentGadget<N> {
-    pub fn check_value_commitment_gadget<CS: ConstraintSystem<N::InnerScalarField>>(
+    /// Returns a commitment on the input with a randomness of zero.
+    pub fn check_commitment_without_randomness_gadget<CS: ConstraintSystem<N::InnerScalarField>>(
         mut cs: CS,
         commitment_scheme: &N::ValueCommitmentGadget,
         input: &[UInt8],
@@ -48,31 +49,42 @@ impl<N: Network> ValueBalanceCommitmentGadget<N> {
         commitment_scheme.check_commitment_gadget(cs, input, &zero_randomness)
     }
 
+    /// Check that the value balance commitment is valid.
     pub fn check_value_balance_commitment_gadget<CS: ConstraintSystem<N::InnerScalarField>>(
         mut cs: CS,
-        partial_bvk: &<N::ValueCommitmentGadget as CommitmentGadget<N::ValueCommitment, N::InnerScalarField>>::OutputGadget,
+        partial_combined_commitments: &<N::ValueCommitmentGadget as CommitmentGadget<
+            N::ValueCommitment,
+            N::InnerScalarField,
+        >>::OutputGadget,
         value_balance_comm: &<N::ValueCommitmentGadget as CommitmentGadget<
             N::ValueCommitment,
             N::InnerScalarField,
         >>::OutputGadget,
         is_negative: &Boolean,
         c: &<N::ValueCommitmentGadget as CommitmentGadget<N::ValueCommitment, N::InnerScalarField>>::RandomnessGadget,
-        affine_r: &<N::ValueCommitmentGadget as CommitmentGadget<N::ValueCommitment, N::InnerScalarField>>::OutputGadget,
-        recommit: &<N::ValueCommitmentGadget as CommitmentGadget<N::ValueCommitment, N::InnerScalarField>>::OutputGadget,
+        commitment: &<N::ValueCommitmentGadget as CommitmentGadget<N::ValueCommitment, N::InnerScalarField>>::OutputGadget,
+        blinded_commitment: &<N::ValueCommitmentGadget as CommitmentGadget<
+            N::ValueCommitment,
+            N::InnerScalarField,
+        >>::OutputGadget,
     ) -> Result<(), SynthesisError> {
         // TODO (raychu86) make this circuit more efficient
 
-        let negative_bvk = partial_bvk.add(cs.ns(|| "construct_negative_bvk"), value_balance_comm)?;
-        let positive_bvk = partial_bvk.sub(cs.ns(|| "construct_positive_bvk"), value_balance_comm)?;
+        let negative_combined_commitments = partial_combined_commitments
+            .add(cs.ns(|| "construct_negative_combined_commitments"), value_balance_comm)?;
+        let positive_combined_commitments = partial_combined_commitments
+            .sub(cs.ns(|| "construct_positive_combined_commitments"), value_balance_comm)?;
 
         let c_bits: Vec<_> = c.to_bits_le(cs.ns(|| "c.to_bits_le()"))?;
         let zero =
             <N::ValueCommitmentGadget as CommitmentGadget<_, _>>::OutputGadget::zero(&mut cs.ns(|| "zero")).unwrap();
 
-        let negative_result = negative_bvk.mul_bits(cs.ns(|| "mul_bits_negative"), &zero, c_bits.iter().cloned())?;
-        let positive_result = positive_bvk.mul_bits(cs.ns(|| "mul_bits_positive"), &zero, c_bits.iter().cloned())?;
+        let negative_result =
+            negative_combined_commitments.mul_bits(cs.ns(|| "mul_bits_negative"), &zero, c_bits.iter().cloned())?;
+        let positive_result =
+            positive_combined_commitments.mul_bits(cs.ns(|| "mul_bits_positive"), &zero, c_bits.iter().cloned())?;
 
-        let temp = affine_r.sub(cs.ns(|| "sub_recommit"), recommit)?;
+        let temp = commitment.sub(cs.ns(|| "sub_blinded_commitment"), blinded_commitment)?;
         let negative_result = negative_result.add(cs.ns(|| "add_temp"), &temp)?;
         let positive_result = positive_result.add(cs.ns(|| "add_temp2"), &temp)?;
 
@@ -102,10 +114,10 @@ mod tests {
         let rng = &mut rand::thread_rng();
         let mut cs = TestConstraintSystem::<Fr>::new();
 
-        let input_amount: u64 = rng.gen_range(0..100000000);
-        let input_amount_2: u64 = rng.gen_range(0..100000000);
-        let output_amount: u64 = rng.gen_range(0..100000000);
-        let output_amount_2: u64 = rng.gen_range(0..100000000);
+        let input_amount = AleoAmount::from_gate(rng.gen_range(0..100000000));
+        let input_amount_2 = AleoAmount::from_gate(rng.gen_range(0..100000000));
+        let output_amount = AleoAmount::from_gate(rng.gen_range(0..100000000));
+        let output_amount_2 = AleoAmount::from_gate(rng.gen_range(0..100000000));
         let sighash = [1u8; 64].to_vec();
 
         let (input_value_commitments, output_value_commitments, value_balance, value_balance_commitment) =
@@ -118,23 +130,19 @@ mod tests {
 
         // Verify the value balance commitment.
         assert!(
-            verify_value_balance_commitment::<Testnet2>(
-                &input_value_commitments,
-                &output_value_commitments,
-                value_balance,
-                &sighash,
-                &value_balance_commitment,
-            )
-            .unwrap()
+            value_balance_commitment
+                .verify_value_balance_commitment(
+                    &input_value_commitments,
+                    &output_value_commitments,
+                    value_balance,
+                    &sighash,
+                )
+                .unwrap()
         );
 
-        let (c, partial_bvk, affine_r, recommit) = gadget_verification_setup::<Testnet2>(
-            &input_value_commitments,
-            &output_value_commitments,
-            &sighash,
-            &value_balance_commitment,
-        )
-        .unwrap();
+        let (c, partial_bvk, affine_r, recommit) = value_balance_commitment
+            .gadget_verification_setup(&input_value_commitments, &output_value_commitments, &sighash)
+            .unwrap();
 
         // Allocate gadget values
         let commitment_scheme_gadget = <Testnet2 as Network>::ValueCommitmentGadget::alloc_constant(
@@ -172,12 +180,12 @@ mod tests {
             .unwrap();
 
         let value_balance_bytes =
-            UInt8::alloc_vec(cs.ns(|| "value_balance_bytes"), &(value_balance.abs() as u64).to_le_bytes()).unwrap();
+            UInt8::alloc_vec(cs.ns(|| "value_balance_bytes"), &(value_balance.0.abs() as u64).to_le_bytes()).unwrap();
 
         let is_negative =
             Boolean::alloc(&mut cs.ns(|| "value_balance_is_negative"), || Ok(value_balance.is_negative())).unwrap();
 
-        let value_balance_comm = ValueBalanceCommitmentGadget::<Testnet2>::check_value_commitment_gadget(
+        let value_balance_comm = ValueBalanceCommitmentGadget::<Testnet2>::check_commitment_without_randomness_gadget(
             &mut cs.ns(|| "value_balance_commitment"),
             &commitment_scheme_gadget,
             &value_balance_bytes,

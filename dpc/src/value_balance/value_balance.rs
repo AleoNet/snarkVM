@@ -182,7 +182,7 @@ impl<N: Network> ValueBalanceCommitment<N> {
     /// `commitment` - Commit(0, Hash( rng || message)).
     /// `blinded_commitment` - Commit(0, `blinding_factor`)
     ///
-    pub(crate) fn gadget_verification_setup(
+    pub fn gadget_verification_setup(
         &self,
         input_value_commitments: &[N::ProgramAffineCurve],
         output_value_commitments: &[N::ProgramAffineCurve],
