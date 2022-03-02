@@ -49,6 +49,7 @@ impl<N: Network> ValueBalanceCommitmentGadget<N> {
         commitment_scheme.check_commitment_gadget(cs, input, &zero_randomness)
     }
 
+    #[rustfmt::skip]
     /// Check that the value balance commitment is valid.
     pub fn check_value_balance_commitment_gadget<CS: ConstraintSystem<N::InnerScalarField>>(
         mut cs: CS,
@@ -140,7 +141,7 @@ mod tests {
                 .unwrap()
         );
 
-        let (c, partial_bvk, affine_r, recommit) = value_balance_commitment
+        let (c, partial_combined_commitments, zero_commitment, blinded_commitment) = value_balance_commitment
             .gadget_verification_setup(&input_value_commitments, &output_value_commitments, &sighash)
             .unwrap();
 
@@ -158,24 +159,24 @@ mod tests {
             )
             .unwrap();
 
-        let partial_bvk_gadget =
+        let partial_combined_commitments_gadget =
             <<Testnet2 as Network>::ValueCommitmentGadget as CommitmentGadget<_, _>>::OutputGadget::alloc(
-                &mut cs.ns(|| "partial_bvk_gadget"),
-                || Ok(partial_bvk),
+                &mut cs.ns(|| "partial_combined_commitments_gadget"),
+                || Ok(partial_combined_commitments),
             )
             .unwrap();
 
-        let affine_r_gadget =
+        let zero_commitment_gadget =
             <<Testnet2 as Network>::ValueCommitmentGadget as CommitmentGadget<_, _>>::OutputGadget::alloc(
-                &mut cs.ns(|| "affine_r_gadget"),
-                || Ok(affine_r),
+                &mut cs.ns(|| "zero_commitment_gadget"),
+                || Ok(zero_commitment),
             )
             .unwrap();
 
-        let recommit_gadget =
+        let blinded_commitment_gadget =
             <<Testnet2 as Network>::ValueCommitmentGadget as CommitmentGadget<_, _>>::OutputGadget::alloc(
-                &mut cs.ns(|| "recommit_gadget"),
-                || Ok(recommit),
+                &mut cs.ns(|| "blinded_commitment_gadget"),
+                || Ok(blinded_commitment),
             )
             .unwrap();
 
@@ -194,12 +195,12 @@ mod tests {
 
         ValueBalanceCommitmentGadget::<Testnet2>::check_value_balance_commitment_gadget(
             &mut cs.ns(|| "verify_value_balance_commitment"),
-            &partial_bvk_gadget,
+            &partial_combined_commitments_gadget,
             &value_balance_comm,
             &is_negative,
             &c_gadget,
-            &affine_r_gadget,
-            &recommit_gadget,
+            &zero_commitment_gadget,
+            &blinded_commitment_gadget,
         )
         .unwrap();
 
