@@ -99,7 +99,6 @@ impl<N: Network> Program<N> {
 }
 
 impl<N: Network> Program<N> {
-    /// TODO (howardwu): Add safety checks for u8 (max 255 functions).
     /// Adds the given function to the tree, returning its function index in the tree.
     fn add(&mut self, function: Arc<dyn Function<N>>) -> Result<u8> {
         // Ensure the function does not already exist in the tree.
@@ -114,8 +113,12 @@ impl<N: Network> Program<N> {
         self.functions
             .insert(function.function_id(), (self.last_function_index, function));
 
-        self.last_function_index += 1;
-        Ok(self.last_function_index - 1)
+        let last_function_index = self.last_function_index;
+        self.last_function_index = last_function_index
+            .checked_add(1)
+            .ok_or(anyhow!("The index exceeds the maximum number of functions."))?;
+
+        Ok(last_function_index)
     }
 
     /// TODO (howardwu): Add safety checks for u8 (max 255 functions).
@@ -144,6 +147,11 @@ impl<N: Network> Program<N> {
         let start_index = self.last_function_index;
         let num_functions = functions.len();
 
+        // Ensure that the number of functions does not exceed the u8 bounds of `self.last_function_index`.
+        if (self.last_function_index as usize).saturating_add(num_functions) > u8::MAX as usize {
+            return Err(anyhow!("The program tree will reach its maximum size."));
+        }
+
         self.functions.extend(
             functions
                 .into_iter()
@@ -151,8 +159,14 @@ impl<N: Network> Program<N> {
                 .map(|(index, function)| (function.function_id(), (start_index + index as u8, function))),
         );
 
-        self.last_function_index += num_functions as u8;
-        let end_index = self.last_function_index - 1;
+        self.last_function_index = self
+            .last_function_index
+            .checked_add(num_functions as u8)
+            .ok_or(anyhow!("The index exceeds the maximum number of allowed functions."))?;
+        let end_index = self
+            .last_function_index
+            .checked_sub(1)
+            .ok_or(anyhow!("Integer underflow."))?;
 
         Ok((start_index, end_index))
     }
