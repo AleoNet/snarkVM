@@ -194,6 +194,7 @@ mod tests {
         let b = Amount::from_gate(*b);
         let result = Amount::from_gate(*result);
 
+        assert_eq!(result, a.add(b).unwrap());
         assert_eq!(result, a + b);
     }
 
@@ -202,6 +203,7 @@ mod tests {
         let b = Amount::from_gate(*b);
         let result = Amount::from_gate(*result);
 
+        assert_eq!(result, a.sub(b).unwrap());
         assert_eq!(result, a - b);
     }
 
@@ -298,6 +300,22 @@ mod tests {
             #[test]
             fn test_invalid_subtraction() {
                 TEST_VALUES.iter().for_each(|(a, b, c)| test_subtraction(a, b, c));
+            }
+
+            #[test]
+            fn test_invalid_addition_overflow() {
+                let max_amount = Amount::from_gate(i64::MAX);
+                let one_gate = Amount::ONE_GATE;
+
+                assert!(max_amount.add(one_gate).is_err());
+            }
+
+            #[test]
+            fn test_invalid_subtraction_underflow() {
+                let min_amount = Amount::from_gate(i64::MIN);
+                let one_gate = Amount::ONE_GATE;
+
+                assert!(min_amount.sub(one_gate).is_err());
             }
         }
     }
