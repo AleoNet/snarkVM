@@ -258,7 +258,7 @@ impl<N: Network> Transaction<N> {
     /// Returns the value balance.
     #[inline]
     pub fn value_balance(&self) -> AleoAmount {
-        self.transitions.iter().map(Transition::value_balance).fold(AleoAmount::ZERO, |a, b| a.add(*b))
+        self.transitions.iter().map(Transition::value_balance).fold(AleoAmount::ZERO, |a, b| a + *b)
     }
 
     /// Returns the events.

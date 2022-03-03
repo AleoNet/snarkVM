@@ -169,10 +169,10 @@ impl<N: Network> ResponseBuilder<N> {
         // Compute the value balance.
         let mut value_balance = AleoAmount::ZERO;
         for record in input_records.iter().take(N::NUM_INPUT_RECORDS) {
-            value_balance = value_balance.add(record.value());
+            value_balance = value_balance.add(record.value())?;
         }
         for record in output_records.iter().take(N::NUM_OUTPUT_RECORDS) {
-            value_balance = value_balance.sub(record.value());
+            value_balance = value_balance.sub(record.value())?;
         }
 
         // Ensure the value balance matches the fee from the request.

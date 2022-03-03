@@ -138,13 +138,13 @@ impl<N: Network> VirtualMachine<N> {
         }
 
         // Compute the starting balance of the caller.
-        let starting_balance = request.to_balance().sub(request.fee());
+        let starting_balance = request.to_balance().sub(request.fee())?;
         if starting_balance.is_negative() {
             return Err(VMError::BalanceInsufficient.into());
         }
 
         // Compute the final balance of the caller.
-        let caller_balance = starting_balance.sub(amount);
+        let caller_balance = starting_balance.sub(amount)?;
         if caller_balance.is_negative() {
             return Err(VMError::BalanceInsufficient.into());
         }
@@ -181,13 +181,13 @@ impl<N: Network> VirtualMachine<N> {
         }
 
         // Compute the starting balance of the caller.
-        let starting_balance = request.to_balance().sub(request.fee());
+        let starting_balance = request.to_balance().sub(request.fee())?;
         if starting_balance.is_negative() {
             return Err(VMError::BalanceInsufficient.into());
         }
 
         // Compute the final balance of the caller.
-        let caller_balance = starting_balance.sub(function_inputs.amount);
+        let caller_balance = starting_balance.sub(function_inputs.amount)?;
         if caller_balance.is_negative() {
             return Err(VMError::BalanceInsufficient.into());
         }

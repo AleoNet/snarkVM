@@ -74,11 +74,13 @@ impl AleoAmount {
     }
 
     /// Add the values of two `AleoAmount`s
+    #[allow(clippy::should_implement_trait)]
     pub fn add(self, b: Self) -> Result<Self> {
         Ok(Self::from_gate(self.0.checked_add(b.0).ok_or(anyhow!("Amount addition overflow."))?))
     }
 
     /// Subtract the value of two `AleoAmounts`
+    #[allow(clippy::should_implement_trait)]
     pub fn sub(self, b: Self) -> Result<Self> {
         Ok(Self::from_gate(self.0.checked_sub(b.0).ok_or(anyhow!("Amount subtraction underflow."))?))
     }

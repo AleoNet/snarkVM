@@ -128,7 +128,7 @@ impl<N: Network> Transactions<N> {
 
     /// Returns the net value balance, by summing the value balance from all transactions.
     pub fn net_value_balance(&self) -> AleoAmount {
-        self.transactions.iter().map(Transaction::value_balance).fold(AleoAmount::ZERO, |a, b| a.add(b))
+        self.transactions.iter().map(Transaction::value_balance).fold(AleoAmount::ZERO, |a, b| a + b)
     }
 
     /// Returns the total transaction fees, by summing the value balance from all positive transactions.
@@ -140,7 +140,7 @@ impl<N: Network> Transactions<N> {
                 true => None,
                 false => Some(t.value_balance()),
             })
-            .fold(AleoAmount::ZERO, |a, b| a.add(b))
+            .fold(AleoAmount::ZERO, |a, b| a + b)
     }
 
     /// Returns the coinbase transaction for the block.

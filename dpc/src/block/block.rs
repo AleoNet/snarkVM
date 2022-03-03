@@ -170,7 +170,7 @@ impl<N: Network> Block<N> {
         };
 
         // Ensure the coinbase reward is equal to or greater than the expected block reward.
-        let coinbase_reward = AleoAmount::ZERO.sub(coinbase_transaction.value_balance()); // Make it a positive number.
+        let coinbase_reward = AleoAmount::ZERO - coinbase_transaction.value_balance(); // Make it a positive number.
         let block_reward = Self::block_reward(self.height());
         if coinbase_reward < block_reward {
             eprintln!("Coinbase reward must be >= {}, found {}", block_reward, coinbase_reward);
@@ -178,7 +178,7 @@ impl<N: Network> Block<N> {
         }
 
         // Ensure the coinbase reward less transaction fees is less than or equal to the block reward.
-        let candidate_block_reward = AleoAmount::ZERO.sub(self.transactions.net_value_balance()); // Make it a positive number.
+        let candidate_block_reward = AleoAmount::ZERO - self.transactions.net_value_balance(); // Make it a positive number.
         if candidate_block_reward > block_reward {
             eprintln!("Block reward must be <= {}, found {}", block_reward, candidate_block_reward);
             return false;
@@ -464,7 +464,7 @@ mod tests {
             (0..=first_halving).into_par_iter().map(|i| Block::<Testnet2>::block_reward(i).0).sum::<i64>(),
         );
 
-        supply = supply.add(phase_1_sum);
+        supply += phase_1_sum;
 
         assert_eq!(supply, AleoAmount::from_gate(supply_at_first_halving * AleoAmount::ONE_CREDIT.0));
 
@@ -476,7 +476,7 @@ mod tests {
                 .sum::<i64>(),
         );
 
-        supply = supply.add(phase_2_sum);
+        supply += phase_2_sum;
 
         assert_eq!(supply, AleoAmount::from_gate(supply_at_second_halving * AleoAmount::ONE_CREDIT.0));
     }

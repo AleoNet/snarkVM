@@ -53,7 +53,7 @@ impl<N: Network> Request<N> {
     ) -> Result<Self> {
         let burner = PrivateKey::new(rng);
         let operation = Operation::Coinbase(recipient, amount);
-        let fee = AleoAmount::ZERO.sub(amount);
+        let fee = AleoAmount::ZERO.sub(amount)?;
         Self::new(&burner, vec![], vec![LedgerProof::default(); N::NUM_INPUT_RECORDS], operation, fee, is_public, rng)
     }
 

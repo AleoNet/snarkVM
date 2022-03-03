@@ -46,10 +46,10 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize) 
     // Compute the value balance.
     let mut value_balance = AleoAmount::ZERO;
     for record in request.records().iter().take(N::NUM_INPUT_RECORDS) {
-        value_balance = value_balance.add(record.value());
+        value_balance = value_balance.add(record.value()).unwrap();
     }
     for record in response.records().iter().take(N::NUM_OUTPUT_RECORDS) {
-        value_balance = value_balance.sub(record.value());
+        value_balance = value_balance.sub(record.value()).unwrap();
     }
 
     // Compute the local transitions root.
