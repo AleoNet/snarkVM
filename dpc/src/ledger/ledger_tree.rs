@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -25,8 +25,8 @@ use anyhow::{anyhow, Result};
 use std::{collections::HashMap, sync::Arc};
 
 /// A ledger tree contains all block hashes on the ledger.
-#[derive(Derivative)]
-#[derivative(Clone(bound = "N: Network"), Debug(bound = "N: Network"))]
+#[derive(Clone, Derivative)]
+#[derivative(Debug(bound = "N: Network"))]
 pub struct LedgerTree<N: Network> {
     #[derivative(Debug = "ignore")]
     tree: Arc<MerkleTree<N::LedgerRootParameters>>,

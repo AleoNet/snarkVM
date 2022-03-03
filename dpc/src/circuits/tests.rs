@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -29,7 +29,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize) 
     let request = Request::new_coinbase(recipient.address(), amount, false, rng).unwrap();
     let response = ResponseBuilder::new()
         .add_request(request.clone())
-        .add_output(Output::new(recipient.address(), amount, Default::default(), None).unwrap())
+        .add_output(Output::new(recipient.address(), amount, None, None).unwrap())
         .build(rng)
         .unwrap();
 
@@ -61,14 +61,20 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize) 
     //////////////////////////////////////////////////////////////////////////
 
     // Construct the inner circuit public and private variables.
-    let inner_public =
-        InnerPublicVariables::new(transition_id, value_balance, ledger_root, local_transitions_root, Some(program_id));
+    let inner_public = InnerPublicVariables::new(
+        serial_numbers,
+        commitments,
+        value_balance,
+        ledger_root,
+        local_transitions_root,
+        program_id,
+    );
     let inner_private = InnerPrivateVariables::new(&request, &response).unwrap();
 
     // Check that the core check constraint system was satisfied.
     let mut inner_cs = TestConstraintSystem::<N::InnerScalarField>::new();
 
-    let inner_circuit = InnerCircuit::new(inner_public, inner_private);
+    let inner_circuit = InnerCircuit::new(inner_public.clone(), inner_private);
     inner_circuit.generate_constraints(&mut inner_cs.ns(|| "Inner circuit")).unwrap();
 
     let candidate_inner_num_constraints = inner_cs.num_constraints();
@@ -114,21 +120,11 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize) 
 
     //////////////////////////////////////////////////////////////////////////
 
-    // Compute the noop execution.
-    let execution = Execution::<N>::from(
-        *N::noop_program_id(),
-        N::noop_program_path().clone(),
-        N::noop_circuit_verifying_key().clone(),
-        Noop::<N>::new()
-            .execute(ProgramPublicVariables::new(transition_id), &NoopPrivateVariables::<N>::new_blank().unwrap())
-            .unwrap(),
-        inner_proof.into(),
-    )
-    .unwrap();
-    assert_eq!(N::PROGRAM_PROOF_SIZE_IN_BYTES, N::ProgramProof::to_bytes_le(&execution.program_proof).unwrap().len());
+    // Construct the execution.
+    let execution = Execution::<N>::from(None, inner_proof.into()).unwrap();
 
     // Verify that the program proof passes.
-    assert!(execution.verify(&inner_verifying_key, transition_id, value_balance, ledger_root, local_transitions_root,));
+    assert!(execution.verify(&inner_verifying_key, &inner_public, transition_id));
 }
 
 mod testnet1 {
@@ -137,7 +133,7 @@ mod testnet1 {
 
     #[test]
     fn test_dpc_execute_circuits() {
-        dpc_execute_circuits_test::<Testnet1>(253822);
+        dpc_execute_circuits_test::<Testnet1>(244090);
     }
 }
 
@@ -147,6 +143,6 @@ mod testnet2 {
 
     #[test]
     fn test_dpc_execute_circuits() {
-        dpc_execute_circuits_test::<Testnet2>(253822);
+        dpc_execute_circuits_test::<Testnet2>(244090);
     }
 }

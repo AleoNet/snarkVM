@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -490,7 +490,7 @@ mod tests {
         // Serialize
         let expected_string = expected_block.to_string();
         let candidate_string = serde_json::to_string(&expected_block).unwrap();
-        assert_eq!(1008476, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(4274, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(expected_string, candidate_string);
 
         // Deserialize
@@ -507,7 +507,7 @@ mod tests {
         // Serialize
         let expected_bytes = expected_block.to_bytes_le().unwrap();
         let candidate_bytes = bincode::serialize(&expected_block).unwrap();
-        assert_eq!(504089, expected_bytes.len(), "Update me if serialization has changed");
+        assert_eq!(2119, expected_bytes.len(), "Update me if serialization has changed");
         // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
         assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
 
