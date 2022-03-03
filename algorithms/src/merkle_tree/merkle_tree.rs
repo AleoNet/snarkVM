@@ -265,7 +265,7 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
         let leaf_hash = self.parameters.hash_leaf(leaf)?;
 
         let tree_depth = tree_depth(self.tree.len());
-        let tree_index = convert_index_to_last_level(index, tree_depth);
+        let tree_index = convert_index_to_last_level(index, tree_depth)?;
 
         // Check that the given index corresponds to the correct leaf.
         if tree_index >= self.tree.len() || leaf_hash != self.tree[tree_index] {
@@ -375,8 +375,11 @@ fn parent(index: usize) -> Option<usize> {
 }
 
 #[inline]
-fn convert_index_to_last_level(index: usize, tree_depth: usize) -> usize {
-    index + (1 << tree_depth) - 1
+fn convert_index_to_last_level(index: usize, tree_depth: usize) -> Result<usize, MerkleError> {
+    let shifted = 1u32
+        .checked_shl(tree_depth as u32)
+        .ok_or(MerkleError::IncorrectLeafIndex(index))?;
+    Ok(index.saturating_add(shifted as usize).saturating_sub(1))
 }
 
 pub struct Ancestors(usize);
