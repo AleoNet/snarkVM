@@ -299,5 +299,24 @@ mod pedersen_compressed_crh_on_projective {
                 .verify(merkle_tree_root, &to_bytes_le![leaf1, leaf2].unwrap())
                 .unwrap()
         );
+
+    #[should_panic]
+    #[test]
+    fn merkle_tree_overflow_protection_test() {
+        type MTParameters = MerkleTreeParameters<PedersenCompressedCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32>;
+        let leaves = generate_random_leaves!(4, 8);
+
+        let parameters = &MTParameters::setup("merkle_tree_test");
+        let tree = MerkleTree::<MTParameters>::new(Arc::new(parameters.clone()), &leaves[..]).unwrap();
+
+        let _proof = tree.generate_proof(0, &leaves[0]).unwrap();
+        _proof.verify(tree.root(), &leaves[0]).unwrap();
+
+        let leaf1 = parameters.crh().hash(&leaves[0]).unwrap();
+        let leaf2 = parameters.crh().hash(&leaves[1]).unwrap();
+
+        // proof for non-leaf node
+        let raw_nodes = to_bytes_le![leaf1, leaf2].unwrap();
+        let _proof = tree.generate_proof(18446744073709551614, &raw_nodes).unwrap();
     }
 }

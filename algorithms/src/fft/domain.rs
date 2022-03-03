@@ -44,6 +44,9 @@ use std::fmt;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
+#[cfg(not(feature = "parallel"))]
+use itertools::Itertools;
+
 /// Returns the ceiling of the base-2 logarithm of `x`.
 ///
 /// ```
@@ -286,7 +289,7 @@ impl<F: FftField> EvaluationDomain<F> {
             }
 
             batch_inversion(u.as_mut_slice());
-            cfg_iter_mut!(u).zip(ls).for_each(|(tau_minus_r, l)| {
+            cfg_iter_mut!(u).zip_eq(ls).for_each(|(tau_minus_r, l)| {
                 *tau_minus_r = l * *tau_minus_r;
             });
             u
@@ -295,8 +298,8 @@ impl<F: FftField> EvaluationDomain<F> {
 
     /// Return the sparse vanishing polynomial.
     pub fn vanishing_polynomial(&self) -> SparsePolynomial<F> {
-        let coeffs = vec![(0, -F::one()), (self.size(), F::one())];
-        SparsePolynomial::from_coefficients_vec(coeffs)
+        let coeffs = [(0, -F::one()), (self.size(), F::one())];
+        SparsePolynomial::from_coefficients(coeffs)
     }
 
     /// This evaluates the vanishing polynomial for this domain at tau.
@@ -357,10 +360,8 @@ impl<F: FftField> EvaluationDomain<F> {
     /// Returns the evaluations of the product over the domain.
     #[must_use]
     pub fn mul_polynomials_in_evaluation_domain(&self, self_evals: &[F], other_evals: &[F]) -> Vec<F> {
-        assert_eq!(self_evals.len(), other_evals.len());
-
         let mut result = self_evals.to_vec();
-        cfg_iter_mut!(result).zip(other_evals).for_each(|(a, b)| *a *= b);
+        cfg_iter_mut!(result).zip_eq(other_evals).for_each(|(a, b)| *a *= b);
 
         result
     }
