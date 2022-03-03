@@ -193,6 +193,7 @@ mod pedersen_crh_on_projective {
 
 mod pedersen_compressed_crh_on_projective {
     use super::*;
+    use crate::merkle_tree::MerklePath;
     use snarkvm_curves::edwards_bls12::EdwardsProjective as Edwards;
 
     const NUM_WINDOWS: usize = 256;
@@ -250,6 +251,54 @@ mod pedersen_compressed_crh_on_projective {
         assert_eq!(tree.root(), new_tree_1.root());
         assert_eq!(tree.root(), new_tree_2.root());
     }
+
+    #[test]
+    fn merkle_tree_invalid_path_test() {
+        type MTParameters = MerkleTreeParameters<PedersenCompressedCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 2>;
+        let leaves = generate_random_leaves!(4, 64);
+
+        let parameters = &MTParameters::setup("merkle_tree_test");
+        let crh = parameters.crh();
+
+        // Evaluate the Merkle tree root.
+        let merkle_tree = generate_merkle_tree(&leaves, parameters);
+        let merkle_tree_root = merkle_tree.root();
+        // real proof
+        let proof = merkle_tree.generate_proof(0, &leaves[0]).unwrap();
+        assert!(proof.verify(merkle_tree_root, &leaves[0].to_vec()).unwrap());
+
+        // Manually construct the merkle tree.
+
+        // Construct the leaf nodes.
+        let leaf1 = crh.hash(&leaves[0]).unwrap();
+        let leaf2 = crh.hash(&leaves[1]).unwrap();
+        let leaf3 = crh.hash(&leaves[2]).unwrap();
+        let leaf4 = crh.hash(&leaves[3]).unwrap();
+
+        // Construct the inner nodes.
+        let left = crh.hash(&to_bytes_le![leaf1, leaf2].unwrap()).unwrap();
+        let right = crh.hash(&to_bytes_le![leaf3, leaf4].unwrap()).unwrap();
+
+        // Construct the root.
+        let expected_root = {
+            // depth 0
+            crh.hash(&to_bytes_le![left, right].unwrap()).unwrap()
+        };
+        assert_eq!(merkle_tree_root, &expected_root);
+
+        // Manually construct a proof of the inner node
+        let invalid_proof = MerklePath {
+            parameters: Arc::new(parameters.clone()),
+            path: vec![right],
+            leaf_index: 0,
+        };
+
+        // Ensure that the proof is invalid because the path length is not P::DEPTH - 1.
+        assert!(
+            !invalid_proof
+                .verify(merkle_tree_root, &to_bytes_le![leaf1, leaf2].unwrap())
+                .unwrap()
+        );
 
     #[should_panic]
     #[test]
