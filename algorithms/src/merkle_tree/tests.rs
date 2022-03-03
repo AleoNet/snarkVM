@@ -299,6 +299,7 @@ mod pedersen_compressed_crh_on_projective {
                 .verify(merkle_tree_root, &to_bytes_le![leaf1, leaf2].unwrap())
                 .unwrap()
         );
+    }
 
     #[should_panic]
     #[test]
