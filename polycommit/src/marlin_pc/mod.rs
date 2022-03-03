@@ -44,6 +44,7 @@ use core::{
     ops::{Mul, MulAssign},
     sync::atomic::{AtomicBool, Ordering},
 };
+use itertools::Itertools;
 use rand_core::RngCore;
 
 mod data_structures;
@@ -287,7 +288,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for MarlinKZG10<E> {
         let mut shifted_r_witness = Polynomial::zero();
 
         let mut enforce_degree_bound = false;
-        for (j, (polynomial, rand)) in labeled_polynomials.into_iter().zip(rands).enumerate() {
+        for (j, (polynomial, rand)) in labeled_polynomials.into_iter().zip_eq(rands).enumerate() {
             let degree_bound = polynomial.degree_bound();
 
             let enforced_degree_bounds: Option<&[usize]> = ck.enforced_degree_bounds.as_deref();
@@ -455,8 +456,8 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for MarlinKZG10<E> {
     {
         let label_map = polynomials
             .into_iter()
-            .zip(rands)
-            .zip(commitments)
+            .zip_eq(rands)
+            .zip_eq(commitments)
             .map(|((p, r), c)| (p.label(), (p, r, c)))
             .collect::<BTreeMap<_, _>>();
 
@@ -512,7 +513,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for MarlinKZG10<E> {
         let comms = Self::normalize_commitments(lc_commitments);
         let lc_commitments = lc_info
             .into_iter()
-            .zip(comms)
+            .zip_eq(comms)
             .map(|((label, d), c)| LabeledCommitment::new(label, c, d))
             .collect::<Vec<_>>();
 
@@ -597,7 +598,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for MarlinKZG10<E> {
         let comms = Self::normalize_commitments(lc_commitments);
         let lc_commitments: Vec<_> = lc_info
             .into_iter()
-            .zip(comms)
+            .zip_eq(comms)
             .map(|((label, d), c)| LabeledCommitment::new(label, c, d))
             .collect();
         end_timer!(combined_comms_norm_time);
@@ -631,8 +632,8 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for MarlinKZG10<E> {
     {
         let label_map = polynomials
             .into_iter()
-            .zip(rands)
-            .zip(commitments)
+            .zip_eq(rands)
+            .zip_eq(commitments)
             .map(|((p, r), c)| (p.label(), (p, r, c)))
             .collect::<BTreeMap<_, _>>();
 
@@ -679,7 +680,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for MarlinKZG10<E> {
         let comms = Self::normalize_commitments(lc_commitments);
         let lc_commitments = lc_info
             .into_iter()
-            .zip(comms)
+            .zip_eq(comms)
             .map(|((label, d), c)| LabeledCommitment::new(label, c, d))
             .collect::<Vec<_>>();
 
@@ -762,7 +763,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for MarlinKZG10<E> {
         let comms = Self::normalize_commitments(lc_commitments);
         let lc_commitments = lc_info
             .into_iter()
-            .zip(comms)
+            .zip_eq(comms)
             .map(|((label, d), c)| LabeledCommitment::new(label, c, d))
             .collect::<Vec<_>>();
         end_timer!(combined_comms_norm_time);
@@ -804,7 +805,7 @@ impl<E: PairingEngine> MarlinKZG10<E> {
         let mut enforce_degree_bound = false;
         let mut opening_challenge_counter = 0;
 
-        for (polynomial, rand) in labeled_polynomials.into_iter().zip(rands) {
+        for (polynomial, rand) in labeled_polynomials.into_iter().zip_eq(rands) {
             let degree_bound = polynomial.degree_bound();
             assert_eq!(degree_bound.is_some(), rand.shifted_rand.is_some());
 
@@ -891,8 +892,8 @@ impl<E: PairingEngine> MarlinKZG10<E> {
     {
         let poly_rand_comm: BTreeMap<_, _> = labeled_polynomials
             .into_iter()
-            .zip(rands)
-            .zip(commitments.into_iter())
+            .zip_eq(rands)
+            .zip_eq(commitments.into_iter())
             .map(|((poly, r), comm)| (poly.label(), (poly, r, comm)))
             .collect();
 
@@ -1044,13 +1045,17 @@ impl<E: PairingEngine> MarlinKZG10<E> {
         }
         let comms = E::G1Projective::batch_normalization_into_affine(comms);
         let s_comms = E::G1Projective::batch_normalization_into_affine(s_comms);
-        comms.into_iter().zip(s_comms).zip(s_flags).map(|((c, s_c), flag)| {
-            let shifted_comm = if flag { Some(kzg10::Commitment(s_c)) } else { None };
-            Commitment {
-                comm: kzg10::Commitment(c),
-                shifted_comm,
-            }
-        })
+        comms
+            .into_iter()
+            .zip_eq(s_comms)
+            .zip_eq(s_flags)
+            .map(|((c, s_c), flag)| {
+                let shifted_comm = if flag { Some(kzg10::Commitment(s_c)) } else { None };
+                Commitment {
+                    comm: kzg10::Commitment(c),
+                    shifted_comm,
+                }
+            })
     }
 
     /// Combine and normalize a set of commitments
@@ -1131,7 +1136,7 @@ impl<E: PairingEngine> MarlinKZG10<E> {
         let mut combined_comm = E::G1Projective::zero();
         let mut combined_value = E::Fr::zero();
         let mut challenge_i = E::Fr::one();
-        for (labeled_commitment, value) in commitments.into_iter().zip(values) {
+        for (labeled_commitment, value) in commitments.into_iter().zip_eq(values) {
             let degree_bound = labeled_commitment.degree_bound();
             let commitment = labeled_commitment.commitment();
             assert_eq!(degree_bound.is_some(), commitment.shifted_comm.is_some());
@@ -1169,7 +1174,7 @@ impl<E: PairingEngine> MarlinKZG10<E> {
         let mut combined_value = E::Fr::zero();
         let mut opening_challenge_counter = 0;
 
-        for (labeled_commitment, value) in commitments.into_iter().zip(values) {
+        for (labeled_commitment, value) in commitments.into_iter().zip_eq(values) {
             let degree_bound = labeled_commitment.degree_bound();
             let commitment = labeled_commitment.commitment();
             assert_eq!(degree_bound.is_some(), commitment.shifted_comm.is_some());
