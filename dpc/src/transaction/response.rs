@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AleoAmount, Event, Network, Record};
+use crate::{Amount, Event, Network, Record};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::Result;
@@ -36,7 +36,7 @@ pub struct Response<N: Network> {
     /// The record encryption randomness.
     encryption_randomness: Vec<EncryptionRandomness<N>>,
     /// A value balance is the difference between the input and output record values.
-    value_balance: AleoAmount,
+    value_balance: Amount,
     /// The events emitted from the execution.
     events: Vec<Event<N>>,
 }
@@ -47,7 +47,7 @@ impl<N: Network> Response<N> {
         transition_id: N::TransitionID,
         records: Vec<Record<N>>,
         encryption_randomness: Vec<EncryptionRandomness<N>>,
-        value_balance: AleoAmount,
+        value_balance: Amount,
         events: Vec<Event<N>>,
     ) -> Result<Self> {
         Ok(Self { transition_id, records, encryption_randomness, value_balance, events })
@@ -84,7 +84,7 @@ impl<N: Network> Response<N> {
     }
 
     /// Returns the value balance.
-    pub fn value_balance(&self) -> AleoAmount {
+    pub fn value_balance(&self) -> Amount {
         self.value_balance
     }
 

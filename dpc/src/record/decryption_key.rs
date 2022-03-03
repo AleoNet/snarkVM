@@ -68,7 +68,7 @@ mod tests {
     use super::*;
     use crate::testnet2::Testnet2;
 
-    use crate::{Account, AleoAmount, Transaction};
+    use crate::{Account, Amount, Transaction};
     use rand::thread_rng;
 
     #[test]
@@ -87,7 +87,7 @@ mod tests {
 
         // Craft a transaction with 1 coinbase record.
         let (transaction, _expected_record) =
-            Transaction::new_coinbase(account.address(), AleoAmount(1234), true, rng).unwrap();
+            Transaction::new_coinbase(account.address(), Amount(1234), true, rng).unwrap();
 
         let public_records = transaction.to_records().collect::<Vec<_>>();
         let record = public_records.first().unwrap();

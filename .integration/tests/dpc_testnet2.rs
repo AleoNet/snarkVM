@@ -123,7 +123,7 @@ fn dpc_testnet2_integration_test() {
 //         candidate_record.owner().to_string()
 //     );
 //     assert_eq!(
-//         AleoAmount(Testnet2::ALEO_STARTING_SUPPLY_IN_CREDITS * 1_000_000),
+//         Amount(Testnet2::ALEO_STARTING_SUPPLY_IN_CREDITS * 1_000_000),
 //         candidate_record.value()
 //     );
 //     assert_eq!(vec![0u8; 128], candidate_record.payload().to_bytes_le().unwrap());

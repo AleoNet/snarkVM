@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Address, AleoAmount, ComputeKey, LedgerProof, Network, Operation, PrivateKey, Record};
+use crate::{Address, Amount, ComputeKey, LedgerProof, Network, Operation, PrivateKey, Record};
 use snarkvm_algorithms::SignatureScheme;
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
@@ -36,7 +36,7 @@ pub struct Request<N: Network> {
     /// The operation being performed.
     operation: Operation<N>,
     /// The network fee being paid.
-    fee: AleoAmount,
+    fee: Amount,
     /// The signature for the request.
     signature: N::AccountSignature,
     /// The visibility of the operation.
@@ -47,13 +47,13 @@ impl<N: Network> Request<N> {
     /// Initializes a new coinbase generation.
     pub fn new_coinbase<R: Rng + CryptoRng>(
         recipient: Address<N>,
-        amount: AleoAmount,
+        amount: Amount,
         is_public: bool,
         rng: &mut R,
     ) -> Result<Self> {
         let burner = PrivateKey::new(rng);
         let operation = Operation::Coinbase(recipient, amount);
-        let fee = AleoAmount::ZERO.sub(amount)?;
+        let fee = Amount::ZERO.sub(amount)?;
         Self::new(&burner, vec![], vec![LedgerProof::default(); N::NUM_INPUT_RECORDS], operation, fee, is_public, rng)
     }
 
@@ -63,8 +63,8 @@ impl<N: Network> Request<N> {
         records: Vec<Record<N>>,
         ledger_proofs: Vec<LedgerProof<N>>,
         recipient: Address<N>,
-        amount: AleoAmount,
-        fee: AleoAmount,
+        amount: Amount,
+        fee: Amount,
         is_public: bool,
         rng: &mut R,
     ) -> Result<Self> {
@@ -84,7 +84,7 @@ impl<N: Network> Request<N> {
             records.push(Record::new_noop(noop_address, rng)?);
         }
 
-        Self::new(&noop_private_key, records, ledger_proofs, Operation::Noop, AleoAmount::ZERO, false, rng)
+        Self::new(&noop_private_key, records, ledger_proofs, Operation::Noop, Amount::ZERO, false, rng)
     }
 
     /// Signs and returns a new instance of a request.
@@ -93,7 +93,7 @@ impl<N: Network> Request<N> {
         records: Vec<Record<N>>,
         ledger_proofs: Vec<LedgerProof<N>>,
         operation: Operation<N>,
-        fee: AleoAmount,
+        fee: Amount,
         is_public: bool,
         rng: &mut R,
     ) -> Result<Self> {
@@ -126,7 +126,7 @@ impl<N: Network> Request<N> {
         records: Vec<Record<N>>,
         ledger_proofs: Vec<LedgerProof<N>>,
         operation: Operation<N>,
-        fee: AleoAmount,
+        fee: Amount,
         signature: N::AccountSignature,
         is_public: bool,
     ) -> Result<Self> {
@@ -173,7 +173,7 @@ impl<N: Network> Request<N> {
 
         // Ensure the records contains a total value that is at least the fee amount.
         if !self.operation.is_coinbase() {
-            let balance: AleoAmount = self.records.iter().map(|record| record.value()).sum();
+            let balance: Amount = self.records.iter().map(|record| record.value()).sum();
             if balance < self.fee {
                 eprintln!("Request records do not contain sufficient value for fee");
                 return false;
@@ -255,7 +255,7 @@ impl<N: Network> Request<N> {
     }
 
     /// Returns the fee.
-    pub fn fee(&self) -> AleoAmount {
+    pub fn fee(&self) -> Amount {
         self.fee
     }
 
@@ -274,7 +274,7 @@ impl<N: Network> Request<N> {
     }
 
     /// Returns the balance of the caller.
-    pub fn to_balance(&self) -> AleoAmount {
+    pub fn to_balance(&self) -> Amount {
         self.records.iter().map(|record| record.value()).sum()
     }
 

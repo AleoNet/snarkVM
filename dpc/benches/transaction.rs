@@ -26,7 +26,7 @@ fn testnet1_coinbase_transaction(c: &mut Criterion) {
     let rng = &mut thread_rng();
 
     let address = Account::<Testnet1>::new(rng).address();
-    let amount = AleoAmount::from_aleo(100);
+    let amount = Amount::from_aleo(100);
 
     c.bench_function("testnet1_coinbase_transaction", move |b| {
         b.iter(|| {
@@ -39,7 +39,7 @@ fn testnet2_coinbase_transaction(c: &mut Criterion) {
     let rng = &mut thread_rng();
 
     let address = Account::<Testnet2>::new(rng).address();
-    let amount = AleoAmount::from_aleo(100);
+    let amount = Amount::from_aleo(100);
 
     c.bench_function("testnet2_coinbase_transaction", move |b| {
         b.iter(|| {

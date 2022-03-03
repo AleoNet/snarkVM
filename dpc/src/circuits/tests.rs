@@ -25,7 +25,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize) 
     let rng = &mut thread_rng();
 
     let recipient = Account::new(rng);
-    let amount = AleoAmount::from_gate(10);
+    let amount = Amount::from_gate(10);
     let request = Request::new_coinbase(recipient.address(), amount, false, rng).unwrap();
     let response = ResponseBuilder::new()
         .add_request(request.clone())
@@ -44,7 +44,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize) 
     let commitments = response.commitments();
 
     // Compute the value balance.
-    let mut value_balance = AleoAmount::ZERO;
+    let mut value_balance = Amount::ZERO;
     for record in request.records().iter().take(N::NUM_INPUT_RECORDS) {
         value_balance = value_balance.add(record.value()).unwrap();
     }

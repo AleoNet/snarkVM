@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AleoAmount, BlockError, DecryptionKey, Network, Record, Transaction};
+use crate::{Amount, BlockError, DecryptionKey, Network, Record, Transaction};
 use snarkvm_algorithms::merkle_tree::*;
 use snarkvm_utilities::{has_duplicates, FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
 
@@ -127,20 +127,20 @@ impl<N: Network> Transactions<N> {
     }
 
     /// Returns the net value balance, by summing the value balance from all transactions.
-    pub fn net_value_balance(&self) -> AleoAmount {
-        self.transactions.iter().map(Transaction::value_balance).fold(AleoAmount::ZERO, |a, b| a + b)
+    pub fn net_value_balance(&self) -> Amount {
+        self.transactions.iter().map(Transaction::value_balance).fold(Amount::ZERO, |a, b| a + b)
     }
 
     /// Returns the total transaction fees, by summing the value balance from all positive transactions.
     /// Note - this amount does *not* include the block reward.
-    pub fn transaction_fees(&self) -> AleoAmount {
+    pub fn transaction_fees(&self) -> Amount {
         self.transactions
             .iter()
             .filter_map(|t| match t.value_balance().is_negative() {
                 true => None,
                 false => Some(t.value_balance()),
             })
-            .fold(AleoAmount::ZERO, |a, b| a + b)
+            .fold(Amount::ZERO, |a, b| a + b)
     }
 
     /// Returns the coinbase transaction for the block.
@@ -269,7 +269,7 @@ mod tests {
 
         // Craft a transaction with 1 coinbase record.
         let (transaction, expected_record) =
-            Transaction::new_coinbase(account.address(), AleoAmount(1234), true, rng).unwrap();
+            Transaction::new_coinbase(account.address(), Amount(1234), true, rng).unwrap();
 
         // Craft a Transactions struct with 1 coinbase record.
         let transactions = Transactions::from(&[transaction]).unwrap();

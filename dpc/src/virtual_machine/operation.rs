@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Address, AleoAmount, FunctionInputs, Network};
+use crate::{Address, Amount, FunctionInputs, Network};
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::{FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
 
@@ -34,9 +34,9 @@ pub enum Operation<N: Network> {
     /// Noop.
     Noop,
     /// Generates the given amount to the recipient address.
-    Coinbase(Recipient<N>, AleoAmount),
+    Coinbase(Recipient<N>, Amount),
     /// Transfers the given amount from the caller to the recipient address.
-    Transfer(Caller<N>, Recipient<N>, AleoAmount),
+    Transfer(Caller<N>, Recipient<N>, Amount),
     /// Invokes the given records on the function and inputs.
     Evaluate(N::FunctionID, FunctionInputs<N>),
 }

@@ -17,7 +17,7 @@
 use crate::{
     record::*,
     Address,
-    AleoAmount,
+    Amount,
     Event,
     LedgerTree,
     LedgerTreeScheme,
@@ -71,7 +71,7 @@ impl<N: Network> Transaction<N> {
     #[inline]
     pub fn new_coinbase<R: Rng + CryptoRng>(
         recipient: Address<N>,
-        amount: AleoAmount,
+        amount: Amount,
         is_public: bool,
         rng: &mut R,
     ) -> Result<(Self, Record<N>)> {
@@ -257,8 +257,8 @@ impl<N: Network> Transaction<N> {
 
     /// Returns the value balance.
     #[inline]
-    pub fn value_balance(&self) -> AleoAmount {
-        self.transitions.iter().map(Transition::value_balance).fold(AleoAmount::ZERO, |a, b| a + *b)
+    pub fn value_balance(&self) -> Amount {
+        self.transitions.iter().map(Transition::value_balance).fold(Amount::ZERO, |a, b| a + *b)
     }
 
     /// Returns the events.
@@ -428,7 +428,7 @@ mod tests {
 
         // Craft a transaction with 1 coinbase record.
         let (transaction, expected_record) =
-            Transaction::new_coinbase(account.address(), AleoAmount(1234), true, rng).unwrap();
+            Transaction::new_coinbase(account.address(), Amount(1234), true, rng).unwrap();
         let decrypted_records =
             transaction.to_decrypted_records(&account.view_key().into()).collect::<Vec<Record<Testnet2>>>();
         assert_eq!(decrypted_records.len(), 1); // Excludes dummy records upon decryption.
@@ -449,7 +449,7 @@ mod tests {
 
         // Craft a transaction with 1 coinbase record.
         let (transaction, expected_record) =
-            Transaction::new_coinbase(account.address(), AleoAmount(1234), true, rng).unwrap();
+            Transaction::new_coinbase(account.address(), Amount(1234), true, rng).unwrap();
 
         let public_records = transaction.to_records().collect::<Vec<_>>();
         assert_eq!(public_records.len(), 2);
@@ -472,7 +472,7 @@ mod tests {
 
         // Craft a transaction with 1 coinbase record.
         let (expected_transaction, _) =
-            Transaction::<Testnet2>::new_coinbase(account.address(), AleoAmount(1234), true, rng).unwrap();
+            Transaction::<Testnet2>::new_coinbase(account.address(), Amount(1234), true, rng).unwrap();
 
         // Serialize
         let expected_string = expected_transaction.to_string();
@@ -492,7 +492,7 @@ mod tests {
 
         // Craft a transaction with 1 coinbase record.
         let (expected_transaction, _) =
-            Transaction::<Testnet2>::new_coinbase(account.address(), AleoAmount(1234), true, rng).unwrap();
+            Transaction::<Testnet2>::new_coinbase(account.address(), Amount(1234), true, rng).unwrap();
 
         // Serialize
         let expected_bytes = expected_transaction.to_bytes_le().unwrap();

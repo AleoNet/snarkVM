@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AleoAmount, Network};
+use crate::{Amount, Network};
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::ToBytes;
 
@@ -27,7 +27,7 @@ pub struct InnerPublicVariables<N: Network> {
     /// The commitments of the output records.
     commitments: Vec<N::Commitment>,
     /// A value balance is the difference between the input and output record values.
-    value_balance: AleoAmount,
+    value_balance: Amount,
     ledger_root: N::LedgerRoot,
     local_transitions_root: N::TransactionID,
     // These are required in natively verifying an inner circuit proof.
@@ -41,7 +41,7 @@ impl<N: Network> InnerPublicVariables<N> {
         Self {
             serial_numbers: vec![Default::default(); N::NUM_INPUT_RECORDS],
             commitments: vec![Default::default(); N::NUM_INPUT_RECORDS],
-            value_balance: AleoAmount::ZERO,
+            value_balance: Amount::ZERO,
             ledger_root: N::LedgerRoot::default(),
             local_transitions_root: Default::default(),
             program_id: Some(N::ProgramID::default()),
@@ -51,7 +51,7 @@ impl<N: Network> InnerPublicVariables<N> {
     pub(crate) fn new(
         serial_numbers: Vec<N::SerialNumber>,
         commitments: Vec<N::Commitment>,
-        value_balance: AleoAmount,
+        value_balance: Amount,
         ledger_root: N::LedgerRoot,
         local_transitions_root: N::TransactionID,
         program_id: Option<N::ProgramID>,
@@ -70,7 +70,7 @@ impl<N: Network> InnerPublicVariables<N> {
     }
 
     /// Returns the value balance of the transition.
-    pub(crate) fn value_balance(&self) -> AleoAmount {
+    pub(crate) fn value_balance(&self) -> Amount {
         self.value_balance
     }
 

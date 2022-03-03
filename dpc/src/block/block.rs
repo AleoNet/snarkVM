@@ -16,7 +16,7 @@
 
 use crate::{
     Address,
-    AleoAmount,
+    Amount,
     BlockError,
     BlockHeader,
     BlockTemplate,
@@ -170,7 +170,7 @@ impl<N: Network> Block<N> {
         };
 
         // Ensure the coinbase reward is equal to or greater than the expected block reward.
-        let coinbase_reward = AleoAmount::ZERO - coinbase_transaction.value_balance(); // Make it a positive number.
+        let coinbase_reward = Amount::ZERO - coinbase_transaction.value_balance(); // Make it a positive number.
         let block_reward = Self::block_reward(self.height());
         if coinbase_reward < block_reward {
             eprintln!("Coinbase reward must be >= {}, found {}", block_reward, coinbase_reward);
@@ -178,7 +178,7 @@ impl<N: Network> Block<N> {
         }
 
         // Ensure the coinbase reward less transaction fees is less than or equal to the block reward.
-        let candidate_block_reward = AleoAmount::ZERO - self.transactions.net_value_balance(); // Make it a positive number.
+        let candidate_block_reward = Amount::ZERO - self.transactions.net_value_balance(); // Make it a positive number.
         if candidate_block_reward > block_reward {
             eprintln!("Block reward must be <= {}, found {}", block_reward, candidate_block_reward);
             return false;
@@ -266,11 +266,11 @@ impl<N: Network> Block<N> {
     ///
     /// Returns the block reward for the given block height.
     ///
-    pub fn block_reward(height: u32) -> AleoAmount {
+    pub fn block_reward(height: u32) -> Amount {
         match height == 0 {
             true => {
                 // Output the starting supply as the genesis block reward.
-                AleoAmount::from_gate(N::ALEO_STARTING_SUPPLY_IN_CREDITS * AleoAmount::ONE_CREDIT.0)
+                Amount::from_gate(N::ALEO_STARTING_SUPPLY_IN_CREDITS * Amount::ONE_CREDIT.0)
             }
             false => {
                 // The initial blocks that aren't taken into account with the halving calculation.
@@ -284,11 +284,11 @@ impl<N: Network> Block<N> {
                 // Blocks 1 to 4,730,400         - 100 CREDITS
                 // Blocks 4,730,401 to 9,460,800 - 50 CREDITS
                 // Blocks 9,460,801+             - 25 CREDITS
-                let initial_reward = 100i64 * AleoAmount::ONE_CREDIT.0;
+                let initial_reward = 100i64 * Amount::ONE_CREDIT.0;
                 let num_halves = u32::min(height.saturating_sub(1) / block_segments, 2);
                 let reward = initial_reward / (2_u64.pow(num_halves)) as i64;
 
-                AleoAmount::from_gate(reward)
+                Amount::from_gate(reward)
             }
         }
     }
@@ -454,22 +454,22 @@ mod tests {
 
         assert_eq!(
             Block::<Testnet2>::block_reward(0),
-            AleoAmount::from_gate(Testnet2::ALEO_STARTING_SUPPLY_IN_CREDITS * AleoAmount::ONE_CREDIT.0)
+            Amount::from_gate(Testnet2::ALEO_STARTING_SUPPLY_IN_CREDITS * Amount::ONE_CREDIT.0)
         );
 
-        let mut supply = AleoAmount::ZERO;
+        let mut supply = Amount::ZERO;
 
         // Phase 1 - 100 credits per block.
-        let phase_1_sum = AleoAmount::from_gate(
+        let phase_1_sum = Amount::from_gate(
             (0..=first_halving).into_par_iter().map(|i| Block::<Testnet2>::block_reward(i).0).sum::<i64>(),
         );
 
         supply += phase_1_sum;
 
-        assert_eq!(supply, AleoAmount::from_gate(supply_at_first_halving * AleoAmount::ONE_CREDIT.0));
+        assert_eq!(supply, Amount::from_gate(supply_at_first_halving * Amount::ONE_CREDIT.0));
 
         // Phase 2 - 50 credits per block.
-        let phase_2_sum = AleoAmount::from_gate(
+        let phase_2_sum = Amount::from_gate(
             ((first_halving + 1)..=second_halving)
                 .into_par_iter()
                 .map(|i| Block::<Testnet2>::block_reward(i).0)
@@ -478,7 +478,7 @@ mod tests {
 
         supply += phase_2_sum;
 
-        assert_eq!(supply, AleoAmount::from_gate(supply_at_second_halving * AleoAmount::ONE_CREDIT.0));
+        assert_eq!(supply, Amount::from_gate(supply_at_second_halving * Amount::ONE_CREDIT.0));
     }
 
     #[test]

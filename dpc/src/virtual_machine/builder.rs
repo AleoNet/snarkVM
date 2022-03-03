@@ -167,7 +167,7 @@ impl<N: Network> ResponseBuilder<N> {
         let commitments: Vec<_> = output_records.iter().take(N::NUM_OUTPUT_RECORDS).map(Record::commitment).collect();
 
         // Compute the value balance.
-        let mut value_balance = AleoAmount::ZERO;
+        let mut value_balance = Amount::ZERO;
         for record in input_records.iter().take(N::NUM_INPUT_RECORDS) {
             value_balance = value_balance.add(record.value())?;
         }

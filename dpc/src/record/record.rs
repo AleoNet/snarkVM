@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Address, AleoAmount, Ciphertext, ComputeKey, DecryptionKey, Network, Payload, RecordError};
+use crate::{Address, Amount, Ciphertext, ComputeKey, DecryptionKey, Network, Payload, RecordError};
 use snarkvm_algorithms::traits::{EncryptionScheme, PRF};
 use snarkvm_curves::AffineCurve;
 use snarkvm_fields::PrimeField;
@@ -33,7 +33,7 @@ use std::{
 #[derive(Clone, Debug)]
 pub struct Record<N: Network> {
     owner: Address<N>,
-    value: AleoAmount,
+    value: Amount,
     payload: Option<Payload<N>>,
     record_view_key: N::RecordViewKey,
     ciphertext: N::RecordCiphertext,
@@ -42,13 +42,13 @@ pub struct Record<N: Network> {
 impl<N: Network> Record<N> {
     /// Returns a new noop record.
     pub fn new_noop<R: Rng + CryptoRng>(owner: Address<N>, rng: &mut R) -> Result<Self, RecordError> {
-        Self::new(owner, AleoAmount::ZERO, None, None, rng)
+        Self::new(owner, Amount::ZERO, None, None, rng)
     }
 
     /// Returns a new record.
     pub fn new<R: Rng + CryptoRng>(
         owner: Address<N>,
-        value: AleoAmount,
+        value: Amount,
         payload: Option<Payload<N>>,
         program_id: Option<N::ProgramID>,
         rng: &mut R,
@@ -62,7 +62,7 @@ impl<N: Network> Record<N> {
     /// Returns a record from the given inputs.
     pub fn from(
         owner: Address<N>,
-        value: AleoAmount,
+        value: Amount,
         payload: Option<Payload<N>>,
         program_id: Option<N::ProgramID>,
         randomizer: N::RecordRandomizer,
@@ -105,7 +105,7 @@ impl<N: Network> Record<N> {
 
         // Decode the plaintext bytes into the record contents.
         let owner = Address::<N>::read_le(&plaintext[0].to_bytes_le()?[..])?;
-        let value = AleoAmount::read_le(&*N::AccountEncryptionScheme::decode_message(&[plaintext[1]])?)?;
+        let value = Amount::read_le(&*N::AccountEncryptionScheme::decode_message(&[plaintext[1]])?)?;
         let payload = Some(Payload::read_le(&*N::AccountEncryptionScheme::decode_message(&plaintext[2..])?)?);
 
         // TODO (howardwu): TEMPORARY - Reintroduce this logic.
@@ -129,7 +129,7 @@ impl<N: Network> Record<N> {
     }
 
     /// Returns the record value.
-    pub fn value(&self) -> AleoAmount {
+    pub fn value(&self) -> Amount {
         self.value
     }
 
@@ -229,7 +229,7 @@ impl<N: Network> FromBytes for Record<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let owner: Address<N> = FromBytes::read_le(&mut reader)?;
-        let value: AleoAmount = FromBytes::read_le(&mut reader)?;
+        let value: Amount = FromBytes::read_le(&mut reader)?;
 
         let payload_exists: bool = FromBytes::read_le(&mut reader)?;
         let payload: Option<Payload<N>> = match payload_exists {
@@ -318,7 +318,7 @@ impl<'de, N: Network> Deserialize<'de> for Record<N> {
 
 impl<N: Network> Default for Record<N> {
     fn default() -> Self {
-        Self::from(Default::default(), AleoAmount::ZERO, None, None, Default::default(), Default::default())
+        Self::from(Default::default(), Amount::ZERO, None, None, Default::default(), Default::default())
             .expect("Failed to initialize Record::default()")
     }
 }
@@ -356,14 +356,9 @@ mod tests {
         // Output record
         let mut payload = [0u8; Testnet2::RECORD_PAYLOAD_SIZE_IN_BYTES];
         rng.fill(&mut payload);
-        let expected_record = Record::new(
-            address,
-            AleoAmount::from_gate(1234),
-            Some(Payload::from_bytes_le(&payload).unwrap()),
-            None,
-            rng,
-        )
-        .unwrap();
+        let expected_record =
+            Record::new(address, Amount::from_gate(1234), Some(Payload::from_bytes_le(&payload).unwrap()), None, rng)
+                .unwrap();
 
         // Serialize
         let expected_string = expected_record.to_string();
@@ -402,14 +397,9 @@ mod tests {
         // Output record
         let mut payload = [0u8; Testnet2::RECORD_PAYLOAD_SIZE_IN_BYTES];
         rng.fill(&mut payload);
-        let expected_record = Record::new(
-            address,
-            AleoAmount::from_gate(1234),
-            Some(Payload::from_bytes_le(&payload).unwrap()),
-            None,
-            rng,
-        )
-        .unwrap();
+        let expected_record =
+            Record::new(address, Amount::from_gate(1234), Some(Payload::from_bytes_le(&payload).unwrap()), None, rng)
+                .unwrap();
 
         // Serialize
         let expected_bytes = expected_record.to_bytes_le().unwrap();

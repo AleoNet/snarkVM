@@ -39,7 +39,7 @@ pub struct Transition<N: Network> {
     /// The ciphertexts of the output records.
     ciphertexts: Vec<N::RecordCiphertext>,
     /// A value balance is the difference between the input and output record values.
-    value_balance: AleoAmount,
+    value_balance: Amount,
     /// The events emitted from this transition.
     events: Vec<Event<N>>,
     /// The zero-knowledge proofs attesting to the validity of this transition.
@@ -68,7 +68,7 @@ impl<N: Network> Transition<N> {
         transition_id: N::TransitionID,
         serial_numbers: Vec<N::SerialNumber>,
         ciphertexts: Vec<N::RecordCiphertext>,
-        value_balance: AleoAmount,
+        value_balance: Amount,
         events: Vec<Event<N>>,
         execution: Execution<N>,
     ) -> Result<Self> {
@@ -166,7 +166,7 @@ impl<N: Network> Transition<N> {
 
     /// Returns a reference to the value balance.
     #[inline]
-    pub fn value_balance(&self) -> &AleoAmount {
+    pub fn value_balance(&self) -> &Amount {
         &self.value_balance
     }
 
@@ -305,7 +305,7 @@ impl<N: Network> FromBytes for Transition<N> {
             ciphertexts.push(FromBytes::read_le(&mut reader)?);
         }
 
-        let value_balance: AleoAmount = FromBytes::read_le(&mut reader)?;
+        let value_balance: Amount = FromBytes::read_le(&mut reader)?;
 
         let num_events: u16 = FromBytes::read_le(&mut reader)?;
         let mut events = Vec::with_capacity(num_events as usize);

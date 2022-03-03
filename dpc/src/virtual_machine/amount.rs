@@ -27,7 +27,7 @@ use std::{
 
 /// Represents the amount of ALEOs.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct AleoAmount(pub i64);
+pub struct Amount(pub i64);
 
 pub enum Denomination {
     /// AG
@@ -55,31 +55,31 @@ impl fmt::Display for Denomination {
     }
 }
 
-impl AleoAmount {
+impl Amount {
     /// Exactly one Aleo credit (ALEO).
-    pub const ONE_CREDIT: AleoAmount = AleoAmount(1_000_000i64);
+    pub const ONE_CREDIT: Amount = Amount(1_000_000i64);
     /// Exactly one Aleo gate (AG).
-    pub const ONE_GATE: AleoAmount = AleoAmount(1i64);
+    pub const ONE_GATE: Amount = Amount(1i64);
     /// The zero amount.
-    pub const ZERO: AleoAmount = AleoAmount(0i64);
+    pub const ZERO: Amount = Amount(0i64);
 
-    /// Create an `AleoAmount` given a number of gates.
+    /// Create an `Amount` given a number of gates.
     pub fn from_gate(gates: i64) -> Self {
         Self(gates)
     }
 
-    /// Create an `AleoAmount` given a number of credits.
+    /// Create an `Amount` given a number of credits.
     pub fn from_aleo(aleo_value: i64) -> Self {
         Self::from_gate(aleo_value * 10_i64.pow(Denomination::CREDIT.precision()))
     }
 
-    /// Add the values of two `AleoAmount`s
+    /// Add the values of two `Amount`s
     #[allow(clippy::should_implement_trait)]
     pub fn add(self, b: Self) -> Result<Self> {
         Ok(Self::from_gate(self.0.checked_add(b.0).ok_or(anyhow!("Amount addition overflow."))?))
     }
 
-    /// Subtract the value of two `AleoAmounts`
+    /// Subtract the value of two `Amount`
     #[allow(clippy::should_implement_trait)]
     pub fn sub(self, b: Self) -> Result<Self> {
         Ok(Self::from_gate(self.0.checked_sub(b.0).ok_or(anyhow!("Amount subtraction underflow."))?))
@@ -108,10 +108,10 @@ impl AleoAmount {
     }
 }
 
-impl Add<Self> for AleoAmount {
-    type Output = AleoAmount;
+impl Add<Self> for Amount {
+    type Output = Amount;
 
-    fn add(self, other: AleoAmount) -> Self::Output {
+    fn add(self, other: Amount) -> Self::Output {
         match self.add(other) {
             Ok(result) => result,
             Err(err) => panic!("{}", err),
@@ -119,8 +119,8 @@ impl Add<Self> for AleoAmount {
     }
 }
 
-impl AddAssign<Self> for AleoAmount {
-    fn add_assign(&mut self, other: AleoAmount) {
+impl AddAssign<Self> for Amount {
+    fn add_assign(&mut self, other: Amount) {
         match self.add(other) {
             Ok(result) => *self = result,
             Err(err) => panic!("{}", err),
@@ -128,10 +128,10 @@ impl AddAssign<Self> for AleoAmount {
     }
 }
 
-impl Sub<Self> for AleoAmount {
-    type Output = AleoAmount;
+impl Sub<Self> for Amount {
+    type Output = Amount;
 
-    fn sub(self, other: AleoAmount) -> Self::Output {
+    fn sub(self, other: Amount) -> Self::Output {
         match self.sub(other) {
             Ok(result) => result,
             Err(err) => panic!("{}", err),
@@ -139,8 +139,8 @@ impl Sub<Self> for AleoAmount {
     }
 }
 
-impl SubAssign<Self> for AleoAmount {
-    fn sub_assign(&mut self, other: AleoAmount) {
+impl SubAssign<Self> for Amount {
+    fn sub_assign(&mut self, other: Amount) {
         match self.sub(other) {
             Ok(result) => *self = result,
             Err(err) => panic!("{}", err),
@@ -148,19 +148,19 @@ impl SubAssign<Self> for AleoAmount {
     }
 }
 
-impl Sum for AleoAmount {
-    fn sum<I: Iterator<Item = AleoAmount>>(iter: I) -> AleoAmount {
-        iter.fold(AleoAmount::ZERO, |a, b| a + b)
+impl Sum for Amount {
+    fn sum<I: Iterator<Item = Amount>>(iter: I) -> Amount {
+        iter.fold(Amount::ZERO, |a, b| a + b)
     }
 }
 
-impl ToBytes for AleoAmount {
+impl ToBytes for Amount {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.0.write_le(&mut writer)
     }
 }
 
-impl FromBytes for AleoAmount {
+impl FromBytes for Amount {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let amount: i64 = FromBytes::read_le(&mut reader)?;
@@ -169,7 +169,7 @@ impl FromBytes for AleoAmount {
     }
 }
 
-impl fmt::Display for AleoAmount {
+impl fmt::Display for Amount {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0)
     }
@@ -179,28 +179,28 @@ impl fmt::Display for AleoAmount {
 mod tests {
     use super::*;
 
-    fn test_from_gate(gate_value: i64, expected_amount: AleoAmount) {
-        let amount = AleoAmount::from_gate(gate_value);
+    fn test_from_gate(gate_value: i64, expected_amount: Amount) {
+        let amount = Amount::from_gate(gate_value);
         assert_eq!(expected_amount, amount)
     }
 
-    fn test_from_aleo(aleo_value: i64, expected_amount: AleoAmount) {
-        let amount = AleoAmount::from_aleo(aleo_value);
+    fn test_from_aleo(aleo_value: i64, expected_amount: Amount) {
+        let amount = Amount::from_aleo(aleo_value);
         assert_eq!(expected_amount, amount)
     }
 
     fn test_addition(a: &i64, b: &i64, result: &i64) {
-        let a = AleoAmount::from_gate(*a);
-        let b = AleoAmount::from_gate(*b);
-        let result = AleoAmount::from_gate(*result);
+        let a = Amount::from_gate(*a);
+        let b = Amount::from_gate(*b);
+        let result = Amount::from_gate(*result);
 
         assert_eq!(result, a + b);
     }
 
     fn test_subtraction(a: &i64, b: &i64, result: &i64) {
-        let a = AleoAmount::from_gate(*a);
-        let b = AleoAmount::from_gate(*b);
-        let result = AleoAmount::from_gate(*result);
+        let a = Amount::from_gate(*a);
+        let b = Amount::from_gate(*b);
+        let result = Amount::from_gate(*result);
 
         assert_eq!(result, a - b);
     }
@@ -223,12 +223,12 @@ mod tests {
 
         #[test]
         fn test_gate_conversion() {
-            TEST_AMOUNTS.iter().for_each(|amounts| test_from_gate(amounts.gate, AleoAmount(amounts.gate)));
+            TEST_AMOUNTS.iter().for_each(|amounts| test_from_gate(amounts.gate, Amount(amounts.gate)));
         }
 
         #[test]
         fn test_aleo_conversion() {
-            TEST_AMOUNTS.iter().for_each(|amounts| test_from_aleo(amounts.aleo, AleoAmount(amounts.gate)));
+            TEST_AMOUNTS.iter().for_each(|amounts| test_from_aleo(amounts.aleo, Amount(amounts.gate)));
         }
     }
 
@@ -272,13 +272,13 @@ mod tests {
             #[should_panic]
             #[test]
             fn test_invalid_gate_conversion() {
-                INVALID_TEST_AMOUNTS.iter().for_each(|amounts| test_from_gate(amounts.aleo, AleoAmount(amounts.gate)));
+                INVALID_TEST_AMOUNTS.iter().for_each(|amounts| test_from_gate(amounts.aleo, Amount(amounts.gate)));
             }
 
             #[should_panic]
             #[test]
             fn test_invalid_aleo_conversion() {
-                INVALID_TEST_AMOUNTS.iter().for_each(|amounts| test_from_aleo(amounts.aleo, AleoAmount(amounts.gate)));
+                INVALID_TEST_AMOUNTS.iter().for_each(|amounts| test_from_aleo(amounts.aleo, Amount(amounts.gate)));
             }
         }
 

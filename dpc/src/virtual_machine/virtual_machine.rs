@@ -115,7 +115,7 @@ impl<N: Network> VirtualMachine<N> {
     fn coinbase<R: Rng + CryptoRng>(
         request: &Request<N>,
         recipient: Address<N>,
-        amount: AleoAmount,
+        amount: Amount,
         rng: &mut R,
     ) -> Result<Response<N>> {
         ResponseBuilder::new()
@@ -129,7 +129,7 @@ impl<N: Network> VirtualMachine<N> {
         request: &Request<N>,
         caller: Address<N>,
         recipient: Address<N>,
-        amount: AleoAmount,
+        amount: Amount,
         rng: &mut R,
     ) -> Result<Response<N>> {
         // Fetch the caller.

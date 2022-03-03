@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{virtual_machine::AleoAmount, Address, Network, Payload};
+use crate::{virtual_machine::Amount, Address, Network, Payload};
 use snarkvm_algorithms::CRH;
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::{FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
@@ -34,12 +34,12 @@ type Recipient<N> = Address<N>;
 pub struct FunctionInputs<N: Network> {
     pub(crate) caller: Caller<N>,
     pub(crate) recipient: Recipient<N>,
-    pub(crate) amount: AleoAmount,
+    pub(crate) amount: Amount,
     pub(crate) record_payload: Payload<N>,
 }
 
 impl<N: Network> FunctionInputs<N> {
-    pub fn new(caller: &Caller<N>, recipient: &Recipient<N>, amount: AleoAmount, record_payload: Payload<N>) -> Self {
+    pub fn new(caller: &Caller<N>, recipient: &Recipient<N>, amount: Amount, record_payload: Payload<N>) -> Self {
         Self { caller: *caller, recipient: *recipient, amount, record_payload }
     }
 
