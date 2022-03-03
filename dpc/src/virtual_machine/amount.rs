@@ -16,11 +16,13 @@
 
 use snarkvm_utilities::{FromBytes, ToBytes};
 
+use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use std::{
     fmt,
     io::{Read, Result as IoResult, Write},
     iter::Sum,
+    ops::{Add, AddAssign, Sub, SubAssign},
 };
 
 /// Represents the amount of ALEOs.
@@ -72,15 +74,13 @@ impl AleoAmount {
     }
 
     /// Add the values of two `AleoAmount`s
-    #[allow(clippy::should_implement_trait)]
-    pub fn add(self, b: Self) -> Self {
-        Self::from_gate(self.0 + b.0)
+    pub fn add(self, b: Self) -> Result<Self> {
+        Ok(Self::from_gate(self.0.checked_add(b.0).ok_or(anyhow!("Amount addition overflow."))?))
     }
 
     /// Subtract the value of two `AleoAmounts`
-    #[allow(clippy::should_implement_trait)]
-    pub fn sub(self, b: AleoAmount) -> Self {
-        Self::from_gate(self.0 - b.0)
+    pub fn sub(self, b: Self) -> Result<Self> {
+        Ok(Self::from_gate(self.0.checked_sub(b.0).ok_or(anyhow!("Amount subtraction underflow."))?))
     }
 
     /// Returns `true` the amount is positive and `false` if the amount is zero or
@@ -106,9 +106,49 @@ impl AleoAmount {
     }
 }
 
+impl Add<Self> for AleoAmount {
+    type Output = AleoAmount;
+
+    fn add(self, other: AleoAmount) -> Self::Output {
+        match self.add(other) {
+            Ok(result) => result,
+            Err(err) => panic!("{}", err),
+        }
+    }
+}
+
+impl AddAssign<Self> for AleoAmount {
+    fn add_assign(&mut self, other: AleoAmount) {
+        match self.add(other) {
+            Ok(result) => *self = result,
+            Err(err) => panic!("{}", err),
+        }
+    }
+}
+
+impl Sub<Self> for AleoAmount {
+    type Output = AleoAmount;
+
+    fn sub(self, other: AleoAmount) -> Self::Output {
+        match self.sub(other) {
+            Ok(result) => result,
+            Err(err) => panic!("{}", err),
+        }
+    }
+}
+
+impl SubAssign<Self> for AleoAmount {
+    fn sub_assign(&mut self, other: AleoAmount) {
+        match self.sub(other) {
+            Ok(result) => *self = result,
+            Err(err) => panic!("{}", err),
+        }
+    }
+}
+
 impl Sum for AleoAmount {
     fn sum<I: Iterator<Item = AleoAmount>>(iter: I) -> AleoAmount {
-        iter.fold(AleoAmount::ZERO, |a, b| a.add(b))
+        iter.fold(AleoAmount::ZERO, |a, b| a + b)
     }
 }
 
@@ -152,7 +192,7 @@ mod tests {
         let b = AleoAmount::from_gate(*b);
         let result = AleoAmount::from_gate(*result);
 
-        assert_eq!(result, a.add(b));
+        assert_eq!(result, a + b);
     }
 
     fn test_subtraction(a: &i64, b: &i64, result: &i64) {
@@ -160,7 +200,7 @@ mod tests {
         let b = AleoAmount::from_gate(*b);
         let result = AleoAmount::from_gate(*result);
 
-        assert_eq!(result, a.sub(b));
+        assert_eq!(result, a - b);
     }
 
     pub(crate) struct AmountDenominationTestCase {
