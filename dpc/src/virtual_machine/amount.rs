@@ -76,13 +76,13 @@ impl Amount {
     /// Add the values of two `Amount`s
     #[allow(clippy::should_implement_trait)]
     pub fn add(self, b: Self) -> Result<Self> {
-        Ok(Self::from_gate(self.0.checked_add(b.0).ok_or(anyhow!("Amount addition overflow."))?))
+        self.0.checked_add(b.0).ok_or(anyhow!("Amount addition overflow.")).map(Self::from_gate)
     }
 
     /// Subtract the value of two `Amount`
     #[allow(clippy::should_implement_trait)]
     pub fn sub(self, b: Self) -> Result<Self> {
-        Ok(Self::from_gate(self.0.checked_sub(b.0).ok_or(anyhow!("Amount subtraction underflow."))?))
+        self.0.checked_sub(b.0).ok_or(anyhow!("Amount subtraction underflow.")).map(Self::from_gate)
     }
 
     /// Returns `true` the amount is positive and `false` if the amount is zero or
