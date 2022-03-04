@@ -109,9 +109,9 @@ impl Amount {
 }
 
 impl Add<Self> for Amount {
-    type Output = Amount;
+    type Output = Self;
 
-    fn add(self, other: Amount) -> Self::Output {
+    fn add(self, other: Self) -> Self::Output {
         match self.add(other) {
             Ok(result) => result,
             Err(err) => panic!("{}", err),
@@ -120,7 +120,7 @@ impl Add<Self> for Amount {
 }
 
 impl AddAssign<Self> for Amount {
-    fn add_assign(&mut self, other: Amount) {
+    fn add_assign(&mut self, other: Self) {
         match self.add(other) {
             Ok(result) => *self = result,
             Err(err) => panic!("{}", err),
@@ -129,9 +129,9 @@ impl AddAssign<Self> for Amount {
 }
 
 impl Sub<Self> for Amount {
-    type Output = Amount;
+    type Output = Self;
 
-    fn sub(self, other: Amount) -> Self::Output {
+    fn sub(self, other: Self) -> Self::Output {
         match self.sub(other) {
             Ok(result) => result,
             Err(err) => panic!("{}", err),
@@ -140,7 +140,7 @@ impl Sub<Self> for Amount {
 }
 
 impl SubAssign<Self> for Amount {
-    fn sub_assign(&mut self, other: Amount) {
+    fn sub_assign(&mut self, other: Self) {
         match self.sub(other) {
             Ok(result) => *self = result,
             Err(err) => panic!("{}", err),
@@ -149,8 +149,8 @@ impl SubAssign<Self> for Amount {
 }
 
 impl Sum for Amount {
-    fn sum<I: Iterator<Item = Amount>>(iter: I) -> Amount {
-        iter.fold(Amount::ZERO, |a, b| a + b)
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.fold(Self::ZERO, |a, b| a + b)
     }
 }
 
