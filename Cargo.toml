@@ -29,7 +29,6 @@ members = [
   "fields",
   "gadgets",
   "instructions",
-  "machine",
   "parameters",
   "r1cs",
   "utilities",
