@@ -14,11 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{instructions::Instruction, Memory, Opcode, Operand, Register};
+use crate::{instructions::Instruction, Memory, Opcode, Operand, Register, UnaryParser};
 use snarkvm_circuits::{Parser, ParserResult};
 
 use core::fmt;
-use nom::bytes::complete::tag;
 
 /// Stores `operand` into `register`, if `destination` is not already set.
 pub struct Store<M: Memory> {
@@ -51,22 +50,16 @@ impl<M: Memory> Parser for Store<M> {
     /// Parses a string into an 'store' instruction.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self::Output> {
-        // Parse the opcode.
-        let (string, _) = tag(Self::NAME)(string)?;
-        // Parse the destination register from the string.
-        let (string, destination) = Register::parse(string)?;
-        // Parse the operand from the string.
-        let (string, operand) = Operand::parse(string)?;
-        // Parse the semicolon from the string.
-        let (string, _) = tag(";")(string)?;
-
+        // Parse the instruction.
+        let (string, (destination, operand)) = UnaryParser::parse(Self::NAME, string)?;
+        // Return the string and instruction.
         Ok((string, Self { destination, operand }))
     }
 }
 
 impl<M: Memory> fmt::Display for Store<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} {} {};", Self::NAME, self.destination, self.operand)
+        write!(f, "{}", UnaryParser::render(Self::NAME, &self.destination, &self.operand))
     }
 }
 

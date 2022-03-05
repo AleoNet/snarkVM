@@ -14,19 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod function;
-pub use function::*;
+pub(crate) mod binary;
+pub(crate) use binary::*;
 
-pub mod instructions;
-
-pub mod memory;
-pub use memory::*;
-
-pub mod operand;
-pub use operand::*;
-
-pub(crate) mod parsers;
-pub(crate) use parsers::*;
-
-pub mod traits;
-pub use traits::*;
+pub(crate) mod unary;
+pub(crate) use unary::*;
