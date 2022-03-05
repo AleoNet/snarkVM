@@ -24,9 +24,9 @@ dependencies = [
 
 [[package]]
 name = "aleo-std"
-version = "0.1.10"
+version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7fcf966a26ae69ab7809aa0e96abcd6bb4ea9ca322d0977eb553e338fb3f637f"
+checksum = "cedebcd5cef12e2739faee8e07ccde1c4a0c7d23371f4007799c49ba2a7eb278"
 dependencies = [
  "aleo-std-cpu",
  "aleo-std-profiler",
