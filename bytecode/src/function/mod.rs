@@ -19,7 +19,7 @@ pub use global::*;
 
 pub mod local;
 
-use crate::{Immediate, Instruction, Memory, Register};
+use crate::{instructions::Instruction, Immediate, Memory, Register};
 use snarkvm_circuits::Environment;
 
 use core::hash;

@@ -14,15 +14,86 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::*;
+use crate::{instructions::Instruction, Immediate, Memory, Opcode, Operand, Register};
+use snarkvm_circuits::{Parser, ParserResult};
 
-impl<M: Memory> Instruction<M> {
-    /// Adds `first` with `second`, storing the outcome in `register`.
-    pub(super) fn add(register: &Register<M::Environment>, first: &Operand<M>, second: &Operand<M>) {
-        match (first.to_value(), second.to_value()) {
-            (Immediate::BaseField(a), Immediate::BaseField(b)) => M::store(register, Immediate::BaseField(a + b)),
-            (Immediate::Group(a), Immediate::Group(b)) => M::store(register, Immediate::Group(a + b)),
-            _ => M::halt("Invalid 'add' instruction"),
+use core::fmt;
+
+/// Adds `first` with `second`, storing the outcome in `destination`.
+pub struct Add<M: Memory> {
+    destination: Register<M::Environment>,
+    first: Operand<M>,
+    second: Operand<M>,
+}
+
+impl<M: Memory> Add<M> {
+    /// Initializes a new instance of the 'add' operation.
+    pub fn new(destination: Register<M::Environment>, first: Operand<M>, second: Operand<M>) -> Self {
+        Self { destination, first, second }
+    }
+}
+
+impl<M: Memory> Opcode for Add<M> {
+    const NAME: &'static str = "add";
+
+    /// Evaluates the operation in-place.
+    fn evaluate(&self) {
+        match (self.first.to_value(), self.second.to_value()) {
+            (Immediate::BaseField(a), Immediate::BaseField(b)) => {
+                M::store(&self.destination, Immediate::BaseField(a + b))
+            }
+            (Immediate::Group(a), Immediate::Group(b)) => M::store(&self.destination, Immediate::Group(a + b)),
+            _ => M::halt(format!("Invalid {} instruction", Self::NAME)),
         }
     }
 }
+
+impl<M: Memory> Into<Instruction<M>> for Add<M> {
+    /// Converts the operation into an instruction.
+    fn into(self) -> Instruction<M> {
+        Instruction::Add(self)
+    }
+}
+
+// impl<M: Memory> Parser for Add<M> {
+//     type Environment = M::Environment;
+//     type Output = Add<M>;
+//
+//     /// Parses a string into an instruction.
+//     #[inline]
+//     fn parse(string: &str) -> ParserResult<Self::Output> {
+//         let (string, ) = alt((
+//             // Note that order of the individual parsers matters.
+//             map(tag("add"), |_| Opcode::Add),
+//             map(tag("store"), |_| Opcode::Store),
+//             map(tag("sub"), |_| Opcode::Sub),
+//         ))(string)?;
+//
+//         // alt((
+//         //     map(|string: &str| -> ParserResult<Self::Output> {
+//         //         // Parse the 'let ' from the string.
+//         //         let (string, _) = tag("let ")(string)?;
+//         //         // Parse the register from the string.
+//         //         let (string, register) = Register::parse(string)?;
+//         //         // Parse the ' = ' from the string.
+//         //         let (string, _) = tag(" = ")(string)?;
+//         //         // Parse the first operand from the string.
+//         //         let (string, first) = Operand::parse(string)?;
+//         //         // Parse the ' + ' from the string.
+//         //         let (string, _) = tag(" + ")(string)?;
+//         //         // Parse the second operand from the string.
+//         //         let (string, second) = Operand::parse(string)?;
+//         //         // Parse the semicolon from the string.
+//         //         let (string, _) = tag(";")(string)?;
+//         //
+//         //         Ok((string, Self::Add(register, first, second)))
+//         //     }, |instruction| instruction),
+//         // ))(string)
+//     }
+// }
+//
+// impl<M: Memory> fmt::Display for Add<M> {
+//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//
+//     }
+// }

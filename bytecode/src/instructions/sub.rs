@@ -14,15 +14,25 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::*;
+use crate::{Immediate, Memory, Opcode, Operand, Register};
 
-impl<M: Memory> Instruction<M> {
-    /// Subtracts `first` from `second`, storing the outcome in `register`.
-    pub(super) fn sub(register: &Register<M::Environment>, first: &Operand<M>, second: &Operand<M>) {
-        match (first.to_value(), second.to_value()) {
-            (Immediate::BaseField(a), Immediate::BaseField(b)) => M::store(register, Immediate::BaseField(a - b)),
-            (Immediate::Group(a), Immediate::Group(b)) => M::store(register, Immediate::Group(a - b)),
-            _ => M::halt("Invalid 'sub' instruction"),
+/// Subtracts `first` from `second`, storing the outcome in `destination`.
+pub struct Sub<M: Memory> {
+    destination: Register<M::Environment>,
+    first: Operand<M>,
+    second: Operand<M>,
+}
+
+impl<M: Memory> Opcode for Sub<M> {
+    const NAME: &'static str = "sub";
+
+    fn evaluate(&self) {
+        match (self.first.to_value(), self.second.to_value()) {
+            (Immediate::BaseField(a), Immediate::BaseField(b)) => {
+                M::store(&self.destination, Immediate::BaseField(a - b))
+            }
+            (Immediate::Group(a), Immediate::Group(b)) => M::store(&self.destination, Immediate::Group(a - b)),
+            _ => M::halt(format!("Invalid {} instruction", Self::NAME)),
         }
     }
 }

@@ -14,11 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod add;
-mod store;
-mod sub;
+pub mod add;
+pub use add::*;
 
-use crate::{Immediate, Memory, Operand, Register};
+pub mod store;
+pub use store::*;
+
+pub mod sub;
+pub use sub::*;
+
+use crate::{Immediate, Memory, Opcode, Operand, Register};
 use snarkvm_circuits::{Parser, ParserResult};
 
 use core::fmt;
@@ -31,12 +36,12 @@ use nom::{
 };
 
 pub enum Instruction<M: Memory> {
-    /// Adds `first` with `second`, storing the outcome in `register`.
-    Add(Register<M::Environment>, Operand<M>, Operand<M>),
-    /// Stores `operand` into `register`, if `register` is not already set.
-    Store(Register<M::Environment>, Operand<M>),
-    /// Subtracts `first` from `second`, storing the outcome in `register`.
-    Sub(Register<M::Environment>, Operand<M>, Operand<M>),
+    /// Adds `first` with `second`, storing the outcome in `destination`.
+    Add(Add<M>),
+    /// Stores `operand` into `register`, if `destination` is not already set.
+    Store(Store<M>),
+    /// Subtracts `first` from `second`, storing the outcome in `destination`.
+    Sub(Sub<M>),
 }
 
 impl<M: Memory> Instruction<M> {
@@ -52,9 +57,9 @@ impl<M: Memory> Instruction<M> {
     /// Evaluates the instruction.
     pub fn evaluate(&self) {
         match self {
-            Self::Add(register, first, second) => Self::add(register, first, second),
-            Self::Store(register, operand) => Self::store(register, operand),
-            Self::Sub(register, first, second) => Self::sub(register, first, second),
+            Self::Add(instruction) => instruction.evaluate(),
+            Self::Store(instruction) => instruction.evaluate(),
+            Self::Sub(instruction) => instruction.evaluate(),
         }
     }
 }
@@ -66,35 +71,42 @@ impl<M: Memory> Instruction<M> {
 //     /// Parses a string into an instruction.
 //     #[inline]
 //     fn parse(string: &str) -> ParserResult<Self::Output> {
-//         alt((
-//             map(|string: &str| -> ParserResult<Self::Output> {
-//                 // Parse the 'let ' from the string.
-//                 let (string, _) = tag("let ")(string)?;
-//                 // Parse the register from the string.
-//                 let (string, register) = Register::parse(string)?;
-//                 // Parse the ' = ' from the string.
-//                 let (string, _) = tag(" = ")(string)?;
-//                 // Parse the first operand from the string.
-//                 let (string, first) = Operand::parse(string)?;
-//                 // Parse the ' + ' from the string.
-//                 let (string, _) = tag(" + ")(string)?;
-//                 // Parse the second operand from the string.
-//                 let (string, second) = Operand::parse(string)?;
-//                 // Parse the semicolon from the string.
-//                 let (string, _) = tag(";")(string)?;
+//         let (string, ) = alt((
+//             // Note that order of the individual parsers matters.
+//             map(tag("add"), |_| Opcode::Add),
+//             map(tag("store"), |_| Opcode::Store),
+//             map(tag("sub"), |_| Opcode::Sub),
+//         ))(string)?;
 //
-//                 Ok((string, Self::Add(register, first, second)))
-//             }, |instruction| instruction),
-//         ))(string)
+//         // alt((
+//         //     map(|string: &str| -> ParserResult<Self::Output> {
+//         //         // Parse the 'let ' from the string.
+//         //         let (string, _) = tag("let ")(string)?;
+//         //         // Parse the register from the string.
+//         //         let (string, register) = Register::parse(string)?;
+//         //         // Parse the ' = ' from the string.
+//         //         let (string, _) = tag(" = ")(string)?;
+//         //         // Parse the first operand from the string.
+//         //         let (string, first) = Operand::parse(string)?;
+//         //         // Parse the ' + ' from the string.
+//         //         let (string, _) = tag(" + ")(string)?;
+//         //         // Parse the second operand from the string.
+//         //         let (string, second) = Operand::parse(string)?;
+//         //         // Parse the semicolon from the string.
+//         //         let (string, _) = tag(";")(string)?;
+//         //
+//         //         Ok((string, Self::Add(register, first, second)))
+//         //     }, |instruction| instruction),
+//         // ))(string)
 //     }
 // }
-
-impl<M: Memory> fmt::Display for Instruction<M> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Self::Add(register, first, second) => write!(f, "let {} = {} + {};", register, first, second),
-            Self::Store(register, operand) => write!(f, "let {} = {};", register, operand),
-            Self::Sub(register, first, second) => write!(f, "let {} = {} - {};", register, first, second),
-        }
-    }
-}
+//
+// impl<M: Memory> fmt::Display for Instruction<M> {
+//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//         match self {
+//             Self::Add(instruction) => instruction.fmt(f),
+//             Self::Store(instruction) => instruction.fmt(f),
+//             Self::Sub(instruction) => instruction.fmt(f),
+//         }
+//     }
+// }

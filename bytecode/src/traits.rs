@@ -14,18 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Immediate, Memory, Opcode, Operand, Register};
+use snarkvm_circuits::Parser;
 
-/// Stores `operand` into `register`, if `destination` is not already set.
-pub struct Store<M: Memory> {
-    destination: Register<M::Environment>,
-    operand: Operand<M>,
-}
+pub trait Opcode {
+    const NAME: &'static str;
 
-impl<M: Memory> Opcode for Store<M> {
-    const NAME: &'static str = "store";
-
-    fn evaluate(&self) {
-        M::store(&self.destination, self.operand.to_value())
-    }
+    /// Evaluates the operation in-place.
+    fn evaluate(&self);
 }

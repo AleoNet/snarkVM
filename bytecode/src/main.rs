@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_bytecode::{Function, Global, Immediate, Instruction, Operand};
+use snarkvm_bytecode::{instructions::Add, Function, Global, Immediate, Operand};
 use snarkvm_circuits::{traits::*, BaseField, Circuit};
 
 pub struct HelloWorld;
@@ -33,7 +33,7 @@ impl HelloWorld {
             let first = Operand::Register(pair[0]);
             let second = Operand::Register(pair[1]);
             let output = F::new_output();
-            F::push_instruction(Instruction::Add(output, first, second));
+            F::push_instruction(Add::new(output, first, second).into());
         }
 
         F::evaluate()

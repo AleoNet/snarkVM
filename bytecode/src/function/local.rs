@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Immediate, Instruction, Memory, Register};
+use crate::{instructions::Instruction, Immediate, Memory, Register};
 
 pub(super) struct Local<M: Memory> {
     inputs: Vec<Register<M::Environment>>,

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{function::local::Local, Function, Immediate, Instruction, Memory, Register, Stack};
+use crate::{function::local::Local, instructions::Instruction, Function, Immediate, Memory, Register, Stack};
 
 use core::cell::RefCell;
 use once_cell::unsync::Lazy;
