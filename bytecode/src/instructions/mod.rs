@@ -23,7 +23,7 @@ pub use store::*;
 pub mod sub;
 pub use sub::*;
 
-use crate::{Memory, Opcode};
+use crate::{Memory, Operation};
 use snarkvm_circuits::{Parser, ParserResult};
 
 use core::fmt;

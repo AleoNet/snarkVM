@@ -17,10 +17,10 @@
 use crate::{instructions::Instruction, Memory};
 use snarkvm_circuits::Parser;
 
-pub trait Opcode: Parser + Into<Instruction<Self::Memory>> {
+pub trait Operation: Parser + Into<Instruction<Self::Memory>> {
     type Memory: Memory;
 
-    const NAME: &'static str;
+    const OPCODE: &'static str;
 
     /// Evaluates the instruction in-place.
     fn evaluate(&self);

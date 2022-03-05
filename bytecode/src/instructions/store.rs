@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{instructions::Instruction, Memory, Opcode, Operand, Register, UnaryParser};
+use crate::{instructions::Instruction, Memory, Operand, Operation, Register, UnaryParser};
 use snarkvm_circuits::{Parser, ParserResult};
 
 use core::fmt;
@@ -26,18 +26,18 @@ pub struct Store<M: Memory> {
 }
 
 impl<M: Memory> Store<M> {
-    /// Initializes a new instance of the 'store' instruction.
+    /// Initializes a new instance of the 'store' operation.
     pub fn new(destination: Register<M::Environment>, operand: Operand<M>) -> Self {
         Self { destination, operand }
     }
 }
 
-impl<M: Memory> Opcode for Store<M> {
+impl<M: Memory> Operation for Store<M> {
     type Memory = M;
 
-    const NAME: &'static str = "store";
+    const OPCODE: &'static str = "store";
 
-    /// Evaluates the instruction in-place.
+    /// Evaluates the operation in-place.
     fn evaluate(&self) {
         M::store(&self.destination, self.operand.to_value())
     }
@@ -47,11 +47,11 @@ impl<M: Memory> Parser for Store<M> {
     type Environment = M::Environment;
     type Output = Store<M>;
 
-    /// Parses a string into an 'store' instruction.
+    /// Parses a string into an 'store' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self::Output> {
         // Parse the instruction.
-        let (string, (destination, operand)) = UnaryParser::parse(Self::NAME, string)?;
+        let (string, (destination, operand)) = UnaryParser::parse(Self::OPCODE, string)?;
         // Return the string and instruction.
         Ok((string, Self { destination, operand }))
     }
@@ -59,7 +59,7 @@ impl<M: Memory> Parser for Store<M> {
 
 impl<M: Memory> fmt::Display for Store<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", UnaryParser::render(Self::NAME, &self.destination, &self.operand))
+        write!(f, "{}", UnaryParser::render(Self::OPCODE, &self.destination, &self.operand))
     }
 }
 

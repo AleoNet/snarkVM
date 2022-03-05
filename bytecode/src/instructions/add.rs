@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{instructions::Instruction, BinaryParser, Immediate, Memory, Opcode, Operand, Register};
+use crate::{instructions::Instruction, BinaryParser, Immediate, Memory, Operand, Operation, Register};
 use snarkvm_circuits::{Parser, ParserResult};
 
 use core::fmt;
@@ -27,25 +27,25 @@ pub struct Add<M: Memory> {
 }
 
 impl<M: Memory> Add<M> {
-    /// Initializes a new instance of the 'add' instruction.
+    /// Initializes a new instance of the 'add' operation.
     pub fn new(destination: Register<M::Environment>, first: Operand<M>, second: Operand<M>) -> Self {
         Self { destination, first, second }
     }
 }
 
-impl<M: Memory> Opcode for Add<M> {
+impl<M: Memory> Operation for Add<M> {
     type Memory = M;
 
-    const NAME: &'static str = "add";
+    const OPCODE: &'static str = "add";
 
-    /// Evaluates the instruction in-place.
+    /// Evaluates the operation in-place.
     fn evaluate(&self) {
         match (self.first.to_value(), self.second.to_value()) {
             (Immediate::BaseField(a), Immediate::BaseField(b)) => {
                 M::store(&self.destination, Immediate::BaseField(a + b))
             }
             (Immediate::Group(a), Immediate::Group(b)) => M::store(&self.destination, Immediate::Group(a + b)),
-            _ => M::halt(format!("Invalid {} instruction", Self::NAME)),
+            _ => M::halt(format!("Invalid {} instruction", Self::OPCODE)),
         }
     }
 }
@@ -54,11 +54,11 @@ impl<M: Memory> Parser for Add<M> {
     type Environment = M::Environment;
     type Output = Add<M>;
 
-    /// Parses a string into an 'add' instruction.
+    /// Parses a string into an 'add' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self::Output> {
         // Parse the instruction.
-        let (string, (destination, first, second)) = BinaryParser::parse(Self::NAME, string)?;
+        let (string, (destination, first, second)) = BinaryParser::parse(Self::OPCODE, string)?;
         // Return the string and instruction.
         Ok((string, Self { destination, first, second }))
     }
@@ -66,7 +66,7 @@ impl<M: Memory> Parser for Add<M> {
 
 impl<M: Memory> fmt::Display for Add<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", BinaryParser::render(Self::NAME, &self.destination, &self.first, &self.second))
+        write!(f, "{}", BinaryParser::render(Self::OPCODE, &self.destination, &self.first, &self.second))
     }
 }
 
