@@ -23,17 +23,11 @@ pub use store::*;
 pub mod sub;
 pub use sub::*;
 
-use crate::{Immediate, Memory, Opcode, Operand, Register};
+use crate::{Memory, Opcode};
 use snarkvm_circuits::{Parser, ParserResult};
 
 use core::fmt;
-use nom::{
-    branch::alt,
-    bytes::complete::tag,
-    character::complete::one_of,
-    combinator::{map, map_res, recognize},
-    multi::many1,
-};
+use nom::{branch::alt, combinator::map};
 
 pub enum Instruction<M: Memory> {
     /// Adds `first` with `second`, storing the outcome in `destination`.
@@ -64,49 +58,28 @@ impl<M: Memory> Instruction<M> {
     }
 }
 
-// impl<M: Memory> Parser for Instruction<M> {
-//     type Environment = M::Environment;
-//     type Output = Instruction<M>;
-//
-//     /// Parses a string into an instruction.
-//     #[inline]
-//     fn parse(string: &str) -> ParserResult<Self::Output> {
-//         let (string, ) = alt((
-//             // Note that order of the individual parsers matters.
-//             map(tag("add"), |_| Opcode::Add),
-//             map(tag("store"), |_| Opcode::Store),
-//             map(tag("sub"), |_| Opcode::Sub),
-//         ))(string)?;
-//
-//         // alt((
-//         //     map(|string: &str| -> ParserResult<Self::Output> {
-//         //         // Parse the 'let ' from the string.
-//         //         let (string, _) = tag("let ")(string)?;
-//         //         // Parse the register from the string.
-//         //         let (string, register) = Register::parse(string)?;
-//         //         // Parse the ' = ' from the string.
-//         //         let (string, _) = tag(" = ")(string)?;
-//         //         // Parse the first operand from the string.
-//         //         let (string, first) = Operand::parse(string)?;
-//         //         // Parse the ' + ' from the string.
-//         //         let (string, _) = tag(" + ")(string)?;
-//         //         // Parse the second operand from the string.
-//         //         let (string, second) = Operand::parse(string)?;
-//         //         // Parse the semicolon from the string.
-//         //         let (string, _) = tag(";")(string)?;
-//         //
-//         //         Ok((string, Self::Add(register, first, second)))
-//         //     }, |instruction| instruction),
-//         // ))(string)
-//     }
-// }
-//
-// impl<M: Memory> fmt::Display for Instruction<M> {
-//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//         match self {
-//             Self::Add(instruction) => instruction.fmt(f),
-//             Self::Store(instruction) => instruction.fmt(f),
-//             Self::Sub(instruction) => instruction.fmt(f),
-//         }
-//     }
-// }
+impl<M: Memory> Parser for Instruction<M> {
+    type Environment = M::Environment;
+    type Output = Instruction<M>;
+
+    /// Parses a string into an instruction.
+    #[inline]
+    fn parse(string: &str) -> ParserResult<Self::Output> {
+        alt((
+            // Note that order of the individual parsers matters.
+            map(Add::parse, |instruction| Self::Add(instruction)),
+            map(Store::parse, |instruction| Self::Store(instruction)),
+            map(Sub::parse, |instruction| Self::Sub(instruction)),
+        ))(string)
+    }
+}
+
+impl<M: Memory> fmt::Display for Instruction<M> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Add(instruction) => instruction.fmt(f),
+            Self::Store(instruction) => instruction.fmt(f),
+            Self::Sub(instruction) => instruction.fmt(f),
+        }
+    }
+}

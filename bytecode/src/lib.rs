@@ -25,8 +25,5 @@ pub use memory::*;
 pub mod operand;
 pub use operand::*;
 
-// pub mod parsers;
-// pub use parsers::*;
-
 pub mod traits;
 pub use traits::*;

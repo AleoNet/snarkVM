@@ -14,11 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::{instructions::Instruction, Memory};
 use snarkvm_circuits::Parser;
 
-pub trait Opcode {
+pub trait Opcode: Parser + Into<Instruction<Self::Memory>> {
+    type Memory: Memory;
+
     const NAME: &'static str;
 
-    /// Evaluates the operation in-place.
+    /// Evaluates the instruction in-place.
     fn evaluate(&self);
 }
