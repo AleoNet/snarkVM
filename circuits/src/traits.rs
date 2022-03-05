@@ -67,24 +67,24 @@ pub trait BooleanTrait:
 
 /// Representation of a base field.
 pub trait BaseFieldTrait:
-    Add
+    Add<Output = Self>
     + AddAssign
     + Clone
     + Debug
-    + Div
+    + Div<Output = Self>
     + DivAssign
-    + Double
+    + Double<Output = Self>
     + Eject
     + Equal
     + FromBits
     + Inv
-    + Mul
+    + Mul<Output = Self>
     + MulAssign
-    + Neg
+    + Neg<Output = Self>
     + One
     + Parser<Output = Self>
-    + Square
-    + Sub
+    + Square<Output = Self>
+    + Sub<Output = Self>
     + SubAssign
     + Ternary
     + ToBits
