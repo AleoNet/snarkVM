@@ -79,6 +79,7 @@ impl<M: Memory> fmt::Display for Add<M> {
     }
 }
 
+#[allow(clippy::from_over_into)]
 impl<M: Memory> Into<Instruction<M>> for Add<M> {
     /// Converts the operation into an instruction.
     fn into(self) -> Instruction<M> {

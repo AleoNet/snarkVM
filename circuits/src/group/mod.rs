@@ -140,7 +140,7 @@ impl<E: Environment> Parser for Affine<E> {
         // Parse the digits from the string.
         let (string, primitive) = recognize(many1(terminated(one_of("0123456789"), many0(char('_')))))(string)?;
         // Parse the x-coordinate from the string.
-        let (string, x_coordinate) = map_res(tag("group"), |_| primitive.replace("_", "").parse())(string)?;
+        let (string, x_coordinate) = map_res(tag("group"), |_| primitive.replace('_', "").parse())(string)?;
         // Parse the close parenthesis from the string.
         let (string, _) = tag(")")(string)?;
 

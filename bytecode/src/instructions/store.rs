@@ -70,6 +70,7 @@ impl<M: Memory> fmt::Display for Store<M> {
     }
 }
 
+#[allow(clippy::from_over_into)]
 impl<M: Memory> Into<Instruction<M>> for Store<M> {
     /// Converts the operation into an instruction.
     fn into(self) -> Instruction<M> {
