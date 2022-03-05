@@ -75,7 +75,7 @@ default-features = false
 optional = true
 
 [dependencies.once_cell]
-version = "1.8.0"
+version = "1.10.0"
 
 [dependencies.rayon]
 version = "1"
