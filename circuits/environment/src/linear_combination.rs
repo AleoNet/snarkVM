@@ -531,7 +531,7 @@ mod tests {
             let candidate = one_private + one_public + LinearCombination::one() - one_private;
             assert_eq!(expected, format!("{:?}", candidate));
 
-            let candidate = one_private - (one_private + LinearCombination::one() + one_public);
+            let candidate = one_private - one_private + LinearCombination::one() + one_public;
             assert_eq!(expected, format!("{:?}", candidate));
 
             let candidate = one_public + LinearCombination::one() + one_private - one_private;

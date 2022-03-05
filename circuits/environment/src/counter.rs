@@ -17,7 +17,7 @@
 use crate::*;
 
 #[derive(Debug, Default)]
-pub(super) struct Transcript {
+pub(super) struct Counter {
     scope: Scope,
     constants: usize,
     public: usize,
@@ -27,7 +27,7 @@ pub(super) struct Transcript {
     parents: Vec<(Scope, usize, usize, usize, usize, usize)>,
 }
 
-impl Transcript {
+impl Counter {
     pub(super) fn push(&mut self, name: &str) -> Result<(), String> {
         match name.contains('.') {
             true => Err("Scope names cannot contain periods (\".\")".to_string()),

@@ -27,7 +27,7 @@ pub(super) struct R1CS<F: PrimeField> {
     public: Vec<Variable<F>>,
     private: Vec<Variable<F>>,
     constraints: Vec<(Scope, (LinearCombination<F>, LinearCombination<F>, LinearCombination<F>))>,
-    counter: Transcript,
+    counter: Counter,
     gates: usize,
 }
 

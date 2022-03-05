@@ -14,57 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::*;
+use crate::{LinearCombination, Mode, Variable};
 use snarkvm_curves::{AffineCurve, TwistedEdwardsParameters};
 use snarkvm_fields::traits::*;
 
 use core::{fmt, hash};
-use nom::{branch::alt, bytes::complete::tag, combinator::map, error::VerboseError, IResult};
-
-pub type ParserResult<'a, O> = IResult<&'a str, O, VerboseError<&'a str>>;
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum Mode {
-    Constant,
-    Public,
-    Private,
-}
-
-impl Mode {
-    /// Returns `true` if the mode is a constant.
-    pub fn is_constant(&self) -> bool {
-        matches!(self, Self::Constant)
-    }
-
-    /// Returns `true` if the mode is public.
-    pub fn is_public(&self) -> bool {
-        matches!(self, Self::Public)
-    }
-
-    /// Returns `true` if the mode is private.
-    pub fn is_private(&self) -> bool {
-        matches!(self, Self::Private)
-    }
-
-    /// Parses the string for the mode.
-    pub fn parse(string: &str) -> ParserResult<Self> {
-        alt((
-            map(tag("Constant"), |_| Self::Constant),
-            map(tag("Public"), |_| Self::Public),
-            map(tag("Private"), |_| Self::Private),
-        ))(string)
-    }
-}
-
-impl fmt::Display for Mode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        match self {
-            Self::Constant => write!(f, "Constant"),
-            Self::Public => write!(f, "Public"),
-            Self::Private => write!(f, "Private"),
-        }
-    }
-}
 
 pub trait Environment: Copy + Clone + fmt::Display + Eq + PartialEq + hash::Hash {
     type Affine: AffineCurve<BaseField = Self::BaseField>;

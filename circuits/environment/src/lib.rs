@@ -31,6 +31,9 @@ pub use environment::*;
 pub mod linear_combination;
 pub use linear_combination::*;
 
+pub mod mode;
+pub use mode::*;
+
 mod r1cs;
 use r1cs::*;
 
@@ -41,12 +44,5 @@ pub use variable::*;
 macro_rules! scoped {
     ($scope_name:expr, $block:block) => {
         E::scoped($scope_name, || $block)
-    };
-}
-
-#[macro_export]
-macro_rules! push_scope {
-    ($scope_name:expr) => {
-        E::push_scope($scope_name)
     };
 }
