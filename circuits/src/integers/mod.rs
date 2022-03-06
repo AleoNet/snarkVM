@@ -49,10 +49,11 @@ use crate::{
     Environment,
     LinearCombination,
     Mode,
+    ParserResult,
 };
-
 use snarkvm_fields::PrimeField;
-use std::{
+
+use core::{
     fmt,
     marker::PhantomData,
     ops::{
@@ -78,6 +79,28 @@ use std::{
         SubAssign,
     },
 };
+use nom::{
+    bytes::complete::tag,
+    character::complete::{char, one_of},
+    combinator::{map, map_res, opt, recognize},
+    multi::{many0, many1},
+    sequence::{pair, terminated},
+};
+
+// TODO (@pranav) Is there a better place for this?
+/// Sealed trait pattern to prevent abuse of Magnitude.
+mod private {
+    use crate::helpers::integers::IntegerType;
+    use num_traits::{ToPrimitive, Unsigned};
+
+    /// Trait for integers that can be used as an unsigned magnitude.
+    /// `Magnitude`s are either used to represent an integer exponent
+    /// or the right operand in integer shift operations.
+    pub trait Magnitude: IntegerType + ToPrimitive + Unsigned {}
+    impl Magnitude for u8 {}
+    impl Magnitude for u16 {}
+    impl Magnitude for u32 {}
+}
 
 pub type I8<E> = Integer<E, i8>;
 pub type I16<E> = Integer<E, i16>;
@@ -112,21 +135,6 @@ impl<E: Environment, I: IntegerType> Inject for Integer<E, I> {
         }
         Self::from_bits_le(mode, &bits_le)
     }
-}
-
-// TODO (@pranav) Is there a better place for this?
-/// Sealed trait pattern to prevent abuse of Magnitude.
-mod private {
-    use crate::helpers::integers::IntegerType;
-    use num_traits::{ToPrimitive, Unsigned};
-
-    /// Trait for integers that can be used as an unsigned magnitude.
-    /// `Magnitude`s are either used to represent an integer exponent
-    /// or the right operand in integer shift operations.
-    pub trait Magnitude: IntegerType + ToPrimitive + Unsigned {}
-    impl Magnitude for u8 {}
-    impl Magnitude for u16 {}
-    impl Magnitude for u32 {}
 }
 
 // TODO (@pranav) Document
@@ -182,9 +190,40 @@ impl<E: Environment, I: IntegerType> Eject for Integer<E, I> {
     }
 }
 
+impl<E: Environment, I: IntegerType> Parser for Integer<E, I> {
+    type Environment = E;
+    type Output = Integer<E, I>;
+
+    /// Parses a string into an integer circuit.
+    #[inline]
+    fn parse(string: &str) -> ParserResult<Self::Output> {
+        // Parse the negative sign '-' from the string.
+        let (string, negation) = map(opt(tag("-")), |neg: Option<&str>| neg.unwrap_or_default().to_string())(string)?;
+        // Parse the digits from the string.
+        let (string, primitive) = recognize(many1(terminated(one_of("0123456789"), many0(char('_')))))(string)?;
+        // Combine the sign and primitive.
+        let primitive = negation + primitive;
+        // Parse the value from the string.
+        let (string, value) = map_res(tag(I::type_name()), |_| primitive.replace('_', "").parse())(string)?;
+        // Parse the mode from the string.
+        let (string, mode) = opt(pair(tag("."), Mode::parse))(string)?;
+
+        match mode {
+            Some((_, mode)) => Ok((string, Self::new(mode, value))),
+            None => Ok((string, Self::new(Mode::Constant, value))),
+        }
+    }
+}
+
 impl<E: Environment, I: IntegerType> fmt::Debug for Integer<E, I> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self.eject_value())
+    }
+}
+
+impl<E: Environment, I: IntegerType> fmt::Display for Integer<E, I> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}{}.{}", self.eject_value(), I::type_name(), self.eject_mode())
     }
 }
 
@@ -229,6 +268,49 @@ mod tests {
         assert_eq!(I::MAX, Integer::<Circuit, I>::new(mode, I::MAX).eject_value());
     }
 
+    fn check_parser<I: IntegerType>() {
+        for mode in [Mode::Constant, Mode::Public, Mode::Private] {
+            for _ in 0..ITERATIONS {
+                let value: I = UniformRand::rand(&mut thread_rng());
+                let expected = Integer::<Circuit, I>::new(mode, value);
+
+                let (_, candidate) = Integer::<Circuit, I>::parse(&format!("{expected}")).unwrap();
+                assert_eq!(mode, candidate.eject_mode());
+                assert_eq!(value, candidate.eject_value());
+                assert_eq!(expected.eject_mode(), candidate.eject_mode());
+                assert_eq!(expected.eject_value(), candidate.eject_value());
+            }
+        }
+    }
+
+    fn check_debug<I: IntegerType>() {
+        // Constant
+        let candidate = Integer::<Circuit, I>::new(Mode::Constant, I::one() + I::one());
+        assert_eq!("2", format!("{:?}", candidate));
+
+        // Public
+        let candidate = Integer::<Circuit, I>::new(Mode::Public, I::one() + I::one());
+        assert_eq!("2", format!("{:?}", candidate));
+
+        // Private
+        let candidate = Integer::<Circuit, I>::new(Mode::Private, I::one() + I::one());
+        assert_eq!("2", format!("{:?}", candidate));
+    }
+
+    fn check_display<I: IntegerType>() {
+        // Constant
+        let candidate = Integer::<Circuit, I>::new(Mode::Constant, I::one() + I::one());
+        assert_eq!(format!("2{}.constant", I::type_name()), format!("{}", candidate));
+
+        // Public
+        let candidate = Integer::<Circuit, I>::new(Mode::Public, I::one() + I::one());
+        assert_eq!(format!("2{}.public", I::type_name()), format!("{}", candidate));
+
+        // Private
+        let candidate = Integer::<Circuit, I>::new(Mode::Private, I::one() + I::one());
+        assert_eq!(format!("2{}.private", I::type_name()), format!("{}", candidate));
+    }
+
     fn run_test<I: IntegerType>() {
         for _ in 0..ITERATIONS {
             check_new::<I>(Mode::Constant);
@@ -239,6 +321,10 @@ mod tests {
         check_min_max::<I>(Mode::Constant);
         check_min_max::<I>(Mode::Public);
         check_min_max::<I>(Mode::Private);
+
+        check_parser::<I>();
+        check_debug::<I>();
+        check_display::<I>();
     }
 
     #[test]

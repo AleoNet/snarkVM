@@ -77,7 +77,7 @@ mod tests {
     use rand::thread_rng;
     use std::{ops::RangeInclusive, panic::RefUnwindSafe};
 
-    const ITERATIONS: usize = 64;
+    const ITERATIONS: usize = 32;
 
     #[rustfmt::skip]
     fn check_shl<I: CheckedShl + IntegerType + RefUnwindSafe, M: private::Magnitude + RefUnwindSafe>(

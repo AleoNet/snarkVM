@@ -39,12 +39,10 @@ mod tests {
             assert_eq!(I::one(), Integer::<Circuit, I>::one().eject_value());
             assert_circuit!(I::BITS, 0, 0, 0);
         });
-
-        let candidate = Integer::<Circuit, I>::one();
         // Should equal 1.
-        assert!(candidate.is_one().eject_value());
+        assert!(Integer::<Circuit, I>::one().is_one().eject_value());
         // Should not equal 0.
-        assert!(!candidate.is_zero().eject_value());
+        assert!(!Integer::<Circuit, I>::one().is_zero().eject_value());
     }
 
     #[test]
