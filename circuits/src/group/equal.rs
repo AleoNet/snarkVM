@@ -61,8 +61,8 @@ mod tests {
             let a: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
             let b: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
 
-            let a = Affine::<Circuit>::new(Mode::Constant, a.to_x_coordinate(), Some(a.to_y_coordinate()));
-            let b = Affine::<Circuit>::new(Mode::Constant, b.to_x_coordinate(), Some(b.to_y_coordinate()));
+            let a = Affine::<Circuit>::new(Mode::Constant, (a.to_x_coordinate(), Some(a.to_y_coordinate())));
+            let b = Affine::<Circuit>::new(Mode::Constant, (b.to_x_coordinate(), Some(b.to_y_coordinate())));
 
             Circuit::scoped(&format!("Constant Equals {}", i), || {
                 let equals = a.is_eq(&b);
@@ -83,8 +83,8 @@ mod tests {
             let a: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
             let b: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
 
-            let a = Affine::<Circuit>::new(Mode::Constant, a.to_x_coordinate(), Some(a.to_y_coordinate()));
-            let b = Affine::<Circuit>::new(Mode::Public, b.to_x_coordinate(), Some(b.to_y_coordinate()));
+            let a = Affine::<Circuit>::new(Mode::Constant, (a.to_x_coordinate(), Some(a.to_y_coordinate())));
+            let b = Affine::<Circuit>::new(Mode::Public, (b.to_x_coordinate(), Some(b.to_y_coordinate())));
 
             Circuit::scoped(&format!("Constant and Public Equals {}", i), || {
                 let equals = a.is_eq(&b);
@@ -105,8 +105,8 @@ mod tests {
             let a: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
             let b: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
 
-            let a = Affine::<Circuit>::new(Mode::Public, a.to_x_coordinate(), Some(a.to_y_coordinate()));
-            let b = Affine::<Circuit>::new(Mode::Constant, b.to_x_coordinate(), Some(b.to_y_coordinate()));
+            let a = Affine::<Circuit>::new(Mode::Public, (a.to_x_coordinate(), Some(a.to_y_coordinate())));
+            let b = Affine::<Circuit>::new(Mode::Constant, (b.to_x_coordinate(), Some(b.to_y_coordinate())));
 
             Circuit::scoped(&format!("Public and Constant Equals {}", i), || {
                 let equals = a.is_eq(&b);
@@ -127,8 +127,8 @@ mod tests {
             let a: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
             let b: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
 
-            let a = Affine::<Circuit>::new(Mode::Public, a.to_x_coordinate(), Some(a.to_y_coordinate()));
-            let b = Affine::<Circuit>::new(Mode::Public, b.to_x_coordinate(), Some(b.to_y_coordinate()));
+            let a = Affine::<Circuit>::new(Mode::Public, (a.to_x_coordinate(), Some(a.to_y_coordinate())));
+            let b = Affine::<Circuit>::new(Mode::Public, (b.to_x_coordinate(), Some(b.to_y_coordinate())));
 
             Circuit::scoped(&format!("Public Equals {}", i), || {
                 let equals = a.is_eq(&b);
@@ -149,8 +149,8 @@ mod tests {
             let a: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
             let b: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
 
-            let a = Affine::<Circuit>::new(Mode::Private, a.to_x_coordinate(), Some(a.to_y_coordinate()));
-            let b = Affine::<Circuit>::new(Mode::Private, b.to_x_coordinate(), Some(b.to_y_coordinate()));
+            let a = Affine::<Circuit>::new(Mode::Private, (a.to_x_coordinate(), Some(a.to_y_coordinate())));
+            let b = Affine::<Circuit>::new(Mode::Private, (b.to_x_coordinate(), Some(b.to_y_coordinate())));
 
             Circuit::scoped(&format!("Private Equals {}", i), || {
                 let equals = a.is_eq(&b);

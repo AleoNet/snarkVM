@@ -56,14 +56,18 @@ pub struct BaseField<E: Environment>(LinearCombination<E::BaseField>);
 
 impl<E: Environment> BaseFieldTrait for BaseField<E> {}
 
-impl<E: Environment> BaseField<E> {
+impl<E: Environment> Inject for BaseField<E> {
+    type Primitive = E::BaseField;
+
     ///
-    /// Initializes a new instance of a base field from a constant base field value.
+    /// Initializes a new instance of a base field from a primitive base field value.
     ///
-    pub fn new(mode: Mode, value: E::BaseField) -> Self {
+    fn new(mode: Mode, value: Self::Primitive) -> Self {
         Self(E::new_variable(mode, value).into())
     }
+}
 
+impl<E: Environment> BaseField<E> {
     ///
     /// Initializes a new instance of a base field from a boolean.
     ///

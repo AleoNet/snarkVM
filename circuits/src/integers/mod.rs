@@ -97,9 +97,11 @@ pub struct Integer<E: Environment, I: IntegerType> {
     phantom: PhantomData<I>,
 }
 
-impl<E: Environment, I: IntegerType> IntegerTrait<E, I> for Integer<E, I> {
+impl<E: Environment, I: IntegerType> Inject for Integer<E, I> {
+    type Primitive = I;
+
     /// Initializes a new integer.
-    fn new(mode: Mode, value: I) -> Self {
+    fn new(mode: Mode, value: Self::Primitive) -> Self {
         let mut bits_le = Vec::with_capacity(I::BITS);
         let mut value = value.to_le();
         for _ in 0..I::BITS {
@@ -213,28 +215,28 @@ mod tests {
 
     const ITERATIONS: usize = 1000;
 
-    fn check_new<I: IntegerType, IC: IntegerTrait<Circuit, I>>(mode: Mode) {
+    fn check_new<I: IntegerType>(mode: Mode) {
         let expected: I = UniformRand::rand(&mut thread_rng());
-        let candidate = IC::new(mode, expected);
+        let candidate = Integer::<Circuit, I>::new(mode, expected);
         assert_eq!(mode.is_constant(), candidate.is_constant());
         assert_eq!(candidate.eject_value(), expected);
     }
 
-    fn check_min_max<I: IntegerType, IC: IntegerTrait<Circuit, I>>(mode: Mode) {
-        assert_eq!(I::MIN, IC::new(mode, I::MIN).eject_value());
-        assert_eq!(I::MAX, IC::new(mode, I::MAX).eject_value());
+    fn check_min_max<I: IntegerType>(mode: Mode) {
+        assert_eq!(I::MIN, Integer::<Circuit, I>::new(mode, I::MIN).eject_value());
+        assert_eq!(I::MAX, Integer::<Circuit, I>::new(mode, I::MAX).eject_value());
     }
 
     fn run_test<I: IntegerType>() {
         for _ in 0..ITERATIONS {
-            check_new::<I, Integer<Circuit, I>>(Mode::Constant);
-            check_new::<I, Integer<Circuit, I>>(Mode::Public);
-            check_new::<I, Integer<Circuit, I>>(Mode::Private);
+            check_new::<I>(Mode::Constant);
+            check_new::<I>(Mode::Public);
+            check_new::<I>(Mode::Private);
         }
 
-        check_min_max::<I, Integer<Circuit, I>>(Mode::Constant);
-        check_min_max::<I, Integer<Circuit, I>>(Mode::Public);
-        check_min_max::<I, Integer<Circuit, I>>(Mode::Private);
+        check_min_max::<I>(Mode::Constant);
+        check_min_max::<I>(Mode::Public);
+        check_min_max::<I>(Mode::Private);
     }
 
     #[test]

@@ -90,14 +90,17 @@ impl<F: PrimeField> R1CS<F> {
         let (a, b, c) = (a.into(), b.into(), c.into());
 
         // Ensure the constraint is not comprised of constants.
-        if !(a.is_constant() && b.is_constant() && c.is_constant()) {
-            let num_additions = a.num_additions() + b.num_additions() + c.num_additions();
-            let num_gates = 1 + num_additions;
+        match a.is_constant() && b.is_constant() && c.is_constant() {
+            true => println!("Attempted to enforce a constant constraint {}:\n\t({} * {}) != {}", self.counter.scope(), a, b, c),
+            false => {
+                let num_additions = a.num_additions() + b.num_additions() + c.num_additions();
+                let num_gates = 1 + num_additions;
 
-            self.constraints.push((self.counter.scope(), (a, b, c)));
-            self.counter.increment_constraints();
-            self.counter.increment_gates_by(num_gates);
-            self.gates += num_gates;
+                self.constraints.push((self.counter.scope(), (a, b, c)));
+                self.counter.increment_constraints();
+                self.counter.increment_gates_by(num_gates);
+                self.gates += num_gates;
+            }
         }
     }
 

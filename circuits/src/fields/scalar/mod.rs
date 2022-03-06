@@ -45,11 +45,13 @@ use nom::{
 #[derive(Clone)]
 pub struct ScalarField<E: Environment>(Vec<Boolean<E>>);
 
-impl<E: Environment> ScalarField<E> {
+impl<E: Environment> Inject for ScalarField<E> {
+    type Primitive = E::ScalarField;
+
     ///
-    /// Initializes a new instance of a scalar field from a constant scalar field value.
+    /// Initializes a new instance of a scalar field from a primitive scalar field value.
     ///
-    pub fn new(mode: Mode, value: E::ScalarField) -> Self {
+    fn new(mode: Mode, value: Self::Primitive) -> Self {
         let bits = value.to_bits_le().iter().map(|bit| Boolean::new(mode, *bit)).collect::<Vec<_>>();
 
         Self(bits)

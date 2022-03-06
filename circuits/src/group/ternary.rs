@@ -63,85 +63,85 @@ mod tests {
         // false ? Constant : Constant
         let expected = second;
         let condition = Boolean::<Circuit>::new(Mode::Constant, false);
-        let a = Affine::<Circuit>::new(Mode::Constant, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Constant, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Constant, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Constant, (second.to_x_coordinate(), None));
         check_ternary("false ? Constant : Constant", expected, condition, a, b, 0, 0, 0, 0);
 
         // false ? Constant : Public
         let expected = second;
         let condition = Boolean::<Circuit>::new(Mode::Constant, false);
-        let a = Affine::<Circuit>::new(Mode::Constant, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Public, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Constant, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Public, (second.to_x_coordinate(), None));
         check_ternary("false ? Constant : Public", expected, condition, a, b, 0, 0, 0, 0);
 
         // false ? Public : Constant
         let expected = second;
         let condition = Boolean::<Circuit>::new(Mode::Constant, false);
-        let a = Affine::<Circuit>::new(Mode::Public, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Constant, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Public, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Constant, (second.to_x_coordinate(), None));
         check_ternary("false ? Public : Constant", expected, condition, a, b, 0, 0, 0, 0);
 
         // false ? Public : Public
         let expected = second;
         let condition = Boolean::<Circuit>::new(Mode::Constant, false);
-        let a = Affine::<Circuit>::new(Mode::Public, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Public, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Public, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Public, (second.to_x_coordinate(), None));
         check_ternary("false ? Public : Public", expected, condition, a, b, 0, 0, 0, 0);
 
         // false ? Public : Private
         let expected = second;
         let condition = Boolean::<Circuit>::new(Mode::Constant, false);
-        let a = Affine::<Circuit>::new(Mode::Public, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Private, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Public, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Private, (second.to_x_coordinate(), None));
         check_ternary("false ? Public : Private", expected, condition, a, b, 0, 0, 0, 0);
 
         // false ? Private : Private
         let expected = second;
         let condition = Boolean::<Circuit>::new(Mode::Constant, false);
-        let a = Affine::<Circuit>::new(Mode::Private, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Private, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Private, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Private, (second.to_x_coordinate(), None));
         check_ternary("false ? Private : Private", expected, condition, a, b, 0, 0, 0, 0);
 
         // true ? Constant : Constant
         let expected = first;
         let condition = Boolean::<Circuit>::new(Mode::Constant, true);
-        let a = Affine::<Circuit>::new(Mode::Constant, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Constant, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Constant, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Constant, (second.to_x_coordinate(), None));
         check_ternary("true ? Constant : Constant", expected, condition, a, b, 0, 0, 0, 0);
 
         // true ? Constant : Public
         let expected = first;
         let condition = Boolean::<Circuit>::new(Mode::Constant, true);
-        let a = Affine::<Circuit>::new(Mode::Constant, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Public, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Constant, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Public, (second.to_x_coordinate(), None));
         check_ternary("true ? Constant : Public", expected, condition, a, b, 0, 0, 0, 0);
 
         // true ? Public : Constant
         let expected = first;
         let condition = Boolean::<Circuit>::new(Mode::Constant, true);
-        let a = Affine::<Circuit>::new(Mode::Public, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Constant, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Public, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Constant, (second.to_x_coordinate(), None));
         check_ternary("true ? Public : Constant", expected, condition, a, b, 0, 0, 0, 0);
 
         // true ? Public : Public
         let expected = first;
         let condition = Boolean::<Circuit>::new(Mode::Constant, true);
-        let a = Affine::<Circuit>::new(Mode::Public, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Public, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Public, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Public, (second.to_x_coordinate(), None));
         check_ternary("true ? Public : Public", expected, condition, a, b, 0, 0, 0, 0);
 
         // true ? Public : Private
         let expected = first;
         let condition = Boolean::<Circuit>::new(Mode::Constant, true);
-        let a = Affine::<Circuit>::new(Mode::Public, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Private, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Public, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Private, (second.to_x_coordinate(), None));
         check_ternary("true ? Public : Private", expected, condition, a, b, 0, 0, 0, 0);
 
         // true ? Private : Private
         let expected = first;
         let condition = Boolean::<Circuit>::new(Mode::Constant, true);
-        let a = Affine::<Circuit>::new(Mode::Private, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Private, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Private, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Private, (second.to_x_coordinate(), None));
         check_ternary("true ? Private : Private", expected, condition, a, b, 0, 0, 0, 0);
     }
 
@@ -153,15 +153,15 @@ mod tests {
         // false ? Constant : Constant
         let expected = second;
         let condition = Boolean::<Circuit>::new(Mode::Public, false);
-        let a = Affine::<Circuit>::new(Mode::Constant, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Constant, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Constant, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Constant, (second.to_x_coordinate(), None));
         check_ternary("false ? Constant : Constant", expected, condition, a, b, 0, 0, 0, 0);
 
         // true ? Constant : Constant
         let expected = first;
         let condition = Boolean::<Circuit>::new(Mode::Public, true);
-        let a = Affine::<Circuit>::new(Mode::Constant, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Constant, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Constant, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Constant, (second.to_x_coordinate(), None));
         check_ternary("true ? Constant : Constant", expected, condition, a, b, 0, 0, 0, 0);
     }
 
@@ -173,29 +173,29 @@ mod tests {
         // false ? Constant : Public
         let expected = second;
         let condition = Boolean::<Circuit>::new(Mode::Public, false);
-        let a = Affine::<Circuit>::new(Mode::Constant, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Public, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Constant, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Public, (second.to_x_coordinate(), None));
         check_ternary("false ? Constant : Public", expected, condition, a, b, 0, 0, 2, 2);
 
         // false ? Public : Constant
         let expected = second;
         let condition = Boolean::<Circuit>::new(Mode::Public, false);
-        let a = Affine::<Circuit>::new(Mode::Public, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Constant, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Public, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Constant, (second.to_x_coordinate(), None));
         check_ternary("false ? Public : Constant", expected, condition, a, b, 0, 0, 2, 2);
 
         // true ? Constant : Public
         let expected = first;
         let condition = Boolean::<Circuit>::new(Mode::Public, true);
-        let a = Affine::<Circuit>::new(Mode::Constant, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Public, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Constant, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Public, (second.to_x_coordinate(), None));
         check_ternary("true ? Constant : Public", expected, condition, a, b, 0, 0, 2, 2);
 
         // true ? Public : Constant
         let expected = first;
         let condition = Boolean::<Circuit>::new(Mode::Public, true);
-        let a = Affine::<Circuit>::new(Mode::Public, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Constant, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Public, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Constant, (second.to_x_coordinate(), None));
         check_ternary("true ? Public : Constant", expected, condition, a, b, 0, 0, 2, 2);
     }
 
@@ -207,15 +207,15 @@ mod tests {
         // false ? Constant : Constant
         let expected = second;
         let condition = Boolean::<Circuit>::new(Mode::Private, false);
-        let a = Affine::<Circuit>::new(Mode::Constant, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Constant, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Constant, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Constant, (second.to_x_coordinate(), None));
         check_ternary("false ? Constant : Constant", expected, condition, a, b, 0, 0, 0, 0);
 
         // true ? Constant : Constant
         let expected = first;
         let condition = Boolean::<Circuit>::new(Mode::Private, true);
-        let a = Affine::<Circuit>::new(Mode::Constant, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Constant, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Constant, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Constant, (second.to_x_coordinate(), None));
         check_ternary("true ? Constant : Constant", expected, condition, a, b, 0, 0, 0, 0);
     }
 
@@ -227,29 +227,29 @@ mod tests {
         // false ? Constant : Public
         let expected = second;
         let condition = Boolean::<Circuit>::new(Mode::Private, false);
-        let a = Affine::<Circuit>::new(Mode::Constant, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Public, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Constant, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Public, (second.to_x_coordinate(), None));
         check_ternary("false ? Constant : Public", expected, condition, a, b, 0, 0, 2, 2);
 
         // false ? Public : Constant
         let expected = second;
         let condition = Boolean::<Circuit>::new(Mode::Private, false);
-        let a = Affine::<Circuit>::new(Mode::Public, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Constant, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Public, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Constant, (second.to_x_coordinate(), None));
         check_ternary("false ? Public : Constant", expected, condition, a, b, 0, 0, 2, 2);
 
         // true ? Constant : Public
         let expected = first;
         let condition = Boolean::<Circuit>::new(Mode::Private, true);
-        let a = Affine::<Circuit>::new(Mode::Constant, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Public, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Constant, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Public, (second.to_x_coordinate(), None));
         check_ternary("true ? Constant : Public", expected, condition, a, b, 0, 0, 2, 2);
 
         // true ? Public : Constant
         let expected = first;
         let condition = Boolean::<Circuit>::new(Mode::Private, true);
-        let a = Affine::<Circuit>::new(Mode::Public, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Constant, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Public, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Constant, (second.to_x_coordinate(), None));
         check_ternary("true ? Public : Constant", expected, condition, a, b, 0, 0, 2, 2);
     }
 
@@ -261,57 +261,57 @@ mod tests {
         // false ? Public : Public
         let expected = second;
         let condition = Boolean::<Circuit>::new(Mode::Public, false);
-        let a = Affine::<Circuit>::new(Mode::Public, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Public, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Public, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Public, (second.to_x_coordinate(), None));
         check_ternary("false ? Public : Public", expected, condition, a, b, 0, 0, 2, 2);
 
         // false ? Public : Private
         let expected = second;
         let condition = Boolean::<Circuit>::new(Mode::Public, false);
-        let a = Affine::<Circuit>::new(Mode::Public, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Private, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Public, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Private, (second.to_x_coordinate(), None));
         check_ternary("false ? Public : Private", expected, condition, a, b, 0, 0, 2, 2);
 
         // false ? Private : Public
         let expected = second;
         let condition = Boolean::<Circuit>::new(Mode::Public, false);
-        let a = Affine::<Circuit>::new(Mode::Private, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Public, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Private, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Public, (second.to_x_coordinate(), None));
         check_ternary("false ? Private : Public", expected, condition, a, b, 0, 0, 2, 2);
 
         // false ? Private : Private
         let expected = second;
         let condition = Boolean::<Circuit>::new(Mode::Public, false);
-        let a = Affine::<Circuit>::new(Mode::Private, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Private, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Private, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Private, (second.to_x_coordinate(), None));
         check_ternary("false ? Private : Private", expected, condition, a, b, 0, 0, 2, 2);
 
         // true ? Public : Public
         let expected = first;
         let condition = Boolean::<Circuit>::new(Mode::Public, true);
-        let a = Affine::<Circuit>::new(Mode::Public, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Public, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Public, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Public, (second.to_x_coordinate(), None));
         check_ternary("true ? Public : Public", expected, condition, a, b, 0, 0, 2, 2);
 
         // true ? Public : Private
         let expected = first;
         let condition = Boolean::<Circuit>::new(Mode::Public, true);
-        let a = Affine::<Circuit>::new(Mode::Public, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Private, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Public, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Private, (second.to_x_coordinate(), None));
         check_ternary("true ? Public : Private", expected, condition, a, b, 0, 0, 2, 2);
 
         // true ? Private : Public
         let expected = first;
         let condition = Boolean::<Circuit>::new(Mode::Public, true);
-        let a = Affine::<Circuit>::new(Mode::Private, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Public, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Private, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Public, (second.to_x_coordinate(), None));
         check_ternary("true ? Private : Public", expected, condition, a, b, 0, 0, 2, 2);
 
         // true ? Private : Private
         let expected = first;
         let condition = Boolean::<Circuit>::new(Mode::Public, true);
-        let a = Affine::<Circuit>::new(Mode::Private, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Private, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Private, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Private, (second.to_x_coordinate(), None));
         check_ternary("true ? Private : Private", expected, condition, a, b, 0, 0, 2, 2);
     }
 
@@ -323,57 +323,57 @@ mod tests {
         // false ? Public : Public
         let expected = second;
         let condition = Boolean::<Circuit>::new(Mode::Private, false);
-        let a = Affine::<Circuit>::new(Mode::Public, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Public, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Public, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Public, (second.to_x_coordinate(), None));
         check_ternary("false ? Public : Public", expected, condition, a, b, 0, 0, 2, 2);
 
         // false ? Public : Private
         let expected = second;
         let condition = Boolean::<Circuit>::new(Mode::Private, false);
-        let a = Affine::<Circuit>::new(Mode::Public, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Private, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Public, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Private, (second.to_x_coordinate(), None));
         check_ternary("false ? Public : Private", expected, condition, a, b, 0, 0, 2, 2);
 
         // false ? Private : Public
         let expected = second;
         let condition = Boolean::<Circuit>::new(Mode::Private, false);
-        let a = Affine::<Circuit>::new(Mode::Private, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Public, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Private, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Public, (second.to_x_coordinate(), None));
         check_ternary("false ? Private : Public", expected, condition, a, b, 0, 0, 2, 2);
 
         // false ? Private : Private
         let expected = second;
         let condition = Boolean::<Circuit>::new(Mode::Private, false);
-        let a = Affine::<Circuit>::new(Mode::Private, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Private, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Private, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Private, (second.to_x_coordinate(), None));
         check_ternary("false ? Private : Private", expected, condition, a, b, 0, 0, 2, 2);
 
         // true ? Public : Public
         let expected = first;
         let condition = Boolean::<Circuit>::new(Mode::Private, true);
-        let a = Affine::<Circuit>::new(Mode::Public, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Public, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Public, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Public, (second.to_x_coordinate(), None));
         check_ternary("true ? Public : Public", expected, condition, a, b, 0, 0, 2, 2);
 
         // true ? Public : Private
         let expected = first;
         let condition = Boolean::<Circuit>::new(Mode::Private, true);
-        let a = Affine::<Circuit>::new(Mode::Public, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Private, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Public, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Private, (second.to_x_coordinate(), None));
         check_ternary("true ? Public : Private", expected, condition, a, b, 0, 0, 2, 2);
 
         // true ? Private : Public
         let expected = first;
         let condition = Boolean::<Circuit>::new(Mode::Private, true);
-        let a = Affine::<Circuit>::new(Mode::Private, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Public, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Private, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Public, (second.to_x_coordinate(), None));
         check_ternary("true ? Private : Public", expected, condition, a, b, 0, 0, 2, 2);
 
         // true ? Private : Private
         let expected = first;
         let condition = Boolean::<Circuit>::new(Mode::Private, true);
-        let a = Affine::<Circuit>::new(Mode::Private, first.to_x_coordinate(), None);
-        let b = Affine::<Circuit>::new(Mode::Private, second.to_x_coordinate(), None);
+        let a = Affine::<Circuit>::new(Mode::Private, (first.to_x_coordinate(), None));
+        let b = Affine::<Circuit>::new(Mode::Private, (second.to_x_coordinate(), None));
         check_ternary("true ? Private : Private", expected, condition, a, b, 0, 0, 2, 2);
     }
 }

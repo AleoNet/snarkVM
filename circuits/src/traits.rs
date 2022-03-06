@@ -158,10 +158,16 @@ pub trait IntegerTrait<E: Environment, I: IntegerType>:
     + ToBits
     + Zero
 {
+}
+
+/// Operations to inject from a primitive form into a circuit environment.
+pub trait Inject {
+    type Primitive: Debug;
+
     ///
-    /// Initializes a new integer.
+    /// Initializes a circuit of the given mode and primitive value.
     ///
-    fn new(mode: Mode, value: I) -> Self;
+    fn new(mode: Mode, value: Self::Primitive) -> Self;
 }
 
 /// Operations to eject from a circuit environment into primitive form.

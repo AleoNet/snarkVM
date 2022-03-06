@@ -232,7 +232,7 @@ mod tests {
             let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut thread_rng());
 
             let expected = base * scalar;
-            let a = Affine::<Circuit>::new(Mode::Constant, base.to_x_coordinate(), None);
+            let a = Affine::<Circuit>::new(Mode::Constant, (base.to_x_coordinate(), None));
             let b = ScalarField::<Circuit>::new(Mode::Constant, scalar);
 
             let name = format!("Mul: a * b {}", i);
@@ -249,7 +249,7 @@ mod tests {
             let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut thread_rng());
 
             let expected = base * scalar;
-            let a = Affine::<Circuit>::new(Mode::Constant, base.to_x_coordinate(), None);
+            let a = Affine::<Circuit>::new(Mode::Constant, (base.to_x_coordinate(), None));
             let b = ScalarField::<Circuit>::new(Mode::Public, scalar);
 
             let name = format!("Mul: a * b {}", i);
@@ -266,7 +266,7 @@ mod tests {
             let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut thread_rng());
 
             let expected = base * scalar;
-            let a = Affine::<Circuit>::new(Mode::Constant, base.to_x_coordinate(), None);
+            let a = Affine::<Circuit>::new(Mode::Constant, (base.to_x_coordinate(), None));
             let b = ScalarField::<Circuit>::new(Mode::Private, scalar);
 
             let name = format!("Mul: a * b {}", i);
@@ -306,7 +306,7 @@ mod tests {
             };
 
             let expected = base * scalar;
-            let a = Affine::<Circuit>::new(Mode::Public, base.to_x_coordinate(), None);
+            let a = Affine::<Circuit>::new(Mode::Public, (base.to_x_coordinate(), None));
             let b = ScalarField::<Circuit>::new(Mode::Constant, scalar);
 
             let name = format!("Mul: a * b {}", i);
@@ -346,7 +346,7 @@ mod tests {
             };
 
             let expected = base * scalar;
-            let a = Affine::<Circuit>::new(Mode::Private, base.to_x_coordinate(), None);
+            let a = Affine::<Circuit>::new(Mode::Private, (base.to_x_coordinate(), None));
             let b = ScalarField::<Circuit>::new(Mode::Constant, scalar);
 
             let name = format!("Mul: a * b {}", i);
@@ -363,7 +363,7 @@ mod tests {
             let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut thread_rng());
 
             let expected = base * scalar;
-            let a = Affine::<Circuit>::new(Mode::Public, base.to_x_coordinate(), None);
+            let a = Affine::<Circuit>::new(Mode::Public, (base.to_x_coordinate(), None));
             let b = ScalarField::<Circuit>::new(Mode::Public, scalar);
 
             let name = format!("Mul: a * b {}", i);
@@ -380,7 +380,7 @@ mod tests {
             let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut thread_rng());
 
             let expected = base * scalar;
-            let a = Affine::<Circuit>::new(Mode::Public, base.to_x_coordinate(), None);
+            let a = Affine::<Circuit>::new(Mode::Public, (base.to_x_coordinate(), None));
             let b = ScalarField::<Circuit>::new(Mode::Private, scalar);
 
             let name = format!("Mul: a * b {}", i);
@@ -397,7 +397,7 @@ mod tests {
             let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut thread_rng());
 
             let expected = base * scalar;
-            let a = Affine::<Circuit>::new(Mode::Private, base.to_x_coordinate(), None);
+            let a = Affine::<Circuit>::new(Mode::Private, (base.to_x_coordinate(), None));
             let b = ScalarField::<Circuit>::new(Mode::Public, scalar);
 
             let name = format!("Mul: a * b {}", i);
@@ -414,7 +414,7 @@ mod tests {
             let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut thread_rng());
 
             let expected = base * scalar;
-            let a = Affine::<Circuit>::new(Mode::Private, base.to_x_coordinate(), None);
+            let a = Affine::<Circuit>::new(Mode::Private, (base.to_x_coordinate(), None));
             let b = ScalarField::<Circuit>::new(Mode::Private, scalar);
 
             let name = format!("Mul: a * b {}", i);
@@ -432,13 +432,13 @@ mod tests {
         let expected = a * b;
 
         // Constant
-        let base = Affine::<Circuit>::new(Mode::Constant, a.to_x_coordinate(), Some(a.to_y_coordinate()));
+        let base = Affine::<Circuit>::new(Mode::Constant, (a.to_x_coordinate(), Some(a.to_y_coordinate())));
         let scalar = ScalarField::<Circuit>::new(Mode::Constant, b);
         let candidate_a = base * scalar;
         assert_eq!(expected, candidate_a.eject_value());
 
         // Private
-        let base = Affine::<Circuit>::new(Mode::Private, a.to_x_coordinate(), Some(a.to_y_coordinate()));
+        let base = Affine::<Circuit>::new(Mode::Private, (a.to_x_coordinate(), Some(a.to_y_coordinate())));
         let scalar = ScalarField::<Circuit>::new(Mode::Private, b);
         let candidate_b = base * scalar;
         assert_eq!(expected, candidate_b.eject_value());

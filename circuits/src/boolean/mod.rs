@@ -58,11 +58,13 @@ pub struct Boolean<E: Environment>(LinearCombination<E::BaseField>);
 
 impl<E: Environment> BooleanTrait for Boolean<E> {}
 
-impl<E: Environment> Boolean<E> {
+impl<E: Environment> Inject for Boolean<E> {
+    type Primitive = bool;
+
     ///
-    /// Initializes a new instance of a boolean from a constant boolean value.
+    /// Initializes a new instance of a boolean from a primitive boolean value.
     ///
-    pub fn new(mode: Mode, value: bool) -> Self {
+    fn new(mode: Mode, value: Self::Primitive) -> Self {
         let variable = E::new_variable(mode, match value {
             true => E::BaseField::one(),
             false => E::BaseField::zero(),

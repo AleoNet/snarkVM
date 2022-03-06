@@ -49,7 +49,9 @@ pub struct Affine<E: Environment> {
     y: BaseField<E>,
 }
 
-impl<E: Environment> Affine<E> {
+impl<E: Environment> Inject for Affine<E> {
+    type Primitive = (E::BaseField, Option<E::BaseField>);
+
     ///
     /// Initializes a new affine group element.
     ///
@@ -58,7 +60,10 @@ impl<E: Environment> Affine<E> {
     /// For safety, the resulting point is always enforced to be on the curve with constraints.
     /// regardless of whether the y-coordinate was recovered.
     ///
-    pub fn new(mode: Mode, x: E::BaseField, y: Option<E::BaseField>) -> Self {
+    fn new(mode: Mode, value: Self::Primitive) -> Self {
+        // Retrieve the x- and y-coordinate.
+        let (x, y) = value;
+
         // Derive the y-coordinate if it is not given.
         let y = match y {
             Some(y) => y,
@@ -71,7 +76,9 @@ impl<E: Environment> Affine<E> {
 
         Self::from(x, y)
     }
+}
 
+impl<E: Environment> Affine<E> {
     ///
     /// For safety, the resulting point is always enforced to be on the curve with constraints.
     /// regardless of whether the y-coordinate was recovered.
@@ -144,7 +151,7 @@ impl<E: Environment> Parser for Affine<E> {
         // Parse the close parenthesis from the string.
         let (string, _) = tag(")")(string)?;
 
-        Ok((string, Affine::new(mode, x_coordinate, None)))
+        Ok((string, Affine::new(mode, (x_coordinate, None))))
     }
 }
 
@@ -173,7 +180,7 @@ mod tests {
 
     /// Attempts to construct an affine group element from the given x-coordinate and mode.
     fn check_debug(mode: Mode, x: <Circuit as Environment>::BaseField, y: <Circuit as Environment>::BaseField) {
-        let candidate = Affine::<Circuit>::new(mode, x, None);
+        let candidate = Affine::<Circuit>::new(mode, (x, None));
         assert_eq!(format!("({}, {})", x, y), format!("{:?}", candidate));
     }
 
@@ -190,7 +197,7 @@ mod tests {
             assert_eq!(point.to_y_coordinate(), recovered.to_y_coordinate());
 
             Circuit::scoped(&format!("Constant {}", i), || {
-                let affine = Affine::<Circuit>::new(Mode::Constant, point.to_x_coordinate(), None);
+                let affine = Affine::<Circuit>::new(Mode::Constant, (point.to_x_coordinate(), None));
                 assert_eq!(point, affine.eject_value());
                 assert_circuit!(4, 0, 0, 0);
             });
@@ -202,7 +209,7 @@ mod tests {
             let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
 
             Circuit::scoped(&format!("Public {}", i), || {
-                let affine = Affine::<Circuit>::new(Mode::Public, point.to_x_coordinate(), None);
+                let affine = Affine::<Circuit>::new(Mode::Public, (point.to_x_coordinate(), None));
                 assert_eq!(point, affine.eject_value());
                 assert_circuit!(2, 2, 2, 3);
             });
@@ -214,7 +221,7 @@ mod tests {
             let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
 
             Circuit::scoped(&format!("Private {}", i), || {
-                let affine = Affine::<Circuit>::new(Mode::Private, point.to_x_coordinate(), None);
+                let affine = Affine::<Circuit>::new(Mode::Private, (point.to_x_coordinate(), None));
                 assert_eq!(point, affine.eject_value());
                 assert_circuit!(2, 0, 4, 3);
             });
@@ -243,15 +250,15 @@ mod tests {
         let zero = <Circuit as Environment>::BaseField::zero();
 
         // Constant
-        let candidate = Affine::<Circuit>::new(Mode::Constant, zero, None);
+        let candidate = Affine::<Circuit>::new(Mode::Constant, (zero, None));
         assert_eq!("(0, 1)", &format!("{:?}", candidate));
 
         // Public
-        let candidate = Affine::<Circuit>::new(Mode::Public, zero, None);
+        let candidate = Affine::<Circuit>::new(Mode::Public, (zero, None));
         assert_eq!("(0, 1)", &format!("{:?}", candidate));
 
         // Private
-        let candidate = Affine::<Circuit>::new(Mode::Private, zero, None);
+        let candidate = Affine::<Circuit>::new(Mode::Private, (zero, None));
         assert_eq!("(0, 1)", &format!("{:?}", candidate));
     }
 
@@ -327,7 +334,7 @@ mod tests {
         for mode in [Mode::Constant, Mode::Public, Mode::Private] {
             for _ in 0..ITERATIONS {
                 let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
-                let expected = Affine::<Circuit>::new(mode, point.to_x_coordinate(), None);
+                let expected = Affine::<Circuit>::new(mode, (point.to_x_coordinate(), None));
 
                 let (_, candidate) = Affine::<Circuit>::parse(&format!("{expected}")).unwrap();
                 assert_eq!(expected.eject_value(), candidate.eject_value());
@@ -342,15 +349,15 @@ mod tests {
         let two = one + one;
 
         // Constant
-        let candidate = Affine::<Circuit>::new(Mode::Constant, two, None);
+        let candidate = Affine::<Circuit>::new(Mode::Constant, (two, None));
         assert_eq!("Constant(2group)", &format!("{}", candidate));
 
         // Public
-        let candidate = Affine::<Circuit>::new(Mode::Public, two, None);
+        let candidate = Affine::<Circuit>::new(Mode::Public, (two, None));
         assert_eq!("Public(2group)", &format!("{}", candidate));
 
         // Private
-        let candidate = Affine::<Circuit>::new(Mode::Private, two, None);
+        let candidate = Affine::<Circuit>::new(Mode::Private, (two, None));
         assert_eq!("Private(2group)", &format!("{}", candidate));
     }
 }
