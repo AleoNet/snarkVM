@@ -568,6 +568,7 @@ mod tests {
     use std::{collections::BTreeMap, fs::OpenOptions, ops::MulAssign};
 
     #[test]
+    #[ignore]
     fn srs_info() {
         let mut file = OpenOptions::new().read(true).open("./universal.srs").unwrap();
         let params = UniversalParams::<Bls12_377>::read_le(file).unwrap();
@@ -581,6 +582,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn split_powers() {
         let mut file = OpenOptions::new().read(true).open("./universal.srs").unwrap();
 
@@ -613,6 +615,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn create_new_srs() {
         let mut file = OpenOptions::new().read(true).open("./universal.srs").unwrap();
         let params = UniversalParams::<Bls12_377>::read_le(file).unwrap();
