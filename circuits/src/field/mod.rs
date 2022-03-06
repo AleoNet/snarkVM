@@ -31,7 +31,7 @@ pub mod to_lower_bits;
 pub mod to_upper_bits;
 pub mod zero;
 
-use crate::{traits::*, Boolean, Environment, LinearCombination, Mode, ParserResult};
+use crate::{traits::*, Boolean, Environment, LinearCombination, Mode};
 use snarkvm_fields::{Field as F, One as O};
 use snarkvm_utilities::ToBits as TBits;
 

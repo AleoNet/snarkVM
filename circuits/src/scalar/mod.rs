@@ -29,7 +29,7 @@ pub mod ternary;
 pub mod to_bits;
 pub mod zero;
 
-use crate::{traits::*, Boolean, Environment, Mode, ParserResult};
+use crate::{traits::*, Boolean, Environment, Mode};
 use snarkvm_fields::{One as O, PrimeField, Zero as Z};
 use snarkvm_utilities::{FromBits as FBits, ToBits as TBits};
 

@@ -14,38 +14,34 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![forbid(unsafe_code)]
-#![allow(clippy::type_complexity)]
+use crate::Environment;
 
-pub mod circuit;
-pub use circuit::*;
+use core::fmt;
+use nom::{error::VerboseError, IResult};
 
-mod converter;
+pub type ParserResult<'a, O> = IResult<&'a str, O, VerboseError<&'a str>>;
 
-mod counter;
-use counter::*;
+/// Operations to parse a string literal into an object.
+pub trait Parser: fmt::Display {
+    type Environment: Environment;
 
-pub mod environment;
-pub use environment::*;
+    ///
+    /// Parses a string literal into an object.
+    ///
+    fn parse(s: &str) -> ParserResult<Self>
+    where
+        Self: Sized;
 
-pub mod linear_combination;
-pub use linear_combination::*;
-
-pub mod mode;
-pub use mode::*;
-
-pub mod parser;
-pub use parser::*;
-
-mod r1cs;
-use r1cs::*;
-
-pub mod variable;
-pub use variable::*;
-
-#[macro_export]
-macro_rules! scoped {
-    ($scope_name:expr, $block:block) => {
-        E::scoped($scope_name, || $block)
-    };
+    ///
+    /// Returns an object from a string literal.
+    ///
+    fn from_str(string: &str) -> Self
+    where
+        Self: Sized,
+    {
+        match Self::parse(string) {
+            Ok((_, circuit)) => circuit,
+            Err(error) => Self::Environment::halt(format!("Failed to parse: {}", error)),
+        }
+    }
 }

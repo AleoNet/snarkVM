@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{helpers::integers::IntegerType, Environment, Mode, ParserResult, U16, U32, U8};
+use crate::{helpers::integers::IntegerType, Environment, Mode, U16, U32, U8};
 
 use core::{
     fmt::{Debug, Display},
@@ -42,6 +42,8 @@ use core::{
     },
 };
 use num_traits::Inv;
+
+pub use crate::{Parser, ParserResult};
 
 /// Representation of a boolean.
 pub trait BooleanTrait:
@@ -226,31 +228,6 @@ pub trait Eject {
     ///
     fn is_private(&self) -> bool {
         self.eject_mode().is_private()
-    }
-}
-
-/// Operations to parse a string literal into an object.
-pub trait Parser: Display {
-    type Environment: Environment;
-
-    ///
-    /// Parses a string literal into an object.
-    ///
-    fn parse(s: &str) -> ParserResult<Self>
-    where
-        Self: Sized;
-
-    ///
-    /// Returns an object from a string literal.
-    ///
-    fn from_str(string: &str) -> Self
-    where
-        Self: Sized,
-    {
-        match Self::parse(string) {
-            Ok((_, circuit)) => circuit,
-            Err(error) => Self::Environment::halt(format!("Failed to parse: {}", error)),
-        }
     }
 }
 

@@ -49,7 +49,6 @@ use crate::{
     Environment,
     LinearCombination,
     Mode,
-    ParserResult,
 };
 use snarkvm_fields::PrimeField;
 

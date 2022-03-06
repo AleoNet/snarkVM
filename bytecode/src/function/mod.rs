@@ -37,6 +37,7 @@ pub struct Function<M: Memory> {
     name: String,
     inputs: Vec<Input<M>>,
     instructions: Vec<Instruction<M>>,
+    // instructions: Vec<Box<dyn Operation<Memory = M, Environment = M::Environment>>>,
     outputs: Vec<Output<M>>,
 }
 

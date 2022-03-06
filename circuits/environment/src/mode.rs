@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use core::fmt;
-use nom::{branch::alt, bytes::complete::tag, combinator::map, error::VerboseError, IResult};
+use crate::ParserResult;
 
-pub type ParserResult<'a, O> = IResult<&'a str, O, VerboseError<&'a str>>;
+use core::fmt;
+use nom::{branch::alt, bytes::complete::tag, combinator::map};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Mode {
