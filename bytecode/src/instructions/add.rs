@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{instructions::Instruction, BinaryParser, Immediate, Memory, Operand, Operation, Register};
-use snarkvm_circuits::{Parser, ParserResult};
+use snarkvm_circuits::{AddChecked, Parser, ParserResult};
 
 use core::fmt;
 
@@ -36,11 +36,13 @@ impl<M: Memory> Operation for Add<M> {
         M::initialize(&self.destination);
 
         // Load the values for the first and second operands, and perform the operation.
-        match (self.first.load::<M>(), self.second.load::<M>()) {
-            (Immediate::Field(a), Immediate::Field(b)) => M::store(&self.destination, Immediate::Field(a + b)),
-            (Immediate::Group(a), Immediate::Group(b)) => M::store(&self.destination, Immediate::Group(a + b)),
+        let result = match (self.first.load::<M>(), self.second.load::<M>()) {
+            (Immediate::Field(a), Immediate::Field(b)) => (a + b).into(),
+            (Immediate::Group(a), Immediate::Group(b)) => (a + b).into(),
             _ => M::halt(format!("Invalid {} instruction", Self::OPCODE)),
-        }
+        };
+
+        M::store(&self.destination, result);
     }
 }
 

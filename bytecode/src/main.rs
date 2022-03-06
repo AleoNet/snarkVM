@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_bytecode::{instructions::Instruction, Argument, Function, Global, Immediate, Operand};
+use snarkvm_bytecode::{Function, Global, Immediate};
 use snarkvm_circuits::{traits::*, BaseField};
 
 pub struct HelloWorld;

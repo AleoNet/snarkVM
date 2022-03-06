@@ -75,6 +75,34 @@ impl<E: Environment> Immediate<E> {
     }
 }
 
+impl<E: Environment> From<Boolean<E>> for Immediate<E> {
+    #[inline]
+    fn from(boolean: Boolean<E>) -> Self {
+        Self::Boolean(boolean)
+    }
+}
+
+impl<E: Environment> From<BaseField<E>> for Immediate<E> {
+    #[inline]
+    fn from(field: BaseField<E>) -> Self {
+        Self::Field(field)
+    }
+}
+
+impl<E: Environment> From<Affine<E>> for Immediate<E> {
+    #[inline]
+    fn from(group: Affine<E>) -> Self {
+        Self::Group(group)
+    }
+}
+
+impl<E: Environment> From<Scalar<E>> for Immediate<E> {
+    #[inline]
+    fn from(scalar: Scalar<E>) -> Self {
+        Self::Scalar(scalar)
+    }
+}
+
 impl<E: Environment> Parser for Immediate<E> {
     type Environment = E;
 

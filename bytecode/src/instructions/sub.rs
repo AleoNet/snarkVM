@@ -36,11 +36,13 @@ impl<M: Memory> Operation for Sub<M> {
         M::initialize(&self.destination);
 
         // Load the values for the first and second operands, and perform the operation.
-        match (self.first.load::<M>(), self.second.load::<M>()) {
-            (Immediate::Field(a), Immediate::Field(b)) => M::store(&self.destination, Immediate::Field(a - b)),
-            (Immediate::Group(a), Immediate::Group(b)) => M::store(&self.destination, Immediate::Group(a - b)),
+        let result = match (self.first.load::<M>(), self.second.load::<M>()) {
+            (Immediate::Field(a), Immediate::Field(b)) => (a - b).into(),
+            (Immediate::Group(a), Immediate::Group(b)) => (a - b).into(),
             _ => M::halt(format!("Invalid {} instruction", Self::OPCODE)),
-        }
+        };
+
+        M::store(&self.destination, result);
     }
 }
 
