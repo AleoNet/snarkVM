@@ -24,8 +24,9 @@ use crate::{
     Register,
     Stack,
 };
+use snarkvm_circuits::{Parser, ParserResult};
 
-use core::cell::RefCell;
+use core::{cell::RefCell, fmt};
 use once_cell::unsync::Lazy;
 
 thread_local! {
@@ -40,7 +41,7 @@ impl Function for Global {
     type Memory = Stack;
 
     /// Allocates a new register, stores the given input, and returns the new register.
-    fn new_input(input: Immediate<Self::Environment>) -> Register<Self::Environment> {
+    fn new_input(input: Immediate<<Self as Function>::Environment>) -> Register<<Self as Function>::Environment> {
         FUNCTION.with(|function| (**function).borrow_mut().new_input(input))
     }
 
@@ -50,7 +51,7 @@ impl Function for Global {
     }
 
     /// Evaluates the function, returning the outputs.
-    fn evaluate() -> Vec<Immediate<Self::Environment>> {
+    fn evaluate() -> Vec<Immediate<<Self as Function>::Environment>> {
         FUNCTION.with(|function| (**function).borrow().evaluate())
     }
 
@@ -58,5 +59,28 @@ impl Function for Global {
     fn reset() {
         Self::Memory::reset();
         FUNCTION.with(|function| *(**function).borrow_mut() = Default::default());
+    }
+}
+
+impl Parser for Global {
+    type Environment = <<Self as Function>::Memory as CoreMemory>::Environment;
+
+    /// Parses a string into a global function.
+    #[inline]
+    fn parse(string: &str) -> ParserResult<Self> {
+        match Local::parse(string) {
+            Ok((string, local)) => {
+                // <Self as Function>::Memory::reset();
+                FUNCTION.with(|function| *(**function).borrow_mut() = local);
+                Ok((string, Self))
+            }
+            Err(error) => Err(error),
+        }
+    }
+}
+
+impl fmt::Display for Global {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        FUNCTION.with(|function| (**function).borrow().fmt(f))
     }
 }

@@ -20,22 +20,22 @@ pub use global::*;
 pub mod local;
 
 use crate::{instructions::Instruction, Immediate, Memory, Register};
-use snarkvm_circuits::Environment;
+use snarkvm_circuits::{Environment, Parser};
 
 use core::hash;
 
-pub trait Function: Copy + Clone + Eq + PartialEq + hash::Hash {
+pub trait Function: Parser + Copy + Clone + Eq + PartialEq + hash::Hash {
     type Environment: Environment;
-    type Memory: Memory<Environment = Self::Environment>;
+    type Memory: Memory<Environment = <Self as Function>::Environment>;
 
     /// Allocates a new input in memory, returning the new register.
-    fn new_input(input: Immediate<Self::Environment>) -> Register<Self::Environment>;
+    fn new_input(input: Immediate<<Self as Function>::Environment>) -> Register<<Self as Function>::Environment>;
 
     /// Adds the given instruction.
     fn push_instruction(instruction: Instruction<Self::Memory>);
 
     /// Evaluates the function, returning the outputs.
-    fn evaluate() -> Vec<Immediate<Self::Environment>>;
+    fn evaluate() -> Vec<Immediate<<Self as Function>::Environment>>;
 
     /// Clears and initializes a new function layout.
     fn reset();

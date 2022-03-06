@@ -21,17 +21,29 @@ pub struct HelloWorld;
 
 impl HelloWorld {
     /// Initializes a new instance of `HelloWorld` with the given inputs.
-    pub fn run<F: Function>(inputs: [Immediate<F::Environment>; 2]) -> Vec<Immediate<F::Environment>> {
+    pub fn run<F: Function>(
+        inputs: [Immediate<<F as Function>::Environment>; 2],
+    ) -> Vec<Immediate<<F as Function>::Environment>> {
         // Allocate a new register for each input, and store each input in the register.
         let mut registers = Vec::with_capacity(2);
         for input in inputs {
             registers.push(F::new_input(input));
         }
 
-        F::push_instruction(Instruction::from_str("input r0 field.public;"));
-        F::push_instruction(Instruction::from_str("input r1 field.private;"));
-        F::push_instruction(Instruction::from_str("add r2 r0 r1;"));
-        F::push_instruction(Instruction::from_str("output r2 field.private;"));
+        // F::push_instruction(Instruction::from_str("input r0 field.public;"));
+        // F::push_instruction(Instruction::from_str("input r1 field.private;"));
+        // F::push_instruction(Instruction::from_str("add r2 r0 r1;"));
+        // F::push_instruction(Instruction::from_str("output r2 field.private;"));
+
+        F::from_str(
+            r"
+function main:
+    input r0 field.public;
+    input r1 field.private;
+    add r2 r0 r1;
+    output r2 field.private;
+",
+        );
         F::evaluate()
     }
 }
