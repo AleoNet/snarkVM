@@ -43,7 +43,7 @@ pub mod zero;
 
 use crate::{
     boolean::Boolean,
-    fields::BaseField,
+    field::BaseField,
     helpers::integers::*,
     traits::*,
     Environment,

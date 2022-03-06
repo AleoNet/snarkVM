@@ -41,26 +41,26 @@ impl HelloWorld {
 }
 
 fn main() {
-    let first = Immediate::BaseField(BaseField::<Circuit>::from_str("Public(1base)"));
-    let second = Immediate::BaseField(BaseField::from_str("Private(1base)"));
+    let first = Immediate::Base(BaseField::<Circuit>::from_str("1field.public"));
+    let second = Immediate::Base(BaseField::from_str("1field.private"));
 
     let expected = BaseField::one() + BaseField::one();
     let candidate = HelloWorld::run::<Global>([first, second]);
     match &candidate[0] {
-        Immediate::BaseField(output) => assert!(output.is_eq(&expected).eject_value()),
+        Immediate::Base(output) => assert!(output.is_eq(&expected).eject_value()),
         _ => panic!("Failed to load output"),
     }
 }
 
 #[test]
 fn test_hello_world() {
-    let first = Immediate::BaseField(BaseField::<Circuit>::from_str("Public(1base)"));
-    let second = Immediate::BaseField(BaseField::from_str("Private(1base)"));
+    let first = Immediate::Base(BaseField::<Circuit>::from_str("1field.public"));
+    let second = Immediate::Base(BaseField::from_str("1field.private"));
 
     let expected = BaseField::one() + BaseField::one();
     let candidate = HelloWorld::run::<Global>([first, second]);
     match &candidate[0] {
-        Immediate::BaseField(output) => assert!(output.is_eq(&expected).eject_value()),
+        Immediate::Base(output) => assert!(output.is_eq(&expected).eject_value()),
         _ => panic!("Failed to load output"),
     }
 }

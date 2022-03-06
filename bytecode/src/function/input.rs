@@ -18,6 +18,7 @@ use crate::{instructions::Instruction, Immediate, Memory, Register};
 use snarkvm_circuits::{Parser, ParserResult};
 
 use core::fmt;
+use once_cell::unsync::OnceCell;
 use nom::{
     branch::alt,
     bytes::complete::tag,
@@ -27,13 +28,12 @@ use nom::{
     multi::{many0, many1, separated_list0, separated_list1},
 };
 
-pub(super) struct Local<M: Memory> {
+pub(super) struct Input<M: Memory> {
     inputs: Vec<Register<M::Environment>>,
-    instructions: Vec<Instruction<M>>,
-    outputs: Vec<Register<M::Environment>>,
+    register: OnceCell<Register<M::Environment>>,
 }
 
-impl<M: Memory> Local<M> {
+impl<M: Memory> Input<M> {
     /// Allocates a new register, stores the given input, and returns the new register.
     pub fn new_input(&mut self, input: Immediate<M::Environment>) -> Register<M::Environment> {
         match input.is_constant() {
@@ -47,55 +47,54 @@ impl<M: Memory> Local<M> {
         }
     }
 
-    /// Allocates a new register, stores the given output, and returns the new register.
-    pub fn new_output(&mut self) -> Register<M::Environment> {
-        let register = M::new_register();
-        self.outputs.push(register);
-        register
+    /// Returns `true` if the given register is already set.
+    pub(super) fn is_set(&self, register: &Register<E>) -> bool {
+        // Attempt to retrieve the specified register from memory.
+        match self.registers.get(register) {
+            // Check if the register is set.
+            Some(memory) => memory.get().is_some(),
+            None => false,
+        }
     }
 
-    /// Adds the given instruction.
-    pub fn push_instruction(&mut self, instruction: Instruction<M>) {
-        self.instructions.push(instruction);
+    /// Attempts to load the value from the register.
+    pub(super) fn load(&self, register: &Register<E>) -> Immediate<E> {
+        // Attempt to retrieve the specified register from memory.
+        let memory = match self.registers.get(register) {
+            Some(memory) => memory,
+            None => E::halt(format!("Register {} does not exist", register)),
+        };
+
+        // Attempt to retrieve the value the specified register.
+        match memory.get() {
+            Some(value) => value.clone(),
+            None => E::halt(format!("Register {} is not set", register)),
+        }
     }
 
-    /// Evaluates the function, returning the outputs.
-    pub fn evaluate(&self) -> Vec<Immediate<M::Environment>> {
-        for instruction in &self.instructions {
-            instruction.evaluate();
-        }
+    /// Attempts to store value into the register.
+    pub(super) fn store(&self, register: &Register<E>, value: Immediate<E>) {
+        // Attempt to retrieve the specified register from memory.
+        let memory = match self.registers.get(register) {
+            Some(memory) => memory,
+            None => E::halt(format!("Register {} does not exist", register)),
+        };
 
-        let mut outputs = Vec::with_capacity(self.outputs.len());
-        for output in &self.outputs {
-            outputs.push(M::load(output));
+        // Attempt to set the specified register with the given value.
+        if memory.set(value).is_err() {
+            E::halt(format!("Register {} is already set", register))
         }
-        outputs
     }
 }
 
-impl<M: Memory> Default for Local<M> {
-    fn default() -> Self {
-        Self { inputs: Default::default(), instructions: Default::default(), outputs: Default::default() }
-    }
-}
-
-impl<M: Memory> Parser for Register<M> {
+impl<M: Memory> Parser for Input<M> {
     type Environment = E;
-    type Output = Register<E>;
+    type Output = Input<M>;
 
     /// Parses a string into a register.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self::Output> {
         let mut newline_or_space = many0(alt((tag(" "), tag("\n"))));
-
-        // Parse the 'function' keyword from the string.
-        let (string, _) = tag("function ")(string)?;
-        // Parse the function name from the string.
-        let (string, _) = recognize(pair(alpha1, many0(alt((alphanumeric1, tag("_"))))))(string)?;
-        // Parse the colon ':' keyword from the string.
-        let (string, _) = tag(":")(string)?;
-        // Parse the whitespace from the string.
-        let (string, _) = newline_or_space(string)?;
 
         // Parse the inputs from the string.
 
@@ -115,9 +114,8 @@ impl<M: Memory> Parser for Register<M> {
     }
 }
 
-impl<M: Memory> fmt::Display for Register<M> {
+impl<M: Memory> fmt::Display for Input<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "r{}", self.0)
     }
 }
-

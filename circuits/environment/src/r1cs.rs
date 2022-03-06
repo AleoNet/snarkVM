@@ -93,8 +93,14 @@ impl<F: PrimeField> R1CS<F> {
         match a.is_constant() && b.is_constant() && c.is_constant() {
             true => match self.counter.scope().is_empty() {
                 true => println!("Enforced constraint with constant terms: ({} * {}) != {}", a, b, c),
-                false => println!("Enforced constraint with constant terms ({}): ({} * {}) != {}", self.counter.scope(), a, b, c),
-            }
+                false => println!(
+                    "Enforced constraint with constant terms ({}): ({} * {}) != {}",
+                    self.counter.scope(),
+                    a,
+                    b,
+                    c
+                ),
+            },
             false => {
                 let num_additions = a.num_additions() + b.num_additions() + c.num_additions();
                 let num_gates = 1 + num_additions;

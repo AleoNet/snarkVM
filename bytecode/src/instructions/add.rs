@@ -41,9 +41,7 @@ impl<M: Memory> Operation for Add<M> {
     /// Evaluates the operation in-place.
     fn evaluate(&self) {
         match (self.first.to_value(), self.second.to_value()) {
-            (Immediate::BaseField(a), Immediate::BaseField(b)) => {
-                M::store(&self.destination, Immediate::BaseField(a + b))
-            }
+            (Immediate::Base(a), Immediate::Base(b)) => M::store(&self.destination, Immediate::Base(a + b)),
             (Immediate::Group(a), Immediate::Group(b)) => M::store(&self.destination, Immediate::Group(a + b)),
             _ => M::halt(format!("Invalid {} instruction", Self::OPCODE)),
         }

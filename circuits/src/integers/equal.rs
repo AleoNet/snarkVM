@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::fields::BaseField;
+use crate::field::BaseField;
 
 use itertools::Itertools;
 

@@ -15,6 +15,17 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{instructions::Instruction, Immediate, Memory, Register};
+use snarkvm_circuits::{Parser, ParserResult};
+
+use core::fmt;
+use nom::{
+    branch::alt,
+    bytes::complete::tag,
+    character::complete::{alpha1, alphanumeric1},
+    combinator::{opt, recognize},
+    multi::{many0, many1, separated_list0, separated_list1},
+    sequence::pair,
+};
 
 pub(super) struct Local<M: Memory> {
     inputs: Vec<Register<M::Environment>>,
@@ -67,3 +78,45 @@ impl<M: Memory> Default for Local<M> {
         Self { inputs: Default::default(), instructions: Default::default(), outputs: Default::default() }
     }
 }
+
+// impl<M: Memory> Parser for Register<M> {
+//     type Environment = E;
+//     type Output = Register<E>;
+//
+//     /// Parses a string into a register.
+//     #[inline]
+//     fn parse(string: &str) -> ParserResult<Self::Output> {
+//         let mut newline_or_space = many0(alt((tag(" "), tag("\n"))));
+//
+//         // Parse the 'function' keyword from the string.
+//         let (string, _) = tag("function ")(string)?;
+//         // Parse the function name from the string.
+//         let (string, _) = recognize(pair(alpha1, many0(alt((alphanumeric1, tag("_"))))))(string)?;
+//         // Parse the colon ':' keyword from the string.
+//         let (string, _) = tag(":")(string)?;
+//         // Parse the whitespace from the string.
+//         let (string, _) = newline_or_space(string)?;
+//
+//         // Parse the inputs from the string.
+//
+//         let (string, _) = pair(pair(tag("input "), Register::parse), x)(string)?;
+//         let (string, registers) = separated_list1(tag(" "), Register::parse)(string)?;
+//         let (string, _) = tag(";")(string)?;
+//
+//         let (string, inputs) = many0(opt(Function::parse_input_or_output))(string)?;
+//         let (string, _) = newline_or_space(string)?;
+//
+//         // Parse the open parenthesis from the string.
+//         // Parse the locator from the string.
+//         let (string, locator) =
+//             map_res(recognize(many1(one_of("0123456789"))), |locator: &str| locator.parse::<u64>())(string)?;
+//
+//         Ok((string, Register::new(locator)))
+//     }
+// }
+//
+// impl<M: Memory> fmt::Display for Register<M> {
+//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//         write!(f, "r{}", self.0)
+//     }
+// }

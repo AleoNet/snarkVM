@@ -25,7 +25,7 @@ use snarkvm_circuits::{
     Integer,
     IntegerTrait,
     Mode,
-    ScalarField as ScalarFieldCircuit,
+    Scalar as ScalarFieldCircuit,
     I128,
     I16,
     I32,

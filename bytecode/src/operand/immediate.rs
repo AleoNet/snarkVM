@@ -14,25 +14,27 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_circuits::{Affine, BaseField, Boolean, Eject, Environment, Mode, Parser, ParserResult};
+use snarkvm_circuits::{Affine, BaseField, Boolean, Eject, Environment, Mode, Parser, ParserResult, Scalar};
 
 use core::fmt;
 use nom::{branch::alt, combinator::map};
 
 #[derive(Clone)]
 pub enum Immediate<E: Environment> {
-    BaseField(BaseField<E>),
+    Base(BaseField<E>),
     Boolean(Boolean<E>),
     Group(Affine<E>),
+    Scalar(Scalar<E>),
 }
 
 impl<E: Environment> Immediate<E> {
     /// Returns the mode of the immediate.
     pub fn mode(&self) -> Mode {
         match self {
-            Self::BaseField(base) => base.eject_mode(),
+            Self::Base(base) => base.eject_mode(),
             Self::Boolean(boolean) => boolean.eject_mode(),
             Self::Group(group) => group.eject_mode(),
+            Self::Scalar(scalar) => scalar.eject_mode(),
         }
     }
 
@@ -60,9 +62,10 @@ impl<E: Environment> Parser for Immediate<E> {
     #[inline]
     fn parse(string: &str) -> ParserResult<Self::Output> {
         alt((
-            map(BaseField::parse, |base| Self::BaseField(base)),
+            map(BaseField::parse, |base| Self::Base(base)),
             map(Boolean::parse, |boolean| Self::Boolean(boolean)),
             map(Affine::parse, |group| Self::Group(group)),
+            map(Scalar::parse, |scalar| Self::Scalar(scalar)),
         ))(string)
     }
 }
@@ -70,9 +73,10 @@ impl<E: Environment> Parser for Immediate<E> {
 impl<E: Environment> fmt::Display for Immediate<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::BaseField(base) => base.fmt(f),
+            Self::Base(base) => base.fmt(f),
             Self::Boolean(boolean) => boolean.fmt(f),
             Self::Group(group) => group.fmt(f),
+            Self::Scalar(scalar) => scalar.fmt(f),
         }
     }
 }

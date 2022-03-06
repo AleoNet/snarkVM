@@ -29,8 +29,8 @@ pub use snarkvm_circuits_environment::*;
 pub mod boolean;
 pub use boolean::*;
 
-pub mod fields;
-pub use fields::*;
+pub mod field;
+pub use field::*;
 
 pub mod group;
 pub use group::*;
@@ -46,6 +46,9 @@ pub use macros::*;
 
 // pub mod record;
 // pub use record::*;
+
+pub mod scalar;
+pub use scalar::*;
 
 pub mod traits;
 pub use traits::*;
