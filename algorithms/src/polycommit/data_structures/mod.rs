@@ -29,6 +29,7 @@ mod polynomial;
 pub use polynomial::*;
 
 mod powers;
+pub use powers::*;
 
 /// Labels a `LabeledPolynomial` or a `LabeledCommitment`.
 pub type PolynomialLabel = String;

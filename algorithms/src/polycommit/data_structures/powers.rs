@@ -58,21 +58,21 @@ impl<E: PairingEngine> PowersOfG<E> {
         Ok(Self { file, degree, _phantom_data: PhantomData })
     }
 
-    /// Return the degree of the current powers of G.
-    pub fn len(&self) -> u64 {
-        self.degree
+    /// Return the number of current powers of G.
+    pub fn len(&self) -> usize {
+        2u64.pow(self.degree as u32) as usize
     }
 
     /// Returns an element at `index`.
     /// NOTE: `std::ops::Index` was not used here as the trait requires
     /// that we return a reference. We can not return a reference to
     /// something that does not exist when this function is called.
-    pub fn index(&self, index: u64) -> Result<E::G1Affine> {
+    pub fn index(&self, index: usize) -> Result<E::G1Affine> {
         let index_start = self.get_starting_index(index)?;
 
         // Move our offset to the start of the desired element.
         let mut reader = BufReader::new(&self.file);
-        reader.seek(SeekFrom::Start(index_start));
+        reader.seek(SeekFrom::Start(index_start as u64));
 
         // Now read it out, deserialize it, and return it.
         let mut buf = String::new();
@@ -82,9 +82,9 @@ impl<E: PairingEngine> PowersOfG<E> {
 
     /// Slices the underlying file to return a vector of affine elements
     /// between `lower` and `upper`.
-    pub fn slice(&self, lower: u64, upper: u64) -> Result<Vec<E::G1Affine>> {
-        if upper.checked_mul(E::G1Affine::SERIALIZED_SIZE as u64 + 1).ok_or(PCError::IndexOverflowed)?
-            > self.file.metadata()?.len()
+    pub fn slice(&self, lower: usize, upper: usize) -> Result<Vec<E::G1Affine>> {
+        if upper.checked_mul(E::G1Affine::SERIALIZED_SIZE + 1).ok_or(PCError::IndexOverflowed)?
+            > self.file.metadata()?.len() as usize
         {
             let degree = upper.next_power_of_two();
             self.download_up_to(degree)?;
@@ -94,7 +94,7 @@ impl<E: PairingEngine> PowersOfG<E> {
 
         // Move our offset to the start of the desired element.
         let mut reader = BufReader::new(&self.file);
-        reader.seek(SeekFrom::Start(index_start));
+        reader.seek(SeekFrom::Start(index_start as u64));
 
         // Now iterate until we fill a vector with all desired elements.
         let mut powers = Vec::with_capacity((upper - lower) as usize);
@@ -109,9 +109,9 @@ impl<E: PairingEngine> PowersOfG<E> {
 
     /// This function returns the starting byte of the file in which we're indexing
     /// our powers of G.
-    fn get_starting_index(&self, index: u64) -> Result<u64> {
-        let index_start = index.checked_mul(E::G1Affine::SERIALIZED_SIZE as u64 + 1).ok_or(PCError::IndexOverflowed)?;
-        if index_start > self.file.metadata()?.len() {
+    fn get_starting_index(&self, index: usize) -> Result<usize> {
+        let index_start = index.checked_mul(E::G1Affine::SERIALIZED_SIZE + 1).ok_or(PCError::IndexOverflowed)?;
+        if index_start > self.file.metadata()?.len() as usize {
             let degree = index.next_power_of_two();
             self.download_up_to(degree)?;
         }
@@ -120,7 +120,7 @@ impl<E: PairingEngine> PowersOfG<E> {
     }
 
     /// Download the transcript up to `degree`.
-    fn download_up_to(&self, degree: u64) -> Result<()> {
+    fn download_up_to(&self, degree: usize) -> Result<()> {
         unimplemented!()
     }
 }
