@@ -17,7 +17,8 @@
 use crate::{instructions::Instruction, Memory};
 use snarkvm_circuits::Parser;
 
-pub trait Operation: Parser + Into<Instruction<Self::Memory>> {
+// pub trait Operation: Parser + Into<Instruction<Self::Memory>> {
+pub trait Operation: Parser {
     type Memory: Memory;
 
     const OPCODE: &'static str;

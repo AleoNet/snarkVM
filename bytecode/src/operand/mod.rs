@@ -60,7 +60,7 @@ impl<E: Environment> From<Immediate<E>> for Operand<E> {
     fn from(immediate: Immediate<E>) -> Operand<E> {
         match immediate.mode() {
             Mode::Constant => Operand::Immediate(immediate),
-            mode => E::halt(format!("Attempted to assign a {} as an immediate", mode)),
+            mode => E::halt(format!("Attempted to assign a {} immediate", mode)),
         }
     }
 }

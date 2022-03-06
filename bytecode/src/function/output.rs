@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{instructions::Instruction, Argument, Immediate, Memory, Operation, Register};
-use snarkvm_circuits::{Mode, Parser, ParserResult};
+use crate::{Argument, Memory, Operation, Sanitizer};
+use snarkvm_circuits::{Parser, ParserResult};
 
 use core::fmt;
 use nom::bytes::complete::tag;
@@ -42,6 +42,8 @@ impl<M: Memory> Parser for Output<M> {
     /// Parses a string into an input.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
+        // Parse the whitespace and comments from the string.
+        let (string, _) = Sanitizer::parse(string)?;
         // Parse the input keyword from the string.
         let (string, _) = tag(Self::OPCODE)(string)?;
         // Parse the space from the string.
@@ -58,13 +60,5 @@ impl<M: Memory> Parser for Output<M> {
 impl<M: Memory> fmt::Display for Output<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{} {};", Self::OPCODE, self.argument)
-    }
-}
-
-#[allow(clippy::from_over_into)]
-impl<M: Memory> Into<Instruction<M>> for Output<M> {
-    /// Converts the operation into an instruction.
-    fn into(self) -> Instruction<M> {
-        Instruction::Output(self)
     }
 }

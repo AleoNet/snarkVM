@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{instructions::Instruction, BinaryParser, Immediate, Memory, Operand, Operation, Register};
-use snarkvm_circuits::{AddChecked, Parser, ParserResult};
+use snarkvm_circuits::{Parser, ParserResult};
 
 use core::fmt;
 

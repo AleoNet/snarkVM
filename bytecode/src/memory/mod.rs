@@ -19,7 +19,7 @@ pub mod allocator;
 pub mod stack;
 pub use stack::*;
 
-use crate::{Argument, Immediate, Operand, Register};
+use crate::{Argument, Immediate, Register};
 use snarkvm_circuits::Environment;
 
 use core::hash;

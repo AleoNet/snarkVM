@@ -14,12 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    instructions::{Input, Instruction, Output},
-    Immediate,
-    Memory,
-    Register,
-};
+pub mod input;
+pub use input::*;
+
+pub mod output;
+pub use output::*;
+
+use crate::{instructions::Instruction, Immediate, Memory, Operation, Sanitizer};
 use snarkvm_circuits::{Parser, ParserResult};
 
 use core::fmt;
@@ -27,34 +28,36 @@ use nom::{
     branch::alt,
     bytes::complete::tag,
     character::complete::{alpha1, alphanumeric1},
-    combinator::{opt, recognize},
-    multi::{many0, many1, separated_list0, separated_list1},
+    combinator::recognize,
+    multi::{many0, many1},
     sequence::pair,
 };
 
 pub struct Function<M: Memory> {
     name: String,
+    inputs: Vec<Input<M>>,
     instructions: Vec<Instruction<M>>,
+    outputs: Vec<Output<M>>,
 }
 
 impl<M: Memory> Function<M> {
-    /// Adds the given instruction.
-    pub fn push_instruction(&mut self, instruction: Instruction<M>) {
-        self.instructions.push(instruction);
-    }
-
     /// Evaluates the function, returning the outputs.
     pub fn evaluate(&self) -> Vec<Immediate<M::Environment>> {
-        for instruction in &self.instructions {
-            instruction.evaluate();
-        }
+        self.inputs.iter().for_each(Operation::evaluate);
+        self.instructions.iter().for_each(Instruction::evaluate);
+        self.outputs.iter().for_each(Operation::evaluate);
         M::load_outputs()
     }
 }
 
 impl<M: Memory> Default for Function<M> {
     fn default() -> Self {
-        Self { name: String::new(), instructions: Default::default() }
+        Self {
+            name: String::new(),
+            inputs: Default::default(),
+            instructions: Default::default(),
+            outputs: Default::default(),
+        }
     }
 }
 
@@ -64,27 +67,23 @@ impl<M: Memory> Parser for Function<M> {
     /// Parses a string into a local function.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        let mut sanitize_whitespace = many0(alt((tag(" "), tag("\n"), tag("\t"))));
-
-        // Parse the whitespace from the string.
-        let (string, _) = sanitize_whitespace(string)?;
+        // Parse the whitespace and comments from the string.
+        let (string, _) = Sanitizer::parse(string)?;
         // Parse the 'function' keyword from the string.
         let (string, _) = tag("function ")(string)?;
         // Parse the function name from the string.
         let (string, name) = recognize(pair(alpha1, many0(alt((alphanumeric1, tag("_"))))))(string)?;
         // Parse the colon ':' keyword from the string.
         let (string, _) = tag(":")(string)?;
-        // Parse the whitespace from the string.
-        let (string, _) = sanitize_whitespace(string)?;
 
-        // // Parse the inputs from the string.
-        // let (string, inputs) = separated_list1(sanitize_whitespace, Input::parse)(string)?;
+        // Parse the inputs from the string.
+        let (string, inputs) = many0(Input::parse)(string)?;
         // Parse the instructions from the string.
-        let (string, instructions) = separated_list1(sanitize_whitespace, Instruction::parse)(string)?;
-        // // Parse the outputs from the string.
-        // let (string, outputs) = separated_list1(sanitize_whitespace, Output::parse)(string)?;
+        let (string, instructions) = many1(Instruction::parse)(string)?;
+        // Parse the outputs from the string.
+        let (string, outputs) = many0(Output::parse)(string)?;
 
-        Ok((string, Self { name: name.to_string(), instructions }))
+        Ok((string, Self { name: name.to_string(), inputs, instructions, outputs }))
     }
 }
 

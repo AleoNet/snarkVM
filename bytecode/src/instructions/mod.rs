@@ -17,19 +17,13 @@
 pub mod add;
 pub use add::*;
 
-pub mod input;
-pub use input::*;
-
-pub mod output;
-pub use output::*;
-
 pub mod store;
 pub use store::*;
 
 pub mod sub;
 pub use sub::*;
 
-use crate::{Memory, Operation};
+use crate::{Memory, Operation, Sanitizer};
 use snarkvm_circuits::{Parser, ParserResult};
 
 use core::fmt;
@@ -38,10 +32,6 @@ use nom::{branch::alt, combinator::map};
 pub enum Instruction<M: Memory> {
     /// Adds `first` with `second`, storing the outcome in `destination`.
     Add(Add<M>),
-    /// Declares a function input `register` with type `annotation`.
-    Input(Input<M>),
-    /// Declares a `register` as a function output with type `annotation`.
-    Output(Output<M>),
     /// Stores `operand` into `register`, if `destination` is not already set.
     Store(Store<M>),
     /// Subtracts `first` from `second`, storing the outcome in `destination`.
@@ -53,10 +43,8 @@ impl<M: Memory> Instruction<M> {
     pub fn opcode(&self) -> u16 {
         match self {
             Self::Add(..) => 0,
-            Self::Input(..) => 1,
-            Self::Output(..) => 2,
-            Self::Store(..) => 3,
-            Self::Sub(..) => 4,
+            Self::Store(..) => 1,
+            Self::Sub(..) => 2,
         }
     }
 
@@ -64,8 +52,6 @@ impl<M: Memory> Instruction<M> {
     pub fn evaluate(&self) {
         match self {
             Self::Add(instruction) => instruction.evaluate(),
-            Self::Input(instruction) => instruction.evaluate(),
-            Self::Output(instruction) => instruction.evaluate(),
             Self::Store(instruction) => instruction.evaluate(),
             Self::Sub(instruction) => instruction.evaluate(),
         }
@@ -78,11 +64,12 @@ impl<M: Memory> Parser for Instruction<M> {
     /// Parses a string into an instruction.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
+        // Parse the whitespace and comments from the string.
+        let (string, _) = Sanitizer::parse(string)?;
+
         alt((
             // Note that order of the individual parsers matters.
             map(Add::parse, |instruction| Self::Add(instruction)),
-            map(Input::parse, |instruction| Self::Input(instruction)),
-            map(Output::parse, |instruction| Self::Output(instruction)),
             map(Store::parse, |instruction| Self::Store(instruction)),
             map(Sub::parse, |instruction| Self::Sub(instruction)),
         ))(string)
@@ -93,8 +80,6 @@ impl<M: Memory> fmt::Display for Instruction<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::Add(instruction) => instruction.fmt(f),
-            Self::Input(instruction) => instruction.fmt(f),
-            Self::Output(instruction) => instruction.fmt(f),
             Self::Store(instruction) => instruction.fmt(f),
             Self::Sub(instruction) => instruction.fmt(f),
         }

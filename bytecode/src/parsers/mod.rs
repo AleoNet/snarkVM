@@ -17,5 +17,8 @@
 pub(crate) mod binary;
 pub(crate) use binary::*;
 
+pub(crate) mod sanitizer;
+pub(crate) use sanitizer::*;
+
 pub(crate) mod unary;
 pub(crate) use unary::*;
