@@ -76,12 +76,6 @@ mod tests {
         }
     }
 
-    fn assert_unsigned_neg_halts<I: IntegerType + std::panic::UnwindSafe>(mode: Mode) {
-        let candidate = Integer::<Circuit, I>::new(mode, UniformRand::rand(&mut test_rng()));
-        let operation = std::panic::catch_unwind(|| candidate.neg());
-        assert!(operation.is_err());
-    }
-
     #[rustfmt::skip]
     fn run_test<I: IntegerType + std::panic::UnwindSafe + Neg<Output = I> >(
         mode: Mode,
@@ -90,17 +84,21 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
-        let check_neg = | name: &str, first: I | check_neg(name, first, mode, num_constants, num_public, num_private, num_constraints);
-
         // Check the 0 case.
-        check_neg(&format!("Neg: {} zero", mode), I::zero());
+        check_neg(&format!("Neg: {} zero", mode), I::zero(), mode, num_constants, num_public, num_private, num_constraints);
         // Check the 1 case.
-        check_neg(&format!("Neg: {} one", mode), -I::one());
+        check_neg(&format!("Neg: {} one", mode), -I::one(), mode, num_constants, num_public, num_private, num_constraints);
         // Check random values.
         for i in 0..ITERATIONS {
             let value: I = UniformRand::rand(&mut test_rng());
-            check_neg(&format!("Neg: {} {}", mode, i), value);
+            check_neg(&format!("Neg: {} {}", mode, i), value, mode, num_constants, num_public, num_private, num_constraints);
         }
+    }
+
+    fn assert_unsigned_neg_halts<I: IntegerType + std::panic::UnwindSafe>(mode: Mode) {
+        let candidate = Integer::<Circuit, I>::new(mode, UniformRand::rand(&mut test_rng()));
+        let operation = std::panic::catch_unwind(|| candidate.neg());
+        assert!(operation.is_err());
     }
 
     #[test]

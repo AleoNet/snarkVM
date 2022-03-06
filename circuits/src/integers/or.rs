@@ -87,7 +87,7 @@ mod tests {
     const ITERATIONS: usize = 128;
 
     #[rustfmt::skip]
-    fn check_bitor<I: IntegerType + BitOr<Output = I>>(
+    fn check_or<I: IntegerType + BitOr<Output = I>>(
         name: &str,
         first: I,
         second: I,
@@ -118,28 +118,26 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
-        let check_bitor = | name: &str, first: I, second: I | check_bitor(name, first, second, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
-
         for i in 0..ITERATIONS {
             let first : I = UniformRand::rand(&mut thread_rng());
             let second : I = UniformRand::rand(&mut thread_rng());
 
             let name = format!("BitOr: ({} | {}) {}", mode_a, mode_b, i);
-            check_bitor(&name, first, second);
+            check_or(&name, first, second, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
 
             let name = format!("BitOr Identity: ({} | {}) {}", mode_a, mode_b, i);
-            check_bitor(&name, I::zero(), first);
+            check_or(&name, I::zero(), first, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
 
             let name = format!("BitOr Invariant: ({} | {}) {}", mode_a, mode_b, i);
             let invariant = if I::is_signed() { I::zero() - I::one() } else { I::MAX };
-            check_bitor(&name, invariant, first);
+            check_or(&name, invariant, first, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
         }
 
         // Check cases common to signed and unsigned integers.
-        check_bitor("0 | MAX", I::zero(), I::MAX);
-        check_bitor("MAX | 0", I::MAX, I::zero());
-        check_bitor("0 | MIN", I::zero(), I::MIN);
-        check_bitor("MIN | 0", I::MIN, I::zero());
+        check_or("0 | MAX", I::zero(), I::MAX, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+        check_or("MAX | 0", I::MAX, I::zero(), mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+        check_or("0 | MIN", I::zero(), I::MIN, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+        check_or("MIN | 0", I::MIN, I::zero(), mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
     }
 
     #[rustfmt::skip]
@@ -156,7 +154,7 @@ mod tests {
         for first in I::MIN..=I::MAX {
             for second in I::MIN..=I::MAX {
                 let name = format!("BitOr: ({} | {})", first, second);
-                check_bitor(&name, first, second, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+                check_or(&name, first, second, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
             }
         }
     }

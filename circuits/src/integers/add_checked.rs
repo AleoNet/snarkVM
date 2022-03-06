@@ -114,13 +114,15 @@ impl<E: Environment, I: IntegerType> AddChecked<Self> for Integer<E, I> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{assert_circuit, assert_circuit_fails, Circuit};
+    use crate::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
+    use test_utilities::*;
 
     use core::{ops::RangeInclusive, panic::RefUnwindSafe};
 
     const ITERATIONS: usize = 128;
 
+    #[rustfmt::skip]
     fn check_add<I: IntegerType + RefUnwindSafe>(
         name: &str,
         first: I,
@@ -132,43 +134,18 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
-        let case = format!("({} + {})", first, second);
         let a = Integer::<Circuit, I>::new(mode_a, first);
         let b = Integer::new(mode_b, second);
+        let case = format!("({} + {})", a.eject_value(), b.eject_value());
 
         match first.checked_add(&second) {
-            Some(expected) => Circuit::scoped(name, || {
-                let candidate = a.add_checked(&b);
-                assert_eq!(expected, candidate.eject_value(), "{}", case);
-                assert_circuit!(case, num_constants, num_public, num_private, num_constraints);
-            }),
+            Some(expected) => check_operation_passes(name, &case, expected, &a, &b, Integer::add_checked, num_constants, num_public, num_private, num_constraints),
             None => match mode_a.is_constant() && mode_b.is_constant() {
-                true => check_add_halts(&a, &b),
-                false => check_add_fails(name, &case, &a, &b, num_constants, num_public, num_private, num_constraints),
+                true => check_operation_halts(&a, &b, Integer::add_checked),
+                false => check_operation_fails(name, &case, &a, &b, Integer::add_checked, num_constants, num_public, num_private, num_constraints),
             },
         }
         Circuit::reset();
-    }
-
-    fn check_add_halts<I: IntegerType + RefUnwindSafe>(a: &Integer<Circuit, I>, b: &Integer<Circuit, I>) {
-        let result = std::panic::catch_unwind(|| a.add_checked(&b));
-        assert!(result.is_err());
-    }
-
-    fn check_add_fails<I: IntegerType + RefUnwindSafe>(
-        name: &str,
-        case: &str,
-        a: &Integer<Circuit, I>,
-        b: &Integer<Circuit, I>,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        Circuit::scoped(name, || {
-            let _candidate = a.add_checked(&b);
-            assert_circuit_fails!(case, num_constants, num_public, num_private, num_constraints);
-        });
     }
 
     #[rustfmt::skip]

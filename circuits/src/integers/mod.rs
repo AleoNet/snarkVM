@@ -480,7 +480,7 @@ mod test_utilities {
     ) {
         Circuit::scoped(name, || {
             let candidate = operation(input);
-            assert_eq!(expected, candidate.eject_value(), "{} != {} := {}", expected, candidate.eject_value(), case);
+            assert_eq!(expected, candidate.eject_value(), "{}", case);
             assert_circuit!(case, num_constants, num_public, num_private, num_constraints);
         });
         Circuit::reset();

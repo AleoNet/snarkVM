@@ -47,13 +47,15 @@ impl<E: Environment, I: IntegerType> AddWrapped<Self> for Integer<E, I> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{assert_circuit, Circuit};
+    use crate::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
+    use test_utilities::*;
 
     use core::ops::RangeInclusive;
 
     const ITERATIONS: usize = 128;
 
+    #[rustfmt::skip]
     fn check_add<I: IntegerType>(
         name: &str,
         first: I,
@@ -65,18 +67,11 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
-        let case = format!("({} + {})", first, second);
-        let expected = first.wrapping_add(&second);
-
         let a = Integer::<Circuit, I>::new(mode_a, first);
-        let b = Integer::new(mode_b, second);
-
-        Circuit::scoped(name, || {
-            let candidate = a.add_wrapped(&b);
-            assert_eq!(expected, candidate.eject_value(), "{}", case);
-            assert_circuit!(case, num_constants, num_public, num_private, num_constraints);
-        });
-        Circuit::reset();
+        let b = Integer::<Circuit, I>::new(mode_b, second);
+        let case = format!("({} + {})", a.eject_value(), b.eject_value());
+        let expected = first.wrapping_add(&second);
+        check_operation_passes(name, &case, expected, &a, &b, Integer::add_wrapped, num_constants, num_public, num_private, num_constraints);
     }
 
     #[rustfmt::skip]
