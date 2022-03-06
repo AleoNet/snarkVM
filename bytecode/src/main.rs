@@ -14,21 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_bytecode::{Function, Global, Immediate};
+use snarkvm_bytecode::{Function, Immediate, Memory, Stack};
 use snarkvm_circuits::{traits::*, BaseField};
 
 pub struct HelloWorld;
 
 impl HelloWorld {
     /// Initializes a new instance of `HelloWorld` with the given inputs.
-    pub fn run<F: Function>(inputs: [Immediate<F::Environment>; 2]) -> Vec<Immediate<F::Environment>> {
+    pub fn run<M: Memory>(inputs: [Immediate<M::Environment>; 2]) -> Vec<Immediate<M::Environment>> {
         // Allocate a new register for each input, and store each input in the register.
         let mut registers = Vec::with_capacity(2);
         for input in inputs {
-            registers.push(F::new_input(input));
+            registers.push(M::new_input(input));
         }
 
-        F::from_str(
+        Function::<M>::from_str(
             r"
 function main:
     input r0 field.public;
@@ -36,8 +36,8 @@ function main:
     add r2 r0 r1;
     output r2 field.private;
 ",
-        );
-        F::evaluate()
+        )
+        .evaluate()
     }
 }
 
@@ -46,7 +46,7 @@ fn main() {
     let second = Immediate::from_str("1field.private");
 
     let expected = BaseField::from_str("2field.private");
-    let candidate = HelloWorld::run::<Global>([first, second]);
+    let candidate = HelloWorld::run::<Stack>([first, second]);
 
     match &candidate[0] {
         Immediate::Field(output) => {
@@ -63,7 +63,7 @@ fn test_hello_world() {
     let second = Immediate::from_str("1field.private");
 
     let expected = BaseField::from_str("2field.private");
-    let candidate = HelloWorld::run::<Global>([first, second]);
+    let candidate = HelloWorld::run::<Stack>([first, second]);
 
     match &candidate[0] {
         Immediate::Field(output) => assert!(output.is_eq(&expected).eject_value()),
