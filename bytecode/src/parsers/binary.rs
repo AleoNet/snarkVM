@@ -28,7 +28,7 @@ impl<M: Memory> BinaryParser<M> {
     pub(crate) fn parse<'a>(
         opcode: &'a str,
         string: &'a str,
-    ) -> ParserResult<'a, (Register<M::Environment>, Operand<M>, Operand<M>)> {
+    ) -> ParserResult<'a, (Register<M::Environment>, Operand<M::Environment>, Operand<M::Environment>)> {
         // Parse the opcode.
         let (string, _) = tag(opcode)(string)?;
         // Parse the space from the string.
@@ -54,8 +54,8 @@ impl<M: Memory> BinaryParser<M> {
     pub(crate) fn render(
         opcode: &str,
         destination: &Register<M::Environment>,
-        first: &Operand<M>,
-        second: &Operand<M>,
+        first: &Operand<M::Environment>,
+        second: &Operand<M::Environment>,
     ) -> String {
         format!("{} {} {} {};", opcode, destination, first, second)
     }

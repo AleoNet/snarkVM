@@ -19,7 +19,7 @@ pub mod allocator;
 pub mod stack;
 pub use stack::*;
 
-use crate::{Argument, Immediate, Register};
+use crate::{Argument, Immediate, Operand, Register};
 use snarkvm_circuits::Environment;
 
 use core::hash;
@@ -45,14 +45,6 @@ pub trait Memory: InputMemory + OutputMemory + Copy + Clone + Eq + PartialEq + h
 
     /// Returns the number of registers allocated.
     fn num_registers() -> u64;
-
-    /// Halts the program from further synthesis, evaluation, and execution in the current environment.
-    fn halt<S: Into<String>, T>(message: S) -> T {
-        Self::Environment::halt(message)
-    }
-
-    /// Clears and initializes an empty memory layout.
-    fn reset();
 }
 
 pub trait InputMemory: CoreMemory {
@@ -79,4 +71,12 @@ pub trait OutputMemory: CoreMemory {
 
 pub trait CoreMemory {
     type Environment: Environment;
+
+    /// Halts the program from further synthesis, evaluation, and execution in the current environment.
+    fn halt<S: Into<String>, T>(message: S) -> T {
+        Self::Environment::halt(message)
+    }
+
+    /// Clears and initializes an empty memory layout.
+    fn reset();
 }

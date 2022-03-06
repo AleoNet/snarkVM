@@ -24,18 +24,18 @@ pub mod register;
 pub use register::*;
 
 use crate::Memory;
-use snarkvm_circuits::{Mode, Parser, ParserResult};
+use snarkvm_circuits::{Environment, Mode, Parser, ParserResult};
 
 use core::fmt;
 use nom::{branch::alt, combinator::map};
 
 #[derive(Clone)]
-pub enum Operand<M: Memory> {
-    Immediate(Immediate<M::Environment>),
-    Register(Register<M::Environment>),
+pub enum Operand<E: Environment> {
+    Immediate(Immediate<E>),
+    Register(Register<E>),
 }
 
-impl<M: Memory> Operand<M> {
+impl<E: Environment> Operand<E> {
     /// Returns `true` if the value type is an immediate.
     pub(crate) fn is_immediate(&self) -> bool {
         matches!(self, Self::Immediate(..))
@@ -47,7 +47,7 @@ impl<M: Memory> Operand<M> {
     }
 
     /// Returns the value from a register, otherwise passes the loaded value through.
-    pub(crate) fn to_value(&self) -> Immediate<M::Environment> {
+    pub(crate) fn load<M: Memory<Environment = E>>(&self) -> Immediate<E> {
         match self {
             Self::Immediate(value) => value.clone(),
             Self::Register(register) => M::load(register),
@@ -55,37 +55,37 @@ impl<M: Memory> Operand<M> {
     }
 }
 
-impl<M: Memory> From<Immediate<M::Environment>> for Operand<M> {
+impl<E: Environment> From<Immediate<E>> for Operand<E> {
     /// Ensures that the given immediate is a constant.
-    fn from(immediate: Immediate<M::Environment>) -> Operand<M> {
+    fn from(immediate: Immediate<E>) -> Operand<E> {
         match immediate.mode() {
             Mode::Constant => Operand::Immediate(immediate),
-            mode => M::halt(format!("Attempted to assign a {} as an immediate", mode)),
+            mode => E::halt(format!("Attempted to assign a {} as an immediate", mode)),
         }
     }
 }
 
-impl<M: Memory> From<&Immediate<M::Environment>> for Operand<M> {
+impl<E: Environment> From<&Immediate<E>> for Operand<E> {
     /// Ensures that the given immediate is a constant.
-    fn from(immediate: &Immediate<M::Environment>) -> Operand<M> {
+    fn from(immediate: &Immediate<E>) -> Operand<E> {
         Operand::from(immediate.clone())
     }
 }
 
-impl<M: Memory> From<Register<M::Environment>> for Operand<M> {
-    fn from(register: Register<M::Environment>) -> Operand<M> {
+impl<E: Environment> From<Register<E>> for Operand<E> {
+    fn from(register: Register<E>) -> Operand<E> {
         Operand::Register(register)
     }
 }
 
-impl<M: Memory> From<&Register<M::Environment>> for Operand<M> {
-    fn from(register: &Register<M::Environment>) -> Operand<M> {
+impl<E: Environment> From<&Register<E>> for Operand<E> {
+    fn from(register: &Register<E>) -> Operand<E> {
         Operand::from(*register)
     }
 }
 
-impl<M: Memory> Parser for Operand<M> {
-    type Environment = M::Environment;
+impl<E: Environment> Parser for Operand<E> {
+    type Environment = E;
 
     /// Parses a string into an operand.
     #[inline]
@@ -97,7 +97,7 @@ impl<M: Memory> Parser for Operand<M> {
     }
 }
 
-impl<M: Memory> fmt::Display for Operand<M> {
+impl<E: Environment> fmt::Display for Operand<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::Immediate(immediate) => immediate.fmt(f),

@@ -25,13 +25,6 @@ pub struct Output<M: Memory> {
     argument: Argument<M::Environment>,
 }
 
-impl<M: Memory> Output<M> {
-    /// Initializes a new output register.
-    pub fn new(argument: Argument<M::Environment>) -> Self {
-        Self { argument }
-    }
-}
-
 impl<M: Memory> Operation for Output<M> {
     type Memory = M;
 
@@ -58,7 +51,7 @@ impl<M: Memory> Parser for Output<M> {
         // Parse the semicolon from the string.
         let (string, _) = tag(";")(string)?;
 
-        Ok((string, Output::new(argument)))
+        Ok((string, Self { argument }))
     }
 }
 

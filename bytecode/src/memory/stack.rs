@@ -38,6 +38,12 @@ pub struct Stack;
 
 impl CoreMemory for Stack {
     type Environment = Circuit;
+
+    /// Clears and initializes an empty memory layout.
+    fn reset() {
+        Self::Environment::reset();
+        STACK.with(|stack| *(**stack).borrow_mut() = Default::default());
+    }
 }
 
 impl InputMemory for Stack {
@@ -91,12 +97,6 @@ impl Memory for Stack {
     /// Returns the number of registers allocated.
     fn num_registers() -> u64 {
         STACK.with(|stack| (**stack).borrow().num_registers())
-    }
-
-    /// Clears and initializes an empty memory layout.
-    fn reset() {
-        Self::Environment::reset();
-        STACK.with(|stack| *(**stack).borrow_mut() = Default::default());
     }
 }
 

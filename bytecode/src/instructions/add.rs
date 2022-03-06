@@ -22,15 +22,8 @@ use core::fmt;
 /// Adds `first` with `second`, storing the outcome in `destination`.
 pub struct Add<M: Memory> {
     destination: Register<M::Environment>,
-    first: Operand<M>,
-    second: Operand<M>,
-}
-
-impl<M: Memory> Add<M> {
-    /// Initializes a new instance of the 'add' operation.
-    pub fn new(destination: Register<M::Environment>, first: Operand<M>, second: Operand<M>) -> Self {
-        Self { destination, first, second }
-    }
+    first: Operand<M::Environment>,
+    second: Operand<M::Environment>,
 }
 
 impl<M: Memory> Operation for Add<M> {
@@ -42,7 +35,8 @@ impl<M: Memory> Operation for Add<M> {
     fn evaluate(&self) {
         M::initialize(&self.destination);
 
-        match (self.first.to_value(), self.second.to_value()) {
+        // Load the values for the first and second operands, and perform the operation.
+        match (self.first.load::<M>(), self.second.load::<M>()) {
             (Immediate::Field(a), Immediate::Field(b)) => M::store(&self.destination, Immediate::Field(a + b)),
             (Immediate::Group(a), Immediate::Group(b)) => M::store(&self.destination, Immediate::Group(a + b)),
             _ => M::halt(format!("Invalid {} instruction", Self::OPCODE)),
@@ -57,7 +51,7 @@ impl<M: Memory> Parser for Add<M> {
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the instruction.
-        let (string, (destination, first, second)) = BinaryParser::parse(Self::OPCODE, string)?;
+        let (string, (destination, first, second)) = BinaryParser::<M>::parse(Self::OPCODE, string)?;
         // Return the string and instruction.
         Ok((string, Self { destination, first, second }))
     }
@@ -65,7 +59,7 @@ impl<M: Memory> Parser for Add<M> {
 
 impl<M: Memory> fmt::Display for Add<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", BinaryParser::render(Self::OPCODE, &self.destination, &self.first, &self.second))
+        write!(f, "{}", BinaryParser::<M>::render(Self::OPCODE, &self.destination, &self.first, &self.second))
     }
 }
 

@@ -28,7 +28,7 @@ impl<M: Memory> UnaryParser<M> {
     pub(crate) fn parse<'a>(
         opcode: &'a str,
         string: &'a str,
-    ) -> ParserResult<'a, (Register<M::Environment>, Operand<M>)> {
+    ) -> ParserResult<'a, (Register<M::Environment>, Operand<M::Environment>)> {
         // Parse the opcode.
         let (string, _) = tag(opcode)(string)?;
         // Parse the space from the string.
@@ -47,7 +47,11 @@ impl<M: Memory> UnaryParser<M> {
 
     /// Returns a unary instruction as a string.
     #[inline]
-    pub(crate) fn render(opcode: &str, destination: &Register<M::Environment>, operand: &Operand<M>) -> String {
+    pub(crate) fn render(
+        opcode: &str,
+        destination: &Register<M::Environment>,
+        operand: &Operand<M::Environment>,
+    ) -> String {
         format!("{} {} {};", opcode, destination, operand)
     }
 }

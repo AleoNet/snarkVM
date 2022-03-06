@@ -22,14 +22,7 @@ use core::fmt;
 /// Stores `operand` into `register`, if `destination` is not already set.
 pub struct Store<M: Memory> {
     destination: Register<M::Environment>,
-    operand: Operand<M>,
-}
-
-impl<M: Memory> Store<M> {
-    /// Initializes a new instance of the 'store' operation.
-    pub fn new(destination: Register<M::Environment>, operand: Operand<M>) -> Self {
-        Self { destination, operand }
-    }
+    operand: Operand<M::Environment>,
 }
 
 impl<M: Memory> Operation for Store<M> {
@@ -40,7 +33,8 @@ impl<M: Memory> Operation for Store<M> {
     /// Evaluates the operation in-place.
     fn evaluate(&self) {
         M::initialize(&self.destination);
-        M::store(&self.destination, self.operand.to_value())
+        // Load the value for the operand, and store it into the destination register.
+        M::store(&self.destination, self.operand.load::<M>())
     }
 }
 
@@ -51,7 +45,7 @@ impl<M: Memory> Parser for Store<M> {
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the instruction.
-        let (string, (destination, operand)) = UnaryParser::parse(Self::OPCODE, string)?;
+        let (string, (destination, operand)) = UnaryParser::<M>::parse(Self::OPCODE, string)?;
         // Return the string and instruction.
         Ok((string, Self { destination, operand }))
     }
@@ -59,7 +53,7 @@ impl<M: Memory> Parser for Store<M> {
 
 impl<M: Memory> fmt::Display for Store<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", UnaryParser::render(Self::OPCODE, &self.destination, &self.operand))
+        write!(f, "{}", UnaryParser::<M>::render(Self::OPCODE, &self.destination, &self.operand))
     }
 }
 

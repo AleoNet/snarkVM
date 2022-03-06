@@ -26,13 +26,6 @@ pub struct Input<M: Memory> {
     argument: Argument<M::Environment>,
 }
 
-impl<M: Memory> Input<M> {
-    /// Initializes a new input register.
-    pub fn new(argument: Argument<M::Environment>) -> Self {
-        Self { argument }
-    }
-}
-
 impl<M: Memory> Operation for Input<M> {
     type Memory = M;
 
@@ -60,7 +53,7 @@ impl<M: Memory> Parser for Input<M> {
         // Parse the semicolon from the string.
         let (string, _) = tag(";")(string)?;
 
-        Ok((string, Input::new(argument)))
+        Ok((string, Self { argument }))
     }
 }
 
