@@ -14,47 +14,57 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Memory, Operand, Register};
+use crate::{Immediate, Memory, Operand, Register};
 use snarkvm_circuits::{Parser, ParserResult};
 
-use core::marker::PhantomData;
+use core::{fmt, marker::PhantomData};
 use nom::bytes::complete::tag;
 
-pub(crate) struct UnaryParser<M: Memory>(PhantomData<M>);
+pub(crate) struct UnaryOperation<M: Memory> {
+    destination: Register<M::Environment>,
+    operand: Operand<M::Environment>,
+}
 
-impl<M: Memory> UnaryParser<M> {
-    /// Parses a string into a unary instruction.
+impl<M: Memory> UnaryOperation<M> {
+    /// Returns the destination register.
+    pub(crate) fn destination(&self) -> &Register<M::Environment> {
+        &self.destination
+    }
+
+    /// Returns the operand.
+    pub(crate) fn operand(&self) -> Immediate<M::Environment> {
+        self.operand.load::<M>()
+    }
+}
+
+impl<M: Memory> Parser for UnaryOperation<M> {
+    type Environment = M::Environment;
+
+    /// Returns the type name as a string.
     #[inline]
-    pub(crate) fn parse<'a>(
-        opcode: &'a str,
-        string: &'a str,
-    ) -> ParserResult<'a, (Register<M::Environment>, Operand<M::Environment>)> {
-        // Parse the opcode.
-        let (string, _) = tag(opcode)(string)?;
-        // Parse the space from the string.
-        let (string, _) = tag(" ")(string)?;
+    fn type_name() -> &'static str {
+        "operation"
+    }
+
+    /// Parses a string into an operation.
+    #[inline]
+    fn parse(string: &str) -> ParserResult<Self> {
         // Parse the destination register from the string.
         let (string, destination) = Register::parse(string)?;
         // Parse the space from the string.
         let (string, _) = tag(" ")(string)?;
         // Parse the operand from the string.
         let (string, operand) = Operand::parse(string)?;
-        // Parse the semicolon from the string.
-        let (string, _) = tag(";")(string)?;
 
         // Initialize the destination register.
         M::initialize(&destination);
 
-        Ok((string, (destination, operand)))
+        Ok((string, Self { destination, operand }))
     }
+}
 
-    /// Returns a unary instruction as a string.
-    #[inline]
-    pub(crate) fn render(
-        opcode: &str,
-        destination: &Register<M::Environment>,
-        operand: &Operand<M::Environment>,
-    ) -> String {
-        format!("{} {} {};", opcode, destination, operand)
+impl<M: Memory> fmt::Display for UnaryOperation<M> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{} {}", self.destination, self.operand)
     }
 }

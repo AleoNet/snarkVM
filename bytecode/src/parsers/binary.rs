@@ -14,25 +14,47 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Memory, Operand, Register};
+use crate::{Immediate, Memory, Operand, Register};
 use snarkvm_circuits::{Parser, ParserResult};
 
-use core::marker::PhantomData;
+use core::{fmt, marker::PhantomData};
 use nom::bytes::complete::tag;
 
-pub(crate) struct BinaryParser<M: Memory>(PhantomData<M>);
+pub(crate) struct BinaryOperation<M: Memory> {
+    destination: Register<M::Environment>,
+    first: Operand<M::Environment>,
+    second: Operand<M::Environment>,
+}
 
-impl<M: Memory> BinaryParser<M> {
-    /// Parses a string into a binary instruction.
+impl<M: Memory> BinaryOperation<M> {
+    /// Returns the destination register.
+    pub(crate) fn destination(&self) -> &Register<M::Environment> {
+        &self.destination
+    }
+
+    /// Returns the first operand.
+    pub(crate) fn first(&self) -> Immediate<M::Environment> {
+        self.first.load::<M>()
+    }
+
+    /// Returns the second operand.
+    pub(crate) fn second(&self) -> Immediate<M::Environment> {
+        self.second.load::<M>()
+    }
+}
+
+impl<M: Memory> Parser for BinaryOperation<M> {
+    type Environment = M::Environment;
+
+    /// Returns the type name as a string.
     #[inline]
-    pub(crate) fn parse<'a>(
-        opcode: &'a str,
-        string: &'a str,
-    ) -> ParserResult<'a, (Register<M::Environment>, Operand<M::Environment>, Operand<M::Environment>)> {
-        // Parse the opcode.
-        let (string, _) = tag(opcode)(string)?;
-        // Parse the space from the string.
-        let (string, _) = tag(" ")(string)?;
+    fn type_name() -> &'static str {
+        "operation"
+    }
+
+    /// Parses a string into an operation.
+    #[inline]
+    fn parse(string: &str) -> ParserResult<Self> {
         // Parse the destination register from the string.
         let (string, destination) = Register::parse(string)?;
         // Parse the space from the string.
@@ -43,23 +65,16 @@ impl<M: Memory> BinaryParser<M> {
         let (string, _) = tag(" ")(string)?;
         // Parse the second operand from the string.
         let (string, second) = Operand::parse(string)?;
-        // Parse the semicolon from the string.
-        let (string, _) = tag(";")(string)?;
 
         // Initialize the destination register.
         M::initialize(&destination);
 
-        Ok((string, (destination, first, second)))
+        Ok((string, Self { destination, first, second }))
     }
+}
 
-    /// Returns a binary instruction as a string.
-    #[inline]
-    pub(crate) fn render(
-        opcode: &str,
-        destination: &Register<M::Environment>,
-        first: &Operand<M::Environment>,
-        second: &Operand<M::Environment>,
-    ) -> String {
-        format!("{} {} {} {};", opcode, destination, first, second)
+impl<M: Memory> fmt::Display for BinaryOperation<M> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{} {} {}", self.destination, self.first, self.second)
     }
 }

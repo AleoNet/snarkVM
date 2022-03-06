@@ -14,15 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{instructions::Instruction, Memory, Operand, Operation, Register, UnaryParser};
+use crate::{instructions::Instruction, Memory, Operand, Operation, Register, UnaryOperation};
 use snarkvm_circuits::{Parser, ParserResult};
 
 use core::fmt;
+use nom::{bytes::complete::tag, combinator::map};
 
 /// Stores `operand` into `register`, if `destination` is not already set.
 pub struct Store<M: Memory> {
-    destination: Register<M::Environment>,
-    operand: Operand<M::Environment>,
+    operation: UnaryOperation<M>,
 }
 
 impl<M: Memory> Operation for Store<M> {
@@ -31,7 +31,7 @@ impl<M: Memory> Operation for Store<M> {
     /// Evaluates the operation in-place.
     fn evaluate(&self) {
         // Load the value for the operand, and store it into the destination register.
-        M::store(&self.destination, self.operand.load::<M>())
+        M::store(&self.operation.destination(), self.operation.operand())
     }
 }
 
@@ -47,16 +47,22 @@ impl<M: Memory> Parser for Store<M> {
     /// Parses a string into an 'store' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        // Parse the instruction.
-        let (string, (destination, operand)) = UnaryParser::<M>::parse(Self::type_name(), string)?;
-        // Return the string and instruction.
-        Ok((string, Self { destination, operand }))
+        // Parse the opcode.
+        let (string, _) = tag(Self::type_name())(string)?;
+        // Parse the space from the string.
+        let (string, _) = tag(" ")(string)?;
+        // Parse the operands.
+        let (string, operation) = map(UnaryOperation::parse, |operation| Self { operation })(string)?;
+        // Parse the semicolon from the string.
+        let (string, _) = tag(";")(string)?;
+
+        Ok((string, operation))
     }
 }
 
 impl<M: Memory> fmt::Display for Store<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", UnaryParser::<M>::render(Self::type_name(), &self.destination, &self.operand))
+        write!(f, "{} {};", Self::type_name(), self.operation)
     }
 }
 
