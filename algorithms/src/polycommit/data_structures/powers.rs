@@ -31,7 +31,7 @@ use snarkvm_utilities::{
 
 use std::{
     fs::{File, OpenOptions},
-    io::{BufRead, BufReader, Cursor, Seek, SeekFrom},
+    io::{BufReader, Seek, SeekFrom},
     marker::PhantomData,
     path::PathBuf,
 };
@@ -82,7 +82,7 @@ impl<E: PairingEngine> CanonicalSerialize for PowersOfG<E> {
 impl<E: PairingEngine> CanonicalDeserialize for PowersOfG<E> {
     fn deserialize<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
         let file_path = String::deserialize(reader)?;
-        Ok(Self::new(PathBuf::from(file_path)).map_err(|_| SerializationError::InvalidData)?)
+        Self::new(PathBuf::from(file_path)).map_err(|_| SerializationError::InvalidData)
     }
 }
 
@@ -118,7 +118,7 @@ impl<E: PairingEngine> PowersOfG<E> {
     pub fn new(file_path: PathBuf) -> Result<Self> {
         // Open the given file, creating it if it doesn't yet exist.
         let mut file = OpenOptions::new().read(true).write(true).create(true).open(file_path.clone())?;
-        let degree = u32::read_le(&mut file).unwrap() as u64;
+        let degree = if file.metadata()?.len() > 0 { u32::read_le(&mut file).unwrap() as u64 } else { 0 };
 
         Ok(Self {
             file_path: file_path.into_os_string().into_string().unwrap(),
@@ -131,6 +131,11 @@ impl<E: PairingEngine> PowersOfG<E> {
     /// Return the number of current powers of G.
     pub fn len(&self) -> usize {
         self.degree as usize
+    }
+
+    /// Returns whether or not the current powers of G are empty.
+    pub fn is_empty(&self) -> bool {
+        self.degree == 0
     }
 
     /// Returns an element at `index`.
@@ -192,7 +197,7 @@ impl<E: PairingEngine> PowersOfG<E> {
     }
 
     /// Download the transcript up to `degree`.
-    fn download_up_to(&self, degree: usize) -> Result<()> {
+    fn download_up_to(&self, _degree: usize) -> Result<()> {
         unimplemented!()
     }
 }
