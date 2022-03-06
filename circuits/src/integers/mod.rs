@@ -192,6 +192,12 @@ impl<E: Environment, I: IntegerType> Eject for Integer<E, I> {
 impl<E: Environment, I: IntegerType> Parser for Integer<E, I> {
     type Environment = E;
 
+    /// Returns the type name of the circuit as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        I::type_name()
+    }
+
     /// Parses a string into an integer circuit.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -210,14 +216,6 @@ impl<E: Environment, I: IntegerType> Parser for Integer<E, I> {
             Some((_, mode)) => Ok((string, Self::new(mode, value))),
             None => Ok((string, Self::new(Mode::Constant, value))),
         }
-    }
-}
-
-impl<E: Environment, I: IntegerType> Annotation for Integer<E, I> {
-    /// Returns the type name of the circuit as a string.
-    #[inline]
-    fn type_name() -> &'static str {
-        I::type_name()
     }
 }
 

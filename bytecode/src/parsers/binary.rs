@@ -46,6 +46,9 @@ impl<M: Memory> BinaryParser<M> {
         // Parse the semicolon from the string.
         let (string, _) = tag(";")(string)?;
 
+        // Initialize the destination register.
+        M::initialize(&destination);
+
         Ok((string, (destination, first, second)))
     }
 

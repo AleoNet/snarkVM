@@ -97,6 +97,12 @@ impl<E: Environment> Eject for BaseField<E> {
 impl<E: Environment> Parser for BaseField<E> {
     type Environment = E;
 
+    /// Returns the type name of the circuit as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "field"
+    }
+
     /// Parses a string into a base field circuit.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -111,14 +117,6 @@ impl<E: Environment> Parser for BaseField<E> {
             Some((_, mode)) => Ok((string, BaseField::new(mode, value))),
             None => Ok((string, BaseField::new(Mode::Constant, value))),
         }
-    }
-}
-
-impl<E: Environment> Annotation for BaseField<E> {
-    /// Returns the type name of the circuit as a string.
-    #[inline]
-    fn type_name() -> &'static str {
-        "field"
     }
 }
 

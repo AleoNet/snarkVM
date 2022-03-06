@@ -29,17 +29,13 @@ pub struct Sub<M: Memory> {
 impl<M: Memory> Operation for Sub<M> {
     type Memory = M;
 
-    const OPCODE: &'static str = "sub";
-
     /// Evaluates the operation in-place.
     fn evaluate(&self) {
-        M::initialize(&self.destination);
-
         // Load the values for the first and second operands, and perform the operation.
         let result = match (self.first.load::<M>(), self.second.load::<M>()) {
             (Immediate::Field(a), Immediate::Field(b)) => (a - b).into(),
             (Immediate::Group(a), Immediate::Group(b)) => (a - b).into(),
-            _ => M::halt(format!("Invalid {} instruction", Self::OPCODE)),
+            _ => M::halt(format!("Invalid {} instruction", Self::type_name())),
         };
 
         M::store(&self.destination, result);
@@ -49,11 +45,17 @@ impl<M: Memory> Operation for Sub<M> {
 impl<M: Memory> Parser for Sub<M> {
     type Environment = M::Environment;
 
+    /// Returns the type name as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "sub"
+    }
+
     /// Parses a string into an 'sub' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the instruction.
-        let (string, (destination, first, second)) = BinaryParser::<M>::parse(Self::OPCODE, string)?;
+        let (string, (destination, first, second)) = BinaryParser::<M>::parse(Self::type_name(), string)?;
         // Return the string and instruction.
         Ok((string, Self { destination, first, second }))
     }
@@ -61,7 +63,7 @@ impl<M: Memory> Parser for Sub<M> {
 
 impl<M: Memory> fmt::Display for Sub<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", BinaryParser::<M>::render(Self::OPCODE, &self.destination, &self.first, &self.second))
+        write!(f, "{}", BinaryParser::<M>::render(Self::type_name(), &self.destination, &self.first, &self.second))
     }
 }
 

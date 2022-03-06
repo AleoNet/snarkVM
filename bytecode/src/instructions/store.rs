@@ -28,11 +28,8 @@ pub struct Store<M: Memory> {
 impl<M: Memory> Operation for Store<M> {
     type Memory = M;
 
-    const OPCODE: &'static str = "store";
-
     /// Evaluates the operation in-place.
     fn evaluate(&self) {
-        M::initialize(&self.destination);
         // Load the value for the operand, and store it into the destination register.
         M::store(&self.destination, self.operand.load::<M>())
     }
@@ -41,11 +38,17 @@ impl<M: Memory> Operation for Store<M> {
 impl<M: Memory> Parser for Store<M> {
     type Environment = M::Environment;
 
+    /// Returns the type name as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "store"
+    }
+
     /// Parses a string into an 'store' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the instruction.
-        let (string, (destination, operand)) = UnaryParser::<M>::parse(Self::OPCODE, string)?;
+        let (string, (destination, operand)) = UnaryParser::<M>::parse(Self::type_name(), string)?;
         // Return the string and instruction.
         Ok((string, Self { destination, operand }))
     }
@@ -53,7 +56,7 @@ impl<M: Memory> Parser for Store<M> {
 
 impl<M: Memory> fmt::Display for Store<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", UnaryParser::<M>::render(Self::OPCODE, &self.destination, &self.operand))
+        write!(f, "{}", UnaryParser::<M>::render(Self::type_name(), &self.destination, &self.operand))
     }
 }
 

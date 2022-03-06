@@ -21,59 +21,20 @@ use once_cell::unsync::OnceCell;
 use std::collections::HashMap;
 
 pub(super) struct Allocator<E: Environment> {
-    inputs: HashMap<u64, Immediate<E>>,
     registers: HashMap<Register<E>, OnceCell<Immediate<E>>>,
-    outputs: Vec<Register<E>>,
 }
 
 impl<E: Environment> Allocator<E> {
-    /// Allocates a new input in memory, returning the new register.
-    pub(super) fn new_input(&mut self, input: Immediate<E>) -> Register<E> {
-        let register = Register::new(self.inputs.len() as u64);
-        self.inputs.insert(*register, input);
-        self.registers.insert(register, Default::default());
-        register
-    }
-
-    /// Attempts to retrieve the input value from the given argument.
-    pub(super) fn load_input(&self, argument: &Argument<E>) -> Immediate<E> {
-        // Attempt to retrieve the specified register from memory.
-        let immediate = match self.inputs.get(&**argument.register()) {
-            Some(immediate) => immediate,
-            None => E::halt(format!("Input register {} does not exist", argument.register())),
-        };
-
-        // Ensure the type and mode are correct.
-        match immediate.type_name() == argument.type_name() && &immediate.mode() == argument.mode() {
-            true => immediate.clone(),
-            false => E::halt(format!(
-                "Input register {} is not a {} {}",
-                argument.register(),
-                argument.mode(),
-                argument.type_name()
-            )),
-        }
-    }
-
-    /// Returns the number of input registers allocated.
-    pub(super) fn num_inputs(&self) -> u64 {
-        self.inputs.len() as u64
-    }
-}
-
-impl<E: Environment> Allocator<E> {
-    /// Allocates a new register in memory, returning the new register.
-    pub(super) fn new_register(&mut self) -> Register<E> {
-        let register = Register::new(self.registers.len() as u64);
-        self.registers.insert(register, Default::default());
-        register
-    }
-
-    /// Allocates the given register in memory.
+    /// Allocates the given register in memory. Ensures the given register does not exist already.
     pub(super) fn initialize(&mut self, register: &Register<E>) {
-        if !self.exists(register) {
-            self.registers.insert(*register, Default::default());
-        }
+        // TODO (howardwu): Handle this assert as a haltable event.
+        assert_eq!(**register, self.registers.len() as u64);
+
+        // Ensure the register has not be initialized, and initialize it.
+        match !self.exists(register) {
+            true => self.registers.insert(*register, Default::default()),
+            false => E::halt(format!("Tried to re-initialize existing register {}", register)),
+        };
     }
 
     /// Returns `true` if the given register exists.
@@ -81,7 +42,7 @@ impl<E: Environment> Allocator<E> {
         self.registers.contains_key(register)
     }
 
-    /// Returns `true` if the given register is already set.
+    /// Returns `true` if the given register both exists and is set.
     pub(super) fn is_set(&self, register: &Register<E>) -> bool {
         // Attempt to retrieve the specified register from memory.
         match self.registers.get(register) {
@@ -91,7 +52,7 @@ impl<E: Environment> Allocator<E> {
         }
     }
 
-    /// Attempts to load the value from the register.
+    /// Attempts to load the immediate from the register.
     pub(super) fn load(&self, register: &Register<E>) -> Immediate<E> {
         // Attempt to retrieve the specified register from memory.
         let memory = match self.registers.get(register) {
@@ -101,13 +62,13 @@ impl<E: Environment> Allocator<E> {
 
         // Attempt to retrieve the value the specified register.
         match memory.get() {
-            Some(value) => value.clone(),
+            Some(immediate) => immediate.clone(),
             None => E::halt(format!("Register {} is not set", register)),
         }
     }
 
-    /// Attempts to store value into the register.
-    pub(super) fn store(&self, register: &Register<E>, value: Immediate<E>) {
+    /// Attempts to store immediate into the register.
+    pub(super) fn store(&self, register: &Register<E>, immediate: Immediate<E>) {
         // Attempt to retrieve the specified register from memory.
         let memory = match self.registers.get(register) {
             Some(memory) => memory,
@@ -115,7 +76,7 @@ impl<E: Environment> Allocator<E> {
         };
 
         // Attempt to set the specified register with the given value.
-        if memory.set(value).is_err() {
+        if memory.set(immediate).is_err() {
             E::halt(format!("Register {} is already set", register))
         }
     }
@@ -126,53 +87,8 @@ impl<E: Environment> Allocator<E> {
     }
 }
 
-impl<E: Environment> Allocator<E> {
-    /// Attempts to store the register of the given argument as an output.
-    pub(super) fn store_output(&mut self, argument: &Argument<E>) {
-        let register = argument.register();
-        self.outputs.push(*register);
-
-        // Attempt to retrieve the specified register from memory.
-        let memory = match self.registers.get(register) {
-            Some(memory) => memory,
-            None => E::halt(format!("Output register {} does not exist", register)),
-        };
-
-        // Attempt to retrieve the value the specified register.
-        let immediate = match memory.get() {
-            Some(immediate) => immediate,
-            None => E::halt(format!("Output register {} is missing", register)),
-        };
-
-        // Ensure the type and mode are correct.
-        match immediate.type_name() == argument.type_name() && &immediate.mode() == argument.mode() {
-            true => (),
-            false => E::halt(format!(
-                "Output register {} is not a {} {}",
-                argument.register(),
-                argument.mode(),
-                argument.type_name()
-            )),
-        }
-    }
-
-    /// Attempts to retrieve the output value from the given argument.
-    pub(super) fn load_outputs(&self) -> Vec<Immediate<E>> {
-        let mut outputs = Vec::with_capacity(self.outputs.len());
-        for register in &self.outputs {
-            outputs.push(self.load(&register));
-        }
-        outputs
-    }
-
-    /// Returns the number of output registers allocated.
-    pub(super) fn num_outputs(&self) -> u64 {
-        self.outputs.len() as u64
-    }
-}
-
 impl<E: Environment> Default for Allocator<E> {
     fn default() -> Self {
-        Self { inputs: Default::default(), registers: Default::default(), outputs: Default::default() }
+        Self { registers: Default::default() }
     }
 }

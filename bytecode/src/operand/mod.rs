@@ -87,6 +87,12 @@ impl<E: Environment> From<&Register<E>> for Operand<E> {
 impl<E: Environment> Parser for Operand<E> {
     type Environment = E;
 
+    /// Returns the type name as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "operand"
+    }
+
     /// Parses a string into an operand.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {

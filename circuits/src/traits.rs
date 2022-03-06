@@ -48,7 +48,6 @@ pub use crate::{Parser, ParserResult};
 /// Representation of a boolean.
 pub trait BooleanTrait:
     Adder
-    + Annotation
     + BitAndAssign
     + BitAnd<Output = Self>
     + BitOrAssign
@@ -73,7 +72,6 @@ pub trait BooleanTrait:
 pub trait BaseFieldTrait:
     Add<Output = Self>
     + AddAssign
-    + Annotation
     + Clone
     + Debug
     + Div<Output = Self>
@@ -99,10 +97,7 @@ pub trait BaseFieldTrait:
 }
 
 /// Representation of a scalar field.
-pub trait ScalarTrait:
-    Annotation + Clone + Debug + Eject + Equal + Inject + One + Parser + Ternary + ToBits + Zero
-{
-}
+pub trait ScalarTrait: Clone + Debug + Eject + Equal + Inject + One + Parser + Ternary + ToBits + Zero {}
 
 /// Representation of an integer.
 pub trait IntegerTrait<E: Environment, I: IntegerType>:
@@ -110,7 +105,6 @@ pub trait IntegerTrait<E: Environment, I: IntegerType>:
     + Add<Output = Self>
     + AddChecked<Output = Self>
     + AddWrapped<Output = Self>
-    + Annotation
     + BitAndAssign
     + BitAnd<Output = Self>
     + BitOrAssign
@@ -229,14 +223,6 @@ pub trait Eject {
     fn is_private(&self) -> bool {
         self.eject_mode().is_private()
     }
-}
-
-/// Operations to retrieve the type annotation.
-pub trait Annotation {
-    ///
-    /// Returns the type name of the circuit as a string slice. (i.e. "u8")
-    ///
-    fn type_name() -> &'static str;
 }
 
 /// Representation of the zero value.

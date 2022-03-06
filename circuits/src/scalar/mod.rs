@@ -97,6 +97,12 @@ impl<E: Environment> Eject for Scalar<E> {
 impl<E: Environment> Parser for Scalar<E> {
     type Environment = E;
 
+    /// Returns the type name of the circuit as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "scalar"
+    }
+
     /// Parses a string into a scalar field circuit.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -111,14 +117,6 @@ impl<E: Environment> Parser for Scalar<E> {
             Some((_, mode)) => Ok((string, Scalar::new(mode, value))),
             None => Ok((string, Scalar::new(Mode::Constant, value))),
         }
-    }
-}
-
-impl<E: Environment> Annotation for Scalar<E> {
-    /// Returns the type name of the circuit as a string.
-    #[inline]
-    fn type_name() -> &'static str {
-        "scalar"
     }
 }
 

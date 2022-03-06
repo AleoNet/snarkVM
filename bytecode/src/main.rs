@@ -22,12 +22,6 @@ pub struct HelloWorld;
 impl HelloWorld {
     /// Initializes a new instance of `HelloWorld` with the given inputs.
     pub fn run<M: Memory>(inputs: [Immediate<M::Environment>; 2]) -> Vec<Immediate<M::Environment>> {
-        // Allocate a new register for each input, and store each input in the register.
-        let mut registers = Vec::with_capacity(2);
-        for input in inputs {
-            registers.push(M::new_input(input));
-        }
-
         Function::<M>::from_str(
             r"
 function main:
@@ -37,7 +31,8 @@ function main:
     output r2 field.private;
 ",
         )
-        .evaluate()
+        .add_inputs(&inputs)
+        .evaluate(&[])
     }
 }
 

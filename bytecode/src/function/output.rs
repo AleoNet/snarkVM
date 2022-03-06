@@ -17,7 +17,7 @@
 use crate::{Argument, Memory, Operation, Sanitizer};
 use snarkvm_circuits::{Parser, ParserResult};
 
-use core::fmt;
+use core::{fmt, ops};
 use nom::bytes::complete::tag;
 
 /// Declares a `register` as a function output with type `annotation`.
@@ -28,24 +28,39 @@ pub struct Output<M: Memory> {
 impl<M: Memory> Operation for Output<M> {
     type Memory = M;
 
-    const OPCODE: &'static str = "output";
-
     /// Evaluates the operation in-place.
     fn evaluate(&self) {
-        M::store_output(&self.argument)
+        // Retrieve the output annotations.
+        let register = self.argument.register();
+        let mode = self.argument.mode();
+        let type_name = self.argument.type_name();
+
+        // Load the output from memory.
+        let immediate = M::load(register);
+
+        // Ensure the type and mode are correct.
+        if immediate.type_name() != type_name || &immediate.mode() != mode {
+            M::halt(format!("Output register {} is not a {} {}", register, mode, type_name))
+        }
     }
 }
 
 impl<M: Memory> Parser for Output<M> {
     type Environment = M::Environment;
 
-    /// Parses a string into an input.
+    /// Returns the type name as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "output"
+    }
+
+    /// Parses a string into an output.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the whitespace and comments from the string.
         let (string, _) = Sanitizer::parse(string)?;
-        // Parse the input keyword from the string.
-        let (string, _) = tag(Self::OPCODE)(string)?;
+        // Parse the output keyword from the string.
+        let (string, _) = tag(Self::type_name())(string)?;
         // Parse the space from the string.
         let (string, _) = tag(" ")(string)?;
         // Parse the argument from the string.
@@ -53,12 +68,24 @@ impl<M: Memory> Parser for Output<M> {
         // Parse the semicolon from the string.
         let (string, _) = tag(";")(string)?;
 
-        Ok((string, Self { argument }))
+        // Ensure the output register exists.
+        match M::exists(argument.register()) {
+            true => Ok((string, Self { argument })),
+            false => M::halt(format!("Tried to set non-existent register {} as an output", argument.register())),
+        }
     }
 }
 
 impl<M: Memory> fmt::Display for Output<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} {};", Self::OPCODE, self.argument)
+        write!(f, "{} {};", Self::type_name(), self.argument)
+    }
+}
+
+impl<M: Memory> ops::Deref for Output<M> {
+    type Target = Argument<M::Environment>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.argument
     }
 }

@@ -21,8 +21,6 @@ use snarkvm_circuits::Parser;
 pub trait Operation: Parser {
     type Memory: Memory;
 
-    const OPCODE: &'static str;
-
     /// Evaluates the instruction in-place.
     fn evaluate(&self);
 }

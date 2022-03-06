@@ -61,6 +61,12 @@ impl<M: Memory> Instruction<M> {
 impl<M: Memory> Parser for Instruction<M> {
     type Environment = M::Environment;
 
+    /// Returns the type name as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "instruction"
+    }
+
     /// Parses a string into an instruction.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {

@@ -78,6 +78,12 @@ impl<E: Environment> Argument<E> {
 impl<E: Environment> Parser for Argument<E> {
     type Environment = E;
 
+    /// Returns the type name as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "argument"
+    }
+
     /// Parses a string into an argument.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {

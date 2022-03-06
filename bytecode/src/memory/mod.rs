@@ -24,11 +24,10 @@ use snarkvm_circuits::Environment;
 
 use core::hash;
 
-pub trait Memory: InputMemory + OutputMemory + Copy + Clone + Eq + PartialEq + hash::Hash {
-    /// Allocates a new register in memory, returning the new register.
-    fn new_register() -> Register<Self::Environment>;
+pub trait Memory: Copy + Clone + Eq + PartialEq + hash::Hash {
+    type Environment: Environment;
 
-    /// Allocates the given register in memory.
+    /// Allocates the given register in memory. Ensures the given register does not exist already.
     fn initialize(register: &Register<Self::Environment>);
 
     /// Returns `true` if the given register exists.
@@ -37,40 +36,14 @@ pub trait Memory: InputMemory + OutputMemory + Copy + Clone + Eq + PartialEq + h
     /// Returns `true` if the given register is set.
     fn is_set(register: &Register<Self::Environment>) -> bool;
 
-    /// Attempts to load the value from the register.
+    /// Attempts to load the immediate from the register.
     fn load(register: &Register<Self::Environment>) -> Immediate<Self::Environment>;
 
-    /// Attempts to store value into the register.
-    fn store(register: &Register<Self::Environment>, value: Immediate<Self::Environment>);
+    /// Attempts to store immediate into the register.
+    fn store(register: &Register<Self::Environment>, immediate: Immediate<Self::Environment>);
 
     /// Returns the number of registers allocated.
     fn num_registers() -> u64;
-}
-
-pub trait InputMemory: CoreMemory {
-    /// Allocates a new input in memory, returning the new register.
-    fn new_input(input: Immediate<Self::Environment>) -> Register<Self::Environment>;
-
-    /// Attempts to retrieve the input value from the given argument.
-    fn load_input(argument: &Argument<Self::Environment>) -> Immediate<Self::Environment>;
-
-    /// Returns the number of input registers allocated.
-    fn num_inputs() -> u64;
-}
-
-pub trait OutputMemory: CoreMemory {
-    /// Attempts to store the register of the given argument as an output.
-    fn store_output(argument: &Argument<Self::Environment>);
-
-    /// Attempts to retrieve the output value from the given argument.
-    fn load_outputs() -> Vec<Immediate<Self::Environment>>;
-
-    /// Returns the number of output registers allocated.
-    fn num_outputs() -> u64;
-}
-
-pub trait CoreMemory {
-    type Environment: Environment;
 
     /// Halts the program from further synthesis, evaluation, and execution in the current environment.
     fn halt<S: Into<String>, T>(message: S) -> T {

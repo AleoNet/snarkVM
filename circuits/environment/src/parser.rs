@@ -26,6 +26,11 @@ pub trait Parser: fmt::Display {
     type Environment: Environment;
 
     ///
+    /// Returns the type name of the object as a string. (i.e. "u8")
+    ///
+    fn type_name() -> &'static str;
+
+    ///
     /// Parses a string literal into an object.
     ///
     fn parse(s: &str) -> ParserResult<Self>

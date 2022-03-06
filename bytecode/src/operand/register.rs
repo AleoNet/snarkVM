@@ -16,7 +16,7 @@
 
 use snarkvm_circuits::{Environment, Parser, ParserResult};
 
-use core::{fmt, marker::PhantomData};
+use core::{fmt, marker::PhantomData, ops};
 use nom::{
     bytes::complete::tag,
     character::complete::one_of,
@@ -37,11 +37,17 @@ impl<E: Environment> Register<E> {
 impl<E: Environment> Parser for Register<E> {
     type Environment = E;
 
+    /// Returns the type name as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "r"
+    }
+
     /// Parses a string into a register.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the open parenthesis from the string.
-        let (string, _) = tag("r")(string)?;
+        let (string, _) = tag(Self::type_name())(string)?;
         // Parse the locator from the string.
         let (string, locator) =
             map_res(recognize(many1(one_of("0123456789"))), |locator: &str| locator.parse::<u64>())(string)?;
@@ -52,11 +58,11 @@ impl<E: Environment> Parser for Register<E> {
 
 impl<E: Environment> fmt::Display for Register<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "r{}", self.0)
+        write!(f, "{}{}", Self::type_name(), self.0)
     }
 }
 
-impl<E: Environment> core::ops::Deref for Register<E> {
+impl<E: Environment> ops::Deref for Register<E> {
     type Target = u64;
 
     fn deref(&self) -> &Self::Target {

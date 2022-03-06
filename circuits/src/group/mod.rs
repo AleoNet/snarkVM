@@ -136,6 +136,12 @@ impl<E: Environment> Eject for Affine<E> {
 impl<E: Environment> Parser for Affine<E> {
     type Environment = E;
 
+    /// Returns the type name of the circuit as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "group"
+    }
+
     /// Parses a string into an affine group circuit.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -150,14 +156,6 @@ impl<E: Environment> Parser for Affine<E> {
             Some((_, mode)) => Ok((string, Affine::new(mode, (x_coordinate, None)))),
             None => Ok((string, Affine::new(Mode::Constant, (x_coordinate, None)))),
         }
-    }
-}
-
-impl<E: Environment> Annotation for Affine<E> {
-    /// Returns the type name of the circuit as a string.
-    #[inline]
-    fn type_name() -> &'static str {
-        "group"
     }
 }
 

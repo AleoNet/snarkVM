@@ -14,18 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_circuits::{
-    Affine,
-    Annotation,
-    BaseField,
-    Boolean,
-    Eject,
-    Environment,
-    Mode,
-    Parser,
-    ParserResult,
-    Scalar,
-};
+use snarkvm_circuits::{Affine, BaseField, Boolean, Eject, Environment, Mode, Parser, ParserResult, Scalar};
 
 use core::fmt;
 use nom::{branch::alt, combinator::map};
@@ -105,6 +94,12 @@ impl<E: Environment> From<Scalar<E>> for Immediate<E> {
 
 impl<E: Environment> Parser for Immediate<E> {
     type Environment = E;
+
+    /// Returns the type name as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "immediate"
+    }
 
     /// Parses a string into an immediate.
     #[inline]
