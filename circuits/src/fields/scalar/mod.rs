@@ -37,9 +37,9 @@ use core::fmt;
 use nom::{
     bytes::complete::tag,
     character::complete::{char, one_of},
-    combinator::{map_res, recognize},
+    combinator::{map_res, opt, recognize},
     multi::{many0, many1},
-    sequence::terminated,
+    sequence::{pair, terminated},
 };
 
 #[derive(Clone)]
@@ -101,18 +101,17 @@ impl<E: Environment> Parser for Scalar<E> {
     /// Parses a string into a scalar field circuit.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self::Output> {
-        // Parse the mode from the string.
-        let (string, mode) = Mode::parse(string)?;
-        // Parse the open parenthesis from the string.
-        let (string, _) = tag("(")(string)?;
         // Parse the digits from the string.
         let (string, primitive) = recognize(many1(terminated(one_of("0123456789"), many0(char('_')))))(string)?;
         // Parse the value from the string.
         let (string, value) = map_res(tag("scalar"), |_| primitive.replace('_', "").parse())(string)?;
-        // Parse the close parenthesis from the string.
-        let (string, _) = tag(")")(string)?;
+        // Parse the mode from the string.
+        let (string, mode) = opt(pair(tag("."), Mode::parse))(string)?;
 
-        Ok((string, Scalar::new(mode, value)))
+        match mode {
+            Some((_, mode)) => Ok((string, Scalar::new(mode, value))),
+            None => Ok((string, Scalar::new(Mode::Constant, value))),
+        }
     }
 }
 
@@ -124,7 +123,7 @@ impl<E: Environment> fmt::Debug for Scalar<E> {
 
 impl<E: Environment> fmt::Display for Scalar<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}({}scalar)", self.eject_mode(), self.eject_value())
+        write!(f, "{}scalar.{}", self.eject_value(), self.eject_mode())
     }
 }
 
@@ -256,43 +255,55 @@ mod tests {
 
         // Constant
 
-        let (_, candidate) = Scalar::<Circuit>::parse("Constant(5scalar)").unwrap();
+        let (_, candidate) = Scalar::<Circuit>::parse("5scalar").unwrap();
         assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
         assert!(candidate.is_constant());
 
-        let (_, candidate) = Scalar::<Circuit>::parse("Constant(5_scalar)").unwrap();
+        let (_, candidate) = Scalar::<Circuit>::parse("5_scalar").unwrap();
         assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
         assert!(candidate.is_constant());
 
-        let (_, candidate) = Scalar::<Circuit>::parse("Constant(1_5_scalar)").unwrap();
+        let (_, candidate) = Scalar::<Circuit>::parse("1_5_scalar").unwrap();
+        assert_eq!(Primitive::from_str("15").unwrap(), candidate.eject_value());
+        assert!(candidate.is_constant());
+
+        let (_, candidate) = Scalar::<Circuit>::parse("5scalar.constant").unwrap();
+        assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
+        assert!(candidate.is_constant());
+
+        let (_, candidate) = Scalar::<Circuit>::parse("5_scalar.constant").unwrap();
+        assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
+        assert!(candidate.is_constant());
+
+        let (_, candidate) = Scalar::<Circuit>::parse("1_5_scalar.constant").unwrap();
         assert_eq!(Primitive::from_str("15").unwrap(), candidate.eject_value());
         assert!(candidate.is_constant());
 
         // Public
 
-        let (_, candidate) = Scalar::<Circuit>::parse("Public(5scalar)").unwrap();
+        let (_, candidate) = Scalar::<Circuit>::parse("5scalar.public").unwrap();
         assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
         assert!(candidate.is_public());
 
-        let (_, candidate) = Scalar::<Circuit>::parse("Public(5_scalar)").unwrap();
+        let (_, candidate) = Scalar::<Circuit>::parse("5_scalar.public").unwrap();
         assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
         assert!(candidate.is_public());
 
-        let (_, candidate) = Scalar::<Circuit>::parse("Public(1_5_scalar)").unwrap();
+        let (_, candidate) = Scalar::<Circuit>::parse("1_5_scalar.public").unwrap();
         assert_eq!(Primitive::from_str("15").unwrap(), candidate.eject_value());
         assert!(candidate.is_public());
 
         // Private
 
-        let (_, candidate) = Scalar::<Circuit>::parse("Private(5scalar)").unwrap();
+        let (_, candidate) = Scalar::<Circuit>::parse("5scalar.private").unwrap();
         assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
         assert!(candidate.is_private());
 
-        let (_, candidate) = Scalar::<Circuit>::parse("Private(5_scalar)").unwrap();
+        let (_, candidate) = Scalar::<Circuit>::parse("5_scalar.private").unwrap();
         assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
         assert!(candidate.is_private());
 
-        let (_, candidate) = Scalar::<Circuit>::parse("Private(1_5_scalar)").unwrap();
+        let (_, candidate) = Scalar::<Circuit>::parse("1_5_scalar.private").unwrap();
         assert_eq!(Primitive::from_str("15").unwrap(), candidate.eject_value());
         assert!(candidate.is_private());
 
@@ -317,14 +328,14 @@ mod tests {
 
         // Constant
         let candidate = Scalar::<Circuit>::new(Mode::Constant, two);
-        assert_eq!("Constant(2scalar)", &format!("{}", candidate));
+        assert_eq!("2scalar.constant", &format!("{}", candidate));
 
         // Public
         let candidate = Scalar::<Circuit>::new(Mode::Public, two);
-        assert_eq!("Public(2scalar)", &format!("{}", candidate));
+        assert_eq!("2scalar.public", &format!("{}", candidate));
 
         // Private
         let candidate = Scalar::<Circuit>::new(Mode::Private, two);
-        assert_eq!("Private(2scalar)", &format!("{}", candidate));
+        assert_eq!("2scalar.private", &format!("{}", candidate));
     }
 }

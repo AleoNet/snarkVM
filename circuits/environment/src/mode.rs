@@ -45,9 +45,9 @@ impl Mode {
     /// Parses the string for the mode.
     pub fn parse(string: &str) -> ParserResult<Self> {
         alt((
-            map(tag("Constant"), |_| Self::Constant),
-            map(tag("Public"), |_| Self::Public),
-            map(tag("Private"), |_| Self::Private),
+            map(tag("constant"), |_| Self::Constant),
+            map(tag("public"), |_| Self::Public),
+            map(tag("private"), |_| Self::Private),
         ))(string)
     }
 }
@@ -55,9 +55,9 @@ impl Mode {
 impl fmt::Display for Mode {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match self {
-            Self::Constant => write!(f, "Constant"),
-            Self::Public => write!(f, "Public"),
-            Self::Private => write!(f, "Private"),
+            Self::Constant => write!(f, "constant"),
+            Self::Public => write!(f, "public"),
+            Self::Private => write!(f, "private"),
         }
     }
 }

@@ -45,9 +45,9 @@ use core::{
 use nom::{
     bytes::complete::tag,
     character::complete::{char, one_of},
-    combinator::{map_res, recognize},
+    combinator::{map_res, opt, recognize},
     multi::{many0, many1},
-    sequence::terminated,
+    sequence::{pair, terminated},
 };
 use num_traits::Inv;
 
@@ -101,18 +101,17 @@ impl<E: Environment> Parser for BaseField<E> {
     /// Parses a string into a base field circuit.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self::Output> {
-        // Parse the mode from the string.
-        let (string, mode) = Mode::parse(string)?;
-        // Parse the open parenthesis from the string.
-        let (string, _) = tag("(")(string)?;
         // Parse the digits from the string.
         let (string, primitive) = recognize(many1(terminated(one_of("0123456789"), many0(char('_')))))(string)?;
         // Parse the value from the string.
         let (string, value) = map_res(tag("base"), |_| primitive.replace('_', "").parse())(string)?;
-        // Parse the close parenthesis from the string.
-        let (string, _) = tag(")")(string)?;
+        // Parse the mode from the string.
+        let (string, mode) = opt(pair(tag("."), Mode::parse))(string)?;
 
-        Ok((string, BaseField::new(mode, value)))
+        match mode {
+            Some((_, mode)) => Ok((string, BaseField::new(mode, value))),
+            None => Ok((string, BaseField::new(Mode::Constant, value))),
+        }
     }
 }
 
@@ -124,7 +123,7 @@ impl<E: Environment> fmt::Debug for BaseField<E> {
 
 impl<E: Environment> fmt::Display for BaseField<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}({}base)", self.eject_mode(), self.eject_value())
+        write!(f, "{}base.{}", self.eject_value(), self.eject_mode())
     }
 }
 
@@ -234,43 +233,55 @@ mod tests {
 
         // Constant
 
-        let (_, candidate) = BaseField::<Circuit>::parse("Constant(5base)").unwrap();
+        let (_, candidate) = BaseField::<Circuit>::parse("5base").unwrap();
         assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
         assert!(candidate.is_constant());
 
-        let (_, candidate) = BaseField::<Circuit>::parse("Constant(5_base)").unwrap();
+        let (_, candidate) = BaseField::<Circuit>::parse("5_base").unwrap();
         assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
         assert!(candidate.is_constant());
 
-        let (_, candidate) = BaseField::<Circuit>::parse("Constant(1_5_base)").unwrap();
+        let (_, candidate) = BaseField::<Circuit>::parse("1_5_base").unwrap();
+        assert_eq!(Primitive::from_str("15").unwrap(), candidate.eject_value());
+        assert!(candidate.is_constant());
+
+        let (_, candidate) = BaseField::<Circuit>::parse("5base.constant").unwrap();
+        assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
+        assert!(candidate.is_constant());
+
+        let (_, candidate) = BaseField::<Circuit>::parse("5_base.constant").unwrap();
+        assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
+        assert!(candidate.is_constant());
+
+        let (_, candidate) = BaseField::<Circuit>::parse("1_5_base.constant").unwrap();
         assert_eq!(Primitive::from_str("15").unwrap(), candidate.eject_value());
         assert!(candidate.is_constant());
 
         // Public
 
-        let (_, candidate) = BaseField::<Circuit>::parse("Public(5base)").unwrap();
+        let (_, candidate) = BaseField::<Circuit>::parse("5base.public").unwrap();
         assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
         assert!(candidate.is_public());
 
-        let (_, candidate) = BaseField::<Circuit>::parse("Public(5_base)").unwrap();
+        let (_, candidate) = BaseField::<Circuit>::parse("5_base.public").unwrap();
         assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
         assert!(candidate.is_public());
 
-        let (_, candidate) = BaseField::<Circuit>::parse("Public(1_5_base)").unwrap();
+        let (_, candidate) = BaseField::<Circuit>::parse("1_5_base.public").unwrap();
         assert_eq!(Primitive::from_str("15").unwrap(), candidate.eject_value());
         assert!(candidate.is_public());
 
         // Private
 
-        let (_, candidate) = BaseField::<Circuit>::parse("Private(5base)").unwrap();
+        let (_, candidate) = BaseField::<Circuit>::parse("5base.private").unwrap();
         assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
         assert!(candidate.is_private());
 
-        let (_, candidate) = BaseField::<Circuit>::parse("Private(5_base)").unwrap();
+        let (_, candidate) = BaseField::<Circuit>::parse("5_base.private").unwrap();
         assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
         assert!(candidate.is_private());
 
-        let (_, candidate) = BaseField::<Circuit>::parse("Private(1_5_base)").unwrap();
+        let (_, candidate) = BaseField::<Circuit>::parse("1_5_base.private").unwrap();
         assert_eq!(Primitive::from_str("15").unwrap(), candidate.eject_value());
         assert!(candidate.is_private());
 
@@ -295,14 +306,14 @@ mod tests {
 
         // Constant
         let candidate = BaseField::<Circuit>::new(Mode::Constant, two);
-        assert_eq!("Constant(2base)", &format!("{}", candidate));
+        assert_eq!("2base.constant", &format!("{}", candidate));
 
         // Public
         let candidate = BaseField::<Circuit>::new(Mode::Public, two);
-        assert_eq!("Public(2base)", &format!("{}", candidate));
+        assert_eq!("2base.public", &format!("{}", candidate));
 
         // Private
         let candidate = BaseField::<Circuit>::new(Mode::Private, two);
-        assert_eq!("Private(2base)", &format!("{}", candidate));
+        assert_eq!("2base.private", &format!("{}", candidate));
     }
 }
