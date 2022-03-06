@@ -30,11 +30,6 @@ impl HelloWorld {
             registers.push(F::new_input(input));
         }
 
-        // F::push_instruction(Instruction::from_str("input r0 field.public;"));
-        // F::push_instruction(Instruction::from_str("input r1 field.private;"));
-        // F::push_instruction(Instruction::from_str("add r2 r0 r1;"));
-        // F::push_instruction(Instruction::from_str("output r2 field.private;"));
-
         F::from_str(
             r"
 function main:
@@ -49,11 +44,12 @@ function main:
 }
 
 fn main() {
-    let first = Immediate::Field(BaseField::<Circuit>::from_str("1field.public"));
-    let second = Immediate::Field(BaseField::from_str("1field.private"));
+    let first = Immediate::from_str("1field.public");
+    let second = Immediate::from_str("1field.private");
 
-    let expected = BaseField::one() + BaseField::one();
+    let expected = BaseField::from_str("2field.private");
     let candidate = HelloWorld::run::<Global>([first, second]);
+
     match &candidate[0] {
         Immediate::Field(output) => {
             println!("{output}");
@@ -65,11 +61,12 @@ fn main() {
 
 #[test]
 fn test_hello_world() {
-    let first = Immediate::Field(BaseField::<Circuit>::from_str("1field.public"));
-    let second = Immediate::Field(BaseField::from_str("1field.private"));
+    let first = Immediate::from_str("1field.public");
+    let second = Immediate::from_str("1field.private");
 
-    let expected = BaseField::one() + BaseField::one();
+    let expected = BaseField::from_str("2field.private");
     let candidate = HelloWorld::run::<Global>([first, second]);
+
     match &candidate[0] {
         Immediate::Field(output) => assert!(output.is_eq(&expected).eject_value()),
         _ => panic!("Failed to load output"),
