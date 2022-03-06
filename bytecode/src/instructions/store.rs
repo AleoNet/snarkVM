@@ -45,11 +45,10 @@ impl<M: Memory> Operation for Store<M> {
 
 impl<M: Memory> Parser for Store<M> {
     type Environment = M::Environment;
-    type Output = Store<M>;
 
     /// Parses a string into an 'store' operation.
     #[inline]
-    fn parse(string: &str) -> ParserResult<Self::Output> {
+    fn parse(string: &str) -> ParserResult<Self> {
         // Parse the instruction.
         let (string, (destination, operand)) = UnaryParser::parse(Self::OPCODE, string)?;
         // Return the string and instruction.

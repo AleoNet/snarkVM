@@ -96,15 +96,14 @@ impl<E: Environment> Eject for BaseField<E> {
 
 impl<E: Environment> Parser for BaseField<E> {
     type Environment = E;
-    type Output = BaseField<E>;
 
     /// Parses a string into a base field circuit.
     #[inline]
-    fn parse(string: &str) -> ParserResult<Self::Output> {
+    fn parse(string: &str) -> ParserResult<Self> {
         // Parse the digits from the string.
         let (string, primitive) = recognize(many1(terminated(one_of("0123456789"), many0(char('_')))))(string)?;
         // Parse the value from the string.
-        let (string, value) = map_res(tag("field"), |_| primitive.replace('_', "").parse())(string)?;
+        let (string, value) = map_res(tag(Self::type_name()), |_| primitive.replace('_', "").parse())(string)?;
         // Parse the mode from the string.
         let (string, mode) = opt(pair(tag("."), Mode::parse))(string)?;
 
@@ -112,6 +111,14 @@ impl<E: Environment> Parser for BaseField<E> {
             Some((_, mode)) => Ok((string, BaseField::new(mode, value))),
             None => Ok((string, BaseField::new(Mode::Constant, value))),
         }
+    }
+}
+
+impl<E: Environment> Annotation for BaseField<E> {
+    /// Returns the type name of the circuit as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "field"
     }
 }
 
@@ -123,7 +130,7 @@ impl<E: Environment> fmt::Debug for BaseField<E> {
 
 impl<E: Environment> fmt::Display for BaseField<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}field.{}", self.eject_value(), self.eject_mode())
+        write!(f, "{}{}.{}", self.eject_value(), Self::type_name(), self.eject_mode())
     }
 }
 

@@ -109,11 +109,10 @@ impl<E: Environment> Eject for Boolean<E> {
 
 impl<E: Environment> Parser for Boolean<E> {
     type Environment = E;
-    type Output = Boolean<E>;
 
     /// Parses a string into a boolean circuit.
     #[inline]
-    fn parse(string: &str) -> ParserResult<Self::Output> {
+    fn parse(string: &str) -> ParserResult<Self> {
         // Parse the boolean from the string.
         let (string, value) = alt((map(tag("true"), |_| true), map(tag("false"), |_| false)))(string)?;
         // Parse the mode from the string.
@@ -123,6 +122,14 @@ impl<E: Environment> Parser for Boolean<E> {
             Some((_, mode)) => Ok((string, Boolean::new(mode, value))),
             None => Ok((string, Boolean::new(Mode::Constant, value))),
         }
+    }
+}
+
+impl<E: Environment> Annotation for Boolean<E> {
+    /// Returns the type name of the circuit as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "boolean"
     }
 }
 

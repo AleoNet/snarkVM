@@ -46,6 +46,7 @@ use num_traits::Inv;
 /// Representation of a boolean.
 pub trait BooleanTrait:
     Adder
+    + Annotation
     + BitAndAssign
     + BitAnd<Output = Self>
     + BitOrAssign
@@ -60,7 +61,7 @@ pub trait BooleanTrait:
     + Nand
     + Nor
     + Not
-    + Parser<Output = Self>
+    + Parser
     + Subtractor
     + Ternary
 {
@@ -70,6 +71,7 @@ pub trait BooleanTrait:
 pub trait BaseFieldTrait:
     Add<Output = Self>
     + AddAssign
+    + Annotation
     + Clone
     + Debug
     + Div<Output = Self>
@@ -84,7 +86,7 @@ pub trait BaseFieldTrait:
     + MulAssign
     + Neg<Output = Self>
     + One
-    + Parser<Output = Self>
+    + Parser
     + Square<Output = Self>
     + Sub<Output = Self>
     + SubAssign
@@ -96,7 +98,7 @@ pub trait BaseFieldTrait:
 
 /// Representation of a scalar field.
 pub trait ScalarTrait:
-    Clone + Debug + Eject + Equal + Inject + One + Parser<Output = Self> + Ternary + ToBits + Zero
+    Annotation + Clone + Debug + Eject + Equal + Inject + One + Parser + Ternary + ToBits + Zero
 {
 }
 
@@ -106,6 +108,7 @@ pub trait IntegerTrait<E: Environment, I: IntegerType>:
     + Add<Output = Self>
     + AddChecked<Output = Self>
     + AddWrapped<Output = Self>
+    + Annotation
     + BitAndAssign
     + BitAnd<Output = Self>
     + BitOrAssign
@@ -218,22 +221,34 @@ pub trait Eject {
 /// Operations to parse a string literal into a circuit type.
 pub trait Parser: Display {
     type Environment: Environment;
-    type Output;
 
     ///
     /// Parses a string literal into a circuit type.
     ///
-    fn parse(s: &str) -> ParserResult<Self::Output>;
+    fn parse(s: &str) -> ParserResult<Self>
+    where
+        Self: Sized;
 
     ///
     /// Returns a circuit type from a string literal.
     ///
-    fn from_str(string: &str) -> Self::Output {
+    fn from_str(string: &str) -> Self
+    where
+        Self: Sized,
+    {
         match Self::parse(string) {
             Ok((_, circuit)) => circuit,
             Err(error) => Self::Environment::halt(format!("Failed to parse: {}", error)),
         }
     }
+}
+
+/// Operations to retrieve the type annotation.
+pub trait Annotation {
+    ///
+    /// Returns the type name of the circuit as a string slice. (i.e. "u8")
+    ///
+    fn type_name() -> &'static str;
 }
 
 /// Representation of the zero value.

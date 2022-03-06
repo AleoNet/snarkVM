@@ -60,11 +60,10 @@ impl<M: Memory> Instruction<M> {
 
 impl<M: Memory> Parser for Instruction<M> {
     type Environment = M::Environment;
-    type Output = Instruction<M>;
 
     /// Parses a string into an instruction.
     #[inline]
-    fn parse(string: &str) -> ParserResult<Self::Output> {
+    fn parse(string: &str) -> ParserResult<Self> {
         alt((
             // Note that order of the individual parsers matters.
             map(Add::parse, |instruction| Self::Add(instruction)),

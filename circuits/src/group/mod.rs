@@ -135,15 +135,14 @@ impl<E: Environment> Eject for Affine<E> {
 
 impl<E: Environment> Parser for Affine<E> {
     type Environment = E;
-    type Output = Affine<E>;
 
     /// Parses a string into an affine group circuit.
     #[inline]
-    fn parse(string: &str) -> ParserResult<Self::Output> {
+    fn parse(string: &str) -> ParserResult<Self> {
         // Parse the digits from the string.
         let (string, primitive) = recognize(many1(terminated(one_of("0123456789"), many0(char('_')))))(string)?;
         // Parse the x-coordinate from the string.
-        let (string, x_coordinate) = map_res(tag("group"), |_| primitive.replace('_', "").parse())(string)?;
+        let (string, x_coordinate) = map_res(tag(Self::type_name()), |_| primitive.replace('_', "").parse())(string)?;
         // Parse the mode from the string.
         let (string, mode) = opt(pair(tag("."), Mode::parse))(string)?;
 
@@ -151,6 +150,14 @@ impl<E: Environment> Parser for Affine<E> {
             Some((_, mode)) => Ok((string, Affine::new(mode, (x_coordinate, None)))),
             None => Ok((string, Affine::new(Mode::Constant, (x_coordinate, None)))),
         }
+    }
+}
+
+impl<E: Environment> Annotation for Affine<E> {
+    /// Returns the type name of the circuit as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "group"
     }
 }
 
@@ -162,7 +169,7 @@ impl<E: Environment> fmt::Debug for Affine<E> {
 
 impl<E: Environment> fmt::Display for Affine<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}group.{}", self.x.eject_value(), self.eject_mode())
+        write!(f, "{}{}.{}", self.x.eject_value(), Self::type_name(), self.eject_mode())
     }
 }
 

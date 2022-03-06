@@ -56,11 +56,10 @@ impl<E: Environment> Immediate<E> {
 
 impl<E: Environment> Parser for Immediate<E> {
     type Environment = E;
-    type Output = Immediate<E>;
 
     /// Parses a string into an immediate.
     #[inline]
-    fn parse(string: &str) -> ParserResult<Self::Output> {
+    fn parse(string: &str) -> ParserResult<Self> {
         alt((
             map(BaseField::parse, |base| Self::Base(base)),
             map(Boolean::parse, |boolean| Self::Boolean(boolean)),

@@ -50,11 +50,10 @@ impl<M: Memory> Operation for Sub<M> {
 
 impl<M: Memory> Parser for Sub<M> {
     type Environment = M::Environment;
-    type Output = Sub<M>;
 
     /// Parses a string into an 'sub' operation.
     #[inline]
-    fn parse(string: &str) -> ParserResult<Self::Output> {
+    fn parse(string: &str) -> ParserResult<Self> {
         // Parse the instruction.
         let (string, (destination, first, second)) = BinaryParser::parse(Self::OPCODE, string)?;
         // Return the string and instruction.

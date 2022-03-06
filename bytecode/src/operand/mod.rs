@@ -83,11 +83,10 @@ impl<M: Memory> From<&Register<M::Environment>> for Operand<M> {
 
 impl<M: Memory> Parser for Operand<M> {
     type Environment = M::Environment;
-    type Output = Operand<M>;
 
     /// Parses a string into an operand.
     #[inline]
-    fn parse(string: &str) -> ParserResult<Self::Output> {
+    fn parse(string: &str) -> ParserResult<Self> {
         alt((
             map(Immediate::parse, |immediate| Self::Immediate(immediate)),
             map(Register::parse, |register| Self::Register(register)),

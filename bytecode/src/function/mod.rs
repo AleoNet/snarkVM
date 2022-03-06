@@ -17,6 +17,9 @@
 pub mod global;
 pub use global::*;
 
+pub mod input;
+pub use input::*;
+
 pub mod local;
 
 use crate::{instructions::Instruction, Immediate, Memory, Register};

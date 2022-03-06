@@ -36,11 +36,10 @@ impl<E: Environment> Register<E> {
 
 impl<E: Environment> Parser for Register<E> {
     type Environment = E;
-    type Output = Register<E>;
 
     /// Parses a string into a register.
     #[inline]
-    fn parse(string: &str) -> ParserResult<Self::Output> {
+    fn parse(string: &str) -> ParserResult<Self> {
         // Parse the open parenthesis from the string.
         let (string, _) = tag("r")(string)?;
         // Parse the locator from the string.

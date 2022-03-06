@@ -192,11 +192,10 @@ impl<E: Environment, I: IntegerType> Eject for Integer<E, I> {
 
 impl<E: Environment, I: IntegerType> Parser for Integer<E, I> {
     type Environment = E;
-    type Output = Integer<E, I>;
 
     /// Parses a string into an integer circuit.
     #[inline]
-    fn parse(string: &str) -> ParserResult<Self::Output> {
+    fn parse(string: &str) -> ParserResult<Self> {
         // Parse the negative sign '-' from the string.
         let (string, negation) = map(opt(tag("-")), |neg: Option<&str>| neg.unwrap_or_default().to_string())(string)?;
         // Parse the digits from the string.
@@ -204,7 +203,7 @@ impl<E: Environment, I: IntegerType> Parser for Integer<E, I> {
         // Combine the sign and primitive.
         let primitive = negation + primitive;
         // Parse the value from the string.
-        let (string, value) = map_res(tag(I::type_name()), |_| primitive.replace('_', "").parse())(string)?;
+        let (string, value) = map_res(tag(Self::type_name()), |_| primitive.replace('_', "").parse())(string)?;
         // Parse the mode from the string.
         let (string, mode) = opt(pair(tag("."), Mode::parse))(string)?;
 
@@ -212,6 +211,14 @@ impl<E: Environment, I: IntegerType> Parser for Integer<E, I> {
             Some((_, mode)) => Ok((string, Self::new(mode, value))),
             None => Ok((string, Self::new(Mode::Constant, value))),
         }
+    }
+}
+
+impl<E: Environment, I: IntegerType> Annotation for Integer<E, I> {
+    /// Returns the type name of the circuit as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        I::type_name()
     }
 }
 
@@ -223,7 +230,7 @@ impl<E: Environment, I: IntegerType> fmt::Debug for Integer<E, I> {
 
 impl<E: Environment, I: IntegerType> fmt::Display for Integer<E, I> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}{}.{}", self.eject_value(), I::type_name(), self.eject_mode())
+        write!(f, "{}{}.{}", self.eject_value(), Self::type_name(), self.eject_mode())
     }
 }
 
