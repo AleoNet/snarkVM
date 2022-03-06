@@ -21,9 +21,7 @@ pub struct HelloWorld;
 
 impl HelloWorld {
     /// Initializes a new instance of `HelloWorld` with the given inputs.
-    pub fn run<F: Function>(
-        inputs: [Immediate<<F as Function>::Environment>; 2],
-    ) -> Vec<Immediate<<F as Function>::Environment>> {
+    pub fn run<F: Function>(inputs: [Immediate<F::Environment>; 2]) -> Vec<Immediate<F::Environment>> {
         // Allocate a new register for each input, and store each input in the register.
         let mut registers = Vec::with_capacity(2);
         for input in inputs {

@@ -37,11 +37,10 @@ thread_local! {
 pub struct Global;
 
 impl Function for Global {
-    type Environment = <Self::Memory as CoreMemory>::Environment;
     type Memory = Stack;
 
     /// Allocates a new register, stores the given input, and returns the new register.
-    fn new_input(input: Immediate<<Self as Function>::Environment>) -> Register<<Self as Function>::Environment> {
+    fn new_input(input: Immediate<Self::Environment>) -> Register<Self::Environment> {
         FUNCTION.with(|function| (**function).borrow_mut().new_input(input))
     }
 
@@ -51,7 +50,7 @@ impl Function for Global {
     }
 
     /// Evaluates the function, returning the outputs.
-    fn evaluate() -> Vec<Immediate<<Self as Function>::Environment>> {
+    fn evaluate() -> Vec<Immediate<Self::Environment>> {
         FUNCTION.with(|function| (**function).borrow().evaluate())
     }
 
