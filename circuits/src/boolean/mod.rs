@@ -262,35 +262,35 @@ mod tests {
     #[test]
     fn test_parser() {
         let (_, candidate) = Boolean::<Circuit>::parse("true").unwrap();
-        assert_eq!(true, candidate.eject_value());
+        assert!(candidate.eject_value());
         assert!(candidate.is_constant());
 
         let (_, candidate) = Boolean::<Circuit>::parse("false").unwrap();
-        assert_eq!(false, candidate.eject_value());
+        assert!(!candidate.eject_value());
         assert!(candidate.is_constant());
 
         let (_, candidate) = Boolean::<Circuit>::parse("true.constant").unwrap();
-        assert_eq!(true, candidate.eject_value());
+        assert!(candidate.eject_value());
         assert!(candidate.is_constant());
 
         let (_, candidate) = Boolean::<Circuit>::parse("false.constant").unwrap();
-        assert_eq!(false, candidate.eject_value());
+        assert!(!candidate.eject_value());
         assert!(candidate.is_constant());
 
         let (_, candidate) = Boolean::<Circuit>::parse("true.public").unwrap();
-        assert_eq!(true, candidate.eject_value());
+        assert!(candidate.eject_value());
         assert!(candidate.is_public());
 
         let (_, candidate) = Boolean::<Circuit>::parse("false.public").unwrap();
-        assert_eq!(false, candidate.eject_value());
+        assert!(!candidate.eject_value());
         assert!(candidate.is_public());
 
         let (_, candidate) = Boolean::<Circuit>::parse("true.private").unwrap();
-        assert_eq!(true, candidate.eject_value());
+        assert!(candidate.eject_value());
         assert!(candidate.is_private());
 
         let (_, candidate) = Boolean::<Circuit>::parse("false.private").unwrap();
-        assert_eq!(false, candidate.eject_value());
+        assert!(!candidate.eject_value());
         assert!(candidate.is_private());
 
         for mode in [Mode::Constant, Mode::Public, Mode::Private] {
