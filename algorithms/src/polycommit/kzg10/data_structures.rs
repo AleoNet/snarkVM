@@ -16,7 +16,7 @@
 
 use crate::{
     fft::{DensePolynomial, EvaluationDomain},
-    polycommit::{PCCommitment, PCProof, PCRandomness, PCUniversalParams},
+    polycommit::{PCCommitment, PCProof, PCRandomness, PCUniversalParams, PowersOfG},
 };
 use snarkvm_curves::{
     traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve},
@@ -44,7 +44,7 @@ use std::{collections::BTreeMap, io};
 pub struct UniversalParams<E: PairingEngine> {
     /// Group elements of the form `{ \beta^i G }`, where `i` ranges from 0 to `degree`.
     /// These represent the monomial basis evaluated at `beta`.
-    pub powers_of_beta_g: Vec<E::G1Affine>,
+    pub powers_of_beta_g: PowersOfG<E>,
     /// Group elements of the form `{ \beta^i \gamma G }`, where `i` ranges from 0 to `degree`.
     /// These are used for hiding.
     pub powers_of_beta_times_gamma_g: BTreeMap<usize, E::G1Affine>,
@@ -67,8 +67,15 @@ pub struct UniversalParams<E: PairingEngine> {
 
 impl<E: PairingEngine> UniversalParams<E> {
     pub fn lagrange_basis(&self, domain: EvaluationDomain<E::Fr>) -> Vec<E::G1Affine> {
-        let basis = domain
-            .ifft(&self.powers_of_beta_g[..domain.size()].iter().map(|e| e.into_projective()).collect::<Vec<_>>());
+        let basis = domain.ifft(
+            &self
+                .powers_of_beta_g
+                .slice(0, domain.size())
+                .unwrap()
+                .iter()
+                .map(|e| (*e).into_projective())
+                .collect::<Vec<_>>(),
+        );
         E::G1Projective::batch_normalization_into_affine(basis)
     }
 }
@@ -76,12 +83,7 @@ impl<E: PairingEngine> UniversalParams<E> {
 impl<E: PairingEngine> FromBytes for UniversalParams<E> {
     fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
         // Deserialize `powers_of_beta_g`.
-        let powers_of_beta_g_len: u32 = FromBytes::read_le(&mut reader)?;
-        let mut powers_of_beta_g = Vec::with_capacity(powers_of_beta_g_len as usize);
-        for _ in 0..powers_of_beta_g_len {
-            let power_of_g: E::G1Affine = FromBytes::read_le(&mut reader)?;
-            powers_of_beta_g.push(power_of_g);
-        }
+        let powers_of_beta_g = PowersOfG::<E>::deserialize(&mut reader)?;
 
         // Deserialize `powers_of_beta_times_gamma_g`.
         let mut powers_of_beta_times_gamma_g = BTreeMap::new();
@@ -139,10 +141,10 @@ impl<E: PairingEngine> FromBytes for UniversalParams<E> {
 impl<E: PairingEngine> ToBytes for UniversalParams<E> {
     fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
         // Serialize `powers_of_beta_g`.
-        (self.powers_of_beta_g.len() as u32).write_le(&mut writer)?;
-        for power in &self.powers_of_beta_g {
-            power.write_le(&mut writer)?;
-        }
+        // (self.powers_of_beta_g.len() as u32).write_le(&mut writer)?;
+        // for power in &self.powers_of_beta_g {
+        //     power.write_le(&mut writer)?;
+        // }
 
         // Serialize `powers_of_beta_times_gamma_g`.
         (self.powers_of_beta_times_gamma_g.len() as u32).write_le(&mut writer)?;
@@ -538,5 +540,84 @@ impl<E: PairingEngine> ToBytes for Proof<E> {
 impl<E: PairingEngine> PCProof for Proof<E> {
     fn is_hiding(&self) -> bool {
         self.random_v.is_some()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::polycommit::sonic_pc::SonicKZG10;
+    use phase1::{helpers::testing::generate_input, Phase1, Phase1Parameters, ProvingSystem};
+    use rand::thread_rng;
+    use setup_utils::{blank_hash, CheckForCorrectness, UseCompression};
+    use std::fs::File;
+
+    use snarkvm_curves::{
+        bls12_377::{Bls12_377, Fr},
+        PairingCurve,
+        PairingEngine,
+    };
+    use snarkvm_fields::Field;
+    use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError};
+    use snarkvm_utilities::{serialize::*, UniformRand};
+
+    use crate::snark::marlin::fiat_shamir::FiatShamirChaChaRng;
+    use blake2::Blake2s;
+    use itertools::Itertools;
+    use memmap::MmapOptions;
+    use std::{collections::BTreeMap, fs::OpenOptions, ops::MulAssign};
+
+    #[test]
+    fn srs_info() {
+        let mut file = OpenOptions::new().read(true).open("./universal.srs").unwrap();
+        let params = UniversalParams::<Bls12_377>::read_le(file).unwrap();
+
+        println!("{:?}", params);
+        println!("powers {}", params.powers_of_beta_g.len());
+        println!("powers times gamma {}", params.powers_of_beta_times_gamma_g.len());
+        println!("degree bounds {:?}", params.supported_degree_bounds);
+        println!("len degree bounds {}", params.supported_degree_bounds.len());
+        println!("inverse neg {}", params.inverse_neg_powers_of_beta_h.len());
+    }
+
+    #[test]
+    fn split_powers() {
+        let mut file = OpenOptions::new().read(true).open("./universal.srs").unwrap();
+
+        // Deserialize `powers_of_beta_g`.
+        let _powers_of_beta_g_len: u32 = FromBytes::read_le(&mut file).unwrap();
+
+        for degree in 22..=28 {
+            let mut power_file =
+                OpenOptions::new().write(true).create(true).open(format!("powers_of_g_{}", degree)).unwrap();
+
+            if degree == 22 {
+                // Write length
+                (2i32.pow(22u32) as u32).write_le(&mut power_file).unwrap();
+
+                for _ in 0..2i32.pow(22u32) {
+                    let power_of_g: <Bls12_377 as PairingEngine>::G1Affine = FromBytes::read_le(&mut file).unwrap();
+                    power_of_g.write_le(&mut power_file).unwrap();
+                }
+            } else {
+                (2i32.pow((degree - 1) as u32) - (2i32.pow(degree as u32))).write_le(&mut power_file).unwrap();
+
+                for _ in 2i32.pow((degree - 1) as u32)..2i32.pow(degree as u32) {
+                    let power_of_g: <Bls12_377 as PairingEngine>::G1Affine = FromBytes::read_le(&mut file).unwrap();
+                    power_of_g.write_le(&mut power_file).unwrap();
+                }
+            }
+
+            drop(power_file);
+        }
+    }
+
+    #[test]
+    fn create_new_srs() {
+        let mut file = OpenOptions::new().read(true).open("./universal.srs").unwrap();
+        let params = UniversalParams::<Bls12_377>::read_le(file).unwrap();
+        let mut new_file = OpenOptions::new().write(true).create(true).open("new-params.srs").unwrap();
+
+        params.write_le(new_file).unwrap();
     }
 }

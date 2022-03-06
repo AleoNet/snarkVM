@@ -17,7 +17,15 @@
 use crate::polycommit::PCError;
 use anyhow::Result;
 use snarkvm_curves::traits::PairingEngine;
-use snarkvm_utilities::{CanonicalDeserialize, ConstantSerializedSize};
+use snarkvm_utilities::{
+    CanonicalDeserialize,
+    CanonicalSerialize,
+    ConstantSerializedSize,
+    Read,
+    SerializationError,
+    ToBytes,
+    Write,
+};
 
 use std::{
     fs::{File, OpenOptions},
@@ -33,8 +41,13 @@ lazy_static::lazy_static! {
 
 /// An abstraction over a vector of powers of G, meant to reduce
 /// memory burden when handling universal setup parameters.
+#[derive(Derivative)]
+#[derivative(Debug(bound = ""))]
 pub struct PowersOfG<E: PairingEngine> {
+    /// Filepath of the powers we're using.
+    file_path: String,
     /// A handle to the file on disk containing the powers of G.
+    #[derivative(Debug = "ignore")]
     file: File,
     /// The degree up to which we currently have powers.
     degree: u64,
@@ -47,15 +60,61 @@ impl<E: PairingEngine> Default for PowersOfG<E> {
     }
 }
 
+// TODO: is this okay? check for issues
+impl<E: PairingEngine> Clone for PowersOfG<E> {
+    fn clone(&self) -> Self {
+        Self::new(PathBuf::from(self.file_path.clone())).unwrap()
+    }
+}
+
+impl<E: PairingEngine> CanonicalSerialize for PowersOfG<E> {
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), SerializationError> {
+        CanonicalSerialize::serialize(&self.file_path, writer)
+    }
+
+    fn serialized_size(&self) -> usize {
+        self.file_path.len()
+    }
+}
+
+impl<E: PairingEngine> CanonicalDeserialize for PowersOfG<E> {
+    fn deserialize<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
+        let file_path = String::deserialize(reader)?;
+        Ok(Self::new(PathBuf::from(file_path)).map_err(|_| SerializationError::InvalidData)?)
+    }
+}
+
+// NOTE: this drops the powers into a tmp file.
+// I assume this is only used for testing but this needs to be verified.
+impl<E: PairingEngine> From<Vec<E::G1Affine>> for PowersOfG<E> {
+    fn from(value: Vec<E::G1Affine>) -> Self {
+        let mut dir = std::env::temp_dir();
+        dir.push("powers_of_g");
+        let mut file = File::create(dir.clone()).unwrap();
+
+        (value.len() as u32).write_le(&mut file).unwrap();
+        for power in value {
+            power.write_le(&mut file).unwrap();
+        }
+
+        Self::new(dir).unwrap()
+    }
+}
+
 impl<E: PairingEngine> PowersOfG<E> {
     /// Returns a new instance of PowersOfG, which will store its
     /// powers in a file at `file_path`.
     pub fn new(file_path: PathBuf) -> Result<Self> {
         // Open the given file, creating it if it doesn't yet exist.
-        let file = OpenOptions::new().read(true).create(true).open(file_path)?;
-        let degree = (file.metadata()?.len() / (E::G1Affine::SERIALIZED_SIZE as u64 + 1)).next_power_of_two();
+        let file = OpenOptions::new().read(true).create(true).open(file_path.clone())?;
+        let degree = ((file.metadata()?.len() - 4) / E::G1Affine::SERIALIZED_SIZE as u64).next_power_of_two();
 
-        Ok(Self { file, degree, _phantom_data: PhantomData })
+        Ok(Self {
+            file_path: file_path.into_os_string().into_string().unwrap(),
+            file,
+            degree,
+            _phantom_data: PhantomData,
+        })
     }
 
     /// Return the number of current powers of G.
@@ -72,7 +131,7 @@ impl<E: PairingEngine> PowersOfG<E> {
 
         // Move our offset to the start of the desired element.
         let mut reader = BufReader::new(&self.file);
-        reader.seek(SeekFrom::Start(index_start as u64));
+        reader.seek(SeekFrom::Start(index_start as u64))?;
 
         // Now read it out, deserialize it, and return it.
         let mut buf = String::new();
@@ -83,7 +142,7 @@ impl<E: PairingEngine> PowersOfG<E> {
     /// Slices the underlying file to return a vector of affine elements
     /// between `lower` and `upper`.
     pub fn slice(&self, lower: usize, upper: usize) -> Result<Vec<E::G1Affine>> {
-        if upper.checked_mul(E::G1Affine::SERIALIZED_SIZE + 1).ok_or(PCError::IndexOverflowed)?
+        if upper.checked_mul(E::G1Affine::SERIALIZED_SIZE).ok_or(PCError::IndexOverflowed)? + 4
             > self.file.metadata()?.len() as usize
         {
             let degree = upper.next_power_of_two();
@@ -94,7 +153,7 @@ impl<E: PairingEngine> PowersOfG<E> {
 
         // Move our offset to the start of the desired element.
         let mut reader = BufReader::new(&self.file);
-        reader.seek(SeekFrom::Start(index_start as u64));
+        reader.seek(SeekFrom::Start(index_start as u64))?;
 
         // Now iterate until we fill a vector with all desired elements.
         let mut powers = Vec::with_capacity((upper - lower) as usize);
@@ -110,7 +169,7 @@ impl<E: PairingEngine> PowersOfG<E> {
     /// This function returns the starting byte of the file in which we're indexing
     /// our powers of G.
     fn get_starting_index(&self, index: usize) -> Result<usize> {
-        let index_start = index.checked_mul(E::G1Affine::SERIALIZED_SIZE + 1).ok_or(PCError::IndexOverflowed)?;
+        let index_start = index.checked_mul(E::G1Affine::SERIALIZED_SIZE).ok_or(PCError::IndexOverflowed)? + 4;
         if index_start > self.file.metadata()?.len() as usize {
             let degree = index.next_power_of_two();
             self.download_up_to(degree)?;

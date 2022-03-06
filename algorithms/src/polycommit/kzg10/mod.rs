@@ -205,7 +205,7 @@ impl<E: PairingEngine> KZG10<E> {
         let prepared_beta_h = beta_h.prepare();
 
         let pp = UniversalParams {
-            powers_of_beta_g,
+            powers_of_beta_g: powers_of_beta_g.into(),
             powers_of_beta_times_gamma_g,
             h,
             beta_h,
@@ -598,7 +598,7 @@ mod tests {
             if supported_degree == 1 {
                 supported_degree += 1;
             }
-            let powers_of_beta_g = pp.powers_of_beta_g[..=supported_degree].to_vec();
+            let powers_of_beta_g = pp.powers_of_beta_g.slice(0, supported_degree + 1).unwrap().to_vec();
             let powers_of_beta_times_gamma_g =
                 (0..=supported_degree).map(|i| pp.powers_of_beta_times_gamma_g[&i]).collect();
 
@@ -607,7 +607,7 @@ mod tests {
                 powers_of_beta_times_gamma_g: Cow::Owned(powers_of_beta_times_gamma_g),
             };
             let vk = VerifierKey {
-                g: pp.powers_of_beta_g[0],
+                g: pp.powers_of_beta_g.index(0).unwrap(),
                 gamma_g: pp.powers_of_beta_times_gamma_g[&0],
                 h: pp.h,
                 beta_h: pp.beta_h,
