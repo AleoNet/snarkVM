@@ -141,10 +141,7 @@ impl<E: PairingEngine> FromBytes for UniversalParams<E> {
 impl<E: PairingEngine> ToBytes for UniversalParams<E> {
     fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
         // Serialize `powers_of_beta_g`.
-        // (self.powers_of_beta_g.len() as u32).write_le(&mut writer)?;
-        // for power in &self.powers_of_beta_g {
-        //     power.write_le(&mut writer)?;
-        // }
+        self.powers_of_beta_g.serialize(&mut writer)?;
 
         // Serialize `powers_of_beta_times_gamma_g`.
         (self.powers_of_beta_times_gamma_g.len() as u32).write_le(&mut writer)?;

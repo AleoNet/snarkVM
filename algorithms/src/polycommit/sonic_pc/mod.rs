@@ -145,8 +145,9 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
                     max_degree - lowest_shift_degree + 1
                 ));
 
+                println!("lowest shift {}", lowest_shift_degree);
                 let shifted_powers_of_beta_g =
-                    pp.powers_of_beta_g.slice(lowest_shift_degree, supported_degree).unwrap().to_vec();
+                    pp.powers_of_beta_g.slice(lowest_shift_degree, pp.powers_of_beta_g.len()).unwrap().to_vec();
                 let mut shifted_powers_of_beta_times_gamma_g = BTreeMap::new();
                 // Also add degree 0.
                 let _max_gamma_g = pp.powers_of_beta_times_gamma_g.keys().last().unwrap();

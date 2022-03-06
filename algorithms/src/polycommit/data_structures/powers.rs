@@ -16,11 +16,13 @@
 
 use crate::polycommit::PCError;
 use anyhow::Result;
+use rand::Rng;
 use snarkvm_curves::traits::PairingEngine;
 use snarkvm_utilities::{
     CanonicalDeserialize,
     CanonicalSerialize,
     ConstantSerializedSize,
+    FromBytes,
     Read,
     SerializationError,
     ToBytes,
@@ -73,7 +75,7 @@ impl<E: PairingEngine> CanonicalSerialize for PowersOfG<E> {
     }
 
     fn serialized_size(&self) -> usize {
-        self.file_path.len()
+        self.file_path.len() + 8
     }
 }
 
@@ -89,14 +91,23 @@ impl<E: PairingEngine> CanonicalDeserialize for PowersOfG<E> {
 impl<E: PairingEngine> From<Vec<E::G1Affine>> for PowersOfG<E> {
     fn from(value: Vec<E::G1Affine>) -> Self {
         let mut dir = std::env::temp_dir();
-        dir.push("powers_of_g");
-        let mut file = File::create(dir.clone()).unwrap();
+        dir.push(format!("powers_of_g_{}", rand::thread_rng().gen::<u32>()));
+        let mut file = OpenOptions::new()
+            .write(true)
+            .truncate(true)
+            .create(true)
+            .open(dir.clone())
+            .expect("should be able to create tmp powers of g");
 
+        println!("creating a file with {} powers", value.len());
         (value.len() as u32).write_le(&mut file).unwrap();
         for power in value {
-            power.write_le(&mut file).unwrap();
+            power.serialize(&mut file).unwrap();
         }
 
+        println!("file size {}", file.metadata().unwrap().len());
+
+        drop(file);
         Self::new(dir).unwrap()
     }
 }
@@ -106,8 +117,8 @@ impl<E: PairingEngine> PowersOfG<E> {
     /// powers in a file at `file_path`.
     pub fn new(file_path: PathBuf) -> Result<Self> {
         // Open the given file, creating it if it doesn't yet exist.
-        let file = OpenOptions::new().read(true).create(true).open(file_path.clone())?;
-        let degree = ((file.metadata()?.len() - 4) / E::G1Affine::SERIALIZED_SIZE as u64).next_power_of_two();
+        let mut file = OpenOptions::new().read(true).write(true).create(true).open(file_path.clone())?;
+        let degree = u32::read_le(&mut file).unwrap() as u64;
 
         Ok(Self {
             file_path: file_path.into_os_string().into_string().unwrap(),
@@ -119,7 +130,7 @@ impl<E: PairingEngine> PowersOfG<E> {
 
     /// Return the number of current powers of G.
     pub fn len(&self) -> usize {
-        2u64.pow(self.degree as u32) as usize
+        self.degree as usize
     }
 
     /// Returns an element at `index`.
@@ -127,6 +138,7 @@ impl<E: PairingEngine> PowersOfG<E> {
     /// that we return a reference. We can not return a reference to
     /// something that does not exist when this function is called.
     pub fn index(&self, index: usize) -> Result<E::G1Affine> {
+        println!("indexing at {}", index);
         let index_start = self.get_starting_index(index)?;
 
         // Move our offset to the start of the desired element.
@@ -134,14 +146,15 @@ impl<E: PairingEngine> PowersOfG<E> {
         reader.seek(SeekFrom::Start(index_start as u64))?;
 
         // Now read it out, deserialize it, and return it.
-        let mut buf = String::new();
-        reader.read_line(&mut buf)?;
-        Ok(E::G1Affine::deserialize(&mut Cursor::new(buf))?)
+        Ok(E::G1Affine::deserialize(&mut reader)?)
     }
 
     /// Slices the underlying file to return a vector of affine elements
     /// between `lower` and `upper`.
     pub fn slice(&self, lower: usize, upper: usize) -> Result<Vec<E::G1Affine>> {
+        println!("slicing at {}..{}", lower, upper);
+        println!("{}", self.degree);
+        println!("checked mul {}", self.file.metadata()?.len());
         if upper.checked_mul(E::G1Affine::SERIALIZED_SIZE).ok_or(PCError::IndexOverflowed)? + 4
             > self.file.metadata()?.len() as usize
         {
@@ -158,9 +171,8 @@ impl<E: PairingEngine> PowersOfG<E> {
         // Now iterate until we fill a vector with all desired elements.
         let mut powers = Vec::with_capacity((upper - lower) as usize);
         for _ in lower..upper {
-            let mut buf = String::new();
-            reader.read_line(&mut buf)?;
-            powers.push(E::G1Affine::deserialize(&mut Cursor::new(buf))?);
+            let power = E::G1Affine::deserialize(&mut reader)?;
+            powers.push(power);
         }
 
         Ok(powers)
@@ -170,6 +182,7 @@ impl<E: PairingEngine> PowersOfG<E> {
     /// our powers of G.
     fn get_starting_index(&self, index: usize) -> Result<usize> {
         let index_start = index.checked_mul(E::G1Affine::SERIALIZED_SIZE).ok_or(PCError::IndexOverflowed)? + 4;
+        println!("starting index {}", index_start);
         if index_start > self.file.metadata()?.len() as usize {
             let degree = index.next_power_of_two();
             self.download_up_to(degree)?;
