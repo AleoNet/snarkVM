@@ -14,7 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{function::local::Local, instructions::Instruction, Function, Immediate, Memory, Register, Stack};
+use crate::{
+    function::local::Local,
+    instructions::Instruction,
+    CoreMemory,
+    Function,
+    Immediate,
+    Memory,
+    Register,
+    Stack,
+};
 
 use core::cell::RefCell;
 use once_cell::unsync::Lazy;
@@ -27,17 +36,12 @@ thread_local! {
 pub struct Global;
 
 impl Function for Global {
-    type Environment = <Self::Memory as Memory>::Environment;
+    type Environment = <Self::Memory as CoreMemory>::Environment;
     type Memory = Stack;
 
     /// Allocates a new register, stores the given input, and returns the new register.
     fn new_input(input: Immediate<Self::Environment>) -> Register<Self::Environment> {
         FUNCTION.with(|function| (**function).borrow_mut().new_input(input))
-    }
-
-    /// Allocates a new register, stores the given output, and returns the new register.
-    fn new_output() -> Register<Self::Environment> {
-        FUNCTION.with(|function| (**function).borrow_mut().new_output())
     }
 
     /// Adds the given instruction.

@@ -55,3 +55,11 @@ impl<E: Environment> fmt::Display for Register<E> {
         write!(f, "r{}", self.0)
     }
 }
+
+impl<E: Environment> core::ops::Deref for Register<E> {
+    type Target = u64;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}

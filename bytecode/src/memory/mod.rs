@@ -19,18 +19,22 @@ pub mod allocator;
 pub mod stack;
 pub use stack::*;
 
-use crate::{Immediate, Register};
+use crate::{Argument, Immediate, Register};
 use snarkvm_circuits::Environment;
 
 use core::hash;
 
-pub trait Memory: Copy + Clone + Eq + PartialEq + hash::Hash {
-    type Environment: Environment;
-
+pub trait Memory: InputMemory + OutputMemory + Copy + Clone + Eq + PartialEq + hash::Hash {
     /// Allocates a new register in memory, returning the new register.
     fn new_register() -> Register<Self::Environment>;
 
-    /// Returns `true` if the given register is already set.
+    /// Allocates the given register in memory.
+    fn initialize(register: &Register<Self::Environment>);
+
+    /// Returns `true` if the given register exists.
+    fn exists(register: &Register<Self::Environment>) -> bool;
+
+    /// Returns `true` if the given register is set.
     fn is_set(register: &Register<Self::Environment>) -> bool;
 
     /// Attempts to load the value from the register.
@@ -49,4 +53,30 @@ pub trait Memory: Copy + Clone + Eq + PartialEq + hash::Hash {
 
     /// Clears and initializes an empty memory layout.
     fn reset();
+}
+
+pub trait InputMemory: CoreMemory {
+    /// Allocates a new input in memory, returning the new register.
+    fn new_input(input: Immediate<Self::Environment>) -> Register<Self::Environment>;
+
+    /// Attempts to retrieve the input value from the given argument.
+    fn load_input(argument: &Argument<Self::Environment>) -> Immediate<Self::Environment>;
+
+    /// Returns the number of input registers allocated.
+    fn num_inputs() -> u64;
+}
+
+pub trait OutputMemory: CoreMemory {
+    /// Attempts to store the register of the given argument as an output.
+    fn store_output(argument: &Argument<Self::Environment>);
+
+    /// Attempts to retrieve the output value from the given argument.
+    fn load_outputs() -> Vec<Immediate<Self::Environment>>;
+
+    /// Returns the number of output registers allocated.
+    fn num_outputs() -> u64;
+}
+
+pub trait CoreMemory {
+    type Environment: Environment;
 }

@@ -31,10 +31,16 @@ impl<M: Memory> BinaryParser<M> {
     ) -> ParserResult<'a, (Register<M::Environment>, Operand<M>, Operand<M>)> {
         // Parse the opcode.
         let (string, _) = tag(opcode)(string)?;
+        // Parse the space from the string.
+        let (string, _) = tag(" ")(string)?;
         // Parse the destination register from the string.
         let (string, destination) = Register::parse(string)?;
+        // Parse the space from the string.
+        let (string, _) = tag(" ")(string)?;
         // Parse the first operand from the string.
         let (string, first) = Operand::parse(string)?;
+        // Parse the space from the string.
+        let (string, _) = tag(" ")(string)?;
         // Parse the second operand from the string.
         let (string, second) = Operand::parse(string)?;
         // Parse the semicolon from the string.

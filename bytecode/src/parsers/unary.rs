@@ -31,8 +31,12 @@ impl<M: Memory> UnaryParser<M> {
     ) -> ParserResult<'a, (Register<M::Environment>, Operand<M>)> {
         // Parse the opcode.
         let (string, _) = tag(opcode)(string)?;
+        // Parse the space from the string.
+        let (string, _) = tag(" ")(string)?;
         // Parse the destination register from the string.
         let (string, destination) = Register::parse(string)?;
+        // Parse the space from the string.
+        let (string, _) = tag(" ")(string)?;
         // Parse the operand from the string.
         let (string, operand) = Operand::parse(string)?;
         // Parse the semicolon from the string.

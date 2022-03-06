@@ -17,9 +17,6 @@
 pub mod global;
 pub use global::*;
 
-pub mod input;
-pub use input::*;
-
 pub mod local;
 
 use crate::{instructions::Instruction, Immediate, Memory, Register};
@@ -31,11 +28,8 @@ pub trait Function: Copy + Clone + Eq + PartialEq + hash::Hash {
     type Environment: Environment;
     type Memory: Memory<Environment = Self::Environment>;
 
-    /// Allocates a new register, stores the given input, and returns the new register.
+    /// Allocates a new input in memory, returning the new register.
     fn new_input(input: Immediate<Self::Environment>) -> Register<Self::Environment>;
-
-    /// Allocates a new register, stores the given output, and returns the new register.
-    fn new_output() -> Register<Self::Environment>;
 
     /// Adds the given instruction.
     fn push_instruction(instruction: Instruction<Self::Memory>);

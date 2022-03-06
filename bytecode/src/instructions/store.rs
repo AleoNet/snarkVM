@@ -39,6 +39,7 @@ impl<M: Memory> Operation for Store<M> {
 
     /// Evaluates the operation in-place.
     fn evaluate(&self) {
+        M::initialize(&self.destination);
         M::store(&self.destination, self.operand.to_value())
     }
 }

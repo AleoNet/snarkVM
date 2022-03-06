@@ -47,6 +47,7 @@ pub(crate) mod integers {
         + CheckedShl
         + CheckedShr
         + Debug
+        + Default
         + Display
         + FromStr<Err = ParseIntError>
         + NumZero

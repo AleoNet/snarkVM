@@ -28,30 +28,13 @@ use nom::{
 };
 
 pub(super) struct Local<M: Memory> {
-    inputs: Vec<Register<M::Environment>>,
     instructions: Vec<Instruction<M>>,
-    outputs: Vec<Register<M::Environment>>,
 }
 
 impl<M: Memory> Local<M> {
-    /// Allocates a new register, stores the given input, and returns the new register.
+    /// Allocates a new input in memory, returning the new register.
     pub fn new_input(&mut self, input: Immediate<M::Environment>) -> Register<M::Environment> {
-        match input.is_constant() {
-            true => M::halt("Attempted to assign a constant value as an input"),
-            false => {
-                let register = M::new_register();
-                self.inputs.push(register);
-                M::store(&register, input);
-                register
-            }
-        }
-    }
-
-    /// Allocates a new register, stores the given output, and returns the new register.
-    pub fn new_output(&mut self) -> Register<M::Environment> {
-        let register = M::new_register();
-        self.outputs.push(register);
-        register
+        M::new_input(input)
     }
 
     /// Adds the given instruction.
@@ -64,18 +47,13 @@ impl<M: Memory> Local<M> {
         for instruction in &self.instructions {
             instruction.evaluate();
         }
-
-        let mut outputs = Vec::with_capacity(self.outputs.len());
-        for output in &self.outputs {
-            outputs.push(M::load(output));
-        }
-        outputs
+        M::load_outputs()
     }
 }
 
 impl<M: Memory> Default for Local<M> {
     fn default() -> Self {
-        Self { inputs: Default::default(), instructions: Default::default(), outputs: Default::default() }
+        Self { instructions: Default::default() }
     }
 }
 

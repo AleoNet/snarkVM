@@ -174,12 +174,23 @@ pub trait IntegerTrait<E: Environment, I: IntegerType>:
 
 /// Operations to inject from a primitive form into a circuit environment.
 pub trait Inject {
-    type Primitive: Debug;
+    type Primitive: Debug + Default;
 
     ///
     /// Initializes a circuit of the given mode and primitive value.
     ///
     fn new(mode: Mode, value: Self::Primitive) -> Self;
+
+    ///
+    /// Initializes a blank default of the circuit for the given mode.
+    /// This operation is used commonly to derive a proving and verifying key.
+    ///
+    fn blank(mode: Mode) -> Self
+    where
+        Self: Sized,
+    {
+        Self::new(mode, Default::default())
+    }
 }
 
 /// Operations to eject from a circuit environment into primitive form.
@@ -218,19 +229,19 @@ pub trait Eject {
     }
 }
 
-/// Operations to parse a string literal into a circuit type.
+/// Operations to parse a string literal into an object.
 pub trait Parser: Display {
     type Environment: Environment;
 
     ///
-    /// Parses a string literal into a circuit type.
+    /// Parses a string literal into an object.
     ///
     fn parse(s: &str) -> ParserResult<Self>
     where
         Self: Sized;
 
     ///
-    /// Returns a circuit type from a string literal.
+    /// Returns an object from a string literal.
     ///
     fn from_str(string: &str) -> Self
     where
