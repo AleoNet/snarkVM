@@ -233,15 +233,15 @@ mod tests {
 
         // Constant
 
-        let (_, candidate) = BaseField::<Circuit>::parse("5base").unwrap();
+        let (_, candidate) = BaseField::<Circuit>::parse("5field").unwrap();
         assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
         assert!(candidate.is_constant());
 
-        let (_, candidate) = BaseField::<Circuit>::parse("5_base").unwrap();
+        let (_, candidate) = BaseField::<Circuit>::parse("5_field").unwrap();
         assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
         assert!(candidate.is_constant());
 
-        let (_, candidate) = BaseField::<Circuit>::parse("1_5_base").unwrap();
+        let (_, candidate) = BaseField::<Circuit>::parse("1_5_field").unwrap();
         assert_eq!(Primitive::from_str("15").unwrap(), candidate.eject_value());
         assert!(candidate.is_constant());
 
