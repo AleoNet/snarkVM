@@ -19,6 +19,7 @@ pub(crate) mod integers {
 
     use core::{
         fmt::{Debug, Display},
+        num::ParseIntError,
         ops::{Div, Rem},
         str::FromStr,
     };
@@ -37,7 +38,6 @@ pub(crate) mod integers {
         WrappingSub,
         Zero as NumZero,
     };
-    use std::num::ParseIntError;
 
     /// Trait bound for integer values. Common to both signed and unsigned integers.
     pub trait IntegerType:

@@ -24,7 +24,7 @@ pub mod sub;
 pub mod ternary;
 pub mod zero;
 
-use crate::{traits::*, BaseField, Boolean, Environment, Mode, Parser, ParserResult, ScalarField};
+use crate::{traits::*, BaseField, Boolean, Environment, Mode, Parser, ParserResult, Scalar};
 use snarkvm_curves::{AffineCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{Field as F, One as O};
 

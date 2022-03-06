@@ -56,6 +56,7 @@ pub trait BooleanTrait:
     + Debug
     + Eject<Primitive = bool>
     + Equal
+    + Inject<Primitive = bool>
     + Nand
     + Nor
     + Not
@@ -77,6 +78,7 @@ pub trait BaseFieldTrait:
     + Eject
     + Equal
     + FromBits
+    + Inject
     + Inv
     + Mul<Output = Self>
     + MulAssign
@@ -89,6 +91,12 @@ pub trait BaseFieldTrait:
     + Ternary
     + ToBits
     + Zero
+{
+}
+
+/// Representation of a scalar field.
+pub trait ScalarTrait:
+    Clone + Debug + Eject + Equal + Inject + One + Parser<Output = Self> + Ternary + ToBits + Zero
 {
 }
 
@@ -113,6 +121,7 @@ pub trait IntegerTrait<E: Environment, I: IntegerType>:
     + Eject<Primitive = I>
     + Equal
     + FromBits
+    + Inject<Primitive = I>
     + MulAssign
     + Mul<Output = Self>
     + MulChecked<Output = Self>

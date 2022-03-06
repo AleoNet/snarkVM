@@ -16,41 +16,41 @@
 
 use super::*;
 
-impl<E: Environment> Mul<ScalarField<E>> for Affine<E> {
+impl<E: Environment> Mul<Scalar<E>> for Affine<E> {
     type Output = Affine<E>;
 
-    fn mul(self, other: ScalarField<E>) -> Self::Output {
+    fn mul(self, other: Scalar<E>) -> Self::Output {
         self * &other
     }
 }
 
-impl<E: Environment> Mul<ScalarField<E>> for &Affine<E> {
+impl<E: Environment> Mul<Scalar<E>> for &Affine<E> {
     type Output = Affine<E>;
 
-    fn mul(self, other: ScalarField<E>) -> Self::Output {
+    fn mul(self, other: Scalar<E>) -> Self::Output {
         self * &other
     }
 }
 
-impl<E: Environment> Mul<&ScalarField<E>> for Affine<E> {
+impl<E: Environment> Mul<&Scalar<E>> for Affine<E> {
     type Output = Affine<E>;
 
-    fn mul(self, other: &ScalarField<E>) -> Self::Output {
+    fn mul(self, other: &Scalar<E>) -> Self::Output {
         let mut output = self;
         output *= other;
         output
     }
 }
 
-impl<E: Environment> Mul<&ScalarField<E>> for &Affine<E> {
+impl<E: Environment> Mul<&Scalar<E>> for &Affine<E> {
     type Output = Affine<E>;
 
-    fn mul(self, other: &ScalarField<E>) -> Self::Output {
+    fn mul(self, other: &Scalar<E>) -> Self::Output {
         (*self).clone() * other
     }
 }
 
-impl<E: Environment> Mul<Affine<E>> for ScalarField<E> {
+impl<E: Environment> Mul<Affine<E>> for Scalar<E> {
     type Output = Affine<E>;
 
     fn mul(self, other: Affine<E>) -> Self::Output {
@@ -58,7 +58,7 @@ impl<E: Environment> Mul<Affine<E>> for ScalarField<E> {
     }
 }
 
-impl<E: Environment> Mul<Affine<E>> for &ScalarField<E> {
+impl<E: Environment> Mul<Affine<E>> for &Scalar<E> {
     type Output = Affine<E>;
 
     fn mul(self, other: Affine<E>) -> Self::Output {
@@ -66,7 +66,7 @@ impl<E: Environment> Mul<Affine<E>> for &ScalarField<E> {
     }
 }
 
-impl<E: Environment> Mul<&Affine<E>> for ScalarField<E> {
+impl<E: Environment> Mul<&Affine<E>> for Scalar<E> {
     type Output = Affine<E>;
 
     fn mul(self, other: &Affine<E>) -> Self::Output {
@@ -74,7 +74,7 @@ impl<E: Environment> Mul<&Affine<E>> for ScalarField<E> {
     }
 }
 
-impl<E: Environment> Mul<&Affine<E>> for &ScalarField<E> {
+impl<E: Environment> Mul<&Affine<E>> for &Scalar<E> {
     type Output = Affine<E>;
 
     fn mul(self, other: &Affine<E>) -> Self::Output {
@@ -82,14 +82,14 @@ impl<E: Environment> Mul<&Affine<E>> for &ScalarField<E> {
     }
 }
 
-impl<E: Environment> MulAssign<ScalarField<E>> for Affine<E> {
-    fn mul_assign(&mut self, other: ScalarField<E>) {
+impl<E: Environment> MulAssign<Scalar<E>> for Affine<E> {
+    fn mul_assign(&mut self, other: Scalar<E>) {
         *self *= &other;
     }
 }
 
-impl<E: Environment> MulAssign<&ScalarField<E>> for Affine<E> {
-    fn mul_assign(&mut self, other: &ScalarField<E>) {
+impl<E: Environment> MulAssign<&Scalar<E>> for Affine<E> {
+    fn mul_assign(&mut self, other: &Scalar<E>) {
         *self *= other.to_bits_be().as_slice();
     }
 }
@@ -194,7 +194,7 @@ mod tests {
         name: &str,
         expected: &<Circuit as Environment>::Affine,
         a: &Affine<Circuit>,
-        b: &ScalarField<Circuit>,
+        b: &Scalar<Circuit>,
         num_constants: usize,
         num_public: usize,
         num_private: usize,
@@ -211,7 +211,7 @@ mod tests {
         name: &str,
         expected: &<Circuit as Environment>::Affine,
         a: &Affine<Circuit>,
-        b: &ScalarField<Circuit>,
+        b: &Scalar<Circuit>,
         num_constants: usize,
         num_public: usize,
         num_private: usize,
@@ -233,7 +233,7 @@ mod tests {
 
             let expected = base * scalar;
             let a = Affine::<Circuit>::new(Mode::Constant, (base.to_x_coordinate(), None));
-            let b = ScalarField::<Circuit>::new(Mode::Constant, scalar);
+            let b = Scalar::<Circuit>::new(Mode::Constant, scalar);
 
             let name = format!("Mul: a * b {}", i);
             check_mul(&name, &expected, &a, &b, 1757, 0, 0, 0);
@@ -250,7 +250,7 @@ mod tests {
 
             let expected = base * scalar;
             let a = Affine::<Circuit>::new(Mode::Constant, (base.to_x_coordinate(), None));
-            let b = ScalarField::<Circuit>::new(Mode::Public, scalar);
+            let b = Scalar::<Circuit>::new(Mode::Public, scalar);
 
             let name = format!("Mul: a * b {}", i);
             check_mul(&name, &expected, &a, &b, 757, 0, 2500, 2500);
@@ -267,7 +267,7 @@ mod tests {
 
             let expected = base * scalar;
             let a = Affine::<Circuit>::new(Mode::Constant, (base.to_x_coordinate(), None));
-            let b = ScalarField::<Circuit>::new(Mode::Private, scalar);
+            let b = Scalar::<Circuit>::new(Mode::Private, scalar);
 
             let name = format!("Mul: a * b {}", i);
             check_mul(&name, &expected, &a, &b, 757, 0, 2500, 2500);
@@ -307,7 +307,7 @@ mod tests {
 
             let expected = base * scalar;
             let a = Affine::<Circuit>::new(Mode::Public, (base.to_x_coordinate(), None));
-            let b = ScalarField::<Circuit>::new(Mode::Constant, scalar);
+            let b = Scalar::<Circuit>::new(Mode::Constant, scalar);
 
             let name = format!("Mul: a * b {}", i);
             check_mul(&name, &expected, &a, &b, num_constant, 0, num_private, num_constraints);
@@ -347,7 +347,7 @@ mod tests {
 
             let expected = base * scalar;
             let a = Affine::<Circuit>::new(Mode::Private, (base.to_x_coordinate(), None));
-            let b = ScalarField::<Circuit>::new(Mode::Constant, scalar);
+            let b = Scalar::<Circuit>::new(Mode::Constant, scalar);
 
             let name = format!("Mul: a * b {}", i);
             check_mul(&name, &expected, &a, &b, num_constant, 0, num_private, num_constraints);
@@ -364,7 +364,7 @@ mod tests {
 
             let expected = base * scalar;
             let a = Affine::<Circuit>::new(Mode::Public, (base.to_x_coordinate(), None));
-            let b = ScalarField::<Circuit>::new(Mode::Public, scalar);
+            let b = Scalar::<Circuit>::new(Mode::Public, scalar);
 
             let name = format!("Mul: a * b {}", i);
             check_mul(&name, &expected, &a, &b, 755, 0, 3255, 3255);
@@ -381,7 +381,7 @@ mod tests {
 
             let expected = base * scalar;
             let a = Affine::<Circuit>::new(Mode::Public, (base.to_x_coordinate(), None));
-            let b = ScalarField::<Circuit>::new(Mode::Private, scalar);
+            let b = Scalar::<Circuit>::new(Mode::Private, scalar);
 
             let name = format!("Mul: a * b {}", i);
             check_mul(&name, &expected, &a, &b, 755, 0, 3255, 3255);
@@ -398,7 +398,7 @@ mod tests {
 
             let expected = base * scalar;
             let a = Affine::<Circuit>::new(Mode::Private, (base.to_x_coordinate(), None));
-            let b = ScalarField::<Circuit>::new(Mode::Public, scalar);
+            let b = Scalar::<Circuit>::new(Mode::Public, scalar);
 
             let name = format!("Mul: a * b {}", i);
             check_mul(&name, &expected, &a, &b, 755, 0, 3255, 3255);
@@ -415,7 +415,7 @@ mod tests {
 
             let expected = base * scalar;
             let a = Affine::<Circuit>::new(Mode::Private, (base.to_x_coordinate(), None));
-            let b = ScalarField::<Circuit>::new(Mode::Private, scalar);
+            let b = Scalar::<Circuit>::new(Mode::Private, scalar);
 
             let name = format!("Mul: a * b {}", i);
             check_mul(&name, &expected, &a, &b, 755, 0, 3255, 3255);
@@ -433,13 +433,13 @@ mod tests {
 
         // Constant
         let base = Affine::<Circuit>::new(Mode::Constant, (a.to_x_coordinate(), Some(a.to_y_coordinate())));
-        let scalar = ScalarField::<Circuit>::new(Mode::Constant, b);
+        let scalar = Scalar::<Circuit>::new(Mode::Constant, b);
         let candidate_a = base * scalar;
         assert_eq!(expected, candidate_a.eject_value());
 
         // Private
         let base = Affine::<Circuit>::new(Mode::Private, (a.to_x_coordinate(), Some(a.to_y_coordinate())));
-        let scalar = ScalarField::<Circuit>::new(Mode::Private, b);
+        let scalar = Scalar::<Circuit>::new(Mode::Private, b);
         let candidate_b = base * scalar;
         assert_eq!(expected, candidate_b.eject_value());
     }

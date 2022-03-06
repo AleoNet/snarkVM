@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<E: Environment> Zero for ScalarField<E> {
+impl<E: Environment> Zero for Scalar<E> {
     type Boolean = Boolean<E>;
 
     fn zero() -> Self {
@@ -39,7 +39,7 @@ mod tests {
 
         Circuit::scoped("Zero", || {
             assert_circuit!(0, 0, 0, 0);
-            let candidate = ScalarField::<Circuit>::zero();
+            let candidate = Scalar::<Circuit>::zero();
             assert_eq!(zero, candidate.eject_value());
             assert_circuit!(251, 0, 0, 0);
         });
@@ -47,7 +47,7 @@ mod tests {
 
     #[test]
     fn test_is_zero() {
-        let candidate = ScalarField::<Circuit>::zero();
+        let candidate = Scalar::<Circuit>::zero();
         // Should equal 0.
         assert!(candidate.is_zero().eject_value());
         // Should not equal 1.

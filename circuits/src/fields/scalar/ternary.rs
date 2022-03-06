@@ -18,7 +18,7 @@ use super::*;
 
 use itertools::Itertools;
 
-impl<E: Environment> Ternary for ScalarField<E> {
+impl<E: Environment> Ternary for Scalar<E> {
     type Boolean = Boolean<E>;
     type Output = Self;
 
@@ -46,12 +46,12 @@ mod tests {
     fn test_ternary() {
         // Constant ? Constant : Constant
         {
-            let a = ScalarField::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
-            let b = ScalarField::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
+            let a = Scalar::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
+            let b = Scalar::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
 
             let condition = Boolean::new(Mode::Constant, true);
             Circuit::scoped("Constant(true) ? Constant : Constant", || {
-                let output = ScalarField::ternary(&condition, &a, &b);
+                let output = Scalar::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 0, 0);
 
                 assert!(output.is_eq(&a).eject_value());
@@ -60,7 +60,7 @@ mod tests {
 
             let condition = Boolean::new(Mode::Constant, false);
             Circuit::scoped("Constant(false) ? Constant : Constant", || {
-                let output = ScalarField::ternary(&condition, &a, &b);
+                let output = Scalar::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 0, 0);
 
                 assert!(!output.is_eq(&a).eject_value());
@@ -70,12 +70,12 @@ mod tests {
 
         // Constant ? Public : Private
         {
-            let a = ScalarField::<Circuit>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
-            let b = ScalarField::<Circuit>::new(Mode::Private, UniformRand::rand(&mut thread_rng()));
+            let a = Scalar::<Circuit>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
+            let b = Scalar::<Circuit>::new(Mode::Private, UniformRand::rand(&mut thread_rng()));
 
             let condition = Boolean::new(Mode::Constant, true);
             Circuit::scoped("Constant(true) ? Public : Private", || {
-                let output = ScalarField::ternary(&condition, &a, &b);
+                let output = Scalar::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 0, 0);
 
                 assert!(output.is_eq(&a).eject_value());
@@ -84,7 +84,7 @@ mod tests {
 
             let condition = Boolean::new(Mode::Constant, false);
             Circuit::scoped("Constant(false) ? Public : Private", || {
-                let output = ScalarField::ternary(&condition, &a, &b);
+                let output = Scalar::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 0, 0);
 
                 assert!(!output.is_eq(&a).eject_value());
@@ -94,12 +94,12 @@ mod tests {
 
         // Public ? Constant : Constant
         {
-            let a = ScalarField::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
-            let b = ScalarField::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
+            let a = Scalar::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
+            let b = Scalar::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
 
             let condition = Boolean::new(Mode::Public, true);
             Circuit::scoped("Public(true) ? Constant : Constant", || {
-                let output = ScalarField::ternary(&condition, &a, &b);
+                let output = Scalar::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 0, 0);
 
                 assert!(output.is_eq(&a).eject_value());
@@ -108,7 +108,7 @@ mod tests {
 
             let condition = Boolean::new(Mode::Public, false);
             Circuit::scoped("Public(false) ? Constant : Constant", || {
-                let output = ScalarField::ternary(&condition, &a, &b);
+                let output = Scalar::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 0, 0);
 
                 assert!(!output.is_eq(&a).eject_value());
@@ -118,12 +118,12 @@ mod tests {
 
         // Private ? Constant : Constant
         {
-            let a = ScalarField::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
-            let b = ScalarField::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
+            let a = Scalar::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
+            let b = Scalar::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
 
             let condition = Boolean::new(Mode::Private, true);
             Circuit::scoped("Private(true) ? Constant : Constant", || {
-                let output = ScalarField::ternary(&condition, &a, &b);
+                let output = Scalar::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 0, 0);
 
                 assert!(output.is_eq(&a).eject_value());
@@ -132,7 +132,7 @@ mod tests {
 
             let condition = Boolean::new(Mode::Private, false);
             Circuit::scoped("Private(false) ? Constant : Constant", || {
-                let output = ScalarField::ternary(&condition, &a, &b);
+                let output = Scalar::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 0, 0);
 
                 assert!(!output.is_eq(&a).eject_value());
@@ -142,12 +142,12 @@ mod tests {
 
         // Private ? Public : Constant
         {
-            let a = ScalarField::<Circuit>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
-            let b = ScalarField::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
+            let a = Scalar::<Circuit>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
+            let b = Scalar::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
 
             let condition = Boolean::new(Mode::Private, true);
             Circuit::scoped("Private(true) ? Public : Constant", || {
-                let output = ScalarField::ternary(&condition, &a, &b);
+                let output = Scalar::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 251, 251);
 
                 assert!(output.is_eq(&a).eject_value());
@@ -156,7 +156,7 @@ mod tests {
 
             let condition = Boolean::new(Mode::Private, false);
             Circuit::scoped("Private(false) ? Public : Constant", || {
-                let output = ScalarField::ternary(&condition, &a, &b);
+                let output = Scalar::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 251, 251);
 
                 assert!(!output.is_eq(&a).eject_value());
@@ -166,12 +166,12 @@ mod tests {
 
         // Private ? Constant : Public
         {
-            let a = ScalarField::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
-            let b = ScalarField::<Circuit>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
+            let a = Scalar::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut thread_rng()));
+            let b = Scalar::<Circuit>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
 
             let condition = Boolean::new(Mode::Private, true);
             Circuit::scoped("Private(true) ? Constant : Public", || {
-                let output = ScalarField::ternary(&condition, &a, &b);
+                let output = Scalar::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 251, 251);
 
                 assert!(output.is_eq(&a).eject_value());
@@ -180,7 +180,7 @@ mod tests {
 
             let condition = Boolean::new(Mode::Private, false);
             Circuit::scoped("Private(false) ? Constant : Public", || {
-                let output = ScalarField::ternary(&condition, &a, &b);
+                let output = Scalar::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 251, 251);
 
                 assert!(!output.is_eq(&a).eject_value());
@@ -190,12 +190,12 @@ mod tests {
 
         // Private ? Private : Public
         {
-            let a = ScalarField::<Circuit>::new(Mode::Private, UniformRand::rand(&mut thread_rng()));
-            let b = ScalarField::<Circuit>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
+            let a = Scalar::<Circuit>::new(Mode::Private, UniformRand::rand(&mut thread_rng()));
+            let b = Scalar::<Circuit>::new(Mode::Public, UniformRand::rand(&mut thread_rng()));
 
             let condition = Boolean::new(Mode::Private, true);
             Circuit::scoped("Private(true) ? Private : Public", || {
-                let output = ScalarField::ternary(&condition, &a, &b);
+                let output = Scalar::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 251, 251);
 
                 assert!(output.is_eq(&a).eject_value());
@@ -204,7 +204,7 @@ mod tests {
 
             let condition = Boolean::new(Mode::Private, false);
             Circuit::scoped("Private(false) ? Private : Public", || {
-                let output = ScalarField::ternary(&condition, &a, &b);
+                let output = Scalar::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 251, 251);
 
                 assert!(!output.is_eq(&a).eject_value());

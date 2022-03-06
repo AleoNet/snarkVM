@@ -43,22 +43,22 @@ use nom::{
 };
 
 #[derive(Clone)]
-pub struct ScalarField<E: Environment>(Vec<Boolean<E>>);
+pub struct Scalar<E: Environment>(Vec<Boolean<E>>);
 
-impl<E: Environment> Inject for ScalarField<E> {
+impl<E: Environment> ScalarTrait for Scalar<E> {}
+
+impl<E: Environment> Inject for Scalar<E> {
     type Primitive = E::ScalarField;
 
     ///
     /// Initializes a new instance of a scalar field from a primitive scalar field value.
     ///
     fn new(mode: Mode, value: Self::Primitive) -> Self {
-        let bits = value.to_bits_le().iter().map(|bit| Boolean::new(mode, *bit)).collect::<Vec<_>>();
-
-        Self(bits)
+        Self(value.to_bits_le().iter().map(|bit| Boolean::new(mode, *bit)).collect())
     }
 }
 
-impl<E: Environment> Eject for ScalarField<E> {
+impl<E: Environment> Eject for Scalar<E> {
     type Primitive = E::ScalarField;
 
     ///
@@ -94,9 +94,9 @@ impl<E: Environment> Eject for ScalarField<E> {
     }
 }
 
-impl<E: Environment> Parser for ScalarField<E> {
+impl<E: Environment> Parser for Scalar<E> {
     type Environment = E;
-    type Output = ScalarField<E>;
+    type Output = Scalar<E>;
 
     /// Parses a string into a scalar field circuit.
     #[inline]
@@ -112,17 +112,17 @@ impl<E: Environment> Parser for ScalarField<E> {
         // Parse the close parenthesis from the string.
         let (string, _) = tag(")")(string)?;
 
-        Ok((string, ScalarField::new(mode, value)))
+        Ok((string, Scalar::new(mode, value)))
     }
 }
 
-impl<E: Environment> fmt::Debug for ScalarField<E> {
+impl<E: Environment> fmt::Debug for Scalar<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.eject_value())
     }
 }
 
-impl<E: Environment> fmt::Display for ScalarField<E> {
+impl<E: Environment> fmt::Display for Scalar<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}({}scalar)", self.eject_mode(), self.eject_value())
     }
@@ -149,7 +149,7 @@ mod tests {
         num_constraints: usize,
     ) {
         Circuit::scoped(name, || {
-            let candidate = ScalarField::<Circuit>::new(mode, expected);
+            let candidate = Scalar::<Circuit>::new(mode, expected);
             assert_eq!(expected, candidate.eject_value());
             assert_circuit!(num_constants, num_public, num_private, num_constraints);
         });
@@ -158,11 +158,11 @@ mod tests {
     /// Attempts to construct a field from the given element and mode,
     /// format it in debug mode, and recover a field from it.
     fn check_debug(mode: Mode, element: <Circuit as Environment>::ScalarField) {
-        let candidate = ScalarField::<Circuit>::new(mode, element);
+        let candidate = Scalar::<Circuit>::new(mode, element);
         assert_eq!(element.to_string(), format!("{:?}", candidate));
 
         let candidate_element = <Circuit as Environment>::ScalarField::from_str(&format!("{:?}", candidate)).unwrap();
-        let candidate_recovered = ScalarField::<Circuit>::new(mode, candidate_element);
+        let candidate_recovered = Scalar::<Circuit>::new(mode, candidate_element);
         assert_eq!(candidate.eject_value(), candidate_recovered.eject_value());
     }
 
@@ -203,15 +203,15 @@ mod tests {
         let zero = <Circuit as Environment>::ScalarField::zero();
 
         // Constant
-        let candidate = ScalarField::<Circuit>::new(Mode::Constant, zero);
+        let candidate = Scalar::<Circuit>::new(Mode::Constant, zero);
         assert_eq!("0", &format!("{:?}", candidate));
 
         // Public
-        let candidate = ScalarField::<Circuit>::new(Mode::Public, zero);
+        let candidate = Scalar::<Circuit>::new(Mode::Public, zero);
         assert_eq!("0", &format!("{:?}", candidate));
 
         // Private
-        let candidate = ScalarField::<Circuit>::new(Mode::Private, zero);
+        let candidate = Scalar::<Circuit>::new(Mode::Private, zero);
         assert_eq!("0", &format!("{:?}", candidate));
     }
 
@@ -220,15 +220,15 @@ mod tests {
         let one = <Circuit as Environment>::ScalarField::one();
 
         // Constant
-        let candidate = ScalarField::<Circuit>::new(Mode::Constant, one);
+        let candidate = Scalar::<Circuit>::new(Mode::Constant, one);
         assert_eq!("1", &format!("{:?}", candidate));
 
         // Public
-        let candidate = ScalarField::<Circuit>::new(Mode::Public, one);
+        let candidate = Scalar::<Circuit>::new(Mode::Public, one);
         assert_eq!("1", &format!("{:?}", candidate));
 
         // Private
-        let candidate = ScalarField::<Circuit>::new(Mode::Private, one);
+        let candidate = Scalar::<Circuit>::new(Mode::Private, one);
         assert_eq!("1", &format!("{:?}", candidate));
     }
 
@@ -238,15 +238,15 @@ mod tests {
         let two = one + one;
 
         // Constant
-        let candidate = ScalarField::<Circuit>::new(Mode::Constant, two);
+        let candidate = Scalar::<Circuit>::new(Mode::Constant, two);
         assert_eq!("2", &format!("{:?}", candidate));
 
         // Public
-        let candidate = ScalarField::<Circuit>::new(Mode::Public, two);
+        let candidate = Scalar::<Circuit>::new(Mode::Public, two);
         assert_eq!("2", &format!("{:?}", candidate));
 
         // Private
-        let candidate = ScalarField::<Circuit>::new(Mode::Private, two);
+        let candidate = Scalar::<Circuit>::new(Mode::Private, two);
         assert_eq!("2", &format!("{:?}", candidate));
     }
 
@@ -256,43 +256,43 @@ mod tests {
 
         // Constant
 
-        let (_, candidate) = ScalarField::<Circuit>::parse("Constant(5scalar)").unwrap();
+        let (_, candidate) = Scalar::<Circuit>::parse("Constant(5scalar)").unwrap();
         assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
         assert!(candidate.is_constant());
 
-        let (_, candidate) = ScalarField::<Circuit>::parse("Constant(5_scalar)").unwrap();
+        let (_, candidate) = Scalar::<Circuit>::parse("Constant(5_scalar)").unwrap();
         assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
         assert!(candidate.is_constant());
 
-        let (_, candidate) = ScalarField::<Circuit>::parse("Constant(1_5_scalar)").unwrap();
+        let (_, candidate) = Scalar::<Circuit>::parse("Constant(1_5_scalar)").unwrap();
         assert_eq!(Primitive::from_str("15").unwrap(), candidate.eject_value());
         assert!(candidate.is_constant());
 
         // Public
 
-        let (_, candidate) = ScalarField::<Circuit>::parse("Public(5scalar)").unwrap();
+        let (_, candidate) = Scalar::<Circuit>::parse("Public(5scalar)").unwrap();
         assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
         assert!(candidate.is_public());
 
-        let (_, candidate) = ScalarField::<Circuit>::parse("Public(5_scalar)").unwrap();
+        let (_, candidate) = Scalar::<Circuit>::parse("Public(5_scalar)").unwrap();
         assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
         assert!(candidate.is_public());
 
-        let (_, candidate) = ScalarField::<Circuit>::parse("Public(1_5_scalar)").unwrap();
+        let (_, candidate) = Scalar::<Circuit>::parse("Public(1_5_scalar)").unwrap();
         assert_eq!(Primitive::from_str("15").unwrap(), candidate.eject_value());
         assert!(candidate.is_public());
 
         // Private
 
-        let (_, candidate) = ScalarField::<Circuit>::parse("Private(5scalar)").unwrap();
+        let (_, candidate) = Scalar::<Circuit>::parse("Private(5scalar)").unwrap();
         assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
         assert!(candidate.is_private());
 
-        let (_, candidate) = ScalarField::<Circuit>::parse("Private(5_scalar)").unwrap();
+        let (_, candidate) = Scalar::<Circuit>::parse("Private(5_scalar)").unwrap();
         assert_eq!(Primitive::from_str("5").unwrap(), candidate.eject_value());
         assert!(candidate.is_private());
 
-        let (_, candidate) = ScalarField::<Circuit>::parse("Private(1_5_scalar)").unwrap();
+        let (_, candidate) = Scalar::<Circuit>::parse("Private(1_5_scalar)").unwrap();
         assert_eq!(Primitive::from_str("15").unwrap(), candidate.eject_value());
         assert!(candidate.is_private());
 
@@ -301,9 +301,9 @@ mod tests {
         for mode in [Mode::Constant, Mode::Public, Mode::Private] {
             for _ in 0..ITERATIONS {
                 let value: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut thread_rng());
-                let expected = ScalarField::<Circuit>::new(mode, value);
+                let expected = Scalar::<Circuit>::new(mode, value);
 
-                let (_, candidate) = ScalarField::<Circuit>::parse(&format!("{expected}")).unwrap();
+                let (_, candidate) = Scalar::<Circuit>::parse(&format!("{expected}")).unwrap();
                 assert_eq!(expected.eject_value(), candidate.eject_value());
                 assert_eq!(mode, candidate.eject_mode());
             }
@@ -316,15 +316,15 @@ mod tests {
         let two = one + one;
 
         // Constant
-        let candidate = ScalarField::<Circuit>::new(Mode::Constant, two);
+        let candidate = Scalar::<Circuit>::new(Mode::Constant, two);
         assert_eq!("Constant(2scalar)", &format!("{}", candidate));
 
         // Public
-        let candidate = ScalarField::<Circuit>::new(Mode::Public, two);
+        let candidate = Scalar::<Circuit>::new(Mode::Public, two);
         assert_eq!("Public(2scalar)", &format!("{}", candidate));
 
         // Private
-        let candidate = ScalarField::<Circuit>::new(Mode::Private, two);
+        let candidate = Scalar::<Circuit>::new(Mode::Private, two);
         assert_eq!("Private(2scalar)", &format!("{}", candidate));
     }
 }

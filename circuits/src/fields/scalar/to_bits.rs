@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<E: Environment> ToBits for ScalarField<E> {
+impl<E: Environment> ToBits for Scalar<E> {
     type Boolean = Boolean<E>;
 
     /// Outputs the little-endian bit representation of `self` *without* trailing zeros.
@@ -30,7 +30,7 @@ impl<E: Environment> ToBits for ScalarField<E> {
     }
 }
 
-impl<E: Environment> ToBits for &ScalarField<E> {
+impl<E: Environment> ToBits for &Scalar<E> {
     type Boolean = Boolean<E>;
 
     /// Outputs the little-endian bit representation of `self` *without* trailing zeros.
@@ -59,7 +59,7 @@ mod tests {
     fn check_to_bits_le(
         name: &str,
         expected: &[bool],
-        candidate: &ScalarField<Circuit>,
+        candidate: &Scalar<Circuit>,
         num_constants: usize,
         num_public: usize,
         num_private: usize,
@@ -80,7 +80,7 @@ mod tests {
     fn check_to_bits_be(
         name: &str,
         expected: &[bool],
-        candidate: ScalarField<Circuit>,
+        candidate: Scalar<Circuit>,
         num_constants: usize,
         num_public: usize,
         num_private: usize,
@@ -101,7 +101,7 @@ mod tests {
     #[test]
     fn test_to_bits_constant() {
         let expected = UniformRand::rand(&mut thread_rng());
-        let candidate = ScalarField::<Circuit>::new(Mode::Constant, expected);
+        let candidate = Scalar::<Circuit>::new(Mode::Constant, expected);
         check_to_bits_le("Constant", &expected.to_bits_le(), &candidate, 0, 0, 0, 0);
         check_to_bits_be("Constant", &expected.to_bits_be(), candidate, 0, 0, 0, 0);
     }
@@ -109,7 +109,7 @@ mod tests {
     #[test]
     fn test_to_bits_public() {
         let expected = UniformRand::rand(&mut thread_rng());
-        let candidate = ScalarField::<Circuit>::new(Mode::Public, expected);
+        let candidate = Scalar::<Circuit>::new(Mode::Public, expected);
         check_to_bits_le("Public", &expected.to_bits_le(), &candidate, 0, 0, 0, 0);
         check_to_bits_be("Public", &expected.to_bits_be(), candidate, 0, 0, 0, 0);
     }
@@ -117,7 +117,7 @@ mod tests {
     #[test]
     fn test_to_bits_private() {
         let expected = UniformRand::rand(&mut thread_rng());
-        let candidate = ScalarField::<Circuit>::new(Mode::Private, expected);
+        let candidate = Scalar::<Circuit>::new(Mode::Private, expected);
         check_to_bits_le("Private", &expected.to_bits_le(), &candidate, 0, 0, 0, 0);
         check_to_bits_be("Private", &expected.to_bits_be(), candidate, 0, 0, 0, 0);
     }
@@ -125,7 +125,7 @@ mod tests {
     #[test]
     fn test_one() {
         /// Checks that the field element, when converted to little-endian bits, is well-formed.
-        fn check_bits_le(candidate: ScalarField<Circuit>) {
+        fn check_bits_le(candidate: Scalar<Circuit>) {
             for (i, bit) in candidate.to_bits_le().iter().enumerate() {
                 match i == 0 {
                     true => assert!(bit.eject_value()),
@@ -135,7 +135,7 @@ mod tests {
         }
 
         /// Checks that the field element, when converted to big-endian bits, is well-formed.
-        fn check_bits_be(candidate: ScalarField<Circuit>) {
+        fn check_bits_be(candidate: Scalar<Circuit>) {
             for (i, bit) in candidate.to_bits_be().iter().rev().enumerate() {
                 match i == 0 {
                     true => assert!(bit.eject_value()),
@@ -147,13 +147,13 @@ mod tests {
         let one = <Circuit as Environment>::ScalarField::one();
 
         // Constant
-        check_bits_le(ScalarField::<Circuit>::new(Mode::Constant, one));
-        check_bits_be(ScalarField::<Circuit>::new(Mode::Constant, one));
+        check_bits_le(Scalar::<Circuit>::new(Mode::Constant, one));
+        check_bits_be(Scalar::<Circuit>::new(Mode::Constant, one));
         // Public
-        check_bits_le(ScalarField::<Circuit>::new(Mode::Public, one));
-        check_bits_be(ScalarField::<Circuit>::new(Mode::Public, one));
+        check_bits_le(Scalar::<Circuit>::new(Mode::Public, one));
+        check_bits_be(Scalar::<Circuit>::new(Mode::Public, one));
         // Private
-        check_bits_le(ScalarField::<Circuit>::new(Mode::Private, one));
-        check_bits_be(ScalarField::<Circuit>::new(Mode::Private, one));
+        check_bits_le(Scalar::<Circuit>::new(Mode::Private, one));
+        check_bits_be(Scalar::<Circuit>::new(Mode::Private, one));
     }
 }
