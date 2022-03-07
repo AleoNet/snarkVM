@@ -32,7 +32,9 @@ use snarkvm_circuits::{Environment, ParserResult};
 use core::fmt::Display;
 
 // pub trait Operation: Parser + Into<Instruction<Self::Memory>> {
-pub trait Operation<E: Environment>: Display {
+pub trait Operation: Display {
+    type Memory: Memory;
+
     ///
     /// Returns the opcode of the instruction.
     ///
@@ -41,25 +43,25 @@ pub trait Operation<E: Environment>: Display {
     ///
     /// Evaluates the instruction in-place.
     ///
-    fn evaluate<M: Memory<Environment = E>>(&self, memory: &M);
+    fn evaluate(&self, memory: &Self::Memory);
 
     ///
     /// Parses a string literal into an object.
     ///
-    fn parse<'a, M: Memory<Environment = E>>(s: &'a str, memory: &'a mut M) -> ParserResult<'a, Self>
+    fn parse<'a>(s: &'a str, memory: &'a mut Self::Memory) -> ParserResult<'a, Self>
     where
         Self: Sized;
 
     ///
     /// Returns an object from a string literal.
     ///
-    fn from_str<M: Memory<Environment = E>>(string: &str, memory: &mut M) -> Self
+    fn from_str(string: &str, memory: &mut Self::Memory) -> Self
     where
         Self: Sized,
     {
         match Self::parse(string, memory) {
             Ok((_, circuit)) => circuit,
-            Err(error) => M::halt(format!("Failed to parse: {}", error)),
+            Err(error) => Self::Memory::halt(format!("Failed to parse: {}", error)),
         }
     }
 }

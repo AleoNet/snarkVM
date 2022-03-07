@@ -22,16 +22,16 @@ use nom::bytes::complete::tag;
 use once_cell::unsync::OnceCell;
 
 /// Declares a function input `register` with type `annotation`.
-pub struct Input<E: Environment> {
+pub struct Input<M: Memory> {
     /// The register and type annotations for the input.
-    argument: Argument<E>,
+    argument: Argument<M::Environment>,
     /// The assigned value for this input.
-    immediate: OnceCell<Immediate<E>>,
+    immediate: OnceCell<Immediate<M::Environment>>,
 }
 
-impl<E: Environment> Input<E> {
+impl<M: Memory> Input<M> {
     /// Assigns the given immediate to the input register.
-    pub(super) fn assign<M: Memory>(&self, immediate: Immediate<E>) {
+    pub(super) fn assign(&self, immediate: Immediate<M::Environment>) {
         // Retrieve the input annotations.
         let register = self.argument.register();
         let mode = self.argument.mode();
@@ -50,7 +50,9 @@ impl<E: Environment> Input<E> {
     }
 }
 
-impl<E: Environment> Operation<E> for Input<E> {
+impl<M: Memory> Operation for Input<M> {
+    type Memory = M;
+
     /// Returns the type name as a string.
     #[inline]
     fn opcode() -> &'static str {
@@ -58,7 +60,7 @@ impl<E: Environment> Operation<E> for Input<E> {
     }
 
     /// Evaluates the operation in-place.
-    fn evaluate<M: Memory<Environment = E>>(&self, memory: &M) {
+    fn evaluate(&self, memory: &Self::Memory) {
         // Retrieve the input annotations.
         let register = self.argument.register();
         // Attempt to retrieve the immediate this input register.
@@ -71,7 +73,7 @@ impl<E: Environment> Operation<E> for Input<E> {
 
     /// Parses a string into an input.
     #[inline]
-    fn parse<'a, M: Memory<Environment = E>>(string: &'a str, memory: &'a mut M) -> ParserResult<'a, Self> {
+    fn parse<'a>(string: &'a str, memory: &'a mut Self::Memory) -> ParserResult<'a, Self> {
         // Parse the whitespace and comments from the string.
         let (string, _) = Sanitizer::parse(string)?;
         // Parse the input keyword from the string.
@@ -90,14 +92,14 @@ impl<E: Environment> Operation<E> for Input<E> {
     }
 }
 
-impl<E: Environment> fmt::Display for Input<E> {
+impl<M: Memory> fmt::Display for Input<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{} {};", Self::opcode(), self.argument)
     }
 }
 
-impl<E: Environment> ops::Deref for Input<E> {
-    type Target = Argument<E>;
+impl<M: Memory> ops::Deref for Input<M> {
+    type Target = Argument<M::Environment>;
 
     fn deref(&self) -> &Self::Target {
         &self.argument

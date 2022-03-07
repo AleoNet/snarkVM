@@ -39,11 +39,11 @@ pub struct Function<M: Memory> {
     /// The function arguments provided by the caller.
     arguments: Vec<Register<M::Environment>>,
     /// The instructions to initialize the function inputs.
-    inputs: Vec<Input<M::Environment>>,
+    inputs: Vec<Input<M>>,
     /// The main instructions of the function.
-    instructions: Vec<Instruction<M::Environment>>,
+    instructions: Vec<Instruction<M>>,
     /// The instructions to initialize the function outputs.
-    outputs: Vec<Output<M::Environment>>,
+    outputs: Vec<Output<M>>,
     /// The function stack of registers.
     memory: M,
 }
@@ -54,7 +54,7 @@ impl<M: Memory> Function<M> {
         // Append new inputs from the index of the last assigned input.
         for (input, immediate) in (self.inputs.iter().skip(self.arguments.len())).zip(inputs) {
             // Store the immediate into the input register.
-            input.assign::<M>(immediate.clone());
+            input.assign(immediate.clone());
             // Save the input register.
             self.arguments.push(*(*input).register());
         }

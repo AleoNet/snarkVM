@@ -35,7 +35,7 @@ impl<E: Environment> Memory for Stack<E> {
         // Ensure the register has not be initialized, and initialize it.
         match !self.exists(register) {
             true => self.registers.insert(*register, Default::default()),
-            false => E::halt(format!("Tried to re-initialize existing register {}", register)),
+            false => Self::halt(format!("Tried to re-initialize existing register {}", register)),
         };
     }
 
@@ -59,13 +59,13 @@ impl<E: Environment> Memory for Stack<E> {
         // Attempt to retrieve the specified register from memory.
         let memory = match self.registers.get(register) {
             Some(memory) => memory,
-            None => E::halt(format!("Register {} does not exist", register)),
+            None => Self::halt(format!("Register {} does not exist", register)),
         };
 
         // Attempt to retrieve the value the specified register.
         match memory.get() {
             Some(immediate) => immediate.clone(),
-            None => E::halt(format!("Register {} is not set", register)),
+            None => Self::halt(format!("Register {} is not set", register)),
         }
     }
 
@@ -74,12 +74,12 @@ impl<E: Environment> Memory for Stack<E> {
         // Attempt to retrieve the specified register from memory.
         let memory = match self.registers.get(register) {
             Some(memory) => memory,
-            None => E::halt(format!("Register {} does not exist", register)),
+            None => Self::halt(format!("Register {} does not exist", register)),
         };
 
         // Attempt to set the specified register with the given value.
         if memory.set(immediate).is_err() {
-            E::halt(format!("Register {} is already set", register))
+            Self::halt(format!("Register {} is already set", register))
         }
     }
 

@@ -34,16 +34,16 @@ use nom::{
     sequence::{pair, preceded},
 };
 
-pub enum Instruction<E: Environment> {
+pub enum Instruction<M: Memory> {
     /// Adds `first` with `second`, storing the outcome in `destination`.
-    Add(Add<E>),
+    Add(Add<M>),
     /// Stores `operand` into `register`, if `destination` is not already set.
-    Store(Store<E>),
+    Store(Store<M>),
     /// Subtracts `first` from `second`, storing the outcome in `destination`.
-    Sub(Sub<E>),
+    Sub(Sub<M>),
 }
 
-impl<E: Environment> Instruction<E> {
+impl<M: Memory> Instruction<M> {
     /// Returns the opcode of the instruction.
     #[inline]
     pub(crate) fn opcode(&self) -> &'static str {
@@ -55,7 +55,7 @@ impl<E: Environment> Instruction<E> {
     }
 
     /// Evaluates the instruction.
-    pub(crate) fn evaluate<M: Memory<Environment = E>>(&self, memory: &M) {
+    pub(crate) fn evaluate(&self, memory: &M) {
         match self {
             Self::Add(instruction) => instruction.evaluate(memory),
             Self::Store(instruction) => instruction.evaluate(memory),
@@ -65,27 +65,27 @@ impl<E: Environment> Instruction<E> {
 
     /// Parses a string into an instruction.
     #[inline]
-    pub(crate) fn parse<'a, M: Memory<Environment = E>>(string: &'a str, memory: &'a mut M) -> ParserResult<'a, Self> {
+    pub(crate) fn parse<'a>(string: &'a str, memory: &'a mut M) -> ParserResult<'a, Self> {
         // Parse the whitespace and comments from the string.
         let (string, _) = Sanitizer::parse(string)?;
         // Parse the instruction from the string.
         let (string, instruction) = alt((
             // Note that order of the individual parsers matters.
             preceded(
-                pair(tag(Add::<E>::opcode()), tag(" ")),
+                pair(tag(Add::<M>::opcode()), tag(" ")),
                 map(|s| Add::parse(s, memory), |operation| operation.into()),
             ),
             preceded(
-                pair(tag(Store::<E>::opcode()), tag(" ")),
+                pair(tag(Store::<M>::opcode()), tag(" ")),
                 map(|s| Store::parse(s, memory), |operation| operation.into()),
             ),
             preceded(
-                pair(tag(Sub::<E>::opcode()), tag(" ")),
+                pair(tag(Sub::<M>::opcode()), tag(" ")),
                 map(|s| Sub::parse(s, memory), |operation| operation.into()),
             ),
         ))(string)?;
 
-        // let (string, (_, _)) = pair(tag(Add::<E>::opcode()), tag(" "))(string)?;
+        // let (string, (_, _)) = pair(tag(Add::<M>::opcode()), tag(" "))(string)?;
         // let (string, operation) = Add::parse(string, memory)?;
         // let instruction = operation.into();
 
@@ -96,7 +96,7 @@ impl<E: Environment> Instruction<E> {
     }
 }
 
-impl<E: Environment> fmt::Display for Instruction<E> {
+impl<M: Memory> fmt::Display for Instruction<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::Add(instruction) => write!(f, "{} {};", self.opcode(), instruction),

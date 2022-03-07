@@ -21,11 +21,13 @@ use core::{fmt, ops};
 use nom::bytes::complete::tag;
 
 /// Declares a `register` as a function output with type `annotation`.
-pub struct Output<E: Environment> {
-    argument: Argument<E>,
+pub struct Output<M: Memory> {
+    argument: Argument<M::Environment>,
 }
 
-impl<E: Environment> Operation<E> for Output<E> {
+impl<M: Memory> Operation for Output<M> {
+    type Memory = M;
+
     /// Returns the type name as a string.
     #[inline]
     fn opcode() -> &'static str {
@@ -33,7 +35,7 @@ impl<E: Environment> Operation<E> for Output<E> {
     }
 
     /// Evaluates the operation in-place.
-    fn evaluate<M: Memory<Environment = E>>(&self, memory: &M) {
+    fn evaluate(&self, memory: &Self::Memory) {
         // Retrieve the output annotations.
         let register = self.argument.register();
         let mode = self.argument.mode();
@@ -50,7 +52,7 @@ impl<E: Environment> Operation<E> for Output<E> {
 
     /// Parses a string into an output.
     #[inline]
-    fn parse<'a, M: Memory<Environment = E>>(string: &'a str, memory: &'a mut M) -> ParserResult<'a, Self> {
+    fn parse<'a>(string: &'a str, memory: &'a mut Self::Memory) -> ParserResult<'a, Self> {
         // Parse the whitespace and comments from the string.
         let (string, _) = Sanitizer::parse(string)?;
         // Parse the output keyword from the string.
@@ -70,14 +72,14 @@ impl<E: Environment> Operation<E> for Output<E> {
     }
 }
 
-impl<E: Environment> fmt::Display for Output<E> {
+impl<M: Memory> fmt::Display for Output<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{} {};", Self::opcode(), self.argument)
     }
 }
 
-impl<E: Environment> ops::Deref for Output<E> {
-    type Target = Argument<E>;
+impl<M: Memory> ops::Deref for Output<M> {
+    type Target = Argument<M::Environment>;
 
     fn deref(&self) -> &Self::Target {
         &self.argument

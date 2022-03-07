@@ -21,11 +21,13 @@ use core::fmt;
 use nom::combinator::map;
 
 /// Stores `operand` into `register`, if `destination` is not already set.
-pub struct Store<E: Environment> {
-    operation: UnaryOperation<E>,
+pub struct Store<M: Memory> {
+    operation: UnaryOperation<M::Environment>,
 }
 
-impl<E: Environment> Operation<E> for Store<E> {
+impl<M: Memory> Operation for Store<M> {
+    type Memory = M;
+
     /// Returns the type name as a string.
     #[inline]
     fn opcode() -> &'static str {
@@ -33,14 +35,14 @@ impl<E: Environment> Operation<E> for Store<E> {
     }
 
     /// Evaluates the operation in-place.
-    fn evaluate<M: Memory<Environment = E>>(&self, memory: &M) {
+    fn evaluate(&self, memory: &Self::Memory) {
         // Load the value for the operand, and store it into the destination register.
         memory.store(self.operation.destination(), self.operation.operand().load(memory))
     }
 
     /// Parses a string into an 'store' operation.
     #[inline]
-    fn parse<'a, M: Memory<Environment = E>>(string: &'a str, memory: &'a mut M) -> ParserResult<'a, Self> {
+    fn parse<'a>(string: &'a str, memory: &'a mut Self::Memory) -> ParserResult<'a, Self> {
         // Parse the operation from the string.
         let (string, operation) = map(UnaryOperation::parse, |operation| Self { operation })(string)?;
         // Initialize the destination register.
@@ -50,16 +52,16 @@ impl<E: Environment> Operation<E> for Store<E> {
     }
 }
 
-impl<E: Environment> fmt::Display for Store<E> {
+impl<M: Memory> fmt::Display for Store<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.operation)
     }
 }
 
 #[allow(clippy::from_over_into)]
-impl<E: Environment> Into<Instruction<E>> for Store<E> {
+impl<M: Memory> Into<Instruction<M>> for Store<M> {
     /// Converts the operation into an instruction.
-    fn into(self) -> Instruction<E> {
+    fn into(self) -> Instruction<M> {
         Instruction::Store(self)
     }
 }
