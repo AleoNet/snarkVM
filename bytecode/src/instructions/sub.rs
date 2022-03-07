@@ -35,6 +35,7 @@ impl<M: Memory> Operation for Sub<M> {
     }
 
     /// Evaluates the operation in-place.
+    #[inline]
     fn evaluate(&self, memory: &Self::Memory) {
         // Load the values for the first and second operands.
         let first = self.operation.first().load(memory);

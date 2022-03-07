@@ -35,6 +35,7 @@ impl<M: Memory> Operation for Output<M> {
     }
 
     /// Evaluates the operation in-place.
+    #[inline]
     fn evaluate(&self, memory: &Self::Memory) {
         // Retrieve the output annotations.
         let register = self.argument.register();

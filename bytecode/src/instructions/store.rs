@@ -35,6 +35,7 @@ impl<M: Memory> Operation for Store<M> {
     }
 
     /// Evaluates the operation in-place.
+    #[inline]
     fn evaluate(&self, memory: &Self::Memory) {
         // Load the value for the operand, and store it into the destination register.
         memory.store(self.operation.destination(), self.operation.operand().load(memory))

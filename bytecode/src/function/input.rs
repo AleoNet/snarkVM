@@ -60,6 +60,7 @@ impl<M: Memory> Operation for Input<M> {
     }
 
     /// Evaluates the operation in-place.
+    #[inline]
     fn evaluate(&self, memory: &Self::Memory) {
         // Retrieve the input annotations.
         let register = self.argument.register();
