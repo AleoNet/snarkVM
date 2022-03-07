@@ -75,6 +75,7 @@ impl<E: Environment> Argument<E> {
     }
 }
 
+#[allow(clippy::let_and_return)]
 impl<E: Environment> Parser for Argument<E> {
     type Environment = E;
 

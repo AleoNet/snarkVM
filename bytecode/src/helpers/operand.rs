@@ -28,12 +28,12 @@ pub enum Operand<E: Environment> {
 
 impl<E: Environment> Operand<E> {
     /// Returns `true` if the value type is an immediate.
-    pub(crate) fn is_immediate(&self) -> bool {
+    pub fn is_immediate(&self) -> bool {
         matches!(self, Self::Immediate(..))
     }
 
     /// Returns `true` if the value type is a register.
-    pub(crate) fn is_register(&self) -> bool {
+    pub fn is_register(&self) -> bool {
         matches!(self, Self::Register(..))
     }
 

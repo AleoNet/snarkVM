@@ -45,7 +45,7 @@ fn main() {
     match (&expected, &candidate[0]) {
         (Immediate::Field(expected), Immediate::Field(candidate)) => {
             println!("{candidate}");
-            assert!(expected.is_eq(&candidate).eject_value());
+            assert!(expected.is_eq(candidate).eject_value());
         }
         _ => panic!("Failed to load output"),
     }
@@ -60,7 +60,7 @@ fn test_hello_world() {
     let candidate = HelloWorld::run::<Stack<Circuit>>([first, second]);
 
     match (&expected, &candidate[0]) {
-        (Immediate::Field(expected), Immediate::Field(candidate)) => assert!(expected.is_eq(&candidate).eject_value()),
+        (Immediate::Field(expected), Immediate::Field(candidate)) => assert!(expected.is_eq(candidate).eject_value()),
         _ => panic!("Failed to load output"),
     }
 }

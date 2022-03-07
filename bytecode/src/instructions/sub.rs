@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{instructions::Instruction, BinaryOperation, Immediate, Memory, Operation};
-use snarkvm_circuits::ParserResult;
+use snarkvm_circuits::{Parser, ParserResult};
 
 use core::fmt;
 use nom::combinator::map;

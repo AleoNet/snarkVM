@@ -41,10 +41,20 @@ impl<E: Environment> BinaryOperation<E> {
     pub(crate) fn second(&self) -> &Operand<E> {
         &self.second
     }
+}
+
+impl<E: Environment> Parser for BinaryOperation<E> {
+    type Environment = E;
+
+    /// Returns the type name as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "operation"
+    }
 
     /// Parses a string into an operation.
     #[inline]
-    pub(crate) fn parse<'a>(string: &'a str) -> ParserResult<'a, Self> {
+    fn parse(string: &str) -> ParserResult<Self> {
         // Parse the destination register from the string.
         let (string, destination) = Register::parse(string)?;
         // Parse the space from the string.

@@ -26,7 +26,7 @@ pub use operand::*;
 pub mod register;
 pub use register::*;
 
-use crate::{instructions::Instruction, Memory};
+use crate::Memory;
 use snarkvm_circuits::ParserResult;
 
 use core::fmt::Display;
