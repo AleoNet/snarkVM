@@ -323,7 +323,11 @@ impl<N: Network> Blocks<N> {
             .flat_map(|transactions| &**transactions)
             .filter(|transaction| transaction.commitments().contains(&commitment))
             .collect::<Vec<_>>();
-        assert_eq!(1, transaction.len()); // TODO (howardwu): Clean this up with a proper error handler.
+
+        if transaction.len() != 1 {
+            return Err(anyhow!("Multiple transactions associated with commitment {}", commitment.to_string()));
+        }
+
         let transaction = transaction[0];
         let local_proof = {
             // Initialize a transitions tree.
@@ -344,7 +348,11 @@ impl<N: Network> Blocks<N> {
                 false => None,
             })
             .collect::<Vec<_>>();
-        assert_eq!(1, block_height.len()); // TODO (howardwu): Clean this up with a proper error handler.
+
+        if block_height.len() != 1 {
+            return Err(anyhow!("Multiple blocks associated with transaction {}", transaction_id.to_string()));
+        }
+
         let block_height = *block_height[0];
         let transactions = self.get_block_transactions(block_height)?;
         let block_header = self.get_block_header(block_height)?;
@@ -360,7 +368,11 @@ impl<N: Network> Blocks<N> {
                     false => None,
                 })
                 .collect::<Vec<_>>();
-            assert_eq!(1, index.len()); // TODO (howardwu): Clean this up with a proper error handler.
+
+            if index.len() != 1 {
+                return Err(anyhow!("Block contains multiple transactions with the id {}", transaction_id.to_string()));
+            }
+
             transactions.to_transactions_inclusion_proof(index[0], transaction_id)?
         };
 
