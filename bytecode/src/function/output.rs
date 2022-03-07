@@ -15,52 +15,46 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Argument, Memory, Operation, Sanitizer};
-use snarkvm_circuits::{Parser, ParserResult};
+use snarkvm_circuits::{Environment, Parser, ParserResult};
 
 use core::{fmt, ops};
 use nom::bytes::complete::tag;
 
 /// Declares a `register` as a function output with type `annotation`.
-pub struct Output<M: Memory> {
-    argument: Argument<M::Environment>,
+pub struct Output<E: Environment> {
+    argument: Argument<E>,
 }
 
-impl<M: Memory> Operation for Output<M> {
-    type Memory = M;
+impl<E: Environment> Operation<E> for Output<E> {
+    /// Returns the type name as a string.
+    #[inline]
+    fn opcode() -> &'static str {
+        "output"
+    }
 
     /// Evaluates the operation in-place.
-    fn evaluate(&self) {
+    fn evaluate<M: Memory<Environment = E>>(&self, memory: &M) {
         // Retrieve the output annotations.
         let register = self.argument.register();
         let mode = self.argument.mode();
         let type_name = self.argument.type_name();
 
         // Load the output from memory.
-        let immediate = M::load(register);
+        let immediate = memory.load(register);
 
         // Ensure the type and mode are correct.
         if immediate.type_name() != type_name || &immediate.mode() != mode {
             M::halt(format!("Output register {} is not a {} {}", register, mode, type_name))
         }
     }
-}
-
-impl<M: Memory> Parser for Output<M> {
-    type Environment = M::Environment;
-
-    /// Returns the type name as a string.
-    #[inline]
-    fn type_name() -> &'static str {
-        "output"
-    }
 
     /// Parses a string into an output.
     #[inline]
-    fn parse(string: &str) -> ParserResult<Self> {
+    fn parse<'a, M: Memory<Environment = E>>(string: &'a str, memory: &'a mut M) -> ParserResult<'a, Self> {
         // Parse the whitespace and comments from the string.
         let (string, _) = Sanitizer::parse(string)?;
         // Parse the output keyword from the string.
-        let (string, _) = tag(Self::type_name())(string)?;
+        let (string, _) = tag("output")(string)?;
         // Parse the space from the string.
         let (string, _) = tag(" ")(string)?;
         // Parse the argument from the string.
@@ -69,21 +63,21 @@ impl<M: Memory> Parser for Output<M> {
         let (string, _) = tag(";")(string)?;
 
         // Ensure the output register exists.
-        match M::exists(argument.register()) {
+        match memory.exists(argument.register()) {
             true => Ok((string, Self { argument })),
             false => M::halt(format!("Tried to set non-existent register {} as an output", argument.register())),
         }
     }
 }
 
-impl<M: Memory> fmt::Display for Output<M> {
+impl<E: Environment> fmt::Display for Output<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} {};", Self::type_name(), self.argument)
+        write!(f, "{} {};", Self::opcode(), self.argument)
     }
 }
 
-impl<M: Memory> ops::Deref for Output<M> {
-    type Target = Argument<M::Environment>;
+impl<E: Environment> ops::Deref for Output<E> {
+    type Target = Argument<E>;
 
     fn deref(&self) -> &Self::Target {
         &self.argument

@@ -26,5 +26,40 @@ pub use operand::*;
 pub mod register;
 pub use register::*;
 
-pub(crate) mod sanitizer;
-pub(crate) use sanitizer::*;
+use crate::{instructions::Instruction, Memory};
+use snarkvm_circuits::{Environment, ParserResult};
+
+use core::fmt::Display;
+
+// pub trait Operation: Parser + Into<Instruction<Self::Memory>> {
+pub trait Operation<E: Environment>: Display {
+    ///
+    /// Returns the opcode of the instruction.
+    ///
+    fn opcode() -> &'static str;
+
+    ///
+    /// Evaluates the instruction in-place.
+    ///
+    fn evaluate<M: Memory<Environment = E>>(&self, memory: &M);
+
+    ///
+    /// Parses a string literal into an object.
+    ///
+    fn parse<'a, M: Memory<Environment = E>>(s: &'a str, memory: &'a mut M) -> ParserResult<'a, Self>
+    where
+        Self: Sized;
+
+    ///
+    /// Returns an object from a string literal.
+    ///
+    fn from_str<M: Memory<Environment = E>>(string: &str, memory: &mut M) -> Self
+    where
+        Self: Sized,
+    {
+        match Self::parse(string, memory) {
+            Ok((_, circuit)) => circuit,
+            Err(error) => M::halt(format!("Failed to parse: {}", error)),
+        }
+    }
+}

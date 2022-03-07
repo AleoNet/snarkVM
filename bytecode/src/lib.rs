@@ -25,5 +25,5 @@ pub mod instructions;
 pub mod memory;
 pub use memory::*;
 
-pub(crate) mod operation;
-pub(crate) use operation::*;
+pub(crate) mod parsers;
+pub(crate) use parsers::*;

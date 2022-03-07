@@ -14,53 +14,37 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Immediate, Memory, Operand, Register};
-use snarkvm_circuits::{Parser, ParserResult};
+use crate::{Immediate, Operand, Register};
+use snarkvm_circuits::{Environment, Parser, ParserResult};
 
 use core::fmt;
 use nom::bytes::complete::tag;
 
-pub(crate) struct BinaryOperation<M: Memory> {
-    destination: Register<M::Environment>,
-    first: Operand<M::Environment>,
-    second: Operand<M::Environment>,
+pub(crate) struct BinaryOperation<E: Environment> {
+    destination: Register<E>,
+    first: Operand<E>,
+    second: Operand<E>,
 }
 
-impl<M: Memory> BinaryOperation<M> {
+impl<E: Environment> BinaryOperation<E> {
     /// Returns the destination register.
-    pub(crate) fn destination(&self) -> &Register<M::Environment> {
+    pub(crate) fn destination(&self) -> &Register<E> {
         &self.destination
     }
 
     /// Returns the first operand.
-    pub(crate) fn first(&self) -> Immediate<M::Environment> {
-        match &self.first {
-            Operand::Immediate(immediate) => immediate.clone(),
-            Operand::Register(register) => M::load(register),
-        }
+    pub(crate) fn first(&self) -> &Operand<E> {
+        &self.first
     }
 
     /// Returns the second operand.
-    pub(crate) fn second(&self) -> Immediate<M::Environment> {
-        match &self.second {
-            Operand::Immediate(immediate) => immediate.clone(),
-            Operand::Register(register) => M::load(register),
-        }
-    }
-}
-
-impl<M: Memory> Parser for BinaryOperation<M> {
-    type Environment = M::Environment;
-
-    /// Returns the type name as a string.
-    #[inline]
-    fn type_name() -> &'static str {
-        "operation"
+    pub(crate) fn second(&self) -> &Operand<E> {
+        &self.second
     }
 
     /// Parses a string into an operation.
     #[inline]
-    fn parse(string: &str) -> ParserResult<Self> {
+    pub(crate) fn parse<'a>(string: &'a str) -> ParserResult<'a, Self> {
         // Parse the destination register from the string.
         let (string, destination) = Register::parse(string)?;
         // Parse the space from the string.
@@ -72,14 +56,11 @@ impl<M: Memory> Parser for BinaryOperation<M> {
         // Parse the second operand from the string.
         let (string, second) = Operand::parse(string)?;
 
-        // Initialize the destination register.
-        M::initialize(&destination);
-
         Ok((string, Self { destination, first, second }))
     }
 }
 
-impl<M: Memory> fmt::Display for BinaryOperation<M> {
+impl<E: Environment> fmt::Display for BinaryOperation<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{} {} {}", self.destination, self.first, self.second)
     }

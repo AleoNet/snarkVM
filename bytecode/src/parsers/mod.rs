@@ -17,16 +17,8 @@
 pub(crate) mod binary;
 pub(crate) use binary::*;
 
+pub(crate) mod sanitizer;
+pub(crate) use sanitizer::*;
+
 pub(crate) mod unary;
 pub(crate) use unary::*;
-
-use crate::{instructions::Instruction, Memory};
-use snarkvm_circuits::Parser;
-
-// pub trait Operation: Parser + Into<Instruction<Self::Memory>> {
-pub trait Operation: Parser {
-    type Memory: Memory;
-
-    /// Evaluates the instruction in-place.
-    fn evaluate(&self);
-}

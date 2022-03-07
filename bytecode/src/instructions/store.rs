@@ -15,52 +15,51 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{instructions::Instruction, Memory, Operation, UnaryOperation};
-use snarkvm_circuits::{Parser, ParserResult};
+use snarkvm_circuits::{Environment, Parser, ParserResult};
 
 use core::fmt;
 use nom::combinator::map;
 
 /// Stores `operand` into `register`, if `destination` is not already set.
-pub struct Store<M: Memory> {
-    operation: UnaryOperation<M>,
+pub struct Store<E: Environment> {
+    operation: UnaryOperation<E>,
 }
 
-impl<M: Memory> Operation for Store<M> {
-    type Memory = M;
-
-    /// Evaluates the operation in-place.
-    fn evaluate(&self) {
-        // Load the value for the operand, and store it into the destination register.
-        M::store(&self.operation.destination(), self.operation.operand())
-    }
-}
-
-impl<M: Memory> Parser for Store<M> {
-    type Environment = M::Environment;
-
+impl<E: Environment> Operation<E> for Store<E> {
     /// Returns the type name as a string.
     #[inline]
-    fn type_name() -> &'static str {
+    fn opcode() -> &'static str {
         "store"
+    }
+
+    /// Evaluates the operation in-place.
+    fn evaluate<M: Memory<Environment = E>>(&self, memory: &M) {
+        // Load the value for the operand, and store it into the destination register.
+        memory.store(self.operation.destination(), self.operation.operand().load(memory))
     }
 
     /// Parses a string into an 'store' operation.
     #[inline]
-    fn parse(string: &str) -> ParserResult<Self> {
-        map(UnaryOperation::parse, |operation| Self { operation })(string)
+    fn parse<'a, M: Memory<Environment = E>>(string: &'a str, memory: &'a mut M) -> ParserResult<'a, Self> {
+        // Parse the operation from the string.
+        let (string, operation) = map(UnaryOperation::parse, |operation| Self { operation })(string)?;
+        // Initialize the destination register.
+        memory.initialize(operation.operation.destination());
+        // Return the operation.
+        Ok((string, operation))
     }
 }
 
-impl<M: Memory> fmt::Display for Store<M> {
+impl<E: Environment> fmt::Display for Store<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.operation)
     }
 }
 
 #[allow(clippy::from_over_into)]
-impl<M: Memory> Into<Instruction<M>> for Store<M> {
+impl<E: Environment> Into<Instruction<E>> for Store<E> {
     /// Converts the operation into an instruction.
-    fn into(self) -> Instruction<M> {
+    fn into(self) -> Instruction<E> {
         Instruction::Store(self)
     }
 }

@@ -39,11 +39,13 @@ pub struct Function<M: Memory> {
     /// The function arguments provided by the caller.
     arguments: Vec<Register<M::Environment>>,
     /// The instructions to initialize the function inputs.
-    inputs: Vec<Input<M>>,
+    inputs: Vec<Input<M::Environment>>,
     /// The main instructions of the function.
-    instructions: Vec<Instruction<M>>,
+    instructions: Vec<Instruction<M::Environment>>,
     /// The instructions to initialize the function outputs.
-    outputs: Vec<Output<M>>,
+    outputs: Vec<Output<M::Environment>>,
+    /// The function stack of registers.
+    memory: M,
 }
 
 impl<M: Memory> Function<M> {
@@ -52,7 +54,7 @@ impl<M: Memory> Function<M> {
         // Append new inputs from the index of the last assigned input.
         for (input, immediate) in (self.inputs.iter().skip(self.arguments.len())).zip(inputs) {
             // Store the immediate into the input register.
-            input.assign(immediate.clone());
+            input.assign::<M>(immediate.clone());
             // Save the input register.
             self.arguments.push(*(*input).register());
         }
@@ -62,14 +64,15 @@ impl<M: Memory> Function<M> {
     /// Evaluates the function, returning the outputs.
     pub fn evaluate(&mut self, inputs: &[Immediate<M::Environment>]) -> Vec<Immediate<M::Environment>> {
         self.add_inputs(inputs);
-        self.instructions.iter().for_each(Instruction::evaluate);
-        self.outputs.iter().for_each(Operation::evaluate);
+        self.inputs.iter().for_each(|input| input.evaluate(&self.memory));
+        self.instructions.iter().for_each(|instruction| instruction.evaluate(&self.memory));
+        self.outputs.iter().for_each(|output| output.evaluate(&self.memory));
         self.outputs()
     }
 
     /// Returns the outputs from the function.
     pub(super) fn outputs(&self) -> Vec<Immediate<M::Environment>> {
-        self.outputs.iter().map(|output| M::load((*output).register())).collect()
+        self.outputs.iter().map(|output| self.memory.load((*output).register())).collect()
     }
 
     /// Returns the number of arguments provided by the caller.
@@ -100,6 +103,9 @@ impl<M: Memory> Parser for Function<M> {
     /// Parses a string into a local function.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
+        // Initialize a new instance of memory.
+        let mut memory = Default::default();
+
         // Parse the whitespace and comments from the string.
         let (string, _) = Sanitizer::parse(string)?;
         // Parse the 'function' keyword from the string.
@@ -112,13 +118,20 @@ impl<M: Memory> Parser for Function<M> {
         let (string, _) = tag(":")(string)?;
 
         // Parse the inputs from the string.
-        let (string, inputs) = many0(Input::parse)(string)?;
+        let (string, inputs) = many0(|s| Input::parse(s, &mut memory))(string)?;
         // Parse the instructions from the string.
-        let (string, instructions) = many1(Instruction::parse)(string)?;
+        let (string, instructions) = many1(|s| Instruction::parse(s, &mut memory))(string)?;
         // Parse the outputs from the string.
-        let (string, outputs) = many0(Output::parse)(string)?;
+        let (string, outputs) = many0(|s| Output::parse(s, &mut memory))(string)?;
 
-        Ok((string, Self { name: name.to_string(), arguments: Default::default(), inputs, instructions, outputs }))
+        Ok((string, Self {
+            name: name.to_string(),
+            arguments: Default::default(),
+            inputs,
+            instructions,
+            outputs,
+            memory,
+        }))
     }
 }
 

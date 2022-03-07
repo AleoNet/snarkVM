@@ -14,42 +14,35 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod allocator;
-
 pub mod stack;
 pub use stack::*;
 
 use crate::{Immediate, Register};
 use snarkvm_circuits::Environment;
 
-use core::hash;
-
-pub trait Memory: Copy + Clone + Eq + PartialEq + hash::Hash {
+pub trait Memory: Default {
     type Environment: Environment;
 
     /// Allocates the given register in memory. Ensures the given register does not exist already.
-    fn initialize(register: &Register<Self::Environment>);
+    fn initialize(&mut self, register: &Register<Self::Environment>);
 
     /// Returns `true` if the given register exists.
-    fn exists(register: &Register<Self::Environment>) -> bool;
+    fn exists(&self, register: &Register<Self::Environment>) -> bool;
 
     /// Returns `true` if the given register is set.
-    fn is_set(register: &Register<Self::Environment>) -> bool;
+    fn is_set(&self, register: &Register<Self::Environment>) -> bool;
 
     /// Attempts to load the immediate from the register.
-    fn load(register: &Register<Self::Environment>) -> Immediate<Self::Environment>;
+    fn load(&self, register: &Register<Self::Environment>) -> Immediate<Self::Environment>;
 
     /// Attempts to store immediate into the register.
-    fn store(register: &Register<Self::Environment>, immediate: Immediate<Self::Environment>);
+    fn store(&self, register: &Register<Self::Environment>, immediate: Immediate<Self::Environment>);
 
     /// Returns the number of registers allocated.
-    fn num_registers() -> u64;
+    fn num_registers(&self) -> u64;
 
     /// Halts the program from further synthesis, evaluation, and execution in the current environment.
     fn halt<S: Into<String>, T>(message: S) -> T {
         Self::Environment::halt(message)
     }
-
-    /// Clears and initializes an empty memory layout.
-    fn reset();
 }

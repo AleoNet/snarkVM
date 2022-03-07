@@ -15,58 +15,61 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{instructions::Instruction, BinaryOperation, Immediate, Memory, Operation};
-use snarkvm_circuits::{Parser, ParserResult};
+use snarkvm_circuits::{Environment, ParserResult};
 
 use core::fmt;
 use nom::combinator::map;
 
 /// Adds `first` with `second`, storing the outcome in `destination`.
-pub struct Add<M: Memory> {
-    operation: BinaryOperation<M>,
+pub struct Add<E: Environment> {
+    operation: BinaryOperation<E>,
 }
 
-impl<M: Memory> Operation for Add<M> {
-    type Memory = M;
-
-    /// Evaluates the operation in-place.
-    fn evaluate(&self) {
-        // Load the values for the first and second operands, and perform the operation.
-        let result = match (self.operation.first(), self.operation.second()) {
-            (Immediate::Field(a), Immediate::Field(b)) => (a + b).into(),
-            (Immediate::Group(a), Immediate::Group(b)) => (a + b).into(),
-            _ => M::halt(format!("Invalid {} instruction", Self::type_name())),
-        };
-
-        M::store(&self.operation.destination(), result);
-    }
-}
-
-impl<M: Memory> Parser for Add<M> {
-    type Environment = M::Environment;
-
+impl<E: Environment> Operation<E> for Add<E> {
     /// Returns the type name as a string.
     #[inline]
-    fn type_name() -> &'static str {
+    fn opcode() -> &'static str {
         "add"
+    }
+
+    /// Evaluates the operation in-place.
+    fn evaluate<M: Memory<Environment = E>>(&self, memory: &M) {
+        // Load the values for the first and second operands.
+        let first = self.operation.first().load(memory);
+        let second = self.operation.second().load(memory);
+
+        // Perform the operation.
+        let result = match (first, second) {
+            (Immediate::Field(a), Immediate::Field(b)) => (a + b).into(),
+            (Immediate::Group(a), Immediate::Group(b)) => (a + b).into(),
+            _ => M::halt(format!("Invalid '{}' instruction", Self::opcode())),
+        };
+
+        memory.store(self.operation.destination(), result);
     }
 
     /// Parses a string into an 'add' operation.
     #[inline]
-    fn parse(string: &str) -> ParserResult<Self> {
-        map(BinaryOperation::parse, |operation| Self { operation })(string)
+    fn parse<'a, M: Memory<Environment = E>>(string: &'a str, memory: &'a mut M) -> ParserResult<'a, Self> {
+        // Parse the operation from the string.
+        let (string, operation) = map(BinaryOperation::parse, |operation| Self { operation })(string)?;
+        // Initialize the destination register.
+        memory.initialize(operation.operation.destination());
+        // Return the operation.
+        Ok((string, operation))
     }
 }
 
-impl<M: Memory> fmt::Display for Add<M> {
+impl<E: Environment> fmt::Display for Add<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.operation)
     }
 }
 
 #[allow(clippy::from_over_into)]
-impl<M: Memory> Into<Instruction<M>> for Add<M> {
+impl<E: Environment> Into<Instruction<E>> for Add<E> {
     /// Converts the operation into an instruction.
-    fn into(self) -> Instruction<M> {
+    fn into(self) -> Instruction<E> {
         Instruction::Add(self)
     }
 }

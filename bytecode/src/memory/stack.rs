@@ -14,55 +14,83 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{memory::allocator::Allocator, Immediate, Memory, Register};
-use snarkvm_circuits::{Circuit, Environment};
+use crate::{Immediate, Memory, Register};
+use snarkvm_circuits::Environment;
 
-use core::cell::RefCell;
-use once_cell::unsync::Lazy;
+use once_cell::unsync::OnceCell;
+use std::collections::HashMap;
 
-thread_local! {
-    static STACK: Lazy<RefCell<Allocator<Circuit>>> = Lazy::new(|| RefCell::new(Default::default()));
+struct Stack<E: Environment> {
+    registers: HashMap<Register<E>, OnceCell<Immediate<E>>>,
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
-pub struct Stack;
-
-impl Memory for Stack {
-    type Environment = Circuit;
+impl<E: Environment> Memory for Stack<E> {
+    type Environment = E;
 
     /// Allocates the given register in memory. Ensures the given register does not exist already.
-    fn initialize(register: &Register<Self::Environment>) {
-        STACK.with(|stack| (**stack).borrow_mut().initialize(register))
+    fn initialize(&mut self, register: &Register<E>) {
+        // TODO (howardwu): Handle this assert as a haltable event.
+        assert_eq!(**register, self.registers.len() as u64);
+
+        // Ensure the register has not be initialized, and initialize it.
+        match !self.exists(register) {
+            true => self.registers.insert(*register, Default::default()),
+            false => E::halt(format!("Tried to re-initialize existing register {}", register)),
+        };
     }
 
     /// Returns `true` if the given register exists.
-    fn exists(register: &Register<Self::Environment>) -> bool {
-        STACK.with(|stack| (**stack).borrow().exists(register))
+    fn exists(&self, register: &Register<E>) -> bool {
+        self.registers.contains_key(register)
     }
 
     /// Returns `true` if the given register both exists and is set.
-    fn is_set(register: &Register<Self::Environment>) -> bool {
-        STACK.with(|stack| (**stack).borrow().is_set(register))
+    fn is_set(&self, register: &Register<E>) -> bool {
+        // Attempt to retrieve the specified register from memory.
+        match self.registers.get(register) {
+            // Check if the register is set.
+            Some(memory) => memory.get().is_some(),
+            None => false,
+        }
     }
 
     /// Attempts to load the immediate from the register.
-    fn load(register: &Register<Self::Environment>) -> Immediate<Self::Environment> {
-        STACK.with(|stack| (**stack).borrow().load(register))
+    fn load(&self, register: &Register<E>) -> Immediate<E> {
+        // Attempt to retrieve the specified register from memory.
+        let memory = match self.registers.get(register) {
+            Some(memory) => memory,
+            None => E::halt(format!("Register {} does not exist", register)),
+        };
+
+        // Attempt to retrieve the value the specified register.
+        match memory.get() {
+            Some(immediate) => immediate.clone(),
+            None => E::halt(format!("Register {} is not set", register)),
+        }
     }
 
-    /// Attempts to store the immediate into the register.
-    fn store(register: &Register<Self::Environment>, immediate: Immediate<Self::Environment>) {
-        STACK.with(|stack| (**stack).borrow().store(register, immediate))
+    /// Attempts to store immediate into the register.
+    fn store(&self, register: &Register<E>, immediate: Immediate<E>) {
+        // Attempt to retrieve the specified register from memory.
+        let memory = match self.registers.get(register) {
+            Some(memory) => memory,
+            None => E::halt(format!("Register {} does not exist", register)),
+        };
+
+        // Attempt to set the specified register with the given value.
+        if memory.set(immediate).is_err() {
+            E::halt(format!("Register {} is already set", register))
+        }
     }
 
     /// Returns the number of registers allocated.
-    fn num_registers() -> u64 {
-        STACK.with(|stack| (**stack).borrow().num_registers())
+    fn num_registers(&self) -> u64 {
+        self.registers.len() as u64
     }
+}
 
-    /// Clears and initializes an empty memory layout.
-    fn reset() {
-        Self::Environment::reset();
-        STACK.with(|stack| *(**stack).borrow_mut() = Default::default());
+impl<E: Environment> Default for Stack<E> {
+    fn default() -> Self {
+        Self { registers: Default::default() }
     }
 }

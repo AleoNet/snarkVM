@@ -14,34 +14,31 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Immediate, Memory, Operand, Register};
-use snarkvm_circuits::{Parser, ParserResult};
+use crate::{Immediate, Operand, Register};
+use snarkvm_circuits::{Environment, Parser, ParserResult};
 
 use core::fmt;
 use nom::bytes::complete::tag;
 
-pub(crate) struct UnaryOperation<M: Memory> {
-    destination: Register<M::Environment>,
-    operand: Operand<M::Environment>,
+pub(crate) struct UnaryOperation<E: Environment> {
+    destination: Register<E>,
+    operand: Operand<E>,
 }
 
-impl<M: Memory> UnaryOperation<M> {
+impl<E: Environment> UnaryOperation<E> {
     /// Returns the destination register.
-    pub(crate) fn destination(&self) -> &Register<M::Environment> {
+    pub(crate) fn destination(&self) -> &Register<E> {
         &self.destination
     }
 
     /// Returns the operand.
-    pub(crate) fn operand(&self) -> Immediate<M::Environment> {
-        match &self.operand {
-            Operand::Immediate(immediate) => immediate.clone(),
-            Operand::Register(register) => M::load(register),
-        }
+    pub(crate) fn operand(&self) -> &Operand<E> {
+        &self.operand
     }
 }
 
-impl<M: Memory> Parser for UnaryOperation<M> {
-    type Environment = M::Environment;
+impl<E: Environment> Parser for UnaryOperation<E> {
+    type Environment = E;
 
     /// Returns the type name as a string.
     #[inline]
@@ -59,14 +56,11 @@ impl<M: Memory> Parser for UnaryOperation<M> {
         // Parse the operand from the string.
         let (string, operand) = Operand::parse(string)?;
 
-        // Initialize the destination register.
-        M::initialize(&destination);
-
         Ok((string, Self { destination, operand }))
     }
 }
 
-impl<M: Memory> fmt::Display for UnaryOperation<M> {
+impl<E: Environment> fmt::Display for UnaryOperation<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{} {}", self.destination, self.operand)
     }
