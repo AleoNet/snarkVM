@@ -33,7 +33,10 @@ impl<M: Memory> UnaryOperation<M> {
 
     /// Returns the operand.
     pub(crate) fn operand(&self) -> Immediate<M::Environment> {
-        self.operand.load::<M>()
+        match &self.operand {
+            Operand::Immediate(immediate) => immediate.clone(),
+            Operand::Register(register) => M::load(register),
+        }
     }
 }
 

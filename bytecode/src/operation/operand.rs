@@ -14,13 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod immediate;
-pub use immediate::*;
-
-pub mod register;
-pub use register::*;
-
-use crate::Memory;
+use crate::{Immediate, Register};
 use snarkvm_circuits::{Environment, Mode, Parser, ParserResult};
 
 use core::fmt;
@@ -41,14 +35,6 @@ impl<E: Environment> Operand<E> {
     /// Returns `true` if the value type is a register.
     pub(crate) fn is_register(&self) -> bool {
         matches!(self, Self::Register(..))
-    }
-
-    /// Returns the value from a register, otherwise passes the loaded value through.
-    pub(crate) fn load<M: Memory<Environment = E>>(&self) -> Immediate<E> {
-        match self {
-            Self::Immediate(value) => value.clone(),
-            Self::Register(register) => M::load(register),
-        }
     }
 }
 

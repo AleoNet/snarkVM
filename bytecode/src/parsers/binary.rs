@@ -34,12 +34,18 @@ impl<M: Memory> BinaryOperation<M> {
 
     /// Returns the first operand.
     pub(crate) fn first(&self) -> Immediate<M::Environment> {
-        self.first.load::<M>()
+        match &self.first {
+            Operand::Immediate(immediate) => immediate.clone(),
+            Operand::Register(register) => M::load(register),
+        }
     }
 
     /// Returns the second operand.
     pub(crate) fn second(&self) -> Immediate<M::Environment> {
-        self.second.load::<M>()
+        match &self.second {
+            Operand::Immediate(immediate) => immediate.clone(),
+            Operand::Register(register) => M::load(register),
+        }
     }
 }
 
