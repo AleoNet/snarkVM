@@ -21,9 +21,11 @@ use core::cell::RefCell;
 use once_cell::unsync::OnceCell;
 use std::{collections::HashMap, rc::Rc};
 
+type Registers<E> = Rc<RefCell<HashMap<Register<E>, OnceCell<Immediate<E>>>>>;
+
 #[derive(Clone)]
 pub struct Stack<E: Environment> {
-    registers: Rc<RefCell<HashMap<Register<E>, OnceCell<Immediate<E>>>>>,
+    registers: Registers<E>,
 }
 
 impl<E: Environment> Memory for Stack<E> {
