@@ -24,7 +24,7 @@ pub mod sub;
 pub use sub::*;
 
 use crate::{Memory, Operation, Sanitizer};
-use snarkvm_circuits::{Environment, Parser, ParserResult};
+use snarkvm_circuits::ParserResult;
 
 use core::fmt;
 use nom::{
@@ -65,7 +65,7 @@ impl<M: Memory> Instruction<M> {
 
     /// Parses a string into an instruction.
     #[inline]
-    pub(crate) fn parse<'a>(string: &'a str, memory: &'a mut M) -> ParserResult<'a, Self> {
+    pub(crate) fn parse(string: &str, memory: M) -> ParserResult<Self> {
         // Parse the whitespace and comments from the string.
         let (string, _) = Sanitizer::parse(string)?;
         // Parse the instruction from the string.
@@ -73,21 +73,17 @@ impl<M: Memory> Instruction<M> {
             // Note that order of the individual parsers matters.
             preceded(
                 pair(tag(Add::<M>::opcode()), tag(" ")),
-                map(|s| Add::parse(s, memory), |operation| operation.into()),
+                map(|s| Add::parse(s, memory.clone()), |operation| operation.into()),
             ),
             preceded(
                 pair(tag(Store::<M>::opcode()), tag(" ")),
-                map(|s| Store::parse(s, memory), |operation| operation.into()),
+                map(|s| Store::parse(s, memory.clone()), |operation| operation.into()),
             ),
             preceded(
                 pair(tag(Sub::<M>::opcode()), tag(" ")),
-                map(|s| Sub::parse(s, memory), |operation| operation.into()),
+                map(|s| Sub::parse(s, memory.clone()), |operation| operation.into()),
             ),
         ))(string)?;
-
-        // let (string, (_, _)) = pair(tag(Add::<M>::opcode()), tag(" "))(string)?;
-        // let (string, operation) = Add::parse(string, memory)?;
-        // let instruction = operation.into();
 
         // Parse the semicolon from the string.
         let (string, _) = tag(";")(string)?;

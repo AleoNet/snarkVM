@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{instructions::Instruction, Memory, Operation, UnaryOperation};
-use snarkvm_circuits::{Environment, Parser, ParserResult};
+use snarkvm_circuits::{Parser, ParserResult};
 
 use core::fmt;
 use nom::combinator::map;
@@ -42,7 +42,7 @@ impl<M: Memory> Operation for Store<M> {
 
     /// Parses a string into an 'store' operation.
     #[inline]
-    fn parse<'a>(string: &'a str, memory: &'a mut Self::Memory) -> ParserResult<'a, Self> {
+    fn parse(string: &str, memory: Self::Memory) -> ParserResult<Self> {
         // Parse the operation from the string.
         let (string, operation) = map(UnaryOperation::parse, |operation| Self { operation })(string)?;
         // Initialize the destination register.

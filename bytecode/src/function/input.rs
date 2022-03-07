@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Argument, Immediate, Memory, Operation, Sanitizer};
-use snarkvm_circuits::{Environment, Parser, ParserResult};
+use snarkvm_circuits::{Parser, ParserResult};
 
 use core::{fmt, ops};
 use nom::bytes::complete::tag;
@@ -73,7 +73,7 @@ impl<M: Memory> Operation for Input<M> {
 
     /// Parses a string into an input.
     #[inline]
-    fn parse<'a>(string: &'a str, memory: &'a mut Self::Memory) -> ParserResult<'a, Self> {
+    fn parse(string: &str, memory: Self::Memory) -> ParserResult<Self> {
         // Parse the whitespace and comments from the string.
         let (string, _) = Sanitizer::parse(string)?;
         // Parse the input keyword from the string.

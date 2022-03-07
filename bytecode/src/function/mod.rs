@@ -104,7 +104,7 @@ impl<M: Memory> Parser for Function<M> {
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Initialize a new instance of memory.
-        let mut memory = Default::default();
+        let memory = M::default();
 
         // Parse the whitespace and comments from the string.
         let (string, _) = Sanitizer::parse(string)?;
@@ -118,11 +118,11 @@ impl<M: Memory> Parser for Function<M> {
         let (string, _) = tag(":")(string)?;
 
         // Parse the inputs from the string.
-        let (string, inputs) = many0(|s| Input::parse(s, &mut memory))(string)?;
+        let (string, inputs) = many0(|s| Input::parse(s, memory.clone()))(string)?;
         // Parse the instructions from the string.
-        let (string, instructions) = many1(|s| Instruction::parse(s, &mut memory))(string)?;
+        let (string, instructions) = many1(|s| Instruction::parse(s, memory.clone()))(string)?;
         // Parse the outputs from the string.
-        let (string, outputs) = many0(|s| Output::parse(s, &mut memory))(string)?;
+        let (string, outputs) = many0(|s| Output::parse(s, memory.clone()))(string)?;
 
         Ok((string, Self {
             name: name.to_string(),

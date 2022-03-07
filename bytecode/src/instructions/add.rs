@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{instructions::Instruction, BinaryOperation, Immediate, Memory, Operation};
-use snarkvm_circuits::{Environment, ParserResult};
+use snarkvm_circuits::ParserResult;
 
 use core::fmt;
 use nom::combinator::map;
@@ -52,7 +52,7 @@ impl<M: Memory> Operation for Add<M> {
 
     /// Parses a string into an 'add' operation.
     #[inline]
-    fn parse<'a>(string: &'a str, memory: &'a mut Self::Memory) -> ParserResult<'a, Self> {
+    fn parse(string: &str, memory: Self::Memory) -> ParserResult<Self> {
         // Parse the operation from the string.
         let (string, operation) = map(BinaryOperation::parse, |operation| Self { operation })(string)?;
         // Initialize the destination register.

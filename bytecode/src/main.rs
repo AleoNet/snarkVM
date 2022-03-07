@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_bytecode::{Function, Immediate, Memory, Stack};
-use snarkvm_circuits::traits::*;
+use snarkvm_circuits::{traits::*, Circuit};
 
 pub struct HelloWorld;
 
@@ -40,7 +40,7 @@ fn main() {
     let second = Immediate::from_str("1field.private");
 
     let expected = Immediate::from_str("2field.private");
-    let candidate = HelloWorld::run::<Stack>([first, second]);
+    let candidate = HelloWorld::run::<Stack<Circuit>>([first, second]);
 
     match (&expected, &candidate[0]) {
         (Immediate::Field(expected), Immediate::Field(candidate)) => {
@@ -57,7 +57,7 @@ fn test_hello_world() {
     let second = Immediate::from_str("1field.private");
 
     let expected = Immediate::from_str("2field.private");
-    let candidate = HelloWorld::run::<Stack>([first, second]);
+    let candidate = HelloWorld::run::<Stack<Circuit>>([first, second]);
 
     match (&expected, &candidate[0]) {
         (Immediate::Field(expected), Immediate::Field(candidate)) => assert!(expected.is_eq(&candidate).eject_value()),

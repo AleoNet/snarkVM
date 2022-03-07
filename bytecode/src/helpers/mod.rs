@@ -27,7 +27,7 @@ pub mod register;
 pub use register::*;
 
 use crate::{instructions::Instruction, Memory};
-use snarkvm_circuits::{Environment, ParserResult};
+use snarkvm_circuits::ParserResult;
 
 use core::fmt::Display;
 
@@ -48,14 +48,14 @@ pub trait Operation: Display {
     ///
     /// Parses a string literal into an object.
     ///
-    fn parse<'a>(s: &'a str, memory: &'a mut Self::Memory) -> ParserResult<'a, Self>
+    fn parse(s: &str, memory: Self::Memory) -> ParserResult<Self>
     where
         Self: Sized;
 
     ///
     /// Returns an object from a string literal.
     ///
-    fn from_str(string: &str, memory: &mut Self::Memory) -> Self
+    fn from_str(string: &str, memory: Self::Memory) -> Self
     where
         Self: Sized,
     {

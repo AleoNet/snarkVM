@@ -20,11 +20,11 @@ pub use stack::*;
 use crate::{Immediate, Register};
 use snarkvm_circuits::Environment;
 
-pub trait Memory: Default {
+pub trait Memory: Clone + Default {
     type Environment: Environment;
 
     /// Allocates the given register in memory. Ensures the given register does not exist already.
-    fn initialize(&mut self, register: &Register<Self::Environment>);
+    fn initialize(&self, register: &Register<Self::Environment>);
 
     /// Returns `true` if the given register exists.
     fn exists(&self, register: &Register<Self::Environment>) -> bool;
