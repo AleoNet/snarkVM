@@ -55,6 +55,7 @@ impl<M: Memory> Instruction<M> {
     }
 
     /// Evaluates the instruction.
+    #[inline]
     pub(crate) fn evaluate(&self, memory: &M) {
         match self {
             Self::Add(instruction) => instruction.evaluate(memory),
