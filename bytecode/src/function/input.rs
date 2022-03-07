@@ -31,7 +31,7 @@ pub struct Input<M: Memory> {
 
 impl<M: Memory> Input<M> {
     /// Assigns the given immediate to the input register.
-    pub(super) fn assign(&self, immediate: Immediate<M::Environment>) {
+    pub(crate) fn assign(&self, immediate: Immediate<M::Environment>) -> &Self {
         // Retrieve the input annotations.
         let register = self.argument.register();
         let mode = self.argument.mode();
@@ -40,11 +40,10 @@ impl<M: Memory> Input<M> {
         // Ensure the type and mode are correct.
         match immediate.type_name() == type_name && &immediate.mode() == mode {
             // Assign the immediate to this input register.
-            true => {
-                if self.immediate.set(immediate).is_err() {
-                    M::halt(format!("Input register {} is already set", register))
-                }
-            }
+            true => match self.immediate.set(immediate).is_ok() {
+                true => self,
+                false => M::halt(format!("Input register {} is already set", register)),
+            },
             false => M::halt(format!("Input register {} is not a {} {}", register, mode, type_name)),
         }
     }
@@ -68,7 +67,7 @@ impl<M: Memory> Operation for Input<M> {
         match self.immediate.get() {
             // Store the input into the register.
             Some(immediate) => memory.store(register, immediate.clone()),
-            None => M::halt(format!("Input register {} is not set", register)),
+            None => M::halt(format!("Input register {} is not assigned yet", register)),
         }
     }
 

@@ -77,26 +77,37 @@ impl<M: Memory> Into<Instruction<M>> for Add<M> {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use crate::Stack;
-//
-//     #[test]
-//     fn test_add() {
-//         // let first = Immediate::from_str("1field.public");
-//         // let second = Immediate::from_str("1field.private");
-//         //
-//         // let expected = Immediate::from_str("2field.private");
-//
-//         Add::<Stack>::from_str("r2 r0 r1");
-//
-//         //     .evaluate();
-//         // let candidate =
-//         //
-//         // match &candidate[0] {
-//         //     Immediate::Field(output) => assert!(output.is_eq(&expected).eject_value()),
-//         //     _ => panic!("Failed to load output"),
-//         // }
-//     }
-// }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{Input, Register, Stack};
+    use snarkvm_circuits::Circuit;
+
+    #[test]
+    fn test_add_field() {
+        let first = Immediate::<Circuit>::from_str("1field.public");
+        let second = Immediate::<Circuit>::from_str("2field.private");
+        let expected = Immediate::<Circuit>::from_str("3field.private");
+
+        let memory = Stack::<Circuit>::default();
+        Input::from_str("input r0 field.public;", &memory).assign(first).evaluate(&memory);
+        Input::from_str("input r1 field.private;", &memory).assign(second).evaluate(&memory);
+
+        Add::<Stack<Circuit>>::from_str("r2 r0 r1", &memory).evaluate(&memory);
+        assert_eq!(expected, memory.load(&Register::new(2)));
+    }
+
+    #[test]
+    fn test_add_group() {
+        let first = Immediate::<Circuit>::from_str("2group.public");
+        let second = Immediate::<Circuit>::from_str("0group.private");
+        let expected = Immediate::<Circuit>::from_str("2group.private");
+
+        let memory = Stack::<Circuit>::default();
+        Input::from_str("input r0 group.public;", &memory).assign(first).evaluate(&memory);
+        Input::from_str("input r1 group.private;", &memory).assign(second).evaluate(&memory);
+
+        Add::<Stack<Circuit>>::from_str("r2 r0 r1", &memory).evaluate(&memory);
+        assert_eq!(expected, memory.load(&Register::new(2)));
+    }
+}

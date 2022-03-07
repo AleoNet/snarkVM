@@ -113,6 +113,17 @@ impl<E: Environment> Parser for Immediate<E> {
     }
 }
 
+impl<E: Environment> fmt::Debug for Immediate<E> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Self::Boolean(boolean) => boolean.fmt(f),
+            Self::Field(field) => field.fmt(f),
+            Self::Group(group) => group.fmt(f),
+            Self::Scalar(scalar) => scalar.fmt(f),
+        }
+    }
+}
+
 impl<E: Environment> fmt::Display for Immediate<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -123,3 +134,18 @@ impl<E: Environment> fmt::Display for Immediate<E> {
         }
     }
 }
+
+impl<E: Environment> PartialEq for Immediate<E> {
+    fn eq(&self, other: &Self) -> bool {
+        self.mode() == other.mode()
+            && match (self, other) {
+                (Self::Boolean(this), Self::Boolean(that)) => this.eject_value() == that.eject_value(),
+                (Self::Field(this), Self::Field(that)) => this.eject_value() == that.eject_value(),
+                (Self::Group(this), Self::Group(that)) => this.eject_value() == that.eject_value(),
+                (Self::Scalar(this), Self::Scalar(that)) => this.eject_value() == that.eject_value(),
+                _ => false,
+            }
+    }
+}
+
+impl<E: Environment> Eq for Immediate<E> {}

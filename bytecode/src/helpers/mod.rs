@@ -48,18 +48,18 @@ pub trait Operation: Display {
     ///
     /// Parses a string literal into an object.
     ///
-    fn parse(s: &str, memory: Self::Memory) -> ParserResult<Self>
+    fn parse(string: &str, memory: Self::Memory) -> ParserResult<Self>
     where
         Self: Sized;
 
     ///
     /// Returns an object from a string literal.
     ///
-    fn from_str(string: &str, memory: Self::Memory) -> Self
+    fn from_str(string: &str, memory: &Self::Memory) -> Self
     where
         Self: Sized,
     {
-        match Self::parse(string, memory) {
+        match Self::parse(string, memory.clone()) {
             Ok((_, circuit)) => circuit,
             Err(error) => Self::Memory::halt(format!("Failed to parse: {}", error)),
         }
