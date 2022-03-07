@@ -28,7 +28,6 @@ members = [
   "dpc",
   "fields",
   "gadgets",
-  "instructions",
   "parameters",
   "r1cs",
   "utilities",

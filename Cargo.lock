@@ -2095,15 +2095,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "snarkvm-instructions"
-version = "0.7.5"
-dependencies = [
- "anyhow",
- "nom",
- "snarkvm-circuits",
-]
-
-[[package]]
 name = "snarkvm-integration"
 version = "0.7.5"
 dependencies = [
