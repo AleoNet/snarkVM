@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{instructions::Instruction, BinaryOperation, Immediate, Memory, Operand, Operation, Register};
+use crate::{instructions::Instruction, BinaryOperation, Immediate, Memory, Operation};
 use snarkvm_circuits::{Parser, ParserResult};
 
 use core::fmt;
-use nom::{bytes::complete::tag, combinator::map};
+use nom::combinator::map;
 
 /// Adds `first` with `second`, storing the outcome in `destination`.
 pub struct Add<M: Memory> {
@@ -53,22 +53,13 @@ impl<M: Memory> Parser for Add<M> {
     /// Parses a string into an 'add' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        // Parse the opcode.
-        let (string, _) = tag(Self::type_name())(string)?;
-        // Parse the space from the string.
-        let (string, _) = tag(" ")(string)?;
-        // Parse the operands.
-        let (string, operation) = map(BinaryOperation::parse, |operation| Self { operation })(string)?;
-        // Parse the semicolon from the string.
-        let (string, _) = tag(";")(string)?;
-
-        Ok((string, operation))
+        map(BinaryOperation::parse, |operation| Self { operation })(string)
     }
 }
 
 impl<M: Memory> fmt::Display for Add<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} {};", Self::type_name(), self.operation)
+        write!(f, "{}", self.operation)
     }
 }
 

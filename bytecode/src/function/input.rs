@@ -19,7 +19,6 @@ use snarkvm_circuits::{Parser, ParserResult};
 
 use core::{fmt, ops};
 use nom::bytes::complete::tag;
-use once_cell::unsync::OnceCell;
 
 /// Declares a function input `register` with type `annotation`.
 pub struct Input<M: Memory> {

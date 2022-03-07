@@ -27,7 +27,12 @@ use crate::{Memory, Operation, Sanitizer};
 use snarkvm_circuits::{Parser, ParserResult};
 
 use core::fmt;
-use nom::{branch::alt, combinator::map};
+use nom::{
+    branch::alt,
+    bytes::complete::tag,
+    combinator::map,
+    sequence::{pair, preceded},
+};
 
 pub enum Instruction<M: Memory> {
     /// Adds `first` with `second`, storing the outcome in `destination`.
@@ -40,11 +45,11 @@ pub enum Instruction<M: Memory> {
 
 impl<M: Memory> Instruction<M> {
     /// Returns the opcode of the instruction.
-    pub fn opcode(&self) -> u16 {
+    pub fn opcode(&self) -> &'static str {
         match self {
-            Self::Add(..) => 0,
-            Self::Store(..) => 1,
-            Self::Sub(..) => 2,
+            Self::Add(..) => "add",
+            Self::Store(..) => "store",
+            Self::Sub(..) => "sub",
         }
     }
 
@@ -72,22 +77,26 @@ impl<M: Memory> Parser for Instruction<M> {
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the whitespace and comments from the string.
         let (string, _) = Sanitizer::parse(string)?;
-
-        alt((
+        // Parse the instruction from the string.
+        let (string, instruction) = alt((
             // Note that order of the individual parsers matters.
-            map(Add::parse, |instruction| Self::Add(instruction)),
-            map(Store::parse, |instruction| Self::Store(instruction)),
-            map(Sub::parse, |instruction| Self::Sub(instruction)),
-        ))(string)
+            preceded(pair(tag(Add::<M>::type_name()), tag(" ")), map(Add::parse, |operation| operation.into())),
+            preceded(pair(tag(Store::<M>::type_name()), tag(" ")), map(Store::parse, |operation| operation.into())),
+            preceded(pair(tag(Sub::<M>::type_name()), tag(" ")), map(Sub::parse, |operation| operation.into())),
+        ))(string)?;
+        // Parse the semicolon from the string.
+        let (string, _) = tag(";")(string)?;
+
+        Ok((string, instruction))
     }
 }
 
 impl<M: Memory> fmt::Display for Instruction<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::Add(instruction) => instruction.fmt(f),
-            Self::Store(instruction) => instruction.fmt(f),
-            Self::Sub(instruction) => instruction.fmt(f),
+            Self::Add(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::Store(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::Sub(instruction) => write!(f, "{} {};", self.opcode(), instruction),
         }
     }
 }

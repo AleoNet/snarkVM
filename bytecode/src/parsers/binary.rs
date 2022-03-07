@@ -17,7 +17,7 @@
 use crate::{Immediate, Memory, Operand, Register};
 use snarkvm_circuits::{Parser, ParserResult};
 
-use core::{fmt, marker::PhantomData};
+use core::fmt;
 use nom::bytes::complete::tag;
 
 pub(crate) struct BinaryOperation<M: Memory> {
