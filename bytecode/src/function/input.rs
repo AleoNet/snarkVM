@@ -22,13 +22,12 @@ use nom::bytes::complete::tag;
 
 /// Declares a function input `register` with type `annotation`.
 pub struct Input<M: Memory> {
-    // parser: Box<dyn Parser<Environment = M::Environment>>,
     argument: Argument<M::Environment>,
-    // immediate: OnceCell<Immediate<M::Environment>>
 }
 
 impl<M: Memory> Input<M> {
-    pub(super) fn store(&self, immediate: Immediate<M::Environment>) {
+    /// Assigns the given immediate to the input register.
+    pub(super) fn assign(&self, immediate: Immediate<M::Environment>) {
         // Retrieve the input annotations.
         let register = self.argument.register();
         let mode = self.argument.mode();
@@ -43,24 +42,6 @@ impl<M: Memory> Input<M> {
         M::store(register, immediate);
     }
 }
-
-// impl<M: Memory> Operation for Input<M> {
-//     type Memory = M;
-//
-//     const OPCODE: &'static str = "input";
-//
-//     /// Evaluates the operation in-place.
-//     fn evaluate(&self) {
-//         let register = self.argument.register();
-//
-//         // Attempt to retrieve the specified register from memory.
-//         match self.immediate.get() {
-//             // Store the input into the register.
-//             Some(immediate) => M::store(register, immediate.clone()),
-//             None => E::halt(format!("Input register {} does not exist", register)),
-//         };
-//     }
-// }
 
 impl<M: Memory> Parser for Input<M> {
     type Environment = M::Environment;

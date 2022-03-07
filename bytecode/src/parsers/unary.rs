@@ -17,7 +17,7 @@
 use crate::{Immediate, Memory, Operand, Register};
 use snarkvm_circuits::{Parser, ParserResult};
 
-use core::{fmt};
+use core::fmt;
 use nom::bytes::complete::tag;
 
 pub(crate) struct UnaryOperation<M: Memory> {

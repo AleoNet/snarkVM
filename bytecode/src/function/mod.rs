@@ -42,7 +42,6 @@ pub struct Function<M: Memory> {
     inputs: Vec<Input<M>>,
     /// The main instructions of the function.
     instructions: Vec<Instruction<M>>,
-    // instructions: Vec<Box<dyn Operation<Memory = M, Environment = M::Environment>>>,
     /// The instructions to initialize the function outputs.
     outputs: Vec<Output<M>>,
 }
@@ -53,7 +52,7 @@ impl<M: Memory> Function<M> {
         // Append new inputs from the index of the last assigned input.
         for (input, immediate) in (self.inputs.iter().skip(self.arguments.len())).zip(inputs) {
             // Store the immediate into the input register.
-            input.store(immediate.clone());
+            input.assign(immediate.clone());
             // Save the input register.
             self.arguments.push(*(*input).register());
         }
