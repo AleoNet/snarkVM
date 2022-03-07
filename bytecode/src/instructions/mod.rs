@@ -71,18 +71,9 @@ impl<M: Memory> Instruction<M> {
         // Parse the instruction from the string.
         let (string, instruction) = alt((
             // Note that order of the individual parsers matters.
-            preceded(
-                pair(tag(Add::<M>::opcode()), tag(" ")),
-                map(|s| Add::parse(s, memory.clone()), |operation| operation.into()),
-            ),
-            preceded(
-                pair(tag(Store::<M>::opcode()), tag(" ")),
-                map(|s| Store::parse(s, memory.clone()), |operation| operation.into()),
-            ),
-            preceded(
-                pair(tag(Sub::<M>::opcode()), tag(" ")),
-                map(|s| Sub::parse(s, memory.clone()), |operation| operation.into()),
-            ),
+            preceded(pair(tag(Add::<M>::opcode()), tag(" ")), map(|s| Add::parse(s, memory.clone()), Into::into)),
+            preceded(pair(tag(Store::<M>::opcode()), tag(" ")), map(|s| Store::parse(s, memory.clone()), Into::into)),
+            preceded(pair(tag(Sub::<M>::opcode()), tag(" ")), map(|s| Sub::parse(s, memory.clone()), Into::into)),
         ))(string)?;
 
         // Parse the semicolon from the string.
