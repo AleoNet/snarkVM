@@ -46,7 +46,7 @@ pub trait Parser: fmt::Display {
     {
         match Self::parse(string) {
             Ok((_, circuit)) => circuit,
-            Err(error) => Self::Environment::halt(format!("Failed to parse: {}", error)),
+            Err(error) => Self::Environment::halt(format!("Failed to parse {}: {}", Self::type_name(), error)),
         }
     }
 }
