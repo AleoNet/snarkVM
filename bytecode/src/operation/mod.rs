@@ -14,14 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod argument;
-pub use argument::*;
+pub(crate) mod binary;
+pub(crate) use binary::*;
 
-pub mod immediate;
-pub use immediate::*;
+pub(crate) mod unary;
+pub(crate) use unary::*;
 
-pub mod operand;
-pub use operand::*;
+use crate::{instructions::Instruction, Memory};
+use snarkvm_circuits::Parser;
 
-pub mod register;
-pub use register::*;
+// pub trait Operation: Parser + Into<Instruction<Self::Memory>> {
+pub trait Operation: Parser {
+    type Memory: Memory;
+
+    /// Evaluates the instruction in-place.
+    fn evaluate(&self);
+}

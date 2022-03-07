@@ -70,26 +70,27 @@ impl<M: Memory> Into<Instruction<M>> for Add<M> {
         Instruction::Add(self)
     }
 }
-//
+
 // #[cfg(test)]
 // mod tests {
 //     use super::*;
+//     use crate::Stack;
 //
 //     #[test]
 //     fn test_add() {
-//         let first = Immediate::from_str("1field.public");
-//         let second = Immediate::from_str("1field.private");
+//         // let first = Immediate::from_str("1field.public");
+//         // let second = Immediate::from_str("1field.private");
+//         //
+//         // let expected = Immediate::from_str("2field.private");
 //
-//         let expected = Immediate::from_str("2field.private");
+//         Add::<Stack>::from_str("r2 r0 r1");
 //
-//         let
-//
-//         Add::from_str("r2 r0 r1").evaluate();
-//         let candidate =
-//
-//         match &candidate[0] {
-//             Immediate::Field(output) => assert!(output.is_eq(&expected).eject_value()),
-//             _ => panic!("Failed to load output"),
-//         }
+//         //     .evaluate();
+//         // let candidate =
+//         //
+//         // match &candidate[0] {
+//         //     Immediate::Field(output) => assert!(output.is_eq(&expected).eject_value()),
+//         //     _ => panic!("Failed to load output"),
+//         // }
 //     }
 // }

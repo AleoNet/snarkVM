@@ -17,16 +17,13 @@
 pub mod function;
 pub use function::*;
 
+pub mod helpers;
+pub use helpers::*;
+
 pub mod instructions;
 
 pub mod memory;
 pub use memory::*;
 
-pub mod operation;
-pub use operation::*;
-
-pub(crate) mod parsers;
-pub(crate) use parsers::*;
-
-pub mod traits;
-pub use traits::*;
+pub(crate) mod operation;
+pub(crate) use operation::*;
