@@ -99,13 +99,10 @@ impl<E: PairingEngine> From<Vec<E::G1Affine>> for PowersOfG<E> {
             .open(dir.clone())
             .expect("should be able to create tmp powers of g");
 
-        println!("creating a file with {} powers", value.len());
         (value.len() as u32).write_le(&mut file).unwrap();
         for power in value {
             power.serialize(&mut file).unwrap();
         }
-
-        println!("file size {}", file.metadata().unwrap().len());
 
         drop(file);
         Self::new(dir).unwrap()
