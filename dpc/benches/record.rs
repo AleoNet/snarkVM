@@ -39,7 +39,7 @@ fn record_decrypt_noop(c: &mut Criterion) {
     let decryption_key = DecryptionKey::from(ViewKey::from_private_key(&private_key));
 
     let ciphertext_noop = Record::new_noop(address, rng).unwrap().ciphertext().clone();
-    bench_record_decryption(c, "record_decrypt_noop", decryption_key.clone(), ciphertext_noop);
+    bench_record_decryption(c, "record_decrypt_noop", decryption_key, ciphertext_noop);
 }
 
 fn record_decrypt_with_payload(c: &mut Criterion) {
@@ -55,7 +55,7 @@ fn record_decrypt_with_payload(c: &mut Criterion) {
             .unwrap()
             .ciphertext()
             .clone();
-    bench_record_decryption(c, "record_decrypt_with_payload", decryption_key.clone(), ciphertext_with_payload);
+    bench_record_decryption(c, "record_decrypt_with_payload", decryption_key, ciphertext_with_payload);
 }
 
 fn record_decrypt_with_program_id(c: &mut Criterion) {
@@ -67,7 +67,7 @@ fn record_decrypt_with_program_id(c: &mut Criterion) {
 
     let ciphertext_with_program_id =
         Record::new(address, AleoAmount::from_gate(1234), None, Some(program_id), rng).unwrap().ciphertext().clone();
-    bench_record_decryption(c, "record_decrypt_with_program_id", decryption_key.clone(), ciphertext_with_program_id);
+    bench_record_decryption(c, "record_decrypt_with_program_id", decryption_key, ciphertext_with_program_id);
 }
 
 fn record_decrypt_with_payload_and_program_id(c: &mut Criterion) {
@@ -88,7 +88,7 @@ fn record_decrypt_with_payload_and_program_id(c: &mut Criterion) {
     bench_record_decryption(
         c,
         "record_decrypt_payload_and_program_id",
-        decryption_key.clone(),
+        decryption_key,
         ciphertext_with_program_id_and_payload,
     );
 }
