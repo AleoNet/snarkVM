@@ -51,10 +51,7 @@ fn record_decrypt(c: &mut Criterion) {
             .ciphertext()
             .clone();
     let ciphertext_with_program_id =
-        Record::new(address, AleoAmount::from_gate(1234), None, Some(program_id.clone()), rng)
-            .unwrap()
-            .ciphertext()
-            .clone();
+        Record::new(address, AleoAmount::from_gate(1234), None, Some(program_id), rng).unwrap().ciphertext().clone();
     let ciphertext_with_program_id_and_payload =
         Record::new(address, AleoAmount::from_gate(1234), Some(Payload::from(&payload)), Some(program_id), rng)
             .unwrap()
@@ -71,17 +68,12 @@ fn record_decrypt(c: &mut Criterion) {
         decryption_key.clone(),
         ciphertext_with_program_id_and_payload,
     );
-    bench_record_decryption(
-        c,
-        "record_decrypt_incorrect_view_key",
-        decryption_key.clone(),
-        ciphertext_incorrect_view_key,
-    );
+    bench_record_decryption(c, "record_decrypt_incorrect_view_key", decryption_key, ciphertext_incorrect_view_key);
 }
 
 criterion_group! {
     name = record;
-    config = Criterion::default().sample_size(10);
+    config = Criterion::default().sample_size(100);
     targets = record_decrypt
 }
 
