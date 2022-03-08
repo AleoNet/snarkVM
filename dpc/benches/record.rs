@@ -32,49 +32,81 @@ fn bench_record_decryption(
     c.bench_function(benchmark_id, move |b| b.iter(|| Record::decrypt(&decryption_key, &ciphertext)));
 }
 
-#[allow(unused_must_use)]
-fn record_decrypt(c: &mut Criterion) {
+fn record_decrypt_noop(c: &mut Criterion) {
     let mut rng = &mut thread_rng();
     let private_key: PrivateKey<Testnet2> = PrivateKey::new(rng);
     let address = private_key.to_address();
     let decryption_key = DecryptionKey::from(ViewKey::from_private_key(&private_key));
-    let other_address: Address<Testnet2> = PrivateKey::new(rng).into();
-
-    let mut payload = [0u8; Testnet2::RECORD_PAYLOAD_SIZE_IN_BYTES];
-    rng.fill(&mut payload);
-    let program_id = <Testnet2 as Network>::ProgramID::rand(&mut rng);
 
     let ciphertext_noop = Record::new_noop(address, rng).unwrap().ciphertext().clone();
+    bench_record_decryption(c, "record_decrypt_noop", decryption_key.clone(), ciphertext_noop);
+}
+
+fn record_decrypt_with_payload(c: &mut Criterion) {
+    let mut rng = &mut thread_rng();
+    let private_key: PrivateKey<Testnet2> = PrivateKey::new(rng);
+    let address = private_key.to_address();
+    let decryption_key = DecryptionKey::from(ViewKey::from_private_key(&private_key));
+    let mut payload = [0u8; Testnet2::RECORD_PAYLOAD_SIZE_IN_BYTES];
+    rng.fill(&mut payload);
+
     let ciphertext_with_payload =
         Record::new(address, AleoAmount::from_gate(1234), Some(Payload::from(&payload)), None, rng)
             .unwrap()
             .ciphertext()
             .clone();
+    bench_record_decryption(c, "record_decrypt_with_payload", decryption_key.clone(), ciphertext_with_payload);
+}
+
+fn record_decrypt_with_program_id(c: &mut Criterion) {
+    let mut rng = &mut thread_rng();
+    let private_key: PrivateKey<Testnet2> = PrivateKey::new(rng);
+    let address = private_key.to_address();
+    let decryption_key = DecryptionKey::from(ViewKey::from_private_key(&private_key));
+    let program_id = <Testnet2 as Network>::ProgramID::rand(&mut rng);
+
     let ciphertext_with_program_id =
         Record::new(address, AleoAmount::from_gate(1234), None, Some(program_id), rng).unwrap().ciphertext().clone();
+    bench_record_decryption(c, "record_decrypt_with_program_id", decryption_key.clone(), ciphertext_with_program_id);
+}
+
+fn record_decrypt_with_payload_and_program_id(c: &mut Criterion) {
+    let mut rng = &mut thread_rng();
+    let private_key: PrivateKey<Testnet2> = PrivateKey::new(rng);
+    let address = private_key.to_address();
+    let decryption_key = DecryptionKey::from(ViewKey::from_private_key(&private_key));
+
+    let mut payload = [0u8; Testnet2::RECORD_PAYLOAD_SIZE_IN_BYTES];
+    rng.fill(&mut payload);
+    let program_id = <Testnet2 as Network>::ProgramID::rand(&mut rng);
+
     let ciphertext_with_program_id_and_payload =
         Record::new(address, AleoAmount::from_gate(1234), Some(Payload::from(&payload)), Some(program_id), rng)
             .unwrap()
             .ciphertext()
             .clone();
-    let ciphertext_incorrect_view_key = Record::new_noop(other_address, rng).unwrap().ciphertext().clone();
-
-    bench_record_decryption(c, "record_decrypt_noop", decryption_key.clone(), ciphertext_noop);
-    bench_record_decryption(c, "record_decrypt_payload", decryption_key.clone(), ciphertext_with_payload);
-    bench_record_decryption(c, "record_decrypt_program_id", decryption_key.clone(), ciphertext_with_program_id);
     bench_record_decryption(
         c,
         "record_decrypt_payload_and_program_id",
         decryption_key.clone(),
         ciphertext_with_program_id_and_payload,
     );
+}
+
+fn record_decrypt_with_incorrect_view_key(c: &mut Criterion) {
+    let mut rng = &mut thread_rng();
+    let private_key: PrivateKey<Testnet2> = PrivateKey::new(rng);
+    let decryption_key = DecryptionKey::from(ViewKey::from_private_key(&private_key));
+    let other_address: Address<Testnet2> = PrivateKey::new(rng).into();
+
+    let ciphertext_incorrect_view_key = Record::new_noop(other_address, rng).unwrap().ciphertext().clone();
     bench_record_decryption(c, "record_decrypt_incorrect_view_key", decryption_key, ciphertext_incorrect_view_key);
 }
 
 criterion_group! {
     name = record;
     config = Criterion::default().sample_size(100);
-    targets = record_decrypt
+    targets = record_decrypt_noop, record_decrypt_with_payload, record_decrypt_with_program_id, record_decrypt_with_payload_and_program_id, record_decrypt_with_incorrect_view_key
 }
 
 criterion_main!(record);
