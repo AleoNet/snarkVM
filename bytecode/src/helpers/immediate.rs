@@ -15,9 +15,12 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_circuits::{Affine, BaseField, Boolean, Eject, Environment, Mode, Parser, ParserResult, Scalar};
+use snarkvm_utilities::{error, FromBytes, ToBytes};
 
+use crate::Immediate::Field;
 use core::fmt;
 use nom::{branch::alt, combinator::map};
+use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Clone)]
 pub enum Immediate<E: Environment> {
@@ -149,3 +152,45 @@ impl<E: Environment> PartialEq for Immediate<E> {
 }
 
 impl<E: Environment> Eq for Immediate<E> {}
+
+impl<E: Environment> ToBytes for Immediate<E> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()>
+    where
+        Self: Sized,
+    {
+        match self {
+            Immediate::Boolean(immediate) => {
+                u8::write_le(&(0u8), &mut writer)?;
+                immediate.write_le(&mut writer)
+            }
+            Immediate::Field(immediate) => {
+                u8::write_le(&(1u8), &mut writer)?;
+                immediate.write_le(&mut writer)
+            }
+            Immediate::Group(immediate) => {
+                u8::write_le(&(2u8), &mut writer)?;
+                immediate.write_le(&mut writer)
+            }
+            Immediate::Scalar(immediate) => {
+                u8::write_le(&(3u8), &mut writer)?;
+                immediate.write_le(&mut writer)
+            }
+        }
+    }
+}
+
+impl<E: Environment> FromBytes for Immediate<E> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self>
+    where
+        Self: Sized,
+    {
+        match u8::read_le(&mut reader) {
+            Ok(0) => Ok(Self::Boolean(Boolean::read_le(&mut reader)?)),
+            Ok(1) => Ok(Self::Field(BaseField::read_le(&mut reader)?)),
+            Ok(2) => Ok(Self::Group(Affine::read_le(&mut reader)?)),
+            Ok(4) => Ok(Self::Scalar(Scalar::read_le(&mut reader)?)),
+            Ok(_) => Err(error("FromBytes::read failed for Immediate")),
+            Err(err) => Err(err),
+        }
+    }
+}
