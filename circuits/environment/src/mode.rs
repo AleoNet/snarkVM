@@ -83,7 +83,7 @@ impl FromBytes for Mode {
             Ok(0) => Ok(Self::Constant),
             Ok(1) => Ok(Self::Public),
             Ok(2) => Ok(Self::Private),
-            Ok(_) => Err(error("FromBytes::read failed")),
+            Ok(_) => Err(error("FromBytes::read failed for Mode")),
             Err(err) => Err(err),
         }
     }

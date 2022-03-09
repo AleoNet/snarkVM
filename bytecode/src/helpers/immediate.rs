@@ -17,7 +17,6 @@
 use snarkvm_circuits::{Affine, BaseField, Boolean, Eject, Environment, Mode, Parser, ParserResult, Scalar};
 use snarkvm_utilities::{error, FromBytes, ToBytes};
 
-use crate::Immediate::Field;
 use core::fmt;
 use nom::{branch::alt, combinator::map};
 use std::io::{Read, Result as IoResult, Write};
