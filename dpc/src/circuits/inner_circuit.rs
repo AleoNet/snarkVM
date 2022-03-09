@@ -14,14 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{InnerPrivateVariables, InnerPublicVariables, Network, Payload};
+use crate::{InnerPrivateVariables, InnerPublicVariables, Network, Payload, Transition, ValueBalanceCommitmentGadget};
 use snarkvm_algorithms::traits::*;
 use snarkvm_gadgets::{
     algorithms::merkle_tree::merkle_path::MerklePathGadget,
     bits::{Boolean, ToBytesGadget},
     integers::{int::Int64, uint::UInt8},
     traits::{
-        algorithms::{CRHGadget, EncryptionGadget, PRFGadget, SignatureGadget},
+        algorithms::{CRHGadget, CommitmentGadget, EncryptionGadget, PRFGadget, SignatureGadget},
         alloc::AllocGadget,
         eq::{ConditionalEqGadget, EqGadget},
         integers::{add::Add, integer::Integer, sub::Sub},
@@ -63,6 +63,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             account_encryption_parameters,
             account_signature_parameters,
             record_commitment_parameters,
+            value_commitment_parameters,
             transition_id_crh,
             transaction_id_crh,
             transactions_root_crh,
@@ -86,6 +87,11 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 N::CommitmentGadget::alloc_constant(&mut cs.ns(|| "Declare record commitment parameters"), || {
                     Ok(N::commitment_scheme().clone())
                 })?;
+
+            let value_commitment_parameters = N::ValueCommitmentGadget::alloc_constant(
+                &mut cs.ns(|| "Declare record value commitment parameters"),
+                || Ok(N::value_commitment_scheme().clone()),
+            )?;
 
             let transition_id_crh = N::TransitionIDCRHGadget::alloc_constant(
                 &mut cs.ns(|| "Declare the transition ID CRH parameters"),
@@ -121,6 +127,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 account_encryption_parameters,
                 account_signature_parameters,
                 record_commitment_parameters,
+                value_commitment_parameters,
                 transition_id_crh,
                 transaction_id_crh,
                 transactions_root_crh,
@@ -186,8 +193,14 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         let mut input_values = Vec::with_capacity(N::NUM_INPUT_RECORDS);
         let mut input_program_id_bytes = Vec::with_capacity(N::NUM_INPUT_RECORDS * 32);
 
-        for (i, ((record, ledger_proof), serial_number)) in
-            private.input_records.iter().zip_eq(&private.ledger_proofs).zip_eq(public.serial_numbers()).enumerate()
+        for (i, ((((record, ledger_proof), serial_number), value_commitment), value_commitment_randomness)) in private
+            .input_records
+            .iter()
+            .zip_eq(&private.ledger_proofs)
+            .zip_eq(public.serial_numbers())
+            .zip_eq(public.input_value_commitments())
+            .zip_eq(&private.input_value_commitment_randomness)
+            .enumerate()
         {
             let cs = &mut cs.ns(|| format!("Process input record {}", i));
 
@@ -530,6 +543,43 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     &is_local_or_dummy.not(),
                 )?;
             }
+
+            // ********************************************************************
+            // Check that the input value commitment is derived correctly.
+            // ********************************************************************
+            {
+                let vc_cs = &mut cs.ns(|| "Check that value commitment is derived correctly");
+
+                let value_commitment_randomness_gadget = <N::ValueCommitmentGadget as CommitmentGadget<
+                    N::ValueCommitmentScheme,
+                    N::InnerScalarField,
+                >>::RandomnessGadget::alloc(
+                    &mut vc_cs.ns(|| format!("Input value commitment randomness {}", i)),
+                    || Ok(value_commitment_randomness),
+                )?;
+
+                let given_value_commitment_gadget = <N::ValueCommitmentGadget as CommitmentGadget<
+                    N::ValueCommitmentScheme,
+                    N::InnerScalarField,
+                >>::OutputGadget::alloc(
+                    &mut vc_cs.ns(|| format!("Input value commitment {}", i)),
+                    || Ok(value_commitment),
+                )?;
+
+                let value_bytes =
+                    UInt8::alloc_vec(vc_cs.ns(|| format!("Input value bytes {}", i)), &record.value().to_bytes_le()?)?;
+
+                let candidate_value_commitment_gadget = value_commitment_parameters.check_commitment_gadget(
+                    &mut vc_cs.ns(|| format!("Compute input value commitment {}", i)),
+                    &value_bytes,
+                    &value_commitment_randomness_gadget,
+                )?;
+
+                candidate_value_commitment_gadget.enforce_equal(
+                    &mut vc_cs.ns(|| format!("Check that the {}-th input value commitment is valid", i)),
+                    &given_value_commitment_gadget,
+                )?;
+            }
         }
         // ********************************************************************
 
@@ -570,12 +620,15 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
         let mut output_values = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
 
-        for (j, ((record, encryption_randomness), commitment)) in private
-            .output_records
-            .iter()
-            .zip_eq(&private.encryption_randomness)
-            .zip_eq(public.commitments())
-            .enumerate()
+        for (j, ((((record, encryption_randomness), commitment), value_commitment), value_commitment_randomness)) in
+            private
+                .output_records
+                .iter()
+                .zip_eq(&private.encryption_randomness)
+                .zip_eq(public.commitments())
+                .zip_eq(public.output_value_commitments())
+                .zip_eq(&private.output_value_commitment_randomness)
+                .enumerate()
         {
             let cs = &mut cs.ns(|| format!("Process output record {}", j));
 
@@ -772,6 +825,43 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
                 output_values.push(given_value);
             };
+
+            // ********************************************************************
+            // Check that the ouput value commitment is derived correctly.
+            // ********************************************************************
+            {
+                let vc_cs = &mut cs.ns(|| "Check that value commitment is derived correctly");
+
+                let value_commitment_randomness_gadget = <N::ValueCommitmentGadget as CommitmentGadget<
+                    N::ValueCommitmentScheme,
+                    N::InnerScalarField,
+                >>::RandomnessGadget::alloc(
+                    &mut vc_cs.ns(|| format!("Output value commitment randomness {}", j)),
+                    || Ok(value_commitment_randomness),
+                )?;
+
+                let given_value_commitment_gadget = <N::ValueCommitmentGadget as CommitmentGadget<
+                    N::ValueCommitmentScheme,
+                    N::InnerScalarField,
+                >>::OutputGadget::alloc(
+                    &mut vc_cs.ns(|| format!("Output value commitment {}", j)),
+                    || Ok(value_commitment),
+                )?;
+
+                let value_bytes =
+                    UInt8::alloc_vec(vc_cs.ns(|| format!("Output value bytes {}", j)), &record.value().to_bytes_le()?)?;
+
+                let candidate_value_commitment_gadget = value_commitment_parameters.check_commitment_gadget(
+                    &mut vc_cs.ns(|| format!("Compute output value commitment {}", j)),
+                    &value_bytes,
+                    &value_commitment_randomness_gadget,
+                )?;
+
+                candidate_value_commitment_gadget.enforce_equal(
+                    &mut vc_cs.ns(|| format!("Check that the {}-th output value commitment is valid", j)),
+                    &given_value_commitment_gadget,
+                )?;
+            }
         }
         // *******************************************************************
 
@@ -827,6 +917,80 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 &given_value_balance_field_elements,
             )?;
         };
+
+        // *******************************************************************
+
+        // *******************************************************************
+        // Check that the value balance is valid by verifying the value balance commitment.
+        // *******************************************************************
+        {
+            let mut cs = cs.ns(|| "Check that the value balance commitment is valid.");
+
+            let transition_id =
+                Transition::<N>::compute_transition_id(&public.serial_numbers(), &public.commitments())?;
+
+            // TODO (raychu86): Confirm if we need to do this operation in the gadget world.
+            let (c, partial_combined_commitments, zero_commitment, blinded_commitment) = public
+                .value_balance_commitment()
+                .gadget_verification_setup(
+                    &public.input_value_commitments(),
+                    &public.output_value_commitments(),
+                    &transition_id.to_bytes_le()?,
+                )
+                .unwrap();
+
+            let c_gadget = <N::ValueCommitmentGadget as CommitmentGadget<
+                N::ValueCommitmentScheme,
+                N::InnerScalarField,
+            >>::RandomnessGadget::alloc(&mut cs.ns(|| "c"), || Ok(&c))?;
+
+            let partial_combined_commitments_gadget = <N::ValueCommitmentGadget as CommitmentGadget<
+                N::ValueCommitmentScheme,
+                N::InnerScalarField,
+            >>::OutputGadget::alloc(
+                &mut cs.ns(|| "Partially combined commitments"),
+                || Ok(partial_combined_commitments),
+            )?;
+
+            let zero_commitment_gadget = <N::ValueCommitmentGadget as CommitmentGadget<
+                N::ValueCommitmentScheme,
+                N::InnerScalarField,
+            >>::OutputGadget::alloc(
+                &mut cs.ns(|| "Zero commitment gadget"), || Ok(zero_commitment)
+            )?;
+
+            let blinded_commitment_gadget = <N::ValueCommitmentGadget as CommitmentGadget<
+                N::ValueCommitmentScheme,
+                N::InnerScalarField,
+            >>::OutputGadget::alloc(
+                &mut cs.ns(|| "Blinding commitment gadget"), || Ok(blinded_commitment)
+            )?;
+
+            let value_balance_bytes = UInt8::alloc_vec(
+                cs.ns(|| "value_balance_bytes"),
+                &(public.value_balance().0.abs() as u64).to_le_bytes(),
+            )?;
+
+            let is_negative = Boolean::alloc(&mut cs.ns(|| "Value balance is negative"), || {
+                Ok(public.value_balance().is_negative())
+            })?;
+
+            let value_balance_comm = ValueBalanceCommitmentGadget::<N>::check_commitment_without_randomness_gadget(
+                &mut cs.ns(|| "Commitment on value balance without randomness"),
+                &value_commitment_parameters,
+                &value_balance_bytes,
+            )?;
+
+            ValueBalanceCommitmentGadget::<N>::check_value_balance_commitment_gadget(
+                &mut cs.ns(|| "Verify value balance commitment"),
+                &partial_combined_commitments_gadget,
+                &value_balance_comm,
+                &is_negative,
+                &c_gadget,
+                &zero_commitment_gadget,
+                &blinded_commitment_gadget,
+            )?;
+        }
 
         Ok(())
     }

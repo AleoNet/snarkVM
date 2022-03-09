@@ -190,24 +190,30 @@ impl<N: Network> ResponseBuilder<N> {
         let transition_id = Transition::<N>::compute_transition_id(&serial_numbers, &commitments)?;
 
         // Construct the input value commitments.
-        let mut input_value_commitments = Vec::with_capacity(request.records().len());
-        let mut input_value_commitment_randomness = Vec::with_capacity(request.records().len());
-        for record in request.records() {
+        let mut input_record_values: Vec<AleoAmount> = request.records().iter().map(|x| x.value()).collect();
+        input_record_values.resize(N::NUM_INPUT_RECORDS, AleoAmount::ZERO);
+
+        let mut input_value_commitments = Vec::with_capacity(N::NUM_INPUT_RECORDS);
+        let mut input_value_commitment_randomness = Vec::with_capacity(N::NUM_INPUT_RECORDS);
+
+        for value in input_record_values.iter() {
             let commitment_randomness = N::ProgramScalarField::rand(rng);
-            let commitment =
-                N::value_commitment_scheme().commit(&record.value().to_bytes_le()?, &commitment_randomness)?;
+            let commitment = N::value_commitment_scheme().commit(&value.to_bytes_le()?, &commitment_randomness)?;
 
             input_value_commitments.push(commitment);
             input_value_commitment_randomness.push(commitment_randomness);
         }
 
         // Construct the output value commitments.
-        let mut output_value_commitments = Vec::with_capacity(output_records.len());
-        let mut output_value_commitment_randomness = Vec::with_capacity(output_records.len());
-        for record in &output_records {
+        let mut output_record_values: Vec<AleoAmount> = output_records.iter().map(|x| x.value()).collect();
+        output_record_values.resize(N::NUM_OUTPUT_RECORDS, AleoAmount::ZERO);
+
+        let mut output_value_commitments = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
+        let mut output_value_commitment_randomness = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
+
+        for value in output_record_values.iter() {
             let commitment_randomness = N::ProgramScalarField::rand(rng);
-            let commitment =
-                N::value_commitment_scheme().commit(&record.value().to_bytes_le()?, &commitment_randomness)?;
+            let commitment = N::value_commitment_scheme().commit(&value.to_bytes_le()?, &commitment_randomness)?;
 
             output_value_commitments.push(commitment);
             output_value_commitment_randomness.push(commitment_randomness);
