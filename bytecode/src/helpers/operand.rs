@@ -20,7 +20,7 @@ use snarkvm_circuits::{Environment, Mode, Parser, ParserResult};
 use core::fmt;
 use nom::{branch::alt, combinator::map};
 use snarkvm_utilities::{error, FromBytes, ToBytes};
-use std::io::{Read, Write};
+use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Clone)]
 pub enum Operand<E: Environment> {
