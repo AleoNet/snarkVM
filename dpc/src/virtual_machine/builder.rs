@@ -15,6 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::prelude::*;
+use snarkvm_algorithms::CommitmentScheme;
+use snarkvm_utilities::{ToBytes, UniformRand};
 
 use anyhow::{anyhow, Result};
 use once_cell::sync::OnceCell;
@@ -187,8 +189,54 @@ impl<N: Network> ResponseBuilder<N> {
         // Compute the transition ID.
         let transition_id = Transition::<N>::compute_transition_id(&serial_numbers, &commitments)?;
 
+        // Construct the input value commitments.
+        let mut input_value_commitments = Vec::with_capacity(request.records().len());
+        let mut input_value_commitment_randomness = Vec::with_capacity(request.records().len());
+        for record in request.records() {
+            let commitment_randomness = N::ProgramScalarField::rand(rng);
+            let commitment =
+                N::value_commitment_scheme().commit(&record.value().to_bytes_le()?, &commitment_randomness)?;
+
+            input_value_commitments.push(commitment);
+            input_value_commitment_randomness.push(commitment_randomness);
+        }
+
+        // Construct the output value commitments.
+        let mut output_value_commitments = Vec::with_capacity(output_records.len());
+        let mut output_value_commitment_randomness = Vec::with_capacity(output_records.len());
+        for record in &output_records {
+            let commitment_randomness = N::ProgramScalarField::rand(rng);
+            let commitment =
+                N::value_commitment_scheme().commit(&record.value().to_bytes_le()?, &commitment_randomness)?;
+
+            output_value_commitments.push(commitment);
+            output_value_commitment_randomness.push(commitment_randomness);
+        }
+
+        // Construct the final value balance commitment.
+        let value_balance_commitment = ValueBalanceCommitment::new(
+            &input_value_commitments,
+            &output_value_commitments,
+            &input_value_commitment_randomness,
+            &output_value_commitment_randomness,
+            value_balance,
+            &transition_id.to_bytes_le()?,
+            rng,
+        )?;
+
         // Construct the response.
-        Response::new(transition_id, output_records, encryption_randomness, value_balance, events)
+        Response::new(
+            transition_id,
+            output_records,
+            encryption_randomness,
+            value_balance,
+            input_value_commitments,
+            output_value_commitments,
+            input_value_commitment_randomness,
+            output_value_commitment_randomness,
+            value_balance_commitment,
+            events,
+        )
     }
 }
 

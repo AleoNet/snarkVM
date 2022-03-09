@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AleoAmount, Event, Network, Record};
+use crate::{AleoAmount, Event, Network, Record, ValueBalanceCommitment};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::Result;
@@ -37,6 +37,16 @@ pub struct Response<N: Network> {
     encryption_randomness: Vec<EncryptionRandomness<N>>,
     /// A value balance is the difference between the input and output record values.
     value_balance: AleoAmount,
+    /// The commitments on the input record values.
+    input_value_commitments: Vec<N::ProgramAffineCurve>,
+    /// The commitments on the output record values.
+    output_value_commitments: Vec<N::ProgramAffineCurve>,
+    /// The randomness used to generate the input value commitments.
+    input_value_commitment_randomness: Vec<N::ProgramScalarField>,
+    /// The randomness used to generate the output value commitments.
+    output_value_commitment_randomness: Vec<N::ProgramScalarField>,
+    /// The value balance commitment.
+    value_balance_commitment: ValueBalanceCommitment<N>,
     /// The events emitted from the execution.
     events: Vec<Event<N>>,
 }
@@ -48,9 +58,25 @@ impl<N: Network> Response<N> {
         records: Vec<Record<N>>,
         encryption_randomness: Vec<EncryptionRandomness<N>>,
         value_balance: AleoAmount,
+        input_value_commitments: Vec<N::ProgramAffineCurve>,
+        output_value_commitments: Vec<N::ProgramAffineCurve>,
+        input_value_commitment_randomness: Vec<N::ProgramScalarField>,
+        output_value_commitment_randomness: Vec<N::ProgramScalarField>,
+        value_balance_commitment: ValueBalanceCommitment<N>,
         events: Vec<Event<N>>,
     ) -> Result<Self> {
-        Ok(Self { transition_id, records, encryption_randomness, value_balance, events })
+        Ok(Self {
+            transition_id,
+            records,
+            encryption_randomness,
+            value_balance,
+            input_value_commitments,
+            output_value_commitments,
+            input_value_commitment_randomness,
+            output_value_commitment_randomness,
+            value_balance_commitment,
+            events,
+        })
     }
 
     /// Returns `true` if the output records are the noop program.
@@ -88,6 +114,31 @@ impl<N: Network> Response<N> {
         self.value_balance
     }
 
+    /// Returns the commitments on the input record values.
+    pub fn input_value_commitments(&self) -> &Vec<N::ProgramAffineCurve> {
+        &self.input_value_commitments
+    }
+
+    /// Returns the commitments on the output record values.
+    pub fn output_value_commitments(&self) -> &Vec<N::ProgramAffineCurve> {
+        &self.output_value_commitments
+    }
+
+    /// Returns the randomness used to generate the input value commitments.
+    pub fn input_value_commitment_randomness(&self) -> &Vec<N::ProgramScalarField> {
+        &self.input_value_commitment_randomness
+    }
+
+    /// Returns the randomness used to generate the output value commitments.
+    pub fn output_value_commitment_randomness(&self) -> &Vec<N::ProgramScalarField> {
+        &self.output_value_commitment_randomness
+    }
+
+    /// Returns the value balance commitment.
+    pub fn value_balance_commitment(&self) -> &ValueBalanceCommitment<N> {
+        &self.value_balance_commitment
+    }
+
     /// Returns a reference to the events.
     pub fn events(&self) -> &Vec<Event<N>> {
         &self.events
@@ -111,13 +162,46 @@ impl<N: Network> FromBytes for Response<N> {
 
         let value_balance = FromBytes::read_le(&mut reader)?;
 
+        let mut input_value_commitments = Vec::with_capacity(N::NUM_INPUT_RECORDS);
+        for _ in 0..N::NUM_INPUT_RECORDS {
+            input_value_commitments.push(FromBytes::read_le(&mut reader)?);
+        }
+
+        let mut output_value_commitments = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
+        for _ in 0..N::NUM_OUTPUT_RECORDS {
+            output_value_commitments.push(FromBytes::read_le(&mut reader)?);
+        }
+
+        let mut input_value_commitment_randomness = Vec::with_capacity(N::NUM_INPUT_RECORDS);
+        for _ in 0..N::NUM_INPUT_RECORDS {
+            input_value_commitment_randomness.push(FromBytes::read_le(&mut reader)?);
+        }
+
+        let mut output_value_commitment_randomness = Vec::with_capacity(N::NUM_INPUT_RECORDS);
+        for _ in 0..N::NUM_INPUT_RECORDS {
+            output_value_commitment_randomness.push(FromBytes::read_le(&mut reader)?);
+        }
+
+        let value_balance_commitment = FromBytes::read_le(&mut reader)?;
+
         let num_events: u16 = FromBytes::read_le(&mut reader)?;
         let mut events = Vec::with_capacity(num_events as usize);
         for _ in 0..num_events {
             events.push(FromBytes::read_le(&mut reader)?);
         }
 
-        Ok(Self { transition_id, records, encryption_randomness, value_balance, events })
+        Ok(Self {
+            transition_id,
+            records,
+            encryption_randomness,
+            value_balance,
+            input_value_commitments,
+            output_value_commitments,
+            input_value_commitment_randomness,
+            output_value_commitment_randomness,
+            value_balance_commitment,
+            events,
+        })
     }
 }
 
@@ -128,6 +212,11 @@ impl<N: Network> ToBytes for Response<N> {
         self.records.write_le(&mut writer)?;
         self.encryption_randomness.write_le(&mut writer)?;
         self.value_balance.write_le(&mut writer)?;
+        self.input_value_commitments.write_le(&mut writer)?;
+        self.output_value_commitments.write_le(&mut writer)?;
+        self.input_value_commitment_randomness.write_le(&mut writer)?;
+        self.output_value_commitment_randomness.write_le(&mut writer)?;
+        self.value_balance_commitment.write_le(&mut writer)?;
         (self.events.len() as u16).write_le(&mut writer)?;
         self.events.write_le(&mut writer)
     }

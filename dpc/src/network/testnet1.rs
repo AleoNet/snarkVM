@@ -223,7 +223,7 @@ impl Network for Testnet1 {
     type TransitionIDParameters = MerkleTreeParameters<Self::TransitionIDCRH, { Self::TRANSITION_TREE_DEPTH }>;
     type TransitionID = AleoLocator<<Self::TransitionIDCRH as CRH>::Output, { Self::TRANSITION_ID_PREFIX }>;
 
-    type ValueCommitment = PedersenCommitment<Self::ProgramProjectiveCurve, 4, 350>;
+    type ValueCommitmentScheme = PedersenCommitment<Self::ProgramProjectiveCurve, 4, 350>;
     type ValueCommitmentGadget = PedersenCommitmentGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 4, 350>;
 
     dpc_setup!{Testnet1, account_encryption_scheme, AccountEncryptionScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
@@ -238,7 +238,7 @@ impl Network for Testnet1 {
     dpc_setup!{Testnet1, transactions_root_parameters, TransactionsRootParameters, "AleoTransactionsRootCRH0"}
     dpc_setup!{Testnet1, transaction_id_parameters, TransactionIDParameters, "AleoTransactionIDCRH0"}
     dpc_setup!{Testnet1, transition_id_parameters, TransitionIDParameters, "AleoTransitionIDCRH0"}
-    dpc_setup!{Testnet1, value_commitment, ValueCommitment, "AleoValueCommitment0"}
+    dpc_setup!{Testnet1, value_commitment_scheme, ValueCommitmentScheme, "AleoValueCommitment0"}
 
     dpc_snark_setup!{Testnet1, inner_proving_key, InnerSNARK, ProvingKey, InnerProvingKeyBytes, "inner proving key"}
     dpc_snark_setup!{Testnet1, inner_verifying_key, InnerSNARK, VerifyingKey, InnerVerifyingKeyBytes, "inner verifying key"}

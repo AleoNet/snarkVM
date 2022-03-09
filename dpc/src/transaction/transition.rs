@@ -40,6 +40,12 @@ pub struct Transition<N: Network> {
     ciphertexts: Vec<N::RecordCiphertext>,
     /// A value balance is the difference between the input and output record values.
     value_balance: AleoAmount,
+    /// The commitments on the input record values.
+    input_value_commitments: Vec<N::ProgramAffineCurve>,
+    /// The commitments on the output record values.
+    output_value_commitments: Vec<N::ProgramAffineCurve>,
+    /// The value balance commitment.
+    value_balance_commitment: ValueBalanceCommitment<N>,
     /// The events emitted from this transition.
     events: Vec<Event<N>>,
     /// The zero-knowledge proofs attesting to the validity of this transition.
@@ -59,8 +65,22 @@ impl<N: Network> Transition<N> {
         let value_balance = response.value_balance();
         let events = response.events().clone();
 
+        let input_value_commitments = response.input_value_commitments().clone();
+        let output_value_commitments = response.output_value_commitments().clone();
+        let value_balance_commitment = response.value_balance_commitment().clone();
+
         // Construct the transition.
-        Self::from(transition_id, serial_numbers, ciphertexts, value_balance, events, execution)
+        Self::from(
+            transition_id,
+            serial_numbers,
+            ciphertexts,
+            value_balance,
+            input_value_commitments,
+            output_value_commitments,
+            value_balance_commitment,
+            events,
+            execution,
+        )
     }
 
     /// Constructs an instance of a transition from the given inputs.
@@ -69,6 +89,9 @@ impl<N: Network> Transition<N> {
         serial_numbers: Vec<N::SerialNumber>,
         ciphertexts: Vec<N::RecordCiphertext>,
         value_balance: AleoAmount,
+        input_value_commitments: Vec<N::ProgramAffineCurve>,
+        output_value_commitments: Vec<N::ProgramAffineCurve>,
+        value_balance_commitment: ValueBalanceCommitment<N>,
         events: Vec<Event<N>>,
         execution: Execution<N>,
     ) -> Result<Self> {
@@ -81,6 +104,9 @@ impl<N: Network> Transition<N> {
             commitments,
             ciphertexts,
             value_balance,
+            input_value_commitments,
+            output_value_commitments,
+            value_balance_commitment,
             events,
             execution,
         };
@@ -115,6 +141,33 @@ impl<N: Network> Transition<N> {
             return false;
         }
 
+        match self.transition_id.to_bytes_le() {
+            Ok(message) => {
+                // Verify that the value balance commitment is valid.
+                match self.value_balance_commitment.verify(
+                    &self.input_value_commitments,
+                    &self.output_value_commitments,
+                    self.value_balance,
+                    &message,
+                ) {
+                    Ok(result) => {
+                        if !result {
+                            eprintln!("Transition contains an invalid value balance commitment");
+                            return false;
+                        }
+                    }
+                    Err(err) => {
+                        eprintln!("Invalid value balance commitment verification {:?}", err);
+                        return false;
+                    }
+                }
+            }
+            Err(err) => {
+                eprintln!("Invalid transition id {}", err);
+                return false;
+            }
+        }
+
         // Returns `false` if the execution is invalid.
         self.execution.verify(
             N::inner_verifying_key(),
@@ -122,6 +175,9 @@ impl<N: Network> Transition<N> {
                 self.serial_numbers.clone(),
                 self.commitments.clone(),
                 self.value_balance,
+                self.input_value_commitments.clone(),
+                self.output_value_commitments.clone(),
+                self.value_balance_commitment.clone(),
                 ledger_root,
                 local_transitions_root,
                 self.execution.program_execution.as_ref().map(|x| x.program_id),
@@ -168,6 +224,21 @@ impl<N: Network> Transition<N> {
     #[inline]
     pub fn value_balance(&self) -> &AleoAmount {
         &self.value_balance
+    }
+
+    /// Returns a reference to the commitments on the input record values.
+    pub fn input_value_commitments(&self) -> impl Iterator<Item = &N::ProgramAffineCurve> + fmt::Debug + '_ {
+        self.input_value_commitments.iter()
+    }
+
+    /// Returns a reference to the commitments on the output record values.
+    pub fn output_value_commitments(&self) -> impl Iterator<Item = &N::ProgramAffineCurve> + fmt::Debug + '_ {
+        self.output_value_commitments.iter()
+    }
+
+    /// Returns a reference to the value balance commitment.
+    pub fn value_balance_commitment(&self) -> &ValueBalanceCommitment<N> {
+        &self.value_balance_commitment
     }
 
     /// Returns a reference to the events.
@@ -307,6 +378,18 @@ impl<N: Network> FromBytes for Transition<N> {
 
         let value_balance: AleoAmount = FromBytes::read_le(&mut reader)?;
 
+        let mut input_value_commitments = Vec::with_capacity(N::NUM_INPUT_RECORDS);
+        for _ in 0..N::NUM_INPUT_RECORDS {
+            input_value_commitments.push(FromBytes::read_le(&mut reader)?);
+        }
+
+        let mut output_value_commitments = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
+        for _ in 0..N::NUM_OUTPUT_RECORDS {
+            output_value_commitments.push(FromBytes::read_le(&mut reader)?);
+        }
+
+        let value_balance_commitment = FromBytes::read_le(&mut reader)?;
+
         let num_events: u16 = FromBytes::read_le(&mut reader)?;
         let mut events = Vec::with_capacity(num_events as usize);
         for _ in 0..num_events {
@@ -315,8 +398,18 @@ impl<N: Network> FromBytes for Transition<N> {
 
         let execution: Execution<N> = FromBytes::read_le(&mut reader)?;
 
-        Ok(Self::from(transition_id, serial_numbers, ciphertexts, value_balance, events, execution)
-            .expect("Failed to deserialize a transition from bytes"))
+        Ok(Self::from(
+            transition_id,
+            serial_numbers,
+            ciphertexts,
+            value_balance,
+            input_value_commitments,
+            output_value_commitments,
+            value_balance_commitment,
+            events,
+            execution,
+        )
+        .expect("Failed to deserialize a transition from bytes"))
     }
 }
 
@@ -327,6 +420,9 @@ impl<N: Network> ToBytes for Transition<N> {
         self.serial_numbers.write_le(&mut writer)?;
         self.ciphertexts.write_le(&mut writer)?;
         self.value_balance.write_le(&mut writer)?;
+        self.input_value_commitments.write_le(&mut writer)?;
+        self.output_value_commitments.write_le(&mut writer)?;
+        self.value_balance_commitment.write_le(&mut writer)?;
         (self.events.len() as u16).write_le(&mut writer)?;
         self.events.write_le(&mut writer)?;
         self.execution.write_le(&mut writer)
@@ -357,6 +453,9 @@ impl<N: Network> Serialize for Transition<N> {
                 transition.serialize_field("commitments", &self.commitments)?;
                 transition.serialize_field("ciphertexts", &self.ciphertexts)?;
                 transition.serialize_field("value_balance", &self.value_balance)?;
+                transition.serialize_field("input_value_commitments", &self.input_value_commitments)?;
+                transition.serialize_field("output_value_commitments", &self.output_value_commitments)?;
+                transition.serialize_field("value_balance_commitment", &self.value_balance_commitment)?;
                 transition.serialize_field("events", &self.events)?;
                 transition.serialize_field("execution", &self.execution)?;
                 transition.end()
@@ -377,6 +476,11 @@ impl<'de, N: Network> Deserialize<'de> for Transition<N> {
                     serde_json::from_value(transition["serial_numbers"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(transition["ciphertexts"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(transition["value_balance"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(transition["input_value_commitments"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(transition["output_value_commitments"].clone())
+                        .map_err(de::Error::custom)?,
+                    serde_json::from_value(transition["value_balance_commitment"].clone())
+                        .map_err(de::Error::custom)?,
                     serde_json::from_value(transition["events"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(transition["execution"].clone()).map_err(de::Error::custom)?,
                 )
