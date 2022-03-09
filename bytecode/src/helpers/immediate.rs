@@ -158,20 +158,20 @@ impl<E: Environment> ToBytes for Immediate<E> {
         Self: Sized,
     {
         match self {
-            Immediate::Boolean(immediate) => {
-                u8::write_le(&(0u8), &mut writer)?;
+            Self::Boolean(immediate) => {
+                u8::write_le(&(Self::Boolean as u8), &mut writer)?;
                 immediate.write_le(&mut writer)
             }
-            Immediate::Field(immediate) => {
-                u8::write_le(&(1u8), &mut writer)?;
+            Self::Field(immediate) => {
+                u8::write_le(&(Self::Field as u8), &mut writer)?;
                 immediate.write_le(&mut writer)
             }
-            Immediate::Group(immediate) => {
-                u8::write_le(&(2u8), &mut writer)?;
+            Self::Group(immediate) => {
+                u8::write_le(&(Self::Group as u8), &mut writer)?;
                 immediate.write_le(&mut writer)
             }
-            Immediate::Scalar(immediate) => {
-                u8::write_le(&(3u8), &mut writer)?;
+            Self::Scalar(immediate) => {
+                u8::write_le(&(Self::Scalar as u8), &mut writer)?;
                 immediate.write_le(&mut writer)
             }
         }

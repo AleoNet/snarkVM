@@ -19,6 +19,8 @@ use snarkvm_circuits::{Environment, Mode, Parser, ParserResult};
 
 use core::fmt;
 use nom::{branch::alt, bytes::complete::tag, combinator::map, sequence::pair};
+use snarkvm_utilities::{error, FromBytes, ToBytes};
+use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Clone)]
 pub enum Argument<E: Environment> {
@@ -106,5 +108,51 @@ impl<E: Environment> Parser for Argument<E> {
 impl<E: Environment> fmt::Display for Argument<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{} {}.{}", self.register(), self.type_name(), self.mode())
+    }
+}
+
+impl<E: Environment> ToBytes for Argument<E> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()>
+    where
+        Self: Sized,
+    {
+        match self {
+            Self::Boolean(register, mode) => {
+                u8::write_le(&(Self::Boolean as u8), &mut writer)?;
+                register.write_le(&mut writer)?;
+                mode.write_le(&mut writer)
+            }
+            Self::Field(register, mode) => {
+                u8::write_le(&(Self::Field as u8), &mut writer)?;
+                register.write_le(&mut writer)?;
+                mode.write_le(&mut writer)
+            }
+            Self::Group(register, mode) => {
+                u8::write_le(&(Self::Group as u8), &mut writer)?;
+                register.write_le(&mut writer)?;
+                mode.write_le(&mut writer)
+            }
+            Self::Scalar(register, mode) => {
+                u8::write_le(&(Self::Scalar as u8), &mut writer)?;
+                register.write_le(&mut writer)?;
+                mode.write_le(&mut writer)
+            }
+        }
+    }
+}
+
+impl<E: Environment> FromBytes for Argument<E> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self>
+    where
+        Self: Sized,
+    {
+        match u8::read_le(&mut reader) {
+            Ok(0) => Ok(Self::Boolean(Register::<E>::read_le(&mut reader)?, Mode::read_le(&mut reader)?)),
+            Ok(1) => Ok(Self::Field(Register::<E>::read_le(&mut reader)?, Mode::read_le(&mut reader)?)),
+            Ok(2) => Ok(Self::Group(Register::<E>::read_le(&mut reader)?, Mode::read_le(&mut reader)?)),
+            Ok(4) => Ok(Self::Scalar(Register::<E>::read_le(&mut reader)?, Mode::read_le(&mut reader)?)),
+            Ok(_) => Err(error("FromBytes::read failed for Argument")),
+            Err(err) => Err(err),
+        }
     }
 }
