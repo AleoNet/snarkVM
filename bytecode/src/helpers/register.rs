@@ -23,6 +23,8 @@ use nom::{
     combinator::{map_res, recognize},
     multi::many1,
 };
+use snarkvm_utilities::{FromBytes, ToBytes};
+use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Copy, Clone, Eq, Hash, PartialEq)]
 pub struct Register<E: Environment>(u64, PhantomData<E>);
@@ -67,5 +69,23 @@ impl<E: Environment> ops::Deref for Register<E> {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl<E: Environment> FromBytes for Register<E> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self>
+    where
+        Self: Sized,
+    {
+        Ok(Self::new(u64::read_le(&mut reader)?))
+    }
+}
+
+impl<E: Environment> ToBytes for Register<E> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()>
+    where
+        Self: Sized,
+    {
+        self.0.write_le(&mut writer)
     }
 }
