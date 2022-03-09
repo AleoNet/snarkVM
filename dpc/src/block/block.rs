@@ -38,7 +38,6 @@ use std::{
     io::{Read, Result as IoResult, Write},
     str::FromStr,
     sync::atomic::AtomicBool,
-    time::Instant,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -70,10 +69,8 @@ impl<N: Network> Block<N> {
     /// Initializes a new genesis block with one coinbase transaction.
     pub fn new_genesis<R: Rng + CryptoRng>(recipient: Address<N>, rng: &mut R) -> Result<Self> {
         // Compute the coinbase transaction.
-        let start = Instant::now();
         let (transaction, coinbase_record) = Transaction::new_coinbase(recipient, Self::block_reward(0), true, rng)?;
         let transactions = Transactions::from(&[transaction])?;
-        println!("{} seconds", (Instant::now() - start).as_secs());
 
         // Construct the genesis block header metadata.
         let block_height = 0u32;
@@ -490,7 +487,7 @@ mod tests {
         // Serialize
         let expected_string = expected_block.to_string();
         let candidate_string = serde_json::to_string(&expected_block).unwrap();
-        assert_eq!(4274, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(5306, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(expected_string, candidate_string);
 
         // Deserialize
@@ -507,7 +504,7 @@ mod tests {
         // Serialize
         let expected_bytes = expected_block.to_bytes_le().unwrap();
         let candidate_bytes = bincode::serialize(&expected_block).unwrap();
-        assert_eq!(2119, expected_bytes.len(), "Update me if serialization has changed");
+        assert_eq!(2439, expected_bytes.len(), "Update me if serialization has changed");
         // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
         assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
 

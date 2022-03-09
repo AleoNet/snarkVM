@@ -370,7 +370,7 @@ impl<N: Network> Serialize for Transaction<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut transaction = serializer.serialize_struct("Transaction", 5)?;
+                let mut transaction = serializer.serialize_struct("Transaction", 4)?;
                 transaction.serialize_field("transaction_id", &self.transaction_id)?;
                 transaction.serialize_field("inner_circuit_id", &self.inner_circuit_id)?;
                 transaction.serialize_field("ledger_root", &self.ledger_root)?;
@@ -477,7 +477,7 @@ mod tests {
         // Serialize
         let expected_string = expected_transaction.to_string();
         let candidate_string = serde_json::to_string(&expected_transaction).unwrap();
-        assert_eq!(2258, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(3294, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(expected_string, candidate_string);
 
         // Deserialize
@@ -497,7 +497,7 @@ mod tests {
         // Serialize
         let expected_bytes = expected_transaction.to_bytes_le().unwrap();
         let candidate_bytes = bincode::serialize(&expected_transaction).unwrap();
-        assert_eq!(1038, expected_bytes.len(), "Update me if serialization has changed");
+        assert_eq!(1358, expected_bytes.len(), "Update me if serialization has changed");
         // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
         assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
 

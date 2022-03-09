@@ -447,7 +447,7 @@ impl<N: Network> Serialize for Transition<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut transition = serializer.serialize_struct("Transition", 7)?;
+                let mut transition = serializer.serialize_struct("Transition", 10)?;
                 transition.serialize_field("transition_id", &self.transition_id)?;
                 transition.serialize_field("serial_numbers", &self.serial_numbers)?;
                 transition.serialize_field("commitments", &self.commitments)?;
@@ -503,13 +503,13 @@ mod tests {
             let transaction = Testnet1::genesis_block().to_coinbase_transaction().unwrap();
             let transition = transaction.transitions().first().unwrap().clone();
             let transition_bytes = transition.to_bytes_le().unwrap();
-            assert_eq!(956, transition_bytes.len(),);
+            assert_eq!(1276, transition_bytes.len(),);
         }
         {
             let transaction = Testnet2::genesis_block().to_coinbase_transaction().unwrap();
             let transition = transaction.transitions().first().unwrap().clone();
             let transition_bytes = transition.to_bytes_le().unwrap();
-            assert_eq!(956, transition_bytes.len(),);
+            assert_eq!(1276, transition_bytes.len(),);
         }
     }
 
@@ -521,7 +521,7 @@ mod tests {
         // Serialize
         let expected_string = expected_transition.to_string();
         let candidate_string = serde_json::to_string(&expected_transition).unwrap();
-        assert_eq!(1985, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(3019, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(expected_string, candidate_string);
 
         // Deserialize
@@ -537,7 +537,7 @@ mod tests {
         // Serialize
         let expected_bytes = expected_transition.to_bytes_le().unwrap();
         let candidate_bytes = bincode::serialize(&expected_transition).unwrap();
-        assert_eq!(956, expected_bytes.len(), "Update me if serialization has changed");
+        assert_eq!(1276, expected_bytes.len(), "Update me if serialization has changed");
         // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
         assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
 
