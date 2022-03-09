@@ -33,6 +33,8 @@ use nom::{
     combinator::map,
     sequence::{pair, preceded},
 };
+use snarkvm_utilities::{error, FromBytes, ToBytes};
+use std::io::{Read, Result as IoResult, Write};
 
 pub enum Instruction<M: Memory> {
     /// Adds `first` with `second`, storing the outcome in `destination`.
@@ -90,6 +92,43 @@ impl<M: Memory> fmt::Display for Instruction<M> {
             Self::Add(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Store(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Sub(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+        }
+    }
+}
+
+impl<M: Memory> FromBytes for Instruction<M> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self>
+    where
+        Self: Sized,
+    {
+        match u8::read_le(&mut reader) {
+            Ok(i) if i == Self::Add as u8 => Ok(Self::Add(Add::read_le(&mut reader)?)),
+            Ok(i) if i == Self::Store as u8 => Ok(Self::Store(Store::read_le(&mut reader)?)),
+            Ok(i) if i == Self::Sub as u8 => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
+            Ok(_) => Err(error("FromBytes::read failed for Instruction")),
+            Err(err) => Err(err),
+        }
+    }
+}
+
+impl<M: Memory> ToBytes for Instruction<M> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()>
+    where
+        Self: Sized,
+    {
+        match self {
+            Self::Add(instruction) => {
+                u8::write_le(&(Self::Add as u8), &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::Store(instruction) => {
+                u8::write_le(&(Self::Store as u8), &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::Sub(instruction) => {
+                u8::write_le(&(Self::Sub as u8), &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
         }
     }
 }

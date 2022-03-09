@@ -20,10 +20,7 @@ use snarkvm_circuits::{Environment, Parser, ParserResult};
 use core::fmt;
 use nom::bytes::complete::tag;
 use snarkvm_utilities::{FromBytes, ToBytes};
-use std::{
-    fs::read,
-    io::{Read, Result as IoResult, Write},
-};
+use std::io::{Read, Result as IoResult, Write};
 
 pub(crate) struct BinaryOperation<E: Environment> {
     destination: Register<E>,

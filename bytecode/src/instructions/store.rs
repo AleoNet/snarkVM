@@ -19,7 +19,10 @@ use snarkvm_circuits::{Parser, ParserResult};
 
 use core::fmt;
 use nom::combinator::map;
+use snarkvm_utilities::{FromBytes, ToBytes};
+use std::io::{Read, Result as IoResult, Write};
 
+// TODO: Remove store as a public facing operation.
 /// Stores `operand` into `register`, if `destination` is not already set.
 pub struct Store<M: Memory> {
     operation: UnaryOperation<M::Environment>,
@@ -56,6 +59,25 @@ impl<M: Memory> Operation for Store<M> {
 impl<M: Memory> fmt::Display for Store<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.operation)
+    }
+}
+
+impl<M: Memory> FromBytes for Store<M> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self>
+    where
+        Self: Sized,
+    {
+        let operation = UnaryOperation::read_le(&mut reader)?;
+        Ok(Self { operation })
+    }
+}
+
+impl<M: Memory> ToBytes for Store<M> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()>
+    where
+        Self: Sized,
+    {
+        self.operation.write_le(&mut writer)
     }
 }
 

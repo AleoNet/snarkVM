@@ -19,6 +19,8 @@ use snarkvm_circuits::{Parser, ParserResult};
 
 use core::fmt;
 use nom::combinator::map;
+use snarkvm_utilities::{FromBytes, ToBytes};
+use std::io::{Read, Result as IoResult, Write};
 
 /// Adds `first` with `second`, storing the outcome in `destination`.
 pub struct Add<M: Memory> {
@@ -66,6 +68,25 @@ impl<M: Memory> Operation for Add<M> {
 impl<M: Memory> fmt::Display for Add<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.operation)
+    }
+}
+
+impl<M: Memory> FromBytes for Add<M> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self>
+    where
+        Self: Sized,
+    {
+        let operation = BinaryOperation::read_le(&mut reader)?;
+        Ok(Self { operation })
+    }
+}
+
+impl<M: Memory> ToBytes for Add<M> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()>
+    where
+        Self: Sized,
+    {
+        self.operation.write_le(&mut writer)
     }
 }
 
