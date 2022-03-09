@@ -16,8 +16,11 @@
 
 use crate::ParserResult;
 
+use snarkvm_utilities::{error, FromBytes, ToBytes};
+
 use core::fmt;
 use nom::{branch::alt, bytes::complete::tag, combinator::map};
+use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Mode {
@@ -53,11 +56,35 @@ impl Mode {
 }
 
 impl fmt::Display for Mode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> core::fmt::Result {
         match self {
             Self::Constant => write!(f, "constant"),
             Self::Public => write!(f, "public"),
             Self::Private => write!(f, "private"),
+        }
+    }
+}
+
+impl ToBytes for Mode {
+    fn write_le<W: Write>(&self, writer: W) -> IoResult<()>
+    where
+        Self: Sized,
+    {
+        u8::write_le(&(*self as u8), writer)
+    }
+}
+
+impl FromBytes for Mode {
+    fn read_le<R: Read>(reader: R) -> IoResult<Self>
+    where
+        Self: Sized,
+    {
+        match u8::read_le(reader) {
+            Ok(0) => Ok(Self::Constant),
+            Ok(1) => Ok(Self::Public),
+            Ok(2) => Ok(Self::Private),
+            Ok(_) => Err(error("FromBytes::read failed")),
+            Err(err) => Err(err),
         }
     }
 }

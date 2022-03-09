@@ -21,6 +21,11 @@ path = "../../r1cs"
 version = "0.7.5"
 default-features = false
 
+[dependencies.snarkvm-utilities]
+path = "../../utilities"
+version = "0.7.5"
+default-features = false
+
 [dependencies.nom]
 version = "7.1"
 
