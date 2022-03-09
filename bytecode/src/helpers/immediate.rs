@@ -152,6 +152,22 @@ impl<E: Environment> PartialEq for Immediate<E> {
 
 impl<E: Environment> Eq for Immediate<E> {}
 
+impl<E: Environment> FromBytes for Immediate<E> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self>
+    where
+        Self: Sized,
+    {
+        match u8::read_le(&mut reader) {
+            Ok(i) if i == Self::Boolean as u8 => Ok(Self::Boolean(Boolean::read_le(&mut reader)?)),
+            Ok(i) if i == Self::Field as u8 => Ok(Self::Field(BaseField::read_le(&mut reader)?)),
+            Ok(i) if i == Self::Group as u8 => Ok(Self::Group(Affine::read_le(&mut reader)?)),
+            Ok(i) if i == Self::Scalar as u8 => Ok(Self::Scalar(Scalar::read_le(&mut reader)?)),
+            Ok(_) => Err(error("FromBytes::read failed for Immediate")),
+            Err(err) => Err(err),
+        }
+    }
+}
+
 impl<E: Environment> ToBytes for Immediate<E> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()>
     where
@@ -174,22 +190,6 @@ impl<E: Environment> ToBytes for Immediate<E> {
                 u8::write_le(&(Self::Scalar as u8), &mut writer)?;
                 immediate.write_le(&mut writer)
             }
-        }
-    }
-}
-
-impl<E: Environment> FromBytes for Immediate<E> {
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self>
-    where
-        Self: Sized,
-    {
-        match u8::read_le(&mut reader) {
-            Ok(0) => Ok(Self::Boolean(Boolean::read_le(&mut reader)?)),
-            Ok(1) => Ok(Self::Field(BaseField::read_le(&mut reader)?)),
-            Ok(2) => Ok(Self::Group(Affine::read_le(&mut reader)?)),
-            Ok(4) => Ok(Self::Scalar(Scalar::read_le(&mut reader)?)),
-            Ok(_) => Err(error("FromBytes::read failed for Immediate")),
-            Err(err) => Err(err),
         }
     }
 }

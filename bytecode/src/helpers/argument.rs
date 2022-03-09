@@ -111,6 +111,30 @@ impl<E: Environment> fmt::Display for Argument<E> {
     }
 }
 
+impl<E: Environment> FromBytes for Argument<E> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self>
+    where
+        Self: Sized,
+    {
+        match u8::read_le(&mut reader) {
+            Ok(i) if i == Self::Boolean as u8 => {
+                Ok(Self::Boolean(Register::<E>::read_le(&mut reader)?, Mode::read_le(&mut reader)?))
+            }
+            Ok(i) if i == Self::Field as u8 => {
+                Ok(Self::Field(Register::<E>::read_le(&mut reader)?, Mode::read_le(&mut reader)?))
+            }
+            Ok(i) if i == Self::Group as u8 => {
+                Ok(Self::Group(Register::<E>::read_le(&mut reader)?, Mode::read_le(&mut reader)?))
+            }
+            Ok(i) if i == Self::Scalar as u8 => {
+                Ok(Self::Scalar(Register::<E>::read_le(&mut reader)?, Mode::read_le(&mut reader)?))
+            }
+            Ok(_) => Err(error("FromBytes::read failed for Argument")),
+            Err(err) => Err(err),
+        }
+    }
+}
+
 impl<E: Environment> ToBytes for Argument<E> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()>
     where
@@ -137,22 +161,6 @@ impl<E: Environment> ToBytes for Argument<E> {
                 register.write_le(&mut writer)?;
                 mode.write_le(&mut writer)
             }
-        }
-    }
-}
-
-impl<E: Environment> FromBytes for Argument<E> {
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self>
-    where
-        Self: Sized,
-    {
-        match u8::read_le(&mut reader) {
-            Ok(0) => Ok(Self::Boolean(Register::<E>::read_le(&mut reader)?, Mode::read_le(&mut reader)?)),
-            Ok(1) => Ok(Self::Field(Register::<E>::read_le(&mut reader)?, Mode::read_le(&mut reader)?)),
-            Ok(2) => Ok(Self::Group(Register::<E>::read_le(&mut reader)?, Mode::read_le(&mut reader)?)),
-            Ok(4) => Ok(Self::Scalar(Register::<E>::read_le(&mut reader)?, Mode::read_le(&mut reader)?)),
-            Ok(_) => Err(error("FromBytes::read failed for Argument")),
-            Err(err) => Err(err),
         }
     }
 }

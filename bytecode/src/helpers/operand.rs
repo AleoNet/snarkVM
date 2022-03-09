@@ -105,6 +105,20 @@ impl<E: Environment> fmt::Display for Operand<E> {
     }
 }
 
+impl<E: Environment> FromBytes for Operand<E> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self>
+    where
+        Self: Sized,
+    {
+        match u8::read_le(&mut reader) {
+            Ok(i) if i == Self::Immediate as u8 => Ok(Self::Immediate(Immediate::read_le(&mut reader)?)),
+            Ok(i) if i == Self::Register as u8 => Ok(Self::Register(Register::read_le(&mut reader)?)),
+            Ok(_) => Err(error("FromBytes::read failed for Operand")),
+            Err(err) => Err(err),
+        }
+    }
+}
+
 impl<E: Environment> ToBytes for Operand<E> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()>
     where
@@ -119,20 +133,6 @@ impl<E: Environment> ToBytes for Operand<E> {
                 u8::write_le(&(1u8), &mut writer)?;
                 register.write_le(&mut writer)
             }
-        }
-    }
-}
-
-impl<E: Environment> FromBytes for Operand<E> {
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self>
-    where
-        Self: Sized,
-    {
-        match u8::read_le(&mut reader) {
-            Ok(0) => Ok(Self::Immediate(Immediate::read_le(&mut reader)?)),
-            Ok(1) => Ok(Self::Register(Register::read_le(&mut reader)?)),
-            Ok(_) => Err(error("FromBytes::read failed for Operand")),
-            Err(err) => Err(err),
         }
     }
 }
