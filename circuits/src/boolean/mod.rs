@@ -57,6 +57,8 @@ use nom::{
     combinator::{map, opt},
     sequence::pair,
 };
+use snarkvm_utilities::{FromBytes, ToBytes};
+use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Clone)]
 pub struct Boolean<E: Environment>(LinearCombination<E::BaseField>);
@@ -160,6 +162,30 @@ impl<E: Environment> From<Boolean<E>> for LinearCombination<E::BaseField> {
 impl<E: Environment> From<&Boolean<E>> for LinearCombination<E::BaseField> {
     fn from(boolean: &Boolean<E>) -> Self {
         boolean.0.clone()
+    }
+}
+
+// TODO (@pranav) Test
+impl<E: Environment> FromBytes for Boolean<E> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self>
+    where
+        Self: Sized,
+    {
+        let mode = Mode::read_le(&mut reader)?;
+        let value = bool::read_le(&mut reader)?;
+
+        Ok(Self::new(mode, value))
+    }
+}
+
+// TODO (@pranav) Test
+impl<E: Environment> ToBytes for Boolean<E> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()>
+    where
+        Self: Sized,
+    {
+        self.eject_mode().write_le(&mut writer)?;
+        self.eject_value().write_le(&mut writer)
     }
 }
 

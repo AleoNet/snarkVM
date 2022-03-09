@@ -42,6 +42,8 @@ use nom::{
     multi::{many0, many1},
     sequence::{pair, terminated},
 };
+use snarkvm_utilities::{FromBytes, ToBytes};
+use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Clone)]
 pub struct Affine<E: Environment> {
@@ -168,6 +170,32 @@ impl<E: Environment> fmt::Debug for Affine<E> {
 impl<E: Environment> fmt::Display for Affine<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}{}.{}", self.x.eject_value(), Self::type_name(), self.eject_mode())
+    }
+}
+
+// TODO (@pranav) Test
+impl<E: Environment> FromBytes for Affine<E> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self>
+    where
+        Self: Sized,
+    {
+        let mode = Mode::read_le(&mut reader)?;
+        let x = E::BaseField::read_le(&mut reader)?;
+        let y = E::BaseField::read_le(&mut reader)?;
+
+        Ok(Self::new(mode, (x, Some(y))))
+    }
+}
+
+// TODO (@pranav) Test
+impl<E: Environment> ToBytes for Affine<E> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()>
+    where
+        Self: Sized,
+    {
+        self.eject_mode().write_le(&mut writer)?;
+        self.x.eject_value().write_le(&mut writer)?;
+        self.y.eject_value().write_le(&mut writer)
     }
 }
 
