@@ -926,15 +926,14 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
         {
             let mut cs = cs.ns(|| "Check that the value balance commitment is valid.");
 
-            let transition_id =
-                Transition::<N>::compute_transition_id(&public.serial_numbers(), &public.commitments())?;
+            let transition_id = Transition::<N>::compute_transition_id(public.serial_numbers(), public.commitments())?;
 
             // TODO (raychu86): Confirm if we need to do this operation in the gadget world.
             let (c, partial_combined_commitments, zero_commitment, blinded_commitment) = public
                 .value_balance_commitment()
                 .gadget_verification_setup(
-                    &public.input_value_commitments(),
-                    &public.output_value_commitments(),
+                    public.input_value_commitments(),
+                    public.output_value_commitments(),
                     &transition_id.to_bytes_le()?,
                 )
                 .unwrap();
