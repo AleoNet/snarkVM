@@ -29,11 +29,13 @@ use snarkvm_utilities::{
     Write,
 };
 
+use parking_lot::RwLock;
 use std::{
     fs::{File, OpenOptions},
     io::{BufReader, Seek, SeekFrom},
     marker::PhantomData,
     path::PathBuf,
+    sync::Arc,
 };
 
 lazy_static::lazy_static! {
@@ -49,8 +51,10 @@ pub struct PowersOfG<E: PairingEngine> {
     /// Filepath of the powers we're using.
     file_path: String,
     /// A handle to the file on disk containing the powers of G.
+    /// The handle is guarded to avoid read/write conflicts with potential
+    /// clones.
     #[derivative(Debug = "ignore")]
-    file: File,
+    file: Arc<RwLock<File>>,
     /// The degree up to which we currently have powers.
     degree: u64,
     _phantom_data: PhantomData<E>,
@@ -58,14 +62,15 @@ pub struct PowersOfG<E: PairingEngine> {
 
 impl<E: PairingEngine> Default for PowersOfG<E> {
     fn default() -> Self {
-        Self::new(DEFAULT_PATH.clone()).unwrap()
+        // This basically should never fail, hence the expect call.
+        Self::new(DEFAULT_PATH.clone()).expect("could not create default powers of G")
     }
 }
 
 // TODO: is this okay? check for issues
 impl<E: PairingEngine> Clone for PowersOfG<E> {
     fn clone(&self) -> Self {
-        Self::new(PathBuf::from(self.file_path.clone())).unwrap()
+        Self::new(PathBuf::from(self.file_path.clone())).expect("could not clone powers of g")
     }
 }
 
@@ -119,7 +124,7 @@ impl<E: PairingEngine> PowersOfG<E> {
 
         Ok(Self {
             file_path: file_path.into_os_string().into_string().unwrap(),
-            file,
+            file: Arc::new(RwLock::new(file)),
             degree,
             _phantom_data: PhantomData,
         })
@@ -140,11 +145,11 @@ impl<E: PairingEngine> PowersOfG<E> {
     /// that we return a reference. We can not return a reference to
     /// something that does not exist when this function is called.
     pub fn index(&self, index: usize) -> Result<E::G1Affine> {
-        println!("indexing at {}", index);
         let index_start = self.get_starting_index(index)?;
 
         // Move our offset to the start of the desired element.
-        let mut reader = BufReader::new(&self.file);
+        let file = self.file.read();
+        let mut reader = BufReader::new(&*file);
         reader.seek(SeekFrom::Start(index_start as u64))?;
 
         // Now read it out, deserialize it, and return it.
@@ -154,11 +159,8 @@ impl<E: PairingEngine> PowersOfG<E> {
     /// Slices the underlying file to return a vector of affine elements
     /// between `lower` and `upper`.
     pub fn slice(&self, lower: usize, upper: usize) -> Result<Vec<E::G1Affine>> {
-        println!("slicing at {}..{}", lower, upper);
-        println!("{}", self.degree);
-        println!("checked mul {}", self.file.metadata()?.len());
         if upper.checked_mul(E::G1Affine::SERIALIZED_SIZE).ok_or(PCError::IndexOverflowed)? + 4
-            > self.file.metadata()?.len() as usize
+            > self.file.read().metadata()?.len() as usize
         {
             let degree = upper.next_power_of_two();
             self.download_up_to(degree)?;
@@ -167,7 +169,8 @@ impl<E: PairingEngine> PowersOfG<E> {
         let index_start = self.get_starting_index(lower)?;
 
         // Move our offset to the start of the desired element.
-        let mut reader = BufReader::new(&self.file);
+        let file = self.file.read();
+        let mut reader = BufReader::new(&*file);
         reader.seek(SeekFrom::Start(index_start as u64))?;
 
         // Now iterate until we fill a vector with all desired elements.
@@ -184,8 +187,7 @@ impl<E: PairingEngine> PowersOfG<E> {
     /// our powers of G.
     fn get_starting_index(&self, index: usize) -> Result<usize> {
         let index_start = index.checked_mul(E::G1Affine::SERIALIZED_SIZE).ok_or(PCError::IndexOverflowed)? + 4;
-        println!("starting index {}", index_start);
-        if index_start > self.file.metadata()?.len() as usize {
+        if index_start > self.file.read().metadata()?.len() as usize {
             let degree = index.next_power_of_two();
             self.download_up_to(degree)?;
         }
