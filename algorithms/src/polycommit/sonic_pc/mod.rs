@@ -147,7 +147,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
 
                 println!("lowest shift {}", lowest_shift_degree);
                 let shifted_powers_of_beta_g =
-                    pp.powers_of_beta_g.slice(lowest_shift_degree, pp.powers_of_beta_g.len()).unwrap().to_vec();
+                    pp.powers_of_beta_g.slice(lowest_shift_degree, pp.powers_of_beta_g.len()).to_vec();
                 let mut shifted_powers_of_beta_times_gamma_g = BTreeMap::new();
                 // Also add degree 0.
                 let _max_gamma_g = pp.powers_of_beta_times_gamma_g.keys().last().unwrap();
@@ -171,7 +171,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
             (None, None)
         };
 
-        let powers_of_beta_g = pp.powers_of_beta_g.slice(0, supported_degree + 1).unwrap().to_vec();
+        let powers_of_beta_g = pp.powers_of_beta_g.slice(0, supported_degree + 1).to_vec();
         let powers_of_beta_times_gamma_g =
             (0..=supported_hiding_bound + 1).map(|i| pp.powers_of_beta_times_gamma_g[&i]).collect();
 
@@ -199,7 +199,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
             max_degree,
         };
 
-        let g = pp.powers_of_beta_g.index(0).unwrap();
+        let g = pp.powers_of_beta_g.index(0);
         let h = pp.h;
         let beta_h = pp.beta_h;
         let gamma_g = pp.powers_of_beta_times_gamma_g[&0];

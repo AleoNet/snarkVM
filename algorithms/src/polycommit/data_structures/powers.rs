@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::polycommit::PCError;
 use anyhow::Result;
 use rand::Rng;
 use snarkvm_curves::traits::PairingEngine;
@@ -67,7 +66,6 @@ impl<E: PairingEngine> Default for PowersOfG<E> {
     }
 }
 
-// TODO: is this okay? check for issues
 impl<E: PairingEngine> Clone for PowersOfG<E> {
     fn clone(&self) -> Self {
         Self::new(PathBuf::from(self.file_path.clone())).expect("could not clone powers of g")
@@ -123,7 +121,7 @@ impl<E: PairingEngine> PowersOfG<E> {
         let degree = if file.metadata()?.len() > 0 { u32::read_le(&mut file).unwrap() as u64 } else { 0 };
 
         Ok(Self {
-            file_path: file_path.into_os_string().into_string().unwrap(),
+            file_path: String::from(file_path.to_str().expect("could not get filepath for powers of g")),
             file: Arc::new(RwLock::new(file)),
             degree,
             _phantom_data: PhantomData,
@@ -144,55 +142,56 @@ impl<E: PairingEngine> PowersOfG<E> {
     /// NOTE: `std::ops::Index` was not used here as the trait requires
     /// that we return a reference. We can not return a reference to
     /// something that does not exist when this function is called.
-    pub fn index(&self, index: usize) -> Result<E::G1Affine> {
-        let index_start = self.get_starting_index(index)?;
+    pub fn index(&self, index: usize) -> E::G1Affine {
+        let index_start = self.get_starting_index(index);
 
         // Move our offset to the start of the desired element.
         let file = self.file.read();
         let mut reader = BufReader::new(&*file);
-        reader.seek(SeekFrom::Start(index_start as u64))?;
+        reader.seek(SeekFrom::Start(index_start as u64)).expect("could not seek to element starting index");
 
         // Now read it out, deserialize it, and return it.
-        Ok(E::G1Affine::deserialize(&mut reader)?)
+        E::G1Affine::deserialize(&mut reader).expect("powers of g corrupted")
     }
 
     /// Slices the underlying file to return a vector of affine elements
     /// between `lower` and `upper`.
-    pub fn slice(&self, lower: usize, upper: usize) -> Result<Vec<E::G1Affine>> {
-        if upper.checked_mul(E::G1Affine::SERIALIZED_SIZE).ok_or(PCError::IndexOverflowed)? + 4
-            > self.file.read().metadata()?.len() as usize
-        {
-            let degree = upper.next_power_of_two();
-            self.download_up_to(degree)?;
-        }
-
-        let index_start = self.get_starting_index(lower)?;
+    pub fn slice(&self, lower: usize, upper: usize) -> Vec<E::G1Affine> {
+        self.ensure_powers_exist(upper);
+        let index_start = self.get_starting_index(lower);
 
         // Move our offset to the start of the desired element.
         let file = self.file.read();
         let mut reader = BufReader::new(&*file);
-        reader.seek(SeekFrom::Start(index_start as u64))?;
+        reader.seek(SeekFrom::Start(index_start as u64)).expect("could not seek to element starting index");
 
         // Now iterate until we fill a vector with all desired elements.
         let mut powers = Vec::with_capacity((upper - lower) as usize);
         for _ in lower..upper {
-            let power = E::G1Affine::deserialize(&mut reader)?;
+            let power = E::G1Affine::deserialize(&mut reader).expect("powers of g corrupted");
             powers.push(power);
         }
 
-        Ok(powers)
+        powers
     }
 
     /// This function returns the starting byte of the file in which we're indexing
     /// our powers of G.
-    fn get_starting_index(&self, index: usize) -> Result<usize> {
-        let index_start = index.checked_mul(E::G1Affine::SERIALIZED_SIZE).ok_or(PCError::IndexOverflowed)? + 4;
-        if index_start > self.file.read().metadata()?.len() as usize {
-            let degree = index.next_power_of_two();
-            self.download_up_to(degree)?;
-        }
+    fn get_starting_index(&self, index: usize) -> usize {
+        let index_start = index
+            .checked_mul(E::G1Affine::SERIALIZED_SIZE)
+            .expect("attempted to index powers of G with an index greater than usize")
+            + 4;
+        self.ensure_powers_exist(index_start);
 
-        Ok(index_start)
+        index_start
+    }
+
+    fn ensure_powers_exist(&self, index: usize) {
+        if index > self.file.read().metadata().expect("could not get powers of G metadata").len() as usize {
+            let degree = index.next_power_of_two();
+            self.download_up_to(degree).expect("could not download missing powers of G");
+        }
     }
 
     /// Download the transcript up to `degree`.

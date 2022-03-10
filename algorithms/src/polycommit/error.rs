@@ -93,9 +93,6 @@ pub enum PCError {
     },
 
     Terminated,
-
-    /// Attempted to index powers of g resulted in overflow.
-    IndexOverflowed,
 }
 
 impl snarkvm_utilities::error::Error for PCError {}
@@ -149,7 +146,6 @@ impl core::fmt::Display for PCError {
                 degree_bound, label, poly_degree, supported_degree
             ),
             PCError::Terminated => write!(f, "terminated"),
-            PCError::IndexOverflowed => write!(f, "index overflowed"),
         }
     }
 }
