@@ -117,18 +117,10 @@ impl<E: Environment> FromBytes for Argument<E> {
         Self: Sized,
     {
         match u8::read_le(&mut reader) {
-            Ok(i) if i == Self::Boolean as u8 => {
-                Ok(Self::Boolean(Register::<E>::read_le(&mut reader)?, Mode::read_le(&mut reader)?))
-            }
-            Ok(i) if i == Self::Field as u8 => {
-                Ok(Self::Field(Register::<E>::read_le(&mut reader)?, Mode::read_le(&mut reader)?))
-            }
-            Ok(i) if i == Self::Group as u8 => {
-                Ok(Self::Group(Register::<E>::read_le(&mut reader)?, Mode::read_le(&mut reader)?))
-            }
-            Ok(i) if i == Self::Scalar as u8 => {
-                Ok(Self::Scalar(Register::<E>::read_le(&mut reader)?, Mode::read_le(&mut reader)?))
-            }
+            Ok(0) => Ok(Self::Boolean(Register::<E>::read_le(&mut reader)?, Mode::read_le(&mut reader)?)),
+            Ok(1) => Ok(Self::Field(Register::<E>::read_le(&mut reader)?, Mode::read_le(&mut reader)?)),
+            Ok(2) => Ok(Self::Group(Register::<E>::read_le(&mut reader)?, Mode::read_le(&mut reader)?)),
+            Ok(3) => Ok(Self::Scalar(Register::<E>::read_le(&mut reader)?, Mode::read_le(&mut reader)?)),
             Ok(_) => Err(error("FromBytes::read failed for Argument")),
             Err(err) => Err(err),
         }
@@ -142,22 +134,22 @@ impl<E: Environment> ToBytes for Argument<E> {
     {
         match self {
             Self::Boolean(register, mode) => {
-                u8::write_le(&(Self::Boolean as u8), &mut writer)?;
+                u8::write_le(&(0u8), &mut writer)?;
                 register.write_le(&mut writer)?;
                 mode.write_le(&mut writer)
             }
             Self::Field(register, mode) => {
-                u8::write_le(&(Self::Field as u8), &mut writer)?;
+                u8::write_le(&(1u8), &mut writer)?;
                 register.write_le(&mut writer)?;
                 mode.write_le(&mut writer)
             }
             Self::Group(register, mode) => {
-                u8::write_le(&(Self::Group as u8), &mut writer)?;
+                u8::write_le(&(2u8), &mut writer)?;
                 register.write_le(&mut writer)?;
                 mode.write_le(&mut writer)
             }
             Self::Scalar(register, mode) => {
-                u8::write_le(&(Self::Scalar as u8), &mut writer)?;
+                u8::write_le(&(3u8), &mut writer)?;
                 register.write_le(&mut writer)?;
                 mode.write_le(&mut writer)
             }

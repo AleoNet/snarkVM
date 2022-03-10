@@ -102,9 +102,9 @@ impl<M: Memory> FromBytes for Instruction<M> {
         Self: Sized,
     {
         match u8::read_le(&mut reader) {
-            Ok(i) if i == Self::Add as u8 => Ok(Self::Add(Add::read_le(&mut reader)?)),
-            Ok(i) if i == Self::Store as u8 => Ok(Self::Store(Store::read_le(&mut reader)?)),
-            Ok(i) if i == Self::Sub as u8 => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
+            Ok(0) => Ok(Self::Add(Add::read_le(&mut reader)?)),
+            Ok(1) => Ok(Self::Store(Store::read_le(&mut reader)?)),
+            Ok(2) => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
             Ok(_) => Err(error("FromBytes::read failed for Instruction")),
             Err(err) => Err(err),
         }
@@ -118,15 +118,15 @@ impl<M: Memory> ToBytes for Instruction<M> {
     {
         match self {
             Self::Add(instruction) => {
-                u8::write_le(&(Self::Add as u8), &mut writer)?;
+                u8::write_le(&(0u8), &mut writer)?;
                 instruction.write_le(&mut writer)
             }
             Self::Store(instruction) => {
-                u8::write_le(&(Self::Store as u8), &mut writer)?;
+                u8::write_le(&(1u8), &mut writer)?;
                 instruction.write_le(&mut writer)
             }
             Self::Sub(instruction) => {
-                u8::write_le(&(Self::Sub as u8), &mut writer)?;
+                u8::write_le(&(2u8), &mut writer)?;
                 instruction.write_le(&mut writer)
             }
         }

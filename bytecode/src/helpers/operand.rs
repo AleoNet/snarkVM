@@ -111,8 +111,8 @@ impl<E: Environment> FromBytes for Operand<E> {
         Self: Sized,
     {
         match u8::read_le(&mut reader) {
-            Ok(i) if i == Self::Immediate as u8 => Ok(Self::Immediate(Immediate::read_le(&mut reader)?)),
-            Ok(i) if i == Self::Register as u8 => Ok(Self::Register(Register::read_le(&mut reader)?)),
+            Ok(0) => Ok(Self::Immediate(Immediate::read_le(&mut reader)?)),
+            Ok(1) => Ok(Self::Register(Register::read_le(&mut reader)?)),
             Ok(_) => Err(error("FromBytes::read failed for Operand")),
             Err(err) => Err(err),
         }
