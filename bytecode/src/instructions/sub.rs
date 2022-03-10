@@ -16,10 +16,10 @@
 
 use crate::{instructions::Instruction, BinaryOperation, Immediate, Memory, Operation};
 use snarkvm_circuits::{Parser, ParserResult};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
 use nom::combinator::map;
-use snarkvm_utilities::{FromBytes, ToBytes};
 use std::io::{Read, Result as IoResult, Write};
 
 /// Subtracts `first` from `second`, storing the outcome in `destination`.

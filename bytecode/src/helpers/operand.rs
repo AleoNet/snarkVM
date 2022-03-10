@@ -16,10 +16,10 @@
 
 use crate::{Immediate, Memory, Register};
 use snarkvm_circuits::{Environment, Mode, Parser, ParserResult};
+use snarkvm_utilities::{error, FromBytes, ToBytes};
 
 use core::fmt;
 use nom::{branch::alt, combinator::map};
-use snarkvm_utilities::{error, FromBytes, ToBytes};
 use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Clone)]
@@ -126,11 +126,11 @@ impl<E: Environment> ToBytes for Operand<E> {
     {
         match self {
             Self::Immediate(immediate) => {
-                u8::write_le(&(0u8), &mut writer)?;
+                u8::write_le(&0u8, &mut writer)?;
                 immediate.write_le(&mut writer)
             }
             Self::Register(register) => {
-                u8::write_le(&(1u8), &mut writer)?;
+                u8::write_le(&1u8, &mut writer)?;
                 register.write_le(&mut writer)
             }
         }

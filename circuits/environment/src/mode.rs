@@ -71,7 +71,7 @@ impl ToBytes for Mode {
     where
         Self: Sized,
     {
-        u8::write_le(&ToPrimitive::to_u8(self).ok_or(error("Invalid mode"))?, &mut writer)
+        u8::write_le(&ToPrimitive::to_u8(self).ok_or_else(|| error("Invalid mode"))?, &mut writer)
     }
 }
 
@@ -81,7 +81,7 @@ impl FromBytes for Mode {
         Self: Sized,
     {
         let mode = u8::read_le(&mut reader)?;
-        Ok(FromPrimitive::from_u8(mode).ok_or(error("Invalid mode"))?)
+        FromPrimitive::from_u8(mode).ok_or_else(|| error("Invalid mode"))
 
         //match u8::read_le(reader) {
         //    Ok(i) if i == Self::Constant as u8 => Ok(Self::Constant),

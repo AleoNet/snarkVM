@@ -22,6 +22,7 @@ pub use output::*;
 
 use crate::{instructions::Instruction, Immediate, Memory, Operation, Register, Sanitizer};
 use snarkvm_circuits::{Parser, ParserResult};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
 use nom::{
@@ -32,7 +33,6 @@ use nom::{
     multi::{many0, many1},
     sequence::pair,
 };
-use snarkvm_utilities::{FromBytes, ToBytes};
 use std::io::{Read, Result as IoResult, Write};
 
 pub struct Function<M: Memory> {

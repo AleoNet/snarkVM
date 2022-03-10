@@ -17,6 +17,7 @@
 use snarkvm_utilities::{
     error,
     io::{Read, Result as IoResult},
+    FromBytes,
 };
 
 /// Returns the variable length integer of the given value.
@@ -37,35 +38,22 @@ pub fn variable_length_integer(value: u64) -> Vec<u8> {
 /// Decode the value of a variable length integer.
 /// https://en.bitcoin.it/wiki/Protocol_documentation#Variable_length_integer
 pub fn read_variable_length_integer<R: Read>(mut reader: R) -> IoResult<u64> {
-    let mut flag = [0u8; 1];
-    reader.read(&mut flag)?;
+    let flag = u8::read_le(&mut reader)?;
 
-    match flag[0] {
-        0..=252 => Ok(flag[0] as u64),
-        0xfd => {
-            let mut size = [0u8; 2];
-            reader.read(&mut size)?;
-            match u16::from_le_bytes(size) {
-                s if s < 253 => Err(error("Invalid variable size integer")),
-                s => Ok(s as u64),
-            }
-        }
-        0xfe => {
-            let mut size = [0u8; 4];
-            reader.read(&mut size)?;
-            match u32::from_le_bytes(size) {
-                s if s < 65536 => Err(error("Invalid variable size integer")),
-                s => Ok(s as u64),
-            }
-        }
-        _ => {
-            let mut size = [0u8; 8];
-            reader.read(&mut size)?;
-            match u64::from_le_bytes(size) {
-                s if s < 4_294_967_296 => Err(error("Invalid variable size integer")),
-                s => Ok(s as u64),
-            }
-        }
+    match flag {
+        0..=252 => Ok(flag as u64),
+        0xfd => match u16::read_le(&mut reader)? {
+            s if s < 253 => Err(error("Invalid variable size integer")),
+            s => Ok(s as u64),
+        },
+        0xfe => match u32::read_le(&mut reader)? {
+            s if s < 65536 => Err(error("Invalid variable size integer")),
+            s => Ok(s as u64),
+        },
+        _ => match u64::read_le(&mut reader)? {
+            s if s < 4_294_967_296 => Err(error("Invalid variable size integer")),
+            s => Ok(s as u64),
+        },
     }
 }
 

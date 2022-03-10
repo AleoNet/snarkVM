@@ -16,10 +16,10 @@
 
 use crate::{instructions::Instruction, Memory, Operation, UnaryOperation};
 use snarkvm_circuits::{Parser, ParserResult};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
 use nom::combinator::map;
-use snarkvm_utilities::{FromBytes, ToBytes};
 use std::io::{Read, Result as IoResult, Write};
 
 // TODO: Remove store as a public facing operation.

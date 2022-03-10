@@ -25,10 +25,7 @@ use nom::{
     multi::many1,
 };
 use snarkvm_utilities::{FromBytes, ToBytes};
-use std::{
-    fs::read,
-    io::{Read, Result as IoResult, Write},
-};
+use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Copy, Clone, Eq, Hash, PartialEq)]
 pub struct Register<E: Environment>(u64, PhantomData<E>);

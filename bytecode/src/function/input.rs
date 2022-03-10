@@ -16,11 +16,11 @@
 
 use crate::{Argument, Immediate, Memory, Operation, Sanitizer};
 use snarkvm_circuits::{Parser, ParserResult};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::{fmt, ops};
 use nom::bytes::complete::tag;
 use once_cell::unsync::OnceCell;
-use snarkvm_utilities::{FromBytes, ToBytes};
 use std::io::{Read, Result as IoResult, Write};
 
 /// Declares a function input `register` with type `annotation`.

@@ -16,10 +16,10 @@
 
 use crate::Register;
 use snarkvm_circuits::{Environment, Mode, Parser, ParserResult};
+use snarkvm_utilities::{error, FromBytes, ToBytes};
 
 use core::fmt;
 use nom::{branch::alt, bytes::complete::tag, combinator::map, sequence::pair};
-use snarkvm_utilities::{error, FromBytes, ToBytes};
 use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Clone)]
@@ -134,22 +134,22 @@ impl<E: Environment> ToBytes for Argument<E> {
     {
         match self {
             Self::Boolean(register, mode) => {
-                u8::write_le(&(0u8), &mut writer)?;
+                u8::write_le(&0u8, &mut writer)?;
                 register.write_le(&mut writer)?;
                 mode.write_le(&mut writer)
             }
             Self::Field(register, mode) => {
-                u8::write_le(&(1u8), &mut writer)?;
+                u8::write_le(&1u8, &mut writer)?;
                 register.write_le(&mut writer)?;
                 mode.write_le(&mut writer)
             }
             Self::Group(register, mode) => {
-                u8::write_le(&(2u8), &mut writer)?;
+                u8::write_le(&2u8, &mut writer)?;
                 register.write_le(&mut writer)?;
                 mode.write_le(&mut writer)
             }
             Self::Scalar(register, mode) => {
-                u8::write_le(&(3u8), &mut writer)?;
+                u8::write_le(&3u8, &mut writer)?;
                 register.write_le(&mut writer)?;
                 mode.write_le(&mut writer)
             }

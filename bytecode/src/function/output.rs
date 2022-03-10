@@ -16,10 +16,10 @@
 
 use crate::{Argument, Memory, Operation, Sanitizer};
 use snarkvm_circuits::{Parser, ParserResult};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::{fmt, ops};
 use nom::bytes::complete::tag;
-use snarkvm_utilities::{FromBytes, ToBytes};
 use std::io::{Read, Result as IoResult, Write};
 
 /// Declares a `register` as a function output with type `annotation`.

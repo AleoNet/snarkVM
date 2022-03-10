@@ -16,10 +16,10 @@
 
 use crate::{Operand, Register};
 use snarkvm_circuits::{Environment, Parser, ParserResult};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
 use nom::bytes::complete::tag;
-use snarkvm_utilities::{FromBytes, ToBytes};
 use std::io::{Read, Result as IoResult, Write};
 
 pub(crate) struct UnaryOperation<E: Environment> {

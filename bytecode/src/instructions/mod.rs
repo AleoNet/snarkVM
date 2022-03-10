@@ -25,6 +25,7 @@ pub use sub::*;
 
 use crate::{Memory, Operation, Sanitizer};
 use snarkvm_circuits::ParserResult;
+use snarkvm_utilities::{error, FromBytes, ToBytes};
 
 use core::fmt;
 use nom::{
@@ -33,7 +34,6 @@ use nom::{
     combinator::map,
     sequence::{pair, preceded},
 };
-use snarkvm_utilities::{error, FromBytes, ToBytes};
 use std::io::{Read, Result as IoResult, Write};
 
 pub enum Instruction<M: Memory> {
@@ -101,7 +101,7 @@ impl<M: Memory> FromBytes for Instruction<M> {
     where
         Self: Sized,
     {
-        match u8::read_le(&mut reader) {
+        match u16::read_le(&mut reader) {
             Ok(0) => Ok(Self::Add(Add::read_le(&mut reader)?)),
             Ok(1) => Ok(Self::Store(Store::read_le(&mut reader)?)),
             Ok(2) => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
@@ -118,15 +118,15 @@ impl<M: Memory> ToBytes for Instruction<M> {
     {
         match self {
             Self::Add(instruction) => {
-                u8::write_le(&(0u8), &mut writer)?;
+                u16::write_le(&0u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
             Self::Store(instruction) => {
-                u8::write_le(&(1u8), &mut writer)?;
+                u16::write_le(&1u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
             Self::Sub(instruction) => {
-                u8::write_le(&(2u8), &mut writer)?;
+                u16::write_le(&2u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
         }
