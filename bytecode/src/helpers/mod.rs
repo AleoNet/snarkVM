@@ -26,6 +26,9 @@ pub use operand::*;
 pub mod register;
 pub use register::*;
 
+pub mod variable_length;
+pub use variable_length::*;
+
 use crate::Memory;
 use snarkvm_circuits::ParserResult;
 
