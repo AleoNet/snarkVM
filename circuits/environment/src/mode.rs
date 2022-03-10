@@ -56,7 +56,7 @@ impl Mode {
 }
 
 impl fmt::Display for Mode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> core::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::Constant => write!(f, "constant"),
             Self::Public => write!(f, "public"),
