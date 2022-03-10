@@ -32,6 +32,8 @@ use nom::{
     multi::{many0, many1},
     sequence::pair,
 };
+use snarkvm_utilities::{FromBytes, ToBytes};
+use std::io::{Read, Result as IoResult, Write};
 
 pub struct Function<M: Memory> {
     /// The function name.
@@ -142,5 +144,78 @@ impl<M: Memory> fmt::Display for Function<M> {
             output += &format!("    {}", instruction);
         }
         write!(f, "{}", output)
+    }
+}
+
+impl<M: Memory> FromBytes for Function<M> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self>
+    where
+        Self: Sized,
+    {
+        // Read the name of the function.
+        let len = u8::read_le(&mut reader)?;
+        let mut bytes = vec![0u8; len as usize];
+        reader.read_exact(&mut bytes)?;
+        let name = String::from_utf8(bytes).expect("Found invalid UTF-8");
+
+        // Read the input registers.
+        let input_count = u64::read_le(&mut reader)?;
+        let mut inputs = Vec::with_capacity(input_count as usize);
+        for _ in 0..input_count {
+            inputs.push(Input::read_le(&mut reader)?);
+        }
+
+        // Read the instructions.
+        let instruction_count = u64::read_le(&mut reader)?;
+        let mut instructions = Vec::with_capacity(instruction_count as usize);
+        for _ in 0..instruction_count {
+            instructions.push(Instruction::read_le(&mut reader)?);
+        }
+
+        // Read the ouptuts.
+        let output_count = u64::read_le(&mut reader)?;
+        let mut outputs = Vec::with_capacity(output_count as usize);
+        for _ in 0..output_count {
+            outputs.push(Output::read_le(&mut reader)?);
+        }
+
+        Ok(Self { name, arguments: Default::default(), inputs, instructions, outputs, memory: M::default() })
+    }
+}
+
+impl<M: Memory> ToBytes for Function<M> {
+    // TODO (@pranav) Confirm bound on number of characters.
+    // TODO (@pranav) Handle errors on input exceeding allowed amount.
+    // TODO (@pranav) Handle errors when function name exceeds allowed amount.
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()>
+    where
+        Self: Sized,
+    {
+        // Write the name of the function, up to 255 bytes.
+        let len = self.name.len() as u64;
+        len.write_le(&mut writer)?;
+        self.name.as_bytes().write_le(&mut writer)?;
+
+        // Write the input registers.
+        let input_count = self.inputs.len() as u64;
+        input_count.write_le(&mut writer)?;
+        for input in self.inputs.iter() {
+            input.write_le(&mut writer)?;
+        }
+
+        // Write the instructions.
+        let instruction_count = self.instructions.len() as u64;
+        instruction_count.write_le(&mut writer)?;
+        for instruction in self.instructions.iter() {
+            instruction.write_le(&mut writer)?;
+        }
+
+        // Write the outputs.
+        let output_count = self.outputs.len() as u64;
+        output_count.write_le(&mut writer)?;
+        for output in self.outputs.iter() {
+            output.write_le(&mut writer)?;
+        }
+        Ok(())
     }
 }
