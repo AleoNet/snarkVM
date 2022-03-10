@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -14,12 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Function, FunctionType, Network, ProgramPrivateVariables, ProgramPublicVariables};
-use snarkvm_algorithms::{MerkleParameters, SNARK};
+use crate::{Function, Network, ProgramPrivateVariables, ProgramPublicVariables};
+use snarkvm_algorithms::{MerkleParameters, CRH, SNARK};
 use snarkvm_fields::ConstraintFieldError;
 use snarkvm_gadgets::prelude::*;
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, SynthesisError, ToConstraintField};
-use snarkvm_utilities::{FromBytes, ToBytes};
+use snarkvm_utilities::{FromBytes, ToBytes, ToMinimalBits};
 
 use anyhow::Result;
 use std::{
@@ -27,24 +27,34 @@ use std::{
     marker::PhantomData,
 };
 
-pub struct Noop<N: Network>(PhantomData<N>);
+pub struct Noop<N: Network> {
+    proving_key: <N::ProgramSNARK as SNARK>::ProvingKey,
+    verifying_key: <N::ProgramSNARK as SNARK>::VerifyingKey,
+}
 
 impl<N: Network> Noop<N> {
     /// Returns the noop function.
-    pub fn new() -> Self {
-        Self(PhantomData)
+    pub fn new(
+        proving_key: <N::ProgramSNARK as SNARK>::ProvingKey,
+        verifying_key: <N::ProgramSNARK as SNARK>::VerifyingKey,
+    ) -> Self {
+        Self { proving_key, verifying_key }
+    }
+
+    pub fn setup() -> Result<Self> {
+        let (proving_key, verifying_key) = <N::ProgramSNARK as SNARK>::setup(
+            &SynthesizedCircuit::<N>::Noop(Default::default()),
+            &mut *N::program_srs(&mut rand::thread_rng()).borrow_mut(),
+        )?;
+
+        Ok(Self { proving_key, verifying_key })
     }
 }
 
 impl<N: Network> Function<N> for Noop<N> {
     /// Returns the function ID.
     fn function_id(&self) -> N::FunctionID {
-        *N::noop_function_id()
-    }
-
-    /// Returns the circuit type.
-    fn function_type(&self) -> FunctionType {
-        FunctionType::Noop
+        N::function_id_crh().hash_bits(&self.verifying_key.to_minimal_bits()).unwrap().into()
     }
 
     /// Synthesizes the circuit inside the given constraint system.
@@ -64,7 +74,7 @@ impl<N: Network> Function<N> for Noop<N> {
         _private: &dyn ProgramPrivateVariables<N>,
     ) -> Result<N::ProgramProof> {
         let proof = <N::ProgramSNARK as SNARK>::prove(
-            N::noop_circuit_proving_key(),
+            &self.proving_key,
             &SynthesizedCircuit::Noop(public),
             &mut rand::thread_rng(),
         )?
@@ -75,14 +85,8 @@ impl<N: Network> Function<N> for Noop<N> {
 
     /// Returns true if the execution of the function is valid.
     fn verify(&self, public: &ProgramPublicVariables<N>, proof: &N::ProgramProof) -> bool {
-        <N::ProgramSNARK as SNARK>::verify(N::noop_circuit_verifying_key(), public, proof)
+        <N::ProgramSNARK as SNARK>::verify(&self.verifying_key, public, proof)
             .expect("Failed to verify noop function proof")
-    }
-}
-
-impl<N: Network> Default for Noop<N> {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

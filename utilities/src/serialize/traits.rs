@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -57,7 +57,7 @@ pub trait Flags: Default + Clone + Copy + Sized {
 /// ```
 /// // The `derive` feature must be set for the derivation to work.
 /// use snarkvm_utilities::serialize::*;
-/// use snarkvm_utilities::errors::SerializationError;
+/// use snarkvm_utilities::serialize::SerializationError;
 ///
 /// # #[cfg(feature = "derive")]
 /// #[derive(CanonicalSerialize)]
@@ -104,7 +104,7 @@ pub trait ConstantSerializedSize: CanonicalSerialize {
 /// ```
 /// // The `derive` feature must be set for the derivation to work.
 /// use snarkvm_utilities::serialize::*;
-/// use snarkvm_utilities::errors::SerializationError;
+/// use snarkvm_utilities::serialize::SerializationError;
 ///
 /// # #[cfg(feature = "derive")]
 /// #[derive(CanonicalDeserialize)]

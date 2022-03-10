@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -222,6 +222,17 @@ pub trait AffineCurve:
 
     /// Checks that the current point is on the elliptic curve.
     fn is_on_curve(&self) -> bool;
+
+    /// Performs the first half of batch addition in-place.
+    fn batch_add_loop_1(
+        a: &mut Self,
+        b: &mut Self,
+        half: &Self::BaseField, // The value 2.inverse().
+        inversion_tmp: &mut Self::BaseField,
+    );
+
+    /// Performs the second half of batch addition in-place.
+    fn batch_add_loop_2(a: &mut Self, b: Self, inversion_tmp: &mut Self::BaseField);
 }
 
 pub trait PairingCurve: AffineCurve {

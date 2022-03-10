@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -33,6 +33,7 @@ use crate::{
         QuerySet,
     },
 };
+use itertools::Itertools;
 use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{One, Zero};
 use snarkvm_utilities::rand::UniformRand;
@@ -356,7 +357,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         let mut combined_rand = kzg10::Randomness::empty();
         let mut curr_challenge = opening_challenge;
 
-        for (polynomial, rand) in labeled_polynomials.into_iter().zip(rands) {
+        for (polynomial, rand) in labeled_polynomials.into_iter().zip_eq(rands) {
             let enforced_degree_bounds: Option<&[usize]> = ck.enforced_degree_bounds.as_deref();
 
             kzg10::KZG10::<E>::check_degrees_and_bounds(
@@ -441,7 +442,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         let mut combined_witness: E::G1Projective = E::G1Projective::zero();
         let mut combined_adjusted_witness: E::G1Projective = E::G1Projective::zero();
 
-        for ((_query_name, (query, labels)), p) in query_to_labels_map.into_iter().zip(proof) {
+        for ((_query_name, (query, labels)), p) in query_to_labels_map.into_iter().zip_eq(proof) {
             let mut comms_to_combine: Vec<&'_ LabeledCommitment<_>> = Vec::new();
             let mut values_to_combine = Vec::new();
             for label in labels.into_iter() {
@@ -491,8 +492,8 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
     {
         let label_map = polynomials
             .into_iter()
-            .zip(rands)
-            .zip(commitments)
+            .zip_eq(rands)
+            .zip_eq(commitments)
             .map(|((p, r), c)| (p.label(), (p, r, c)))
             .collect::<BTreeMap<_, _>>();
 
@@ -544,7 +545,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
 
         let lc_commitments = lc_info
             .into_iter()
-            .zip(comms)
+            .zip_eq(comms)
             .map(|((label, d), c)| LabeledCommitment::new(label, c, d))
             .collect::<Vec<_>>();
 
@@ -617,7 +618,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         let comms = E::G1Projective::batch_normalization_into_affine(lc_commitments).into_iter().map(kzg10::Commitment);
 
         let lc_commitments: Vec<_> =
-            lc_info.into_iter().zip(comms).map(|((label, d), c)| LabeledCommitment::new(label, c, d)).collect();
+            lc_info.into_iter().zip_eq(comms).map(|((label, d), c)| LabeledCommitment::new(label, c, d)).collect();
 
         Self::batch_check(vk, &lc_commitments, query_set, &evaluations, proof, opening_challenge, rng)
     }
@@ -640,8 +641,8 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
     {
         let label_map = polynomials
             .into_iter()
-            .zip(rands)
-            .zip(commitments)
+            .zip_eq(rands)
+            .zip_eq(commitments)
             .map(|((p, r), c)| (p.label(), (p, r, c)))
             .collect::<BTreeMap<_, _>>();
 
@@ -687,7 +688,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         let comms = Self::normalize_commitments(lc_commitments);
         let lc_commitments = lc_info
             .into_iter()
-            .zip(comms)
+            .zip_eq(comms)
             .map(|((label, d), c)| LabeledCommitment::new(label, c, d))
             .collect::<Vec<_>>();
 
@@ -763,7 +764,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         let comms = Self::normalize_commitments(lc_commitments);
         let lc_commitments = lc_info
             .into_iter()
-            .zip(comms)
+            .zip_eq(comms)
             .map(|((label, d), c)| LabeledCommitment::new(label, c, d))
             .collect::<Vec<_>>();
         end_timer!(combined_comms_norm_time);
@@ -798,7 +799,8 @@ impl<E: PairingEngine> SonicKZG10<E> {
         let mut combined_polynomial = DensePolynomial::zero();
         let mut combined_rand = kzg10::Randomness::empty();
 
-        for (opening_challenge_counter, (polynomial, rand)) in labeled_polynomials.into_iter().zip(rands).enumerate() {
+        for (opening_challenge_counter, (polynomial, rand)) in labeled_polynomials.into_iter().zip_eq(rands).enumerate()
+        {
             let enforced_degree_bounds: Option<&[usize]> = ck.enforced_degree_bounds.as_deref();
 
             kzg10::KZG10::<E>::check_degrees_and_bounds(
@@ -838,8 +840,8 @@ impl<E: PairingEngine> SonicKZG10<E> {
     {
         let poly_rand_comm: BTreeMap<_, _> = labeled_polynomials
             .into_iter()
-            .zip(rands)
-            .zip(commitments.into_iter())
+            .zip_eq(rands)
+            .zip_eq(commitments.into_iter())
             .map(|((poly, r), comm)| (poly.label(), (poly, r, comm)))
             .collect();
 
@@ -958,7 +960,7 @@ impl<E: PairingEngine> SonicKZG10<E> {
         assert_eq!(proofs.len(), query_to_labels_map.len());
 
         let mut result = true;
-        for ((_point_name, (point, labels)), proof) in query_to_labels_map.into_iter().zip(proofs) {
+        for ((_point_name, (point, labels)), proof) in query_to_labels_map.into_iter().zip_eq(proofs) {
             let mut comms: Vec<&'_ LabeledCommitment<_>> = Vec::new();
             let mut values = Vec::new();
             for label in labels {
@@ -1002,7 +1004,7 @@ impl<E: PairingEngine> SonicKZG10<E> {
         let mut combined_values = E::Fr::zero();
 
         // Iterates through all of the commitments and accumulates common degree_bound elements in a BTreeMap
-        for (labeled_comm, value) in commitments.into_iter().zip(values) {
+        for (labeled_comm, value) in commitments.into_iter().zip_eq(values) {
             combined_values += &(value * curr_challenge);
 
             let comm = labeled_comm.commitment();
@@ -1055,7 +1057,8 @@ impl<E: PairingEngine> SonicKZG10<E> {
         let mut combined_values = E::Fr::zero();
 
         // Iterates through all of the commitments and accumulates common degree_bound elements in a BTreeMap
-        for (opening_challenge_counter, (labeled_commitment, value)) in commitments.into_iter().zip(values).enumerate()
+        for (opening_challenge_counter, (labeled_commitment, value)) in
+            commitments.into_iter().zip_eq(values).enumerate()
         {
             let current_challenge = opening_challenges(opening_challenge_counter as u64);
             combined_values += &(value * current_challenge);
@@ -1124,7 +1127,7 @@ impl<E: PairingEngine> SonicKZG10<E> {
             .map(|a| a.prepare())
             .collect::<Vec<_>>();
 
-        let g1_g2_prepared = g1_prepared_elems_iter.iter().zip(g2_prepared_elems.iter());
+        let g1_g2_prepared = g1_prepared_elems_iter.iter().zip_eq(g2_prepared_elems.iter());
         let is_one: bool = E::product_of_pairings(g1_g2_prepared).is_one();
         end_timer!(check_time);
         Ok(is_one)

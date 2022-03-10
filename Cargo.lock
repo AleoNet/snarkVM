@@ -24,11 +24,12 @@ dependencies = [
 
 [[package]]
 name = "aleo-std"
-version = "0.1.8"
+version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a4618148b254f38b9283c9e00a4938187f8f3f20aa2dafc59cf7377b27cb764b"
+checksum = "cedebcd5cef12e2739faee8e07ccde1c4a0c7d23371f4007799c49ba2a7eb278"
 dependencies = [
  "aleo-std-cpu",
+ "aleo-std-profiler",
  "aleo-std-storage",
  "aleo-std-time",
  "aleo-std-timed",
@@ -40,6 +41,15 @@ name = "aleo-std-cpu"
 version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d1dcc739555d14733cbe4756f144b81d64f01843df359189b4d71bd5e521e2ee"
+
+[[package]]
+name = "aleo-std-profiler"
+version = "0.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a34f197d0a9f652805848e83e26d398ecea9a751904a8fbbc013a1aeb71c8f04"
+dependencies = [
+ "colored",
+]
 
 [[package]]
 name = "aleo-std-storage"
@@ -92,9 +102,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.53"
+version = "1.0.55"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94a45b455c14666b85fc40a019e8ab9eb75e3a124e05494f5397122bc9eb06e0"
+checksum = "159bb86af3a200e19a068f4224eae4c8bb2d0fa054c7e5d1cacd5cef95e684cd"
 
 [[package]]
 name = "arrayref"
@@ -160,11 +170,11 @@ checksum = "bef38d45163c2f1dde094a7dfd33ccf595c92905c8f8f4fdc18d06fb1037718a"
 
 [[package]]
 name = "blake2"
-version = "0.10.2"
+version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b94ba84325db59637ffc528bbe8c7f86c02c57cff5c0e2b9b00f9a851f42f309"
+checksum = "b9cf849ee05b2ee5fba5e36f97ff8ec2533916700fc0758d40d92136a42f3388"
 dependencies = [
- "digest 0.10.2",
+ "digest 0.10.3",
 ]
 
 [[package]]
@@ -461,11 +471,12 @@ dependencies = [
 
 [[package]]
 name = "crypto-common"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a4600d695eb3f6ce1cd44e6e291adceb2cc3ab12f20a33777ecd0bf6eba34e06"
+checksum = "57952ca27b5e3606ff4dd79b0020231aaf9d6aa76dc05fd30137538c50bd3ce8"
 dependencies = [
  "generic-array 0.14.5",
+ "typenum",
 ]
 
 [[package]]
@@ -560,9 +571,9 @@ dependencies = [
 
 [[package]]
 name = "digest"
-version = "0.10.2"
+version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8cb780dce4f9a8f5c087362b3a4595936b2019e7c8b30f2c3e9a7e94e6ae9837"
+checksum = "f2fb860ca6fafa5552fb6d0e816a69c8e49f0908bf524e30a90d97c85892d506"
 dependencies = [
  "block-buffer 0.10.0",
  "crypto-common",
@@ -797,9 +808,9 @@ dependencies = [
 
 [[package]]
 name = "getrandom"
-version = "0.2.4"
+version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "418d37c8b1d42553c93648be529cb70f920d3baf8ef469b74b9638df426e0b4c"
+checksum = "d39cd93900197114fa1fcb7ae84ca742095eed9442088988ae74fa744e930e77"
 dependencies = [
  "cfg-if 1.0.0",
  "js-sys",
@@ -1211,9 +1222,9 @@ checksum = "830b246a0e5f20af87141b25c173cd1b609bd7779a4617d6ec582abaf90870f3"
 
 [[package]]
 name = "once_cell"
-version = "1.9.0"
+version = "1.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da32515d9f6e6e489d7bc9d84c71b060db7247dc035bbe44eac88cf87486d8d5"
+checksum = "87f3e037eac156d1775da914196f0f37741a274155e34a0b7e427c35d2a2ecb9"
 
 [[package]]
 name = "oorandom"
@@ -1675,6 +1686,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustversion"
+version = "1.0.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f2cc38e8fa666e2de3c4aba7edeb5ffc5246c1c2ed0e3d17e560aeeba736b23f"
+
+[[package]]
 name = "rusty-hook"
 version = "0.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1842,9 +1859,9 @@ dependencies = [
 
 [[package]]
 name = "serial_test"
-version = "0.5.1"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e0bccbcf40c8938196944a3da0e133e031a33f4d6b72db3bda3cc556e361905d"
+checksum = "e5bcc41d18f7a1d50525d080fd3e953be87c4f9f1a974f3c21798ca00d54ec15"
 dependencies = [
  "lazy_static",
  "parking_lot 0.11.2",
@@ -1853,12 +1870,14 @@ dependencies = [
 
 [[package]]
 name = "serial_test_derive"
-version = "0.5.1"
+version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b2acd6defeddb41eb60bb468f8825d0cfd0c2a76bc03bfd235b6a1dc4f6a1ad5"
+checksum = "2881bccd7d60fb32dfa3d7b3136385312f8ad75e2674aab2852867a09790cae8"
 dependencies = [
+ "proc-macro-error",
  "proc-macro2 1.0.36",
  "quote 1.0.15",
+ "rustversion",
  "syn 1.0.86",
 ]
 
@@ -1876,13 +1895,13 @@ dependencies = [
 
 [[package]]
 name = "sha2"
-version = "0.10.1"
+version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "99c3bd8169c58782adad9290a9af5939994036b76187f7b4f0e6de91dbbfc0ec"
+checksum = "55deaec60f81eefe3cce0dc50bda92d6d8e88f2a27df7c5033b42afeb1ed2676"
 dependencies = [
  "cfg-if 1.0.0",
  "cpufeatures",
- "digest 0.10.2",
+ "digest 0.10.3",
 ]
 
 [[package]]
@@ -1930,7 +1949,7 @@ dependencies = [
  "crossbeam-channel",
  "csv",
  "derivative",
- "digest 0.10.2",
+ "digest 0.10.3",
  "expect-test",
  "getrandom",
  "hashbrown 0.12.0",
@@ -1949,11 +1968,10 @@ dependencies = [
  "serde",
  "serde_json",
  "serial_test",
- "sha2 0.10.1",
+ "sha2 0.10.2",
  "smallvec",
  "snarkvm-curves",
  "snarkvm-fields",
- "snarkvm-profiler",
  "snarkvm-r1cs",
  "snarkvm-utilities",
  "thiserror",
@@ -1966,7 +1984,7 @@ dependencies = [
  "anyhow",
  "criterion",
  "derivative",
- "digest 0.10.2",
+ "digest 0.10.3",
  "itertools",
  "num-bigint",
  "num-integer",
@@ -2016,6 +2034,7 @@ dependencies = [
 name = "snarkvm-dpc"
 version = "0.7.5"
 dependencies = [
+ "aleo-std",
  "anyhow",
  "base58",
  "bech32",
@@ -2036,7 +2055,6 @@ dependencies = [
  "snarkvm-fields",
  "snarkvm-gadgets",
  "snarkvm-parameters",
- "snarkvm-profiler",
  "snarkvm-r1cs",
  "snarkvm-utilities",
  "thiserror",
@@ -2083,6 +2101,7 @@ dependencies = [
 name = "snarkvm-integration"
 version = "0.7.5"
 dependencies = [
+ "aleo-std",
  "anyhow",
  "base58",
  "bech32",
@@ -2098,7 +2117,6 @@ dependencies = [
  "snarkvm-curves",
  "snarkvm-dpc",
  "snarkvm-fields",
- "snarkvm-profiler",
  "snarkvm-r1cs",
  "snarkvm-utilities",
  "thiserror",
@@ -2125,13 +2143,6 @@ dependencies = [
  "snarkvm-utilities",
  "thiserror",
  "wasm-bindgen-futures",
-]
-
-[[package]]
-name = "snarkvm-profiler"
-version = "0.7.5"
-dependencies = [
- "colored",
 ]
 
 [[package]]

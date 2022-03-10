@@ -24,7 +24,7 @@ The first ingredient is provided as part of this library, and is an efficient al
 
 ## Profiling
 
-This library is instrumented with profiling infrastructure that prints detailed traces of execution time. To enable this, compile with `cargo build --features print-trace`.
+This library is instrumented with profiling infrastructure that prints detailed traces of execution time. To enable this, compile with `cargo build --features profiler`.
 
 
 ## Benchmarks

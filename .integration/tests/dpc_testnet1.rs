@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -26,7 +26,7 @@ use time::OffsetDateTime;
 #[test]
 fn test_testnet1_inner_circuit_id_sanity_check() {
     let expected_inner_circuit_id =
-        "ic1pwdn5qg6x27efevduvnp2eh2enzsfjnaw07nzng99ks8efw8ml27qnsrsj0n64mfqjr70e9tpz8qqpyazpc".to_string();
+        "ic12hl4yg0vuxqllqyy0hw8lmunw98qr75r67r98ra70dau05p383zfmlj5795l05lc9dszrgaw9j4qq6jl64d".to_string();
     let candidate_inner_circuit_id = <Testnet1 as Network>::inner_circuit_id().to_string();
     assert_eq!(expected_inner_circuit_id, candidate_inner_circuit_id);
 }

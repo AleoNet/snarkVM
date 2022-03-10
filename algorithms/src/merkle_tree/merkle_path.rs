@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -48,7 +48,7 @@ impl<P: MerkleParameters> MerklePath<P> {
 
     pub fn verify<L: ToBytes>(&self, root_hash: &MerkleTreeDigest<P>, leaf: &L) -> Result<bool, MerkleError> {
         // Check that the given leaf matches the leaf in the membership proof.
-        if !self.path.is_empty() {
+        if self.path.len() == P::DEPTH {
             let claimed_leaf_hash = self.parameters.hash_leaf::<L>(leaf)?;
 
             let mut index = self.leaf_index;

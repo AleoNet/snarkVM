@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -15,13 +15,17 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::{push_constraints, r1cs_to_qap::R1CStoQAP, Proof, ProvingKey};
-use crate::{cfg_into_iter, msm::VariableBaseMSM};
+use crate::{cfg_into_iter, msm::VariableBase};
 use snarkvm_curves::traits::{AffineCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{One, PrimeField, Zero};
-use snarkvm_r1cs::errors::SynthesisError;
-
-use snarkvm_profiler::{end_timer, start_timer};
-use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, Index, LinearCombination, Variable};
+use snarkvm_r1cs::{
+    errors::SynthesisError,
+    ConstraintSynthesizer,
+    ConstraintSystem,
+    Index,
+    LinearCombination,
+    Variable,
+};
 use snarkvm_utilities::rand::UniformRand;
 
 use core::ops::Mul;
@@ -208,21 +212,22 @@ where
 
     pool.add_job(|| {
         let h_query = &params.h_query;
-        let res = VariableBaseMSM::multi_scalar_mul(h_query, &h_assignment);
+        let res = VariableBase::msm(h_query, &h_assignment);
         ResultWrapper::from_g1(res)
     });
 
     pool.add_job(|| {
         let l_aux_source = &params.l_query;
-        let res = VariableBaseMSM::multi_scalar_mul(l_aux_source, &aux_assignment);
+        let res = VariableBase::msm(l_aux_source, &aux_assignment);
         ResultWrapper::from_g1(res)
     });
     let results: Vec<_> = pool.execute_all();
 
-    let g1_b = if r != E::Fr::zero() { results[0].into_g1() } else { E::G1Projective::zero() };
-    let g2_b = results[1].into_g2();
-    let h_acc = results[2].into_g1();
-    let l_aux_acc = results[3].into_g1();
+    let (g1_b, g2_b, h_acc, l_aux_acc) = if r != E::Fr::zero() {
+        (results[0].into_g1(), results[1].into_g2(), results[2].into_g1(), results[3].into_g1())
+    } else {
+        (E::G1Projective::zero(), results[0].into_g2(), results[1].into_g1(), results[2].into_g1())
+    };
 
     let s_g_a = g_a.mul(s);
     let r_g1_b = g1_b.mul(r);
@@ -247,7 +252,7 @@ fn calculate_coeff<G: AffineCurve>(
     assignment: &[<G::ScalarField as PrimeField>::BigInteger],
 ) -> G::Projective {
     let el = query[0];
-    let acc = VariableBaseMSM::multi_scalar_mul(&query[1..], assignment);
+    let acc = VariableBase::msm(&query[1..], assignment);
 
     let mut res = initial;
     res.add_assign_mixed(&el);

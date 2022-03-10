@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -451,6 +451,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             #[cfg(feature = "parallel")]
             use rayon::iter::repeat;
 
+            // Zip safety: here `constraint_domain.size() + z_a_poly_det.coeffs.len()` could
+            // have size smaller than `z_c.coeffs`, so `zip_eq` would be incorrect.
             let zero = F::zero();
             repeat(&zero)
                 .take(constraint_domain.size())
@@ -465,6 +467,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     };
                     *z_c += t * r_b;
                 });
+
+            // Zip safety: here `constraint_domain.size() + z_b_poly_det.coeffs.len()` could
+            // have size smaller than `z_c.coeffs`, so `zip_eq` would be incorrect.
             repeat(&zero)
                 .take(constraint_domain.size())
                 .chain(&z_b_poly_det.coeffs)
@@ -528,6 +533,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 .interpolate_with_pc(state.ifft_precomputation());
         let w_poly = state.w_poly.as_ref().and_then(|p| p.polynomial().as_dense()).unwrap();
         let mut z_poly = w_poly.mul_by_vanishing_poly(state.input_domain);
+        // Zip safety: `x_poly` is smaller than `z_poly`.
         cfg_iter_mut!(z_poly.coeffs).zip(&x_poly.coeffs).for_each(|(z, x)| *z += x);
         assert!(z_poly.degree() < constraint_domain.size() + zk_bound);
 
@@ -699,8 +705,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let alpha_beta = alpha * beta;
             let b_poly = {
                 let evals: Vec<F> = cfg_iter!(row_on_K.evaluations)
-                    .zip(&col_on_K.evaluations)
-                    .zip(&row_col_on_K.evaluations)
+                    .zip_eq(&col_on_K.evaluations)
+                    .zip_eq(&row_col_on_K.evaluations)
                     .map(|((r, c), r_c)| alpha_beta - alpha * r - beta * c + r_c)
                     .collect();
                 EvaluationsOnDomain::from_vec_and_domain(evals, non_zero_domain)
@@ -712,11 +718,13 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let [a_poly, b_poly]: [_; 2] = job_pool.execute_all().try_into().unwrap();
 
         let f_evals_time = start_timer!(|| "Computing f evals on K");
-        let mut inverses: Vec<_> =
-            cfg_iter!(row_on_K.evaluations).zip(&col_on_K.evaluations).map(|(r, c)| (beta - r) * (alpha - c)).collect();
+        let mut inverses: Vec<_> = cfg_iter!(row_on_K.evaluations)
+            .zip_eq(&col_on_K.evaluations)
+            .map(|(r, c)| (beta - r) * (alpha - c))
+            .collect();
         batch_inversion_and_mul(&mut inverses, &v_H_alpha_v_H_beta);
 
-        cfg_iter_mut!(inverses).zip(&arithmetization.evals_on_K.val.evaluations).for_each(|(inv, a)| *inv *= a);
+        cfg_iter_mut!(inverses).zip_eq(&arithmetization.evals_on_K.val.evaluations).for_each(|(inv, a)| *inv *= a);
         let f_evals_on_K = inverses;
         end_timer!(f_evals_time);
 

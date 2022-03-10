@@ -12,10 +12,10 @@ keywords = [
   "decentralized",
   "zero-knowledge"
 ]
-categories = [ "cryptography::cryptocurrencies", "operating-systems" ]
+categories = [ "compilers", "cryptography", "mathematics", "wasm", "web-programming" ]
 include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
-edition = "2018"
+edition = "2021"
 
 [dependencies.snarkvm-algorithms]
 path = "../algorithms"
@@ -28,7 +28,7 @@ version = "0.7.5"
 default-features = false
 
 [dependencies.aleo-std]
-version = "0.1.6"
+version = "0.1.12"
 
 [dependencies.anyhow]
 version = "1"

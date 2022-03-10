@@ -1,4 +1,4 @@
-// Copyright (C) 2019-2021 Aleo Systems Inc.
+// Copyright (C) 2019-2022 Aleo Systems Inc.
 // This file is part of the snarkVM library.
 
 // The snarkVM library is free software: you can redistribute it and/or modify
@@ -25,6 +25,9 @@ use std::{
     fmt,
     ops::{Add, AddAssign, Deref, DerefMut, Div, Mul, MulAssign, Neg, Sub, SubAssign},
 };
+
+#[cfg(not(feature = "parallel"))]
+use itertools::Itertools;
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -105,9 +108,8 @@ impl<F: Field> DensePolynomial<F> {
             powers_of_point.push(cur);
             cur *= point;
         }
-        assert_eq!(powers_of_point.len(), self.coeffs.len());
         let zero = F::zero();
-        let mapping = crate::cfg_into_iter!(powers_of_point).zip(&self.coeffs).map(|(power, coeff)| power * coeff);
+        let mapping = crate::cfg_into_iter!(powers_of_point).zip_eq(&self.coeffs).map(|(power, coeff)| power * coeff);
         crate::cfg_reduce!(mapping, || zero, |a, b| a + b)
     }
 
@@ -145,7 +147,7 @@ impl<F: PrimeField> DensePolynomial<F> {
     pub fn mul_by_vanishing_poly(&self, domain: EvaluationDomain<F>) -> DensePolynomial<F> {
         let mut shifted = vec![F::zero(); domain.size()];
         shifted.extend_from_slice(&self.coeffs);
-        crate::cfg_iter_mut!(shifted).zip(&self.coeffs).for_each(|(s, c)| *s -= c);
+        crate::cfg_iter_mut!(shifted[..self.coeffs.len()]).zip_eq(&self.coeffs).for_each(|(s, c)| *s -= c);
         DensePolynomial::from_coefficients_vec(shifted)
     }
 
@@ -171,15 +173,13 @@ impl<'a, 'b, F: Field> Add<&'a DensePolynomial<F>> for &'b DensePolynomial<F> {
             self.clone()
         } else if self.degree() >= other.degree() {
             let mut result = self.clone();
-            for (a, b) in result.coeffs.iter_mut().zip(&other.coeffs) {
-                *a += b
-            }
+            // Zip safety: `result` and `other` could have different lengths.
+            cfg_iter_mut!(result.coeffs).zip(&other.coeffs).for_each(|(a, b)| *a += b);
             result
         } else {
             let mut result = other.clone();
-            for (a, b) in result.coeffs.iter_mut().zip(&self.coeffs) {
-                *a += b
-            }
+            // Zip safety: `result` and `other` could have different lengths.
+            cfg_iter_mut!(result.coeffs).zip(&self.coeffs).for_each(|(a, b)| *a += b);
             // If the leading coefficient ends up being zero, pop it off.
             while result.coeffs.last().unwrap().is_zero() {
                 result.coeffs.pop();
@@ -197,15 +197,13 @@ impl<'a, 'b, F: Field> AddAssign<&'a DensePolynomial<F>> for DensePolynomial<F> 
         } else if other.is_zero() {
             // return
         } else if self.degree() >= other.degree() {
-            for (a, b) in self.coeffs.iter_mut().zip(&other.coeffs) {
-                *a += b
-            }
+            // Zip safety: `self` and `other` could have different lengths.
+            cfg_iter_mut!(self.coeffs).zip(&other.coeffs).for_each(|(a, b)| *a += b);
         } else {
             // Add the necessary number of zero coefficients.
             self.coeffs.resize(other.coeffs.len(), F::zero());
-            for (a, b) in self.coeffs.iter_mut().zip(&other.coeffs) {
-                *a += b
-            }
+            // Zip safety: `self` and `other` have the same length.
+            cfg_iter_mut!(self.coeffs).zip(&other.coeffs).for_each(|(a, b)| *a += b);
             // If the leading coefficient ends up being zero, pop it off.
             while self.coeffs.last().unwrap().is_zero() {
                 self.coeffs.pop();
@@ -242,15 +240,17 @@ impl<'a, 'b, F: Field> AddAssign<(F, &'a DensePolynomial<F>)> for DensePolynomia
         } else if other.is_zero() {
             // return
         } else if self.degree() >= other.degree() {
-            for (a, b) in self.coeffs.iter_mut().zip(&other.coeffs) {
+            // Zip safety: `self` and `other` could have different lengths.
+            cfg_iter_mut!(self.coeffs).zip(&other.coeffs).for_each(|(a, b)| {
                 *a += f * b;
-            }
+            });
         } else {
             // Add the necessary number of zero coefficients.
             self.coeffs.resize(other.coeffs.len(), F::zero());
-            for (a, b) in self.coeffs.iter_mut().zip(&other.coeffs) {
+            // Zip safety: `self` and `other` have the same length after the resize.
+            cfg_iter_mut!(self.coeffs).zip(&other.coeffs).for_each(|(a, b)| {
                 *a += f * b;
-            }
+            });
             // If the leading coefficient ends up being zero, pop it off.
             while self.coeffs.last().unwrap().is_zero() {
                 self.coeffs.pop();
@@ -310,16 +310,16 @@ impl<'a, 'b, F: Field> Sub<&'a DensePolynomial<F>> for &'b DensePolynomial<F> {
             self.clone()
         } else if self.degree() >= other.degree() {
             let mut result = self.clone();
-            for (a, b) in result.coeffs.iter_mut().zip(&other.coeffs) {
-                *a -= b
-            }
+            // Zip safety: `result` and `other` could have different degrees.
+            cfg_iter_mut!(result.coeffs).zip(&other.coeffs).for_each(|(a, b)| *a -= b);
             result
         } else {
             let mut result = self.clone();
             result.coeffs.resize(other.coeffs.len(), F::zero());
-            for (a, b) in result.coeffs.iter_mut().zip(&other.coeffs) {
+            // Zip safety: `result` and `other` have the same length after the resize.
+            cfg_iter_mut!(result.coeffs).zip(&other.coeffs).for_each(|(a, b)| {
                 *a -= b;
-            }
+            });
             if !result.is_zero() {
                 // If the leading coefficient ends up being zero, pop it off.
                 while result.coeffs.last().unwrap().is_zero() {
@@ -343,15 +343,13 @@ impl<'a, 'b, F: Field> SubAssign<&'a DensePolynomial<F>> for DensePolynomial<F> 
         } else if other.is_zero() {
             // return
         } else if self.degree() >= other.degree() {
-            for (a, b) in self.coeffs.iter_mut().zip(&other.coeffs) {
-                *a -= b
-            }
+            // Zip safety: self and other could have different lengths.
+            cfg_iter_mut!(self.coeffs).zip(&other.coeffs).for_each(|(a, b)| *a -= b);
         } else {
             // Add the necessary number of zero coefficients.
             self.coeffs.resize(other.coeffs.len(), F::zero());
-            for (a, b) in self.coeffs.iter_mut().zip(&other.coeffs) {
-                *a -= b
-            }
+            // Zip safety: self and other have the same length after the resize.
+            cfg_iter_mut!(self.coeffs).zip(&other.coeffs).for_each(|(a, b)| *a -= b);
             // If the leading coefficient ends up being zero, pop it off.
             while self.coeffs.last().unwrap().is_zero() {
                 self.coeffs.pop();
