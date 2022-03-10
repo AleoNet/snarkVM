@@ -153,7 +153,7 @@ impl<M: Memory> FromBytes for Function<M> {
         Self: Sized,
     {
         // Read the name of the function.
-        let len = u8::read_le(&mut reader)?;
+        let len = u64::read_le(&mut reader)?;
         let mut bytes = vec![0u8; len as usize];
         reader.read_exact(&mut bytes)?;
         let name = String::from_utf8(bytes).expect("Found invalid UTF-8");
