@@ -1194,6 +1194,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "num-derive"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "876a53fff98e03a936a674b29568b0e605f06b29372c2489ff4de23f1949743d"
+dependencies = [
+ "proc-macro2 1.0.36",
+ "quote 1.0.15",
+ "syn 1.0.86",
+]
+
+[[package]]
 name = "num-integer"
 version = "0.1.44"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1991,6 +2002,8 @@ name = "snarkvm-circuits-environment"
 version = "0.7.5"
 dependencies = [
  "nom",
+ "num-derive",
+ "num-traits",
  "once_cell",
  "rayon",
  "snarkvm-algorithms",

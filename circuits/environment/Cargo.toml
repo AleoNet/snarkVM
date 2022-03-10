@@ -29,6 +29,12 @@ default-features = false
 [dependencies.nom]
 version = "7.1"
 
+[dependencies.num-derive]
+version = "0.3"
+
+[dependencies.num-traits]
+version = "0.2"
+
 [dependencies.once_cell]
 version = "1.8.0"
 

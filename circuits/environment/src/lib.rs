@@ -17,6 +17,9 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::type_complexity)]
 
+#[macro_use]
+extern crate num_derive;
+
 pub mod circuit;
 pub use circuit::*;
 

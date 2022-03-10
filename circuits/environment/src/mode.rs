@@ -20,9 +20,10 @@ use snarkvm_utilities::{error, FromBytes, ToBytes};
 
 use core::fmt;
 use nom::{branch::alt, bytes::complete::tag, combinator::map};
+use num_traits::{FromPrimitive, ToPrimitive};
 use std::io::{Read, Result as IoResult, Write};
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive, ToPrimitive)]
 pub enum Mode {
     Constant,
     Public,
@@ -66,25 +67,28 @@ impl fmt::Display for Mode {
 }
 
 impl ToBytes for Mode {
-    fn write_le<W: Write>(&self, writer: W) -> IoResult<()>
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()>
     where
         Self: Sized,
     {
-        u8::write_le(&(*self as u8), writer)
+        u8::write_le(&ToPrimitive::to_u8(self).ok_or(error("Invalid mode"))?, &mut writer)
     }
 }
 
 impl FromBytes for Mode {
-    fn read_le<R: Read>(reader: R) -> IoResult<Self>
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self>
     where
         Self: Sized,
     {
-        match u8::read_le(reader) {
-            Ok(0) => Ok(Self::Constant),
-            Ok(1) => Ok(Self::Public),
-            Ok(2) => Ok(Self::Private),
-            Ok(_) => Err(error("FromBytes::read failed for Mode")),
-            Err(err) => Err(err),
-        }
+        let mode = u8::read_le(&mut reader)?;
+        Ok(FromPrimitive::from_u8(mode).ok_or(error("Invalid mode"))?)
+
+        //match u8::read_le(reader) {
+        //    Ok(i) if i == Self::Constant as u8 => Ok(Self::Constant),
+        //    Ok(1) => Ok(Self::Public),
+        //    Ok(2) => Ok(Self::Private),
+        //    Ok(_) => Err(error("FromBytes::read failed for Mode")),
+        //    Err(err) => Err(err),
+        //}
     }
 }
