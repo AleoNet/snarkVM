@@ -26,7 +26,7 @@ use time::OffsetDateTime;
 #[test]
 fn test_testnet1_inner_circuit_id_sanity_check() {
     let expected_inner_circuit_id =
-        "ic1s93vgs0r2wnlla353jas03r7qa94a60wea2l2wkfx2d8fyw90njaqfya0vgdsdy63xv60e5fmf9qqn5y5hj".to_string();
+        "ic1uf9j84py7dwjtpjwswmae2gscp5epw96su3vtrh6s9gd6e263d3ueg62mgpf9cflwvwl6fk39xsszwydwmg".to_string();
     let candidate_inner_circuit_id = <Testnet1 as Network>::inner_circuit_id().to_string();
     assert_eq!(expected_inner_circuit_id, candidate_inner_circuit_id);
 }
