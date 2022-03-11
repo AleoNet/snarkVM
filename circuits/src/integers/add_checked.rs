@@ -97,8 +97,8 @@ impl<E: Environment, I: IntegerType> AddChecked<Self> for Integer<E, I> {
                 //   - Note: if sign(a) != sign(b) then over/underflow is impossible.
                 //   - Note: the result of an overflow and underflow must be negative and positive, respectively.
                 true => {
-                    let is_same_sign = self.msb().is_eq(other.msb());
-                    let is_overflow = is_same_sign & sum.msb().is_neq(self.msb());
+                    let is_same_sign = self.msb().is_equal(other.msb());
+                    let is_overflow = is_same_sign & sum.msb().is_not_equal(self.msb());
                     E::assert_eq(is_overflow, E::zero());
                 }
                 // For unsigned addition, ensure the carry bit is zero.
@@ -115,11 +115,10 @@ impl<E: Environment, I: IntegerType> AddChecked<Self> for Integer<E, I> {
 mod tests {
     use super::*;
     use crate::Circuit;
-    use snarkvm_utilities::UniformRand;
+    use snarkvm_utilities::{test_rng, UniformRand};
     use test_utilities::*;
 
-    use rand::thread_rng;
-    use std::{ops::RangeInclusive, panic::RefUnwindSafe};
+    use core::{ops::RangeInclusive, panic::RefUnwindSafe};
 
     const ITERATIONS: usize = 128;
 
@@ -136,35 +135,17 @@ mod tests {
         num_constraints: usize,
     ) {
         let a = Integer::<Circuit, I>::new(mode_a, first);
-        let b = Integer::<Circuit, I>::new(mode_b, second);
+        let b = Integer::new(mode_b, second);
         let case = format!("({} + {})", a.eject_value(), b.eject_value());
+
         match first.checked_add(&second) {
-            Some(value) => {
-                check_operation_passes(name, &case, value, &a, &b, Integer::add_checked, num_constants, num_public, num_private, num_constraints);
-                // Commute the operation.
-                let a = Integer::<Circuit, I>::new(mode_a, second);
-                let b = Integer::<Circuit, I>::new(mode_b, first);
-                check_operation_passes(name, &case, value, &a, &b, Integer::add_checked, num_constants, num_public, num_private, num_constraints);
+            Some(expected) => check_operation_passes(name, &case, expected, &a, &b, Integer::add_checked, num_constants, num_public, num_private, num_constraints),
+            None => match mode_a.is_constant() && mode_b.is_constant() {
+                true => check_operation_halts(&a, &b, Integer::add_checked),
+                false => check_operation_fails(name, &case, &a, &b, Integer::add_checked, num_constants, num_public, num_private, num_constraints),
             },
-            None => {
-                match (mode_a, mode_b) {
-                    (Mode::Constant, Mode::Constant) => {
-                        check_operation_halts(&a, &b, Integer::add_checked);
-                        // Commute the operation.
-                        let a = Integer::<Circuit, I>::new(mode_a, second);
-                        let b = Integer::<Circuit, I>::new(mode_b, first);
-                        check_operation_halts(&a, &b, Integer::add_checked);
-                    },
-                    _ => {
-                        check_operation_fails(name, &case, &a, &b, Integer::add_checked, num_constants, num_public, num_private, num_constraints);
-                        // Commute the operation.
-                        let a = Integer::<Circuit, I>::new(mode_a, second);
-                        let b = Integer::<Circuit, I>::new(mode_b, first);
-                        check_operation_fails(name, &case, &a, &b, Integer::add_checked, num_constants, num_public, num_private, num_constraints);
-                    }
-                }
-            }
         }
+        Circuit::reset();
     }
 
     #[rustfmt::skip]
@@ -176,31 +157,25 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
-        let check_add = | name: &str, first: I, second: I | check_add(name, first, second, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
-
         for i in 0..ITERATIONS {
-            let first: I = UniformRand::rand(&mut thread_rng());
-            let second: I = UniformRand::rand(&mut thread_rng());
+            let first: I = UniformRand::rand(&mut test_rng());
+            let second: I = UniformRand::rand(&mut test_rng());
 
             let name = format!("Add: {} + {} {}", mode_a, mode_b, i);
-            check_add(&name, first, second);
+            check_add(&name, first, second, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+
+            let name = format!("Add: {} + {} {} (commutative)", mode_a, mode_b, i);
+            check_add(&name, second, first, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
         }
 
-        match I::is_signed() {
-            true => {
-                // Overflow
-                check_add("MAX + 1", I::MAX, I::one());
-                check_add("1 + MAX", I::one(), I::MAX);
+        // Overflow
+        check_add("MAX + 1", I::MAX, I::one(), mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+        check_add("1 + MAX", I::one(), I::MAX, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
 
-                // Underflow
-                check_add("MIN + (-1)", I::MIN, I::zero() - I::one());
-                check_add("-1 + MIN", I::zero() - I::one(), I::MIN);
-            },
-            false => {
-                // Overflow
-                check_add("MAX + 1", I::MAX, I::one());
-                check_add("1 + MAX", I::one(), I::MAX);
-            }
+        // Underflow
+        if I::is_signed() {
+            check_add("MIN + (-1)", I::MIN, I::zero() - I::one(), mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+            check_add("-1 + MIN", I::zero() - I::one(), I::MIN, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
         }
     }
 

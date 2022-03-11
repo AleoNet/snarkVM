@@ -48,11 +48,10 @@ impl<E: Environment, I: IntegerType> AddWrapped<Self> for Integer<E, I> {
 mod tests {
     use super::*;
     use crate::Circuit;
-    use snarkvm_utilities::UniformRand;
+    use snarkvm_utilities::{test_rng, UniformRand};
     use test_utilities::*;
 
-    use rand::thread_rng;
-    use std::ops::RangeInclusive;
+    use core::ops::RangeInclusive;
 
     const ITERATIONS: usize = 128;
 
@@ -73,10 +72,6 @@ mod tests {
         let case = format!("({} + {})", a.eject_value(), b.eject_value());
         let expected = first.wrapping_add(&second);
         check_operation_passes(name, &case, expected, &a, &b, Integer::add_wrapped, num_constants, num_public, num_private, num_constraints);
-        // Commute the operation.
-        let a = Integer::<Circuit, I>::new(mode_a, second);
-        let b = Integer::<Circuit, I>::new(mode_b, first);
-        check_operation_passes(name, &case, expected, &a, &b, Integer::add_wrapped, num_constants, num_public, num_private, num_constraints);
     }
 
     #[rustfmt::skip]
@@ -88,31 +83,25 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
-        let check_add = | name: &str, first: I, second: I | check_add(name, first, second, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
-
         for i in 0..ITERATIONS {
-            let first: I = UniformRand::rand(&mut thread_rng());
-            let second: I = UniformRand::rand(&mut thread_rng());
+            let first: I = UniformRand::rand(&mut test_rng());
+            let second: I = UniformRand::rand(&mut test_rng());
 
             let name = format!("Add: {} + {} {}", mode_a, mode_b, i);
-            check_add(&name, first, second);
+            check_add(&name, first, second, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+
+            let name = format!("Add: {} + {} {} (commutative)", mode_a, mode_b, i);
+            check_add(&name, second, first, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
         }
 
-        match I::is_signed() {
-            true => {
-                // Overflow
-                check_add("MAX + 1", I::MAX, I::one());
-                check_add("1 + MAX", I::one(), I::MAX);
+        // Overflow
+        check_add("MAX + 1", I::MAX, I::one(), mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+        check_add("1 + MAX", I::one(), I::MAX, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
 
-                // Underflow
-                check_add("MIN + (-1)", I::MIN, I::zero() - I::one());
-                check_add("-1 + MIN", I::zero() - I::one(), I::MIN);
-            },
-            false => {
-                // Overflow
-                check_add("MAX + 1", I::MAX, I::one());
-                check_add("1 + MAX", I::one(), I::MAX);
-            }
+        // Underflow
+        if I::is_signed() {
+            check_add("MIN + (-1)", I::MIN, I::zero() - I::one(), mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+            check_add("-1 + MIN", I::zero() - I::one(), I::MIN, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
         }
     }
 

@@ -113,7 +113,7 @@ mod tests {
     use rand::thread_rng;
     use std::ops::RangeInclusive;
 
-    const ITERATIONS: usize = 64;
+    const ITERATIONS: usize = 32;
 
     #[rustfmt::skip]
     fn check_mul<I: IntegerType>(

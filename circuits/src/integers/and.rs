@@ -87,7 +87,7 @@ mod tests {
     const ITERATIONS: usize = 128;
 
     #[rustfmt::skip]
-    fn check_bitand<I: IntegerType + BitAnd<Output = I>>(
+    fn check_and<I: IntegerType + BitAnd<Output = I>>(
         name: &str,
         first: I,
         second: I,
@@ -118,7 +118,7 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
-        let check_bitand = | name: &str, first: I, second: I | check_bitand(name, first, second, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+        let check_bitand = | name: &str, first: I, second: I | check_and(name, first, second, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
 
         for i in 0..ITERATIONS {
             let first : I = UniformRand::rand(&mut thread_rng());
@@ -152,7 +152,7 @@ mod tests {
         for first in I::MIN..=I::MAX {
             for second in I::MIN..=I::MAX {
                 let name = format!("BitAnd: ({} & {})", first, second);
-                check_bitand(
+                check_and(
                     &name,
                     first,
                     second,

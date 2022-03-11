@@ -60,30 +60,26 @@ mod tests {
         check_unary_operation_passes(name, &case, expected, &a, |a: &Integer<Circuit, I>| { a.not() }, num_constants, num_public, num_private, num_constraints);
     }
 
-    #[rustfmt::skip]
-    fn run_test<I: IntegerType + Not<Output=I>>(
+    fn run_test<I: IntegerType + Not<Output = I>>(
         mode: Mode,
         num_constants: usize,
         num_public: usize,
         num_private: usize,
         num_constraints: usize,
     ) {
-        let check_not = |name: &str, first: I| check_not(name, first, mode, num_constants, num_public, num_private, num_constraints);
-
         for i in 0..ITERATIONS {
-            let value: I = UniformRand::rand(&mut thread_rng());
-
             let name = format!("Not: {} {}", mode, i);
-            check_not(&name, value)
+            let value: I = UniformRand::rand(&mut thread_rng());
+            check_not(&name, value, mode, num_constants, num_public, num_private, num_constraints);
         }
 
         // Check the 0 case.
         let name = format!("Not: {} zero", mode);
-        check_not(&name, I::zero());
+        check_not(&name, I::zero(), mode, num_constants, num_public, num_private, num_constraints);
 
         // Check the 1 case.
         let name = format!("Not: {} one", mode);
-        check_not(&name, I::one());
+        check_not(&name, I::one(), mode, num_constants, num_public, num_private, num_constraints);
     }
 
     #[test]

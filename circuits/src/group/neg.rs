@@ -70,7 +70,7 @@ mod tests {
             assert!(expected.is_in_correct_subgroup_assuming_on_curve());
 
             let candidate_input =
-                Affine::<Circuit>::new(Mode::Constant, point.to_x_coordinate(), Some(point.to_y_coordinate()));
+                Affine::<Circuit>::new(Mode::Constant, (point.to_x_coordinate(), Some(point.to_y_coordinate())));
             check_neg(&format!("NEG Constant {}", i), expected, candidate_input, 0, 0, 0, 0);
         }
     }
@@ -85,7 +85,7 @@ mod tests {
             assert!(expected.is_in_correct_subgroup_assuming_on_curve());
 
             let candidate_input =
-                Affine::<Circuit>::new(Mode::Public, point.to_x_coordinate(), Some(point.to_y_coordinate()));
+                Affine::<Circuit>::new(Mode::Public, (point.to_x_coordinate(), Some(point.to_y_coordinate())));
             check_neg(&format!("NEG Public {}", i), expected, candidate_input, 0, 0, 0, 0);
         }
     }
@@ -100,7 +100,7 @@ mod tests {
             assert!(expected.is_in_correct_subgroup_assuming_on_curve());
 
             let candidate_input =
-                Affine::<Circuit>::new(Mode::Private, point.to_x_coordinate(), Some(point.to_y_coordinate()));
+                Affine::<Circuit>::new(Mode::Private, (point.to_x_coordinate(), Some(point.to_y_coordinate())));
             check_neg(&format!("NEG Private {}", i), expected, candidate_input, 0, 0, 0, 0);
         }
     }
@@ -114,10 +114,10 @@ mod tests {
         let candidate_input = Affine::<Circuit>::zero();
         check_neg("NEG Constant Zero", expected, candidate_input, 0, 0, 0, 0);
 
-        let candidate_input = Affine::<Circuit>::new(Mode::Public, zero, None);
+        let candidate_input = Affine::<Circuit>::new(Mode::Public, (zero, None));
         check_neg("NEG Public Zero", expected, candidate_input, 0, 0, 0, 0);
 
-        let candidate_input = Affine::<Circuit>::new(Mode::Private, zero, None);
+        let candidate_input = Affine::<Circuit>::new(Mode::Private, (zero, None));
         check_neg("NEG Private Zero", expected, candidate_input, 0, 0, 0, 0);
     }
 }

@@ -19,7 +19,9 @@ pub(crate) mod integers {
 
     use core::{
         fmt::{Debug, Display},
+        num::ParseIntError,
         ops::{Div, Rem},
+        str::FromStr,
     };
     use num_traits::{
         CheckedNeg,
@@ -45,7 +47,9 @@ pub(crate) mod integers {
         + CheckedShl
         + CheckedShr
         + Debug
+        + Default
         + Display
+        + FromStr<Err = ParseIntError>
         + NumZero
         + NumOne
         + ToPrimitive
@@ -117,6 +121,11 @@ pub(crate) mod integers {
                 #[inline]
                 fn is_signed() -> bool {
                     $is_signed
+                }
+
+                #[inline]
+                fn type_name() -> &'static str {
+                    std::any::type_name::<$t>()
                 }
             }
         };
@@ -194,6 +203,9 @@ pub(crate) mod integers {
 
         /// Returns `true` if `Self` is a signed integer and `false` otherwise.
         fn is_signed() -> bool;
+
+        /// Returns the name of the integer type as a string slice. (i.e. "u8")
+        fn type_name() -> &'static str;
     }
 
     integer_properties_impl!(u8, i8, false);

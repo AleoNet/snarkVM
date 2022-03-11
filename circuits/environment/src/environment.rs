@@ -14,47 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::*;
+use crate::{LinearCombination, Mode, Variable};
 use snarkvm_curves::{AffineCurve, TwistedEdwardsParameters};
 use snarkvm_fields::traits::*;
 
-use core::fmt;
+use core::{fmt, hash};
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum Mode {
-    Constant,
-    Public,
-    Private,
-}
-
-impl Mode {
-    /// Returns `true` if the mode is a constant.
-    pub fn is_constant(&self) -> bool {
-        matches!(self, Self::Constant)
-    }
-
-    /// Returns `true` if the mode is public.
-    pub fn is_public(&self) -> bool {
-        matches!(self, Self::Public)
-    }
-
-    /// Returns `true` if the mode is private.
-    pub fn is_private(&self) -> bool {
-        matches!(self, Self::Private)
-    }
-}
-
-impl fmt::Display for Mode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        match self {
-            Mode::Constant => write!(f, "Constant"),
-            Mode::Public => write!(f, "Public"),
-            Mode::Private => write!(f, "Private"),
-        }
-    }
-}
-
-pub trait Environment: Clone + fmt::Display {
+pub trait Environment: Copy + Clone + fmt::Display + Eq + PartialEq + hash::Hash {
     type Affine: AffineCurve<BaseField = Self::BaseField>;
     type AffineParameters: TwistedEdwardsParameters<BaseField = Self::BaseField>;
     type BaseField: PrimeField + Copy;

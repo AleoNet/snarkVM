@@ -15,53 +15,48 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 pub mod adder;
-pub use adder::*;
-
 pub mod and;
-pub use and::*;
-
 pub mod equal;
-pub use equal::*;
-
+pub mod from_bits;
 pub mod nand;
-pub use nand::*;
-
 pub mod nor;
-pub use nor::*;
-
 pub mod not;
-pub use not::*;
-
 pub mod or;
-pub use or::*;
-
 pub mod subtractor;
-pub use subtractor::*;
-
 pub mod ternary;
-pub use ternary::*;
-
+pub mod to_bits;
 pub mod xor;
-pub use xor::*;
 
 use crate::{traits::*, Environment, LinearCombination, Mode, Variable};
 use snarkvm_fields::{One as O, Zero as Z};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::{
     fmt,
     ops::{BitAnd, BitAndAssign, BitOr, BitOrAssign, BitXor, BitXorAssign, Deref, Not},
 };
+use nom::{
+    branch::alt,
+    bytes::complete::tag,
+    combinator::{map, opt},
+    sequence::pair,
+};
+use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Clone)]
 pub struct Boolean<E: Environment>(LinearCombination<E::BaseField>);
 
 impl<E: Environment> BooleanTrait for Boolean<E> {}
 
-impl<E: Environment> Boolean<E> {
+impl<E: Environment> DataType<Boolean<E>> for Boolean<E> {}
+
+impl<E: Environment> Inject for Boolean<E> {
+    type Primitive = bool;
+
     ///
-    /// Initializes a new instance of a boolean from a constant boolean value.
+    /// Initializes a new instance of a boolean from a primitive boolean value.
     ///
-    pub fn new(mode: Mode, value: bool) -> Self {
+    fn new(mode: Mode, value: Self::Primitive) -> Self {
         let variable = E::new_variable(mode, match value {
             true => E::BaseField::one(),
             false => E::BaseField::zero(),
@@ -99,15 +94,39 @@ impl<E: Environment> Eject for Boolean<E> {
     }
 }
 
-impl<E: Environment> AsRef<Boolean<E>> for Boolean<E> {
-    fn as_ref(&self) -> &Boolean<E> {
-        &self
+impl<E: Environment> Parser for Boolean<E> {
+    type Environment = E;
+
+    /// Returns the type name of the circuit as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "boolean"
+    }
+
+    /// Parses a string into a boolean circuit.
+    #[inline]
+    fn parse(string: &str) -> ParserResult<Self> {
+        // Parse the boolean from the string.
+        let (string, value) = alt((map(tag("true"), |_| true), map(tag("false"), |_| false)))(string)?;
+        // Parse the mode from the string.
+        let (string, mode) = opt(pair(tag("."), Mode::parse))(string)?;
+
+        match mode {
+            Some((_, mode)) => Ok((string, Boolean::new(mode, value))),
+            None => Ok((string, Boolean::new(Mode::Constant, value))),
+        }
     }
 }
 
 impl<E: Environment> fmt::Debug for Boolean<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.eject_value())
+    }
+}
+
+impl<E: Environment> fmt::Display for Boolean<E> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}.{}", self.eject_value(), self.eject_mode())
     }
 }
 
@@ -131,72 +150,72 @@ impl<E: Environment> From<&Boolean<E>> for LinearCombination<E::BaseField> {
     }
 }
 
+// TODO (@pranav) Test
+impl<E: Environment> FromBytes for Boolean<E> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self>
+    where
+        Self: Sized,
+    {
+        let mode = Mode::read_le(&mut reader)?;
+        let value = bool::read_le(&mut reader)?;
+
+        Ok(Self::new(mode, value))
+    }
+}
+
+// TODO (@pranav) Test
+impl<E: Environment> ToBytes for Boolean<E> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()>
+    where
+        Self: Sized,
+    {
+        self.eject_mode().write_le(&mut writer)?;
+        self.eject_value().write_le(&mut writer)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Circuit;
+    use crate::{assert_circuit, Circuit};
 
     #[test]
     fn test_new_constant() {
-        assert_eq!(0, Circuit::num_constants());
-        assert_eq!(1, Circuit::num_public());
-        assert_eq!(0, Circuit::num_private());
-        assert_eq!(0, Circuit::num_constraints());
+        Circuit::scoped("test_new_constant", || {
+            let candidate = Boolean::<Circuit>::new(Mode::Constant, false);
+            assert!(!candidate.eject_value()); // false
+            assert_circuit!(1, 0, 0, 0);
 
-        let candidate = Boolean::<Circuit>::new(Mode::Constant, false);
-        assert!(!candidate.eject_value()); // false
-        assert!(Circuit::is_satisfied());
-
-        let candidate = Boolean::<Circuit>::new(Mode::Constant, true);
-        assert!(candidate.eject_value()); // true
-        assert!(Circuit::is_satisfied());
-
-        assert_eq!(2, Circuit::num_constants());
-        assert_eq!(1, Circuit::num_public());
-        assert_eq!(0, Circuit::num_private());
-        assert_eq!(0, Circuit::num_constraints());
+            let candidate = Boolean::<Circuit>::new(Mode::Constant, true);
+            assert!(candidate.eject_value()); // true
+            assert_circuit!(2, 0, 0, 0);
+        });
     }
 
     #[test]
     fn test_new_public() {
-        assert_eq!(0, Circuit::num_constants());
-        assert_eq!(1, Circuit::num_public());
-        assert_eq!(0, Circuit::num_private());
-        assert_eq!(0, Circuit::num_constraints());
+        Circuit::scoped("test_new_public", || {
+            let candidate = Boolean::<Circuit>::new(Mode::Public, false);
+            assert!(!candidate.eject_value()); // false
+            assert_circuit!(0, 1, 0, 1);
 
-        let candidate = Boolean::<Circuit>::new(Mode::Public, false);
-        assert!(!candidate.eject_value()); // false
-        assert!(Circuit::is_satisfied());
-
-        let candidate = Boolean::<Circuit>::new(Mode::Public, true);
-        assert!(candidate.eject_value()); // true
-        assert!(Circuit::is_satisfied());
-
-        assert_eq!(0, Circuit::num_constants());
-        assert_eq!(3, Circuit::num_public());
-        assert_eq!(0, Circuit::num_private());
-        assert_eq!(2, Circuit::num_constraints());
+            let candidate = Boolean::<Circuit>::new(Mode::Public, true);
+            assert!(candidate.eject_value()); // true
+            assert_circuit!(0, 2, 0, 2);
+        });
     }
 
     #[test]
     fn test_new_private() {
-        assert_eq!(0, Circuit::num_constants());
-        assert_eq!(1, Circuit::num_public());
-        assert_eq!(0, Circuit::num_private());
-        assert_eq!(0, Circuit::num_constraints());
+        Circuit::scoped("test_new_private", || {
+            let candidate = Boolean::<Circuit>::new(Mode::Private, false);
+            assert!(!candidate.eject_value()); // false
+            assert_circuit!(0, 0, 1, 1);
 
-        let candidate = Boolean::<Circuit>::new(Mode::Private, false);
-        assert!(!candidate.eject_value()); // false
-        assert!(Circuit::is_satisfied());
-
-        let candidate = Boolean::<Circuit>::new(Mode::Private, true);
-        assert!(candidate.eject_value()); // true
-        assert!(Circuit::is_satisfied());
-
-        assert_eq!(0, Circuit::num_constants());
-        assert_eq!(1, Circuit::num_public());
-        assert_eq!(2, Circuit::num_private());
-        assert_eq!(2, Circuit::num_constraints());
+            let candidate = Boolean::<Circuit>::new(Mode::Private, true);
+            assert!(candidate.eject_value()); // true
+            assert_circuit!(0, 0, 2, 2);
+        });
     }
 
     #[test]
@@ -254,5 +273,71 @@ mod tests {
 
         let candidate = Boolean::<Circuit>::new(Mode::Private, true);
         assert_eq!("true", format!("{:?}", candidate));
+    }
+
+    #[test]
+    fn test_parser() {
+        let (_, candidate) = Boolean::<Circuit>::parse("true").unwrap();
+        assert!(candidate.eject_value());
+        assert!(candidate.is_constant());
+
+        let (_, candidate) = Boolean::<Circuit>::parse("false").unwrap();
+        assert!(!candidate.eject_value());
+        assert!(candidate.is_constant());
+
+        let (_, candidate) = Boolean::<Circuit>::parse("true.constant").unwrap();
+        assert!(candidate.eject_value());
+        assert!(candidate.is_constant());
+
+        let (_, candidate) = Boolean::<Circuit>::parse("false.constant").unwrap();
+        assert!(!candidate.eject_value());
+        assert!(candidate.is_constant());
+
+        let (_, candidate) = Boolean::<Circuit>::parse("true.public").unwrap();
+        assert!(candidate.eject_value());
+        assert!(candidate.is_public());
+
+        let (_, candidate) = Boolean::<Circuit>::parse("false.public").unwrap();
+        assert!(!candidate.eject_value());
+        assert!(candidate.is_public());
+
+        let (_, candidate) = Boolean::<Circuit>::parse("true.private").unwrap();
+        assert!(candidate.eject_value());
+        assert!(candidate.is_private());
+
+        let (_, candidate) = Boolean::<Circuit>::parse("false.private").unwrap();
+        assert!(!candidate.eject_value());
+        assert!(candidate.is_private());
+
+        for mode in [Mode::Constant, Mode::Public, Mode::Private] {
+            for value in [true, false] {
+                let expected = Boolean::<Circuit>::new(mode, value);
+
+                let (_, candidate) = Boolean::<Circuit>::parse(&format!("{expected}")).unwrap();
+                assert_eq!(expected.eject_value(), candidate.eject_value());
+                assert_eq!(mode, candidate.eject_mode());
+            }
+        }
+    }
+
+    #[test]
+    fn test_display() {
+        let candidate = Boolean::<Circuit>::new(Mode::Constant, false);
+        assert_eq!("false.constant", format!("{}", candidate));
+
+        let candidate = Boolean::<Circuit>::new(Mode::Constant, true);
+        assert_eq!("true.constant", format!("{}", candidate));
+
+        let candidate = Boolean::<Circuit>::new(Mode::Public, false);
+        assert_eq!("false.public", format!("{}", candidate));
+
+        let candidate = Boolean::<Circuit>::new(Mode::Public, true);
+        assert_eq!("true.public", format!("{}", candidate));
+
+        let candidate = Boolean::<Circuit>::new(Mode::Private, false);
+        assert_eq!("false.private", format!("{}", candidate));
+
+        let candidate = Boolean::<Circuit>::new(Mode::Private, true);
+        assert_eq!("true.private", format!("{}", candidate));
     }
 }
