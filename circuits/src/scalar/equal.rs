@@ -27,7 +27,7 @@ impl<E: Environment> Equal<Self> for Scalar<E> {
     fn is_eq(&self, other: &Self) -> Self::Boolean {
         let mut output = Boolean::new(Mode::Constant, true);
 
-        for (a, b) in self.0.iter().zip_eq(other.0.iter()) {
+        for (a, b) in self.bits_le.iter().zip_eq(other.bits_le.iter()) {
             output &= a.is_eq(b);
         }
 

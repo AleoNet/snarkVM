@@ -299,7 +299,7 @@ pub trait LessThan<Rhs: ?Sized = Self> {
     type Boolean: BooleanTrait;
 
     /// Returns `true` if `self` is less than `other`.
-    fn is_lt(&self, other: &Rhs) -> Self::Boolean;
+    fn is_less_than(&self, other: &Rhs) -> Self::Boolean;
 }
 
 /// Binary operator for performing `NOT (a AND b)`.

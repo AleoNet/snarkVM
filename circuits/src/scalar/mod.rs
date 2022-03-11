@@ -24,6 +24,8 @@
 // pub mod sub;
 
 pub mod equal;
+// pub mod from_bits;
+pub mod less_than;
 pub mod one;
 pub mod ternary;
 pub mod to_bits;
@@ -44,7 +46,9 @@ use nom::{
 use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Clone)]
-pub struct Scalar<E: Environment>(Vec<Boolean<E>>);
+pub struct Scalar<E: Environment> {
+    bits_le: Vec<Boolean<E>>,
+}
 
 impl<E: Environment> ScalarTrait for Scalar<E> {}
 
@@ -55,7 +59,7 @@ impl<E: Environment> Inject for Scalar<E> {
     /// Initializes a new instance of a scalar field from a primitive scalar field value.
     ///
     fn new(mode: Mode, value: Self::Primitive) -> Self {
-        Self(value.to_bits_le().iter().map(|bit| Boolean::new(mode, *bit)).collect())
+        Self { bits_le: value.to_bits_le().iter().map(|bit| Boolean::new(mode, *bit)).collect() }
     }
 }
 
@@ -67,7 +71,7 @@ impl<E: Environment> Eject for Scalar<E> {
     ///
     fn eject_mode(&self) -> Mode {
         let mut scalar_mode = Mode::Constant;
-        for bit_mode in self.0.iter().map(Eject::eject_mode) {
+        for bit_mode in self.bits_le.iter().map(Eject::eject_mode) {
             // Check if the mode in the current iteration matches the scalar mode.
             if scalar_mode != bit_mode {
                 // If they do not match, the scalar mode must be a constant.
@@ -85,7 +89,7 @@ impl<E: Environment> Eject for Scalar<E> {
     /// Ejects the scalar field as a constant scalar field value.
     ///
     fn eject_value(&self) -> Self::Primitive {
-        let bits = self.0.iter().map(Boolean::eject_value).collect::<Vec<_>>();
+        let bits = self.bits_le.iter().map(Boolean::eject_value).collect::<Vec<_>>();
         let biginteger = <E::ScalarField as PrimeField>::BigInteger::from_bits_le(&bits[..]);
         let scalar = <E::ScalarField as PrimeField>::from_repr(biginteger);
         match scalar {

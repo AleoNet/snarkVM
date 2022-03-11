@@ -35,7 +35,7 @@ impl<E: Environment> ToBits for &Scalar<E> {
 
     /// Outputs the little-endian bit representation of `self` *without* trailing zeros.
     fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        self.0.clone()
+        self.bits_le.clone()
     }
 
     /// Outputs the big-endian bit representation of `self` *without* leading zeros.
