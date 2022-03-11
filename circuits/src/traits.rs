@@ -251,9 +251,9 @@ pub trait Eject {
         // Eject the mode and value.
         let (mode, value) = self.eject();
         // Convert the value to bytes, and append the mode.
-        value.to_bytes_le().and_then(|mut value| {
+        value.to_bytes_le().map(|mut value| {
             value.push(mode as u8);
-            Ok(value)
+            value
         })
     }
 
