@@ -149,6 +149,10 @@ impl<N: Network> ToConstraintField<N::InnerScalarField> for InnerPublicVariables
 
         v.extend_from_slice(&self.value_balance.to_bytes_le()?.to_field_elements()?);
 
+        v.extend_from_slice(&self.value_balance_commitment().commitment.to_x_coordinate().to_field_elements()?);
+        v.extend_from_slice(&self.value_balance_commitment().commitment.to_y_coordinate().to_field_elements()?);
+        v.extend_from_slice(&self.value_balance_commitment().blinding_factor.to_bytes_le()?.to_field_elements()?);
+
         Ok(v)
     }
 }

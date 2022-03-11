@@ -905,6 +905,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             let candidate_value_balance_field_elements = candidate_value_balance_bytes
                 .to_constraint_field(&mut cs.ns(|| "convert candidate value balance to field elements"))?;
 
+            // TODO (raychu86): Move this input allocation to the value balance section.
             let given_value_balance_bytes = UInt8::alloc_input_vec_le(
                 &mut cs.ns(|| "Allocate given_value_balance"),
                 &public.value_balance().to_bytes_le()?,
@@ -928,8 +929,8 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
 
             let transition_id = Transition::<N>::compute_transition_id(public.serial_numbers(), public.commitments())?;
 
-            // TODO (raychu86): Confirm if we need to do this operation in the gadget world.
-            let (c, partial_combined_commitments, zero_commitment, blinded_commitment) = public
+            // TODO (raychu86): Clean up this.
+            let (c, partial_combined_commitments, _, _) = public
                 .value_balance_commitment()
                 .gadget_verification_setup(
                     public.input_value_commitments(),
@@ -954,15 +955,24 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             let zero_commitment_gadget = <N::ValueCommitmentGadget as CommitmentGadget<
                 N::ValueCommitmentScheme,
                 N::InnerScalarField,
-            >>::OutputGadget::alloc(
-                &mut cs.ns(|| "Zero commitment gadget"), || Ok(zero_commitment)
+            >>::OutputGadget::alloc_input(
+                &mut cs.ns(|| "Zero commitment gadget"),
+                || Ok(public.value_balance_commitment().commitment),
             )?;
 
-            let blinded_commitment_gadget = <N::ValueCommitmentGadget as CommitmentGadget<
+            let blinding_factor_gadget = <N::ValueCommitmentGadget as CommitmentGadget<
                 N::ValueCommitmentScheme,
                 N::InnerScalarField,
-            >>::OutputGadget::alloc(
-                &mut cs.ns(|| "Blinding commitment gadget"), || Ok(blinded_commitment)
+            >>::RandomnessGadget::alloc_input(
+                &mut cs.ns(|| "Blinding factor gadget"),
+                || Ok(public.value_balance_commitment().blinding_factor),
+            )?;
+
+            let zero_bytes = UInt8::alloc_vec(cs.ns(|| "Zero"), &0i64.to_le_bytes())?;
+            let blinded_commitment_gadget = value_commitment_parameters.check_commitment_gadget(
+                &mut cs.ns(|| "Compute blinding commitment"),
+                &zero_bytes,
+                &blinding_factor_gadget,
             )?;
 
             let value_balance_bytes = UInt8::alloc_vec(
