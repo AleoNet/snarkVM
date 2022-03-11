@@ -35,14 +35,15 @@ impl<E: Environment> FromBits for BaseField<E> {
         }
 
         // Construct the field value from the given bits.
-        let witness = match E::BaseField::from_bytes_le(&from_bits_le_to_bytes_le(
-            &bits_le.iter().map(|bit| bit.eject_value()).collect::<Vec<_>>(),
-        )) {
-            Ok(value) => value,
-            Err(error) => E::halt(format!("Failed to convert a list of booleans into a base field element. {}", error)),
-        };
-
-        let output = BaseField::new(mode, witness);
+        let output = BaseField::new(
+            mode,
+            match E::BaseField::from_bytes_le(&from_bits_le_to_bytes_le(
+                &bits_le.iter().map(|bit| bit.eject_value()).collect::<Vec<_>>(),
+            )) {
+                Ok(value) => value,
+                Err(error) => E::halt(format!("Failed to convert booleans into a base field element. {}", error)),
+            },
+        );
 
         // Reconstruct the bits as a linear combination representing the original field value.
         let mut accumulator = BaseField::zero();
@@ -53,7 +54,7 @@ impl<E: Environment> FromBits for BaseField<E> {
         }
 
         // Ensure `output` * 1 == (2^i * b_i + ... + 2^0 * b_0)
-        E::enforce(|| (&output, E::one(), accumulator));
+        E::assert_eq(&output, accumulator);
 
         output
     }

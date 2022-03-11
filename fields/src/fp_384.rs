@@ -448,12 +448,6 @@ impl<P: Fp384Parameters> PrimeField for Fp384<P> {
     }
 
     #[inline]
-    fn from_repr_unchecked(r: BigInteger) -> Self {
-        let r = Fp384(r, PhantomData);
-        if r.is_valid() { r } else { Self::zero() }
-    }
-
-    #[inline]
     fn to_repr_unchecked(&self) -> BigInteger {
         self.0
     }

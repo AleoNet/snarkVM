@@ -15,8 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::BaseField;
-use snarkvm_utilities::{from_bits_le_to_bytes_le, FromBytes};
+// use crate::BaseField;
+// use snarkvm_utilities::{from_bits_le_to_bytes_le, FromBytes};
 
 impl<E: Environment> FromBits for Scalar<E> {
     type Boolean = Boolean<E>;
@@ -35,30 +35,57 @@ impl<E: Environment> FromBits for Scalar<E> {
             )),
         }
 
-        // Construct the field value from the given bits.
-        let witness = match E::ScalarField::from_bytes_le(&from_bits_le_to_bytes_le(
-            &bits_le.iter().map(|bit| bit.eject_value()).collect::<Vec<_>>(),
-        )) {
-            Ok(value) => value,
-            Err(error) => E::halt(format!("Failed to convert a list of booleans into a scalar field element. {}", error)),
-        };
-
-        let output = Scalar::new(mode, witness);
-
-        // Reconstruct the bits as a linear combination representing the original field value.
+        // // Construct the field value from the given bits.
+        // let output = Scalar::new(
+        //     mode,
+        //     match E::ScalarField::from_bytes_le(&from_bits_le_to_bytes_le(
+        //         &bits_le.iter().map(|bit| bit.eject_value()).collect::<Vec<_>>(),
+        //     )) {
+        //         Ok(value) => value,
+        //         Err(error) => E::halt(format!("Failed to convert booleans into a scalar field element. {}", error)),
+        //     },
+        // );
         //
-        // Note: We are reconstituting the scalar field into a base field here in order to check
-        // that the scalar was synthesized correctly. This is safe as the scalar field modulus
-        // is less that the base field modulus, and thus will always fit in a base field element.
-        let mut accumulator = BaseField::zero();
-        let mut coefficient = BaseField::one();
-        for bit in &bits_le {
-            accumulator += BaseField::from(bit) * &coefficient;
-            coefficient = coefficient.double();
-        }
+        // // Reconstruct the bits as a linear combination representing the original field value.
+        // //
+        // // Note: We are reconstituting the scalar field into a base field here in order to check
+        // // that the scalar was synthesized correctly. This is safe as the scalar field modulus
+        // // is less that the base field modulus, and thus will always fit in a base field element.
+        // let mut accumulator = BaseField::zero();
+        // let mut coefficient = BaseField::one();
+        // for bit in &bits_le {
+        //     accumulator += BaseField::from(bit) * &coefficient;
+        //     coefficient = coefficient.double();
+        // }
+        //
+        // // Ensure `output` * 1 == (2^i * b_i + ... + 2^0 * b_0)
+        // E::assert_eq(&output, accumulator);
 
-        // Ensure `output` * 1 == (2^i * b_i + ... + 2^0 * b_0)
-        E::enforce(|| (&output, E::one(), accumulator));
+        // Construct the candidate scalar field element.
+        let output = Scalar { bits_le };
+
+        // // Ensure the mode in the given bits are consistent with the desired mode.
+        // // If they do not match, proceed to construct a new scalar, and check that it is well-formed.
+        // match candidate.eject_mode() == mode {
+        //     true => candidate,
+        //     false => {
+        //         // Construct a new integer as a witness.
+        //         let output = Scalar::new(mode, candidate.eject_value());
+        //         // Ensure `output` == `candidate`.
+        //         E::assert_eq(&output, &candidate);
+        //         // Return the new integer.
+        //         output
+        //     }
+        // }
+
+        // Initialize the scalar field modulus as a constant variable.
+        let modulus = Scalar::new(Mode::Constant, match E::ScalarField::from_repr(E::ScalarField::modulus()) {
+            Some(modulus) => modulus,
+            None => E::halt(format!("Failed to initialize the scalar field modulus as a constant variable"))
+        });
+
+        // Ensure `output` is less than `E::ScalarField::modulus()`.
+        E::assert(output.is_less_than(&modulus));
 
         output
     }
