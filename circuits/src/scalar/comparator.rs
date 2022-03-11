@@ -18,23 +18,11 @@ use super::*;
 
 use itertools::Itertools;
 
-impl<E: Environment> LessThan<Scalar<E>> for Scalar<E> {
+impl<E: Environment> Comparator<Scalar<E>> for Scalar<E> {
     type Boolean = Boolean<E>;
 
-    ///
     /// Returns `true` if `self` is less than `other`.
-    ///
     fn is_less_than(&self, other: &Self) -> Self::Boolean {
-        // let (mut is_less_than, mut are_previous_bits_equal) = (self.msb() & !other.msb(), self.msb().is_eq(other.msb());
-        //
-        // // Compare the remaining bits.
-        // for (self_bit, other_bit) in self.bits_le.iter().rev().zip_eq(other.bits_le.iter().rev()).skip(1) {
-        //     is_less_than |= &are_previous_bits_equal & !self_bit & other_bit;
-        //     are_previous_bits_equal &= self_bit.is_eq(other_bit);
-        // }
-        //
-        // is_less_than
-
         let mut is_less_than = Boolean::new(Mode::Constant, false);
         let mut are_previous_bits_equal = Boolean::new(Mode::Constant, true);
 
@@ -52,6 +40,21 @@ impl<E: Environment> LessThan<Scalar<E>> for Scalar<E> {
         }
 
         is_less_than
+    }
+
+    /// Returns `true` if `self` is greater than `other`.
+    fn is_greater_than(&self, other: &Self) -> Self::Boolean {
+        other.is_less_than(self)
+    }
+
+    /// Returns `true` if `self` is less than or equal to `other`.
+    fn is_less_than_or_equal(&self, other: &Self) -> Self::Boolean {
+        other.is_greater_than_or_equal(self)
+    }
+
+    /// Returns `true` if `self` is greater than or equal to `other`.
+    fn is_greater_than_or_equal(&self, other: &Self) -> Self::Boolean {
+        !self.is_less_than(other)
     }
 }
 

@@ -295,11 +295,20 @@ pub trait Equal<Rhs: ?Sized = Self> {
     fn is_neq(&self, other: &Rhs) -> Self::Boolean;
 }
 
-pub trait LessThan<Rhs: ?Sized = Self> {
+pub trait Comparator<Rhs: ?Sized = Self> {
     type Boolean: BooleanTrait;
 
     /// Returns `true` if `self` is less than `other`.
     fn is_less_than(&self, other: &Rhs) -> Self::Boolean;
+
+    /// Returns `true` if `self` is greater than `other`.
+    fn is_greater_than(&self, other: &Rhs) -> Self::Boolean;
+
+    /// Returns `true` if `self` is less than or equal to `other`.
+    fn is_less_than_or_equal(&self, other: &Rhs) -> Self::Boolean;
+
+    /// Returns `true` if `self` is greater than or equal to `other`.
+    fn is_greater_than_or_equal(&self, other: &Rhs) -> Self::Boolean;
 }
 
 /// Binary operator for performing `NOT (a AND b)`.
