@@ -32,7 +32,7 @@ impl<E: Environment> FromBits for Scalar<E> {
         let size_in_bits = E::ScalarField::size_in_bits();
         match num_bits <= size_in_bits {
             true => bits_le.resize(size_in_bits, Boolean::new(Mode::Constant, false)),
-            false => E::halt(format!("Attempted to instantiate a {}-bit scalar with {} bits", size_in_bits, num_bits)),
+            false => E::halt(format!("Attempted to instantiate a {size_in_bits}-bit scalar with {num_bits} bits")),
         }
 
         // Construct the candidate scalar field element.
@@ -52,44 +52,23 @@ impl<E: Environment> FromBits for Scalar<E> {
             }
         };
 
-        // Construct the scalar field value from the given bits.
-        let output = Scalar::new(
-            mode,
-            match E::ScalarField::from_bytes_le(&from_bits_le_to_bytes_le(
-                &bits_le.iter().map(|bit| bit.eject_value()).collect::<Vec<_>>(),
-            )) {
-                Ok(value) => value,
-                Err(error) => E::halt(format!("Failed to convert booleans into a scalar field element. {}", error)),
-            },
-        );
-
-        // Reconstruct the bits as a linear combination representing the original field value.
-        //
-        // Note: We are reconstituting the scalar field into a base field here in order to check
-        // that the scalar was synthesized correctly. This is safe as the scalar field modulus
-        // is less that the base field modulus, and thus will always fit in a base field element.
-        let mut accumulator = BaseField::zero();
-        let mut coefficient = BaseField::one();
-        for bit in &bits_le {
-            accumulator += BaseField::from(bit) * &coefficient;
-            coefficient = coefficient.double();
-        }
-
-        // Ensure `output` * 1 == (2^i * b_i + ... + 2^0 * b_0)
-        E::assert_eq(&output, accumulator);
-
         // Initialize the scalar field modulus as a constant base field variable.
         //
         // Note: We are reconstituting the scalar field into a base field here in order to check
         // that the scalar was synthesized correctly. This is safe as the scalar field modulus
         // is less that the base field modulus, and thus will always fit in a base field element.
-        let modulus = BaseField::new(Mode::Constant, match E::BaseField::from_repr(E::ScalarField::modulus()) {
-            Some(modulus) => modulus,
-            None => E::halt(format!("Failed to initialize the scalar field modulus as a constant variable")),
+        let modulus = BaseField::new(Mode::Constant, match E::ScalarField::modulus().to_bytes_le() {
+            Ok(modulus_bytes) => match E::BaseField::from_bytes_le(&modulus_bytes) {
+                Ok(modulus) => modulus,
+                Err(error) => {
+                    E::halt(format!("Failed to initialize the scalar modulus as a constant variable: {error}"))
+                }
+            },
+            Err(error) => E::halt(format!("Failed to retrieve the scalar modulus as bytes: {error}")),
         });
 
         // Ensure `output` is less than `E::ScalarField::modulus()`.
-        E::assert(output.is_less_than(&modulus));
+        E::assert(output.to_field().is_less_than(&modulus));
 
         output
     }
@@ -132,6 +111,7 @@ mod tests {
                 assert_eq!(expected, candidate.eject_value());
                 assert_circuit!(num_constants, num_public, num_private, num_constraints);
             });
+            Circuit::reset();
         }
     }
 
@@ -152,36 +132,37 @@ mod tests {
                 assert_eq!(expected, candidate.eject_value());
                 assert_circuit!(num_constants, num_public, num_private, num_constraints);
             });
+            Circuit::reset();
         }
     }
 
     #[test]
     fn test_from_bits_le_constant() {
-        check_from_bits_le(Mode::Constant, 2, 0, 0, 0);
+        check_from_bits_le(Mode::Constant, 510, 0, 0, 0);
     }
 
     #[test]
     fn test_from_bits_le_public() {
-        check_from_bits_le(Mode::Public, 1, 1, 0, 1);
+        check_from_bits_le(Mode::Public, 257, 0, 769, 771);
     }
 
     #[test]
     fn test_from_bits_le_private() {
-        check_from_bits_le(Mode::Private, 1, 0, 1, 1);
+        check_from_bits_le(Mode::Private, 257, 0, 769, 771);
     }
 
     #[test]
     fn test_from_bits_be_constant() {
-        check_from_bits_be(Mode::Constant, 2, 0, 0, 0);
+        check_from_bits_be(Mode::Constant, 510, 0, 0, 0);
     }
 
     #[test]
     fn test_from_bits_be_public() {
-        check_from_bits_be(Mode::Public, 1, 1, 0, 1);
+        check_from_bits_be(Mode::Public, 257, 0, 769, 771);
     }
 
     #[test]
     fn test_from_bits_be_private() {
-        check_from_bits_be(Mode::Private, 1, 0, 1, 1);
+        check_from_bits_be(Mode::Private, 257, 0, 769, 771);
     }
 }

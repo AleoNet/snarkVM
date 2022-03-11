@@ -49,54 +49,41 @@ impl<E: Environment> Inv for &BaseField<E> {
 mod tests {
     use super::*;
     use crate::{assert_circuit, Circuit};
+    use snarkvm_utilities::UniformRand;
+
+    use rand::thread_rng;
 
     const ITERATIONS: usize = 1_000;
 
+    fn check_inv(
+        name: &str,
+        mode: Mode,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) {
+        for _ in 0..ITERATIONS {
+            // Sample a random element.
+            let given: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
+            // Compute it's inverse, or skip this iteration if it does not natively exist.
+            if let Some(expected) = given.inverse() {
+                let candidate = BaseField::<Circuit>::new(mode, given);
+
+                Circuit::scoped(name, || {
+                    assert_eq!(expected, candidate.inv().eject_value());
+                    assert_circuit!(num_constants, num_public, num_private, num_constraints);
+                });
+                Circuit::reset();
+            }
+        }
+    }
+
     #[test]
     fn test_inv() {
-        let one = <Circuit as Environment>::BaseField::one();
-
-        // Constant variables
-        Circuit::scoped("Constant", || {
-            let mut accumulator = one;
-
-            for i in 0..ITERATIONS {
-                let expected = accumulator.inverse().expect("Failed to compute the accumulator inverse");
-                let candidate = BaseField::<Circuit>::new(Mode::Constant, accumulator).inv();
-                assert_eq!(expected, candidate.eject_value());
-                assert_circuit!((i + 1) * 2, 0, 0, 0);
-
-                accumulator += one;
-            }
-        });
-
-        // Public variables
-        Circuit::scoped("Public", || {
-            let mut accumulator = one;
-
-            for i in 0..ITERATIONS {
-                let expected = accumulator.inverse().expect("Failed to compute the accumulator inverse");
-                let candidate = BaseField::<Circuit>::new(Mode::Public, accumulator).inv();
-                assert_eq!(expected, candidate.eject_value());
-                assert_circuit!(0, i + 1, i + 1, i + 1);
-
-                accumulator += one;
-            }
-        });
-
-        // Private variables
-        Circuit::scoped("Private", || {
-            let mut accumulator = one;
-
-            for i in 0..ITERATIONS {
-                let expected = accumulator.inverse().expect("Failed to compute the accumulator inverse");
-                let candidate = BaseField::<Circuit>::new(Mode::Private, accumulator).inv();
-                assert_eq!(expected, candidate.eject_value());
-                assert_circuit!(0, 0, (i + 1) * 2, i + 1);
-
-                accumulator += one;
-            }
-        });
+        check_inv("Constant", Mode::Constant, 1, 0, 0, 0);
+        check_inv("Public", Mode::Public, 0, 0, 1, 1);
+        check_inv("Private", Mode::Private, 0, 0, 1, 1);
     }
 
     #[test]

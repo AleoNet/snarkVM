@@ -113,6 +113,7 @@ mod tests {
                 assert_eq!(expected, candidate.eject_value());
                 assert_circuit!(3, 0, 0, 0);
             });
+            Circuit::reset();
         }
 
         // Public variables
@@ -128,6 +129,7 @@ mod tests {
                 assert_eq!(expected, candidate.eject_value());
                 assert_circuit!(1, 0, 5, 5);
             });
+            Circuit::reset();
         }
 
         // Private variables
@@ -144,6 +146,7 @@ mod tests {
                 assert_eq!(expected, candidate.eject_value());
                 assert_circuit!(1, 0, 5, 5);
             });
+            Circuit::reset();
         }
     }
 

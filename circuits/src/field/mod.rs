@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 pub mod add;
+pub mod compare;
 pub mod div;
 pub mod double;
 pub mod equal;

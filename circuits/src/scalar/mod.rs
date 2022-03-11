@@ -16,7 +16,7 @@
 
 pub mod compare;
 pub mod equal;
-// pub mod from_bits;
+pub mod from_bits;
 pub mod one;
 pub mod ternary;
 pub mod to_bits;

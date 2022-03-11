@@ -65,6 +65,7 @@ mod tests {
                 assert_eq!(expected, candidate.eject_value());
                 assert_circuit!(num_constants, num_public, num_private, num_constraints);
             });
+            Circuit::reset();
         }
     }
 
@@ -87,6 +88,7 @@ mod tests {
                 assert_eq!(expected, candidate.eject_value());
                 assert_circuit!(num_constants, num_public, num_private, num_constraints);
             });
+            Circuit::reset();
         }
     }
 

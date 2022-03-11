@@ -69,12 +69,14 @@ mod tests {
                 assert!(!equals.eject_value());
                 assert_circuit!(2, 0, 0, 0);
             });
+            Circuit::reset();
 
             Circuit::scoped(&format!("Constant Not Equals {}", i), || {
                 let equals = a.is_not_equal(&b);
                 assert!(equals.eject_value());
                 assert_circuit!(2, 0, 0, 0);
             });
+            Circuit::reset();
         }
 
         // Constant == Public
@@ -91,12 +93,14 @@ mod tests {
                 assert!(!equals.eject_value());
                 assert_circuit!(0, 0, 5, 7);
             });
+            Circuit::reset();
 
             Circuit::scoped(&format!("Constant and Public Not Equals {}", i), || {
                 let equals = a.is_not_equal(&b);
                 assert!(equals.eject_value());
                 assert_circuit!(0, 0, 5, 7);
             });
+            Circuit::reset();
         }
 
         // Public == Constant
@@ -113,12 +117,14 @@ mod tests {
                 assert!(!equals.eject_value());
                 assert_circuit!(0, 0, 5, 7);
             });
+            Circuit::reset();
 
             Circuit::scoped(&format!("Public and Constant Not Equals {}", i), || {
                 let equals = a.is_not_equal(&b);
                 assert!(equals.eject_value());
                 assert_circuit!(0, 0, 5, 7);
             });
+            Circuit::reset();
         }
 
         // Public == Public
@@ -135,12 +141,14 @@ mod tests {
                 assert!(!equals.eject_value());
                 assert_circuit!(0, 0, 5, 7);
             });
+            Circuit::reset();
 
             Circuit::scoped(&format!("Public Not Equals {}", i), || {
                 let equals = a.is_not_equal(&b);
                 assert!(equals.eject_value());
                 assert_circuit!(0, 0, 5, 7);
             });
+            Circuit::reset();
         }
 
         // Private == Private
@@ -157,12 +165,14 @@ mod tests {
                 assert!(!equals.eject_value());
                 assert_circuit!(0, 0, 5, 7);
             });
+            Circuit::reset();
 
             Circuit::scoped(&format!("Private Not Equals {}", i), || {
                 let equals = a.is_not_equal(&b);
                 assert!(equals.eject_value());
                 assert_circuit!(0, 0, 5, 7);
             });
+            Circuit::reset();
         }
     }
 }
