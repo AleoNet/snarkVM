@@ -45,7 +45,7 @@ fn main() {
     match (&expected, &candidate[0]) {
         (Immediate::Field(expected), Immediate::Field(candidate)) => {
             println!("{candidate}");
-            assert!(expected.is_eq(candidate).eject_value());
+            assert!(expected.is_equal(candidate).eject_value());
         }
         _ => panic!("Failed to load output"),
     }
@@ -66,7 +66,7 @@ mod tests {
 
         match (&expected, &candidate[0]) {
             (Immediate::Field(expected), Immediate::Field(candidate)) => {
-                assert!(expected.is_eq(candidate).eject_value())
+                assert!(expected.is_equal(candidate).eject_value())
             }
             _ => panic!("Failed to load output"),
         }
