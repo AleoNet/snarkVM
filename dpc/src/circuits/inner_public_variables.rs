@@ -20,7 +20,6 @@ use snarkvm_utilities::ToBytes;
 
 use anyhow::Result;
 use itertools::Itertools;
-use snarkvm_curves::AffineCurve;
 
 #[derive(Clone, Debug)]
 pub struct InnerPublicVariables<N: Network> {
@@ -138,19 +137,16 @@ impl<N: Network> ToConstraintField<N::InnerScalarField> for InnerPublicVariables
         for (serial_number, input_value_commitment) in self.serial_numbers.iter().zip_eq(&self.input_value_commitments)
         {
             v.extend_from_slice(&serial_number.to_field_elements()?);
-            v.extend_from_slice(&input_value_commitment.to_x_coordinate().to_field_elements()?);
-            v.extend_from_slice(&input_value_commitment.to_y_coordinate().to_field_elements()?);
+            v.extend_from_slice(&input_value_commitment.to_field_elements()?);
         }
         for (commitment, output_value_commitment) in self.commitments.iter().zip_eq(&self.output_value_commitments) {
             v.extend_from_slice(&commitment.to_field_elements()?);
-            v.extend_from_slice(&output_value_commitment.to_x_coordinate().to_field_elements()?);
-            v.extend_from_slice(&output_value_commitment.to_y_coordinate().to_field_elements()?);
+            v.extend_from_slice(&output_value_commitment.to_field_elements()?);
         }
 
         v.extend_from_slice(&self.value_balance.to_bytes_le()?.to_field_elements()?);
 
-        v.extend_from_slice(&self.value_balance_commitment().commitment.to_x_coordinate().to_field_elements()?);
-        v.extend_from_slice(&self.value_balance_commitment().commitment.to_y_coordinate().to_field_elements()?);
+        v.extend_from_slice(&self.value_balance_commitment().commitment.to_field_elements()?);
         v.extend_from_slice(&self.value_balance_commitment().blinding_factor.to_bytes_le()?.to_field_elements()?);
 
         Ok(v)

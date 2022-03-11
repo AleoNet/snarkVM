@@ -154,7 +154,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type InnerBaseField: PrimeField + PoseidonDefaultParametersField;
 
     /// Program curve type declarations.
-    type ProgramAffineCurve: AffineCurve<BaseField = Self::InnerScalarField, ScalarField = Self::ProgramScalarField>;
+    type ProgramAffineCurve: AffineCurve<BaseField = Self::InnerScalarField, ScalarField = Self::ProgramScalarField> + ToConstraintField<Self::InnerScalarField>;
     type ProgramAffineCurveGadget: GroupGadget<Self::ProgramAffineCurve, Self::InnerScalarField>;
     type ProgramProjectiveCurve: ProjectiveCurve<BaseField = Self::InnerScalarField>;
     type ProgramCurveParameters: TwistedEdwardsParameters;
