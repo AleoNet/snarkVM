@@ -169,7 +169,7 @@ impl<E: Environment, I: IntegerType, M: private::Magnitude> ShrChecked<Integer<E
 
                     // Arithmetic shift uses a different rounding mode than division.
                     let rounded_negated_quotient = Self::ternary(
-                        &(&remainder_field).is_eq(&BaseField::zero()),
+                        &(&remainder_field).is_equal(&BaseField::zero()),
                         &negated_quotient,
                         &(&negated_quotient).sub_wrapped(&Self::one()),
                     );

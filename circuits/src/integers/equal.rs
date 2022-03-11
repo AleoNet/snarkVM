@@ -25,14 +25,14 @@ impl<E: Environment, I: IntegerType> Equal<Self> for Integer<E, I> {
     ///
     /// Returns `true` if `self` and `other` are equal.
     ///
-    fn is_eq(&self, other: &Self) -> Self::Boolean {
+    fn is_equal(&self, other: &Self) -> Self::Boolean {
         // Determine if this operation is constant or variable.
         match self.is_constant() && other.is_constant() {
             true => self
                 .bits_le
                 .iter()
                 .zip_eq(other.bits_le.iter())
-                .map(|(this, that)| this.is_eq(that))
+                .map(|(this, that)| this.is_equal(that))
                 .fold(Boolean::new(Mode::Constant, true), |a, b| a & b),
             false => {
                 // Instead of comparing the bits of `self` and `other` directly, the integers are
@@ -40,7 +40,7 @@ impl<E: Environment, I: IntegerType> Equal<Self> for Integer<E, I> {
                 // Note: This is safe as the field is larger than the maximum integer type supported.
                 let this = BaseField::from_bits_le(Mode::Private, &self.bits_le);
                 let that = BaseField::from_bits_le(Mode::Private, &other.bits_le);
-                this.is_eq(&that)
+                this.is_equal(&that)
             }
         }
     }
@@ -51,8 +51,8 @@ impl<E: Environment, I: IntegerType> Equal<Self> for Integer<E, I> {
     /// This method constructs a boolean that indicates if
     /// `self` and `other ` are *not* equal to each other.
     ///
-    fn is_neq(&self, other: &Self) -> Self::Boolean {
-        !self.is_eq(other)
+    fn is_not_equal(&self, other: &Self) -> Self::Boolean {
+        !self.is_equal(other)
     }
 }
 
@@ -85,12 +85,12 @@ mod tests {
 
         let a = Integer::<Circuit, I>::new(mode_a, first);
         let b = Integer::<Circuit, I>::new(mode_b, second);
-        check_operation_passes(&name, &case, expected, &a, &b, Integer::is_eq, num_constants, num_public, num_private, num_constraints);
+        check_operation_passes(&name, &case, expected, &a, &b, Integer::is_equal, num_constants, num_public, num_private, num_constraints);
 
         // Commute the operation.
         let a = Integer::<Circuit, I>::new(mode_a, second);
         let b = Integer::<Circuit, I>::new(mode_b, first);
-        check_operation_passes(&name, &case, expected, &a, &b, Integer::is_eq, num_constants, num_public, num_private, num_constraints);
+        check_operation_passes(&name, &case, expected, &a, &b, Integer::is_equal, num_constants, num_public, num_private, num_constraints);
     }
 
     #[rustfmt::skip]

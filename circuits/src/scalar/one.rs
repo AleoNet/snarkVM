@@ -24,7 +24,7 @@ impl<E: Environment> One for Scalar<E> {
     }
 
     fn is_one(&self) -> Self::Boolean {
-        self.is_eq(&Self::one())
+        self.is_equal(&Self::one())
     }
 }
 

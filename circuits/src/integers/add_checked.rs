@@ -97,8 +97,8 @@ impl<E: Environment, I: IntegerType> AddChecked<Self> for Integer<E, I> {
                 //   - Note: if sign(a) != sign(b) then over/underflow is impossible.
                 //   - Note: the result of an overflow and underflow must be negative and positive, respectively.
                 true => {
-                    let is_same_sign = self.msb().is_eq(other.msb());
-                    let is_overflow = is_same_sign & sum.msb().is_neq(self.msb());
+                    let is_same_sign = self.msb().is_equal(other.msb());
+                    let is_overflow = is_same_sign & sum.msb().is_not_equal(self.msb());
                     E::assert_eq(is_overflow, E::zero());
                 }
                 // For unsigned addition, ensure the carry bit is zero.

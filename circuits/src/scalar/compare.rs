@@ -35,7 +35,7 @@ impl<E: Environment> Compare<Scalar<E>> for Scalar<E> {
 
             // Skip the update to the LSB, as this boolean is subsequently discarded.
             if index != self.bits_le.len() - 1 {
-                are_previous_bits_equal &= self_bit.is_eq(other_bit);
+                are_previous_bits_equal &= self_bit.is_equal(other_bit);
             }
         }
 

@@ -24,7 +24,7 @@ impl<E: Environment, I: IntegerType> One for Integer<E, I> {
     }
 
     fn is_one(&self) -> Self::Boolean {
-        self.is_eq(&Integer::one())
+        self.is_equal(&Integer::one())
     }
 }
 

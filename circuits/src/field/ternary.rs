@@ -112,8 +112,8 @@ mod tests {
                 let output = BaseField::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 0, 0);
 
-                assert!(output.is_eq(&a).eject_value());
-                assert!(!output.is_eq(&b).eject_value());
+                assert!(output.is_equal(&a).eject_value());
+                assert!(!output.is_equal(&b).eject_value());
             });
 
             let condition = Boolean::new(Mode::Constant, false);
@@ -121,8 +121,8 @@ mod tests {
                 let output = BaseField::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 0, 0);
 
-                assert!(!output.is_eq(&a).eject_value());
-                assert!(output.is_eq(&b).eject_value());
+                assert!(!output.is_equal(&a).eject_value());
+                assert!(output.is_equal(&b).eject_value());
             });
         }
 
@@ -136,8 +136,8 @@ mod tests {
                 let output = BaseField::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 0, 0);
 
-                assert!(output.is_eq(&a).eject_value());
-                assert!(!output.is_eq(&b).eject_value());
+                assert!(output.is_equal(&a).eject_value());
+                assert!(!output.is_equal(&b).eject_value());
             });
 
             let condition = Boolean::new(Mode::Constant, false);
@@ -145,8 +145,8 @@ mod tests {
                 let output = BaseField::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 0, 0);
 
-                assert!(!output.is_eq(&a).eject_value());
-                assert!(output.is_eq(&b).eject_value());
+                assert!(!output.is_equal(&a).eject_value());
+                assert!(output.is_equal(&b).eject_value());
             });
         }
 
@@ -160,8 +160,8 @@ mod tests {
                 let output = BaseField::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 0, 0);
 
-                assert!(output.is_eq(&a).eject_value());
-                assert!(!output.is_eq(&b).eject_value());
+                assert!(output.is_equal(&a).eject_value());
+                assert!(!output.is_equal(&b).eject_value());
             });
 
             let condition = Boolean::new(Mode::Public, false);
@@ -169,8 +169,8 @@ mod tests {
                 let output = BaseField::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 0, 0);
 
-                assert!(!output.is_eq(&a).eject_value());
-                assert!(output.is_eq(&b).eject_value());
+                assert!(!output.is_equal(&a).eject_value());
+                assert!(output.is_equal(&b).eject_value());
             });
         }
 
@@ -184,8 +184,8 @@ mod tests {
                 let output = BaseField::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 0, 0);
 
-                assert!(output.is_eq(&a).eject_value());
-                assert!(!output.is_eq(&b).eject_value());
+                assert!(output.is_equal(&a).eject_value());
+                assert!(!output.is_equal(&b).eject_value());
             });
 
             let condition = Boolean::new(Mode::Private, false);
@@ -193,8 +193,8 @@ mod tests {
                 let output = BaseField::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 0, 0);
 
-                assert!(!output.is_eq(&a).eject_value());
-                assert!(output.is_eq(&b).eject_value());
+                assert!(!output.is_equal(&a).eject_value());
+                assert!(output.is_equal(&b).eject_value());
             });
         }
 
@@ -208,8 +208,8 @@ mod tests {
                 let output = BaseField::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 1, 1);
 
-                assert!(output.is_eq(&a).eject_value());
-                assert!(!output.is_eq(&b).eject_value());
+                assert!(output.is_equal(&a).eject_value());
+                assert!(!output.is_equal(&b).eject_value());
             });
 
             let condition = Boolean::new(Mode::Private, false);
@@ -217,8 +217,8 @@ mod tests {
                 let output = BaseField::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 1, 1);
 
-                assert!(!output.is_eq(&a).eject_value());
-                assert!(output.is_eq(&b).eject_value());
+                assert!(!output.is_equal(&a).eject_value());
+                assert!(output.is_equal(&b).eject_value());
             });
         }
 
@@ -232,8 +232,8 @@ mod tests {
                 let output = BaseField::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 1, 1);
 
-                assert!(output.is_eq(&a).eject_value());
-                assert!(!output.is_eq(&b).eject_value());
+                assert!(output.is_equal(&a).eject_value());
+                assert!(!output.is_equal(&b).eject_value());
             });
 
             let condition = Boolean::new(Mode::Private, false);
@@ -241,8 +241,8 @@ mod tests {
                 let output = BaseField::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 1, 1);
 
-                assert!(!output.is_eq(&a).eject_value());
-                assert!(output.is_eq(&b).eject_value());
+                assert!(!output.is_equal(&a).eject_value());
+                assert!(output.is_equal(&b).eject_value());
             });
         }
 
@@ -256,8 +256,8 @@ mod tests {
                 let output = BaseField::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 1, 1);
 
-                assert!(output.is_eq(&a).eject_value());
-                assert!(!output.is_eq(&b).eject_value());
+                assert!(output.is_equal(&a).eject_value());
+                assert!(!output.is_equal(&b).eject_value());
             });
 
             let condition = Boolean::new(Mode::Private, false);
@@ -265,8 +265,8 @@ mod tests {
                 let output = BaseField::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 1, 1);
 
-                assert!(!output.is_eq(&a).eject_value());
-                assert!(output.is_eq(&b).eject_value());
+                assert!(!output.is_equal(&a).eject_value());
+                assert!(output.is_equal(&b).eject_value());
             });
         }
     }

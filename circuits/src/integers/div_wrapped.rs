@@ -40,14 +40,14 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
             // TODO (@pranav) Do we need to check that the quotient cannot exceed abs(I::MIN)?
             //  This is implicitly true since the dividend <= abs(I::MIN) and 0 <= quotient <= dividend.
             let signed_quotient = Self { bits_le: unsigned_quotient.bits_le, phantom: Default::default() };
-            let operands_same_sign = &self.msb().is_eq(other.msb());
+            let operands_same_sign = &self.msb().is_equal(other.msb());
             let signed_quotient =
                 Self::ternary(operands_same_sign, &signed_quotient, &Self::zero().sub_wrapped(&signed_quotient));
 
             // Signed integer division wraps when the dividend is I::MIN and the divisor is -1.
             let min = Self::new(Mode::Constant, I::MIN);
             let neg_one = Self::new(Mode::Constant, I::zero() - I::one());
-            let overflows = self.is_eq(&min) & other.is_eq(&neg_one);
+            let overflows = self.is_equal(&min) & other.is_equal(&neg_one);
             Self::ternary(&overflows, &min, &signed_quotient)
         } else {
             // Eject the dividend and divisor, to compute the quotient as a witness.

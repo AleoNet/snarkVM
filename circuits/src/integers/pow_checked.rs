@@ -49,7 +49,7 @@ impl<E: Environment, I: IntegerType, M: private::Magnitude> PowChecked<Integer<E
                     let carry_bits_nonzero = carry.iter().fold(Boolean::new(Mode::Constant, false), |a, b| a | b);
 
                     // If the product should be positive, then it cannot exceed the signed maximum.
-                    let operands_same_sign = &result.msb().is_eq(self.msb());
+                    let operands_same_sign = &result.msb().is_equal(self.msb());
                     let positive_product_overflows = operands_same_sign & product.msb();
 
                     // If the product should be negative, then it cannot exceed the absolute value of the signed minimum.

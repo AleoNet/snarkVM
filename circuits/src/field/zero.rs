@@ -24,7 +24,7 @@ impl<E: Environment> Zero for BaseField<E> {
     }
 
     fn is_zero(&self) -> Self::Boolean {
-        self.is_eq(&BaseField::zero())
+        self.is_equal(&BaseField::zero())
     }
 }
 

@@ -24,8 +24,8 @@ impl<E: Environment> Equal<Self> for BaseField<E> {
     ///
     /// This method costs 3 constraints.
     ///
-    fn is_eq(&self, other: &Self) -> Self::Boolean {
-        !self.is_neq(other)
+    fn is_equal(&self, other: &Self) -> Self::Boolean {
+        !self.is_not_equal(other)
     }
 
     ///
@@ -36,7 +36,7 @@ impl<E: Environment> Equal<Self> for BaseField<E> {
     ///
     /// This method costs 3 constraints.
     ///
-    fn is_neq(&self, other: &Self) -> Self::Boolean {
+    fn is_not_equal(&self, other: &Self) -> Self::Boolean {
         match (self.is_constant(), other.is_constant()) {
             (true, true) => Boolean::new(Mode::Constant, self.eject_value() != other.eject_value()),
             _ => {
@@ -141,7 +141,7 @@ mod tests {
     const ITERATIONS: usize = 200;
 
     #[test]
-    fn test_is_eq() {
+    fn test_is_equal() {
         let zero = <Circuit as Environment>::BaseField::zero();
         let one = <Circuit as Environment>::BaseField::one();
 
@@ -152,17 +152,17 @@ mod tests {
             for _ in 0..ITERATIONS {
                 let a = BaseField::<Circuit>::new(Mode::Private, accumulator);
                 let b = BaseField::<Circuit>::new(Mode::Private, accumulator);
-                let is_eq = a.is_eq(&b);
+                let is_eq = a.is_equal(&b);
                 assert!(is_eq.eject_value()); // true
 
                 let a = BaseField::<Circuit>::new(Mode::Private, one);
                 let b = BaseField::<Circuit>::new(Mode::Private, accumulator);
-                let is_eq = a.is_eq(&b);
+                let is_eq = a.is_equal(&b);
                 assert!(!is_eq.eject_value()); // false
 
                 let a = BaseField::<Circuit>::new(Mode::Private, accumulator);
                 let b = BaseField::<Circuit>::new(Mode::Private, accumulator - one);
-                let is_eq = a.is_eq(&b);
+                let is_eq = a.is_equal(&b);
                 assert!(!is_eq.eject_value()); // false
 
                 accumulator += one;
@@ -177,7 +177,7 @@ mod tests {
                 let a = BaseField::<Circuit>::new(Mode::Constant, accumulator);
                 let b = BaseField::<Circuit>::new(Mode::Constant, accumulator);
 
-                let is_eq = a.is_eq(&b);
+                let is_eq = a.is_equal(&b);
                 assert!(is_eq.eject_value());
                 assert_circuit!((i + 1) * 3, 0, 0, 0);
 
@@ -192,7 +192,7 @@ mod tests {
             for i in 0..ITERATIONS {
                 let a = BaseField::<Circuit>::new(Mode::Public, accumulator);
                 let b = BaseField::<Circuit>::new(Mode::Public, accumulator);
-                let is_eq = a.is_eq(&b);
+                let is_eq = a.is_equal(&b);
                 assert!(is_eq.eject_value());
                 assert_circuit!(0, (i + 1) * 2, (i + 1) * 2, (i + 1) * 3);
 
@@ -207,7 +207,7 @@ mod tests {
             for i in 0..ITERATIONS {
                 let a = BaseField::<Circuit>::new(Mode::Public, accumulator);
                 let b = BaseField::<Circuit>::new(Mode::Private, accumulator);
-                let is_eq = a.is_eq(&b);
+                let is_eq = a.is_equal(&b);
                 assert!(is_eq.eject_value());
                 assert_circuit!(0, i + 1, (i + 1) * 3, (i + 1) * 3);
 
@@ -222,7 +222,7 @@ mod tests {
             for i in 0..ITERATIONS {
                 let a = BaseField::<Circuit>::new(Mode::Private, accumulator);
                 let b = BaseField::<Circuit>::new(Mode::Private, accumulator);
-                let is_eq = a.is_eq(&b);
+                let is_eq = a.is_equal(&b);
                 assert!(is_eq.eject_value());
                 assert!(Circuit::is_satisfied());
                 assert_circuit!(0, 0, (i + 1) * 4, (i + 1) * 3);

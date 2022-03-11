@@ -24,7 +24,7 @@ impl<E: Environment, I: IntegerType> Zero for Integer<E, I> {
     }
 
     fn is_zero(&self) -> Self::Boolean {
-        self.is_eq(&Integer::zero())
+        self.is_equal(&Integer::zero())
     }
 }
 

@@ -296,10 +296,10 @@ pub trait Equal<Rhs: ?Sized = Self> {
     type Boolean: BooleanTrait;
 
     /// Returns `true` if `self` and `other` are equal.
-    fn is_eq(&self, other: &Rhs) -> Self::Boolean;
+    fn is_equal(&self, other: &Rhs) -> Self::Boolean;
 
     /// Returns `true` if `self` and `other` are *not* equal.
-    fn is_neq(&self, other: &Rhs) -> Self::Boolean;
+    fn is_not_equal(&self, other: &Rhs) -> Self::Boolean;
 }
 
 /// Trait for comparator operations.

@@ -54,8 +54,8 @@ mod tests {
                 let output = Scalar::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 0, 0);
 
-                assert!(output.is_eq(&a).eject_value());
-                assert!(!output.is_eq(&b).eject_value());
+                assert!(output.is_equal(&a).eject_value());
+                assert!(!output.is_equal(&b).eject_value());
             });
 
             let condition = Boolean::new(Mode::Constant, false);
@@ -63,8 +63,8 @@ mod tests {
                 let output = Scalar::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 0, 0);
 
-                assert!(!output.is_eq(&a).eject_value());
-                assert!(output.is_eq(&b).eject_value());
+                assert!(!output.is_equal(&a).eject_value());
+                assert!(output.is_equal(&b).eject_value());
             });
         }
 
@@ -78,8 +78,8 @@ mod tests {
                 let output = Scalar::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 0, 0);
 
-                assert!(output.is_eq(&a).eject_value());
-                assert!(!output.is_eq(&b).eject_value());
+                assert!(output.is_equal(&a).eject_value());
+                assert!(!output.is_equal(&b).eject_value());
             });
 
             let condition = Boolean::new(Mode::Constant, false);
@@ -87,8 +87,8 @@ mod tests {
                 let output = Scalar::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 0, 0);
 
-                assert!(!output.is_eq(&a).eject_value());
-                assert!(output.is_eq(&b).eject_value());
+                assert!(!output.is_equal(&a).eject_value());
+                assert!(output.is_equal(&b).eject_value());
             });
         }
 
@@ -102,8 +102,8 @@ mod tests {
                 let output = Scalar::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 0, 0);
 
-                assert!(output.is_eq(&a).eject_value());
-                assert!(!output.is_eq(&b).eject_value());
+                assert!(output.is_equal(&a).eject_value());
+                assert!(!output.is_equal(&b).eject_value());
             });
 
             let condition = Boolean::new(Mode::Public, false);
@@ -111,8 +111,8 @@ mod tests {
                 let output = Scalar::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 0, 0);
 
-                assert!(!output.is_eq(&a).eject_value());
-                assert!(output.is_eq(&b).eject_value());
+                assert!(!output.is_equal(&a).eject_value());
+                assert!(output.is_equal(&b).eject_value());
             });
         }
 
@@ -126,8 +126,8 @@ mod tests {
                 let output = Scalar::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 0, 0);
 
-                assert!(output.is_eq(&a).eject_value());
-                assert!(!output.is_eq(&b).eject_value());
+                assert!(output.is_equal(&a).eject_value());
+                assert!(!output.is_equal(&b).eject_value());
             });
 
             let condition = Boolean::new(Mode::Private, false);
@@ -135,8 +135,8 @@ mod tests {
                 let output = Scalar::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 0, 0);
 
-                assert!(!output.is_eq(&a).eject_value());
-                assert!(output.is_eq(&b).eject_value());
+                assert!(!output.is_equal(&a).eject_value());
+                assert!(output.is_equal(&b).eject_value());
             });
         }
 
@@ -150,8 +150,8 @@ mod tests {
                 let output = Scalar::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 251, 251);
 
-                assert!(output.is_eq(&a).eject_value());
-                assert!(!output.is_eq(&b).eject_value());
+                assert!(output.is_equal(&a).eject_value());
+                assert!(!output.is_equal(&b).eject_value());
             });
 
             let condition = Boolean::new(Mode::Private, false);
@@ -159,8 +159,8 @@ mod tests {
                 let output = Scalar::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 251, 251);
 
-                assert!(!output.is_eq(&a).eject_value());
-                assert!(output.is_eq(&b).eject_value());
+                assert!(!output.is_equal(&a).eject_value());
+                assert!(output.is_equal(&b).eject_value());
             });
         }
 
@@ -174,8 +174,8 @@ mod tests {
                 let output = Scalar::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 251, 251);
 
-                assert!(output.is_eq(&a).eject_value());
-                assert!(!output.is_eq(&b).eject_value());
+                assert!(output.is_equal(&a).eject_value());
+                assert!(!output.is_equal(&b).eject_value());
             });
 
             let condition = Boolean::new(Mode::Private, false);
@@ -183,8 +183,8 @@ mod tests {
                 let output = Scalar::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 251, 251);
 
-                assert!(!output.is_eq(&a).eject_value());
-                assert!(output.is_eq(&b).eject_value());
+                assert!(!output.is_equal(&a).eject_value());
+                assert!(output.is_equal(&b).eject_value());
             });
         }
 
@@ -198,8 +198,8 @@ mod tests {
                 let output = Scalar::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 251, 251);
 
-                assert!(output.is_eq(&a).eject_value());
-                assert!(!output.is_eq(&b).eject_value());
+                assert!(output.is_equal(&a).eject_value());
+                assert!(!output.is_equal(&b).eject_value());
             });
 
             let condition = Boolean::new(Mode::Private, false);
@@ -207,8 +207,8 @@ mod tests {
                 let output = Scalar::ternary(&condition, &a, &b);
                 assert_circuit!(0, 0, 251, 251);
 
-                assert!(!output.is_eq(&a).eject_value());
-                assert!(output.is_eq(&b).eject_value());
+                assert!(!output.is_equal(&a).eject_value());
+                assert!(output.is_equal(&b).eject_value());
             });
         }
     }
