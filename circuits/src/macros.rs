@@ -16,20 +16,28 @@
 
 #[cfg(test)]
 #[macro_export]
+macro_rules! println_circuit_scoped {
+    () => {
+        println!(
+            "Circuit::scoped(Constants: {:?}, Public: {:?}, Private: {:?}, Constraints: {:?})",
+            Circuit::num_constants_in_scope(),
+            Circuit::num_public_in_scope(),
+            Circuit::num_private_in_scope(),
+            Circuit::num_constraints_in_scope()
+        );
+    };
+}
+
+#[cfg(test)]
+#[macro_export]
 macro_rules! assert_circuit {
     () => {
-        println!("Constants: {:?}", Circuit::num_constants_in_scope());
-        println!("Public: {:?}", Circuit::num_public_in_scope());
-        println!("Private: {:?}", Circuit::num_private_in_scope());
-        println!("Constraints: {:?}", Circuit::num_constraints_in_scope());
+        crate::println_circuit_scoped!();
 
         assert!(Circuit::is_satisfied(), "(is_satisfied)");
     };
     ($num_constants:expr, $num_public:expr, $num_private:expr, $num_constraints:expr) => {
-        println!("Constants: {:?}", Circuit::num_constants_in_scope());
-        println!("Public: {:?}", Circuit::num_public_in_scope());
-        println!("Private: {:?}", Circuit::num_private_in_scope());
-        println!("Constraints: {:?}", Circuit::num_constraints_in_scope());
+        crate::println_circuit_scoped!();
 
         assert_eq!($num_constants, Circuit::num_constants_in_scope(), "(num_constants)");
         assert_eq!($num_public, Circuit::num_public_in_scope(), "(num_public)");
@@ -38,10 +46,7 @@ macro_rules! assert_circuit {
         assert!(Circuit::is_satisfied(), "(is_satisfied)");
     };
     ($case:expr, $num_constants:expr, $num_public:expr, $num_private:expr, $num_constraints:expr) => {
-        println!("Constants: {:?}", Circuit::num_constants_in_scope());
-        println!("Public: {:?}", Circuit::num_public_in_scope());
-        println!("Private: {:?}", Circuit::num_private_in_scope());
-        println!("Constraints: {:?}", Circuit::num_constraints_in_scope());
+        crate::println_circuit_scoped!();
 
         assert_eq!($num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", $case);
         assert_eq!($num_public, Circuit::num_public_in_scope(), "{} (num_public)", $case);
@@ -55,18 +60,12 @@ macro_rules! assert_circuit {
 #[macro_export]
 macro_rules! assert_circuit_fails {
     () => {
-        println!("Constants: {:?}", Circuit::num_constants_in_scope());
-        println!("Public: {:?}", Circuit::num_public_in_scope());
-        println!("Private: {:?}", Circuit::num_private_in_scope());
-        println!("Constraints: {:?}", Circuit::num_constraints_in_scope());
+        crate::println_circuit_scoped!();
 
         assert!(!Circuit::is_satisfied(), "(!is_satisfied)");
     };
     ($num_constants:expr, $num_public:expr, $num_private:expr, $num_constraints:expr) => {
-        println!("Constants: {:?}", Circuit::num_constants_in_scope());
-        println!("Public: {:?}", Circuit::num_public_in_scope());
-        println!("Private: {:?}", Circuit::num_private_in_scope());
-        println!("Constraints: {:?}", Circuit::num_constraints_in_scope());
+        crate::println_circuit_scoped!();
 
         assert_eq!($num_constants, Circuit::num_constants_in_scope(), "(num_constants)");
         assert_eq!($num_public, Circuit::num_public_in_scope(), "(num_public)");
@@ -75,10 +74,7 @@ macro_rules! assert_circuit_fails {
         assert!(!Circuit::is_satisfied(), "(!is_satisfied)");
     };
     ($case:expr, $num_constants:expr, $num_public:expr, $num_private:expr, $num_constraints:expr) => {
-        println!("Constants: {:?}", Circuit::num_constants_in_scope());
-        println!("Public: {:?}", Circuit::num_public_in_scope());
-        println!("Private: {:?}", Circuit::num_private_in_scope());
-        println!("Constraints: {:?}", Circuit::num_constraints_in_scope());
+        crate::println_circuit_scoped!();
 
         assert_eq!($num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", $case);
         assert_eq!($num_public, Circuit::num_public_in_scope(), "{} (num_public)", $case);

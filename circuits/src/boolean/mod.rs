@@ -23,6 +23,9 @@ pub use and::*;
 pub mod equal;
 pub use equal::*;
 
+pub mod from_bits;
+pub use from_bits::*;
+
 pub mod nand;
 pub use nand::*;
 
