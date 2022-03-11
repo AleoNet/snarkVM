@@ -51,6 +51,8 @@ pub struct Affine<E: Environment> {
     y: BaseField<E>,
 }
 
+impl<E: Environment> GroupTrait<E> for Affine<E> {}
+
 impl<E: Environment> Inject for Affine<E> {
     type Primitive = (E::BaseField, Option<E::BaseField>);
 

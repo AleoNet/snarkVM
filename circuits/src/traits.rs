@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{helpers::integers::IntegerType, Boolean, Environment, Mode, U16, U32, U8};
+use crate::{helpers::integers::IntegerType, Boolean, Environment, Mode, Scalar, U16, U32, U8};
 
 use core::{
     fmt::{Debug, Display},
@@ -59,6 +59,7 @@ pub trait BooleanTrait:
     + Debug
     + Eject<Primitive = bool>
     + Equal
+    + FromBits
     + Inject<Primitive = bool>
     + Nand
     + Nor
@@ -66,10 +67,11 @@ pub trait BooleanTrait:
     + Parser
     + Subtractor
     + Ternary
+    + ToBits
 {
 }
 
-/// Representation of a base field.
+/// Representation of a base field element.
 pub trait BaseFieldTrait<E: Environment>:
     Add<Output = Self>
     + AddAssign
@@ -98,7 +100,28 @@ pub trait BaseFieldTrait<E: Environment>:
 {
 }
 
-/// Representation of a scalar field.
+/// Representation of a group element.
+pub trait GroupTrait<E: Environment>:
+    Add<Output = Self>
+    + AddAssign
+    + Clone
+    + Debug
+    + Double<Output = Self>
+    + Eject
+    + Equal
+    + Inject
+    + Mul<Scalar<E>, Output = Self>
+    + MulAssign<Scalar<E>>
+    + Neg<Output = Self>
+    + Parser
+    + Sub<Output = Self>
+    + SubAssign
+    + Ternary
+    + Zero
+{
+}
+
+/// Representation of a scalar field element.
 pub trait ScalarTrait: Clone + Debug + Eject + Equal + Inject + One + Parser + Ternary + ToBits + Zero {}
 
 /// Representation of an integer.
@@ -205,9 +228,16 @@ pub trait Eject {
     fn eject_mode(&self) -> Mode;
 
     ///
-    /// Ejects the circuit type as a primitive type value.
+    /// Ejects the circuit type as a primitive value.
     ///
     fn eject_value(&self) -> Self::Primitive;
+
+    ///
+    /// Ejects the mode and primitive value of the circuit type.
+    ///
+    fn eject(&self) -> (Mode, Self::Primitive) {
+        (self.eject_mode(), self.eject_value())
+    }
 
     ///
     /// Returns `true` if the circuit is a constant.
