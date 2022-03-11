@@ -101,6 +101,16 @@ mod tests {
     }
 
     #[test]
+    fn test_constant_is_less_than_public() {
+        check_is_less_than(Mode::Constant, Mode::Public, 2, 473, 0, 473);
+    }
+
+    #[test]
+    fn test_constant_is_less_than_private() {
+        check_is_less_than(Mode::Constant, Mode::Private, 2, 0, 473, 473);
+    }
+
+    #[test]
     fn test_public_is_less_than_public() {
         check_is_less_than(Mode::Public, Mode::Public, 2, 0, 1250, 1250);
     }
