@@ -23,8 +23,8 @@
 
 pub use snarkvm_circuits_environment::*;
 
-// pub mod address;
-// pub use address::*;
+pub mod address;
+pub use address::*;
 
 pub mod boolean;
 pub use boolean::*;
@@ -44,8 +44,8 @@ pub use integers::*;
 pub mod macros;
 pub use macros::*;
 
-// pub mod record;
-// pub use record::*;
+pub mod record;
+pub use record::*;
 
 pub mod scalar;
 pub use scalar::*;

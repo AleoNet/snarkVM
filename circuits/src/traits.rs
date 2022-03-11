@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{helpers::integers::IntegerType, Environment, Mode, U16, U32, U8};
+use crate::{helpers::integers::IntegerType, Boolean, Environment, Mode, U16, U32, U8};
 
 use core::{
     fmt::{Debug, Display},
@@ -69,7 +69,7 @@ pub trait BooleanTrait:
 }
 
 /// Representation of a base field.
-pub trait BaseFieldTrait:
+pub trait BaseFieldTrait<E: Environment>:
     Add<Output = Self>
     + AddAssign
     + Clone
@@ -87,6 +87,7 @@ pub trait BaseFieldTrait:
     + Neg<Output = Self>
     + One
     + Parser
+    + DataType<Boolean<E>>
     + Square<Output = Self>
     + Sub<Output = Self>
     + SubAssign
@@ -128,6 +129,7 @@ pub trait IntegerTrait<E: Environment, I: IntegerType>:
     + Neg<Output = Self>
     + Not<Output = Self>
     + One
+    + DataType<Boolean<E>>
     + PowChecked<U8<E>, Output = Self>
     + PowChecked<U16<E>, Output = Self>
     + PowChecked<U32<E>, Output = Self>
@@ -167,6 +169,9 @@ pub trait IntegerTrait<E: Environment, I: IntegerType>:
     + Zero
 {
 }
+
+/// Operations to convert to and from bit representation in a circuit environment.
+pub trait DataType<B: BooleanTrait>: FromBits<Boolean = B> + ToBits<Boolean = B> {}
 
 /// Operations to inject from a primitive form into a circuit environment.
 pub trait Inject {
@@ -448,9 +453,13 @@ pub trait MSB {
 pub trait FromBits {
     type Boolean: BooleanTrait;
 
-    fn from_bits_le(mode: Mode, bits_le: &[Self::Boolean]) -> Self;
+    fn from_bits_le(mode: Mode, bits_le: &[Self::Boolean]) -> Self
+    where
+        Self: Sized;
 
-    fn from_bits_be(mode: Mode, bits_be: &[Self::Boolean]) -> Self;
+    fn from_bits_be(mode: Mode, bits_be: &[Self::Boolean]) -> Self
+    where
+        Self: Sized;
 }
 
 /// Unary operator for converting to bits.

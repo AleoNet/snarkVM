@@ -14,37 +14,40 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-// pub mod payload;
-// pub use payload::*;
+use crate::{Boolean, Environment, Mode, traits::*};
 
-use crate::{traits::*, Address, BaseField, Boolean, Environment, I64};
+pub struct Payload<E: Environment> {
+    public: Vec<Box<dyn DataType<Boolean<E>>>>,
+    private: Vec<Box<dyn DataType<Boolean<E>>>>
+}
 
-// TODO (howardwu): Check mode is only public/private, not constant.
-// #[derive(Clone, Debug)]
-pub struct Record<E: Environment> {
-    owner: Address<E>,
-    value: I64<E>,
-    payload: Vec<Box<dyn DataType<Boolean<E>>>>,
-    // program_id: Vec<Boolean<E>>,
-    // randomizer: BaseField<E>,
-    // record_view_key: BaseField<E>,
+impl<E: Environment> Inject for Payload<E> {
+    type Primitive = (Vec<Box<dyn DataType<Boolean<E>>>>, Vec<Box<dyn DataType<Boolean<E>>>>);
+
+    ///
+    /// Initializes a new instance of a payload.
+    ///
+    fn new(_: Mode, value: Self::Primitive) -> Self {
+        // TODO (howardwu): Ensure the value.0 is all public, and value.1 is all private.
+        Self { public: value.0, private: value.1 }
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::Affine;
     use super::*;
-    use crate::{Affine, Circuit};
+    use crate::{Circuit, BaseField, I64};
 
     #[test]
-    fn test_record_payload() {
+    fn test_payload() {
         let first = BaseField::<Circuit>::from_str("10field.public");
         // let second = Boolean::from_str("true.private");
         let third = I64::from_str("99i64.public");
 
-        let candidate = Record {
-            owner: Address::from(Affine::from_str("2group.private")),
-            value: I64::from_str("1i64.private"),
-            payload: vec![Box::new(first), Box::new(third)],
+        let candidate = Payload {
+            public: vec![Box::new(first)],
+            private: vec![Box::new(third)],
         };
     }
 }
