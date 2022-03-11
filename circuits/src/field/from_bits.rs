@@ -28,7 +28,7 @@ impl<E: Environment> FromBits for BaseField<E> {
 
         // TODO (howardwu): Contemplate how to handle the CAPACITY vs. BITS case.
         // Ensure the list of booleans is within the allowed capacity.
-        let size_in_bits = E::ScalarField::size_in_bits();
+        let size_in_bits = E::BaseField::size_in_bits();
         match num_bits <= size_in_bits {
             true => bits_le.resize(size_in_bits, Boolean::new(Mode::Constant, false)),
             false => E::halt(format!("Attempted to instantiate a {}-bit field with {} bits", size_in_bits, num_bits)),
