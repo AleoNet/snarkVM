@@ -15,40 +15,17 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 pub mod adder;
-pub use adder::*;
-
 pub mod and;
-pub use and::*;
-
 pub mod equal;
-pub use equal::*;
-
 pub mod from_bits;
-pub use from_bits::*;
-
 pub mod nand;
-pub use nand::*;
-
 pub mod nor;
-pub use nor::*;
-
 pub mod not;
-pub use not::*;
-
 pub mod or;
-pub use or::*;
-
 pub mod subtractor;
-pub use subtractor::*;
-
 pub mod ternary;
-pub use ternary::*;
-
 pub mod to_bits;
-pub use to_bits::*;
-
 pub mod xor;
-pub use xor::*;
 
 use crate::{traits::*, Environment, LinearCombination, Mode, Variable};
 use snarkvm_fields::{One as O, Zero as Z};

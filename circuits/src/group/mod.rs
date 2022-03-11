@@ -22,11 +22,13 @@ pub mod neg;
 // pub mod one;
 pub mod sub;
 pub mod ternary;
+pub mod to_bits;
 pub mod zero;
 
 use crate::{traits::*, BaseField, Boolean, Environment, Mode, Scalar};
 use snarkvm_curves::{AffineCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{Field as F, One as O};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 #[cfg(test)]
 use snarkvm_fields::Zero as Z;
@@ -42,7 +44,6 @@ use nom::{
     multi::{many0, many1},
     sequence::{pair, terminated},
 };
-use snarkvm_utilities::{FromBytes, ToBytes};
 use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Clone)]
