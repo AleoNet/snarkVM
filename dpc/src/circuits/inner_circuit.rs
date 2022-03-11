@@ -561,7 +561,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 let given_value_commitment_gadget = <N::ValueCommitmentGadget as CommitmentGadget<
                     N::ValueCommitmentScheme,
                     N::InnerScalarField,
-                >>::OutputGadget::alloc(
+                >>::OutputGadget::alloc_input(
                     &mut vc_cs.ns(|| format!("Input value commitment {}", i)),
                     || Ok(value_commitment),
                 )?;
@@ -843,7 +843,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 let given_value_commitment_gadget = <N::ValueCommitmentGadget as CommitmentGadget<
                     N::ValueCommitmentScheme,
                     N::InnerScalarField,
-                >>::OutputGadget::alloc(
+                >>::OutputGadget::alloc_input(
                     &mut vc_cs.ns(|| format!("Output value commitment {}", j)),
                     || Ok(value_commitment),
                 )?;
