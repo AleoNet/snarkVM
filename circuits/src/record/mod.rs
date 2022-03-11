@@ -35,13 +35,13 @@ mod tests {
     #[test]
     fn test_record_data() {
         let first = BaseField::<Circuit>::from_str("10field.public");
-        // let second = Boolean::from_str("true.private");
+        let second = Boolean::from_str("true.private");
         let third = I64::from_str("99i64.public");
 
-        let candidate = Record {
+        let _candidate = Record {
             owner: Address::from(Affine::from_str("2group.private")),
             value: I64::from_str("1i64.private"),
-            data: vec![Box::new(first), Box::new(third)],
+            data: vec![Box::new(first), Box::new(second), Box::new(third)],
         };
     }
 }
