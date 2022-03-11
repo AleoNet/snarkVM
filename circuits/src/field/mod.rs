@@ -55,7 +55,7 @@ use std::io::{Read, Result as IoResult, Write};
 #[derive(Clone)]
 pub struct BaseField<E: Environment>(LinearCombination<E::BaseField>);
 
-impl<E: Environment> BaseFieldTrait<E> for BaseField<E> {}
+impl<E: Environment> FieldTrait<E> for BaseField<E> {}
 
 impl<E: Environment> DataType<Boolean<E>> for BaseField<E> {}
 

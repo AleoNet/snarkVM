@@ -14,24 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-// pub mod add;
-// pub mod div;
-// pub mod double;
-// pub mod inv;
-// pub mod mul;
-// pub mod neg;
-// pub mod square;
-// pub mod sub;
-
 pub mod compare;
 pub mod equal;
 // pub mod from_bits;
 pub mod one;
 pub mod ternary;
 pub mod to_bits;
+pub mod to_field;
 pub mod zero;
 
-use crate::{traits::*, Boolean, Environment, Mode};
+use crate::{traits::*, Boolean, Environment, LinearCombination, Mode};
 use snarkvm_fields::{One as O, PrimeField, Zero as Z};
 use snarkvm_utilities::{FromBits as FBits, FromBytes, ToBits as TBits, ToBytes};
 
@@ -158,6 +150,18 @@ impl<E: Environment> ToBytes for Scalar<E> {
     {
         self.eject_mode().write_le(&mut writer)?;
         self.eject_value().write_le(&mut writer)
+    }
+}
+
+impl<E: Environment> From<Scalar<E>> for LinearCombination<E::BaseField> {
+    fn from(scalar: Scalar<E>) -> Self {
+        From::from(&scalar)
+    }
+}
+
+impl<E: Environment> From<&Scalar<E>> for LinearCombination<E::BaseField> {
+    fn from(scalar: &Scalar<E>) -> Self {
+        scalar.to_field().into()
     }
 }
 

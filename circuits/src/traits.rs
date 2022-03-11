@@ -72,7 +72,7 @@ pub trait BooleanTrait:
 }
 
 /// Representation of a base field element.
-pub trait BaseFieldTrait<E: Environment>:
+pub trait FieldTrait<E: Environment>:
     Add<Output = Self>
     + AddAssign
     + Clone
@@ -260,6 +260,13 @@ pub trait Eject {
     fn is_private(&self) -> bool {
         self.eject_mode().is_private()
     }
+}
+
+pub trait ToField<E: Environment> {
+    type Field: FieldTrait<E>;
+
+    /// Casts a scalar field element into a base field element.
+    fn to_field(&self) -> Self::Field;
 }
 
 /// Representation of the zero value.

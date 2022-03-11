@@ -22,16 +22,16 @@ impl<E: Environment> FromBits for BaseField<E> {
 
     /// Initializes a new base field element from a list of little-endian bits *without* trailing zeros.
     fn from_bits_le(mode: Mode, bits_le: &[Self::Boolean]) -> Self {
+        // Initialize the new little-endian boolean vector.
+        let mut bits_le = bits_le.to_vec();
+        let num_bits = bits_le.len();
+
         // TODO (howardwu): Contemplate how to handle the CAPACITY vs. BITS case.
         // Ensure the list of booleans is within the allowed capacity.
-        let mut bits_le = bits_le.to_vec();
-        match bits_le.len() <= E::BaseField::size_in_bits() {
-            true => bits_le.resize(E::BaseField::size_in_bits(), Boolean::new(Mode::Constant, false)),
-            false => E::halt(format!(
-                "Attempted to instantiate a {}-bit base field element with {} bits",
-                E::BaseField::size_in_bits(),
-                bits_le.len()
-            )),
+        let size_in_bits = E::ScalarField::size_in_bits();
+        match num_bits <= size_in_bits {
+            true => bits_le.resize(size_in_bits, Boolean::new(Mode::Constant, false)),
+            false => E::halt(format!("Attempted to instantiate a {}-bit field with {} bits", size_in_bits, num_bits)),
         }
 
         // Construct the field value from the given bits.
