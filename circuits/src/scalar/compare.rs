@@ -18,7 +18,7 @@ use super::*;
 
 use itertools::Itertools;
 
-impl<E: Environment> Comparator<Scalar<E>> for Scalar<E> {
+impl<E: Environment> Compare<Scalar<E>> for Scalar<E> {
     type Boolean = Boolean<E>;
 
     /// Returns `true` if `self` is less than `other`.

@@ -23,7 +23,7 @@
 // pub mod square;
 // pub mod sub;
 
-pub mod comparator;
+pub mod compare;
 pub mod equal;
 // pub mod from_bits;
 pub mod one;

@@ -295,7 +295,8 @@ pub trait Equal<Rhs: ?Sized = Self> {
     fn is_neq(&self, other: &Rhs) -> Self::Boolean;
 }
 
-pub trait Comparator<Rhs: ?Sized = Self> {
+/// Trait for comparator operations.
+pub trait Compare<Rhs: ?Sized = Self> {
     type Boolean: BooleanTrait;
 
     /// Returns `true` if `self` is less than `other`.
