@@ -29,7 +29,7 @@ impl<E: Environment> LessThan<Scalar<E>> for Scalar<E> {
         //
         // // Compare the remaining bits.
         // for (self_bit, other_bit) in self.bits_le.iter().rev().zip_eq(other.bits_le.iter().rev()).skip(1) {
-        //     is_less_than |= (&are_previous_bits_equal & !self_bit & other_bit);
+        //     is_less_than |= &are_previous_bits_equal & !self_bit & other_bit;
         //     are_previous_bits_equal &= self_bit.is_eq(other_bit);
         // }
         //
@@ -43,7 +43,7 @@ impl<E: Environment> LessThan<Scalar<E>> for Scalar<E> {
 
         for (index, (self_bit, other_bit)) in bits_be.enumerate() {
             // Determine if `self` is less than `other` up to the `index`-th bit.
-            is_less_than |= (&are_previous_bits_equal & (!self_bit & other_bit));
+            is_less_than |= &are_previous_bits_equal & (!self_bit & other_bit);
 
             // Skip the update to the LSB, as this boolean is subsequently discarded.
             if index != self.bits_le.len() - 1 {
