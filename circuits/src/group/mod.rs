@@ -84,6 +84,19 @@ impl<E: Environment> Inject for Affine<E> {
 
 impl<E: Environment> Affine<E> {
     ///
+    /// Initializes a new affine group element from a mode and x-coordinate circuit field element.
+    ///
+    /// For safety, the resulting point is always enforced to be on the curve with constraints.
+    /// regardless of whether the y-coordinate was recovered.
+    ///
+    pub fn from_x_coordinate(mode: Mode, x: BaseField<E>) -> Self {
+        // Derive the y-coordinate.
+        let y = BaseField::new(mode, E::affine_from_x_coordinate(x.eject_value()).to_y_coordinate());
+
+        Self::from(x, y)
+    }
+
+    ///
     /// For safety, the resulting point is always enforced to be on the curve with constraints.
     /// regardless of whether the y-coordinate was recovered.
     ///
