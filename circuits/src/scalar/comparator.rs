@@ -68,7 +68,7 @@ mod tests {
 
     const ITERATIONS: usize = 100;
 
-    fn check_less_than(
+    fn check_is_less_than(
         mode: Mode,
         num_constants: usize,
         num_public: usize,
@@ -95,17 +95,17 @@ mod tests {
     }
 
     #[test]
-    fn test_less_than_constant() {
-        check_less_than(Mode::Constant, 2, 0, 0, 0);
+    fn test_constant_is_less_than_constant() {
+        check_is_less_than(Mode::Constant, 2, 0, 0, 0);
     }
 
     #[test]
-    fn test_less_than_public() {
-        check_less_than(Mode::Public, 2, 0, 1250, 1250);
+    fn test_public_is_less_than_public() {
+        check_is_less_than(Mode::Public, 2, 0, 1250, 1250);
     }
 
     #[test]
-    fn test_less_than_private() {
-        check_less_than(Mode::Private, 2, 0, 1250, 1250);
+    fn test_private_is_less_than_private() {
+        check_is_less_than(Mode::Private, 2, 0, 1250, 1250);
     }
 }
