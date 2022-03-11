@@ -55,6 +55,7 @@ pub trait BooleanTrait:
     + BitXorAssign
     + BitXor<Output = Self>
     + Clone
+    + DataType<Self>
     + Debug
     + Eject<Primitive = bool>
     + Equal
@@ -73,6 +74,7 @@ pub trait BaseFieldTrait<E: Environment>:
     Add<Output = Self>
     + AddAssign
     + Clone
+    + DataType<Boolean<E>>
     + Debug
     + Div<Output = Self>
     + DivAssign
@@ -87,7 +89,6 @@ pub trait BaseFieldTrait<E: Environment>:
     + Neg<Output = Self>
     + One
     + Parser
-    + DataType<Boolean<E>>
     + Square<Output = Self>
     + Sub<Output = Self>
     + SubAssign
@@ -113,6 +114,7 @@ pub trait IntegerTrait<E: Environment, I: IntegerType>:
     + BitXorAssign
     + BitXor<Output = Self>
     + Clone
+    + DataType<Boolean<E>>
     + Debug
     + DivAssign
     + Div<Output = Self>
@@ -129,7 +131,6 @@ pub trait IntegerTrait<E: Environment, I: IntegerType>:
     + Neg<Output = Self>
     + Not<Output = Self>
     + One
-    + DataType<Boolean<E>>
     + PowChecked<U8<E>, Output = Self>
     + PowChecked<U16<E>, Output = Self>
     + PowChecked<U32<E>, Output = Self>

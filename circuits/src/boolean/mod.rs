@@ -52,6 +52,7 @@ pub use xor::*;
 
 use crate::{traits::*, Environment, LinearCombination, Mode, Variable};
 use snarkvm_fields::{One as O, Zero as Z};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::{
     fmt,
@@ -63,13 +64,14 @@ use nom::{
     combinator::{map, opt},
     sequence::pair,
 };
-use snarkvm_utilities::{FromBytes, ToBytes};
 use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Clone)]
 pub struct Boolean<E: Environment>(LinearCombination<E::BaseField>);
 
 impl<E: Environment> BooleanTrait for Boolean<E> {}
+
+impl<E: Environment> DataType<Boolean<E>> for Boolean<E> {}
 
 impl<E: Environment> Inject for Boolean<E> {
     type Primitive = bool;
