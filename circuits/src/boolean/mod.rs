@@ -25,6 +25,7 @@ pub mod or;
 pub mod subtractor;
 pub mod ternary;
 pub mod to_bits;
+pub mod to_field;
 pub mod xor;
 
 use crate::{traits::*, Environment, LinearCombination, Mode, Variable};
