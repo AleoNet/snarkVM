@@ -14,9 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-// pub mod payload;
-// pub use payload::*;
-
 use crate::{traits::*, Address, BaseField, Boolean, Environment, I64};
 
 // TODO (howardwu): Check mode is only public/private, not constant.
@@ -24,7 +21,7 @@ use crate::{traits::*, Address, BaseField, Boolean, Environment, I64};
 pub struct Record<E: Environment> {
     owner: Address<E>,
     value: I64<E>,
-    payload: Vec<Box<dyn DataType<Boolean<E>>>>,
+    data: Vec<Box<dyn DataType<Boolean<E>>>>,
     // program_id: Vec<Boolean<E>>,
     // randomizer: BaseField<E>,
     // record_view_key: BaseField<E>,
@@ -36,7 +33,7 @@ mod tests {
     use crate::{Affine, Circuit};
 
     #[test]
-    fn test_record_payload() {
+    fn test_record_data() {
         let first = BaseField::<Circuit>::from_str("10field.public");
         // let second = Boolean::from_str("true.private");
         let third = I64::from_str("99i64.public");
@@ -44,7 +41,7 @@ mod tests {
         let candidate = Record {
             owner: Address::from(Affine::from_str("2group.private")),
             value: I64::from_str("1i64.private"),
-            payload: vec![Box::new(first), Box::new(third)],
+            data: vec![Box::new(first), Box::new(third)],
         };
     }
 }

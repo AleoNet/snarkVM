@@ -41,6 +41,9 @@ pub use subtractor::*;
 pub mod ternary;
 pub use ternary::*;
 
+pub mod to_bits;
+pub use to_bits::*;
+
 pub mod xor;
 pub use xor::*;
 
