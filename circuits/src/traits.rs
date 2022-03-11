@@ -105,6 +105,7 @@ pub trait GroupTrait<E: Environment>:
     Add<Output = Self>
     + AddAssign
     + Clone
+    + DataType<Boolean<E>>
     + Debug
     + Double<Output = Self>
     + Eject
@@ -120,9 +121,6 @@ pub trait GroupTrait<E: Environment>:
     + Zero
 {
 }
-
-/// Representation of a scalar field element.
-pub trait ScalarTrait: Clone + Debug + Eject + Equal + Inject + One + Parser + Ternary + ToBits + Zero {}
 
 /// Representation of an integer.
 pub trait IntegerTrait<E: Environment, I: IntegerType>:
@@ -193,6 +191,9 @@ pub trait IntegerTrait<E: Environment, I: IntegerType>:
     + Zero
 {
 }
+
+/// Representation of a scalar field element.
+pub trait ScalarTrait: Clone + Debug + Eject + Equal + Inject + One + Parser + Ternary + ToBits + Zero {}
 
 /// Operations to convert to and from bit representation in a circuit environment.
 pub trait DataType<B: BooleanTrait>: FromBits<Boolean = B> + ToBits<Boolean = B> {}

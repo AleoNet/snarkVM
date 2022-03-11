@@ -32,7 +32,7 @@ pub mod to_upper_bits;
 pub mod zero;
 
 use crate::{traits::*, Boolean, Environment, LinearCombination, Mode};
-use snarkvm_fields::{Field as F, One as O};
+use snarkvm_fields::{Field as F, One as O, PrimeField};
 use snarkvm_utilities::{FromBytes, ToBits as TBits, ToBytes};
 
 #[cfg(test)]

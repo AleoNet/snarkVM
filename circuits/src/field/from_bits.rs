@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{from_bits_le_to_bytes_le, FromBytes};
 
 impl<E: Environment> FromBits for BaseField<E> {

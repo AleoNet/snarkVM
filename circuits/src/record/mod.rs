@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{traits::*, Address, BaseField, Boolean, Environment, I64};
+use crate::{traits::*, Address, Boolean, Environment, I64};
 
 // TODO (howardwu): Check mode is only public/private, not constant.
 // #[derive(Clone, Debug)]
@@ -30,7 +30,7 @@ pub struct Record<E: Environment> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Affine, Circuit};
+    use crate::{Affine, BaseField, Circuit};
 
     #[test]
     fn test_record_data() {

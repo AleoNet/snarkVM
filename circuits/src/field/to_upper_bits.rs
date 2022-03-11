@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_fields::PrimeField;
 
 impl<E: Environment> ToUpperBits for BaseField<E> {
     type Boolean = Boolean<E>;

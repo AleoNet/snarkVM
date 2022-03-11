@@ -17,6 +17,7 @@
 pub mod add;
 pub mod double;
 pub mod equal;
+pub mod from_bits;
 pub mod mul;
 pub mod neg;
 // pub mod one;
@@ -53,6 +54,8 @@ pub struct Affine<E: Environment> {
 }
 
 impl<E: Environment> GroupTrait<E> for Affine<E> {}
+
+impl<E: Environment> DataType<Boolean<E>> for Affine<E> {}
 
 impl<E: Environment> Inject for Affine<E> {
     type Primitive = (E::BaseField, Option<E::BaseField>);
