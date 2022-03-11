@@ -52,6 +52,7 @@ pub(crate) mod integers {
         + FromStr<Err = ParseIntError>
         + NumZero
         + NumOne
+        + ToBytes
         + ToPrimitive
         + UniformRand
         + WrappingAdd

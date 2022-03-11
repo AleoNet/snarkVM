@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{helpers::integers::IntegerType, Boolean, Environment, Mode, Scalar, U16, U32, U8};
+use snarkvm_utilities::ToBytes;
 
 use core::{
     fmt::{Debug, Display},
@@ -193,7 +194,10 @@ pub trait IntegerTrait<E: Environment, I: IntegerType>:
 }
 
 /// Representation of a scalar field element.
-pub trait ScalarTrait: Clone + Debug + Eject + Equal + Inject + One + Parser + Ternary + ToBits + Zero {}
+pub trait ScalarTrait<E: Environment>:
+    Clone + DataType<Boolean<E>> + Debug + Eject + Equal + Inject + One + Parser + Ternary + ToBits + Zero
+{
+}
 
 /// Operations to convert to and from bit representation in a circuit environment.
 pub trait DataType<B: BooleanTrait>: FromBits<Boolean = B> + ToBits<Boolean = B> {}
@@ -221,7 +225,14 @@ pub trait Inject {
 
 /// Operations to eject from a circuit environment into primitive form.
 pub trait Eject {
-    type Primitive: Debug + Display;
+    type Primitive: Debug + Display + ToBytes;
+
+    ///
+    /// Ejects the mode and primitive value of the circuit type.
+    ///
+    fn eject(&self) -> (Mode, Self::Primitive) {
+        (self.eject_mode(), self.eject_value())
+    }
 
     ///
     /// Ejects the mode of the circuit type.
@@ -234,10 +245,16 @@ pub trait Eject {
     fn eject_value(&self) -> Self::Primitive;
 
     ///
-    /// Ejects the mode and primitive value of the circuit type.
+    /// Ejects the circuit type as bytes in little-endian form.
     ///
-    fn eject(&self) -> (Mode, Self::Primitive) {
-        (self.eject_mode(), self.eject_value())
+    fn eject_bytes_le(&self) -> anyhow::Result<Vec<u8>> {
+        // Eject the mode and value.
+        let (mode, value) = self.eject();
+        // Convert the value to bytes, and append the mode.
+        value.to_bytes_le().and_then(|mut value| {
+            value.push(mode as u8);
+            Ok(value)
+        })
     }
 
     ///
