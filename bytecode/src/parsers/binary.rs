@@ -16,9 +16,11 @@
 
 use crate::{Operand, Register};
 use snarkvm_circuits::{Environment, Parser, ParserResult};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
 use nom::bytes::complete::tag;
+use std::io::{Read, Result as IoResult, Write};
 
 pub(crate) struct BinaryOperation<E: Environment> {
     destination: Register<E>,
@@ -73,5 +75,22 @@ impl<E: Environment> Parser for BinaryOperation<E> {
 impl<E: Environment> fmt::Display for BinaryOperation<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{} {} {}", self.destination, self.first, self.second)
+    }
+}
+
+impl<E: Environment> FromBytes for BinaryOperation<E> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let destination = Register::read_le(&mut reader)?;
+        let first = Operand::read_le(&mut reader)?;
+        let second = Operand::read_le(&mut reader)?;
+        Ok(Self { destination, first, second })
+    }
+}
+
+impl<E: Environment> ToBytes for BinaryOperation<E> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.destination.write_le(&mut writer)?;
+        self.first.write_le(&mut writer)?;
+        self.second.write_le(&mut writer)
     }
 }

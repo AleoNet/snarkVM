@@ -22,16 +22,18 @@ pub use output::*;
 
 use crate::{instructions::Instruction, Immediate, Memory, Operation, Register, Sanitizer};
 use snarkvm_circuits::{Parser, ParserResult};
+use snarkvm_utilities::{error, FromBytes, ToBytes};
 
 use core::fmt;
 use nom::{
     branch::alt,
     bytes::complete::tag,
     character::complete::{alpha1, alphanumeric1},
-    combinator::recognize,
+    combinator::{map_res, recognize},
     multi::{many0, many1},
     sequence::pair,
 };
+use std::io::{Read, Result as IoResult, Write};
 
 pub struct Function<M: Memory> {
     /// The function name.
@@ -113,7 +115,13 @@ impl<M: Memory> Parser for Function<M> {
         // Parse the space from the string.
         let (string, _) = tag(" ")(string)?;
         // Parse the function name from the string.
-        let (string, name) = recognize(pair(alpha1, many0(alt((alphanumeric1, tag("_"))))))(string)?;
+        let (string, name) = map_res(recognize(pair(alpha1, many0(alt((alphanumeric1, tag("_")))))), |name: &str| {
+            let num_characters = name.len();
+            match num_characters <= M::NUM_CHARACTERS {
+                true => Ok(name),
+                false => Err(error(format!("Failed to read function name of length {num_characters} as bytes"))),
+            }
+        })(string)?;
         // Parse the colon ':' keyword from the string.
         let (string, _) = tag(":")(string)?;
 
@@ -142,5 +150,94 @@ impl<M: Memory> fmt::Display for Function<M> {
             output += &format!("    {}", instruction);
         }
         write!(f, "{}", output)
+    }
+}
+
+impl<M: Memory> FromBytes for Function<M> {
+    #[inline]
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        // Read the number of characters for the function name.
+        let num_characters = u8::read_le(&mut reader)?;
+
+        // Read the name of the function.
+        let mut name_bytes = vec![0u8; num_characters as usize];
+        reader.read_exact(&mut name_bytes)?;
+        let name = String::from_utf8(name_bytes).expect("Found invalid UTF-8");
+
+        // Read the inputs.
+        let num_inputs = u32::read_le(&mut reader)?;
+        let mut inputs = Vec::with_capacity(num_inputs as usize);
+        for _ in 0..num_inputs {
+            inputs.push(Input::read_le(&mut reader)?);
+        }
+
+        // Read the instructions.
+        let num_instructions = u32::read_le(&mut reader)?;
+        let mut instructions = Vec::with_capacity(num_instructions as usize);
+        for _ in 0..num_instructions {
+            instructions.push(Instruction::read_le(&mut reader)?);
+        }
+
+        // Read the outputs.
+        let num_outputs = u32::read_le(&mut reader)?;
+        let mut outputs = Vec::with_capacity(num_outputs as usize);
+        for _ in 0..num_outputs {
+            outputs.push(Output::read_le(&mut reader)?);
+        }
+
+        Ok(Self { name, arguments: Default::default(), inputs, instructions, outputs, memory: M::default() })
+    }
+}
+
+impl<M: Memory> ToBytes for Function<M> {
+    #[inline]
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        // Write the number of characters for the function name.
+        let num_characters = self.name.len();
+        match num_characters <= M::NUM_CHARACTERS {
+            true => (num_characters as u8).write_le(&mut writer)?,
+            false => return Err(error(format!("Failed to write function name of length {num_characters} as bytes"))),
+        }
+
+        // Write the function name.
+        self.name.as_bytes().write_le(&mut writer)?;
+
+        // Write the number of inputs for the function.
+        let num_inputs = self.inputs.len();
+        match num_inputs <= M::NUM_INPUTS {
+            true => (num_inputs as u32).write_le(&mut writer)?,
+            false => return Err(error(format!("Failed to write {num_inputs} inputs as bytes"))),
+        }
+
+        // Write the inputs.
+        for input in &self.inputs {
+            input.write_le(&mut writer)?;
+        }
+
+        // Write the number of instructions for the function.
+        let num_instructions = self.instructions.len();
+        match num_instructions <= M::NUM_INPUTS {
+            true => (num_instructions as u32).write_le(&mut writer)?,
+            false => return Err(error(format!("Failed to write {num_instructions} instructions as bytes"))),
+        }
+
+        // Write the instructions.
+        for instruction in &self.instructions {
+            instruction.write_le(&mut writer)?;
+        }
+
+        // Write the number of outputs for the function.
+        let num_outputs = self.outputs.len();
+        match num_outputs <= M::NUM_INPUTS {
+            true => (num_outputs as u32).write_le(&mut writer)?,
+            false => return Err(error(format!("Failed to write {num_outputs} outputs as bytes"))),
+        }
+
+        // Write the outputs.
+        for output in &self.outputs {
+            output.write_le(&mut writer)?;
+        }
+
+        Ok(())
     }
 }

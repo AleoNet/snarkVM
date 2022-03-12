@@ -17,7 +17,7 @@
 use crate::*;
 
 #[derive(Debug, Default)]
-pub(super) struct Counter {
+pub(crate) struct Counter {
     scope: Scope,
     constants: usize,
     public: usize,
@@ -28,7 +28,7 @@ pub(super) struct Counter {
 }
 
 impl Counter {
-    pub(super) fn push(&mut self, name: &str) -> Result<(), String> {
+    pub(crate) fn push(&mut self, name: &str) -> Result<(), String> {
         match name.contains('.') {
             true => Err("Scope names cannot contain periods (\".\")".to_string()),
             false => {
@@ -61,7 +61,7 @@ impl Counter {
         }
     }
 
-    pub(super) fn pop(&mut self, name: &str) -> Result<(), String> {
+    pub(crate) fn pop(&mut self, name: &str) -> Result<(), String> {
         // Pop the current scope from the full scope.
         let (_previous_scope, current_scope) = match self.scope.rsplit_once('.') {
             Some((previous_scope, current_scope)) => (previous_scope, current_scope),
@@ -89,57 +89,57 @@ impl Counter {
     }
 
     /// Returns the current scope.
-    pub(super) fn scope(&self) -> Scope {
+    pub(crate) fn scope(&self) -> Scope {
         self.scope.clone()
     }
 
     /// Increments the number of constants by 1.
-    pub(super) fn increment_constant(&mut self) {
+    pub(crate) fn increment_constant(&mut self) {
         self.constants += 1;
     }
 
     /// Increments the number of public variables by 1.
-    pub(super) fn increment_public(&mut self) {
+    pub(crate) fn increment_public(&mut self) {
         self.public += 1;
     }
 
     /// Increments the number of private variables by 1.
-    pub(super) fn increment_private(&mut self) {
+    pub(crate) fn increment_private(&mut self) {
         self.private += 1;
     }
 
     /// Increments the number of constraints by 1.
-    pub(super) fn increment_constraints(&mut self) {
+    pub(crate) fn increment_constraints(&mut self) {
         self.constraints += 1;
     }
 
     /// Increments the number of constraints by the given amount.
-    pub(super) fn increment_gates_by(&mut self, amount: usize) {
+    pub(crate) fn increment_gates_by(&mut self, amount: usize) {
         self.gates += amount;
     }
 
     /// Returns the number of constants.
-    pub(super) fn num_constants_in_scope(&self) -> usize {
+    pub(crate) fn num_constants_in_scope(&self) -> usize {
         self.constants
     }
 
     /// Returns the number of public variables.
-    pub(super) fn num_public_in_scope(&self) -> usize {
+    pub(crate) fn num_public_in_scope(&self) -> usize {
         self.public
     }
 
     /// Returns the number of private variables.
-    pub(super) fn num_private_in_scope(&self) -> usize {
+    pub(crate) fn num_private_in_scope(&self) -> usize {
         self.private
     }
 
     /// Returns the number of constraints.
-    pub(super) fn num_constraints_in_scope(&self) -> usize {
+    pub(crate) fn num_constraints_in_scope(&self) -> usize {
         self.constraints
     }
 
     /// Returns the number of gates.
-    pub(super) fn num_gates_in_scope(&self) -> usize {
+    pub(crate) fn num_gates_in_scope(&self) -> usize {
         self.gates
     }
 }

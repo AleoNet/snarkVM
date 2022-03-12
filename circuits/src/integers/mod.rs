@@ -121,6 +121,8 @@ pub struct Integer<E: Environment, I: IntegerType> {
 
 impl<E: Environment, I: IntegerType> IntegerTrait<E, I> for Integer<E, I> {}
 
+impl<E: Environment, I: IntegerType> DataType<Boolean<E>> for Integer<E, I> {}
+
 impl<E: Environment, I: IntegerType> Inject for Integer<E, I> {
     type Primitive = I;
 

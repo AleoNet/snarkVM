@@ -36,51 +36,38 @@ impl<E: Environment> Square for &BaseField<E> {
 mod tests {
     use super::*;
     use crate::{assert_circuit, Circuit};
+    use snarkvm_utilities::UniformRand;
+
+    use rand::thread_rng;
 
     const ITERATIONS: usize = 500;
 
+    fn check_square(
+        name: &str,
+        mode: Mode,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) {
+        for _ in 0..ITERATIONS {
+            // Sample a random element.
+            let given: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
+            let candidate = BaseField::<Circuit>::new(mode, given);
+
+            Circuit::scoped(name, || {
+                assert_eq!(given.square(), candidate.square().eject_value());
+                assert_circuit!(num_constants, num_public, num_private, num_constraints);
+            });
+            Circuit::reset();
+        }
+    }
+
     #[test]
     fn test_square() {
-        let one = <Circuit as Environment>::BaseField::one();
-
-        // Constant variables
-        Circuit::scoped("Constant", || {
-            let mut expected = one;
-            let mut candidate = BaseField::<Circuit>::new(Mode::Constant, one);
-
-            for _ in 0..ITERATIONS {
-                expected = expected.square();
-                candidate = candidate.square();
-                assert_eq!(expected, candidate.eject_value());
-                assert_circuit!(1, 0, 0, 0);
-            }
-        });
-
-        // Public variables
-        Circuit::scoped("Public", || {
-            let mut expected = one;
-            let mut candidate = BaseField::<Circuit>::new(Mode::Public, one);
-
-            for i in 0..ITERATIONS {
-                expected = expected.square();
-                candidate = candidate.square();
-                assert_eq!(expected, candidate.eject_value());
-                assert_circuit!(0, 1, i + 1, i + 1);
-            }
-        });
-
-        // Private variables
-        Circuit::scoped("Private", || {
-            let mut expected = one;
-            let mut candidate = BaseField::<Circuit>::new(Mode::Private, one);
-
-            for i in 0..ITERATIONS {
-                expected = expected.square();
-                candidate = candidate.square();
-                assert_eq!(expected, candidate.eject_value());
-                assert_circuit!(0, 0, i + 2, i + 1);
-            }
-        });
+        check_square("Constant", Mode::Constant, 0, 0, 0, 0);
+        check_square("Public", Mode::Public, 0, 0, 1, 1);
+        check_square("Private", Mode::Private, 0, 0, 1, 1);
     }
 
     #[test]

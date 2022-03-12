@@ -16,9 +16,11 @@
 
 use crate::Register;
 use snarkvm_circuits::{Environment, Mode, Parser, ParserResult};
+use snarkvm_utilities::{error, FromBytes, ToBytes};
 
 use core::fmt;
 use nom::{branch::alt, bytes::complete::tag, combinator::map, sequence::pair};
+use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Clone)]
 pub enum Argument<E: Environment> {
@@ -106,5 +108,45 @@ impl<E: Environment> Parser for Argument<E> {
 impl<E: Environment> fmt::Display for Argument<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{} {}.{}", self.register(), self.type_name(), self.mode())
+    }
+}
+
+impl<E: Environment> FromBytes for Argument<E> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        match u8::read_le(&mut reader) {
+            Ok(0) => Ok(Self::Boolean(Register::<E>::read_le(&mut reader)?, Mode::read_le(&mut reader)?)),
+            Ok(1) => Ok(Self::Field(Register::<E>::read_le(&mut reader)?, Mode::read_le(&mut reader)?)),
+            Ok(2) => Ok(Self::Group(Register::<E>::read_le(&mut reader)?, Mode::read_le(&mut reader)?)),
+            Ok(3) => Ok(Self::Scalar(Register::<E>::read_le(&mut reader)?, Mode::read_le(&mut reader)?)),
+            Ok(type_) => Err(error(format!("FromBytes failed to parse an argument of type {type_}"))),
+            Err(err) => Err(err),
+        }
+    }
+}
+
+impl<E: Environment> ToBytes for Argument<E> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        match self {
+            Self::Boolean(register, mode) => {
+                u8::write_le(&0u8, &mut writer)?;
+                register.write_le(&mut writer)?;
+                mode.write_le(&mut writer)
+            }
+            Self::Field(register, mode) => {
+                u8::write_le(&1u8, &mut writer)?;
+                register.write_le(&mut writer)?;
+                mode.write_le(&mut writer)
+            }
+            Self::Group(register, mode) => {
+                u8::write_le(&2u8, &mut writer)?;
+                register.write_le(&mut writer)?;
+                mode.write_le(&mut writer)
+            }
+            Self::Scalar(register, mode) => {
+                u8::write_le(&3u8, &mut writer)?;
+                register.write_le(&mut writer)?;
+                mode.write_le(&mut writer)
+            }
+        }
     }
 }

@@ -205,6 +205,7 @@ mod tests {
             assert_eq!(*expected, candidate.eject_value(), "({} * {})", a.eject_value(), b.eject_value());
             assert_circuit!(num_constants, num_public, num_private, num_constraints);
         });
+        Circuit::reset();
     }
 
     fn check_mul_assign(
@@ -223,6 +224,7 @@ mod tests {
             assert_eq!(*expected, candidate.eject_value(), "({} * {})", a.eject_value(), b.eject_value());
             assert_circuit!(num_constants, num_public, num_private, num_constraints);
         });
+        Circuit::reset();
     }
 
     #[test]

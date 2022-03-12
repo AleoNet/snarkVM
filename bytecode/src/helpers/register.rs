@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::variable_length::*;
 use snarkvm_circuits::{Environment, Parser, ParserResult};
 
 use core::{fmt, marker::PhantomData, ops};
@@ -23,6 +24,8 @@ use nom::{
     combinator::{map_res, recognize},
     multi::many1,
 };
+use snarkvm_utilities::{FromBytes, ToBytes};
+use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Copy, Clone, Eq, Hash, PartialEq)]
 pub struct Register<E: Environment>(u64, PhantomData<E>);
@@ -67,5 +70,17 @@ impl<E: Environment> ops::Deref for Register<E> {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl<E: Environment> FromBytes for Register<E> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        Ok(Self::new(read_variable_length_integer(&mut reader)?))
+    }
+}
+
+impl<E: Environment> ToBytes for Register<E> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        variable_length_integer(self.0).write_le(&mut writer)
     }
 }

@@ -97,8 +97,8 @@ impl<E: Environment, I: IntegerType> SubChecked<Self> for Integer<E, I> {
                 //   - Note: if sign(a) == sign(b) then over/underflow is impossible.
                 //   - Note: the result of an overflow and underflow must be negative and positive, respectively.
                 true => {
-                    let is_different_signs = self.msb().is_neq(other.msb());
-                    let is_underflow = is_different_signs & difference.msb().is_eq(other.msb());
+                    let is_different_signs = self.msb().is_not_equal(other.msb());
+                    let is_underflow = is_different_signs & difference.msb().is_equal(other.msb());
                     E::assert_eq(is_underflow, E::zero());
                 }
                 // For unsigned subtraction, ensure the carry bit is one.

@@ -14,22 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-// pub mod add;
-// pub mod div;
-// pub mod double;
-// pub mod inv;
-// pub mod mul;
-// pub mod neg;
-// pub mod square;
-// pub mod sub;
-
+pub mod compare;
 pub mod equal;
+pub mod from_bits;
 pub mod one;
 pub mod ternary;
 pub mod to_bits;
+pub mod to_field;
 pub mod zero;
 
-use crate::{traits::*, Boolean, Environment, Mode};
+use crate::{traits::*, Boolean, Environment, LinearCombination, Mode};
 use snarkvm_fields::{One as O, PrimeField, Zero as Z};
 use snarkvm_utilities::{FromBits as FBits, ToBits as TBits};
 
@@ -43,9 +37,13 @@ use nom::{
 };
 
 #[derive(Clone)]
-pub struct Scalar<E: Environment>(Vec<Boolean<E>>);
+pub struct Scalar<E: Environment> {
+    bits_le: Vec<Boolean<E>>,
+}
 
-impl<E: Environment> ScalarTrait for Scalar<E> {}
+impl<E: Environment> ScalarTrait<E> for Scalar<E> {}
+
+impl<E: Environment> DataType<Boolean<E>> for Scalar<E> {}
 
 impl<E: Environment> Inject for Scalar<E> {
     type Primitive = E::ScalarField;
@@ -54,7 +52,7 @@ impl<E: Environment> Inject for Scalar<E> {
     /// Initializes a new instance of a scalar field from a primitive scalar field value.
     ///
     fn new(mode: Mode, value: Self::Primitive) -> Self {
-        Self(value.to_bits_le().iter().map(|bit| Boolean::new(mode, *bit)).collect())
+        Self { bits_le: value.to_bits_le().iter().map(|bit| Boolean::new(mode, *bit)).collect() }
     }
 }
 
@@ -66,7 +64,7 @@ impl<E: Environment> Eject for Scalar<E> {
     ///
     fn eject_mode(&self) -> Mode {
         let mut scalar_mode = Mode::Constant;
-        for bit_mode in self.0.iter().map(Eject::eject_mode) {
+        for bit_mode in self.bits_le.iter().map(Eject::eject_mode) {
             // Check if the mode in the current iteration matches the scalar mode.
             if scalar_mode != bit_mode {
                 // If they do not match, the scalar mode must be a constant.
@@ -84,7 +82,7 @@ impl<E: Environment> Eject for Scalar<E> {
     /// Ejects the scalar field as a constant scalar field value.
     ///
     fn eject_value(&self) -> Self::Primitive {
-        let bits = self.0.iter().map(Boolean::eject_value).collect::<Vec<_>>();
+        let bits = self.bits_le.iter().map(Boolean::eject_value).collect::<Vec<_>>();
         let biginteger = <E::ScalarField as PrimeField>::BigInteger::from_bits_le(&bits[..]);
         let scalar = <E::ScalarField as PrimeField>::from_repr(biginteger);
         match scalar {
@@ -129,6 +127,18 @@ impl<E: Environment> fmt::Debug for Scalar<E> {
 impl<E: Environment> fmt::Display for Scalar<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}{}.{}", self.eject_value(), Self::type_name(), self.eject_mode())
+    }
+}
+
+impl<E: Environment> From<Scalar<E>> for LinearCombination<E::BaseField> {
+    fn from(scalar: Scalar<E>) -> Self {
+        From::from(&scalar)
+    }
+}
+
+impl<E: Environment> From<&Scalar<E>> for LinearCombination<E::BaseField> {
+    fn from(scalar: &Scalar<E>) -> Self {
+        scalar.to_field().into()
     }
 }
 

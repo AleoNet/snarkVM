@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{helpers::integers::IntegerType, Environment, Mode, U16, U32, U8};
+use crate::{helpers::integers::IntegerType, Boolean, Environment, Mode, Scalar, U16, U32, U8};
 
 use core::{
     fmt::{Debug, Display},
@@ -55,9 +55,11 @@ pub trait BooleanTrait:
     + BitXorAssign
     + BitXor<Output = Self>
     + Clone
+    + DataType<Self>
     + Debug
     + Eject<Primitive = bool>
     + Equal
+    + FromBits
     + Inject<Primitive = bool>
     + Nand
     + Nor
@@ -65,14 +67,16 @@ pub trait BooleanTrait:
     + Parser
     + Subtractor
     + Ternary
+    + ToBits
 {
 }
 
-/// Representation of a base field.
-pub trait BaseFieldTrait:
+/// Representation of a base field element.
+pub trait FieldTrait<E: Environment>:
     Add<Output = Self>
     + AddAssign
     + Clone
+    + DataType<Boolean<E>>
     + Debug
     + Div<Output = Self>
     + DivAssign
@@ -96,8 +100,27 @@ pub trait BaseFieldTrait:
 {
 }
 
-/// Representation of a scalar field.
-pub trait ScalarTrait: Clone + Debug + Eject + Equal + Inject + One + Parser + Ternary + ToBits + Zero {}
+/// Representation of a group element.
+pub trait GroupTrait<E: Environment>:
+    Add<Output = Self>
+    + AddAssign
+    + Clone
+    + DataType<Boolean<E>>
+    + Debug
+    + Double<Output = Self>
+    + Eject
+    + Equal
+    + Inject
+    + Mul<Scalar<E>, Output = Self>
+    + MulAssign<Scalar<E>>
+    + Neg<Output = Self>
+    + Parser
+    + Sub<Output = Self>
+    + SubAssign
+    + Ternary
+    + Zero
+{
+}
 
 /// Representation of an integer.
 pub trait IntegerTrait<E: Environment, I: IntegerType>:
@@ -112,6 +135,7 @@ pub trait IntegerTrait<E: Environment, I: IntegerType>:
     + BitXorAssign
     + BitXor<Output = Self>
     + Clone
+    + DataType<Boolean<E>>
     + Debug
     + DivAssign
     + Div<Output = Self>
@@ -168,6 +192,15 @@ pub trait IntegerTrait<E: Environment, I: IntegerType>:
 {
 }
 
+/// Representation of a scalar field element.
+pub trait ScalarTrait<E: Environment>:
+    Clone + DataType<Boolean<E>> + Debug + Eject + Equal + Inject + One + Parser + Ternary + ToBits + Zero
+{
+}
+
+/// Operations to convert to and from bit representation in a circuit environment.
+pub trait DataType<B: BooleanTrait>: FromBits<Boolean = B> + ToBits<Boolean = B> {}
+
 /// Operations to inject from a primitive form into a circuit environment.
 pub trait Inject {
     type Primitive: Debug + Default;
@@ -194,12 +227,19 @@ pub trait Eject {
     type Primitive: Debug + Display;
 
     ///
+    /// Ejects the mode and primitive value of the circuit type.
+    ///
+    fn eject(&self) -> (Mode, Self::Primitive) {
+        (self.eject_mode(), self.eject_value())
+    }
+
+    ///
     /// Ejects the mode of the circuit type.
     ///
     fn eject_mode(&self) -> Mode;
 
     ///
-    /// Ejects the circuit type as a primitive type value.
+    /// Ejects the circuit type as a primitive value.
     ///
     fn eject_value(&self) -> Self::Primitive;
 
@@ -223,6 +263,13 @@ pub trait Eject {
     fn is_private(&self) -> bool {
         self.eject_mode().is_private()
     }
+}
+
+pub trait ToField<E: Environment> {
+    type Field: FieldTrait<E>;
+
+    /// Casts a scalar field element into a base field element.
+    fn to_field(&self) -> Self::Field;
 }
 
 /// Representation of the zero value.
@@ -252,17 +299,27 @@ pub trait Equal<Rhs: ?Sized = Self> {
     type Boolean: BooleanTrait;
 
     /// Returns `true` if `self` and `other` are equal.
-    fn is_eq(&self, other: &Rhs) -> Self::Boolean;
+    fn is_equal(&self, other: &Rhs) -> Self::Boolean;
 
     /// Returns `true` if `self` and `other` are *not* equal.
-    fn is_neq(&self, other: &Rhs) -> Self::Boolean;
+    fn is_not_equal(&self, other: &Rhs) -> Self::Boolean;
 }
 
-pub trait LessThan<Rhs: ?Sized = Self> {
+/// Trait for comparator operations.
+pub trait Compare<Rhs: ?Sized = Self> {
     type Boolean: BooleanTrait;
 
     /// Returns `true` if `self` is less than `other`.
-    fn is_lt(&self, other: &Rhs) -> Self::Boolean;
+    fn is_less_than(&self, other: &Rhs) -> Self::Boolean;
+
+    /// Returns `true` if `self` is greater than `other`.
+    fn is_greater_than(&self, other: &Rhs) -> Self::Boolean;
+
+    /// Returns `true` if `self` is less than or equal to `other`.
+    fn is_less_than_or_equal(&self, other: &Rhs) -> Self::Boolean;
+
+    /// Returns `true` if `self` is greater than or equal to `other`.
+    fn is_greater_than_or_equal(&self, other: &Rhs) -> Self::Boolean;
 }
 
 /// Binary operator for performing `NOT (a AND b)`.
@@ -448,9 +505,13 @@ pub trait MSB {
 pub trait FromBits {
     type Boolean: BooleanTrait;
 
-    fn from_bits_le(mode: Mode, bits_le: &[Self::Boolean]) -> Self;
+    fn from_bits_le(mode: Mode, bits_le: &[Self::Boolean]) -> Self
+    where
+        Self: Sized;
 
-    fn from_bits_be(mode: Mode, bits_be: &[Self::Boolean]) -> Self;
+    fn from_bits_be(mode: Mode, bits_be: &[Self::Boolean]) -> Self
+    where
+        Self: Sized;
 }
 
 /// Unary operator for converting to bits.

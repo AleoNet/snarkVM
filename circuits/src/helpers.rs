@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 pub(crate) mod integers {
-    pub use snarkvm_utilities::{ToBytes, UniformRand};
+    pub use snarkvm_utilities::{FromBytes, ToBytes, UniformRand};
 
     use core::{
         fmt::{Debug, Display},
@@ -49,9 +49,11 @@ pub(crate) mod integers {
         + Debug
         + Default
         + Display
+        + FromBytes
         + FromStr<Err = ParseIntError>
         + NumZero
         + NumOne
+        + ToBytes
         + ToPrimitive
         + UniformRand
         + WrappingAdd

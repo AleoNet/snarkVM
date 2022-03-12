@@ -16,10 +16,12 @@
 
 use crate::{Argument, Immediate, Memory, Operation, Sanitizer};
 use snarkvm_circuits::{Parser, ParserResult};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::{fmt, ops};
 use nom::bytes::complete::tag;
 use once_cell::unsync::OnceCell;
+use std::io::{Read, Result as IoResult, Write};
 
 /// Declares a function input `register` with type `annotation`.
 pub struct Input<M: Memory> {
@@ -103,5 +105,17 @@ impl<M: Memory> ops::Deref for Input<M> {
 
     fn deref(&self) -> &Self::Target {
         &self.argument
+    }
+}
+
+impl<M: Memory> FromBytes for Input<M> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        Ok(Self { argument: Argument::read_le(&mut reader)?, immediate: Default::default() })
+    }
+}
+
+impl<M: Memory> ToBytes for Input<M> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.argument.write_le(&mut writer)
     }
 }

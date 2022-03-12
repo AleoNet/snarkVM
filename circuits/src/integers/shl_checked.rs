@@ -91,40 +91,8 @@ impl<E: Environment, I: IntegerType, M: private::Magnitude> ShlChecked<Integer<E
             // Enforce that the appropriate number of upper bits in rhs are zero.
             E::assert_eq(upper_bits_are_nonzero, E::zero());
 
-            // Perform the left shift operation by exponentiation and multiplication.
-            // By masking the upper bits, we have that rhs < I::BITS.
-            // Therefore, 2^{rhs} < I::MAX.
-
-            // Zero-extend `rhs` by `8`.
-            let mut bits_le = rhs.bits_le[..first_upper_bit_index].to_vec();
-            bits_le.extend(core::iter::repeat(Boolean::new(Mode::Constant, false)).take(8));
-
-            // Use U8 for the exponent as it costs fewer constraints.
-            let rhs_as_u8 = U8 { bits_le, phantom: Default::default() };
-
-            if rhs_as_u8.is_constant() {
-                // If the shift amount is a constant, then we can manually shift in bits and truncate the result.
-                let shift_amount = rhs_as_u8.eject_value();
-                let mut bits_le = vec![Boolean::new(self.eject_mode(), false); shift_amount as usize];
-
-                bits_le.extend_from_slice(&self.bits_le);
-                bits_le.truncate(I::BITS);
-
-                Self { bits_le, phantom: Default::default() }
-            } else {
-                // Calculate the value of the shift directly in the field.
-                // Since 2^{rhs} < I::MAX, we know that the operation will not overflow I::MAX or the field modulus.
-                let two = BaseField::one() + BaseField::one();
-                let mut shift_in_field = BaseField::one();
-                for bit in rhs.bits_le[..first_upper_bit_index].iter().rev() {
-                    shift_in_field = &shift_in_field * &shift_in_field;
-                    shift_in_field = BaseField::ternary(bit, &(&shift_in_field * &two), &shift_in_field);
-                }
-                // TODO (@pranav) Avoid initializing the integer.
-                let shift_as_multiplicand =
-                    Self { bits_le: shift_in_field.to_lower_bits_le(I::BITS), phantom: Default::default() };
-                self.mul_wrapped(&shift_as_multiplicand)
-            }
+            // Perform a wrapping shift left.
+            self.shl_wrapped(rhs)
         }
     }
 }

@@ -17,11 +17,13 @@
 pub mod add;
 pub mod double;
 pub mod equal;
+pub mod from_bits;
 pub mod mul;
 pub mod neg;
 // pub mod one;
 pub mod sub;
 pub mod ternary;
+pub mod to_bits;
 pub mod zero;
 
 use crate::{traits::*, BaseField, Boolean, Environment, Mode, Scalar};
@@ -48,6 +50,10 @@ pub struct Affine<E: Environment> {
     x: BaseField<E>,
     y: BaseField<E>,
 }
+
+impl<E: Environment> GroupTrait<E> for Affine<E> {}
+
+impl<E: Environment> DataType<Boolean<E>> for Affine<E> {}
 
 impl<E: Environment> Inject for Affine<E> {
     type Primitive = (E::BaseField, Option<E::BaseField>);
@@ -79,6 +85,19 @@ impl<E: Environment> Inject for Affine<E> {
 }
 
 impl<E: Environment> Affine<E> {
+    ///
+    /// Initializes a new affine group element from a mode and x-coordinate circuit field element.
+    ///
+    /// For safety, the resulting point is always enforced to be on the curve with constraints.
+    /// regardless of whether the y-coordinate was recovered.
+    ///
+    pub fn from_x_coordinate(mode: Mode, x: BaseField<E>) -> Self {
+        // Derive the y-coordinate.
+        let y = BaseField::new(mode, E::affine_from_x_coordinate(x.eject_value()).to_y_coordinate());
+
+        Self::from(x, y)
+    }
+
     ///
     /// For safety, the resulting point is always enforced to be on the curve with constraints.
     /// regardless of whether the y-coordinate was recovered.

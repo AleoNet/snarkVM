@@ -16,9 +16,11 @@
 
 use crate::{Operand, Register};
 use snarkvm_circuits::{Environment, Parser, ParserResult};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
 use nom::bytes::complete::tag;
+use std::io::{Read, Result as IoResult, Write};
 
 pub(crate) struct UnaryOperation<E: Environment> {
     destination: Register<E>,
@@ -63,5 +65,20 @@ impl<E: Environment> Parser for UnaryOperation<E> {
 impl<E: Environment> fmt::Display for UnaryOperation<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{} {}", self.destination, self.operand)
+    }
+}
+
+impl<E: Environment> FromBytes for UnaryOperation<E> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let destination = Register::read_le(&mut reader)?;
+        let operand = Operand::read_le(&mut reader)?;
+        Ok(Self { destination, operand })
+    }
+}
+
+impl<E: Environment> ToBytes for UnaryOperation<E> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.destination.write_le(&mut writer)?;
+        self.operand.write_le(&mut writer)
     }
 }

@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 pub mod add;
+pub mod compare;
 pub mod div;
 pub mod double;
 pub mod equal;
@@ -32,7 +33,7 @@ pub mod to_upper_bits;
 pub mod zero;
 
 use crate::{traits::*, Boolean, Environment, LinearCombination, Mode};
-use snarkvm_fields::{Field as F, One as O};
+use snarkvm_fields::{Field as F, One as O, PrimeField};
 use snarkvm_utilities::ToBits as TBits;
 
 #[cfg(test)]
@@ -54,7 +55,9 @@ use num_traits::Inv;
 #[derive(Clone)]
 pub struct BaseField<E: Environment>(LinearCombination<E::BaseField>);
 
-impl<E: Environment> BaseFieldTrait for BaseField<E> {}
+impl<E: Environment> FieldTrait<E> for BaseField<E> {}
+
+impl<E: Environment> DataType<Boolean<E>> for BaseField<E> {}
 
 impl<E: Environment> Inject for BaseField<E> {
     type Primitive = E::BaseField;

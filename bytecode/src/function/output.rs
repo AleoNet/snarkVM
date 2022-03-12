@@ -16,9 +16,11 @@
 
 use crate::{Argument, Memory, Operation, Sanitizer};
 use snarkvm_circuits::{Parser, ParserResult};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::{fmt, ops};
 use nom::bytes::complete::tag;
+use std::io::{Read, Result as IoResult, Write};
 
 /// Declares a `register` as a function output with type `annotation`.
 pub struct Output<M: Memory> {
@@ -84,5 +86,17 @@ impl<M: Memory> ops::Deref for Output<M> {
 
     fn deref(&self) -> &Self::Target {
         &self.argument
+    }
+}
+
+impl<M: Memory> FromBytes for Output<M> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        Ok(Self { argument: Argument::read_le(&mut reader)? })
+    }
+}
+
+impl<M: Memory> ToBytes for Output<M> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.argument.write_le(&mut writer)
     }
 }

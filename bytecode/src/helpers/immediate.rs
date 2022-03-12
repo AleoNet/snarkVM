@@ -14,10 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_circuits::{Affine, BaseField, Boolean, Eject, Environment, Mode, Parser, ParserResult, Scalar};
+use snarkvm_circuits::{Affine, BaseField, Boolean, Eject, Environment, Inject, Mode, Parser, ParserResult, Scalar};
+use snarkvm_utilities::{error, FromBytes, ToBytes};
 
 use core::fmt;
 use nom::{branch::alt, combinator::map};
+use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Clone)]
 pub enum Immediate<E: Environment> {
@@ -149,3 +151,47 @@ impl<E: Environment> PartialEq for Immediate<E> {
 }
 
 impl<E: Environment> Eq for Immediate<E> {}
+
+impl<E: Environment> FromBytes for Immediate<E> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let type_ = u8::read_le(&mut reader)?;
+        let mode = Mode::read_le(&mut reader)?;
+        match type_ {
+            0 => Ok(Self::Boolean(Boolean::new(mode, FromBytes::read_le(&mut reader)?))),
+            1 => Ok(Self::Field(BaseField::new(mode, FromBytes::read_le(&mut reader)?))),
+            2 => Ok(Self::Group(Affine::new(
+                mode,
+                (FromBytes::read_le(&mut reader)?, Some(FromBytes::read_le(&mut reader)?)),
+            ))),
+            3 => Ok(Self::Scalar(Scalar::new(mode, FromBytes::read_le(&mut reader)?))),
+            _ => Err(error(format!("FromBytes failed to parse an immediate of type {type_}"))),
+        }
+    }
+}
+
+impl<E: Environment> ToBytes for Immediate<E> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        match self {
+            Self::Boolean(immediate) => {
+                u8::write_le(&0u8, &mut writer)?;
+                immediate.eject_mode().write_le(&mut writer)?;
+                immediate.eject_value().write_le(&mut writer)
+            }
+            Self::Field(immediate) => {
+                u8::write_le(&1u8, &mut writer)?;
+                immediate.eject_mode().write_le(&mut writer)?;
+                immediate.eject_value().write_le(&mut writer)
+            }
+            Self::Group(immediate) => {
+                u8::write_le(&2u8, &mut writer)?;
+                immediate.eject_mode().write_le(&mut writer)?;
+                immediate.eject_value().write_le(&mut writer)
+            }
+            Self::Scalar(immediate) => {
+                u8::write_le(&3u8, &mut writer)?;
+                immediate.eject_mode().write_le(&mut writer)?;
+                immediate.eject_value().write_le(&mut writer)
+            }
+        }
+    }
+}

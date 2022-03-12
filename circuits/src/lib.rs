@@ -23,8 +23,8 @@
 
 pub use snarkvm_circuits_environment::*;
 
-// pub mod address;
-// pub use address::*;
+pub mod address;
+pub use address::*;
 
 pub mod boolean;
 pub use boolean::*;

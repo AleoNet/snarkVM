@@ -24,7 +24,7 @@ impl<E: Environment> One for BaseField<E> {
     }
 
     fn is_one(&self) -> Self::Boolean {
-        self.is_eq(&BaseField::one())
+        self.is_equal(&BaseField::one())
     }
 }
 

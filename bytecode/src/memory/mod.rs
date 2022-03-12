@@ -23,6 +23,15 @@ use snarkvm_circuits::Environment;
 pub trait Memory: Clone + Default {
     type Environment: Environment;
 
+    /// The maximum number of characters in human-readable identifiers (such as function name).
+    const NUM_CHARACTERS: usize = u8::MAX as usize;
+    /// The maximum number of inputs for a function.
+    const NUM_INPUTS: usize = u32::MAX as usize;
+    /// The maximum number of instructions for a function.
+    const NUM_INSTRUCTIONS: usize = u32::MAX as usize;
+    /// The maximum number of outputs for a function.
+    const NUM_OUTPUTS: usize = u32::MAX as usize;
+
     /// Allocates the given register in memory. Ensures the given register does not exist already.
     fn initialize(&self, register: &Register<Self::Environment>);
 

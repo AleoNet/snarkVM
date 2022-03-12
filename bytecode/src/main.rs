@@ -45,22 +45,57 @@ fn main() {
     match (&expected, &candidate[0]) {
         (Immediate::Field(expected), Immediate::Field(candidate)) => {
             println!("{candidate}");
-            assert!(expected.is_eq(candidate).eject_value());
+            assert!(expected.is_equal(candidate).eject_value());
         }
         _ => panic!("Failed to load output"),
     }
 }
 
-#[test]
-fn test_hello_world() {
-    let first = Immediate::from_str("1field.public");
-    let second = Immediate::from_str("1field.private");
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_utilities::{FromBytes, ToBytes};
 
-    let expected = Immediate::from_str("2field.private");
-    let candidate = HelloWorld::run::<Stack<Circuit>>([first, second]);
+    #[test]
+    fn test_hello_world() {
+        let first = Immediate::from_str("1field.public");
+        let second = Immediate::from_str("1field.private");
 
-    match (&expected, &candidate[0]) {
-        (Immediate::Field(expected), Immediate::Field(candidate)) => assert!(expected.is_eq(candidate).eject_value()),
-        _ => panic!("Failed to load output"),
+        let expected = Immediate::from_str("2field.private");
+        let candidate = HelloWorld::run::<Stack<Circuit>>([first, second]);
+
+        match (&expected, &candidate[0]) {
+            (Immediate::Field(expected), Immediate::Field(candidate)) => {
+                assert!(expected.is_equal(candidate).eject_value())
+            }
+            _ => panic!("Failed to load output"),
+        }
+    }
+
+    #[test]
+    fn test_to_and_from_bytes() {
+        type M = Stack<Circuit>;
+        let function_string = r"
+function main:
+    input r0 field.public;
+    input r1 field.private;
+    add r2 r0 r1;
+    add r3 r0 r1;
+    add r4 r0 r1;
+    add r5 r0 r1;
+    add r6 r0 r1;
+    add r7 r0 r1;
+    add r8 r0 r1;
+    add r9 r0 r1;
+    add r10 r0 r1;
+    add r11 r0 r1;
+    output r2 field.private;
+";
+        let function_from_string = Function::<M>::from_str(function_string);
+        let bytes = function_from_string.to_bytes_le().unwrap();
+
+        println!("String size: {:?}, Bytecode size: {:?}", function_string.as_bytes().len(), bytes.len());
+
+        Function::<M>::from_bytes_le(&bytes).unwrap();
     }
 }

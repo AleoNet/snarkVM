@@ -85,7 +85,7 @@ impl<E: Environment, I: IntegerType> DivChecked<Self> for Integer<E, I> {
             // Signed integer division wraps when the dividend is I::MIN and the divisor is -1.
             let min = Self::new(Mode::Constant, I::MIN);
             let neg_one = Self::new(Mode::Constant, I::zero() - I::one());
-            let overflows = self.is_eq(&min) & other.is_eq(&neg_one);
+            let overflows = self.is_equal(&min) & other.is_equal(&neg_one);
             E::assert_eq(overflows, E::zero());
 
             // Divide the absolute value of `self` and `other` in the base field.
@@ -96,7 +96,7 @@ impl<E: Environment, I: IntegerType> DivChecked<Self> for Integer<E, I> {
             // TODO (@pranav) Do we need to check that the quotient cannot exceed abs(I::MIN)?
             //  This is implicitly true since the dividend <= abs(I::MIN) and 0 <= quotient <= dividend.
             let signed_quotient = Integer { bits_le: unsigned_quotient.bits_le, phantom: Default::default() };
-            let operands_same_sign = &self.msb().is_eq(other.msb());
+            let operands_same_sign = &self.msb().is_equal(other.msb());
 
             Self::ternary(operands_same_sign, &signed_quotient, &Self::zero().sub_wrapped(&signed_quotient))
         } else {

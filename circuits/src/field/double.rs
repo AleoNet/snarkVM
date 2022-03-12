@@ -36,51 +36,31 @@ impl<E: Environment> Double for &BaseField<E> {
 mod tests {
     use super::*;
     use crate::{assert_circuit, Circuit};
+    use snarkvm_utilities::UniformRand;
+
+    use rand::thread_rng;
 
     const ITERATIONS: usize = 10_000;
 
+    fn check_double(name: &str, mode: Mode) {
+        for _ in 0..ITERATIONS {
+            // Sample a random element.
+            let given: <Circuit as Environment>::BaseField = UniformRand::rand(&mut thread_rng());
+            let candidate = BaseField::<Circuit>::new(mode, given);
+
+            Circuit::scoped(name, || {
+                assert_eq!(given.double(), candidate.double().eject_value());
+                assert_circuit!(0, 0, 0, 0);
+            });
+            Circuit::reset();
+        }
+    }
+
     #[test]
     fn test_double() {
-        let one = <Circuit as Environment>::BaseField::one();
-
-        // Constant variables
-        Circuit::scoped("Constant", || {
-            let mut expected = one;
-            let mut candidate = BaseField::<Circuit>::new(Mode::Constant, one);
-
-            for _ in 0..ITERATIONS {
-                expected = expected.double();
-                candidate = candidate.double();
-                assert_eq!(expected, candidate.eject_value());
-                assert_circuit!(1, 0, 0, 0);
-            }
-        });
-
-        // Public variables
-        Circuit::scoped("Public", || {
-            let mut expected = one;
-            let mut candidate = BaseField::<Circuit>::new(Mode::Public, one);
-
-            for _ in 0..ITERATIONS {
-                expected = expected.double();
-                candidate = candidate.double();
-                assert_eq!(expected, candidate.eject_value());
-                assert_circuit!(0, 1, 0, 0);
-            }
-        });
-
-        // Private variables
-        Circuit::scoped("Private", || {
-            let mut expected = one;
-            let mut candidate = BaseField::<Circuit>::new(Mode::Private, one);
-
-            for _ in 0..ITERATIONS {
-                expected = expected.double();
-                candidate = candidate.double();
-                assert_eq!(expected, candidate.eject_value());
-                assert_circuit!(0, 0, 1, 0);
-            }
-        });
+        check_double("Constant", Mode::Constant);
+        check_double("Public", Mode::Public);
+        check_double("Private", Mode::Private);
     }
 
     #[test]

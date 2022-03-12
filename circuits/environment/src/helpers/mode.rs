@@ -16,10 +16,14 @@
 
 use crate::ParserResult;
 
+use snarkvm_utilities::{error, FromBytes, ToBytes};
+
 use core::fmt;
 use nom::{branch::alt, bytes::complete::tag, combinator::map};
+use num_traits::{FromPrimitive, ToPrimitive};
+use std::io::{Read, Result as IoResult, Write};
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive, ToPrimitive)]
 pub enum Mode {
     Constant,
     Public,
@@ -53,11 +57,24 @@ impl Mode {
 }
 
 impl fmt::Display for Mode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::Constant => write!(f, "constant"),
             Self::Public => write!(f, "public"),
             Self::Private => write!(f, "private"),
         }
+    }
+}
+
+impl ToBytes for Mode {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        u8::write_le(&ToPrimitive::to_u8(self).ok_or_else(|| error("Invalid mode"))?, &mut writer)
+    }
+}
+
+impl FromBytes for Mode {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let mode = u8::read_le(&mut reader)?;
+        FromPrimitive::from_u8(mode).ok_or_else(|| error("Invalid mode"))
     }
 }

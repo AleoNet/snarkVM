@@ -14,30 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![forbid(unsafe_code)]
-#![allow(clippy::type_complexity)]
+pub(super) mod converter;
 
-#[macro_use]
-extern crate num_derive;
+pub(super) mod counter;
+pub(super) use counter::*;
 
-pub mod circuit;
-pub use circuit::*;
+pub mod linear_combination;
+pub use linear_combination::*;
 
-pub mod environment;
-pub use environment::*;
+pub mod mode;
+pub use mode::*;
 
-pub mod helpers;
-pub use helpers::*;
-
-pub mod parser;
-pub use parser::*;
-
-mod r1cs;
-use r1cs::*;
-
-#[macro_export]
-macro_rules! scoped {
-    ($scope_name:expr, $block:block) => {
-        E::scoped($scope_name, || $block)
-    };
-}
+pub mod variable;
+pub use variable::*;

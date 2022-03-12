@@ -24,7 +24,7 @@ impl<E: Environment> Zero for Scalar<E> {
     }
 
     fn is_zero(&self) -> Self::Boolean {
-        self.is_eq(&Self::zero())
+        self.is_equal(&Self::zero())
     }
 }
 

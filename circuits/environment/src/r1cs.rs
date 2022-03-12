@@ -92,9 +92,9 @@ impl<F: PrimeField> R1CS<F> {
         // Ensure the constraint is not comprised of constants.
         match a.is_constant() && b.is_constant() && c.is_constant() {
             true => match self.counter.scope().is_empty() {
-                true => println!("Enforced constraint with constant terms: ({} * {}) != {}", a, b, c),
+                true => println!("Enforced constraint with constant terms: ({} * {}) =?= {}", a, b, c),
                 false => println!(
-                    "Enforced constraint with constant terms ({}): ({} * {}) != {}",
+                    "Enforced constraint with constant terms ({}): ({} * {}) =?= {}",
                     self.counter.scope(),
                     a,
                     b,
