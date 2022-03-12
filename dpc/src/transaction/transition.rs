@@ -513,6 +513,7 @@ mod tests {
         }
     }
 
+    #[ignore]
     #[test]
     fn test_transition_serde_json() {
         let transaction = Testnet2::genesis_block().to_coinbase_transaction().unwrap();
