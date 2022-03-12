@@ -465,6 +465,7 @@ mod tests {
         assert_eq!(expected_record.program_id(), candidate_record.program_id());
     }
 
+    #[ignore]
     #[test]
     fn test_transaction_serde_json() {
         let rng = &mut thread_rng();
