@@ -29,6 +29,9 @@ pub struct InnerPrivateVariables<N: Network> {
     // Outputs.
     pub(super) output_records: Vec<Record<N>>,
     pub(super) encryption_randomness: Vec<<N::AccountEncryptionScheme as EncryptionScheme>::ScalarRandomness>,
+
+    pub(super) input_value_commitment_randomness: Vec<N::ProgramScalarField>,
+    pub(super) output_value_commitment_randomness: Vec<N::ProgramScalarField>,
 }
 
 impl<N: Network> InnerPrivateVariables<N> {
@@ -42,6 +45,8 @@ impl<N: Network> InnerPrivateVariables<N> {
                 <N::AccountEncryptionScheme as EncryptionScheme>::ScalarRandomness::default();
                 N::NUM_OUTPUT_RECORDS
             ],
+            input_value_commitment_randomness: vec![Default::default(); N::NUM_INPUT_RECORDS],
+            output_value_commitment_randomness: vec![Default::default(); N::NUM_INPUT_RECORDS],
         }
     }
 
@@ -52,6 +57,8 @@ impl<N: Network> InnerPrivateVariables<N> {
             signature: request.signature().clone(),
             output_records: response.records().clone(),
             encryption_randomness: response.encryption_randomness().clone(),
+            input_value_commitment_randomness: response.input_value_commitment_randomness().clone(),
+            output_value_commitment_randomness: response.output_value_commitment_randomness().clone(),
         })
     }
 }

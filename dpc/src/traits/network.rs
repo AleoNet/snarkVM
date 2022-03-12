@@ -154,7 +154,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type InnerBaseField: PrimeField + PoseidonDefaultParametersField;
 
     /// Program curve type declarations.
-    type ProgramAffineCurve: AffineCurve<BaseField = Self::InnerScalarField, ScalarField = Self::ProgramScalarField>;
+    type ProgramAffineCurve: AffineCurve<BaseField = Self::InnerScalarField, ScalarField = Self::ProgramScalarField> + ToConstraintField<Self::InnerScalarField>;
     type ProgramAffineCurveGadget: GroupGadget<Self::ProgramAffineCurve, Self::InnerScalarField>;
     type ProgramProjectiveCurve: ProjectiveCurve<BaseField = Self::InnerScalarField>;
     type ProgramCurveParameters: TwistedEdwardsParameters;
@@ -271,8 +271,10 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type TransitionID: Bech32Locator<<Self::TransitionIDCRH as CRH>::Output>;
 
     /// Commitment scheme for value commitments. Invoked only over `Self::InnerScalarField`.
-    type ValueCommitment: CommitmentScheme<Randomness = Self::ProgramScalarField, Output = Self::ProgramAffineCurve>;
-    type ValueCommitmentGadget: CommitmentGadget<Self::ValueCommitment, Self::InnerScalarField, OutputGadget = Self::ProgramAffineCurveGadget>;
+    type ValueCommitmentScheme: CommitmentScheme<Randomness = Self::ProgramScalarField, Output = Self::ProgramAffineCurve>;
+    type ValueCommitmentGadget: CommitmentGadget<Self::ValueCommitmentScheme, Self::InnerScalarField, OutputGadget = Self::ProgramAffineCurveGadget>;
+    // TODO (raychu86): Create a formal locator for the value commitment output.
+    // type ValueCommitment: Bech32Locator<<Self::ValueCommitmentScheme as CommitmentScheme>::Output>;
 
     fn account_encryption_scheme() -> &'static Self::AccountEncryptionScheme;
     fn account_signature_scheme() -> &'static Self::AccountSignatureScheme;
@@ -286,7 +288,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     fn transactions_root_parameters() -> &'static Self::TransactionsRootParameters;
     fn transaction_id_parameters() -> &'static Self::TransactionIDParameters;
     fn transition_id_parameters() -> &'static Self::TransitionIDParameters;
-    fn value_commitment() -> &'static Self::ValueCommitment;
+    fn value_commitment_scheme() -> &'static Self::ValueCommitmentScheme;
 
     fn inner_circuit_id() -> &'static Self::InnerCircuitID;
     fn inner_proving_key() -> &'static <Self::InnerSNARK as SNARK>::ProvingKey;

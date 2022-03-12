@@ -38,7 +38,7 @@ impl<N: Network> ValueBalanceCommitmentGadget<N> {
         commitment_scheme: &N::ValueCommitmentGadget,
         input: &[UInt8],
     ) -> Result<
-        <N::ValueCommitmentGadget as CommitmentGadget<N::ValueCommitment, N::InnerScalarField>>::OutputGadget,
+        <N::ValueCommitmentGadget as CommitmentGadget<N::ValueCommitmentScheme, N::InnerScalarField>>::OutputGadget,
         SynthesisError,
     > {
         let zero_randomness = <N::ValueCommitmentGadget as CommitmentGadget<_, _>>::RandomnessGadget::alloc(
@@ -54,18 +54,18 @@ impl<N: Network> ValueBalanceCommitmentGadget<N> {
     pub fn check_value_balance_commitment_gadget<CS: ConstraintSystem<N::InnerScalarField>>(
         mut cs: CS,
         partial_combined_commitments: &<N::ValueCommitmentGadget as CommitmentGadget<
-            N::ValueCommitment,
+            N::ValueCommitmentScheme,
             N::InnerScalarField,
         >>::OutputGadget,
         value_balance_comm: &<N::ValueCommitmentGadget as CommitmentGadget<
-            N::ValueCommitment,
+            N::ValueCommitmentScheme,
             N::InnerScalarField,
         >>::OutputGadget,
         is_negative: &Boolean,
-        c: &<N::ValueCommitmentGadget as CommitmentGadget<N::ValueCommitment, N::InnerScalarField>>::RandomnessGadget,
-        commitment: &<N::ValueCommitmentGadget as CommitmentGadget<N::ValueCommitment, N::InnerScalarField>>::OutputGadget,
+        c: &<N::ValueCommitmentGadget as CommitmentGadget<N::ValueCommitmentScheme, N::InnerScalarField>>::RandomnessGadget,
+        commitment: &<N::ValueCommitmentGadget as CommitmentGadget<N::ValueCommitmentScheme, N::InnerScalarField>>::OutputGadget,
         blinded_commitment: &<N::ValueCommitmentGadget as CommitmentGadget<
-            N::ValueCommitment,
+            N::ValueCommitmentScheme,
             N::InnerScalarField,
         >>::OutputGadget,
     ) -> Result<(), SynthesisError> {
@@ -132,12 +132,7 @@ mod tests {
         // Verify the value balance commitment.
         assert!(
             value_balance_commitment
-                .verify_value_balance_commitment(
-                    &input_value_commitments,
-                    &output_value_commitments,
-                    value_balance,
-                    &sighash,
-                )
+                .verify(&input_value_commitments, &output_value_commitments, value_balance, &sighash,)
                 .unwrap()
         );
 
@@ -148,7 +143,7 @@ mod tests {
         // Allocate gadget values
         let commitment_scheme_gadget = <Testnet2 as Network>::ValueCommitmentGadget::alloc_constant(
             &mut cs.ns(|| "commitment_scheme_gadget"),
-            || Ok(<Testnet2 as Network>::value_commitment()),
+            || Ok(<Testnet2 as Network>::value_commitment_scheme()),
         )
         .unwrap();
 

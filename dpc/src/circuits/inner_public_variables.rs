@@ -14,11 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AleoAmount, Network};
+use crate::{AleoAmount, Network, ValueBalanceCommitment};
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::ToBytes;
 
 use anyhow::Result;
+use itertools::Itertools;
 
 #[derive(Clone, Debug)]
 pub struct InnerPublicVariables<N: Network> {
@@ -28,6 +29,12 @@ pub struct InnerPublicVariables<N: Network> {
     commitments: Vec<N::Commitment>,
     /// A value balance is the difference between the input and output record values.
     value_balance: AleoAmount,
+    /// The commitments on the input record values.
+    input_value_commitments: Vec<N::ProgramAffineCurve>,
+    /// The commitments on the output record values.
+    output_value_commitments: Vec<N::ProgramAffineCurve>,
+    /// The value balance commitments.
+    value_balance_commitment: ValueBalanceCommitment<N>,
     ledger_root: N::LedgerRoot,
     local_transitions_root: N::TransactionID,
     // These are required in natively verifying an inner circuit proof.
@@ -42,6 +49,9 @@ impl<N: Network> InnerPublicVariables<N> {
             serial_numbers: vec![Default::default(); N::NUM_INPUT_RECORDS],
             commitments: vec![Default::default(); N::NUM_INPUT_RECORDS],
             value_balance: AleoAmount::ZERO,
+            input_value_commitments: vec![Default::default(); N::NUM_INPUT_RECORDS],
+            output_value_commitments: vec![Default::default(); N::NUM_OUTPUT_RECORDS],
+            value_balance_commitment: ValueBalanceCommitment::default(),
             ledger_root: N::LedgerRoot::default(),
             local_transitions_root: Default::default(),
             program_id: Some(N::ProgramID::default()),
@@ -52,11 +62,24 @@ impl<N: Network> InnerPublicVariables<N> {
         serial_numbers: Vec<N::SerialNumber>,
         commitments: Vec<N::Commitment>,
         value_balance: AleoAmount,
+        input_value_commitments: Vec<N::ProgramAffineCurve>,
+        output_value_commitments: Vec<N::ProgramAffineCurve>,
+        value_balance_commitment: ValueBalanceCommitment<N>,
         ledger_root: N::LedgerRoot,
         local_transitions_root: N::TransactionID,
         program_id: Option<N::ProgramID>,
     ) -> Self {
-        Self { serial_numbers, commitments, value_balance, ledger_root, local_transitions_root, program_id }
+        Self {
+            serial_numbers,
+            commitments,
+            value_balance,
+            input_value_commitments,
+            output_value_commitments,
+            value_balance_commitment,
+            ledger_root,
+            local_transitions_root,
+            program_id,
+        }
     }
 
     /// Returns a reference to the serial numbers.
@@ -72,6 +95,21 @@ impl<N: Network> InnerPublicVariables<N> {
     /// Returns the value balance of the transition.
     pub(crate) fn value_balance(&self) -> AleoAmount {
         self.value_balance
+    }
+
+    /// Returns the commitments on the input record values.
+    pub(crate) fn input_value_commitments(&self) -> &Vec<N::ProgramAffineCurve> {
+        &self.input_value_commitments
+    }
+
+    /// Returns the commitments on the output record values.
+    pub(crate) fn output_value_commitments(&self) -> &Vec<N::ProgramAffineCurve> {
+        &self.output_value_commitments
+    }
+
+    /// Returns the value balance commitment.
+    pub(crate) fn value_balance_commitment(&self) -> &ValueBalanceCommitment<N> {
+        &self.value_balance_commitment
     }
 
     /// Returns the ledger root.
@@ -96,14 +134,20 @@ impl<N: Network> ToConstraintField<N::InnerScalarField> for InnerPublicVariables
             v.extend_from_slice(&vec![0u8; N::PROGRAM_ID_SIZE_IN_BYTES].to_field_elements()?);
         }
 
-        for serial_number in &self.serial_numbers {
+        for (serial_number, input_value_commitment) in self.serial_numbers.iter().zip_eq(&self.input_value_commitments)
+        {
             v.extend_from_slice(&serial_number.to_field_elements()?);
+            v.extend_from_slice(&input_value_commitment.to_field_elements()?);
         }
-        for commitment in &self.commitments {
+        for (commitment, output_value_commitment) in self.commitments.iter().zip_eq(&self.output_value_commitments) {
             v.extend_from_slice(&commitment.to_field_elements()?);
+            v.extend_from_slice(&output_value_commitment.to_field_elements()?);
         }
 
         v.extend_from_slice(&self.value_balance.to_bytes_le()?.to_field_elements()?);
+
+        v.extend_from_slice(&self.value_balance_commitment().commitment.to_field_elements()?);
+        v.extend_from_slice(&self.value_balance_commitment().blinding_factor.to_bytes_le()?.to_field_elements()?);
 
         Ok(v)
     }

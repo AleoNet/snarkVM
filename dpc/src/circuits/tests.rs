@@ -65,6 +65,9 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize) 
         serial_numbers,
         commitments,
         value_balance,
+        response.input_value_commitments().clone(),
+        response.output_value_commitments().clone(),
+        response.value_balance_commitment().clone(),
         ledger_root,
         local_transitions_root,
         program_id,
@@ -133,7 +136,7 @@ mod testnet1 {
 
     #[test]
     fn test_dpc_execute_circuits() {
-        dpc_execute_circuits_test::<Testnet1>(244090);
+        dpc_execute_circuits_test::<Testnet1>(292723);
     }
 }
 
@@ -143,6 +146,6 @@ mod testnet2 {
 
     #[test]
     fn test_dpc_execute_circuits() {
-        dpc_execute_circuits_test::<Testnet2>(244090);
+        dpc_execute_circuits_test::<Testnet2>(292723);
     }
 }
