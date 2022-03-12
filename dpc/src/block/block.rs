@@ -478,6 +478,7 @@ mod tests {
         assert_eq!(supply, AleoAmount::from_gate(supply_at_second_halving * AleoAmount::ONE_CREDIT.0));
     }
 
+    #[ignore]
     #[test]
     fn test_block_serde_json() {
         let rng = &mut thread_rng();
