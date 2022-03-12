@@ -274,7 +274,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             // *******************************************************************
             // Check that the record is well-formed.
             // *******************************************************************
-            let (commitment, is_dummy) = {
+            let (commitment, value_bytes, is_dummy) = {
                 let commitment_cs = &mut cs.ns(|| "Check that record is well-formed");
 
                 // *******************************************************************
@@ -404,7 +404,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 input_commitments_bytes.extend_from_slice(&candidate_commitment_bytes);
                 input_values.push(given_value);
 
-                (candidate_commitment, given_is_dummy)
+                (candidate_commitment, given_value_bytes, given_is_dummy)
             };
 
             // ********************************************************************
@@ -566,9 +566,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     || Ok(value_commitment),
                 )?;
 
-                let value_bytes =
-                    UInt8::alloc_vec(vc_cs.ns(|| format!("Input value bytes {}", i)), &record.value().to_bytes_le()?)?;
-
                 let candidate_value_commitment_gadget = value_commitment_parameters.check_commitment_gadget(
                     &mut vc_cs.ns(|| format!("Compute input value commitment {}", i)),
                     &value_bytes,
@@ -670,7 +667,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             // *******************************************************************
             // Check that the record is well-formed.
             // *******************************************************************
-            {
+            let value_bytes = {
                 let commitment_cs = &mut cs.ns(|| "Check that record is well-formed");
 
                 // *******************************************************************
@@ -824,6 +821,8 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 )?;
 
                 output_values.push(given_value);
+
+                given_value_bytes
             };
 
             // ********************************************************************
@@ -847,9 +846,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     &mut vc_cs.ns(|| format!("Output value commitment {}", j)),
                     || Ok(value_commitment),
                 )?;
-
-                let value_bytes =
-                    UInt8::alloc_vec(vc_cs.ns(|| format!("Output value bytes {}", j)), &record.value().to_bytes_le()?)?;
 
                 let candidate_value_commitment_gadget = value_commitment_parameters.check_commitment_gadget(
                     &mut vc_cs.ns(|| format!("Compute output value commitment {}", j)),
