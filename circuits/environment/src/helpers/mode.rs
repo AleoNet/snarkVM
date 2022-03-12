@@ -67,28 +67,14 @@ impl fmt::Display for Mode {
 }
 
 impl ToBytes for Mode {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()>
-    where
-        Self: Sized,
-    {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         u8::write_le(&ToPrimitive::to_u8(self).ok_or_else(|| error("Invalid mode"))?, &mut writer)
     }
 }
 
 impl FromBytes for Mode {
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self>
-    where
-        Self: Sized,
-    {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let mode = u8::read_le(&mut reader)?;
         FromPrimitive::from_u8(mode).ok_or_else(|| error("Invalid mode"))
-
-        //match u8::read_le(reader) {
-        //    Ok(i) if i == Self::Constant as u8 => Ok(Self::Constant),
-        //    Ok(1) => Ok(Self::Public),
-        //    Ok(2) => Ok(Self::Private),
-        //    Ok(_) => Err(error("FromBytes::read failed for Mode")),
-        //    Err(err) => Err(err),
-        //}
     }
 }

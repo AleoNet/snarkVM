@@ -129,17 +129,17 @@ impl<F: PrimeField> LinearCombination<F> {
     }
 
     /// Returns only the constant value (excluding the terms) in the linear combination.
-    pub(super) fn to_constant(&self) -> F {
+    pub(crate) fn to_constant(&self) -> F {
         self.constant
     }
 
     /// Returns the terms (excluding the constant value) in the linear combination.
-    pub(super) fn to_terms(&self) -> &BTreeMap<Variable<F>, F> {
+    pub(crate) fn to_terms(&self) -> &BTreeMap<Variable<F>, F> {
         &self.terms
     }
 
     /// Returns the number of addition gates in the linear combination.
-    pub(super) fn num_additions(&self) -> usize {
+    pub(crate) fn num_additions(&self) -> usize {
         // Increment by one if the constant is nonzero and the number of terms is nonzero.
         match !self.constant.is_zero() && !self.terms.is_empty() {
             true => self.terms.len(),
