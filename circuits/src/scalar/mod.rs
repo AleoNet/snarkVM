@@ -25,7 +25,7 @@ pub mod zero;
 
 use crate::{traits::*, Boolean, Environment, LinearCombination, Mode};
 use snarkvm_fields::{One as O, PrimeField, Zero as Z};
-use snarkvm_utilities::{FromBits as FBits, FromBytes, ToBits as TBits, ToBytes};
+use snarkvm_utilities::{FromBits as FBits, ToBits as TBits};
 
 use core::fmt;
 use nom::{
@@ -35,7 +35,6 @@ use nom::{
     multi::{many0, many1},
     sequence::{pair, terminated},
 };
-use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Clone)]
 pub struct Scalar<E: Environment> {
@@ -128,30 +127,6 @@ impl<E: Environment> fmt::Debug for Scalar<E> {
 impl<E: Environment> fmt::Display for Scalar<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}{}.{}", self.eject_value(), Self::type_name(), self.eject_mode())
-    }
-}
-
-// TODO (@pranav) Test
-impl<E: Environment> FromBytes for Scalar<E> {
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self>
-    where
-        Self: Sized,
-    {
-        let mode = Mode::read_le(&mut reader)?;
-        let value = E::ScalarField::read_le(&mut reader)?;
-
-        Ok(Self::new(mode, value))
-    }
-}
-
-// TODO (@pranav) Test
-impl<E: Environment> ToBytes for Scalar<E> {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()>
-    where
-        Self: Sized,
-    {
-        self.eject_mode().write_le(&mut writer)?;
-        self.eject_value().write_le(&mut writer)
     }
 }
 

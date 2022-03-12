@@ -112,26 +112,20 @@ impl<E: Environment> fmt::Display for Argument<E> {
 }
 
 impl<E: Environment> FromBytes for Argument<E> {
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self>
-    where
-        Self: Sized,
-    {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         match u8::read_le(&mut reader) {
             Ok(0) => Ok(Self::Boolean(Register::<E>::read_le(&mut reader)?, Mode::read_le(&mut reader)?)),
             Ok(1) => Ok(Self::Field(Register::<E>::read_le(&mut reader)?, Mode::read_le(&mut reader)?)),
             Ok(2) => Ok(Self::Group(Register::<E>::read_le(&mut reader)?, Mode::read_le(&mut reader)?)),
             Ok(3) => Ok(Self::Scalar(Register::<E>::read_le(&mut reader)?, Mode::read_le(&mut reader)?)),
-            Ok(_) => Err(error("FromBytes::read failed for Argument")),
+            Ok(type_) => Err(error(format!("FromBytes failed to parse an argument of type {type_}"))),
             Err(err) => Err(err),
         }
     }
 }
 
 impl<E: Environment> ToBytes for Argument<E> {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()>
-    where
-        Self: Sized,
-    {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         match self {
             Self::Boolean(register, mode) => {
                 u8::write_le(&0u8, &mut writer)?;

@@ -34,7 +34,7 @@ pub mod zero;
 
 use crate::{traits::*, Boolean, Environment, LinearCombination, Mode};
 use snarkvm_fields::{Field as F, One as O, PrimeField};
-use snarkvm_utilities::{FromBytes, ToBits as TBits, ToBytes};
+use snarkvm_utilities::ToBits as TBits;
 
 #[cfg(test)]
 use snarkvm_fields::Zero as Z;
@@ -51,7 +51,6 @@ use nom::{
     sequence::{pair, terminated},
 };
 use num_traits::Inv;
-use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Clone)]
 pub struct BaseField<E: Environment>(LinearCombination<E::BaseField>);
@@ -145,30 +144,6 @@ impl<E: Environment> From<BaseField<E>> for LinearCombination<E::BaseField> {
 impl<E: Environment> From<&BaseField<E>> for LinearCombination<E::BaseField> {
     fn from(field: &BaseField<E>) -> Self {
         field.0.clone()
-    }
-}
-
-// TODO (@pranav) Test
-impl<E: Environment> FromBytes for BaseField<E> {
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self>
-    where
-        Self: Sized,
-    {
-        let mode = Mode::read_le(&mut reader)?;
-        let value = E::BaseField::read_le(&mut reader)?;
-
-        Ok(Self::new(mode, value))
-    }
-}
-
-// TODO (@pranav) Test
-impl<E: Environment> ToBytes for BaseField<E> {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()>
-    where
-        Self: Sized,
-    {
-        self.eject_mode().write_le(&mut writer)?;
-        self.eject_value().write_le(&mut writer)
     }
 }
 

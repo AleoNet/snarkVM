@@ -97,25 +97,19 @@ impl<M: Memory> fmt::Display for Instruction<M> {
 }
 
 impl<M: Memory> FromBytes for Instruction<M> {
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self>
-    where
-        Self: Sized,
-    {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         match u16::read_le(&mut reader) {
             Ok(0) => Ok(Self::Add(Add::read_le(&mut reader)?)),
             Ok(1) => Ok(Self::Store(Store::read_le(&mut reader)?)),
             Ok(2) => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
-            Ok(_) => Err(error("FromBytes::read failed for Instruction")),
+            Ok(code) => Err(error(format!("FromBytes failed to parse an instruction of code {code}"))),
             Err(err) => Err(err),
         }
     }
 }
 
 impl<M: Memory> ToBytes for Instruction<M> {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()>
-    where
-        Self: Sized,
-    {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         match self {
             Self::Add(instruction) => {
                 u16::write_le(&0u16, &mut writer)?;

@@ -106,24 +106,18 @@ impl<E: Environment> fmt::Display for Operand<E> {
 }
 
 impl<E: Environment> FromBytes for Operand<E> {
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self>
-    where
-        Self: Sized,
-    {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         match u8::read_le(&mut reader) {
             Ok(0) => Ok(Self::Immediate(Immediate::read_le(&mut reader)?)),
             Ok(1) => Ok(Self::Register(Register::read_le(&mut reader)?)),
-            Ok(_) => Err(error("FromBytes::read failed for Operand")),
+            Ok(variant) => Err(error(format!("FromBytes failed to parse an operand of variant {variant}"))),
             Err(err) => Err(err),
         }
     }
 }
 
 impl<E: Environment> ToBytes for Operand<E> {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()>
-    where
-        Self: Sized,
-    {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         match self {
             Self::Immediate(immediate) => {
                 u8::write_le(&0u8, &mut writer)?;

@@ -69,10 +69,7 @@ impl<E: Environment> fmt::Display for UnaryOperation<E> {
 }
 
 impl<E: Environment> FromBytes for UnaryOperation<E> {
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self>
-    where
-        Self: Sized,
-    {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let destination = Register::read_le(&mut reader)?;
         let operand = Operand::read_le(&mut reader)?;
         Ok(Self { destination, operand })
@@ -80,10 +77,7 @@ impl<E: Environment> FromBytes for UnaryOperation<E> {
 }
 
 impl<E: Environment> ToBytes for UnaryOperation<E> {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()>
-    where
-        Self: Sized,
-    {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.destination.write_le(&mut writer)?;
         self.operand.write_le(&mut writer)
     }

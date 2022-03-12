@@ -16,7 +16,7 @@
 
 use super::*;
 use crate::BaseField;
-// use snarkvm_utilities::{from_bits_le_to_bytes_le, FromBytes};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 impl<E: Environment> FromBits for Scalar<E> {
     type Boolean = Boolean<E>;

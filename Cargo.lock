@@ -1985,6 +1985,7 @@ dependencies = [
 name = "snarkvm-circuits"
 version = "0.7.5"
 dependencies = [
+ "anyhow",
  "criterion",
  "itertools",
  "nom",

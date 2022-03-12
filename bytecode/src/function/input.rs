@@ -109,20 +109,13 @@ impl<M: Memory> ops::Deref for Input<M> {
 }
 
 impl<M: Memory> FromBytes for Input<M> {
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self>
-    where
-        Self: Sized,
-    {
-        let argument = Argument::read_le(&mut reader)?;
-        Ok(Self { argument, immediate: Default::default() })
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        Ok(Self { argument: Argument::read_le(&mut reader)?, immediate: Default::default() })
     }
 }
 
 impl<M: Memory> ToBytes for Input<M> {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()>
-    where
-        Self: Sized,
-    {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.argument.write_le(&mut writer)
     }
 }

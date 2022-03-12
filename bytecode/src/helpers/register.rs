@@ -74,19 +74,13 @@ impl<E: Environment> ops::Deref for Register<E> {
 }
 
 impl<E: Environment> FromBytes for Register<E> {
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self>
-    where
-        Self: Sized,
-    {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         Ok(Self::new(read_variable_length_integer(&mut reader)?))
     }
 }
 
 impl<E: Environment> ToBytes for Register<E> {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()>
-    where
-        Self: Sized,
-    {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         variable_length_integer(self.0).write_le(&mut writer)
     }
 }

@@ -31,7 +31,7 @@ impl<E: Environment> FromBits for BaseField<E> {
         let size_in_bits = E::BaseField::size_in_bits();
         match num_bits <= size_in_bits {
             true => bits_le.resize(size_in_bits, Boolean::new(Mode::Constant, false)),
-            false => E::halt(format!("Attempted to instantiate a {}-bit field with {} bits", size_in_bits, num_bits)),
+            false => E::halt(format!("Attempted to instantiate a {size_in_bits}-bit field with {num_bits} bits")),
         }
 
         // Construct the field value from the given bits.
@@ -41,7 +41,7 @@ impl<E: Environment> FromBits for BaseField<E> {
                 &bits_le.iter().map(|bit| bit.eject_value()).collect::<Vec<_>>(),
             )) {
                 Ok(value) => value,
-                Err(error) => E::halt(format!("Failed to convert booleans into a base field element. {}", error)),
+                Err(error) => E::halt(format!("Failed to convert booleans into a base field element: {error}")),
             },
         );
 

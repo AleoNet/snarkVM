@@ -72,20 +72,13 @@ impl<M: Memory> fmt::Display for Sub<M> {
 }
 
 impl<M: Memory> FromBytes for Sub<M> {
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self>
-    where
-        Self: Sized,
-    {
-        let operation = BinaryOperation::read_le(&mut reader)?;
-        Ok(Self { operation })
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        Ok(Self { operation: BinaryOperation::read_le(&mut reader)? })
     }
 }
 
 impl<M: Memory> ToBytes for Sub<M> {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()>
-    where
-        Self: Sized,
-    {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.operation.write_le(&mut writer)
     }
 }

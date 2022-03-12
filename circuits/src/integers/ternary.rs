@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+
 use itertools::Itertools;
 
 impl<E: Environment, I: IntegerType> Ternary for Integer<E, I> {

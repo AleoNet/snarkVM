@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{helpers::integers::IntegerType, Boolean, Environment, Mode, Scalar, U16, U32, U8};
-use snarkvm_utilities::ToBytes;
 
 use core::{
     fmt::{Debug, Display},
@@ -225,7 +224,7 @@ pub trait Inject {
 
 /// Operations to eject from a circuit environment into primitive form.
 pub trait Eject {
-    type Primitive: Debug + Display + ToBytes;
+    type Primitive: Debug + Display;
 
     ///
     /// Ejects the mode and primitive value of the circuit type.
@@ -243,19 +242,6 @@ pub trait Eject {
     /// Ejects the circuit type as a primitive value.
     ///
     fn eject_value(&self) -> Self::Primitive;
-
-    ///
-    /// Ejects the circuit type as bytes in little-endian form.
-    ///
-    fn eject_bytes_le(&self) -> anyhow::Result<Vec<u8>> {
-        // Eject the mode and value.
-        let (mode, value) = self.eject();
-        // Convert the value to bytes, and append the mode.
-        value.to_bytes_le().map(|mut value| {
-            value.push(mode as u8);
-            value
-        })
-    }
 
     ///
     /// Returns `true` if the circuit is a constant.
