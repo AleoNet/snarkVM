@@ -294,6 +294,7 @@ mod tests {
         assert!(Transactions::from(&[transaction.clone(), transaction]).is_err());
     }
 
+    #[ignore]
     #[test]
     fn test_transactions_serde_json() {
         let expected_transactions = Testnet2::genesis_block().transactions().clone();
