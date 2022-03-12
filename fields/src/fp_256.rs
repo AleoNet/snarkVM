@@ -367,12 +367,6 @@ impl<P: Fp256Parameters> PrimeField for Fp256<P> {
     }
 
     #[inline]
-    fn from_repr_unchecked(r: BigInteger) -> Self {
-        let r = Fp256(r, PhantomData);
-        if r.is_valid() { r } else { Self::zero() }
-    }
-
-    #[inline]
     fn to_repr_unchecked(&self) -> BigInteger {
         let r = *self;
         r.0

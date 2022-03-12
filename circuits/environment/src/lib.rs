@@ -17,36 +17,27 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::type_complexity)]
 
+#[macro_use]
+extern crate num_derive;
+
 pub mod circuit;
 pub use circuit::*;
-
-mod converter;
 
 pub mod environment;
 pub use environment::*;
 
-pub mod linear_combination;
-pub use linear_combination::*;
+pub mod helpers;
+pub use helpers::*;
+
+pub mod parser;
+pub use parser::*;
 
 mod r1cs;
 use r1cs::*;
-
-mod transcript;
-use transcript::*;
-
-pub mod variable;
-pub use variable::*;
 
 #[macro_export]
 macro_rules! scoped {
     ($scope_name:expr, $block:block) => {
         E::scoped($scope_name, || $block)
-    };
-}
-
-#[macro_export]
-macro_rules! push_scope {
-    ($scope_name:expr) => {
-        E::push_scope($scope_name)
     };
 }

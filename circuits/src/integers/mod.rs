@@ -43,16 +43,16 @@ pub mod zero;
 
 use crate::{
     boolean::Boolean,
-    fields::BaseField,
+    field::BaseField,
     helpers::integers::*,
     traits::*,
     Environment,
     LinearCombination,
     Mode,
 };
-
 use snarkvm_fields::PrimeField;
-use std::{
+
+use core::{
     fmt,
     marker::PhantomData,
     ops::{
@@ -78,6 +78,28 @@ use std::{
         SubAssign,
     },
 };
+use nom::{
+    bytes::complete::tag,
+    character::complete::{char, one_of},
+    combinator::{map, map_res, opt, recognize},
+    multi::{many0, many1},
+    sequence::{pair, terminated},
+};
+
+// TODO (@pranav) Is there a better place for this?
+/// Sealed trait pattern to prevent abuse of Magnitude.
+mod private {
+    use crate::helpers::integers::IntegerType;
+    use num_traits::{ToPrimitive, Unsigned};
+
+    /// Trait for integers that can be used as an unsigned magnitude.
+    /// `Magnitude`s are either used to represent an integer exponent
+    /// or the right operand in integer shift operations.
+    pub trait Magnitude: IntegerType + ToPrimitive + Unsigned {}
+    impl Magnitude for u8 {}
+    impl Magnitude for u16 {}
+    impl Magnitude for u32 {}
+}
 
 pub type I8<E> = Integer<E, i8>;
 pub type I16<E> = Integer<E, i16>;
@@ -97,9 +119,15 @@ pub struct Integer<E: Environment, I: IntegerType> {
     phantom: PhantomData<I>,
 }
 
-impl<E: Environment, I: IntegerType> IntegerTrait<E, I> for Integer<E, I> {
+impl<E: Environment, I: IntegerType> IntegerTrait<E, I> for Integer<E, I> {}
+
+impl<E: Environment, I: IntegerType> DataType<Boolean<E>> for Integer<E, I> {}
+
+impl<E: Environment, I: IntegerType> Inject for Integer<E, I> {
+    type Primitive = I;
+
     /// Initializes a new integer.
-    fn new(mode: Mode, value: I) -> Self {
+    fn new(mode: Mode, value: Self::Primitive) -> Self {
         let mut bits_le = Vec::with_capacity(I::BITS);
         let mut value = value.to_le();
         for _ in 0..I::BITS {
@@ -108,21 +136,6 @@ impl<E: Environment, I: IntegerType> IntegerTrait<E, I> for Integer<E, I> {
         }
         Self::from_bits_le(mode, &bits_le)
     }
-}
-
-// TODO (@pranav) Is there a better place for this?
-/// Sealed trait pattern to prevent abuse of Magnitude.
-mod private {
-    use crate::helpers::integers::IntegerType;
-    use num_traits::{ToPrimitive, Unsigned};
-
-    /// Trait for integers that can be used as an unsigned magnitude.
-    /// `Magnitude`s are either used to represent an integer exponent
-    /// or the right operand in integer shift operations.
-    pub trait Magnitude: IntegerType + ToPrimitive + Unsigned {}
-    impl Magnitude for u8 {}
-    impl Magnitude for u16 {}
-    impl Magnitude for u32 {}
 }
 
 // TODO (@pranav) Document
@@ -178,15 +191,45 @@ impl<E: Environment, I: IntegerType> Eject for Integer<E, I> {
     }
 }
 
-impl<E: Environment, I: IntegerType> AsRef<Integer<E, I>> for Integer<E, I> {
-    fn as_ref(&self) -> &Integer<E, I> {
-        &self
+impl<E: Environment, I: IntegerType> Parser for Integer<E, I> {
+    type Environment = E;
+
+    /// Returns the type name of the circuit as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        I::type_name()
+    }
+
+    /// Parses a string into an integer circuit.
+    #[inline]
+    fn parse(string: &str) -> ParserResult<Self> {
+        // Parse the negative sign '-' from the string.
+        let (string, negation) = map(opt(tag("-")), |neg: Option<&str>| neg.unwrap_or_default().to_string())(string)?;
+        // Parse the digits from the string.
+        let (string, primitive) = recognize(many1(terminated(one_of("0123456789"), many0(char('_')))))(string)?;
+        // Combine the sign and primitive.
+        let primitive = negation + primitive;
+        // Parse the value from the string.
+        let (string, value) = map_res(tag(Self::type_name()), |_| primitive.replace('_', "").parse())(string)?;
+        // Parse the mode from the string.
+        let (string, mode) = opt(pair(tag("."), Mode::parse))(string)?;
+
+        match mode {
+            Some((_, mode)) => Ok((string, Self::new(mode, value))),
+            None => Ok((string, Self::new(Mode::Constant, value))),
+        }
     }
 }
 
 impl<E: Environment, I: IntegerType> fmt::Debug for Integer<E, I> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self.eject_value())
+    }
+}
+
+impl<E: Environment, I: IntegerType> fmt::Display for Integer<E, I> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}{}.{}", self.eject_value(), Self::type_name(), self.eject_mode())
     }
 }
 
@@ -219,28 +262,75 @@ mod tests {
 
     const ITERATIONS: usize = 1000;
 
-    fn check_new<I: IntegerType, IC: IntegerTrait<Circuit, I>>(mode: Mode) {
+    fn check_new<I: IntegerType>(mode: Mode) {
         let expected: I = UniformRand::rand(&mut thread_rng());
-        let candidate = IC::new(mode, expected);
+        let candidate = Integer::<Circuit, I>::new(mode, expected);
         assert_eq!(mode.is_constant(), candidate.is_constant());
         assert_eq!(candidate.eject_value(), expected);
     }
 
-    fn check_min_max<I: IntegerType, IC: IntegerTrait<Circuit, I>>(mode: Mode) {
-        assert_eq!(I::MIN, IC::new(mode, I::MIN).eject_value());
-        assert_eq!(I::MAX, IC::new(mode, I::MAX).eject_value());
+    fn check_min_max<I: IntegerType>(mode: Mode) {
+        assert_eq!(I::MIN, Integer::<Circuit, I>::new(mode, I::MIN).eject_value());
+        assert_eq!(I::MAX, Integer::<Circuit, I>::new(mode, I::MAX).eject_value());
+    }
+
+    fn check_parser<I: IntegerType>() {
+        for mode in [Mode::Constant, Mode::Public, Mode::Private] {
+            for _ in 0..ITERATIONS {
+                let value: I = UniformRand::rand(&mut thread_rng());
+                let expected = Integer::<Circuit, I>::new(mode, value);
+
+                let (_, candidate) = Integer::<Circuit, I>::parse(&format!("{expected}")).unwrap();
+                assert_eq!(mode, candidate.eject_mode());
+                assert_eq!(value, candidate.eject_value());
+                assert_eq!(expected.eject_mode(), candidate.eject_mode());
+                assert_eq!(expected.eject_value(), candidate.eject_value());
+            }
+        }
+    }
+
+    fn check_debug<I: IntegerType>() {
+        // Constant
+        let candidate = Integer::<Circuit, I>::new(Mode::Constant, I::one() + I::one());
+        assert_eq!("2", format!("{:?}", candidate));
+
+        // Public
+        let candidate = Integer::<Circuit, I>::new(Mode::Public, I::one() + I::one());
+        assert_eq!("2", format!("{:?}", candidate));
+
+        // Private
+        let candidate = Integer::<Circuit, I>::new(Mode::Private, I::one() + I::one());
+        assert_eq!("2", format!("{:?}", candidate));
+    }
+
+    fn check_display<I: IntegerType>() {
+        // Constant
+        let candidate = Integer::<Circuit, I>::new(Mode::Constant, I::one() + I::one());
+        assert_eq!(format!("2{}.constant", I::type_name()), format!("{}", candidate));
+
+        // Public
+        let candidate = Integer::<Circuit, I>::new(Mode::Public, I::one() + I::one());
+        assert_eq!(format!("2{}.public", I::type_name()), format!("{}", candidate));
+
+        // Private
+        let candidate = Integer::<Circuit, I>::new(Mode::Private, I::one() + I::one());
+        assert_eq!(format!("2{}.private", I::type_name()), format!("{}", candidate));
     }
 
     fn run_test<I: IntegerType>() {
         for _ in 0..ITERATIONS {
-            check_new::<I, Integer<Circuit, I>>(Mode::Constant);
-            check_new::<I, Integer<Circuit, I>>(Mode::Public);
-            check_new::<I, Integer<Circuit, I>>(Mode::Private);
+            check_new::<I>(Mode::Constant);
+            check_new::<I>(Mode::Public);
+            check_new::<I>(Mode::Private);
         }
 
-        check_min_max::<I, Integer<Circuit, I>>(Mode::Constant);
-        check_min_max::<I, Integer<Circuit, I>>(Mode::Public);
-        check_min_max::<I, Integer<Circuit, I>>(Mode::Private);
+        check_min_max::<I>(Mode::Constant);
+        check_min_max::<I>(Mode::Public);
+        check_min_max::<I>(Mode::Private);
+
+        check_parser::<I>();
+        check_debug::<I>();
+        check_display::<I>();
     }
 
     #[test]
@@ -396,7 +486,7 @@ mod test_utilities {
     ) {
         Circuit::scoped(name, || {
             let candidate = operation(input);
-            assert_eq!(expected, candidate.eject_value(), "{} != {} := {}", expected, candidate.eject_value(), case);
+            assert_eq!(expected, candidate.eject_value(), "{}", case);
             assert_circuit!(case, num_constants, num_public, num_private, num_constraints);
         });
         Circuit::reset();

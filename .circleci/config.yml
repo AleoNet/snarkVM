@@ -105,6 +105,21 @@ jobs:
       - clear_environment:
           cache_key: snarkvm-algorithms-cache
 
+  bytecode:
+    docker:
+      - image: cimg/rust:1.59
+    resource_class: 2xlarge
+    steps:
+      - checkout
+      - setup_environment:
+          cache_key: snarkvm-bytecode-cache
+      - run:
+          name: Build and run tests
+          no_output_timeout: 35m
+          command: cd bytecode && RUST_MIN_STACK=67108864 cargo test
+      - clear_environment:
+          cache_key: snarkvm-bytecode-cache
+
   circuits:
     docker:
       - image: cimg/rust:1.59
@@ -275,6 +290,7 @@ workflows:
       - integration-testnet1
       - integration-testnet2
       - algorithms
+      - bytecode
       - circuits
       - circuits-environment
       - curves

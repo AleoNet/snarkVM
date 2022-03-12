@@ -29,7 +29,7 @@ impl<E: Environment, I: IntegerType> FromBits for Integer<E, I> {
         // Construct a candidate integer.
         let candidate = Integer { bits_le: bits_le.to_vec(), phantom: Default::default() };
 
-        // Ensure the mode in the given bits are consistent, with the desired mode.
+        // Ensure the mode in the given bits are consistent with the desired mode.
         // If they do not match, proceed to construct a new integer, and check that it is well-formed.
         match candidate.eject_mode() == mode {
             true => candidate,

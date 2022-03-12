@@ -16,7 +16,7 @@
 
 use crate::{traits::*, Affine, Environment, Mode};
 
-use std::{fmt, ops::Deref};
+use core::{fmt, ops::Deref};
 
 #[derive(Clone)]
 pub struct Address<E: Environment>(Affine<E>);
@@ -25,7 +25,7 @@ impl<E: Environment> Address<E> {
     ///
     /// Initializes a new instance of an address from an affine group.
     ///
-    pub fn new(value: Affine<E>) -> Self {
+    pub fn from(value: Affine<E>) -> Self {
         Self(value)
     }
 }
@@ -45,12 +45,6 @@ impl<E: Environment> Eject for Address<E> {
     ///
     fn eject_value(&self) -> Self::Primitive {
         self.0.eject_value()
-    }
-}
-
-impl<E: Environment> AsRef<Address<E>> for Address<E> {
-    fn as_ref(&self) -> &Address<E> {
-        &self
     }
 }
 

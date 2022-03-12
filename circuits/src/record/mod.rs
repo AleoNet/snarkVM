@@ -14,29 +14,34 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Address, BaseField, Boolean, Environment, I64};
+use crate::{traits::*, Address, Boolean, Environment, I64};
 
+// TODO (howardwu): Check mode is only public/private, not constant.
 // #[derive(Clone, Debug)]
 pub struct Record<E: Environment> {
     owner: Address<E>,
     value: I64<E>,
-    payload: Vec<Boolean<E>>,
-    program_id: Vec<Boolean<E>>,
-    randomizer: BaseField<E>,
-    record_view_key: BaseField<E>,
+    data: Vec<Box<dyn DataType<Boolean<E>>>>,
+    // program_id: Vec<Boolean<E>>,
+    // randomizer: BaseField<E>,
+    // record_view_key: BaseField<E>,
 }
 
-// impl<E: Environment> Record<E> {
-//     ///
-//     /// Initializes a new instance of a record.
-//     ///
-//     pub fn new(value: Affine<E>) -> Self {
-//         Self(value)
-//     }
-// }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{Affine, BaseField, Circuit};
 
-impl<E: Environment> AsRef<Record<E>> for Record<E> {
-    fn as_ref(&self) -> &Record<E> {
-        &self
+    #[test]
+    fn test_record_data() {
+        let first = BaseField::<Circuit>::from_str("10field.public");
+        let second = Boolean::from_str("true.private");
+        let third = I64::from_str("99i64.public");
+
+        let _candidate = Record {
+            owner: Address::from(Affine::from_str("2group.private")),
+            value: I64::from_str("1i64.private"),
+            data: vec![Box::new(first), Box::new(second), Box::new(third)],
+        };
     }
 }

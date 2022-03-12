@@ -44,13 +44,12 @@ impl<E: Environment, I: IntegerType> SubWrapped<Self> for Integer<E, I> {
     }
 }
 
-#[rustfmt::skip]
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::Circuit;
-    use test_utilities::*;
     use snarkvm_utilities::UniformRand;
+    use test_utilities::*;
 
     use rand::thread_rng;
     use std::ops::RangeInclusive;
@@ -95,19 +94,12 @@ mod tests {
             check_sub(&name, first, second);
         }
 
-        match I::is_signed() {
-            // Check overflow and underflow conditions for signed integers
-            true => {
-                // Overflow
-                check_sub("MAX - (-1)", I::MAX, I::zero() - I::one());
-                // Underflow
-                check_sub("MIN - 1", I::MIN, I::one());
-            },
-            false => {
-                // Underflow
-                check_sub("MIN - 1", I::MIN, I::one());
-            }
+        // Overflow
+        if I::is_signed() {
+            check_sub("MAX - (-1)", I::MAX, I::zero() - I::one());
         }
+        // Underflow
+        check_sub("MIN - 1", I::MIN, I::one());
     }
 
     #[rustfmt::skip]
@@ -691,63 +683,63 @@ mod tests {
 
     #[test]
     #[ignore]
-	fn test_exhaustive_u8_constant_minus_constant() {
+    fn test_exhaustive_u8_constant_minus_constant() {
         type I = u8;
         run_exhaustive_test::<I>(Mode::Constant, Mode::Constant, 8, 0, 0, 0);
     }
 
     #[test]
     #[ignore]
-	fn test_exhaustive_u8_constant_minus_public() {
+    fn test_exhaustive_u8_constant_minus_public() {
         type I = u8;
         run_exhaustive_test::<I>(Mode::Constant, Mode::Public, 2, 0, 11, 12);
     }
 
     #[test]
     #[ignore]
-	fn test_exhaustive_u8_constant_minus_private() {
+    fn test_exhaustive_u8_constant_minus_private() {
         type I = u8;
         run_exhaustive_test::<I>(Mode::Constant, Mode::Private, 2, 0, 11, 12);
     }
 
     #[test]
     #[ignore]
-	fn test_exhaustive_u8_public_minus_constant() {
+    fn test_exhaustive_u8_public_minus_constant() {
         type I = u8;
         run_exhaustive_test::<I>(Mode::Public, Mode::Constant, 2, 0, 11, 12);
     }
 
     #[test]
     #[ignore]
-	fn test_exhaustive_u8_private_minus_constant() {
+    fn test_exhaustive_u8_private_minus_constant() {
         type I = u8;
         run_exhaustive_test::<I>(Mode::Private, Mode::Constant, 2, 0, 11, 12);
     }
 
     #[test]
     #[ignore]
-	fn test_exhaustive_u8_public_minus_public() {
+    fn test_exhaustive_u8_public_minus_public() {
         type I = u8;
         run_exhaustive_test::<I>(Mode::Public, Mode::Public, 2, 0, 11, 12);
     }
 
     #[test]
     #[ignore]
-	fn test_exhaustive_u8_public_minus_private() {
+    fn test_exhaustive_u8_public_minus_private() {
         type I = u8;
         run_exhaustive_test::<I>(Mode::Public, Mode::Private, 2, 0, 11, 12);
     }
 
     #[test]
     #[ignore]
-	fn test_exhaustive_u8_private_minus_public() {
+    fn test_exhaustive_u8_private_minus_public() {
         type I = u8;
         run_exhaustive_test::<I>(Mode::Private, Mode::Public, 2, 0, 11, 12);
     }
 
     #[test]
     #[ignore]
-	fn test_exhaustive_u8_private_minus_private() {
+    fn test_exhaustive_u8_private_minus_private() {
         type I = u8;
         run_exhaustive_test::<I>(Mode::Private, Mode::Private, 2, 0, 11, 12);
     }
@@ -756,63 +748,63 @@ mod tests {
 
     #[test]
     #[ignore]
-	fn test_exhaustive_i8_constant_minus_constant() {
+    fn test_exhaustive_i8_constant_minus_constant() {
         type I = i8;
         run_exhaustive_test::<I>(Mode::Constant, Mode::Constant, 8, 0, 0, 0);
     }
 
     #[test]
     #[ignore]
-	fn test_exhaustive_i8_constant_minus_public() {
+    fn test_exhaustive_i8_constant_minus_public() {
         type I = i8;
         run_exhaustive_test::<I>(Mode::Constant, Mode::Public, 2, 0, 11, 12);
     }
 
     #[test]
     #[ignore]
-	fn test_exhaustive_i8_constant_minus_private() {
+    fn test_exhaustive_i8_constant_minus_private() {
         type I = i8;
         run_exhaustive_test::<I>(Mode::Constant, Mode::Private, 2, 0, 11, 12);
     }
 
     #[test]
     #[ignore]
-	fn test_exhaustive_i8_public_minus_constant() {
+    fn test_exhaustive_i8_public_minus_constant() {
         type I = i8;
         run_exhaustive_test::<I>(Mode::Public, Mode::Constant, 2, 0, 11, 12);
     }
 
     #[test]
     #[ignore]
-	fn test_exhaustive_i8_private_minus_constant() {
+    fn test_exhaustive_i8_private_minus_constant() {
         type I = i8;
         run_exhaustive_test::<I>(Mode::Private, Mode::Constant, 2, 0, 11, 12);
     }
 
     #[test]
     #[ignore]
-	fn test_exhaustive_i8_public_minus_public() {
+    fn test_exhaustive_i8_public_minus_public() {
         type I = i8;
         run_exhaustive_test::<I>(Mode::Public, Mode::Public, 2, 0, 11, 12);
     }
 
     #[test]
     #[ignore]
-	fn test_exhaustive_i8_public_minus_private() {
+    fn test_exhaustive_i8_public_minus_private() {
         type I = i8;
         run_exhaustive_test::<I>(Mode::Public, Mode::Private, 2, 0, 11, 12);
     }
 
     #[test]
     #[ignore]
-	fn test_exhaustive_i8_private_minus_public() {
+    fn test_exhaustive_i8_private_minus_public() {
         type I = i8;
         run_exhaustive_test::<I>(Mode::Private, Mode::Public, 2, 0, 11, 12);
     }
 
     #[test]
     #[ignore]
-	fn test_exhaustive_i8_private_minus_private() {
+    fn test_exhaustive_i8_private_minus_private() {
         type I = i8;
         run_exhaustive_test::<I>(Mode::Private, Mode::Private, 2, 0, 11, 12);
     }

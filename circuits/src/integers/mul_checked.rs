@@ -85,7 +85,7 @@ impl<E: Environment, I: IntegerType> MulChecked<Self> for Integer<E, I> {
             let carry_bits_nonzero = carry.iter().fold(Boolean::new(Mode::Constant, false), |a, b| a | b);
 
             // If the product should be positive, then it cannot exceed the signed maximum.
-            let operands_same_sign = &self.msb().is_eq(other.msb());
+            let operands_same_sign = &self.msb().is_equal(other.msb());
             let positive_product_overflows = operands_same_sign & product.msb();
 
             // If the product should be negative, then it cannot exceed the absolute value of the signed minimum.
@@ -127,7 +127,7 @@ mod tests {
     use rand::thread_rng;
     use std::{ops::RangeInclusive, panic::RefUnwindSafe};
 
-    const ITERATIONS: usize = 64;
+    const ITERATIONS: usize = 32;
 
     #[rustfmt::skip]
     fn check_mul<I: IntegerType + std::panic::RefUnwindSafe>(

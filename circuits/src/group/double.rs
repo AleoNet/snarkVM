@@ -105,13 +105,15 @@ mod tests {
             let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
             let expected = point.double();
 
-            let affine = Affine::<Circuit>::new(Mode::Constant, point.to_x_coordinate(), Some(point.to_y_coordinate()));
+            let affine =
+                Affine::<Circuit>::new(Mode::Constant, (point.to_x_coordinate(), Some(point.to_y_coordinate())));
 
             Circuit::scoped(&format!("Constant {}", i), || {
                 let candidate = affine.double();
                 assert_eq!(expected, candidate.eject_value());
                 assert_circuit!(3, 0, 0, 0);
             });
+            Circuit::reset();
         }
 
         // Public variables
@@ -120,13 +122,14 @@ mod tests {
             let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
             let expected = point.double();
 
-            let affine = Affine::<Circuit>::new(Mode::Public, point.to_x_coordinate(), Some(point.to_y_coordinate()));
+            let affine = Affine::<Circuit>::new(Mode::Public, (point.to_x_coordinate(), Some(point.to_y_coordinate())));
 
             Circuit::scoped(&format!("Public {}", i), || {
                 let candidate = affine.double();
                 assert_eq!(expected, candidate.eject_value());
                 assert_circuit!(1, 0, 5, 5);
             });
+            Circuit::reset();
         }
 
         // Private variables
@@ -135,13 +138,15 @@ mod tests {
             let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut thread_rng());
             let expected = point.double();
 
-            let affine = Affine::<Circuit>::new(Mode::Private, point.to_x_coordinate(), Some(point.to_y_coordinate()));
+            let affine =
+                Affine::<Circuit>::new(Mode::Private, (point.to_x_coordinate(), Some(point.to_y_coordinate())));
 
             Circuit::scoped(&format!("Private {}", i), || {
                 let candidate = affine.double();
                 assert_eq!(expected, candidate.eject_value());
                 assert_circuit!(1, 0, 5, 5);
             });
+            Circuit::reset();
         }
     }
 
@@ -153,12 +158,12 @@ mod tests {
 
         // Constant
         let candidate_a =
-            Affine::<Circuit>::new(Mode::Constant, a.to_x_coordinate(), Some(a.to_y_coordinate())).double();
+            Affine::<Circuit>::new(Mode::Constant, (a.to_x_coordinate(), Some(a.to_y_coordinate()))).double();
         assert_eq!(expected, candidate_a.eject_value());
 
         // Private
         let candidate_b =
-            Affine::<Circuit>::new(Mode::Private, a.to_x_coordinate(), Some(a.to_y_coordinate())).double();
+            Affine::<Circuit>::new(Mode::Private, (a.to_x_coordinate(), Some(a.to_y_coordinate()))).double();
         assert_eq!(expected, candidate_b.eject_value());
     }
 }

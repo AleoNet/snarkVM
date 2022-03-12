@@ -27,7 +27,7 @@ thread_local! {
     pub(super) static CIRCUIT: Lazy<RefCell<R1CS<Fq>>> = Lazy::new(|| RefCell::new(R1CS::<Fq>::new()));
 }
 
-#[derive(Clone)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
 pub struct Circuit;
 
 impl Environment for Circuit {
@@ -210,7 +210,14 @@ impl fmt::Display for Circuit {
 
 #[cfg(test)]
 mod tests {
-    use snarkvm_circuits::{traits::Eject, BaseField, Circuit, Environment, Mode, One};
+    use snarkvm_circuits::{
+        traits::{Eject, Inject},
+        BaseField,
+        Circuit,
+        Environment,
+        Mode,
+        One,
+    };
     use snarkvm_fields::One as O;
 
     /// Compute 2^EXPONENT - 1, in a purposefully constraint-inefficient manner for testing.

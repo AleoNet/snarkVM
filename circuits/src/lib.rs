@@ -23,19 +23,20 @@
 
 pub use snarkvm_circuits_environment::*;
 
-// pub mod address;
-// pub use address::*;
+pub mod address;
+pub use address::*;
 
 pub mod boolean;
 pub use boolean::*;
 
-pub mod fields;
-pub use fields::*;
+pub mod field;
+pub use field::*;
 
 pub mod group;
 pub use group::*;
 
 pub mod helpers;
+pub use helpers::integers::IntegerType;
 
 pub mod integers;
 pub use integers::*;
@@ -43,13 +44,11 @@ pub use integers::*;
 pub mod macros;
 pub use macros::*;
 
-// TODO (howardwu): This is temporary until the programs interface is stabilized.
-#[allow(unused)]
-pub mod programs;
-pub use programs::*;
-
 // pub mod record;
 // pub use record::*;
+
+pub mod scalar;
+pub use scalar::*;
 
 pub mod traits;
 pub use traits::*;

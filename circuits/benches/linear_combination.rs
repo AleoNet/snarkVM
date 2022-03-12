@@ -18,7 +18,7 @@
 extern crate criterion;
 
 use snarkvm_circuits::{
-    traits::{Eject, One},
+    traits::{Eject, Inject, One},
     BaseField,
     Circuit,
     Environment,
