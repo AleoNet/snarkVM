@@ -162,16 +162,8 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for R1CS<F> {
 
 #[cfg(test)]
 mod tests {
-    use snarkvm_circuits::{
-        traits::{Eject, Inject},
-        BaseField,
-        Circuit,
-        Environment,
-        Mode,
-        One,
-    };
+    use snarkvm_circuits::{traits::*, BaseField, Circuit, Environment, Mode};
     use snarkvm_curves::bls12_377::Fr;
-    use snarkvm_fields::One as O;
     use snarkvm_r1cs::ConstraintSynthesizer;
 
     /// Compute 2^EXPONENT - 1, in a purposefully constraint-inefficient manner for testing.

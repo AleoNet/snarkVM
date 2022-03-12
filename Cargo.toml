@@ -22,7 +22,13 @@ members = [
   "algorithms",
   "bytecode",
   "circuits",
+  "circuits/address",
+  "circuits/boolean",
   "circuits/environment",
+  "circuits/field",
+  "circuits/integers",
+  "circuits/group",
+  "circuits/scalar",
   "curves",
   "derives", # excluded from [features], for internal use primarily
   "dpc",

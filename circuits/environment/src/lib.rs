@@ -29,15 +29,11 @@ pub use environment::*;
 pub mod helpers;
 pub use helpers::*;
 
-pub mod parser;
-pub use parser::*;
+pub mod macros;
+pub use macros::*;
+
+pub mod traits;
+pub use traits::*;
 
 mod r1cs;
 use r1cs::*;
-
-#[macro_export]
-macro_rules! scoped {
-    ($scope_name:expr, $block:block) => {
-        E::scoped($scope_name, || $block)
-    };
-}

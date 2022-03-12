@@ -210,15 +210,7 @@ impl fmt::Display for Circuit {
 
 #[cfg(test)]
 mod tests {
-    use snarkvm_circuits::{
-        traits::{Eject, Inject},
-        BaseField,
-        Circuit,
-        Environment,
-        Mode,
-        One,
-    };
-    use snarkvm_fields::One as O;
+    use snarkvm_circuits::{traits::*, BaseField, Circuit, Environment, Mode, One};
 
     /// Compute 2^EXPONENT - 1, in a purposefully constraint-inefficient manner for testing.
     fn create_example_circuit<E: Environment>() -> BaseField<E> {

@@ -22,50 +22,33 @@ name = "linear_combination"
 path = "benches/linear_combination.rs"
 harness = false
 
+[dependencies.snarkvm-circuits-address]
+path = "./address"
+version = "0.7.5"
+
+[dependencies.snarkvm-circuits-boolean]
+path = "./boolean"
+version = "0.7.5"
+
 [dependencies.snarkvm-circuits-environment]
 path = "./environment"
 version = "0.7.5"
 
-[dependencies.snarkvm-curves]
-path = "../curves"
+[dependencies.snarkvm-circuits-field]
+path = "./field"
 version = "0.7.5"
-default-features = false
 
-[dependencies.snarkvm-fields]
-path = "../fields"
+[dependencies.snarkvm-circuits-group]
+path = "./group"
 version = "0.7.5"
-default-features = false
 
-[dependencies.snarkvm-utilities]
-path = "../utilities"
+[dependencies.snarkvm-circuits-integers]
+path = "./integers"
 version = "0.7.5"
-default-features = false
 
-[dependencies.itertools]
-version = "0.10.1"
-
-[dependencies.num-traits]
-version = "0.2"
-default-features = false
-
-[dependencies.once_cell]
-version = "1.10.0"
+[dependencies.snarkvm-circuits-scalar]
+path = "./scalar"
+version = "0.7.5"
 
 [dev-dependencies.criterion]
 version = "0.3"
-
-[dependencies.anyhow]
-version = "1.0.55"
-
-[dependencies.nom]
-version = "7.1"
-
-[dev-dependencies.rand]
-version = "0.8"
-
-[features]
-default = [
-    "snarkvm-curves/default",
-    "snarkvm-fields/default",
-    "snarkvm-utilities/default",
-]

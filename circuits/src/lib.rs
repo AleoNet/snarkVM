@@ -15,40 +15,14 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 #![forbid(unsafe_code)]
-#![allow(clippy::identity_op)]
-#![allow(clippy::module_inception)]
-#![allow(clippy::needless_borrow)]
-#![allow(clippy::too_many_arguments)]
-#![allow(clippy::type_complexity)]
 
 pub use snarkvm_circuits_environment::*;
 
-pub mod address;
-pub use address::*;
-
-pub mod boolean;
-pub use boolean::*;
-
-pub mod field;
-pub use field::*;
-
-pub mod group;
-pub use group::*;
-
-pub mod helpers;
-pub use helpers::integers::IntegerType;
-
-pub mod integers;
-pub use integers::*;
-
-pub mod macros;
-pub use macros::*;
+pub use snarkvm_circuits_boolean::Boolean;
+pub use snarkvm_circuits_field::BaseField;
+pub use snarkvm_circuits_group::Affine;
+pub use snarkvm_circuits_integers::{I128, I16, I32, I64, I8, U128, U16, U32, U64, U8};
+pub use snarkvm_circuits_scalar::Scalar;
 
 // pub mod record;
 // pub use record::*;
-
-pub mod scalar;
-pub use scalar::*;
-
-pub mod traits;
-pub use traits::*;

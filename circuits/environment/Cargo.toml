@@ -26,6 +26,9 @@ path = "../../utilities"
 version = "0.7.5"
 default-features = false
 
+[dependencies.itertools]
+version = "0.10.1"
+
 [dependencies.nom]
 version = "7.1"
 
