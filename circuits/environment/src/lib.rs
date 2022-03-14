@@ -35,5 +35,43 @@ pub use macros::*;
 pub mod traits;
 pub use traits::*;
 
-mod r1cs;
-use r1cs::*;
+pub mod prelude {
+    pub use crate::{traits::*, Environment, LinearCombination, Mode, Variable};
+    pub use snarkvm_fields::{Field as F, One as O, PrimeField, Zero as Z};
+
+    pub use core::{
+        fmt::{self, Debug, Display},
+        ops::{
+            Add,
+            AddAssign,
+            BitAnd,
+            BitAndAssign,
+            BitOr,
+            BitOrAssign,
+            BitXor,
+            BitXorAssign,
+            Div,
+            DivAssign,
+            Mul,
+            MulAssign,
+            Neg,
+            Not,
+            Shl,
+            ShlAssign,
+            Shr,
+            ShrAssign,
+            Sub,
+            SubAssign,
+        },
+    };
+    pub use itertools::Itertools;
+    pub use nom::{
+        branch::alt,
+        bytes::complete::tag,
+        character::complete::{char, one_of},
+        combinator::{map, map_res, opt, recognize},
+        multi::{many0, many1},
+        sequence::{pair, terminated},
+    };
+    pub use num_traits::{Inv, One as NumOne, Unsigned};
+}

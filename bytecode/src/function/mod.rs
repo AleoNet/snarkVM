@@ -20,8 +20,8 @@ pub use input::*;
 pub mod output;
 pub use output::*;
 
-use crate::{instructions::Instruction, Immediate, Memory, Operation, Register, Sanitizer};
-use snarkvm_circuits::{Parser, ParserResult};
+use crate::{instructions::Instruction, Memory, Operation, Register, Sanitizer};
+use snarkvm_circuits::{Literal, Parser, ParserResult};
 use snarkvm_utilities::{error, FromBytes, ToBytes};
 
 use core::fmt;
@@ -52,11 +52,11 @@ pub struct Function<M: Memory> {
 
 impl<M: Memory> Function<M> {
     /// Allocates the given inputs, by appending them as function inputs.
-    pub fn add_inputs(&mut self, inputs: &[Immediate<M::Environment>]) -> &mut Self {
+    pub fn add_inputs(&mut self, inputs: &[Literal<M::Environment>]) -> &mut Self {
         // Append new inputs from the index of the last assigned input.
-        for (input, immediate) in (self.inputs.iter().skip(self.arguments.len())).zip(inputs) {
-            // Store the immediate into the input register.
-            input.assign(immediate.clone());
+        for (input, literal) in (self.inputs.iter().skip(self.arguments.len())).zip(inputs) {
+            // Store the literal into the input register.
+            input.assign(literal.clone());
             // Save the input register.
             self.arguments.push(*(*input).register());
         }
@@ -64,7 +64,7 @@ impl<M: Memory> Function<M> {
     }
 
     /// Evaluates the function, returning the outputs.
-    pub fn evaluate(&mut self, inputs: &[Immediate<M::Environment>]) -> Vec<Immediate<M::Environment>> {
+    pub fn evaluate(&mut self, inputs: &[Literal<M::Environment>]) -> Vec<Literal<M::Environment>> {
         self.add_inputs(inputs);
         self.inputs.iter().for_each(|input| input.evaluate(&self.memory));
         self.instructions.iter().for_each(|instruction| instruction.evaluate(&self.memory));
@@ -73,7 +73,7 @@ impl<M: Memory> Function<M> {
     }
 
     /// Returns the outputs from the function.
-    pub(super) fn outputs(&self) -> Vec<Immediate<M::Environment>> {
+    pub(super) fn outputs(&self) -> Vec<Literal<M::Environment>> {
         self.outputs.iter().map(|output| self.memory.load((*output).register())).collect()
     }
 
@@ -91,18 +91,18 @@ impl<M: Memory> Function<M> {
     pub fn num_outputs(&self) -> u64 {
         self.outputs.len() as u64
     }
-}
-
-impl<M: Memory> Parser for Function<M> {
-    type Environment = M::Environment;
 
     /// Returns the type name as a string.
     #[inline]
     fn type_name() -> &'static str {
         "function"
     }
+}
 
-    /// Parses a string into a local function.
+impl<M: Memory> Parser for Function<M> {
+    type Environment = M::Environment;
+
+    /// Parses a string into a function.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Initialize a new instance of memory.

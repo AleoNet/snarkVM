@@ -346,12 +346,12 @@ impl<'a, T: 'a + ToBytes> ToBytes for &'a T {
 }
 
 #[inline]
-pub fn from_bytes_le_to_bits_le(bytes: &[u8]) -> impl Iterator<Item = bool> + DoubleEndedIterator<Item = bool> + '_ {
+pub fn bits_from_bytes_le(bytes: &[u8]) -> impl Iterator<Item = bool> + DoubleEndedIterator<Item = bool> + '_ {
     bytes.iter().flat_map(|byte| (0..8).map(move |i| (*byte >> i) & 1 == 1))
 }
 
 #[inline]
-pub fn from_bits_le_to_bytes_le(bits: &[bool]) -> Vec<u8> {
+pub fn bytes_from_bits_le(bits: &[bool]) -> Vec<u8> {
     let desired_size = if bits.len() % 8 == 0 { bits.len() / 8 } else { bits.len() / 8 + 1 };
 
     let mut bytes = Vec::with_capacity(desired_size);
@@ -377,8 +377,7 @@ pub fn from_bits_le_to_bytes_le(bits: &[bool]) -> Vec<u8> {
 
 #[cfg(test)]
 mod test {
-    use super::{from_bits_le_to_bytes_le, from_bytes_le_to_bits_le, ToBytes};
-    use crate::Vec;
+    use super::*;
 
     use rand::{Rng, SeedableRng};
     use rand_xorshift::XorShiftRng;
@@ -413,20 +412,20 @@ mod test {
     }
 
     #[test]
-    fn test_from_bytes_le_to_bits_le() {
-        assert_eq!(from_bytes_le_to_bits_le(&[204, 76]).collect::<Vec<bool>>(), [
+    fn test_bits_from_bytes_le() {
+        assert_eq!(bits_from_bytes_le(&[204, 76]).collect::<Vec<bool>>(), [
             false, false, true, true, false, false, true, true, // 204
             false, false, true, true, false, false, true, false, // 76
         ]);
     }
 
     #[test]
-    fn test_from_bits_le_to_bytes_le() {
+    fn test_bytes_from_bits_le() {
         let bits = [
             false, false, true, true, false, false, true, true, // 204
             false, false, true, true, false, false, true, false, // 76
         ];
-        assert_eq!(from_bits_le_to_bytes_le(&bits), [204, 76]);
+        assert_eq!(bytes_from_bits_le(&bits), [204, 76]);
     }
 
     #[test]
@@ -436,8 +435,8 @@ mod test {
         for _ in 0..ITERATIONS {
             let given_bytes: [u8; 32] = rng.gen();
 
-            let bits = from_bytes_le_to_bits_le(&given_bytes).collect::<Vec<_>>();
-            let recovered_bytes = from_bits_le_to_bytes_le(&bits);
+            let bits = bits_from_bytes_le(&given_bytes).collect::<Vec<_>>();
+            let recovered_bytes = bytes_from_bits_le(&bits);
 
             assert_eq!(given_bytes.to_vec(), recovered_bytes);
         }

@@ -14,14 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_bytecode::{Function, Immediate, Memory, Stack};
-use snarkvm_circuits::{traits::*, Circuit};
+use snarkvm_bytecode::{Function, Memory, Stack};
+use snarkvm_circuits::prelude::*;
 
 pub struct HelloWorld;
 
 impl HelloWorld {
     /// Initializes a new instance of `HelloWorld` with the given inputs.
-    pub fn run<M: Memory>(inputs: [Immediate<M::Environment>; 2]) -> Vec<Immediate<M::Environment>> {
+    pub fn run<M: Memory>(inputs: [Literal<M::Environment>; 2]) -> Vec<Literal<M::Environment>> {
         Function::<M>::from_str(
             r"
 function main:
@@ -36,14 +36,14 @@ function main:
 }
 
 fn main() {
-    let first = Immediate::from_str("1field.public");
-    let second = Immediate::from_str("1field.private");
+    let first = Literal::from_str("1field.public");
+    let second = Literal::from_str("1field.private");
 
-    let expected = Immediate::from_str("2field.private");
+    let expected = Literal::from_str("2field.private");
     let candidate = HelloWorld::run::<Stack<Circuit>>([first, second]);
 
     match (&expected, &candidate[0]) {
-        (Immediate::Field(expected), Immediate::Field(candidate)) => {
+        (Literal::Field(expected), Literal::Field(candidate)) => {
             println!("{candidate}");
             assert!(expected.is_equal(candidate).eject_value());
         }
@@ -58,14 +58,14 @@ mod tests {
 
     #[test]
     fn test_hello_world() {
-        let first = Immediate::from_str("1field.public");
-        let second = Immediate::from_str("1field.private");
+        let first = Literal::from_str("1field.public");
+        let second = Literal::from_str("1field.private");
 
-        let expected = Immediate::from_str("2field.private");
+        let expected = Literal::from_str("2field.private");
         let candidate = HelloWorld::run::<Stack<Circuit>>([first, second]);
 
         match (&expected, &candidate[0]) {
-            (Immediate::Field(expected), Immediate::Field(candidate)) => {
+            (Literal::Field(expected), Literal::Field(candidate)) => {
                 assert!(expected.is_equal(candidate).eject_value())
             }
             _ => panic!("Failed to load output"),
@@ -97,5 +97,73 @@ function main:
         println!("String size: {:?}, Bytecode size: {:?}", function_string.as_bytes().len(), bytes.len());
 
         Function::<M>::from_bytes_le(&bytes).unwrap();
+    }
+
+    #[test]
+    fn test_marlin() {
+        pub struct HelloWorld;
+
+        impl HelloWorld {
+            /// Initializes a new instance of `HelloWorld` with the given inputs.
+            pub fn run<M: Memory>(inputs: &[Literal<M::Environment>]) -> Vec<Literal<M::Environment>> {
+                Function::<M>::from_str(
+                    r"
+function main:
+    input r0 u8.public;
+    input r1 u8.private;
+    add r2 r0 r1;
+    output r2 u8.private;
+",
+                )
+                .evaluate(inputs)
+            }
+        }
+
+        // Initialize the inputs.
+        let input = [Literal::from_str("1u8.public"), Literal::from_str("1u8.private")];
+
+        // Run the function.
+        let _output = HelloWorld::run::<Stack<Circuit>>(&input);
+
+        // Marlin setup, prove, and verify.
+        {
+            use snarkvm_algorithms::{
+                crypto_hash::poseidon::PoseidonSponge,
+                polycommit::sonic_pc::SonicKZG10,
+                snark::marlin::{
+                    ahp::AHPForR1CS,
+                    fiat_shamir::FiatShamirAlgebraicSpongeRng,
+                    MarlinHidingMode,
+                    MarlinSNARK,
+                },
+            };
+            use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
+            use snarkvm_utilities::rand::test_rng;
+
+            type MultiPC = SonicKZG10<Bls12_377>;
+            type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
+            type MarlinInst = MarlinSNARK<Fr, Fq, MultiPC, FS, MarlinHidingMode, Vec<Fr>>;
+
+            let rng = &mut test_rng();
+
+            let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(200, 200, 300).unwrap();
+            let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
+
+            let (index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &Circuit).unwrap();
+            println!("Called circuit setup");
+
+            let proof = MarlinInst::prove(&index_pk, &Circuit, rng).unwrap();
+            println!("Called prover");
+
+            let zero = <Circuit as Environment>::BaseField::zero();
+            let one = <Circuit as Environment>::BaseField::one();
+
+            assert!(
+                MarlinInst::verify(&index_vk, &[one, one, zero, zero, zero, zero, zero, zero, zero], &proof).unwrap()
+            );
+            println!("Called verifier");
+            println!("\nShould not verify (i.e. verifier messages should print below):");
+            assert!(!MarlinInst::verify(&index_vk, &[one, one + one], &proof).unwrap());
+        }
     }
 }

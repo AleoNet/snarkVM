@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Argument, Memory, Operation, Sanitizer};
-use snarkvm_circuits::{Parser, ParserResult};
+use snarkvm_circuits::{Parser, ParserResult, Type};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::{fmt, ops};
@@ -41,15 +41,14 @@ impl<M: Memory> Operation for Output<M> {
     fn evaluate(&self, memory: &Self::Memory) {
         // Retrieve the output annotations.
         let register = self.argument.register();
-        let mode = self.argument.mode();
-        let type_name = self.argument.type_name();
+        let type_ = self.argument.type_annotation();
 
         // Load the output from memory.
-        let immediate = memory.load(register);
+        let literal = memory.load(register);
 
-        // Ensure the type and mode are correct.
-        if immediate.type_name() != type_name || &immediate.mode() != mode {
-            M::halt(format!("Output register {} is not a {} {}", register, mode, type_name))
+        // Ensure the type matches.
+        if Type::from(&literal) != type_ {
+            M::halt(format!("Output register {register} is not a {type_}"))
         }
     }
 

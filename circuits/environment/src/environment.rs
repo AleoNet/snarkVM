@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{LinearCombination, Mode, Variable};
+use crate::{Eject, LinearCombination, Mode, Variable};
 use snarkvm_curves::{AffineCurve, TwistedEdwardsParameters};
 use snarkvm_fields::traits::*;
 
@@ -25,6 +25,9 @@ pub trait Environment: Copy + Clone + fmt::Display + Eq + PartialEq + hash::Hash
     type AffineParameters: TwistedEdwardsParameters<BaseField = Self::BaseField>;
     type BaseField: PrimeField + Copy;
     type ScalarField: PrimeField + Copy;
+
+    /// The maximum number of bytes allowed in a string.
+    const NUM_STRING_BYTES: u32;
 
     /// Returns the `zero` constant.
     fn zero() -> LinearCombination<Self::BaseField>;
@@ -41,7 +44,7 @@ pub trait Environment: Copy + Clone + fmt::Display + Eq + PartialEq + hash::Hash
     // /// Removes the given scope from the current environment.
     // fn pop_scope(name: &str);
 
-    fn scoped<Fn, Output>(name: &str, logic: Fn) -> Output
+    fn scope<S: Into<String>, Fn, Output>(name: S, logic: Fn) -> Output
     where
         Fn: FnOnce() -> Output;
 
@@ -69,6 +72,9 @@ pub trait Environment: Copy + Clone + fmt::Display + Eq + PartialEq + hash::Hash
 
     /// Returns `true` if all constraints in the environment are satisfied.
     fn is_satisfied() -> bool;
+
+    /// Returns `true` if all constraints in the current scope are satisfied.
+    fn is_satisfied_in_scope() -> bool;
 
     /// Returns the number of constants in the entire environment.
     fn num_constants() -> usize;
@@ -100,7 +106,36 @@ pub trait Environment: Copy + Clone + fmt::Display + Eq + PartialEq + hash::Hash
     /// Returns the number of gates for the current scope.
     fn num_gates_in_scope() -> usize;
 
+    /// A helper method to recover the y-coordinate given the x-coordinate for
+    /// a twisted Edwards point, returning the affine curve point.
     fn affine_from_x_coordinate(x: Self::BaseField) -> Self::Affine;
+
+    /// A helper method to deduce the mode from a list of `Eject` circuits.
+    fn eject_mode<T: Eject>(circuits: &[T]) -> Mode {
+        // Retrieve the mode of the first circuit.
+        let mut current_mode = match circuits.get(0) {
+            Some(circuit) => circuit.eject_mode(),
+            None => Self::halt("Attempted to eject the mode on an empty circuit"),
+        };
+
+        for bit_mode in circuits.iter().skip(1).map(Eject::eject_mode) {
+            // Check if the current mode matches the bit mode.
+            if !current_mode.is_private() && current_mode != bit_mode {
+                // If the current mode is not Mode::Private, and they do not match:
+                //  - If the bit mode is Mode::Private, then set the current mode to Mode::Private.
+                //  - If the bit mode is Mode::Public, then set the current mode to Mode::Private.
+                match (current_mode, bit_mode) {
+                    (Mode::Constant, Mode::Public)
+                    | (Mode::Constant, Mode::Private)
+                    | (Mode::Public, Mode::Private) => current_mode = bit_mode,
+                    (_, _) => (), // Do nothing.
+                }
+            }
+        }
+
+        // Return the mode.
+        current_mode
+    }
 
     /// Halts the program from further synthesis, evaluation, and execution in the current environment.
     fn halt<S: Into<String>, T>(message: S) -> T {

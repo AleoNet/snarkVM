@@ -93,7 +93,7 @@ commands:
           cache_key: << parameters.cache_key >>
       - run:
           no_output_timeout: 30m
-          command: cd << parameters.workspace_member >> && RUST_MIN_STACK=67108864 cargo test testnet1
+          command: cd << parameters.workspace_member >> && RUST_MIN_STACK=67108864 cargo test
       - clear_environment:
           cache_key: << parameters.cache_key >>
 
@@ -138,8 +138,9 @@ jobs:
     docker:
       - image: cimg/rust:1.59
     resource_class: 2xlarge
+    parallelism: 25
     steps:
-      - run_serial:
+      - run_parallel:
           workspace_member: algorithms
           cache_key: snarkvm-algorithms-cache
 
@@ -161,23 +162,23 @@ jobs:
           workspace_member: circuits
           cache_key: snarkvm-circuits-cache
 
-  circuits-address:
+  circuits-core:
     docker:
       - image: cimg/rust:1.59
     resource_class: xlarge
     steps:
       - run_serial:
-          workspace_member: circuits/address
-          cache_key: snarkvm-circuits-address-cache
+          workspace_member: circuits/core
+          cache_key: snarkvm-circuits-core-cache
 
-  circuits-boolean:
+  circuits-edge:
     docker:
       - image: cimg/rust:1.59
     resource_class: xlarge
     steps:
       - run_serial:
-          workspace_member: circuits/boolean
-          cache_key: snarkvm-circuits-boolean-cache
+          workspace_member: circuits/edge
+          cache_key: snarkvm-circuits-edge-cache
 
   circuits-environment:
     docker:
@@ -188,41 +189,77 @@ jobs:
           workspace_member: circuits/environment
           cache_key: snarkvm-circuits-environment-cache
 
-  circuits-field:
+  circuits-types:
     docker:
       - image: cimg/rust:1.59
     resource_class: xlarge
     steps:
       - run_serial:
-          workspace_member: circuits/field
-          cache_key: snarkvm-circuits-field-cache
+          workspace_member: circuits/types
+          cache_key: snarkvm-circuits-types-cache
 
-  circuits-group:
+  circuits-types-address:
     docker:
       - image: cimg/rust:1.59
     resource_class: xlarge
     steps:
       - run_serial:
-          workspace_member: circuits/group
-          cache_key: snarkvm-circuits-group-cache
+          workspace_member: circuits/types/address
+          cache_key: snarkvm-circuits-types-address-cache
 
-  circuits-integers:
+  circuits-types-boolean:
+    docker:
+      - image: cimg/rust:1.59
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: circuits/types/boolean
+          cache_key: snarkvm-circuits-types-boolean-cache
+
+  circuits-types-field:
+    docker:
+      - image: cimg/rust:1.59
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: circuits/types/field
+          cache_key: snarkvm-circuits-types-field-cache
+
+  circuits-types-group:
+    docker:
+      - image: cimg/rust:1.59
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: circuits/types/group
+          cache_key: snarkvm-circuits-types-group-cache
+
+  circuits-types-integers:
     docker:
       - image: cimg/rust:1.59
     resource_class: 2xlarge
     steps:
       - run_serial:
-          workspace_member: circuits/integers
-          cache_key: snarkvm-circuits-integers-cache
+          workspace_member: circuits/types/integers
+          cache_key: snarkvm-circuits-types-integers-cache
 
-  circuits-scalar:
+  circuits-types-scalar:
     docker:
       - image: cimg/rust:1.59
     resource_class: xlarge
     steps:
       - run_serial:
-          workspace_member: circuits/scalar
-          cache_key: snarkvm-circuits-scalar-cache
+          workspace_member: circuits/types/scalar
+          cache_key: snarkvm-circuits-types-scalar-cache
+
+  circuits-types-string:
+    docker:
+      - image: cimg/rust:1.59
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: circuits/types/string
+          cache_key: snarkvm-circuits-types-string-cache
 
   curves:
     docker:
@@ -372,13 +409,17 @@ workflows:
       - algorithms
       - bytecode
       - circuits
-      - circuits-address
-      - circuits-boolean
+      - circuits-core
+      - circuits-edge
       - circuits-environment
-      - circuits-field
-      - circuits-group
-      - circuits-integers
-      - circuits-scalar
+      - circuits-types
+      - circuits-types-address
+      - circuits-types-boolean
+      - circuits-types-field
+      - circuits-types-group
+      - circuits-types-integers
+      - circuits-types-scalar
+      - circuits-types-string
       - curves
       - derives
       - dpc

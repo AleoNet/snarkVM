@@ -17,9 +17,6 @@
 pub mod argument;
 pub use argument::*;
 
-pub mod immediate;
-pub use immediate::*;
-
 pub mod operand;
 pub use operand::*;
 

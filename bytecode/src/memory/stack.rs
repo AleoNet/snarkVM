@@ -14,14 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Immediate, Memory, Register};
-use snarkvm_circuits::Environment;
+use crate::{Memory, Register};
+use snarkvm_circuits::{Environment, Literal};
 
 use core::cell::RefCell;
 use once_cell::unsync::OnceCell;
 use std::{collections::HashMap, rc::Rc};
 
-type Registers<E> = Rc<RefCell<HashMap<Register<E>, OnceCell<Immediate<E>>>>>;
+type Registers<E> = Rc<RefCell<HashMap<Register<E>, OnceCell<Literal<E>>>>>;
 
 #[derive(Clone)]
 pub struct Stack<E: Environment> {
@@ -33,8 +33,11 @@ impl<E: Environment> Memory for Stack<E> {
 
     /// Allocates the given register in memory. Ensures the given register does not exist already.
     fn initialize(&self, register: &Register<E>) {
-        // TODO (howardwu): Handle this assert as a haltable event.
-        assert_eq!(**register, self.registers.borrow().len() as u64);
+        // Ensure the register count is incrementing linearly.
+        let expected_locator = self.registers.borrow().len() as u64;
+        if **register != expected_locator {
+            Self::halt(format!("Invalid register. Expected r{expected_locator}, found r{}", register.locator()))
+        }
 
         // Ensure the register has not be initialized, and initialize it.
         match !self.exists(register) {
@@ -58,26 +61,26 @@ impl<E: Environment> Memory for Stack<E> {
         }
     }
 
-    /// Attempts to load the immediate from the register.
-    fn load(&self, register: &Register<E>) -> Immediate<E> {
+    /// Attempts to load the literal from the register.
+    fn load(&self, register: &Register<E>) -> Literal<E> {
         // Attempt to retrieve the specified register from memory.
         match self.registers.borrow().get(register) {
             // Attempt to retrieve the value the specified register.
             Some(memory) => match memory.get() {
-                Some(immediate) => immediate.clone(),
+                Some(literal) => literal.clone(),
                 None => Self::halt(format!("Register {} is not set", register)),
             },
             None => Self::halt(format!("Register {} does not exist", register)),
         }
     }
 
-    /// Attempts to store immediate into the register.
-    fn store(&self, register: &Register<E>, immediate: Immediate<E>) {
+    /// Attempts to store literal into the register.
+    fn store(&self, register: &Register<E>, literal: Literal<E>) {
         // Attempt to retrieve the specified register from memory.
         match self.registers.borrow().get(register) {
             // Attempt to set the specified register with the given value.
             Some(memory) => {
-                if memory.set(immediate).is_err() {
+                if memory.set(literal).is_err() {
                     Self::halt(format!("Register {} is already set", register))
                 }
             }

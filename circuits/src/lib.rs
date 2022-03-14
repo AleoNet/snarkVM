@@ -16,13 +16,32 @@
 
 #![forbid(unsafe_code)]
 
+#[macro_use]
+extern crate enum_index_derive;
+
+pub mod literal;
+pub use literal::*;
+
+pub mod type_;
+pub use type_::*;
+
 pub use snarkvm_circuits_environment::*;
 
-pub use snarkvm_circuits_boolean::Boolean;
-pub use snarkvm_circuits_field::BaseField;
-pub use snarkvm_circuits_group::Affine;
-pub use snarkvm_circuits_integers::{I128, I16, I32, I64, I8, U128, U16, U32, U64, U8};
-pub use snarkvm_circuits_scalar::Scalar;
+pub use snarkvm_circuits_core::*;
+pub use snarkvm_circuits_edge::*;
+pub use snarkvm_circuits_types::*;
 
-// pub mod record;
-// pub use record::*;
+pub mod prelude {
+    pub use super::*;
+    pub use snarkvm_circuits_environment::{prelude::*, Circuit};
+}
+
+pub trait Library<E: Environment> {
+    const VERSION: u32;
+}
+
+pub type V1 = Literal<Circuit>;
+
+impl Library<Circuit> for V1 {
+    const VERSION: u32 = 1;
+}

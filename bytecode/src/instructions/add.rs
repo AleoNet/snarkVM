@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{instructions::Instruction, BinaryOperation, Immediate, Memory, Operation};
-use snarkvm_circuits::{Parser, ParserResult};
+use crate::{instructions::Instruction, BinaryOperation, Memory, Operation};
+use snarkvm_circuits::{Literal, Parser, ParserResult};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
@@ -45,8 +45,10 @@ impl<M: Memory> Operation for Add<M> {
 
         // Perform the operation.
         let result = match (first, second) {
-            (Immediate::Field(a), Immediate::Field(b)) => (a + b).into(),
-            (Immediate::Group(a), Immediate::Group(b)) => (a + b).into(),
+            (Literal::Field(a), Literal::Field(b)) => Literal::Field(a + b),
+            (Literal::Group(a), Literal::Group(b)) => Literal::Group(a + b),
+            (Literal::I8(a), Literal::I8(b)) => Literal::I8(a + b),
+            (Literal::U8(a), Literal::U8(b)) => Literal::U8(a + b),
             _ => Self::Memory::halt(format!("Invalid '{}' instruction", Self::opcode())),
         };
 
@@ -99,9 +101,9 @@ mod tests {
 
     #[test]
     fn test_add_field() {
-        let first = Immediate::<Circuit>::from_str("1field.public");
-        let second = Immediate::<Circuit>::from_str("2field.private");
-        let expected = Immediate::<Circuit>::from_str("3field.private");
+        let first = Literal::<Circuit>::from_str("1field.public");
+        let second = Literal::<Circuit>::from_str("2field.private");
+        let expected = Literal::<Circuit>::from_str("3field.private");
 
         let memory = Stack::<Circuit>::default();
         Input::from_str("input r0 field.public;", &memory).assign(first).evaluate(&memory);
@@ -113,9 +115,9 @@ mod tests {
 
     #[test]
     fn test_add_group() {
-        let first = Immediate::<Circuit>::from_str("2group.public");
-        let second = Immediate::<Circuit>::from_str("0group.private");
-        let expected = Immediate::<Circuit>::from_str("2group.private");
+        let first = Literal::<Circuit>::from_str("2group.public");
+        let second = Literal::<Circuit>::from_str("0group.private");
+        let expected = Literal::<Circuit>::from_str("2group.private");
 
         let memory = Stack::<Circuit>::default();
         Input::from_str("input r0 group.public;", &memory).assign(first).evaluate(&memory);

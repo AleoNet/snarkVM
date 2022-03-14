@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::*;
+use crate::{helpers::Constraint, *};
 use snarkvm_curves::{
     edwards_bls12::{EdwardsAffine, EdwardsParameters, Fq, Fr},
     AffineCurve,
@@ -35,6 +35,9 @@ impl Environment for Circuit {
     type AffineParameters = EdwardsParameters;
     type BaseField = Fq;
     type ScalarField = Fr;
+
+    /// The maximum number of characters allowed in a string.
+    const NUM_STRING_BYTES: u32 = u8::MAX as u32;
 
     /// Returns the `zero` constant.
     fn zero() -> LinearCombination<Self::BaseField> {
@@ -79,13 +82,14 @@ impl Environment for Circuit {
     //     })
     // }
 
-    fn scoped<Fn, Output>(name: &str, logic: Fn) -> Output
+    fn scope<S: Into<String>, Fn, Output>(name: S, logic: Fn) -> Output
     where
         Fn: FnOnce() -> Output,
     {
         CIRCUIT.with(|circuit| {
             // Set the entire environment to the new scope.
-            if let Err(error) = (**circuit).borrow_mut().push_scope(name) {
+            let name = name.into();
+            if let Err(error) = (**circuit).borrow_mut().push_scope(&name) {
                 Self::halt(error)
             }
 
@@ -109,12 +113,41 @@ impl Environment for Circuit {
         B: Into<LinearCombination<Self::BaseField>>,
         C: Into<LinearCombination<Self::BaseField>>,
     {
-        CIRCUIT.with(|circuit| (**circuit).borrow_mut().enforce(constraint));
+        CIRCUIT.with(|circuit| {
+            let (a, b, c) = constraint();
+            let (a, b, c) = (a.into(), b.into(), c.into());
+
+            // Ensure the constraint is not comprised of constants.
+            match a.is_constant() && b.is_constant() && c.is_constant() {
+                true => {
+                    // Disabled for now until better control handling for this can be defined (using scope).
+
+                    // match self.counter.scope().is_empty() {
+                    //     true => println!("Enforced constraint with constant terms: ({} * {}) =?= {}", a, b, c),
+                    //     false => println!(
+                    //         "Enforced constraint with constant terms ({}): ({} * {}) =?= {}",
+                    //         self.counter.scope(), a, b, c
+                    //     ),
+                    // }
+                }
+                false => {
+                    // Construct the constraint object.
+                    let constraint = Constraint((**circuit).borrow().scope(), a, b, c);
+                    // Append the constraint.
+                    (**circuit).borrow_mut().enforce(constraint)
+                }
+            }
+        });
     }
 
     /// Returns `true` if all constraints in the environment are satisfied.
     fn is_satisfied() -> bool {
         CIRCUIT.with(|circuit| (**circuit).borrow().is_satisfied())
+    }
+
+    /// Returns `true` if all constraints in the current scope are satisfied.
+    fn is_satisfied_in_scope() -> bool {
+        CIRCUIT.with(|circuit| (**circuit).borrow().is_satisfied_in_scope())
     }
 
     /// Returns the number of constants in the entire circuit.
@@ -186,7 +219,7 @@ impl Environment for Circuit {
     /// Halts the program from further synthesis, evaluation, and execution in the current environment.
     fn halt<S: Into<String>, T>(message: S) -> T {
         let error = message.into();
-        eprintln!("{}", &error);
+        // eprintln!("{}", &error);
         panic!("{}", &error)
     }
 
@@ -210,24 +243,24 @@ impl fmt::Display for Circuit {
 
 #[cfg(test)]
 mod tests {
-    use snarkvm_circuits::{traits::*, BaseField, Circuit, Environment, Mode, One};
+    use snarkvm_circuits::prelude::*;
 
     /// Compute 2^EXPONENT - 1, in a purposefully constraint-inefficient manner for testing.
-    fn create_example_circuit<E: Environment>() -> BaseField<E> {
+    fn create_example_circuit<E: Environment>() -> Field<E> {
         let one = <E as Environment>::BaseField::one();
         let two = one + one;
 
         const EXPONENT: usize = 64;
 
         // Compute 2^EXPONENT - 1, in a purposefully constraint-inefficient manner for testing.
-        let mut candidate = BaseField::<E>::new(Mode::Public, one);
-        let mut accumulator = BaseField::new(Mode::Private, two);
+        let mut candidate = Field::<E>::new(Mode::Public, one);
+        let mut accumulator = Field::new(Mode::Private, two);
         for _ in 0..EXPONENT {
             candidate += &accumulator;
-            accumulator *= BaseField::new(Mode::Private, two);
+            accumulator *= Field::new(Mode::Private, two);
         }
 
-        assert_eq!((accumulator - BaseField::one()).eject_value(), candidate.eject_value());
+        assert_eq!((accumulator - Field::one()).eject_value(), candidate.eject_value());
         assert_eq!(2, E::num_public());
         assert_eq!(2 * EXPONENT + 1, E::num_private());
         assert_eq!(EXPONENT, E::num_constraints());
@@ -244,8 +277,8 @@ mod tests {
     }
 
     #[test]
-    fn test_circuit_scoped() {
-        Circuit::scoped("test_circuit_scoped", || {
+    fn test_circuit_scope() {
+        Circuit::scope("test_circuit_scope", || {
             assert_eq!(0, Circuit::num_constants());
             assert_eq!(1, Circuit::num_public());
             assert_eq!(0, Circuit::num_private());

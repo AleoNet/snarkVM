@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::ParserResult;
-
 use snarkvm_utilities::{error, FromBytes, ToBytes};
 
 use core::fmt;
@@ -23,7 +22,7 @@ use nom::{branch::alt, bytes::complete::tag, combinator::map};
 use num_traits::{FromPrimitive, ToPrimitive};
 use std::io::{Read, Result as IoResult, Write};
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq, FromPrimitive, ToPrimitive)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, FromPrimitive, ToPrimitive)]
 pub enum Mode {
     Constant,
     Public,

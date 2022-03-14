@@ -15,50 +15,33 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::Register;
-use snarkvm_circuits::{Environment, Mode, Parser, ParserResult};
-use snarkvm_utilities::{error, FromBytes, ToBytes};
+use snarkvm_circuits::{Environment, Mode, Parser, ParserResult, Type};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
-use nom::{branch::alt, bytes::complete::tag, combinator::map, sequence::pair};
+use nom::bytes::complete::tag;
 use std::io::{Read, Result as IoResult, Write};
 
 #[derive(Clone)]
-pub enum Argument<E: Environment> {
-    Boolean(Register<E>, Mode),
-    Field(Register<E>, Mode),
-    Group(Register<E>, Mode),
-    Scalar(Register<E>, Mode),
+pub struct Argument<E: Environment> {
+    register: Register<E>,
+    type_annotation: Type<E>,
 }
 
 impl<E: Environment> Argument<E> {
     /// Returns the register of the argument.
     pub fn register(&self) -> &Register<E> {
-        match self {
-            Self::Boolean(register, _) => register,
-            Self::Field(register, _) => register,
-            Self::Group(register, _) => register,
-            Self::Scalar(register, _) => register,
-        }
+        &self.register
     }
 
-    /// Returns the type name of the argument.
-    pub fn type_name(&self) -> &'static str {
-        match self {
-            Self::Boolean(..) => "boolean",
-            Self::Field(..) => "field",
-            Self::Group(..) => "group",
-            Self::Scalar(..) => "scalar",
-        }
+    /// Returns the type annotation of the argument.
+    pub fn type_annotation(&self) -> Type<E> {
+        self.type_annotation
     }
 
     /// Returns the mode of the argument.
     pub fn mode(&self) -> &Mode {
-        match self {
-            Self::Boolean(_, mode) => mode,
-            Self::Field(_, mode) => mode,
-            Self::Group(_, mode) => mode,
-            Self::Scalar(_, mode) => mode,
-        }
+        self.type_annotation.mode()
     }
 
     /// Returns `true` if the argument is a constant.
@@ -81,12 +64,6 @@ impl<E: Environment> Argument<E> {
 impl<E: Environment> Parser for Argument<E> {
     type Environment = E;
 
-    /// Returns the type name as a string.
-    #[inline]
-    fn type_name() -> &'static str {
-        "argument"
-    }
-
     /// Parses a string into an argument.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -94,59 +71,31 @@ impl<E: Environment> Parser for Argument<E> {
         let (string, register) = Register::parse(string)?;
         // Parse the space from the string.
         let (string, _) = tag(" ")(string)?;
-        // Parse the annotation from the string.
-        let result = alt((
-            map(pair(pair(tag("boolean"), tag(".")), Mode::parse), |(_, mode)| Self::Boolean(register, mode)),
-            map(pair(pair(tag("field"), tag(".")), Mode::parse), |(_, mode)| Self::Field(register, mode)),
-            map(pair(pair(tag("group"), tag(".")), Mode::parse), |(_, mode)| Self::Group(register, mode)),
-            map(pair(pair(tag("scalar"), tag(".")), Mode::parse), |(_, mode)| Self::Scalar(register, mode)),
-        ))(string);
-        result
+        // Parse the type from the string.
+        let (string, type_) = Type::parse(string)?;
+
+        Ok((string, Self { register, type_annotation: type_ }))
     }
 }
 
 impl<E: Environment> fmt::Display for Argument<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} {}.{}", self.register(), self.type_name(), self.mode())
+        write!(f, "{} {}", self.register(), self.type_annotation())
     }
 }
 
 impl<E: Environment> FromBytes for Argument<E> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        match u8::read_le(&mut reader) {
-            Ok(0) => Ok(Self::Boolean(Register::<E>::read_le(&mut reader)?, Mode::read_le(&mut reader)?)),
-            Ok(1) => Ok(Self::Field(Register::<E>::read_le(&mut reader)?, Mode::read_le(&mut reader)?)),
-            Ok(2) => Ok(Self::Group(Register::<E>::read_le(&mut reader)?, Mode::read_le(&mut reader)?)),
-            Ok(3) => Ok(Self::Scalar(Register::<E>::read_le(&mut reader)?, Mode::read_le(&mut reader)?)),
-            Ok(type_) => Err(error(format!("FromBytes failed to parse an argument of type {type_}"))),
-            Err(err) => Err(err),
-        }
+        let register = Register::<E>::read_le(&mut reader)?;
+        let type_ = Type::<E>::read_le(&mut reader)?;
+
+        Ok(Self { register, type_annotation: type_ })
     }
 }
 
 impl<E: Environment> ToBytes for Argument<E> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        match self {
-            Self::Boolean(register, mode) => {
-                u8::write_le(&0u8, &mut writer)?;
-                register.write_le(&mut writer)?;
-                mode.write_le(&mut writer)
-            }
-            Self::Field(register, mode) => {
-                u8::write_le(&1u8, &mut writer)?;
-                register.write_le(&mut writer)?;
-                mode.write_le(&mut writer)
-            }
-            Self::Group(register, mode) => {
-                u8::write_le(&2u8, &mut writer)?;
-                register.write_le(&mut writer)?;
-                mode.write_le(&mut writer)
-            }
-            Self::Scalar(register, mode) => {
-                u8::write_le(&3u8, &mut writer)?;
-                register.write_le(&mut writer)?;
-                mode.write_le(&mut writer)
-            }
-        }
+        self.register.write_le(&mut writer)?;
+        self.type_annotation.write_le(&mut writer)
     }
 }

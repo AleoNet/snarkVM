@@ -58,7 +58,7 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for R1CS<F> {
                         "Public variables in first system must be processed in lexicographic order"
                     );
 
-                    let gadget = cs.alloc_input(|| format!("Public {}", i), || Ok(*value))?;
+                    let gadget = cs.alloc_input(|| format!("Public {i}"), || Ok(*value))?;
 
                     assert_eq!(
                         snarkvm_r1cs::Index::Public((index + 1) as usize),
@@ -83,7 +83,7 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for R1CS<F> {
                         "Private variables in first system must be processed in lexicographic order"
                     );
 
-                    let gadget = cs.alloc(|| format!("Private {}", i), || Ok(*value))?;
+                    let gadget = cs.alloc(|| format!("Private {i}"), || Ok(*value))?;
 
                     assert_eq!(
                         snarkvm_r1cs::Index::Private(i),
@@ -100,7 +100,7 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for R1CS<F> {
         }
 
         // Enforce all of the constraints.
-        for (i, (_, (a, b, c))) in self.to_constraints().iter().enumerate() {
+        for (i, constraint) in self.to_constraints().iter().enumerate() {
             // Converts terms from one linear combination in the first system to the second system.
             let convert_linear_combination = |lc: &LinearCombination<F>| -> snarkvm_r1cs::LinearCombination<F> {
                 // Initialize a linear combination for the second system.
@@ -143,8 +143,10 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for R1CS<F> {
                 linear_combination
             };
 
+            let (a, b, c) = constraint.to_terms();
+
             cs.enforce(
-                || format!("Constraint {}", i),
+                || format!("Constraint {i}"),
                 |lc| lc + convert_linear_combination(a),
                 |lc| lc + convert_linear_combination(b),
                 |lc| lc + convert_linear_combination(c),
@@ -162,26 +164,26 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for R1CS<F> {
 
 #[cfg(test)]
 mod tests {
-    use snarkvm_circuits::{traits::*, BaseField, Circuit, Environment, Mode};
+    use snarkvm_circuits::prelude::*;
     use snarkvm_curves::bls12_377::Fr;
     use snarkvm_r1cs::ConstraintSynthesizer;
 
     /// Compute 2^EXPONENT - 1, in a purposefully constraint-inefficient manner for testing.
-    fn create_example_circuit<E: Environment>() -> BaseField<E> {
+    fn create_example_circuit<E: Environment>() -> Field<E> {
         let one = <E as Environment>::BaseField::one();
         let two = one + one;
 
         const EXPONENT: usize = 64;
 
         // Compute 2^EXPONENT - 1, in a purposefully constraint-inefficient manner for testing.
-        let mut candidate = BaseField::<E>::new(Mode::Public, one);
-        let mut accumulator = BaseField::new(Mode::Private, two);
+        let mut candidate = Field::<E>::new(Mode::Public, one);
+        let mut accumulator = Field::new(Mode::Private, two);
         for _ in 0..EXPONENT {
             candidate += &accumulator;
-            accumulator *= BaseField::new(Mode::Private, two);
+            accumulator *= Field::new(Mode::Private, two);
         }
 
-        assert_eq!((accumulator - BaseField::one()).eject_value(), candidate.eject_value());
+        assert_eq!((accumulator - Field::one()).eject_value(), candidate.eject_value());
         assert_eq!(2, E::num_public());
         assert_eq!(2 * EXPONENT + 1, E::num_private());
         assert_eq!(EXPONENT, E::num_constraints());

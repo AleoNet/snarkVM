@@ -35,16 +35,22 @@ impl<E: Environment> Register<E> {
     pub(crate) fn new(locator: u64) -> Register<E> {
         Self(locator, PhantomData)
     }
+
+    /// Returns the locator of the register.
+    #[inline]
+    pub(crate) fn locator(&self) -> u64 {
+        self.0
+    }
+
+    /// Returns the type name as a string.
+    #[inline]
+    pub(crate) fn type_name() -> &'static str {
+        "r"
+    }
 }
 
 impl<E: Environment> Parser for Register<E> {
     type Environment = E;
-
-    /// Returns the type name as a string.
-    #[inline]
-    fn type_name() -> &'static str {
-        "r"
-    }
 
     /// Parses a string into a register.
     #[inline]

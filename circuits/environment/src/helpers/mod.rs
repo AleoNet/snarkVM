@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+pub(crate) mod constraint;
+pub(crate) use constraint::*;
+
 pub(super) mod converter;
 
 pub(super) mod counter;
@@ -27,3 +30,6 @@ pub use mode::*;
 
 pub mod variable;
 pub use variable::*;
+
+pub(super) mod r1cs;
+pub(super) use r1cs::*;

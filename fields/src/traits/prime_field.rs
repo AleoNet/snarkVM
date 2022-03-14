@@ -36,6 +36,11 @@ pub trait PrimeField: FftField<FftParameters = <Self as PrimeField>::Parameters>
         Self::Parameters::MODULUS_BITS as usize
     }
 
+    /// Returns the capacity size for data bits.
+    fn size_in_data_bits() -> usize {
+        Self::Parameters::CAPACITY as usize
+    }
+
     /// Returns the modulus.
     fn modulus() -> Self::BigInteger {
         Self::Parameters::MODULUS

@@ -17,8 +17,8 @@
 pub mod stack;
 pub use stack::*;
 
-use crate::{Immediate, Register};
-use snarkvm_circuits::Environment;
+use crate::Register;
+use snarkvm_circuits::{Environment, Literal};
 
 pub trait Memory: Clone + Default {
     type Environment: Environment;
@@ -41,11 +41,11 @@ pub trait Memory: Clone + Default {
     /// Returns `true` if the given register is set.
     fn is_set(&self, register: &Register<Self::Environment>) -> bool;
 
-    /// Attempts to load the immediate from the register.
-    fn load(&self, register: &Register<Self::Environment>) -> Immediate<Self::Environment>;
+    /// Attempts to load the literal from the register.
+    fn load(&self, register: &Register<Self::Environment>) -> Literal<Self::Environment>;
 
-    /// Attempts to store immediate into the register.
-    fn store(&self, register: &Register<Self::Environment>, immediate: Immediate<Self::Environment>);
+    /// Attempts to store literal into the register.
+    fn store(&self, register: &Register<Self::Environment>, literal: Literal<Self::Environment>);
 
     /// Returns the number of registers allocated.
     fn num_registers(&self) -> u64;

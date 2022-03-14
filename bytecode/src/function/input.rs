@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Argument, Immediate, Memory, Operation, Sanitizer};
-use snarkvm_circuits::{Parser, ParserResult};
+use crate::{Argument, Memory, Operation, Sanitizer};
+use snarkvm_circuits::{Literal, Parser, ParserResult, Type};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::{fmt, ops};
@@ -28,25 +28,24 @@ pub struct Input<M: Memory> {
     /// The register and type annotations for the input.
     argument: Argument<M::Environment>,
     /// The assigned value for this input.
-    immediate: OnceCell<Immediate<M::Environment>>,
+    literal: OnceCell<Literal<M::Environment>>,
 }
 
 impl<M: Memory> Input<M> {
-    /// Assigns the given immediate to the input register.
-    pub(crate) fn assign(&self, immediate: Immediate<M::Environment>) -> &Self {
+    /// Assigns the given literal to the input register.
+    pub(crate) fn assign(&self, literal: Literal<M::Environment>) -> &Self {
         // Retrieve the input annotations.
         let register = self.argument.register();
-        let mode = self.argument.mode();
-        let type_name = self.argument.type_name();
+        let type_ = self.argument.type_annotation();
 
-        // Ensure the type and mode are correct.
-        match immediate.type_name() == type_name && &immediate.mode() == mode {
-            // Assign the immediate to this input register.
-            true => match self.immediate.set(immediate).is_ok() {
+        // Ensure the type matches.
+        match Type::from(&literal) == type_ {
+            // Assign the literal to this input register.
+            true => match self.literal.set(literal).is_ok() {
                 true => self,
-                false => M::halt(format!("Input register {} is already set", register)),
+                false => M::halt(format!("Input register {register} is already set")),
             },
-            false => M::halt(format!("Input register {} is not a {} {}", register, mode, type_name)),
+            false => M::halt(format!("Input register {register} is not {type_}")),
         }
     }
 }
@@ -65,10 +64,10 @@ impl<M: Memory> Operation for Input<M> {
     fn evaluate(&self, memory: &Self::Memory) {
         // Retrieve the input annotations.
         let register = self.argument.register();
-        // Attempt to retrieve the immediate this input register.
-        match self.immediate.get() {
+        // Attempt to retrieve the literal this input register.
+        match self.literal.get() {
             // Store the input into the register.
-            Some(immediate) => memory.store(register, immediate.clone()),
+            Some(literal) => memory.store(register, literal.clone()),
             None => M::halt(format!("Input register {} is not assigned yet", register)),
         }
     }
@@ -90,7 +89,7 @@ impl<M: Memory> Operation for Input<M> {
         // Initialize the input register.
         memory.initialize(argument.register());
 
-        Ok((string, Self { argument, immediate: Default::default() }))
+        Ok((string, Self { argument, literal: Default::default() }))
     }
 }
 
@@ -110,7 +109,7 @@ impl<M: Memory> ops::Deref for Input<M> {
 
 impl<M: Memory> FromBytes for Input<M> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        Ok(Self { argument: Argument::read_le(&mut reader)?, immediate: Default::default() })
+        Ok(Self { argument: Argument::read_le(&mut reader)?, literal: Default::default() })
     }
 }
 

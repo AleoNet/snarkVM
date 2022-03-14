@@ -48,12 +48,6 @@ impl<E: Environment> BinaryOperation<E> {
 impl<E: Environment> Parser for BinaryOperation<E> {
     type Environment = E;
 
-    /// Returns the type name as a string.
-    #[inline]
-    fn type_name() -> &'static str {
-        "operation"
-    }
-
     /// Parses a string into an operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
