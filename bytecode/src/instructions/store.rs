@@ -37,13 +37,6 @@ impl<M: Memory> Operation for Store<M> {
         "store"
     }
 
-    /// Evaluates the operation in-place.
-    #[inline]
-    fn evaluate(&self, memory: &Self::Memory) {
-        // Load the value for the operand, and store it into the destination register.
-        memory.store(self.operation.destination(), self.operation.operand().load(memory))
-    }
-
     /// Parses a string into an 'store' operation.
     #[inline]
     fn parse(string: &str, memory: Self::Memory) -> ParserResult<Self> {
@@ -53,6 +46,13 @@ impl<M: Memory> Operation for Store<M> {
         memory.initialize(operation.operation.destination());
         // Return the operation.
         Ok((string, operation))
+    }
+
+    /// Evaluates the operation in-place.
+    #[inline]
+    fn evaluate(&self, memory: &Self::Memory) {
+        // Load the value for the operand, and store it into the destination register.
+        memory.store(self.operation.destination(), self.operation.operand().load(memory))
     }
 }
 

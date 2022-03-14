@@ -59,19 +59,6 @@ impl<M: Memory> Operation for Input<M> {
         "input"
     }
 
-    /// Evaluates the operation in-place.
-    #[inline]
-    fn evaluate(&self, memory: &Self::Memory) {
-        // Retrieve the input annotations.
-        let register = self.argument.register();
-        // Attempt to retrieve the literal this input register.
-        match self.literal.get() {
-            // Store the input into the register.
-            Some(literal) => memory.store(register, literal.clone()),
-            None => M::halt(format!("Input register {} is not assigned yet", register)),
-        }
-    }
-
     /// Parses a string into an input.
     #[inline]
     fn parse(string: &str, memory: Self::Memory) -> ParserResult<Self> {
@@ -90,6 +77,19 @@ impl<M: Memory> Operation for Input<M> {
         memory.initialize(argument.register());
 
         Ok((string, Self { argument, literal: Default::default() }))
+    }
+
+    /// Evaluates the operation in-place.
+    #[inline]
+    fn evaluate(&self, memory: &Self::Memory) {
+        // Retrieve the input annotations.
+        let register = self.argument.register();
+        // Attempt to retrieve the literal this input register.
+        match self.literal.get() {
+            // Store the input into the register.
+            Some(literal) => memory.store(register, literal.clone()),
+            None => M::halt(format!("Input register {register} is not assigned yet")),
+        }
     }
 }
 

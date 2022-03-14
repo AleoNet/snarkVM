@@ -41,16 +41,16 @@ pub trait Operation: Display {
     fn opcode() -> &'static str;
 
     ///
-    /// Evaluates the instruction in-place.
-    ///
-    fn evaluate(&self, memory: &Self::Memory);
-
-    ///
     /// Parses a string literal into an object.
     ///
     fn parse(string: &str, memory: Self::Memory) -> ParserResult<Self>
     where
         Self: Sized;
+
+    ///
+    /// Evaluates the instruction in-place.
+    ///
+    fn evaluate(&self, memory: &Self::Memory);
 
     ///
     /// Returns an object from a string literal.

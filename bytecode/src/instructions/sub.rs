@@ -36,6 +36,17 @@ impl<M: Memory> Operation for Sub<M> {
         "sub"
     }
 
+    /// Parses a string into an 'sub' operation.
+    #[inline]
+    fn parse(string: &str, memory: Self::Memory) -> ParserResult<Self> {
+        // Parse the operation from the string.
+        let (string, operation) = map(BinaryOperation::parse, |operation| Self { operation })(string)?;
+        // Initialize the destination register.
+        memory.initialize(operation.operation.destination());
+        // Return the operation.
+        Ok((string, operation))
+    }
+
     /// Evaluates the operation in-place.
     #[inline]
     fn evaluate(&self, memory: &Self::Memory) {
@@ -51,17 +62,6 @@ impl<M: Memory> Operation for Sub<M> {
         };
 
         memory.store(self.operation.destination(), result);
-    }
-
-    /// Parses a string into an 'sub' operation.
-    #[inline]
-    fn parse(string: &str, memory: Self::Memory) -> ParserResult<Self> {
-        // Parse the operation from the string.
-        let (string, operation) = map(BinaryOperation::parse, |operation| Self { operation })(string)?;
-        // Initialize the destination register.
-        memory.initialize(operation.operation.destination());
-        // Return the operation.
-        Ok((string, operation))
     }
 }
 

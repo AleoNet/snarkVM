@@ -36,22 +36,6 @@ impl<M: Memory> Operation for Output<M> {
         "output"
     }
 
-    /// Evaluates the operation in-place.
-    #[inline]
-    fn evaluate(&self, memory: &Self::Memory) {
-        // Retrieve the output annotations.
-        let register = self.argument.register();
-        let type_ = self.argument.type_annotation();
-
-        // Load the output from memory.
-        let literal = memory.load(register);
-
-        // Ensure the type matches.
-        if Type::from(&literal) != type_ {
-            M::halt(format!("Output register {register} is not a {type_}"))
-        }
-    }
-
     /// Parses a string into an output.
     #[inline]
     fn parse(string: &str, memory: Self::Memory) -> ParserResult<Self> {
@@ -70,6 +54,22 @@ impl<M: Memory> Operation for Output<M> {
         match memory.exists(argument.register()) {
             true => Ok((string, Self { argument })),
             false => M::halt(format!("Tried to set non-existent register {} as an output", argument.register())),
+        }
+    }
+
+    /// Evaluates the operation in-place.
+    #[inline]
+    fn evaluate(&self, memory: &Self::Memory) {
+        // Retrieve the output annotations.
+        let register = self.argument.register();
+        let type_ = self.argument.type_annotation();
+
+        // Load the output from memory.
+        let literal = memory.load(register);
+
+        // Ensure the type matches.
+        if Type::from(&literal) != type_ {
+            M::halt(format!("Output register {register} is not a {type_}"))
         }
     }
 }
