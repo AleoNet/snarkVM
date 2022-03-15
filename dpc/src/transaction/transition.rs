@@ -45,7 +45,7 @@ pub struct Transition<N: Network> {
     /// The commitments on the output record values.
     output_value_commitments: Vec<N::ValueCommitment>,
     /// The value balance commitment.
-    value_balance_commitment: ValueBalanceCommitment<N>,
+    value_balance_commitment: N::ValueBalanceCommitment,
     /// The events emitted from this transition.
     events: Vec<Event<N>>,
     /// The zero-knowledge proofs attesting to the validity of this transition.
@@ -91,7 +91,7 @@ impl<N: Network> Transition<N> {
         value_balance: AleoAmount,
         input_value_commitments: Vec<N::ValueCommitment>,
         output_value_commitments: Vec<N::ValueCommitment>,
-        value_balance_commitment: ValueBalanceCommitment<N>,
+        value_balance_commitment: N::ValueBalanceCommitment,
         events: Vec<Event<N>>,
         execution: Execution<N>,
     ) -> Result<Self> {
@@ -237,7 +237,7 @@ impl<N: Network> Transition<N> {
     }
 
     /// Returns a reference to the value balance commitment.
-    pub fn value_balance_commitment(&self) -> &ValueBalanceCommitment<N> {
+    pub fn value_balance_commitment(&self) -> &N::ValueBalanceCommitment {
         &self.value_balance_commitment
     }
 

@@ -25,6 +25,7 @@ use crate::{
     Network,
     PoSWScheme,
     ProgramPublicVariables,
+    ValueBalanceCommitment,
 };
 use snarkvm_algorithms::{
     commitment::PedersenCommitment,
@@ -106,6 +107,7 @@ impl Network for Testnet1 {
     const RECORD_VIEW_KEY_PREFIX: u32 = hrp4!("rcvk");
     const SIGNATURE_PREFIX: u32 = hrp4!("sign");
     const VALUE_COMMITMENT_PREFIX: u32 = hrp4!("valc");
+    const VALUE_BALANCE_COMMITMENT_PREFIX: u32 = hrp4!("vbco");
 
     const ADDRESS_SIZE_IN_BYTES: usize = 32;
     const HEADER_SIZE_IN_BYTES: usize = 1015;
@@ -118,6 +120,7 @@ impl Network for Testnet1 {
     const RECORD_VIEW_KEY_SIZE_IN_BYTES: usize = 32;
     const SIGNATURE_SIZE_IN_BYTES: usize = 128;
     const VALUE_COMMITMENT_SIZE_IN_BYTES: usize = 64;
+    const VALUE_BALANCE_COMMITMENT_SIZE_IN_BYTES: usize = 96;
 
     const HEADER_TRANSACTIONS_TREE_DEPTH: usize = 15;
     const HEADER_TREE_DEPTH: usize = 2;
@@ -228,6 +231,7 @@ impl Network for Testnet1 {
     type ValueCommitmentScheme = PedersenCommitment<Self::ProgramProjectiveCurve, 4, 350>;
     type ValueCommitmentGadget = PedersenCommitmentGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 4, 350>;
     type ValueCommitment = AleoObject<<Self::ValueCommitmentScheme as CommitmentScheme>::Output, { Self::VALUE_COMMITMENT_PREFIX }, { Self::VALUE_COMMITMENT_SIZE_IN_BYTES }>;
+    type ValueBalanceCommitment = AleoObject<ValueBalanceCommitment<Self>, { Self::VALUE_BALANCE_COMMITMENT_PREFIX }, { Self::VALUE_BALANCE_COMMITMENT_SIZE_IN_BYTES }>;
 
     dpc_setup!{Testnet1, account_encryption_scheme, AccountEncryptionScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
     dpc_setup!{Testnet1, account_signature_scheme, AccountSignatureScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}

@@ -34,7 +34,7 @@ pub struct InnerPublicVariables<N: Network> {
     /// The commitments on the output record values.
     output_value_commitments: Vec<N::ValueCommitment>,
     /// The value balance commitments.
-    value_balance_commitment: ValueBalanceCommitment<N>,
+    value_balance_commitment: N::ValueBalanceCommitment,
     ledger_root: N::LedgerRoot,
     local_transitions_root: N::TransactionID,
     // These are required in natively verifying an inner circuit proof.
@@ -52,7 +52,7 @@ impl<N: Network> InnerPublicVariables<N> {
             value_balance: AleoAmount::ZERO,
             input_value_commitments: vec![default_value_commitment.into(); N::NUM_INPUT_RECORDS],
             output_value_commitments: vec![default_value_commitment.into(); N::NUM_OUTPUT_RECORDS],
-            value_balance_commitment: ValueBalanceCommitment::default(),
+            value_balance_commitment: ValueBalanceCommitment::default().into(),
             ledger_root: N::LedgerRoot::default(),
             local_transitions_root: Default::default(),
             program_id: Some(N::ProgramID::default()),
@@ -65,7 +65,7 @@ impl<N: Network> InnerPublicVariables<N> {
         value_balance: AleoAmount,
         input_value_commitments: Vec<N::ValueCommitment>,
         output_value_commitments: Vec<N::ValueCommitment>,
-        value_balance_commitment: ValueBalanceCommitment<N>,
+        value_balance_commitment: N::ValueBalanceCommitment,
         ledger_root: N::LedgerRoot,
         local_transitions_root: N::TransactionID,
         program_id: Option<N::ProgramID>,
@@ -109,7 +109,7 @@ impl<N: Network> InnerPublicVariables<N> {
     }
 
     /// Returns the value balance commitment.
-    pub(crate) fn value_balance_commitment(&self) -> &ValueBalanceCommitment<N> {
+    pub(crate) fn value_balance_commitment(&self) -> &N::ValueBalanceCommitment {
         &self.value_balance_commitment
     }
 
@@ -146,9 +146,7 @@ impl<N: Network> ToConstraintField<N::InnerScalarField> for InnerPublicVariables
         }
 
         v.extend_from_slice(&self.value_balance.to_bytes_le()?.to_field_elements()?);
-
-        v.extend_from_slice(&self.value_balance_commitment().commitment.to_field_elements()?);
-        v.extend_from_slice(&self.value_balance_commitment().blinding_factor.to_bytes_le()?.to_field_elements()?);
+        v.extend_from_slice(&self.value_balance_commitment().to_field_elements()?);
 
         Ok(v)
     }

@@ -240,7 +240,7 @@ impl<N: Network> ResponseBuilder<N> {
             output_value_commitments,
             input_value_commitment_randomness,
             output_value_commitment_randomness,
-            value_balance_commitment,
+            value_balance_commitment.into(),
             events,
         )
     }

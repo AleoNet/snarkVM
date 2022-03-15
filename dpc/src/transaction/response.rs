@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AleoAmount, Event, Network, Record, ValueBalanceCommitment};
+use crate::{AleoAmount, Event, Network, Record};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::Result;
@@ -46,7 +46,7 @@ pub struct Response<N: Network> {
     /// The randomness used to generate the output value commitments.
     output_value_commitment_randomness: Vec<N::ProgramScalarField>,
     /// The value balance commitment.
-    value_balance_commitment: ValueBalanceCommitment<N>,
+    value_balance_commitment: N::ValueBalanceCommitment,
     /// The events emitted from the execution.
     events: Vec<Event<N>>,
 }
@@ -62,7 +62,7 @@ impl<N: Network> Response<N> {
         output_value_commitments: Vec<N::ValueCommitment>,
         input_value_commitment_randomness: Vec<N::ProgramScalarField>,
         output_value_commitment_randomness: Vec<N::ProgramScalarField>,
-        value_balance_commitment: ValueBalanceCommitment<N>,
+        value_balance_commitment: N::ValueBalanceCommitment,
         events: Vec<Event<N>>,
     ) -> Result<Self> {
         Ok(Self {
@@ -135,7 +135,7 @@ impl<N: Network> Response<N> {
     }
 
     /// Returns the value balance commitment.
-    pub fn value_balance_commitment(&self) -> &ValueBalanceCommitment<N> {
+    pub fn value_balance_commitment(&self) -> &N::ValueBalanceCommitment {
         &self.value_balance_commitment
     }
 

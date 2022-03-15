@@ -17,7 +17,7 @@
 use crate::{error::ValueBalanceCommitmentError, AleoAmount, Network};
 use snarkvm_algorithms::CommitmentScheme;
 use snarkvm_curves::AffineCurve;
-use snarkvm_fields::{PrimeField, Zero};
+use snarkvm_fields::{ConstraintFieldError, PrimeField, ToConstraintField, Zero};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use blake2::{
@@ -244,6 +244,20 @@ impl<N: Network> FromBytes for ValueBalanceCommitment<N> {
         }
 
         Err(ValueBalanceCommitmentError::NotInCorrectSubgroupOnCurve.into())
+    }
+}
+
+impl<N: Network> ToConstraintField<N::InnerScalarField> for ValueBalanceCommitment<N> {
+    #[inline]
+    fn to_field_elements(&self) -> Result<Vec<N::InnerScalarField>, ConstraintFieldError> {
+        let commitment_fe = self.commitment.to_field_elements()?;
+        let blinding_factor_fe = self.blinding_factor.to_bytes_le()?.to_field_elements()?;
+
+        let mut field_elements = vec![];
+        field_elements.extend_from_slice(&commitment_fe);
+        field_elements.extend_from_slice(&blinding_factor_fe);
+
+        Ok(field_elements)
     }
 }
 
