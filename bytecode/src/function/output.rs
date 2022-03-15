@@ -30,7 +30,7 @@ pub struct Output<M: Memory> {
 impl<M: Memory> Operation for Output<M> {
     type Memory = M;
 
-    /// Returns the type name as a string.
+    /// Returns the opcode as a string.
     #[inline]
     fn opcode() -> &'static str {
         "output"
