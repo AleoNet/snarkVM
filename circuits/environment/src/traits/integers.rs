@@ -70,6 +70,7 @@ pub trait IntegerCore<B: BooleanTrait, I: IntegerType>:
     + BitXorAssign
     + BitXor<Output = Self>
     + Clone
+    + Compare
     + DataType<B>
     + Debug
     + DivAssign
