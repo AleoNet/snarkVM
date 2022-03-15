@@ -41,9 +41,9 @@ pub struct Transition<N: Network> {
     /// A value balance is the difference between the input and output record values.
     value_balance: AleoAmount,
     /// The commitments on the input record values.
-    input_value_commitments: Vec<N::ProgramAffineCurve>,
+    input_value_commitments: Vec<N::ValueCommitment>,
     /// The commitments on the output record values.
-    output_value_commitments: Vec<N::ProgramAffineCurve>,
+    output_value_commitments: Vec<N::ValueCommitment>,
     /// The value balance commitment.
     value_balance_commitment: ValueBalanceCommitment<N>,
     /// The events emitted from this transition.
@@ -89,8 +89,8 @@ impl<N: Network> Transition<N> {
         serial_numbers: Vec<N::SerialNumber>,
         ciphertexts: Vec<N::RecordCiphertext>,
         value_balance: AleoAmount,
-        input_value_commitments: Vec<N::ProgramAffineCurve>,
-        output_value_commitments: Vec<N::ProgramAffineCurve>,
+        input_value_commitments: Vec<N::ValueCommitment>,
+        output_value_commitments: Vec<N::ValueCommitment>,
         value_balance_commitment: ValueBalanceCommitment<N>,
         events: Vec<Event<N>>,
         execution: Execution<N>,
@@ -227,12 +227,12 @@ impl<N: Network> Transition<N> {
     }
 
     /// Returns a reference to the commitments on the input record values.
-    pub fn input_value_commitments(&self) -> impl Iterator<Item = &N::ProgramAffineCurve> + fmt::Debug + '_ {
+    pub fn input_value_commitments(&self) -> impl Iterator<Item = &N::ValueCommitment> + fmt::Debug + '_ {
         self.input_value_commitments.iter()
     }
 
     /// Returns a reference to the commitments on the output record values.
-    pub fn output_value_commitments(&self) -> impl Iterator<Item = &N::ProgramAffineCurve> + fmt::Debug + '_ {
+    pub fn output_value_commitments(&self) -> impl Iterator<Item = &N::ValueCommitment> + fmt::Debug + '_ {
         self.output_value_commitments.iter()
     }
 

@@ -30,9 +30,9 @@ pub struct InnerPublicVariables<N: Network> {
     /// A value balance is the difference between the input and output record values.
     value_balance: AleoAmount,
     /// The commitments on the input record values.
-    input_value_commitments: Vec<N::ProgramAffineCurve>,
+    input_value_commitments: Vec<N::ValueCommitment>,
     /// The commitments on the output record values.
-    output_value_commitments: Vec<N::ProgramAffineCurve>,
+    output_value_commitments: Vec<N::ValueCommitment>,
     /// The value balance commitments.
     value_balance_commitment: ValueBalanceCommitment<N>,
     ledger_root: N::LedgerRoot,
@@ -45,12 +45,13 @@ pub struct InnerPublicVariables<N: Network> {
 
 impl<N: Network> InnerPublicVariables<N> {
     pub(crate) fn blank() -> Self {
+        let default_value_commitment: N::ProgramAffineCurve = Default::default();
         Self {
             serial_numbers: vec![Default::default(); N::NUM_INPUT_RECORDS],
             commitments: vec![Default::default(); N::NUM_INPUT_RECORDS],
             value_balance: AleoAmount::ZERO,
-            input_value_commitments: vec![Default::default(); N::NUM_INPUT_RECORDS],
-            output_value_commitments: vec![Default::default(); N::NUM_OUTPUT_RECORDS],
+            input_value_commitments: vec![default_value_commitment.into(); N::NUM_INPUT_RECORDS],
+            output_value_commitments: vec![default_value_commitment.into(); N::NUM_OUTPUT_RECORDS],
             value_balance_commitment: ValueBalanceCommitment::default(),
             ledger_root: N::LedgerRoot::default(),
             local_transitions_root: Default::default(),
@@ -62,8 +63,8 @@ impl<N: Network> InnerPublicVariables<N> {
         serial_numbers: Vec<N::SerialNumber>,
         commitments: Vec<N::Commitment>,
         value_balance: AleoAmount,
-        input_value_commitments: Vec<N::ProgramAffineCurve>,
-        output_value_commitments: Vec<N::ProgramAffineCurve>,
+        input_value_commitments: Vec<N::ValueCommitment>,
+        output_value_commitments: Vec<N::ValueCommitment>,
         value_balance_commitment: ValueBalanceCommitment<N>,
         ledger_root: N::LedgerRoot,
         local_transitions_root: N::TransactionID,
@@ -98,12 +99,12 @@ impl<N: Network> InnerPublicVariables<N> {
     }
 
     /// Returns the commitments on the input record values.
-    pub(crate) fn input_value_commitments(&self) -> &Vec<N::ProgramAffineCurve> {
+    pub(crate) fn input_value_commitments(&self) -> &Vec<N::ValueCommitment> {
         &self.input_value_commitments
     }
 
     /// Returns the commitments on the output record values.
-    pub(crate) fn output_value_commitments(&self) -> &Vec<N::ProgramAffineCurve> {
+    pub(crate) fn output_value_commitments(&self) -> &Vec<N::ValueCommitment> {
         &self.output_value_commitments
     }
 

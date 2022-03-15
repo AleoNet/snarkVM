@@ -120,6 +120,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const RECORD_CIPHERTEXT_PREFIX: u32;
     const RECORD_VIEW_KEY_PREFIX: u32;
     const SIGNATURE_PREFIX: u32;
+    const VALUE_COMMITMENT_PREFIX: u32;
 
     const ADDRESS_SIZE_IN_BYTES: usize;
     const HEADER_SIZE_IN_BYTES: usize;
@@ -131,6 +132,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const RECORD_PAYLOAD_SIZE_IN_BYTES: usize;
     const RECORD_VIEW_KEY_SIZE_IN_BYTES: usize;
     const SIGNATURE_SIZE_IN_BYTES: usize;
+    const VALUE_COMMITMENT_SIZE_IN_BYTES: usize;
 
     const HEADER_TRANSACTIONS_TREE_DEPTH: usize;
     const HEADER_TREE_DEPTH: usize;
@@ -273,8 +275,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     /// Commitment scheme for value commitments. Invoked only over `Self::InnerScalarField`.
     type ValueCommitmentScheme: CommitmentScheme<Randomness = Self::ProgramScalarField, Output = Self::ProgramAffineCurve>;
     type ValueCommitmentGadget: CommitmentGadget<Self::ValueCommitmentScheme, Self::InnerScalarField, OutputGadget = Self::ProgramAffineCurveGadget>;
-    // TODO (raychu86): Create a formal locator for the value commitment output.
-    // type ValueCommitment: Bech32Locator<<Self::ValueCommitmentScheme as CommitmentScheme>::Output>;
+    type ValueCommitment: Bech32Object<Self::ProgramAffineCurve>;
 
     fn account_encryption_scheme() -> &'static Self::AccountEncryptionScheme;
     fn account_signature_scheme() -> &'static Self::AccountSignatureScheme;

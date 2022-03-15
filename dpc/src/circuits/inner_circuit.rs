@@ -563,7 +563,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     N::InnerScalarField,
                 >>::OutputGadget::alloc_input(
                     &mut vc_cs.ns(|| format!("Input value commitment {}", i)),
-                    || Ok(value_commitment),
+                    || Ok(**value_commitment),
                 )?;
 
                 let candidate_value_commitment_gadget = value_commitment_parameters.check_commitment_gadget(
@@ -844,7 +844,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                     N::InnerScalarField,
                 >>::OutputGadget::alloc_input(
                     &mut vc_cs.ns(|| format!("Output value commitment {}", j)),
-                    || Ok(value_commitment),
+                    || Ok(**value_commitment),
                 )?;
 
                 let candidate_value_commitment_gadget = value_commitment_parameters.check_commitment_gadget(
@@ -953,7 +953,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
                 N::InnerScalarField,
             >>::OutputGadget::alloc_input(
                 &mut cs.ns(|| "Zero commitment gadget"),
-                || Ok(public.value_balance_commitment().commitment),
+                || Ok(*public.value_balance_commitment().commitment),
             )?;
 
             let blinding_factor_gadget = <N::ValueCommitmentGadget as CommitmentGadget<

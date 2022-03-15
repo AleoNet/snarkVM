@@ -113,6 +113,7 @@ impl Network for Testnet2 {
     const RECORD_CIPHERTEXT_PREFIX: u32 = hrp4!("recd");
     const RECORD_VIEW_KEY_PREFIX: u32 = hrp4!("rcvk");
     const SIGNATURE_PREFIX: u32 = hrp4!("sign");
+    const VALUE_COMMITMENT_PREFIX: u32 = hrp4!("valc");
 
     const ADDRESS_SIZE_IN_BYTES: usize = 32;
     const HEADER_SIZE_IN_BYTES: usize = 1015;
@@ -124,6 +125,7 @@ impl Network for Testnet2 {
     const RECORD_PAYLOAD_SIZE_IN_BYTES: usize = 128;
     const RECORD_VIEW_KEY_SIZE_IN_BYTES: usize = 32;
     const SIGNATURE_SIZE_IN_BYTES: usize = 128;
+    const VALUE_COMMITMENT_SIZE_IN_BYTES: usize = 64;
 
     const HEADER_TRANSACTIONS_TREE_DEPTH: usize = 15;
     const HEADER_TREE_DEPTH: usize = 2;
@@ -233,7 +235,8 @@ impl Network for Testnet2 {
 
     type ValueCommitmentScheme = PedersenCommitment<Self::ProgramProjectiveCurve, 4, 350>;
     type ValueCommitmentGadget = PedersenCommitmentGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 4, 350>;
-
+    type ValueCommitment = AleoObject<<Self::ValueCommitmentScheme as CommitmentScheme>::Output, { Self::VALUE_COMMITMENT_PREFIX }, { Self::VALUE_COMMITMENT_SIZE_IN_BYTES }>;
+    
     dpc_setup!{Testnet2, account_encryption_scheme, AccountEncryptionScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
     dpc_setup!{Testnet2, account_signature_scheme, AccountSignatureScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
     dpc_setup!{Testnet2, block_hash_crh, BlockHashCRH, "AleoBlockHashCRH0"}

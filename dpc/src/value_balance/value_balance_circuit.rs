@@ -164,7 +164,7 @@ mod tests {
         let zero_commitment_gadget =
             <<Testnet2 as Network>::ValueCommitmentGadget as CommitmentGadget<_, _>>::OutputGadget::alloc(
                 &mut cs.ns(|| "zero_commitment_gadget"),
-                || Ok(zero_commitment),
+                || Ok(*zero_commitment),
             )
             .unwrap();
 

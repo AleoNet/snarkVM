@@ -38,9 +38,9 @@ pub struct Response<N: Network> {
     /// A value balance is the difference between the input and output record values.
     value_balance: AleoAmount,
     /// The commitments on the input record values.
-    input_value_commitments: Vec<N::ProgramAffineCurve>,
+    input_value_commitments: Vec<N::ValueCommitment>,
     /// The commitments on the output record values.
-    output_value_commitments: Vec<N::ProgramAffineCurve>,
+    output_value_commitments: Vec<N::ValueCommitment>,
     /// The randomness used to generate the input value commitments.
     input_value_commitment_randomness: Vec<N::ProgramScalarField>,
     /// The randomness used to generate the output value commitments.
@@ -58,8 +58,8 @@ impl<N: Network> Response<N> {
         records: Vec<Record<N>>,
         encryption_randomness: Vec<EncryptionRandomness<N>>,
         value_balance: AleoAmount,
-        input_value_commitments: Vec<N::ProgramAffineCurve>,
-        output_value_commitments: Vec<N::ProgramAffineCurve>,
+        input_value_commitments: Vec<N::ValueCommitment>,
+        output_value_commitments: Vec<N::ValueCommitment>,
         input_value_commitment_randomness: Vec<N::ProgramScalarField>,
         output_value_commitment_randomness: Vec<N::ProgramScalarField>,
         value_balance_commitment: ValueBalanceCommitment<N>,
@@ -115,12 +115,12 @@ impl<N: Network> Response<N> {
     }
 
     /// Returns the commitments on the input record values.
-    pub fn input_value_commitments(&self) -> &Vec<N::ProgramAffineCurve> {
+    pub fn input_value_commitments(&self) -> &Vec<N::ValueCommitment> {
         &self.input_value_commitments
     }
 
     /// Returns the commitments on the output record values.
-    pub fn output_value_commitments(&self) -> &Vec<N::ProgramAffineCurve> {
+    pub fn output_value_commitments(&self) -> &Vec<N::ValueCommitment> {
         &self.output_value_commitments
     }
 
