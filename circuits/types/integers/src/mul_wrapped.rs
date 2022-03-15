@@ -779,28 +779,28 @@ mod tests {
     #[ignore]
     fn test_exhaustive_u8_constant_times_public() {
         type I = u8;
-        run_exhaustive_test::<I>(Mode::Constant, Mode::Public, 0, 0, 17, 18);
+        run_exhaustive_test::<I>(Mode::Constant, Mode::Public, 0, 0, 16, 17);
     }
 
     #[test]
     #[ignore]
     fn test_exhaustive_u8_constant_times_private() {
         type I = u8;
-        run_exhaustive_test::<I>(Mode::Constant, Mode::Private, 0, 0, 17, 18);
+        run_exhaustive_test::<I>(Mode::Constant, Mode::Private, 0, 0, 16, 17);
     }
 
     #[test]
     #[ignore]
     fn test_exhaustive_u8_public_times_constant() {
         type I = u8;
-        run_exhaustive_test::<I>(Mode::Public, Mode::Constant, 0, 0, 17, 18);
+        run_exhaustive_test::<I>(Mode::Public, Mode::Constant, 0, 0, 16, 17);
     }
 
     #[test]
     #[ignore]
     fn test_exhaustive_u8_private_times_constant() {
         type I = u8;
-        run_exhaustive_test::<I>(Mode::Private, Mode::Constant, 0, 0, 17, 18);
+        run_exhaustive_test::<I>(Mode::Private, Mode::Constant, 0, 0, 16, 17);
     }
 
     #[test]
@@ -844,28 +844,28 @@ mod tests {
     #[ignore]
     fn test_exhaustive_i8_constant_times_public() {
         type I = i8;
-        run_exhaustive_test::<I>(Mode::Constant, Mode::Public, 0, 0, 17, 18);
+        run_exhaustive_test::<I>(Mode::Constant, Mode::Public, 0, 0, 16, 17);
     }
 
     #[test]
     #[ignore]
     fn test_exhaustive_i8_constant_times_private() {
         type I = i8;
-        run_exhaustive_test::<I>(Mode::Constant, Mode::Private, 0, 0, 17, 18);
+        run_exhaustive_test::<I>(Mode::Constant, Mode::Private, 0, 0, 16, 17);
     }
 
     #[test]
     #[ignore]
     fn test_exhaustive_i8_public_times_constant() {
         type I = i8;
-        run_exhaustive_test::<I>(Mode::Public, Mode::Constant, 0, 0, 17, 18);
+        run_exhaustive_test::<I>(Mode::Public, Mode::Constant, 0, 0, 16, 17);
     }
 
     #[test]
     #[ignore]
     fn test_exhaustive_i8_private_times_constant() {
         type I = i8;
-        run_exhaustive_test::<I>(Mode::Private, Mode::Constant, 0, 0, 17, 18);
+        run_exhaustive_test::<I>(Mode::Private, Mode::Constant, 0, 0, 16, 17);
     }
 
     #[test]

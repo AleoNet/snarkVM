@@ -17,7 +17,6 @@
 use super::*;
 
 impl<E: Environment> Nor<Self> for Boolean<E> {
-    type Boolean = Boolean<E>;
     type Output = Boolean<E>;
 
     /// Returns `(NOT a) AND (NOT b)`.

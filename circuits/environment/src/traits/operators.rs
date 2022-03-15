@@ -46,7 +46,6 @@ pub trait Compare<Rhs: ?Sized = Self> {
 
 /// Binary operator for performing `NOT (a AND b)`.
 pub trait Nand<Rhs: ?Sized = Self> {
-    type Boolean: BooleanTrait;
     type Output;
 
     /// Returns `NOT (a AND b)`.
@@ -55,7 +54,6 @@ pub trait Nand<Rhs: ?Sized = Self> {
 
 /// Binary operator for performing `(NOT a) AND (NOT b)`.
 pub trait Nor<Rhs: ?Sized = Self> {
-    type Boolean: BooleanTrait;
     type Output;
 
     /// Returns `(NOT a) AND (NOT b)`.

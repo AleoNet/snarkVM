@@ -844,28 +844,28 @@ mod tests {
     #[ignore]
     fn test_exhaustive_u8_public_times_public() {
         type I = u8;
-        run_exhaustive_test::<I>(Mode::Public, Mode::Public, 1, 0, 23, 25);
+        run_exhaustive_test::<I>(Mode::Public, Mode::Public, 1, 0, 24, 26);
     }
 
     #[test]
     #[ignore]
     fn test_exhaustive_u8_public_times_private() {
         type I = u8;
-        run_exhaustive_test::<I>(Mode::Public, Mode::Private, 1, 0, 23, 25);
+        run_exhaustive_test::<I>(Mode::Public, Mode::Private, 1, 0, 24, 26);
     }
 
     #[test]
     #[ignore]
     fn test_exhaustive_u8_private_times_public() {
         type I = u8;
-        run_exhaustive_test::<I>(Mode::Private, Mode::Public, 1, 0, 23, 25);
+        run_exhaustive_test::<I>(Mode::Private, Mode::Public, 1, 0, 24, 26);
     }
 
     #[test]
     #[ignore]
     fn test_exhaustive_u8_private_times_private() {
         type I = u8;
-        run_exhaustive_test::<I>(Mode::Private, Mode::Private, 1, 0, 23, 25);
+        run_exhaustive_test::<I>(Mode::Private, Mode::Private, 1, 0, 24, 26);
     }
 
     // Tests for i8

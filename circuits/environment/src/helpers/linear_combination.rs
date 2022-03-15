@@ -85,8 +85,8 @@ impl<F: PrimeField> LinearCombination<F> {
             }
 
             // Enforce property 2.
-            if self.terms.iter().filter(|(v, _)| !(v.value().is_zero() || v.value().is_one())).count() > 0 {
-                eprintln!("Property 2 of the `Boolean` type was violated");
+            if self.terms.iter().all(|(v, _)| !(v.value().is_zero() || v.value().is_one())) {
+                eprintln!("Property 2 of the `Boolean` type was violated in {self}");
                 return false;
             }
 

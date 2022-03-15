@@ -95,7 +95,7 @@ impl<E: Environment> BitAndAssign<&Boolean<E>> for Boolean<E> {
 
                 // Ensure `self` * `other` = `output`
                 // `output` is `1` iff `self` AND `other` are both `1`.
-                E::enforce(|| (self.clone(), other, &output));
+                E::enforce(|| (&*self, other, &output));
 
                 output
             }

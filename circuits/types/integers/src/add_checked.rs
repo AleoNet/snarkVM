@@ -669,7 +669,7 @@ mod tests {
     #[test]
     #[ignore]
     fn test_exhaustive_u8_constant_plus_constant() {
-        run_exhaustive_test::<u8>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
+        run_exhaustive_test::<u8>(Mode::Constant, Mode::Constant, 8, 0, 0, 0);
     }
 
     #[test]
@@ -725,7 +725,7 @@ mod tests {
     #[test]
     #[ignore]
     fn test_exhaustive_i8_constant_plus_constant() {
-        run_exhaustive_test::<i8>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
+        run_exhaustive_test::<i8>(Mode::Constant, Mode::Constant, 8, 0, 0, 0);
     }
 
     #[test]

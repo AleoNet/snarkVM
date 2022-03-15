@@ -113,7 +113,7 @@ impl<E: Environment> BitXorAssign<&Boolean<E>> for Boolean<E> {
                 // 2a * b = a + b - c
                 // (a + a) * b = a + b - c
                 //
-                E::enforce(|| ((self.0.clone() + self.0.clone()), other, (self.0.clone() + &other.0 - &output.0)));
+                E::enforce(|| ((&self.0 + &self.0), other, (&self.0 + &other.0 - &output.0)));
 
                 output
             }

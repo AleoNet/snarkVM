@@ -27,8 +27,7 @@ impl<E: Environment> ToLowerBits for Field<E> {
         // Ensure the size is within the allowed capacity.
         if k > E::BaseField::size_in_bits() {
             E::halt(format!(
-                "Attempted to extract {} bits from a {}-bit base field element",
-                k,
+                "Attempted to extract {k} bits from a {}-bit base field element",
                 E::BaseField::size_in_bits()
             ))
         }

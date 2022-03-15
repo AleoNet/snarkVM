@@ -122,7 +122,7 @@ impl<E: Environment> Equal<Self> for Field<E> {
                 let is_eq = !is_neq.clone();
 
                 // Check 1: (a - b) * multiplier = is_neq
-                E::enforce(|| (delta.clone(), &multiplier, is_neq.clone()));
+                E::enforce(|| (delta.clone(), &multiplier, &is_neq));
 
                 // Check 2: (a - b) * not(is_neq) = 0
                 E::enforce(|| (delta, is_eq, E::zero()));

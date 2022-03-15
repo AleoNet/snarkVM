@@ -66,7 +66,7 @@ impl<E: Environment> MulAssign<&Field<E>> for Field<E> {
                 let product = Field::new(Mode::Private, self.eject_value() * other.eject_value());
 
                 // Ensure self * other == product.
-                E::enforce(|| (self.0.clone(), other, &product));
+                E::enforce(|| (&*self, other, &product));
 
                 *self = product;
             }
