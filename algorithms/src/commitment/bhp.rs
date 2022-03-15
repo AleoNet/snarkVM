@@ -19,7 +19,6 @@ use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, Field, PrimeField, ToConstraintField};
 use snarkvm_utilities::{BitIteratorLE, FromBytes, ToBytes};
 
-use itertools::Itertools;
 use std::{
     fmt::Debug,
     io::{Read, Result as IoResult, Write},
@@ -54,6 +53,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
             random_base.push(base);
             base.double_in_place();
         }
+        assert_eq!(random_base.len(), num_scalar_bits);
 
         Self { bhp_crh: bhp, random_base }
     }
@@ -72,7 +72,8 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
 
         // Compute h^r.
         let scalar_bits = BitIteratorLE::new(randomness.to_repr());
-        for (bit, power) in scalar_bits.into_iter().zip_eq(&self.random_base) {
+        // This is left as `zip` because the `scalar_bits` is byte denominated (by 8) and the trailing bits will always be 0.
+        for (bit, power) in scalar_bits.into_iter().zip(&self.random_base) {
             if bit {
                 output += power
             }
