@@ -294,7 +294,6 @@ mod tests {
         assert!(Transactions::from(&[transaction.clone(), transaction]).is_err());
     }
 
-    #[ignore]
     #[test]
     fn test_transactions_serde_json() {
         let expected_transactions = Testnet2::genesis_block().transactions().clone();
@@ -302,7 +301,7 @@ mod tests {
         // Serialize
         let expected_string = expected_transactions.to_string();
         let candidate_string = serde_json::to_string(&expected_transactions).unwrap();
-        assert_eq!(3323, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(2958, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(expected_string, candidate_string);
 
         // Deserialize

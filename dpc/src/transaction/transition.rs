@@ -513,7 +513,6 @@ mod tests {
         }
     }
 
-    #[ignore]
     #[test]
     fn test_transition_serde_json() {
         let transaction = Testnet2::genesis_block().to_coinbase_transaction().unwrap();
@@ -522,7 +521,7 @@ mod tests {
         // Serialize
         let expected_string = expected_transition.to_string();
         let candidate_string = serde_json::to_string(&expected_transition).unwrap();
-        assert_eq!(3019, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(2654, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(expected_string, candidate_string);
 
         // Deserialize

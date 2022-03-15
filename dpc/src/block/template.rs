@@ -285,7 +285,7 @@ mod tests {
         // Serialize
         let expected_string = expected_template.to_string();
         let candidate_string = serde_json::to_string(&expected_template).unwrap();
-        assert_eq!(4257, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(3892, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(expected_string, candidate_string);
 
         // Deserialize

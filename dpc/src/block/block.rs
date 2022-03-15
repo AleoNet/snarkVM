@@ -478,7 +478,6 @@ mod tests {
         assert_eq!(supply, AleoAmount::from_gate(supply_at_second_halving * AleoAmount::ONE_CREDIT.0));
     }
 
-    #[ignore]
     #[test]
     fn test_block_serde_json() {
         let rng = &mut thread_rng();
@@ -488,7 +487,7 @@ mod tests {
         // Serialize
         let expected_string = expected_block.to_string();
         let candidate_string = serde_json::to_string(&expected_block).unwrap();
-        assert_eq!(5306, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(4943, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(expected_string, candidate_string);
 
         // Deserialize
