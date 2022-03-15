@@ -53,7 +53,7 @@ impl<M: Memory> Input<M> {
 impl<M: Memory> Operation for Input<M> {
     type Memory = M;
 
-    /// Returns the type name as a string.
+    /// Returns the opcode as a string.
     #[inline]
     fn opcode() -> &'static str {
         "input"
