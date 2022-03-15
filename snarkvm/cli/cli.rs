@@ -14,33 +14,33 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use structopt::StructOpt;
+use clap::Parser;
 
-#[derive(StructOpt, Debug)]
-#[structopt(name = "snarkVM", author = "The Aleo Team <hello@aleo.org>", setting = structopt::clap::AppSettings::ColoredHelp)]
+#[derive(Debug, Parser)]
+#[clap(name = "snarkVM", author = "The Aleo Team <hello@aleo.org>")]
 pub struct CLI {
     /// Enable debug mode
-    #[structopt(short, long)]
+    #[clap(short, long)]
     pub debug: bool,
 
     /// Enable verbose mode
-    #[structopt(short, long, parse(from_occurrences))]
+    #[clap(short, long, parse(from_occurrences))]
     pub verbose: u8,
 
-    #[structopt(subcommand)]
+    #[clap(subcommand)]
     pub command: Command,
 }
 
-#[derive(StructOpt, Debug)]
+#[derive(Debug, Parser)]
 pub enum Command {
     /// Update snarkVM to the latest version
     Update {
         /// Lists all available versions of snarkVM
-        #[structopt(short = "l", long)]
+        #[clap(short = 'l', long)]
         list: bool,
 
         /// Suppress outputs to terminal
-        #[structopt(short = "q", long)]
+        #[clap(short = 'q', long)]
         quiet: bool,
     },
 }
