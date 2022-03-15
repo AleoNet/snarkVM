@@ -47,7 +47,6 @@ impl<N: Network> LedgerTreeScheme<N> for LedgerTree<N> {
         })
     }
 
-    /// TODO (howardwu): Add safety checks for u32 (max 2^32).
     /// Adds the given block hash to the tree, returning its index in the tree.
     fn add(&mut self, block_hash: &N::BlockHash) -> Result<u32> {
         // Ensure the block_hash does not already exist in the tree.
@@ -57,12 +56,15 @@ impl<N: Network> LedgerTreeScheme<N> for LedgerTree<N> {
 
         self.tree = Arc::new(self.tree.rebuild(self.current_index as usize, &[block_hash])?);
         self.block_hashes.insert(*block_hash, self.current_index);
-        self.current_index += 1;
 
-        Ok(self.current_index - 1)
+        let current_index = self.current_index;
+        self.current_index = current_index
+            .checked_add(1)
+            .ok_or(anyhow!("The index exceeds the maximum number of allowed block hashes."))?;
+
+        Ok(current_index)
     }
 
-    /// TODO (howardwu): Add safety checks for u32 (max 2^32).
     /// Adds all given block hashes to the tree, returning the start and ending index in the tree.
     fn add_all(&mut self, block_hashes: &[N::BlockHash]) -> Result<(u32, u32)> {
         // Ensure the list of given block hashes is non-empty.
@@ -83,6 +85,11 @@ impl<N: Network> LedgerTreeScheme<N> for LedgerTree<N> {
         let start_index = self.current_index;
         let num_block_hashes = block_hashes.len();
 
+        // Ensure that the number of block hashes does not exceed the u32 bounds of `self.current_index`.
+        if (self.current_index as usize).saturating_add(num_block_hashes) > u32::MAX as usize {
+            return Err(anyhow!("The ledger tree will reach its maximum size."));
+        }
+
         // Add the block hashes to the tree. Start the tree from scratch if the tree is currently empty.
         self.tree = match self.current_index {
             0 => Arc::new(MerkleTree::<N::LedgerRootParameters>::new::<N::BlockHash>(
@@ -95,8 +102,12 @@ impl<N: Network> LedgerTreeScheme<N> for LedgerTree<N> {
         self.block_hashes.extend(
             block_hashes.iter().enumerate().map(|(index, block_hash)| (*block_hash, start_index + index as u32)),
         );
-        self.current_index += num_block_hashes as u32;
-        let end_index = self.current_index - 1;
+
+        self.current_index = self
+            .current_index
+            .checked_add(num_block_hashes as u32)
+            .ok_or(anyhow!("The index exceeds the maximum number of allowed block hashes."))?;
+        let end_index = self.current_index.checked_sub(1).ok_or(anyhow!("Integer underflow."))?;
 
         Ok((start_index, end_index))
     }

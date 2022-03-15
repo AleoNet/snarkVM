@@ -223,10 +223,11 @@ where
     });
     let results: Vec<_> = pool.execute_all();
 
-    let g1_b = if r != E::Fr::zero() { results[0].into_g1() } else { E::G1Projective::zero() };
-    let g2_b = results[1].into_g2();
-    let h_acc = results[2].into_g1();
-    let l_aux_acc = results[3].into_g1();
+    let (g1_b, g2_b, h_acc, l_aux_acc) = if r != E::Fr::zero() {
+        (results[0].into_g1(), results[1].into_g2(), results[2].into_g1(), results[3].into_g1())
+    } else {
+        (E::G1Projective::zero(), results[0].into_g2(), results[1].into_g1(), results[2].into_g1())
+    };
 
     let s_g_a = g_a.mul(s);
     let r_g1_b = g1_b.mul(r);

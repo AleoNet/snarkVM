@@ -61,16 +61,19 @@ impl<N: Network> Transitions<N> {
 
         self.tree = Arc::new(self.tree.rebuild(self.current_index as usize, &[transition_id])?);
         self.transitions.insert(transition_id, (self.current_index, transition.clone()));
-        self.current_index += 1;
+        let current_index = self.current_index;
+        self.current_index = current_index
+            .checked_add(1)
+            .ok_or(anyhow!("The index exceeds the maximum number of allowed transitions."))?;
 
-        Ok(self.current_index - 1)
+        Ok(current_index)
     }
 
     /// Adds all given transitions to the tree, returning the start and ending index in the tree.
     pub(crate) fn add_all(&mut self, transitions: &[Transition<N>]) -> Result<(u8, u8)> {
         // Ensure the current index has not reached the maximum number of transitions permitted in software.
         if self.current_index >= N::NUM_TRANSITIONS
-            || self.current_index + transitions.len() as u8 >= N::NUM_TRANSITIONS
+            || (self.current_index as usize).saturating_add(transitions.len()) >= N::NUM_TRANSITIONS as usize
         {
             return Err(anyhow!("The transitions tree has reached its maximum size"));
         }
@@ -96,8 +99,11 @@ impl<N: Network> Transitions<N> {
                 .enumerate()
                 .map(|(index, transition)| (transition.transition_id(), (start_index + index as u8, transition))),
         );
-        self.current_index += transition_ids.len() as u8;
-        let end_index = self.current_index - 1;
+        self.current_index = self
+            .current_index
+            .checked_add(transition_ids.len() as u8)
+            .ok_or(anyhow!("The index exceeds the maximum number of allowed transitions."))?;
+        let end_index = self.current_index.checked_sub(1).ok_or(anyhow!("Integer underflow."))?;
 
         Ok((start_index, end_index))
     }
