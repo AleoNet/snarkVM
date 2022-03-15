@@ -67,7 +67,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize) 
         value_balance,
         response.input_value_commitments().clone(),
         response.output_value_commitments().clone(),
-        response.value_balance_commitment().clone().into(),
+        response.value_balance_commitment().clone(),
         ledger_root,
         local_transitions_root,
         program_id,
