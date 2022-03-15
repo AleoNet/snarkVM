@@ -34,13 +34,13 @@ members = [
   "circuits/types/scalar",
   "circuits/types/string",
   "curves",
-  "derives", # excluded from [features], for internal use primarily
   "dpc",
   "fields",
   "gadgets",
   "parameters",
   "r1cs",
   "utilities",
+  "utilities/derives", # excluded from [features], for internal use primarily
   "wasm", # excluded from [features], WASM contexts will typically import this crate directly
   ".integration" # excluded from [features], for CI only
 ]

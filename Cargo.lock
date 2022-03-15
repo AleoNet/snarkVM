@@ -2157,17 +2157,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "snarkvm-derives"
-version = "0.7.5"
-dependencies = [
- "proc-macro-crate",
- "proc-macro-error",
- "proc-macro2 1.0.36",
- "quote 1.0.15",
- "syn 1.0.86",
-]
-
-[[package]]
 name = "snarkvm-dpc"
 version = "0.7.5"
 dependencies = [
@@ -2310,8 +2299,19 @@ dependencies = [
  "rand_xorshift",
  "rayon",
  "serde",
- "snarkvm-derives",
+ "snarkvm-utilities-derives",
  "thiserror",
+]
+
+[[package]]
+name = "snarkvm-utilities-derives"
+version = "0.7.5"
+dependencies = [
+ "proc-macro-crate",
+ "proc-macro-error",
+ "proc-macro2 1.0.36",
+ "quote 1.0.15",
+ "syn 1.0.86",
 ]
 
 [[package]]
