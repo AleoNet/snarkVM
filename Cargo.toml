@@ -78,7 +78,7 @@ cuda = ["snarkvm-algorithms/cuda"]
 parameters_no_std_out = ["snarkvm-parameters/no_std_out"]
 
 ## snarkVM CLI ##
-cli = ["anyhow", "colored", "self_update", "structopt", "thiserror"]
+cli = ["anyhow", "clap", "colored", "self_update", "thiserror"]
 
 ## CI ##
 noconfig = []
@@ -135,8 +135,9 @@ optional = true
 version = "0.28"
 optional = true
 
-[dependencies.structopt]
-version = "0.3"
+[dependencies.clap]
+version = "3.1"
+features = ["derive"]
 optional = true
 
 [dependencies.thiserror]
