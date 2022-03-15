@@ -15,33 +15,33 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 #![forbid(unsafe_code)]
-#![allow(clippy::identity_op)]
-#![allow(clippy::module_inception)]
-#![allow(clippy::needless_borrow)]
-#![allow(clippy::too_many_arguments)]
-#![allow(clippy::type_complexity)]
 
-pub mod address;
-pub use address::*;
+#[macro_use]
+extern crate enum_index_derive;
 
-pub mod boolean;
-pub use boolean::*;
+pub mod literal;
+pub use literal::*;
 
-pub mod fields;
-pub use fields::*;
+pub mod type_;
+pub use type_::*;
 
-pub mod group;
-pub use group::*;
+pub use snarkvm_circuits_environment::*;
 
-// TODO (howardwu): This is temporary until the models interface is stabilized.
-#[allow(unused)]
-pub mod models;
-pub use models::*;
+pub use snarkvm_circuits_core::*;
+pub use snarkvm_circuits_edge::*;
+pub use snarkvm_circuits_types::*;
 
-// TODO (howardwu): This is temporary until the programs interface is stabilized.
-#[allow(unused)]
-pub mod programs;
-pub use programs::*;
+pub mod prelude {
+    pub use super::*;
+    pub use snarkvm_circuits_environment::{prelude::*, Circuit};
+}
 
-pub mod traits;
-pub use traits::*;
+pub trait Library<E: Environment> {
+    const VERSION: u32;
+}
+
+pub type V1 = Literal<Circuit>;
+
+impl Library<Circuit> for V1 {
+    const VERSION: u32 = 1;
+}

@@ -20,15 +20,27 @@ edition = "2021"
 [workspace]
 members = [
   "algorithms",
+  "bytecode",
   "circuits",
+  "circuits/core",
+  "circuits/edge",
+  "circuits/environment",
+  "circuits/types",
+  "circuits/types/address",
+  "circuits/types/boolean",
+  "circuits/types/field",
+  "circuits/types/integers",
+  "circuits/types/group",
+  "circuits/types/scalar",
+  "circuits/types/string",
   "curves",
-  "derives", # excluded from [features], for internal use primarily
   "dpc",
   "fields",
   "gadgets",
   "parameters",
   "r1cs",
   "utilities",
+  "utilities/derives", # excluded from [features], for internal use primarily
   "wasm", # excluded from [features], WASM contexts will typically import this crate directly
   ".integration" # excluded from [features], for CI only
 ]

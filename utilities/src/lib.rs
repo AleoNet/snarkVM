@@ -84,8 +84,8 @@ pub fn error(_msg: &'static str) -> io::Error {
 }
 
 #[cfg(feature = "std")]
-pub fn error(msg: &'static str) -> io::Error {
-    io::Error::new(io::ErrorKind::Other, msg)
+pub fn error<S: Into<String>>(msg: S) -> io::Error {
+    io::Error::new(io::ErrorKind::Other, msg.into())
 }
 
 use std::sync::atomic::{AtomicBool, AtomicU64};

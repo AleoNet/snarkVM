@@ -56,6 +56,7 @@ where
     type VerifierInput = Input;
     type VerifyingKey = CircuitVerifyingKey<TargetField, BaseField, PC, MM>;
 
+    #[allow(clippy::only_used_in_recursion)]
     fn universal_setup<R: Rng + CryptoRng>(
         max_degree: &Self::UniversalSetupConfig,
         rng: &mut R,
@@ -78,6 +79,7 @@ where
         .map_err(SNARKError::from)
     }
 
+    #[allow(clippy::only_used_in_recursion)]
     fn prove_with_terminator<C: ConstraintSynthesizer<TargetField>, R: Rng + CryptoRng>(
         parameters: &Self::ProvingKey,
         circuit: &C,

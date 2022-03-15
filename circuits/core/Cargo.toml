@@ -1,0 +1,18 @@
+[package]
+name = "snarkvm-circuits-core"
+version = "0.7.5"
+authors = [ "The Aleo Team <hello@aleo.org>" ]
+description = "Core circuits library for a decentralized virtual machine"
+license = "GPL-3.0"
+edition = "2021"
+
+[dependencies.snarkvm-circuits-environment]
+path = "../environment"
+version = "0.7.5"
+
+[dependencies.snarkvm-circuits-types]
+path = "../types"
+version = "0.7.5"
+
+[dependencies.nom]
+version = "7.1"
