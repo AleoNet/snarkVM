@@ -31,7 +31,7 @@ pub struct Store<M: Memory> {
 impl<M: Memory> Operation for Store<M> {
     type Memory = M;
 
-    /// Returns the type name as a string.
+    /// Returns the opcode as a string.
     #[inline]
     fn opcode() -> &'static str {
         "store"
