@@ -21,8 +21,9 @@
 |:------------------:|-------------------------------------------------------------------------------|:------------------:|:------------------:|
 | snarkvm            |![crates.io](https://img.shields.io/crates/v/snarkvm.svg?color=neon)           | :white_check_mark: | :white_check_mark: |
 | snarkvm-algorithms |![crates.io](https://img.shields.io/crates/v/snarkvm-algorithms.svg?color=neon)| :white_check_mark: | :white_check_mark: |
+| snarkvm-bytecode   |![crates.io](https://img.shields.io/crates/v/snarkvm-bytecode.svg?color=neon)  | :white_check_mark: | :white_check_mark: |
+| snarkvm-circuits   |![crates.io](https://img.shields.io/crates/v/snarkvm-circuits.svg?color=neon)  | :white_check_mark: | :white_check_mark: |
 | snarkvm-curves     | ![crates.io](https://img.shields.io/crates/v/snarkvm-curves.svg?color=neon)   | :white_check_mark: | :white_check_mark: |
-| snarkvm-derives    | ![crates.io](https://img.shields.io/crates/v/snarkvm-derives.svg?color=neon)  | :white_check_mark: | :white_check_mark: |
 | snarkvm-dpc        | ![crates.io](https://img.shields.io/crates/v/snarkvm-dpc.svg?color=neon)      | :white_check_mark: | :white_check_mark: |
 | snarkvm-fields     | ![crates.io](https://img.shields.io/crates/v/snarkvm-fields.svg?color=neon)   | :white_check_mark: | :white_check_mark: |
 | snarkvm-gadgets    | ![crates.io](https://img.shields.io/crates/v/snarkvm-gadgets.svg?color=neon)  | :white_check_mark: | :white_check_mark: |
