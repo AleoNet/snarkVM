@@ -25,29 +25,27 @@ impl<E: Environment, I: IntegerType> Compare<Self> for Integer<E, I> {
         if self.is_constant() && other.is_constant() {
             // Compute the comparison and return the new constant.
             Self::Boolean::new(Mode::Constant, self.eject_value() < other.eject_value())
+        } else if I::is_signed() {
+            // Compute the less than operation via a sign and overflow check.
+            // If sign(a) != sign(b), then a < b, if a is negative and b is positive.
+            // If sign(b) == sign(a), then a < b if the carry bit of I::NEG_ONE + a - b + 1 is set.
+            let same_sign = self.msb().is_equal(other.msb());
+            let self_is_negative_and_other_is_positive = self.msb() & !other.msb();
+            let negative_one_plus_difference_plus_one =
+                Self::new(Mode::Constant, I::zero() - I::one()).to_field() + self.to_field() - other.to_field()
+                    + Field::one();
+            match negative_one_plus_difference_plus_one.to_lower_bits_le(I::BITS + 1).last() {
+                Some(bit) => Self::Boolean::ternary(&same_sign, &!bit, &self_is_negative_and_other_is_positive),
+                None => E::halt("Malformed expression detected during signed integer comparison."),
+            }
         } else {
-            if I::is_signed() {
-                // Compute the less than operation via a sign and overflow check.
-                // If sign(a) != sign(b), then a < b, if a is negative and b is positive.
-                // If sign(b) == sign(a), then a < b if the carry bit of I::NEG_ONE + a - b + 1 is set.
-                let same_sign = self.msb().is_equal(other.msb());
-                let self_is_negative_and_other_is_positive = self.msb() & !other.msb();
-                let negative_one_plus_difference_plus_one =
-                    Self::new(Mode::Constant, I::zero() - I::one()).to_field() + self.to_field() - other.to_field()
-                        + Field::one();
-                match negative_one_plus_difference_plus_one.to_lower_bits_le(I::BITS + 1).last() {
-                    Some(bit) => Self::Boolean::ternary(&same_sign, &!bit, &self_is_negative_and_other_is_positive),
-                    None => E::halt("Malformed expression detected during signed integer comparison."),
-                }
-            } else {
-                // Compute the less than operation via an overflow check.
-                // If I::MAX + a - b + 1 overflows, then a >= b, otherwise a < b.
-                let max_plus_difference_plus_one =
-                    Self::new(Mode::Constant, I::MAX).to_field() + self.to_field() - other.to_field() + Field::one();
-                match max_plus_difference_plus_one.to_lower_bits_le(I::BITS + 1).last() {
-                    Some(bit) => !bit,
-                    None => E::halt("Malformed expression detected during unsigned integer comparison."),
-                }
+            // Compute the less than operation via an overflow check.
+            // If I::MAX + a - b + 1 overflows, then a >= b, otherwise a < b.
+            let max_plus_difference_plus_one =
+                Self::new(Mode::Constant, I::MAX).to_field() + self.to_field() - other.to_field() + Field::one();
+            match max_plus_difference_plus_one.to_lower_bits_le(I::BITS + 1).last() {
+                Some(bit) => !bit,
+                None => E::halt("Malformed expression detected during unsigned integer comparison."),
             }
         }
     }
