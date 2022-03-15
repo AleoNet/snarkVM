@@ -19,6 +19,7 @@ use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, Field, PrimeField, ToConstraintField};
 use snarkvm_utilities::{BitIteratorLE, FromBytes, ToBytes};
 
+use itertools::Itertools;
 use std::{
     fmt::Debug,
     io::{Read, Result as IoResult, Write},
@@ -46,8 +47,10 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
         let random_base_message = format!("{} for random base", message);
         let (generator, _, _) = hash_to_curve::<G::Affine>(&random_base_message);
         let mut base = generator.into_projective();
-        let mut random_base = Vec::with_capacity(WINDOW_SIZE);
-        for _ in 0..WINDOW_SIZE {
+
+        let num_scalar_bits = G::ScalarField::size_in_bits();
+        let mut random_base = Vec::with_capacity(num_scalar_bits);
+        for _ in 0..num_scalar_bits {
             random_base.push(base);
             base.double_in_place();
         }
@@ -69,7 +72,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
 
         // Compute h^r.
         let scalar_bits = BitIteratorLE::new(randomness.to_repr());
-        for (bit, power) in scalar_bits.into_iter().zip(&self.random_base) {
+        for (bit, power) in scalar_bits.into_iter().zip_eq(&self.random_base) {
             if bit {
                 output += power
             }
