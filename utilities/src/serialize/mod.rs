@@ -27,7 +27,7 @@ mod traits;
 pub use traits::*;
 
 #[cfg(feature = "derive")]
-pub use snarkvm_derives::*;
+pub use snarkvm_utilities_derives::*;
 
 /// Return the number of (byte-aligned) bits and bytes required to represent the given number of bits.
 ///

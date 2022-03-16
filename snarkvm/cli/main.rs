@@ -16,10 +16,10 @@
 
 use snarkvm::cli::{parse, Updater, CLI};
 
-use structopt::StructOpt;
+use clap::Parser;
 
 fn main() -> anyhow::Result<()> {
-    let cli = CLI::from_args();
+    let cli = CLI::parse();
 
     if cli.debug {
         println!("\n{:#?}\n", cli);

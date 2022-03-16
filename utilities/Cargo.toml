@@ -17,8 +17,8 @@ include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
 edition = "2021"
 
-[dependencies.snarkvm-derives]
-path = "../derives"
+[dependencies.snarkvm-utilities-derives]
+path = "./derives"
 version = "0.7.5"
 optional = true
 
@@ -62,5 +62,5 @@ default-features = false
 [features]
 default = [ "std", "derive" ]
 std = [ ]
-derive = [ "snarkvm-derives" ]
+derive = [ "snarkvm-utilities-derives" ]
 parallel = [ "rayon", "num_cpus", "aleo-std" ]

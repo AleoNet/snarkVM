@@ -1,0 +1,33 @@
+[package]
+name = "snarkvm-circuits-types-group"
+version = "0.7.5"
+authors = [ "The Aleo Team <hello@aleo.org>" ]
+description = "Group circuit for a decentralized virtual machine"
+license = "GPL-3.0"
+edition = "2021"
+
+[dependencies.snarkvm-circuits-environment]
+path = "../../environment"
+version = "0.7.5"
+
+[dependencies.snarkvm-circuits-types-boolean]
+path = "../boolean"
+version = "0.7.5"
+
+[dependencies.snarkvm-circuits-types-field]
+path = "../field"
+version = "0.7.5"
+
+[dependencies.snarkvm-circuits-types-scalar]
+path = "../scalar"
+version = "0.7.5"
+
+[dependencies.snarkvm-curves]
+path = "../../../curves"
+version = "0.7.5"
+default-features = false
+
+[dev-dependencies.snarkvm-utilities]
+path = "../../../utilities"
+version = "0.7.5"
+default-features = false
