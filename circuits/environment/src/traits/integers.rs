@@ -166,6 +166,10 @@ pub(super) mod integer_type {
     impl IntegerType for u64 {}
     impl IntegerType for u128 {}
 
+    pub trait CheckedPow: Sized {
+        fn checked_pow(&self, v: u32) -> Option<Self>;
+    }
+
     macro_rules! checked_impl {
         ($trait_name:ident, $method:ident, $t:ty) => {
             impl $trait_name for $t {
@@ -175,6 +179,21 @@ pub(super) mod integer_type {
                 }
             }
         };
+    }
+
+    checked_impl!(CheckedPow, checked_pow, u8);
+    checked_impl!(CheckedPow, checked_pow, u16);
+    checked_impl!(CheckedPow, checked_pow, u32);
+    checked_impl!(CheckedPow, checked_pow, u64);
+    checked_impl!(CheckedPow, checked_pow, u128);
+    checked_impl!(CheckedPow, checked_pow, i8);
+    checked_impl!(CheckedPow, checked_pow, i16);
+    checked_impl!(CheckedPow, checked_pow, i32);
+    checked_impl!(CheckedPow, checked_pow, i64);
+    checked_impl!(CheckedPow, checked_pow, i128);
+
+    pub trait WrappingDiv: Sized + Div<Self, Output = Self> {
+        fn wrapping_div(&self, v: &Self) -> Self;
     }
 
     macro_rules! wrapping_impl {
@@ -194,47 +213,6 @@ pub(super) mod integer_type {
                 }
             }
         };
-    }
-
-    macro_rules! integer_properties_impl {
-        ($t:ty, $dual:ty, $is_signed:expr) => {
-            impl IntegerProperties for $t {
-                type Dual = $dual;
-
-                const BITS: usize = <$t>::BITS as usize;
-                const MAX: $t = <$t>::MAX;
-                const MIN: $t = <$t>::MIN;
-
-                #[inline]
-                fn is_signed() -> bool {
-                    $is_signed
-                }
-
-                #[inline]
-                fn type_name() -> &'static str {
-                    std::any::type_name::<$t>()
-                }
-            }
-        };
-    }
-
-    pub trait CheckedPow: Sized {
-        fn checked_pow(&self, v: u32) -> Option<Self>;
-    }
-
-    checked_impl!(CheckedPow, checked_pow, u8);
-    checked_impl!(CheckedPow, checked_pow, u16);
-    checked_impl!(CheckedPow, checked_pow, u32);
-    checked_impl!(CheckedPow, checked_pow, u64);
-    checked_impl!(CheckedPow, checked_pow, u128);
-    checked_impl!(CheckedPow, checked_pow, i8);
-    checked_impl!(CheckedPow, checked_pow, i16);
-    checked_impl!(CheckedPow, checked_pow, i32);
-    checked_impl!(CheckedPow, checked_pow, i64);
-    checked_impl!(CheckedPow, checked_pow, i128);
-
-    pub trait WrappingDiv: Sized + Div<Self, Output = Self> {
-        fn wrapping_div(&self, v: &Self) -> Self;
     }
 
     wrapping_impl!(WrappingDiv, wrapping_div, u8);
@@ -293,18 +271,48 @@ pub(super) mod integer_type {
 
         /// Returns the name of the integer type as a string slice. (i.e. "u8")
         fn type_name() -> &'static str;
+
+        /// Returns the absolute value of the integer type.
+        fn absolute(&self) -> Self;
     }
 
-    integer_properties_impl!(u8, i8, false);
-    integer_properties_impl!(u16, i16, false);
-    integer_properties_impl!(u32, i32, false);
-    integer_properties_impl!(u64, i64, false);
-    integer_properties_impl!(u128, i128, false);
-    integer_properties_impl!(i8, u8, true);
-    integer_properties_impl!(i16, u16, true);
-    integer_properties_impl!(i32, u32, true);
-    integer_properties_impl!(i64, u64, true);
-    integer_properties_impl!(i128, u128, true);
+    macro_rules! integer_properties_impl {
+        ($t:ty, $dual:ty, $is_signed:expr, $abs:expr) => {
+            impl IntegerProperties for $t {
+                type Dual = $dual;
+
+                const BITS: usize = <$t>::BITS as usize;
+                const MAX: $t = <$t>::MAX;
+                const MIN: $t = <$t>::MIN;
+
+                #[inline]
+                fn is_signed() -> bool {
+                    $is_signed
+                }
+
+                #[inline]
+                fn type_name() -> &'static str {
+                    std::any::type_name::<$t>()
+                }
+
+                #[inline]
+                fn absolute(&self) -> Self {
+                    $abs(self)
+                }
+            }
+        };
+    }
+
+    integer_properties_impl!(u8, i8, false, |i: &u8| *i);
+    integer_properties_impl!(u16, i16, false, |i: &u16| *i);
+    integer_properties_impl!(u32, i32, false, |i: &u32| *i);
+    integer_properties_impl!(u64, i64, false, |i: &u64| *i);
+    integer_properties_impl!(u128, i128, false, |i: &u128| *i);
+    integer_properties_impl!(i8, u8, true, |i: &i8| i.abs());
+    integer_properties_impl!(i16, u16, true, |i: &i16| i.abs());
+    integer_properties_impl!(i32, u32, true, |i: &i32| i.abs());
+    integer_properties_impl!(i64, u64, true, |i: &i64| i.abs());
+    integer_properties_impl!(i128, u128, true, |i: &i128| i.abs());
 }
 
 /// Sealed trait pattern to prevent abuse of Magnitude.
