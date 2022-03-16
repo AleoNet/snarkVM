@@ -199,6 +199,13 @@ pub trait SubWrapped<Rhs: ?Sized = Self> {
     fn sub_wrapped(&self, rhs: &Rhs) -> Self::Output;
 }
 
+/// Unary operator for retrieving the absolute value.
+pub trait Abs {
+    type Output;
+
+    fn abs(self) -> Self::Output;
+}
+
 /// Unary operator for retrieving the doubled value.
 pub trait Double {
     type Output;

@@ -41,9 +41,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> PowChecked<Integer<E, M>> for
 
                 let result_times_self = if I::is_signed() {
                     // Multiply the absolute value of `self` and `other` in the base field.
-                    let absolute_result = Self::ternary(result.msb(), &Self::zero().sub_wrapped(&result), &result);
-                    let absolute_self = Self::ternary(self.msb(), &Self::zero().sub_wrapped(self), self);
-                    let (product, carry) = Self::mul_with_carry(&absolute_result, &absolute_self, true);
+                    let (product, carry) = Self::mul_with_carry(&(&result).abs(), &self.abs(), true);
 
                     // We need to check that the abs(a) * abs(b) did not exceed the unsigned maximum.
                     let carry_bits_nonzero = carry.iter().fold(Boolean::new(Mode::Constant, false), |a, b| a | b);

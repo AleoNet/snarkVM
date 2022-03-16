@@ -74,19 +74,15 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShrWrapped<Integer<E, M>> for
 
                 if I::is_signed() {
                     // Divide the absolute value of `self` and `shift` (as a divisor) in the base field.
-                    let dividend_unsigned =
-                        Self::ternary(self.msb(), &(!self).add_wrapped(&Self::one()), self).cast_as_dual();
+                    let dividend_unsigned = self.abs().cast_as_dual();
                     let divisor_unsigned = shift_as_divisor.cast_as_dual();
 
-                    let dividend_unsigned_value = dividend_unsigned.eject_value();
-                    let divisor_unsigned_value = divisor_unsigned.eject_value();
+                    let dividend = dividend_unsigned.eject_value();
+                    let divisor = divisor_unsigned.eject_value();
 
                     // Wrapping operations are safe since unsigned division never overflows.
-                    let quotient_unsigned_value = dividend_unsigned_value.wrapping_div(&divisor_unsigned_value);
-                    let remainder_unsigned_value = dividend_unsigned_value.wrapping_rem(&divisor_unsigned_value);
-
-                    let quotient_unsigned = Integer::<E, I::Dual>::new(Mode::Private, quotient_unsigned_value);
-                    let remainder_unsigned = Integer::<E, I::Dual>::new(Mode::Private, remainder_unsigned_value);
+                    let quotient_unsigned = Integer::<E, I::Dual>::new(Mode::Private, dividend.wrapping_div(&divisor));
+                    let remainder_unsigned = Integer::<E, I::Dual>::new(Mode::Private, dividend.wrapping_rem(&divisor));
 
                     // Ensure that Euclidean division holds for these values in the base field.
                     let remainder_field = remainder_unsigned.to_field();

@@ -17,6 +17,7 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
+pub mod abs;
 pub mod add_checked;
 pub mod add_wrapped;
 pub mod and;
