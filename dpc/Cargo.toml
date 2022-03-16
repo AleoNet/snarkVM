@@ -33,6 +33,11 @@ path = "benches/posw.rs"
 harness = false
 
 [[bench]]
+name = "record"
+path = "benches/record.rs"
+harness = false
+
+[[bench]]
 name = "transaction"
 path = "benches/transaction.rs"
 harness = false
