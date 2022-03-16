@@ -115,6 +115,9 @@ optional = true
 [dependencies.crossbeam-channel]
 version = "0.5"
 
+[target.'cfg(not(target_family = "wasm"))'.dependencies.curl]
+version = "0.4.43"
+
 [dependencies.derivative]
 version = "2"
 features = [ "use_core" ]
@@ -166,6 +169,10 @@ default-features = false
 version = "1"
 optional = true
 
+[dependencies.reqwest]
+version = "0.11"
+optional = true
+
 [dependencies.rust-gpu-tools]
 version = "0.6.0"
 optional = true
@@ -186,6 +193,10 @@ features = [ "const_generics", "const_new" ]
 
 [dependencies.thiserror]
 version = "1.0"
+
+[dependencies.wasm-bindgen-futures]
+version = "0.4"
+optional = true
 
 [dev-dependencies.expect-test ]
 version = "1.1.0"
@@ -251,7 +262,9 @@ wasm = [
   "prf",
   "signature",
   "snark",
-  "getrandom"
+  "getrandom",
+  "wasm-bindgen-futures",
+  "reqwest"
 ]
 
 cuda = [ "rust-gpu-tools" ]

@@ -14,14 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use rand::Rng;
 use snarkvm_curves::traits::PairingEngine;
 use snarkvm_utilities::{
     CanonicalDeserialize,
     CanonicalSerialize,
     ConstantSerializedSize,
-    FromBytes,
     Read,
     SerializationError,
     ToBytes,
@@ -30,6 +29,7 @@ use snarkvm_utilities::{
 
 use parking_lot::RwLock;
 use std::{
+    collections::HashMap,
     fs::{File, OpenOptions},
     io::{BufReader, Seek, SeekFrom},
     marker::PhantomData,
@@ -39,8 +39,24 @@ use std::{
 
 lazy_static::lazy_static! {
     static ref DEFAULT_PATH: PathBuf = PathBuf::from("~/.aleo/powers_of_g");
+    static ref URLS: HashMap<usize, String> = {
+        let mut m = HashMap::new();
+        m.insert(1 << 16, String::new());
+        m.insert(1 << 17, String::new());
+        m.insert(1 << 18, String::new());
+        m.insert(1 << 19, String::new());
+        m.insert(1 << 20, String::new());
+        m.insert(1 << 21, String::new());
+        m.insert(1 << 22, String::new());
+        m.insert(1 << 23, String::new());
+        m.insert(1 << 24, String::new());
+        m.insert(1 << 25, String::new());
+        m.insert(1 << 26, String::new());
+        m.insert(1 << 27, String::new());
+        m.insert(1 << 28, String::new());
+        m
+    };
 }
-// TODO: add buckets here
 
 /// An abstraction over a vector of powers of G, meant to reduce
 /// memory burden when handling universal setup parameters.
@@ -54,8 +70,6 @@ pub struct PowersOfG<E: PairingEngine> {
     /// clones.
     #[derivative(Debug = "ignore")]
     file: Arc<RwLock<File>>,
-    /// The degree up to which we currently have powers.
-    degree: u64,
     _phantom_data: PhantomData<E>,
 }
 
@@ -117,25 +131,23 @@ impl<E: PairingEngine> PowersOfG<E> {
     /// powers in a file at `file_path`.
     pub fn new(file_path: PathBuf) -> Result<Self> {
         // Open the given file, creating it if it doesn't yet exist.
-        let mut file = OpenOptions::new().read(true).write(true).create(true).open(file_path.clone())?;
-        let degree = if file.metadata()?.len() > 0 { u32::read_le(&mut file).unwrap() as u64 } else { 0 };
+        let file = OpenOptions::new().read(true).write(true).create(true).open(file_path.clone())?;
 
         Ok(Self {
             file_path: String::from(file_path.to_str().expect("could not get filepath for powers of g")),
             file: Arc::new(RwLock::new(file)),
-            degree,
             _phantom_data: PhantomData,
         })
     }
 
     /// Return the number of current powers of G.
     pub fn len(&self) -> usize {
-        self.degree as usize
+        (self.file.read().metadata().unwrap().len() - 4) as usize / E::G1Affine::SERIALIZED_SIZE
     }
 
     /// Returns whether or not the current powers of G are empty.
     pub fn is_empty(&self) -> bool {
-        self.degree == 0
+        self.file.read().metadata().unwrap().len() == 0
     }
 
     /// Returns an element at `index`.
@@ -195,7 +207,52 @@ impl<E: PairingEngine> PowersOfG<E> {
     }
 
     /// Download the transcript up to `degree`.
-    fn download_up_to(&self, _degree: usize) -> Result<()> {
-        unimplemented!()
+    #[cfg(not(feature = "wasm"))]
+    fn download_up_to(&self, degree: usize) -> Result<()> {
+        if let Some(link) = URLS.get(&degree) {
+            let mut easy = curl::easy::Easy::new();
+            easy.url(link)?;
+            let mut transfer = easy.transfer();
+            transfer.write_function(|data| {
+                let mut file = self.file.write();
+                file.seek(SeekFrom::End(0)).unwrap();
+                file.write_all(data).unwrap();
+                Ok(data.len())
+            })?;
+            Ok(transfer.perform()?)
+        } else {
+            Err(anyhow!("incorrect degree selected - {}", degree))
+        }
+    }
+
+    /// Download the transcript up to `degree`.
+    #[cfg(feature = "wasm")]
+    fn download_up_to(&self, degree: usize) -> Result<()> {
+        if let Some(link) = URLS.get(&degree) {
+            let buffer = alloc::sync::Arc::new(parking_lot::RwLock::new(vec![]));
+            let url = String::from(link);
+
+            // NOTE(julesdesmit): I'm leaking memory here so that I can get a
+            // static reference to the url, which is needed to pass it into
+            // the local thread which downloads the file.
+            let buffer_clone = alloc::sync::Arc::downgrade(&buffer);
+            // NOTE(julesdesmit): We spawn a local thread here in order to be
+            // able to accommodate the async syntax from reqwest.
+            wasm_bindgen_futures::spawn_local(async move {
+                let content = reqwest::get(url).await.unwrap().text().await.unwrap();
+
+                let buffer = buffer_clone.upgrade().unwrap();
+                buffer.write().extend_from_slice(content.as_bytes());
+                drop(buffer);
+            });
+            // Recover the bytes.
+            let buffer = alloc::sync::Arc::try_unwrap(buffer).unwrap();
+            let buffer = buffer.write().clone();
+            let mut file = self.file.write();
+            file.seek(SeekFrom::End(0))?;
+            Ok(file.write_all(&buffer)?)
+        } else {
+            Err(anyhow!("incorrect degree selected - {}", degree))
+        }
     }
 }

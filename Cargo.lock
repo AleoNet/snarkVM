@@ -2010,6 +2010,7 @@ dependencies = [
  "criterion",
  "crossbeam-channel",
  "csv",
+ "curl",
  "derivative",
  "digest 0.10.3",
  "expect-test",
