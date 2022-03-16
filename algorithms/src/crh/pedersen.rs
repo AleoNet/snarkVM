@@ -19,6 +19,7 @@ use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
+use itertools::Itertools;
 use std::{
     borrow::Cow,
     fmt::Debug,
@@ -63,10 +64,10 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
         // Compute sum of h_i^{m_i} for all i.
         let result = padded_input
             .chunks(WINDOW_SIZE)
-            .zip(&self.bases)
+            .zip_eq(&self.bases)
             .map(|(bits, powers)| {
                 let mut encoded = G::zero();
-                for (bit, base) in bits.iter().zip(powers.iter()) {
+                for (bit, base) in bits.iter().zip_eq(powers.iter()) {
                     if *bit {
                         encoded += base;
                     }
