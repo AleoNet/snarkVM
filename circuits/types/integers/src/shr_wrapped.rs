@@ -64,7 +64,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShrWrapped<Integer<E, M>> for
                 let two = Field::one() + Field::one();
                 let mut shift_in_field = Field::one();
                 for bit in rhs.bits_le[..first_upper_bit_index].iter().rev() {
-                    shift_in_field = &shift_in_field * &shift_in_field;
+                    shift_in_field = shift_in_field.square();
                     shift_in_field = Field::ternary(bit, &(&shift_in_field * &two), &shift_in_field);
                 }
 
