@@ -41,6 +41,7 @@ lazy_static::lazy_static! {
     static ref DEFAULT_PATH: PathBuf = PathBuf::from("~/.aleo/powers_of_g");
     static ref URLS: HashMap<usize, String> = {
         let mut m = HashMap::new();
+        // TODO: add links
         m.insert(1 << 16, String::new());
         m.insert(1 << 17, String::new());
         m.insert(1 << 18, String::new());
