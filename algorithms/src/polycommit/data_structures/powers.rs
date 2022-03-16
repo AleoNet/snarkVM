@@ -56,6 +56,7 @@ lazy_static::lazy_static! {
         m.insert(1 << 28, String::new());
         m
     };
+    static ref BASE_POWERS: &'static [u8] = include_bytes!("./powers_of_g_15");
 }
 
 /// An abstraction over a vector of powers of G, meant to reduce
@@ -131,7 +132,13 @@ impl<E: PairingEngine> PowersOfG<E> {
     /// powers in a file at `file_path`.
     pub fn new(file_path: PathBuf) -> Result<Self> {
         // Open the given file, creating it if it doesn't yet exist.
-        let file = OpenOptions::new().read(true).write(true).create(true).open(file_path.clone())?;
+        let mut file = OpenOptions::new().read(true).write(true).create(true).open(file_path.clone())?;
+
+        // If the file is empty, let's write the base powers (up to degree 15)
+        // to it.
+        if file.metadata()?.len() == 0 {
+            file.write_all(&BASE_POWERS)?;
+        }
 
         Ok(Self {
             file_path: String::from(file_path.to_str().expect("could not get filepath for powers of g")),

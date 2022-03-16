@@ -2027,6 +2027,7 @@ dependencies = [
  "rand_core",
  "rand_xorshift",
  "rayon",
+ "reqwest",
  "rust-gpu-tools",
  "serde",
  "serde_json",
@@ -2038,6 +2039,7 @@ dependencies = [
  "snarkvm-r1cs",
  "snarkvm-utilities",
  "thiserror",
+ "wasm-bindgen-futures",
 ]
 
 [[package]]
