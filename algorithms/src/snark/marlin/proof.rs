@@ -14,10 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    polycommit::{BatchLCProof, PCCommitment, PolynomialCommitment},
-    snark::marlin::ahp::prover::ProverMessage,
-};
+use crate::polycommit::{BatchLCProof, PolynomialCommitment};
+
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{
     error,
@@ -27,15 +25,57 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
+#[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
+pub struct Commitments<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> {
+    /// Commitment to the `w` polynomial.
+    pub w: PC::Commitment,
+    /// Commitment to the `z_a` polynomial.
+    pub z_a: PC::Commitment,
+    /// Commitment to the `z_b` polynomial.
+    pub z_b: PC::Commitment,
+    /// Commitment to the masking polynomial.
+    pub mask_poly: PC::Commitment,
+    /// Commitment to the `g_1` polynomial.
+    pub g_1: PC::Commitment,
+    /// Commitment to the `h_1` polynomial.
+    pub h_1: PC::Commitment,
+    /// Commitment to the `g_a` polynomial.
+    pub g_a: PC::Commitment,
+    /// Commitment to the `g_b` polynomial.
+    pub g_b: PC::Commitment,
+    /// Commitment to the `g_c` polynomial.
+    pub g_c: PC::Commitment,
+    /// Commitment to the `h_2` polynomial.
+    pub h_2: PC::Commitment,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
+pub struct EvaluationsForProof<F: PrimeField> {
+    /// Evaluation of `z_a` at `beta`.
+    pub z_a_eval: F,
+    /// Evaluation of `z_b` at `beta`.
+    pub z_b_eval: F,
+    /// Evaluation of `g_1` at `beta`.
+    pub g_1_eval: F,
+    /// Evaluation of `t` at `beta`.
+    pub t_eval: F,
+    /// Evaluation of `g_a` at `beta`.
+    pub g_a_eval: F,
+    /// Evaluation of `g_b` at `gamma`.
+    pub g_b_eval: F,
+    /// Evaluation of `g_c` at `gamma`.
+    pub g_c_eval: F,
+}
+
 /// A zkSNARK proof.
 #[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Proof<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> {
-    /// Commitments to the polynomials produced by the AHP prover.
-    pub commitments: Vec<Vec<PC::Commitment>>,
-    /// Evaluations of these polynomials.
-    pub evaluations: Vec<F>,
-    /// The field elements sent by the prover.
-    pub prover_messages: Vec<ProverMessage<F>>,
+    /// Commitments to prover polynomials.
+    pub commitments: Commitments<F, CF, PC>,
+
+    /// Evaluations of some of the committed polynomials.
+    pub evaluations: EvaluationsForProof<F>,
+
     /// An evaluation proof from the polynomial commitment.
     pub pc_proof: BatchLCProof<F, CF, PC>,
 }
@@ -43,72 +83,11 @@ pub struct Proof<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>>
 impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> Proof<F, CF, PC> {
     /// Construct a new proof.
     pub fn new(
-        commitments: Vec<Vec<PC::Commitment>>,
-        evaluations: Vec<F>,
-        prover_messages: Vec<ProverMessage<F>>,
+        commitments: Commitments<F, CF, PC>,
+        evaluations: EvaluationsForProof<F>,
         pc_proof: BatchLCProof<F, CF, PC>,
     ) -> Self {
-        Self { commitments, evaluations, prover_messages, pc_proof }
-    }
-
-    /// Prints information about the size of the proof.
-    pub fn print_size_info(&self) {
-        let size_of_fe_in_bytes = F::zero().to_repr().as_ref().len() * 8;
-        let mut num_comms_without_degree_bounds = 0;
-        let mut num_comms_with_degree_bounds = 0;
-        let mut size_bytes_comms_without_degree_bounds = 0;
-        let mut size_bytes_comms_with_degree_bounds = 0;
-        let mut size_bytes_proofs = 0;
-        for c in self.commitments.iter().flatten() {
-            if !c.has_degree_bound() {
-                num_comms_without_degree_bounds += 1;
-                size_bytes_comms_without_degree_bounds += c.serialized_size();
-            } else {
-                num_comms_with_degree_bounds += 1;
-                size_bytes_comms_with_degree_bounds += c.serialized_size();
-            }
-        }
-
-        let proofs: Vec<PC::Proof> = self.pc_proof.proof.clone().into();
-        let num_proofs = proofs.len();
-        for proof in &proofs {
-            size_bytes_proofs += proof.serialized_size();
-        }
-
-        let num_evaluations = self.evaluations.len();
-        let evaluation_size_in_bytes = num_evaluations * size_of_fe_in_bytes;
-        let num_prover_messages: usize = self.prover_messages.iter().map(|v| v.field_elements.len()).sum();
-        let prover_message_size_in_bytes = num_prover_messages * size_of_fe_in_bytes;
-        let argument_size = size_bytes_comms_with_degree_bounds
-            + size_bytes_comms_without_degree_bounds
-            + size_bytes_proofs
-            + prover_message_size_in_bytes
-            + evaluation_size_in_bytes;
-        let statistics = format!(
-            "Argument size in bytes: {}\n\n\
-             Number of commitments without degree bounds: {}\n\
-             Size (in bytes) of commitments without degree bounds: {}\n\
-             Number of commitments with degree bounds: {}\n\
-             Size (in bytes) of commitments with degree bounds: {}\n\n\
-             Number of evaluation proofs: {}\n\
-             Size (in bytes) of evaluation proofs: {}\n\n\
-             Number of evaluations: {}\n\
-             Size (in bytes) of evaluations: {}\n\n\
-             Number of field elements in prover messages: {}\n\
-             Size (in bytes) of prover message: {}\n",
-            argument_size,
-            num_comms_without_degree_bounds,
-            size_bytes_comms_without_degree_bounds,
-            num_comms_with_degree_bounds,
-            size_bytes_comms_with_degree_bounds,
-            num_proofs,
-            size_bytes_proofs,
-            num_evaluations,
-            evaluation_size_in_bytes,
-            num_prover_messages,
-            prover_message_size_in_bytes,
-        );
-        add_to_trace!(|| "Statistics about proof", || statistics);
+        Self { commitments, evaluations, pc_proof }
     }
 }
 

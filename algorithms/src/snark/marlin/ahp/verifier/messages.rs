@@ -16,11 +16,27 @@
 
 /// First message of the verifier.
 #[derive(Copy, Clone, Debug)]
-pub struct VerifierFirstMessage<F> {
+pub struct FirstMessage<F> {
     /// Query for the random polynomial.
     pub alpha: F,
     /// Randomizer for the lincheck for `B`.
     pub eta_b: F,
     /// Randomizer for the lincheck for `C`.
     pub eta_c: F,
+}
+
+/// Second verifier message.
+#[derive(Copy, Clone, Debug)]
+pub struct SecondMessage<F> {
+    /// Query for the second round of polynomials.
+    pub beta: F,
+}
+
+/// Third message of the verifier.
+#[derive(Copy, Clone, Debug)]
+pub struct ThirdMessage<F> {
+    /// Randomizer for the h-polynomial for `B`.
+    pub r_b: F,
+    /// Randomizer for the h-polynomial for `C`.
+    pub r_c: F,
 }

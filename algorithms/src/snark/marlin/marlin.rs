@@ -24,6 +24,7 @@ use crate::{
         prover::{ProverConstraintSystem, ProverMessage},
         CircuitProvingKey,
         CircuitVerifyingKey,
+        Commitments,
         MarlinError,
         MarlinMode,
         PreparedCircuitVerifyingKey,
@@ -195,16 +196,15 @@ impl<
         // First round
 
         Self::terminate(terminator)?;
-        let (prover_first_message, prover_first_oracles, prover_state) =
-            AHPForR1CS::<_, MM>::prover_first_round(prover_init_state, zk_rng)?;
+        let (first_oracles, prover_state) = AHPForR1CS::<_, MM>::prover_first_round(prover_init_state, zk_rng)?;
         Self::terminate(terminator)?;
 
         let first_round_comm_time = start_timer!(|| "Committing to first round polys");
         let (first_commitments, first_commitment_randomnesses) =
-            PC::commit(&circuit_proving_key.committer_key, prover_first_oracles.iter_for_commit(), Some(zk_rng))?;
+            PC::commit(&circuit_proving_key.committer_key, first_oracles.iter_for_commit(), Some(zk_rng))?;
         end_timer!(first_round_comm_time);
 
-        Self::verifier_absorb_labeled(&first_commitments, &prover_first_message, &mut fs_rng);
+        Self::verifier_absorb_labeled_no_msg(&first_commitments, &mut fs_rng);
         Self::terminate(terminator)?;
 
         let (verifier_first_message, verifier_state) = AHPForR1CS::<_, MM>::verifier_first_round(
@@ -217,20 +217,20 @@ impl<
         // Second round
 
         Self::terminate(terminator)?;
-        let (prover_second_message, prover_second_oracles, prover_state) =
+        let (second_oracles, prover_state) =
             AHPForR1CS::<_, MM>::prover_second_round(&verifier_first_message, prover_state, zk_rng);
         Self::terminate(terminator)?;
 
         let second_round_comm_time = start_timer!(|| "Committing to second round polys");
         let (second_commitments, second_commitment_randomnesses) = PC::commit_with_terminator(
             &circuit_proving_key.committer_key,
-            prover_second_oracles.iter().map(Into::into),
+            second_oracles.iter().map(Into::into),
             terminator,
             Some(zk_rng),
         )?;
         end_timer!(second_round_comm_time);
 
-        Self::verifier_absorb_labeled(&second_commitments, &prover_second_message, &mut fs_rng);
+        Self::verifier_absorb_labeled_no_msg(&second_commitments, &mut fs_rng);
         Self::terminate(terminator)?;
 
         let (verifier_second_msg, verifier_state) =
@@ -242,14 +242,14 @@ impl<
 
         Self::terminate(terminator)?;
 
-        let (prover_third_message, prover_third_oracles, prover_state) =
+        let (prover_third_message, third_oracles, prover_state) =
             AHPForR1CS::<_, MM>::prover_third_round(&verifier_second_msg, prover_state, zk_rng)?;
         Self::terminate(terminator)?;
 
         let third_round_comm_time = start_timer!(|| "Committing to third round polys");
         let (third_commitments, third_commitment_randomnesses) = PC::commit_with_terminator(
             &circuit_proving_key.committer_key,
-            prover_third_oracles.iter().map(Into::into),
+            third_oracles.iter().map(Into::into),
             terminator,
             Some(zk_rng),
         )?;
@@ -266,20 +266,19 @@ impl<
 
         Self::terminate(terminator)?;
 
-        let (prover_fourth_message, prover_fourth_oracles) =
-            AHPForR1CS::<_, MM>::prover_fourth_round(&verifier_third_msg, prover_state, zk_rng)?;
+        let fourth_oracles = AHPForR1CS::<_, MM>::prover_fourth_round(&verifier_third_msg, prover_state, zk_rng)?;
         Self::terminate(terminator)?;
 
         let fourth_round_comm_time = start_timer!(|| "Committing to fourth round polys");
         let (fourth_commitments, fourth_commitment_randomnesses) = PC::commit_with_terminator(
             &circuit_proving_key.committer_key,
-            prover_fourth_oracles.iter().map(Into::into),
+            fourth_oracles.iter().map(Into::into),
             terminator,
             Some(zk_rng),
         )?;
         end_timer!(fourth_round_comm_time);
 
-        Self::verifier_absorb_labeled(&fourth_commitments, &prover_fourth_message, &mut fs_rng);
+        Self::verifier_absorb_labeled_no_msg(&fourth_commitments, &mut fs_rng);
 
         let verifier_state = AHPForR1CS::<_, MM>::verifier_fourth_round(verifier_state, &mut fs_rng)?;
         // --------------------------------------------------------------------
@@ -290,10 +289,10 @@ impl<
         let polynomials: Vec<_> = circuit_proving_key
             .circuit
             .iter() // 12 items
-            .chain(prover_first_oracles.iter_for_open()) // 3 or 4 items
-            .chain(prover_second_oracles.iter())// 2 items
-            .chain(prover_third_oracles.iter())// 3 items
-            .chain(prover_fourth_oracles.iter())// 1 item
+            .chain(first_oracles.iter_for_open()) // 3 or 4 items
+            .chain(second_oracles.iter())// 2 items
+            .chain(third_oracles.iter())// 3 items
+            .chain(fourth_oracles.iter())// 1 item
             .collect();
 
         Self::terminate(terminator)?;
@@ -303,13 +302,22 @@ impl<
 
         // Gather commitments in one vector.
         #[rustfmt::skip]
-        let commitments = vec![
-            first_commitments.iter().map(|p| p.commitment()).cloned().collect(),
-            second_commitments.iter().map(|p| p.commitment()).cloned().collect(),
-            third_commitments.iter().map(|p| p.commitment()).cloned().collect(),
-            fourth_commitments.iter().map(|p| p.commitment()).cloned().collect(),
-        ];
-        Self::terminate(terminator)?;
+        let commitments = Commitments {
+            w: *first_commitments[0].commitment(),
+            z_a: *first_commitments[1].commitment(),
+            z_b: *first_commitments[2].commitment(),
+            mask_poly: *first_commitments[3].commitment(),
+
+            g_1: *second_commitments[0].commitment(),
+            h_1: *second_commitments[1].commitment(),
+
+
+            g_a: *third_commitments[0].commitment(),
+            g_b: *third_commitments[1].commitment(),
+            g_c: *third_commitments[2].commitment(),
+
+            h_2: *fourth_commitments[3].commitment(),
+        };
 
         let indexer_polynomials = AHPForR1CS::<TargetField, MM>::indexer_polynomials();
 
@@ -390,16 +398,15 @@ impl<
 
         Self::terminate(terminator)?;
 
-        // Gather prover messages together.
-        let prover_messages =
-            vec![prover_first_message, prover_second_message, prover_third_message, prover_fourth_message];
-
-        let proof = Proof::new(commitments, evaluations, prover_messages, pc_proof);
+        let proof = Proof::new(commitments, evaluations, pc_proof);
         assert_eq!(proof.pc_proof.is_hiding(), MM::ZK);
-        proof.print_size_info();
         end_timer!(prover_time);
 
         Ok(proof)
+    }
+
+    fn verifier_absorb_labeled_no_msg(commitments: &[LabeledCommitment<PC::Commitment>], fs_rng: &mut FS) {
+        Self::verifier_absorb_labeled(commitments, &ProverMessage::default(), fs_rng)
     }
 
     fn verifier_absorb_labeled(

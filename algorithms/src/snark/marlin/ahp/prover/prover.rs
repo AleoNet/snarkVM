@@ -29,15 +29,13 @@ use crate::{
     snark::marlin::{
         ahp::{
             indexer::{Circuit, CircuitInfo, Matrix},
-            prover::ProverConstraintSystem,
-            verifier::{VerifierFirstMessage, VerifierSecondMessage},
+            verifier,
             AHPError,
             AHPForR1CS,
             UnnormalizedBivariateLagrangePoly,
         },
         matrices::MatrixArithmetization,
-        prover::{state::ProverState, ProverMessage},
-        verifier::VerifierThirdMessage,
+        prover,
         MarlinMode,
     },
 };
@@ -54,101 +52,16 @@ use snarkvm_utilities::println;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-/// The first set of prover oracles.
-#[derive(Debug, Clone)]
-pub struct ProverFirstOracles<'a, F: PrimeField> {
-    /// The evaluations of `Az`.
-    pub z_a: LabeledPolynomialWithBasis<'a, F>,
-    /// The evaluations of `Bz`.
-    pub z_b: LabeledPolynomialWithBasis<'a, F>,
-    /// The sum-check hiding polynomial.
-    pub mask_poly: Option<LabeledPolynomial<F>>,
-    /// The LDE of `w`.
-    pub w_poly: LabeledPolynomial<F>,
-    /// The LDE of `Az`.
-    pub z_a_poly: LabeledPolynomial<F>,
-    /// The LDE of `Bz`.
-    pub z_b_poly: LabeledPolynomial<F>,
-}
-
-impl<'a, F: PrimeField> ProverFirstOracles<'a, F> {
-    /// Iterate over the polynomials output by the prover in the first round.
-    /// Intended for use when committing.
-    pub fn iter_for_commit(&'a self) -> impl Iterator<Item = LabeledPolynomialWithBasis<'a, F>> {
-        [
-            Some(&self.w_poly).map(Into::into),
-            Some(self.z_a.clone()),
-            Some(self.z_b.clone()),
-            self.mask_poly.as_ref().map(Into::into),
-        ]
-        .into_iter()
-        .flatten()
-    }
-
-    /// Iterate over the polynomials output by the prover in the first round.
-    /// Intended for use when opening.
-    pub fn iter_for_open(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
-        [Some(&self.w_poly), Some(&self.z_a_poly), Some(&self.z_b_poly), self.mask_poly.as_ref()].into_iter().flatten()
-    }
-}
-
-/// The second set of prover oracles.
-#[derive(Debug)]
-pub struct ProverSecondOracles<F: PrimeField> {
-    /// The polynomial `g` resulting from the first sumcheck.
-    pub g_1: LabeledPolynomial<F>,
-    /// The polynomial `h` resulting from the first sumcheck.
-    pub h_1: LabeledPolynomial<F>,
-}
-
-impl<F: PrimeField> ProverSecondOracles<F> {
-    /// Iterate over the polynomials output by the prover in the second round.
-    pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
-        [&self.g_1, &self.h_1].into_iter()
-    }
-}
-
-/// The third set of prover oracles.
-#[derive(Debug)]
-pub struct ProverThirdOracles<F: PrimeField> {
-    /// The polynomial `g_a` resulting from the second sumcheck.
-    pub g_a: LabeledPolynomial<F>,
-    /// The polynomial `g_b` resulting from the second sumcheck.
-    pub g_b: LabeledPolynomial<F>,
-    /// The polynomial `g_c` resulting from the second sumcheck.
-    pub g_c: LabeledPolynomial<F>,
-}
-
-impl<F: PrimeField> ProverThirdOracles<F> {
-    /// Iterate over the polynomials output by the prover in the third round.
-    pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
-        [&self.g_a, &self.g_b, &self.g_c].into_iter()
-    }
-}
-
-#[derive(Debug)]
-pub struct ProverFourthOracles<F: PrimeField> {
-    /// The polynomial `h_2` resulting from the second sumcheck.
-    pub h_2: LabeledPolynomial<F>,
-}
-
-impl<F: PrimeField> ProverFourthOracles<F> {
-    /// Iterate over the polynomials output by the prover in the third round.
-    pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
-        [&self.h_2].into_iter()
-    }
-}
-
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Initialize the AHP prover.
     pub fn prover_init<'a, C: ConstraintSynthesizer<F>>(
         index: &'a Circuit<F, MM>,
         circuit: &C,
-    ) -> Result<ProverState<'a, F, MM>, AHPError> {
+    ) -> Result<prover::State<'a, F, MM>, AHPError> {
         let init_time = start_timer!(|| "AHP::Prover::Init");
 
         let constraint_time = start_timer!(|| "Generating constraints and witnesses");
-        let mut pcs = ProverConstraintSystem::new();
+        let mut pcs = prover::ConstraintSystem::new();
         circuit.generate_constraints(&mut pcs)?;
         end_timer!(constraint_time);
 
@@ -161,7 +74,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let num_non_zero_b = index.index_info.num_non_zero_b;
         let num_non_zero_c = index.index_info.num_non_zero_c;
 
-        let ProverConstraintSystem {
+        let prover::ConstraintSystem {
             public_variables: padded_public_variables,
             private_variables,
             num_constraints,
@@ -221,7 +134,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let zk_bound = 1; // One query is sufficient for our desired soundness
 
         end_timer!(init_time);
-        let mut state = ProverState::initialize(padded_public_variables, private_variables, zk_bound, index)?;
+        let mut state = prover::State::initialize(padded_public_variables, private_variables, zk_bound, index)?;
         state.z_a = Some(z_a);
         state.z_b = Some(z_b);
 
@@ -231,9 +144,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Output the first round message and the next state.
     #[allow(clippy::type_complexity)]
     pub fn prover_first_round<'a, R: RngCore>(
-        mut state: ProverState<'a, F, MM>,
+        mut state: prover::State<'a, F, MM>,
         rng: &mut R,
-    ) -> Result<(ProverMessage<F>, ProverFirstOracles<'a, F>, ProverState<'a, F, MM>), AHPError> {
+    ) -> Result<(prover::FirstOracles<'a, F>, prover::State<'a, F, MM>), AHPError> {
         let round_time = start_timer!(|| "AHP::Prover::FirstRound");
         let constraint_domain = state.constraint_domain;
         let zk_bound = state.zk_bound;
@@ -326,8 +239,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             None
         };
 
-        let msg = ProverMessage::default();
-
         let hiding_bound = if MM::ZK { Some(1) } else { None };
 
         let w_poly = LabeledPolynomial::new("w".to_string(), w_poly, None, hiding_bound);
@@ -357,7 +268,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         }
         let z_b = LabeledPolynomialWithBasis::new_linear_combination("z_b".to_string(), z_b, hiding_bound);
 
-        let oracles = ProverFirstOracles { z_a, z_b, mask_poly: mask_poly.clone(), z_a_poly, z_b_poly, w_poly };
+        let oracles = prover::FirstOracles { z_a, z_b, mask_poly: mask_poly.clone(), z_a_poly, z_b_poly, w_poly };
 
         state.w_poly = Some(oracles.w_poly.clone());
         state.mz_polys = Some((oracles.z_a_poly.clone(), oracles.z_b_poly.clone()));
@@ -365,7 +276,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         state.mask_poly = mask_poly;
         end_timer!(round_time);
 
-        Ok((msg, oracles, state))
+        Ok((oracles, state))
     }
 
     fn calculate_t<'a>(
@@ -401,10 +312,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
     /// Output the second round message and the next state.
     pub fn prover_second_round<'a, R: RngCore>(
-        verifier_message: &VerifierFirstMessage<F>,
-        mut state: ProverState<'a, F, MM>,
+        verifier_message: &verifier::FirstMessage<F>,
+        mut state: prover::State<'a, F, MM>,
         _r: &mut R,
-    ) -> (ProverMessage<F>, ProverSecondOracles<F>, ProverState<'a, F, MM>) {
+    ) -> (prover::SecondOracles<F>, prover::State<'a, F, MM>) {
         let round_time = start_timer!(|| "AHP::Prover::SecondRound");
 
         let constraint_domain = state.constraint_domain;
@@ -413,7 +324,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let mask_poly = state.mask_poly.as_ref();
         assert_eq!(MM::ZK, mask_poly.is_some());
 
-        let VerifierFirstMessage { alpha, eta_b, eta_c } = *verifier_message;
+        let verifier::FirstMessage { alpha, eta_b, eta_c } = *verifier_message;
 
         let summed_z_m_poly_time = start_timer!(|| "Compute z_m poly");
         let (z_a_poly, z_b_poly) = state.mz_polys.as_ref().unwrap();
@@ -578,13 +489,11 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         drop(x_g_1);
         end_timer!(sumcheck_time);
 
-        let msg = ProverMessage::default();
-
         assert!(g_1.degree() <= constraint_domain.size() - 2);
         assert!(h_1.degree() <= 2 * constraint_domain.size() + 2 * zk_bound - 2);
 
         let hiding_bound = if MM::ZK { Some(1) } else { None };
-        let oracles = ProverSecondOracles {
+        let oracles = prover::SecondOracles {
             g_1: LabeledPolynomial::new("g_1".into(), g_1, Some(constraint_domain.size() - 2), hiding_bound),
             h_1: LabeledPolynomial::new("h_1".into(), h_1, None, None),
         };
@@ -593,7 +502,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         state.verifier_first_message = Some(*verifier_message);
         end_timer!(round_time);
 
-        (msg, oracles, state)
+        (oracles, state)
     }
 
     /// Output the number of oracles sent by the prover in the second round.
@@ -610,15 +519,15 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
     /// Output the third round message and the next state.
     pub fn prover_third_round<'a, R: RngCore>(
-        verifier_message: &VerifierSecondMessage<F>,
-        mut state: ProverState<'a, F, MM>,
+        verifier_message: &verifier::SecondMessage<F>,
+        mut state: prover::State<'a, F, MM>,
         _r: &mut R,
-    ) -> Result<(ProverMessage<F>, ProverThirdOracles<F>, ProverState<'a, F, MM>), AHPError> {
+    ) -> Result<(prover::Message<F>, prover::ThirdOracles<F>, prover::State<'a, F, MM>), AHPError> {
         let round_time = start_timer!(|| "AHP::Prover::ThirdRound");
 
-        let VerifierFirstMessage { alpha, .. } = state
+        let verifier::FirstMessage { alpha, .. } = state
             .verifier_first_message
-            .expect("ProverState should include verifier_first_msg when prover_third_round is called");
+            .expect("prover::State should include verifier_first_msg when prover_third_round is called");
 
         let beta = verifier_message.beta;
 
@@ -662,8 +571,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             state.ifft_precomputation(),
         );
 
-        let msg = ProverMessage { field_elements: vec![sum_a, sum_b, sum_c] };
-        let oracles = ProverThirdOracles { g_a, g_b, g_c };
+        let msg = prover::Message::with_field_elements(vec![sum_a, sum_b, sum_c]);
+        let oracles = prover::ThirdOracles { g_a, g_b, g_c };
         state.lhs_polynomials = Some([lhs_a, lhs_b, lhs_c]);
         state.sums = Some([sum_a, sum_b, sum_c]);
 
@@ -780,21 +689,20 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
     /// Output the fourth round message and the next state.
     pub fn prover_fourth_round<'a, R: RngCore>(
-        verifier_message: &VerifierThirdMessage<F>,
-        state: ProverState<'a, F, MM>,
+        verifier_message: &verifier::ThirdMessage<F>,
+        state: prover::State<'a, F, MM>,
         _r: &mut R,
-    ) -> Result<(ProverMessage<F>, ProverFourthOracles<F>), AHPError> {
-        let VerifierThirdMessage { r_b, r_c, .. } = verifier_message;
+    ) -> Result<prover::FourthOracles<F>, AHPError> {
+        let verifier::ThirdMessage { r_b, r_c, .. } = verifier_message;
         let [mut lhs_a, mut lhs_b, mut lhs_c] = state.lhs_polynomials.unwrap();
         lhs_b *= *r_b;
         lhs_c *= *r_c;
 
         lhs_a += &lhs_b;
         lhs_a += &lhs_c;
-        let msg = ProverMessage::default();
         let h_2 = LabeledPolynomial::new("h_2".into(), lhs_a, None, None);
-        let oracles = ProverFourthOracles { h_2 };
-        Ok((msg, oracles))
+        let oracles = prover::FourthOracles { h_2 };
+        Ok(oracles)
     }
 
     /// Output the number of oracles sent by the prover in the third round.

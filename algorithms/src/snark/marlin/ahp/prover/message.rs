@@ -20,12 +20,19 @@ use snarkvm_utilities::{error, serialize::*, ToBytes, Write};
 /// Each prover message that is not a list of oracles is a list of field elements.
 #[repr(transparent)]
 #[derive(Clone, Debug, Default, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
-pub struct ProverMessage<F: Field> {
-    /// The field elements that make up the message
-    pub field_elements: Vec<F>,
+pub struct Message<F: Field>(Option<Vec<F>>);
+
+impl<F: Field> Message<F> {
+    pub fn blank() -> Self {
+        Self(None)
+    }
+
+    pub fn with_field_elements(msg: Vec<F>) -> Self {
+        Self(Some(msg))
+    }
 }
 
-impl<F: Field> ToBytes for ProverMessage<F> {
+impl<F: Field> ToBytes for Message<F> {
     fn write_le<W: Write>(&self, mut w: W) -> io::Result<()> {
         CanonicalSerialize::serialize(self, &mut w).map_err(|_| error("Could not serialize ProverMsg"))
     }

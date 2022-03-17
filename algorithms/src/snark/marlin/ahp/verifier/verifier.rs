@@ -22,7 +22,7 @@ use crate::{
     snark::marlin::{
         ahp::{
             indexer::CircuitInfo,
-            verifier::{VerifierFirstMessage, VerifierSecondMessage, VerifierState, VerifierThirdMessage},
+            verifier::{FirstMessage, SecondMessage, State, ThirdMessage},
             AHPError,
             AHPForR1CS,
         },
@@ -40,7 +40,7 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
     pub fn verifier_first_round<BaseField: PrimeField, R: FiatShamirRng<TargetField, BaseField>>(
         index_info: CircuitInfo<TargetField>,
         fs_rng: &mut R,
-    ) -> Result<(VerifierFirstMessage<TargetField>, VerifierState<TargetField, MM>), AHPError> {
+    ) -> Result<(FirstMessage<TargetField>, State<TargetField, MM>), AHPError> {
         // Check that the R1CS is a square matrix.
         if index_info.num_constraints != index_info.num_variables {
             return Err(AHPError::NonSquareMatrix);
@@ -63,9 +63,9 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         let eta_c = elems[2];
         assert!(!constraint_domain.evaluate_vanishing_polynomial(alpha).is_zero());
 
-        let message = VerifierFirstMessage { alpha, eta_b, eta_c };
+        let message = FirstMessage { alpha, eta_b, eta_c };
 
-        let new_state = VerifierState {
+        let new_state = State {
             constraint_domain,
             non_zero_a_domain,
             non_zero_b_domain,
@@ -82,14 +82,14 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
 
     /// Output the second message and next round state.
     pub fn verifier_second_round<BaseField: PrimeField, R: FiatShamirRng<TargetField, BaseField>>(
-        mut state: VerifierState<TargetField, MM>,
+        mut state: State<TargetField, MM>,
         fs_rng: &mut R,
-    ) -> Result<(VerifierSecondMessage<TargetField>, VerifierState<TargetField, MM>), AHPError> {
+    ) -> Result<(SecondMessage<TargetField>, State<TargetField, MM>), AHPError> {
         let elems = fs_rng.squeeze_nonnative_field_elements(1, OptimizationType::Weight)?;
         let beta = elems[0];
         assert!(!state.constraint_domain.evaluate_vanishing_polynomial(beta).is_zero());
 
-        let message = VerifierSecondMessage { beta };
+        let message = SecondMessage { beta };
         state.second_round_message = Some(message);
 
         Ok((message, state))
@@ -97,13 +97,13 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
 
     /// Output the third message and next round state.
     pub fn verifier_third_round<BaseField: PrimeField, R: FiatShamirRng<TargetField, BaseField>>(
-        mut state: VerifierState<TargetField, MM>,
+        mut state: State<TargetField, MM>,
         fs_rng: &mut R,
-    ) -> Result<(VerifierThirdMessage<TargetField>, VerifierState<TargetField, MM>), AHPError> {
+    ) -> Result<(ThirdMessage<TargetField>, State<TargetField, MM>), AHPError> {
         let elems = fs_rng.squeeze_nonnative_field_elements(2, OptimizationType::Weight)?;
         let r_b = elems[0];
         let r_c = elems[1];
-        let message = VerifierThirdMessage { r_b, r_c };
+        let message = ThirdMessage { r_b, r_c };
 
         state.third_round_message = Some(message);
         Ok((message, state))
@@ -111,9 +111,9 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
 
     /// Output the third message and next round state.
     pub fn verifier_fourth_round<BaseField: PrimeField, R: FiatShamirRng<TargetField, BaseField>>(
-        mut state: VerifierState<TargetField, MM>,
+        mut state: State<TargetField, MM>,
         fs_rng: &mut R,
-    ) -> Result<VerifierState<TargetField, MM>, AHPError> {
+    ) -> Result<State<TargetField, MM>, AHPError> {
         let elems = fs_rng.squeeze_nonnative_field_elements(1, OptimizationType::Weight)?;
         let gamma = elems[0];
 
@@ -123,9 +123,9 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
 
     /// Output the query state and next round state.
     pub fn verifier_query_set<'a, 'b, R: RngCore>(
-        state: VerifierState<TargetField, MM>,
+        state: State<TargetField, MM>,
         _: &'a mut R,
-    ) -> (QuerySet<'b, TargetField>, VerifierState<TargetField, MM>) {
+    ) -> (QuerySet<'b, TargetField>, State<TargetField, MM>) {
         let beta = state.second_round_message.unwrap().beta;
         let gamma = state.gamma.unwrap();
 

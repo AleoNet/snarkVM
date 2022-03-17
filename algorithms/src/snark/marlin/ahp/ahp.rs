@@ -21,8 +21,8 @@ use crate::{
     },
     polycommit::{LCTerm, LabeledPolynomial, LinearCombination},
     snark::marlin::{
-        ahp::{matrices, prover::ProverConstraintSystem, verifier, AHPError, CircuitInfo},
-        prover::ProverMessage,
+        ahp::{matrices, verifier, AHPError, CircuitInfo},
+        prover,
         MarlinMode,
     },
 };
@@ -174,8 +174,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     pub fn construct_linear_combinations<E: EvaluationsProvider<F>>(
         public_input: &[F],
         evals: &E,
-        prover_third_message: &ProverMessage<F>,
-        state: &verifier::VerifierState<F, MM>,
+        prover_third_message: &prover::Message<F>,
+        state: &verifier::State<F, MM>,
     ) -> Result<Vec<LinearCombination<F>>, AHPError> {
         let constraint_domain = state.constraint_domain;
         let non_zero_a_domain = state.non_zero_a_domain;
@@ -184,7 +184,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let largest_non_zero_domain =
             Self::max_non_zero_domain_helper(state.non_zero_a_domain, state.non_zero_b_domain, state.non_zero_c_domain);
 
-        let public_input = ProverConstraintSystem::format_public_input(public_input);
+        let public_input = prover::ConstraintSystem::format_public_input(public_input);
         if !Self::formatted_public_input_is_admissible(&public_input) {
             return Err(AHPError::InvalidPublicInputLength);
         }

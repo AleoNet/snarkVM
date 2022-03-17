@@ -16,14 +16,8 @@
 
 #![allow(non_snake_case)]
 
-mod first_message;
-pub(crate) use first_message::*;
-
-mod second_message;
-pub(crate) use second_message::*;
-
-mod third_message;
-pub(crate) use third_message::*;
+mod messages;
+pub(crate) use messages::*;
 
 mod state;
 pub(crate) use state::*;
