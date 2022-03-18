@@ -41,20 +41,19 @@ lazy_static::lazy_static! {
     static ref DEFAULT_PATH: PathBuf = PathBuf::from("~/.aleo/powers_of_g");
     static ref URLS: HashMap<usize, String> = {
         let mut m = HashMap::new();
-        // TODO: add links
-        m.insert(1 << 16, String::new());
-        m.insert(1 << 17, String::new());
-        m.insert(1 << 18, String::new());
-        m.insert(1 << 19, String::new());
-        m.insert(1 << 20, String::new());
-        m.insert(1 << 21, String::new());
-        m.insert(1 << 22, String::new());
-        m.insert(1 << 23, String::new());
-        m.insert(1 << 24, String::new());
-        m.insert(1 << 25, String::new());
-        m.insert(1 << 26, String::new());
-        m.insert(1 << 27, String::new());
-        m.insert(1 << 28, String::new());
+        m.insert(1 << 16, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_16"));
+        m.insert(1 << 17, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_17"));
+        m.insert(1 << 18, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_18"));
+        m.insert(1 << 19, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_19"));
+        m.insert(1 << 20, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_20"));
+        m.insert(1 << 21, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_21"));
+        m.insert(1 << 22, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_22"));
+        m.insert(1 << 23, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_23"));
+        m.insert(1 << 24, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_24"));
+        m.insert(1 << 25, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_25"));
+        m.insert(1 << 26, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_26"));
+        m.insert(1 << 27, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_27"));
+        m.insert(1 << 28, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_28"));
         m
     };
     static ref BASE_POWERS: &'static [u8] = include_bytes!("./powers_of_g_15");
