@@ -33,9 +33,8 @@ use crate::{
     },
 };
 use snarkvm_fields::{batch_inversion_and_mul, PrimeField};
-use snarkvm_utilities::{cfg_iter, cfg_iter_mut};
+use snarkvm_utilities::{cfg_iter, cfg_iter_mut, ExecutionPool};
 
-use itertools::Itertools;
 use rand_core::RngCore;
 
 #[cfg(not(feature = "std"))]
@@ -45,6 +44,20 @@ use snarkvm_utilities::println;
 use rayon::prelude::*;
 
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
+    /// Output the number of oracles sent by the prover in the third round.
+    pub fn prover_num_third_round_oracles() -> usize {
+        3
+    }
+
+    /// Output the degree bounds of oracles in the third round.
+    pub fn prover_third_round_degree_bounds(info: &CircuitInfo<F>) -> impl Iterator<Item = Option<usize>> {
+        let non_zero_a_size = EvaluationDomain::<F>::compute_size_of_domain(info.num_non_zero_a).unwrap();
+        let non_zero_b_size = EvaluationDomain::<F>::compute_size_of_domain(info.num_non_zero_b).unwrap();
+        let non_zero_c_size = EvaluationDomain::<F>::compute_size_of_domain(info.num_non_zero_c).unwrap();
+
+        [Some(non_zero_a_size - 2), Some(non_zero_b_size - 2), Some(non_zero_c_size - 2)].into_iter()
+    }
+
     /// Output the third round message and the next state.
     pub fn prover_third_round<'a, R: RngCore>(
         verifier_message: &verifier::SecondMessage<F>,
@@ -65,18 +78,23 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let v_H_alpha_v_H_beta = v_H_at_alpha * v_H_at_beta;
 
         let largest_non_zero_domain_size = Self::max_non_zero_domain(&state.index.index_info).size_as_field_element;
-        let (sum_a, lhs_a, g_a) = Self::third_round_helper(
-            "a",
-            state.non_zero_a_domain,
-            &state.index.a_arith,
-            alpha,
-            beta,
-            v_H_alpha_v_H_beta,
-            largest_non_zero_domain_size,
-            state.fft_precomputation(),
-            state.ifft_precomputation(),
-        );
-        let (sum_b, lhs_b, g_b) = Self::third_round_helper(
+        let mut pool = ExecutionPool::with_capacity(3);
+        pool.add_job(|| {
+            Self::matrix_sumcheck_helper(
+                "a",
+                state.non_zero_a_domain,
+                &state.index.a_arith,
+                alpha,
+                beta,
+                v_H_alpha_v_H_beta,
+                largest_non_zero_domain_size,
+                state.fft_precomputation(),
+                state.ifft_precomputation(),
+            )
+        });
+        
+        pool.add_job(|| {
+        Self::matrix_sumcheck_helper(
             "b",
             state.non_zero_b_domain,
             &state.index.b_arith,
@@ -86,8 +104,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             largest_non_zero_domain_size,
             state.fft_precomputation(),
             state.ifft_precomputation(),
-        );
-        let (sum_c, lhs_c, g_c) = Self::third_round_helper(
+        )});
+
+        pool.add_job(|| {
+            Self::matrix_sumcheck_helper(
             "c",
             state.non_zero_c_domain,
             &state.index.c_arith,
@@ -97,7 +117,13 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             largest_non_zero_domain_size,
             state.fft_precomputation(),
             state.ifft_precomputation(),
-        );
+        )});
+
+        let [
+            (sum_a, lhs_a, g_a),
+            (sum_b, lhs_b, g_b),
+            (sum_c, lhs_c, g_c),
+        ]: [_; 3] = pool.execute_all().try_into().unwrap();
 
         let msg = prover::Message::with_field_elements(vec![sum_a, sum_b, sum_c]);
         let oracles = prover::ThirdOracles { g_a, g_b, g_c };
@@ -110,7 +136,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     }
 
     #[allow(clippy::too_many_arguments)]
-    fn third_round_helper(
+    fn matrix_sumcheck_helper(
         label: &str,
         non_zero_domain: EvaluationDomain<F>,
         arithmetization: &MatrixArithmetization<F>,
@@ -199,19 +225,5 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         assert!(h.degree() <= non_zero_domain.size() - 2);
         assert!(g.degree() <= non_zero_domain.size() - 2);
         (f.coeffs[0], h, g)
-    }
-
-    /// Output the number of oracles sent by the prover in the third round.
-    pub fn prover_num_third_round_oracles() -> usize {
-        3
-    }
-
-    /// Output the degree bounds of oracles in the third round.
-    pub fn prover_third_round_degree_bounds(info: &CircuitInfo<F>) -> impl Iterator<Item = Option<usize>> {
-        let non_zero_a_size = EvaluationDomain::<F>::compute_size_of_domain(info.num_non_zero_a).unwrap();
-        let non_zero_b_size = EvaluationDomain::<F>::compute_size_of_domain(info.num_non_zero_b).unwrap();
-        let non_zero_c_size = EvaluationDomain::<F>::compute_size_of_domain(info.num_non_zero_c).unwrap();
-
-        [Some(non_zero_a_size - 2), Some(non_zero_b_size - 2), Some(non_zero_c_size - 2)].into_iter()
     }
 }
