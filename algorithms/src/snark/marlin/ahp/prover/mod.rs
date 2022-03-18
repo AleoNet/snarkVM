@@ -25,7 +25,7 @@ pub(crate) use message::*;
 mod oracles;
 pub(crate) use oracles::*;
 
-mod prover;
+mod round_functions;
 
 mod state;
 pub(self) use state::*;

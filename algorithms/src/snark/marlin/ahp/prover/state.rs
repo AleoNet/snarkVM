@@ -19,6 +19,7 @@ use crate::{
         domain::{FFTPrecomputation, IFFTPrecomputation},
         DensePolynomial,
         EvaluationDomain,
+        Evaluations as EvaluationsOnDomain,
     },
     polycommit::LabeledPolynomial,
     snark::marlin::{
@@ -41,9 +42,10 @@ pub struct State<'a, F: PrimeField, MM: MarlinMode> {
     /// Bz.
     pub(super) z_b: Option<Vec<F>>,
 
+    pub(super) x_poly: DensePolynomial<F>,
     pub(super) w_poly: Option<LabeledPolynomial<F>>,
     pub(super) mz_polys: Option<(LabeledPolynomial<F>, LabeledPolynomial<F>)>,
-    pub(super) mz_poly_randomizer: Option<(F, F)>,
+    pub(super) mz_poly_randomizer: Option<F>,
 
     pub(super) index: &'a Circuit<F, MM>,
 
@@ -93,8 +95,11 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
         let input_domain =
             EvaluationDomain::new(padded_public_input.len()).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
+        let x_poly = EvaluationsOnDomain::from_vec_and_domain(padded_public_input.clone(), input_domain).interpolate();
+
         Ok(Self {
             padded_public_variables: padded_public_input,
+            x_poly,
             private_variables,
             zk_bound,
             index,
