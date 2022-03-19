@@ -59,7 +59,6 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
                 range.muln(4);
                 c += 1;
             }
-
             c
         }
 
@@ -78,10 +77,25 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
             WINDOW_SIZE,
             WINDOW_SIZE * NUM_WINDOWS * BOWE_HOPWOOD_CHUNK_SIZE
         ));
-        let bases = Arc::new(Self::create_generators(message));
+        let mut bases = Vec::with_capacity(NUM_WINDOWS);
+        for index in 0..NUM_WINDOWS {
+            // Construct an indexed message to attempt to sample a base.
+            let indexed_message = format!("{} at {}", message, index);
+            let (generator, _, _) = hash_to_curve::<G::Affine>(&indexed_message);
+            let mut base = generator.into_projective();
+            // Compute the generators for the sampled base.
+            let mut generators_for_segment = Vec::with_capacity(WINDOW_SIZE);
+            for _ in 0..WINDOW_SIZE {
+                generators_for_segment.push(base);
+                for _ in 0..4 {
+                    base.double_in_place();
+                }
+            }
+            bases.push(generators_for_segment);
+        }
         end_timer!(time);
 
-        Self { bases, base_lookup: OnceCell::new() }
+        Self { bases: Arc::new(bases), base_lookup: OnceCell::new() }
     }
 
     fn hash(&self, input: &[bool]) -> Result<Self::Output, CRHError> {
@@ -96,26 +110,6 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
 }
 
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE> {
-    pub fn create_generators(message: &str) -> Vec<Vec<G>> {
-        let mut generators = Vec::with_capacity(NUM_WINDOWS);
-        for index in 0..NUM_WINDOWS {
-            // Construct an indexed message to attempt to sample a base.
-            let indexed_message = format!("{} at {}", message, index);
-            let (generator, _, _) = hash_to_curve::<G::Affine>(&indexed_message);
-            let mut base = generator.into_projective();
-            // Compute the generators for the sampled base.
-            let mut generators_for_segment = Vec::with_capacity(WINDOW_SIZE);
-            for _ in 0..WINDOW_SIZE {
-                generators_for_segment.push(base);
-                for _ in 0..4 {
-                    base.double_in_place();
-                }
-            }
-            generators.push(generators_for_segment);
-        }
-        generators
-    }
-
     pub fn base_lookup(&self, bases: &[Vec<G>]) -> &Vec<Vec<[G; BOWE_HOPWOOD_LOOKUP_SIZE]>> {
         self.base_lookup
             .get_or_try_init::<_, ()>(|| {
