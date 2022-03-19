@@ -38,7 +38,20 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
     type Parameters = Vec<Vec<G>>;
 
     fn setup(message: &str) -> Self {
-        Self::bases(message).into()
+        let mut bases = Vec::with_capacity(NUM_WINDOWS);
+        for index in 0..NUM_WINDOWS {
+            // Construct an indexed message to attempt to sample a base.
+            let indexed_message = format!("{} at {}", message, index);
+            let (generator, _, _) = hash_to_curve::<G::Affine>(&indexed_message);
+            let mut base = generator.into_projective();
+            let mut powers = Vec::with_capacity(WINDOW_SIZE);
+            for _ in 0..WINDOW_SIZE {
+                powers.push(base);
+                base.double_in_place();
+            }
+            bases.push(powers);
+        }
+        Self { bases }
     }
 
     fn hash(&self, input: &[bool]) -> Result<Self::Output, CRHError> {
@@ -81,25 +94,6 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
 
     fn parameters(&self) -> &Self::Parameters {
         &self.bases
-    }
-}
-
-impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE> {
-    fn bases(message: &str) -> Vec<Vec<G>> {
-        let mut bases = Vec::with_capacity(NUM_WINDOWS);
-        for index in 0..NUM_WINDOWS {
-            // Construct an indexed message to attempt to sample a base.
-            let indexed_message = format!("{} at {}", message, index);
-            let (generator, _, _) = hash_to_curve::<G::Affine>(&indexed_message);
-            let mut base = generator.into_projective();
-            let mut powers = Vec::with_capacity(WINDOW_SIZE);
-            for _ in 0..WINDOW_SIZE {
-                powers.push(base);
-                base.double_in_place();
-            }
-            bases.push(powers);
-        }
-        bases
     }
 }
 
