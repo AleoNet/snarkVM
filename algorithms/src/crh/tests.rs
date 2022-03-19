@@ -51,5 +51,5 @@ fn bowe_hopwood_crh_serialization() {
 #[test]
 fn simple_bowe_hopwood_crh() {
     let crh = BHPCRH::<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>::setup("simple_bowe_hopwood_crh");
-    crh.hash(&[1, 2, 3]).unwrap();
+    crh.hash_bytes(&[1, 2, 3]).unwrap();
 }

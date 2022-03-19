@@ -41,7 +41,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
         Self::bases(message).into()
     }
 
-    fn hash_bits(&self, input: &[bool]) -> Result<Self::Output, CRHError> {
+    fn hash(&self, input: &[bool]) -> Result<Self::Output, CRHError> {
         if input.len() > WINDOW_SIZE * NUM_WINDOWS {
             return Err(CRHError::IncorrectInputLength(input.len(), WINDOW_SIZE, NUM_WINDOWS));
         }

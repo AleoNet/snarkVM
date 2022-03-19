@@ -308,7 +308,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     fn function_id(
         verifying_key: &<Self::ProgramSNARK as SNARK>::VerifyingKey,
     ) -> Result<Self::FunctionID> {
-        Ok(Self::function_id_crh().hash_bits(&verifying_key.to_minimal_bits())?.into())
+        Ok(Self::function_id_crh().hash(&verifying_key.to_minimal_bits())?.into())
     }
 
     /// Returns the program SRS for Aleo applications.

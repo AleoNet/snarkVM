@@ -264,7 +264,7 @@ impl Network for Testnet2 {
     fn inner_circuit_id() -> &'static Self::InnerCircuitID {
         static INNER_CIRCUIT_ID: OnceCell<<Testnet2 as Network>::InnerCircuitID> = OnceCell::new();
         INNER_CIRCUIT_ID.get_or_init(|| Self::inner_circuit_id_crh()
-            .hash_bits(&Self::inner_verifying_key().to_minimal_bits())
+            .hash(&Self::inner_verifying_key().to_minimal_bits())
             .expect("Failed to hash inner circuit verifying key elements").into())
     }
 
@@ -313,7 +313,7 @@ mod tests {
         assert_eq!(
             Testnet2::inner_circuit_id(),
             &Testnet2::inner_circuit_id_crh()
-                .hash_bits(&Testnet2::inner_verifying_key().to_minimal_bits())
+                .hash(&Testnet2::inner_verifying_key().to_minimal_bits())
                 .expect("Failed to hash inner circuit ID")
                 .into(),
             "The inner circuit ID does not correspond to the inner circuit verifying key"

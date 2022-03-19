@@ -44,14 +44,14 @@ fn bowe_pedersen_crh_hash(c: &mut Criterion) {
     let crh = <BHPCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CRH>::setup("bhp_crh_benchmark");
     let input = vec![127u8; 32];
 
-    c.bench_function("BHP CRH hash", move |b| b.iter(|| crh.hash(&input).unwrap()));
+    c.bench_function("BHP CRH hash", move |b| b.iter(|| crh.hash_bytes(&input).unwrap()));
 }
 
 fn big_bowe_pedersen_crh_hash(c: &mut Criterion) {
     let crh = <BHPCRH<EdwardsProjective, BIG_NUM_WINDOWS, BIG_WINDOW_SIZE> as CRH>::setup("bhp_crh_benchmark");
     let input = vec![127u8; 32];
 
-    c.bench_function("Big BHP CRH hash", move |b| b.iter(|| crh.hash(&input).unwrap()));
+    c.bench_function("Big BHP CRH hash", move |b| b.iter(|| crh.hash_bytes(&input).unwrap()));
 }
 
 criterion_group! {

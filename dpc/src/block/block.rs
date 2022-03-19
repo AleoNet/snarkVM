@@ -110,7 +110,7 @@ impl<N: Network> Block<N> {
 
         // Compute the block hash.
         let block_hash =
-            N::block_hash_crh().hash(&to_bytes_le![previous_block_hash, header.to_header_root()?]?)?.into();
+            N::block_hash_crh().hash_bytes(&to_bytes_le![previous_block_hash, header.to_header_root()?]?)?.into();
 
         // Construct the block.
         let block = Self { block_hash, previous_block_hash, header, transactions };

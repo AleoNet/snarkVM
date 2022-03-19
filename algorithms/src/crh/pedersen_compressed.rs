@@ -40,8 +40,8 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
     }
 
     /// Returns the affine x-coordinate as the collision-resistant hash output.
-    fn hash_bits(&self, input: &[bool]) -> Result<Self::Output, CRHError> {
-        let affine = self.crh.hash_bits(input)?;
+    fn hash(&self, input: &[bool]) -> Result<Self::Output, CRHError> {
+        let affine = self.crh.hash(input)?;
         debug_assert!(affine.is_in_correct_subgroup_assuming_on_curve());
         Ok(affine.to_x_coordinate())
     }

@@ -84,7 +84,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
         Self { bases, base_lookup: OnceCell::new() }
     }
 
-    fn hash_bits(&self, input: &[bool]) -> Result<Self::Output, CRHError> {
+    fn hash(&self, input: &[bool]) -> Result<Self::Output, CRHError> {
         let affine = self.hash_bits_inner(input.iter(), input.len())?.into_affine();
         debug_assert!(affine.is_in_correct_subgroup_assuming_on_curve());
         Ok(affine.to_x_coordinate())
@@ -279,7 +279,7 @@ mod tests {
         let crh = <BHPCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CRH>::setup("test_bowe_pedersen");
         let input = vec![127u8; 32];
 
-        let output = crh.hash(&input).unwrap();
+        let output = crh.hash_bytes(&input).unwrap();
         assert_eq!(
             &*output.to_string(),
             "2591648422993904809826711498838675948697848925001720514073745852367402669969"

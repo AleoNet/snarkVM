@@ -28,12 +28,11 @@ pub trait CRH: Clone + Debug + ToBytes + FromBytes + Send + Sync + From<<Self as
 
     fn setup(message: &str) -> Self;
 
-    fn hash(&self, input: &[u8]) -> Result<Self::Output, CRHError> {
-        let bits = input.iter().flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8)).collect::<Vec<bool>>();
-        self.hash_bits(&bits)
-    }
+    fn hash(&self, input: &[bool]) -> Result<Self::Output, CRHError>;
 
-    fn hash_bits(&self, input_bits: &[bool]) -> Result<Self::Output, CRHError>;
+    fn hash_bytes(&self, input: &[u8]) -> Result<Self::Output, CRHError> {
+        self.hash(&input.iter().flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8)).collect::<Vec<bool>>())
+    }
 
     fn parameters(&self) -> &Self::Parameters;
 }

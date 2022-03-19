@@ -61,7 +61,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
             return Err(CommitmentError::IncorrectInputLength(input.len(), WINDOW_SIZE, NUM_WINDOWS));
         }
 
-        let mut output = self.crh.hash(input)?.into_projective();
+        let mut output = self.crh.hash_bytes(input)?.into_projective();
 
         // Compute h^r.
         let scalar_bits = BitIteratorLE::new(randomness.to_repr());

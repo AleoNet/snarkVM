@@ -42,7 +42,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize>
         Self(PoseidonCryptoHash::<F, 4, false>::setup())
     }
 
-    fn hash_bits(&self, input: &[bool]) -> Result<Self::Output, CRHError> {
+    fn hash(&self, input: &[bool]) -> Result<Self::Output, CRHError> {
         // Pad the input if necessary.
         let input = {
             let input_size_bits: usize = INPUT_SIZE_FE * <F as PrimeField>::Parameters::CAPACITY as usize;
