@@ -81,6 +81,10 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
     fn parameters(&self) -> &Self::Parameters {
         &self.bases
     }
+
+    fn window() -> (usize, usize) {
+        (NUM_WINDOWS, WINDOW_SIZE)
+    }
 }
 
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE> {

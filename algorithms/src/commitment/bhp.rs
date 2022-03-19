@@ -87,6 +87,10 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
     fn parameters(&self) -> Self::Parameters {
         (self.bhp_crh.bases.clone(), self.random_base.clone())
     }
+
+    fn window() -> (usize, usize) {
+        BHPCRH::<G, NUM_WINDOWS, WINDOW_SIZE>::window()
+    }
 }
 
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> From<(Arc<Vec<Vec<G>>>, Vec<G>)>

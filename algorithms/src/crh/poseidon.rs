@@ -86,6 +86,10 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize>
     fn parameters(&self) -> &Self::Parameters {
         self.0.parameters()
     }
+
+    fn window() -> (usize, usize) {
+        unimplemented!()
+    }
 }
 
 impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize> From<PoseidonParameters<F, 4, 1>>

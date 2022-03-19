@@ -45,4 +45,6 @@ pub trait CRH: Clone + Debug + ToBytes + FromBytes + Send + Sync + From<<Self as
     }
 
     fn parameters(&self) -> &Self::Parameters;
+
+    fn window() -> (usize, usize);
 }

@@ -29,4 +29,6 @@ pub trait CommitmentScheme: ToBytes + FromBytes + Sized + Clone + From<<Self as 
     fn commit(&self, input: &[u8], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError>;
 
     fn parameters(&self) -> Self::Parameters;
+
+    fn window() -> (usize, usize);
 }
