@@ -14,11 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod bhp;
-pub use bhp::*;
+pub mod amount;
+pub use amount::*;
 
-pub mod pedersen;
-pub use pedersen::*;
+pub mod error;
+pub use error::*;
 
-#[cfg(test)]
-mod tests;
+pub mod value_balance;
+pub use value_balance::*;
+
+pub mod value_balance_circuit;
+pub use value_balance_circuit::*;

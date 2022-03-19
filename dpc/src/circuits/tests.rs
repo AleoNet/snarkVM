@@ -26,8 +26,8 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize) 
 
     let recipient = Account::new(rng);
     let amount = AleoAmount::from_gate(10);
-    let request = Request::new_coinbase(recipient.address(), amount, false, rng).unwrap();
-    let response = ResponseBuilder::new()
+    let request: Request<N> = Request::new_coinbase(recipient.address(), amount, false, rng).unwrap();
+    let response: Response<N> = ResponseBuilder::new()
         .add_request(request.clone())
         .add_output(Output::new(recipient.address(), amount, None, None).unwrap())
         .build(rng)
@@ -65,6 +65,9 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize) 
         serial_numbers,
         commitments,
         value_balance,
+        response.input_value_commitments().clone(),
+        response.output_value_commitments().clone(),
+        response.value_balance_commitment().clone(),
         ledger_root,
         local_transitions_root,
         program_id,
@@ -133,7 +136,7 @@ mod testnet1 {
 
     #[test]
     fn test_dpc_execute_circuits() {
-        dpc_execute_circuits_test::<Testnet1>(244090);
+        dpc_execute_circuits_test::<Testnet1>(262081);
     }
 }
 
@@ -143,6 +146,6 @@ mod testnet2 {
 
     #[test]
     fn test_dpc_execute_circuits() {
-        dpc_execute_circuits_test::<Testnet2>(244090);
+        dpc_execute_circuits_test::<Testnet2>(262081);
     }
 }

@@ -25,8 +25,10 @@ use crate::{
     Network,
     PoSWScheme,
     ProgramPublicVariables,
+    ValueBalanceCommitment,
 };
 use snarkvm_algorithms::{
+    commitment::PedersenCommitment,
     crh::{PedersenCompressedCRH, PoseidonCRH, BHPCRH},
     crypto_hash::poseidon::PoseidonSponge,
     encryption::ECIESPoseidonEncryption,
@@ -52,6 +54,7 @@ use snarkvm_curves::{
 };
 use snarkvm_gadgets::{
     algorithms::{
+        commitment::PedersenCommitmentGadget,
         crh::{BHPCRHGadget, PedersenCompressedCRHGadget, PoseidonCRHGadget},
         encryption::ECIESPoseidonEncryptionGadget,
         prf::PoseidonPRFGadget,
@@ -103,6 +106,8 @@ impl Network for Testnet1 {
     const RECORD_CIPHERTEXT_PREFIX: u32 = hrp4!("recd");
     const RECORD_VIEW_KEY_PREFIX: u32 = hrp4!("rcvk");
     const SIGNATURE_PREFIX: u32 = hrp4!("sign");
+    const VALUE_COMMITMENT_PREFIX: u32 = hrp4!("valc");
+    const VALUE_BALANCE_COMMITMENT_PREFIX: u32 = hrp4!("vbco");
 
     const ADDRESS_SIZE_IN_BYTES: usize = 32;
     const HEADER_SIZE_IN_BYTES: usize = 1015;
@@ -114,6 +119,8 @@ impl Network for Testnet1 {
     const RECORD_PAYLOAD_SIZE_IN_BYTES: usize = 128;
     const RECORD_VIEW_KEY_SIZE_IN_BYTES: usize = 32;
     const SIGNATURE_SIZE_IN_BYTES: usize = 128;
+    const VALUE_COMMITMENT_SIZE_IN_BYTES: usize = 64;
+    const VALUE_BALANCE_COMMITMENT_SIZE_IN_BYTES: usize = 96;
 
     const HEADER_TRANSACTIONS_TREE_DEPTH: usize = 15;
     const HEADER_TREE_DEPTH: usize = 2;
@@ -181,7 +188,7 @@ impl Network for Testnet1 {
     type FunctionInputsCRHGadget = PoseidonCRHGadget<Self::InnerScalarField, 128>;
     type FunctionInputsHash = AleoLocator<<Self::FunctionInputsCRH as CRH>::Output, { Self::FUNCTION_INPUTS_HASH_PREFIX }>;
 
-    type InnerCircuitIDCRH = BHPCRH<EdwardsBW6, 103, 63>;
+    type InnerCircuitIDCRH = BHPCRH<EdwardsBW6, 175, 63>;
     type InnerCircuitID = AleoLocator<<Self::InnerCircuitIDCRH as CRH>::Output, { Self::INNER_CIRCUIT_ID_PREFIX }>;
 
     type LedgerRootCRH = BHPCRH<Self::ProgramProjectiveCurve, 16, 32>;
@@ -221,6 +228,11 @@ impl Network for Testnet1 {
     type TransitionIDParameters = MerkleTreeParameters<Self::TransitionIDCRH, { Self::TRANSITION_TREE_DEPTH }>;
     type TransitionID = AleoLocator<<Self::TransitionIDCRH as CRH>::Output, { Self::TRANSITION_ID_PREFIX }>;
 
+    type ValueCommitmentScheme = PedersenCommitment<Self::ProgramProjectiveCurve, 4, 32>;
+    type ValueCommitmentGadget = PedersenCommitmentGadget<Self::ProgramProjectiveCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 4, 32>;
+    type ValueCommitment = AleoObject<<Self::ValueCommitmentScheme as CommitmentScheme>::Output, { Self::VALUE_COMMITMENT_PREFIX }, { Self::VALUE_COMMITMENT_SIZE_IN_BYTES }>;
+    type ValueBalanceCommitment = AleoObject<ValueBalanceCommitment<Self>, { Self::VALUE_BALANCE_COMMITMENT_PREFIX }, { Self::VALUE_BALANCE_COMMITMENT_SIZE_IN_BYTES }>;
+
     dpc_setup!{Testnet1, account_encryption_scheme, AccountEncryptionScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
     dpc_setup!{Testnet1, account_signature_scheme, AccountSignatureScheme, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT}
     dpc_setup!{Testnet1, block_hash_crh, BlockHashCRH, "AleoBlockHashCRH0"}
@@ -233,6 +245,7 @@ impl Network for Testnet1 {
     dpc_setup!{Testnet1, transactions_root_parameters, TransactionsRootParameters, "AleoTransactionsRootCRH0"}
     dpc_setup!{Testnet1, transaction_id_parameters, TransactionIDParameters, "AleoTransactionIDCRH0"}
     dpc_setup!{Testnet1, transition_id_parameters, TransitionIDParameters, "AleoTransitionIDCRH0"}
+    dpc_setup!{Testnet1, value_commitment_scheme, ValueCommitmentScheme, "AleoValueCommitment0"}
 
     dpc_snark_setup!{Testnet1, inner_proving_key, InnerSNARK, ProvingKey, InnerProvingKeyBytes, "inner proving key"}
     dpc_snark_setup!{Testnet1, inner_verifying_key, InnerSNARK, VerifyingKey, InnerVerifyingKeyBytes, "inner verifying key"}

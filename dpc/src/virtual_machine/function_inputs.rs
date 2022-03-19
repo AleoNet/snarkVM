@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{virtual_machine::AleoAmount, Address, Network, Payload};
+use crate::{Address, AleoAmount, Network, Payload};
 use snarkvm_algorithms::CRH;
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::{FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
