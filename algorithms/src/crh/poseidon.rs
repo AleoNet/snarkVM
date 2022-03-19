@@ -20,7 +20,7 @@ use crate::{
     CRHError,
 };
 use snarkvm_fields::{ConstraintFieldError, FieldParameters, PrimeField, ToConstraintField};
-use snarkvm_utilities::{any::TypeId, FromBytes, ToBytes};
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use std::{
     borrow::Cow,
@@ -57,30 +57,6 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize>
         };
 
         Ok(self.0.evaluate(&input.to_field_elements()?))
-    }
-
-    fn hash_field_elements<F2: PrimeField>(&self, input: &[F2]) -> Result<Self::Output, CRHError> {
-        if TypeId::of::<F2>() == TypeId::of::<F>() {
-            let mut dest = vec![];
-            for item in input.iter() {
-                dest.push(F::from_bytes_le(&item.to_bytes_le()?)?)
-            }
-
-            // Pad the input if necessary.
-            let dest = {
-                assert!(dest.len() <= INPUT_SIZE_FE);
-
-                let mut dest = Cow::Borrowed(&dest);
-                if dest.len() < INPUT_SIZE_FE {
-                    dest.to_mut().resize(INPUT_SIZE_FE, F::zero());
-                }
-                dest
-            };
-
-            Ok(self.0.evaluate(&dest))
-        } else {
-            unimplemented!()
-        }
     }
 
     fn parameters(&self) -> &Self::Parameters {
