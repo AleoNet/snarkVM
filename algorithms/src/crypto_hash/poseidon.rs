@@ -275,9 +275,9 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> AlgebraicSponge<F,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct PoseidonCryptoHash<F: PrimeField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool> {
-    pub parameters: Arc<PoseidonParameters<F, RATE, 1>>,
-}
+pub struct PoseidonCryptoHash<F: PrimeField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool>(
+    Arc<PoseidonParameters<F, RATE, 1>>,
+);
 
 impl<F: PrimeField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool> CryptoHash
     for PoseidonCryptoHash<F, RATE, OPTIMIZED_FOR_WEIGHTS>
@@ -288,16 +288,16 @@ impl<F: PrimeField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool> Crypto
 
     /// Initializes a new instance of the cryptographic hash function.
     fn setup() -> Self {
-        Self { parameters: Arc::new(F::default_poseidon_parameters::<RATE>(OPTIMIZED_FOR_WEIGHTS).unwrap()) }
+        Self(Arc::new(F::default_poseidon_parameters::<RATE>(OPTIMIZED_FOR_WEIGHTS).unwrap()))
     }
 
     fn evaluate(&self, input: &[Self::Input]) -> Self::Output {
-        let mut sponge = PoseidonSponge::<F, RATE, 1>::with_parameters(&self.parameters);
+        let mut sponge = PoseidonSponge::<F, RATE, 1>::with_parameters(&self.0);
         sponge.absorb(input);
         sponge.squeeze_field_elements(1)[0]
     }
 
     fn parameters(&self) -> &Self::Parameters {
-        &self.parameters
+        &self.0
     }
 }

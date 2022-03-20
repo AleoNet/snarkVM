@@ -254,19 +254,6 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize>
         Self { parameters: parameters.clone(), state, mode }
     }
 
-    fn constant<CS: ConstraintSystem<F>>(mut cs: CS, pfs: &PoseidonSponge<F, RATE, CAPACITY>) -> Self {
-        let params = pfs.parameters.clone();
-        let mut sponge_var = Self::with_parameters(cs.ns(|| "alloc sponge"), &params);
-
-        for (i, state_elem) in pfs.state.iter().enumerate() {
-            sponge_var.state[i] =
-                FpGadget::<F>::alloc_constant(cs.ns(|| format!("alloc_elems_{}", i)), || Ok(*state_elem)).unwrap();
-        }
-        sponge_var.mode = pfs.mode.clone();
-
-        sponge_var
-    }
-
     fn absorb<'a, CS: ConstraintSystem<F>, I: Iterator<Item = &'a FpGadget<F>>>(
         &mut self,
         mut cs: CS,

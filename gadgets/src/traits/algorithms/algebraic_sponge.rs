@@ -35,8 +35,6 @@ pub trait AlgebraicSpongeVar<
     /// Initialize a new instance of the sponge.
     fn with_parameters<CS: ConstraintSystem<CF>>(cs: CS, params: &S::Parameters) -> Self;
 
-    fn constant<CS: ConstraintSystem<CF>>(cs: CS, sponge: &S) -> Self;
-
     /// Absorb an input into the sponge.
     fn absorb<'a, CS: ConstraintSystem<CF>, I: Iterator<Item = &'a FpGadget<CF>>>(
         &mut self,
