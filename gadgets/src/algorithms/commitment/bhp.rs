@@ -105,11 +105,8 @@ impl<
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let bhp: BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE> = value_gen()?.borrow().parameters().into();
-        Ok(Self {
-            bhp_crh_gadget: BHPCRHGadget::alloc_constant(cs, || Ok(bhp.bhp_crh.clone()))?,
-            random_base: bhp.random_base,
-        })
+        let (bhp_crh, random_base) = value_gen()?.borrow().parameters();
+        Ok(Self { bhp_crh_gadget: BHPCRHGadget::alloc_constant(cs, || Ok(bhp_crh))?, random_base })
     }
 
     fn alloc<

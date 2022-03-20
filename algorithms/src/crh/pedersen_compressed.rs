@@ -17,26 +17,22 @@
 use crate::{crh::PedersenCRH, CRHError, CRH};
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
-use snarkvm_utilities::{FromBytes, ToBytes};
 
-use std::{
-    fmt::Debug,
-    io::{Read, Result as IoResult, Write},
-};
+use std::fmt::Debug;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PedersenCompressedCRH<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
-    pub crh: PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>,
+    crh: PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>,
 }
 
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
     for PedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     type Output = <G::Affine as AffineCurve>::BaseField;
-    type Parameters = Vec<Vec<G>>;
+    type Parameters = PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>;
 
     fn setup(message: &str) -> Self {
-        PedersenCRH::setup(message).into()
+        Self { crh: PedersenCRH::setup(message) }
     }
 
     /// Returns the affine x-coordinate as the collision-resistant hash output.
@@ -45,40 +41,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
     }
 
     fn parameters(&self) -> &Self::Parameters {
-        self.crh.parameters()
-    }
-}
-
-impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    From<PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>> for PedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>
-{
-    fn from(crh: PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>) -> Self {
-        Self { crh }
-    }
-}
-
-impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> From<Vec<Vec<G>>>
-    for PedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>
-{
-    fn from(bases: Vec<Vec<G>>) -> Self {
-        Self { crh: bases.into() }
-    }
-}
-
-impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToBytes
-    for PedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>
-{
-    fn write_le<W: Write>(&self, writer: W) -> IoResult<()> {
-        self.crh.write_le(writer)
-    }
-}
-
-impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> FromBytes
-    for PedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>
-{
-    #[inline]
-    fn read_le<R: Read>(reader: R) -> IoResult<Self> {
-        Ok(PedersenCRH::read_le(reader)?.into())
+        &self.crh
     }
 }
 

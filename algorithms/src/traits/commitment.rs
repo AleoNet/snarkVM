@@ -19,7 +19,7 @@ use snarkvm_utilities::{FromBytes, ToBytes, UniformRand};
 
 use std::{fmt::Debug, hash::Hash};
 
-pub trait CommitmentScheme: ToBytes + FromBytes + Sized + Clone + From<<Self as CommitmentScheme>::Parameters> {
+pub trait CommitmentScheme: Sized + Clone {
     type Output: Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + Sync + Send;
     type Parameters: Clone + Debug + Eq;
     type Randomness: Clone + Debug + Default + Eq + UniformRand + ToBytes + FromBytes + Sync + Send;

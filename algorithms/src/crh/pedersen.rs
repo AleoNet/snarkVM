@@ -17,14 +17,9 @@
 use crate::{hash_to_curve::hash_to_curve, CRHError, CRH};
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
-use snarkvm_utilities::{FromBytes, ToBytes};
 
 use itertools::Itertools;
-use std::{
-    borrow::Cow,
-    fmt::Debug,
-    io::{Read, Result as IoResult, Write},
-};
+use std::{borrow::Cow, fmt::Debug};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PedersenCRH<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
@@ -80,52 +75,6 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
 
     fn parameters(&self) -> &Self::Parameters {
         &self.bases
-    }
-}
-
-impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> From<Vec<Vec<G>>>
-    for PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>
-{
-    fn from(bases: Vec<Vec<G>>) -> Self {
-        Self { bases }
-    }
-}
-
-impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToBytes
-    for PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>
-{
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (self.bases.len() as u32).write_le(&mut writer)?;
-        for base in &self.bases {
-            (base.len() as u32).write_le(&mut writer)?;
-            for g in base {
-                g.write_le(&mut writer)?;
-            }
-        }
-        Ok(())
-    }
-}
-
-impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> FromBytes
-    for PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>
-{
-    #[inline]
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let num_bases: u32 = FromBytes::read_le(&mut reader)?;
-        let mut bases = Vec::with_capacity(num_bases as usize);
-
-        for _ in 0..num_bases {
-            let base_len: u32 = FromBytes::read_le(&mut reader)?;
-            let mut base = Vec::with_capacity(base_len as usize);
-
-            for _ in 0..base_len {
-                let g: G = FromBytes::read_le(&mut reader)?;
-                base.push(g);
-            }
-            bases.push(base);
-        }
-
-        Ok(Self { bases })
     }
 }
 

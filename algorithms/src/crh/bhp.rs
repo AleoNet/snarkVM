@@ -17,15 +17,9 @@
 use crate::{hash_to_curve::hash_to_curve, CRHError, CRH};
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, Field, PrimeField, ToConstraintField};
-use snarkvm_utilities::{BigInteger, FromBytes, ToBytes};
+use snarkvm_utilities::BigInteger;
 
-use once_cell::sync::OnceCell;
-use std::{
-    borrow::Borrow,
-    fmt::Debug,
-    io::{Read, Result as IoResult, Write},
-    sync::Arc,
-};
+use std::{borrow::Borrow, fmt::Debug, sync::Arc};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -41,7 +35,7 @@ pub const BOWE_HOPWOOD_LOOKUP_SIZE: usize = 2usize.pow(BOWE_HOPWOOD_CHUNK_SIZE a
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BHPCRH<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
     pub bases: Arc<Vec<Vec<G>>>,
-    base_lookup: OnceCell<Vec<Vec<[G; BOWE_HOPWOOD_LOOKUP_SIZE]>>>,
+    base_lookup: Vec<Vec<[G; BOWE_HOPWOOD_LOOKUP_SIZE]>>,
 }
 
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
@@ -86,9 +80,35 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
                 }
                 powers
             })
-            .collect();
+            .collect::<Vec<Vec<G>>>();
 
-        Self { bases: Arc::new(bases), base_lookup: OnceCell::new() }
+        let base_lookup = crate::cfg_iter!(bases)
+            .map(|x| {
+                x.iter()
+                    .map(|g| {
+                        let mut out = [G::zero(); BOWE_HOPWOOD_LOOKUP_SIZE];
+                        for (i, element) in out.iter_mut().enumerate().take(BOWE_HOPWOOD_LOOKUP_SIZE) {
+                            let mut encoded = *g;
+                            if (i & 0x01) != 0 {
+                                encoded += g;
+                            }
+                            if (i & 0x02) != 0 {
+                                encoded += g.double();
+                            }
+                            if (i & 0x04) != 0 {
+                                encoded = encoded.neg();
+                            }
+                            *element = encoded;
+                        }
+                        out
+                    })
+                    .collect()
+            })
+            .collect::<Vec<Vec<[G; BOWE_HOPWOOD_LOOKUP_SIZE]>>>();
+        debug_assert_eq!(base_lookup.len(), NUM_WINDOWS);
+        base_lookup.iter().for_each(|bases| debug_assert_eq!(bases.len(), WINDOW_SIZE));
+
+        Self { bases: Arc::new(bases), base_lookup }
     }
 
     fn hash(&self, input: &[bool]) -> Result<Self::Output, CRHError> {
@@ -101,36 +121,6 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
 }
 
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE> {
-    pub fn base_lookup(&self, bases: &[Vec<G>]) -> &Vec<Vec<[G; BOWE_HOPWOOD_LOOKUP_SIZE]>> {
-        self.base_lookup
-            .get_or_try_init::<_, ()>(|| {
-                Ok(crate::cfg_iter!(bases)
-                    .map(|x| {
-                        x.iter()
-                            .map(|g| {
-                                let mut out = [G::zero(); BOWE_HOPWOOD_LOOKUP_SIZE];
-                                for (i, element) in out.iter_mut().enumerate().take(BOWE_HOPWOOD_LOOKUP_SIZE) {
-                                    let mut encoded = *g;
-                                    if (i & 0x01) != 0 {
-                                        encoded += g;
-                                    }
-                                    if (i & 0x02) != 0 {
-                                        encoded += g.double();
-                                    }
-                                    if (i & 0x04) != 0 {
-                                        encoded = encoded.neg();
-                                    }
-                                    *element = encoded;
-                                }
-                                out
-                            })
-                            .collect()
-                    })
-                    .collect())
-            })
-            .expect("failed to init BoweHopwoodPedersenCRHParameters")
-    }
-
     /// Precondition: number of elements in `input` == `num_bits`.
     pub(crate) fn hash_bits_inner(&self, input: &[bool]) -> Result<G, CRHError> {
         // Input-independent sanity checks.
@@ -154,71 +144,19 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP
         }
         debug_assert_eq!(bit_len % BOWE_HOPWOOD_CHUNK_SIZE, 0);
 
-        let base_lookup = self.base_lookup(&self.bases);
-        debug_assert_eq!(base_lookup.len(), NUM_WINDOWS);
-        for bases in base_lookup.iter() {
-            debug_assert_eq!(bases.len(), WINDOW_SIZE);
-        }
-
         // Compute sum of h_i^{sum of
         // (1-2*c_{i,j,2})*(1+c_{i,j,0}+2*c_{i,j,1})*2^{4*(j-1)} for all j in segment}
         // for all i. Described in section 5.4.1.7 in the Zcash protocol
         // specification.
         Ok(input_stack[..bit_len]
             .chunks(WINDOW_SIZE * BOWE_HOPWOOD_CHUNK_SIZE)
-            .zip(base_lookup)
+            .zip(&self.base_lookup)
             .flat_map(|(bits, bases)| {
                 bits.chunks(BOWE_HOPWOOD_CHUNK_SIZE).zip(bases).map(|(chunk_bits, base)| {
                     base[(chunk_bits[0] as usize) | (chunk_bits[1] as usize) << 1 | (chunk_bits[2] as usize) << 2]
                 })
             })
             .sum())
-    }
-}
-
-impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> From<Arc<Vec<Vec<G>>>>
-    for BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>
-{
-    fn from(bases: Arc<Vec<Vec<G>>>) -> Self {
-        Self { bases, base_lookup: OnceCell::new() }
-    }
-}
-
-impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToBytes
-    for BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>
-{
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (self.bases.len() as u32).write_le(&mut writer)?;
-        for base in self.bases.iter() {
-            (base.len() as u32).write_le(&mut writer)?;
-            for g in base {
-                g.write_le(&mut writer)?;
-            }
-        }
-        Ok(())
-    }
-}
-
-impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> FromBytes
-    for BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>
-{
-    #[inline]
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let num_bases: u32 = FromBytes::read_le(&mut reader)?;
-        let mut bases = Vec::with_capacity(num_bases as usize);
-
-        for _ in 0..num_bases {
-            let base_len: u32 = FromBytes::read_le(&mut reader)?;
-            let mut base = Vec::with_capacity(base_len as usize);
-
-            for _ in 0..base_len {
-                let g: G = FromBytes::read_le(&mut reader)?;
-                base.push(g);
-            }
-            bases.push(base);
-        }
-
-        Ok(Self { bases: Arc::new(bases), base_lookup: OnceCell::new() })
     }
 }
 

@@ -17,14 +17,10 @@
 use crate::{crh::BHPCRH, hash_to_curve::hash_to_curve, CommitmentError, CommitmentScheme, CRH};
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, Field, PrimeField, ToConstraintField};
-use snarkvm_utilities::{BitIteratorLE, FromBytes, ToBytes};
+use snarkvm_utilities::BitIteratorLE;
 
 use itertools::Itertools;
-use std::{
-    fmt::Debug,
-    io::{Read, Result as IoResult, Write},
-    sync::Arc,
-};
+use std::fmt::Debug;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BHPCommitment<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
@@ -36,12 +32,12 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
     for BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     type Output = <G::Affine as AffineCurve>::BaseField;
-    type Parameters = (Arc<Vec<Vec<G>>>, Vec<G>);
+    type Parameters = (BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>, Vec<G>);
     type Randomness = G::ScalarField;
 
     fn setup(message: &str) -> Self {
         // First, compute the bases.
-        let bhp = BHPCRH::<G, NUM_WINDOWS, WINDOW_SIZE>::setup(message);
+        let bhp_crh = BHPCRH::<G, NUM_WINDOWS, WINDOW_SIZE>::setup(message);
 
         // Next, compute the random base.
         let (generator, _, _) = hash_to_curve::<G::Affine>(&format!("{message} for random base"));
@@ -55,7 +51,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
         }
         assert_eq!(random_base.len(), num_scalar_bits);
 
-        Self { bhp_crh: bhp, random_base }
+        Self { bhp_crh, random_base }
     }
 
     fn commit(&self, input: &[bool], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError> {
@@ -73,48 +69,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
     }
 
     fn parameters(&self) -> Self::Parameters {
-        (self.bhp_crh.bases.clone(), self.random_base.clone())
-    }
-}
-
-impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> From<(Arc<Vec<Vec<G>>>, Vec<G>)>
-    for BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
-{
-    fn from((bases, random_base): (Arc<Vec<Vec<G>>>, Vec<G>)) -> Self {
-        Self { bhp_crh: bases.into(), random_base }
-    }
-}
-
-impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> ToBytes
-    for BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
-{
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.bhp_crh.write_le(&mut writer)?;
-
-        (self.random_base.len() as u32).write_le(&mut writer)?;
-        for g in &self.random_base {
-            g.write_le(&mut writer)?;
-        }
-
-        Ok(())
-    }
-}
-
-impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> FromBytes
-    for BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
-{
-    #[inline]
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let bhp = BHPCRH::read_le(&mut reader)?;
-
-        let random_base_len: u32 = FromBytes::read_le(&mut reader)?;
-        let mut random_base = Vec::with_capacity(random_base_len as usize);
-        for _ in 0..random_base_len {
-            let g: G = FromBytes::read_le(&mut reader)?;
-            random_base.push(g);
-        }
-
-        Ok(Self { bhp_crh: bhp, random_base })
+        (self.bhp_crh.clone(), self.random_base.clone())
     }
 }
 

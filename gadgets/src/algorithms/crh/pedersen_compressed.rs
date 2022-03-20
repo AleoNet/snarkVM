@@ -63,7 +63,7 @@ impl<
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let crh: PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE> = value_gen()?.borrow().parameters().clone().into();
+        let crh: PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE> = value_gen()?.borrow().parameters().clone();
         Ok(Self {
             crh_gadget: PedersenCRHGadget::<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>::alloc_constant(cs, || Ok(crh))?,
         })
