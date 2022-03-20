@@ -27,7 +27,7 @@ use rayon::prelude::*;
 // The stack is currently allocated with the following size
 // because we cannot specify them using the trait consts.
 const MAX_WINDOW_SIZE: usize = 64;
-const MAX_NUM_WINDOWS: usize = 4096;
+const MAX_NUM_WINDOWS: usize = 8192;
 
 pub const BOWE_HOPWOOD_CHUNK_SIZE: usize = 3;
 pub const BOWE_HOPWOOD_LOOKUP_SIZE: usize = 2usize.pow(BOWE_HOPWOOD_CHUNK_SIZE as u32);
