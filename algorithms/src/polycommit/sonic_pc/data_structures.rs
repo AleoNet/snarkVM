@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    crh::sha256::sha256,
+    crypto_hash::sha256::sha256,
     fft::EvaluationDomain,
     polycommit::{kzg10, PCCommitterKey, PCVerifierKey},
     Prepare,

@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_algorithms::{
-    crh::sha256::sha256,
+    crypto_hash::sha256::sha256,
     snark::marlin::{ahp::AHPForR1CS, MarlinHidingMode},
     CRH,
     SNARK,

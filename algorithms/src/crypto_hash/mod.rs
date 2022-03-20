@@ -20,5 +20,8 @@ pub use blake2xs::*;
 pub mod poseidon;
 pub use poseidon::*;
 
+pub mod sha256;
+pub use sha256::*;
+
 #[cfg(test)]
 pub mod tests;
