@@ -133,8 +133,12 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP
 
     /// Precondition: number of elements in `input` == `num_bits`.
     pub(crate) fn hash_bits_inner(&self, input: &[bool]) -> Result<G, CRHError> {
+        // Input-independent sanity checks.
         debug_assert!(WINDOW_SIZE <= MAX_WINDOW_SIZE);
         debug_assert!(NUM_WINDOWS <= MAX_NUM_WINDOWS);
+        debug_assert_eq!(self.bases.len(), NUM_WINDOWS, "Incorrect number of windows ({:?}) for BHP", self.bases.len(),);
+        self.bases.iter().for_each(|bases| debug_assert_eq!(bases.len(), WINDOW_SIZE));
+        debug_assert_eq!(BOWE_HOPWOOD_CHUNK_SIZE, 3);
 
         if input.len() > WINDOW_SIZE * NUM_WINDOWS {
             return Err(CRHError::IncorrectInputLength(input.len(), WINDOW_SIZE, NUM_WINDOWS));
@@ -148,19 +152,13 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP
         if bit_len % BOWE_HOPWOOD_CHUNK_SIZE != 0 {
             bit_len += BOWE_HOPWOOD_CHUNK_SIZE - (bit_len % BOWE_HOPWOOD_CHUNK_SIZE);
         }
-
         debug_assert_eq!(bit_len % BOWE_HOPWOOD_CHUNK_SIZE, 0);
 
-        debug_assert_eq!(self.bases.len(), NUM_WINDOWS, "Incorrect number of windows ({:?}) for BHP", self.bases.len(),);
-        for bases in self.bases.iter() {
-            debug_assert_eq!(bases.len(), WINDOW_SIZE);
-        }
         let base_lookup = self.base_lookup(&self.bases);
         debug_assert_eq!(base_lookup.len(), NUM_WINDOWS);
         for bases in base_lookup.iter() {
             debug_assert_eq!(bases.len(), WINDOW_SIZE);
         }
-        debug_assert_eq!(BOWE_HOPWOOD_CHUNK_SIZE, 3);
 
         // Compute sum of h_i^{sum of
         // (1-2*c_{i,j,2})*(1+c_{i,j,0}+2*c_{i,j,1})*2^{4*(j-1)} for all j in segment}
