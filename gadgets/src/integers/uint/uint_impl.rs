@@ -87,11 +87,10 @@ impl UInt8 {
         let mut bits_le = Vec::with_capacity(8 * values.len());
         for (i, field_element) in values.to_field_elements()?.iter().enumerate() {
             let fe = FpGadget::alloc_input(&mut cs.ns(|| format!("Field element {}", i)), || Ok(field_element))?;
-
-            // Extends the LSB -> MSB-1 bit, where LSB := 0-th bit, and MSB := F::MODULUS_BITS-th bit.
-            // This is safe (and necessary) as we packed field elements that do not utilize the MSB.
             let fe_bits_le = fe.to_bits_le(cs.ns(|| format!("Convert fe to bits le {}", i)))?;
-            bits_le.extend_from_slice(&fe_bits_le[0..F::size_in_data_bits()]);
+
+            // Save the byte-aligned bits.
+            bits_le.extend_from_slice(&fe_bits_le[0..(8 * (F::size_in_data_bits() / 8))]);
         }
 
         // Chunk up slices of 8 bit into bytes.

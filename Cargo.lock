@@ -2047,7 +2047,6 @@ dependencies = [
  "nom",
  "snarkvm-circuits-environment",
  "snarkvm-circuits-types",
- "snarkvm-fields",
 ]
 
 [[package]]
