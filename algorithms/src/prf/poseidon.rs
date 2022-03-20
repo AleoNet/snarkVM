@@ -30,24 +30,12 @@ impl<F: PrimeField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool> PRF
     type Seed = F;
 
     fn evaluate(seed: &Self::Seed, input: &Self::Input) -> Result<Self::Output, PRFError> {
-        let timer = start_timer!(|| "PoseidonPRF::evaluate");
-
-        // Construct the input length as a field element.
-        let input_length = {
-            let mut buffer = input.len().to_le_bytes().to_vec();
-            buffer.resize((F::size_in_bits() + 7) / 8, 0u8);
-            F::from_bytes_le(&buffer)?
-        };
-
         // Construct the preimage.
         let mut preimage = vec![*seed];
-        preimage.push(input_length);
+        preimage.push(F::from(input.len() as u128)); // Input length
         preimage.extend_from_slice(input);
 
         // Evaluate the preimage.
-        let output = Poseidon::<F, RATE, OPTIMIZED_FOR_WEIGHTS>::setup().evaluate(preimage.as_slice());
-
-        end_timer!(timer);
-        Ok(output)
+        Ok(Poseidon::<F, RATE, OPTIMIZED_FOR_WEIGHTS>::setup().evaluate(&preimage))
     }
 }

@@ -90,7 +90,7 @@ impl<F: PrimeField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool> Poseid
     /// Evaluate the cryptographic hash function over a non-fixed-length vector,
     /// in which the length also needs to be hashed.
     pub fn evaluate_with_len(&self, input: &[F]) -> F {
-        self.evaluate(&[vec![<F as From<u64>>::from(input.len() as u64)], input.to_vec()].concat())
+        self.evaluate(&[vec![F::from(input.len() as u128)], input.to_vec()].concat())
     }
 
     pub fn parameters(&self) -> &Arc<PoseidonParameters<F, RATE, 1>> {

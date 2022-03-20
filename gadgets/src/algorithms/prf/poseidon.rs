@@ -64,7 +64,7 @@ mod tests {
         algorithms::prf::*,
         traits::{algorithms::PRFGadget, alloc::AllocGadget, eq::EqGadget},
     };
-    use snarkvm_algorithms::{prf::PoseidonPRF, traits::PRF};
+    use snarkvm_algorithms::{prf::PoseidonPRF, PRF};
     use snarkvm_curves::bls12_377::Fr;
     use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 
