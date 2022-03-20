@@ -43,23 +43,14 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
         debug_assert_eq!(BHP_CHUNK_SIZE, 3);
 
         // Calculate the maximum window size.
-        let maximum_window_size = {
-            let upper_limit = G::ScalarField::modulus_minus_one_div_two();
-            let mut c = 0;
-            let mut range = <G::ScalarField as PrimeField>::BigInteger::from(2_u64);
-            while range < upper_limit {
-                range.muln(4);
-                c += 1;
-            }
-            c
-        };
-        if WINDOW_SIZE > maximum_window_size {
-            panic!(
-                "BHP CRH must have a window size resulting in scalars < (p-1)/2, \
-                 maximum segment size is {}",
-                maximum_window_size
-            );
+        let mut maximum_window_size = 0;
+        let mut range = <G::ScalarField as PrimeField>::BigInteger::from(2_u64);
+        while range < G::ScalarField::modulus_minus_one_div_two() {
+            // range < (p-1)/2
+            range.muln(4); // range * 2^4
+            maximum_window_size += 1;
         }
+        assert!(WINDOW_SIZE <= maximum_window_size, "The maximum BHP window size is {maximum_window_size}");
 
         // Compute the bases.
         let bases = (0..NUM_WINDOWS)
