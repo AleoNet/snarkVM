@@ -32,21 +32,6 @@ pub struct PoseidonParameters<F: PrimeField, const RATE: usize, const CAPACITY: 
     pub mds: Vec<Vec<F>>,
 }
 
-impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonParameters<F, RATE, CAPACITY> {
-    /// Initialize the parameter for Poseidon Sponge.
-    pub fn new(full_rounds: usize, partial_rounds: usize, alpha: u64, mds: Vec<Vec<F>>, ark: Vec<Vec<F>>) -> Self {
-        assert_eq!(ark.len(), full_rounds + partial_rounds);
-        for item in &ark {
-            assert_eq!(item.len(), RATE + CAPACITY);
-        }
-        assert_eq!(mds.len(), RATE + CAPACITY);
-        for item in &mds {
-            assert_eq!(item.len(), RATE + CAPACITY);
-        }
-        Self { full_rounds, partial_rounds, alpha, mds, ark }
-    }
-}
-
 /// A field with Poseidon parameters associated
 pub trait PoseidonDefaultField {
     /// Obtain the default Poseidon parameters for this rate and for this prime field,
