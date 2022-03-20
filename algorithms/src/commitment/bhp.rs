@@ -24,8 +24,8 @@ use std::fmt::Debug;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BHPCommitment<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
-    pub bhp_crh: BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>,
-    pub random_base: Vec<G>,
+    bhp_crh: BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>,
+    random_base: Vec<G>,
 }
 
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CommitmentScheme
