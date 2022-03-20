@@ -16,7 +16,7 @@
 
 use crate::traits::Group;
 use snarkvm_fields::{Field, PrimeField, SquareRootField, ToConstraintField};
-use snarkvm_utilities::{biginteger::BigInteger, serialize::*, ToBytes, ToMinimalBits};
+use snarkvm_utilities::{serialize::*, ToBytes, ToMinimalBits};
 
 use serde::{de::DeserializeOwned, Serialize};
 use std::{fmt::Debug, iter};
@@ -130,17 +130,6 @@ pub trait ProjectiveCurve:
     #[must_use]
     #[allow(clippy::wrong_self_convention)]
     fn into_affine(&self) -> Self::Affine;
-
-    /// Recommends a wNAF window table size given a scalar. Always returns a
-    /// number between 2 and 22, inclusive.
-    #[must_use]
-    fn recommended_wnaf_for_scalar(scalar: <Self::ScalarField as PrimeField>::BigInteger) -> usize;
-
-    /// Recommends a wNAF window size given the number of scalars you intend to
-    /// multiply a base by. Always returns a number between 2 and 22,
-    /// inclusive.
-    #[must_use]
-    fn recommended_wnaf_for_num_scalars(num_scalars: usize) -> usize;
 }
 
 /// Affine representation of an elliptic curve point guaranteed to be
@@ -286,33 +275,6 @@ pub trait ShortWeierstrassParameters: ModelParameters {
         copy += &Self::COEFF_B;
         copy
     }
-
-    #[inline(always)]
-    fn empirical_recommended_wnaf_for_scalar(scalar: <Self::ScalarField as PrimeField>::BigInteger) -> usize {
-        let num_bits = scalar.num_bits() as usize;
-
-        if num_bits >= 103 {
-            4
-        } else if num_bits >= 37 {
-            3
-        } else {
-            2
-        }
-    }
-
-    #[inline(always)]
-    fn empirical_recommended_wnaf_for_num_scalars(num_scalars: usize) -> usize {
-        const RECOMMENDATIONS: [usize; 11] = [1, 3, 8, 20, 47, 126, 260, 826, 1501, 4555, 84071];
-
-        let mut result = 4;
-        for r in &RECOMMENDATIONS {
-            match num_scalars > *r {
-                true => result += 1,
-                false => break,
-            }
-        }
-        result
-    }
 }
 
 pub trait TwistedEdwardsParameters: Copy + Clone + Debug + Default + PartialEq + Eq + ModelParameters {
@@ -329,35 +291,6 @@ pub trait TwistedEdwardsParameters: Copy + Clone + Debug + Default + PartialEq +
         let mut copy = *elem;
         copy *= &Self::COEFF_A;
         copy
-    }
-
-    #[inline(always)]
-    fn empirical_recommended_wnaf_for_scalar(scalar: <Self::ScalarField as PrimeField>::BigInteger) -> usize {
-        let num_bits = scalar.num_bits() as usize;
-
-        if num_bits >= 130 {
-            4
-        } else if num_bits >= 34 {
-            3
-        } else {
-            2
-        }
-    }
-
-    #[inline(always)]
-    fn empirical_recommended_wnaf_for_num_scalars(num_scalars: usize) -> usize {
-        const RECOMMENDATIONS: [usize; 12] = [1, 3, 7, 20, 43, 120, 273, 563, 1630, 3128, 7933, 62569];
-
-        let mut ret = 4;
-        for r in &RECOMMENDATIONS {
-            if num_scalars > *r {
-                ret += 1;
-            } else {
-                break;
-            }
-        }
-
-        ret
     }
 }
 

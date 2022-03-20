@@ -233,14 +233,6 @@ impl<P: Parameters> ProjectiveCurve for Projective<P> {
     fn into_affine(&self) -> Affine<P> {
         (*self).into()
     }
-
-    fn recommended_wnaf_for_scalar(scalar: <Self::ScalarField as PrimeField>::BigInteger) -> usize {
-        P::empirical_recommended_wnaf_for_scalar(scalar)
-    }
-
-    fn recommended_wnaf_for_num_scalars(num_scalars: usize) -> usize {
-        P::empirical_recommended_wnaf_for_num_scalars(num_scalars)
-    }
 }
 
 impl<P: Parameters> Group for Projective<P> {
