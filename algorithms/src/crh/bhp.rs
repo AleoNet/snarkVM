@@ -32,8 +32,8 @@ use rayon::prelude::*;
 
 // The stack is currently allocated with the following size
 // because we cannot specify them using the trait consts.
-const MAX_WINDOW_SIZE: usize = 256;
-const MAX_NUM_WINDOWS: usize = 2048;
+const MAX_WINDOW_SIZE: usize = 64;
+const MAX_NUM_WINDOWS: usize = 4096;
 
 pub const BOWE_HOPWOOD_CHUNK_SIZE: usize = 3;
 pub const BOWE_HOPWOOD_LOOKUP_SIZE: usize = 2usize.pow(BOWE_HOPWOOD_CHUNK_SIZE as u32);
@@ -133,32 +133,25 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP
 
     /// Precondition: number of elements in `input` == `num_bits`.
     pub(crate) fn hash_bits_inner(&self, input: &[bool]) -> Result<G, CRHError> {
-        if input.len() > WINDOW_SIZE * NUM_WINDOWS {
-            return Err(CRHError::IncorrectInputLength(input.len(), WINDOW_SIZE, NUM_WINDOWS));
-        }
         debug_assert!(WINDOW_SIZE <= MAX_WINDOW_SIZE);
         debug_assert!(NUM_WINDOWS <= MAX_NUM_WINDOWS);
 
-        // overzealous but stack allocation
-        let mut buf_slice = [false; MAX_WINDOW_SIZE * MAX_NUM_WINDOWS + BOWE_HOPWOOD_CHUNK_SIZE + 1];
-        buf_slice[..input.len()].iter_mut().zip(input).for_each(|(b, i)| *b = *i.borrow());
+        if input.len() > WINDOW_SIZE * NUM_WINDOWS {
+            return Err(CRHError::IncorrectInputLength(input.len(), WINDOW_SIZE, NUM_WINDOWS));
+        }
 
-        let mut bit_len = WINDOW_SIZE * NUM_WINDOWS;
+        // overzealous but stack allocation
+        let mut input_stack = [false; MAX_WINDOW_SIZE * MAX_NUM_WINDOWS + BOWE_HOPWOOD_CHUNK_SIZE + 1];
+        input_stack[..input.len()].iter_mut().zip(input).for_each(|(b, i)| *b = *i.borrow());
+
+        let mut bit_len = input.len();
         if bit_len % BOWE_HOPWOOD_CHUNK_SIZE != 0 {
             bit_len += BOWE_HOPWOOD_CHUNK_SIZE - (bit_len % BOWE_HOPWOOD_CHUNK_SIZE);
         }
 
         debug_assert_eq!(bit_len % BOWE_HOPWOOD_CHUNK_SIZE, 0);
 
-        debug_assert_eq!(
-            self.bases.len(),
-            NUM_WINDOWS,
-            "Incorrect number of windows ({:?}) for BHP of {:?}x{:?}x{}",
-            self.bases.len(),
-            WINDOW_SIZE,
-            NUM_WINDOWS,
-            BOWE_HOPWOOD_CHUNK_SIZE,
-        );
+        debug_assert_eq!(self.bases.len(), NUM_WINDOWS, "Incorrect number of windows ({:?}) for BHP", self.bases.len(),);
         for bases in self.bases.iter() {
             debug_assert_eq!(bases.len(), WINDOW_SIZE);
         }
@@ -173,22 +166,15 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP
         // (1-2*c_{i,j,2})*(1+c_{i,j,0}+2*c_{i,j,1})*2^{4*(j-1)} for all j in segment}
         // for all i. Described in section 5.4.1.7 in the Zcash protocol
         // specification.
-        let output = buf_slice[..bit_len]
+        Ok(input_stack[..bit_len]
             .chunks(WINDOW_SIZE * BOWE_HOPWOOD_CHUNK_SIZE)
             .zip(base_lookup)
-            .map(|(segment_bits, segment_generators)| {
-                segment_bits
-                    .chunks(BOWE_HOPWOOD_CHUNK_SIZE)
-                    .zip(segment_generators)
-                    .map(|(chunk_bits, generator)| {
-                        &generator
-                            [(chunk_bits[0] as usize) | (chunk_bits[1] as usize) << 1 | (chunk_bits[2] as usize) << 2]
-                    })
-                    .fold(G::zero(), |a, b| a + b)
+            .flat_map(|(bits, bases)| {
+                bits.chunks(BOWE_HOPWOOD_CHUNK_SIZE).zip(bases).map(|(chunk_bits, base)| {
+                    base[(chunk_bits[0] as usize) | (chunk_bits[1] as usize) << 1 | (chunk_bits[2] as usize) << 2]
+                })
             })
-            .fold(G::zero(), |a, b| a + b);
-
-        Ok(output)
+            .sum())
     }
 }
 
