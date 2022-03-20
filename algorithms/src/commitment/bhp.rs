@@ -59,11 +59,6 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
     }
 
     fn commit(&self, input: &[bool], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError> {
-        // If the input is too long, return an error.
-        if input.len() > WINDOW_SIZE * NUM_WINDOWS {
-            return Err(CommitmentError::IncorrectInputLength(input.len(), WINDOW_SIZE, NUM_WINDOWS));
-        }
-
         let mut output = self.bhp_crh.hash_bits_inner(input)?;
 
         // Compute h^r.
