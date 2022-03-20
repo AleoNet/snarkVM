@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::FpGadget;
-use snarkvm_algorithms::traits::{AlgebraicSponge};
+use snarkvm_algorithms::traits::AlgebraicSponge;
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 

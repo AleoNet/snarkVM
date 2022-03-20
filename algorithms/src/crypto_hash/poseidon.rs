@@ -19,14 +19,7 @@ use crate::{
     traits::{AlgebraicSponge, DefaultCapacityAlgebraicSponge, DuplexSpongeMode},
     CryptoHash,
 };
-use snarkvm_fields::{
-    Fp256,
-    Fp256Parameters,
-    Fp384,
-    Fp384Parameters,
-    PoseidonDefaultParameters,
-    PrimeField,
-};
+use snarkvm_fields::{Fp256, Fp256Parameters, Fp384, Fp384Parameters, PoseidonDefaultParameters, PrimeField};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use smallvec::SmallVec;
@@ -138,24 +131,6 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> FromBytes for Pose
     }
 }
 
-/// A duplex sponge based using the Poseidon permutation.
-///
-/// This implementation of Poseidon is entirely from Fractal's implementation in [COS20][cos]
-/// with small syntax changes.
-///
-/// [cos]: https://eprint.iacr.org/2019/1076
-#[derive(Clone, Debug)]
-pub struct PoseidonSponge<F: PrimeField, const RATE: usize, const CAPACITY: usize> {
-    // Sponge Parameters
-    pub parameters: Arc<PoseidonParameters<F, RATE, CAPACITY>>,
-
-    // Sponge State
-    /// current sponge's state (current elements in the permutation block)
-    pub state: State<F, RATE, CAPACITY>,
-    /// current mode (whether its absorbing or squeezing)
-    pub mode: DuplexSpongeMode,
-}
-
 #[derive(Copy, Clone, Debug)]
 pub struct State<F: PrimeField, const RATE: usize, const CAPACITY: usize> {
     capacity_state: [F; CAPACITY],
@@ -216,7 +191,32 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> IndexMut<usize> fo
     }
 }
 
+/// A duplex sponge based using the Poseidon permutation.
+///
+/// This implementation of Poseidon is entirely from Fractal's implementation in [COS20][cos]
+/// with small syntax changes.
+///
+/// [cos]: https://eprint.iacr.org/2019/1076
+#[derive(Clone, Debug)]
+pub struct PoseidonSponge<F: PrimeField, const RATE: usize, const CAPACITY: usize> {
+    // Sponge Parameters
+    pub parameters: Arc<PoseidonParameters<F, RATE, CAPACITY>>,
+
+    // Sponge State
+    /// current sponge's state (current elements in the permutation block)
+    pub state: State<F, RATE, CAPACITY>,
+    /// current mode (whether its absorbing or squeezing)
+    pub mode: DuplexSpongeMode,
+}
+
 impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSponge<F, RATE, CAPACITY> {
+    #[inline]
+    fn apply_ark(&self, state: &mut State<F, RATE, CAPACITY>, round_number: usize) {
+        for (state_elem, ark_elem) in state.iter_mut().zip(&self.parameters.ark[round_number]) {
+            *state_elem += ark_elem;
+        }
+    }
+
     #[inline]
     fn apply_s_box(&self, state: &mut State<F, RATE, CAPACITY>, is_full_round: bool) {
         // Full rounds apply the S Box (x^alpha) to every element of state
@@ -228,13 +228,6 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSponge<F, 
         // Partial rounds apply the S Box (x^alpha) to just the first element of state
         else {
             state[0] = state[0].pow(&[self.parameters.alpha]);
-        }
-    }
-
-    #[inline]
-    fn apply_ark(&self, state: &mut State<F, RATE, CAPACITY>, round_number: usize) {
-        for (state_elem, ark_elem) in state.iter_mut().zip(&self.parameters.ark[round_number]) {
-            *state_elem += ark_elem;
         }
     }
 
@@ -298,22 +291,6 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSponge<F, 
         }
     }
 
-    fn squeeze_helper(&mut self, output: &mut [F]) {
-        match self.mode {
-            DuplexSpongeMode::Absorbing { next_absorb_index: _ } => {
-                self.permute();
-                self.squeeze_internal(0, output);
-            }
-            DuplexSpongeMode::Squeezing { mut next_squeeze_index } => {
-                if next_squeeze_index == RATE {
-                    self.permute();
-                    next_squeeze_index = 0;
-                }
-                self.squeeze_internal(next_squeeze_index, output);
-            }
-        };
-    }
-
     // Squeeze |output| many elements. This does not end in a squeeze
     fn squeeze_internal(&mut self, mut rate_start: usize, output: &mut [F]) {
         let output_length = output.len();
@@ -361,64 +338,63 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSponge<F, 
     }
 }
 
-impl<F: PoseidonDefaultParametersField, const RATE: usize> PoseidonSponge<F, RATE, 1> {
-    pub fn sample_default_parameters() -> Arc<PoseidonParameters<F, RATE, 1>> {
-        Arc::new(F::default_poseidon_parameters::<RATE>(false).unwrap())
-    }
-
-    pub fn with_default_parameters() -> Self {
-        let parameters = Arc::new(F::default_poseidon_parameters::<RATE>(false).unwrap());
-        let state = State::default();
-        let mode = DuplexSpongeMode::Absorbing { next_absorb_index: 0 };
-
-        Self { parameters, state, mode }
-    }
-}
-
 impl<F: PoseidonDefaultParametersField, const RATE: usize, const CAPACITY: usize> AlgebraicSponge<F, RATE, CAPACITY>
     for PoseidonSponge<F, RATE, CAPACITY>
 {
     type Parameters = Arc<PoseidonParameters<F, RATE, CAPACITY>>;
 
     fn with_parameters(parameters: &Self::Parameters) -> Self {
-        let state = State::default();
-        let mode = DuplexSpongeMode::Absorbing { next_absorb_index: 0 };
-
-        Self { parameters: parameters.clone(), state, mode }
+        Self {
+            parameters: parameters.clone(),
+            state: State::default(),
+            mode: DuplexSpongeMode::Absorbing { next_absorb_index: 0 },
+        }
     }
 
     fn absorb(&mut self, input: &[F]) {
-        if input.is_empty() {
-            return;
-        }
-
-        match self.mode {
-            DuplexSpongeMode::Absorbing { mut next_absorb_index } => {
-                if next_absorb_index == RATE {
-                    self.permute();
-                    next_absorb_index = 0;
+        if !input.is_empty() {
+            match self.mode {
+                DuplexSpongeMode::Absorbing { mut next_absorb_index } => {
+                    if next_absorb_index == RATE {
+                        self.permute();
+                        next_absorb_index = 0;
+                    }
+                    self.absorb_internal(next_absorb_index, input);
                 }
-                self.absorb_internal(next_absorb_index, input);
+                DuplexSpongeMode::Squeezing { next_squeeze_index: _ } => {
+                    self.permute();
+                    self.absorb_internal(0, input);
+                }
             }
-            DuplexSpongeMode::Squeezing { next_squeeze_index: _ } => {
-                self.permute();
-                self.absorb_internal(0, input);
-            }
-        };
+        }
     }
 
     fn squeeze_field_elements(&mut self, num_elements: usize) -> SmallVec<[F; 10]> {
         if num_elements == 0 {
             return SmallVec::new();
         }
-        let mut buf = if num_elements <= 10 {
+        let mut output = if num_elements <= 10 {
             smallvec::smallvec_inline![F::zero(); 10]
         } else {
             smallvec::smallvec![F::zero(); num_elements]
         };
-        self.squeeze_helper(&mut buf[..num_elements]);
-        buf.truncate(num_elements);
-        buf
+
+        match self.mode {
+            DuplexSpongeMode::Absorbing { next_absorb_index: _ } => {
+                self.permute();
+                self.squeeze_internal(0, &mut output[..num_elements]);
+            }
+            DuplexSpongeMode::Squeezing { mut next_squeeze_index } => {
+                if next_squeeze_index == RATE {
+                    self.permute();
+                    next_squeeze_index = 0;
+                }
+                self.squeeze_internal(next_squeeze_index, &mut output[..num_elements]);
+            }
+        };
+
+        output.truncate(num_elements);
+        output
     }
 }
 
