@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::{crypto_hash::PoseidonCryptoHash, CryptoHash};
+use snarkvm_fields::{PoseidonParameters, PoseidonDefaultField};
 use snarkvm_circuits_environment::{traits::*, Environment};
 use snarkvm_circuits_types::{Boolean, Field, I64};
 
@@ -37,11 +37,32 @@ pub enum DuplexSpongeMode {
     },
 }
 
-pub struct Poseidon<E: Environment>(PoseidonCryptoHash<E::BaseField, RATE, OPTIMIZED_FOR_WEIGHTS>);
+pub struct Poseidon<E: Environment> {
+    /// number of rounds in a full-round operation
+    full_rounds: usize,
+    /// number of rounds in a partial-round operation
+    partial_rounds: usize,
+    /// Exponent used in S-boxes
+    alpha: u64,
+    /// Additive Round keys. These are added before each MDS matrix application to make it an affine shift.
+    /// They are indexed by `ark[round_num][state_element_index]`
+    ark: Vec<Vec<E::BaseField>>,
+    /// Maximally Distance Separating Matrix.
+    mds: Vec<Vec<E::BaseField>>,
+}
 
 impl<E: Environment> Poseidon<E> {
     fn new() -> Self {
-        Self(PoseidonCryptoHash::<E::BaseField, RATE, OPTIMIZED_FOR_WEIGHTS>::setup())
+        match E::BaseField::default_poseidon_parameters::<RATE>(OPTIMIZED_FOR_WEIGHTS) {
+            Some(parameters) => Self {
+                full_rounds: parameters.full_rounds,
+                partial_rounds: parameters.partial_rounds,
+                alpha: parameters.alpha,
+                ark: parameters.ark,
+                mds: parameters.mds
+            },
+            None => E::halt("Failed to initialize the Poseidon hash function")
+        }
     }
 
     fn hash(&self, input: &[Field<E>]) -> Field<E> {
@@ -54,65 +75,60 @@ impl<E: Environment> Poseidon<E> {
 }
 
 impl<E: Environment> Poseidon<E> {
-    fn apply_ark(&self, state: &mut [Field<E>], round_number: usize) {
+    fn apply_ark(&self, state: &mut [Field<E>], round: usize) {
         // Adds ark in place.
         for (i, element) in state.iter_mut().enumerate() {
-            element.add_constant_in_place(&self.0.parameters.ark[round_number][i])?;
+            element.add_constant_in_place(&self.ark[round][i])?;
         }
     }
 
     fn apply_s_box(&self, state: &mut [Field<E>], is_full_round: bool) {
         // Full rounds apply the S Box (x^alpha) to every element of state
         if is_full_round {
-            for (i, state_item) in state.iter_mut().enumerate() {
-                *state_item = state_item.pow_by_constant(&[self.parameters.alpha])?;
+            for element in state.iter_mut() {
+                *element = element.pow_by_constant(&[self.alpha])?;
             }
         }
         // Partial rounds apply the S Box (x^alpha) to just the first element of state
         else {
-            state[0] = state[0].pow_by_constant(&[self.parameters.alpha])?;
+            state[0] = state[0].pow_by_constant(&[self.alpha])?;
         }
     }
 
     fn apply_mds(&self, state: &mut [Field<E>]) {
-        let mut new_state = Vec::new();
+        let mut new_state = Vec::with_capacity(state.len());
         for i in 0..state.len() {
-            let mut cur = Field::zero();
-            for (j, state_elem) in state.iter().enumerate() {
-                let term = state_elem.mul_by_constant(&self.parameters.mds[i][j])?;
-                cur.add_in_place(&term)?;
+            let mut accumulator = Field::zero();
+            for (j, element) in state.iter().enumerate() {
+                accumulator += element.mul_by_constant(&self.mds[i][j])?;
             }
-            new_state.push(cur);
+            new_state.push(accumulator);
         }
         state.clone_from_slice(&new_state[..state.len()]);
     }
 
     fn permute(&self, state: &mut [Field<E>]) {
-        let partial_rounds = self.0.parameters.partial_rounds;
-        let full_rounds = self.0.parameters.full_rounds;
+        let partial_rounds = self.partial_rounds;
+        let full_rounds = self.full_rounds;
         let full_rounds_over_2 = full_rounds / 2;
 
-        let mut internal = state.clone();
-
         for i in 0..full_rounds_over_2 {
-            self.apply_ark(&mut internal, i);
-            self.apply_s_box(&mut internal, true);
-            self.apply_mds(&mut internal);
+            self.apply_ark(state, i);
+            self.apply_s_box(state, true);
+            self.apply_mds(state);
         }
 
         for i in full_rounds_over_2..(full_rounds_over_2 + partial_rounds) {
-            self.apply_ark(&mut internal, i);
-            self.apply_s_box(&mut internal, false);
-            self.apply_mds(&mut internal);
+            self.apply_ark(state, i);
+            self.apply_s_box(state, false);
+            self.apply_mds(state);
         }
 
         for i in (full_rounds_over_2 + partial_rounds)..(partial_rounds + full_rounds) {
-            self.apply_ark(&mut internal, i);
-            self.apply_s_box(&mut internal, true);
-            self.apply_mds(&mut internal);
+            self.apply_ark(state, i);
+            self.apply_s_box(state, true);
+            self.apply_mds(state);
         }
-
-        *state = internal;
     }
 
     fn absorb_internal(&self, state: &mut [Field<E>], mode: &mut DuplexSpongeMode, mut rate_start_index: usize, input: &[Field<E>]) {
@@ -125,7 +141,7 @@ impl<E: Environment> Poseidon<E> {
                 if rate_start_index + remaining_elements.len() <= RATE {
                     for (i, element) in remaining_elements.iter().enumerate() {
                         // Absorb
-                        state[CAPACITY + i + rate_start_index].add_in_place(element)?;
+                        state[CAPACITY + i + rate_start_index] += element;
                     }
                     *mode = DuplexSpongeMode::Absorbing { next_absorb_index: rate_start_index + remaining_elements.len() };
 
@@ -135,7 +151,7 @@ impl<E: Environment> Poseidon<E> {
                 let num_elements_absorbed = RATE - rate_start_index;
                 for (i, element) in remaining_elements.iter().enumerate().take(num_elements_absorbed) {
                     // Absorb
-                    state[CAPACITY + i + rate_start_index].add_in_place(element)?;
+                    state[CAPACITY + i + rate_start_index] += element;
                 }
                 self.permute(state);
                 // the input elements got truncated by num elements absorbed
@@ -232,13 +248,13 @@ mod tests {
     #[test]
     fn test_record_data() {
         let first = Field::<Circuit>::from_str("10field.public");
-        let second = Boolean::from_str("true.private");
-        let third = I64::from_str("99i64.public");
+        // let second = Boolean::from_str("true.private");
+        // let third = I64::from_str("99i64.public");
 
-        let _candidate = Record {
-            owner: Address::from(Group::from_str("2group.private")),
-            value: I64::from_str("1i64.private"),
-            data: vec![Box::new(first), Box::new(second), Box::new(third)],
-        };
+        // let _candidate = Record {
+        //     owner: Address::from(Group::from_str("2group.private")),
+        //     value: I64::from_str("1i64.private"),
+        //     data: vec![Box::new(first), Box::new(second), Box::new(third)],
+        // };
     }
 }

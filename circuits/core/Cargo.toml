@@ -6,8 +6,8 @@ description = "Core circuits library for a decentralized virtual machine"
 license = "GPL-3.0"
 edition = "2021"
 
-[dependencies.snarkvm-algorithms]
-path = "../../algorithms"
+[dependencies.snarkvm-fields]
+path = "../../fields"
 version = "0.7.5"
 
 [dependencies.snarkvm-circuits-environment]
