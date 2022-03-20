@@ -38,10 +38,6 @@ pub trait AlgebraicSponge<F: PrimeField, const RATE: usize, const CAPACITY: usiz
 
 pub trait DefaultCapacityAlgebraicSponge<F: PrimeField, const RATE: usize>: AlgebraicSponge<F, RATE, 1> {
     fn sample_parameters() -> Self::Parameters;
-
-    fn with_default_parameters() -> Self {
-        Self::with_parameters(&Self::sample_parameters())
-    }
 }
 
 /// The mode structure for duplex sponges

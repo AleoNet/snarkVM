@@ -19,7 +19,7 @@ use snarkvm_fields::{PoseidonParameters, PrimeField};
 
 use smallvec::SmallVec;
 use std::{
-    ops::{Index, IndexMut, Range},
+    ops::{Index, IndexMut},
     sync::Arc,
 };
 
@@ -44,26 +44,6 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> State<F, RATE, CAP
     /// Returns an mutable iterator over the state.
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut F> {
         self.capacity_state.iter_mut().chain(self.rate_state.iter_mut())
-    }
-
-    /// Get elements lying within the specified range
-    pub fn range(&self, range: Range<usize>) -> impl Iterator<Item = &F> {
-        let start = range.start;
-        let end = range.end;
-        assert!(start < end, "start < end in range: start is {} but end is {}", start, end);
-        assert!(end <= RATE + CAPACITY, "Range out of bounds: range is {:?} but length is {}", range, RATE + CAPACITY);
-        if start >= CAPACITY {
-            // Our range is contained entirely in `rate_state`
-            self.rate_state[(start - CAPACITY)..(end - CAPACITY)].iter().chain(&[]) // This hack is need for `impl Iterator` to work.
-        } else if end > CAPACITY {
-            // Our range spans both arrays
-            self.capacity_state[start..].iter().chain(self.rate_state[..(end - CAPACITY)].iter())
-        } else {
-            debug_assert!(end <= CAPACITY);
-            debug_assert!(start < CAPACITY);
-            // Our range spans only the first array
-            self.capacity_state[start..end].iter().chain(&[])
-        }
     }
 }
 
@@ -91,13 +71,11 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> IndexMut<usize> fo
 /// [cos]: https://eprint.iacr.org/2019/1076
 #[derive(Clone, Debug)]
 pub struct PoseidonSponge<F: PrimeField, const RATE: usize, const CAPACITY: usize> {
-    // Sponge Parameters
+    /// Sponge Parameters
     pub parameters: Arc<PoseidonParameters<F, RATE, CAPACITY>>,
-
-    // Sponge State
-    /// current sponge's state (current elements in the permutation block)
+    /// Current sponge's state (current elements in the permutation block)
     pub state: State<F, RATE, CAPACITY>,
-    /// current mode (whether its absorbing or squeezing)
+    /// Current mode (whether its absorbing or squeezing)
     pub mode: DuplexSpongeMode,
 }
 
@@ -230,6 +208,12 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSponge<F, 
     }
 }
 
+impl<F: PrimeField, const RATE: usize> DefaultCapacityAlgebraicSponge<F, RATE> for PoseidonSponge<F, RATE, 1> {
+    fn sample_parameters() -> Arc<PoseidonParameters<F, RATE, 1>> {
+        Arc::new(F::default_poseidon_parameters::<RATE>(false).unwrap())
+    }
+}
+
 impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> AlgebraicSponge<F, RATE, CAPACITY>
     for PoseidonSponge<F, RATE, CAPACITY>
 {
@@ -287,20 +271,6 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> AlgebraicSponge<F,
 
         output.truncate(num_elements);
         output
-    }
-}
-
-impl<F: PrimeField, const RATE: usize> DefaultCapacityAlgebraicSponge<F, RATE> for PoseidonSponge<F, RATE, 1> {
-    fn sample_parameters() -> Arc<PoseidonParameters<F, RATE, 1>> {
-        Arc::new(F::default_poseidon_parameters::<RATE>(false).unwrap())
-    }
-
-    fn with_default_parameters() -> Self {
-        let parameters = Arc::new(F::default_poseidon_parameters::<RATE>(false).unwrap());
-        let state = State::default();
-        let mode = DuplexSpongeMode::Absorbing { next_absorb_index: 0 };
-
-        Self { parameters, state, mode }
     }
 }
 

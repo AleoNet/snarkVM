@@ -426,17 +426,6 @@ impl<
         public_input: &[TargetField],
         proof: &Proof<TargetField, BaseField, PC>,
     ) -> Result<bool, MarlinError> {
-        Self::verify_with_fs_parameters(circuit_verifying_key, &FS::sample_params(), public_input, proof)
-    }
-
-    /// Verify that a proof for the constraint system defined by `C` asserts that
-    /// all constraints are satisfied.
-    pub fn verify_with_fs_parameters(
-        circuit_verifying_key: &CircuitVerifyingKey<TargetField, BaseField, PC, MM>,
-        fs_parameters: &FS::Parameters,
-        public_input: &[TargetField],
-        proof: &Proof<TargetField, BaseField, PC>,
-    ) -> Result<bool, MarlinError> {
         let verifier_time = start_timer!(|| "Marlin::Verify");
         let first_commitments = &proof.commitments[0];
         let second_commitments = &proof.commitments[1];
@@ -475,8 +464,7 @@ impl<
             println!("Number of padded public variables: {}", padded_public_input.len());
         }
 
-        let mut fs_rng = FS::with_parameters(fs_parameters);
-
+        let mut fs_rng = FS::new();
         fs_rng.absorb_bytes(&to_bytes_le![&Self::PROTOCOL_NAME].unwrap());
         fs_rng.absorb_native_field_elements(&circuit_verifying_key.circuit_commitments);
         fs_rng.absorb_nonnative_field_elements(&padded_public_input, OptimizationType::Weight);
@@ -597,16 +585,5 @@ impl<
         proof: &Proof<TargetField, BaseField, PC>,
     ) -> Result<bool, MarlinError> {
         Self::verify(&prepared_vk.orig_vk, public_input, proof)
-    }
-
-    /// Verify that a proof for the constraint system defined by `C` asserts that
-    /// all constraints are satisfied using the prepared verifying key.
-    pub fn prepared_verify_with_fs_parameters(
-        prepared_vk: &PreparedCircuitVerifyingKey<TargetField, BaseField, PC, MM>,
-        fs_parameters: &FS::Parameters,
-        public_input: &[TargetField],
-        proof: &Proof<TargetField, BaseField, PC>,
-    ) -> Result<bool, MarlinError> {
-        Self::verify_with_fs_parameters(&prepared_vk.orig_vk, fs_parameters, public_input, proof)
     }
 }
