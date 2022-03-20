@@ -86,21 +86,20 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
             .map(|x| {
                 x.iter()
                     .map(|g| {
-                        let mut out = [G::zero(); BOWE_HOPWOOD_LOOKUP_SIZE];
-                        for (i, element) in out.iter_mut().enumerate().take(BOWE_HOPWOOD_LOOKUP_SIZE) {
-                            let mut encoded = *g;
+                        let mut lookup = [G::zero(); BOWE_HOPWOOD_LOOKUP_SIZE];
+                        for (i, element) in lookup.iter_mut().enumerate().take(BOWE_HOPWOOD_LOOKUP_SIZE) {
+                            *element = *g;
                             if (i & 0x01) != 0 {
-                                encoded += g;
+                                *element += g;
                             }
                             if (i & 0x02) != 0 {
-                                encoded += g.double();
+                                *element += g.double();
                             }
                             if (i & 0x04) != 0 {
-                                encoded = encoded.neg();
+                                *element = element.neg();
                             }
-                            *element = encoded;
                         }
-                        out
+                        lookup
                     })
                     .collect()
             })
@@ -121,7 +120,6 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
 }
 
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE> {
-    /// Precondition: number of elements in `input` == `num_bits`.
     pub(crate) fn hash_bits_inner(&self, input: &[bool]) -> Result<G, CRHError> {
         // Input-independent sanity checks.
         debug_assert!(WINDOW_SIZE <= MAX_WINDOW_SIZE);
