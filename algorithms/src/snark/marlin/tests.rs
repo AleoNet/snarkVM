@@ -260,7 +260,7 @@ mod marlin {
 mod marlin_recursion {
     use super::*;
     use crate::{
-        crypto_hash::poseidon::PoseidonSponge,
+        crypto_hash::PoseidonSponge,
         polycommit::sonic_pc::SonicKZG10,
         snark::marlin::{
             ahp::AHPForR1CS,

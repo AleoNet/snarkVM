@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{algorithms::crypto_hash::PoseidonSpongeGadget, AlgebraicSpongeVar, AllocGadget, FieldGadget, FpGadget};
-use snarkvm_algorithms::{crypto_hash::poseidon::PoseidonSponge, AlgebraicSponge};
+use snarkvm_algorithms::{crypto_hash::PoseidonSponge, AlgebraicSponge};
 use snarkvm_curves::bls12_377::Fr;
 use snarkvm_fields::PoseidonDefaultField;
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
@@ -38,7 +38,7 @@ fn absorb_test() {
 
     let sponge_params = Arc::new(Fr::default_poseidon_parameters::<2>(false).unwrap());
 
-    let mut native_sponge = PoseidonSponge::with_parameters(&sponge_params);
+    let mut native_sponge = PoseidonSponge::new(&sponge_params);
     let mut constraint_sponge = PoseidonSpongeGadget::with_parameters(cs.ns(|| "new sponge"), &sponge_params);
 
     native_sponge.absorb(&absorb);

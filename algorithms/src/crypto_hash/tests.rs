@@ -54,7 +54,7 @@ fn test_poseidon_sponge_consistency() {
     for absorb in 0..10 {
         for squeeze in 0..10 {
             let iteration_name = format!("Absorb {} and Squeeze {}", absorb, squeeze);
-            let mut sponge = PoseidonSponge::<Fr, RATE, 1>::with_parameters(&sponge_param);
+            let mut sponge = PoseidonSponge::<Fr, RATE, 1>::new(&sponge_param);
             sponge.absorb(&vec![Fr::from(1237812u64); absorb]);
             let next_absorb_index = if absorb % RATE != 0 || absorb == 0 { absorb % RATE } else { RATE };
             assert_eq!(sponge.mode, DuplexSpongeMode::Absorbing { next_absorb_index }, "{}", iteration_name);

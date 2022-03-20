@@ -52,7 +52,7 @@ where
     type Parameters = S::Parameters;
 
     fn new() -> Self {
-        Self { s: S::with_parameters(&S::sample_parameters()), _phantom: PhantomData }
+        Self { s: S::new(&S::sample_parameters()), _phantom: PhantomData }
     }
 
     fn absorb_nonnative_field_elements(&mut self, elems: &[TargetField], ty: OptimizationType) {

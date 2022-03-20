@@ -26,7 +26,6 @@ use crate::{
         select::CondSelectGadget,
     },
     CompressedGroupGadget,
-    CryptoHashGadget,
     FpGadget,
     ToBitsLEGadget,
     ToConstraintFieldGadget,

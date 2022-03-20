@@ -15,8 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    crypto_hash::{hash_to_curve, PoseidonCryptoHash},
-    CryptoHash,
+    crypto_hash::{hash_to_curve, Poseidon},
     SignatureError,
     SignatureScheme,
     SignatureSchemeOperations,
@@ -135,7 +134,7 @@ where
     TE::BaseField: PrimeField,
 {
     g_bases: Vec<TEProjective<TE>>,
-    crypto_hash: PoseidonCryptoHash<TE::BaseField, 4, false>,
+    crypto_hash: Poseidon<TE::BaseField, 4, false>,
 }
 
 impl<TE: TwistedEdwardsParameters> SignatureScheme for AleoSignatureScheme<TE>
@@ -163,7 +162,7 @@ where
             g_bases
         };
 
-        let crypto_hash = PoseidonCryptoHash::<TE::BaseField, 4, false>::setup();
+        let crypto_hash = Poseidon::<TE::BaseField, 4, false>::setup();
 
         Self { g_bases, crypto_hash }
     }
@@ -387,7 +386,7 @@ where
     TE::BaseField: PrimeField,
 {
     fn from(g_bases: Vec<TEProjective<TE>>) -> Self {
-        let crypto_hash = PoseidonCryptoHash::<TE::BaseField, 4, false>::setup();
+        let crypto_hash = Poseidon::<TE::BaseField, 4, false>::setup();
         Self { g_bases, crypto_hash }
     }
 }

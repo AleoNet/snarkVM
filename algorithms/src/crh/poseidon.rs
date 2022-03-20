@@ -14,20 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{crypto_hash::PoseidonCryptoHash, CRHError, CryptoHash, CRH};
+use crate::{crypto_hash::Poseidon, CRHError, CRH};
 use snarkvm_fields::{FieldParameters, PoseidonParameters, PrimeField, ToConstraintField};
 
 use std::{borrow::Cow, fmt::Debug, sync::Arc};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PoseidonCRH<F: PrimeField, const INPUT_SIZE_FE: usize>(PoseidonCryptoHash<F, 4, false>);
+pub struct PoseidonCRH<F: PrimeField, const INPUT_SIZE_FE: usize>(Poseidon<F, 4, false>);
 
 impl<F: PrimeField, const INPUT_SIZE_FE: usize> CRH for PoseidonCRH<F, INPUT_SIZE_FE> {
     type Output = F;
     type Parameters = Arc<PoseidonParameters<F, 4, 1>>;
 
     fn setup(_message: &str) -> Self {
-        Self(PoseidonCryptoHash::<F, 4, false>::setup())
+        Self(Poseidon::<F, 4, false>::setup())
     }
 
     fn hash(&self, input: &[bool]) -> Result<Self::Output, CRHError> {

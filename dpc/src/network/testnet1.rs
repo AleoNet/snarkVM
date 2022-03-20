@@ -30,7 +30,7 @@ use crate::{
 use snarkvm_algorithms::{
     commitment::PedersenCommitment,
     crh::{PedersenCompressedCRH, PoseidonCRH, BHPCRH},
-    crypto_hash::poseidon::PoseidonSponge,
+    crypto_hash::PoseidonSponge,
     encryption::ECIESPoseidonEncryption,
     merkle_tree::{MaskedMerkleTreeParameters, MerkleTreeParameters},
     polycommit::sonic_pc::SonicKZG10,

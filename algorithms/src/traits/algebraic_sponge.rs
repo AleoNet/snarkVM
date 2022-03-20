@@ -27,7 +27,7 @@ pub trait AlgebraicSponge<F: PrimeField, const RATE: usize, const CAPACITY: usiz
     type Parameters;
 
     /// Initialize a new instance of the sponge.
-    fn with_parameters(params: &Self::Parameters) -> Self;
+    fn new(params: &Self::Parameters) -> Self;
 
     /// Absorb an input into the sponge.
     fn absorb(&mut self, input: &[F]);

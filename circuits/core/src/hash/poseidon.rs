@@ -75,6 +75,7 @@ impl<E: Environment> Poseidon<E> {
 }
 
 impl<E: Environment> Poseidon<E> {
+    #[inline]
     fn apply_ark(&self, state: &mut [Field<E>], round: usize) {
         // Adds ark in place.
         for (i, element) in state.iter_mut().enumerate() {
@@ -82,6 +83,7 @@ impl<E: Environment> Poseidon<E> {
         }
     }
 
+    #[inline]
     fn apply_s_box(&self, state: &mut [Field<E>], is_full_round: bool) {
         // Full rounds apply the S Box (x^alpha) to every element of state
         if is_full_round {
@@ -95,6 +97,7 @@ impl<E: Environment> Poseidon<E> {
         }
     }
 
+    #[inline]
     fn apply_mds(&self, state: &mut [Field<E>]) {
         let mut new_state = Vec::with_capacity(state.len());
         for i in 0..state.len() {
@@ -107,30 +110,24 @@ impl<E: Environment> Poseidon<E> {
         state.clone_from_slice(&new_state[..state.len()]);
     }
 
+    #[inline]
     fn permute(&self, state: &mut [Field<E>]) {
+        // Determine the partial rounds range bound.
         let partial_rounds = self.partial_rounds;
         let full_rounds = self.full_rounds;
         let full_rounds_over_2 = full_rounds / 2;
+        let partial_round_range = full_rounds_over_2..(full_rounds_over_2 + partial_rounds);
 
-        for i in 0..full_rounds_over_2 {
+        // Iterate through all rounds to permute.
+        for i in 0..(partial_rounds + full_rounds) {
+            let is_full_round = !partial_round_range.contains(&i);
             self.apply_ark(state, i);
-            self.apply_s_box(state, true);
-            self.apply_mds(state);
-        }
-
-        for i in full_rounds_over_2..(full_rounds_over_2 + partial_rounds) {
-            self.apply_ark(state, i);
-            self.apply_s_box(state, false);
-            self.apply_mds(state);
-        }
-
-        for i in (full_rounds_over_2 + partial_rounds)..(partial_rounds + full_rounds) {
-            self.apply_ark(state, i);
-            self.apply_s_box(state, true);
+            self.apply_s_box(state, is_full_round);
             self.apply_mds(state);
         }
     }
 
+    #[inline]
     fn absorb_internal(&self, state: &mut [Field<E>], mode: &mut DuplexSpongeMode, mut rate_start_index: usize, input: &[Field<E>]) {
         if !input.is_empty() {
             let mut remaining_elements = input;
@@ -163,6 +160,7 @@ impl<E: Environment> Poseidon<E> {
         }
     }
 
+    #[inline]
     fn squeeze_internal(&self, state: &mut [Field<E>], mode: &mut DuplexSpongeMode, mut rate_start_index: usize, output: &mut [Field<E>]) {
         let mut remaining_output = output;
 
@@ -194,6 +192,7 @@ impl<E: Environment> Poseidon<E> {
         }
     }
 
+    #[inline]
     fn absorb(&self, state: &mut [Field<E>], mode: &mut DuplexSpongeMode, input: &[Field<E>]) {
         if !input.is_empty() {
             match mode {
@@ -215,6 +214,7 @@ impl<E: Environment> Poseidon<E> {
         }
     }
 
+    #[inline]
     fn squeeze(&self, state: &mut [Field<E>], mode: &mut DuplexSpongeMode, num_outputs: usize) -> Vec<Field<E>> {
         let mut output = vec![Field::zero(); num_outputs];
         if num_outputs != 0 {

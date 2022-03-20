@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    algorithms::crypto_hash::poseidon::PoseidonSpongeGadget,
+    algorithms::crypto_hash::PoseidonSpongeGadget,
     AlgebraicSpongeVar,
     AllocGadget,
     Boolean,

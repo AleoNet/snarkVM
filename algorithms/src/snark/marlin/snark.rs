@@ -101,7 +101,7 @@ where
 pub mod test {
     use super::*;
     use crate::{
-        crypto_hash::poseidon::PoseidonSponge,
+        crypto_hash::PoseidonSponge,
         polycommit::sonic_pc::SonicKZG10,
         snark::marlin::{fiat_shamir::FiatShamirAlgebraicSpongeRng, MarlinHidingMode, MarlinSNARK},
         SRS,

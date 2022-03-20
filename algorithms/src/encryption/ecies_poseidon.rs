@@ -15,8 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    crypto_hash::{hash_to_curve, PoseidonSponge},
-    AlgebraicSponge,
+    crypto_hash::{hash_to_curve, Poseidon},
     EncryptionError,
     EncryptionScheme,
 };
@@ -26,14 +25,7 @@ use snarkvm_curves::{
     ProjectiveCurve,
     TwistedEdwardsParameters,
 };
-use snarkvm_fields::{
-    ConstraintFieldError,
-    FieldParameters,
-    PoseidonDefaultField,
-    PoseidonParameters,
-    PrimeField,
-    ToConstraintField,
-};
+use snarkvm_fields::{ConstraintFieldError, FieldParameters, PrimeField, ToConstraintField};
 use snarkvm_utilities::{
     io::Result as IoResult,
     ops::Mul,
@@ -50,7 +42,6 @@ use snarkvm_utilities::{
 
 use itertools::Itertools;
 use rand::{CryptoRng, Rng};
-use std::sync::Arc;
 
 #[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
 #[derivative(
@@ -111,7 +102,7 @@ where
     TE::BaseField: PrimeField,
 {
     generator: TEAffine<TE>,
-    poseidon_parameters: Arc<PoseidonParameters<TE::BaseField, 4, 1>>,
+    poseidon: Poseidon<TE::BaseField, 4, false>,
     symmetric_key_commitment_domain: TE::BaseField,
     symmetric_encryption_domain: TE::BaseField,
 }
@@ -220,9 +211,7 @@ where
     ///
     fn generate_symmetric_key_commitment(&self, symmetric_key: &Self::SymmetricKey) -> Self::SymmetricKeyCommitment {
         // Compute the symmetric key commitment.
-        let mut sponge = PoseidonSponge::with_parameters(&self.poseidon_parameters);
-        sponge.absorb(&[self.symmetric_key_commitment_domain, *symmetric_key]);
-        sponge.squeeze(1)[0]
+        self.poseidon.evaluate(&[self.symmetric_key_commitment_domain, *symmetric_key])
     }
 
     ///
@@ -303,30 +292,24 @@ where
     /// ```
     ///
     fn encrypt(&self, symmetric_key: &Self::SymmetricKey, message: &[Self::MessageType]) -> Vec<Self::MessageType> {
-        // Initialize the sponge state.
-        let mut sponge = PoseidonSponge::with_parameters(&self.poseidon_parameters);
-        sponge.absorb(&[self.symmetric_encryption_domain, *symmetric_key]);
-
         // Obtain random field elements from Poseidon.
-        let sponge_randomizers = sponge.squeeze(message.len());
+        let randomizers =
+            self.poseidon.evaluate_many(&[self.symmetric_encryption_domain, *symmetric_key], message.len());
 
         // Add the random field elements to the plaintext elements.
-        message.iter().zip_eq(sponge_randomizers).map(|(plaintext, randomizer)| *plaintext + randomizer).collect()
+        message.iter().zip_eq(randomizers).map(|(plaintext, randomizer)| *plaintext + randomizer).collect()
     }
 
     ///
     /// Decrypts the given ciphertext with the given symmetric key.
     ///
     fn decrypt(&self, symmetric_key: &Self::SymmetricKey, ciphertext: &[Self::MessageType]) -> Vec<Self::MessageType> {
-        // Initialize sponge state.
-        let mut sponge = PoseidonSponge::with_parameters(&self.poseidon_parameters);
-        sponge.absorb(&[self.symmetric_encryption_domain, *symmetric_key]);
-
         // Obtain random field elements from Poseidon.
-        let sponge_randomizers = sponge.squeeze(ciphertext.len());
+        let randomizers =
+            self.poseidon.evaluate_many(&[self.symmetric_encryption_domain, *symmetric_key], ciphertext.len());
 
         // Subtract the random field elements to the ciphertext elements.
-        ciphertext.iter().zip_eq(sponge_randomizers).map(|(ciphertext, randomizer)| *ciphertext - randomizer).collect()
+        ciphertext.iter().zip_eq(randomizers).map(|(ciphertext, randomizer)| *ciphertext - randomizer).collect()
     }
 
     fn parameters(&self) -> &<Self as EncryptionScheme>::Parameters {
@@ -343,12 +326,11 @@ where
     TE::BaseField: PrimeField,
 {
     fn from(generator: TEAffine<TE>) -> Self {
-        let poseidon_parameters =
-            Arc::new(<TE::BaseField as PoseidonDefaultField>::default_poseidon_parameters::<4>(false).unwrap());
+        let poseidon = Poseidon::<TE::BaseField, 4, false>::setup();
         let symmetric_key_commitment_domain = TE::BaseField::from_bytes_le_mod_order(b"AleoSymmetricKeyCommitment0");
         let symmetric_encryption_domain = TE::BaseField::from_bytes_le_mod_order(b"AleoSymmetricEncryption0");
 
-        Self { generator, poseidon_parameters, symmetric_key_commitment_domain, symmetric_encryption_domain }
+        Self { generator, poseidon, symmetric_key_commitment_domain, symmetric_encryption_domain }
     }
 }
 

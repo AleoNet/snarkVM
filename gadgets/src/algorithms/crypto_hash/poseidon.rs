@@ -14,11 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AlgebraicSpongeVar, AllocGadget, CryptoHashGadget, FieldGadget, FpGadget};
-use snarkvm_algorithms::{
-    crypto_hash::{PoseidonCryptoHash, PoseidonSponge},
-    DuplexSpongeMode,
-};
+use crate::{AlgebraicSpongeVar, AllocGadget, FieldGadget, FpGadget};
+use snarkvm_algorithms::{crypto_hash::PoseidonSponge, DuplexSpongeMode};
 use snarkvm_fields::{PoseidonParameters, PrimeField};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
@@ -325,19 +322,25 @@ pub struct PoseidonCryptoHashGadget<F: PrimeField, const RATE: usize, const OPTI
 );
 
 impl<F: PrimeField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool>
-    CryptoHashGadget<PoseidonCryptoHash<F, RATE, OPTIMIZED_FOR_WEIGHTS>, F>
-    for PoseidonCryptoHashGadget<F, RATE, OPTIMIZED_FOR_WEIGHTS>
+    PoseidonCryptoHashGadget<F, RATE, OPTIMIZED_FOR_WEIGHTS>
 {
-    type OutputGadget = FpGadget<F>;
-
-    fn check_evaluation_gadget<CS: ConstraintSystem<F>>(
+    pub fn check_evaluation_gadget<CS: ConstraintSystem<F>>(
         mut cs: CS,
         input: &[FpGadget<F>],
-    ) -> Result<Self::OutputGadget, SynthesisError> {
+    ) -> Result<FpGadget<F>, SynthesisError> {
         let params = Arc::new(F::default_poseidon_parameters::<RATE>(OPTIMIZED_FOR_WEIGHTS).unwrap());
         let mut sponge = PoseidonSpongeGadget::<F, RATE, 1>::with_parameters(cs.ns(|| "alloc"), &params);
         sponge.absorb(cs.ns(|| "absorb"), input.iter())?;
         let res = sponge.squeeze(cs.ns(|| "squeeze"), 1)?;
         Ok(res[0].clone())
+    }
+
+    pub fn check_evaluation_with_len_gadget<CS: ConstraintSystem<F>>(
+        cs: CS,
+        input: &[FpGadget<F>],
+    ) -> Result<FpGadget<F>, SynthesisError> {
+        let mut header = vec![FpGadget::<F>::Constant(F::from(input.len() as u128))];
+        header.extend_from_slice(input);
+        Self::check_evaluation_gadget(cs, &header)
     }
 }

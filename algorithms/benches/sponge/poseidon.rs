@@ -17,7 +17,7 @@
 #[macro_use]
 extern crate criterion;
 
-use snarkvm_algorithms::{crypto_hash::poseidon::PoseidonSponge, AlgebraicSponge};
+use snarkvm_algorithms::{crypto_hash::PoseidonSponge, AlgebraicSponge};
 use snarkvm_curves::bls12_377::Fq;
 use snarkvm_fields::PoseidonDefaultField;
 use snarkvm_utilities::UniformRand;
@@ -28,8 +28,7 @@ use std::sync::Arc;
 
 fn sponge_2_1_absorb_4(c: &mut Criterion) {
     let rng = &mut thread_rng();
-    let mut sponge =
-        PoseidonSponge::<Fq, 2, 1>::with_parameters(&Arc::new(Fq::default_poseidon_parameters::<2>(false).unwrap()));
+    let mut sponge = PoseidonSponge::<Fq, 2, 1>::new(&Arc::new(Fq::default_poseidon_parameters::<2>(false).unwrap()));
 
     let input = vec![Fq::rand(rng), Fq::rand(rng), Fq::rand(rng), Fq::rand(rng)];
     c.bench_function("PoseidonSponge<2, 1> Absorb 4", move |b| b.iter(|| sponge.absorb(&input)));
@@ -37,8 +36,7 @@ fn sponge_2_1_absorb_4(c: &mut Criterion) {
 
 fn sponge_2_1_absorb_10(c: &mut Criterion) {
     let rng = &mut thread_rng();
-    let mut sponge =
-        PoseidonSponge::<Fq, 2, 1>::with_parameters(&Arc::new(Fq::default_poseidon_parameters::<2>(false).unwrap()));
+    let mut sponge = PoseidonSponge::<Fq, 2, 1>::new(&Arc::new(Fq::default_poseidon_parameters::<2>(false).unwrap()));
 
     let input = vec![Fq::rand(rng); 10];
     c.bench_function("PoseidonSponge<2, 1> Absorb 10 ", move |b| b.iter(|| sponge.absorb(&input)));

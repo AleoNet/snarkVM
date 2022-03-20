@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AlgebraicSponge, CryptoHash, DefaultCapacityAlgebraicSponge, DuplexSpongeMode};
+use crate::{AlgebraicSponge, DefaultCapacityAlgebraicSponge, DuplexSpongeMode};
 use snarkvm_fields::{PoseidonParameters, PrimeField};
 
 use smallvec::SmallVec;
@@ -63,6 +63,41 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> IndexMut<usize> fo
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Poseidon<F: PrimeField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool> {
+    parameters: Arc<PoseidonParameters<F, RATE, 1>>,
+}
+
+impl<F: PrimeField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool> Poseidon<F, RATE, OPTIMIZED_FOR_WEIGHTS> {
+    /// Initializes a new instance of the cryptographic hash function.
+    pub fn setup() -> Self {
+        Self { parameters: Arc::new(F::default_poseidon_parameters::<RATE>(OPTIMIZED_FOR_WEIGHTS).unwrap()) }
+    }
+
+    /// Evaluate the cryptographic hash function over a list of field elements as input.
+    pub fn evaluate(&self, input: &[F]) -> F {
+        self.evaluate_many(input, 1)[0]
+    }
+
+    /// Evaluate the cryptographic hash function over a list of field elements as input,
+    /// and returns the specified number of field elements as output.
+    pub fn evaluate_many(&self, input: &[F], num_outputs: usize) -> Vec<F> {
+        let mut sponge = PoseidonSponge::<F, RATE, 1>::new(&self.parameters);
+        sponge.absorb(input);
+        sponge.squeeze(num_outputs).to_vec()
+    }
+
+    /// Evaluate the cryptographic hash function over a non-fixed-length vector,
+    /// in which the length also needs to be hashed.
+    pub fn evaluate_with_len(&self, input: &[F]) -> F {
+        self.evaluate(&[vec![<F as From<u64>>::from(input.len() as u64)], input.to_vec()].concat())
+    }
+
+    pub fn parameters(&self) -> &Arc<PoseidonParameters<F, RATE, 1>> {
+        &self.parameters
+    }
+}
+
 /// A duplex sponge based using the Poseidon permutation.
 ///
 /// This implementation of Poseidon is entirely from Fractal's implementation in [COS20][cos]
@@ -72,9 +107,9 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> IndexMut<usize> fo
 #[derive(Clone, Debug)]
 pub struct PoseidonSponge<F: PrimeField, const RATE: usize, const CAPACITY: usize> {
     /// Sponge Parameters
-    pub parameters: Arc<PoseidonParameters<F, RATE, CAPACITY>>,
+    parameters: Arc<PoseidonParameters<F, RATE, CAPACITY>>,
     /// Current sponge's state (current elements in the permutation block)
-    pub state: State<F, RATE, CAPACITY>,
+    state: State<F, RATE, CAPACITY>,
     /// Current mode (whether its absorbing or squeezing)
     pub mode: DuplexSpongeMode,
 }
@@ -90,7 +125,7 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> AlgebraicSponge<F,
 {
     type Parameters = Arc<PoseidonParameters<F, RATE, CAPACITY>>;
 
-    fn with_parameters(parameters: &Self::Parameters) -> Self {
+    fn new(parameters: &Self::Parameters) -> Self {
         Self {
             parameters: parameters.clone(),
             state: State::default(),
@@ -138,7 +173,7 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> AlgebraicSponge<F,
                 }
                 self.squeeze_internal(next_squeeze_index, &mut output[..num_elements]);
             }
-        };
+        }
 
         output.truncate(num_elements);
         output
@@ -147,157 +182,130 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> AlgebraicSponge<F,
 
 impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSponge<F, RATE, CAPACITY> {
     #[inline]
-    fn apply_ark(&self, state: &mut State<F, RATE, CAPACITY>, round_number: usize) {
-        for (state_elem, ark_elem) in state.iter_mut().zip(&self.parameters.ark[round_number]) {
+    fn apply_ark(&mut self, round_number: usize) {
+        for (state_elem, ark_elem) in self.state.iter_mut().zip(&self.parameters.ark[round_number]) {
             *state_elem += ark_elem;
         }
     }
 
     #[inline]
-    fn apply_s_box(&self, state: &mut State<F, RATE, CAPACITY>, is_full_round: bool) {
+    fn apply_s_box(&mut self, is_full_round: bool) {
         // Full rounds apply the S Box (x^alpha) to every element of state
         if is_full_round {
-            for elem in state.iter_mut() {
+            for elem in self.state.iter_mut() {
                 *elem = elem.pow(&[self.parameters.alpha]);
             }
         }
         // Partial rounds apply the S Box (x^alpha) to just the first element of state
         else {
-            state[0] = state[0].pow(&[self.parameters.alpha]);
+            self.state[0] = self.state[0].pow(&[self.parameters.alpha]);
         }
     }
 
     #[inline]
-    fn apply_mds(&self, state: &mut State<F, RATE, CAPACITY>) {
+    fn apply_mds(&mut self) {
         let mut new_state = State::default();
         new_state.iter_mut().zip(&self.parameters.mds).for_each(|(new_elem, mds_row)| {
-            *new_elem = state.iter().zip(mds_row).map(|(state_elem, &mds_elem)| mds_elem * state_elem).sum::<F>();
+            *new_elem = self.state.iter().zip(mds_row).map(|(state_elem, &mds_elem)| mds_elem * state_elem).sum::<F>();
         });
-        *state = new_state;
+        self.state = new_state;
     }
 
+    #[inline]
     fn permute(&mut self) {
-        let full_rounds_over_2 = self.parameters.full_rounds / 2;
-        let partial_round_range = full_rounds_over_2..(full_rounds_over_2 + self.parameters.partial_rounds);
+        // Determine the partial rounds range bound.
+        let partial_rounds = self.parameters.partial_rounds;
+        let full_rounds = self.parameters.full_rounds;
+        let full_rounds_over_2 = full_rounds / 2;
+        let partial_round_range = full_rounds_over_2..(full_rounds_over_2 + partial_rounds);
 
-        let mut state = self.state;
-        for i in 0..(self.parameters.partial_rounds + self.parameters.full_rounds) {
+        // Iterate through all rounds to permute.
+        for i in 0..(partial_rounds + full_rounds) {
             let is_full_round = !partial_round_range.contains(&i);
-            self.apply_ark(&mut state, i);
-            self.apply_s_box(&mut state, is_full_round);
-            self.apply_mds(&mut state);
-        }
-        self.state = state;
-    }
-
-    // Absorbs everything in elements, this does not end in an absorbtion.
-    fn absorb_internal(&mut self, mut rate_start: usize, elements: &[F]) {
-        if elements.is_empty() {
-            return;
-        }
-
-        let first_chunk_size = std::cmp::min(RATE - rate_start, elements.len());
-        let num_elements_remaining = elements.len() - first_chunk_size;
-        let (first_chunk, rest_chunk) = elements.split_at(first_chunk_size);
-        let rest_chunks = rest_chunk.chunks(RATE);
-        // The total number of chunks is `elements[num_elements_remaining..].len() / RATE`, plus 1
-        // for the remainder.
-        let total_num_chunks = 1 + // 1 for the first chunk
-            // We add all the chunks that are perfectly divisible by `RATE`
-            (num_elements_remaining / RATE) +
-            // And also add 1 if the last chunk is non-empty 
-            // (i.e. if `num_elements_remaining` is not a multiple of `RATE`)
-            usize::from((num_elements_remaining % RATE) != 0);
-
-        // Absorb the input elements, `RATE` elements at a time, except for the first chunk, which
-        // is of size `RATE - rate_start`.
-        for (i, chunk) in std::iter::once(first_chunk).chain(rest_chunks).enumerate() {
-            for (element, state_elem) in chunk.iter().zip(&mut self.state.rate_state[rate_start..]) {
-                *state_elem += element;
-            }
-            // Are we in the last chunk?
-            // If so, let's wrap up.
-            if i == total_num_chunks - 1 {
-                self.mode = DuplexSpongeMode::Absorbing { next_absorb_index: rate_start + chunk.len() };
-                return;
-            } else {
-                self.permute();
-            }
-            rate_start = 0;
+            self.apply_ark(i);
+            self.apply_s_box(is_full_round);
+            self.apply_mds();
         }
     }
 
-    // Squeeze |output| many elements. This does not end in a squeeze
+    /// Absorbs everything in elements, this does not end in an absorption.
+    #[inline]
+    fn absorb_internal(&mut self, mut rate_start: usize, input: &[F]) {
+        if !input.is_empty() {
+            let first_chunk_size = std::cmp::min(RATE - rate_start, input.len());
+            let num_elements_remaining = input.len() - first_chunk_size;
+            let (first_chunk, rest_chunk) = input.split_at(first_chunk_size);
+            let rest_chunks = rest_chunk.chunks(RATE);
+            // The total number of chunks is `elements[num_elements_remaining..].len() / RATE`, plus 1
+            // for the remainder.
+            let total_num_chunks = 1 + // 1 for the first chunk
+                // We add all the chunks that are perfectly divisible by `RATE`
+                (num_elements_remaining / RATE) +
+                // And also add 1 if the last chunk is non-empty
+                // (i.e. if `num_elements_remaining` is not a multiple of `RATE`)
+                usize::from((num_elements_remaining % RATE) != 0);
+
+            // Absorb the input elements, `RATE` elements at a time, except for the first chunk, which
+            // is of size `RATE - rate_start`.
+            for (i, chunk) in std::iter::once(first_chunk).chain(rest_chunks).enumerate() {
+                for (element, state_elem) in chunk.iter().zip(&mut self.state.rate_state[rate_start..]) {
+                    *state_elem += element;
+                }
+                // Are we in the last chunk?
+                // If so, let's wrap up.
+                if i == total_num_chunks - 1 {
+                    self.mode = DuplexSpongeMode::Absorbing { next_absorb_index: rate_start + chunk.len() };
+                    return;
+                } else {
+                    self.permute();
+                }
+                rate_start = 0;
+            }
+        }
+    }
+
+    /// Squeeze |output| many elements. This does not end in a squeeze
+    #[inline]
     fn squeeze_internal(&mut self, mut rate_start: usize, output: &mut [F]) {
-        let output_length = output.len();
-        if output_length == 0 {
-            return;
-        }
+        let output_size = output.len();
+        if output_size != 0 {
+            let first_chunk_size = std::cmp::min(RATE - rate_start, output.len());
+            let num_output_remaining = output.len() - first_chunk_size;
+            let (first_chunk, rest_chunk) = output.split_at_mut(first_chunk_size);
+            assert_eq!(rest_chunk.len(), num_output_remaining);
+            let rest_chunks = rest_chunk.chunks_mut(RATE);
+            // The total number of chunks is `output[num_output_remaining..].len() / RATE`, plus 1
+            // for the remainder.
+            let total_num_chunks = 1 + // 1 for the first chunk
+                // We add all the chunks that are perfectly divisible by `RATE`
+                (num_output_remaining / RATE) +
+                // And also add 1 if the last chunk is non-empty
+                // (i.e. if `num_output_remaining` is not a multiple of `RATE`)
+                usize::from((num_output_remaining % RATE) != 0);
 
-        let first_chunk_size = std::cmp::min(RATE - rate_start, output.len());
-        let num_output_remaining = output.len() - first_chunk_size;
-        let (first_chunk, rest_chunk) = output.split_at_mut(first_chunk_size);
-        assert_eq!(rest_chunk.len(), num_output_remaining);
-        let rest_chunks = rest_chunk.chunks_mut(RATE);
-        // The total number of chunks is `output[num_output_remaining..].len() / RATE`, plus 1
-        // for the remainder.
-        let total_num_chunks = 1 + // 1 for the first chunk
-            // We add all the chunks that are perfectly divisible by `RATE`
-            (num_output_remaining / RATE) +
-            // And also add 1 if the last chunk is non-empty 
-            // (i.e. if `num_output_remaining` is not a multiple of `RATE`)
-            usize::from((num_output_remaining % RATE) != 0);
-
-        // Absorb the input output, `RATE` output at a time, except for the first chunk, which
-        // is of size `RATE - rate_start`.
-        for (i, chunk) in std::iter::once(first_chunk).chain(rest_chunks).enumerate() {
-            let range = rate_start..(rate_start + chunk.len());
-            debug_assert_eq!(
-                chunk.len(),
-                self.state.rate_state[range.clone()].len(),
-                "failed with squeeze {} at rate {} and rate_start {}",
-                output_length,
-                RATE,
-                rate_start
-            );
-            chunk.copy_from_slice(&self.state.rate_state[range]);
-            // Are we in the last chunk?
-            // If so, let's wrap up.
-            if i == total_num_chunks - 1 {
-                self.mode = DuplexSpongeMode::Squeezing { next_squeeze_index: (rate_start + chunk.len()) };
-                return;
-            } else {
-                self.permute();
+            // Absorb the input output, `RATE` output at a time, except for the first chunk, which
+            // is of size `RATE - rate_start`.
+            for (i, chunk) in std::iter::once(first_chunk).chain(rest_chunks).enumerate() {
+                let range = rate_start..(rate_start + chunk.len());
+                debug_assert_eq!(
+                    chunk.len(),
+                    self.state.rate_state[range.clone()].len(),
+                    "failed with squeeze {} at rate {} and rate_start {}",
+                    output_size,
+                    RATE,
+                    rate_start
+                );
+                chunk.copy_from_slice(&self.state.rate_state[range]);
+                // Are we in the last chunk?
+                // If so, let's wrap up.
+                if i == total_num_chunks - 1 {
+                    self.mode = DuplexSpongeMode::Squeezing { next_squeeze_index: (rate_start + chunk.len()) };
+                    return;
+                } else {
+                    self.permute();
+                }
+                rate_start = 0;
             }
-            rate_start = 0;
         }
-    }
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct PoseidonCryptoHash<F: PrimeField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool>(
-    Arc<PoseidonParameters<F, RATE, 1>>,
-);
-
-impl<F: PrimeField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool> CryptoHash
-    for PoseidonCryptoHash<F, RATE, OPTIMIZED_FOR_WEIGHTS>
-{
-    type Input = F;
-    type Output = F;
-    type Parameters = Arc<PoseidonParameters<F, RATE, 1>>;
-
-    /// Initializes a new instance of the cryptographic hash function.
-    fn setup() -> Self {
-        Self(Arc::new(F::default_poseidon_parameters::<RATE>(OPTIMIZED_FOR_WEIGHTS).unwrap()))
-    }
-
-    fn evaluate(&self, input: &[Self::Input]) -> Self::Output {
-        let mut sponge = PoseidonSponge::<F, RATE, 1>::with_parameters(&self.0);
-        sponge.absorb(input);
-        sponge.squeeze(1)[0]
-    }
-
-    fn parameters(&self) -> &Self::Parameters {
-        &self.0
     }
 }
