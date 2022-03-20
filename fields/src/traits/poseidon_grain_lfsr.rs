@@ -16,7 +16,7 @@
 
 #![allow(dead_code)]
 
-use snarkvm_fields::{FieldParameters, PrimeField};
+use crate::{FieldParameters, PrimeField};
 use snarkvm_utilities::{cmp::Ordering, vec::Vec, FromBits};
 
 pub struct PoseidonGrainLFSR {

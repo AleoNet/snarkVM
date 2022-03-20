@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    crypto_hash::{PoseidonDefaultField, PoseidonParameters, PoseidonSponge},
+    crypto_hash::PoseidonSponge,
     hash_to_curve::hash_to_curve,
     AlgebraicSponge,
     EncryptionError,
@@ -27,7 +27,14 @@ use snarkvm_curves::{
     ProjectiveCurve,
     TwistedEdwardsParameters,
 };
-use snarkvm_fields::{ConstraintFieldError, FieldParameters, PrimeField, ToConstraintField};
+use snarkvm_fields::{
+    ConstraintFieldError,
+    FieldParameters,
+    PoseidonDefaultField,
+    PoseidonParameters,
+    PrimeField,
+    ToConstraintField,
+};
 use snarkvm_utilities::{
     io::Result as IoResult,
     ops::Mul,

@@ -15,11 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{algorithms::crypto_hash::PoseidonSpongeGadget, AlgebraicSpongeVar, AllocGadget, FieldGadget, FpGadget};
-use snarkvm_algorithms::{
-    crypto_hash::{poseidon::PoseidonSponge, PoseidonDefaultField},
-    AlgebraicSponge,
-};
+use snarkvm_algorithms::{crypto_hash::poseidon::PoseidonSponge, AlgebraicSponge};
 use snarkvm_curves::bls12_377::Fr;
+use snarkvm_fields::PoseidonDefaultField;
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::{test_rng, UniformRand};
 

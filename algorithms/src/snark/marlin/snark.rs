@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    crypto_hash::PoseidonDefaultField,
     polycommit::PolynomialCommitment,
     snark::marlin::{
         fiat_shamir::FiatShamirRng,
@@ -31,7 +30,7 @@ use crate::{
     SNARK,
     SRS,
 };
-use snarkvm_fields::{PrimeField, ToConstraintField};
+use snarkvm_fields::{PoseidonDefaultField, PrimeField, ToConstraintField};
 use snarkvm_r1cs::ConstraintSynthesizer;
 
 use core::sync::atomic::AtomicBool;

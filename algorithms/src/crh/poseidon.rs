@@ -14,12 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    crypto_hash::{PoseidonCryptoHash, PoseidonDefaultField, PoseidonParameters},
-    traits::{CryptoHash, CRH},
-    CRHError,
-};
-use snarkvm_fields::{ConstraintFieldError, FieldParameters, PrimeField, ToConstraintField};
+use crate::{crypto_hash::PoseidonCryptoHash, CRHError, CryptoHash, CRH};
+use snarkvm_fields::{FieldParameters, PoseidonDefaultField, PoseidonParameters, PrimeField, ToConstraintField};
 
 use std::{borrow::Cow, fmt::Debug, sync::Arc};
 
@@ -55,12 +51,5 @@ impl<F: PrimeField + PoseidonDefaultField, const INPUT_SIZE_FE: usize> CRH for P
 
     fn parameters(&self) -> &Self::Parameters {
         self.0.parameters()
-    }
-}
-
-impl<F: PrimeField + PoseidonDefaultField> ToConstraintField<F> for PoseidonParameters<F, 4, 1> {
-    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
-        // do not write into field elements
-        Ok(vec![])
     }
 }

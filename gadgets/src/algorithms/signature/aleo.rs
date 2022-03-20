@@ -32,12 +32,11 @@ use crate::{
     ToConstraintFieldGadget,
 };
 use snarkvm_algorithms::{
-    crypto_hash::PoseidonDefaultField,
     signature::{AleoSignature, AleoSignatureScheme},
     SignatureScheme,
 };
 use snarkvm_curves::{templates::twisted_edwards_extended::Affine as TEAffine, TwistedEdwardsParameters};
-use snarkvm_fields::{FieldParameters, PrimeField};
+use snarkvm_fields::{FieldParameters, PoseidonDefaultField, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{FromBytes, ToBytes};
 

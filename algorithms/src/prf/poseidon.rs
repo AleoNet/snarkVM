@@ -15,11 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    crypto_hash::{PoseidonCryptoHash, PoseidonDefaultField},
+    crypto_hash::PoseidonCryptoHash,
     errors::PRFError,
     traits::{CryptoHash, PRF},
 };
-use snarkvm_fields::PrimeField;
+use snarkvm_fields::{PoseidonDefaultField, PrimeField};
 
 use std::marker::PhantomData;
 

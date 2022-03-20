@@ -14,12 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    crypto_hash::{PoseidonDefaultField, PoseidonGrainLFSR, PoseidonSponge},
-    AlgebraicSponge,
-    DuplexSpongeMode,
-};
+use crate::{crypto_hash::PoseidonSponge, AlgebraicSponge, DuplexSpongeMode};
 use snarkvm_curves::bls12_377::Fr;
+use snarkvm_fields::{PoseidonDefaultField, PoseidonGrainLFSR};
 
 use itertools::Itertools;
 use std::{path::PathBuf, sync::Arc};

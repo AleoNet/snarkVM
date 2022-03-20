@@ -15,12 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{AlgebraicSpongeVar, AllocGadget, CryptoHashGadget, FieldGadget, FpGadget};
-
 use snarkvm_algorithms::{
-    crypto_hash::{PoseidonCryptoHash, PoseidonDefaultField, PoseidonParameters, PoseidonSponge},
+    crypto_hash::{PoseidonCryptoHash, PoseidonSponge},
     DuplexSpongeMode,
 };
-use snarkvm_fields::PrimeField;
+use snarkvm_fields::{PoseidonDefaultField, PoseidonParameters, PrimeField};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
 use std::{borrow::Borrow, marker::PhantomData, sync::Arc};

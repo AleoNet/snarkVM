@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    crypto_hash::{PoseidonCryptoHash, PoseidonDefaultField},
+    crypto_hash::PoseidonCryptoHash,
     hash_to_curve::hash_to_curve,
     CryptoHash,
     SignatureError,
@@ -29,7 +29,14 @@ use snarkvm_curves::{
     ProjectiveCurve,
     TwistedEdwardsParameters,
 };
-use snarkvm_fields::{ConstraintFieldError, Field, FieldParameters, PrimeField, ToConstraintField};
+use snarkvm_fields::{
+    ConstraintFieldError,
+    Field,
+    FieldParameters,
+    PoseidonDefaultField,
+    PrimeField,
+    ToConstraintField,
+};
 use snarkvm_utilities::{
     io::{Read, Result as IoResult, Write},
     ops::Mul,
@@ -149,17 +156,15 @@ where
     type Signature = AleoSignature<TE>;
 
     fn setup(message: &str) -> Self {
-        assert!(
-            <TE::ScalarField as PrimeField>::Parameters::CAPACITY < <TE::BaseField as PrimeField>::Parameters::CAPACITY
-        );
+        assert!(TE::ScalarField::size_in_data_bits() < TE::BaseField::size_in_data_bits());
 
         // Compute the powers of G.
         let g_bases = {
             let (base, _, _) = hash_to_curve::<TEAffine<TE>>(message);
 
             let mut g = base.into_projective();
-            let mut g_bases = Vec::with_capacity(<TE::ScalarField as PrimeField>::Parameters::MODULUS_BITS as usize);
-            for _ in 0..<TE::ScalarField as PrimeField>::Parameters::MODULUS_BITS as usize {
+            let mut g_bases = Vec::with_capacity(TE::ScalarField::size_in_bits());
+            for _ in 0..TE::ScalarField::size_in_bits() {
                 g_bases.push(g);
                 g.double_in_place();
             }

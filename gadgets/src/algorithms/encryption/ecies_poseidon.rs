@@ -29,7 +29,7 @@ use crate::{
     ToBytesGadget,
     UInt8,
 };
-use snarkvm_algorithms::{crypto_hash::PoseidonDefaultField, encryption::ECIESPoseidonEncryption, EncryptionScheme};
+use snarkvm_algorithms::{encryption::ECIESPoseidonEncryption, EncryptionScheme};
 use snarkvm_curves::{
     templates::twisted_edwards_extended::{Affine as TEAffine, Projective as TEProjective},
     AffineCurve,
@@ -37,7 +37,7 @@ use snarkvm_curves::{
     ProjectiveCurve,
     TwistedEdwardsParameters,
 };
-use snarkvm_fields::{FieldParameters, PrimeField};
+use snarkvm_fields::{FieldParameters, PoseidonDefaultField, PrimeField};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 use snarkvm_utilities::{borrow::Borrow, to_bytes_le, ToBytes};
 

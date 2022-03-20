@@ -15,9 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Block, Ciphertext, InnerPublicVariables, PoSWScheme, ProgramPublicVariables, ValueBalanceCommitment};
-use snarkvm_algorithms::{crypto_hash::PoseidonDefaultField, prelude::*};
+use snarkvm_algorithms::prelude::*;
 use snarkvm_curves::{AffineCurve, PairingEngine, ProjectiveCurve, TwistedEdwardsParameters};
-use snarkvm_fields::{Field, PrimeField, ToConstraintField};
+use snarkvm_fields::{Field, PoseidonDefaultField, PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
     traits::algorithms::{CRHGadget, CommitmentGadget, EncryptionGadget, PRFGadget, SignatureGadget},
     FpGadget,

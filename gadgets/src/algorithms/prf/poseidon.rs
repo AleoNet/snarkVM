@@ -21,8 +21,8 @@ use crate::{
     FpGadget,
     PRFGadget,
 };
-use snarkvm_algorithms::{crypto_hash::PoseidonDefaultField, prf::PoseidonPRF};
-use snarkvm_fields::PrimeField;
+use snarkvm_algorithms::prf::PoseidonPRF;
+use snarkvm_fields::{PoseidonDefaultField, PrimeField};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
 use std::marker::PhantomData;

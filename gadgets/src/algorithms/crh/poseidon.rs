@@ -23,8 +23,8 @@ use crate::{
     CRHGadget,
     FpGadget,
 };
-use snarkvm_algorithms::{crh::PoseidonCRH, crypto_hash::PoseidonDefaultField, traits::CRH};
-use snarkvm_fields::{FieldParameters, PrimeField};
+use snarkvm_algorithms::{crh::PoseidonCRH, CRH};
+use snarkvm_fields::{FieldParameters, PoseidonDefaultField, PrimeField};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
 use std::borrow::{Borrow, Cow};

@@ -23,6 +23,8 @@ use crate::{
     FieldParameters,
     LegendreSymbol,
     One,
+    PoseidonDefaultField,
+    PoseidonDefaultParameters,
     PrimeField,
     SquareRootField,
     Zero,
@@ -425,6 +427,8 @@ impl<P: Fp256Parameters> SquareRootField for Fp256<P> {
         }
     }
 }
+
+impl<P: Fp256Parameters + PoseidonDefaultParameters> PoseidonDefaultField for Fp256<P> {}
 
 impl_primefield_from_int!(Fp256, u128, Fp256Parameters);
 impl_primefield_from_int!(Fp256, u64, Fp256Parameters);
