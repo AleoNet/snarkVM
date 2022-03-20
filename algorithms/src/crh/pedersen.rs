@@ -16,7 +16,6 @@
 
 use crate::{crypto_hash::hash_to_curve, CRHError, CRH};
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
-use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
 
 use itertools::Itertools;
 use std::{borrow::Cow, fmt::Debug};
@@ -75,14 +74,5 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
 
     fn parameters(&self) -> &Self::Parameters {
         &self.bases
-    }
-}
-
-impl<F: Field, G: ProjectiveCurve + ToConstraintField<F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    ToConstraintField<F> for PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>
-{
-    #[inline]
-    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
-        Ok(Vec::new())
     }
 }

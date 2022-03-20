@@ -16,7 +16,7 @@
 
 use crate::{crh::BHPCRH, crypto_hash::hash_to_curve, CommitmentError, CommitmentScheme, CRH};
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
-use snarkvm_fields::{ConstraintFieldError, Field, PrimeField, ToConstraintField};
+use snarkvm_fields::PrimeField;
 use snarkvm_utilities::BitIteratorLE;
 
 use itertools::Itertools;
@@ -72,14 +72,5 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
 
     fn parameters(&self) -> Self::Parameters {
         (self.bhp_crh.clone(), self.random_base.clone())
-    }
-}
-
-impl<F: Field, G: ProjectiveCurve + ToConstraintField<F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    ToConstraintField<F> for BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
-{
-    #[inline]
-    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
-        Ok(Vec::new())
     }
 }

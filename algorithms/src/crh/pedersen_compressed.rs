@@ -16,7 +16,6 @@
 
 use crate::{crh::PedersenCRH, CRHError, CRH};
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
-use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
 
 use std::fmt::Debug;
 
@@ -42,14 +41,5 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
 
     fn parameters(&self) -> &Self::Parameters {
         &self.crh
-    }
-}
-
-impl<F: Field, G: ProjectiveCurve + ToConstraintField<F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    ToConstraintField<F> for PedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>
-{
-    #[inline]
-    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
-        self.crh.to_field_elements()
     }
 }
