@@ -27,8 +27,6 @@ use rayon::prelude::*;
 pub const BHP_CHUNK_SIZE: usize = 3;
 pub const BHP_LOOKUP_SIZE: usize = 2usize.pow(BHP_CHUNK_SIZE as u32);
 
-const ASSERT: () = assert!(BHP_CHUNK_SIZE == 3);
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BHPCRH<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
     pub bases: Arc<Vec<Vec<G>>>,
