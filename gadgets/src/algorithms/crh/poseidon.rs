@@ -97,7 +97,7 @@ impl<F: PrimeField, const INPUT_SIZE_FE: usize> CRHGadget<PoseidonCRH<F, INPUT_S
 
         let mut sponge = PoseidonSpongeGadget::with_parameters(cs.ns(|| "alloc"), &self.crh.parameters().clone());
         sponge.absorb(cs.ns(|| "absorb"), field_input.iter())?;
-        let res = sponge.squeeze_field_elements(cs.ns(|| "squeeze"), 1)?;
+        let res = sponge.squeeze(cs.ns(|| "squeeze"), 1)?;
         Ok(res[0].clone())
     }
 
@@ -119,7 +119,7 @@ impl<F: PrimeField, const INPUT_SIZE_FE: usize> CRHGadget<PoseidonCRH<F, INPUT_S
 
         let mut sponge = PoseidonSpongeGadget::with_parameters(cs.ns(|| "alloc"), self.crh.parameters());
         sponge.absorb(cs.ns(|| "absorb"), input.iter())?;
-        let res = sponge.squeeze_field_elements(cs.ns(|| "squeeze"), 1)?;
+        let res = sponge.squeeze(cs.ns(|| "squeeze"), 1)?;
         Ok(res[0].clone())
     }
 }

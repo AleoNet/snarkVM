@@ -289,7 +289,7 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize>
         Ok(())
     }
 
-    fn squeeze_field_elements<CS: ConstraintSystem<F>>(
+    fn squeeze<CS: ConstraintSystem<F>>(
         &mut self,
         mut cs: CS,
         num_elements: usize,
@@ -337,7 +337,7 @@ impl<F: PrimeField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool>
         let params = Arc::new(F::default_poseidon_parameters::<RATE>(OPTIMIZED_FOR_WEIGHTS).unwrap());
         let mut sponge = PoseidonSpongeGadget::<F, RATE, 1>::with_parameters(cs.ns(|| "alloc"), &params);
         sponge.absorb(cs.ns(|| "absorb"), input.iter())?;
-        let res = sponge.squeeze_field_elements(cs.ns(|| "squeeze"), 1)?;
+        let res = sponge.squeeze(cs.ns(|| "squeeze"), 1)?;
         Ok(res[0].clone())
     }
 }

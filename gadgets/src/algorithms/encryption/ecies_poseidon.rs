@@ -463,7 +463,7 @@ fn symmetric_key_commitment<F: PrimeField>(
     sponge.absorb(cs.ns(|| "absorb"), IntoIterator::into_iter([&domain_separator, symmetric_key]))?;
 
     // Obtain the symmetric key commitment from Poseidon.
-    Ok(sponge.squeeze_field_elements(cs.ns(|| "squeeze for symmetric key commitment"), 1)?[0].clone())
+    Ok(sponge.squeeze(cs.ns(|| "squeeze for symmetric key commitment"), 1)?[0].clone())
 }
 
 /// On input the symmetric key and the plaintext, outputs
@@ -482,8 +482,7 @@ fn symmetric_encryption<F: PrimeField>(
     sponge.absorb(cs.ns(|| "absorb"), IntoIterator::into_iter([&domain_separator, symmetric_key]))?;
 
     // Obtain random field elements from Poseidon.
-    let sponge_randomizers =
-        sponge.squeeze_field_elements(cs.ns(|| "squeeze for random elements"), encoded_message.len())?;
+    let sponge_randomizers = sponge.squeeze(cs.ns(|| "squeeze for random elements"), encoded_message.len())?;
 
     let mut ciphertext = encoded_message.to_vec();
     for (i, (element, randomizer)) in ciphertext.iter_mut().zip_eq(sponge_randomizers).enumerate() {

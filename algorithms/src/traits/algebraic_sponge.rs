@@ -33,7 +33,7 @@ pub trait AlgebraicSponge<F: PrimeField, const RATE: usize, const CAPACITY: usiz
     fn absorb(&mut self, input: &[F]);
 
     /// Squeeze `num_elements` field elements from the sponge.
-    fn squeeze_field_elements(&mut self, num_elements: usize) -> SmallVec<[F; 10]>;
+    fn squeeze(&mut self, num_elements: usize) -> SmallVec<[F; 10]>;
 }
 
 pub trait DefaultCapacityAlgebraicSponge<F: PrimeField, const RATE: usize>: AlgebraicSponge<F, RATE, 1> {

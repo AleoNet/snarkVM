@@ -223,7 +223,7 @@ where
         // Compute the symmetric key commitment.
         let mut sponge = PoseidonSponge::with_parameters(&self.poseidon_parameters);
         sponge.absorb(&[self.symmetric_key_commitment_domain, *symmetric_key]);
-        sponge.squeeze_field_elements(1)[0]
+        sponge.squeeze(1)[0]
     }
 
     ///
@@ -309,7 +309,7 @@ where
         sponge.absorb(&[self.symmetric_encryption_domain, *symmetric_key]);
 
         // Obtain random field elements from Poseidon.
-        let sponge_randomizers = sponge.squeeze_field_elements(message.len());
+        let sponge_randomizers = sponge.squeeze(message.len());
 
         // Add the random field elements to the plaintext elements.
         message.iter().zip_eq(sponge_randomizers).map(|(plaintext, randomizer)| *plaintext + randomizer).collect()
@@ -324,7 +324,7 @@ where
         sponge.absorb(&[self.symmetric_encryption_domain, *symmetric_key]);
 
         // Obtain random field elements from Poseidon.
-        let sponge_randomizers = sponge.squeeze_field_elements(ciphertext.len());
+        let sponge_randomizers = sponge.squeeze(ciphertext.len());
 
         // Subtract the random field elements to the ciphertext elements.
         ciphertext.iter().zip_eq(sponge_randomizers).map(|(ciphertext, randomizer)| *ciphertext - randomizer).collect()

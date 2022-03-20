@@ -43,7 +43,7 @@ pub trait AlgebraicSpongeVar<
     ) -> Result<(), SynthesisError>;
 
     /// Squeeze `num_elements` field elements from the sponge.
-    fn squeeze_field_elements<CS: ConstraintSystem<CF>>(
+    fn squeeze<CS: ConstraintSystem<CF>>(
         &mut self,
         cs: CS,
         num_elements: usize,
