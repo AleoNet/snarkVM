@@ -15,8 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    crypto_hash::PoseidonCryptoHash,
-    crypto_hash::hash_to_curve,
+    crypto_hash::{hash_to_curve, PoseidonCryptoHash},
     CryptoHash,
     SignatureError,
     SignatureScheme,
