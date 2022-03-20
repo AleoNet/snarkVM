@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    crypto_hash::{PoseidonCryptoHash, PoseidonDefaultParametersField},
+    crypto_hash::{PoseidonCryptoHash, PoseidonDefaultField},
     errors::PRFError,
     traits::{CryptoHash, PRF},
 };
@@ -24,13 +24,11 @@ use snarkvm_fields::PrimeField;
 use std::marker::PhantomData;
 
 #[derive(Clone)]
-pub struct PoseidonPRF<
-    F: PrimeField + PoseidonDefaultParametersField,
-    const RATE: usize,
-    const OPTIMIZED_FOR_WEIGHTS: bool,
->(PhantomData<F>);
+pub struct PoseidonPRF<F: PrimeField + PoseidonDefaultField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool>(
+    PhantomData<F>,
+);
 
-impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool> PRF
+impl<F: PrimeField + PoseidonDefaultField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool> PRF
     for PoseidonPRF<F, RATE, OPTIMIZED_FOR_WEIGHTS>
 {
     type Input = Vec<F>;

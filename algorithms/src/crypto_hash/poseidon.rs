@@ -338,7 +338,7 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSponge<F, 
     }
 }
 
-impl<F: PoseidonDefaultParametersField, const RATE: usize, const CAPACITY: usize> AlgebraicSponge<F, RATE, CAPACITY>
+impl<F: PoseidonDefaultField, const RATE: usize, const CAPACITY: usize> AlgebraicSponge<F, RATE, CAPACITY>
     for PoseidonSponge<F, RATE, CAPACITY>
 {
     type Parameters = Arc<PoseidonParameters<F, RATE, CAPACITY>>;
@@ -398,7 +398,7 @@ impl<F: PoseidonDefaultParametersField, const RATE: usize, const CAPACITY: usize
     }
 }
 
-impl<F: PoseidonDefaultParametersField, const RATE: usize> DefaultCapacityAlgebraicSponge<F, RATE>
+impl<F: PoseidonDefaultField, const RATE: usize> DefaultCapacityAlgebraicSponge<F, RATE>
     for PoseidonSponge<F, RATE, 1>
 {
     fn sample_parameters() -> Arc<PoseidonParameters<F, RATE, 1>> {
@@ -416,14 +416,14 @@ impl<F: PoseidonDefaultParametersField, const RATE: usize> DefaultCapacityAlgebr
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PoseidonCryptoHash<
-    F: PrimeField + PoseidonDefaultParametersField,
+    F: PrimeField + PoseidonDefaultField,
     const RATE: usize,
     const OPTIMIZED_FOR_WEIGHTS: bool,
 > {
     pub parameters: Arc<PoseidonParameters<F, RATE, 1>>,
 }
 
-impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool> CryptoHash
+impl<F: PrimeField + PoseidonDefaultField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool> CryptoHash
     for PoseidonCryptoHash<F, RATE, OPTIMIZED_FOR_WEIGHTS>
 {
     type Input = F;
@@ -446,7 +446,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
     }
 }
 
-impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool>
+impl<F: PrimeField + PoseidonDefaultField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool>
     From<PoseidonParameters<F, RATE, 1>> for PoseidonCryptoHash<F, RATE, OPTIMIZED_FOR_WEIGHTS>
 {
     fn from(parameters: PoseidonParameters<F, RATE, 1>) -> Self {
@@ -454,7 +454,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
     }
 }
 
-impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool>
+impl<F: PrimeField + PoseidonDefaultField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool>
     From<Arc<PoseidonParameters<F, RATE, 1>>> for PoseidonCryptoHash<F, RATE, OPTIMIZED_FOR_WEIGHTS>
 {
     fn from(parameters: Arc<PoseidonParameters<F, RATE, 1>>) -> Self {
@@ -462,7 +462,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
     }
 }
 
-impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool> ToBytes
+impl<F: PrimeField + PoseidonDefaultField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool> ToBytes
     for PoseidonCryptoHash<F, RATE, OPTIMIZED_FOR_WEIGHTS>
 {
     #[inline]
@@ -471,7 +471,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
     }
 }
 
-impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool> FromBytes
+impl<F: PrimeField + PoseidonDefaultField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool> FromBytes
     for PoseidonCryptoHash<F, RATE, OPTIMIZED_FOR_WEIGHTS>
 {
     #[inline]
@@ -482,16 +482,51 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
 }
 
 /// A field with Poseidon parameters associated
-pub trait PoseidonDefaultParametersField: PrimeField {
+pub trait PoseidonDefaultField: PrimeField {
     /// Obtain the default Poseidon parameters for this rate and for this prime field,
     /// with a specific optimization goal.
     fn default_poseidon_parameters<const RATE: usize>(
         optimized_for_weights: bool,
     ) -> Option<PoseidonParameters<Self, RATE, 1>> {
-        let default_entries = if !optimized_for_weights {
-            Self::Parameters::PARAMS_OPT_FOR_CONSTRAINTS
-        } else {
-            Self::Parameters::PARAMS_OPT_FOR_WEIGHTS
+        /// Internal function that computes the ark and mds from the Poseidon Grain LFSR.
+        fn find_poseidon_ark_and_mds<F: PrimeField, const RATE: usize>(
+            full_rounds: u64,
+            partial_rounds: u64,
+            skip_matrices: u64,
+        ) -> (Vec<Vec<F>>, Vec<Vec<F>>) {
+            let mut lfsr =
+                PoseidonGrainLFSR::new(false, F::size_in_bits() as u64, (RATE + 1) as u64, full_rounds, partial_rounds);
+
+            let mut ark = Vec::<Vec<F>>::new();
+            for _ in 0..(full_rounds + partial_rounds) {
+                ark.push(lfsr.get_field_elements_rejection_sampling(RATE + 1));
+            }
+
+            let mut mds = vec![vec![F::zero(); RATE + 1]; RATE + 1];
+            for _ in 0..skip_matrices {
+                let _ = lfsr.get_field_elements_mod_p::<F>(2 * (RATE + 1));
+            }
+
+            // a qualifying matrix must satisfy the following requirements
+            // - there is no duplication among the elements in x or y
+            // - there is no i and j such that x[i] + y[j] = p
+            // - the resultant MDS passes all the three tests
+
+            let xs = lfsr.get_field_elements_mod_p::<F>(RATE + 1);
+            let ys = lfsr.get_field_elements_mod_p::<F>(RATE + 1);
+
+            for (i, x) in xs.iter().enumerate().take(RATE + 1) {
+                for (j, y) in ys.iter().enumerate().take(RATE + 1) {
+                    mds[i][j] = (*x + y).inverse().unwrap();
+                }
+            }
+
+            (ark, mds)
+        }
+
+        let default_entries = match optimized_for_weights {
+            true => Self::Parameters::PARAMS_OPT_FOR_WEIGHTS,
+            false => Self::Parameters::PARAMS_OPT_FOR_CONSTRAINTS,
         };
 
         default_entries.iter().find(|entry| entry.rate == RATE).map(|entry| {
@@ -512,45 +547,9 @@ pub trait PoseidonDefaultParametersField: PrimeField {
     }
 }
 
-/// Internal function that computes the ark and mds from the Poseidon Grain LFSR.
-pub fn find_poseidon_ark_and_mds<F: PrimeField, const RATE: usize>(
-    full_rounds: u64,
-    partial_rounds: u64,
-    skip_matrices: u64,
-) -> (Vec<Vec<F>>, Vec<Vec<F>>) {
-    let mut lfsr =
-        PoseidonGrainLFSR::new(false, F::size_in_bits() as u64, (RATE + 1) as u64, full_rounds, partial_rounds);
-
-    let mut ark = Vec::<Vec<F>>::new();
-    for _ in 0..(full_rounds + partial_rounds) {
-        ark.push(lfsr.get_field_elements_rejection_sampling(RATE + 1));
-    }
-
-    let mut mds = vec![vec![F::zero(); RATE + 1]; RATE + 1];
-    for _ in 0..skip_matrices {
-        let _ = lfsr.get_field_elements_mod_p::<F>(2 * (RATE + 1));
-    }
-
-    // a qualifying matrix must satisfy the following requirements
-    // - there is no duplication among the elements in x or y
-    // - there is no i and j such that x[i] + y[j] = p
-    // - the resultant MDS passes all the three tests
-
-    let xs = lfsr.get_field_elements_mod_p::<F>(RATE + 1);
-    let ys = lfsr.get_field_elements_mod_p::<F>(RATE + 1);
-
-    for (i, x) in xs.iter().enumerate().take(RATE + 1) {
-        for (j, y) in ys.iter().enumerate().take(RATE + 1) {
-            mds[i][j] = (*x + y).inverse().unwrap();
-        }
-    }
-
-    (ark, mds)
-}
-
 macro_rules! impl_poseidon_default_parameters_field {
     ($field: ident, $params: ident) => {
-        impl<P: $params + PoseidonDefaultParameters> PoseidonDefaultParametersField for $field<P> {}
+        impl<P: $params + PoseidonDefaultParameters> PoseidonDefaultField for $field<P> {}
     };
 }
 

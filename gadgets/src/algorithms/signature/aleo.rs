@@ -32,7 +32,7 @@ use crate::{
     ToConstraintFieldGadget,
 };
 use snarkvm_algorithms::{
-    crypto_hash::PoseidonDefaultParametersField,
+    crypto_hash::PoseidonDefaultField,
     signature::{AleoSignature, AleoSignatureScheme},
     SignatureScheme,
 };
@@ -309,15 +309,13 @@ impl<F: PrimeField> ToBitsLEGadget<F> for AleoComputeKeyGadget {
     }
 }
 
-pub struct AleoSignatureSchemeGadget<
-    TE: TwistedEdwardsParameters<BaseField = F>,
-    F: PrimeField + PoseidonDefaultParametersField,
-> {
+pub struct AleoSignatureSchemeGadget<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaultField>
+{
     pub(crate) signature: AleoSignatureScheme<TE>,
     pub(crate) _engine: PhantomData<F>,
 }
 
-impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaultParametersField>
+impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaultField>
     AllocGadget<AleoSignatureScheme<TE>, F> for AleoSignatureSchemeGadget<TE, F>
 {
     fn alloc_constant<
@@ -350,7 +348,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
     }
 }
 
-impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaultParametersField>
+impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaultField>
     SignatureGadget<AleoSignatureScheme<TE>, F> for AleoSignatureSchemeGadget<TE, F>
 {
     type ComputeKeyGadget = AleoComputeKeyGadget;

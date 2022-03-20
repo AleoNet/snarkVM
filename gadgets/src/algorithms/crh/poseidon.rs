@@ -23,19 +23,19 @@ use crate::{
     CRHGadget,
     FpGadget,
 };
-use snarkvm_algorithms::{crh::PoseidonCRH, crypto_hash::PoseidonDefaultParametersField, traits::CRH};
+use snarkvm_algorithms::{crh::PoseidonCRH, crypto_hash::PoseidonDefaultField, traits::CRH};
 use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
 use std::borrow::{Borrow, Cow};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct PoseidonCRHGadget<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize> {
+pub struct PoseidonCRHGadget<F: PrimeField + PoseidonDefaultField, const INPUT_SIZE_FE: usize> {
     pub(crate) crh: PoseidonCRH<F, INPUT_SIZE_FE>,
 }
 
-impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize>
-    AllocGadget<PoseidonCRH<F, INPUT_SIZE_FE>, F> for PoseidonCRHGadget<F, INPUT_SIZE_FE>
+impl<F: PrimeField + PoseidonDefaultField, const INPUT_SIZE_FE: usize> AllocGadget<PoseidonCRH<F, INPUT_SIZE_FE>, F>
+    for PoseidonCRHGadget<F, INPUT_SIZE_FE>
 {
     fn alloc_constant<
         Fn: FnOnce() -> Result<T, SynthesisError>,
@@ -71,8 +71,8 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize>
     }
 }
 
-impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize>
-    CRHGadget<PoseidonCRH<F, INPUT_SIZE_FE>, F> for PoseidonCRHGadget<F, INPUT_SIZE_FE>
+impl<F: PrimeField + PoseidonDefaultField, const INPUT_SIZE_FE: usize> CRHGadget<PoseidonCRH<F, INPUT_SIZE_FE>, F>
+    for PoseidonCRHGadget<F, INPUT_SIZE_FE>
 {
     type OutputGadget = FpGadget<F>;
 

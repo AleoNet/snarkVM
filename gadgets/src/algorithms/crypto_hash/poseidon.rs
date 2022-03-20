@@ -17,7 +17,7 @@
 use crate::{AlgebraicSpongeVar, AllocGadget, CryptoHashGadget, FieldGadget, FpGadget};
 
 use snarkvm_algorithms::{
-    crypto_hash::{PoseidonCryptoHash, PoseidonDefaultParametersField, PoseidonParameters, PoseidonSponge},
+    crypto_hash::{PoseidonCryptoHash, PoseidonDefaultField, PoseidonParameters, PoseidonSponge},
     DuplexSpongeMode,
 };
 use snarkvm_fields::PrimeField;
@@ -202,7 +202,7 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSpongeGadg
     }
 }
 
-impl<F: PoseidonDefaultParametersField, const RATE: usize, const CAPACITY: usize>
+impl<F: PoseidonDefaultField, const RATE: usize, const CAPACITY: usize>
     AllocGadget<PoseidonParameters<F, RATE, CAPACITY>, F> for PoseidonSpongeGadget<F, RATE, CAPACITY>
 {
     fn alloc_constant<
@@ -241,7 +241,7 @@ impl<F: PoseidonDefaultParametersField, const RATE: usize, const CAPACITY: usize
     }
 }
 
-impl<F: PoseidonDefaultParametersField, const RATE: usize, const CAPACITY: usize>
+impl<F: PoseidonDefaultField, const RATE: usize, const CAPACITY: usize>
     AlgebraicSpongeVar<F, PoseidonSponge<F, RATE, CAPACITY>, RATE, CAPACITY>
     for PoseidonSpongeGadget<F, RATE, CAPACITY>
 {
@@ -335,14 +335,14 @@ impl<F: PoseidonDefaultParametersField, const RATE: usize, const CAPACITY: usize
 
 #[derive(Clone)]
 pub struct PoseidonCryptoHashGadget<
-    F: PrimeField + PoseidonDefaultParametersField,
+    F: PrimeField + PoseidonDefaultField,
     const RATE: usize,
     const OPTIMIZED_FOR_WEIGHTS: bool,
 > {
     field_phantom: PhantomData<F>,
 }
 
-impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool>
+impl<F: PrimeField + PoseidonDefaultField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool>
     CryptoHashGadget<PoseidonCryptoHash<F, RATE, OPTIMIZED_FOR_WEIGHTS>, F>
     for PoseidonCryptoHashGadget<F, RATE, OPTIMIZED_FOR_WEIGHTS>
 {
@@ -360,7 +360,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
     }
 }
 
-impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool>
+impl<F: PrimeField + PoseidonDefaultField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool>
     AllocGadget<PoseidonCryptoHash<F, RATE, OPTIMIZED_FOR_WEIGHTS>, F>
     for PoseidonCryptoHashGadget<F, RATE, OPTIMIZED_FOR_WEIGHTS>
 {

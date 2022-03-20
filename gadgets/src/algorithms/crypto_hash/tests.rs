@@ -16,7 +16,7 @@
 
 use crate::{algorithms::crypto_hash::PoseidonSpongeGadget, AlgebraicSpongeVar, AllocGadget, FieldGadget, FpGadget};
 use snarkvm_algorithms::{
-    crypto_hash::{poseidon::PoseidonSponge, PoseidonDefaultParametersField},
+    crypto_hash::{poseidon::PoseidonSponge, PoseidonDefaultField},
     AlgebraicSponge,
 };
 use snarkvm_curves::bls12_377::Fr;

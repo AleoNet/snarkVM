@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    crypto_hash::{PoseidonDefaultParametersField, PoseidonGrainLFSR, PoseidonSponge},
+    crypto_hash::{PoseidonDefaultField, PoseidonGrainLFSR, PoseidonSponge},
     AlgebraicSponge,
     DuplexSpongeMode,
 };

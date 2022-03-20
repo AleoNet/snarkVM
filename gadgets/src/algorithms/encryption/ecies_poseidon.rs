@@ -29,11 +29,7 @@ use crate::{
     ToBytesGadget,
     UInt8,
 };
-use snarkvm_algorithms::{
-    crypto_hash::PoseidonDefaultParametersField,
-    encryption::ECIESPoseidonEncryption,
-    EncryptionScheme,
-};
+use snarkvm_algorithms::{crypto_hash::PoseidonDefaultField, encryption::ECIESPoseidonEncryption, EncryptionScheme};
 use snarkvm_curves::{
     templates::twisted_edwards_extended::{Affine as TEAffine, Projective as TEProjective},
     AffineCurve,
@@ -328,7 +324,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> ToBytesGadget<F
 )]
 pub struct ECIESPoseidonEncryptionGadget<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField>
 where
-    TE::BaseField: PoseidonDefaultParametersField,
+    TE::BaseField: PoseidonDefaultField,
 {
     encryption: ECIESPoseidonEncryption<TE>,
     f_phantom: PhantomData<F>,
@@ -337,7 +333,7 @@ where
 impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> AllocGadget<ECIESPoseidonEncryption<TE>, F>
     for ECIESPoseidonEncryptionGadget<TE, F>
 where
-    TE::BaseField: PoseidonDefaultParametersField,
+    TE::BaseField: PoseidonDefaultField,
 {
     fn alloc_constant<
         Fn: FnOnce() -> Result<T, SynthesisError>,
@@ -459,7 +455,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> EqGadget<F>
 
 /// On input the symmetric key, outputs
 /// the symmetric key commitment.
-fn symmetric_key_commitment<F: PoseidonDefaultParametersField>(
+fn symmetric_key_commitment<F: PoseidonDefaultField>(
     mut cs: impl ConstraintSystem<F>,
     symmetric_key: &FpGadget<F>,
 ) -> Result<FpGadget<F>, SynthesisError> {
@@ -477,7 +473,7 @@ fn symmetric_key_commitment<F: PoseidonDefaultParametersField>(
 
 /// On input the symmetric key and the plaintext, outputs
 /// the ciphertext.
-fn symmetric_encryption<F: PoseidonDefaultParametersField>(
+fn symmetric_encryption<F: PoseidonDefaultField>(
     mut cs: impl ConstraintSystem<F>,
     symmetric_key: &FpGadget<F>,
     encoded_message: &[FpGadget<F>],
@@ -502,7 +498,7 @@ fn symmetric_encryption<F: PoseidonDefaultParametersField>(
     Ok(ciphertext)
 }
 
-impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaultParametersField>
+impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaultField>
     EncryptionGadget<ECIESPoseidonEncryption<TE>, F> for ECIESPoseidonEncryptionGadget<TE, F>
 {
     type CiphertextRandomizer = ECIESPoseidonCiphertextRandomizerGadget<TE, F>;

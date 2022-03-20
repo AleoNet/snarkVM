@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    crypto_hash::{PoseidonCryptoHash, PoseidonDefaultParametersField, PoseidonParameters},
+    crypto_hash::{PoseidonCryptoHash, PoseidonDefaultField, PoseidonParameters},
     traits::{CryptoHash, CRH},
     CRHError,
 };
@@ -24,11 +24,11 @@ use snarkvm_fields::{ConstraintFieldError, FieldParameters, PrimeField, ToConstr
 use std::{borrow::Cow, fmt::Debug, sync::Arc};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PoseidonCRH<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize>(
+pub struct PoseidonCRH<F: PrimeField + PoseidonDefaultField, const INPUT_SIZE_FE: usize>(
     PoseidonCryptoHash<F, 4, false>,
 );
 
-impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize> CRH for PoseidonCRH<F, INPUT_SIZE_FE> {
+impl<F: PrimeField + PoseidonDefaultField, const INPUT_SIZE_FE: usize> CRH for PoseidonCRH<F, INPUT_SIZE_FE> {
     type Output = F;
     type Parameters = Arc<PoseidonParameters<F, 4, 1>>;
 
@@ -58,7 +58,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const INPUT_SIZE_FE: usize>
     }
 }
 
-impl<F: PrimeField + PoseidonDefaultParametersField> ToConstraintField<F> for PoseidonParameters<F, 4, 1> {
+impl<F: PrimeField + PoseidonDefaultField> ToConstraintField<F> for PoseidonParameters<F, 4, 1> {
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
         // do not write into field elements
         Ok(vec![])

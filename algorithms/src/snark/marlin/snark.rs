@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    crypto_hash::PoseidonDefaultParametersField,
+    crypto_hash::PoseidonDefaultField,
     polycommit::PolynomialCommitment,
     snark::marlin::{
         fiat_shamir::FiatShamirRng,
@@ -40,7 +40,7 @@ use rand::{CryptoRng, Rng};
 impl<TargetField, BaseField, PC, FS, MM, Input> SNARK for MarlinSNARK<TargetField, BaseField, PC, FS, MM, Input>
 where
     TargetField: PrimeField,
-    BaseField: PrimeField + PoseidonDefaultParametersField,
+    BaseField: PrimeField + PoseidonDefaultField,
     PC: PolynomialCommitment<TargetField, BaseField>,
     FS: FiatShamirRng<TargetField, BaseField>,
     MM: MarlinMode,
