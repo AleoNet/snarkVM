@@ -17,6 +17,7 @@
 use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
 use snarkvm_utilities::{error as error_fn, serialize::*, FromBytes, ToBytes};
 
+use anyhow::Result;
 use core::{
     borrow::Borrow,
     fmt::Debug,
@@ -42,6 +43,9 @@ pub trait PCUniversalParams: CanonicalSerialize + CanonicalDeserialize + Clone +
 
     /// Supported degree bounds
     fn supported_degree_bounds(&self) -> &[usize];
+
+    /// Increases the max degree for this set of universal parameters.
+    fn increase_degree(&self, degree: usize) -> Result<()>;
 }
 
 /// Defines the minimal interface of committer keys for any polynomial

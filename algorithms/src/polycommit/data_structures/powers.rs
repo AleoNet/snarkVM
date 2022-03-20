@@ -21,15 +21,17 @@ use snarkvm_utilities::{
     CanonicalDeserialize,
     CanonicalSerialize,
     ConstantSerializedSize,
+    FromBytes,
     Read,
     SerializationError,
     ToBytes,
     Write,
 };
 
+use itertools::Itertools;
 use parking_lot::RwLock;
 use std::{
-    collections::HashMap,
+    collections::{BTreeMap, HashMap},
     fs::{File, OpenOptions},
     io::{BufReader, Seek, SeekFrom},
     marker::PhantomData,
@@ -38,7 +40,7 @@ use std::{
 };
 
 lazy_static::lazy_static! {
-    static ref DEFAULT_PATH: PathBuf = PathBuf::from("~/.aleo/powers_of_g");
+    static ref DEFAULT_PATH: PathBuf = PathBuf::from(format!("{}/.aleo/powers_of_g", std::env::var("HOME").unwrap()));
     static ref URLS: HashMap<usize, String> = {
         let mut m = HashMap::new();
         m.insert(1 << 16, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_16"));
@@ -57,7 +59,11 @@ lazy_static::lazy_static! {
         m
     };
     static ref BASE_POWERS: &'static [u8] = include_bytes!("./powers_of_g_15");
+    static ref POWERS_TIMES_GAMMA_G: &'static [u8] = include_bytes!("./gamma_powers");
 }
+
+// Amount of powers contained in `POWERS_TIMES_GAMMA_G`.
+const NUM_POWERS_TIMES_GAMMA_G: usize = 84;
 
 /// An abstraction over a vector of powers of G, meant to reduce
 /// memory burden when handling universal setup parameters.
@@ -71,6 +77,13 @@ pub struct PowersOfG<E: PairingEngine> {
     /// clones.
     #[derivative(Debug = "ignore")]
     file: Arc<RwLock<File>>,
+    /// Group elements of the form `{ \beta^i \gamma G }`, where `i` ranges from 0 to `degree`.
+    /// These are used for hiding.
+    pub powers_of_beta_times_gamma_g: Arc<RwLock<BTreeMap<usize, E::G1Affine>>>,
+    /// The degree up to which we have powers.
+    /// Mostly just used for ensuring we download in the proper order,
+    /// length checks are actually done by checking file metadata.
+    degree: Arc<RwLock<usize>>,
     _phantom_data: PhantomData<E>,
 }
 
@@ -87,20 +100,51 @@ impl<E: PairingEngine> Clone for PowersOfG<E> {
     }
 }
 
+impl<E: PairingEngine> ToBytes for PowersOfG<E> {
+    fn write_le<W: Write>(&self, mut writer: W) -> std::io::Result<()> {
+        // Serialize `powers_of_beta_times_gamma_g`.
+        (self.powers_of_beta_times_gamma_g.read().len() as u32).write_le(&mut writer)?;
+        for (key, power_of_gamma_g) in &*self.powers_of_beta_times_gamma_g.read() {
+            (*key as u32).write_le(&mut writer)?;
+            power_of_gamma_g.write_le(&mut writer)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl<E: PairingEngine> FromBytes for PowersOfG<E> {
+    fn read_le<R: Read>(mut reader: R) -> std::io::Result<Self> {
+        // Deserialize `powers_of_beta_times_gamma_g`.
+        let mut powers_of_beta_times_gamma_g = BTreeMap::new();
+        let powers_of_gamma_g_num_elements: u32 = FromBytes::read_le(&mut reader)?;
+        for _ in 0..powers_of_gamma_g_num_elements {
+            let key: u32 = FromBytes::read_le(&mut reader)?;
+            let power_of_gamma_g: E::G1Affine = FromBytes::read_le(&mut reader)?;
+
+            powers_of_beta_times_gamma_g.insert(key as usize, power_of_gamma_g);
+        }
+
+        let powers = PowersOfG::default();
+        *powers.powers_of_beta_times_gamma_g.write() = powers_of_beta_times_gamma_g;
+        Ok(powers)
+    }
+}
+
 impl<E: PairingEngine> CanonicalSerialize for PowersOfG<E> {
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), SerializationError> {
-        CanonicalSerialize::serialize(&self.file_path, writer)
+        self.write_le(&mut *writer)?;
+        Ok(())
     }
 
     fn serialized_size(&self) -> usize {
-        self.file_path.len() + 8
+        todo!()
     }
 }
 
 impl<E: PairingEngine> CanonicalDeserialize for PowersOfG<E> {
     fn deserialize<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
-        let file_path = String::deserialize(reader)?;
-        Self::new(PathBuf::from(file_path)).map_err(|_| SerializationError::InvalidData)
+        Ok(FromBytes::read_le(&mut *reader)?)
     }
 }
 
@@ -117,7 +161,6 @@ impl<E: PairingEngine> From<Vec<E::G1Affine>> for PowersOfG<E> {
             .open(dir.clone())
             .expect("should be able to create tmp powers of g");
 
-        (value.len() as u32).write_le(&mut file).unwrap();
         for power in value {
             power.serialize(&mut file).unwrap();
         }
@@ -140,21 +183,30 @@ impl<E: PairingEngine> PowersOfG<E> {
             file.write_all(&BASE_POWERS)?;
         }
 
-        Ok(Self {
+        let degree = file.metadata()?.len() as usize / E::G1Affine::SERIALIZED_SIZE;
+
+        let powers = Self {
             file_path: String::from(file_path.to_str().expect("could not get filepath for powers of g")),
             file: Arc::new(RwLock::new(file)),
+            powers_of_beta_times_gamma_g: Arc::new(RwLock::new(BTreeMap::new())),
+            degree: Arc::new(RwLock::new(degree)),
             _phantom_data: PhantomData,
-        })
+        };
+
+        powers.regenerate_powers_of_beta_times_gamma_g();
+        Ok(powers)
     }
 
     /// Return the number of current powers of G.
     pub fn len(&self) -> usize {
-        (self.file.read().metadata().unwrap().len() - 4) as usize / E::G1Affine::SERIALIZED_SIZE
+        *self.degree.read()
     }
 
     /// Returns whether or not the current powers of G are empty.
+    /// This file should never be empty since we always write at least
+    /// up to the 15th degree, so this will always return false.
     pub fn is_empty(&self) -> bool {
-        self.file.read().metadata().unwrap().len() == 0
+        false
     }
 
     /// Returns an element at `index`.
@@ -176,7 +228,7 @@ impl<E: PairingEngine> PowersOfG<E> {
     /// Slices the underlying file to return a vector of affine elements
     /// between `lower` and `upper`.
     pub fn slice(&self, lower: usize, upper: usize) -> Vec<E::G1Affine> {
-        self.ensure_powers_exist(upper);
+        self.ensure_powers_exist(self.get_starting_index(upper));
         let index_start = self.get_starting_index(lower);
 
         // Move our offset to the start of the desired element.
@@ -199,8 +251,7 @@ impl<E: PairingEngine> PowersOfG<E> {
     fn get_starting_index(&self, index: usize) -> usize {
         let index_start = index
             .checked_mul(E::G1Affine::SERIALIZED_SIZE)
-            .expect("attempted to index powers of G with an index greater than usize")
-            + 4;
+            .expect("attempted to index powers of G with an index greater than usize");
         self.ensure_powers_exist(index_start);
 
         index_start
@@ -213,53 +264,112 @@ impl<E: PairingEngine> PowersOfG<E> {
         }
     }
 
+    fn get_degrees_to_download(&self, degree: usize) -> Vec<usize> {
+        let current_degree = self.degree.write();
+        let mut degrees = vec![];
+        let mut starting_degree = *current_degree;
+        loop {
+            let next_degree_to_download = starting_degree * 2;
+            degrees.push(next_degree_to_download);
+            if next_degree_to_download >= degree {
+                break;
+            }
+            starting_degree = next_degree_to_download;
+        }
+        degrees
+    }
+
     /// Download the transcript up to `degree`.
     #[cfg(not(feature = "wasm"))]
-    fn download_up_to(&self, degree: usize) -> Result<()> {
-        if let Some(link) = URLS.get(&degree) {
-            let mut easy = curl::easy::Easy::new();
-            easy.url(link)?;
-            let mut transfer = easy.transfer();
-            transfer.write_function(|data| {
-                let mut file = self.file.write();
-                file.seek(SeekFrom::End(0)).unwrap();
-                file.write_all(data).unwrap();
-                Ok(data.len())
-            })?;
-            Ok(transfer.perform()?)
-        } else {
-            Err(anyhow!("incorrect degree selected - {}", degree))
+    pub fn download_up_to(&self, degree: usize) -> Result<()> {
+        println!("called download");
+        let degrees_to_download = self.get_degrees_to_download(degree);
+        for d in &degrees_to_download {
+            println!("downloading new degree");
+            if let Some(link) = URLS.get(d) {
+                let mut easy = curl::easy::Easy::new();
+                easy.url(link)?;
+                let mut transfer = easy.transfer();
+                transfer.write_function(|data| {
+                    let mut file = self.file.write();
+                    file.seek(SeekFrom::End(0)).unwrap();
+                    file.write_all(data).unwrap();
+                    Ok(data.len())
+                })?;
+                transfer.perform()?;
+            } else {
+                return Err(anyhow!("incorrect degree selected - {}", degree));
+            }
         }
+
+        *self.degree.write() = *degrees_to_download.last().unwrap();
+        self.regenerate_powers_of_beta_times_gamma_g();
+
+        Ok(())
     }
 
     /// Download the transcript up to `degree`.
     #[cfg(feature = "wasm")]
-    fn download_up_to(&self, degree: usize) -> Result<()> {
-        if let Some(link) = URLS.get(&degree) {
-            let buffer = alloc::sync::Arc::new(parking_lot::RwLock::new(vec![]));
-            let url = String::from(link);
+    pub fn download_up_to(&self, degree: usize) -> Result<()> {
+        let degrees_to_download = self.get_degrees_to_download(degree);
+        for d in &degrees_to_download {
+            if let Some(link) = URLS.get(d) {
+                let buffer = alloc::sync::Arc::new(parking_lot::RwLock::new(vec![]));
+                let url = String::from(link);
 
-            // NOTE(julesdesmit): I'm leaking memory here so that I can get a
-            // static reference to the url, which is needed to pass it into
-            // the local thread which downloads the file.
-            let buffer_clone = alloc::sync::Arc::downgrade(&buffer);
-            // NOTE(julesdesmit): We spawn a local thread here in order to be
-            // able to accommodate the async syntax from reqwest.
-            wasm_bindgen_futures::spawn_local(async move {
-                let content = reqwest::get(url).await.unwrap().text().await.unwrap();
+                // NOTE(julesdesmit): I'm leaking memory here so that I can get a
+                // static reference to the url, which is needed to pass it into
+                // the local thread which downloads the file.
+                let buffer_clone = alloc::sync::Arc::downgrade(&buffer);
+                // NOTE(julesdesmit): We spawn a local thread here in order to be
+                // able to accommodate the async syntax from reqwest.
+                wasm_bindgen_futures::spawn_local(async move {
+                    let content = reqwest::get(url).await.unwrap().text().await.unwrap();
 
-                let buffer = buffer_clone.upgrade().unwrap();
-                buffer.write().extend_from_slice(content.as_bytes());
-                drop(buffer);
-            });
-            // Recover the bytes.
-            let buffer = alloc::sync::Arc::try_unwrap(buffer).unwrap();
-            let buffer = buffer.write().clone();
-            let mut file = self.file.write();
-            file.seek(SeekFrom::End(0))?;
-            Ok(file.write_all(&buffer)?)
-        } else {
-            Err(anyhow!("incorrect degree selected - {}", degree))
+                    let buffer = buffer_clone.upgrade().unwrap();
+                    buffer.write().extend_from_slice(content.as_bytes());
+                    drop(buffer);
+                });
+                // Recover the bytes.
+                let buffer = alloc::sync::Arc::try_unwrap(buffer).unwrap();
+                let buffer = buffer.write().clone();
+                let mut file = self.file.write();
+                file.seek(SeekFrom::End(0))?;
+                file.write_all(&buffer)?;
+            } else {
+                return Err(anyhow!("incorrect degree selected - {}", degree));
+            }
         }
+
+        *self.degree.write() = *degrees_to_download.last().unwrap();
+        self.regenerate_powers_of_beta_times_gamma_g();
+
+        Ok(())
+    }
+
+    fn regenerate_powers_of_beta_times_gamma_g(&self) {
+        let mut alpha_powers_g1 = vec![];
+        let mut reader = BufReader::new(*POWERS_TIMES_GAMMA_G);
+        for _ in 0..NUM_POWERS_TIMES_GAMMA_G {
+            let power: E::G1Affine =
+                FromBytes::read_le(&mut reader).expect("hardcoded powers times gamma g should be well-formed");
+            alpha_powers_g1.push(power);
+        }
+
+        let mut alpha_tau_powers_g1 = BTreeMap::new();
+        for (i, power) in alpha_powers_g1.iter().enumerate().take(3) {
+            alpha_tau_powers_g1.insert(i, *power);
+        }
+        alpha_powers_g1[3..].iter().chunks(3).into_iter().enumerate().for_each(|(i, c)| {
+            // Avoid underflows and just stop populating the map if we're going to.
+            if self.len() - 1 > (1 << i) {
+                let c = c.into_iter().collect::<Vec<_>>();
+                alpha_tau_powers_g1.insert(self.len() - 1 - (1 << i) + 2, *c[0]);
+                alpha_tau_powers_g1.insert(self.len() - 1 - (1 << i) + 3, *c[1]);
+                alpha_tau_powers_g1.insert(self.len() - 1 - (1 << i) + 4, *c[2]);
+            }
+        });
+
+        *self.powers_of_beta_times_gamma_g.write() = alpha_tau_powers_g1;
     }
 }

@@ -33,6 +33,7 @@ use snarkvm_utilities::{
     ToMinimalBits,
 };
 
+use anyhow::Result;
 use core::ops::{Add, AddAssign, Mul};
 use rand_core::RngCore;
 use std::{collections::BTreeMap, io};
@@ -45,9 +46,6 @@ pub struct UniversalParams<E: PairingEngine> {
     /// Group elements of the form `{ \beta^i G }`, where `i` ranges from 0 to `degree`.
     /// These represent the monomial basis evaluated at `beta`.
     pub powers_of_beta_g: PowersOfG<E>,
-    /// Group elements of the form `{ \beta^i \gamma G }`, where `i` ranges from 0 to `degree`.
-    /// These are used for hiding.
-    pub powers_of_beta_times_gamma_g: BTreeMap<usize, E::G1Affine>,
     /// The generator of G2.
     pub h: E::G2Affine,
     /// \beta times the above generator of G2.
@@ -76,18 +74,8 @@ impl<E: PairingEngine> UniversalParams<E> {
 
 impl<E: PairingEngine> FromBytes for UniversalParams<E> {
     fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
-        // Deserialize `powers_of_beta_g`.
-        let powers_of_beta_g = PowersOfG::<E>::deserialize(&mut reader)?;
-
-        // Deserialize `powers_of_beta_times_gamma_g`.
-        let mut powers_of_beta_times_gamma_g = BTreeMap::new();
-        let powers_of_gamma_g_num_elements: u32 = FromBytes::read_le(&mut reader)?;
-        for _ in 0..powers_of_gamma_g_num_elements {
-            let key: u32 = FromBytes::read_le(&mut reader)?;
-            let power_of_gamma_g: E::G1Affine = FromBytes::read_le(&mut reader)?;
-
-            powers_of_beta_times_gamma_g.insert(key as usize, power_of_gamma_g);
-        }
+        // Deserialize `powers`.
+        let powers: PowersOfG<E> = FromBytes::read_le(&mut reader)?;
 
         // Deserialize `h`.
         let h: E::G2Affine = FromBytes::read_le(&mut reader)?;
@@ -120,8 +108,7 @@ impl<E: PairingEngine> FromBytes for UniversalParams<E> {
         let prepared_beta_h: <E::G2Affine as PairingCurve>::Prepared = FromBytes::read_le(&mut reader)?;
 
         Ok(Self {
-            powers_of_beta_g,
-            powers_of_beta_times_gamma_g,
+            powers_of_beta_g: powers,
             h,
             beta_h,
             supported_degree_bounds,
@@ -134,15 +121,8 @@ impl<E: PairingEngine> FromBytes for UniversalParams<E> {
 
 impl<E: PairingEngine> ToBytes for UniversalParams<E> {
     fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
-        // Serialize `powers_of_beta_g`.
-        self.powers_of_beta_g.serialize(&mut writer)?;
-
-        // Serialize `powers_of_beta_times_gamma_g`.
-        (self.powers_of_beta_times_gamma_g.len() as u32).write_le(&mut writer)?;
-        for (key, power_of_gamma_g) in &self.powers_of_beta_times_gamma_g {
-            (*key as u32).write_le(&mut writer)?;
-            power_of_gamma_g.write_le(&mut writer)?;
-        }
+        // Serialize powers.
+        self.powers_of_beta_g.write_le(&mut writer)?;
 
         // Serialize `h`.
         self.h.write_le(&mut writer)?;
@@ -180,6 +160,10 @@ impl<E: PairingEngine> PCUniversalParams for UniversalParams<E> {
 
     fn supported_degree_bounds(&self) -> &[usize] {
         &self.supported_degree_bounds
+    }
+
+    fn increase_degree(&self, degree: usize) -> Result<()> {
+        self.powers_of_beta_g.download_up_to(degree)
     }
 }
 

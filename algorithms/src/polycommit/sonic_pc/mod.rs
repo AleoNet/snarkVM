@@ -116,9 +116,10 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         enforced_degree_bounds: Option<&[usize]>,
     ) -> Result<(Self::CommitterKey, Self::VerifierKey), PCError> {
         let trim_time = start_timer!(|| "Trimming public parameters");
-        let max_degree = pp.max_degree();
+        let mut max_degree = pp.max_degree();
         if supported_degree > max_degree {
-            return Err(PCError::TrimmingDegreeTooLarge);
+            pp.powers_of_beta_g.download_up_to(supported_degree).map_err(|_| PCError::TrimmingDegreeTooLarge)?;
+            max_degree = pp.max_degree();
         }
 
         let enforced_degree_bounds = enforced_degree_bounds.map(|bounds| {
@@ -151,14 +152,15 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
                     pp.powers_of_beta_g.slice(lowest_shift_degree, pp.powers_of_beta_g.len()).to_vec();
                 let mut shifted_powers_of_beta_times_gamma_g = BTreeMap::new();
                 // Also add degree 0.
-                let _max_gamma_g = pp.powers_of_beta_times_gamma_g.keys().last().unwrap();
+                let _max_gamma_g = pp.powers_of_beta_g.powers_of_beta_times_gamma_g.read().keys().last().unwrap();
                 for degree_bound in enforced_degree_bounds {
                     let shift_degree = max_degree - degree_bound;
                     let mut powers_for_degree_bound = Vec::with_capacity((max_degree + 2).saturating_sub(shift_degree));
                     for i in 0..=supported_hiding_bound + 1 {
                         // We have an additional degree in `powers_of_beta_times_gamma_g` beyond `powers_of_beta_g`.
                         if shift_degree + i < max_degree + 2 {
-                            powers_for_degree_bound.push(pp.powers_of_beta_times_gamma_g[&(shift_degree + i)]);
+                            powers_for_degree_bound
+                                .push(pp.powers_of_beta_g.powers_of_beta_times_gamma_g.read()[&(shift_degree + i)]);
                         }
                     }
                     shifted_powers_of_beta_times_gamma_g.insert(*degree_bound, powers_for_degree_bound);
@@ -173,8 +175,9 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         };
 
         let powers_of_beta_g = pp.powers_of_beta_g.slice(0, supported_degree + 1).to_vec();
-        let powers_of_beta_times_gamma_g =
-            (0..=supported_hiding_bound + 1).map(|i| pp.powers_of_beta_times_gamma_g[&i]).collect();
+        let powers_of_beta_times_gamma_g = (0..=supported_hiding_bound + 1)
+            .map(|i| pp.powers_of_beta_g.powers_of_beta_times_gamma_g.read()[&i])
+            .collect();
 
         let mut lagrange_bases_at_beta_g = BTreeMap::new();
         for size in supported_lagrange_sizes {
@@ -203,7 +206,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         let g = pp.powers_of_beta_g.index(0);
         let h = pp.h;
         let beta_h = pp.beta_h;
-        let gamma_g = pp.powers_of_beta_times_gamma_g[&0];
+        let gamma_g = pp.powers_of_beta_g.powers_of_beta_times_gamma_g.read()[&0];
         let prepared_h = pp.prepared_h.clone();
         let prepared_beta_h = pp.prepared_beta_h.clone();
 

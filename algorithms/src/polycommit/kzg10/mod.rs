@@ -24,7 +24,7 @@
 use crate::{
     fft::{DenseOrSparsePolynomial, DensePolynomial},
     msm::{FixedBase, VariableBase},
-    polycommit::{PCError, PCRandomness},
+    polycommit::{PCError, PCRandomness, PowersOfG},
 };
 use itertools::Itertools;
 use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
@@ -196,9 +196,10 @@ impl<E: PairingEngine> KZG10<E> {
         let prepared_h = h.prepare();
         let prepared_beta_h = beta_h.prepare();
 
+        let powers: PowersOfG<E> = powers_of_beta_g.into();
+        *powers.powers_of_beta_times_gamma_g.write() = powers_of_beta_times_gamma_g;
         let pp = UniversalParams {
-            powers_of_beta_g: powers_of_beta_g.into(),
-            powers_of_beta_times_gamma_g,
+            powers_of_beta_g: powers,
             h,
             beta_h,
             supported_degree_bounds,
@@ -588,7 +589,7 @@ mod tests {
             }
             let powers_of_beta_g = pp.powers_of_beta_g.slice(0, supported_degree + 1).to_vec();
             let powers_of_beta_times_gamma_g =
-                (0..=supported_degree).map(|i| pp.powers_of_beta_times_gamma_g[&i]).collect();
+                (0..=supported_degree).map(|i| pp.powers_of_beta_g.powers_of_beta_times_gamma_g.read()[&i]).collect();
 
             let powers = Powers {
                 powers_of_beta_g: Cow::Owned(powers_of_beta_g),
@@ -596,7 +597,7 @@ mod tests {
             };
             let vk = VerifierKey {
                 g: pp.powers_of_beta_g.index(0),
-                gamma_g: pp.powers_of_beta_times_gamma_g[&0],
+                gamma_g: pp.powers_of_beta_g.powers_of_beta_times_gamma_g.read()[&0],
                 h: pp.h,
                 beta_h: pp.beta_h,
                 prepared_h: pp.prepared_h.clone(),
