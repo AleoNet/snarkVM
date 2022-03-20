@@ -43,15 +43,7 @@ use anyhow::Result;
 use itertools::Itertools;
 use rand::{CryptoRng, Rng};
 
-#[derive(Derivative)]
-#[derivative(
-    Copy(bound = "TE: TwistedEdwardsParameters"),
-    Clone(bound = "TE: TwistedEdwardsParameters"),
-    PartialEq(bound = "TE: TwistedEdwardsParameters"),
-    Eq(bound = "TE: TwistedEdwardsParameters"),
-    Debug(bound = "TE: TwistedEdwardsParameters"),
-    Default(bound = "TE: TwistedEdwardsParameters")
-)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub struct AleoSignature<TE: TwistedEdwardsParameters> {
     pub prover_response: TE::ScalarField,
     pub verifier_challenge: TE::ScalarField,
@@ -122,13 +114,7 @@ impl<TE: TwistedEdwardsParameters> ToBytes for AleoSignature<TE> {
     }
 }
 
-#[derive(Derivative)]
-#[derivative(
-    Clone(bound = "TE: TwistedEdwardsParameters"),
-    Debug(bound = "TE: TwistedEdwardsParameters"),
-    PartialEq(bound = "TE: TwistedEdwardsParameters"),
-    Eq(bound = "TE: TwistedEdwardsParameters")
-)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AleoSignatureScheme<TE: TwistedEdwardsParameters>
 where
     TE::BaseField: PrimeField,

@@ -315,7 +315,7 @@ pub trait ShortWeierstrassParameters: ModelParameters {
     }
 }
 
-pub trait TwistedEdwardsParameters: Clone + Debug + PartialEq + Eq + ModelParameters {
+pub trait TwistedEdwardsParameters: Copy + Clone + Debug + Default + PartialEq + Eq + ModelParameters {
     const COEFF_A: Self::BaseField;
     const COEFF_D: Self::BaseField;
     const COFACTOR: &'static [u64];

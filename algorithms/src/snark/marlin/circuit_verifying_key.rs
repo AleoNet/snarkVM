@@ -40,8 +40,7 @@ use core::{fmt, marker::PhantomData, str::FromStr};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 
 /// Verification key for a specific index (i.e., R1CS matrices).
-#[derive(derivative::Derivative, CanonicalSerialize, CanonicalDeserialize)]
-#[derivative(Clone(bound = ""), Debug(bound = ""), PartialEq(bound = ""), Eq(bound = ""))]
+#[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct CircuitVerifyingKey<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinMode> {
     /// Stores information about the size of the circuit, as well as its defined field.
     pub circuit_info: CircuitInfo<F>,

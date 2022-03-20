@@ -1987,7 +1987,6 @@ dependencies = [
  "criterion",
  "crossbeam-channel",
  "csv",
- "derivative",
  "digest 0.10.3",
  "expect-test",
  "getrandom",
@@ -2251,24 +2250,10 @@ name = "snarkvm-integration"
 version = "0.7.5"
 dependencies = [
  "aleo-std",
- "anyhow",
- "base58",
- "bech32",
- "bincode",
- "blake2",
- "derivative",
- "hex",
- "itertools",
- "parking_lot",
  "rand",
  "rand_chacha",
- "snarkvm-algorithms",
- "snarkvm-curves",
  "snarkvm-dpc",
- "snarkvm-fields",
- "snarkvm-r1cs",
  "snarkvm-utilities",
- "thiserror",
  "time",
 ]
 
@@ -2341,7 +2326,6 @@ dependencies = [
 name = "snarkvm-wasm"
 version = "0.7.5"
 dependencies = [
- "derivative",
  "getrandom",
  "rand",
  "rand_xorshift",

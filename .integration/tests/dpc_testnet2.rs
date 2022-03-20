@@ -14,13 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::sync::atomic::AtomicBool;
-
 use snarkvm_dpc::{prelude::*, testnet2::*};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
+use std::sync::atomic::AtomicBool;
 use time::OffsetDateTime;
 
 #[test]

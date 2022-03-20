@@ -19,7 +19,7 @@ use snarkvm_utilities::{to_bytes_le, ToBytes};
 
 use std::fmt::Debug;
 
-pub trait MerkleParameters: Clone + Debug + Send + Sync {
+pub trait MerkleParameters: Clone + Debug + PartialEq + Eq + Send + Sync {
     type H: CRH;
 
     const DEPTH: usize;

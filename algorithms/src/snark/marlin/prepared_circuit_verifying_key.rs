@@ -22,8 +22,7 @@ use snarkvm_fields::PrimeField;
 
 /// Verification key, prepared (preprocessed) for use in pairings.
 
-#[derive(derivative::Derivative)]
-#[derivative(Clone(bound = "F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinMode"))]
+#[derive(Clone)]
 pub struct PreparedCircuitVerifyingKey<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinMode> {
     /// Size of the variable domain.
     pub constraint_domain_size: u64,

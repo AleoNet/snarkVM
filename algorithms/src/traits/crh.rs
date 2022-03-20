@@ -22,8 +22,8 @@ use std::{
     hash::Hash,
 };
 
-pub trait CRH: Clone + Debug + Send + Sync {
-    type Output: Copy + Clone + Debug + Display + ToBytes + FromBytes + Eq + Hash + Default + Send + Sync;
+pub trait CRH: Clone + Debug + PartialEq + Eq + Send + Sync {
+    type Output: Copy + Clone + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Default + Send + Sync;
     type Parameters: Clone + Debug + Eq;
 
     fn setup(message: &str) -> Self;

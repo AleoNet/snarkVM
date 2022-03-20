@@ -115,10 +115,6 @@ optional = true
 [dependencies.crossbeam-channel]
 version = "0.5"
 
-[dependencies.derivative]
-version = "2"
-features = [ "use_core" ]
-
 [dependencies.digest]
 version = "0.10"
 

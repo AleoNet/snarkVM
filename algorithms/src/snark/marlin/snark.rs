@@ -43,7 +43,7 @@ where
     PC: PolynomialCommitment<TargetField, BaseField>,
     FS: FiatShamirRng<TargetField, BaseField>,
     MM: MarlinMode,
-    Input: ToConstraintField<TargetField>,
+    Input: Clone + ToConstraintField<TargetField>,
 {
     type BaseField = BaseField;
     type PreparedVerifyingKey = PreparedCircuitVerifyingKey<TargetField, BaseField, PC, MM>;

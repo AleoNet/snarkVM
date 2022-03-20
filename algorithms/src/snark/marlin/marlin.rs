@@ -46,8 +46,7 @@ use core::{
 use rand_core::RngCore;
 
 /// The Marlin proof system.
-#[derive(derivative::Derivative)]
-#[derivative(Clone(bound = ""), Debug(bound = ""))]
+#[derive(Clone, Debug)]
 pub struct MarlinSNARK<
     TargetField: PrimeField,
     BaseField: PrimeField,
