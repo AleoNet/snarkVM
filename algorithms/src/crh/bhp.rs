@@ -25,12 +25,12 @@ use std::{fmt::Debug, sync::Arc};
 use rayon::prelude::*;
 
 pub const BHP_CHUNK_SIZE: usize = 3;
-pub const BOWE_HOPWOOD_LOOKUP_SIZE: usize = 2usize.pow(BHP_CHUNK_SIZE as u32);
+pub const BHP_LOOKUP_SIZE: usize = 2usize.pow(BHP_CHUNK_SIZE as u32);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BHPCRH<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
     pub bases: Arc<Vec<Vec<G>>>,
-    base_lookup: Vec<Vec<[G; BOWE_HOPWOOD_LOOKUP_SIZE]>>,
+    base_lookup: Vec<Vec<[G; BHP_LOOKUP_SIZE]>>,
 }
 
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
@@ -77,8 +77,8 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
             .map(|x| {
                 x.iter()
                     .map(|g| {
-                        let mut lookup = [G::zero(); BOWE_HOPWOOD_LOOKUP_SIZE];
-                        for (i, element) in lookup.iter_mut().enumerate().take(BOWE_HOPWOOD_LOOKUP_SIZE) {
+                        let mut lookup = [G::zero(); BHP_LOOKUP_SIZE];
+                        for (i, element) in lookup.iter_mut().enumerate().take(BHP_LOOKUP_SIZE) {
                             *element = *g;
                             if (i & 0x01) != 0 {
                                 *element += g;
@@ -94,7 +94,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
                     })
                     .collect()
             })
-            .collect::<Vec<Vec<[G; BOWE_HOPWOOD_LOOKUP_SIZE]>>>();
+            .collect::<Vec<Vec<[G; BHP_LOOKUP_SIZE]>>>();
         debug_assert_eq!(base_lookup.len(), NUM_WINDOWS);
         base_lookup.iter().for_each(|bases| debug_assert_eq!(bases.len(), WINDOW_SIZE));
 
@@ -114,7 +114,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP
     pub(crate) fn hash_bits_inner(&self, input: &[bool]) -> Result<G, CRHError> {
         // Ensure the input size is within the parameter size,
         if input.len() > NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE {
-            return Err(CRHError::IncorrectInputLength(input.len(), WINDOW_SIZE, NUM_WINDOWS));
+            return Err(CRHError::IncorrectInputLength(input.len(), WINDOW_SIZE, NUM_WINDOWS * BHP_CHUNK_SIZE));
         }
 
         // Pad the input to a multiple of `BHP_CHUNK_SIZE` for hashing.

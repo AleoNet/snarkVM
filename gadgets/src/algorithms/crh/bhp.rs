@@ -113,7 +113,7 @@ impl<
         cs: CS,
         input: Vec<Boolean>,
     ) -> Result<GG, SynthesisError> {
-        assert!(input.len() <= WINDOW_SIZE * NUM_WINDOWS);
+        assert!(input.len() <= WINDOW_SIZE * NUM_WINDOWS * BHP_CHUNK_SIZE);
 
         // Pad the input bytes.
         let mut input_in_bits = input;

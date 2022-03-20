@@ -27,7 +27,7 @@ use crate::{
     ToBitsLEGadget,
     ToBytesGadget,
 };
-use snarkvm_algorithms::{commitment::BHPCommitment, CommitmentScheme};
+use snarkvm_algorithms::{commitment::BHPCommitment, crh::BHP_CHUNK_SIZE, CommitmentScheme};
 use snarkvm_curves::ProjectiveCurve;
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
@@ -157,7 +157,7 @@ impl<
         input: &[UInt8],
         randomness: &Self::RandomnessGadget,
     ) -> Result<Self::OutputGadget, SynthesisError> {
-        assert!((input.len() * 8) <= (WINDOW_SIZE * NUM_WINDOWS));
+        assert!((input.len() * 8) <= (WINDOW_SIZE * NUM_WINDOWS * BHP_CHUNK_SIZE));
 
         // Compute BHP CRH.
         let input = input.to_vec().to_bits_le(cs.ns(|| "to_bits"))?;
