@@ -25,78 +25,20 @@ use snarkvm_curves::{
     ProjectiveCurve,
     TwistedEdwardsParameters,
 };
-use snarkvm_fields::{ConstraintFieldError, FieldParameters, PrimeField, ToConstraintField};
+use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_utilities::{
-    io::Result as IoResult,
     ops::Mul,
     serialize::*,
     BitIteratorBE,
     FromBits,
-    FromBytes,
-    Read,
     ToBits,
-    ToBytes,
     UniformRand,
-    Write,
 };
 
 use itertools::Itertools;
 use rand::{CryptoRng, Rng};
 
-#[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
-#[derivative(
-    Copy(bound = "TE: TwistedEdwardsParameters"),
-    Clone(bound = "TE: TwistedEdwardsParameters"),
-    PartialEq(bound = "TE: TwistedEdwardsParameters"),
-    Eq(bound = "TE: TwistedEdwardsParameters"),
-    Debug(bound = "TE: TwistedEdwardsParameters"),
-    Hash(bound = "TE: TwistedEdwardsParameters")
-)]
-pub struct ECIESPoseidonPublicKey<TE: TwistedEdwardsParameters>(pub TEAffine<TE>);
-
-impl<TE: TwistedEdwardsParameters> ToBytes for ECIESPoseidonPublicKey<TE> {
-    /// Writes the x-coordinate of the encryption public key.
-    #[inline]
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.0.to_x_coordinate().write_le(&mut writer)
-    }
-}
-
-impl<TE: TwistedEdwardsParameters> FromBytes for ECIESPoseidonPublicKey<TE> {
-    /// Reads the x-coordinate of the encryption public key.
-    #[inline]
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let x_coordinate = TE::BaseField::read_le(&mut reader)?;
-
-        if let Some(element) = TEAffine::<TE>::from_x_coordinate(x_coordinate, true) {
-            if element.is_in_correct_subgroup_assuming_on_curve() {
-                return Ok(Self(element));
-            }
-        }
-
-        if let Some(element) = TEAffine::<TE>::from_x_coordinate(x_coordinate, false) {
-            if element.is_in_correct_subgroup_assuming_on_curve() {
-                return Ok(Self(element));
-            }
-        }
-
-        Err(EncryptionError::Message("Failed to read encryption public key".into()).into())
-    }
-}
-
-impl<TE: TwistedEdwardsParameters> Default for ECIESPoseidonPublicKey<TE> {
-    fn default() -> Self {
-        Self(TEAffine::<TE>::default())
-    }
-}
-
-#[derive(Derivative)]
-#[derivative(
-    Clone(bound = "TE: TwistedEdwardsParameters"),
-    Debug(bound = "TE: TwistedEdwardsParameters"),
-    PartialEq(bound = "TE: TwistedEdwardsParameters"),
-    Eq(bound = "TE: TwistedEdwardsParameters")
-)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ECIESPoseidonEncryption<TE: TwistedEdwardsParameters>
 where
     TE::BaseField: PrimeField,
@@ -122,7 +64,11 @@ where
 
     fn setup(message: &str) -> Self {
         let (generator, _, _) = hash_to_curve::<TEAffine<TE>>(message);
-        Self::from(generator)
+        let poseidon = Poseidon::<TE::BaseField, 4, false>::setup();
+        let symmetric_key_commitment_domain = TE::BaseField::from_bytes_le_mod_order(b"AleoSymmetricKeyCommitment0");
+        let symmetric_encryption_domain = TE::BaseField::from_bytes_le_mod_order(b"AleoSymmetricEncryption0");
+
+        Self { generator, poseidon, symmetric_key_commitment_domain, symmetric_encryption_domain }
     }
 
     fn generate_private_key<R: Rng + CryptoRng>(&self, rng: &mut R) -> Self::PrivateKey {
@@ -318,28 +264,5 @@ where
 
     fn private_key_size_in_bits() -> usize {
         Self::PrivateKey::size_in_bits()
-    }
-}
-
-impl<TE: TwistedEdwardsParameters> From<TEAffine<TE>> for ECIESPoseidonEncryption<TE>
-where
-    TE::BaseField: PrimeField,
-{
-    fn from(generator: TEAffine<TE>) -> Self {
-        let poseidon = Poseidon::<TE::BaseField, 4, false>::setup();
-        let symmetric_key_commitment_domain = TE::BaseField::from_bytes_le_mod_order(b"AleoSymmetricKeyCommitment0");
-        let symmetric_encryption_domain = TE::BaseField::from_bytes_le_mod_order(b"AleoSymmetricEncryption0");
-
-        Self { generator, poseidon, symmetric_key_commitment_domain, symmetric_encryption_domain }
-    }
-}
-
-impl<TE: TwistedEdwardsParameters> ToConstraintField<TE::BaseField> for ECIESPoseidonEncryption<TE>
-where
-    TE::BaseField: PrimeField,
-{
-    #[inline]
-    fn to_field_elements(&self) -> Result<Vec<TE::BaseField>, ConstraintFieldError> {
-        Ok(Vec::new())
     }
 }
