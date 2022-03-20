@@ -364,7 +364,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
         mut cs: CS,
         input: &[FpGadget<F>],
     ) -> Result<Self::OutputGadget, SynthesisError> {
-        let params = Arc::new(F::get_default_poseidon_parameters::<RATE>(OPTIMIZED_FOR_WEIGHTS).unwrap());
+        let params = Arc::new(F::default_poseidon_parameters::<RATE>(OPTIMIZED_FOR_WEIGHTS).unwrap());
         let mut sponge = PoseidonSpongeGadget::<F, RATE, 1>::with_parameters(cs.ns(|| "alloc"), &params);
         sponge.absorb(cs.ns(|| "absorb"), input.iter())?;
         let res = sponge.squeeze_field_elements(cs.ns(|| "squeeze"), 1)?;

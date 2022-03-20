@@ -338,7 +338,7 @@ where
 {
     fn from(generator: TEAffine<TE>) -> Self {
         let poseidon_parameters = Arc::new(
-            <TE::BaseField as PoseidonDefaultParametersField>::get_default_poseidon_parameters::<4>(false).unwrap(),
+            <TE::BaseField as PoseidonDefaultParametersField>::default_poseidon_parameters::<4>(false).unwrap(),
         );
         let symmetric_key_commitment_domain = TE::BaseField::from_bytes_le_mod_order(b"AleoSymmetricKeyCommitment0");
         let symmetric_encryption_domain = TE::BaseField::from_bytes_le_mod_order(b"AleoSymmetricEncryption0");

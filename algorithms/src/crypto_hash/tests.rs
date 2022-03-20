@@ -53,7 +53,7 @@ fn test_grain_lfsr_consistency() {
 #[test]
 fn test_poseidon_sponge_consistency() {
     const RATE: usize = 2;
-    let sponge_param = Arc::new(Fr::get_default_poseidon_parameters::<RATE>(false).unwrap());
+    let sponge_param = Arc::new(Fr::default_poseidon_parameters::<RATE>(false).unwrap());
     for absorb in 0..10 {
         for squeeze in 0..10 {
             let iteration_name = format!("Absorb {} and Squeeze {}", absorb, squeeze);
@@ -75,7 +75,7 @@ fn test_poseidon_sponge_consistency() {
 #[test]
 fn bls12_377_fr_poseidon_default_parameters_test() {
     fn single_rate_test<const RATE: usize>(optimize_for_weights: bool) {
-        let params = Fr::get_default_poseidon_parameters::<RATE>(optimize_for_weights).unwrap();
+        let params = Fr::default_poseidon_parameters::<RATE>(optimize_for_weights).unwrap();
         let name = format!("rate {} and optimize_for_weights {}", RATE, optimize_for_weights);
         expect_file_with_name("Ark for ".to_string() + &name, params.ark);
         expect_file_with_name("MDS for ".to_string() + &name, params.mds);

@@ -38,7 +38,7 @@ fn absorb_test() {
         .map(|(i, v)| FpGadget::<Fr>::alloc_input(cs.ns(|| format!("alloc input {}", i)), || Ok(*v)).unwrap())
         .collect();
 
-    let sponge_params = Arc::new(Fr::get_default_poseidon_parameters::<2>(false).unwrap());
+    let sponge_params = Arc::new(Fr::default_poseidon_parameters::<2>(false).unwrap());
 
     let mut native_sponge = PoseidonSponge::with_parameters(&sponge_params);
     let mut constraint_sponge = PoseidonSpongeGadget::with_parameters(cs.ns(|| "new sponge"), &sponge_params);

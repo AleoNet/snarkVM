@@ -14,7 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::FieldParameters;
+/// A trait for default Poseidon parameters associated with a prime field
+pub trait PoseidonDefaultParameters {
+    /// An array of the parameters optimized for constraints
+    /// (rate, alpha, full_rounds, partial_rounds, skip_matrices)
+    /// for rate = 2, 3, 4, 5, 6, 7, 8
+    ///
+    /// Here, `skip_matrices` denote how many matrices to skip before
+    /// finding one that satisfy all the requirements.
+    const PARAMS_OPT_FOR_CONSTRAINTS: [PoseidonDefaultParametersEntry; 7];
+
+    /// An array of the parameters optimized for weights
+    /// (rate, alpha, full_rounds, partial_rounds, skip_matrices)
+    /// for rate = 2, 3, 4, 5, 6, 7, 8
+    const PARAMS_OPT_FOR_WEIGHTS: [PoseidonDefaultParametersEntry; 7];
+}
 
 /// An entry in the default Poseidon parameters
 pub struct PoseidonDefaultParametersEntry {
@@ -44,20 +58,4 @@ impl PoseidonDefaultParametersEntry {
     ) -> Self {
         Self { rate, alpha, full_rounds, partial_rounds, skip_matrices }
     }
-}
-
-/// A trait for default Poseidon parameters associated with a prime field
-pub trait PoseidonDefaultParameters: FieldParameters {
-    /// An array of the parameters optimized for constraints
-    /// (rate, alpha, full_rounds, partial_rounds, skip_matrices)
-    /// for rate = 2, 3, 4, 5, 6, 7, 8
-    ///
-    /// Here, `skip_matrices` denote how many matrices to skip before
-    /// finding one that satisfy all the requirements.
-    const PARAMS_OPT_FOR_CONSTRAINTS: [PoseidonDefaultParametersEntry; 7];
-
-    /// An array of the parameters optimized for weights
-    /// (rate, alpha, full_rounds, partial_rounds, skip_matrices)
-    /// for rate = 2, 3, 4, 5, 6, 7, 8
-    const PARAMS_OPT_FOR_WEIGHTS: [PoseidonDefaultParametersEntry; 7];
 }

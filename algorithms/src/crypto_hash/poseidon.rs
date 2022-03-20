@@ -19,7 +19,15 @@ use crate::{
     traits::{AlgebraicSponge, DefaultCapacityAlgebraicSponge, DuplexSpongeMode, SpongeParameters},
     CryptoHash,
 };
-use snarkvm_fields::{Fp256, Fp256Parameters, Fp384, Fp384Parameters, PoseidonDefaultParameters, PrimeField};
+use snarkvm_fields::{
+    FieldParameters,
+    Fp256,
+    Fp256Parameters,
+    Fp384,
+    Fp384Parameters,
+    PoseidonDefaultParameters,
+    PrimeField,
+};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use smallvec::SmallVec;
@@ -356,11 +364,11 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSponge<F, 
 
 impl<F: PoseidonDefaultParametersField, const RATE: usize> PoseidonSponge<F, RATE, 1> {
     pub fn sample_default_parameters() -> Arc<PoseidonParameters<F, RATE, 1>> {
-        Arc::new(F::get_default_poseidon_parameters::<RATE>(false).unwrap())
+        Arc::new(F::default_poseidon_parameters::<RATE>(false).unwrap())
     }
 
     pub fn with_default_parameters() -> Self {
-        let parameters = Arc::new(F::get_default_poseidon_parameters::<RATE>(false).unwrap());
+        let parameters = Arc::new(F::default_poseidon_parameters::<RATE>(false).unwrap());
         let state = State::default();
         let mode = DuplexSpongeMode::Absorbing { next_absorb_index: 0 };
 
@@ -424,11 +432,11 @@ impl<F: PoseidonDefaultParametersField, const RATE: usize> DefaultCapacityAlgebr
     for PoseidonSponge<F, RATE, 1>
 {
     fn sample_parameters() -> Arc<PoseidonParameters<F, RATE, 1>> {
-        Arc::new(F::get_default_poseidon_parameters::<RATE>(false).unwrap())
+        Arc::new(F::default_poseidon_parameters::<RATE>(false).unwrap())
     }
 
     fn with_default_parameters() -> Self {
-        let parameters = Arc::new(F::get_default_poseidon_parameters::<RATE>(false).unwrap());
+        let parameters = Arc::new(F::default_poseidon_parameters::<RATE>(false).unwrap());
         let state = State::default();
         let mode = DuplexSpongeMode::Absorbing { next_absorb_index: 0 };
 
@@ -442,7 +450,7 @@ pub struct PoseidonCryptoHash<
     const RATE: usize,
     const OPTIMIZED_FOR_WEIGHTS: bool,
 > {
-    parameters: Arc<PoseidonParameters<F, RATE, 1>>,
+    pub parameters: Arc<PoseidonParameters<F, RATE, 1>>,
 }
 
 impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool> CryptoHash
@@ -454,7 +462,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
 
     /// Initializes a new instance of the cryptographic hash function.
     fn setup() -> Self {
-        Self { parameters: Arc::new(F::get_default_poseidon_parameters::<RATE>(OPTIMIZED_FOR_WEIGHTS).unwrap()) }
+        Self { parameters: Arc::new(F::default_poseidon_parameters::<RATE>(OPTIMIZED_FOR_WEIGHTS).unwrap()) }
     }
 
     fn evaluate(&self, input: &[Self::Input]) -> Self::Output {
@@ -507,33 +515,32 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
 pub trait PoseidonDefaultParametersField: PrimeField {
     /// Obtain the default Poseidon parameters for this rate and for this prime field,
     /// with a specific optimization goal.
-    fn get_default_poseidon_parameters<const RATE: usize>(
+    fn default_poseidon_parameters<const RATE: usize>(
         optimized_for_weights: bool,
-    ) -> Option<PoseidonParameters<Self, RATE, 1>>;
-}
+    ) -> Option<PoseidonParameters<Self, RATE, 1>> {
+        let default_entries = if !optimized_for_weights {
+            Self::Parameters::PARAMS_OPT_FOR_CONSTRAINTS
+        } else {
+            Self::Parameters::PARAMS_OPT_FOR_WEIGHTS
+        };
 
-/// Internal function that uses the `PoseidonDefaultParameters` to compute the Poseidon parameters.
-pub fn get_default_poseidon_parameters_internal<F: PrimeField, P: PoseidonDefaultParameters, const RATE: usize>(
-    optimized_for_weights: bool,
-) -> Option<PoseidonParameters<F, RATE, 1>> {
-    let params_set = if !optimized_for_weights { P::PARAMS_OPT_FOR_CONSTRAINTS } else { P::PARAMS_OPT_FOR_WEIGHTS };
+        default_entries.iter().find(|entry| entry.rate == RATE).map(|entry| {
+            let (ark, mds) = find_poseidon_ark_and_mds::<Self, RATE>(
+                Self::Parameters::MODULUS_BITS as u64,
+                entry.full_rounds as u64,
+                entry.partial_rounds as u64,
+                entry.skip_matrices as u64,
+            );
 
-    params_set.iter().find(|p| p.rate == RATE).map(|p| {
-        let (ark, mds) = find_poseidon_ark_and_mds::<F, RATE>(
-            P::MODULUS_BITS as u64,
-            p.full_rounds as u64,
-            p.partial_rounds as u64,
-            p.skip_matrices as u64,
-        );
-
-        PoseidonParameters {
-            full_rounds: p.full_rounds,
-            partial_rounds: p.partial_rounds,
-            alpha: p.alpha as u64,
-            ark,
-            mds,
-        }
-    })
+            PoseidonParameters {
+                full_rounds: entry.full_rounds,
+                partial_rounds: entry.partial_rounds,
+                alpha: entry.alpha as u64,
+                ark,
+                mds,
+            }
+        })
+    }
 }
 
 /// Internal function that computes the ark and mds from the Poseidon Grain LFSR.
@@ -574,13 +581,7 @@ pub fn find_poseidon_ark_and_mds<F: PrimeField, const RATE: usize>(
 
 macro_rules! impl_poseidon_default_parameters_field {
     ($field: ident, $params: ident) => {
-        impl<P: $params + PoseidonDefaultParameters> PoseidonDefaultParametersField for $field<P> {
-            fn get_default_poseidon_parameters<const RATE: usize>(
-                optimized_for_weights: bool,
-            ) -> Option<PoseidonParameters<Self, RATE, 1>> {
-                get_default_poseidon_parameters_internal::<Self, P, RATE>(optimized_for_weights)
-            }
-        }
+        impl<P: $params + PoseidonDefaultParameters> PoseidonDefaultParametersField for $field<P> {}
     };
 }
 
