@@ -26,14 +26,7 @@ use snarkvm_curves::{
     TwistedEdwardsParameters,
 };
 use snarkvm_fields::{FieldParameters, PrimeField};
-use snarkvm_utilities::{
-    ops::Mul,
-    serialize::*,
-    BitIteratorBE,
-    FromBits,
-    ToBits,
-    UniformRand,
-};
+use snarkvm_utilities::{ops::Mul, serialize::*, BitIteratorBE, FromBits, ToBits, UniformRand};
 
 use itertools::Itertools;
 use rand::{CryptoRng, Rng};

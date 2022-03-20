@@ -27,7 +27,7 @@ use snarkvm_curves::{
     ProjectiveCurve,
     TwistedEdwardsParameters,
 };
-use snarkvm_fields::{ConstraintFieldError, Field, FieldParameters, PrimeField, ToConstraintField};
+use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_utilities::{
     io::{Read, Result as IoResult, Write},
     ops::Mul,
@@ -134,7 +134,7 @@ where
     TE::BaseField: PrimeField,
 {
     g_bases: Vec<TEProjective<TE>>,
-    crypto_hash: Poseidon<TE::BaseField, 4, false>,
+    poseidon: Poseidon<TE::BaseField, 4, false>,
 }
 
 impl<TE: TwistedEdwardsParameters> SignatureScheme for AleoSignatureScheme<TE>
@@ -164,7 +164,7 @@ where
 
         let crypto_hash = Poseidon::<TE::BaseField, 4, false>::setup();
 
-        Self { g_bases, crypto_hash }
+        Self { g_bases, poseidon: crypto_hash }
     }
 
     fn parameters(&self) -> &Self::Parameters {
@@ -340,11 +340,11 @@ where
 
     fn hash_to_scalar_field(&self, input: &[Self::BaseField]) -> Self::ScalarField {
         // Use Poseidon as a random oracle.
-        let output = self.crypto_hash.evaluate(input);
+        let output = self.poseidon.evaluate(input);
 
         // Truncate the output to CAPACITY bits (1 bit less than MODULUS_BITS) in the scalar field.
-        let mut bits = output.to_repr().to_bits_le();
-        bits.resize(<TE::ScalarField as PrimeField>::Parameters::CAPACITY as usize, false);
+        let mut bits = output.to_bits_le();
+        bits.resize(TE::ScalarField::size_in_data_bits(), false);
 
         // Output the scalar field.
         let biginteger = <TE::ScalarField as PrimeField>::BigInteger::from_bits_le(&bits);
@@ -378,25 +378,5 @@ where
         }
 
         Err(SignatureError::Message("Failed to recover from x coordinate".into()).into())
-    }
-}
-
-impl<TE: TwistedEdwardsParameters> From<Vec<TEProjective<TE>>> for AleoSignatureScheme<TE>
-where
-    TE::BaseField: PrimeField,
-{
-    fn from(g_bases: Vec<TEProjective<TE>>) -> Self {
-        let crypto_hash = Poseidon::<TE::BaseField, 4, false>::setup();
-        Self { g_bases, crypto_hash }
-    }
-}
-
-impl<F: Field, TE: TwistedEdwardsParameters + ToConstraintField<F>> ToConstraintField<F> for AleoSignatureScheme<TE>
-where
-    TE::BaseField: PrimeField,
-{
-    #[inline]
-    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
-        Ok(Vec::new())
     }
 }
