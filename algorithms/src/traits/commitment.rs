@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::CommitmentError;
-use snarkvm_utilities::{FromBytes, ToBytes, UniformRand};
+use snarkvm_utilities::{FromBytes, ToBits, ToBytes, UniformRand};
 
 use std::{fmt::Debug, hash::Hash};
 
@@ -29,10 +29,7 @@ pub trait CommitmentScheme: Sized + Clone {
     fn commit(&self, input: &[bool], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError>;
 
     fn commit_bytes(&self, input: &[u8], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError> {
-        self.commit(
-            &input.iter().flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8)).collect::<Vec<bool>>(),
-            randomness,
-        )
+        self.commit(&input.to_bits_le(), randomness)
     }
 
     fn parameters(&self) -> Self::Parameters;

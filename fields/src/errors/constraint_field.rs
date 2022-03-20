@@ -23,7 +23,7 @@ pub enum ConstraintFieldError {
     Crate(&'static str, String),
 
     #[error("{}", _0)]
-    Message(String),
+    Message(&'static str),
 }
 
 impl From<std::io::Error> for ConstraintFieldError {
