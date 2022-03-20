@@ -28,12 +28,12 @@ path = "benches/commitment/bhp.rs"
 harness = false
 
 [[bench]]
-name = "crh-pedersen"
+name = "pedersen_crh"
 path = "benches/crh/pedersen.rs"
 harness = false
 
 [[bench]]
-name = "crh-bhp"
+name = "bhp_crh"
 path = "benches/crh/bhp.rs"
 harness = false
 

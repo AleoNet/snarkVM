@@ -44,8 +44,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
         let bhp = BHPCRH::<G, NUM_WINDOWS, WINDOW_SIZE>::setup(message);
 
         // Next, compute the random base.
-        let random_base_message = format!("{} for random base", message);
-        let (generator, _, _) = hash_to_curve::<G::Affine>(&random_base_message);
+        let (generator, _, _) = hash_to_curve::<G::Affine>(&format!("{message} for random base"));
         let mut base = generator.into_projective();
 
         let num_scalar_bits = G::ScalarField::size_in_bits();
@@ -59,7 +58,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
         Self { bhp_crh: bhp, random_base }
     }
 
-    fn commit(&self, input: &[u8], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError> {
+    fn commit_bytes(&self, input: &[u8], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError> {
         let num_bits = input.len() * 8;
         // If the input is too long, return an error.
         if num_bits > WINDOW_SIZE * NUM_WINDOWS {

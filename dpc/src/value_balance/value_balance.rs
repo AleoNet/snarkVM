@@ -110,7 +110,7 @@ impl<N: Network> ValueBalanceCommitment<N> {
 
         // Make sure bvk can be derived from the cumulative randomness.
         let expected_combined_commitments =
-            N::value_commitment_scheme().commit(&0i64.to_le_bytes(), &combined_randomness)?;
+            N::value_commitment_scheme().commit_bytes(&0i64.to_le_bytes(), &combined_randomness)?;
         assert_eq!(combined_commitments, expected_combined_commitments);
 
         // Generate final commitment randomness.
@@ -121,7 +121,7 @@ impl<N: Network> ValueBalanceCommitment<N> {
         let c = hash_into_field::<N>(&sig_rand[..], input);
 
         // Commit to 0 with `c`as randomness.
-        let commitment = N::value_commitment_scheme().commit(&0i64.to_le_bytes(), &c)?;
+        let commitment = N::value_commitment_scheme().commit_bytes(&0i64.to_le_bytes(), &c)?;
 
         let mut blinding_factor = hash_into_field::<N>(&commitment.to_x_coordinate().to_bytes_le()?, input);
         blinding_factor = blinding_factor.mul(&combined_randomness);
@@ -152,7 +152,7 @@ impl<N: Network> ValueBalanceCommitment<N> {
         combined_commitments -= Self::commit_without_randomness(value_balance)?;
 
         let c = hash_into_field::<N>(&self.commitment.to_x_coordinate().to_bytes_le()?, input);
-        let recommit = N::value_commitment_scheme().commit(&0i64.to_le_bytes(), &self.blinding_factor)?;
+        let recommit = N::value_commitment_scheme().commit_bytes(&0i64.to_le_bytes(), &self.blinding_factor)?;
 
         Ok((combined_commitments.mul(c) + *self.commitment - recommit).is_zero())
     }
@@ -168,7 +168,7 @@ impl<N: Network> ValueBalanceCommitment<N> {
 
         // Compute commitment of the value with a zero randomness.
         let zero_randomness = Zero::zero();
-        let commitment = N::value_commitment_scheme().commit(&value_as_u64.to_le_bytes(), &zero_randomness)?;
+        let commitment = N::value_commitment_scheme().commit_bytes(&value_as_u64.to_le_bytes(), &zero_randomness)?;
 
         match value.is_negative() {
             true => Ok(commitment.neg()),
@@ -205,7 +205,8 @@ impl<N: Network> ValueBalanceCommitment<N> {
         }
 
         let c = hash_into_field::<N>(&self.commitment.to_x_coordinate().to_bytes_le()?, input);
-        let blinded_commitment = N::value_commitment_scheme().commit(&0i64.to_le_bytes(), &self.blinding_factor)?;
+        let blinded_commitment =
+            N::value_commitment_scheme().commit_bytes(&0i64.to_le_bytes(), &self.blinding_factor)?;
 
         Ok((c, partial_combined_commitments, self.commitment.clone(), blinded_commitment))
     }
@@ -289,7 +290,7 @@ pub(crate) mod tests {
 
             let value_commit_randomness = UniformRand::rand(rng);
             let value_commitment = N::value_commitment_scheme()
-                .commit(&input_amount.to_bytes_le().unwrap(), &value_commit_randomness)
+                .commit_bytes(&input_amount.to_bytes_le().unwrap(), &value_commit_randomness)
                 .unwrap();
 
             input_value_commitment_randomness.push(value_commit_randomness);
@@ -301,7 +302,7 @@ pub(crate) mod tests {
 
             let value_commit_randomness = UniformRand::rand(rng);
             let value_commitment = N::value_commitment_scheme()
-                .commit(&output_amount.to_bytes_le().unwrap(), &value_commit_randomness)
+                .commit_bytes(&output_amount.to_bytes_le().unwrap(), &value_commit_randomness)
                 .unwrap();
 
             output_value_commitment_randomness.push(value_commit_randomness);

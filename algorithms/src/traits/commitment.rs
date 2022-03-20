@@ -26,7 +26,13 @@ pub trait CommitmentScheme: ToBytes + FromBytes + Sized + Clone + From<<Self as 
 
     fn setup(message: &str) -> Self;
 
-    fn commit(&self, input: &[u8], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError>;
+    // fn commit(&self, input: &[bool], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError>;
+
+    fn commit_bytes(&self, input: &[u8], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError>;
+
+    // fn hash_bytes(&self, input: &[u8]) -> Result<Self::Output, CRHError> {
+    //     self.hash(&input.iter().flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8)).collect::<Vec<bool>>())
+    // }
 
     fn parameters(&self) -> Self::Parameters;
 }

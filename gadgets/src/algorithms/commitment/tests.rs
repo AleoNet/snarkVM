@@ -42,7 +42,7 @@ fn native_and_gadget_equivalence_test<Native: CommitmentScheme, Gadget: Commitme
 
     // Compute the native commitment.
     let commitment_scheme = Native::setup("commitment_test");
-    let native_output = commitment_scheme.commit(&input, &randomness).unwrap();
+    let native_output = commitment_scheme.commit_bytes(&input, &randomness).unwrap();
 
     // Compute the gadget commitment.
     let mut cs = TestConstraintSystem::<Fq>::new();

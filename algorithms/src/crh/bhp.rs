@@ -80,8 +80,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
         let mut bases = Vec::with_capacity(NUM_WINDOWS);
         for index in 0..NUM_WINDOWS {
             // Construct an indexed message to attempt to sample a base.
-            let indexed_message = format!("{} at {}", message, index);
-            let (generator, _, _) = hash_to_curve::<G::Affine>(&indexed_message);
+            let (generator, _, _) = hash_to_curve::<G::Affine>(&format!("{message} at {index}"));
             let mut base = generator.into_projective();
             // Compute the generators for the sampled base.
             let mut generators_for_segment = Vec::with_capacity(WINDOW_SIZE);

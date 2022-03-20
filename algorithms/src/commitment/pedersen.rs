@@ -40,8 +40,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
         let crh = PedersenCRH::setup(message);
 
         // Next, compute the random base.
-        let random_base_message = format!("{} for random base", message);
-        let (generator, _, _) = hash_to_curve::<G::Affine>(&random_base_message);
+        let (generator, _, _) = hash_to_curve::<G::Affine>(&format!("{message} for random base"));
         let mut base = generator.into_projective();
 
         let num_scalar_bits = G::ScalarField::size_in_bits();
@@ -55,7 +54,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
         Self { crh, random_base }
     }
 
-    fn commit(&self, input: &[u8], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError> {
+    fn commit_bytes(&self, input: &[u8], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError> {
         // If the input is too long, return an error.
         if input.len() > WINDOW_SIZE * NUM_WINDOWS {
             return Err(CommitmentError::IncorrectInputLength(input.len(), WINDOW_SIZE, NUM_WINDOWS));

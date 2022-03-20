@@ -41,8 +41,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
         let mut bases = Vec::with_capacity(NUM_WINDOWS);
         for index in 0..NUM_WINDOWS {
             // Construct an indexed message to attempt to sample a base.
-            let indexed_message = format!("{} at {}", message, index);
-            let (generator, _, _) = hash_to_curve::<G::Affine>(&indexed_message);
+            let (generator, _, _) = hash_to_curve::<G::Affine>(&format!("{message} at {index}"));
             let mut base = generator.into_projective();
             let mut powers = Vec::with_capacity(WINDOW_SIZE);
             for _ in 0..WINDOW_SIZE {
@@ -55,41 +54,26 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
     }
 
     fn hash(&self, input: &[bool]) -> Result<Self::Output, CRHError> {
-        if input.len() > WINDOW_SIZE * NUM_WINDOWS {
-            return Err(CRHError::IncorrectInputLength(input.len(), WINDOW_SIZE, NUM_WINDOWS));
-        }
-
-        // Pad the input if it is not the current length.
-        let mut padded_input = Cow::Borrowed(input);
-        if padded_input.len() < WINDOW_SIZE * NUM_WINDOWS {
-            padded_input.to_mut().resize(WINDOW_SIZE * NUM_WINDOWS, false);
-        }
-
-        if self.bases.len() != NUM_WINDOWS {
-            return Err(CRHError::IncorrectParameterSize(
-                self.bases[0].len(),
-                self.bases.len(),
-                WINDOW_SIZE,
-                NUM_WINDOWS,
-            ));
+        let mut input = Cow::Borrowed(input);
+        match input.len() <= WINDOW_SIZE * NUM_WINDOWS {
+            // Pad the input if it is under the required parameter size.
+            true => input.to_mut().resize(WINDOW_SIZE * NUM_WINDOWS, false),
+            // Ensure the input size is within the parameter size,
+            false => return Err(CRHError::IncorrectInputLength(input.len(), WINDOW_SIZE, NUM_WINDOWS)),
         }
 
         // Compute sum of h_i^{m_i} for all i.
-        let result = padded_input
+        Ok(input
             .chunks(WINDOW_SIZE)
             .zip_eq(&self.bases)
-            .map(|(bits, powers)| {
-                let mut encoded = G::zero();
-                for (bit, base) in bits.iter().zip_eq(powers.iter()) {
-                    if *bit {
-                        encoded += base;
-                    }
-                }
-                encoded
+            .flat_map(|(bits, powers)| {
+                bits.iter().zip_eq(powers).flat_map(|(bit, base)| match bit {
+                    true => Some(*base),
+                    false => None,
+                })
             })
-            .fold(G::zero(), |a, b| a + b);
-
-        Ok(result.into_affine())
+            .sum::<G>()
+            .into_affine())
     }
 
     fn parameters(&self) -> &Self::Parameters {

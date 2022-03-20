@@ -198,7 +198,8 @@ impl<N: Network> ResponseBuilder<N> {
 
         for value in input_record_values.iter() {
             let commitment_randomness = N::ProgramScalarField::rand(rng);
-            let commitment = N::value_commitment_scheme().commit(&value.to_bytes_le()?, &commitment_randomness)?;
+            let commitment =
+                N::value_commitment_scheme().commit_bytes(&value.to_bytes_le()?, &commitment_randomness)?;
 
             input_value_commitments.push(commitment.into());
             input_value_commitment_randomness.push(commitment_randomness);
@@ -213,7 +214,8 @@ impl<N: Network> ResponseBuilder<N> {
 
         for value in output_record_values.iter() {
             let commitment_randomness = N::ProgramScalarField::rand(rng);
-            let commitment = N::value_commitment_scheme().commit(&value.to_bytes_le()?, &commitment_randomness)?;
+            let commitment =
+                N::value_commitment_scheme().commit_bytes(&value.to_bytes_le()?, &commitment_randomness)?;
 
             output_value_commitments.push(commitment.into());
             output_value_commitment_randomness.push(commitment_randomness);
