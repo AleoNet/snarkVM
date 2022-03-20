@@ -29,7 +29,7 @@ pub struct PoseidonGrainLFSR {
 impl PoseidonGrainLFSR {
     pub fn new(
         is_sbox_an_inverse: bool,
-        prime_num_bits: u64,
+        field_size_in_bits: u64,
         state_len: u64,
         num_full_rounds: u64,
         num_partial_rounds: u64,
@@ -48,7 +48,7 @@ impl PoseidonGrainLFSR {
 
         // b6, ..., b17 are the binary representation of n (prime_num_bits)
         {
-            let mut cur = prime_num_bits;
+            let mut cur = field_size_in_bits;
             for i in (6..=17).rev() {
                 state[i] = cur & 1 == 1;
                 cur >>= 1;
@@ -88,32 +88,11 @@ impl PoseidonGrainLFSR {
             state[i] = true;
         }
 
-        let head = 0;
-
-        let mut res = Self { prime_num_bits, state, head };
-        res.init();
-        res
-    }
-
-    pub fn get_bits(&mut self, num_bits: usize) -> Vec<bool> {
-        let mut res = Vec::with_capacity(num_bits);
-
-        for _ in 0..num_bits {
-            // Obtain the first bit
-            let mut new_bit = self.update();
-
-            // Loop until the first bit is true
-            while !new_bit {
-                // Discard the second bit
-                let _ = self.update();
-                // Obtain another first bit
-                new_bit = self.update();
-            }
-
-            // Obtain the second bit
-            res.push(self.update());
+        // Initialize.
+        let mut res = Self { prime_num_bits: field_size_in_bits, state, head: 0 };
+        for _ in 0..160 {
+            res.next_bit();
         }
-
         res
     }
 
@@ -168,33 +147,44 @@ impl PoseidonGrainLFSR {
 
         res
     }
+}
+
+impl PoseidonGrainLFSR {
+    #[inline]
+    fn get_bits(&mut self, num_bits: usize) -> Vec<bool> {
+        let mut bits = Vec::with_capacity(num_bits);
+
+        for _ in 0..num_bits {
+            // Obtain the first bit
+            let mut new_bit = self.next_bit();
+
+            // Loop until the first bit is true
+            while !new_bit {
+                // Discard the second bit
+                let _ = self.next_bit();
+                // Obtain another first bit
+                new_bit = self.next_bit();
+            }
+
+            // Obtain the second bit
+            bits.push(self.next_bit());
+        }
+
+        bits
+    }
 
     #[inline]
-    fn update(&mut self) -> bool {
-        let new_bit = self.state[(self.head + 62) % 80]
+    fn next_bit(&mut self) -> bool {
+        let next_bit = self.state[(self.head + 62) % 80]
             ^ self.state[(self.head + 51) % 80]
             ^ self.state[(self.head + 38) % 80]
             ^ self.state[(self.head + 23) % 80]
             ^ self.state[(self.head + 13) % 80]
             ^ self.state[self.head];
-        self.state[self.head] = new_bit;
+        self.state[self.head] = next_bit;
         self.head += 1;
         self.head %= 80;
 
-        new_bit
-    }
-
-    fn init(&mut self) {
-        for _ in 0..160 {
-            let new_bit = self.state[(self.head + 62) % 80]
-                ^ self.state[(self.head + 51) % 80]
-                ^ self.state[(self.head + 38) % 80]
-                ^ self.state[(self.head + 23) % 80]
-                ^ self.state[(self.head + 13) % 80]
-                ^ self.state[self.head];
-            self.state[self.head] = new_bit;
-            self.head += 1;
-            self.head %= 80;
-        }
+        next_bit
     }
 }

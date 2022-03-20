@@ -14,13 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    AlgebraicSpongeVar,
-    AllocGadget,
-    CryptoHashGadget,
-    FieldGadget,
-    FpGadget,
-};
+use crate::{AlgebraicSpongeVar, AllocGadget, CryptoHashGadget, FieldGadget, FpGadget};
 
 use snarkvm_algorithms::{
     crypto_hash::{PoseidonCryptoHash, PoseidonDefaultParametersField, PoseidonParameters, PoseidonSponge},

@@ -20,7 +20,6 @@ use crate::{
     CryptoHash,
 };
 use snarkvm_fields::{
-    FieldParameters,
     Fp256,
     Fp256Parameters,
     Fp384,
@@ -521,7 +520,6 @@ pub trait PoseidonDefaultParametersField: PrimeField {
 
         default_entries.iter().find(|entry| entry.rate == RATE).map(|entry| {
             let (ark, mds) = find_poseidon_ark_and_mds::<Self, RATE>(
-                Self::Parameters::MODULUS_BITS as u64,
                 entry.full_rounds as u64,
                 entry.partial_rounds as u64,
                 entry.skip_matrices as u64,
@@ -540,12 +538,12 @@ pub trait PoseidonDefaultParametersField: PrimeField {
 
 /// Internal function that computes the ark and mds from the Poseidon Grain LFSR.
 pub fn find_poseidon_ark_and_mds<F: PrimeField, const RATE: usize>(
-    prime_bits: u64,
     full_rounds: u64,
     partial_rounds: u64,
     skip_matrices: u64,
 ) -> (Vec<Vec<F>>, Vec<Vec<F>>) {
-    let mut lfsr = PoseidonGrainLFSR::new(false, prime_bits, (RATE + 1) as u64, full_rounds, partial_rounds);
+    let mut lfsr =
+        PoseidonGrainLFSR::new(false, F::size_in_bits() as u64, (RATE + 1) as u64, full_rounds, partial_rounds);
 
     let mut ark = Vec::<Vec<F>>::new();
     for _ in 0..(full_rounds + partial_rounds) {
