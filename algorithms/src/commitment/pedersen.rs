@@ -54,17 +54,17 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
         Self { crh, random_base }
     }
 
-    fn commit_bytes(&self, input: &[u8], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError> {
+    fn commit(&self, input: &[bool], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError> {
         // If the input is too long, return an error.
         if input.len() > WINDOW_SIZE * NUM_WINDOWS {
             return Err(CommitmentError::IncorrectInputLength(input.len(), WINDOW_SIZE, NUM_WINDOWS));
         }
 
-        let mut output = self.crh.hash_bytes(input)?.into_projective();
+        let mut output = self.crh.hash(input)?.into_projective();
 
         // Compute h^r.
-        let scalar_bits = BitIteratorLE::new(randomness.to_repr());
-        for (bit, power) in scalar_bits.take(G::ScalarField::size_in_bits()).zip_eq(&self.random_base) {
+        let scalar_bits = BitIteratorLE::new(randomness.to_repr()).take(G::ScalarField::size_in_bits());
+        for (bit, power) in scalar_bits.zip_eq(&self.random_base) {
             if bit {
                 output += power
             }

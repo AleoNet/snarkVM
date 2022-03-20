@@ -58,29 +58,23 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
         Self { bhp_crh: bhp, random_base }
     }
 
-    fn commit_bytes(&self, input: &[u8], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError> {
-        let num_bits = input.len() * 8;
+    fn commit(&self, input: &[bool], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError> {
         // If the input is too long, return an error.
-        if num_bits > WINDOW_SIZE * NUM_WINDOWS {
+        if input.len() > WINDOW_SIZE * NUM_WINDOWS {
             return Err(CommitmentError::IncorrectInputLength(input.len(), WINDOW_SIZE, NUM_WINDOWS));
         }
 
-        // Convert input bytes to bits.
-        let bits = input.iter().flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8));
-
-        let mut output = self.bhp_crh.hash_bits_inner(bits, num_bits)?;
+        let mut output = self.bhp_crh.hash_bits_inner(input)?;
 
         // Compute h^r.
-        let scalar_bits = BitIteratorLE::new(randomness.to_repr());
-        for (bit, power) in scalar_bits.take(G::ScalarField::size_in_bits()).zip_eq(&self.random_base) {
+        let scalar_bits = BitIteratorLE::new(randomness.to_repr()).take(G::ScalarField::size_in_bits());
+        for (bit, power) in scalar_bits.zip_eq(&self.random_base) {
             if bit {
                 output += power
             }
         }
 
-        let affine = output.into_affine();
-        debug_assert!(affine.is_in_correct_subgroup_assuming_on_curve());
-        Ok(affine.to_x_coordinate())
+        Ok(output.into_affine().to_x_coordinate())
     }
 
     fn parameters(&self) -> Self::Parameters {

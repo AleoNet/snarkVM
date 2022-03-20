@@ -92,7 +92,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
     }
 
     fn hash(&self, input: &[bool]) -> Result<Self::Output, CRHError> {
-        Ok(self.hash_bits_inner(input.iter(), input.len())?.into_affine().to_x_coordinate())
+        Ok(self.hash_bits_inner(input)?.into_affine().to_x_coordinate())
     }
 
     fn parameters(&self) -> &Self::Parameters {
@@ -132,20 +132,16 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP
     }
 
     /// Precondition: number of elements in `input` == `num_bits`.
-    pub(crate) fn hash_bits_inner<S: Borrow<bool>>(
-        &self,
-        input: impl Iterator<Item = S>,
-        num_bits: usize,
-    ) -> Result<G, CRHError> {
-        if num_bits > WINDOW_SIZE * NUM_WINDOWS {
-            return Err(CRHError::IncorrectInputLength(num_bits, WINDOW_SIZE, NUM_WINDOWS));
+    pub(crate) fn hash_bits_inner(&self, input: &[bool]) -> Result<G, CRHError> {
+        if input.len() > WINDOW_SIZE * NUM_WINDOWS {
+            return Err(CRHError::IncorrectInputLength(input.len(), WINDOW_SIZE, NUM_WINDOWS));
         }
         debug_assert!(WINDOW_SIZE <= MAX_WINDOW_SIZE);
         debug_assert!(NUM_WINDOWS <= MAX_NUM_WINDOWS);
 
         // overzealous but stack allocation
         let mut buf_slice = [false; MAX_WINDOW_SIZE * MAX_NUM_WINDOWS + BOWE_HOPWOOD_CHUNK_SIZE + 1];
-        buf_slice[..num_bits].iter_mut().zip(input).for_each(|(b, i)| *b = *i.borrow());
+        buf_slice[..input.len()].iter_mut().zip(input).for_each(|(b, i)| *b = *i.borrow());
 
         let mut bit_len = WINDOW_SIZE * NUM_WINDOWS;
         if bit_len % BOWE_HOPWOOD_CHUNK_SIZE != 0 {
