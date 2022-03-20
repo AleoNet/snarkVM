@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{AlgebraicSponge, CryptoHash, DefaultCapacityAlgebraicSponge, DuplexSpongeMode};
-use snarkvm_fields::{PoseidonDefaultField, PoseidonParameters, PrimeField};
+use snarkvm_fields::{PoseidonParameters, PrimeField};
 
 use smallvec::SmallVec;
 use std::{
@@ -230,7 +230,7 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSponge<F, 
     }
 }
 
-impl<F: PoseidonDefaultField, const RATE: usize, const CAPACITY: usize> AlgebraicSponge<F, RATE, CAPACITY>
+impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> AlgebraicSponge<F, RATE, CAPACITY>
     for PoseidonSponge<F, RATE, CAPACITY>
 {
     type Parameters = Arc<PoseidonParameters<F, RATE, CAPACITY>>;
@@ -290,9 +290,7 @@ impl<F: PoseidonDefaultField, const RATE: usize, const CAPACITY: usize> Algebrai
     }
 }
 
-impl<F: PoseidonDefaultField, const RATE: usize> DefaultCapacityAlgebraicSponge<F, RATE>
-    for PoseidonSponge<F, RATE, 1>
-{
+impl<F: PrimeField, const RATE: usize> DefaultCapacityAlgebraicSponge<F, RATE> for PoseidonSponge<F, RATE, 1> {
     fn sample_parameters() -> Arc<PoseidonParameters<F, RATE, 1>> {
         Arc::new(F::default_poseidon_parameters::<RATE>(false).unwrap())
     }
@@ -307,15 +305,11 @@ impl<F: PoseidonDefaultField, const RATE: usize> DefaultCapacityAlgebraicSponge<
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct PoseidonCryptoHash<
-    F: PrimeField + PoseidonDefaultField,
-    const RATE: usize,
-    const OPTIMIZED_FOR_WEIGHTS: bool,
-> {
+pub struct PoseidonCryptoHash<F: PrimeField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool> {
     pub parameters: Arc<PoseidonParameters<F, RATE, 1>>,
 }
 
-impl<F: PrimeField + PoseidonDefaultField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool> CryptoHash
+impl<F: PrimeField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool> CryptoHash
     for PoseidonCryptoHash<F, RATE, OPTIMIZED_FOR_WEIGHTS>
 {
     type Input = F;

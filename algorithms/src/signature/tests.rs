@@ -15,12 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::SignatureScheme;
-use snarkvm_utilities::FromBytes;
-
-use rand::thread_rng;
+use snarkvm_utilities::test_crypto_rng;
 
 fn sign_and_verify<S: SignatureScheme>(message: &[u8]) {
-    let rng = &mut thread_rng();
+    let rng = &mut test_crypto_rng();
     let signature_scheme = S::setup("sign_and_verify");
 
     let private_key = signature_scheme.generate_private_key(rng);
@@ -30,19 +28,13 @@ fn sign_and_verify<S: SignatureScheme>(message: &[u8]) {
 }
 
 fn failed_verification<S: SignatureScheme>(message: &[u8], bad_message: &[u8]) {
-    let rng = &mut thread_rng();
+    let rng = &mut test_crypto_rng();
     let signature_scheme = S::setup("failed_verification");
 
     let private_key = signature_scheme.generate_private_key(rng);
     let public_key = signature_scheme.generate_public_key(&private_key);
     let signature = signature_scheme.sign(&private_key, message, rng).unwrap();
     assert!(!signature_scheme.verify(&public_key, bad_message, &signature).unwrap());
-}
-
-fn signature_scheme_serialization<S: SignatureScheme>() {
-    let signature_scheme = S::setup("signature_scheme_serialization");
-    let recovered_signature_scheme: S = FromBytes::read_le(&signature_scheme.to_bytes_le().unwrap()[..]).unwrap();
-    assert_eq!(signature_scheme, recovered_signature_scheme);
 }
 
 mod aleo {
@@ -69,11 +61,5 @@ mod aleo {
         let message = "Hi, I am an Aleo signature!";
         sign_and_verify::<TestSignature>(message.as_bytes());
         failed_verification::<TestSignature>(message.as_bytes(), b"Bad message");
-    }
-
-    #[test]
-    fn aleo_signature_scheme_serialization() {
-        signature_scheme_serialization::<AleoSignatureScheme<EdwardsBls12>>();
-        signature_scheme_serialization::<AleoSignatureScheme<EdwardsBW6>>();
     }
 }

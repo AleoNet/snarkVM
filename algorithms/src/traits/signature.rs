@@ -21,7 +21,7 @@ use rand::{CryptoRng, Rng};
 use std::{fmt::Debug, hash::Hash};
 
 pub trait SignatureScheme:
-    Sized + ToBytes + FromBytes + Debug + Clone + Eq + Send + Sync + From<<Self as SignatureScheme>::Parameters>
+    Sized + Debug + Clone + Eq + Send + Sync + From<<Self as SignatureScheme>::Parameters>
 {
     type Parameters: Clone + Debug + Eq;
     type PublicKey: Clone + Debug + Default + ToBytes + FromBytes + Hash + Eq + Send + Sync;

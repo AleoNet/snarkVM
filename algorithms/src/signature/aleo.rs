@@ -29,14 +29,7 @@ use snarkvm_curves::{
     ProjectiveCurve,
     TwistedEdwardsParameters,
 };
-use snarkvm_fields::{
-    ConstraintFieldError,
-    Field,
-    FieldParameters,
-    PoseidonDefaultField,
-    PrimeField,
-    ToConstraintField,
-};
+use snarkvm_fields::{ConstraintFieldError, Field, FieldParameters, PrimeField, ToConstraintField};
 use snarkvm_utilities::{
     io::{Read, Result as IoResult, Write},
     ops::Mul,
@@ -140,7 +133,7 @@ impl<TE: TwistedEdwardsParameters> ToBytes for AleoSignature<TE> {
 )]
 pub struct AleoSignatureScheme<TE: TwistedEdwardsParameters>
 where
-    TE::BaseField: PoseidonDefaultField,
+    TE::BaseField: PrimeField,
 {
     g_bases: Vec<TEProjective<TE>>,
     crypto_hash: PoseidonCryptoHash<TE::BaseField, 4, false>,
@@ -148,7 +141,7 @@ where
 
 impl<TE: TwistedEdwardsParameters> SignatureScheme for AleoSignatureScheme<TE>
 where
-    TE::BaseField: PoseidonDefaultField,
+    TE::BaseField: PrimeField,
 {
     type Parameters = Vec<TEProjective<TE>>;
     type PrivateKey = (TE::ScalarField, TE::ScalarField);
@@ -320,7 +313,7 @@ where
 
 impl<TE: TwistedEdwardsParameters> SignatureSchemeOperations for AleoSignatureScheme<TE>
 where
-    TE::BaseField: PoseidonDefaultField,
+    TE::BaseField: PrimeField,
 {
     type AffineCurve = TEAffine<TE>;
     type BaseField = TE::BaseField;
@@ -367,7 +360,7 @@ where
 
 impl<TE: TwistedEdwardsParameters> AleoSignatureScheme<TE>
 where
-    TE::BaseField: PoseidonDefaultField,
+    TE::BaseField: PrimeField,
 {
     fn scalar_multiply(&self, base: TEProjective<TE>, scalar: &TE::ScalarField) -> TEAffine<TE> {
         base.mul(*scalar).into_affine()
@@ -392,7 +385,7 @@ where
 
 impl<TE: TwistedEdwardsParameters> From<Vec<TEProjective<TE>>> for AleoSignatureScheme<TE>
 where
-    TE::BaseField: PoseidonDefaultField,
+    TE::BaseField: PrimeField,
 {
     fn from(g_bases: Vec<TEProjective<TE>>) -> Self {
         let crypto_hash = PoseidonCryptoHash::<TE::BaseField, 4, false>::setup();
@@ -400,40 +393,9 @@ where
     }
 }
 
-impl<TE: TwistedEdwardsParameters> ToBytes for AleoSignatureScheme<TE>
-where
-    TE::BaseField: PoseidonDefaultField,
-{
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (self.g_bases.len() as u32).write_le(&mut writer)?;
-        for g in &self.g_bases {
-            g.into_affine().write_le(&mut writer)?;
-        }
-
-        Ok(())
-    }
-}
-
-impl<TE: TwistedEdwardsParameters> FromBytes for AleoSignatureScheme<TE>
-where
-    TE::BaseField: PoseidonDefaultField,
-{
-    #[inline]
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let g_bases_length: u32 = FromBytes::read_le(&mut reader)?;
-        let mut g_bases = Vec::with_capacity(g_bases_length as usize);
-        for _ in 0..g_bases_length {
-            let g: TEAffine<TE> = FromBytes::read_le(&mut reader)?;
-            g_bases.push(g.into_projective());
-        }
-
-        Ok(Self::from(g_bases))
-    }
-}
-
 impl<F: Field, TE: TwistedEdwardsParameters + ToConstraintField<F>> ToConstraintField<F> for AleoSignatureScheme<TE>
 where
-    TE::BaseField: PoseidonDefaultField,
+    TE::BaseField: PrimeField,
 {
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {

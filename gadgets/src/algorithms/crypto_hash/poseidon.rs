@@ -19,7 +19,7 @@ use snarkvm_algorithms::{
     crypto_hash::{PoseidonCryptoHash, PoseidonSponge},
     DuplexSpongeMode,
 };
-use snarkvm_fields::{PoseidonDefaultField, PoseidonParameters, PrimeField};
+use snarkvm_fields::{PoseidonParameters, PrimeField};
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
 use std::{borrow::Borrow, marker::PhantomData, sync::Arc};
@@ -201,8 +201,8 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSpongeGadg
     }
 }
 
-impl<F: PoseidonDefaultField, const RATE: usize, const CAPACITY: usize>
-    AllocGadget<PoseidonParameters<F, RATE, CAPACITY>, F> for PoseidonSpongeGadget<F, RATE, CAPACITY>
+impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> AllocGadget<PoseidonParameters<F, RATE, CAPACITY>, F>
+    for PoseidonSpongeGadget<F, RATE, CAPACITY>
 {
     fn alloc_constant<
         Fn: FnOnce() -> Result<T, SynthesisError>,
@@ -240,7 +240,7 @@ impl<F: PoseidonDefaultField, const RATE: usize, const CAPACITY: usize>
     }
 }
 
-impl<F: PoseidonDefaultField, const RATE: usize, const CAPACITY: usize>
+impl<F: PrimeField, const RATE: usize, const CAPACITY: usize>
     AlgebraicSpongeVar<F, PoseidonSponge<F, RATE, CAPACITY>, RATE, CAPACITY>
     for PoseidonSpongeGadget<F, RATE, CAPACITY>
 {
@@ -333,13 +333,11 @@ impl<F: PoseidonDefaultField, const RATE: usize, const CAPACITY: usize>
 }
 
 #[derive(Clone)]
-pub struct PoseidonCryptoHashGadget<
-    F: PrimeField + PoseidonDefaultField,
-    const RATE: usize,
-    const OPTIMIZED_FOR_WEIGHTS: bool,
->(PhantomData<F>);
+pub struct PoseidonCryptoHashGadget<F: PrimeField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool>(
+    PhantomData<F>,
+);
 
-impl<F: PrimeField + PoseidonDefaultField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool>
+impl<F: PrimeField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool>
     CryptoHashGadget<PoseidonCryptoHash<F, RATE, OPTIMIZED_FOR_WEIGHTS>, F>
     for PoseidonCryptoHashGadget<F, RATE, OPTIMIZED_FOR_WEIGHTS>
 {

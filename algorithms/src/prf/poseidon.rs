@@ -19,16 +19,14 @@ use crate::{
     errors::PRFError,
     traits::{CryptoHash, PRF},
 };
-use snarkvm_fields::{PoseidonDefaultField, PrimeField};
+use snarkvm_fields::PrimeField;
 
 use std::marker::PhantomData;
 
 #[derive(Clone)]
-pub struct PoseidonPRF<F: PrimeField + PoseidonDefaultField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool>(
-    PhantomData<F>,
-);
+pub struct PoseidonPRF<F: PrimeField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool>(PhantomData<F>);
 
-impl<F: PrimeField + PoseidonDefaultField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool> PRF
+impl<F: PrimeField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool> PRF
     for PoseidonPRF<F, RATE, OPTIMIZED_FOR_WEIGHTS>
 {
     type Input = Vec<F>;

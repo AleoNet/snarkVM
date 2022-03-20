@@ -48,12 +48,15 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonParameters
 }
 
 /// A field with Poseidon parameters associated
-pub trait PoseidonDefaultField: PrimeField {
+pub trait PoseidonDefaultField {
     /// Obtain the default Poseidon parameters for this rate and for this prime field,
     /// with a specific optimization goal.
     fn default_poseidon_parameters<const RATE: usize>(
         optimized_for_weights: bool,
-    ) -> Option<PoseidonParameters<Self, RATE, 1>> {
+    ) -> Option<PoseidonParameters<Self, RATE, 1>>
+    where
+        Self: PrimeField,
+    {
         /// Internal function that computes the ark and mds from the Poseidon Grain LFSR.
         fn find_poseidon_ark_and_mds<F: PrimeField, const RATE: usize>(
             full_rounds: u64,

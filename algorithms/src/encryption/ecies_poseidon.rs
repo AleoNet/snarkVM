@@ -109,7 +109,7 @@ impl<TE: TwistedEdwardsParameters> Default for ECIESPoseidonPublicKey<TE> {
 )]
 pub struct ECIESPoseidonEncryption<TE: TwistedEdwardsParameters>
 where
-    TE::BaseField: PoseidonDefaultField,
+    TE::BaseField: PrimeField,
 {
     generator: TEAffine<TE>,
     poseidon_parameters: Arc<PoseidonParameters<TE::BaseField, 4, 1>>,
@@ -119,7 +119,7 @@ where
 
 impl<TE: TwistedEdwardsParameters> EncryptionScheme for ECIESPoseidonEncryption<TE>
 where
-    TE::BaseField: PoseidonDefaultField,
+    TE::BaseField: PrimeField,
 {
     type CiphertextRandomizer = TE::BaseField;
     type MessageType = TE::BaseField;
@@ -341,7 +341,7 @@ where
 
 impl<TE: TwistedEdwardsParameters> From<TEAffine<TE>> for ECIESPoseidonEncryption<TE>
 where
-    TE::BaseField: PoseidonDefaultField,
+    TE::BaseField: PrimeField,
 {
     fn from(generator: TEAffine<TE>) -> Self {
         let poseidon_parameters =
@@ -353,28 +353,9 @@ where
     }
 }
 
-impl<TE: TwistedEdwardsParameters> ToBytes for ECIESPoseidonEncryption<TE>
-where
-    TE::BaseField: PoseidonDefaultField,
-{
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.generator.write_le(&mut writer)
-    }
-}
-
-impl<TE: TwistedEdwardsParameters> FromBytes for ECIESPoseidonEncryption<TE>
-where
-    TE::BaseField: PoseidonDefaultField,
-{
-    #[inline]
-    fn read_le<R: Read>(reader: R) -> IoResult<Self> {
-        Ok(Self::from(TEAffine::<TE>::read_le(reader)?))
-    }
-}
-
 impl<TE: TwistedEdwardsParameters> ToConstraintField<TE::BaseField> for ECIESPoseidonEncryption<TE>
 where
-    TE::BaseField: PoseidonDefaultField,
+    TE::BaseField: PrimeField,
 {
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<TE::BaseField>, ConstraintFieldError> {

@@ -36,7 +36,7 @@ use snarkvm_algorithms::{
     SignatureScheme,
 };
 use snarkvm_curves::{templates::twisted_edwards_extended::Affine as TEAffine, TwistedEdwardsParameters};
-use snarkvm_fields::{FieldParameters, PoseidonDefaultField, PrimeField};
+use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -308,14 +308,13 @@ impl<F: PrimeField> ToBitsLEGadget<F> for AleoComputeKeyGadget {
     }
 }
 
-pub struct AleoSignatureSchemeGadget<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaultField>
-{
+pub struct AleoSignatureSchemeGadget<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> {
     pub(crate) signature: AleoSignatureScheme<TE>,
     pub(crate) _engine: PhantomData<F>,
 }
 
-impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaultField>
-    AllocGadget<AleoSignatureScheme<TE>, F> for AleoSignatureSchemeGadget<TE, F>
+impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> AllocGadget<AleoSignatureScheme<TE>, F>
+    for AleoSignatureSchemeGadget<TE, F>
 {
     fn alloc_constant<
         Fn: FnOnce() -> Result<T, SynthesisError>,
@@ -347,8 +346,8 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
     }
 }
 
-impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaultField>
-    SignatureGadget<AleoSignatureScheme<TE>, F> for AleoSignatureSchemeGadget<TE, F>
+impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> SignatureGadget<AleoSignatureScheme<TE>, F>
+    for AleoSignatureSchemeGadget<TE, F>
 {
     type ComputeKeyGadget = AleoComputeKeyGadget;
     type PublicKeyGadget = AleoSignaturePublicKeyGadget<TE, F>;

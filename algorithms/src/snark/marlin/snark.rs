@@ -30,7 +30,7 @@ use crate::{
     SNARK,
     SRS,
 };
-use snarkvm_fields::{PoseidonDefaultField, PrimeField, ToConstraintField};
+use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_r1cs::ConstraintSynthesizer;
 
 use core::sync::atomic::AtomicBool;
@@ -39,7 +39,7 @@ use rand::{CryptoRng, Rng};
 impl<TargetField, BaseField, PC, FS, MM, Input> SNARK for MarlinSNARK<TargetField, BaseField, PC, FS, MM, Input>
 where
     TargetField: PrimeField,
-    BaseField: PrimeField + PoseidonDefaultField,
+    BaseField: PrimeField,
     PC: PolynomialCommitment<TargetField, BaseField>,
     FS: FiatShamirRng<TargetField, BaseField>,
     MM: MarlinMode,
