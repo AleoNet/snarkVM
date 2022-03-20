@@ -104,7 +104,13 @@ pub trait PoseidonDefaultField {
                 entry.partial_rounds as u64,
                 entry.skip_matrices as u64,
             );
-            PoseidonParameters::new(entry.full_rounds, entry.partial_rounds, entry.alpha as u64, ark, mds)
+            PoseidonParameters {
+                full_rounds: entry.full_rounds,
+                partial_rounds: entry.partial_rounds,
+                alpha: entry.alpha as u64,
+                ark,
+                mds,
+            }
         })
     }
 }
