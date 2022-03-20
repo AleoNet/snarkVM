@@ -380,3 +380,51 @@ where
         Err(SignatureError::Message("Failed to recover from x coordinate".into()).into())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_curves::{
+        edwards_bls12::EdwardsParameters as EdwardsBls12,
+        edwards_bw6::EdwardsParameters as EdwardsBW6,
+    };
+    use snarkvm_utilities::test_crypto_rng;
+
+    fn sign_and_verify<S: SignatureScheme>(message: &[u8]) {
+        let rng = &mut test_crypto_rng();
+        let signature_scheme = S::setup("sign_and_verify");
+
+        let private_key = signature_scheme.generate_private_key(rng);
+        let public_key = signature_scheme.generate_public_key(&private_key);
+        let signature = signature_scheme.sign(&private_key, message, rng).unwrap();
+        assert!(signature_scheme.verify(&public_key, message, &signature).unwrap());
+    }
+
+    fn failed_verification<S: SignatureScheme>(message: &[u8], bad_message: &[u8]) {
+        let rng = &mut test_crypto_rng();
+        let signature_scheme = S::setup("failed_verification");
+
+        let private_key = signature_scheme.generate_private_key(rng);
+        let public_key = signature_scheme.generate_public_key(&private_key);
+        let signature = signature_scheme.sign(&private_key, message, rng).unwrap();
+        assert!(!signature_scheme.verify(&public_key, bad_message, &signature).unwrap());
+    }
+
+    #[test]
+    fn test_aleo_signature_on_edwards_bls12_377() {
+        type TestSignature = AleoSignatureScheme<EdwardsBls12>;
+
+        let message = "Hi, I am an Aleo signature!";
+        sign_and_verify::<TestSignature>(message.as_bytes());
+        failed_verification::<TestSignature>(message.as_bytes(), b"Bad message");
+    }
+
+    #[test]
+    fn test_aleo_signature_on_edwards_bw6() {
+        type TestSignature = AleoSignatureScheme<EdwardsBW6>;
+
+        let message = "Hi, I am an Aleo signature!";
+        sign_and_verify::<TestSignature>(message.as_bytes());
+        failed_verification::<TestSignature>(message.as_bytes(), b"Bad message");
+    }
+}
