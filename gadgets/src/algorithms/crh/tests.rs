@@ -42,7 +42,7 @@ const BHP_NUM_WINDOWS: usize = 32;
 const BHP_WINDOW_SIZE: usize = 48;
 
 const PEDERSEN_HASH_CONSTRAINTS: usize = 5632;
-const BOWE_HOPWOOD_HASH_CONSTRAINTS: usize = 3974;
+const BOWE_HOPWOOD_HASH_CONSTRAINTS: usize = 3279;
 
 fn generate_input<F: PrimeField, CS: ConstraintSystem<F>, R: Rng>(
     mut cs: CS,
@@ -174,9 +174,7 @@ mod pedersen_compressed_crh_gadget_on_projective {
     }
 }
 
-// Note: Bowe-Hopwood CRH Gadget currently does not support affine curves or masked crh
-
-mod bowe_hopwood_pedersen_crh_gadget_on_projective {
+mod bhp_crh_gadget_on_projective {
     use super::*;
 
     type TestCRH = BHPCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
