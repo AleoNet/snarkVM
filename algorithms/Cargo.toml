@@ -227,7 +227,6 @@ full = [
   "crh",
   "encryption",
   "fft",
-  "hash_to_curve",
   "merkle_tree",
   "msm",
   "polycommit",
@@ -241,7 +240,6 @@ wasm = [
   "crypto_hash",
   "encryption",
   "fft",
-  "hash_to_curve",
   "merkle_tree",
   "msm",
   "polycommit",
@@ -256,11 +254,10 @@ parallel = [ "rayon", "num_cpus", "snarkvm-fields/parallel", "snarkvm-utilities/
 profiler = [ "aleo-std/profiler" ]
 
 commitment = [ "crh" ]
-crh = [ "hash_to_curve" ]
+crh = [ "crypto_hash" ]
 crypto_hash = [ "blake2s_simd" ]
 encryption = [ "signature" ]
 fft = [ ]
-hash_to_curve = [ "crypto_hash" ]
 merkle_tree = [ ]
 msm = [ ]
 polycommit = [ "rand_core", "fft", "crh", "msm" ]

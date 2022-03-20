@@ -16,7 +16,7 @@
 
 use crate::{
     crypto_hash::PoseidonCryptoHash,
-    hash_to_curve::hash_to_curve,
+    crypto_hash::hash_to_curve,
     CryptoHash,
     SignatureError,
     SignatureScheme,

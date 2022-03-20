@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{hash_to_curve::hash_to_curve, CRHError, CRH};
+use crate::{crypto_hash::hash_to_curve, CRHError, CRH};
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, Field, PrimeField, ToConstraintField};
 use snarkvm_utilities::BigInteger;
