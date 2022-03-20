@@ -38,18 +38,20 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
     type Parameters = Vec<Vec<G>>;
 
     fn setup(message: &str) -> Self {
-        let mut bases = Vec::with_capacity(NUM_WINDOWS);
-        for index in 0..NUM_WINDOWS {
-            // Construct an indexed message to attempt to sample a base.
-            let (generator, _, _) = hash_to_curve::<G::Affine>(&format!("{message} at {index}"));
-            let mut base = generator.into_projective();
-            let mut powers = Vec::with_capacity(WINDOW_SIZE);
-            for _ in 0..WINDOW_SIZE {
-                powers.push(base);
-                base.double_in_place();
-            }
-            bases.push(powers);
-        }
+        let bases = (0..NUM_WINDOWS)
+            .map(|index| {
+                // Construct an indexed message to attempt to sample a base.
+                let (generator, _, _) = hash_to_curve::<G::Affine>(&format!("{message} at {index}"));
+                let mut base = generator.into_projective();
+                let mut powers = Vec::with_capacity(WINDOW_SIZE);
+                for _ in 0..WINDOW_SIZE {
+                    powers.push(base);
+                    base.double_in_place();
+                }
+                powers
+            })
+            .collect();
+
         Self { bases }
     }
 

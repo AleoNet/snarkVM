@@ -51,7 +51,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
     type Parameters = Arc<Vec<Vec<G>>>;
 
     fn setup(message: &str) -> Self {
-        fn calculate_num_chunks_in_segment<F: PrimeField>() -> usize {
+        fn calculate_maximum_window_size<F: PrimeField>() -> usize {
             let upper_limit = F::modulus_minus_one_div_two();
             let mut c = 0;
             let mut range = F::BigInteger::from(2_u64);
@@ -62,45 +62,37 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
             c
         }
 
-        let maximum_num_chunks_in_segment = calculate_num_chunks_in_segment::<G::ScalarField>();
-        if WINDOW_SIZE > maximum_num_chunks_in_segment {
+        let maximum_window_size = calculate_maximum_window_size::<G::ScalarField>();
+        if WINDOW_SIZE > maximum_window_size {
             panic!(
                 "BHP CRH must have a window size resulting in scalars < (p-1)/2, \
                  maximum segment size is {}",
-                maximum_num_chunks_in_segment
+                maximum_window_size
             );
         }
 
-        let time = start_timer!(|| format!(
-            "BoweHopwoodPedersenCRH::Setup: {} segments of {} 3-bit chunks; {{0,1}}^{{{}}} -> G",
-            NUM_WINDOWS,
-            WINDOW_SIZE,
-            WINDOW_SIZE * NUM_WINDOWS * BOWE_HOPWOOD_CHUNK_SIZE
-        ));
-        let mut bases = Vec::with_capacity(NUM_WINDOWS);
-        for index in 0..NUM_WINDOWS {
-            // Construct an indexed message to attempt to sample a base.
-            let (generator, _, _) = hash_to_curve::<G::Affine>(&format!("{message} at {index}"));
-            let mut base = generator.into_projective();
-            // Compute the generators for the sampled base.
-            let mut generators_for_segment = Vec::with_capacity(WINDOW_SIZE);
-            for _ in 0..WINDOW_SIZE {
-                generators_for_segment.push(base);
-                for _ in 0..4 {
-                    base.double_in_place();
+        let bases = (0..NUM_WINDOWS)
+            .map(|index| {
+                // Construct an indexed message to attempt to sample a base.
+                let (generator, _, _) = hash_to_curve::<G::Affine>(&format!("{message} at {index}"));
+                let mut base = generator.into_projective();
+                // Compute the generators for the sampled base.
+                let mut powers = Vec::with_capacity(WINDOW_SIZE);
+                for _ in 0..WINDOW_SIZE {
+                    powers.push(base);
+                    for _ in 0..4 {
+                        base.double_in_place();
+                    }
                 }
-            }
-            bases.push(generators_for_segment);
-        }
-        end_timer!(time);
+                powers
+            })
+            .collect();
 
         Self { bases: Arc::new(bases), base_lookup: OnceCell::new() }
     }
 
     fn hash(&self, input: &[bool]) -> Result<Self::Output, CRHError> {
-        let affine = self.hash_bits_inner(input.iter(), input.len())?.into_affine();
-        debug_assert!(affine.is_in_correct_subgroup_assuming_on_curve());
-        Ok(affine.to_x_coordinate())
+        Ok(self.hash_bits_inner(input.iter(), input.len())?.into_affine().to_x_coordinate())
     }
 
     fn parameters(&self) -> &Self::Parameters {
