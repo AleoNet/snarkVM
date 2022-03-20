@@ -19,18 +19,14 @@ use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, Field, PrimeField, ToConstraintField};
 use snarkvm_utilities::BigInteger;
 
-use std::{borrow::Borrow, fmt::Debug, sync::Arc};
+use std::{borrow::Borrow, borrow::Cow, fmt::Debug, sync::Arc};
+use itertools::Itertools;
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-// The stack is currently allocated with the following size
-// because we cannot specify them using the trait consts.
-const MAX_WINDOW_SIZE: usize = 64;
-const MAX_NUM_WINDOWS: usize = 8192;
-
-pub const BOWE_HOPWOOD_CHUNK_SIZE: usize = 3;
-pub const BOWE_HOPWOOD_LOOKUP_SIZE: usize = 2usize.pow(BOWE_HOPWOOD_CHUNK_SIZE as u32);
+pub const BHP_CHUNK_SIZE: usize = 3;
+pub const BOWE_HOPWOOD_LOOKUP_SIZE: usize = 2usize.pow(BHP_CHUNK_SIZE as u32);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BHPCRH<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
@@ -45,18 +41,19 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
     type Parameters = Arc<Vec<Vec<G>>>;
 
     fn setup(message: &str) -> Self {
-        fn calculate_maximum_window_size<F: PrimeField>() -> usize {
-            let upper_limit = F::modulus_minus_one_div_two();
+        debug_assert_eq!(BHP_CHUNK_SIZE, 3);
+
+        // Calculate the maximum window size.
+        let maximum_window_size = {
+            let upper_limit = G::ScalarField::modulus_minus_one_div_two();
             let mut c = 0;
-            let mut range = F::BigInteger::from(2_u64);
+            let mut range = <G::ScalarField as PrimeField>::BigInteger::from(2_u64);
             while range < upper_limit {
                 range.muln(4);
                 c += 1;
             }
             c
-        }
-
-        let maximum_window_size = calculate_maximum_window_size::<G::ScalarField>();
+        };
         if WINDOW_SIZE > maximum_window_size {
             panic!(
                 "BHP CRH must have a window size resulting in scalars < (p-1)/2, \
@@ -65,6 +62,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
             );
         }
 
+        // Compute the bases.
         let bases = (0..NUM_WINDOWS)
             .map(|index| {
                 // Construct an indexed message to attempt to sample a base.
@@ -81,7 +79,10 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
                 powers
             })
             .collect::<Vec<Vec<G>>>();
+        debug_assert_eq!(bases.len(), NUM_WINDOWS, "Incorrect number of windows ({:?}) for BHP", bases.len());
+        bases.iter().for_each(|window| debug_assert_eq!(window.len(), WINDOW_SIZE));
 
+        // Compute the base lookup.
         let base_lookup = crate::cfg_iter!(bases)
             .map(|x| {
                 x.iter()
@@ -121,36 +122,22 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
 
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE> {
     pub(crate) fn hash_bits_inner(&self, input: &[bool]) -> Result<G, CRHError> {
-        // Input-independent sanity checks.
-        debug_assert!(WINDOW_SIZE <= MAX_WINDOW_SIZE);
-        debug_assert!(NUM_WINDOWS <= MAX_NUM_WINDOWS);
-        debug_assert_eq!(self.bases.len(), NUM_WINDOWS, "Incorrect number of windows ({:?}) for BHP", self.bases.len(),);
-        self.bases.iter().for_each(|bases| debug_assert_eq!(bases.len(), WINDOW_SIZE));
-        debug_assert_eq!(BOWE_HOPWOOD_CHUNK_SIZE, 3);
-
-        if input.len() > WINDOW_SIZE * NUM_WINDOWS {
-            return Err(CRHError::IncorrectInputLength(input.len(), WINDOW_SIZE, NUM_WINDOWS));
+        // Ensure the input size is within the parameter size,
+        if input.len() > NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE {
+            return Err(CRHError::IncorrectInputLength(input.len(), WINDOW_SIZE, NUM_WINDOWS))
         }
 
-        // overzealous but stack allocation
-        let mut input_stack = [false; MAX_WINDOW_SIZE * MAX_NUM_WINDOWS + BOWE_HOPWOOD_CHUNK_SIZE + 1];
-        input_stack[..input.len()].iter_mut().zip(input).for_each(|(b, i)| *b = *i.borrow());
+        // Pad the input.
+        let mut padded_input = vec![false; NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE];
+        padded_input[..input.len()].iter_mut().zip_eq(input).for_each(|(b, i)| *b = *i.borrow());
 
-        let mut bit_len = input.len();
-        if bit_len % BOWE_HOPWOOD_CHUNK_SIZE != 0 {
-            bit_len += BOWE_HOPWOOD_CHUNK_SIZE - (bit_len % BOWE_HOPWOOD_CHUNK_SIZE);
-        }
-        debug_assert_eq!(bit_len % BOWE_HOPWOOD_CHUNK_SIZE, 0);
-
-        // Compute sum of h_i^{sum of
-        // (1-2*c_{i,j,2})*(1+c_{i,j,0}+2*c_{i,j,1})*2^{4*(j-1)} for all j in segment}
-        // for all i. Described in section 5.4.1.7 in the Zcash protocol
-        // specification.
-        Ok(input_stack[..bit_len]
-            .chunks(WINDOW_SIZE * BOWE_HOPWOOD_CHUNK_SIZE)
-            .zip(&self.base_lookup)
+        // Compute sum of h_i^{sum of (1-2*c_{i,j,2})*(1+c_{i,j,0}+2*c_{i,j,1})*2^{4*(j-1)} for all j in segment}
+        // for all i. Described in section 5.4.1.7 in the Zcash protocol specification.
+        Ok(padded_input
+            .chunks(WINDOW_SIZE * BHP_CHUNK_SIZE)
+            .zip_eq(&self.base_lookup)
             .flat_map(|(bits, bases)| {
-                bits.chunks(BOWE_HOPWOOD_CHUNK_SIZE).zip(bases).map(|(chunk_bits, base)| {
+                bits.chunks(BHP_CHUNK_SIZE).zip_eq(bases).map(|(chunk_bits, base)| {
                     base[(chunk_bits[0] as usize) | (chunk_bits[1] as usize) << 1 | (chunk_bits[2] as usize) << 2]
                 })
             })

@@ -18,7 +18,7 @@ use crate::{
     bits::Boolean,
     traits::{algorithms::CRHGadget, alloc::AllocGadget, curves::CompressedGroupGadget},
 };
-use snarkvm_algorithms::crh::{BHPCRH, BOWE_HOPWOOD_CHUNK_SIZE};
+use snarkvm_algorithms::crh::{BHPCRH, BHP_CHUNK_SIZE};
 use snarkvm_curves::ProjectiveCurve;
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
@@ -120,12 +120,12 @@ impl<
         input_in_bits.resize(WINDOW_SIZE * NUM_WINDOWS, Boolean::Constant(false));
         assert_eq!(input_in_bits.len(), WINDOW_SIZE * NUM_WINDOWS);
 
-        if (input_in_bits.len()) % BOWE_HOPWOOD_CHUNK_SIZE != 0 {
+        if (input_in_bits.len()) % BHP_CHUNK_SIZE != 0 {
             let current_length = input_in_bits.len();
-            let target_length = current_length + BOWE_HOPWOOD_CHUNK_SIZE - current_length % BOWE_HOPWOOD_CHUNK_SIZE;
+            let target_length = current_length + BHP_CHUNK_SIZE - current_length % BHP_CHUNK_SIZE;
             input_in_bits.resize(target_length, Boolean::constant(false));
         }
-        assert!(input_in_bits.len() % BOWE_HOPWOOD_CHUNK_SIZE == 0);
+        assert!(input_in_bits.len() % BHP_CHUNK_SIZE == 0);
         assert_eq!(self.crh.bases.len(), NUM_WINDOWS);
         for generators in self.crh.bases.iter() {
             assert_eq!(generators.len(), WINDOW_SIZE);
@@ -133,7 +133,7 @@ impl<
 
         // Allocate new variable for the result.
         let input_in_bits =
-            input_in_bits.chunks(WINDOW_SIZE * BOWE_HOPWOOD_CHUNK_SIZE).map(|x| x.chunks(BOWE_HOPWOOD_CHUNK_SIZE));
+            input_in_bits.chunks(WINDOW_SIZE * BHP_CHUNK_SIZE).map(|x| x.chunks(BHP_CHUNK_SIZE));
 
         GG::three_bit_signed_digit_scalar_multiplication(cs, &self.crh.bases, input_in_bits)
     }
