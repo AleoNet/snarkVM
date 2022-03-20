@@ -19,8 +19,7 @@ use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, Field, PrimeField, ToConstraintField};
 use snarkvm_utilities::BigInteger;
 
-use std::{borrow::Borrow, borrow::Cow, fmt::Debug, sync::Arc};
-use itertools::Itertools;
+use std::{fmt::Debug, sync::Arc};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -124,20 +123,27 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP
     pub(crate) fn hash_bits_inner(&self, input: &[bool]) -> Result<G, CRHError> {
         // Ensure the input size is within the parameter size,
         if input.len() > NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE {
-            return Err(CRHError::IncorrectInputLength(input.len(), WINDOW_SIZE, NUM_WINDOWS))
+            return Err(CRHError::IncorrectInputLength(input.len(), WINDOW_SIZE, NUM_WINDOWS));
         }
 
-        // Pad the input.
-        let mut padded_input = vec![false; NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE];
-        padded_input[..input.len()].iter_mut().zip_eq(input).for_each(|(b, i)| *b = *i.borrow());
+        // Pad the input to a multiple of `BHP_CHUNK_SIZE` for hashing.
+        let mut input = input.to_vec();
+        if input.len() % BHP_CHUNK_SIZE != 0 {
+            let padding = BHP_CHUNK_SIZE - (input.len() % BHP_CHUNK_SIZE);
+            input.extend_from_slice(&vec![false; padding]);
+            assert_eq!(input.len() % BHP_CHUNK_SIZE, 0);
+        }
 
         // Compute sum of h_i^{sum of (1-2*c_{i,j,2})*(1+c_{i,j,0}+2*c_{i,j,1})*2^{4*(j-1)} for all j in segment}
         // for all i. Described in section 5.4.1.7 in the Zcash protocol specification.
-        Ok(padded_input
+        //
+        // Note: `.zip()` is used here (as opposed to `.zip_eq()`) as the input can be less than
+        // `NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE` in length, which is the parameter size here.
+        Ok(input
             .chunks(WINDOW_SIZE * BHP_CHUNK_SIZE)
-            .zip_eq(&self.base_lookup)
+            .zip(&self.base_lookup)
             .flat_map(|(bits, bases)| {
-                bits.chunks(BHP_CHUNK_SIZE).zip_eq(bases).map(|(chunk_bits, base)| {
+                bits.chunks(BHP_CHUNK_SIZE).zip(bases).map(|(chunk_bits, base)| {
                     base[(chunk_bits[0] as usize) | (chunk_bits[1] as usize) << 1 | (chunk_bits[2] as usize) << 2]
                 })
             })

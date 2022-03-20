@@ -126,14 +126,9 @@ impl<
             input_in_bits.resize(target_length, Boolean::constant(false));
         }
         assert!(input_in_bits.len() % BHP_CHUNK_SIZE == 0);
-        assert_eq!(self.crh.bases.len(), NUM_WINDOWS);
-        for generators in self.crh.bases.iter() {
-            assert_eq!(generators.len(), WINDOW_SIZE);
-        }
 
         // Allocate new variable for the result.
-        let input_in_bits =
-            input_in_bits.chunks(WINDOW_SIZE * BHP_CHUNK_SIZE).map(|x| x.chunks(BHP_CHUNK_SIZE));
+        let input_in_bits = input_in_bits.chunks(WINDOW_SIZE * BHP_CHUNK_SIZE).map(|x| x.chunks(BHP_CHUNK_SIZE));
 
         GG::three_bit_signed_digit_scalar_multiplication(cs, &self.crh.bases, input_in_bits)
     }
