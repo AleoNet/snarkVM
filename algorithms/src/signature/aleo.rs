@@ -23,7 +23,6 @@ use crate::{
 use snarkvm_curves::{
     templates::twisted_edwards_extended::{Affine as TEAffine, Projective as TEProjective},
     AffineCurve,
-    Group,
     ProjectiveCurve,
     TwistedEdwardsParameters,
 };

@@ -20,10 +20,7 @@ use crate::{
     polycommit::{kzg10, PCCommitterKey, PCVerifierKey},
     Prepare,
 };
-use snarkvm_curves::{
-    traits::{PairingCurve, PairingEngine},
-    Group,
-};
+use snarkvm_curves::{PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::{error, serialize::*, FromBytes, ToBytes};
 

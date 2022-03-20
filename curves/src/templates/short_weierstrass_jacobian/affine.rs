@@ -17,7 +17,7 @@
 use crate::{
     impl_sw_curve_serializer,
     templates::short_weierstrass_jacobian::Projective,
-    traits::{AffineCurve, Group, ProjectiveCurve, ShortWeierstrassParameters as Parameters},
+    traits::{AffineCurve, ProjectiveCurve, ShortWeierstrassParameters as Parameters},
 };
 use snarkvm_fields::{impl_add_sub_from_field_ref, Field, One, PrimeField, SquareRootField, Zero};
 use snarkvm_utilities::{
@@ -93,6 +93,7 @@ impl<P: Parameters> PartialEq<Projective<P>> for Affine<P> {
 impl<P: Parameters> AffineCurve for Affine<P> {
     type BaseField = P::BaseField;
     type Projective = Projective<P>;
+    type ScalarField = P::ScalarField;
 
     #[inline]
     fn prime_subgroup_generator() -> Self {
@@ -138,6 +139,20 @@ impl<P: Parameters> AffineCurve for Affine<P> {
     /// largest y-coordinate be selected.
     fn from_y_coordinate(_y: Self::BaseField, _greatest: bool) -> Option<Self> {
         unimplemented!()
+    }
+
+    #[inline]
+    #[must_use]
+    fn double(&self) -> Self {
+        let mut tmp = *self;
+        tmp += self;
+        tmp
+    }
+
+    #[inline]
+    fn double_in_place(&mut self) {
+        let tmp = *self;
+        *self = tmp.double();
     }
 
     fn mul_bits(&self, bits: impl Iterator<Item = bool>) -> Projective<P> {
@@ -249,24 +264,6 @@ impl<P: Parameters> ToMinimalBits for Affine<P> {
         res_bits.push(*self.y.to_bits_le().first().unwrap());
         res_bits.push(self.infinity);
         res_bits
-    }
-}
-
-impl<P: Parameters> Group for Affine<P> {
-    type ScalarField = P::ScalarField;
-
-    #[inline]
-    #[must_use]
-    fn double(&self) -> Self {
-        let mut tmp = *self;
-        tmp += self;
-        tmp
-    }
-
-    #[inline]
-    fn double_in_place(&mut self) {
-        let tmp = *self;
-        *self = tmp.double();
     }
 }
 

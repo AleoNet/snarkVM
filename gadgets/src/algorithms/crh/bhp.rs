@@ -19,7 +19,7 @@ use crate::{
     traits::{algorithms::CRHGadget, alloc::AllocGadget, curves::CompressedGroupGadget},
 };
 use snarkvm_algorithms::crh::{BHPCRH, BHP_CHUNK_SIZE};
-use snarkvm_curves::ProjectiveCurve;
+use snarkvm_curves::AffineCurve;
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
@@ -27,28 +27,24 @@ use std::{borrow::Borrow, marker::PhantomData};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BHPCRHGadget<
-    G: ProjectiveCurve,
+    G: AffineCurve,
     F: PrimeField,
     GG: CompressedGroupGadget<G, F>,
     const NUM_WINDOWS: usize,
     const WINDOW_SIZE: usize,
 > {
-    pub(crate) crh: BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>,
+    pub(crate) crh: BHPCRH<G::Projective, NUM_WINDOWS, WINDOW_SIZE>,
     _field: PhantomData<F>,
     _group: PhantomData<GG>,
 }
 
-impl<
-    G: ProjectiveCurve,
-    F: PrimeField,
-    GG: CompressedGroupGadget<G, F>,
-    const NUM_WINDOWS: usize,
-    const WINDOW_SIZE: usize,
-> AllocGadget<BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F> for BHPCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
+impl<G: AffineCurve, F: PrimeField, GG: CompressedGroupGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+    AllocGadget<BHPCRH<G::Projective, NUM_WINDOWS, WINDOW_SIZE>, F>
+    for BHPCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn alloc_constant<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        T: Borrow<BHPCRH<G::Projective, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         _cs: CS,
@@ -59,7 +55,7 @@ impl<
 
     fn alloc<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        T: Borrow<BHPCRH<G::Projective, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         _cs: CS,
@@ -70,7 +66,7 @@ impl<
 
     fn alloc_input<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        T: Borrow<BHPCRH<G::Projective, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         _cs: CS,
@@ -80,13 +76,8 @@ impl<
     }
 }
 
-impl<
-    F: PrimeField,
-    G: ProjectiveCurve,
-    GG: CompressedGroupGadget<G, F>,
-    const NUM_WINDOWS: usize,
-    const WINDOW_SIZE: usize,
-> CRHGadget<BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F> for BHPCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
+impl<F: PrimeField, G: AffineCurve, GG: CompressedGroupGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+    CRHGadget<BHPCRH<G::Projective, NUM_WINDOWS, WINDOW_SIZE>, F> for BHPCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
     type OutputGadget = GG::BaseFieldGadget;
 
@@ -100,13 +91,8 @@ impl<
     }
 }
 
-impl<
-    F: PrimeField,
-    G: ProjectiveCurve,
-    GG: CompressedGroupGadget<G, F>,
-    const NUM_WINDOWS: usize,
-    const WINDOW_SIZE: usize,
-> BHPCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
+impl<F: PrimeField, G: AffineCurve, GG: CompressedGroupGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+    BHPCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
     pub(crate) fn check_evaluation_gadget_on_bits_inner<CS: ConstraintSystem<F>>(
         &self,

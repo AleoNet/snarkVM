@@ -18,10 +18,7 @@ use crate::{
     fft::{DensePolynomial, EvaluationDomain},
     polycommit::{PCCommitment, PCProof, PCRandomness, PCUniversalParams},
 };
-use snarkvm_curves::{
-    traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve},
-    Group,
-};
+use snarkvm_curves::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, PrimeField, ToConstraintField, Zero};
 use snarkvm_utilities::{
     borrow::Cow,

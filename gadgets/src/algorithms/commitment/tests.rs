@@ -24,7 +24,7 @@ use snarkvm_algorithms::{
     commitment::{BHPCommitment, PedersenCommitment},
     CommitmentScheme,
 };
-use snarkvm_curves::edwards_bls12::{EdwardsProjective, Fq};
+use snarkvm_curves::edwards_bls12::{EdwardsAffine, EdwardsProjective, Fq};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::rand::{test_rng, UniformRand};
 
@@ -69,7 +69,7 @@ fn native_and_gadget_equivalence_test<Native: CommitmentScheme, Gadget: Commitme
 #[test]
 fn bhp_commitment_gadget_test() {
     type TestCommitment = BHPCommitment<EdwardsProjective, 32, 48>;
-    type TestCommitmentGadget = BHPCommitmentGadget<EdwardsProjective, Fq, EdwardsBls12Gadget, 32, 48>;
+    type TestCommitmentGadget = BHPCommitmentGadget<EdwardsAffine, Fq, EdwardsBls12Gadget, 32, 48>;
 
     let mut rng = test_rng();
 
@@ -83,7 +83,7 @@ fn bhp_commitment_gadget_test() {
 #[test]
 fn pedersen_commitment_gadget_test() {
     type TestCommitment = PedersenCommitment<EdwardsProjective, 8, 32>;
-    type TestCommitmentGadget = PedersenCommitmentGadget<EdwardsProjective, Fq, EdwardsBls12Gadget, 8, 32>;
+    type TestCommitmentGadget = PedersenCommitmentGadget<EdwardsAffine, Fq, EdwardsBls12Gadget, 8, 32>;
 
     let mut rng = test_rng();
 

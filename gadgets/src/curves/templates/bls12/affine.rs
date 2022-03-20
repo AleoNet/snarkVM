@@ -17,8 +17,9 @@
 use std::{borrow::Borrow, marker::PhantomData, ops::Neg};
 
 use snarkvm_curves::{
-    templates::short_weierstrass_jacobian::{Affine as SWAffine, Projective as SWProjective},
-    traits::{AffineCurve, ProjectiveCurve, ShortWeierstrassParameters},
+    templates::short_weierstrass_jacobian::Affine as SWAffine,
+    AffineCurve,
+    ShortWeierstrassParameters,
 };
 use snarkvm_fields::{Field, One, PrimeField, Zero};
 use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem};
@@ -30,7 +31,7 @@ use crate::{
     integers::uint::UInt8,
     traits::{
         alloc::AllocGadget,
-        curves::{CurveGadget, GroupGadget},
+        curves::GroupGadget,
         eq::{ConditionalEqGadget, EqGadget, NEqGadget},
         fields::{FieldGadget, ToConstraintFieldGadget},
         select::CondSelectGadget,
@@ -45,36 +46,12 @@ pub struct AffineGadget<P: ShortWeierstrassParameters, F: Field, FG: FieldGadget
     pub x: FG,
     pub y: FG,
     pub infinity: Boolean,
-    _parameters: PhantomData<P>,
-    _engine: PhantomData<F>,
+    _phantom: PhantomData<(P, F)>,
 }
 
 impl<P: ShortWeierstrassParameters, F: Field, FG: FieldGadget<P::BaseField, F>> AffineGadget<P, F, FG> {
     pub fn new(x: FG, y: FG, infinity: Boolean) -> Self {
-        Self { x, y, infinity, _parameters: PhantomData, _engine: PhantomData }
-    }
-
-    pub fn alloc_without_check<Fn: FnOnce() -> Result<SWProjective<P>, SynthesisError>, CS: ConstraintSystem<F>>(
-        mut cs: CS,
-        value_gen: Fn,
-    ) -> Result<Self, SynthesisError> {
-        let (x, y, infinity) = match value_gen() {
-            Ok(ge) => {
-                let ge = ge.into_affine();
-                (Ok(ge.x), Ok(ge.y), Ok(ge.infinity))
-            }
-            _ => (
-                Err(SynthesisError::AssignmentMissing),
-                Err(SynthesisError::AssignmentMissing),
-                Err(SynthesisError::AssignmentMissing),
-            ),
-        };
-
-        let x = FG::alloc(&mut cs.ns(|| "x"), || x)?;
-        let y = FG::alloc(&mut cs.ns(|| "y"), || y)?;
-        let infinity = Boolean::alloc(&mut cs.ns(|| "infinity"), || infinity)?;
-
-        Ok(Self::new(x, y, infinity))
+        Self { x, y, infinity, _phantom: PhantomData }
     }
 }
 
@@ -97,19 +74,19 @@ where
 {
 }
 
-impl<P, F, FG> GroupGadget<SWProjective<P>, F> for AffineGadget<P, F, FG>
+impl<P, F, FG> GroupGadget<SWAffine<P>, F> for AffineGadget<P, F, FG>
 where
     P: ShortWeierstrassParameters,
     F: PrimeField,
     FG: FieldGadget<P::BaseField, F>,
 {
-    type Value = SWProjective<P>;
+    type Value = SWAffine<P>;
     type Variable = (FG::Variable, FG::Variable);
 
     #[inline]
     fn get_value(&self) -> Option<Self::Value> {
         match (self.x.get_value(), self.y.get_value(), self.infinity.get_value()) {
-            (Some(x), Some(y), Some(infinity)) => Some(SWAffine::new(x, y, infinity).into_projective()),
+            (Some(x), Some(y), Some(infinity)) => Some(SWAffine::new(x, y, infinity)),
             (None, None, None) => None,
             _ => unreachable!(),
         }
@@ -186,11 +163,7 @@ where
 
     /// Incomplete addition: neither `self` nor `other` can be the neutral
     /// element.
-    fn add_constant<CS: ConstraintSystem<F>>(
-        &self,
-        mut cs: CS,
-        other: &SWProjective<P>,
-    ) -> Result<Self, SynthesisError> {
+    fn add_constant<CS: ConstraintSystem<F>>(&self, mut cs: CS, other: &SWAffine<P>) -> Result<Self, SynthesisError> {
         // lambda = (B.y - A.y)/(B.x - A.x)
         // C.x = lambda^2 - A.x - B.x
         // C.y = lambda(A.x - C.x) - A.y
@@ -209,7 +182,6 @@ where
         if other.is_zero() {
             return Err(SynthesisError::AssignmentMissing);
         }
-        let other = other.into_affine();
         let other_x = other.x;
         let other_y = other.y;
 
@@ -390,20 +362,20 @@ where
     }
 }
 
-impl<P: ShortWeierstrassParameters, F: PrimeField, FG: FieldGadget<P::BaseField, F>> AllocGadget<SWProjective<P>, F>
+impl<P: ShortWeierstrassParameters, F: PrimeField, FG: FieldGadget<P::BaseField, F>> AllocGadget<SWAffine<P>, F>
     for AffineGadget<P, F, FG>
 {
     #[inline]
     fn alloc_constant<Fn, T, CS: ConstraintSystem<F>>(mut cs: CS, value_gen: Fn) -> Result<Self, SynthesisError>
     where
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<SWProjective<P>>,
+        T: Borrow<SWAffine<P>>,
     {
         // When allocating the input we assume that the verifier has performed
         // any on curve checks already.
         let (x, y, infinity) = match value_gen() {
             Ok(ge) => {
-                let ge = ge.borrow().into_affine();
+                let ge = ge.borrow();
                 (Ok(ge.x), Ok(ge.y), Ok(ge.infinity))
             }
             _ => (
@@ -438,11 +410,11 @@ impl<P: ShortWeierstrassParameters, F: PrimeField, FG: FieldGadget<P::BaseField,
     fn alloc<Fn, T, CS: ConstraintSystem<F>>(mut cs: CS, value_gen: Fn) -> Result<Self, SynthesisError>
     where
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<SWProjective<P>>,
+        T: Borrow<SWAffine<P>>,
     {
         let (x, y, infinity) = match value_gen() {
             Ok(ge) => {
-                let ge = ge.borrow().into_affine();
+                let ge = ge.borrow();
                 (Ok(ge.x), Ok(ge.y), Ok(ge.infinity))
             }
             _ => (
@@ -477,7 +449,7 @@ impl<P: ShortWeierstrassParameters, F: PrimeField, FG: FieldGadget<P::BaseField,
     fn alloc_checked<Fn, T, CS: ConstraintSystem<F>>(mut cs: CS, value_gen: Fn) -> Result<Self, SynthesisError>
     where
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<SWProjective<P>>,
+        T: Borrow<SWAffine<P>>,
     {
         let cofactor_weight = BitIteratorBE::new(P::COFACTOR).filter(|b| *b).count();
         // If we multiply by r, we actually multiply by r - 2.
@@ -492,9 +464,8 @@ impl<P: ShortWeierstrassParameters, F: PrimeField, FG: FieldGadget<P::BaseField,
         // Else, we multiply by the scalar field's modulus and ensure that the result
         // is zero.
         if cofactor_weight < r_weight {
-            let ge = Self::alloc(cs.ns(|| "Alloc checked"), || {
-                value_gen().map(|ge| ge.borrow().into_affine().mul_by_cofactor_inv().into_projective())
-            })?;
+            let ge =
+                Self::alloc(cs.ns(|| "Alloc checked"), || value_gen().map(|ge| ge.borrow().mul_by_cofactor_inv()))?;
             let mut seen_one = false;
             let mut result = Self::zero(cs.ns(|| "result"))?;
             for (i, b) in BitIteratorBE::new(P::COFACTOR).enumerate() {
@@ -541,11 +512,11 @@ impl<P: ShortWeierstrassParameters, F: PrimeField, FG: FieldGadget<P::BaseField,
     fn alloc_input<Fn, T, CS: ConstraintSystem<F>>(mut cs: CS, value_gen: Fn) -> Result<Self, SynthesisError>
     where
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<SWProjective<P>>,
+        T: Borrow<SWAffine<P>>,
     {
         let (x, y, infinity) = match value_gen() {
             Ok(ge) => {
-                let ge = ge.borrow().into_affine();
+                let ge = ge.borrow();
                 (Ok(ge.x), Ok(ge.y), Ok(ge.infinity))
             }
             _ => (
@@ -579,38 +550,6 @@ impl<P: ShortWeierstrassParameters, F: PrimeField, FG: FieldGadget<P::BaseField,
         x2_plus_a.mul_equals(cs.ns(|| "on curve check"), &x, &y2_minus_b)?;
 
         Ok(Self::new(x, y, infinity))
-    }
-}
-
-impl<P: ShortWeierstrassParameters, F: PrimeField, FG: FieldGadget<P::BaseField, F>> AllocGadget<SWAffine<P>, F>
-    for AffineGadget<P, F, FG>
-{
-    fn alloc_constant<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<SWAffine<P>>, CS: ConstraintSystem<F>>(
-        cs: CS,
-        f: Fn,
-    ) -> Result<Self, SynthesisError> {
-        Self::alloc_constant(cs, || Ok(f()?.borrow().into_projective()))
-    }
-
-    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<SWAffine<P>>, CS: ConstraintSystem<F>>(
-        cs: CS,
-        f: Fn,
-    ) -> Result<Self, SynthesisError> {
-        Self::alloc(cs, || Ok(f()?.borrow().into_projective()))
-    }
-
-    fn alloc_checked<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<SWAffine<P>>, CS: ConstraintSystem<F>>(
-        cs: CS,
-        f: Fn,
-    ) -> Result<Self, SynthesisError> {
-        Self::alloc_checked(cs, || Ok(f()?.borrow().into_projective()))
-    }
-
-    fn alloc_input<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<SWAffine<P>>, CS: ConstraintSystem<F>>(
-        cs: CS,
-        f: Fn,
-    ) -> Result<Self, SynthesisError> {
-        Self::alloc_input(cs, || Ok(f()?.borrow().into_projective()))
     }
 }
 
@@ -693,12 +632,4 @@ where
 
         Ok(res)
     }
-}
-
-impl<P, F, FG> CurveGadget<SWProjective<P>, F> for AffineGadget<P, F, FG>
-where
-    P: ShortWeierstrassParameters,
-    F: PrimeField,
-    FG: FieldGadget<P::BaseField, F>,
-{
 }

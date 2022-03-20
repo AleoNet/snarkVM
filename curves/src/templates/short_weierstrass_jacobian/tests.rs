@@ -15,10 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::{Affine, Projective};
-use crate::traits::{
-    pairing_engine::{AffineCurve, ProjectiveCurve},
-    ShortWeierstrassParameters,
-};
+use crate::{AffineCurve, ProjectiveCurve, ShortWeierstrassParameters};
 use snarkvm_fields::Zero;
 use snarkvm_utilities::{
     io::Cursor,

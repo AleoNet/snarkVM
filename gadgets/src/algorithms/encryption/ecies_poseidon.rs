@@ -33,7 +33,6 @@ use snarkvm_algorithms::{encryption::ECIESPoseidonEncryption, EncryptionScheme};
 use snarkvm_curves::{
     templates::twisted_edwards_extended::{Affine as TEAffine, Projective as TEProjective},
     AffineCurve,
-    Group,
     ProjectiveCurve,
     TwistedEdwardsParameters,
 };
@@ -512,16 +511,13 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> EncryptionGadge
 
         let num_powers = private_key_bits.len();
 
-        let generator_powers: Vec<TEAffine<TE>> = {
-            let mut generator_powers = Vec::new();
-            let mut generator = self.encryption.parameters().into_projective();
-            for _ in 0..num_powers {
-                generator_powers.push(generator);
-                generator.double_in_place();
-            }
-            TEProjective::<TE>::batch_normalization(&mut generator_powers);
-            generator_powers.into_iter().map(|v| v.into()).collect()
-        };
+        let mut generator_powers = Vec::with_capacity(num_powers);
+        let mut generator = self.encryption.parameters().into_projective();
+        for _ in 0..num_powers {
+            generator_powers.push(generator);
+            generator.double_in_place();
+        }
+        TEProjective::<TE>::batch_normalization(&mut generator_powers);
 
         public_key.scalar_multiplication(
             cs.ns(|| "check_public_key_gadget"),

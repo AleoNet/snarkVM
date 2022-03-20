@@ -20,7 +20,10 @@ use snarkvm_algorithms::{
     crh::{PedersenCRH, PedersenCompressedCRH, BHPCRH},
     CRH,
 };
-use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsProjective};
+use snarkvm_curves::{
+    bls12_377::Fr,
+    edwards_bls12::{EdwardsAffine, EdwardsProjective},
+};
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 
@@ -133,12 +136,12 @@ fn masked_crh_gadget_test<F: PrimeField, H: CRH, CG: MaskedCRHGadget<H, F>>() {
     assert!(cs.is_satisfied());
 }
 
-mod pedersen_crh_gadget_on_projective {
+mod pedersen_crh_gadget {
     use super::*;
 
     type TestCRH = PedersenCRH<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
     type TestCRHGadget =
-        PedersenCRHGadget<EdwardsProjective, Fr, EdwardsBls12Gadget, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
+        PedersenCRHGadget<EdwardsAffine, Fr, EdwardsBls12Gadget, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
 
     #[test]
     fn primitive_gadget_test() {
@@ -151,17 +154,12 @@ mod pedersen_crh_gadget_on_projective {
     }
 }
 
-mod pedersen_compressed_crh_gadget_on_projective {
+mod pedersen_compressed_crh_gadget {
     use super::*;
 
     type TestCRH = PedersenCompressedCRH<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
-    type TestCRHGadget = PedersenCompressedCRHGadget<
-        EdwardsProjective,
-        Fr,
-        EdwardsBls12Gadget,
-        PEDERSEN_NUM_WINDOWS,
-        PEDERSEN_WINDOW_SIZE,
-    >;
+    type TestCRHGadget =
+        PedersenCompressedCRHGadget<EdwardsAffine, Fr, EdwardsBls12Gadget, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
 
     #[test]
     fn primitive_gadget_test() {
@@ -174,11 +172,11 @@ mod pedersen_compressed_crh_gadget_on_projective {
     }
 }
 
-mod bhp_crh_gadget_on_projective {
+mod bhp_crh_gadget {
     use super::*;
 
     type TestCRH = BHPCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
-    type TestCRHGadget = BHPCRHGadget<EdwardsProjective, Fr, EdwardsBls12Gadget, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
+    type TestCRHGadget = BHPCRHGadget<EdwardsAffine, Fr, EdwardsBls12Gadget, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
 
     #[test]
     fn primitive_gadget_test() {

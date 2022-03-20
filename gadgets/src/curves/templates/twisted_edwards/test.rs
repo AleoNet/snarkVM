@@ -19,10 +19,7 @@ use crate::{
     curves::tests_group::group_test,
     traits::{alloc::AllocGadget, curves::GroupGadget, select::CondSelectGadget},
 };
-use snarkvm_curves::{
-    templates::twisted_edwards_extended::Affine as TEAffine,
-    traits::{Group, TwistedEdwardsParameters},
-};
+use snarkvm_curves::{templates::twisted_edwards_extended::Affine as TEAffine, AffineCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::ConstraintSystem;
 use snarkvm_utilities::{bititerator::BitIteratorBE, rand::UniformRand};
@@ -46,7 +43,7 @@ where
     group_test::<F, TEAffine<P>, GG, _>(&mut cs.ns(|| "GroupTest(a, b)"), gadget_a.clone(), gadget_b);
 
     // Check mul_bits
-    let scalar: <TEAffine<P> as Group>::ScalarField = UniformRand::rand(&mut thread_rng());
+    let scalar: <TEAffine<P> as AffineCurve>::ScalarField = UniformRand::rand(&mut thread_rng());
     let native_result = a.mul(scalar);
 
     let mut scalar: Vec<bool> = BitIteratorBE::new(scalar.to_repr()).collect();

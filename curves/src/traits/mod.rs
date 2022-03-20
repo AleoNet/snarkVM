@@ -27,4 +27,4 @@ pub mod tests_field;
 pub mod tests_group;
 
 #[cfg(test)]
-pub mod tests_curve;
+pub mod tests_projective;

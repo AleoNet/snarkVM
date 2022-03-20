@@ -28,7 +28,7 @@ use crate::{
     ToBytesGadget,
 };
 use snarkvm_algorithms::{commitment::BHPCommitment, crh::BHP_CHUNK_SIZE, CommitmentScheme};
-use snarkvm_curves::ProjectiveCurve;
+use snarkvm_curves::AffineCurve;
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{to_bytes_le, ToBytes};
@@ -36,9 +36,9 @@ use snarkvm_utilities::{to_bytes_le, ToBytes};
 use std::{borrow::Borrow, marker::PhantomData};
 
 #[derive(Clone, Debug)]
-pub struct BHPRandomnessGadget<G: ProjectiveCurve>(Vec<UInt8>, PhantomData<G>);
+pub struct BHPRandomnessGadget<G: AffineCurve>(Vec<UInt8>, PhantomData<G>);
 
-impl<G: ProjectiveCurve, F: PrimeField> AllocGadget<G::ScalarField, F> for BHPRandomnessGadget<G> {
+impl<G: AffineCurve, F: PrimeField> AllocGadget<G::ScalarField, F> for BHPRandomnessGadget<G> {
     fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<G::ScalarField>, CS: ConstraintSystem<F>>(
         cs: CS,
         value_gen: Fn,
@@ -56,7 +56,7 @@ impl<G: ProjectiveCurve, F: PrimeField> AllocGadget<G::ScalarField, F> for BHPRa
     }
 }
 
-impl<G: ProjectiveCurve, F: PrimeField> ToBytesGadget<F> for BHPRandomnessGadget<G> {
+impl<G: AffineCurve, F: PrimeField> ToBytesGadget<F> for BHPRandomnessGadget<G> {
     fn to_bytes<CS: ConstraintSystem<F>>(&self, _: CS) -> Result<Vec<UInt8>, SynthesisError> {
         Ok(self.0.clone())
     }
@@ -66,7 +66,7 @@ impl<G: ProjectiveCurve, F: PrimeField> ToBytesGadget<F> for BHPRandomnessGadget
     }
 }
 
-impl<G: ProjectiveCurve, F: PrimeField> ToBitsLEGadget<F> for BHPRandomnessGadget<G> {
+impl<G: AffineCurve, F: PrimeField> ToBitsLEGadget<F> for BHPRandomnessGadget<G> {
     fn to_bits_le<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
         self.0.to_bits_le(cs)
     }
@@ -78,28 +78,23 @@ impl<G: ProjectiveCurve, F: PrimeField> ToBitsLEGadget<F> for BHPRandomnessGadge
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BHPCommitmentGadget<
-    G: ProjectiveCurve,
+    G: AffineCurve,
     F: PrimeField,
     GG: CompressedGroupGadget<G, F>,
     const NUM_WINDOWS: usize,
     const WINDOW_SIZE: usize,
 > {
     bhp_crh_gadget: BHPCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>,
-    random_base: Vec<G>,
+    random_base: Vec<G::Projective>,
 }
 
-impl<
-    G: ProjectiveCurve,
-    F: PrimeField,
-    GG: CompressedGroupGadget<G, F>,
-    const NUM_WINDOWS: usize,
-    const WINDOW_SIZE: usize,
-> AllocGadget<BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE>, F>
+impl<G: AffineCurve, F: PrimeField, GG: CompressedGroupGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+    AllocGadget<BHPCommitment<G::Projective, NUM_WINDOWS, WINDOW_SIZE>, F>
     for BHPCommitmentGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn alloc_constant<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        T: Borrow<BHPCommitment<G::Projective, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         cs: CS,
@@ -111,7 +106,7 @@ impl<
 
     fn alloc<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        T: Borrow<BHPCommitment<G::Projective, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         _cs: CS,
@@ -122,7 +117,7 @@ impl<
 
     fn alloc_input<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        T: Borrow<BHPCommitment<G::Projective, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         _cs: CS,
@@ -132,13 +127,8 @@ impl<
     }
 }
 
-impl<
-    F: PrimeField,
-    G: ProjectiveCurve,
-    GG: CompressedGroupGadget<G, F>,
-    const NUM_WINDOWS: usize,
-    const WINDOW_SIZE: usize,
-> CommitmentGadget<BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE>, F>
+impl<F: PrimeField, G: AffineCurve, GG: CompressedGroupGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+    CommitmentGadget<BHPCommitment<G::Projective, NUM_WINDOWS, WINDOW_SIZE>, F>
     for BHPCommitmentGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
     type OutputGadget = GG::BaseFieldGadget;
