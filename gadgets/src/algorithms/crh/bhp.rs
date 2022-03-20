@@ -117,17 +117,12 @@ impl<
 
         // Pad the input bytes.
         let mut input_in_bits = input;
-        input_in_bits.resize(WINDOW_SIZE * NUM_WINDOWS, Boolean::Constant(false));
-        assert_eq!(input_in_bits.len(), WINDOW_SIZE * NUM_WINDOWS);
-
         if (input_in_bits.len()) % BHP_CHUNK_SIZE != 0 {
-            let current_length = input_in_bits.len();
-            let target_length = current_length + BHP_CHUNK_SIZE - current_length % BHP_CHUNK_SIZE;
-            input_in_bits.resize(target_length, Boolean::constant(false));
+            let padding = BHP_CHUNK_SIZE - (input_in_bits.len() % BHP_CHUNK_SIZE);
+            input_in_bits.extend_from_slice(&vec![Boolean::constant(false); padding]);
         }
         assert!(input_in_bits.len() % BHP_CHUNK_SIZE == 0);
 
-        // Allocate new variable for the result.
         let input_in_bits = input_in_bits.chunks(WINDOW_SIZE * BHP_CHUNK_SIZE).map(|x| x.chunks(BHP_CHUNK_SIZE));
 
         GG::three_bit_signed_digit_scalar_multiplication(cs, &self.crh.bases, input_in_bits)
