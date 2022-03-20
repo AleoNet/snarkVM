@@ -18,7 +18,6 @@ use crate::{
     AlgebraicSpongeVar,
     AllocGadget,
     CryptoHashGadget,
-    DefaultCapacityAlgebraicSpongeVar,
     FieldGadget,
     FpGadget,
 };
@@ -246,11 +245,6 @@ impl<F: PoseidonDefaultParametersField, const RATE: usize, const CAPACITY: usize
     ) -> Result<Self, SynthesisError> {
         unimplemented!()
     }
-}
-
-impl<F: PoseidonDefaultParametersField, const RATE: usize>
-    DefaultCapacityAlgebraicSpongeVar<F, PoseidonSponge<F, RATE, 1>, RATE> for PoseidonSpongeGadget<F, RATE, 1>
-{
 }
 
 impl<F: PoseidonDefaultParametersField, const RATE: usize, const CAPACITY: usize>

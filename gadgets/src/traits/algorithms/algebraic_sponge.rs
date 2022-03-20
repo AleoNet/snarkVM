@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::FpGadget;
-use snarkvm_algorithms::traits::{AlgebraicSponge, DefaultCapacityAlgebraicSponge};
+use snarkvm_algorithms::traits::{AlgebraicSponge};
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
@@ -50,13 +50,4 @@ pub trait AlgebraicSpongeVar<
         cs: CS,
         num_elements: usize,
     ) -> Result<Vec<FpGadget<CF>>, SynthesisError>;
-}
-
-/// Trait for an algebraic sponge such as Poseidon.
-pub trait DefaultCapacityAlgebraicSpongeVar<
-    CF: PrimeField,
-    PS: DefaultCapacityAlgebraicSponge<CF, RATE>,
-    const RATE: usize,
->: AlgebraicSpongeVar<CF, PS, RATE, 1>
-{
 }

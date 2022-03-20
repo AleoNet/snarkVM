@@ -16,7 +16,7 @@
 
 use crate::{
     crypto_hash::PoseidonGrainLFSR,
-    traits::{AlgebraicSponge, DefaultCapacityAlgebraicSponge, DuplexSpongeMode, SpongeParameters},
+    traits::{AlgebraicSponge, DefaultCapacityAlgebraicSponge, DuplexSpongeMode},
     CryptoHash,
 };
 use snarkvm_fields::{
@@ -374,11 +374,6 @@ impl<F: PoseidonDefaultParametersField, const RATE: usize> PoseidonSponge<F, RAT
 
         Self { parameters, state, mode }
     }
-}
-
-impl<F: PoseidonDefaultParametersField, const RATE: usize, const CAPACITY: usize> SpongeParameters<RATE, CAPACITY>
-    for Arc<PoseidonParameters<F, RATE, CAPACITY>>
-{
 }
 
 impl<F: PoseidonDefaultParametersField, const RATE: usize, const CAPACITY: usize> AlgebraicSponge<F, RATE, CAPACITY>

@@ -19,14 +19,12 @@ use snarkvm_fields::PrimeField;
 
 use core::fmt::Debug;
 
-pub trait SpongeParameters<const RATE: usize, const CAPACITY: usize> {}
-
 /// The interface for a cryptographic sponge.
 /// A sponge can `absorb` or take in inputs and later `squeeze` or output bytes or field elements.
 /// The outputs are dependent on previous `absorb` and `squeeze` calls.
 pub trait AlgebraicSponge<F: PrimeField, const RATE: usize, const CAPACITY: usize>: Clone + Debug {
     /// Parameters used by the sponge.
-    type Parameters: SpongeParameters<RATE, CAPACITY>;
+    type Parameters;
 
     /// Initialize a new instance of the sponge.
     fn with_parameters(params: &Self::Parameters) -> Self;
