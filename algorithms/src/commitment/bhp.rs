@@ -65,7 +65,9 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
             }
         }
 
-        Ok(output.into_affine().to_x_coordinate())
+        let affine = output.into_affine();
+        debug_assert!(affine.is_in_correct_subgroup_assuming_on_curve());
+        Ok(affine.to_x_coordinate())
     }
 
     fn parameters(&self) -> Self::Parameters {
