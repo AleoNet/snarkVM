@@ -27,6 +27,8 @@ use rayon::prelude::*;
 pub const BHP_CHUNK_SIZE: usize = 3;
 pub const BHP_LOOKUP_SIZE: usize = 2usize.pow(BHP_CHUNK_SIZE as u32);
 
+const ASSERT: () = assert!(BHP_CHUNK_SIZE == 3);
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BHPCRH<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
     pub bases: Arc<Vec<Vec<G>>>,
@@ -40,8 +42,6 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
     type Parameters = Arc<Vec<Vec<G>>>;
 
     fn setup(message: &str) -> Self {
-        debug_assert_eq!(BHP_CHUNK_SIZE, 3);
-
         // Calculate the maximum window size.
         let mut maximum_window_size = 0;
         let mut range = <G::ScalarField as PrimeField>::BigInteger::from(2_u64);
