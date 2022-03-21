@@ -59,6 +59,8 @@ impl<E: Environment> Poseidon<E> {
                 let full_rounds = parameters.full_rounds;
                 let partial_rounds = parameters.partial_rounds;
                 let alpha = Field::constant(E::BaseField::from(parameters.alpha as u128));
+                // Cache the bits for the field element.
+                alpha.to_bits_le();
                 let ark = parameters
                     .ark
                     .into_iter()
@@ -87,6 +89,17 @@ impl<E: Environment> Poseidon<E> {
         // Absorb the input and squeeze the output.
         self.absorb(&mut state, &mut mode, input);
         self.squeeze(&mut state, &mut mode, 1)[0].clone()
+    }
+
+    #[inline]
+    pub fn hash_many(&self, input: &[Field<E>], num_outputs: usize) -> Vec<Field<E>> {
+        // Initialize a new sponge.
+        let mut state = vec![Field::zero(); RATE + CAPACITY];
+        let mut mode = DuplexSpongeMode::Absorbing { next_absorb_index: 0 };
+
+        // Absorb the input and squeeze the output.
+        self.absorb(&mut state, &mut mode, input);
+        self.squeeze(&mut state, &mut mode, num_outputs)
     }
 }
 
@@ -263,34 +276,68 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
-        let mut rng = test_rng();
-
+        let rng = &mut test_rng();
         let native = NativePoseidon::<_, RATE, OPTIMIZED_FOR_WEIGHTS>::setup();
         let circuit = Poseidon::new();
 
         for i in 0..ITERATIONS {
-            // Compute the native hash.
-            let input =
-                (0..NUM_INPUTS).map(|_| <Circuit as Environment>::BaseField::rand(&mut rng)).collect::<Vec<_>>();
-            let expected = native.evaluate(&input);
-
-            // Prepare the circuit preimage.
+            // Prepare the preimage.
+            let input = (0..NUM_INPUTS).map(|_| <Circuit as Environment>::BaseField::rand(rng)).collect::<Vec<_>>();
             let preimage = input.iter().map(|v| Field::<Circuit>::new(mode, *v)).collect::<Vec<_>>();
 
+            // Compute the native hash.
+            let expected = native.evaluate(&input);
             // Compute the circuit hash.
             Circuit::scope(format!("Poseidon {mode} {i}"), || {
                 let candidate = circuit.hash(&preimage);
                 assert_eq!(expected, candidate.eject_value());
-                // assert!(Circuit::is_satisfied());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
             });
         }
     }
 
+    fn check_hash_many<const NUM_INPUTS: usize>(
+        mode: Mode,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) {
+        let rng = &mut test_rng();
+        let native = NativePoseidon::<_, RATE, OPTIMIZED_FOR_WEIGHTS>::setup();
+        let circuit = Poseidon::new();
+
+        for i in 0..ITERATIONS {
+            // Prepare the preimage.
+            let input = (0..NUM_INPUTS).map(|_| <Circuit as Environment>::BaseField::rand(rng)).collect::<Vec<_>>();
+            let preimage = input.iter().map(|v| Field::<Circuit>::new(mode, *v)).collect::<Vec<_>>();
+            // Evaluate the hash with different expect output sizes.
+            for num_outputs in 1..10 {
+                // Compute the native hash.
+                let expected = native.evaluate_many(&input, num_outputs);
+                // Compute the circuit hash.
+                Circuit::scope(format!("Poseidon {mode} {i} {num_outputs}"), || {
+                    let candidate = circuit.hash_many(&preimage, num_outputs);
+                    for (expected_element, candidate_element) in expected.iter().zip_eq(&candidate) {
+                        assert_eq!(*expected_element, candidate_element.eject_value());
+                    }
+                    assert_scope!(num_constants, num_public, num_private, num_constraints);
+                });
+            }
+        }
+    }
+
     #[test]
-    fn test_poseidon() {
-        check_hash::<5>(Mode::Constant, 253, 0, 0, 0);
-        check_hash::<5>(Mode::Public, 253, 0, 705, 705);
-        check_hash::<5>(Mode::Private, 253, 0, 705, 705);
+    fn test_poseidon_hash() {
+        check_hash::<5>(Mode::Constant, 0, 0, 0, 0);
+        check_hash::<5>(Mode::Public, 0, 0, 705, 705);
+        check_hash::<5>(Mode::Private, 0, 0, 705, 705);
+    }
+
+    #[test]
+    fn test_poseidon_hash_many() {
+        check_hash_many::<5>(Mode::Constant, 0, 0, 0, 0);
+        check_hash_many::<5>(Mode::Public, 0, 0, 705, 705);
+        check_hash_many::<5>(Mode::Private, 0, 0, 705, 705);
     }
 }
