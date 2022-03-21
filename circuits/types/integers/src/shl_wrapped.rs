@@ -35,7 +35,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShlWrapped<Integer<E, M>> for
 
             // Zero-extend `rhs` by `8`.
             let mut bits_le = rhs.bits_le[..first_upper_bit_index].to_vec();
-            bits_le.extend(core::iter::repeat(Boolean::new(Mode::Constant, false)).take(8));
+            bits_le.extend(core::iter::repeat(Boolean::constant(false)).take(8));
 
             // Use U8 for the exponent as it costs fewer constraints.
             let rhs_as_u8 = U8 { bits_le, phantom: Default::default() };
@@ -43,7 +43,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShlWrapped<Integer<E, M>> for
             if rhs_as_u8.is_constant() {
                 // If the shift amount is a constant, then we can manually shift in bits and truncate the result.
                 let shift_amount = rhs_as_u8.eject_value();
-                let mut bits_le = vec![Boolean::new(Mode::Constant, false); shift_amount as usize];
+                let mut bits_le = vec![Boolean::constant(false); shift_amount as usize];
 
                 bits_le.extend_from_slice(&self.bits_le);
                 bits_le.truncate(I::BITS);

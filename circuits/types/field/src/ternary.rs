@@ -105,7 +105,7 @@ mod tests {
             let a = Field::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut test_rng()));
             let b = Field::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut test_rng()));
 
-            let condition = Boolean::new(Mode::Constant, true);
+            let condition = Boolean::constant(true);
             Circuit::scope("Constant(true) ? Constant : Constant", || {
                 let output = Field::ternary(&condition, &a, &b);
                 assert_scope!(0, 0, 0, 0);
@@ -114,7 +114,7 @@ mod tests {
                 assert!(!output.is_equal(&b).eject_value());
             });
 
-            let condition = Boolean::new(Mode::Constant, false);
+            let condition = Boolean::constant(false);
             Circuit::scope("Constant(false) ? Constant : Constant", || {
                 let output = Field::ternary(&condition, &a, &b);
                 assert_scope!(0, 0, 0, 0);
@@ -129,7 +129,7 @@ mod tests {
             let a = Field::<Circuit>::new(Mode::Public, UniformRand::rand(&mut test_rng()));
             let b = Field::<Circuit>::new(Mode::Private, UniformRand::rand(&mut test_rng()));
 
-            let condition = Boolean::new(Mode::Constant, true);
+            let condition = Boolean::constant(true);
             Circuit::scope("Constant(true) ? Public : Private", || {
                 let output = Field::ternary(&condition, &a, &b);
                 assert_scope!(0, 0, 0, 0);
@@ -138,7 +138,7 @@ mod tests {
                 assert!(!output.is_equal(&b).eject_value());
             });
 
-            let condition = Boolean::new(Mode::Constant, false);
+            let condition = Boolean::constant(false);
             Circuit::scope("Constant(false) ? Public : Private", || {
                 let output = Field::ternary(&condition, &a, &b);
                 assert_scope!(0, 0, 0, 0);

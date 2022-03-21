@@ -34,7 +34,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShrWrapped<Integer<E, M>> for
             // Therefore, 2^{rhs} < I::MAX.
             let mut lower_rhs_bits = Vec::with_capacity(8);
             lower_rhs_bits.extend_from_slice(&rhs.bits_le[..first_upper_bit_index]);
-            lower_rhs_bits.resize(8, Boolean::new(Mode::Constant, false));
+            lower_rhs_bits.resize(8, Boolean::constant(false));
 
             // Use U8 for the exponent as it costs fewer constraints.
             let rhs_as_u8 = U8 { bits_le: lower_rhs_bits, phantom: Default::default() };
@@ -50,7 +50,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShrWrapped<Integer<E, M>> for
                     // Sign-extend `self` by `shift_amount`.
                     true => bits_le.extend(core::iter::repeat(self.msb().clone()).take(shift_amount)),
                     // Zero-extend `self` by `shift_amount`.
-                    false => bits_le.extend(core::iter::repeat(Boolean::new(Mode::Constant, false)).take(shift_amount)),
+                    false => bits_le.extend(core::iter::repeat(Boolean::constant(false)).take(shift_amount)),
                 };
 
                 bits_le.reverse();

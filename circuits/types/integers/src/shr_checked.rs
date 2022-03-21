@@ -82,7 +82,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShrChecked<Integer<E, M>> for
             let first_upper_bit_index = I::BITS.trailing_zeros() as usize;
 
             let upper_bits_are_nonzero =
-                rhs.bits_le[first_upper_bit_index..].iter().fold(Boolean::new(Mode::Constant, false), |a, b| a | b);
+                rhs.bits_le[first_upper_bit_index..].iter().fold(Boolean::constant(false), |a, b| a | b);
 
             // Halt if upper bits of rhs are constant and nonzero.
             if upper_bits_are_nonzero.is_constant() && upper_bits_are_nonzero.eject_value() {

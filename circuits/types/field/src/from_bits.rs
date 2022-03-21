@@ -40,23 +40,9 @@ impl<E: Environment> FromBits for Field<E> {
             coefficient = coefficient.double();
         }
 
-        // Store the little-endian bits in the output.
-        if let Err(_) = output.bits_le.set(bits_le[..size_in_bits].to_vec()) {
-            E::halt("Detected corrupt internal state for the bits of a field element")
-        }
-
         // If the number of bits is equivalent to the field size in bits (or greater),
         // ensure the reconstructed field element lies within the field modulus.
         if num_bits > size_in_data_bits {
-            // If the number of bits exceeds the field size in bits,
-            // ensure the surplus bits are all `false`, by `OR`-ing the surplus bits together.
-            if num_bits > size_in_bits {
-                // Prepare the surplus bits.
-                let surplus_bits = &bits_le[size_in_bits..];
-                // Ensure the `surplus_bits` are all `false`.
-                E::assert(!surplus_bits.iter().fold(Boolean::new(Mode::Constant, false), |a, b| a | b));
-            }
-
             // Retrieve the modulus & subtract by 1 as we'll check `output.bits_le` is less than or *equal* to this value.
             // (For advanced users) BaseField::MODULUS - 1 is equivalent to -1 in the field.
             let modulus = -E::BaseField::one();
@@ -65,7 +51,7 @@ impl<E: Environment> FromBits for Field<E> {
             let mut bits_be = bits_le.iter().rev().skip(bits_le.len() - size_in_bits);
 
             // Initialize trackers for the sequence of ones.
-            let mut previous = Boolean::new(Mode::Constant, true);
+            let mut previous = Boolean::constant(true);
             let mut sequence = vec![];
 
             for (modulus_bit, current_bit) in modulus.to_bits_be().iter().zip_eq(&mut bits_be) {
@@ -92,6 +78,13 @@ impl<E: Environment> FromBits for Field<E> {
             }
             // The sequence will always finish empty, because we subtracted 1 from the `modulus`.
             debug_assert!(sequence.is_empty());
+        }
+
+        // Store the little-endian bits in the output.
+        let mut bits_le = bits_le.to_vec();
+        bits_le.resize(num_bits, Boolean::constant(false));
+        if let Err(_) = output.bits_le.set(bits_le) {
+            E::halt("Detected corrupt internal state for the bits of a field element")
         }
 
         output

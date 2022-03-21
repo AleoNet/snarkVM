@@ -15,8 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_circuits_environment::prelude::*;
-use snarkvm_circuits_types::{Field};
-use snarkvm_fields::{PoseidonDefaultField};
+use snarkvm_circuits_types::Field;
+use snarkvm_fields::PoseidonDefaultField;
 
 const RATE: usize = 4;
 const OPTIMIZED_FOR_WEIGHTS: bool = false;
@@ -57,18 +57,18 @@ impl<E: Environment> Poseidon<E> {
             Some(parameters) => {
                 let full_rounds = parameters.full_rounds;
                 let partial_rounds = parameters.partial_rounds;
-                let alpha = Field::new(Mode::Constant, E::BaseField::from(parameters.alpha as u128));
+                let alpha = Field::constant(E::BaseField::from(parameters.alpha as u128));
                 let ark = parameters
                     .ark
                     .into_iter()
                     .take(full_rounds + partial_rounds)
-                    .map(|round| round.into_iter().take(RATE + 1).map(|element| Field::new(Mode::Constant, element)).collect())
+                    .map(|round| round.into_iter().take(RATE + 1).map(Field::constant).collect())
                     .collect();
                 let mds = parameters
                     .mds
                     .into_iter()
                     .take(RATE + 1)
-                    .map(|round| round.into_iter().take(RATE + 1).map(|element| Field::new(Mode::Constant, element)).collect())
+                    .map(|round| round.into_iter().take(RATE + 1).map(Field::constant).collect())
                     .collect();
 
                 Self { full_rounds, partial_rounds, alpha, ark, mds }
@@ -266,24 +266,22 @@ impl<E: Environment> Poseidon<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use snarkvm_algorithms::{crypto_hash::PoseidonSponge, AlgebraicSponge};
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
-    use snarkvm_algorithms::{crypto_hash::PoseidonSponge, AlgebraicSponge};
 
     use std::sync::Arc;
 
     #[test]
     fn test_poseidon() {
         let mut rng = test_rng();
-        let parameters = <Circuit as Environment>::BaseField::default_poseidon_parameters::<RATE>(OPTIMIZED_FOR_WEIGHTS).unwrap();
+        let parameters =
+            <Circuit as Environment>::BaseField::default_poseidon_parameters::<RATE>(OPTIMIZED_FOR_WEIGHTS).unwrap();
 
         let mode = Mode::Private;
 
         let native_input: Vec<_> = (0..256).map(|_| <Circuit as Environment>::BaseField::rand(&mut rng)).collect();
-        let candidate_input: Vec<_> = native_input
-            .iter()
-            .map(|v| Field::<Circuit>::new(mode, *v))
-            .collect();
+        let candidate_input: Vec<_> = native_input.iter().map(|v| Field::<Circuit>::new(mode, *v)).collect();
 
         let expected = {
             let mut native_poseidon = PoseidonSponge::new(&Arc::new(parameters));

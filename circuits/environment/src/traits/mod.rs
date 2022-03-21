@@ -66,6 +66,16 @@ pub trait Inject {
     fn new(mode: Mode, value: Self::Primitive) -> Self;
 
     ///
+    /// Initializes a constant circuit of the given primitive value.
+    ///
+    fn constant(value: Self::Primitive) -> Self
+    where
+        Self: Sized,
+    {
+        Self::new(Mode::Constant, value)
+    }
+
+    ///
     /// Initializes a blank default of the circuit for the given mode.
     /// This operation is used commonly to derive a proving and verifying key.
     ///

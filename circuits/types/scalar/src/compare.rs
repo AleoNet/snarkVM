@@ -21,8 +21,8 @@ impl<E: Environment> Compare<Scalar<E>> for Scalar<E> {
 
     /// Returns `true` if `self` is less than `other`.
     fn is_less_than(&self, other: &Self) -> Self::Boolean {
-        let mut is_less_than = Boolean::new(Mode::Constant, false);
-        let mut are_previous_bits_equal = Boolean::new(Mode::Constant, true);
+        let mut is_less_than = Boolean::constant(false);
+        let mut are_previous_bits_equal = Boolean::constant(true);
 
         // Initialize an iterator over `self` and `other` from MSB to LSB.
         let bits_be = self.bits_le.iter().rev().zip_eq(other.bits_le.iter().rev());

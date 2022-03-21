@@ -65,8 +65,8 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
             let z_0 = &x_0 * &y_0;
             let z_1 = (&x_1 * &y_0) + (&x_0 * &y_1);
 
-            let mut b_m_bits = vec![Boolean::new(Mode::Constant, false); I::BITS / 2];
-            b_m_bits.push(Boolean::new(Mode::Constant, true));
+            let mut b_m_bits = vec![Boolean::constant(false); I::BITS / 2];
+            b_m_bits.push(Boolean::constant(true));
 
             let b_m = Field::from_bits_le(Mode::Constant, &b_m_bits);
             let z_0_plus_z_1 = &z_0 + (&z_1 * &b_m);
