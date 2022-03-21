@@ -19,14 +19,21 @@ use snarkvm_utilities::{FromBytes, ToBytes, UniformRand};
 
 use std::{fmt::Debug, hash::Hash};
 
-pub trait CommitmentScheme: ToBytes + FromBytes + Sized + Clone + From<<Self as CommitmentScheme>::Parameters> {
+pub trait CommitmentScheme: Sized + Clone {
     type Output: Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + Sync + Send;
     type Parameters: Clone + Debug + Eq;
     type Randomness: Clone + Debug + Default + Eq + UniformRand + ToBytes + FromBytes + Sync + Send;
 
     fn setup(message: &str) -> Self;
 
-    fn commit(&self, input: &[u8], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError>;
+    fn commit(&self, input: &[bool], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError>;
+
+    fn commit_bytes(&self, input: &[u8], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError> {
+        self.commit(
+            &input.iter().flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8)).collect::<Vec<bool>>(),
+            randomness,
+        )
+    }
 
     fn parameters(&self) -> Self::Parameters;
 

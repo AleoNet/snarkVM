@@ -23,10 +23,11 @@ use crate::{
         curves::CompressedGroupGadget,
         integers::integer::Integer,
     },
+    Boolean,
     ToBitsLEGadget,
     ToBytesGadget,
 };
-use snarkvm_algorithms::{commitment::BHPCommitment, CommitmentScheme};
+use snarkvm_algorithms::{commitment::BHPCommitment, crh::BHP_CHUNK_SIZE, CommitmentScheme};
 use snarkvm_curves::ProjectiveCurve;
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
@@ -35,7 +36,7 @@ use snarkvm_utilities::{to_bytes_le, ToBytes};
 use std::{borrow::Borrow, marker::PhantomData};
 
 #[derive(Clone, Debug)]
-pub struct BHPRandomnessGadget<G: ProjectiveCurve>(pub Vec<UInt8>, PhantomData<G>);
+pub struct BHPRandomnessGadget<G: ProjectiveCurve>(Vec<UInt8>, PhantomData<G>);
 
 impl<G: ProjectiveCurve, F: PrimeField> AllocGadget<G::ScalarField, F> for BHPRandomnessGadget<G> {
     fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<G::ScalarField>, CS: ConstraintSystem<F>>(
@@ -62,6 +63,16 @@ impl<G: ProjectiveCurve, F: PrimeField> ToBytesGadget<F> for BHPRandomnessGadget
 
     fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, _: CS) -> Result<Vec<UInt8>, SynthesisError> {
         Ok(self.0.clone())
+    }
+}
+
+impl<G: ProjectiveCurve, F: PrimeField> ToBitsLEGadget<F> for BHPRandomnessGadget<G> {
+    fn to_bits_le<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        self.0.to_bits_le(cs)
+    }
+
+    fn to_bits_le_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
+        self.0.to_bits_le(cs)
     }
 }
 
@@ -94,11 +105,8 @@ impl<
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let bhp: BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE> = value_gen()?.borrow().parameters().into();
-        Ok(Self {
-            bhp_crh_gadget: BHPCRHGadget::alloc_constant(cs, || Ok(bhp.bhp_crh.clone()))?,
-            random_base: bhp.random_base,
-        })
+        let (bhp_crh, random_base) = value_gen()?.borrow().parameters();
+        Ok(Self { bhp_crh_gadget: BHPCRHGadget::alloc_constant(cs, || Ok(bhp_crh))?, random_base })
     }
 
     fn alloc<
@@ -149,7 +157,7 @@ impl<
         input: &[UInt8],
         randomness: &Self::RandomnessGadget,
     ) -> Result<Self::OutputGadget, SynthesisError> {
-        assert!((input.len() * 8) <= (WINDOW_SIZE * NUM_WINDOWS));
+        assert!((input.len() * 8) <= (WINDOW_SIZE * NUM_WINDOWS * BHP_CHUNK_SIZE));
 
         // Compute BHP CRH.
         let input = input.to_vec().to_bits_le(cs.ns(|| "to_bits"))?;

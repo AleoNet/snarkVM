@@ -17,31 +17,34 @@
 use std::io::{Error, ErrorKind};
 
 #[derive(Debug, Error)]
-pub enum CRHError {
+pub enum ValueBalanceCommitmentError {
     #[error("{}", _0)]
     AnyhowError(#[from] anyhow::Error),
+
+    #[error("{}", _0)]
+    CommitmentError(#[from] snarkvm_algorithms::CommitmentError),
 
     #[error("{}: {}", _0, _1)]
     Crate(&'static str, String),
 
     #[error("{}", _0)]
-    ConstraintFieldError(#[from] snarkvm_fields::ConstraintFieldError),
-
-    #[error("incorrect input length {} x 8 for window params {}x{}", _0, _1, _2)]
-    IncorrectInputLength(usize, usize, usize),
-
-    #[error("{}", _0)]
     Message(String),
+
+    #[error("Affine point is not in the correct subgroup on curve")]
+    NotInCorrectSubgroupOnCurve,
+
+    #[error("The value balance is out of bounds: {}", _0)]
+    OutOfBounds(i64),
 }
 
-impl From<Error> for CRHError {
+impl From<Error> for ValueBalanceCommitmentError {
     fn from(error: Error) -> Self {
-        CRHError::Crate("std::io", format!("{:?}", error))
+        ValueBalanceCommitmentError::Crate("std::io", format!("{:?}", error))
     }
 }
 
-impl From<CRHError> for Error {
-    fn from(error: CRHError) -> Error {
+impl From<ValueBalanceCommitmentError> for Error {
+    fn from(error: ValueBalanceCommitmentError) -> Error {
         Error::new(ErrorKind::Other, error.to_string())
     }
 }

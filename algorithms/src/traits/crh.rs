@@ -17,31 +17,21 @@
 use crate::errors::CRHError;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
-use snarkvm_fields::PrimeField;
 use std::{
     fmt::{Debug, Display},
     hash::Hash,
 };
 
-pub trait CRH: Clone + Debug + ToBytes + FromBytes + Send + Sync + From<<Self as CRH>::Parameters> {
+pub trait CRH: Clone + Debug + Send + Sync {
     type Output: Copy + Clone + Debug + Display + ToBytes + FromBytes + Eq + Hash + Default + Send + Sync;
     type Parameters: Clone + Debug + Eq;
 
     fn setup(message: &str) -> Self;
 
-    fn hash(&self, input: &[u8]) -> Result<Self::Output, CRHError> {
-        let bits = input.iter().flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8)).collect::<Vec<bool>>();
-        self.hash_bits(&bits)
-    }
+    fn hash(&self, input: &[bool]) -> Result<Self::Output, CRHError>;
 
-    fn hash_bits(&self, input_bits: &[bool]) -> Result<Self::Output, CRHError>;
-
-    fn hash_field_elements<F: PrimeField>(&self, input: &[F]) -> Result<Self::Output, CRHError> {
-        let mut input_bytes = vec![];
-        for elem in input.iter() {
-            input_bytes.extend_from_slice(&elem.to_bytes_le()?);
-        }
-        self.hash(&input_bytes)
+    fn hash_bytes(&self, input: &[u8]) -> Result<Self::Output, CRHError> {
+        self.hash(&input.iter().flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8)).collect::<Vec<bool>>())
     }
 
     fn parameters(&self) -> &Self::Parameters;

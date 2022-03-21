@@ -14,30 +14,29 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{crh::BHPCRH, hash_to_curve::hash_to_curve, CommitmentError, CommitmentScheme, CRH};
+use crate::{crh::PedersenCRH, hash_to_curve::hash_to_curve, CommitmentError, CommitmentScheme, CRH};
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, Field, PrimeField, ToConstraintField};
 use snarkvm_utilities::BitIteratorLE;
 
 use itertools::Itertools;
-use std::fmt::Debug;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BHPCommitment<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
-    bhp_crh: BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>,
-    random_base: Vec<G>,
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct PedersenCommitment<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
+    pub crh: PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>,
+    pub random_base: Vec<G>,
 }
 
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CommitmentScheme
-    for BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
+    for PedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
 {
-    type Output = <G::Affine as AffineCurve>::BaseField;
-    type Parameters = (BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>, Vec<G>);
+    type Output = G::Affine;
+    type Parameters = (Vec<Vec<G>>, Vec<G>);
     type Randomness = G::ScalarField;
 
     fn setup(message: &str) -> Self {
         // First, compute the bases.
-        let bhp_crh = BHPCRH::<G, NUM_WINDOWS, WINDOW_SIZE>::setup(message);
+        let crh = PedersenCRH::setup(message);
 
         // Next, compute the random base.
         let (generator, _, _) = hash_to_curve::<G::Affine>(&format!("{message} for random base"));
@@ -51,11 +50,11 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
         }
         assert_eq!(random_base.len(), num_scalar_bits);
 
-        Self { bhp_crh, random_base }
+        Self { crh, random_base }
     }
 
     fn commit(&self, input: &[bool], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError> {
-        let mut output = self.bhp_crh.hash_bits_inner(input)?;
+        let mut output = self.crh.hash(input)?.into_projective();
 
         // Compute h^r.
         let scalar_bits = BitIteratorLE::new(randomness.to_repr()).take(G::ScalarField::size_in_bits());
@@ -65,22 +64,20 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
             }
         }
 
-        let affine = output.into_affine();
-        debug_assert!(affine.is_in_correct_subgroup_assuming_on_curve());
-        Ok(affine.to_x_coordinate())
+        Ok(output.into_affine())
     }
 
     fn parameters(&self) -> Self::Parameters {
-        (self.bhp_crh.clone(), self.random_base.clone())
+        (self.crh.bases.clone(), self.random_base.clone())
     }
 
     fn window() -> (usize, usize) {
-        BHPCRH::<G, NUM_WINDOWS, WINDOW_SIZE>::window()
+        (NUM_WINDOWS, WINDOW_SIZE)
     }
 }
 
 impl<F: Field, G: ProjectiveCurve + ToConstraintField<F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    ToConstraintField<F> for BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
+    ToConstraintField<F> for PedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {

@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{virtual_machine::AleoAmount, Address, Network, Payload};
-use snarkvm_algorithms::CRH;
+use crate::{Address, AleoAmount, Network, Payload};
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::{FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
 
@@ -41,15 +40,6 @@ pub struct FunctionInputs<N: Network> {
 impl<N: Network> FunctionInputs<N> {
     pub fn new(caller: &Caller<N>, recipient: &Recipient<N>, amount: AleoAmount, record_payload: Payload<N>) -> Self {
         Self { caller: *caller, recipient: *recipient, amount, record_payload }
-    }
-
-    /// Returns a hash of the function inputs.
-    pub fn to_hash(&self) -> Result<N::FunctionInputsHash> {
-        Ok(N::FunctionInputsCRH::setup("UnusedInPoseidon").hash_field_elements(&self.to_field_elements()?)?.into())
-    }
-
-    fn size_in_bytes() -> usize {
-        N::ADDRESS_SIZE_IN_BYTES + N::ADDRESS_SIZE_IN_BYTES + 8 + N::RECORD_PAYLOAD_SIZE_IN_BYTES
     }
 }
 
@@ -108,7 +98,7 @@ impl<N: Network> Serialize for FunctionInputs<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => serializer.collect_str(self),
-            false => ToBytesSerializer::serialize(self, serializer),
+            false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
         }
     }
 }
@@ -117,7 +107,7 @@ impl<'de, N: Network> Deserialize<'de> for FunctionInputs<N> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
-            false => FromBytesDeserializer::<Self>::deserialize(deserializer, "function_inputs", Self::size_in_bytes()),
+            false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "function_inputs"),
         }
     }
 }
