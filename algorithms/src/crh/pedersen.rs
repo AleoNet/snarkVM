@@ -33,13 +33,15 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
     type Parameters = Vec<Vec<G>>;
 
     fn setup(message: &str) -> Self {
-        let bases = (0..NUM_WINDOWS)
+        let (num_windows, window_size) = Self::window();
+
+        let bases = (0..num_windows)
             .map(|index| {
                 // Construct an indexed message to attempt to sample a base.
                 let (generator, _, _) = hash_to_curve::<G::Affine>(&format!("{message} at {index}"));
                 let mut base = generator.into_projective();
-                let mut powers = Vec::with_capacity(WINDOW_SIZE);
-                for _ in 0..WINDOW_SIZE {
+                let mut powers = Vec::with_capacity(window_size);
+                for _ in 0..window_size {
                     powers.push(base);
                     base.double_in_place();
                 }
@@ -51,17 +53,19 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
     }
 
     fn hash(&self, input: &[bool]) -> Result<Self::Output, CRHError> {
+        let (num_windows, window_size) = Self::window();
+
         let mut input = Cow::Borrowed(input);
-        match input.len() <= WINDOW_SIZE * NUM_WINDOWS {
+        match input.len() <= window_size * num_windows {
             // Pad the input if it is under the required parameter size.
-            true => input.to_mut().resize(WINDOW_SIZE * NUM_WINDOWS, false),
+            true => input.to_mut().resize(window_size * num_windows, false),
             // Ensure the input size is within the parameter size,
-            false => return Err(CRHError::IncorrectInputLength(input.len(), WINDOW_SIZE, NUM_WINDOWS)),
+            false => return Err(CRHError::IncorrectInputLength(input.len(), window_size, num_windows)),
         }
 
         // Compute sum of h_i^{m_i} for all i.
         Ok(input
-            .chunks(WINDOW_SIZE)
+            .chunks(window_size)
             .zip_eq(&self.bases)
             .flat_map(|(bits, powers)| {
                 bits.iter().zip_eq(powers).flat_map(|(bit, base)| match bit {

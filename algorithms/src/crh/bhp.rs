@@ -40,6 +40,8 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
     type Parameters = Arc<Vec<Vec<G>>>;
 
     fn setup(message: &str) -> Self {
+        let (num_windows, window_size) = Self::window();
+
         // Calculate the maximum window size.
         let mut maximum_window_size = 0;
         let mut range = <G::ScalarField as PrimeField>::BigInteger::from(2_u64);
@@ -48,17 +50,17 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
             range.muln(4); // range * 2^4
             maximum_window_size += 1;
         }
-        assert!(WINDOW_SIZE <= maximum_window_size, "The maximum BHP window size is {maximum_window_size}");
+        assert!(window_size <= maximum_window_size, "The maximum BHP window size is {maximum_window_size}");
 
         // Compute the bases.
-        let bases = (0..NUM_WINDOWS)
+        let bases = (0..num_windows)
             .map(|index| {
                 // Construct an indexed message to attempt to sample a base.
                 let (generator, _, _) = hash_to_curve::<G::Affine>(&format!("{message} at {index}"));
                 let mut base = generator.into_projective();
                 // Compute the generators for the sampled base.
-                let mut powers = Vec::with_capacity(WINDOW_SIZE);
-                for _ in 0..WINDOW_SIZE {
+                let mut powers = Vec::with_capacity(window_size);
+                for _ in 0..window_size {
                     powers.push(base);
                     for _ in 0..4 {
                         base.double_in_place();
@@ -68,7 +70,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
             })
             .collect::<Vec<Vec<G>>>();
         debug_assert_eq!(bases.len(), NUM_WINDOWS, "Incorrect number of windows ({:?}) for BHP", bases.len());
-        bases.iter().for_each(|window| debug_assert_eq!(window.len(), WINDOW_SIZE));
+        bases.iter().for_each(|window| debug_assert_eq!(window.len(), window_size));
 
         // Compute the base lookup.
         let base_lookup = crate::cfg_iter!(bases)
@@ -93,8 +95,8 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
                     .collect()
             })
             .collect::<Vec<Vec<[G; BHP_LOOKUP_SIZE]>>>();
-        debug_assert_eq!(base_lookup.len(), NUM_WINDOWS);
-        base_lookup.iter().for_each(|bases| debug_assert_eq!(bases.len(), WINDOW_SIZE));
+        debug_assert_eq!(base_lookup.len(), num_windows);
+        base_lookup.iter().for_each(|bases| debug_assert_eq!(bases.len(), window_size));
 
         Self { bases: Arc::new(bases), base_lookup }
     }
@@ -114,9 +116,11 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
 
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE> {
     pub(crate) fn hash_bits_inner(&self, input: &[bool]) -> Result<G, CRHError> {
+        let (num_windows, window_size) = Self::window();
+
         // Ensure the input size is within the parameter size,
-        if input.len() > NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE {
-            return Err(CRHError::IncorrectInputLength(input.len(), WINDOW_SIZE, NUM_WINDOWS * BHP_CHUNK_SIZE));
+        if input.len() > num_windows * window_size * BHP_CHUNK_SIZE {
+            return Err(CRHError::IncorrectInputLength(input.len(), window_size, num_windows * BHP_CHUNK_SIZE));
         }
 
         // Pad the input to a multiple of `BHP_CHUNK_SIZE` for hashing.
@@ -133,7 +137,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP
         // Note: `.zip()` is used here (as opposed to `.zip_eq()`) as the input can be less than
         // `NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE` in length, which is the parameter size here.
         Ok(input
-            .chunks(WINDOW_SIZE * BHP_CHUNK_SIZE)
+            .chunks(window_size * BHP_CHUNK_SIZE)
             .zip(&self.base_lookup)
             .flat_map(|(bits, bases)| {
                 bits.chunks(BHP_CHUNK_SIZE).zip(bases).map(|(chunk_bits, base)| {
