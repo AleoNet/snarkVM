@@ -21,7 +21,7 @@ impl<E: Environment> Neg for Field<E> {
 
     /// Performs the unary `-` operation.
     fn neg(self) -> Self::Output {
-        Self(-self.0)
+        (&self).neg()
     }
 }
 
@@ -30,7 +30,7 @@ impl<E: Environment> Neg for &Field<E> {
 
     /// Performs the unary `-` operation.
     fn neg(self) -> Self::Output {
-        Field(-&(self.0))
+        Field { linear_combination: -&self.linear_combination, bits_le: None }
     }
 }
 

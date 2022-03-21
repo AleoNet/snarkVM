@@ -36,7 +36,7 @@ impl<E: Environment> Add<&Field<E>> for Field<E> {
     type Output = Field<E>;
 
     fn add(self, other: &Field<E>) -> Self::Output {
-        Field(self.0 + &other.0)
+        &self + other
     }
 }
 
@@ -44,7 +44,9 @@ impl<E: Environment> Add<&Field<E>> for &Field<E> {
     type Output = Field<E>;
 
     fn add(self, other: &Field<E>) -> Self::Output {
-        (*self).clone() + other
+        let mut result = self.clone();
+        result += other;
+        result
     }
 }
 
@@ -56,7 +58,7 @@ impl<E: Environment> AddAssign<Field<E>> for Field<E> {
 
 impl<E: Environment> AddAssign<&Field<E>> for Field<E> {
     fn add_assign(&mut self, other: &Field<E>) {
-        self.0 += &other.0
+        *self = Field { linear_combination: &self.linear_combination + &other.linear_combination, bits_le: None }
     }
 }
 

@@ -58,17 +58,20 @@ impl<E: Environment> MulAssign<Field<E>> for Field<E> {
 
 impl<E: Environment> MulAssign<&Field<E>> for Field<E> {
     fn mul_assign(&mut self, other: &Field<E>) {
-        match (self.is_constant(), other.is_constant()) {
-            (true, true) => self.0 = self.0.clone() * other.eject_value(),
-            (false, true) => self.0 = self.0.clone() * other.eject_value(),
-            (true, false) => self.0 = other.0.clone() * self.eject_value(),
+        *self = match (self.is_constant(), other.is_constant()) {
+            (true, true) | (false, true) => {
+                Field { linear_combination: self.linear_combination.clone() * other.eject_value(), bits_le: None }
+            }
+            (true, false) => {
+                Field { linear_combination: other.linear_combination.clone() * self.eject_value(), bits_le: None }
+            }
             (false, false) => {
                 let product = Field::new(Mode::Private, self.eject_value() * other.eject_value());
 
                 // Ensure self * other == product.
                 E::enforce(|| (&*self, other, &product));
 
-                *self = product;
+                product
             }
         }
     }
