@@ -159,56 +159,56 @@ mod tests {
     fn test_u8_constant_shl_u8_public() {
         type I = u8;
         type M = u8;
-        run_test::<I, M>(Mode::Constant, Mode::Public, 1, 0, 28, 30);
+        run_test::<I, M>(Mode::Constant, Mode::Public, 0, 0, 28, 30);
     }
 
     #[test]
     fn test_u8_constant_shl_u8_private() {
         type I = u8;
         type M = u8;
-        run_test::<I, M>(Mode::Constant, Mode::Private, 1, 0, 28, 30);
+        run_test::<I, M>(Mode::Constant, Mode::Private, 0, 0, 28, 30);
     }
 
     #[test]
     fn test_u8_public_shl_u8_constant() {
         type I = u8;
         type M = u8;
-        run_test::<I, M>(Mode::Public, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_u8_private_shl_u8_constant() {
         type I = u8;
         type M = u8;
-        run_test::<I, M>(Mode::Private, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_u8_public_shl_u8_public() {
         type I = u8;
         type M = u8;
-        run_test::<I, M>(Mode::Public, Mode::Public, 1, 0, 29, 31);
+        run_test::<I, M>(Mode::Public, Mode::Public, 0, 0, 29, 31);
     }
 
     #[test]
     fn test_u8_public_shl_u8_private() {
         type I = u8;
         type M = u8;
-        run_test::<I, M>(Mode::Public, Mode::Private, 1, 0, 29, 31);
+        run_test::<I, M>(Mode::Public, Mode::Private, 0, 0, 29, 31);
     }
 
     #[test]
     fn test_u8_private_shl_u8_public() {
         type I = u8;
         type M = u8;
-        run_test::<I, M>(Mode::Private, Mode::Public, 1, 0, 29, 31);
+        run_test::<I, M>(Mode::Private, Mode::Public, 0, 0, 29, 31);
     }
 
     #[test]
     fn test_u8_private_shl_u8_private() {
         type I = u8;
         type M = u8;
-        run_test::<I, M>(Mode::Private, Mode::Private, 1, 0, 29, 31);
+        run_test::<I, M>(Mode::Private, Mode::Private, 0, 0, 29, 31);
     }
 
     // Tests for i8, where shift magnitude is u8
@@ -224,56 +224,56 @@ mod tests {
     fn test_i8_constant_shl_u8_public() {
         type I = i8;
         type M = u8;
-        run_test::<I, M>(Mode::Constant, Mode::Public, 1, 0, 28, 30);
+        run_test::<I, M>(Mode::Constant, Mode::Public, 0, 0, 28, 30);
     }
 
     #[test]
     fn test_i8_constant_shl_u8_private() {
         type I = i8;
         type M = u8;
-        run_test::<I, M>(Mode::Constant, Mode::Private, 1, 0, 28, 30);
+        run_test::<I, M>(Mode::Constant, Mode::Private, 0, 0, 28, 30);
     }
 
     #[test]
     fn test_i8_public_shl_u8_constant() {
         type I = i8;
         type M = u8;
-        run_test::<I, M>(Mode::Public, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_i8_private_shl_u8_constant() {
         type I = i8;
         type M = u8;
-        run_test::<I, M>(Mode::Private, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_i8_public_shl_u8_public() {
         type I = i8;
         type M = u8;
-        run_test::<I, M>(Mode::Public, Mode::Public, 1, 0, 29, 31);
+        run_test::<I, M>(Mode::Public, Mode::Public, 0, 0, 29, 31);
     }
 
     #[test]
     fn test_i8_public_shl_u8_private() {
         type I = i8;
         type M = u8;
-        run_test::<I, M>(Mode::Public, Mode::Private, 1, 0, 29, 31);
+        run_test::<I, M>(Mode::Public, Mode::Private, 0, 0, 29, 31);
     }
 
     #[test]
     fn test_i8_private_shl_u8_public() {
         type I = i8;
         type M = u8;
-        run_test::<I, M>(Mode::Private, Mode::Public, 1, 0, 29, 31);
+        run_test::<I, M>(Mode::Private, Mode::Public, 0, 0, 29, 31);
     }
 
     #[test]
     fn test_i8_private_shl_u8_private() {
         type I = i8;
         type M = u8;
-        run_test::<I, M>(Mode::Private, Mode::Private, 1, 0, 29, 31);
+        run_test::<I, M>(Mode::Private, Mode::Private, 0, 0, 29, 31);
     }
 
     // Tests for u16, where shift magnitude is u8
@@ -289,56 +289,56 @@ mod tests {
     fn test_u16_constant_shl_u8_public() {
         type I = u16;
         type M = u8;
-        run_test::<I, M>(Mode::Constant, Mode::Public, 1, 0, 54, 56);
+        run_test::<I, M>(Mode::Constant, Mode::Public, 0, 0, 54, 56);
     }
 
     #[test]
     fn test_u16_constant_shl_u8_private() {
         type I = u16;
         type M = u8;
-        run_test::<I, M>(Mode::Constant, Mode::Private, 1, 0, 54, 56);
+        run_test::<I, M>(Mode::Constant, Mode::Private, 0, 0, 54, 56);
     }
 
     #[test]
     fn test_u16_public_shl_u8_constant() {
         type I = u16;
         type M = u8;
-        run_test::<I, M>(Mode::Public, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_u16_private_shl_u8_constant() {
         type I = u16;
         type M = u8;
-        run_test::<I, M>(Mode::Private, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_u16_public_shl_u8_public() {
         type I = u16;
         type M = u8;
-        run_test::<I, M>(Mode::Public, Mode::Public, 1, 0, 55, 57);
+        run_test::<I, M>(Mode::Public, Mode::Public, 0, 0, 55, 57);
     }
 
     #[test]
     fn test_u16_public_shl_u8_private() {
         type I = u16;
         type M = u8;
-        run_test::<I, M>(Mode::Public, Mode::Private, 1, 0, 55, 57);
+        run_test::<I, M>(Mode::Public, Mode::Private, 0, 0, 55, 57);
     }
 
     #[test]
     fn test_u16_private_shl_u8_public() {
         type I = u16;
         type M = u8;
-        run_test::<I, M>(Mode::Private, Mode::Public, 1, 0, 55, 57);
+        run_test::<I, M>(Mode::Private, Mode::Public, 0, 0, 55, 57);
     }
 
     #[test]
     fn test_u16_private_shl_u8_private() {
         type I = u16;
         type M = u8;
-        run_test::<I, M>(Mode::Private, Mode::Private, 1, 0, 55, 57);
+        run_test::<I, M>(Mode::Private, Mode::Private, 0, 0, 55, 57);
     }
 
     // Tests for i16, where shift magnitude is u8
@@ -354,56 +354,56 @@ mod tests {
     fn test_i16_constant_shl_u8_public() {
         type I = i16;
         type M = u8;
-        run_test::<I, M>(Mode::Constant, Mode::Public, 1, 0, 54, 56);
+        run_test::<I, M>(Mode::Constant, Mode::Public, 0, 0, 54, 56);
     }
 
     #[test]
     fn test_i16_constant_shl_u8_private() {
         type I = i16;
         type M = u8;
-        run_test::<I, M>(Mode::Constant, Mode::Private, 1, 0, 54, 56);
+        run_test::<I, M>(Mode::Constant, Mode::Private, 0, 0, 54, 56);
     }
 
     #[test]
     fn test_i16_public_shl_u8_constant() {
         type I = i16;
         type M = u8;
-        run_test::<I, M>(Mode::Public, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_i16_private_shl_u8_constant() {
         type I = i16;
         type M = u8;
-        run_test::<I, M>(Mode::Private, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_i16_public_shl_u8_public() {
         type I = i16;
         type M = u8;
-        run_test::<I, M>(Mode::Public, Mode::Public, 1, 0, 55, 57);
+        run_test::<I, M>(Mode::Public, Mode::Public, 0, 0, 55, 57);
     }
 
     #[test]
     fn test_i16_public_shl_u8_private() {
         type I = i16;
         type M = u8;
-        run_test::<I, M>(Mode::Public, Mode::Private, 1, 0, 55, 57);
+        run_test::<I, M>(Mode::Public, Mode::Private, 0, 0, 55, 57);
     }
 
     #[test]
     fn test_i16_private_shl_u8_public() {
         type I = i16;
         type M = u8;
-        run_test::<I, M>(Mode::Private, Mode::Public, 1, 0, 55, 57);
+        run_test::<I, M>(Mode::Private, Mode::Public, 0, 0, 55, 57);
     }
 
     #[test]
     fn test_i16_private_shl_u8_private() {
         type I = i16;
         type M = u8;
-        run_test::<I, M>(Mode::Private, Mode::Private, 1, 0, 55, 57);
+        run_test::<I, M>(Mode::Private, Mode::Private, 0, 0, 55, 57);
     }
 
     // Tests for u32, where shift magnitude is u8
@@ -419,56 +419,56 @@ mod tests {
     fn test_u32_constant_shl_u8_public() {
         type I = u32;
         type M = u8;
-        run_test::<I, M>(Mode::Constant, Mode::Public, 1, 0, 104, 106);
+        run_test::<I, M>(Mode::Constant, Mode::Public, 0, 0, 104, 106);
     }
 
     #[test]
     fn test_u32_constant_shl_u8_private() {
         type I = u32;
         type M = u8;
-        run_test::<I, M>(Mode::Constant, Mode::Public, 1, 0, 104, 106);
+        run_test::<I, M>(Mode::Constant, Mode::Public, 0, 0, 104, 106);
     }
 
     #[test]
     fn test_u32_public_shl_u8_constant() {
         type I = u32;
         type M = u8;
-        run_test::<I, M>(Mode::Public, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_u32_private_shl_u8_constant() {
         type I = u32;
         type M = u8;
-        run_test::<I, M>(Mode::Public, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_u32_public_shl_u8_public() {
         type I = u32;
         type M = u8;
-        run_test::<I, M>(Mode::Public, Mode::Public, 1, 0, 105, 107);
+        run_test::<I, M>(Mode::Public, Mode::Public, 0, 0, 105, 107);
     }
 
     #[test]
     fn test_u32_public_shl_u8_private() {
         type I = u32;
         type M = u8;
-        run_test::<I, M>(Mode::Public, Mode::Private, 1, 0, 105, 107);
+        run_test::<I, M>(Mode::Public, Mode::Private, 0, 0, 105, 107);
     }
 
     #[test]
     fn test_u32_private_shl_u8_public() {
         type I = u32;
         type M = u8;
-        run_test::<I, M>(Mode::Private, Mode::Public, 1, 0, 105, 107);
+        run_test::<I, M>(Mode::Private, Mode::Public, 0, 0, 105, 107);
     }
 
     #[test]
     fn test_u32_private_shl_u8_private() {
         type I = u32;
         type M = u8;
-        run_test::<I, M>(Mode::Private, Mode::Private, 1, 0, 105, 107);
+        run_test::<I, M>(Mode::Private, Mode::Private, 0, 0, 105, 107);
     }
 
     // Tests for i32, where shift magnitude is u8
@@ -484,56 +484,56 @@ mod tests {
     fn test_i32_constant_shl_u8_public() {
         type I = i32;
         type M = u8;
-        run_test::<I, M>(Mode::Constant, Mode::Public, 1, 0, 104, 106);
+        run_test::<I, M>(Mode::Constant, Mode::Public, 0, 0, 104, 106);
     }
 
     #[test]
     fn test_i32_constant_shl_u8_private() {
         type I = i32;
         type M = u8;
-        run_test::<I, M>(Mode::Constant, Mode::Private, 1, 0, 104, 106);
+        run_test::<I, M>(Mode::Constant, Mode::Private, 0, 0, 104, 106);
     }
 
     #[test]
     fn test_i32_public_shl_u8_constant() {
         type I = i32;
         type M = u8;
-        run_test::<I, M>(Mode::Public, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_i32_private_shl_u8_constant() {
         type I = i32;
         type M = u8;
-        run_test::<I, M>(Mode::Private, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_i32_public_shl_u8_public() {
         type I = i32;
         type M = u8;
-        run_test::<I, M>(Mode::Public, Mode::Public, 1, 0, 105, 107);
+        run_test::<I, M>(Mode::Public, Mode::Public, 0, 0, 105, 107);
     }
 
     #[test]
     fn test_i32_public_shl_u8_private() {
         type I = i32;
         type M = u8;
-        run_test::<I, M>(Mode::Public, Mode::Private, 1, 0, 105, 107);
+        run_test::<I, M>(Mode::Public, Mode::Private, 0, 0, 105, 107);
     }
 
     #[test]
     fn test_i32_private_shl_u8_public() {
         type I = i32;
         type M = u8;
-        run_test::<I, M>(Mode::Private, Mode::Public, 1, 0, 105, 107);
+        run_test::<I, M>(Mode::Private, Mode::Public, 0, 0, 105, 107);
     }
 
     #[test]
     fn test_i32_private_shl_u8_private() {
         type I = i32;
         type M = u8;
-        run_test::<I, M>(Mode::Private, Mode::Private, 1, 0, 105, 107);
+        run_test::<I, M>(Mode::Private, Mode::Private, 0, 0, 105, 107);
     }
 
     // Tests for u64, where shift magnitude is u8
@@ -549,56 +549,56 @@ mod tests {
     fn test_u64_constant_shl_u8_public() {
         type I = u64;
         type M = u8;
-        run_test::<I, M>(Mode::Constant, Mode::Public, 1, 0, 202, 204);
+        run_test::<I, M>(Mode::Constant, Mode::Public, 0, 0, 202, 204);
     }
 
     #[test]
     fn test_u64_constant_shl_u8_private() {
         type I = u64;
         type M = u8;
-        run_test::<I, M>(Mode::Constant, Mode::Private, 1, 0, 202, 204);
+        run_test::<I, M>(Mode::Constant, Mode::Private, 0, 0, 202, 204);
     }
 
     #[test]
     fn test_u64_public_shl_u8_constant() {
         type I = u64;
         type M = u8;
-        run_test::<I, M>(Mode::Public, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_u64_private_shl_u8_constant() {
         type I = u64;
         type M = u8;
-        run_test::<I, M>(Mode::Private, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_u64_public_shl_u8_public() {
         type I = u64;
         type M = u8;
-        run_test::<I, M>(Mode::Public, Mode::Public, 1, 0, 203, 205);
+        run_test::<I, M>(Mode::Public, Mode::Public, 0, 0, 203, 205);
     }
 
     #[test]
     fn test_u64_public_shl_u8_private() {
         type I = u64;
         type M = u8;
-        run_test::<I, M>(Mode::Public, Mode::Private, 1, 0, 203, 205);
+        run_test::<I, M>(Mode::Public, Mode::Private, 0, 0, 203, 205);
     }
 
     #[test]
     fn test_u64_private_shl_u8_public() {
         type I = u64;
         type M = u8;
-        run_test::<I, M>(Mode::Private, Mode::Public, 1, 0, 203, 205);
+        run_test::<I, M>(Mode::Private, Mode::Public, 0, 0, 203, 205);
     }
 
     #[test]
     fn test_u64_private_shl_u8_private() {
         type I = u64;
         type M = u8;
-        run_test::<I, M>(Mode::Private, Mode::Private, 1, 0, 203, 205);
+        run_test::<I, M>(Mode::Private, Mode::Private, 0, 0, 203, 205);
     }
 
     // Tests for i64, where shift magnitude is u8
@@ -614,56 +614,56 @@ mod tests {
     fn test_i64_constant_shl_u8_public() {
         type I = i64;
         type M = u8;
-        run_test::<I, M>(Mode::Constant, Mode::Public, 1, 0, 202, 204);
+        run_test::<I, M>(Mode::Constant, Mode::Public, 0, 0, 202, 204);
     }
 
     #[test]
     fn test_i64_constant_shl_u8_private() {
         type I = i64;
         type M = u8;
-        run_test::<I, M>(Mode::Constant, Mode::Private, 1, 0, 202, 204);
+        run_test::<I, M>(Mode::Constant, Mode::Private, 0, 0, 202, 204);
     }
 
     #[test]
     fn test_i64_public_shl_u8_constant() {
         type I = i64;
         type M = u8;
-        run_test::<I, M>(Mode::Public, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_i64_private_shl_u8_constant() {
         type I = i64;
         type M = u8;
-        run_test::<I, M>(Mode::Private, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_i64_public_shl_u8_public() {
         type I = i64;
         type M = u8;
-        run_test::<I, M>(Mode::Public, Mode::Public, 1, 0, 203, 205);
+        run_test::<I, M>(Mode::Public, Mode::Public, 0, 0, 203, 205);
     }
 
     #[test]
     fn test_i64_public_shl_u8_private() {
         type I = i64;
         type M = u8;
-        run_test::<I, M>(Mode::Public, Mode::Private, 1, 0, 203, 205);
+        run_test::<I, M>(Mode::Public, Mode::Private, 0, 0, 203, 205);
     }
 
     #[test]
     fn test_i64_private_shl_u8_public() {
         type I = i64;
         type M = u8;
-        run_test::<I, M>(Mode::Private, Mode::Public, 1, 0, 203, 205);
+        run_test::<I, M>(Mode::Private, Mode::Public, 0, 0, 203, 205);
     }
 
     #[test]
     fn test_i64_private_shl_u8_private() {
         type I = i64;
         type M = u8;
-        run_test::<I, M>(Mode::Private, Mode::Private, 1, 0, 203, 205);
+        run_test::<I, M>(Mode::Private, Mode::Private, 0, 0, 203, 205);
     }
 
     // Tests for u128, where shift magnitude is u8
@@ -679,56 +679,56 @@ mod tests {
     fn test_u128_constant_shl_u8_public() {
         type I = u128;
         type M = u8;
-        run_test::<I, M>(Mode::Constant, Mode::Public, 3, 0, 333, 335);
+        run_test::<I, M>(Mode::Constant, Mode::Public, 0, 0, 333, 335);
     }
 
     #[test]
     fn test_u128_constant_shl_u8_private() {
         type I = u128;
         type M = u8;
-        run_test::<I, M>(Mode::Constant, Mode::Private, 3, 0, 333, 335);
+        run_test::<I, M>(Mode::Constant, Mode::Private, 0, 0, 333, 335);
     }
 
     #[test]
     fn test_u128_public_shl_u8_constant() {
         type I = u128;
         type M = u8;
-        run_test::<I, M>(Mode::Public, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_u128_private_shl_u8_constant() {
         type I = u128;
         type M = u8;
-        run_test::<I, M>(Mode::Private, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_u128_public_shl_u8_public() {
         type I = u128;
         type M = u8;
-        run_test::<I, M>(Mode::Public, Mode::Public, 3, 0, 336, 338);
+        run_test::<I, M>(Mode::Public, Mode::Public, 0, 0, 336, 338);
     }
 
     #[test]
     fn test_u128_public_shl_u8_private() {
         type I = u128;
         type M = u8;
-        run_test::<I, M>(Mode::Public, Mode::Private, 3, 0, 336, 338);
+        run_test::<I, M>(Mode::Public, Mode::Private, 0, 0, 336, 338);
     }
 
     #[test]
     fn test_u128_private_shl_u8_public() {
         type I = u128;
         type M = u8;
-        run_test::<I, M>(Mode::Private, Mode::Public, 3, 0, 336, 338);
+        run_test::<I, M>(Mode::Private, Mode::Public, 0, 0, 336, 338);
     }
 
     #[test]
     fn test_u128_private_shl_u8_private() {
         type I = u128;
         type M = u8;
-        run_test::<I, M>(Mode::Private, Mode::Private, 3, 0, 336, 338);
+        run_test::<I, M>(Mode::Private, Mode::Private, 0, 0, 336, 338);
     }
 
     // Tests for i128, where shift magnitude is u8
@@ -744,56 +744,56 @@ mod tests {
     fn test_i128_constant_shl_u8_public() {
         type I = i128;
         type M = u8;
-        run_test::<I, M>(Mode::Constant, Mode::Public, 3, 0, 333, 335);
+        run_test::<I, M>(Mode::Constant, Mode::Public, 0, 0, 333, 335);
     }
 
     #[test]
     fn test_i128_constant_shl_u8_private() {
         type I = i128;
         type M = u8;
-        run_test::<I, M>(Mode::Constant, Mode::Private, 3, 0, 333, 335);
+        run_test::<I, M>(Mode::Constant, Mode::Private, 0, 0, 333, 335);
     }
 
     #[test]
     fn test_i128_public_shl_u8_constant() {
         type I = i128;
         type M = u8;
-        run_test::<I, M>(Mode::Public, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_i128_private_shl_u8_constant() {
         type I = i128;
         type M = u8;
-        run_test::<I, M>(Mode::Private, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_i128_public_shl_u8_public() {
         type I = i128;
         type M = u8;
-        run_test::<I, M>(Mode::Public, Mode::Public, 3, 0, 336, 338);
+        run_test::<I, M>(Mode::Public, Mode::Public, 0, 0, 336, 338);
     }
 
     #[test]
     fn test_i128_public_shl_u8_private() {
         type I = i128;
         type M = u8;
-        run_test::<I, M>(Mode::Public, Mode::Private, 3, 0, 336, 338);
+        run_test::<I, M>(Mode::Public, Mode::Private, 0, 0, 336, 338);
     }
 
     #[test]
     fn test_i128_private_shl_u8_public() {
         type I = i128;
         type M = u8;
-        run_test::<I, M>(Mode::Private, Mode::Public, 3, 0, 336, 338);
+        run_test::<I, M>(Mode::Private, Mode::Public, 0, 0, 336, 338);
     }
 
     #[test]
     fn test_i128_private_shl_u8_private() {
         type I = i128;
         type M = u8;
-        run_test::<I, M>(Mode::Private, Mode::Private, 3, 0, 336, 338);
+        run_test::<I, M>(Mode::Private, Mode::Private, 0, 0, 336, 338);
     }
 
     // Tests for u8, where shift magnitude is u16
@@ -809,56 +809,56 @@ mod tests {
     fn test_u8_constant_shl_u16_public() {
         type I = u8;
         type M = u16;
-        run_test::<I, M>(Mode::Constant, Mode::Public, 1, 0, 28, 30);
+        run_test::<I, M>(Mode::Constant, Mode::Public, 0, 0, 28, 30);
     }
 
     #[test]
     fn test_u8_constant_shl_u16_private() {
         type I = u8;
         type M = u16;
-        run_test::<I, M>(Mode::Constant, Mode::Private, 1, 0, 28, 30);
+        run_test::<I, M>(Mode::Constant, Mode::Private, 0, 0, 28, 30);
     }
 
     #[test]
     fn test_u8_public_shl_u16_constant() {
         type I = u8;
         type M = u16;
-        run_test::<I, M>(Mode::Public, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_u8_private_shl_u16_constant() {
         type I = u8;
         type M = u16;
-        run_test::<I, M>(Mode::Private, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_u8_public_shl_u16_public() {
         type I = u8;
         type M = u16;
-        run_test::<I, M>(Mode::Public, Mode::Public, 1, 0, 29, 31);
+        run_test::<I, M>(Mode::Public, Mode::Public, 0, 0, 29, 31);
     }
 
     #[test]
     fn test_u8_public_shl_u16_private() {
         type I = u8;
         type M = u16;
-        run_test::<I, M>(Mode::Public, Mode::Private, 1, 0, 29, 31);
+        run_test::<I, M>(Mode::Public, Mode::Private, 0, 0, 29, 31);
     }
 
     #[test]
     fn test_u8_private_shl_u16_public() {
         type I = u8;
         type M = u16;
-        run_test::<I, M>(Mode::Private, Mode::Public, 1, 0, 29, 31);
+        run_test::<I, M>(Mode::Private, Mode::Public, 0, 0, 29, 31);
     }
 
     #[test]
     fn test_u8_private_shl_u16_private() {
         type I = u8;
         type M = u16;
-        run_test::<I, M>(Mode::Private, Mode::Private, 1, 0, 29, 31);
+        run_test::<I, M>(Mode::Private, Mode::Private, 0, 0, 29, 31);
     }
 
     // Tests for i8, where shift magnitude is u16
@@ -874,56 +874,56 @@ mod tests {
     fn test_i8_constant_shl_u16_public() {
         type I = i8;
         type M = u16;
-        run_test::<I, M>(Mode::Constant, Mode::Public, 1, 0, 28, 30);
+        run_test::<I, M>(Mode::Constant, Mode::Public, 0, 0, 28, 30);
     }
 
     #[test]
     fn test_i8_constant_shl_u16_private() {
         type I = i8;
         type M = u16;
-        run_test::<I, M>(Mode::Constant, Mode::Private, 1, 0, 28, 30);
+        run_test::<I, M>(Mode::Constant, Mode::Private, 0, 0, 28, 30);
     }
 
     #[test]
     fn test_i8_public_shl_u16_constant() {
         type I = i8;
         type M = u16;
-        run_test::<I, M>(Mode::Public, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_i8_private_shl_u16_constant() {
         type I = i8;
         type M = u16;
-        run_test::<I, M>(Mode::Private, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_i8_public_shl_u16_public() {
         type I = i8;
         type M = u16;
-        run_test::<I, M>(Mode::Public, Mode::Public, 1, 0, 29, 31);
+        run_test::<I, M>(Mode::Public, Mode::Public, 0, 0, 29, 31);
     }
 
     #[test]
     fn test_i8_public_shl_u16_private() {
         type I = i8;
         type M = u16;
-        run_test::<I, M>(Mode::Public, Mode::Private, 1, 0, 29, 31);
+        run_test::<I, M>(Mode::Public, Mode::Private, 0, 0, 29, 31);
     }
 
     #[test]
     fn test_i8_private_shl_u16_public() {
         type I = i8;
         type M = u16;
-        run_test::<I, M>(Mode::Private, Mode::Public, 1, 0, 29, 31);
+        run_test::<I, M>(Mode::Private, Mode::Public, 0, 0, 29, 31);
     }
 
     #[test]
     fn test_i8_private_shl_u16_private() {
         type I = i8;
         type M = u16;
-        run_test::<I, M>(Mode::Private, Mode::Private, 1, 0, 29, 31);
+        run_test::<I, M>(Mode::Private, Mode::Private, 0, 0, 29, 31);
     }
 
     // Tests for u16, where shift magnitude is u16
@@ -939,56 +939,56 @@ mod tests {
     fn test_u16_constant_shl_u16_public() {
         type I = u16;
         type M = u16;
-        run_test::<I, M>(Mode::Constant, Mode::Public, 1, 0, 54, 56);
+        run_test::<I, M>(Mode::Constant, Mode::Public, 0, 0, 54, 56);
     }
 
     #[test]
     fn test_u16_constant_shl_u16_private() {
         type I = u16;
         type M = u16;
-        run_test::<I, M>(Mode::Constant, Mode::Private, 1, 0, 54, 56);
+        run_test::<I, M>(Mode::Constant, Mode::Private, 0, 0, 54, 56);
     }
 
     #[test]
     fn test_u16_public_shl_u16_constant() {
         type I = u16;
         type M = u16;
-        run_test::<I, M>(Mode::Public, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_u16_private_shl_u16_constant() {
         type I = u16;
         type M = u16;
-        run_test::<I, M>(Mode::Private, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_u16_public_shl_u16_public() {
         type I = u16;
         type M = u16;
-        run_test::<I, M>(Mode::Public, Mode::Public, 1, 0, 55, 57);
+        run_test::<I, M>(Mode::Public, Mode::Public, 0, 0, 55, 57);
     }
 
     #[test]
     fn test_u16_public_shl_u16_private() {
         type I = u16;
         type M = u16;
-        run_test::<I, M>(Mode::Public, Mode::Private, 1, 0, 55, 57);
+        run_test::<I, M>(Mode::Public, Mode::Private, 0, 0, 55, 57);
     }
 
     #[test]
     fn test_u16_private_shl_u16_public() {
         type I = u16;
         type M = u16;
-        run_test::<I, M>(Mode::Private, Mode::Public, 1, 0, 55, 57);
+        run_test::<I, M>(Mode::Private, Mode::Public, 0, 0, 55, 57);
     }
 
     #[test]
     fn test_u16_private_shl_u16_private() {
         type I = u16;
         type M = u16;
-        run_test::<I, M>(Mode::Private, Mode::Private, 1, 0, 55, 57);
+        run_test::<I, M>(Mode::Private, Mode::Private, 0, 0, 55, 57);
     }
 
     // Tests for i16, where shift magnitude is u16
@@ -1004,56 +1004,56 @@ mod tests {
     fn test_i16_constant_shl_u16_public() {
         type I = i16;
         type M = u16;
-        run_test::<I, M>(Mode::Constant, Mode::Public, 1, 0, 54, 56);
+        run_test::<I, M>(Mode::Constant, Mode::Public, 0, 0, 54, 56);
     }
 
     #[test]
     fn test_i16_constant_shl_u16_private() {
         type I = i16;
         type M = u16;
-        run_test::<I, M>(Mode::Constant, Mode::Private, 1, 0, 54, 56);
+        run_test::<I, M>(Mode::Constant, Mode::Private, 0, 0, 54, 56);
     }
 
     #[test]
     fn test_i16_public_shl_u16_constant() {
         type I = i16;
         type M = u16;
-        run_test::<I, M>(Mode::Public, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_i16_private_shl_u16_constant() {
         type I = i16;
         type M = u16;
-        run_test::<I, M>(Mode::Private, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_i16_public_shl_u16_public() {
         type I = i16;
         type M = u16;
-        run_test::<I, M>(Mode::Public, Mode::Public, 1, 0, 55, 57);
+        run_test::<I, M>(Mode::Public, Mode::Public, 0, 0, 55, 57);
     }
 
     #[test]
     fn test_i16_public_shl_u16_private() {
         type I = i16;
         type M = u16;
-        run_test::<I, M>(Mode::Public, Mode::Private, 1, 0, 55, 57);
+        run_test::<I, M>(Mode::Public, Mode::Private, 0, 0, 55, 57);
     }
 
     #[test]
     fn test_i16_private_shl_u16_public() {
         type I = i16;
         type M = u16;
-        run_test::<I, M>(Mode::Private, Mode::Public, 1, 0, 55, 57);
+        run_test::<I, M>(Mode::Private, Mode::Public, 0, 0, 55, 57);
     }
 
     #[test]
     fn test_i16_private_shl_u16_private() {
         type I = i16;
         type M = u16;
-        run_test::<I, M>(Mode::Private, Mode::Private, 1, 0, 55, 57);
+        run_test::<I, M>(Mode::Private, Mode::Private, 0, 0, 55, 57);
     }
 
     // Tests for u32, where shift magnitude is u16
@@ -1069,56 +1069,56 @@ mod tests {
     fn test_u32_constant_shl_u16_public() {
         type I = u32;
         type M = u16;
-        run_test::<I, M>(Mode::Constant, Mode::Public, 1, 0, 104, 106);
+        run_test::<I, M>(Mode::Constant, Mode::Public, 0, 0, 104, 106);
     }
 
     #[test]
     fn test_u32_constant_shl_u16_private() {
         type I = u32;
         type M = u16;
-        run_test::<I, M>(Mode::Constant, Mode::Private, 1, 0, 104, 106);
+        run_test::<I, M>(Mode::Constant, Mode::Private, 0, 0, 104, 106);
     }
 
     #[test]
     fn test_u32_public_shl_u16_constant() {
         type I = u32;
         type M = u16;
-        run_test::<I, M>(Mode::Public, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_u32_private_shl_u16_constant() {
         type I = u32;
         type M = u16;
-        run_test::<I, M>(Mode::Private, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_u32_public_shl_u16_public() {
         type I = u32;
         type M = u16;
-        run_test::<I, M>(Mode::Public, Mode::Public, 1, 0, 105, 107);
+        run_test::<I, M>(Mode::Public, Mode::Public, 0, 0, 105, 107);
     }
 
     #[test]
     fn test_u32_public_shl_u16_private() {
         type I = u32;
         type M = u16;
-        run_test::<I, M>(Mode::Public, Mode::Private, 1, 0, 105, 107);
+        run_test::<I, M>(Mode::Public, Mode::Private, 0, 0, 105, 107);
     }
 
     #[test]
     fn test_u32_private_shl_u16_public() {
         type I = u32;
         type M = u16;
-        run_test::<I, M>(Mode::Private, Mode::Public, 1, 0, 105, 107);
+        run_test::<I, M>(Mode::Private, Mode::Public, 0, 0, 105, 107);
     }
 
     #[test]
     fn test_u32_private_shl_u16_private() {
         type I = u32;
         type M = u16;
-        run_test::<I, M>(Mode::Private, Mode::Private, 1, 0, 105, 107);
+        run_test::<I, M>(Mode::Private, Mode::Private, 0, 0, 105, 107);
     }
 
     // Tests for i32, where shift magnitude is u16
@@ -1134,56 +1134,56 @@ mod tests {
     fn test_i32_constant_shl_u16_public() {
         type I = i32;
         type M = u16;
-        run_test::<I, M>(Mode::Constant, Mode::Public, 1, 0, 104, 106);
+        run_test::<I, M>(Mode::Constant, Mode::Public, 0, 0, 104, 106);
     }
 
     #[test]
     fn test_i32_constant_shl_u16_private() {
         type I = i32;
         type M = u16;
-        run_test::<I, M>(Mode::Constant, Mode::Private, 1, 0, 104, 106);
+        run_test::<I, M>(Mode::Constant, Mode::Private, 0, 0, 104, 106);
     }
 
     #[test]
     fn test_i32_public_shl_u16_constant() {
         type I = i32;
         type M = u16;
-        run_test::<I, M>(Mode::Public, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_i32_private_shl_u16_constant() {
         type I = i32;
         type M = u16;
-        run_test::<I, M>(Mode::Private, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_i32_public_shl_u16_public() {
         type I = i32;
         type M = u16;
-        run_test::<I, M>(Mode::Public, Mode::Public, 1, 0, 105, 107);
+        run_test::<I, M>(Mode::Public, Mode::Public, 0, 0, 105, 107);
     }
 
     #[test]
     fn test_i32_public_shl_u16_private() {
         type I = i32;
         type M = u16;
-        run_test::<I, M>(Mode::Public, Mode::Private, 1, 0, 105, 107);
+        run_test::<I, M>(Mode::Public, Mode::Private, 0, 0, 105, 107);
     }
 
     #[test]
     fn test_i32_private_shl_u16_public() {
         type I = i32;
         type M = u16;
-        run_test::<I, M>(Mode::Private, Mode::Public, 1, 0, 105, 107);
+        run_test::<I, M>(Mode::Private, Mode::Public, 0, 0, 105, 107);
     }
 
     #[test]
     fn test_i32_private_shl_u16_private() {
         type I = i32;
         type M = u16;
-        run_test::<I, M>(Mode::Private, Mode::Private, 1, 0, 105, 107);
+        run_test::<I, M>(Mode::Private, Mode::Private, 0, 0, 105, 107);
     }
 
     // Tests for u64, where shift magnitude is u16
@@ -1199,56 +1199,56 @@ mod tests {
     fn test_u64_constant_shl_u16_public() {
         type I = u64;
         type M = u16;
-        run_test::<I, M>(Mode::Constant, Mode::Public, 1, 0, 202, 204);
+        run_test::<I, M>(Mode::Constant, Mode::Public, 0, 0, 202, 204);
     }
 
     #[test]
     fn test_u64_constant_shl_u16_private() {
         type I = u64;
         type M = u16;
-        run_test::<I, M>(Mode::Constant, Mode::Private, 1, 0, 202, 204);
+        run_test::<I, M>(Mode::Constant, Mode::Private, 0, 0, 202, 204);
     }
 
     #[test]
     fn test_u64_public_shl_u16_constant() {
         type I = u64;
         type M = u16;
-        run_test::<I, M>(Mode::Public, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_u64_private_shl_u16_constant() {
         type I = u64;
         type M = u16;
-        run_test::<I, M>(Mode::Private, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_u64_public_shl_u16_public() {
         type I = u64;
         type M = u16;
-        run_test::<I, M>(Mode::Public, Mode::Public, 1, 0, 203, 205);
+        run_test::<I, M>(Mode::Public, Mode::Public, 0, 0, 203, 205);
     }
 
     #[test]
     fn test_u64_public_shl_u16_private() {
         type I = u64;
         type M = u16;
-        run_test::<I, M>(Mode::Public, Mode::Private, 1, 0, 203, 205);
+        run_test::<I, M>(Mode::Public, Mode::Private, 0, 0, 203, 205);
     }
 
     #[test]
     fn test_u64_private_shl_u16_public() {
         type I = u64;
         type M = u16;
-        run_test::<I, M>(Mode::Private, Mode::Public, 1, 0, 203, 205);
+        run_test::<I, M>(Mode::Private, Mode::Public, 0, 0, 203, 205);
     }
 
     #[test]
     fn test_u64_private_shl_u16_private() {
         type I = u64;
         type M = u16;
-        run_test::<I, M>(Mode::Private, Mode::Private, 1, 0, 203, 205);
+        run_test::<I, M>(Mode::Private, Mode::Private, 0, 0, 203, 205);
     }
 
     // Tests for i64, where shift magnitude is u16
@@ -1264,56 +1264,56 @@ mod tests {
     fn test_i64_constant_shl_u16_public() {
         type I = i64;
         type M = u16;
-        run_test::<I, M>(Mode::Constant, Mode::Public, 1, 0, 202, 204);
+        run_test::<I, M>(Mode::Constant, Mode::Public, 0, 0, 202, 204);
     }
 
     #[test]
     fn test_i64_constant_shl_u16_private() {
         type I = i64;
         type M = u16;
-        run_test::<I, M>(Mode::Constant, Mode::Private, 1, 0, 202, 204);
+        run_test::<I, M>(Mode::Constant, Mode::Private, 0, 0, 202, 204);
     }
 
     #[test]
     fn test_i64_public_shl_u16_constant() {
         type I = i64;
         type M = u16;
-        run_test::<I, M>(Mode::Public, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_i64_private_shl_u16_constant() {
         type I = i64;
         type M = u16;
-        run_test::<I, M>(Mode::Private, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_i64_public_shl_u16_public() {
         type I = i64;
         type M = u16;
-        run_test::<I, M>(Mode::Public, Mode::Public, 1, 0, 203, 205);
+        run_test::<I, M>(Mode::Public, Mode::Public, 0, 0, 203, 205);
     }
 
     #[test]
     fn test_i64_public_shl_u16_private() {
         type I = i64;
         type M = u16;
-        run_test::<I, M>(Mode::Public, Mode::Private, 1, 0, 203, 205);
+        run_test::<I, M>(Mode::Public, Mode::Private, 0, 0, 203, 205);
     }
 
     #[test]
     fn test_i64_private_shl_u16_public() {
         type I = i64;
         type M = u16;
-        run_test::<I, M>(Mode::Private, Mode::Public, 1, 0, 203, 205);
+        run_test::<I, M>(Mode::Private, Mode::Public, 0, 0, 203, 205);
     }
 
     #[test]
     fn test_i64_private_shl_u16_private() {
         type I = i64;
         type M = u16;
-        run_test::<I, M>(Mode::Private, Mode::Private, 1, 0, 203, 205);
+        run_test::<I, M>(Mode::Private, Mode::Private, 0, 0, 203, 205);
     }
 
     // Tests for u128, where shift magnitude is u16
@@ -1329,56 +1329,56 @@ mod tests {
     fn test_u128_constant_shl_u16_public() {
         type I = u128;
         type M = u16;
-        run_test::<I, M>(Mode::Constant, Mode::Public, 3, 0, 333, 335);
+        run_test::<I, M>(Mode::Constant, Mode::Public, 0, 0, 333, 335);
     }
 
     #[test]
     fn test_u128_constant_shl_u16_private() {
         type I = u128;
         type M = u16;
-        run_test::<I, M>(Mode::Constant, Mode::Private, 3, 0, 333, 335);
+        run_test::<I, M>(Mode::Constant, Mode::Private, 0, 0, 333, 335);
     }
 
     #[test]
     fn test_u128_public_shl_u16_constant() {
         type I = u128;
         type M = u16;
-        run_test::<I, M>(Mode::Public, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_u128_private_shl_u16_constant() {
         type I = u128;
         type M = u16;
-        run_test::<I, M>(Mode::Private, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_u128_public_shl_u16_public() {
         type I = u128;
         type M = u16;
-        run_test::<I, M>(Mode::Public, Mode::Public, 3, 0, 336, 338);
+        run_test::<I, M>(Mode::Public, Mode::Public, 0, 0, 336, 338);
     }
 
     #[test]
     fn test_u128_public_shl_u16_private() {
         type I = u128;
         type M = u16;
-        run_test::<I, M>(Mode::Public, Mode::Private, 3, 0, 336, 338);
+        run_test::<I, M>(Mode::Public, Mode::Private, 0, 0, 336, 338);
     }
 
     #[test]
     fn test_u128_private_shl_u16_public() {
         type I = u128;
         type M = u16;
-        run_test::<I, M>(Mode::Private, Mode::Public, 3, 0, 336, 338);
+        run_test::<I, M>(Mode::Private, Mode::Public, 0, 0, 336, 338);
     }
 
     #[test]
     fn test_u128_private_shl_u16_private() {
         type I = u128;
         type M = u16;
-        run_test::<I, M>(Mode::Private, Mode::Private, 3, 0, 336, 338);
+        run_test::<I, M>(Mode::Private, Mode::Private, 0, 0, 336, 338);
     }
 
     // Tests for i128, where shift magnitude is u16
@@ -1394,56 +1394,56 @@ mod tests {
     fn test_i128_constant_shl_u16_public() {
         type I = i128;
         type M = u16;
-        run_test::<I, M>(Mode::Constant, Mode::Public, 3, 0, 333, 335);
+        run_test::<I, M>(Mode::Constant, Mode::Public, 0, 0, 333, 335);
     }
 
     #[test]
     fn test_i128_constant_shl_u16_private() {
         type I = i128;
         type M = u16;
-        run_test::<I, M>(Mode::Constant, Mode::Private, 3, 0, 333, 335);
+        run_test::<I, M>(Mode::Constant, Mode::Private, 0, 0, 333, 335);
     }
 
     #[test]
     fn test_i128_public_shl_u16_constant() {
         type I = i128;
         type M = u16;
-        run_test::<I, M>(Mode::Public, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_i128_private_shl_u16_constant() {
         type I = i128;
         type M = u16;
-        run_test::<I, M>(Mode::Private, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_i128_public_shl_u16_public() {
         type I = i128;
         type M = u16;
-        run_test::<I, M>(Mode::Public, Mode::Public, 3, 0, 336, 338);
+        run_test::<I, M>(Mode::Public, Mode::Public, 0, 0, 336, 338);
     }
 
     #[test]
     fn test_i128_public_shl_u16_private() {
         type I = i128;
         type M = u16;
-        run_test::<I, M>(Mode::Public, Mode::Private, 3, 0, 336, 338);
+        run_test::<I, M>(Mode::Public, Mode::Private, 0, 0, 336, 338);
     }
 
     #[test]
     fn test_i128_private_shl_u16_public() {
         type I = i128;
         type M = u16;
-        run_test::<I, M>(Mode::Private, Mode::Public, 3, 0, 336, 338);
+        run_test::<I, M>(Mode::Private, Mode::Public, 0, 0, 336, 338);
     }
 
     #[test]
     fn test_i128_private_shl_u16_private() {
         type I = i128;
         type M = u16;
-        run_test::<I, M>(Mode::Private, Mode::Private, 3, 0, 336, 338);
+        run_test::<I, M>(Mode::Private, Mode::Private, 0, 0, 336, 338);
     }
 
     // Tests for u8, where shift magnitude is u32
@@ -1459,56 +1459,56 @@ mod tests {
     fn test_u8_constant_shl_u32_public() {
         type I = u8;
         type M = u32;
-        run_test::<I, M>(Mode::Constant, Mode::Public, 1, 0, 28, 30);
+        run_test::<I, M>(Mode::Constant, Mode::Public, 0, 0, 28, 30);
     }
 
     #[test]
     fn test_u8_constant_shl_u32_private() {
         type I = u8;
         type M = u32;
-        run_test::<I, M>(Mode::Constant, Mode::Private, 1, 0, 28, 30);
+        run_test::<I, M>(Mode::Constant, Mode::Private, 0, 0, 28, 30);
     }
 
     #[test]
     fn test_u8_public_shl_u32_constant() {
         type I = u8;
         type M = u32;
-        run_test::<I, M>(Mode::Public, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_u8_private_shl_u32_constant() {
         type I = u8;
         type M = u32;
-        run_test::<I, M>(Mode::Private, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_u8_public_shl_u32_public() {
         type I = u8;
         type M = u32;
-        run_test::<I, M>(Mode::Public, Mode::Public, 1, 0, 29, 31);
+        run_test::<I, M>(Mode::Public, Mode::Public, 0, 0, 29, 31);
     }
 
     #[test]
     fn test_u8_public_shl_u32_private() {
         type I = u8;
         type M = u32;
-        run_test::<I, M>(Mode::Public, Mode::Private, 1, 0, 29, 31);
+        run_test::<I, M>(Mode::Public, Mode::Private, 0, 0, 29, 31);
     }
 
     #[test]
     fn test_u8_private_shl_u32_public() {
         type I = u8;
         type M = u32;
-        run_test::<I, M>(Mode::Private, Mode::Public, 1, 0, 29, 31);
+        run_test::<I, M>(Mode::Private, Mode::Public, 0, 0, 29, 31);
     }
 
     #[test]
     fn test_u8_private_shl_u32_private() {
         type I = u8;
         type M = u32;
-        run_test::<I, M>(Mode::Private, Mode::Private, 1, 0, 29, 31);
+        run_test::<I, M>(Mode::Private, Mode::Private, 0, 0, 29, 31);
     }
 
     // Tests for i8, where shift magnitude is u32
@@ -1524,56 +1524,56 @@ mod tests {
     fn test_i8_constant_shl_u32_public() {
         type I = i8;
         type M = u32;
-        run_test::<I, M>(Mode::Constant, Mode::Public, 1, 0, 28, 30);
+        run_test::<I, M>(Mode::Constant, Mode::Public, 0, 0, 28, 30);
     }
 
     #[test]
     fn test_i8_constant_shl_u32_private() {
         type I = i8;
         type M = u32;
-        run_test::<I, M>(Mode::Constant, Mode::Private, 1, 0, 28, 30);
+        run_test::<I, M>(Mode::Constant, Mode::Private, 0, 0, 28, 30);
     }
 
     #[test]
     fn test_i8_public_shl_u32_constant() {
         type I = i8;
         type M = u32;
-        run_test::<I, M>(Mode::Public, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_i8_private_shl_u32_constant() {
         type I = i8;
         type M = u32;
-        run_test::<I, M>(Mode::Private, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_i8_public_shl_u32_public() {
         type I = i8;
         type M = u32;
-        run_test::<I, M>(Mode::Public, Mode::Public, 1, 0, 29, 31);
+        run_test::<I, M>(Mode::Public, Mode::Public, 0, 0, 29, 31);
     }
 
     #[test]
     fn test_i8_public_shl_u32_private() {
         type I = i8;
         type M = u32;
-        run_test::<I, M>(Mode::Public, Mode::Private, 1, 0, 29, 31);
+        run_test::<I, M>(Mode::Public, Mode::Private, 0, 0, 29, 31);
     }
 
     #[test]
     fn test_i8_private_shl_u32_public() {
         type I = i8;
         type M = u32;
-        run_test::<I, M>(Mode::Private, Mode::Public, 1, 0, 29, 31);
+        run_test::<I, M>(Mode::Private, Mode::Public, 0, 0, 29, 31);
     }
 
     #[test]
     fn test_i8_private_shl_u32_private() {
         type I = i8;
         type M = u32;
-        run_test::<I, M>(Mode::Private, Mode::Private, 1, 0, 29, 31);
+        run_test::<I, M>(Mode::Private, Mode::Private, 0, 0, 29, 31);
     }
 
     // Tests for u16, where shift magnitude is u32
@@ -1589,56 +1589,56 @@ mod tests {
     fn test_u16_constant_shl_u32_public() {
         type I = u16;
         type M = u32;
-        run_test::<I, M>(Mode::Constant, Mode::Public, 1, 0, 54, 56);
+        run_test::<I, M>(Mode::Constant, Mode::Public, 0, 0, 54, 56);
     }
 
     #[test]
     fn test_u16_constant_shl_u32_private() {
         type I = u16;
         type M = u32;
-        run_test::<I, M>(Mode::Constant, Mode::Private, 1, 0, 54, 56);
+        run_test::<I, M>(Mode::Constant, Mode::Private, 0, 0, 54, 56);
     }
 
     #[test]
     fn test_u16_public_shl_u32_constant() {
         type I = u16;
         type M = u32;
-        run_test::<I, M>(Mode::Public, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_u16_private_shl_u32_constant() {
         type I = u16;
         type M = u32;
-        run_test::<I, M>(Mode::Private, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_u16_public_shl_u32_public() {
         type I = u16;
         type M = u32;
-        run_test::<I, M>(Mode::Public, Mode::Public, 1, 0, 55, 57);
+        run_test::<I, M>(Mode::Public, Mode::Public, 0, 0, 55, 57);
     }
 
     #[test]
     fn test_u16_public_shl_u32_private() {
         type I = u16;
         type M = u32;
-        run_test::<I, M>(Mode::Public, Mode::Private, 1, 0, 55, 57);
+        run_test::<I, M>(Mode::Public, Mode::Private, 0, 0, 55, 57);
     }
 
     #[test]
     fn test_u16_private_shl_u32_public() {
         type I = u16;
         type M = u32;
-        run_test::<I, M>(Mode::Private, Mode::Public, 1, 0, 55, 57);
+        run_test::<I, M>(Mode::Private, Mode::Public, 0, 0, 55, 57);
     }
 
     #[test]
     fn test_u16_private_shl_u32_private() {
         type I = u16;
         type M = u32;
-        run_test::<I, M>(Mode::Private, Mode::Private, 1, 0, 55, 57);
+        run_test::<I, M>(Mode::Private, Mode::Private, 0, 0, 55, 57);
     }
 
     // Tests for i16, where shift magnitude is u32
@@ -1654,56 +1654,56 @@ mod tests {
     fn test_i16_constant_shl_u32_public() {
         type I = i16;
         type M = u32;
-        run_test::<I, M>(Mode::Constant, Mode::Public, 1, 0, 54, 56);
+        run_test::<I, M>(Mode::Constant, Mode::Public, 0, 0, 54, 56);
     }
 
     #[test]
     fn test_i16_constant_shl_u32_private() {
         type I = i16;
         type M = u32;
-        run_test::<I, M>(Mode::Constant, Mode::Private, 1, 0, 54, 56);
+        run_test::<I, M>(Mode::Constant, Mode::Private, 0, 0, 54, 56);
     }
 
     #[test]
     fn test_i16_public_shl_u32_constant() {
         type I = i16;
         type M = u32;
-        run_test::<I, M>(Mode::Public, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_i16_private_shl_u32_constant() {
         type I = i16;
         type M = u32;
-        run_test::<I, M>(Mode::Private, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_i16_public_shl_u32_public() {
         type I = i16;
         type M = u32;
-        run_test::<I, M>(Mode::Public, Mode::Public, 1, 0, 55, 57);
+        run_test::<I, M>(Mode::Public, Mode::Public, 0, 0, 55, 57);
     }
 
     #[test]
     fn test_i16_public_shl_u32_private() {
         type I = i16;
         type M = u32;
-        run_test::<I, M>(Mode::Public, Mode::Private, 1, 0, 55, 57);
+        run_test::<I, M>(Mode::Public, Mode::Private, 0, 0, 55, 57);
     }
 
     #[test]
     fn test_i16_private_shl_u32_public() {
         type I = i16;
         type M = u32;
-        run_test::<I, M>(Mode::Private, Mode::Public, 1, 0, 55, 57);
+        run_test::<I, M>(Mode::Private, Mode::Public, 0, 0, 55, 57);
     }
 
     #[test]
     fn test_i16_private_shl_u32_private() {
         type I = i16;
         type M = u32;
-        run_test::<I, M>(Mode::Private, Mode::Private, 1, 0, 55, 57);
+        run_test::<I, M>(Mode::Private, Mode::Private, 0, 0, 55, 57);
     }
 
     // Tests for u32, where shift magnitude is u32
@@ -1719,56 +1719,56 @@ mod tests {
     fn test_u32_constant_shl_u32_public() {
         type I = u32;
         type M = u32;
-        run_test::<I, M>(Mode::Constant, Mode::Public, 1, 0, 104, 106);
+        run_test::<I, M>(Mode::Constant, Mode::Public, 0, 0, 104, 106);
     }
 
     #[test]
     fn test_u32_constant_shl_u32_private() {
         type I = u32;
         type M = u32;
-        run_test::<I, M>(Mode::Constant, Mode::Private, 1, 0, 104, 106);
+        run_test::<I, M>(Mode::Constant, Mode::Private, 0, 0, 104, 106);
     }
 
     #[test]
     fn test_u32_public_shl_u32_constant() {
         type I = u32;
         type M = u32;
-        run_test::<I, M>(Mode::Public, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_u32_private_shl_u32_constant() {
         type I = u32;
         type M = u32;
-        run_test::<I, M>(Mode::Private, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_u32_public_shl_u32_public() {
         type I = u32;
         type M = u32;
-        run_test::<I, M>(Mode::Public, Mode::Public, 1, 0, 105, 107);
+        run_test::<I, M>(Mode::Public, Mode::Public, 0, 0, 105, 107);
     }
 
     #[test]
     fn test_u32_public_shl_u32_private() {
         type I = u32;
         type M = u32;
-        run_test::<I, M>(Mode::Public, Mode::Private, 1, 0, 105, 107);
+        run_test::<I, M>(Mode::Public, Mode::Private, 0, 0, 105, 107);
     }
 
     #[test]
     fn test_u32_private_shl_u32_public() {
         type I = u32;
         type M = u32;
-        run_test::<I, M>(Mode::Private, Mode::Public, 1, 0, 105, 107);
+        run_test::<I, M>(Mode::Private, Mode::Public, 0, 0, 105, 107);
     }
 
     #[test]
     fn test_u32_private_shl_u32_private() {
         type I = u32;
         type M = u32;
-        run_test::<I, M>(Mode::Private, Mode::Private, 1, 0, 105, 107);
+        run_test::<I, M>(Mode::Private, Mode::Private, 0, 0, 105, 107);
     }
 
     // Tests for i32, where shift magnitude is u32
@@ -1784,56 +1784,56 @@ mod tests {
     fn test_i32_constant_shl_u32_public() {
         type I = i32;
         type M = u32;
-        run_test::<I, M>(Mode::Constant, Mode::Public, 1, 0, 104, 106);
+        run_test::<I, M>(Mode::Constant, Mode::Public, 0, 0, 104, 106);
     }
 
     #[test]
     fn test_i32_constant_shl_u32_private() {
         type I = i32;
         type M = u32;
-        run_test::<I, M>(Mode::Constant, Mode::Private, 1, 0, 104, 106);
+        run_test::<I, M>(Mode::Constant, Mode::Private, 0, 0, 104, 106);
     }
 
     #[test]
     fn test_i32_public_shl_u32_constant() {
         type I = i32;
         type M = u32;
-        run_test::<I, M>(Mode::Public, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_i32_private_shl_u32_constant() {
         type I = i32;
         type M = u32;
-        run_test::<I, M>(Mode::Private, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_i32_public_shl_u32_public() {
         type I = i32;
         type M = u32;
-        run_test::<I, M>(Mode::Public, Mode::Public, 1, 0, 105, 107);
+        run_test::<I, M>(Mode::Public, Mode::Public, 0, 0, 105, 107);
     }
 
     #[test]
     fn test_i32_public_shl_u32_private() {
         type I = i32;
         type M = u32;
-        run_test::<I, M>(Mode::Public, Mode::Private, 1, 0, 105, 107);
+        run_test::<I, M>(Mode::Public, Mode::Private, 0, 0, 105, 107);
     }
 
     #[test]
     fn test_i32_private_shl_u32_public() {
         type I = i32;
         type M = u32;
-        run_test::<I, M>(Mode::Private, Mode::Public, 1, 0, 105, 107);
+        run_test::<I, M>(Mode::Private, Mode::Public, 0, 0, 105, 107);
     }
 
     #[test]
     fn test_i32_private_shl_u32_private() {
         type I = i32;
         type M = u32;
-        run_test::<I, M>(Mode::Private, Mode::Private, 1, 0, 105, 107);
+        run_test::<I, M>(Mode::Private, Mode::Private, 0, 0, 105, 107);
     }
 
     // Tests for u64, where shift magnitude is u32
@@ -1849,56 +1849,56 @@ mod tests {
     fn test_u64_constant_shl_u32_public() {
         type I = u64;
         type M = u32;
-        run_test::<I, M>(Mode::Constant, Mode::Public, 1, 0, 202, 204);
+        run_test::<I, M>(Mode::Constant, Mode::Public, 0, 0, 202, 204);
     }
 
     #[test]
     fn test_u64_constant_shl_u32_private() {
         type I = u64;
         type M = u32;
-        run_test::<I, M>(Mode::Constant, Mode::Private, 1, 0, 202, 204);
+        run_test::<I, M>(Mode::Constant, Mode::Private, 0, 0, 202, 204);
     }
 
     #[test]
     fn test_u64_public_shl_u32_constant() {
         type I = u64;
         type M = u32;
-        run_test::<I, M>(Mode::Public, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_u64_private_shl_u32_constant() {
         type I = u64;
         type M = u32;
-        run_test::<I, M>(Mode::Private, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_u64_public_shl_u32_public() {
         type I = u64;
         type M = u32;
-        run_test::<I, M>(Mode::Public, Mode::Public, 1, 0, 203, 205);
+        run_test::<I, M>(Mode::Public, Mode::Public, 0, 0, 203, 205);
     }
 
     #[test]
     fn test_u64_public_shl_u32_private() {
         type I = u64;
         type M = u32;
-        run_test::<I, M>(Mode::Public, Mode::Private, 1, 0, 203, 205);
+        run_test::<I, M>(Mode::Public, Mode::Private, 0, 0, 203, 205);
     }
 
     #[test]
     fn test_u64_private_shl_u32_public() {
         type I = u64;
         type M = u32;
-        run_test::<I, M>(Mode::Private, Mode::Public, 1, 0, 203, 205);
+        run_test::<I, M>(Mode::Private, Mode::Public, 0, 0, 203, 205);
     }
 
     #[test]
     fn test_u64_private_shl_u32_private() {
         type I = u64;
         type M = u32;
-        run_test::<I, M>(Mode::Private, Mode::Private, 1, 0, 203, 205);
+        run_test::<I, M>(Mode::Private, Mode::Private, 0, 0, 203, 205);
     }
 
     // Tests for i64, where shift magnitude is u32
@@ -1914,56 +1914,56 @@ mod tests {
     fn test_i64_constant_shl_u32_public() {
         type I = i64;
         type M = u32;
-        run_test::<I, M>(Mode::Constant, Mode::Public, 1, 0, 202, 204);
+        run_test::<I, M>(Mode::Constant, Mode::Public, 0, 0, 202, 204);
     }
 
     #[test]
     fn test_i64_constant_shl_u32_private() {
         type I = i64;
         type M = u32;
-        run_test::<I, M>(Mode::Constant, Mode::Private, 1, 0, 202, 204);
+        run_test::<I, M>(Mode::Constant, Mode::Private, 0, 0, 202, 204);
     }
 
     #[test]
     fn test_i64_public_shl_u32_constant() {
         type I = i64;
         type M = u32;
-        run_test::<I, M>(Mode::Public, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_i64_private_shl_u32_constant() {
         type I = i64;
         type M = u32;
-        run_test::<I, M>(Mode::Private, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_i64_public_shl_u32_public() {
         type I = i64;
         type M = u32;
-        run_test::<I, M>(Mode::Public, Mode::Public, 1, 0, 203, 205);
+        run_test::<I, M>(Mode::Public, Mode::Public, 0, 0, 203, 205);
     }
 
     #[test]
     fn test_i64_public_shl_u32_private() {
         type I = i64;
         type M = u32;
-        run_test::<I, M>(Mode::Public, Mode::Private, 1, 0, 203, 205);
+        run_test::<I, M>(Mode::Public, Mode::Private, 0, 0, 203, 205);
     }
 
     #[test]
     fn test_i64_private_shl_u32_public() {
         type I = i64;
         type M = u32;
-        run_test::<I, M>(Mode::Private, Mode::Public, 1, 0, 203, 205);
+        run_test::<I, M>(Mode::Private, Mode::Public, 0, 0, 203, 205);
     }
 
     #[test]
     fn test_i64_private_shl_u32_private() {
         type I = i64;
         type M = u32;
-        run_test::<I, M>(Mode::Private, Mode::Private, 1, 0, 203, 205);
+        run_test::<I, M>(Mode::Private, Mode::Private, 0, 0, 203, 205);
     }
 
     // Tests for u128, where shift magnitude is u32
@@ -1979,56 +1979,56 @@ mod tests {
     fn test_u128_constant_shl_u32_public() {
         type I = u128;
         type M = u32;
-        run_test::<I, M>(Mode::Constant, Mode::Public, 3, 0, 333, 335);
+        run_test::<I, M>(Mode::Constant, Mode::Public, 0, 0, 333, 335);
     }
 
     #[test]
     fn test_u128_constant_shl_u32_private() {
         type I = u128;
         type M = u32;
-        run_test::<I, M>(Mode::Constant, Mode::Private, 3, 0, 333, 335);
+        run_test::<I, M>(Mode::Constant, Mode::Private, 0, 0, 333, 335);
     }
 
     #[test]
     fn test_u128_public_shl_u32_constant() {
         type I = u128;
         type M = u32;
-        run_test::<I, M>(Mode::Public, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_u128_private_shl_u32_constant() {
         type I = u128;
         type M = u32;
-        run_test::<I, M>(Mode::Private, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_u128_public_shl_u32_public() {
         type I = u128;
         type M = u32;
-        run_test::<I, M>(Mode::Public, Mode::Public, 3, 0, 336, 338);
+        run_test::<I, M>(Mode::Public, Mode::Public, 0, 0, 336, 338);
     }
 
     #[test]
     fn test_u128_public_shl_u32_private() {
         type I = u128;
         type M = u32;
-        run_test::<I, M>(Mode::Public, Mode::Private, 3, 0, 336, 338);
+        run_test::<I, M>(Mode::Public, Mode::Private, 0, 0, 336, 338);
     }
 
     #[test]
     fn test_u128_private_shl_u32_public() {
         type I = u128;
         type M = u32;
-        run_test::<I, M>(Mode::Private, Mode::Public, 3, 0, 336, 338);
+        run_test::<I, M>(Mode::Private, Mode::Public, 0, 0, 336, 338);
     }
 
     #[test]
     fn test_u128_private_shl_u32_private() {
         type I = u128;
         type M = u32;
-        run_test::<I, M>(Mode::Private, Mode::Private, 3, 0, 336, 338);
+        run_test::<I, M>(Mode::Private, Mode::Private, 0, 0, 336, 338);
     }
 
     // Tests for i128, where shift magnitude is u32
@@ -2044,56 +2044,56 @@ mod tests {
     fn test_i128_constant_shl_u32_public() {
         type I = i128;
         type M = u32;
-        run_test::<I, M>(Mode::Constant, Mode::Public, 3, 0, 333, 335);
+        run_test::<I, M>(Mode::Constant, Mode::Public, 0, 0, 333, 335);
     }
 
     #[test]
     fn test_i128_constant_shl_u32_private() {
         type I = i128;
         type M = u32;
-        run_test::<I, M>(Mode::Constant, Mode::Private, 3, 0, 333, 335);
+        run_test::<I, M>(Mode::Constant, Mode::Private, 0, 0, 333, 335);
     }
 
     #[test]
     fn test_i128_public_shl_u32_constant() {
         type I = i128;
         type M = u32;
-        run_test::<I, M>(Mode::Public, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_i128_private_shl_u32_constant() {
         type I = i128;
         type M = u32;
-        run_test::<I, M>(Mode::Private, Mode::Constant, 2, 0, 0, 0);
+        run_test::<I, M>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_i128_public_shl_u32_public() {
         type I = i128;
         type M = u32;
-        run_test::<I, M>(Mode::Public, Mode::Public, 3, 0, 336, 338);
+        run_test::<I, M>(Mode::Public, Mode::Public, 0, 0, 336, 338);
     }
 
     #[test]
     fn test_i128_public_shl_u32_private() {
         type I = i128;
         type M = u32;
-        run_test::<I, M>(Mode::Public, Mode::Private, 3, 0, 336, 338);
+        run_test::<I, M>(Mode::Public, Mode::Private, 0, 0, 336, 338);
     }
 
     #[test]
     fn test_i128_private_shl_u32_public() {
         type I = i128;
         type M = u32;
-        run_test::<I, M>(Mode::Private, Mode::Public, 3, 0, 336, 338);
+        run_test::<I, M>(Mode::Private, Mode::Public, 0, 0, 336, 338);
     }
 
     #[test]
     fn test_i128_private_shl_u32_private() {
         type I = i128;
         type M = u32;
-        run_test::<I, M>(Mode::Private, Mode::Private, 3, 0, 336, 338);
+        run_test::<I, M>(Mode::Private, Mode::Private, 0, 0, 336, 338);
     }
 
     // Exhaustive tests for u8, where shift magnitude is u8
@@ -2111,7 +2111,7 @@ mod tests {
     fn test_exhaustive_u8_constant_shl_u8_public() {
         type I = u8;
         type M = u8;
-        run_exhaustive_test::<I, M>(Mode::Constant, Mode::Public, 1, 0, 28, 30);
+        run_exhaustive_test::<I, M>(Mode::Constant, Mode::Public, 0, 0, 28, 30);
     }
 
     #[test]
@@ -2119,7 +2119,7 @@ mod tests {
     fn test_exhaustive_u8_constant_shl_u8_private() {
         type I = u8;
         type M = u8;
-        run_exhaustive_test::<I, M>(Mode::Constant, Mode::Private, 1, 0, 28, 30);
+        run_exhaustive_test::<I, M>(Mode::Constant, Mode::Private, 0, 0, 28, 30);
     }
 
     #[test]
@@ -2127,7 +2127,7 @@ mod tests {
     fn test_exhaustive_u8_public_shl_u8_constant() {
         type I = u8;
         type M = u8;
-        run_exhaustive_test::<I, M>(Mode::Public, Mode::Constant, 2, 0, 0, 0);
+        run_exhaustive_test::<I, M>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
@@ -2135,7 +2135,7 @@ mod tests {
     fn test_exhaustive_u8_private_shl_u8_constant() {
         type I = u8;
         type M = u8;
-        run_exhaustive_test::<I, M>(Mode::Private, Mode::Constant, 2, 0, 0, 0);
+        run_exhaustive_test::<I, M>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
@@ -2143,7 +2143,7 @@ mod tests {
     fn test_exhaustive_u8_public_shl_u8_public() {
         type I = u8;
         type M = u8;
-        run_exhaustive_test::<I, M>(Mode::Public, Mode::Public, 1, 0, 29, 31);
+        run_exhaustive_test::<I, M>(Mode::Public, Mode::Public, 0, 0, 29, 31);
     }
 
     #[test]
@@ -2151,7 +2151,7 @@ mod tests {
     fn test_exhaustive_u8_public_shl_u8_private() {
         type I = u8;
         type M = u8;
-        run_exhaustive_test::<I, M>(Mode::Public, Mode::Private, 1, 0, 29, 31);
+        run_exhaustive_test::<I, M>(Mode::Public, Mode::Private, 0, 0, 29, 31);
     }
 
     #[test]
@@ -2159,7 +2159,7 @@ mod tests {
     fn test_exhaustive_u8_private_shl_u8_public() {
         type I = u8;
         type M = u8;
-        run_exhaustive_test::<I, M>(Mode::Private, Mode::Public, 1, 0, 29, 31);
+        run_exhaustive_test::<I, M>(Mode::Private, Mode::Public, 0, 0, 29, 31);
     }
 
     #[test]
@@ -2167,7 +2167,7 @@ mod tests {
     fn test_exhaustive_u8_private_shl_u8_private() {
         type I = u8;
         type M = u8;
-        run_exhaustive_test::<I, M>(Mode::Private, Mode::Private, 1, 0, 29, 31);
+        run_exhaustive_test::<I, M>(Mode::Private, Mode::Private, 0, 0, 29, 31);
     }
 
     // Tests for i8, where shift magnitude is u8
@@ -2185,7 +2185,7 @@ mod tests {
     fn test_exhaustive_i8_constant_shl_u8_public() {
         type I = i8;
         type M = u8;
-        run_exhaustive_test::<I, M>(Mode::Constant, Mode::Public, 1, 0, 28, 30);
+        run_exhaustive_test::<I, M>(Mode::Constant, Mode::Public, 0, 0, 28, 30);
     }
 
     #[test]
@@ -2193,7 +2193,7 @@ mod tests {
     fn test_exhaustive_i8_constant_shl_u8_private() {
         type I = i8;
         type M = u8;
-        run_exhaustive_test::<I, M>(Mode::Constant, Mode::Private, 1, 0, 28, 30);
+        run_exhaustive_test::<I, M>(Mode::Constant, Mode::Private, 0, 0, 28, 30);
     }
 
     #[test]
@@ -2201,7 +2201,7 @@ mod tests {
     fn test_exhaustive_i8_public_shl_u8_constant() {
         type I = i8;
         type M = u8;
-        run_exhaustive_test::<I, M>(Mode::Public, Mode::Constant, 2, 0, 0, 0);
+        run_exhaustive_test::<I, M>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
@@ -2209,7 +2209,7 @@ mod tests {
     fn test_exhaustive_i8_private_shl_u8_constant() {
         type I = i8;
         type M = u8;
-        run_exhaustive_test::<I, M>(Mode::Private, Mode::Constant, 2, 0, 0, 0);
+        run_exhaustive_test::<I, M>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
@@ -2217,7 +2217,7 @@ mod tests {
     fn test_exhaustive_i8_public_shl_u8_public() {
         type I = i8;
         type M = u8;
-        run_exhaustive_test::<I, M>(Mode::Public, Mode::Public, 1, 0, 29, 31);
+        run_exhaustive_test::<I, M>(Mode::Public, Mode::Public, 0, 0, 29, 31);
     }
 
     #[test]
@@ -2225,7 +2225,7 @@ mod tests {
     fn test_exhaustive_i8_public_shl_u8_private() {
         type I = i8;
         type M = u8;
-        run_exhaustive_test::<I, M>(Mode::Public, Mode::Private, 1, 0, 29, 31);
+        run_exhaustive_test::<I, M>(Mode::Public, Mode::Private, 0, 0, 29, 31);
     }
 
     #[test]
@@ -2233,7 +2233,7 @@ mod tests {
     fn test_exhaustive_i8_private_shl_u8_public() {
         type I = i8;
         type M = u8;
-        run_exhaustive_test::<I, M>(Mode::Private, Mode::Public, 1, 0, 29, 31);
+        run_exhaustive_test::<I, M>(Mode::Private, Mode::Public, 0, 0, 29, 31);
     }
 
     #[test]
@@ -2241,6 +2241,6 @@ mod tests {
     fn test_exhaustive_i8_private_shl_u8_private() {
         type I = i8;
         type M = u8;
-        run_exhaustive_test::<I, M>(Mode::Private, Mode::Private, 1, 0, 29, 31);
+        run_exhaustive_test::<I, M>(Mode::Private, Mode::Private, 0, 0, 29, 31);
     }
 }

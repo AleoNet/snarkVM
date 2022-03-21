@@ -57,7 +57,7 @@ impl<E: Environment> FromBits for Scalar<E> {
             // Note: We are reconstituting the scalar field into a base field here in order to check
             // that the scalar was synthesized correctly. This is safe as the scalar field modulus
             // is less that the base field modulus, and thus will always fit in a base field element.
-            let modulus = Field::new(Mode::Constant, match E::ScalarField::modulus().to_bytes_le() {
+            let modulus = Field::constant(match E::ScalarField::modulus().to_bytes_le() {
                 Ok(modulus_bytes) => match E::BaseField::from_bytes_le(&modulus_bytes) {
                     Ok(modulus) => modulus,
                     Err(error) => E::halt(format!("Failed to load the scalar modulus as a constant: {error}")),

@@ -136,7 +136,7 @@ mod tests {
     #[test]
     fn test_u8_constant_equals_constant() {
         type I = u8;
-        run_test::<I>(Mode::Constant, Mode::Constant, 1, 0, 0, 0);
+        run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
@@ -192,7 +192,7 @@ mod tests {
     #[test]
     fn test_i8_constant_equals_constant() {
         type I = i8;
-        run_test::<I>(Mode::Constant, Mode::Constant, 1, 0, 0, 0);
+        run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
@@ -248,7 +248,7 @@ mod tests {
     #[test]
     fn test_u16_constant_equals_constant() {
         type I = u16;
-        run_test::<I>(Mode::Constant, Mode::Constant, 1, 0, 0, 0);
+        run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
@@ -304,7 +304,7 @@ mod tests {
     #[test]
     fn test_i16_constant_equals_constant() {
         type I = i16;
-        run_test::<I>(Mode::Constant, Mode::Constant, 1, 0, 0, 0);
+        run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
@@ -360,7 +360,7 @@ mod tests {
     #[test]
     fn test_u32_constant_equals_constant() {
         type I = u32;
-        run_test::<I>(Mode::Constant, Mode::Constant, 1, 0, 0, 0);
+        run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
@@ -416,7 +416,7 @@ mod tests {
     #[test]
     fn test_i32_constant_equals_constant() {
         type I = i32;
-        run_test::<I>(Mode::Constant, Mode::Constant, 1, 0, 0, 0);
+        run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
@@ -472,7 +472,7 @@ mod tests {
     #[test]
     fn test_u64_constant_equals_constant() {
         type I = u64;
-        run_test::<I>(Mode::Constant, Mode::Constant, 1, 0, 0, 0);
+        run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
@@ -528,7 +528,7 @@ mod tests {
     #[test]
     fn test_i64_constant_equals_constant() {
         type I = i64;
-        run_test::<I>(Mode::Constant, Mode::Constant, 1, 0, 0, 0);
+        run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
@@ -584,7 +584,7 @@ mod tests {
     #[test]
     fn test_u128_constant_equals_constant() {
         type I = u128;
-        run_test::<I>(Mode::Constant, Mode::Constant, 1, 0, 0, 0);
+        run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
@@ -640,7 +640,7 @@ mod tests {
     #[test]
     fn test_i128_constant_equals_constant() {
         type I = i128;
-        run_test::<I>(Mode::Constant, Mode::Constant, 1, 0, 0, 0);
+        run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
@@ -697,7 +697,7 @@ mod tests {
     #[ignore]
     fn test_exhaustive_u8_constant_equals_constant() {
         type I = u8;
-        run_exhaustive_test::<I>(Mode::Constant, Mode::Constant, 1, 0, 0, 0);
+        run_exhaustive_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
@@ -762,7 +762,7 @@ mod tests {
     #[ignore]
     fn test_exhaustive_i8_constant_equals_constant() {
         type I = i8;
-        run_exhaustive_test::<I>(Mode::Constant, Mode::Constant, 1, 0, 0, 0);
+        run_exhaustive_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
