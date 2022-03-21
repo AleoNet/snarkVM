@@ -122,9 +122,7 @@ impl<E: PairingEngine> FromBytes for PowersOfG<E> {
             powers_of_beta_times_gamma_g.insert(key as usize, power_of_gamma_g);
         }
 
-        let mut powers = PowersOfG::default();
-        powers.powers_of_beta_times_gamma_g = powers_of_beta_times_gamma_g;
-        Ok(powers)
+        Ok(PowersOfG { powers_of_beta_times_gamma_g, ..Default::default() })
     }
 }
 
