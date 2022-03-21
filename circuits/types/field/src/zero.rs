@@ -20,7 +20,7 @@ impl<E: Environment> Zero for Field<E> {
     type Boolean = Boolean<E>;
 
     fn zero() -> Self {
-        Field { linear_combination: E::zero(), bits_le: None }
+        E::zero().into()
     }
 
     fn is_zero(&self) -> Self::Boolean {

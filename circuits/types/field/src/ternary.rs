@@ -85,7 +85,7 @@ impl<E: Environment> Ternary for Field<E> {
             //       a - b = 0
             // => if a != b, as LHS != RHS, the witness is incorrect.
             //
-            E::enforce(|| (condition, (first - second), (&witness - &second)));
+            E::enforce(|| (condition, (first - second), (&witness - second)));
 
             witness
         }

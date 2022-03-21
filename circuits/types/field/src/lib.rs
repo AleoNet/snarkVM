@@ -49,7 +49,7 @@ pub struct Field<E: Environment> {
     linear_combination: LinearCombination<E::BaseField>,
     /// An optional secondary representation in little-endian bits is provided,
     /// so that calls to `ToBits` only incur constraint costs once.
-    bits_le: Option<Vec<Boolean<E>>>,
+    bits_le: OnceCell<Vec<Boolean<E>>>,
 }
 
 impl<E: Environment> FieldTrait<Boolean<E>> for Field<E> {}
@@ -69,7 +69,7 @@ impl<E: Environment> Inject for Field<E> {
     /// Initializes a new instance of a base field from a primitive base field value.
     ///
     fn new(mode: Mode, value: Self::Primitive) -> Self {
-        Self { linear_combination: E::new_variable(mode, value).into(), bits_le: None }
+        Self { linear_combination: E::new_variable(mode, value).into(), bits_le: Default::default() }
     }
 }
 
@@ -78,7 +78,7 @@ impl<E: Environment> Field<E> {
     /// Initializes a new instance of a base field from a boolean.
     ///
     pub fn from(boolean: &Boolean<E>) -> Self {
-        Self { linear_combination: (**boolean).clone(), bits_le: None }
+        (&**boolean).into()
     }
 }
 
@@ -129,6 +129,18 @@ impl<E: Environment> Debug for Field<E> {
 impl<E: Environment> Display for Field<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}{}.{}", self.eject_value(), Self::type_name(), self.eject_mode())
+    }
+}
+
+impl<E: Environment> From<LinearCombination<E::BaseField>> for Field<E> {
+    fn from(linear_combination: LinearCombination<E::BaseField>) -> Self {
+        Self { linear_combination, bits_le: Default::default() }
+    }
+}
+
+impl<E: Environment> From<&LinearCombination<E::BaseField>> for Field<E> {
+    fn from(linear_combination: &LinearCombination<E::BaseField>) -> Self {
+        From::from(linear_combination.clone())
     }
 }
 

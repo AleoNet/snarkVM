@@ -156,7 +156,7 @@ mod tests {
             let exponent_bits = second.to_bits_be();
             let index = exponent_bits
                 .iter()
-                .position(|b| *b == true)
+                .position(|b| *b)
                 .unwrap_or(<Circuit as Environment>::BaseField::size_in_bits() - 1);
 
             // Calculate the number of squares and multiplications as follows:
@@ -187,7 +187,7 @@ mod tests {
             let exponent_bits = second.to_bits_be();
             let index = exponent_bits
                 .iter()
-                .position(|b| *b == true)
+                .position(|b| *b)
                 .unwrap_or(<Circuit as Environment>::BaseField::size_in_bits() - 1);
 
             // Calculate the number of squares and multiplications as follows:
