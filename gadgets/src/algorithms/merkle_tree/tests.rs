@@ -43,11 +43,9 @@ use crate::{
     },
 };
 
-const PEDERSEN_NUM_WINDOWS: usize = 256;
-const PEDERSEN_WINDOW_SIZE: usize = 4;
+const PEDERSEN_INPUT_SIZE: usize = 1024;
 
-const BHP_NUM_WINDOWS: usize = 32;
-const BHP_WINDOW_SIZE: usize = 60;
+const BHP_INPUT_SIZE: usize = 1920;
 
 fn generate_merkle_tree<P: MerkleParameters, F: PrimeField, HG: CRHGadget<P::H, F>>(
     leaves: &[[u8; 30]],
@@ -216,8 +214,8 @@ fn update_merkle_tree<P: MerkleParameters, F: PrimeField, HG: CRHGadget<P::H, F>
 mod merkle_tree_pedersen_crh_on_projective {
     use super::*;
 
-    type H = PedersenCRH<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
-    type HG = PedersenCRHGadget<EdwardsProjective, Fr, EdwardsBls12Gadget, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
+    type H = PedersenCRH<EdwardsProjective, PEDERSEN_INPUT_SIZE>;
+    type HG = PedersenCRHGadget<EdwardsProjective, Fr, EdwardsBls12Gadget, PEDERSEN_INPUT_SIZE>;
 
     type EdwardsMerkleParameters = MaskedMerkleTreeParameters<H, 4>;
 
@@ -265,14 +263,8 @@ mod merkle_tree_pedersen_crh_on_projective {
 mod merkle_tree_compressed_pedersen_crh_on_projective {
     use super::*;
 
-    type H = PedersenCompressedCRH<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
-    type HG = PedersenCompressedCRHGadget<
-        EdwardsProjective,
-        Fr,
-        EdwardsBls12Gadget,
-        PEDERSEN_NUM_WINDOWS,
-        PEDERSEN_WINDOW_SIZE,
-    >;
+    type H = PedersenCompressedCRH<EdwardsProjective, PEDERSEN_INPUT_SIZE>;
+    type HG = PedersenCompressedCRHGadget<EdwardsProjective, Fr, EdwardsBls12Gadget, PEDERSEN_INPUT_SIZE>;
 
     type EdwardsMerkleParameters = MaskedMerkleTreeParameters<H, 4>;
 
@@ -347,8 +339,8 @@ mod merkle_tree_compressed_pedersen_crh_on_projective {
 mod merkle_tree_bowe_hopwood_pedersen_crh_on_projective {
     use super::*;
 
-    type H = BHPCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
-    type HG = BHPCRHGadget<EdwardsProjective, Fr, EdwardsBls12Gadget, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
+    type H = BHPCRH<EdwardsProjective, BHP_INPUT_SIZE>;
+    type HG = BHPCRHGadget<EdwardsProjective, Fr, EdwardsBls12Gadget, BHP_INPUT_SIZE>;
 
     type EdwardsMerkleParameters = MaskedMerkleTreeParameters<H, 4>;
 

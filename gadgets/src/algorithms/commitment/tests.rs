@@ -68,8 +68,8 @@ fn native_and_gadget_equivalence_test<Native: CommitmentScheme, Gadget: Commitme
 
 #[test]
 fn bhp_commitment_gadget_test() {
-    type TestCommitment = BHPCommitment<EdwardsProjective, 32, 48>;
-    type TestCommitmentGadget = BHPCommitmentGadget<EdwardsProjective, Fq, EdwardsBls12Gadget, 32, 48>;
+    type TestCommitment = BHPCommitment<EdwardsProjective, 1536>;
+    type TestCommitmentGadget = BHPCommitmentGadget<EdwardsProjective, Fq, EdwardsBls12Gadget, 1536>;
 
     let mut rng = test_rng();
 
@@ -82,8 +82,8 @@ fn bhp_commitment_gadget_test() {
 
 #[test]
 fn pedersen_commitment_gadget_test() {
-    type TestCommitment = PedersenCommitment<EdwardsProjective, 8, 32>;
-    type TestCommitmentGadget = PedersenCommitmentGadget<EdwardsProjective, Fq, EdwardsBls12Gadget, 8, 32>;
+    type TestCommitment = PedersenCommitment<EdwardsProjective, 256>;
+    type TestCommitmentGadget = PedersenCommitmentGadget<EdwardsProjective, Fq, EdwardsBls12Gadget, 256>;
 
     let mut rng = test_rng();
 

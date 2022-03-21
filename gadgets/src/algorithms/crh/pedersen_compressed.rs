@@ -39,39 +39,30 @@ pub struct PedersenCompressedCRHGadget<
     G: ProjectiveCurve,
     F: PrimeField,
     GG: CompressedGroupGadget<G, F>,
-    const NUM_WINDOWS: usize,
-    const WINDOW_SIZE: usize,
+    const INPUT_SIZE: usize,
 > {
-    crh_gadget: PedersenCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>,
+    crh_gadget: PedersenCRHGadget<G, F, GG, INPUT_SIZE>,
 }
 
 // TODO (howardwu): This should be only `alloc_constant`. This is unsafe convention.
-impl<
-    G: ProjectiveCurve,
-    F: PrimeField,
-    GG: CompressedGroupGadget<G, F>,
-    const NUM_WINDOWS: usize,
-    const WINDOW_SIZE: usize,
-> AllocGadget<PedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F>
-    for PedersenCompressedCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
+impl<G: ProjectiveCurve, F: PrimeField, GG: CompressedGroupGadget<G, F>, const INPUT_SIZE: usize>
+    AllocGadget<PedersenCompressedCRH<G, INPUT_SIZE>, F> for PedersenCompressedCRHGadget<G, F, GG, INPUT_SIZE>
 {
     fn alloc_constant<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<PedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        T: Borrow<PedersenCompressedCRH<G, INPUT_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let crh: PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE> = value_gen()?.borrow().parameters().clone();
-        Ok(Self {
-            crh_gadget: PedersenCRHGadget::<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>::alloc_constant(cs, || Ok(crh))?,
-        })
+        let crh: PedersenCRH<G, INPUT_SIZE> = value_gen()?.borrow().parameters().clone();
+        Ok(Self { crh_gadget: PedersenCRHGadget::<G, F, GG, INPUT_SIZE>::alloc_constant(cs, || Ok(crh))? })
     }
 
     fn alloc<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<PedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        T: Borrow<PedersenCompressedCRH<G, INPUT_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         _cs: CS,
@@ -82,7 +73,7 @@ impl<
 
     fn alloc_input<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<PedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        T: Borrow<PedersenCompressedCRH<G, INPUT_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         _cs: CS,
@@ -92,14 +83,8 @@ impl<
     }
 }
 
-impl<
-    G: ProjectiveCurve,
-    F: PrimeField,
-    GG: CompressedGroupGadget<G, F>,
-    const NUM_WINDOWS: usize,
-    const WINDOW_SIZE: usize,
-> CRHGadget<PedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F>
-    for PedersenCompressedCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
+impl<G: ProjectiveCurve, F: PrimeField, GG: CompressedGroupGadget<G, F>, const INPUT_SIZE: usize>
+    CRHGadget<PedersenCompressedCRH<G, INPUT_SIZE>, F> for PedersenCompressedCRHGadget<G, F, GG, INPUT_SIZE>
 {
     type OutputGadget = GG::BaseFieldGadget;
 
@@ -113,14 +98,8 @@ impl<
     }
 }
 
-impl<
-    G: ProjectiveCurve,
-    F: PrimeField,
-    GG: CompressedGroupGadget<G, F>,
-    const NUM_WINDOWS: usize,
-    const WINDOW_SIZE: usize,
-> MaskedCRHGadget<PedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F>
-    for PedersenCompressedCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
+impl<G: ProjectiveCurve, F: PrimeField, GG: CompressedGroupGadget<G, F>, const INPUT_SIZE: usize>
+    MaskedCRHGadget<PedersenCompressedCRH<G, INPUT_SIZE>, F> for PedersenCompressedCRHGadget<G, F, GG, INPUT_SIZE>
 {
     type MaskParametersGadget = Self;
 

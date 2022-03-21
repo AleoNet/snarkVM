@@ -24,7 +24,7 @@ use crate::{
         integers::Integer,
     },
 };
-use snarkvm_algorithms::crh::PedersenCRH;
+use snarkvm_algorithms::{crh::PedersenCRH, traits::CRH};
 use snarkvm_curves::ProjectiveCurve;
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
@@ -32,24 +32,18 @@ use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use std::{borrow::Borrow, marker::PhantomData};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct PedersenCRHGadget<
-    G: ProjectiveCurve,
-    F: PrimeField,
-    GG: CurveGadget<G, F>,
-    const NUM_WINDOWS: usize,
-    const WINDOW_SIZE: usize,
-> {
-    pub(crate) crh: PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>,
+pub struct PedersenCRHGadget<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const INPUT_SIZE: usize> {
+    pub(crate) crh: PedersenCRH<G, INPUT_SIZE>,
     _group: PhantomData<GG>,
     _engine: PhantomData<F>,
 }
 
-impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    AllocGadget<PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F> for PedersenCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
+impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const INPUT_SIZE: usize>
+    AllocGadget<PedersenCRH<G, INPUT_SIZE>, F> for PedersenCRHGadget<G, F, GG, INPUT_SIZE>
 {
     fn alloc_constant<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        T: Borrow<PedersenCRH<G, INPUT_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         _cs: CS,
@@ -60,7 +54,7 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS
 
     fn alloc<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        T: Borrow<PedersenCRH<G, INPUT_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         _cs: CS,
@@ -71,7 +65,7 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS
 
     fn alloc_input<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        T: Borrow<PedersenCRH<G, INPUT_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         _cs: CS,
@@ -81,8 +75,8 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS
     }
 }
 
-impl<F: PrimeField, G: ProjectiveCurve, GG: CurveGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    CRHGadget<PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F> for PedersenCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
+impl<F: PrimeField, G: ProjectiveCurve, GG: CurveGadget<G, F>, const INPUT_SIZE: usize>
+    CRHGadget<PedersenCRH<G, INPUT_SIZE>, F> for PedersenCRHGadget<G, F, GG, INPUT_SIZE>
 {
     type OutputGadget = GG;
 
@@ -91,31 +85,35 @@ impl<F: PrimeField, G: ProjectiveCurve, GG: CurveGadget<G, F>, const NUM_WINDOWS
         cs: CS,
         input: Vec<Boolean>,
     ) -> Result<Self::OutputGadget, SynthesisError> {
-        assert!(input.len() <= WINDOW_SIZE * NUM_WINDOWS);
+        let (window_size, num_windows) = PedersenCRH::<G, INPUT_SIZE>::window();
+        assert!(input.len() <= window_size * num_windows);
 
-        assert_eq!(self.crh.bases.len(), NUM_WINDOWS);
+        assert_eq!(self.crh.bases.len(), num_windows);
         // Pad the input if it is not the correct length.
-        let input_in_bits = pad_input::<NUM_WINDOWS, WINDOW_SIZE>(input);
-        GG::multi_scalar_multiplication(cs, &self.crh.bases, input_in_bits.chunks(WINDOW_SIZE))
+        let input_in_bits = pad_input::<G, INPUT_SIZE>(input);
+        GG::multi_scalar_multiplication(cs, &self.crh.bases, input_in_bits.chunks(window_size))
     }
 }
 
-fn pad_input<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(input: Vec<Boolean>) -> Vec<Boolean> {
+fn pad_input<G: ProjectiveCurve, const INPUT_SIZE: usize>(input: Vec<Boolean>) -> Vec<Boolean> {
+    let (window_size, num_windows) = PedersenCRH::<G, INPUT_SIZE>::window();
+
     let mut padded_input = input;
-    padded_input.resize(WINDOW_SIZE * NUM_WINDOWS, Boolean::Constant(false));
+    padded_input.resize(window_size * num_windows, Boolean::Constant(false));
     padded_input
 }
 
-fn pad_input_and_bitify<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(input: Vec<UInt8>) -> Vec<Boolean> {
+fn pad_input_and_bitify<G: ProjectiveCurve, const INPUT_SIZE: usize>(input: Vec<UInt8>) -> Vec<Boolean> {
+    let (window_size, num_windows) = PedersenCRH::<G, INPUT_SIZE>::window();
+
     let mut padded_input = input;
-    padded_input.resize(WINDOW_SIZE * NUM_WINDOWS / 8, UInt8::constant(0u8));
-    assert_eq!(padded_input.len() * 8, WINDOW_SIZE * NUM_WINDOWS);
+    padded_input.resize(window_size * num_windows / 8, UInt8::constant(0u8));
+    assert_eq!(padded_input.len() * 8, window_size * num_windows);
     padded_input.into_iter().flat_map(|byte| byte.to_bits_le()).collect()
 }
 
-impl<F: PrimeField, G: ProjectiveCurve, GG: CurveGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    MaskedCRHGadget<PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F>
-    for PedersenCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
+impl<F: PrimeField, G: ProjectiveCurve, GG: CurveGadget<G, F>, const INPUT_SIZE: usize>
+    MaskedCRHGadget<PedersenCRH<G, INPUT_SIZE>, F> for PedersenCRHGadget<G, F, GG, INPUT_SIZE>
 {
     type MaskParametersGadget = Self;
 
@@ -135,37 +133,37 @@ impl<F: PrimeField, G: ProjectiveCurve, GG: CurveGadget<G, F>, const NUM_WINDOWS
         mask_parameters: &Self::MaskParametersGadget,
         mask: Vec<UInt8>,
     ) -> Result<Self::OutputGadget, SynthesisError> {
+        let (window_size, num_windows) = PedersenCRH::<G, INPUT_SIZE>::window();
+
         // The mask will be extended to ensure constant hardness. This condition
         // ensures the input and the mask sizes match.
         if input.len() != mask.len() * 2 {
             return Err(SynthesisError::Unsatisfiable);
         }
-        let mask = <Self as MaskedCRHGadget<PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F>>::extend_mask(
-            cs.ns(|| "extend mask"),
-            &mask,
-        )?;
+        let mask =
+            <Self as MaskedCRHGadget<PedersenCRH<G, INPUT_SIZE>, F>>::extend_mask(cs.ns(|| "extend mask"), &mask)?;
         // H(p) = sum of g_i^{p_i} for all i.
         let mask_hash = self.check_evaluation_gadget(cs.ns(|| "evaluate mask"), mask.clone())?;
 
         // H_2(p) = sum of h_i^{1-2*p_i} for all i.
-        let mask_input_in_bits = pad_input_and_bitify::<NUM_WINDOWS, WINDOW_SIZE>(mask.clone());
+        let mask_input_in_bits = pad_input_and_bitify::<G, INPUT_SIZE>(mask.clone());
         let mask_symmetric_hash = GG::symmetric_multi_scalar_multiplication(
             cs.ns(|| "evaluate mask with mask bases"),
             &mask_parameters.crh.bases,
-            mask_input_in_bits.chunks(WINDOW_SIZE),
+            mask_input_in_bits.chunks(window_size),
         )?;
 
-        assert_eq!(self.crh.bases.len(), NUM_WINDOWS);
+        assert_eq!(self.crh.bases.len(), num_windows);
         // Pad the input if it is not the correct length.
-        let input_in_bits = pad_input_and_bitify::<NUM_WINDOWS, WINDOW_SIZE>(input);
-        let mask_in_bits = pad_input_and_bitify::<NUM_WINDOWS, WINDOW_SIZE>(mask);
+        let input_in_bits = pad_input_and_bitify::<G, INPUT_SIZE>(input);
+        let mask_in_bits = pad_input_and_bitify::<G, INPUT_SIZE>(mask);
 
         let masked_output = GG::masked_multi_scalar_multiplication(
             cs.ns(|| "multiscalar multiplication"),
             &self.crh.bases,
-            input_in_bits.chunks(WINDOW_SIZE),
+            input_in_bits.chunks(window_size),
             &mask_parameters.crh.bases,
-            mask_in_bits.chunks(WINDOW_SIZE),
+            mask_in_bits.chunks(window_size),
         )?;
         masked_output
             .add(cs.ns(|| "remove mask"), &mask_hash)?

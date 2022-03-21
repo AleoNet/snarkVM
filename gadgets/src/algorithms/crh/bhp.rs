@@ -18,7 +18,10 @@ use crate::{
     bits::Boolean,
     traits::{algorithms::CRHGadget, alloc::AllocGadget, curves::CompressedGroupGadget},
 };
-use snarkvm_algorithms::crh::{BHPCRH, BHP_CHUNK_SIZE};
+use snarkvm_algorithms::{
+    crh::{BHPCRH, BHP_CHUNK_SIZE},
+    traits::CRH,
+};
 use snarkvm_curves::ProjectiveCurve;
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
@@ -26,29 +29,18 @@ use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use std::{borrow::Borrow, marker::PhantomData};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct BHPCRHGadget<
-    G: ProjectiveCurve,
-    F: PrimeField,
-    GG: CompressedGroupGadget<G, F>,
-    const NUM_WINDOWS: usize,
-    const WINDOW_SIZE: usize,
-> {
-    pub(crate) crh: BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>,
+pub struct BHPCRHGadget<G: ProjectiveCurve, F: PrimeField, GG: CompressedGroupGadget<G, F>, const INPUT_SIZE: usize> {
+    pub(crate) crh: BHPCRH<G, INPUT_SIZE>,
     _field: PhantomData<F>,
     _group: PhantomData<GG>,
 }
 
-impl<
-    G: ProjectiveCurve,
-    F: PrimeField,
-    GG: CompressedGroupGadget<G, F>,
-    const NUM_WINDOWS: usize,
-    const WINDOW_SIZE: usize,
-> AllocGadget<BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F> for BHPCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
+impl<G: ProjectiveCurve, F: PrimeField, GG: CompressedGroupGadget<G, F>, const INPUT_SIZE: usize>
+    AllocGadget<BHPCRH<G, INPUT_SIZE>, F> for BHPCRHGadget<G, F, GG, INPUT_SIZE>
 {
     fn alloc_constant<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        T: Borrow<BHPCRH<G, INPUT_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         _cs: CS,
@@ -57,11 +49,7 @@ impl<
         Ok(Self { crh: value_gen()?.borrow().clone(), _field: PhantomData, _group: PhantomData })
     }
 
-    fn alloc<
-        Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>>,
-        CS: ConstraintSystem<F>,
-    >(
+    fn alloc<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<BHPCRH<G, INPUT_SIZE>>, CS: ConstraintSystem<F>>(
         _cs: CS,
         _value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
@@ -70,7 +58,7 @@ impl<
 
     fn alloc_input<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        T: Borrow<BHPCRH<G, INPUT_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         _cs: CS,
@@ -80,13 +68,8 @@ impl<
     }
 }
 
-impl<
-    F: PrimeField,
-    G: ProjectiveCurve,
-    GG: CompressedGroupGadget<G, F>,
-    const NUM_WINDOWS: usize,
-    const WINDOW_SIZE: usize,
-> CRHGadget<BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F> for BHPCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
+impl<F: PrimeField, G: ProjectiveCurve, GG: CompressedGroupGadget<G, F>, const INPUT_SIZE: usize>
+    CRHGadget<BHPCRH<G, INPUT_SIZE>, F> for BHPCRHGadget<G, F, GG, INPUT_SIZE>
 {
     type OutputGadget = GG::BaseFieldGadget;
 
@@ -100,20 +83,16 @@ impl<
     }
 }
 
-impl<
-    F: PrimeField,
-    G: ProjectiveCurve,
-    GG: CompressedGroupGadget<G, F>,
-    const NUM_WINDOWS: usize,
-    const WINDOW_SIZE: usize,
-> BHPCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
+impl<F: PrimeField, G: ProjectiveCurve, GG: CompressedGroupGadget<G, F>, const INPUT_SIZE: usize>
+    BHPCRHGadget<G, F, GG, INPUT_SIZE>
 {
     pub(crate) fn check_evaluation_gadget_on_bits_inner<CS: ConstraintSystem<F>>(
         &self,
         cs: CS,
         input: Vec<Boolean>,
     ) -> Result<GG, SynthesisError> {
-        assert!(input.len() <= WINDOW_SIZE * NUM_WINDOWS * BHP_CHUNK_SIZE);
+        let (num_windows, window_size) = BHPCRH::<G, INPUT_SIZE>::window();
+        assert!(input.len() <= num_windows * window_size * BHP_CHUNK_SIZE);
 
         // Pad the input bytes.
         let mut input_in_bits = input;
@@ -123,7 +102,7 @@ impl<
         }
         assert!(input_in_bits.len() % BHP_CHUNK_SIZE == 0);
 
-        let input_in_bits = input_in_bits.chunks(WINDOW_SIZE * BHP_CHUNK_SIZE).map(|x| x.chunks(BHP_CHUNK_SIZE));
+        let input_in_bits = input_in_bits.chunks(window_size * BHP_CHUNK_SIZE).map(|x| x.chunks(BHP_CHUNK_SIZE));
 
         GG::three_bit_signed_digit_scalar_multiplication(cs, &self.crh.bases, input_in_bits)
     }

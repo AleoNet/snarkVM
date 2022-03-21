@@ -81,25 +81,18 @@ pub struct BHPCommitmentGadget<
     G: ProjectiveCurve,
     F: PrimeField,
     GG: CompressedGroupGadget<G, F>,
-    const NUM_WINDOWS: usize,
-    const WINDOW_SIZE: usize,
+    const INPUT_SIZE: usize,
 > {
-    bhp_crh_gadget: BHPCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>,
+    bhp_crh_gadget: BHPCRHGadget<G, F, GG, INPUT_SIZE>,
     random_base: Vec<G>,
 }
 
-impl<
-    G: ProjectiveCurve,
-    F: PrimeField,
-    GG: CompressedGroupGadget<G, F>,
-    const NUM_WINDOWS: usize,
-    const WINDOW_SIZE: usize,
-> AllocGadget<BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE>, F>
-    for BHPCommitmentGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
+impl<G: ProjectiveCurve, F: PrimeField, GG: CompressedGroupGadget<G, F>, const INPUT_SIZE: usize>
+    AllocGadget<BHPCommitment<G, INPUT_SIZE>, F> for BHPCommitmentGadget<G, F, GG, INPUT_SIZE>
 {
     fn alloc_constant<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        T: Borrow<BHPCommitment<G, INPUT_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         cs: CS,
@@ -111,7 +104,7 @@ impl<
 
     fn alloc<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        T: Borrow<BHPCommitment<G, INPUT_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         _cs: CS,
@@ -122,7 +115,7 @@ impl<
 
     fn alloc_input<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        T: Borrow<BHPCommitment<G, INPUT_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         _cs: CS,
@@ -132,14 +125,8 @@ impl<
     }
 }
 
-impl<
-    F: PrimeField,
-    G: ProjectiveCurve,
-    GG: CompressedGroupGadget<G, F>,
-    const NUM_WINDOWS: usize,
-    const WINDOW_SIZE: usize,
-> CommitmentGadget<BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE>, F>
-    for BHPCommitmentGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
+impl<F: PrimeField, G: ProjectiveCurve, GG: CompressedGroupGadget<G, F>, const INPUT_SIZE: usize>
+    CommitmentGadget<BHPCommitment<G, INPUT_SIZE>, F> for BHPCommitmentGadget<G, F, GG, INPUT_SIZE>
 {
     type OutputGadget = GG::BaseFieldGadget;
     type RandomnessGadget = BHPRandomnessGadget<G>;
@@ -157,7 +144,8 @@ impl<
         input: &[UInt8],
         randomness: &Self::RandomnessGadget,
     ) -> Result<Self::OutputGadget, SynthesisError> {
-        assert!((input.len() * 8) <= (WINDOW_SIZE * NUM_WINDOWS * BHP_CHUNK_SIZE));
+        let (num_windows, window_size) = BHPCommitment::<G, INPUT_SIZE>::window();
+        assert!((input.len() * 8) <= (num_windows * window_size * BHP_CHUNK_SIZE));
 
         // Compute BHP CRH.
         let input = input.to_vec().to_bits_le(cs.ns(|| "to_bits"))?;

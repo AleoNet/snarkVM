@@ -21,7 +21,7 @@ use crate::{
     ToBitsLEGadget,
     ToBytesGadget,
 };
-use snarkvm_algorithms::commitment::PedersenCommitment;
+use snarkvm_algorithms::{commitment::PedersenCommitment, traits::CommitmentScheme};
 use snarkvm_curves::ProjectiveCurve;
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
@@ -82,26 +82,19 @@ impl<G: ProjectiveCurve, F: PrimeField> ToBitsLEGadget<F> for PedersenRandomness
 }
 
 #[derive(Clone)]
-pub struct PedersenCommitmentGadget<
-    G: ProjectiveCurve,
-    F: Field,
-    GG: CurveGadget<G, F>,
-    const NUM_WINDOWS: usize,
-    const WINDOW_SIZE: usize,
-> {
-    pub(crate) pedersen: PedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>,
+pub struct PedersenCommitmentGadget<G: ProjectiveCurve, F: Field, GG: CurveGadget<G, F>, const INPUT_SIZE: usize> {
+    pub(crate) pedersen: PedersenCommitment<G, INPUT_SIZE>,
     _group_gadget: PhantomData<GG>,
     _field: PhantomData<F>,
 }
 
 // TODO (howardwu): This should be only `alloc_constant`. This is unsafe convention.
-impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    AllocGadget<PedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>, F>
-    for PedersenCommitmentGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
+impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const INPUT_SIZE: usize>
+    AllocGadget<PedersenCommitment<G, INPUT_SIZE>, F> for PedersenCommitmentGadget<G, F, GG, INPUT_SIZE>
 {
     fn alloc_constant<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<PedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        T: Borrow<PedersenCommitment<G, INPUT_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         _cs: CS,
@@ -112,7 +105,7 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS
 
     fn alloc<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<PedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        T: Borrow<PedersenCommitment<G, INPUT_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         _cs: CS,
@@ -123,7 +116,7 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS
 
     fn alloc_input<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<PedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        T: Borrow<PedersenCommitment<G, INPUT_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         _cs: CS,
@@ -133,9 +126,8 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS
     }
 }
 
-impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    CommitmentGadget<PedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>, F>
-    for PedersenCommitmentGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
+impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const INPUT_SIZE: usize>
+    CommitmentGadget<PedersenCommitment<G, INPUT_SIZE>, F> for PedersenCommitmentGadget<G, F, GG, INPUT_SIZE>
 {
     type OutputGadget = GG;
     type RandomnessGadget = PedersenRandomnessGadget<G>;
@@ -153,21 +145,23 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS
         input: &[UInt8],
         randomness: &Self::RandomnessGadget,
     ) -> Result<Self::OutputGadget, SynthesisError> {
-        assert!((input.len() * 8) <= (WINDOW_SIZE * NUM_WINDOWS));
+        let (num_windows, window_size) = PedersenCommitment::<G, INPUT_SIZE>::window();
+
+        assert!((input.len() * 8) <= (num_windows * window_size));
 
         let mut padded_input = Cow::Borrowed(input);
-        // Pad if input length is less than `WINDOW_SIZE * NUM_WINDOWS`.
-        if (input.len() * 8) < WINDOW_SIZE * NUM_WINDOWS {
-            padded_input.to_mut().resize((WINDOW_SIZE * NUM_WINDOWS) / 8, UInt8::constant(0u8))
+        // Pad if input length is less than `num_windows * window_size`.
+        if (input.len() * 8) < num_windows * window_size {
+            padded_input.to_mut().resize((num_windows * window_size) / 8, UInt8::constant(0u8))
         }
-        assert_eq!(padded_input.len() * 8, WINDOW_SIZE * NUM_WINDOWS);
+        assert_eq!(padded_input.len() * 8, num_windows * window_size);
 
         let bases = &self.pedersen.crh.bases;
-        assert_eq!(bases.len(), NUM_WINDOWS);
+        assert_eq!(bases.len(), num_windows);
 
         // Allocate new variable for commitment output.
         let input_in_bits: Vec<_> = padded_input.iter().flat_map(|byte| byte.to_bits_le()).collect();
-        let input_in_bits = input_in_bits.chunks(WINDOW_SIZE);
+        let input_in_bits = input_in_bits.chunks(window_size);
         let mut result = GG::multi_scalar_multiplication(cs.ns(|| "msm"), bases, input_in_bits)?;
 
         // Compute h^r
