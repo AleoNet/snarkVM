@@ -36,7 +36,7 @@ use snarkvm_utilities::{
 
 use anyhow::Result;
 use core::ops::{Add, AddAssign, Mul};
-use parking_lot::Mutex;
+use parking_lot::RwLock;
 use rand_core::RngCore;
 use std::{collections::BTreeMap, io, sync::Arc};
 
@@ -48,7 +48,7 @@ pub struct UniversalParams<E: PairingEngine> {
     /// and group elements of the form `{ \beta^i \gamma G }`, where `i` ranges from 0 to `degree`.
     /// This struct provides an abstraction over the powers which are located on-disk
     /// to reduce memory usage.
-    pub powers: Arc<Mutex<PowersOfG<E>>>,
+    pub powers: Arc<RwLock<PowersOfG<E>>>,
     /// The generator of G2.
     pub h: E::G2Affine,
     /// \beta times the above generator of G2.
@@ -68,7 +68,7 @@ pub struct UniversalParams<E: PairingEngine> {
 
 impl<E: PairingEngine> CanonicalSerialize for UniversalParams<E> {
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), SerializationError> {
-        self.powers.lock().serialize(writer)?;
+        self.powers.read().serialize(writer)?;
         self.h.serialize(writer)?;
         self.beta_h.serialize(writer)?;
         self.supported_degree_bounds.serialize(writer)?;
@@ -78,7 +78,7 @@ impl<E: PairingEngine> CanonicalSerialize for UniversalParams<E> {
     }
 
     fn serialized_size(&self) -> usize {
-        self.powers.lock().serialized_size()
+        self.powers.read().serialized_size()
             + self.h.serialized_size()
             + self.beta_h.serialized_size()
             + self.supported_degree_bounds.serialized_size()
@@ -99,7 +99,7 @@ impl<E: PairingEngine> CanonicalDeserialize for UniversalParams<E> {
         let prepared_beta_h: <E::G2Affine as PairingCurve>::Prepared = CanonicalDeserialize::deserialize(reader)?;
 
         Ok(Self {
-            powers: Arc::new(Mutex::new(powers)),
+            powers: Arc::new(RwLock::new(powers)),
             h,
             beta_h,
             supported_degree_bounds,
@@ -112,16 +112,25 @@ impl<E: PairingEngine> CanonicalDeserialize for UniversalParams<E> {
 
 impl<E: PairingEngine> UniversalParams<E> {
     pub fn lagrange_basis(&self, domain: EvaluationDomain<E::Fr>) -> Vec<E::G1Affine> {
-        let basis = domain.ifft(
-            &self
-                .powers
-                .lock()
-                .powers_of_beta_g(0, domain.size())
-                .iter()
-                .map(|e| (*e).into_projective())
-                .collect::<Vec<_>>(),
-        );
+        let basis = domain
+            .ifft(&self.powers_of_beta_g(0, domain.size()).iter().map(|e| (*e).into_projective()).collect::<Vec<_>>());
         E::G1Projective::batch_normalization_into_affine(basis)
+    }
+
+    pub fn power_of_beta_g(&self, which_power: usize) -> E::G1Affine {
+        self.powers.write().power_of_beta_g(which_power)
+    }
+
+    pub fn powers_of_beta_g(&self, lower: usize, upper: usize) -> Vec<E::G1Affine> {
+        self.powers.write().powers_of_beta_g(lower, upper)
+    }
+
+    pub fn get_powers_times_gamma_g(&self) -> BTreeMap<usize, E::G1Affine> {
+        self.powers.read().get_powers_times_gamma_g().clone()
+    }
+
+    pub fn download_up_to(&self, degree: usize) -> Result<()> {
+        self.powers.write().download_up_to(degree)
     }
 }
 
@@ -161,7 +170,7 @@ impl<E: PairingEngine> FromBytes for UniversalParams<E> {
         let prepared_beta_h: <E::G2Affine as PairingCurve>::Prepared = FromBytes::read_le(&mut reader)?;
 
         Ok(Self {
-            powers: Arc::new(Mutex::new(powers)),
+            powers: Arc::new(RwLock::new(powers)),
             h,
             beta_h,
             supported_degree_bounds,
@@ -175,7 +184,7 @@ impl<E: PairingEngine> FromBytes for UniversalParams<E> {
 impl<E: PairingEngine> ToBytes for UniversalParams<E> {
     fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
         // Serialize powers.
-        self.powers.lock().write_le(&mut writer)?;
+        self.powers.read().write_le(&mut writer)?;
 
         // Serialize `h`.
         self.h.write_le(&mut writer)?;
@@ -208,7 +217,7 @@ impl<E: PairingEngine> ToBytes for UniversalParams<E> {
 
 impl<E: PairingEngine> PCUniversalParams for UniversalParams<E> {
     fn max_degree(&self) -> usize {
-        self.powers.lock().len() - 1
+        self.powers.read().len() - 1
     }
 
     fn supported_degree_bounds(&self) -> &[usize] {
@@ -216,7 +225,7 @@ impl<E: PairingEngine> PCUniversalParams for UniversalParams<E> {
     }
 
     fn increase_degree(&self, degree: usize) -> Result<()> {
-        self.powers.lock().download_up_to(degree)
+        self.download_up_to(degree)
     }
 }
 
