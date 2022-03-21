@@ -36,8 +36,9 @@ use core::{
     ops::Mul,
     sync::atomic::{AtomicBool, Ordering},
 };
+use parking_lot::Mutex;
 use rand_core::RngCore;
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::Arc};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -196,10 +197,9 @@ impl<E: PairingEngine> KZG10<E> {
         let prepared_h = h.prepare();
         let prepared_beta_h = beta_h.prepare();
 
-        let powers: PowersOfG<E> = powers_of_beta_g.into();
-        *powers.powers_of_beta_times_gamma_g.write() = powers_of_beta_times_gamma_g;
+        let powers: PowersOfG<E> = (powers_of_beta_g, powers_of_beta_times_gamma_g).into();
         let pp = UniversalParams {
-            powers_of_beta_g: powers,
+            powers: Arc::new(Mutex::new(powers)),
             h,
             beta_h,
             supported_degree_bounds,
@@ -587,17 +587,17 @@ mod tests {
             if supported_degree == 1 {
                 supported_degree += 1;
             }
-            let powers_of_beta_g = pp.powers_of_beta_g.slice(0, supported_degree + 1).to_vec();
+            let powers_of_beta_g = pp.powers.lock().powers_of_beta_g(0, supported_degree + 1).to_vec();
             let powers_of_beta_times_gamma_g =
-                (0..=supported_degree).map(|i| pp.powers_of_beta_g.powers_of_beta_times_gamma_g.read()[&i]).collect();
+                (0..=supported_degree).map(|i| pp.powers.lock().get_powers_times_gamma_g()[&i]).collect();
 
             let powers = Powers {
                 powers_of_beta_g: Cow::Owned(powers_of_beta_g),
                 powers_of_beta_times_gamma_g: Cow::Owned(powers_of_beta_times_gamma_g),
             };
             let vk = VerifierKey {
-                g: pp.powers_of_beta_g.index(0),
-                gamma_g: pp.powers_of_beta_g.powers_of_beta_times_gamma_g.read()[&0],
+                g: pp.powers.lock().power_of_beta_g(0),
+                gamma_g: pp.powers.lock().get_powers_times_gamma_g()[&0],
                 h: pp.h,
                 beta_h: pp.beta_h,
                 prepared_h: pp.prepared_h.clone(),

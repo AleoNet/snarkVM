@@ -29,23 +29,26 @@ use snarkvm_utilities::{
     io::{Read, Write},
     serialize::{CanonicalDeserialize, CanonicalSerialize},
     FromBytes,
+    SerializationError,
     ToBytes,
     ToMinimalBits,
 };
 
 use anyhow::Result;
 use core::ops::{Add, AddAssign, Mul};
+use parking_lot::Mutex;
 use rand_core::RngCore;
-use std::{collections::BTreeMap, io};
+use std::{collections::BTreeMap, io, sync::Arc};
 
 /// `UniversalParams` are the universal parameters for the KZG10 scheme.
 #[derive(Derivative)]
 #[derivative(Default(bound = ""), Clone(bound = ""), Debug(bound = ""))]
-#[derive(CanonicalSerialize, CanonicalDeserialize)]
 pub struct UniversalParams<E: PairingEngine> {
-    /// Group elements of the form `{ \beta^i G }`, where `i` ranges from 0 to `degree`.
-    /// These represent the monomial basis evaluated at `beta`.
-    pub powers_of_beta_g: PowersOfG<E>,
+    /// Group elements of the form `{ \beta^i G }`, where `i` ranges from 0 to `degree`,
+    /// and group elements of the form `{ \beta^i \gamma G }`, where `i` ranges from 0 to `degree`.
+    /// This struct provides an abstraction over the powers which are located on-disk
+    /// to reduce memory usage.
+    pub powers: Arc<Mutex<PowersOfG<E>>>,
     /// The generator of G2.
     pub h: E::G2Affine,
     /// \beta times the above generator of G2.
@@ -63,10 +66,60 @@ pub struct UniversalParams<E: PairingEngine> {
     pub prepared_beta_h: <E::G2Affine as PairingCurve>::Prepared,
 }
 
+impl<E: PairingEngine> CanonicalSerialize for UniversalParams<E> {
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), SerializationError> {
+        self.powers.lock().serialize(writer)?;
+        self.h.serialize(writer)?;
+        self.beta_h.serialize(writer)?;
+        self.supported_degree_bounds.serialize(writer)?;
+        self.inverse_neg_powers_of_beta_h.serialize(writer)?;
+        self.prepared_h.serialize(writer)?;
+        self.prepared_beta_h.serialize(writer)
+    }
+
+    fn serialized_size(&self) -> usize {
+        self.powers.lock().serialized_size()
+            + self.h.serialized_size()
+            + self.beta_h.serialized_size()
+            + self.supported_degree_bounds.serialized_size()
+            + self.inverse_neg_powers_of_beta_h.serialized_size()
+            + self.prepared_h.serialized_size()
+            + self.prepared_beta_h.serialized_size()
+    }
+}
+
+impl<E: PairingEngine> CanonicalDeserialize for UniversalParams<E> {
+    fn deserialize<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
+        let powers: PowersOfG<E> = CanonicalDeserialize::deserialize(reader)?;
+        let h: E::G2Affine = CanonicalDeserialize::deserialize(reader)?;
+        let beta_h: E::G2Affine = CanonicalDeserialize::deserialize(reader)?;
+        let supported_degree_bounds: Vec<usize> = CanonicalDeserialize::deserialize(reader)?;
+        let inverse_neg_powers_of_beta_h: BTreeMap<usize, E::G2Affine> = CanonicalDeserialize::deserialize(reader)?;
+        let prepared_h: <E::G2Affine as PairingCurve>::Prepared = CanonicalDeserialize::deserialize(reader)?;
+        let prepared_beta_h: <E::G2Affine as PairingCurve>::Prepared = CanonicalDeserialize::deserialize(reader)?;
+
+        Ok(Self {
+            powers: Arc::new(Mutex::new(powers)),
+            h,
+            beta_h,
+            supported_degree_bounds,
+            inverse_neg_powers_of_beta_h,
+            prepared_h,
+            prepared_beta_h,
+        })
+    }
+}
+
 impl<E: PairingEngine> UniversalParams<E> {
     pub fn lagrange_basis(&self, domain: EvaluationDomain<E::Fr>) -> Vec<E::G1Affine> {
         let basis = domain.ifft(
-            &self.powers_of_beta_g.slice(0, domain.size()).iter().map(|e| (*e).into_projective()).collect::<Vec<_>>(),
+            &self
+                .powers
+                .lock()
+                .powers_of_beta_g(0, domain.size())
+                .iter()
+                .map(|e| (*e).into_projective())
+                .collect::<Vec<_>>(),
         );
         E::G1Projective::batch_normalization_into_affine(basis)
     }
@@ -108,7 +161,7 @@ impl<E: PairingEngine> FromBytes for UniversalParams<E> {
         let prepared_beta_h: <E::G2Affine as PairingCurve>::Prepared = FromBytes::read_le(&mut reader)?;
 
         Ok(Self {
-            powers_of_beta_g: powers,
+            powers: Arc::new(Mutex::new(powers)),
             h,
             beta_h,
             supported_degree_bounds,
@@ -122,7 +175,7 @@ impl<E: PairingEngine> FromBytes for UniversalParams<E> {
 impl<E: PairingEngine> ToBytes for UniversalParams<E> {
     fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
         // Serialize powers.
-        self.powers_of_beta_g.write_le(&mut writer)?;
+        self.powers.lock().write_le(&mut writer)?;
 
         // Serialize `h`.
         self.h.write_le(&mut writer)?;
@@ -155,7 +208,7 @@ impl<E: PairingEngine> ToBytes for UniversalParams<E> {
 
 impl<E: PairingEngine> PCUniversalParams for UniversalParams<E> {
     fn max_degree(&self) -> usize {
-        self.powers_of_beta_g.len() - 1
+        self.powers.lock().len() - 1
     }
 
     fn supported_degree_bounds(&self) -> &[usize] {
@@ -163,7 +216,7 @@ impl<E: PairingEngine> PCUniversalParams for UniversalParams<E> {
     }
 
     fn increase_degree(&self, degree: usize) -> Result<()> {
-        self.powers_of_beta_g.download_up_to(degree)
+        self.powers.lock().download_up_to(degree)
     }
 }
 
