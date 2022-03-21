@@ -78,12 +78,31 @@ impl<E: Environment> Poseidon<E> {
         }
     }
 
+    #[inline]
     pub fn hash(&self, input: &[Field<E>]) -> Field<E> {
+        // Initialize a new sponge.
         let mut state = vec![Field::zero(); RATE + CAPACITY];
         let mut mode = DuplexSpongeMode::Absorbing { next_absorb_index: 0 };
 
+        // Absorb the input and squeeze the output.
         self.absorb(&mut state, &mut mode, input);
         self.squeeze(&mut state, &mut mode, 1)[0].clone()
+    }
+
+    #[inline]
+    fn absorb(&self, state: &mut [Field<E>], mode: &mut DuplexSpongeMode, input: &[Field<E>]) {
+        if !input.is_empty() {
+            self.absorb_internal(state, mode, input);
+        }
+    }
+
+    #[inline]
+    fn squeeze(&self, state: &mut [Field<E>], mode: &mut DuplexSpongeMode, num_outputs: usize) -> Vec<Field<E>> {
+        let mut output = vec![Field::zero(); num_outputs];
+        if num_outputs != 0 {
+            self.squeeze_internal(state, mode, &mut output);
+        }
+        output
     }
 }
 
@@ -142,17 +161,25 @@ impl<E: Environment> Poseidon<E> {
         }
     }
 
+    /// Absorbs the input elements into state.
     #[inline]
-    fn absorb_internal(
-        &self,
-        state: &mut [Field<E>],
-        mode: &mut DuplexSpongeMode,
-        mut absorb_index: usize,
-        input: &[Field<E>],
-    ) {
+    fn absorb_internal(&self, state: &mut [Field<E>], mode: &mut DuplexSpongeMode, input: &[Field<E>]) {
         if !input.is_empty() {
-            let mut remaining = input;
+            // Determine the absorb index.
+            let (mut absorb_index, should_permute) = match *mode {
+                DuplexSpongeMode::Absorbing { next_absorb_index } => match next_absorb_index == RATE {
+                    true => (0, true),
+                    false => (next_absorb_index, false),
+                },
+                DuplexSpongeMode::Squeezing { .. } => (0, true),
+            };
 
+            // Proceed to permute the state, if necessary.
+            if should_permute {
+                self.permute(state);
+            }
+
+            let mut remaining = input;
             loop {
                 // Compute the starting index.
                 let start = CAPACITY + absorb_index;
@@ -180,16 +207,24 @@ impl<E: Environment> Poseidon<E> {
         }
     }
 
+    /// Squeeze the state elements into the output.
     #[inline]
-    fn squeeze_internal(
-        &self,
-        state: &mut [Field<E>],
-        mode: &mut DuplexSpongeMode,
-        mut squeeze_index: usize,
-        output: &mut [Field<E>],
-    ) {
-        let mut remaining = output;
+    fn squeeze_internal(&self, state: &mut [Field<E>], mode: &mut DuplexSpongeMode, output: &mut [Field<E>]) {
+        // Determine the squeeze index.
+        let (mut squeeze_index, should_permute) = match *mode {
+            DuplexSpongeMode::Absorbing { .. } => (0, true),
+            DuplexSpongeMode::Squeezing { next_squeeze_index } => match next_squeeze_index == RATE {
+                true => (0, true),
+                false => (next_squeeze_index, false),
+            },
+        };
 
+        // Proceed to permute the state, if necessary.
+        if should_permute {
+            self.permute(state);
+        }
+
+        let mut remaining = output;
         loop {
             // Compute the starting index.
             let start = CAPACITY + squeeze_index;
@@ -215,48 +250,6 @@ impl<E: Environment> Poseidon<E> {
             remaining = &mut remaining[num_squeezed..];
             squeeze_index = 0;
         }
-    }
-
-    #[inline]
-    fn absorb(&self, state: &mut [Field<E>], mode: &mut DuplexSpongeMode, input: &[Field<E>]) {
-        if !input.is_empty() {
-            match mode {
-                DuplexSpongeMode::Absorbing { next_absorb_index } => {
-                    let mut absorb_index = *next_absorb_index;
-                    if absorb_index == RATE {
-                        self.permute(state);
-                        absorb_index = 0;
-                    }
-                    self.absorb_internal(state, mode, absorb_index, input);
-                }
-                DuplexSpongeMode::Squeezing { next_squeeze_index: _ } => {
-                    self.permute(state);
-                    self.absorb_internal(state, mode, 0, input);
-                }
-            }
-        }
-    }
-
-    #[inline]
-    fn squeeze(&self, state: &mut [Field<E>], mode: &mut DuplexSpongeMode, num_outputs: usize) -> Vec<Field<E>> {
-        let mut output = vec![Field::zero(); num_outputs];
-        if num_outputs != 0 {
-            match mode {
-                DuplexSpongeMode::Absorbing { next_absorb_index: _ } => {
-                    self.permute(state);
-                    self.squeeze_internal(state, mode, 0, &mut output);
-                }
-                DuplexSpongeMode::Squeezing { next_squeeze_index } => {
-                    let mut squeeze_index = *next_squeeze_index;
-                    if squeeze_index == RATE {
-                        self.permute(state);
-                        squeeze_index = 0;
-                    }
-                    self.squeeze_internal(state, mode, squeeze_index, &mut output);
-                }
-            }
-        }
-        output
     }
 }
 
