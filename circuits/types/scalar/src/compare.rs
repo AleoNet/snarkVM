@@ -93,37 +93,37 @@ mod tests {
 
     #[test]
     fn test_constant_is_less_than_constant() {
-        check_is_less_than(Mode::Constant, Mode::Constant, 2, 0, 0, 0);
+        check_is_less_than(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
     }
 
     // TODO (howardwu): These variate in num_constraints.
     // #[test]
     // fn test_constant_is_less_than_public() {
-    //     check_is_less_than(Mode::Constant, Mode::Public, 2, 473, 0, 473);
+    //     check_is_less_than(Mode::Constant, Mode::Public, 0, 473, 0, 473);
     // }
     //
     // #[test]
     // fn test_constant_is_less_than_private() {
-    //     check_is_less_than(Mode::Constant, Mode::Private, 2, 0, 503, 503);
+    //     check_is_less_than(Mode::Constant, Mode::Private, 0, 0, 503, 503);
     // }
 
     #[test]
     fn test_public_is_less_than_public() {
-        check_is_less_than(Mode::Public, Mode::Public, 2, 0, 1250, 1250);
+        check_is_less_than(Mode::Public, Mode::Public, 0, 0, 1250, 1250);
     }
 
     #[test]
     fn test_public_is_less_than_private() {
-        check_is_less_than(Mode::Public, Mode::Private, 2, 0, 1250, 1250);
+        check_is_less_than(Mode::Public, Mode::Private, 0, 0, 1250, 1250);
     }
 
     #[test]
     fn test_private_is_less_than_public() {
-        check_is_less_than(Mode::Private, Mode::Public, 2, 0, 1250, 1250);
+        check_is_less_than(Mode::Private, Mode::Public, 0, 0, 1250, 1250);
     }
 
     #[test]
     fn test_private_is_less_than_private() {
-        check_is_less_than(Mode::Private, Mode::Private, 2, 0, 1250, 1250);
+        check_is_less_than(Mode::Private, Mode::Private, 0, 0, 1250, 1250);
     }
 }

@@ -135,31 +135,31 @@ mod tests {
 
     #[test]
     fn test_from_bits_le_constant() {
-        check_from_bits_le(Mode::Constant, 509, 0, 0, 0);
+        check_from_bits_le(Mode::Constant, 507, 0, 0, 0);
     }
 
     #[test]
     fn test_from_bits_le_public() {
-        check_from_bits_le(Mode::Public, 256, 0, 769, 771);
+        check_from_bits_le(Mode::Public, 254, 0, 769, 771);
     }
 
     #[test]
     fn test_from_bits_le_private() {
-        check_from_bits_le(Mode::Private, 256, 0, 769, 771);
+        check_from_bits_le(Mode::Private, 254, 0, 769, 771);
     }
 
     #[test]
     fn test_from_bits_be_constant() {
-        check_from_bits_be(Mode::Constant, 509, 0, 0, 0);
+        check_from_bits_be(Mode::Constant, 507, 0, 0, 0);
     }
 
     #[test]
     fn test_from_bits_be_public() {
-        check_from_bits_be(Mode::Public, 256, 0, 769, 771);
+        check_from_bits_be(Mode::Public, 254, 0, 769, 771);
     }
 
     #[test]
     fn test_from_bits_be_private() {
-        check_from_bits_be(Mode::Private, 256, 0, 769, 771);
+        check_from_bits_be(Mode::Private, 254, 0, 769, 771);
     }
 }
