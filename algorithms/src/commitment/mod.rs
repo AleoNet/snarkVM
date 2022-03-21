@@ -19,6 +19,3 @@ pub use bhp::*;
 
 pub mod pedersen;
 pub use pedersen::*;
-
-#[cfg(test)]
-mod tests;

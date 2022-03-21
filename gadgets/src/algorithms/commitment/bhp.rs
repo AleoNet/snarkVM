@@ -27,7 +27,7 @@ use crate::{
     ToBitsLEGadget,
     ToBytesGadget,
 };
-use snarkvm_algorithms::{commitment::BHPCommitment, CommitmentScheme};
+use snarkvm_algorithms::{commitment::BHPCommitment, crh::BHP_CHUNK_SIZE, CommitmentScheme};
 use snarkvm_curves::ProjectiveCurve;
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
@@ -105,11 +105,8 @@ impl<
         cs: CS,
         value_gen: Fn,
     ) -> Result<Self, SynthesisError> {
-        let bhp: BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE> = value_gen()?.borrow().parameters().into();
-        Ok(Self {
-            bhp_crh_gadget: BHPCRHGadget::alloc_constant(cs, || Ok(bhp.bhp_crh.clone()))?,
-            random_base: bhp.random_base,
-        })
+        let (bhp_crh, random_base) = value_gen()?.borrow().parameters();
+        Ok(Self { bhp_crh_gadget: BHPCRHGadget::alloc_constant(cs, || Ok(bhp_crh))?, random_base })
     }
 
     fn alloc<
@@ -160,7 +157,7 @@ impl<
         input: &[UInt8],
         randomness: &Self::RandomnessGadget,
     ) -> Result<Self::OutputGadget, SynthesisError> {
-        assert!((input.len() * 8) <= (WINDOW_SIZE * NUM_WINDOWS));
+        assert!((input.len() * 8) <= (WINDOW_SIZE * NUM_WINDOWS * BHP_CHUNK_SIZE));
 
         // Compute BHP CRH.
         let input = input.to_vec().to_bits_le(cs.ns(|| "to_bits"))?;

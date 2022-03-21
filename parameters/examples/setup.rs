@@ -99,7 +99,7 @@ pub fn inner_setup<N: Network>() -> Result<()> {
         N::InnerSNARK::setup(&InnerCircuit::<N>::blank(), &mut SRS::CircuitSpecific(&mut thread_rng()))?;
 
     let inner_circuit_id =
-        hex::encode(N::inner_circuit_id_crh().hash_bits(&inner_verifying_key.to_minimal_bits())?.to_bytes_le()?);
+        hex::encode(N::inner_circuit_id_crh().hash(&inner_verifying_key.to_minimal_bits())?.to_bytes_le()?);
     let inner_proving_key = inner_proving_key.to_bytes_le()?;
     let inner_proving_checksum = checksum(&inner_proving_key);
     let inner_verifying_key = inner_verifying_key.to_bytes_le()?;

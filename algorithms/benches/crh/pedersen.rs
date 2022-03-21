@@ -17,37 +17,49 @@
 #[macro_use]
 extern crate criterion;
 
-use snarkvm_algorithms::{crh::pedersen::PedersenCRH, traits::CRH};
+use snarkvm_algorithms::{crh::PedersenCRH, traits::CRH};
 use snarkvm_curves::edwards_bls12::EdwardsProjective;
 
 use criterion::Criterion;
 
+const SETUP_MESSAGE: &str = "pedersen_crh_benchmark";
+
 const NUM_WINDOWS: usize = 8;
 const WINDOW_SIZE: usize = 32;
 
-fn pedersen_crh_setup(c: &mut Criterion) {
-    c.bench_function("Pedersen CRH setup", move |b| {
-        b.iter(|| <PedersenCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CRH>::setup("pedersen_crh_benchmark"))
+const BIG_NUM_WINDOWS: usize = 296;
+const BIG_WINDOW_SIZE: usize = 63;
+
+fn setup(c: &mut Criterion) {
+    c.bench_function("Pedersen setup", move |b| {
+        b.iter(|| <PedersenCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CRH>::setup(SETUP_MESSAGE))
+    });
+
+    c.bench_function("Pedersen setup (large)", move |b| {
+        b.iter(|| <PedersenCRH<EdwardsProjective, BIG_NUM_WINDOWS, BIG_WINDOW_SIZE> as CRH>::setup(SETUP_MESSAGE))
     });
 }
 
-fn pedersen_crh_hash(c: &mut Criterion) {
-    let crh = <PedersenCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CRH>::setup("pedersen_crh_benchmark");
-    let input = vec![127u8; 32];
+fn hash(c: &mut Criterion) {
+    c.bench_function("Pedersen hash", move |b| {
+        let crh = <PedersenCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CRH>::setup(SETUP_MESSAGE);
+        let input = (0..(NUM_WINDOWS * WINDOW_SIZE)).map(|_| rand::random::<bool>()).collect::<Vec<bool>>();
 
-    c.bench_function("Pedersen CRH hash", move |b| b.iter(|| crh.hash(&input).unwrap()));
+        b.iter(|| crh.hash(&input).unwrap())
+    });
+
+    c.bench_function("Pedersen hash (large)", move |b| {
+        let crh = <PedersenCRH<EdwardsProjective, BIG_NUM_WINDOWS, BIG_WINDOW_SIZE> as CRH>::setup(SETUP_MESSAGE);
+        let input = (0..(BIG_NUM_WINDOWS * BIG_WINDOW_SIZE)).map(|_| rand::random::<bool>()).collect::<Vec<bool>>();
+
+        b.iter(|| crh.hash(&input).unwrap())
+    });
 }
 
 criterion_group! {
-    name = crh_setup;
-    config = Criterion::default().sample_size(50);
-    targets = pedersen_crh_setup
+    name = pedersen_crh;
+    config = Criterion::default().sample_size(10);
+    targets = setup, hash
 }
 
-criterion_group! {
-    name = crh_hash;
-    config = Criterion::default().sample_size(50);
-    targets = pedersen_crh_hash
-}
-
-criterion_main!(crh_setup, crh_hash);
+criterion_main!(pedersen_crh);
