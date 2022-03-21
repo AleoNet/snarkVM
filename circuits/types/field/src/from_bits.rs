@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_utilities::{bytes_from_bits_le, FromBytes};
 
 impl<E: Environment> FromBits for Field<E> {
     type Boolean = Boolean<E>;
@@ -41,19 +40,58 @@ impl<E: Environment> FromBits for Field<E> {
             coefficient = coefficient.double();
         }
 
-        // TODO (howardwu): This check is insufficient. We need to check that we are within the field modulus.
-        // If the number of bits is equivalent to the field size in bits, construct a witness.
+        // Store the little-endian bits in the output.
+        if let Err(_) = output.bits_le.set(bits_le[..size_in_bits].to_vec()) {
+            E::halt("Detected corrupt internal state for the bits of a field element")
+        }
+
+        // If the number of bits is equivalent to the field size in bits (or greater),
+        // ensure the reconstructed field element lies within the field modulus.
         if num_bits > size_in_data_bits {
-            // Construct the field value from the given bits.
-            let witness_bytes = bytes_from_bits_le(&bits_le.iter().map(|bit| bit.eject_value()).collect::<Vec<_>>());
-            let witness = E::BaseField::from_bytes_le(&witness_bytes)
-                .unwrap_or_else(|error| E::halt(format!("Failed to construct base field from bytes: {error}")));
+            // If the number of bits exceeds the field size in bits,
+            // ensure the surplus bits are all `false`, by `OR`-ing the surplus bits together.
+            if num_bits > size_in_bits {
+                // Prepare the surplus bits.
+                let surplus_bits = &bits_le[size_in_bits..];
+                // Ensure the `surplus_bits` are all `false`.
+                E::assert(!surplus_bits.iter().fold(Boolean::new(Mode::Constant, false), |a, b| a | b));
+            }
 
-            // Initialize a new candidate field.
-            let candidate = Field::<E>::new(mode, witness);
+            // Retrieve the modulus & subtract by 1 as we'll check `output.bits_le` is less than or *equal* to this value.
+            // (For advanced users) BaseField::MODULUS - 1 is equivalent to -1 in the field.
+            let modulus = -E::BaseField::one();
 
-            // Ensure `output` == `candidate`
-            E::assert_eq(&output, candidate);
+            // Initialize an iterator for big-endian bits, skipping the surplus bits, which are checked above.
+            let mut bits_be = bits_le.iter().rev().skip(bits_le.len() - size_in_bits);
+
+            // Initialize trackers for the sequence of ones.
+            let mut previous = Boolean::new(Mode::Constant, true);
+            let mut sequence = vec![];
+
+            for (modulus_bit, current_bit) in modulus.to_bits_be().iter().zip_eq(&mut bits_be) {
+                match modulus_bit {
+                    // This bit *continues* a sequence of ones.
+                    true => sequence.push(current_bit),
+                    // This bit *breaks* a sequence of ones.
+                    false => {
+                        // Process the previous sequence and reset for the new sequence.
+                        if !sequence.is_empty() {
+                            // Check if all bits were true.
+                            previous = sequence.iter().fold(previous, |a, b| a & *b);
+                            sequence.clear();
+                        }
+
+                        // Ensure either `previous` or `current_bit` must be false: `previous` NAND `current_bit`
+                        //
+                        // If `previous` is true, `current_bit` must be false, or it is not in the field.
+                        // If `previous` is false, `current_bit` can be true or false.
+                        // Thus, either `previous` or `current_bit` must be false.
+                        E::assert(previous.nand(current_bit));
+                    }
+                }
+            }
+            // The sequence will always finish empty, because we subtracted 1 from the `modulus`.
+            debug_assert!(sequence.is_empty());
         }
 
         output
@@ -88,11 +126,16 @@ mod tests {
         for i in 0..ITERATIONS {
             // Sample a random element.
             let expected: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
-            let candidate = Field::<Circuit>::new(mode, expected).to_bits_le();
+            let given_bits = Field::<Circuit>::new(mode, expected).to_bits_le();
 
             Circuit::scope(&format!("{} {}", mode, i), || {
-                let candidate = Field::<Circuit>::from_bits_le(mode, &candidate);
+                let candidate = Field::<Circuit>::from_bits_le(mode, &given_bits);
                 assert_eq!(expected, candidate.eject_value());
+                assert_scope!(num_constants, num_public, num_private, num_constraints);
+
+                // Ensure a subsequent call to `to_bits_le` does not incur additional costs.
+                let candidate_bits = candidate.to_bits_le();
+                assert_eq!(given_bits.len(), candidate_bits.len());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
             });
         }
@@ -108,11 +151,16 @@ mod tests {
         for i in 0..ITERATIONS {
             // Sample a random element.
             let expected: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
-            let candidate = Field::<Circuit>::new(mode, expected).to_bits_be();
+            let given_bits = Field::<Circuit>::new(mode, expected).to_bits_be();
 
             Circuit::scope(&format!("{} {}", mode, i), || {
-                let candidate = Field::<Circuit>::from_bits_be(mode, &candidate);
+                let candidate = Field::<Circuit>::from_bits_be(mode, &given_bits);
                 assert_eq!(expected, candidate.eject_value());
+                assert_scope!(num_constants, num_public, num_private, num_constraints);
+
+                // Ensure a subsequent call to `to_bits_be` does not incur additional costs.
+                let candidate_bits = candidate.to_bits_be();
+                assert_eq!(given_bits.len(), candidate_bits.len());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
             });
         }
@@ -125,12 +173,12 @@ mod tests {
 
     #[test]
     fn test_from_bits_le_public() {
-        check_from_bits_le(Mode::Public, 0, 1, 0, 1);
+        check_from_bits_le(Mode::Public, 1, 0, 252, 418);
     }
 
     #[test]
     fn test_from_bits_le_private() {
-        check_from_bits_le(Mode::Private, 0, 0, 1, 1);
+        check_from_bits_le(Mode::Private, 1, 0, 252, 418);
     }
 
     #[test]
@@ -140,11 +188,11 @@ mod tests {
 
     #[test]
     fn test_from_bits_be_public() {
-        check_from_bits_be(Mode::Public, 0, 1, 0, 1);
+        check_from_bits_be(Mode::Public, 1, 0, 252, 418);
     }
 
     #[test]
     fn test_from_bits_be_private() {
-        check_from_bits_be(Mode::Private, 0, 0, 1, 1);
+        check_from_bits_be(Mode::Private, 1, 0, 252, 418);
     }
 }
