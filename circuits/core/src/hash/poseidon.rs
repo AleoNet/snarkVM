@@ -227,12 +227,12 @@ impl<E: Environment> Poseidon<E> {
                         self.permute(state);
                         absorb_index = 0;
                     }
-                    self.absorb_internal(state, mode, absorb_index, &input);
+                    self.absorb_internal(state, mode, absorb_index, input);
                 }
                 DuplexSpongeMode::Squeezing { next_squeeze_index: _ } => {
                     // Squeeze permute.
                     self.permute(state);
-                    self.absorb_internal(state, mode, 0, &input);
+                    self.absorb_internal(state, mode, 0, input);
                 }
             }
         }

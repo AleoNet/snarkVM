@@ -83,7 +83,7 @@ impl<E: Environment> FromBits for Field<E> {
         // Store the little-endian bits in the output.
         let mut bits_le = bits_le.to_vec();
         bits_le.resize(num_bits, Boolean::constant(false));
-        if let Err(_) = output.bits_le.set(bits_le) {
+        if output.bits_le.set(bits_le).is_err() {
             E::halt("Detected corrupt internal state for the bits of a field element")
         }
 
