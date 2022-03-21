@@ -296,7 +296,7 @@ mod tests {
         }
     }
 
-    fn check_hash_many<const NUM_INPUTS: usize>(
+    fn check_hash_many<const NUM_INPUTS: usize, const NUM_OUTPUTS: usize>(
         mode: Mode,
         num_constants: usize,
         num_public: usize,
@@ -312,7 +312,7 @@ mod tests {
             let input = (0..NUM_INPUTS).map(|_| <Circuit as Environment>::BaseField::rand(rng)).collect::<Vec<_>>();
             let preimage = input.iter().map(|v| Field::<Circuit>::new(mode, *v)).collect::<Vec<_>>();
             // Evaluate the hash with different expect output sizes.
-            for num_outputs in 1..10 {
+            for num_outputs in 1..=NUM_OUTPUTS {
                 // Compute the native hash.
                 let expected = native.evaluate_many(&input, num_outputs);
                 // Compute the circuit hash.
@@ -328,16 +328,51 @@ mod tests {
     }
 
     #[test]
-    fn test_poseidon_hash() {
+    fn test_hash_constant() {
+        check_hash::<0>(Mode::Constant, 0, 0, 0, 0);
+        check_hash::<1>(Mode::Constant, 0, 0, 0, 0);
+        check_hash::<2>(Mode::Constant, 0, 0, 0, 0);
+        check_hash::<3>(Mode::Constant, 0, 0, 0, 0);
+        check_hash::<4>(Mode::Constant, 0, 0, 0, 0);
         check_hash::<5>(Mode::Constant, 0, 0, 0, 0);
+        check_hash::<6>(Mode::Constant, 0, 0, 0, 0);
+        check_hash::<7>(Mode::Constant, 0, 0, 0, 0);
+        check_hash::<8>(Mode::Constant, 0, 0, 0, 0);
+        check_hash::<9>(Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_hash_public() {
+        check_hash::<0>(Mode::Public, 0, 0, 0, 0);
+        check_hash::<1>(Mode::Public, 0, 0, 335, 335);
+        check_hash::<2>(Mode::Public, 0, 0, 340, 340);
+        check_hash::<3>(Mode::Public, 0, 0, 345, 345);
+        check_hash::<4>(Mode::Public, 0, 0, 350, 350);
         check_hash::<5>(Mode::Public, 0, 0, 705, 705);
+    }
+
+    #[test]
+    fn test_hash_private() {
+        check_hash::<0>(Mode::Private, 0, 0, 0, 0);
+        check_hash::<1>(Mode::Private, 0, 0, 335, 335);
+        check_hash::<2>(Mode::Private, 0, 0, 340, 340);
+        check_hash::<3>(Mode::Private, 0, 0, 345, 345);
+        check_hash::<4>(Mode::Private, 0, 0, 350, 350);
         check_hash::<5>(Mode::Private, 0, 0, 705, 705);
     }
 
     #[test]
-    fn test_poseidon_hash_many() {
-        check_hash_many::<5>(Mode::Constant, 0, 0, 0, 0);
-        check_hash_many::<5>(Mode::Public, 0, 0, 705, 705);
-        check_hash_many::<5>(Mode::Private, 0, 0, 705, 705);
+    fn test_hash_many_constant() {
+        check_hash_many::<5, 4>(Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_hash_many_public() {
+        check_hash_many::<5, 4>(Mode::Public, 0, 0, 705, 705);
+    }
+
+    #[test]
+    fn test_hash_many_private() {
+        check_hash_many::<5, 4>(Mode::Private, 0, 0, 705, 705);
     }
 }
