@@ -60,7 +60,7 @@ mod tests {
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
-    const ITERATIONS: usize = 100_000;
+    const ITERATIONS: usize = 10_000;
 
     fn check_sub(
         name: &str,
