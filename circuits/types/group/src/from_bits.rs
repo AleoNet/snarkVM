@@ -101,7 +101,7 @@ mod tests {
 
     #[test]
     fn test_from_bits_le_public() {
-        check_from_bits_le(Mode::Public, 2, 1, 254, 421);
+        check_from_bits_le(Mode::Public, 2, 0, 254, 421);
     }
 
     #[test]
@@ -116,7 +116,7 @@ mod tests {
 
     #[test]
     fn test_from_bits_be_public() {
-        check_from_bits_be(Mode::Public, 2, 1, 254, 421);
+        check_from_bits_be(Mode::Public, 2, 0, 254, 421);
     }
 
     #[test]

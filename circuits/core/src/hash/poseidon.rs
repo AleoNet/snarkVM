@@ -261,31 +261,47 @@ impl<E: Environment> Poseidon<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_algorithms::{crypto_hash::PoseidonSponge, AlgebraicSponge};
-    use snarkvm_circuits_environment::Circuit;
+    use snarkvm_algorithms::crypto_hash::Poseidon as NativePoseidon;
+    use snarkvm_circuits_environment::{assert_scope, Circuit};
     use snarkvm_utilities::{test_rng, UniformRand};
 
-    use std::sync::Arc;
+    const ITERATIONS: usize = 1;
+
+    fn check_hash<const NUM_INPUTS: usize>(
+        mode: Mode,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) {
+        let mut rng = test_rng();
+
+        let native = NativePoseidon::<_, RATE, OPTIMIZED_FOR_WEIGHTS>::setup();
+        let circuit = Poseidon::new();
+
+        for i in 0..ITERATIONS {
+            // Compute the native hash.
+            let input =
+                (0..NUM_INPUTS).map(|_| <Circuit as Environment>::BaseField::rand(&mut rng)).collect::<Vec<_>>();
+            let expected = native.evaluate(&input);
+
+            // Prepare the circuit preimage.
+            let preimage = input.iter().map(|v| Field::<Circuit>::new(mode, *v)).collect::<Vec<_>>();
+
+            // Compute the circuit hash.
+            Circuit::scope(format!("Poseidon {mode} {i}"), || {
+                let candidate = circuit.hash(&preimage);
+                assert_eq!(expected, candidate.eject_value());
+                // assert!(Circuit::is_satisfied());
+                assert_scope!(num_constants, num_public, num_private, num_constraints);
+            });
+        }
+    }
 
     #[test]
     fn test_poseidon() {
-        let mut rng = test_rng();
-        let parameters =
-            <Circuit as Environment>::BaseField::default_poseidon_parameters::<RATE>(OPTIMIZED_FOR_WEIGHTS).unwrap();
-
-        let mode = Mode::Private;
-
-        let native_input: Vec<_> = (0..256).map(|_| <Circuit as Environment>::BaseField::rand(&mut rng)).collect();
-        let candidate_input: Vec<_> = native_input.iter().map(|v| Field::<Circuit>::new(mode, *v)).collect();
-
-        let expected = {
-            let mut native_poseidon = PoseidonSponge::new(&Arc::new(parameters));
-            native_poseidon.absorb(&native_input);
-            native_poseidon.squeeze(1)[0]
-        };
-
-        let candidate = Poseidon::new().hash(&candidate_input);
-        assert_eq!(expected, candidate.eject_value());
-        assert!(Circuit::is_satisfied());
+        check_hash::<5>(Mode::Constant, 253, 0, 0, 0);
+        check_hash::<5>(Mode::Public, 253, 0, 705, 705);
+        check_hash::<5>(Mode::Private, 253, 0, 705, 705);
     }
 }
