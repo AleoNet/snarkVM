@@ -88,22 +88,6 @@ impl<E: Environment> Poseidon<E> {
         self.absorb(&mut state, &mut mode, input);
         self.squeeze(&mut state, &mut mode, 1)[0].clone()
     }
-
-    #[inline]
-    fn absorb(&self, state: &mut [Field<E>], mode: &mut DuplexSpongeMode, input: &[Field<E>]) {
-        if !input.is_empty() {
-            self.absorb_internal(state, mode, input);
-        }
-    }
-
-    #[inline]
-    fn squeeze(&self, state: &mut [Field<E>], mode: &mut DuplexSpongeMode, num_outputs: usize) -> Vec<Field<E>> {
-        let mut output = vec![Field::zero(); num_outputs];
-        if num_outputs != 0 {
-            self.squeeze_internal(state, mode, &mut output);
-        }
-        output
-    }
 }
 
 impl<E: Environment> Poseidon<E> {
@@ -163,7 +147,7 @@ impl<E: Environment> Poseidon<E> {
 
     /// Absorbs the input elements into state.
     #[inline]
-    fn absorb_internal(&self, state: &mut [Field<E>], mode: &mut DuplexSpongeMode, input: &[Field<E>]) {
+    fn absorb(&self, state: &mut [Field<E>], mode: &mut DuplexSpongeMode, input: &[Field<E>]) {
         if !input.is_empty() {
             // Determine the absorb index.
             let (mut absorb_index, should_permute) = match *mode {
@@ -205,6 +189,16 @@ impl<E: Environment> Poseidon<E> {
                 absorb_index = 0;
             }
         }
+    }
+
+    /// Squeeze the specified number of state elements into the output.
+    #[inline]
+    fn squeeze(&self, state: &mut [Field<E>], mode: &mut DuplexSpongeMode, num_outputs: usize) -> Vec<Field<E>> {
+        let mut output = vec![Field::zero(); num_outputs];
+        if num_outputs != 0 {
+            self.squeeze_internal(state, mode, &mut output);
+        }
+        output
     }
 
     /// Squeeze the state elements into the output.
