@@ -24,33 +24,31 @@ use criterion::Criterion;
 
 const SETUP_MESSAGE: &str = "pedersen_crh_benchmark";
 
-const NUM_WINDOWS: usize = 8;
-const WINDOW_SIZE: usize = 32;
+const INPUT_SIZE: usize = 256;
 
-const BIG_NUM_WINDOWS: usize = 296;
-const BIG_WINDOW_SIZE: usize = 63;
+const BIG_INPUT_SIZE: usize = 18648;
 
 fn setup(c: &mut Criterion) {
     c.bench_function("Pedersen setup", move |b| {
-        b.iter(|| <PedersenCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CRH>::setup(SETUP_MESSAGE))
+        b.iter(|| <PedersenCRH<EdwardsProjective, INPUT_SIZE> as CRH>::setup(SETUP_MESSAGE))
     });
 
     c.bench_function("Pedersen setup (large)", move |b| {
-        b.iter(|| <PedersenCRH<EdwardsProjective, BIG_NUM_WINDOWS, BIG_WINDOW_SIZE> as CRH>::setup(SETUP_MESSAGE))
+        b.iter(|| <PedersenCRH<EdwardsProjective, BIG_INPUT_SIZE> as CRH>::setup(SETUP_MESSAGE))
     });
 }
 
 fn hash(c: &mut Criterion) {
     c.bench_function("Pedersen hash", move |b| {
-        let crh = <PedersenCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CRH>::setup(SETUP_MESSAGE);
-        let input = (0..(NUM_WINDOWS * WINDOW_SIZE)).map(|_| rand::random::<bool>()).collect::<Vec<bool>>();
+        let crh = <PedersenCRH<EdwardsProjective, INPUT_SIZE> as CRH>::setup(SETUP_MESSAGE);
+        let input = (0..INPUT_SIZE).map(|_| rand::random::<bool>()).collect::<Vec<bool>>();
 
         b.iter(|| crh.hash(&input).unwrap())
     });
 
     c.bench_function("Pedersen hash (large)", move |b| {
-        let crh = <PedersenCRH<EdwardsProjective, BIG_NUM_WINDOWS, BIG_WINDOW_SIZE> as CRH>::setup(SETUP_MESSAGE);
-        let input = (0..(BIG_NUM_WINDOWS * BIG_WINDOW_SIZE)).map(|_| rand::random::<bool>()).collect::<Vec<bool>>();
+        let crh = <PedersenCRH<EdwardsProjective, BIG_INPUT_SIZE> as CRH>::setup(SETUP_MESSAGE);
+        let input = (0..BIG_INPUT_SIZE).map(|_| rand::random::<bool>()).collect::<Vec<bool>>();
 
         b.iter(|| crh.hash(&input).unwrap())
     });

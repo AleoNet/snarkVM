@@ -23,21 +23,19 @@ use itertools::Itertools;
 use std::fmt::Debug;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BHPCommitment<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
-    bhp_crh: BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>,
+pub struct BHPCommitment<G: ProjectiveCurve, const INPUT_SIZE: usize> {
+    bhp_crh: BHPCRH<G, INPUT_SIZE>,
     random_base: Vec<G>,
 }
 
-impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CommitmentScheme
-    for BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
-{
+impl<G: ProjectiveCurve, const INPUT_SIZE: usize> CommitmentScheme for BHPCommitment<G, INPUT_SIZE> {
     type Output = <G::Affine as AffineCurve>::BaseField;
-    type Parameters = (BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>, Vec<G>);
+    type Parameters = (BHPCRH<G, INPUT_SIZE>, Vec<G>);
     type Randomness = G::ScalarField;
 
     fn setup(message: &str) -> Self {
         // First, compute the bases.
-        let bhp_crh = BHPCRH::<G, NUM_WINDOWS, WINDOW_SIZE>::setup(message);
+        let bhp_crh = BHPCRH::<G, INPUT_SIZE>::setup(message);
 
         // Next, compute the random base.
         let (generator, _, _) = hash_to_curve::<G::Affine>(&format!("{message} for random base"));
@@ -75,12 +73,12 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
     }
 
     fn window() -> (usize, usize) {
-        BHPCRH::<G, NUM_WINDOWS, WINDOW_SIZE>::window()
+        BHPCRH::<G, INPUT_SIZE>::window()
     }
 }
 
-impl<F: Field, G: ProjectiveCurve + ToConstraintField<F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    ToConstraintField<F> for BHPCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
+impl<F: Field, G: ProjectiveCurve + ToConstraintField<F>, const INPUT_SIZE: usize> ToConstraintField<F>
+    for BHPCommitment<G, INPUT_SIZE>
 {
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {

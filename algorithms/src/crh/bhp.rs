@@ -28,14 +28,12 @@ pub const BHP_CHUNK_SIZE: usize = 3;
 pub const BHP_LOOKUP_SIZE: usize = 2usize.pow(BHP_CHUNK_SIZE as u32);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BHPCRH<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
+pub struct BHPCRH<G: ProjectiveCurve, const INPUT_SIZE: usize> {
     pub bases: Arc<Vec<Vec<G>>>,
     base_lookup: Vec<Vec<[G; BHP_LOOKUP_SIZE]>>,
 }
 
-impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
-    for BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>
-{
+impl<G: ProjectiveCurve, const INPUT_SIZE: usize> CRH for BHPCRH<G, INPUT_SIZE> {
     type Output = <G::Affine as AffineCurve>::BaseField;
     type Parameters = Arc<Vec<Vec<G>>>;
 
@@ -69,7 +67,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
                 powers
             })
             .collect::<Vec<Vec<G>>>();
-        debug_assert_eq!(bases.len(), NUM_WINDOWS, "Incorrect number of windows ({:?}) for BHP", bases.len());
+        debug_assert_eq!(bases.len(), num_windows, "Incorrect number of windows ({:?}) for BHP", bases.len());
         bases.iter().for_each(|window| debug_assert_eq!(window.len(), window_size));
 
         // Compute the base lookup.
@@ -110,11 +108,40 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
     }
 
     fn window() -> (usize, usize) {
-        (NUM_WINDOWS, WINDOW_SIZE)
+        fn div_up(a: usize, b: usize) -> usize {
+            (a + (b - 1)) / b
+        }
+
+        let mut window_size: usize = 63;
+        let num_windows: usize = div_up(INPUT_SIZE, window_size);
+        let mut remainder = num_windows.saturating_mul(window_size) % INPUT_SIZE;
+
+        let mut final_num_windows: usize = num_windows;
+        let mut final_window_size: usize = window_size;
+
+        while window_size < INPUT_SIZE && window_size > 0 {
+            let new_window_size = window_size.saturating_mul(1);
+            let new_num_windows = div_up(INPUT_SIZE, new_window_size);
+            let new_remainder = new_num_windows.saturating_mul(new_window_size) % INPUT_SIZE;
+
+            if new_remainder < remainder
+                || (new_remainder == remainder
+                    && new_window_size % BHP_CHUNK_SIZE == 0
+                    && new_window_size > final_window_size)
+            {
+                final_num_windows = new_num_windows;
+                final_window_size = new_window_size;
+                remainder = new_remainder;
+            }
+
+            window_size = new_window_size;
+        }
+
+        (final_num_windows, final_window_size)
     }
 }
 
-impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE> {
+impl<G: ProjectiveCurve, const INPUT_SIZE: usize> BHPCRH<G, INPUT_SIZE> {
     pub(crate) fn hash_bits_inner(&self, input: &[bool]) -> Result<G, CRHError> {
         let (num_windows, window_size) = Self::window();
 
@@ -148,8 +175,8 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP
     }
 }
 
-impl<F: Field, G: ProjectiveCurve + ToConstraintField<F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    ToConstraintField<F> for BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>
+impl<F: Field, G: ProjectiveCurve + ToConstraintField<F>, const INPUT_SIZE: usize> ToConstraintField<F>
+    for BHPCRH<G, INPUT_SIZE>
 {
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
@@ -162,12 +189,11 @@ mod tests {
     use super::*;
     use snarkvm_curves::edwards_bls12::EdwardsProjective;
 
-    const NUM_WINDOWS: usize = 8;
-    const WINDOW_SIZE: usize = 32;
+    const INPUT_SIZE: usize = 256;
 
     #[test]
     fn test_bhp_sanity_check() {
-        let crh = <BHPCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CRH>::setup("test_bowe_pedersen");
+        let crh = <BHPCRH<EdwardsProjective, INPUT_SIZE> as CRH>::setup("test_bowe_pedersen");
         let input = vec![127u8; 32];
 
         let output = crh.hash_bytes(&input).unwrap();

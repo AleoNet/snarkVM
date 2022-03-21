@@ -22,14 +22,12 @@ use snarkvm_utilities::BitIteratorLE;
 use itertools::Itertools;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct PedersenCommitment<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
-    pub crh: PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>,
+pub struct PedersenCommitment<G: ProjectiveCurve, const INPUT_SIZE: usize> {
+    pub crh: PedersenCRH<G, INPUT_SIZE>,
     pub random_base: Vec<G>,
 }
 
-impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CommitmentScheme
-    for PedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
-{
+impl<G: ProjectiveCurve, const INPUT_SIZE: usize> CommitmentScheme for PedersenCommitment<G, INPUT_SIZE> {
     type Output = G::Affine;
     type Parameters = (Vec<Vec<G>>, Vec<G>);
     type Randomness = G::ScalarField;
@@ -72,12 +70,12 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
     }
 
     fn window() -> (usize, usize) {
-        (NUM_WINDOWS, WINDOW_SIZE)
+        PedersenCRH::<G, INPUT_SIZE>::window()
     }
 }
 
-impl<F: Field, G: ProjectiveCurve + ToConstraintField<F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    ToConstraintField<F> for PedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>
+impl<F: Field, G: ProjectiveCurve + ToConstraintField<F>, const INPUT_SIZE: usize> ToConstraintField<F>
+    for PedersenCommitment<G, INPUT_SIZE>
 {
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {

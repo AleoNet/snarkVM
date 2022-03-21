@@ -22,13 +22,11 @@ use itertools::Itertools;
 use std::{borrow::Cow, fmt::Debug};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct PedersenCRH<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
+pub struct PedersenCRH<G: ProjectiveCurve, const INPUT_SIZE: usize> {
     pub bases: Vec<Vec<G>>,
 }
 
-impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
-    for PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>
-{
+impl<G: ProjectiveCurve, const INPUT_SIZE: usize> CRH for PedersenCRH<G, INPUT_SIZE> {
     type Output = G::Affine;
     type Parameters = Vec<Vec<G>>;
 
@@ -82,12 +80,43 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
     }
 
     fn window() -> (usize, usize) {
-        (NUM_WINDOWS, WINDOW_SIZE)
+        fn div_up(a: usize, b: usize) -> usize {
+            (a + (b - 1)) / b
+        }
+
+        const MAXIMUM_ITERATIONS: usize = 64;
+        const NUM_WINDOWS_GROWTH_FACTOR: usize = 2;
+
+        let mut num_windows: usize = 2;
+        let window_size: usize = div_up(INPUT_SIZE, num_windows);
+        let mut remainder = num_windows.saturating_mul(window_size) % INPUT_SIZE;
+
+        let mut final_num_windows: usize = num_windows;
+        let mut final_window_size: usize = window_size;
+
+        let mut iteration = 0;
+
+        while remainder != 0 && num_windows < INPUT_SIZE && iteration < MAXIMUM_ITERATIONS {
+            let new_num_windows = num_windows.saturating_add(NUM_WINDOWS_GROWTH_FACTOR);
+            let new_window_size = div_up(INPUT_SIZE, new_num_windows);
+            let new_remainder = new_num_windows.saturating_mul(new_window_size) % INPUT_SIZE;
+
+            if new_remainder <= remainder {
+                final_num_windows = new_num_windows;
+                final_window_size = new_window_size;
+                remainder = new_remainder;
+            }
+
+            num_windows = new_num_windows;
+            iteration += 1;
+        }
+
+        (final_num_windows, final_window_size)
     }
 }
 
-impl<F: Field, G: ProjectiveCurve + ToConstraintField<F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    ToConstraintField<F> for PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>
+impl<F: Field, G: ProjectiveCurve + ToConstraintField<F>, const INPUT_SIZE: usize> ToConstraintField<F>
+    for PedersenCRH<G, INPUT_SIZE>
 {
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {

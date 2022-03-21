@@ -21,15 +21,13 @@ use snarkvm_fields::{ConstraintFieldError, Field, ToConstraintField};
 use std::fmt::Debug;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct PedersenCompressedCRH<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
-    crh: PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>,
+pub struct PedersenCompressedCRH<G: ProjectiveCurve, const INPUT_SIZE: usize> {
+    crh: PedersenCRH<G, INPUT_SIZE>,
 }
 
-impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
-    for PedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>
-{
+impl<G: ProjectiveCurve, const INPUT_SIZE: usize> CRH for PedersenCompressedCRH<G, INPUT_SIZE> {
     type Output = <G::Affine as AffineCurve>::BaseField;
-    type Parameters = PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>;
+    type Parameters = PedersenCRH<G, INPUT_SIZE>;
 
     fn setup(message: &str) -> Self {
         Self { crh: PedersenCRH::setup(message) }
@@ -45,12 +43,12 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
     }
 
     fn window() -> (usize, usize) {
-        (NUM_WINDOWS, WINDOW_SIZE)
+        PedersenCRH::<G, INPUT_SIZE>::window()
     }
 }
 
-impl<F: Field, G: ProjectiveCurve + ToConstraintField<F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    ToConstraintField<F> for PedersenCompressedCRH<G, NUM_WINDOWS, WINDOW_SIZE>
+impl<F: Field, G: ProjectiveCurve + ToConstraintField<F>, const INPUT_SIZE: usize> ToConstraintField<F>
+    for PedersenCompressedCRH<G, INPUT_SIZE>
 {
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {

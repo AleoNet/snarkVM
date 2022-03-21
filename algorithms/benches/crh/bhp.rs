@@ -24,33 +24,31 @@ use criterion::Criterion;
 
 const SETUP_MESSAGE: &str = "bhp_crh_benchmark";
 
-const NUM_WINDOWS: usize = 8;
-const WINDOW_SIZE: usize = 32;
+const INPUT_SIZE: usize = 256;
 
-const BIG_NUM_WINDOWS: usize = 296;
-const BIG_WINDOW_SIZE: usize = 63;
+const BIG_INPUT_SIZE: usize = 18648;
 
 fn setup(c: &mut Criterion) {
     c.bench_function("BHP setup", move |b| {
-        b.iter(|| <BHPCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CRH>::setup(SETUP_MESSAGE))
+        b.iter(|| <BHPCRH<EdwardsProjective, INPUT_SIZE> as CRH>::setup(SETUP_MESSAGE))
     });
 
     c.bench_function("BHP setup (large)", move |b| {
-        b.iter(|| <BHPCRH<EdwardsProjective, BIG_NUM_WINDOWS, BIG_WINDOW_SIZE> as CRH>::setup(SETUP_MESSAGE))
+        b.iter(|| <BHPCRH<EdwardsProjective, BIG_INPUT_SIZE> as CRH>::setup(SETUP_MESSAGE))
     });
 }
 
 fn hash(c: &mut Criterion) {
     c.bench_function("BHP hash", move |b| {
-        let crh = <BHPCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CRH>::setup(SETUP_MESSAGE);
-        let input = (0..(NUM_WINDOWS * WINDOW_SIZE)).map(|_| rand::random::<bool>()).collect::<Vec<bool>>();
+        let crh = <BHPCRH<EdwardsProjective, INPUT_SIZE> as CRH>::setup(SETUP_MESSAGE);
+        let input = (0..INPUT_SIZE).map(|_| rand::random::<bool>()).collect::<Vec<bool>>();
 
         b.iter(|| crh.hash(&input).unwrap())
     });
 
     c.bench_function("BHP hash (large)", move |b| {
-        let crh = <BHPCRH<EdwardsProjective, BIG_NUM_WINDOWS, BIG_WINDOW_SIZE> as CRH>::setup(SETUP_MESSAGE);
-        let input = (0..(BIG_NUM_WINDOWS * BIG_WINDOW_SIZE)).map(|_| rand::random::<bool>()).collect::<Vec<bool>>();
+        let crh = <BHPCRH<EdwardsProjective, BIG_INPUT_SIZE> as CRH>::setup(SETUP_MESSAGE);
+        let input = (0..BIG_INPUT_SIZE).map(|_| rand::random::<bool>()).collect::<Vec<bool>>();
 
         b.iter(|| crh.hash(&input).unwrap())
     });

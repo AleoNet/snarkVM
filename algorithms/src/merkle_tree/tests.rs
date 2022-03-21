@@ -211,49 +211,48 @@ mod pedersen_crh_on_projective {
     use super::*;
     use snarkvm_curves::edwards_bls12::EdwardsProjective as Edwards;
 
-    const NUM_WINDOWS: usize = 256;
-    const WINDOW_SIZE: usize = 4;
+    const INPUT_SIZE: usize = 1024;
 
     #[test]
     fn empty_merkle_tree_test() {
-        type MTParameters = MerkleTreeParameters<PedersenCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32>;
+        type MTParameters = MerkleTreeParameters<PedersenCRH<Edwards, INPUT_SIZE>, 32>;
         run_empty_merkle_tree_test::<MTParameters>();
     }
 
     #[test]
     fn good_root_test() {
-        type MTParameters = MerkleTreeParameters<PedersenCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32>;
+        type MTParameters = MerkleTreeParameters<PedersenCRH<Edwards, INPUT_SIZE>, 32>;
         run_good_root_test::<MTParameters>();
     }
 
     #[should_panic]
     #[test]
     fn bad_root_test() {
-        type MTParameters = MerkleTreeParameters<PedersenCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32>;
+        type MTParameters = MerkleTreeParameters<PedersenCRH<Edwards, INPUT_SIZE>, 32>;
         run_bad_root_test::<MTParameters>();
     }
 
     #[test]
     fn depth2_merkle_tree_matches_hashing_test() {
-        type MTParameters = MerkleTreeParameters<PedersenCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 2>;
+        type MTParameters = MerkleTreeParameters<PedersenCRH<Edwards, INPUT_SIZE>, 2>;
         depth_2_merkle_tree_test::<MTParameters>();
     }
 
     #[test]
     fn depth3_padded_merkle_tree_matches_hashing_test() {
-        type MTParameters = MerkleTreeParameters<PedersenCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 3>;
+        type MTParameters = MerkleTreeParameters<PedersenCRH<Edwards, INPUT_SIZE>, 3>;
         padded_merkle_tree_test::<MTParameters>();
     }
 
     #[test]
     fn merkle_path_serialization_test() {
-        type MTParameters = MerkleTreeParameters<PedersenCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32>;
+        type MTParameters = MerkleTreeParameters<PedersenCRH<Edwards, INPUT_SIZE>, 32>;
         run_merkle_path_serialization_test::<MTParameters>();
     }
 
     #[test]
     fn merkle_path_bincode_test() {
-        type MTParameters = MerkleTreeParameters<PedersenCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32>;
+        type MTParameters = MerkleTreeParameters<PedersenCRH<Edwards, INPUT_SIZE>, 32>;
         run_merkle_path_bincode_test::<MTParameters>();
     }
 }
@@ -263,43 +262,42 @@ mod pedersen_compressed_crh_on_projective {
     use crate::merkle_tree::MerklePath;
     use snarkvm_curves::edwards_bls12::EdwardsProjective as Edwards;
 
-    const NUM_WINDOWS: usize = 256;
-    const WINDOW_SIZE: usize = 4;
+    const INPUT_SIZE: usize = 1024;
 
     #[test]
     fn empty_merkle_tree_test() {
-        type MTParameters = MerkleTreeParameters<PedersenCompressedCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32>;
+        type MTParameters = MerkleTreeParameters<PedersenCompressedCRH<Edwards, INPUT_SIZE>, 32>;
         run_empty_merkle_tree_test::<MTParameters>();
     }
 
     #[test]
     fn good_root_test() {
-        type MTParameters = MerkleTreeParameters<PedersenCompressedCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32>;
+        type MTParameters = MerkleTreeParameters<PedersenCompressedCRH<Edwards, INPUT_SIZE>, 32>;
         run_good_root_test::<MTParameters>();
     }
 
     #[should_panic]
     #[test]
     fn bad_root_test() {
-        type MTParameters = MerkleTreeParameters<PedersenCompressedCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32>;
+        type MTParameters = MerkleTreeParameters<PedersenCompressedCRH<Edwards, INPUT_SIZE>, 32>;
         run_bad_root_test::<MTParameters>();
     }
 
     #[test]
     fn depth2_merkle_tree_matches_hashing_test() {
-        type MTParameters = MerkleTreeParameters<PedersenCompressedCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 2>;
+        type MTParameters = MerkleTreeParameters<PedersenCompressedCRH<Edwards, INPUT_SIZE>, 2>;
         depth_2_merkle_tree_test::<MTParameters>();
     }
 
     #[test]
     fn depth3_padded_merkle_tree_matches_hashing_test() {
-        type MTParameters = MerkleTreeParameters<PedersenCompressedCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 3>;
+        type MTParameters = MerkleTreeParameters<PedersenCompressedCRH<Edwards, INPUT_SIZE>, 3>;
         padded_merkle_tree_test::<MTParameters>();
     }
 
     #[test]
     fn merkle_tree_rebuild_test() {
-        type MTParameters = MerkleTreeParameters<PedersenCompressedCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32>;
+        type MTParameters = MerkleTreeParameters<PedersenCompressedCRH<Edwards, INPUT_SIZE>, 32>;
         let leaves = generate_random_leaves!(1000, 32);
 
         let parameters = &MTParameters::setup("merkle_tree_test");
@@ -321,20 +319,20 @@ mod pedersen_compressed_crh_on_projective {
 
     #[test]
     fn merkle_path_serialization_test() {
-        type MTParameters = MerkleTreeParameters<PedersenCompressedCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32>;
+        type MTParameters = MerkleTreeParameters<PedersenCompressedCRH<Edwards, INPUT_SIZE>, 32>;
         run_merkle_path_serialization_test::<MTParameters>();
     }
 
     #[test]
     fn merkle_path_bincode_test() {
-        type MTParameters = MerkleTreeParameters<PedersenCompressedCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32>;
+        type MTParameters = MerkleTreeParameters<PedersenCompressedCRH<Edwards, INPUT_SIZE>, 32>;
         run_merkle_path_bincode_test::<MTParameters>();
     }
 
     #[should_panic]
     #[test]
     fn merkle_tree_overflow_protection_test() {
-        type MTParameters = MerkleTreeParameters<PedersenCompressedCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 32>;
+        type MTParameters = MerkleTreeParameters<PedersenCompressedCRH<Edwards, INPUT_SIZE>, 32>;
         let leaves = generate_random_leaves!(4, 8);
 
         let parameters = &MTParameters::setup("merkle_tree_test");
@@ -353,7 +351,7 @@ mod pedersen_compressed_crh_on_projective {
 
     #[test]
     fn merkle_tree_invalid_path_test() {
-        type MTParameters = MerkleTreeParameters<PedersenCompressedCRH<Edwards, NUM_WINDOWS, WINDOW_SIZE>, 2>;
+        type MTParameters = MerkleTreeParameters<PedersenCompressedCRH<Edwards, INPUT_SIZE>, 2>;
         let leaves = generate_random_leaves!(4, 64);
 
         let parameters = &MTParameters::setup("merkle_tree_test");

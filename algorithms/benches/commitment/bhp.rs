@@ -27,31 +27,24 @@ use rand::{
     {self},
 };
 
-const NUM_WINDOWS: usize = 16;
-const WINDOW_SIZE: usize = 32;
+const INPUT_SIZE: usize = 512;
 
 fn bhp_commitment_setup(c: &mut Criterion) {
     c.bench_function("BHP Commitment Setup", move |b| {
-        b.iter(|| {
-            <BHPCommitment<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CommitmentScheme>::setup(
-                "bhp_commitment_benchmark",
-            )
-        })
+        b.iter(|| <BHPCommitment<EdwardsProjective, INPUT_SIZE> as CommitmentScheme>::setup("bhp_commitment_benchmark"))
     });
 }
 
 fn bhp_commitment_evaluation(c: &mut Criterion) {
     let rng = &mut thread_rng();
-    let parameters = <BHPCommitment<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CommitmentScheme>::setup(
-        "bhp_commitment_benchmark",
-    );
+    let parameters =
+        <BHPCommitment<EdwardsProjective, INPUT_SIZE> as CommitmentScheme>::setup("bhp_commitment_benchmark");
     let input = vec![127u8; 256];
 
     c.bench_function("BHP Commitment Evaluation", move |b| {
         b.iter(|| {
-            let randomness =
-                <BHPCommitment<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CommitmentScheme>::Randomness::rand(rng);
-            <BHPCommitment<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CommitmentScheme>::commit_bytes(
+            let randomness = <BHPCommitment<EdwardsProjective, INPUT_SIZE> as CommitmentScheme>::Randomness::rand(rng);
+            <BHPCommitment<EdwardsProjective, INPUT_SIZE> as CommitmentScheme>::commit_bytes(
                 &parameters,
                 &input,
                 &randomness,
