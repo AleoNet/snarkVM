@@ -64,7 +64,9 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
         }
 
         let maximum_num_chunks_in_segment = calculate_num_chunks_in_segment::<G::ScalarField>();
-        if WINDOW_SIZE > maximum_num_chunks_in_segment {
+        let (num_windows, window_size) = Self::window();
+
+        if window_size > maximum_num_chunks_in_segment {
             panic!(
                 "BHP CRH must have a window size resulting in scalars < (p-1)/2, \
                  maximum segment size is {}",
@@ -74,9 +76,9 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
 
         let time = start_timer!(|| format!(
             "BoweHopwoodPedersenCRH::Setup: {} segments of {} 3-bit chunks; {{0,1}}^{{{}}} -> G",
-            NUM_WINDOWS,
-            WINDOW_SIZE,
-            WINDOW_SIZE * NUM_WINDOWS * BOWE_HOPWOOD_CHUNK_SIZE
+            num_windows,
+            window_size,
+            window_size * num_windows * BOWE_HOPWOOD_CHUNK_SIZE
         ));
         let bases = Arc::new(Self::create_generators(message));
         end_timer!(time);
@@ -101,15 +103,16 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
 
 impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE> {
     pub fn create_generators(message: &str) -> Vec<Vec<G>> {
-        let mut generators = Vec::with_capacity(NUM_WINDOWS);
-        for index in 0..NUM_WINDOWS {
+        let (num_windows, window_size) = Self::window();
+        let mut generators = Vec::with_capacity(num_windows);
+        for index in 0..num_windows {
             // Construct an indexed message to attempt to sample a base.
             let indexed_message = format!("{} at {}", message, index);
             let (generator, _, _) = hash_to_curve::<G::Affine>(&indexed_message);
             let mut base = generator.into_projective();
             // Compute the generators for the sampled base.
-            let mut generators_for_segment = Vec::with_capacity(WINDOW_SIZE);
-            for _ in 0..WINDOW_SIZE {
+            let mut generators_for_segment = Vec::with_capacity(window_size);
+            for _ in 0..window_size {
                 generators_for_segment.push(base);
                 for _ in 0..4 {
                     base.double_in_place();
@@ -156,11 +159,12 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP
         input: impl Iterator<Item = S>,
         num_bits: usize,
     ) -> Result<G, CRHError> {
-        if num_bits > WINDOW_SIZE * NUM_WINDOWS {
-            return Err(CRHError::IncorrectInputLength(num_bits, WINDOW_SIZE, NUM_WINDOWS));
+        let (num_windows, window_size) = Self::window();
+        if num_bits > window_size * num_windows {
+            return Err(CRHError::IncorrectInputLength(num_bits, window_size, num_windows));
         }
-        debug_assert!(WINDOW_SIZE <= MAX_WINDOW_SIZE);
-        debug_assert!(NUM_WINDOWS <= MAX_NUM_WINDOWS);
+        debug_assert!(window_size <= MAX_WINDOW_SIZE);
+        debug_assert!(num_windows <= MAX_NUM_WINDOWS);
 
         // overzealous but stack allocation
         let mut buf_slice = [false; MAX_WINDOW_SIZE * MAX_NUM_WINDOWS + BOWE_HOPWOOD_CHUNK_SIZE + 1];

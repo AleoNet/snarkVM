@@ -61,9 +61,11 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
 
     fn commit(&self, input: &[u8], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError> {
         let num_bits = input.len() * 8;
+        let (num_windows, window_size) = Self::window();
+
         // If the input is too long, return an error.
-        if num_bits > WINDOW_SIZE * NUM_WINDOWS {
-            return Err(CommitmentError::IncorrectInputLength(input.len(), WINDOW_SIZE, NUM_WINDOWS));
+        if num_bits > window_size * num_windows {
+            return Err(CommitmentError::IncorrectInputLength(input.len(), window_size, num_windows));
         }
 
         // Convert input bytes to bits.
