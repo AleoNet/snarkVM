@@ -99,6 +99,8 @@ impl<E: PairingEngine> Clone for PowersOfG<E> {
 
 impl<E: PairingEngine> ToBytes for PowersOfG<E> {
     fn write_le<W: Write>(&self, mut writer: W) -> std::io::Result<()> {
+        bincode::serialize_into(&mut writer, &self.file_path).unwrap();
+
         // Serialize `powers_of_beta_times_gamma_g`.
         (self.powers_of_beta_times_gamma_g.len() as u32).write_le(&mut writer)?;
         for (key, power_of_gamma_g) in &self.powers_of_beta_times_gamma_g {
@@ -112,6 +114,8 @@ impl<E: PairingEngine> ToBytes for PowersOfG<E> {
 
 impl<E: PairingEngine> FromBytes for PowersOfG<E> {
     fn read_le<R: Read>(mut reader: R) -> std::io::Result<Self> {
+        let file_path: String = bincode::deserialize_from(&mut reader).unwrap();
+
         // Deserialize `powers_of_beta_times_gamma_g`.
         let mut powers_of_beta_times_gamma_g = BTreeMap::new();
         let powers_of_gamma_g_num_elements: u32 = FromBytes::read_le(&mut reader)?;
@@ -122,7 +126,9 @@ impl<E: PairingEngine> FromBytes for PowersOfG<E> {
             powers_of_beta_times_gamma_g.insert(key as usize, power_of_gamma_g);
         }
 
-        Ok(PowersOfG { powers_of_beta_times_gamma_g, ..Default::default() })
+        let mut powers = PowersOfG::new(PathBuf::from(file_path)).unwrap();
+        powers.powers_of_beta_times_gamma_g = powers_of_beta_times_gamma_g;
+        Ok(powers)
     }
 }
 

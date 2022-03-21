@@ -108,6 +108,9 @@ version = "0.1.12"
 [dependencies.anyhow]
 version = "1.0"
 
+[dependencies.bincode]
+version = "1"
+
 [dependencies.blake2s_simd]
 version = "1.0"
 optional = true
@@ -200,9 +203,6 @@ optional = true
 
 [dev-dependencies.expect-test ]
 version = "1.1.0"
-
-[dev-dependencies.bincode]
-version = "1"
 
 [dev-dependencies.blake2]
 version = "0.10"
