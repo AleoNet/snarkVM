@@ -339,6 +339,7 @@ mod tests {
         check_hash::<7>(Mode::Constant, 0, 0, 0, 0);
         check_hash::<8>(Mode::Constant, 0, 0, 0, 0);
         check_hash::<9>(Mode::Constant, 0, 0, 0, 0);
+        check_hash::<10>(Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
@@ -349,6 +350,11 @@ mod tests {
         check_hash::<3>(Mode::Public, 0, 0, 345, 345);
         check_hash::<4>(Mode::Public, 0, 0, 350, 350);
         check_hash::<5>(Mode::Public, 0, 0, 705, 705);
+        check_hash::<6>(Mode::Public, 0, 0, 705, 705);
+        check_hash::<7>(Mode::Public, 0, 0, 705, 705);
+        check_hash::<8>(Mode::Public, 0, 0, 705, 705);
+        check_hash::<9>(Mode::Public, 0, 0, 1060, 1060);
+        check_hash::<10>(Mode::Public, 0, 0, 1060, 1060);
     }
 
     #[test]
@@ -359,6 +365,11 @@ mod tests {
         check_hash::<3>(Mode::Private, 0, 0, 345, 345);
         check_hash::<4>(Mode::Private, 0, 0, 350, 350);
         check_hash::<5>(Mode::Private, 0, 0, 705, 705);
+        check_hash::<6>(Mode::Private, 0, 0, 705, 705);
+        check_hash::<7>(Mode::Private, 0, 0, 705, 705);
+        check_hash::<8>(Mode::Private, 0, 0, 705, 705);
+        check_hash::<9>(Mode::Private, 0, 0, 1060, 1060);
+        check_hash::<10>(Mode::Private, 0, 0, 1060, 1060);
     }
 
     #[test]
