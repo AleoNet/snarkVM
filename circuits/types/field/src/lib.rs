@@ -27,6 +27,7 @@ pub mod inv;
 pub mod mul;
 pub mod neg;
 pub mod one;
+pub mod pow;
 pub mod square;
 pub mod sub;
 pub mod ternary;

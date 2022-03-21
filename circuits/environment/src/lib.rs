@@ -73,5 +73,5 @@ pub mod prelude {
         multi::{many0, many1},
         sequence::{pair, terminated},
     };
-    pub use num_traits::{Inv, One as NumOne, Unsigned};
+    pub use num_traits::{Inv, One as NumOne, Pow, Unsigned};
 }
