@@ -16,6 +16,7 @@
 
 use super::*;
 
+#[allow(clippy::only_used_in_recursion)]
 impl<E: Environment> Pow<Field<E>> for Field<E> {
     type Output = Field<E>;
 

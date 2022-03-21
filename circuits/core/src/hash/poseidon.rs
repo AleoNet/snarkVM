@@ -52,6 +52,7 @@ pub struct Poseidon<E: Environment> {
 }
 
 impl<E: Environment> Poseidon<E> {
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         match E::BaseField::default_poseidon_parameters::<RATE>(OPTIMIZED_FOR_WEIGHTS) {
             Some(parameters) => {
@@ -150,7 +151,6 @@ impl<E: Environment> Poseidon<E> {
         if !input.is_empty() {
             let mut remaining_elements = input;
 
-            let mut loop_counter = 0;
             loop {
                 // if we can finish in this call
                 if rate_start_index + remaining_elements.len() <= RATE {
@@ -173,8 +173,6 @@ impl<E: Environment> Poseidon<E> {
                 // the input elements got truncated by num elements absorbed
                 remaining_elements = &remaining_elements[num_elements_absorbed..];
                 rate_start_index = 0;
-
-                loop_counter += 1;
             }
         }
     }
@@ -189,7 +187,6 @@ impl<E: Environment> Poseidon<E> {
     ) {
         let mut remaining_output = output;
 
-        let mut loop_counter = 0;
         loop {
             // if we can finish in this call
             if rate_start_index + remaining_output.len() <= RATE {
@@ -211,8 +208,6 @@ impl<E: Environment> Poseidon<E> {
             // Repeat with updated output slices and rate start index
             remaining_output = &mut remaining_output[num_squeezed..];
             rate_start_index = 0;
-
-            loop_counter += 1;
         }
     }
 

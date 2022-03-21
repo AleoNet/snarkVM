@@ -191,11 +191,11 @@ pub trait MSB {
 pub trait FromBits {
     type Boolean: BooleanTrait;
 
-    fn from_bits_le(mode: Mode, bits_le: &[Self::Boolean]) -> Self
+    fn from_bits_le(bits_le: &[Self::Boolean]) -> Self
     where
         Self: Sized;
 
-    fn from_bits_be(mode: Mode, bits_be: &[Self::Boolean]) -> Self
+    fn from_bits_be(bits_be: &[Self::Boolean]) -> Self
     where
         Self: Sized;
 }

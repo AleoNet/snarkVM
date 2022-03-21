@@ -72,7 +72,7 @@ impl<E: Environment, I: IntegerType> SubChecked<Self> for Integer<E, I> {
         if self.is_constant() && other.is_constant() {
             // Compute the difference and return the new constant.
             match self.eject_value().checked_sub(&other.eject_value()) {
-                Some(value) => Integer::new(Mode::Constant, value),
+                Some(value) => Integer::constant(value),
                 None => E::halt("Integer underflow on subtraction of two constants"),
             }
         } else {
@@ -83,7 +83,7 @@ impl<E: Environment, I: IntegerType> SubChecked<Self> for Integer<E, I> {
 
             // Extract the integer bits from the field element, with a carry bit.
             let (difference, carry) = match difference.to_lower_bits_le(I::BITS + 1).split_last() {
-                Some((carry, bits_le)) => (Integer::from_bits_le(Mode::Private, bits_le), carry.clone()),
+                Some((carry, bits_le)) => (Integer::from_bits_le(bits_le), carry.clone()),
                 None => E::halt("Malformed difference detected during integer subtraction"),
             };
 

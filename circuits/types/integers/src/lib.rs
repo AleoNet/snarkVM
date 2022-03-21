@@ -97,7 +97,7 @@ impl<E: Environment, I: IntegerType> Inject for Integer<E, I> {
             bits_le.push(Boolean::new(mode, value & I::one() == I::one()));
             value = value.wrapping_shr(1u32);
         }
-        Self::from_bits_le(mode, &bits_le)
+        Self::from_bits_le(&bits_le)
     }
 }
 

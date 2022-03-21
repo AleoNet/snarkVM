@@ -20,7 +20,7 @@ impl<E: Environment> FromBits for Field<E> {
     type Boolean = Boolean<E>;
 
     /// Initializes a new base field element from a list of little-endian bits *without* trailing zeros.
-    fn from_bits_le(mode: Mode, bits_le: &[Self::Boolean]) -> Self {
+    fn from_bits_le(bits_le: &[Self::Boolean]) -> Self {
         // Retrieve the data and field size.
         let size_in_data_bits = E::BaseField::size_in_data_bits();
         let size_in_bits = E::BaseField::size_in_bits();
@@ -91,13 +91,13 @@ impl<E: Environment> FromBits for Field<E> {
     }
 
     /// Initializes a new base field element from a list of big-endian bits *without* leading zeros.
-    fn from_bits_be(mode: Mode, bits_be: &[Self::Boolean]) -> Self {
+    fn from_bits_be(bits_be: &[Self::Boolean]) -> Self {
         // Reverse the given bits from big-endian into little-endian.
         // Note: This is safe as the bit representation is consistent (there are no leading zeros).
         let mut bits_le = bits_be.to_vec();
         bits_le.reverse();
 
-        Self::from_bits_le(mode, &bits_le)
+        Self::from_bits_le(&bits_le)
     }
 }
 
@@ -121,8 +121,8 @@ mod tests {
             let expected: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
             let given_bits = Field::<Circuit>::new(mode, expected).to_bits_le();
 
-            Circuit::scope(&format!("{} {}", mode, i), || {
-                let candidate = Field::<Circuit>::from_bits_le(mode, &given_bits);
+            Circuit::scope(format!("{mode} {i}"), || {
+                let candidate = Field::<Circuit>::from_bits_le(&given_bits);
                 assert_eq!(expected, candidate.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
 
@@ -146,8 +146,8 @@ mod tests {
             let expected: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
             let given_bits = Field::<Circuit>::new(mode, expected).to_bits_be();
 
-            Circuit::scope(&format!("{} {}", mode, i), || {
-                let candidate = Field::<Circuit>::from_bits_be(mode, &given_bits);
+            Circuit::scope(format!("{mode} {i}"), || {
+                let candidate = Field::<Circuit>::from_bits_be(&given_bits);
                 assert_eq!(expected, candidate.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
 
