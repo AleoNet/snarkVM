@@ -88,28 +88,29 @@ impl<E: Environment> Poseidon<E> {
 }
 
 impl<E: Environment> Poseidon<E> {
+    /// Apply the additive round keys in-place.
     #[inline]
     fn apply_ark(&self, state: &mut [Field<E>], round: usize) {
-        // Adds ark in place.
         for (i, element) in state.iter_mut().enumerate() {
             *element += &self.ark[round][i];
         }
     }
 
+    /// Apply the S-Box based on whether it is a full round or partial round.
     #[inline]
     fn apply_s_box(&self, state: &mut [Field<E>], is_full_round: bool) {
-        // Full rounds apply the S Box (x^alpha) to every element of state
         if is_full_round {
+            // Full rounds apply the S Box (x^alpha) to every element of state
             for element in state.iter_mut() {
                 *element = (&*element).pow(&self.alpha);
             }
-        }
-        // Partial rounds apply the S Box (x^alpha) to just the first element of state
-        else {
+        } else {
+            // Partial rounds apply the S Box (x^alpha) to just the first element of state
             state[0] = (&state[0]).pow(&self.alpha);
         }
     }
 
+    /// Apply the Maximally Distance Separating (MDS) matrix in-place.
     #[inline]
     fn apply_mds(&self, state: &mut [Field<E>]) {
         let mut new_state = Vec::with_capacity(state.len());
@@ -123,6 +124,7 @@ impl<E: Environment> Poseidon<E> {
         state.clone_from_slice(&new_state[..state.len()]);
     }
 
+    /// Apply the permutation for all rounds in-place.
     #[inline]
     fn permute(&self, state: &mut [Field<E>]) {
         // Determine the partial rounds range bound.
@@ -145,34 +147,35 @@ impl<E: Environment> Poseidon<E> {
         &self,
         state: &mut [Field<E>],
         mode: &mut DuplexSpongeMode,
-        mut rate_start_index: usize,
+        mut absorb_index: usize,
         input: &[Field<E>],
     ) {
         if !input.is_empty() {
-            let mut remaining_elements = input;
+            let mut remaining = input;
 
             loop {
-                // if we can finish in this call
-                if rate_start_index + remaining_elements.len() <= RATE {
-                    for (i, element) in remaining_elements.iter().enumerate() {
-                        // Absorb
-                        state[CAPACITY + i + rate_start_index] += element;
-                    }
-                    *mode =
-                        DuplexSpongeMode::Absorbing { next_absorb_index: rate_start_index + remaining_elements.len() };
+                // Compute the starting index.
+                let start = CAPACITY + absorb_index;
 
+                // Check if we can exit the loop.
+                if absorb_index + remaining.len() <= RATE {
+                    // Absorb the state elements into the input.
+                    remaining.iter().enumerate().for_each(|(i, element)| state[start + i] += element);
+                    // Update the sponge mode.
+                    *mode = DuplexSpongeMode::Absorbing { next_absorb_index: absorb_index + remaining.len() };
                     return;
                 }
-                // otherwise absorb (rate - rate_start_index) elements
-                let num_elements_absorbed = RATE - rate_start_index;
-                for (i, element) in remaining_elements.iter().enumerate().take(num_elements_absorbed) {
-                    // Absorb
-                    state[CAPACITY + i + rate_start_index] += element;
-                }
+
+                // Otherwise, proceed to absorb `(rate - absorb_index)` elements.
+                let num_absorbed = RATE - absorb_index;
+                remaining.iter().enumerate().take(num_absorbed).for_each(|(i, element)| state[start + i] += element);
+
+                // Permute the state.
                 self.permute(state);
-                // the input elements got truncated by num elements absorbed
-                remaining_elements = &remaining_elements[num_elements_absorbed..];
-                rate_start_index = 0;
+
+                // Repeat with the updated input slice and absorb index.
+                remaining = &remaining[num_absorbed..];
+                absorb_index = 0;
             }
         }
     }
@@ -182,32 +185,35 @@ impl<E: Environment> Poseidon<E> {
         &self,
         state: &mut [Field<E>],
         mode: &mut DuplexSpongeMode,
-        mut rate_start_index: usize,
+        mut squeeze_index: usize,
         output: &mut [Field<E>],
     ) {
-        let mut remaining_output = output;
+        let mut remaining = output;
 
         loop {
-            // if we can finish in this call
-            if rate_start_index + remaining_output.len() <= RATE {
-                remaining_output.clone_from_slice(
-                    &state[CAPACITY + rate_start_index..(CAPACITY + remaining_output.len() + rate_start_index)],
-                );
-                *mode = DuplexSpongeMode::Squeezing { next_squeeze_index: rate_start_index + remaining_output.len() };
+            // Compute the starting index.
+            let start = CAPACITY + squeeze_index;
+
+            // Check if we can exit the loop.
+            if squeeze_index + remaining.len() <= RATE {
+                // Store the state elements into the output.
+                remaining.clone_from_slice(&state[start..(start + remaining.len())]);
+                // Update the sponge mode.
+                *mode = DuplexSpongeMode::Squeezing { next_squeeze_index: squeeze_index + remaining.len() };
                 return;
             }
-            // otherwise squeeze (rate - rate_start_index) elements
-            let num_squeezed = RATE - rate_start_index;
-            remaining_output[..num_squeezed]
-                .clone_from_slice(&state[CAPACITY + rate_start_index..(CAPACITY + num_squeezed + rate_start_index)]);
+
+            // Otherwise, proceed to squeeze `(rate - squeeze_index)` elements.
+            let num_squeezed = RATE - squeeze_index;
+            remaining[..num_squeezed].clone_from_slice(&state[start..(start + num_squeezed)]);
 
             // Unless we are done with squeezing in this call, permute.
-            if remaining_output.len() != RATE {
+            if remaining.len() != RATE {
                 self.permute(state);
             }
-            // Repeat with updated output slices and rate start index
-            remaining_output = &mut remaining_output[num_squeezed..];
-            rate_start_index = 0;
+            // Repeat with the updated output slice and squeeze index.
+            remaining = &mut remaining[num_squeezed..];
+            squeeze_index = 0;
         }
     }
 
@@ -216,7 +222,6 @@ impl<E: Environment> Poseidon<E> {
         if !input.is_empty() {
             match mode {
                 DuplexSpongeMode::Absorbing { next_absorb_index } => {
-                    // Absorb permute.
                     let mut absorb_index = *next_absorb_index;
                     if absorb_index == RATE {
                         self.permute(state);
@@ -225,7 +230,6 @@ impl<E: Environment> Poseidon<E> {
                     self.absorb_internal(state, mode, absorb_index, input);
                 }
                 DuplexSpongeMode::Squeezing { next_squeeze_index: _ } => {
-                    // Squeeze permute.
                     self.permute(state);
                     self.absorb_internal(state, mode, 0, input);
                 }
@@ -239,12 +243,10 @@ impl<E: Environment> Poseidon<E> {
         if num_outputs != 0 {
             match mode {
                 DuplexSpongeMode::Absorbing { next_absorb_index: _ } => {
-                    // Absorb permute.
                     self.permute(state);
                     self.squeeze_internal(state, mode, 0, &mut output);
                 }
                 DuplexSpongeMode::Squeezing { next_squeeze_index } => {
-                    // Squeeze permute.
                     let mut squeeze_index = *next_squeeze_index;
                     if squeeze_index == RATE {
                         self.permute(state);
