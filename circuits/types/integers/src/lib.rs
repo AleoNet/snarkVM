@@ -17,7 +17,8 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
-pub mod abs;
+pub mod abs_checked;
+pub mod abs_wrapped;
 pub mod add_checked;
 pub mod add_wrapped;
 pub mod and;
@@ -438,5 +439,10 @@ mod test_utilities {
             assert_scope_fails!(case, num_constants, num_public, num_private, num_constraints);
         });
         Circuit::reset();
+    }
+
+    pub fn check_unary_operation_halts<IN: UnwindSafe, OUT>(input: IN, operation: impl FnOnce(IN) -> OUT + UnwindSafe) {
+        let result = std::panic::catch_unwind(|| operation(input));
+        assert!(result.is_err());
     }
 }
