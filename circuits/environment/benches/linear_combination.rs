@@ -21,18 +21,18 @@ use snarkvm_circuits::prelude::*;
 
 use criterion::Criterion;
 
-fn evaluate(c: &mut Criterion) {
+fn eject_value(c: &mut Criterion) {
     let one = <Circuit as Environment>::BaseField::one();
+    let two = one + one;
 
-    // Public variables
     let mut candidate = Field::<Circuit>::one();
-    for _ in 0..1_000_000 {
-        candidate += Field::new(Mode::Constant, one);
-        candidate += Field::new(Mode::Public, one);
-        candidate += Field::new(Mode::Private, one);
-    }
+    (0..1_000_000).for_each(|_| {
+        candidate += Field::new(Mode::Constant, two);
+        candidate += Field::new(Mode::Public, two);
+        candidate += Field::new(Mode::Private, two);
+    });
 
-    c.bench_function("evaluate", move |b| {
+    c.bench_function("eject_value", move |b| {
         b.iter(|| {
             let _value = candidate.eject_value();
         })
@@ -42,7 +42,7 @@ fn evaluate(c: &mut Criterion) {
 criterion_group! {
     name = linear_combination;
     config = Criterion::default().sample_size(20);
-    targets = evaluate
+    targets = eject_value
 }
 
 criterion_main!(linear_combination);

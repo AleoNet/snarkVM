@@ -174,10 +174,10 @@ impl<E: Environment, I: IntegerType> From<Integer<E, I>> for LinearCombination<E
 impl<E: Environment, I: IntegerType> From<&Integer<E, I>> for LinearCombination<E::BaseField> {
     fn from(integer: &Integer<E, I>) -> Self {
         // Reconstruct the bits as a linear combination representing the original field value.
-        let mut accumulator: LinearCombination<_> = Field::<E>::zero().into();
-        let mut coefficient = Field::one();
+        let mut accumulator = E::zero();
+        let mut coefficient = E::BaseField::one();
         for bit in &integer.bits_le {
-            accumulator += LinearCombination::from(Field::from(bit) * &coefficient);
+            accumulator = accumulator + (LinearCombination::from(bit) * coefficient);
             coefficient = coefficient.double();
         }
         accumulator
