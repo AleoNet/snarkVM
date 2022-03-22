@@ -267,10 +267,11 @@ mod tests {
     use snarkvm_circuits_environment::{assert_scope, Circuit};
     use snarkvm_utilities::{test_rng, UniformRand};
 
-    const ITERATIONS: usize = 1;
+    const ITERATIONS: usize = 10;
 
-    fn check_hash<const NUM_INPUTS: usize>(
+    fn check_hash(
         mode: Mode,
+        num_inputs: usize,
         num_constants: usize,
         num_public: usize,
         num_private: usize,
@@ -282,7 +283,7 @@ mod tests {
 
         for i in 0..ITERATIONS {
             // Prepare the preimage.
-            let input = (0..NUM_INPUTS).map(|_| <Circuit as Environment>::BaseField::rand(rng)).collect::<Vec<_>>();
+            let input = (0..num_inputs).map(|_| <Circuit as Environment>::BaseField::rand(rng)).collect::<Vec<_>>();
             let preimage = input.iter().map(|v| Field::<Circuit>::new(mode, *v)).collect::<Vec<_>>();
 
             // Compute the native hash.
@@ -291,13 +292,16 @@ mod tests {
             Circuit::scope(format!("Poseidon {mode} {i}"), || {
                 let candidate = circuit.hash(&preimage);
                 assert_eq!(expected, candidate.eject_value());
-                assert_scope!(num_constants, num_public, num_private, num_constraints);
+                let case = format!("(mode = {mode}, num_inputs = {num_inputs})");
+                assert_scope!(case, num_constants, num_public, num_private, num_constraints);
             });
         }
     }
 
-    fn check_hash_many<const NUM_INPUTS: usize, const NUM_OUTPUTS: usize>(
+    fn check_hash_many(
         mode: Mode,
+        num_inputs: usize,
+        num_outputs: usize,
         num_constants: usize,
         num_public: usize,
         num_private: usize,
@@ -309,81 +313,112 @@ mod tests {
 
         for i in 0..ITERATIONS {
             // Prepare the preimage.
-            let input = (0..NUM_INPUTS).map(|_| <Circuit as Environment>::BaseField::rand(rng)).collect::<Vec<_>>();
+            let input = (0..num_inputs).map(|_| <Circuit as Environment>::BaseField::rand(rng)).collect::<Vec<_>>();
             let preimage = input.iter().map(|v| Field::<Circuit>::new(mode, *v)).collect::<Vec<_>>();
-            // Evaluate the hash with different expect output sizes.
-            for num_outputs in 1..=NUM_OUTPUTS {
-                // Compute the native hash.
-                let expected = native.evaluate_many(&input, num_outputs);
-                // Compute the circuit hash.
-                Circuit::scope(format!("Poseidon {mode} {i} {num_outputs}"), || {
-                    let candidate = circuit.hash_many(&preimage, num_outputs);
-                    for (expected_element, candidate_element) in expected.iter().zip_eq(&candidate) {
-                        assert_eq!(*expected_element, candidate_element.eject_value());
-                    }
-                    assert_scope!(num_constants, num_public, num_private, num_constraints);
-                });
-            }
+
+            // Compute the native hash.
+            let expected = native.evaluate_many(&input, num_outputs);
+            // Compute the circuit hash.
+            Circuit::scope(format!("Poseidon {mode} {i} {num_outputs}"), || {
+                let candidate = circuit.hash_many(&preimage, num_outputs);
+                for (expected_element, candidate_element) in expected.iter().zip_eq(&candidate) {
+                    assert_eq!(*expected_element, candidate_element.eject_value());
+                }
+                let case = format!("(mode = {mode}, num_inputs = {num_inputs}, num_outputs = {num_outputs})");
+                assert_scope!(case, num_constants, num_public, num_private, num_constraints);
+            });
         }
     }
 
     #[test]
     fn test_hash_constant() {
-        check_hash::<0>(Mode::Constant, 0, 0, 0, 0);
-        check_hash::<1>(Mode::Constant, 0, 0, 0, 0);
-        check_hash::<2>(Mode::Constant, 0, 0, 0, 0);
-        check_hash::<3>(Mode::Constant, 0, 0, 0, 0);
-        check_hash::<4>(Mode::Constant, 0, 0, 0, 0);
-        check_hash::<5>(Mode::Constant, 0, 0, 0, 0);
-        check_hash::<6>(Mode::Constant, 0, 0, 0, 0);
-        check_hash::<7>(Mode::Constant, 0, 0, 0, 0);
-        check_hash::<8>(Mode::Constant, 0, 0, 0, 0);
-        check_hash::<9>(Mode::Constant, 0, 0, 0, 0);
-        check_hash::<10>(Mode::Constant, 0, 0, 0, 0);
+        for num_inputs in 0..=RATE {
+            check_hash(Mode::Constant, num_inputs, 0, 0, 0, 0);
+        }
     }
 
     #[test]
     fn test_hash_public() {
-        check_hash::<0>(Mode::Public, 0, 0, 0, 0);
-        check_hash::<1>(Mode::Public, 0, 0, 335, 335);
-        check_hash::<2>(Mode::Public, 0, 0, 340, 340);
-        check_hash::<3>(Mode::Public, 0, 0, 345, 345);
-        check_hash::<4>(Mode::Public, 0, 0, 350, 350);
-        check_hash::<5>(Mode::Public, 0, 0, 705, 705);
-        check_hash::<6>(Mode::Public, 0, 0, 705, 705);
-        check_hash::<7>(Mode::Public, 0, 0, 705, 705);
-        check_hash::<8>(Mode::Public, 0, 0, 705, 705);
-        check_hash::<9>(Mode::Public, 0, 0, 1060, 1060);
-        check_hash::<10>(Mode::Public, 0, 0, 1060, 1060);
+        check_hash(Mode::Public, 0, 0, 0, 0, 0);
+        check_hash(Mode::Public, 1, 0, 0, 335, 335);
+        check_hash(Mode::Public, 2, 0, 0, 340, 340);
+        check_hash(Mode::Public, 3, 0, 0, 345, 345);
+        check_hash(Mode::Public, 4, 0, 0, 350, 350);
+        check_hash(Mode::Public, 5, 0, 0, 705, 705);
+        check_hash(Mode::Public, 6, 0, 0, 705, 705);
+        check_hash(Mode::Public, 7, 0, 0, 705, 705);
+        check_hash(Mode::Public, 8, 0, 0, 705, 705);
+        check_hash(Mode::Public, 9, 0, 0, 1060, 1060);
+        check_hash(Mode::Public, 10, 0, 0, 1060, 1060);
     }
 
     #[test]
     fn test_hash_private() {
-        check_hash::<0>(Mode::Private, 0, 0, 0, 0);
-        check_hash::<1>(Mode::Private, 0, 0, 335, 335);
-        check_hash::<2>(Mode::Private, 0, 0, 340, 340);
-        check_hash::<3>(Mode::Private, 0, 0, 345, 345);
-        check_hash::<4>(Mode::Private, 0, 0, 350, 350);
-        check_hash::<5>(Mode::Private, 0, 0, 705, 705);
-        check_hash::<6>(Mode::Private, 0, 0, 705, 705);
-        check_hash::<7>(Mode::Private, 0, 0, 705, 705);
-        check_hash::<8>(Mode::Private, 0, 0, 705, 705);
-        check_hash::<9>(Mode::Private, 0, 0, 1060, 1060);
-        check_hash::<10>(Mode::Private, 0, 0, 1060, 1060);
+        check_hash(Mode::Private, 0, 0, 0, 0, 0);
+        check_hash(Mode::Private, 1, 0, 0, 335, 335);
+        check_hash(Mode::Private, 2, 0, 0, 340, 340);
+        check_hash(Mode::Private, 3, 0, 0, 345, 345);
+        check_hash(Mode::Private, 4, 0, 0, 350, 350);
+        check_hash(Mode::Private, 5, 0, 0, 705, 705);
+        check_hash(Mode::Private, 6, 0, 0, 705, 705);
+        check_hash(Mode::Private, 7, 0, 0, 705, 705);
+        check_hash(Mode::Private, 8, 0, 0, 705, 705);
+        check_hash(Mode::Private, 9, 0, 0, 1060, 1060);
+        check_hash(Mode::Private, 10, 0, 0, 1060, 1060);
     }
 
     #[test]
     fn test_hash_many_constant() {
-        check_hash_many::<5, 4>(Mode::Constant, 0, 0, 0, 0);
+        for num_inputs in 0..=RATE {
+            for num_outputs in 0..=RATE {
+                check_hash_many(Mode::Constant, num_inputs, num_outputs, 0, 0, 0, 0);
+            }
+        }
     }
 
     #[test]
     fn test_hash_many_public() {
-        check_hash_many::<5, 4>(Mode::Public, 0, 0, 705, 705);
+        for num_outputs in 0..=RATE {
+            check_hash_many(Mode::Public, 0, num_outputs, 0, 0, 0, 0);
+        }
+        for num_outputs in 1..=RATE {
+            check_hash_many(Mode::Public, 1, num_outputs, 0, 0, 335, 335);
+            check_hash_many(Mode::Public, 2, num_outputs, 0, 0, 340, 340);
+            check_hash_many(Mode::Public, 3, num_outputs, 0, 0, 345, 345);
+            check_hash_many(Mode::Public, 4, num_outputs, 0, 0, 350, 350);
+            check_hash_many(Mode::Public, 5, num_outputs, 0, 0, 705, 705);
+            check_hash_many(Mode::Public, 6, num_outputs, 0, 0, 705, 705);
+        }
+        for num_outputs in (RATE + 1)..=(RATE * 2) {
+            check_hash_many(Mode::Public, 1, num_outputs, 0, 0, 690, 690);
+            check_hash_many(Mode::Public, 2, num_outputs, 0, 0, 695, 695);
+            check_hash_many(Mode::Public, 3, num_outputs, 0, 0, 700, 700);
+            check_hash_many(Mode::Public, 4, num_outputs, 0, 0, 705, 705);
+            check_hash_many(Mode::Public, 5, num_outputs, 0, 0, 1060, 1060);
+            check_hash_many(Mode::Public, 6, num_outputs, 0, 0, 1060, 1060);
+        }
     }
 
     #[test]
     fn test_hash_many_private() {
-        check_hash_many::<5, 4>(Mode::Private, 0, 0, 705, 705);
+        for num_outputs in 0..=RATE {
+            check_hash_many(Mode::Private, 0, num_outputs, 0, 0, 0, 0);
+        }
+        for num_outputs in 1..=RATE {
+            check_hash_many(Mode::Private, 1, num_outputs, 0, 0, 335, 335);
+            check_hash_many(Mode::Private, 2, num_outputs, 0, 0, 340, 340);
+            check_hash_many(Mode::Private, 3, num_outputs, 0, 0, 345, 345);
+            check_hash_many(Mode::Private, 4, num_outputs, 0, 0, 350, 350);
+            check_hash_many(Mode::Private, 5, num_outputs, 0, 0, 705, 705);
+            check_hash_many(Mode::Private, 6, num_outputs, 0, 0, 705, 705);
+        }
+        for num_outputs in (RATE + 1)..=(RATE * 2) {
+            check_hash_many(Mode::Private, 1, num_outputs, 0, 0, 690, 690);
+            check_hash_many(Mode::Private, 2, num_outputs, 0, 0, 695, 695);
+            check_hash_many(Mode::Private, 3, num_outputs, 0, 0, 700, 700);
+            check_hash_many(Mode::Private, 4, num_outputs, 0, 0, 705, 705);
+            check_hash_many(Mode::Private, 5, num_outputs, 0, 0, 1060, 1060);
+            check_hash_many(Mode::Private, 6, num_outputs, 0, 0, 1060, 1060);
+        }
     }
 }
