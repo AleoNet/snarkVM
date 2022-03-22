@@ -21,7 +21,8 @@ use crate::{
         ahp::{AHPError, AHPForR1CS, EvaluationsProvider},
         fiat_shamir::traits::FiatShamirRng,
         params::OptimizationType,
-        prover::{ProverConstraintSystem, ProverMessage},
+        proof,
+        prover,
         CircuitProvingKey,
         CircuitVerifyingKey,
         Commitments,
@@ -138,7 +139,7 @@ impl<
             PC::commit(&committer_key, index.iter().map(Into::into), None)?;
         end_timer!(commit_time);
 
-        let circuit_commitments = circuit_commitments.into_iter().map(|c| c.commitment().clone()).collect();
+        let circuit_commitments = circuit_commitments.into_iter().map(|c| *c.commitment()).collect();
         let circuit_verifying_key = CircuitVerifyingKey {
             circuit_info: index.index_info,
             circuit_commitments,
@@ -183,7 +184,7 @@ impl<
 
         Self::terminate(terminator)?;
 
-        let prover_init_state = AHPForR1CS::<_, MM>::prover_init(&circuit_proving_key.circuit, circuit)?;
+        let prover_init_state = AHPForR1CS::<_, MM>::init_prover(&circuit_proving_key.circuit, circuit)?;
         let public_input = prover_init_state.public_input();
         let padded_public_input = prover_init_state.padded_public_input();
 
@@ -204,7 +205,7 @@ impl<
             PC::commit(&circuit_proving_key.committer_key, first_oracles.iter_for_commit(), Some(zk_rng))?;
         end_timer!(first_round_comm_time);
 
-        Self::verifier_absorb_labeled_no_msg(&first_commitments, &mut fs_rng);
+        Self::verifier_absorb_labeled(&first_commitments, &mut fs_rng);
         Self::terminate(terminator)?;
 
         let (verifier_first_message, verifier_state) = AHPForR1CS::<_, MM>::verifier_first_round(
@@ -230,7 +231,7 @@ impl<
         )?;
         end_timer!(second_round_comm_time);
 
-        Self::verifier_absorb_labeled_no_msg(&second_commitments, &mut fs_rng);
+        Self::verifier_absorb_labeled(&second_commitments, &mut fs_rng);
         Self::terminate(terminator)?;
 
         let (verifier_second_msg, verifier_state) =
@@ -255,7 +256,7 @@ impl<
         )?;
         end_timer!(third_round_comm_time);
 
-        Self::verifier_absorb_labeled(&third_commitments, &prover_third_message, &mut fs_rng);
+        Self::verifier_absorb_labeled_with_msg(&third_commitments, &prover_third_message, &mut fs_rng);
 
         let (verifier_third_msg, verifier_state) =
             AHPForR1CS::<_, MM>::verifier_third_round(verifier_state, &mut fs_rng)?;
@@ -278,7 +279,7 @@ impl<
         )?;
         end_timer!(fourth_round_comm_time);
 
-        Self::verifier_absorb_labeled_no_msg(&fourth_commitments, &mut fs_rng);
+        Self::verifier_absorb_labeled(&fourth_commitments, &mut fs_rng);
 
         let verifier_state = AHPForR1CS::<_, MM>::verifier_fourth_round(verifier_state, &mut fs_rng)?;
         // --------------------------------------------------------------------
@@ -306,7 +307,7 @@ impl<
             w: *first_commitments[0].commitment(),
             z_a: *first_commitments[1].commitment(),
             z_b: *first_commitments[2].commitment(),
-            mask_poly: *first_commitments[3].commitment(),
+            mask_poly: MM::ZK.then(||  *first_commitments[3].commitment()),
 
             g_1: *second_commitments[0].commitment(),
             h_1: *second_commitments[1].commitment(),
@@ -316,7 +317,7 @@ impl<
             g_b: *third_commitments[1].commitment(),
             g_c: *third_commitments[2].commitment(),
 
-            h_2: *fourth_commitments[3].commitment(),
+            h_2: *fourth_commitments[0].commitment(),
         };
 
         let indexer_polynomials = AHPForR1CS::<TargetField, MM>::indexer_polynomials();
@@ -350,7 +351,8 @@ impl<
         }
 
         // Compute the AHP verifier's query set.
-        let (query_set, verifier_state) = AHPForR1CS::<_, MM>::verifier_query_set(verifier_state, &mut fs_rng);
+        let (query_set, verifier_state) = AHPForR1CS::<_, MM>::verifier_query_set(verifier_state);
+        dbg!(&query_set);
         let lc_s = AHPForR1CS::<_, MM>::construct_linear_combinations(
             &public_input,
             &polynomials,
@@ -361,23 +363,25 @@ impl<
         Self::terminate(terminator)?;
 
         let eval_time = start_timer!(|| "Evaluating linear combinations over query set");
-        let mut evaluations_unsorted = Vec::new();
-        for (label, (_point_name, point)) in &query_set {
-            let lc =
-                lc_s.iter().find(|lc| &lc.label == label).ok_or_else(|| AHPError::MissingEval(label.to_string()))?;
-            let evaluation = polynomials.get_lc_eval(lc, *point)?;
-            if !AHPForR1CS::<TargetField, MM>::LC_WITH_ZERO_EVAL.contains(&lc.label.as_ref()) {
-                evaluations_unsorted.push((label.to_string(), evaluation));
+        let mut evaluations = std::collections::BTreeMap::new();
+        for (label, (_, point)) in query_set.to_set() {
+            if !AHPForR1CS::<TargetField, MM>::LC_WITH_ZERO_EVAL.contains(&label.as_str()) {
+                let lc = lc_s
+                    .iter()
+                    .find(|lc| *lc.label == label)
+                    .ok_or_else(|| AHPError::MissingEval(label.to_string()))?;
+                let evaluation = polynomials.get_lc_eval(lc, point)?;
+                evaluations.insert(label, evaluation);
             }
         }
+        dbg!(&evaluations);
 
-        evaluations_unsorted.sort_by(|a, b| a.0.cmp(&b.0));
-        let evaluations = evaluations_unsorted.iter().map(|x| x.1).collect::<Vec<TargetField>>();
+        let evaluations = proof::Evaluations::from_map(&evaluations);
         end_timer!(eval_time);
 
         Self::terminate(terminator)?;
 
-        fs_rng.absorb_nonnative_field_elements(&evaluations, OptimizationType::Weight);
+        fs_rng.absorb_nonnative_field_elements(&evaluations.to_field_elements(), OptimizationType::Weight);
 
         let num_open_challenges: usize = 7;
 
@@ -391,38 +395,45 @@ impl<
             &lc_s,
             polynomials,
             &labeled_commitments,
-            &query_set,
+            &query_set.to_set(),
             &opening_challenges_f,
             &commitment_randomnesses,
         )?;
 
         Self::terminate(terminator)?;
 
-        let proof = Proof::new(commitments, evaluations, pc_proof);
+        let proof = Proof::new(commitments, evaluations, prover_third_message, pc_proof);
         assert_eq!(proof.pc_proof.is_hiding(), MM::ZK);
         end_timer!(prover_time);
 
         Ok(proof)
     }
 
-    fn verifier_absorb_labeled_no_msg(commitments: &[LabeledCommitment<PC::Commitment>], fs_rng: &mut FS) {
-        Self::verifier_absorb_labeled(commitments, &ProverMessage::default(), fs_rng)
-    }
-
-    fn verifier_absorb_labeled(
-        commitments: &[LabeledCommitment<PC::Commitment>],
-        message: &ProverMessage<TargetField>,
+    fn verifier_absorb_labeled_with_msg(
+        comms: &[LabeledCommitment<PC::Commitment>],
+        message: &prover::ThirdMessage<TargetField>,
         fs_rng: &mut FS,
     ) {
-        let commitments: Vec<_> = commitments.iter().map(|c| c.commitment()).cloned().collect();
-        Self::verifier_absorb(&commitments, message, fs_rng)
+        let commitments: Vec<_> = comms.iter().map(|c| *c.commitment()).collect();
+        Self::verifier_absorb_with_msg(&commitments, message, fs_rng)
     }
 
-    fn verifier_absorb(commitments: &[PC::Commitment], message: &ProverMessage<TargetField>, fs_rng: &mut FS) {
+    fn verifier_absorb_labeled(comms: &[LabeledCommitment<PC::Commitment>], fs_rng: &mut FS) {
+        let commitments: Vec<_> = comms.iter().map(|c| *c.commitment()).collect();
+        Self::verifier_absorb(&commitments, fs_rng)
+    }
+
+    fn verifier_absorb(commitments: &[PC::Commitment], fs_rng: &mut FS) {
         fs_rng.absorb_native_field_elements(commitments);
-        if !message.field_elements.is_empty() {
-            fs_rng.absorb_nonnative_field_elements(&message.field_elements, OptimizationType::Weight);
-        };
+    }
+
+    fn verifier_absorb_with_msg(
+        commitments: &[PC::Commitment],
+        msg: &prover::ThirdMessage<TargetField>,
+        fs_rng: &mut FS,
+    ) {
+        Self::verifier_absorb(commitments, fs_rng);
+        fs_rng.absorb_nonnative_field_elements(&[msg.sum_a, msg.sum_b, msg.sum_c], OptimizationType::Weight);
     }
 
     /// Verify that a proof for the constraint system defined by `C` asserts that
@@ -433,14 +444,20 @@ impl<
         proof: &Proof<TargetField, BaseField, PC>,
     ) -> Result<bool, MarlinError> {
         let verifier_time = start_timer!(|| "Marlin::Verify");
-        let first_commitments = &proof.commitments[0];
-        let second_commitments = &proof.commitments[1];
-        let third_commitments = &proof.commitments[2];
-        let fourth_commitments = &proof.commitments[3];
-        let proof_has_correct_zk_mode = if MM::ZK {
-            first_commitments.len() == 4 && proof.pc_proof.is_hiding()
+        let comms = &proof.commitments;
+        let first_commitments = if MM::ZK {
+            vec![comms.w, comms.z_a, comms.z_b, comms.mask_poly.unwrap()]
         } else {
-            first_commitments.len() == 3 && !proof.pc_proof.is_hiding()
+            vec![comms.w, comms.z_a, comms.z_b]
+        };
+        let second_commitments = [comms.g_1, comms.h_1];
+        let third_commitments = [comms.g_a, comms.g_b, comms.g_c];
+        let fourth_commitments = [comms.h_2];
+
+        let proof_has_correct_zk_mode = if MM::ZK {
+            proof.pc_proof.is_hiding() & comms.mask_poly.is_some()
+        } else {
+            !proof.pc_proof.is_hiding() & comms.mask_poly.is_none()
         };
         if !proof_has_correct_zk_mode {
             eprintln!(
@@ -464,7 +481,7 @@ impl<
             new_input.resize(core::cmp::max(public_input.len(), input_domain.size()), TargetField::zero());
             new_input
         };
-        let public_input = ProverConstraintSystem::unformat_public_input(&padded_public_input);
+        let public_input = prover::ConstraintSystem::unformat_public_input(&padded_public_input);
 
         if cfg!(debug_assertions) {
             println!("Number of padded public variables: {}", padded_public_input.len());
@@ -477,26 +494,26 @@ impl<
 
         // --------------------------------------------------------------------
         // First round
-        Self::verifier_absorb(first_commitments, &proof.prover_messages[0], &mut fs_rng);
+        Self::verifier_absorb(&first_commitments, &mut fs_rng);
         let (_, verifier_state) =
             AHPForR1CS::<_, MM>::verifier_first_round(circuit_verifying_key.circuit_info, &mut fs_rng)?;
         // --------------------------------------------------------------------
 
         // --------------------------------------------------------------------
         // Second round
-        Self::verifier_absorb(second_commitments, &proof.prover_messages[1], &mut fs_rng);
+        Self::verifier_absorb(&second_commitments, &mut fs_rng);
         let (_, verifier_state) = AHPForR1CS::<_, MM>::verifier_second_round(verifier_state, &mut fs_rng)?;
         // --------------------------------------------------------------------
 
         // --------------------------------------------------------------------
         // Third round
-        Self::verifier_absorb(third_commitments, &proof.prover_messages[2], &mut fs_rng);
+        Self::verifier_absorb_with_msg(&third_commitments, &proof.msg, &mut fs_rng);
         let (_, verifier_state) = AHPForR1CS::<_, MM>::verifier_third_round(verifier_state, &mut fs_rng)?;
         // --------------------------------------------------------------------
 
         // --------------------------------------------------------------------
         // Fourth round
-        Self::verifier_absorb(fourth_commitments, &proof.prover_messages[3], &mut fs_rng);
+        Self::verifier_absorb(&fourth_commitments, &mut fs_rng);
         let verifier_state = AHPForR1CS::<_, MM>::verifier_fourth_round(verifier_state, &mut fs_rng)?;
         // --------------------------------------------------------------------
 
@@ -516,40 +533,35 @@ impl<
         // Gather commitments in one vector.
         let commitments: Vec<_> = circuit_verifying_key
             .iter()
-            .chain(first_commitments)
-            .chain(second_commitments)
-            .chain(third_commitments)
-            .chain(fourth_commitments)
+            .chain(&first_commitments)
+            .chain(&second_commitments)
+            .chain(&third_commitments)
+            .chain(&fourth_commitments)
             .cloned()
             .zip_eq(polynomial_labels)
             .zip_eq(degree_bounds)
             .map(|((c, l), d)| LabeledCommitment::new(l, c, d))
             .collect();
 
-        let (query_set, verifier_state) = AHPForR1CS::<_, MM>::verifier_query_set(verifier_state, &mut fs_rng);
+        let (query_set, verifier_state) = AHPForR1CS::<_, MM>::verifier_query_set(verifier_state);
 
-        fs_rng.absorb_nonnative_field_elements(&proof.evaluations, OptimizationType::Weight);
+        fs_rng.absorb_nonnative_field_elements(&proof.evaluations.to_field_elements(), OptimizationType::Weight);
 
         let mut evaluations = Evaluations::new();
 
-        let mut evaluation_labels = Vec::<(String, TargetField)>::new();
-
-        for (label, (_point_name, q)) in query_set.iter().cloned() {
+        for (label, (_point_name, q)) in query_set.to_set() {
             if AHPForR1CS::<TargetField, MM>::LC_WITH_ZERO_EVAL.contains(&label.as_ref()) {
                 evaluations.insert((label, q), TargetField::zero());
             } else {
-                evaluation_labels.push((label, q));
+                let eval = proof.evaluations.get(&label).ok_or_else(|| AHPError::MissingEval(label.clone()))?;
+                evaluations.insert((label, q), eval);
             }
-        }
-        evaluation_labels.sort_by(|a, b| a.0.cmp(&b.0));
-        for (q, eval) in evaluation_labels.into_iter().zip_eq(&proof.evaluations) {
-            evaluations.insert(q, *eval);
         }
 
         let lc_s = AHPForR1CS::<_, MM>::construct_linear_combinations(
             &public_input,
             &evaluations,
-            &proof.prover_messages[2],
+            &proof.msg,
             &verifier_state,
         )?;
 
@@ -564,7 +576,7 @@ impl<
                 &circuit_verifying_key.verifier_key,
                 &lc_s,
                 &commitments,
-                &query_set,
+                &query_set.to_set(),
                 &evaluations,
                 &proof.pc_proof,
                 &opening_challenges_f,

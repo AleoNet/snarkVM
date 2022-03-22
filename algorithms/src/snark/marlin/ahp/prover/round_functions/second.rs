@@ -43,9 +43,6 @@ use snarkvm_utilities::cfg_iter_mut;
 use itertools::Itertools;
 use rand_core::RngCore;
 
-#[cfg(not(feature = "std"))]
-use snarkvm_utilities::println;
-
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
@@ -75,7 +72,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let verifier::FirstMessage { alpha, eta_b, eta_c } = *verifier_message;
 
-        let (summed_z_m, t) = Self::calculate_summed_z_m_and_t(&state, alpha, eta_b, eta_c);
+        let (summed_z_m, t) = Self::calculate_summed_z_m_and_t(&mut state, alpha, eta_b, eta_c);
 
         let z_time = start_timer!(|| "Compute z poly");
 
@@ -87,7 +84,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         end_timer!(z_time);
 
-        let sumcheck_lhs = Self::calculate_lhs(&state, t, summed_z_m, z, alpha);
+        let sumcheck_lhs = Self::calculate_lhs(&mut state, t, summed_z_m, z, alpha);
 
         let sumcheck_time = start_timer!(|| "Compute sumcheck h and g polys");
         let (h_1, x_g_1) = sumcheck_lhs.divide_by_vanishing_poly(constraint_domain).unwrap();
@@ -111,8 +108,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         (oracles, state)
     }
 
-    fn calculate_lhs<'a>(
-        state: &prover::State<'a, F, MM>,
+    fn calculate_lhs(
+        state: &mut prover::State<F, MM>,
         t: DensePolynomial<F>,
         summed_z_m: DensePolynomial<F>,
         z: DensePolynomial<F>,
@@ -121,11 +118,11 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let constraint_domain = state.constraint_domain;
         let q_1_time = start_timer!(|| "Compute LHS of sumcheck");
 
-        let mask_poly = state.mask_poly.as_ref();
+        let mask_poly = state.mask_poly.take();
         assert_eq!(MM::ZK, mask_poly.is_some());
 
         let mul_domain_size = *[
-            mask_poly.map_or(0, |p| p.degree() + 1),
+            mask_poly.as_ref().map_or(0, |p| p.degree() + 1),
             constraint_domain.size() + summed_z_m.coeffs.len(),
             t.coeffs.len() + z.len(),
         ]
@@ -151,52 +148,51 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             })
             .unwrap();
 
-        lhs += mask_poly.map_or(&SparsePolynomial::zero(), |p| p.polynomial().as_sparse().unwrap());
+        lhs += &mask_poly.map_or(SparsePolynomial::zero(), |p| p.polynomial().as_sparse().unwrap().clone());
         end_timer!(q_1_time);
         lhs
     }
 
-    fn calculate_summed_z_m_and_t<'a>(
-        state: &prover::State<'a, F, MM>,
+    fn calculate_summed_z_m_and_t(
+        state: &mut prover::State<F, MM>,
         alpha: F,
         eta_b: F,
         eta_c: F,
     ) -> (DensePolynomial<F>, DensePolynomial<F>) {
         let constraint_domain = state.constraint_domain;
         let summed_z_m_poly_time = start_timer!(|| "Compute z_m poly");
-        let (z_a_poly, z_b_poly) = state.mz_polys.as_ref().unwrap();
-        assert!(z_a_poly.degree() < constraint_domain.size());
-        if MM::ZK {
-            assert_eq!(z_b_poly.degree(), constraint_domain.size());
-        } else {
-            assert!(z_b_poly.degree() < constraint_domain.size());
-        }
 
-        let (z_a_poly, z_b_poly) = state.mz_polys.as_ref().unwrap();
-        let z_a_poly = z_a_poly.polynomial().as_dense().unwrap();
-        let z_b_poly = z_b_poly.polynomial().as_dense().unwrap();
-
-        let z_c_poly = {
-            let mut multiplier = PolyMultiplier::new();
-            multiplier.add_polynomial_ref(z_a_poly, "z_a_poly");
-            multiplier.add_polynomial_ref(z_b_poly, "z_b_poly");
-            multiplier.add_precomputation(state.fft_precomputation(), state.ifft_precomputation());
-            multiplier.multiply().unwrap()
-        };
-
+        let (z_a, z_b) = state.mz_polys.take().unwrap();
         let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(2);
         job_pool.add_job(|| {
-            let mut summed_z_m_coeffs = z_c_poly.coeffs;
+            let z_a = z_a.polynomial().as_dense().unwrap();
+            let z_b = z_b.polynomial().as_dense().unwrap();
+            assert!(z_a.degree() < constraint_domain.size());
+            if MM::ZK {
+                assert_eq!(z_b.degree(), constraint_domain.size());
+            } else {
+                assert!(z_b.degree() < constraint_domain.size());
+            }
+
+            let z_c = {
+                let mut multiplier = PolyMultiplier::new();
+                multiplier.add_polynomial_ref(z_a, "z_a");
+                multiplier.add_polynomial_ref(z_b, "z_b");
+                multiplier.add_precomputation(state.fft_precomputation(), state.ifft_precomputation());
+                multiplier.multiply().unwrap()
+            };
+            let mut summed_z_m_coeffs = z_c.coeffs;
             // Note: Can't combine these two loops, because z_c_poly has 2x the degree
             // of z_a_poly and z_b_poly, so the second loop gets truncated due to
             // the `zip`s.
             cfg_iter_mut!(summed_z_m_coeffs).for_each(|c| *c *= &eta_c);
             cfg_iter_mut!(summed_z_m_coeffs)
-                .zip(&z_a_poly.coeffs)
-                .zip(&z_b_poly.coeffs)
+                .zip(&z_a.coeffs)
+                .zip(&z_b.coeffs)
                 .for_each(|((c, a), b)| *c += eta_b * b + a);
 
             let summed_z_m = DensePolynomial::from_coefficients_vec(summed_z_m_coeffs);
+            assert_eq!(summed_z_m.degree(), z_a.degree() + z_b.degree());
             end_timer!(summed_z_m_poly_time);
             summed_z_m
         });

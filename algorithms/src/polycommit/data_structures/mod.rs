@@ -67,7 +67,7 @@ pub trait PCVerifierKey:
 
 /// Defines the minimal interface of commitments for any polynomial
 /// commitment scheme.
-pub trait PCCommitment: CanonicalDeserialize + CanonicalSerialize + Clone + Debug + ToBytes {
+pub trait PCCommitment: CanonicalDeserialize + CanonicalSerialize + Copy + Debug + ToBytes {
     /// Outputs a non-hiding commitment to the zero polynomial.
     fn empty() -> Self;
 

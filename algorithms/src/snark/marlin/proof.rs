@@ -14,7 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::polycommit::{BatchLCProof, PolynomialCommitment};
+use crate::{
+    polycommit::{BatchLCProof, PolynomialCommitment},
+    snark::marlin::ahp,
+};
 
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{
@@ -34,7 +37,7 @@ pub struct Commitments<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F
     /// Commitment to the `z_b` polynomial.
     pub z_b: PC::Commitment,
     /// Commitment to the masking polynomial.
-    pub mask_poly: PC::Commitment,
+    pub mask_poly: Option<PC::Commitment>,
     /// Commitment to the `g_1` polynomial.
     pub g_1: PC::Commitment,
     /// Commitment to the `h_1` polynomial.
@@ -50,21 +53,46 @@ pub struct Commitments<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
-pub struct EvaluationsForProof<F: PrimeField> {
-    /// Evaluation of `z_a` at `beta`.
-    pub z_a_eval: F,
+pub struct Evaluations<F: PrimeField> {
     /// Evaluation of `z_b` at `beta`.
     pub z_b_eval: F,
     /// Evaluation of `g_1` at `beta`.
     pub g_1_eval: F,
-    /// Evaluation of `t` at `beta`.
-    pub t_eval: F,
     /// Evaluation of `g_a` at `beta`.
     pub g_a_eval: F,
     /// Evaluation of `g_b` at `gamma`.
     pub g_b_eval: F,
     /// Evaluation of `g_c` at `gamma`.
     pub g_c_eval: F,
+}
+
+impl<F: PrimeField> Evaluations<F> {
+    pub(crate) fn from_map(map: &std::collections::BTreeMap<String, F>) -> Self {
+        Self {
+            z_b_eval: map["z_b"],
+            g_1_eval: map["g_1"],
+            g_a_eval: map["g_a"],
+            g_b_eval: map["g_b"],
+            g_c_eval: map["g_c"],
+        }
+    }
+
+    pub(crate) fn get(&self, label: &str) -> Option<F> {
+        match label {
+            "z_b" => Some(self.z_b_eval),
+            "g_1" => Some(self.g_1_eval),
+            "g_a" => Some(self.g_a_eval),
+            "g_b" => Some(self.g_b_eval),
+            "g_c" => Some(self.g_c_eval),
+            _ => None,
+        }
+    }
+}
+
+impl<F: PrimeField> Evaluations<F> {
+    pub fn to_field_elements(&self) -> [F; 5] {
+        [self.z_b_eval, self.g_1_eval, self.g_a_eval, self.g_b_eval, self.g_c_eval]
+    }
 }
 
 /// A zkSNARK proof.
@@ -74,7 +102,10 @@ pub struct Proof<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>>
     pub commitments: Commitments<F, CF, PC>,
 
     /// Evaluations of some of the committed polynomials.
-    pub evaluations: EvaluationsForProof<F>,
+    pub evaluations: Evaluations<F>,
+
+    /// Prover message: sum_a, sum_b, sum_c
+    pub msg: ahp::prover::ThirdMessage<F>,
 
     /// An evaluation proof from the polynomial commitment.
     pub pc_proof: BatchLCProof<F, CF, PC>,
@@ -84,10 +115,11 @@ impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> Proof<F, CF
     /// Construct a new proof.
     pub fn new(
         commitments: Commitments<F, CF, PC>,
-        evaluations: EvaluationsForProof<F>,
+        evaluations: Evaluations<F>,
+        msg: ahp::prover::ThirdMessage<F>,
         pc_proof: BatchLCProof<F, CF, PC>,
     ) -> Self {
-        Self { commitments, evaluations, pc_proof }
+        Self { commitments, evaluations, msg, pc_proof }
     }
 }
 

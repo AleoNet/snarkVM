@@ -17,22 +17,15 @@
 use snarkvm_fields::Field;
 use snarkvm_utilities::{error, serialize::*, ToBytes, Write};
 
-/// Each prover message that is not a list of oracles is a list of field elements.
-#[repr(transparent)]
+/// The prover message in the third round.
 #[derive(Clone, Debug, Default, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
-pub struct Message<F: Field>(Option<Vec<F>>);
-
-impl<F: Field> Message<F> {
-    pub fn blank() -> Self {
-        Self(None)
-    }
-
-    pub fn with_field_elements(msg: Vec<F>) -> Self {
-        Self(Some(msg))
-    }
+pub struct ThirdMessage<F: Field> {
+    pub sum_a: F,
+    pub sum_b: F,
+    pub sum_c: F,
 }
 
-impl<F: Field> ToBytes for Message<F> {
+impl<F: Field> ToBytes for ThirdMessage<F> {
     fn write_le<W: Write>(&self, mut w: W) -> io::Result<()> {
         CanonicalSerialize::serialize(self, &mut w).map_err(|_| error("Could not serialize ProverMsg"))
     }

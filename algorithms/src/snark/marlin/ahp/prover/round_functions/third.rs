@@ -37,9 +37,6 @@ use snarkvm_utilities::{cfg_iter, cfg_iter_mut, ExecutionPool};
 
 use rand_core::RngCore;
 
-#[cfg(not(feature = "std"))]
-use snarkvm_utilities::println;
-
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
@@ -63,7 +60,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         verifier_message: &verifier::SecondMessage<F>,
         mut state: prover::State<'a, F, MM>,
         _r: &mut R,
-    ) -> Result<(prover::Message<F>, prover::ThirdOracles<F>, prover::State<'a, F, MM>), AHPError> {
+    ) -> Result<(prover::ThirdMessage<F>, prover::ThirdOracles<F>, prover::State<'a, F, MM>), AHPError> {
         let round_time = start_timer!(|| "AHP::Prover::ThirdRound");
 
         let verifier::FirstMessage { alpha, .. } = state
@@ -92,40 +89,39 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 state.ifft_precomputation(),
             )
         });
-        
-        pool.add_job(|| {
-        Self::matrix_sumcheck_helper(
-            "b",
-            state.non_zero_b_domain,
-            &state.index.b_arith,
-            alpha,
-            beta,
-            v_H_alpha_v_H_beta,
-            largest_non_zero_domain_size,
-            state.fft_precomputation(),
-            state.ifft_precomputation(),
-        )});
 
         pool.add_job(|| {
             Self::matrix_sumcheck_helper(
-            "c",
-            state.non_zero_c_domain,
-            &state.index.c_arith,
-            alpha,
-            beta,
-            v_H_alpha_v_H_beta,
-            largest_non_zero_domain_size,
-            state.fft_precomputation(),
-            state.ifft_precomputation(),
-        )});
+                "b",
+                state.non_zero_b_domain,
+                &state.index.b_arith,
+                alpha,
+                beta,
+                v_H_alpha_v_H_beta,
+                largest_non_zero_domain_size,
+                state.fft_precomputation(),
+                state.ifft_precomputation(),
+            )
+        });
 
-        let [
-            (sum_a, lhs_a, g_a),
-            (sum_b, lhs_b, g_b),
-            (sum_c, lhs_c, g_c),
-        ]: [_; 3] = pool.execute_all().try_into().unwrap();
+        pool.add_job(|| {
+            Self::matrix_sumcheck_helper(
+                "c",
+                state.non_zero_c_domain,
+                &state.index.c_arith,
+                alpha,
+                beta,
+                v_H_alpha_v_H_beta,
+                largest_non_zero_domain_size,
+                state.fft_precomputation(),
+                state.ifft_precomputation(),
+            )
+        });
 
-        let msg = prover::Message::with_field_elements(vec![sum_a, sum_b, sum_c]);
+        let [(sum_a, lhs_a, g_a), (sum_b, lhs_b, g_b), (sum_c, lhs_c, g_c)]: [_; 3] =
+            pool.execute_all().try_into().unwrap();
+
+        let msg = prover::ThirdMessage { sum_a, sum_b, sum_c };
         let oracles = prover::ThirdOracles { g_a, g_b, g_c };
         state.lhs_polynomials = Some([lhs_a, lhs_b, lhs_c]);
         state.sums = Some([sum_a, sum_b, sum_c]);

@@ -30,9 +30,6 @@ use snarkvm_utilities::cfg_into_iter;
 
 use rand_core::RngCore;
 
-#[cfg(not(feature = "std"))]
-use snarkvm_utilities::println;
-
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
@@ -58,18 +55,20 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let zk_bound = state.zk_bound;
 
         let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(3);
-        job_pool.add_job(|| Self::calculate_w(state.private_variables, &state));
+        let z_a = state.z_a.take().unwrap();
+        let z_b = state.z_b.take().unwrap();
+        let mut private_variables = vec![];
+        core::mem::swap(&mut state.private_variables, &mut private_variables);
+        job_pool.add_job(|| Self::calculate_w(private_variables, &state));
 
-        job_pool.add_job(|| Self::calculate_z_m("z_a", state.z_a.take().unwrap(), false, &state, None));
+        job_pool.add_job(|| Self::calculate_z_m("z_a", z_a, false, &state, None));
 
         let r_b = Some(F::rand(rng));
-        job_pool.add_job(|| Self::calculate_z_m("z_b", state.z_b.take().unwrap(), true, &state, r_b));
+        job_pool.add_job(|| Self::calculate_z_m("z_b", z_b, true, &state, r_b));
         let [w, z_a, z_b]: [PoolResult<F>; 3] = job_pool.execute_all().try_into().unwrap();
         let w_poly = w.witness().unwrap();
         let (z_a_poly, z_a) = z_a.z_m().unwrap();
         let (z_b_poly, z_b) = z_b.z_m().unwrap();
-
-        let hiding_bound = if MM::ZK { Some(1) } else { None };
 
         let mask_poly = Self::calculate_mask_poly(constraint_domain, zk_bound, rng);
 
@@ -127,7 +126,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let x_evals = {
             let mut coeffs = state.x_poly.coeffs.clone();
             coeffs.resize(constraint_domain.size(), F::zero());
-            constraint_domain.in_order_fft_in_place_with_pc(&mut coeffs, &state.fft_precomputation());
+            constraint_domain.in_order_fft_in_place_with_pc(&mut coeffs, state.fft_precomputation());
             coeffs
         };
 
@@ -138,12 +137,13 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 _ => w_extended[k - (k / ratio) - 1] - x_evals[k],
             })
             .collect();
-        let mut w_poly = EvaluationsOnDomain::from_vec_and_domain(w_poly_evals, constraint_domain)
+        let w_poly = EvaluationsOnDomain::from_vec_and_domain(w_poly_evals, constraint_domain)
             .interpolate_with_pc(state.ifft_precomputation());
         let (w_poly, remainder) = w_poly.divide_by_vanishing_poly(input_domain).unwrap();
         assert!(remainder.is_zero());
 
         assert!(w_poly.degree() < constraint_domain.size() - input_domain.size());
+        end_timer!(w_poly_time);
         PoolResult::Witness(LabeledPolynomial::new("w".to_string(), w_poly, None, Some(1)))
     }
 
@@ -171,9 +171,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let poly_for_opening = LabeledPolynomial::new(label.to_string(), poly, None, hiding_bound);
         if should_randomize {
-            assert!(poly.degree() < constraint_domain.size() + hiding_bound.unwrap());
+            assert!(poly_for_opening.degree() < constraint_domain.size() + hiding_bound.unwrap());
         } else {
-            assert!(poly.degree() < constraint_domain.size());
+            assert!(poly_for_opening.degree() < constraint_domain.size());
         }
 
         let poly_for_committing = if should_randomize {
