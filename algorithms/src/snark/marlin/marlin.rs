@@ -352,7 +352,6 @@ impl<
 
         // Compute the AHP verifier's query set.
         let (query_set, verifier_state) = AHPForR1CS::<_, MM>::verifier_query_set(verifier_state);
-        dbg!(&query_set);
         let lc_s = AHPForR1CS::<_, MM>::construct_linear_combinations(
             &public_input,
             &polynomials,
@@ -374,7 +373,6 @@ impl<
                 evaluations.insert(label, evaluation);
             }
         }
-        dbg!(&evaluations);
 
         let evaluations = proof::Evaluations::from_map(&evaluations);
         end_timer!(eval_time);

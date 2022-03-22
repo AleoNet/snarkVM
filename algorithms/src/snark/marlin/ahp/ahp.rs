@@ -243,8 +243,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             lc_terms.push((-beta * g_1_at_beta, LCTerm::One));
             LinearCombination::new("lincheck_sumcheck", lc_terms)
         };
-        dbg!(&lincheck_sumcheck);
-        assert!(evals.get_lc_eval(&lincheck_sumcheck, beta)?.is_zero());
+        debug_assert!(evals.get_lc_eval(&lincheck_sumcheck, beta)?.is_zero());
 
         linear_combinations.push(z_b);
         linear_combinations.push(g_1);
@@ -341,10 +340,7 @@ impl<F: PrimeField, T: Borrow<LabeledPolynomial<F>>> EvaluationsProvider<F> for 
         for (coeff, term) in lc.iter() {
             let value = if let LCTerm::PolyLabel(label) = term {
                 self.iter()
-                    .find(|p| {
-                        let p: &LabeledPolynomial<F> = (*p).borrow();
-                        p.label() == label
-                    })
+                    .find(|p| (*p).borrow().label() == label)
                     .ok_or_else(|| AHPError::MissingEval(format!("Missing {} for {}", label, lc.label)))?
                     .borrow()
                     .evaluate(point)
