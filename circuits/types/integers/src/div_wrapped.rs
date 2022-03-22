@@ -33,8 +33,8 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
             Integer::new(Mode::Constant, self.eject_value().wrapping_div(&other.eject_value()))
         } else if I::is_signed() {
             // Divide the absolute value of `self` and `other` in the base field.
-            let unsigned_dividend = self.abs().cast_as_dual();
-            let unsigned_divisor = other.abs().cast_as_dual();
+            let unsigned_dividend = self.abs_wrapped().cast_as_dual();
+            let unsigned_divisor = other.abs_wrapped().cast_as_dual();
             let unsigned_quotient = unsigned_dividend.div_wrapped(&unsigned_divisor);
 
             // TODO (@pranav) Do we need to check that the quotient cannot exceed abs(I::MIN)?

@@ -89,8 +89,9 @@ impl<E: Environment, I: IntegerType> DivChecked<Self> for Integer<E, I> {
             E::assert_eq(overflows, E::zero());
 
             // Divide the absolute value of `self` and `other` in the base field.
-            let unsigned_dividend = self.abs().cast_as_dual();
-            let unsigned_divisor = other.abs().cast_as_dual();
+            // Note that it is safe to use `abs_wrapped`, since the case for I::MIN is handled above.
+            let unsigned_dividend = self.abs_wrapped().cast_as_dual();
+            let unsigned_divisor = other.abs_wrapped().cast_as_dual();
             let unsigned_quotient = unsigned_dividend.div_wrapped(&unsigned_divisor);
 
             // TODO (@pranav) Do we need to check that the quotient cannot exceed abs(I::MIN)?

@@ -74,7 +74,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShrWrapped<Integer<E, M>> for
 
                 if I::is_signed() {
                     // Divide the absolute value of `self` and `shift` (as a divisor) in the base field.
-                    let dividend_unsigned = self.abs().cast_as_dual();
+                    let dividend_unsigned = self.abs_wrapped().cast_as_dual();
                     let divisor_unsigned = shift_as_divisor.cast_as_dual();
 
                     let dividend = dividend_unsigned.eject_value();
