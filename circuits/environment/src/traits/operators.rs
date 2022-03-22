@@ -199,11 +199,25 @@ pub trait SubWrapped<Rhs: ?Sized = Self> {
     fn sub_wrapped(&self, rhs: &Rhs) -> Self::Output;
 }
 
-/// Unary operator for retrieving the absolute value.
-pub trait Abs {
+/// Unary operator for retrieving the absolute value, enforcing an overflow never occurs.
+pub trait AbsChecked {
     type Output;
 
-    fn abs(self) -> Self::Output;
+    fn abs_checked(self) -> Self::Output;
+}
+
+/// Unary operator for retrieving the absolute value, bounding the difference to `MAX` if an overflow occurs.
+pub trait AbsSaturating {
+    type Output;
+
+    fn abs_saturating(self) -> Self::Output;
+}
+
+/// Unary operator for retrieving the absolute value, wrapping the result if an overflow occurs.
+pub trait AbsWrapped {
+    type Output;
+
+    fn abs_wrapped(self) -> Self::Output;
 }
 
 /// Unary operator for retrieving the doubled value.
