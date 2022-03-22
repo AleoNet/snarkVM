@@ -47,14 +47,8 @@ mod tests {
 
     const ITERATIONS: usize = 128;
 
-    fn check_unsigned_neg_halts<I: IntegerType + std::panic::UnwindSafe>(mode: Mode, value: I) {
-        let candidate = Integer::<Circuit, I>::new(mode, value);
-        let operation = std::panic::catch_unwind(|| candidate.neg());
-        assert!(operation.is_err());
-    }
-
     #[rustfmt::skip]
-    fn check_neg<I: IntegerType + std::panic::UnwindSafe + Neg<Output = I> >(
+    fn check_neg<I: IntegerType + std::panic::RefUnwindSafe + std::panic::UnwindSafe + Neg<Output = I> >(
         name: &str,
         value: I,
         mode: Mode,
@@ -66,18 +60,18 @@ mod tests {
         let a = Integer::<Circuit, I>::new(mode, value);
         let case = format!("(-{})", a.eject_value());
         match value.checked_neg() {
-            Some(value) => check_unary_operation_passes(name, &case, value, &a, |a: &Integer<Circuit, I> | { a.neg() }, num_constants, num_public, num_private, num_constraints),
+            Some(value) => check_unary_operation_passes(name, &case, value, &a, |a: &Integer::<Circuit, I> | a.neg(), num_constants, num_public, num_private, num_constraints),
             None => {
                 match mode {
-                    Mode::Constant => check_unsigned_neg_halts(mode, value),
-                    _ => check_unary_operation_fails(name, &case, &a, |a: &Integer<Circuit, I> | { a.neg() }, num_constants, num_public, num_private, num_constraints),
+                    Mode::Constant => check_unary_operation_halts(&a, |a: &Integer::<Circuit, I> | a.neg()),
+                    _ => check_unary_operation_fails(name, &case, &a, |a: &Integer::<Circuit, I> | a.neg(), num_constants, num_public, num_private, num_constraints),
                 }
             }
         }
     }
 
     #[rustfmt::skip]
-    fn run_test<I: IntegerType + std::panic::UnwindSafe + Neg<Output = I> >(
+    fn run_test<I: IntegerType + std::panic::RefUnwindSafe + std::panic::UnwindSafe + Neg<Output = I> >(
         mode: Mode,
         num_constants: usize,
         num_public: usize,
@@ -95,7 +89,7 @@ mod tests {
         }
     }
 
-    fn assert_unsigned_neg_halts<I: IntegerType + std::panic::UnwindSafe>(mode: Mode) {
+    fn assert_unsigned_neg_halts<I: IntegerType + std::panic::RefUnwindSafe + std::panic::UnwindSafe>(mode: Mode) {
         let candidate = Integer::<Circuit, I>::new(mode, UniformRand::rand(&mut test_rng()));
         let operation = std::panic::catch_unwind(|| candidate.neg());
         assert!(operation.is_err());
