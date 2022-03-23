@@ -575,42 +575,39 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
         Self::Commitment: 'a,
     {
         let BatchLCProof { proof, .. } = proof;
-        let label_comm_map = commitments.into_iter().map(|c| (c.label().to_owned(), c)).collect::<BTreeMap<_, _>>();
+        let label_comm_map = commitments.into_iter().map(|c| (c.label(), c)).collect::<BTreeMap<_, _>>();
 
         let mut lc_commitments = Vec::new();
         let mut lc_info = Vec::new();
         let mut evaluations = evaluations.clone();
         for lc in lc_s {
-            let lc_label = lc.label().clone();
-            let num_polys = lc.len();
-
             let mut degree_bound = None;
             let mut combined_comm = E::G1Projective::zero();
 
-            for (coeff, label) in lc.iter() {
-                if label.is_one() {
+            for (coeff, term) in lc.iter() {
+                if term.is_one() {
                     for (&(ref label, _), ref mut eval) in evaluations.iter_mut() {
-                        if label == &lc_label {
+                        if label == lc.label() {
                             **eval -= coeff;
                         }
                     }
                 } else {
-                    let label: String = label.to_owned().try_into().unwrap();
-                    let cur_comm =
-                        label_comm_map.get(&label).ok_or(PCError::MissingPolynomial { label: label.to_string() })?;
+                    let label: String = term.to_owned().try_into().unwrap();
+                    let cur_comm: &LabeledCommitment<_> =
+                        label_comm_map.get(&label).ok_or(PCError::MissingPolynomial { label })?;
 
-                    if num_polys == 1 && cur_comm.degree_bound().is_some() {
+                    if lc.len() == 1 && cur_comm.degree_bound().is_some() {
                         assert!(coeff.is_one(), "Coefficient must be one for degree-bounded equations");
                         degree_bound = cur_comm.degree_bound();
                     } else if cur_comm.degree_bound().is_some() {
-                        return Err(PCError::EquationHasDegreeBounds(lc_label));
+                        return Err(PCError::EquationHasDegreeBounds(lc.label().clone()));
                     }
                     combined_comm += &cur_comm.commitment().0.mul(*coeff).into();
                 }
             }
 
             lc_commitments.push(combined_comm);
-            lc_info.push((lc_label, degree_bound));
+            lc_info.push((lc.label().clone(), degree_bound));
         }
 
         let comms = E::G1Projective::batch_normalization_into_affine(lc_commitments).into_iter().map(kzg10::Commitment);
