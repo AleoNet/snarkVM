@@ -429,11 +429,11 @@ impl<E: PairingEngine> KZG10<E> {
         let check_time = start_timer!(|| "Checking evaluation");
         let mut inner = commitment.0.into_projective() - vk.g.into_projective().mul(value);
         if let Some(random_v) = proof.random_v {
-            inner -= &vk.gamma_g.mul(random_v).into();
+            inner -= &vk.gamma_g.mul(random_v);
         }
         let lhs = E::pairing(inner, vk.h);
 
-        let inner = vk.beta_h.into_projective() - vk.h.mul(point).into_projective();
+        let inner = vk.beta_h.into_projective() - vk.h.mul(point);
         let rhs = E::pairing(proof.w, inner);
 
         end_timer!(check_time, || format!("Result: {}", lhs == rhs));
@@ -465,7 +465,7 @@ impl<E: PairingEngine> KZG10<E> {
         let mut gamma_g_multiplier = E::Fr::zero();
         for (((c, z), v), proof) in commitments.iter().zip_eq(points).zip_eq(values).zip_eq(proofs) {
             let w = proof.w;
-            let mut temp = w.mul(*z).into_projective();
+            let mut temp = w.mul(*z);
             temp.add_assign_mixed(&c.0);
             let c = temp;
             g_multiplier += &(randomizer * v);
@@ -473,7 +473,7 @@ impl<E: PairingEngine> KZG10<E> {
                 gamma_g_multiplier += &(randomizer * random_v);
             }
             total_c += &c.mul(randomizer);
-            total_w += &w.mul(randomizer).into();
+            total_w += &w.mul(randomizer);
             // We don't need to sample randomizers from the full field,
             // only from 128-bit strings.
             randomizer = u128::rand(rng).into();

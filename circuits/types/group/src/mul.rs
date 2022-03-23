@@ -184,6 +184,7 @@ impl<E: Environment> MulAssign<&[Boolean<E>]> for Group<E> {
 mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
+    use snarkvm_curves::ProjectiveCurve;
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 10;
@@ -231,7 +232,7 @@ mod tests {
             let base: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
             let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
 
-            let expected = base * scalar;
+            let expected = (base * scalar).into_affine();
             let a = Group::<Circuit>::new(Mode::Constant, (base.to_x_coordinate(), None));
             let b = Scalar::<Circuit>::new(Mode::Constant, scalar);
 
@@ -248,7 +249,7 @@ mod tests {
             let base: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
             let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
 
-            let expected = base * scalar;
+            let expected = (base * scalar).into_affine();
             let a = Group::<Circuit>::new(Mode::Constant, (base.to_x_coordinate(), None));
             let b = Scalar::<Circuit>::new(Mode::Public, scalar);
 
@@ -265,7 +266,7 @@ mod tests {
             let base: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
             let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
 
-            let expected = base * scalar;
+            let expected = (base * scalar).into_affine();
             let a = Group::<Circuit>::new(Mode::Constant, (base.to_x_coordinate(), None));
             let b = Scalar::<Circuit>::new(Mode::Private, scalar);
 
@@ -305,7 +306,7 @@ mod tests {
                 (num_constant, num_private, num_constraints)
             };
 
-            let expected = base * scalar;
+            let expected = (base * scalar).into_affine();
             let a = Group::<Circuit>::new(Mode::Public, (base.to_x_coordinate(), None));
             let b = Scalar::<Circuit>::new(Mode::Constant, scalar);
 
@@ -345,7 +346,7 @@ mod tests {
                 (num_constant, num_private, num_constraints)
             };
 
-            let expected = base * scalar;
+            let expected = (base * scalar).into_affine();
             let a = Group::<Circuit>::new(Mode::Private, (base.to_x_coordinate(), None));
             let b = Scalar::<Circuit>::new(Mode::Constant, scalar);
 
@@ -362,7 +363,7 @@ mod tests {
             let base: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
             let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
 
-            let expected = base * scalar;
+            let expected = (base * scalar).into_affine();
             let a = Group::<Circuit>::new(Mode::Public, (base.to_x_coordinate(), None));
             let b = Scalar::<Circuit>::new(Mode::Public, scalar);
 
@@ -379,7 +380,7 @@ mod tests {
             let base: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
             let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
 
-            let expected = base * scalar;
+            let expected = (base * scalar).into_affine();
             let a = Group::<Circuit>::new(Mode::Public, (base.to_x_coordinate(), None));
             let b = Scalar::<Circuit>::new(Mode::Private, scalar);
 
@@ -396,7 +397,7 @@ mod tests {
             let base: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
             let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
 
-            let expected = base * scalar;
+            let expected = (base * scalar).into_affine();
             let a = Group::<Circuit>::new(Mode::Private, (base.to_x_coordinate(), None));
             let b = Scalar::<Circuit>::new(Mode::Public, scalar);
 
@@ -413,7 +414,7 @@ mod tests {
             let base: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
             let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
 
-            let expected = base * scalar;
+            let expected = (base * scalar).into_affine();
             let a = Group::<Circuit>::new(Mode::Private, (base.to_x_coordinate(), None));
             let b = Scalar::<Circuit>::new(Mode::Private, scalar);
 
@@ -429,7 +430,7 @@ mod tests {
         // Sample two random elements.
         let a: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
         let b: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
-        let expected = a * b;
+        let expected = (a * b).into_affine();
 
         // Constant
         let base = Group::<Circuit>::new(Mode::Constant, (a.to_x_coordinate(), Some(a.to_y_coordinate())));

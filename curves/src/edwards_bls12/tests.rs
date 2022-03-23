@@ -69,8 +69,7 @@ fn test_projective_group() {
 fn test_affine_group() {
     for _i in 0..10 {
         let a: EdwardsAffine = rand::random();
-        let b: EdwardsAffine = rand::random();
-        affine_test::<EdwardsAffine>(a, b);
+        affine_test::<EdwardsAffine>(a);
     }
 }
 
@@ -85,10 +84,8 @@ fn test_generator() {
 fn test_conversion() {
     let a: EdwardsAffine = rand::random();
     let b: EdwardsAffine = rand::random();
-    let a_b = (a + b).double().double();
-    let a_b2 = (a.into_projective() + b.into_projective()).double().double();
-    assert_eq!(a_b, a_b2.into_affine());
-    assert_eq!(a_b.into_projective(), a_b2);
+    assert_eq!(a.into_projective().into_affine(), a);
+    assert_eq!(b.into_projective().into_affine(), b);
 }
 
 #[test]

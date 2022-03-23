@@ -18,7 +18,7 @@ use crate::traits::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::Zero;
 use snarkvm_utilities::rand::{test_rng, UniformRand};
 
-use std::ops::{AddAssign, Mul};
+use std::ops::Mul;
 
 pub const ITERATIONS: usize = 5;
 
@@ -125,7 +125,7 @@ fn random_multiplication_test<G: ProjectiveCurve>() {
         tmp3.add_assign(b_affine.mul(s));
 
         assert_eq!(tmp1, tmp2);
-        assert_eq!(tmp1, tmp3.into());
+        assert_eq!(tmp1, tmp3);
     }
 }
 

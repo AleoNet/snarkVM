@@ -88,6 +88,11 @@ pub trait ProjectiveCurve:
     /// Adds an affine element to this element.
     fn add_assign_mixed(&mut self, other: &Self::Affine);
 
+    /// Adds an affine element to this element.
+    fn sub_assign_mixed(&mut self, other: &Self::Affine) {
+        self.add_assign_mixed(&-*other);
+    }
+
     /// Returns `self + self`.
     #[must_use]
     fn double(&self) -> Self;
@@ -120,17 +125,8 @@ pub trait AffineCurve:
     + Neg<Output = Self>
     + UniformRand
     + Zero
-    + Add<Self, Output = Self>
-    + Sub<Self, Output = Self>
-    + Mul<Self::ScalarField, Output = Self>
-    + AddAssign<Self>
-    + SubAssign<Self>
-    + MulAssign<Self::ScalarField>
-    + for<'a> Add<&'a Self, Output = Self>
-    + for<'a> Sub<&'a Self, Output = Self>
-    + for<'a> AddAssign<&'a Self>
-    + for<'a> SubAssign<&'a Self>
     + PartialEq<Self::Projective>
+    + Mul<Self::ScalarField, Output = Self::Projective>
     + Sized
     + Serialize
     + DeserializeOwned
@@ -175,13 +171,6 @@ pub trait AffineCurve:
     /// otherwise returns None. This function is primarily intended for sampling
     /// random group elements from a hash-function or RNG output.
     fn from_random_bytes(bytes: &[u8]) -> Option<Self>;
-
-    /// Returns `self + self`.
-    #[must_use]
-    fn double(&self) -> Self;
-
-    /// Sets `self := self + self`.
-    fn double_in_place(&mut self);
 
     /// Multiply this element by a big-endian boolean representation of
     /// an integer.

@@ -90,6 +90,7 @@ impl<E: Environment> Double for &Group<E> {
 mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
+    use snarkvm_curves::ProjectiveCurve;
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 250;
@@ -99,8 +100,9 @@ mod tests {
         // Constant variables
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+            let point = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
             let expected = point.double();
+            let point = point.into_affine();
 
             let affine =
                 Group::<Circuit>::new(Mode::Constant, (point.to_x_coordinate(), Some(point.to_y_coordinate())));
@@ -116,8 +118,9 @@ mod tests {
         // Public variables
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+            let point = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
             let expected = point.double();
+            let point = point.into_affine();
 
             let affine = Group::<Circuit>::new(Mode::Public, (point.to_x_coordinate(), Some(point.to_y_coordinate())));
 
@@ -132,8 +135,10 @@ mod tests {
         // Private variables
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+
+            let point = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
             let expected = point.double();
+            let point = point.into_affine();
 
             let affine = Group::<Circuit>::new(Mode::Private, (point.to_x_coordinate(), Some(point.to_y_coordinate())));
 
@@ -149,8 +154,9 @@ mod tests {
     #[test]
     fn test_double_matches() {
         // Sample two random elements.
-        let a: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+        let a = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
         let expected = a + a;
+        let a = a.into_affine();
 
         // Constant
         let candidate_a =

@@ -16,7 +16,7 @@
 
 use crate::{error::ValueBalanceCommitmentError, AleoAmount, Network};
 use snarkvm_algorithms::CommitmentScheme;
-use snarkvm_curves::AffineCurve;
+use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, PrimeField, ToConstraintField, Zero};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -96,17 +96,17 @@ impl<N: Network> ValueBalanceCommitment<N> {
         }
 
         // Calculate the `combined_commitments`.
-        let mut combined_commitments = N::ProgramAffineCurve::zero();
+        let mut combined_commitments = N::ProgramAffineCurve::zero().into_projective();
 
         for vc_input in input_value_commitments {
-            combined_commitments += **vc_input;
+            combined_commitments.add_assign_mixed(&**vc_input);
         }
 
         for vc_output in output_value_commitments {
-            combined_commitments -= **vc_output;
+            combined_commitments.sub_assign_mixed(&**vc_output);
         }
 
-        combined_commitments -= Self::commit_without_randomness(value_balance)?;
+        combined_commitments.sub_assign_mixed(&Self::commit_without_randomness(value_balance)?);
 
         // Make sure bvk can be derived from the cumulative randomness.
         let expected_combined_commitments =
@@ -139,22 +139,22 @@ impl<N: Network> ValueBalanceCommitment<N> {
         input: &[u8],
     ) -> Result<bool, ValueBalanceCommitmentError> {
         // Craft the combined value commitments (verifying key).
-        let mut combined_commitments = N::ProgramAffineCurve::zero();
+        let mut combined_commitments = N::ProgramAffineCurve::zero().into_projective();
 
         for vc_input in input_value_commitments {
-            combined_commitments += **vc_input;
+            combined_commitments.add_assign_mixed(&**vc_input);
         }
 
         for vc_output in output_value_commitments {
-            combined_commitments -= **vc_output;
+            combined_commitments.sub_assign_mixed(&**vc_output);
         }
 
-        combined_commitments -= Self::commit_without_randomness(value_balance)?;
+        combined_commitments.sub_assign_mixed(&Self::commit_without_randomness(value_balance)?);
 
         let c = hash_into_field::<N>(&self.commitment.to_x_coordinate().to_bytes_le()?, input);
         let recommit = N::value_commitment_scheme().commit_bytes(&0i64.to_le_bytes(), &self.blinding_factor)?;
 
-        Ok((combined_commitments.mul(c) + *self.commitment - recommit).is_zero())
+        Ok((combined_commitments.mul(c) + self.commitment.into_projective() - recommit.into_projective()).is_zero())
     }
 
     /// Returns a commitment on the value balance with a randomness of zero.
@@ -194,21 +194,21 @@ impl<N: Network> ValueBalanceCommitment<N> {
         ValueBalanceCommitmentError,
     > {
         // Craft the partial combined value commitments (partial verifying key).
-        let mut partial_combined_commitments = N::ProgramAffineCurve::zero();
+        let mut partial_combined_commitments = N::ProgramAffineCurve::zero().into_projective();
 
         for vc_input in input_value_commitments {
-            partial_combined_commitments += **vc_input;
+            partial_combined_commitments.add_assign_mixed(&**vc_input);
         }
 
         for vc_output in output_value_commitments {
-            partial_combined_commitments -= **vc_output;
+            partial_combined_commitments.sub_assign_mixed(&**vc_output);
         }
 
         let c = hash_into_field::<N>(&self.commitment.to_x_coordinate().to_bytes_le()?, input);
         let blinded_commitment =
             N::value_commitment_scheme().commit_bytes(&0i64.to_le_bytes(), &self.blinding_factor)?;
 
-        Ok((c, partial_combined_commitments, self.commitment.clone(), blinded_commitment))
+        Ok((c, partial_combined_commitments.into(), self.commitment.clone(), blinded_commitment))
     }
 }
 

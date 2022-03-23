@@ -77,7 +77,7 @@ impl<E: PairingEngine> SonicKZG10<E> {
             if coeff.is_one() {
                 combined_comm.add_assign_mixed(&comm.0);
             } else {
-                combined_comm += &comm.0.mul(coeff).into();
+                combined_comm += &comm.0.mul(coeff);
             }
         }
         combined_comm
@@ -602,7 +602,7 @@ impl<E: PairingEngine> PolynomialCommitment<E::Fr, E::Fq> for SonicKZG10<E> {
                     } else if cur_comm.degree_bound().is_some() {
                         return Err(PCError::EquationHasDegreeBounds(lc.label().clone()));
                     }
-                    combined_comm += &cur_comm.commitment().0.mul(*coeff).into();
+                    combined_comm += &cur_comm.commitment().0.mul(*coeff);
                 }
             }
 
@@ -1006,7 +1006,7 @@ impl<E: PairingEngine> SonicKZG10<E> {
             let degree_bound = labeled_comm.degree_bound();
 
             // Applying opening challenge and randomness (used in batch_checking)
-            let mut comm_with_challenge: E::G1Projective = comm.0.mul(curr_challenge).into();
+            let mut comm_with_challenge: E::G1Projective = comm.0.mul(curr_challenge);
 
             if let Some(randomizer) = randomizer {
                 comm_with_challenge = comm_with_challenge.mul(randomizer);
@@ -1030,7 +1030,7 @@ impl<E: PairingEngine> SonicKZG10<E> {
         }
 
         *combined_witness += &witness;
-        *combined_adjusted_witness += &adjusted_witness.into();
+        *combined_adjusted_witness += &adjusted_witness;
         end_timer!(acc_time);
     }
 
@@ -1062,7 +1062,7 @@ impl<E: PairingEngine> SonicKZG10<E> {
             let degree_bound = labeled_commitment.degree_bound();
 
             // Applying opening challenge and randomness (used in batch_checking)
-            let mut commitment_with_challenge: E::G1Projective = commitment.0.mul(current_challenge).into();
+            let mut commitment_with_challenge: E::G1Projective = commitment.0.mul(current_challenge);
 
             if let Some(randomizer) = randomizer {
                 commitment_with_challenge = commitment_with_challenge.mul(randomizer);
@@ -1085,7 +1085,7 @@ impl<E: PairingEngine> SonicKZG10<E> {
         }
 
         *combined_witness += &witness;
-        *combined_adjusted_witness += &adjusted_witness.into();
+        *combined_adjusted_witness += &adjusted_witness;
         end_timer!(acc_time);
     }
 

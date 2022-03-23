@@ -123,6 +123,7 @@ impl<E: Environment> AddAssign<&Self> for Group<E> {
 mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
+    use snarkvm_curves::ProjectiveCurve;
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 100;
@@ -167,12 +168,12 @@ mod tests {
     #[test]
     fn test_constant_plus_constant() {
         for i in 0..ITERATIONS {
-            let first: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+            let first = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
+            let second = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
 
-            let expected = first + second;
-            let a = Group::<Circuit>::new(Mode::Constant, (first.to_x_coordinate(), None));
-            let b = Group::<Circuit>::new(Mode::Constant, (second.to_x_coordinate(), None));
+            let expected = (first + second).into();
+            let a = Group::<Circuit>::new(Mode::Constant, (first.into_affine().to_x_coordinate(), None));
+            let b = Group::<Circuit>::new(Mode::Constant, (second.into_affine().to_x_coordinate(), None));
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, &expected, &a, &b, 4, 0, 0, 0);
@@ -184,12 +185,12 @@ mod tests {
     #[test]
     fn test_constant_plus_public() {
         for i in 0..ITERATIONS {
-            let first: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+            let first = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
+            let second = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
 
-            let expected = first + second;
-            let a = Group::<Circuit>::new(Mode::Constant, (first.to_x_coordinate(), None));
-            let b = Group::<Circuit>::new(Mode::Public, (second.to_x_coordinate(), None));
+            let expected = (first + second).into();
+            let a = Group::<Circuit>::new(Mode::Constant, (first.into_affine().to_x_coordinate(), None));
+            let b = Group::<Circuit>::new(Mode::Public, (second.into_affine().to_x_coordinate(), None));
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, &expected, &a, &b, 2, 0, 3, 3);
@@ -201,12 +202,12 @@ mod tests {
     #[test]
     fn test_public_plus_constant() {
         for i in 0..ITERATIONS {
-            let first: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+            let first = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
+            let second = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
 
-            let expected = first + second;
-            let a = Group::<Circuit>::new(Mode::Public, (first.to_x_coordinate(), None));
-            let b = Group::<Circuit>::new(Mode::Constant, (second.to_x_coordinate(), None));
+            let expected = (first + second).into();
+            let a = Group::<Circuit>::new(Mode::Public, (first.into_affine().to_x_coordinate(), None));
+            let b = Group::<Circuit>::new(Mode::Constant, (second.into_affine().to_x_coordinate(), None));
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, &expected, &a, &b, 2, 0, 3, 3);
@@ -218,12 +219,12 @@ mod tests {
     #[test]
     fn test_constant_plus_private() {
         for i in 0..ITERATIONS {
-            let first: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+            let first = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
+            let second = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
 
-            let expected = first + second;
-            let a = Group::<Circuit>::new(Mode::Constant, (first.to_x_coordinate(), None));
-            let b = Group::<Circuit>::new(Mode::Private, (second.to_x_coordinate(), None));
+            let expected = (first + second).into();
+            let a = Group::<Circuit>::new(Mode::Constant, (first.into_affine().to_x_coordinate(), None));
+            let b = Group::<Circuit>::new(Mode::Private, (second.into_affine().to_x_coordinate(), None));
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, &expected, &a, &b, 2, 0, 3, 3);
@@ -235,12 +236,12 @@ mod tests {
     #[test]
     fn test_private_plus_constant() {
         for i in 0..ITERATIONS {
-            let first: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+            let first = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
+            let second = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
 
-            let expected = first + second;
-            let a = Group::<Circuit>::new(Mode::Private, (first.to_x_coordinate(), None));
-            let b = Group::<Circuit>::new(Mode::Constant, (second.to_x_coordinate(), None));
+            let expected = (first + second).into();
+            let a = Group::<Circuit>::new(Mode::Private, (first.into_affine().to_x_coordinate(), None));
+            let b = Group::<Circuit>::new(Mode::Constant, (second.into_affine().to_x_coordinate(), None));
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, &expected, &a, &b, 2, 0, 3, 3);
@@ -252,12 +253,12 @@ mod tests {
     #[test]
     fn test_public_plus_public() {
         for i in 0..ITERATIONS {
-            let first: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+            let first = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
+            let second = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
 
-            let expected = first + second;
-            let a = Group::<Circuit>::new(Mode::Public, (first.to_x_coordinate(), None));
-            let b = Group::<Circuit>::new(Mode::Public, (second.to_x_coordinate(), None));
+            let expected = (first + second).into();
+            let a = Group::<Circuit>::new(Mode::Public, (first.into_affine().to_x_coordinate(), None));
+            let b = Group::<Circuit>::new(Mode::Public, (second.into_affine().to_x_coordinate(), None));
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, &expected, &a, &b, 2, 0, 6, 6);
@@ -269,12 +270,12 @@ mod tests {
     #[test]
     fn test_public_plus_private() {
         for i in 0..ITERATIONS {
-            let first: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+            let first = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
+            let second = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
 
-            let expected = first + second;
-            let a = Group::<Circuit>::new(Mode::Public, (first.to_x_coordinate(), None));
-            let b = Group::<Circuit>::new(Mode::Private, (second.to_x_coordinate(), None));
+            let expected = (first + second).into();
+            let a = Group::<Circuit>::new(Mode::Public, (first.into_affine().to_x_coordinate(), None));
+            let b = Group::<Circuit>::new(Mode::Private, (second.into_affine().to_x_coordinate(), None));
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, &expected, &a, &b, 2, 0, 6, 6);
@@ -286,12 +287,12 @@ mod tests {
     #[test]
     fn test_private_plus_public() {
         for i in 0..ITERATIONS {
-            let first: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+            let first = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
+            let second = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
 
-            let expected = first + second;
-            let a = Group::<Circuit>::new(Mode::Private, (first.to_x_coordinate(), None));
-            let b = Group::<Circuit>::new(Mode::Public, (second.to_x_coordinate(), None));
+            let expected = (first + second).into();
+            let a = Group::<Circuit>::new(Mode::Private, (first.into_affine().to_x_coordinate(), None));
+            let b = Group::<Circuit>::new(Mode::Public, (second.into_affine().to_x_coordinate(), None));
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, &expected, &a, &b, 2, 0, 6, 6);
@@ -303,12 +304,12 @@ mod tests {
     #[test]
     fn test_private_plus_private() {
         for i in 0..ITERATIONS {
-            let first: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+            let first = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
+            let second = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
 
-            let expected = first + second;
-            let a = Group::<Circuit>::new(Mode::Private, (first.to_x_coordinate(), None));
-            let b = Group::<Circuit>::new(Mode::Private, (second.to_x_coordinate(), None));
+            let expected = (first + second).into();
+            let a = Group::<Circuit>::new(Mode::Private, (first.into_affine().to_x_coordinate(), None));
+            let b = Group::<Circuit>::new(Mode::Private, (second.into_affine().to_x_coordinate(), None));
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, &expected, &a, &b, 2, 0, 6, 6);
@@ -320,11 +321,13 @@ mod tests {
     #[test]
     fn test_add_matches() {
         // Sample two random elements.
-        let a: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-        let b: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+        let a = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
+        let b = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
         let expected = a + b;
 
         // Constant
+        let a = a.into_affine();
+        let b = b.into_affine();
         let first = Group::<Circuit>::new(Mode::Constant, (a.to_x_coordinate(), Some(a.to_y_coordinate())));
         let second = Group::<Circuit>::new(Mode::Constant, (b.to_x_coordinate(), Some(b.to_y_coordinate())));
         let candidate_a = first + second;

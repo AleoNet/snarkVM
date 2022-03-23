@@ -344,7 +344,7 @@ impl<E: PairingEngine> PCCommitment for Commitment<E> {
 impl<'a, E: PairingEngine> AddAssign<(E::Fr, &'a Commitment<E>)> for Commitment<E> {
     #[inline]
     fn add_assign(&mut self, (f, other): (E::Fr, &'a Commitment<E>)) {
-        let mut other = other.0.mul(f).into_projective();
+        let mut other = other.0.mul(f);
         other.add_assign_mixed(&self.0);
         self.0 = other.into();
     }
