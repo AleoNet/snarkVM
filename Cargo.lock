@@ -1498,9 +1498,9 @@ dependencies = [
 
 [[package]]
 name = "quick-xml"
-version = "0.20.0"
+version = "0.22.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "26aab6b48e2590e4a64d1ed808749ba06257882b461d01ca71baeb747074a6dd"
+checksum = "8533f14c8382aaad0d592c812ac3b826162128b65662331e1127b45c3d18536b"
 dependencies = [
  "memchr",
 ]
@@ -1804,9 +1804,9 @@ dependencies = [
 
 [[package]]
 name = "self_update"
-version = "0.28.0"
+version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5bc3e89793fe56c82104ddc103c998e4e94713cb975202207829e61031eb4be6"
+checksum = "710b9f39843957861314222c3bad16b9138f664665125ba277a48930253c4ed5"
 dependencies = [
  "hyper",
  "indicatif",
