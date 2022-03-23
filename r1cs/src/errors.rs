@@ -25,6 +25,9 @@ pub enum SynthesisError {
     /// During synthesis, we lacked knowledge of a variable assignment.
     #[error("An assignment for a variable could not be computed")]
     AssignmentMissing,
+    /// Handles a failed conversion of objects into constraint field elements.
+    #[error("Failed to convert object into constraint field elements")]
+    ConstraintFieldError(#[from] snarkvm_fields::ConstraintFieldError),
     /// During synthesis, we divided by zero.
     #[error("Division by zero during synthesis")]
     DivisionByZero,

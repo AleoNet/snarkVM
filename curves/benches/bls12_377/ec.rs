@@ -18,7 +18,6 @@ pub(crate) mod g1 {
     use snarkvm_curves::{
         bls12_377::{Fr, G1Affine, G1Projective as G1},
         traits::ProjectiveCurve,
-        Group,
     };
     use snarkvm_utilities::rand::UniformRand;
 
@@ -108,7 +107,6 @@ pub(crate) mod g2 {
     use snarkvm_curves::{
         bls12_377::{Fr, G2Affine, G2Projective as G2},
         traits::ProjectiveCurve,
-        Group,
     };
     use snarkvm_utilities::rand::UniformRand;
 

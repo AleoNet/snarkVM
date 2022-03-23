@@ -51,16 +51,8 @@ where
 {
     type Parameters = S::Parameters;
 
-    fn sample_params() -> Self::Parameters {
-        S::sample_parameters()
-    }
-
     fn new() -> Self {
-        Self { s: S::with_default_parameters(), _phantom: PhantomData }
-    }
-
-    fn with_parameters(params: &Self::Parameters) -> Self {
-        Self { s: S::with_parameters(params), _phantom: PhantomData }
+        Self { s: S::new(&S::sample_parameters()), _phantom: PhantomData }
     }
 
     fn absorb_nonnative_field_elements(&mut self, elems: &[TargetField], ty: OptimizationType) {
@@ -107,7 +99,7 @@ where
     }
 
     fn squeeze_native_field_elements(&mut self, num: usize) -> Result<SmallVec<[BaseField; 10]>, FiatShamirError> {
-        Ok(self.s.squeeze_field_elements(num))
+        Ok(self.s.squeeze(num))
     }
 
     fn squeeze_128_bits_nonnative_field_elements(&mut self, num: usize) -> Result<Vec<TargetField>, FiatShamirError> {
@@ -143,7 +135,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField, S: DefaultCapacityAlgebraic
         let len = dest.len() * 8;
 
         let num_of_elements = (capacity + len - 1) / len;
-        let elements = self.s.squeeze_field_elements(num_of_elements);
+        let elements = self.s.squeeze(num_of_elements);
 
         let mut bits = Vec::<bool>::new();
         for elem in elements.iter() {
@@ -281,7 +273,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField, S: DefaultCapacityAlgebraic
         let bits_per_element = BaseField::size_in_bits() - 1;
         let num_elements = (num_bits + bits_per_element - 1) / bits_per_element;
 
-        let src_elements = sponge.squeeze_field_elements(num_elements);
+        let src_elements = sponge.squeeze(num_elements);
         let mut dest_bits = Vec::<bool>::new();
 
         let skip = (BaseField::Parameters::REPR_SHAVE_BITS + 1) as usize;

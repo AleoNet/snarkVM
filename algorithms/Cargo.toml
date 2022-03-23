@@ -38,6 +38,16 @@ path = "benches/crh/bhp.rs"
 harness = false
 
 [[bench]]
+name = "hash_to_curve"
+path = "benches/crypto_hash/hash_to_curve.rs"
+harness = false
+
+[[bench]]
+name = "poseidon_sponge"
+path = "benches/crypto_hash/poseidon.rs"
+harness = false
+
+[[bench]]
 name = "encryption-aleo"
 path = "benches/encryption/aleo.rs"
 harness = false
@@ -45,16 +55,6 @@ harness = false
 [[bench]]
 name = "fft"
 path = "benches/fft/fft.rs"
-harness = false
-
-[[bench]]
-name = "hash_to_curve"
-path = "benches/hash_to_curve/hash_to_curve.rs"
-harness = false
-
-[[bench]]
-name = "poseidon_sponge"
-path = "benches/sponge/poseidon.rs"
 harness = false
 
 [[bench]]
@@ -114,10 +114,6 @@ optional = true
 
 [dependencies.crossbeam-channel]
 version = "0.5"
-
-[dependencies.derivative]
-version = "2"
-features = [ "use_core" ]
 
 [dependencies.digest]
 version = "0.10"
@@ -227,7 +223,6 @@ full = [
   "crh",
   "encryption",
   "fft",
-  "hash_to_curve",
   "merkle_tree",
   "msm",
   "polycommit",
@@ -241,7 +236,6 @@ wasm = [
   "crypto_hash",
   "encryption",
   "fft",
-  "hash_to_curve",
   "merkle_tree",
   "msm",
   "polycommit",
@@ -256,11 +250,10 @@ parallel = [ "rayon", "num_cpus", "snarkvm-fields/parallel", "snarkvm-utilities/
 profiler = [ "aleo-std/profiler" ]
 
 commitment = [ "crh" ]
-crh = [ "hash_to_curve" ]
+crh = [ "crypto_hash" ]
 crypto_hash = [ "blake2s_simd" ]
 encryption = [ "signature" ]
 fft = [ ]
-hash_to_curve = [ "crypto_hash" ]
 merkle_tree = [ ]
 msm = [ ]
 polycommit = [ "rand_core", "fft", "crh", "msm" ]

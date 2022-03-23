@@ -17,7 +17,7 @@
 use crate::{
     impl_edwards_curve_serializer,
     templates::twisted_edwards_extended::Projective,
-    traits::{AffineCurve, Group, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters as Parameters},
+    traits::{AffineCurve, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters as Parameters},
 };
 use snarkvm_fields::{impl_add_sub_from_field_ref, Field, One, PrimeField, SquareRootField, Zero};
 use snarkvm_utilities::{
@@ -117,6 +117,7 @@ impl<P: Parameters> Display for Affine<P> {
 impl<P: Parameters> AffineCurve for Affine<P> {
     type BaseField = P::BaseField;
     type Projective = Projective<P>;
+    type ScalarField = P::ScalarField;
 
     #[inline]
     fn prime_subgroup_generator() -> Self {
@@ -169,6 +170,20 @@ impl<P: Parameters> AffineCurve for Affine<P> {
             let x = if (x < negx) ^ greatest { x } else { negx };
             Self::new(x, y)
         })
+    }
+
+    #[inline]
+    #[must_use]
+    fn double(&self) -> Self {
+        let mut tmp = *self;
+        tmp += self;
+        tmp
+    }
+
+    #[inline]
+    fn double_in_place(&mut self) {
+        let tmp = *self;
+        *self = tmp.double();
     }
 
     fn mul_bits(&self, bits: impl Iterator<Item = bool>) -> Projective<P> {
@@ -257,24 +272,6 @@ impl<P: Parameters> AffineCurve for Affine<P> {
 impl<P: Parameters> ToMinimalBits for Affine<P> {
     fn to_minimal_bits(&self) -> Vec<bool> {
         self.x.to_bits_le()
-    }
-}
-
-impl<P: Parameters> Group for Affine<P> {
-    type ScalarField = P::ScalarField;
-
-    #[inline]
-    #[must_use]
-    fn double(&self) -> Self {
-        let mut tmp = *self;
-        tmp += self;
-        tmp
-    }
-
-    #[inline]
-    fn double_in_place(&mut self) {
-        let tmp = *self;
-        *self = tmp.double();
     }
 }
 

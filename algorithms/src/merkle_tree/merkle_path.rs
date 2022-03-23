@@ -31,10 +31,8 @@ pub type MerkleTreeDigest<P> = <<P as MerkleParameters>::H as CRH>::Output;
 
 /// Stores the hashes of a particular path (in order) from leaf to root.
 /// Our path `is_left_child()` if the boolean in `path` is true.
-#[derive(Derivative)]
-#[derivative(Clone(bound = ""), Debug(bound = ""), PartialEq(bound = ""), Eq(bound = ""))]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MerklePath<P: MerkleParameters> {
-    #[derivative(PartialEq = "ignore")]
     pub parameters: Arc<P>,
     pub path: Vec<MerkleTreeDigest<P>>,
     pub leaf_index: u64,

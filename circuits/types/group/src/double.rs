@@ -90,7 +90,6 @@ impl<E: Environment> Double for &Group<E> {
 mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
-    use snarkvm_curves::Group as G;
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 250;

@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Block, Ciphertext, InnerPublicVariables, PoSWScheme, ProgramPublicVariables, ValueBalanceCommitment};
-use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, prelude::*};
+use snarkvm_algorithms::prelude::*;
 use snarkvm_curves::{AffineCurve, PairingEngine, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{Field, PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
@@ -154,8 +154,8 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
 
     /// Inner curve type declarations.
     type InnerCurve: PairingEngine<Fr = Self::InnerScalarField, Fq = Self::InnerBaseField>;
-    type InnerScalarField: PrimeField + PoseidonDefaultParametersField;
-    type InnerBaseField: PrimeField + PoseidonDefaultParametersField;
+    type InnerScalarField: PrimeField;
+    type InnerBaseField: PrimeField;
 
     /// Program curve type declarations.
     type ProgramAffineCurve: AffineCurve<BaseField = Self::InnerScalarField, ScalarField = Self::ProgramScalarField> + ToConstraintField<Self::InnerScalarField>;

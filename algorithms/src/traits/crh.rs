@@ -15,15 +15,15 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::errors::CRHError;
-use snarkvm_utilities::{FromBytes, ToBytes};
+use snarkvm_utilities::{FromBytes, ToBits, ToBytes};
 
 use std::{
     fmt::{Debug, Display},
     hash::Hash,
 };
 
-pub trait CRH: Clone + Debug + Send + Sync {
-    type Output: Copy + Clone + Debug + Display + ToBytes + FromBytes + Eq + Hash + Default + Send + Sync;
+pub trait CRH: Clone + Debug + PartialEq + Eq + Send + Sync {
+    type Output: Copy + Clone + Debug + Display + ToBytes + FromBytes + PartialEq + Eq + Hash + Default + Send + Sync;
     type Parameters: Clone + Debug + Eq;
 
     fn setup(message: &str) -> Self;
@@ -31,7 +31,7 @@ pub trait CRH: Clone + Debug + Send + Sync {
     fn hash(&self, input: &[bool]) -> Result<Self::Output, CRHError>;
 
     fn hash_bytes(&self, input: &[u8]) -> Result<Self::Output, CRHError> {
-        self.hash(&input.iter().flat_map(|&byte| (0..8).map(move |i| (byte >> i) & 1u8 == 1u8)).collect::<Vec<bool>>())
+        self.hash(&input.to_bits_le())
     }
 
     fn parameters(&self) -> &Self::Parameters;

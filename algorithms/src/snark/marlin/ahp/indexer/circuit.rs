@@ -27,9 +27,7 @@ use crate::{
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{serialize::*, SerializationError};
 
-#[derive(derivative::Derivative)]
-#[derivative(Clone(bound = "F: PrimeField"))]
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 /// The indexed version of the constraint system.
 /// This struct contains three kinds of objects:
 /// 1) `index_info` is information about the index, such as the size of the

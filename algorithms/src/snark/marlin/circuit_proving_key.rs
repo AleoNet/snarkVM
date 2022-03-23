@@ -27,9 +27,7 @@ use snarkvm_utilities::{
 };
 
 /// Proving key for a specific circuit (i.e., R1CS matrices).
-#[derive(derivative::Derivative)]
-#[derivative(Clone(bound = ""))]
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct CircuitProvingKey<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinMode> {
     /// The circuit verifying key.
     pub circuit_verifying_key: CircuitVerifyingKey<F, CF, PC, MM>,

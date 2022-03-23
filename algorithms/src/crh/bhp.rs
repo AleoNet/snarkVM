@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{hash_to_curve::hash_to_curve, CRHError, CRH};
+use crate::{crypto_hash::hash_to_curve, CRHError, CRH};
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
-use snarkvm_fields::{ConstraintFieldError, Field, PrimeField, ToConstraintField};
+use snarkvm_fields::PrimeField;
 use snarkvm_utilities::BigInteger;
 
 use std::{fmt::Debug, sync::Arc};
@@ -137,15 +137,6 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP
                 })
             })
             .sum())
-    }
-}
-
-impl<F: Field, G: ProjectiveCurve + ToConstraintField<F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    ToConstraintField<F> for BHPCRH<G, NUM_WINDOWS, WINDOW_SIZE>
-{
-    #[inline]
-    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
-        Ok(Vec::new())
     }
 }
 

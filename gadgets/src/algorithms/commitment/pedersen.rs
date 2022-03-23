@@ -16,13 +16,13 @@
 
 use crate::{
     integers::uint::UInt8,
-    traits::{algorithms::CommitmentGadget, alloc::AllocGadget, curves::CurveGadget, integers::Integer},
+    traits::{algorithms::CommitmentGadget, alloc::AllocGadget, curves::GroupGadget, integers::Integer},
     Boolean,
     ToBitsLEGadget,
     ToBytesGadget,
 };
 use snarkvm_algorithms::commitment::PedersenCommitment;
-use snarkvm_curves::ProjectiveCurve;
+use snarkvm_curves::AffineCurve;
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{to_bytes_le, ToBytes};
@@ -33,9 +33,9 @@ use std::{
 };
 
 #[derive(Clone, Debug)]
-pub struct PedersenRandomnessGadget<G: ProjectiveCurve>(Vec<UInt8>, pub(crate) PhantomData<G>);
+pub struct PedersenRandomnessGadget<G: AffineCurve>(Vec<UInt8>, pub(crate) PhantomData<G>);
 
-impl<G: ProjectiveCurve, F: PrimeField> AllocGadget<G::ScalarField, F> for PedersenRandomnessGadget<G> {
+impl<G: AffineCurve, F: PrimeField> AllocGadget<G::ScalarField, F> for PedersenRandomnessGadget<G> {
     fn alloc_constant<Fn: FnOnce() -> Result<T, SynthesisError>, T: Borrow<G::ScalarField>, CS: ConstraintSystem<F>>(
         _cs: CS,
         value_gen: Fn,
@@ -61,7 +61,7 @@ impl<G: ProjectiveCurve, F: PrimeField> AllocGadget<G::ScalarField, F> for Peder
     }
 }
 
-impl<G: ProjectiveCurve, F: PrimeField> ToBytesGadget<F> for PedersenRandomnessGadget<G> {
+impl<G: AffineCurve, F: PrimeField> ToBytesGadget<F> for PedersenRandomnessGadget<G> {
     fn to_bytes<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         self.0.to_bytes(cs)
     }
@@ -71,7 +71,7 @@ impl<G: ProjectiveCurve, F: PrimeField> ToBytesGadget<F> for PedersenRandomnessG
     }
 }
 
-impl<G: ProjectiveCurve, F: PrimeField> ToBitsLEGadget<F> for PedersenRandomnessGadget<G> {
+impl<G: AffineCurve, F: PrimeField> ToBitsLEGadget<F> for PedersenRandomnessGadget<G> {
     fn to_bits_le<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<Boolean>, SynthesisError> {
         self.0.to_bits_le(cs)
     }
@@ -83,25 +83,25 @@ impl<G: ProjectiveCurve, F: PrimeField> ToBitsLEGadget<F> for PedersenRandomness
 
 #[derive(Clone)]
 pub struct PedersenCommitmentGadget<
-    G: ProjectiveCurve,
+    G: AffineCurve,
     F: Field,
-    GG: CurveGadget<G, F>,
+    GG: GroupGadget<G, F>,
     const NUM_WINDOWS: usize,
     const WINDOW_SIZE: usize,
 > {
-    pub(crate) pedersen: PedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>,
+    pub(crate) pedersen: PedersenCommitment<G::Projective, NUM_WINDOWS, WINDOW_SIZE>,
     _group_gadget: PhantomData<GG>,
     _field: PhantomData<F>,
 }
 
 // TODO (howardwu): This should be only `alloc_constant`. This is unsafe convention.
-impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    AllocGadget<PedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>, F>
+impl<G: AffineCurve, F: PrimeField, GG: GroupGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+    AllocGadget<PedersenCommitment<G::Projective, NUM_WINDOWS, WINDOW_SIZE>, F>
     for PedersenCommitmentGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn alloc_constant<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<PedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        T: Borrow<PedersenCommitment<G::Projective, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         _cs: CS,
@@ -112,7 +112,7 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS
 
     fn alloc<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<PedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        T: Borrow<PedersenCommitment<G::Projective, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         _cs: CS,
@@ -123,7 +123,7 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS
 
     fn alloc_input<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<PedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        T: Borrow<PedersenCommitment<G::Projective, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         _cs: CS,
@@ -133,8 +133,8 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS
     }
 }
 
-impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    CommitmentGadget<PedersenCommitment<G, NUM_WINDOWS, WINDOW_SIZE>, F>
+impl<G: AffineCurve, F: PrimeField, GG: GroupGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+    CommitmentGadget<PedersenCommitment<G::Projective, NUM_WINDOWS, WINDOW_SIZE>, F>
     for PedersenCommitmentGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
     type OutputGadget = GG;

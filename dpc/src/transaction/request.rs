@@ -291,10 +291,8 @@ impl<N: Network> Request<N> {
 
     /// Returns the serial numbers.
     pub fn to_serial_numbers(&self) -> Result<Vec<N::SerialNumber>> {
-        self.records
-            .iter()
-            .map(|record| Ok(record.to_serial_number(&ComputeKey::from_signature(&self.signature)?)?))
-            .collect::<Result<Vec<_>>>()
+        let compute_key = ComputeKey::from_signature(&self.signature)?;
+        self.records.iter().map(|record| Ok(record.to_serial_number(&compute_key)?)).collect::<Result<Vec<_>>>()
     }
 
     /// Returns the input commitments.

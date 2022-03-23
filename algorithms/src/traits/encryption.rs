@@ -20,9 +20,7 @@ use snarkvm_utilities::{rand::UniformRand, FromBytes, ToBits, ToBytes};
 use rand::{CryptoRng, Rng};
 use std::{fmt::Debug, hash::Hash};
 
-pub trait EncryptionScheme:
-    Sized + ToBytes + FromBytes + Debug + Clone + Eq + From<<Self as EncryptionScheme>::Parameters>
-{
+pub trait EncryptionScheme: Sized + Debug + Clone + PartialEq + Eq {
     type CiphertextRandomizer: Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + ToBits;
     type MessageType: Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + ToBits;
     type Parameters: Clone + Debug + Eq;

@@ -18,7 +18,7 @@
 extern crate criterion;
 
 use snarkvm_algorithms::{
-    crypto_hash::poseidon::PoseidonSponge,
+    crypto_hash::PoseidonSponge,
     polycommit::sonic_pc::SonicKZG10,
     snark::marlin::{ahp::AHPForR1CS, FiatShamirAlgebraicSpongeRng, MarlinHidingMode, MarlinSNARK},
 };

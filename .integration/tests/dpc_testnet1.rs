@@ -14,19 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::sync::atomic::AtomicBool;
-
 use snarkvm_dpc::{prelude::*, testnet1::*};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use rand::SeedableRng;
 use rand_chacha::ChaChaRng;
+use std::sync::atomic::AtomicBool;
 use time::OffsetDateTime;
 
 #[test]
 fn test_testnet1_inner_circuit_id_sanity_check() {
     let expected_inner_circuit_id =
-        "ic1hd3ewmnxnk07v4t88x635hyv58t6reltx2hy86e2us26w5y7z0a9xjjxcewwejxnjd53pkl7ulhsqvxaqt5".to_string();
+        "ic1qqjkldu2cg2zn2am4tzdyglpz6lg5frw8umu3es66ssplfpvhudjwp43zuuwrvtsvn9hk4g6hnlsqp8zjdw".to_string();
     let candidate_inner_circuit_id = <Testnet1 as Network>::inner_circuit_id().to_string();
     assert_eq!(expected_inner_circuit_id, candidate_inner_circuit_id);
 }

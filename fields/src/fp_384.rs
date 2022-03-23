@@ -23,6 +23,8 @@ use crate::{
     FieldParameters,
     LegendreSymbol,
     One,
+    PoseidonDefaultField,
+    PoseidonDefaultParameters,
     PrimeField,
     SquareRootField,
     Zero,
@@ -514,6 +516,8 @@ impl<P: Fp384Parameters> PartialOrd for Fp384<P> {
         Some(self.cmp(other))
     }
 }
+
+impl<P: Fp384Parameters + PoseidonDefaultParameters> PoseidonDefaultField for Fp384<P> {}
 
 impl_primefield_from_int!(Fp384, u128, Fp384Parameters);
 impl_primefield_from_int!(Fp384, u64, Fp384Parameters);
