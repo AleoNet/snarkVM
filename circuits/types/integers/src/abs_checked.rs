@@ -104,8 +104,8 @@ mod tests {
     fn test_i8_abs() {
         type I = i8;
         run_test::<I>(Mode::Constant, 16, 0, 0, 0);
-        run_test::<I>(Mode::Public, 8, 0, 17, 18);
-        run_test::<I>(Mode::Private, 8, 0, 17, 18);
+        run_test::<I>(Mode::Public, 8, 0, 19, 21);
+        run_test::<I>(Mode::Private, 8, 0, 19, 21);
     }
 
     #[test]
@@ -120,8 +120,8 @@ mod tests {
     fn test_i16_abs() {
         type I = i16;
         run_test::<I>(Mode::Constant, 32, 0, 0, 0);
-        run_test::<I>(Mode::Public, 16, 0, 33, 34);
-        run_test::<I>(Mode::Private, 16, 0, 33, 34);
+        run_test::<I>(Mode::Public, 16, 0, 35, 37);
+        run_test::<I>(Mode::Private, 16, 0, 35, 37);
     }
 
     #[test]
@@ -136,8 +136,8 @@ mod tests {
     fn test_i32_abs() {
         type I = i32;
         run_test::<I>(Mode::Constant, 64, 0, 0, 0);
-        run_test::<I>(Mode::Public, 32, 0, 65, 66);
-        run_test::<I>(Mode::Private, 32, 0, 65, 66);
+        run_test::<I>(Mode::Public, 32, 0, 67, 69);
+        run_test::<I>(Mode::Private, 32, 0, 67, 69);
     }
 
     #[test]
@@ -152,8 +152,8 @@ mod tests {
     fn test_i64_abs() {
         type I = i64;
         run_test::<I>(Mode::Constant, 128, 0, 0, 0);
-        run_test::<I>(Mode::Public, 64, 0, 129, 130);
-        run_test::<I>(Mode::Private, 64, 0, 129, 130);
+        run_test::<I>(Mode::Public, 64, 0, 131, 133);
+        run_test::<I>(Mode::Private, 64, 0, 131, 133);
     }
 
     #[test]
@@ -168,8 +168,8 @@ mod tests {
     fn test_i128_abs() {
         type I = i128;
         run_test::<I>(Mode::Constant, 256, 0, 0, 0);
-        run_test::<I>(Mode::Public, 128, 0, 257, 258);
-        run_test::<I>(Mode::Private, 128, 0, 257, 258);
+        run_test::<I>(Mode::Public, 128, 0, 259, 261);
+        run_test::<I>(Mode::Private, 128, 0, 259, 261);
     }
 
     #[test]
@@ -194,13 +194,13 @@ mod tests {
         type I = i8;
         for value in I::MIN..=I::MAX {
             let name = format!("Abs: {}", Mode::Constant);
-            check_abs(&name, value, Mode::Constant, 0, 0, 0, 0);
+            check_abs(&name, value, Mode::Constant, 16, 0, 0, 0);
 
             let name = format!("Abs: {}", Mode::Public);
-            check_abs(&name, value, Mode::Public, 0, 0, 0, 0);
+            check_abs(&name, value, Mode::Public, 8, 0, 19, 21);
 
             let name = format!("Abs: {}", Mode::Private);
-            check_abs(&name, value, Mode::Private, 0, 0, 0, 0);
+            check_abs(&name, value, Mode::Private, 8, 0, 19, 21);
         }
     }
 }

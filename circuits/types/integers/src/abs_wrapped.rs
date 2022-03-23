@@ -188,13 +188,13 @@ mod tests {
         type I = i8;
         for value in I::MIN..=I::MAX {
             let name = format!("Abs: {}", Mode::Constant);
-            check_abs(&name, value, Mode::Constant, 0, 0, 0, 0);
+            check_abs(&name, value, Mode::Constant, 16, 0, 0, 0);
 
             let name = format!("Abs: {}", Mode::Public);
-            check_abs(&name, value, Mode::Public, 0, 0, 0, 0);
+            check_abs(&name, value, Mode::Public, 8, 0, 17, 18);
 
             let name = format!("Abs: {}", Mode::Private);
-            check_abs(&name, value, Mode::Private, 0, 0, 0, 0);
+            check_abs(&name, value, Mode::Private, 8, 0, 17, 18);
         }
     }
 }
