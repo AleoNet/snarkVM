@@ -49,6 +49,9 @@ pub use posw::*;
 pub mod record;
 pub use record::*;
 
+pub mod split_circuits;
+pub use split_circuits::*;
+
 pub mod traits;
 pub use traits::*;
 
