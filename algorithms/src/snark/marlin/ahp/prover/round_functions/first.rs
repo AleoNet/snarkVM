@@ -85,7 +85,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
     fn calculate_mask_poly<R: RngCore>(
         constraint_domain: EvaluationDomain<F>,
-        zk_bound: usize,
+        zk_bound: Option<usize>,
         rng: &mut R,
     ) -> Option<LabeledPolynomial<F>> {
         MM::ZK
@@ -107,7 +107,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 mask_poly += &g_1_mask;
                 debug_assert!(constraint_domain.elements().map(|z| mask_poly.evaluate(z)).sum::<F>().is_zero());
                 assert_eq!(mask_poly.degree(), constraint_domain.size() + 3);
-                assert!(mask_poly.degree() <= 3 * constraint_domain.size() + 2 * zk_bound - 3);
+                assert!(mask_poly.degree() <= 3 * constraint_domain.size() + 2 * zk_bound.unwrap() - 3);
 
                 end_timer!(mask_poly_time);
                 mask_poly
@@ -144,7 +144,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         assert!(w_poly.degree() < constraint_domain.size() - input_domain.size());
         end_timer!(w_poly_time);
-        PoolResult::Witness(LabeledPolynomial::new("w".to_string(), w_poly, None, Some(1)))
+        PoolResult::Witness(LabeledPolynomial::new("w".to_string(), w_poly, None, state.zk_bound))
     }
 
     fn calculate_z_m<'a>(

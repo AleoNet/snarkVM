@@ -80,7 +80,7 @@ pub trait PCCommitment: CanonicalDeserialize + CanonicalSerialize + Copy + Debug
 
 /// Defines the minimal interface of commitment randomness for any polynomial
 /// commitment scheme.
-pub trait PCRandomness: CanonicalSerialize + CanonicalDeserialize + Clone + Eq {
+pub trait PCRandomness: CanonicalSerialize + CanonicalDeserialize + Clone + Eq + Debug {
     /// Outputs empty randomness that does not hide the commitment.
     fn empty() -> Self;
 

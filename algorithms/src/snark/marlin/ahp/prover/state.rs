@@ -36,7 +36,7 @@ pub struct State<'a, F: PrimeField, MM: MarlinMode> {
     pub(super) padded_public_variables: Vec<F>,
     pub(super) private_variables: Vec<F>,
     /// Query bound b
-    pub(super) zk_bound: usize,
+    pub(super) zk_bound: Option<usize>,
     /// Az.
     pub(super) z_a: Option<Vec<F>>,
     /// Bz.
@@ -78,7 +78,7 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
     pub fn initialize(
         padded_public_input: Vec<F>,
         private_variables: Vec<F>,
-        zk_bound: usize,
+        zk_bound: impl Into<Option<usize>>,
         index: &'a Circuit<F, MM>,
     ) -> Result<Self, AHPError> {
         let index_info = &index.index_info;
@@ -101,7 +101,7 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
             padded_public_variables: padded_public_input,
             x_poly,
             private_variables,
-            zk_bound,
+            zk_bound: zk_bound.into(),
             index,
             input_domain,
             constraint_domain,

@@ -93,11 +93,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         end_timer!(sumcheck_time);
 
         assert!(g_1.degree() <= constraint_domain.size() - 2);
-        assert!(h_1.degree() <= 2 * constraint_domain.size() + 2 * zk_bound - 2);
+        assert!(h_1.degree() <= 2 * constraint_domain.size() + 2 * zk_bound.unwrap_or(0) - 2);
 
-        let hiding_bound = if MM::ZK { Some(1) } else { None };
         let oracles = prover::SecondOracles {
-            g_1: LabeledPolynomial::new("g_1".into(), g_1, Some(constraint_domain.size() - 2), hiding_bound),
+            g_1: LabeledPolynomial::new("g_1".into(), g_1, Some(constraint_domain.size() - 2), zk_bound),
             h_1: LabeledPolynomial::new("h_1".into(), h_1, None, None),
         };
 

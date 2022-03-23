@@ -109,7 +109,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let z_b = index.b.iter().map(|row| inner_product(row)).collect();
         end_timer!(eval_z_b_time);
 
-        let zk_bound = 1; // One query is sufficient for our desired soundness
+        let zk_bound = MM::ZK.then(|| 1); // One query is sufficient for our desired soundness
 
         end_timer!(init_time);
         let mut state = prover::State::initialize(padded_public_variables, private_variables, zk_bound, index)?;
