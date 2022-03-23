@@ -34,7 +34,7 @@ impl<E: Environment> Double for &Group<E> {
             false => Mode::Private,
         };
 
-        let a = Field::new(Mode::Constant, E::AffineParameters::COEFF_A);
+        let a = Field::constant(E::AffineParameters::COEFF_A);
         let two = Field::one() + Field::one();
 
         // Compute xy, xx, yy, axx.

@@ -46,8 +46,8 @@ mod tests {
 
     use std::{ops::RangeInclusive, panic::RefUnwindSafe};
 
-    // Lowered to 8, since we run (~6 * ITERATIONS) cases for most tests.
-    const ITERATIONS: usize = 8;
+    // Lowered to 4; we run (~6 * ITERATIONS) cases for most tests.
+    const ITERATIONS: usize = 4;
 
     #[rustfmt::skip]
     fn check_pow<I: IntegerType + RefUnwindSafe, M: Magnitude + RefUnwindSafe>(

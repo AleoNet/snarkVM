@@ -21,8 +21,8 @@ impl<E: Environment> Compare<Field<E>> for Field<E> {
 
     /// Returns `true` if `self` is less than `other`.
     fn is_less_than(&self, other: &Self) -> Self::Boolean {
-        let mut is_less_than = Boolean::new(Mode::Constant, false);
-        let mut are_previous_bits_equal = Boolean::new(Mode::Constant, true);
+        let mut is_less_than = Boolean::constant(false);
+        let mut are_previous_bits_equal = Boolean::constant(true);
 
         // Initialize an iterator over `self` and `other` from MSB to LSB.
         let self_bits_be = self.to_bits_be();
@@ -95,37 +95,37 @@ mod tests {
 
     #[test]
     fn test_constant_is_less_than_constant() {
-        check_is_less_than(Mode::Constant, Mode::Constant, 508, 0, 0, 0);
+        check_is_less_than(Mode::Constant, Mode::Constant, 506, 0, 0, 0);
     }
 
     // TODO (howardwu): These variate in num_constraints.
     // #[test]
     // fn test_constant_is_less_than_public() {
-    //     check_is_less_than(Mode::Constant, Mode::Public, 2, 473, 0, 473);
+    //     check_is_less_than(Mode::Constant, Mode::Public, 0, 473, 0, 473);
     // }
     //
     // #[test]
     // fn test_constant_is_less_than_private() {
-    //     check_is_less_than(Mode::Constant, Mode::Private, 2, 0, 503, 503);
+    //     check_is_less_than(Mode::Constant, Mode::Private, 0, 0, 503, 503);
     // }
 
     #[test]
     fn test_public_is_less_than_public() {
-        check_is_less_than(Mode::Public, Mode::Public, 2, 0, 1766, 1768);
+        check_is_less_than(Mode::Public, Mode::Public, 0, 0, 1766, 1768);
     }
 
     #[test]
     fn test_public_is_less_than_private() {
-        check_is_less_than(Mode::Public, Mode::Private, 2, 0, 1766, 1768);
+        check_is_less_than(Mode::Public, Mode::Private, 0, 0, 1766, 1768);
     }
 
     #[test]
     fn test_private_is_less_than_public() {
-        check_is_less_than(Mode::Private, Mode::Public, 2, 0, 1766, 1768);
+        check_is_less_than(Mode::Private, Mode::Public, 0, 0, 1766, 1768);
     }
 
     #[test]
     fn test_private_is_less_than_private() {
-        check_is_less_than(Mode::Private, Mode::Private, 2, 0, 1766, 1768);
+        check_is_less_than(Mode::Private, Mode::Private, 0, 0, 1766, 1768);
     }
 }

@@ -444,9 +444,9 @@ dependencies = [
 
 [[package]]
 name = "crossbeam-channel"
-version = "0.5.4"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5aaa7bd5fb665c6864b5f963dd9097905c54125909c7aa94c9e18507cdbe6c53"
+checksum = "fdbfe11fe19ff083c48923cf179540e8cd0535903dc35e178a1fdeeb59aef51f"
 dependencies = [
  "cfg-if 1.0.0",
  "crossbeam-utils",
@@ -2045,8 +2045,11 @@ name = "snarkvm-circuits-core"
 version = "0.7.5"
 dependencies = [
  "nom",
+ "snarkvm-algorithms",
  "snarkvm-circuits-environment",
  "snarkvm-circuits-types",
+ "snarkvm-fields",
+ "snarkvm-utilities",
 ]
 
 [[package]]

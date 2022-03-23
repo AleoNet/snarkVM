@@ -40,8 +40,8 @@ impl<E: Environment> Add<&Self> for Group<E> {
             false => (other, &self),
         };
 
-        let a = Field::new(Mode::Constant, E::AffineParameters::COEFF_A);
-        let d = Field::new(Mode::Constant, E::AffineParameters::COEFF_D);
+        let a = Field::constant(E::AffineParameters::COEFF_A);
+        let d = Field::constant(E::AffineParameters::COEFF_D);
 
         // Compute U = (-A * x1 + y1) * (x2 + y2)
         let u1 = (&this.x * &-&a) + &this.y;
