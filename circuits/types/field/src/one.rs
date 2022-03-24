@@ -20,7 +20,7 @@ impl<E: Environment> One for Field<E> {
     type Boolean = Boolean<E>;
 
     fn one() -> Self {
-        Field(E::one())
+        E::one().into()
     }
 
     fn is_one(&self) -> Self::Boolean {

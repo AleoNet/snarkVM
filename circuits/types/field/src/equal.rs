@@ -116,13 +116,13 @@ impl<E: Environment> Equal<Self> for Field<E> {
                 //
 
                 // Compute `self` - `other`.
-                let delta = &self.0 - &other.0;
+                let delta = self - other;
 
                 // Negate `is_neq`.
                 let is_eq = !is_neq.clone();
 
                 // Check 1: (a - b) * multiplier = is_neq
-                E::enforce(|| (delta.clone(), &multiplier, &is_neq));
+                E::enforce(|| (&delta, &multiplier, &is_neq));
 
                 // Check 2: (a - b) * not(is_neq) = 0
                 E::enforce(|| (delta, is_eq, E::zero()));
@@ -246,7 +246,7 @@ mod tests {
 
         let enforce = |a: Field<Circuit>, b: Field<Circuit>, multiplier: Field<Circuit>, is_neq: Boolean<Circuit>| {
             // Compute `self` - `other`.
-            let delta = &a.0 - &b.0;
+            let delta = &a - &b;
 
             // Negate `is_neq`.
             let is_eq = !is_neq.clone();

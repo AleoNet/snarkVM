@@ -36,7 +36,7 @@ impl<E: Environment> Add<&Field<E>> for Field<E> {
     type Output = Field<E>;
 
     fn add(self, other: &Field<E>) -> Self::Output {
-        Field(self.0 + &other.0)
+        &self + other
     }
 }
 
@@ -44,7 +44,9 @@ impl<E: Environment> Add<&Field<E>> for &Field<E> {
     type Output = Field<E>;
 
     fn add(self, other: &Field<E>) -> Self::Output {
-        (*self).clone() + other
+        let mut result = self.clone();
+        result += other;
+        result
     }
 }
 
@@ -56,7 +58,7 @@ impl<E: Environment> AddAssign<Field<E>> for Field<E> {
 
 impl<E: Environment> AddAssign<&Field<E>> for Field<E> {
     fn add_assign(&mut self, other: &Field<E>) {
-        self.0 += &other.0
+        *self = (&self.linear_combination + &other.linear_combination).into();
     }
 }
 
@@ -66,7 +68,7 @@ mod tests {
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
-    const ITERATIONS: usize = 100_000;
+    const ITERATIONS: usize = 10_000;
 
     fn check_add(
         name: &str,

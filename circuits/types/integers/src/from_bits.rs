@@ -20,38 +20,22 @@ impl<E: Environment, I: IntegerType> FromBits for Integer<E, I> {
     type Boolean = Boolean<E>;
 
     /// Initializes a new integer from a list of little-endian bits *with* trailing zeros.
-    fn from_bits_le(mode: Mode, bits_le: &[Self::Boolean]) -> Self {
+    fn from_bits_le(bits_le: &[Self::Boolean]) -> Self {
         // Ensure the number of booleans is the correct capacity.
-        if bits_le.len() != I::BITS {
-            E::halt(format!("Attempted to instantiate a {}-bit integer with {} bits", I::BITS, bits_le.len()))
-        }
-
-        // Construct a candidate integer.
-        let candidate = Integer { bits_le: bits_le.to_vec(), phantom: Default::default() };
-
-        // Ensure the mode in the given bits are consistent with the desired mode.
-        // If they do not match, proceed to construct a new integer, and check that it is well-formed.
-        match candidate.eject_mode() == mode {
-            true => candidate,
-            false => {
-                // Construct a new integer as a witness.
-                let output = Integer::new(mode, candidate.eject_value());
-                // Ensure `output` == `candidate`.
-                E::assert_eq(&output, &candidate);
-                // Return the new integer.
-                output
-            }
+        match bits_le.len() == I::BITS {
+            true => Integer { bits_le: bits_le.to_vec(), phantom: Default::default() },
+            false => E::halt(format!("Attempted to instantiate a {}-bit integer with {} bits", I::BITS, bits_le.len())),
         }
     }
 
     /// Initializes a new integer from a list of big-endian bits *with* leading zeros.
-    fn from_bits_be(mode: Mode, bits_be: &[Self::Boolean]) -> Self {
+    fn from_bits_be(bits_be: &[Self::Boolean]) -> Self {
         // Reverse the given bits from big-endian into little-endian.
         // Note: This is safe as the bit representation is consistent (there are leading zeros).
         let mut bits_le = bits_be.to_vec();
         bits_le.reverse();
 
-        Self::from_bits_le(mode, &bits_le)
+        Self::from_bits_le(&bits_le)
     }
 }
 
@@ -81,7 +65,7 @@ mod tests {
                 "",
                 expected,
                 &a[..],
-                |a: &[Boolean<Circuit>]| Integer::from_bits_le(mode, a),
+                Integer::from_bits_le,
                 num_constants,
                 num_public,
                 num_private,
@@ -107,7 +91,7 @@ mod tests {
                 "",
                 expected,
                 &a[..],
-                |a: &[Boolean<Circuit>]| Integer::from_bits_be(mode, a),
+                Integer::from_bits_be,
                 num_constants,
                 num_public,
                 num_private,
