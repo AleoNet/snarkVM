@@ -18,13 +18,14 @@ use crate::{LinearCombination, Mode};
 use snarkvm_fields::traits::*;
 
 use core::{
+    cmp::Ordering,
     fmt,
     ops::{Add, Sub},
 };
 
 pub type Index = u64;
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Variable<F: PrimeField> {
     Constant(F),
     Public(Index, F),
@@ -97,6 +98,28 @@ impl<F: PrimeField> Variable<F> {
             Self::Constant(value) => *value,
             Self::Public(_, value) => *value,
             Self::Private(_, value) => *value,
+        }
+    }
+}
+
+impl<F: PrimeField> PartialOrd for Variable<F> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<F: PrimeField> Ord for Variable<F> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self, other) {
+            (Self::Constant(v1), Self::Constant(v2)) => v1.cmp(v2),
+            (Self::Constant(..), Self::Public(..)) => Ordering::Less,
+            (Self::Constant(..), Self::Private(..)) => Ordering::Less,
+            (Self::Public(..), Self::Constant(..)) => Ordering::Greater,
+            (Self::Private(..), Self::Constant(..)) => Ordering::Greater,
+            (Self::Public(i1, ..), Self::Public(i2, ..)) => i1.cmp(i2),
+            (Self::Private(i1, ..), Self::Private(i2, ..)) => i1.cmp(i2),
+            (Self::Public(..), Self::Private(..)) => Ordering::Less,
+            (Self::Private(..), Self::Public(..)) => Ordering::Greater,
         }
     }
 }

@@ -19,15 +19,15 @@ use snarkvm_fields::PrimeField;
 
 use core::{
     fmt,
-    ops::{Add, Mul, Neg, Sub},
+    ops::{Add, AddAssign, Mul, Neg, Sub},
 };
+use indexmap::{map::Entry, IndexMap};
 use rayon::prelude::*;
-use std::collections::{btree_map::Entry, BTreeMap};
 
 #[derive(Clone)]
 pub struct LinearCombination<F: PrimeField> {
     constant: F,
-    terms: BTreeMap<Variable<F>, F>,
+    terms: IndexMap<Variable<F>, F>,
 }
 
 impl<F: PrimeField> LinearCombination<F> {
@@ -118,9 +118,9 @@ impl<F: PrimeField> LinearCombination<F> {
 
     /// Returns the computed value of the linear combination.
     pub fn to_value(&self) -> F {
-        // Note that 200_000 is derived empirically.
+        // Note that 500_000 is derived empirically.
         // The setup cost of Rayon is only worth it after sufficient size.
-        let sum: F = match self.terms.len() > 200_000 {
+        let sum: F = match self.terms.len() > 500_000 {
             true => self.terms.par_iter().map(|(variable, coefficient)| variable.value() * coefficient).sum(),
             false => self.terms.iter().map(|(variable, coefficient)| variable.value() * coefficient).sum(),
         };
@@ -134,7 +134,7 @@ impl<F: PrimeField> LinearCombination<F> {
     }
 
     /// Returns the terms (excluding the constant value) in the linear combination.
-    pub(crate) fn to_terms(&self) -> &BTreeMap<Variable<F>, F> {
+    pub(crate) fn to_terms(&self) -> &IndexMap<Variable<F>, F> {
         &self.terms
     }
 
@@ -190,12 +190,22 @@ impl<F: PrimeField> From<&[Variable<F>]> for LinearCombination<F> {
         for variable in variables {
             match variable.is_constant() {
                 true => output.constant += variable.value(),
-                false => match output.terms.get_mut(variable) {
-                    Some(coefficient) => *coefficient += F::one(),
-                    None => {
-                        output.terms.insert(*variable, F::one());
+                false => {
+                    match output.terms.entry(*variable) {
+                        Entry::Occupied(mut entry) => {
+                            // Increment the existing coefficient by 1.
+                            *entry.get_mut() += F::one();
+                            // If the coefficient of the term is now zero, remove the entry.
+                            if entry.get().is_zero() {
+                                entry.remove_entry();
+                            }
+                        }
+                        Entry::Vacant(entry) => {
+                            // Insert the variable and a coefficient of 1 as a new term.
+                            entry.insert(F::one());
+                        }
                     }
-                },
+                }
             }
         }
         output
@@ -252,46 +262,7 @@ impl<F: PrimeField> Add<&LinearCombination<F>> for LinearCombination<F> {
     type Output = Self;
 
     fn add(self, other: &Self) -> Self::Output {
-        if self.constant.is_zero() && self.terms.is_empty() {
-            // If `self` is empty, return immediately.
-            other.clone()
-        } else if other.constant.is_zero() && other.terms.is_empty() {
-            // If `other` is empty, return immediately.
-            self
-        } else {
-            // Use the larger linear combination as the accumulator.
-            let (mut this, that) = match self.terms.len() > other.terms.len() {
-                true => (self, other),
-                false => (other.clone(), &self),
-            };
-
-            // Add the constant value from `other` to `self`.
-            this.constant += that.constant;
-
-            // Add the terms from `other` to the terms of `self`.
-            for (variable, coefficient) in that.terms.iter() {
-                match variable.is_constant() {
-                    true => this.constant += variable.value(),
-                    false => {
-                        match this.terms.entry(*variable) {
-                            Entry::Occupied(mut entry) => {
-                                // Add the coefficient to the existing coefficient for this term.
-                                *entry.get_mut() += *coefficient;
-                                // If the coefficient of the term is now zero, remove the entry.
-                                if entry.get().is_zero() {
-                                    entry.remove_entry();
-                                }
-                            }
-                            Entry::Vacant(entry) => {
-                                // Insert the variable and coefficient as a new term.
-                                entry.insert(*coefficient);
-                            }
-                        }
-                    }
-                }
-            }
-            this
-        }
+        &self + other
     }
 }
 
@@ -299,7 +270,60 @@ impl<F: PrimeField> Add<&LinearCombination<F>> for &LinearCombination<F> {
     type Output = LinearCombination<F>;
 
     fn add(self, other: &LinearCombination<F>) -> Self::Output {
-        self.clone() + other
+        if self.constant.is_zero() && self.terms.is_empty() {
+            other.clone()
+        } else if other.constant.is_zero() && other.terms.is_empty() {
+            self.clone()
+        } else if self.terms.len() > other.terms.len() {
+            let mut output = self.clone();
+            output += other;
+            output
+        } else {
+            let mut output = other.clone();
+            output += self;
+            output
+        }
+    }
+}
+
+impl<F: PrimeField> AddAssign<LinearCombination<F>> for LinearCombination<F> {
+    fn add_assign(&mut self, other: Self) {
+        *self += &other;
+    }
+}
+
+impl<F: PrimeField> AddAssign<&LinearCombination<F>> for LinearCombination<F> {
+    fn add_assign(&mut self, other: &Self) {
+        // If `other` is empty, return immediately.
+        if other.constant.is_zero() && other.terms.is_empty() {
+            return;
+        }
+
+        // Add the constant value from `other` to `self`.
+        self.constant += other.constant;
+
+        // Add the terms from `other` to the terms of `self`.
+        for (variable, coefficient) in other.terms.iter() {
+            match variable.is_constant() {
+                true => self.constant += variable.value(),
+                false => {
+                    match self.terms.entry(*variable) {
+                        Entry::Occupied(mut entry) => {
+                            // Add the coefficient to the existing coefficient for this term.
+                            *entry.get_mut() += *coefficient;
+                            // If the coefficient of the term is now zero, remove the entry.
+                            if entry.get().is_zero() {
+                                entry.remove_entry();
+                            }
+                        }
+                        Entry::Vacant(entry) => {
+                            // Insert the variable and coefficient as a new term.
+                            entry.insert(*coefficient);
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -332,7 +356,7 @@ impl<F: PrimeField> Sub<&LinearCombination<F>> for LinearCombination<F> {
     type Output = Self;
 
     fn sub(self, other: &Self) -> Self::Output {
-        self + (-other)
+        &self - other
     }
 }
 
@@ -340,7 +364,7 @@ impl<F: PrimeField> Sub<&LinearCombination<F>> for &LinearCombination<F> {
     type Output = LinearCombination<F>;
 
     fn sub(self, other: &LinearCombination<F>) -> Self::Output {
-        self.clone() - other
+        self + &(-other)
     }
 }
 

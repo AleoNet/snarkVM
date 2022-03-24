@@ -1009,6 +1009,7 @@ checksum = "282a6247722caba404c065016bbfa522806e51714c34f5dfc3e4a3a46fcb4223"
 dependencies = [
  "autocfg",
  "hashbrown 0.11.2",
+ "rayon",
 ]
 
 [[package]]
@@ -2065,6 +2066,7 @@ name = "snarkvm-circuits-environment"
 version = "0.7.5"
 dependencies = [
  "criterion",
+ "indexmap",
  "itertools",
  "nom",
  "num-derive",

@@ -21,12 +21,37 @@ use snarkvm_circuits::prelude::*;
 
 use criterion::Criterion;
 
+fn add(c: &mut Criterion) {
+    let one = <Circuit as Environment>::BaseField::one();
+    let two = one + one;
+
+    const ITERATIONS: usize = 1000;
+
+    c.bench_function("LinearCombination::add", move |b| {
+        b.iter(|| {
+            let mut candidate = <Circuit as Environment>::one();
+            for _ in 0..ITERATIONS {
+                candidate = &candidate + &LinearCombination::from(Circuit::new_variable(Mode::Public, two));
+            }
+        })
+    });
+
+    c.bench_function("LinearCombination::add_assign", move |b| {
+        b.iter(|| {
+            let mut candidate = <Circuit as Environment>::one();
+            for _ in 0..ITERATIONS {
+                candidate += LinearCombination::from(Circuit::new_variable(Mode::Public, two));
+            }
+        })
+    });
+}
+
 fn eject_value(c: &mut Criterion) {
     let one = <Circuit as Environment>::BaseField::one();
     let two = one + one;
 
     let mut candidate = Field::<Circuit>::one();
-    (0..1_000_000).for_each(|_| {
+    (0..500_000).for_each(|_| {
         candidate += Field::new(Mode::Constant, two);
         candidate += Field::new(Mode::Public, two);
         candidate += Field::new(Mode::Private, two);
@@ -41,8 +66,8 @@ fn eject_value(c: &mut Criterion) {
 
 criterion_group! {
     name = linear_combination;
-    config = Criterion::default().sample_size(20);
-    targets = eject_value
+    config = Criterion::default().sample_size(10);
+    targets = add, eject_value
 }
 
 criterion_main!(linear_combination);

@@ -177,7 +177,7 @@ impl<E: Environment, I: IntegerType> From<&Integer<E, I>> for LinearCombination<
         let mut accumulator = E::zero();
         let mut coefficient = E::BaseField::one();
         for bit in &integer.bits_le {
-            accumulator = accumulator + (LinearCombination::from(bit) * coefficient);
+            accumulator += LinearCombination::from(bit) * coefficient;
             coefficient = coefficient.double();
         }
         accumulator
