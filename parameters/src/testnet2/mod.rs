@@ -26,6 +26,18 @@ impl_remote!(UniversalSRSBytes, REMOTE_URL, "./resources/", "universal", "srs");
 impl_remote!(InnerProvingKeyBytes, REMOTE_URL, "./resources/", "inner", "proving");
 impl_local!(InnerVerifyingKeyBytes, "./resources/", "inner", "verifying");
 
+// Input Circuit
+impl_remote!(InputProvingKeyBytes, REMOTE_URL, "./resources/", "input", "proving");
+impl_local!(InputVerifyingKeyBytes, "./resources/", "input", "verifying");
+
+// Output Circuit
+impl_remote!(OutputProvingKeyBytes, REMOTE_URL, "./resources/", "output", "proving");
+impl_local!(OutputVerifyingKeyBytes, "./resources/", "output", "verifying");
+
+// Value Check Circuit
+impl_remote!(ValueCheckProvingKeyBytes, REMOTE_URL, "./resources/", "value_check", "proving");
+impl_local!(ValueCheckVerifyingKeyBytes, "./resources/", "value_check", "verifying");
+
 // PoSW Circuit
 impl_remote!(PoSWProvingKeyBytes, REMOTE_URL, "./resources/", "posw", "proving");
 impl_local!(PoSWVerifyingKeyBytes, "./resources/", "posw", "verifying");
