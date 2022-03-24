@@ -14,14 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod input;
-pub use input::*;
+// TODO (raychu86): Rename this circuit.
+pub mod value_check_circuit;
+pub use value_check_circuit::*;
 
-pub mod output;
-pub use output::*;
+pub(crate) mod value_check_private_variables;
+pub(crate) use value_check_private_variables::*;
 
-pub mod value_check;
-pub use value_check::*;
-
-#[cfg(test)]
-mod tests;
+pub(crate) mod value_check_public_variables;
+pub(crate) use value_check_public_variables::*;
