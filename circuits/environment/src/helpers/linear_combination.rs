@@ -292,9 +292,10 @@ impl<F: PrimeField> AddAssign<&LinearCombination<F>> for LinearCombination<F> {
         // If `other` is empty, return immediately.
         if other.constant.is_zero() && other.terms.is_empty() {
             return;
-        } else if self.constant.is_zero() && self.terms.is_empty() {
+        }
+
+        if self.constant.is_zero() && self.terms.is_empty() {
             *self = other.clone();
-            return;
         } else {
             // Add the constant value from `other` to `self`.
             self.constant += other.constant;
