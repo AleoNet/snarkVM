@@ -40,16 +40,16 @@ impl<E: Environment> Equal<Self> for Field<E> {
         match (self.is_constant(), other.is_constant()) {
             (true, true) => Boolean::new(Mode::Constant, self.eject_value() != other.eject_value()),
             _ => {
-                let this = self.eject_value();
-                let that = other.eject_value();
-
                 // Compute a boolean that is `true` if `this` and `that` are not equivalent.
-                let is_neq = Boolean::new(Mode::Private, this != that);
+                let this = self;
+                let is_neq: Boolean<E> = witness!(|this, other| { this != other });
 
                 // Assign the expected multiplier.
-                let multiplier = Field::<E>::new(Mode::Private, match this != that {
-                    true => (this - that).inverse().expect("Failed to compute a native inverse"),
-                    false => E::BaseField::one(),
+                let multiplier: Field<E> = witness!(|this, other| {
+                    match this != other {
+                        true => (this - other).inverse().expect("Failed to compute a native inverse"),
+                        false => E::BaseField::one(),
+                    }
                 });
 
                 //

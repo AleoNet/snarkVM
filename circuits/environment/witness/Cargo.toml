@@ -1,0 +1,26 @@
+[package]
+name = "snarkvm-circuits-environment-witness"
+version = "0.7.5"
+authors = [ "The Aleo Team <hello@aleo.org>" ]
+description = "A procedural macro to construct a witness in an environment"
+license = "GPL-3.0"
+edition = "2018"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+quote = "0.6"
+proc-macro2 = "0.4"
+
+[dependencies.snarkvm-circuits-environment]
+path = ".."
+version = "0.7.5"
+
+[dependencies.syn]
+version = "0.15.42"
+features = ["full"]
+
+[features]
+default = ["witness"]
+witness = []

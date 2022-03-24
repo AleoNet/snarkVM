@@ -25,6 +25,7 @@ use once_cell::unsync::Lazy;
 
 thread_local! {
     pub(super) static CIRCUIT: Lazy<RefCell<R1CS<Fq>>> = Lazy::new(|| RefCell::new(R1CS::<Fq>::new()));
+    pub(super) static IN_WITNESS: Lazy<RefCell<bool>> = Lazy::new(|| RefCell::new(false));
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
@@ -51,10 +52,32 @@ impl Environment for Circuit {
 
     /// Returns a new variable of the given mode and value.
     fn new_variable(mode: Mode, value: Self::BaseField) -> Variable<Self::BaseField> {
-        CIRCUIT.with(|circuit| match mode {
-            Mode::Constant => (**circuit).borrow_mut().new_constant(value),
-            Mode::Public => (**circuit).borrow_mut().new_public(value),
-            Mode::Private => (**circuit).borrow_mut().new_private(value),
+        IN_WITNESS.with(|in_witness| {
+            // Ensure we are not in witness mode.
+            if !(*(**in_witness).borrow()) {
+                CIRCUIT.with(|circuit| match mode {
+                    Mode::Constant => (**circuit).borrow_mut().new_constant(value),
+                    Mode::Public => (**circuit).borrow_mut().new_public(value),
+                    Mode::Private => (**circuit).borrow_mut().new_private(value),
+                })
+            } else {
+                Self::halt("Tried to initialize a new variable in witness mode")
+            }
+        })
+    }
+
+    fn new_witness<Fn: FnOnce() -> Output::Primitive, Output: Inject>(mode: Mode, logic: Fn) -> Output {
+        IN_WITNESS.with(|in_witness| {
+            // Set the entire environment to witness mode.
+            *(**in_witness).borrow_mut() = true;
+
+            // Run the logic.
+            let output = logic();
+
+            // Return the entire environment from witness mode.
+            *(**in_witness).borrow_mut() = false;
+
+            Inject::new(mode, output)
         })
     }
 
@@ -86,22 +109,29 @@ impl Environment for Circuit {
     where
         Fn: FnOnce() -> Output,
     {
-        CIRCUIT.with(|circuit| {
-            // Set the entire environment to the new scope.
-            let name = name.into();
-            if let Err(error) = (**circuit).borrow_mut().push_scope(&name) {
-                Self::halt(error)
+        IN_WITNESS.with(|in_witness| {
+            // Ensure we are not in witness mode.
+            if !(*(**in_witness).borrow()) {
+                CIRCUIT.with(|circuit| {
+                    // Set the entire environment to the new scope.
+                    let name = name.into();
+                    if let Err(error) = (**circuit).borrow_mut().push_scope(&name) {
+                        Self::halt(error)
+                    }
+
+                    // Run the logic.
+                    let output = logic();
+
+                    // Return the entire environment to the previous scope.
+                    if let Err(error) = (**circuit).borrow_mut().pop_scope(name) {
+                        Self::halt(error)
+                    }
+
+                    output
+                })
+            } else {
+                Self::halt("Tried to initialize a new scope in witness mode")
             }
-
-            // Run the logic.
-            let output = logic();
-
-            // Return the entire environment to the previous scope.
-            if let Err(error) = (**circuit).borrow_mut().pop_scope(name) {
-                Self::halt(error)
-            }
-
-            output
         })
     }
 
@@ -113,31 +143,36 @@ impl Environment for Circuit {
         B: Into<LinearCombination<Self::BaseField>>,
         C: Into<LinearCombination<Self::BaseField>>,
     {
-        CIRCUIT.with(|circuit| {
-            let (a, b, c) = constraint();
-            let (a, b, c) = (a.into(), b.into(), c.into());
+        IN_WITNESS.with(|in_witness| {
+            // Ensure we are not in witness mode.
+            if !(*(**in_witness).borrow()) {
+                CIRCUIT.with(|circuit| {
+                    let (a, b, c) = constraint();
+                    let (a, b, c) = (a.into(), b.into(), c.into());
 
-            // Ensure the constraint is not comprised of constants.
-            match a.is_constant() && b.is_constant() && c.is_constant() {
-                true => {
-                    // Disabled for now until better control handling for this can be defined (using scope).
+                    // Ensure the constraint is not comprised of constants.
+                    match a.is_constant() && b.is_constant() && c.is_constant() {
+                        true => {
+                            // Disabled for now until better control handling for this can be defined (using scope).
 
-                    // match self.counter.scope().is_empty() {
-                    //     true => println!("Enforced constraint with constant terms: ({} * {}) =?= {}", a, b, c),
-                    //     false => println!(
-                    //         "Enforced constraint with constant terms ({}): ({} * {}) =?= {}",
-                    //         self.counter.scope(), a, b, c
-                    //     ),
-                    // }
-                }
-                false => {
-                    // Construct the constraint object.
-                    let constraint = Constraint((**circuit).borrow().scope(), a, b, c);
-                    // Append the constraint.
-                    (**circuit).borrow_mut().enforce(constraint)
-                }
+                            // match self.counter.scope().is_empty() {
+                            //     true => println!("Enforced constraint with constant terms: ({} * {}) =?= {}", a, b, c),
+                            //     false => println!(
+                            //         "Enforced constraint with constant terms ({}): ({} * {}) =?= {}",
+                            //         self.counter.scope(), a, b, c
+                            //     ),
+                            // }
+                        }
+                        false => {
+                            // Construct the constraint object.
+                            let constraint = Constraint((**circuit).borrow().scope(), a, b, c);
+                            // Append the constraint.
+                            (**circuit).borrow_mut().enforce(constraint)
+                        }
+                    }
+                });
             }
-        });
+        })
     }
 
     /// Returns `true` if all constraints in the environment are satisfied.

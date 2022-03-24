@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Eject, LinearCombination, Mode, Variable};
+use crate::{Eject, Inject, LinearCombination, Mode, Variable};
 use snarkvm_curves::{AffineCurve, TwistedEdwardsParameters};
 use snarkvm_fields::traits::*;
 
@@ -43,6 +43,8 @@ pub trait Environment: Copy + Clone + fmt::Display + Eq + PartialEq + hash::Hash
     //
     // /// Removes the given scope from the current environment.
     // fn pop_scope(name: &str);
+
+    fn new_witness<Fn: FnOnce() -> Output::Primitive, Output: Inject>(mode: Mode, logic: Fn) -> Output;
 
     fn scope<S: Into<String>, Fn, Output>(name: S, logic: Fn) -> Output
     where

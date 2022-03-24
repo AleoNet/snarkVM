@@ -22,24 +22,20 @@
 /// and `Eject` to be implemented on all inputs.
 #[macro_export]
 macro_rules! witness {
-    (| $($circuit:ident),* | $block:block) => {
-        {
-            // Determine if all given circuits are constant.
-            let is_constant = { $( $circuit.is_constant() & )* true };
+    (| $($circuit:ident),* | $block:block) => {{
+        // Determine the witness mode, by checking if all given circuits are constant.
+        let mode = match $( $circuit.is_constant() & )* true {
+            true => Mode::Constant,
+            false => Mode::Private
+        };
 
-            // Determine the witness mode.
-            let mode = match is_constant {
-                true => Mode::Constant,
-                false => Mode::Private
-            };
-
+        E::new_witness(mode, || {
             // Reassign each circuit to its primitive type.
             $( let $circuit = $circuit.eject_value(); )*
-
             // Execute the code block, returning the primitive to be injected.
-            Inject::new(mode, $block)
-        }
-    }
+            $block
+        })
+    }}
 }
 
 #[cfg(test)]
@@ -69,21 +65,21 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_witness_constant() {
-        let x = Foo::new(Mode::Constant, 3);
-        let y = Foo::new(Mode::Constant, 5);
+    fn check_witness<E: Environment>(expected_mode: Mode, mode_a: Mode, mode_b: Mode) {
+        let x = Foo::new(mode_a, 3);
+        let y = Foo::new(mode_b, 5);
         let z: Foo = witness!(|x, y| { x + y });
-        assert_eq!(Mode::Constant, z.eject_mode());
+        assert_eq!(expected_mode, z.eject_mode());
         assert_eq!(8, z.eject_value());
     }
 
     #[test]
+    fn test_witness_constant() {
+        check_witness::<Circuit>(Mode::Constant, Mode::Constant, Mode::Constant);
+    }
+
+    #[test]
     fn test_witness_private() {
-        let x = Foo::new(Mode::Constant, 3);
-        let y = Foo::new(Mode::Private, 5);
-        let z: Foo = witness!(|x, y| { x + y });
-        assert_eq!(Mode::Private, z.eject_mode());
-        assert_eq!(8, z.eject_value());
+        check_witness::<Circuit>(Mode::Private, Mode::Constant, Mode::Private);
     }
 }
