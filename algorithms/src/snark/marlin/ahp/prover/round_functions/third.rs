@@ -37,6 +37,8 @@ use snarkvm_utilities::{cfg_iter, cfg_iter_mut, ExecutionPool};
 
 use rand_core::RngCore;
 
+#[cfg(not(feature = "parallel"))]
+use itertools::Itertools;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
