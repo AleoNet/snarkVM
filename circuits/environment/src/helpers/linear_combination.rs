@@ -63,6 +63,22 @@ impl<F: PrimeField> LinearCombination<F> {
         !self.is_constant() && !self.is_public()
     }
 
+    /// Returns the mode of this linear combination.
+    pub fn mode(&self) -> Mode {
+        if self.is_constant() {
+            Mode::Constant
+        } else if self.is_public() {
+            Mode::Public
+        } else {
+            Mode::Private
+        }
+    }
+
+    /// Returns the computed value of the linear combination.
+    pub fn value(&self) -> F {
+        self.value
+    }
+
     ///
     /// Returns `true` if the linear combination represents a `Boolean` type,
     /// and is well-formed.
@@ -100,34 +116,18 @@ impl<F: PrimeField> LinearCombination<F> {
         }
     }
 
-    /// Returns the mode of this linear combination.
-    pub fn to_mode(&self) -> Mode {
-        if self.is_constant() {
-            Mode::Constant
-        } else if self.is_public() {
-            Mode::Public
-        } else {
-            Mode::Private
-        }
-    }
-
-    /// Returns the computed value of the linear combination.
-    pub fn to_value(&self) -> F {
-        self.value
-    }
-
     /// Returns only the constant value (excluding the terms) in the linear combination.
-    pub(crate) fn to_constant(&self) -> F {
+    pub(super) fn to_constant(&self) -> F {
         self.constant
     }
 
     /// Returns the terms (excluding the constant value) in the linear combination.
-    pub(crate) fn to_terms(&self) -> &IndexMap<Variable<F>, F> {
+    pub(super) fn to_terms(&self) -> &IndexMap<Variable<F>, F> {
         &self.terms
     }
 
     /// Returns the number of addition gates in the linear combination.
-    pub(crate) fn num_additions(&self) -> usize {
+    pub(super) fn num_additions(&self) -> usize {
         // Increment by one if the constant is nonzero and the number of terms is nonzero.
         match !self.constant.is_zero() && !self.terms.is_empty() {
             true => self.terms.len(),
@@ -424,7 +424,7 @@ mod tests {
         let candidate = LinearCombination::zero();
         assert_eq!(zero, candidate.constant);
         assert!(candidate.terms.is_empty());
-        assert_eq!(zero, candidate.to_value());
+        assert_eq!(zero, candidate.value());
     }
 
     #[test]
@@ -434,7 +434,7 @@ mod tests {
         let candidate = LinearCombination::one();
         assert_eq!(one, candidate.constant);
         assert!(candidate.terms.is_empty());
-        assert_eq!(one, candidate.to_value());
+        assert_eq!(one, candidate.value());
     }
 
     #[test]
@@ -445,7 +445,7 @@ mod tests {
         let candidate = LinearCombination::one() + LinearCombination::one();
         assert_eq!(two, candidate.constant);
         assert!(candidate.terms.is_empty());
-        assert_eq!(two, candidate.to_value());
+        assert_eq!(two, candidate.value());
     }
 
     #[test]
@@ -456,12 +456,12 @@ mod tests {
         let candidate = LinearCombination::zero();
         assert!(candidate.is_constant());
         assert_eq!(zero, candidate.constant);
-        assert_eq!(zero, candidate.to_value());
+        assert_eq!(zero, candidate.value());
 
         let candidate = LinearCombination::one();
         assert!(candidate.is_constant());
         assert_eq!(one, candidate.constant);
-        assert_eq!(one, candidate.to_value());
+        assert_eq!(one, candidate.value());
     }
 
     #[test]
@@ -473,11 +473,11 @@ mod tests {
 
         let start = LinearCombination::from(Variable::Public(1, one));
         assert!(!start.is_constant());
-        assert_eq!(one, start.to_value());
+        assert_eq!(one, start.value());
 
         // Compute 1 * 4.
         let candidate = start * four;
-        assert_eq!(four, candidate.to_value());
+        assert_eq!(four, candidate.value());
         assert_eq!(zero, candidate.constant);
         assert_eq!(1, candidate.terms.len());
 

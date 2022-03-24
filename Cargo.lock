@@ -2118,6 +2118,7 @@ dependencies = [
 name = "snarkvm-circuits-types-boolean"
 version = "0.7.5"
 dependencies = [
+ "criterion",
  "snarkvm-circuits-environment",
 ]
 

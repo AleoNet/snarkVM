@@ -83,14 +83,14 @@ impl<E: Environment> Eject for Field<E> {
     /// Ejects the mode of the base field.
     ///
     fn eject_mode(&self) -> Mode {
-        self.linear_combination.to_mode()
+        self.linear_combination.mode()
     }
 
     ///
     /// Ejects the base field as a constant base field value.
     ///
     fn eject_value(&self) -> Self::Primitive {
-        self.linear_combination.to_value()
+        self.linear_combination.value()
     }
 }
 

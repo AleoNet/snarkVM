@@ -84,7 +84,7 @@ impl<E: Environment> Eject for Boolean<E> {
     fn eject_mode(&self) -> Mode {
         // Perform a software-level safety check that the boolean is well-formed.
         match self.0.is_boolean_type() {
-            true => self.0.to_mode(),
+            true => self.0.mode(),
             false => E::halt("Boolean variable is not well-formed"),
         }
     }
@@ -93,7 +93,7 @@ impl<E: Environment> Eject for Boolean<E> {
     /// Ejects the boolean as a constant boolean value.
     ///
     fn eject_value(&self) -> Self::Primitive {
-        let value = self.0.to_value();
+        let value = self.0.value();
         debug_assert!(value.is_zero() || value.is_one());
         value.is_one()
     }
