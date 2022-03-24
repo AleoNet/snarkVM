@@ -22,18 +22,19 @@ use core::{
     ops::{Add, AddAssign, Mul, Neg, Sub},
 };
 use indexmap::{map::Entry, IndexMap};
-use rayon::prelude::*;
 
 #[derive(Clone)]
 pub struct LinearCombination<F: PrimeField> {
     constant: F,
     terms: IndexMap<Variable<F>, F>,
+    /// The value of this linear combination, defined as the sum of the `terms` and `constant`.
+    value: F,
 }
 
 impl<F: PrimeField> LinearCombination<F> {
     /// Returns the `zero` constant.
     pub fn zero() -> Self {
-        Self { constant: F::zero(), terms: Default::default() }
+        Self { constant: F::zero(), terms: Default::default(), value: Default::default() }
     }
 
     /// Returns the `one` constant.
@@ -113,14 +114,7 @@ impl<F: PrimeField> LinearCombination<F> {
 
     /// Returns the computed value of the linear combination.
     pub fn to_value(&self) -> F {
-        // Note that 500_000 is derived empirically.
-        // The setup cost of Rayon is only worth it after sufficient size.
-        let sum: F = match self.terms.len() > 500_000 {
-            true => self.terms.par_iter().map(|(variable, coefficient)| variable.value() * coefficient).sum(),
-            false => self.terms.iter().map(|(variable, coefficient)| variable.value() * coefficient).sum(),
-        };
-
-        self.constant + sum
+        self.value
     }
 
     /// Returns only the constant value (excluding the terms) in the linear combination.
@@ -202,6 +196,8 @@ impl<F: PrimeField> From<&[Variable<F>]> for LinearCombination<F> {
                     }
                 }
             }
+            // Increment the value of the linear combination by the variable.
+            output.value += variable.value();
         }
         output
     }
@@ -215,6 +211,7 @@ impl<F: PrimeField> Neg for LinearCombination<F> {
         let mut output = self;
         output.constant = -output.constant;
         output.terms.iter_mut().for_each(|(_, coefficient)| *coefficient = -(*coefficient));
+        output.value = -output.value;
         output
     }
 }
@@ -322,6 +319,9 @@ impl<F: PrimeField> AddAssign<&LinearCombination<F>> for LinearCombination<F> {
                     }
                 }
             }
+
+            // Add the value from `other` to `self`.
+            self.value += other.value;
         }
     }
 }
@@ -383,6 +383,7 @@ impl<F: PrimeField> Mul<&F> for LinearCombination<F> {
         let mut output = self;
         output.constant *= coefficient;
         output.terms.iter_mut().for_each(|(_, current_coefficient)| *current_coefficient *= coefficient);
+        output.value *= coefficient;
         output
     }
 }
