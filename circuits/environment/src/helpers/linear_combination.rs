@@ -241,6 +241,15 @@ impl<F: PrimeField> Add<&Variable<F>> for LinearCombination<F> {
     }
 }
 
+impl<F: PrimeField> Add<Variable<F>> for &LinearCombination<F> {
+    type Output = LinearCombination<F>;
+
+    #[allow(clippy::op_ref)]
+    fn add(self, other: Variable<F>) -> Self::Output {
+        self.clone() + &other
+    }
+}
+
 impl<F: PrimeField> Add<LinearCombination<F>> for LinearCombination<F> {
     type Output = Self;
 
@@ -254,6 +263,14 @@ impl<F: PrimeField> Add<&LinearCombination<F>> for LinearCombination<F> {
 
     fn add(self, other: &Self) -> Self::Output {
         &self + other
+    }
+}
+
+impl<F: PrimeField> Add<LinearCombination<F>> for &LinearCombination<F> {
+    type Output = LinearCombination<F>;
+
+    fn add(self, other: LinearCombination<F>) -> Self::Output {
+        self + &other
     }
 }
 
@@ -342,6 +359,15 @@ impl<F: PrimeField> Sub<&Variable<F>> for LinearCombination<F> {
     }
 }
 
+impl<F: PrimeField> Sub<Variable<F>> for &LinearCombination<F> {
+    type Output = LinearCombination<F>;
+
+    #[allow(clippy::op_ref)]
+    fn sub(self, other: Variable<F>) -> Self::Output {
+        self.clone() - &other
+    }
+}
+
 impl<F: PrimeField> Sub<LinearCombination<F>> for LinearCombination<F> {
     type Output = Self;
 
@@ -355,6 +381,14 @@ impl<F: PrimeField> Sub<&LinearCombination<F>> for LinearCombination<F> {
 
     fn sub(self, other: &Self) -> Self::Output {
         &self - other
+    }
+}
+
+impl<F: PrimeField> Sub<LinearCombination<F>> for &LinearCombination<F> {
+    type Output = LinearCombination<F>;
+
+    fn sub(self, other: LinearCombination<F>) -> Self::Output {
+        self - &other
     }
 }
 

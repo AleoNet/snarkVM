@@ -33,15 +33,15 @@ impl<E: Environment> Not for &Boolean<E> {
         // Constant case
         if self.is_constant() {
             match self.eject_value() {
-                true => Boolean(self.0.clone() - Variable::one()),
-                false => Boolean(self.0.clone() + Variable::one()),
+                true => Boolean(&self.0 - Variable::one()),
+                false => Boolean(&self.0 + Variable::one()),
             }
         }
         // Public and private cases
         else {
             match self.eject_value() {
-                true => Boolean(self.0.clone() - Variable::Public(0, E::BaseField::one())),
-                false => Boolean(self.0.clone() + Variable::Public(0, E::BaseField::one())),
+                true => Boolean(&self.0 - Variable::Public(0, E::BaseField::one())),
+                false => Boolean(&self.0 + Variable::Public(0, E::BaseField::one())),
             }
         }
     }
