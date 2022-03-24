@@ -47,6 +47,10 @@ pub trait Inject {
     }
 }
 
+/********************/
+/****** Arrays ******/
+/********************/
+
 impl<C: Inject<Primitive = P>, P: Default> Inject for Vec<C> {
     type Primitive = Vec<P>;
 
@@ -56,11 +60,48 @@ impl<C: Inject<Primitive = P>, P: Default> Inject for Vec<C> {
     }
 }
 
-impl<C1: Inject<Primitive = P1>, P1: Default, C2: Inject<Primitive = P2>, P2: Default> Inject for (C1, C2) {
-    type Primitive = (P1, P2);
+/********************/
+/****** Tuples ******/
+/********************/
+
+impl<C0: Inject, C1: Inject> Inject for (C0, C1) {
+    type Primitive = (C0::Primitive, C1::Primitive);
 
     #[inline]
     fn new(mode: Mode, value: Self::Primitive) -> Self {
-        (C1::new(mode, value.0), C2::new(mode, value.1))
+        (C0::new(mode, value.0), C1::new(mode, value.1))
+    }
+}
+
+impl<C0: Inject, C1: Inject, C2: Inject> Inject for (C0, C1, C2) {
+    type Primitive = (C0::Primitive, C1::Primitive, C2::Primitive);
+
+    #[inline]
+    fn new(mode: Mode, value: Self::Primitive) -> Self {
+        (C0::new(mode, value.0), C1::new(mode, value.1), C2::new(mode, value.2))
+    }
+}
+
+impl<C0: Inject, C1: Inject, C2: Inject, C3: Inject> Inject for (C0, C1, C2, C3) {
+    type Primitive = (C0::Primitive, C1::Primitive, C2::Primitive, C3::Primitive);
+
+    #[inline]
+    fn new(mode: Mode, value: Self::Primitive) -> Self {
+        (C0::new(mode, value.0), C1::new(mode, value.1), C2::new(mode, value.2), C3::new(mode, value.3))
+    }
+}
+
+impl<C0: Inject, C1: Inject, C2: Inject, C3: Inject, C4: Inject> Inject for (C0, C1, C2, C3, C4) {
+    type Primitive = (C0::Primitive, C1::Primitive, C2::Primitive, C3::Primitive, C4::Primitive);
+
+    #[inline]
+    fn new(mode: Mode, value: Self::Primitive) -> Self {
+        (
+            C0::new(mode, value.0),
+            C1::new(mode, value.1),
+            C2::new(mode, value.2),
+            C3::new(mode, value.3),
+            C4::new(mode, value.4),
+        )
     }
 }
