@@ -72,18 +72,12 @@ impl<F: PrimeField> LinearCombination<F> {
     /// 3. The value of the linear combination must always be either `0` or `1`.
     ///
     pub fn is_boolean_type(&self) -> bool {
+        // Constant case (enforce Property 1)
         if self.terms.is_empty() {
-            // Constant case
             self.constant.is_zero() || self.constant.is_one()
-        } else if self.constant.is_zero() {
-            // Public and private cases
-
-            // Enforce property 1.
-            if self.terms.is_empty() {
-                eprintln!("Property 1 of the `Boolean` type was violated");
-                return false;
-            }
-
+        }
+        // Public and private cases (enforce Property 1)
+        else if self.constant.is_zero() {
             // Enforce property 2.
             if self.terms.iter().all(|(v, _)| !(v.value().is_zero() || v.value().is_one())) {
                 eprintln!("Property 2 of the `Boolean` type was violated in {self}");
@@ -99,7 +93,8 @@ impl<F: PrimeField> LinearCombination<F> {
 
             true
         } else {
-            // Both self.constant and self.terms contain elements. This is a violation.
+            // Property 1 of the `Boolean` type was violated.
+            // Both self.constant and self.terms contain elements.
             eprintln!("Both LC::constant and LC::terms contain elements, which is a violation");
             false
         }
@@ -297,28 +292,31 @@ impl<F: PrimeField> AddAssign<&LinearCombination<F>> for LinearCombination<F> {
         // If `other` is empty, return immediately.
         if other.constant.is_zero() && other.terms.is_empty() {
             return;
-        }
+        } else if self.constant.is_zero() && self.terms.is_empty() {
+            *self = other.clone();
+            return;
+        } else {
+            // Add the constant value from `other` to `self`.
+            self.constant += other.constant;
 
-        // Add the constant value from `other` to `self`.
-        self.constant += other.constant;
-
-        // Add the terms from `other` to the terms of `self`.
-        for (variable, coefficient) in other.terms.iter() {
-            match variable.is_constant() {
-                true => self.constant += variable.value(),
-                false => {
-                    match self.terms.entry(*variable) {
-                        Entry::Occupied(mut entry) => {
-                            // Add the coefficient to the existing coefficient for this term.
-                            *entry.get_mut() += *coefficient;
-                            // If the coefficient of the term is now zero, remove the entry.
-                            if entry.get().is_zero() {
-                                entry.remove_entry();
+            // Add the terms from `other` to the terms of `self`.
+            for (variable, coefficient) in other.terms.iter() {
+                match variable.is_constant() {
+                    true => self.constant += variable.value(),
+                    false => {
+                        match self.terms.entry(*variable) {
+                            Entry::Occupied(mut entry) => {
+                                // Add the coefficient to the existing coefficient for this term.
+                                *entry.get_mut() += *coefficient;
+                                // If the coefficient of the term is now zero, remove the entry.
+                                if entry.get().is_zero() {
+                                    entry.remove_entry();
+                                }
                             }
-                        }
-                        Entry::Vacant(entry) => {
-                            // Insert the variable and coefficient as a new term.
-                            entry.insert(*coefficient);
+                            Entry::Vacant(entry) => {
+                                // Insert the variable and coefficient as a new term.
+                                entry.insert(*coefficient);
+                            }
                         }
                     }
                 }
