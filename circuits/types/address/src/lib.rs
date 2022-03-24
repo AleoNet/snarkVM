@@ -40,12 +40,6 @@ impl<E: Environment> Address<E> {
 impl<E: Environment> Inject for Address<E> {
     type Primitive = E::Affine;
 
-    /// Returns the type name of the circuit as a string.
-    #[inline]
-    fn type_name() -> &'static str {
-        "address"
-    }
-
     ///
     /// Initializes a new instance of an address from a string.
     ///
@@ -74,6 +68,12 @@ impl<E: Environment> Eject for Address<E> {
 
 impl<E: Environment> Parser for Address<E> {
     type Environment = E;
+
+    /// Returns the type name of the circuit as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "address"
+    }
 
     /// Parses a string into an address circuit.
     #[inline]

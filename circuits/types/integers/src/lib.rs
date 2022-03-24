@@ -83,12 +83,6 @@ impl<E: Environment, I: IntegerType> DataType<Boolean<E>> for Integer<E, I> {}
 impl<E: Environment, I: IntegerType> Inject for Integer<E, I> {
     type Primitive = I;
 
-    /// Returns the type name of the circuit as a string.
-    #[inline]
-    fn type_name() -> &'static str {
-        I::type_name()
-    }
-
     /// Initializes a new integer.
     fn new(mode: Mode, value: Self::Primitive) -> Self {
         let mut bits_le = Vec::with_capacity(I::BITS);
@@ -131,6 +125,12 @@ impl<E: Environment, I: IntegerType> Eject for Integer<E, I> {
 
 impl<E: Environment, I: IntegerType> Parser for Integer<E, I> {
     type Environment = E;
+
+    /// Returns the type name of the circuit as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        I::type_name()
+    }
 
     /// Parses a string into an integer circuit.
     #[inline]

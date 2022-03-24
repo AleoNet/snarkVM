@@ -91,16 +91,16 @@ impl<M: Memory> Function<M> {
     pub fn num_outputs(&self) -> u64 {
         self.outputs.len() as u64
     }
+}
+
+impl<M: Memory> Parser for Function<M> {
+    type Environment = M::Environment;
 
     /// Returns the type name as a string.
     #[inline]
     fn type_name() -> &'static str {
         "function"
     }
-}
-
-impl<M: Memory> Parser for Function<M> {
-    type Environment = M::Environment;
 
     /// Parses a string into a function.
     #[inline]

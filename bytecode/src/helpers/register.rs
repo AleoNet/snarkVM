@@ -52,6 +52,12 @@ impl<E: Environment> Register<E> {
 impl<E: Environment> Parser for Register<E> {
     type Environment = E;
 
+    /// Returns the type name as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "register"
+    }
+
     /// Parses a string into a register.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {

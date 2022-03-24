@@ -52,10 +52,6 @@ mod tests {
     impl Inject for Foo {
         type Primitive = u8;
 
-        fn type_name() -> &'static str {
-            "Foo"
-        }
-
         fn new(mode: Mode, value: Self::Primitive) -> Self {
             Self(mode, value)
         }

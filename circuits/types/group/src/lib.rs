@@ -50,12 +50,6 @@ impl<E: Environment> DataType<Boolean<E>> for Group<E> {}
 impl<E: Environment> Inject for Group<E> {
     type Primitive = (E::BaseField, Option<E::BaseField>);
 
-    /// Returns the type name of the circuit as a string.
-    #[inline]
-    fn type_name() -> &'static str {
-        "group"
-    }
-
     ///
     /// Initializes a new affine group element.
     ///
@@ -152,6 +146,12 @@ impl<E: Environment> Eject for Group<E> {
 
 impl<E: Environment> Parser for Group<E> {
     type Environment = E;
+
+    /// Returns the type name of the circuit as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "group"
+    }
 
     /// Parses a string into an affine group circuit.
     #[inline]

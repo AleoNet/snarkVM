@@ -48,12 +48,6 @@ impl<E: Environment> DataType<Boolean<E>> for Boolean<E> {}
 impl<E: Environment> Inject for Boolean<E> {
     type Primitive = bool;
 
-    /// Returns the type name of the circuit as a string.
-    #[inline]
-    fn type_name() -> &'static str {
-        "boolean"
-    }
-
     ///
     /// Initializes a new instance of a boolean from a primitive boolean value.
     ///
@@ -107,6 +101,12 @@ impl<E: Environment> Eject for Boolean<E> {
 
 impl<E: Environment> Parser for Boolean<E> {
     type Environment = E;
+
+    /// Returns the type name of the circuit as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "boolean"
+    }
 
     /// Parses a string into a boolean circuit.
     #[inline]

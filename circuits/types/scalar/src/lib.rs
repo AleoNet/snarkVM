@@ -47,12 +47,6 @@ impl<E: Environment> DataType<Boolean<E>> for Scalar<E> {}
 impl<E: Environment> Inject for Scalar<E> {
     type Primitive = E::ScalarField;
 
-    /// Returns the type name of the circuit as a string.
-    #[inline]
-    fn type_name() -> &'static str {
-        "scalar"
-    }
-
     ///
     /// Initializes a new instance of a scalar field from a primitive scalar field value.
     ///
@@ -99,6 +93,12 @@ impl<E: Environment> Eject for Scalar<E> {
 
 impl<E: Environment> Parser for Scalar<E> {
     type Environment = E;
+
+    /// Returns the type name of the circuit as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "scalar"
+    }
 
     /// Parses a string into a scalar field circuit.
     #[inline]

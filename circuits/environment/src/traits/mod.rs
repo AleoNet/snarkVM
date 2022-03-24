@@ -56,11 +56,6 @@ pub trait Inject {
     type Primitive: Default;
 
     ///
-    /// Returns the type name of the object as a string. (i.e. "u8")
-    ///
-    fn type_name() -> &'static str;
-
-    ///
     /// Initializes a circuit of the given mode and primitive value.
     ///
     fn new(mode: Mode, value: Self::Primitive) -> Self;
@@ -90,10 +85,6 @@ pub trait Inject {
 impl<C: Inject<Primitive = P>, P: Default> Inject for Vec<C> {
     type Primitive = Vec<P>;
 
-    fn type_name() -> &'static str {
-        "composite"
-    }
-
     #[inline]
     fn new(mode: Mode, value: Self::Primitive) -> Self {
         value.into_iter().map(|v| C::new(mode, v)).collect()
@@ -102,10 +93,6 @@ impl<C: Inject<Primitive = P>, P: Default> Inject for Vec<C> {
 
 impl<C1: Inject<Primitive = P1>, P1: Default, C2: Inject<Primitive = P2>, P2: Default> Inject for (C1, C2) {
     type Primitive = (P1, P2);
-
-    fn type_name() -> &'static str {
-        "composite"
-    }
 
     #[inline]
     fn new(mode: Mode, value: Self::Primitive) -> Self {
@@ -161,6 +148,11 @@ pub type ParserResult<'a, O> = IResult<&'a str, O, VerboseError<&'a str>>;
 /// Operations to parse a string literal into an object.
 pub trait Parser: Display {
     type Environment: Environment;
+
+    ///
+    /// Returns the type name of the object as a string. (i.e. "u8")
+    ///
+    fn type_name() -> &'static str;
 
     ///
     /// Parses a string literal into an object.

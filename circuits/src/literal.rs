@@ -134,6 +134,12 @@ impl<E: Environment> Literal<E> {
 impl<E: Environment> Parser for Literal<E> {
     type Environment = E;
 
+    /// Returns the type name as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "literal"
+    }
+
     /// Parses a string into a literal.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
