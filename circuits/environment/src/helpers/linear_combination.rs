@@ -303,7 +303,7 @@ impl<F: PrimeField> AddAssign<&LinearCombination<F>> for LinearCombination<F> {
             // Add the terms from `other` to the terms of `self`.
             for (variable, coefficient) in other.terms.iter() {
                 match variable.is_constant() {
-                    true => self.constant += variable.value(),
+                    true => panic!("Malformed linear combination found"),
                     false => {
                         match self.terms.entry(*variable) {
                             Entry::Occupied(mut entry) => {
@@ -389,7 +389,7 @@ impl<F: PrimeField> Mul<&F> for LinearCombination<F> {
 
 impl<F: PrimeField> fmt::Debug for LinearCombination<F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        let mut output = format!("Constant({})", self.constant);
+        let mut output = format!("{:?}", Variable::Constant(self.constant));
 
         // Sort the terms.
         let mut terms = self.terms.clone();
