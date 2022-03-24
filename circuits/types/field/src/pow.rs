@@ -99,7 +99,7 @@ mod tests {
     }
 
     #[test]
-    fn test_constant_times_constant() {
+    fn test_constant_pow_constant() {
         for i in 0..ITERATIONS {
             let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
             let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
@@ -114,7 +114,7 @@ mod tests {
     }
 
     #[test]
-    fn test_constant_times_public() {
+    fn test_constant_pow_public() {
         for i in 0..ITERATIONS {
             let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
             let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
@@ -129,7 +129,7 @@ mod tests {
     }
 
     #[test]
-    fn test_constant_times_private() {
+    fn test_constant_pow_private() {
         for i in 0..ITERATIONS {
             let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
             let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
@@ -144,7 +144,7 @@ mod tests {
     }
 
     #[test]
-    fn test_public_times_constant() {
+    fn test_public_pow_constant() {
         for i in 0..ITERATIONS {
             let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
             let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
@@ -175,7 +175,7 @@ mod tests {
     }
 
     #[test]
-    fn test_private_times_constant() {
+    fn test_private_pow_constant() {
         for i in 0..ITERATIONS {
             let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
             let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
@@ -206,7 +206,7 @@ mod tests {
     }
 
     #[test]
-    fn test_public_times_public() {
+    fn test_public_pow_public() {
         for i in 0..ITERATIONS {
             let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
             let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
@@ -221,7 +221,7 @@ mod tests {
     }
 
     #[test]
-    fn test_public_times_private() {
+    fn test_public_pow_private() {
         for i in 0..ITERATIONS {
             let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
             let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
@@ -236,7 +236,7 @@ mod tests {
     }
 
     #[test]
-    fn test_private_times_public() {
+    fn test_private_pow_public() {
         for i in 0..ITERATIONS {
             let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
             let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
@@ -251,7 +251,7 @@ mod tests {
     }
 
     #[test]
-    fn test_private_times_private() {
+    fn test_private_pow_private() {
         for i in 0..ITERATIONS {
             let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
             let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
