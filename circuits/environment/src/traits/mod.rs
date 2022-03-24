@@ -128,4 +128,3 @@ pub trait Parser: Display {
         }
     }
 }
-

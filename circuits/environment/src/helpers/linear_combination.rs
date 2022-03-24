@@ -86,8 +86,7 @@ impl<F: PrimeField> LinearCombination<F> {
             }
 
             // Enforce property 3.
-            let value = self.to_value();
-            if !(value.is_zero() || value.is_one()) {
+            if !(self.value.is_zero() || self.value.is_one()) {
                 eprintln!("Property 3 of the `Boolean` type was violated");
                 return false;
             }
@@ -409,7 +408,7 @@ impl<F: PrimeField> fmt::Debug for LinearCombination<F> {
 
 impl<F: PrimeField> fmt::Display for LinearCombination<F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        write!(f, "{}", self.to_value())
+        write!(f, "{}", self.value)
     }
 }
 
