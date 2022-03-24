@@ -46,7 +46,7 @@ fn add(c: &mut Criterion) {
     });
 }
 
-fn eject_value(c: &mut Criterion) {
+fn to_value(c: &mut Criterion) {
     let one = <Circuit as Environment>::BaseField::one();
     let two = one + one;
 
@@ -57,9 +57,27 @@ fn eject_value(c: &mut Criterion) {
         candidate += Field::new(Mode::Private, two);
     });
 
-    c.bench_function("eject_value", move |b| {
+    c.bench_function("to_value", move |b| {
         b.iter(|| {
             let _value = candidate.eject_value();
+        })
+    });
+}
+
+fn debug(c: &mut Criterion) {
+    let one = <Circuit as Environment>::BaseField::one();
+    let two = one + one;
+
+    let mut candidate = Field::<Circuit>::one();
+    (0..500_000).for_each(|_| {
+        candidate += Field::new(Mode::Constant, two);
+        candidate += Field::new(Mode::Public, two);
+        candidate += Field::new(Mode::Private, two);
+    });
+
+    c.bench_function("debug", move |b| {
+        b.iter(|| {
+            let _value = format!("{:?}", candidate);
         })
     });
 }
@@ -67,7 +85,7 @@ fn eject_value(c: &mut Criterion) {
 criterion_group! {
     name = linear_combination;
     config = Criterion::default().sample_size(10);
-    targets = add, eject_value
+    targets = add, to_value, debug
 }
 
 criterion_main!(linear_combination);

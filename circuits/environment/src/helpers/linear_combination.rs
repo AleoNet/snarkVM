@@ -391,7 +391,12 @@ impl<F: PrimeField> Mul<&F> for LinearCombination<F> {
 impl<F: PrimeField> fmt::Debug for LinearCombination<F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         let mut output = format!("Constant({})", self.constant);
-        for (variable, coefficient) in &self.terms {
+
+        // Sort the terms.
+        let mut terms = self.terms.clone();
+        terms.par_sort_keys();
+
+        for (variable, coefficient) in &terms {
             output += &match (variable.mode(), coefficient.is_one()) {
                 (Mode::Constant, _) => panic!("Malformed linear combination at: ({} * {:?})", coefficient, variable),
                 (_, true) => format!(" + {:?}", variable),

@@ -53,7 +53,7 @@ pub trait DataType<B: BooleanTrait>: FromBits<Boolean = B> + ToBits<Boolean = B>
 
 /// Operations to inject from a primitive form into a circuit environment.
 pub trait Inject {
-    type Primitive: Debug + Default;
+    type Primitive: Default;
 
     ///
     /// Returns the type name of the object as a string. (i.e. "u8")
@@ -84,6 +84,32 @@ pub trait Inject {
         Self: Sized,
     {
         Self::new(mode, Default::default())
+    }
+}
+
+impl<C: Inject<Primitive = P>, P: Default> Inject for Vec<C> {
+    type Primitive = Vec<P>;
+
+    fn type_name() -> &'static str {
+        "composite"
+    }
+
+    #[inline]
+    fn new(mode: Mode, value: Self::Primitive) -> Self {
+        value.into_iter().map(|v| C::new(mode, v)).collect()
+    }
+}
+
+impl<C1: Inject<Primitive = P1>, P1: Default, C2: Inject<Primitive = P2>, P2: Default> Inject for (C1, C2) {
+    type Primitive = (P1, P2);
+
+    fn type_name() -> &'static str {
+        "composite"
+    }
+
+    #[inline]
+    fn new(mode: Mode, value: Self::Primitive) -> Self {
+        (C1::new(mode, value.0), C2::new(mode, value.1))
     }
 }
 
