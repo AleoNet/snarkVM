@@ -31,9 +31,9 @@ macro_rules! witness {
 
         E::new_witness(mode, || {
             // Reassign each circuit to its primitive type.
-            $( let $circuit = $circuit.eject_value(); )*
+            $( let crate::rename_selfs!($circuit) = $circuit.eject_value(); )*
             // Execute the code block, returning the primitive to be injected.
-            $block
+            crate::rename_selfs!($block)
         })
     }}
 }

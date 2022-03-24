@@ -16,67 +16,28 @@
 
 extern crate proc_macro;
 
-use proc_macro::TokenStream;
-use quote::quote;
-use syn::*;
+use proc_macro::{Group, Ident, TokenStream, TokenTree};
 
-#[proc_macro_attribute]
-pub fn witness(_attrs: TokenStream, item: TokenStream) -> TokenStream {
-    if let Ok(mut fun) = parse::<ItemFn>(item.clone()) {
-        fun.block.stmts = parse_stmts(&mut fun.block.stmts);
-        return quote!(#fun).into();
-    }
-
-    if let Ok(mut fun) = parse::<TraitItemMethod>(item.clone()) {
-        if let Some(block) = fun.default.as_mut() {
-            block.stmts = parse_stmts(&mut block.stmts);
-            return quote!(#fun).into();
-        }
-    }
-
-    if let Ok(mut fun) = parse::<ImplItemMethod>(item) {
-        fun.block.stmts = parse_stmts(&mut fun.block.stmts);
-        return quote!(#fun).into();
-    }
-
-    panic!("`witness` only works on functions")
+fn recursively_replace_self(stream: TokenStream, replacement: &str) -> TokenStream {
+    stream
+        .into_iter()
+        .map(|item| match item {
+            TokenTree::Ident(ident) => {
+                if ident.to_string() == "self" {
+                    TokenTree::Ident(Ident::new(replacement, ident.span()))
+                } else {
+                    TokenTree::Ident(ident)
+                }
+            }
+            TokenTree::Group(group) => {
+                TokenTree::Group(Group::new(group.delimiter(), recursively_replace_self(group.stream(), replacement)))
+            }
+            i => i,
+        })
+        .collect()
 }
 
-#[cfg(feature = "witness")]
-fn parse_stmts(stmts: &mut Vec<Stmt>) -> Vec<Stmt> {
-    fn sanitize_stmt(stmt: &mut Stmt) -> String {
-        let short = format!("{}", quote::ToTokens::into_token_stream(stmt)).chars().collect::<Vec<_>>();
-
-        let short = short.into_iter().collect::<String>();
-        short
-
-        // let mut stream = quote::ToTokens::into_token_stream(stmt);
-        //
-        // let mut new_stream = Token
-        //
-        // for token in stream.into_iter() {
-        //     match token {
-        //         proc_macro::TokenTree::Ident(ident) => if ident.to_string() == "self".to_string() {
-        //
-        //         },
-        //         other =>
-        //     }
-        // }
-        //
-        // stream.to_string()
-    }
-
-    let mut new_stmts = Vec::with_capacity(stmts.len());
-
-    for stmt in stmts {
-        let sanitized_stmt = sanitize_stmt(stmt);
-        new_stmts.push(parse_quote!(#sanitized_stmt));
-    }
-
-    new_stmts
-}
-
-#[cfg(not(feature = "witness"))]
-fn parse_stmts(stmts: &mut Vec<Stmt>) -> Vec<Stmt> {
-    stmts.clone()
+#[proc_macro]
+pub fn rename_selfs(stream: TokenStream) -> TokenStream {
+    recursively_replace_self(stream, "_self")
 }

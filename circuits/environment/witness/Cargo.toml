@@ -10,17 +10,4 @@ edition = "2018"
 proc-macro = true
 
 [dependencies]
-quote = "0.6"
 proc-macro2 = "0.4"
-
-[dependencies.snarkvm-circuits-environment]
-path = ".."
-version = "0.7.5"
-
-[dependencies.syn]
-version = "0.15.42"
-features = ["full"]
-
-[features]
-default = ["witness"]
-witness = []

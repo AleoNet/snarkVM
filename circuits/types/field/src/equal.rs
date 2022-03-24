@@ -41,13 +41,12 @@ impl<E: Environment> Equal<Self> for Field<E> {
             (true, true) => Boolean::new(Mode::Constant, self.eject_value() != other.eject_value()),
             _ => {
                 // Compute a boolean that is `true` if `this` and `that` are not equivalent.
-                let this = self;
-                let is_neq: Boolean<E> = witness!(|this, other| { this != other });
+                let is_neq: Boolean<E> = witness!(|self, other| { self != other });
 
                 // Assign the expected multiplier.
-                let multiplier: Field<E> = witness!(|this, other| {
-                    match this != other {
-                        true => (this - other).inverse().expect("Failed to compute a native inverse"),
+                let multiplier: Field<E> = witness!(|self, other| {
+                    match self != other {
+                        true => (self - other).inverse().expect("Failed to compute a native inverse"),
                         false => E::BaseField::one(),
                     }
                 });
