@@ -16,7 +16,7 @@
 
 use snarkvm_fields::PrimeField;
 
-use crate::polycommit::{LabeledPolynomial, LabeledPolynomialWithBasis};
+use crate::polycommit::sonic_pc::{LabeledPolynomial, LabeledPolynomialWithBasis};
 
 /// The first set of prover oracles.
 #[derive(Debug, Clone)]

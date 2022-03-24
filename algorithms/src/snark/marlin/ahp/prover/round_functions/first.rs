@@ -18,7 +18,7 @@ use core::convert::TryInto;
 
 use crate::{
     fft::{DensePolynomial, EvaluationDomain, Evaluations as EvaluationsOnDomain, SparsePolynomial},
-    polycommit::{LabeledPolynomial, LabeledPolynomialWithBasis, PolynomialWithBasis},
+    polycommit::sonic_pc::{LabeledPolynomial, LabeledPolynomialWithBasis, PolynomialWithBasis},
     snark::marlin::{
         ahp::{indexer::CircuitInfo, AHPError, AHPForR1CS},
         prover,

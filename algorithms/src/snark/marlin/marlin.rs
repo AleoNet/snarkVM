@@ -16,7 +16,7 @@
 
 use crate::{
     fft::EvaluationDomain,
-    polycommit::{Evaluations, LabeledCommitment, PCProof, PCRandomness, PCUniversalParams, PolynomialCommitment},
+    polycommit::sonic_pc::{Commitment, Evaluations, LabeledCommitment, Randomness, SonicKZG10},
     snark::marlin::{
         ahp::{AHPError, AHPForR1CS, EvaluationsProvider},
         fiat_shamir::traits::FiatShamirRng,
@@ -34,7 +34,8 @@ use crate::{
     },
 };
 use itertools::Itertools;
-use snarkvm_fields::{PrimeField, ToConstraintField};
+use snarkvm_curves::PairingEngine;
+use snarkvm_fields::{One, ToConstraintField, Zero};
 use snarkvm_r1cs::ConstraintSynthesizer;
 use snarkvm_utilities::{to_bytes_le, ToBytes};
 
@@ -50,35 +51,24 @@ use rand_core::RngCore;
 /// The Marlin proof system.
 #[derive(Clone, Debug)]
 pub struct MarlinSNARK<
-    TargetField: PrimeField,
-    BaseField: PrimeField,
-    PC: PolynomialCommitment<TargetField, BaseField>,
-    FS: FiatShamirRng<TargetField, BaseField>,
+    E: PairingEngine,
+    FS: FiatShamirRng<E::Fr, E::Fq>,
     MM: MarlinMode,
-    Input: ToConstraintField<TargetField>,
->(#[doc(hidden)] PhantomData<(TargetField, BaseField, PC, FS, MM, Input)>);
+    Input: ToConstraintField<E::Fr>,
+>(#[doc(hidden)] PhantomData<(E, FS, MM, Input)>);
 
-impl<
-    TargetField: PrimeField,
-    BaseField: PrimeField,
-    PC: PolynomialCommitment<TargetField, BaseField>,
-    FS: FiatShamirRng<TargetField, BaseField>,
-    MM: MarlinMode,
-    Input: ToConstraintField<TargetField>,
-> MarlinSNARK<TargetField, BaseField, PC, FS, MM, Input>
+impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: ToConstraintField<E::Fr>>
+    MarlinSNARK<E, FS, MM, Input>
 {
     /// The personalization string for this protocol.
     /// Used to personalize the Fiat-Shamir RNG.
     pub const PROTOCOL_NAME: &'static [u8] = b"MARLIN-2019";
 
     /// Generates the universal proving and verifying keys for the argument system.
-    pub fn universal_setup<R: RngCore>(
-        max_degree: usize,
-        rng: &mut R,
-    ) -> Result<UniversalSRS<TargetField, BaseField, PC>, MarlinError> {
+    pub fn universal_setup<R: RngCore>(max_degree: usize, rng: &mut R) -> Result<UniversalSRS<E>, MarlinError> {
         let setup_time = start_timer!(|| { format!("Marlin::UniversalSetup with max_degree {}", max_degree,) });
 
-        let srs = PC::setup(max_degree, rng).map_err(Into::into);
+        let srs = SonicKZG10::<E, FS>::setup(max_degree, rng).map_err(Into::into);
         end_timer!(setup_time);
         srs
     }
@@ -92,13 +82,10 @@ impl<
     /// In production, one should instead perform a universal setup via [`Self::universal_setup`],
     /// and then deterministically specialize the resulting universal SRS via [`Self::circuit_setup`].
     #[allow(clippy::type_complexity)]
-    pub fn circuit_specific_setup<C: ConstraintSynthesizer<TargetField>, R: RngCore>(
+    pub fn circuit_specific_setup<C: ConstraintSynthesizer<E::Fr>, R: RngCore>(
         c: &C,
         rng: &mut R,
-    ) -> Result<
-        (CircuitProvingKey<TargetField, BaseField, PC, MM>, CircuitVerifyingKey<TargetField, BaseField, PC, MM>),
-        MarlinError,
-    > {
+    ) -> Result<(CircuitProvingKey<E, MM>, CircuitVerifyingKey<E, MM>), MarlinError> {
         let circuit = AHPForR1CS::<_, MM>::index(c)?;
         let srs = Self::universal_setup(circuit.max_degree(), rng)?;
         Self::circuit_setup(&srs, c)
@@ -107,13 +94,10 @@ impl<
     /// Generates the circuit proving and verifying keys.
     /// This is a deterministic algorithm that anyone can rerun.
     #[allow(clippy::type_complexity)]
-    pub fn circuit_setup<C: ConstraintSynthesizer<TargetField>>(
-        universal_srs: &UniversalSRS<TargetField, BaseField, PC>,
+    pub fn circuit_setup<C: ConstraintSynthesizer<E::Fr>>(
+        universal_srs: &UniversalSRS<E>,
         circuit: &C,
-    ) -> Result<
-        (CircuitProvingKey<TargetField, BaseField, PC, MM>, CircuitVerifyingKey<TargetField, BaseField, PC, MM>),
-        MarlinError,
-    > {
+    ) -> Result<(CircuitProvingKey<E, MM>, CircuitVerifyingKey<E, MM>), MarlinError> {
         let index_time = start_timer!(|| "Marlin::CircuitSetup");
 
         // TODO: Add check that c is in the correct mode.
@@ -126,7 +110,7 @@ impl<
 
         // Marlin only needs degree 2 random polynomials.
         let supported_hiding_bound = 1;
-        let (committer_key, verifier_key) = PC::trim(
+        let (committer_key, verifier_key) = SonicKZG10::<E, FS>::trim(
             universal_srs,
             index.max_degree(),
             [index.constraint_domain_size()],
@@ -136,7 +120,7 @@ impl<
 
         let commit_time = start_timer!(|| "Commit to index polynomials");
         let (circuit_commitments, circuit_commitment_randomness): (_, _) =
-            PC::commit(&committer_key, index.iter().map(Into::into), None)?;
+            SonicKZG10::<E, FS>::commit(&committer_key, index.iter().map(Into::into), None)?;
         end_timer!(commit_time);
 
         let circuit_commitments = circuit_commitments.into_iter().map(|c| *c.commitment()).collect();
@@ -160,11 +144,11 @@ impl<
     }
 
     /// Create a zkSNARK asserting that the constraint system is satisfied.
-    pub fn prove<C: ConstraintSynthesizer<TargetField>, R: RngCore>(
-        circuit_proving_key: &CircuitProvingKey<TargetField, BaseField, PC, MM>,
+    pub fn prove<C: ConstraintSynthesizer<E::Fr>, R: RngCore>(
+        circuit_proving_key: &CircuitProvingKey<E, MM>,
         circuit: &C,
         zk_rng: &mut R,
-    ) -> Result<Proof<TargetField, BaseField, PC>, MarlinError> {
+    ) -> Result<Proof<E>, MarlinError> {
         Self::prove_with_terminator(circuit_proving_key, circuit, &AtomicBool::new(false), zk_rng)
     }
 
@@ -173,12 +157,12 @@ impl<
     }
 
     /// Same as [`Self::prove`] with an added termination flag, `terminator`.
-    pub fn prove_with_terminator<C: ConstraintSynthesizer<TargetField>, R: RngCore>(
-        circuit_proving_key: &CircuitProvingKey<TargetField, BaseField, PC, MM>,
+    pub fn prove_with_terminator<C: ConstraintSynthesizer<E::Fr>, R: RngCore>(
+        circuit_proving_key: &CircuitProvingKey<E, MM>,
         circuit: &C,
         terminator: &AtomicBool,
         zk_rng: &mut R,
-    ) -> Result<Proof<TargetField, BaseField, PC>, MarlinError> {
+    ) -> Result<Proof<E>, MarlinError> {
         let prover_time = start_timer!(|| "Marlin::Prover");
         // TODO: Add check that c is in the correct mode.
 
@@ -201,8 +185,11 @@ impl<
         Self::terminate(terminator)?;
 
         let first_round_comm_time = start_timer!(|| "Committing to first round polys");
-        let (first_commitments, first_commitment_randomnesses) =
-            PC::commit(&circuit_proving_key.committer_key, first_oracles.iter_for_commit(), Some(zk_rng))?;
+        let (first_commitments, first_commitment_randomnesses) = SonicKZG10::<E, FS>::commit(
+            &circuit_proving_key.committer_key,
+            first_oracles.iter_for_commit(),
+            Some(zk_rng),
+        )?;
         end_timer!(first_round_comm_time);
 
         Self::verifier_absorb_labeled(&first_commitments, &mut fs_rng);
@@ -223,7 +210,7 @@ impl<
         Self::terminate(terminator)?;
 
         let second_round_comm_time = start_timer!(|| "Committing to second round polys");
-        let (second_commitments, second_commitment_randomnesses) = PC::commit_with_terminator(
+        let (second_commitments, second_commitment_randomnesses) = SonicKZG10::<E, FS>::commit_with_terminator(
             &circuit_proving_key.committer_key,
             second_oracles.iter().map(Into::into),
             terminator,
@@ -248,7 +235,7 @@ impl<
         Self::terminate(terminator)?;
 
         let third_round_comm_time = start_timer!(|| "Committing to third round polys");
-        let (third_commitments, third_commitment_randomnesses) = PC::commit_with_terminator(
+        let (third_commitments, third_commitment_randomnesses) = SonicKZG10::<E, FS>::commit_with_terminator(
             &circuit_proving_key.committer_key,
             third_oracles.iter().map(Into::into),
             terminator,
@@ -271,7 +258,7 @@ impl<
         Self::terminate(terminator)?;
 
         let fourth_round_comm_time = start_timer!(|| "Committing to fourth round polys");
-        let (fourth_commitments, fourth_commitment_randomnesses) = PC::commit_with_terminator(
+        let (fourth_commitments, fourth_commitment_randomnesses) = SonicKZG10::<E, FS>::commit_with_terminator(
             &circuit_proving_key.committer_key,
             fourth_oracles.iter().map(Into::into),
             terminator,
@@ -299,7 +286,7 @@ impl<
         Self::terminate(terminator)?;
 
         // Sanity check, whose length should be updated if the underlying structs are updated.
-        assert_eq!(polynomials.len(), AHPForR1CS::<TargetField, MM>::polynomial_labels().count());
+        assert_eq!(polynomials.len(), AHPForR1CS::<E::Fr, MM>::polynomial_labels().count());
 
         // Gather commitments in one vector.
         #[rustfmt::skip]
@@ -320,7 +307,7 @@ impl<
             h_2: *fourth_commitments[0].commitment(),
         };
 
-        let indexer_polynomials = AHPForR1CS::<TargetField, MM>::indexer_polynomials();
+        let indexer_polynomials = AHPForR1CS::<E::Fr, MM>::indexer_polynomials();
 
         let labeled_commitments: Vec<_> = circuit_proving_key
             .circuit_verifying_key
@@ -335,7 +322,7 @@ impl<
             .collect();
 
         // Gather commitment randomness together.
-        let commitment_randomnesses: Vec<PC::Randomness> = circuit_proving_key
+        let commitment_randomnesses: Vec<Randomness<E>> = circuit_proving_key
             .circuit_commitment_randomness
             .clone()
             .into_iter()
@@ -346,7 +333,7 @@ impl<
             .collect();
 
         if !MM::ZK {
-            let empty_randomness = PC::Randomness::empty();
+            let empty_randomness = Randomness::<E>::empty();
             assert!(commitment_randomnesses.iter().all(|r| r == &empty_randomness));
         }
 
@@ -364,7 +351,7 @@ impl<
         let eval_time = start_timer!(|| "Evaluating linear combinations over query set");
         let mut evaluations = std::collections::BTreeMap::new();
         for (label, (_, point)) in query_set.to_set() {
-            if !AHPForR1CS::<TargetField, MM>::LC_WITH_ZERO_EVAL.contains(&label.as_str()) {
+            if !AHPForR1CS::<E::Fr, MM>::LC_WITH_ZERO_EVAL.contains(&label.as_str()) {
                 let lc = lc_s
                     .iter()
                     .find(|lc| *lc.label == label)
@@ -381,26 +368,19 @@ impl<
 
         fs_rng.absorb_nonnative_field_elements(&evaluations.to_field_elements(), OptimizationType::Weight);
 
-        let num_open_challenges: usize = 7;
-
-        let mut opening_challenges = Vec::new();
-        opening_challenges.append(&mut fs_rng.squeeze_128_bits_nonnative_field_elements(num_open_challenges)?);
-
-        let opening_challenges_f = |i| opening_challenges[i as usize];
-
-        let pc_proof = PC::open_combinations_individual_opening_challenges(
+        let pc_proof = SonicKZG10::<E, FS>::open_combinations(
             &circuit_proving_key.committer_key,
             &lc_s,
             polynomials,
             &labeled_commitments,
             &query_set.to_set(),
-            &opening_challenges_f,
             &commitment_randomnesses,
+            &mut fs_rng,
         )?;
 
         Self::terminate(terminator)?;
 
-        let proof = Proof::new(commitments, evaluations, prover_third_message, pc_proof);
+        let proof = Proof::<E>::new(commitments, evaluations, prover_third_message, pc_proof);
         assert_eq!(proof.pc_proof.is_hiding(), MM::ZK);
         end_timer!(prover_time);
 
@@ -408,28 +388,24 @@ impl<
     }
 
     fn verifier_absorb_labeled_with_msg(
-        comms: &[LabeledCommitment<PC::Commitment>],
-        message: &prover::ThirdMessage<TargetField>,
+        comms: &[LabeledCommitment<Commitment<E>>],
+        message: &prover::ThirdMessage<E::Fr>,
         fs_rng: &mut FS,
     ) {
         let commitments: Vec<_> = comms.iter().map(|c| *c.commitment()).collect();
         Self::verifier_absorb_with_msg(&commitments, message, fs_rng)
     }
 
-    fn verifier_absorb_labeled(comms: &[LabeledCommitment<PC::Commitment>], fs_rng: &mut FS) {
+    fn verifier_absorb_labeled(comms: &[LabeledCommitment<Commitment<E>>], fs_rng: &mut FS) {
         let commitments: Vec<_> = comms.iter().map(|c| *c.commitment()).collect();
         Self::verifier_absorb(&commitments, fs_rng)
     }
 
-    fn verifier_absorb(commitments: &[PC::Commitment], fs_rng: &mut FS) {
+    fn verifier_absorb(commitments: &[Commitment<E>], fs_rng: &mut FS) {
         fs_rng.absorb_native_field_elements(commitments);
     }
 
-    fn verifier_absorb_with_msg(
-        commitments: &[PC::Commitment],
-        msg: &prover::ThirdMessage<TargetField>,
-        fs_rng: &mut FS,
-    ) {
+    fn verifier_absorb_with_msg(commitments: &[Commitment<E>], msg: &prover::ThirdMessage<E::Fr>, fs_rng: &mut FS) {
         Self::verifier_absorb(commitments, fs_rng);
         fs_rng.absorb_nonnative_field_elements(&[msg.sum_a, msg.sum_b, msg.sum_c], OptimizationType::Weight);
     }
@@ -437,9 +413,9 @@ impl<
     /// Verify that a proof for the constraint system defined by `C` asserts that
     /// all constraints are satisfied.
     pub fn verify(
-        circuit_verifying_key: &CircuitVerifyingKey<TargetField, BaseField, PC, MM>,
-        public_input: &[TargetField],
-        proof: &Proof<TargetField, BaseField, PC>,
+        circuit_verifying_key: &CircuitVerifyingKey<E, MM>,
+        public_input: &[E::Fr],
+        proof: &Proof<E>,
     ) -> Result<bool, MarlinError> {
         let verifier_time = start_timer!(|| "Marlin::Verify");
         let comms = &proof.commitments;
@@ -467,11 +443,11 @@ impl<
         }
 
         let padded_public_input = {
-            let input_domain = EvaluationDomain::<TargetField>::new(public_input.len() + 1).unwrap();
+            let input_domain = EvaluationDomain::<E::Fr>::new(public_input.len() + 1).unwrap();
 
-            let mut new_input = vec![TargetField::one()];
+            let mut new_input = vec![E::Fr::one()];
             new_input.extend_from_slice(public_input);
-            new_input.resize(core::cmp::max(public_input.len(), input_domain.size()), TargetField::zero());
+            new_input.resize(core::cmp::max(public_input.len(), input_domain.size()), E::Fr::zero());
             new_input
         };
         let public_input = prover::ConstraintSystem::unformat_public_input(&padded_public_input);
@@ -521,7 +497,7 @@ impl<
             .chain(AHPForR1CS::<_, MM>::prover_third_round_degree_bounds(&index_info))
             .chain(AHPForR1CS::<_, MM>::prover_fourth_round_degree_bounds(&index_info));
 
-        let polynomial_labels = AHPForR1CS::<TargetField, MM>::polynomial_labels();
+        let polynomial_labels = AHPForR1CS::<E::Fr, MM>::polynomial_labels();
 
         // Gather commitments in one vector.
         let commitments: Vec<_> = circuit_verifying_key
@@ -543,8 +519,8 @@ impl<
         let mut evaluations = Evaluations::new();
 
         for (label, (_point_name, q)) in query_set.to_set() {
-            if AHPForR1CS::<TargetField, MM>::LC_WITH_ZERO_EVAL.contains(&label.as_ref()) {
-                evaluations.insert((label, q), TargetField::zero());
+            if AHPForR1CS::<E::Fr, MM>::LC_WITH_ZERO_EVAL.contains(&label.as_ref()) {
+                evaluations.insert((label, q), E::Fr::zero());
             } else {
                 let eval = proof.evaluations.get(&label).ok_or_else(|| AHPError::MissingEval(label.clone()))?;
                 evaluations.insert((label, q), eval);
@@ -558,31 +534,22 @@ impl<
             &verifier_state,
         )?;
 
-        let evaluations_are_correct = {
-            let num_open_challenges: usize = 7;
-
-            let opening_challenges = fs_rng.squeeze_128_bits_nonnative_field_elements(num_open_challenges)?;
-
-            let opening_challenges_f = |i| opening_challenges[i as usize];
-
-            PC::check_combinations_individual_opening_challenges(
-                &circuit_verifying_key.verifier_key,
-                &lc_s,
-                &commitments,
-                &query_set.to_set(),
-                &evaluations,
-                &proof.pc_proof,
-                &opening_challenges_f,
-                &mut fs_rng,
-            )?
-        };
+        let evaluations_are_correct = SonicKZG10::<E, FS>::check_combinations(
+            &circuit_verifying_key.verifier_key,
+            &lc_s,
+            &commitments,
+            &query_set.to_set(),
+            &evaluations,
+            &proof.pc_proof,
+            &mut fs_rng,
+        )?;
 
         if !evaluations_are_correct {
             #[cfg(debug_assertions)]
-            eprintln!("PC::Check failed");
+            eprintln!("SonicKZG10::<E, FS>::Check failed");
         }
         end_timer!(verifier_time, || format!(
-            " PC::Check for AHP Verifier linear equations: {}",
+            " SonicKZG10::<E, FS>::Check for AHP Verifier linear equations: {}",
             evaluations_are_correct & proof_has_correct_zk_mode
         ));
         Ok(evaluations_are_correct & proof_has_correct_zk_mode)
@@ -591,9 +558,9 @@ impl<
     /// Verify that a proof for the constraint system defined by `C` asserts that
     /// all constraints are satisfied using the prepared verifying key.
     pub fn prepared_verify(
-        prepared_vk: &PreparedCircuitVerifyingKey<TargetField, BaseField, PC, MM>,
-        public_input: &[TargetField],
-        proof: &Proof<TargetField, BaseField, PC>,
+        prepared_vk: &PreparedCircuitVerifyingKey<E, MM>,
+        public_input: &[E::Fr],
+        proof: &Proof<E>,
     ) -> Result<bool, MarlinError> {
         Self::verify(&prepared_vk.orig_vk, public_input, proof)
     }

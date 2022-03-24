@@ -17,7 +17,7 @@
 use crate::{
     impl_edwards_curve_serializer,
     templates::twisted_edwards_extended::Projective,
-    traits::{AffineCurve, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters as Parameters},
+    traits::{AffineCurve, ProjectiveCurve, TwistedEdwardsParameters as Parameters},
 };
 use snarkvm_fields::{Field, One, PrimeField, SquareRootField, Zero};
 use snarkvm_utilities::{
@@ -40,32 +40,6 @@ use std::{
     io::{Read, Result as IoResult, Write},
     ops::{Mul, Neg},
 };
-
-#[derive(Derivative)]
-#[derivative(
-    Copy(bound = "P: MontgomeryParameters"),
-    Clone(bound = "P: MontgomeryParameters"),
-    PartialEq(bound = "P: MontgomeryParameters"),
-    Eq(bound = "P: MontgomeryParameters"),
-    Debug(bound = "P: MontgomeryParameters"),
-    Hash(bound = "P: MontgomeryParameters")
-)]
-pub struct MontgomeryAffine<P: MontgomeryParameters> {
-    pub x: P::BaseField,
-    pub y: P::BaseField,
-}
-
-impl<P: MontgomeryParameters> MontgomeryAffine<P> {
-    pub fn new(x: P::BaseField, y: P::BaseField) -> Self {
-        Self { x, y }
-    }
-}
-
-impl<P: MontgomeryParameters> Display for MontgomeryAffine<P> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "MontgomeryAffine(x={}, y={})", self.x, self.y)
-    }
-}
 
 #[derive(Derivative, Serialize, Deserialize)]
 #[derivative(

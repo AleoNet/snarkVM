@@ -15,12 +15,13 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::snark::marlin::{fiat_shamir::FiatShamirRng, params::OptimizationType, FiatShamirError};
+use rand::RngCore;
 use snarkvm_fields::{PrimeField, ToConstraintField};
 
-use core::{fmt::Debug, marker::PhantomData, num::NonZeroU32};
+use core::{fmt::Debug, marker::PhantomData};
 use digest::Digest;
 use rand_chacha::ChaChaRng;
-use rand_core::{Error, RngCore, SeedableRng};
+use rand_core::SeedableRng;
 use smallvec::SmallVec;
 
 /// Implements a Fiat-Shamir based Rng that allows one to incrementally update
@@ -35,33 +36,6 @@ pub struct FiatShamirChaChaRng<TargetField: PrimeField, BaseField: PrimeField, D
     seed: Option<Vec<u8>>,
     #[doc(hidden)]
     _phantom: PhantomData<(TargetField, BaseField, D)>,
-}
-
-impl<TargetField: PrimeField, BaseField: PrimeField, D: Digest + Clone + Debug> RngCore
-    for FiatShamirChaChaRng<TargetField, BaseField, D>
-{
-    #[inline]
-    fn next_u32(&mut self) -> u32 {
-        self.r.as_mut().map(|r| r.next_u32()).expect("Rng was invoked in a non-hiding context")
-    }
-
-    #[inline]
-    fn next_u64(&mut self) -> u64 {
-        self.r.as_mut().map(|r| r.next_u64()).expect("Rng was invoked in a non-hiding context")
-    }
-
-    #[inline]
-    fn fill_bytes(&mut self, dest: &mut [u8]) {
-        self.r.as_mut().map(|r| r.fill_bytes(dest)).expect("Rng was invoked in a non-hiding context")
-    }
-
-    #[inline]
-    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), Error> {
-        match &mut self.r {
-            Some(r) => r.try_fill_bytes(dest),
-            None => Err(NonZeroU32::new(rand_core::Error::CUSTOM_START).unwrap().into()),
-        }
-    }
 }
 
 impl<TargetField: PrimeField, BaseField: PrimeField, D: Digest + Clone + Debug> FiatShamirRng<TargetField, BaseField>
@@ -144,7 +118,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField, D: Digest + Clone + Debug> 
         Ok(res)
     }
 
-    fn squeeze_128_bits_nonnative_field_elements(&mut self, num: usize) -> Result<Vec<TargetField>, FiatShamirError> {
+    fn squeeze_short_nonnative_field_elements(&mut self, num: usize) -> Result<Vec<TargetField>, FiatShamirError> {
         // Ensure the RNG is initialized.
         let rng = match &mut self.r {
             Some(rng) => rng,
@@ -153,7 +127,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField, D: Digest + Clone + Debug> 
 
         let mut res = Vec::<TargetField>::new();
         for _ in 0..num {
-            let mut x = [0u8; 16];
+            let mut x = [0u8; 21];
             rng.fill_bytes(&mut x);
             res.push(TargetField::from_random_bytes(&x).unwrap());
         }
@@ -201,6 +175,6 @@ mod tests {
         let _squeezed_fields_elems =
             fs_rng.squeeze_nonnative_field_elements(NUM_SQUEEZED_FIELD_ELEMS, OptimizationType::Weight);
         let _squeezed_short_fields_elems =
-            fs_rng.squeeze_128_bits_nonnative_field_elements(NUM_SQUEEZED_SHORT_FIELD_ELEMS);
+            fs_rng.squeeze_short_nonnative_field_elements(NUM_SQUEEZED_SHORT_FIELD_ELEMS);
     }
 }

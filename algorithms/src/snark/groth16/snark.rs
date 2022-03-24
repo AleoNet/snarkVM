@@ -40,7 +40,6 @@ pub struct Groth16<E: PairingEngine, V: ToConstraintField<E::Fr> + Clone> {
 
 impl<E: PairingEngine, V: ToConstraintField<E::Fr> + Clone> SNARK for Groth16<E, V> {
     type BaseField = E::Fq;
-    type PreparedVerifyingKey = PreparedVerifyingKey<E>;
     type Proof = Proof<E>;
     type ProvingKey = ProvingKey<E>;
     type ScalarField = E::Fr;
@@ -77,7 +76,7 @@ impl<E: PairingEngine, V: ToConstraintField<E::Fr> + Clone> SNARK for Groth16<E,
     }
 
     fn verify_prepared(
-        prepared_verifying_key: &Self::PreparedVerifyingKey,
+        prepared_verifying_key: &PreparedVerifyingKey<E>,
         input: &Self::VerifierInput,
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError> {

@@ -18,13 +18,12 @@ use crate::snark::marlin::{fiat_shamir::FiatShamirError, params::OptimizationTyp
 use snarkvm_fields::{PrimeField, ToConstraintField};
 
 use core::fmt::Debug;
-use rand_core::RngCore;
 use smallvec::SmallVec;
 
 // TODO (raychu86): Remove unnecessary Result types
 
 /// Trait for a Fiat-Shamir RNG.
-pub trait FiatShamirRng<TargetField: PrimeField, BaseField: PrimeField>: Clone + Debug + RngCore {
+pub trait FiatShamirRng<TargetField: PrimeField, BaseField: PrimeField>: Clone + Debug {
     type Parameters;
 
     /// Initializes an RNG.
@@ -49,6 +48,11 @@ pub trait FiatShamirRng<TargetField: PrimeField, BaseField: PrimeField>: Clone +
     /// Takes in field elements.
     fn squeeze_native_field_elements(&mut self, num: usize) -> Result<SmallVec<[BaseField; 10]>, FiatShamirError>;
 
-    /// Takes out field elements of 128 bits.
-    fn squeeze_128_bits_nonnative_field_elements(&mut self, num: usize) -> Result<Vec<TargetField>, FiatShamirError>;
+    /// Takes out field elements of 168 bits.
+    fn squeeze_short_nonnative_field_elements(&mut self, num: usize) -> Result<Vec<TargetField>, FiatShamirError>;
+
+    /// Takes out a field element of 168 bits.
+    fn squeeze_short_nonnative_field_element(&mut self) -> Result<TargetField, FiatShamirError> {
+        self.squeeze_short_nonnative_field_elements(1).map(|v| v[0])
+    }
 }

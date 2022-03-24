@@ -228,7 +228,9 @@ pub struct VerifyingKey<E: PairingEngine> {
     pub gamma_abc_g1: Vec<E::G1Affine>,
 }
 
-impl<E: PairingEngine> Prepare<PreparedVerifyingKey<E>> for VerifyingKey<E> {
+impl<E: PairingEngine> Prepare for VerifyingKey<E> {
+    type Prepared = PreparedVerifyingKey<E>;
+
     fn prepare(&self) -> PreparedVerifyingKey<E> {
         prepare_verifying_key(self.clone())
     }

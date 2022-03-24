@@ -24,7 +24,7 @@
 use crate::{
     fft::{DenseOrSparsePolynomial, DensePolynomial},
     msm::{FixedBase, VariableBase},
-    polycommit::{PCError, PCRandomness},
+    polycommit::PCError,
 };
 use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{Field, One, PrimeField, Zero};
@@ -45,7 +45,7 @@ use rayon::prelude::*;
 mod data_structures;
 pub use data_structures::*;
 
-use super::LabeledPolynomialWithBasis;
+use super::sonic_pc::LabeledPolynomialWithBasis;
 
 #[derive(Debug, PartialEq, Eq)]
 #[allow(deprecated)]
@@ -571,7 +571,6 @@ mod tests {
     #![allow(non_camel_case_types)]
     #![allow(clippy::needless_borrow)]
     use super::*;
-    use crate::polycommit::data_structures::PCCommitment;
     use snarkvm_curves::bls12_377::{Bls12_377, Fr};
     use snarkvm_utilities::{rand::test_rng, FromBytes, ToBytes};
 
@@ -618,34 +617,6 @@ mod tests {
         let pp_recovered_bytes = pp_recovered.to_bytes_le().unwrap();
 
         assert_eq!(&pp_bytes, &pp_recovered_bytes);
-    }
-
-    #[test]
-    fn test_add_commitments() {
-        let rng = &mut test_rng();
-        let p = DensePolynomial::from_coefficients_slice(&[
-            Fr::rand(rng),
-            Fr::rand(rng),
-            Fr::rand(rng),
-            Fr::rand(rng),
-            Fr::rand(rng),
-        ]);
-        let f = Fr::rand(rng);
-        let mut f_p = DensePolynomial::zero();
-        f_p += (f, &p);
-
-        let degree = 4;
-        let pp = KZG_Bls12_377::setup(degree, &KZG10DegreeBoundsConfig::NONE, false, rng).unwrap();
-        let (powers, _) = KZG_Bls12_377::trim(&pp, degree);
-
-        let hiding_bound = None;
-        let (comm, _) = KZG10::commit(&powers, &(&p).into(), hiding_bound, &AtomicBool::new(false), Some(rng)).unwrap();
-        let (f_comm, _) =
-            KZG10::commit(&powers, &(&f_p).into(), hiding_bound, &AtomicBool::new(false), Some(rng)).unwrap();
-        let mut f_comm_2 = Commitment::empty();
-        f_comm_2 += (f, &comm);
-
-        assert_eq!(f_comm, f_comm_2);
     }
 
     fn end_to_end_test_template<E: PairingEngine>() -> Result<(), PCError> {

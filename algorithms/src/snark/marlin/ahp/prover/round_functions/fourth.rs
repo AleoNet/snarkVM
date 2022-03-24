@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    polycommit::LabeledPolynomial,
+    polycommit::sonic_pc::LabeledPolynomial,
     snark::marlin::{
         ahp::{indexer::CircuitInfo, verifier, AHPError, AHPForR1CS},
         prover,

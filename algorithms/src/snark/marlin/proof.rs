@@ -14,11 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    polycommit::{BatchLCProof, PolynomialCommitment},
-    snark::marlin::ahp,
-};
+use crate::{polycommit::sonic_pc, snark::marlin::ahp};
 
+use snarkvm_curves::PairingEngine;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{
     error,
@@ -29,27 +27,27 @@ use snarkvm_utilities::{
 };
 
 #[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
-pub struct Commitments<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> {
+pub struct Commitments<E: PairingEngine> {
     /// Commitment to the `w` polynomial.
-    pub w: PC::Commitment,
+    pub w: sonic_pc::Commitment<E>,
     /// Commitment to the `z_a` polynomial.
-    pub z_a: PC::Commitment,
+    pub z_a: sonic_pc::Commitment<E>,
     /// Commitment to the `z_b` polynomial.
-    pub z_b: PC::Commitment,
+    pub z_b: sonic_pc::Commitment<E>,
     /// Commitment to the masking polynomial.
-    pub mask_poly: Option<PC::Commitment>,
+    pub mask_poly: Option<sonic_pc::Commitment<E>>,
     /// Commitment to the `g_1` polynomial.
-    pub g_1: PC::Commitment,
+    pub g_1: sonic_pc::Commitment<E>,
     /// Commitment to the `h_1` polynomial.
-    pub h_1: PC::Commitment,
+    pub h_1: sonic_pc::Commitment<E>,
     /// Commitment to the `g_a` polynomial.
-    pub g_a: PC::Commitment,
+    pub g_a: sonic_pc::Commitment<E>,
     /// Commitment to the `g_b` polynomial.
-    pub g_b: PC::Commitment,
+    pub g_b: sonic_pc::Commitment<E>,
     /// Commitment to the `g_c` polynomial.
-    pub g_c: PC::Commitment,
+    pub g_c: sonic_pc::Commitment<E>,
     /// Commitment to the `h_2` polynomial.
-    pub h_2: PC::Commitment,
+    pub h_2: sonic_pc::Commitment<E>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
@@ -97,39 +95,39 @@ impl<F: PrimeField> Evaluations<F> {
 
 /// A zkSNARK proof.
 #[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
-pub struct Proof<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> {
+pub struct Proof<E: PairingEngine> {
     /// Commitments to prover polynomials.
-    pub commitments: Commitments<F, CF, PC>,
+    pub commitments: Commitments<E>,
 
     /// Evaluations of some of the committed polynomials.
-    pub evaluations: Evaluations<F>,
+    pub evaluations: Evaluations<E::Fr>,
 
     /// Prover message: sum_a, sum_b, sum_c
-    pub msg: ahp::prover::ThirdMessage<F>,
+    pub msg: ahp::prover::ThirdMessage<E::Fr>,
 
     /// An evaluation proof from the polynomial commitment.
-    pub pc_proof: BatchLCProof<F, CF, PC>,
+    pub pc_proof: sonic_pc::BatchLCProof<E>,
 }
 
-impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> Proof<F, CF, PC> {
+impl<E: PairingEngine> Proof<E> {
     /// Construct a new proof.
     pub fn new(
-        commitments: Commitments<F, CF, PC>,
-        evaluations: Evaluations<F>,
-        msg: ahp::prover::ThirdMessage<F>,
-        pc_proof: BatchLCProof<F, CF, PC>,
+        commitments: Commitments<E>,
+        evaluations: Evaluations<E::Fr>,
+        msg: ahp::prover::ThirdMessage<E::Fr>,
+        pc_proof: sonic_pc::BatchLCProof<E>,
     ) -> Self {
         Self { commitments, evaluations, msg, pc_proof }
     }
 }
 
-impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> ToBytes for Proof<F, CF, PC> {
+impl<E: PairingEngine> ToBytes for Proof<E> {
     fn write_le<W: Write>(&self, mut w: W) -> io::Result<()> {
         CanonicalSerialize::serialize(self, &mut w).map_err(|_| error("could not serialize Proof"))
     }
 }
 
-impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> FromBytes for Proof<F, CF, PC> {
+impl<E: PairingEngine> FromBytes for Proof<E> {
     fn read_le<R: Read>(mut r: R) -> io::Result<Self> {
         CanonicalDeserialize::deserialize(&mut r).map_err(|_| error("could not deserialize Proof"))
     }

@@ -14,10 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    fft::{DensePolynomial, EvaluationDomain},
-    polycommit::{PCCommitment, PCProof, PCRandomness, PCUniversalParams},
-};
+use crate::fft::{DensePolynomial, EvaluationDomain};
 use snarkvm_curves::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, PrimeField, ToConstraintField, Zero};
 use snarkvm_utilities::{
@@ -30,7 +27,7 @@ use snarkvm_utilities::{
     ToMinimalBits,
 };
 
-use core::ops::{Add, AddAssign, Mul};
+use core::ops::{Add, AddAssign};
 use rand_core::RngCore;
 use std::{collections::BTreeMap, io};
 
@@ -173,12 +170,12 @@ impl<E: PairingEngine> ToBytes for UniversalParams<E> {
     }
 }
 
-impl<E: PairingEngine> PCUniversalParams for UniversalParams<E> {
-    fn max_degree(&self) -> usize {
+impl<E: PairingEngine> UniversalParams<E> {
+    pub fn max_degree(&self) -> usize {
         self.powers_of_beta_g.len() - 1
     }
 
-    fn supported_degree_bounds(&self) -> &[usize] {
+    pub fn supported_degree_bounds(&self) -> &[usize] {
         &self.supported_degree_bounds
     }
 }
@@ -326,27 +323,18 @@ impl<E: PairingEngine> ToMinimalBits for Commitment<E> {
     }
 }
 
-impl<E: PairingEngine> PCCommitment for Commitment<E> {
+impl<E: PairingEngine> Commitment<E> {
     #[inline]
-    fn empty() -> Self {
+    pub fn empty() -> Self {
         Commitment(E::G1Affine::zero())
     }
 
-    fn has_degree_bound(&self) -> bool {
+    pub fn has_degree_bound(&self) -> bool {
         false
     }
 
-    fn is_in_correct_subgroup_assuming_on_curve(&self) -> bool {
+    pub fn is_in_correct_subgroup_assuming_on_curve(&self) -> bool {
         self.0.is_in_correct_subgroup_assuming_on_curve()
-    }
-}
-
-impl<'a, E: PairingEngine> AddAssign<(E::Fr, &'a Commitment<E>)> for Commitment<E> {
-    #[inline]
-    fn add_assign(&mut self, (f, other): (E::Fr, &'a Commitment<E>)) {
-        let mut other = other.0.mul(f);
-        other.add_assign_mixed(&self.0);
-        self.0 = other.into();
     }
 }
 
@@ -413,12 +401,12 @@ impl<E: PairingEngine> Randomness<E> {
     }
 }
 
-impl<E: PairingEngine> PCRandomness for Randomness<E> {
-    fn empty() -> Self {
+impl<E: PairingEngine> Randomness<E> {
+    pub fn empty() -> Self {
         Self { blinding_polynomial: DensePolynomial::zero() }
     }
 
-    fn rand<R: RngCore>(hiding_bound: usize, _: bool, rng: &mut R) -> Self {
+    pub fn rand<R: RngCore>(hiding_bound: usize, _: bool, rng: &mut R) -> Self {
         let mut randomness = Randomness::empty();
         let hiding_poly_degree = Self::calculate_hiding_polynomial_degree(hiding_bound);
         randomness.blinding_polynomial = DensePolynomial::rand(hiding_poly_degree, rng);
@@ -483,8 +471,8 @@ impl<E: PairingEngine> ToBytes for Proof<E> {
     }
 }
 
-impl<E: PairingEngine> PCProof for Proof<E> {
-    fn is_hiding(&self) -> bool {
+impl<E: PairingEngine> Proof<E> {
+    pub fn is_hiding(&self) -> bool {
         self.random_v.is_some()
     }
 }

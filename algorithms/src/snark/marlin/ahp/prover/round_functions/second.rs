@@ -25,7 +25,7 @@ use crate::{
         EvaluationDomain,
         SparsePolynomial,
     },
-    polycommit::LabeledPolynomial,
+    polycommit::sonic_pc::LabeledPolynomial,
     snark::marlin::{
         ahp::{
             indexer::{CircuitInfo, Matrix},

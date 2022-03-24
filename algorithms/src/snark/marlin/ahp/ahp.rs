@@ -19,7 +19,7 @@ use crate::{
         domain::{FFTPrecomputation, IFFTPrecomputation},
         EvaluationDomain,
     },
-    polycommit::{LCTerm, LabeledPolynomial, LinearCombination},
+    polycommit::sonic_pc::{LCTerm, LabeledPolynomial, LinearCombination},
     snark::marlin::{
         ahp::{matrices, verifier, AHPError, CircuitInfo},
         prover,
@@ -327,7 +327,7 @@ pub trait EvaluationsProvider<F: PrimeField> {
     fn get_lc_eval(&self, lc: &LinearCombination<F>, point: F) -> Result<F, AHPError>;
 }
 
-impl<'a, F: PrimeField> EvaluationsProvider<F> for crate::polycommit::Evaluations<'a, F> {
+impl<'a, F: PrimeField> EvaluationsProvider<F> for crate::polycommit::sonic_pc::Evaluations<'a, F> {
     fn get_lc_eval(&self, lc: &LinearCombination<F>, point: F) -> Result<F, AHPError> {
         let key = (lc.label.clone(), point);
         self.get(&key).copied().ok_or_else(|| AHPError::MissingEval(lc.label.clone()))

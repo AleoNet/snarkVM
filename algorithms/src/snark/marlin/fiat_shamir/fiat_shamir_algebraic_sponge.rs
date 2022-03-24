@@ -26,7 +26,6 @@ use snarkvm_fields::{FieldParameters, PrimeField, ToConstraintField};
 use snarkvm_utilities::{BigInteger, FromBits, ToBits};
 
 use core::marker::PhantomData;
-use rand_core::{Error, RngCore};
 use smallvec::SmallVec;
 
 /// An RNG from any algebraic sponge
@@ -102,65 +101,8 @@ where
         Ok(self.s.squeeze(num))
     }
 
-    fn squeeze_128_bits_nonnative_field_elements(&mut self, num: usize) -> Result<Vec<TargetField>, FiatShamirError> {
+    fn squeeze_short_nonnative_field_elements(&mut self, num: usize) -> Result<Vec<TargetField>, FiatShamirError> {
         Ok(Self::get_elements_from_sponge(&mut self.s, num, true))
-    }
-}
-
-impl<TargetField: PrimeField, BaseField: PrimeField, S: DefaultCapacityAlgebraicSponge<BaseField, 6>> RngCore
-    for FiatShamirAlgebraicSpongeRng<TargetField, BaseField, S>
-{
-    fn next_u32(&mut self) -> u32 {
-        assert!(BaseField::size_in_bits() > 128, "The native field of the algebraic sponge is too small.");
-
-        let mut dest = [0u8; 4];
-        self.fill_bytes(&mut dest);
-
-        u32::from_be_bytes(dest)
-    }
-
-    fn next_u64(&mut self) -> u64 {
-        assert!(BaseField::size_in_bits() > 128, "The native field of the algebraic sponge is too small.");
-
-        let mut dest = [0u8; 8];
-        self.fill_bytes(&mut dest);
-
-        u64::from_be_bytes(dest)
-    }
-
-    fn fill_bytes(&mut self, dest: &mut [u8]) {
-        assert!(BaseField::size_in_bits() > 128, "The native field of the algebraic sponge is too small.");
-
-        let capacity = BaseField::size_in_bits() - 128;
-        let len = dest.len() * 8;
-
-        let num_of_elements = (capacity + len - 1) / len;
-        let elements = self.s.squeeze(num_of_elements);
-
-        let mut bits = Vec::<bool>::new();
-        for elem in elements.iter() {
-            let mut elem_bits = elem.to_repr().to_bits_be();
-            elem_bits.reverse();
-            bits.extend_from_slice(&elem_bits[0..capacity]);
-        }
-
-        bits.truncate(len);
-        bits.chunks_exact(8).enumerate().for_each(|(i, bits_per_byte)| {
-            let mut byte = 0;
-            for (j, bit) in bits_per_byte.iter().enumerate() {
-                if *bit {
-                    byte += 1 << j;
-                }
-            }
-            dest[i] = byte;
-        });
-    }
-
-    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), Error> {
-        assert!(BaseField::size_in_bits() > 128, "The native field of the algebraic sponge is too small.");
-
-        self.fill_bytes(dest);
-        Ok(())
     }
 }
 
@@ -294,7 +236,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField, S: DefaultCapacityAlgebraic
         outputs_short_elements: bool,
     ) -> Vec<TargetField> {
         let num_bits_per_nonnative = if outputs_short_elements {
-            128
+            168
         } else {
             TargetField::size_in_bits() - 1 // also omit the highest bit
         };

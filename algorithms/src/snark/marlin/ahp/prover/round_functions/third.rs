@@ -24,7 +24,7 @@ use crate::{
         EvaluationDomain,
         Evaluations as EvaluationsOnDomain,
     },
-    polycommit::LabeledPolynomial,
+    polycommit::sonic_pc::LabeledPolynomial,
     snark::marlin::{
         ahp::{indexer::CircuitInfo, verifier, AHPError, AHPForR1CS},
         matrices::MatrixArithmetization,

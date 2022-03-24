@@ -21,7 +21,7 @@ use crate::{
         EvaluationDomain,
         Evaluations as EvaluationsOnDomain,
     },
-    polycommit::LabeledPolynomial,
+    polycommit::sonic_pc::LabeledPolynomial,
     snark::marlin::{
         ahp::{indexer::Circuit, verifier},
         AHPError,

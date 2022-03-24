@@ -84,8 +84,8 @@ impl<F: PrimeField> QuerySet<F> {
 
     /// Returns a `BTreeSet` containing elements of the form
     /// `(polynomial_label, (query_label, query))`.
-    pub fn to_set(&self) -> crate::polycommit::QuerySet<'_, F> {
-        let mut query_set = crate::polycommit::QuerySet::new();
+    pub fn to_set(&self) -> crate::polycommit::sonic_pc::QuerySet<'_, F> {
+        let mut query_set = crate::polycommit::sonic_pc::QuerySet::new();
         query_set.insert(("z_b".into(), self.z_b_query.clone()));
         query_set.insert(("g_1".into(), self.g_1_query.clone()));
         query_set.insert(("lincheck_sumcheck".into(), self.lincheck_sumcheck_query.clone()));
