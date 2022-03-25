@@ -25,7 +25,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> PowWrapped<Integer<E, M>> for
         if self.is_constant() && other.is_constant() {
             // Compute the result and return the new constant.
             // This cast is safe since Magnitude other can only be `u8`, `u16`, or `u32`.
-            Integer::new(Mode::Constant, self.eject_value().wrapping_pow(other.eject_value().to_u32().unwrap()))
+            witness!(|self, other| self.wrapping_pow(other.to_u32().unwrap()))
         } else {
             let mut result = Self::one();
             for bit in other.bits_le.iter().rev() {

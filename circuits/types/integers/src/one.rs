@@ -20,7 +20,7 @@ impl<E: Environment, I: IntegerType> One for Integer<E, I> {
     type Boolean = Boolean<E>;
 
     fn one() -> Self {
-        Integer::new(Mode::Constant, I::one())
+        Integer::constant(I::one())
     }
 
     fn is_one(&self) -> Self::Boolean {
