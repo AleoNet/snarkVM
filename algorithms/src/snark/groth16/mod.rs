@@ -261,6 +261,12 @@ impl<E: PairingEngine> From<ProvingKey<E>> for VerifyingKey<E> {
     }
 }
 
+impl<'a, E: PairingEngine> From<&'a ProvingKey<E>> for VerifyingKey<E> {
+    fn from(other: &'a ProvingKey<E>) -> Self {
+        other.vk.clone()
+    }
+}
+
 impl<E: PairingEngine> From<PreparedVerifyingKey<E>> for VerifyingKey<E> {
     fn from(other: PreparedVerifyingKey<E>) -> Self {
         other.vk

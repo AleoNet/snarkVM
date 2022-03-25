@@ -720,7 +720,7 @@ pub fn evaluate_query_set<'a, F: PrimeField>(
     evaluations
 }
 
-fn lc_query_set_to_poly_query_set<'a, F: 'a + PrimeField>(
+pub(crate) fn lc_query_set_to_poly_query_set<'a, F: 'a + PrimeField>(
     linear_combinations: impl IntoIterator<Item = &'a LinearCombination<F>>,
     query_set: &QuerySet<F>,
 ) -> QuerySet<'a, F> {

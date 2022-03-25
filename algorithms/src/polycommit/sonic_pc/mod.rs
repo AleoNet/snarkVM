@@ -306,38 +306,29 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
         Ok((labeled_comms, randomness))
     }
 
-    pub fn open<'a>(
+    pub fn combine_for_open<'a>(
         ck: &CommitterKey<E>,
         labeled_polynomials: impl IntoIterator<Item = &'a LabeledPolynomial<E::Fr>>,
-        commitments: impl IntoIterator<Item = &'a LabeledCommitment<Commitment<E>>>,
-        point: E::Fr,
         rands: impl IntoIterator<Item = &'a Randomness<E>>,
         fs_rng: &mut S,
-    ) -> Result<kzg10::Proof<E>, PCError>
+    ) -> Result<(DensePolynomial<E::Fr>, Randomness<E>), PCError>
     where
         Randomness<E>: 'a,
         Commitment<E>: 'a,
     {
-        let (combined_polynomial, combined_rand) =
-            Self::combine_polynomials(labeled_polynomials.into_iter().zip_eq(rands).map(|(p, r)| {
-                let enforced_degree_bounds: Option<&[usize]> = ck.enforced_degree_bounds.as_deref();
+        Ok(Self::combine_polynomials(labeled_polynomials.into_iter().zip_eq(rands).map(|(p, r)| {
+            let enforced_degree_bounds: Option<&[usize]> = ck.enforced_degree_bounds.as_deref();
 
-                kzg10::KZG10::<E>::check_degrees_and_bounds(
-                    ck.supported_degree(),
-                    ck.max_degree,
-                    enforced_degree_bounds,
-                    p,
-                )
-                .unwrap();
-                let challenge = fs_rng.squeeze_short_nonnative_field_element().unwrap();
-                (challenge, p.polynomial().as_dense().unwrap(), r)
-            }));
-
-        let proof_time = start_timer!(|| "Creating proof for polynomials");
-        let proof = kzg10::KZG10::open(&ck.powers(), &combined_polynomial, point, &combined_rand)?;
-        end_timer!(proof_time);
-
-        Ok(proof)
+            kzg10::KZG10::<E>::check_degrees_and_bounds(
+                ck.supported_degree(),
+                ck.max_degree,
+                enforced_degree_bounds,
+                p,
+            )
+            .unwrap();
+            let challenge = fs_rng.squeeze_short_nonnative_field_element().unwrap();
+            (challenge, p.polynomial().as_dense().unwrap(), r)
+        })))
     }
 
     /// On input a list of labeled polynomials and a query set, `open` outputs a proof of evaluation
@@ -374,7 +365,7 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
             labels.1.insert(label);
         }
 
-        let mut pool = snarkvm_utilities::ExecutionPool::<Result<_, _>>::with_capacity(query_to_labels_map.len());
+        let mut pool = snarkvm_utilities::ExecutionPool::<_>::with_capacity(query_to_labels_map.len());
         for (_point_name, (&query, labels)) in query_to_labels_map.into_iter() {
             let mut query_polys = Vec::with_capacity(labels.len());
             let mut query_rands = Vec::with_capacity(labels.len());
@@ -388,17 +379,17 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
                 query_rands.push(*rand);
                 query_comms.push(*comm);
             }
+            let (polynomial, rand) = Self::combine_for_open(ck, query_polys, query_rands, fs_rng)?;
 
             pool.add_job(move || {
                 let proof_time = start_timer!(|| "Creating proof");
-                let proof = Self::open(ck, query_polys, query_comms, query, query_rands, fs_rng);
+                let proof = kzg10::KZG10::open(&ck.powers(), &polynomial, query, &rand);
                 end_timer!(proof_time);
                 proof
             });
         }
         end_timer!(open_time);
-        let proofs: Vec<_> = pool.execute_all();
-        proofs.into_iter().collect::<Result<Vec<_>, _>>().map(BatchProof)
+        pool.execute_all().into_iter().collect::<Result<_, _>>().map(BatchProof)
     }
 
     pub fn check<'a>(
@@ -462,7 +453,7 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
         let mut combined_witness: E::G1Projective = E::G1Projective::zero();
         let mut combined_adjusted_witness: E::G1Projective = E::G1Projective::zero();
 
-        for ((_query_name, (query, labels)), p) in query_to_labels_map.into_iter().zip_eq(proof.0) {
+        for ((_query_name, (query, labels)), p) in query_to_labels_map.into_iter().zip_eq(&proof.0) {
             let mut comms_to_combine: Vec<&'_ LabeledCommitment<_>> = Vec::new();
             let mut values_to_combine = Vec::new();
             for label in labels.into_iter() {
@@ -485,7 +476,7 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
                 comms_to_combine.into_iter(),
                 *query,
                 values_to_combine.into_iter(),
-                &p,
+                p,
                 Some(randomizer),
                 fs_rng,
             );
@@ -741,61 +732,6 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
         end_timer!(acc_time);
     }
 
-    fn accumulate_elems_individual_opening_challenges<'a>(
-        combined_comms: &mut BTreeMap<Option<usize>, E::G1Projective>,
-        combined_witness: &mut E::G1Projective,
-        combined_adjusted_witness: &mut E::G1Projective,
-        vk: &VerifierKey<E>,
-        commitments: impl IntoIterator<Item = &'a LabeledCommitment<Commitment<E>>>,
-        point: E::Fr,
-        values: impl IntoIterator<Item = E::Fr>,
-        proof: &kzg10::Proof<E>,
-        opening_challenges: &dyn Fn(u64) -> E::Fr,
-        randomizer: Option<E::Fr>,
-    ) {
-        let acc_time = start_timer!(|| "Accumulating elements");
-
-        // Keeps track of running combination of values
-        let mut combined_values = E::Fr::zero();
-
-        // Iterates through all of the commitments and accumulates common degree_bound elements in a BTreeMap
-        for (opening_challenge_counter, (labeled_commitment, value)) in
-            commitments.into_iter().zip_eq(values).enumerate()
-        {
-            let current_challenge = opening_challenges(opening_challenge_counter as u64);
-            combined_values += &(value * current_challenge);
-
-            let commitment = labeled_commitment.commitment();
-            let degree_bound = labeled_commitment.degree_bound();
-
-            // Applying opening challenge and randomness (used in batch_checking)
-            let mut commitment_with_challenge: E::G1Projective = commitment.0.mul(current_challenge);
-
-            if let Some(randomizer) = randomizer {
-                commitment_with_challenge *= randomizer;
-            }
-
-            // Accumulate values in the BTreeMap
-            *combined_comms.entry(degree_bound).or_insert_with(E::G1Projective::zero) += &commitment_with_challenge;
-        }
-
-        // Push expected results into list of elems. Power will be the negative of the expected power
-        let mut witness: E::G1Projective = proof.w.into_projective();
-        let mut adjusted_witness = vk.vk.g.mul(combined_values) - proof.w.mul(point);
-        if let Some(random_v) = proof.random_v {
-            adjusted_witness += &vk.vk.gamma_g.mul(random_v);
-        }
-
-        if let Some(randomizer) = randomizer {
-            witness = proof.w * randomizer;
-            adjusted_witness *= randomizer;
-        }
-
-        *combined_witness += &witness;
-        *combined_adjusted_witness += &adjusted_witness;
-        end_timer!(acc_time);
-    }
-
     #[allow(clippy::type_complexity)]
     fn check_elems(
         combined_comms: BTreeMap<Option<usize>, E::G1Projective>,
@@ -851,7 +787,8 @@ mod tests {
 
     use rand::distributions::Distribution;
 
-    type PC_Bls12_377 = SonicKZG10<Bls12_377, FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>>;
+    type Sponge = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
+    type PC_Bls12_377 = SonicKZG10<Bls12_377, Sponge>;
 
     #[test]
     fn test_committer_key_serialization() {
@@ -874,74 +811,75 @@ mod tests {
 
     #[test]
     fn test_single_poly() {
-        single_poly_test::<Bls12_377>().expect("test failed for bls12-377");
+        single_poly_test::<Bls12_377, Sponge>().expect("test failed for bls12-377");
     }
 
     #[test]
     fn test_quadratic_poly_degree_bound_multiple_queries() {
-        quadratic_poly_degree_bound_multiple_queries_test::<Bls12_377>().expect("test failed for bls12-377");
+        quadratic_poly_degree_bound_multiple_queries_test::<Bls12_377, Sponge>().expect("test failed for bls12-377");
     }
 
     #[test]
     fn test_linear_poly_degree_bound() {
-        linear_poly_degree_bound_test::<Bls12_377>().expect("test failed for bls12-377");
+        linear_poly_degree_bound_test::<Bls12_377, Sponge>().expect("test failed for bls12-377");
     }
 
     #[test]
     fn test_single_poly_degree_bound() {
-        single_poly_degree_bound_test::<Bls12_377>().expect("test failed for bls12-377");
+        single_poly_degree_bound_test::<Bls12_377, Sponge>().expect("test failed for bls12-377");
     }
 
     #[test]
     fn test_single_poly_degree_bound_multiple_queries() {
-        single_poly_degree_bound_multiple_queries_test::<Bls12_377>().expect("test failed for bls12-377");
+        single_poly_degree_bound_multiple_queries_test::<Bls12_377, Sponge>().expect("test failed for bls12-377");
     }
 
     #[test]
     fn test_two_polys_degree_bound_single_query() {
-        two_polys_degree_bound_single_query_test::<Bls12_377>().expect("test failed for bls12-377");
+        two_polys_degree_bound_single_query_test::<Bls12_377, Sponge>().expect("test failed for bls12-377");
     }
 
     #[test]
     fn test_full_end_to_end() {
-        full_end_to_end_test::<Bls12_377>().expect("test failed for bls12-377");
+        full_end_to_end_test::<Bls12_377, Sponge>().expect("test failed for bls12-377");
         println!("Finished bls12-377");
     }
 
     #[test]
     fn test_single_equation() {
-        single_equation_test::<Bls12_377>().expect("test failed for bls12-377");
+        single_equation_test::<Bls12_377, Sponge>().expect("test failed for bls12-377");
         println!("Finished bls12-377");
     }
 
     #[test]
     fn test_two_equation() {
-        two_equation_test::<Bls12_377>().expect("test failed for bls12-377");
+        two_equation_test::<Bls12_377, Sponge>().expect("test failed for bls12-377");
         println!("Finished bls12-377");
     }
 
     #[test]
     fn test_two_equation_degree_bound() {
-        two_equation_degree_bound_test::<Bls12_377>().expect("test failed for bls12-377");
+        two_equation_degree_bound_test::<Bls12_377, Sponge>().expect("test failed for bls12-377");
         println!("Finished bls12-377");
     }
 
     #[test]
     fn test_full_end_to_end_equation() {
-        full_end_to_end_equation_test::<Bls12_377>().expect("test failed for bls12-377");
+        full_end_to_end_equation_test::<Bls12_377, Sponge>().expect("test failed for bls12-377");
         println!("Finished bls12-377");
     }
 
     #[test]
     #[should_panic]
     fn test_bad_degree_bound() {
-        bad_degree_bound_test::<Bls12_377>().expect("test failed for bls12-377");
+        bad_degree_bound_test::<Bls12_377, Sponge>().expect("test failed for bls12-377");
         println!("Finished bls12-377");
     }
 
     #[test]
     fn test_lagrange_commitment() {
-        crate::polycommit::test_templates::lagrange_test_template::<Bls12_377>().expect("test failed for bls12-377");
+        crate::polycommit::test_templates::lagrange_test_template::<Bls12_377, Sponge>()
+            .expect("test failed for bls12-377");
         println!("Finished bls12-377");
     }
 }

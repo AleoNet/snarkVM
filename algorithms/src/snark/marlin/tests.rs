@@ -66,16 +66,13 @@ impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Circuit<Constrai
 
 mod marlin {
     use super::*;
-    use crate::{
-        polycommit::sonic_pc::SonicKZG10,
-        snark::marlin::{
-            fiat_shamir::FiatShamirChaChaRng,
-            AHPForR1CS,
-            CircuitVerifyingKey,
-            MarlinHidingMode,
-            MarlinNonHidingMode,
-            MarlinSNARK,
-        },
+    use crate::snark::marlin::{
+        fiat_shamir::FiatShamirChaChaRng,
+        AHPForR1CS,
+        CircuitVerifyingKey,
+        MarlinHidingMode,
+        MarlinNonHidingMode,
+        MarlinSNARK,
     };
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
     use snarkvm_utilities::rand::{test_rng, UniformRand};
@@ -83,7 +80,6 @@ mod marlin {
     use blake2::Blake2s256;
     use core::ops::MulAssign;
 
-    type MultiPCSonic = SonicKZG10<Bls12_377, FiatShamirChaChaRng<Fr, Fq, Blake2s256>>;
     type MarlinSonicInst = MarlinSNARK<Bls12_377, FiatShamirChaChaRng<Fr, Fq, Blake2s256>, MarlinHidingMode, Vec<Fr>>;
 
     type MarlinSonicPoswInst =
@@ -260,7 +256,6 @@ mod marlin_recursion {
     use super::*;
     use crate::{
         crypto_hash::PoseidonSponge,
-        polycommit::sonic_pc::SonicKZG10,
         snark::marlin::{
             ahp::AHPForR1CS,
             fiat_shamir::FiatShamirAlgebraicSpongeRng,
@@ -279,7 +274,6 @@ mod marlin_recursion {
     use core::ops::MulAssign;
     use std::str::FromStr;
 
-    type MultiPC = SonicKZG10<Bls12_377, FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>>;
     type MarlinInst = MarlinSNARK<
         Bls12_377,
         FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>,

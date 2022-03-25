@@ -100,7 +100,6 @@ pub mod test {
     use super::*;
     use crate::{
         crypto_hash::PoseidonSponge,
-        polycommit::sonic_pc::SonicKZG10,
         snark::marlin::{fiat_shamir::FiatShamirAlgebraicSpongeRng, MarlinHidingMode, MarlinSNARK},
         SRS,
     };
@@ -149,7 +148,6 @@ pub mod test {
     }
 
     type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
-    type PC = SonicKZG10<Bls12_377, FS>;
     type TestSNARK = MarlinSNARK<Bls12_377, FS, MarlinHidingMode, Vec<Fr>>;
 
     #[test]

@@ -173,7 +173,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             let z_c = {
                 // Mutate z_b in place to compute eta_c * z_b + 1
                 // This saves us an additional memory allocation.
-                cfg_iter_mut!(z_b.coeffs).map(|b| *b *= eta_c).collect::<Vec<_>>();
+                cfg_iter_mut!(z_b.coeffs).for_each(|b| *b *= eta_c);
                 z_b.coeffs[0] += F::one();
                 let mut multiplier = PolyMultiplier::new();
                 multiplier.add_polynomial_ref(z_a, "z_a");

@@ -92,6 +92,12 @@ impl<E: PairingEngine, MM: MarlinMode> From<CircuitProvingKey<E, MM>> for Circui
     }
 }
 
+impl<'a, E: PairingEngine, MM: MarlinMode> From<&'a CircuitProvingKey<E, MM>> for CircuitVerifyingKey<E, MM> {
+    fn from(other: &'a CircuitProvingKey<E, MM>) -> Self {
+        other.circuit_verifying_key.clone()
+    }
+}
+
 impl<E: PairingEngine, MM: MarlinMode> From<PreparedCircuitVerifyingKey<E, MM>> for CircuitVerifyingKey<E, MM> {
     fn from(other: PreparedCircuitVerifyingKey<E, MM>) -> Self {
         other.orig_vk
