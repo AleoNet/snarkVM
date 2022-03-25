@@ -14,7 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::fft::{DensePolynomial, EvaluationDomain};
+use crate::{
+    fft::{DensePolynomial, EvaluationDomain},
+    snark::marlin::{params::OptimizationType, FiatShamirError, FiatShamirRng},
+};
 use snarkvm_curves::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, PrimeField, ToConstraintField, Zero};
 use snarkvm_utilities::{
@@ -459,6 +462,17 @@ pub struct Proof<E: PairingEngine> {
     /// the evaluation proof was produced.
     pub random_v: Option<E::Fr>,
 }
+
+impl<E: PairingEngine> Proof<E> {
+    pub fn absorb_into_sponge<S: FiatShamirRng<E::Fr, E::Fq>>(&self, sponge: &mut S) -> Result<(), FiatShamirError> {
+        sponge.absorb_native_field_elements(&self.w.to_field_elements()?);
+        if let Some(random_v) = self.random_v {
+            sponge.absorb_nonnative_field_elements(&[random_v], OptimizationType::Weight);
+        }
+        Ok(())
+    }
+}
+
 impl<E: PairingEngine> FromBytes for Proof<E> {
     fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
         CanonicalDeserialize::deserialize(&mut reader).map_err(|_| error("could not deserialize proof"))

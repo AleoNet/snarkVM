@@ -14,7 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{crypto_hash::sha256::sha256, fft::EvaluationDomain, polycommit::kzg10, Prepare};
+use crate::{
+    crypto_hash::sha256::sha256,
+    fft::EvaluationDomain,
+    polycommit::kzg10,
+    snark::marlin::{FiatShamirError, FiatShamirRng},
+    Prepare,
+};
 use snarkvm_curves::{PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, Field, PrimeField, ToConstraintField};
 use snarkvm_utilities::{error, serialize::*, FromBytes, ToBytes};
@@ -487,7 +493,19 @@ pub struct BatchProof<E: PairingEngine>(pub(crate) Vec<kzg10::Proof<E>>);
 
 impl<E: PairingEngine> BatchProof<E> {
     pub fn is_hiding(&self) -> bool {
-        self.0.iter().all(|c| c.is_hiding())
+        self.0.iter().any(|c| c.is_hiding())
+    }
+}
+
+impl<E: PairingEngine> BatchProof<E> {
+    pub(crate) fn absorb_into_sponge<S: FiatShamirRng<E::Fr, E::Fq>>(
+        &self,
+        fs_rng: &mut S,
+    ) -> Result<(), FiatShamirError> {
+        for proof in self.0.iter() {
+            proof.absorb_into_sponge(fs_rng)?;
+        }
+        Ok(())
     }
 }
 
@@ -718,25 +736,6 @@ pub fn evaluate_query_set<'a, F: PrimeField>(
         evaluations.insert((label.clone(), *point), eval);
     }
     evaluations
-}
-
-pub(crate) fn lc_query_set_to_poly_query_set<'a, F: 'a + PrimeField>(
-    linear_combinations: impl IntoIterator<Item = &'a LinearCombination<F>>,
-    query_set: &QuerySet<F>,
-) -> QuerySet<'a, F> {
-    let mut poly_query_set = QuerySet::new();
-    let lc_s = linear_combinations.into_iter().map(|lc| (lc.label(), lc));
-    let linear_combinations: BTreeMap<_, _> = lc_s.collect();
-    for (lc_label, (point_name, point)) in query_set {
-        if let Some(lc) = linear_combinations.get(lc_label) {
-            for (_, poly_label) in lc.iter().filter(|(_, l)| !l.is_one()) {
-                if let LCTerm::PolyLabel(l) = poly_label {
-                    poly_query_set.insert((l.into(), (point_name.clone(), *point)));
-                }
-            }
-        }
-    }
-    poly_query_set
 }
 
 /// A proof of satisfaction of linear combinations.

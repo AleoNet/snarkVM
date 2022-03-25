@@ -17,7 +17,7 @@
 use crate::{
     fft::DensePolynomial,
     polycommit::{kzg10, optional_rng::OptionalRng, PCError},
-    snark::marlin::FiatShamirRng,
+    snark::marlin::{params::OptimizationType, FiatShamirRng},
 };
 use itertools::Itertools;
 use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
@@ -392,40 +392,6 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
         pool.execute_all().into_iter().collect::<Result<_, _>>().map(BatchProof)
     }
 
-    pub fn check<'a>(
-        vk: &VerifierKey<E>,
-        commitments: impl IntoIterator<Item = &'a LabeledCommitment<Commitment<E>>>,
-        point: E::Fr,
-        values: impl IntoIterator<Item = E::Fr>,
-        proof: &kzg10::Proof<E>,
-        fs_rng: &mut S,
-    ) -> Result<bool, PCError>
-    where
-        Commitment<E>: 'a,
-    {
-        let check_time = start_timer!(|| "Checking evaluations");
-        let mut combined_comms: BTreeMap<Option<usize>, E::G1Projective> = BTreeMap::new();
-        let mut combined_witness: E::G1Projective = E::G1Projective::zero();
-        let mut combined_adjusted_witness: E::G1Projective = E::G1Projective::zero();
-
-        Self::accumulate_elems(
-            &mut combined_comms,
-            &mut combined_witness,
-            &mut combined_adjusted_witness,
-            vk,
-            commitments,
-            point,
-            values,
-            proof,
-            None,
-            fs_rng,
-        );
-
-        let res = Self::check_elems(combined_comms, combined_witness, combined_adjusted_witness, vk);
-        end_timer!(check_time);
-        res
-    }
-
     pub fn batch_check<'a>(
         vk: &VerifierKey<E>,
         commitments: impl IntoIterator<Item = &'a LabeledCommitment<Commitment<E>>>,
@@ -449,9 +415,18 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
 
         let mut randomizer = E::Fr::one();
 
-        let mut combined_comms: BTreeMap<Option<usize>, E::G1Projective> = BTreeMap::new();
-        let mut combined_witness: E::G1Projective = E::G1Projective::zero();
-        let mut combined_adjusted_witness: E::G1Projective = E::G1Projective::zero();
+        let mut combined_comms = BTreeMap::new();
+        let mut combined_witness = E::G1Projective::zero();
+        let mut combined_adjusted_witness = E::G1Projective::zero();
+
+        let mut batch_kzg_check_fs_rng = S::new();
+        batch_kzg_check_fs_rng.absorb_nonnative_field_elements(
+            &query_set.iter().map(|(_, (_, q))| *q).collect::<Vec<_>>(),
+            OptimizationType::Weight,
+        );
+        batch_kzg_check_fs_rng
+            .absorb_nonnative_field_elements(&values.values().copied().collect::<Vec<_>>(), OptimizationType::Weight);
+        proof.absorb_into_sponge(&mut batch_kzg_check_fs_rng)?;
 
         for ((_query_name, (query, labels)), p) in query_to_labels_map.into_iter().zip_eq(&proof.0) {
             let mut comms_to_combine: Vec<&'_ LabeledCommitment<_>> = Vec::new();
@@ -481,7 +456,7 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
                 fs_rng,
             );
 
-            randomizer = fs_rng.squeeze_short_nonnative_field_element()?;
+            randomizer = batch_kzg_check_fs_rng.squeeze_short_nonnative_field_element()?;
         }
 
         Self::check_elems(combined_comms, combined_witness, combined_adjusted_witness, vk)
@@ -716,19 +691,19 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
         }
 
         // Push expected results into list of elems. Power will be the negative of the expected power
-        let mut witness: E::G1Projective = proof.w.into_projective();
         let mut adjusted_witness = vk.vk.g.mul(combined_values) - proof.w.mul(point);
         if let Some(random_v) = proof.random_v {
             adjusted_witness += &vk.vk.gamma_g.mul(random_v);
         }
 
-        if let Some(randomizer) = randomizer {
-            witness = witness.mul(randomizer);
-            adjusted_witness = adjusted_witness.mul(randomizer);
-        }
+        let (witness, adjusted_witness) = if let Some(randomizer) = randomizer {
+            (proof.w.mul(randomizer), adjusted_witness.mul(randomizer))
+        } else {
+            (proof.w.into_projective(), adjusted_witness)
+        };
 
-        *combined_witness += &witness;
-        *combined_adjusted_witness += &adjusted_witness;
+        *combined_witness += witness;
+        *combined_adjusted_witness += adjusted_witness;
         end_timer!(acc_time);
     }
 
