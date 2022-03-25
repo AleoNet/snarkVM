@@ -39,7 +39,7 @@ impl<F: PrimeField> LinearCombination<F> {
 
     /// Returns the `one` constant.
     pub(crate) fn one() -> Self {
-        Variable::one().into()
+        Self { constant: F::one(), terms: Default::default(), value: F::one() }
     }
 
     /// Returns `true` if there are no terms in the linear combination.
@@ -144,14 +144,6 @@ impl<F: PrimeField> From<Variable<F>> for LinearCombination<F> {
 
 impl<F: PrimeField> From<&Variable<F>> for LinearCombination<F> {
     fn from(variable: &Variable<F>) -> Self {
-        // let mut output = Self::zero();
-        // match variable.is_constant() {
-        //     true => output.constant += variable.value(),
-        //     false => output.terms = IndexMap::from_iter([(variable.clone(), F::one())].into_iter())
-        // }
-        // // Increment the value of the linear combination by the variable.
-        // output.value += variable.value();
-        // output
         Self::from(&[variable.clone()])
     }
 }

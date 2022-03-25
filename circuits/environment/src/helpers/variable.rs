@@ -35,20 +35,6 @@ pub enum Variable<F: PrimeField> {
 
 impl<F: PrimeField> Variable<F> {
     ///
-    /// Returns the `zero` constant.
-    ///
-    pub fn zero() -> Self {
-        Self::Constant(Rc::new(F::zero()))
-    }
-
-    ///
-    /// Returns the `one` constant.
-    ///
-    pub fn one() -> Self {
-        Self::Constant(Rc::new(F::one()))
-    }
-
-    ///
     /// Returns `true` if the variable is a constant.
     ///
     pub fn is_constant(&self) -> bool {
