@@ -48,39 +48,25 @@ impl<E: Environment> FromBits for Field<E> {
         if num_bits > size_in_data_bits {
             // Retrieve the modulus & subtract by 1 as we'll check `output.bits_le` is less than or *equal* to this value.
             // (For advanced users) BaseField::MODULUS - 1 is equivalent to -1 in the field.
-            let modulus = -E::BaseField::one();
+            let modulus_minus_one = -E::BaseField::one();
+            let modulus_minus_one_bits_le = modulus_minus_one.to_bits_le();
 
-            // Initialize an iterator for big-endian bits, skipping the excess bits, which are checked above.
-            let mut bits_be = bits_le.iter().rev().skip(bits_le.len() - size_in_bits);
+            // Initialize an iterator over `self` and `other` from MSB to LSB.
+            let bit_pairs_le = modulus_minus_one_bits_le.iter().zip_eq(bits_le);
 
-            // Initialize trackers for the sequence of ones.
-            let mut previous = Boolean::constant(true);
-            let mut sequence = vec![];
-
-            for (modulus_bit, current_bit) in modulus.to_bits_be().iter().zip_eq(&mut bits_be) {
-                match modulus_bit {
-                    // This bit *continues* a sequence of ones.
-                    true => sequence.push(current_bit),
-                    // This bit *breaks* a sequence of ones.
-                    false => {
-                        // Process the previous sequence and reset for the new sequence.
-                        if !sequence.is_empty() {
-                            // Check if all bits were true.
-                            previous = sequence.iter().fold(previous, |a, b| a & *b);
-                            sequence.clear();
-                        }
-
-                        // Ensure either `previous` or `current_bit` must be false: `previous` NAND `current_bit`
-                        //
-                        // If `previous` is true, `current_bit` must be false, or it is not in the field.
-                        // If `previous` is false, `current_bit` can be true or false.
-                        // Thus, either `previous` or `current_bit` must be false.
-                        E::assert(previous.nand(current_bit));
+            // This implementation produces ~500 fewer constraints than the original one.
+            let modulus_minus_one_less_than_bits =
+                bit_pairs_le.fold(Boolean::constant(false), |rest_is_less, (modulus_minus_one_bit, other_bit)| {
+                    if *modulus_minus_one_bit {
+                        Boolean::ternary(&!other_bit, other_bit, &rest_is_less)
+                    } else {
+                        Boolean::ternary(other_bit, other_bit, &rest_is_less)
                     }
-                }
-            }
-            // The sequence will always finish empty, because we subtracted 1 from the `modulus`.
-            debug_assert!(sequence.is_empty());
+                });
+
+            // Enforce that BaseField::MODULUS - 1 is not less than the field element given by `bits_le`.
+            // In other words, enforce that BaseField::MODULUS - 1 is greater than or equal to the field element given by `bits_le`.
+            E::assert(!modulus_minus_one_less_than_bits);
         }
 
         // Construct the sanitized list of bits, resizing up if necessary.
@@ -113,6 +99,8 @@ mod tests {
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 100;
+
+    // TODO: Tests need to check when bits are greater than the field modulus.
 
     fn check_from_bits_le(
         mode: Mode,
@@ -209,12 +197,12 @@ mod tests {
 
     #[test]
     fn test_from_bits_le_public() {
-        check_from_bits_le(Mode::Public, 0, 0, 252, 418);
+        check_from_bits_le(Mode::Public, 0, 0, 253, 254);
     }
 
     #[test]
     fn test_from_bits_le_private() {
-        check_from_bits_le(Mode::Private, 0, 0, 252, 418);
+        check_from_bits_le(Mode::Private, 0, 0, 253, 254);
     }
 
     #[test]
@@ -224,11 +212,11 @@ mod tests {
 
     #[test]
     fn test_from_bits_be_public() {
-        check_from_bits_be(Mode::Public, 0, 0, 252, 418);
+        check_from_bits_be(Mode::Public, 0, 0, 253, 254);
     }
 
     #[test]
     fn test_from_bits_be_private() {
-        check_from_bits_be(Mode::Private, 0, 0, 252, 418);
+        check_from_bits_be(Mode::Private, 0, 0, 253, 254);
     }
 }

@@ -45,21 +45,26 @@ impl<E: Environment> FromBits for Scalar<E> {
         // If the number of bits is equivalent to the scalar size in bits,
         // ensure the scalar is below the scalar field modulus.
         if num_bits > size_in_data_bits {
-            // Initialize the scalar field modulus as a constant base field variable.
-            //
-            // Note: We are reconstituting the scalar field into a base field here in order to check
-            // that the scalar was synthesized correctly. This is safe as the scalar field modulus
-            // is less that the base field modulus, and thus will always fit in a base field element.
-            let modulus = Field::constant(match E::ScalarField::modulus().to_bytes_le() {
-                Ok(modulus_bytes) => match E::BaseField::from_bytes_le(&modulus_bytes) {
-                    Ok(modulus) => modulus,
-                    Err(error) => E::halt(format!("Failed to load the scalar modulus as a constant: {error}")),
-                },
-                Err(error) => E::halt(format!("Failed to retrieve the scalar modulus as bytes: {error}")),
-            });
+            // Retrieve the modulus & subtract by 1 as we'll check `output.bits_le` is less than or *equal* to this value.
+            // (For advanced users) ScalarField::MODULUS - 1 is equivalent to -1 in the field.
+            let modulus_minus_one = -E::ScalarField::one();
+            let modulus_minus_one_bits_le = modulus_minus_one.to_bits_le();
 
-            // Ensure `output` is less than `E::ScalarField::modulus()`.
-            E::assert(output.to_field().is_less_than(&modulus));
+            // Initialize an iterator over `self` and `other` from MSB to LSB.
+            let bit_pairs_le = modulus_minus_one_bits_le.iter().zip_eq(bits_le);
+
+            let modulus_minus_one_less_than_bits =
+                bit_pairs_le.fold(Boolean::constant(false), |rest_is_less, (modulus_minus_one_bit, other_bit)| {
+                    if *modulus_minus_one_bit {
+                        Boolean::ternary(&!other_bit, other_bit, &rest_is_less)
+                    } else {
+                        Boolean::ternary(other_bit, other_bit, &rest_is_less)
+                    }
+                });
+
+            // Enforce that ScalarField::MODULUS - 1 is not less than the field element given by `bits_le`.
+            // In other words, enforce that ScalarField::MODULUS - 1 is greater than or equal to the field element given by `bits_le`.
+            E::assert(!modulus_minus_one_less_than_bits);
         }
 
         output
@@ -83,6 +88,8 @@ mod tests {
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 100;
+
+    // TODO: Need to test for case where bits are greater than the scalar field modulus.
 
     fn check_from_bits_le(
         mode: Mode,
@@ -164,31 +171,31 @@ mod tests {
 
     #[test]
     fn test_from_bits_le_constant() {
-        check_from_bits_le(Mode::Constant, 507, 0, 0, 0);
+        check_from_bits_le(Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_from_bits_le_public() {
-        check_from_bits_le(Mode::Public, 254, 0, 769, 771);
+        check_from_bits_le(Mode::Public, 0, 0, 251, 252);
     }
 
     #[test]
     fn test_from_bits_le_private() {
-        check_from_bits_le(Mode::Private, 254, 0, 769, 771);
+        check_from_bits_le(Mode::Private, 0, 0, 251, 252);
     }
 
     #[test]
     fn test_from_bits_be_constant() {
-        check_from_bits_be(Mode::Constant, 507, 0, 0, 0);
+        check_from_bits_be(Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
     fn test_from_bits_be_public() {
-        check_from_bits_be(Mode::Public, 254, 0, 769, 771);
+        check_from_bits_be(Mode::Public, 0, 0, 251, 252);
     }
 
     #[test]
     fn test_from_bits_be_private() {
-        check_from_bits_be(Mode::Private, 254, 0, 769, 771);
+        check_from_bits_be(Mode::Private, 0, 0, 251, 252);
     }
 }
