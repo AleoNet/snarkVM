@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_utilities::{FromBytes, ToBytes};
 
 impl<E: Environment> FromBits for Scalar<E> {
     type Boolean = Boolean<E>;

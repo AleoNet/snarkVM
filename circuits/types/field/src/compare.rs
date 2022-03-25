@@ -19,17 +19,45 @@ use super::*;
 impl<E: Environment> Compare<Field<E>> for Field<E> {
     type Boolean = Boolean<E>;
 
+    // TODO (@pranav) See if this can be deduped. Document.
     /// Returns `true` if `self` is less than `other`.
     fn is_less_than(&self, other: &Self) -> Self::Boolean {
-        // Initialize an iterator over `self` and `other` from MSB to LSB.
-        let self_bits_le = self.to_bits_le();
-        let other_bits_le = other.to_bits_le();
-        let bits_le = self_bits_le.iter().zip_eq(&other_bits_le);
+        if self.is_constant() && other.is_constant() {
+            Boolean::constant(self.eject_value() < other.eject_value())
+        } else if self.is_constant() {
+            let self_bits_le = self.eject_value().to_bits_le();
 
-        // This implementation produces ~500 fewer constraints than the original one.
-        bits_le.fold(Boolean::constant(false), |rest_is_less, (self_bit, other_bit)| {
-            Boolean::ternary(&self_bit.bitxor(other_bit), &(!self_bit).bitand(other_bit), &rest_is_less)
-        })
+            let bit_pairs_le = self_bits_le.into_iter().zip_eq(other.to_bits_le());
+
+            bit_pairs_le.fold(Boolean::constant(false), |rest_is_less, (self_bit, other_bit)| {
+                if self_bit {
+                    Boolean::ternary(&!&other_bit, &other_bit, &rest_is_less)
+                } else {
+                    Boolean::ternary(&other_bit, &other_bit, &rest_is_less)
+                }
+            })
+        } else if other.is_constant() {
+            let self_bits_le = self.to_bits_le();
+
+            let bit_pairs_le = self_bits_le.iter().zip_eq(other.eject_value().to_bits_le());
+
+            bit_pairs_le.fold(Boolean::constant(false), |rest_is_less, (self_bit, other_bit)| {
+                if other_bit {
+                    Boolean::ternary(&!self_bit, &!self_bit, &rest_is_less)
+                } else {
+                    Boolean::ternary(self_bit, &!self_bit, &rest_is_less)
+                }
+            })
+        } else {
+            // Initialize an iterator over `self` and `other` from MSB to LSB.
+            let self_bits_le = self.to_bits_le();
+            let other_bits_le = other.to_bits_le();
+            let bits_le = self_bits_le.iter().zip_eq(&other_bits_le);
+
+            bits_le.fold(Boolean::constant(false), |rest_is_less, (self_bit, other_bit)| {
+                Boolean::ternary(&self_bit.bitxor(other_bit), other_bit, &rest_is_less)
+            })
+        }
     }
 
     /// Returns `true` if `self` is greater than `other`.
@@ -54,7 +82,7 @@ mod tests {
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
-    const ITERATIONS: usize = 100;
+    const ITERATIONS: usize = 1000;
 
     fn check_is_less_than(
         mode_a: Mode,
@@ -83,49 +111,48 @@ mod tests {
         }
     }
 
-    // These vary in the number of constants
-    // #[test]
-    // fn test_constant_is_less_than_constant() {
-    //     check_is_less_than(Mode::Constant, Mode::Constant, 506, 0, 0, 0);
-    // }
-    //
-    // #[test]
-    // fn test_constant_is_less_than_public() {
-    //     check_is_less_than(Mode::Constant, Mode::Public, 253, 0, 506, 507);
-    // }
-    //
-    // #[test]
-    // fn test_constant_is_less_than_private() {
-    //     check_is_less_than(Mode::Constant, Mode::Private, 0, 0, 503, 503);
-    // }
-    //
-    // #[test]
-    // fn test_public_is_less_than_constant() {
-    //     check_is_less_than(Mode::Constant, Mode::Public, 0, 473, 0, 473);
-    // }
+    #[test]
+    fn test_constant_is_less_than_constant() {
+        check_is_less_than(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_constant_is_less_than_public() {
+        check_is_less_than(Mode::Constant, Mode::Public, 0, 0, 506, 507);
+    }
+
+    #[test]
+    fn test_constant_is_less_than_private() {
+        check_is_less_than(Mode::Constant, Mode::Private, 0, 0, 506, 507);
+    }
+
+    #[test]
+    fn test_public_is_less_than_constant() {
+        check_is_less_than(Mode::Constant, Mode::Public, 0, 0, 506, 507);
+    }
 
     #[test]
     fn test_private_is_less_than_constant() {
-        check_is_less_than(Mode::Constant, Mode::Private, 0, 0, 503, 503);
+        check_is_less_than(Mode::Constant, Mode::Private, 0, 0, 506, 507);
     }
 
     #[test]
     fn test_public_is_less_than_public() {
-        check_is_less_than(Mode::Public, Mode::Public, 0, 0, 1265, 1267);
+        check_is_less_than(Mode::Public, Mode::Public, 0, 0, 1012, 1014);
     }
 
     #[test]
     fn test_public_is_less_than_private() {
-        check_is_less_than(Mode::Public, Mode::Private, 0, 0, 1265, 1267);
+        check_is_less_than(Mode::Public, Mode::Private, 0, 0, 1012, 1014);
     }
 
     #[test]
     fn test_private_is_less_than_public() {
-        check_is_less_than(Mode::Private, Mode::Public, 0, 0, 1265, 1267);
+        check_is_less_than(Mode::Private, Mode::Public, 0, 0, 1012, 1014);
     }
 
     #[test]
     fn test_private_is_less_than_private() {
-        check_is_less_than(Mode::Private, Mode::Private, 0, 0, 1265, 1267);
+        check_is_less_than(Mode::Private, Mode::Private, 0, 0, 1012, 1014);
     }
 }

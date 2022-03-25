@@ -22,43 +22,23 @@ impl<E: Environment> Compare<Scalar<E>> for Scalar<E> {
 
     /// Returns `true` if `self` is less than `other`.
     fn is_less_than(&self, other: &Self) -> Self::Boolean {
-        // TODO: Will ScalarField ever outsize BaseField?
-        let scalar_modulus = match E::ScalarField::modulus().to_bytes_le() {
+        debug_assert!(match E::ScalarField::modulus().to_bytes_le() {
             Ok(modulus_bytes) => match E::BaseField::from_bytes_le(&modulus_bytes) {
-                Ok(modulus) => modulus,
+                Ok(modulus) => modulus.to_repr() <= E::BaseField::modulus(),
                 Err(error) => E::halt(format!("Failed to load the scalar modulus as a constant: {error}")),
             },
             Err(error) => E::halt(format!("Failed to retrieve the scalar modulus as bytes: {error}")),
-        };
-        if scalar_modulus.to_repr() <= E::BaseField::modulus_minus_one_div_two() {
-            // If all elements of the scalar field are less than (p - 1)/2, where p is the modulus of
-            // the base field, then we can perform an optimized check for `less_than`.
-            // We compute the less than operation by checking the parity of 2 * (self - other) mod p.
-            // If a < b, then 2 * (self - other) mod p is odd.
-            // If a >= b, then 2 * (self - oher) mod p is even.
-            if self.is_constant() && other.is_constant() {
-                Boolean::new(Mode::Constant, self.eject_value() < other.eject_value())
-            } else {
-                (self.to_field() - other.to_field()).double().to_bits_be().pop().unwrap()
-            }
+        });
+
+        // If all elements of the scalar field are less than (p - 1)/2, where p is the modulus of
+        // the base field, then we can perform an optimized check for `less_than`.
+        // We compute the less than operation by checking the parity of 2 * (self - other) mod p.
+        // If a < b, then 2 * (self - other) mod p is odd.
+        // If a >= b, then 2 * (self - other) mod p is even.
+        if self.is_constant() && other.is_constant() {
+            Boolean::new(Mode::Constant, self.eject_value() < other.eject_value())
         } else {
-            // Otherwise, we have to individually compare the bits of `self` and `other`.
-            let mut is_less_than = Boolean::constant(false);
-            let mut are_previous_bits_equal = Boolean::constant(true);
-
-            // Initialize an iterator over `self` and `other` from MSB to LSB.
-            let bits_be = self.bits_le.iter().rev().zip_eq(other.bits_le.iter().rev());
-
-            for (index, (self_bit, other_bit)) in bits_be.enumerate() {
-                // Determine if `self` is less than `other` up to the `index`-th bit.
-                is_less_than |= &are_previous_bits_equal & (!self_bit & other_bit);
-
-                // Skip the update to the LSB, as this boolean is subsequently discarded.
-                if index != self.bits_le.len() - 1 {
-                    are_previous_bits_equal &= self_bit.is_equal(other_bit);
-                }
-            }
-            is_less_than
+            (self.to_field() - other.to_field()).double().to_bits_be().pop().unwrap()
         }
     }
 
