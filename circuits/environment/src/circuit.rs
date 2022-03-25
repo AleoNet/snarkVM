@@ -26,8 +26,8 @@ use once_cell::unsync::Lazy;
 thread_local! {
     pub(super) static CIRCUIT: Lazy<RefCell<R1CS<Fq>>> = Lazy::new(|| RefCell::new(R1CS::<Fq>::new()));
     pub(super) static IN_WITNESS: Lazy<RefCell<bool>> = Lazy::new(|| RefCell::new(false));
-    pub(super) static ZERO: Lazy<LinearCombination<Fq>> = Lazy::new(|| LinearCombination::zero());
-    pub(super) static ONE: Lazy<LinearCombination<Fq>> = Lazy::new(|| LinearCombination::one());
+    pub(super) static ZERO: Lazy<LinearCombination<Fq>> = Lazy::new(LinearCombination::zero);
+    pub(super) static ONE: Lazy<LinearCombination<Fq>> = Lazy::new(LinearCombination::one);
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]
