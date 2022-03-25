@@ -16,7 +16,6 @@
 
 /// The `witness!` macro is a closure that takes in a list of circuits,
 /// eject the value of each circuit, and uses it in the subsequent code block.
-/// In addition,
 ///
 /// This macro requires `Inject` to be implemented on the return type,
 /// and `Eject` to be implemented on all inputs.
