@@ -332,15 +332,18 @@ impl<N: Network> Transition<N> {
     ) -> Result<Vec<Vec<u8>>> {
         // Construct the leaves of the transition tree.
         let leaves: Vec<Vec<u8>> = vec![
-            // Leaf 0, 1 := serial numbers
-            serial_numbers.iter().take(N::NUM_INPUT_RECORDS).map(ToBytes::to_bytes_le).collect::<Result<Vec<_>>>()?,
-            // Leaf 2, 3 := commitments
-            commitments.iter().take(N::NUM_OUTPUT_RECORDS).map(ToBytes::to_bytes_le).collect::<Result<Vec<_>>>()?,
+            // TODO (raychu86): split - handle padding serial numbers and commitments. (i.e. leaf 1 - 16 = serial numbers, 17 - 32 = commitments)
+            serial_numbers
+                .iter()
+                .take(N::MAX_NUM_INPUT_RECORDS)
+                .map(ToBytes::to_bytes_le)
+                .collect::<Result<Vec<_>>>()?,
+            commitments.iter().take(N::MAX_NUM_OUTPUT_RECORDS).map(ToBytes::to_bytes_le).collect::<Result<Vec<_>>>()?,
         ]
         .concat();
 
         // Ensure the correct number of leaves are allocated.
-        assert_eq!(usize::pow(2, N::TRANSITION_TREE_DEPTH as u32), leaves.len());
+        assert!(usize::pow(2, N::TRANSITION_TREE_DEPTH as u32) >= leaves.len());
 
         Ok(leaves)
     }
@@ -366,25 +369,27 @@ impl<N: Network> FromBytes for Transition<N> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let transition_id: N::TransitionID = FromBytes::read_le(&mut reader)?;
 
-        let mut serial_numbers = Vec::<N::SerialNumber>::with_capacity(N::NUM_INPUT_RECORDS);
-        for _ in 0..N::NUM_INPUT_RECORDS {
+        let num_input_records: u32 = FromBytes::read_le(&mut reader)?;
+        let mut serial_numbers = Vec::<N::SerialNumber>::with_capacity(num_input_records as usize);
+        for _ in 0..num_input_records {
             serial_numbers.push(FromBytes::read_le(&mut reader)?);
         }
 
-        let mut ciphertexts = Vec::<N::RecordCiphertext>::with_capacity(N::NUM_OUTPUT_RECORDS);
-        for _ in 0..N::NUM_OUTPUT_RECORDS {
+        let num_output_records: u32 = FromBytes::read_le(&mut reader)?;
+        let mut ciphertexts = Vec::<N::RecordCiphertext>::with_capacity(num_output_records as usize);
+        for _ in 0..num_output_records {
             ciphertexts.push(FromBytes::read_le(&mut reader)?);
         }
 
         let value_balance: AleoAmount = FromBytes::read_le(&mut reader)?;
 
-        let mut input_value_commitments = Vec::with_capacity(N::NUM_INPUT_RECORDS);
-        for _ in 0..N::NUM_INPUT_RECORDS {
+        let mut input_value_commitments = Vec::with_capacity(num_input_records as usize);
+        for _ in 0..num_input_records {
             input_value_commitments.push(FromBytes::read_le(&mut reader)?);
         }
 
-        let mut output_value_commitments = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
-        for _ in 0..N::NUM_OUTPUT_RECORDS {
+        let mut output_value_commitments = Vec::with_capacity(num_output_records as usize);
+        for _ in 0..num_output_records {
             output_value_commitments.push(FromBytes::read_le(&mut reader)?);
         }
 
@@ -417,7 +422,9 @@ impl<N: Network> ToBytes for Transition<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.transition_id.write_le(&mut writer)?;
+        (self.serial_numbers.len() as u32).write_le(&mut writer)?;
         self.serial_numbers.write_le(&mut writer)?;
+        (self.ciphertexts.len() as u32).write_le(&mut writer)?;
         self.ciphertexts.write_le(&mut writer)?;
         self.value_balance.write_le(&mut writer)?;
         self.input_value_commitments.write_le(&mut writer)?;

@@ -82,6 +82,7 @@ impl<N: Network> Request<N> {
         // Construct the noop records.
         let mut records = Vec::with_capacity(N::NUM_INPUT_RECORDS);
         for _ in 0..N::NUM_INPUT_RECORDS {
+            // TODO (raychu86): Remove this requirement.
             records.push(Record::new_noop(noop_address, rng)?);
         }
 

@@ -187,8 +187,8 @@ impl<N: Network> ResponseBuilder<N> {
         // Construct the input value commitments.
         let input_record_values: Vec<AleoAmount> = request.records().iter().map(|x| x.value()).collect();
 
-        let mut input_value_commitments = Vec::with_capacity(N::NUM_INPUT_RECORDS);
-        let mut input_value_commitment_randomness = Vec::with_capacity(N::NUM_INPUT_RECORDS);
+        let mut input_value_commitments = Vec::with_capacity(N::MAX_NUM_INPUT_RECORDS);
+        let mut input_value_commitment_randomness = Vec::with_capacity(N::MAX_NUM_INPUT_RECORDS);
 
         for value in input_record_values.iter() {
             let commitment_randomness = N::ProgramScalarField::rand(rng);
@@ -202,8 +202,8 @@ impl<N: Network> ResponseBuilder<N> {
         // Construct the output value commitments.
         let output_record_values: Vec<AleoAmount> = output_records.iter().map(|x| x.value()).collect();
 
-        let mut output_value_commitments = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
-        let mut output_value_commitment_randomness = Vec::with_capacity(N::NUM_OUTPUT_RECORDS);
+        let mut output_value_commitments = Vec::with_capacity(N::MAX_NUM_OUTPUT_RECORDS);
+        let mut output_value_commitment_randomness = Vec::with_capacity(N::MAX_NUM_OUTPUT_RECORDS);
 
         for value in output_record_values.iter() {
             let commitment_randomness = N::ProgramScalarField::rand(rng);

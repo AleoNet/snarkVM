@@ -86,8 +86,8 @@ impl Network for Testnet1 {
     const NUM_TRANSITIONS: u8 = u8::pow(2, Self::TRANSACTION_TREE_DEPTH as u32);
     const NUM_EVENTS: u16 = 2;
 
-    const MAX_NUM_INPUT_RECORDS: usize = 32;
-    const MAX_NUM_OUTPUT_RECORDS: usize = 32;
+    const MAX_NUM_INPUT_RECORDS: usize = 16;
+    const MAX_NUM_OUTPUT_RECORDS: usize = 16;
 
     const BLOCK_HASH_PREFIX: u16 = hrp2!("ab");
     const LEDGER_ROOT_PREFIX: u16 = hrp2!("al");
@@ -146,7 +146,7 @@ impl Network for Testnet1 {
     const HEADER_TREE_DEPTH: usize = 2;
     const LEDGER_TREE_DEPTH: usize = 32;
     const PROGRAM_TREE_DEPTH: usize = 8;
-    const TRANSITION_TREE_DEPTH: usize = 2;
+    const TRANSITION_TREE_DEPTH: usize = 5;
     const TRANSACTION_TREE_DEPTH: usize = 5;
 
     const ALEO_BLOCK_TIME_IN_SECS: i64 = 20i64;
