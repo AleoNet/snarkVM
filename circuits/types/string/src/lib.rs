@@ -77,12 +77,6 @@ impl<E: Environment> Eject for StringType<E> {
 impl<E: Environment> Parser for StringType<E> {
     type Environment = E;
 
-    /// Returns the type name as a string.
-    #[inline]
-    fn type_name() -> &'static str {
-        "string"
-    }
-
     /// Parses a string into a string circuit.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -95,6 +89,14 @@ impl<E: Environment> Parser for StringType<E> {
             Some((_, mode)) => Ok((string, StringType::new(mode, &value))),
             None => Ok((string, StringType::new(Mode::Constant, &value))),
         }
+    }
+}
+
+impl<E: Environment> TypeName for StringType<E> {
+    /// Returns the type name of the circuit as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "string"
     }
 }
 

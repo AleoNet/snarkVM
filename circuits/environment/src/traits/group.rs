@@ -34,6 +34,7 @@ pub trait GroupTrait<B: BooleanTrait, S: ScalarTrait<B>>:
     + Sub<Output = Self>
     + SubAssign
     + Ternary
+    + TypeName
     + Zero
 {
 }

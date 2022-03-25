@@ -42,12 +42,6 @@ impl<E: Environment> UnaryOperation<E> {
 impl<E: Environment> Parser for UnaryOperation<E> {
     type Environment = E;
 
-    /// Returns the type name as a string.
-    #[inline]
-    fn type_name() -> &'static str {
-        "unary.operation"
-    }
-
     /// Parses a string into an operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {

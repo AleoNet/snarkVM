@@ -69,12 +69,6 @@ impl<E: Environment> Eject for Address<E> {
 impl<E: Environment> Parser for Address<E> {
     type Environment = E;
 
-    /// Returns the type name of the circuit as a string.
-    #[inline]
-    fn type_name() -> &'static str {
-        "address"
-    }
-
     /// Parses a string into an address circuit.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -111,6 +105,14 @@ impl<E: Environment> Parser for Address<E> {
             Some((_, mode)) => Ok((string, Address::new(mode, value))),
             None => Ok((string, Address::new(Mode::Constant, value))),
         }
+    }
+}
+
+impl<E: Environment> TypeName for Address<E> {
+    /// Returns the type name of the circuit as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "address"
     }
 }
 

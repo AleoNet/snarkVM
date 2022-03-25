@@ -147,12 +147,6 @@ impl<E: Environment> Eject for Group<E> {
 impl<E: Environment> Parser for Group<E> {
     type Environment = E;
 
-    /// Returns the type name of the circuit as a string.
-    #[inline]
-    fn type_name() -> &'static str {
-        "group"
-    }
-
     /// Parses a string into an affine group circuit.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
@@ -167,6 +161,14 @@ impl<E: Environment> Parser for Group<E> {
             Some((_, mode)) => Ok((string, Group::new(mode, (x_coordinate, None)))),
             None => Ok((string, Group::new(Mode::Constant, (x_coordinate, None)))),
         }
+    }
+}
+
+impl<E: Environment> TypeName for Group<E> {
+    /// Returns the type name of the circuit as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "group"
     }
 }
 
