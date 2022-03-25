@@ -107,6 +107,9 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const NUM_TRANSITIONS: u8;
     const NUM_EVENTS: u16;
 
+    const MAX_NUM_INPUT_RECORDS: usize;
+    const MAX_NUM_OUTPUT_RECORDS: usize;
+
     const BLOCK_HASH_PREFIX: u16;
     const LEDGER_ROOT_PREFIX: u16;
     const PROGRAM_ID_PREFIX: u16;
