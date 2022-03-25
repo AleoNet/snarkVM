@@ -22,48 +22,44 @@ use snarkvm_curves::edwards_bls12::EdwardsProjective;
 
 use criterion::Criterion;
 
+const SETUP_MESSAGE: &str = "bhp_crh_benchmark";
+
 const NUM_WINDOWS: usize = 8;
 const WINDOW_SIZE: usize = 32;
 
 const BIG_NUM_WINDOWS: usize = 296;
 const BIG_WINDOW_SIZE: usize = 63;
 
-fn bowe_pedersen_crh_setup(c: &mut Criterion) {
-    c.bench_function("BHP CRH setup", move |b| {
-        b.iter(|| <BHPCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CRH>::setup("bhp_crh_benchmark"))
+fn setup(c: &mut Criterion) {
+    c.bench_function("BHP setup", move |b| {
+        b.iter(|| <BHPCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CRH>::setup(SETUP_MESSAGE))
+    });
+
+    c.bench_function("BHP setup (large)", move |b| {
+        b.iter(|| <BHPCRH<EdwardsProjective, BIG_NUM_WINDOWS, BIG_WINDOW_SIZE> as CRH>::setup(SETUP_MESSAGE))
     });
 }
 
-fn big_bowe_pedersen_crh_setup(c: &mut Criterion) {
-    c.bench_function("Big BHP CRH setup", move |b| {
-        b.iter(|| <BHPCRH<EdwardsProjective, BIG_NUM_WINDOWS, BIG_WINDOW_SIZE> as CRH>::setup("bhp_crh_benchmark"))
+fn hash(c: &mut Criterion) {
+    c.bench_function("BHP hash", move |b| {
+        let crh = <BHPCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CRH>::setup(SETUP_MESSAGE);
+        let input = (0..(NUM_WINDOWS * WINDOW_SIZE)).map(|_| rand::random::<bool>()).collect::<Vec<bool>>();
+
+        b.iter(|| crh.hash(&input).unwrap())
+    });
+
+    c.bench_function("BHP hash (large)", move |b| {
+        let crh = <BHPCRH<EdwardsProjective, BIG_NUM_WINDOWS, BIG_WINDOW_SIZE> as CRH>::setup(SETUP_MESSAGE);
+        let input = (0..(BIG_NUM_WINDOWS * BIG_WINDOW_SIZE)).map(|_| rand::random::<bool>()).collect::<Vec<bool>>();
+
+        b.iter(|| crh.hash(&input).unwrap())
     });
 }
 
-fn bowe_pedersen_crh_hash(c: &mut Criterion) {
-    let crh = <BHPCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CRH>::setup("bhp_crh_benchmark");
-    let input = vec![127u8; 32];
-
-    c.bench_function("BHP CRH hash", move |b| b.iter(|| crh.hash(&input).unwrap()));
-}
-
-fn big_bowe_pedersen_crh_hash(c: &mut Criterion) {
-    let crh = <BHPCRH<EdwardsProjective, BIG_NUM_WINDOWS, BIG_WINDOW_SIZE> as CRH>::setup("bhp_crh_benchmark");
-    let input = vec![127u8; 32];
-
-    c.bench_function("Big BHP CRH hash", move |b| b.iter(|| crh.hash(&input).unwrap()));
-}
-
 criterion_group! {
-    name = bowe_crh_setup;
-    config = Criterion::default().sample_size(50);
-    targets = bowe_pedersen_crh_setup, big_bowe_pedersen_crh_setup
+    name = bhp_crh;
+    config = Criterion::default().sample_size(10);
+    targets = setup, hash
 }
 
-criterion_group! {
-    name = bowe_crh_hash;
-    config = Criterion::default().sample_size(5000);
-    targets = bowe_pedersen_crh_hash, big_bowe_pedersen_crh_hash
-}
-
-criterion_main!(bowe_crh_setup, bowe_crh_hash);
+criterion_main!(bhp_crh);

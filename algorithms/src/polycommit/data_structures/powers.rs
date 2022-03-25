@@ -64,8 +64,7 @@ const NUM_POWERS_TIMES_GAMMA_G: usize = 84;
 
 /// An abstraction over a vector of powers of G, meant to reduce
 /// memory burden when handling universal setup parameters.
-#[derive(Derivative)]
-#[derivative(Debug(bound = ""))]
+#[derive(Debug)]
 pub struct PowersOfG<E: PairingEngine> {
     /// Filepath of the powers we're using.
     file_path: String,
@@ -73,7 +72,6 @@ pub struct PowersOfG<E: PairingEngine> {
     /// The handle is guarded to avoid read/write conflicts with potential
     /// clones.
     /// Contains group elements of the form `[G, \beta * G, \beta^2 * G, ..., \beta^{d} G]`.
-    #[derivative(Debug = "ignore")]
     file: File,
     /// Group elements of the form `{ \beta^i \gamma G }`, where `i` ranges from 0 to `degree`.
     /// These are used for hiding.

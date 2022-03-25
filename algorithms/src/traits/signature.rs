@@ -20,13 +20,11 @@ use anyhow::Result;
 use rand::{CryptoRng, Rng};
 use std::{fmt::Debug, hash::Hash};
 
-pub trait SignatureScheme:
-    Sized + ToBytes + FromBytes + Debug + Clone + Eq + Send + Sync + From<<Self as SignatureScheme>::Parameters>
-{
+pub trait SignatureScheme: Sized + Debug + Clone + Eq + Send + Sync {
     type Parameters: Clone + Debug + Eq;
     type PublicKey: Clone + Debug + Default + ToBytes + FromBytes + Hash + Eq + Send + Sync;
     type PrivateKey: Clone + Debug + Default + ToBytes + FromBytes + PartialEq + Eq;
-    type Signature: Clone + Debug + Default + ToBytes + FromBytes + Send + Sync + PartialEq + Eq;
+    type Signature: Copy + Clone + Debug + Default + ToBytes + FromBytes + Send + Sync + PartialEq + Eq;
 
     fn setup(message: &str) -> Self;
 

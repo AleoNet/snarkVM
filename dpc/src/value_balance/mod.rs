@@ -14,19 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{commitment::BHPCommitment, traits::CommitmentScheme};
-use snarkvm_curves::edwards_bls12::EdwardsProjective;
+pub mod amount;
+pub use amount::*;
 
-const BHP_NUM_WINDOWS: usize = 32;
-const BHP_WINDOW_SIZE: usize = 48;
+pub mod error;
+pub use error::*;
 
-fn commitment_parameters_serialization<C: CommitmentScheme>() {
-    let commitment = C::setup("commitment_parameters_serialization").to_bytes_le().unwrap();
-    let recovered_commitment = C::read_le(&commitment[..]).unwrap();
-    assert_eq!(commitment, recovered_commitment.to_bytes_le().unwrap());
-}
+pub mod value_balance;
+pub use value_balance::*;
 
-#[test]
-fn bhp_commitment_parameters_serialization() {
-    commitment_parameters_serialization::<BHPCommitment<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>>();
-}
+pub mod value_balance_circuit;
+pub use value_balance_circuit::*;

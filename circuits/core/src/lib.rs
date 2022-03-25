@@ -17,5 +17,8 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
+pub mod hash;
+pub use hash::*;
+
 pub mod record;
 pub use record::*;

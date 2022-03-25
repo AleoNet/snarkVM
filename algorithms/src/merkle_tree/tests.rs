@@ -100,17 +100,17 @@ fn depth_2_merkle_tree_test<P: MerkleParameters>() {
     // Evaluate the root by direct hashing.
     let expected_root = {
         // depth 2
-        let leaf1 = crh.hash(&leaves[0]).unwrap();
-        let leaf2 = crh.hash(&leaves[1]).unwrap();
-        let leaf3 = crh.hash(&leaves[2]).unwrap();
-        let leaf4 = crh.hash(&leaves[3]).unwrap();
+        let leaf1 = crh.hash_bytes(&leaves[0]).unwrap();
+        let leaf2 = crh.hash_bytes(&leaves[1]).unwrap();
+        let leaf3 = crh.hash_bytes(&leaves[2]).unwrap();
+        let leaf4 = crh.hash_bytes(&leaves[3]).unwrap();
 
         // depth 1
-        let left = crh.hash(&to_bytes_le![leaf1, leaf2].unwrap()).unwrap();
-        let right = crh.hash(&to_bytes_le![leaf3, leaf4].unwrap()).unwrap();
+        let left = crh.hash_bytes(&to_bytes_le![leaf1, leaf2].unwrap()).unwrap();
+        let right = crh.hash_bytes(&to_bytes_le![leaf3, leaf4].unwrap()).unwrap();
 
         // depth 0
-        crh.hash(&to_bytes_le![left, right].unwrap()).unwrap()
+        crh.hash_bytes(&to_bytes_le![left, right].unwrap()).unwrap()
     };
 
     println!("{} == {}", merkle_tree_root, &expected_root);
@@ -130,21 +130,21 @@ fn padded_merkle_tree_test<P: MerkleParameters>() {
     // Evaluate the root by direct hashing.
     let expected_root = {
         // depth 3
-        let leaf1 = crh.hash(&leaves[0]).unwrap();
-        let leaf2 = crh.hash(&leaves[1]).unwrap();
-        let leaf3 = crh.hash(&leaves[2]).unwrap();
-        let leaf4 = crh.hash(&leaves[3]).unwrap();
+        let leaf1 = crh.hash_bytes(&leaves[0]).unwrap();
+        let leaf2 = crh.hash_bytes(&leaves[1]).unwrap();
+        let leaf3 = crh.hash_bytes(&leaves[2]).unwrap();
+        let leaf4 = crh.hash_bytes(&leaves[3]).unwrap();
 
         // depth 2
-        let left = crh.hash(&to_bytes_le![leaf1, leaf2].unwrap()).unwrap();
-        let right = crh.hash(&to_bytes_le![leaf3, leaf4].unwrap()).unwrap();
+        let left = crh.hash_bytes(&to_bytes_le![leaf1, leaf2].unwrap()).unwrap();
+        let right = crh.hash_bytes(&to_bytes_le![leaf3, leaf4].unwrap()).unwrap();
 
         // depth 1
-        let penultimate_left = crh.hash(&to_bytes_le![left, right].unwrap()).unwrap();
+        let penultimate_left = crh.hash_bytes(&to_bytes_le![left, right].unwrap()).unwrap();
         let penultimate_right = parameters.hash_empty().unwrap();
 
         // depth 0
-        crh.hash(&to_bytes_le![penultimate_left, penultimate_right].unwrap()).unwrap()
+        crh.hash_bytes(&to_bytes_le![penultimate_left, penultimate_right].unwrap()).unwrap()
     };
 
     println!("{} == {}", merkle_tree_root, &expected_root);
@@ -343,8 +343,8 @@ mod pedersen_compressed_crh_on_projective {
         let _proof = tree.generate_proof(0, &leaves[0]).unwrap();
         _proof.verify(tree.root(), &leaves[0]).unwrap();
 
-        let leaf1 = parameters.crh().hash(&leaves[0]).unwrap();
-        let leaf2 = parameters.crh().hash(&leaves[1]).unwrap();
+        let leaf1 = parameters.crh().hash_bytes(&leaves[0]).unwrap();
+        let leaf2 = parameters.crh().hash_bytes(&leaves[1]).unwrap();
 
         // proof for non-leaf node
         let raw_nodes = to_bytes_le![leaf1, leaf2].unwrap();
@@ -369,19 +369,19 @@ mod pedersen_compressed_crh_on_projective {
         // Manually construct the merkle tree.
 
         // Construct the leaf nodes.
-        let leaf1 = crh.hash(&leaves[0]).unwrap();
-        let leaf2 = crh.hash(&leaves[1]).unwrap();
-        let leaf3 = crh.hash(&leaves[2]).unwrap();
-        let leaf4 = crh.hash(&leaves[3]).unwrap();
+        let leaf1 = crh.hash_bytes(&leaves[0]).unwrap();
+        let leaf2 = crh.hash_bytes(&leaves[1]).unwrap();
+        let leaf3 = crh.hash_bytes(&leaves[2]).unwrap();
+        let leaf4 = crh.hash_bytes(&leaves[3]).unwrap();
 
         // Construct the inner nodes.
-        let left = crh.hash(&to_bytes_le![leaf1, leaf2].unwrap()).unwrap();
-        let right = crh.hash(&to_bytes_le![leaf3, leaf4].unwrap()).unwrap();
+        let left = crh.hash_bytes(&to_bytes_le![leaf1, leaf2].unwrap()).unwrap();
+        let right = crh.hash_bytes(&to_bytes_le![leaf3, leaf4].unwrap()).unwrap();
 
         // Construct the root.
         let expected_root = {
             // depth 0
-            crh.hash(&to_bytes_le![left, right].unwrap()).unwrap()
+            crh.hash_bytes(&to_bytes_le![left, right].unwrap()).unwrap()
         };
         assert_eq!(merkle_tree_root, &expected_root);
 

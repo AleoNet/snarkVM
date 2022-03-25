@@ -52,23 +52,23 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
             let (bits_le, carry) = product.split_at(I::BITS);
 
             // Return the product of `self` and `other`, along with the carry bits.
-            (Integer::from_bits_le(Mode::Private, bits_le), carry.to_vec())
+            (Integer::from_bits_le(bits_le), carry.to_vec())
         } else if (I::BITS + I::BITS / 2) < E::BaseField::size_in_bits() - 1 {
             // Perform multiplication by decomposing it into operations on its upper and lower bits.
             // See this page for reference: https://en.wikipedia.org/wiki/Karatsuba_algorithm.
             // Note: We follow the naming convention given in the `Basic Step` section of the cited page.
-            let x_1 = Field::from_bits_le(Mode::Private, &this.bits_le[(I::BITS / 2)..]);
-            let x_0 = Field::from_bits_le(Mode::Private, &this.bits_le[..(I::BITS / 2)]);
-            let y_1 = Field::from_bits_le(Mode::Private, &that.bits_le[(I::BITS / 2)..]);
-            let y_0 = Field::from_bits_le(Mode::Private, &that.bits_le[..(I::BITS / 2)]);
+            let x_1 = Field::from_bits_le(&this.bits_le[(I::BITS / 2)..]);
+            let x_0 = Field::from_bits_le(&this.bits_le[..(I::BITS / 2)]);
+            let y_1 = Field::from_bits_le(&that.bits_le[(I::BITS / 2)..]);
+            let y_0 = Field::from_bits_le(&that.bits_le[..(I::BITS / 2)]);
 
             let z_0 = &x_0 * &y_0;
             let z_1 = (&x_1 * &y_0) + (&x_0 * &y_1);
 
-            let mut b_m_bits = vec![Boolean::new(Mode::Constant, false); I::BITS / 2];
-            b_m_bits.push(Boolean::new(Mode::Constant, true));
+            let mut b_m_bits = vec![Boolean::constant(false); I::BITS / 2];
+            b_m_bits.push(Boolean::constant(true));
 
-            let b_m = Field::from_bits_le(Mode::Constant, &b_m_bits);
+            let b_m = Field::from_bits_le(&b_m_bits);
             let z_0_plus_z_1 = &z_0 + (&z_1 * &b_m);
 
             let mut bits_le = z_0_plus_z_1.to_lower_bits_le(I::BITS + I::BITS / 2 + 1);
@@ -83,7 +83,7 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
                     let (bits_le, carry) = bits_le.split_at(I::BITS);
 
                     // Return the product of `self` and `other`, along with the carry bits.
-                    (Integer::from_bits_le(Mode::Private, bits_le), carry.to_vec())
+                    (Integer::from_bits_le(bits_le), carry.to_vec())
                 }
                 false => {
                     // Remove any carry bits.
@@ -665,49 +665,49 @@ mod tests {
     #[test]
     fn test_u128_constant_times_public() {
         type I = u128;
-        run_test::<I>(Mode::Constant, Mode::Public, 2, 0, 193, 194);
+        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 193, 194);
     }
 
     #[test]
     fn test_u128_constant_times_private() {
         type I = u128;
-        run_test::<I>(Mode::Constant, Mode::Private, 2, 0, 193, 194);
+        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 193, 194);
     }
 
     #[test]
     fn test_u128_public_times_constant() {
         type I = u128;
-        run_test::<I>(Mode::Public, Mode::Constant, 2, 0, 193, 194);
+        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 193, 194);
     }
 
     #[test]
     fn test_u128_private_times_constant() {
         type I = u128;
-        run_test::<I>(Mode::Private, Mode::Constant, 2, 0, 193, 194);
+        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 193, 194);
     }
 
     #[test]
     fn test_u128_public_times_public() {
         type I = u128;
-        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 196, 197);
+        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 196, 197);
     }
 
     #[test]
     fn test_u128_public_times_private() {
         type I = u128;
-        run_test::<I>(Mode::Public, Mode::Private, 2, 0, 196, 197);
+        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 196, 197);
     }
 
     #[test]
     fn test_u128_private_times_public() {
         type I = u128;
-        run_test::<I>(Mode::Private, Mode::Public, 2, 0, 196, 197);
+        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 196, 197);
     }
 
     #[test]
     fn test_u128_private_times_private() {
         type I = u128;
-        run_test::<I>(Mode::Private, Mode::Private, 2, 0, 196, 197);
+        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 196, 197);
     }
 
     // Tests for i128
@@ -721,49 +721,49 @@ mod tests {
     #[test]
     fn test_i128_constant_times_public() {
         type I = i128;
-        run_test::<I>(Mode::Constant, Mode::Public, 2, 0, 193, 194);
+        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 193, 194);
     }
 
     #[test]
     fn test_i128_constant_times_private() {
         type I = i128;
-        run_test::<I>(Mode::Constant, Mode::Private, 2, 0, 193, 194);
+        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 193, 194);
     }
 
     #[test]
     fn test_i128_public_times_constant() {
         type I = i128;
-        run_test::<I>(Mode::Public, Mode::Constant, 2, 0, 193, 194);
+        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 193, 194);
     }
 
     #[test]
     fn test_i128_private_times_constant() {
         type I = i128;
-        run_test::<I>(Mode::Private, Mode::Constant, 2, 0, 193, 194);
+        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 193, 194);
     }
 
     #[test]
     fn test_i128_public_times_public() {
         type I = i128;
-        run_test::<I>(Mode::Public, Mode::Public, 2, 0, 196, 197);
+        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 196, 197);
     }
 
     #[test]
     fn test_i128_public_times_private() {
         type I = i128;
-        run_test::<I>(Mode::Public, Mode::Private, 2, 0, 196, 197);
+        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 196, 197);
     }
 
     #[test]
     fn test_i128_private_times_public() {
         type I = i128;
-        run_test::<I>(Mode::Private, Mode::Public, 2, 0, 196, 197);
+        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 196, 197);
     }
 
     #[test]
     fn test_i128_private_times_private() {
         type I = i128;
-        run_test::<I>(Mode::Private, Mode::Private, 2, 0, 196, 197);
+        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 196, 197);
     }
 
     // Exhaustive tests for u8.

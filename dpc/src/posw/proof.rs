@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Network, PoSWError};
-use snarkvm_algorithms::{crh::sha256d_to_u64, SNARK};
+use snarkvm_algorithms::{crypto_hash::sha256d_to_u64, SNARK};
 use snarkvm_utilities::{
     fmt,
     io::{Read, Result as IoResult, Write},

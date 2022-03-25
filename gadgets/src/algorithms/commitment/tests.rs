@@ -20,8 +20,11 @@ use crate::{
     integers::uint::UInt8,
     traits::{algorithms::CommitmentGadget, alloc::AllocGadget, FieldGadget},
 };
-use snarkvm_algorithms::{commitment::BHPCommitment, CommitmentScheme};
-use snarkvm_curves::edwards_bls12::{EdwardsProjective, Fq};
+use snarkvm_algorithms::{
+    commitment::{BHPCommitment, PedersenCommitment},
+    CommitmentScheme,
+};
+use snarkvm_curves::edwards_bls12::{EdwardsAffine, EdwardsProjective, Fq};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::rand::{test_rng, UniformRand};
 
@@ -39,7 +42,7 @@ fn native_and_gadget_equivalence_test<Native: CommitmentScheme, Gadget: Commitme
 
     // Compute the native commitment.
     let commitment_scheme = Native::setup("commitment_test");
-    let native_output = commitment_scheme.commit(&input, &randomness).unwrap();
+    let native_output = commitment_scheme.commit_bytes(&input, &randomness).unwrap();
 
     // Compute the gadget commitment.
     let mut cs = TestConstraintSystem::<Fq>::new();
@@ -66,7 +69,7 @@ fn native_and_gadget_equivalence_test<Native: CommitmentScheme, Gadget: Commitme
 #[test]
 fn bhp_commitment_gadget_test() {
     type TestCommitment = BHPCommitment<EdwardsProjective, 32, 48>;
-    type TestCommitmentGadget = BHPCommitmentGadget<EdwardsProjective, Fq, EdwardsBls12Gadget, 32, 48>;
+    type TestCommitmentGadget = BHPCommitmentGadget<EdwardsAffine, Fq, EdwardsBls12Gadget, 32, 48>;
 
     let mut rng = test_rng();
 
@@ -74,5 +77,20 @@ fn bhp_commitment_gadget_test() {
         let (native_output, gadget_output) =
             native_and_gadget_equivalence_test::<TestCommitment, TestCommitmentGadget>(&mut rng);
         assert_eq!(native_output, gadget_output.get_value().unwrap());
+    }
+}
+
+#[test]
+fn pedersen_commitment_gadget_test() {
+    type TestCommitment = PedersenCommitment<EdwardsProjective, 8, 32>;
+    type TestCommitmentGadget = PedersenCommitmentGadget<EdwardsAffine, Fq, EdwardsBls12Gadget, 8, 32>;
+
+    let mut rng = test_rng();
+
+    for _ in 0..ITERATIONS {
+        let (native_output, gadget_output) =
+            native_and_gadget_equivalence_test::<TestCommitment, TestCommitmentGadget>(&mut rng);
+        assert_eq!(native_output.x, gadget_output.x.get_value().unwrap());
+        assert_eq!(native_output.y, gadget_output.y.get_value().unwrap());
     }
 }

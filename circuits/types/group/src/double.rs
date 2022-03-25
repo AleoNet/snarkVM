@@ -34,7 +34,7 @@ impl<E: Environment> Double for &Group<E> {
             false => Mode::Private,
         };
 
-        let a = Field::new(Mode::Constant, E::AffineParameters::COEFF_A);
+        let a = Field::constant(E::AffineParameters::COEFF_A);
         let two = Field::one() + Field::one();
 
         // Compute xy, xx, yy, axx.
@@ -90,7 +90,6 @@ impl<E: Environment> Double for &Group<E> {
 mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
-    use snarkvm_curves::Group as G;
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 250;

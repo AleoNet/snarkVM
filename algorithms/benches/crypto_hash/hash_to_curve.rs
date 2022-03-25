@@ -16,7 +16,7 @@
 
 use criterion::Criterion;
 
-use snarkvm_algorithms::hash_to_curve::{hash_to_curve, try_hash_to_curve};
+use snarkvm_algorithms::crypto_hash::{hash_to_curve, try_hash_to_curve};
 use snarkvm_curves::bls12_377::{G1Affine, G2Affine};
 
 use rand::{distributions::Alphanumeric, thread_rng, Rng};

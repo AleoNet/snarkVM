@@ -24,8 +24,6 @@ extern crate alloc;
 #[macro_use]
 extern crate aleo_std;
 #[macro_use]
-extern crate derivative;
-#[macro_use]
 extern crate thiserror;
 
 pub use snarkvm_utilities::{cfg_chunks, cfg_chunks_mut, cfg_into_iter, cfg_iter, cfg_iter_mut, cfg_reduce};
@@ -47,9 +45,6 @@ pub use errors::*;
 
 #[cfg(feature = "fft")]
 pub mod fft;
-
-#[cfg(feature = "hash_to_curve")]
-pub mod hash_to_curve;
 
 #[cfg(feature = "merkle_tree")]
 pub mod merkle_tree;

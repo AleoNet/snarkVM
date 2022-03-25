@@ -26,7 +26,6 @@ use crate::{
     msm::{FixedBase, VariableBase},
     polycommit::{PCError, PCRandomness, PowersOfG},
 };
-use itertools::Itertools;
 use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{Field, One, PrimeField, Zero};
 use snarkvm_utilities::{cfg_iter, rand::UniformRand, BitIteratorBE};
@@ -36,6 +35,7 @@ use core::{
     ops::Mul,
     sync::atomic::{AtomicBool, Ordering},
 };
+use itertools::Itertools;
 use parking_lot::RwLock;
 use rand_core::RngCore;
 use std::{collections::BTreeMap, sync::Arc};

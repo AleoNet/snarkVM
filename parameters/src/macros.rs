@@ -17,7 +17,7 @@
 #[macro_export]
 macro_rules! checksum {
     ($bytes: expr) => {
-        hex::encode(snarkvm_algorithms::crh::sha256::sha256($bytes))
+        hex::encode(snarkvm_algorithms::crypto_hash::sha256::sha256($bytes))
     };
 }
 

@@ -69,6 +69,16 @@ impl<E: Environment> Inject for Boolean<E> {
 
         Self(variable.into())
     }
+
+    ///
+    /// Initializes a constant boolean circuit from a primitive boolean value.
+    ///
+    fn constant(value: Self::Primitive) -> Self {
+        match value {
+            true => Self(E::one()),
+            false => Self(E::zero()),
+        }
+    }
 }
 
 impl<E: Environment> Eject for Boolean<E> {

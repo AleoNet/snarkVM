@@ -23,9 +23,7 @@ use core::marker::PhantomData;
 /// Information about the circuit, including the field of definition, the number of
 /// variables, the number of constraints, and the maximum number of non-zero
 /// entries in any of the constraint matrices.
-#[derive(derivative::Derivative)]
-#[derivative(Clone(bound = ""), Copy(bound = ""), PartialEq(bound = ""), Eq(bound = ""))]
-#[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct CircuitInfo<F> {
     /// The total number of variables in the constraint system.
     pub num_variables: usize,

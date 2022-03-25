@@ -14,12 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Block, Ciphertext, InnerPublicVariables, PoSWScheme, ProgramPublicVariables};
-use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, prelude::*};
+use crate::{Block, Ciphertext, InnerPublicVariables, PoSWScheme, ProgramPublicVariables, ValueBalanceCommitment};
+use snarkvm_algorithms::prelude::*;
 use snarkvm_curves::{AffineCurve, PairingEngine, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{Field, PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
-    traits::algorithms::{CRHGadget, EncryptionGadget, PRFGadget, SignatureGadget},
+    traits::algorithms::{CRHGadget, CommitmentGadget, EncryptionGadget, PRFGadget, SignatureGadget},
     FpGadget,
     GroupGadget,
     MaskedCRHGadget,
@@ -120,6 +120,8 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const RECORD_CIPHERTEXT_PREFIX: u32;
     const RECORD_VIEW_KEY_PREFIX: u32;
     const SIGNATURE_PREFIX: u32;
+    const VALUE_COMMITMENT_PREFIX: u32;
+    const VALUE_BALANCE_COMMITMENT_PREFIX: u32;
 
     const ADDRESS_SIZE_IN_BYTES: usize;
     const HEADER_SIZE_IN_BYTES: usize;
@@ -131,6 +133,8 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const RECORD_PAYLOAD_SIZE_IN_BYTES: usize;
     const RECORD_VIEW_KEY_SIZE_IN_BYTES: usize;
     const SIGNATURE_SIZE_IN_BYTES: usize;
+    const VALUE_COMMITMENT_SIZE_IN_BYTES: usize;
+    const VALUE_BALANCE_COMMITMENT_SIZE_IN_BYTES: usize;
 
     const HEADER_TRANSACTIONS_TREE_DEPTH: usize;
     const HEADER_TREE_DEPTH: usize;
@@ -150,11 +154,11 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
 
     /// Inner curve type declarations.
     type InnerCurve: PairingEngine<Fr = Self::InnerScalarField, Fq = Self::InnerBaseField>;
-    type InnerScalarField: PrimeField + PoseidonDefaultParametersField;
-    type InnerBaseField: PrimeField + PoseidonDefaultParametersField;
+    type InnerScalarField: PrimeField;
+    type InnerBaseField: PrimeField;
 
     /// Program curve type declarations.
-    type ProgramAffineCurve: AffineCurve<BaseField = Self::InnerScalarField>;
+    type ProgramAffineCurve: AffineCurve<BaseField = Self::InnerScalarField, ScalarField = Self::ProgramScalarField> + ToConstraintField<Self::InnerScalarField>;
     type ProgramAffineCurveGadget: GroupGadget<Self::ProgramAffineCurve, Self::InnerScalarField>;
     type ProgramProjectiveCurve: ProjectiveCurve<BaseField = Self::InnerScalarField>;
     type ProgramCurveParameters: TwistedEdwardsParameters;
@@ -270,6 +274,12 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type TransitionIDParameters: MerkleParameters<H = Self::TransitionIDCRH>;
     type TransitionID: Bech32Locator<<Self::TransitionIDCRH as CRH>::Output>;
 
+    /// Commitment scheme for value commitments. Invoked only over `Self::InnerScalarField`.
+    type ValueCommitmentScheme: CommitmentScheme<Randomness = Self::ProgramScalarField, Output = Self::ProgramAffineCurve>;
+    type ValueCommitmentGadget: CommitmentGadget<Self::ValueCommitmentScheme, Self::InnerScalarField, OutputGadget = Self::ProgramAffineCurveGadget>;
+    type ValueCommitment: Bech32Object<Self::ProgramAffineCurve>;
+    type ValueBalanceCommitment: Bech32Object<ValueBalanceCommitment<Self>>;
+
     fn account_encryption_scheme() -> &'static Self::AccountEncryptionScheme;
     fn account_signature_scheme() -> &'static Self::AccountSignatureScheme;
     fn block_hash_crh() -> &'static Self::BlockHashCRH;
@@ -282,6 +292,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     fn transactions_root_parameters() -> &'static Self::TransactionsRootParameters;
     fn transaction_id_parameters() -> &'static Self::TransactionIDParameters;
     fn transition_id_parameters() -> &'static Self::TransitionIDParameters;
+    fn value_commitment_scheme() -> &'static Self::ValueCommitmentScheme;
 
     fn inner_circuit_id() -> &'static Self::InnerCircuitID;
     fn inner_proving_key() -> &'static <Self::InnerSNARK as SNARK>::ProvingKey;
@@ -297,7 +308,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     fn function_id(
         verifying_key: &<Self::ProgramSNARK as SNARK>::VerifyingKey,
     ) -> Result<Self::FunctionID> {
-        Ok(Self::function_id_crh().hash_bits(&verifying_key.to_minimal_bits())?.into())
+        Ok(Self::function_id_crh().hash(&verifying_key.to_minimal_bits())?.into())
     }
 
     /// Returns the program SRS for Aleo applications.

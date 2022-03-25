@@ -15,15 +15,12 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    crh::sha256::sha256,
+    crypto_hash::sha256::sha256,
     fft::EvaluationDomain,
     polycommit::{kzg10, PCCommitterKey, PCVerifierKey},
     Prepare,
 };
-use snarkvm_curves::{
-    traits::{PairingCurve, PairingEngine},
-    Group,
-};
+use snarkvm_curves::{PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
 use snarkvm_utilities::{error, serialize::*, FromBytes, ToBytes};
 
@@ -55,11 +52,8 @@ impl<E: PairingEngine> Prepare<PreparedCommitment<E>> for Commitment<E> {
     }
 }
 
-/// `ComitterKey` is used to commit to, and create evaluation proofs for, a given
-/// polynomial.
-#[derive(Derivative)]
-#[derivative(Default(bound = ""), Hash(bound = ""), Clone(bound = ""), Debug(bound = ""))]
-#[derive(CanonicalSerialize, CanonicalDeserialize)]
+/// `CommitterKey` is used to commit to, and create evaluation proofs for, a given polynomial.
+#[derive(Clone, Debug, Default, Hash, CanonicalSerialize, CanonicalDeserialize)]
 pub struct CommitterKey<E: PairingEngine> {
     /// The key used to commit to polynomials.
     pub powers_of_beta_g: Vec<E::G1Affine>,
@@ -367,8 +361,7 @@ impl<E: PairingEngine> PCCommitterKey for CommitterKey<E> {
 }
 
 /// `VerifierKey` is used to check evaluation proofs for a given commitment.
-#[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
-#[derivative(Default(bound = ""), Clone(bound = ""), Debug(bound = ""), PartialEq(bound = ""), Eq(bound = ""))]
+#[derive(Clone, Debug, Default, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct VerifierKey<E: PairingEngine> {
     /// The verification key for the underlying KZG10 scheme.
     pub vk: kzg10::VerifierKey<E>,
@@ -444,8 +437,7 @@ impl<E: PairingEngine> ToConstraintField<E::Fq> for VerifierKey<E> {
 }
 
 /// `PreparedVerifierKey` is used to check evaluation proofs for a given commitment.
-#[derive(Derivative)]
-#[derivative(Clone(bound = ""), Debug(bound = ""))]
+#[derive(Clone, Debug)]
 pub struct PreparedVerifierKey<E: PairingEngine> {
     /// The verification key for the underlying KZG10 scheme.
     pub prepared_vk: kzg10::PreparedVerifierKey<E>,
@@ -485,13 +477,5 @@ impl<E: PairingEngine> Prepare<PreparedVerifierKey<E>> for VerifierKey<E> {
 }
 
 /// Evaluation proof at a query set.
-#[derive(Derivative)]
-#[derivative(
-    Default(bound = ""),
-    Hash(bound = ""),
-    Clone(bound = ""),
-    Debug(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct BatchProof<E: PairingEngine>(pub(crate) Vec<kzg10::Proof<E>>);

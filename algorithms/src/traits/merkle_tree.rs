@@ -19,7 +19,7 @@ use snarkvm_utilities::{to_bytes_le, ToBytes};
 
 use std::fmt::Debug;
 
-pub trait MerkleParameters: Clone + Debug + Send + Sync {
+pub trait MerkleParameters: Clone + Debug + PartialEq + Eq + Send + Sync {
     type H: CRH;
 
     const DEPTH: usize;
@@ -41,7 +41,7 @@ pub trait MerkleParameters: Clone + Debug + Send + Sync {
 
     /// Returns the hash of a given leaf.
     fn hash_leaf<L: ToBytes>(&self, leaf: &L) -> Result<<Self::H as CRH>::Output, MerkleError> {
-        Ok(self.crh().hash(&leaf.to_bytes_le()?)?)
+        Ok(self.crh().hash_bytes(&leaf.to_bytes_le()?)?)
     }
 
     /// Returns the output hash, given a left and right hash value.
@@ -50,7 +50,7 @@ pub trait MerkleParameters: Clone + Debug + Send + Sync {
         left: &<Self::H as CRH>::Output,
         right: &<Self::H as CRH>::Output,
     ) -> Result<<Self::H as CRH>::Output, MerkleError> {
-        Ok(self.crh().hash(&to_bytes_le![left, right]?)?)
+        Ok(self.crh().hash_bytes(&to_bytes_le![left, right]?)?)
     }
 
     fn hash_empty(&self) -> Result<<Self::H as CRH>::Output, MerkleError> {
@@ -60,7 +60,7 @@ pub trait MerkleParameters: Clone + Debug + Send + Sync {
         //  64 bytes was chosen as a temporary fix, to at least ensure the `TwoToOneCRH` preimage size fits,
         //  however this temporary fix does not technically address the issue in a meaningful sense.
         let empty_buffer = &[0u8; 64];
-        Ok(self.crh().hash(&*empty_buffer)?)
+        Ok(self.crh().hash_bytes(&*empty_buffer)?)
     }
 }
 

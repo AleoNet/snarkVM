@@ -66,6 +66,16 @@ pub trait Inject {
     fn new(mode: Mode, value: Self::Primitive) -> Self;
 
     ///
+    /// Initializes a constant circuit of the given primitive value.
+    ///
+    fn constant(value: Self::Primitive) -> Self
+    where
+        Self: Sized,
+    {
+        Self::new(Mode::Constant, value)
+    }
+
+    ///
     /// Initializes a blank default of the circuit for the given mode.
     /// This operation is used commonly to derive a proving and verifying key.
     ///
@@ -181,11 +191,11 @@ pub trait MSB {
 pub trait FromBits {
     type Boolean: BooleanTrait;
 
-    fn from_bits_le(mode: Mode, bits_le: &[Self::Boolean]) -> Self
+    fn from_bits_le(bits_le: &[Self::Boolean]) -> Self
     where
         Self: Sized;
 
-    fn from_bits_be(mode: Mode, bits_be: &[Self::Boolean]) -> Self
+    fn from_bits_be(bits_be: &[Self::Boolean]) -> Self
     where
         Self: Sized;
 }

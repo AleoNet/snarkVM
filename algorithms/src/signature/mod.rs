@@ -16,6 +16,3 @@
 
 pub mod aleo;
 pub use aleo::*;
-
-#[cfg(test)]
-mod tests;
