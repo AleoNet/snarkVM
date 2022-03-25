@@ -35,7 +35,10 @@ macro_rules! witness {
             // Execute the code block, returning the primitive to be injected.
             crate::rename_selfs!($block)
         })
-    }}
+    }};
+    (| $($circuit:ident),* | $logic:expr) => {{
+        witness!(| $($circuit),* | { $logic })
+    }};
 }
 
 #[cfg(test)]

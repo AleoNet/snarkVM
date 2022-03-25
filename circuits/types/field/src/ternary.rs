@@ -38,9 +38,9 @@ impl<E: Environment> Ternary for Field<E> {
         // Variables
         else {
             // Initialize the witness.
-            let witness = Field::new(Mode::Private, match condition.eject_value() {
-                true => first.eject_value(),
-                false => second.eject_value(),
+            let witness = witness!(|condition, first, second| match condition {
+                true => first,
+                false => second,
             });
 
             //

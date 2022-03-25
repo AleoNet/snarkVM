@@ -429,6 +429,22 @@ impl<F: PrimeField> Mul<&F> for LinearCombination<F> {
     }
 }
 
+impl<F: PrimeField> Mul<F> for &LinearCombination<F> {
+    type Output = LinearCombination<F>;
+
+    fn mul(self, coefficient: F) -> Self::Output {
+        self * &coefficient
+    }
+}
+
+impl<F: PrimeField> Mul<&F> for &LinearCombination<F> {
+    type Output = LinearCombination<F>;
+
+    fn mul(self, coefficient: &F) -> Self::Output {
+        self.clone() * coefficient
+    }
+}
+
 impl<F: PrimeField> fmt::Debug for LinearCombination<F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         let mut output = format!("Constant({})", self.constant);

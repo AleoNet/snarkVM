@@ -41,7 +41,7 @@ impl<E: Environment> Equal<Self> for Field<E> {
             (true, true) => Boolean::new(Mode::Constant, self.eject_value() != other.eject_value()),
             _ => {
                 // Compute a boolean that is `true` if `this` and `that` are not equivalent.
-                let is_neq: Boolean<E> = witness!(|self, other| { self != other });
+                let is_neq: Boolean<E> = witness!(|self, other| self != other);
 
                 // Assign the expected multiplier.
                 let multiplier: Field<E> = witness!(|self, other| {

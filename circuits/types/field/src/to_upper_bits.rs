@@ -42,14 +42,8 @@ impl<E: Environment> ToUpperBits for Field<E> {
             ))
         }
 
-        let mode = match self.is_constant() {
-            true => Mode::Constant,
-            false => Mode::Private,
-        };
-
         // Construct a vector of `Boolean`s comprising the bits of the field value.
-        let bits =
-            self.eject_value().to_bits_be().iter().take(k).map(|bit| Boolean::new(mode, *bit)).collect::<Vec<_>>();
+        let bits: Vec<Boolean<E>> = witness!(|self| self.to_bits_be().into_iter().take(k).collect());
 
         // Reconstruct the bits as a linear combination representing the original field value.
         let mut accumulator = Field::zero();
