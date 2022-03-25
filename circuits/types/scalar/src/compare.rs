@@ -15,29 +15,44 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 impl<E: Environment> Compare<Scalar<E>> for Scalar<E> {
     type Boolean = Boolean<E>;
 
     /// Returns `true` if `self` is less than `other`.
     fn is_less_than(&self, other: &Self) -> Self::Boolean {
-        let mut is_less_than = Boolean::constant(false);
-        let mut are_previous_bits_equal = Boolean::constant(true);
-
-        // Initialize an iterator over `self` and `other` from MSB to LSB.
-        let bits_be = self.bits_le.iter().rev().zip_eq(other.bits_le.iter().rev());
-
-        for (index, (self_bit, other_bit)) in bits_be.enumerate() {
-            // Determine if `self` is less than `other` up to the `index`-th bit.
-            is_less_than |= &are_previous_bits_equal & (!self_bit & other_bit);
-
-            // Skip the update to the LSB, as this boolean is subsequently discarded.
-            if index != self.bits_le.len() - 1 {
-                are_previous_bits_equal &= self_bit.is_equal(other_bit);
+        let scalar_modulus = match E::ScalarField::modulus().to_bytes_le() {
+            Ok(modulus_bytes) => match E::BaseField::from_bytes_le(&modulus_bytes) {
+                Ok(modulus) => modulus,
+                Err(error) => E::halt(format!("Failed to load the scalar modulus as a constant: {error}")),
+            },
+            Err(error) => E::halt(format!("Failed to retrieve the scalar modulus as bytes: {error}")),
+        };
+        if scalar_modulus.to_repr() <= E::BaseField::modulus_minus_one_div_two() {
+            if self.is_constant() && other.is_constant() {
+                Boolean::new(Mode::Constant, self.eject_value() < other.eject_value())
+            } else {
+                (self.to_field() - other.to_field()).double().to_bits_be().pop().unwrap()
             }
-        }
+        } else {
+            let mut is_less_than = Boolean::constant(false);
+            let mut are_previous_bits_equal = Boolean::constant(true);
 
-        is_less_than
+            // Initialize an iterator over `self` and `other` from MSB to LSB.
+            let bits_be = self.bits_le.iter().rev().zip_eq(other.bits_le.iter().rev());
+
+            for (index, (self_bit, other_bit)) in bits_be.enumerate() {
+                // Determine if `self` is less than `other` up to the `index`-th bit.
+                is_less_than |= &are_previous_bits_equal & (!self_bit & other_bit);
+
+                // Skip the update to the LSB, as this boolean is subsequently discarded.
+                if index != self.bits_le.len() - 1 {
+                    are_previous_bits_equal &= self_bit.is_equal(other_bit);
+                }
+            }
+            is_less_than
+        }
     }
 
     /// Returns `true` if `self` is greater than `other`.
@@ -93,37 +108,36 @@ mod tests {
 
     #[test]
     fn test_constant_is_less_than_constant() {
-        check_is_less_than(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
+        check_is_less_than(Mode::Constant, Mode::Constant, 1, 0, 0, 0);
     }
 
-    // TODO (howardwu): These variate in num_constraints.
-    // #[test]
-    // fn test_constant_is_less_than_public() {
-    //     check_is_less_than(Mode::Constant, Mode::Public, 0, 473, 0, 473);
-    // }
-    //
-    // #[test]
-    // fn test_constant_is_less_than_private() {
-    //     check_is_less_than(Mode::Constant, Mode::Private, 0, 0, 503, 503);
-    // }
+    #[test]
+    fn test_constant_is_less_than_public() {
+        check_is_less_than(Mode::Constant, Mode::Public, 0, 0, 253, 254);
+    }
+
+    #[test]
+    fn test_constant_is_less_than_private() {
+        check_is_less_than(Mode::Constant, Mode::Private, 0, 0, 253, 254);
+    }
 
     #[test]
     fn test_public_is_less_than_public() {
-        check_is_less_than(Mode::Public, Mode::Public, 0, 0, 1250, 1250);
+        check_is_less_than(Mode::Public, Mode::Public, 0, 0, 253, 254);
     }
 
     #[test]
     fn test_public_is_less_than_private() {
-        check_is_less_than(Mode::Public, Mode::Private, 0, 0, 1250, 1250);
+        check_is_less_than(Mode::Public, Mode::Private, 0, 0, 253, 254);
     }
 
     #[test]
     fn test_private_is_less_than_public() {
-        check_is_less_than(Mode::Private, Mode::Public, 0, 0, 1250, 1250);
+        check_is_less_than(Mode::Private, Mode::Public, 0, 0, 253, 254);
     }
 
     #[test]
     fn test_private_is_less_than_private() {
-        check_is_less_than(Mode::Private, Mode::Private, 0, 0, 1250, 1250);
+        check_is_less_than(Mode::Private, Mode::Private, 0, 0, 253, 254);
     }
 }
