@@ -219,14 +219,13 @@ impl Network for Testnet1 {
     type InnerCircuitIDCRH = BHPCRH<EdwardsBW6, 59, 63>;
     type InnerCircuitID = AleoLocator<<Self::InnerCircuitIDCRH as CRH>::Output, { Self::INNER_CIRCUIT_ID_PREFIX }>;
 
-    // TODO (raychu86): Adjust the windows. 
     type InputCircuitIDCRH = BHPCRH<EdwardsBW6, 31, 63>;
     type InputCircuitID = AleoLocator<<Self::InputCircuitIDCRH as CRH>::Output, { Self::INPUT_CIRCUIT_ID_PREFIX }>;
 
     type OutputCircuitIDCRH = BHPCRH<EdwardsBW6, 27, 63>;
     type OutputCircuitID = AleoLocator<<Self::OutputCircuitIDCRH as CRH>::Output, { Self::OUTPUT_CIRCUIT_ID_PREFIX }>;
 
-    type ValueCheckCircuitIDCRH = BHPCRH<EdwardsBW6, 26, 63>;
+    type ValueCheckCircuitIDCRH = BHPCRH<EdwardsBW6, 27, 63>;
     type ValueCheckCircuitID = AleoLocator<<Self::ValueCheckCircuitIDCRH as CRH>::Output, { Self::VALUE_CHECK_CIRCUIT_ID_PREFIX }>;
 
     type LedgerRootCRH = BHPCRH<Self::ProgramProjectiveCurve, 3, 57>;

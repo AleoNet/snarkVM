@@ -174,13 +174,13 @@ impl Network for Testnet2 {
     type InnerSNARK = Groth16<Self::InnerCurve, InnerPublicVariables<Testnet2>>;
     type InnerProof = AleoObject<<Self::InnerSNARK as SNARK>::Proof, { Self::INNER_PROOF_PREFIX }, { Self::INNER_PROOF_SIZE_IN_BYTES }>;
 
-    type InputSNARK = MarlinSNARK<Self::InnerScalarField, Self::InnerBaseField, SonicKZG10<Self::InnerCurve>, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::InnerBaseField, PoseidonSponge<Self::InnerBaseField, 6, 1>>, MarlinHidingMode, InputPublicVariables<Self>>;
+    type InputSNARK = Groth16<Self::InnerCurve, InputPublicVariables<Self>>;
     type InputProof = AleoObject<<Self::InputSNARK as SNARK>::Proof, { Self::INPUT_PROOF_PREFIX }, { Self::INPUT_PROOF_SIZE_IN_BYTES }>;
 
-    type OutputSNARK = MarlinSNARK<Self::InnerScalarField, Self::InnerBaseField, SonicKZG10<Self::InnerCurve>, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::InnerBaseField, PoseidonSponge<Self::InnerBaseField, 6, 1>>, MarlinHidingMode, OutputPublicVariables<Self>>;
+    type OutputSNARK = Groth16<Self::InnerCurve, OutputPublicVariables<Self>>;
     type OutputProof = AleoObject<<Self::OutputSNARK as SNARK>::Proof, { Self::OUTPUT_PROOF_PREFIX }, { Self::OUTPUT_PROOF_SIZE_IN_BYTES }>;
 
-    type ValueCheckSNARK = MarlinSNARK<Self::InnerScalarField, Self::InnerBaseField, SonicKZG10<Self::InnerCurve>, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::InnerBaseField, PoseidonSponge<Self::InnerBaseField, 6, 1>>, MarlinHidingMode, ValueCheckPublicVariables<Self>>;
+    type ValueCheckSNARK = Groth16<Self::InnerCurve, ValueCheckPublicVariables<Self>>;
     type ValueCheckProof = AleoObject<<Self::ValueCheckSNARK as SNARK>::Proof, { Self::VALUE_CHECK_PROOF_PREFIX }, { Self::VALUE_CHECK_PROOF_SIZE_IN_BYTES }>;
 
     type ProgramSNARK = MarlinSNARK<Self::InnerScalarField, Self::InnerBaseField, SonicKZG10<Self::InnerCurve>, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::InnerBaseField, PoseidonSponge<Self::InnerBaseField, 6, 1>>, MarlinHidingMode, ProgramPublicVariables<Self>>;
@@ -227,14 +227,13 @@ impl Network for Testnet2 {
     type InnerCircuitIDCRH = BHPCRH<EdwardsBW6, 59, 63>;
     type InnerCircuitID = AleoLocator<<Self::InnerCircuitIDCRH as CRH>::Output, { Self::INNER_CIRCUIT_ID_PREFIX }>;
 
-    // TODO (raychu86): Adjust the windows. 
     type InputCircuitIDCRH = BHPCRH<EdwardsBW6, 31, 63>;
     type InputCircuitID = AleoLocator<<Self::InputCircuitIDCRH as CRH>::Output, { Self::INPUT_CIRCUIT_ID_PREFIX }>;
 
     type OutputCircuitIDCRH = BHPCRH<EdwardsBW6, 27, 63>;
     type OutputCircuitID = AleoLocator<<Self::OutputCircuitIDCRH as CRH>::Output, { Self::OUTPUT_CIRCUIT_ID_PREFIX }>;
 
-    type ValueCheckCircuitIDCRH = BHPCRH<EdwardsBW6, 26, 63>;
+    type ValueCheckCircuitIDCRH = BHPCRH<EdwardsBW6, 27, 63>;
     type ValueCheckCircuitID = AleoLocator<<Self::ValueCheckCircuitIDCRH as CRH>::Output, { Self::VALUE_CHECK_CIRCUIT_ID_PREFIX }>;
 
     type LedgerRootCRH = BHPCRH<Self::ProgramProjectiveCurve, 3, 57>;

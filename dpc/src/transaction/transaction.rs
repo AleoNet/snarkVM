@@ -129,7 +129,7 @@ impl<N: Network> Transaction<N> {
         }
 
         // Returns `false` if the number of serial numbers in the transaction is incorrect.
-        if self.serial_numbers().count() != num_transitions * N::NUM_INPUT_RECORDS {
+        if self.serial_numbers().count() > num_transitions * N::MAX_NUM_INPUT_RECORDS {
             eprintln!("Transaction contains incorrect number of serial numbers");
             return false;
         }
@@ -141,7 +141,7 @@ impl<N: Network> Transaction<N> {
         }
 
         // Returns `false` if the number of commitments in the transaction is incorrect.
-        if self.commitments().count() != num_transitions * N::NUM_OUTPUT_RECORDS {
+        if self.commitments().count() > num_transitions * N::MAX_NUM_OUTPUT_RECORDS {
             eprintln!("Transaction contains incorrect number of commitments");
             return false;
         }
@@ -153,7 +153,7 @@ impl<N: Network> Transaction<N> {
         }
 
         // Returns `false` if the number of record ciphertexts in the transaction is incorrect.
-        if self.ciphertexts().count() != num_transitions * N::NUM_OUTPUT_RECORDS {
+        if self.ciphertexts().count() > num_transitions * N::MAX_NUM_OUTPUT_RECORDS {
             eprintln!("Transaction contains incorrect number of record ciphertexts");
             return false;
         }
@@ -492,7 +492,7 @@ mod tests {
             Transaction::new_coinbase(account.address(), AleoAmount(1234), true, rng).unwrap();
 
         let public_records = transaction.to_records().collect::<Vec<_>>();
-        assert_eq!(public_records.len(), 2);
+        assert_eq!(public_records.len(), 1);
         // TODO (howardwu): Reenable this after fixing how payloads are handled.
         // assert_eq!(public_records.len(), 1); // Excludes dummy records upon decryption.
 
@@ -517,7 +517,7 @@ mod tests {
         // Serialize
         let expected_string = expected_transaction.to_string();
         let candidate_string = serde_json::to_string(&expected_transaction).unwrap();
-        assert_eq!(2927, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(2887, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(expected_string, candidate_string);
 
         // Deserialize
@@ -537,7 +537,7 @@ mod tests {
         // Serialize
         let expected_bytes = expected_transaction.to_bytes_le().unwrap();
         let candidate_bytes = bincode::serialize(&expected_transaction).unwrap();
-        assert_eq!(1358, expected_bytes.len(), "Update me if serialization has changed");
+        assert_eq!(1368, expected_bytes.len(), "Update me if serialization has changed");
         // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
         assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
 
