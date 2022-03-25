@@ -59,7 +59,7 @@ impl<E: Environment> Inject for Boolean<E> {
 
         // Ensure (1 - a) * a = 0
         // `a` must be either 0 or 1.
-        E::enforce(|| (E::one() - variable, variable, E::zero()));
+        E::enforce(|| (E::one() - &variable, &variable, E::zero()));
 
         Self(variable.into())
     }
@@ -208,7 +208,7 @@ mod tests {
 
             // Ensure `a` is either 0 or 1:
             // (1 - a) * a = 0
-            Circuit::enforce(|| (Circuit::one() - candidate, candidate, Circuit::zero()));
+            Circuit::enforce(|| (Circuit::one() - &candidate, candidate, Circuit::zero()));
             assert_eq!(0, Circuit::num_constraints());
 
             Circuit::reset();
@@ -218,7 +218,7 @@ mod tests {
 
             // Ensure `a` is either 0 or 1:
             // (1 - a) * a = 0
-            Circuit::enforce(|| (Circuit::one() - candidate, candidate, Circuit::zero()));
+            Circuit::enforce(|| (Circuit::one() - &candidate, candidate, Circuit::zero()));
             assert!(!Circuit::is_satisfied());
 
             Circuit::reset();
@@ -228,7 +228,7 @@ mod tests {
 
             // Ensure `a` is either 0 or 1:
             // (1 - a) * a = 0
-            Circuit::enforce(|| (Circuit::one() - candidate, candidate, Circuit::zero()));
+            Circuit::enforce(|| (Circuit::one() - &candidate, candidate, Circuit::zero()));
             assert!(!Circuit::is_satisfied());
 
             Circuit::reset();

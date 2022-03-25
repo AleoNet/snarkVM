@@ -22,14 +22,15 @@ use core::{
     fmt,
     ops::{Add, Sub},
 };
+use std::rc::Rc;
 
 pub type Index = u64;
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Variable<F: PrimeField> {
-    Constant(F),
-    Public(Index, F),
-    Private(Index, F),
+    Constant(Rc<F>),
+    Public(Index, Rc<F>),
+    Private(Index, Rc<F>),
 }
 
 impl<F: PrimeField> Variable<F> {
@@ -37,14 +38,14 @@ impl<F: PrimeField> Variable<F> {
     /// Returns the `zero` constant.
     ///
     pub fn zero() -> Self {
-        Self::Constant(F::zero())
+        Self::Constant(Rc::new(F::zero()))
     }
 
     ///
     /// Returns the `one` constant.
     ///
     pub fn one() -> Self {
-        Self::Constant(F::one())
+        Self::Constant(Rc::new(F::one()))
     }
 
     ///
@@ -95,9 +96,9 @@ impl<F: PrimeField> Variable<F> {
     ///
     pub fn value(&self) -> F {
         match self {
-            Self::Constant(value) => *value,
-            Self::Public(_, value) => *value,
-            Self::Private(_, value) => *value,
+            Self::Constant(value) => **value,
+            Self::Public(_, value) => **value,
+            Self::Private(_, value) => **value,
         }
     }
 }
@@ -156,8 +157,8 @@ impl<F: PrimeField> Add<&Variable<F>> for &Variable<F> {
 
     fn add(self, other: &Variable<F>) -> Self::Output {
         match (self, other) {
-            (Variable::Constant(a), Variable::Constant(b)) => Variable::Constant(*a + b).into(),
-            (first, second) => LinearCombination::from([*first, *second]),
+            (Variable::Constant(a), Variable::Constant(b)) => Variable::Constant(Rc::new(**a + **b)).into(),
+            (first, second) => LinearCombination::from([first.clone(), second.clone()]),
         }
     }
 }
@@ -229,7 +230,7 @@ impl<F: PrimeField> Sub<&Variable<F>> for &Variable<F> {
 
     fn sub(self, other: &Variable<F>) -> Self::Output {
         match (self, other) {
-            (Variable::Constant(a), Variable::Constant(b)) => Variable::Constant(*a - b).into(),
+            (Variable::Constant(a), Variable::Constant(b)) => Variable::Constant(Rc::new(**a - **b)).into(),
             (first, second) => LinearCombination::from(first) - second,
         }
     }
@@ -283,5 +284,15 @@ impl<F: PrimeField> fmt::Debug for Variable<F> {
 impl<F: PrimeField> fmt::Display for Variable<F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.value())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::*;
+
+    #[test]
+    fn test_size() {
+        assert_eq!(24, std::mem::size_of::<Variable<<Circuit as Environment>::BaseField>>());
     }
 }

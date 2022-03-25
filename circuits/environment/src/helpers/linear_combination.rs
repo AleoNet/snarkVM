@@ -144,7 +144,15 @@ impl<F: PrimeField> From<Variable<F>> for LinearCombination<F> {
 
 impl<F: PrimeField> From<&Variable<F>> for LinearCombination<F> {
     fn from(variable: &Variable<F>) -> Self {
-        Self::from(&[*variable])
+        // let mut output = Self::zero();
+        // match variable.is_constant() {
+        //     true => output.constant += variable.value(),
+        //     false => output.terms = IndexMap::from_iter([(variable.clone(), F::one())].into_iter())
+        // }
+        // // Increment the value of the linear combination by the variable.
+        // output.value += variable.value();
+        // output
+        Self::from(&[variable.clone()])
     }
 }
 
@@ -179,7 +187,7 @@ impl<F: PrimeField> From<&[Variable<F>]> for LinearCombination<F> {
             match variable.is_constant() {
                 true => output.constant += variable.value(),
                 false => {
-                    match output.terms.entry(*variable) {
+                    match output.terms.entry(variable.clone()) {
                         Entry::Occupied(mut entry) => {
                             // Increment the existing coefficient by 1.
                             *entry.get_mut() += F::one();
@@ -318,7 +326,7 @@ impl<F: PrimeField> AddAssign<&LinearCombination<F>> for LinearCombination<F> {
                 match variable.is_constant() {
                     true => panic!("Malformed linear combination found"),
                     false => {
-                        match self.terms.entry(*variable) {
+                        match self.terms.entry(variable.clone()) {
                             Entry::Occupied(mut entry) => {
                                 // Add the coefficient to the existing coefficient for this term.
                                 *entry.get_mut() += *coefficient;
@@ -423,11 +431,11 @@ impl<F: PrimeField> Mul<&F> for LinearCombination<F> {
 
 impl<F: PrimeField> fmt::Debug for LinearCombination<F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
-        let mut output = format!("{:?}", Variable::Constant(self.constant));
+        let mut output = format!("Constant({})", self.constant);
 
         // Sort the terms.
         let mut terms = self.terms.clone();
-        terms.par_sort_keys();
+        terms.sort_keys();
 
         for (variable, coefficient) in &terms {
             output += &match (variable.mode(), coefficient.is_one()) {
@@ -450,6 +458,8 @@ impl<F: PrimeField> fmt::Display for LinearCombination<F> {
 mod tests {
     use super::*;
     use snarkvm_fields::{One as O, Zero as Z};
+
+    use std::rc::Rc;
 
     #[test]
     fn test_zero() {
@@ -505,7 +515,7 @@ mod tests {
         let two = one + one;
         let four = two + two;
 
-        let start = LinearCombination::from(Variable::Public(1, one));
+        let start = LinearCombination::from(Variable::Public(1, Rc::new(one)));
         assert!(!start.is_constant());
         assert_eq!(one, start.value());
 
@@ -523,8 +533,8 @@ mod tests {
 
     #[test]
     fn test_debug() {
-        let one_public = Circuit::new_variable(Mode::Public, <Circuit as Environment>::BaseField::one());
-        let one_private = Circuit::new_variable(Mode::Private, <Circuit as Environment>::BaseField::one());
+        let one_public = &Circuit::new_variable(Mode::Public, <Circuit as Environment>::BaseField::one());
+        let one_private = &Circuit::new_variable(Mode::Private, <Circuit as Environment>::BaseField::one());
         {
             let expected = "Constant(1) + Public(1, 1) + Private(0, 1)";
 
@@ -590,8 +600,8 @@ mod tests {
     #[rustfmt::skip]
     #[test]
     fn test_num_additions() {
-        let one_public = Circuit::new_variable(Mode::Public, <Circuit as Environment>::BaseField::one());
-        let one_private = Circuit::new_variable(Mode::Private, <Circuit as Environment>::BaseField::one());
+        let one_public = &Circuit::new_variable(Mode::Public, <Circuit as Environment>::BaseField::one());
+        let one_private = &Circuit::new_variable(Mode::Private, <Circuit as Environment>::BaseField::one());
         let two_private = one_private + one_private;
 
         let candidate = LinearCombination::<<Circuit as Environment>::BaseField>::zero();
