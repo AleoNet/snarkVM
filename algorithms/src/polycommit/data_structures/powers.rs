@@ -211,10 +211,10 @@ impl<E: PairingEngine> PowersOfG<E> {
         false
     }
 
-    /// Returns an element at `index`.
-    /// NOTE: `std::ops::Index` was not used here as the trait requires
-    /// that we return a reference. We can not return a reference to
-    /// something that does not exist when this function is called.
+    /// Returns the power of beta times G specified by `which_power`.
+    // NOTE: `std::ops::Index` was not used here as the trait requires
+    // that we return a reference. We can not return a reference to
+    // something that does not exist when this function is called.
     pub fn power_of_beta_g(&mut self, which_power: usize) -> E::G1Affine {
         let index_start = self.get_starting_index(which_power);
 
