@@ -79,7 +79,75 @@ mod tests {
 
     const ITERATIONS: usize = 100;
 
-    fn check_is_less_than(
+    // TODO: Consider exposing test utilities in integers to all circuit types.
+
+    #[rustfmt::skip]
+    fn check_compare(
+        name: &str,
+        first: <Circuit as Environment>::ScalarField,
+        second: <Circuit as Environment>::ScalarField,
+        mode_a: Mode,
+        mode_b: Mode,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) {
+        // Check `is_less_than`.
+        let expected = first < second;
+        let case = format!("({} < {})", first, second);
+
+        let a = Scalar::<Circuit>::new(mode_a, first);
+        let b = Scalar::<Circuit>::new(mode_b, second);
+        Circuit::scope(name, || {
+            let candidate = a.is_less_than(&b);
+            assert_eq!(expected, candidate.eject_value(), "{} != {} := {}", expected, candidate.eject_value(), case);
+            assert_scope!(case, num_constants, num_public, num_private, num_constraints);
+        });
+        Circuit::reset();
+
+        // Check `is_less_than_or_equal`
+        let expected = first <= second;
+        let case = format!("({} <= {})", first, second);
+
+        let a = Scalar::<Circuit>::new(mode_a, first);
+        let b = Scalar::<Circuit>::new(mode_b, second);
+        Circuit::scope(name, || {
+            let candidate = a.is_less_than_or_equal(&b);
+            assert_eq!(expected, candidate.eject_value(), "{} != {} := {}", expected, candidate.eject_value(), case);
+            assert_scope!(case, num_constants, num_public, num_private, num_constraints);
+        });
+        Circuit::reset();
+
+        // Check `is_greater_than`
+        let expected = first > second;
+        let case = format!("({} > {})", first, second);
+
+        let a = Scalar::<Circuit>::new(mode_a, first);
+        let b = Scalar::<Circuit>::new(mode_b, second);
+        Circuit::scope(name, || {
+            let candidate = a.is_greater_than(&b);
+            assert_eq!(expected, candidate.eject_value(), "{} != {} := {}", expected, candidate.eject_value(), case);
+            assert_scope!(case, num_constants, num_public, num_private, num_constraints);
+        });
+        Circuit::reset();
+
+        // Check `is_greater_than_or_equal`
+        let expected = first >= second;
+        let case = format!("({} >= {})", first, second);
+
+        let a = Scalar::<Circuit>::new(mode_a, first);
+        let b = Scalar::<Circuit>::new(mode_b, second);
+        Circuit::scope(name, || {
+            let candidate = a.is_greater_than_or_equal(&b);
+            assert_eq!(expected, candidate.eject_value(), "{} != {} := {}", expected, candidate.eject_value(), case);
+            assert_scope!(case, num_constants, num_public, num_private, num_constraints);
+        });
+        Circuit::reset();
+    }
+
+    #[rustfmt::skip]
+    fn run_test(
         mode_a: Mode,
         mode_b: Mode,
         num_constants: usize,
@@ -88,56 +156,56 @@ mod tests {
         num_constraints: usize,
     ) {
         for i in 0..ITERATIONS {
-            // Sample a random element `a`.
-            let expected_a: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
-            let candidate_a = Scalar::<Circuit>::new(mode_a, expected_a);
+            let first: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
+            let second: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
 
-            // Sample a random element `b`.
-            let expected_b: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
-            let candidate_b = Scalar::<Circuit>::new(mode_b, expected_b);
-
-            // Perform the less than comparison.
-            Circuit::scope(&format!("{} {} {}", mode_a, mode_b, i), || {
-                let candidate = candidate_a.is_less_than(&candidate_b);
-                assert_eq!(expected_a < expected_b, candidate.eject_value());
-                assert_scope!(num_constants, num_public, num_private, num_constraints);
-            });
-            Circuit::reset();
+            let name = format!("Compare: {}, {}, {}", mode_a, mode_b, i);
+            check_compare(&name, first, second, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
         }
     }
 
     #[test]
-    fn test_constant_is_less_than_constant() {
-        check_is_less_than(Mode::Constant, Mode::Constant, 1, 0, 0, 0);
+    fn test_constant_compare_with_constant() {
+        run_test(Mode::Constant, Mode::Constant, 1, 0, 0, 0);
     }
 
     #[test]
-    fn test_constant_is_less_than_public() {
-        check_is_less_than(Mode::Constant, Mode::Public, 0, 0, 253, 254);
+    fn test_constant_compare_with_public() {
+        run_test(Mode::Constant, Mode::Public, 0, 0, 253, 254);
     }
 
     #[test]
-    fn test_constant_is_less_than_private() {
-        check_is_less_than(Mode::Constant, Mode::Private, 0, 0, 253, 254);
+    fn test_constant_compare_with_private() {
+        run_test(Mode::Constant, Mode::Private, 0, 0, 253, 254);
     }
 
     #[test]
-    fn test_public_is_less_than_public() {
-        check_is_less_than(Mode::Public, Mode::Public, 0, 0, 253, 254);
+    fn test_public_compare_with_constant() {
+        run_test(Mode::Public, Mode::Constant, 0, 0, 253, 254);
     }
 
     #[test]
-    fn test_public_is_less_than_private() {
-        check_is_less_than(Mode::Public, Mode::Private, 0, 0, 253, 254);
+    fn test_private_compare_with_constant() {
+        run_test(Mode::Private, Mode::Constant, 0, 0, 253, 254);
     }
 
     #[test]
-    fn test_private_is_less_than_public() {
-        check_is_less_than(Mode::Private, Mode::Public, 0, 0, 253, 254);
+    fn test_public_compare_with_public() {
+        run_test(Mode::Public, Mode::Public, 0, 0, 253, 254);
     }
 
     #[test]
-    fn test_private_is_less_than_private() {
-        check_is_less_than(Mode::Private, Mode::Private, 0, 0, 253, 254);
+    fn test_public_compare_with_private() {
+        run_test(Mode::Public, Mode::Private, 0, 0, 253, 254);
+    }
+
+    #[test]
+    fn test_private_compare_with_public() {
+        run_test(Mode::Private, Mode::Public, 0, 0, 253, 254);
+    }
+
+    #[test]
+    fn test_private_compare_with_private() {
+        run_test(Mode::Private, Mode::Private, 0, 0, 253, 254);
     }
 }
