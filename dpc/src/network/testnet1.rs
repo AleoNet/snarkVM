@@ -137,10 +137,9 @@ impl Network for Testnet1 {
     const VALUE_COMMITMENT_SIZE_IN_BYTES: usize = 64;
     const VALUE_BALANCE_COMMITMENT_SIZE_IN_BYTES: usize = 96;
 
-    // TODO (raychu86): Update to the correct sizes.
-    const INPUT_PROOF_SIZE_IN_BYTES: usize = 100;
-    const OUTPUT_PROOF_SIZE_IN_BYTES: usize = 100;
-    const VALUE_CHECK_PROOF_SIZE_IN_BYTES: usize = 100;
+    const INPUT_PROOF_SIZE_IN_BYTES: usize = 193;
+    const OUTPUT_PROOF_SIZE_IN_BYTES: usize = 193;
+    const VALUE_CHECK_PROOF_SIZE_IN_BYTES: usize = 193;
 
     const HEADER_TRANSACTIONS_TREE_DEPTH: usize = 15;
     const HEADER_TREE_DEPTH: usize = 2;

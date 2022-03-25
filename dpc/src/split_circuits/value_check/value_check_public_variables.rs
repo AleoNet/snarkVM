@@ -52,8 +52,10 @@ impl<N: Network> ToConstraintField<N::InnerScalarField> for ValueCheckPublicVari
     fn to_field_elements(&self) -> Result<Vec<N::InnerScalarField>, ConstraintFieldError> {
         let mut v = Vec::new();
 
-        v.extend_from_slice(&self.value_balance.to_bytes_le()?.to_field_elements()?);
         v.extend_from_slice(&self.value_balance_commitment().to_field_elements()?);
+        // TODO (raychu86): Evaluate safety of allocating the absolute value of the value balance. Should be
+        //  safe due to the consensus enforcements of value balances.
+        v.extend_from_slice(&(self.value_balance.0.abs() as u64).to_bytes_le()?.to_field_elements()?);
 
         Ok(v)
     }

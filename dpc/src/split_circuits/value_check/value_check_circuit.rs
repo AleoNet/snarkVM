@@ -103,8 +103,10 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for ValueCheckCircui
             &blinding_factor_gadget,
         )?;
 
-        let value_balance_bytes =
-            UInt8::alloc_vec(cs.ns(|| "value_balance_bytes"), &(public.value_balance().0.abs() as u64).to_le_bytes())?;
+        let value_balance_bytes = UInt8::alloc_input_vec_le(
+            cs.ns(|| "value_balance_bytes"),
+            &(public.value_balance().0.abs() as u64).to_le_bytes(),
+        )?;
 
         let is_negative =
             Boolean::alloc(&mut cs.ns(|| "Value balance is negative"), || Ok(public.value_balance().is_negative()))?;

@@ -54,9 +54,20 @@ impl<N: Network> Request<N> {
         rng: &mut R,
     ) -> Result<Self> {
         let burner = PrivateKey::new(rng);
+        let burner_address = Address::from_private_key(&burner);
+
         let operation = Operation::Coinbase(recipient, amount);
         let fee = AleoAmount::ZERO.sub(amount);
-        Self::new(&burner, vec![], vec![LedgerProof::default(); N::NUM_INPUT_RECORDS], operation, fee, is_public, rng)
+        // TODO (raychu86): Remove noop record from coinbase?.
+        Self::new(
+            &burner,
+            vec![Record::new_noop(burner_address, rng)?],
+            vec![LedgerProof::default()],
+            operation,
+            fee,
+            is_public,
+            rng,
+        )
     }
 
     /// Initializes a new transfer request.
@@ -82,6 +93,7 @@ impl<N: Network> Request<N> {
 
         // Construct the noop records.
         let mut records = Vec::with_capacity(N::NUM_INPUT_RECORDS);
+        // TODO (raychu86): Remove usage of noop records.
         for _ in 0..N::NUM_INPUT_RECORDS {
             // TODO (raychu86): Remove this requirement.
             records.push(Record::new_noop(noop_address, rng)?);
@@ -102,7 +114,7 @@ impl<N: Network> Request<N> {
     ) -> Result<Self> {
         let caller_address = Address::from_private_key(caller);
 
-        if records.is_empty() {
+        if records.is_empty() && !operation.is_coinbase() {
             return Err(anyhow!("There must be at least one record consumed."));
         }
 

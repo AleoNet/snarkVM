@@ -16,6 +16,7 @@
 
 use crate::Network;
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
+use snarkvm_utilities::ToBytes;
 
 use anyhow::Result;
 
@@ -77,6 +78,14 @@ impl<N: Network> InputPublicVariables<N> {
 impl<N: Network> ToConstraintField<N::InnerScalarField> for InputPublicVariables<N> {
     fn to_field_elements(&self) -> Result<Vec<N::InnerScalarField>, ConstraintFieldError> {
         let mut v = Vec::new();
+        v.extend_from_slice(&self.ledger_root.to_field_elements()?);
+        v.extend_from_slice(&self.local_transitions_root.to_field_elements()?);
+
+        if let Some(program_id) = &self.program_id {
+            v.extend_from_slice(&program_id.to_bytes_le()?.to_field_elements()?);
+        } else {
+            v.extend_from_slice(&vec![0u8; N::PROGRAM_ID_SIZE_IN_BYTES].to_field_elements()?);
+        }
 
         v.extend_from_slice(&self.serial_number.to_field_elements()?);
         v.extend_from_slice(&self.input_value_commitment.to_field_elements()?);
