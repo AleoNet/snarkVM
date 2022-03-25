@@ -14,11 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{circuits::InnerPublicVariables, prelude::*};
+use crate::{
+    prelude::*,
+    split_circuits::{InputPublicVariables, OutputPublicVariables, ValueCheckPublicVariables},
+};
 use snarkvm_algorithms::merkle_tree::{MerklePath, MerkleTree};
 use snarkvm_utilities::{FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
 
 use anyhow::{anyhow, Result};
+use itertools::Itertools;
 use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     fmt,
@@ -125,7 +129,9 @@ impl<N: Network> Transition<N> {
     #[inline]
     pub fn verify(
         &self,
-        inner_circuit_id: N::InnerCircuitID,
+        input_circuit_id: N::InputCircuitID,
+        output_circuit_id: N::OutputCircuitID,
+        value_check_circuit_id: N::ValueCheckCircuitID,
         ledger_root: N::LedgerRoot,
         local_transitions_root: N::TransactionID,
     ) -> bool {
@@ -135,9 +141,21 @@ impl<N: Network> Transition<N> {
             return false;
         }
 
-        // Returns `false` if the inner circuit ID does not match.
-        if &inner_circuit_id != N::inner_circuit_id() {
-            eprintln!("Invalid inner circuit ID for network {}", N::NETWORK_ID);
+        // Returns `false` if the input circuit ID does not match.
+        if &input_circuit_id != N::input_circuit_id() {
+            eprintln!("Invalid input circuit ID for network {}", N::NETWORK_ID);
+            return false;
+        }
+
+        // Returns `false` if the output circuit ID does not match.
+        if &output_circuit_id != N::output_circuit_id() {
+            eprintln!("Invalid output circuit ID for network {}", N::NETWORK_ID);
+            return false;
+        }
+
+        // Returns `false` if the value check circuit ID does not match.
+        if &value_check_circuit_id != N::value_check_circuit_id() {
+            eprintln!("Invalid value check circuit ID for network {}", N::NETWORK_ID);
             return false;
         }
 
@@ -168,20 +186,40 @@ impl<N: Network> Transition<N> {
             }
         }
 
-        // Returns `false` if the execution is invalid.
-        self.execution.verify(
-            N::inner_verifying_key(),
-            &InnerPublicVariables::new(
-                self.serial_numbers.clone(),
-                self.commitments.clone(),
-                self.value_balance,
-                self.input_value_commitments.clone(),
-                self.output_value_commitments.clone(),
-                self.value_balance_commitment.clone(),
+        let program_id = self.execution.program_execution.as_ref().map(|x| x.program_id);
+
+        let mut input_public_variables = Vec::with_capacity(N::MAX_NUM_INPUT_RECORDS);
+        for (serial_number, input_value_commitment) in self.serial_numbers().zip_eq(self.input_value_commitments()) {
+            let input_public = InputPublicVariables::<N>::new(
+                *serial_number,
+                input_value_commitment.clone(),
                 ledger_root,
                 local_transitions_root,
-                self.execution.program_execution.as_ref().map(|x| x.program_id),
-            ),
+                program_id,
+            );
+
+            input_public_variables.push(input_public);
+        }
+
+        let mut output_public_variables = Vec::with_capacity(N::MAX_NUM_OUTPUT_RECORDS);
+        for (commitment, output_value_commitment) in self.commitments().zip_eq(self.output_value_commitments()) {
+            let output_public =
+                OutputPublicVariables::<N>::new(*commitment, output_value_commitment.clone(), program_id);
+
+            output_public_variables.push(output_public);
+        }
+
+        let value_check_public_variables =
+            ValueCheckPublicVariables::<N>::new(*self.value_balance(), self.value_balance_commitment().clone());
+
+        // Returns `false` if the execution is invalid.
+        self.execution.verify(
+            N::input_verifying_key(),
+            N::output_verifying_key(),
+            N::value_check_verifying_key(),
+            &input_public_variables,
+            &output_public_variables,
+            &value_check_public_variables,
             self.transition_id,
         )
     }

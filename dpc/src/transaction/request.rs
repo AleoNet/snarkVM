@@ -28,6 +28,7 @@ use std::{
     io::{Read, Result as IoResult, Write},
 };
 
+// TODO (raychu86): Refactor this. Map records, ledger_proofs, and signatures together.
 #[derive(Clone, Debug)]
 pub struct Request<N: Network> {
     /// The records being consumed.

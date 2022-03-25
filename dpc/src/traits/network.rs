@@ -203,11 +203,11 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     
     /// SNARK for record outputs.
     type OutputSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::InnerBaseField, VerifierInput = OutputPublicVariables<Self>>;
-    type OutputProof: Bech32Object<<Self::InputSNARK as SNARK>::Proof>;
+    type OutputProof: Bech32Object<<Self::OutputSNARK as SNARK>::Proof>;
     
     /// SNARK for transition value check.
     type ValueCheckSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::InnerBaseField, VerifierInput = ValueCheckPublicVariables<Self>>;
-    type ValueCheckProof: Bech32Object<<Self::InputSNARK as SNARK>::Proof>;
+    type ValueCheckProof: Bech32Object<<Self::ValueCheckSNARK as SNARK>::Proof>;
 
     /// SNARK for Aleo program functions.
     type ProgramSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::InnerBaseField, VerifierInput = ProgramPublicVariables<Self>, ProvingKey = Self::ProgramProvingKey, VerifyingKey = Self::ProgramVerifyingKey, UniversalSetupConfig = usize>;

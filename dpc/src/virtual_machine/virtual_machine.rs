@@ -14,10 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{circuits::*, prelude::*};
+use crate::{prelude::*, split_circuits::*};
 use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
 
 use anyhow::{anyhow, Result};
+use itertools::Itertools;
 use rand::{CryptoRng, Rng};
 use std::sync::Arc;
 
@@ -72,27 +73,89 @@ impl<N: Network> VirtualMachine<N> {
 
         let program_id = request.to_program_id()?;
         let value_balance = response.value_balance();
+        let value_balance_commitment = response.value_balance_commitment();
 
-        // Compute the inner circuit proof, and verify that the inner proof passes.
-        let inner_public = InnerPublicVariables::new(
-            request.to_serial_numbers()?,
-            response.commitments(),
-            value_balance,
+        // TODO (raychu86): Clean this up.
+        // Compute the input circuit proofs.
+        let mut input_proofs = Vec::with_capacity(N::MAX_NUM_INPUT_RECORDS);
+        for (
+            ((((record, serial_number), ledger_proof), signature), input_value_commitment),
+            input_value_commitment_randomness,
+        ) in request
+            .records()
+            .iter()
+            .zip_eq(request.to_serial_numbers()?.iter())
+            .zip_eq(request.ledger_proofs())
+            .zip_eq(request.signatures())
+            .zip_eq(response.input_value_commitments())
+            .zip_eq(response.input_value_commitment_randomness())
+        {
+            let input_public = InputPublicVariables::<N>::new(
+                *serial_number,
+                input_value_commitment.clone(),
+                self.ledger_root,
+                self.local_transitions.root(),
+                program_id,
+            );
+            let input_private = InputPrivateVariables::<N>::new(
+                record.clone(),
+                ledger_proof.clone(),
+                signature.clone(),
+                *input_value_commitment_randomness,
+            )?;
+
+            let input_circuit = InputCircuit::<N>::new(input_public.clone(), input_private);
+            let input_proof = N::InputSNARK::prove(N::input_proving_key(), &input_circuit, rng)?;
+
+            assert!(N::InputSNARK::verify(N::input_verifying_key(), &input_public, &input_proof)?);
+
+            input_proofs.push(input_proof.into());
+        }
+
+        // TODO (raychu86): Clean this up.
+        // Compute the output circuit proofs.
+        let mut output_proofs = Vec::with_capacity(N::MAX_NUM_OUTPUT_RECORDS);
+        for (
+            (((record, commitment), encryption_randomness), output_value_commitment),
+            output_value_commitment_randomness,
+        ) in response
+            .records()
+            .iter()
+            .zip_eq(response.commitments())
+            .zip_eq(response.encryption_randomness())
+            .zip_eq(response.output_value_commitments())
+            .zip_eq(response.output_value_commitment_randomness())
+        {
+            let output_public =
+                OutputPublicVariables::<N>::new(commitment, output_value_commitment.clone(), program_id);
+            let output_private = OutputPrivateVariables::<N>::new(
+                record.clone(),
+                *encryption_randomness,
+                *output_value_commitment_randomness,
+            )?;
+
+            let output_circuit = OutputCircuit::<N>::new(output_public.clone(), output_private);
+            let output_proof = N::OutputSNARK::prove(N::output_proving_key(), &output_circuit, rng)?;
+
+            assert!(N::OutputSNARK::verify(N::output_verifying_key(), &output_public, &output_proof)?);
+
+            output_proofs.push(output_proof.into());
+        }
+
+        let value_check_public = ValueCheckPublicVariables::<N>::new(value_balance, value_balance_commitment.clone());
+        let value_check_private = ValueCheckPrivateVariables::<N>::new(
+            Transition::<N>::compute_transition_id(&request.to_serial_numbers()?, &response.commitments())?,
             response.input_value_commitments().clone(),
             response.output_value_commitments().clone(),
-            response.value_balance_commitment().clone(),
-            self.ledger_root,
-            self.local_transitions.root(),
-            program_id,
-        );
-        let inner_private = InnerPrivateVariables::new(request, &response)?;
-        let inner_circuit = InnerCircuit::<N>::new(inner_public.clone(), inner_private);
-        let inner_proof = N::InnerSNARK::prove(N::inner_proving_key(), &inner_circuit, rng)?;
+        )?;
 
-        assert!(N::InnerSNARK::verify(N::inner_verifying_key(), &inner_public, &inner_proof)?);
+        let value_check_circuit = ValueCheckCircuit::<N>::new(value_check_public.clone(), value_check_private);
+        let value_check_proof = N::ValueCheckSNARK::prove(N::value_check_proving_key(), &value_check_circuit, rng)?;
+
+        assert!(N::ValueCheckSNARK::verify(N::value_check_verifying_key(), &value_check_public, &value_check_proof)?);
 
         // Compute the noop execution, for now.
-        let execution = Execution::from(None, inner_proof.into())?;
+        let execution = Execution::from(None, input_proofs, output_proofs, value_check_proof.into())?;
 
         // Construct the transition.
         let transition = Transition::<N>::new(request, &response, execution)?;
@@ -106,7 +169,13 @@ impl<N: Network> VirtualMachine<N> {
 
     /// Finalizes the virtual machine state and returns a transaction.
     pub fn finalize(&self) -> Result<Transaction<N>> {
-        Transaction::from(*N::inner_circuit_id(), self.ledger_root, self.transitions.clone())
+        Transaction::from(
+            *N::input_circuit_id(),
+            *N::output_circuit_id(),
+            *N::value_check_circuit_id(),
+            self.ledger_root,
+            self.transitions.clone(),
+        )
     }
 
     /// Performs a noop transition.
@@ -250,6 +319,7 @@ impl<N: Network> VirtualMachine<N> {
 
         let transition_id = response.transition_id();
         let value_balance = response.value_balance();
+        let value_balance_commitment = response.value_balance_commitment();
 
         // Compute the execution.
         let program_proof = function.execute(ProgramPublicVariables::new(transition_id), private_variables)?;
@@ -258,27 +328,90 @@ impl<N: Network> VirtualMachine<N> {
         assert!(function.verify(&public_variables, &program_proof));
         assert!(function_path.verify(&program_id, &function.function_id())?);
 
-        // Compute the inner circuit proof, and verify that the inner proof passes.
-        let inner_public = InnerPublicVariables::new(
-            request.to_serial_numbers()?,
-            response.commitments(),
-            value_balance,
+        // TODO (raychu86): Clean this up.
+        // Compute the input circuit proofs.
+        let mut input_proofs = Vec::with_capacity(N::MAX_NUM_INPUT_RECORDS);
+        for (
+            ((((record, serial_number), ledger_proof), signature), input_value_commitment),
+            input_value_commitment_randomness,
+        ) in request
+            .records()
+            .iter()
+            .zip_eq(request.to_serial_numbers()?.iter())
+            .zip_eq(request.ledger_proofs())
+            .zip_eq(request.signatures())
+            .zip_eq(response.input_value_commitments())
+            .zip_eq(response.input_value_commitment_randomness())
+        {
+            let input_public = InputPublicVariables::<N>::new(
+                *serial_number,
+                input_value_commitment.clone(),
+                self.ledger_root,
+                self.local_transitions.root(),
+                Some(program_id),
+            );
+            let input_private = InputPrivateVariables::<N>::new(
+                record.clone(),
+                ledger_proof.clone(),
+                signature.clone(),
+                *input_value_commitment_randomness,
+            )?;
+
+            let input_circuit = InputCircuit::<N>::new(input_public.clone(), input_private);
+            let input_proof = N::InputSNARK::prove(N::input_proving_key(), &input_circuit, rng)?;
+
+            assert!(N::InputSNARK::verify(N::input_verifying_key(), &input_public, &input_proof)?);
+
+            input_proofs.push(input_proof.into());
+        }
+
+        // TODO (raychu86): Clean this up.
+        // Compute the output circuit proofs.
+        let mut output_proofs = Vec::with_capacity(N::MAX_NUM_OUTPUT_RECORDS);
+        for (
+            (((record, commitment), encryption_randomness), output_value_commitment),
+            output_value_commitment_randomness,
+        ) in response
+            .records()
+            .iter()
+            .zip_eq(response.commitments())
+            .zip_eq(response.encryption_randomness())
+            .zip_eq(response.output_value_commitments())
+            .zip_eq(response.output_value_commitment_randomness())
+        {
+            let output_public =
+                OutputPublicVariables::<N>::new(commitment, output_value_commitment.clone(), Some(program_id));
+            let output_private = OutputPrivateVariables::<N>::new(
+                record.clone(),
+                *encryption_randomness,
+                *output_value_commitment_randomness,
+            )?;
+
+            let output_circuit = OutputCircuit::<N>::new(output_public.clone(), output_private);
+            let output_proof = N::OutputSNARK::prove(N::output_proving_key(), &output_circuit, rng)?;
+
+            assert!(N::OutputSNARK::verify(N::output_verifying_key(), &output_public, &output_proof)?);
+
+            output_proofs.push(output_proof.into());
+        }
+
+        let value_check_public = ValueCheckPublicVariables::<N>::new(value_balance, value_balance_commitment.clone());
+        let value_check_private = ValueCheckPrivateVariables::<N>::new(
+            Transition::<N>::compute_transition_id(&request.to_serial_numbers()?, &response.commitments())?,
             response.input_value_commitments().clone(),
             response.output_value_commitments().clone(),
-            response.value_balance_commitment().clone(),
-            self.ledger_root,
-            self.local_transitions.root(),
-            Some(program_id),
-        );
-        let inner_private = InnerPrivateVariables::new(request, &response)?;
-        let inner_circuit = InnerCircuit::<N>::new(inner_public.clone(), inner_private);
-        let inner_proof = N::InnerSNARK::prove(N::inner_proving_key(), &inner_circuit, rng)?;
+        )?;
 
-        assert!(N::InnerSNARK::verify(N::inner_verifying_key(), &inner_public, &inner_proof)?);
+        let value_check_circuit = ValueCheckCircuit::<N>::new(value_check_public.clone(), value_check_private);
+        let value_check_proof = N::ValueCheckSNARK::prove(N::value_check_proving_key(), &value_check_circuit, rng)?;
+
+        assert!(N::ValueCheckSNARK::verify(N::value_check_verifying_key(), &value_check_public, &value_check_proof)?);
 
         let execution = Execution::from(
             Some(ProgramExecution::from(program_id, function_path.clone(), function_verifying_key, program_proof)?),
-            inner_proof.into(),
+            input_proofs,
+            output_proofs,
+            value_check_proof.into(),
         )?;
 
         // Construct the transition.
