@@ -38,7 +38,7 @@ impl<E: Environment> Equal<Self> for Field<E> {
     ///
     fn is_not_equal(&self, other: &Self) -> Self::Boolean {
         match (self.is_constant(), other.is_constant()) {
-            (true, true) => Boolean::new(Mode::Constant, self.eject_value() != other.eject_value()),
+            (true, true) => witness!(|self, other| self != other),
             _ => {
                 // Compute a boolean that is `true` if `this` and `that` are not equivalent.
                 let is_neq: Boolean<E> = witness!(|self, other| self != other);
