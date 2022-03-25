@@ -432,6 +432,7 @@ impl<F: PrimeField> Mul<&F> for LinearCombination<F> {
 impl<F: PrimeField> Mul<F> for &LinearCombination<F> {
     type Output = LinearCombination<F>;
 
+    #[allow(clippy::op_ref)]
     fn mul(self, coefficient: F) -> Self::Output {
         self * &coefficient
     }
