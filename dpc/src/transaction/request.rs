@@ -19,6 +19,7 @@ use snarkvm_algorithms::SignatureScheme;
 use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
 
 use anyhow::{anyhow, Result};
+use itertools::Itertools;
 use once_cell::sync::OnceCell;
 use rand::{CryptoRng, Rng};
 use std::{
@@ -37,8 +38,8 @@ pub struct Request<N: Network> {
     operation: Operation<N>,
     /// The network fee being paid.
     fee: AleoAmount,
-    /// The signature for the request.
-    signature: N::AccountSignature,
+    /// The signatures for the request (each record will have one).
+    signatures: Vec<N::AccountSignature>,
     /// The visibility of the operation.
     is_public: bool,
 }
@@ -99,26 +100,24 @@ impl<N: Network> Request<N> {
     ) -> Result<Self> {
         let caller_address = Address::from_private_key(caller);
 
-        // Pad the records with noops if there is less than required.
-        let mut records = records;
-        while records.len() < N::NUM_INPUT_RECORDS {
-            records.push(Record::new_noop(caller_address, rng)?);
+        if records.is_empty() {
+            return Err(anyhow!("There must be at least one record consumed."));
         }
 
-        let mut commitments = Vec::with_capacity(N::NUM_INPUT_RECORDS);
-        for record in records.iter().take(N::NUM_INPUT_RECORDS) {
+        let mut signatures = Vec::with_capacity(N::MAX_NUM_INPUT_RECORDS);
+        for record in records.iter() {
             // Ensure the caller and record owner match.
             if caller_address != record.owner() {
                 return Err(anyhow!("Address from caller private key does not match record owner"));
             }
-            commitments.push(record.commitment());
+            let message =
+                to_bytes_le![record.commitment(), record.program_id().unwrap_or_default() /*operation_id, fee*/]?;
+            let signature = caller.sign(&message, rng)?;
+
+            signatures.push(signature);
         }
 
-        let message =
-            to_bytes_le![commitments, records[0].program_id().unwrap_or_default() /*operation_id, fee*/]?;
-        let signature = caller.sign(&message, rng)?;
-
-        Self::from(records, ledger_proofs, operation, fee, signature, is_public)
+        Self::from(records, ledger_proofs, operation, fee, signatures, is_public)
     }
 
     /// Returns a new instance of a request.
@@ -127,10 +126,10 @@ impl<N: Network> Request<N> {
         ledger_proofs: Vec<LedgerProof<N>>,
         operation: Operation<N>,
         fee: AleoAmount,
-        signature: N::AccountSignature,
+        signatures: Vec<N::AccountSignature>,
         is_public: bool,
     ) -> Result<Self> {
-        let request = Self { records, operation, ledger_proofs, fee, signature, is_public };
+        let request = Self { records, operation, ledger_proofs, fee, signatures, is_public };
 
         match request.is_valid() {
             true => Ok(request),
@@ -141,20 +140,20 @@ impl<N: Network> Request<N> {
     /// Returns `true` if the request signature is valid.
     pub fn is_valid(&self) -> bool {
         // Ensure the number of records is correct.
-        if self.records.len() != N::NUM_INPUT_RECORDS {
+        if self.records.len() > N::MAX_NUM_INPUT_RECORDS {
             eprintln!(
-                "Incorrect number of request records. Expected {}, found {}",
-                N::NUM_INPUT_RECORDS,
+                "Incorrect number of request records. Maximum {}, found {}",
+                N::MAX_NUM_INPUT_RECORDS,
                 self.records.len()
             );
             return false;
         }
 
         // Ensure the number of ledger proofs is correct.
-        if self.ledger_proofs.len() != N::NUM_INPUT_RECORDS {
+        if self.ledger_proofs.len() != self.records.len() {
             eprintln!(
                 "Incorrect number of request ledger proofs. Expected {}, found {}",
-                N::NUM_INPUT_RECORDS,
+                self.records.len(),
                 self.ledger_proofs.len()
             );
             return false;
@@ -204,24 +203,28 @@ impl<N: Network> Request<N> {
         // Ensure the given record commitments are in the specified ledger proofs.
         {}
 
-        // Prepare for signature verification.
-        let commitments: Vec<_> = self.records.iter().map(|record| record.commitment()).collect();
-        let message = match to_bytes_le![commitments, program_id.unwrap_or_default() /*operation_id, self.fee*/] {
-            Ok(signature_message) => signature_message,
-            Err(error) => {
-                eprintln!("Failed to construct request signature message: {}", error);
+        // Verify the request signatures.
+        for (i, (record, signature)) in self.records.iter().zip_eq(&self.signatures).enumerate() {
+            // Prepare for signature verification.
+            let message = match to_bytes_le![
+                record.commitment(),
+                record.program_id().unwrap_or_default() /*operation_id, self.fee*/
+            ] {
+                Ok(signature_message) => signature_message,
+                Err(error) => {
+                    eprintln!("Failed to construct record {} request signature message: {}", i, error);
+                    return false;
+                }
+            };
+
+            // Ensure the signature is valid.
+            if let Err(error) = N::account_signature_scheme().verify(&caller, &message, signature) {
+                eprintln!("Failed to verify request signature {}: {}", i, error);
                 return false;
             }
-        };
-
-        // Ensure the signature is valid.
-        match N::account_signature_scheme().verify(&caller, &message, &self.signature) {
-            Ok(is_valid) => is_valid,
-            Err(error) => {
-                eprintln!("Failed to verify request signature: {}", error);
-                false
-            }
         }
+
+        true
     }
 
     /// Returns a reference to the records.
@@ -259,9 +262,9 @@ impl<N: Network> Request<N> {
         self.fee
     }
 
-    /// Returns a reference to the signature.
-    pub fn signature(&self) -> &N::AccountSignature {
-        &self.signature
+    /// Returns a reference to the signatures.
+    pub fn signatures(&self) -> &Vec<N::AccountSignature> {
+        &self.signatures
     }
 
     /// Returns the caller of the request.
@@ -291,8 +294,14 @@ impl<N: Network> Request<N> {
 
     /// Returns the serial numbers.
     pub fn to_serial_numbers(&self) -> Result<Vec<N::SerialNumber>> {
-        let compute_key = ComputeKey::from_signature(&self.signature)?;
-        self.records.iter().map(|record| Ok(record.to_serial_number(&compute_key)?)).collect::<Result<Vec<_>>>()
+        self.records
+            .iter()
+            .zip_eq(&self.signatures)
+            .map(|(record, signature)| {
+                let compute_key = ComputeKey::from_signature(signature)?;
+                Ok(record.to_serial_number(&compute_key)?)
+            })
+            .collect::<Result<Vec<_>>>()
     }
 
     /// Returns the input commitments.
@@ -304,22 +313,28 @@ impl<N: Network> Request<N> {
 impl<N: Network> FromBytes for Request<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let mut records = Vec::with_capacity(N::NUM_INPUT_RECORDS);
-        for _ in 0..N::NUM_INPUT_RECORDS {
+        let num_records: u32 = FromBytes::read_le(&mut reader)?;
+        let mut records = Vec::with_capacity(num_records as usize);
+        for _ in 0..num_records {
             records.push(FromBytes::read_le(&mut reader)?);
         }
 
-        let mut ledger_proofs = Vec::with_capacity(N::NUM_INPUT_RECORDS);
-        for _ in 0..N::NUM_INPUT_RECORDS {
+        let mut ledger_proofs = Vec::with_capacity(num_records as usize);
+        for _ in 0..num_records {
             ledger_proofs.push(FromBytes::read_le(&mut reader)?);
         }
 
         let operation = FromBytes::read_le(&mut reader)?;
         let fee = FromBytes::read_le(&mut reader)?;
-        let signature = FromBytes::read_le(&mut reader)?;
+
+        let mut signatures = Vec::with_capacity(num_records as usize);
+        for _ in 0..num_records {
+            signatures.push(FromBytes::read_le(&mut reader)?);
+        }
+
         let is_public = FromBytes::read_le(&mut reader)?;
 
-        Ok(Self::from(records, ledger_proofs, operation, fee, signature, is_public)
+        Ok(Self::from(records, ledger_proofs, operation, fee, signatures, is_public)
             .expect("Failed to deserialize a request"))
     }
 }
@@ -327,11 +342,12 @@ impl<N: Network> FromBytes for Request<N> {
 impl<N: Network> ToBytes for Request<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        (self.records.len() as u32).write_le(&mut writer)?;
         self.records.write_le(&mut writer)?;
         self.ledger_proofs.write_le(&mut writer)?;
         self.operation.write_le(&mut writer)?;
         self.fee.write_le(&mut writer)?;
-        self.signature.write_le(&mut writer)?;
+        self.signatures.write_le(&mut writer)?;
         self.is_public.write_le(&mut writer)
     }
 }
