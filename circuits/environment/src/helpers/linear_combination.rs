@@ -33,12 +33,12 @@ pub struct LinearCombination<F: PrimeField> {
 
 impl<F: PrimeField> LinearCombination<F> {
     /// Returns the `zero` constant.
-    pub fn zero() -> Self {
+    pub(crate) fn zero() -> Self {
         Self { constant: F::zero(), terms: Default::default(), value: Default::default() }
     }
 
     /// Returns the `one` constant.
-    pub fn one() -> Self {
+    pub(crate) fn one() -> Self {
         Variable::one().into()
     }
 
