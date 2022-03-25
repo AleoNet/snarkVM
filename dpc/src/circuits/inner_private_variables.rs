@@ -54,7 +54,7 @@ impl<N: Network> InnerPrivateVariables<N> {
         Ok(Self {
             input_records: request.records().clone(),
             ledger_proofs: request.ledger_proofs().clone(),
-            signature: request.signature().clone(),
+            signature: request.signatures()[0].clone(), // TODO (raychu86): Remove compilation workaround.
             output_records: response.records().clone(),
             encryption_randomness: response.encryption_randomness().clone(),
             input_value_commitment_randomness: response.input_value_commitment_randomness().clone(),
