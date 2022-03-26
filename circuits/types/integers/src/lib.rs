@@ -194,32 +194,48 @@ mod tests {
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
-    const ITERATIONS: usize = 1000;
+    const ITERATIONS: usize = 100;
 
-    fn check_new<I: IntegerType>(mode: Mode) {
-        let expected: I = UniformRand::rand(&mut test_rng());
-        let candidate = Integer::<Circuit, I>::new(mode, expected);
-        assert_eq!(mode.is_constant(), candidate.is_constant());
-        assert_eq!(candidate.eject_value(), expected);
-    }
+    fn check_new<I: IntegerType>(
+        mode: Mode,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) {
+        for _ in 0..ITERATIONS {
+            let expected: I = UniformRand::rand(&mut test_rng());
 
-    fn check_min_max<I: IntegerType>(mode: Mode) {
+            Circuit::scope(format!("New {mode}"), || {
+                let candidate = Integer::<Circuit, I>::new(mode, expected);
+                assert_eq!(mode, candidate.eject_mode());
+                assert_eq!(expected, candidate.eject_value());
+                assert_scope!(num_constants, num_public, num_private, num_constraints);
+            })
+        }
+        // Check that the minimum and maximum integer bounds are correct.
         assert_eq!(I::MIN, Integer::<Circuit, I>::new(mode, I::MIN).eject_value());
         assert_eq!(I::MAX, Integer::<Circuit, I>::new(mode, I::MAX).eject_value());
     }
 
-    fn check_parser<I: IntegerType>() {
-        for mode in [Mode::Constant, Mode::Public, Mode::Private] {
-            for _ in 0..ITERATIONS {
-                let value: I = UniformRand::rand(&mut test_rng());
-                let expected = Integer::<Circuit, I>::new(mode, value);
+    fn check_parse<I: IntegerType>(
+        mode: Mode,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) {
+        for _ in 0..ITERATIONS {
+            let value: I = UniformRand::rand(&mut test_rng());
+            let expected = Integer::<Circuit, I>::new(mode, value);
 
+            Circuit::scope(format!("Parse {mode}"), || {
                 let (_, candidate) = Integer::<Circuit, I>::parse(&format!("{expected}")).unwrap();
-                assert_eq!(mode, candidate.eject_mode());
-                assert_eq!(value, candidate.eject_value());
+                assert_eq!((mode, value), candidate.eject());
                 assert_eq!(expected.eject_mode(), candidate.eject_mode());
                 assert_eq!(expected.eject_value(), candidate.eject_value());
-            }
+                assert_scope!(num_constants, num_public, num_private, num_constraints);
+            })
         }
     }
 
@@ -251,70 +267,224 @@ mod tests {
         assert_eq!(format!("2{}.private", I::type_name()), format!("{}", candidate));
     }
 
-    fn run_test<I: IntegerType>() {
-        for _ in 0..ITERATIONS {
-            check_new::<I>(Mode::Constant);
-            check_new::<I>(Mode::Public);
-            check_new::<I>(Mode::Private);
-        }
+    // u8
 
-        check_min_max::<I>(Mode::Constant);
-        check_min_max::<I>(Mode::Public);
-        check_min_max::<I>(Mode::Private);
-
-        check_parser::<I>();
-        check_debug::<I>();
-        check_display::<I>();
+    #[test]
+    fn test_u8_new() {
+        check_new::<u8>(Mode::Constant, 8, 0, 0, 0);
+        check_new::<u8>(Mode::Public, 0, 8, 0, 8);
+        check_new::<u8>(Mode::Private, 0, 0, 8, 8);
     }
 
     #[test]
-    fn test_i8() {
-        run_test::<i8>();
+    fn test_u8_parse() {
+        check_parse::<u8>(Mode::Constant, 8, 0, 0, 0);
+        check_parse::<u8>(Mode::Public, 0, 8, 0, 8);
+        check_parse::<u8>(Mode::Private, 0, 0, 8, 8);
     }
 
     #[test]
-    fn test_i16() {
-        run_test::<i16>();
+    fn test_u8_debug_and_display() {
+        check_debug::<u8>();
+        check_display::<u8>();
+    }
+
+    // i8
+
+    #[test]
+    fn test_i8_new() {
+        check_new::<i8>(Mode::Constant, 8, 0, 0, 0);
+        check_new::<i8>(Mode::Public, 0, 8, 0, 8);
+        check_new::<i8>(Mode::Private, 0, 0, 8, 8);
     }
 
     #[test]
-    fn test_i32() {
-        run_test::<i32>();
+    fn test_i8_parse() {
+        check_parse::<i8>(Mode::Constant, 8, 0, 0, 0);
+        check_parse::<i8>(Mode::Public, 0, 8, 0, 8);
+        check_parse::<i8>(Mode::Private, 0, 0, 8, 8);
     }
 
     #[test]
-    fn test_i64() {
-        run_test::<i64>();
+    fn test_i8_debug_and_display() {
+        check_debug::<i8>();
+        check_display::<i8>();
+    }
+
+    // u16
+
+    #[test]
+    fn test_u16_new() {
+        check_new::<u16>(Mode::Constant, 16, 0, 0, 0);
+        check_new::<u16>(Mode::Public, 0, 16, 0, 16);
+        check_new::<u16>(Mode::Private, 0, 0, 16, 16);
     }
 
     #[test]
-    fn test_i128() {
-        run_test::<i128>();
+    fn test_u16_parse() {
+        check_parse::<u16>(Mode::Constant, 16, 0, 0, 0);
+        check_parse::<u16>(Mode::Public, 0, 16, 0, 16);
+        check_parse::<u16>(Mode::Private, 0, 0, 16, 16);
     }
 
     #[test]
-    fn test_u8() {
-        run_test::<u8>();
+    fn test_u16_debug_and_display() {
+        check_debug::<u16>();
+        check_display::<u16>();
+    }
+
+    // i16
+
+    #[test]
+    fn test_i16_new() {
+        check_new::<i16>(Mode::Constant, 16, 0, 0, 0);
+        check_new::<i16>(Mode::Public, 0, 16, 0, 16);
+        check_new::<i16>(Mode::Private, 0, 0, 16, 16);
     }
 
     #[test]
-    fn test_u16() {
-        run_test::<u16>();
+    fn test_i16_parse() {
+        check_parse::<i16>(Mode::Constant, 16, 0, 0, 0);
+        check_parse::<i16>(Mode::Public, 0, 16, 0, 16);
+        check_parse::<i16>(Mode::Private, 0, 0, 16, 16);
     }
 
     #[test]
-    fn test_u32() {
-        run_test::<u32>();
+    fn test_i16_debug_and_display() {
+        check_debug::<i16>();
+        check_display::<i16>();
+    }
+
+    // u32
+
+    #[test]
+    fn test_u32_new() {
+        check_new::<u32>(Mode::Constant, 32, 0, 0, 0);
+        check_new::<u32>(Mode::Public, 0, 32, 0, 32);
+        check_new::<u32>(Mode::Private, 0, 0, 32, 32);
     }
 
     #[test]
-    fn test_u64() {
-        run_test::<u64>();
+    fn test_u32_parse() {
+        check_parse::<u32>(Mode::Constant, 32, 0, 0, 0);
+        check_parse::<u32>(Mode::Public, 0, 32, 0, 32);
+        check_parse::<u32>(Mode::Private, 0, 0, 32, 32);
     }
 
     #[test]
-    fn test_u128() {
-        run_test::<u128>();
+    fn test_u32_debug_and_display() {
+        check_debug::<u32>();
+        check_display::<u32>();
+    }
+
+    // i32
+
+    #[test]
+    fn test_i32_new() {
+        check_new::<i32>(Mode::Constant, 32, 0, 0, 0);
+        check_new::<i32>(Mode::Public, 0, 32, 0, 32);
+        check_new::<i32>(Mode::Private, 0, 0, 32, 32);
+    }
+
+    #[test]
+    fn test_i32_parse() {
+        check_parse::<i32>(Mode::Constant, 32, 0, 0, 0);
+        check_parse::<i32>(Mode::Public, 0, 32, 0, 32);
+        check_parse::<i32>(Mode::Private, 0, 0, 32, 32);
+    }
+
+    #[test]
+    fn test_i32_debug_and_display() {
+        check_debug::<i32>();
+        check_display::<i32>();
+    }
+
+    // u64
+
+    #[test]
+    fn test_u64_new() {
+        check_new::<u64>(Mode::Constant, 64, 0, 0, 0);
+        check_new::<u64>(Mode::Public, 0, 64, 0, 64);
+        check_new::<u64>(Mode::Private, 0, 0, 64, 64);
+    }
+
+    #[test]
+    fn test_u64_parse() {
+        check_parse::<u64>(Mode::Constant, 64, 0, 0, 0);
+        check_parse::<u64>(Mode::Public, 0, 64, 0, 64);
+        check_parse::<u64>(Mode::Private, 0, 0, 64, 64);
+    }
+
+    #[test]
+    fn test_u64_debug_and_display() {
+        check_debug::<u64>();
+        check_display::<u64>();
+    }
+
+    // i64
+
+    #[test]
+    fn test_i64_new() {
+        check_new::<i64>(Mode::Constant, 64, 0, 0, 0);
+        check_new::<i64>(Mode::Public, 0, 64, 0, 64);
+        check_new::<i64>(Mode::Private, 0, 0, 64, 64);
+    }
+
+    #[test]
+    fn test_i64_parse() {
+        check_parse::<i64>(Mode::Constant, 64, 0, 0, 0);
+        check_parse::<i64>(Mode::Public, 0, 64, 0, 64);
+        check_parse::<i64>(Mode::Private, 0, 0, 64, 64);
+    }
+
+    #[test]
+    fn test_i64_debug_and_display() {
+        check_debug::<i64>();
+        check_display::<i64>();
+    }
+
+    // u128
+
+    #[test]
+    fn test_u128_new() {
+        check_new::<u128>(Mode::Constant, 128, 0, 0, 0);
+        check_new::<u128>(Mode::Public, 0, 128, 0, 128);
+        check_new::<u128>(Mode::Private, 0, 0, 128, 128);
+    }
+
+    #[test]
+    fn test_u128_parse() {
+        check_parse::<u128>(Mode::Constant, 128, 0, 0, 0);
+        check_parse::<u128>(Mode::Public, 0, 128, 0, 128);
+        check_parse::<u128>(Mode::Private, 0, 0, 128, 128);
+    }
+
+    #[test]
+    fn test_u128_debug_and_display() {
+        check_debug::<u128>();
+        check_display::<u128>();
+    }
+
+    // i128
+
+    #[test]
+    fn test_i128_new() {
+        check_new::<i128>(Mode::Constant, 128, 0, 0, 0);
+        check_new::<i128>(Mode::Public, 0, 128, 0, 128);
+        check_new::<i128>(Mode::Private, 0, 0, 128, 128);
+    }
+
+    #[test]
+    fn test_i128_parse() {
+        check_parse::<i128>(Mode::Constant, 128, 0, 0, 0);
+        check_parse::<i128>(Mode::Public, 0, 128, 0, 128);
+        check_parse::<i128>(Mode::Private, 0, 0, 128, 128);
+    }
+
+    #[test]
+    fn test_i128_debug_and_display() {
+        check_debug::<i128>();
+        check_display::<i128>();
     }
 }
 
