@@ -23,19 +23,10 @@ impl<E: Environment> ToFields for StringType<E> {
 
     /// Casts a string into a list of base fields.
     fn to_fields(&self) -> Vec<Self::Field> {
-        // Retrieve the mode of the string.
-        let mode = match self.is_constant() {
-            true => Mode::Constant,
-            false => Mode::Private,
-        };
-
         // Convert the string bytes into bits, then chunk them into lists of size
         // `E::BaseField::size_in_data_bits()` and recover the base field element for each chunk.
         // (For advanced users: Chunk into CAPACITY bits and create a linear combination per chunk.)
-        self.to_bits_le()
-            .chunks(E::BaseField::size_in_data_bits())
-            .map(|data_bits| Field::from_bits_le(mode, data_bits))
-            .collect()
+        self.to_bits_le().chunks(E::BaseField::size_in_data_bits()).map(Field::from_bits_le).collect()
     }
 }
 

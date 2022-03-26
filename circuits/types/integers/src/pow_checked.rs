@@ -45,7 +45,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> PowChecked<Integer<E, M>> for
                     let (product, carry) = Self::mul_with_carry(&(&result).abs_wrapped(), &self.abs_wrapped(), true);
 
                     // We need to check that the abs(a) * abs(b) did not exceed the unsigned maximum.
-                    let carry_bits_nonzero = carry.iter().fold(Boolean::new(Mode::Constant, false), |a, b| a | b);
+                    let carry_bits_nonzero = carry.iter().fold(Boolean::constant(false), |a, b| a | b);
 
                     // If the product should be positive, then it cannot exceed the signed maximum.
                     let operands_same_sign = &result.msb().is_equal(self.msb());
@@ -53,9 +53,8 @@ impl<E: Environment, I: IntegerType, M: Magnitude> PowChecked<Integer<E, M>> for
 
                     // If the product should be negative, then it cannot exceed the absolute value of the signed minimum.
                     let negative_product_underflows = {
-                        let lower_product_bits_nonzero = product.bits_le[..(I::BITS - 1)]
-                            .iter()
-                            .fold(Boolean::new(Mode::Constant, false), |a, b| a | b);
+                        let lower_product_bits_nonzero =
+                            product.bits_le[..(I::BITS - 1)].iter().fold(Boolean::constant(false), |a, b| a | b);
                         let negative_product_lt_or_eq_signed_min =
                             !product.msb() | (product.msb() & !lower_product_bits_nonzero);
                         !operands_same_sign & !negative_product_lt_or_eq_signed_min
@@ -70,7 +69,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> PowChecked<Integer<E, M>> for
                     let (product, carry) = Self::mul_with_carry(&result, self, true);
 
                     // For unsigned multiplication, check that the none of the carry bits are set.
-                    let overflow = carry.iter().fold(Boolean::new(Mode::Constant, false), |a, b| a | b);
+                    let overflow = carry.iter().fold(Boolean::constant(false), |a, b| a | b);
                     E::assert_eq(overflow & bit, E::zero());
 
                     // Return the product of `self` and `other`.
@@ -93,8 +92,8 @@ mod tests {
 
     use std::{ops::RangeInclusive, panic::RefUnwindSafe};
 
-    // Lowered to 8, since we run (~5 * ITERATIONS) cases for most tests.
-    const ITERATIONS: usize = 8;
+    // Lowered to 4; we run (~5 * ITERATIONS) cases for most tests.
+    const ITERATIONS: usize = 4;
 
     #[rustfmt::skip]
     fn check_pow<I: IntegerType + RefUnwindSafe, M: Magnitude + RefUnwindSafe>(

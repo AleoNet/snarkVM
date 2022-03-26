@@ -18,17 +18,19 @@ use crate::{LinearCombination, Mode};
 use snarkvm_fields::traits::*;
 
 use core::{
+    cmp::Ordering,
     fmt,
     ops::{Add, Sub},
 };
+use std::rc::Rc;
 
 pub type Index = u64;
 
-#[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub enum Variable<F: PrimeField> {
-    Constant(F),
-    Public(Index, F),
-    Private(Index, F),
+    Constant(Rc<F>),
+    Public(Index, Rc<F>),
+    Private(Index, Rc<F>),
 }
 
 impl<F: PrimeField> Variable<F> {
@@ -51,20 +53,6 @@ impl<F: PrimeField> Variable<F> {
     ///
     pub fn is_private(&self) -> bool {
         matches!(self, Self::Private(..))
-    }
-
-    ///
-    /// Returns the `zero` constant.
-    ///
-    pub fn zero() -> Self {
-        Self::Constant(F::zero())
-    }
-
-    ///
-    /// Returns the `one` constant.
-    ///
-    pub fn one() -> Self {
-        Self::Constant(F::one())
     }
 
     ///
@@ -94,9 +82,31 @@ impl<F: PrimeField> Variable<F> {
     ///
     pub fn value(&self) -> F {
         match self {
-            Self::Constant(value) => *value,
-            Self::Public(_, value) => *value,
-            Self::Private(_, value) => *value,
+            Self::Constant(value) => **value,
+            Self::Public(_, value) => **value,
+            Self::Private(_, value) => **value,
+        }
+    }
+}
+
+impl<F: PrimeField> PartialOrd for Variable<F> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<F: PrimeField> Ord for Variable<F> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match (self, other) {
+            (Self::Constant(v1), Self::Constant(v2)) => v1.cmp(v2),
+            (Self::Constant(..), Self::Public(..)) => Ordering::Less,
+            (Self::Constant(..), Self::Private(..)) => Ordering::Less,
+            (Self::Public(..), Self::Constant(..)) => Ordering::Greater,
+            (Self::Private(..), Self::Constant(..)) => Ordering::Greater,
+            (Self::Public(i1, ..), Self::Public(i2, ..)) => i1.cmp(i2),
+            (Self::Private(i1, ..), Self::Private(i2, ..)) => i1.cmp(i2),
+            (Self::Public(..), Self::Private(..)) => Ordering::Less,
+            (Self::Private(..), Self::Public(..)) => Ordering::Greater,
         }
     }
 }
@@ -133,8 +143,8 @@ impl<F: PrimeField> Add<&Variable<F>> for &Variable<F> {
 
     fn add(self, other: &Variable<F>) -> Self::Output {
         match (self, other) {
-            (Variable::Constant(a), Variable::Constant(b)) => Variable::Constant(*a + b).into(),
-            (first, second) => LinearCombination::from([*first, *second]),
+            (Variable::Constant(a), Variable::Constant(b)) => Variable::Constant(Rc::new(**a + **b)).into(),
+            (first, second) => LinearCombination::from([first.clone(), second.clone()]),
         }
     }
 }
@@ -206,7 +216,7 @@ impl<F: PrimeField> Sub<&Variable<F>> for &Variable<F> {
 
     fn sub(self, other: &Variable<F>) -> Self::Output {
         match (self, other) {
-            (Variable::Constant(a), Variable::Constant(b)) => Variable::Constant(*a - b).into(),
+            (Variable::Constant(a), Variable::Constant(b)) => Variable::Constant(Rc::new(**a - **b)).into(),
             (first, second) => LinearCombination::from(first) - second,
         }
     }
@@ -260,5 +270,15 @@ impl<F: PrimeField> fmt::Debug for Variable<F> {
 impl<F: PrimeField> fmt::Display for Variable<F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.value())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::*;
+
+    #[test]
+    fn test_size() {
+        assert_eq!(24, std::mem::size_of::<Variable<<Circuit as Environment>::BaseField>>());
     }
 }

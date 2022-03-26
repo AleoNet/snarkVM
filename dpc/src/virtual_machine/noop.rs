@@ -54,7 +54,7 @@ impl<N: Network> Noop<N> {
 impl<N: Network> Function<N> for Noop<N> {
     /// Returns the function ID.
     fn function_id(&self) -> N::FunctionID {
-        N::function_id_crh().hash_bits(&self.verifying_key.to_minimal_bits()).unwrap().into()
+        N::function_id_crh().hash(&self.verifying_key.to_minimal_bits()).unwrap().into()
     }
 
     /// Synthesizes the circuit inside the given constraint system.

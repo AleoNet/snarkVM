@@ -45,7 +45,13 @@ impl<N: Network> Ciphertext<N> {
 
         // Compute the commitment.
         let commitment = N::commitment_scheme()
-            .hash(&to_bytes_le![randomizer, record_view_key_commitment, record_elements, program_id_bytes, is_dummy]?)?
+            .hash_bytes(&to_bytes_le![
+                randomizer,
+                record_view_key_commitment,
+                record_elements,
+                program_id_bytes,
+                is_dummy
+            ]?)?
             .into();
 
         Ok(Self { commitment, randomizer, record_view_key_commitment, record_elements, program_id, is_dummy })

@@ -50,12 +50,6 @@ impl<E: Environment> DataType<Boolean<E>> for Group<E> {}
 impl<E: Environment> Inject for Group<E> {
     type Primitive = (E::BaseField, Option<E::BaseField>);
 
-    /// Returns the type name of the circuit as a string.
-    #[inline]
-    fn type_name() -> &'static str {
-        "group"
-    }
-
     ///
     /// Initializes a new affine group element.
     ///
@@ -108,8 +102,8 @@ impl<E: Environment> Group<E> {
         // by checking that y^2 * (dx^2 - 1) = (ax^2 - 1)
         //
         {
-            let a = Field::new(Mode::Constant, E::AffineParameters::COEFF_A);
-            let d = Field::new(Mode::Constant, E::AffineParameters::COEFF_D);
+            let a = Field::constant(E::AffineParameters::COEFF_A);
+            let d = Field::constant(E::AffineParameters::COEFF_D);
 
             let x2 = x.square();
             let y2 = y.square();
@@ -167,6 +161,14 @@ impl<E: Environment> Parser for Group<E> {
             Some((_, mode)) => Ok((string, Group::new(mode, (x_coordinate, None)))),
             None => Ok((string, Group::new(Mode::Constant, (x_coordinate, None)))),
         }
+    }
+}
+
+impl<E: Environment> TypeName for Group<E> {
+    /// Returns the type name of the circuit as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "group"
     }
 }
 

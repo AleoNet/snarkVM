@@ -34,10 +34,9 @@ impl<F: PrimeField> Constraint<F> {
     /// Returns `true` if the constraint is satisfied.
     pub(crate) fn is_satisfied(&self) -> bool {
         let (scope, a, b, c) = (&self.0, &self.1, &self.2, &self.3);
-
-        let a = a.to_value();
-        let b = b.to_value();
-        let c = c.to_value();
+        let a = a.value();
+        let b = b.value();
+        let c = c.value();
 
         match a * b == c {
             true => true,
@@ -57,10 +56,9 @@ impl<F: PrimeField> Constraint<F> {
 impl<F: PrimeField> Display for Constraint<F> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let (scope, a, b, c) = (&self.0, &self.1, &self.2, &self.3);
-
-        let a = a.to_value();
-        let b = b.to_value();
-        let c = c.to_value();
+        let a = a.value();
+        let b = b.value();
+        let c = c.value();
 
         match (a * b) == c {
             true => write!(f, "Constraint {scope}:\n\t{a} * {b} == {c}\n"),

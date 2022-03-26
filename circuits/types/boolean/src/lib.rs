@@ -48,12 +48,6 @@ impl<E: Environment> DataType<Boolean<E>> for Boolean<E> {}
 impl<E: Environment> Inject for Boolean<E> {
     type Primitive = bool;
 
-    /// Returns the type name of the circuit as a string.
-    #[inline]
-    fn type_name() -> &'static str {
-        "boolean"
-    }
-
     ///
     /// Initializes a new instance of a boolean from a primitive boolean value.
     ///
@@ -65,9 +59,19 @@ impl<E: Environment> Inject for Boolean<E> {
 
         // Ensure (1 - a) * a = 0
         // `a` must be either 0 or 1.
-        E::enforce(|| (E::one() - variable, variable, E::zero()));
+        E::enforce(|| (E::one() - &variable, &variable, E::zero()));
 
         Self(variable.into())
+    }
+
+    ///
+    /// Initializes a constant boolean circuit from a primitive boolean value.
+    ///
+    fn constant(value: Self::Primitive) -> Self {
+        match value {
+            true => Self(E::one()),
+            false => Self(E::zero()),
+        }
     }
 }
 
@@ -80,7 +84,7 @@ impl<E: Environment> Eject for Boolean<E> {
     fn eject_mode(&self) -> Mode {
         // Perform a software-level safety check that the boolean is well-formed.
         match self.0.is_boolean_type() {
-            true => self.0.to_mode(),
+            true => self.0.mode(),
             false => E::halt("Boolean variable is not well-formed"),
         }
     }
@@ -89,7 +93,7 @@ impl<E: Environment> Eject for Boolean<E> {
     /// Ejects the boolean as a constant boolean value.
     ///
     fn eject_value(&self) -> Self::Primitive {
-        let value = self.0.to_value();
+        let value = self.0.value();
         debug_assert!(value.is_zero() || value.is_one());
         value.is_one()
     }
@@ -110,6 +114,14 @@ impl<E: Environment> Parser for Boolean<E> {
             Some((_, mode)) => Ok((string, Boolean::new(mode, value))),
             None => Ok((string, Boolean::new(Mode::Constant, value))),
         }
+    }
+}
+
+impl<E: Environment> TypeName for Boolean<E> {
+    /// Returns the type name of the circuit as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "boolean"
     }
 }
 
@@ -198,7 +210,7 @@ mod tests {
 
             // Ensure `a` is either 0 or 1:
             // (1 - a) * a = 0
-            Circuit::enforce(|| (Circuit::one() - candidate, candidate, Circuit::zero()));
+            Circuit::enforce(|| (Circuit::one() - &candidate, candidate, Circuit::zero()));
             assert_eq!(0, Circuit::num_constraints());
 
             Circuit::reset();
@@ -208,7 +220,7 @@ mod tests {
 
             // Ensure `a` is either 0 or 1:
             // (1 - a) * a = 0
-            Circuit::enforce(|| (Circuit::one() - candidate, candidate, Circuit::zero()));
+            Circuit::enforce(|| (Circuit::one() - &candidate, candidate, Circuit::zero()));
             assert!(!Circuit::is_satisfied());
 
             Circuit::reset();
@@ -218,7 +230,7 @@ mod tests {
 
             // Ensure `a` is either 0 or 1:
             // (1 - a) * a = 0
-            Circuit::enforce(|| (Circuit::one() - candidate, candidate, Circuit::zero()));
+            Circuit::enforce(|| (Circuit::one() - &candidate, candidate, Circuit::zero()));
             assert!(!Circuit::is_satisfied());
 
             Circuit::reset();

@@ -24,11 +24,7 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
-use crate::traits::{
-    pairing_engine::{AffineCurve, ProjectiveCurve},
-    MontgomeryParameters,
-    TwistedEdwardsParameters,
-};
+use crate::traits::{AffineCurve, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{Field, One, PrimeField, Zero};
 
 pub const ITERATIONS: usize = 10;

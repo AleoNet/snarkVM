@@ -38,18 +38,17 @@ impl<E: Environment> Equal<Self> for Field<E> {
     ///
     fn is_not_equal(&self, other: &Self) -> Self::Boolean {
         match (self.is_constant(), other.is_constant()) {
-            (true, true) => Boolean::new(Mode::Constant, self.eject_value() != other.eject_value()),
+            (true, true) => witness!(|self, other| self != other),
             _ => {
-                let this = self.eject_value();
-                let that = other.eject_value();
-
                 // Compute a boolean that is `true` if `this` and `that` are not equivalent.
-                let is_neq = Boolean::new(Mode::Private, this != that);
+                let is_neq: Boolean<E> = witness!(|self, other| self != other);
 
                 // Assign the expected multiplier.
-                let multiplier = Field::<E>::new(Mode::Private, match this != that {
-                    true => (this - that).inverse().expect("Failed to compute a native inverse"),
-                    false => E::BaseField::one(),
+                let multiplier: Field<E> = witness!(|self, other| {
+                    match self != other {
+                        true => (self - other).inverse().expect("Failed to compute a native inverse"),
+                        false => E::BaseField::one(),
+                    }
                 });
 
                 //
@@ -116,13 +115,13 @@ impl<E: Environment> Equal<Self> for Field<E> {
                 //
 
                 // Compute `self` - `other`.
-                let delta = &self.0 - &other.0;
+                let delta = self - other;
 
                 // Negate `is_neq`.
                 let is_eq = !is_neq.clone();
 
                 // Check 1: (a - b) * multiplier = is_neq
-                E::enforce(|| (delta.clone(), &multiplier, &is_neq));
+                E::enforce(|| (&delta, &multiplier, &is_neq));
 
                 // Check 2: (a - b) * not(is_neq) = 0
                 E::enforce(|| (delta, is_eq, E::zero()));
@@ -246,7 +245,7 @@ mod tests {
 
         let enforce = |a: Field<Circuit>, b: Field<Circuit>, multiplier: Field<Circuit>, is_neq: Boolean<Circuit>| {
             // Compute `self` - `other`.
-            let delta = &a.0 - &b.0;
+            let delta = &a - &b;
 
             // Negate `is_neq`.
             let is_eq = !is_neq.clone();

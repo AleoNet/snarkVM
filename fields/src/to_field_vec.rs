@@ -14,8 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{ConstraintFieldError, Field, FieldParameters, Fp2, Fp2Parameters, PrimeField, ToConstraintField};
+use crate::{ConstraintFieldError, Field, Fp2, Fp2Parameters, PrimeField, ToConstraintField};
 use snarkvm_utilities::FromBits;
+
+impl<F: Field> ToConstraintField<F> for () {
+    #[inline]
+    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
+        Ok(Vec::new())
+    }
+}
+
+impl<F: Field> ToConstraintField<F> for bool {
+    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
+        if *self { Ok(vec![F::one()]) } else { Ok(vec![F::zero()]) }
+    }
+}
 
 impl<F: PrimeField> ToConstraintField<F> for F {
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
@@ -23,7 +36,6 @@ impl<F: PrimeField> ToConstraintField<F> for F {
     }
 }
 
-// Impl for base field
 impl<F: Field> ToConstraintField<F> for [F] {
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
@@ -38,14 +50,6 @@ impl<F: Field> ToConstraintField<F> for Vec<F> {
     }
 }
 
-impl<F: Field> ToConstraintField<F> for () {
-    #[inline]
-    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
-        Ok(Vec::new())
-    }
-}
-
-// Impl for constraint Fp2<F>
 impl<P: Fp2Parameters> ToConstraintField<P::Fp> for Fp2<P> {
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<P::Fp>, ConstraintFieldError> {
@@ -59,10 +63,12 @@ impl<P: Fp2Parameters> ToConstraintField<P::Fp> for Fp2<P> {
 impl<F: PrimeField> ToConstraintField<F> for [bool] {
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
-        Ok(self
-            .chunks(<F as PrimeField>::Parameters::CAPACITY as usize)
-            .map(|chunk| F::from_repr(F::BigInteger::from_bits_le(chunk)).unwrap())
-            .collect::<Vec<F>>())
+        self.chunks(F::size_in_data_bits())
+            .map(|chunk| {
+                F::from_repr(F::BigInteger::from_bits_le(chunk))
+                    .ok_or(ConstraintFieldError::Message("Invalid data bits for constraint field"))
+            })
+            .collect::<Result<Vec<F>, _>>()
     }
 }
 
@@ -77,7 +83,7 @@ impl<F: PrimeField> ToConstraintField<F> for [u8] {
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
         // Derive the field size in bytes, floored to be conservative.
-        let floored_field_size_in_bytes = (<F as PrimeField>::Parameters::CAPACITY / 8) as usize;
+        let floored_field_size_in_bytes = (F::size_in_data_bits() / 8) as usize;
 
         // Pack the bytes into field elements.
         Ok(self
@@ -96,11 +102,5 @@ impl<F: PrimeField, const NUM_BYTES: usize> ToConstraintField<F> for [u8; NUM_BY
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
         self.as_ref().to_field_elements()
-    }
-}
-
-impl<F: Field> ToConstraintField<F> for bool {
-    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
-        if *self { Ok(vec![F::one()]) } else { Ok(vec![F::zero()]) }
     }
 }

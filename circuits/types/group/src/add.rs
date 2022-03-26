@@ -28,20 +28,14 @@ impl<E: Environment> Add<&Self> for Group<E> {
     type Output = Self;
 
     fn add(self, other: &Self) -> Self::Output {
-        // Determine the variable mode.
-        let mode = match self.is_constant() && other.is_constant() {
-            true => Mode::Constant,
-            false => Mode::Private,
-        };
-
         // This swap reduces the number of constants by one.
         let (this, that) = match other.is_constant() {
             true => (&self, other),
             false => (other, &self),
         };
 
-        let a = Field::new(Mode::Constant, E::AffineParameters::COEFF_A);
-        let d = Field::new(Mode::Constant, E::AffineParameters::COEFF_D);
+        let a = Field::constant(E::AffineParameters::COEFF_A);
+        let d = Field::constant(E::AffineParameters::COEFF_D);
 
         // Compute U = (-A * x1 + y1) * (x2 + y2)
         let u1 = (&this.x * &-&a) + &this.y;
@@ -58,29 +52,14 @@ impl<E: Environment> Add<&Self> for Group<E> {
         let v2 = (&v0 * &v1) * d;
 
         // Compute x3 and y3.
-        let (x3, y3) = {
-            let v0 = v0.eject_value();
-            let v1 = v1.eject_value();
-            let v2 = v2.eject_value();
-
-            // Assign x3 = (v0 + v1) / (v2 + 1)
-            let x3 = {
-                let t0 = v0 + v1;
-                let t1 = v2 + E::BaseField::one();
-                let t0_div_t1 = t0 * t1.inverse().expect("Failed to compute x-coordinate");
-                Field::new(mode, t0_div_t1)
-            };
-
-            // Assign y3 = (U + a * v0 - v1) / (1 - v2)
-            let y3 = {
-                let t0 = u.eject_value() + (v0 * a.eject_value()) - v1;
-                let t1 = E::BaseField::one() - v2;
-                let t0_div_t1 = t0 * t1.inverse().expect("Failed to compute y-coordinate");
-                Field::new(mode, t0_div_t1)
-            };
-
+        let (x3, y3) = witness!(|a, u, v0, v1, v2| {
+            // Assign x3 = (v0 + v1) / (v2 + 1).
+            let x3 = (v0 + v1) / (v2 + E::BaseField::one());
+            // Assign y3 = (U + a * v0 - v1) / (1 - v2).
+            let y3 = (u + (v0 * a) - v1) / (E::BaseField::one() - v2);
+            // Return (x3, y3).
             (x3, y3)
-        };
+        });
 
         // Ensure x3 is well-formed.
         // x3 * (v2 + 1) = v0 + v1

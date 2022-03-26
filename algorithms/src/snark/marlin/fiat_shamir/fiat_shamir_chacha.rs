@@ -69,14 +69,8 @@ impl<TargetField: PrimeField, BaseField: PrimeField, D: Digest + Clone + Debug> 
 {
     type Parameters = ();
 
-    fn sample_params() -> Self::Parameters {}
-
     fn new() -> Self {
         Self { r: None, seed: None, _phantom: PhantomData }
-    }
-
-    fn with_parameters(_params: &Self::Parameters) -> Self {
-        Self::new()
     }
 
     fn absorb_nonnative_field_elements(&mut self, elems: &[TargetField], _: OptimizationType) {

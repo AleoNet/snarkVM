@@ -262,8 +262,7 @@ fn calculate_coeff<G: AffineCurve>(
     res
 }
 
-#[derive(derivative::Derivative)]
-#[derivative(Copy(bound = ""), Clone(bound = ""))]
+#[derive(Copy, Clone)]
 enum ResultWrapper<E: PairingEngine> {
     G1(E::G1Projective),
     G2(E::G2Projective),

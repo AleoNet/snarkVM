@@ -18,10 +18,7 @@ use crate::{
     fft::{DensePolynomial, EvaluationDomain},
     polycommit::{PCCommitment, PCProof, PCRandomness, PCUniversalParams},
 };
-use snarkvm_curves::{
-    traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve},
-    Group,
-};
+use snarkvm_curves::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, PrimeField, ToConstraintField, Zero};
 use snarkvm_utilities::{
     borrow::Cow,
@@ -38,9 +35,7 @@ use rand_core::RngCore;
 use std::{collections::BTreeMap, io};
 
 /// `UniversalParams` are the universal parameters for the KZG10 scheme.
-#[derive(Derivative)]
-#[derivative(Default(bound = ""), Clone(bound = ""), Debug(bound = ""))]
-#[derive(CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Debug, Default, CanonicalSerialize, CanonicalDeserialize)]
 pub struct UniversalParams<E: PairingEngine> {
     /// Group elements of the form `{ \beta^i G }`, where `i` ranges from 0 to `degree`.
     /// These represent the monomial basis evaluated at `beta`.
@@ -58,10 +53,8 @@ pub struct UniversalParams<E: PairingEngine> {
     /// This one is used for deriving the verifying key.
     pub inverse_neg_powers_of_beta_h: BTreeMap<usize, E::G2Affine>,
     /// The generator of G2, prepared for use in pairings.
-    #[derivative(Debug = "ignore")]
     pub prepared_h: <E::G2Affine as PairingCurve>::Prepared,
     /// \beta times the above generator of G2, prepared for use in pairings.
-    #[derivative(Debug = "ignore")]
     pub prepared_beta_h: <E::G2Affine as PairingCurve>::Prepared,
 }
 
@@ -190,10 +183,8 @@ impl<E: PairingEngine> PCUniversalParams for UniversalParams<E> {
     }
 }
 
-/// `Powers` is used to commit to and create evaluation proofs for a given
-/// polynomial.
-#[derive(Derivative)]
-#[derivative(Default(bound = ""), Hash(bound = ""), Clone(bound = ""), Debug(bound = ""))]
+/// `Powers` is used to commit to and create evaluation proofs for a given polynomial.
+#[derive(Clone, Debug, Default, Hash)]
 pub struct Powers<'a, E: PairingEngine> {
     /// Group elements of the form `β^i G`, for different values of `i`.
     pub powers_of_beta_g: Cow<'a, [E::G1Affine]>,
@@ -207,10 +198,8 @@ impl<E: PairingEngine> Powers<'_, E> {
         self.powers_of_beta_g.len()
     }
 }
-/// `LagrangeBasis` is used to commit to and create evaluation proofs for a given
-/// polynomial.
-#[derive(Derivative)]
-#[derivative(Hash(bound = ""), Clone(bound = ""), Debug(bound = ""))]
+/// `LagrangeBasis` is used to commit to and create evaluation proofs for a given polynomial.
+#[derive(Clone, Debug, Hash)]
 pub struct LagrangeBasis<'a, E: PairingEngine> {
     /// Group elements of the form `β^i G`, for different values of `i`.
     pub lagrange_basis_at_beta_g: Cow<'a, [E::G1Affine]>,
@@ -229,8 +218,7 @@ impl<E: PairingEngine> LagrangeBasis<'_, E> {
 }
 
 /// `VerifierKey` is used to check evaluation proofs for a given commitment.
-#[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
-#[derivative(Default(bound = ""), Clone(bound = ""), Debug(bound = ""), PartialEq(bound = ""), Eq(bound = ""))]
+#[derive(Clone, Debug, Default, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct VerifierKey<E: PairingEngine> {
     /// The generator of G1.
     pub g: E::G1Affine,
@@ -241,10 +229,8 @@ pub struct VerifierKey<E: PairingEngine> {
     /// \beta times the above generator of G2.
     pub beta_h: E::G2Affine,
     /// The generator of G2, prepared for use in pairings.
-    #[derivative(Debug = "ignore")]
     pub prepared_h: <E::G2Affine as PairingCurve>::Prepared,
     /// \beta times the above generator of G2, prepared for use in pairings.
-    #[derivative(Debug = "ignore")]
     pub prepared_beta_h: <E::G2Affine as PairingCurve>::Prepared,
 }
 
@@ -275,8 +261,7 @@ impl<E: PairingEngine> ToConstraintField<E::Fq> for VerifierKey<E> {
 
 /// `PreparedVerifierKey` is the fully prepared version for checking evaluation proofs for a given commitment.
 /// We omit gamma here for simplicity.
-#[derive(Derivative)]
-#[derivative(Default(bound = ""), Clone(bound = ""), Debug(bound = ""))]
+#[derive(Clone, Debug, Default)]
 pub struct PreparedVerifierKey<E: PairingEngine> {
     /// The generator of G1, prepared for power series.
     pub prepared_g: Vec<E::G1Affine>,
@@ -317,17 +302,7 @@ impl<E: PairingEngine> PreparedVerifierKey<E> {
 }
 
 /// `Commitment` commits to a polynomial. It is output by `KZG10::commit`.
-#[derive(Derivative)]
-#[derivative(
-    Default(bound = ""),
-    Hash(bound = ""),
-    Clone(bound = ""),
-    Copy(bound = ""),
-    Debug(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
-#[derive(CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Commitment<E: PairingEngine>(
     /// The commitment is a group element.
     pub E::G1Affine,
@@ -382,15 +357,7 @@ impl<E: PairingEngine> ToConstraintField<E::Fq> for Commitment<E> {
 }
 
 /// `PreparedCommitment` commits to a polynomial and prepares for mul_bits.
-#[derive(Derivative)]
-#[derivative(
-    Default(bound = ""),
-    Hash(bound = ""),
-    Clone(bound = ""),
-    Debug(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct PreparedCommitment<E: PairingEngine>(
     /// The commitment is a group element.
     pub Vec<E::G1Affine>,
@@ -414,16 +381,7 @@ impl<E: PairingEngine> PreparedCommitment<E> {
 }
 
 /// `Randomness` hides the polynomial inside a commitment. It is output by `KZG10::commit`.
-#[derive(Derivative)]
-#[derivative(
-    Default(bound = ""),
-    Hash(bound = ""),
-    Clone(bound = ""),
-    Debug(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
-#[derive(CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Randomness<E: PairingEngine> {
     /// For KZG10, the commitment randomness is a random polynomial.
     pub blinding_polynomial: DensePolynomial<E::Fr>,
@@ -503,17 +461,7 @@ impl<'a, E: PairingEngine> AddAssign<(E::Fr, &'a Randomness<E>)> for Randomness<
 }
 
 /// `Proof` is an evaluation proof that is output by `KZG10::open`.
-#[derive(Derivative)]
-#[derivative(
-    Default(bound = ""),
-    Hash(bound = ""),
-    Clone(bound = ""),
-    Copy(bound = ""),
-    Debug(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
-#[derive(CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Proof<E: PairingEngine> {
     /// This is a commitment to the witness polynomial; see [\[KZG10\]][kzg] for more details.
     ///

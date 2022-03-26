@@ -29,6 +29,12 @@ pub use field_parameters::*;
 mod one;
 pub use one::*;
 
+mod poseidon_grain_lfsr;
+pub use poseidon_grain_lfsr::*;
+
+mod poseidon_default;
+pub use poseidon_default::*;
+
 mod prime_field;
 pub use prime_field::*;
 
@@ -40,6 +46,3 @@ pub use to_constraint_field::*;
 
 mod zero;
 pub use zero::*;
-
-mod poseidon_default_parameters;
-pub use poseidon_default_parameters::*;

@@ -210,9 +210,9 @@ impl<F: PrimeField, CF: PrimeField> FromFieldElementsGadget<F, CF> for BooleanIn
                 }
             }
 
-            if fr_not_smaller_than_fq { F::size_in_bits() } else { F::size_in_bits() - 1 }
+            if fr_not_smaller_than_fq { F::size_in_bits() } else { F::size_in_data_bits() }
         } else {
-            F::size_in_bits() - 1
+            F::size_in_data_bits()
         };
 
         // Step 3: group them based on the used capacity of F

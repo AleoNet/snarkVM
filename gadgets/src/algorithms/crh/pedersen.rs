@@ -20,12 +20,12 @@ use crate::{
     traits::{
         algorithms::{CRHGadget, MaskedCRHGadget},
         alloc::AllocGadget,
-        curves::CurveGadget,
+        curves::GroupGadget,
         integers::Integer,
     },
 };
 use snarkvm_algorithms::crh::PedersenCRH;
-use snarkvm_curves::ProjectiveCurve;
+use snarkvm_curves::AffineCurve;
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
@@ -33,23 +33,24 @@ use std::{borrow::Borrow, marker::PhantomData};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PedersenCRHGadget<
-    G: ProjectiveCurve,
+    G: AffineCurve,
     F: PrimeField,
-    GG: CurveGadget<G, F>,
+    GG: GroupGadget<G, F>,
     const NUM_WINDOWS: usize,
     const WINDOW_SIZE: usize,
 > {
-    pub(crate) crh: PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>,
+    pub(crate) crh: PedersenCRH<G::Projective, NUM_WINDOWS, WINDOW_SIZE>,
     _group: PhantomData<GG>,
     _engine: PhantomData<F>,
 }
 
-impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    AllocGadget<PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F> for PedersenCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
+impl<G: AffineCurve, F: PrimeField, GG: GroupGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+    AllocGadget<PedersenCRH<G::Projective, NUM_WINDOWS, WINDOW_SIZE>, F>
+    for PedersenCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
     fn alloc_constant<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        T: Borrow<PedersenCRH<G::Projective, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         _cs: CS,
@@ -60,7 +61,7 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS
 
     fn alloc<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        T: Borrow<PedersenCRH<G::Projective, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         _cs: CS,
@@ -71,7 +72,7 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS
 
     fn alloc_input<
         Fn: FnOnce() -> Result<T, SynthesisError>,
-        T: Borrow<PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>>,
+        T: Borrow<PedersenCRH<G::Projective, NUM_WINDOWS, WINDOW_SIZE>>,
         CS: ConstraintSystem<F>,
     >(
         _cs: CS,
@@ -81,8 +82,9 @@ impl<G: ProjectiveCurve, F: PrimeField, GG: CurveGadget<G, F>, const NUM_WINDOWS
     }
 }
 
-impl<F: PrimeField, G: ProjectiveCurve, GG: CurveGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    CRHGadget<PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F> for PedersenCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
+impl<F: PrimeField, G: AffineCurve, GG: GroupGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+    CRHGadget<PedersenCRH<G::Projective, NUM_WINDOWS, WINDOW_SIZE>, F>
+    for PedersenCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
     type OutputGadget = GG;
 
@@ -113,8 +115,8 @@ fn pad_input_and_bitify<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(inpu
     padded_input.into_iter().flat_map(|byte| byte.to_bits_le()).collect()
 }
 
-impl<F: PrimeField, G: ProjectiveCurve, GG: CurveGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    MaskedCRHGadget<PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F>
+impl<F: PrimeField, G: AffineCurve, GG: GroupGadget<G, F>, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+    MaskedCRHGadget<PedersenCRH<G::Projective, NUM_WINDOWS, WINDOW_SIZE>, F>
     for PedersenCRHGadget<G, F, GG, NUM_WINDOWS, WINDOW_SIZE>
 {
     type MaskParametersGadget = Self;
@@ -140,7 +142,7 @@ impl<F: PrimeField, G: ProjectiveCurve, GG: CurveGadget<G, F>, const NUM_WINDOWS
         if input.len() != mask.len() * 2 {
             return Err(SynthesisError::Unsatisfiable);
         }
-        let mask = <Self as MaskedCRHGadget<PedersenCRH<G, NUM_WINDOWS, WINDOW_SIZE>, F>>::extend_mask(
+        let mask = <Self as MaskedCRHGadget<PedersenCRH<G::Projective, NUM_WINDOWS, WINDOW_SIZE>, F>>::extend_mask(
             cs.ns(|| "extend mask"),
             &mask,
         )?;

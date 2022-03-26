@@ -21,28 +21,71 @@ use snarkvm_circuits::prelude::*;
 
 use criterion::Criterion;
 
-fn evaluate(c: &mut Criterion) {
+fn add(c: &mut Criterion) {
     let one = <Circuit as Environment>::BaseField::one();
+    let two = one + one;
 
-    // Public variables
+    const ITERATIONS: usize = 1000;
+
+    c.bench_function("LinearCombination::add", move |b| {
+        b.iter(|| {
+            let mut candidate = <Circuit as Environment>::one();
+            for _ in 0..ITERATIONS {
+                candidate = &candidate + &LinearCombination::from(Circuit::new_variable(Mode::Public, two));
+            }
+        })
+    });
+
+    c.bench_function("LinearCombination::add_assign", move |b| {
+        b.iter(|| {
+            let mut candidate = <Circuit as Environment>::one();
+            for _ in 0..ITERATIONS {
+                candidate += LinearCombination::from(Circuit::new_variable(Mode::Public, two));
+            }
+        })
+    });
+}
+
+fn to_value(c: &mut Criterion) {
+    let one = <Circuit as Environment>::BaseField::one();
+    let two = one + one;
+
     let mut candidate = Field::<Circuit>::one();
-    for _ in 0..1_000_000 {
-        candidate += Field::new(Mode::Constant, one);
-        candidate += Field::new(Mode::Public, one);
-        candidate += Field::new(Mode::Private, one);
-    }
+    (0..500_000).for_each(|_| {
+        candidate += Field::new(Mode::Constant, two);
+        candidate += Field::new(Mode::Public, two);
+        candidate += Field::new(Mode::Private, two);
+    });
 
-    c.bench_function("evaluate", move |b| {
+    c.bench_function("to_value", move |b| {
         b.iter(|| {
             let _value = candidate.eject_value();
         })
     });
 }
 
+fn debug(c: &mut Criterion) {
+    let one = <Circuit as Environment>::BaseField::one();
+    let two = one + one;
+
+    let mut candidate = Field::<Circuit>::one();
+    (0..500_000).for_each(|_| {
+        candidate += Field::new(Mode::Constant, two);
+        candidate += Field::new(Mode::Public, two);
+        candidate += Field::new(Mode::Private, two);
+    });
+
+    c.bench_function("debug", move |b| {
+        b.iter(|| {
+            let _value = format!("{:?}", candidate);
+        })
+    });
+}
+
 criterion_group! {
     name = linear_combination;
-    config = Criterion::default().sample_size(20);
-    targets = evaluate
+    config = Criterion::default().sample_size(10);
+    targets = add, to_value, debug
 }
 
 criterion_main!(linear_combination);

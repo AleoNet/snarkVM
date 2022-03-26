@@ -45,8 +45,8 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
                 Self::ternary(operands_same_sign, &signed_quotient, &Self::zero().sub_wrapped(&signed_quotient));
 
             // Signed integer division wraps when the dividend is I::MIN and the divisor is -1.
-            let min = Self::new(Mode::Constant, I::MIN);
-            let neg_one = Self::new(Mode::Constant, I::zero() - I::one());
+            let min = Self::constant(I::MIN);
+            let neg_one = Self::constant(I::zero() - I::one());
             let overflows = self.is_equal(&min) & other.is_equal(&neg_one);
             Self::ternary(&overflows, &min, &signed_quotient)
         } else {

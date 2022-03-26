@@ -48,12 +48,6 @@ impl<E: Environment> StringType<E> {
             false => E::halt(format!("Attempted to allocate a string of size {num_bytes}")),
         }
     }
-
-    /// Returns the type name as a string.
-    #[inline]
-    pub fn type_name() -> &'static str {
-        "string"
-    }
 }
 
 impl<E: Environment> Eject for StringType<E> {
@@ -95,6 +89,14 @@ impl<E: Environment> Parser for StringType<E> {
             Some((_, mode)) => Ok((string, StringType::new(mode, &value))),
             None => Ok((string, StringType::new(Mode::Constant, &value))),
         }
+    }
+}
+
+impl<E: Environment> TypeName for StringType<E> {
+    /// Returns the type name of the circuit as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "string"
     }
 }
 

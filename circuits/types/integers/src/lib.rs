@@ -85,12 +85,6 @@ impl<E: Environment, I: IntegerType> DataType<Boolean<E>> for Integer<E, I> {}
 impl<E: Environment, I: IntegerType> Inject for Integer<E, I> {
     type Primitive = I;
 
-    /// Returns the type name of the circuit as a string.
-    #[inline]
-    fn type_name() -> &'static str {
-        I::type_name()
-    }
-
     /// Initializes a new integer.
     fn new(mode: Mode, value: Self::Primitive) -> Self {
         let mut bits_le = Vec::with_capacity(I::BITS);
@@ -99,7 +93,7 @@ impl<E: Environment, I: IntegerType> Inject for Integer<E, I> {
             bits_le.push(Boolean::new(mode, value & I::one() == I::one()));
             value = value.wrapping_shr(1u32);
         }
-        Self::from_bits_le(mode, &bits_le)
+        Self::from_bits_le(&bits_le)
     }
 }
 
@@ -155,6 +149,14 @@ impl<E: Environment, I: IntegerType> Parser for Integer<E, I> {
     }
 }
 
+impl<E: Environment, I: IntegerType> TypeName for Integer<E, I> {
+    /// Returns the type name of the circuit as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        I::type_name()
+    }
+}
+
 impl<E: Environment, I: IntegerType> Debug for Integer<E, I> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self.eject_value())
@@ -176,10 +178,10 @@ impl<E: Environment, I: IntegerType> From<Integer<E, I>> for LinearCombination<E
 impl<E: Environment, I: IntegerType> From<&Integer<E, I>> for LinearCombination<E::BaseField> {
     fn from(integer: &Integer<E, I>) -> Self {
         // Reconstruct the bits as a linear combination representing the original field value.
-        let mut accumulator: LinearCombination<_> = Field::<E>::zero().into();
-        let mut coefficient = Field::one();
+        let mut accumulator = E::zero();
+        let mut coefficient = E::BaseField::one();
         for bit in &integer.bits_le {
-            accumulator += LinearCombination::from(Field::from(bit) * &coefficient);
+            accumulator += LinearCombination::from(bit) * coefficient;
             coefficient = coefficient.double();
         }
         accumulator
