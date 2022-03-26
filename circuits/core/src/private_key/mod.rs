@@ -18,7 +18,9 @@ use snarkvm_circuits_environment::prelude::*;
 use snarkvm_circuits_types::Scalar;
 
 pub struct PrivateKey<E: Environment> {
+    /// The signature secret key.
     sk_sig: Scalar<E>,
+    /// The signature randomizer.
     r_sig: Scalar<E>,
 }
 
