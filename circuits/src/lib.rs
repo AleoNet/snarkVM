@@ -18,12 +18,12 @@
 
 pub use snarkvm_circuits_core::*;
 pub use snarkvm_circuits_edge::*;
+pub use snarkvm_circuits_environment::*;
 pub use snarkvm_circuits_types::*;
-
-use snarkvm_circuits_types::environment::{Circuit, Environment};
 
 pub mod prelude {
     pub use super::*;
+    pub use snarkvm_circuits_environment::*;
 }
 
 pub trait Library<E: Environment> {

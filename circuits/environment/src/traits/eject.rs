@@ -74,9 +74,9 @@ fn eject_mode(start_mode: Mode, modes: &[Mode]) -> Mode {
             //  - If the next mode is Mode::Private, then set the current mode to Mode::Private.
             //  - If the next mode is Mode::Public, then set the current mode to Mode::Private.
             match (current_mode, next_mode) {
-                (Mode::Constant, Mode::Public)
-                | (Mode::Constant, Mode::Private)
-                | (Mode::Public, Mode::Private) => current_mode = *next_mode,
+                (Mode::Constant, Mode::Public) | (Mode::Constant, Mode::Private) | (Mode::Public, Mode::Private) => {
+                    current_mode = *next_mode
+                }
                 (_, _) => (), // Do nothing.
             }
         }
@@ -129,7 +129,9 @@ impl<C: Eject<Primitive = P>, P: Default> Eject for &[C] {
         // TODO (howardwu): Determine if a default mode of `constant` is appropriate.
         // Retrieve the mode of the first circuit.
         match self.get(0) {
-            Some(first) => eject_mode(first.eject_mode(), &self.iter().skip(1).map(Eject::eject_mode).collect::<Vec<_>>()),
+            Some(first) => {
+                eject_mode(first.eject_mode(), &self.iter().skip(1).map(Eject::eject_mode).collect::<Vec<_>>())
+            }
             None => eject_mode(Mode::Constant, &self.iter().skip(1).map(Eject::eject_mode).collect::<Vec<_>>()),
             // None => panic!("Attempted to eject the mode on an empty circuit"),
         }
