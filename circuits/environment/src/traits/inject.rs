@@ -36,16 +36,6 @@ pub trait Inject {
     }
 
     ///
-    /// Initializes a witness of the given primitive value.
-    ///
-    fn witness<Fn: FnOnce() -> Self::Primitive>(mode: Mode, value: Fn) -> Self
-    where
-        Self: Sized,
-    {
-        Self::new(mode, value())
-    }
-
-    ///
     /// Initializes a blank default of the circuit for the given mode.
     /// This operation is used commonly to derive a proving and verifying key.
     ///
