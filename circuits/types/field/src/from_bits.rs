@@ -84,7 +84,7 @@ impl<E: Environment> FromBits for Field<E> {
         }
 
         // Construct the sanitized list of bits, resizing up if necessary.
-        let mut bits_le = bits_le.iter().cloned().take(size_in_bits).collect::<Vec<_>>();
+        let mut bits_le = bits_le.iter().take(size_in_bits).cloned().collect::<Vec<_>>();
         bits_le.resize(size_in_bits, Boolean::constant(false));
 
         // Store the little-endian bits in the output.
