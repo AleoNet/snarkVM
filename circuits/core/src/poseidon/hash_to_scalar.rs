@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_circuits_types::Scalar;
 
 impl<E: Environment> Poseidon<E> {
     /// Returns a scalar from hashing the input.

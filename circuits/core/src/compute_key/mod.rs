@@ -19,16 +19,16 @@ pub mod from_private_key;
 #[cfg(test)]
 use snarkvm_circuits_environment::assert_scope;
 
-use crate::Account;
+use crate::{Account, PrivateKey};
 use snarkvm_circuits_environment::prelude::*;
 use snarkvm_circuits_types::{Group, Scalar};
 
 pub struct ComputeKey<A: Account> {
-    /// pk_sig := G^sk_sig.
+    /// The signature public key `pk_sig` := G^sk_sig.
     pk_sig: Group<A>,
-    /// pr_sig := G^r_sig.
+    /// The signature public randomizer `pr_sig` := G^r_sig.
     pr_sig: Group<A>,
-    /// sk_prf := RO(G^sk_sig || G^r_sig).
+    /// The PRF secret key `sk_prf` := RO(G^sk_sig || G^r_sig).
     sk_prf: Scalar<A>,
 }
 
@@ -36,7 +36,7 @@ impl<A: Account> Inject for ComputeKey<A> {
     type Primitive = (A::Affine, A::Affine, A::ScalarField);
 
     /// Initializes an account compute key from the given mode and `(pk_sig, pr_sig, sk_prf)`.
-    fn new(mode: Mode, (pk_sig, pr_sig, sk_prf): Self::Primitive) -> ComputeKey<A> {
+    fn new(mode: Mode, (pk_sig, pr_sig, sk_prf): Self::Primitive) -> Self {
         Self { pk_sig: Group::new(mode, pk_sig), pr_sig: Group::new(mode, pr_sig), sk_prf: Scalar::new(mode, sk_prf) }
     }
 }

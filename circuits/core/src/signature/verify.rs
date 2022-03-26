@@ -15,10 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use crate::PrivateKey;
 
-impl<A: Account> ComputeKey<A> {
-    /// Returns the account compute key for this account private key.
-    pub fn from_private_key(private_key: &PrivateKey<A>) -> Self {
+impl<A: Account> Signature<A> {
+    /// Returns `true` if the signature is valid for the given `address` and `message`.
+    pub fn verify(address: &Address<A>, message: &[Literal<A>]) -> Boolean<A> {
         // Extract (sk_sig, r_sig).
         let (sk_sig, r_sig) = (private_key.sk_sig(), private_key.r_sig());
 
@@ -31,8 +32,7 @@ impl<A: Account> ComputeKey<A> {
         // Compute sk_prf := RO(G^sk_sig || G^r_sig).
         let sk_prf = A::hash_to_scalar(&[pk_sig.to_x_coordinate(), pr_sig.to_x_coordinate()]);
 
-        // Return the compute key.
-        Self { pk_sig, pr_sig, sk_prf }
+        Boolean
     }
 }
 
@@ -74,13 +74,7 @@ pub(crate) mod tests {
         (sk_sig, r_sig, pk_sig, pr_sig, sk_prf)
     }
 
-    fn check_from_private_key(
-        mode: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
+    fn check_verify(mode: Mode, num_constants: usize, num_public: usize, num_private: usize, num_constraints: usize) {
         for i in 0..ITERATIONS {
             // Generate the private key and compute key components.
             let (sk_sig, r_sig, pk_sig, pr_sig, sk_prf) = generate_private_and_compute_key();
@@ -89,7 +83,7 @@ pub(crate) mod tests {
             let private_key = PrivateKey::<Circuit>::new(mode, (sk_sig, r_sig));
 
             Circuit::scope(&format!("{} {}", mode, i), || {
-                let candidate = ComputeKey::from_private_key(&private_key);
+                let candidate = ComputeKey::verify(&private_key);
                 assert_eq!(pk_sig, candidate.pk_sig().eject_value());
                 assert_eq!(pr_sig, candidate.pr_sig().eject_value());
                 assert_eq!(sk_prf, candidate.sk_prf().eject_value());
@@ -103,17 +97,17 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn test_from_private_key_constant() {
-        check_from_private_key(Mode::Constant, 2261, 0, 0, 0);
+    fn test_verify_constant() {
+        check_verify(Mode::Constant, 2261, 0, 0, 0);
     }
 
     #[test]
-    fn test_from_private_key_public() {
-        check_from_private_key(Mode::Public, 1008, 0, 3093, 3094);
+    fn test_verify_public() {
+        check_verify(Mode::Public, 1008, 0, 3093, 3094);
     }
 
     #[test]
-    fn test_from_private_key_private() {
-        check_from_private_key(Mode::Private, 1008, 0, 3093, 3094);
+    fn test_verify_private() {
+        check_verify(Mode::Private, 1008, 0, 3093, 3094);
     }
 }

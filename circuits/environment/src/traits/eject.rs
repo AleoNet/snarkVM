@@ -60,6 +60,31 @@ pub trait Eject {
 }
 
 /********************/
+/****** Helper ******/
+/********************/
+
+/// A helper method to deduce the mode from a list of `Eject` circuits.
+#[inline]
+fn eject_mode(start_mode: Mode, modes: &[Mode]) -> Mode {
+    let mut current_mode = start_mode;
+    for next_mode in modes {
+        // Check if the current mode matches the next mode.
+        if !current_mode.is_private() && current_mode != *next_mode {
+            // If the current mode is not Mode::Private, and they do not match:
+            //  - If the next mode is Mode::Private, then set the current mode to Mode::Private.
+            //  - If the next mode is Mode::Public, then set the current mode to Mode::Private.
+            match (current_mode, next_mode) {
+                (Mode::Constant, Mode::Public)
+                | (Mode::Constant, Mode::Private)
+                | (Mode::Public, Mode::Private) => current_mode = *next_mode,
+                (_, _) => (), // Do nothing.
+            }
+        }
+    }
+    current_mode
+}
+
+/********************/
 /****** Arrays ******/
 /********************/
 
@@ -103,29 +128,11 @@ impl<C: Eject<Primitive = P>, P: Default> Eject for &[C] {
     fn eject_mode(&self) -> Mode {
         // TODO (howardwu): Determine if a default mode of `constant` is appropriate.
         // Retrieve the mode of the first circuit.
-        let mut current_mode = match self.get(0) {
-            Some(circuit) => circuit.eject_mode(),
-            None => Mode::Constant,
+        match self.get(0) {
+            Some(first) => eject_mode(first.eject_mode(), &self.iter().skip(1).map(Eject::eject_mode).collect::<Vec<_>>()),
+            None => eject_mode(Mode::Constant, &self.iter().skip(1).map(Eject::eject_mode).collect::<Vec<_>>()),
             // None => panic!("Attempted to eject the mode on an empty circuit"),
-        };
-
-        for bit_mode in self.iter().skip(1).map(Eject::eject_mode) {
-            // Check if the current mode matches the bit mode.
-            if !current_mode.is_private() && current_mode != bit_mode {
-                // If the current mode is not Mode::Private, and they do not match:
-                //  - If the bit mode is Mode::Private, then set the current mode to Mode::Private.
-                //  - If the bit mode is Mode::Public, then set the current mode to Mode::Private.
-                match (current_mode, bit_mode) {
-                    (Mode::Constant, Mode::Public)
-                    | (Mode::Constant, Mode::Private)
-                    | (Mode::Public, Mode::Private) => current_mode = bit_mode,
-                    (_, _) => (), // Do nothing.
-                }
-            }
         }
-
-        // Return the mode.
-        current_mode
     }
 
     /// Ejects the value from each circuit.
@@ -145,24 +152,7 @@ impl<'a, C0: Eject, C1: Eject> Eject for (&'a C0, &'a C1) {
     /// A helper method to deduce the mode from a tuple of `Eject` circuits.
     #[inline]
     fn eject_mode(&self) -> Mode {
-        // Eject the modes.
-        let first = self.0.eject_mode();
-        let second = self.1.eject_mode();
-
-        // Check if the first mode matches the second mode.
-        if !first.is_private() && first != second {
-            // If the first mode is not Mode::Private, and they do not match:
-            //  - If the second mode is Mode::Private, then return the second mode.
-            //  - If the second mode is Mode::Public, then return the second mode.
-            match (first, second) {
-                (Mode::Constant, Mode::Public) | (Mode::Constant, Mode::Private) | (Mode::Public, Mode::Private) => {
-                    second
-                }
-                (_, _) => first,
-            }
-        } else {
-            first
-        }
+        eject_mode(self.0.eject_mode(), &[self.1.eject_mode()])
     }
 
     /// Ejects the value from each circuit.
@@ -178,27 +168,28 @@ impl<'a, C0: Eject, C1: Eject, C2: Eject> Eject for (&'a C0, &'a C1, &'a C2) {
     /// A helper method to deduce the mode from a tuple of `Eject` circuits.
     #[inline]
     fn eject_mode(&self) -> Mode {
-        let mut current_mode = self.0.eject_mode();
-        for next_mode in &[self.1.eject_mode(), self.2.eject_mode()] {
-            // Check if the current mode matches the next mode.
-            if !current_mode.is_private() && current_mode != *next_mode {
-                // If the current mode is not Mode::Private, and they do not match:
-                //  - If the next mode is Mode::Private, then set the current mode to Mode::Private.
-                //  - If the next mode is Mode::Public, then set the current mode to Mode::Private.
-                match (current_mode, next_mode) {
-                    (Mode::Constant, Mode::Public)
-                    | (Mode::Constant, Mode::Private)
-                    | (Mode::Public, Mode::Private) => current_mode = *next_mode,
-                    (_, _) => (), // Do nothing.
-                }
-            }
-        }
-        current_mode
+        eject_mode(self.0.eject_mode(), &[self.1.eject_mode(), self.2.eject_mode()])
     }
 
     /// Ejects the value from each circuit.
     #[inline]
     fn eject_value(&self) -> Self::Primitive {
         (self.0.eject_value(), self.1.eject_value(), self.2.eject_value())
+    }
+}
+
+impl<'a, C0: Eject, C1: Eject, C2: Eject, C3: Eject> Eject for (&'a C0, &'a C1, &'a C2, &'a C3) {
+    type Primitive = (C0::Primitive, C1::Primitive, C2::Primitive, C3::Primitive);
+
+    /// A helper method to deduce the mode from a tuple of `Eject` circuits.
+    #[inline]
+    fn eject_mode(&self) -> Mode {
+        eject_mode(self.0.eject_mode(), &[self.1.eject_mode(), self.2.eject_mode(), self.3.eject_mode()])
+    }
+
+    /// Ejects the value from each circuit.
+    #[inline]
+    fn eject_value(&self) -> Self::Primitive {
+        (self.0.eject_value(), self.1.eject_value(), self.2.eject_value(), self.3.eject_value())
     }
 }

@@ -19,7 +19,7 @@ pub mod to_compute_key;
 #[cfg(test)]
 use snarkvm_circuits_environment::assert_scope;
 
-use crate::Account;
+use crate::{Account, ComputeKey};
 use snarkvm_circuits_environment::prelude::*;
 use snarkvm_circuits_types::Scalar;
 

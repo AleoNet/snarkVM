@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::ComputeKey;
 
 impl<A: Account> PrivateKey<A> {
     /// Returns the account compute key for this account private key.

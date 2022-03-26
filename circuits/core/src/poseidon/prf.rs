@@ -22,7 +22,7 @@ impl<E: Environment> Poseidon<E> {
         // Construct the preimage: seed || length(input) || input.
         let mut preimage = Vec::with_capacity(2 + input.len());
         preimage.push(seed.clone());
-        preimage.push(Field::constant((input.len() as u128).into()));
+        preimage.push(Field::constant((input.len() as u128).into())); // <- Input length *must* be constant.
         preimage.extend_from_slice(input);
 
         // Hash the preimage to derive the PRF output.
