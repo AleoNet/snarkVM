@@ -26,14 +26,17 @@ impl<E: Environment> FromBits for Scalar<E> {
         let size_in_data_bits = E::ScalarField::size_in_data_bits();
         let size_in_bits = E::ScalarField::size_in_bits();
 
-        // Ensure the list of booleans is within the allowed capacity.
+        // Ensure the list of booleans is within the allowed size in bits.
         let num_bits = bits_le.len();
         if num_bits > size_in_bits {
-            E::halt(format!("Attempted to instantiate a {size_in_bits}-bit scalar with {num_bits} bits"))
+            // Check if all excess bits are zero.
+            let should_be_zero = bits_le[size_in_bits..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit);
+            // Ensure `should_be_zero` is zero.
+            E::assert_eq(E::zero(), should_be_zero);
         }
 
         // Construct the candidate scalar field element.
-        let output = Scalar { bits_le: bits_le.to_vec() };
+        let output = Scalar { bits_le: bits_le[..size_in_bits].to_vec() };
 
         // If the number of bits is equivalent to the scalar size in bits,
         // ensure the scalar is below the scalar field modulus.
@@ -94,7 +97,22 @@ mod tests {
                 assert_eq!(expected, candidate.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
             });
-            Circuit::reset();
+
+            // Add excess zero bits.
+            let candidate = vec![candidate, vec![Boolean::new(mode, false); i]].concat();
+
+            Circuit::scope(&format!("Excess {} {}", mode, i), || {
+                let candidate = Scalar::<Circuit>::from_bits_le(&candidate);
+                assert_eq!(expected, candidate.eject_value());
+                match mode.is_constant() {
+                    true => assert_scope!(num_constants, num_public, num_private, num_constraints),
+                    // `num_private` gets 1 free excess bit, then is incremented by one for each excess bit.
+                    // `num_constraints` is incremented by one for each excess bit.
+                    false => {
+                        assert_scope!(num_constants, num_public, num_private + i.saturating_sub(1), num_constraints + i)
+                    }
+                };
+            });
         }
     }
 
@@ -115,7 +133,22 @@ mod tests {
                 assert_eq!(expected, candidate.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
             });
-            Circuit::reset();
+
+            // Add excess zero bits.
+            let candidate = vec![vec![Boolean::new(mode, false); i], candidate].concat();
+
+            Circuit::scope(&format!("Excess {} {}", mode, i), || {
+                let candidate = Scalar::<Circuit>::from_bits_be(&candidate);
+                assert_eq!(expected, candidate.eject_value());
+                match mode.is_constant() {
+                    true => assert_scope!(num_constants, num_public, num_private, num_constraints),
+                    // `num_private` gets 1 free excess bit, then is incremented by one for each excess bit.
+                    // `num_constraints` is incremented by one for each excess bit.
+                    false => {
+                        assert_scope!(num_constants, num_public, num_private + i.saturating_sub(1), num_constraints + i)
+                    }
+                };
+            });
         }
     }
 
