@@ -68,13 +68,14 @@ impl Environment for Circuit {
         })
     }
 
-    fn new_witness<Fn: FnOnce() -> Output::Primitive, Output: Inject>(mode: Mode, logic: Fn) -> Output {
+    /// Returns a new witness of the given mode and value.
+    fn new_witness<Fn: FnOnce() -> Output::Primitive, Output: Inject>(mode: Mode, value: Fn) -> Output {
         IN_WITNESS.with(|in_witness| {
             // Set the entire environment to witness mode.
             *(**in_witness).borrow_mut() = true;
 
             // Run the logic.
-            let output = logic();
+            let output = value();
 
             // Return the entire environment from witness mode.
             *(**in_witness).borrow_mut() = false;
@@ -107,6 +108,7 @@ impl Environment for Circuit {
     //     })
     // }
 
+    /// Enters a new scope for the environment.
     fn scope<S: Into<String>, Fn, Output>(name: S, logic: Fn) -> Output
     where
         Fn: FnOnce() -> Output,
@@ -237,6 +239,8 @@ impl Environment for Circuit {
         CIRCUIT.with(|circuit| (**circuit).borrow().num_gates_in_scope())
     }
 
+    /// A helper method to recover the y-coordinate given the x-coordinate for
+    /// a twisted Edwards point, returning the affine curve point.
     fn affine_from_x_coordinate(x: Self::BaseField) -> Self::Affine {
         if let Some(element) = Self::Affine::from_x_coordinate(x, true) {
             if element.is_in_correct_subgroup_assuming_on_curve() {

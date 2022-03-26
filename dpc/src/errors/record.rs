@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::{CRHError, CommitmentError, EncryptionError, PRFError, SignatureError};
+use snarkvm_algorithms::{CRHError, CommitmentError, EncryptionError, SignatureError};
 
 #[derive(Debug, Error)]
 pub enum RecordError {
@@ -44,9 +44,6 @@ pub enum RecordError {
 
     #[error("Invalid commitment. Expected {}, found {}", _0, _1)]
     InvalidCommitment(String, String),
-
-    #[error("{}", _0)]
-    PRFError(#[from] PRFError),
 
     #[error("{}", _0)]
     SignatureError(#[from] SignatureError),

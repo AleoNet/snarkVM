@@ -48,19 +48,20 @@ mod tests {
         num_constraints: usize,
     ) {
         let rng = &mut test_rng();
-        let native = NativePoseidon::<_, RATE, OPTIMIZED_FOR_WEIGHTS>::setup();
-        let circuit = Poseidon::new();
+        let native_poseidon = NativePoseidon::<_, RATE, OPTIMIZED_FOR_WEIGHTS>::setup();
+        let poseidon = Poseidon::new();
 
         for i in 0..ITERATIONS {
             // Prepare the preimage.
-            let input = (0..num_inputs).map(|_| <Circuit as Environment>::BaseField::rand(rng)).collect::<Vec<_>>();
-            let preimage = input.iter().map(|v| Field::<Circuit>::new(mode, *v)).collect::<Vec<_>>();
+            let native_input =
+                (0..num_inputs).map(|_| <Circuit as Environment>::BaseField::rand(rng)).collect::<Vec<_>>();
+            let input = native_input.iter().map(|v| Field::<Circuit>::new(mode, *v)).collect::<Vec<_>>();
 
             // Compute the native hash.
-            let expected = native.evaluate_many(&input, num_outputs);
+            let expected = native_poseidon.evaluate_many(&native_input, num_outputs);
             // Compute the circuit hash.
             Circuit::scope(format!("Poseidon {mode} {i} {num_outputs}"), || {
-                let candidate = circuit.hash_many(&preimage, num_outputs);
+                let candidate = poseidon.hash_many(&input, num_outputs);
                 for (expected_element, candidate_element) in expected.iter().zip_eq(&candidate) {
                     assert_eq!(*expected_element, candidate_element.eject_value());
                 }

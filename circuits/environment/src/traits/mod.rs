@@ -20,6 +20,9 @@ pub use address::*;
 pub mod boolean;
 pub use boolean::*;
 
+pub mod eject;
+pub use eject::*;
+
 pub mod field;
 pub use field::*;
 
@@ -46,56 +49,13 @@ pub use scalar::*;
 pub mod string;
 pub use string::*;
 
-use crate::{Environment, Mode};
+use crate::Environment;
 
-use core::fmt::{Debug, Display};
+use core::fmt::Display;
 use nom::{error::VerboseError, IResult};
 
 /// Operations to convert to and from bit representation in a circuit environment.
 pub trait DataType<B: BooleanTrait>: FromBits<Boolean = B> + ToBits<Boolean = B> {}
-
-/// Operations to eject from a circuit environment into primitive form.
-pub trait Eject {
-    type Primitive: Debug + Display;
-
-    ///
-    /// Ejects the mode and primitive value of the circuit type.
-    ///
-    fn eject(&self) -> (Mode, Self::Primitive) {
-        (self.eject_mode(), self.eject_value())
-    }
-
-    ///
-    /// Ejects the mode of the circuit type.
-    ///
-    fn eject_mode(&self) -> Mode;
-
-    ///
-    /// Ejects the circuit type as a primitive value.
-    ///
-    fn eject_value(&self) -> Self::Primitive;
-
-    ///
-    /// Returns `true` if the circuit is a constant.
-    ///
-    fn is_constant(&self) -> bool {
-        self.eject_mode().is_constant()
-    }
-
-    ///
-    /// Returns `true` if the circuit is a public.
-    ///
-    fn is_public(&self) -> bool {
-        self.eject_mode().is_public()
-    }
-
-    ///
-    /// Returns `true` if the circuit is a private.
-    ///
-    fn is_private(&self) -> bool {
-        self.eject_mode().is_private()
-    }
-}
 
 pub type ParserResult<'a, O> = IResult<&'a str, O, VerboseError<&'a str>>;
 

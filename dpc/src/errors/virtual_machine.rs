@@ -14,15 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::{
-    CRHError,
-    CommitmentError,
-    EncryptionError,
-    MerkleError,
-    PRFError,
-    SNARKError,
-    SignatureError,
-};
+use snarkvm_algorithms::{CRHError, CommitmentError, EncryptionError, MerkleError, SNARKError, SignatureError};
 use snarkvm_fields::ConstraintFieldError;
 use snarkvm_parameters::ParameterError;
 
@@ -75,9 +67,6 @@ pub enum VMError {
 
     #[error("{}", _0)]
     ParameterError(#[from] ParameterError),
-
-    #[error("{}", _0)]
-    PRFError(#[from] PRFError),
 
     #[error("{}", _0)]
     SignatureError(#[from] SignatureError),

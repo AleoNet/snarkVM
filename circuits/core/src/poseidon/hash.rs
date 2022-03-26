@@ -200,90 +200,70 @@ mod tests {
 
     const ITERATIONS: usize = 10;
 
-    fn check_hash_many(
+    fn check_hash(
         mode: Mode,
         num_inputs: usize,
-        num_outputs: usize,
         num_constants: usize,
         num_public: usize,
         num_private: usize,
         num_constraints: usize,
     ) {
         let rng = &mut test_rng();
-        let native = NativePoseidon::<_, RATE, OPTIMIZED_FOR_WEIGHTS>::setup();
-        let circuit = Poseidon::new();
+        let native_poseidon = NativePoseidon::<_, RATE, OPTIMIZED_FOR_WEIGHTS>::setup();
+        let poseidon = Poseidon::new();
 
         for i in 0..ITERATIONS {
             // Prepare the preimage.
-            let input = (0..num_inputs).map(|_| <Circuit as Environment>::BaseField::rand(rng)).collect::<Vec<_>>();
-            let preimage = input.iter().map(|v| Field::<Circuit>::new(mode, *v)).collect::<Vec<_>>();
+            let native_input =
+                (0..num_inputs).map(|_| <Circuit as Environment>::BaseField::rand(rng)).collect::<Vec<_>>();
+            let input = native_input.iter().map(|v| Field::<Circuit>::new(mode, *v)).collect::<Vec<_>>();
 
             // Compute the native hash.
-            let expected = native.evaluate_many(&input, num_outputs);
+            let expected = native_poseidon.evaluate(&native_input);
             // Compute the circuit hash.
-            Circuit::scope(format!("Poseidon {mode} {i} {num_outputs}"), || {
-                let candidate = circuit.hash_many(&preimage, num_outputs);
-                for (expected_element, candidate_element) in expected.iter().zip_eq(&candidate) {
-                    assert_eq!(*expected_element, candidate_element.eject_value());
-                }
-                let case = format!("(mode = {mode}, num_inputs = {num_inputs}, num_outputs = {num_outputs})");
+            Circuit::scope(format!("Poseidon {mode} {i}"), || {
+                let candidate = poseidon.hash(&input);
+                assert_eq!(expected, candidate.eject_value());
+                let case = format!("(mode = {mode}, num_inputs = {num_inputs})");
                 assert_scope!(case, num_constants, num_public, num_private, num_constraints);
             });
         }
     }
 
     #[test]
-    fn test_hash_many_constant() {
+    fn test_hash_constant() {
         for num_inputs in 0..=RATE {
-            for num_outputs in 0..=RATE {
-                check_hash_many(Mode::Constant, num_inputs, num_outputs, 0, 0, 0, 0);
-            }
+            check_hash(Mode::Constant, num_inputs, 0, 0, 0, 0);
         }
     }
 
     #[test]
-    fn test_hash_many_public() {
-        for num_outputs in 0..=RATE {
-            check_hash_many(Mode::Public, 0, num_outputs, 0, 0, 0, 0);
-        }
-        for num_outputs in 1..=RATE {
-            check_hash_many(Mode::Public, 1, num_outputs, 0, 0, 335, 335);
-            check_hash_many(Mode::Public, 2, num_outputs, 0, 0, 340, 340);
-            check_hash_many(Mode::Public, 3, num_outputs, 0, 0, 345, 345);
-            check_hash_many(Mode::Public, 4, num_outputs, 0, 0, 350, 350);
-            check_hash_many(Mode::Public, 5, num_outputs, 0, 0, 705, 705);
-            check_hash_many(Mode::Public, 6, num_outputs, 0, 0, 705, 705);
-        }
-        for num_outputs in (RATE + 1)..=(RATE * 2) {
-            check_hash_many(Mode::Public, 1, num_outputs, 0, 0, 690, 690);
-            check_hash_many(Mode::Public, 2, num_outputs, 0, 0, 695, 695);
-            check_hash_many(Mode::Public, 3, num_outputs, 0, 0, 700, 700);
-            check_hash_many(Mode::Public, 4, num_outputs, 0, 0, 705, 705);
-            check_hash_many(Mode::Public, 5, num_outputs, 0, 0, 1060, 1060);
-            check_hash_many(Mode::Public, 6, num_outputs, 0, 0, 1060, 1060);
-        }
+    fn test_hash_public() {
+        check_hash(Mode::Public, 0, 0, 0, 0, 0);
+        check_hash(Mode::Public, 1, 0, 0, 335, 335);
+        check_hash(Mode::Public, 2, 0, 0, 340, 340);
+        check_hash(Mode::Public, 3, 0, 0, 345, 345);
+        check_hash(Mode::Public, 4, 0, 0, 350, 350);
+        check_hash(Mode::Public, 5, 0, 0, 705, 705);
+        check_hash(Mode::Public, 6, 0, 0, 705, 705);
+        check_hash(Mode::Public, 7, 0, 0, 705, 705);
+        check_hash(Mode::Public, 8, 0, 0, 705, 705);
+        check_hash(Mode::Public, 9, 0, 0, 1060, 1060);
+        check_hash(Mode::Public, 10, 0, 0, 1060, 1060);
     }
 
     #[test]
-    fn test_hash_many_private() {
-        for num_outputs in 0..=RATE {
-            check_hash_many(Mode::Private, 0, num_outputs, 0, 0, 0, 0);
-        }
-        for num_outputs in 1..=RATE {
-            check_hash_many(Mode::Private, 1, num_outputs, 0, 0, 335, 335);
-            check_hash_many(Mode::Private, 2, num_outputs, 0, 0, 340, 340);
-            check_hash_many(Mode::Private, 3, num_outputs, 0, 0, 345, 345);
-            check_hash_many(Mode::Private, 4, num_outputs, 0, 0, 350, 350);
-            check_hash_many(Mode::Private, 5, num_outputs, 0, 0, 705, 705);
-            check_hash_many(Mode::Private, 6, num_outputs, 0, 0, 705, 705);
-        }
-        for num_outputs in (RATE + 1)..=(RATE * 2) {
-            check_hash_many(Mode::Private, 1, num_outputs, 0, 0, 690, 690);
-            check_hash_many(Mode::Private, 2, num_outputs, 0, 0, 695, 695);
-            check_hash_many(Mode::Private, 3, num_outputs, 0, 0, 700, 700);
-            check_hash_many(Mode::Private, 4, num_outputs, 0, 0, 705, 705);
-            check_hash_many(Mode::Private, 5, num_outputs, 0, 0, 1060, 1060);
-            check_hash_many(Mode::Private, 6, num_outputs, 0, 0, 1060, 1060);
-        }
+    fn test_hash_private() {
+        check_hash(Mode::Private, 0, 0, 0, 0, 0);
+        check_hash(Mode::Private, 1, 0, 0, 335, 335);
+        check_hash(Mode::Private, 2, 0, 0, 340, 340);
+        check_hash(Mode::Private, 3, 0, 0, 345, 345);
+        check_hash(Mode::Private, 4, 0, 0, 350, 350);
+        check_hash(Mode::Private, 5, 0, 0, 705, 705);
+        check_hash(Mode::Private, 6, 0, 0, 705, 705);
+        check_hash(Mode::Private, 7, 0, 0, 705, 705);
+        check_hash(Mode::Private, 8, 0, 0, 705, 705);
+        check_hash(Mode::Private, 9, 0, 0, 1060, 1060);
+        check_hash(Mode::Private, 10, 0, 0, 1060, 1060);
     }
 }

@@ -26,13 +26,23 @@ pub trait Inject {
     fn new(mode: Mode, value: Self::Primitive) -> Self;
 
     ///
-    /// Initializes a constant circuit of the given primitive value.
+    /// Initializes a constant of the given primitive value.
     ///
     fn constant(value: Self::Primitive) -> Self
     where
         Self: Sized,
     {
         Self::new(Mode::Constant, value)
+    }
+
+    ///
+    /// Initializes a witness of the given primitive value.
+    ///
+    fn witness<Fn: FnOnce() -> Self::Primitive>(mode: Mode, value: Fn) -> Self
+    where
+        Self: Sized,
+    {
+        Self::new(mode, value())
     }
 
     ///

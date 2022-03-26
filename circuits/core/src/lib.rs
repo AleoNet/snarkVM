@@ -17,11 +17,14 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
+// pub mod aleo;
+// pub use aleo::*;
+
 pub mod poseidon;
 pub use poseidon::*;
 
+// pub mod private_key;
+// pub use private_key::*;
+
 pub mod record;
 pub use record::*;
-
-// pub mod signature;
-// pub use signature::*;

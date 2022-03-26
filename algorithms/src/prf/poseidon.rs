@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{crypto_hash::Poseidon, PRFError, PRF};
+use crate::{crypto_hash::Poseidon, PRF};
 use snarkvm_fields::PrimeField;
 
 use std::marker::PhantomData;
@@ -29,13 +29,13 @@ impl<F: PrimeField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool> PRF
     type Output = F;
     type Seed = F;
 
-    fn evaluate(seed: &Self::Seed, input: &Self::Input) -> Result<Self::Output, PRFError> {
+    fn evaluate(seed: &Self::Seed, input: &Self::Input) -> Self::Output {
         // Construct the preimage.
         let mut preimage = vec![*seed];
         preimage.push(F::from(input.len() as u128)); // Input length
         preimage.extend_from_slice(input);
 
         // Evaluate the preimage.
-        Ok(Poseidon::<F, RATE, OPTIMIZED_FOR_WEIGHTS>::setup().evaluate(&preimage))
+        Poseidon::<F, RATE, OPTIMIZED_FOR_WEIGHTS>::setup().evaluate(&preimage)
     }
 }

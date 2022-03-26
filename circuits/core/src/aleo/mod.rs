@@ -17,28 +17,33 @@
 pub mod sign;
 
 use crate::Poseidon;
+use snarkvm_algorithms::crypto_hash::hash_to_curve;
 use snarkvm_circuits_environment::prelude::*;
-use snarkvm_circuits_types::{Field, Scalar};
+use snarkvm_circuits_types::{Field, Group, Scalar};
 
 pub struct Aleo<E: Environment> {
     /// The Poseidon hash function.
     poseidon: Poseidon<E>,
-    /// The group bases for Aleo signatures.
+    /// The group bases for the Aleo signature and encryption schemes.
+    bases: Vec<Group<E>>,
 }
 
 impl<E: Environment> Aleo<E> {
-    #[allow(clippy::new_without_default)]
-    pub fn new() -> Self {
-        let (base, _, _) = hash_to_curve::<TEAffine<TE>>(message);
+    /// Initializes a new instance of the signature scheme from a given input domain message.
+    pub fn new(message: &str) -> Self {
+        // Hash the given message to a point on the curve, to initialize the starting base.
+        let (base, _, _) = hash_to_curve::<E::Affine>(message);
 
-        let mut g = base.into_projective();
-        let mut g_bases = Vec::with_capacity(TE::ScalarField::size_in_bits());
-        for _ in 0..TE::ScalarField::size_in_bits() {
-            g_bases.push(g);
-            g.double_in_place();
+        // Initialize the vector of bases.
+        let mut bases = Vec::with_capacity(E::ScalarField::size_in_bits());
+
+        // Compute the bases up to the size of the scalar field (in bits).
+        let mut base = base.into_projective();
+        for _ in 0..E::ScalarField::size_in_bits() {
+            bases.push(Group::constant(base.into_affine()));
+            base.double_in_place();
         }
-        g_bases
 
-        Self { poseidon: Poseidon::new() }
+        Self { poseidon: Poseidon::new(), bases }
     }
 }

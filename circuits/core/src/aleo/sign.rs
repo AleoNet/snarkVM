@@ -42,6 +42,15 @@ impl<E: Environment> Aleo<E> {
     }
 }
 
+impl<E: Environment> Aleo<E> {
+    fn g_scalar_multiply(&self, scalar: &Scalar<E>) -> Group<E> {
+        self.bases
+            .iter()
+            .zip_eq(&scalar.to_bits_le())
+            .fold(Group::zero(), |output, (base, bit)| Group::ternary(bit, &(output + base), &output))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

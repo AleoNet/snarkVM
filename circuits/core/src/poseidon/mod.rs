@@ -16,6 +16,7 @@
 
 pub mod hash;
 pub mod hash_many;
+pub mod prf;
 
 use snarkvm_algorithms::DuplexSpongeMode;
 use snarkvm_circuits_environment::prelude::*;

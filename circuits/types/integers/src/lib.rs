@@ -109,7 +109,7 @@ impl<E: Environment, I: IntegerType> Eject for Integer<E, I> {
     /// Ejects the mode of the integer.
     ///
     fn eject_mode(&self) -> Mode {
-        E::eject_mode(&self.bits_le)
+        self.bits_le.eject_mode()
     }
 
     ///
