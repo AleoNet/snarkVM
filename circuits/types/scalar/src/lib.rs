@@ -51,7 +51,7 @@ impl<E: Environment> Inject for Scalar<E> {
     /// Initializes a new instance of a scalar field from a primitive scalar field value.
     ///
     fn new(mode: Mode, value: Self::Primitive) -> Self {
-        Self { bits_le: value.to_bits_le().iter().map(|bit| Boolean::new(mode, *bit)).collect() }
+        Self { bits_le: Inject::new(mode, value.to_bits_le()) }
     }
 }
 
@@ -81,10 +81,9 @@ impl<E: Environment> Eject for Scalar<E> {
     /// Ejects the scalar field as a constant scalar field value.
     ///
     fn eject_value(&self) -> Self::Primitive {
-        let bits = self.bits_le.iter().map(Boolean::eject_value).collect::<Vec<_>>();
+        let bits = self.bits_le.eject_value();
         let biginteger = <E::ScalarField as PrimeField>::BigInteger::from_bits_le(&bits[..]);
-        let scalar = <E::ScalarField as PrimeField>::from_repr(biginteger);
-        match scalar {
+        match <E::ScalarField as PrimeField>::from_repr(biginteger) {
             Some(scalar) => scalar,
             None => E::halt("Failed to eject scalar field value"),
         }

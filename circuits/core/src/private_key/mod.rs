@@ -14,34 +14,37 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_circuits_environment::{traits::*, Environment};
-use snarkvm_circuits_types::{Address, Boolean, I64};
+use snarkvm_circuits_environment::prelude::*;
+use snarkvm_circuits_types::Scalar;
 
-pub struct PrivateKey<E: Environment> {}
+pub struct PrivateKey<E: Environment> {
+    sk_sig: Scalar<E>,
+    r_sig: Scalar<E>,
+}
 
 impl<E: Environment> Inject for PrivateKey<E> {
-    type Primitive = E::BaseField;
+    type Primitive = (E::ScalarField, E::ScalarField);
 
-    /// Initializes an account private key from the given mode and account seed.
-    fn new(mode: Mode, seed: &N::AccountSeed) -> PrivateKey<E> {
-        // Construct the sk_sig domain separator.
-        let sk_sig_input = ACCOUNT_SEED_SK_SIG_DOMAIN;
-        let sk_sig_domain = N::ProgramScalarField::from_bytes_le_mod_order(sk_sig_input.as_bytes());
+    /// Initializes an account private key from the given mode and `(sk_sig, r_sig)`.
+    fn new(mode: Mode, (sk_sig, r_sig): Self::Primitive) -> PrivateKey<E> {
+        Self { sk_sig: Scalar::new(mode, sk_sig), r_sig: Scalar::new(mode, r_sig) }
+    }
+}
 
-        // Construct the r_sig domain separator.
-        let r_sig_input = format!("{}_{}", ACCOUNT_SEED_R_SIG_DOMAIN, 0);
-        let r_sig_domain = N::ProgramScalarField::from_bytes_le_mod_order(r_sig_input.as_bytes());
+impl<E: Environment> Eject for PrivateKey<E> {
+    type Primitive = (E::ScalarField, E::ScalarField);
 
-        // Construct the preimage.
-        let mut preimage = vec![*seed];
-        preimage.push(F::from(input.len() as u128)); // Input length
-        preimage.extend_from_slice(input);
+    ///
+    /// Ejects the mode of the scalar field.
+    ///
+    fn eject_mode(&self) -> Mode {
+        (self.sk_sig.clone(), self.r_sig.clone()).eject_mode()
+    }
 
-        Self {
-            sk_sig: N::AccountSeedPRF::evaluate(seed, &vec![sk_sig_domain])
-                .expect("Failed to derive private key component for PRF(seed, sk_sig_domain)"),
-            r_sig: N::AccountSeedPRF::evaluate(seed, &vec![r_sig_domain])
-                .expect("Failed to derive private key component for PRF(seed, r_sig_domain)"),
-        }
+    ///
+    /// Ejects the scalar field as a constant scalar field value.
+    ///
+    fn eject_value(&self) -> Self::Primitive {
+        (self.sk_sig.clone(), self.r_sig.clone()).eject_value()
     }
 }

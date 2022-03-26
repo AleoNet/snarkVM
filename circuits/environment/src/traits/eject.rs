@@ -134,3 +134,40 @@ impl<C: Eject<Primitive = P>, P: Default> Eject for &[C] {
         self.iter().map(Eject::eject_value).collect()
     }
 }
+
+/********************/
+/****** Tuples ******/
+/********************/
+
+impl<C0: Eject, C1: Eject> Eject for (C0, C1) {
+    type Primitive = (C0::Primitive, C1::Primitive);
+
+    /// A helper method to deduce the mode from a tuple of `Eject` circuits.
+    #[inline]
+    fn eject_mode(&self) -> Mode {
+        // Eject the modes.
+        let first = self.0.eject_mode();
+        let second = self.1.eject_mode();
+
+        // Check if the first mode matches the second mode.
+        if !first.is_private() && first != second {
+            // If the first mode is not Mode::Private, and they do not match:
+            //  - If the second mode is Mode::Private, then return the second mode.
+            //  - If the second mode is Mode::Public, then return the second mode.
+            match (first, second) {
+                (Mode::Constant, Mode::Public) | (Mode::Constant, Mode::Private) | (Mode::Public, Mode::Private) => {
+                    second
+                }
+                (_, _) => first,
+            }
+        } else {
+            first
+        }
+    }
+
+    /// Ejects the value from each circuit.
+    #[inline]
+    fn eject_value(&self) -> Self::Primitive {
+        (self.0.eject_value(), self.1.eject_value())
+    }
+}

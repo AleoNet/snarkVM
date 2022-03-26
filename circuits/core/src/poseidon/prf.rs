@@ -25,7 +25,7 @@ impl<E: Environment> Poseidon<E> {
         preimage.push(witness!(|input| (input.len() as u128).into()));
         preimage.extend_from_slice(input);
 
-        // Absorb the input and squeeze the output.
+        // Hash the preimage to derive the PRF output.
         self.hash(&preimage)
     }
 }
