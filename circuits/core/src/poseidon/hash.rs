@@ -14,72 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_circuits_environment::prelude::*;
-use snarkvm_circuits_types::Field;
-use snarkvm_fields::PoseidonDefaultField;
-
-const RATE: usize = 4;
-const OPTIMIZED_FOR_WEIGHTS: bool = false;
-const CAPACITY: usize = 1;
-
-/// The mode structure for duplex sponges
-#[derive(PartialEq, Eq, Clone, Debug)]
-pub enum DuplexSpongeMode {
-    /// The sponge is currently absorbing data.
-    Absorbing {
-        /// next position of the state to be XOR-ed when absorbing.
-        next_absorb_index: usize,
-    },
-    /// The sponge is currently squeezing data out.
-    Squeezing {
-        /// next position of the state to be outputted when squeezing.
-        next_squeeze_index: usize,
-    },
-}
-
-pub struct Poseidon<E: Environment> {
-    /// The number of rounds in a full-round operation.
-    full_rounds: usize,
-    /// The number of rounds in a partial-round operation.
-    partial_rounds: usize,
-    /// The exponent used in S-boxes.
-    alpha: Field<E>,
-    /// The additive round keys. These are added before each MDS matrix application to make it an affine shift.
-    /// They are indexed by `ark[round_number][state_element_index]`
-    ark: Vec<Vec<Field<E>>>,
-    /// The Maximally Distance Separating (MDS) matrix.
-    mds: Vec<Vec<Field<E>>>,
-}
+use super::*;
 
 impl<E: Environment> Poseidon<E> {
-    #[allow(clippy::new_without_default)]
-    pub fn new() -> Self {
-        match E::BaseField::default_poseidon_parameters::<RATE>(OPTIMIZED_FOR_WEIGHTS) {
-            Some(parameters) => {
-                let full_rounds = parameters.full_rounds;
-                let partial_rounds = parameters.partial_rounds;
-                let alpha = Field::constant(E::BaseField::from(parameters.alpha as u128));
-                // Cache the bits for the field element.
-                alpha.to_bits_le();
-                let ark = parameters
-                    .ark
-                    .into_iter()
-                    .take(full_rounds + partial_rounds)
-                    .map(|round| round.into_iter().take(RATE + 1).map(Field::constant).collect())
-                    .collect();
-                let mds = parameters
-                    .mds
-                    .into_iter()
-                    .take(RATE + 1)
-                    .map(|round| round.into_iter().take(RATE + 1).map(Field::constant).collect())
-                    .collect();
-
-                Self { full_rounds, partial_rounds, alpha, ark, mds }
-            }
-            None => E::halt("Failed to initialize the Poseidon hash function"),
-        }
-    }
-
     #[inline]
     pub fn hash(&self, input: &[Field<E>]) -> Field<E> {
         // Initialize a new sponge.
@@ -90,20 +27,115 @@ impl<E: Environment> Poseidon<E> {
         self.absorb(&mut state, &mut mode, input);
         self.squeeze(&mut state, &mut mode, 1)[0].clone()
     }
-
-    #[inline]
-    pub fn hash_many(&self, input: &[Field<E>], num_outputs: usize) -> Vec<Field<E>> {
-        // Initialize a new sponge.
-        let mut state = vec![Field::zero(); RATE + CAPACITY];
-        let mut mode = DuplexSpongeMode::Absorbing { next_absorb_index: 0 };
-
-        // Absorb the input and squeeze the output.
-        self.absorb(&mut state, &mut mode, input);
-        self.squeeze(&mut state, &mut mode, num_outputs)
-    }
 }
 
 impl<E: Environment> Poseidon<E> {
+    /// Absorbs the input elements into state.
+    #[inline]
+    pub(super) fn absorb(&self, state: &mut [Field<E>], mode: &mut DuplexSpongeMode, input: &[Field<E>]) {
+        if !input.is_empty() {
+            // Determine the absorb index.
+            let (mut absorb_index, should_permute) = match *mode {
+                DuplexSpongeMode::Absorbing { next_absorb_index } => match next_absorb_index == RATE {
+                    true => (0, true),
+                    false => (next_absorb_index, false),
+                },
+                DuplexSpongeMode::Squeezing { .. } => (0, true),
+            };
+
+            // Proceed to permute the state, if necessary.
+            if should_permute {
+                self.permute(state);
+            }
+
+            let mut remaining = input;
+            loop {
+                // Compute the starting index.
+                let start = CAPACITY + absorb_index;
+
+                // Check if we can exit the loop.
+                if absorb_index + remaining.len() <= RATE {
+                    // Absorb the state elements into the input.
+                    remaining.iter().enumerate().for_each(|(i, element)| state[start + i] += element);
+                    // Update the sponge mode.
+                    *mode = DuplexSpongeMode::Absorbing { next_absorb_index: absorb_index + remaining.len() };
+                    return;
+                }
+
+                // Otherwise, proceed to absorb `(rate - absorb_index)` elements.
+                let num_absorbed = RATE - absorb_index;
+                remaining.iter().enumerate().take(num_absorbed).for_each(|(i, element)| state[start + i] += element);
+
+                // Permute the state.
+                self.permute(state);
+
+                // Repeat with the updated input slice and absorb index.
+                remaining = &remaining[num_absorbed..];
+                absorb_index = 0;
+            }
+        }
+    }
+
+    /// Squeeze the specified number of state elements into the output.
+    #[inline]
+    pub(super) fn squeeze(
+        &self,
+        state: &mut [Field<E>],
+        mode: &mut DuplexSpongeMode,
+        num_outputs: usize,
+    ) -> Vec<Field<E>> {
+        let mut output = vec![Field::zero(); num_outputs];
+        if num_outputs != 0 {
+            self.squeeze_internal(state, mode, &mut output);
+        }
+        output
+    }
+
+    /// Squeeze the state elements into the output.
+    #[inline]
+    fn squeeze_internal(&self, state: &mut [Field<E>], mode: &mut DuplexSpongeMode, output: &mut [Field<E>]) {
+        // Determine the squeeze index.
+        let (mut squeeze_index, should_permute) = match *mode {
+            DuplexSpongeMode::Absorbing { .. } => (0, true),
+            DuplexSpongeMode::Squeezing { next_squeeze_index } => match next_squeeze_index == RATE {
+                true => (0, true),
+                false => (next_squeeze_index, false),
+            },
+        };
+
+        // Proceed to permute the state, if necessary.
+        if should_permute {
+            self.permute(state);
+        }
+
+        let mut remaining = output;
+        loop {
+            // Compute the starting index.
+            let start = CAPACITY + squeeze_index;
+
+            // Check if we can exit the loop.
+            if squeeze_index + remaining.len() <= RATE {
+                // Store the state elements into the output.
+                remaining.clone_from_slice(&state[start..(start + remaining.len())]);
+                // Update the sponge mode.
+                *mode = DuplexSpongeMode::Squeezing { next_squeeze_index: squeeze_index + remaining.len() };
+                return;
+            }
+
+            // Otherwise, proceed to squeeze `(rate - squeeze_index)` elements.
+            let num_squeezed = RATE - squeeze_index;
+            remaining[..num_squeezed].clone_from_slice(&state[start..(start + num_squeezed)]);
+
+            // Unless we are done with squeezing in this call, permute.
+            if remaining.len() != RATE {
+                self.permute(state);
+            }
+            // Repeat with the updated output slice and squeeze index.
+            remaining = &mut remaining[num_squeezed..];
+            squeeze_index = 0;
+        }
+    }
+
     /// Apply the additive round keys in-place.
     #[inline]
     fn apply_ark(&self, state: &mut [Field<E>], round: usize) {
@@ -157,107 +189,6 @@ impl<E: Environment> Poseidon<E> {
             self.apply_mds(state);
         }
     }
-
-    /// Absorbs the input elements into state.
-    #[inline]
-    fn absorb(&self, state: &mut [Field<E>], mode: &mut DuplexSpongeMode, input: &[Field<E>]) {
-        if !input.is_empty() {
-            // Determine the absorb index.
-            let (mut absorb_index, should_permute) = match *mode {
-                DuplexSpongeMode::Absorbing { next_absorb_index } => match next_absorb_index == RATE {
-                    true => (0, true),
-                    false => (next_absorb_index, false),
-                },
-                DuplexSpongeMode::Squeezing { .. } => (0, true),
-            };
-
-            // Proceed to permute the state, if necessary.
-            if should_permute {
-                self.permute(state);
-            }
-
-            let mut remaining = input;
-            loop {
-                // Compute the starting index.
-                let start = CAPACITY + absorb_index;
-
-                // Check if we can exit the loop.
-                if absorb_index + remaining.len() <= RATE {
-                    // Absorb the state elements into the input.
-                    remaining.iter().enumerate().for_each(|(i, element)| state[start + i] += element);
-                    // Update the sponge mode.
-                    *mode = DuplexSpongeMode::Absorbing { next_absorb_index: absorb_index + remaining.len() };
-                    return;
-                }
-
-                // Otherwise, proceed to absorb `(rate - absorb_index)` elements.
-                let num_absorbed = RATE - absorb_index;
-                remaining.iter().enumerate().take(num_absorbed).for_each(|(i, element)| state[start + i] += element);
-
-                // Permute the state.
-                self.permute(state);
-
-                // Repeat with the updated input slice and absorb index.
-                remaining = &remaining[num_absorbed..];
-                absorb_index = 0;
-            }
-        }
-    }
-
-    /// Squeeze the specified number of state elements into the output.
-    #[inline]
-    fn squeeze(&self, state: &mut [Field<E>], mode: &mut DuplexSpongeMode, num_outputs: usize) -> Vec<Field<E>> {
-        let mut output = vec![Field::zero(); num_outputs];
-        if num_outputs != 0 {
-            self.squeeze_internal(state, mode, &mut output);
-        }
-        output
-    }
-
-    /// Squeeze the state elements into the output.
-    #[inline]
-    fn squeeze_internal(&self, state: &mut [Field<E>], mode: &mut DuplexSpongeMode, output: &mut [Field<E>]) {
-        // Determine the squeeze index.
-        let (mut squeeze_index, should_permute) = match *mode {
-            DuplexSpongeMode::Absorbing { .. } => (0, true),
-            DuplexSpongeMode::Squeezing { next_squeeze_index } => match next_squeeze_index == RATE {
-                true => (0, true),
-                false => (next_squeeze_index, false),
-            },
-        };
-
-        // Proceed to permute the state, if necessary.
-        if should_permute {
-            self.permute(state);
-        }
-
-        let mut remaining = output;
-        loop {
-            // Compute the starting index.
-            let start = CAPACITY + squeeze_index;
-
-            // Check if we can exit the loop.
-            if squeeze_index + remaining.len() <= RATE {
-                // Store the state elements into the output.
-                remaining.clone_from_slice(&state[start..(start + remaining.len())]);
-                // Update the sponge mode.
-                *mode = DuplexSpongeMode::Squeezing { next_squeeze_index: squeeze_index + remaining.len() };
-                return;
-            }
-
-            // Otherwise, proceed to squeeze `(rate - squeeze_index)` elements.
-            let num_squeezed = RATE - squeeze_index;
-            remaining[..num_squeezed].clone_from_slice(&state[start..(start + num_squeezed)]);
-
-            // Unless we are done with squeezing in this call, permute.
-            if remaining.len() != RATE {
-                self.permute(state);
-            }
-            // Repeat with the updated output slice and squeeze index.
-            remaining = &mut remaining[num_squeezed..];
-            squeeze_index = 0;
-        }
-    }
 }
 
 #[cfg(test)]
@@ -268,35 +199,6 @@ mod tests {
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 10;
-
-    fn check_hash(
-        mode: Mode,
-        num_inputs: usize,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        let rng = &mut test_rng();
-        let native = NativePoseidon::<_, RATE, OPTIMIZED_FOR_WEIGHTS>::setup();
-        let circuit = Poseidon::new();
-
-        for i in 0..ITERATIONS {
-            // Prepare the preimage.
-            let input = (0..num_inputs).map(|_| <Circuit as Environment>::BaseField::rand(rng)).collect::<Vec<_>>();
-            let preimage = input.iter().map(|v| Field::<Circuit>::new(mode, *v)).collect::<Vec<_>>();
-
-            // Compute the native hash.
-            let expected = native.evaluate(&input);
-            // Compute the circuit hash.
-            Circuit::scope(format!("Poseidon {mode} {i}"), || {
-                let candidate = circuit.hash(&preimage);
-                assert_eq!(expected, candidate.eject_value());
-                let case = format!("(mode = {mode}, num_inputs = {num_inputs})");
-                assert_scope!(case, num_constants, num_public, num_private, num_constraints);
-            });
-        }
-    }
 
     fn check_hash_many(
         mode: Mode,
@@ -328,43 +230,6 @@ mod tests {
                 assert_scope!(case, num_constants, num_public, num_private, num_constraints);
             });
         }
-    }
-
-    #[test]
-    fn test_hash_constant() {
-        for num_inputs in 0..=RATE {
-            check_hash(Mode::Constant, num_inputs, 0, 0, 0, 0);
-        }
-    }
-
-    #[test]
-    fn test_hash_public() {
-        check_hash(Mode::Public, 0, 0, 0, 0, 0);
-        check_hash(Mode::Public, 1, 0, 0, 335, 335);
-        check_hash(Mode::Public, 2, 0, 0, 340, 340);
-        check_hash(Mode::Public, 3, 0, 0, 345, 345);
-        check_hash(Mode::Public, 4, 0, 0, 350, 350);
-        check_hash(Mode::Public, 5, 0, 0, 705, 705);
-        check_hash(Mode::Public, 6, 0, 0, 705, 705);
-        check_hash(Mode::Public, 7, 0, 0, 705, 705);
-        check_hash(Mode::Public, 8, 0, 0, 705, 705);
-        check_hash(Mode::Public, 9, 0, 0, 1060, 1060);
-        check_hash(Mode::Public, 10, 0, 0, 1060, 1060);
-    }
-
-    #[test]
-    fn test_hash_private() {
-        check_hash(Mode::Private, 0, 0, 0, 0, 0);
-        check_hash(Mode::Private, 1, 0, 0, 335, 335);
-        check_hash(Mode::Private, 2, 0, 0, 340, 340);
-        check_hash(Mode::Private, 3, 0, 0, 345, 345);
-        check_hash(Mode::Private, 4, 0, 0, 350, 350);
-        check_hash(Mode::Private, 5, 0, 0, 705, 705);
-        check_hash(Mode::Private, 6, 0, 0, 705, 705);
-        check_hash(Mode::Private, 7, 0, 0, 705, 705);
-        check_hash(Mode::Private, 8, 0, 0, 705, 705);
-        check_hash(Mode::Private, 9, 0, 0, 1060, 1060);
-        check_hash(Mode::Private, 10, 0, 0, 1060, 1060);
     }
 
     #[test]

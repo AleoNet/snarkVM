@@ -14,14 +14,31 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![forbid(unsafe_code)]
-#![allow(clippy::too_many_arguments)]
+pub mod sign;
 
-pub mod poseidon;
-pub use poseidon::*;
+use crate::Poseidon;
+use snarkvm_circuits_environment::prelude::*;
+use snarkvm_circuits_types::{Field, Scalar};
 
-pub mod record;
-pub use record::*;
+pub struct Aleo<E: Environment> {
+    /// The Poseidon hash function.
+    poseidon: Poseidon<E>,
+    /// The group bases for Aleo signatures.
+}
 
-// pub mod signature;
-// pub use signature::*;
+impl<E: Environment> Aleo<E> {
+    #[allow(clippy::new_without_default)]
+    pub fn new() -> Self {
+        let (base, _, _) = hash_to_curve::<TEAffine<TE>>(message);
+
+        let mut g = base.into_projective();
+        let mut g_bases = Vec::with_capacity(TE::ScalarField::size_in_bits());
+        for _ in 0..TE::ScalarField::size_in_bits() {
+            g_bases.push(g);
+            g.double_in_place();
+        }
+        g_bases
+
+        Self { poseidon: Poseidon::new() }
+    }
+}
