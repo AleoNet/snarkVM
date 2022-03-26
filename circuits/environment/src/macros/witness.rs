@@ -23,10 +23,7 @@
 macro_rules! witness {
     (| $($circuit:ident),* | $block:block) => {{
         // Determine the witness mode, by checking if all given circuits are constant.
-        let mode = match $( $circuit.is_constant() & )* true {
-            true => Mode::Constant,
-            false => Mode::Private
-        };
+        let mode = witness_mode!($( $circuit ),*);
 
         E::new_witness(mode, || {
             // Reassign each circuit to its primitive type.
@@ -38,6 +35,17 @@ macro_rules! witness {
     (| $($circuit:ident),* | $logic:expr) => {{
         witness!(| $($circuit),* | { $logic })
     }};
+}
+
+#[macro_export]
+macro_rules! witness_mode {
+    ($($circuit:ident),*) => {{
+        // Determine the witness mode, by checking if all given circuits are constant.
+        match $( $circuit.is_constant() & )* true {
+            true => Mode::Constant,
+            false => Mode::Private
+        }
+    }}
 }
 
 #[cfg(test)]
