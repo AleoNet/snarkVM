@@ -177,7 +177,7 @@ impl<N: Network> Record<N> {
         // is always smaller than base field, so the bytes always fit without wraparound.
         let seed = N::InnerScalarField::from_repr(FromBits::from_bits_le(&compute_key.sk_prf().to_bits_le())).unwrap();
         let input = self.commitment();
-        let serial_number = N::SerialNumberPRF::evaluate(&seed, &input.into())?.into();
+        let serial_number = N::SerialNumberPRF::evaluate(&seed, &input.into()).into();
 
         Ok(serial_number)
     }

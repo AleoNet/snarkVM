@@ -112,8 +112,9 @@ impl<N: Network> Program<N> {
         self.functions.insert(function.function_id(), (self.last_function_index, function));
 
         let last_function_index = self.last_function_index;
-        self.last_function_index =
-            last_function_index.checked_add(1).ok_or(anyhow!("The index exceeds the maximum number of functions."))?;
+        self.last_function_index = last_function_index
+            .checked_add(1)
+            .ok_or_else(|| anyhow!("The index exceeds the maximum number of functions."))?;
 
         Ok(last_function_index)
     }
@@ -159,8 +160,8 @@ impl<N: Network> Program<N> {
         self.last_function_index = self
             .last_function_index
             .checked_add(num_functions as u8)
-            .ok_or(anyhow!("The index exceeds the maximum number of allowed functions."))?;
-        let end_index = self.last_function_index.checked_sub(1).ok_or(anyhow!("Integer underflow."))?;
+            .ok_or_else(|| anyhow!("The index exceeds the maximum number of allowed functions."))?;
+        let end_index = self.last_function_index.checked_sub(1).ok_or_else(|| anyhow!("Integer underflow."))?;
 
         Ok((start_index, end_index))
     }

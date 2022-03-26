@@ -44,7 +44,7 @@ impl<E: Environment> Inject for Address<E> {
     /// Initializes a new instance of an address from a string.
     ///
     fn new(mode: Mode, value: Self::Primitive) -> Self {
-        Self(Group::new(mode, (value.to_x_coordinate(), Some(value.to_y_coordinate()))))
+        Self(Group::new(mode, value))
     }
 }
 

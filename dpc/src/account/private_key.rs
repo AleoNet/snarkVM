@@ -84,10 +84,8 @@ impl<N: Network> From<&N::AccountSeed> for PrivateKey<N> {
 
         Self {
             seed: seed.clone(),
-            sk_sig: N::AccountSeedPRF::evaluate(seed, &vec![sk_sig_domain])
-                .expect("Failed to derive private key component for PRF(seed, sk_sig_domain)"),
-            r_sig: N::AccountSeedPRF::evaluate(seed, &vec![r_sig_domain])
-                .expect("Failed to derive private key component for PRF(seed, r_sig_domain)"),
+            sk_sig: N::AccountSeedPRF::evaluate(seed, &vec![sk_sig_domain]),
+            r_sig: N::AccountSeedPRF::evaluate(seed, &vec![r_sig_domain]),
         }
     }
 }
