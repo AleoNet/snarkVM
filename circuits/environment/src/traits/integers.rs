@@ -168,177 +168,117 @@ pub(super) mod integer_type {
     impl IntegerType for u64 {}
     impl IntegerType for u128 {}
 
-    macro_rules! binary_checked_impl {
-        ($trait_name:ident, $method:ident, $t:ty) => {
+    macro_rules! binary_impl {
+        ($trait_name:ident, $t:ty, $method:ident, $arg1: ident, $argname:ident, $arg2: ident, $rt:ty, $body:expr) => {
             impl $trait_name for $t {
                 #[inline]
-                fn $method(&self, v: &Self) -> Option<Self> {
-                    <$t>::$method(*self, *v)
-                }
-            }
-        };
-        ($trait_name:ident, $method:ident, $t:ty, $rhs:ty) => {
-            impl $trait_name for $t {
-                #[inline]
-                fn $method(&self, v: $rhs) -> Option<Self> {
-                    <$t>::$method(*self, v)
+                fn $method(&$arg1, $argname: &$arg2) -> $rt {
+                    $body
                 }
             }
         };
     }
 
-    macro_rules! unary_checked_impl {
-        ($trait_name:ident, $method:ident, $t:ty) => {
-            impl $trait_name for $t {
-                #[inline]
-                fn $method(self) -> Option<Self> {
-                    <$t>::$method(self)
-                }
-            }
-        };
+    pub trait CheckedPow: Sized {
+        fn checked_pow(&self, v: &u32) -> Option<Self>;
     }
 
-    macro_rules! unary_checked_identity_impl {
-        ($trait_name:ident, $method:ident, $t:ty) => {
+    binary_impl!(CheckedPow, u8, checked_pow, self, v, u32, Option<u8>, u8::checked_pow(*self, *v));
+    binary_impl!(CheckedPow, u16, checked_pow, self, v, u32, Option<u16>, u16::checked_pow(*self, *v));
+    binary_impl!(CheckedPow, u32, checked_pow, self, v, u32, Option<u32>, u32::checked_pow(*self, *v));
+    binary_impl!(CheckedPow, u64, checked_pow, self, v, u32, Option<u64>, u64::checked_pow(*self, *v));
+    binary_impl!(CheckedPow, u128, checked_pow, self, v, u32, Option<u128>, u128::checked_pow(*self, *v));
+    binary_impl!(CheckedPow, i8, checked_pow, self, v, u32, Option<i8>, i8::checked_pow(*self, *v));
+    binary_impl!(CheckedPow, i16, checked_pow, self, v, u32, Option<i16>, i16::checked_pow(*self, *v));
+    binary_impl!(CheckedPow, i32, checked_pow, self, v, u32, Option<i32>, i32::checked_pow(*self, *v));
+    binary_impl!(CheckedPow, i64, checked_pow, self, v, u32, Option<i64>, i64::checked_pow(*self, *v));
+    binary_impl!(CheckedPow, i128, checked_pow, self, v, u32, Option<i128>, i128::checked_pow(*self, *v));
+
+    pub trait WrappingDiv: Sized + Div<Self, Output = Self> {
+        fn wrapping_div(&self, v: &Self) -> Self;
+    }
+
+    binary_impl!(WrappingDiv, u8, wrapping_div, self, v, Self, u8, u8::wrapping_div(*self, *v));
+    binary_impl!(WrappingDiv, u16, wrapping_div, self, v, Self, u16, u16::wrapping_div(*self, *v));
+    binary_impl!(WrappingDiv, u32, wrapping_div, self, v, Self, u32, u32::wrapping_div(*self, *v));
+    binary_impl!(WrappingDiv, u64, wrapping_div, self, v, Self, u64, u64::wrapping_div(*self, *v));
+    binary_impl!(WrappingDiv, u128, wrapping_div, self, v, Self, u128, u128::wrapping_div(*self, *v));
+    binary_impl!(WrappingDiv, i8, wrapping_div, self, v, Self, i8, i8::wrapping_div(*self, *v));
+    binary_impl!(WrappingDiv, i16, wrapping_div, self, v, Self, i16, i16::wrapping_div(*self, *v));
+    binary_impl!(WrappingDiv, i32, wrapping_div, self, v, Self, i32, i32::wrapping_div(*self, *v));
+    binary_impl!(WrappingDiv, i64, wrapping_div, self, v, Self, i64, i64::wrapping_div(*self, *v));
+    binary_impl!(WrappingDiv, i128, wrapping_div, self, v, Self, i128, i128::wrapping_div(*self, *v));
+
+    pub trait WrappingRem: Sized + Rem<Self, Output = Self> {
+        fn wrapping_rem(&self, v: &Self) -> Self;
+    }
+
+    binary_impl!(WrappingRem, u8, wrapping_rem, self, v, Self, u8, u8::wrapping_rem(*self, *v));
+    binary_impl!(WrappingRem, u16, wrapping_rem, self, v, Self, u16, u16::wrapping_rem(*self, *v));
+    binary_impl!(WrappingRem, u32, wrapping_rem, self, v, Self, u32, u32::wrapping_rem(*self, *v));
+    binary_impl!(WrappingRem, u64, wrapping_rem, self, v, Self, u64, u64::wrapping_rem(*self, *v));
+    binary_impl!(WrappingRem, u128, wrapping_rem, self, v, Self, u128, u128::wrapping_rem(*self, *v));
+    binary_impl!(WrappingRem, i8, wrapping_rem, self, v, Self, i8, i8::wrapping_rem(*self, *v));
+    binary_impl!(WrappingRem, i16, wrapping_rem, self, v, Self, i16, i16::wrapping_rem(*self, *v));
+    binary_impl!(WrappingRem, i32, wrapping_rem, self, v, Self, i32, i32::wrapping_rem(*self, *v));
+    binary_impl!(WrappingRem, i64, wrapping_rem, self, v, Self, i64, i64::wrapping_rem(*self, *v));
+    binary_impl!(WrappingRem, i128, wrapping_rem, self, v, Self, i128, i128::wrapping_rem(*self, *v));
+
+    pub trait WrappingPow: Sized {
+        fn wrapping_pow(&self, v: &u32) -> Self;
+    }
+
+    binary_impl!(WrappingPow, u8, wrapping_pow, self, v, u32, u8, u8::wrapping_pow(*self, *v));
+    binary_impl!(WrappingPow, u16, wrapping_pow, self, v, u32, u16, u16::wrapping_pow(*self, *v));
+    binary_impl!(WrappingPow, u32, wrapping_pow, self, v, u32, u32, u32::wrapping_pow(*self, *v));
+    binary_impl!(WrappingPow, u64, wrapping_pow, self, v, u32, u64, u64::wrapping_pow(*self, *v));
+    binary_impl!(WrappingPow, u128, wrapping_pow, self, v, u32, u128, u128::wrapping_pow(*self, *v));
+    binary_impl!(WrappingPow, i8, wrapping_pow, self, v, u32, i8, i8::wrapping_pow(*self, *v));
+    binary_impl!(WrappingPow, i16, wrapping_pow, self, v, u32, i16, i16::wrapping_pow(*self, *v));
+    binary_impl!(WrappingPow, i32, wrapping_pow, self, v, u32, i32, i32::wrapping_pow(*self, *v));
+    binary_impl!(WrappingPow, i64, wrapping_pow, self, v, u32, i64, i64::wrapping_pow(*self, *v));
+    binary_impl!(WrappingPow, i128, wrapping_pow, self, v, u32, i128, i128::wrapping_pow(*self, *v));
+
+    macro_rules! unary_impl {
+        ($trait_name:ident, $t:ty, $method:ident, $arg: ident, $rt:ty, $body:expr) => {
             impl $trait_name for $t {
                 #[inline]
-                fn $method(self) -> Option<Self> {
-                    Some(self)
+                fn $method(&$arg) -> $rt {
+                    $body
                 }
             }
         };
     }
 
     pub trait CheckedAbs: Sized {
-        fn checked_abs(self) -> Option<Self>;
+        fn checked_abs(&self) -> Option<Self>;
     }
 
-    unary_checked_identity_impl!(CheckedAbs, checked_abs, u8);
-    unary_checked_identity_impl!(CheckedAbs, checked_abs, u16);
-    unary_checked_identity_impl!(CheckedAbs, checked_abs, u32);
-    unary_checked_identity_impl!(CheckedAbs, checked_abs, u64);
-    unary_checked_identity_impl!(CheckedAbs, checked_abs, u128);
-    unary_checked_impl!(CheckedAbs, checked_abs, i8);
-    unary_checked_impl!(CheckedAbs, checked_abs, i16);
-    unary_checked_impl!(CheckedAbs, checked_abs, i32);
-    unary_checked_impl!(CheckedAbs, checked_abs, i64);
-    unary_checked_impl!(CheckedAbs, checked_abs, i128);
-
-    pub trait CheckedPow: Sized {
-        fn checked_pow(&self, v: u32) -> Option<Self>;
-    }
-
-    binary_checked_impl!(CheckedPow, checked_pow, u8, u32);
-    binary_checked_impl!(CheckedPow, checked_pow, u16, u32);
-    binary_checked_impl!(CheckedPow, checked_pow, u32, u32);
-    binary_checked_impl!(CheckedPow, checked_pow, u64, u32);
-    binary_checked_impl!(CheckedPow, checked_pow, u128, u32);
-    binary_checked_impl!(CheckedPow, checked_pow, i8, u32);
-    binary_checked_impl!(CheckedPow, checked_pow, i16, u32);
-    binary_checked_impl!(CheckedPow, checked_pow, i32, u32);
-    binary_checked_impl!(CheckedPow, checked_pow, i64, u32);
-    binary_checked_impl!(CheckedPow, checked_pow, i128, u32);
-
-    macro_rules! binary_wrapping_impl {
-        ($trait_name:ident, $method:ident, $t:ty) => {
-            impl $trait_name for $t {
-                #[inline]
-                fn $method(&self, v: &Self) -> Self {
-                    <$t>::$method(*self, *v)
-                }
-            }
-        };
-        ($trait_name:ident, $method:ident, $t:ty, $rhs:ty) => {
-            impl $trait_name for $t {
-                #[inline]
-                fn $method(&self, v: $rhs) -> Self {
-                    <$t>::$method(*self, v)
-                }
-            }
-        };
-    }
-
-    macro_rules! unary_wrapping_impl {
-        ($trait_name:ident, $method:ident, $t:ty) => {
-            impl $trait_name for $t {
-                #[inline]
-                fn $method(self) -> Self {
-                    <$t>::$method(self)
-                }
-            }
-        };
-    }
-
-    macro_rules! unary_wrapping_identity_impl {
-        ($trait_name:ident, $method:ident, $t:ty) => {
-            impl $trait_name for $t {
-                #[inline]
-                fn $method(self) -> Self {
-                    self
-                }
-            }
-        };
-    }
+    unary_impl!(CheckedAbs, u8, checked_abs, self, Option<u8>, Some(*self));
+    unary_impl!(CheckedAbs, u16, checked_abs, self, Option<u16>, Some(*self));
+    unary_impl!(CheckedAbs, u32, checked_abs, self, Option<u32>, Some(*self));
+    unary_impl!(CheckedAbs, u64, checked_abs, self, Option<u64>, Some(*self));
+    unary_impl!(CheckedAbs, u128, checked_abs, self, Option<u128>, Some(*self));
+    unary_impl!(CheckedAbs, i8, checked_abs, self, Option<i8>, i8::checked_abs(*self));
+    unary_impl!(CheckedAbs, i16, checked_abs, self, Option<i16>, i16::checked_abs(*self));
+    unary_impl!(CheckedAbs, i32, checked_abs, self, Option<i32>, i32::checked_abs(*self));
+    unary_impl!(CheckedAbs, i64, checked_abs, self, Option<i64>, i64::checked_abs(*self));
+    unary_impl!(CheckedAbs, i128, checked_abs, self, Option<i128>, i128::checked_abs(*self));
 
     pub trait WrappingAbs: Sized {
-        fn wrapping_abs(self) -> Self;
+        fn wrapping_abs(&self) -> Self;
     }
 
-    unary_wrapping_identity_impl!(WrappingAbs, wrapping_abs, u8);
-    unary_wrapping_identity_impl!(WrappingAbs, wrapping_abs, u16);
-    unary_wrapping_identity_impl!(WrappingAbs, wrapping_abs, u32);
-    unary_wrapping_identity_impl!(WrappingAbs, wrapping_abs, u64);
-    unary_wrapping_identity_impl!(WrappingAbs, wrapping_abs, u128);
-    unary_wrapping_impl!(WrappingAbs, wrapping_abs, i8);
-    unary_wrapping_impl!(WrappingAbs, wrapping_abs, i16);
-    unary_wrapping_impl!(WrappingAbs, wrapping_abs, i32);
-    unary_wrapping_impl!(WrappingAbs, wrapping_abs, i64);
-    unary_wrapping_impl!(WrappingAbs, wrapping_abs, i128);
-
-    pub trait WrappingDiv: Sized + Div<Self, Output = Self> {
-        fn wrapping_div(&self, v: &Self) -> Self;
-    }
-
-    binary_wrapping_impl!(WrappingDiv, wrapping_div, u8);
-    binary_wrapping_impl!(WrappingDiv, wrapping_div, u16);
-    binary_wrapping_impl!(WrappingDiv, wrapping_div, u32);
-    binary_wrapping_impl!(WrappingDiv, wrapping_div, u64);
-    binary_wrapping_impl!(WrappingDiv, wrapping_div, u128);
-    binary_wrapping_impl!(WrappingDiv, wrapping_div, i8);
-    binary_wrapping_impl!(WrappingDiv, wrapping_div, i16);
-    binary_wrapping_impl!(WrappingDiv, wrapping_div, i32);
-    binary_wrapping_impl!(WrappingDiv, wrapping_div, i64);
-    binary_wrapping_impl!(WrappingDiv, wrapping_div, i128);
-
-    pub trait WrappingRem: Sized + Rem<Self, Output = Self> {
-        fn wrapping_rem(&self, v: &Self) -> Self;
-    }
-
-    binary_wrapping_impl!(WrappingRem, wrapping_rem, u8);
-    binary_wrapping_impl!(WrappingRem, wrapping_rem, u16);
-    binary_wrapping_impl!(WrappingRem, wrapping_rem, u32);
-    binary_wrapping_impl!(WrappingRem, wrapping_rem, u64);
-    binary_wrapping_impl!(WrappingRem, wrapping_rem, u128);
-    binary_wrapping_impl!(WrappingRem, wrapping_rem, i8);
-    binary_wrapping_impl!(WrappingRem, wrapping_rem, i16);
-    binary_wrapping_impl!(WrappingRem, wrapping_rem, i32);
-    binary_wrapping_impl!(WrappingRem, wrapping_rem, i64);
-    binary_wrapping_impl!(WrappingRem, wrapping_rem, i128);
-
-    pub trait WrappingPow: Sized {
-        fn wrapping_pow(&self, v: u32) -> Self;
-    }
-
-    binary_wrapping_impl!(WrappingPow, wrapping_pow, u8, u32);
-    binary_wrapping_impl!(WrappingPow, wrapping_pow, u16, u32);
-    binary_wrapping_impl!(WrappingPow, wrapping_pow, u32, u32);
-    binary_wrapping_impl!(WrappingPow, wrapping_pow, u64, u32);
-    binary_wrapping_impl!(WrappingPow, wrapping_pow, u128, u32);
-    binary_wrapping_impl!(WrappingPow, wrapping_pow, i8, u32);
-    binary_wrapping_impl!(WrappingPow, wrapping_pow, i16, u32);
-    binary_wrapping_impl!(WrappingPow, wrapping_pow, i32, u32);
-    binary_wrapping_impl!(WrappingPow, wrapping_pow, i64, u32);
-    binary_wrapping_impl!(WrappingPow, wrapping_pow, i128, u32);
+    unary_impl!(WrappingAbs, u8, wrapping_abs, self, u8, *self);
+    unary_impl!(WrappingAbs, u16, wrapping_abs, self, u16, *self);
+    unary_impl!(WrappingAbs, u32, wrapping_abs, self, u32, *self);
+    unary_impl!(WrappingAbs, u64, wrapping_abs, self, u64, *self);
+    unary_impl!(WrappingAbs, u128, wrapping_abs, self, u128, *self);
+    unary_impl!(WrappingAbs, i8, wrapping_abs, self, i8, i8::wrapping_abs(*self));
+    unary_impl!(WrappingAbs, i16, wrapping_abs, self, i16, i16::wrapping_abs(*self));
+    unary_impl!(WrappingAbs, i32, wrapping_abs, self, i32, i32::wrapping_abs(*self));
+    unary_impl!(WrappingAbs, i64, wrapping_abs, self, i64, i64::wrapping_abs(*self));
+    unary_impl!(WrappingAbs, i128, wrapping_abs, self, i128, i128::wrapping_abs(*self));
 
     /// Properties common to all integer types.
     pub trait IntegerProperties: PrimInt + Debug + Display {
@@ -355,13 +295,10 @@ pub(super) mod integer_type {
 
         /// Returns the name of the integer type as a string slice. (i.e. "u8")
         fn type_name() -> &'static str;
-
-        /// Returns the absolute value of the integer type.
-        fn absolute(&self) -> Self;
     }
 
     macro_rules! integer_properties_impl {
-        ($t:ty, $dual:ty, $is_signed:expr, $abs:expr) => {
+        ($t:ty, $dual:ty, $is_signed:expr) => {
             impl IntegerProperties for $t {
                 type Dual = $dual;
 
@@ -378,25 +315,20 @@ pub(super) mod integer_type {
                 fn type_name() -> &'static str {
                     std::any::type_name::<$t>()
                 }
-
-                #[inline]
-                fn absolute(&self) -> Self {
-                    $abs(self)
-                }
             }
         };
     }
 
-    integer_properties_impl!(u8, i8, false, |i: &u8| *i);
-    integer_properties_impl!(u16, i16, false, |i: &u16| *i);
-    integer_properties_impl!(u32, i32, false, |i: &u32| *i);
-    integer_properties_impl!(u64, i64, false, |i: &u64| *i);
-    integer_properties_impl!(u128, i128, false, |i: &u128| *i);
-    integer_properties_impl!(i8, u8, true, |i: &i8| i.abs());
-    integer_properties_impl!(i16, u16, true, |i: &i16| i.abs());
-    integer_properties_impl!(i32, u32, true, |i: &i32| i.abs());
-    integer_properties_impl!(i64, u64, true, |i: &i64| i.abs());
-    integer_properties_impl!(i128, u128, true, |i: &i128| i.abs());
+    integer_properties_impl!(u8, i8, false);
+    integer_properties_impl!(u16, i16, false);
+    integer_properties_impl!(u32, i32, false);
+    integer_properties_impl!(u64, i64, false);
+    integer_properties_impl!(u128, i128, false);
+    integer_properties_impl!(i8, u8, true);
+    integer_properties_impl!(i16, u16, true);
+    integer_properties_impl!(i32, u32, true);
+    integer_properties_impl!(i64, u64, true);
+    integer_properties_impl!(i128, u128, true);
 }
 
 /// Sealed trait pattern to prevent abuse of Magnitude.

@@ -45,7 +45,7 @@ mod tests {
     const ITERATIONS: usize = 128;
 
     #[rustfmt::skip]
-    fn check_abs<I: IntegerType + std::panic::RefUnwindSafe>(
+    fn check_abs<I: IntegerType + std::panic::UnwindSafe>(
         name: &str,
         value: I,
         mode: Mode,
@@ -57,10 +57,10 @@ mod tests {
         let a = Integer::<Circuit, I>::new(mode, value);
         let case = format!("(!{})", a.eject_value());
         let expected = value.wrapping_abs();
-        check_unary_operation_passes(name, &case, expected, &a, |a: &Integer<Circuit, I> | a.abs_wrapped(), num_constants, num_public, num_private, num_constraints);
+        check_unary_operation_passes(name, &case, expected, a, |a: Integer<Circuit, I> | a.abs_wrapped(), num_constants, num_public, num_private, num_constraints);
     }
 
-    fn run_test<I: IntegerType + std::panic::RefUnwindSafe>(
+    fn run_test<I: IntegerType + std::panic::UnwindSafe>(
         mode: Mode,
         num_constants: usize,
         num_public: usize,
@@ -81,7 +81,7 @@ mod tests {
         let name = format!("Abs: {} one", mode);
         check_abs(&name, I::one(), mode, num_constants, num_public, num_private, num_constraints);
 
-        // Check the I::MIN (checked) case.
+        // Check the I::MIN (wrapped) case.
         let name = format!("Abs: {} one", mode);
         check_abs(&name, I::MIN, mode, num_constants, num_public, num_private, num_constraints);
     }

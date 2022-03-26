@@ -45,7 +45,7 @@ mod tests {
     const ITERATIONS: usize = 128;
 
     #[rustfmt::skip]
-    fn check_abs<I: IntegerType + std::panic::RefUnwindSafe>(
+    fn check_abs<I: IntegerType + std::panic::UnwindSafe>(
         name: &str,
         value: I,
         mode: Mode,
@@ -57,16 +57,16 @@ mod tests {
         let a = Integer::<Circuit, I>::new(mode, value);
         let case = format!("(!{})", a.eject_value());
         match value.checked_abs() {
-            Some(expected) => check_unary_operation_passes(name, &case, expected, &a, |a: &Integer<Circuit, I>| a.abs_checked(), num_constants, num_public, num_private, num_constraints),
+            Some(expected) => check_unary_operation_passes(name, &case, expected, a, |a: Integer<Circuit, I>| a.abs_checked(), num_constants, num_public, num_private, num_constraints),
             None => match mode {
-                Mode::Constant => check_unary_operation_halts(&a, |a: &Integer<Circuit, I>| a.abs_checked()),
-                _ => check_unary_operation_fails(name, &case, &a, |a: &Integer<Circuit, I>| a.abs_checked(), num_constants, num_public, num_private, num_constraints)
+                Mode::Constant => check_unary_operation_halts(a, |a: Integer<Circuit, I>| a.abs_checked()),
+                _ => check_unary_operation_fails(name, &case, a, |a: Integer<Circuit, I>| a.abs_checked(), num_constants, num_public, num_private, num_constraints)
             }
         }
 
     }
 
-    fn run_test<I: IntegerType + std::panic::RefUnwindSafe>(
+    fn run_test<I: IntegerType + std::panic::UnwindSafe>(
         mode: Mode,
         num_constants: usize,
         num_public: usize,

@@ -25,7 +25,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> PowChecked<Integer<E, M>> for
         if self.is_constant() && other.is_constant() {
             // Compute the result and return the new constant.
             // This cast is safe since `Magnitude`s can only be `u8`, `u16`, or `u32`.
-            match self.eject_value().checked_pow(other.eject_value().to_u32().unwrap()) {
+            match self.eject_value().checked_pow(&other.eject_value().to_u32().unwrap()) {
                 Some(value) => Integer::new(Mode::Constant, value),
                 None => E::halt("Integer overflow on exponentiation of two constants"),
             }
@@ -107,7 +107,7 @@ mod tests {
         let a = Integer::<Circuit, I>::new(mode_a, first);
         let b = Integer::<Circuit, M>::new(mode_b, second);
         let case = format!("({} ** {})", a.eject_value(), b.eject_value());
-        match first.checked_pow(second.to_u32().unwrap()) {
+        match first.checked_pow(&second.to_u32().unwrap()) {
             Some(value) => check_operation_passes_without_counts(name, &case, value, &a, &b, Integer::pow_checked),
             None => {
                 match (mode_a, mode_b) {
