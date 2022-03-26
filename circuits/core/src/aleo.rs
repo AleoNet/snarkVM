@@ -16,20 +16,12 @@
 
 use crate::Poseidon;
 use snarkvm_algorithms::crypto_hash::hash_to_curve;
-use snarkvm_circuits_environment::prelude::*;
-use snarkvm_circuits_types::{Group, Field, Scalar};
-use snarkvm_curves::{AffineCurve, ProjectiveCurve, TwistedEdwardsParameters};
-use snarkvm_circuits_environment::Circuit;
+use snarkvm_circuits_environment::{prelude::*, Circuit};
+use snarkvm_circuits_types::{Field, Group, Scalar};
+use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 
+use core::fmt;
 use once_cell::unsync::Lazy;
-use core::{fmt};
-
-// pub struct Aleo<E: Environment> {
-//     /// The Poseidon hash function.
-//     poseidon: Poseidon<E>,
-//     /// The group bases for the Aleo signature and encryption schemes.
-//     bases: Vec<Group<E>>,
-// }
 
 pub trait Account: Environment {
     /// Returns the scalar multiplication on the group bases.
@@ -44,7 +36,9 @@ pub type E = Circuit;
 pub static ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT: &str = "AleoAccountEncryptionAndSignatureScheme0";
 
 thread_local! {
-    static POSEIDON: Lazy<Poseidon<Aleo>> = Lazy::new(|| Poseidon::<Aleo>::new());
+    /// The Poseidon hash function.
+    static POSEIDON: Lazy<Poseidon<Aleo>> = Lazy::new(Poseidon::<Aleo>::new);
+    /// The group bases for the Aleo signature and encryption schemes.
     static BASES: Lazy<Vec<Group<Aleo>>> = Lazy::new(|| Aleo::new_bases(ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT));
 }
 
@@ -76,14 +70,17 @@ impl Account for Aleo {
     /// Returns the scalar multiplication on the group bases.
     #[inline]
     fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self> {
-        BASES.with(|ref bases| bases.iter()
-            .zip_eq(&scalar.to_bits_le())
-            .fold(Group::zero(), |output, (base, bit)| Group::ternary(bit, &(&output + base), &output)))
+        BASES.with(|bases| {
+            bases
+                .iter()
+                .zip_eq(&scalar.to_bits_le())
+                .fold(Group::zero(), |output, (base, bit)| Group::ternary(bit, &(&output + base), &output))
+        })
     }
 
     /// Returns a hash on the scalar field for the given input.
     fn hash_to_scalar(input: &[Field<Self>]) -> Scalar<Self> {
-        POSEIDON.with(|ref poseidon| poseidon.hash_to_scalar(input))
+        POSEIDON.with(|poseidon| poseidon.hash_to_scalar(input))
     }
 }
 
@@ -118,19 +115,19 @@ impl Environment for Aleo {
 
     /// Enters a new scope for the environment.
     fn scope<S: Into<String>, Fn, Output>(name: S, logic: Fn) -> Output
-        where
-            Fn: FnOnce() -> Output,
+    where
+        Fn: FnOnce() -> Output,
     {
         E::scope(name, logic)
     }
 
     /// Adds one constraint enforcing that `(A * B) == C`.
     fn enforce<Fn, A, B, C>(constraint: Fn)
-        where
-            Fn: FnOnce() -> (A, B, C),
-            A: Into<LinearCombination<Self::BaseField>>,
-            B: Into<LinearCombination<Self::BaseField>>,
-            C: Into<LinearCombination<Self::BaseField>>,
+    where
+        Fn: FnOnce() -> (A, B, C),
+        A: Into<LinearCombination<Self::BaseField>>,
+        B: Into<LinearCombination<Self::BaseField>>,
+        C: Into<LinearCombination<Self::BaseField>>,
     {
         E::enforce(constraint)
     }
@@ -214,7 +211,8 @@ impl Environment for Aleo {
 
 impl fmt::Display for Aleo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", E.fmt(f))
+        // TODO (howardwu): Find a better way to print the circuit.
+        Circuit.fmt(f)
     }
 }
 
