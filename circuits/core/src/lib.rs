@@ -17,8 +17,8 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
-// pub mod aleo;
-// pub use aleo::*;
+pub mod aleo;
+pub use aleo::*;
 
 pub mod compute_key;
 pub use compute_key::*;

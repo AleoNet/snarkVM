@@ -14,13 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod sign;
-
 use crate::Poseidon;
 use snarkvm_algorithms::crypto_hash::hash_to_curve;
 use snarkvm_circuits_environment::prelude::*;
-use snarkvm_circuits_types::{Field, Group, Scalar};
+use snarkvm_circuits_types::{Group, Scalar};
+use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 
+#[allow(dead_code)]
 pub struct Aleo<E: Environment> {
     /// The Poseidon hash function.
     poseidon: Poseidon<E>,
@@ -45,5 +45,14 @@ impl<E: Environment> Aleo<E> {
         }
 
         Self { poseidon: Poseidon::new(), bases }
+    }
+}
+
+impl<E: Environment> Aleo<E> {
+    pub fn g_scalar_multiply(&self, scalar: &Scalar<E>) -> Group<E> {
+        self.bases
+            .iter()
+            .zip_eq(&scalar.to_bits_le())
+            .fold(Group::zero(), |output, (base, bit)| Group::ternary(bit, &(&output + base), &output))
     }
 }
