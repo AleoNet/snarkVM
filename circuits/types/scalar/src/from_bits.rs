@@ -35,8 +35,12 @@ impl<E: Environment> FromBits for Scalar<E> {
             E::assert_eq(E::zero(), should_be_zero);
         }
 
+        // Construct the sanitized list of bits, resizing up if necessary.
+        let mut bits_le = bits_le.iter().cloned().take(size_in_bits).collect::<Vec<_>>();
+        bits_le.resize(size_in_bits, Boolean::constant(false));
+
         // Construct the candidate scalar field element.
-        let output = Scalar { bits_le: bits_le[..size_in_bits].to_vec() };
+        let output = Scalar { bits_le };
 
         // If the number of bits is equivalent to the scalar size in bits,
         // ensure the scalar is below the scalar field modulus.

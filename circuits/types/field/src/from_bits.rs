@@ -34,14 +34,11 @@ impl<E: Environment> FromBits for Field<E> {
             E::assert_eq(E::zero(), should_be_zero);
         }
 
-        // Construct the sanitized list of bits.
-        let bits_le = bits_le[..size_in_bits].to_vec();
-
         // Reconstruct the bits as a linear combination representing the original field value.
         // `output` := (2^i * b_i + ... + 2^0 * b_0)
         let mut output = Field::zero();
         let mut coefficient = Field::one();
-        for bit in &bits_le {
+        for bit in bits_le.iter().take(size_in_bits) {
             output += Field::from(bit) * &coefficient;
             coefficient = coefficient.double();
         }
@@ -54,7 +51,7 @@ impl<E: Environment> FromBits for Field<E> {
             let modulus = -E::BaseField::one();
 
             // Initialize an iterator for big-endian bits, skipping the excess bits, which are checked above.
-            let mut bits_be = bits_le.iter().rev();
+            let mut bits_be = bits_le.iter().rev().skip(bits_le.len() - size_in_bits);
 
             // Initialize trackers for the sequence of ones.
             let mut previous = Boolean::constant(true);
@@ -85,6 +82,10 @@ impl<E: Environment> FromBits for Field<E> {
             // The sequence will always finish empty, because we subtracted 1 from the `modulus`.
             debug_assert!(sequence.is_empty());
         }
+
+        // Construct the sanitized list of bits, resizing up if necessary.
+        let mut bits_le = bits_le.iter().cloned().take(size_in_bits).collect::<Vec<_>>();
+        bits_le.resize(size_in_bits, Boolean::constant(false));
 
         // Store the little-endian bits in the output.
         if output.bits_le.set(bits_le).is_err() {

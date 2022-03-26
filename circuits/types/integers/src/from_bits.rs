@@ -21,11 +21,20 @@ impl<E: Environment, I: IntegerType> FromBits for Integer<E, I> {
 
     /// Initializes a new integer from a list of little-endian bits *with* trailing zeros.
     fn from_bits_le(bits_le: &[Self::Boolean]) -> Self {
-        // Ensure the number of booleans is the correct capacity.
-        match bits_le.len() == I::BITS {
-            true => Integer { bits_le: bits_le.to_vec(), phantom: Default::default() },
-            false => E::halt(format!("Attempted to instantiate a {}-bit integer with {} bits", I::BITS, bits_le.len())),
+        // Ensure the list of booleans is within the allowed size in bits.
+        let num_bits = bits_le.len();
+        if num_bits > I::BITS {
+            // Check if all excess bits are zero.
+            let should_be_zero = bits_le[I::BITS..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit);
+            // Ensure `should_be_zero` is zero.
+            E::assert_eq(E::zero(), should_be_zero);
         }
+
+        // Construct the sanitized list of bits, resizing up if necessary.
+        let mut bits_le = bits_le.iter().take(I::BITS).cloned().collect::<Vec<_>>();
+        bits_le.resize(I::BITS, Boolean::constant(false));
+
+        Self { bits_le, phantom: Default::default() }
     }
 
     /// Initializes a new integer from a list of big-endian bits *with* leading zeros.
@@ -44,7 +53,6 @@ mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
-    use test_utilities::*;
 
     const ITERATIONS: usize = 128;
 
@@ -56,21 +64,34 @@ mod tests {
         num_constraints: usize,
     ) {
         for i in 0..ITERATIONS {
-            // Sample a random element.
+            // Sample a random integer.
             let expected: I = UniformRand::rand(&mut test_rng());
-            let a = Integer::<Circuit, I>::new(mode, expected).to_bits_le();
-            let name = format!("From BitsLE: {} {}", mode, i);
-            check_unary_operation_passes(
-                &name,
-                "",
-                expected,
-                &a[..],
-                Integer::from_bits_le,
-                num_constants,
-                num_public,
-                num_private,
-                num_constraints,
-            );
+            let given_bits = Integer::<Circuit, I>::new(mode, expected).to_bits_le();
+            let expected_size_in_bits = given_bits.len();
+
+            Circuit::scope(&format!("{} {}", mode, i), || {
+                let candidate = Integer::<Circuit, I>::from_bits_le(&given_bits);
+                assert_eq!(expected, candidate.eject_value());
+                assert_eq!(expected_size_in_bits, candidate.bits_le.len());
+                assert_scope!(num_constants, num_public, num_private, num_constraints);
+            });
+
+            // Add excess zero bits.
+            let candidate = vec![given_bits, vec![Boolean::new(mode, false); i]].concat();
+
+            Circuit::scope(&format!("Excess {} {}", mode, i), || {
+                let candidate = Integer::<Circuit, I>::from_bits_le(&candidate);
+                assert_eq!(expected, candidate.eject_value());
+                assert_eq!(expected_size_in_bits, candidate.bits_le.len());
+                match mode.is_constant() {
+                    true => assert_scope!(num_constants, num_public, num_private, num_constraints),
+                    // `num_private` gets 1 free excess bit, then is incremented by one for each excess bit.
+                    // `num_constraints` is incremented by one for each excess bit.
+                    false => {
+                        assert_scope!(num_constants, num_public, num_private + i.saturating_sub(1), num_constraints + i)
+                    }
+                };
+            });
         }
     }
 
@@ -82,21 +103,34 @@ mod tests {
         num_constraints: usize,
     ) {
         for i in 0..ITERATIONS {
-            // Sample a random element.
+            // Sample a random integer.
             let expected: I = UniformRand::rand(&mut test_rng());
-            let a = Integer::<Circuit, I>::new(mode, expected).to_bits_be();
-            let name = format!("From BitsBE: {} {}", mode, i);
-            check_unary_operation_passes(
-                &name,
-                "",
-                expected,
-                &a[..],
-                Integer::from_bits_be,
-                num_constants,
-                num_public,
-                num_private,
-                num_constraints,
-            );
+            let given_bits = Integer::<Circuit, I>::new(mode, expected).to_bits_be();
+            let expected_size_in_bits = given_bits.len();
+
+            Circuit::scope(&format!("{} {}", mode, i), || {
+                let candidate = Integer::<Circuit, I>::from_bits_be(&given_bits);
+                assert_eq!(expected, candidate.eject_value());
+                assert_eq!(expected_size_in_bits, candidate.bits_le.len());
+                assert_scope!(num_constants, num_public, num_private, num_constraints);
+            });
+
+            // Add excess zero bits.
+            let candidate = vec![vec![Boolean::new(mode, false); i], given_bits].concat();
+
+            Circuit::scope(&format!("Excess {} {}", mode, i), || {
+                let candidate = Integer::<Circuit, I>::from_bits_be(&candidate);
+                assert_eq!(expected, candidate.eject_value());
+                assert_eq!(expected_size_in_bits, candidate.bits_le.len());
+                match mode.is_constant() {
+                    true => assert_scope!(num_constants, num_public, num_private, num_constraints),
+                    // `num_private` gets 1 free excess bit, then is incremented by one for each excess bit.
+                    // `num_constraints` is incremented by one for each excess bit.
+                    false => {
+                        assert_scope!(num_constants, num_public, num_private + i.saturating_sub(1), num_constraints + i)
+                    }
+                };
+            });
         }
     }
 
