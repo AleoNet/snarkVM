@@ -195,7 +195,7 @@ impl<E: Environment> Poseidon<E> {
 mod tests {
     use super::*;
     use snarkvm_algorithms::crypto_hash::Poseidon as NativePoseidon;
-    use snarkvm_circuits_environment::{assert_scope, Circuit};
+    use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 10;

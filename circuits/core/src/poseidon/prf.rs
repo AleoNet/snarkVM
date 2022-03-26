@@ -22,7 +22,7 @@ impl<E: Environment> Poseidon<E> {
         // Construct the preimage: seed || length(input) || input.
         let mut preimage = Vec::with_capacity(2 + input.len());
         preimage.push(seed.clone());
-        preimage.push(witness!(|input| (input.len() as u128).into()));
+        preimage.push(Field::constant((input.len() as u128).into()));
         preimage.extend_from_slice(input);
 
         // Hash the preimage to derive the PRF output.
@@ -34,7 +34,7 @@ impl<E: Environment> Poseidon<E> {
 mod tests {
     use super::*;
     use snarkvm_algorithms::{prf::PoseidonPRF as NativePoseidonPRF, PRF as NativePRF};
-    use snarkvm_circuits_environment::{assert_scope, Circuit};
+    use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 10;
@@ -82,30 +82,30 @@ mod tests {
     #[test]
     fn test_prf_public() {
         check_prf(Mode::Public, 0, 1, 0, 335, 335);
-        check_prf(Mode::Public, 1, 0, 0, 346, 345);
-        check_prf(Mode::Public, 2, 0, 0, 351, 350);
-        check_prf(Mode::Public, 3, 0, 0, 706, 705);
-        check_prf(Mode::Public, 4, 0, 0, 706, 705);
-        check_prf(Mode::Public, 5, 0, 0, 706, 705);
-        check_prf(Mode::Public, 6, 0, 0, 706, 705);
-        check_prf(Mode::Public, 7, 0, 0, 1061, 1060);
-        check_prf(Mode::Public, 8, 0, 0, 1061, 1060);
-        check_prf(Mode::Public, 9, 0, 0, 1061, 1060);
-        check_prf(Mode::Public, 10, 0, 0, 1061, 1060);
+        check_prf(Mode::Public, 1, 1, 0, 340, 340);
+        check_prf(Mode::Public, 2, 1, 0, 345, 345);
+        check_prf(Mode::Public, 3, 1, 0, 700, 700);
+        check_prf(Mode::Public, 4, 1, 0, 700, 700);
+        check_prf(Mode::Public, 5, 1, 0, 700, 700);
+        check_prf(Mode::Public, 6, 1, 0, 700, 700);
+        check_prf(Mode::Public, 7, 1, 0, 1055, 1055);
+        check_prf(Mode::Public, 8, 1, 0, 1055, 1055);
+        check_prf(Mode::Public, 9, 1, 0, 1055, 1055);
+        check_prf(Mode::Public, 10, 1, 0, 1055, 1055);
     }
 
     #[test]
     fn test_prf_private() {
         check_prf(Mode::Private, 0, 1, 0, 335, 335);
-        check_prf(Mode::Private, 1, 0, 0, 346, 345);
-        check_prf(Mode::Private, 2, 0, 0, 351, 350);
-        check_prf(Mode::Private, 3, 0, 0, 706, 705);
-        check_prf(Mode::Private, 4, 0, 0, 706, 705);
-        check_prf(Mode::Private, 5, 0, 0, 706, 705);
-        check_prf(Mode::Private, 6, 0, 0, 706, 705);
-        check_prf(Mode::Private, 7, 0, 0, 1061, 1060);
-        check_prf(Mode::Private, 8, 0, 0, 1061, 1060);
-        check_prf(Mode::Private, 9, 0, 0, 1061, 1060);
-        check_prf(Mode::Private, 10, 0, 0, 1061, 1060);
+        check_prf(Mode::Private, 1, 1, 0, 340, 340);
+        check_prf(Mode::Private, 2, 1, 0, 345, 345);
+        check_prf(Mode::Private, 3, 1, 0, 700, 700);
+        check_prf(Mode::Private, 4, 1, 0, 700, 700);
+        check_prf(Mode::Private, 5, 1, 0, 700, 700);
+        check_prf(Mode::Private, 6, 1, 0, 700, 700);
+        check_prf(Mode::Private, 7, 1, 0, 1055, 1055);
+        check_prf(Mode::Private, 8, 1, 0, 1055, 1055);
+        check_prf(Mode::Private, 9, 1, 0, 1055, 1055);
+        check_prf(Mode::Private, 10, 1, 0, 1055, 1055);
     }
 }

@@ -14,39 +14,82 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_circuits_environment::prelude::*;
-use snarkvm_circuits_types::Scalar;
+use super::*;
+use crate::ComputeKey;
 
-pub struct PrivateKey<E: Environment> {
-    /// The signature secret key.
-    sk_sig: Scalar<E>,
-    /// The signature randomizer.
-    r_sig: Scalar<E>,
-}
-
-impl<E: Environment> Inject for PrivateKey<E> {
-    type Primitive = (E::ScalarField, E::ScalarField);
-
-    /// Initializes an account private key from the given mode and `(sk_sig, r_sig)`.
-    fn new(mode: Mode, (sk_sig, r_sig): Self::Primitive) -> PrivateKey<E> {
-        Self { sk_sig: Scalar::new(mode, sk_sig), r_sig: Scalar::new(mode, r_sig) }
+impl<A: Account> PrivateKey<A> {
+    /// Returns the account compute key for this account private key.
+    pub fn to_compute_key(&self) -> ComputeKey<A> {
+        ComputeKey::from_private_key(self)
     }
 }
 
-impl<E: Environment> Eject for PrivateKey<E> {
-    type Primitive = (E::ScalarField, E::ScalarField);
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Aleo;
+    use snarkvm_algorithms::{signature::AleoSignatureScheme, SignatureScheme, SignatureSchemeOperations};
+    use snarkvm_utilities::{test_rng, UniformRand};
 
-    ///
-    /// Ejects the mode of the account private key.
-    ///
-    fn eject_mode(&self) -> Mode {
-        (&self.sk_sig, &self.r_sig).eject_mode()
+    use rand::Rng;
+
+    const ITERATIONS: usize = 100;
+
+    fn check_to_compute_key(
+        mode: Mode,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) {
+        let mut rng = test_rng();
+
+        for i in 0..ITERATIONS {
+            // Sample random signature parameters.
+            let setup_message: String = (0..(ITERATIONS + 1)).map(|_| rng.gen::<char>()).collect();
+            let native = AleoSignatureScheme::<<Aleo as Environment>::AffineParameters>::setup(&setup_message);
+
+            // Sample a random private key.
+            let sk_sig: <Aleo as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
+            let r_sig: <Aleo as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
+
+            // Compute the expected output.
+            let (pk_sig, pr_sig, sk_prf) = {
+                // Compute G^sk_sig.
+                let pk_sig = native.g_scalar_multiply(&sk_sig);
+                // Compute G^r_sig.
+                let pr_sig = native.g_scalar_multiply(&r_sig);
+                // Compute sk_prf := RO(G^sk_sig || G^r_sig).
+                let sk_prf = native.hash_to_scalar_field(&[pk_sig.x, pr_sig.x]);
+                // Return the native compute key components.
+                (pk_sig, pr_sig, sk_prf)
+            };
+
+            // Initialize the private key.
+            let candidate = PrivateKey::<Aleo>::new(mode, (sk_sig, r_sig));
+
+            Aleo::scope(&format!("{} {}", mode, i), || {
+                let candidate = candidate.to_compute_key();
+                assert_eq!(pk_sig, candidate.pk_sig().eject_value());
+                assert_eq!(pr_sig, candidate.pr_sig().eject_value());
+                assert_eq!(sk_prf, candidate.sk_prf().eject_value());
+                assert_scope!(num_constants, num_public, num_private, num_constraints);
+            });
+        }
     }
 
-    ///
-    /// Ejects the account private key as `(sk_sig, r_sig)`.
-    ///
-    fn eject_value(&self) -> Self::Primitive {
-        (&self.sk_sig, &self.r_sig).eject_value()
+    #[test]
+    fn test_to_compute_key_constant() {
+        check_to_compute_key(Mode::Constant, 253, 0, 0, 0);
+    }
+
+    #[test]
+    fn test_to_compute_key_public() {
+        check_to_compute_key(Mode::Public, 0, 0, 253, 254);
+    }
+
+    #[test]
+    fn test_to_compute_key_private() {
+        check_to_compute_key(Mode::Private, 0, 0, 253, 254);
     }
 }

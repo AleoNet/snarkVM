@@ -14,27 +14,47 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+pub mod to_compute_key;
+
+#[cfg(test)]
+use snarkvm_circuits_environment::assert_scope;
+
+use crate::Account;
 use snarkvm_circuits_environment::prelude::*;
 use snarkvm_circuits_types::Scalar;
 
-pub struct PrivateKey<E: Environment> {
+use core::marker::PhantomData;
+
+pub struct PrivateKey<A: Account> {
     /// The signature secret key.
-    sk_sig: Scalar<E>,
-    /// The signature randomizer.
-    r_sig: Scalar<E>,
+    sk_sig: Scalar<A>,
+    /// The signature secret randomizer.
+    r_sig: Scalar<A>,
 }
 
-impl<E: Environment> Inject for PrivateKey<E> {
-    type Primitive = (E::ScalarField, E::ScalarField);
+impl<A: Account> Inject for PrivateKey<A> {
+    type Primitive = (A::ScalarField, A::ScalarField);
 
     /// Initializes an account private key from the given mode and `(sk_sig, r_sig)`.
-    fn new(mode: Mode, (sk_sig, r_sig): Self::Primitive) -> PrivateKey<E> {
+    fn new(mode: Mode, (sk_sig, r_sig): Self::Primitive) -> Self {
         Self { sk_sig: Scalar::new(mode, sk_sig), r_sig: Scalar::new(mode, r_sig) }
     }
 }
 
-impl<E: Environment> Eject for PrivateKey<E> {
-    type Primitive = (E::ScalarField, E::ScalarField);
+impl<A: Account> PrivateKey<A> {
+    /// Returns the signature secret key.
+    pub fn sk_sig(&self) -> &Scalar<A> {
+        &self.sk_sig
+    }
+
+    /// Returns the signature randomizer.
+    pub fn r_sig(&self) -> &Scalar<A> {
+        &self.r_sig
+    }
+}
+
+impl<A: Account> Eject for PrivateKey<A> {
+    type Primitive = (A::ScalarField, A::ScalarField);
 
     ///
     /// Ejects the mode of the account private key.
