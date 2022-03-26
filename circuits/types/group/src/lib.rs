@@ -26,6 +26,8 @@ pub mod neg;
 pub mod sub;
 pub mod ternary;
 pub mod to_bits;
+pub mod to_x_coordinate;
+pub mod to_y_coordinate;
 pub mod zero;
 
 #[cfg(test)]
