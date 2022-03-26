@@ -171,3 +171,34 @@ impl<'a, C0: Eject, C1: Eject> Eject for (&'a C0, &'a C1) {
         (self.0.eject_value(), self.1.eject_value())
     }
 }
+
+impl<'a, C0: Eject, C1: Eject, C2: Eject> Eject for (&'a C0, &'a C1, &'a C2) {
+    type Primitive = (C0::Primitive, C1::Primitive, C2::Primitive);
+
+    /// A helper method to deduce the mode from a tuple of `Eject` circuits.
+    #[inline]
+    fn eject_mode(&self) -> Mode {
+        let mut current_mode = self.0.eject_mode();
+        for next_mode in &[self.1.eject_mode(), self.2.eject_mode()] {
+            // Check if the current mode matches the next mode.
+            if !current_mode.is_private() && current_mode != *next_mode {
+                // If the current mode is not Mode::Private, and they do not match:
+                //  - If the next mode is Mode::Private, then set the current mode to Mode::Private.
+                //  - If the next mode is Mode::Public, then set the current mode to Mode::Private.
+                match (current_mode, next_mode) {
+                    (Mode::Constant, Mode::Public)
+                    | (Mode::Constant, Mode::Private)
+                    | (Mode::Public, Mode::Private) => current_mode = *next_mode,
+                    (_, _) => (), // Do nothing.
+                }
+            }
+        }
+        current_mode
+    }
+
+    /// Ejects the value from each circuit.
+    #[inline]
+    fn eject_value(&self) -> Self::Primitive {
+        (self.0.eject_value(), self.1.eject_value(), self.2.eject_value())
+    }
+}
