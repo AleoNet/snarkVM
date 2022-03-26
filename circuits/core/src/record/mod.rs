@@ -14,16 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#[cfg(test)]
-use snarkvm_circuits_types::environment::assert_scope;
+// #[cfg(test)]
+// use snarkvm_circuits_types::environment::assert_scope;
 
-use snarkvm_circuits_types::{environment::prelude::*, Address, Boolean, I64};
+use snarkvm_circuits_types::{environment::prelude::*, Address, Literal, I64};
 
 // TODO (howardwu): Check mode is only public/private, not constant.
 pub struct Record<E: Environment> {
     owner: Address<E>,
     value: I64<E>,
-    data: Vec<Box<dyn DataType<Boolean<E>>>>,
+    data: Vec<Literal<E>>,
     // program_id: Vec<Boolean<E>>,
     // randomizer: BaseField<E>,
     // record_view_key: BaseField<E>,
@@ -41,7 +41,7 @@ impl<E: Environment> Record<E> {
     }
 
     /// Returns the record data.
-    pub fn data(&self) -> &Vec<Box<dyn DataType<Boolean<E>>>> {
+    pub fn data(&self) -> &Vec<Literal<E>> {
         &self.data
     }
 }
@@ -49,18 +49,18 @@ impl<E: Environment> Record<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_circuits_types::{environment::Circuit, Field, Group};
+    use snarkvm_circuits_types::{environment::Circuit, Group};
 
     #[test]
     fn test_record_data() {
-        let first = Field::<Circuit>::from_str("10field.public");
-        let second = Boolean::from_str("true.private");
-        let third = I64::from_str("99i64.public");
+        let first = Literal::<Circuit>::from_str("10field.public");
+        let second = Literal::from_str("true.private");
+        let third = Literal::from_str("99i64.public");
 
         let _candidate = Record {
             owner: Address::from(Group::from_str("2group.private")),
             value: I64::from_str("1i64.private"),
-            data: vec![Box::new(first), Box::new(second), Box::new(third)],
+            data: vec![first, second, third],
         };
     }
 }

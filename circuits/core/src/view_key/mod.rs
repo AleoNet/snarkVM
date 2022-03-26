@@ -17,22 +17,23 @@
 #[cfg(test)]
 use snarkvm_circuits_types::environment::assert_scope;
 
+use crate::Account;
 use snarkvm_circuits_types::{environment::prelude::*, Scalar};
 
 /// The account view key is able to decrypt records and ciphertext messages.
-pub struct ViewKey<E: Environment>(Scalar<E>);
+pub struct ViewKey<A: Account>(Scalar<A>);
 
-impl<E: Environment> Inject for ViewKey<E> {
-    type Primitive = E::ScalarField;
+impl<A: Account> Inject for ViewKey<A> {
+    type Primitive = A::ScalarField;
 
     /// Initializes an account view key from the given mode and scalar field element.
-    fn new(mode: Mode, value: Self::Primitive) -> ViewKey<E> {
+    fn new(mode: Mode, value: Self::Primitive) -> ViewKey<A> {
         Self(Scalar::new(mode, value))
     }
 }
 
-impl<E: Environment> Eject for ViewKey<E> {
-    type Primitive = E::ScalarField;
+impl<A: Account> Eject for ViewKey<A> {
+    type Primitive = A::ScalarField;
 
     ///
     /// Ejects the mode of the view key.
@@ -46,5 +47,36 @@ impl<E: Environment> Eject for ViewKey<E> {
     ///
     fn eject_value(&self) -> Self::Primitive {
         self.0.eject_value()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Aleo as Circuit;
+    use snarkvm_utilities::{test_rng, UniformRand};
+
+    const ITERATIONS: usize = 1000;
+
+    fn check_new(mode: Mode, num_constants: usize, num_public: usize, num_private: usize, num_constraints: usize) {
+        let rng = &mut test_rng();
+
+        for _ in 0..ITERATIONS {
+            let view_key = UniformRand::rand(rng);
+
+            Circuit::scope(format!("New {mode}"), || {
+                let candidate = ViewKey::<Circuit>::new(mode, view_key);
+                assert_eq!(mode, candidate.eject_mode());
+                assert_eq!(view_key, candidate.eject_value());
+                assert_scope!(num_constants, num_public, num_private, num_constraints);
+            });
+        }
+    }
+
+    #[test]
+    fn test_view_key_new() {
+        check_new(Mode::Constant, 251, 0, 0, 0);
+        check_new(Mode::Public, 0, 251, 0, 251);
+        check_new(Mode::Private, 0, 0, 251, 251);
     }
 }

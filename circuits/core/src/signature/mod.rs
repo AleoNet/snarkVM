@@ -20,7 +20,7 @@
 use snarkvm_circuits_types::environment::assert_scope;
 
 use crate::Account;
-use snarkvm_circuits_types::{environment::prelude::*, Boolean, Field, Group, Scalar};
+use snarkvm_circuits_types::{environment::prelude::*, Field, Scalar};
 
 pub struct Signature<A: Account> {
     /// The prover response to the challenge.
@@ -62,5 +62,39 @@ impl<A: Account> Eject for Signature<A> {
     ///
     fn eject_value(&self) -> Self::Primitive {
         (&self.prover_response, &self.verifier_challenge, &self.pk_sig, &self.pr_sig).eject_value()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Aleo as Circuit;
+    use snarkvm_utilities::{test_rng, UniformRand};
+
+    const ITERATIONS: usize = 1000;
+
+    fn check_new(mode: Mode, num_constants: usize, num_public: usize, num_private: usize, num_constraints: usize) {
+        let rng = &mut test_rng();
+
+        for _ in 0..ITERATIONS {
+            let prover_response = UniformRand::rand(rng);
+            let verifier_challenge = UniformRand::rand(rng);
+            let pk_sig = UniformRand::rand(rng);
+            let pr_sig = UniformRand::rand(rng);
+
+            Circuit::scope(format!("New {mode}"), || {
+                let candidate = Signature::<Circuit>::new(mode, (prover_response, verifier_challenge, pk_sig, pr_sig));
+                assert_eq!(mode, candidate.eject_mode());
+                assert_eq!((prover_response, verifier_challenge, pk_sig, pr_sig), candidate.eject_value());
+                assert_scope!(num_constants, num_public, num_private, num_constraints);
+            });
+        }
+    }
+
+    #[test]
+    fn test_signature_new() {
+        check_new(Mode::Constant, 504, 0, 0, 0);
+        check_new(Mode::Public, 0, 504, 0, 502);
+        check_new(Mode::Private, 0, 0, 504, 502);
     }
 }

@@ -74,3 +74,36 @@ impl<A: Account> Eject for ComputeKey<A> {
         (&self.pk_sig, &self.pr_sig, &self.sk_prf).eject_value()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Aleo as Circuit;
+    use snarkvm_utilities::{test_rng, UniformRand};
+
+    const ITERATIONS: usize = 1000;
+
+    fn check_new(mode: Mode, num_constants: usize, num_public: usize, num_private: usize, num_constraints: usize) {
+        let rng = &mut test_rng();
+
+        for _ in 0..ITERATIONS {
+            let pk_sig = UniformRand::rand(rng);
+            let pr_sig = UniformRand::rand(rng);
+            let sk_prf = UniformRand::rand(rng);
+
+            Circuit::scope(format!("New {mode}"), || {
+                let candidate = ComputeKey::<Circuit>::new(mode, (pk_sig, pr_sig, sk_prf));
+                assert_eq!(mode, candidate.eject_mode());
+                assert_eq!((pk_sig, pr_sig, sk_prf), candidate.eject_value());
+                assert_scope!(num_constants, num_public, num_private, num_constraints);
+            });
+        }
+    }
+
+    #[test]
+    fn test_compute_key_new() {
+        check_new(Mode::Constant, 259, 0, 0, 0);
+        check_new(Mode::Public, 4, 255, 4, 257);
+        check_new(Mode::Private, 4, 0, 259, 257);
+    }
+}
