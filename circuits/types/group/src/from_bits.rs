@@ -24,10 +24,7 @@ impl<E: Environment> FromBits for Group<E> {
         // Derive the x-coordinate for the affine group element.
         let x = Field::from_bits_le(bits_le);
         // Recover the y-coordinate and return the affine group element.
-        match x.is_constant() {
-            true => Self::from_x_coordinate(Mode::Constant, x),
-            false => Self::from_x_coordinate(Mode::Private, x),
-        }
+        Self::from_x_coordinate(x)
     }
 
     /// Initializes a new group element from the x-coordinate as a list of big-endian bits *without* leading zeros.
@@ -35,10 +32,7 @@ impl<E: Environment> FromBits for Group<E> {
         // Derive the x-coordinate for the affine group element.
         let x = Field::from_bits_be(bits_be);
         // Recover the y-coordinate and return the affine group element.
-        match x.is_constant() {
-            true => Self::from_x_coordinate(Mode::Constant, x),
-            false => Self::from_x_coordinate(Mode::Private, x),
-        }
+        Self::from_x_coordinate(x)
     }
 }
 

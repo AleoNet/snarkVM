@@ -21,6 +21,7 @@ pub mod add;
 pub mod double;
 pub mod equal;
 pub mod from_bits;
+pub mod from_x_coordinate;
 pub mod mul;
 pub mod neg;
 pub mod sub;
@@ -70,19 +71,6 @@ impl<E: Environment> Inject for Group<E> {
 }
 
 impl<E: Environment> Group<E> {
-    ///
-    /// Initializes a new affine group element from a mode and x-coordinate circuit field element.
-    ///
-    /// For safety, the resulting point is always enforced to be on the curve with constraints.
-    /// regardless of whether the y-coordinate was recovered.
-    ///
-    pub fn from_x_coordinate(mode: Mode, x: Field<E>) -> Self {
-        // Derive the y-coordinate.
-        let y = Field::new(mode, E::affine_from_x_coordinate(x.eject_value()).to_y_coordinate());
-
-        Self::from(x, y)
-    }
-
     ///
     /// For safety, the resulting point is always enforced to be on the curve with constraints.
     /// regardless of whether the y-coordinate was recovered.
@@ -227,59 +215,6 @@ mod tests {
                 let affine = Group::<Circuit>::new(Mode::Private, point);
                 assert_eq!(point, affine.eject_value());
                 assert_scope!(2, 0, 4, 3);
-            });
-        }
-    }
-
-    #[test]
-    fn test_from_x_coordinate() {
-        // Constant variables
-        for i in 0..ITERATIONS {
-            // Sample a random element.
-            let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-
-            // Verify the recovery method is behaving correctly.
-            let recovered = Circuit::affine_from_x_coordinate(point.to_x_coordinate());
-            assert_eq!(point.to_x_coordinate(), recovered.to_x_coordinate());
-            assert_eq!(point.to_y_coordinate(), recovered.to_y_coordinate());
-
-            // Inject the x-coordinate.
-            let x_coordinate = Field::new(Mode::Constant, point.to_x_coordinate());
-
-            Circuit::scope(&format!("Constant {}", i), || {
-                let affine = Group::<Circuit>::from_x_coordinate(Mode::Constant, x_coordinate);
-                assert_eq!(point, affine.eject_value());
-                assert_scope!(3, 0, 0, 0);
-            });
-        }
-
-        // Public variables
-        for i in 0..ITERATIONS {
-            // Sample a random element.
-            let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-
-            // Inject the x-coordinate.
-            let x_coordinate = Field::new(Mode::Public, point.to_x_coordinate());
-
-            Circuit::scope(&format!("Public {}", i), || {
-                let affine = Group::<Circuit>::from_x_coordinate(Mode::Public, x_coordinate);
-                assert_eq!(point, affine.eject_value());
-                assert_scope!(2, 1, 2, 3);
-            });
-        }
-
-        // Private variables
-        for i in 0..ITERATIONS {
-            // Sample a random element.
-            let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-
-            // Inject the x-coordinate.
-            let x_coordinate = Field::new(Mode::Private, point.to_x_coordinate());
-
-            Circuit::scope(&format!("Private {}", i), || {
-                let affine = Group::<Circuit>::from_x_coordinate(Mode::Private, x_coordinate);
-                assert_eq!(point, affine.eject_value());
-                assert_scope!(2, 0, 3, 3);
             });
         }
     }
