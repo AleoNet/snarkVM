@@ -29,7 +29,7 @@ pub struct ComputeKey<E: Environment> {
 impl<E: Environment> Inject for ComputeKey<E> {
     type Primitive = (E::Affine, E::Affine, E::ScalarField);
 
-    /// Initializes an account private key from the given mode and `(pk_sig, pr_sig, sk_prf)`.
+    /// Initializes an account compute key from the given mode and `(pk_sig, pr_sig, sk_prf)`.
     fn new(mode: Mode, (pk_sig, pr_sig, sk_prf): Self::Primitive) -> ComputeKey<E> {
         Self { pk_sig: Group::new(mode, pk_sig), pr_sig: Group::new(mode, pr_sig), sk_prf: Scalar::new(mode, sk_prf) }
     }
@@ -39,14 +39,14 @@ impl<E: Environment> Eject for ComputeKey<E> {
     type Primitive = (E::Affine, E::Affine, E::ScalarField);
 
     ///
-    /// Ejects the mode of the scalar field.
+    /// Ejects the mode of the compute key.
     ///
     fn eject_mode(&self) -> Mode {
         (&self.pk_sig, &self.pr_sig, &self.sk_prf).eject_mode()
     }
 
     ///
-    /// Ejects the scalar field as a constant scalar field value.
+    /// Ejects the compute key as `(pk_sig, pr_sig, sk_prf)`.
     ///
     fn eject_value(&self) -> Self::Primitive {
         (&self.pk_sig, &self.pr_sig, &self.sk_prf).eject_value()

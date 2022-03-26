@@ -17,34 +17,32 @@
 use snarkvm_circuits_environment::prelude::*;
 use snarkvm_circuits_types::Scalar;
 
-pub struct PrivateKey<E: Environment> {
-    sk_sig: Scalar<E>,
-    r_sig: Scalar<E>,
-}
+/// The account view key is able to decrypt records and ciphertext messages.
+pub struct ViewKey<E: Environment>(Scalar<E>);
 
-impl<E: Environment> Inject for PrivateKey<E> {
-    type Primitive = (E::ScalarField, E::ScalarField);
+impl<E: Environment> Inject for ViewKey<E> {
+    type Primitive = E::ScalarField;
 
-    /// Initializes an account private key from the given mode and `(sk_sig, r_sig)`.
-    fn new(mode: Mode, (sk_sig, r_sig): Self::Primitive) -> PrivateKey<E> {
-        Self { sk_sig: Scalar::new(mode, sk_sig), r_sig: Scalar::new(mode, r_sig) }
+    /// Initializes an account view key from the given mode and scalar field element.
+    fn new(mode: Mode, value: Self::Primitive) -> ViewKey<E> {
+        Self(Scalar::new(mode, value))
     }
 }
 
-impl<E: Environment> Eject for PrivateKey<E> {
-    type Primitive = (E::ScalarField, E::ScalarField);
+impl<E: Environment> Eject for ViewKey<E> {
+    type Primitive = E::ScalarField;
 
     ///
-    /// Ejects the mode of the account private key.
+    /// Ejects the mode of the view key.
     ///
     fn eject_mode(&self) -> Mode {
-        (&self.sk_sig, &self.r_sig).eject_mode()
+        self.0.eject_mode()
     }
 
     ///
-    /// Ejects the account private key as `(sk_sig, r_sig)`.
+    /// Ejects the view key as a scalar field element.
     ///
     fn eject_value(&self) -> Self::Primitive {
-        (&self.sk_sig, &self.r_sig).eject_value()
+        self.0.eject_value()
     }
 }
