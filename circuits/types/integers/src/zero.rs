@@ -20,7 +20,7 @@ impl<E: Environment, I: IntegerType> Zero for Integer<E, I> {
     type Boolean = Boolean<E>;
 
     fn zero() -> Self {
-        Integer::new(Mode::Constant, I::zero())
+        Integer::constant(I::zero())
     }
 
     fn is_zero(&self) -> Self::Boolean {

@@ -26,6 +26,9 @@ pub use field::*;
 pub mod group;
 pub use group::*;
 
+pub mod inject;
+pub use inject::*;
+
 pub mod integers;
 pub use integers::{
     integer_type::{CheckedPow, IntegerProperties, IntegerType, WrappingDiv, WrappingPow, WrappingRem},
@@ -50,42 +53,6 @@ use nom::{error::VerboseError, IResult};
 
 /// Operations to convert to and from bit representation in a circuit environment.
 pub trait DataType<B: BooleanTrait>: FromBits<Boolean = B> + ToBits<Boolean = B> {}
-
-/// Operations to inject from a primitive form into a circuit environment.
-pub trait Inject {
-    type Primitive: Debug + Default;
-
-    ///
-    /// Returns the type name of the object as a string. (i.e. "u8")
-    ///
-    fn type_name() -> &'static str;
-
-    ///
-    /// Initializes a circuit of the given mode and primitive value.
-    ///
-    fn new(mode: Mode, value: Self::Primitive) -> Self;
-
-    ///
-    /// Initializes a constant circuit of the given primitive value.
-    ///
-    fn constant(value: Self::Primitive) -> Self
-    where
-        Self: Sized,
-    {
-        Self::new(Mode::Constant, value)
-    }
-
-    ///
-    /// Initializes a blank default of the circuit for the given mode.
-    /// This operation is used commonly to derive a proving and verifying key.
-    ///
-    fn blank(mode: Mode) -> Self
-    where
-        Self: Sized,
-    {
-        Self::new(mode, Default::default())
-    }
-}
 
 /// Operations to eject from a circuit environment into primitive form.
 pub trait Eject {
@@ -157,106 +124,9 @@ pub trait Parser: Display {
     }
 }
 
-/// Representation of the zero value.
-pub trait Zero {
-    type Boolean: BooleanTrait;
-
-    /// Returns a new zero constant.
-    fn zero() -> Self;
-
-    /// Returns `true` if `self` is zero.
-    fn is_zero(&self) -> Self::Boolean;
-}
-
-/// Representation of the one value.
-pub trait One {
-    type Boolean: BooleanTrait;
-
-    /// Returns a new one constant.
-    fn one() -> Self;
-
-    /// Returns `true` if `self` is one.
-    fn is_one(&self) -> Self::Boolean;
-}
-
-/// Unary operator for retrieving the most-significant bit.
-pub trait MSB {
-    type Boolean: BooleanTrait;
-
-    /// Returns the MSB of the value.
-    fn msb(&self) -> &Self::Boolean;
-}
-
-/// Unary operator for instantiating from bits.
-pub trait FromBits {
-    type Boolean: BooleanTrait;
-
-    fn from_bits_le(bits_le: &[Self::Boolean]) -> Self
-    where
-        Self: Sized;
-
-    fn from_bits_be(bits_be: &[Self::Boolean]) -> Self
-    where
-        Self: Sized;
-}
-
-/// Unary operator for converting to bits.
-pub trait ToBits {
-    type Boolean: BooleanTrait;
-
-    fn to_bits_le(&self) -> Vec<Self::Boolean>;
-
-    fn to_bits_be(&self) -> Vec<Self::Boolean>;
-}
-
-/// Unary operator for converting to `k` number of bits.
-pub trait ToLowerBits {
-    type Boolean: BooleanTrait;
-
+pub trait TypeName {
     ///
-    /// Outputs the lower `k` bits of an `n`-bit element in little-endian representation.
-    /// Enforces that the upper `n - k` bits are zero.
+    /// Returns the type name of the object as a string. (i.e. "u8")
     ///
-    fn to_lower_bits_le(&self, k: usize) -> Vec<Self::Boolean>;
-
-    ///
-    /// Outputs the lower `k` bits of an `n`-bit element in big-endian representation.
-    /// Enforces that the upper `n - k` bits are zero.
-    ///
-    fn to_lower_bits_be(&self, k: usize) -> Vec<Self::Boolean>;
-}
-
-/// Unary operator for converting to `k` number of bits.
-pub trait ToUpperBits {
-    type Boolean: BooleanTrait;
-
-    ///
-    /// Outputs the upper `k` bits of an `n`-bit element in little-endian representation.
-    /// Enforces that the lower `n - k` bits are zero.
-    ///
-    fn to_upper_bits_le(&self, k: usize) -> Vec<Self::Boolean>;
-
-    ///
-    /// Outputs the upper `k` bits of an `n`-bit element in big-endian representation.
-    /// Enforces that the lower `n - k` bits are zero.
-    ///
-    fn to_upper_bits_be(&self, k: usize) -> Vec<Self::Boolean>;
-}
-
-/// Unary operator for converting to a base field.
-pub trait ToField {
-    type Boolean: BooleanTrait;
-    type Field: FieldTrait<Self::Boolean>;
-
-    /// Casts a circuit into a base field.
-    fn to_field(&self) -> Self::Field;
-}
-
-/// Unary operator for converting to a list of base fields.
-pub trait ToFields {
-    type Boolean: BooleanTrait;
-    type Field: FieldTrait<Self::Boolean>;
-
-    /// Casts a circuit into a list of base fields.
-    fn to_fields(&self) -> Vec<Self::Field>;
+    fn type_name() -> &'static str;
 }

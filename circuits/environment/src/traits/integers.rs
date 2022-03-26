@@ -95,6 +95,7 @@ pub trait IntegerCore<B: BooleanTrait, I: IntegerType>:
     + SubWrapped<Output = Self>
     + Ternary
     + ToBits
+    + TypeName
     + Zero
 {
 }

@@ -14,10 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::prelude::*;
+pub mod scope;
+pub use scope::*;
 
-/// Representation of a scalar field element.
-pub trait ScalarTrait<B: BooleanTrait>:
-    Clone + DataType<B> + Debug + Eject + Equal + Inject + One + Parser + Ternary + ToBits + TypeName + Zero
-{
-}
+pub mod witness;
+pub use witness::*;

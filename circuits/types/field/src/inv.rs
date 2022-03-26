@@ -28,12 +28,7 @@ impl<E: Environment> Inv for &Field<E> {
     type Output = Field<E>;
 
     fn inv(self) -> Self::Output {
-        let mode = match self.is_constant() {
-            true => Mode::Constant,
-            false => Mode::Private,
-        };
-
-        let inverse = Field::new(mode, match self.eject_value().inverse() {
+        let inverse = witness!(|self| match self.inverse() {
             Some(inverse) => inverse,
             None => E::halt("Failed to compute the inverse for a base field element"),
         });

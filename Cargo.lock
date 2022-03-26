@@ -2065,6 +2065,7 @@ name = "snarkvm-circuits-environment"
 version = "0.7.5"
 dependencies = [
  "criterion",
+ "indexmap",
  "itertools",
  "nom",
  "num-derive",
@@ -2073,10 +2074,18 @@ dependencies = [
  "rayon",
  "snarkvm-algorithms",
  "snarkvm-circuits",
+ "snarkvm-circuits-environment-witness",
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-r1cs",
  "snarkvm-utilities",
+]
+
+[[package]]
+name = "snarkvm-circuits-environment-witness"
+version = "0.7.5"
+dependencies = [
+ "proc-macro2 0.4.30",
 ]
 
 [[package]]
@@ -2108,6 +2117,7 @@ dependencies = [
 name = "snarkvm-circuits-types-boolean"
 version = "0.7.5"
 dependencies = [
+ "criterion",
  "snarkvm-circuits-environment",
 ]
 

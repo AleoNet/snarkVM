@@ -39,5 +39,6 @@ pub trait BooleanTrait:
     + Subtractor
     + Ternary
     + ToBits
+    + TypeName
 {
 }

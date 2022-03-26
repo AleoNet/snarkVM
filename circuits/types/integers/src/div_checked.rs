@@ -77,14 +77,14 @@ impl<E: Environment, I: IntegerType> DivChecked<Self> for Integer<E, I> {
         if self.is_constant() && other.is_constant() {
             // Compute the quotient and return the new constant.
             match self.eject_value().checked_div(&other.eject_value()) {
-                Some(value) => Integer::new(Mode::Constant, value),
+                Some(value) => Integer::constant(value),
                 None => E::halt("Overflow or underflow on division of two integer constants"),
             }
         } else if I::is_signed() {
             // Ensure that overflow cannot occur in this division.
             // Signed integer division wraps when the dividend is I::MIN and the divisor is -1.
-            let min = Integer::new(Mode::Constant, I::MIN);
-            let neg_one = Integer::new(Mode::Constant, I::zero() - I::one());
+            let min = Integer::constant(I::MIN);
+            let neg_one = Integer::constant(I::zero() - I::one());
             let overflows = self.is_equal(&min) & other.is_equal(&neg_one);
             E::assert_eq(overflows, E::zero());
 
