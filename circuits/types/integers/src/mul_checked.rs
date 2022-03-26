@@ -77,9 +77,8 @@ impl<E: Environment, I: IntegerType> MulChecked<Self> for Integer<E, I> {
             }
         } else if I::is_signed() {
             // Multiply the absolute value of `self` and `other` in the base field.
-            let absolute_self = Self::ternary(self.msb(), &Self::zero().sub_wrapped(self), self);
-            let absolute_other = Self::ternary(other.msb(), &Self::zero().sub_wrapped(other), other);
-            let (product, carry) = Self::mul_with_carry(&absolute_self, &absolute_other, true);
+            // Note that it is safe to use abs_wrapped since we want I::MIN to be interpreted as an unsigned number.
+            let (product, carry) = Self::mul_with_carry(&self.abs_wrapped(), &other.abs_wrapped(), true);
 
             // We need to check that the abs(a) * abs(b) did not exceed the unsigned maximum.
             let carry_bits_nonzero = carry.iter().fold(Boolean::constant(false), |a, b| a | b);

@@ -37,6 +37,7 @@ macro_rules! witness {
     }};
 }
 
+/// The `witness_mode!` macro returns the expected mode given a list of circuits.
 #[macro_export]
 macro_rules! witness_mode {
     ($($circuit:ident),*) => {{

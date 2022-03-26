@@ -69,13 +69,13 @@ impl Environment for Circuit {
     }
 
     /// Returns a new witness of the given mode and value.
-    fn new_witness<Fn: FnOnce() -> Output::Primitive, Output: Inject>(mode: Mode, value: Fn) -> Output {
+    fn new_witness<Fn: FnOnce() -> Output::Primitive, Output: Inject>(mode: Mode, logic: Fn) -> Output {
         IN_WITNESS.with(|in_witness| {
             // Set the entire environment to witness mode.
             *(**in_witness).borrow_mut() = true;
 
             // Run the logic.
-            let output = value();
+            let output = logic();
 
             // Return the entire environment from witness mode.
             *(**in_witness).borrow_mut() = false;
