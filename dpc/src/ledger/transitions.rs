@@ -64,7 +64,7 @@ impl<N: Network> Transitions<N> {
         let current_index = self.current_index;
         self.current_index = current_index
             .checked_add(1)
-            .ok_or(anyhow!("The index exceeds the maximum number of allowed transitions."))?;
+            .ok_or_else(|| anyhow!("The index exceeds the maximum number of allowed transitions."))?;
 
         Ok(current_index)
     }
@@ -102,8 +102,8 @@ impl<N: Network> Transitions<N> {
         self.current_index = self
             .current_index
             .checked_add(transition_ids.len() as u8)
-            .ok_or(anyhow!("The index exceeds the maximum number of allowed transitions."))?;
-        let end_index = self.current_index.checked_sub(1).ok_or(anyhow!("Integer underflow."))?;
+            .ok_or_else(|| anyhow!("The index exceeds the maximum number of allowed transitions."))?;
+        let end_index = self.current_index.checked_sub(1).ok_or_else(|| anyhow!("Integer underflow."))?;
 
         Ok((start_index, end_index))
     }
