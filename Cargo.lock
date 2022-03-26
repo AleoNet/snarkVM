@@ -2085,7 +2085,7 @@ dependencies = [
 name = "snarkvm-circuits-environment-witness"
 version = "0.7.5"
 dependencies = [
- "proc-macro2 0.4.30",
+ "proc-macro2 1.0.36",
 ]
 
 [[package]]
