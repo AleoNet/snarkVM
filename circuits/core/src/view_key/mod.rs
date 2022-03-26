@@ -14,8 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_circuits_environment::prelude::*;
-use snarkvm_circuits_types::Scalar;
+#[cfg(test)]
+use snarkvm_circuits_types::environment::assert_scope;
+
+use snarkvm_circuits_types::{environment::prelude::*, Scalar};
 
 /// The account view key is able to decrypt records and ciphertext messages.
 pub struct ViewKey<E: Environment>(Scalar<E>);

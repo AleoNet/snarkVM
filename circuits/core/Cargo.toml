@@ -21,10 +21,6 @@ default-features = false
 path = "../../fields"
 version = "0.7.5"
 
-[dependencies.snarkvm-circuits-environment]
-path = "../environment"
-version = "0.7.5"
-
 [dependencies.snarkvm-circuits-types]
 path = "../types"
 version = "0.7.5"

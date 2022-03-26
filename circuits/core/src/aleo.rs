@@ -16,8 +16,12 @@
 
 use crate::Poseidon;
 use snarkvm_algorithms::crypto_hash::hash_to_curve;
-use snarkvm_circuits_environment::{prelude::*, Circuit};
-use snarkvm_circuits_types::{Field, Group, Scalar};
+use snarkvm_circuits_types::{
+    environment::{prelude::*, Circuit},
+    Field,
+    Group,
+    Scalar,
+};
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 
 use core::fmt;

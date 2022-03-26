@@ -17,11 +17,10 @@
 pub mod from_private_key;
 
 #[cfg(test)]
-use snarkvm_circuits_environment::assert_scope;
+use snarkvm_circuits_types::environment::assert_scope;
 
 use crate::{Account, PrivateKey};
-use snarkvm_circuits_environment::prelude::*;
-use snarkvm_circuits_types::{Group, Scalar};
+use snarkvm_circuits_types::{environment::prelude::*, Group, Scalar};
 
 pub struct ComputeKey<A: Account> {
     /// The signature public key `pk_sig` := G^sk_sig.

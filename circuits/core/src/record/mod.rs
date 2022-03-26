@@ -14,8 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_circuits_environment::prelude::*;
-use snarkvm_circuits_types::{Address, Boolean, I64};
+#[cfg(test)]
+use snarkvm_circuits_types::environment::assert_scope;
+
+use snarkvm_circuits_types::{environment::prelude::*, Address, Boolean, I64};
 
 // TODO (howardwu): Check mode is only public/private, not constant.
 pub struct Record<E: Environment> {
@@ -47,8 +49,7 @@ impl<E: Environment> Record<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_circuits_environment::Circuit;
-    use snarkvm_circuits_types::{Field, Group};
+    use snarkvm_circuits_types::{environment::Circuit, Field, Group};
 
     #[test]
     fn test_record_data() {

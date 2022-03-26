@@ -34,7 +34,7 @@ impl<E: Environment> Poseidon<E> {
 mod tests {
     use super::*;
     use snarkvm_algorithms::{prf::PoseidonPRF as NativePoseidonPRF, PRF as NativePRF};
-    use snarkvm_circuits_environment::Circuit;
+    use snarkvm_circuits_types::environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 10;

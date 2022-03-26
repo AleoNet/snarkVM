@@ -15,14 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::prelude::*;
-use snarkvm_circuits_types::{
-    address::Address,
-    boolean::Boolean,
-    field::Field,
-    group::Group,
-    integers::{I128, I16, I32, I64, I8, U128, U16, U32, U64, U8},
-    scalar::Scalar,
-};
 use snarkvm_utilities::{
     error,
     io::{Read, Result as IoResult, Write},

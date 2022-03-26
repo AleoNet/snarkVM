@@ -20,11 +20,10 @@ pub mod hash_to_scalar;
 pub mod prf;
 
 #[cfg(test)]
-use snarkvm_circuits_environment::assert_scope;
+use snarkvm_circuits_types::environment::assert_scope;
 
 use snarkvm_algorithms::DuplexSpongeMode;
-use snarkvm_circuits_environment::prelude::*;
-use snarkvm_circuits_types::{Field, Scalar};
+use snarkvm_circuits_types::{environment::prelude::*, Field, Scalar};
 use snarkvm_fields::PoseidonDefaultField;
 
 const RATE: usize = 4;
