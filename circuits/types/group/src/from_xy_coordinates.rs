@@ -17,13 +17,31 @@
 use super::*;
 
 impl<E: Environment> Group<E> {
-    /// Initializes a new affine group element from a given x-coordinate field element.
+    /// Initializes a new affine group element from a given x- and y-coordinate field element.
     /// For safety, the resulting point is always enforced to be on the curve with constraints.
-    pub fn from_x_coordinate(x: Field<E>) -> Self {
-        // Derive the y-coordinate.
-        let y = witness!(|x| E::affine_from_x_coordinate(x).to_y_coordinate());
+    pub fn from_xy_coordinates(x: Field<E>, y: Field<E>) -> Self {
+        //
+        // Check the point is on the curve.
+        //
+        // Ensure ax^2 + y^2 = 1 + dx^2y^2
+        // by checking that y^2 * (dx^2 - 1) = (ax^2 - 1)
+        //
+        {
+            let a = Field::constant(E::AffineParameters::COEFF_A);
+            let d = Field::constant(E::AffineParameters::COEFF_D);
 
-        Self::from_xy_coordinates(x, y)
+            let x2 = x.square();
+            let y2 = y.square();
+
+            let first = y2;
+            let second = (d * &x2) - &Field::one();
+            let third = (a * x2) - Field::one();
+
+            // Ensure y^2 * (dx^2 - 1) = (ax^2 - 1).
+            E::enforce(|| (first, second, third));
+        }
+
+        Self { x, y }
     }
 }
 
@@ -35,7 +53,7 @@ mod tests {
 
     const ITERATIONS: usize = 100;
 
-    fn check_from_x_coordinate(
+    fn check_from_xy_coordinates(
         mode: Mode,
         num_constants: usize,
         num_public: usize,
@@ -46,16 +64,12 @@ mod tests {
             // Sample a random element.
             let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
 
-            // Verify the recovery method is behaving correctly.
-            let recovered = Circuit::affine_from_x_coordinate(point.to_x_coordinate());
-            assert_eq!(point.to_x_coordinate(), recovered.to_x_coordinate());
-            assert_eq!(point.to_y_coordinate(), recovered.to_y_coordinate());
-
-            // Inject the x-coordinate.
+            // Inject the x- and y-coordinates.
             let x_coordinate = Field::new(mode, point.to_x_coordinate());
+            let y_coordinate = Field::new(mode, point.to_y_coordinate());
 
             Circuit::scope(&format!("Constant {}", i), || {
-                let affine = Group::<Circuit>::from_x_coordinate(x_coordinate);
+                let affine = Group::<Circuit>::from_xy_coordinates(x_coordinate, y_coordinate);
                 assert_eq!(point, affine.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
             });
@@ -63,17 +77,17 @@ mod tests {
     }
 
     #[test]
-    fn test_from_x_coordinate_constant() {
-        check_from_x_coordinate(Mode::Constant, 3, 0, 0, 0);
+    fn test_from_xy_coordinates_constant() {
+        check_from_xy_coordinates(Mode::Constant, 2, 0, 0, 0);
     }
 
     #[test]
-    fn test_from_x_coordinate_public() {
-        check_from_x_coordinate(Mode::Public, 2, 0, 3, 3);
+    fn test_from_xy_coordinates_public() {
+        check_from_xy_coordinates(Mode::Public, 2, 0, 2, 3);
     }
 
     #[test]
-    fn test_from_x_coordinate_private() {
-        check_from_x_coordinate(Mode::Private, 2, 0, 3, 3);
+    fn test_from_xy_coordinates_private() {
+        check_from_xy_coordinates(Mode::Private, 2, 0, 2, 3);
     }
 }

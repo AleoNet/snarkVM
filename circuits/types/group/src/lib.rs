@@ -22,6 +22,7 @@ pub mod double;
 pub mod equal;
 pub mod from_bits;
 pub mod from_x_coordinate;
+pub mod from_xy_coordinates;
 pub mod mul;
 pub mod neg;
 pub mod sub;
@@ -66,38 +67,7 @@ impl<E: Environment> Inject for Group<E> {
         let x = Field::new(mode, value.to_x_coordinate());
         let y = Field::new(mode, value.to_y_coordinate());
 
-        Self::from(x, y)
-    }
-}
-
-impl<E: Environment> Group<E> {
-    ///
-    /// For safety, the resulting point is always enforced to be on the curve with constraints.
-    /// regardless of whether the y-coordinate was recovered.
-    ///
-    pub fn from(x: Field<E>, y: Field<E>) -> Self {
-        //
-        // Check the point is on the curve.
-        //
-        // Ensure ax^2 + y^2 = 1 + dx^2y^2
-        // by checking that y^2 * (dx^2 - 1) = (ax^2 - 1)
-        //
-        {
-            let a = Field::constant(E::AffineParameters::COEFF_A);
-            let d = Field::constant(E::AffineParameters::COEFF_D);
-
-            let x2 = x.square();
-            let y2 = y.square();
-
-            let first = y2;
-            let second = (d * &x2) - &Field::one();
-            let third = (a * x2) - Field::one();
-
-            // Ensure y^2 * (dx^2 - 1) = (ax^2 - 1).
-            E::enforce(|| (first, second, third));
-        }
-
-        Self { x, y }
+        Self::from_xy_coordinates(x, y)
     }
 }
 
