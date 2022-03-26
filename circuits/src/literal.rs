@@ -23,7 +23,6 @@ use snarkvm_circuits_types::{
     integers::{I128, I16, I32, I64, I8, U128, U16, U32, U64, U8},
     scalar::Scalar,
 };
-use snarkvm_curves::AffineCurve;
 use snarkvm_utilities::{
     error,
     io::{Read, Result as IoResult, Write},

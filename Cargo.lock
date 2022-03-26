@@ -2036,7 +2036,6 @@ dependencies = [
  "snarkvm-circuits-edge",
  "snarkvm-circuits-environment",
  "snarkvm-circuits-types",
- "snarkvm-curves",
  "snarkvm-utilities",
 ]
 
