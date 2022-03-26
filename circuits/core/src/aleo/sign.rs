@@ -15,10 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use crate::PrivateKey;
 
 impl<E: Environment> Aleo<E> {
     #[inline]
-    pub fn sign<F: ToField>(&self, private_key: &Field<E>, message: &[F], randomizer: Scalar<E>) -> Field<E> {
+    pub fn sign<F: ToField>(&self, private_key: &PrivateKey<E>, message: &[F], randomizer: Scalar<E>) -> Field<E> {
         // Compute G^r.
         let g_r = self.g_scalar_multiply(&r);
 

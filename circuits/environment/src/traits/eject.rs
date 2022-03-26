@@ -139,7 +139,7 @@ impl<C: Eject<Primitive = P>, P: Default> Eject for &[C] {
 /****** Tuples ******/
 /********************/
 
-impl<C0: Eject, C1: Eject> Eject for (C0, C1) {
+impl<'a, C0: Eject, C1: Eject> Eject for (&'a C0, &'a C1) {
     type Primitive = (C0::Primitive, C1::Primitive);
 
     /// A helper method to deduce the mode from a tuple of `Eject` circuits.

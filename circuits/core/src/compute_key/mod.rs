@@ -15,36 +15,44 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_circuits_environment::prelude::*;
-use snarkvm_circuits_types::Scalar;
+use snarkvm_circuits_types::{Group, Scalar};
 
-pub struct PrivateKey<E: Environment> {
-    sk_sig: Scalar<E>,
-    r_sig: Scalar<E>,
+pub struct ComputeKey<E: Environment> {
+    /// pk_sig := G^sk_sig.
+    pk_sig: Group<E>,
+    /// pr_sig := G^r_sig.
+    pr_sig: Group<E>,
+    /// sk_prf := RO(G^sk_sig || G^r_sig).
+    sk_prf: Scalar<E>,
 }
 
-impl<E: Environment> Inject for PrivateKey<E> {
-    type Primitive = (E::ScalarField, E::ScalarField);
+impl<E: Environment> Inject for ComputeKey<E> {
+    type Primitive = (E::Affine, E::Affine, E::ScalarField);
 
-    /// Initializes an account private key from the given mode and `(sk_sig, r_sig)`.
-    fn new(mode: Mode, (sk_sig, r_sig): Self::Primitive) -> PrivateKey<E> {
-        Self { sk_sig: Scalar::new(mode, sk_sig), r_sig: Scalar::new(mode, r_sig) }
+    /// Initializes an account private key from the given mode and `(pk_sig, pr_sig, sk_prf)`.
+    fn new(mode: Mode, (pk_sig, pr_sig, sk_prf): Self::Primitive) -> ComputeKey<E> {
+        Self {
+            pk_sig: Group::from_x_coordinate(mode, pk_sig),
+            pr_sig: Group::from_x_coordinate(mode, pr_sig),
+            sk_prf: Scalar::new(mode, sk_prf),
+        }
     }
 }
 
-impl<E: Environment> Eject for PrivateKey<E> {
-    type Primitive = (E::ScalarField, E::ScalarField);
+impl<E: Environment> Eject for ComputeKey<E> {
+    type Primitive = (E::Affine, E::Affine, E::ScalarField);
 
     ///
     /// Ejects the mode of the scalar field.
     ///
     fn eject_mode(&self) -> Mode {
-        (&self.sk_sig, &self.r_sig).eject_mode()
+        (self.sk_sig.clone(), self.r_sig.clone()).eject_mode()
     }
 
     ///
     /// Ejects the scalar field as a constant scalar field value.
     ///
     fn eject_value(&self) -> Self::Primitive {
-        (&self.sk_sig, &self.r_sig).eject_value()
+        (self.sk_sig.clone(), self.r_sig.clone()).eject_value()
     }
 }

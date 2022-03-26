@@ -59,8 +59,8 @@ mod tests {
             let a: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
             let b: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
 
-            let a = Group::<Circuit>::new(Mode::Constant, (a.to_x_coordinate(), Some(a.to_y_coordinate())));
-            let b = Group::<Circuit>::new(Mode::Constant, (b.to_x_coordinate(), Some(b.to_y_coordinate())));
+            let a = Group::<Circuit>::new(Mode::Constant, a);
+            let b = Group::<Circuit>::new(Mode::Constant, b);
 
             Circuit::scope(&format!("Constant Equals {}", i), || {
                 let equals = a.is_equal(&b);
@@ -83,8 +83,8 @@ mod tests {
             let a: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
             let b: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
 
-            let a = Group::<Circuit>::new(Mode::Constant, (a.to_x_coordinate(), Some(a.to_y_coordinate())));
-            let b = Group::<Circuit>::new(Mode::Public, (b.to_x_coordinate(), Some(b.to_y_coordinate())));
+            let a = Group::<Circuit>::new(Mode::Constant, a);
+            let b = Group::<Circuit>::new(Mode::Public, b);
 
             Circuit::scope(&format!("Constant and Public Equals {}", i), || {
                 let equals = a.is_equal(&b);
@@ -107,8 +107,8 @@ mod tests {
             let a: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
             let b: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
 
-            let a = Group::<Circuit>::new(Mode::Public, (a.to_x_coordinate(), Some(a.to_y_coordinate())));
-            let b = Group::<Circuit>::new(Mode::Constant, (b.to_x_coordinate(), Some(b.to_y_coordinate())));
+            let a = Group::<Circuit>::new(Mode::Public, a);
+            let b = Group::<Circuit>::new(Mode::Constant, b);
 
             Circuit::scope(&format!("Public and Constant Equals {}", i), || {
                 let equals = a.is_equal(&b);
@@ -131,8 +131,8 @@ mod tests {
             let a: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
             let b: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
 
-            let a = Group::<Circuit>::new(Mode::Public, (a.to_x_coordinate(), Some(a.to_y_coordinate())));
-            let b = Group::<Circuit>::new(Mode::Public, (b.to_x_coordinate(), Some(b.to_y_coordinate())));
+            let a = Group::<Circuit>::new(Mode::Public, a);
+            let b = Group::<Circuit>::new(Mode::Public, b);
 
             Circuit::scope(&format!("Public Equals {}", i), || {
                 let equals = a.is_equal(&b);
@@ -155,8 +155,8 @@ mod tests {
             let a: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
             let b: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
 
-            let a = Group::<Circuit>::new(Mode::Private, (a.to_x_coordinate(), Some(a.to_y_coordinate())));
-            let b = Group::<Circuit>::new(Mode::Private, (b.to_x_coordinate(), Some(b.to_y_coordinate())));
+            let a = Group::<Circuit>::new(Mode::Private, a);
+            let b = Group::<Circuit>::new(Mode::Private, b);
 
             Circuit::scope(&format!("Private Equals {}", i), || {
                 let equals = a.is_equal(&b);

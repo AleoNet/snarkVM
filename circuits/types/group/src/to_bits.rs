@@ -64,7 +64,7 @@ mod tests {
         for i in 0..ITERATIONS {
             // Sample a random element.
             let expected: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let candidate = Group::<Circuit>::new(mode, (expected.to_x_coordinate(), Some(expected.to_y_coordinate())));
+            let candidate = Group::<Circuit>::new(mode, expected);
 
             Circuit::scope(&format!("{} {}", mode, i), || {
                 let candidate = candidate.to_bits_le();
@@ -91,7 +91,7 @@ mod tests {
         for i in 0..ITERATIONS {
             // Sample a random element.
             let expected: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let candidate = Group::<Circuit>::new(mode, (expected.to_x_coordinate(), Some(expected.to_y_coordinate())));
+            let candidate = Group::<Circuit>::new(mode, expected);
 
             Circuit::scope(&format!("{} {}", mode, i), || {
                 let candidate = candidate.to_bits_be();

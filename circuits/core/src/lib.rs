@@ -20,6 +20,9 @@
 // pub mod aleo;
 // pub use aleo::*;
 
+// pub mod compute_key;
+// pub use compute_key::*;
+
 pub mod poseidon;
 pub use poseidon::*;
 

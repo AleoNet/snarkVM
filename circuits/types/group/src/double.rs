@@ -79,8 +79,7 @@ mod tests {
             let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
             let expected = point.double();
 
-            let affine =
-                Group::<Circuit>::new(Mode::Constant, (point.to_x_coordinate(), Some(point.to_y_coordinate())));
+            let affine = Group::<Circuit>::new(Mode::Constant, point);
 
             Circuit::scope(&format!("Constant {}", i), || {
                 let candidate = affine.double();
@@ -96,7 +95,7 @@ mod tests {
             let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
             let expected = point.double();
 
-            let affine = Group::<Circuit>::new(Mode::Public, (point.to_x_coordinate(), Some(point.to_y_coordinate())));
+            let affine = Group::<Circuit>::new(Mode::Public, point);
 
             Circuit::scope(&format!("Public {}", i), || {
                 let candidate = affine.double();
@@ -112,7 +111,7 @@ mod tests {
             let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
             let expected = point.double();
 
-            let affine = Group::<Circuit>::new(Mode::Private, (point.to_x_coordinate(), Some(point.to_y_coordinate())));
+            let affine = Group::<Circuit>::new(Mode::Private, point);
 
             Circuit::scope(&format!("Private {}", i), || {
                 let candidate = affine.double();
@@ -130,13 +129,11 @@ mod tests {
         let expected = a + a;
 
         // Constant
-        let candidate_a =
-            Group::<Circuit>::new(Mode::Constant, (a.to_x_coordinate(), Some(a.to_y_coordinate()))).double();
+        let candidate_a = Group::<Circuit>::new(Mode::Constant, a).double();
         assert_eq!(expected, candidate_a.eject_value());
 
         // Private
-        let candidate_b =
-            Group::<Circuit>::new(Mode::Private, (a.to_x_coordinate(), Some(a.to_y_coordinate()))).double();
+        let candidate_b = Group::<Circuit>::new(Mode::Private, a).double();
         assert_eq!(expected, candidate_b.eject_value());
     }
 }
