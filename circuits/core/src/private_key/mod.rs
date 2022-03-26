@@ -23,8 +23,6 @@ use crate::Account;
 use snarkvm_circuits_environment::prelude::*;
 use snarkvm_circuits_types::Scalar;
 
-use core::marker::PhantomData;
-
 pub struct PrivateKey<A: Account> {
     /// The signature secret key.
     sk_sig: Scalar<A>,

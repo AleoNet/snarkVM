@@ -18,8 +18,8 @@ use super::*;
 
 impl<E: Environment> Group<E> {
     /// Returns the x-coordinate of the group element.
-    pub fn to_x_coordinate(&self) -> &Field<E> {
-        &self.x
+    pub fn to_x_coordinate(&self) -> Field<E> {
+        self.x.clone()
     }
 }
 

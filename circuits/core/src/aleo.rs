@@ -21,7 +21,6 @@ use snarkvm_circuits_types::{Field, Group, Scalar};
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 
 use core::fmt;
-use once_cell::unsync::Lazy;
 
 pub trait Account: Environment {
     /// Returns the scalar multiplication on the group bases.
@@ -37,9 +36,9 @@ pub static ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT: &str = "AleoAccountEncryption
 
 thread_local! {
     /// The Poseidon hash function.
-    static POSEIDON: Lazy<Poseidon<Aleo>> = Lazy::new(Poseidon::<Aleo>::new);
+    static POSEIDON: Poseidon<Aleo> = Poseidon::<Aleo>::new();
     /// The group bases for the Aleo signature and encryption schemes.
-    static BASES: Lazy<Vec<Group<Aleo>>> = Lazy::new(|| Aleo::new_bases(ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT));
+    static BASES: Vec<Group<Aleo>> = Aleo::new_bases(ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT);
 }
 
 #[derive(Copy, Clone, Eq, PartialEq, Hash)]

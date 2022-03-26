@@ -20,14 +20,14 @@
 pub mod aleo;
 pub use aleo::*;
 
-// pub mod compute_key;
-// pub use compute_key::*;
+pub mod compute_key;
+pub use compute_key::*;
 
 pub mod poseidon;
 pub use poseidon::*;
 
-// pub mod private_key;
-// pub use private_key::*;
+pub mod private_key;
+pub use private_key::*;
 
 pub mod record;
 pub use record::*;
