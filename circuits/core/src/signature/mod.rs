@@ -20,7 +20,7 @@
 use snarkvm_circuits_types::environment::assert_scope;
 
 use crate::Account;
-use snarkvm_circuits_types::{environment::prelude::*, Field, Scalar};
+use snarkvm_circuits_types::{environment::prelude::*, Boolean, Field, Group, Scalar};
 
 pub struct Signature<A: Account> {
     /// The prover response to the challenge.
@@ -28,9 +28,9 @@ pub struct Signature<A: Account> {
     /// The verifier challenge to check against.
     verifier_challenge: Scalar<A>,
     /// The x-coordinate of the signature public key `pk_sig` := G^sk_sig.
-    pk_sig: Field<A>,
+    pk_sig: Group<A>,
     /// The x-coordinate of the signature public randomizer `pr_sig` := G^r_sig.
-    pr_sig: Field<A>,
+    pr_sig: Group<A>,
 }
 
 impl<A: Account> Inject for Signature<A> {
@@ -41,8 +41,8 @@ impl<A: Account> Inject for Signature<A> {
         Self {
             prover_response: Scalar::new(mode, prover_response),
             verifier_challenge: Scalar::new(mode, verifier_challenge),
-            pk_sig: Field::new(mode, pk_sig),
-            pr_sig: Field::new(mode, pr_sig),
+            pk_sig: Group::from_x_coordinate(Field::new(mode, pk_sig)),
+            pr_sig: Group::from_x_coordinate(Field::new(mode, pr_sig)),
         }
     }
 }
@@ -61,7 +61,13 @@ impl<A: Account> Eject for Signature<A> {
     /// Ejects the signature as `(prover_response, verifier_challenge, pk_sig, pr_sig)`.
     ///
     fn eject_value(&self) -> Self::Primitive {
-        (&self.prover_response, &self.verifier_challenge, &self.pk_sig, &self.pr_sig).eject_value()
+        (
+            &self.prover_response,
+            &self.verifier_challenge,
+            &self.pk_sig.to_x_coordinate(),
+            &self.pr_sig.to_x_coordinate(),
+        )
+            .eject_value()
     }
 }
 
@@ -69,6 +75,7 @@ impl<A: Account> Eject for Signature<A> {
 mod tests {
     use super::*;
     use crate::Aleo as Circuit;
+    use snarkvm_curves::AffineCurve;
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 1000;
@@ -79,12 +86,11 @@ mod tests {
         for _ in 0..ITERATIONS {
             let prover_response = UniformRand::rand(rng);
             let verifier_challenge = UniformRand::rand(rng);
-            let pk_sig = UniformRand::rand(rng);
-            let pr_sig = UniformRand::rand(rng);
+            let pk_sig = <Circuit as Environment>::Affine::rand(rng).to_x_coordinate();
+            let pr_sig = <Circuit as Environment>::Affine::rand(rng).to_x_coordinate();
 
             Circuit::scope(format!("New {mode}"), || {
                 let candidate = Signature::<Circuit>::new(mode, (prover_response, verifier_challenge, pk_sig, pr_sig));
-                assert_eq!(mode, candidate.eject_mode());
                 assert_eq!((prover_response, verifier_challenge, pk_sig, pr_sig), candidate.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
             });
@@ -93,8 +99,8 @@ mod tests {
 
     #[test]
     fn test_signature_new() {
-        check_new(Mode::Constant, 504, 0, 0, 0);
-        check_new(Mode::Public, 0, 504, 0, 502);
-        check_new(Mode::Private, 0, 0, 504, 502);
+        check_new(Mode::Constant, 510, 0, 0, 0);
+        check_new(Mode::Public, 4, 504, 6, 508);
+        check_new(Mode::Private, 4, 0, 510, 508);
     }
 }

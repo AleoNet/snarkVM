@@ -27,7 +27,6 @@ impl<E: Environment> Field<E> {
 mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
-    use snarkvm_utilities::{test_rng, UniformRand};
 
     fn check_from_boolean(
         mode: Mode,
@@ -38,11 +37,14 @@ mod tests {
     ) {
         for expected in &[true, false] {
             // Inject the boolean.
-            let given = Boolean::new(mode, expected);
+            let given = Boolean::<Circuit>::new(mode, *expected);
 
             Circuit::scope(format!("{mode} {expected}"), || {
-                let candidate = Field::<Circuit>::from_boolean(given);
-                assert_eq!(expected, candidate.eject_value());
+                let candidate = Field::from_boolean(&given);
+                match expected {
+                    true => assert_eq!(<Circuit as Environment>::BaseField::one(), candidate.eject_value()),
+                    false => assert_eq!(<Circuit as Environment>::BaseField::zero(), candidate.eject_value()),
+                }
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
             });
         }

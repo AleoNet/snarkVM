@@ -19,7 +19,7 @@ use crate::PrivateKey;
 
 impl<A: Account> Signature<A> {
     /// Returns `true` if the signature is valid for the given `address` and `message`.
-    pub fn verify(address: &Address<A>, message: &[Literal<A>]) -> Boolean<A> {
+    pub fn verify(&self, address: &Address<A>, message: &[Literal<A>]) -> Boolean<A> {
         // Extract (sk_sig, r_sig).
         let (sk_sig, r_sig) = (private_key.sk_sig(), private_key.r_sig());
 
@@ -32,7 +32,46 @@ impl<A: Account> Signature<A> {
         // Compute sk_prf := RO(G^sk_sig || G^r_sig).
         let sk_prf = A::hash_to_scalar(&[pk_sig.to_x_coordinate(), pr_sig.to_x_coordinate()]);
 
-        Boolean
+
+
+        // Recover G^sk_sig.
+        let g_sk_sig = Group::from(self.pk_sig)?;
+
+        // Compute G^sk_sig^c.
+        let g_sk_sig_c = self.scalar_multiply(g_sk_sig.into_projective(), verifier_challenge);
+
+        // Compute G^r := G^s G^sk_sig^c.
+        let g_r = self.g_scalar_multiply(prover_response) + g_sk_sig_c;
+
+        // Compute the candidate verifier challenge.
+        let candidate_verifier_challenge = {
+            // Construct the hash input (G^sk_sig G^r_sig G^sk_prf, G^r, message).
+            let mut preimage = vec![];
+            preimage.extend_from_slice(&public_key.x.to_field_elements()?);
+            preimage.extend_from_slice(&g_r.x.to_field_elements()?);
+            preimage.push(TE::BaseField::from(message.len() as u128));
+            preimage.extend_from_slice(&message.to_field_elements()?);
+
+            // Hash to derive the verifier challenge.
+            self.hash_to_scalar_field(&preimage)
+        };
+
+        // Recover G^r_sig.
+        let g_r_sig = Self::recover_from_x_coordinate(root_randomizer)?;
+
+        // Compute the candidate public key as (G^sk_sig G^r_sig G^sk_prf).
+        let candidate_public_key = {
+            // Compute sk_prf := RO(G^sk_sig || G^r_sig).
+            let sk_prf = self.hash_to_scalar_field(&[g_sk_sig.x, g_r_sig.x]);
+
+            // Compute G^sk_prf.
+            let g_sk_prf = self.g_scalar_multiply(&sk_prf);
+
+            // Compute G^sk_sig G^r_sig G^sk_prf.
+            g_sk_sig + g_r_sig + g_sk_prf
+        };
+
+        Ok(*verifier_challenge == candidate_verifier_challenge && *public_key == candidate_public_key)
     }
 }
 
