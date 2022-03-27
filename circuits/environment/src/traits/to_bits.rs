@@ -69,12 +69,14 @@ impl<C: ToBits<Boolean = B>, B: BooleanTrait> ToBits for &[C] {
     /// A helper method to return a concatenated list of little-endian bits from the circuits.
     #[inline]
     fn to_bits_le(&self) -> Vec<Self::Boolean> {
+        // The vector is order-preserving, meaning the first circuit in is the first circuit bits out.
         self.iter().flat_map(|c| c.to_bits_le()).collect()
     }
 
     /// A helper method to return a concatenated list of big-endian bits from the circuits.
     #[inline]
     fn to_bits_be(&self) -> Vec<Self::Boolean> {
+        // The vector is order-preserving, meaning the first circuit in is the first circuit bits out.
         self.iter().flat_map(|c| c.to_bits_be()).collect()
     }
 }

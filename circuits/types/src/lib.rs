@@ -19,6 +19,9 @@
 #[macro_use]
 extern crate enum_index_derive;
 
+// pub mod custom;
+// pub use custom::*;
+
 pub mod literal;
 pub use literal::*;
 

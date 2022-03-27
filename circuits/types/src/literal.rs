@@ -30,6 +30,8 @@ pub enum Literal<E: Environment> {
     Address(Address<E>),
     /// The boolean type.
     Boolean(Boolean<E>),
+    // /// A custom type.
+    // Custom(Custom<E>),
     /// The field type (base field).
     Field(Field<E>),
     /// The group type (affine).
@@ -66,6 +68,7 @@ impl<E: Environment> Literal<E> {
         match self {
             Self::Address(..) => Address::<E>::type_name(),
             Self::Boolean(..) => Boolean::<E>::type_name(),
+            // Self::Custom(custom) => custom.type_name(),
             Self::Field(..) => Field::<E>::type_name(),
             Self::Group(..) => Group::<E>::type_name(),
             Self::I8(..) => I8::<E>::type_name(),
@@ -88,6 +91,7 @@ impl<E: Environment> Literal<E> {
         match self {
             Self::Address(literal) => literal.eject_mode(),
             Self::Boolean(literal) => literal.eject_mode(),
+            // Self::Custom(literal) => literal.eject_mode(),
             Self::Field(literal) => literal.eject_mode(),
             Self::Group(literal) => literal.eject_mode(),
             Self::I8(literal) => literal.eject_mode(),
@@ -131,6 +135,7 @@ impl<E: Environment> Parser for Literal<E> {
         alt((
             map(Address::parse, |literal| Self::Address(literal)),
             map(Boolean::parse, |literal| Self::Boolean(literal)),
+            // map(Custom::parse, |literal| Self::Custom(literal)),
             map(Field::parse, |literal| Self::Field(literal)),
             map(Group::parse, |literal| Self::Group(literal)),
             map(I8::parse, |literal| Self::I8(literal)),
@@ -154,6 +159,7 @@ impl<E: Environment> Debug for Literal<E> {
         match self {
             Self::Address(literal) => Debug::fmt(literal, f),
             Self::Boolean(literal) => Debug::fmt(literal, f),
+            // Self::Custom(literal) => Debug::fmt(literal, f),
             Self::Field(literal) => Debug::fmt(literal, f),
             Self::Group(literal) => Debug::fmt(literal, f),
             Self::I8(literal) => Debug::fmt(literal, f),
@@ -177,6 +183,7 @@ impl<E: Environment> Display for Literal<E> {
         match self {
             Self::Address(literal) => Display::fmt(literal, f),
             Self::Boolean(literal) => Display::fmt(literal, f),
+            // Self::Custom(literal) => Display::fmt(literal, f),
             Self::Field(literal) => Display::fmt(literal, f),
             Self::Group(literal) => Display::fmt(literal, f),
             Self::I8(literal) => Display::fmt(literal, f),
@@ -201,6 +208,7 @@ impl<E: Environment> PartialEq for Literal<E> {
             && match (self, other) {
                 (Self::Address(this), Self::Address(that)) => this.eject_value() == that.eject_value(),
                 (Self::Boolean(this), Self::Boolean(that)) => this.eject_value() == that.eject_value(),
+                // (Self::Custom(this), Self::Custom(that)) => this.eject_value() == that.eject_value(),
                 (Self::Field(this), Self::Field(that)) => this.eject_value() == that.eject_value(),
                 (Self::Group(this), Self::Group(that)) => this.eject_value() == that.eject_value(),
                 (Self::I8(this), Self::I8(that)) => this.eject_value() == that.eject_value(),
@@ -229,6 +237,7 @@ impl<E: Environment> ToBits for Literal<E> {
         match self {
             Self::Address(literal) => literal.to_bits_le(),
             Self::Boolean(literal) => literal.to_bits_le(),
+            // Self::Custom(literal) => literal.to_bits_le(),
             Self::Field(literal) => literal.to_bits_le(),
             Self::Group(literal) => literal.to_bits_le(),
             Self::I8(literal) => literal.to_bits_le(),
@@ -251,6 +260,7 @@ impl<E: Environment> ToBits for Literal<E> {
         match self {
             Self::Address(literal) => literal.to_bits_be(),
             Self::Boolean(literal) => literal.to_bits_be(),
+            // Self::Custom(literal) => literal.to_bits_be(),
             Self::Field(literal) => literal.to_bits_be(),
             Self::Group(literal) => literal.to_bits_be(),
             Self::I8(literal) => literal.to_bits_be(),
@@ -276,24 +286,25 @@ impl<E: Environment> FromBytes for Literal<E> {
         let literal = match index {
             0 => Self::Address(Address::new(mode, FromBytes::read_le(&mut reader)?)),
             1 => Self::Boolean(Boolean::new(mode, FromBytes::read_le(&mut reader)?)),
-            2 => Self::Field(Field::new(mode, FromBytes::read_le(&mut reader)?)),
-            3 => Self::Group(Group::new(mode, FromBytes::read_le(&mut reader)?)),
-            4 => Self::I8(I8::new(mode, FromBytes::read_le(&mut reader)?)),
-            5 => Self::I16(I16::new(mode, FromBytes::read_le(&mut reader)?)),
-            6 => Self::I32(I32::new(mode, FromBytes::read_le(&mut reader)?)),
-            7 => Self::I64(I64::new(mode, FromBytes::read_le(&mut reader)?)),
-            8 => Self::I128(I128::new(mode, FromBytes::read_le(&mut reader)?)),
-            9 => Self::U8(U8::new(mode, FromBytes::read_le(&mut reader)?)),
-            10 => Self::U16(U16::new(mode, FromBytes::read_le(&mut reader)?)),
-            11 => Self::U32(U32::new(mode, FromBytes::read_le(&mut reader)?)),
-            12 => Self::U64(U64::new(mode, FromBytes::read_le(&mut reader)?)),
-            13 => Self::U128(U128::new(mode, FromBytes::read_le(&mut reader)?)),
-            14 => Self::Scalar(Scalar::new(mode, FromBytes::read_le(&mut reader)?)),
-            15 => {
+            // 2 => Self::Custom(Custom::new(mode, FromBytes::read_le(&mut reader)?)),
+            3 => Self::Field(Field::new(mode, FromBytes::read_le(&mut reader)?)),
+            4 => Self::Group(Group::new(mode, FromBytes::read_le(&mut reader)?)),
+            5 => Self::I8(I8::new(mode, FromBytes::read_le(&mut reader)?)),
+            6 => Self::I16(I16::new(mode, FromBytes::read_le(&mut reader)?)),
+            7 => Self::I32(I32::new(mode, FromBytes::read_le(&mut reader)?)),
+            8 => Self::I64(I64::new(mode, FromBytes::read_le(&mut reader)?)),
+            9 => Self::I128(I128::new(mode, FromBytes::read_le(&mut reader)?)),
+            10 => Self::U8(U8::new(mode, FromBytes::read_le(&mut reader)?)),
+            11 => Self::U16(U16::new(mode, FromBytes::read_le(&mut reader)?)),
+            12 => Self::U32(U32::new(mode, FromBytes::read_le(&mut reader)?)),
+            13 => Self::U64(U64::new(mode, FromBytes::read_le(&mut reader)?)),
+            14 => Self::U128(U128::new(mode, FromBytes::read_le(&mut reader)?)),
+            15 => Self::Scalar(Scalar::new(mode, FromBytes::read_le(&mut reader)?)),
+            16 => {
                 let size = u32::read_le(&mut reader)?;
                 let mut buffer = vec![0u8; size as usize];
                 reader.read_exact(&mut buffer)?;
-                Self::String(StringType::new(mode, &String::from_utf8(buffer).map_err(|e| error(format!("{e}")))?))
+                Self::String(StringType::new(mode, String::from_utf8(buffer).map_err(|e| error(format!("{e}")))?))
             }
             _ => return Err(error(format!("FromBytes failed to parse a literal of type {index}"))),
         };
@@ -308,6 +319,7 @@ impl<E: Environment> ToBytes for Literal<E> {
         match self {
             Self::Address(literal) => literal.eject_value().write_le(&mut writer),
             Self::Boolean(literal) => literal.eject_value().write_le(&mut writer),
+            // Self::Custom(literal) => literal.eject_value().write_le(&mut writer),
             Self::Field(literal) => literal.eject_value().write_le(&mut writer),
             Self::Group(literal) => literal.eject_value().write_le(&mut writer),
             Self::I8(literal) => literal.eject_value().write_le(&mut writer),
