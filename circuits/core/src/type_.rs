@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::prelude::*;
+use crate::Literal;
+use snarkvm_circuits_types::prelude::*;
 use snarkvm_utilities::{
     error,
     io::{Read, Result as IoResult, Write},

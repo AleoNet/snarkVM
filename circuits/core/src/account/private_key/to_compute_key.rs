@@ -26,7 +26,7 @@ impl<A: Account> PrivateKey<A> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{from_private_key::tests::generate_private_and_compute_key, Aleo as Circuit};
+    use crate::account::{from_private_key::tests::generate_private_and_compute_key, Aleo as Circuit};
 
     const ITERATIONS: usize = 100;
 

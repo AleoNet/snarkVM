@@ -19,8 +19,8 @@ pub mod verify;
 #[cfg(test)]
 use snarkvm_circuits_types::environment::assert_scope;
 
-use crate::Account;
-use snarkvm_circuits_types::{environment::prelude::*, Address, Boolean, Field, Group, Literal, Scalar};
+use crate::{account::Account, Literal};
+use snarkvm_circuits_types::{environment::prelude::*, Address, Boolean, Field, Group, Scalar};
 
 pub struct Signature<A: Account> {
     /// The prover response to the challenge.
@@ -74,7 +74,7 @@ impl<A: Account> Eject for Signature<A> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Aleo as Circuit;
+    use crate::account::Aleo as Circuit;
     use snarkvm_curves::AffineCurve;
     use snarkvm_utilities::{test_rng, UniformRand};
 

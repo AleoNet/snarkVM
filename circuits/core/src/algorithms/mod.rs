@@ -14,17 +14,5 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![forbid(unsafe_code)]
-#![allow(clippy::too_many_arguments)]
-
-#[macro_use]
-extern crate enum_index_derive;
-
-pub mod account;
-pub mod algorithms;
-
-pub mod literal;
-pub use literal::*;
-
-pub mod type_;
-pub use type_::*;
+pub mod poseidon;
+pub use poseidon::*;
