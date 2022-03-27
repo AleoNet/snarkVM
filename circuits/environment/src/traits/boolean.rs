@@ -26,7 +26,6 @@ pub trait BooleanTrait:
     + BitXorAssign
     + BitXor<Output = Self>
     + Clone
-    + DataType<Self>
     + Debug
     + Eject<Primitive = bool>
     + Equal

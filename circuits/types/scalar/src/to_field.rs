@@ -17,7 +17,6 @@
 use super::*;
 
 impl<E: Environment> ToField for Scalar<E> {
-    type Boolean = Boolean<E>;
     type Field = Field<E>;
 
     /// Casts a scalar field element into a base field element.

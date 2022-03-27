@@ -33,9 +33,7 @@ pub struct StringType<E: Environment> {
     bytes: Vec<U8<E>>,
 }
 
-impl<E: Environment> StringTrait<Boolean<E>> for StringType<E> {}
-
-impl<E: Environment> DataType<Boolean<E>> for StringType<E> {}
+impl<E: Environment> StringTrait for StringType<E> {}
 
 impl<E: Environment> StringType<E> {
     ///

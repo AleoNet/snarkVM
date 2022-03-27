@@ -17,7 +17,6 @@
 use super::*;
 
 impl<E: Environment> ToGroup for Address<E> {
-    type Boolean = Boolean<E>;
     type Group = Group<E>;
     type Scalar = Scalar<E>;
 

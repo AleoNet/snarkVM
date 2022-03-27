@@ -52,8 +52,7 @@ pub trait ToUpperBits {
 
 /// Unary operator for converting to a base field.
 pub trait ToField {
-    type Boolean: BooleanTrait;
-    type Field: FieldTrait<Self::Boolean>;
+    type Field: FieldTrait;
 
     /// Casts a circuit into a base field.
     fn to_field(&self) -> Self::Field;
@@ -61,8 +60,7 @@ pub trait ToField {
 
 /// Unary operator for converting to a list of base fields.
 pub trait ToFields {
-    type Boolean: BooleanTrait;
-    type Field: FieldTrait<Self::Boolean>;
+    type Field: FieldTrait;
 
     /// Casts a circuit into a list of base fields.
     fn to_fields(&self) -> Vec<Self::Field>;
@@ -70,9 +68,8 @@ pub trait ToFields {
 
 /// Unary operator for converting to an affine group.
 pub trait ToGroup {
-    type Boolean: BooleanTrait;
-    type Scalar: ScalarTrait<Self::Boolean>;
-    type Group: GroupTrait<Self::Boolean, Self::Scalar>;
+    type Scalar: ScalarTrait;
+    type Group: GroupTrait<Self::Scalar>;
 
     /// Casts a circuit into a base field.
     fn to_group(&self) -> &Self::Group;

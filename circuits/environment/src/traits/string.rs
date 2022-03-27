@@ -16,8 +16,8 @@
 
 use crate::prelude::*;
 
-pub trait StringTrait<B: BooleanTrait>:
-    Clone + Display + DataType<B> + Debug + Eject<Primitive = String> + FromBits + ToBits + Parser + TypeName
+pub trait StringTrait:
+    Clone + Display + Debug + Eject<Primitive = String> + FromBits + ToBits + Parser + TypeName
 {
 }
 

@@ -17,7 +17,6 @@
 use super::*;
 
 impl<E: Environment, I: IntegerType> ToField for Integer<E, I> {
-    type Boolean = Boolean<E>;
     type Field = Field<E>;
 
     /// Casts an integer into a base field.

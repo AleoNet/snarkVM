@@ -63,9 +63,6 @@ use crate::Environment;
 use core::fmt::Display;
 use nom::{error::VerboseError, IResult};
 
-/// Operations to convert to and from bit representation in a circuit environment.
-pub trait DataType<B: BooleanTrait>: FromBits<Boolean = B> + ToBits<Boolean = B> {}
-
 pub type ParserResult<'a, O> = IResult<&'a str, O, VerboseError<&'a str>>;
 
 /// Operations to parse a string literal into an object.

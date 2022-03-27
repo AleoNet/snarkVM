@@ -41,9 +41,7 @@ pub struct Scalar<E: Environment> {
     bits_le: Vec<Boolean<E>>,
 }
 
-impl<E: Environment> ScalarTrait<Boolean<E>> for Scalar<E> {}
-
-impl<E: Environment> DataType<Boolean<E>> for Scalar<E> {}
+impl<E: Environment> ScalarTrait for Scalar<E> {}
 
 impl<E: Environment> Inject for Scalar<E> {
     type Primitive = E::ScalarField;

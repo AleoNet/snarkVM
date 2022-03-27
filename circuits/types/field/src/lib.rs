@@ -53,9 +53,7 @@ pub struct Field<E: Environment> {
     bits_le: OnceCell<Vec<Boolean<E>>>,
 }
 
-impl<E: Environment> FieldTrait<Boolean<E>> for Field<E> {}
-
-impl<E: Environment> DataType<Boolean<E>> for Field<E> {}
+impl<E: Environment> FieldTrait for Field<E> {}
 
 impl<E: Environment> Inject for Field<E> {
     type Primitive = E::BaseField;

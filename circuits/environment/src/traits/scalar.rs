@@ -17,7 +17,7 @@
 use crate::prelude::*;
 
 /// Representation of a scalar field element.
-pub trait ScalarTrait<B: BooleanTrait>:
-    Clone + DataType<B> + Debug + Eject + Equal + Inject + One + Parser + Ternary + ToBits + TypeName + Zero
+pub trait ScalarTrait:
+    Clone + Debug + Eject + Equal + Inject + One + Parser + Ternary + ToBits + TypeName + Zero
 {
 }

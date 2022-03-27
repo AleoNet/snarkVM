@@ -47,9 +47,7 @@ pub struct Group<E: Environment> {
     y: Field<E>,
 }
 
-impl<E: Environment> GroupTrait<Boolean<E>, Scalar<E>> for Group<E> {}
-
-impl<E: Environment> DataType<Boolean<E>> for Group<E> {}
+impl<E: Environment> GroupTrait<Scalar<E>> for Group<E> {}
 
 impl<E: Environment> Inject for Group<E> {
     type Primitive = E::Affine;

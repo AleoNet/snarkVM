@@ -17,18 +17,17 @@
 use crate::prelude::*;
 
 /// Representation of a base field element.
-pub trait FieldTrait<B: BooleanTrait>:
+pub trait FieldTrait:
     Add<Output = Self>
     + AddAssign
     + Clone
-    + DataType<B>
     + Debug
     + Div<Output = Self>
     + DivAssign
     + Double<Output = Self>
     + Eject
     + Equal
-    + FromBits<Boolean = B>
+    + FromBits
     + FromBoolean
     + Inject
     + Inv

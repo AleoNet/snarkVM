@@ -76,11 +76,9 @@ pub struct Integer<E: Environment, I: IntegerType> {
     phantom: PhantomData<I>,
 }
 
-impl<E: Environment, I: IntegerType> IntegerTrait<Boolean<E>, I, U8<E>, U16<E>, U32<E>> for Integer<E, I> {}
+impl<E: Environment, I: IntegerType> IntegerTrait<I, U8<E>, U16<E>, U32<E>> for Integer<E, I> {}
 
-impl<E: Environment, I: IntegerType> IntegerCore<Boolean<E>, I> for Integer<E, I> {}
-
-impl<E: Environment, I: IntegerType> DataType<Boolean<E>> for Integer<E, I> {}
+impl<E: Environment, I: IntegerType> IntegerCore<I> for Integer<E, I> {}
 
 impl<E: Environment, I: IntegerType> Inject for Integer<E, I> {
     type Primitive = I;

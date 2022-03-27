@@ -17,11 +17,10 @@
 use crate::prelude::*;
 
 /// Representation of a group element.
-pub trait GroupTrait<B: BooleanTrait, S: ScalarTrait<B>>:
+pub trait GroupTrait<S: ScalarTrait>:
     Add<Output = Self>
     + AddAssign
     + Clone
-    + DataType<B>
     + Debug
     + Double<Output = Self>
     + Eject
