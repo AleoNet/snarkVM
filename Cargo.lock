@@ -2044,6 +2044,7 @@ dependencies = [
 name = "snarkvm-circuits-core"
 version = "0.7.5"
 dependencies = [
+ "bech32",
  "enum_index",
  "enum_index_derive",
  "nom",

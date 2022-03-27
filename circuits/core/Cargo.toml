@@ -29,6 +29,9 @@ version = "0.7.5"
 path = "../../utilities"
 version = "0.7.5"
 
+[dependencies.bech32]
+version = "0.8"
+
 [dependencies.enum_index]
 version = "0.2"
 

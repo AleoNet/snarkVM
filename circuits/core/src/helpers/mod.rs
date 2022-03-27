@@ -14,14 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![forbid(unsafe_code)]
-#![allow(clippy::too_many_arguments)]
+pub mod literal;
+pub use literal::*;
 
-#[macro_use]
-extern crate enum_index_derive;
+pub mod primitive;
+pub use primitive::*;
 
-pub mod account;
-pub mod algorithms;
-
-pub mod helpers;
-pub use helpers::*;
+pub mod type_;
+pub use type_::*;

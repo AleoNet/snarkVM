@@ -63,7 +63,7 @@ pub enum Type<E: Environment> {
 
 impl<E: Environment> Type<E> {
     /// Returns the type name.
-    pub fn type_name(&self) -> &'static str {
+    pub fn type_name(&self) -> &str {
         match self {
             Self::Address(..) => Address::<E>::type_name(),
             Self::Boolean(..) => Boolean::<E>::type_name(),
@@ -132,7 +132,7 @@ impl<E: Environment> From<Literal<E>> for Type<E> {
 impl<E: Environment> From<&Literal<E>> for Type<E> {
     #[inline]
     fn from(literal: &Literal<E>) -> Self {
-        let mode = literal.mode();
+        let mode = literal.eject_mode();
         match literal {
             Literal::Address(..) => Self::Address(mode),
             Literal::Boolean(..) => Self::Boolean(mode),
