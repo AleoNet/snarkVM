@@ -17,6 +17,7 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
+pub mod add;
 pub mod compare;
 pub mod equal;
 pub mod from_bits;
