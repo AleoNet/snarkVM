@@ -137,28 +137,23 @@ mod tests {
                 let candidate_bits = candidate.to_bits_le();
                 assert_eq!(expected_size_in_bits, candidate_bits.len());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
+            });
 
-                // Add excess zero bits.
-                let candidate = vec![given_bits, vec![Boolean::new(mode, false); i]].concat();
+            // Add excess zero bits.
+            let candidate = vec![given_bits, vec![Boolean::new(mode, false); i]].concat();
 
-                Circuit::scope(&format!("Excess {} {}", mode, i), || {
-                    let candidate = Field::<Circuit>::from_bits_le(&candidate);
-                    assert_eq!(expected, candidate.eject_value());
-                    assert_eq!(expected_size_in_bits, candidate.bits_le.get().expect("Caching failed").len());
-                    match mode.is_constant() {
-                        true => assert_scope!(num_constants, num_public, num_private, num_constraints),
-                        // `num_private` gets 1 free excess bit, then is incremented by one for each excess bit.
-                        // `num_constraints` is incremented by one for each excess bit.
-                        false => {
-                            assert_scope!(
-                                num_constants,
-                                num_public,
-                                num_private + i.saturating_sub(1),
-                                num_constraints + i
-                            )
-                        }
-                    };
-                });
+            Circuit::scope(&format!("Excess {} {}", mode, i), || {
+                let candidate = Field::<Circuit>::from_bits_le(&candidate);
+                assert_eq!(expected, candidate.eject_value());
+                assert_eq!(expected_size_in_bits, candidate.bits_le.get().expect("Caching failed").len());
+                match mode.is_constant() {
+                    true => assert_scope!(num_constants, num_public, num_private, num_constraints),
+                    // `num_private` gets 1 free excess bit, then is incremented by one for each excess bit.
+                    // `num_constraints` is incremented by one for each excess bit.
+                    false => {
+                        assert_scope!(num_constants, num_public, num_private + i.saturating_sub(1), num_constraints + i)
+                    }
+                };
             });
         }
     }
