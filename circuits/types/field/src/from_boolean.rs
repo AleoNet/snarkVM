@@ -16,9 +16,11 @@
 
 use super::*;
 
-impl<E: Environment> Field<E> {
+impl<E: Environment> FromBoolean for Field<E> {
+    type Boolean = Boolean<E>;
+
     /// Initializes a base field from a boolean.
-    pub fn from_boolean(boolean: &Boolean<E>) -> Self {
+    fn from_boolean(boolean: &Self::Boolean) -> Self {
         (&**boolean).into()
     }
 }

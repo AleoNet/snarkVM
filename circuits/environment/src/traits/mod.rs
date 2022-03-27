@@ -26,6 +26,9 @@ pub use eject::*;
 pub mod field;
 pub use field::*;
 
+pub mod from;
+pub use from::*;
+
 pub mod group;
 pub use group::*;
 
@@ -48,6 +51,12 @@ pub use scalar::*;
 
 pub mod string;
 pub use string::*;
+
+pub mod to;
+pub use to::*;
+
+pub mod to_bits;
+pub use to_bits::*;
 
 use crate::Environment;
 

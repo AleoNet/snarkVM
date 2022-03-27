@@ -28,7 +28,8 @@ pub trait FieldTrait<B: BooleanTrait>:
     + Double<Output = Self>
     + Eject
     + Equal
-    + FromBits
+    + FromBits<Boolean = B>
+    + FromBoolean
     + Inject
     + Inv
     + Mul<Output = Self>

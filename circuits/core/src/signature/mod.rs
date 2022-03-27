@@ -14,13 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-// pub mod verify;
+pub mod verify;
 
 #[cfg(test)]
 use snarkvm_circuits_types::environment::assert_scope;
 
-use crate::Account;
-use snarkvm_circuits_types::{environment::prelude::*, Boolean, Field, Group, Scalar};
+use crate::{Account, PrivateKey};
+use snarkvm_circuits_types::{environment::prelude::*, Address, Boolean, Field, Group, Literal, Scalar};
 
 pub struct Signature<A: Account> {
     /// The prover response to the challenge.

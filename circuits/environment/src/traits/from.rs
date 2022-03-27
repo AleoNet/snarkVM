@@ -14,9 +14,24 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::prelude::*;
+use crate::BooleanTrait;
 
-pub trait AddressTrait:
-    Clone + Debug + Display + Eject + Equal + Inject + Parser + ToBits + ToGroup + TypeName
-{
+/// Unary operator for instantiating from a boolean.
+pub trait FromBoolean {
+    type Boolean: BooleanTrait;
+
+    fn from_boolean(boolean: &Self::Boolean) -> Self;
+}
+
+/// Unary operator for instantiating from bits.
+pub trait FromBits {
+    type Boolean: BooleanTrait;
+
+    fn from_bits_le(bits_le: &[Self::Boolean]) -> Self
+    where
+        Self: Sized;
+
+    fn from_bits_be(bits_be: &[Self::Boolean]) -> Self
+    where
+        Self: Sized;
 }
