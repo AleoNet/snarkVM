@@ -118,8 +118,8 @@ impl Network for Testnet2 {
     const VALUE_BALANCE_COMMITMENT_PREFIX: u32 = hrp4!("vbco");
 
     const ADDRESS_SIZE_IN_BYTES: usize = 32;
-    const HEADER_SIZE_IN_BYTES: usize = 1015;
-    const HEADER_PROOF_SIZE_IN_BYTES: usize = 883;
+    const HEADER_SIZE_IN_BYTES: usize = 928;
+    const HEADER_PROOF_SIZE_IN_BYTES: usize = 796;
     const INNER_PROOF_SIZE_IN_BYTES: usize = 193;
     const PROGRAM_PROOF_SIZE_IN_BYTES: usize = 963;
     const PROGRAM_ID_SIZE_IN_BYTES: usize = 32;
