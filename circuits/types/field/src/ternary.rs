@@ -31,8 +31,8 @@ impl<E: Environment> Ternary for Field<E> {
         }
         // Constant `first` and `second`
         else if first.is_constant() && second.is_constant() {
-            let not_condition = Field::from(&!condition);
-            let condition = Field::from(condition);
+            let not_condition = Field::from_boolean(&!condition);
+            let condition = Field::from_boolean(condition);
             (condition * first) + (not_condition * second)
         }
         // Variables

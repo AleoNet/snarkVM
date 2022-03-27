@@ -39,7 +39,7 @@ impl<E: Environment> FromBits for Field<E> {
         let mut output = Field::zero();
         let mut coefficient = Field::one();
         for bit in bits_le.iter().take(size_in_bits) {
-            output += Field::from(bit) * &coefficient;
+            output += Field::from_boolean(bit) * &coefficient;
             coefficient = coefficient.double();
         }
 

@@ -23,6 +23,7 @@ pub mod div;
 pub mod double;
 pub mod equal;
 pub mod from_bits;
+pub mod from_boolean;
 pub mod inv;
 pub mod mul;
 pub mod neg;
@@ -64,15 +65,6 @@ impl<E: Environment> Inject for Field<E> {
     ///
     fn new(mode: Mode, value: Self::Primitive) -> Self {
         Self { linear_combination: E::new_variable(mode, value).into(), bits_le: Default::default() }
-    }
-}
-
-impl<E: Environment> Field<E> {
-    ///
-    /// Initializes a new instance of a base field from a boolean.
-    ///
-    pub fn from(boolean: &Boolean<E>) -> Self {
-        (&**boolean).into()
     }
 }
 

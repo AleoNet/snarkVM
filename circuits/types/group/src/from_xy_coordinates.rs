@@ -17,7 +17,7 @@
 use super::*;
 
 impl<E: Environment> Group<E> {
-    /// Initializes a new affine group element from a given x- and y-coordinate field element.
+    /// Initializes an affine group element from a given x- and y-coordinate field element.
     /// For safety, the resulting point is always enforced to be on the curve with constraints.
     pub fn from_xy_coordinates(x: Field<E>, y: Field<E>) -> Self {
         //
@@ -68,7 +68,7 @@ mod tests {
             let x_coordinate = Field::new(mode, point.to_x_coordinate());
             let y_coordinate = Field::new(mode, point.to_y_coordinate());
 
-            Circuit::scope(&format!("Constant {}", i), || {
+            Circuit::scope(format!("{mode} {i}"), || {
                 let affine = Group::<Circuit>::from_xy_coordinates(x_coordinate, y_coordinate);
                 assert_eq!(point, affine.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
