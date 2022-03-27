@@ -83,7 +83,7 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize) 
     let candidate_inner_num_constraints = inner_cs.num_constraints();
     let (num_non_zero_a, num_non_zero_b, num_non_zero_c) = inner_cs.num_non_zero();
 
-    if !inner_cs.is_satisfied() {
+    if !dbg!(inner_cs.is_satisfied()) {
         println!("=========================================================");
         println!("Inner circuit num constraints: {}", candidate_inner_num_constraints);
         println!("Unsatisfied constraints:\n{}", inner_cs.which_is_unsatisfied().unwrap());
