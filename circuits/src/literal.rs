@@ -23,7 +23,6 @@ use snarkvm_circuits_types::{
     integers::{I128, I16, I32, I64, I8, U128, U16, U32, U64, U8},
     scalar::Scalar,
 };
-use snarkvm_curves::AffineCurve;
 use snarkvm_utilities::{
     error,
     io::{Read, Result as IoResult, Write},
@@ -238,10 +237,7 @@ impl<E: Environment> FromBytes for Literal<E> {
             0 => Self::Address(Address::new(mode, FromBytes::read_le(&mut reader)?)),
             1 => Self::Boolean(Boolean::new(mode, FromBytes::read_le(&mut reader)?)),
             2 => Self::Field(Field::new(mode, FromBytes::read_le(&mut reader)?)),
-            3 => {
-                let affine = E::Affine::read_le(&mut reader)?;
-                Self::Group(Group::new(mode, (affine.to_x_coordinate(), Some(affine.to_y_coordinate()))))
-            }
+            3 => Self::Group(Group::new(mode, FromBytes::read_le(&mut reader)?)),
             4 => Self::I8(I8::new(mode, FromBytes::read_le(&mut reader)?)),
             5 => Self::I16(I16::new(mode, FromBytes::read_le(&mut reader)?)),
             6 => Self::I32(I32::new(mode, FromBytes::read_le(&mut reader)?)),

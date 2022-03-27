@@ -25,7 +25,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> PowChecked<Integer<E, M>> for
         if self.is_constant() && other.is_constant() {
             // Compute the result and return the new constant.
             // This cast is safe since `Magnitude`s can only be `u8`, `u16`, or `u32`.
-            match self.eject_value().checked_pow(other.eject_value().to_u32().unwrap()) {
+            match self.eject_value().checked_pow(&other.eject_value().to_u32().unwrap()) {
                 Some(value) => Integer::new(Mode::Constant, value),
                 None => E::halt("Integer overflow on exponentiation of two constants"),
             }
@@ -41,9 +41,8 @@ impl<E: Environment, I: IntegerType, M: Magnitude> PowChecked<Integer<E, M>> for
 
                 let result_times_self = if I::is_signed() {
                     // Multiply the absolute value of `self` and `other` in the base field.
-                    let absolute_result = Self::ternary(result.msb(), &Self::zero().sub_wrapped(&result), &result);
-                    let absolute_self = Self::ternary(self.msb(), &Self::zero().sub_wrapped(self), self);
-                    let (product, carry) = Self::mul_with_carry(&absolute_result, &absolute_self, true);
+                    // Note that it is safe to use abs_wrapped since we want I::MIN to be interpreted as an unsigned number.
+                    let (product, carry) = Self::mul_with_carry(&(&result).abs_wrapped(), &self.abs_wrapped(), true);
 
                     // We need to check that the abs(a) * abs(b) did not exceed the unsigned maximum.
                     let carry_bits_nonzero = carry.iter().fold(Boolean::constant(false), |a, b| a | b);
@@ -107,7 +106,7 @@ mod tests {
         let a = Integer::<Circuit, I>::new(mode_a, first);
         let b = Integer::<Circuit, M>::new(mode_b, second);
         let case = format!("({} ** {})", a.eject_value(), b.eject_value());
-        match first.checked_pow(second.to_u32().unwrap()) {
+        match first.checked_pow(&second.to_u32().unwrap()) {
             Some(value) => check_operation_passes_without_counts(name, &case, value, &a, &b, Integer::pow_checked),
             None => {
                 match (mode_a, mode_b) {

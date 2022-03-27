@@ -11,6 +11,11 @@ name = "linear_combination"
 path = "benches/linear_combination.rs"
 harness = false
 
+[dependencies.snarkvm-circuits-environment-witness]
+path = "./witness"
+version = "0.7.5"
+default-features = false
+
 [dependencies.snarkvm-curves]
 path = "../../curves"
 version = "0.7.5"
@@ -31,6 +36,9 @@ path = "../../utilities"
 version = "0.7.5"
 default-features = false
 
+[dependencies.indexmap]
+version = "1.8.0"
+
 [dependencies.itertools]
 version = "0.10.1"
 
@@ -44,7 +52,7 @@ version = "0.3"
 version = "0.2"
 
 [dependencies.once_cell]
-version = "1.8.0"
+version = "1.10.0"
 
 [dependencies.rayon]
 version = "1"

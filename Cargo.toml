@@ -25,6 +25,7 @@ members = [
   "circuits/core",
   "circuits/edge",
   "circuits/environment",
+  "circuits/environment/witness",
   "circuits/types",
   "circuits/types/address",
   "circuits/types/boolean",

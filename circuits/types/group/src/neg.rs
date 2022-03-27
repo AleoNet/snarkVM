@@ -67,8 +67,7 @@ mod tests {
             assert!(expected.is_on_curve());
             assert!(expected.is_in_correct_subgroup_assuming_on_curve());
 
-            let candidate_input =
-                Group::<Circuit>::new(Mode::Constant, (point.to_x_coordinate(), Some(point.to_y_coordinate())));
+            let candidate_input = Group::<Circuit>::new(Mode::Constant, point);
             check_neg(&format!("NEG Constant {}", i), expected, candidate_input, 0, 0, 0, 0);
         }
     }
@@ -82,8 +81,7 @@ mod tests {
             assert!(expected.is_on_curve());
             assert!(expected.is_in_correct_subgroup_assuming_on_curve());
 
-            let candidate_input =
-                Group::<Circuit>::new(Mode::Public, (point.to_x_coordinate(), Some(point.to_y_coordinate())));
+            let candidate_input = Group::<Circuit>::new(Mode::Public, point);
             check_neg(&format!("NEG Public {}", i), expected, candidate_input, 0, 0, 0, 0);
         }
     }
@@ -97,25 +95,22 @@ mod tests {
             assert!(expected.is_on_curve());
             assert!(expected.is_in_correct_subgroup_assuming_on_curve());
 
-            let candidate_input =
-                Group::<Circuit>::new(Mode::Private, (point.to_x_coordinate(), Some(point.to_y_coordinate())));
+            let candidate_input = Group::<Circuit>::new(Mode::Private, point);
             check_neg(&format!("NEG Private {}", i), expected, candidate_input, 0, 0, 0, 0);
         }
     }
 
     #[test]
     fn test_zero() {
-        let zero = <Circuit as Environment>::BaseField::zero();
-
         let expected = <Circuit as Environment>::Affine::zero();
 
         let candidate_input = Group::<Circuit>::zero();
         check_neg("NEG Constant Zero", expected, candidate_input, 0, 0, 0, 0);
 
-        let candidate_input = Group::<Circuit>::new(Mode::Public, (zero, None));
+        let candidate_input = Group::<Circuit>::new(Mode::Public, expected);
         check_neg("NEG Public Zero", expected, candidate_input, 0, 0, 0, 0);
 
-        let candidate_input = Group::<Circuit>::new(Mode::Private, (zero, None));
+        let candidate_input = Group::<Circuit>::new(Mode::Private, expected);
         check_neg("NEG Private Zero", expected, candidate_input, 0, 0, 0, 0);
     }
 }

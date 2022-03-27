@@ -28,12 +28,6 @@ impl<E: Environment> Add<&Self> for Group<E> {
     type Output = Self;
 
     fn add(self, other: &Self) -> Self::Output {
-        // Determine the variable mode.
-        let mode = match self.is_constant() && other.is_constant() {
-            true => Mode::Constant,
-            false => Mode::Private,
-        };
-
         // This swap reduces the number of constants by one.
         let (this, that) = match other.is_constant() {
             true => (&self, other),
@@ -58,29 +52,14 @@ impl<E: Environment> Add<&Self> for Group<E> {
         let v2 = (&v0 * &v1) * d;
 
         // Compute x3 and y3.
-        let (x3, y3) = {
-            let v0 = v0.eject_value();
-            let v1 = v1.eject_value();
-            let v2 = v2.eject_value();
-
-            // Assign x3 = (v0 + v1) / (v2 + 1)
-            let x3 = {
-                let t0 = v0 + v1;
-                let t1 = v2 + E::BaseField::one();
-                let t0_div_t1 = t0 * t1.inverse().expect("Failed to compute x-coordinate");
-                Field::new(mode, t0_div_t1)
-            };
-
-            // Assign y3 = (U + a * v0 - v1) / (1 - v2)
-            let y3 = {
-                let t0 = u.eject_value() + (v0 * a.eject_value()) - v1;
-                let t1 = E::BaseField::one() - v2;
-                let t0_div_t1 = t0 * t1.inverse().expect("Failed to compute y-coordinate");
-                Field::new(mode, t0_div_t1)
-            };
-
+        let (x3, y3) = witness!(|a, u, v0, v1, v2| {
+            // Assign x3 = (v0 + v1) / (v2 + 1).
+            let x3 = (v0 + v1) / (v2 + E::BaseField::one());
+            // Assign y3 = (U + a * v0 - v1) / (1 - v2).
+            let y3 = (u + (v0 * a) - v1) / (E::BaseField::one() - v2);
+            // Return (x3, y3).
             (x3, y3)
-        };
+        });
 
         // Ensure x3 is well-formed.
         // x3 * (v2 + 1) = v0 + v1
@@ -142,7 +121,6 @@ mod tests {
             assert_eq!(*expected, candidate.eject_value(), "({} + {})", a.eject_value(), b.eject_value());
             assert_scope!(num_constants, num_public, num_private, num_constraints);
         });
-        Circuit::reset();
     }
 
     fn check_add_assign(
@@ -161,7 +139,6 @@ mod tests {
             assert_eq!(*expected, candidate.eject_value(), "({} + {})", a.eject_value(), b.eject_value());
             assert_scope!(num_constants, num_public, num_private, num_constraints);
         });
-        Circuit::reset();
     }
 
     #[test]
@@ -171,8 +148,8 @@ mod tests {
             let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
 
             let expected = first + second;
-            let a = Group::<Circuit>::new(Mode::Constant, (first.to_x_coordinate(), None));
-            let b = Group::<Circuit>::new(Mode::Constant, (second.to_x_coordinate(), None));
+            let a = Group::<Circuit>::new(Mode::Constant, first);
+            let b = Group::<Circuit>::new(Mode::Constant, second);
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, &expected, &a, &b, 4, 0, 0, 0);
@@ -188,8 +165,8 @@ mod tests {
             let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
 
             let expected = first + second;
-            let a = Group::<Circuit>::new(Mode::Constant, (first.to_x_coordinate(), None));
-            let b = Group::<Circuit>::new(Mode::Public, (second.to_x_coordinate(), None));
+            let a = Group::<Circuit>::new(Mode::Constant, first);
+            let b = Group::<Circuit>::new(Mode::Public, second);
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, &expected, &a, &b, 2, 0, 3, 3);
@@ -205,8 +182,8 @@ mod tests {
             let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
 
             let expected = first + second;
-            let a = Group::<Circuit>::new(Mode::Public, (first.to_x_coordinate(), None));
-            let b = Group::<Circuit>::new(Mode::Constant, (second.to_x_coordinate(), None));
+            let a = Group::<Circuit>::new(Mode::Public, first);
+            let b = Group::<Circuit>::new(Mode::Constant, second);
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, &expected, &a, &b, 2, 0, 3, 3);
@@ -222,8 +199,8 @@ mod tests {
             let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
 
             let expected = first + second;
-            let a = Group::<Circuit>::new(Mode::Constant, (first.to_x_coordinate(), None));
-            let b = Group::<Circuit>::new(Mode::Private, (second.to_x_coordinate(), None));
+            let a = Group::<Circuit>::new(Mode::Constant, first);
+            let b = Group::<Circuit>::new(Mode::Private, second);
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, &expected, &a, &b, 2, 0, 3, 3);
@@ -239,8 +216,8 @@ mod tests {
             let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
 
             let expected = first + second;
-            let a = Group::<Circuit>::new(Mode::Private, (first.to_x_coordinate(), None));
-            let b = Group::<Circuit>::new(Mode::Constant, (second.to_x_coordinate(), None));
+            let a = Group::<Circuit>::new(Mode::Private, first);
+            let b = Group::<Circuit>::new(Mode::Constant, second);
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, &expected, &a, &b, 2, 0, 3, 3);
@@ -256,8 +233,8 @@ mod tests {
             let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
 
             let expected = first + second;
-            let a = Group::<Circuit>::new(Mode::Public, (first.to_x_coordinate(), None));
-            let b = Group::<Circuit>::new(Mode::Public, (second.to_x_coordinate(), None));
+            let a = Group::<Circuit>::new(Mode::Public, first);
+            let b = Group::<Circuit>::new(Mode::Public, second);
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, &expected, &a, &b, 2, 0, 6, 6);
@@ -273,8 +250,8 @@ mod tests {
             let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
 
             let expected = first + second;
-            let a = Group::<Circuit>::new(Mode::Public, (first.to_x_coordinate(), None));
-            let b = Group::<Circuit>::new(Mode::Private, (second.to_x_coordinate(), None));
+            let a = Group::<Circuit>::new(Mode::Public, first);
+            let b = Group::<Circuit>::new(Mode::Private, second);
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, &expected, &a, &b, 2, 0, 6, 6);
@@ -290,8 +267,8 @@ mod tests {
             let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
 
             let expected = first + second;
-            let a = Group::<Circuit>::new(Mode::Private, (first.to_x_coordinate(), None));
-            let b = Group::<Circuit>::new(Mode::Public, (second.to_x_coordinate(), None));
+            let a = Group::<Circuit>::new(Mode::Private, first);
+            let b = Group::<Circuit>::new(Mode::Public, second);
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, &expected, &a, &b, 2, 0, 6, 6);
@@ -307,8 +284,8 @@ mod tests {
             let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
 
             let expected = first + second;
-            let a = Group::<Circuit>::new(Mode::Private, (first.to_x_coordinate(), None));
-            let b = Group::<Circuit>::new(Mode::Private, (second.to_x_coordinate(), None));
+            let a = Group::<Circuit>::new(Mode::Private, first);
+            let b = Group::<Circuit>::new(Mode::Private, second);
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, &expected, &a, &b, 2, 0, 6, 6);
@@ -325,14 +302,14 @@ mod tests {
         let expected = a + b;
 
         // Constant
-        let first = Group::<Circuit>::new(Mode::Constant, (a.to_x_coordinate(), Some(a.to_y_coordinate())));
-        let second = Group::<Circuit>::new(Mode::Constant, (b.to_x_coordinate(), Some(b.to_y_coordinate())));
+        let first = Group::<Circuit>::new(Mode::Constant, a);
+        let second = Group::<Circuit>::new(Mode::Constant, b);
         let candidate_a = first + second;
         assert_eq!(expected, candidate_a.eject_value());
 
         // Private
-        let first = Group::<Circuit>::new(Mode::Private, (a.to_x_coordinate(), Some(a.to_y_coordinate())));
-        let second = Group::<Circuit>::new(Mode::Private, (b.to_x_coordinate(), Some(b.to_y_coordinate())));
+        let first = Group::<Circuit>::new(Mode::Private, a);
+        let second = Group::<Circuit>::new(Mode::Private, b);
         let candidate_b = first + second;
         assert_eq!(expected, candidate_b.eject_value());
     }

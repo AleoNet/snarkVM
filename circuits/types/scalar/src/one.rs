@@ -20,7 +20,7 @@ impl<E: Environment> One for Scalar<E> {
     type Boolean = Boolean<E>;
 
     fn one() -> Self {
-        Self::new(Mode::Constant, <E as Environment>::ScalarField::one())
+        Self::constant(<E as Environment>::ScalarField::one())
     }
 
     fn is_one(&self) -> Self::Boolean {

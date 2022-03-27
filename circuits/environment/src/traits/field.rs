@@ -42,6 +42,7 @@ pub trait FieldTrait<B: BooleanTrait>:
     + SubAssign
     + Ternary
     + ToBits
+    + TypeName
     + Zero
 {
 }

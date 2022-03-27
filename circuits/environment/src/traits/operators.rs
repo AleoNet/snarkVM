@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::BooleanTrait;
+use crate::{BooleanTrait, FieldTrait};
 
 /// Trait for equality comparisons.
 pub trait Equal<Rhs: ?Sized = Self> {
@@ -199,6 +199,27 @@ pub trait SubWrapped<Rhs: ?Sized = Self> {
     fn sub_wrapped(&self, rhs: &Rhs) -> Self::Output;
 }
 
+/// Unary operator for retrieving the absolute value, enforcing an overflow never occurs.
+pub trait AbsChecked {
+    type Output;
+
+    fn abs_checked(self) -> Self::Output;
+}
+
+/// Unary operator for retrieving the absolute value, bounding the difference to `MAX` if an overflow occurs.
+pub trait AbsSaturating {
+    type Output;
+
+    fn abs_saturating(self) -> Self::Output;
+}
+
+/// Unary operator for retrieving the absolute value, wrapping the result if an overflow occurs.
+pub trait AbsWrapped {
+    type Output;
+
+    fn abs_wrapped(self) -> Self::Output;
+}
+
 /// Unary operator for retrieving the doubled value.
 pub trait Double {
     type Output;
@@ -245,4 +266,108 @@ pub trait Subtractor {
 
     /// Returns the difference of `self` and `other` as a difference bit and borrow bit.
     fn subtractor(&self, other: &Self, borrow: &Self) -> (Self::Difference, Self::Borrow);
+}
+
+/// Representation of the zero value.
+pub trait Zero {
+    type Boolean: BooleanTrait;
+
+    /// Returns a new zero constant.
+    fn zero() -> Self;
+
+    /// Returns `true` if `self` is zero.
+    fn is_zero(&self) -> Self::Boolean;
+}
+
+/// Representation of the one value.
+pub trait One {
+    type Boolean: BooleanTrait;
+
+    /// Returns a new one constant.
+    fn one() -> Self;
+
+    /// Returns `true` if `self` is one.
+    fn is_one(&self) -> Self::Boolean;
+}
+
+/// Unary operator for retrieving the most-significant bit.
+pub trait MSB {
+    type Boolean: BooleanTrait;
+
+    /// Returns the MSB of the value.
+    fn msb(&self) -> &Self::Boolean;
+}
+
+/// Unary operator for instantiating from bits.
+pub trait FromBits {
+    type Boolean: BooleanTrait;
+
+    fn from_bits_le(bits_le: &[Self::Boolean]) -> Self
+    where
+        Self: Sized;
+
+    fn from_bits_be(bits_be: &[Self::Boolean]) -> Self
+    where
+        Self: Sized;
+}
+
+/// Unary operator for converting to bits.
+pub trait ToBits {
+    type Boolean: BooleanTrait;
+
+    fn to_bits_le(&self) -> Vec<Self::Boolean>;
+
+    fn to_bits_be(&self) -> Vec<Self::Boolean>;
+}
+
+/// Unary operator for converting to `k` number of bits.
+pub trait ToLowerBits {
+    type Boolean: BooleanTrait;
+
+    ///
+    /// Outputs the lower `k` bits of an `n`-bit element in little-endian representation.
+    /// Enforces that the upper `n - k` bits are zero.
+    ///
+    fn to_lower_bits_le(&self, k: usize) -> Vec<Self::Boolean>;
+
+    ///
+    /// Outputs the lower `k` bits of an `n`-bit element in big-endian representation.
+    /// Enforces that the upper `n - k` bits are zero.
+    ///
+    fn to_lower_bits_be(&self, k: usize) -> Vec<Self::Boolean>;
+}
+
+/// Unary operator for converting to `k` number of bits.
+pub trait ToUpperBits {
+    type Boolean: BooleanTrait;
+
+    ///
+    /// Outputs the upper `k` bits of an `n`-bit element in little-endian representation.
+    /// Enforces that the lower `n - k` bits are zero.
+    ///
+    fn to_upper_bits_le(&self, k: usize) -> Vec<Self::Boolean>;
+
+    ///
+    /// Outputs the upper `k` bits of an `n`-bit element in big-endian representation.
+    /// Enforces that the lower `n - k` bits are zero.
+    ///
+    fn to_upper_bits_be(&self, k: usize) -> Vec<Self::Boolean>;
+}
+
+/// Unary operator for converting to a base field.
+pub trait ToField {
+    type Boolean: BooleanTrait;
+    type Field: FieldTrait<Self::Boolean>;
+
+    /// Casts a circuit into a base field.
+    fn to_field(&self) -> Self::Field;
+}
+
+/// Unary operator for converting to a list of base fields.
+pub trait ToFields {
+    type Boolean: BooleanTrait;
+    type Field: FieldTrait<Self::Boolean>;
+
+    /// Casts a circuit into a list of base fields.
+    fn to_fields(&self) -> Vec<Self::Field>;
 }
