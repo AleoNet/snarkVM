@@ -2033,8 +2033,6 @@ dependencies = [
 name = "snarkvm-circuits"
 version = "0.7.5"
 dependencies = [
- "enum_index",
- "enum_index_derive",
  "snarkvm-circuits-core",
  "snarkvm-circuits-edge",
  "snarkvm-circuits-environment",
@@ -2048,7 +2046,6 @@ version = "0.7.5"
 dependencies = [
  "nom",
  "snarkvm-algorithms",
- "snarkvm-circuits-environment",
  "snarkvm-circuits-types",
  "snarkvm-curves",
  "snarkvm-fields",
@@ -2092,6 +2089,8 @@ version = "0.7.5"
 name = "snarkvm-circuits-types"
 version = "0.7.5"
 dependencies = [
+ "enum_index",
+ "enum_index_derive",
  "snarkvm-circuits-environment",
  "snarkvm-circuits-types-address",
  "snarkvm-circuits-types-boolean",
@@ -2100,6 +2099,7 @@ dependencies = [
  "snarkvm-circuits-types-integers",
  "snarkvm-circuits-types-scalar",
  "snarkvm-circuits-types-string",
+ "snarkvm-utilities",
 ]
 
 [[package]]
@@ -2108,7 +2108,9 @@ version = "0.7.5"
 dependencies = [
  "bech32",
  "snarkvm-circuits-environment",
+ "snarkvm-circuits-types-boolean",
  "snarkvm-circuits-types-group",
+ "snarkvm-circuits-types-scalar",
  "snarkvm-curves",
  "snarkvm-utilities",
 ]

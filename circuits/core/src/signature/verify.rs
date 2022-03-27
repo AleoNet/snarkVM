@@ -27,18 +27,17 @@ impl<A: Account> Signature<A> {
 
         // Compute the candidate verifier challenge.
         let candidate_verifier_challenge = {
+            // Convert the message into little-endian bits.
+            let message_bits = message.to_bits_le();
+            let message_elements =
+                message_bits.chunks(A::BaseField::size_in_data_bits()).map(FromBits::from_bits_le).collect::<Vec<_>>();
+
             // Construct the hash input (G^sk_sig G^r_sig G^sk_prf, G^r, message).
-            let mut preimage = vec![];
+            let mut preimage = Vec::with_capacity(3 + message_elements.len());
             preimage.push(address.to_group().to_x_coordinate());
             preimage.push(g_r.to_x_coordinate());
-            preimage.push(Field::constant((message.len() as u128).into())); // <- Message length *must* be constant.
-            preimage.extend_from_slice(
-                &message
-                    .to_bits_le()
-                    .chunks(A::BaseField::size_in_data_bits())
-                    .map(FromBits::from_bits_le)
-                    .collect::<Vec<_>>(),
-            );
+            preimage.push(Field::constant((message_bits.len() as u128).into())); // <- Message length *must* be constant.
+            preimage.extend_from_slice(&message_elements);
 
             // Hash to derive the verifier challenge.
             A::hash_to_scalar(&preimage)
@@ -57,7 +56,7 @@ impl<A: Account> Signature<A> {
         };
 
         let is_verifier_challenge_valid = self.verifier_challenge.is_equal(&candidate_verifier_challenge);
-        let is_address_valid = address.is_equal(&candidate_address);
+        let is_address_valid = address.to_group().is_equal(&candidate_address);
 
         is_verifier_challenge_valid & is_address_valid
     }
@@ -73,23 +72,23 @@ pub(crate) mod tests {
         SignatureSchemeOperations,
     };
     use snarkvm_curves::AffineCurve;
-    use snarkvm_utilities::{bytes_from_bits_le, test_crypto_rng, test_rng, UniformRand};
+    use snarkvm_utilities::{test_crypto_rng, test_rng, UniformRand};
 
     const ITERATIONS: usize = 100;
 
-    #[allow(clippy::type_complexity)]
-    pub(crate) fn generate_private_key_and_address()
-    -> (<Circuit as Environment>::ScalarField, <Circuit as Environment>::ScalarField, <Circuit as Environment>::Affine)
-    {
+    pub type NativeAffine = <Circuit as Environment>::Affine;
+    pub type NativeAffineParameters = <Circuit as Environment>::AffineParameters;
+    pub type NativeScalarField = <Circuit as Environment>::ScalarField;
+    pub type NativeSignatureScheme = AleoSignatureScheme<NativeAffineParameters>;
+
+    pub(crate) fn generate_private_key_and_address() -> (NativeScalarField, NativeScalarField, NativeAffine) {
         // Compute the signature parameters.
-        let native = AleoSignatureScheme::<<Circuit as Environment>::AffineParameters>::setup(
-            ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT,
-        );
+        let native = NativeSignatureScheme::setup(ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT);
 
         // Sample a random private key.
         let rng = &mut test_rng();
-        let sk_sig: <Circuit as Environment>::ScalarField = UniformRand::rand(rng);
-        let r_sig: <Circuit as Environment>::ScalarField = UniformRand::rand(rng);
+        let sk_sig: NativeScalarField = UniformRand::rand(rng);
+        let r_sig: NativeScalarField = UniformRand::rand(rng);
 
         // Compute G^sk_sig.
         let pk_sig = native.g_scalar_multiply(&sk_sig);
@@ -97,35 +96,46 @@ pub(crate) mod tests {
         let pr_sig = native.g_scalar_multiply(&r_sig);
         // Compute sk_prf := RO(G^sk_sig || G^r_sig).
         let sk_prf = native.hash_to_scalar_field(&[pk_sig.x, pr_sig.x]);
+        // Compute G^sk_prf.
+        let pk_prf = native.g_scalar_multiply(&sk_prf);
 
         // Return the private key components and address.
-        (sk_sig, r_sig, pk_sig + pr_sig + sk_prf)
+        (sk_sig, r_sig, pk_sig + pr_sig + pk_prf)
     }
 
-    #[allow(clippy::type_complexity)]
     pub(crate) fn generate_signature(
-        (sk_sig, r_sig): (<Circuit as Environment>::ScalarField, <Circuit as Environment>::ScalarField),
+        (sk_sig, r_sig): (&NativeScalarField, &NativeScalarField),
+        address: &NativeAffine,
         message: &[Literal<Circuit>],
-    ) -> AleoSignature<<Circuit as Environment>::AffineParameters> {
-        // Compute the signature parameters.
-        let native = AleoSignatureScheme::<<Circuit as Environment>::AffineParameters>::setup(
-            ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT,
-        );
+    ) -> AleoSignature<NativeAffineParameters> {
+        let rng = &mut test_crypto_rng();
+        let native = NativeSignatureScheme::setup(ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT);
 
-        // Return the signature.
-        native
-            .sign(&(sk_sig, r_sig), &bytes_from_bits_le(&message.to_bits_le().eject_value()), &mut test_crypto_rng())
-            .expect("Failed to generate a signature")
+        // Compute the signature.
+        let message = message.to_bits_le().eject_value();
+        let signature = native.sign(&(*sk_sig, *r_sig), &message, rng).expect("Failed to sign");
+        assert!(native.verify(address, &message, &signature).expect("Failed to verify signature"));
+        signature
     }
 
     fn check_verify(mode: Mode, num_constants: usize, num_public: usize, num_private: usize, num_constraints: usize) {
         for i in 0..ITERATIONS {
+            let rng = &mut test_rng();
+
+            // Sample a random message.
+            let message = vec![
+                Literal::Address(Address::new(mode, UniformRand::rand(rng))),
+                Literal::Boolean(Boolean::new(mode, UniformRand::rand(rng))),
+                Literal::Field(Field::new(mode, UniformRand::rand(rng))),
+                Literal::Group(Group::new(mode, UniformRand::rand(rng))),
+                Literal::Scalar(Scalar::new(mode, UniformRand::rand(rng))),
+            ];
+
             // Generate the private key and compute key components.
             let (sk_sig, r_sig, address) = generate_private_key_and_address();
-            let signature = generate_signature((sk_sig, r_sig), &[Literal::Constant(0u8)]);
+            let signature = generate_signature((&sk_sig, &r_sig), &address, &message);
 
             // Initialize the private key.
-            let private_key = PrivateKey::<Circuit>::new(mode, (sk_sig, r_sig));
             let address = Address::<Circuit>::new(mode, address);
             let signature = Signature::<Circuit>::new(
                 mode,
@@ -151,16 +161,16 @@ pub(crate) mod tests {
 
     #[test]
     fn test_verify_constant() {
-        check_verify(Mode::Constant, 2261, 0, 0, 0);
+        check_verify(Mode::Constant, 4287, 0, 0, 0);
     }
 
     #[test]
     fn test_verify_public() {
-        check_verify(Mode::Public, 1008, 0, 3093, 3094);
+        check_verify(Mode::Public, 1770, 0, 7325, 7330);
     }
 
     #[test]
     fn test_verify_private() {
-        check_verify(Mode::Private, 1008, 0, 3093, 3094);
+        check_verify(Mode::Private, 1770, 0, 7325, 7330);
     }
 }

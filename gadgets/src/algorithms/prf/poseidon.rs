@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{algorithms::crypto_hash::PoseidonCryptoHashGadget, traits::alloc::AllocGadget, FpGadget, PRFGadget};
+use crate::{algorithms::crypto_hash::PoseidonCryptoHashGadget, FpGadget, PRFGadget};
 use snarkvm_algorithms::prf::PoseidonPRF;
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
@@ -43,7 +43,7 @@ impl<F: PrimeField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool>
         };
 
         // Allocate the input length as a field element.
-        let input_length_gadget = FpGadget::<F>::alloc(cs.ns(|| "Allocate input length"), || Ok(&input_length))?;
+        let input_length_gadget = FpGadget::<F>::Constant(input_length);
 
         // Construct the preimage.
         let mut preimage = vec![seed.clone()];

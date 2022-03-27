@@ -19,7 +19,7 @@ pub mod verify;
 #[cfg(test)]
 use snarkvm_circuits_types::environment::assert_scope;
 
-use crate::{Account, PrivateKey};
+use crate::Account;
 use snarkvm_circuits_types::{environment::prelude::*, Address, Boolean, Field, Group, Literal, Scalar};
 
 pub struct Signature<A: Account> {

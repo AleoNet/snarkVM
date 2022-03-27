@@ -601,6 +601,8 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InnerCircuit<N> 
             // signature_message.extend_from_slice(&inputs_digest);
             // signature_message.extend_from_slice(&fee);
 
+            let signature_message = signature_message.to_bits_le(signature_cs.ns(|| "convert message to bits"))?;
+
             let signature_verification = account_signature_parameters.verify(
                 signature_cs.ns(|| "signature_verify"),
                 &input_owners[0],

@@ -16,7 +16,7 @@
 
 use crate::{Address, AleoAmount, ComputeKey, LedgerProof, Network, Operation, PrivateKey, Record};
 use snarkvm_algorithms::SignatureScheme;
-use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBits, ToBytes};
 
 use anyhow::{anyhow, Result};
 use once_cell::sync::OnceCell;
@@ -116,7 +116,7 @@ impl<N: Network> Request<N> {
 
         let message =
             to_bytes_le![commitments, records[0].program_id().unwrap_or_default() /*operation_id, fee*/]?;
-        let signature = caller.sign(&message, rng)?;
+        let signature = caller.sign(&message.to_bits_le(), rng)?;
 
         Self::from(records, ledger_proofs, operation, fee, signature, is_public)
     }
@@ -207,7 +207,7 @@ impl<N: Network> Request<N> {
         // Prepare for signature verification.
         let commitments: Vec<_> = self.records.iter().map(|record| record.commitment()).collect();
         let message = match to_bytes_le![commitments, program_id.unwrap_or_default() /*operation_id, self.fee*/] {
-            Ok(signature_message) => signature_message,
+            Ok(signature_message) => signature_message.to_bits_le(),
             Err(error) => {
                 eprintln!("Failed to construct request signature message: {}", error);
                 return false;
