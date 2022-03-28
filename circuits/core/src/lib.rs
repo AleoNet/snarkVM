@@ -23,6 +23,9 @@ pub use aleo::*;
 pub mod compute_key;
 pub use compute_key::*;
 
+pub mod pedersen;
+pub use pedersen::*;
+
 pub mod poseidon;
 pub use poseidon::*;
 
