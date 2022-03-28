@@ -14,32 +14,23 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![forbid(unsafe_code)]
-#![allow(clippy::too_many_arguments)]
+mod hash;
 
-pub mod aleo;
-pub use aleo::*;
+use super::PedersenCRH;
+use snarkvm_circuits_types::Environment;
 
-pub mod compute_key;
-pub use compute_key::*;
+pub struct PedersenCompressedCRH<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
+    crh: PedersenCRH<E, NUM_WINDOWS, WINDOW_SIZE>,
+}
 
-pub mod pedersen;
-pub use pedersen::*;
+impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+    PedersenCompressedCRH<E, NUM_WINDOWS, WINDOW_SIZE>
+{
+    pub fn setup(message: &str) -> Self {
+        Self { crh: PedersenCRH::setup(message) }
+    }
 
-pub mod pedersen_compressed;
-pub use pedersen_compressed::*;
-
-pub mod poseidon;
-pub use poseidon::*;
-
-pub mod private_key;
-pub use private_key::*;
-
-pub mod record;
-pub use record::*;
-
-pub mod signature;
-pub use signature::*;
-
-pub mod view_key;
-pub use view_key::*;
+    pub fn parameters(&self) -> &PedersenCRH<E, NUM_WINDOWS, WINDOW_SIZE> {
+        &self.crh
+    }
+}

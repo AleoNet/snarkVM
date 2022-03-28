@@ -14,32 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![forbid(unsafe_code)]
-#![allow(clippy::too_many_arguments)]
+use super::PedersenCompressedCRH;
+use snarkvm_circuits_types::{Boolean, Environment, Field};
 
-pub mod aleo;
-pub use aleo::*;
-
-pub mod compute_key;
-pub use compute_key::*;
-
-pub mod pedersen;
-pub use pedersen::*;
-
-pub mod pedersen_compressed;
-pub use pedersen_compressed::*;
-
-pub mod poseidon;
-pub use poseidon::*;
-
-pub mod private_key;
-pub use private_key::*;
-
-pub mod record;
-pub use record::*;
-
-pub mod signature;
-pub use signature::*;
-
-pub mod view_key;
-pub use view_key::*;
+impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+    PedersenCompressedCRH<E, NUM_WINDOWS, WINDOW_SIZE>
+{
+    /// Returns the affine x-coordinate as the collision-resistant hash output.
+    pub fn hash(&self, input: &[Boolean<E>]) -> Field<E> {
+        self.crh.hash(input).to_x_coordinate()
+    }
+}

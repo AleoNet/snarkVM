@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::Pedersen;
+use super::PedersenCRH;
 
 #[cfg(test)]
 use super::WINDOW_SIZE_MULTIPLIER;
@@ -23,9 +23,8 @@ use snarkvm_circuits_types::{Boolean, Environment, Group, Inject, Itertools, Ter
 
 use std::borrow::Cow;
 
-impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Pedersen<E, NUM_WINDOWS, WINDOW_SIZE> {
-    #[allow(dead_code)]
-    fn hash(&self, input: &[Boolean<E>]) -> Group<E> {
+impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> PedersenCRH<E, NUM_WINDOWS, WINDOW_SIZE> {
+    pub fn hash(&self, input: &[Boolean<E>]) -> Group<E> {
         let constant_false = Boolean::<E>::constant(false);
 
         let mut input = Cow::Borrowed(input);
@@ -53,7 +52,7 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Pederse
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_algorithms::{crh::PedersenCRH, CRH};
+    use snarkvm_algorithms::{crh::PedersenCRH as NativePedersen, CRH};
     use snarkvm_circuits_environment::{Circuit, Mode};
     use snarkvm_circuits_types::Eject;
     use snarkvm_curves::edwards_bls12::{EdwardsAffine, EdwardsProjective};
@@ -62,8 +61,8 @@ mod tests {
     const ITERATIONS: usize = 10;
 
     fn check_hash<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(mode: Mode, message: &str, input_value: &[bool]) {
-        let native_hasher = PedersenCRH::<EdwardsProjective, { NUM_WINDOWS }, { WINDOW_SIZE }>::setup(message);
-        let circuit_hasher = Pedersen::<Circuit, { NUM_WINDOWS }, { WINDOW_SIZE }>::setup(message);
+        let native_hasher = NativePedersen::<EdwardsProjective, { NUM_WINDOWS }, { WINDOW_SIZE }>::setup(message);
+        let circuit_hasher = PedersenCRH::<Circuit, { NUM_WINDOWS }, { WINDOW_SIZE }>::setup(message);
 
         for i in 0..ITERATIONS {
             let native_hash: EdwardsAffine = native_hasher.hash(input_value).expect("should be able to hash input");
