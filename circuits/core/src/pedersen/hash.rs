@@ -21,6 +21,7 @@ use snarkvm_circuits_types::{Boolean, Eject, Environment, Group, Inject, Itertoo
 use std::borrow::Cow;
 
 impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Pedersen<E, NUM_WINDOWS, WINDOW_SIZE> {
+    #[allow(dead_code)]
     fn hash(&self, input: &[Boolean<E>]) -> Group<E> {
         let constant_false = Boolean::<E>::constant(false);
 
@@ -43,5 +44,97 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Pederse
                 })
             })
             .fold(Group::<E>::zero(), |acc, x| acc + x)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_algorithms::{crh::PedersenCRH, CRH};
+    use snarkvm_circuits_environment::{Circuit, Mode};
+    use snarkvm_curves::{
+        edwards_bls12::{EdwardsAffine, EdwardsProjective},
+        ProjectiveCurve,
+    };
+    use snarkvm_utilities::{test_rng, ToBits, UniformRand};
+
+    const ITERATIONS: usize = 10;
+    const WINDOW_SIZE_MULTIPLIER: usize = 8;
+
+    fn check_hash<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(mode: Mode, message: &str, input_value: &[bool]) {
+        let native_hasher = PedersenCRH::<EdwardsProjective, { NUM_WINDOWS }, { WINDOW_SIZE }>::setup(message);
+        let circuit_hasher = Pedersen::<_, { NUM_WINDOWS }, { WINDOW_SIZE }>::setup(message);
+
+        // Check for equivalency of bases.
+        native_hasher.parameters().iter().zip(circuit_hasher.parameters().iter()).for_each(
+            |(native_bases, circuit_bases)| {
+                native_bases.iter().zip(circuit_bases.iter()).for_each(|(native_base, circuit_base)| {
+                    assert_eq!(native_base.into_affine(), circuit_base.eject_value())
+                })
+            },
+        );
+
+        for i in 0..ITERATIONS {
+            let native_hash: EdwardsAffine = native_hasher.hash(input_value).expect("should be able to hash input");
+            Circuit::scope(format!("Pedersen {mode} {i}"), || {
+                let circuit_input =
+                    input_value.iter().map(|b| Boolean::<Circuit>::new(mode, *b)).collect::<Vec<Boolean<_>>>();
+                let circuit_hash: EdwardsAffine = circuit_hasher.hash(&circuit_input).eject_value();
+                assert_eq!(native_hash, circuit_hash);
+            });
+        }
+    }
+
+    fn hash<const NUM_ELEMENTS: usize, const WINDOW_SIZE: usize>(mode: Mode) {
+        let rng = &mut test_rng();
+        let bits = (0..NUM_ELEMENTS)
+            .map(|_| <Circuit as Environment>::BaseField::rand(rng))
+            .collect::<Vec<_>>()
+            .iter()
+            .flat_map(|el| el.to_bits_le())
+            .collect::<Vec<_>>();
+        check_hash::<WINDOW_SIZE, 32>(mode, "pedersen_circuit", &bits);
+    }
+
+    #[test]
+    fn test_hash_constant() {
+        hash::<1, { 1 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
+        hash::<2, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
+        hash::<3, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
+        hash::<4, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
+        hash::<5, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
+        hash::<6, { 6 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
+        hash::<7, { 7 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
+        hash::<8, { 8 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
+        hash::<9, { 9 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
+        hash::<10, { 10 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
+    }
+
+    #[test]
+    fn test_hash_public() {
+        hash::<1, { 1 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
+        hash::<2, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
+        hash::<3, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
+        hash::<4, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
+        hash::<5, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
+        hash::<6, { 6 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
+        hash::<7, { 7 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
+        hash::<8, { 8 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
+        hash::<9, { 9 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
+        hash::<10, { 10 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
+    }
+
+    #[test]
+    fn test_hash_private() {
+        hash::<1, { 1 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
+        hash::<2, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
+        hash::<3, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
+        hash::<4, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
+        hash::<5, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
+        hash::<6, { 6 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
+        hash::<7, { 7 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
+        hash::<8, { 8 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
+        hash::<9, { 9 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
+        hash::<10, { 10 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
     }
 }

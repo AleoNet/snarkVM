@@ -10,7 +10,7 @@ edition = "2021"
 path = "../../algorithms"
 version = "0.7.5"
 default-features = false
-features = ["crypto_hash"]
+features = ["crypto_hash", "crh"]
 
 [dependencies.snarkvm-curves]
 path = "../../curves"
