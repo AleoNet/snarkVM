@@ -44,6 +44,24 @@ const NUM_IDENTIFIER_BYTES: usize = 64;
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Identifier<E: Environment>(String, PhantomData<E>);
 
+impl<E: Environment> Identifier<E> {
+    /// Create a new identifier from a string.
+    pub fn new(identifier: String) -> Self {
+        match identifier.len() <= NUM_IDENTIFIER_BYTES {
+            true => Self(identifier, PhantomData),
+            false => E::halt(format!(
+                "Identifier {} is too large. Identifiers must be <= {} bytes long.",
+                identifier, NUM_IDENTIFIER_BYTES
+            )),
+        }
+    }
+
+    /// Returns the identifier as a string.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
 impl<E: Environment> Parser for Identifier<E> {
     type Environment = E;
 
@@ -64,7 +82,7 @@ impl<E: Environment> Parser for Identifier<E> {
         // Check for alphanumeric characters and underscores.
         map_res(recognize(pair(alpha1, many0(alt((alphanumeric1, tag("_")))))), |name: &str| {
             match name.len() <= NUM_IDENTIFIER_BYTES {
-                true => Ok(Self(name.to_string(), PhantomData)),
+                true => Ok(Self::new(name.to_string())),
                 false => Err(error(format!("Failed to parse template identifier of {} bytes", name.len()))),
             }
         })(string)
