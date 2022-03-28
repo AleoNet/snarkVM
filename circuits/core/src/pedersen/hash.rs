@@ -98,7 +98,7 @@ mod tests {
 
     #[test]
     fn test_hash_constant() {
-        hash::<1, { 1 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
+        hash::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Constant);
         hash::<2, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
         hash::<3, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
         hash::<4, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
@@ -112,7 +112,7 @@ mod tests {
 
     #[test]
     fn test_hash_public() {
-        hash::<1, { 1 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
+        hash::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Public);
         hash::<2, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
         hash::<3, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
         hash::<4, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
@@ -126,7 +126,7 @@ mod tests {
 
     #[test]
     fn test_hash_private() {
-        hash::<1, { 1 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
+        hash::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Private);
         hash::<2, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
         hash::<3, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
         hash::<4, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
