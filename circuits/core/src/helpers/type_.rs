@@ -26,7 +26,7 @@ use snarkvm_utilities::{
 use enum_index::EnumIndex;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, EnumIndex)]
-pub enum Type<E: Environment> {
+pub enum Type<E> {
     /// The Aleo address type.
     Address(Mode),
     /// The boolean type.
