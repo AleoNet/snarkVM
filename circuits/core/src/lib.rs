@@ -17,6 +17,9 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
+pub mod pedersen;
+pub use pedersen::*;
+
 pub mod poseidon;
 pub use poseidon::*;
 
