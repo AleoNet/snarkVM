@@ -61,12 +61,11 @@ mod tests {
 
     fn check_hash<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(mode: Mode, message: &str, input_value: &[bool]) {
         let native_hasher = PedersenCRH::<EdwardsProjective, { NUM_WINDOWS }, { WINDOW_SIZE }>::setup(message);
-        let circuit_hasher = Pedersen::<_, { NUM_WINDOWS }, { WINDOW_SIZE }>::setup(message);
+        let circuit_hasher = Pedersen::<Circuit, { NUM_WINDOWS }, { WINDOW_SIZE }>::setup(message);
 
         for i in 0..ITERATIONS {
             let native_hash: EdwardsAffine = native_hasher.hash(input_value).expect("should be able to hash input");
-            let circuit_input =
-                input_value.iter().map(|b| Boolean::<Circuit>::new(mode, *b)).collect::<Vec<Boolean<_>>>();
+            let circuit_input = input_value.iter().map(|b| Boolean::<_>::new(mode, *b)).collect::<Vec<Boolean<_>>>();
 
             Circuit::scope(format!("Pedersen {mode} {i}"), || {
                 let circuit_hash: EdwardsAffine = circuit_hasher.hash(&circuit_input).eject_value();
