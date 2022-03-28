@@ -186,6 +186,15 @@ pub enum Value<E: Environment> {
 }
 
 impl<E: Environment> Value<E> {
+    /// Returns the annotation.
+    #[inline]
+    pub fn annotation(&self) -> Annotation<E> {
+        match self {
+            Self::Literal(literal) => Annotation::Type(Type::from(literal)),
+            Self::Composite(composite) => Annotation::Composite(composite.identifier().clone()),
+        }
+    }
+
     /// Returns `true` if the value is a constant.
     #[inline]
     pub fn is_constant(&self) -> bool {
@@ -743,7 +752,9 @@ pub trait Memory: Environment {
     ///
     /// # Errors
     /// This method will halt if there are instructions or output statements in memory already.
+    /// This method will halt if the input statement was previously added.
     /// This method will halt if the given input register is not new.
+    /// This method will halt if the given input register has a previously saved annotation in memory.
     /// This method will halt if the given inputs are not incrementing monotonically.
     /// This method will halt if the given input annotation references a non-existent template.
     fn new_input_statement(input: Input<Self>);
@@ -752,9 +763,11 @@ pub trait Memory: Environment {
     /// This method is called before a function is run.
     ///
     /// # Errors
-    /// This function will halt if the input registers are not assigned monotonically.
-    /// This function will halt if the input register was previously stored.
-    /// This function will halt if the register is not an input register.
+    /// This method will halt if the input registers are not assigned monotonically.
+    /// This method will halt if the input register was previously stored.
+    /// This method will halt if the register is not an input register.
+    /// This method will halt if the input statement does not exist.
+    /// This method will halt if the annotation does not match.
     fn assign_input(input: Input<Self>, value: Value<Self>);
 
     /// Adds the given instruction into memory.
@@ -791,6 +804,10 @@ pub struct Stack<E: Environment> {
     /// When input assignments are added, the entry is updated to `(locator, Some(value))`.
     /// No changes occur to `registers` when output statements are added.
     registers: IndexMap<Locator, Option<Value<E>>>,
+    /// The map of register locators to their annotations.
+    /// When input statements are added, a new entry of `(locator, annotation)` is added to this map.
+    annotations: IndexMap<Locator, Annotation<E>>,
+
     /// The templates declared for the program.
     /// This is a map from the template name to the template.
     templates: IndexMap<Identifier<E>, Template<E>>,
@@ -885,7 +902,9 @@ impl<E: Environment> Stack<E> {
     ///
     /// # Errors
     /// This method will halt if there are instructions or output statements in memory already.
+    /// This method will halt if the input statement was previously added.
     /// This method will halt if the given input register is not new.
+    /// This method will halt if the given input register has a previously saved annotation in memory.
     /// This method will halt if the given inputs are not incrementing monotonically.
     /// This method will halt if the given input annotation references a non-existent template.
     #[inline]
@@ -897,9 +916,19 @@ impl<E: Environment> Stack<E> {
             E::halt(format!("Cannot add input statement after output statements have been added"))
         }
 
+        // Ensure the input statement was not previously added.
+        if self.input_statements.contains(&input) {
+            E::halt(format!("Input statement {input} was previously added"))
+        }
+
         // Ensure the input does not exist in the registers.
         if self.registers.contains_key(input.locator()) {
             E::halt(format!("Input register {} was previously stored", input.locator()))
+        }
+
+        // Ensure the input register does not exist in the annotations.
+        if self.annotations.contains_key(input.locator()) {
+            E::halt(format!("Input register {} was previously annotated", input.locator()))
         }
 
         // Ensure the input register is new, and incrementing monotonically.
@@ -920,6 +949,9 @@ impl<E: Environment> Stack<E> {
             }
         }
 
+        // Insert the register into the annotations.
+        self.annotations.insert(*input.locator(), input.annotation().clone());
+
         // Insert the input statement to memory.
         self.input_statements.insert(input);
     }
@@ -928,9 +960,11 @@ impl<E: Environment> Stack<E> {
     /// This method is called before a function is run.
     ///
     /// # Errors
-    /// This function will halt if the input registers are not assigned monotonically.
-    /// This function will halt if the input register was previously stored.
-    /// This function will halt if the register is not an input register.
+    /// This method will halt if the input registers are not assigned monotonically.
+    /// This method will halt if the input register was previously stored.
+    /// This method will halt if the register is not an input register.
+    /// This method will halt if the input statement does not exist.
+    /// This method will halt if the annotation does not match.
     #[inline]
     fn assign_input(&mut self, input: Input<E>, value: Value<E>) {
         // Ensure the input exists in the registers.
@@ -938,9 +972,9 @@ impl<E: Environment> Stack<E> {
             E::halt(format!("Register {} does not exist", input.locator()))
         }
 
-        // Ensure the input exists in the inputs.
+        // Ensure the input is an input register.
         if !self.input_statements.contains(&input) {
-            E::halt(format!("Input register {} does not exist", input.locator()))
+            E::halt(format!("Register {} is not an input register", input.locator()))
         }
 
         // Ensure the previous input is assigned before the current input.
@@ -952,12 +986,22 @@ impl<E: Environment> Stack<E> {
             _ => (),
         }
 
+        // Ensure the input annotation matches.
+        let expected_annotation = match self.annotations.get(input.locator()) {
+            Some(annotation) => annotation,
+            None => E::halt(format!("Annotation for register {} does not exist", input.locator())),
+        };
+        if expected_annotation != &value.annotation() {
+            E::halt(format!("Input register {} annotation does not match", input.locator()))
+        }
+
         // Assign the input value to the register.
         if let Some(Some(..)) = self.registers.insert(*input.locator(), Some(value)) {
             E::halt(format!("Input register {} was already assigned", input.locator()))
         }
     }
 
+    // TODO (howardwu): Instructions should have annotations, and we should check them here.
     /// Adds the given instruction into memory.
     /// This method is called before a function is run.
     ///
@@ -1067,10 +1111,3 @@ impl<E: Environment> Stack<E> {
         self.output_statements.insert(output);
     }
 }
-
-// enum Declaration<E> {
-//     /// A template declaration.
-//     Template(Template<E>),
-//     /// A function declaration.
-//     Function(Function<E>),
-// }
