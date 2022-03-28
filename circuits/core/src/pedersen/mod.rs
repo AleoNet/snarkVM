@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod hash;
+
 use snarkvm_algorithms::crypto_hash::hash_to_curve;
 use snarkvm_circuits_environment::Mode;
 use snarkvm_circuits_types::{Double, Environment, Group, Inject, StringType};
