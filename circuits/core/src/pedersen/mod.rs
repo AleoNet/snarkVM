@@ -18,20 +18,21 @@ mod hash;
 
 use snarkvm_algorithms::crypto_hash::hash_to_curve;
 use snarkvm_circuits_environment::Mode;
-use snarkvm_circuits_types::{Double, Environment, Group, Inject, StringType};
+use snarkvm_circuits_types::{Double, Environment, Group, Inject};
 
 pub struct Pedersen<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
     pub bases: Vec<Vec<Group<E>>>,
 }
 
 impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Pedersen<E, NUM_WINDOWS, WINDOW_SIZE> {
-    fn setup(message: StringType<E>) -> Self {
+    #[allow(dead_code)]
+    fn setup(message: &str) -> Self {
         let bases = (0..NUM_WINDOWS)
             .map(|index| {
                 // Construct an indexed message to attempt to sample a base.
                 let (generator, _, _) = hash_to_curve(&format!("{message} at {index}"));
                 // Inject the new base.
-                let mut base = Group::new(Mode::Public, generator);
+                let mut base = Group::new(Mode::Constant, generator);
                 let mut powers = Vec::with_capacity(WINDOW_SIZE);
                 for _ in 0..WINDOW_SIZE {
                     powers.push(base.clone());
@@ -44,6 +45,7 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Pederse
         Self { bases }
     }
 
+    #[allow(dead_code)]
     fn parameters(&self) -> Vec<Vec<Group<E>>> {
         self.bases.clone()
     }
