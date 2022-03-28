@@ -16,7 +16,7 @@
 
 use super::Pedersen;
 
-use snarkvm_circuits_types::{Boolean, Eject, Environment, Group, Inject, Itertools, Zero};
+use snarkvm_circuits_types::{Boolean, Environment, Group, Inject, Itertools, Ternary, Zero};
 
 use std::borrow::Cow;
 
@@ -38,10 +38,10 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Pederse
             .chunks(WINDOW_SIZE)
             .zip_eq(&self.bases)
             .flat_map(|(bits, powers)| {
-                bits.iter().zip_eq(powers).flat_map(|(bit, base)| match bit.eject_value() {
-                    true => Some(base.clone()),
-                    false => None,
-                })
+                bits.iter()
+                    .zip_eq(powers)
+                    .map(|(bit, base)| Group::<E>::ternary(bit, &base.clone(), &Group::<E>::zero()))
+                    .collect::<Vec<Group<E>>>()
             })
             .fold(Group::<E>::zero(), |acc, x| acc + x)
     }
@@ -52,10 +52,8 @@ mod tests {
     use super::*;
     use snarkvm_algorithms::{crh::PedersenCRH, CRH};
     use snarkvm_circuits_environment::{Circuit, Mode};
-    use snarkvm_curves::{
-        edwards_bls12::{EdwardsAffine, EdwardsProjective},
-        ProjectiveCurve,
-    };
+    use snarkvm_circuits_types::Eject;
+    use snarkvm_curves::edwards_bls12::{EdwardsAffine, EdwardsProjective};
     use snarkvm_utilities::{test_rng, ToBits, UniformRand};
 
     const ITERATIONS: usize = 10;
@@ -65,20 +63,12 @@ mod tests {
         let native_hasher = PedersenCRH::<EdwardsProjective, { NUM_WINDOWS }, { WINDOW_SIZE }>::setup(message);
         let circuit_hasher = Pedersen::<_, { NUM_WINDOWS }, { WINDOW_SIZE }>::setup(message);
 
-        // Check for equivalency of bases.
-        native_hasher.parameters().iter().zip(circuit_hasher.parameters().iter()).for_each(
-            |(native_bases, circuit_bases)| {
-                native_bases.iter().zip(circuit_bases.iter()).for_each(|(native_base, circuit_base)| {
-                    assert_eq!(native_base.into_affine(), circuit_base.eject_value())
-                })
-            },
-        );
-
         for i in 0..ITERATIONS {
             let native_hash: EdwardsAffine = native_hasher.hash(input_value).expect("should be able to hash input");
+            let circuit_input =
+                input_value.iter().map(|b| Boolean::<Circuit>::new(mode, *b)).collect::<Vec<Boolean<_>>>();
+
             Circuit::scope(format!("Pedersen {mode} {i}"), || {
-                let circuit_input =
-                    input_value.iter().map(|b| Boolean::<Circuit>::new(mode, *b)).collect::<Vec<Boolean<_>>>();
                 let circuit_hash: EdwardsAffine = circuit_hasher.hash(&circuit_input).eject_value();
                 assert_eq!(native_hash, circuit_hash);
             });

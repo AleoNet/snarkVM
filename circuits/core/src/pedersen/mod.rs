@@ -50,3 +50,27 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Pederse
         self.bases.clone()
     }
 }
+
+/*
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn check_setup() {
+        // Check for equivalency of bases.
+        native_hasher.parameters().iter().zip(circuit_hasher.parameters().iter()).for_each(
+            |(native_bases, circuit_bases)| {
+                native_bases.iter().zip(circuit_bases.iter()).for_each(|(native_base, circuit_base)| {
+                    assert_eq!(native_base.into_affine(), circuit_base.eject_value())
+                })
+            },
+        );
+    }
+
+    #[test]
+    fn test_setup_constant {
+
+
+    }
+}
+*/
