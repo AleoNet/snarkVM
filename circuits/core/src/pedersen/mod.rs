@@ -20,6 +20,9 @@ use snarkvm_algorithms::crypto_hash::hash_to_curve;
 use snarkvm_circuits_environment::Mode;
 use snarkvm_circuits_types::{Double, Environment, Group, Inject};
 
+#[cfg(test)]
+const WINDOW_SIZE_MULTIPLIER: usize = 8;
+
 pub struct Pedersen<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
     pub bases: Vec<Vec<Group<E>>>,
 }
@@ -59,21 +62,23 @@ mod tests {
     use snarkvm_circuits_types::Eject;
     use snarkvm_curves::{edwards_bls12::EdwardsProjective, ProjectiveCurve};
 
+    const ITERATIONS: usize = 10;
     const MESSAGE: &str = "pedersen_gadget_setup_test";
-    const WINDOW_SIZE_MULTIPLIER: usize = 8;
 
     fn check_setup<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>() {
-        let native_hasher = PedersenCRH::<EdwardsProjective, { NUM_WINDOWS }, { WINDOW_SIZE }>::setup(MESSAGE);
-        let circuit_hasher = Pedersen::<Circuit, { NUM_WINDOWS }, { WINDOW_SIZE }>::setup(MESSAGE);
+        for _ in 0..ITERATIONS {
+            let native_hasher = PedersenCRH::<EdwardsProjective, { NUM_WINDOWS }, { WINDOW_SIZE }>::setup(MESSAGE);
+            let circuit_hasher = Pedersen::<Circuit, { NUM_WINDOWS }, { WINDOW_SIZE }>::setup(MESSAGE);
 
-        // Check for equivalency of bases.
-        native_hasher.parameters().iter().zip(circuit_hasher.parameters().iter()).for_each(
-            |(native_bases, circuit_bases)| {
-                native_bases.iter().zip(circuit_bases.iter()).for_each(|(native_base, circuit_base)| {
-                    assert_eq!(native_base.into_affine(), circuit_base.eject_value());
-                })
-            },
-        );
+            // Check for equivalency of bases.
+            native_hasher.parameters().iter().zip(circuit_hasher.parameters().iter()).for_each(
+                |(native_bases, circuit_bases)| {
+                    native_bases.iter().zip(circuit_bases.iter()).for_each(|(native_base, circuit_base)| {
+                        assert_eq!(native_base.into_affine(), circuit_base.eject_value());
+                    })
+                },
+            );
+        }
     }
 
     #[test]

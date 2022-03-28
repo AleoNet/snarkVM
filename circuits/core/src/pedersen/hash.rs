@@ -16,6 +16,9 @@
 
 use super::Pedersen;
 
+#[cfg(test)]
+use super::WINDOW_SIZE_MULTIPLIER;
+
 use snarkvm_circuits_types::{Boolean, Environment, Group, Inject, Itertools, Ternary, Zero};
 
 use std::borrow::Cow;
@@ -57,7 +60,6 @@ mod tests {
     use snarkvm_utilities::{test_rng, ToBits, UniformRand};
 
     const ITERATIONS: usize = 10;
-    const WINDOW_SIZE_MULTIPLIER: usize = 8;
 
     fn check_hash<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(mode: Mode, message: &str, input_value: &[bool]) {
         let native_hasher = PedersenCRH::<EdwardsProjective, { NUM_WINDOWS }, { WINDOW_SIZE }>::setup(message);
