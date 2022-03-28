@@ -83,7 +83,76 @@ impl<E: Environment> fmt::Display for Annotation<E> {
     }
 }
 
-use indexmap::IndexMap;
+/// A template is a user-defined type that represents a collection of circuits.
+/// A template does not have a mode; rather its individual members are annotated with modes.
+/// A template is defined by an identifier (such as `record`) and a list of members,
+/// such as `[(owner, address.public), (balance, i64.private)]`, where the left entry is an identifier,
+/// and the right entry is a type annotation.
+///
+/// A composite format is used to access individual members of a template. For example,
+/// if the `record` template is assigned to register `r0`, individual members can be accessed
+/// as `r0.owner` or `r0.balance`. This generalizes to the composite format, i.e. `r{locator}.{owner}`.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Template<E: Environment> {
+    /// The identifier of the composite.
+    identifier: Identifier<E>,
+    /// The members of the composite.
+    members: Vec<(Identifier<E>, Annotation<E>)>,
+}
+
+impl<E: Environment> Template<E> {
+    /// Initializes a new template. The identifier is the name of the template,
+    /// and the members are a list of identifiers and type annotations.
+    #[inline]
+    pub fn new(identifier: Identifier<E>, members: Vec<(Identifier<E>, Annotation<E>)>) -> Self {
+        Self { identifier, members }
+    }
+
+    /// Returns the identifier of the template.
+    #[inline]
+    pub fn identifier(&self) -> &Identifier<E> {
+        &self.identifier
+    }
+
+    /// Returns the members of the template.
+    #[inline]
+    pub fn members(&self) -> &[(Identifier<E>, Annotation<E>)] {
+        &self.members
+    }
+}
+
+/// A composite literal is an instantiation of a template. A composite literal is defined by an identifier (such as `record`)
+/// and a list of members, such as `[(owner, aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.public), (balance, 5i64.private)]`,
+/// where the left entry is an identifier, and the right entry is a type annotation.
+/// The members of a composite are accessed as `r{locator}.{identifier}`.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Composite<E: Environment> {
+    /// The identifier of the composite.
+    identifier: Identifier<E>,
+    /// The members of the composite.
+    members: Vec<(Identifier<E>, Value<E>)>,
+}
+
+impl<E: Environment> Composite<E> {
+    /// Initializes a new composite literal. The identifier is the name of the template,
+    /// and the members are a list of identifiers and values.
+    #[inline]
+    pub fn new(identifier: Identifier<E>, members: Vec<(Identifier<E>, Value<E>)>) -> Self {
+        Self { identifier, members }
+    }
+
+    /// Returns the identifier of the composite.
+    #[inline]
+    pub fn identifier(&self) -> &Identifier<E> {
+        &self.identifier
+    }
+
+    /// Returns the members of the composite.
+    #[inline]
+    pub fn members(&self) -> &[(Identifier<E>, Value<E>)] {
+        &self.members
+    }
+}
 
 /// A value contains the underlying literal(s) in memory.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -91,7 +160,7 @@ pub enum Value<E: Environment> {
     /// A literal contains its declared literal value.
     Literal(Literal<E>),
     /// A composite literal contains its declared member values.
-    Composite(Identifier<E>, Vec<(Identifier<E>, Value<E>)>),
+    Composite(Composite<E>),
 }
 
 impl<E: Environment> Value<E> {
@@ -100,7 +169,7 @@ impl<E: Environment> Value<E> {
     pub fn is_constant(&self) -> bool {
         match self {
             Self::Literal(literal) => literal.is_constant(),
-            Self::Composite(_, members) => members.iter().all(|(_, value)| value.is_constant()),
+            Self::Composite(composite) => composite.members().iter().all(|(_, value)| value.is_constant()),
         }
     }
 
@@ -109,8 +178,8 @@ impl<E: Environment> Value<E> {
     #[inline]
     fn get_composite(&self, identifier: &Identifier<E>) -> Option<&Value<E>> {
         match self {
-            Self::Composite(_, members) => {
-                members.iter().find(|(member, _)| member == identifier).map(|(_, value)| value)
+            Self::Composite(composite) => {
+                composite.members().iter().find(|(member, _)| member == identifier).map(|(_, value)| value)
             }
             _ => None,
         }
@@ -146,7 +215,7 @@ impl<E: Environment> Parser for Value<E> {
         let slice_parse = pair(pair(tag("["), sequence_parse), tag("]"));
         // Parses a composite literal of form: identifier[(identifier, value), ...].
         let composite_literal = map(pair(Identifier::parse, slice_parse), |(identifier, ((_, members), _))| {
-            Self::Composite(identifier, members.into_iter().collect())
+            Self::Composite(Composite::new(identifier, members))
         });
 
         // Parse to determine the value (order matters).
@@ -161,9 +230,9 @@ impl<E: Environment> fmt::Display for Value<E> {
             // Prints the literal, i.e. 10field.private
             Self::Literal(literal) => fmt::Display::fmt(literal, f),
             // Prints the composite literal, i.e. "record"[("owner",aleo1xxx.public),("value",10i64.private)]
-            Self::Composite(name, members) => {
-                let mut output = format!("{}[", name);
-                for (identifier, value) in members.iter() {
+            Self::Composite(composite) => {
+                let mut output = format!("{}[", composite.identifier());
+                for (identifier, value) in composite.members().iter() {
                     output += &format!("({identifier},{value}),");
                 }
                 output.pop(); // trailing comma
@@ -654,7 +723,7 @@ pub trait Memory: Environment {
     fn new_output_statement(output: Output<Self>);
 }
 
-use indexmap::IndexSet;
+use indexmap::{IndexMap, IndexSet};
 
 pub struct Stack<E: Environment> {
     /// The map of register locators to their values.
