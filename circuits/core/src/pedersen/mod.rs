@@ -51,26 +51,42 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Pederse
     }
 }
 
-/*
 #[cfg(test)]
 mod tests {
     use super::*;
+    use snarkvm_algorithms::{crh::PedersenCRH, CRH};
+    use snarkvm_circuits_environment::Circuit;
+    use snarkvm_circuits_types::Eject;
+    use snarkvm_curves::{edwards_bls12::EdwardsProjective, ProjectiveCurve};
 
-    fn check_setup() {
+    const MESSAGE: &str = "pedersen_gadget_setup_test";
+    const WINDOW_SIZE_MULTIPLIER: usize = 8;
+
+    fn check_setup<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>() {
+        let native_hasher = PedersenCRH::<EdwardsProjective, { NUM_WINDOWS }, { WINDOW_SIZE }>::setup(MESSAGE);
+        let circuit_hasher = Pedersen::<Circuit, { NUM_WINDOWS }, { WINDOW_SIZE }>::setup(MESSAGE);
+
         // Check for equivalency of bases.
         native_hasher.parameters().iter().zip(circuit_hasher.parameters().iter()).for_each(
             |(native_bases, circuit_bases)| {
                 native_bases.iter().zip(circuit_bases.iter()).for_each(|(native_base, circuit_base)| {
-                    assert_eq!(native_base.into_affine(), circuit_base.eject_value())
+                    assert_eq!(native_base.into_affine(), circuit_base.eject_value());
                 })
             },
         );
     }
 
     #[test]
-    fn test_setup_constant {
-
-
+    fn test_setup_constant() {
+        check_setup::<1, WINDOW_SIZE_MULTIPLIER>();
+        check_setup::<2, { 2 * WINDOW_SIZE_MULTIPLIER }>();
+        check_setup::<3, { 3 * WINDOW_SIZE_MULTIPLIER }>();
+        check_setup::<4, { 4 * WINDOW_SIZE_MULTIPLIER }>();
+        check_setup::<5, { 5 * WINDOW_SIZE_MULTIPLIER }>();
+        check_setup::<6, { 6 * WINDOW_SIZE_MULTIPLIER }>();
+        check_setup::<7, { 7 * WINDOW_SIZE_MULTIPLIER }>();
+        check_setup::<8, { 8 * WINDOW_SIZE_MULTIPLIER }>();
+        check_setup::<9, { 9 * WINDOW_SIZE_MULTIPLIER }>();
+        check_setup::<10, { 10 * WINDOW_SIZE_MULTIPLIER }>();
     }
 }
-*/
