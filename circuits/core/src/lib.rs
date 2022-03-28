@@ -28,10 +28,6 @@ pub use helpers::*;
 
 use snarkvm_circuits_types::prelude::*;
 
-use once_cell::unsync::OnceCell;
-
-use snarkvm_utilities::{error, FromBytes, ToBytes};
-
 use core::fmt;
 use nom::{
     branch::alt,
@@ -46,8 +42,6 @@ use std::{
     io::{Read, Result as IoResult, Write},
 };
 
-use core::marker::PhantomData;
-
 pub mod identifier;
 pub use identifier::*;
 
@@ -59,19 +53,20 @@ pub enum Annotation<E: Environment> {
     /// A type contains its type name and mode.
     Type(Type<E>),
     /// A composite type contains its identifier.
-    CompositeType(Identifier<E>),
+    Composite(Identifier<E>),
 }
 
 impl<E: Environment> Parser for Annotation<E> {
     type Environment = E;
 
     /// Parses a string into an annotation.
+    /// The annotation is of the form `{type_name}.{mode}` or `{identifier}`.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse to determine the annotation (order matters).
         alt((
             map(Type::parse, |type_| Self::Type(type_)),
-            map(Identifier::parse, |identifier| Self::CompositeType(identifier)),
+            map(Identifier::parse, |identifier| Self::Composite(identifier)),
         ))(string)
     }
 }
@@ -83,7 +78,7 @@ impl<E: Environment> fmt::Display for Annotation<E> {
             // Prints the type, i.e. field.private
             Self::Type(type_) => fmt::Display::fmt(type_, f),
             // Prints the composite type, i.e. record
-            Self::CompositeType(identifier) => fmt::Display::fmt(identifier, f),
+            Self::Composite(identifier) => fmt::Display::fmt(identifier, f),
         }
     }
 }
@@ -91,20 +86,32 @@ impl<E: Environment> fmt::Display for Annotation<E> {
 use indexmap::IndexMap;
 
 /// A value contains the underlying literal(s) in memory.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Value<E: Environment> {
     /// A literal contains its declared literal value.
     Literal(Literal<E>),
     /// A composite literal contains its declared member values.
-    CompositeLiteral(Identifier<E>, IndexMap<Identifier<E>, Value<E>>),
+    Composite(Identifier<E>, Vec<(Identifier<E>, Value<E>)>),
 }
 
 impl<E: Environment> Value<E> {
+    /// Returns `true` if the value is a constant.
+    #[inline]
+    pub fn is_constant(&self) -> bool {
+        match self {
+            Self::Literal(literal) => literal.is_constant(),
+            Self::Composite(_, members) => members.iter().all(|(_, value)| value.is_constant()),
+        }
+    }
+
     /// Returns the literal corresponding to the given identifier, if `self` is a composite literal.
+    /// Returns `None` otherwise.
     #[inline]
     fn get_composite(&self, identifier: &Identifier<E>) -> Option<&Value<E>> {
         match self {
-            Self::CompositeLiteral(_, members) => members.get(identifier),
+            Self::Composite(_, members) => {
+                members.iter().find(|(member, _)| member == identifier).map(|(_, value)| value)
+            }
             _ => None,
         }
     }
@@ -139,7 +146,7 @@ impl<E: Environment> Parser for Value<E> {
         let slice_parse = pair(pair(tag("["), sequence_parse), tag("]"));
         // Parses a composite literal of form: identifier[(identifier, value), ...].
         let composite_literal = map(pair(Identifier::parse, slice_parse), |(identifier, ((_, members), _))| {
-            Self::CompositeLiteral(identifier, members.into_iter().collect())
+            Self::Composite(identifier, members.into_iter().collect())
         });
 
         // Parse to determine the value (order matters).
@@ -154,7 +161,7 @@ impl<E: Environment> fmt::Display for Value<E> {
             // Prints the literal, i.e. 10field.private
             Self::Literal(literal) => fmt::Display::fmt(literal, f),
             // Prints the composite literal, i.e. "record"[("owner",aleo1xxx.public),("value",10i64.private)]
-            Self::CompositeLiteral(name, members) => {
+            Self::Composite(name, members) => {
                 let mut output = format!("{}[", name);
                 for (identifier, value) in members.iter() {
                     output += &format!("({identifier},{value}),");
@@ -178,7 +185,7 @@ pub enum Register<E: Environment> {
     Register(Locator),
     /// A composite register contains its locator and identifier in memory.
     /// The composite register holds a value (that is non-composite) in memory.
-    CompositeRegister(Locator, Identifier<E>),
+    Composite(Locator, Identifier<E>),
 }
 
 impl<E: Environment> Register<E> {
@@ -187,7 +194,7 @@ impl<E: Environment> Register<E> {
     pub fn locator(&self) -> &Locator {
         match self {
             Self::Register(locator) => locator,
-            Self::CompositeRegister(locator, _) => locator,
+            Self::Composite(locator, _) => locator,
         }
     }
 }
@@ -196,17 +203,19 @@ impl<E: Environment> Parser for Register<E> {
     type Environment = E;
 
     /// Parses a string into a register.
+    /// The register is of the form `r{locator}` or `r{locator}.{identifier}`.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        // Parse the register locator of form `r{locator}`.
-        let (string, locator) = map_res(recognize(pair(tag("r"), many1(one_of("0123456789")))), |locator: &str| {
-            locator.parse::<Locator>()
-        })(string)?;
+        // Parse the register character from the string.
+        let (string, _) = tag("r")(string)?;
+        // Parse the locator from the string.
+        let (string, locator) =
+            map_res(recognize(many1(one_of("0123456789"))), |locator: &str| locator.parse::<u64>())(string)?;
         // Parse the identifier from the string, if it is a composite register.
         let (string, identifier) = opt(pair(tag("."), Identifier::parse))(string)?;
         // Return the register.
         Ok((string, match identifier {
-            Some((_, identifier)) => Self::CompositeRegister(locator, identifier),
+            Some((_, identifier)) => Self::Composite(locator, identifier),
             None => Self::Register(locator),
         }))
     }
@@ -219,7 +228,7 @@ impl<E: Environment> fmt::Display for Register<E> {
             // Prints the register, i.e. r0
             Self::Register(locator) => write!(f, "r{locator}"),
             // Prints the composite register, i.e. r0.owner
-            Self::CompositeRegister(locator, identifier) => write!(f, "r{locator}.{identifier}"),
+            Self::Composite(locator, identifier) => write!(f, "r{locator}.{identifier}"),
         }
     }
 }
@@ -255,7 +264,7 @@ impl<E: Environment> Input<E> {
     #[inline]
     fn new(register: Register<E>, annotation: Annotation<E>) -> Self {
         // Ensure the register is not a composite register format.
-        if let Register::CompositeRegister(..) = register {
+        if let Register::Composite(..) = register {
             E::halt("Input register cannot be of composite format")
         }
         Self { register, annotation }
@@ -286,6 +295,7 @@ impl<E: Environment> Parser for Input<E> {
     type Environment = E;
 
     /// Parses a string into an input statement.
+    /// The input statement is of the form `input {register} {annotation}`.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the input keyword from the string.
@@ -333,6 +343,8 @@ impl<E: Environment> PartialOrd for Input<E> {
 }
 
 /// The output statement defines an output of a function.
+/// The output may refer to the value in either a register or a composite register.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Output<E: Environment> {
     /// The output register.
     register: Register<E>,
@@ -352,11 +364,11 @@ impl<E: Environment> Output<E> {
         // Ensure the register type and annotation type match.
         match (&register, &annotation) {
             // Case 1: Both are either composite or not composite.
-            (Register::Register(..), Annotation::Type(..))
-            | (Register::CompositeRegister(..), Annotation::CompositeType(..)) => Self { register, annotation },
+            (Register::Register(..), Annotation::Type(..)) | (Register::Composite(..), Annotation::Composite(..)) => {
+                Self { register, annotation }
+            }
             // Case 2: Mixed composite and non-composite.
-            (Register::CompositeRegister(..), Annotation::Type(..))
-            | (Register::Register(..), Annotation::CompositeType(..)) => {
+            (Register::Composite(..), Annotation::Type(..)) | (Register::Register(..), Annotation::Composite(..)) => {
                 E::halt("Mismatch in output register and annotation declaration")
             }
         }
@@ -387,6 +399,7 @@ impl<E: Environment> Parser for Output<E> {
     type Environment = E;
 
     /// Parses a string into an output statement.
+    /// The output statement is of the form `output {register} {annotation}`.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the output keyword from the string.
@@ -421,14 +434,15 @@ impl<E: Environment> fmt::Display for Output<E> {
 
 /// The operand enum represents the complete set of options for operands in an instruction.
 /// This enum is designed to support instructions (such as `add {Register} {Register} {Value}`).
-enum Operand<E: Environment> {
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum Operand<E: Environment> {
     /// A value contains its declared literal(s).
     Value(Value<E>),
     /// A register contains its locator in memory.
     Register(Register<E>),
 }
 
-impl<E: Memory> Operand<E> {
+impl<E: Environment> Operand<E> {
     // /// Returns the value, corresponding to the operand.
     // #[inline]
     // fn load(&self) -> Value<M> {
@@ -437,12 +451,88 @@ impl<E: Memory> Operand<E> {
     //         Operand::Register(register) => M::load(register),
     //     }
     // }
+
+    /// Returns the value, if the operand is a value.
+    /// Returns `None` otherwise.
+    ///
+    /// # Examples
+    /// ```
+    /// use snarkvm_circuits_core::{Register, Operand, Value, Literal};
+    /// use snarkvm_circuits_types::environment::{Parser, Circuit};
+    /// let operand = Operand::<Circuit>::Value(Value::Literal(Literal::from_str("1field.private")));
+    /// assert_eq!(operand.value(), Some(&Value::Literal(Literal::from_str("1field.private"))));
+    /// ```
+    /// ```
+    /// use snarkvm_circuits_core::{Register, Operand};
+    /// use snarkvm_circuits_types::environment::{Parser, Circuit};
+    /// let operand = Operand::<Circuit>::Register(Register::from_str("r0"));
+    /// assert_eq!(operand.value(), None);
+    /// ```
+    #[inline]
+    pub fn value(&self) -> Option<&Value<E>> {
+        match self {
+            Operand::Value(value) => Some(value),
+            _ => None,
+        }
+    }
+
+    /// Returns the register, if the operand is a register.
+    /// Returns `None` otherwise.
+    ///
+    /// # Examples
+    /// ```
+    /// use snarkvm_circuits_core::{Register, Operand};
+    /// use snarkvm_circuits_types::environment::{Parser, Circuit};
+    /// let operand = Operand::<Circuit>::Register(Register::from_str("r0"));
+    /// assert_eq!(operand.register(), Some(&Register::from_str("r0")));
+    /// ```
+    /// ```
+    /// use snarkvm_circuits_core::{Register, Operand, Value, Literal};
+    /// use snarkvm_circuits_types::environment::{Parser, Circuit};
+    /// let operand = Operand::<Circuit>::Value(Value::Literal(Literal::from_str("1field.private")));
+    /// assert_eq!(operand.register(), None);
+    /// ```
+    #[inline]
+    pub fn register(&self) -> Option<&Register<E>> {
+        match self {
+            Operand::Register(register) => Some(register),
+            _ => None,
+        }
+    }
+
+    /// Returns `true` if the operand is a value.
+    /// Returns `false` if the operand is a register.
+    #[inline]
+    pub fn is_value(&self) -> bool {
+        matches!(self, Operand::Value(_))
+    }
+
+    /// Returns `true` if the operand is a register.
+    /// Returns `false` if the operand is a value.
+    #[inline]
+    pub fn is_register(&self) -> bool {
+        matches!(self, Operand::Register(_))
+    }
 }
 
 impl<E: Environment> Parser for Operand<E> {
     type Environment = E;
 
     /// Parses a string into a operand.
+    ///
+    /// # Examples
+    /// ```
+    /// use snarkvm_circuits_core::{Register, Operand, Value, Literal};
+    /// use snarkvm_circuits_types::environment::{Parser, Circuit};
+    /// let operand = Operand::<Circuit>::Value(Value::Literal(Literal::from_str("1field.private")));
+    /// assert_eq!(Operand::<Circuit>::parse("1field.private"), Ok(("", Operand::Value(Value::Literal(Literal::from_str("1field.private"))))));
+    /// ```
+    /// ```
+    /// use snarkvm_circuits_core::{Operand, Register};
+    /// use snarkvm_circuits_types::environment::{Parser, Circuit};
+    /// let operand = Operand::<Circuit>::Register(Register::from_str("r0"));
+    /// assert_eq!(Operand::<Circuit>::parse("r0"), Ok(("", Operand::Register(Register::from_str("r0")))));
+    /// ```
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse to determine the operand (order matters).
@@ -464,6 +554,65 @@ impl<E: Environment> fmt::Display for Operand<E> {
     }
 }
 
+/// The instruction represents a single instruction in the program.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Instruction<E: Environment> {
+    /// The instruction name.
+    name: &'static str,
+    /// The destination register.
+    destination: Register<E>,
+    /// The operands of the instruction.
+    operands: Vec<Operand<E>>,
+}
+
+impl<E: Environment> Instruction<E> {
+    /// Initializes a new instruction.
+    ///
+    /// # Errors
+    /// This function will halt if the given destination register is of composite format.
+    #[inline]
+    pub fn new(name: &'static str, destination: Register<E>, operands: Vec<Operand<E>>) -> Self {
+        // Ensure the destination register is not a composite register format.
+        if let Register::Composite(..) = destination {
+            E::halt("Destination register cannot be of composite format")
+        }
+        Self { name, destination, operands }
+    }
+
+    /// Returns the instruction name.
+    /// This is the name of the instruction, such as `add`.
+    #[inline]
+    pub fn name(&self) -> &'static str {
+        self.name
+    }
+
+    /// Returns the destination register.
+    /// This is the register that the instruction will write its result into.
+    #[inline]
+    pub fn destination(&self) -> &Register<E> {
+        &self.destination
+    }
+
+    /// Returns the operands of the instruction.
+    /// These are the registers and values that the instruction will read from.
+    #[inline]
+    pub fn operands(&self) -> &[Operand<E>] {
+        &self.operands
+    }
+}
+
+impl<E: Environment> fmt::Display for Instruction<E> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{} {} {}",
+            self.name,
+            self.destination,
+            self.operands.iter().map(|operand| operand.to_string()).collect::<Vec<_>>().join(" ")
+        )
+    }
+}
+
 pub trait Memory: Environment {
     /// Loads the value of a given register from memory.
     ///
@@ -479,20 +628,30 @@ pub trait Memory: Environment {
     fn store(register: &Register<Self>, value: Value<Self>);
 
     /// Adds the input statement into memory.
-    /// This method is only called before `new_variables` are created.
+    /// This method is called before a function is run.
+    /// This method is only called before `new_instruction` is ever called.
     ///
     /// # Errors
     /// This method will halt if the given input register is not new.
     /// This method will halt if the given inputs are not incrementing monotonically.
-    fn new_input(input: Input<Self>);
+    fn new_input_statement(input: Input<Self>);
 
     /// Assigns the given input value to the corresponding register in memory.
+    /// This method is called before a function is run.
     ///
     /// # Errors
     /// This function will halt if the input registers are not assigned monotonically.
     /// This function will halt if the input register was previously stored.
     /// This function will also halt if the register is not an input register.
     fn assign_input(input: Input<Self>, value: Value<Self>);
+
+    /// Adds the output statement into memory.
+    /// This method is called before a function is run.
+    ///
+    /// # Errors
+    /// This method will halt if the given output register is new.
+    /// This method will halt if the given output register is already set.
+    fn new_output_statement(output: Output<Self>);
 }
 
 use indexmap::IndexSet;
@@ -501,9 +660,16 @@ pub struct Stack<E: Environment> {
     /// The map of register locators to their values.
     /// When input statements are added, a new entry of `(locator, None)` is added to this map.
     /// When input assignments are added, the entry is updated to `(locator, Some(value))`.
+    /// No changes occur to `registers` when output statements are added.
     registers: IndexMap<Locator, Option<Value<E>>>,
-    /// The input statements, in order of the input registers.
-    inputs: IndexSet<Input<E>>,
+    /// The input statements, added in order of the input registers.
+    /// Input assignments are ensured to match the ordering of the input statements.
+    input_statements: IndexSet<Input<E>>,
+    /// The instructions, in order of execution.
+    instructions: IndexSet<Instruction<E>>,
+    /// The output statements, in order of the desired output.
+    /// There is no expectation that the output registers are in any ordering.
+    output_statements: IndexSet<Output<E>>,
 }
 
 impl<E: Environment> Stack<E> {
@@ -519,7 +685,7 @@ impl<E: Environment> Stack<E> {
             // Load the value for a register.
             Register::Register(locator) => self.registers.get(locator),
             // Load the value for a composite.
-            Register::CompositeRegister(locator, _) => self.registers.get(locator),
+            Register::Composite(locator, _) => self.registers.get(locator),
         };
 
         // Retrieve the value from the option.
@@ -535,7 +701,7 @@ impl<E: Environment> Stack<E> {
             // Load the value for a register.
             Register::Register(_) => (*value).clone(),
             // Load the value for a composite.
-            Register::CompositeRegister(locator, identifier) => match value.get_composite(identifier) {
+            Register::Composite(locator, identifier) => match value.get_composite(identifier) {
                 // Return the value if it exists.
                 Some(value) => (*value).clone(),
                 // Halts if the value in the composite literal does not exist.
@@ -555,7 +721,7 @@ impl<E: Environment> Stack<E> {
             // Store the value for a register.
             Register::Register(locator) => self.registers.insert(locator.clone(), Some(value)),
             // Store the value for a composite.
-            Register::CompositeRegister(locator, _) => self.registers.insert(locator.clone(), Some(value)),
+            Register::Composite(locator, _) => self.registers.insert(locator.clone(), Some(value)),
         };
 
         // Ensure the register has not been previously stored.
@@ -565,13 +731,14 @@ impl<E: Environment> Stack<E> {
     }
 
     /// Adds the input statement into memory.
-    /// This method is only called before `new_variables` are created.
+    /// This method is called before a function is run.
+    /// This method is only called before `new_instruction` is ever called.
     ///
     /// # Errors
     /// This method will halt if the given input register is not new.
     /// This method will halt if the given inputs are not incrementing monotonically.
     #[inline]
-    fn new_input(&mut self, input: Input<E>) {
+    fn new_input_statement(&mut self, input: Input<E>) {
         // Ensure the input does not exist in the registers.
         if self.registers.contains_key(input.locator()) {
             E::halt(format!("Input register {} was previously stored", input.locator()))
@@ -588,11 +755,12 @@ impl<E: Environment> Stack<E> {
             E::halt(format!("Invalid input ordering detected in memory at register {index}"))
         }
 
-        // Insert the input to memory.
-        self.inputs.insert(input);
+        // Insert the input statement to memory.
+        self.input_statements.insert(input);
     }
 
     /// Assigns the given input value to the corresponding register in memory.
+    /// This method is called before a function is run.
     ///
     /// # Errors
     /// This function will halt if the input registers are not assigned monotonically.
@@ -606,7 +774,7 @@ impl<E: Environment> Stack<E> {
         }
 
         // Ensure the input exists in the inputs.
-        if !self.inputs.contains(&input) {
+        if !self.input_statements.contains(&input) {
             E::halt(format!("Input register {} does not exist", input.locator()))
         }
 
@@ -624,9 +792,96 @@ impl<E: Environment> Stack<E> {
             E::halt(format!("Input register {} was already assigned", input.locator()))
         }
     }
+
+    /// Adds the given instruction into memory.
+    /// This method is called before a function is run.
+    ///
+    /// # Errors
+    /// This method will halt if the given instruction already exists in memory.
+    /// This method will halt if the destination register already exists in memory.
+    /// This method will halt if the destination register locator does not monotonically increase.
+    /// This method will halt if any operand register does not already exist in memory.
+    /// This method will halt if any operand registers are greater than *or equal to* the destination register.
+    /// This method will halt if any registers are already set.
+    /// This method will halt if any operand values are not constant.
+    #[inline]
+    fn new_instruction(&mut self, instruction: Instruction<E>) {
+        // Ensure the instruction does not already exist in memory.
+        if self.instructions.contains(&instruction) {
+            E::halt(format!("Instruction {} was previously stored", instruction))
+        }
+
+        // Ensure the destination register does not exist.
+        if self.registers.contains_key(instruction.destination.locator()) {
+            E::halt(format!("Destination {} already exists", instruction.destination))
+        }
+
+        // Ensure the destination register locator is monotonically increasing.
+        if !self.registers.contains_key(&instruction.destination.locator().saturating_sub(1)) {
+            E::halt(format!("Destination {} is not monotonically increasing", instruction.destination))
+        }
+
+        // Ensure the operand registers exist.
+        for register in instruction.operands().iter().filter_map(|operand| operand.register()) {
+            if !self.registers.contains_key(register.locator()) {
+                E::halt(format!("Operand register {} does not exist", register))
+            }
+        }
+
+        // Ensure the operands do not contain registers greater than or equal to the destination register.
+        for register in instruction.operands().iter().filter_map(|operand| operand.register()) {
+            if *register.locator() >= *instruction.destination.locator() {
+                E::halt(format!(
+                    "Operand register {} is greater than the destination {}",
+                    register, instruction.destination
+                ))
+            }
+        }
+
+        // Ensure the destination register and operand registers are not already set.
+        for register in [instruction.destination.clone()]
+            .iter()
+            .chain(instruction.operands().iter().filter_map(|operand| operand.register()))
+        {
+            if let Some(Some(..)) = self.registers.get(register.locator()) {
+                E::halt(format!("Register {} is already set", register))
+            }
+        }
+
+        // Ensure the operand values are constant.
+        for value in instruction.operands().iter().filter_map(|operand| operand.value()) {
+            if !value.is_constant() {
+                E::halt(format!("Operand {} is not constant", value))
+            }
+        }
+
+        // Add the instruction to the memory.
+        self.instructions.insert(instruction);
+    }
+
+    /// Adds the output statement into memory.
+    /// This method is called before a function is run.
+    ///
+    /// # Errors
+    /// This method will halt if the given output register is new.
+    /// This method will halt if the given output register is already set.
+    #[inline]
+    fn new_output_statement(&mut self, output: Output<E>) {
+        // Ensure the output exists in the registers.
+        if !self.registers.contains_key(output.locator()) {
+            E::halt(format!("Output register {} is missing", output.locator()))
+        }
+
+        // Ensure the output register is not already set.
+        if let Some(Some(..)) = self.registers.get(output.locator()) {
+            E::halt(format!("Output register {} was already set", output.locator()))
+        }
+
+        // Insert the output statement to memory.
+        self.output_statements.insert(output);
+    }
 }
 
-//
 // enum Declaration<E> {
 //     /// A template declaration.
 //     Template(Identifier<E>),
@@ -634,78 +889,6 @@ impl<E: Environment> Stack<E> {
 //     Function(Identifier<E>),
 // }
 
-// #[derive(Default)]
-// pub struct Memory<E: Environment> {
-//     /// The input registers (ordering matters).
-//     /// By convention, the order of the inputs is dictated by register locator increment.
-//     inputs: Vec<Type<E>>,
-//     /// The output registers (as these registers already exist in memory, ordering does not matters).
-//     /// By convention, the order of the outputs is dictated by the function.
-//     outputs: Vec<(Locator, Type<E>)>,
-//     /// The values of the variable registers (ordering matters).
-//     variables: Vec<OnceCell<Literal<E>>>,
-//     /// The instructions of the function.
-//     instructions: Vec<Instruction<E>>,
-//
-//     /// The templates define helper objects which can be referenced in instructions.
-//     /// Template names are enforced to be unique.
-//     templates: HashMap<Identifier<E>, Template<E>>,
-// }
-//
-// impl<E: Environment> Memory<E> {
-//     /// This method is only called before `new_variables` are created.
-//     #[inline]
-//     fn new_input(&mut self, input: Type<E>) -> Operand<E> {
-//         // Retrieve the next locator.
-//         let locator = self.inputs.len() as Locator;
-//         debug_assert!(locator == self.variables.len() as Locator, "Mismatch between inputs and variables.");
-//
-//         // Add the input type and empty variable.
-//         self.inputs.push(input);
-//         self.variables.push(Default::default());
-//
-//         // Return the new input register.
-//         Operand::Input(locator, input)
-//     }
-//
-//     /// This method is only called on registers that already exist.
-//     #[inline]
-//     fn new_output(&mut self, locator: Locator, output: Type<E>) -> Operand<E> {
-//         // Ensure the locator exists.
-//         if locator > self.inputs.len() as Locator || locator > self.variables.len() as Locator {
-//             E::halt(format!("Register {locator} does not exist."))
-//         }
-//
-//         // Add the output type.
-//         self.outputs.push((locator, output));
-//
-//         // Return the new output register.
-//         Operand::Output(locator, output)
-//     }
-//
-//     #[inline]
-//     fn new_constant(&mut self, literal: Literal<E>) -> Operand<E> {
-//         // Return the new constant register.
-//         Operand::Literal(literal)
-//     }
-//
-//     #[inline]
-//     fn new_variable(&mut self, value: Literal<E>) -> Operand<E> {
-//         // Retrieve the next locator.
-//         let locator = self.variables.len() as Locator;
-//
-//         // Prepare the value.
-//         let once_cell = OnceCell::new();
-//         once_cell.set(value);
-//
-//         // Add the input type.
-//         self.variables.push(once_cell);
-//
-//         // Return the new variable register.
-//         Operand::Register(locator)
-//     }
-// }
-//
 // pub struct Template<E: Environment>(Identifier<E>);
 //
 // impl<E: Environment> Parser for Template<E> {

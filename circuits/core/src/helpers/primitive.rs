@@ -24,7 +24,7 @@ use snarkvm_utilities::{
 
 use enum_index::EnumIndex;
 
-#[derive(Debug, PartialEq, Eq, EnumIndex)]
+#[derive(Debug, PartialEq, Eq, Hash, EnumIndex)]
 pub enum Primitive<E: Environment> {
     /// The Aleo address type.
     Address(<Address<E> as Eject>::Primitive),

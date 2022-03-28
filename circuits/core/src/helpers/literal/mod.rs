@@ -24,9 +24,12 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
+use core::hash::{Hash, Hasher};
+
 #[allow(unused_imports)]
 use enum_index::EnumIndex;
 
+/// The literal enum represents all supported circuit types in snarkVM.
 #[derive(Clone, EnumIndex)]
 pub enum Literal<E: Environment> {
     /// The Aleo address type.
@@ -246,6 +249,13 @@ impl<E: Environment> PartialEq for Literal<E> {
 }
 
 impl<E: Environment> Eq for Literal<E> {}
+
+impl<E: Environment> Hash for Literal<E> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.eject_mode().hash(state);
+        self.eject_value().hash(state);
+    }
+}
 
 impl<E: Environment> FromBytes for Literal<E> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {

@@ -48,6 +48,17 @@ impl<E: Environment> Parser for Identifier<E> {
     type Environment = E;
 
     /// Parses a string into an identifier.
+    /// The identifier must be less than or equal to `NUM_IDENTIFIER_BYTES` bytes long.
+    /// The identifier must be alphanumeric (and underscore).
+    /// The identifier must not start with a number.
+    ///
+    /// # Example
+    /// ```
+    /// use snarkvm_circuits_core::Identifier;
+    /// use snarkvm_circuits_types::environment::{Circuit, Parser};
+    /// let identifier = Identifier::<Circuit>::parse("foo_bar_baz");
+    /// assert!(identifier.is_ok());
+    /// ```
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Check for alphanumeric characters and underscores.
@@ -62,6 +73,7 @@ impl<E: Environment> Parser for Identifier<E> {
 
 impl<E: Environment> fmt::Display for Identifier<E> {
     /// Prints the identifier as a string.
+    /// The identifier must be less than or equal to `NUM_IDENTIFIER_BYTES` bytes long.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0)
     }

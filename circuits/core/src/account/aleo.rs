@@ -215,7 +215,7 @@ impl Environment for Aleo {
 impl fmt::Display for Aleo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // TODO (howardwu): Find a better way to print the circuit.
-        Circuit.fmt(f)
+        fmt::Display::fmt(&Circuit, f)
     }
 }
 
