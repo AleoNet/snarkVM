@@ -43,7 +43,7 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Pederse
             .flat_map(|(bits, powers)| {
                 bits.iter()
                     .zip_eq(powers)
-                    .map(|(bit, base)| Group::<E>::ternary(bit, &base.clone(), &Group::<E>::zero()))
+                    .map(|(bit, base)| Group::<E>::ternary(bit, base, &Group::<E>::zero()))
                     .collect::<Vec<Group<E>>>()
             })
             .fold(Group::<E>::zero(), |acc, x| acc + x)
