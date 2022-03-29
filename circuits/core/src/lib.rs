@@ -581,9 +581,9 @@ impl<E: Environment> Stack<E> {
         // Store the value in the register.
         let previous = match register {
             // Store the value for a register.
-            Register::Locator(locator) => self.registers.insert(locator.clone(), Some(value)),
+            Register::Locator(locator) => self.registers.insert(*locator, Some(value)),
             // Store the value for a register member.
-            Register::Member(locator, _) => self.registers.insert(locator.clone(), Some(value)),
+            Register::Member(locator, _) => self.registers.insert(*locator, Some(value)),
         };
 
         // Ensure the register has not been previously stored.
