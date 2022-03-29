@@ -28,7 +28,6 @@ use crate::{
     PoSWScheme,
     ProgramPublicVariables,
     ValueBalanceCommitment,
-    ValueCheckPublicVariables,
 };
 use snarkvm_algorithms::{
     commitment::PedersenCommitment,
@@ -115,14 +114,11 @@ impl Network for Testnet1 {
     const VALUE_COMMITMENT_PREFIX: u32 = hrp4!("valc");
     const VALUE_BALANCE_COMMITMENT_PREFIX: u32 = hrp4!("vbco");
 
-    // TODO (raychu86): the input circuit prefixes overlap with the inner circuit prefixes.
     const INPUT_CIRCUIT_ID_PREFIX: u16 = hrp2!("ic");
     const OUTPUT_CIRCUIT_ID_PREFIX: u16 = hrp2!("oc");
-    const VALUE_CHECK_CIRCUIT_ID_PREFIX: u16 = hrp2!("vc");
     
     const INPUT_PROOF_PREFIX: u32 = hrp4!("izkp");
     const OUTPUT_PROOF_PREFIX: u32 = hrp4!("ozkp");
-    const VALUE_CHECK_PROOF_PREFIX: u32 = hrp4!("vzkp");
     
     const ADDRESS_SIZE_IN_BYTES: usize = 32;
     const HEADER_SIZE_IN_BYTES: usize = 1015;
@@ -139,7 +135,6 @@ impl Network for Testnet1 {
 
     const INPUT_PROOF_SIZE_IN_BYTES: usize = 193;
     const OUTPUT_PROOF_SIZE_IN_BYTES: usize = 193;
-    const VALUE_CHECK_PROOF_SIZE_IN_BYTES: usize = 193;
 
     const HEADER_TRANSACTIONS_TREE_DEPTH: usize = 15;
     const HEADER_TREE_DEPTH: usize = 2;
@@ -172,9 +167,6 @@ impl Network for Testnet1 {
     type OutputSNARK = Groth16<Self::InnerCurve, OutputPublicVariables<Self>>;
     type OutputProof = AleoObject<<Self::OutputSNARK as SNARK>::Proof, { Self::OUTPUT_PROOF_PREFIX }, { Self::OUTPUT_PROOF_SIZE_IN_BYTES }>;
 
-    type ValueCheckSNARK = Groth16<Self::InnerCurve, ValueCheckPublicVariables<Self>>;
-    type ValueCheckProof = AleoObject<<Self::ValueCheckSNARK as SNARK>::Proof, { Self::VALUE_CHECK_PROOF_PREFIX }, { Self::VALUE_CHECK_PROOF_SIZE_IN_BYTES }>;
-    
     type ProgramSNARK = Groth16<Self::InnerCurve, ProgramPublicVariables<Self>>;
     type ProgramProvingKey = <Self::ProgramSNARK as SNARK>::ProvingKey;
     type ProgramVerifyingKey = <Self::ProgramSNARK as SNARK>::VerifyingKey;
@@ -224,9 +216,6 @@ impl Network for Testnet1 {
 
     type OutputCircuitIDCRH = BHPCRH<EdwardsBW6, 27, 63>;
     type OutputCircuitID = AleoLocator<<Self::OutputCircuitIDCRH as CRH>::Output, { Self::OUTPUT_CIRCUIT_ID_PREFIX }>;
-
-    type ValueCheckCircuitIDCRH = BHPCRH<EdwardsBW6, 27, 63>;
-    type ValueCheckCircuitID = AleoLocator<<Self::ValueCheckCircuitIDCRH as CRH>::Output, { Self::VALUE_CHECK_CIRCUIT_ID_PREFIX }>;
 
     type LedgerRootCRH = BHPCRH<Self::ProgramProjectiveCurve, 3, 57>;
     type LedgerRootCRHGadget = BHPCRHGadget<Self::ProgramAffineCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 3, 57>;
@@ -286,7 +275,6 @@ impl Network for Testnet1 {
 
     dpc_setup!{Testnet1, input_circuit_id_crh, InputCircuitIDCRH, "AleoInputCircuitIDCRH0"}
     dpc_setup!{Testnet1, output_circuit_id_crh, OutputCircuitIDCRH, "AleoOutputCircuitIDCRH0"}
-    dpc_setup!{Testnet1, value_check_circuit_id_crh, ValueCheckCircuitIDCRH, "AleoValueCheckCircuitIDCRH0"}
 
     dpc_snark_setup!{Testnet1, inner_proving_key, InnerSNARK, ProvingKey, InnerProvingKeyBytes, "inner proving key"}
     dpc_snark_setup!{Testnet1, inner_verifying_key, InnerSNARK, VerifyingKey, InnerVerifyingKeyBytes, "inner verifying key"}
@@ -296,10 +284,7 @@ impl Network for Testnet1 {
     
     dpc_snark_setup!{Testnet1, output_proving_key, OutputSNARK, ProvingKey, OutputProvingKeyBytes, "output circuit proving key"}
     dpc_snark_setup!{Testnet1, output_verifying_key, OutputSNARK, VerifyingKey, OutputVerifyingKeyBytes, "output circuit verifying key"}
-    
-    dpc_snark_setup!{Testnet1, value_check_proving_key, ValueCheckSNARK, ProvingKey, ValueCheckProvingKeyBytes, "value check circuit proving key"}
-    dpc_snark_setup!{Testnet1, value_check_verifying_key, ValueCheckSNARK, VerifyingKey, ValueCheckVerifyingKeyBytes, "value check circuit verifying key"}
-    
+
     dpc_snark_setup!{Testnet1, posw_proving_key, PoSWSNARK, ProvingKey, PoSWProvingKeyBytes, "posw proving key"}
     dpc_snark_setup!{Testnet1, posw_verifying_key, PoSWSNARK, VerifyingKey, PoSWVerifyingKeyBytes, "posw verifying key"}
 
@@ -309,7 +294,6 @@ impl Network for Testnet1 {
             .hash(&Self::inner_verifying_key().to_minimal_bits())
             .expect("Failed to hash inner circuit verifying key elements").into())
     }
-
 
     fn input_circuit_id() -> &'static Self::InputCircuitID {
         static INPUT_CIRCUIT_ID: OnceCell<<Testnet1 as Network>::InputCircuitID> = OnceCell::new();
@@ -323,13 +307,6 @@ impl Network for Testnet1 {
         OUTPUT_CIRCUIT_ID.get_or_init(|| Self::output_circuit_id_crh()
             .hash(&Self::output_verifying_key().to_minimal_bits())
             .expect("Failed to hash output circuit verifying key elements").into())
-    }
-
-    fn value_check_circuit_id() -> &'static Self::ValueCheckCircuitID {
-        static VALUE_CHECK_CIRCUIT_ID: OnceCell<<Testnet1 as Network>::ValueCheckCircuitID> = OnceCell::new();
-        VALUE_CHECK_CIRCUIT_ID.get_or_init(|| Self::value_check_circuit_id_crh()
-            .hash(&Self::value_check_verifying_key().to_minimal_bits())
-            .expect("Failed to hash value check circuit verifying key elements").into())
     }
     
     fn posw() -> &'static Self::PoSW {

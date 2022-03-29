@@ -39,14 +39,6 @@ fn test_testnet2_output_circuit_id_sanity_check() {
 }
 
 #[test]
-fn test_testnet2_value_check_circuit_id_sanity_check() {
-    let expected_value_check_circuit_id =
-        "vc1q4df045v6kf084smpxwpalm7h73nd72v4n342g0dye9ngdfkr2l83x4mnuj763h0qhf3fxpq0p6sqn6ea34".to_string();
-    let candidate_value_check_circuit_id = <Testnet2 as Network>::value_check_circuit_id().to_string();
-    assert_eq!(expected_value_check_circuit_id, candidate_value_check_circuit_id);
-}
-
-#[test]
 fn dpc_testnet2_integration_test() {
     let mut rng = &mut ChaChaRng::seed_from_u64(1231275789u64);
 

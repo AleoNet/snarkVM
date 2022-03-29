@@ -55,8 +55,6 @@ pub struct Transaction<N: Network> {
     input_circuit_id: N::InputCircuitID,
     /// The ID of the output circuit used to execute each transition.
     output_circuit_id: N::OutputCircuitID,
-    /// The ID of the value check circuit used to execute each transition.
-    value_check_circuit_id: N::ValueCheckCircuitID,
     /// The ledger root used to prove inclusion of ledger-consumed records.
     ledger_root: N::LedgerRoot,
     /// The state transition.
@@ -89,20 +87,12 @@ impl<N: Network> Transaction<N> {
     pub fn from(
         input_circuit_id: N::InputCircuitID,
         output_circuit_id: N::OutputCircuitID,
-        value_check_circuit_id: N::ValueCheckCircuitID,
         ledger_root: N::LedgerRoot,
         transitions: Vec<Transition<N>>,
     ) -> Result<Self> {
         let transaction_id = Self::compute_transaction_id(&transitions)?;
 
-        let transaction = Self {
-            transaction_id,
-            input_circuit_id,
-            output_circuit_id,
-            value_check_circuit_id,
-            ledger_root,
-            transitions,
-        };
+        let transaction = Self { transaction_id, input_circuit_id, output_circuit_id, ledger_root, transitions };
 
         match transaction.is_valid() {
             true => Ok(transaction),
@@ -184,13 +174,7 @@ impl<N: Network> Transaction<N> {
         // Returns `false` if any transition is invalid.
         for transition in &self.transitions {
             // Returns `false` if the transition is invalid.
-            if !transition.verify(
-                self.input_circuit_id,
-                self.output_circuit_id,
-                self.value_check_circuit_id,
-                self.ledger_root,
-                transitions.root(),
-            ) {
+            if !transition.verify(self.input_circuit_id, self.output_circuit_id, self.ledger_root, transitions.root()) {
                 eprintln!("Transaction contains an invalid transition");
                 return false;
             }
@@ -248,12 +232,6 @@ impl<N: Network> Transaction<N> {
     #[inline]
     pub fn output_circuit_id(&self) -> N::OutputCircuitID {
         self.output_circuit_id
-    }
-
-    /// Returns the value check circuit ID.
-    #[inline]
-    pub fn value_check_circuit_id(&self) -> N::ValueCheckCircuitID {
-        self.value_check_circuit_id
     }
 
     /// Returns the ledger root used to execute the transitions.
@@ -362,7 +340,6 @@ impl<N: Network> FromBytes for Transaction<N> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let input_circuit_id = FromBytes::read_le(&mut reader)?;
         let output_circuit_id = FromBytes::read_le(&mut reader)?;
-        let value_check_circuit_id = FromBytes::read_le(&mut reader)?;
         let ledger_root = FromBytes::read_le(&mut reader)?;
 
         let num_transitions: u16 = FromBytes::read_le(&mut reader)?;
@@ -371,7 +348,7 @@ impl<N: Network> FromBytes for Transaction<N> {
             transitions.push(FromBytes::read_le(&mut reader)?);
         }
 
-        Ok(Self::from(input_circuit_id, output_circuit_id, value_check_circuit_id, ledger_root, transitions)
+        Ok(Self::from(input_circuit_id, output_circuit_id, ledger_root, transitions)
             .expect("Failed to deserialize a transaction"))
     }
 }
@@ -381,7 +358,6 @@ impl<N: Network> ToBytes for Transaction<N> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.input_circuit_id.write_le(&mut writer)?;
         self.output_circuit_id.write_le(&mut writer)?;
-        self.value_check_circuit_id.write_le(&mut writer)?;
         self.ledger_root.write_le(&mut writer)?;
         (self.transitions.len() as u16).write_le(&mut writer)?;
         self.transitions.write_le(&mut writer)
@@ -406,11 +382,10 @@ impl<N: Network> Serialize for Transaction<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut transaction = serializer.serialize_struct("Transaction", 6)?;
+                let mut transaction = serializer.serialize_struct("Transaction", 5)?;
                 transaction.serialize_field("transaction_id", &self.transaction_id)?;
                 transaction.serialize_field("input_circuit_id", &self.input_circuit_id)?;
                 transaction.serialize_field("output_circuit_id", &self.output_circuit_id)?;
-                transaction.serialize_field("value_check_circuit_id", &self.value_check_circuit_id)?;
                 transaction.serialize_field("ledger_root", &self.ledger_root)?;
                 transaction.serialize_field("transitions", &self.transitions)?;
                 transaction.end()
@@ -432,7 +407,6 @@ impl<'de, N: Network> Deserialize<'de> for Transaction<N> {
                 let transaction = Self::from(
                     serde_json::from_value(transaction["input_circuit_id"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(transaction["output_circuit_id"].clone()).map_err(de::Error::custom)?,
-                    serde_json::from_value(transaction["value_check_circuit_id"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(transaction["ledger_root"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(transaction["transitions"].clone()).map_err(de::Error::custom)?,
                 )

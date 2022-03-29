@@ -20,8 +20,5 @@ pub use input::*;
 pub mod output;
 pub use output::*;
 
-pub mod value_check;
-pub use value_check::*;
-
 #[cfg(test)]
 mod tests;

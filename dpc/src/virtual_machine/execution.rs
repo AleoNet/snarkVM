@@ -55,7 +55,6 @@ pub struct Execution<N: Network> {
     pub program_execution: Option<ProgramExecution<N>>,
     pub input_proofs: Vec<N::InputProof>,
     pub output_proofs: Vec<N::OutputProof>,
-    pub value_check_proof: N::ValueCheckProof,
 }
 
 impl<N: Network> Execution<N> {
@@ -63,9 +62,8 @@ impl<N: Network> Execution<N> {
         program_execution: Option<ProgramExecution<N>>,
         input_proofs: Vec<N::InputProof>,
         output_proofs: Vec<N::OutputProof>,
-        value_check_proof: N::ValueCheckProof,
     ) -> Result<Self> {
-        Ok(Self { program_execution, input_proofs, output_proofs, value_check_proof })
+        Ok(Self { program_execution, input_proofs, output_proofs })
     }
 
     /// Returns `true` if the program execution is valid.
@@ -74,10 +72,8 @@ impl<N: Network> Execution<N> {
         &self,
         input_verifying_key: &<N::InputSNARK as SNARK>::VerifyingKey,
         output_verifying_key: &<N::OutputSNARK as SNARK>::VerifyingKey,
-        value_check_verifying_key: &<N::ValueCheckSNARK as SNARK>::VerifyingKey,
         input_public_variables: &[<N::InputSNARK as SNARK>::VerifierInput],
         output_public_variables: &[<N::OutputSNARK as SNARK>::VerifierInput],
-        value_check_public_variables: &<N::ValueCheckSNARK as SNARK>::VerifierInput,
         transition_id: N::TransitionID,
     ) -> bool {
         // Returns `false` if any input proof is invalid.
@@ -114,24 +110,6 @@ impl<N: Network> Execution<N> {
                 }
             };
         }
-
-        // Returns `false` if the value check proof is invalid.
-        match N::ValueCheckSNARK::verify(
-            value_check_verifying_key,
-            value_check_public_variables,
-            &self.value_check_proof,
-        ) {
-            Ok(is_valid) => {
-                if !is_valid {
-                    eprintln!("Value check proof failed to verify");
-                    return false;
-                }
-            }
-            Err(error) => {
-                eprintln!("Failed to validate the value check proof: {:?}", error);
-                return false;
-            }
-        };
 
         if let Some(program_execution) = &self.program_execution {
             // Returns `false` if the program proof is invalid.
@@ -178,9 +156,7 @@ impl<N: Network> FromBytes for Execution<N> {
             output_proofs.push(FromBytes::read_le(&mut reader)?);
         }
 
-        let value_check_proof = FromBytes::read_le(&mut reader)?;
-
-        Self::from(program_execution, input_proofs, output_proofs, value_check_proof)
+        Self::from(program_execution, input_proofs, output_proofs)
             .map_err(|error| Error::new(ErrorKind::Other, format!("{}", error)))
     }
 }
@@ -202,8 +178,7 @@ impl<N: Network> ToBytes for Execution<N> {
         (self.input_proofs.len() as u32).write_le(&mut writer)?;
         self.input_proofs.write_le(&mut writer)?;
         (self.output_proofs.len() as u32).write_le(&mut writer)?;
-        self.output_proofs.write_le(&mut writer)?;
-        self.value_check_proof.write_le(&mut writer)
+        self.output_proofs.write_le(&mut writer)
     }
 }
 
@@ -227,11 +202,10 @@ impl<N: Network> Serialize for Execution<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut execution = serializer.serialize_struct("Execution", 4)?;
+                let mut execution = serializer.serialize_struct("Execution", 3)?;
                 execution.serialize_field("program_execution", &self.program_execution)?;
                 execution.serialize_field("input_proofs", &self.input_proofs)?;
                 execution.serialize_field("output_proofs", &self.output_proofs)?;
-                execution.serialize_field("value_check_proof", &self.value_check_proof)?;
                 execution.end()
             }
             false => ToBytesSerializer::serialize_with_size_encoding(self, serializer),
@@ -249,7 +223,6 @@ impl<'de, N: Network> Deserialize<'de> for Execution<N> {
                     serde_json::from_value(execution["program_execution"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(execution["input_proofs"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(execution["output_proofs"].clone()).map_err(de::Error::custom)?,
-                    serde_json::from_value(execution["value_check_proof"].clone()).map_err(de::Error::custom)?,
                 )
                 .map_err(de::Error::custom)
             }

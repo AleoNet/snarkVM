@@ -16,7 +16,7 @@
 
 use crate::{
     prelude::*,
-    split_circuits::{InputPublicVariables, OutputPublicVariables, ValueCheckPublicVariables},
+    split_circuits::{InputPublicVariables, OutputPublicVariables},
 };
 use snarkvm_algorithms::merkle_tree::{MerklePath, MerkleTree};
 use snarkvm_utilities::{FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
@@ -131,7 +131,6 @@ impl<N: Network> Transition<N> {
         &self,
         input_circuit_id: N::InputCircuitID,
         output_circuit_id: N::OutputCircuitID,
-        value_check_circuit_id: N::ValueCheckCircuitID,
         ledger_root: N::LedgerRoot,
         local_transitions_root: N::TransactionID,
     ) -> bool {
@@ -150,12 +149,6 @@ impl<N: Network> Transition<N> {
         // Returns `false` if the output circuit ID does not match.
         if &output_circuit_id != N::output_circuit_id() {
             eprintln!("Invalid output circuit ID for network {}", N::NETWORK_ID);
-            return false;
-        }
-
-        // Returns `false` if the value check circuit ID does not match.
-        if &value_check_circuit_id != N::value_check_circuit_id() {
-            eprintln!("Invalid value check circuit ID for network {}", N::NETWORK_ID);
             return false;
         }
 
@@ -209,17 +202,12 @@ impl<N: Network> Transition<N> {
             output_public_variables.push(output_public);
         }
 
-        let value_check_public_variables =
-            ValueCheckPublicVariables::<N>::new(*self.value_balance(), self.value_balance_commitment().clone());
-
         // Returns `false` if the execution is invalid.
         self.execution.verify(
             N::input_verifying_key(),
             N::output_verifying_key(),
-            N::value_check_verifying_key(),
             &input_public_variables,
             &output_public_variables,
-            &value_check_public_variables,
             self.transition_id,
         )
     }

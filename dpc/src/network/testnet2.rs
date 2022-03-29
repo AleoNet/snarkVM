@@ -28,7 +28,6 @@ use crate::{
     PoSWScheme,
     ProgramPublicVariables,
     ValueBalanceCommitment,
-    ValueCheckPublicVariables,
 };
 use snarkvm_algorithms::{
     commitment::PedersenCommitment,
@@ -126,11 +125,9 @@ impl Network for Testnet2 {
     // TODO (raychu86): the input circuit prefixes overlap with the inner circuit prefixes.
     const INPUT_CIRCUIT_ID_PREFIX: u16 = hrp2!("ic");
     const OUTPUT_CIRCUIT_ID_PREFIX: u16 = hrp2!("oc");
-    const VALUE_CHECK_CIRCUIT_ID_PREFIX: u16 = hrp2!("vc");
     
     const INPUT_PROOF_PREFIX: u32 = hrp4!("izkp");
     const OUTPUT_PROOF_PREFIX: u32 = hrp4!("ozkp");
-    const VALUE_CHECK_PROOF_PREFIX: u32 = hrp4!("vzkp");
     
     const ADDRESS_SIZE_IN_BYTES: usize = 32;
     const HEADER_SIZE_IN_BYTES: usize = 1015;
@@ -147,7 +144,6 @@ impl Network for Testnet2 {
 
     const INPUT_PROOF_SIZE_IN_BYTES: usize = 193;
     const OUTPUT_PROOF_SIZE_IN_BYTES: usize = 193;
-    const VALUE_CHECK_PROOF_SIZE_IN_BYTES: usize = 193;
     
     const HEADER_TRANSACTIONS_TREE_DEPTH: usize = 15;
     const HEADER_TREE_DEPTH: usize = 2;
@@ -179,9 +175,6 @@ impl Network for Testnet2 {
 
     type OutputSNARK = Groth16<Self::InnerCurve, OutputPublicVariables<Self>>;
     type OutputProof = AleoObject<<Self::OutputSNARK as SNARK>::Proof, { Self::OUTPUT_PROOF_PREFIX }, { Self::OUTPUT_PROOF_SIZE_IN_BYTES }>;
-
-    type ValueCheckSNARK = Groth16<Self::InnerCurve, ValueCheckPublicVariables<Self>>;
-    type ValueCheckProof = AleoObject<<Self::ValueCheckSNARK as SNARK>::Proof, { Self::VALUE_CHECK_PROOF_PREFIX }, { Self::VALUE_CHECK_PROOF_SIZE_IN_BYTES }>;
 
     type ProgramSNARK = MarlinSNARK<Self::InnerScalarField, Self::InnerBaseField, SonicKZG10<Self::InnerCurve>, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::InnerBaseField, PoseidonSponge<Self::InnerBaseField, 6, 1>>, MarlinHidingMode, ProgramPublicVariables<Self>>;
     type ProgramProvingKey = <Self::ProgramSNARK as SNARK>::ProvingKey;
@@ -232,9 +225,6 @@ impl Network for Testnet2 {
 
     type OutputCircuitIDCRH = BHPCRH<EdwardsBW6, 27, 63>;
     type OutputCircuitID = AleoLocator<<Self::OutputCircuitIDCRH as CRH>::Output, { Self::OUTPUT_CIRCUIT_ID_PREFIX }>;
-
-    type ValueCheckCircuitIDCRH = BHPCRH<EdwardsBW6, 27, 63>;
-    type ValueCheckCircuitID = AleoLocator<<Self::ValueCheckCircuitIDCRH as CRH>::Output, { Self::VALUE_CHECK_CIRCUIT_ID_PREFIX }>;
 
     type LedgerRootCRH = BHPCRH<Self::ProgramProjectiveCurve, 3, 57>;
     type LedgerRootCRHGadget = BHPCRHGadget<Self::ProgramAffineCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 3, 57>;
@@ -294,7 +284,6 @@ impl Network for Testnet2 {
 
     dpc_setup!{Testnet2, input_circuit_id_crh, InputCircuitIDCRH, "AleoInputCircuitIDCRH0"}
     dpc_setup!{Testnet2, output_circuit_id_crh, OutputCircuitIDCRH, "AleoOutputCircuitIDCRH0"}
-    dpc_setup!{Testnet2, value_check_circuit_id_crh, ValueCheckCircuitIDCRH, "AleoValueCheckCircuitIDCRH0"}
 
     dpc_snark_setup!{Testnet2, inner_proving_key, InnerSNARK, ProvingKey, InnerProvingKeyBytes, "inner circuit proving key"}
     dpc_snark_setup!{Testnet2, inner_verifying_key, InnerSNARK, VerifyingKey, InnerVerifyingKeyBytes, "inner circuit verifying key"}
@@ -304,9 +293,6 @@ impl Network for Testnet2 {
     
     dpc_snark_setup!{Testnet2, output_proving_key, OutputSNARK, ProvingKey, OutputProvingKeyBytes, "output circuit proving key"}
     dpc_snark_setup!{Testnet2, output_verifying_key, OutputSNARK, VerifyingKey, OutputVerifyingKeyBytes, "output circuit verifying key"}
-    
-    dpc_snark_setup!{Testnet2, value_check_proving_key, ValueCheckSNARK, ProvingKey, ValueCheckProvingKeyBytes, "value check circuit proving key"}
-    dpc_snark_setup!{Testnet2, value_check_verifying_key, ValueCheckSNARK, VerifyingKey, ValueCheckVerifyingKeyBytes, "value check circuit verifying key"}
 
     dpc_snark_setup!{Testnet2, posw_proving_key, PoSWSNARK, ProvingKey, PoSWProvingKeyBytes, "posw proving key"}
     dpc_snark_setup!{Testnet2, posw_verifying_key, PoSWSNARK, VerifyingKey, PoSWVerifyingKeyBytes, "posw verifying key"}
@@ -330,13 +316,6 @@ impl Network for Testnet2 {
         OUTPUT_CIRCUIT_ID.get_or_init(|| Self::output_circuit_id_crh()
             .hash(&Self::output_verifying_key().to_minimal_bits())
             .expect("Failed to hash output circuit verifying key elements").into())
-    }
-
-    fn value_check_circuit_id() -> &'static Self::ValueCheckCircuitID {
-        static VALUE_CHECK_CIRCUIT_ID: OnceCell<<Testnet2 as Network>::ValueCheckCircuitID> = OnceCell::new();
-        VALUE_CHECK_CIRCUIT_ID.get_or_init(|| Self::value_check_circuit_id_crh()
-            .hash(&Self::value_check_verifying_key().to_minimal_bits())
-            .expect("Failed to hash value check circuit verifying key elements").into())
     }
 
     fn posw() -> &'static Self::PoSW {
@@ -388,6 +367,52 @@ mod tests {
                 .expect("Failed to hash inner circuit ID")
                 .into(),
             "The inner circuit ID does not correspond to the inner circuit verifying key"
+        );
+    }
+
+    #[test]
+    fn test_input_circuit_sanity_check() {
+        // Verify the input circuit verifying key matches the one derived from the input circuit proving key.
+        assert_eq!(
+            Testnet2::input_verifying_key(),
+            &Testnet2::input_proving_key().vk,
+            "The input circuit verifying key does not correspond to the input circuit proving key"
+        );
+    }
+
+    #[test]
+    fn test_input_circuit_id_derivation() {
+        // Verify the input circuit ID matches the one derived from the input circuit verifying key.
+        assert_eq!(
+            Testnet2::input_circuit_id(),
+            &Testnet2::input_circuit_id_crh()
+                .hash(&Testnet2::input_verifying_key().to_minimal_bits())
+                .expect("Failed to hash input circuit ID")
+                .into(),
+            "The input circuit ID does not correspond to the input circuit verifying key"
+        );
+    }
+
+    #[test]
+    fn test_output_circuit_sanity_check() {
+        // Verify the output circuit verifying key matches the one derived from the output circuit proving key.
+        assert_eq!(
+            Testnet2::output_verifying_key(),
+            &Testnet2::output_proving_key().vk,
+            "The output circuit verifying key does not correspond to the output circuit proving key"
+        );
+    }
+
+    #[test]
+    fn test_output_circuit_id_derivation() {
+        // Verify the output circuit ID matches the one derived from the output circuit verifying key.
+        assert_eq!(
+            Testnet2::output_circuit_id(),
+            &Testnet2::output_circuit_id_crh()
+                .hash(&Testnet2::output_verifying_key().to_minimal_bits())
+                .expect("Failed to hash output circuit ID")
+                .into(),
+            "The output circuit ID does not correspond to the output circuit verifying key"
         );
     }
 

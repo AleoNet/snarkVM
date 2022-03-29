@@ -72,8 +72,6 @@ impl<N: Network> VirtualMachine<N> {
         };
 
         let program_id = request.to_program_id()?;
-        let value_balance = response.value_balance();
-        let value_balance_commitment = response.value_balance_commitment();
 
         // TODO (raychu86): Clean this up.
         // Compute the input circuit proofs.
@@ -142,20 +140,8 @@ impl<N: Network> VirtualMachine<N> {
             output_proofs.push(output_proof.into());
         }
 
-        let value_check_public = ValueCheckPublicVariables::<N>::new(value_balance, value_balance_commitment.clone());
-        let value_check_private = ValueCheckPrivateVariables::<N>::new(
-            Transition::<N>::compute_transition_id(&request.to_serial_numbers()?, &response.commitments())?,
-            response.input_value_commitments().clone(),
-            response.output_value_commitments().clone(),
-        )?;
-
-        let value_check_circuit = ValueCheckCircuit::<N>::new(value_check_public.clone(), value_check_private);
-        let value_check_proof = N::ValueCheckSNARK::prove(N::value_check_proving_key(), &value_check_circuit, rng)?;
-
-        assert!(N::ValueCheckSNARK::verify(N::value_check_verifying_key(), &value_check_public, &value_check_proof)?);
-
         // Compute the noop execution, for now.
-        let execution = Execution::from(None, input_proofs, output_proofs, value_check_proof.into())?;
+        let execution = Execution::from(None, input_proofs, output_proofs)?;
 
         // Construct the transition.
         let transition = Transition::<N>::new(request, &response, execution)?;
@@ -169,13 +155,7 @@ impl<N: Network> VirtualMachine<N> {
 
     /// Finalizes the virtual machine state and returns a transaction.
     pub fn finalize(&self) -> Result<Transaction<N>> {
-        Transaction::from(
-            *N::input_circuit_id(),
-            *N::output_circuit_id(),
-            *N::value_check_circuit_id(),
-            self.ledger_root,
-            self.transitions.clone(),
-        )
+        Transaction::from(*N::input_circuit_id(), *N::output_circuit_id(), self.ledger_root, self.transitions.clone())
     }
 
     /// Performs a noop transition.
@@ -318,8 +298,6 @@ impl<N: Network> VirtualMachine<N> {
         };
 
         let transition_id = response.transition_id();
-        let value_balance = response.value_balance();
-        let value_balance_commitment = response.value_balance_commitment();
 
         // Compute the execution.
         let program_proof = function.execute(ProgramPublicVariables::new(transition_id), private_variables)?;
@@ -395,23 +373,10 @@ impl<N: Network> VirtualMachine<N> {
             output_proofs.push(output_proof.into());
         }
 
-        let value_check_public = ValueCheckPublicVariables::<N>::new(value_balance, value_balance_commitment.clone());
-        let value_check_private = ValueCheckPrivateVariables::<N>::new(
-            Transition::<N>::compute_transition_id(&request.to_serial_numbers()?, &response.commitments())?,
-            response.input_value_commitments().clone(),
-            response.output_value_commitments().clone(),
-        )?;
-
-        let value_check_circuit = ValueCheckCircuit::<N>::new(value_check_public.clone(), value_check_private);
-        let value_check_proof = N::ValueCheckSNARK::prove(N::value_check_proving_key(), &value_check_circuit, rng)?;
-
-        assert!(N::ValueCheckSNARK::verify(N::value_check_verifying_key(), &value_check_public, &value_check_proof)?);
-
         let execution = Execution::from(
             Some(ProgramExecution::from(program_id, function_path.clone(), function_verifying_key, program_proof)?),
             input_proofs,
             output_proofs,
-            value_check_proof.into(),
         )?;
 
         // Construct the transition.

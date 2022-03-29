@@ -27,7 +27,6 @@ use rand::thread_rng;
 fn dpc_execute_circuits_test<N: Network>(
     expected_input_num_constraints: usize,
     expected_output_num_constraints: usize,
-    expected_value_check_num_constraints: usize,
 ) {
     let rng = &mut thread_rng();
 
@@ -217,79 +216,15 @@ fn dpc_execute_circuits_test<N: Network>(
 
     //////////////////////////////////////////////////////////////////////////
 
-    // Generate value check circuit parameters and proof.
-    let (value_check_proving_key, value_check_verifying_key) =
-        <N as Network>::ValueCheckSNARK::setup(&ValueCheckCircuit::<N>::blank(), &mut SRS::CircuitSpecific(rng))
-            .unwrap();
-
-    // Check that the value check constraint system was satisfied.
-    let mut value_check_cs = TestConstraintSystem::<N::InnerScalarField>::new();
-
-    let value_check_public_variables =
-        ValueCheckPublicVariables::<N>::new(value_balance, response.value_balance_commitment().clone());
-    let value_check_private_variables = ValueCheckPrivateVariables::<N>::new(
-        Transition::<N>::compute_transition_id(&request.to_serial_numbers().unwrap(), &response.commitments()).unwrap(),
-        response.input_value_commitments().clone(),
-        response.output_value_commitments().clone(),
-    )
-    .unwrap();
-
-    let value_check_circuit =
-        ValueCheckCircuit::<N>::new(value_check_public_variables.clone(), value_check_private_variables);
-    value_check_circuit.generate_constraints(&mut value_check_cs.ns(|| "Value check circuit")).unwrap();
-
-    let candidate_value_check_num_constraints = value_check_cs.num_constraints();
-    let (num_non_zero_a, num_non_zero_b, num_non_zero_c) = value_check_cs.num_non_zero();
-
-    if !value_check_cs.is_satisfied() {
-        println!("=========================================================");
-        println!("Value check circuit num constraints: {}", candidate_value_check_num_constraints);
-        println!("Unsatisfied constraints:\n{}", value_check_cs.which_is_unsatisfied().unwrap());
-        println!("=========================================================");
-    }
-
-    println!("=========================================================");
-    println!("Value check circuit num constraints: {}", candidate_value_check_num_constraints);
-    assert_eq!(expected_value_check_num_constraints, candidate_value_check_num_constraints);
-    println!("=========================================================");
-
-    println!("=========================================================");
-    println!("Value check circuit num non_zero_a: {}", num_non_zero_a);
-    println!("Value check circuit num non_zero_b: {}", num_non_zero_b);
-    println!("Value check circuit num non_zero_c: {}", num_non_zero_c);
-    println!("=========================================================");
-
-    assert!(value_check_cs.is_satisfied());
-
-    //////////////////////////////////////////////////////////////////////////
-
-    let value_check_proof =
-        <N as Network>::ValueCheckSNARK::prove(&value_check_proving_key, &value_check_circuit, rng).unwrap();
-    assert_eq!(N::VALUE_CHECK_PROOF_SIZE_IN_BYTES, value_check_proof.to_bytes_le().unwrap().len());
-
-    // Verify that the inner circuit proof passes.
-    assert!(
-        <N as Network>::ValueCheckSNARK::verify(
-            &value_check_verifying_key,
-            &value_check_public_variables,
-            &value_check_proof
-        )
-        .unwrap()
-    );
-
-    //////////////////////////////////////////////////////////////////////////
-
     // Construct the execution.
-    let execution = Execution::<N>::from(None, input_proofs, output_proofs, value_check_proof.into()).unwrap();
+    let execution = Execution::<N>::from(None, input_proofs, output_proofs).unwrap();
 
     // Verify that the program proof passes.
     assert!(execution.verify(
         &input_verifying_key,
         &output_verifying_key,
-        &value_check_verifying_key,
         &input_public_variables,
         &output_public_variables,
-        &value_check_public_variables,
         transition_id
     ));
 }
@@ -300,7 +235,7 @@ mod testnet1 {
 
     #[test]
     fn test_dpc_execute_circuits() {
-        dpc_execute_circuits_test::<Testnet1>(113181, 18731, 11069);
+        dpc_execute_circuits_test::<Testnet1>(113181, 18731);
     }
 }
 
@@ -310,6 +245,6 @@ mod testnet2 {
 
     #[test]
     fn test_dpc_execute_circuits() {
-        dpc_execute_circuits_test::<Testnet2>(113181, 18731, 11069);
+        dpc_execute_circuits_test::<Testnet2>(113181, 18731);
     }
 }

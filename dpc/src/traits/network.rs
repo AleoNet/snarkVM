@@ -23,7 +23,6 @@ use crate::{
     PoSWScheme,
     ProgramPublicVariables,
     ValueBalanceCommitment,
-    ValueCheckPublicVariables,
 };
 use snarkvm_algorithms::prelude::*;
 use snarkvm_curves::{AffineCurve, PairingEngine, ProjectiveCurve, TwistedEdwardsParameters};
@@ -136,16 +135,13 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const VALUE_COMMITMENT_PREFIX: u32;
     const VALUE_BALANCE_COMMITMENT_PREFIX: u32;
     
-    // TODO (raychu86): Clean up.
     /// Split circuit id prefixes.
     const INPUT_CIRCUIT_ID_PREFIX: u16;
     const OUTPUT_CIRCUIT_ID_PREFIX: u16;
-    const VALUE_CHECK_CIRCUIT_ID_PREFIX: u16;
 
     /// Split circuit proof prefixes.
     const INPUT_PROOF_PREFIX: u32;
     const OUTPUT_PROOF_PREFIX: u32;
-    const VALUE_CHECK_PROOF_PREFIX: u32;
 
     const ADDRESS_SIZE_IN_BYTES: usize;
     const HEADER_SIZE_IN_BYTES: usize;
@@ -163,7 +159,6 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     /// Split circuit proof sizes.
     const INPUT_PROOF_SIZE_IN_BYTES: usize;
     const OUTPUT_PROOF_SIZE_IN_BYTES: usize;
-    const VALUE_CHECK_PROOF_SIZE_IN_BYTES: usize;
 
     const HEADER_TRANSACTIONS_TREE_DEPTH: usize;
     const HEADER_TREE_DEPTH: usize;
@@ -204,10 +199,6 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     /// SNARK for record outputs.
     type OutputSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::InnerBaseField, VerifierInput = OutputPublicVariables<Self>>;
     type OutputProof: Bech32Object<<Self::OutputSNARK as SNARK>::Proof>;
-    
-    /// SNARK for transition value check.
-    type ValueCheckSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::InnerBaseField, VerifierInput = ValueCheckPublicVariables<Self>>;
-    type ValueCheckProof: Bech32Object<<Self::ValueCheckSNARK as SNARK>::Proof>;
 
     /// SNARK for Aleo program functions.
     type ProgramSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::InnerBaseField, VerifierInput = ProgramPublicVariables<Self>, ProvingKey = Self::ProgramProvingKey, VerifyingKey = Self::ProgramVerifyingKey, UniversalSetupConfig = usize>;
@@ -272,10 +263,6 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     /// CRH for hash of the `Self::OutputSNARK` verifying keys. Invoked only over `Self::OuterScalarField`.
     type OutputCircuitIDCRH: CRH<Output = Self::InnerBaseField>;
     type OutputCircuitID: Bech32Locator<<Self::OutputCircuitIDCRH as CRH>::Output>;
-
-    /// CRH for hash of the `Self::ValueCheckSNARK` verifying keys. Invoked only over `Self::OuterScalarField`.
-    type ValueCheckCircuitIDCRH: CRH<Output = Self::InnerBaseField>;
-    type ValueCheckCircuitID: Bech32Locator<<Self::ValueCheckCircuitIDCRH as CRH>::Output>;
 
     /// Merkle scheme for computing the ledger root. Invoked only over `Self::InnerScalarField`.
     type LedgerRootCRH: CRH<Output = Self::InnerScalarField>;
@@ -349,7 +336,6 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
 
     fn input_circuit_id_crh() -> &'static Self::InputCircuitIDCRH;
     fn output_circuit_id_crh() -> &'static Self::OutputCircuitIDCRH;
-    fn value_check_circuit_id_crh() -> &'static Self::ValueCheckCircuitIDCRH;
 
     fn inner_circuit_id() -> &'static Self::InnerCircuitID;
     fn inner_proving_key() -> &'static <Self::InnerSNARK as SNARK>::ProvingKey;
@@ -362,11 +348,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     fn output_circuit_id() -> &'static Self::OutputCircuitID;
     fn output_proving_key() -> &'static <Self::OutputSNARK as SNARK>::ProvingKey;
     fn output_verifying_key() -> &'static <Self::OutputSNARK as SNARK>::VerifyingKey;
-
-    fn value_check_circuit_id() -> &'static Self::ValueCheckCircuitID;
-    fn value_check_proving_key() -> &'static <Self::ValueCheckSNARK as SNARK>::ProvingKey;
-    fn value_check_verifying_key() -> &'static <Self::ValueCheckSNARK as SNARK>::VerifyingKey;
-
+    
     fn posw_proving_key() -> &'static <Self::PoSWSNARK as SNARK>::ProvingKey;
     fn posw_verifying_key() -> &'static <Self::PoSWSNARK as SNARK>::VerifyingKey;
     fn posw() -> &'static Self::PoSW;
