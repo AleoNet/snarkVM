@@ -96,3 +96,53 @@ impl<M: Memory> fmt::Display for Instruction<M> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Stack;
+
+    use snarkvm_circuits::Circuit;
+    use snarkvm_utilities::{FromBytes, ToBytes};
+
+    #[test]
+    fn test_instruction_to_bytes() {
+        type M = Stack<Circuit>;
+        // Test serialization for the `Add` instruction. Check that the first two bytes are 0u16.
+        let instruction = Instruction::<M>::parse("add r0 r2 r1;", M::default()).unwrap().1;
+        let bytes = instruction.to_bytes_le().unwrap();
+        assert_eq!(u16::from_bytes_le(&bytes[0..2]).unwrap(), 0u16);
+
+        // Test serialization for the `Store` instruction. Check that the first two bytes are 1u16.
+        let instruction = Instruction::<M>::parse("store r0 r2;", M::default()).unwrap().1;
+        let bytes = instruction.to_bytes_le().unwrap();
+        assert_eq!(u16::from_bytes_le(&bytes[0..2]).unwrap(), 1u16);
+
+        // Test serialization for the `Sub` instruction. Check that the first two bytes are 2u16.
+        let instruction = Instruction::<M>::parse("sub r0 r2 r1;", M::default()).unwrap().1;
+        let bytes = instruction.to_bytes_le().unwrap();
+        assert_eq!(u16::from_bytes_le(&bytes[0..2]).unwrap(), 2u16);
+    }
+
+    #[test]
+    fn test_instruction_to_and_from_bytes() {
+        type M = Stack<Circuit>;
+        // Test serialization for the `Add` instruction. Check that to_bytes and from_bytes are symmetric in the enum variant.
+        let instruction = Instruction::<M>::parse("add r0 r2 r1;", M::default()).unwrap().1;
+        let bytes = instruction.to_bytes_le().unwrap();
+        let recovered_instruction = Instruction::<M>::from_bytes_le(&bytes).unwrap();
+        assert_eq!(std::mem::discriminant(&instruction), std::mem::discriminant(&recovered_instruction));
+
+        // Test serialization for the `Store` instruction. Check that to_bytes and from_bytes are symmetric in the enum variant.
+        let instruction = Instruction::<M>::parse("store r0 r2;", M::default()).unwrap().1;
+        let bytes = instruction.to_bytes_le().unwrap();
+        let recovered_instruction = Instruction::<M>::from_bytes_le(&bytes).unwrap();
+        assert_eq!(std::mem::discriminant(&instruction), std::mem::discriminant(&recovered_instruction));
+
+        // Test serialization for the `Sub` instruction. Check that to_bytes and from_bytes are symmetric in the enum variant.
+        let instruction = Instruction::<M>::parse("sub r0 r2 r1;", M::default()).unwrap().1;
+        let bytes = instruction.to_bytes_le().unwrap();
+        let recovered_instruction = Instruction::<M>::from_bytes_le(&bytes).unwrap();
+        assert_eq!(std::mem::discriminant(&instruction), std::mem::discriminant(&recovered_instruction));
+    }
+}
