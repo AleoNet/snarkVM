@@ -20,19 +20,25 @@ impl<E: Environment> FromBits for Group<E> {
     type Boolean = Boolean<E>;
 
     /// Initializes a new group element from the x-coordinate as a list of little-endian bits *without* trailing zeros.
-    fn from_bits_le(mode: Mode, bits_le: &[Self::Boolean]) -> Self {
+    fn from_bits_le(bits_le: &[Self::Boolean]) -> Self {
         // Derive the x-coordinate for the affine group element.
-        let x = Field::from_bits_le(mode, bits_le);
+        let x = Field::from_bits_le(bits_le);
         // Recover the y-coordinate and return the affine group element.
-        Self::from_x_coordinate(mode, x)
+        match x.is_constant() {
+            true => Self::from_x_coordinate(Mode::Constant, x),
+            false => Self::from_x_coordinate(Mode::Private, x),
+        }
     }
 
     /// Initializes a new group element from the x-coordinate as a list of big-endian bits *without* leading zeros.
-    fn from_bits_be(mode: Mode, bits_be: &[Self::Boolean]) -> Self {
+    fn from_bits_be(bits_be: &[Self::Boolean]) -> Self {
         // Derive the x-coordinate for the affine group element.
-        let x = Field::from_bits_be(mode, bits_be);
+        let x = Field::from_bits_be(bits_be);
         // Recover the y-coordinate and return the affine group element.
-        Self::from_x_coordinate(mode, x)
+        match x.is_constant() {
+            true => Self::from_x_coordinate(Mode::Constant, x),
+            false => Self::from_x_coordinate(Mode::Private, x),
+        }
     }
 }
 
@@ -54,11 +60,10 @@ mod tests {
         for i in 0..ITERATIONS {
             // Sample a random element.
             let expected: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let candidate = Group::<Circuit>::new(mode, (expected.to_x_coordinate(), Some(expected.to_y_coordinate())))
-                .to_bits_le();
+            let candidate = Group::<Circuit>::new(mode, expected).to_bits_le();
 
             Circuit::scope(&format!("{} {}", mode, i), || {
-                let candidate = Group::<Circuit>::from_bits_le(mode, &candidate);
+                let candidate = Group::<Circuit>::from_bits_le(&candidate);
                 assert_eq!(expected, candidate.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
             });
@@ -76,11 +81,10 @@ mod tests {
         for i in 0..ITERATIONS {
             // Sample a random element.
             let expected: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let candidate = Group::<Circuit>::new(mode, (expected.to_x_coordinate(), Some(expected.to_y_coordinate())))
-                .to_bits_be();
+            let candidate = Group::<Circuit>::new(mode, expected).to_bits_be();
 
             Circuit::scope(&format!("{} {}", mode, i), || {
-                let candidate = Group::<Circuit>::from_bits_be(mode, &candidate);
+                let candidate = Group::<Circuit>::from_bits_be(&candidate);
                 assert_eq!(expected, candidate.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
             });
@@ -90,31 +94,31 @@ mod tests {
 
     #[test]
     fn test_from_bits_le_constant() {
-        check_from_bits_le(Mode::Constant, 4, 0, 0, 0);
+        check_from_bits_le(Mode::Constant, 3, 0, 0, 0);
     }
 
     #[test]
     fn test_from_bits_le_public() {
-        check_from_bits_le(Mode::Public, 2, 2, 2, 4);
+        check_from_bits_le(Mode::Public, 2, 0, 255, 421);
     }
 
     #[test]
     fn test_from_bits_le_private() {
-        check_from_bits_le(Mode::Private, 2, 0, 4, 4);
+        check_from_bits_le(Mode::Private, 2, 0, 255, 421);
     }
 
     #[test]
     fn test_from_bits_be_constant() {
-        check_from_bits_be(Mode::Constant, 4, 0, 0, 0);
+        check_from_bits_be(Mode::Constant, 3, 0, 0, 0);
     }
 
     #[test]
     fn test_from_bits_be_public() {
-        check_from_bits_be(Mode::Public, 2, 2, 2, 4);
+        check_from_bits_be(Mode::Public, 2, 0, 255, 421);
     }
 
     #[test]
     fn test_from_bits_be_private() {
-        check_from_bits_be(Mode::Private, 2, 0, 4, 4);
+        check_from_bits_be(Mode::Private, 2, 0, 255, 421);
     }
 }

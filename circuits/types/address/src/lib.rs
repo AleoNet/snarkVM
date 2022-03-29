@@ -40,17 +40,11 @@ impl<E: Environment> Address<E> {
 impl<E: Environment> Inject for Address<E> {
     type Primitive = E::Affine;
 
-    /// Returns the type name of the circuit as a string.
-    #[inline]
-    fn type_name() -> &'static str {
-        "address"
-    }
-
     ///
     /// Initializes a new instance of an address from a string.
     ///
     fn new(mode: Mode, value: Self::Primitive) -> Self {
-        Self(Group::new(mode, (value.to_x_coordinate(), Some(value.to_y_coordinate()))))
+        Self(Group::new(mode, value))
     }
 }
 
@@ -111,6 +105,14 @@ impl<E: Environment> Parser for Address<E> {
             Some((_, mode)) => Ok((string, Address::new(mode, value))),
             None => Ok((string, Address::new(Mode::Constant, value))),
         }
+    }
+}
+
+impl<E: Environment> TypeName for Address<E> {
+    /// Returns the type name of the circuit as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "address"
     }
 }
 

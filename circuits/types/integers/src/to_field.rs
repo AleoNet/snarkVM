@@ -28,10 +28,7 @@ impl<E: Environment, I: IntegerType> ToField for Integer<E, I> {
         debug_assert!(I::BITS < E::BaseField::size_in_bits());
 
         // Reconstruct the bits as a linear combination representing the original field value.
-        match self.is_constant() {
-            true => Field::from_bits_le(Mode::Constant, &self.bits_le),
-            false => Field::from_bits_le(Mode::Private, &self.bits_le),
-        }
+        Field::from_bits_le(&self.bits_le)
     }
 }
 

@@ -17,7 +17,7 @@
 use core::fmt::Debug;
 
 /// A trait to specify the Marlin mode.
-pub trait MarlinMode: 'static + Copy + Debug + Eq + Sync + Send {
+pub trait MarlinMode: 'static + Copy + Clone + Debug + PartialEq + Eq + Sync + Send {
     const ZK: bool;
 }
 

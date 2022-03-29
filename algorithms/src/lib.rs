@@ -17,6 +17,7 @@
 #![allow(clippy::module_inception)]
 #![allow(clippy::type_complexity)]
 
+#[allow(unused_imports)]
 #[macro_use]
 extern crate aleo_std;
 #[macro_use]

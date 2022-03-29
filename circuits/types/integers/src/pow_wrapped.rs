@@ -25,7 +25,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> PowWrapped<Integer<E, M>> for
         if self.is_constant() && other.is_constant() {
             // Compute the result and return the new constant.
             // This cast is safe since Magnitude other can only be `u8`, `u16`, or `u32`.
-            Integer::new(Mode::Constant, self.eject_value().wrapping_pow(other.eject_value().to_u32().unwrap()))
+            witness!(|self, other| self.wrapping_pow(&other.to_u32().unwrap()))
         } else {
             let mut result = Self::one();
             for bit in other.bits_le.iter().rev() {
@@ -46,8 +46,8 @@ mod tests {
 
     use std::{ops::RangeInclusive, panic::RefUnwindSafe};
 
-    // Lowered to 8, since we run (~6 * ITERATIONS) cases for most tests.
-    const ITERATIONS: usize = 8;
+    // Lowered to 4; we run (~6 * ITERATIONS) cases for most tests.
+    const ITERATIONS: usize = 4;
 
     #[rustfmt::skip]
     fn check_pow<I: IntegerType + RefUnwindSafe, M: Magnitude + RefUnwindSafe>(
@@ -60,7 +60,7 @@ mod tests {
         let a = Integer::<Circuit, I>::new(mode_a, first);
         let b = Integer::<Circuit, M>::new(mode_b, second);
         let case = format!("({} ** {})", a.eject_value(), b.eject_value());
-        let expected = first.wrapping_pow(second.to_u32().unwrap());
+        let expected = first.wrapping_pow(&second.to_u32().unwrap());
         check_operation_passes_without_counts(name, &case, expected, &a, &b, Integer::pow_wrapped);
     }
 

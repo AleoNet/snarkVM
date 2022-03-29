@@ -35,26 +35,25 @@ impl<E: Environment> ToBits for &Field<E> {
 
     /// Outputs the little-endian bit representation of `self` *without* trailing zeros.
     fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        let mode = match self.is_constant() {
-            true => Mode::Constant,
-            false => Mode::Private,
-        };
+        self.bits_le
+            .get_or_init(|| {
+                // Construct a vector of `Boolean`s comprising the bits of the field value.
+                let bits_le = witness!(|self| self.to_bits_le());
 
-        // Construct a vector of `Boolean`s comprising the bits of the field value.
-        let bits = self.eject_value().to_bits_le().iter().map(|bit| Boolean::new(mode, *bit)).collect::<Vec<_>>();
+                // Reconstruct the bits as a linear combination representing the original field value.
+                let mut accumulator = Field::zero();
+                let mut coefficient = Field::one();
+                for bit in &bits_le {
+                    accumulator += Field::from(bit) * &coefficient;
+                    coefficient = coefficient.double();
+                }
 
-        // Reconstruct the bits as a linear combination representing the original field value.
-        let mut accumulator = Field::zero();
-        let mut coefficient = Field::one();
-        for bit in &bits {
-            accumulator += Field::from(bit) * &coefficient;
-            coefficient = coefficient.double();
-        }
+                // Ensure value * 1 == (2^i * b_i + ... + 2^0 * b_0)
+                E::assert_eq(*self, accumulator);
 
-        // Ensure value * 1 == (2^i * b_i + ... + 2^0 * b_0)
-        E::assert_eq(*self, accumulator);
-
-        bits
+                bits_le
+            })
+            .clone()
     }
 
     /// Outputs the big-endian bit representation of `self` *without* leading zeros.
@@ -88,11 +87,16 @@ mod tests {
             let candidate = Field::<Circuit>::new(mode, expected);
 
             Circuit::scope(&format!("{} {}", mode, i), || {
-                let candidate = candidate.to_bits_le();
-                assert_eq!(expected_number_of_bits, candidate.len());
-                for (expected_bit, candidate_bit) in expected.to_bits_le().iter().zip_eq(candidate.iter()) {
+                let candidate_bits = candidate.to_bits_le();
+                assert_eq!(expected_number_of_bits, candidate_bits.len());
+                for (expected_bit, candidate_bit) in expected.to_bits_le().iter().zip_eq(&candidate_bits) {
                     assert_eq!(*expected_bit, candidate_bit.eject_value());
                 }
+                assert_scope!(num_constants, num_public, num_private, num_constraints);
+
+                // Ensure a second call to `to_bits_le` does not incur additional costs.
+                let candidate_bits = candidate.to_bits_le();
+                assert_eq!(expected_number_of_bits, candidate_bits.len());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
             });
         }
@@ -113,11 +117,16 @@ mod tests {
             let candidate = Field::<Circuit>::new(mode, expected);
 
             Circuit::scope(&format!("{} {}", mode, i), || {
-                let candidate = candidate.to_bits_be();
-                assert_eq!(expected_number_of_bits, candidate.len());
-                for (expected_bit, candidate_bit) in expected.to_bits_be().iter().zip_eq(candidate.iter()) {
+                let candidate_bits = candidate.to_bits_be();
+                assert_eq!(expected_number_of_bits, candidate_bits.len());
+                for (expected_bit, candidate_bit) in expected.to_bits_be().iter().zip_eq(&candidate_bits) {
                     assert_eq!(*expected_bit, candidate_bit.eject_value());
                 }
+                assert_scope!(num_constants, num_public, num_private, num_constraints);
+
+                // Ensure a second call to `to_bits_be` does not incur additional costs.
+                let candidate_bits = candidate.to_bits_be();
+                assert_eq!(expected_number_of_bits, candidate_bits.len());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
             });
         }

@@ -20,7 +20,7 @@ impl<E: Environment> Zero for Scalar<E> {
     type Boolean = Boolean<E>;
 
     fn zero() -> Self {
-        Self::new(Mode::Constant, <E as Environment>::ScalarField::zero())
+        Self::constant(<E as Environment>::ScalarField::zero())
     }
 
     fn is_zero(&self) -> Self::Boolean {

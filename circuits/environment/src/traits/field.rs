@@ -36,11 +36,13 @@ pub trait FieldTrait<B: BooleanTrait>:
     + Neg<Output = Self>
     + One
     + Parser
+    + Pow<Self, Output = Self>
     + Square<Output = Self>
     + Sub<Output = Self>
     + SubAssign
     + Ternary
     + ToBits
+    + TypeName
     + Zero
 {
 }

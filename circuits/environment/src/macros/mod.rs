@@ -14,20 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#[derive(Debug, Error)]
-pub enum PRFError {
-    #[error("{}", _0)]
-    AnyhowError(#[from] anyhow::Error),
+pub mod scope;
+pub use scope::*;
 
-    #[error("{}: {}", _0, _1)]
-    Crate(&'static str, String),
-
-    #[error("incorrect input length: {}", _0)]
-    IncorrectInputLength(usize),
-
-    #[error("{}", _0)]
-    Message(String),
-
-    #[error("element is not of prime order")]
-    NotPrimeOrder,
-}
+pub mod witness;
+pub use witness::*;

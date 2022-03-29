@@ -20,6 +20,7 @@ use crate::{
 };
 
 use core::fmt;
+use std::rc::Rc;
 
 pub type Scope = String;
 
@@ -38,7 +39,7 @@ impl<F: PrimeField> R1CS<F> {
     pub(crate) fn new() -> Self {
         Self {
             constants: Default::default(),
-            public: vec![Variable::Public(0u64, F::one())],
+            public: vec![Variable::Public(0u64, Rc::new(F::one()))],
             private: Default::default(),
             constraints: Default::default(),
             counter: Default::default(),
@@ -58,24 +59,24 @@ impl<F: PrimeField> R1CS<F> {
 
     /// Returns a new constant with the given value and scope.
     pub(crate) fn new_constant(&mut self, value: F) -> Variable<F> {
-        let variable = Variable::Constant(value);
-        self.constants.push(variable);
+        let variable = Variable::Constant(Rc::new(value));
+        self.constants.push(variable.clone());
         self.counter.increment_constant();
         variable
     }
 
     /// Returns a new public variable with the given value and scope.
     pub(crate) fn new_public(&mut self, value: F) -> Variable<F> {
-        let variable = Variable::Public(self.public.len() as u64, value);
-        self.public.push(variable);
+        let variable = Variable::Public(self.public.len() as u64, Rc::new(value));
+        self.public.push(variable.clone());
         self.counter.increment_public();
         variable
     }
 
     /// Returns a new private variable with the given value and scope.
     pub(crate) fn new_private(&mut self, value: F) -> Variable<F> {
-        let variable = Variable::Private(self.private.len() as u64, value);
-        self.private.push(variable);
+        let variable = Variable::Private(self.private.len() as u64, Rc::new(value));
+        self.private.push(variable.clone());
         self.counter.increment_private();
         variable
     }

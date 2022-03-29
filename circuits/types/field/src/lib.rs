@@ -27,6 +27,7 @@ pub mod inv;
 pub mod mul;
 pub mod neg;
 pub mod one;
+pub mod pow;
 pub mod square;
 pub mod sub;
 pub mod ternary;
@@ -43,7 +44,13 @@ use snarkvm_circuits_types_boolean::Boolean;
 use snarkvm_utilities::ToBits as TBits;
 
 #[derive(Clone)]
-pub struct Field<E: Environment>(LinearCombination<E::BaseField>);
+pub struct Field<E: Environment> {
+    /// The linear combination contains the primary representation of the field.
+    linear_combination: LinearCombination<E::BaseField>,
+    /// An optional secondary representation in little-endian bits is provided,
+    /// so that calls to `ToBits` only incur constraint costs once.
+    bits_le: OnceCell<Vec<Boolean<E>>>,
+}
 
 impl<E: Environment> FieldTrait<Boolean<E>> for Field<E> {}
 
@@ -52,17 +59,11 @@ impl<E: Environment> DataType<Boolean<E>> for Field<E> {}
 impl<E: Environment> Inject for Field<E> {
     type Primitive = E::BaseField;
 
-    /// Returns the type name of the circuit as a string.
-    #[inline]
-    fn type_name() -> &'static str {
-        "field"
-    }
-
     ///
     /// Initializes a new instance of a base field from a primitive base field value.
     ///
     fn new(mode: Mode, value: Self::Primitive) -> Self {
-        Self(E::new_variable(mode, value).into())
+        Self { linear_combination: E::new_variable(mode, value).into(), bits_le: Default::default() }
     }
 }
 
@@ -71,7 +72,7 @@ impl<E: Environment> Field<E> {
     /// Initializes a new instance of a base field from a boolean.
     ///
     pub fn from(boolean: &Boolean<E>) -> Self {
-        Self((**boolean).clone())
+        (&**boolean).into()
     }
 }
 
@@ -82,14 +83,14 @@ impl<E: Environment> Eject for Field<E> {
     /// Ejects the mode of the base field.
     ///
     fn eject_mode(&self) -> Mode {
-        self.0.to_mode()
+        self.linear_combination.mode()
     }
 
     ///
     /// Ejects the base field as a constant base field value.
     ///
     fn eject_value(&self) -> Self::Primitive {
-        self.0.to_value()
+        self.linear_combination.value()
     }
 }
 
@@ -113,6 +114,14 @@ impl<E: Environment> Parser for Field<E> {
     }
 }
 
+impl<E: Environment> TypeName for Field<E> {
+    /// Returns the type name of the circuit as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "field"
+    }
+}
+
 impl<E: Environment> Debug for Field<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.eject_value())
@@ -125,6 +134,18 @@ impl<E: Environment> Display for Field<E> {
     }
 }
 
+impl<E: Environment> From<LinearCombination<E::BaseField>> for Field<E> {
+    fn from(linear_combination: LinearCombination<E::BaseField>) -> Self {
+        Self { linear_combination, bits_le: Default::default() }
+    }
+}
+
+impl<E: Environment> From<&LinearCombination<E::BaseField>> for Field<E> {
+    fn from(linear_combination: &LinearCombination<E::BaseField>) -> Self {
+        From::from(linear_combination.clone())
+    }
+}
+
 impl<E: Environment> From<Field<E>> for LinearCombination<E::BaseField> {
     fn from(field: Field<E>) -> Self {
         From::from(&field)
@@ -133,7 +154,7 @@ impl<E: Environment> From<Field<E>> for LinearCombination<E::BaseField> {
 
 impl<E: Environment> From<&Field<E>> for LinearCombination<E::BaseField> {
     fn from(field: &Field<E>) -> Self {
-        field.0.clone()
+        field.linear_combination.clone()
     }
 }
 

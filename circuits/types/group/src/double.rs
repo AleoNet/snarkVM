@@ -28,14 +28,8 @@ impl<E: Environment> Double for &Group<E> {
     type Output = Group<E>;
 
     fn double(self) -> Self::Output {
-        // Determine the variable mode.
-        let mode = match self.is_constant() {
-            true => Mode::Constant,
-            false => Mode::Private,
-        };
-
-        let a = Field::new(Mode::Constant, E::AffineParameters::COEFF_A);
-        let two = Field::one() + Field::one();
+        let a = Field::constant(E::AffineParameters::COEFF_A);
+        let two = Field::one().double();
 
         // Compute xy, xx, yy, axx.
         let xy = &self.x * &self.y;
@@ -44,31 +38,14 @@ impl<E: Environment> Double for &Group<E> {
         let ax2 = &x2 * &a;
 
         // Compute x3 and y3.
-        let (x3, y3) = {
-            let xy = xy.eject_value();
-            let x2 = x2.eject_value();
-            let y2 = y2.eject_value();
-            let ax2 = ax2.eject_value();
-            let two = E::BaseField::one() + E::BaseField::one();
-
-            // Assign x3 = (2xy) / (ax^2 + y^2)
-            let x3 = {
-                let t0 = xy.double();
-                let t1 = (E::AffineParameters::COEFF_A * x2) + y2;
-                let t0_div_t1 = t0 * t1.inverse().expect("Failed to compute x-coordinate");
-                Field::new(mode, t0_div_t1)
-            };
-
-            // Assign y3 = (y^2 - ax^2) / (2 - ax^2 - y^2)
-            let y3 = {
-                let t0 = y2 - ax2;
-                let t1 = two - ax2 - y2;
-                let t0_div_t1 = t0 * t1.inverse().expect("Failed to compute y-coordinate");
-                Field::new(mode, t0_div_t1)
-            };
-
+        let (x3, y3) = witness!(|two, xy, y2, ax2| {
+            // Assign x3 = (2xy) / (ax^2 + y^2).
+            let x3 = xy.double() / (ax2 + y2);
+            // Assign y3 = (y^2 - ax^2) / (2 - ax^2 - y^2).
+            let y3 = (y2 - ax2) / (two - ax2 - y2);
+            // Return (x3, y3).
             (x3, y3)
-        };
+        });
 
         // Ensure x3 is well-formed.
         // x3 * (ax^2 + y^2) = 2xy
@@ -104,8 +81,7 @@ mod tests {
             let expected = point.double();
             let point = point.into_affine();
 
-            let affine =
-                Group::<Circuit>::new(Mode::Constant, (point.to_x_coordinate(), Some(point.to_y_coordinate())));
+            let affine = Group::<Circuit>::new(Mode::Constant, point);
 
             Circuit::scope(&format!("Constant {}", i), || {
                 let candidate = affine.double();
@@ -122,7 +98,7 @@ mod tests {
             let expected = point.double();
             let point = point.into_affine();
 
-            let affine = Group::<Circuit>::new(Mode::Public, (point.to_x_coordinate(), Some(point.to_y_coordinate())));
+            let affine = Group::<Circuit>::new(Mode::Public, point);
 
             Circuit::scope(&format!("Public {}", i), || {
                 let candidate = affine.double();
@@ -140,7 +116,7 @@ mod tests {
             let expected = point.double();
             let point = point.into_affine();
 
-            let affine = Group::<Circuit>::new(Mode::Private, (point.to_x_coordinate(), Some(point.to_y_coordinate())));
+            let affine = Group::<Circuit>::new(Mode::Private, point);
 
             Circuit::scope(&format!("Private {}", i), || {
                 let candidate = affine.double();
@@ -159,13 +135,11 @@ mod tests {
         let a = a.into_affine();
 
         // Constant
-        let candidate_a =
-            Group::<Circuit>::new(Mode::Constant, (a.to_x_coordinate(), Some(a.to_y_coordinate()))).double();
+        let candidate_a = Group::<Circuit>::new(Mode::Constant, a).double();
         assert_eq!(expected, candidate_a.eject_value());
 
         // Private
-        let candidate_b =
-            Group::<Circuit>::new(Mode::Private, (a.to_x_coordinate(), Some(a.to_y_coordinate()))).double();
+        let candidate_b = Group::<Circuit>::new(Mode::Private, a).double();
         assert_eq!(expected, candidate_b.eject_value());
     }
 }

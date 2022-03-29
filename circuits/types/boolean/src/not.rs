@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use std::rc::Rc;
 
 impl<E: Environment> Not for Boolean<E> {
     type Output = Boolean<E>;
@@ -33,15 +34,15 @@ impl<E: Environment> Not for &Boolean<E> {
         // Constant case
         if self.is_constant() {
             match self.eject_value() {
-                true => Boolean(self.0.clone() - Variable::one()),
-                false => Boolean(self.0.clone() + Variable::one()),
+                true => Boolean(&self.0 - E::one()),
+                false => Boolean(&self.0 + E::one()),
             }
         }
         // Public and private cases
         else {
             match self.eject_value() {
-                true => Boolean(self.0.clone() - Variable::Public(0, E::BaseField::one())),
-                false => Boolean(self.0.clone() + Variable::Public(0, E::BaseField::one())),
+                true => Boolean(&self.0 - Variable::Public(0, Rc::new(E::BaseField::one()))),
+                false => Boolean(&self.0 + Variable::Public(0, Rc::new(E::BaseField::one()))),
             }
         }
     }

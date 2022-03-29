@@ -268,7 +268,7 @@ impl<N: Network> Request<N> {
     pub fn caller(&self) -> Result<Address<N>> {
         let owners: HashSet<Address<N>> = self.records.iter().map(Record::owner).collect();
         match owners.len() == 1 {
-            true => owners.into_iter().next().ok_or(anyhow!("Failed to retrieve the request caller")),
+            true => owners.into_iter().next().ok_or_else(|| anyhow!("Failed to retrieve the request caller")),
             false => Err(anyhow!("Request records do not contain the same owner")),
         }
     }

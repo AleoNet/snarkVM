@@ -25,7 +25,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> PowChecked<Integer<E, M>> for
         if self.is_constant() && other.is_constant() {
             // Compute the result and return the new constant.
             // This cast is safe since `Magnitude`s can only be `u8`, `u16`, or `u32`.
-            match self.eject_value().checked_pow(other.eject_value().to_u32().unwrap()) {
+            match self.eject_value().checked_pow(&other.eject_value().to_u32().unwrap()) {
                 Some(value) => Integer::new(Mode::Constant, value),
                 None => E::halt("Integer overflow on exponentiation of two constants"),
             }
@@ -41,12 +41,11 @@ impl<E: Environment, I: IntegerType, M: Magnitude> PowChecked<Integer<E, M>> for
 
                 let result_times_self = if I::is_signed() {
                     // Multiply the absolute value of `self` and `other` in the base field.
-                    let absolute_result = Self::ternary(result.msb(), &Self::zero().sub_wrapped(&result), &result);
-                    let absolute_self = Self::ternary(self.msb(), &Self::zero().sub_wrapped(self), self);
-                    let (product, carry) = Self::mul_with_carry(&absolute_result, &absolute_self, true);
+                    // Note that it is safe to use abs_wrapped since we want I::MIN to be interpreted as an unsigned number.
+                    let (product, carry) = Self::mul_with_carry(&(&result).abs_wrapped(), &self.abs_wrapped(), true);
 
                     // We need to check that the abs(a) * abs(b) did not exceed the unsigned maximum.
-                    let carry_bits_nonzero = carry.iter().fold(Boolean::new(Mode::Constant, false), |a, b| a | b);
+                    let carry_bits_nonzero = carry.iter().fold(Boolean::constant(false), |a, b| a | b);
 
                     // If the product should be positive, then it cannot exceed the signed maximum.
                     let operands_same_sign = &result.msb().is_equal(self.msb());
@@ -54,9 +53,8 @@ impl<E: Environment, I: IntegerType, M: Magnitude> PowChecked<Integer<E, M>> for
 
                     // If the product should be negative, then it cannot exceed the absolute value of the signed minimum.
                     let negative_product_underflows = {
-                        let lower_product_bits_nonzero = product.bits_le[..(I::BITS - 1)]
-                            .iter()
-                            .fold(Boolean::new(Mode::Constant, false), |a, b| a | b);
+                        let lower_product_bits_nonzero =
+                            product.bits_le[..(I::BITS - 1)].iter().fold(Boolean::constant(false), |a, b| a | b);
                         let negative_product_lt_or_eq_signed_min =
                             !product.msb() | (product.msb() & !lower_product_bits_nonzero);
                         !operands_same_sign & !negative_product_lt_or_eq_signed_min
@@ -71,7 +69,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> PowChecked<Integer<E, M>> for
                     let (product, carry) = Self::mul_with_carry(&result, self, true);
 
                     // For unsigned multiplication, check that the none of the carry bits are set.
-                    let overflow = carry.iter().fold(Boolean::new(Mode::Constant, false), |a, b| a | b);
+                    let overflow = carry.iter().fold(Boolean::constant(false), |a, b| a | b);
                     E::assert_eq(overflow & bit, E::zero());
 
                     // Return the product of `self` and `other`.
@@ -94,8 +92,8 @@ mod tests {
 
     use std::{ops::RangeInclusive, panic::RefUnwindSafe};
 
-    // Lowered to 8, since we run (~5 * ITERATIONS) cases for most tests.
-    const ITERATIONS: usize = 8;
+    // Lowered to 4; we run (~5 * ITERATIONS) cases for most tests.
+    const ITERATIONS: usize = 4;
 
     #[rustfmt::skip]
     fn check_pow<I: IntegerType + RefUnwindSafe, M: Magnitude + RefUnwindSafe>(
@@ -108,7 +106,7 @@ mod tests {
         let a = Integer::<Circuit, I>::new(mode_a, first);
         let b = Integer::<Circuit, M>::new(mode_b, second);
         let case = format!("({} ** {})", a.eject_value(), b.eject_value());
-        match first.checked_pow(second.to_u32().unwrap()) {
+        match first.checked_pow(&second.to_u32().unwrap()) {
             Some(value) => check_operation_passes_without_counts(name, &case, value, &a, &b, Integer::pow_checked),
             None => {
                 match (mode_a, mode_b) {

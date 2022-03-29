@@ -16,4 +16,4 @@
 
 use crate::prelude::*;
 
-pub trait AddressTrait: Clone + Debug + Display + Eject + Inject + Parser {}
+pub trait AddressTrait: Clone + Debug + Display + Eject + Inject + Parser + TypeName {}

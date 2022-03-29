@@ -25,6 +25,7 @@ members = [
   "circuits/core",
   "circuits/edge",
   "circuits/environment",
+  "circuits/environment/witness",
   "circuits/types",
   "circuits/types/address",
   "circuits/types/boolean",
@@ -132,7 +133,7 @@ version = "2"
 optional = true
 
 [dependencies.self_update]
-version = "0.28"
+version = "0.29"
 optional = true
 
 [dependencies.clap]

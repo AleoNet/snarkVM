@@ -28,7 +28,7 @@ impl<E: Environment> Double for &Field<E> {
     type Output = Field<E>;
 
     fn double(self) -> Self::Output {
-        Field(&self.0 + &self.0)
+        self + self
     }
 }
 

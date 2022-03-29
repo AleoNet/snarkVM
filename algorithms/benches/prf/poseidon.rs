@@ -31,7 +31,7 @@ fn poseidon_prf(c: &mut Criterion) {
         let input: Vec<_> = vec![UniformRand::rand(rng)];
         let seed = UniformRand::rand(rng);
 
-        b.iter(|| PoseidonPRF::<Fr, 4, false>::evaluate(&seed, &input).unwrap())
+        b.iter(|| PoseidonPRF::<Fr, 4, false>::evaluate(&seed, &input))
     });
 }
 
