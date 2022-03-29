@@ -31,10 +31,6 @@ impl_local!(InputVerifyingKeyBytes, "./resources/", "input", "verifying");
 impl_remote!(OutputProvingKeyBytes, REMOTE_URL, "./resources/", "output", "proving");
 impl_local!(OutputVerifyingKeyBytes, "./resources/", "output", "verifying");
 
-// Value Check Circuit
-impl_remote!(ValueCheckProvingKeyBytes, REMOTE_URL, "./resources/", "value_check", "proving");
-impl_local!(ValueCheckVerifyingKeyBytes, "./resources/", "value_check", "verifying");
-
 // PoSW Circuit
 impl_remote!(PoSWProvingKeyBytes, REMOTE_URL, "./resources/", "posw", "proving");
 impl_local!(PoSWVerifyingKeyBytes, "./resources/", "posw", "verifying");

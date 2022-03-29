@@ -5,8 +5,6 @@
 
 ./output.sh || exit
 
-./value_check.sh || exit
-
 ./posw.sh || exit
 
 ./genesis.sh || exit
