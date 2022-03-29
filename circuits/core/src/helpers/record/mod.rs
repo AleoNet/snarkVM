@@ -34,13 +34,14 @@ pub struct Record<E: Environment> {
 impl<E: Environment> Record<E> {
     /// Returns the identifier of the record.
     pub fn identifier(&self) -> Identifier<E> {
-        Identifier::new("record".to_string())
+        Identifier::new(Record::<E>::type_name())
     }
 
+    /// Returns the members of the record.
     pub fn members(&self) -> Vec<(Identifier<E>, Value<E>)> {
         [
-            (Identifier::new("address".to_string()), Value::Literal(Literal::Address(self.owner.clone()))),
-            (Identifier::new("value".to_string()), Value::Literal(Literal::I64(self.value.clone()))),
+            (Identifier::new("address"), Value::Literal(Literal::Address(self.owner.clone()))),
+            (Identifier::new("value"), Value::Literal(Literal::I64(self.value.clone()))),
         ]
         .into_iter()
         .chain(self.data.iter().cloned())
@@ -63,6 +64,12 @@ impl<E: Environment> Record<E> {
     }
 }
 
+impl<E: Environment> TypeName for Record<E> {
+    fn type_name() -> &'static str {
+        "record"
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -70,10 +77,9 @@ mod tests {
 
     #[test]
     fn test_record_data() {
-        let first =
-            (Identifier::new("first".to_string()), Value::Literal(Literal::<Circuit>::from_str("10field.public")));
-        let second = (Identifier::new("second".to_string()), Value::Literal(Literal::from_str("true.private")));
-        let third = (Identifier::new("third".to_string()), Value::Literal(Literal::from_str("99i64.public")));
+        let first = (Identifier::new("first"), Value::Literal(Literal::<Circuit>::from_str("10field.public")));
+        let second = (Identifier::new("second"), Value::Literal(Literal::from_str("true.private")));
+        let third = (Identifier::new("third"), Value::Literal(Literal::from_str("99i64.public")));
 
         let _candidate = Record {
             owner: Address::from(Group::from_str("2group.private")),

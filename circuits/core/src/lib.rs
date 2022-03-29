@@ -29,93 +29,18 @@ pub use helpers::*;
 use snarkvm_circuits_types::prelude::*;
 
 use core::fmt;
-use nom::{
-    branch::alt,
-    bytes::complete::tag,
-    character::complete::{alpha1, alphanumeric1},
-    combinator::{map, map_res, recognize},
-    multi::{many0, many1},
-    sequence::pair,
-};
 use std::{
     fmt::write,
     io::{Read, Result as IoResult, Write},
 };
 
+pub mod annotation;
+pub use annotation::*;
+
 pub mod identifier;
 pub use identifier::*;
 
 pub type Locator = u64;
-
-/// An annotation defines the type parameters for a function or template member.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum Annotation<E: Environment> {
-    /// A type contains its type name and mode.
-    Literal(Type<E>),
-    /// A composite type contains its identifier.
-    Composite(Identifier<E>),
-    /// A record type contains its identifier.
-    Record(Identifier<E>),
-}
-
-impl<E: Environment> Annotation<E> {
-    /// Returns the identifier.
-    pub fn identifier(&self) -> Identifier<E> {
-        match self {
-            Annotation::Literal(type_) => Identifier::new(type_.to_string()),
-            Annotation::Composite(identifier) => identifier.clone(),
-            Annotation::Record(identifier) => identifier.clone(),
-        }
-    }
-
-    /// Returns `true` if the annotation is a literal.
-    /// Returns `false` if the annotation is a composite or record.
-    pub fn is_literal(&self) -> bool {
-        matches!(self, Annotation::Literal(_))
-    }
-
-    /// Returns `true` if the annotation is a composite.
-    /// Returns `false` if the annotation is a literal or record.
-    pub fn is_composite(&self) -> bool {
-        matches!(self, Annotation::Composite(_))
-    }
-
-    /// Returns `true` if the annotation is a record.
-    /// Returns `false` if the annotation is a literal or composite.
-    pub fn is_record(&self) -> bool {
-        matches!(self, Annotation::Record(_))
-    }
-}
-
-impl<E: Environment> Parser for Annotation<E> {
-    type Environment = E;
-
-    /// Parses a string into an annotation.
-    /// The annotation is of the form `{type_name}.{mode}` or `{identifier}`.
-    #[inline]
-    fn parse(string: &str) -> ParserResult<Self> {
-        // Parse to determine the annotation (order matters).
-        alt((
-            map(Type::parse, |type_| Self::Literal(type_)),
-            map(tag("record"), |_| Self::Record(Identifier::new("record".to_string()))),
-            map(Identifier::parse, |identifier| Self::Composite(identifier)),
-        ))(string)
-    }
-}
-
-impl<E: Environment> fmt::Display for Annotation<E> {
-    /// Prints the annotation as a string.
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            // Prints the type, i.e. field.private
-            Self::Literal(type_) => fmt::Display::fmt(type_, f),
-            // Prints the composite type, i.e. signature
-            Self::Composite(identifier) => fmt::Display::fmt(identifier, f),
-            // Prints the record type, i.e. owner
-            Self::Record(identifier) => fmt::Display::fmt(identifier, f),
-        }
-    }
-}
 
 /// A template is a user-defined type that represents a collection of circuits.
 /// A template does not have a mode; rather its individual members are annotated with modes.
@@ -206,7 +131,7 @@ impl<E: Environment> Value<E> {
         match self {
             Self::Literal(literal) => Annotation::Literal(Type::from(literal)),
             Self::Composite(composite) => Annotation::Composite(composite.identifier().clone()),
-            Self::Record(record) => Annotation::Record(record.identifier().clone()),
+            Self::Record(record) => Annotation::Record,
         }
     }
 
@@ -761,56 +686,6 @@ impl<E: Environment> PartialEq for Instruction<E> {
 
 impl<E: Environment> Eq for Instruction<E> {}
 
-// impl<E: Environment> Parser<E> for Instruction<E> {
-//     /// Parses an instruction from a string.
-//     ///
-//     /// # Examples
-//     /// ```
-//     /// use snarkvm_circuits_core::{Instruction, Register, Operand, Value, Literal};
-//     /// use snarkvm_circuits_types::environment::{Parser, Circuit};
-//     /// let instruction = Instruction::<Circuit>::parse("add r0 r1 r2");
-//     /// assert_eq!(Instruction::<Circuit>::parse("add r0 r1 r2"), Ok(("", Instruction::new("add", Register::from_str("r0"), vec![Operand::Register(Register::from_str("r1")), Operand::Register(Register::from_str("r2"))]))));
-//     /// ```
-//     /// ```
-//     /// use snarkvm_circuits_core::{Instruction, Register, Operand, Value, Literal};
-//     /// use snarkvm_circuits_types::environment::{Parser, Circuit};
-//     /// let instruction = Instruction::<Circuit>::parse("add r0 r1 1field.private");
-//     /// assert_eq!(Instruction::<Circuit>::parse("add r0 r1 1field.private"), Ok(("", Instruction::new("add", Register::from_str("r0"), vec![Operand::Register(Register::from_str("r1")), Operand::Value(Value::Literal(Literal::from_str("1field.private"))))))));
-//     /// ```
-//     /// ```
-//     /// use snarkvm_circuits_core::{Instruction, Register, Operand, Value, Literal};
-//     /// use snarkvm_circuits_types::environment::{Parser, Circuit};
-//     /// let instruction = Instruction::<Circuit>::parse("add r0 r1 r2 r3");
-//     /// assert_eq!(Instruction::<Circuit>::parse("add r0 r1 r2 r3"), Ok(("", Instruction::new("add", Register::from_str("r0"), vec![Operand::Register(Register::from_str("r1")), Operand::Register(Register::from_str("r2")), Operand::Register(Register::from_str("r3"))]))));
-//     /// ```
-//     /// ```
-//     /// use snarkvm_circuits_core::{Instruction, Register, Operand, Value, Literal};
-//     /// use snarkvm_circuits_types::environment::{Parser, Circuit};
-//     /// let instruction = Instruction::<Circuit>::parse("add r0 r1 1field.private r2");
-//     /// assert_eq!(Instruction::<Circuit>::parse("add r0 r1 1field.private r2"), Ok(("", Instruction::new("add", Register::from_str("r0"), vec![Operand::Register(Register::from_str("r1")), Operand::Value(Value::Literal(Literal::from_str("1field.private"))), Operand::Register(Register::from_str("r2"))]))));
-//     /// ```
-//     fn parse(input: &str) -> Result<(&str, Self), Error<E>> {
-//         let mut input = input.trim();
-//
-//         // Parse the instruction name.
-//         let name = input.split_whitespace().next().ok_or(Error::ParseError)?;
-//         input = input.split_whitespace().skip(1).collect::<Vec<_>>().join(" ");
-//
-//         // Parse the destination register.
-//         let destination = Register::parse(&input)?;
-//         input = input.split_whitespace().skip(1).collect::<Vec<_>>().join(" ");
-//
-//         // Parse the operands.
-//         let mut operands = Vec::new();
-//         while !input.is_empty() {
-//             operands.push(Operand::parse(&input)?);
-//             input = input.split_whitespace().skip(1).collect::<Vec<_>>().join(" ");
-//         }
-//
-//         Ok((input, Self::new(name, destination, operands)))
-//     }
-// }
-
 pub trait Memory: Environment {
     /// Loads the value of a given register from memory.
     ///
@@ -897,6 +772,7 @@ pub struct Stack<E: Environment> {
     /// The templates declared for the program.
     /// This is a map from the template name to the template.
     templates: IndexMap<Identifier<E>, Template<E>>,
+
     /// The input statements, added in order of the input registers.
     /// Input assignments are ensured to match the ordering of the input statements.
     input_statements: IndexSet<Input<E>>,
@@ -1029,9 +905,9 @@ impl<E: Environment> Stack<E> {
         }
 
         // If the input annotation is for a composite, ensure the input is referencing a valid template.
-        if input.annotation().is_composite() {
-            if !self.templates.contains_key(&input.annotation().identifier()) {
-                E::halt(format!("Template {} does not exist", input.annotation().identifier()))
+        if let Annotation::Composite(identifier) = input.annotation() {
+            if !self.templates.contains_key(identifier) {
+                E::halt(format!("Input annotation references non-existent composite template"))
             }
         }
 
@@ -1189,9 +1065,9 @@ impl<E: Environment> Stack<E> {
         }
 
         // If the output annotation is for a composite, ensure the output is referencing a valid template.
-        if output.annotation().is_composite() {
-            if !self.templates.contains_key(&output.annotation().identifier()) {
-                E::halt(format!("Template {} does not exist", output.annotation().identifier()))
+        if let Annotation::Composite(identifier) = output.annotation() {
+            if !self.templates.contains_key(identifier) {
+                E::halt(format!("Output annotation references non-existent composite template"))
             }
         }
 

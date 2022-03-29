@@ -24,8 +24,6 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
-use core::hash::{Hash, Hasher};
-
 #[allow(unused_imports)]
 use enum_index::EnumIndex;
 
