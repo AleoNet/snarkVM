@@ -17,20 +17,36 @@
 // #[cfg(test)]
 // use snarkvm_circuits_types::environment::assert_scope;
 
-use crate::Literal;
+use crate::{Identifier, Literal, Value};
 use snarkvm_circuits_types::{environment::prelude::*, Address, I64};
 
 // TODO (howardwu): Check mode is only public/private, not constant.
+#[derive(Debug, Clone)]
 pub struct Record<E: Environment> {
     owner: Address<E>,
     value: I64<E>,
-    data: Vec<Literal<E>>,
+    data: Vec<(Identifier<E>, Value<E>)>,
     // program_id: Vec<Boolean<E>>,
     // randomizer: BaseField<E>,
     // record_view_key: BaseField<E>,
 }
 
 impl<E: Environment> Record<E> {
+    /// Returns the identifier of the record.
+    pub fn identifier(&self) -> Identifier<E> {
+        Identifier::new("record".to_string())
+    }
+
+    pub fn members(&self) -> Vec<(Identifier<E>, Value<E>)> {
+        [
+            (Identifier::new("address".to_string()), Value::Literal(Literal::Address(self.owner.clone()))),
+            (Identifier::new("value".to_string()), Value::Literal(Literal::I64(self.value.clone()))),
+        ]
+        .into_iter()
+        .chain(self.data.iter().cloned())
+        .collect::<Vec<_>>()
+    }
+
     /// Returns the record owner.
     pub fn owner(&self) -> &Address<E> {
         &self.owner
@@ -42,7 +58,7 @@ impl<E: Environment> Record<E> {
     }
 
     /// Returns the record data.
-    pub fn data(&self) -> &Vec<Literal<E>> {
+    pub fn data(&self) -> &Vec<(Identifier<E>, Value<E>)> {
         &self.data
     }
 }
@@ -54,9 +70,10 @@ mod tests {
 
     #[test]
     fn test_record_data() {
-        let first = Literal::<Circuit>::from_str("10field.public");
-        let second = Literal::from_str("true.private");
-        let third = Literal::from_str("99i64.public");
+        let first =
+            (Identifier::new("first".to_string()), Value::Literal(Literal::<Circuit>::from_str("10field.public")));
+        let second = (Identifier::new("second".to_string()), Value::Literal(Literal::from_str("true.private")));
+        let third = (Identifier::new("third".to_string()), Value::Literal(Literal::from_str("99i64.public")));
 
         let _candidate = Record {
             owner: Address::from(Group::from_str("2group.private")),

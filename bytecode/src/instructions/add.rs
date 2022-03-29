@@ -97,7 +97,7 @@ impl<M: Memory> Into<Instruction<M>> for Add<M> {
 mod tests {
     use super::*;
     use crate::{Input, Register, Stack};
-    use snarkvm_circuits::Circuit;
+    use snarkvm_circuits::{Circuit, Eject};
 
     #[test]
     fn test_add_field() {
@@ -110,7 +110,7 @@ mod tests {
         Input::from_str("input r1 field.private;", &memory).assign(second).evaluate(&memory);
 
         Add::<Stack<Circuit>>::from_str("r2 r0 r1", &memory).evaluate(&memory);
-        assert_eq!(expected, memory.load(&Register::new(2)));
+        assert_eq!(expected.eject(), memory.load(&Register::new(2)).eject());
     }
 
     #[test]
@@ -124,6 +124,6 @@ mod tests {
         Input::from_str("input r1 group.private;", &memory).assign(second).evaluate(&memory);
 
         Add::<Stack<Circuit>>::from_str("r2 r0 r1", &memory).evaluate(&memory);
-        assert_eq!(expected, memory.load(&Register::new(2)));
+        assert_eq!(expected.eject(), memory.load(&Register::new(2)).eject());
     }
 }

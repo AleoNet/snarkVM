@@ -242,21 +242,6 @@ impl<E: Environment> Display for Literal<E> {
     }
 }
 
-impl<E: Environment> PartialEq for Literal<E> {
-    fn eq(&self, other: &Self) -> bool {
-        self.eject_mode() == other.eject_mode() && self.eject_value() == other.eject_value()
-    }
-}
-
-impl<E: Environment> Eq for Literal<E> {}
-
-impl<E: Environment> Hash for Literal<E> {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.eject_mode().hash(state);
-        self.eject_value().hash(state);
-    }
-}
-
 impl<E: Environment> FromBytes for Literal<E> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let mode = Mode::read_le(&mut reader)?;

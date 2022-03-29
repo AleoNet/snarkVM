@@ -20,5 +20,8 @@ pub use literal::*;
 pub mod primitive;
 pub use primitive::*;
 
+pub mod record;
+pub use record::*;
+
 pub mod type_;
 pub use type_::*;

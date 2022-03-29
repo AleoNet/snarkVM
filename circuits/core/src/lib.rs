@@ -51,30 +51,39 @@ pub type Locator = u64;
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Annotation<E: Environment> {
     /// A type contains its type name and mode.
-    Type(Type<E>),
+    Literal(Type<E>),
     /// A composite type contains its identifier.
     Composite(Identifier<E>),
+    /// A record type contains its identifier.
+    Record(Identifier<E>),
 }
 
 impl<E: Environment> Annotation<E> {
     /// Returns the identifier.
     pub fn identifier(&self) -> Identifier<E> {
         match self {
-            Annotation::Type(type_) => Identifier::new(type_.to_string()),
+            Annotation::Literal(type_) => Identifier::new(type_.to_string()),
             Annotation::Composite(identifier) => identifier.clone(),
+            Annotation::Record(identifier) => identifier.clone(),
         }
     }
 
     /// Returns `true` if the annotation is a literal.
-    /// Returns `false` if the annotation is a composite.
+    /// Returns `false` if the annotation is a composite or record.
     pub fn is_literal(&self) -> bool {
-        matches!(self, Annotation::Type(_))
+        matches!(self, Annotation::Literal(_))
     }
 
     /// Returns `true` if the annotation is a composite.
-    /// Returns `false` if the annotation is a literal.
+    /// Returns `false` if the annotation is a literal or record.
     pub fn is_composite(&self) -> bool {
         matches!(self, Annotation::Composite(_))
+    }
+
+    /// Returns `true` if the annotation is a record.
+    /// Returns `false` if the annotation is a literal or composite.
+    pub fn is_record(&self) -> bool {
+        matches!(self, Annotation::Record(_))
     }
 }
 
@@ -87,7 +96,8 @@ impl<E: Environment> Parser for Annotation<E> {
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse to determine the annotation (order matters).
         alt((
-            map(Type::parse, |type_| Self::Type(type_)),
+            map(Type::parse, |type_| Self::Literal(type_)),
+            map(tag("record"), |_| Self::Record(Identifier::new("record".to_string()))),
             map(Identifier::parse, |identifier| Self::Composite(identifier)),
         ))(string)
     }
@@ -98,9 +108,11 @@ impl<E: Environment> fmt::Display for Annotation<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             // Prints the type, i.e. field.private
-            Self::Type(type_) => fmt::Display::fmt(type_, f),
-            // Prints the composite type, i.e. record
+            Self::Literal(type_) => fmt::Display::fmt(type_, f),
+            // Prints the composite type, i.e. signature
             Self::Composite(identifier) => fmt::Display::fmt(identifier, f),
+            // Prints the record type, i.e. owner
+            Self::Record(identifier) => fmt::Display::fmt(identifier, f),
         }
     }
 }
@@ -111,14 +123,14 @@ impl<E: Environment> fmt::Display for Annotation<E> {
 /// such as `[(owner, address.public), (balance, i64.private)]`, where the left entry is an identifier,
 /// and the right entry is a type annotation.
 ///
-/// A composite format is used to access individual members of a template. For example,
+/// A register member format is used to access individual members of a template. For example,
 /// if the `record` template is assigned to register `r0`, individual members can be accessed
-/// as `r0.owner` or `r0.balance`. This generalizes to the composite format, i.e. `r{locator}.{owner}`.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+/// as `r0.owner` or `r0.balance`. This generalizes to the format, i.e. `r{locator}.{owner}`.
+#[derive(Clone, Debug)]
 pub struct Template<E: Environment> {
-    /// The identifier of the composite.
+    /// The identifier of the template.
     identifier: Identifier<E>,
-    /// The members of the composite.
+    /// The members of the template.
     members: Vec<(Identifier<E>, Annotation<E>)>,
 }
 
@@ -143,11 +155,11 @@ impl<E: Environment> Template<E> {
     }
 }
 
-/// A composite literal is an instantiation of a template. A composite literal is defined by an identifier (such as `record`)
+/// A composite is an instantiation of a template. A composite is defined by an identifier (such as `record`)
 /// and a list of members, such as `[(owner, aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.public), (balance, 5i64.private)]`,
 /// where the left entry is an identifier, and the right entry is a type annotation.
 /// The members of a composite are accessed as `r{locator}.{identifier}`.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug)]
 pub struct Composite<E: Environment> {
     /// The identifier of the composite.
     identifier: Identifier<E>,
@@ -156,7 +168,7 @@ pub struct Composite<E: Environment> {
 }
 
 impl<E: Environment> Composite<E> {
-    /// Initializes a new composite literal. The identifier is the name of the template,
+    /// Initializes a new composite. The identifier is the name of the template,
     /// and the members are a list of identifiers and values.
     #[inline]
     pub fn new(identifier: Identifier<E>, members: Vec<(Identifier<E>, Value<E>)>) -> Self {
@@ -177,12 +189,14 @@ impl<E: Environment> Composite<E> {
 }
 
 /// A value contains the underlying literal(s) in memory.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug)]
 pub enum Value<E: Environment> {
     /// A literal contains its declared literal value.
     Literal(Literal<E>),
-    /// A composite literal contains its declared member values.
+    /// A composite contains its declared member values.
     Composite(Composite<E>),
+    /// A record contains its declared member values.
+    Record(Record<E>),
 }
 
 impl<E: Environment> Value<E> {
@@ -190,8 +204,9 @@ impl<E: Environment> Value<E> {
     #[inline]
     pub fn annotation(&self) -> Annotation<E> {
         match self {
-            Self::Literal(literal) => Annotation::Type(Type::from(literal)),
+            Self::Literal(literal) => Annotation::Literal(Type::from(literal)),
             Self::Composite(composite) => Annotation::Composite(composite.identifier().clone()),
+            Self::Record(record) => Annotation::Record(record.identifier().clone()),
         }
     }
 
@@ -201,16 +216,20 @@ impl<E: Environment> Value<E> {
         match self {
             Self::Literal(literal) => literal.is_constant(),
             Self::Composite(composite) => composite.members().iter().all(|(_, value)| value.is_constant()),
+            Self::Record(record) => record.members().iter().all(|(_, literal)| literal.is_constant()),
         }
     }
 
-    /// Returns the literal corresponding to the given identifier, if `self` is a composite literal.
+    /// Returns the literal corresponding to the given identifier, if `self` is a composite or record.
     /// Returns `None` otherwise.
     #[inline]
-    fn get_composite(&self, identifier: &Identifier<E>) -> Option<&Value<E>> {
+    fn get_member(&self, identifier: &Identifier<E>) -> Option<Value<E>> {
         match self {
             Self::Composite(composite) => {
-                composite.members().iter().find(|(member, _)| member == identifier).map(|(_, value)| value)
+                composite.members().iter().find(|(member, _)| member == identifier).map(|(_, value)| value.clone())
+            }
+            Self::Record(record) => {
+                record.members().into_iter().find(|(member, _)| member == identifier).map(|(_, value)| value)
             }
             _ => None,
         }
@@ -223,8 +242,9 @@ impl<E: Environment> Parser for Value<E> {
     /// Parses a string into a value.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
+        // TODO (howardwu): Add support for records.
         // TODO (howardwu): Sanitize of any whitespaces, or support whitespaces.
-        // A composite literal is defined as: `(identifier, [(identifier, value), ...])`,
+        // A composite is defined as: `(identifier, [(identifier, value), ...])`,
         // where the left tuple is the name of the composite, and the right tuple is the composite identifiers and value.
 
         // Parses a tuple of form: (identifier,value).
@@ -244,7 +264,7 @@ impl<E: Environment> Parser for Value<E> {
         });
         // Parses a slice of form: [(identifier,value),(identifier,value),...,(identifier,value)].
         let slice_parse = pair(pair(tag("["), sequence_parse), tag("]"));
-        // Parses a composite literal of form: identifier[(identifier, value), ...].
+        // Parses a composite of form: identifier[(identifier, value), ...].
         let composite_literal = map(pair(Identifier::parse, slice_parse), |(identifier, ((_, members), _))| {
             Self::Composite(Composite::new(identifier, members))
         });
@@ -260,10 +280,21 @@ impl<E: Environment> fmt::Display for Value<E> {
         match self {
             // Prints the literal, i.e. 10field.private
             Self::Literal(literal) => fmt::Display::fmt(literal, f),
-            // Prints the composite literal, i.e. "record"[("owner",aleo1xxx.public),("value",10i64.private)]
+            // Prints the composite, i.e. "record"[("owner",aleo1xxx.public),("value",10i64.private)]
             Self::Composite(composite) => {
                 let mut output = format!("{}[", composite.identifier());
                 for (identifier, value) in composite.members().iter() {
+                    output += &format!("({identifier},{value}),");
+                }
+                output.pop(); // trailing comma
+                output += &format!("]");
+
+                write!(f, "{output}")
+            }
+            // Prints the record literal, i.e. "record"[("owner",aleo1xxx.public),("value",10i64.private)]
+            Self::Record(record) => {
+                let mut output = format!("{}[", record.identifier());
+                for (identifier, value) in record.members().iter() {
                     output += &format!("({identifier},{value}),");
                 }
                 output.pop(); // trailing comma
@@ -277,15 +308,13 @@ impl<E: Environment> fmt::Display for Value<E> {
 
 use core::cmp::Ordering;
 
-/// A register contains the location data of the underlying value in memory.
+/// A register contains the location data to a value in memory.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Register<E: Environment> {
     /// A register contains its locator in memory.
-    /// The register may hold a value or composite value in memory.
-    Register(Locator),
-    /// A composite register contains its locator and identifier in memory.
-    /// The composite register holds a value (that is non-composite) in memory.
-    Composite(Locator, Identifier<E>),
+    Locator(Locator),
+    /// A register member contains its locator and identifier in memory.
+    Member(Locator, Identifier<E>),
 }
 
 impl<E: Environment> Register<E> {
@@ -293,8 +322,8 @@ impl<E: Environment> Register<E> {
     #[inline]
     pub fn locator(&self) -> &Locator {
         match self {
-            Self::Register(locator) => locator,
-            Self::Composite(locator, _) => locator,
+            Self::Locator(locator) => locator,
+            Self::Member(locator, _) => locator,
         }
     }
 }
@@ -311,12 +340,12 @@ impl<E: Environment> Parser for Register<E> {
         // Parse the locator from the string.
         let (string, locator) =
             map_res(recognize(many1(one_of("0123456789"))), |locator: &str| locator.parse::<u64>())(string)?;
-        // Parse the identifier from the string, if it is a composite register.
+        // Parse the identifier from the string, if it is a register member.
         let (string, identifier) = opt(pair(tag("."), Identifier::parse))(string)?;
         // Return the register.
         Ok((string, match identifier {
-            Some((_, identifier)) => Self::Composite(locator, identifier),
-            None => Self::Register(locator),
+            Some((_, identifier)) => Self::Member(locator, identifier),
+            None => Self::Locator(locator),
         }))
     }
 }
@@ -326,9 +355,9 @@ impl<E: Environment> fmt::Display for Register<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             // Prints the register, i.e. r0
-            Self::Register(locator) => write!(f, "r{locator}"),
-            // Prints the composite register, i.e. r0.owner
-            Self::Composite(locator, identifier) => write!(f, "r{locator}.{identifier}"),
+            Self::Locator(locator) => write!(f, "r{locator}"),
+            // Prints the register member, i.e. r0.owner
+            Self::Member(locator, identifier) => write!(f, "r{locator}.{identifier}"),
         }
     }
 }
@@ -360,12 +389,12 @@ impl<E: Environment> Input<E> {
     /// Initializes a new input.
     ///
     /// # Errors
-    /// This function will halt if the given register is of composite format.
+    /// This function will halt if the given register is a register member.
     #[inline]
     fn new(register: Register<E>, annotation: Annotation<E>) -> Self {
-        // Ensure the register is not a composite register format.
-        if let Register::Composite(..) = register {
-            E::halt("Input register cannot be of composite format")
+        // Ensure the register is not a register member.
+        if let Register::Member(..) = register {
+            E::halt("Input register cannot be a register member")
         }
         Self { register, annotation }
     }
@@ -449,7 +478,7 @@ impl<E: Environment> PartialOrd for Input<E> {
 }
 
 /// The output statement defines an output of a function.
-/// The output may refer to the value in either a register or a composite register.
+/// The output may refer to the value in either a register or a register member.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Output<E: Environment> {
     /// The output register.
@@ -460,24 +489,9 @@ pub struct Output<E: Environment> {
 
 impl<E: Environment> Output<E> {
     /// Initializes a new output.
-    ///
-    /// # Errors
-    /// This function will halt if the given register format and annotation format do not match.
-    /// If the register is not of composite format, the annotation must also not be of composite format.
-    /// If the register is of composite format, the annotation must also be of composite format.
     #[inline]
     fn new(register: Register<E>, annotation: Annotation<E>) -> Self {
-        // Ensure the register type and annotation type match.
-        match (&register, &annotation) {
-            // Case 1: Both are either composite or not composite.
-            (Register::Register(..), Annotation::Type(..)) | (Register::Composite(..), Annotation::Composite(..)) => {
-                Self { register, annotation }
-            }
-            // Case 2: Mixed composite and non-composite.
-            (Register::Composite(..), Annotation::Type(..)) | (Register::Register(..), Annotation::Composite(..)) => {
-                E::halt("Mismatch in output register and annotation declaration")
-            }
-        }
+        Self { register, annotation }
     }
 
     /// Returns the output register.
@@ -546,9 +560,9 @@ impl<E: Environment> fmt::Display for Output<E> {
 
 /// The operand enum represents the complete set of options for operands in an instruction.
 /// This enum is designed to support instructions (such as `add {Register} {Register} {Value}`).
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug)]
 pub enum Operand<E: Environment> {
-    /// A value contains its declared literal(s).
+    /// A value contains a declared literal, composite, or record.
     Value(Value<E>),
     /// A register contains its locator in memory.
     Register(Register<E>),
@@ -568,13 +582,13 @@ impl<E: Environment> Operand<E> {
     /// Returns `None` otherwise.
     ///
     /// # Examples
-    /// ```
+    /// ```ignore
     /// use snarkvm_circuits_core::{Register, Operand, Value, Literal};
     /// use snarkvm_circuits_types::environment::{Parser, Circuit};
     /// let operand = Operand::<Circuit>::Value(Value::Literal(Literal::from_str("1field.private")));
     /// assert_eq!(operand.value(), Some(&Value::Literal(Literal::from_str("1field.private"))));
     /// ```
-    /// ```
+    /// ```ignore
     /// use snarkvm_circuits_core::{Register, Operand};
     /// use snarkvm_circuits_types::environment::{Parser, Circuit};
     /// let operand = Operand::<Circuit>::Register(Register::from_str("r0"));
@@ -633,13 +647,13 @@ impl<E: Environment> Parser for Operand<E> {
     /// Parses a string into a operand.
     ///
     /// # Examples
-    /// ```
+    /// ```ignore
     /// use snarkvm_circuits_core::{Register, Operand, Value, Literal};
     /// use snarkvm_circuits_types::environment::{Parser, Circuit};
     /// let operand = Operand::<Circuit>::Value(Value::Literal(Literal::from_str("1field.private")));
     /// assert_eq!(Operand::<Circuit>::parse("1field.private"), Ok(("", Operand::Value(Value::Literal(Literal::from_str("1field.private"))))));
     /// ```
-    /// ```
+    /// ```ignore
     /// use snarkvm_circuits_core::{Operand, Register};
     /// use snarkvm_circuits_types::environment::{Parser, Circuit};
     /// let operand = Operand::<Circuit>::Register(Register::from_str("r0"));
@@ -667,7 +681,7 @@ impl<E: Environment> fmt::Display for Operand<E> {
 }
 
 /// The instruction represents a single instruction in the program.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug)]
 pub struct Instruction<E: Environment> {
     /// The instruction name.
     name: &'static str,
@@ -681,13 +695,24 @@ impl<E: Environment> Instruction<E> {
     /// Initializes a new instruction.
     ///
     /// # Errors
-    /// This function will halt if the given destination register is of composite format.
+    /// This function will halt if the given destination register is a register member.
+    /// This function will halt if any given operand is a value and is non-constant.
     #[inline]
     pub fn new(name: &'static str, destination: Register<E>, operands: Vec<Operand<E>>) -> Self {
-        // Ensure the destination register is not a composite register format.
-        if let Register::Composite(..) = destination {
-            E::halt("Destination register cannot be of composite format")
+        // Ensure the destination register is not a register member.
+        if let Register::Member(..) = destination {
+            E::halt("Destination register cannot be a register member")
         }
+
+        // Ensure if any operand is a value, that it is constant.
+        for operand in operands.iter() {
+            if let Operand::Value(value) = operand {
+                if !value.is_constant() {
+                    E::halt("Operand cannot be a non-constant value")
+                }
+            }
+        }
+
         Self { name, destination, operands }
     }
 
@@ -725,12 +750,73 @@ impl<E: Environment> fmt::Display for Instruction<E> {
     }
 }
 
+impl<E: Environment> PartialEq for Instruction<E> {
+    /// The destination register can only be assigned once.
+    /// As such, an equivalence relation can be constructed based on this assumption,
+    /// as an instruction may only ever write to a given destination register once.
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name && self.destination == other.destination && self.operands.len() == other.operands.len()
+    }
+}
+
+impl<E: Environment> Eq for Instruction<E> {}
+
+// impl<E: Environment> Parser<E> for Instruction<E> {
+//     /// Parses an instruction from a string.
+//     ///
+//     /// # Examples
+//     /// ```
+//     /// use snarkvm_circuits_core::{Instruction, Register, Operand, Value, Literal};
+//     /// use snarkvm_circuits_types::environment::{Parser, Circuit};
+//     /// let instruction = Instruction::<Circuit>::parse("add r0 r1 r2");
+//     /// assert_eq!(Instruction::<Circuit>::parse("add r0 r1 r2"), Ok(("", Instruction::new("add", Register::from_str("r0"), vec![Operand::Register(Register::from_str("r1")), Operand::Register(Register::from_str("r2"))]))));
+//     /// ```
+//     /// ```
+//     /// use snarkvm_circuits_core::{Instruction, Register, Operand, Value, Literal};
+//     /// use snarkvm_circuits_types::environment::{Parser, Circuit};
+//     /// let instruction = Instruction::<Circuit>::parse("add r0 r1 1field.private");
+//     /// assert_eq!(Instruction::<Circuit>::parse("add r0 r1 1field.private"), Ok(("", Instruction::new("add", Register::from_str("r0"), vec![Operand::Register(Register::from_str("r1")), Operand::Value(Value::Literal(Literal::from_str("1field.private"))))))));
+//     /// ```
+//     /// ```
+//     /// use snarkvm_circuits_core::{Instruction, Register, Operand, Value, Literal};
+//     /// use snarkvm_circuits_types::environment::{Parser, Circuit};
+//     /// let instruction = Instruction::<Circuit>::parse("add r0 r1 r2 r3");
+//     /// assert_eq!(Instruction::<Circuit>::parse("add r0 r1 r2 r3"), Ok(("", Instruction::new("add", Register::from_str("r0"), vec![Operand::Register(Register::from_str("r1")), Operand::Register(Register::from_str("r2")), Operand::Register(Register::from_str("r3"))]))));
+//     /// ```
+//     /// ```
+//     /// use snarkvm_circuits_core::{Instruction, Register, Operand, Value, Literal};
+//     /// use snarkvm_circuits_types::environment::{Parser, Circuit};
+//     /// let instruction = Instruction::<Circuit>::parse("add r0 r1 1field.private r2");
+//     /// assert_eq!(Instruction::<Circuit>::parse("add r0 r1 1field.private r2"), Ok(("", Instruction::new("add", Register::from_str("r0"), vec![Operand::Register(Register::from_str("r1")), Operand::Value(Value::Literal(Literal::from_str("1field.private"))), Operand::Register(Register::from_str("r2"))]))));
+//     /// ```
+//     fn parse(input: &str) -> Result<(&str, Self), Error<E>> {
+//         let mut input = input.trim();
+//
+//         // Parse the instruction name.
+//         let name = input.split_whitespace().next().ok_or(Error::ParseError)?;
+//         input = input.split_whitespace().skip(1).collect::<Vec<_>>().join(" ");
+//
+//         // Parse the destination register.
+//         let destination = Register::parse(&input)?;
+//         input = input.split_whitespace().skip(1).collect::<Vec<_>>().join(" ");
+//
+//         // Parse the operands.
+//         let mut operands = Vec::new();
+//         while !input.is_empty() {
+//             operands.push(Operand::parse(&input)?);
+//             input = input.split_whitespace().skip(1).collect::<Vec<_>>().join(" ");
+//         }
+//
+//         Ok((input, Self::new(name, destination, operands)))
+//     }
+// }
+
 pub trait Memory: Environment {
     /// Loads the value of a given register from memory.
     ///
     /// # Errors
     /// This function will halt if the register locator is not found.
-    /// In the case of composite registers, this function will halt if the identifier is not found.
+    /// In the case of register members, this function will halt if the member is not found.
     fn load(register: &Register<Self>) -> Value<Self>;
 
     /// Stores the given register and value in memory, assuming the register has not been previously stored.
@@ -815,7 +901,7 @@ pub struct Stack<E: Environment> {
     /// Input assignments are ensured to match the ordering of the input statements.
     input_statements: IndexSet<Input<E>>,
     /// The instructions, in order of execution.
-    instructions: IndexSet<Instruction<E>>,
+    instructions: Vec<Instruction<E>>,
     /// The output statements, in order of the desired output.
     /// There is no expectation that the output registers are in any ordering.
     output_statements: IndexSet<Output<E>>,
@@ -826,15 +912,15 @@ impl<E: Environment> Stack<E> {
     ///
     /// # Errors
     /// This function will halt if the register locator is not found.
-    /// In the case of composite registers, this function will halt if the identifier is not found.
+    /// In the case of register members, this function will halt if the member is not found.
     #[inline]
     fn load(&self, register: &Register<E>) -> Value<E> {
         // Attempt to load the value from the register.
         let candidate = match register {
             // Load the value for a register.
-            Register::Register(locator) => self.registers.get(locator),
-            // Load the value for a composite.
-            Register::Composite(locator, _) => self.registers.get(locator),
+            Register::Locator(locator) => self.registers.get(locator),
+            // Load the value for a register member.
+            Register::Member(locator, _) => self.registers.get(locator),
         };
 
         // Retrieve the value from the option.
@@ -845,16 +931,16 @@ impl<E: Environment> Stack<E> {
             Some(None) | None => E::halt(format!("Failed to locate register {register}")),
         };
 
-        // If the register is a composite register, then load the specific value from the composite literal.
+        // If the register is a register member, then load the specific value.
         match register {
             // Load the value for a register.
-            Register::Register(_) => (*value).clone(),
-            // Load the value for a composite.
-            Register::Composite(locator, identifier) => match value.get_composite(identifier) {
+            Register::Locator(_) => (*value).clone(),
+            // Load the value for a register member.
+            Register::Member(locator, identifier) => match value.get_member(identifier) {
                 // Return the value if it exists.
-                Some(value) => (*value).clone(),
-                // Halts if the value in the composite literal does not exist.
-                None => E::halt(format!("Failed to locate composite {identifier} in register {locator}")),
+                Some(value) => value,
+                // Halts if the value does not exist.
+                None => E::halt(format!("Failed to locate member {identifier} in register {locator}")),
             },
         }
     }
@@ -868,9 +954,9 @@ impl<E: Environment> Stack<E> {
         // Store the value in the register.
         let previous = match register {
             // Store the value for a register.
-            Register::Register(locator) => self.registers.insert(locator.clone(), Some(value)),
-            // Store the value for a composite.
-            Register::Composite(locator, _) => self.registers.insert(locator.clone(), Some(value)),
+            Register::Locator(locator) => self.registers.insert(locator.clone(), Some(value)),
+            // Store the value for a register member.
+            Register::Member(locator, _) => self.registers.insert(locator.clone(), Some(value)),
         };
 
         // Ensure the register has not been previously stored.
@@ -910,9 +996,9 @@ impl<E: Environment> Stack<E> {
     #[inline]
     fn new_input_statement(&mut self, input: Input<E>) {
         // Ensure there are no instructions or output statements in memory.
-        if self.instructions.len() > 0 {
+        if !self.instructions.is_empty() {
             E::halt(format!("Cannot add input statement after instructions have been added"))
-        } else if self.output_statements.len() > 0 {
+        } else if !self.output_statements.is_empty() {
             E::halt(format!("Cannot add input statement after output statements have been added"))
         }
 
@@ -999,6 +1085,8 @@ impl<E: Environment> Stack<E> {
         if let Some(Some(..)) = self.registers.insert(*input.locator(), Some(value)) {
             E::halt(format!("Input register {} was already assigned", input.locator()))
         }
+
+        // TODO (howardwu): If input is a record, add all the safety hooks we need to use the record data.
     }
 
     // TODO (howardwu): Instructions should have annotations, and we should check them here.
@@ -1071,7 +1159,7 @@ impl<E: Environment> Stack<E> {
         }
 
         // Add the instruction to the memory.
-        self.instructions.insert(instruction);
+        self.instructions.push(instruction);
     }
 
     /// Adds the output statement into memory.
