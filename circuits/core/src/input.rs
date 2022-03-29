@@ -59,6 +59,24 @@ impl<E: Environment> Input<E> {
     pub fn annotation(&self) -> &Annotation<E> {
         &self.annotation
     }
+
+    /// Returns `true` if the input is a literal.
+    /// Returns `false` if the input is a composite or record.
+    pub fn is_literal(&self) -> bool {
+        self.annotation.is_literal()
+    }
+
+    /// Returns `true` if the input is a composite.
+    /// Returns `false` if the input is a literal or record.
+    pub fn is_composite(&self) -> bool {
+        self.annotation.is_composite()
+    }
+
+    /// Returns `true` if the input is a record.
+    /// Returns `false` if the input is a literal or composite.
+    pub fn is_record(&self) -> bool {
+        self.annotation.is_record()
+    }
 }
 
 impl<E: Environment> TypeName for Input<E> {
@@ -129,6 +147,11 @@ mod tests {
     type E = Circuit;
 
     #[test]
+    fn test_input_type_name() {
+        assert_eq!(Input::<E>::type_name(), "input");
+    }
+
+    #[test]
     fn test_input_parse() {
         // Literal
         let input = Input::<E>::parse("input r0 field.private;").unwrap().1;
@@ -160,6 +183,70 @@ mod tests {
         // Record
         let input = Input::<E>::new(Register::<E>::Locator(2), Annotation::<E>::Record);
         assert_eq!("input r2 record;", input.to_string());
+    }
+
+    #[test]
+    fn test_input_locator() {
+        // Literal
+        let input = Input::<E>::new(Register::<E>::Locator(0), Annotation::<E>::Literal(Type::Field(Mode::Private)));
+        assert_eq!(input.locator(), &0);
+
+        // Composite
+        let input =
+            Input::<E>::new(Register::<E>::Locator(1), Annotation::<E>::Composite(Identifier::new("signature")));
+        assert_eq!(input.locator(), &1);
+
+        // Record
+        let input = Input::<E>::new(Register::<E>::Locator(2), Annotation::<E>::Record);
+        assert_eq!(input.locator(), &2);
+    }
+
+    #[test]
+    fn test_input_is_literal() {
+        // Literal
+        let input = Input::<E>::new(Register::<E>::Locator(0), Annotation::<E>::Literal(Type::Field(Mode::Private)));
+        assert!(input.is_literal());
+
+        // Composite
+        let input =
+            Input::<E>::new(Register::<E>::Locator(1), Annotation::<E>::Composite(Identifier::new("signature")));
+        assert!(!input.is_literal());
+
+        // Record
+        let input = Input::<E>::new(Register::<E>::Locator(2), Annotation::<E>::Record);
+        assert!(!input.is_literal());
+    }
+
+    #[test]
+    fn test_input_is_composite() {
+        // Literal
+        let input = Input::<E>::new(Register::<E>::Locator(0), Annotation::<E>::Literal(Type::Field(Mode::Private)));
+        assert!(!input.is_composite());
+
+        // Composite
+        let input =
+            Input::<E>::new(Register::<E>::Locator(1), Annotation::<E>::Composite(Identifier::new("signature")));
+        assert!(input.is_composite());
+
+        // Record
+        let input = Input::<E>::new(Register::<E>::Locator(2), Annotation::<E>::Record);
+        assert!(!input.is_composite());
+    }
+
+    #[test]
+    fn test_input_is_record() {
+        // Literal
+        let input = Input::<E>::new(Register::<E>::Locator(0), Annotation::<E>::Literal(Type::Field(Mode::Private)));
+        assert!(!input.is_record());
+
+        // Composite
+        let input =
+            Input::<E>::new(Register::<E>::Locator(1), Annotation::<E>::Composite(Identifier::new("signature")));
+        assert!(!input.is_record());
+
+        // Record
+        let input = Input::<E>::new(Register::<E>::Locator(2), Annotation::<E>::Record);
+        assert!(input.is_record());
     }
 
     #[test]

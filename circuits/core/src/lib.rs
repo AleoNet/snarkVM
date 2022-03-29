@@ -39,6 +39,9 @@ pub use identifier::*;
 pub mod input;
 pub use input::*;
 
+pub mod output;
+pub use output::*;
+
 pub mod register;
 pub use register::*;
 
@@ -228,87 +231,6 @@ impl<E: Environment> fmt::Display for Value<E> {
                 write!(f, "{output}")
             }
         }
-    }
-}
-
-/// The output statement defines an output of a function.
-/// The output may refer to the value in either a register or a register member.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Output<E: Environment> {
-    /// The output register.
-    register: Register<E>,
-    /// The output annotation.
-    annotation: Annotation<E>,
-}
-
-impl<E: Environment> Output<E> {
-    /// Initializes a new output.
-    #[inline]
-    pub fn new(register: Register<E>, annotation: Annotation<E>) -> Self {
-        Self { register, annotation }
-    }
-
-    /// Returns the output register.
-    #[inline]
-    pub fn register(&self) -> &Register<E> {
-        &self.register
-    }
-
-    /// Returns the output register locator.
-    #[inline]
-    pub fn locator(&self) -> &Locator {
-        self.register.locator()
-    }
-
-    /// Returns the output annotation.
-    #[inline]
-    pub fn annotation(&self) -> &Annotation<E> {
-        &self.annotation
-    }
-}
-
-impl<E: Environment> TypeName for Output<E> {
-    /// Returns the type name as a string.
-    #[inline]
-    fn type_name() -> &'static str {
-        "output"
-    }
-}
-
-impl<E: Environment> Parser for Output<E> {
-    type Environment = E;
-
-    /// Parses a string into an output statement.
-    /// The output statement is of the form `output {register} {annotation}`.
-    #[inline]
-    fn parse(string: &str) -> ParserResult<Self> {
-        // Parse the output keyword from the string.
-        let (string, _) = tag(Self::type_name())(string)?;
-        // Parse the space from the string.
-        let (string, _) = tag(" ")(string)?;
-        // Parse the register from the string.
-        let (string, register) = Register::parse(string)?;
-        // Parse the space from the string.
-        let (string, _) = tag(" ")(string)?;
-        // Parse the annotation from the string.
-        let (string, annotation) = Annotation::parse(string)?;
-        // Parse the semicolon from the string.
-        let (string, _) = tag(";")(string)?;
-        // Return the output statement.
-        Ok((string, Self { register, annotation }))
-    }
-}
-
-impl<E: Environment> fmt::Display for Output<E> {
-    /// Prints the output statement as a string.
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{type_} {register} {annotation};",
-            type_ = Self::type_name(),
-            register = self.register,
-            annotation = self.annotation
-        )
     }
 }
 
