@@ -36,6 +36,9 @@ pub use annotation::*;
 pub mod identifier;
 pub use identifier::*;
 
+pub mod input;
+pub use input::*;
+
 pub mod register;
 pub use register::*;
 
@@ -228,109 +231,6 @@ impl<E: Environment> fmt::Display for Value<E> {
     }
 }
 
-use core::cmp::Ordering;
-
-/// The input statement defines an input argument to a function.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Input<E: Environment> {
-    /// The input register.
-    register: Register<E>,
-    /// The input annotation.
-    annotation: Annotation<E>,
-}
-
-impl<E: Environment> Input<E> {
-    /// Initializes a new input.
-    ///
-    /// # Errors
-    /// This function will halt if the given register is a register member.
-    #[inline]
-    fn new(register: Register<E>, annotation: Annotation<E>) -> Self {
-        // Ensure the register is not a register member.
-        if let Register::Member(..) = register {
-            E::halt("Input register cannot be a register member")
-        }
-        Self { register, annotation }
-    }
-
-    /// Returns the input register.
-    #[inline]
-    fn register(&self) -> &Register<E> {
-        &self.register
-    }
-
-    /// Returns the input register locator.
-    #[inline]
-    fn locator(&self) -> &Locator {
-        self.register.locator()
-    }
-
-    /// Returns the input annotation.
-    #[inline]
-    fn annotation(&self) -> &Annotation<E> {
-        &self.annotation
-    }
-}
-
-impl<E: Environment> TypeName for Input<E> {
-    /// Returns the type name as a string.
-    #[inline]
-    fn type_name() -> &'static str {
-        "input"
-    }
-}
-
-impl<E: Environment> Parser for Input<E> {
-    type Environment = E;
-
-    /// Parses a string into an input statement.
-    /// The input statement is of the form `input {register} {annotation}`.
-    #[inline]
-    fn parse(string: &str) -> ParserResult<Self> {
-        // Parse the input keyword from the string.
-        let (string, _) = tag(Self::type_name())(string)?;
-        // Parse the space from the string.
-        let (string, _) = tag(" ")(string)?;
-        // Parse the register from the string.
-        let (string, register) = Register::parse(string)?;
-        // Parse the space from the string.
-        let (string, _) = tag(" ")(string)?;
-        // Parse the annotation from the string.
-        let (string, annotation) = Annotation::parse(string)?;
-        // Parse the semicolon from the string.
-        let (string, _) = tag(";")(string)?;
-        // Return the input statement.
-        Ok((string, Self::new(register, annotation)))
-    }
-}
-
-impl<E: Environment> fmt::Display for Input<E> {
-    /// Prints the input statement as a string.
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{type_} {register} {annotation};",
-            type_ = Self::type_name(),
-            register = self.register,
-            annotation = self.annotation
-        )
-    }
-}
-
-impl<E: Environment> Ord for Input<E> {
-    /// Ordering is determined by the register (the annotation is ignored).
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.register().cmp(other.register())
-    }
-}
-
-impl<E: Environment> PartialOrd for Input<E> {
-    /// Ordering is determined by the register (the annotation is ignored).
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
 /// The output statement defines an output of a function.
 /// The output may refer to the value in either a register or a register member.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -344,25 +244,25 @@ pub struct Output<E: Environment> {
 impl<E: Environment> Output<E> {
     /// Initializes a new output.
     #[inline]
-    fn new(register: Register<E>, annotation: Annotation<E>) -> Self {
+    pub fn new(register: Register<E>, annotation: Annotation<E>) -> Self {
         Self { register, annotation }
     }
 
     /// Returns the output register.
     #[inline]
-    fn register(&self) -> &Register<E> {
+    pub fn register(&self) -> &Register<E> {
         &self.register
     }
 
     /// Returns the output register locator.
     #[inline]
-    fn locator(&self) -> &Locator {
+    pub fn locator(&self) -> &Locator {
         self.register.locator()
     }
 
     /// Returns the output annotation.
     #[inline]
-    fn annotation(&self) -> &Annotation<E> {
+    pub fn annotation(&self) -> &Annotation<E> {
         &self.annotation
     }
 }
