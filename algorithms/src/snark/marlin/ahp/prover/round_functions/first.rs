@@ -57,8 +57,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(3);
         let z_a = state.z_a.take().unwrap();
         let z_b = state.z_b.take().unwrap();
-        let mut private_variables = vec![];
-        core::mem::swap(&mut state.private_variables, &mut private_variables);
+        let private_variables = core::mem::take(&mut state.private_variables);
         job_pool.add_job(|| Self::calculate_w(private_variables, &state));
 
         job_pool.add_job(|| Self::calculate_z_m("z_a", z_a, false, &state, None));
