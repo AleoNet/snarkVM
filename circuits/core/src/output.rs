@@ -19,8 +19,9 @@ use snarkvm_circuits_types::prelude::*;
 
 use core::fmt;
 
-/// The output statement defines an output of a function.
-/// The output may refer to the value in either a register or a register member.
+/// The output statement defines an output of a function, and may refer to the value
+/// in either a register or a register member. The output statement is of the form
+/// `output {register} as {annotation}`.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Output<E: Environment> {
     /// The output register.
@@ -85,7 +86,7 @@ impl<E: Environment> Parser for Output<E> {
     type Environment = E;
 
     /// Parses a string into an output statement.
-    /// The output statement is of the form `output {register} {annotation}`.
+    /// The output statement is of the form `output {register} as {annotation}`.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the output keyword from the string.
@@ -94,8 +95,8 @@ impl<E: Environment> Parser for Output<E> {
         let (string, _) = tag(" ")(string)?;
         // Parse the register from the string.
         let (string, register) = Register::parse(string)?;
-        // Parse the space from the string.
-        let (string, _) = tag(" ")(string)?;
+        // Parse the " as " from the string.
+        let (string, _) = tag(" as ")(string)?;
         // Parse the annotation from the string.
         let (string, annotation) = Annotation::parse(string)?;
         // Parse the semicolon from the string.
@@ -110,7 +111,7 @@ impl<E: Environment> fmt::Display for Output<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "{type_} {register} {annotation};",
+            "{type_} {register} as {annotation};",
             type_ = Self::type_name(),
             register = self.register,
             annotation = self.annotation
@@ -134,17 +135,17 @@ mod tests {
     #[test]
     fn test_output_parse() {
         // Literal
-        let output = Output::<E>::parse("output r0 field.private;").unwrap().1;
+        let output = Output::<E>::parse("output r0 as field.private;").unwrap().1;
         assert_eq!(output.register(), &Register::<E>::Locator(0));
         assert_eq!(output.annotation(), &Annotation::<E>::Literal(Type::Field(Mode::Private)));
 
         // Composite
-        let output = Output::<E>::parse("output r1 signature;").unwrap().1;
+        let output = Output::<E>::parse("output r1 as signature;").unwrap().1;
         assert_eq!(output.register(), &Register::<E>::Locator(1));
         assert_eq!(output.annotation(), &Annotation::<E>::Composite(Identifier::new("signature")));
 
         // Record
-        let output = Output::<E>::parse("output r2 record;").unwrap().1;
+        let output = Output::<E>::parse("output r2 as record;").unwrap().1;
         assert_eq!(output.register(), &Register::<E>::Locator(2));
         assert_eq!(output.annotation(), &Annotation::<E>::Record);
     }
@@ -152,75 +153,75 @@ mod tests {
     #[test]
     fn test_output_display() {
         // Literal
-        let output = Output::<E>::parse("output r0 field.private;").unwrap().1;
-        assert_eq!(format!("{}", output), "output r0 field.private;");
+        let output = Output::<E>::parse("output r0 as field.private;").unwrap().1;
+        assert_eq!(format!("{}", output), "output r0 as field.private;");
 
         // Composite
-        let output = Output::<E>::parse("output r1 signature;").unwrap().1;
-        assert_eq!(format!("{}", output), "output r1 signature;");
+        let output = Output::<E>::parse("output r1 as signature;").unwrap().1;
+        assert_eq!(format!("{}", output), "output r1 as signature;");
 
         // Record
-        let output = Output::<E>::parse("output r2 record;").unwrap().1;
-        assert_eq!(format!("{}", output), "output r2 record;");
+        let output = Output::<E>::parse("output r2 as record;").unwrap().1;
+        assert_eq!(format!("{}", output), "output r2 as record;");
     }
 
     #[test]
     fn test_output_locator() {
         // Literal
-        let output = Output::<E>::parse("output r0 field.private;").unwrap().1;
+        let output = Output::<E>::parse("output r0 as field.private;").unwrap().1;
         assert_eq!(output.locator(), &0);
 
         // Composite
-        let output = Output::<E>::parse("output r1 signature;").unwrap().1;
+        let output = Output::<E>::parse("output r1 as signature;").unwrap().1;
         assert_eq!(output.locator(), &1);
 
         // Record
-        let output = Output::<E>::parse("output r2 record;").unwrap().1;
+        let output = Output::<E>::parse("output r2 as record;").unwrap().1;
         assert_eq!(output.locator(), &2);
     }
 
     #[test]
     fn test_output_is_literal() {
         // Literal
-        let output = Output::<E>::parse("output r0 field.private;").unwrap().1;
+        let output = Output::<E>::parse("output r0 as field.private;").unwrap().1;
         assert!(output.is_literal());
 
         // Composite
-        let output = Output::<E>::parse("output r1 signature;").unwrap().1;
+        let output = Output::<E>::parse("output r1 as signature;").unwrap().1;
         assert!(!output.is_literal());
 
         // Record
-        let output = Output::<E>::parse("output r2 record;").unwrap().1;
+        let output = Output::<E>::parse("output r2 as record;").unwrap().1;
         assert!(!output.is_literal());
     }
 
     #[test]
     fn test_output_is_composite() {
         // Literal
-        let output = Output::<E>::parse("output r0 field.private;").unwrap().1;
+        let output = Output::<E>::parse("output r0 as field.private;").unwrap().1;
         assert!(!output.is_composite());
 
         // Composite
-        let output = Output::<E>::parse("output r1 signature;").unwrap().1;
+        let output = Output::<E>::parse("output r1 as signature;").unwrap().1;
         assert!(output.is_composite());
 
         // Record
-        let output = Output::<E>::parse("output r2 record;").unwrap().1;
+        let output = Output::<E>::parse("output r2 as record;").unwrap().1;
         assert!(!output.is_composite());
     }
 
     #[test]
     fn test_output_is_record() {
         // Literal
-        let output = Output::<E>::parse("output r0 field.private;").unwrap().1;
+        let output = Output::<E>::parse("output r0 as field.private;").unwrap().1;
         assert!(!output.is_record());
 
         // Composite
-        let output = Output::<E>::parse("output r1 signature;").unwrap().1;
+        let output = Output::<E>::parse("output r1 as signature;").unwrap().1;
         assert!(!output.is_record());
 
         // Record
-        let output = Output::<E>::parse("output r2 record;").unwrap().1;
+        let output = Output::<E>::parse("output r2 as record;").unwrap().1;
         assert!(output.is_record());
     }
 }

@@ -19,7 +19,8 @@ use snarkvm_circuits_types::prelude::*;
 
 use core::{cmp::Ordering, fmt};
 
-/// The input statement defines an input argument to a function.
+/// The input statement defines an input argument to a function, and is of the form
+/// `input {register} as {annotation}`.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Input<E: Environment> {
     /// The input register.
@@ -91,7 +92,7 @@ impl<E: Environment> Parser for Input<E> {
     type Environment = E;
 
     /// Parses a string into an input statement.
-    /// The input statement is of the form `input {register} {annotation}`.
+    /// The input statement is of the form `input {register} as {annotation}`.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the input keyword from the string.
@@ -100,8 +101,8 @@ impl<E: Environment> Parser for Input<E> {
         let (string, _) = tag(" ")(string)?;
         // Parse the register from the string.
         let (string, register) = Register::parse(string)?;
-        // Parse the space from the string.
-        let (string, _) = tag(" ")(string)?;
+        // Parse the " as " from the string.
+        let (string, _) = tag(" as ")(string)?;
         // Parse the annotation from the string.
         let (string, annotation) = Annotation::parse(string)?;
         // Parse the semicolon from the string.
@@ -116,7 +117,7 @@ impl<E: Environment> fmt::Display for Input<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "{type_} {register} {annotation};",
+            "{type_} {register} as {annotation};",
             type_ = Self::type_name(),
             register = self.register,
             annotation = self.annotation
@@ -154,17 +155,17 @@ mod tests {
     #[test]
     fn test_input_parse() {
         // Literal
-        let input = Input::<E>::parse("input r0 field.private;").unwrap().1;
+        let input = Input::<E>::parse("input r0 as field.private;").unwrap().1;
         assert_eq!(input.register(), &Register::<E>::Locator(0));
         assert_eq!(input.annotation(), &Annotation::<E>::Literal(Type::Field(Mode::Private)));
 
         // Composite
-        let input = Input::<E>::parse("input r1 signature;").unwrap().1;
+        let input = Input::<E>::parse("input r1 as signature;").unwrap().1;
         assert_eq!(input.register(), &Register::<E>::Locator(1));
         assert_eq!(input.annotation(), &Annotation::<E>::Composite(Identifier::new("signature")));
 
         // Record
-        let input = Input::<E>::parse("input r2 record;").unwrap().1;
+        let input = Input::<E>::parse("input r2 as record;").unwrap().1;
         assert_eq!(input.register(), &Register::<E>::Locator(2));
         assert_eq!(input.annotation(), &Annotation::<E>::Record);
     }
@@ -173,15 +174,15 @@ mod tests {
     fn test_input_display() {
         // Literal
         let input = Input::<E>::new(Register::Locator(0), Annotation::Literal(Type::Field(Mode::Private)));
-        assert_eq!("input r0 field.private;", input.to_string());
+        assert_eq!("input r0 as field.private;", input.to_string());
 
         // Composite
         let input = Input::<E>::new(Register::Locator(1), Annotation::Composite(Identifier::new("signature")));
-        assert_eq!("input r1 signature;", input.to_string());
+        assert_eq!("input r1 as signature;", input.to_string());
 
         // Record
         let input = Input::<E>::new(Register::Locator(2), Annotation::Record);
-        assert_eq!("input r2 record;", input.to_string());
+        assert_eq!("input r2 as record;", input.to_string());
     }
 
     #[test]
