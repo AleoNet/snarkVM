@@ -47,7 +47,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField, D: Digest + Clone + Debug> 
         Self { r: None, seed: None, _phantom: PhantomData }
     }
 
-    fn absorb_nonnative_field_elements(&mut self, elems: &[TargetField], _: OptimizationType) {
+    fn absorb_nonnative_field_elements(&mut self, elems: impl IntoIterator<Item = TargetField>, _: OptimizationType) {
         let mut bytes = Vec::new();
         for elem in elems {
             elem.write_le(&mut bytes).expect("failed to convert to bytes");
@@ -167,7 +167,7 @@ mod tests {
         }
 
         let mut fs_rng = FiatShamirChaChaRng::<Fr, Fq, Blake2s256>::new();
-        fs_rng.absorb_nonnative_field_elements(&absorbed_rand_field_elems, OptimizationType::Weight);
+        fs_rng.absorb_nonnative_field_elements(absorbed_rand_field_elems.clone(), OptimizationType::Weight);
         for absorbed_rand_byte_elem in absorbed_rand_byte_elems {
             fs_rng.absorb_bytes(&absorbed_rand_byte_elem);
         }

@@ -467,7 +467,7 @@ impl<E: PairingEngine> Proof<E> {
     pub fn absorb_into_sponge<S: FiatShamirRng<E::Fr, E::Fq>>(&self, sponge: &mut S) -> Result<(), FiatShamirError> {
         sponge.absorb_native_field_elements(&self.w.to_field_elements()?);
         if let Some(random_v) = self.random_v {
-            sponge.absorb_nonnative_field_elements(&[random_v], OptimizationType::Weight);
+            sponge.absorb_nonnative_field_elements([random_v], OptimizationType::Weight);
         }
         Ok(())
     }

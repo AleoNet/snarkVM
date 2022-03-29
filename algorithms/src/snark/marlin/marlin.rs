@@ -175,7 +175,7 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
         let mut fs_rng = FS::new();
         fs_rng.absorb_bytes(&to_bytes_le![&Self::PROTOCOL_NAME].unwrap());
         fs_rng.absorb_native_field_elements(&circuit_proving_key.circuit_verifying_key.circuit_commitments);
-        fs_rng.absorb_nonnative_field_elements(padded_public_input, OptimizationType::Weight);
+        fs_rng.absorb_nonnative_field_elements(padded_public_input.to_vec(), OptimizationType::Weight);
 
         // --------------------------------------------------------------------
         // First round
@@ -352,10 +352,7 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
         let mut evaluations = std::collections::BTreeMap::new();
         for (label, (_, point)) in query_set.to_set() {
             if !AHPForR1CS::<E::Fr, MM>::LC_WITH_ZERO_EVAL.contains(&label.as_str()) {
-                let lc = lc_s
-                    .iter()
-                    .find(|lc| *lc.label == label)
-                    .ok_or_else(|| AHPError::MissingEval(label.to_string()))?;
+                let lc = lc_s.get(&label).ok_or_else(|| AHPError::MissingEval(label.to_string()))?;
                 let evaluation = polynomials.get_lc_eval(lc, point)?;
                 evaluations.insert(label, evaluation);
             }
@@ -366,11 +363,11 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
 
         Self::terminate(terminator)?;
 
-        fs_rng.absorb_nonnative_field_elements(&evaluations.to_field_elements(), OptimizationType::Weight);
+        fs_rng.absorb_nonnative_field_elements(evaluations.to_field_elements(), OptimizationType::Weight);
 
         let pc_proof = SonicKZG10::<E, FS>::open_combinations(
             &circuit_proving_key.committer_key,
-            &lc_s,
+            lc_s.values(),
             polynomials,
             &labeled_commitments,
             &query_set.to_set(),
@@ -407,7 +404,7 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
 
     fn verifier_absorb_with_msg(commitments: &[Commitment<E>], msg: &prover::ThirdMessage<E::Fr>, fs_rng: &mut FS) {
         Self::verifier_absorb(commitments, fs_rng);
-        fs_rng.absorb_nonnative_field_elements(&[msg.sum_a, msg.sum_b, msg.sum_c], OptimizationType::Weight);
+        fs_rng.absorb_nonnative_field_elements([msg.sum_a, msg.sum_b, msg.sum_c], OptimizationType::Weight);
     }
 
     /// Verify that a proof for the constraint system defined by `C` asserts that
@@ -459,7 +456,7 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
         let mut fs_rng = FS::new();
         fs_rng.absorb_bytes(&to_bytes_le![&Self::PROTOCOL_NAME].unwrap());
         fs_rng.absorb_native_field_elements(&circuit_verifying_key.circuit_commitments);
-        fs_rng.absorb_nonnative_field_elements(&padded_public_input, OptimizationType::Weight);
+        fs_rng.absorb_nonnative_field_elements(padded_public_input, OptimizationType::Weight);
 
         // --------------------------------------------------------------------
         // First round
@@ -514,7 +511,7 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
 
         let (query_set, verifier_state) = AHPForR1CS::<_, MM>::verifier_query_set(verifier_state);
 
-        fs_rng.absorb_nonnative_field_elements(&proof.evaluations.to_field_elements(), OptimizationType::Weight);
+        fs_rng.absorb_nonnative_field_elements(proof.evaluations.to_field_elements(), OptimizationType::Weight);
 
         let mut evaluations = Evaluations::new();
 
@@ -536,7 +533,7 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
 
         let evaluations_are_correct = SonicKZG10::<E, FS>::check_combinations(
             &circuit_verifying_key.verifier_key,
-            &lc_s,
+            lc_s.values(),
             &commitments,
             &query_set.to_set(),
             &evaluations,

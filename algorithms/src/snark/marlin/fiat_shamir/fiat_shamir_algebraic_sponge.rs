@@ -54,7 +54,7 @@ where
         Self { s: S::new(&S::sample_parameters()), _phantom: PhantomData }
     }
 
-    fn absorb_nonnative_field_elements(&mut self, elems: &[TargetField], ty: OptimizationType) {
+    fn absorb_nonnative_field_elements(&mut self, elems: impl IntoIterator<Item = TargetField>, ty: OptimizationType) {
         Self::push_elements_to_sponge(&mut self.s, elems, ty);
     }
 
@@ -194,11 +194,11 @@ impl<TargetField: PrimeField, BaseField: PrimeField, S: DefaultCapacityAlgebraic
     }
 
     /// Push elements to sponge, treated in the non-native field representations.
-    pub fn push_elements_to_sponge(sponge: &mut S, src: &[TargetField], ty: OptimizationType) {
+    pub fn push_elements_to_sponge(sponge: &mut S, src: impl IntoIterator<Item = TargetField>, ty: OptimizationType) {
         let mut src_limbs = Vec::<(BaseField, BaseField)>::new();
 
-        for elem in src.iter() {
-            let limbs = Self::get_limbs_representations(elem, ty).unwrap();
+        for elem in src {
+            let limbs = Self::get_limbs_representations(&elem, ty).unwrap();
             for limb in limbs.iter() {
                 src_limbs.push((*limb, BaseField::one()));
                 // specifically set to one, since most gadgets in the constraint world would not have zero noise (due to the relatively weak normal form testing in `alloc`)

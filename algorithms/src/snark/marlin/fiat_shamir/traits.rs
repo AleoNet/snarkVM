@@ -30,7 +30,11 @@ pub trait FiatShamirRng<TargetField: PrimeField, BaseField: PrimeField>: Clone +
     fn new() -> Self;
 
     /// Takes in field elements.
-    fn absorb_nonnative_field_elements(&mut self, elements: &[TargetField], ty: OptimizationType);
+    fn absorb_nonnative_field_elements(
+        &mut self,
+        elements: impl IntoIterator<Item = TargetField>,
+        ty: OptimizationType,
+    );
 
     /// Takes in field elements.
     fn absorb_native_field_elements<T: ToConstraintField<BaseField>>(&mut self, elements: &[T]);

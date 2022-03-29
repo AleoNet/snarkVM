@@ -21,6 +21,7 @@ use crate::{
     snark::marlin::{FiatShamirError, FiatShamirRng},
     Prepare,
 };
+use hashbrown::HashMap;
 use snarkvm_curves::{PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, Field, PrimeField, ToConstraintField};
 use snarkvm_utilities::{error, serialize::*, FromBytes, ToBytes};
@@ -728,7 +729,7 @@ pub fn evaluate_query_set<'a, F: PrimeField>(
     polys: impl IntoIterator<Item = &'a LabeledPolynomial<F>>,
     query_set: &QuerySet<'a, F>,
 ) -> Evaluations<'a, F> {
-    let polys: BTreeMap<_, _> = polys.into_iter().map(|p| (p.label(), p)).collect();
+    let polys: HashMap<_, _> = polys.into_iter().map(|p| (p.label(), p)).collect();
     let mut evaluations = Evaluations::new();
     for (label, (_point_name, point)) in query_set {
         let poly = polys.get(label).expect("polynomial in evaluated lc is not found");

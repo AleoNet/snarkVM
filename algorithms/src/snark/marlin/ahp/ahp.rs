@@ -29,6 +29,7 @@ use crate::{
 use snarkvm_fields::{Field, PrimeField};
 
 use core::{borrow::Borrow, marker::PhantomData};
+use std::collections::BTreeMap;
 
 /// The algebraic holographic proof defined in [CHMMVW19](https://eprint.iacr.org/2019/1047).
 /// Currently, this AHP only supports inputs of size one
@@ -176,7 +177,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         evals: &E,
         prover_third_message: &prover::ThirdMessage<F>,
         state: &verifier::State<F, MM>,
-    ) -> Result<Vec<LinearCombination<F>>, AHPError> {
+    ) -> Result<BTreeMap<String, LinearCombination<F>>, AHPError> {
         let constraint_domain = state.constraint_domain;
         let non_zero_a_domain = state.non_zero_a_domain;
         let non_zero_b_domain = state.non_zero_b_domain;
@@ -208,7 +209,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let beta = state.second_round_message.unwrap().beta;
         let gamma = state.gamma.unwrap();
 
-        let mut linear_combinations = Vec::with_capacity(9);
+        let mut linear_combinations = BTreeMap::new();
 
         // Lincheck sumcheck:
         let z_b = LinearCombination::new("z_b", vec![(F::one(), "z_b")]);
@@ -245,9 +246,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         };
         debug_assert!(evals.get_lc_eval(&lincheck_sumcheck, beta)?.is_zero());
 
-        linear_combinations.push(z_b);
-        linear_combinations.push(g_1);
-        linear_combinations.push(lincheck_sumcheck);
+        linear_combinations.insert("z_b".into(), z_b);
+        linear_combinations.insert("g_1".into(), g_1);
+        linear_combinations.insert("lincheck_sumcheck".into(), lincheck_sumcheck);
 
         //  Matrix sumcheck:
         let mut matrix_sumcheck = LinearCombination::empty("matrix_sumcheck");
@@ -277,12 +278,11 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             &LinearCombination::new("h_2", vec![(largest_non_zero_domain.evaluate_vanishing_polynomial(gamma), "h_2")]);
         debug_assert!(evals.get_lc_eval(&matrix_sumcheck, gamma)?.is_zero());
 
-        linear_combinations.push(g_a);
-        linear_combinations.push(g_b);
-        linear_combinations.push(g_c);
-        linear_combinations.push(matrix_sumcheck);
+        linear_combinations.insert("g_a".into(), g_a);
+        linear_combinations.insert("g_b".into(), g_b);
+        linear_combinations.insert("g_c".into(), g_c);
+        linear_combinations.insert("matrix_sumcheck".into(), matrix_sumcheck);
 
-        linear_combinations.sort_by_key(|a| a.label.clone());
         Ok(linear_combinations)
     }
 

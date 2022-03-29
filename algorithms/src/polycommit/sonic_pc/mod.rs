@@ -19,6 +19,7 @@ use crate::{
     polycommit::{kzg10, optional_rng::OptionalRng, PCError},
     snark::marlin::{params::OptimizationType, FiatShamirRng},
 };
+use hashbrown::HashMap;
 use itertools::Itertools;
 use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{One, Zero};
@@ -345,7 +346,7 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
         Randomness<E>: 'a,
         Commitment<E>: 'a,
     {
-        let poly_rand_comm: BTreeMap<_, _> = labeled_polynomials
+        let poly_rand_comm: HashMap<_, _> = labeled_polynomials
             .into_iter()
             .zip_eq(rands)
             .zip_eq(commitments.into_iter())
@@ -420,12 +421,9 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
         let mut combined_adjusted_witness = E::G1Projective::zero();
 
         let mut batch_kzg_check_fs_rng = S::new();
-        batch_kzg_check_fs_rng.absorb_nonnative_field_elements(
-            &query_set.iter().map(|(_, (_, q))| *q).collect::<Vec<_>>(),
-            OptimizationType::Weight,
-        );
         batch_kzg_check_fs_rng
-            .absorb_nonnative_field_elements(&values.values().copied().collect::<Vec<_>>(), OptimizationType::Weight);
+            .absorb_nonnative_field_elements(query_set.iter().map(|(_, (_, q))| *q), OptimizationType::Weight);
+        batch_kzg_check_fs_rng.absorb_nonnative_field_elements(values.values().copied(), OptimizationType::Weight);
         proof.absorb_into_sponge(&mut batch_kzg_check_fs_rng)?;
 
         for ((_query_name, (query, labels)), p) in query_to_labels_map.into_iter().zip_eq(&proof.0) {
@@ -643,11 +641,7 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
     }
 
     fn normalize_commitments(commitments: Vec<E::G1Projective>) -> impl Iterator<Item = Commitment<E>> {
-        let mut comms = Vec::with_capacity(commitments.len());
-        for comm in commitments {
-            comms.push(comm);
-        }
-        let comms = E::G1Projective::batch_normalization_into_affine(comms);
+        let comms = E::G1Projective::batch_normalization_into_affine(commitments);
         comms.into_iter().map(|c| kzg10::Commitment(c))
     }
 }
