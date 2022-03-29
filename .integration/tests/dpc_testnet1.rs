@@ -25,7 +25,7 @@ use time::OffsetDateTime;
 #[test]
 fn test_testnet1_input_circuit_id_sanity_check() {
     let expected_input_circuit_id =
-        "ic1k50z25vzzxcpgs4h60qhnc46t65wlh6asxtt2l3na727e5gd7d7gk2neasdgec4jz9ee278fd3xqq2ar6fr".to_string();
+        "ic17y02cnuupqarg2qh99pcma4ul8g2dyc9qcfdly3s5y3yyrs3zwqf2hvkzlmasmdn9r8g38rdrgnsqgvuech".to_string();
     let candidate_input_circuit_id = <Testnet1 as Network>::input_circuit_id().to_string();
     assert_eq!(expected_input_circuit_id, candidate_input_circuit_id);
 }
@@ -33,7 +33,7 @@ fn test_testnet1_input_circuit_id_sanity_check() {
 #[test]
 fn test_testnet1_output_circuit_id_sanity_check() {
     let expected_output_circuit_id =
-        "oc1dylhuv82qprc285v0sv0ezxmap2ys8dqhlslv9grzf2z0s54qda3wcn07lnxzlux3z7nqdmm2zpqq462mwg".to_string();
+        "oc1ugudgr5jgn6s6trh3rdg9fa7apklkh96fplpr6m7vxf2jv46fzuhak9jpqnexa7yxw8qkx02pdaqz2vq7yh".to_string();
     let candidate_output_circuit_id = <Testnet1 as Network>::output_circuit_id().to_string();
     assert_eq!(expected_output_circuit_id, candidate_output_circuit_id);
 }
