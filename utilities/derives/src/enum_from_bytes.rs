@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use proc_macro2::{Ident, Literal, Span, TokenStream};
+use proc_macro2::{Literal, TokenStream};
 use quote::quote;
 use syn::{parse::Parse, Data, Fields, Type};
 
@@ -51,7 +51,6 @@ pub(crate) fn impl_from_bytes(ast: &syn::DeriveInput) -> TokenStream {
                 let variant_index = Literal::usize_unsuffixed(i);
                 let match_arm = match &variant.fields {
                     Fields::Named(fields) => {
-                        let mut field_patterns = Vec::<TokenStream>::with_capacity(fields.named.len());
                         let mut field_reads = Vec::<TokenStream>::with_capacity(fields.named.len());
 
                         for field in fields.named.iter() {
