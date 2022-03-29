@@ -29,10 +29,6 @@ pub use helpers::*;
 use snarkvm_circuits_types::prelude::*;
 
 use core::fmt;
-use std::{
-    fmt::write,
-    io::{Read, Result as IoResult, Write},
-};
 
 pub mod annotation;
 pub use annotation::*;
@@ -40,7 +36,8 @@ pub use annotation::*;
 pub mod identifier;
 pub use identifier::*;
 
-pub type Locator = u64;
+pub mod register;
+pub use register::*;
 
 /// A template is a user-defined type that represents a collection of circuits.
 /// A template does not have a mode; rather its individual members are annotated with modes.
@@ -131,7 +128,7 @@ impl<E: Environment> Value<E> {
         match self {
             Self::Literal(literal) => Annotation::Literal(Type::from(literal)),
             Self::Composite(composite) => Annotation::Composite(composite.identifier().clone()),
-            Self::Record(record) => Annotation::Record,
+            Self::Record(..) => Annotation::Record,
         }
     }
 
@@ -232,74 +229,6 @@ impl<E: Environment> fmt::Display for Value<E> {
 }
 
 use core::cmp::Ordering;
-
-/// A register contains the location data to a value in memory.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum Register<E: Environment> {
-    /// A register contains its locator in memory.
-    Locator(Locator),
-    /// A register member contains its locator and identifier in memory.
-    Member(Locator, Identifier<E>),
-}
-
-impl<E: Environment> Register<E> {
-    /// Returns the locator of the register.
-    #[inline]
-    pub fn locator(&self) -> &Locator {
-        match self {
-            Self::Locator(locator) => locator,
-            Self::Member(locator, _) => locator,
-        }
-    }
-}
-
-impl<E: Environment> Parser for Register<E> {
-    type Environment = E;
-
-    /// Parses a string into a register.
-    /// The register is of the form `r{locator}` or `r{locator}.{identifier}`.
-    #[inline]
-    fn parse(string: &str) -> ParserResult<Self> {
-        // Parse the register character from the string.
-        let (string, _) = tag("r")(string)?;
-        // Parse the locator from the string.
-        let (string, locator) =
-            map_res(recognize(many1(one_of("0123456789"))), |locator: &str| locator.parse::<u64>())(string)?;
-        // Parse the identifier from the string, if it is a register member.
-        let (string, identifier) = opt(pair(tag("."), Identifier::parse))(string)?;
-        // Return the register.
-        Ok((string, match identifier {
-            Some((_, identifier)) => Self::Member(locator, identifier),
-            None => Self::Locator(locator),
-        }))
-    }
-}
-
-impl<E: Environment> fmt::Display for Register<E> {
-    /// Prints the register as a string.
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            // Prints the register, i.e. r0
-            Self::Locator(locator) => write!(f, "r{locator}"),
-            // Prints the register member, i.e. r0.owner
-            Self::Member(locator, identifier) => write!(f, "r{locator}.{identifier}"),
-        }
-    }
-}
-
-impl<E: Environment> Ord for Register<E> {
-    /// Ordering is determined by the register locator (the identifier is ignored).
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.locator().cmp(other.locator())
-    }
-}
-
-impl<E: Environment> PartialOrd for Register<E> {
-    /// Ordering is determined by the register locator (the identifier is ignored).
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
 
 /// The input statement defines an input argument to a function.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]

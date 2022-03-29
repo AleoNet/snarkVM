@@ -132,4 +132,10 @@ mod tests {
         assert!(Identifier::<E>::parse("input").is_err());
         assert!(Identifier::<E>::parse("record").is_err());
     }
+
+    #[test]
+    fn test_identifier_display() {
+        let identifier = Identifier::<E>::new("foo_bar");
+        assert_eq!("foo_bar", format!("{}", identifier));
+    }
 }

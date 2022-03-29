@@ -103,4 +103,32 @@ mod tests {
         // Record must not contain visibility.
         assert!(Identifier::<E>::parse("record.private").is_err());
     }
+
+    #[test]
+    fn test_annotation_display() {
+        assert_eq!(Annotation::<E>::Literal(Type::Field(Mode::Private)).to_string(), "field.private");
+        assert_eq!(Annotation::<E>::Composite(Identifier::new("signature")).to_string(), "signature");
+        assert_eq!(Annotation::<E>::Record.to_string(), "record");
+    }
+
+    #[test]
+    fn test_annotation_is_literal() {
+        assert!(Annotation::<E>::Literal(Type::Field(Mode::Private)).is_literal());
+        assert!(!Annotation::<E>::Composite(Identifier::new("signature")).is_literal());
+        assert!(!Annotation::<E>::Record.is_literal());
+    }
+
+    #[test]
+    fn test_annotation_is_composite() {
+        assert!(!Annotation::<E>::Literal(Type::Field(Mode::Private)).is_composite());
+        assert!(Annotation::<E>::Composite(Identifier::new("signature")).is_composite());
+        assert!(!Annotation::<E>::Record.is_composite());
+    }
+
+    #[test]
+    fn test_annotation_is_record() {
+        assert!(!Annotation::<E>::Literal(Type::Field(Mode::Private)).is_record());
+        assert!(!Annotation::<E>::Composite(Identifier::new("signature")).is_record());
+        assert!(Annotation::<E>::Record.is_record());
+    }
 }
