@@ -18,6 +18,10 @@ mod canonical_deserialize;
 
 mod canonical_serialize;
 
+mod enum_from_bytes;
+
+mod enum_to_bytes;
+
 mod test_with_metrics;
 
 use proc_macro_error::{abort_call_site, proc_macro_error};
@@ -33,6 +37,18 @@ pub fn derive_canonical_serialize(input: proc_macro::TokenStream) -> proc_macro:
 pub fn derive_canonical_deserialize(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
     proc_macro::TokenStream::from(canonical_deserialize::impl_canonical_deserialize(&ast))
+}
+
+#[proc_macro_derive(EnumFromBytes, attributes(tag))]
+pub fn derive_enum_from_bytes(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let ast = parse_macro_input!(input as DeriveInput);
+    proc_macro::TokenStream::from(enum_from_bytes::impl_from_bytes(&ast))
+}
+
+#[proc_macro_derive(EnumToBytes, attributes(tag))]
+pub fn derive_enum_to_bytes(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let ast = parse_macro_input!(input as DeriveInput);
+    proc_macro::TokenStream::from(enum_to_bytes::impl_to_bytes(&ast))
 }
 
 #[proc_macro_error]

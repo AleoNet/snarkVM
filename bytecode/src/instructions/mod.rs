@@ -25,7 +25,7 @@ pub use sub::*;
 
 use crate::{Memory, Operation, Sanitizer};
 use snarkvm_circuits::ParserResult;
-use snarkvm_utilities::{error, FromBytes, ToBytes};
+use snarkvm_utilities::{EnumFromBytes, EnumToBytes};
 
 use core::fmt;
 use nom::{
@@ -34,8 +34,9 @@ use nom::{
     combinator::map,
     sequence::{pair, preceded},
 };
-use std::io::{Read, Result as IoResult, Write};
 
+#[derive(EnumFromBytes, EnumToBytes)]
+#[tag(u16)]
 pub enum Instruction<M: Memory> {
     /// Adds `first` with `second`, storing the outcome in `destination`.
     Add(Add<M>),
@@ -92,37 +93,6 @@ impl<M: Memory> fmt::Display for Instruction<M> {
             Self::Add(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Store(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Sub(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-        }
-    }
-}
-
-impl<M: Memory> FromBytes for Instruction<M> {
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        match u16::read_le(&mut reader) {
-            Ok(0) => Ok(Self::Add(Add::read_le(&mut reader)?)),
-            Ok(1) => Ok(Self::Store(Store::read_le(&mut reader)?)),
-            Ok(2) => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
-            Ok(code) => Err(error(format!("FromBytes failed to parse an instruction of code {code}"))),
-            Err(err) => Err(err),
-        }
-    }
-}
-
-impl<M: Memory> ToBytes for Instruction<M> {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        match self {
-            Self::Add(instruction) => {
-                u16::write_le(&0u16, &mut writer)?;
-                instruction.write_le(&mut writer)
-            }
-            Self::Store(instruction) => {
-                u16::write_le(&1u16, &mut writer)?;
-                instruction.write_le(&mut writer)
-            }
-            Self::Sub(instruction) => {
-                u16::write_le(&2u16, &mut writer)?;
-                instruction.write_le(&mut writer)
-            }
         }
     }
 }
