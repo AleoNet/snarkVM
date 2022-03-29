@@ -22,15 +22,41 @@ use core::{fmt, marker::PhantomData};
 use nom::character::complete::{alpha1, alphanumeric1};
 
 const NUM_IDENTIFIER_BYTES: usize = 64;
+#[rustfmt::skip]
 const KEYWORDS: &[&str] = &[
     // Mode
-    "constant", "public", "private", // Literals
-    "address", "boolean", "field", "group", "i8", "i16", "i32", "i64", "i128", "u8", "u16", "u32", "u64", "u128",
-    "scalar", "string", // Boolean
-    "true", "false", // TODO (howardwu): Add the instruction opcodes.
+    "constant",
+    "public",
+    "private",
+    // Literals
+    "address",
+    "boolean",
+    "field",
+    "group",
+    "i8",
+    "i16",
+    "i32",
+    "i64",
+    "i128",
+    "u8",
+    "u16",
+    "u32",
+    "u64",
+    "u128",
+    "scalar",
+    "string",
+    // Boolean
+    "true",
+    "false",
+    // TODO (howardwu): Add the instruction opcodes.
     // Statements
-    "input", "output", // Reserved (catch all)
-    "function", "type", "as", "record",
+    "input",
+    "output",
+    // Reserved (catch all)
+    "function",
+    "type",
+    "as",
+    "record",
 ];
 
 /// An identifier is a string of alphanumeric (and underscore) characters.
