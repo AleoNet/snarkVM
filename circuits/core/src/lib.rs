@@ -800,11 +800,13 @@ impl<E: Environment> Stack<E> {
     /// This method will halt if the given input annotation references a non-existent template.
     #[inline]
     fn new_input_statement(&mut self, input: Input<E>) {
+        let register = input.register();
+
         // Ensure there are no instructions or output statements in memory.
         if !self.instructions.is_empty() {
-            E::halt(format!("Cannot add input statement after instructions have been added"))
+            E::halt("Cannot add input statement after instructions have been added")
         } else if !self.output_statements.is_empty() {
-            E::halt(format!("Cannot add input statement after output statements have been added"))
+            E::halt("Cannot add input statement after output statements have been added")
         }
 
         // Ensure the input statement was not previously added.
@@ -814,12 +816,12 @@ impl<E: Environment> Stack<E> {
 
         // Ensure the input does not exist in the registers.
         if self.registers.contains_key(input.locator()) {
-            E::halt(format!("Input register {} was previously stored", input.locator()))
+            E::halt(format!("Input register {register} was previously stored"))
         }
 
         // Ensure the input register does not exist in the annotations.
         if self.annotations.contains_key(input.locator()) {
-            E::halt(format!("Input register {} was previously annotated", input.locator()))
+            E::halt(format!("Input register {register} was previously annotated"))
         }
 
         // Ensure the input register is new, and incrementing monotonically.
@@ -858,37 +860,38 @@ impl<E: Environment> Stack<E> {
     /// This method will halt if the annotation does not match.
     #[inline]
     fn assign_input(&mut self, input: Input<E>, value: Value<E>) {
+        let register = input.register();
+
         // Ensure the input exists in the registers.
         if !self.registers.contains_key(input.locator()) {
-            E::halt(format!("Register {} does not exist", input.locator()))
+            E::halt(format!("Register {register} does not exist"))
         }
 
         // Ensure the input is an input register.
         if !self.input_statements.contains(&input) {
-            E::halt(format!("Register {} is not an input register", input.locator()))
+            E::halt(format!("Register {register} is not an input register"))
         }
 
         // Ensure the previous input is assigned before the current input.
         match self.registers.get(&input.locator().saturating_sub(1)) {
-            Some(None) | None => E::halt(format!(
-                "Cannot assign input register {} as the previous register is not assigned yet",
-                input.locator()
-            )),
+            Some(None) | None => {
+                E::halt(format!("Cannot assign input register {register} as the previous register is not assigned yet"))
+            }
             _ => (),
         }
 
         // Ensure the input annotation matches.
         let expected_annotation = match self.annotations.get(input.locator()) {
             Some(annotation) => annotation,
-            None => E::halt(format!("Annotation for register {} does not exist", input.locator())),
+            None => E::halt(format!("Annotation for register {register} does not exist")),
         };
         if expected_annotation != &value.annotation() {
-            E::halt(format!("Input register {} annotation does not match", input.locator()))
+            E::halt(format!("Input register {register} annotation does not match"))
         }
 
         // Assign the input value to the register.
         if let Some(Some(..)) = self.registers.insert(*input.locator(), Some(value)) {
-            E::halt(format!("Input register {} was already assigned", input.locator()))
+            E::halt(format!("Input register {register} was already assigned"))
         }
 
         // TODO (howardwu): If input is a record, add all the safety hooks we need to use the record data.
@@ -911,12 +914,12 @@ impl<E: Environment> Stack<E> {
     fn new_instruction(&mut self, instruction: Instruction<E>) {
         // Ensure there are input statements in memory.
         if self.input_statements.is_empty() {
-            E::halt(format!("Cannot add instruction before input statements have been added"))
+            E::halt("Cannot add instruction before input statements have been added")
         }
 
         // Ensure the instruction does not already exist in memory.
         if self.instructions.contains(&instruction) {
-            E::halt(format!("Instruction {} was previously stored", instruction))
+            E::halt(format!("Instruction {instruction} was previously stored"))
         }
 
         // Ensure the destination register does not exist.
@@ -932,7 +935,7 @@ impl<E: Environment> Stack<E> {
         // Ensure the operand registers exist.
         for register in instruction.operands().iter().filter_map(|operand| operand.register()) {
             if !self.registers.contains_key(register.locator()) {
-                E::halt(format!("Operand register {} does not exist", register))
+                E::halt(format!("Operand register {register} does not exist"))
             }
         }
 
@@ -940,8 +943,8 @@ impl<E: Environment> Stack<E> {
         for register in instruction.operands().iter().filter_map(|operand| operand.register()) {
             if *register.locator() >= *instruction.destination.locator() {
                 E::halt(format!(
-                    "Operand register {} is greater than the destination {}",
-                    register, instruction.destination
+                    "Operand register {register} is greater than the destination {}",
+                    instruction.destination
                 ))
             }
         }
@@ -952,14 +955,14 @@ impl<E: Environment> Stack<E> {
             .chain(instruction.operands().iter().filter_map(|operand| operand.register()))
         {
             if let Some(Some(..)) = self.registers.get(register.locator()) {
-                E::halt(format!("Register {} is already set", register))
+                E::halt(format!("Register {register} is already set"))
             }
         }
 
         // Ensure the operand values are constant.
         for value in instruction.operands().iter().filter_map(|operand| operand.value()) {
             if !value.is_constant() {
-                E::halt(format!("Operand {} is not constant", value))
+                E::halt(format!("Operand {value} is not constant"))
             }
         }
 
@@ -978,25 +981,27 @@ impl<E: Environment> Stack<E> {
     /// This method will halt if the given output annotation references a non-existent template.
     #[inline]
     fn new_output_statement(&mut self, output: Output<E>) {
+        let register = output.register();
+
         // Ensure there are input statements and instructions in memory.
         if self.input_statements.is_empty() || self.instructions.is_empty() {
-            E::halt(format!("Cannot add output statement before input statements or instructions have been added"))
+            E::halt("Cannot add output statement before input statements or instructions have been added")
         }
 
         // Ensure the output exists in the registers.
         if !self.registers.contains_key(output.locator()) {
-            E::halt(format!("Output register {} is missing", output.locator()))
+            E::halt(format!("Output register {register} is missing"))
         }
 
         // Ensure the output register is not already set.
         if let Some(Some(..)) = self.registers.get(output.locator()) {
-            E::halt(format!("Output register {} was already set", output.locator()))
+            E::halt(format!("Output register {register} was already set"))
         }
 
         // If the output annotation is for a composite, ensure the output is referencing a valid template.
         if let Annotation::Composite(identifier) = output.annotation() {
             if !self.templates.contains_key(identifier) {
-                E::halt(format!("Output annotation references non-existent composite template"))
+                E::halt("Output annotation references non-existent composite template")
             }
         }
 
