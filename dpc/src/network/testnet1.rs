@@ -41,7 +41,7 @@ use snarkvm_algorithms::{
     signature::AleoSignatureScheme,
     snark::{
         groth16::Groth16,
-        marlin::{FiatShamirAlgebraicSpongeRng, MarlinNonHidingMode, MarlinSNARK},
+        marlin::{FiatShamirAlgebraicSpongeRng, MarlinHidingMode, MarlinNonHidingMode, MarlinSNARK},
     },
 };
 use snarkvm_curves::{
@@ -133,8 +133,8 @@ impl Network for Testnet1 {
     const VALUE_COMMITMENT_SIZE_IN_BYTES: usize = 64;
     const VALUE_BALANCE_COMMITMENT_SIZE_IN_BYTES: usize = 96;
 
-    const INPUT_PROOF_SIZE_IN_BYTES: usize = 193;
-    const OUTPUT_PROOF_SIZE_IN_BYTES: usize = 193;
+    const INPUT_PROOF_SIZE_IN_BYTES: usize = 963;
+    const OUTPUT_PROOF_SIZE_IN_BYTES: usize = 963;
 
     const HEADER_TRANSACTIONS_TREE_DEPTH: usize = 15;
     const HEADER_TREE_DEPTH: usize = 2;
@@ -157,14 +157,14 @@ impl Network for Testnet1 {
     type ProgramProjectiveCurve = EdwardsBls12Projective;
     type ProgramCurveParameters = EdwardsParameters;
     type ProgramScalarField = <Self::ProgramCurveParameters as ModelParameters>::ScalarField;
-
-    type InnerSNARK = Groth16<Self::InnerCurve, InnerPublicVariables<Testnet1>>;
+    
+    type InnerSNARK = MarlinSNARK<Self::InnerScalarField, Self::InnerBaseField, SonicKZG10<Self::InnerCurve>, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::InnerBaseField, PoseidonSponge<Self::InnerBaseField, 6, 1>>, MarlinHidingMode, InnerPublicVariables<Self>>;
     type InnerProof = AleoObject<<Self::InnerSNARK as SNARK>::Proof, { Self::INNER_PROOF_PREFIX }, { Self::INNER_PROOF_SIZE_IN_BYTES }>;
 
-    type InputSNARK = Groth16<Self::InnerCurve, InputPublicVariables<Self>>;
+    type InputSNARK = MarlinSNARK<Self::InnerScalarField, Self::InnerBaseField, SonicKZG10<Self::InnerCurve>, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::InnerBaseField, PoseidonSponge<Self::InnerBaseField, 6, 1>>, MarlinHidingMode, InputPublicVariables<Self>>;
     type InputProof = AleoObject<<Self::InputSNARK as SNARK>::Proof, { Self::INPUT_PROOF_PREFIX }, { Self::INPUT_PROOF_SIZE_IN_BYTES }>;
 
-    type OutputSNARK = Groth16<Self::InnerCurve, OutputPublicVariables<Self>>;
+    type OutputSNARK = MarlinSNARK<Self::InnerScalarField, Self::InnerBaseField, SonicKZG10<Self::InnerCurve>, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::InnerBaseField, PoseidonSponge<Self::InnerBaseField, 6, 1>>, MarlinHidingMode, OutputPublicVariables<Self>>;
     type OutputProof = AleoObject<<Self::OutputSNARK as SNARK>::Proof, { Self::OUTPUT_PROOF_PREFIX }, { Self::OUTPUT_PROOF_SIZE_IN_BYTES }>;
 
     type ProgramSNARK = Groth16<Self::InnerCurve, ProgramPublicVariables<Self>>;
@@ -339,7 +339,7 @@ mod tests {
         // Verify the inner circuit verifying key matches the one derived from the inner circuit proving key.
         assert_eq!(
             Testnet1::inner_verifying_key(),
-            &Testnet1::inner_proving_key().vk,
+            &Testnet1::inner_proving_key().circuit_verifying_key,
             "The inner circuit verifying key does not correspond to the inner circuit proving key"
         );
     }
@@ -354,6 +354,52 @@ mod tests {
                 .expect("Failed to hash inner circuit ID")
                 .into(),
             "The inner circuit ID does not correspond to the inner circuit verifying key"
+        );
+    }
+
+    #[test]
+    fn test_input_circuit_sanity_check() {
+        // Verify the input circuit verifying key matches the one derived from the input circuit proving key.
+        assert_eq!(
+            Testnet1::input_verifying_key(),
+            &Testnet1::input_proving_key().circuit_verifying_key,
+            "The input circuit verifying key does not correspond to the input circuit proving key"
+        );
+    }
+
+    #[test]
+    fn test_input_circuit_id_derivation() {
+        // Verify the input circuit ID matches the one derived from the input circuit verifying key.
+        assert_eq!(
+            Testnet1::input_circuit_id(),
+            &Testnet1::input_circuit_id_crh()
+                .hash(&Testnet1::input_verifying_key().to_minimal_bits())
+                .expect("Failed to hash input circuit ID")
+                .into(),
+            "The input circuit ID does not correspond to the input circuit verifying key"
+        );
+    }
+
+    #[test]
+    fn test_output_circuit_sanity_check() {
+        // Verify the output circuit verifying key matches the one derived from the output circuit proving key.
+        assert_eq!(
+            Testnet1::output_verifying_key(),
+            &Testnet1::output_proving_key().circuit_verifying_key,
+            "The output circuit verifying key does not correspond to the output circuit proving key"
+        );
+    }
+
+    #[test]
+    fn test_output_circuit_id_derivation() {
+        // Verify the output circuit ID matches the one derived from the output circuit verifying key.
+        assert_eq!(
+            Testnet1::output_circuit_id(),
+            &Testnet1::output_circuit_id_crh()
+                .hash(&Testnet1::output_verifying_key().to_minimal_bits())
+                .expect("Failed to hash output circuit ID")
+                .into(),
+            "The output circuit ID does not correspond to the output circuit verifying key"
         );
     }
 

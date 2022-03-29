@@ -54,20 +54,10 @@ impl<N: Network> Request<N> {
         rng: &mut R,
     ) -> Result<Self> {
         let burner = PrivateKey::new(rng);
-        let burner_address = Address::from_private_key(&burner);
-
         let operation = Operation::Coinbase(recipient, amount);
         let fee = AleoAmount::ZERO.sub(amount);
         // TODO (raychu86): Remove noop record from coinbase?.
-        Self::new(
-            &burner,
-            vec![Record::new_noop(burner_address, rng)?],
-            vec![LedgerProof::default()],
-            operation,
-            fee,
-            is_public,
-            rng,
-        )
+        Self::new(&burner, vec![], vec![], operation, fee, is_public, rng)
     }
 
     /// Initializes a new transfer request.
@@ -174,15 +164,11 @@ impl<N: Network> Request<N> {
         }
 
         // Ensure the records contain the same owner, and retrieve the owner as the caller.
-        let caller = {
-            let owners: HashSet<Address<N>> = self.records.iter().map(|record| record.owner()).collect();
-            if owners.len() == 1 {
-                *owners.iter().next().expect("Failed to fetch request caller")
-            } else {
-                eprintln!("Request records do not contain the same owner");
-                return false;
-            }
-        };
+        let owners: HashSet<Address<N>> = self.records.iter().map(|record| record.owner()).collect();
+        if owners.len() > 1 {
+            eprintln!("Request records do not contain the same owner");
+            return false;
+        }
 
         // Ensure the records contains a total value that is at least the fee amount.
         if !self.operation.is_coinbase() {
@@ -232,7 +218,7 @@ impl<N: Network> Request<N> {
             };
 
             // Ensure the signature is valid.
-            if let Err(error) = N::account_signature_scheme().verify(&caller, &message, signature) {
+            if let Err(error) = N::account_signature_scheme().verify(&record.owner(), &message, signature) {
                 eprintln!("Failed to verify request signature {}: {}", i, error);
                 return false;
             }

@@ -102,8 +102,11 @@ impl<N: Network> VirtualMachine<N> {
                 *input_value_commitment_randomness,
             )?;
 
+            let now = std::time::Instant::now();
+
             let input_circuit = InputCircuit::<N>::new(input_public.clone(), input_private);
             let input_proof = N::InputSNARK::prove(N::input_proving_key(), &input_circuit, rng)?;
+            println!("{} input proof", now.elapsed().as_millis());
 
             assert!(N::InputSNARK::verify(N::input_verifying_key(), &input_public, &input_proof)?);
 
@@ -132,8 +135,11 @@ impl<N: Network> VirtualMachine<N> {
                 *output_value_commitment_randomness,
             )?;
 
+            let now = std::time::Instant::now();
             let output_circuit = OutputCircuit::<N>::new(output_public.clone(), output_private);
             let output_proof = N::OutputSNARK::prove(N::output_proving_key(), &output_circuit, rng)?;
+
+            println!("{} output proof", now.elapsed().as_millis());
 
             assert!(N::OutputSNARK::verify(N::output_verifying_key(), &output_public, &output_proof)?);
 

@@ -39,15 +39,12 @@ use snarkvm_algorithms::{
     prelude::*,
     prf::PoseidonPRF,
     signature::AleoSignatureScheme,
-    snark::{
-        groth16::Groth16,
-        marlin::{
-            FiatShamirAlgebraicSpongeRng,
-            FiatShamirChaChaRng,
-            MarlinHidingMode,
-            MarlinNonHidingMode,
-            MarlinSNARK,
-        },
+    snark::marlin::{
+        FiatShamirAlgebraicSpongeRng,
+        FiatShamirChaChaRng,
+        MarlinHidingMode,
+        MarlinNonHidingMode,
+        MarlinSNARK,
     },
 };
 use snarkvm_curves::{
@@ -142,8 +139,8 @@ impl Network for Testnet2 {
     const VALUE_COMMITMENT_SIZE_IN_BYTES: usize = 64;
     const VALUE_BALANCE_COMMITMENT_SIZE_IN_BYTES: usize = 96;
 
-    const INPUT_PROOF_SIZE_IN_BYTES: usize = 193;
-    const OUTPUT_PROOF_SIZE_IN_BYTES: usize = 193;
+    const INPUT_PROOF_SIZE_IN_BYTES: usize = 963;
+    const OUTPUT_PROOF_SIZE_IN_BYTES: usize = 963;
     
     const HEADER_TRANSACTIONS_TREE_DEPTH: usize = 15;
     const HEADER_TREE_DEPTH: usize = 2;
@@ -167,13 +164,13 @@ impl Network for Testnet2 {
     type ProgramCurveParameters = EdwardsParameters;
     type ProgramScalarField = <Self::ProgramCurveParameters as ModelParameters>::ScalarField;
 
-    type InnerSNARK = Groth16<Self::InnerCurve, InnerPublicVariables<Testnet2>>;
+    type InnerSNARK = MarlinSNARK<Self::InnerScalarField, Self::InnerBaseField, SonicKZG10<Self::InnerCurve>, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::InnerBaseField, PoseidonSponge<Self::InnerBaseField, 6, 1>>, MarlinHidingMode, InnerPublicVariables<Self>>;
     type InnerProof = AleoObject<<Self::InnerSNARK as SNARK>::Proof, { Self::INNER_PROOF_PREFIX }, { Self::INNER_PROOF_SIZE_IN_BYTES }>;
 
-    type InputSNARK = Groth16<Self::InnerCurve, InputPublicVariables<Self>>;
+    type InputSNARK = MarlinSNARK<Self::InnerScalarField, Self::InnerBaseField, SonicKZG10<Self::InnerCurve>, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::InnerBaseField, PoseidonSponge<Self::InnerBaseField, 6, 1>>, MarlinHidingMode, InputPublicVariables<Self>>;
     type InputProof = AleoObject<<Self::InputSNARK as SNARK>::Proof, { Self::INPUT_PROOF_PREFIX }, { Self::INPUT_PROOF_SIZE_IN_BYTES }>;
 
-    type OutputSNARK = Groth16<Self::InnerCurve, OutputPublicVariables<Self>>;
+    type OutputSNARK = MarlinSNARK<Self::InnerScalarField, Self::InnerBaseField, SonicKZG10<Self::InnerCurve>, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::InnerBaseField, PoseidonSponge<Self::InnerBaseField, 6, 1>>, MarlinHidingMode, OutputPublicVariables<Self>>;
     type OutputProof = AleoObject<<Self::OutputSNARK as SNARK>::Proof, { Self::OUTPUT_PROOF_PREFIX }, { Self::OUTPUT_PROOF_SIZE_IN_BYTES }>;
 
     type ProgramSNARK = MarlinSNARK<Self::InnerScalarField, Self::InnerBaseField, SonicKZG10<Self::InnerCurve>, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::InnerBaseField, PoseidonSponge<Self::InnerBaseField, 6, 1>>, MarlinHidingMode, ProgramPublicVariables<Self>>;
@@ -352,7 +349,7 @@ mod tests {
         // Verify the inner circuit verifying key matches the one derived from the inner circuit proving key.
         assert_eq!(
             Testnet2::inner_verifying_key(),
-            &Testnet2::inner_proving_key().vk,
+            &Testnet2::inner_proving_key().circuit_verifying_key,
             "The inner circuit verifying key does not correspond to the inner circuit proving key"
         );
     }
@@ -375,7 +372,7 @@ mod tests {
         // Verify the input circuit verifying key matches the one derived from the input circuit proving key.
         assert_eq!(
             Testnet2::input_verifying_key(),
-            &Testnet2::input_proving_key().vk,
+            &Testnet2::input_proving_key().circuit_verifying_key,
             "The input circuit verifying key does not correspond to the input circuit proving key"
         );
     }
@@ -398,7 +395,7 @@ mod tests {
         // Verify the output circuit verifying key matches the one derived from the output circuit proving key.
         assert_eq!(
             Testnet2::output_verifying_key(),
-            &Testnet2::output_proving_key().vk,
+            &Testnet2::output_proving_key().circuit_verifying_key,
             "The output circuit verifying key does not correspond to the output circuit proving key"
         );
     }
