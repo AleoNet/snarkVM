@@ -23,7 +23,7 @@ use snarkvm_utilities::{
 };
 
 use enum_index::EnumIndex;
-
+// TODO: Consider deriving EnumToBytes and EnumFromBytes for Literal. Requires additional functionality to ignore certain fields in the proc macro.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, EnumIndex)]
 pub enum Type<E: Environment> {
     /// The Aleo address type.

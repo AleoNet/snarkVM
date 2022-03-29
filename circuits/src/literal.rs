@@ -32,6 +32,7 @@ use snarkvm_utilities::{
 
 use enum_index::EnumIndex;
 
+// TODO: Consider deriving EnumToBytes and EnumFromBytes for Literal. Nontrivial refactor required.
 #[derive(Clone, EnumIndex)]
 pub enum Literal<E: Environment> {
     /// The Aleo address type.
