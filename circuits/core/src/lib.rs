@@ -53,7 +53,7 @@ pub use register::*;
 ///
 /// A register member format is used to access individual members of a template. For example,
 /// if the `record` template is assigned to register `r0`, individual members can be accessed
-/// as `r0.owner` or `r0.balance`. This generalizes to the format, i.e. `r{locator}.{owner}`.
+/// as `r0.owner` or `r0.balance`. This generalizes to the format, i.e. `r{locator}.{member}`.
 #[derive(Clone, Debug)]
 pub struct Template<E: Environment> {
     /// The identifier of the template.
@@ -660,7 +660,7 @@ impl<E: Environment> Stack<E> {
         // If the input annotation is for a composite, ensure the input is referencing a valid template.
         if let Annotation::Composite(identifier) = input.annotation() {
             if !self.templates.contains_key(identifier) {
-                E::halt(format!("Input annotation references non-existent composite template"))
+                E::halt("Input annotation references non-existent composite template")
             }
         }
 

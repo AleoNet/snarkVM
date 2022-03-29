@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::Register;
 use snarkvm_circuits_types::prelude::*;
 use snarkvm_utilities::error;
 
@@ -22,8 +23,20 @@ use nom::character::complete::{alpha1, alphanumeric1};
 
 const NUM_IDENTIFIER_BYTES: usize = 64;
 // TODO (howardwu): Add the instruction opcodes, and the literal type names.
-const KEYWORDS: [&str; 10] =
-    ["constant", "field", "function", "input", "output", "parameter", "public", "private", "record", "template"];
+const KEYWORDS: [&str; 12] = [
+    "constant",
+    "field",
+    "false",
+    "function",
+    "input",
+    "output",
+    "parameter",
+    "public",
+    "private",
+    "record",
+    "template",
+    "true",
+];
 
 /// An identifier is a string of alphanumeric (and underscore) characters.
 ///
@@ -32,6 +45,7 @@ const KEYWORDS: [&str; 10] =
 /// The identifier must be alphanumeric (or underscore).
 /// The identifier must not start with a number.
 /// The identifier must not be a keyword.
+/// The identifier must not be a register format.
 ///
 /// # Example
 /// ```
@@ -65,6 +79,7 @@ impl<E: Environment> Parser for Identifier<E> {
     /// The identifier must be alphanumeric (or underscore).
     /// The identifier must not start with a number.
     /// The identifier must not be a keyword.
+    /// The identifier must not be a register format.
     ///
     /// # Example
     /// ```
@@ -88,7 +103,12 @@ impl<E: Environment> Parser for Identifier<E> {
             // Ensure identifier is not a keyword.
             if KEYWORDS.contains(&identifier) {
                 // if E::keywords().contains(name) {
-                return Err(error(format!("Identifier `{}` is a keyword", identifier)));
+                return Err(error(format!("Identifier `{identifier}` is a keyword")));
+            }
+
+            // Ensure the identifier is not a register format.
+            if Register::<E>::parse(identifier).is_ok() {
+                return Err(error(format!("Identifier `{identifier}` cannot be of a register format")));
             }
 
             Ok(Self(identifier.to_string(), PhantomData))
@@ -128,9 +148,13 @@ mod tests {
         // Must not start with a number.
         assert!(Identifier::<E>::parse("2").is_err());
         assert!(Identifier::<E>::parse("1foo").is_err());
-        //Must not be a keyword.
+        // Must not be a keyword.
         assert!(Identifier::<E>::parse("input").is_err());
         assert!(Identifier::<E>::parse("record").is_err());
+        // Must not be a register format.
+        assert!(Identifier::<E>::parse("r0").is_err());
+        assert!(Identifier::<E>::parse("r123").is_err());
+        assert!(Identifier::<E>::parse("r0.owner").is_err());
     }
 
     #[test]
