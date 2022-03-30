@@ -29,6 +29,7 @@ use snarkvm_circuits_types_integers::U8;
 
 #[derive(Clone)]
 pub struct StringType<E: Environment> {
+    mode: Mode,
     bytes: Vec<U8<E>>,
 }
 
@@ -44,15 +45,9 @@ impl<E: Environment> StringType<E> {
         // Ensure the string is within the allowed capacity.
         let num_bytes = string.len();
         match num_bytes <= E::NUM_STRING_BYTES as usize {
-            true => Self { bytes: string.as_bytes().iter().map(|byte| U8::new(mode, *byte)).collect() },
+            true => Self { mode, bytes: string.as_bytes().iter().map(|byte| U8::new(mode, *byte)).collect() },
             false => E::halt(format!("Attempted to allocate a string of size {num_bytes}")),
         }
-    }
-
-    /// Returns the type name as a string.
-    #[inline]
-    pub fn type_name() -> &'static str {
-        "string"
     }
 }
 
@@ -63,7 +58,10 @@ impl<E: Environment> Eject for StringType<E> {
     /// Ejects the mode of the string.
     ///
     fn eject_mode(&self) -> Mode {
-        E::eject_mode(&self.bytes)
+        match self.bytes.is_empty() {
+            true => self.mode,
+            false => self.bytes.eject_mode(),
+        }
     }
 
     ///
@@ -73,7 +71,7 @@ impl<E: Environment> Eject for StringType<E> {
         // Ensure the string is within the allowed capacity.
         let num_bytes = self.bytes.len();
         match num_bytes <= E::NUM_STRING_BYTES as usize {
-            true => String::from_utf8(self.bytes.iter().map(Eject::eject_value).collect())
+            true => String::from_utf8(self.bytes.eject_value())
                 .unwrap_or_else(|error| E::halt(&format!("Failed to eject a string value: {error}"))),
             false => E::halt(format!("Attempted to eject a string of size {num_bytes}")),
         }
@@ -95,6 +93,14 @@ impl<E: Environment> Parser for StringType<E> {
             Some((_, mode)) => Ok((string, StringType::new(mode, &value))),
             None => Ok((string, StringType::new(Mode::Constant, &value))),
         }
+    }
+}
+
+impl<E: Environment> TypeName for StringType<E> {
+    /// Returns the type name of the circuit as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "string"
     }
 }
 

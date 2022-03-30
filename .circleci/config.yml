@@ -138,7 +138,6 @@ jobs:
     docker:
       - image: cimg/rust:1.59
     resource_class: 2xlarge
-    parallelism: 25
     steps:
       - run_parallel:
           workspace_member: algorithms

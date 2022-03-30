@@ -21,7 +21,7 @@ pub mod output;
 pub use output::*;
 
 use crate::{instructions::Instruction, Memory, Operation, Register, Sanitizer};
-use snarkvm_circuits::{Literal, Parser, ParserResult};
+use snarkvm_circuits::{Literal, Parser, ParserResult, TypeName};
 use snarkvm_utilities::{error, FromBytes, ToBytes};
 
 use core::fmt;
@@ -91,12 +91,6 @@ impl<M: Memory> Function<M> {
     pub fn num_outputs(&self) -> u64 {
         self.outputs.len() as u64
     }
-
-    /// Returns the type name as a string.
-    #[inline]
-    fn type_name() -> &'static str {
-        "function"
-    }
 }
 
 impl<M: Memory> Parser for Function<M> {
@@ -140,6 +134,14 @@ impl<M: Memory> Parser for Function<M> {
             outputs,
             memory,
         }))
+    }
+}
+
+impl<M: Memory> TypeName for Function<M> {
+    /// Returns the type name as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "function"
     }
 }
 

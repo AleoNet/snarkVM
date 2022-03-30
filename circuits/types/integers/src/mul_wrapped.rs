@@ -24,7 +24,7 @@ impl<E: Environment, I: IntegerType> MulWrapped<Self> for Integer<E, I> {
         // Determine the variable mode.
         if self.is_constant() && other.is_constant() {
             // Compute the product and return the new constant.
-            Integer::new(Mode::Constant, self.eject_value().wrapping_mul(&other.eject_value()))
+            witness!(|self, other| self.wrapping_mul(&other))
         } else {
             // Compute the product of `self` and `other`.
             let (product, _) = Self::mul_with_carry(self, other, false);

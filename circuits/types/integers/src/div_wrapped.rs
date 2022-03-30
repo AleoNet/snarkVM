@@ -33,8 +33,8 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
             Integer::new(Mode::Constant, self.eject_value().wrapping_div(&other.eject_value()))
         } else if I::is_signed() {
             // Divide the absolute value of `self` and `other` in the base field.
-            let unsigned_dividend = Self::ternary(self.msb(), &Self::zero().sub_wrapped(self), self).cast_as_dual();
-            let unsigned_divisor = Self::ternary(other.msb(), &Self::zero().sub_wrapped(other), other).cast_as_dual();
+            let unsigned_dividend = self.abs_wrapped().cast_as_dual();
+            let unsigned_divisor = other.abs_wrapped().cast_as_dual();
             let unsigned_quotient = unsigned_dividend.div_wrapped(&unsigned_divisor);
 
             // TODO (@pranav) Do we need to check that the quotient cannot exceed abs(I::MIN)?
@@ -45,8 +45,8 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
                 Self::ternary(operands_same_sign, &signed_quotient, &Self::zero().sub_wrapped(&signed_quotient));
 
             // Signed integer division wraps when the dividend is I::MIN and the divisor is -1.
-            let min = Self::new(Mode::Constant, I::MIN);
-            let neg_one = Self::new(Mode::Constant, I::zero() - I::one());
+            let min = Self::constant(I::MIN);
+            let neg_one = Self::constant(I::zero() - I::one());
             let overflows = self.is_equal(&min) & other.is_equal(&neg_one);
             Self::ternary(&overflows, &min, &signed_quotient)
         } else {

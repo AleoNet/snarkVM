@@ -58,7 +58,8 @@ impl<E: Environment> AddAssign<Field<E>> for Field<E> {
 
 impl<E: Environment> AddAssign<&Field<E>> for Field<E> {
     fn add_assign(&mut self, other: &Field<E>) {
-        *self = (&self.linear_combination + &other.linear_combination).into();
+        self.linear_combination += &other.linear_combination;
+        self.bits_le = Default::default();
     }
 }
 

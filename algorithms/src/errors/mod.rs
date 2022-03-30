@@ -26,9 +26,6 @@ pub use encryption::*;
 pub mod merkle;
 pub use merkle::*;
 
-pub mod prf;
-pub use prf::*;
-
 pub mod signature;
 pub use signature::*;
 

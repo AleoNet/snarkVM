@@ -60,7 +60,7 @@ impl<N: Network> LedgerTreeScheme<N> for LedgerTree<N> {
         let current_index = self.current_index;
         self.current_index = current_index
             .checked_add(1)
-            .ok_or(anyhow!("The index exceeds the maximum number of allowed block hashes."))?;
+            .ok_or_else(|| anyhow!("The index exceeds the maximum number of allowed block hashes."))?;
 
         Ok(current_index)
     }
@@ -106,8 +106,8 @@ impl<N: Network> LedgerTreeScheme<N> for LedgerTree<N> {
         self.current_index = self
             .current_index
             .checked_add(num_block_hashes as u32)
-            .ok_or(anyhow!("The index exceeds the maximum number of allowed block hashes."))?;
-        let end_index = self.current_index.checked_sub(1).ok_or(anyhow!("Integer underflow."))?;
+            .ok_or_else(|| anyhow!("The index exceeds the maximum number of allowed block hashes."))?;
+        let end_index = self.current_index.checked_sub(1).ok_or_else(|| anyhow!("Integer underflow."))?;
 
         Ok((start_index, end_index))
     }

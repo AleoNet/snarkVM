@@ -77,20 +77,21 @@ impl<E: Environment, I: IntegerType> DivChecked<Self> for Integer<E, I> {
         if self.is_constant() && other.is_constant() {
             // Compute the quotient and return the new constant.
             match self.eject_value().checked_div(&other.eject_value()) {
-                Some(value) => Integer::new(Mode::Constant, value),
+                Some(value) => Integer::constant(value),
                 None => E::halt("Overflow or underflow on division of two integer constants"),
             }
         } else if I::is_signed() {
             // Ensure that overflow cannot occur in this division.
             // Signed integer division wraps when the dividend is I::MIN and the divisor is -1.
-            let min = Integer::new(Mode::Constant, I::MIN);
-            let neg_one = Integer::new(Mode::Constant, I::zero() - I::one());
+            let min = Integer::constant(I::MIN);
+            let neg_one = Integer::constant(I::zero() - I::one());
             let overflows = self.is_equal(&min) & other.is_equal(&neg_one);
             E::assert_eq(overflows, E::zero());
 
             // Divide the absolute value of `self` and `other` in the base field.
-            let unsigned_dividend = Self::ternary(self.msb(), &Self::zero().sub_wrapped(self), self).cast_as_dual();
-            let unsigned_divisor = Self::ternary(other.msb(), &Self::zero().sub_wrapped(other), other).cast_as_dual();
+            // Note that it is safe to use `abs_wrapped`, since the case for I::MIN is handled above.
+            let unsigned_dividend = self.abs_wrapped().cast_as_dual();
+            let unsigned_divisor = other.abs_wrapped().cast_as_dual();
             let unsigned_quotient = unsigned_dividend.div_wrapped(&unsigned_divisor);
 
             // TODO (@pranav) Do we need to check that the quotient cannot exceed abs(I::MIN)?

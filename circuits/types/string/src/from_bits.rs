@@ -24,7 +24,7 @@ impl<E: Environment> FromBits for StringType<E> {
         // Ensure the list of booleans is byte-aligned.
         let num_bits = bits_le.len();
         match num_bits % 8 == 0 {
-            true => StringType { bytes: bits_le.chunks(8).map(U8::from_bits_le).collect() },
+            true => StringType { mode: bits_le.eject_mode(), bytes: bits_le.chunks(8).map(U8::from_bits_le).collect() },
             false => E::halt(format!("Attempted to instantiate a {num_bits}-bit string, which is not byte-aligned")),
         }
     }

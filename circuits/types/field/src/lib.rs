@@ -59,12 +59,6 @@ impl<E: Environment> DataType<Boolean<E>> for Field<E> {}
 impl<E: Environment> Inject for Field<E> {
     type Primitive = E::BaseField;
 
-    /// Returns the type name of the circuit as a string.
-    #[inline]
-    fn type_name() -> &'static str {
-        "field"
-    }
-
     ///
     /// Initializes a new instance of a base field from a primitive base field value.
     ///
@@ -89,14 +83,14 @@ impl<E: Environment> Eject for Field<E> {
     /// Ejects the mode of the base field.
     ///
     fn eject_mode(&self) -> Mode {
-        self.linear_combination.to_mode()
+        self.linear_combination.mode()
     }
 
     ///
     /// Ejects the base field as a constant base field value.
     ///
     fn eject_value(&self) -> Self::Primitive {
-        self.linear_combination.to_value()
+        self.linear_combination.value()
     }
 }
 
@@ -117,6 +111,14 @@ impl<E: Environment> Parser for Field<E> {
             Some((_, mode)) => Ok((string, Field::new(mode, value))),
             None => Ok((string, Field::new(Mode::Constant, value))),
         }
+    }
+}
+
+impl<E: Environment> TypeName for Field<E> {
+    /// Returns the type name of the circuit as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "field"
     }
 }
 

@@ -37,15 +37,8 @@ impl<E: Environment> ToBits for &Field<E> {
     fn to_bits_le(&self) -> Vec<Self::Boolean> {
         self.bits_le
             .get_or_init(|| {
-                // Determine the witness mode.
-                let mode = match self.is_constant() {
-                    true => Mode::Constant,
-                    false => Mode::Private,
-                };
-
                 // Construct a vector of `Boolean`s comprising the bits of the field value.
-                let bits_le =
-                    self.eject_value().to_bits_le().iter().map(|bit| Boolean::new(mode, *bit)).collect::<Vec<_>>();
+                let bits_le = witness!(|self| self.to_bits_le());
 
                 // Reconstruct the bits as a linear combination representing the original field value.
                 let mut accumulator = Field::zero();

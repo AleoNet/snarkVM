@@ -48,13 +48,7 @@ impl<E: Environment> GroupTrait<Boolean<E>, Scalar<E>> for Group<E> {}
 impl<E: Environment> DataType<Boolean<E>> for Group<E> {}
 
 impl<E: Environment> Inject for Group<E> {
-    type Primitive = (E::BaseField, Option<E::BaseField>);
-
-    /// Returns the type name of the circuit as a string.
-    #[inline]
-    fn type_name() -> &'static str {
-        "group"
-    }
+    type Primitive = E::Affine;
 
     ///
     /// Initializes a new affine group element.
@@ -65,18 +59,9 @@ impl<E: Environment> Inject for Group<E> {
     /// regardless of whether the y-coordinate was recovered.
     ///
     fn new(mode: Mode, value: Self::Primitive) -> Self {
-        // Retrieve the x- and y-coordinate.
-        let (x, y) = value;
-
-        // Derive the y-coordinate if it is not given.
-        let y = match y {
-            Some(y) => y,
-            None => E::affine_from_x_coordinate(x).to_y_coordinate(),
-        };
-
         // Initialize the x- and y-coordinate field elements.
-        let x = Field::new(mode, x);
-        let y = Field::new(mode, y);
+        let x = Field::new(mode, value.to_x_coordinate());
+        let y = Field::new(mode, value.to_y_coordinate());
 
         Self::from(x, y)
     }
@@ -133,11 +118,7 @@ impl<E: Environment> Eject for Group<E> {
     /// Ejects the mode of the group element.
     ///
     fn eject_mode(&self) -> Mode {
-        match (self.x.eject_mode(), self.y.eject_mode()) {
-            (Mode::Constant, mode) | (mode, Mode::Constant) => mode,
-            (Mode::Public, Mode::Public) => Mode::Public,
-            (Mode::Private, mode) | (mode, Mode::Private) => mode,
-        }
+        (&self.x, &self.y).eject_mode()
     }
 
     ///
@@ -164,9 +145,17 @@ impl<E: Environment> Parser for Group<E> {
         let (string, mode) = opt(pair(tag("."), Mode::parse))(string)?;
 
         match mode {
-            Some((_, mode)) => Ok((string, Group::new(mode, (x_coordinate, None)))),
-            None => Ok((string, Group::new(Mode::Constant, (x_coordinate, None)))),
+            Some((_, mode)) => Ok((string, Group::new(mode, E::affine_from_x_coordinate(x_coordinate)))),
+            None => Ok((string, Group::new(Mode::Constant, E::affine_from_x_coordinate(x_coordinate)))),
         }
+    }
+}
+
+impl<E: Environment> TypeName for Group<E> {
+    /// Returns the type name of the circuit as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "group"
     }
 }
 
@@ -193,8 +182,11 @@ mod tests {
     const ITERATIONS: usize = 128;
 
     /// Attempts to construct an affine group element from the given x-coordinate and mode.
-    fn check_debug(mode: Mode, x: <Circuit as Environment>::BaseField, y: <Circuit as Environment>::BaseField) {
-        let candidate = Group::<Circuit>::new(mode, (x, None));
+    fn check_debug(mode: Mode, point: <Circuit as Environment>::Affine) {
+        let x = point.to_x_coordinate();
+        let y = point.to_y_coordinate();
+
+        let candidate = Group::<Circuit>::new(mode, point);
         assert_eq!(format!("({}, {})", x, y), format!("{:?}", candidate));
     }
 
@@ -205,13 +197,8 @@ mod tests {
             // Sample a random element.
             let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
 
-            // Verify the recovery method is behaving correctly.
-            let recovered = Circuit::affine_from_x_coordinate(point.to_x_coordinate());
-            assert_eq!(point.to_x_coordinate(), recovered.to_x_coordinate());
-            assert_eq!(point.to_y_coordinate(), recovered.to_y_coordinate());
-
             Circuit::scope(&format!("Constant {}", i), || {
-                let affine = Group::<Circuit>::new(Mode::Constant, (point.to_x_coordinate(), None));
+                let affine = Group::<Circuit>::new(Mode::Constant, point);
                 assert_eq!(point, affine.eject_value());
                 assert_scope!(4, 0, 0, 0);
             });
@@ -223,7 +210,7 @@ mod tests {
             let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
 
             Circuit::scope(&format!("Public {}", i), || {
-                let affine = Group::<Circuit>::new(Mode::Public, (point.to_x_coordinate(), None));
+                let affine = Group::<Circuit>::new(Mode::Public, point);
                 assert_eq!(point, affine.eject_value());
                 assert_scope!(2, 2, 2, 3);
             });
@@ -235,9 +222,62 @@ mod tests {
             let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
 
             Circuit::scope(&format!("Private {}", i), || {
-                let affine = Group::<Circuit>::new(Mode::Private, (point.to_x_coordinate(), None));
+                let affine = Group::<Circuit>::new(Mode::Private, point);
                 assert_eq!(point, affine.eject_value());
                 assert_scope!(2, 0, 4, 3);
+            });
+        }
+    }
+
+    #[test]
+    fn test_from_x_coordinate() {
+        // Constant variables
+        for i in 0..ITERATIONS {
+            // Sample a random element.
+            let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+
+            // Verify the recovery method is behaving correctly.
+            let recovered = Circuit::affine_from_x_coordinate(point.to_x_coordinate());
+            assert_eq!(point.to_x_coordinate(), recovered.to_x_coordinate());
+            assert_eq!(point.to_y_coordinate(), recovered.to_y_coordinate());
+
+            // Inject the x-coordinate.
+            let x_coordinate = Field::new(Mode::Constant, point.to_x_coordinate());
+
+            Circuit::scope(&format!("Constant {}", i), || {
+                let affine = Group::<Circuit>::from_x_coordinate(Mode::Constant, x_coordinate);
+                assert_eq!(point, affine.eject_value());
+                assert_scope!(3, 0, 0, 0);
+            });
+        }
+
+        // Public variables
+        for i in 0..ITERATIONS {
+            // Sample a random element.
+            let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+
+            // Inject the x-coordinate.
+            let x_coordinate = Field::new(Mode::Public, point.to_x_coordinate());
+
+            Circuit::scope(&format!("Public {}", i), || {
+                let affine = Group::<Circuit>::from_x_coordinate(Mode::Public, x_coordinate);
+                assert_eq!(point, affine.eject_value());
+                assert_scope!(2, 1, 2, 3);
+            });
+        }
+
+        // Private variables
+        for i in 0..ITERATIONS {
+            // Sample a random element.
+            let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+
+            // Inject the x-coordinate.
+            let x_coordinate = Field::new(Mode::Private, point.to_x_coordinate());
+
+            Circuit::scope(&format!("Private {}", i), || {
+                let affine = Group::<Circuit>::from_x_coordinate(Mode::Private, x_coordinate);
+                assert_eq!(point, affine.eject_value());
+                assert_scope!(2, 0, 3, 3);
             });
         }
     }
@@ -247,32 +287,30 @@ mod tests {
         for _ in 0..ITERATIONS {
             // Sample a random element.
             let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let x_coordinate = point.to_x_coordinate();
-            let y_coordinate = point.to_y_coordinate();
 
             // Constant
-            check_debug(Mode::Constant, x_coordinate, y_coordinate);
+            check_debug(Mode::Constant, point);
             // Public
-            check_debug(Mode::Public, x_coordinate, y_coordinate);
+            check_debug(Mode::Public, point);
             // Private
-            check_debug(Mode::Private, x_coordinate, y_coordinate);
+            check_debug(Mode::Private, point);
         }
     }
 
     #[test]
     fn test_debug_zero() {
-        let zero = <Circuit as Environment>::BaseField::zero();
+        let zero = <Circuit as Environment>::Affine::zero();
 
         // Constant
-        let candidate = Group::<Circuit>::new(Mode::Constant, (zero, None));
+        let candidate = Group::<Circuit>::new(Mode::Constant, zero);
         assert_eq!("(0, 1)", &format!("{:?}", candidate));
 
         // Public
-        let candidate = Group::<Circuit>::new(Mode::Public, (zero, None));
+        let candidate = Group::<Circuit>::new(Mode::Public, zero);
         assert_eq!("(0, 1)", &format!("{:?}", candidate));
 
         // Private
-        let candidate = Group::<Circuit>::new(Mode::Private, (zero, None));
+        let candidate = Group::<Circuit>::new(Mode::Private, zero);
         assert_eq!("(0, 1)", &format!("{:?}", candidate));
     }
 
@@ -340,7 +378,7 @@ mod tests {
         for mode in [Mode::Constant, Mode::Public, Mode::Private] {
             for _ in 0..ITERATIONS {
                 let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-                let expected = Group::<Circuit>::new(mode, (point.to_x_coordinate(), None));
+                let expected = Group::<Circuit>::new(mode, point);
 
                 let (_, candidate) = Group::<Circuit>::parse(&format!("{expected}")).unwrap();
                 assert_eq!(expected.eject_value(), candidate.eject_value());
@@ -351,19 +389,18 @@ mod tests {
 
     #[test]
     fn test_display() {
-        let one = <Circuit as Environment>::BaseField::one();
-        let two = one + one;
+        let two = Circuit::affine_from_x_coordinate(<Circuit as Environment>::BaseField::one().double());
 
         // Constant
-        let candidate = Group::<Circuit>::new(Mode::Constant, (two, None));
+        let candidate = Group::<Circuit>::new(Mode::Constant, two);
         assert_eq!("2group.constant", &format!("{}", candidate));
 
         // Public
-        let candidate = Group::<Circuit>::new(Mode::Public, (two, None));
+        let candidate = Group::<Circuit>::new(Mode::Public, two);
         assert_eq!("2group.public", &format!("{}", candidate));
 
         // Private
-        let candidate = Group::<Circuit>::new(Mode::Private, (two, None));
+        let candidate = Group::<Circuit>::new(Mode::Private, two);
         assert_eq!("2group.private", &format!("{}", candidate));
     }
 }
