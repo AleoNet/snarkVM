@@ -79,8 +79,6 @@ impl Network for Testnet1 {
     const NETWORK_ID: u16 = 1u16;
     const NETWORK_NAME: &'static str = "testnet1";
 
-    const NUM_INPUT_RECORDS: usize = 2;
-    const NUM_OUTPUT_RECORDS: usize = 2;
     const NUM_TRANSITIONS: u8 = u8::pow(2, Self::TRANSACTION_TREE_DEPTH as u32);
     const NUM_EVENTS: u16 = 2;
 

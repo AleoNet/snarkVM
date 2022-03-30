@@ -99,9 +99,6 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const NETWORK_ID: u16;
     const NETWORK_NAME: &'static str;
 
-    const NUM_INPUT_RECORDS: usize;
-    const NUM_OUTPUT_RECORDS: usize;
-    const NUM_TOTAL_RECORDS: usize = Self::NUM_INPUT_RECORDS + Self::NUM_OUTPUT_RECORDS;
     const NUM_TRANSITIONS: u8;
     const NUM_EVENTS: u16;
 
