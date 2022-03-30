@@ -52,7 +52,6 @@ mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
-    use test_utilities::*;
 
     #[rustfmt::skip]
     fn run_test<I: IntegerType>(

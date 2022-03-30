@@ -61,14 +61,16 @@ pub type U32<E> = Integer<E, u32>;
 pub type U64<E> = Integer<E, u64>;
 pub type U128<E> = Integer<E, u128>;
 
-#[cfg(test)]
-use snarkvm_circuits_environment::assert_scope;
-
 use snarkvm_circuits_environment::prelude::*;
 use snarkvm_circuits_types_boolean::Boolean;
 use snarkvm_circuits_types_field::Field;
 
 use core::marker::PhantomData;
+
+#[cfg(test)]
+use snarkvm_circuits_environment::assert_scope;
+#[allow(unused_imports)]
+use snarkvm_circuits_environment::test_utilities::*;
 
 #[derive(Clone)]
 pub struct Integer<E: Environment, I: IntegerType> {
@@ -483,136 +485,5 @@ mod tests {
     fn test_i128_debug_and_display() {
         check_debug::<i128>();
         check_display::<i128>();
-    }
-}
-
-#[cfg(test)]
-mod test_utilities {
-    use core::{
-        fmt::{Debug, Display},
-        panic::UnwindSafe,
-    };
-    use snarkvm_circuits_environment::{assert_scope, assert_scope_fails, Circuit, Eject, Environment};
-
-    pub fn check_operation_passes<V: Debug + Display + PartialEq, LHS, RHS, OUT: Eject<Primitive = V>>(
-        name: &str,
-        case: &str,
-        expected: V,
-        a: LHS,
-        b: RHS,
-        operation: impl FnOnce(LHS, RHS) -> OUT,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        Circuit::scope(name, || {
-            let candidate = operation(a, b);
-            assert_eq!(expected, candidate.eject_value(), "{} != {} := {}", expected, candidate.eject_value(), case);
-            assert_scope!(case, num_constants, num_public, num_private, num_constraints);
-        });
-        Circuit::reset();
-    }
-
-    pub fn check_operation_passes_without_counts<
-        V: Debug + Display + PartialEq,
-        LHS,
-        RHS,
-        OUT: Eject<Primitive = V>,
-    >(
-        name: &str,
-        case: &str,
-        expected: V,
-        a: LHS,
-        b: RHS,
-        operation: impl FnOnce(LHS, RHS) -> OUT,
-    ) {
-        Circuit::scope(name, || {
-            let candidate = operation(a, b);
-            assert_eq!(expected, candidate.eject_value(), "{} != {} := {}", expected, candidate.eject_value(), case);
-        });
-        Circuit::reset();
-    }
-
-    pub fn check_operation_fails<LHS, RHS, OUT>(
-        name: &str,
-        case: &str,
-        a: LHS,
-        b: RHS,
-        operation: impl FnOnce(LHS, RHS) -> OUT,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        Circuit::scope(name, || {
-            let _candidate = operation(a, b);
-            assert_scope_fails!(case, num_constants, num_public, num_private, num_constraints);
-        });
-        Circuit::reset();
-    }
-
-    pub fn check_operation_fails_without_counts<LHS, RHS, OUT>(
-        name: &str,
-        case: &str,
-        a: LHS,
-        b: RHS,
-        operation: impl FnOnce(LHS, RHS) -> OUT,
-    ) {
-        Circuit::scope(name, || {
-            let _candidate = operation(a, b);
-            assert!(!Circuit::is_satisfied(), "{} (!is_satisfied)", case);
-        });
-        Circuit::reset();
-    }
-
-    pub fn check_operation_halts<LHS: UnwindSafe, RHS: UnwindSafe, OUT>(
-        a: LHS,
-        b: RHS,
-        operation: impl FnOnce(LHS, RHS) -> OUT + UnwindSafe,
-    ) {
-        let result = std::panic::catch_unwind(|| operation(a, b));
-        assert!(result.is_err());
-    }
-
-    pub fn check_unary_operation_passes<V: Debug + Display + PartialEq, IN, OUT: Eject<Primitive = V>>(
-        name: &str,
-        case: &str,
-        expected: V,
-        input: IN,
-        operation: impl FnOnce(IN) -> OUT,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        Circuit::scope(name, || {
-            let candidate = operation(input);
-            assert_eq!(expected, candidate.eject_value(), "{}", case);
-            assert_scope!(case, num_constants, num_public, num_private, num_constraints);
-        });
-        Circuit::reset();
-    }
-
-    pub fn check_unary_operation_fails<IN, OUT>(
-        name: &str,
-        case: &str,
-        input: IN,
-        operation: impl FnOnce(IN) -> OUT,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        Circuit::scope(name, || {
-            let _candidate = operation(input);
-            assert_scope_fails!(case, num_constants, num_public, num_private, num_constraints);
-        });
-        Circuit::reset();
-    }
-
-    pub fn check_unary_operation_halts<IN: UnwindSafe, OUT>(input: IN, operation: impl FnOnce(IN) -> OUT + UnwindSafe) {
-        let result = std::panic::catch_unwind(|| operation(input));
-        assert!(result.is_err());
     }
 }

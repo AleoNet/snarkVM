@@ -70,7 +70,6 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShlWrapped<Integer<E, M>> for
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utilities::check_operation_passes;
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 

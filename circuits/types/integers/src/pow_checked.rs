@@ -86,7 +86,6 @@ impl<E: Environment, I: IntegerType, M: Magnitude> PowChecked<Integer<E, M>> for
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_utilities::*;
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
