@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use std::iter;
 
 impl<E: Environment> FromBits for Field<E> {
     type Boolean = Boolean<E>;
@@ -34,25 +35,19 @@ impl<E: Environment> FromBits for Field<E> {
             E::assert_eq(E::zero(), should_be_zero);
         }
 
-        // Reconstruct the bits as a linear combination representing the original field value.
-        // `output` := (2^i * b_i + ... + 2^0 * b_0)
-        let mut output = Field::zero();
-        let mut coefficient = Field::one();
-        for bit in bits_le.iter().take(size_in_bits) {
-            output += Field::from_boolean(bit) * &coefficient;
-            coefficient = coefficient.double();
-        }
-
-        // If the number of bits is equivalent to the field size in bits (or greater),
-        // ensure the reconstructed field element lies within the field modulus.
+        // If the number of bits is greater than `size_in_data_bits`, then check that it is a valid field element.
         if num_bits > size_in_data_bits {
-            // Retrieve the modulus & subtract by 1 as we'll check `output.bits_le` is less than or *equal* to this value.
+            // Retrieve the modulus & subtract by 1 as we'll check `bits_le` is less than or *equal* to this value.
             // (For advanced users) BaseField::MODULUS - 1 is equivalent to -1 in the field.
             let modulus_minus_one = -E::BaseField::one();
             let modulus_minus_one_bits_le = modulus_minus_one.to_bits_le();
 
+            // Pad `bits_le` with zeros to the size of the base field modulus.
+            let boolean_false = Boolean::constant(false);
+            let padded_bits_le = bits_le.iter().chain(iter::repeat(&boolean_false).take(size_in_data_bits - num_bits));
+
             // Initialize an iterator over `self` and `other` from MSB to LSB.
-            let bit_pairs_le = modulus_minus_one_bits_le.iter().zip_eq(bits_le);
+            let bit_pairs_le = modulus_minus_one_bits_le.iter().zip_eq(padded_bits_le);
 
             // This implementation produces ~500 fewer constraints than the original one.
             let modulus_minus_one_less_than_bits =
@@ -68,7 +63,7 @@ impl<E: Environment> FromBits for Field<E> {
             // In other words, enforce that BaseField::MODULUS - 1 is greater than or equal to the field element given by `bits_le`.
             E::assert(!modulus_minus_one_less_than_bits);
         }
-
+        
         // Construct the sanitized list of bits, resizing up if necessary.
         let mut bits_le = bits_le.iter().take(size_in_bits).cloned().collect::<Vec<_>>();
         bits_le.resize(size_in_bits, Boolean::constant(false));

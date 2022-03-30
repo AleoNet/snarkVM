@@ -16,6 +16,8 @@
 
 use super::*;
 
+use std::iter;
+
 impl<E: Environment> FromBits for Scalar<E> {
     type Boolean = Boolean<E>;
 
@@ -41,13 +43,16 @@ impl<E: Environment> FromBits for Scalar<E> {
         // Construct the candidate scalar field element.
         let output = Scalar { bits_le };
 
-        // If the number of bits is equivalent to the scalar size in bits,
-        // ensure the scalar is below the scalar field modulus.
+        // If the number of bits is greater than `size_in_data_bits`, then check that it is a valid field element.
         if num_bits > size_in_data_bits {
-            // Retrieve the modulus & subtract by 1 as we'll check `output.bits_le` is less than or *equal* to this value.
+            // Retrieve the modulus & subtract by 1 as we'll check `bits_le` is less than or *equal* to this value.
             // (For advanced users) ScalarField::MODULUS - 1 is equivalent to -1 in the field.
             let modulus_minus_one = -E::ScalarField::one();
             let modulus_minus_one_bits_le = modulus_minus_one.to_bits_le();
+
+            // Pad `bits_le` with zeros to size of the scalar field modulus.
+            let boolean_false = Self::Boolean::constant(false);
+            let bits_le = bits_le.iter().chain(iter::repeat(&boolean_false).take(size_in_bits - num_bits));
 
             // Initialize an iterator over `self` and `other` from MSB to LSB.
             let bit_pairs_le = modulus_minus_one_bits_le.iter().zip_eq(bits_le);
