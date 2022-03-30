@@ -25,6 +25,8 @@ use rand::thread_rng;
 fn dpc_execute_circuits_test<N: Network>(
     expected_input_num_constraints: usize,
     expected_output_num_constraints: usize,
+    num_inputs: usize,
+    num_outputs: usize,
 ) {
     let rng = &mut thread_rng();
 
@@ -32,24 +34,29 @@ fn dpc_execute_circuits_test<N: Network>(
     let recipient = Account::new(rng);
     let amount = AleoAmount::from_gate(0);
 
+    let mut records = Vec::new();
+    let mut ledger_proofs = Vec::new();
+    for _ in 0..num_inputs {
+        let record = Record::new_noop(sender.address(), rng).unwrap();
+        let ledger_proof = LedgerProof::default();
+
+        records.push(record.clone());
+        ledger_proofs.push(ledger_proof);
+    }
+
     // Coinbase transactions do not have input proofs, so we use a dummy transfer to test both
     // the input and output circuits.
-    let request: Request<N> = Request::new_transfer(
-        sender.private_key(),
-        vec![Record::new_noop(sender.address(), rng).unwrap()],
-        vec![LedgerProof::default()],
-        recipient.address(),
-        amount,
-        false,
-        rng,
-    )
-    .unwrap();
+    let request: Request<N> =
+        Request::new_transfer(sender.private_key(), records, ledger_proofs, recipient.address(), amount, false, rng)
+            .unwrap();
 
-    let response: Response<N> = ResponseBuilder::new()
-        .add_request(request.clone())
-        .add_output(Output::new(recipient.address(), amount, None, None).unwrap())
-        .build(rng)
-        .unwrap();
+    let mut response_builder = ResponseBuilder::new().add_request(request.clone());
+
+    for _ in 0..num_outputs {
+        response_builder = response_builder.add_output(Output::new(recipient.address(), amount, None, None).unwrap());
+    }
+
+    let response: Response<N> = response_builder.build(rng).unwrap();
 
     //////////////////////////////////////////////////////////////////////////
 
@@ -245,9 +252,25 @@ mod testnet1 {
     use super::*;
     use crate::testnet1::*;
 
+    const EXPECTED_INPUT_NUM_CONSTRAINTS: usize = 113181;
+    const EXPECTED_OUTPUT_NUM_CONSTRAINTS: usize = 18731;
+
     #[test]
     fn test_dpc_execute_circuits() {
-        dpc_execute_circuits_test::<Testnet1>(113181, 18731);
+        dpc_execute_circuits_test::<Testnet1>(EXPECTED_INPUT_NUM_CONSTRAINTS, EXPECTED_OUTPUT_NUM_CONSTRAINTS, 1, 1);
+    }
+
+    // TODO (raychu86): Move these tests upstream to the VM when variable size output transfers are supported.
+    #[test]
+    fn test_dpc_execute_circuits_variable_inputs_and_outputs() {
+        dpc_execute_circuits_test::<Testnet1>(EXPECTED_INPUT_NUM_CONSTRAINTS, EXPECTED_OUTPUT_NUM_CONSTRAINTS, 2, 2);
+        dpc_execute_circuits_test::<Testnet1>(EXPECTED_INPUT_NUM_CONSTRAINTS, EXPECTED_OUTPUT_NUM_CONSTRAINTS, 4, 4);
+    }
+
+    #[test]
+    fn test_dpc_execute_circuits_variable_inputs_and_outputs_large() {
+        dpc_execute_circuits_test::<Testnet1>(EXPECTED_INPUT_NUM_CONSTRAINTS, EXPECTED_OUTPUT_NUM_CONSTRAINTS, 1, 8);
+        dpc_execute_circuits_test::<Testnet1>(EXPECTED_INPUT_NUM_CONSTRAINTS, EXPECTED_OUTPUT_NUM_CONSTRAINTS, 8, 1);
     }
 }
 
@@ -255,8 +278,23 @@ mod testnet2 {
     use super::*;
     use crate::testnet2::*;
 
+    const EXPECTED_INPUT_NUM_CONSTRAINTS: usize = 113181;
+    const EXPECTED_OUTPUT_NUM_CONSTRAINTS: usize = 18731;
+
     #[test]
     fn test_dpc_execute_circuits() {
-        dpc_execute_circuits_test::<Testnet2>(113181, 18731);
+        dpc_execute_circuits_test::<Testnet2>(EXPECTED_INPUT_NUM_CONSTRAINTS, EXPECTED_OUTPUT_NUM_CONSTRAINTS, 1, 1);
+    }
+
+    #[test]
+    fn test_dpc_execute_circuits_variable_inputs_and_outputs() {
+        dpc_execute_circuits_test::<Testnet2>(EXPECTED_INPUT_NUM_CONSTRAINTS, EXPECTED_OUTPUT_NUM_CONSTRAINTS, 2, 2);
+        dpc_execute_circuits_test::<Testnet2>(EXPECTED_INPUT_NUM_CONSTRAINTS, EXPECTED_OUTPUT_NUM_CONSTRAINTS, 4, 4);
+    }
+
+    #[test]
+    fn test_dpc_execute_circuits_variable_inputs_and_outputs_large() {
+        dpc_execute_circuits_test::<Testnet2>(EXPECTED_INPUT_NUM_CONSTRAINTS, EXPECTED_OUTPUT_NUM_CONSTRAINTS, 1, 8);
+        dpc_execute_circuits_test::<Testnet2>(EXPECTED_INPUT_NUM_CONSTRAINTS, EXPECTED_OUTPUT_NUM_CONSTRAINTS, 8, 1);
     }
 }
