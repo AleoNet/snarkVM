@@ -31,6 +31,9 @@ pub use account::*;
 pub mod block;
 pub use block::*;
 
+pub mod circuits;
+pub use circuits::*;
+
 pub mod errors;
 pub use errors::*;
 
@@ -45,9 +48,6 @@ pub use posw::*;
 
 pub mod record;
 pub use record::*;
-
-pub mod split_circuits;
-pub use split_circuits::*;
 
 pub mod traits;
 pub use traits::*;

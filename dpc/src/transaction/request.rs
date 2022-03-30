@@ -56,7 +56,6 @@ impl<N: Network> Request<N> {
         let burner = PrivateKey::new(rng);
         let operation = Operation::Coinbase(recipient, amount);
         let fee = AleoAmount::ZERO.sub(amount);
-        // TODO (raychu86): Remove noop record from coinbase?.
         Self::new(&burner, vec![], vec![], operation, fee, is_public, rng)
     }
 

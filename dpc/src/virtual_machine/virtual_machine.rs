@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{prelude::*, split_circuits::*};
+use crate::{circuits::*, prelude::*};
 use snarkvm_algorithms::{merkle_tree::MerklePath, prelude::*};
 
 use anyhow::{anyhow, Result};

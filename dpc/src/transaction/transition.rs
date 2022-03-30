@@ -15,8 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    circuits::{InputPublicVariables, OutputPublicVariables},
     prelude::*,
-    split_circuits::{InputPublicVariables, OutputPublicVariables},
 };
 use snarkvm_algorithms::merkle_tree::{MerklePath, MerkleTree};
 use snarkvm_utilities::{FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
