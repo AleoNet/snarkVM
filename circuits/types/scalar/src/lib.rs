@@ -28,13 +28,15 @@ pub mod to_field;
 pub mod to_fields;
 pub mod zero;
 
-#[cfg(test)]
-use snarkvm_circuits_environment::assert_scope;
-
 use snarkvm_circuits_environment::prelude::*;
 use snarkvm_circuits_types_boolean::Boolean;
 use snarkvm_circuits_types_field::Field;
 use snarkvm_utilities::{FromBits as FBits, ToBits as TBits};
+
+#[cfg(test)]
+use snarkvm_circuits_environment::assert_scope;
+#[allow(unused_imports)]
+use snarkvm_circuits_environment::test_utilities::*;
 
 #[derive(Clone)]
 pub struct Scalar<E: Environment> {

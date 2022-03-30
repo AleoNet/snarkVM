@@ -19,7 +19,7 @@ use super::*;
 impl<E: Environment> Compare<Field<E>> for Field<E> {
     type Boolean = Boolean<E>;
 
-    // TODO (@pranav) See if this can be deduped. Document.
+    // TODO (@pranav) See if this can be deduped. Consider using witness!.
     /// Returns `true` if `self` is less than `other`.
     fn is_less_than(&self, other: &Self) -> Self::Boolean {
         if self.is_constant() && other.is_constant() {
@@ -84,7 +84,56 @@ mod tests {
 
     const ITERATIONS: usize = 1000;
 
-    fn check_is_less_than(
+    #[rustfmt::skip]
+    fn check_compare(
+        name: &str,
+        first: <Circuit as Environment>::BaseField,
+        second: <Circuit as Environment>::BaseField,
+        mode_a: Mode,
+        mode_b: Mode,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) {
+        // Note that we need to use "fresh" circuits for each of the test cases, otherwise number of
+        // variables and constraints are incorrectly counted.
+
+        // Check `is_less_than`.
+        let expected = first < second;
+        let case = format!("({} < {})", first, second);
+
+        let a = Field::<Circuit>::new(mode_a, first);
+        let b = Field::<Circuit>::new(mode_b, second);
+        check_operation_passes(name, &case, expected, &a, &b, Field::is_less_than, num_constants, num_public, num_private, num_constraints);
+
+        // Check `is_less_than_or_equal`
+        let expected = first <= second;
+        let case = format!("({} <= {})", first, second);
+
+        let a = Field::<Circuit>::new(mode_a, first);
+        let b = Field::<Circuit>::new(mode_b, second);
+        check_operation_passes(name, &case, expected, &a, &b, Field::is_less_than_or_equal, num_constants, num_public, num_private, num_constraints);
+
+        // Check `is_greater_than`
+        let expected = first > second;
+        let case = format!("({} > {})", first, second);
+
+        let a = Field::<Circuit>::new(mode_a, first);
+        let b = Field::<Circuit>::new(mode_b, second);
+        check_operation_passes(name, &case, expected, &a, &b, Field::is_greater_than, num_constants, num_public, num_private, num_constraints);
+
+        // Check `is_greater_than_or_equal`
+        let expected = first >= second;
+        let case = format!("({} >= {})", first, second);
+
+        let a = Field::<Circuit>::new(mode_a, first);
+        let b = Field::<Circuit>::new(mode_b, second);
+        check_operation_passes(name, &case, expected, &a, &b, Field::is_greater_than_or_equal, num_constants, num_public, num_private, num_constraints);
+    }
+
+    #[rustfmt::skip]
+    fn run_test(
         mode_a: Mode,
         mode_b: Mode,
         num_constants: usize,
@@ -93,66 +142,56 @@ mod tests {
         num_constraints: usize,
     ) {
         for i in 0..ITERATIONS {
-            // Sample a random element `a`.
-            let expected_a: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
-            let candidate_a = Field::<Circuit>::new(mode_a, expected_a);
+            let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
+            let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
 
-            // Sample a random element `b`.
-            let expected_b: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
-            let candidate_b = Field::<Circuit>::new(mode_b, expected_b);
-
-            // Perform the less than comparison.
-            Circuit::scope(&format!("{} {} {}", mode_a, mode_b, i), || {
-                let candidate = candidate_a.is_less_than(&candidate_b);
-                assert_eq!(expected_a < expected_b, candidate.eject_value());
-                assert_scope!(num_constants, num_public, num_private, num_constraints);
-            });
-            Circuit::reset();
+            let name = format!("Compare: {}, {}, {}", mode_a, mode_b, i);
+            check_compare(&name, first, second, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
         }
     }
 
     #[test]
-    fn test_constant_is_less_than_constant() {
-        check_is_less_than(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
+    fn test_constant_compare_with_constant() {
+        run_test(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
     }
 
     #[test]
-    fn test_constant_is_less_than_public() {
-        check_is_less_than(Mode::Constant, Mode::Public, 0, 0, 506, 507);
+    fn test_constant_compare_with_public() {
+        run_test(Mode::Constant, Mode::Public, 0, 0, 506, 507);
     }
 
     #[test]
-    fn test_constant_is_less_than_private() {
-        check_is_less_than(Mode::Constant, Mode::Private, 0, 0, 506, 507);
+    fn test_constant_compare_with_private() {
+        run_test(Mode::Constant, Mode::Private, 0, 0, 506, 507);
     }
 
     #[test]
-    fn test_public_is_less_than_constant() {
-        check_is_less_than(Mode::Constant, Mode::Public, 0, 0, 506, 507);
+    fn test_public_compare_with_constant() {
+        run_test(Mode::Constant, Mode::Public, 0, 0, 506, 507);
     }
 
     #[test]
-    fn test_private_is_less_than_constant() {
-        check_is_less_than(Mode::Constant, Mode::Private, 0, 0, 506, 507);
+    fn test_private_compare_with_constant() {
+        run_test(Mode::Constant, Mode::Private, 0, 0, 506, 507);
     }
 
     #[test]
-    fn test_public_is_less_than_public() {
-        check_is_less_than(Mode::Public, Mode::Public, 0, 0, 1012, 1014);
+    fn test_public_compare_with_public() {
+        run_test(Mode::Public, Mode::Public, 0, 0, 1012, 1014);
     }
 
     #[test]
-    fn test_public_is_less_than_private() {
-        check_is_less_than(Mode::Public, Mode::Private, 0, 0, 1012, 1014);
+    fn test_public_compare_with_private() {
+        run_test(Mode::Public, Mode::Private, 0, 0, 1012, 1014);
     }
 
     #[test]
-    fn test_private_is_less_than_public() {
-        check_is_less_than(Mode::Private, Mode::Public, 0, 0, 1012, 1014);
+    fn test_private_compare_with_public() {
+        run_test(Mode::Private, Mode::Public, 0, 0, 1012, 1014);
     }
 
     #[test]
-    fn test_private_is_less_than_private() {
-        check_is_less_than(Mode::Private, Mode::Private, 0, 0, 1012, 1014);
+    fn test_private_compare_with_private() {
+        run_test(Mode::Private, Mode::Private, 0, 0, 1012, 1014);
     }
 }

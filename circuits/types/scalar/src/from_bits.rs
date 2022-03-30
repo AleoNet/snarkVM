@@ -68,7 +68,17 @@ impl<E: Environment> FromBits for Scalar<E> {
 
             // Enforce that ScalarField::MODULUS - 1 is not less than the field element given by `bits_le`.
             // In other words, enforce that ScalarField::MODULUS - 1 is greater than or equal to the field element given by `bits_le`.
-            E::assert(!modulus_minus_one_less_than_bits);
+            // Note that we need to match over the following cases since `E::assert` does not enforce constant constraints.
+            match modulus_minus_one_less_than_bits.is_constant() {
+                true => {
+                    if modulus_minus_one_less_than_bits.eject_value() {
+                        E::halt(
+                            "Attempted to instantiate a scalar field element that greater than or equal to the modulus.",
+                        )
+                    }
+                }
+                false => E::assert(!modulus_minus_one_less_than_bits),
+            }
         }
 
         output
@@ -93,8 +103,6 @@ mod tests {
 
     const ITERATIONS: usize = 100;
 
-    // TODO: Need to test for case where bits are greater than the scalar field modulus.
-
     fn check_from_bits_le(
         mode: Mode,
         num_constants: usize,
@@ -102,36 +110,50 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
-        for i in 0..ITERATIONS {
+        for _ in 0..ITERATIONS {
             // Sample a random element.
             let expected: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
             let given_bits = Scalar::<Circuit>::new(mode, expected).to_bits_le();
             let expected_size_in_bits = given_bits.len();
 
-            Circuit::scope(&format!("{} {}", mode, i), || {
-                let candidate = Scalar::<Circuit>::from_bits_le(&given_bits);
-                assert_eq!(expected, candidate.eject_value());
-                assert_eq!(expected_size_in_bits, candidate.bits_le.len());
-                assert_scope!(num_constants, num_public, num_private, num_constraints);
-            });
-
-            // Add excess zero bits.
-            let candidate = vec![given_bits, vec![Boolean::new(mode, false); i]].concat();
-
-            Circuit::scope(&format!("Excess {} {}", mode, i), || {
-                let candidate = Scalar::<Circuit>::from_bits_le(&candidate);
-                assert_eq!(expected, candidate.eject_value());
-                assert_eq!(expected_size_in_bits, candidate.bits_le.len());
-                match mode.is_constant() {
-                    true => assert_scope!(num_constants, num_public, num_private, num_constraints),
-                    // `num_private` gets 1 free excess bit, then is incremented by one for each excess bit.
-                    // `num_constraints` is incremented by one for each excess bit.
-                    false => {
-                        assert_scope!(num_constants, num_public, num_private + i.saturating_sub(1), num_constraints + i)
-                    }
-                };
-            });
+            // Check case where `bits_le` is less than the scalar field modulus.
+            check_unary_operation_passes(
+                "FromBitsLE",
+                &format!("{}", mode),
+                expected,
+                candidate,
+                |bits_le: Vec<Boolean<Circuit>>| Scalar::<Circuit>::from_bits_le(&bits_le),
+                num_constants,
+                num_public,
+                num_private,
+                num_constraints,
+            );
         }
+
+        // Check case where `bits_le` is equal to the scalar field modulus.
+        let mut candidate = Scalar::<Circuit>::zero().to_bits_le();
+        // Set the two most significant bits to true.
+        let len = candidate.len();
+        candidate[len - 1] = Boolean::new(mode, true);
+        candidate[len - 2] = Boolean::new(mode, true);
+        match mode {
+            Mode::Constant => check_unary_operation_halts(candidate, |bits_le: Vec<Boolean<Circuit>>| {
+                Scalar::<Circuit>::from_bits_le(&bits_le)
+            }),
+            _ => check_unary_operation_fails_without_counts(
+                "FromBitsLE",
+                &format!("{}", mode),
+                candidate,
+                |bits_le: Vec<Boolean<Circuit>>| Scalar::<Circuit>::from_bits_le(&bits_le),
+            ),
+        }
+
+        // Check case where `bits_le.len()` is greater than the size of the scalar field.
+        let mut candidate = Scalar::<Circuit>::zero().to_bits_le();
+        candidate.push(Boolean::new(mode, false));
+        check_unary_operation_halts(candidate, |bits_le: Vec<Boolean<Circuit>>| {
+            Scalar::<Circuit>::from_bits_le(&bits_le)
+        });
     }
 
     fn check_from_bits_be(
@@ -141,36 +163,49 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
-        for i in 0..ITERATIONS {
+        for _ in 0..ITERATIONS {
             // Sample a random element.
             let expected: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
             let given_bits = Scalar::<Circuit>::new(mode, expected).to_bits_be();
             let expected_size_in_bits = given_bits.len();
 
-            Circuit::scope(&format!("{} {}", mode, i), || {
-                let candidate = Scalar::<Circuit>::from_bits_be(&given_bits);
-                assert_eq!(expected, candidate.eject_value());
-                assert_eq!(expected_size_in_bits, candidate.to_bits_be().len());
-                assert_scope!(num_constants, num_public, num_private, num_constraints);
-            });
-
-            // Add excess zero bits.
-            let candidate = vec![vec![Boolean::new(mode, false); i], given_bits].concat();
-
-            Circuit::scope(&format!("Excess {} {}", mode, i), || {
-                let candidate = Scalar::<Circuit>::from_bits_be(&candidate);
-                assert_eq!(expected, candidate.eject_value());
-                assert_eq!(expected_size_in_bits, candidate.bits_le.len());
-                match mode.is_constant() {
-                    true => assert_scope!(num_constants, num_public, num_private, num_constraints),
-                    // `num_private` gets 1 free excess bit, then is incremented by one for each excess bit.
-                    // `num_constraints` is incremented by one for each excess bit.
-                    false => {
-                        assert_scope!(num_constants, num_public, num_private + i.saturating_sub(1), num_constraints + i)
-                    }
-                };
-            });
+            // Check case where `bits_be` is less than the scalar field modulus.
+            check_unary_operation_passes(
+                "FromBitsBE",
+                &format!("{}", mode),
+                expected,
+                candidate,
+                |bits_be: Vec<Boolean<Circuit>>| Scalar::<Circuit>::from_bits_be(&bits_be),
+                num_constants,
+                num_public,
+                num_private,
+                num_constraints,
+            );
         }
+
+        // Check case where `bits_be` is equal to the scalar field modulus.
+        let mut candidate = Scalar::<Circuit>::zero().to_bits_be();
+        // Set the two most significant bits to true.
+        candidate[0] = Boolean::new(mode, true);
+        candidate[1] = Boolean::new(mode, true);
+        match mode {
+            Mode::Constant => check_unary_operation_halts(candidate, |bits_be: Vec<Boolean<Circuit>>| {
+                Scalar::<Circuit>::from_bits_be(&bits_be)
+            }),
+            _ => check_unary_operation_fails_without_counts(
+                "FromBitsBE",
+                &format!("{}", mode),
+                candidate,
+                |bits_be: Vec<Boolean<Circuit>>| Scalar::<Circuit>::from_bits_be(&bits_be),
+            ),
+        }
+
+        // Check case where `bits_be.len()` is greater than the size of the scalar field.
+        let mut candidate = Scalar::<Circuit>::zero().to_bits_be();
+        candidate.push(Boolean::new(mode, false));
+        check_unary_operation_halts(candidate, |bits_be: Vec<Boolean<Circuit>>| {
+            Scalar::<Circuit>::from_bits_be(&bits_be)
+        });
     }
 
     #[test]

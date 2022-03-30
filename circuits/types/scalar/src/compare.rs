@@ -66,8 +66,6 @@ mod tests {
 
     const ITERATIONS: usize = 100;
 
-    // TODO: Consider exposing test utilities in integers to all circuit types.
-
     #[rustfmt::skip]
     fn check_compare(
         name: &str,
@@ -80,18 +78,16 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
+        // Note that we need to use "fresh" circuits for each of the test cases, otherwise number of
+        // variables and constraints are incorrectly counted.
+
         // Check `is_less_than`.
         let expected = first < second;
         let case = format!("({} < {})", first, second);
 
         let a = Scalar::<Circuit>::new(mode_a, first);
         let b = Scalar::<Circuit>::new(mode_b, second);
-        Circuit::scope(name, || {
-            let candidate = a.is_less_than(&b);
-            assert_eq!(expected, candidate.eject_value(), "{} != {} := {}", expected, candidate.eject_value(), case);
-            assert_scope!(case, num_constants, num_public, num_private, num_constraints);
-        });
-        Circuit::reset();
+        check_operation_passes(name, &case, expected, &a, &b, Scalar::is_less_than, num_constants, num_public, num_private, num_constraints);
 
         // Check `is_less_than_or_equal`
         let expected = first <= second;
@@ -99,12 +95,7 @@ mod tests {
 
         let a = Scalar::<Circuit>::new(mode_a, first);
         let b = Scalar::<Circuit>::new(mode_b, second);
-        Circuit::scope(name, || {
-            let candidate = a.is_less_than_or_equal(&b);
-            assert_eq!(expected, candidate.eject_value(), "{} != {} := {}", expected, candidate.eject_value(), case);
-            assert_scope!(case, num_constants, num_public, num_private, num_constraints);
-        });
-        Circuit::reset();
+        check_operation_passes(name, &case, expected, &a, &b, Scalar::is_less_than_or_equal, num_constants, num_public, num_private, num_constraints);
 
         // Check `is_greater_than`
         let expected = first > second;
@@ -112,12 +103,7 @@ mod tests {
 
         let a = Scalar::<Circuit>::new(mode_a, first);
         let b = Scalar::<Circuit>::new(mode_b, second);
-        Circuit::scope(name, || {
-            let candidate = a.is_greater_than(&b);
-            assert_eq!(expected, candidate.eject_value(), "{} != {} := {}", expected, candidate.eject_value(), case);
-            assert_scope!(case, num_constants, num_public, num_private, num_constraints);
-        });
-        Circuit::reset();
+        check_operation_passes(name, &case, expected, &a, &b, Scalar::is_greater_than, num_constants, num_public, num_private, num_constraints);
 
         // Check `is_greater_than_or_equal`
         let expected = first >= second;
@@ -125,12 +111,7 @@ mod tests {
 
         let a = Scalar::<Circuit>::new(mode_a, first);
         let b = Scalar::<Circuit>::new(mode_b, second);
-        Circuit::scope(name, || {
-            let candidate = a.is_greater_than_or_equal(&b);
-            assert_eq!(expected, candidate.eject_value(), "{} != {} := {}", expected, candidate.eject_value(), case);
-            assert_scope!(case, num_constants, num_public, num_private, num_constraints);
-        });
-        Circuit::reset();
+        check_operation_passes(name, &case, expected, &a, &b, Scalar::is_greater_than_or_equal, num_constants, num_public, num_private, num_constraints);
     }
 
     #[rustfmt::skip]

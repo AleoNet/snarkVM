@@ -87,6 +87,9 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
+        // Note that we need to use "fresh" circuits for each of the test cases, otherwise number of
+        // variables and constraints are incorrectly counted.
+
         // Check `is_less_than`.
         let expected = first < second;
         let case = format!("({} < {})", first, second);

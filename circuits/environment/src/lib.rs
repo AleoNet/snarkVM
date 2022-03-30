@@ -211,6 +211,19 @@ pub mod test_utilities {
         Circuit::reset();
     }
 
+    pub fn check_unary_operation_fails_without_counts<IN, OUT>(
+        name: &str,
+        case: &str,
+        input: IN,
+        operation: impl FnOnce(IN) -> OUT,
+    ) {
+        Circuit::scope(name, || {
+            let _candidate = operation(input);
+            assert!(!Circuit::is_satisfied(), "{} (!is_satisfied)", case);
+        });
+        Circuit::reset();
+    }
+
     pub fn check_unary_operation_halts<IN: UnwindSafe, OUT>(input: IN, operation: impl FnOnce(IN) -> OUT + UnwindSafe) {
         let result = std::panic::catch_unwind(|| operation(input));
         assert!(result.is_err());
