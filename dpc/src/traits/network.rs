@@ -17,7 +17,6 @@
 use crate::{
     Block,
     Ciphertext,
-    InnerPublicVariables,
     InputPublicVariables,
     OutputPublicVariables,
     PoSWScheme,
@@ -121,13 +120,11 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const HEADER_NONCE_PREFIX: u16;
     const HEADER_ROOT_PREFIX: u16;
     const HEADER_TRANSACTIONS_ROOT_PREFIX: u16;
-    const INNER_CIRCUIT_ID_PREFIX: u16;
     const RECORD_RANDOMIZER_PREFIX: u16;
     const RECORD_VIEW_KEY_COMMITMENT_PREFIX: u16;
     const SERIAL_NUMBER_PREFIX: u16;
 
     const HEADER_PROOF_PREFIX: u32;
-    const INNER_PROOF_PREFIX: u32;
     const PROGRAM_PROOF_PREFIX: u32;
     const RECORD_CIPHERTEXT_PREFIX: u32;
     const RECORD_VIEW_KEY_PREFIX: u32;
@@ -146,7 +143,6 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const ADDRESS_SIZE_IN_BYTES: usize;
     const HEADER_SIZE_IN_BYTES: usize;
     const HEADER_PROOF_SIZE_IN_BYTES: usize;
-    const INNER_PROOF_SIZE_IN_BYTES: usize;
     const PROGRAM_PROOF_SIZE_IN_BYTES: usize;
     const PROGRAM_ID_SIZE_IN_BYTES: usize;
     const RECORD_CIPHERTEXT_SIZE_IN_BYTES: usize;
@@ -187,11 +183,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type ProgramProjectiveCurve: ProjectiveCurve<BaseField = Self::InnerScalarField>;
     type ProgramCurveParameters: TwistedEdwardsParameters;
     type ProgramScalarField: PrimeField;
-
-    /// SNARK for inner circuit proof generation.
-    type InnerSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::InnerBaseField, VerifierInput = InnerPublicVariables<Self>>;
-    type InnerProof: Bech32Object<<Self::InnerSNARK as SNARK>::Proof>;
-
+    
     /// SNARK for record inputs.
     type InputSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::InnerBaseField, VerifierInput = InputPublicVariables<Self>>;
     type InputProof: Bech32Object<<Self::InputSNARK as SNARK>::Proof>;
@@ -251,11 +243,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type FunctionInputsCRH: CRH<Output = Self::InnerScalarField>;
     type FunctionInputsCRHGadget: CRHGadget<Self::FunctionInputsCRH, Self::InnerScalarField>;
     type FunctionInputsHash: Bech32Locator<<Self::FunctionInputsCRH as CRH>::Output>;
-
-    /// CRH for hash of the `Self::InnerSNARK` verifying keys. Invoked only over `Self::OuterScalarField`.
-    type InnerCircuitIDCRH: CRH<Output = Self::InnerBaseField>;
-    type InnerCircuitID: Bech32Locator<<Self::InnerCircuitIDCRH as CRH>::Output>;
-
+    
     /// CRH for hash of the `Self::InputSNARK` verifying keys. Invoked only over `Self::OuterScalarField`.
     type InputCircuitIDCRH: CRH<Output = Self::InnerBaseField>;
     type InputCircuitID: Bech32Locator<<Self::InputCircuitIDCRH as CRH>::Output>;
@@ -326,7 +314,6 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     fn block_header_root_parameters() -> &'static Self::BlockHeaderRootParameters;
     fn commitment_scheme() -> &'static Self::CommitmentScheme;
     fn function_id_crh() -> &'static Self::FunctionIDCRH;
-    fn inner_circuit_id_crh() -> &'static Self::InnerCircuitIDCRH;
     fn ledger_root_parameters() -> &'static Self::LedgerRootParameters;
     fn program_id_parameters() -> &'static Self::ProgramIDParameters;
     fn transactions_root_parameters() -> &'static Self::TransactionsRootParameters;
@@ -336,10 +323,6 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
 
     fn input_circuit_id_crh() -> &'static Self::InputCircuitIDCRH;
     fn output_circuit_id_crh() -> &'static Self::OutputCircuitIDCRH;
-
-    fn inner_circuit_id() -> &'static Self::InnerCircuitID;
-    fn inner_proving_key() -> &'static <Self::InnerSNARK as SNARK>::ProvingKey;
-    fn inner_verifying_key() -> &'static <Self::InnerSNARK as SNARK>::VerifyingKey;
 
     fn input_circuit_id() -> &'static Self::InputCircuitID;
     fn input_proving_key() -> &'static <Self::InputSNARK as SNARK>::ProvingKey;

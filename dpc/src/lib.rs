@@ -31,9 +31,6 @@ pub use account::*;
 pub mod block;
 pub use block::*;
 
-pub mod circuits;
-pub use circuits::*;
-
 pub mod errors;
 pub use errors::*;
 

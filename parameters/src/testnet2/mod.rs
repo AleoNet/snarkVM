@@ -22,10 +22,6 @@ const REMOTE_URL: &str = "https://s3-us-west-1.amazonaws.com/aleo.parameters";
 // Universal SRS
 impl_remote!(UniversalSRSBytes, REMOTE_URL, "./resources/", "universal", "srs");
 
-// Inner Circuit
-impl_remote!(InnerProvingKeyBytes, REMOTE_URL, "./resources/", "inner", "proving");
-impl_local!(InnerVerifyingKeyBytes, "./resources/", "inner", "verifying");
-
 // Input Circuit
 impl_remote!(InputProvingKeyBytes, REMOTE_URL, "./resources/", "input", "proving");
 impl_local!(InputVerifyingKeyBytes, "./resources/", "input", "verifying");
