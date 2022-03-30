@@ -26,7 +26,7 @@ use snarkvm_utilities::{
 use enum_index::EnumIndex;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, EnumIndex)]
-pub enum Type<E> {
+pub enum LiteralType<E> {
     /// The Aleo address type.
     Address(Mode),
     /// The boolean type.
@@ -61,8 +61,8 @@ pub enum Type<E> {
     String(Mode, Option<E>),
 }
 
-impl<E: Environment> Type<E> {
-    /// Returns the type name.
+impl<E: Environment> LiteralType<E> {
+    /// Returns the literal type name.
     pub fn type_name(&self) -> &str {
         match self {
             Self::Address(..) => Address::<E>::type_name(),
@@ -106,30 +106,30 @@ impl<E: Environment> Type<E> {
         }
     }
 
-    /// Returns `true` if the type is a constant.
+    /// Returns `true` if the literal type is a constant.
     pub fn is_constant(&self) -> bool {
         self.mode().is_constant()
     }
 
-    /// Returns `true` if the type is public.
+    /// Returns `true` if the literal type is public.
     pub fn is_public(&self) -> bool {
         self.mode().is_public()
     }
 
-    /// Returns `true` if the type is private.
+    /// Returns `true` if the literal type is private.
     pub fn is_private(&self) -> bool {
         self.mode().is_private()
     }
 }
 
-impl<E: Environment> From<Literal<E>> for Type<E> {
+impl<E: Environment> From<Literal<E>> for LiteralType<E> {
     #[inline]
     fn from(literal: Literal<E>) -> Self {
         Self::from(&literal)
     }
 }
 
-impl<E: Environment> From<&Literal<E>> for Type<E> {
+impl<E: Environment> From<&Literal<E>> for LiteralType<E> {
     #[inline]
     fn from(literal: &Literal<E>) -> Self {
         let mode = literal.eject_mode();
@@ -155,10 +155,10 @@ impl<E: Environment> From<&Literal<E>> for Type<E> {
 }
 
 #[allow(clippy::let_and_return)]
-impl<E: Environment> Parser for Type<E> {
+impl<E: Environment> Parser for LiteralType<E> {
     type Environment = E;
 
-    /// Parses a string into a type.
+    /// Parses a string into a literal type.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the type from the string.
@@ -186,19 +186,19 @@ impl<E: Environment> Parser for Type<E> {
     }
 }
 
-impl<E: Environment> Debug for Type<E> {
+impl<E: Environment> Debug for LiteralType<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}.{}", self.type_name(), self.mode())
     }
 }
 
-impl<E: Environment> Display for Type<E> {
+impl<E: Environment> Display for LiteralType<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}.{}", self.type_name(), self.mode())
     }
 }
 
-impl<E: Environment> FromBytes for Type<E> {
+impl<E: Environment> FromBytes for LiteralType<E> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let index = u16::read_le(&mut reader)?;
         let mode = Mode::read_le(&mut reader)?;
@@ -219,13 +219,13 @@ impl<E: Environment> FromBytes for Type<E> {
             13 => Self::U128(mode),
             14 => Self::Scalar(mode),
             15 => Self::String(mode, None),
-            _ => return Err(error(format!("FromBytes failed to parse a type of index {index}"))),
+            _ => return Err(error(format!("FromBytes failed to parse a literal type of index {index}"))),
         };
         Ok(literal)
     }
 }
 
-impl<E: Environment> ToBytes for Type<E> {
+impl<E: Environment> ToBytes for LiteralType<E> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         (self.enum_index() as u16).write_le(&mut writer)?;
         self.mode().write_le(&mut writer)

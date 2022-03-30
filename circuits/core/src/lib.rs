@@ -30,15 +30,6 @@ use snarkvm_circuits_types::prelude::*;
 
 use core::fmt;
 
-pub mod annotation;
-pub use annotation::*;
-
-pub mod identifier;
-pub use identifier::*;
-
-pub mod register;
-pub use register::*;
-
 /// A template is a user-defined type that represents a collection of circuits.
 /// A template does not have a mode; rather its individual members are annotated with modes.
 /// A template is defined by an identifier (such as `record`) and a list of members,
@@ -161,7 +152,7 @@ impl<E: Environment> Value<E> {
     #[inline]
     pub fn annotation(&self) -> Annotation<E> {
         match self {
-            Self::Literal(literal) => Annotation::Literal(Type::from(literal)),
+            Self::Literal(literal) => Annotation::Literal(LiteralType::from(literal)),
             Self::Composite(composite) => Annotation::Composite(composite.identifier().clone()),
             Self::Record(..) => Annotation::Record,
         }
@@ -651,8 +642,6 @@ impl<E: Environment> Stack<E> {
     /// This method will halt if the given input annotation references a non-existent template.
     #[inline]
     fn new_input_statement(&mut self, input: Input<E>) {
-        let register = input.register();
-
         // Ensure there are no instructions or output statements in memory.
         if !self.instructions.is_empty() {
             E::halt("Cannot add input statement after instructions have been added")
@@ -666,6 +655,7 @@ impl<E: Environment> Stack<E> {
         }
 
         // Ensure the input does not exist in the registers.
+        let register = input.register();
         if self.registers.contains_key(input.locator()) {
             E::halt(format!("Input register {register} was previously stored"))
         }
@@ -711,9 +701,8 @@ impl<E: Environment> Stack<E> {
     /// This method will halt if the annotation does not match.
     #[inline]
     fn assign_input(&mut self, input: Input<E>, value: Value<E>) {
-        let register = input.register();
-
         // Ensure the input exists in the registers.
+        let register = input.register();
         if !self.registers.contains_key(input.locator()) {
             E::halt(format!("Register {register} does not exist"))
         }
@@ -832,14 +821,13 @@ impl<E: Environment> Stack<E> {
     /// This method will halt if the given output annotation references a non-existent template.
     #[inline]
     fn new_output_statement(&mut self, output: Output<E>) {
-        let register = output.register();
-
         // Ensure there are input statements and instructions in memory.
         if self.input_statements.is_empty() || self.instructions.is_empty() {
             E::halt("Cannot add output statement before input statements or instructions have been added")
         }
 
         // Ensure the output exists in the registers.
+        let register = output.register();
         if !self.registers.contains_key(output.locator()) {
             E::halt(format!("Output register {register} is missing"))
         }

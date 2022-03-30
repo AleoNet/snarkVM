@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Argument, Memory, Operation, Sanitizer};
-use snarkvm_circuits::{Parser, ParserResult, Type};
+use snarkvm_circuits::{LiteralType, Parser, ParserResult};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::{fmt, ops};
@@ -68,7 +68,7 @@ impl<M: Memory> Operation for Output<M> {
         let literal = memory.load(register);
 
         // Ensure the type matches.
-        if Type::from(&literal) != type_ {
+        if LiteralType::from(&literal) != type_ {
             M::halt(format!("Output register {register} is not a {type_}"))
         }
     }

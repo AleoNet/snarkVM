@@ -142,7 +142,7 @@ impl<E: Environment> PartialOrd for Input<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Identifier, Type};
+    use crate::{Identifier, LiteralType};
     use snarkvm_circuits_types::environment::Circuit;
 
     type E = Circuit;
@@ -157,7 +157,7 @@ mod tests {
         // Literal
         let input = Input::<E>::parse("input r0 as field.private;").unwrap().1;
         assert_eq!(input.register(), &Register::<E>::Locator(0));
-        assert_eq!(input.annotation(), &Annotation::<E>::Literal(Type::Field(Mode::Private)));
+        assert_eq!(input.annotation(), &Annotation::<E>::Literal(LiteralType::Field(Mode::Private)));
 
         // Composite
         let input = Input::<E>::parse("input r1 as signature;").unwrap().1;
@@ -173,7 +173,7 @@ mod tests {
     #[test]
     fn test_input_display() {
         // Literal
-        let input = Input::<E>::new(Register::Locator(0), Annotation::Literal(Type::Field(Mode::Private)));
+        let input = Input::<E>::new(Register::Locator(0), Annotation::Literal(LiteralType::Field(Mode::Private)));
         assert_eq!("input r0 as field.private;", input.to_string());
 
         // Composite
@@ -188,7 +188,7 @@ mod tests {
     #[test]
     fn test_input_locator() {
         // Literal
-        let input = Input::<E>::new(Register::Locator(0), Annotation::Literal(Type::Field(Mode::Private)));
+        let input = Input::<E>::new(Register::Locator(0), Annotation::Literal(LiteralType::Field(Mode::Private)));
         assert_eq!(input.locator(), &0);
 
         // Composite
@@ -203,7 +203,7 @@ mod tests {
     #[test]
     fn test_input_is_literal() {
         // Literal
-        let input = Input::<E>::new(Register::Locator(0), Annotation::Literal(Type::Field(Mode::Private)));
+        let input = Input::<E>::new(Register::Locator(0), Annotation::Literal(LiteralType::Field(Mode::Private)));
         assert!(input.is_literal());
 
         // Composite
@@ -218,7 +218,7 @@ mod tests {
     #[test]
     fn test_input_is_composite() {
         // Literal
-        let input = Input::<E>::new(Register::Locator(0), Annotation::Literal(Type::Field(Mode::Private)));
+        let input = Input::<E>::new(Register::Locator(0), Annotation::Literal(LiteralType::Field(Mode::Private)));
         assert!(!input.is_composite());
 
         // Composite
@@ -233,7 +233,7 @@ mod tests {
     #[test]
     fn test_input_is_record() {
         // Literal
-        let input = Input::<E>::new(Register::Locator(0), Annotation::Literal(Type::Field(Mode::Private)));
+        let input = Input::<E>::new(Register::Locator(0), Annotation::Literal(LiteralType::Field(Mode::Private)));
         assert!(!input.is_record());
 
         // Composite
@@ -247,8 +247,8 @@ mod tests {
 
     #[test]
     fn test_input_partial_ord() {
-        let input1 = Input::<E>::new(Register::Locator(0), Annotation::Literal(Type::Field(Mode::Private)));
-        let input2 = Input::<E>::new(Register::Locator(1), Annotation::Literal(Type::Field(Mode::Private)));
+        let input1 = Input::<E>::new(Register::Locator(0), Annotation::Literal(LiteralType::Field(Mode::Private)));
+        let input2 = Input::<E>::new(Register::Locator(1), Annotation::Literal(LiteralType::Field(Mode::Private)));
 
         let input3 = Input::<E>::new(Register::Locator(0), Annotation::Composite(Identifier::new("signature")));
         let input4 = Input::<E>::new(Register::Locator(1), Annotation::Composite(Identifier::new("signature")));

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Identifier, Record, Type};
+use crate::{Identifier, LiteralType, Record};
 use snarkvm_circuits_types::prelude::*;
 
 /// An annotation defines the type parameters for a function or template.
@@ -22,7 +22,7 @@ use snarkvm_circuits_types::prelude::*;
 pub enum Annotation<E: Environment> {
     /// A literal annotation contains its type name and mode.
     /// The format of the annotation is `<type_name>.<mode>`.
-    Literal(Type<E>),
+    Literal(LiteralType<E>),
     /// A composite annotation contains its identifier.
     /// The format of the annotation is `<identifier>`.
     Composite(Identifier<E>),
@@ -59,7 +59,7 @@ impl<E: Environment> Parser for Annotation<E> {
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse to determine the annotation (order matters).
         alt((
-            map(Type::parse, |type_| Self::Literal(type_)),
+            map(LiteralType::parse, |type_| Self::Literal(type_)),
             map(Identifier::parse, |identifier| Self::Composite(identifier)),
             map(tag(Record::<E>::type_name()), |_| Self::Record),
         ))(string)
@@ -89,7 +89,10 @@ mod tests {
 
     #[test]
     fn test_annotation_parse() {
-        assert_eq!(Annotation::parse("field.private"), Ok(("", Annotation::<E>::Literal(Type::Field(Mode::Private)))));
+        assert_eq!(
+            Annotation::parse("field.private"),
+            Ok(("", Annotation::<E>::Literal(LiteralType::Field(Mode::Private))))
+        );
         assert_eq!(Annotation::parse("signature"), Ok(("", Annotation::<E>::Composite(Identifier::new("signature")))));
         assert_eq!(Annotation::parse("record"), Ok(("", Annotation::<E>::Record)));
     }
@@ -106,28 +109,28 @@ mod tests {
 
     #[test]
     fn test_annotation_display() {
-        assert_eq!(Annotation::<E>::Literal(Type::Field(Mode::Private)).to_string(), "field.private");
+        assert_eq!(Annotation::<E>::Literal(LiteralType::Field(Mode::Private)).to_string(), "field.private");
         assert_eq!(Annotation::<E>::Composite(Identifier::new("signature")).to_string(), "signature");
         assert_eq!(Annotation::<E>::Record.to_string(), "record");
     }
 
     #[test]
     fn test_annotation_is_literal() {
-        assert!(Annotation::<E>::Literal(Type::Field(Mode::Private)).is_literal());
+        assert!(Annotation::<E>::Literal(LiteralType::Field(Mode::Private)).is_literal());
         assert!(!Annotation::<E>::Composite(Identifier::new("signature")).is_literal());
         assert!(!Annotation::<E>::Record.is_literal());
     }
 
     #[test]
     fn test_annotation_is_composite() {
-        assert!(!Annotation::<E>::Literal(Type::Field(Mode::Private)).is_composite());
+        assert!(!Annotation::<E>::Literal(LiteralType::Field(Mode::Private)).is_composite());
         assert!(Annotation::<E>::Composite(Identifier::new("signature")).is_composite());
         assert!(!Annotation::<E>::Record.is_composite());
     }
 
     #[test]
     fn test_annotation_is_record() {
-        assert!(!Annotation::<E>::Literal(Type::Field(Mode::Private)).is_record());
+        assert!(!Annotation::<E>::Literal(LiteralType::Field(Mode::Private)).is_record());
         assert!(!Annotation::<E>::Composite(Identifier::new("signature")).is_record());
         assert!(Annotation::<E>::Record.is_record());
     }

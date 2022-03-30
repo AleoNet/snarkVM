@@ -122,7 +122,7 @@ impl<E: Environment> fmt::Display for Output<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Identifier, Type};
+    use crate::{Identifier, LiteralType};
     use snarkvm_circuits_types::environment::Circuit;
 
     type E = Circuit;
@@ -137,7 +137,7 @@ mod tests {
         // Literal
         let output = Output::<E>::parse("output r0 as field.private;").unwrap().1;
         assert_eq!(output.register(), &Register::<E>::Locator(0));
-        assert_eq!(output.annotation(), &Annotation::<E>::Literal(Type::Field(Mode::Private)));
+        assert_eq!(output.annotation(), &Annotation::<E>::Literal(LiteralType::Field(Mode::Private)));
 
         // Composite
         let output = Output::<E>::parse("output r1 as signature;").unwrap().1;

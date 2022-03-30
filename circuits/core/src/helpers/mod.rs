@@ -14,17 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+pub mod annotation;
+pub use annotation::*;
+
+pub mod identifier;
+pub use identifier::*;
+
 pub mod literal;
 pub use literal::*;
-
-pub mod primitive;
-pub use primitive::*;
 
 pub mod record;
 pub use record::*;
 
+pub mod register;
+pub use register::*;
+
 pub mod statements;
 pub use statements::*;
-
-pub mod type_;
-pub use type_::*;

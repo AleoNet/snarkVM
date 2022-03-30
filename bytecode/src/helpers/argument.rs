@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::Register;
-use snarkvm_circuits::{Environment, Mode, Parser, ParserResult, Type};
+use snarkvm_circuits::{Environment, LiteralType, Mode, Parser, ParserResult};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
@@ -25,7 +25,7 @@ use std::io::{Read, Result as IoResult, Write};
 #[derive(Clone)]
 pub struct Argument<E: Environment> {
     register: Register<E>,
-    type_annotation: Type<E>,
+    type_annotation: LiteralType<E>,
 }
 
 impl<E: Environment> Argument<E> {
@@ -35,7 +35,7 @@ impl<E: Environment> Argument<E> {
     }
 
     /// Returns the type annotation of the argument.
-    pub fn type_annotation(&self) -> Type<E> {
+    pub fn type_annotation(&self) -> LiteralType<E> {
         self.type_annotation
     }
 
@@ -72,7 +72,7 @@ impl<E: Environment> Parser for Argument<E> {
         // Parse the space from the string.
         let (string, _) = tag(" ")(string)?;
         // Parse the type from the string.
-        let (string, type_) = Type::parse(string)?;
+        let (string, type_) = LiteralType::parse(string)?;
 
         Ok((string, Self { register, type_annotation: type_ }))
     }
@@ -87,7 +87,7 @@ impl<E: Environment> fmt::Display for Argument<E> {
 impl<E: Environment> FromBytes for Argument<E> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let register = Register::<E>::read_le(&mut reader)?;
-        let type_ = Type::<E>::read_le(&mut reader)?;
+        let type_ = LiteralType::<E>::read_le(&mut reader)?;
 
         Ok(Self { register, type_annotation: type_ })
     }

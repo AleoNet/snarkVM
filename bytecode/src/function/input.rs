@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Argument, Memory, Operation, Sanitizer};
-use snarkvm_circuits::{Literal, Parser, ParserResult, Type};
+use snarkvm_circuits::{Literal, LiteralType, Parser, ParserResult};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::{fmt, ops};
@@ -39,7 +39,7 @@ impl<M: Memory> Input<M> {
         let type_ = self.argument.type_annotation();
 
         // Ensure the type matches.
-        match Type::from(&literal) == type_ {
+        match LiteralType::from(&literal) == type_ {
             // Assign the literal to this input register.
             true => match self.literal.set(literal).is_ok() {
                 true => self,
