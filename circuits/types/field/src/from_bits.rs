@@ -49,7 +49,6 @@ impl<E: Environment> FromBits for Field<E> {
             // Initialize an iterator over `self` and `other` from MSB to LSB.
             let bit_pairs_le = modulus_minus_one_bits_le.iter().zip_eq(padded_bits_le);
 
-            // This implementation produces ~500 fewer constraints than the original one.
             let modulus_minus_one_less_than_bits =
                 bit_pairs_le.fold(Boolean::constant(false), |rest_is_less, (modulus_minus_one_bit, other_bit)| {
                     if *modulus_minus_one_bit {
