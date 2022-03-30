@@ -182,7 +182,7 @@ impl<N: Network> Request<N> {
                     return false;
                 }
             }
-        } else if self.records.len() != 0 {
+        } else if !self.records.is_empty() {
             eprintln!("Coinbase request must have no input records.");
             return false;
         }
