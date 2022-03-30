@@ -81,7 +81,7 @@ impl<N: Network> Response<N> {
 
     /// Returns `true` if the output records are the noop program.
     pub fn is_noop(&self) -> bool {
-        self.records.iter().filter(|output| output.is_dummy()).count() == N::NUM_OUTPUT_RECORDS
+        self.records.iter().all(|output| output.is_dummy())
     }
 
     /// Returns the transition ID.
@@ -91,7 +91,7 @@ impl<N: Network> Response<N> {
 
     /// Returns the commitments.
     pub fn commitments(&self) -> Vec<N::Commitment> {
-        self.records.iter().take(N::NUM_OUTPUT_RECORDS).map(Record::commitment).collect()
+        self.records.iter().take(N::MAX_NUM_OUTPUT_RECORDS).map(Record::commitment).collect()
     }
 
     /// Returns a reference to the records.
@@ -101,7 +101,7 @@ impl<N: Network> Response<N> {
 
     /// Returns the ciphertexts.
     pub fn ciphertexts(&self) -> Vec<N::RecordCiphertext> {
-        self.records.iter().take(N::NUM_OUTPUT_RECORDS).map(Record::ciphertext).cloned().collect()
+        self.records.iter().take(N::MAX_NUM_OUTPUT_RECORDS).map(Record::ciphertext).cloned().collect()
     }
 
     /// Returns a reference to the encryption randomness.

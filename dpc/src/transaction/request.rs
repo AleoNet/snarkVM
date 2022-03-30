@@ -66,11 +66,14 @@ impl<N: Network> Request<N> {
         ledger_proofs: Vec<LedgerProof<N>>,
         recipient: Address<N>,
         amount: AleoAmount,
-        fee: AleoAmount,
         is_public: bool,
         rng: &mut R,
     ) -> Result<Self> {
         let operation = Operation::Transfer(caller.to_address(), recipient, amount);
+
+        let total_balance = records.iter().map(|record| record.value()).sum::<AleoAmount>();
+        let fee = total_balance.sub(amount);
+
         Self::new(caller, records, ledger_proofs, operation, fee, is_public, rng)
     }
 
@@ -80,13 +83,8 @@ impl<N: Network> Request<N> {
         let noop_private_key = PrivateKey::new(rng);
         let noop_address = Address::from_private_key(&noop_private_key);
 
-        // Construct the noop records.
-        let mut records = Vec::with_capacity(N::NUM_INPUT_RECORDS);
-        // TODO (raychu86): Remove usage of noop records.
-        for _ in 0..N::NUM_INPUT_RECORDS {
-            // TODO (raychu86): Remove this requirement.
-            records.push(Record::new_noop(noop_address, rng)?);
-        }
+        // Construct the noop.
+        let records = vec![Record::new_noop(noop_address, rng)?];
 
         Self::new(&noop_private_key, records, ledger_proofs, Operation::Noop, AleoAmount::ZERO, false, rng)
     }
@@ -176,6 +174,17 @@ impl<N: Network> Request<N> {
                 eprintln!("Request records do not contain sufficient value for fee");
                 return false;
             }
+
+            // Ensure that the total value is equivalent to the recipient amount and fee
+            if let Operation::Transfer(_, _, amount) = &self.operation {
+                if balance != self.fee.add(*amount) {
+                    eprintln!("Request records do not contain the correct value");
+                    return false;
+                }
+            }
+        } else if self.records.len() != 0 {
+            eprintln!("Coinbase request must have no input records.");
+            return false;
         }
 
         // Ensure the records contain at most 1 program ID, and retrieve the program ID.

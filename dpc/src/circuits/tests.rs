@@ -22,17 +22,29 @@ use snarkvm_utilities::ToBytes;
 use itertools::Itertools;
 use rand::thread_rng;
 
-// TODO (raychu86): Add additional tests for different number of inputs and outputs.
-
 fn dpc_execute_circuits_test<N: Network>(
     expected_input_num_constraints: usize,
     expected_output_num_constraints: usize,
 ) {
     let rng = &mut thread_rng();
 
+    let sender = Account::new(rng);
     let recipient = Account::new(rng);
-    let amount = AleoAmount::from_gate(10);
-    let request: Request<N> = Request::new_coinbase(recipient.address(), amount, false, rng).unwrap();
+    let amount = AleoAmount::from_gate(0);
+
+    // Coinbase transactions do not have input proofs, so we use a dummy transfer to test both
+    // the input and output circuits.
+    let request: Request<N> = Request::new_transfer(
+        sender.private_key(),
+        vec![Record::new_noop(sender.address(), rng).unwrap()],
+        vec![LedgerProof::default()],
+        recipient.address(),
+        amount,
+        false,
+        rng,
+    )
+    .unwrap();
+
     let response: Response<N> = ResponseBuilder::new()
         .add_request(request.clone())
         .add_output(Output::new(recipient.address(), amount, None, None).unwrap())
