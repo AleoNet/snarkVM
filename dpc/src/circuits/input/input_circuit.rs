@@ -564,21 +564,12 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InputCircuit<N> 
         {
             let signature_cs = &mut cs.ns(|| "Check that the signature is valid");
 
-            // TODO (raychu86): Verify that all input signatures are from the same owner.
-            // // Enforce that the input owners are the same address.
-            // let mut current_owner = &input_owners[0];
-            // for (i, next_owner) in input_owners.iter().take(N::NUM_INPUT_RECORDS).skip(1).enumerate() {
-            //     // Enforce the owners are equal.
-            //     current_owner.enforce_equal(signature_cs.ns(|| format!("check_owners_match_{}", i)), next_owner)?;
-            //     // Update the current owner.
-            //     current_owner = next_owner;
-            // }
-
             let mut signature_message = Vec::new();
             signature_message.extend_from_slice(&candidate_commitment_bytes);
             signature_message.extend_from_slice(&input_program_id_bytes);
-            // signature_message.extend_from_slice(&inputs_digest);
-            // signature_message.extend_from_slice(&fee);
+
+            // TODO (raychu86): Use bit representation of the message once PR #720 is merged.
+            // let signature_message = signature_message.to_bits_le(signature_cs.ns(|| "convert message to bits"))?;
 
             let signature_verification = account_signature_parameters.verify(
                 signature_cs.ns(|| "signature_verify"),
