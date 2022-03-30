@@ -36,12 +36,6 @@ pub use annotation::*;
 pub mod identifier;
 pub use identifier::*;
 
-pub mod input;
-pub use input::*;
-
-pub mod output;
-pub use output::*;
-
 pub mod register;
 pub use register::*;
 
@@ -82,6 +76,41 @@ impl<E: Environment> Template<E> {
         &self.members
     }
 }
+
+// impl<E: Environment> Parser for Template<E> {
+//     type Environment = E;
+//
+//     /// Parses a string into a template.
+//     #[inline]
+//     fn parse(string: &str) -> ParserResult<Self> {
+//         // TODO (howardwu): Add support for records.
+//         // TODO (howardwu): Sanitize of any whitespaces, or support whitespaces.
+//         // A composite is defined as: `(identifier, [(identifier, annotation), ...])`,
+//         // where the left tuple is the name of the composite, and the right tuple is the composite identifiers and value.
+//
+//         // Parses a tuple of form: (identifier,value).
+//         let tuple_parse = map(
+//             pair(pair(tag("("), pair(pair(Identifier::parse, tag(",")), Value::parse)), tag(")")),
+//             |((_, ((identifier, _), value)), _)| (identifier, value),
+//         );
+//         let tuple_parse2 = map(
+//             pair(pair(tag("("), pair(pair(Identifier::parse, tag(",")), Value::parse)), tag(")")),
+//             |((_, ((identifier, _), value)), _)| (identifier, value),
+//         );
+//         // Parses a sequence of form: (identifier,value),(identifier,value),...,(identifier,value).
+//         let sequence_parse = map(pair(pair(many0(tuple_parse), tag(",")), tuple_parse2), |((tuples, _), tuple)| {
+//             let mut tuples = tuples;
+//             tuples.push(tuple);
+//             tuples
+//         });
+//         // Parses a slice of form: [(identifier,value),(identifier,value),...,(identifier,value)].
+//         let slice_parse = pair(pair(tag("["), sequence_parse), tag("]"));
+//         // Parses a composite of form: identifier[(identifier, value), ...].
+//         map(pair(Identifier::parse, slice_parse), |(identifier, ((_, members), _))| {
+//             Self::Composite(Composite::new(identifier, members))
+//         })(string)
+//     }
+// }
 
 /// A composite is an instantiation of a template. A composite is defined by an identifier (such as `record`)
 /// and a list of members, such as `[(owner, aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.public), (balance, 5i64.private)]`,

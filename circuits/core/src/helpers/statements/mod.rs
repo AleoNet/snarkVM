@@ -14,17 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod literal;
-pub use literal::*;
+pub mod input;
+pub use input::*;
 
-pub mod primitive;
-pub use primitive::*;
-
-pub mod record;
-pub use record::*;
-
-pub mod statements;
-pub use statements::*;
-
-pub mod type_;
-pub use type_::*;
+pub mod output;
+pub use output::*;
