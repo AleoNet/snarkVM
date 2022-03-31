@@ -414,37 +414,32 @@ impl<E: Environment> Stack<E> {
 
         // If the register is a locator, then return the value.
         if let Register::Locator(..) = register {
-            return (*value).clone();
+            (*value).clone()
         }
         // If the register is a register member, then load the specific value.
         else if let Register::Member(_, member_name) = register {
-            // Retrieve the identifier for the composite (from the annotation).
-            let identifier = match value.annotation() {
-                // Retrieve the identifier from the annotation.
-                Annotation::Composite(identifier) => identifier,
-                // Halts if the value is not a composite.
-                Annotation::Literal(..) => E::halt(format!("Register {register} does not have any members")),
-            };
-
-            // Retrieve the member index of the identifier (from the template).
-            let member_index = match self.templates.get(&identifier) {
-                Some(template) => template
-                    .members()
-                    .iter()
-                    .position(|member| member.name() == member_name)
-                    .unwrap_or_else(|| E::halt(format!("Failed to locate {member_name} in {identifier}"))),
-                // Halts if the template does not exist.
-                None => E::halt(format!("Failed to locate template for identifier {identifier}")),
-            };
-
-            // Retrieve the value of the member (from the value).
             match value {
-                Value::Literal(..) => E::halt(format!("Cannot load a register member from a literal")),
-                Value::Composite(_, composite) => match composite.get(member_index) {
-                    Some(value) => (*value).clone(),
-                    // Halts if the member does not exist.
-                    None => E::halt(format!("Failed to locate register {register}")),
-                },
+                // Halts if the value is not a composite.
+                Value::Literal(..) => E::halt("Cannot load a register member from a literal"),
+                // Retrieve the value of the member (from the value).
+                Value::Composite(identifier, composite) => {
+                    // Retrieve the member index of the identifier (from the template).
+                    let member_index = match self.templates.get(identifier) {
+                        Some(template) => template
+                            .members()
+                            .iter()
+                            .position(|member| member.name() == member_name)
+                            .unwrap_or_else(|| E::halt(format!("Failed to locate {member_name} in {identifier}"))),
+                        // Halts if the template does not exist.
+                        None => E::halt(format!("Failed to locate template for identifier {identifier}")),
+                    };
+                    // Return the value of the member.
+                    match composite.get(member_index) {
+                        Some(value) => (*value).clone(),
+                        // Halts if the member does not exist.
+                        None => E::halt(format!("Failed to locate register {register}")),
+                    }
+                }
             }
         }
         // Halts if the register is neither a locator nor a register member.
