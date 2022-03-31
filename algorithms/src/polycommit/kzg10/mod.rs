@@ -24,7 +24,7 @@
 use crate::{
     fft::{DenseOrSparsePolynomial, DensePolynomial},
     msm::{FixedBase, VariableBase},
-    polycommit::{PCError, PCRandomness},
+    polycommit::{PCError, PCRandomness, PowersOfG},
 };
 use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{Field, One, PrimeField, Zero};
@@ -36,8 +36,9 @@ use core::{
     sync::atomic::{AtomicBool, Ordering},
 };
 use itertools::Itertools;
+use parking_lot::RwLock;
 use rand_core::RngCore;
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::Arc};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -196,9 +197,9 @@ impl<E: PairingEngine> KZG10<E> {
         let prepared_h = h.prepare();
         let prepared_beta_h = beta_h.prepare();
 
+        let powers: PowersOfG<E> = (powers_of_beta_g, powers_of_beta_times_gamma_g).into();
         let pp = UniversalParams {
-            powers_of_beta_g,
-            powers_of_beta_times_gamma_g,
+            powers: Arc::new(RwLock::new(powers)),
             h,
             beta_h,
             supported_degree_bounds,
@@ -586,17 +587,17 @@ mod tests {
             if supported_degree == 1 {
                 supported_degree += 1;
             }
-            let powers_of_beta_g = pp.powers_of_beta_g[..=supported_degree].to_vec();
+            let powers_of_beta_g = pp.powers_of_beta_g(0, supported_degree + 1).to_vec();
             let powers_of_beta_times_gamma_g =
-                (0..=supported_degree).map(|i| pp.powers_of_beta_times_gamma_g[&i]).collect();
+                (0..=supported_degree).map(|i| pp.get_powers_times_gamma_g()[&i]).collect();
 
             let powers = Powers {
                 powers_of_beta_g: Cow::Owned(powers_of_beta_g),
                 powers_of_beta_times_gamma_g: Cow::Owned(powers_of_beta_times_gamma_g),
             };
             let vk = VerifierKey {
-                g: pp.powers_of_beta_g[0],
-                gamma_g: pp.powers_of_beta_times_gamma_g[&0],
+                g: pp.power_of_beta_g(0),
+                gamma_g: pp.get_powers_times_gamma_g()[&0],
                 h: pp.h,
                 beta_h: pp.beta_h,
                 prepared_h: pp.prepared_h.clone(),

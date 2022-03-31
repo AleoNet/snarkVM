@@ -108,12 +108,22 @@ version = "0.1.12"
 [dependencies.anyhow]
 version = "1.0"
 
+[dependencies.bincode]
+version = "1"
+
 [dependencies.blake2s_simd]
 version = "1.0"
 optional = true
 
 [dependencies.crossbeam-channel]
 version = "0.5"
+
+[target.'cfg(not(target_family = "wasm"))'.dependencies.curl]
+version = "0.4.43"
+
+[dependencies.derivative]
+version = "2"
+features = [ "use_core" ]
 
 [dependencies.digest]
 version = "0.10"
@@ -143,6 +153,9 @@ optional = true
 [dependencies.once_cell]
 version = "1.10"
 
+[dependencies.parking_lot]
+version = "0.12"
+
 [dependencies.rand]
 version = "0.8"
 
@@ -157,6 +170,10 @@ default-features = false
 
 [dependencies.rayon]
 version = "1"
+optional = true
+
+[dependencies.reqwest]
+version = "0.11"
 optional = true
 
 [dependencies.rust-gpu-tools]
@@ -180,11 +197,12 @@ features = [ "const_generics", "const_new" ]
 [dependencies.thiserror]
 version = "1.0"
 
+[dependencies.wasm-bindgen-futures]
+version = "0.4"
+optional = true
+
 [dev-dependencies.expect-test ]
 version = "1.1.0"
-
-[dev-dependencies.bincode]
-version = "1"
 
 [dev-dependencies.blake2]
 version = "0.10"
@@ -242,7 +260,9 @@ wasm = [
   "prf",
   "signature",
   "snark",
-  "getrandom"
+  "getrandom",
+  "wasm-bindgen-futures",
+  "reqwest"
 ]
 
 cuda = [ "rust-gpu-tools" ]
