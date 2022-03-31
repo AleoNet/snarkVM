@@ -192,15 +192,6 @@ pub enum Operand<E: Environment> {
 }
 
 impl<E: Environment> Operand<E> {
-    // /// Returns the value, corresponding to the operand.
-    // #[inline]
-    // fn load(&self) -> Value<M> {
-    //     match self {
-    //         Operand::Value(value) => (*value).clone(),
-    //         Operand::Register(register) => M::load(register),
-    //     }
-    // }
-
     /// Returns the value, if the operand is a value.
     /// Returns `None` otherwise.
     ///

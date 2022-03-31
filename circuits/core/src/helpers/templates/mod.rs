@@ -21,7 +21,7 @@ use snarkvm_circuits_types::prelude::*;
 
 use core::fmt;
 
-/// A template is a custom or record type that represents a collection of circuits.
+/// A template is a custom type or record type that represents a collection of circuits.
 /// A template does not have a mode; rather its individual members are annotated with modes.
 /// A template is defined by an identifier (such as `message`) and a list of members,
 /// such as `[(sender, address.public), (amount, i64.private)]`, where the left entry is an identifier,
@@ -32,9 +32,9 @@ use core::fmt;
 /// as `r0.owner` or `r0.value`. This generalizes to the format, i.e. `r{locator}.{member}`.
 #[derive(Clone, Debug)]
 pub enum Template<E: Environment> {
-    /// A type consists of its identifier and a list of members.
+    /// A custom type consists of its name and a list of members.
     Type(Identifier<E>, Vec<Member<E>>),
-    /// A record consists of its identifier and a list of members.
+    /// A record type consists of its name and a list of members.
     Record(Identifier<E>, Vec<Member<E>>),
 }
 
