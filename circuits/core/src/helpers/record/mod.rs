@@ -23,7 +23,6 @@ use snarkvm_circuits_types::{environment::prelude::*, Address, I64};
 // TODO (howardwu): Check mode is only public/private, not constant.
 #[derive(Debug, Clone)]
 pub struct Record<E: Environment> {
-    name: Identifier<E>,
     owner: Address<E>,
     value: I64<E>,
     data: Vec<Value<E>>,
@@ -33,11 +32,6 @@ pub struct Record<E: Environment> {
 }
 
 impl<E: Environment> Record<E> {
-    /// Returns the name of the record.
-    pub fn name(&self) -> &Identifier<E> {
-        &self.name
-    }
-
     /// Returns the members of the record.
     pub fn members(&self) -> Vec<Value<E>> {
         [Value::Literal(Literal::Address(self.owner.clone())), Value::Literal(Literal::I64(self.value.clone()))]
@@ -80,7 +74,6 @@ mod tests {
         let third = Value::Literal(Literal::from_str("99i64.public"));
 
         let _candidate = Record {
-            name: Identifier::from_str("foo"),
             owner: Address::from(Group::from_str("2group.private")),
             value: I64::from_str("1i64.private"),
             data: vec![first, second, third],

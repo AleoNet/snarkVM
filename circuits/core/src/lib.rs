@@ -72,10 +72,8 @@ impl<E: Environment> Type<E> {
 pub enum Value<E: Environment> {
     /// A literal contains its declared literal value.
     Literal(Literal<E>),
-    /// A type contains its declared member values.
-    Type(Type<E>),
-    /// A record contains its declared member values.
-    Record(Record<E>),
+    /// A composite contains its declared member values.
+    Composite(Type<E>),
 }
 
 impl<E: Environment> Value<E> {
@@ -84,8 +82,7 @@ impl<E: Environment> Value<E> {
     pub fn annotation(&self) -> Annotation<E> {
         match self {
             Self::Literal(literal) => Annotation::Literal(LiteralType::from(literal)),
-            Self::Type(type_) => Annotation::Composite(type_.name().clone()),
-            Self::Record(record) => Annotation::Composite(record.name().clone()),
+            Self::Composite(type_) => Annotation::Composite(type_.name().clone()),
         }
     }
 
@@ -94,30 +91,22 @@ impl<E: Environment> Value<E> {
     pub fn is_constant(&self) -> bool {
         match self {
             Self::Literal(literal) => literal.is_constant(),
-            Self::Type(type_) => type_.members().iter().all(|value| value.is_constant()),
-            Self::Record(record) => record.members().iter().all(|value| value.is_constant()),
+            Self::Composite(type_) => type_.members().iter().all(|value| value.is_constant()),
         }
     }
 
     /// Returns `true` if the value is a literal.
-    /// Returns `false` if the value is a type or a record.
+    /// Returns `false` if the value is a composite.
     #[inline]
     pub fn is_literal(&self) -> bool {
         matches!(self, Self::Literal(..))
     }
 
-    /// Returns `true` if the value is a type.
-    /// Returns `false` if the value is a literal or a record.
+    /// Returns `true` if the value is a composite.
+    /// Returns `false` if the value is a literal.
     #[inline]
-    pub fn is_type(&self) -> bool {
-        matches!(self, Self::Type(..))
-    }
-
-    /// Returns `true` if the value is a record.
-    /// Returns `false` if the value is a literal or a type.
-    #[inline]
-    pub fn is_record(&self) -> bool {
-        matches!(self, Self::Record(..))
+    pub fn is_composite(&self) -> bool {
+        matches!(self, Self::Composite(..))
     }
 }
 
@@ -141,8 +130,9 @@ impl<E: Environment> Parser for Value<E> {
         // Parses a slice of form: [value,value,...,value].
         let slice_parse = pair(pair(tag("["), sequence_parse), tag("]"));
         // Parses a type of form: name[value,...,value].
-        let type_parser =
-            map(pair(Identifier::parse, slice_parse), |(name, ((_, members), _))| Self::Type(Type::new(name, members)));
+        let type_parser = map(pair(Identifier::parse, slice_parse), |(name, ((_, members), _))| {
+            Self::Composite(Type::new(name, members))
+        });
 
         // Parse to determine the value (order matters).
         alt((map(Literal::parse, |literal| Self::Literal(literal)), type_parser))(string)
@@ -155,21 +145,10 @@ impl<E: Environment> fmt::Display for Value<E> {
         match self {
             // Prints the literal, i.e. 10field.private
             Self::Literal(literal) => fmt::Display::fmt(literal, f),
-            // Prints the type instantiation, i.e. "message"[aleo1xxx.public,10i64.private]
-            Self::Type(composite) => {
+            // Prints the composite, i.e. [aleo1xxx.public,10i64.private]
+            Self::Composite(composite) => {
                 let mut output = format!("{}[", composite.name());
                 for value in composite.members().iter() {
-                    output += &format!("{value},");
-                }
-                output.pop(); // trailing comma
-                output += &format!("]");
-
-                write!(f, "{output}")
-            }
-            // Prints the record literal, i.e. "token"[aleo1xxx.public,10i64.private]
-            Self::Record(record) => {
-                let mut output = format!("{}[", record.name());
-                for value in record.members().iter() {
                     output += &format!("{value},");
                 }
                 output.pop(); // trailing comma
@@ -520,12 +499,7 @@ impl<E: Environment> Stack<E> {
             // Retrieve the value of the member (from the value).
             match value {
                 Value::Literal(..) => E::halt(format!("Cannot load a register member from a literal")),
-                Value::Type(type_) => match type_.members().get(member_index) {
-                    Some(value) => (*value).clone(),
-                    // Halts if the member does not exist.
-                    None => E::halt(format!("Failed to locate register {register}")),
-                },
-                Value::Record(record) => match record.members().get(member_index) {
+                Value::Composite(type_) => match type_.members().get(member_index) {
                     Some(value) => (*value).clone(),
                     // Halts if the member does not exist.
                     None => E::halt(format!("Failed to locate register {register}")),
