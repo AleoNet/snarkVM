@@ -14,12 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Annotation, Register};
+use crate::{Annotation, Register, Sanitizer};
 use snarkvm_circuits_types::prelude::*;
 
 use core::{cmp::Ordering, fmt};
 
-/// The input statement defines an input argument to a function, and is of the form
+/// An input statement defines an input argument to a function, and is of the form
 /// `input {register} as {annotation}`.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Input<E: Environment> {
@@ -68,9 +68,11 @@ impl<E: Environment> Parser for Input<E> {
     type Environment = E;
 
     /// Parses a string into an input statement.
-    /// The input statement is of the form `input {register} as {annotation}`.
+    /// The input statement is of the form `input {register} as {annotation};`.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
+        // Parse the whitespace and comments from the string.
+        let (string, _) = Sanitizer::parse(string)?;
         // Parse the input keyword from the string.
         let (string, _) = tag(Self::type_name())(string)?;
         // Parse the space from the string.

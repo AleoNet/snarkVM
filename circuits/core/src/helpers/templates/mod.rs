@@ -14,14 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod record;
-mod type_;
+mod member;
 
-use crate::{
-    templates::{record::Record, type_::Type},
-    Annotation,
-    Identifier,
-};
+use crate::{templates::member::Member, Annotation, Identifier, Sanitizer};
 use snarkvm_circuits_types::prelude::*;
 
 use core::fmt;
@@ -38,9 +33,9 @@ use core::fmt;
 #[derive(Clone, Debug)]
 pub enum Template<E: Environment> {
     /// A type consists of its identifier and a list of members.
-    Type(Type<E>),
+    Type(Identifier<E>, Vec<Member<E>>),
     /// A record consists of its identifier and a list of members.
-    Record(Record<E>),
+    Record(Identifier<E>, Vec<Member<E>>),
 }
 
 impl<E: Environment> Template<E> {
@@ -48,17 +43,17 @@ impl<E: Environment> Template<E> {
     #[inline]
     pub fn name(&self) -> &Identifier<E> {
         match self {
-            Self::Type(type_) => type_.name(),
-            Self::Record(record) => record.name(),
+            Self::Type(name, _) => name,
+            Self::Record(name, _) => name,
         }
     }
 
     /// Returns the members of the template.
     #[inline]
-    pub fn members(&self) -> &[(Identifier<E>, Annotation<E>)] {
+    pub fn members(&self) -> &[Member<E>] {
         match self {
-            Self::Type(type_) => type_.members(),
-            Self::Record(record) => record.members(),
+            Self::Type(_, members) => members,
+            Self::Record(_, members) => members,
         }
     }
 }
@@ -69,17 +64,52 @@ impl<E: Environment> Parser for Template<E> {
     /// Parses a string into a template.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        alt((map(Type::parse, |type_| Self::Type(type_)), map(Record::parse, |record| Self::Record(record))))(string)
+        // Parse the whitespace and comments from the string.
+        let (string, _) = Sanitizer::parse(string)?;
+
+        alt((
+            |string| {
+                // Parse the keyword and space from the string.
+                let (string, _) = tag("type ")(string)?;
+                // Parse the type name from the string.
+                let (string, name) = Identifier::parse(string)?;
+                // Parse the colon ':' keyword from the string.
+                let (string, _) = tag(":")(string)?;
+                // Parse the members from the string.
+                let (string, members) = many1(Member::parse)(string)?;
+
+                Ok((string, Self::Type(name, members)))
+            },
+            |string| {
+                // Parse the keyword and space from the string.
+                let (string, _) = tag("record ")(string)?;
+                // Parse the type name from the string.
+                let (string, name) = Identifier::parse(string)?;
+                // Parse the colon ':' keyword from the string.
+                let (string, _) = tag(":")(string)?;
+                // Parse the members from the string.
+                let (string, members) = many1(Member::parse)(string)?;
+
+                Ok((string, Self::Record(name, members)))
+            },
+        ))(string)
     }
 }
 
 impl<E: Environment> fmt::Display for Template<E> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Self::Type(type_) => type_.fmt(f),
-            Self::Record(record) => record.fmt(f),
+        let (type_name, name, members) = match self {
+            Self::Type(name, members) => ("type", name, members),
+            Self::Record(name, members) => ("record", name, members),
+        };
+
+        let mut output = format!("{} {}:\n", type_name, name);
+        for member in members {
+            output += &format!("    {member}\n");
         }
+        output.pop(); // trailing newline
+        write!(f, "{}", output)
     }
 }
 
@@ -103,10 +133,10 @@ type message:
         .1;
         assert_eq!(message.name(), &Identifier::from_str("message"));
         assert_eq!(message.members().len(), 2);
-        assert_eq!(message.members()[0].0, Identifier::from_str("sender"));
-        assert_eq!(message.members()[0].1, Annotation::from_str("address.public"));
-        assert_eq!(message.members()[1].0, Identifier::from_str("amount"));
-        assert_eq!(message.members()[1].1, Annotation::from_str("i64.private"));
+        assert_eq!(message.members()[0].name(), &Identifier::from_str("sender"));
+        assert_eq!(message.members()[0].annotation(), &Annotation::from_str("address.public"));
+        assert_eq!(message.members()[1].name(), &Identifier::from_str("amount"));
+        assert_eq!(message.members()[1].annotation(), &Annotation::from_str("i64.private"));
 
         let token = Template::<E>::parse(
             r"
@@ -119,10 +149,10 @@ record token:
         .1;
         assert_eq!(token.name(), &Identifier::from_str("token"));
         assert_eq!(token.members().len(), 2);
-        assert_eq!(token.members()[0].0, Identifier::from_str("owner"));
-        assert_eq!(token.members()[0].1, Annotation::from_str("address.public"));
-        assert_eq!(token.members()[1].0, Identifier::from_str("amount"));
-        assert_eq!(token.members()[1].1, Annotation::from_str("i64.private"));
+        assert_eq!(token.members()[0].name(), &Identifier::from_str("owner"));
+        assert_eq!(token.members()[0].annotation(), &Annotation::from_str("address.public"));
+        assert_eq!(token.members()[1].name(), &Identifier::from_str("amount"));
+        assert_eq!(token.members()[1].annotation(), &Annotation::from_str("i64.private"));
     }
 
     #[test]

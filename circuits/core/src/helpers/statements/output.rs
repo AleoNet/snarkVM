@@ -14,14 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Annotation, Register};
+use crate::{Annotation, Register, Sanitizer};
 use snarkvm_circuits_types::prelude::*;
 
 use core::fmt;
 
-/// The output statement defines an output of a function, and may refer to the value
-/// in either a register or a register member. The output statement is of the form
-/// `output {register} as {annotation}`.
+/// An output statement defines an output of a function, and may refer to the value
+/// in either a register or a register member. An output statement is of the form
+/// `output {register} as {annotation};`.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Output<E: Environment> {
     /// The output register.
@@ -62,9 +62,11 @@ impl<E: Environment> Parser for Output<E> {
     type Environment = E;
 
     /// Parses a string into an output statement.
-    /// The output statement is of the form `output {register} as {annotation}`.
+    /// The output statement is of the form `output {register} as {annotation};`.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
+        // Parse the whitespace and comments from the string.
+        let (string, _) = Sanitizer::parse(string)?;
         // Parse the output keyword from the string.
         let (string, _) = tag(Self::type_name())(string)?;
         // Parse the space from the string.

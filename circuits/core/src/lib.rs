@@ -506,7 +506,7 @@ impl<E: Environment> Stack<E> {
             return (*value).clone();
         }
         // If the register is a register member, then load the specific value.
-        else if let Register::Member(_, member) = register {
+        else if let Register::Member(_, member_name) = register {
             // Retrieve the identifier for the composite (from the annotation).
             let identifier = match value.annotation() {
                 // Retrieve the identifier from the annotation.
@@ -520,8 +520,8 @@ impl<E: Environment> Stack<E> {
                 Some(template) => template
                     .members()
                     .iter()
-                    .position(|(id, _)| id == member)
-                    .unwrap_or_else(|| E::halt(format!("Failed to locate {member} in {identifier}"))),
+                    .position(|member| member.name() == member_name)
+                    .unwrap_or_else(|| E::halt(format!("Failed to locate {member_name} in {identifier}"))),
                 // Halts if the template does not exist.
                 None => E::halt(format!("Failed to locate template for identifier {identifier}")),
             };
