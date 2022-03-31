@@ -74,7 +74,7 @@ impl<const N: usize> ToBits for [u8; N] {
         crate::bits_from_bytes_le(self).collect()
     }
 
-    #[doc = " Returns `self` as a boolean array in big-endian order, with leading zeros."]
+    #[doc = " Returns `self` as a vector of booleans in big-endian order, with leading zeros."]
     fn to_bits_be(&self) -> Vec<bool> {
         crate::bits_from_bytes_le(self).rev().collect()
     }
