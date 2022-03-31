@@ -69,7 +69,7 @@ impl<T: ToMinimalBits> ToMinimalBits for Vec<T> {
 }
 
 impl<const N: usize> ToBits for [u8; N] {
-    #[doc = " Returns `self` as a boolean array in little-endian order, with trailing zeros."]
+    #[doc = " Returns `self` as a vector of booleans in little-endian order, with trailing zeros."]
     fn to_bits_le(&self) -> Vec<bool> {
         crate::bits_from_bytes_le(self).collect()
     }
