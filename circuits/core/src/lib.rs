@@ -30,50 +30,13 @@ use snarkvm_circuits_types::prelude::*;
 
 use core::fmt;
 
-/// A type is a user-defined type instantiation. A type is defined by an identifier (such as `message`)
-/// and a list of members, such as `[address.public, i64.private]`.
-/// The members of a composite are accessed as `r{locator}.{member}`.
-#[derive(Clone, Debug)]
-pub struct Type<E: Environment> {
-    /// The identifier of the type.
-    name: Identifier<E>,
-    /// The members of the type.
-    members: Vec<Value<E>>,
-}
-
-impl<E: Environment> Type<E> {
-    /// Initializes a new type, consisting of a name as an identifier,
-    /// and members composed of a list of values.
-    #[inline]
-    pub fn new(name: Identifier<E>, members: Vec<Value<E>>) -> Self {
-        // Ensure `members` is not empty.
-        if members.is_empty() {
-            E::halt(format!("Type `{}` must have at least one member", name))
-        }
-
-        Self { name, members }
-    }
-
-    /// Returns the name of the type.
-    #[inline]
-    pub fn name(&self) -> &Identifier<E> {
-        &self.name
-    }
-
-    /// Returns the members of the type.
-    #[inline]
-    pub fn members(&self) -> &[Value<E>] {
-        &self.members
-    }
-}
-
 /// A value contains the underlying literal(s) in memory.
 #[derive(Clone, Debug)]
 pub enum Value<E: Environment> {
     /// A literal contains its declared literal value.
     Literal(Literal<E>),
     /// A composite contains its declared member values.
-    Composite(Type<E>),
+    Composite(Identifier<E>, Vec<Value<E>>),
 }
 
 impl<E: Environment> Value<E> {
@@ -82,7 +45,7 @@ impl<E: Environment> Value<E> {
     pub fn annotation(&self) -> Annotation<E> {
         match self {
             Self::Literal(literal) => Annotation::Literal(LiteralType::from(literal)),
-            Self::Composite(type_) => Annotation::Composite(type_.name().clone()),
+            Self::Composite(name, _) => Annotation::Composite(name.clone()),
         }
     }
 
@@ -91,22 +54,8 @@ impl<E: Environment> Value<E> {
     pub fn is_constant(&self) -> bool {
         match self {
             Self::Literal(literal) => literal.is_constant(),
-            Self::Composite(type_) => type_.members().iter().all(|value| value.is_constant()),
+            Self::Composite(_, composite) => composite.iter().all(|value| value.is_constant()),
         }
-    }
-
-    /// Returns `true` if the value is a literal.
-    /// Returns `false` if the value is a composite.
-    #[inline]
-    pub fn is_literal(&self) -> bool {
-        matches!(self, Self::Literal(..))
-    }
-
-    /// Returns `true` if the value is a composite.
-    /// Returns `false` if the value is a literal.
-    #[inline]
-    pub fn is_composite(&self) -> bool {
-        matches!(self, Self::Composite(..))
     }
 }
 
@@ -116,26 +65,20 @@ impl<E: Environment> Parser for Value<E> {
     /// Parses a string into a value.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        // TODO (howardwu): Add support for records.
         // TODO (howardwu): Sanitize of any whitespaces, or support whitespaces.
-        // A composite is defined as: `(identifier, [value, ..., value])`,
-        // where the left entry is an identifier, and the right entry is a list of values.
-
-        // Parses a sequence of form: value,value,...,value.
-        let sequence_parse = map(pair(pair(many0(Value::parse), tag(",")), Value::parse), |((tuples, _), tuple)| {
-            let mut tuples = tuples;
-            tuples.push(tuple);
-            tuples
+        // Parses a sequence of form: value value ... value
+        let sequence_parse = map(pair(pair(many0(Value::parse), tag(" ")), Value::parse), |((values, _), value)| {
+            let mut values = values;
+            values.push(value);
+            values
         });
-        // Parses a slice of form: [value,value,...,value].
-        let slice_parse = pair(pair(tag("["), sequence_parse), tag("]"));
-        // Parses a type of form: name[value,...,value].
-        let type_parser = map(pair(Identifier::parse, slice_parse), |(name, ((_, members), _))| {
-            Self::Composite(Type::new(name, members))
+        // Parses a composite of form: name value value ... value
+        let composite_parser = map(pair(pair(Identifier::parse, tag(" ")), sequence_parse), |((name, _), values)| {
+            Self::Composite(name, values)
         });
 
         // Parse to determine the value (order matters).
-        alt((map(Literal::parse, |literal| Self::Literal(literal)), type_parser))(string)
+        alt((map(Literal::parse, |literal| Self::Literal(literal)), composite_parser))(string)
     }
 }
 
@@ -145,15 +88,13 @@ impl<E: Environment> fmt::Display for Value<E> {
         match self {
             // Prints the literal, i.e. 10field.private
             Self::Literal(literal) => fmt::Display::fmt(literal, f),
-            // Prints the composite, i.e. [aleo1xxx.public,10i64.private]
-            Self::Composite(composite) => {
-                let mut output = format!("{}[", composite.name());
-                for value in composite.members().iter() {
-                    output += &format!("{value},");
+            // Prints the composite, i.e. message aleo1xxx.public 10i64.private
+            Self::Composite(name, composite) => {
+                let mut output = format!("{name} ");
+                for value in composite.iter() {
+                    output += &format!("{value} ");
                 }
-                output.pop(); // trailing comma
-                output += &format!("]");
-
+                output.pop(); // trailing space
                 write!(f, "{output}")
             }
         }
@@ -499,7 +440,7 @@ impl<E: Environment> Stack<E> {
             // Retrieve the value of the member (from the value).
             match value {
                 Value::Literal(..) => E::halt(format!("Cannot load a register member from a literal")),
-                Value::Composite(type_) => match type_.members().get(member_index) {
+                Value::Composite(_, composite) => match composite.get(member_index) {
                     Some(value) => (*value).clone(),
                     // Halts if the member does not exist.
                     None => E::halt(format!("Failed to locate register {register}")),

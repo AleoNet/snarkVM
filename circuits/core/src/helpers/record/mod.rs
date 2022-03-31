@@ -17,7 +17,7 @@
 // #[cfg(test)]
 // use snarkvm_circuits_types::environment::assert_scope;
 
-use crate::{Identifier, Literal, Value};
+use crate::{Literal, Value};
 use snarkvm_circuits_types::{environment::prelude::*, Address, I64};
 
 // TODO (howardwu): Check mode is only public/private, not constant.
