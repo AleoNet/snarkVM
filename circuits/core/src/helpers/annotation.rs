@@ -81,7 +81,10 @@ mod tests {
             Annotation::parse("field.private"),
             Ok(("", Annotation::<E>::Literal(LiteralType::Field(Mode::Private))))
         );
-        assert_eq!(Annotation::parse("signature"), Ok(("", Annotation::<E>::Composite(Identifier::new("signature")))));
+        assert_eq!(
+            Annotation::parse("signature"),
+            Ok(("", Annotation::<E>::Composite(Identifier::from_str("signature"))))
+        );
     }
 
     #[test]
@@ -89,24 +92,27 @@ mod tests {
         // Type must not contain a keyword.
         assert!(Annotation::<E>::parse("field").is_err());
         // Composite must not contain visibility.
-        assert_eq!(Ok((".private", Identifier::<E>::new("signature"))), Identifier::<E>::parse("signature.private"));
+        assert_eq!(
+            Ok((".private", Identifier::<E>::from_str("signature"))),
+            Identifier::<E>::parse("signature.private")
+        );
     }
 
     #[test]
     fn test_annotation_display() {
         assert_eq!(Annotation::<E>::Literal(LiteralType::Field(Mode::Private)).to_string(), "field.private");
-        assert_eq!(Annotation::<E>::Composite(Identifier::new("signature")).to_string(), "signature");
+        assert_eq!(Annotation::<E>::Composite(Identifier::from_str("signature")).to_string(), "signature");
     }
 
     #[test]
     fn test_annotation_is_literal() {
         assert!(Annotation::<E>::Literal(LiteralType::Field(Mode::Private)).is_literal());
-        assert!(!Annotation::<E>::Composite(Identifier::new("signature")).is_literal());
+        assert!(!Annotation::<E>::Composite(Identifier::from_str("signature")).is_literal());
     }
 
     #[test]
     fn test_annotation_is_composite() {
         assert!(!Annotation::<E>::Literal(LiteralType::Field(Mode::Private)).is_composite());
-        assert!(Annotation::<E>::Composite(Identifier::new("signature")).is_composite());
+        assert!(Annotation::<E>::Composite(Identifier::from_str("signature")).is_composite());
     }
 }

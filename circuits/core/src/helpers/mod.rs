@@ -29,5 +29,11 @@ pub use record::*;
 pub mod register;
 pub use register::*;
 
+pub mod sanitizer;
+pub use sanitizer::*;
+
 pub mod statements;
 pub use statements::*;
+
+pub mod templates;
+pub use templates::*;

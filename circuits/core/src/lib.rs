@@ -30,78 +30,6 @@ use snarkvm_circuits_types::prelude::*;
 
 use core::fmt;
 
-/// A template is a user-defined type or record that represents a collection of circuits.
-/// A template does not have a mode; rather its individual members are annotated with modes.
-/// A template is defined by an identifier (such as `message`) and a list of members,
-/// such as `[(sender, address.public), (amount, i64.private)]`, where the left entry is an identifier,
-/// and the right entry is a type annotation.
-///
-/// A register member format is used to access individual members of a template. For example,
-/// if the `record` template is assigned to register `r0`, individual members can be accessed
-/// as `r0.owner` or `r0.value`. This generalizes to the format, i.e. `r{locator}.{member}`.
-#[derive(Clone, Debug)]
-pub enum Template<E: Environment> {
-    /// A type consists of its identifier and a list of members.
-    Type(Identifier<E>, Vec<(Identifier<E>, Annotation<E>)>),
-    /// A record consists of its identifier and a list of members.
-    Record(Identifier<E>, Vec<(Identifier<E>, Annotation<E>)>),
-}
-
-impl<E: Environment> Template<E> {
-    /// Returns the identifier of the template.
-    #[inline]
-    pub fn identifier(&self) -> &Identifier<E> {
-        match self {
-            Self::Type(identifier, _) => identifier,
-            Self::Record(identifier, _) => identifier,
-        }
-    }
-
-    /// Returns the members of the template.
-    #[inline]
-    pub fn members(&self) -> &[(Identifier<E>, Annotation<E>)] {
-        match self {
-            Self::Type(_, members) => members,
-            Self::Record(_, members) => members,
-        }
-    }
-}
-
-// impl<E: Environment> Parser for Template<E> {
-//     type Environment = E;
-//
-//     /// Parses a string into a template.
-//     #[inline]
-//     fn parse(string: &str) -> ParserResult<Self> {
-//         // TODO (howardwu): Add support for records.
-//         // TODO (howardwu): Sanitize of any whitespaces, or support whitespaces.
-//         // A composite is defined as: `(identifier, [(identifier, annotation), ...])`,
-//         // where the left tuple is the name of the composite, and the right tuple is the composite identifiers and value.
-//
-//         // Parses a tuple of form: (identifier,value).
-//         let tuple_parse = map(
-//             pair(pair(tag("("), pair(pair(Identifier::parse, tag(",")), Value::parse)), tag(")")),
-//             |((_, ((identifier, _), value)), _)| (identifier, value),
-//         );
-//         let tuple_parse2 = map(
-//             pair(pair(tag("("), pair(pair(Identifier::parse, tag(",")), Value::parse)), tag(")")),
-//             |((_, ((identifier, _), value)), _)| (identifier, value),
-//         );
-//         // Parses a sequence of form: (identifier,value),(identifier,value),...,(identifier,value).
-//         let sequence_parse = map(pair(pair(many0(tuple_parse), tag(",")), tuple_parse2), |((tuples, _), tuple)| {
-//             let mut tuples = tuples;
-//             tuples.push(tuple);
-//             tuples
-//         });
-//         // Parses a slice of form: [(identifier,value),(identifier,value),...,(identifier,value)].
-//         let slice_parse = pair(pair(tag("["), sequence_parse), tag("]"));
-//         // Parses a composite of form: identifier[(identifier, value), ...].
-//         map(pair(Identifier::parse, slice_parse), |(identifier, ((_, members), _))| {
-//             Self::Composite(Composite::new(identifier, members))
-//         })(string)
-//     }
-// }
-
 /// A type is a user-defined type instantiation. A type is defined by an identifier (such as `message`)
 /// and a list of members, such as `[address.public, i64.private]`.
 /// The members of a composite are accessed as `r{locator}.{member}`.
@@ -646,7 +574,7 @@ impl<E: Environment> Stack<E> {
     #[inline]
     fn new_template(&mut self, template: Template<E>) {
         // Add the template to the map.
-        let identifier = template.identifier().clone();
+        let identifier = template.name().clone();
         let previous = self.templates.insert(identifier.clone(), template);
 
         // Ensure the template was not previously added.

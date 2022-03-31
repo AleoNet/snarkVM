@@ -138,7 +138,7 @@ mod tests {
         // Composite
         let input = Input::<E>::parse("input r1 as signature;").unwrap().1;
         assert_eq!(input.register(), &Register::<E>::Locator(1));
-        assert_eq!(input.annotation(), &Annotation::<E>::Composite(Identifier::new("signature")));
+        assert_eq!(input.annotation(), &Annotation::<E>::Composite(Identifier::from_str("signature")));
     }
 
     #[test]

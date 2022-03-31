@@ -71,19 +71,14 @@ const KEYWORDS: &[&str] = &[
 /// # Example
 /// ```
 /// use snarkvm_circuits_core::Identifier;
-/// use snarkvm_circuits_types::environment::Circuit;
-/// let identifier = Identifier::<Circuit>::new("foo");
+/// use snarkvm_circuits_types::environment::{Circuit, Parser};
+/// let identifier = Identifier::<Circuit>::from_str("foo");
 /// assert_eq!(identifier.to_string(), "foo");
 /// ```
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Identifier<E: Environment>(String, PhantomData<E>);
 
 impl<E: Environment> Identifier<E> {
-    /// Create a new identifier from a string.
-    pub fn new(identifier: &str) -> Self {
-        Self::from_str(identifier)
-    }
-
     /// Returns the identifier as a string.
     pub fn as_str(&self) -> &str {
         &self.0
@@ -164,8 +159,8 @@ mod tests {
         let identifier = Identifier::<E>::parse("foo_bar_baz_qux_quux_quuz_corge_grault_garply_waldo_fred_plugh_xyzzy");
         assert!(identifier.is_err());
         // Must be alphanumeric or underscore.
-        assert_eq!(Ok(("~baz", Identifier::<E>::new("foo_bar"))), Identifier::<E>::parse("foo_bar~baz"));
-        assert_eq!(Ok(("-baz", Identifier::<E>::new("foo_bar"))), Identifier::<E>::parse("foo_bar-baz"));
+        assert_eq!(Ok(("~baz", Identifier::<E>::from_str("foo_bar"))), Identifier::<E>::parse("foo_bar~baz"));
+        assert_eq!(Ok(("-baz", Identifier::<E>::from_str("foo_bar"))), Identifier::<E>::parse("foo_bar-baz"));
         // Must not start with a number.
         assert!(Identifier::<E>::parse("2").is_err());
         assert!(Identifier::<E>::parse("1foo").is_err());
@@ -180,7 +175,7 @@ mod tests {
 
     #[test]
     fn test_identifier_display() {
-        let identifier = Identifier::<E>::new("foo_bar");
+        let identifier = Identifier::<E>::from_str("foo_bar");
         assert_eq!("foo_bar", format!("{}", identifier));
     }
 }

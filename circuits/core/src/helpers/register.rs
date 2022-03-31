@@ -109,11 +109,11 @@ mod tests {
         assert_eq!("r4", format!("{}", Register::<E>::Locator(4)));
 
         // Register::Member
-        assert_eq!("r0.owner", format!("{}", Register::<E>::Member(0, Identifier::new("owner"))));
-        assert_eq!("r1.owner", format!("{}", Register::<E>::Member(1, Identifier::new("owner"))));
-        assert_eq!("r2.owner", format!("{}", Register::<E>::Member(2, Identifier::new("owner"))));
-        assert_eq!("r3.owner", format!("{}", Register::<E>::Member(3, Identifier::new("owner"))));
-        assert_eq!("r4.owner", format!("{}", Register::<E>::Member(4, Identifier::new("owner"))));
+        assert_eq!("r0.owner", format!("{}", Register::<E>::Member(0, Identifier::from_str("owner"))));
+        assert_eq!("r1.owner", format!("{}", Register::<E>::Member(1, Identifier::from_str("owner"))));
+        assert_eq!("r2.owner", format!("{}", Register::<E>::Member(2, Identifier::from_str("owner"))));
+        assert_eq!("r3.owner", format!("{}", Register::<E>::Member(3, Identifier::from_str("owner"))));
+        assert_eq!("r4.owner", format!("{}", Register::<E>::Member(4, Identifier::from_str("owner"))));
     }
 
     #[test]
@@ -126,18 +126,18 @@ mod tests {
         // Register::Member
         assert_eq!(
             Some(Ordering::Equal),
-            Register::<E>::Member(0, Identifier::new("owner"))
-                .partial_cmp(&Register::<E>::Member(0, Identifier::new("owner")))
+            Register::<E>::Member(0, Identifier::from_str("owner"))
+                .partial_cmp(&Register::<E>::Member(0, Identifier::from_str("owner")))
         );
         assert_eq!(
             Some(Ordering::Less),
-            Register::<E>::Member(0, Identifier::new("owner"))
-                .partial_cmp(&Register::<E>::Member(1, Identifier::new("owner")))
+            Register::<E>::Member(0, Identifier::from_str("owner"))
+                .partial_cmp(&Register::<E>::Member(1, Identifier::from_str("owner")))
         );
         assert_eq!(
             Some(Ordering::Greater),
-            Register::<E>::Member(1, Identifier::new("owner"))
-                .partial_cmp(&Register::<E>::Member(0, Identifier::new("owner")))
+            Register::<E>::Member(1, Identifier::from_str("owner"))
+                .partial_cmp(&Register::<E>::Member(0, Identifier::from_str("owner")))
         );
     }
 
@@ -152,24 +152,24 @@ mod tests {
 
         // Register::Member
         assert_eq!(
-            Register::<E>::Member(0, Identifier::new("owner")),
-            Register::<E>::Member(0, Identifier::new("owner"))
+            Register::<E>::Member(0, Identifier::from_str("owner")),
+            Register::<E>::Member(0, Identifier::from_str("owner"))
         );
         assert_ne!(
-            Register::<E>::Member(0, Identifier::new("owner")),
-            Register::<E>::Member(1, Identifier::new("owner"))
+            Register::<E>::Member(0, Identifier::from_str("owner")),
+            Register::<E>::Member(1, Identifier::from_str("owner"))
         );
         assert_ne!(
-            Register::<E>::Member(0, Identifier::new("owner")),
-            Register::<E>::Member(2, Identifier::new("owner"))
+            Register::<E>::Member(0, Identifier::from_str("owner")),
+            Register::<E>::Member(2, Identifier::from_str("owner"))
         );
         assert_ne!(
-            Register::<E>::Member(0, Identifier::new("owner")),
-            Register::<E>::Member(3, Identifier::new("owner"))
+            Register::<E>::Member(0, Identifier::from_str("owner")),
+            Register::<E>::Member(3, Identifier::from_str("owner"))
         );
         assert_ne!(
-            Register::<E>::Member(0, Identifier::new("owner")),
-            Register::<E>::Member(4, Identifier::new("owner"))
+            Register::<E>::Member(0, Identifier::from_str("owner")),
+            Register::<E>::Member(4, Identifier::from_str("owner"))
         );
     }
 
@@ -183,11 +183,11 @@ mod tests {
         assert_eq!(Register::<E>::Locator(4).to_string(), "r4".to_string());
 
         // Register::Member
-        assert_eq!(Register::<E>::Member(0, Identifier::new("owner")).to_string(), "r0.owner".to_string());
-        assert_eq!(Register::<E>::Member(1, Identifier::new("owner")).to_string(), "r1.owner".to_string());
-        assert_eq!(Register::<E>::Member(2, Identifier::new("owner")).to_string(), "r2.owner".to_string());
-        assert_eq!(Register::<E>::Member(3, Identifier::new("owner")).to_string(), "r3.owner".to_string());
-        assert_eq!(Register::<E>::Member(4, Identifier::new("owner")).to_string(), "r4.owner".to_string());
+        assert_eq!(Register::<E>::Member(0, Identifier::from_str("owner")).to_string(), "r0.owner".to_string());
+        assert_eq!(Register::<E>::Member(1, Identifier::from_str("owner")).to_string(), "r1.owner".to_string());
+        assert_eq!(Register::<E>::Member(2, Identifier::from_str("owner")).to_string(), "r2.owner".to_string());
+        assert_eq!(Register::<E>::Member(3, Identifier::from_str("owner")).to_string(), "r3.owner".to_string());
+        assert_eq!(Register::<E>::Member(4, Identifier::from_str("owner")).to_string(), "r4.owner".to_string());
     }
 
     #[test]
@@ -200,11 +200,11 @@ mod tests {
         assert_eq!(("", Register::<E>::Locator(4)), Register::parse("r4").unwrap());
 
         // Register::Member
-        assert_eq!(("", Register::<E>::Member(0, Identifier::new("owner"))), Register::parse("r0.owner").unwrap());
-        assert_eq!(("", Register::<E>::Member(1, Identifier::new("owner"))), Register::parse("r1.owner").unwrap());
-        assert_eq!(("", Register::<E>::Member(2, Identifier::new("owner"))), Register::parse("r2.owner").unwrap());
-        assert_eq!(("", Register::<E>::Member(3, Identifier::new("owner"))), Register::parse("r3.owner").unwrap());
-        assert_eq!(("", Register::<E>::Member(4, Identifier::new("owner"))), Register::parse("r4.owner").unwrap());
+        assert_eq!(("", Register::<E>::Member(0, Identifier::from_str("owner"))), Register::parse("r0.owner").unwrap());
+        assert_eq!(("", Register::<E>::Member(1, Identifier::from_str("owner"))), Register::parse("r1.owner").unwrap());
+        assert_eq!(("", Register::<E>::Member(2, Identifier::from_str("owner"))), Register::parse("r2.owner").unwrap());
+        assert_eq!(("", Register::<E>::Member(3, Identifier::from_str("owner"))), Register::parse("r3.owner").unwrap());
+        assert_eq!(("", Register::<E>::Member(4, Identifier::from_str("owner"))), Register::parse("r4.owner").unwrap());
     }
 
     #[test]

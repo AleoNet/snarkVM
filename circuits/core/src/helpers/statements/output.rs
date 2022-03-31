@@ -78,7 +78,7 @@ impl<E: Environment> Parser for Output<E> {
         // Parse the semicolon from the string.
         let (string, _) = tag(";")(string)?;
         // Return the output statement.
-        Ok((string, Self { register, annotation }))
+        Ok((string, Self::new(register, annotation)))
     }
 }
 
@@ -118,7 +118,7 @@ mod tests {
         // Composite
         let output = Output::<E>::parse("output r1 as signature;").unwrap().1;
         assert_eq!(output.register(), &Register::<E>::Locator(1));
-        assert_eq!(output.annotation(), &Annotation::<E>::Composite(Identifier::new("signature")));
+        assert_eq!(output.annotation(), &Annotation::<E>::Composite(Identifier::from_str("signature")));
     }
 
     #[test]
