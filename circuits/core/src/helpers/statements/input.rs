@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Annotation, Locator, Register};
+use crate::{Annotation, Register};
 use snarkvm_circuits_types::prelude::*;
 
 use core::{cmp::Ordering, fmt};
@@ -49,34 +49,10 @@ impl<E: Environment> Input<E> {
         &self.register
     }
 
-    /// Returns the input register locator.
-    #[inline]
-    pub fn locator(&self) -> &Locator {
-        self.register.locator()
-    }
-
     /// Returns the input annotation.
     #[inline]
     pub fn annotation(&self) -> &Annotation<E> {
         &self.annotation
-    }
-
-    /// Returns `true` if the input is a literal.
-    /// Returns `false` if the input is a composite or record.
-    pub fn is_literal(&self) -> bool {
-        self.annotation.is_literal()
-    }
-
-    /// Returns `true` if the input is a composite.
-    /// Returns `false` if the input is a literal or record.
-    pub fn is_composite(&self) -> bool {
-        self.annotation.is_composite()
-    }
-
-    /// Returns `true` if the input is a record.
-    /// Returns `false` if the input is a literal or composite.
-    pub fn is_record(&self) -> bool {
-        self.annotation.is_record()
     }
 }
 
@@ -163,139 +139,45 @@ mod tests {
         let input = Input::<E>::parse("input r1 as signature;").unwrap().1;
         assert_eq!(input.register(), &Register::<E>::Locator(1));
         assert_eq!(input.annotation(), &Annotation::<E>::Composite(Identifier::new("signature")));
-
-        // Record
-        let input = Input::<E>::parse("input r2 as record;").unwrap().1;
-        assert_eq!(input.register(), &Register::<E>::Locator(2));
-        assert_eq!(input.annotation(), &Annotation::<E>::Record);
     }
 
     #[test]
     fn test_input_display() {
         // Literal
-        let input = Input::<E>::new(Register::Locator(0), Annotation::Literal(LiteralType::Field(Mode::Private)));
+        let input = Input::<E>::from_str("input r0 as field.private;");
         assert_eq!("input r0 as field.private;", input.to_string());
 
         // Composite
-        let input = Input::<E>::new(Register::Locator(1), Annotation::Composite(Identifier::new("signature")));
+        let input = Input::<E>::from_str("input r1 as signature;");
         assert_eq!("input r1 as signature;", input.to_string());
-
-        // Record
-        let input = Input::<E>::new(Register::Locator(2), Annotation::Record);
-        assert_eq!("input r2 as record;", input.to_string());
-    }
-
-    #[test]
-    fn test_input_locator() {
-        // Literal
-        let input = Input::<E>::new(Register::Locator(0), Annotation::Literal(LiteralType::Field(Mode::Private)));
-        assert_eq!(input.locator(), &0);
-
-        // Composite
-        let input = Input::<E>::new(Register::Locator(1), Annotation::Composite(Identifier::new("signature")));
-        assert_eq!(input.locator(), &1);
-
-        // Record
-        let input = Input::<E>::new(Register::Locator(2), Annotation::Record);
-        assert_eq!(input.locator(), &2);
-    }
-
-    #[test]
-    fn test_input_is_literal() {
-        // Literal
-        let input = Input::<E>::new(Register::Locator(0), Annotation::Literal(LiteralType::Field(Mode::Private)));
-        assert!(input.is_literal());
-
-        // Composite
-        let input = Input::<E>::new(Register::Locator(1), Annotation::Composite(Identifier::new("signature")));
-        assert!(!input.is_literal());
-
-        // Record
-        let input = Input::<E>::new(Register::Locator(2), Annotation::Record);
-        assert!(!input.is_literal());
-    }
-
-    #[test]
-    fn test_input_is_composite() {
-        // Literal
-        let input = Input::<E>::new(Register::Locator(0), Annotation::Literal(LiteralType::Field(Mode::Private)));
-        assert!(!input.is_composite());
-
-        // Composite
-        let input = Input::<E>::new(Register::Locator(1), Annotation::Composite(Identifier::new("signature")));
-        assert!(input.is_composite());
-
-        // Record
-        let input = Input::<E>::new(Register::Locator(2), Annotation::Record);
-        assert!(!input.is_composite());
-    }
-
-    #[test]
-    fn test_input_is_record() {
-        // Literal
-        let input = Input::<E>::new(Register::Locator(0), Annotation::Literal(LiteralType::Field(Mode::Private)));
-        assert!(!input.is_record());
-
-        // Composite
-        let input = Input::<E>::new(Register::Locator(1), Annotation::Composite(Identifier::new("signature")));
-        assert!(!input.is_record());
-
-        // Record
-        let input = Input::<E>::new(Register::Locator(2), Annotation::Record);
-        assert!(input.is_record());
     }
 
     #[test]
     fn test_input_partial_ord() {
-        let input1 = Input::<E>::new(Register::Locator(0), Annotation::Literal(LiteralType::Field(Mode::Private)));
-        let input2 = Input::<E>::new(Register::Locator(1), Annotation::Literal(LiteralType::Field(Mode::Private)));
+        let input1 = Input::<E>::from_str("input r0 as field.private;");
+        let input2 = Input::<E>::from_str("input r1 as field.private;");
 
-        let input3 = Input::<E>::new(Register::Locator(0), Annotation::Composite(Identifier::new("signature")));
-        let input4 = Input::<E>::new(Register::Locator(1), Annotation::Composite(Identifier::new("signature")));
-
-        let input5 = Input::<E>::new(Register::Locator(0), Annotation::Record);
-        let input6 = Input::<E>::new(Register::Locator(1), Annotation::Record);
+        let input3 = Input::<E>::from_str("input r0 as signature;");
+        let input4 = Input::<E>::from_str("input r1 as signature;");
 
         assert_eq!(input1.partial_cmp(&input1), Some(Ordering::Equal));
         assert_eq!(input1.partial_cmp(&input2), Some(Ordering::Less));
         assert_eq!(input1.partial_cmp(&input3), Some(Ordering::Equal));
         assert_eq!(input1.partial_cmp(&input4), Some(Ordering::Less));
-        assert_eq!(input1.partial_cmp(&input5), Some(Ordering::Equal));
-        assert_eq!(input1.partial_cmp(&input6), Some(Ordering::Less));
 
         assert_eq!(input2.partial_cmp(&input1), Some(Ordering::Greater));
         assert_eq!(input2.partial_cmp(&input2), Some(Ordering::Equal));
         assert_eq!(input2.partial_cmp(&input3), Some(Ordering::Greater));
         assert_eq!(input2.partial_cmp(&input4), Some(Ordering::Equal));
-        assert_eq!(input2.partial_cmp(&input5), Some(Ordering::Greater));
-        assert_eq!(input2.partial_cmp(&input6), Some(Ordering::Equal));
 
         assert_eq!(input3.partial_cmp(&input1), Some(Ordering::Equal));
         assert_eq!(input3.partial_cmp(&input2), Some(Ordering::Less));
         assert_eq!(input3.partial_cmp(&input3), Some(Ordering::Equal));
         assert_eq!(input3.partial_cmp(&input4), Some(Ordering::Less));
-        assert_eq!(input3.partial_cmp(&input5), Some(Ordering::Equal));
-        assert_eq!(input3.partial_cmp(&input6), Some(Ordering::Less));
 
         assert_eq!(input4.partial_cmp(&input1), Some(Ordering::Greater));
         assert_eq!(input4.partial_cmp(&input2), Some(Ordering::Equal));
         assert_eq!(input4.partial_cmp(&input3), Some(Ordering::Greater));
         assert_eq!(input4.partial_cmp(&input4), Some(Ordering::Equal));
-        assert_eq!(input4.partial_cmp(&input5), Some(Ordering::Greater));
-        assert_eq!(input4.partial_cmp(&input6), Some(Ordering::Equal));
-
-        assert_eq!(input5.partial_cmp(&input1), Some(Ordering::Equal));
-        assert_eq!(input5.partial_cmp(&input2), Some(Ordering::Less));
-        assert_eq!(input5.partial_cmp(&input3), Some(Ordering::Equal));
-        assert_eq!(input5.partial_cmp(&input4), Some(Ordering::Less));
-        assert_eq!(input5.partial_cmp(&input5), Some(Ordering::Equal));
-        assert_eq!(input5.partial_cmp(&input6), Some(Ordering::Less));
-
-        assert_eq!(input6.partial_cmp(&input1), Some(Ordering::Greater));
-        assert_eq!(input6.partial_cmp(&input2), Some(Ordering::Equal));
-        assert_eq!(input6.partial_cmp(&input3), Some(Ordering::Greater));
-        assert_eq!(input6.partial_cmp(&input4), Some(Ordering::Equal));
-        assert_eq!(input6.partial_cmp(&input5), Some(Ordering::Greater));
-        assert_eq!(input6.partial_cmp(&input6), Some(Ordering::Equal));
     }
 }

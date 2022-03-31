@@ -23,29 +23,27 @@ use snarkvm_circuits_types::{environment::prelude::*, Address, I64};
 // TODO (howardwu): Check mode is only public/private, not constant.
 #[derive(Debug, Clone)]
 pub struct Record<E: Environment> {
+    name: Identifier<E>,
     owner: Address<E>,
     value: I64<E>,
-    data: Vec<(Identifier<E>, Value<E>)>,
+    data: Vec<Value<E>>,
     // program_id: Vec<Boolean<E>>,
     // randomizer: BaseField<E>,
     // record_view_key: BaseField<E>,
 }
 
 impl<E: Environment> Record<E> {
-    /// Returns the identifier of the record.
-    pub fn identifier(&self) -> Identifier<E> {
-        Identifier::new(Record::<E>::type_name())
+    /// Returns the name of the record.
+    pub fn name(&self) -> &Identifier<E> {
+        &self.name
     }
 
     /// Returns the members of the record.
-    pub fn members(&self) -> Vec<(Identifier<E>, Value<E>)> {
-        [
-            (Identifier::new("address"), Value::Literal(Literal::Address(self.owner.clone()))),
-            (Identifier::new("value"), Value::Literal(Literal::I64(self.value.clone()))),
-        ]
-        .into_iter()
-        .chain(self.data.iter().cloned())
-        .collect::<Vec<_>>()
+    pub fn members(&self) -> Vec<Value<E>> {
+        [Value::Literal(Literal::Address(self.owner.clone())), Value::Literal(Literal::I64(self.value.clone()))]
+            .into_iter()
+            .chain(self.data.iter().cloned())
+            .collect::<Vec<_>>()
     }
 
     /// Returns the record owner.
@@ -59,7 +57,7 @@ impl<E: Environment> Record<E> {
     }
 
     /// Returns the record data.
-    pub fn data(&self) -> &Vec<(Identifier<E>, Value<E>)> {
+    pub fn data(&self) -> &Vec<Value<E>> {
         &self.data
     }
 }
@@ -76,12 +74,13 @@ mod tests {
     use snarkvm_circuits_types::{environment::Circuit, Group};
 
     #[test]
-    fn test_record_data() {
-        let first = (Identifier::new("first"), Value::Literal(Literal::<Circuit>::from_str("10field.public")));
-        let second = (Identifier::new("second"), Value::Literal(Literal::from_str("true.private")));
-        let third = (Identifier::new("third"), Value::Literal(Literal::from_str("99i64.public")));
+    fn test_record() {
+        let first = Value::Literal(Literal::<Circuit>::from_str("10field.public"));
+        let second = Value::Literal(Literal::from_str("true.private"));
+        let third = Value::Literal(Literal::from_str("99i64.public"));
 
         let _candidate = Record {
+            name: Identifier::from_str("foo"),
             owner: Address::from(Group::from_str("2group.private")),
             value: I64::from_str("1i64.private"),
             data: vec![first, second, third],

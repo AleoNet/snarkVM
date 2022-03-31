@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Annotation, Locator, Register};
+use crate::{Annotation, Register};
 use snarkvm_circuits_types::prelude::*;
 
 use core::fmt;
@@ -43,34 +43,10 @@ impl<E: Environment> Output<E> {
         &self.register
     }
 
-    /// Returns the output register locator.
-    #[inline]
-    pub fn locator(&self) -> &Locator {
-        self.register.locator()
-    }
-
     /// Returns the output annotation.
     #[inline]
     pub fn annotation(&self) -> &Annotation<E> {
         &self.annotation
-    }
-
-    /// Returns `true` if the output is a literal.
-    /// Returns `false` if the output is a composite or record.
-    pub fn is_literal(&self) -> bool {
-        self.annotation.is_literal()
-    }
-
-    /// Returns `true` if the output is a composite.
-    /// Returns `false` if the output is a literal or record.
-    pub fn is_composite(&self) -> bool {
-        self.annotation.is_composite()
-    }
-
-    /// Returns `true` if the output is a record.
-    /// Returns `false` if the output is a literal or composite.
-    pub fn is_record(&self) -> bool {
-        self.annotation.is_record()
     }
 }
 
@@ -143,11 +119,6 @@ mod tests {
         let output = Output::<E>::parse("output r1 as signature;").unwrap().1;
         assert_eq!(output.register(), &Register::<E>::Locator(1));
         assert_eq!(output.annotation(), &Annotation::<E>::Composite(Identifier::new("signature")));
-
-        // Record
-        let output = Output::<E>::parse("output r2 as record;").unwrap().1;
-        assert_eq!(output.register(), &Register::<E>::Locator(2));
-        assert_eq!(output.annotation(), &Annotation::<E>::Record);
     }
 
     #[test]
@@ -159,69 +130,5 @@ mod tests {
         // Composite
         let output = Output::<E>::parse("output r1 as signature;").unwrap().1;
         assert_eq!(format!("{}", output), "output r1 as signature;");
-
-        // Record
-        let output = Output::<E>::parse("output r2 as record;").unwrap().1;
-        assert_eq!(format!("{}", output), "output r2 as record;");
-    }
-
-    #[test]
-    fn test_output_locator() {
-        // Literal
-        let output = Output::<E>::parse("output r0 as field.private;").unwrap().1;
-        assert_eq!(output.locator(), &0);
-
-        // Composite
-        let output = Output::<E>::parse("output r1 as signature;").unwrap().1;
-        assert_eq!(output.locator(), &1);
-
-        // Record
-        let output = Output::<E>::parse("output r2 as record;").unwrap().1;
-        assert_eq!(output.locator(), &2);
-    }
-
-    #[test]
-    fn test_output_is_literal() {
-        // Literal
-        let output = Output::<E>::parse("output r0 as field.private;").unwrap().1;
-        assert!(output.is_literal());
-
-        // Composite
-        let output = Output::<E>::parse("output r1 as signature;").unwrap().1;
-        assert!(!output.is_literal());
-
-        // Record
-        let output = Output::<E>::parse("output r2 as record;").unwrap().1;
-        assert!(!output.is_literal());
-    }
-
-    #[test]
-    fn test_output_is_composite() {
-        // Literal
-        let output = Output::<E>::parse("output r0 as field.private;").unwrap().1;
-        assert!(!output.is_composite());
-
-        // Composite
-        let output = Output::<E>::parse("output r1 as signature;").unwrap().1;
-        assert!(output.is_composite());
-
-        // Record
-        let output = Output::<E>::parse("output r2 as record;").unwrap().1;
-        assert!(!output.is_composite());
-    }
-
-    #[test]
-    fn test_output_is_record() {
-        // Literal
-        let output = Output::<E>::parse("output r0 as field.private;").unwrap().1;
-        assert!(!output.is_record());
-
-        // Composite
-        let output = Output::<E>::parse("output r1 as signature;").unwrap().1;
-        assert!(!output.is_record());
-
-        // Record
-        let output = Output::<E>::parse("output r2 as record;").unwrap().1;
-        assert!(output.is_record());
     }
 }

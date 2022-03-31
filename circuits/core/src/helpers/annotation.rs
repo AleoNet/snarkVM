@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Identifier, LiteralType, Record};
+use crate::{Identifier, LiteralType};
 use snarkvm_circuits_types::prelude::*;
 
 /// An annotation defines the type parameters for a function or template.
@@ -26,28 +26,19 @@ pub enum Annotation<E: Environment> {
     /// A composite annotation contains its identifier.
     /// The format of the annotation is `<identifier>`.
     Composite(Identifier<E>),
-    /// A record annotation contains its identifier of "record".
-    /// The format of the annotation is `record`.
-    Record,
 }
 
 impl<E: Environment> Annotation<E> {
     /// Returns `true` if the annotation is a literal.
-    /// Returns `false` if the annotation is a composite or record.
+    /// Returns `false` if the annotation is a composite.
     pub fn is_literal(&self) -> bool {
         matches!(self, Annotation::Literal(..))
     }
 
     /// Returns `true` if the annotation is a composite.
-    /// Returns `false` if the annotation is a literal or record.
+    /// Returns `false` if the annotation is a literal.
     pub fn is_composite(&self) -> bool {
         matches!(self, Annotation::Composite(..))
-    }
-
-    /// Returns `true` if the annotation is a record.
-    /// Returns `false` if the annotation is a literal or composite.
-    pub fn is_record(&self) -> bool {
-        matches!(self, Annotation::Record)
     }
 }
 
@@ -61,7 +52,6 @@ impl<E: Environment> Parser for Annotation<E> {
         alt((
             map(LiteralType::parse, |type_| Self::Literal(type_)),
             map(Identifier::parse, |identifier| Self::Composite(identifier)),
-            map(tag(Record::<E>::type_name()), |_| Self::Record),
         ))(string)
     }
 }
@@ -74,8 +64,6 @@ impl<E: Environment> fmt::Display for Annotation<E> {
             Self::Literal(type_) => fmt::Display::fmt(type_, f),
             // Prints the composite type, i.e. signature
             Self::Composite(identifier) => fmt::Display::fmt(identifier, f),
-            // Prints the record type, i.e. record
-            Self::Record => write!(f, "{}", Record::<E>::type_name()),
         }
     }
 }
@@ -94,7 +82,6 @@ mod tests {
             Ok(("", Annotation::<E>::Literal(LiteralType::Field(Mode::Private))))
         );
         assert_eq!(Annotation::parse("signature"), Ok(("", Annotation::<E>::Composite(Identifier::new("signature")))));
-        assert_eq!(Annotation::parse("record"), Ok(("", Annotation::<E>::Record)));
     }
 
     #[test]
@@ -103,35 +90,23 @@ mod tests {
         assert!(Annotation::<E>::parse("field").is_err());
         // Composite must not contain visibility.
         assert_eq!(Ok((".private", Identifier::<E>::new("signature"))), Identifier::<E>::parse("signature.private"));
-        // Record must not contain visibility.
-        assert!(Identifier::<E>::parse("record.private").is_err());
     }
 
     #[test]
     fn test_annotation_display() {
         assert_eq!(Annotation::<E>::Literal(LiteralType::Field(Mode::Private)).to_string(), "field.private");
         assert_eq!(Annotation::<E>::Composite(Identifier::new("signature")).to_string(), "signature");
-        assert_eq!(Annotation::<E>::Record.to_string(), "record");
     }
 
     #[test]
     fn test_annotation_is_literal() {
         assert!(Annotation::<E>::Literal(LiteralType::Field(Mode::Private)).is_literal());
         assert!(!Annotation::<E>::Composite(Identifier::new("signature")).is_literal());
-        assert!(!Annotation::<E>::Record.is_literal());
     }
 
     #[test]
     fn test_annotation_is_composite() {
         assert!(!Annotation::<E>::Literal(LiteralType::Field(Mode::Private)).is_composite());
         assert!(Annotation::<E>::Composite(Identifier::new("signature")).is_composite());
-        assert!(!Annotation::<E>::Record.is_composite());
-    }
-
-    #[test]
-    fn test_annotation_is_record() {
-        assert!(!Annotation::<E>::Literal(LiteralType::Field(Mode::Private)).is_record());
-        assert!(!Annotation::<E>::Composite(Identifier::new("signature")).is_record());
-        assert!(Annotation::<E>::Record.is_record());
     }
 }

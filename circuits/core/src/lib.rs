@@ -30,41 +30,40 @@ use snarkvm_circuits_types::prelude::*;
 
 use core::fmt;
 
-/// A template is a user-defined type that represents a collection of circuits.
+/// A template is a user-defined type or record that represents a collection of circuits.
 /// A template does not have a mode; rather its individual members are annotated with modes.
-/// A template is defined by an identifier (such as `record`) and a list of members,
-/// such as `[(owner, address.public), (balance, i64.private)]`, where the left entry is an identifier,
+/// A template is defined by an identifier (such as `message`) and a list of members,
+/// such as `[(sender, address.public), (amount, i64.private)]`, where the left entry is an identifier,
 /// and the right entry is a type annotation.
 ///
 /// A register member format is used to access individual members of a template. For example,
 /// if the `record` template is assigned to register `r0`, individual members can be accessed
-/// as `r0.owner` or `r0.balance`. This generalizes to the format, i.e. `r{locator}.{member}`.
+/// as `r0.owner` or `r0.value`. This generalizes to the format, i.e. `r{locator}.{member}`.
 #[derive(Clone, Debug)]
-pub struct Template<E: Environment> {
-    /// The identifier of the template.
-    identifier: Identifier<E>,
-    /// The members of the template.
-    members: Vec<(Identifier<E>, Annotation<E>)>,
+pub enum Template<E: Environment> {
+    /// A type consists of its identifier and a list of members.
+    Type(Identifier<E>, Vec<(Identifier<E>, Annotation<E>)>),
+    /// A record consists of its identifier and a list of members.
+    Record(Identifier<E>, Vec<(Identifier<E>, Annotation<E>)>),
 }
 
 impl<E: Environment> Template<E> {
-    /// Initializes a new template. The identifier is the name of the template,
-    /// and the members are a list of identifiers and type annotations.
-    #[inline]
-    pub fn new(identifier: Identifier<E>, members: Vec<(Identifier<E>, Annotation<E>)>) -> Self {
-        Self { identifier, members }
-    }
-
     /// Returns the identifier of the template.
     #[inline]
     pub fn identifier(&self) -> &Identifier<E> {
-        &self.identifier
+        match self {
+            Self::Type(identifier, _) => identifier,
+            Self::Record(identifier, _) => identifier,
+        }
     }
 
     /// Returns the members of the template.
     #[inline]
     pub fn members(&self) -> &[(Identifier<E>, Annotation<E>)] {
-        &self.members
+        match self {
+            Self::Type(_, members) => members,
+            Self::Record(_, members) => members,
+        }
     }
 }
 
@@ -103,35 +102,39 @@ impl<E: Environment> Template<E> {
 //     }
 // }
 
-/// A composite is an instantiation of a template. A composite is defined by an identifier (such as `record`)
-/// and a list of members, such as `[(owner, aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.public), (balance, 5i64.private)]`,
-/// where the left entry is an identifier, and the right entry is a type annotation.
-/// The members of a composite are accessed as `r{locator}.{identifier}`.
+/// A type is a user-defined type instantiation. A type is defined by an identifier (such as `message`)
+/// and a list of members, such as `[address.public, i64.private]`.
+/// The members of a composite are accessed as `r{locator}.{member}`.
 #[derive(Clone, Debug)]
-pub struct Composite<E: Environment> {
-    /// The identifier of the composite.
-    identifier: Identifier<E>,
-    /// The members of the composite.
-    members: Vec<(Identifier<E>, Value<E>)>,
+pub struct Type<E: Environment> {
+    /// The identifier of the type.
+    name: Identifier<E>,
+    /// The members of the type.
+    members: Vec<Value<E>>,
 }
 
-impl<E: Environment> Composite<E> {
-    /// Initializes a new composite. The identifier is the name of the template,
-    /// and the members are a list of identifiers and values.
+impl<E: Environment> Type<E> {
+    /// Initializes a new type, consisting of a name as an identifier,
+    /// and members composed of a list of values.
     #[inline]
-    pub fn new(identifier: Identifier<E>, members: Vec<(Identifier<E>, Value<E>)>) -> Self {
-        Self { identifier, members }
+    pub fn new(name: Identifier<E>, members: Vec<Value<E>>) -> Self {
+        // Ensure `members` is not empty.
+        if members.is_empty() {
+            E::halt(format!("Type `{}` must have at least one member", name))
+        }
+
+        Self { name, members }
     }
 
-    /// Returns the identifier of the composite.
+    /// Returns the name of the type.
     #[inline]
-    pub fn identifier(&self) -> &Identifier<E> {
-        &self.identifier
+    pub fn name(&self) -> &Identifier<E> {
+        &self.name
     }
 
-    /// Returns the members of the composite.
+    /// Returns the members of the type.
     #[inline]
-    pub fn members(&self) -> &[(Identifier<E>, Value<E>)] {
+    pub fn members(&self) -> &[Value<E>] {
         &self.members
     }
 }
@@ -141,8 +144,8 @@ impl<E: Environment> Composite<E> {
 pub enum Value<E: Environment> {
     /// A literal contains its declared literal value.
     Literal(Literal<E>),
-    /// A composite contains its declared member values.
-    Composite(Composite<E>),
+    /// A type contains its declared member values.
+    Type(Type<E>),
     /// A record contains its declared member values.
     Record(Record<E>),
 }
@@ -153,8 +156,8 @@ impl<E: Environment> Value<E> {
     pub fn annotation(&self) -> Annotation<E> {
         match self {
             Self::Literal(literal) => Annotation::Literal(LiteralType::from(literal)),
-            Self::Composite(composite) => Annotation::Composite(composite.identifier().clone()),
-            Self::Record(..) => Annotation::Record,
+            Self::Type(type_) => Annotation::Composite(type_.name().clone()),
+            Self::Record(record) => Annotation::Composite(record.name().clone()),
         }
     }
 
@@ -163,24 +166,30 @@ impl<E: Environment> Value<E> {
     pub fn is_constant(&self) -> bool {
         match self {
             Self::Literal(literal) => literal.is_constant(),
-            Self::Composite(composite) => composite.members().iter().all(|(_, value)| value.is_constant()),
-            Self::Record(record) => record.members().iter().all(|(_, literal)| literal.is_constant()),
+            Self::Type(type_) => type_.members().iter().all(|value| value.is_constant()),
+            Self::Record(record) => record.members().iter().all(|value| value.is_constant()),
         }
     }
 
-    /// Returns the literal corresponding to the given identifier, if `self` is a composite or record.
-    /// Returns `None` otherwise.
+    /// Returns `true` if the value is a literal.
+    /// Returns `false` if the value is a type or a record.
     #[inline]
-    fn get_member(&self, identifier: &Identifier<E>) -> Option<Value<E>> {
-        match self {
-            Self::Composite(composite) => {
-                composite.members().iter().find(|(member, _)| member == identifier).map(|(_, value)| value.clone())
-            }
-            Self::Record(record) => {
-                record.members().into_iter().find(|(member, _)| member == identifier).map(|(_, value)| value)
-            }
-            _ => None,
-        }
+    pub fn is_literal(&self) -> bool {
+        matches!(self, Self::Literal(..))
+    }
+
+    /// Returns `true` if the value is a type.
+    /// Returns `false` if the value is a literal or a record.
+    #[inline]
+    pub fn is_type(&self) -> bool {
+        matches!(self, Self::Type(..))
+    }
+
+    /// Returns `true` if the value is a record.
+    /// Returns `false` if the value is a literal or a type.
+    #[inline]
+    pub fn is_record(&self) -> bool {
+        matches!(self, Self::Record(..))
     }
 }
 
@@ -192,33 +201,23 @@ impl<E: Environment> Parser for Value<E> {
     fn parse(string: &str) -> ParserResult<Self> {
         // TODO (howardwu): Add support for records.
         // TODO (howardwu): Sanitize of any whitespaces, or support whitespaces.
-        // A composite is defined as: `(identifier, [(identifier, value), ...])`,
-        // where the left tuple is the name of the composite, and the right tuple is the composite identifiers and value.
+        // A composite is defined as: `(identifier, [value, ..., value])`,
+        // where the left entry is an identifier, and the right entry is a list of values.
 
-        // Parses a tuple of form: (identifier,value).
-        let tuple_parse = map(
-            pair(pair(tag("("), pair(pair(Identifier::parse, tag(",")), Value::parse)), tag(")")),
-            |((_, ((identifier, _), value)), _)| (identifier, value),
-        );
-        let tuple_parse2 = map(
-            pair(pair(tag("("), pair(pair(Identifier::parse, tag(",")), Value::parse)), tag(")")),
-            |((_, ((identifier, _), value)), _)| (identifier, value),
-        );
-        // Parses a sequence of form: (identifier,value),(identifier,value),...,(identifier,value).
-        let sequence_parse = map(pair(pair(many0(tuple_parse), tag(",")), tuple_parse2), |((tuples, _), tuple)| {
+        // Parses a sequence of form: value,value,...,value.
+        let sequence_parse = map(pair(pair(many0(Value::parse), tag(",")), Value::parse), |((tuples, _), tuple)| {
             let mut tuples = tuples;
             tuples.push(tuple);
             tuples
         });
-        // Parses a slice of form: [(identifier,value),(identifier,value),...,(identifier,value)].
+        // Parses a slice of form: [value,value,...,value].
         let slice_parse = pair(pair(tag("["), sequence_parse), tag("]"));
-        // Parses a composite of form: identifier[(identifier, value), ...].
-        let composite_literal = map(pair(Identifier::parse, slice_parse), |(identifier, ((_, members), _))| {
-            Self::Composite(Composite::new(identifier, members))
-        });
+        // Parses a type of form: name[value,...,value].
+        let type_parser =
+            map(pair(Identifier::parse, slice_parse), |(name, ((_, members), _))| Self::Type(Type::new(name, members)));
 
         // Parse to determine the value (order matters).
-        alt((map(Literal::parse, |literal| Self::Literal(literal)), composite_literal))(string)
+        alt((map(Literal::parse, |literal| Self::Literal(literal)), type_parser))(string)
     }
 }
 
@@ -228,22 +227,22 @@ impl<E: Environment> fmt::Display for Value<E> {
         match self {
             // Prints the literal, i.e. 10field.private
             Self::Literal(literal) => fmt::Display::fmt(literal, f),
-            // Prints the composite, i.e. "record"[("owner",aleo1xxx.public),("value",10i64.private)]
-            Self::Composite(composite) => {
-                let mut output = format!("{}[", composite.identifier());
-                for (identifier, value) in composite.members().iter() {
-                    output += &format!("({identifier},{value}),");
+            // Prints the type instantiation, i.e. "message"[aleo1xxx.public,10i64.private]
+            Self::Type(composite) => {
+                let mut output = format!("{}[", composite.name());
+                for value in composite.members().iter() {
+                    output += &format!("{value},");
                 }
                 output.pop(); // trailing comma
                 output += &format!("]");
 
                 write!(f, "{output}")
             }
-            // Prints the record literal, i.e. "record"[("owner",aleo1xxx.public),("value",10i64.private)]
+            // Prints the record literal, i.e. "token"[aleo1xxx.public,10i64.private]
             Self::Record(record) => {
-                let mut output = format!("{}[", record.identifier());
-                for (identifier, value) in record.members().iter() {
-                    output += &format!("({identifier},{value}),");
+                let mut output = format!("{}[", record.name());
+                for value in record.members().iter() {
+                    output += &format!("{value},");
                 }
                 output.pop(); // trailing comma
                 output += &format!("]");
@@ -475,7 +474,7 @@ pub trait Memory: Environment {
     ///
     /// # Errors
     /// This function will halt if the template was previously added.
-    fn add_template(&mut self, template: Template<Self>);
+    fn new_template(&mut self, template: Template<Self>);
 
     /// Adds the input statement into memory.
     /// This method is called before a function is run.
@@ -536,10 +535,6 @@ pub struct Stack<E: Environment> {
     /// When input assignments are added, the entry is updated to `(locator, Some(value))`.
     /// No changes occur to `registers` when output statements are added.
     registers: IndexMap<Locator, Option<Value<E>>>,
-    /// The map of register locators to their annotations.
-    /// When input statements are added, a new entry of `(locator, annotation)` is added to this map.
-    annotations: IndexMap<Locator, Annotation<E>>,
-
     /// The templates declared for the program.
     /// This is a map from the template name to the template.
     templates: IndexMap<Identifier<E>, Template<E>>,
@@ -578,17 +573,49 @@ impl<E: Environment> Stack<E> {
             Some(None) | None => E::halt(format!("Failed to locate register {register}")),
         };
 
+        // If the register is a locator, then return the value.
+        if let Register::Locator(..) = register {
+            return (*value).clone();
+        }
         // If the register is a register member, then load the specific value.
-        match register {
-            // Load the value for a register.
-            Register::Locator(_) => (*value).clone(),
-            // Load the value for a register member.
-            Register::Member(locator, identifier) => match value.get_member(identifier) {
-                // Return the value if it exists.
-                Some(value) => value,
-                // Halts if the value does not exist.
-                None => E::halt(format!("Failed to locate member {identifier} in register {locator}")),
-            },
+        else if let Register::Member(_, member) = register {
+            // Retrieve the identifier for the composite (from the annotation).
+            let identifier = match value.annotation() {
+                // Retrieve the identifier from the annotation.
+                Annotation::Composite(identifier) => identifier,
+                // Halts if the value is not a composite.
+                Annotation::Literal(..) => E::halt(format!("Register {register} does not have any members")),
+            };
+
+            // Retrieve the member index of the identifier (from the template).
+            let member_index = match self.templates.get(&identifier) {
+                Some(template) => template
+                    .members()
+                    .iter()
+                    .position(|(id, _)| id == member)
+                    .unwrap_or_else(|| E::halt(format!("Failed to locate {member} in {identifier}"))),
+                // Halts if the template does not exist.
+                None => E::halt(format!("Failed to locate template for identifier {identifier}")),
+            };
+
+            // Retrieve the value of the member (from the value).
+            match value {
+                Value::Literal(..) => E::halt(format!("Cannot load a register member from a literal")),
+                Value::Type(type_) => match type_.members().get(member_index) {
+                    Some(value) => (*value).clone(),
+                    // Halts if the member does not exist.
+                    None => E::halt(format!("Failed to locate register {register}")),
+                },
+                Value::Record(record) => match record.members().get(member_index) {
+                    Some(value) => (*value).clone(),
+                    // Halts if the member does not exist.
+                    None => E::halt(format!("Failed to locate register {register}")),
+                },
+            }
+        }
+        // Halts if the register is neither a locator nor a register member.
+        else {
+            E::halt(format!("Failed to locate register {register}"))
         }
     }
 
@@ -617,7 +644,7 @@ impl<E: Environment> Stack<E> {
     /// # Errors
     /// This function will halt if the template was previously added.
     #[inline]
-    fn add_template(&mut self, template: Template<E>) {
+    fn new_template(&mut self, template: Template<E>) {
         // Add the template to the map.
         let identifier = template.identifier().clone();
         let previous = self.templates.insert(identifier.clone(), template);
@@ -656,13 +683,15 @@ impl<E: Environment> Stack<E> {
 
         // Ensure the input does not exist in the registers.
         let register = input.register();
-        if self.registers.contains_key(input.locator()) {
+        if self.registers.contains_key(register.locator()) {
             E::halt(format!("Input register {register} was previously stored"))
         }
 
-        // Ensure the input register does not exist in the annotations.
-        if self.annotations.contains_key(input.locator()) {
-            E::halt(format!("Input register {register} was previously annotated"))
+        // If the input annotation is a composite, ensure the input is referencing a valid template.
+        if let Annotation::Composite(identifier) = input.annotation() {
+            if !self.templates.contains_key(identifier) {
+                E::halt("Input annotation references non-existent composite template")
+            }
         }
 
         // Ensure the input register is new, and incrementing monotonically.
@@ -672,19 +701,9 @@ impl<E: Environment> Stack<E> {
         while self.registers.contains_key(&index) {
             index += 1;
         }
-        if index != *input.locator() {
+        if index != *register.locator() {
             E::halt(format!("Invalid input ordering detected in memory at register {index}"))
         }
-
-        // If the input annotation is for a composite, ensure the input is referencing a valid template.
-        if let Annotation::Composite(identifier) = input.annotation() {
-            if !self.templates.contains_key(identifier) {
-                E::halt("Input annotation references non-existent composite template")
-            }
-        }
-
-        // Insert the register into the annotations.
-        self.annotations.insert(*input.locator(), input.annotation().clone());
 
         // Insert the input statement to memory.
         self.input_statements.insert(input);
@@ -703,7 +722,7 @@ impl<E: Environment> Stack<E> {
     fn assign_input(&mut self, input: Input<E>, value: Value<E>) {
         // Ensure the input exists in the registers.
         let register = input.register();
-        if !self.registers.contains_key(input.locator()) {
+        if !self.registers.contains_key(register.locator()) {
             E::halt(format!("Register {register} does not exist"))
         }
 
@@ -713,24 +732,28 @@ impl<E: Environment> Stack<E> {
         }
 
         // Ensure the previous input is assigned before the current input.
-        match self.registers.get(&input.locator().saturating_sub(1)) {
+        match self.registers.get(&register.locator().saturating_sub(1)) {
             Some(None) | None => {
                 E::halt(format!("Cannot assign input register {register} as the previous register is not assigned yet"))
             }
             _ => (),
         }
 
-        // Ensure the input annotation matches.
-        let expected_annotation = match self.annotations.get(input.locator()) {
-            Some(annotation) => annotation,
-            None => E::halt(format!("Annotation for register {register} does not exist")),
-        };
-        if expected_annotation != &value.annotation() {
-            E::halt(format!("Input register {register} annotation does not match"))
+        // If the input annotation is a composite, ensure the input value matches the template.
+        if let Annotation::Composite(identifier) = input.annotation() {
+            match self.templates.get(identifier) {
+                Some(template) => {
+                    // TODO (howardwu): Check that it matches expected format.
+                    // if !template.matches(&value) {
+                    //     E::halt(format!("Input value does not match template {template}"))
+                    // }
+                }
+                None => E::halt("Input annotation references non-existent template"),
+            }
         }
 
         // Assign the input value to the register.
-        if let Some(Some(..)) = self.registers.insert(*input.locator(), Some(value)) {
+        if let Some(Some(..)) = self.registers.insert(*register.locator(), Some(value)) {
             E::halt(format!("Input register {register} was already assigned"))
         }
 
@@ -828,12 +851,12 @@ impl<E: Environment> Stack<E> {
 
         // Ensure the output exists in the registers.
         let register = output.register();
-        if !self.registers.contains_key(output.locator()) {
+        if !self.registers.contains_key(register.locator()) {
             E::halt(format!("Output register {register} is missing"))
         }
 
         // Ensure the output register is not already set.
-        if let Some(Some(..)) = self.registers.get(output.locator()) {
+        if let Some(Some(..)) = self.registers.get(register.locator()) {
             E::halt(format!("Output register {register} was already set"))
         }
 
