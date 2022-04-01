@@ -54,7 +54,6 @@ impl<E: Environment> Parser for Value<E> {
     /// Parses a string into a value.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        // TODO (howardwu): Sanitize of any whitespaces, or support whitespaces.
         // Parses a sequence of form: value value ... value
         let sequence_parse = map(pair(pair(many0(Value::parse), tag(" ")), Value::parse), |((values, _), value)| {
             let mut values = values;

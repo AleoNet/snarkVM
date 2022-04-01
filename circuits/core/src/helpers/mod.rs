@@ -23,6 +23,9 @@ pub use identifier::*;
 pub mod literal;
 pub use literal::*;
 
+pub mod operand;
+pub use operand::*;
+
 pub mod record;
 pub use record::*;
 
