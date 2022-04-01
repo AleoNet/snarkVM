@@ -150,6 +150,12 @@ impl<N: Network> FromBytes for Ciphertext<N> {
         let record_view_key_commitment = N::RecordViewKeyCommitment::read_le(&mut reader)?;
 
         let num_elements: u32 = FromBytes::read_le(&mut reader)?;
+
+        // Reject values greater than the expected maximum count.
+        if num_elements > 1000 {
+            return Err(std::io::ErrorKind::InvalidData.into());
+        }
+
         let mut record_elements = Vec::with_capacity(num_elements as usize);
         for _ in 0..num_elements {
             record_elements.push(FromBytes::read_le(&mut reader)?);
