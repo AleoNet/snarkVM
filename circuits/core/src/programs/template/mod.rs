@@ -16,7 +16,7 @@
 
 mod member;
 
-use crate::{templates::member::Member, Identifier, Sanitizer};
+use crate::{template::member::Member, Identifier, Sanitizer};
 use snarkvm_circuits_types::prelude::*;
 
 use core::fmt;

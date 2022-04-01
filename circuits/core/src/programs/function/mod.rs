@@ -26,7 +26,7 @@ pub use output::*;
 mod parsers;
 
 use crate::{
-    functions::parsers::*,
+    function::parsers::*,
     helpers::{Locator, Register},
     Annotation,
     Identifier,

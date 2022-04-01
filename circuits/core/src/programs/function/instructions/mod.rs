@@ -20,7 +20,7 @@ pub use add::*;
 pub mod sub;
 pub use sub::*;
 
-use crate::{functions::parsers::Operand, helpers::Register, Function, Literal, Program, Sanitizer};
+use crate::{function::parsers::Operand, helpers::Register, Function, Literal, Program, Sanitizer};
 use snarkvm_circuits_types::environment::{Environment, Parser, ParserResult};
 use snarkvm_utilities::{error, FromBytes, ToBytes};
 

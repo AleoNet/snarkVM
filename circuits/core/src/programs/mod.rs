@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod functions;
-pub use functions::*;
+pub mod function;
+pub use function::*;
 
 pub mod helpers;
 pub use helpers::*;
@@ -26,5 +26,5 @@ pub use literal::*;
 pub mod record;
 pub use record::*;
 
-pub mod templates;
-pub use templates::*;
+pub mod template;
+pub use template::*;

@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    functions::parsers::*,
+    function::parsers::*,
     helpers::Register,
     instructions::Instruction,
     Function,
@@ -32,12 +32,12 @@ use core::fmt;
 use nom::combinator::map;
 use std::io::{Read, Result as IoResult, Write};
 
-/// Subtracts `first` from `second`, storing the outcome in `destination`.
-pub struct Sub<P: Program> {
+/// Adds `first` with `second`, storing the outcome in `destination`.
+pub struct Add<P: Program> {
     operation: BinaryOperation<P>,
 }
 
-impl<P: Program> Sub<P> {
+impl<P: Program> Add<P> {
     /// Returns the operands of the instruction.
     pub fn operands(&self) -> Vec<Operand<P>> {
         self.operation.operands()
@@ -49,15 +49,15 @@ impl<P: Program> Sub<P> {
     }
 }
 
-impl<P: Program> Opcode for Sub<P> {
+impl<P: Program> Opcode for Add<P> {
     /// Returns the opcode as a string.
     #[inline]
     fn opcode() -> &'static str {
-        "sub"
+        "add"
     }
 }
 
-impl<P: Program> Operation<P> for Sub<P> {
+impl<P: Program> Operation<P> for Add<P> {
     /// Evaluates the operation.
     #[inline]
     fn evaluate(&self, function: &mut Function<P>) {
@@ -73,8 +73,10 @@ impl<P: Program> Operation<P> for Sub<P> {
 
         // Perform the operation.
         let result = match (first, second) {
-            (Literal::Field(a), Literal::Field(b)) => Literal::Field(a - b),
-            (Literal::Group(a), Literal::Group(b)) => Literal::Group(a - b),
+            (Literal::Field(a), Literal::Field(b)) => Literal::Field(a + b),
+            (Literal::Group(a), Literal::Group(b)) => Literal::Group(a + b),
+            (Literal::I8(a), Literal::I8(b)) => Literal::I8(a + b),
+            (Literal::U8(a), Literal::U8(b)) => Literal::U8(a + b),
             _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
         };
 
@@ -82,10 +84,10 @@ impl<P: Program> Operation<P> for Sub<P> {
     }
 }
 
-impl<P: Program> Parser for Sub<P> {
+impl<P: Program> Parser for Add<P> {
     type Environment = P;
 
-    /// Parses a string into an 'sub' operation.
+    /// Parses a string into an 'add' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the operation from the string.
@@ -95,29 +97,29 @@ impl<P: Program> Parser for Sub<P> {
     }
 }
 
-impl<P: Program> fmt::Display for Sub<P> {
+impl<P: Program> fmt::Display for Add<P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.operation)
     }
 }
 
-// impl<P: Program> FromBytes for Sub<P>> {
+// impl<P: Program> FromBytes for Add<P>> {
 //     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
 //         Ok(Self { operation: BinaryOperation::read_le(&mut reader)? })
 //     }
 // }
 //
-// impl<P: Program> ToBytes for Sub<P>> {
+// impl<P: Program> ToBytes for Add<P>> {
 //     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
 //         self.operation.write_le(&mut writer)
 //     }
 // }
 
 #[allow(clippy::from_over_into)]
-impl<P: Program> Into<Instruction<P>> for Sub<P> {
+impl<P: Program> Into<Instruction<P>> for Add<P> {
     /// Converts the operation into an instruction.
     fn into(self) -> Instruction<P> {
-        Instruction::Sub(self)
+        Instruction::Add(self)
     }
 }
 
@@ -128,20 +130,20 @@ impl<P: Program> Into<Instruction<P>> for Sub<P> {
 //     use snarkvm_circuits_types::environment::{Circuit, Eject};
 //
 //     #[test]
-//     fn test_sub_field() {
-//         let first = Literal::<Circuit>::from_str("3field.public");
+//     fn test_add_field() {
+//         let first = Literal::<Circuit>::from_str("1field.public");
 //         let second = Literal::<Circuit>::from_str("2field.private");
-//         let expected = Literal::<Circuit>::from_str("1field.private");
+//         let expected = Literal::<Circuit>::from_str("3field.private");
 //
 //         Input::from_str("input r0 field.public;").assign(first).evaluate(&memory);
 //         Input::from_str("input r1 field.private;").assign(second).evaluate(&memory);
 //
-//         Sub::<Stack<Circuit>>::from_str("r2 r0 r1").evaluate(&memory);
+//         Add::<Stack<Circuit>>::from_str("r2 r0 r1").evaluate(&memory);
 //         assert_eq!(expected.eject(), memory.load(&Register::new(2)).eject());
 //     }
 //
 //     #[test]
-//     fn test_sub_group() {
+//     fn test_add_group() {
 //         let first = Literal::<Circuit>::from_str("2group.public");
 //         let second = Literal::<Circuit>::from_str("0group.private");
 //         let expected = Literal::<Circuit>::from_str("2group.private");
@@ -149,7 +151,7 @@ impl<P: Program> Into<Instruction<P>> for Sub<P> {
 //         Input::from_str("input r0 group.public;").assign(first).evaluate(&memory);
 //         Input::from_str("input r1 group.private;").assign(second).evaluate(&memory);
 //
-//         Sub::<Stack<Circuit>>::from_str("r2 r0 r1").evaluate(&memory);
+//         Add::<Stack<Circuit>>::from_str("r2 r0 r1").evaluate(&memory);
 //         assert_eq!(expected.eject(), memory.load(&Register::new(2)).eject());
 //     }
 // }
