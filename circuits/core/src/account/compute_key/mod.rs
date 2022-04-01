@@ -19,10 +19,10 @@ pub mod from_private_key;
 #[cfg(test)]
 use snarkvm_circuits_types::environment::assert_scope;
 
-use crate::account::{Account, PrivateKey};
+use crate::{account::PrivateKey, Program};
 use snarkvm_circuits_types::{environment::prelude::*, Group, Scalar};
 
-pub struct ComputeKey<A: Account> {
+pub struct ComputeKey<A: Program> {
     /// The signature public key `pk_sig` := G^sk_sig.
     pk_sig: Group<A>,
     /// The signature public randomizer `pr_sig` := G^r_sig.
@@ -31,7 +31,7 @@ pub struct ComputeKey<A: Account> {
     sk_prf: Scalar<A>,
 }
 
-impl<A: Account> Inject for ComputeKey<A> {
+impl<A: Program> Inject for ComputeKey<A> {
     type Primitive = (A::Affine, A::Affine, A::ScalarField);
 
     /// Initializes an account compute key from the given mode and `(pk_sig, pr_sig, sk_prf)`.
@@ -40,7 +40,7 @@ impl<A: Account> Inject for ComputeKey<A> {
     }
 }
 
-impl<A: Account> ComputeKey<A> {
+impl<A: Program> ComputeKey<A> {
     /// Returns the signature public key.
     pub fn pk_sig(&self) -> &Group<A> {
         &self.pk_sig
@@ -57,7 +57,7 @@ impl<A: Account> ComputeKey<A> {
     }
 }
 
-impl<A: Account> Eject for ComputeKey<A> {
+impl<A: Program> Eject for ComputeKey<A> {
     type Primitive = (A::Affine, A::Affine, A::ScalarField);
 
     ///
@@ -78,7 +78,7 @@ impl<A: Account> Eject for ComputeKey<A> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::account::Aleo as Circuit;
+    use crate::Aleo as Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 1000;

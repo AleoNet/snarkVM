@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<A: Account> ComputeKey<A> {
+impl<A: Program> ComputeKey<A> {
     /// Returns the account compute key for this account private key.
     pub fn from_private_key(private_key: &PrivateKey<A>) -> Self {
         // Extract (sk_sig, r_sig).
@@ -39,7 +39,7 @@ impl<A: Account> ComputeKey<A> {
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
-    use crate::account::{Aleo as Circuit, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT};
+    use crate::{Aleo as Circuit, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT};
     use snarkvm_algorithms::{signature::AleoSignatureScheme, SignatureScheme, SignatureSchemeOperations};
     use snarkvm_utilities::{test_rng, UniformRand};
 

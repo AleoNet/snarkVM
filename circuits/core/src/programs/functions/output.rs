@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Annotation, Register, Sanitizer};
+use crate::{functions::parsers::*, helpers::Register, Annotation, Sanitizer};
 use snarkvm_circuits_types::prelude::*;
 
 use core::fmt;

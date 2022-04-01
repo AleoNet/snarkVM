@@ -19,10 +19,10 @@ pub mod verify;
 #[cfg(test)]
 use snarkvm_circuits_types::environment::assert_scope;
 
-use crate::{account::Account, Literal};
+use crate::{Literal, Program};
 use snarkvm_circuits_types::{environment::prelude::*, Address, Boolean, Field, Group, Scalar};
 
-pub struct Signature<A: Account> {
+pub struct Signature<A: Program> {
     /// The prover response to the challenge.
     prover_response: Scalar<A>,
     /// The verifier challenge to check against.
@@ -33,7 +33,7 @@ pub struct Signature<A: Account> {
     pr_sig: Group<A>,
 }
 
-impl<A: Account> Inject for Signature<A> {
+impl<A: Program> Inject for Signature<A> {
     type Primitive = (A::ScalarField, A::ScalarField, A::BaseField, A::BaseField);
 
     /// Initializes a signature from the given mode and `(prover_response, verifier_challenge, pk_sig, pr_sig)`.
@@ -47,7 +47,7 @@ impl<A: Account> Inject for Signature<A> {
     }
 }
 
-impl<A: Account> Eject for Signature<A> {
+impl<A: Program> Eject for Signature<A> {
     type Primitive = (A::ScalarField, A::ScalarField, A::BaseField, A::BaseField);
 
     ///
@@ -74,7 +74,7 @@ impl<A: Account> Eject for Signature<A> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::account::Aleo as Circuit;
+    use crate::Aleo as Circuit;
     use snarkvm_curves::AffineCurve;
     use snarkvm_utilities::{test_rng, UniformRand};
 

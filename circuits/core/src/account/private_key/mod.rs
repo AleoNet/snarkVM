@@ -19,17 +19,17 @@ pub mod to_compute_key;
 #[cfg(test)]
 use snarkvm_circuits_types::environment::assert_scope;
 
-use crate::account::{Account, ComputeKey};
+use crate::{account::ComputeKey, Program};
 use snarkvm_circuits_types::{environment::prelude::*, Scalar};
 
-pub struct PrivateKey<A: Account> {
+pub struct PrivateKey<A: Program> {
     /// The signature secret key.
     sk_sig: Scalar<A>,
     /// The signature secret randomizer.
     r_sig: Scalar<A>,
 }
 
-impl<A: Account> Inject for PrivateKey<A> {
+impl<A: Program> Inject for PrivateKey<A> {
     type Primitive = (A::ScalarField, A::ScalarField);
 
     /// Initializes an account private key from the given mode and `(sk_sig, r_sig)`.
@@ -38,7 +38,7 @@ impl<A: Account> Inject for PrivateKey<A> {
     }
 }
 
-impl<A: Account> PrivateKey<A> {
+impl<A: Program> PrivateKey<A> {
     /// Returns the signature secret key.
     pub fn sk_sig(&self) -> &Scalar<A> {
         &self.sk_sig
@@ -50,7 +50,7 @@ impl<A: Account> PrivateKey<A> {
     }
 }
 
-impl<A: Account> Eject for PrivateKey<A> {
+impl<A: Program> Eject for PrivateKey<A> {
     type Primitive = (A::ScalarField, A::ScalarField);
 
     ///

@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<A: Account> Signature<A> {
+impl<A: Program> Signature<A> {
     /// Returns `true` if the signature is valid for the given `address` and `message`.
     pub fn verify(&self, address: &Address<A>, message: &[Literal<A>]) -> Boolean<A> {
         // Compute G^sk_sig^c.
@@ -65,7 +65,7 @@ impl<A: Account> Signature<A> {
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
-    use crate::account::{Aleo as Circuit, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT};
+    use crate::{Aleo as Circuit, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT};
     use snarkvm_algorithms::{
         signature::{AleoSignature, AleoSignatureScheme},
         SignatureScheme,

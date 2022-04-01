@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::algorithms::Poseidon;
+use crate::{algorithms::Poseidon, Function, Identifier, Program, Template};
 use snarkvm_algorithms::crypto_hash::hash_to_curve;
 use snarkvm_circuits_types::{
     environment::{prelude::*, Circuit},
@@ -25,20 +25,19 @@ use snarkvm_circuits_types::{
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 
 use core::fmt;
-
-pub trait Account: Environment {
-    /// Returns the scalar multiplication on the group bases.
-    fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self>;
-
-    /// Returns a hash on the scalar field for the given input.
-    fn hash_to_scalar(input: &[Field<Self>]) -> Scalar<Self>;
-}
+use indexmap::IndexMap;
 
 pub type E = Circuit;
 
 pub static ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT: &str = "AleoAccountEncryptionAndSignatureScheme0";
 
 thread_local! {
+    /// The templates declared for the program.
+    /// This is a map from the template name to the template.
+    static TEMPLATES: IndexMap<Identifier<Aleo>, Template<Aleo>> = IndexMap::new();
+    /// The functions declared for the program.
+    /// This is a map from the function name to the function.
+    static FUNCTIONS: IndexMap<Identifier<Aleo>, Function<Aleo>> = IndexMap::new();
     /// The Poseidon hash function.
     static POSEIDON: Poseidon<Aleo> = Poseidon::<Aleo>::new();
     /// The group bases for the Aleo signature and encryption schemes.
@@ -69,7 +68,37 @@ impl Aleo {
     }
 }
 
-impl Account for Aleo {
+impl Program for Aleo {
+    /// Adds a new template to the program.
+    ///
+    /// # Errors
+    /// This method will halt if the template was previously added.
+    #[inline]
+    fn new_template(template: Template<Self>) {
+        TEMPLATES.with(|templates| {
+            // Add the template to the map.
+            // Ensure the template was not previously added.
+            if let Some(..) = templates.insert(template.name().clone(), template) {
+                Self::halt(format!("Template \'{}\' was previously added", template.name()))
+            }
+        });
+    }
+
+    /// Adds a new function to the program.
+    ///
+    /// # Errors
+    /// This method will halt if the function was previously added.
+    #[inline]
+    fn new_function(function: Function<Self>) {
+        FUNCTIONS.with(|functions| {
+            // Add the function to the map.
+            // Ensure the function was not previously added.
+            if let Some(..) = functions.insert(function.name().clone(), function) {
+                Self::halt(format!("Function \'{}\' was previously added", function.name()))
+            }
+        });
+    }
+
     /// Returns the scalar multiplication on the group bases.
     #[inline]
     fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self> {

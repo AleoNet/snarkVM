@@ -24,8 +24,14 @@ use core::fmt;
 pub enum Value<E: Environment> {
     /// A literal contains its declared literal value.
     Literal(Literal<E>),
-    /// A composite contains its declared member values.
-    Composite(Identifier<E>, Vec<Value<E>>),
+    /// A composite contains its declared member literals.
+    Composite(Identifier<E>, Vec<Literal<E>>),
+}
+
+impl<E: Environment> From<Literal<E>> for Value<E> {
+    fn from(literal: Literal<E>) -> Self {
+        Value::Literal(literal)
+    }
 }
 
 impl<E: Environment> Value<E> {
@@ -43,7 +49,7 @@ impl<E: Environment> Value<E> {
     pub fn is_constant(&self) -> bool {
         match self {
             Self::Literal(literal) => literal.is_constant(),
-            Self::Composite(_, composite) => composite.iter().all(|value| value.is_constant()),
+            Self::Composite(_, composite) => composite.iter().all(|literal| literal.is_constant()),
         }
     }
 }
@@ -54,15 +60,16 @@ impl<E: Environment> Parser for Value<E> {
     /// Parses a string into a value.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        // Parses a sequence of form: value value ... value
-        let sequence_parse = map(pair(pair(many0(Value::parse), tag(" ")), Value::parse), |((values, _), value)| {
-            let mut values = values;
-            values.push(value);
-            values
-        });
-        // Parses a composite of form: name value value ... value
-        let composite_parser = map(pair(pair(Identifier::parse, tag(" ")), sequence_parse), |((name, _), values)| {
-            Self::Composite(name, values)
+        // Parses a sequence of form: literal literal ... literal
+        let sequence_parse =
+            map(pair(pair(many0(Literal::parse), tag(" ")), Literal::parse), |((literals, _), literal)| {
+                let mut literals = literals;
+                literals.push(literal);
+                literals
+            });
+        // Parses a composite of form: name literal literal ... literal
+        let composite_parser = map(pair(pair(Identifier::parse, tag(" ")), sequence_parse), |((name, _), literals)| {
+            Self::Composite(name, literals)
         });
 
         // Parse to determine the value (order matters).

@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Register, Value};
+use super::*;
+use crate::{helpers::Register, Value};
 use snarkvm_circuits_types::prelude::*;
 
 use core::fmt;
@@ -27,6 +28,15 @@ pub enum Operand<E: Environment> {
     Value(Value<E>),
     /// A register contains its locator in memory.
     Register(Register<E>),
+}
+
+impl<E: Environment> From<&Self> for Operand<E> {
+    fn from(operand: &Self) -> Self {
+        match operand {
+            Operand::Value(value) => Operand::Value(value.clone()),
+            Operand::Register(register) => Operand::Register(register.clone()),
+        }
+    }
 }
 
 impl<E: Environment> Operand<E> {
