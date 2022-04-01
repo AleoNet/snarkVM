@@ -23,8 +23,8 @@ extern crate enum_index_derive;
 pub mod account;
 pub mod algorithms;
 
-pub mod helpers;
-pub use helpers::*;
+pub mod parsers;
+pub use parsers::*;
 
 use snarkvm_circuits_types::prelude::*;
 
@@ -117,7 +117,6 @@ pub struct Stack<E: Environment> {
     /// The templates declared for the program.
     /// This is a map from the template name to the template.
     templates: IndexMap<Identifier<E>, Template<E>>,
-
     /// The input statements, added in order of the input registers.
     /// Input assignments are ensured to match the ordering of the input statements.
     input_statements: IndexSet<Input<E>>,
