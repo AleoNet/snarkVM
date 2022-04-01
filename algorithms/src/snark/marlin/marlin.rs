@@ -103,7 +103,9 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
         // TODO: Add check that c is in the correct mode.
         let index = AHPForR1CS::<_, MM>::index(circuit)?;
         if universal_srs.max_degree() < index.max_degree() {
-            return Err(MarlinError::IndexTooLarge(universal_srs.max_degree(), index.max_degree()));
+            universal_srs
+                .increase_degree(index.max_degree())
+                .map_err(|_| MarlinError::IndexTooLarge(universal_srs.max_degree(), index.max_degree()))?;
         }
 
         let coefficient_support = AHPForR1CS::<_, MM>::get_degree_bounds(&index.index_info);
