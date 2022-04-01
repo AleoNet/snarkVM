@@ -130,9 +130,7 @@ impl<E: Environment> Function<E> {
     /// This method will halt if the destination register already exists in memory.
     /// This method will halt if the destination register locator does not monotonically increase.
     /// This method will halt if any operand register does not already exist in memory.
-    /// This method will halt if any operand registers are greater than *or equal to* the destination register.
     /// This method will halt if any registers are already set.
-    /// This method will halt if any operand values are not constant.
     #[inline]
     fn add_instruction(&mut self, instruction: Instruction<E>) {
         // Ensure there are input statements in memory.
@@ -162,16 +160,6 @@ impl<E: Environment> Function<E> {
             }
         }
 
-        // Ensure the operands do not contain registers greater than or equal to the destination register.
-        for register in instruction.operands().iter().filter_map(|operand| operand.register()) {
-            if *register.locator() >= *instruction.destination().locator() {
-                E::halt(format!(
-                    "Operand register {register} is greater than the destination {}",
-                    instruction.destination()
-                ))
-            }
-        }
-
         // Ensure the destination register and operand registers are not already set.
         for register in [instruction.destination().clone()]
             .iter()
@@ -179,13 +167,6 @@ impl<E: Environment> Function<E> {
         {
             if let Some(Some(..)) = self.registers.get(register.locator()) {
                 E::halt(format!("Register {register} is already set"))
-            }
-        }
-
-        // Ensure the operand values are constant.
-        for value in instruction.operands().iter().filter_map(|operand| operand.value()) {
-            if !value.is_constant() {
-                E::halt(format!("Operand {value} is not constant"))
             }
         }
 
