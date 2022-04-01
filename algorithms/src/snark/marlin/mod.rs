@@ -30,13 +30,8 @@
 pub mod ahp;
 pub use ahp::*;
 
-/// The Marlin circuit proving key.
-mod circuit_proving_key;
-pub use circuit_proving_key::*;
-
-/// The Marlin circuit verifying key.
-mod circuit_verifying_key;
-pub use circuit_verifying_key::*;
+pub(crate) mod data_structures;
+pub use data_structures::*;
 
 /// Errors.
 mod errors;
@@ -64,21 +59,9 @@ pub use mode::*;
 ///
 pub mod params;
 
-/// The Marlin prepared circuit verifying key.
-mod prepared_circuit_verifying_key;
-pub use prepared_circuit_verifying_key::*;
-
-/// The Marlin zkSNARK proof.
-mod proof;
-pub use proof::*;
-
 /// Implementation of the `SNARK` trait for [`MarlinSNARK`].
 mod snark;
 pub use snark::*;
 
 #[cfg(test)]
 pub mod tests;
-
-/// The Marlin universal SRS.
-mod universal_srs;
-pub use universal_srs::*;
