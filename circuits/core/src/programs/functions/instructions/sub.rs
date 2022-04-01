@@ -22,6 +22,7 @@ use crate::{
     Literal,
     Opcode,
     Operation,
+    Program,
     Value,
 };
 use snarkvm_circuits_types::environment::{Environment, Parser, ParserResult};
@@ -32,23 +33,23 @@ use nom::combinator::map;
 use std::io::{Read, Result as IoResult, Write};
 
 /// Subtracts `first` from `second`, storing the outcome in `destination`.
-pub struct Sub<E: Environment> {
-    operation: BinaryOperation<E>,
+pub struct Sub<P: Program> {
+    operation: BinaryOperation<P>,
 }
 
-impl<E: Environment> Sub<E> {
+impl<P: Program> Sub<P> {
     /// Returns the operands of the instruction.
-    pub fn operands(&self) -> Vec<Operand<E>> {
+    pub fn operands(&self) -> Vec<Operand<P>> {
         self.operation.operands()
     }
 
     /// Returns the destination register of the instruction.
-    pub fn destination(&self) -> &Register<E> {
+    pub fn destination(&self) -> &Register<P> {
         self.operation.destination()
     }
 }
 
-impl<E: Environment> Opcode for Sub<E> {
+impl<P: Program> Opcode for Sub<P> {
     /// Returns the opcode as a string.
     #[inline]
     fn opcode() -> &'static str {
@@ -56,33 +57,33 @@ impl<E: Environment> Opcode for Sub<E> {
     }
 }
 
-impl<E: Environment> Operation<E> for Sub<E> {
+impl<P: Program> Operation<P> for Sub<P> {
     /// Evaluates the operation.
     #[inline]
-    fn evaluate(&self, function: &mut Function<E>) {
+    fn evaluate(&self, function: &mut Function<P>) {
         // Load the values for the first and second operands.
         let first = match function.load(self.operation.first()) {
             Value::Literal(literal) => literal,
-            Value::Composite(name, ..) => E::halt(format!("{name} is not a literal")),
+            Value::Composite(name, ..) => P::halt(format!("{name} is not a literal")),
         };
         let second = match function.load(self.operation.second()) {
             Value::Literal(literal) => literal,
-            Value::Composite(name, ..) => E::halt(format!("{name} is not a literal")),
+            Value::Composite(name, ..) => P::halt(format!("{name} is not a literal")),
         };
 
         // Perform the operation.
         let result = match (first, second) {
             (Literal::Field(a), Literal::Field(b)) => Literal::Field(a - b),
             (Literal::Group(a), Literal::Group(b)) => Literal::Group(a - b),
-            _ => E::halt(format!("Invalid '{}' instruction", Self::opcode())),
+            _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
         };
 
         function.store(self.operation.destination(), result);
     }
 }
 
-impl<E: Environment> Parser for Sub<E> {
-    type Environment = E;
+impl<P: Program> Parser for Sub<P> {
+    type Environment = P;
 
     /// Parses a string into an 'sub' operation.
     #[inline]
@@ -94,28 +95,28 @@ impl<E: Environment> Parser for Sub<E> {
     }
 }
 
-impl<E: Environment> fmt::Display for Sub<E> {
+impl<P: Program> fmt::Display for Sub<P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.operation)
     }
 }
 
-// impl<E: Environment> FromBytes for Sub<E> {
+// impl<P: Program> FromBytes for Sub<P>> {
 //     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
 //         Ok(Self { operation: BinaryOperation::read_le(&mut reader)? })
 //     }
 // }
 //
-// impl<E: Environment> ToBytes for Sub<E> {
+// impl<P: Program> ToBytes for Sub<P>> {
 //     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
 //         self.operation.write_le(&mut writer)
 //     }
 // }
 
 #[allow(clippy::from_over_into)]
-impl<E: Environment> Into<Instruction<E>> for Sub<E> {
+impl<P: Program> Into<Instruction<P>> for Sub<P> {
     /// Converts the operation into an instruction.
-    fn into(self) -> Instruction<E> {
+    fn into(self) -> Instruction<P> {
         Instruction::Sub(self)
     }
 }

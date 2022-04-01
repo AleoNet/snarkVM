@@ -26,6 +26,7 @@ use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 
 use core::fmt;
 use indexmap::IndexMap;
+use std::cell::RefCell;
 
 pub type E = Circuit;
 
@@ -34,10 +35,10 @@ pub static ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT: &str = "AleoAccountEncryption
 thread_local! {
     /// The templates declared for the program.
     /// This is a map from the template name to the template.
-    static TEMPLATES: IndexMap<Identifier<Aleo>, Template<Aleo>> = IndexMap::new();
+    static TEMPLATES: RefCell<IndexMap<Identifier<Aleo>, Template<Aleo>>> = Default::default();
     /// The functions declared for the program.
     /// This is a map from the function name to the function.
-    static FUNCTIONS: IndexMap<Identifier<Aleo>, Function<Aleo>> = IndexMap::new();
+    static FUNCTIONS: RefCell<IndexMap<Identifier<Aleo>, Function<Aleo>>> = Default::default();
     /// The Poseidon hash function.
     static POSEIDON: Poseidon<Aleo> = Poseidon::<Aleo>::new();
     /// The group bases for the Aleo signature and encryption schemes.
@@ -78,8 +79,9 @@ impl Program for Aleo {
         TEMPLATES.with(|templates| {
             // Add the template to the map.
             // Ensure the template was not previously added.
-            if let Some(..) = templates.insert(template.name().clone(), template) {
-                Self::halt(format!("Template \'{}\' was previously added", template.name()))
+            let name = template.name().clone();
+            if let Some(..) = templates.borrow_mut().insert(name.clone(), template) {
+                Self::halt(format!("Template \'{name}\' was previously added"))
             }
         });
     }
@@ -93,10 +95,21 @@ impl Program for Aleo {
         FUNCTIONS.with(|functions| {
             // Add the function to the map.
             // Ensure the function was not previously added.
-            if let Some(..) = functions.insert(function.name().clone(), function) {
-                Self::halt(format!("Function \'{}\' was previously added", function.name()))
+            let name = function.name().clone();
+            if let Some(..) = functions.borrow_mut().insert(name.clone(), function) {
+                Self::halt(format!("Function \'{name}\' was previously added"))
             }
         });
+    }
+
+    /// Returns `true` if the program contains a template with the given name.
+    fn contains_template(name: &Identifier<Self>) -> bool {
+        TEMPLATES.with(|templates| templates.borrow().contains_key(name))
+    }
+
+    /// Returns the template with the given name.
+    fn get_template(name: &Identifier<Self>) -> Option<Template<Self>> {
+        TEMPLATES.with(|templates| templates.borrow().get(name).cloned())
     }
 
     /// Returns the scalar multiplication on the group bases.

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Function, Template};
+use crate::{Function, Identifier, Template};
 use snarkvm_circuits_types::{environment::Environment, Field, Group, Scalar};
 
 use core::fmt;
@@ -31,6 +31,12 @@ pub trait Program: Environment {
     /// # Errors
     /// This method will halt if the function was previously added.
     fn new_function(function: Function<Self>);
+
+    /// Returns `true` if the program contains a template with the given name.
+    fn contains_template(name: &Identifier<Self>) -> bool;
+
+    /// Returns the template with the given name.
+    fn get_template(name: &Identifier<Self>) -> Option<Template<Self>>;
 
     /// Returns the scalar multiplication on the group bases.
     fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self>;

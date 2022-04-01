@@ -20,7 +20,7 @@ pub use add::*;
 pub mod sub;
 pub use sub::*;
 
-use crate::{functions::parsers::Operand, helpers::Register, Function, Literal, Sanitizer};
+use crate::{functions::parsers::Operand, helpers::Register, Function, Literal, Program, Sanitizer};
 use snarkvm_circuits_types::environment::{Environment, Parser, ParserResult};
 use snarkvm_utilities::{error, FromBytes, ToBytes};
 
@@ -41,33 +41,33 @@ pub trait Opcode {
 }
 
 // pub trait Operation: Parser + Into<Instruction<Self::Memory>> {
-pub trait Operation<E: Environment> {
+pub trait Operation<P: Program> {
     ///
     /// Evaluates the operation.
     ///
-    fn evaluate(&self, function: &mut Function<E>);
+    fn evaluate(&self, function: &mut Function<P>);
 }
 
-pub enum Instruction<E: Environment> {
+pub enum Instruction<P: Program> {
     /// Adds `first` with `second`, storing the outcome in `destination`.
-    Add(Add<E>),
+    Add(Add<P>),
     /// Subtracts `first` from `second`, storing the outcome in `destination`.
-    Sub(Sub<E>),
+    Sub(Sub<P>),
 }
 
-impl<E: Environment> Instruction<E> {
+impl<P: Program> Instruction<P> {
     /// Returns the opcode of the instruction.
     #[inline]
     pub(crate) fn opcode(&self) -> &'static str {
         match self {
-            Self::Add(..) => Add::<E>::opcode(),
-            Self::Sub(..) => Sub::<E>::opcode(),
+            Self::Add(..) => Add::<P>::opcode(),
+            Self::Sub(..) => Sub::<P>::opcode(),
         }
     }
 
     /// Returns the operands of the instruction.
     #[inline]
-    pub(crate) fn operands(&self) -> Vec<Operand<E>> {
+    pub(crate) fn operands(&self) -> Vec<Operand<P>> {
         match self {
             Self::Add(add) => add.operands(),
             Self::Sub(sub) => sub.operands(),
@@ -76,7 +76,7 @@ impl<E: Environment> Instruction<E> {
 
     /// Returns the destination register of the instruction.
     #[inline]
-    pub(crate) fn destination(&self) -> &Register<E> {
+    pub(crate) fn destination(&self) -> &Register<P> {
         match self {
             Self::Add(add) => add.destination(),
             Self::Sub(sub) => sub.destination(),
@@ -85,7 +85,7 @@ impl<E: Environment> Instruction<E> {
 
     /// Evaluates the instruction.
     #[inline]
-    pub(crate) fn evaluate(&self, function: &mut Function<E>) {
+    pub(crate) fn evaluate(&self, function: &mut Function<P>) {
         match self {
             Self::Add(instruction) => instruction.evaluate(function),
             Self::Sub(instruction) => instruction.evaluate(function),
@@ -93,8 +93,8 @@ impl<E: Environment> Instruction<E> {
     }
 }
 
-impl<E: Environment> Parser for Instruction<E> {
-    type Environment = E;
+impl<P: Program> Parser for Instruction<P> {
+    type Environment = P;
 
     /// Parses a string into an instruction.
     #[inline]
@@ -104,8 +104,8 @@ impl<E: Environment> Parser for Instruction<E> {
         // Parse the instruction from the string.
         let (string, instruction) = alt((
             // Note that order of the individual parsers matters.
-            preceded(pair(tag(Add::<E>::opcode()), tag(" ")), map(Add::parse, Into::into)),
-            preceded(pair(tag(Sub::<E>::opcode()), tag(" ")), map(Sub::parse, Into::into)),
+            preceded(pair(tag(Add::<P>::opcode()), tag(" ")), map(Add::parse, Into::into)),
+            preceded(pair(tag(Sub::<P>::opcode()), tag(" ")), map(Sub::parse, Into::into)),
         ))(string)?;
         // Parse the semicolon from the string.
         let (string, _) = tag(";")(string)?;
@@ -114,7 +114,7 @@ impl<E: Environment> Parser for Instruction<E> {
     }
 }
 
-impl<E: Environment> fmt::Display for Instruction<E> {
+impl<P: Program> fmt::Display for Instruction<P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::Add(instruction) => write!(f, "{} {};", self.opcode(), instruction),
@@ -123,7 +123,7 @@ impl<E: Environment> fmt::Display for Instruction<E> {
     }
 }
 
-// impl<E: Environment> FromBytes for Instruction<E> {
+// impl<P: Program> FromBytes for Instruction<P>> {
 //     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
 //         match u16::read_le(&mut reader) {
 //             Ok(0) => Ok(Self::Add(Add::read_le(&mut reader)?)),
@@ -134,7 +134,7 @@ impl<E: Environment> fmt::Display for Instruction<E> {
 //     }
 // }
 //
-// impl<E: Environment> ToBytes for Instruction<E> {
+// impl<P: Program> ToBytes for Instruction<P>> {
 //     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
 //         match self {
 //             Self::Add(instruction) => {
