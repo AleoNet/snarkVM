@@ -117,7 +117,6 @@ impl<E: Environment> PartialOrd for Input<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Identifier, LiteralType};
     use snarkvm_circuits_types::environment::Circuit;
 
     type E = Circuit;
@@ -132,12 +131,12 @@ mod tests {
         // Literal
         let input = Input::<E>::parse("input r0 as field.private;").unwrap().1;
         assert_eq!(input.register(), &Register::<E>::Locator(0));
-        assert_eq!(input.annotation(), &Annotation::<E>::Literal(LiteralType::Field(Mode::Private)));
+        assert_eq!(input.annotation(), &Annotation::<E>::from_str("field.private"));
 
         // Composite
         let input = Input::<E>::parse("input r1 as signature;").unwrap().1;
         assert_eq!(input.register(), &Register::<E>::Locator(1));
-        assert_eq!(input.annotation(), &Annotation::<E>::Composite(Identifier::from_str("signature")));
+        assert_eq!(input.annotation(), &Annotation::<E>::from_str("signature"));
     }
 
     #[test]
