@@ -35,87 +35,6 @@ use core::fmt;
 //     Complex(Primary, Secondary)
 // }
 
-/// The instruction represents a single instruction in the program.
-#[derive(Clone, Debug)]
-pub struct Instruction<E: Environment> {
-    /// The instruction name.
-    name: &'static str,
-    /// The destination register.
-    destination: Register<E>,
-    /// The operands of the instruction.
-    operands: Vec<Operand<E>>,
-}
-
-impl<E: Environment> Instruction<E> {
-    /// Initializes a new instruction.
-    ///
-    /// # Errors
-    /// This function will halt if the given destination register is a register member.
-    /// This function will halt if any given operand is a value and is non-constant.
-    #[inline]
-    pub fn new(name: &'static str, destination: Register<E>, operands: Vec<Operand<E>>) -> Self {
-        // Ensure the destination register is not a register member.
-        if let Register::Member(..) = destination {
-            E::halt("Destination register cannot be a register member")
-        }
-
-        // Ensure if any operand is a value, that it is constant.
-        for operand in operands.iter() {
-            if let Operand::Value(value) = operand {
-                if !value.is_constant() {
-                    E::halt("Operand cannot be a non-constant value")
-                }
-            }
-        }
-
-        Self { name, destination, operands }
-    }
-
-    /// Returns the instruction name.
-    /// This is the name of the instruction, such as `add`.
-    #[inline]
-    pub fn name(&self) -> &'static str {
-        self.name
-    }
-
-    /// Returns the destination register.
-    /// This is the register that the instruction will write its result into.
-    #[inline]
-    pub fn destination(&self) -> &Register<E> {
-        &self.destination
-    }
-
-    /// Returns the operands of the instruction.
-    /// These are the registers and values that the instruction will read from.
-    #[inline]
-    pub fn operands(&self) -> &[Operand<E>] {
-        &self.operands
-    }
-}
-
-impl<E: Environment> fmt::Display for Instruction<E> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{} {} {}",
-            self.name,
-            self.destination,
-            self.operands.iter().map(|operand| operand.to_string()).collect::<Vec<_>>().join(" ")
-        )
-    }
-}
-
-impl<E: Environment> PartialEq for Instruction<E> {
-    /// The destination register can only be assigned once.
-    /// As such, an equivalence relation can be constructed based on this assumption,
-    /// as an instruction may only ever write to a given destination register once.
-    fn eq(&self, other: &Self) -> bool {
-        self.name == other.name && self.destination == other.destination && self.operands.len() == other.operands.len()
-    }
-}
-
-impl<E: Environment> Eq for Instruction<E> {}
-
 pub trait Memory: Environment {
     /// Loads the value of a given register from memory.
     ///
@@ -436,13 +355,13 @@ impl<E: Environment> Stack<E> {
         }
 
         // Ensure the destination register does not exist.
-        if self.registers.contains_key(instruction.destination.locator()) {
-            E::halt(format!("Destination {} already exists", instruction.destination))
+        if self.registers.contains_key(instruction.destination().locator()) {
+            E::halt(format!("Destination {} already exists", instruction.destination()))
         }
 
         // Ensure the destination register locator is monotonically increasing.
-        if !self.registers.contains_key(&instruction.destination.locator().saturating_sub(1)) {
-            E::halt(format!("Destination {} is not monotonically increasing", instruction.destination))
+        if !self.registers.contains_key(&instruction.destination().locator().saturating_sub(1)) {
+            E::halt(format!("Destination {} is not monotonically increasing", instruction.destination()))
         }
 
         // Ensure the operand registers exist.
@@ -454,16 +373,16 @@ impl<E: Environment> Stack<E> {
 
         // Ensure the operands do not contain registers greater than or equal to the destination register.
         for register in instruction.operands().iter().filter_map(|operand| operand.register()) {
-            if *register.locator() >= *instruction.destination.locator() {
+            if *register.locator() >= *instruction.destination().locator() {
                 E::halt(format!(
                     "Operand register {register} is greater than the destination {}",
-                    instruction.destination
+                    instruction.destination()
                 ))
             }
         }
 
         // Ensure the destination register and operand registers are not already set.
-        for register in [instruction.destination.clone()]
+        for register in [instruction.destination().clone()]
             .iter()
             .chain(instruction.operands().iter().filter_map(|operand| operand.register()))
         {

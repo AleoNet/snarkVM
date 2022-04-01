@@ -20,6 +20,9 @@ pub use annotation::*;
 pub mod identifier;
 pub use identifier::*;
 
+pub mod instruction;
+pub use instruction::*;
+
 pub mod literal;
 pub use literal::*;
 

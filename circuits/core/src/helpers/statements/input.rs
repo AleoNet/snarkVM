@@ -16,6 +16,7 @@
 
 use crate::{Annotation, Register, Sanitizer};
 use snarkvm_circuits_types::prelude::*;
+use snarkvm_utilities::error;
 
 use core::{cmp::Ordering, fmt};
 
@@ -30,19 +31,6 @@ pub struct Input<E: Environment> {
 }
 
 impl<E: Environment> Input<E> {
-    /// Initializes a new input.
-    ///
-    /// # Errors
-    /// This function will halt if the given register is a register member.
-    #[inline]
-    pub fn new(register: Register<E>, annotation: Annotation<E>) -> Self {
-        // Ensure the register is not a register member.
-        if let Register::Member(..) = register {
-            E::halt("Input register cannot be a register member")
-        }
-        Self { register, annotation }
-    }
-
     /// Returns the input register.
     #[inline]
     pub fn register(&self) -> &Register<E> {
@@ -69,6 +57,9 @@ impl<E: Environment> Parser for Input<E> {
 
     /// Parses a string into an input statement.
     /// The input statement is of the form `input {register} as {annotation};`.
+    ///
+    /// # Errors
+    /// This function will halt if the given register is a register member.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the whitespace and comments from the string.
@@ -78,7 +69,13 @@ impl<E: Environment> Parser for Input<E> {
         // Parse the space from the string.
         let (string, _) = tag(" ")(string)?;
         // Parse the register from the string.
-        let (string, register) = Register::parse(string)?;
+        let (string, register) = map_res(Register::parse, |register| {
+            // Ensure the register is not a register member.
+            match &register {
+                Register::Locator(..) => Ok(register),
+                Register::Member(..) => Err(error(format!("Input register {register} cannot be a register member"))),
+            }
+        })(string)?;
         // Parse the " as " from the string.
         let (string, _) = tag(" as ")(string)?;
         // Parse the annotation from the string.
@@ -86,7 +83,7 @@ impl<E: Environment> Parser for Input<E> {
         // Parse the semicolon from the string.
         let (string, _) = tag(";")(string)?;
         // Return the input statement.
-        Ok((string, Self::new(register, annotation)))
+        Ok((string, Self { register, annotation }))
     }
 }
 

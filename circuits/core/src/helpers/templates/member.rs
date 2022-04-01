@@ -30,11 +30,6 @@ pub struct Member<E: Environment> {
 }
 
 impl<E: Environment> Member<E> {
-    /// Initializes a new member statement.
-    pub fn new(name: Identifier<E>, annotation: Annotation<E>) -> Self {
-        Self { name, annotation }
-    }
-
     /// Returns the name of the member.
     #[inline]
     pub fn name(&self) -> &Identifier<E> {
@@ -64,7 +59,7 @@ impl<E: Environment> Parser for Member<E> {
         // Parse the semicolon ';' keyword from the string.
         let (string, _) = tag(";")(string)?;
 
-        Ok((string, Self::new(name, annotation)))
+        Ok((string, Self { name, annotation }))
     }
 }
 

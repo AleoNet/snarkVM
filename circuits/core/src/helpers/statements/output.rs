@@ -31,12 +31,6 @@ pub struct Output<E: Environment> {
 }
 
 impl<E: Environment> Output<E> {
-    /// Initializes a new output.
-    #[inline]
-    pub fn new(register: Register<E>, annotation: Annotation<E>) -> Self {
-        Self { register, annotation }
-    }
-
     /// Returns the output register.
     #[inline]
     pub fn register(&self) -> &Register<E> {
@@ -80,7 +74,7 @@ impl<E: Environment> Parser for Output<E> {
         // Parse the semicolon from the string.
         let (string, _) = tag(";")(string)?;
         // Return the output statement.
-        Ok((string, Self::new(register, annotation)))
+        Ok((string, Self { register, annotation }))
     }
 }
 
