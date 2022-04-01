@@ -70,7 +70,8 @@ impl<N: Network> PoSWProof<N> {
         match self {
             Self::NonHiding(proof) => {
                 // Ensure the proof is valid.
-                if !<<N as Network>::PoSWSNARK as SNARK>::verify(verifying_key, &inputs.to_vec(), proof).unwrap() {
+                let check = <<N as Network>::PoSWSNARK as SNARK>::verify(verifying_key, &inputs.to_vec(), proof);
+                if check.is_err() || !check.unwrap() {
                     #[cfg(debug_assertions)]
                     eprintln!("PoSW proof verification failed");
                     return false;
