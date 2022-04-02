@@ -95,11 +95,6 @@ impl<P: Program> Function<P> {
             P::halt(format!("Input \'{register}\' was previously added"))
         }
 
-        // Ensure the input does not exist in the registers.
-        if self.registers.is_defined(register) {
-            P::halt(format!("Input \'{register}\' was previously stored"))
-        }
-
         // If the input annotation is a composite, ensure the input is referencing a valid template.
         if let Annotation::Composite(template) = input.annotation() {
             if !P::contains_template(template) {
@@ -108,7 +103,7 @@ impl<P: Program> Function<P> {
         }
 
         // Define the input register.
-        self.registers.define(input.register());
+        self.registers.define(register);
         // Insert the input statement.
         self.inputs.insert(input);
     }
@@ -130,23 +125,14 @@ impl<P: Program> Function<P> {
             P::halt("Cannot add instruction before input statements have been added")
         }
 
-        // Ensure the destination register does not exist.
-        if self.registers.is_defined(instruction.destination()) {
-            P::halt(format!("Destination {} already exists", instruction.destination()))
-        }
-
-        // Ensure the operand registers exist.
+        // Iterate over the operand registers.
         for register in instruction.operands().iter().filter_map(|operand| operand.register()) {
+            // Ensure the operand registers are defined.
             if !self.registers.is_defined(register) {
                 P::halt(format!("Operand register {register} does not exist"))
             }
-        }
 
-        // Ensure the destination register and operand registers are not already assigned.
-        for register in [instruction.destination().clone()]
-            .iter()
-            .chain(instruction.operands().iter().filter_map(|operand| operand.register()))
-        {
+            // Ensure the operand registers are not already assigned.
             if self.registers.is_assigned(register) {
                 P::halt(format!("Register {register} is already assigned"))
             }
