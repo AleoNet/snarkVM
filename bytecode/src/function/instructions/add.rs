@@ -15,11 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    function::{parsers::*, registers::Registers},
+    function::{parsers::*, Instruction, Opcode, Operation, Registers},
     helpers::Register,
-    instructions::Instruction,
-    Opcode,
-    Operation,
     Program,
     Value,
 };

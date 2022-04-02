@@ -15,12 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Function, Identifier, Program, Template};
-use snarkvm_circuits::environment::{prelude::*, Circuit};
+use snarkvm_circuits::Devnet;
 
 use indexmap::IndexMap;
 use std::cell::RefCell;
-
-pub type E = Circuit;
 
 thread_local! {
     /// The templates declared for the program.
@@ -35,7 +33,7 @@ thread_local! {
 pub struct AleoProgram;
 
 impl Program for AleoProgram {
-    type Environment = E;
+    type Environment = Devnet;
 
     /// Adds a new template to the program.
     ///

@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod add;
-pub use add::*;
+pub(super) mod add;
+pub(super) use add::*;
 
-pub mod sub;
-pub use sub::*;
+pub(super) mod sub;
+pub(super) use sub::*;
 
 use crate::{
     function::{parsers::Operand, registers::Registers},
@@ -26,7 +26,7 @@ use crate::{
     Program,
     Sanitizer,
 };
-use snarkvm_circuits::environment::{Parser, ParserResult};
+use snarkvm_circuits::{Parser, ParserResult};
 use snarkvm_utilities::{error, FromBytes, ToBytes};
 
 use core::fmt;

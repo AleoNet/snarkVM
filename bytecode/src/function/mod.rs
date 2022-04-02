@@ -17,8 +17,8 @@
 mod input;
 use input::*;
 
-pub mod instructions;
-pub use instructions::*;
+mod instructions;
+use instructions::*;
 
 mod output;
 use output::*;
