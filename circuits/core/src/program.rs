@@ -17,8 +17,6 @@
 use crate::{Function, Identifier, Template};
 use snarkvm_circuits_types::{environment::Environment, Field, Group, Scalar};
 
-use core::fmt;
-
 pub trait Program: Environment {
     /// Adds a new template for the program.
     ///

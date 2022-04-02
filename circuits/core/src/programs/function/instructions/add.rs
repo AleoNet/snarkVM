@@ -15,17 +15,16 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    function::parsers::*,
+    function::{parsers::*, registers::Registers},
     helpers::Register,
     instructions::Instruction,
-    Function,
     Literal,
     Opcode,
     Operation,
     Program,
     Value,
 };
-use snarkvm_circuits_types::environment::{Environment, Parser, ParserResult};
+use snarkvm_circuits_types::environment::{Parser, ParserResult};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
@@ -60,13 +59,13 @@ impl<P: Program> Opcode for Add<P> {
 impl<P: Program> Operation<P> for Add<P> {
     /// Evaluates the operation.
     #[inline]
-    fn evaluate(&self, function: &mut Function<P>) {
+    fn evaluate(&self, registers: &mut Registers<P>) {
         // Load the values for the first and second operands.
-        let first = match function.load(self.operation.first()) {
+        let first = match registers.load(self.operation.first()) {
             Value::Literal(literal) => literal,
             Value::Composite(name, ..) => P::halt(format!("{name} is not a literal")),
         };
-        let second = match function.load(self.operation.second()) {
+        let second = match registers.load(self.operation.second()) {
             Value::Literal(literal) => literal,
             Value::Composite(name, ..) => P::halt(format!("{name} is not a literal")),
         };
@@ -80,7 +79,7 @@ impl<P: Program> Operation<P> for Add<P> {
             _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
         };
 
-        function.store(self.operation.destination(), result);
+        registers.assign(self.operation.destination(), result);
     }
 }
 

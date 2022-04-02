@@ -20,8 +20,13 @@ pub use add::*;
 pub mod sub;
 pub use sub::*;
 
-use crate::{function::parsers::Operand, helpers::Register, Function, Literal, Program, Sanitizer};
-use snarkvm_circuits_types::environment::{Environment, Parser, ParserResult};
+use crate::{
+    function::{parsers::Operand, registers::Registers},
+    helpers::Register,
+    Program,
+    Sanitizer,
+};
+use snarkvm_circuits_types::environment::{Parser, ParserResult};
 use snarkvm_utilities::{error, FromBytes, ToBytes};
 
 use core::fmt;
@@ -45,7 +50,7 @@ pub trait Operation<P: Program> {
     ///
     /// Evaluates the operation.
     ///
-    fn evaluate(&self, function: &mut Function<P>);
+    fn evaluate(&self, registers: &mut Registers<P>);
 }
 
 pub enum Instruction<P: Program> {
@@ -85,10 +90,10 @@ impl<P: Program> Instruction<P> {
 
     /// Evaluates the instruction.
     #[inline]
-    pub(crate) fn evaluate(&self, function: &mut Function<P>) {
+    pub(crate) fn evaluate(&self, registers: &mut Registers<P>) {
         match self {
-            Self::Add(instruction) => instruction.evaluate(function),
-            Self::Sub(instruction) => instruction.evaluate(function),
+            Self::Add(instruction) => instruction.evaluate(registers),
+            Self::Sub(instruction) => instruction.evaluate(registers),
         }
     }
 }

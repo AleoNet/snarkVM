@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::*;
 use crate::{helpers::Register, Value};
 use snarkvm_circuits_types::prelude::*;
 
@@ -31,11 +30,45 @@ pub enum Operand<E: Environment> {
 }
 
 impl<E: Environment> From<&Self> for Operand<E> {
+    /// Initializes a new operand from a reference to an operand.
+    #[inline]
     fn from(operand: &Self) -> Self {
         match operand {
             Operand::Value(value) => Operand::Value(value.clone()),
             Operand::Register(register) => Operand::Register(register.clone()),
         }
+    }
+}
+
+impl<E: Environment> From<Register<E>> for Operand<E> {
+    /// Initializes a new operand from a register.
+    #[inline]
+    fn from(register: Register<E>) -> Self {
+        Operand::Register(register)
+    }
+}
+
+impl<E: Environment> From<&Register<E>> for Operand<E> {
+    /// Initializes a new operand from a reference to a register.
+    #[inline]
+    fn from(register: &Register<E>) -> Self {
+        Operand::Register(register.clone())
+    }
+}
+
+impl<E: Environment> From<Value<E>> for Operand<E> {
+    /// Initializes a new operand from a value.
+    #[inline]
+    fn from(value: Value<E>) -> Self {
+        Operand::Value(value)
+    }
+}
+
+impl<E: Environment> From<&Value<E>> for Operand<E> {
+    /// Initializes a new operand from a reference to a value.
+    #[inline]
+    fn from(value: &Value<E>) -> Self {
+        Operand::Value(value.clone())
     }
 }
 

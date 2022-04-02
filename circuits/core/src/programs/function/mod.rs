@@ -14,28 +14,24 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod input;
-pub use input::*;
+mod input;
+use input::*;
 
 pub mod instructions;
 pub use instructions::*;
 
-pub mod output;
-pub use output::*;
+mod output;
+use output::*;
+
+mod registers;
+use registers::*;
 
 mod parsers;
 
-use crate::{
-    function::parsers::*,
-    helpers::{Locator, Register},
-    Annotation,
-    Identifier,
-    Program,
-    Value,
-};
+use crate::{Annotation, Identifier, Program, Value};
 use snarkvm_circuits_types::prelude::*;
 
-use indexmap::{IndexMap, IndexSet};
+use indexmap::IndexSet;
 
 pub struct Function<P: Program> {
     /// The name of the function.
@@ -44,15 +40,15 @@ pub struct Function<P: Program> {
     /// When input statements are added, a new entry of `(locator, None)` is added to this map.
     /// When input assignments are added, the entry is updated to `(locator, Some(value))`.
     /// No changes occur to `registers` when output statements are added.
-    registers: IndexMap<Locator, Option<Value<P>>>,
+    registers: Registers<P>,
     /// The input statements, added in order of the input registers.
     /// Input assignments are ensured to match the ordering of the input statements.
-    input_statements: IndexSet<Input<P>>,
+    inputs: IndexSet<Input<P>>,
     /// The instructions, in order of execution.
     instructions: Vec<Instruction<P>>,
     /// The output statements, in order of the desired output.
     /// There is no expectation that the output registers are in any ordering.
-    output_statements: IndexSet<Output<P>>,
+    outputs: IndexSet<Output<P>>,
 }
 
 impl<P: Program> Function<P> {
@@ -60,10 +56,10 @@ impl<P: Program> Function<P> {
     pub fn new(name: &str) -> Self {
         Self {
             name: Identifier::from_str(name),
-            registers: IndexMap::new(),
-            input_statements: IndexSet::new(),
+            registers: Registers::new(),
+            inputs: IndexSet::new(),
             instructions: Vec::new(),
-            output_statements: IndexSet::new(),
+            outputs: IndexSet::new(),
         }
     }
 
@@ -85,45 +81,36 @@ impl<P: Program> Function<P> {
     /// This method will halt if the given inputs are not incrementing monotonically.
     /// This method will halt if the given input annotation references a non-existent template.
     #[inline]
-    fn add_input_statement(&mut self, input: Input<P>) {
+    fn add_input(&mut self, input: Input<P>) {
         // Ensure there are no instructions or output statements in memory.
         if !self.instructions.is_empty() {
-            P::halt("Cannot add input statement after instructions have been added")
-        } else if !self.output_statements.is_empty() {
-            P::halt("Cannot add input statement after output statements have been added")
+            P::halt("Cannot add inputs after instructions have been added")
+        } else if !self.outputs.is_empty() {
+            P::halt("Cannot add inputs after outputs have been added")
         }
 
         // Ensure the input statement was not previously added.
-        if self.input_statements.contains(&input) {
-            P::halt(format!("Input statement {input} was previously added"))
+        let register = input.register();
+        if self.inputs.contains(&input) {
+            P::halt(format!("Input \'{register}\' was previously added"))
         }
 
         // Ensure the input does not exist in the registers.
-        let register = input.register();
-        if self.registers.contains_key(register.locator()) {
-            P::halt(format!("Input register {register} was previously stored"))
+        if self.registers.is_defined(register) {
+            P::halt(format!("Input \'{register}\' was previously stored"))
         }
 
         // If the input annotation is a composite, ensure the input is referencing a valid template.
-        if let Annotation::Composite(identifier) = input.annotation() {
-            if !P::contains_template(identifier) {
-                P::halt("Input annotation references non-existent composite template")
+        if let Annotation::Composite(template) = input.annotation() {
+            if !P::contains_template(template) {
+                P::halt(format!("Input type \'{template}\' does not exist"))
             }
         }
 
-        // Ensure the input register is new, and incrementing monotonically.
-        // This operation is only performed before the new variables are created,
-        // so the performance of this operation should be reasonable.
-        let mut index = 0;
-        while self.registers.contains_key(&index) {
-            index += 1;
-        }
-        if index != *register.locator() {
-            P::halt(format!("Invalid input ordering detected in memory at register {index}"))
-        }
-
-        // Insert the input statement to memory.
-        self.input_statements.insert(input);
+        // Define the input register.
+        self.registers.define(input.register());
+        // Insert the input statement.
+        self.inputs.insert(input);
     }
 
     // TODO (howardwu): Instructions should have annotations, and we should check them here.
@@ -139,37 +126,34 @@ impl<P: Program> Function<P> {
     #[inline]
     fn add_instruction(&mut self, instruction: Instruction<P>) {
         // Ensure there are input statements in memory.
-        if self.input_statements.is_empty() {
+        if self.inputs.is_empty() {
             P::halt("Cannot add instruction before input statements have been added")
         }
 
         // Ensure the destination register does not exist.
-        if self.registers.contains_key(instruction.destination().locator()) {
+        if self.registers.is_defined(instruction.destination()) {
             P::halt(format!("Destination {} already exists", instruction.destination()))
-        }
-
-        // Ensure the destination register locator is monotonically increasing.
-        if !self.registers.contains_key(&instruction.destination().locator().saturating_sub(1)) {
-            P::halt(format!("Destination {} is not monotonically increasing", instruction.destination()))
         }
 
         // Ensure the operand registers exist.
         for register in instruction.operands().iter().filter_map(|operand| operand.register()) {
-            if !self.registers.contains_key(register.locator()) {
+            if !self.registers.is_defined(register) {
                 P::halt(format!("Operand register {register} does not exist"))
             }
         }
 
-        // Ensure the destination register and operand registers are not already set.
+        // Ensure the destination register and operand registers are not already assigned.
         for register in [instruction.destination().clone()]
             .iter()
             .chain(instruction.operands().iter().filter_map(|operand| operand.register()))
         {
-            if let Some(Some(..)) = self.registers.get(register.locator()) {
-                P::halt(format!("Register {register} is already set"))
+            if self.registers.is_assigned(register) {
+                P::halt(format!("Register {register} is already assigned"))
             }
         }
 
+        // Define the destination register.
+        self.registers.define(instruction.destination());
         // Add the instruction to the memory.
         self.instructions.push(instruction);
     }
@@ -184,21 +168,21 @@ impl<P: Program> Function<P> {
     /// This method will halt if the given output register is already set.
     /// This method will halt if the given output annotation references a non-existent template.
     #[inline]
-    fn add_output_statement(&mut self, output: Output<P>) {
+    fn add_output(&mut self, output: Output<P>) {
         // Ensure there are input statements and instructions in memory.
-        if self.input_statements.is_empty() || self.instructions.is_empty() {
+        if self.inputs.is_empty() || self.instructions.is_empty() {
             P::halt("Cannot add output statement before input statements or instructions have been added")
         }
 
         // Ensure the output exists in the registers.
         let register = output.register();
-        if !self.registers.contains_key(register.locator()) {
+        if !self.registers.is_defined(register) {
             P::halt(format!("Output register {register} is missing"))
         }
 
-        // Ensure the output register is not already set.
-        if let Some(Some(..)) = self.registers.get(register.locator()) {
-            P::halt(format!("Output register {register} was already set"))
+        // Ensure the output register is not already assigned.
+        if self.registers.is_assigned(register) {
+            P::halt(format!("Output register {register} was already assigned"))
         }
 
         // If the output annotation is for a composite, ensure the output is referencing a valid template.
@@ -209,10 +193,55 @@ impl<P: Program> Function<P> {
         }
 
         // Insert the output statement to memory.
-        self.output_statements.insert(output);
+        self.outputs.insert(output);
     }
 
-    /// Assigns the given input value to the corresponding register in memory.
+    /// Evaluates the function on the given inputs.
+    ///
+    /// # Errors
+    /// This method will halt if there are no input statements or instructions in memory.
+    /// This method will halt if there are any registers that are assigned.
+    /// This method will halt if the given inputs are not the same length as the input statements.
+    #[inline]
+    fn evaluate(&mut self, inputs: &[Value<P>]) -> Vec<Value<P>> {
+        // Ensure there are input statements and instructions in memory.
+        if self.inputs.is_empty() || self.instructions.is_empty() {
+            P::halt("Cannot evaluate a function without input statements or instructions")
+        }
+
+        // Ensure the function is not already evaluated.
+        if self.registers.is_dirty() {
+            P::halt("Function is already evaluated and needs to be cleared")
+        }
+
+        // Ensure the number of inputs matches the number of input statements.
+        if self.inputs.len() != inputs.len() {
+            P::halt(format!("Expected {} inputs, but given {}", self.inputs.len(), inputs.len()))
+        }
+
+        // Assign the inputs and ensure they matches the input statements.
+        self.assign_inputs(inputs);
+
+        // Evaluate the instructions.
+        for instruction in self.instructions.iter() {
+            instruction.evaluate(&mut self.registers);
+        }
+
+        // Load the outputs.
+        let mut outputs = Vec::with_capacity(self.outputs.len());
+        for output in self.outputs.iter() {
+            outputs.push(self.registers.load(output.register()));
+        }
+
+        // Clear the register assignments.
+        self.registers.clear();
+
+        outputs
+    }
+}
+
+impl<P: Program> Function<P> {
+    /// Assigns the given input values to the corresponding registers in memory.
     /// This method is called before a function is run.
     ///
     /// # Errors
@@ -222,128 +251,37 @@ impl<P: Program> Function<P> {
     /// This method will halt if the input statement does not exist.
     /// This method will halt if the annotation does not match.
     #[inline]
-    fn assign_input(&mut self, input: Input<P>, value: Value<P>) {
-        // Ensure the input exists in the registers.
-        let register = input.register();
-        if !self.registers.contains_key(register.locator()) {
-            P::halt(format!("Register {register} does not exist"))
-        }
-
-        // Ensure the input is an input register.
-        if !self.input_statements.contains(&input) {
-            P::halt(format!("Register {register} is not an input register"))
-        }
-
-        // Ensure the previous input is assigned before the current input.
-        match self.registers.get(&register.locator().saturating_sub(1)) {
-            Some(None) | None => {
-                P::halt(format!("Cannot assign input register {register} as the previous register is not assigned yet"))
+    fn assign_inputs(&mut self, values: &[Value<P>]) {
+        for (input, value) in self.inputs.iter().zip_eq(values.iter()) {
+            // Ensure the input exists in the registers.
+            let register = input.register();
+            if !self.registers.is_defined(register) {
+                P::halt(format!("Register {register} does not exist"))
             }
-            _ => (),
-        }
 
-        // If the input annotation is a composite, ensure the input value matches the template.
-        if let Annotation::Composite(identifier) = input.annotation() {
-            match P::get_template(identifier) {
-                Some(template) => {
-                    // TODO (howardwu): Check that it matches expected format.
-                    // if !template.matches(&value) {
-                    //     P::halt(format!("Input value does not match template {template}"))
-                    // }
-                }
-                None => P::halt("Input annotation references non-existent template"),
+            // Ensure the input is an input register.
+            if !self.inputs.contains(input) {
+                P::halt(format!("Register {register} is not an input register"))
             }
-        }
 
-        // Assign the input value to the register.
-        if let Some(Some(..)) = self.registers.insert(*register.locator(), Some(value)) {
-            P::halt(format!("Input register {register} was already assigned"))
-        }
-
-        // TODO (howardwu): If input is a record, add all the safety hooks we need to use the record data.
-    }
-
-    /// Loads the value of a given operand from memory.
-    ///
-    /// # Errors
-    /// This function will halt if the register locator is not found.
-    /// In the case of register members, this function will halt if the member is not found.
-    #[inline]
-    fn load<O: Into<Operand<P>>>(&self, operand: O) -> Value<P> {
-        // Attempt to load the value from the operand.
-        let (register, candidate) = match operand.into() {
-            // If the operand is a register, load the value from the register.
-            Operand::Register(register) => match register {
-                // Load the value for a register.
-                Register::Locator(locator) => (register, self.registers.get(&locator)),
-                // Load the value for a register member.
-                Register::Member(locator, _) => (register, self.registers.get(&locator)),
-            },
-            // If the operand is a value, return the value.
-            Operand::Value(value) => return value,
-        };
-
-        // Retrieve the value from the option.
-        let value = match candidate {
-            // Return the value if it exists.
-            Some(Some(value)) => value,
-            // Halts if the value does not exist.
-            Some(None) | None => P::halt(format!("Failed to locate register \'{register}\'")),
-        };
-
-        // If the register is a locator, then return the value.
-        if let Register::Locator(..) = register {
-            (*value).clone()
-        }
-        // If the register is a register member, then load the specific value.
-        else if let Register::Member(_, ref member_name) = register {
-            match value {
-                // Halts if the value is not a composite.
-                Value::Literal(..) => P::halt("Cannot load a register member from a literal"),
-                // Retrieve the value of the member (from the value).
-                Value::Composite(identifier, composite) => {
-                    // Retrieve the member index of the identifier (from the template).
-                    let member_index = match P::get_template(&identifier) {
-                        Some(template) => template
-                            .members()
-                            .iter()
-                            .position(|member| member.name() == member_name)
-                            .unwrap_or_else(|| P::halt(format!("Failed to locate {member_name} in {identifier}"))),
-                        // Halts if the template does not exist.
-                        None => P::halt(format!("Failed to locate template for identifier {identifier}")),
-                    };
-                    // Return the value of the member.
-                    match composite.get(member_index) {
-                        Some(value) => (*value).clone().into(),
-                        // Halts if the member does not exist.
-                        None => P::halt(format!("Failed to locate register {register}")),
+            // If the input annotation is a composite, ensure the input value matches the template.
+            if let Annotation::Composite(identifier) = input.annotation() {
+                match P::get_template(identifier) {
+                    Some(template) => {
+                        // TODO (howardwu): Check that it matches expected format.
+                        // if !template.matches(&value) {
+                        //     P::halt(format!("Input value does not match template {template}"))
+                        // }
                     }
+                    None => P::halt("Input annotation references non-existent template"),
                 }
             }
-        }
-        // Halts if the register is neither a locator nor a register member.
-        else {
-            P::halt(format!("Failed to locate register {register}"))
-        }
-    }
 
-    /// Stores the given register and value in memory, assuming the register has not been previously stored.
-    ///
-    /// # Errors
-    /// This function will halt if the register was previously stored.
-    #[inline]
-    fn store<V: Into<Value<P>>>(&mut self, register: &Register<P>, value: V) {
-        // Store the value in the register.
-        let previous = match register {
-            // Store the value for a register.
-            Register::Locator(locator) => self.registers.insert(*locator, Some(value.into())),
-            // Store the value for a register member.
-            Register::Member(locator, _) => self.registers.insert(*locator, Some(value.into())),
-        };
+            // Assign the input value to the register.
+            // This call will halt if the register is a register member, or if the register is already assigned.
+            self.registers.assign(register, value.clone());
 
-        // Ensure the register has not been previously stored.
-        if let Some(Some(..)) = previous {
-            P::halt(format!("Register {} was previously stored", register.locator()))
+            // TODO (howardwu): If input is a record, add all the safety hooks we need to use the record data.
         }
     }
 }
