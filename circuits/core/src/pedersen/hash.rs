@@ -59,10 +59,11 @@ mod tests {
     use snarkvm_utilities::{test_rng, ToBits, UniformRand};
 
     const ITERATIONS: usize = 10;
+    const MESSAGE: &str = "pedersen_circuit";
 
-    fn check_hash<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(mode: Mode, message: &str, input_value: &[bool]) {
-        let native_hasher = NativePedersen::<EdwardsProjective, { NUM_WINDOWS }, { WINDOW_SIZE }>::setup(message);
-        let circuit_hasher = PedersenCRH::<Circuit, { NUM_WINDOWS }, { WINDOW_SIZE }>::setup(message);
+    fn check_hash<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(mode: Mode, input_value: &[bool]) {
+        let native_hasher = NativePedersen::<EdwardsProjective, { NUM_WINDOWS }, { WINDOW_SIZE }>::setup(MESSAGE);
+        let circuit_hasher = PedersenCRH::<Circuit, { NUM_WINDOWS }, { WINDOW_SIZE }>::setup(MESSAGE);
 
         for i in 0..ITERATIONS {
             let native_hash: EdwardsAffine = native_hasher.hash(input_value).expect("should be able to hash input");
@@ -83,7 +84,7 @@ mod tests {
             .iter()
             .flat_map(|el| el.to_bits_le())
             .collect::<Vec<_>>();
-        check_hash::<WINDOW_SIZE, 32>(mode, "pedersen_circuit", &bits);
+        check_hash::<WINDOW_SIZE, 32>(mode, &bits);
     }
 
     #[test]
