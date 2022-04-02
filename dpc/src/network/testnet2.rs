@@ -34,7 +34,6 @@ use snarkvm_algorithms::{
     crypto_hash::PoseidonSponge,
     encryption::ECIESPoseidonEncryption,
     merkle_tree::{MaskedMerkleTreeParameters, MerkleTreeParameters},
-    polycommit::sonic_pc::SonicKZG10,
     prelude::*,
     prf::PoseidonPRF,
     signature::AleoSignatureScheme,
@@ -121,8 +120,8 @@ impl Network for Testnet2 {
     const OUTPUT_PROOF_PREFIX: u32 = hrp4!("ozkp");
     
     const ADDRESS_SIZE_IN_BYTES: usize = 32;
-    const HEADER_SIZE_IN_BYTES: usize = 1015;
-    const HEADER_PROOF_SIZE_IN_BYTES: usize = 883;
+    const HEADER_SIZE_IN_BYTES: usize = 928;
+    const HEADER_PROOF_SIZE_IN_BYTES: usize = 796;
     const PROGRAM_PROOF_SIZE_IN_BYTES: usize = 963;
     const PROGRAM_ID_SIZE_IN_BYTES: usize = 32;
     const RECORD_CIPHERTEXT_SIZE_IN_BYTES: usize = 294;
@@ -157,18 +156,18 @@ impl Network for Testnet2 {
     type ProgramCurveParameters = EdwardsParameters;
     type ProgramScalarField = <Self::ProgramCurveParameters as ModelParameters>::ScalarField;
 
-    type InputSNARK = MarlinSNARK<Self::InnerScalarField, Self::InnerBaseField, SonicKZG10<Self::InnerCurve>, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::InnerBaseField, PoseidonSponge<Self::InnerBaseField, 6, 1>>, MarlinHidingMode, InputPublicVariables<Self>>;
+    type InputSNARK = MarlinSNARK<Self::InnerCurve, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::InnerBaseField, PoseidonSponge<Self::InnerBaseField, 6, 1>>, MarlinHidingMode, InputPublicVariables<Self>>;
     type InputProof = AleoObject<<Self::InputSNARK as SNARK>::Proof, { Self::INPUT_PROOF_PREFIX }, { Self::INPUT_PROOF_SIZE_IN_BYTES }>;
 
-    type OutputSNARK = MarlinSNARK<Self::InnerScalarField, Self::InnerBaseField, SonicKZG10<Self::InnerCurve>, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::InnerBaseField, PoseidonSponge<Self::InnerBaseField, 6, 1>>, MarlinHidingMode, OutputPublicVariables<Self>>;
+    type OutputSNARK = MarlinSNARK<Self::InnerCurve, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::InnerBaseField, PoseidonSponge<Self::InnerBaseField, 6, 1>>, MarlinHidingMode, OutputPublicVariables<Self>>;
     type OutputProof = AleoObject<<Self::OutputSNARK as SNARK>::Proof, { Self::OUTPUT_PROOF_PREFIX }, { Self::OUTPUT_PROOF_SIZE_IN_BYTES }>;
 
-    type ProgramSNARK = MarlinSNARK<Self::InnerScalarField, Self::InnerBaseField, SonicKZG10<Self::InnerCurve>, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::InnerBaseField, PoseidonSponge<Self::InnerBaseField, 6, 1>>, MarlinHidingMode, ProgramPublicVariables<Self>>;
+    type ProgramSNARK = MarlinSNARK<Self::InnerCurve, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::InnerBaseField, PoseidonSponge<Self::InnerBaseField, 6, 1>>, MarlinHidingMode, ProgramPublicVariables<Self>>;
     type ProgramProvingKey = <Self::ProgramSNARK as SNARK>::ProvingKey;
     type ProgramVerifyingKey = <Self::ProgramSNARK as SNARK>::VerifyingKey;
     type ProgramProof = AleoObject<<Self::ProgramSNARK as SNARK>::Proof, { Self::PROGRAM_PROOF_PREFIX }, { Self::PROGRAM_PROOF_SIZE_IN_BYTES }>;
 
-    type PoSWSNARK = MarlinSNARK<Self::InnerScalarField, Self::InnerBaseField, SonicKZG10<Self::InnerCurve>, FiatShamirChaChaRng<Self::InnerScalarField, Self::InnerBaseField, Blake2s256>, MarlinNonHidingMode, Vec<Self::InnerScalarField>>;
+    type PoSWSNARK = MarlinSNARK<Self::InnerCurve, FiatShamirChaChaRng<Self::InnerScalarField, Self::InnerBaseField, Blake2s256>, MarlinNonHidingMode, Vec<Self::InnerScalarField>>;
     type PoSWProof = AleoObject<<Self::PoSWSNARK as SNARK>::Proof, { Self::HEADER_PROOF_PREFIX }, { Self::HEADER_PROOF_SIZE_IN_BYTES }>;
     type PoSW = PoSW<Self>;
 

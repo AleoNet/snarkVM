@@ -265,11 +265,11 @@ where
     end_timer!(verifying_key_time);
 
     let vk = VerifyingKey::<E> {
-        alpha_g1: alpha_g1.into_affine(),
-        beta_g2: beta_g2.into_affine(),
-        gamma_g2: gamma_g2.into_affine(),
-        delta_g2: delta_g2.into_affine(),
-        gamma_abc_g1: cfg_iter!(gamma_abc_g1).map(|p| p.into_affine()).collect::<Vec<_>>(),
+        alpha_g1: alpha_g1.to_affine(),
+        beta_g2: beta_g2.to_affine(),
+        gamma_g2: gamma_g2.to_affine(),
+        delta_g2: delta_g2.to_affine(),
+        gamma_abc_g1: cfg_iter!(gamma_abc_g1).map(|p| p.to_affine()).collect::<Vec<_>>(),
     };
 
     let batch_normalization_time = start_timer!(|| "Convert proving key elements to affine");
@@ -282,8 +282,8 @@ where
 
     Ok(ProvingKey {
         vk,
-        beta_g1: beta_g1.into_affine(),
-        delta_g1: delta_g1.into_affine(),
+        beta_g1: beta_g1.to_affine(),
+        delta_g1: delta_g1.to_affine(),
         a_query: a_query.into_iter().map(Into::into).collect(),
         b_g1_query: b_g1_query.into_iter().map(Into::into).collect(),
         b_g2_query: b_g2_query.into_iter().map(Into::into).collect(),

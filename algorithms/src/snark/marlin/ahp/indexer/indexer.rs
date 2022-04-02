@@ -18,7 +18,7 @@ use crate::{
     fft::EvaluationDomain,
     snark::marlin::{
         ahp::{
-            indexer::{Circuit, CircuitInfo, IndexerConstraintSystem},
+            indexer::{Circuit, CircuitInfo, ConstraintSystem as IndexerConstraintSystem},
             matrices::arithmetize_matrix,
             AHPError,
             AHPForR1CS,

@@ -128,7 +128,7 @@ fn dpc_execute_circuits_test<N: Network>(
         let candidate_input_num_constraints = input_cs.num_constraints();
         let (num_non_zero_a, num_non_zero_b, num_non_zero_c) = input_cs.num_non_zero();
 
-        if !input_cs.is_satisfied() {
+        if !dbg!(input_cs.is_satisfied()) {
             println!("=========================================================");
             println!("Input circuit num constraints: {}", candidate_input_num_constraints);
             println!("Unsatisfied constraints:\n{}", input_cs.which_is_unsatisfied().unwrap());
@@ -199,7 +199,7 @@ fn dpc_execute_circuits_test<N: Network>(
         let candidate_output_num_constraints = output_cs.num_constraints();
         let (num_non_zero_a, num_non_zero_b, num_non_zero_c) = output_cs.num_non_zero();
 
-        if !output_cs.is_satisfied() {
+        if !dbg!(output_cs.is_satisfied()) {
             println!("=========================================================");
             println!("Output circuit num constraints: {}", candidate_output_num_constraints);
             println!("Unsatisfied constraints:\n{}", output_cs.which_is_unsatisfied().unwrap());

@@ -53,7 +53,7 @@ impl<P: Parameters> Projective<P> {
 
 impl<P: Parameters> Display for Projective<P> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "{}", self.into_affine())
+        write!(f, "{}", self.to_affine())
     }
 }
 
@@ -393,7 +393,7 @@ impl<P: Parameters> ProjectiveCurve for Projective<P> {
     }
 
     #[inline]
-    fn into_affine(&self) -> Affine<P> {
+    fn to_affine(&self) -> Affine<P> {
         (*self).into()
     }
 }
