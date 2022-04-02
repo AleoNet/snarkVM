@@ -218,7 +218,7 @@ impl<E: Environment> FromBytes for LiteralType<E> {
             13 => Self::U128(mode),
             14 => Self::Scalar(mode),
             15 => Self::String(mode, None),
-            _ => return Err(error(format!("FromBytes failed to parse a literal type of index {index}"))),
+            _ => return Err(error(format!("Failed to deserialize literal type variant {index}"))),
         };
         Ok(literal)
     }

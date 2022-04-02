@@ -20,7 +20,6 @@ use snarkvm_circuits::prelude::*;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
-use nom::bytes::complete::tag;
 use std::io::{Read, Result as IoResult, Write};
 
 pub(crate) struct UnaryOperation<E: Environment> {
@@ -68,17 +67,17 @@ impl<E: Environment> fmt::Display for UnaryOperation<E> {
     }
 }
 
-// impl<E: Environment> FromBytes for UnaryOperation<E> {
-//     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-//         let destination = Register::read_le(&mut reader)?;
-//         let operand = Operand::read_le(&mut reader)?;
-//         Ok(Self { destination, operand })
-//     }
-// }
-//
-// impl<E: Environment> ToBytes for UnaryOperation<E> {
-//     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-//         self.destination.write_le(&mut writer)?;
-//         self.operand.write_le(&mut writer)
-//     }
-// }
+impl<E: Environment> FromBytes for UnaryOperation<E> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let operand = Operand::read_le(&mut reader)?;
+        let destination = Register::read_le(&mut reader)?;
+        Ok(Self { operand, destination })
+    }
+}
+
+impl<E: Environment> ToBytes for UnaryOperation<E> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.operand.write_le(&mut writer)?;
+        self.destination.write_le(&mut writer)
+    }
+}

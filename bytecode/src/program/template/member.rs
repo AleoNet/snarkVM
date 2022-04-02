@@ -16,8 +16,10 @@
 
 use crate::program::{Annotation, Identifier, Sanitizer};
 use snarkvm_circuits::prelude::*;
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
+use std::io::{Read, Result as IoResult, Write};
 
 /// An member statement defines a name for an annotation, and is of the form
 /// `{identifier} as {annotation};`.
@@ -66,6 +68,21 @@ impl<E: Environment> Parser for Member<E> {
 impl<E: Environment> fmt::Display for Member<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{name} as {annotation};", name = self.name, annotation = self.annotation)
+    }
+}
+
+impl<E: Environment> FromBytes for Member<E> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let name = FromBytes::read_le(&mut reader)?;
+        let annotation = FromBytes::read_le(&mut reader)?;
+        Ok(Self { name, annotation })
+    }
+}
+
+impl<E: Environment> ToBytes for Member<E> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.name.write_le(&mut writer)?;
+        self.annotation.write_le(&mut writer)
     }
 }
 

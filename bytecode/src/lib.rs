@@ -19,18 +19,4 @@
 #[macro_use]
 extern crate enum_index_derive;
 
-pub mod function;
-pub use function::*;
-
-pub mod helpers;
-pub use helpers::*;
-
-pub mod instructions;
-
-pub mod memory;
-pub use memory::*;
-
-pub(crate) mod parsers;
-pub(crate) use parsers::*;
-
 pub mod program;

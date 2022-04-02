@@ -16,8 +16,10 @@
 
 use crate::program::{helpers::Register, Value};
 use snarkvm_circuits::prelude::*;
+use snarkvm_utilities::{error, FromBytes, ToBytes};
 
 use core::fmt;
+use std::io::{Read, Result as IoResult, Write};
 
 /// The operand enum represents the complete set of options for operands in an instruction.
 /// This enum is designed to support instructions (such as `add {Register} {Value} into {Register}`).
@@ -129,6 +131,32 @@ impl<E: Environment> fmt::Display for Operand<E> {
             Self::Value(literal) => literal.fmt(f),
             // Prints the register, i.e. r0 or r0.owner
             Self::Register(register) => register.fmt(f),
+        }
+    }
+}
+
+impl<E: Environment> FromBytes for Operand<E> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        match u8::read_le(&mut reader) {
+            Ok(0) => Ok(Self::Value(Value::read_le(&mut reader)?)),
+            Ok(1) => Ok(Self::Register(Register::read_le(&mut reader)?)),
+            Ok(variant) => Err(error(format!("Failed to deserialize operand variant {variant}"))),
+            Err(err) => Err(err),
+        }
+    }
+}
+
+impl<E: Environment> ToBytes for Operand<E> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        match self {
+            Self::Value(value) => {
+                u8::write_le(&0u8, &mut writer)?;
+                value.write_le(&mut writer)
+            }
+            Self::Register(register) => {
+                u8::write_le(&1u8, &mut writer)?;
+                register.write_le(&mut writer)
+            }
         }
     }
 }

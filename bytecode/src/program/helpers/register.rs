@@ -17,10 +17,12 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
-use crate::program::Identifier;
+use crate::program::{variable_length::*, Identifier};
 use snarkvm_circuits::prelude::*;
+use snarkvm_utilities::{error, FromBytes, ToBytes};
 
 use core::{cmp::Ordering, fmt};
+use std::io::{Read, Result as IoResult, Write};
 
 pub type Locator = u64;
 
@@ -74,6 +76,34 @@ impl<E: Environment> fmt::Display for Register<E> {
             Self::Locator(locator) => write!(f, "r{locator}"),
             // Prints the register member, i.e. r0.owner
             Self::Member(locator, identifier) => write!(f, "r{locator}.{identifier}"),
+        }
+    }
+}
+
+impl<E: Environment> FromBytes for Register<E> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let variant = u8::read_le(&mut reader)?;
+        let locator = read_variable_length_integer(&mut reader)?;
+        match variant {
+            0 => Ok(Self::Locator(locator)),
+            1 => Ok(Self::Member(locator, Identifier::read_le(&mut reader)?)),
+            variant => Err(error(format!("Failed to deserialize register variant {variant}"))),
+        }
+    }
+}
+
+impl<E: Environment> ToBytes for Register<E> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        match self {
+            Self::Locator(locator) => {
+                u8::write_le(&0u8, &mut writer)?;
+                variable_length_integer(locator).write_le(&mut writer)
+            }
+            Self::Member(locator, member) => {
+                u8::write_le(&1u8, &mut writer)?;
+                variable_length_integer(locator).write_le(&mut writer)?;
+                member.write_le(&mut writer)
+            }
         }
     }
 }

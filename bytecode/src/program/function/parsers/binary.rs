@@ -20,7 +20,6 @@ use snarkvm_circuits::prelude::*;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
-use nom::bytes::complete::tag;
 use std::io::{Read, Result as IoResult, Write};
 
 pub(crate) struct BinaryOperation<E: Environment> {
@@ -78,19 +77,19 @@ impl<E: Environment> fmt::Display for BinaryOperation<E> {
     }
 }
 
-// impl<E: Environment> FromBytes for BinaryOperation<E> {
-//     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-//         let destination = Register::read_le(&mut reader)?;
-//         let first = Operand::read_le(&mut reader)?;
-//         let second = Operand::read_le(&mut reader)?;
-//         Ok(Self { destination, first, second })
-//     }
-// }
-//
-// impl<E: Environment> ToBytes for BinaryOperation<E> {
-//     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-//         self.destination.write_le(&mut writer)?;
-//         self.first.write_le(&mut writer)?;
-//         self.second.write_le(&mut writer)
-//     }
-// }
+impl<E: Environment> FromBytes for BinaryOperation<E> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let first = Operand::read_le(&mut reader)?;
+        let second = Operand::read_le(&mut reader)?;
+        let destination = Register::read_le(&mut reader)?;
+        Ok(Self { first, second, destination })
+    }
+}
+
+impl<E: Environment> ToBytes for BinaryOperation<E> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.first.write_le(&mut writer)?;
+        self.second.write_le(&mut writer)?;
+        self.destination.write_le(&mut writer)
+    }
+}

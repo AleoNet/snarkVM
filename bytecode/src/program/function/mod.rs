@@ -30,8 +30,10 @@ mod parsers;
 
 use crate::program::{Annotation, Identifier, Program, Sanitizer, Value};
 use snarkvm_circuits::prelude::*;
+use snarkvm_utilities::{error, FromBytes, ToBytes};
 
 use indexmap::IndexSet;
+use std::io::{Read, Result as IoResult, Write};
 
 pub struct Function<P: Program> {
     /// The name of the function.
@@ -75,6 +77,7 @@ impl<P: Program> Function<P> {
     ///
     /// # Errors
     /// This method will halt if there are instructions or output statements in memory already.
+    /// This method will halt if the maximum number of inputs has been reached.
     /// This method will halt if any registers are already assigned.
     /// This method will halt if the input statement was previously added.
     /// This method will halt if the given input register is not new.
@@ -82,12 +85,17 @@ impl<P: Program> Function<P> {
     /// This method will halt if the given inputs are not incrementing monotonically.
     /// This method will halt if the given input annotation references a non-existent template.
     #[inline]
-    fn add_input(&mut self, input: Input<P>) {
+    pub fn add_input(&mut self, input: Input<P>) {
         // Ensure there are no instructions or output statements in memory.
         if !self.instructions.is_empty() {
             P::halt("Cannot add inputs after instructions have been added")
         } else if !self.outputs.is_empty() {
             P::halt("Cannot add inputs after outputs have been added")
+        }
+
+        // Ensure the maximum number of inputs has not been exceeded.
+        if self.inputs.len() >= P::NUM_INPUTS {
+            P::halt("Attempted to exceed the maximum number of inputs")
         }
 
         // Ensure the input statement was not previously added.
@@ -115,16 +123,22 @@ impl<P: Program> Function<P> {
     ///
     /// # Errors
     /// This method will halt if there are no input statements in memory.
+    /// This method will halt if the maximum number of instructions has been reached.
     /// This method will halt if any registers are already assigned.
     /// This method will halt if the destination register already exists in memory.
     /// This method will halt if the destination register locator does not monotonically increase.
     /// This method will halt if any operand register does not already exist in memory.
     /// This method will halt if any registers are already set.
     #[inline]
-    fn add_instruction(&mut self, instruction: Instruction<P>) {
+    pub fn add_instruction(&mut self, instruction: Instruction<P>) {
         // Ensure there are input statements in memory.
         if self.inputs.is_empty() {
             P::halt("Cannot add instruction before input statements have been added")
+        }
+
+        // Ensure the maximum number of instructions has not been exceeded.
+        if self.instructions.len() >= P::NUM_INSTRUCTIONS {
+            P::halt("Attempted to exceed the maximum number of instructions")
         }
 
         // Iterate over the operand registers.
@@ -152,15 +166,21 @@ impl<P: Program> Function<P> {
     ///
     /// # Errors
     /// This method will halt if there are no input statements or instructions in memory.
+    /// This method will halt if the maximum number of outputs has been reached.
     /// This method will halt if any registers are already assigned.
     /// This method will halt if the given output register is new.
     /// This method will halt if the given output register is already set.
     /// This method will halt if the given output annotation references a non-existent template.
     #[inline]
-    fn add_output(&mut self, output: Output<P>) {
+    pub fn add_output(&mut self, output: Output<P>) {
         // Ensure there are input statements and instructions in memory.
         if self.inputs.is_empty() || self.instructions.is_empty() {
             P::halt("Cannot add output statement before input statements or instructions have been added")
+        }
+
+        // Ensure the maximum number of outputs has not been exceeded.
+        if self.outputs.len() >= P::NUM_OUTPUTS {
+            P::halt("Attempted to exceed the maximum number of outputs")
         }
 
         // Ensure the registers are clean.
@@ -192,7 +212,7 @@ impl<P: Program> Function<P> {
     /// This method will halt if any registers are already assigned.
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    fn evaluate(&mut self, inputs: &[Value<P>]) -> Vec<Value<P>> {
+    pub fn evaluate(&mut self, inputs: &[Value<P>]) -> Vec<Value<P>> {
         // Ensure there are input statements and instructions in memory.
         if self.inputs.is_empty() || self.instructions.is_empty() {
             P::halt("Cannot evaluate a function without input statements or instructions")
@@ -296,7 +316,7 @@ impl<P: Program> Parser for Function<P> {
         let (string, outputs) = many0(Output::parse)(string)?;
 
         // Initialize a new function.
-        let mut function = Self::new(&name.to_string());
+        let mut function = Self::new(name.as_str());
         inputs.into_iter().for_each(|input| function.add_input(input));
         instructions.into_iter().for_each(|instruction| function.add_instruction(instruction));
         outputs.into_iter().for_each(|output| function.add_output(output));
@@ -327,6 +347,89 @@ impl<P: Program> fmt::Display for Function<P> {
         }
         function.pop(); // trailing newline
         write!(f, "{}", function)
+    }
+}
+
+impl<P: Program> FromBytes for Function<P> {
+    #[inline]
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        // Read the function name.
+        let name = Identifier::<P>::read_le(&mut reader)?;
+
+        // Read the inputs.
+        let num_inputs = u16::read_le(&mut reader)?;
+        let mut inputs = Vec::with_capacity(num_inputs as usize);
+        for _ in 0..num_inputs {
+            inputs.push(Input::read_le(&mut reader)?);
+        }
+
+        // Read the instructions.
+        let num_instructions = u32::read_le(&mut reader)?;
+        let mut instructions = Vec::with_capacity(num_instructions as usize);
+        for _ in 0..num_instructions {
+            instructions.push(Instruction::read_le(&mut reader)?);
+        }
+
+        // Read the outputs.
+        let num_outputs = u16::read_le(&mut reader)?;
+        let mut outputs = Vec::with_capacity(num_outputs as usize);
+        for _ in 0..num_outputs {
+            outputs.push(Output::read_le(&mut reader)?);
+        }
+
+        // Initialize a new function.
+        let mut function = Self::new(name.as_str());
+        inputs.into_iter().for_each(|input| function.add_input(input));
+        instructions.into_iter().for_each(|instruction| function.add_instruction(instruction));
+        outputs.into_iter().for_each(|output| function.add_output(output));
+
+        Ok(function)
+    }
+}
+
+impl<P: Program> ToBytes for Function<P> {
+    #[inline]
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        // Write the function name.
+        self.name.write_le(&mut writer)?;
+
+        // Write the number of inputs for the function.
+        let num_inputs = self.inputs.len();
+        match num_inputs <= P::NUM_INPUTS {
+            true => (num_inputs as u16).write_le(&mut writer)?,
+            false => return Err(error(format!("Failed to write {num_inputs} inputs as bytes"))),
+        }
+
+        // Write the inputs.
+        for input in &self.inputs {
+            input.write_le(&mut writer)?;
+        }
+
+        // Write the number of instructions for the function.
+        let num_instructions = self.instructions.len();
+        match num_instructions <= P::NUM_INPUTS {
+            true => (num_instructions as u32).write_le(&mut writer)?,
+            false => return Err(error(format!("Failed to write {num_instructions} instructions as bytes"))),
+        }
+
+        // Write the instructions.
+        for instruction in &self.instructions {
+            instruction.write_le(&mut writer)?;
+        }
+
+        // Write the number of outputs for the function.
+        let num_outputs = self.outputs.len();
+        match num_outputs <= P::NUM_INPUTS {
+            true => (num_outputs as u16).write_le(&mut writer)?,
+            false => return Err(error(format!("Failed to write {num_outputs} outputs as bytes"))),
+        }
+
+        // Write the outputs.
+        for output in &self.outputs {
+            output.write_le(&mut writer)?;
+        }
+
+        Ok(())
     }
 }
 

@@ -16,8 +16,10 @@
 
 use crate::program::{Annotation, Identifier, LiteralType};
 use snarkvm_circuits::prelude::*;
+use snarkvm_utilities::{error, FromBytes, ToBytes};
 
 use core::fmt;
+use std::io::{Read, Result as IoResult, Write};
 
 /// A value contains the underlying literal(s) in memory.
 #[derive(Clone, Debug)]
@@ -49,7 +51,7 @@ impl<E: Environment> Value<E> {
     pub fn is_constant(&self) -> bool {
         match self {
             Self::Literal(literal) => literal.is_constant(),
-            Self::Composite(_, composite) => composite.iter().all(|literal| literal.is_constant()),
+            Self::Composite(_, members) => members.iter().all(|literal| literal.is_constant()),
         }
     }
 }
@@ -84,13 +86,51 @@ impl<E: Environment> fmt::Display for Value<E> {
             // Prints the literal, i.e. 10field.private
             Self::Literal(literal) => fmt::Display::fmt(literal, f),
             // Prints the composite, i.e. message aleo1xxx.public 10i64.private
-            Self::Composite(name, composite) => {
+            Self::Composite(name, members) => {
                 let mut output = format!("{name} ");
-                for value in composite.iter() {
+                for value in members.iter() {
                     output += &format!("{value} ");
                 }
                 output.pop(); // trailing space
                 write!(f, "{output}")
+            }
+        }
+    }
+}
+
+impl<E: Environment> FromBytes for Value<E> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let variant = u8::read_le(&mut reader)?;
+        match variant {
+            0 => Ok(Self::Literal(Literal::read_le(&mut reader)?)),
+            1 => {
+                // Read the name.
+                let name = Identifier::read_le(&mut reader)?;
+                // Read the members.
+                let num_members = u16::read_le(&mut reader)?;
+                let mut members = Vec::with_capacity(num_members as usize);
+                for _ in 0..num_members {
+                    members.push(Literal::read_le(&mut reader)?);
+                }
+                Ok(Self::Composite(name, members))
+            }
+            variant => Err(error(format!("Failed to deserialize value variant {variant}"))),
+        }
+    }
+}
+
+impl<E: Environment> ToBytes for Value<E> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        match self {
+            Self::Literal(literal) => {
+                u8::write_le(&0u8, &mut writer)?;
+                literal.write_le(&mut writer)
+            }
+            Self::Composite(name, members) => {
+                u8::write_le(&1u8, &mut writer)?;
+                name.write_le(&mut writer)?;
+                (members.len() as u16).write_le(&mut writer)?;
+                members.write_le(&mut writer)
             }
         }
     }

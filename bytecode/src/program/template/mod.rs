@@ -18,8 +18,10 @@ mod member;
 
 use crate::program::{template::member::Member, Identifier, Sanitizer};
 use snarkvm_circuits::prelude::*;
+use snarkvm_utilities::{error, FromBytes, ToBytes};
 
 use core::fmt;
+use std::io::{Read, Result as IoResult, Write};
 
 /// A template is a custom type or record type that represents a collection of circuits.
 /// A template does not have a mode; rather its individual members are annotated with modes.
@@ -110,6 +112,43 @@ impl<E: Environment> fmt::Display for Template<E> {
         }
         output.pop(); // trailing newline
         write!(f, "{}", output)
+    }
+}
+
+impl<E: Environment> FromBytes for Template<E> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        // Read the variant.
+        let variant = u8::read_le(&mut reader)?;
+        // Read the name.
+        let name = Identifier::read_le(&mut reader)?;
+        // Read the members.
+        let num_members = u16::read_le(&mut reader)?;
+        let mut members = Vec::with_capacity(num_members as usize);
+        for _ in 0..num_members {
+            members.push(Member::read_le(&mut reader)?);
+        }
+        match variant {
+            0 => Ok(Self::Type(name, members)),
+            1 => Ok(Self::Record(name, members)),
+            variant => Err(error(format!("Failed to deserialize template variant {variant}"))),
+        }
+    }
+}
+
+impl<E: Environment> ToBytes for Template<E> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        match self {
+            Self::Type(name, members) => {
+                u8::write_le(&0u8, &mut writer)?;
+                name.write_le(&mut writer)
+            }
+            Self::Record(name, members) => {
+                u8::write_le(&1u8, &mut writer)?;
+                name.write_le(&mut writer)?;
+                (members.len() as u16).write_le(&mut writer)?;
+                members.write_le(&mut writer)
+            }
+        }
     }
 }
 

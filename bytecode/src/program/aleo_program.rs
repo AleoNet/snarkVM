@@ -32,7 +32,7 @@ thread_local! {
     static FUNCTIONS: RefCell<IndexMap<Identifier<AleoProgram>, Function<AleoProgram >>> = Default::default();
 }
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
 pub struct AleoProgram;
 
 impl Program for AleoProgram {

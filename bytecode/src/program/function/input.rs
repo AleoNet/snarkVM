@@ -16,9 +16,10 @@
 
 use crate::program::{helpers::Register, Annotation, Sanitizer};
 use snarkvm_circuits::prelude::*;
-use snarkvm_utilities::error;
+use snarkvm_utilities::{error, FromBytes, ToBytes};
 
 use core::{cmp::Ordering, fmt};
+use std::io::{Read, Result as IoResult, Write};
 
 /// An input statement defines an input argument to a function, and is of the form
 /// `input {register} as {annotation}`.
@@ -97,6 +98,21 @@ impl<E: Environment> fmt::Display for Input<E> {
             register = self.register,
             annotation = self.annotation
         )
+    }
+}
+
+impl<E: Environment> FromBytes for Input<E> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let register = FromBytes::read_le(&mut reader)?;
+        let annotation = FromBytes::read_le(&mut reader)?;
+        Ok(Self { register, annotation })
+    }
+}
+
+impl<E: Environment> ToBytes for Input<E> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.register.write_le(&mut writer)?;
+        self.annotation.write_le(&mut writer)
     }
 }
 

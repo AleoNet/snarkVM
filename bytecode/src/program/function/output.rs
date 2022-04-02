@@ -16,8 +16,10 @@
 
 use crate::program::{helpers::Register, Annotation, Sanitizer};
 use snarkvm_circuits::prelude::*;
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
+use std::io::{Read, Result as IoResult, Write};
 
 /// An output statement defines an output of a function, and may refer to the value
 /// in either a register or a register member. An output statement is of the form
@@ -88,6 +90,21 @@ impl<E: Environment> fmt::Display for Output<E> {
             register = self.register,
             annotation = self.annotation
         )
+    }
+}
+
+impl<E: Environment> FromBytes for Output<E> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let register = FromBytes::read_le(&mut reader)?;
+        let annotation = FromBytes::read_le(&mut reader)?;
+        Ok(Self { register, annotation })
+    }
+}
+
+impl<E: Environment> ToBytes for Output<E> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.register.write_le(&mut writer)?;
+        self.annotation.write_le(&mut writer)
     }
 }
 

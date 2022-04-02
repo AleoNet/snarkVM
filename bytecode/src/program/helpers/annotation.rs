@@ -16,6 +16,9 @@
 
 use crate::program::{Identifier, LiteralType};
 use snarkvm_circuits::prelude::*;
+use snarkvm_utilities::{error, FromBytes, ToBytes};
+
+use std::io::{Read, Result as IoResult, Write};
 
 /// An annotation defines the type parameters for a function or template.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -64,6 +67,32 @@ impl<E: Environment> fmt::Display for Annotation<E> {
             Self::Literal(type_) => fmt::Display::fmt(type_, f),
             // Prints the composite type, i.e. signature
             Self::Composite(identifier) => fmt::Display::fmt(identifier, f),
+        }
+    }
+}
+
+impl<E: Environment> FromBytes for Annotation<E> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let variant = u8::read_le(&mut reader)?;
+        match variant {
+            0 => Ok(Self::Literal(LiteralType::read_le(&mut reader)?)),
+            1 => Ok(Self::Composite(Identifier::read_le(&mut reader)?)),
+            variant => Err(error(format!("Failed to deserialize annotation variant {variant}"))),
+        }
+    }
+}
+
+impl<E: Environment> ToBytes for Annotation<E> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        match self {
+            Self::Literal(literal_type) => {
+                u8::write_le(&0u8, &mut writer)?;
+                literal_type.write_le(&mut writer)
+            }
+            Self::Composite(identifier) => {
+                u8::write_le(&1u8, &mut writer)?;
+                identifier.write_le(&mut writer)
+            }
         }
     }
 }

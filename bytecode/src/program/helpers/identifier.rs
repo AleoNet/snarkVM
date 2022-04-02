@@ -16,10 +16,11 @@
 
 use crate::program::helpers::Register;
 use snarkvm_circuits::prelude::*;
-use snarkvm_utilities::error;
+use snarkvm_utilities::{error, FromBytes, ToBytes};
 
 use core::{fmt, marker::PhantomData};
 use nom::character::complete::{alpha1, alphanumeric1};
+use std::io::{Read, Result as IoResult, Write};
 
 const NUM_IDENTIFIER_BYTES: usize = 64;
 #[rustfmt::skip]
@@ -120,6 +121,24 @@ impl<E: Environment> fmt::Display for Identifier<E> {
     /// Prints the identifier as a string.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0)
+    }
+}
+
+impl<E: Environment> FromBytes for Identifier<E> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        let size = u16::read_le(&mut reader)?;
+        let mut buffer = vec![0u8; size as usize];
+        reader.read_exact(&mut buffer)?;
+        Ok(Self::from_str(
+            &String::from_utf8(buffer).map_err(|e| error(format!("Failed to deserialize identifier: {e}")))?,
+        ))
+    }
+}
+
+impl<E: Environment> ToBytes for Identifier<E> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        (self.0.as_bytes().len() as u16).write_le(&mut writer)?;
+        self.0.as_bytes().write_le(&mut writer)
     }
 }
 
