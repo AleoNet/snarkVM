@@ -166,7 +166,7 @@ mod tests {
 
     use std::sync::Arc;
 
-    const INPUT_SIZE_FE: usize = 4;
+    const INPUT_SIZE_FE: usize = 3;
     const TREE_DEPTH: usize = 4;
 
     type H = NativePoseidon<Fr, INPUT_SIZE_FE>;
