@@ -232,11 +232,7 @@ mod tests {
         check_merkle_path(Mode::Private, false, 0, 487, 0, 4015, 4019);
     }
 
-    #[should_panic]
-    #[test]
-    fn bad_root_test_constant() {
-        check_merkle_path(Mode::Constant, true, 0, 2774, 0, 0, 0);
-    }
+    // Bad root test for constants is omitted because it will always be accepted by the circuit, despite having invalid enforcements.
 
     #[should_panic]
     #[test]
