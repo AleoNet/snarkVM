@@ -69,7 +69,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
                 })
             })
             .sum::<G>()
-            .into_affine())
+            .to_affine())
     }
 
     fn parameters(&self) -> &Self::Parameters {

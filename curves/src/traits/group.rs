@@ -103,7 +103,7 @@ pub trait ProjectiveCurve:
     /// Converts this element into its affine representation.
     #[must_use]
     #[allow(clippy::wrong_self_convention)]
-    fn into_affine(&self) -> Self::Affine;
+    fn to_affine(&self) -> Self::Affine;
 }
 
 /// Affine representation of an elliptic curve point guaranteed to be

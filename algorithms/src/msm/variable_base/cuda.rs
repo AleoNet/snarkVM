@@ -454,7 +454,7 @@ mod tests {
         for _ in 0..count {
             let mut out = vec![];
             for _ in 0..cardinality {
-                let point = G1Projective::rand(&mut rng).into_affine();
+                let point = G1Projective::rand(&mut rng).to_affine();
                 out.push(CudaAffine { x: point.x, y: point.y });
             }
             inputs.push(out);

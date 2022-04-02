@@ -100,7 +100,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
     }
 
     fn hash(&self, input: &[bool]) -> Result<Self::Output, CRHError> {
-        Ok(self.hash_bits_inner(input)?.into_affine().to_x_coordinate())
+        Ok(self.hash_bits_inner(input)?.to_affine().to_x_coordinate())
     }
 
     fn parameters(&self) -> &Self::Parameters {

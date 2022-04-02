@@ -40,7 +40,7 @@ impl<E: Environment> Aleo<E> {
         // Compute the bases up to the size of the scalar field (in bits).
         let mut base = base.to_projective();
         for _ in 0..E::ScalarField::size_in_bits() {
-            bases.push(Group::constant(base.into_affine()));
+            bases.push(Group::constant(base.to_affine()));
             base.double_in_place();
         }
 

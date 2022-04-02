@@ -59,7 +59,7 @@ impl<N: Network> ComputeKey<N> {
 
         let mut to_normalize = [pk_sig, pr_sig];
         <N::ProgramAffineCurve as AffineCurve>::Projective::batch_normalization(&mut to_normalize);
-        let [pk_sig, pr_sig] = to_normalize.map(|c| c.into_affine());
+        let [pk_sig, pr_sig] = to_normalize.map(|c| c.to_affine());
 
         Self::new(pk_sig, pr_sig)
     }

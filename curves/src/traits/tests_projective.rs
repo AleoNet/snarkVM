@@ -29,9 +29,9 @@ fn random_addition_test<G: ProjectiveCurve>() {
         let a = G::rand(&mut rng);
         let b = G::rand(&mut rng);
         let c = G::rand(&mut rng);
-        let a_affine = a.into_affine();
-        let b_affine = b.into_affine();
-        let c_affine = c.into_affine();
+        let a_affine = a.to_affine();
+        let b_affine = b.to_affine();
+        let c_affine = c.to_affine();
 
         // a + a should equal the doubling
         {
@@ -39,7 +39,7 @@ fn random_addition_test<G: ProjectiveCurve>() {
             aplusa.add_assign(a);
 
             let mut aplusamixed = a;
-            aplusamixed.add_assign_mixed(&a.into_affine());
+            aplusamixed.add_assign_mixed(&a.to_affine());
 
             let mut adouble = a;
             adouble.double_in_place();
@@ -83,7 +83,7 @@ fn random_addition_test<G: ProjectiveCurve>() {
                     println!("{} \n{}", tmp[i], tmp[j]);
                 }
                 assert_eq!(tmp[i], tmp[j], "Associativity failed {} {}", i, j);
-                assert_eq!(tmp[i].into_affine(), tmp[j].into_affine(), "Associativity failed");
+                assert_eq!(tmp[i].to_affine(), tmp[j].to_affine(), "Associativity failed");
             }
 
             assert!(tmp[i] != a);
@@ -103,8 +103,8 @@ fn random_multiplication_test<G: ProjectiveCurve>() {
     for _ in 0..ITERATIONS {
         let mut a = G::rand(&mut rng);
         let mut b = G::rand(&mut rng);
-        let a_affine = a.into_affine();
-        let b_affine = b.into_affine();
+        let a_affine = a.to_affine();
+        let b_affine = b.to_affine();
 
         let s = G::ScalarField::rand(&mut rng);
 
@@ -149,7 +149,7 @@ fn random_doubling_test<G: ProjectiveCurve>() {
         tmp2.add_assign(b);
 
         let mut tmp3 = a;
-        tmp3.add_assign_mixed(&b.into_affine());
+        tmp3.add_assign_mixed(&b.to_affine());
 
         assert_eq!(tmp1, tmp2);
         assert_eq!(tmp1, tmp3);
@@ -178,7 +178,7 @@ fn random_negation_test<G: ProjectiveCurve>() {
         assert!(t3.is_zero());
 
         let mut t4 = t1;
-        t4.add_assign_mixed(&t2.into_affine());
+        t4.add_assign_mixed(&t2.to_affine());
         assert!(t4.is_zero());
 
         t1 = -t1;
@@ -191,7 +191,7 @@ fn random_transformation_test<G: ProjectiveCurve>() {
 
     for _ in 0..ITERATIONS {
         let g = G::rand(&mut rng);
-        let g_affine = g.into_affine();
+        let g_affine = g.to_affine();
         let g_projective = g_affine.to_projective();
         assert_eq!(g, g_projective);
     }
@@ -212,10 +212,10 @@ fn random_transformation_test<G: ProjectiveCurve>() {
         }
         for _ in 0..5 {
             let s = between.sample(&mut rng);
-            v[s] = v[s].into_affine().to_projective();
+            v[s] = v[s].to_affine().to_projective();
         }
 
-        let expected_v = v.iter().map(|v| v.into_affine().to_projective()).collect::<Vec<_>>();
+        let expected_v = v.iter().map(|v| v.to_affine().to_projective()).collect::<Vec<_>>();
         G::batch_normalization(&mut v);
 
         for i in &v {
@@ -260,7 +260,7 @@ pub fn curve_tests<G: ProjectiveCurve>() {
         let mut z2 = z;
         z2.add_assign(r);
 
-        z.add_assign_mixed(&r.into_affine());
+        z.add_assign_mixed(&r.to_affine());
 
         assert_eq!(z, z2);
         assert_eq!(z, r);
@@ -269,8 +269,8 @@ pub fn curve_tests<G: ProjectiveCurve>() {
     // Transformations
     {
         let a = G::rand(&mut rng);
-        let b = a.into_affine().to_projective();
-        let c = a.into_affine().to_projective().into_affine().to_projective();
+        let b = a.to_affine().to_projective();
+        let c = a.to_affine().to_projective().to_affine().to_projective();
         assert_eq!(a, b);
         assert_eq!(b, c);
     }

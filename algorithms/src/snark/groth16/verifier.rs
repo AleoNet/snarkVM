@@ -45,7 +45,7 @@ pub fn verify_proof<E: PairingEngine>(
     for (i, b) in public_inputs.iter().zip(pvk.gamma_abc_g1().iter().skip(1)) {
         g_ic += &b.mul(*i);
     }
-    let g_ic = g_ic.into_affine();
+    let g_ic = g_ic.to_affine();
 
     let qap = E::miller_loop(
         [

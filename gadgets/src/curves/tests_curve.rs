@@ -42,8 +42,8 @@ fn bls12_377_gadget_bilinearity_test() {
     let b: G2Affine = rand::random();
     let s: Fr = rand::random();
 
-    let sa = a.mul(s).into_affine();
-    let sb = b.mul(s).into_affine();
+    let sa = a.mul(s).to_affine();
+    let sb = b.mul(s).to_affine();
 
     let a_g = G1Gadget::alloc(&mut cs.ns(|| "a"), || Ok(a)).unwrap();
     let b_g = G2Gadget::alloc(&mut cs.ns(|| "b"), || Ok(b)).unwrap();

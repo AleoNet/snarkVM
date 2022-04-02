@@ -64,7 +64,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
             }
         }
 
-        Ok(output.into_affine())
+        Ok(output.to_affine())
     }
 
     fn parameters(&self) -> Self::Parameters {

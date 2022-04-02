@@ -195,8 +195,8 @@ impl<E: PairingEngine> KZG10<E> {
             };
         end_timer!(inverse_neg_powers_of_beta_h_time);
 
-        let beta_h = h.mul(beta).into_affine();
-        let h = h.into_affine();
+        let beta_h = h.mul(beta).to_affine();
+        let h = h.to_affine();
         let prepared_h = h.prepare();
         let prepared_beta_h = beta_h.prepare();
 
@@ -268,7 +268,7 @@ impl<E: PairingEngine> KZG10<E> {
         let random_ints = convert_to_bigints(&randomness.blinding_polynomial.coeffs);
         let msm_time = start_timer!(|| "MSM to compute commitment to random poly");
         let random_commitment =
-            VariableBase::msm(&powers.powers_of_beta_times_gamma_g, random_ints.as_slice()).into_affine();
+            VariableBase::msm(&powers.powers_of_beta_times_gamma_g, random_ints.as_slice()).to_affine();
         end_timer!(msm_time);
 
         if terminator.load(Ordering::Relaxed) {
@@ -324,7 +324,7 @@ impl<E: PairingEngine> KZG10<E> {
         let random_ints = convert_to_bigints(&randomness.blinding_polynomial.coeffs);
         let msm_time = start_timer!(|| "MSM to compute commitment to random poly");
         let random_commitment =
-            VariableBase::msm(&lagrange_basis.powers_of_beta_times_gamma_g, random_ints.as_slice()).into_affine();
+            VariableBase::msm(&lagrange_basis.powers_of_beta_times_gamma_g, random_ints.as_slice()).to_affine();
         end_timer!(msm_time);
 
         if terminator.load(Ordering::Relaxed) {
@@ -397,7 +397,7 @@ impl<E: PairingEngine> KZG10<E> {
             None
         };
 
-        Ok(Proof { w: w.into_affine(), random_v })
+        Ok(Proof { w: w.to_affine(), random_v })
     }
 
     /// On input a polynomial `p` and a point `point`, outputs a proof for the same.

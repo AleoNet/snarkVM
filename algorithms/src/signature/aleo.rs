@@ -178,7 +178,7 @@ where
         // We do a batch inversion to save one inversion.
         let mut to_invert = [g_sk_sig, g_r_sig];
         TEProjective::<TE>::batch_normalization(&mut to_invert);
-        let [g_sk_sig_affine, g_r_sig_affine] = to_invert.map(|a| a.into_affine());
+        let [g_sk_sig_affine, g_r_sig_affine] = to_invert.map(|a| a.to_affine());
 
         // Compute sk_prf := RO(G^sk_sig || G^r_sig).
         let sk_prf = self.hash_to_scalar_field(&[g_sk_sig_affine.to_x_coordinate(), g_r_sig_affine.to_x_coordinate()]);
@@ -218,7 +218,7 @@ where
 
         let mut to_invert = [g_sk_sig, g_r_sig, g_r];
         TEProjective::<TE>::batch_normalization(&mut to_invert);
-        let [g_sk_sig_affine, g_r_sig_affine, g_r_affine] = to_invert.map(|a| a.into_affine());
+        let [g_sk_sig_affine, g_r_sig_affine, g_r_affine] = to_invert.map(|a| a.to_affine());
 
         // Compute sk_prf := RO(G^sk_sig || G^r_sig).
         let sk_prf = self.hash_to_scalar_field(&[g_sk_sig_affine.to_x_coordinate(), g_r_sig_affine.to_x_coordinate()]);
@@ -227,7 +227,7 @@ where
         let g_sk_prf = self.g_scalar_multiply(&sk_prf);
 
         // Compute G^sk_sig G^r_sig G^sk_prf.
-        let public_key = (g_sk_sig + g_r_sig + g_sk_prf).into_affine();
+        let public_key = (g_sk_sig + g_r_sig + g_sk_prf).to_affine();
 
         // Compute the verifier challenge.
         let verifier_challenge = {
@@ -268,7 +268,7 @@ where
         let g_sk_sig_c = self.scalar_multiply(g_sk_sig, verifier_challenge);
 
         // Compute G^r := G^s G^sk_sig^c.
-        let g_r = (self.g_scalar_multiply(prover_response) + g_sk_sig_c).into_affine();
+        let g_r = (self.g_scalar_multiply(prover_response) + g_sk_sig_c).to_affine();
 
         // Compute the candidate verifier challenge.
         let candidate_verifier_challenge = {

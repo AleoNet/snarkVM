@@ -69,7 +69,7 @@ where
     }
 
     fn generate_public_key(&self, private_key: &Self::PrivateKey) -> Self::PublicKey {
-        self.generator.to_projective().mul(*private_key).into_affine()
+        self.generator.to_projective().mul(*private_key).to_affine()
     }
 
     ///
@@ -100,7 +100,7 @@ where
         let mut batch = [ciphertext_randomizer, symmetric_key];
         Projective::<TE>::batch_normalization(&mut batch);
         let (ciphertext_randomizer, symmetric_key) =
-            (batch[0].into_affine().to_x_coordinate(), batch[1].into_affine().to_x_coordinate());
+            (batch[0].to_affine().to_x_coordinate(), batch[1].to_affine().to_x_coordinate());
 
         (randomness, ciphertext_randomizer, symmetric_key)
     }
@@ -136,7 +136,7 @@ where
         randomizer.map(|randomizer| {
             randomizer
                 .mul_bits(BitIteratorBE::new_without_leading_zeros(private_key.to_repr()))
-                .into_affine()
+                .to_affine()
                 .to_x_coordinate()
         })
     }

@@ -430,7 +430,7 @@ mod tests {
         // Sample two random elements.
         let a: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
         let b: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
-        let expected = (a * b).into_affine();
+        let expected = (a * b).to_affine();
 
         // Constant
         let base = Group::<Circuit>::new(Mode::Constant, a);

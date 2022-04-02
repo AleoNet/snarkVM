@@ -291,7 +291,7 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
                         a.1 += (E::Fr::one(), &b.1);
                         a
                     });
-                let comm = kzg10::Commitment(comm.into_affine());
+                let comm = kzg10::Commitment(comm.to_affine());
 
                 end_timer!(commit_time);
                 Ok((LabeledCommitment::new(label.to_string(), comm, degree_bound), rand))

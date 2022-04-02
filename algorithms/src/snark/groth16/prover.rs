@@ -242,7 +242,7 @@ where
 
     end_timer!(prover_time);
 
-    Ok(Proof { a: g_a.into_affine(), b: g2_b.into_affine(), c: g_c.into_affine(), compressed: true })
+    Ok(Proof { a: g_a.to_affine(), b: g2_b.to_affine(), c: g_c.to_affine(), compressed: true })
 }
 
 fn calculate_coeff<G: AffineCurve>(
