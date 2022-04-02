@@ -75,20 +75,6 @@ impl<E: Environment> From<&Value<E>> for Operand<E> {
 impl<E: Environment> Operand<E> {
     /// Returns the value, if the operand is a value.
     /// Returns `None` otherwise.
-    ///
-    /// # Examples
-    /// ```ignore
-    /// use snarkvm_circuits_core::{Register, Operand, Value, Literal};
-    /// use snarkvm_circuits_types::environment::{Parser, Circuit};
-    /// let operand = Operand::<Circuit>::Value(Value::Literal(Literal::from_str("1field.private")));
-    /// assert_eq!(operand.value(), Some(&Value::Literal(Literal::from_str("1field.private"))));
-    /// ```
-    /// ```ignore
-    /// use snarkvm_circuits_core::{Register, Operand};
-    /// use snarkvm_circuits_types::environment::{Parser, Circuit};
-    /// let operand = Operand::<Circuit>::Register(Register::from_str("r0"));
-    /// assert_eq!(operand.value(), None);
-    /// ```
     #[inline]
     pub fn value(&self) -> Option<&Value<E>> {
         match self {
@@ -99,20 +85,6 @@ impl<E: Environment> Operand<E> {
 
     /// Returns the register, if the operand is a register.
     /// Returns `None` otherwise.
-    ///
-    /// # Examples
-    /// ```
-    /// use snarkvm_circuits_core::{Register, Operand};
-    /// use snarkvm_circuits_types::environment::{Parser, Circuit};
-    /// let operand = Operand::<Circuit>::Register(Register::from_str("r0"));
-    /// assert_eq!(operand.register(), Some(&Register::from_str("r0")));
-    /// ```
-    /// ```
-    /// use snarkvm_circuits_core::{Register, Operand, Value, Literal};
-    /// use snarkvm_circuits_types::environment::{Parser, Circuit};
-    /// let operand = Operand::<Circuit>::Value(Value::Literal(Literal::from_str("1field.private")));
-    /// assert_eq!(operand.register(), None);
-    /// ```
     #[inline]
     pub fn register(&self) -> Option<&Register<E>> {
         match self {
@@ -140,20 +112,6 @@ impl<E: Environment> Parser for Operand<E> {
     type Environment = E;
 
     /// Parses a string into a operand.
-    ///
-    /// # Examples
-    /// ```ignore
-    /// use snarkvm_circuits_core::{Register, Operand, Value, Literal};
-    /// use snarkvm_circuits_types::environment::{Parser, Circuit};
-    /// let operand = Operand::<Circuit>::Value(Value::Literal(Literal::from_str("1field.private")));
-    /// assert_eq!(Operand::<Circuit>::parse("1field.private"), Ok(("", Operand::Value(Value::Literal(Literal::from_str("1field.private"))))));
-    /// ```
-    /// ```ignore
-    /// use snarkvm_circuits_core::{Operand, Register};
-    /// use snarkvm_circuits_types::environment::{Parser, Circuit};
-    /// let operand = Operand::<Circuit>::Register(Register::from_str("r0"));
-    /// assert_eq!(Operand::<Circuit>::parse("r0"), Ok(("", Operand::Register(Register::from_str("r0")))));
-    /// ```
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse to determine the operand (order matters).
@@ -172,5 +130,74 @@ impl<E: Environment> fmt::Display for Operand<E> {
             // Prints the register, i.e. r0 or r0.owner
             Self::Register(register) => register.fmt(f),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::programs::{Literal, Register, Value};
+    use snarkvm_circuits_types::environment::{Circuit, Parser};
+
+    type E = Circuit;
+
+    #[test]
+    fn test_operand_value() {
+        let operand = Operand::<E>::Value(Value::Literal(Literal::from_str("1field.private")));
+        // assert_eq!(operand.value(), Some(&Value::Literal(Literal::from_str("1field.private"))));
+        assert_eq!(operand.register(), None);
+        assert!(operand.is_value());
+        assert!(!operand.is_register());
+    }
+
+    #[test]
+    fn test_operand_register() {
+        let operand = Operand::<E>::Register(Register::from_str("r0"));
+        // assert_eq!(operand.value(), None);
+        assert_eq!(operand.register(), Some(&Register::from_str("r0")));
+        assert!(!operand.is_value());
+        assert!(operand.is_register());
+    }
+
+    #[test]
+    fn test_operand_register_member() {
+        let operand = Operand::<E>::Register(Register::from_str("r0.owner"));
+        // assert_eq!(operand.value(), None);
+        assert_eq!(operand.register(), Some(&Register::from_str("r0.owner")));
+        assert!(!operand.is_value());
+        assert!(operand.is_register());
+    }
+
+    #[test]
+    fn test_operand_parse() {
+        let operand = Operand::<E>::parse("1field.private").unwrap().1;
+        // assert_eq!(operand.value(), Some(&Value::Literal(Literal::from_str("1field.private"))));
+        assert_eq!(operand.register(), None);
+        assert!(operand.is_value());
+        assert!(!operand.is_register());
+
+        let operand = Operand::<E>::parse("r0").unwrap().1;
+        // assert_eq!(operand.value(), None);
+        assert_eq!(operand.register(), Some(&Register::from_str("r0")));
+        assert!(!operand.is_value());
+        assert!(operand.is_register());
+
+        let operand = Operand::<E>::parse("r0.owner").unwrap().1;
+        // assert_eq!(operand.value(), None);
+        assert_eq!(operand.register(), Some(&Register::from_str("r0.owner")));
+        assert!(!operand.is_value());
+        assert!(operand.is_register());
+    }
+
+    #[test]
+    fn test_operand_display() {
+        let operand = Operand::<E>::parse("1field.private").unwrap().1;
+        assert_eq!(format!("{operand}"), "1field.private");
+
+        let operand = Operand::<E>::parse("r0").unwrap().1;
+        assert_eq!(format!("{operand}"), "r0");
+
+        let operand = Operand::<E>::parse("r0.owner").unwrap().1;
+        assert_eq!(format!("{operand}"), "r0.owner");
     }
 }

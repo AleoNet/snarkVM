@@ -22,7 +22,7 @@ use core::{cmp::Ordering, fmt};
 
 /// An input statement defines an input argument to a function, and is of the form
 /// `input {register} as {annotation}`.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub struct Input<E: Environment> {
     /// The input register.
     register: Register<E>,
