@@ -66,9 +66,7 @@ use snarkvm_parameters::{testnet1::*, Genesis};
 use snarkvm_utilities::{FromBytes, ToMinimalBits};
 
 use once_cell::sync::OnceCell;
-use rand::{CryptoRng, Rng};
 use serde::{Deserialize, Serialize};
-use std::{cell::RefCell, rc::Rc};
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Testnet1;
@@ -293,11 +291,6 @@ impl Network for Testnet1 {
     fn genesis_block() -> &'static Block<Self> {
         static BLOCK: OnceCell<Block<Testnet1>> = OnceCell::new();
         BLOCK.get_or_init(|| FromBytes::read_le(&GenesisBlock::load_bytes()[..]).expect("Failed to load genesis block"))
-    }
-
-    /// Returns the program SRS for Aleo applications.
-    fn program_srs<R: Rng + CryptoRng>(rng: &mut R) -> Rc<RefCell<SRS<R, <Self::ProgramSNARK as SNARK>::UniversalSetupParameters>>> {
-        Rc::new(RefCell::new(SRS::CircuitSpecific(rng)))
     }
 }
 

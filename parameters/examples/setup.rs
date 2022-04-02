@@ -65,30 +65,6 @@ fn write_metadata(filename: &str, metadata: &Value) -> Result<()> {
     Ok(())
 }
 
-/// Runs a universal SRS setup.
-pub fn universal_setup<N: Network>() -> Result<()> {
-    const UNIVERSAL_METADATA: &str = "universal.metadata";
-    const UNIVERSAL_SRS: &str = "universal.srs";
-
-    let max_degree =
-        AHPForR1CS::<<N as Network>::InnerScalarField, MarlinHidingMode>::max_degree(2000000, 4000000, 8000000)
-            .unwrap();
-    let universal_srs = <<N as Network>::ProgramSNARK as SNARK>::universal_setup(&max_degree, &mut thread_rng())?;
-    let universal_srs = universal_srs.to_bytes_le()?;
-
-    let universal_checksum = checksum(&universal_srs);
-    let universal_metadata = json!({
-        "srs_checksum": universal_checksum,
-        "srs_size": universal_srs.len()
-    });
-
-    println!("{}", serde_json::to_string_pretty(&universal_metadata)?);
-    write_metadata(UNIVERSAL_METADATA, &universal_metadata)?;
-    write_remote(UNIVERSAL_SRS, &universal_checksum, &universal_srs)?;
-
-    Ok(())
-}
-
 /// Runs the input circuit setup.
 pub fn input_setup<N: Network>() -> Result<()> {
     const INPUT_CIRCUIT_METADATA: &str = "input.metadata";
@@ -200,11 +176,6 @@ pub fn main() -> Result<()> {
         "posw" => match args[2].as_str() {
             "testnet1" => posw_setup::<snarkvm_dpc::testnet1::Testnet1>()?,
             "testnet2" => posw_setup::<snarkvm_dpc::testnet2::Testnet2>()?,
-            _ => panic!("Invalid network"),
-        },
-        "universal" => match args[2].as_str() {
-            "testnet1" => panic!("Testnet1 does not support a universal SRS"),
-            "testnet2" => universal_setup::<snarkvm_dpc::testnet2::Testnet2>()?,
             _ => panic!("Invalid network"),
         },
         "input" => match args[2].as_str() {

@@ -70,9 +70,7 @@ use snarkvm_utilities::{FromBytes, ToMinimalBits};
 
 use blake2::Blake2s256;
 use once_cell::sync::OnceCell;
-use rand::{CryptoRng, Rng};
 use serde::{Deserialize, Serialize};
-use std::{cell::RefCell, rc::Rc};
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Testnet2;
@@ -298,15 +296,6 @@ impl Network for Testnet2 {
     fn genesis_block() -> &'static Block<Self> {
         static BLOCK: OnceCell<Block<Testnet2>> = OnceCell::new();
         BLOCK.get_or_init(|| FromBytes::read_le(&GenesisBlock::load_bytes()[..]).expect("Failed to load the genesis block"))
-    }
-    
-    /// Returns the program SRS for Aleo applications.
-    fn program_srs<R: Rng + CryptoRng>(_rng: &mut R) -> Rc<RefCell<SRS<R, <Self::ProgramSNARK as SNARK>::UniversalSetupParameters>>> {
-        static UNIVERSAL_SRS: OnceCell<<<Testnet2 as Network>::ProgramSNARK as SNARK>::UniversalSetupParameters> = OnceCell::new();
-        let universal_srs = UNIVERSAL_SRS.get_or_init(|| <Self::ProgramSNARK as SNARK>::UniversalSetupParameters::from_bytes_le(
-            &UniversalSRSBytes::load_bytes().expect("Failed to load universal SRS bytes"),
-        ).unwrap());
-        Rc::new(RefCell::new(SRS::<_, _>::Universal(universal_srs)))
     }
 }
 

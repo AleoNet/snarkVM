@@ -42,9 +42,8 @@ use snarkvm_utilities::{
 };
 
 use anyhow::Result;
-use rand::{CryptoRng, Rng};
 use serde::{de::DeserializeOwned, Serialize};
-use std::{borrow::Borrow, cell::RefCell, ops::Deref, rc::Rc, str::FromStr};
+use std::{borrow::Borrow, ops::Deref, str::FromStr};
 
 pub trait Bech32Locator<F: Field>:
     From<F>
@@ -341,9 +340,4 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     ) -> Result<Self::FunctionID> {
         Ok(Self::function_id_crh().hash(&verifying_key.to_minimal_bits())?.into())
     }
-
-    /// Returns the program SRS for Aleo applications.
-    fn program_srs<R: Rng + CryptoRng>(
-        rng: &mut R,
-    ) -> Rc<RefCell<SRS<R, <Self::ProgramSNARK as SNARK>::UniversalSetupParameters>>>;
 }

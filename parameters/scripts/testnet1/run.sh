@@ -1,4 +1,3 @@
-# These are dependent on each other.
 ./input.sh || exit
 
 ./output.sh || exit
