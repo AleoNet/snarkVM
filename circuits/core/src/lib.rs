@@ -32,5 +32,8 @@ pub use private_key::*;
 pub mod record;
 pub use record::*;
 
+pub mod signature;
+pub use signature::*;
+
 pub mod view_key;
 pub use view_key::*;

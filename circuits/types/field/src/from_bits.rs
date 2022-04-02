@@ -25,18 +25,21 @@ impl<E: Environment> FromBits for Field<E> {
         let size_in_data_bits = E::BaseField::size_in_data_bits();
         let size_in_bits = E::BaseField::size_in_bits();
 
-        // Ensure the list of booleans is within the allowed capacity.
+        // Ensure the list of booleans is within the allowed size in bits.
         let num_bits = bits_le.len();
         if num_bits > size_in_bits {
-            E::halt(format!("Attempted to instantiate a {size_in_bits}-bit field with {num_bits} bits"))
+            // Check if all excess bits are zero.
+            let should_be_zero = bits_le[size_in_bits..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit);
+            // Ensure `should_be_zero` is zero.
+            E::assert_eq(E::zero(), should_be_zero);
         }
 
         // Reconstruct the bits as a linear combination representing the original field value.
         // `output` := (2^i * b_i + ... + 2^0 * b_0)
         let mut output = Field::zero();
         let mut coefficient = Field::one();
-        for bit in bits_le {
-            output += Field::from(bit) * &coefficient;
+        for bit in bits_le.iter().take(size_in_bits) {
+            output += Field::from_boolean(bit) * &coefficient;
             coefficient = coefficient.double();
         }
 
@@ -47,7 +50,7 @@ impl<E: Environment> FromBits for Field<E> {
             // (For advanced users) BaseField::MODULUS - 1 is equivalent to -1 in the field.
             let modulus = -E::BaseField::one();
 
-            // Initialize an iterator for big-endian bits, skipping the surplus bits, which are checked above.
+            // Initialize an iterator for big-endian bits, skipping the excess bits, which are checked above.
             let mut bits_be = bits_le.iter().rev().skip(bits_le.len() - size_in_bits);
 
             // Initialize trackers for the sequence of ones.
@@ -80,9 +83,11 @@ impl<E: Environment> FromBits for Field<E> {
             debug_assert!(sequence.is_empty());
         }
 
+        // Construct the sanitized list of bits, resizing up if necessary.
+        let mut bits_le = bits_le.iter().take(size_in_bits).cloned().collect::<Vec<_>>();
+        bits_le.resize(size_in_bits, Boolean::constant(false));
+
         // Store the little-endian bits in the output.
-        let mut bits_le = bits_le.to_vec();
-        bits_le.resize(num_bits, Boolean::constant(false));
         if output.bits_le.set(bits_le).is_err() {
             E::halt("Detected corrupt internal state for the bits of a field element")
         }
@@ -120,16 +125,35 @@ mod tests {
             // Sample a random element.
             let expected: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
             let given_bits = Field::<Circuit>::new(mode, expected).to_bits_le();
+            let expected_size_in_bits = given_bits.len();
 
             Circuit::scope(format!("{mode} {i}"), || {
                 let candidate = Field::<Circuit>::from_bits_le(&given_bits);
                 assert_eq!(expected, candidate.eject_value());
+                assert_eq!(expected_size_in_bits, candidate.bits_le.get().expect("Caching failed").len());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
 
                 // Ensure a subsequent call to `to_bits_le` does not incur additional costs.
                 let candidate_bits = candidate.to_bits_le();
-                assert_eq!(given_bits.len(), candidate_bits.len());
+                assert_eq!(expected_size_in_bits, candidate_bits.len());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
+            });
+
+            // Add excess zero bits.
+            let candidate = vec![given_bits, vec![Boolean::new(mode, false); i]].concat();
+
+            Circuit::scope(&format!("Excess {} {}", mode, i), || {
+                let candidate = Field::<Circuit>::from_bits_le(&candidate);
+                assert_eq!(expected, candidate.eject_value());
+                assert_eq!(expected_size_in_bits, candidate.bits_le.get().expect("Caching failed").len());
+                match mode.is_constant() {
+                    true => assert_scope!(num_constants, num_public, num_private, num_constraints),
+                    // `num_private` gets 1 free excess bit, then is incremented by one for each excess bit.
+                    // `num_constraints` is incremented by one for each excess bit.
+                    false => {
+                        assert_scope!(num_constants, num_public, num_private + i.saturating_sub(1), num_constraints + i)
+                    }
+                };
             });
         }
     }
@@ -145,16 +169,35 @@ mod tests {
             // Sample a random element.
             let expected: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
             let given_bits = Field::<Circuit>::new(mode, expected).to_bits_be();
+            let expected_size_in_bits = given_bits.len();
 
             Circuit::scope(format!("{mode} {i}"), || {
                 let candidate = Field::<Circuit>::from_bits_be(&given_bits);
                 assert_eq!(expected, candidate.eject_value());
+                assert_eq!(expected_size_in_bits, candidate.bits_le.get().expect("Caching failed").len());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
 
                 // Ensure a subsequent call to `to_bits_be` does not incur additional costs.
                 let candidate_bits = candidate.to_bits_be();
-                assert_eq!(given_bits.len(), candidate_bits.len());
+                assert_eq!(expected_size_in_bits, candidate_bits.len());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
+            });
+
+            // Add excess zero bits.
+            let candidate = vec![vec![Boolean::new(mode, false); i], given_bits].concat();
+
+            Circuit::scope(&format!("Excess {} {}", mode, i), || {
+                let candidate = Field::<Circuit>::from_bits_be(&candidate);
+                assert_eq!(expected, candidate.eject_value());
+                assert_eq!(expected_size_in_bits, candidate.bits_le.get().expect("Caching failed").len());
+                match mode.is_constant() {
+                    true => assert_scope!(num_constants, num_public, num_private, num_constraints),
+                    // `num_private` gets 1 free excess bit, then is incremented by one for each excess bit.
+                    // `num_constraints` is incremented by one for each excess bit.
+                    false => {
+                        assert_scope!(num_constants, num_public, num_private + i.saturating_sub(1), num_constraints + i)
+                    }
+                };
             });
         }
     }

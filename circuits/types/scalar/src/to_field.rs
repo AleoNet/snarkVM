@@ -17,7 +17,6 @@
 use super::*;
 
 impl<E: Environment> ToField for Scalar<E> {
-    type Boolean = Boolean<E>;
     type Field = Field<E>;
 
     /// Casts a scalar field element into a base field element.
@@ -31,7 +30,7 @@ impl<E: Environment> ToField for Scalar<E> {
         let mut accumulator = Field::zero();
         let mut coefficient = Field::one();
         for bit in &self.bits_le {
-            accumulator += Field::from(bit) * &coefficient;
+            accumulator += Field::from_boolean(bit) * &coefficient;
             coefficient = coefficient.double();
         }
 

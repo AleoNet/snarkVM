@@ -15,14 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::prelude::*;
-use snarkvm_circuits_types::{
-    address::Address,
-    boolean::Boolean,
-    field::Field,
-    group::Group,
-    integers::{I128, I16, I32, I64, I8, U128, U16, U32, U64, U8},
-    scalar::Scalar,
-};
 use snarkvm_utilities::{
     error,
     io::{Read, Result as IoResult, Write},
@@ -228,6 +220,54 @@ impl<E: Environment> PartialEq for Literal<E> {
 }
 
 impl<E: Environment> Eq for Literal<E> {}
+
+impl<E: Environment> ToBits for Literal<E> {
+    type Boolean = Boolean<E>;
+
+    /// Returns the little-endian bits of the literal.
+    fn to_bits_le(&self) -> Vec<Boolean<E>> {
+        match self {
+            Self::Address(literal) => literal.to_bits_le(),
+            Self::Boolean(literal) => literal.to_bits_le(),
+            Self::Field(literal) => literal.to_bits_le(),
+            Self::Group(literal) => literal.to_bits_le(),
+            Self::I8(literal) => literal.to_bits_le(),
+            Self::I16(literal) => literal.to_bits_le(),
+            Self::I32(literal) => literal.to_bits_le(),
+            Self::I64(literal) => literal.to_bits_le(),
+            Self::I128(literal) => literal.to_bits_le(),
+            Self::U8(literal) => literal.to_bits_le(),
+            Self::U16(literal) => literal.to_bits_le(),
+            Self::U32(literal) => literal.to_bits_le(),
+            Self::U64(literal) => literal.to_bits_le(),
+            Self::U128(literal) => literal.to_bits_le(),
+            Self::Scalar(literal) => literal.to_bits_le(),
+            Self::String(literal) => literal.to_bits_le(),
+        }
+    }
+
+    /// Returns the big-endian bits of the literal.
+    fn to_bits_be(&self) -> Vec<Boolean<E>> {
+        match self {
+            Self::Address(literal) => literal.to_bits_be(),
+            Self::Boolean(literal) => literal.to_bits_be(),
+            Self::Field(literal) => literal.to_bits_be(),
+            Self::Group(literal) => literal.to_bits_be(),
+            Self::I8(literal) => literal.to_bits_be(),
+            Self::I16(literal) => literal.to_bits_be(),
+            Self::I32(literal) => literal.to_bits_be(),
+            Self::I64(literal) => literal.to_bits_be(),
+            Self::I128(literal) => literal.to_bits_be(),
+            Self::U8(literal) => literal.to_bits_be(),
+            Self::U16(literal) => literal.to_bits_be(),
+            Self::U32(literal) => literal.to_bits_be(),
+            Self::U64(literal) => literal.to_bits_be(),
+            Self::U128(literal) => literal.to_bits_be(),
+            Self::Scalar(literal) => literal.to_bits_be(),
+            Self::String(literal) => literal.to_bits_be(),
+        }
+    }
+}
 
 impl<E: Environment> FromBytes for Literal<E> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {

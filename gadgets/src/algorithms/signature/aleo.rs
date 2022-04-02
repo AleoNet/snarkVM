@@ -376,7 +376,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> SignatureGadget
         &self,
         mut cs: CS,
         public_key: &Self::PublicKeyGadget,
-        message: &[UInt8],
+        message: &[Boolean],
         signature: &Self::SignatureGadget,
     ) -> Result<Boolean, SynthesisError> {
         // Prepare the zero element in affine form for use.

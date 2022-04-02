@@ -16,8 +16,17 @@
 
 #![forbid(unsafe_code)]
 
+pub mod equal;
+pub mod to_bits;
+pub mod to_group;
+
+#[cfg(test)]
+use snarkvm_circuits_environment::assert_scope;
+
 use snarkvm_circuits_environment::prelude::*;
+use snarkvm_circuits_types_boolean::Boolean;
 use snarkvm_circuits_types_group::Group;
+use snarkvm_circuits_types_scalar::Scalar;
 use snarkvm_curves::AffineCurve;
 use snarkvm_utilities::{error, FromBytes, ToBytes};
 

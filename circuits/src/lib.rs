@@ -16,24 +16,14 @@
 
 #![forbid(unsafe_code)]
 
-#[macro_use]
-extern crate enum_index_derive;
-
-pub mod literal;
-pub use literal::*;
-
-pub mod type_;
-pub use type_::*;
-
-pub use snarkvm_circuits_environment::*;
-
 pub use snarkvm_circuits_core::*;
 pub use snarkvm_circuits_edge::*;
+pub use snarkvm_circuits_environment::*;
 pub use snarkvm_circuits_types::*;
 
 pub mod prelude {
     pub use super::*;
-    pub use snarkvm_circuits_environment::{prelude::*, Circuit};
+    pub use snarkvm_circuits_environment::*;
 }
 
 pub trait Library<E: Environment> {

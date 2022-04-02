@@ -198,7 +198,7 @@ where
     fn sign<R: Rng + CryptoRng>(
         &self,
         private_key: &Self::PrivateKey,
-        message: &[u8],
+        message: &[bool],
         rng: &mut R,
     ) -> Result<Self::Signature> {
         // Sample a random scalar field element.
@@ -257,7 +257,7 @@ where
     /// Verifies (c == c') && (public_key == G^sk_sig G^r_sig G^sk_prf) where:
     ///     c' := Hash(G^sk_sig G^r_sig G^sk_prf, G^s G^sk_sig^c, message)
     ///
-    fn verify(&self, public_key: &Self::PublicKey, message: &[u8], signature: &Self::Signature) -> Result<bool> {
+    fn verify(&self, public_key: &Self::PublicKey, message: &[bool], signature: &Self::Signature) -> Result<bool> {
         // Extract the signature contents.
         let AleoSignature { prover_response, verifier_challenge, root_public_key, root_randomizer } = signature;
 
@@ -382,7 +382,7 @@ mod tests {
     };
     use snarkvm_utilities::test_crypto_rng;
 
-    fn sign_and_verify<S: SignatureScheme>(message: &[u8]) {
+    fn sign_and_verify<S: SignatureScheme>(message: &[bool]) {
         let rng = &mut test_crypto_rng();
         let signature_scheme = S::setup("sign_and_verify");
 
@@ -392,7 +392,7 @@ mod tests {
         assert!(signature_scheme.verify(&public_key, message, &signature).unwrap());
     }
 
-    fn failed_verification<S: SignatureScheme>(message: &[u8], bad_message: &[u8]) {
+    fn failed_verification<S: SignatureScheme>(message: &[bool], bad_message: &[bool]) {
         let rng = &mut test_crypto_rng();
         let signature_scheme = S::setup("failed_verification");
 
@@ -407,8 +407,8 @@ mod tests {
         type TestSignature = AleoSignatureScheme<EdwardsBls12>;
 
         let message = "Hi, I am an Aleo signature!";
-        sign_and_verify::<TestSignature>(message.as_bytes());
-        failed_verification::<TestSignature>(message.as_bytes(), b"Bad message");
+        sign_and_verify::<TestSignature>(&message.as_bytes().to_bits_le());
+        failed_verification::<TestSignature>(&message.as_bytes().to_bits_le(), &b"Bad message".to_bits_le());
     }
 
     #[test]
@@ -416,7 +416,7 @@ mod tests {
         type TestSignature = AleoSignatureScheme<EdwardsBW6>;
 
         let message = "Hi, I am an Aleo signature!";
-        sign_and_verify::<TestSignature>(message.as_bytes());
-        failed_verification::<TestSignature>(message.as_bytes(), b"Bad message");
+        sign_and_verify::<TestSignature>(&message.as_bytes().to_bits_le());
+        failed_verification::<TestSignature>(&message.as_bytes().to_bits_le(), &b"Bad message".to_bits_le());
     }
 }

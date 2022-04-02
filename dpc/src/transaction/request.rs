@@ -16,7 +16,7 @@
 
 use crate::{Address, AleoAmount, ComputeKey, LedgerProof, Network, Operation, PrivateKey, Record};
 use snarkvm_algorithms::SignatureScheme;
-use snarkvm_utilities::{to_bytes_le, FromBytes, ToBytes};
+use snarkvm_utilities::{to_bytes_le, FromBytes, ToBits, ToBytes};
 
 use anyhow::{anyhow, Result};
 use itertools::Itertools;
@@ -113,7 +113,7 @@ impl<N: Network> Request<N> {
             }
             let message =
                 to_bytes_le![record.commitment(), record.program_id().unwrap_or_default() /*operation_id, fee*/]?;
-            let signature = caller.sign(&message, rng)?;
+            let signature = caller.sign(&message.to_bits_le(), rng)?;
 
             signatures.push(signature);
         }
@@ -218,7 +218,7 @@ impl<N: Network> Request<N> {
                 record.commitment(),
                 record.program_id().unwrap_or_default() /*operation_id, self.fee*/
             ] {
-                Ok(signature_message) => signature_message,
+                Ok(signature_message) => signature_message.to_bits_le(),
                 Err(error) => {
                     eprintln!("Failed to construct record {} request signature message: {}", i, error);
                     return false;

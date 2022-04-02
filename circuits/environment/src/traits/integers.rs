@@ -17,14 +17,8 @@
 use crate::prelude::*;
 
 /// Representation of an integer.
-pub trait IntegerTrait<
-    B: BooleanTrait,
-    I: IntegerType,
-    U8: IntegerCore<B, u8>,
-    U16: IntegerCore<B, u16>,
-    U32: IntegerCore<B, u32>,
->:
-    IntegerCore<B, I>
+pub trait IntegerTrait<I: IntegerType, U8: IntegerCore<u8>, U16: IntegerCore<u16>, U32: IntegerCore<u32>>:
+    IntegerCore<I>
     + PowChecked<U8, Output = Self>
     + PowWrapped<U8, Output = Self>
     + Shl<U8, Output = Self>
@@ -58,7 +52,7 @@ pub trait IntegerTrait<
 {
 }
 
-pub trait IntegerCore<B: BooleanTrait, I: IntegerType>:
+pub trait IntegerCore<I: IntegerType>:
     AddAssign
     + Add<Output = Self>
     + AddChecked<Output = Self>
@@ -71,7 +65,6 @@ pub trait IntegerCore<B: BooleanTrait, I: IntegerType>:
     + BitXor<Output = Self>
     + Clone
     + Compare
-    + DataType<B>
     + Debug
     + DivAssign
     + Div<Output = Self>

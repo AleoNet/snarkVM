@@ -23,6 +23,7 @@ pub mod div;
 pub mod double;
 pub mod equal;
 pub mod from_bits;
+pub mod from_boolean;
 pub mod inv;
 pub mod mul;
 pub mod neg;
@@ -52,9 +53,7 @@ pub struct Field<E: Environment> {
     bits_le: OnceCell<Vec<Boolean<E>>>,
 }
 
-impl<E: Environment> FieldTrait<Boolean<E>> for Field<E> {}
-
-impl<E: Environment> DataType<Boolean<E>> for Field<E> {}
+impl<E: Environment> FieldTrait for Field<E> {}
 
 impl<E: Environment> Inject for Field<E> {
     type Primitive = E::BaseField;
@@ -64,15 +63,6 @@ impl<E: Environment> Inject for Field<E> {
     ///
     fn new(mode: Mode, value: Self::Primitive) -> Self {
         Self { linear_combination: E::new_variable(mode, value).into(), bits_le: Default::default() }
-    }
-}
-
-impl<E: Environment> Field<E> {
-    ///
-    /// Initializes a new instance of a base field from a boolean.
-    ///
-    pub fn from(boolean: &Boolean<E>) -> Self {
-        (&**boolean).into()
     }
 }
 

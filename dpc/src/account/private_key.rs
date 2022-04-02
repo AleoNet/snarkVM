@@ -51,7 +51,7 @@ impl<N: Network> PrivateKey<N> {
     }
 
     /// Signs a message using the account private key.
-    pub fn sign<R: Rng + CryptoRng>(&self, message: &[u8], rng: &mut R) -> Result<N::AccountSignature, AccountError> {
+    pub fn sign<R: Rng + CryptoRng>(&self, message: &[bool], rng: &mut R) -> Result<N::AccountSignature, AccountError> {
         Ok(N::account_signature_scheme().sign(&(self.sk_sig, self.r_sig), message, rng)?.into())
     }
 

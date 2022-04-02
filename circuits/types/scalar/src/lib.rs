@@ -17,6 +17,7 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
+pub mod add;
 pub mod compare;
 pub mod equal;
 pub mod from_bits;
@@ -37,19 +38,16 @@ use snarkvm_utilities::{FromBits as FBits, ToBits as TBits};
 
 #[derive(Clone)]
 pub struct Scalar<E: Environment> {
+    /// The little-endian bit representation of the scalar.
     bits_le: Vec<Boolean<E>>,
 }
 
-impl<E: Environment> ScalarTrait<Boolean<E>> for Scalar<E> {}
-
-impl<E: Environment> DataType<Boolean<E>> for Scalar<E> {}
+impl<E: Environment> ScalarTrait for Scalar<E> {}
 
 impl<E: Environment> Inject for Scalar<E> {
     type Primitive = E::ScalarField;
 
-    ///
     /// Initializes a new instance of a scalar field from a primitive scalar field value.
-    ///
     fn new(mode: Mode, value: Self::Primitive) -> Self {
         Self { bits_le: Inject::new(mode, value.to_bits_le()) }
     }

@@ -16,6 +16,16 @@
 
 #![forbid(unsafe_code)]
 
+#[macro_use]
+extern crate enum_index_derive;
+
+pub mod literal;
+pub use literal::*;
+
+pub mod type_;
+pub use type_::*;
+
+pub use snarkvm_circuits_environment as environment;
 pub use snarkvm_circuits_types_address as address;
 pub use snarkvm_circuits_types_boolean as boolean;
 pub use snarkvm_circuits_types_field as field;
@@ -26,6 +36,7 @@ pub use snarkvm_circuits_types_string as string;
 
 pub use address::Address;
 pub use boolean::Boolean;
+pub use environment::prelude::*;
 pub use field::Field;
 pub use group::Group;
 pub use integers::{I128, I16, I32, I64, I8, U128, U16, U32, U64, U8};
@@ -34,4 +45,5 @@ pub use string::StringType;
 
 pub mod prelude {
     pub use super::*;
+    pub use environment::prelude::*;
 }

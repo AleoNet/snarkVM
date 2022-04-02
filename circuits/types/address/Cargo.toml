@@ -10,8 +10,16 @@ edition = "2021"
 path = "../../environment"
 version = "0.7.5"
 
+[dependencies.snarkvm-circuits-types-boolean]
+path = "../boolean"
+version = "0.7.5"
+
 [dependencies.snarkvm-circuits-types-group]
 path = "../group"
+version = "0.7.5"
+
+[dependencies.snarkvm-circuits-types-scalar]
+path = "../scalar"
 version = "0.7.5"
 
 [dependencies.snarkvm-curves]
