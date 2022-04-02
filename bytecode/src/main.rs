@@ -38,7 +38,7 @@ fn main() {
     let first = Value::from_str("1field.public");
     let second = Value::from_str("1field.private");
 
-    let expected = Value::from_str("2field.private");
+    let expected = Value::<AleoProgram>::from_str("2field.private");
     let candidate = HelloWorld::run::<AleoProgram>([first, second]);
 
     match (&expected, &candidate[0]) {
@@ -60,7 +60,7 @@ mod tests {
         let first = Value::from_str("1field.public");
         let second = Value::from_str("1field.private");
 
-        let expected = Value::from_str("2field.private");
+        let expected = Value::<AleoProgram>::from_str("2field.private");
         let candidate = HelloWorld::run::<AleoProgram>([first, second]);
 
         match (&expected, &candidate[0]) {

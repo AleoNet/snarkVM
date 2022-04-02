@@ -128,9 +128,9 @@ impl<P: Program> fmt::Display for Operand<P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             // Prints the value, i.e. 10field.private
-            Self::Value(literal) => literal.fmt(f),
+            Self::Value(literal) => fmt::Display::fmt(literal, f),
             // Prints the register, i.e. r0 or r0.owner
-            Self::Register(register) => register.fmt(f),
+            Self::Register(register) => fmt::Display::fmt(register, f),
         }
     }
 }

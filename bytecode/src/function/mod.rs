@@ -292,7 +292,7 @@ impl<P: Program> Function<P> {
 }
 
 impl<P: Program> Parser for Function<P> {
-    type Environment = P;
+    type Environment = P::Environment;
 
     /// Parses a string into a function.
     #[inline]

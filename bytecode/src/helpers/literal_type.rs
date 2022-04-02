@@ -122,16 +122,16 @@ impl<P: Program> LiteralType<P> {
     }
 }
 
-impl<P: Program> From<Literal<P>> for LiteralType<P> {
+impl<P: Program> From<Literal<P::Environment>> for LiteralType<P> {
     #[inline]
-    fn from(literal: Literal<P>) -> Self {
+    fn from(literal: Literal<P::Environment>) -> Self {
         Self::from(&literal)
     }
 }
 
-impl<P: Program> From<&Literal<P>> for LiteralType<P> {
+impl<P: Program> From<&Literal<P::Environment>> for LiteralType<P> {
     #[inline]
-    fn from(literal: &Literal<P>) -> Self {
+    fn from(literal: &Literal<P::Environment>) -> Self {
         let mode = literal.eject_mode();
         match literal {
             Literal::Address(..) => Self::Address(mode),

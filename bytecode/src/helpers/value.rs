@@ -25,13 +25,13 @@ use std::io::{Read, Result as IoResult, Write};
 #[derive(Clone, Debug)]
 pub enum Value<P: Program> {
     /// A literal contains its declared literal value.
-    Literal(Literal<P>),
+    Literal(Literal<P::Environment>),
     /// A composite contains its declared member literals.
-    Composite(Identifier<P>, Vec<Literal<P>>),
+    Composite(Identifier<P>, Vec<Literal<P::Environment>>),
 }
 
-impl<P: Program> From<Literal<P>> for Value<P> {
-    fn from(literal: Literal<P>) -> Self {
+impl<P: Program> From<Literal<P::Environment>> for Value<P> {
+    fn from(literal: Literal<P::Environment>) -> Self {
         Value::Literal(literal)
     }
 }

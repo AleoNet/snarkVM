@@ -81,7 +81,7 @@ impl<P: Program> Operation<P> for Sub<P> {
 }
 
 impl<P: Program> Parser for Sub<P> {
-    type Environment = P;
+    type Environment = P::Environment;
 
     /// Parses a string into an 'sub' operation.
     #[inline]

@@ -98,7 +98,7 @@ impl<P: Program> Instruction<P> {
 }
 
 impl<P: Program> Parser for Instruction<P> {
-    type Environment = P;
+    type Environment = P::Environment;
 
     /// Parses a string into an instruction.
     #[inline]

@@ -32,10 +32,13 @@ pub mod template;
 pub use template::*;
 
 use crate::Identifier;
+use snarkvm_circuits::environment::Environment;
+
+use core::{fmt, hash};
 
 // pub trait Program: Aleo {
-pub trait Program: snarkvm_circuits::environment::Environment {
-    type Environment: snarkvm_circuits::environment::Environment;
+pub trait Program: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
+    type Environment: Environment;
 
     /// The maximum number of bytes for an identifier.
     const NUM_IDENTIFIER_BYTES: usize = 31;
@@ -65,4 +68,9 @@ pub trait Program: snarkvm_circuits::environment::Environment {
 
     /// Returns the template with the given name.
     fn get_template(name: &Identifier<Self>) -> Option<Template<Self>>;
+
+    /// Halts the program from further synthesis, evaluation, and execution in the current environment.
+    fn halt<S: Into<String>, T>(message: S) -> T {
+        Self::Environment::halt(message)
+    }
 }
