@@ -50,10 +50,7 @@ impl<P: Program> Registers<P> {
     #[inline]
     pub fn is_assigned(&self, register: &Register<P>) -> bool {
         // Checks if the register is assigned.
-        match self.registers.get(register.locator()) {
-            Some(Some(_)) => true,
-            _ => false,
-        }
+        matches!(self.registers.get(register.locator()), Some(Some(_)))
     }
 
     /// Defines the given register, assuming it is not already defined.
