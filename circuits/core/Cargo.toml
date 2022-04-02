@@ -35,12 +35,6 @@ version = "0.2"
 [dependencies.enum_index_derive]
 version = "0.2"
 
-[dependencies.nom]
-version = "7.1"
-
-[dependencies.once_cell]
-version = "*"
-
 [dev-dependencies.snarkvm-algorithms]
 path = "../../algorithms"
 version = "0.7.5"
