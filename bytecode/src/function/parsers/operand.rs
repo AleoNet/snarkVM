@@ -175,7 +175,7 @@ mod tests {
     #[test]
     fn test_operand_value() {
         let operand = Operand::<E>::Value(Value::Literal(Literal::from_str("1field.private")));
-        // assert_eq!(operand.value(), Some(&Value::Literal(Literal::from_str("1field.private"))));
+        assert_eq!(operand.value(), Some(&Value::Literal(Literal::from_str("1field.private"))));
         assert_eq!(operand.register(), None);
         assert!(operand.is_value());
         assert!(!operand.is_register());
@@ -184,7 +184,7 @@ mod tests {
     #[test]
     fn test_operand_register() {
         let operand = Operand::<E>::Register(Register::from_str("r0"));
-        // assert_eq!(operand.value(), None);
+        assert_eq!(operand.value(), None);
         assert_eq!(operand.register(), Some(&Register::from_str("r0")));
         assert!(!operand.is_value());
         assert!(operand.is_register());
@@ -193,7 +193,7 @@ mod tests {
     #[test]
     fn test_operand_register_member() {
         let operand = Operand::<E>::Register(Register::from_str("r0.owner"));
-        // assert_eq!(operand.value(), None);
+        assert_eq!(operand.value(), None);
         assert_eq!(operand.register(), Some(&Register::from_str("r0.owner")));
         assert!(!operand.is_value());
         assert!(operand.is_register());
@@ -202,19 +202,19 @@ mod tests {
     #[test]
     fn test_operand_parse() {
         let operand = Operand::<E>::parse("1field.private").unwrap().1;
-        // assert_eq!(operand.value(), Some(&Value::Literal(Literal::from_str("1field.private"))));
+        assert_eq!(operand.value(), Some(&Value::Literal(Literal::from_str("1field.private"))));
         assert_eq!(operand.register(), None);
         assert!(operand.is_value());
         assert!(!operand.is_register());
 
         let operand = Operand::<E>::parse("r0").unwrap().1;
-        // assert_eq!(operand.value(), None);
+        assert_eq!(operand.value(), None);
         assert_eq!(operand.register(), Some(&Register::from_str("r0")));
         assert!(!operand.is_value());
         assert!(operand.is_register());
 
         let operand = Operand::<E>::parse("r0.owner").unwrap().1;
-        // assert_eq!(operand.value(), None);
+        assert_eq!(operand.value(), None);
         assert_eq!(operand.register(), Some(&Register::from_str("r0.owner")));
         assert!(!operand.is_value());
         assert!(operand.is_register());

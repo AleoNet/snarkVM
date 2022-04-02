@@ -136,7 +136,7 @@ impl<E: Environment> ToBytes for Value<E> {
     }
 }
 
-#[cfg(test)]
+#[cfg(test)] // Do not remove this. It is not a performant way to compare values.
 impl<E: Environment> PartialEq for Value<E> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {

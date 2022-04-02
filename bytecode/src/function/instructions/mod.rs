@@ -45,8 +45,7 @@ pub trait Opcode {
     fn opcode() -> &'static str;
 }
 
-// pub trait Operation: Parser + Into<Instruction<Self::Memory>> {
-pub trait Operation<P: Program> {
+pub trait Operation<P: Program>: Parser + Into<Instruction<P>> {
     ///
     /// Evaluates the operation.
     ///
