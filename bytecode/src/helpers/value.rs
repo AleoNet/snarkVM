@@ -136,28 +136,41 @@ impl<E: Environment> ToBytes for Value<E> {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use snarkvm_circuits::environment::Circuit;
-//
-//     type E = Circuit;
-//
-//     #[test]
-//     fn test_value_parse() {
-//         // Test parsing a literal.
-//         assert_eq!(
-//             Value::<E>::Literal(Literal::from_str("10field.private")),
-//             Value::parse("10field.private").unwrap().1,
-//         );
-//
-//         // Test parsing a composite.
-//         assert_eq!(
-//             Value::<E>::Composite(Identifier::from_str("message"), vec![
-//                 Value::<E>::Literal(Literal::from_str("2group.public")),
-//                 Value::<E>::Literal(Literal::from_str("10field.private")),
-//             ]),
-//             Value::parse("message 2group.public 10field.private").unwrap().1,
-//         );
-//     }
-// }
+#[cfg(test)]
+impl<E: Environment> PartialEq for Value<E> {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Literal(literal), Self::Literal(other_literal)) => literal.eject() == other_literal.eject(),
+            (Self::Composite(name, members), Self::Composite(other_name, other_members)) => {
+                name == other_name && members.eject() == other_members.eject()
+            }
+            _ => false,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_circuits::environment::Circuit;
+
+    type E = Circuit;
+
+    #[test]
+    fn test_value_parse() {
+        // Test parsing a literal.
+        assert_eq!(
+            Value::<E>::Literal(Literal::from_str("10field.private")),
+            Value::parse("10field.private").unwrap().1,
+        );
+
+        // Test parsing a composite.
+        assert_eq!(
+            Value::<E>::Composite(Identifier::from_str("message"), vec![
+                Literal::from_str("2group.public"),
+                Literal::from_str("10field.private"),
+            ]),
+            Value::parse("message 2group.public 10field.private").unwrap().1,
+        );
+    }
+}

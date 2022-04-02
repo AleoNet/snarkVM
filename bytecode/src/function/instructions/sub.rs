@@ -123,9 +123,8 @@ impl<P: Program> Into<Instruction<P>> for Sub<P> {
 mod tests {
     use super::*;
     use crate::{AleoProgram as Circuit, Register};
-    use snarkvm_circuits::environment::Eject;
 
-    fn check_add(first: Literal<Circuit>, second: Literal<Circuit>, expected: Literal<Circuit>) {
+    fn check_sub(first: Value<Circuit>, second: Value<Circuit>, expected: Value<Circuit>) {
         let mut registers = Registers::<Circuit>::default();
         registers.define(&Register::from_str("r0"));
         registers.define(&Register::from_str("r1"));
@@ -135,22 +134,22 @@ mod tests {
 
         Sub::from_str("r0 r1 into r2").evaluate(&mut registers);
         let candidate = registers.load(&Register::from_str("r2"));
-        // assert_eq!(expected.eject(), candidate.eject());
+        assert_eq!(expected, candidate);
     }
 
     #[test]
-    fn test_add_field() {
-        let first = Literal::<Circuit>::from_str("3field.public");
-        let second = Literal::<Circuit>::from_str("2field.private");
-        let expected = Literal::<Circuit>::from_str("1field.private");
-        check_add(first, second, expected);
+    fn test_sub_field() {
+        let first = Value::<Circuit>::from_str("3field.public");
+        let second = Value::<Circuit>::from_str("2field.private");
+        let expected = Value::<Circuit>::from_str("1field.private");
+        check_sub(first, second, expected);
     }
 
     #[test]
-    fn test_add_group() {
-        let first = Literal::<Circuit>::from_str("2group.public");
-        let second = Literal::<Circuit>::from_str("0group.private");
-        let expected = Literal::<Circuit>::from_str("2group.private");
-        check_add(first, second, expected);
+    fn test_sub_group() {
+        let first = Value::<Circuit>::from_str("2group.public");
+        let second = Value::<Circuit>::from_str("0group.private");
+        let expected = Value::<Circuit>::from_str("2group.private");
+        check_sub(first, second, expected);
     }
 }
