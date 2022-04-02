@@ -165,7 +165,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
         (*self * P::COFACTOR_INV).into()
     }
 
-    fn into_projective(&self) -> Projective<P> {
+    fn to_projective(&self) -> Projective<P> {
         (*self).into()
     }
 

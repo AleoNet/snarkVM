@@ -103,7 +103,7 @@ impl<N: Network> ComputeKey<N> {
         // Compute G^sk_prf.
         let pk_prf = N::account_signature_scheme().g_scalar_multiply(&self.sk_prf);
 
-        (self.pk_sig.into_projective() + self.pr_sig.into_projective() + pk_prf).into()
+        (self.pk_sig.to_projective() + self.pr_sig.to_projective() + pk_prf).into()
     }
 }
 

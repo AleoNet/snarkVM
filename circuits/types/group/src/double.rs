@@ -78,7 +78,7 @@ mod tests {
         for i in 0..ITERATIONS {
             // Sample a random element.
             let point = <Circuit as Environment>::Affine::rand(&mut test_rng());
-            let expected = point.into_projective().double();
+            let expected = point.to_projective().double();
 
             let affine = Group::<Circuit>::new(Mode::Constant, point);
 
@@ -94,7 +94,7 @@ mod tests {
         for i in 0..ITERATIONS {
             // Sample a random element.
             let point = <Circuit as Environment>::Affine::rand(&mut test_rng());
-            let expected = point.into_projective().double();
+            let expected = point.to_projective().double();
 
             let affine = Group::<Circuit>::new(Mode::Public, point);
 
@@ -111,7 +111,7 @@ mod tests {
             // Sample a random element.
 
             let point = <Circuit as Environment>::Affine::rand(&mut test_rng());
-            let expected = point.into_projective().double();
+            let expected = point.to_projective().double();
 
             let affine = Group::<Circuit>::new(Mode::Private, point);
 
@@ -128,7 +128,7 @@ mod tests {
     fn test_double_matches() {
         // Sample two random elements.
         let a = <Circuit as Environment>::Affine::rand(&mut test_rng());
-        let expected: <Circuit as Environment>::Affine = (a.into_projective() + a.into_projective()).into();
+        let expected: <Circuit as Environment>::Affine = (a.to_projective() + a.to_projective()).into();
 
         // Constant
         let candidate_a = Group::<Circuit>::new(Mode::Constant, a).double();

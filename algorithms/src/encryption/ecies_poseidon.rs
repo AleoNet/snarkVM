@@ -69,7 +69,7 @@ where
     }
 
     fn generate_public_key(&self, private_key: &Self::PrivateKey) -> Self::PublicKey {
-        self.generator.into_projective().mul(*private_key).into_affine()
+        self.generator.to_projective().mul(*private_key).into_affine()
     }
 
     ///

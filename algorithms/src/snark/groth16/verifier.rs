@@ -41,7 +41,7 @@ pub fn verify_proof<E: PairingEngine>(
         return Err(SynthesisError::MalformedVerifyingKey(public_inputs.len() + 1, pvk.gamma_abc_g1().len()));
     }
 
-    let mut g_ic = pvk.gamma_abc_g1()[0].into_projective();
+    let mut g_ic = pvk.gamma_abc_g1()[0].to_projective();
     for (i, b) in public_inputs.iter().zip(pvk.gamma_abc_g1().iter().skip(1)) {
         g_ic += &b.mul(*i);
     }

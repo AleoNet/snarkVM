@@ -62,17 +62,17 @@ fn random_addition_test<G: ProjectiveCurve>() {
         // Mixed addition
 
         // (a + b) + c
-        tmp[3] = a_affine.into_projective();
+        tmp[3] = a_affine.to_projective();
         tmp[3].add_assign_mixed(&b_affine);
         tmp[3].add_assign_mixed(&c_affine);
 
         // a + (b + c)
-        tmp[4] = b_affine.into_projective();
+        tmp[4] = b_affine.to_projective();
         tmp[4].add_assign_mixed(&c_affine);
         tmp[4].add_assign_mixed(&a_affine);
 
         // (a + c) + b
-        tmp[5] = a_affine.into_projective();
+        tmp[5] = a_affine.to_projective();
         tmp[5].add_assign_mixed(&c_affine);
         tmp[5].add_assign_mixed(&b_affine);
 
@@ -192,7 +192,7 @@ fn random_transformation_test<G: ProjectiveCurve>() {
     for _ in 0..ITERATIONS {
         let g = G::rand(&mut rng);
         let g_affine = g.into_affine();
-        let g_projective = g_affine.into_projective();
+        let g_projective = g_affine.to_projective();
         assert_eq!(g, g_projective);
     }
 
@@ -212,10 +212,10 @@ fn random_transformation_test<G: ProjectiveCurve>() {
         }
         for _ in 0..5 {
             let s = between.sample(&mut rng);
-            v[s] = v[s].into_affine().into_projective();
+            v[s] = v[s].into_affine().to_projective();
         }
 
-        let expected_v = v.iter().map(|v| v.into_affine().into_projective()).collect::<Vec<_>>();
+        let expected_v = v.iter().map(|v| v.into_affine().to_projective()).collect::<Vec<_>>();
         G::batch_normalization(&mut v);
 
         for i in &v {
@@ -269,8 +269,8 @@ pub fn curve_tests<G: ProjectiveCurve>() {
     // Transformations
     {
         let a = G::rand(&mut rng);
-        let b = a.into_affine().into_projective();
-        let c = a.into_affine().into_projective().into_affine().into_projective();
+        let b = a.into_affine().to_projective();
+        let c = a.into_affine().to_projective().into_affine().to_projective();
         assert_eq!(a, b);
         assert_eq!(b, c);
     }

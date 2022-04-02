@@ -137,7 +137,7 @@ where
         let g_bases = {
             let (base, _, _) = hash_to_curve::<TEAffine<TE>>(message);
 
-            let mut g = base.into_projective();
+            let mut g = base.to_projective();
             let mut g_bases = Vec::with_capacity(TE::ScalarField::size_in_bits());
             for _ in 0..TE::ScalarField::size_in_bits() {
                 g_bases.push(g);
@@ -295,7 +295,7 @@ where
             let g_sk_prf = self.g_scalar_multiply(&sk_prf);
 
             // Compute G^sk_sig G^r_sig G^sk_prf.
-            g_sk_sig.into_projective() + g_sk_prf + g_r_sig.into_projective()
+            g_sk_sig.to_projective() + g_sk_prf + g_r_sig.to_projective()
         };
 
         Ok(*verifier_challenge == candidate_verifier_challenge && *public_key == candidate_public_key)

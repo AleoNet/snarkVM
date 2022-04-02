@@ -101,7 +101,7 @@ mod tests {
             let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
             let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
 
-            let expected = (first.into_projective() - second.into_projective()).into();
+            let expected = (first.to_projective() - second.to_projective()).into();
             let a = Group::<Circuit>::new(Mode::Constant, first);
             let b = Group::<Circuit>::new(Mode::Constant, second);
 
@@ -118,7 +118,7 @@ mod tests {
             let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
             let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
 
-            let expected = (first.into_projective() - second.into_projective()).into();
+            let expected = (first.to_projective() - second.to_projective()).into();
             let a = Group::<Circuit>::new(Mode::Constant, first);
             let b = Group::<Circuit>::new(Mode::Public, second);
 
@@ -135,7 +135,7 @@ mod tests {
             let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
             let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
 
-            let expected = (first.into_projective() - second.into_projective()).into();
+            let expected = (first.to_projective() - second.to_projective()).into();
             let a = Group::<Circuit>::new(Mode::Public, first);
             let b = Group::<Circuit>::new(Mode::Constant, second);
 
@@ -152,7 +152,7 @@ mod tests {
             let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
             let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
 
-            let expected = (first.into_projective() - second.into_projective()).into();
+            let expected = (first.to_projective() - second.to_projective()).into();
             let a = Group::<Circuit>::new(Mode::Constant, first);
             let b = Group::<Circuit>::new(Mode::Private, second);
 
@@ -169,7 +169,7 @@ mod tests {
             let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
             let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
 
-            let expected = (first.into_projective() - second.into_projective()).into();
+            let expected = (first.to_projective() - second.to_projective()).into();
             let a = Group::<Circuit>::new(Mode::Private, first);
             let b = Group::<Circuit>::new(Mode::Constant, second);
 
@@ -186,7 +186,7 @@ mod tests {
             let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
             let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
 
-            let expected = (first.into_projective() - second.into_projective()).into();
+            let expected = (first.to_projective() - second.to_projective()).into();
             let a = Group::<Circuit>::new(Mode::Public, first);
             let b = Group::<Circuit>::new(Mode::Public, second);
 
@@ -203,7 +203,7 @@ mod tests {
             let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
             let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
 
-            let expected = (first.into_projective() - second.into_projective()).into();
+            let expected = (first.to_projective() - second.to_projective()).into();
             let a = Group::<Circuit>::new(Mode::Public, first);
             let b = Group::<Circuit>::new(Mode::Private, second);
 
@@ -220,7 +220,7 @@ mod tests {
             let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
             let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
 
-            let expected = (first.into_projective() - second.into_projective()).into();
+            let expected = (first.to_projective() - second.to_projective()).into();
             let a = Group::<Circuit>::new(Mode::Private, first);
             let b = Group::<Circuit>::new(Mode::Public, second);
 
@@ -237,7 +237,7 @@ mod tests {
             let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
             let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
 
-            let expected = (first.into_projective() - second.into_projective()).into();
+            let expected = (first.to_projective() - second.to_projective()).into();
             let a = Group::<Circuit>::new(Mode::Private, first);
             let b = Group::<Circuit>::new(Mode::Private, second);
 
@@ -253,7 +253,7 @@ mod tests {
         // Sample two random elements.
         let a: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
         let b: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-        let expected = a.into_projective() - b.into_projective();
+        let expected = a.to_projective() - b.to_projective();
 
         // Constant
         let first = Group::<Circuit>::new(Mode::Constant, a);

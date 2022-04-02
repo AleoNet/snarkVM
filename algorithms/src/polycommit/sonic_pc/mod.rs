@@ -694,7 +694,7 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
         let (witness, adjusted_witness) = if let Some(randomizer) = randomizer {
             (proof.w.mul(randomizer), adjusted_witness.mul(randomizer))
         } else {
-            (proof.w.into_projective(), adjusted_witness)
+            (proof.w.to_projective(), adjusted_witness)
         };
 
         *combined_witness += witness;

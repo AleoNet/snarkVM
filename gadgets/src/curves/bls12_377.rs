@@ -123,7 +123,7 @@ mod test {
         assert_eq!(gadget_b.y.get_value().unwrap(), b.y);
 
         // Check addition
-        let ab = a.into_projective() + b.into_projective();
+        let ab = a.to_projective() + b.to_projective();
         let ab_affine = ab.into_affine();
         let gadget_ab = gadget_a.add(&mut cs.ns(|| "ab"), &gadget_b).unwrap();
         let gadget_ba = gadget_b.add(&mut cs.ns(|| "ba"), &gadget_a).unwrap();
@@ -133,7 +133,7 @@ mod test {
         assert_eq!(ab_val, ab_affine, "Result of addition is unequal");
 
         // Check doubling
-        let aa = a.into_projective().double();
+        let aa = a.to_projective().double();
         let aa_affine = aa.into_affine();
         gadget_a.double_in_place(&mut cs.ns(|| "2a")).unwrap();
         let aa_val = gadget_a.get_value().expect("Doubling should be successful");
@@ -141,7 +141,7 @@ mod test {
 
         // Check mul_bits
         let scalar = Fr::rand(&mut rng);
-        let native_result = aa.mul(scalar) + b.into_projective();
+        let native_result = aa.mul(scalar) + b.to_projective();
         let native_result = native_result.into_affine();
 
         let mut scalar: Vec<bool> = BitIteratorBE::new(scalar.to_repr()).collect();
@@ -173,7 +173,7 @@ mod test {
         assert_eq!(gadget_b.x.get_value().unwrap(), b.x);
         assert_eq!(gadget_b.y.get_value().unwrap(), b.y);
 
-        let ab = a.into_projective() + b.into_projective();
+        let ab = a.to_projective() + b.to_projective();
         let ab_affine = ab.into_affine();
         let gadget_ab = gadget_a.add(&mut cs.ns(|| "ab"), &gadget_b).unwrap();
         let gadget_ba = gadget_b.add(&mut cs.ns(|| "ba"), &gadget_a).unwrap();
@@ -181,7 +181,7 @@ mod test {
         assert_eq!(gadget_ab.x.get_value().unwrap(), ab_affine.x);
         assert_eq!(gadget_ab.y.get_value().unwrap(), ab_affine.y);
 
-        let aa = a.into_projective().double();
+        let aa = a.to_projective().double();
         let aa_affine = aa.into_affine();
         gadget_a.double_in_place(&mut cs.ns(|| "2a")).unwrap();
         assert_eq!(gadget_a.x.get_value().unwrap(), aa_affine.x);

@@ -231,7 +231,7 @@ where
 
     let s_g_a = g_a.mul(s);
     let r_g1_b = g1_b.mul(r);
-    let r_s_delta_g1 = params.delta_g1.into_projective().mul(r).mul(s);
+    let r_s_delta_g1 = params.delta_g1.to_projective().mul(r).mul(s);
 
     let mut g_c = s_g_a;
     g_c += r_g1_b;

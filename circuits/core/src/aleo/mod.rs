@@ -38,7 +38,7 @@ impl<E: Environment> Aleo<E> {
         let mut bases = Vec::with_capacity(E::ScalarField::size_in_bits());
 
         // Compute the bases up to the size of the scalar field (in bits).
-        let mut base = base.into_projective();
+        let mut base = base.to_projective();
         for _ in 0..E::ScalarField::size_in_bits() {
             bases.push(Group::constant(base.into_affine()));
             base.double_in_place();

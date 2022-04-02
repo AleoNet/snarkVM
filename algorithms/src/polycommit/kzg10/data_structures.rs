@@ -108,7 +108,7 @@ impl<E: PairingEngine> CanonicalDeserialize for UniversalParams<E> {
 impl<E: PairingEngine> UniversalParams<E> {
     pub fn lagrange_basis(&self, domain: EvaluationDomain<E::Fr>) -> Vec<E::G1Affine> {
         let basis = domain
-            .ifft(&self.powers_of_beta_g(0, domain.size()).iter().map(|e| (*e).into_projective()).collect::<Vec<_>>());
+            .ifft(&self.powers_of_beta_g(0, domain.size()).iter().map(|e| (*e).to_projective()).collect::<Vec<_>>());
         E::G1Projective::batch_normalization_into_affine(basis)
     }
 

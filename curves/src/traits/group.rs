@@ -165,7 +165,7 @@ pub trait AffineCurve:
 
     /// Converts this element into its projective representation.
     #[must_use]
-    fn into_projective(&self) -> Self::Projective;
+    fn to_projective(&self) -> Self::Projective;
 
     /// Returns a group element if the set of bytes forms a valid group element,
     /// otherwise returns None. This function is primarily intended for sampling
