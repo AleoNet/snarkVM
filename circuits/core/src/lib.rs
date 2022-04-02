@@ -22,13 +22,15 @@ extern crate enum_index_derive;
 
 pub mod account;
 pub mod algorithms;
-pub mod program;
+
+pub mod literal;
+pub use literal::*;
 
 pub mod devnet;
 pub use devnet::*;
 
 // TODO (howardwu): Remove this.
-pub use program::{Literal, LiteralType};
+pub use literal::{Literal, LiteralType};
 
 use snarkvm_circuits_types::{environment::Environment, Field, Group, Scalar};
 

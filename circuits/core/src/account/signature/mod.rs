@@ -19,7 +19,7 @@ pub mod verify;
 #[cfg(test)]
 use snarkvm_circuits_types::environment::assert_scope;
 
-use crate::{program::Literal, Aleo};
+use crate::{Aleo, Literal};
 use snarkvm_circuits_types::{environment::prelude::*, Address, Boolean, Field, Group, Scalar};
 
 pub struct Signature<A: Aleo> {

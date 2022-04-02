@@ -18,7 +18,7 @@
 #![allow(clippy::too_many_arguments)]
 
 use crate::program::Identifier;
-use snarkvm_circuits_types::prelude::*;
+use snarkvm_circuits::prelude::*;
 
 use core::{cmp::Ordering, fmt};
 
@@ -95,7 +95,7 @@ impl<E: Environment> PartialOrd for Register<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_circuits_types::environment::Circuit;
+    use snarkvm_circuits::environment::Circuit;
 
     type E = Circuit;
 

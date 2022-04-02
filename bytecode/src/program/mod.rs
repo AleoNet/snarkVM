@@ -23,19 +23,13 @@ pub use function::*;
 pub mod helpers;
 pub use helpers::*;
 
-pub mod literal;
-pub use literal::*;
-
 pub mod template;
 pub use template::*;
 
-use crate::{
-    program::{Function, Identifier, Template},
-    Aleo,
-};
+use crate::program::{Function, Identifier, Template};
 
 // pub trait Program: Aleo {
-pub trait Program: snarkvm_circuits_types::environment::Environment {
+pub trait Program: snarkvm_circuits::environment::Environment {
     /// Adds a new template for the program.
     ///
     /// # Errors

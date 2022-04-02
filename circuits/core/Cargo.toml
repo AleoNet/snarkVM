@@ -35,9 +35,6 @@ version = "0.2"
 [dependencies.enum_index_derive]
 version = "0.2"
 
-[dependencies.indexmap]
-version = "1.8"
-
 [dependencies.nom]
 version = "7.1"
 

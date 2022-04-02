@@ -20,7 +20,7 @@ use crate::program::{
     Program,
     Value,
 };
-use snarkvm_circuits_types::prelude::*;
+use snarkvm_circuits::prelude::*;
 
 use indexmap::IndexMap;
 

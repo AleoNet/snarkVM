@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::program::{helpers::Register, Value};
-use snarkvm_circuits_types::prelude::*;
+use snarkvm_circuits::prelude::*;
 
 use core::fmt;
 
@@ -136,8 +136,11 @@ impl<E: Environment> fmt::Display for Operand<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::program::{Literal, Register, Value};
-    use snarkvm_circuits_types::environment::{Circuit, Parser};
+    use crate::program::{Register, Value};
+    use snarkvm_circuits::{
+        environment::{Circuit, Parser},
+        Literal,
+    };
 
     type E = Circuit;
 

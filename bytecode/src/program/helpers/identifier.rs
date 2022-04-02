@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::program::helpers::Register;
-use snarkvm_circuits_types::prelude::*;
+use snarkvm_circuits::prelude::*;
 use snarkvm_utilities::error;
 
 use core::{fmt, marker::PhantomData};
@@ -126,7 +126,7 @@ impl<E: Environment> fmt::Display for Identifier<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_circuits_types::environment::Circuit;
+    use snarkvm_circuits::environment::Circuit;
 
     type E = Circuit;
 

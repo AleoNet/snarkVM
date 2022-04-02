@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::program::{Identifier, LiteralType};
-use snarkvm_circuits_types::prelude::*;
+use crate::program::Identifier;
+use snarkvm_circuits::prelude::*;
 
 /// An annotation defines the type parameters for a function or template.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -71,7 +71,7 @@ impl<E: Environment> fmt::Display for Annotation<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_circuits_types::environment::Circuit;
+    use snarkvm_circuits::environment::Circuit;
 
     type E = Circuit;
 

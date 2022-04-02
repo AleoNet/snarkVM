@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::program::{Function, Identifier, Program, Template};
-use snarkvm_circuits_types::environment::{prelude::*, Circuit};
+use snarkvm_circuits::environment::{prelude::*, Circuit};
 
 use core::fmt;
 use indexmap::IndexMap;
@@ -214,7 +214,7 @@ impl fmt::Display for AleoProgram {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_circuits_types::Field;
+    use snarkvm_circuits::Field;
 
     /// Compute 2^EXPONENT - 1, in a purposefully constraint-inefficient manner for testing.
     fn create_example_circuit<E: Environment>() -> Field<E> {

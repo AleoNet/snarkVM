@@ -29,7 +29,7 @@ use registers::*;
 mod parsers;
 
 use crate::program::{Annotation, Identifier, Program, Sanitizer, Value};
-use snarkvm_circuits_types::prelude::*;
+use snarkvm_circuits::prelude::*;
 
 use indexmap::IndexSet;
 

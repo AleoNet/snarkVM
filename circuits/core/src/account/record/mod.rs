@@ -17,10 +17,7 @@
 // #[cfg(test)]
 // use snarkvm_circuits_types::environment::assert_scope;
 
-use crate::{
-    program::{Literal, Value},
-    Aleo,
-};
+use crate::{Aleo, Literal};
 use snarkvm_circuits_types::{environment::prelude::*, Address, I64};
 
 // TODO (howardwu): Check mode is only public/private, not constant.
@@ -28,21 +25,13 @@ use snarkvm_circuits_types::{environment::prelude::*, Address, I64};
 pub struct Record<A: Aleo> {
     owner: Address<A>,
     value: I64<A>,
-    data: Vec<Value<A>>,
+    data: Vec<Literal<A>>,
     // program_id: Vec<Boolean<P>>>,
     // randomizer: BaseField<P>>,
     // record_view_key: BaseField<P>>,
 }
 
 impl<A: Aleo> Record<A> {
-    /// Returns the members of the record.
-    pub fn members(&self) -> Vec<Value<A>> {
-        [Value::Literal(Literal::Address(self.owner.clone())), Value::Literal(Literal::I64(self.value.clone()))]
-            .into_iter()
-            .chain(self.data.iter().cloned())
-            .collect::<Vec<_>>()
-    }
-
     /// Returns the record owner.
     pub fn owner(&self) -> &Address<A> {
         &self.owner
@@ -54,7 +43,7 @@ impl<A: Aleo> Record<A> {
     }
 
     /// Returns the record data.
-    pub fn data(&self) -> &Vec<Value<A>> {
+    pub fn data(&self) -> &Vec<Literal<A>> {
         &self.data
     }
 }
@@ -73,9 +62,9 @@ mod tests {
 
     #[test]
     fn test_record() {
-        let first = Value::Literal(Literal::<Circuit>::from_str("10field.public"));
-        let second = Value::Literal(Literal::from_str("true.private"));
-        let third = Value::Literal(Literal::from_str("99i64.public"));
+        let first = Literal::<Circuit>::from_str("10field.public");
+        let second = Literal::from_str("true.private");
+        let third = Literal::from_str("99i64.public");
 
         let _candidate = Record::<Circuit> {
             owner: Address::from(Group::from_str("2group.private")),

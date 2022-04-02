@@ -26,7 +26,7 @@ use crate::program::{
     Program,
     Sanitizer,
 };
-use snarkvm_circuits_types::environment::{Parser, ParserResult};
+use snarkvm_circuits::environment::{Parser, ParserResult};
 use snarkvm_utilities::{error, FromBytes, ToBytes};
 
 use core::fmt;

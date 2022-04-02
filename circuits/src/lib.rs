@@ -21,6 +21,8 @@ pub use snarkvm_circuits_edge::*;
 pub use snarkvm_circuits_environment::*;
 pub use snarkvm_circuits_types::*;
 
+pub use snarkvm_circuits_environment as environment;
+
 pub mod prelude {
     pub use super::*;
     pub use snarkvm_circuits_environment::*;
