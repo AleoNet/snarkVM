@@ -14,26 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::Genesis;
+pub mod output_circuit;
+pub use output_circuit::*;
 
-pub struct GenesisBlock;
+pub(crate) mod output_private_variables;
+pub(crate) use output_private_variables::*;
 
-impl Genesis for GenesisBlock {
-    const CHECKSUM: &'static str = "";
-    const SIZE: u64 = 2515;
-
-    fn load_bytes() -> Vec<u8> {
-        include_bytes!("./resources/block.genesis").to_vec()
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_genesis_block() {
-        let block = GenesisBlock::load_bytes();
-        assert_eq!(GenesisBlock::SIZE, block.len() as u64);
-    }
-}
+pub(crate) mod output_public_variables;
+pub(crate) use output_public_variables::*;

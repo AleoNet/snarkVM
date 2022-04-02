@@ -23,11 +23,19 @@ use std::sync::atomic::AtomicBool;
 use time::OffsetDateTime;
 
 #[test]
-fn test_testnet1_inner_circuit_id_sanity_check() {
-    let expected_inner_circuit_id =
-        "ic1wuaut8xp0rtjmctl2t59t666hguzcfzvsdx58g3w5wu48ceg2wwym9wjpr9gprgfz54ykunx37yqqgdkgl2".to_string();
-    let candidate_inner_circuit_id = <Testnet1 as Network>::inner_circuit_id().to_string();
-    assert_eq!(expected_inner_circuit_id, candidate_inner_circuit_id);
+fn test_testnet1_input_circuit_id_sanity_check() {
+    let expected_input_circuit_id =
+        "ic1czd4lza7sqz3yd0qwr2tsqfd9t8k2864c7cx3anm7u4nwt6jkq88dvf2wnqdhdkj3y60449gp7sqzr0g3x8".to_string();
+    let candidate_input_circuit_id = <Testnet1 as Network>::input_circuit_id().to_string();
+    assert_eq!(expected_input_circuit_id, candidate_input_circuit_id);
+}
+
+#[test]
+fn test_testnet1_output_circuit_id_sanity_check() {
+    let expected_output_circuit_id =
+        "oc1mahwq49df5n0pluyftf9xlzle47hpcej24xdhgsfkr3v4ku520ja2jg3y4ncc63z35c7lsyvuydqzazxz5r".to_string();
+    let candidate_output_circuit_id = <Testnet1 as Network>::output_circuit_id().to_string();
+    assert_eq!(expected_output_circuit_id, candidate_output_circuit_id);
 }
 
 #[test]
