@@ -23,19 +23,19 @@ use core::fmt;
 use std::io::{Read, Result as IoResult, Write};
 
 pub(crate) struct UnaryOperation<P: Program> {
-    operand: Operand<P>,
+    first: Operand<P>,
     destination: Register<P>,
 }
 
 impl<P: Program> UnaryOperation<P> {
     /// Returns the operands.
     pub fn operands(&self) -> Vec<Operand<P>> {
-        vec![self.operand.clone()]
+        vec![self.first.clone()]
     }
 
     /// Returns the operand.
-    pub(crate) fn operand(&self) -> &Operand<P> {
-        &self.operand
+    pub(crate) fn first(&self) -> &Operand<P> {
+        &self.first
     }
 
     /// Returns the destination register.
@@ -51,33 +51,33 @@ impl<P: Program> Parser for UnaryOperation<P> {
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the operand from the string.
-        let (string, operand) = Operand::parse(string)?;
+        let (string, first) = Operand::parse(string)?;
         // Parse the " into " from the string.
         let (string, _) = tag(" into ")(string)?;
         // Parse the destination register from the string.
         let (string, destination) = Register::parse(string)?;
 
-        Ok((string, Self { destination, operand }))
+        Ok((string, Self { destination, first }))
     }
 }
 
 impl<P: Program> fmt::Display for UnaryOperation<P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} into {}", self.operand, self.destination)
+        write!(f, "{} into {}", self.first, self.destination)
     }
 }
 
 impl<P: Program> FromBytes for UnaryOperation<P> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let operand = Operand::read_le(&mut reader)?;
+        let first = Operand::read_le(&mut reader)?;
         let destination = Register::read_le(&mut reader)?;
-        Ok(Self { operand, destination })
+        Ok(Self { first, destination })
     }
 }
 
 impl<P: Program> ToBytes for UnaryOperation<P> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.operand.write_le(&mut writer)?;
+        self.first.write_le(&mut writer)?;
         self.destination.write_le(&mut writer)
     }
 }
