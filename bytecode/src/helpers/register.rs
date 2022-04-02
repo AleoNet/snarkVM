@@ -17,7 +17,7 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
-use crate::{variable_length::*, Identifier};
+use crate::{variable_length::*, Identifier, Program};
 use snarkvm_circuits::prelude::*;
 use snarkvm_utilities::{error, FromBytes, ToBytes};
 
@@ -28,14 +28,14 @@ pub type Locator = u64;
 
 /// A register contains the location data to a value in memory.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum Register<E: Environment> {
+pub enum Register<P: Program> {
     /// A register contains its locator in memory.
     Locator(Locator),
     /// A register member contains its locator and identifier in memory.
-    Member(Locator, Identifier<E>),
+    Member(Locator, Identifier<P>),
 }
 
-impl<E: Environment> Register<E> {
+impl<P: Program> Register<P> {
     /// Returns the locator of the register.
     #[inline]
     pub fn locator(&self) -> &Locator {
@@ -46,8 +46,8 @@ impl<E: Environment> Register<E> {
     }
 }
 
-impl<E: Environment> Parser for Register<E> {
-    type Environment = E;
+impl<P: Program> Parser for Register<P> {
+    type Environment = P::Environment;
 
     /// Parses a string into a register.
     /// The register is of the form `r{locator}` or `r{locator}.{identifier}`.
@@ -68,7 +68,7 @@ impl<E: Environment> Parser for Register<E> {
     }
 }
 
-impl<E: Environment> fmt::Display for Register<E> {
+impl<P: Program> fmt::Display for Register<P> {
     /// Prints the register as a string.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -80,7 +80,7 @@ impl<E: Environment> fmt::Display for Register<E> {
     }
 }
 
-impl<E: Environment> FromBytes for Register<E> {
+impl<P: Program> FromBytes for Register<P> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let variant = u8::read_le(&mut reader)?;
         let locator = read_variable_length_integer(&mut reader)?;
@@ -92,7 +92,7 @@ impl<E: Environment> FromBytes for Register<E> {
     }
 }
 
-impl<E: Environment> ToBytes for Register<E> {
+impl<P: Program> ToBytes for Register<P> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         match self {
             Self::Locator(locator) => {
@@ -108,14 +108,14 @@ impl<E: Environment> ToBytes for Register<E> {
     }
 }
 
-impl<E: Environment> Ord for Register<E> {
+impl<P: Program> Ord for Register<P> {
     /// Ordering is determined by the register locator (the identifier is ignored).
     fn cmp(&self, other: &Self) -> Ordering {
         self.locator().cmp(other.locator())
     }
 }
 
-impl<E: Environment> PartialOrd for Register<E> {
+impl<P: Program> PartialOrd for Register<P> {
     /// Ordering is determined by the register locator (the identifier is ignored).
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
@@ -125,128 +125,128 @@ impl<E: Environment> PartialOrd for Register<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_circuits::environment::Circuit;
+    use crate::AleoProgram;
 
-    type E = Circuit;
+    type P = AleoProgram;
 
     #[test]
     fn test_register_display() {
         // Register::Locator
-        assert_eq!("r0", format!("{}", Register::<E>::Locator(0)));
-        assert_eq!("r1", format!("{}", Register::<E>::Locator(1)));
-        assert_eq!("r2", format!("{}", Register::<E>::Locator(2)));
-        assert_eq!("r3", format!("{}", Register::<E>::Locator(3)));
-        assert_eq!("r4", format!("{}", Register::<E>::Locator(4)));
+        assert_eq!("r0", format!("{}", Register::<P>::Locator(0)));
+        assert_eq!("r1", format!("{}", Register::<P>::Locator(1)));
+        assert_eq!("r2", format!("{}", Register::<P>::Locator(2)));
+        assert_eq!("r3", format!("{}", Register::<P>::Locator(3)));
+        assert_eq!("r4", format!("{}", Register::<P>::Locator(4)));
 
         // Register::Member
-        assert_eq!("r0.owner", format!("{}", Register::<E>::Member(0, Identifier::from_str("owner"))));
-        assert_eq!("r1.owner", format!("{}", Register::<E>::Member(1, Identifier::from_str("owner"))));
-        assert_eq!("r2.owner", format!("{}", Register::<E>::Member(2, Identifier::from_str("owner"))));
-        assert_eq!("r3.owner", format!("{}", Register::<E>::Member(3, Identifier::from_str("owner"))));
-        assert_eq!("r4.owner", format!("{}", Register::<E>::Member(4, Identifier::from_str("owner"))));
+        assert_eq!("r0.owner", format!("{}", Register::<P>::Member(0, Identifier::from_str("owner"))));
+        assert_eq!("r1.owner", format!("{}", Register::<P>::Member(1, Identifier::from_str("owner"))));
+        assert_eq!("r2.owner", format!("{}", Register::<P>::Member(2, Identifier::from_str("owner"))));
+        assert_eq!("r3.owner", format!("{}", Register::<P>::Member(3, Identifier::from_str("owner"))));
+        assert_eq!("r4.owner", format!("{}", Register::<P>::Member(4, Identifier::from_str("owner"))));
     }
 
     #[test]
     fn test_register_partial_ord() {
         // Register::Locator
-        assert_eq!(Some(Ordering::Equal), Register::<E>::Locator(0).partial_cmp(&Register::<E>::Locator(0)));
-        assert_eq!(Some(Ordering::Less), Register::<E>::Locator(0).partial_cmp(&Register::<E>::Locator(1)));
-        assert_eq!(Some(Ordering::Greater), Register::<E>::Locator(1).partial_cmp(&Register::<E>::Locator(0)));
+        assert_eq!(Some(Ordering::Equal), Register::<P>::Locator(0).partial_cmp(&Register::<P>::Locator(0)));
+        assert_eq!(Some(Ordering::Less), Register::<P>::Locator(0).partial_cmp(&Register::<P>::Locator(1)));
+        assert_eq!(Some(Ordering::Greater), Register::<P>::Locator(1).partial_cmp(&Register::<P>::Locator(0)));
 
         // Register::Member
         assert_eq!(
             Some(Ordering::Equal),
-            Register::<E>::Member(0, Identifier::from_str("owner"))
-                .partial_cmp(&Register::<E>::Member(0, Identifier::from_str("owner")))
+            Register::<P>::Member(0, Identifier::from_str("owner"))
+                .partial_cmp(&Register::<P>::Member(0, Identifier::from_str("owner")))
         );
         assert_eq!(
             Some(Ordering::Less),
-            Register::<E>::Member(0, Identifier::from_str("owner"))
-                .partial_cmp(&Register::<E>::Member(1, Identifier::from_str("owner")))
+            Register::<P>::Member(0, Identifier::from_str("owner"))
+                .partial_cmp(&Register::<P>::Member(1, Identifier::from_str("owner")))
         );
         assert_eq!(
             Some(Ordering::Greater),
-            Register::<E>::Member(1, Identifier::from_str("owner"))
-                .partial_cmp(&Register::<E>::Member(0, Identifier::from_str("owner")))
+            Register::<P>::Member(1, Identifier::from_str("owner"))
+                .partial_cmp(&Register::<P>::Member(0, Identifier::from_str("owner")))
         );
     }
 
     #[test]
     fn test_register_eq() {
         // Register::Locator
-        assert_eq!(Register::<E>::Locator(0), Register::<E>::Locator(0));
-        assert_ne!(Register::<E>::Locator(0), Register::<E>::Locator(1));
-        assert_ne!(Register::<E>::Locator(0), Register::<E>::Locator(2));
-        assert_ne!(Register::<E>::Locator(0), Register::<E>::Locator(3));
-        assert_ne!(Register::<E>::Locator(0), Register::<E>::Locator(4));
+        assert_eq!(Register::<P>::Locator(0), Register::<P>::Locator(0));
+        assert_ne!(Register::<P>::Locator(0), Register::<P>::Locator(1));
+        assert_ne!(Register::<P>::Locator(0), Register::<P>::Locator(2));
+        assert_ne!(Register::<P>::Locator(0), Register::<P>::Locator(3));
+        assert_ne!(Register::<P>::Locator(0), Register::<P>::Locator(4));
 
         // Register::Member
         assert_eq!(
-            Register::<E>::Member(0, Identifier::from_str("owner")),
-            Register::<E>::Member(0, Identifier::from_str("owner"))
+            Register::<P>::Member(0, Identifier::from_str("owner")),
+            Register::<P>::Member(0, Identifier::from_str("owner"))
         );
         assert_ne!(
-            Register::<E>::Member(0, Identifier::from_str("owner")),
-            Register::<E>::Member(1, Identifier::from_str("owner"))
+            Register::<P>::Member(0, Identifier::from_str("owner")),
+            Register::<P>::Member(1, Identifier::from_str("owner"))
         );
         assert_ne!(
-            Register::<E>::Member(0, Identifier::from_str("owner")),
-            Register::<E>::Member(2, Identifier::from_str("owner"))
+            Register::<P>::Member(0, Identifier::from_str("owner")),
+            Register::<P>::Member(2, Identifier::from_str("owner"))
         );
         assert_ne!(
-            Register::<E>::Member(0, Identifier::from_str("owner")),
-            Register::<E>::Member(3, Identifier::from_str("owner"))
+            Register::<P>::Member(0, Identifier::from_str("owner")),
+            Register::<P>::Member(3, Identifier::from_str("owner"))
         );
         assert_ne!(
-            Register::<E>::Member(0, Identifier::from_str("owner")),
-            Register::<E>::Member(4, Identifier::from_str("owner"))
+            Register::<P>::Member(0, Identifier::from_str("owner")),
+            Register::<P>::Member(4, Identifier::from_str("owner"))
         );
     }
 
     #[test]
     fn test_register_to_string() {
         // Register::Locator
-        assert_eq!(Register::<E>::Locator(0).to_string(), "r0".to_string());
-        assert_eq!(Register::<E>::Locator(1).to_string(), "r1".to_string());
-        assert_eq!(Register::<E>::Locator(2).to_string(), "r2".to_string());
-        assert_eq!(Register::<E>::Locator(3).to_string(), "r3".to_string());
-        assert_eq!(Register::<E>::Locator(4).to_string(), "r4".to_string());
+        assert_eq!(Register::<P>::Locator(0).to_string(), "r0".to_string());
+        assert_eq!(Register::<P>::Locator(1).to_string(), "r1".to_string());
+        assert_eq!(Register::<P>::Locator(2).to_string(), "r2".to_string());
+        assert_eq!(Register::<P>::Locator(3).to_string(), "r3".to_string());
+        assert_eq!(Register::<P>::Locator(4).to_string(), "r4".to_string());
 
         // Register::Member
-        assert_eq!(Register::<E>::Member(0, Identifier::from_str("owner")).to_string(), "r0.owner".to_string());
-        assert_eq!(Register::<E>::Member(1, Identifier::from_str("owner")).to_string(), "r1.owner".to_string());
-        assert_eq!(Register::<E>::Member(2, Identifier::from_str("owner")).to_string(), "r2.owner".to_string());
-        assert_eq!(Register::<E>::Member(3, Identifier::from_str("owner")).to_string(), "r3.owner".to_string());
-        assert_eq!(Register::<E>::Member(4, Identifier::from_str("owner")).to_string(), "r4.owner".to_string());
+        assert_eq!(Register::<P>::Member(0, Identifier::from_str("owner")).to_string(), "r0.owner".to_string());
+        assert_eq!(Register::<P>::Member(1, Identifier::from_str("owner")).to_string(), "r1.owner".to_string());
+        assert_eq!(Register::<P>::Member(2, Identifier::from_str("owner")).to_string(), "r2.owner".to_string());
+        assert_eq!(Register::<P>::Member(3, Identifier::from_str("owner")).to_string(), "r3.owner".to_string());
+        assert_eq!(Register::<P>::Member(4, Identifier::from_str("owner")).to_string(), "r4.owner".to_string());
     }
 
     #[test]
     fn test_register_parse() {
         // Register::Locator
-        assert_eq!(("", Register::<E>::Locator(0)), Register::parse("r0").unwrap());
-        assert_eq!(("", Register::<E>::Locator(1)), Register::parse("r1").unwrap());
-        assert_eq!(("", Register::<E>::Locator(2)), Register::parse("r2").unwrap());
-        assert_eq!(("", Register::<E>::Locator(3)), Register::parse("r3").unwrap());
-        assert_eq!(("", Register::<E>::Locator(4)), Register::parse("r4").unwrap());
+        assert_eq!(("", Register::<P>::Locator(0)), Register::parse("r0").unwrap());
+        assert_eq!(("", Register::<P>::Locator(1)), Register::parse("r1").unwrap());
+        assert_eq!(("", Register::<P>::Locator(2)), Register::parse("r2").unwrap());
+        assert_eq!(("", Register::<P>::Locator(3)), Register::parse("r3").unwrap());
+        assert_eq!(("", Register::<P>::Locator(4)), Register::parse("r4").unwrap());
 
         // Register::Member
-        assert_eq!(("", Register::<E>::Member(0, Identifier::from_str("owner"))), Register::parse("r0.owner").unwrap());
-        assert_eq!(("", Register::<E>::Member(1, Identifier::from_str("owner"))), Register::parse("r1.owner").unwrap());
-        assert_eq!(("", Register::<E>::Member(2, Identifier::from_str("owner"))), Register::parse("r2.owner").unwrap());
-        assert_eq!(("", Register::<E>::Member(3, Identifier::from_str("owner"))), Register::parse("r3.owner").unwrap());
-        assert_eq!(("", Register::<E>::Member(4, Identifier::from_str("owner"))), Register::parse("r4.owner").unwrap());
+        assert_eq!(("", Register::<P>::Member(0, Identifier::from_str("owner"))), Register::parse("r0.owner").unwrap());
+        assert_eq!(("", Register::<P>::Member(1, Identifier::from_str("owner"))), Register::parse("r1.owner").unwrap());
+        assert_eq!(("", Register::<P>::Member(2, Identifier::from_str("owner"))), Register::parse("r2.owner").unwrap());
+        assert_eq!(("", Register::<P>::Member(3, Identifier::from_str("owner"))), Register::parse("r3.owner").unwrap());
+        assert_eq!(("", Register::<P>::Member(4, Identifier::from_str("owner"))), Register::parse("r4.owner").unwrap());
     }
 
     #[test]
     fn test_register_parser_fails() {
-        assert!(Register::<E>::parse("").is_err());
-        assert!(Register::<E>::parse("r").is_err());
-        // assert!(Register::<E>::parse("r0.owner.owner").is_err());
-        // assert!(Register::<E>::parse("r0.owner.owner.owner").is_err());
-        // assert!(Register::<E>::parse("r0.owner.owner.owner.owner").is_err());
-        // assert!(Register::<E>::parse("r0.owner.owner.owner.owner.owner").is_err());
-        // assert!(Register::<E>::parse("r0.owner.owner.owner.owner.owner.owner").is_err());
-        // assert!(Register::<E>::parse("r0.owner.owner.owner.owner.owner.owner.owner").is_err());
-        // assert!(Register::<E>::parse("r0.owner.owner.owner.owner.owner.owner.owner.owner").is_err());
+        assert!(Register::<P>::parse("").is_err());
+        assert!(Register::<P>::parse("r").is_err());
+        // assert!(Register::<P>::parse("r0.owner.owner").is_err());
+        // assert!(Register::<P>::parse("r0.owner.owner.owner").is_err());
+        // assert!(Register::<P>::parse("r0.owner.owner.owner.owner").is_err());
+        // assert!(Register::<P>::parse("r0.owner.owner.owner.owner.owner").is_err());
+        // assert!(Register::<P>::parse("r0.owner.owner.owner.owner.owner.owner").is_err());
+        // assert!(Register::<P>::parse("r0.owner.owner.owner.owner.owner.owner.owner").is_err());
+        // assert!(Register::<P>::parse("r0.owner.owner.owner.owner.owner.owner.owner.owner").is_err());
     }
 }

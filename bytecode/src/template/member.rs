@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Annotation, Identifier, Sanitizer};
+use crate::{Annotation, Identifier, Program, Sanitizer};
 use snarkvm_circuits::prelude::*;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -24,29 +24,29 @@ use std::io::{Read, Result as IoResult, Write};
 /// An member statement defines a name for an annotation, and is of the form
 /// `{identifier} as {annotation};`.
 #[derive(Clone, Debug)]
-pub struct Member<E: Environment> {
+pub struct Member<P: Program> {
     /// The name of the member.
-    name: Identifier<E>,
+    name: Identifier<P>,
     /// The annotation of the member.
-    annotation: Annotation<E>,
+    annotation: Annotation<P>,
 }
 
-impl<E: Environment> Member<E> {
+impl<P: Program> Member<P> {
     /// Returns the name of the member.
     #[inline]
-    pub fn name(&self) -> &Identifier<E> {
+    pub fn name(&self) -> &Identifier<P> {
         &self.name
     }
 
     /// Returns the annotation of the member.
     #[inline]
-    pub fn annotation(&self) -> &Annotation<E> {
+    pub fn annotation(&self) -> &Annotation<P> {
         &self.annotation
     }
 }
 
-impl<E: Environment> Parser for Member<E> {
-    type Environment = E;
+impl<P: Program> Parser for Member<P> {
+    type Environment = P::Environment;
 
     /// Parses a string into an member.
     fn parse(string: &str) -> ParserResult<Self> {
@@ -65,13 +65,13 @@ impl<E: Environment> Parser for Member<E> {
     }
 }
 
-impl<E: Environment> fmt::Display for Member<E> {
+impl<P: Program> fmt::Display for Member<P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{name} as {annotation};", name = self.name, annotation = self.annotation)
     }
 }
 
-impl<E: Environment> FromBytes for Member<E> {
+impl<P: Program> FromBytes for Member<P> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let name = FromBytes::read_le(&mut reader)?;
         let annotation = FromBytes::read_le(&mut reader)?;
@@ -79,7 +79,7 @@ impl<E: Environment> FromBytes for Member<E> {
     }
 }
 
-impl<E: Environment> ToBytes for Member<E> {
+impl<P: Program> ToBytes for Member<P> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.name.write_le(&mut writer)?;
         self.annotation.write_le(&mut writer)
@@ -89,14 +89,14 @@ impl<E: Environment> ToBytes for Member<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_circuits::environment::Circuit;
+    use crate::AleoProgram;
 
-    type E = Circuit;
+    type P = AleoProgram;
 
     #[test]
     fn test_member_parse() {
         let member_string = "owner as address.public;";
-        let member = Member::<E>::parse(member_string).unwrap().1;
+        let member = Member::<P>::parse(member_string).unwrap().1;
         assert_eq!(member.name(), &Identifier::from_str("owner"));
         assert_eq!(member.annotation(), &Annotation::from_str("address.public"));
     }
@@ -104,7 +104,7 @@ mod tests {
     #[test]
     fn test_member_display() {
         let member_string = "owner as address.public;";
-        let member = Member::<E>::parse(member_string).unwrap().1;
+        let member = Member::<P>::parse(member_string).unwrap().1;
         assert_eq!(member_string, format!("{member}"));
     }
 }

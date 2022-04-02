@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{helpers::Register, Value};
+use crate::{helpers::Register, Program, Value};
 use snarkvm_circuits::prelude::*;
 use snarkvm_utilities::{error, FromBytes, ToBytes};
 
@@ -24,14 +24,14 @@ use std::io::{Read, Result as IoResult, Write};
 /// The operand enum represents the complete set of options for operands in an instruction.
 /// This enum is designed to support instructions (such as `add {Register} {Value} into {Register}`).
 #[derive(Clone, Debug)]
-pub enum Operand<E: Environment> {
+pub enum Operand<P: Program> {
     /// A value contains a declared literal or composite.
-    Value(Value<E>),
+    Value(Value<P>),
     /// A register contains its locator in memory.
-    Register(Register<E>),
+    Register(Register<P>),
 }
 
-impl<E: Environment> From<&Self> for Operand<E> {
+impl<P: Program> From<&Self> for Operand<P> {
     /// Initializes a new operand from a reference to an operand.
     #[inline]
     fn from(operand: &Self) -> Self {
@@ -42,43 +42,43 @@ impl<E: Environment> From<&Self> for Operand<E> {
     }
 }
 
-impl<E: Environment> From<Register<E>> for Operand<E> {
+impl<P: Program> From<Register<P>> for Operand<P> {
     /// Initializes a new operand from a register.
     #[inline]
-    fn from(register: Register<E>) -> Self {
+    fn from(register: Register<P>) -> Self {
         Operand::Register(register)
     }
 }
 
-impl<E: Environment> From<&Register<E>> for Operand<E> {
+impl<P: Program> From<&Register<P>> for Operand<P> {
     /// Initializes a new operand from a reference to a register.
     #[inline]
-    fn from(register: &Register<E>) -> Self {
+    fn from(register: &Register<P>) -> Self {
         Operand::Register(register.clone())
     }
 }
 
-impl<E: Environment> From<Value<E>> for Operand<E> {
+impl<P: Program> From<Value<P>> for Operand<P> {
     /// Initializes a new operand from a value.
     #[inline]
-    fn from(value: Value<E>) -> Self {
+    fn from(value: Value<P>) -> Self {
         Operand::Value(value)
     }
 }
 
-impl<E: Environment> From<&Value<E>> for Operand<E> {
+impl<P: Program> From<&Value<P>> for Operand<P> {
     /// Initializes a new operand from a reference to a value.
     #[inline]
-    fn from(value: &Value<E>) -> Self {
+    fn from(value: &Value<P>) -> Self {
         Operand::Value(value.clone())
     }
 }
 
-impl<E: Environment> Operand<E> {
+impl<P: Program> Operand<P> {
     /// Returns the value, if the operand is a value.
     /// Returns `None` otherwise.
     #[inline]
-    pub fn value(&self) -> Option<&Value<E>> {
+    pub fn value(&self) -> Option<&Value<P>> {
         match self {
             Operand::Value(value) => Some(value),
             _ => None,
@@ -88,7 +88,7 @@ impl<E: Environment> Operand<E> {
     /// Returns the register, if the operand is a register.
     /// Returns `None` otherwise.
     #[inline]
-    pub fn register(&self) -> Option<&Register<E>> {
+    pub fn register(&self) -> Option<&Register<P>> {
         match self {
             Operand::Register(register) => Some(register),
             _ => None,
@@ -110,7 +110,7 @@ impl<E: Environment> Operand<E> {
     }
 }
 
-impl<E: Environment> Parser for Operand<E> {
+impl<P: Program> Parser for Operand<P> {
     type Environment = E;
 
     /// Parses a string into a operand.
@@ -123,7 +123,7 @@ impl<E: Environment> Parser for Operand<E> {
     }
 }
 
-impl<E: Environment> fmt::Display for Operand<E> {
+impl<P: Program> fmt::Display for Operand<P> {
     /// Prints the operand as a string.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -135,7 +135,7 @@ impl<E: Environment> fmt::Display for Operand<E> {
     }
 }
 
-impl<E: Environment> FromBytes for Operand<E> {
+impl<P: Program> FromBytes for Operand<P> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         match u8::read_le(&mut reader) {
             Ok(0) => Ok(Self::Value(Value::read_le(&mut reader)?)),
@@ -146,7 +146,7 @@ impl<E: Environment> FromBytes for Operand<E> {
     }
 }
 
-impl<E: Environment> ToBytes for Operand<E> {
+impl<P: Program> ToBytes for Operand<P> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         match self {
             Self::Value(value) => {
@@ -164,17 +164,14 @@ impl<E: Environment> ToBytes for Operand<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Register, Value};
-    use snarkvm_circuits::{
-        environment::{Circuit, Parser},
-        Literal,
-    };
+    use crate::{AleoProgram, Register, Value};
+    use snarkvm_circuits::{environment::Parser, Literal};
 
-    type E = Circuit;
+    type P = AleoProgram;
 
     #[test]
     fn test_operand_value() {
-        let operand = Operand::<E>::Value(Value::Literal(Literal::from_str("1field.private")));
+        let operand = Operand::<P>::Value(Value::Literal(Literal::from_str("1field.private")));
         assert_eq!(operand.value(), Some(&Value::Literal(Literal::from_str("1field.private"))));
         assert_eq!(operand.register(), None);
         assert!(operand.is_value());
@@ -183,7 +180,7 @@ mod tests {
 
     #[test]
     fn test_operand_register() {
-        let operand = Operand::<E>::Register(Register::from_str("r0"));
+        let operand = Operand::<P>::Register(Register::from_str("r0"));
         assert_eq!(operand.value(), None);
         assert_eq!(operand.register(), Some(&Register::from_str("r0")));
         assert!(!operand.is_value());
@@ -192,7 +189,7 @@ mod tests {
 
     #[test]
     fn test_operand_register_member() {
-        let operand = Operand::<E>::Register(Register::from_str("r0.owner"));
+        let operand = Operand::<P>::Register(Register::from_str("r0.owner"));
         assert_eq!(operand.value(), None);
         assert_eq!(operand.register(), Some(&Register::from_str("r0.owner")));
         assert!(!operand.is_value());
@@ -201,19 +198,19 @@ mod tests {
 
     #[test]
     fn test_operand_parse() {
-        let operand = Operand::<E>::parse("1field.private").unwrap().1;
+        let operand = Operand::<P>::parse("1field.private").unwrap().1;
         assert_eq!(operand.value(), Some(&Value::Literal(Literal::from_str("1field.private"))));
         assert_eq!(operand.register(), None);
         assert!(operand.is_value());
         assert!(!operand.is_register());
 
-        let operand = Operand::<E>::parse("r0").unwrap().1;
+        let operand = Operand::<P>::parse("r0").unwrap().1;
         assert_eq!(operand.value(), None);
         assert_eq!(operand.register(), Some(&Register::from_str("r0")));
         assert!(!operand.is_value());
         assert!(operand.is_register());
 
-        let operand = Operand::<E>::parse("r0.owner").unwrap().1;
+        let operand = Operand::<P>::parse("r0.owner").unwrap().1;
         assert_eq!(operand.value(), None);
         assert_eq!(operand.register(), Some(&Register::from_str("r0.owner")));
         assert!(!operand.is_value());
@@ -222,13 +219,13 @@ mod tests {
 
     #[test]
     fn test_operand_display() {
-        let operand = Operand::<E>::parse("1field.private").unwrap().1;
+        let operand = Operand::<P>::parse("1field.private").unwrap().1;
         assert_eq!(format!("{operand}"), "1field.private");
 
-        let operand = Operand::<E>::parse("r0").unwrap().1;
+        let operand = Operand::<P>::parse("r0").unwrap().1;
         assert_eq!(format!("{operand}"), "r0");
 
-        let operand = Operand::<E>::parse("r0.owner").unwrap().1;
+        let operand = Operand::<P>::parse("r0.owner").unwrap().1;
         assert_eq!(format!("{operand}"), "r0.owner");
     }
 }

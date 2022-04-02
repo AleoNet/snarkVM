@@ -15,42 +15,42 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::helpers::Register;
+use crate::{helpers::Register, Program};
 use snarkvm_circuits::prelude::*;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
 use std::io::{Read, Result as IoResult, Write};
 
-pub(crate) struct BinaryOperation<E: Environment> {
-    first: Operand<E>,
-    second: Operand<E>,
-    destination: Register<E>,
+pub(crate) struct BinaryOperation<P: Program> {
+    first: Operand<P>,
+    second: Operand<P>,
+    destination: Register<P>,
 }
 
-impl<E: Environment> BinaryOperation<E> {
+impl<P: Program> BinaryOperation<P> {
     /// Returns the operands.
-    pub fn operands(&self) -> Vec<Operand<E>> {
+    pub fn operands(&self) -> Vec<Operand<P>> {
         vec![self.first.clone(), self.second.clone()]
     }
 
     /// Returns the first operand.
-    pub(crate) fn first(&self) -> &Operand<E> {
+    pub(crate) fn first(&self) -> &Operand<P> {
         &self.first
     }
 
     /// Returns the second operand.
-    pub(crate) fn second(&self) -> &Operand<E> {
+    pub(crate) fn second(&self) -> &Operand<P> {
         &self.second
     }
 
     /// Returns the destination register.
-    pub(crate) fn destination(&self) -> &Register<E> {
+    pub(crate) fn destination(&self) -> &Register<P> {
         &self.destination
     }
 }
 
-impl<E: Environment> Parser for BinaryOperation<E> {
+impl<P: Program> Parser for BinaryOperation<P> {
     type Environment = E;
 
     /// Parses a string into an operation.
@@ -71,13 +71,13 @@ impl<E: Environment> Parser for BinaryOperation<E> {
     }
 }
 
-impl<E: Environment> fmt::Display for BinaryOperation<E> {
+impl<P: Program> fmt::Display for BinaryOperation<P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{} {} into {}", self.first, self.second, self.destination)
     }
 }
 
-impl<E: Environment> FromBytes for BinaryOperation<E> {
+impl<P: Program> FromBytes for BinaryOperation<P> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let first = Operand::read_le(&mut reader)?;
         let second = Operand::read_le(&mut reader)?;
@@ -86,7 +86,7 @@ impl<E: Environment> FromBytes for BinaryOperation<E> {
     }
 }
 
-impl<E: Environment> ToBytes for BinaryOperation<E> {
+impl<P: Program> ToBytes for BinaryOperation<P> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.first.write_le(&mut writer)?;
         self.second.write_le(&mut writer)?;

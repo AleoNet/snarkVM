@@ -36,6 +36,8 @@ thread_local! {
 pub struct AleoProgram;
 
 impl Program for AleoProgram {
+    type Environment = E;
+
     /// Adds a new template to the program.
     ///
     /// # Errors

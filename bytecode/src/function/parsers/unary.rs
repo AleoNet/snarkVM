@@ -15,36 +15,36 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::helpers::Register;
+use crate::{helpers::Register, Program};
 use snarkvm_circuits::prelude::*;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
 use std::io::{Read, Result as IoResult, Write};
 
-pub(crate) struct UnaryOperation<E: Environment> {
-    operand: Operand<E>,
-    destination: Register<E>,
+pub(crate) struct UnaryOperation<P: Program> {
+    operand: Operand<P>,
+    destination: Register<P>,
 }
 
-impl<E: Environment> UnaryOperation<E> {
+impl<P: Program> UnaryOperation<P> {
     /// Returns the operands.
-    pub fn operands(&self) -> Vec<Operand<E>> {
+    pub fn operands(&self) -> Vec<Operand<P>> {
         vec![self.operand.clone()]
     }
 
     /// Returns the operand.
-    pub(crate) fn operand(&self) -> &Operand<E> {
+    pub(crate) fn operand(&self) -> &Operand<P> {
         &self.operand
     }
 
     /// Returns the destination register.
-    pub(crate) fn destination(&self) -> &Register<E> {
+    pub(crate) fn destination(&self) -> &Register<P> {
         &self.destination
     }
 }
 
-impl<E: Environment> Parser for UnaryOperation<E> {
+impl<P: Program> Parser for UnaryOperation<P> {
     type Environment = E;
 
     /// Parses a string into an operation.
@@ -61,13 +61,13 @@ impl<E: Environment> Parser for UnaryOperation<E> {
     }
 }
 
-impl<E: Environment> fmt::Display for UnaryOperation<E> {
+impl<P: Program> fmt::Display for UnaryOperation<P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{} into {}", self.operand, self.destination)
     }
 }
 
-impl<E: Environment> FromBytes for UnaryOperation<E> {
+impl<P: Program> FromBytes for UnaryOperation<P> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let operand = Operand::read_le(&mut reader)?;
         let destination = Register::read_le(&mut reader)?;
@@ -75,7 +75,7 @@ impl<E: Environment> FromBytes for UnaryOperation<E> {
     }
 }
 
-impl<E: Environment> ToBytes for UnaryOperation<E> {
+impl<P: Program> ToBytes for UnaryOperation<P> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.operand.write_le(&mut writer)?;
         self.destination.write_le(&mut writer)

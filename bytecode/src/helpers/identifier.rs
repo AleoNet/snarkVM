@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::helpers::Register;
+use crate::{helpers::Register, Program};
 use snarkvm_circuits::prelude::*;
 use snarkvm_utilities::{error, FromBytes, ToBytes};
 
@@ -22,7 +22,6 @@ use core::{fmt, marker::PhantomData};
 use nom::character::complete::{alpha1, alphanumeric1};
 use std::io::{Read, Result as IoResult, Write};
 
-const NUM_IDENTIFIER_BYTES: usize = 64;
 #[rustfmt::skip]
 const KEYWORDS: &[&str] = &[
     // Mode
@@ -69,17 +68,17 @@ const KEYWORDS: &[&str] = &[
 /// The identifier must not be a keyword.
 /// The identifier must not be a register format.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Identifier<E: Environment>(String, PhantomData<E>);
+pub struct Identifier<P: Program>(String, PhantomData<P>);
 
-impl<E: Environment> Identifier<E> {
+impl<P: Program> Identifier<P> {
     /// Returns the identifier as a string.
     pub fn as_str(&self) -> &str {
         &self.0
     }
 }
 
-impl<E: Environment> Parser for Identifier<E> {
-    type Environment = E;
+impl<P: Program> Parser for Identifier<P> {
+    type Environment = P::Environment;
 
     /// Parses a string into an identifier.
     ///
@@ -94,9 +93,10 @@ impl<E: Environment> Parser for Identifier<E> {
         // Check for alphanumeric characters and underscores.
         map_res(recognize(pair(alpha1, many0(alt((alphanumeric1, tag("_")))))), |identifier: &str| {
             // Ensure identifier is less than or equal to `NUM_IDENTIFIER_BYTES` bytes long.
-            if identifier.len() > NUM_IDENTIFIER_BYTES {
+            if identifier.len() > P::NUM_IDENTIFIER_BYTES {
                 return Err(error(format!(
-                    "Identifier is too large. Identifiers must be <= {NUM_IDENTIFIER_BYTES} bytes long",
+                    "Identifier is too large. Identifiers must be <= {} bytes long",
+                    P::NUM_IDENTIFIER_BYTES
                 )));
             }
 
@@ -108,7 +108,7 @@ impl<E: Environment> Parser for Identifier<E> {
             }
 
             // Ensure the identifier is not a register format.
-            if Register::<E>::parse(identifier).is_ok() {
+            if Register::<P>::parse(identifier).is_ok() {
                 return Err(error(format!("Identifier `{identifier}` cannot be of a register format")));
             }
 
@@ -117,14 +117,14 @@ impl<E: Environment> Parser for Identifier<E> {
     }
 }
 
-impl<E: Environment> fmt::Display for Identifier<E> {
+impl<P: Program> fmt::Display for Identifier<P> {
     /// Prints the identifier as a string.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0)
     }
 }
 
-impl<E: Environment> FromBytes for Identifier<E> {
+impl<P: Program> FromBytes for Identifier<P> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let size = u16::read_le(&mut reader)?;
         let mut buffer = vec![0u8; size as usize];
@@ -135,7 +135,7 @@ impl<E: Environment> FromBytes for Identifier<E> {
     }
 }
 
-impl<E: Environment> ToBytes for Identifier<E> {
+impl<P: Program> ToBytes for Identifier<P> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         (self.0.as_bytes().len() as u16).write_le(&mut writer)?;
         self.0.as_bytes().write_le(&mut writer)
@@ -145,13 +145,13 @@ impl<E: Environment> ToBytes for Identifier<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_circuits::environment::Circuit;
+    use crate::AleoProgram;
 
-    type E = Circuit;
+    type P = AleoProgram;
 
     #[test]
     fn test_identifier_parse() {
-        let candidate = Identifier::<E>::parse("foo_bar").unwrap();
+        let candidate = Identifier::<P>::parse("foo_bar").unwrap();
         assert_eq!("", candidate.0);
         assert_eq!("foo_bar".to_string(), candidate.1.0);
     }
@@ -159,26 +159,26 @@ mod tests {
     #[test]
     fn test_identifier_parse_fails() {
         // Must be less than or equal to `NUM_IDENTIFIER_BYTES` bytes long.
-        let identifier = Identifier::<E>::parse("foo_bar_baz_qux_quux_quuz_corge_grault_garply_waldo_fred_plugh_xyzzy");
+        let identifier = Identifier::<P>::parse("foo_bar_baz_qux_quux_quuz_corge_grault_garply_waldo_fred_plugh_xyzzy");
         assert!(identifier.is_err());
         // Must be alphanumeric or underscore.
-        assert_eq!(Ok(("~baz", Identifier::<E>::from_str("foo_bar"))), Identifier::<E>::parse("foo_bar~baz"));
-        assert_eq!(Ok(("-baz", Identifier::<E>::from_str("foo_bar"))), Identifier::<E>::parse("foo_bar-baz"));
+        assert_eq!(Ok(("~baz", Identifier::<P>::from_str("foo_bar"))), Identifier::<P>::parse("foo_bar~baz"));
+        assert_eq!(Ok(("-baz", Identifier::<P>::from_str("foo_bar"))), Identifier::<P>::parse("foo_bar-baz"));
         // Must not start with a number.
-        assert!(Identifier::<E>::parse("2").is_err());
-        assert!(Identifier::<E>::parse("1foo").is_err());
+        assert!(Identifier::<P>::parse("2").is_err());
+        assert!(Identifier::<P>::parse("1foo").is_err());
         // Must not be a keyword.
-        assert!(Identifier::<E>::parse("input").is_err());
-        assert!(Identifier::<E>::parse("record").is_err());
+        assert!(Identifier::<P>::parse("input").is_err());
+        assert!(Identifier::<P>::parse("record").is_err());
         // Must not be a register format.
-        assert!(Identifier::<E>::parse("r0").is_err());
-        assert!(Identifier::<E>::parse("r123").is_err());
-        assert!(Identifier::<E>::parse("r0.owner").is_err());
+        assert!(Identifier::<P>::parse("r0").is_err());
+        assert!(Identifier::<P>::parse("r123").is_err());
+        assert!(Identifier::<P>::parse("r0.owner").is_err());
     }
 
     #[test]
     fn test_identifier_display() {
-        let identifier = Identifier::<E>::from_str("foo_bar");
+        let identifier = Identifier::<P>::from_str("foo_bar");
         assert_eq!("foo_bar", format!("{}", identifier));
     }
 }

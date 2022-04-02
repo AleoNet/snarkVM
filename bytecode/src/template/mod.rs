@@ -16,7 +16,7 @@
 
 mod member;
 
-use crate::{template::member::Member, Identifier, Sanitizer};
+use crate::{template::member::Member, Identifier, Program, Sanitizer};
 use snarkvm_circuits::prelude::*;
 use snarkvm_utilities::{error, FromBytes, ToBytes};
 
@@ -33,17 +33,17 @@ use std::io::{Read, Result as IoResult, Write};
 /// if the `record` template is assigned to register `r0`, individual members can be accessed
 /// as `r0.owner` or `r0.value`. This generalizes to the format, i.e. `r{locator}.{member}`.
 #[derive(Clone, Debug)]
-pub enum Template<E: Environment> {
+pub enum Template<P: Program> {
     /// A custom type consists of its name and a list of members.
-    Type(Identifier<E>, Vec<Member<E>>),
+    Type(Identifier<P>, Vec<Member<P>>),
     /// A record type consists of its name and a list of members.
-    Record(Identifier<E>, Vec<Member<E>>),
+    Record(Identifier<P>, Vec<Member<P>>),
 }
 
-impl<E: Environment> Template<E> {
+impl<P: Program> Template<P> {
     /// Returns the name of the template.
     #[inline]
-    pub fn name(&self) -> &Identifier<E> {
+    pub fn name(&self) -> &Identifier<P> {
         match self {
             Self::Type(name, _) => name,
             Self::Record(name, _) => name,
@@ -52,7 +52,7 @@ impl<E: Environment> Template<E> {
 
     /// Returns the members of the template.
     #[inline]
-    pub fn members(&self) -> &[Member<E>] {
+    pub fn members(&self) -> &[Member<P>] {
         match self {
             Self::Type(_, members) => members,
             Self::Record(_, members) => members,
@@ -60,8 +60,8 @@ impl<E: Environment> Template<E> {
     }
 }
 
-impl<E: Environment> Parser for Template<E> {
-    type Environment = E;
+impl<P: Program> Parser for Template<P> {
+    type Environment = P::Environment;
 
     /// Parses a string into a template.
     #[inline]
@@ -98,7 +98,7 @@ impl<E: Environment> Parser for Template<E> {
     }
 }
 
-impl<E: Environment> fmt::Display for Template<E> {
+impl<P: Program> fmt::Display for Template<P> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let (type_name, name, members) = match self {
@@ -115,7 +115,7 @@ impl<E: Environment> fmt::Display for Template<E> {
     }
 }
 
-impl<E: Environment> FromBytes for Template<E> {
+impl<P: Program> FromBytes for Template<P> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the variant.
         let variant = u8::read_le(&mut reader)?;
@@ -135,7 +135,7 @@ impl<E: Environment> FromBytes for Template<E> {
     }
 }
 
-impl<E: Environment> ToBytes for Template<E> {
+impl<P: Program> ToBytes for Template<P> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         match self {
             Self::Type(name, members) => {
@@ -155,14 +155,13 @@ impl<E: Environment> ToBytes for Template<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Annotation;
-    use snarkvm_circuits::environment::Circuit;
+    use crate::{AleoProgram, Annotation};
 
-    type E = Circuit;
+    type P = AleoProgram;
 
     #[test]
     fn test_template_parse() {
-        let message = Template::<E>::parse(
+        let message = Template::<P>::parse(
             r"
 type message:
     sender as address.public;
@@ -178,7 +177,7 @@ type message:
         assert_eq!(message.members()[1].name(), &Identifier::from_str("amount"));
         assert_eq!(message.members()[1].annotation(), &Annotation::from_str("i64.private"));
 
-        let token = Template::<E>::parse(
+        let token = Template::<P>::parse(
             r"
 record token:
     owner as address.public;
@@ -198,11 +197,11 @@ record token:
     #[test]
     fn test_template_display() {
         let expected = "type message:\n    sender as address.public;\n    amount as i64.private;";
-        let message = Template::<E>::parse(expected).unwrap().1;
+        let message = Template::<P>::parse(expected).unwrap().1;
         assert_eq!(expected, format!("{}", message));
 
         let expected = "record token:\n    owner as address.public;\n    amount as i64.private;";
-        let token = Template::<E>::parse(expected).unwrap().1;
+        let token = Template::<P>::parse(expected).unwrap().1;
         assert_eq!(expected, format!("{}", token));
     }
 }

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{helpers::Register, Annotation, Sanitizer};
+use crate::{helpers::Register, Annotation, Program, Sanitizer};
 use snarkvm_circuits::prelude::*;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -25,28 +25,28 @@ use std::io::{Read, Result as IoResult, Write};
 /// in either a register or a register member. An output statement is of the form
 /// `output {register} as {annotation};`.
 #[derive(Debug, PartialEq, Eq, Hash)]
-pub struct Output<E: Environment> {
+pub struct Output<P: Program> {
     /// The output register.
-    register: Register<E>,
+    register: Register<P>,
     /// The output annotation.
-    annotation: Annotation<E>,
+    annotation: Annotation<P>,
 }
 
-impl<E: Environment> Output<E> {
+impl<P: Program> Output<P> {
     /// Returns the output register.
     #[inline]
-    pub fn register(&self) -> &Register<E> {
+    pub fn register(&self) -> &Register<P> {
         &self.register
     }
 
     /// Returns the output annotation.
     #[inline]
-    pub fn annotation(&self) -> &Annotation<E> {
+    pub fn annotation(&self) -> &Annotation<P> {
         &self.annotation
     }
 }
 
-impl<E: Environment> TypeName for Output<E> {
+impl<P: Program> TypeName for Output<P> {
     /// Returns the type name as a string.
     #[inline]
     fn type_name() -> &'static str {
@@ -54,8 +54,8 @@ impl<E: Environment> TypeName for Output<E> {
     }
 }
 
-impl<E: Environment> Parser for Output<E> {
-    type Environment = E;
+impl<P: Program> Parser for Output<P> {
+    type Environment = P::Environment;
 
     /// Parses a string into an output statement.
     /// The output statement is of the form `output {register} as {annotation};`.
@@ -80,7 +80,7 @@ impl<E: Environment> Parser for Output<E> {
     }
 }
 
-impl<E: Environment> fmt::Display for Output<E> {
+impl<P: Program> fmt::Display for Output<P> {
     /// Prints the output statement as a string.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
@@ -93,7 +93,7 @@ impl<E: Environment> fmt::Display for Output<E> {
     }
 }
 
-impl<E: Environment> FromBytes for Output<E> {
+impl<P: Program> FromBytes for Output<P> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let register = FromBytes::read_le(&mut reader)?;
         let annotation = FromBytes::read_le(&mut reader)?;
@@ -101,7 +101,7 @@ impl<E: Environment> FromBytes for Output<E> {
     }
 }
 
-impl<E: Environment> ToBytes for Output<E> {
+impl<P: Program> ToBytes for Output<P> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.register.write_le(&mut writer)?;
         self.annotation.write_le(&mut writer)
@@ -111,36 +111,36 @@ impl<E: Environment> ToBytes for Output<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_circuits::environment::Circuit;
+    use crate::AleoProgram;
 
-    type E = Circuit;
+    type P = AleoProgram;
 
     #[test]
     fn test_output_type_name() {
-        assert_eq!(Output::<E>::type_name(), "output");
+        assert_eq!(Output::<P>::type_name(), "output");
     }
 
     #[test]
     fn test_output_parse() {
         // Literal
-        let output = Output::<E>::parse("output r0 as field.private;").unwrap().1;
-        assert_eq!(output.register(), &Register::<E>::Locator(0));
-        assert_eq!(output.annotation(), &Annotation::<E>::from_str("field.private"));
+        let output = Output::<P>::parse("output r0 as field.private;").unwrap().1;
+        assert_eq!(output.register(), &Register::<P>::Locator(0));
+        assert_eq!(output.annotation(), &Annotation::<P>::from_str("field.private"));
 
         // Composite
-        let output = Output::<E>::parse("output r1 as signature;").unwrap().1;
-        assert_eq!(output.register(), &Register::<E>::Locator(1));
-        assert_eq!(output.annotation(), &Annotation::<E>::from_str("signature"));
+        let output = Output::<P>::parse("output r1 as signature;").unwrap().1;
+        assert_eq!(output.register(), &Register::<P>::Locator(1));
+        assert_eq!(output.annotation(), &Annotation::<P>::from_str("signature"));
     }
 
     #[test]
     fn test_output_display() {
         // Literal
-        let output = Output::<E>::parse("output r0 as field.private;").unwrap().1;
+        let output = Output::<P>::parse("output r0 as field.private;").unwrap().1;
         assert_eq!(format!("{}", output), "output r0 as field.private;");
 
         // Composite
-        let output = Output::<E>::parse("output r1 as signature;").unwrap().1;
+        let output = Output::<P>::parse("output r1 as signature;").unwrap().1;
         assert_eq!(format!("{}", output), "output r1 as signature;");
     }
 }

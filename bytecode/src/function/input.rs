@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{helpers::Register, Annotation, Sanitizer};
+use crate::{helpers::Register, Annotation, Program, Sanitizer};
 use snarkvm_circuits::prelude::*;
 use snarkvm_utilities::{error, FromBytes, ToBytes};
 
@@ -24,28 +24,28 @@ use std::io::{Read, Result as IoResult, Write};
 /// An input statement defines an input argument to a function, and is of the form
 /// `input {register} as {annotation}`.
 #[derive(Debug, PartialEq, Eq, Hash)]
-pub struct Input<E: Environment> {
+pub struct Input<P: Program> {
     /// The input register.
-    register: Register<E>,
+    register: Register<P>,
     /// The input annotation.
-    annotation: Annotation<E>,
+    annotation: Annotation<P>,
 }
 
-impl<E: Environment> Input<E> {
+impl<P: Program> Input<P> {
     /// Returns the input register.
     #[inline]
-    pub fn register(&self) -> &Register<E> {
+    pub fn register(&self) -> &Register<P> {
         &self.register
     }
 
     /// Returns the input annotation.
     #[inline]
-    pub fn annotation(&self) -> &Annotation<E> {
+    pub fn annotation(&self) -> &Annotation<P> {
         &self.annotation
     }
 }
 
-impl<E: Environment> TypeName for Input<E> {
+impl<P: Program> TypeName for Input<P> {
     /// Returns the type name as a string.
     #[inline]
     fn type_name() -> &'static str {
@@ -53,8 +53,8 @@ impl<E: Environment> TypeName for Input<E> {
     }
 }
 
-impl<E: Environment> Parser for Input<E> {
-    type Environment = E;
+impl<P: Program> Parser for Input<P> {
+    type Environment = P::Environment;
 
     /// Parses a string into an input statement.
     /// The input statement is of the form `input {register} as {annotation};`.
@@ -88,7 +88,7 @@ impl<E: Environment> Parser for Input<E> {
     }
 }
 
-impl<E: Environment> fmt::Display for Input<E> {
+impl<P: Program> fmt::Display for Input<P> {
     /// Prints the input statement as a string.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
@@ -101,7 +101,7 @@ impl<E: Environment> fmt::Display for Input<E> {
     }
 }
 
-impl<E: Environment> FromBytes for Input<E> {
+impl<P: Program> FromBytes for Input<P> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let register = FromBytes::read_le(&mut reader)?;
         let annotation = FromBytes::read_le(&mut reader)?;
@@ -109,21 +109,21 @@ impl<E: Environment> FromBytes for Input<E> {
     }
 }
 
-impl<E: Environment> ToBytes for Input<E> {
+impl<P: Program> ToBytes for Input<P> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.register.write_le(&mut writer)?;
         self.annotation.write_le(&mut writer)
     }
 }
 
-impl<E: Environment> Ord for Input<E> {
+impl<P: Program> Ord for Input<P> {
     /// Ordering is determined by the register (the annotation is ignored).
     fn cmp(&self, other: &Self) -> Ordering {
         self.register().cmp(other.register())
     }
 }
 
-impl<E: Environment> PartialOrd for Input<E> {
+impl<P: Program> PartialOrd for Input<P> {
     /// Ordering is determined by the register (the annotation is ignored).
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
@@ -133,46 +133,46 @@ impl<E: Environment> PartialOrd for Input<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_circuits::environment::Circuit;
+    use crate::AleoProgram;
 
-    type E = Circuit;
+    type P = AleoProgram;
 
     #[test]
     fn test_input_type_name() {
-        assert_eq!(Input::<E>::type_name(), "input");
+        assert_eq!(Input::<P>::type_name(), "input");
     }
 
     #[test]
     fn test_input_parse() {
         // Literal
-        let input = Input::<E>::parse("input r0 as field.private;").unwrap().1;
-        assert_eq!(input.register(), &Register::<E>::Locator(0));
-        assert_eq!(input.annotation(), &Annotation::<E>::from_str("field.private"));
+        let input = Input::<P>::parse("input r0 as field.private;").unwrap().1;
+        assert_eq!(input.register(), &Register::<P>::Locator(0));
+        assert_eq!(input.annotation(), &Annotation::<P>::from_str("field.private"));
 
         // Composite
-        let input = Input::<E>::parse("input r1 as signature;").unwrap().1;
-        assert_eq!(input.register(), &Register::<E>::Locator(1));
-        assert_eq!(input.annotation(), &Annotation::<E>::from_str("signature"));
+        let input = Input::<P>::parse("input r1 as signature;").unwrap().1;
+        assert_eq!(input.register(), &Register::<P>::Locator(1));
+        assert_eq!(input.annotation(), &Annotation::<P>::from_str("signature"));
     }
 
     #[test]
     fn test_input_display() {
         // Literal
-        let input = Input::<E>::from_str("input r0 as field.private;");
+        let input = Input::<P>::from_str("input r0 as field.private;");
         assert_eq!("input r0 as field.private;", input.to_string());
 
         // Composite
-        let input = Input::<E>::from_str("input r1 as signature;");
+        let input = Input::<P>::from_str("input r1 as signature;");
         assert_eq!("input r1 as signature;", input.to_string());
     }
 
     #[test]
     fn test_input_partial_ord() {
-        let input1 = Input::<E>::from_str("input r0 as field.private;");
-        let input2 = Input::<E>::from_str("input r1 as field.private;");
+        let input1 = Input::<P>::from_str("input r0 as field.private;");
+        let input2 = Input::<P>::from_str("input r1 as field.private;");
 
-        let input3 = Input::<E>::from_str("input r0 as signature;");
-        let input4 = Input::<E>::from_str("input r1 as signature;");
+        let input3 = Input::<P>::from_str("input r0 as signature;");
+        let input4 = Input::<P>::from_str("input r1 as signature;");
 
         assert_eq!(input1.partial_cmp(&input1), Some(Ordering::Equal));
         assert_eq!(input1.partial_cmp(&input2), Some(Ordering::Less));

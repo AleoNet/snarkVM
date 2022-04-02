@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Annotation, Identifier, LiteralType};
+use crate::{Annotation, Identifier, LiteralType, Program};
 use snarkvm_circuits::prelude::*;
 use snarkvm_utilities::{error, FromBytes, ToBytes};
 
@@ -23,23 +23,23 @@ use std::io::{Read, Result as IoResult, Write};
 
 /// A value contains the underlying literal(s) in memory.
 #[derive(Clone, Debug)]
-pub enum Value<E: Environment> {
+pub enum Value<P: Program> {
     /// A literal contains its declared literal value.
-    Literal(Literal<E>),
+    Literal(Literal<P>),
     /// A composite contains its declared member literals.
-    Composite(Identifier<E>, Vec<Literal<E>>),
+    Composite(Identifier<P>, Vec<Literal<P>>),
 }
 
-impl<E: Environment> From<Literal<E>> for Value<E> {
-    fn from(literal: Literal<E>) -> Self {
+impl<P: Program> From<Literal<P>> for Value<P> {
+    fn from(literal: Literal<P>) -> Self {
         Value::Literal(literal)
     }
 }
 
-impl<E: Environment> Value<E> {
+impl<P: Program> Value<P> {
     /// Returns the annotation.
     #[inline]
-    pub fn annotation(&self) -> Annotation<E> {
+    pub fn annotation(&self) -> Annotation<P> {
         match self {
             Self::Literal(literal) => Annotation::Literal(LiteralType::from(literal)),
             Self::Composite(name, _) => Annotation::Composite(name.clone()),
@@ -56,8 +56,8 @@ impl<E: Environment> Value<E> {
     }
 }
 
-impl<E: Environment> Parser for Value<E> {
-    type Environment = E;
+impl<P: Program> Parser for Value<P> {
+    type Environment = P::Environment;
 
     /// Parses a string into a value.
     #[inline]
@@ -79,7 +79,7 @@ impl<E: Environment> Parser for Value<E> {
     }
 }
 
-impl<E: Environment> fmt::Display for Value<E> {
+impl<P: Program> fmt::Display for Value<P> {
     /// Prints the value as a string.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -98,7 +98,7 @@ impl<E: Environment> fmt::Display for Value<E> {
     }
 }
 
-impl<E: Environment> FromBytes for Value<E> {
+impl<P: Program> FromBytes for Value<P> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let variant = u8::read_le(&mut reader)?;
         match variant {
@@ -119,7 +119,7 @@ impl<E: Environment> FromBytes for Value<E> {
     }
 }
 
-impl<E: Environment> ToBytes for Value<E> {
+impl<P: Program> ToBytes for Value<P> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         match self {
             Self::Literal(literal) => {
@@ -137,7 +137,7 @@ impl<E: Environment> ToBytes for Value<E> {
 }
 
 #[cfg(test)] // Do not remove this. It is not a performant way to compare values.
-impl<E: Environment> PartialEq for Value<E> {
+impl<P: Program> PartialEq for Value<P> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Literal(literal), Self::Literal(other_literal)) => literal.eject() == other_literal.eject(),
@@ -152,21 +152,21 @@ impl<E: Environment> PartialEq for Value<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_circuits::environment::Circuit;
+    use crate::AleoProgram;
 
-    type E = Circuit;
+    type P = AleoProgram;
 
     #[test]
     fn test_value_parse() {
         // Test parsing a literal.
         assert_eq!(
-            Value::<E>::Literal(Literal::from_str("10field.private")),
+            Value::<P>::Literal(Literal::from_str("10field.private")),
             Value::parse("10field.private").unwrap().1,
         );
 
         // Test parsing a composite.
         assert_eq!(
-            Value::<E>::Composite(Identifier::from_str("message"), vec![
+            Value::<P>::Composite(Identifier::from_str("message"), vec![
                 Literal::from_str("2group.public"),
                 Literal::from_str("10field.private"),
             ]),
