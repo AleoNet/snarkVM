@@ -42,6 +42,17 @@ impl<E: Environment, I: IntegerType> AddWrapped<Self> for Integer<E, I> {
     }
 }
 
+impl<E: Environment, I: IntegerType> Operation<Integer<E, I>>
+    for dyn AddWrapped<Integer<E, I>, Output = Integer<E, I>>
+{
+    type Input = (Integer<E, I>, Integer<E, I>);
+    type Output = Integer<E, I>;
+
+    fn invoke(input: Self::Input) -> Self::Output {
+        input.0.add_wrapped(&input.1)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -52,16 +63,6 @@ mod tests {
     use core::ops::RangeInclusive;
 
     const ITERATIONS: usize = 128;
-
-    #[test]
-    fn print_metrics() {
-        type I = u8;
-        let a = Integer::<Circuit, I>::new(Mode::Private, 1);
-        let b = Integer::<Circuit, I>::new(Mode::Private, 2);
-        let metrics = <dyn AddWrapped<Integer<Circuit, I>, Output = Integer<Circuit, I>>>::get_metric(&(a, b));
-        println!("{:?}", metrics);
-        assert!(false);
-    }
 
     #[rustfmt::skip]
     fn check_add<I: IntegerType>(

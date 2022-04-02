@@ -42,3 +42,26 @@ impl<E: Environment, I: IntegerType> MetricForOperation for dyn AddWrapped<Integ
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use snarkvm_circuits_environment::{Circuit, Inject, Operation};
+
+    #[test]
+    fn test_add_wrapped_metrics() {
+        type I = u8;
+        let inputs = (Integer::<Circuit, I>::new(Mode::Private, 1), Integer::<Circuit, I>::new(Mode::Private, 2));
+        let (num_constants, num_public, num_private, num_constraints) =
+            <dyn AddWrapped<Integer<Circuit, I>, Output = Integer<Circuit, I>> as MetricForOperation>::get_metric(
+                &inputs,
+            );
+        Circuit::scope("AddWrapped", || {
+            <dyn AddWrapped<Integer<Circuit, I>, Output = Integer<Circuit, I>> as Operation<Integer<Circuit, I>>>::invoke(inputs);
+            num_constants.is_satisfied(Circuit::num_constants_in_scope());
+            num_public.is_satisfied(Circuit::num_public_in_scope());
+            num_private.is_satisfied(Circuit::num_private_in_scope());
+            num_constraints.is_satisfied(Circuit::num_constraints_in_scope());
+        })
+    }
+}

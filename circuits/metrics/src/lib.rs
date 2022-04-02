@@ -15,6 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 pub mod integers;
 
+pub mod macros;
+pub use macros::*;
+
 /// A metric is a required value that can be measured for a circuit.
 #[derive(Clone, Debug)]
 pub enum Metric<V: PartialOrd> {

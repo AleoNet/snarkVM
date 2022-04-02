@@ -2095,6 +2095,14 @@ name = "snarkvm-circuits-environment-witness"
 version = "0.7.5"
 
 [[package]]
+name = "snarkvm-circuits-metrics"
+version = "0.7.5"
+dependencies = [
+ "snarkvm-circuits-environment",
+ "snarkvm-circuits-types",
+]
+
+[[package]]
 name = "snarkvm-circuits-types"
 version = "0.7.5"
 dependencies = [
