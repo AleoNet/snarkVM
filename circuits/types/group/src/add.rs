@@ -302,14 +302,14 @@ mod tests {
         let expected: <Circuit as Environment>::Affine = (a.into_projective() + b.into_projective()).into();
 
         // Constant
-        let first = Group::<Circuit>::new(Mode::Constant, a.into());
-        let second = Group::<Circuit>::new(Mode::Constant, b.into());
+        let first = Group::<Circuit>::new(Mode::Constant, a);
+        let second = Group::<Circuit>::new(Mode::Constant, b);
         let candidate_a = first + second;
         assert_eq!(expected, candidate_a.eject_value());
 
         // Private
-        let first = Group::<Circuit>::new(Mode::Private, a.into());
-        let second = Group::<Circuit>::new(Mode::Private, b.into());
+        let first = Group::<Circuit>::new(Mode::Private, a);
+        let second = Group::<Circuit>::new(Mode::Private, b);
         let candidate_b = first + second;
         assert_eq!(expected, candidate_b.eject_value());
     }
