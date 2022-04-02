@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use snarkvm_circuits_environment::{Metric, MetricForOperation};
 
 impl<E: Environment, I: IntegerType> BitAnd<Integer<E, I>> for Integer<E, I> {
     type Output = Integer<E, I>;
