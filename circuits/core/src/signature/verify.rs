@@ -71,7 +71,7 @@ pub(crate) mod tests {
         SignatureScheme,
         SignatureSchemeOperations,
     };
-    use snarkvm_curves::AffineCurve;
+    use snarkvm_curves::{AffineCurve, ProjectiveCurve};
     use snarkvm_utilities::{test_crypto_rng, test_rng, UniformRand};
 
     const ITERATIONS: usize = 100;
@@ -95,7 +95,8 @@ pub(crate) mod tests {
         // Compute G^r_sig.
         let pr_sig = native.g_scalar_multiply(&r_sig);
         // Compute sk_prf := RO(G^sk_sig || G^r_sig).
-        let sk_prf = native.hash_to_scalar_field(&[pk_sig.x, pr_sig.x]);
+        let sk_prf =
+            native.hash_to_scalar_field(&[pk_sig.to_affine().to_x_coordinate(), pr_sig.to_affine().to_x_coordinate()]);
         // Compute G^sk_prf.
         let pk_prf = native.g_scalar_multiply(&sk_prf);
 
