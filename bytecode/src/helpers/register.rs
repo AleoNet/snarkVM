@@ -17,7 +17,7 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
-use crate::program::{variable_length::*, Identifier};
+use crate::{variable_length::*, Identifier};
 use snarkvm_circuits::prelude::*;
 use snarkvm_utilities::{error, FromBytes, ToBytes};
 

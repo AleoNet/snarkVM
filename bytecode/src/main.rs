@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_bytecode::program::{AleoProgram, Function, Program, Value};
+use snarkvm_bytecode::{AleoProgram, Function, Program, Value};
 use snarkvm_circuits::prelude::*;
 
 pub struct HelloWorld;

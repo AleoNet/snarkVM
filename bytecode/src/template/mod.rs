@@ -16,7 +16,7 @@
 
 mod member;
 
-use crate::program::{template::member::Member, Identifier, Sanitizer};
+use crate::{template::member::Member, Identifier, Sanitizer};
 use snarkvm_circuits::prelude::*;
 use snarkvm_utilities::{error, FromBytes, ToBytes};
 
@@ -155,7 +155,7 @@ impl<E: Environment> ToBytes for Template<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::program::Annotation;
+    use crate::Annotation;
     use snarkvm_circuits::environment::Circuit;
 
     type E = Circuit;

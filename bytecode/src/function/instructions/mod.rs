@@ -20,7 +20,7 @@ pub use add::*;
 pub mod sub;
 pub use sub::*;
 
-use crate::program::{
+use crate::{
     function::{parsers::Operand, registers::Registers},
     helpers::Register,
     Program,

@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::program::helpers::Register;
+use crate::helpers::Register;
 use snarkvm_circuits::prelude::*;
 use snarkvm_utilities::{FromBytes, ToBytes};
 

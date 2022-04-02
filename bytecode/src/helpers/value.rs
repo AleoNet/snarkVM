@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::program::{Annotation, Identifier, LiteralType};
+use crate::{Annotation, Identifier, LiteralType};
 use snarkvm_circuits::prelude::*;
 use snarkvm_utilities::{error, FromBytes, ToBytes};
 

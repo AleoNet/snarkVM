@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::program::{
+use crate::{
     function::{parsers::*, registers::Registers},
     helpers::Register,
     instructions::Instruction,
@@ -122,7 +122,7 @@ impl<P: Program> Into<Instruction<P>> for Sub<P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::program::{AleoProgram as Circuit, Register};
+    use crate::{AleoProgram as Circuit, Register};
     use snarkvm_circuits::environment::Eject;
 
     fn check_add(first: Literal<Circuit>, second: Literal<Circuit>, expected: Literal<Circuit>) {

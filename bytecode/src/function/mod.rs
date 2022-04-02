@@ -28,7 +28,7 @@ use registers::*;
 
 mod parsers;
 
-use crate::program::{Annotation, Identifier, Program, Sanitizer, Value};
+use crate::{Annotation, Identifier, Program, Sanitizer, Value};
 use snarkvm_circuits::prelude::*;
 use snarkvm_utilities::{error, FromBytes, ToBytes};
 
@@ -436,7 +436,7 @@ impl<P: Program> ToBytes for Function<P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::program::AleoProgram;
+    use crate::AleoProgram;
 
     #[test]
     fn test_function_evaluate() {
