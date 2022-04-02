@@ -13,6 +13,7 @@
 
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+pub mod integers;
 
 /// A metric is a required value that can be measured for a circuit.
 #[derive(Clone, Debug)]
@@ -45,11 +46,8 @@ impl<V: PartialOrd> Metric<V> {
     }
 }
 
-// TODO: The `TYPE` parameter allows us to avoid a coherence error. Is there a better fix?
-//   One suggestion is to create a crate metrics in the `circuits` directory and define all
-//   constraint counts in there.
 /// Defines a set of metrics for a given operation.
-pub trait MetricForOperation<TYPE> {
+pub trait MetricForOperation {
     type Input;
     type Metric;
 

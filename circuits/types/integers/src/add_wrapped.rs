@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_circuits_environment::{Metric, MetricForOperation};
 
 impl<E: Environment, I: IntegerType> AddWrapped<Self> for Integer<E, I> {
     type Output = Self;
@@ -39,32 +38,6 @@ impl<E: Environment, I: IntegerType> AddWrapped<Self> for Integer<E, I> {
 
             // Return the sum of `self` and `other`.
             Integer { bits_le, phantom: Default::default() }
-        }
-    }
-}
-
-impl<E: Environment, I: IntegerType> MetricForOperation<Integer<E, I>>
-    for dyn AddWrapped<Integer<E, I>, Output = Integer<E, I>>
-{
-    type Input = (Integer<E, I>, Integer<E, I>);
-    type Metric = (Metric<usize>, Metric<usize>, Metric<usize>, Metric<usize>);
-
-    fn get_metric(input: &Self::Input) -> Self::Metric {
-        let (lhs, rhs) = input;
-        match (lhs.eject_mode(), rhs.eject_mode()) {
-            (Mode::Constant, Mode::Constant) => {
-                (Metric::equal(I::BITS), Metric::equal(0), Metric::equal(0), Metric::equal(0))
-            }
-            (Mode::Constant, Mode::Public)
-            | (Mode::Constant, Mode::Private)
-            | (Mode::Public, Mode::Constant)
-            | (Mode::Private, Mode::Constant)
-            | (Mode::Public, Mode::Public)
-            | (Mode::Public, Mode::Private)
-            | (Mode::Private, Mode::Public)
-            | (Mode::Private, Mode::Private) => {
-                (Metric::equal(0), Metric::equal(0), Metric::equal(I::BITS + 1), Metric::equal(I::BITS + 2))
-            }
         }
     }
 }
