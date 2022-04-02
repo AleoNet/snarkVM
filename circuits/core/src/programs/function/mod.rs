@@ -75,6 +75,7 @@ impl<P: Program> Function<P> {
     ///
     /// # Errors
     /// This method will halt if there are instructions or output statements in memory already.
+    /// This method will halt if any registers are already assigned.
     /// This method will halt if the input statement was previously added.
     /// This method will halt if the given input register is not new.
     /// This method will halt if the given input register has a previously saved annotation in memory.
@@ -114,6 +115,7 @@ impl<P: Program> Function<P> {
     ///
     /// # Errors
     /// This method will halt if there are no input statements in memory.
+    /// This method will halt if any registers are already assigned.
     /// This method will halt if the destination register already exists in memory.
     /// This method will halt if the destination register locator does not monotonically increase.
     /// This method will halt if any operand register does not already exist in memory.
@@ -150,6 +152,7 @@ impl<P: Program> Function<P> {
     ///
     /// # Errors
     /// This method will halt if there are no input statements or instructions in memory.
+    /// This method will halt if any registers are already assigned.
     /// This method will halt if the given output register is new.
     /// This method will halt if the given output register is already set.
     /// This method will halt if the given output annotation references a non-existent template.
@@ -160,15 +163,15 @@ impl<P: Program> Function<P> {
             P::halt("Cannot add output statement before input statements or instructions have been added")
         }
 
+        // Ensure the registers are clean.
+        if self.registers.is_dirty() {
+            P::halt("Registers cannot contain assignments prior to evaluation")
+        }
+
         // Ensure the output exists in the registers.
         let register = output.register();
         if !self.registers.is_defined(register) {
             P::halt(format!("Output register {register} is missing"))
-        }
-
-        // Ensure the output register is not already assigned.
-        if self.registers.is_assigned(register) {
-            P::halt(format!("Output register {register} was already assigned"))
         }
 
         // If the output annotation is for a composite, ensure the output is referencing a valid template.
@@ -186,7 +189,7 @@ impl<P: Program> Function<P> {
     ///
     /// # Errors
     /// This method will halt if there are no input statements or instructions in memory.
-    /// This method will halt if there are any registers that are assigned.
+    /// This method will halt if any registers are already assigned.
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
     fn evaluate(&mut self, inputs: &[Value<P>]) -> Vec<Value<P>> {
@@ -197,7 +200,7 @@ impl<P: Program> Function<P> {
 
         // Ensure the function is not already evaluated.
         if self.registers.is_dirty() {
-            P::halt("Function is already evaluated and needs to be cleared")
+            P::halt("Registers cannot contain assignments prior to evaluation")
         }
 
         // Ensure the number of inputs matches the number of input statements.
@@ -238,21 +241,17 @@ impl<P: Program> Function<P> {
     /// This method will halt if the annotation does not match.
     #[inline]
     fn assign_inputs(&mut self, values: &[Value<P>]) {
+        // Zip the input statements and input values together.
         for (input, value) in self.inputs.iter().zip_eq(values.iter()) {
-            // Ensure the input exists in the registers.
-            let register = input.register();
-            if !self.registers.is_defined(register) {
-                P::halt(format!("Register {register} does not exist"))
-            }
-
             // Ensure the input is an input register.
+            let register = input.register();
             if !self.inputs.contains(input) {
                 P::halt(format!("Register {register} is not an input register"))
             }
 
             // If the input annotation is a composite, ensure the input value matches the template.
-            if let Annotation::Composite(identifier) = input.annotation() {
-                match P::get_template(identifier) {
+            if let Annotation::Composite(template_name) = input.annotation() {
+                match P::get_template(&template_name) {
                     Some(template) => {
                         // TODO (howardwu): Check that it matches expected format.
                         // if !template.matches(&value) {
