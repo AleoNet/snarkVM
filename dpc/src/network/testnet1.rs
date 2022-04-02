@@ -124,8 +124,8 @@ impl Network for Testnet1 {
     const VALUE_COMMITMENT_SIZE_IN_BYTES: usize = 64;
     const VALUE_BALANCE_COMMITMENT_SIZE_IN_BYTES: usize = 96;
 
-    const INPUT_PROOF_SIZE_IN_BYTES: usize = 963;
-    const OUTPUT_PROOF_SIZE_IN_BYTES: usize = 963;
+    const INPUT_PROOF_SIZE_IN_BYTES: usize = 876;
+    const OUTPUT_PROOF_SIZE_IN_BYTES: usize = 876;
 
     const HEADER_TRANSACTIONS_TREE_DEPTH: usize = 15;
     const HEADER_TREE_DEPTH: usize = 2;
