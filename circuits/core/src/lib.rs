@@ -20,6 +20,9 @@
 pub mod aleo;
 pub use aleo::*;
 
+pub mod bhp;
+pub use bhp::*;
+
 pub mod compute_key;
 pub use compute_key::*;
 
