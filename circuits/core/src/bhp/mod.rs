@@ -58,3 +58,29 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHPCRH<
         &self.bases
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_algorithms::{crh::BHPCRH as NativeBHP, CRH};
+    use snarkvm_circuits_environment::Circuit;
+    use snarkvm_circuits_types::Eject;
+    use snarkvm_curves::{edwards_bls12::EdwardsProjective, ProjectiveCurve};
+
+    const ITERATIONS: usize = 10;
+    const MESSAGE: &str = "bhp_gadget_setup_test";
+
+    #[test]
+    fn test_setup_constant() {
+        for _ in 0..ITERATIONS {
+            let native_hasher = NativeBHP::<EdwardsProjective, 59, 63>::setup(MESSAGE);
+            let circuit_hasher = BHPCRH::<Circuit, 59, 63>::setup(MESSAGE);
+
+            native_hasher.parameters().iter().zip(circuit_hasher.parameters().iter()).for_each(
+                |(native_bases, circuit_base)| {
+                    assert_eq!(native_bases[0].into_affine(), circuit_base.eject_value());
+                },
+            );
+        }
+    }
+}
