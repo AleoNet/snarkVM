@@ -140,7 +140,9 @@ impl<P: Program> ToBytes for Template<P> {
         match self {
             Self::Type(name, members) => {
                 u8::write_le(&0u8, &mut writer)?;
-                name.write_le(&mut writer)
+                name.write_le(&mut writer)?;
+                (members.len() as u16).write_le(&mut writer)?;
+                members.write_le(&mut writer)
             }
             Self::Record(name, members) => {
                 u8::write_le(&1u8, &mut writer)?;
