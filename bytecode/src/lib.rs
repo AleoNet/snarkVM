@@ -32,13 +32,12 @@ pub mod template;
 pub use template::*;
 
 use crate::Identifier;
-use snarkvm_circuits::environment::Environment;
+use snarkvm_circuits::{Aleo, Environment};
 
 use core::{fmt, hash};
 
-// pub trait Program: Aleo {
 pub trait Program: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
-    type Environment: Environment;
+    type Environment: Aleo;
 
     /// The maximum number of bytes for an identifier.
     const NUM_IDENTIFIER_BYTES: usize = 31;
