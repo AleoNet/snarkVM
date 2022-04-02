@@ -16,7 +16,7 @@
 
 use super::*;
 
-use snarkvm_circuits_types::{Boolean, Environment, Field, Group, Ternary};
+use snarkvm_circuits_types::{Boolean, Environment, Field, Group, Neg, Ternary};
 
 impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHPCRH<E, NUM_WINDOWS, WINDOW_SIZE> {
     pub fn hash(&self, input: &[Boolean<E>]) -> Field<E> {
@@ -44,30 +44,91 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHPCRH<
         //
         // Note: `.zip()` is used here (as opposed to `.zip_eq()`) as the input can be less than
         // `NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE` in length, which is the parameter size here.
-        let zero = Group::<E>::zero();
+        let zero = Field::<E>::zero();
         input
             .chunks(WINDOW_SIZE * BHP_CHUNK_SIZE)
-            .flat_map(|bits| {
-                bits.chunks(BHP_CHUNK_SIZE).zip(self.bases.iter()).map(|(chunk_bits, base)| {
-                    let mut powers = vec![];
+            .zip(self.bases.iter())
+            .flat_map(|(bits, bases)| {
+                bits.chunks(BHP_CHUNK_SIZE).zip(bases).map(|(chunk_bits, base)| {
+                    let mut x_coeffs = vec![];
+                    let mut y_coeffs = vec![];
                     let mut base_power = base.clone();
                     for _ in 0..4 {
-                        powers.push(base_power.clone());
-                        base_power = base_power.double();
+                        x_coeffs.push(base_power.to_x_coordinate());
+                        y_coeffs.push(base_power.to_y_coordinate());
+                        base_power += base;
                     }
 
-                    let mut result = Group::<E>::zero();
-                    result += &powers[0];
-                    result += Group::ternary(&chunk_bits[0], &(&powers[1] - &powers[0]), &zero);
-                    result += Group::ternary(&chunk_bits[1], &(&powers[2] - &powers[0]), &zero);
-                    result += Group::ternary(
-                        &(&chunk_bits[0] & &chunk_bits[1]),
-                        &(&powers[3] - &powers[2] - &powers[1] + &powers[0]),
-                        &zero,
+                    let precomp = &chunk_bits[0] & &chunk_bits[1];
+                    let mut x = Field::<E>::zero();
+                    x += &x_coeffs[0];
+                    x += Field::ternary(&chunk_bits[0], &(&x_coeffs[1] - &x_coeffs[0]), &zero);
+                    x += Field::ternary(&chunk_bits[1], &(&x_coeffs[2] - &x_coeffs[0]), &zero);
+                    x += Field::ternary(&precomp, &(&x_coeffs[3] - &x_coeffs[2] - &x_coeffs[1] + &x_coeffs[0]), &zero);
+
+                    // Three bit conditional neg lookup for Y
+                    let y = Field::ternary(
+                        &chunk_bits[0],
+                        &Field::ternary(&chunk_bits[1], &y_coeffs[3], &y_coeffs[1]),
+                        &Field::ternary(&chunk_bits[1], &y_coeffs[2], &y_coeffs[0]),
                     );
-                    result
+
+                    let y = Field::ternary(&chunk_bits[2], &y.clone().neg(), &y);
+
+                    Group::from_xy_coordinates(x, y)
                 })
             })
             .fold(Group::zero(), |acc, x| acc + x)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_algorithms::{crh::BHPCRH as NativeBHP, CRH};
+    use snarkvm_circuits_environment::{Circuit, Mode};
+    use snarkvm_circuits_types::Eject;
+    use snarkvm_curves::edwards_bls12::EdwardsProjective;
+
+    use snarkvm_utilities::{test_rng, ToBits, UniformRand};
+
+    const ITERATIONS: usize = 10;
+    const MESSAGE: &str = "bhp_gadget_setup_test";
+
+    fn check_hash(mode: Mode) {
+        let rng = &mut test_rng();
+        let bits = (0..1)
+            .map(|_| <Circuit as Environment>::BaseField::rand(rng))
+            .collect::<Vec<_>>()
+            .iter()
+            .flat_map(|el| el.to_bits_le())
+            .collect::<Vec<_>>();
+        let native_hasher = NativeBHP::<EdwardsProjective, 59, 63>::setup(MESSAGE);
+        let circuit_hasher = BHPCRH::<Circuit, 59, 63>::setup(MESSAGE);
+
+        for i in 0..ITERATIONS {
+            let native_hash = native_hasher.hash(&bits).unwrap();
+            let circuit_input = bits.iter().map(|b| Boolean::<_>::new(mode, *b)).collect::<Vec<Boolean<_>>>();
+
+            Circuit::scope(format!("BHP {mode} {i}"), || {
+                let circuit_hash = circuit_hasher.hash(&circuit_input).eject_value();
+                assert_eq!(native_hash, circuit_hash);
+            });
+        }
+    }
+
+    #[test]
+    fn test_hash_constant() {
+        check_hash(Mode::Constant);
+    }
+
+    #[test]
+    fn test_hash_public() {
+        check_hash(Mode::Public);
+    }
+
+    #[test]
+    fn test_hash_private() {
+        check_hash(Mode::Private);
     }
 }

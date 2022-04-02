@@ -26,7 +26,7 @@ pub const BHP_CHUNK_SIZE: usize = 3;
 pub const BHP_LOOKUP_SIZE: usize = 2usize.pow(BHP_CHUNK_SIZE as u32);
 
 pub struct BHPCRH<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
-    bases: Vec<Group<E>>,
+    bases: Vec<Vec<Group<E>>>,
 }
 
 impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHPCRH<E, NUM_WINDOWS, WINDOW_SIZE> {
@@ -46,15 +46,24 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHPCRH<
             .map(|index| {
                 // Construct an indexed message to attempt to sample a base.
                 let (generator, _, _) = hash_to_curve(&format!("{message} at {index}"));
-                Group::new(Mode::Constant, generator)
+                let mut base = Group::new(Mode::Constant, generator);
+                let mut powers = Vec::with_capacity(WINDOW_SIZE);
+                for _ in 0..WINDOW_SIZE {
+                    powers.push(base.clone());
+                    for _ in 0..4 {
+                        base = base.double();
+                    }
+                }
+                powers
             })
-            .collect::<Vec<Group<E>>>();
+            .collect::<Vec<Vec<Group<E>>>>();
         debug_assert_eq!(bases.len(), NUM_WINDOWS, "Incorrect number of windows ({:?}) for BHP", bases.len());
+        bases.iter().for_each(|window| debug_assert_eq!(window.len(), WINDOW_SIZE));
 
         Self { bases }
     }
 
-    pub fn parameters(&self) -> &Vec<Group<E>> {
+    pub fn parameters(&self) -> &Vec<Vec<Group<E>>> {
         &self.bases
     }
 }
@@ -77,8 +86,10 @@ mod tests {
             let circuit_hasher = BHPCRH::<Circuit, 59, 63>::setup(MESSAGE);
 
             native_hasher.parameters().iter().zip(circuit_hasher.parameters().iter()).for_each(
-                |(native_bases, circuit_base)| {
-                    assert_eq!(native_bases[0].into_affine(), circuit_base.eject_value());
+                |(native_bases, circuit_bases)| {
+                    native_bases.iter().zip(circuit_bases).for_each(|(native_base, circuit_base)| {
+                        assert_eq!(native_base.into_affine(), circuit_base.eject_value());
+                    })
                 },
             );
         }
