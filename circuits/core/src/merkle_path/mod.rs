@@ -116,6 +116,25 @@ impl<E: Environment, const INPUT_SIZE_FE: usize> MerklePath<E, INPUT_SIZE_FE> {
         curr_hash
     }
 
+    // TODO (raychu86): Ideally use the following implementation without bit padding.
+    // pub fn calculate_root(&self, leaf: Field<E>) -> Field<E> {
+    //     let mut curr_hash = self.crh.hash(&[leaf]);
+    //
+    //     // To traverse up a MT, we iterate over the path from bottom to top
+    //
+    //     // At any given bit, the bit being 0 indicates our currently hashed value is the left,
+    //     // and the bit being 1 indicates our currently hashed value is on the right.
+    //     // Thus `left_hash` is the sibling if bit is 1, and it's the computed hash if bit is 0
+    //     for (bit, sibling) in self.traversal.iter().zip_eq(&self.path) {
+    //         let left_hash = Field::ternary(bit, sibling, &curr_hash);
+    //         let right_hash = Field::ternary(bit, &curr_hash, sibling);
+    //
+    //         curr_hash = self.crh.hash(&[left_hash, right_hash]);
+    //     }
+    //
+    //     curr_hash
+    // }
+
     pub fn verify(&self, leaf: Field<E>, root: Field<E>) {
         let expected_root = self.calculate_root(leaf);
         E::assert_eq(&expected_root, &root);
