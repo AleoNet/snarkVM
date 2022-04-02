@@ -45,7 +45,7 @@ thread_local! {
     static BASES: Vec<Group<Aleo>> = Aleo::new_bases(ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT);
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Aleo;
 
 impl Aleo {

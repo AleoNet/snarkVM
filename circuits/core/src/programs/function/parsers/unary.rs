@@ -64,7 +64,7 @@ impl<E: Environment> Parser for UnaryOperation<E> {
 
 impl<E: Environment> fmt::Display for UnaryOperation<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} {}", self.destination, self.operand)
+        write!(f, "{} into {}", self.operand, self.destination)
     }
 }
 

@@ -74,7 +74,7 @@ impl<E: Environment> Parser for BinaryOperation<E> {
 
 impl<E: Environment> fmt::Display for BinaryOperation<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} {} {}", self.destination, self.first, self.second)
+        write!(f, "{} {} into {}", self.first, self.second, self.destination)
     }
 }
 

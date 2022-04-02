@@ -28,7 +28,7 @@ use registers::*;
 
 mod parsers;
 
-use crate::{Annotation, Identifier, Program, Value};
+use crate::{Annotation, Identifier, Program, Sanitizer, Value};
 use snarkvm_circuits_types::prelude::*;
 
 use indexmap::IndexSet;
@@ -268,5 +268,124 @@ impl<P: Program> Function<P> {
 
             // TODO (howardwu): If input is a record, add all the safety hooks we need to use the record data.
         }
+    }
+}
+
+impl<P: Program> Parser for Function<P> {
+    type Environment = P;
+
+    /// Parses a string into a function.
+    #[inline]
+    fn parse(string: &str) -> ParserResult<Self> {
+        // Parse the whitespace and comments from the string.
+        let (string, _) = Sanitizer::parse(string)?;
+        // Parse the 'function' keyword from the string.
+        let (string, _) = tag(Self::type_name())(string)?;
+        // Parse the space from the string.
+        let (string, _) = tag(" ")(string)?;
+        // Parse the function name from the string.
+        let (string, name) = Identifier::<P>::parse(string)?;
+        // Parse the colon ':' keyword from the string.
+        let (string, _) = tag(":")(string)?;
+
+        // Parse the inputs from the string.
+        let (string, inputs) = many1(Input::parse)(string)?;
+        // Parse the instructions from the string.
+        let (string, instructions) = many1(Instruction::parse)(string)?;
+        // Parse the outputs from the string.
+        let (string, outputs) = many0(Output::parse)(string)?;
+
+        // Initialize a new function.
+        let mut function = Self::new(&name.to_string());
+        inputs.into_iter().for_each(|input| function.add_input(input));
+        instructions.into_iter().for_each(|instruction| function.add_instruction(instruction));
+        outputs.into_iter().for_each(|output| function.add_output(output));
+
+        Ok((string, function))
+    }
+}
+
+impl<P: Program> TypeName for Function<P> {
+    /// Returns the type name as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "function"
+    }
+}
+
+impl<P: Program> fmt::Display for Function<P> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut function = format!("{} {}:\n", Self::type_name(), self.name);
+        for input in &self.inputs {
+            function += &format!("    {}\n", input);
+        }
+        for instruction in &self.instructions {
+            function += &format!("    {}\n", instruction);
+        }
+        for output in &self.outputs {
+            function += &format!("    {}\n", output);
+        }
+        function.pop(); // trailing newline
+        write!(f, "{}", function)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Aleo;
+
+    #[test]
+    fn test_function_evaluate() {
+        let mut function = Function::<Aleo>::from_str(
+            r"
+function foo:
+    input r0 as field.public;
+    input r1 as field.private;
+    add r0 r1 into r2;
+    output r2 as field.private;",
+        );
+        let first = Value::<Aleo>::from_str("2field.public");
+        let second = Value::from_str("3field.private");
+
+        // Run the function.
+        let expected = Value::<Aleo>::from_str("5field.private");
+        let candidate = function.evaluate(&[first.clone(), second.clone()]);
+        assert_eq!(expected.to_string(), candidate[0].to_string());
+
+        // Re-run to ensure state continues to work.
+        let expected = Value::<Aleo>::from_str("5field.private");
+        let candidate = function.evaluate(&[first, second]);
+        assert_eq!(expected.to_string(), candidate[0].to_string());
+    }
+
+    #[test]
+    fn test_function_parse() {
+        let function = Function::<Aleo>::parse(
+            r"
+function foo:
+    input r0 as field.public;
+    input r1 as field.private;
+    add r0 r1 into r2;
+    output r2 as field.private;
+",
+        )
+        .unwrap()
+        .1;
+        assert_eq!("foo", function.name().to_string());
+        assert_eq!(2, function.inputs.len());
+        assert_eq!(1, function.instructions.len());
+        assert_eq!(1, function.outputs.len());
+    }
+
+    #[test]
+    fn test_function_display() {
+        let expected = r"function foo:
+    input r0 as field.public;
+    input r1 as field.private;
+    add r0 r1 into r2;
+    output r2 as field.private;";
+        let function = Function::<Aleo>::parse(expected).unwrap().1;
+        assert_eq!(expected, format!("{function}"),);
     }
 }
