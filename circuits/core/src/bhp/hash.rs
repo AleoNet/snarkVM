@@ -50,13 +50,13 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHPCRH<
             .zip(self.bases.iter())
             .flat_map(|(bits, bases)| {
                 bits.chunks(BHP_CHUNK_SIZE).zip(bases).map(|(chunk_bits, base)| {
-                    let mut x_coeffs = vec![];
-                    let mut y_coeffs = vec![];
-                    let mut base_power = base.clone();
+                    let mut x_coeffs = Vec::with_capacity(4);
+                    let mut y_coeffs = Vec::with_capacity(4);
+                    let mut acc_power = base.clone();
                     for _ in 0..4 {
-                        x_coeffs.push(base_power.to_x_coordinate());
-                        y_coeffs.push(base_power.to_y_coordinate());
-                        base_power += base;
+                        x_coeffs.push(acc_power.to_x_coordinate());
+                        y_coeffs.push(acc_power.to_y_coordinate());
+                        acc_power += base;
                     }
 
                     let precomp = &chunk_bits[0] & &chunk_bits[1];
@@ -97,16 +97,16 @@ mod tests {
 
     fn check_hash(mode: Mode) {
         let rng = &mut test_rng();
-        let bits = (0..1)
-            .map(|_| <Circuit as Environment>::BaseField::rand(rng))
-            .collect::<Vec<_>>()
-            .iter()
-            .flat_map(|el| el.to_bits_le())
-            .collect::<Vec<_>>();
-        let native_hasher = NativeBHP::<EdwardsProjective, 59, 63>::setup(MESSAGE);
-        let circuit_hasher = BHPCRH::<Circuit, 59, 63>::setup(MESSAGE);
+        let native_hasher = NativeBHP::<EdwardsProjective, 8, 32>::setup(MESSAGE);
+        let circuit_hasher = BHPCRH::<Circuit, 8, 32>::setup(MESSAGE);
 
         for i in 0..ITERATIONS {
+            let bits = (0..1)
+                .map(|_| <Circuit as Environment>::BaseField::rand(rng))
+                .collect::<Vec<_>>()
+                .iter()
+                .flat_map(|el| el.to_bits_le())
+                .collect::<Vec<_>>();
             let native_hash = native_hasher.hash(&bits).unwrap();
             let circuit_input = bits.iter().map(|b| Boolean::<_>::new(mode, *b)).collect::<Vec<Boolean<_>>>();
 

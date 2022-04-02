@@ -82,8 +82,8 @@ mod tests {
     #[test]
     fn test_setup_constant() {
         for _ in 0..ITERATIONS {
-            let native_hasher = NativeBHP::<EdwardsProjective, 59, 63>::setup(MESSAGE);
-            let circuit_hasher = BHPCRH::<Circuit, 59, 63>::setup(MESSAGE);
+            let native_hasher = NativeBHP::<EdwardsProjective, 8, 32>::setup(MESSAGE);
+            let circuit_hasher = BHPCRH::<Circuit, 8, 32>::setup(MESSAGE);
 
             native_hasher.parameters().iter().zip(circuit_hasher.parameters().iter()).for_each(
                 |(native_bases, circuit_bases)| {
