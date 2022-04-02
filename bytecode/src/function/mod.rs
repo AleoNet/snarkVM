@@ -491,4 +491,31 @@ function foo:
         let function = Function::<AleoProgram>::parse(expected).unwrap().1;
         assert_eq!(expected, format!("{function}"),);
     }
+
+    #[test]
+    fn test_function_bytes() {
+        let function_string = r"
+function main:
+    input r0 as field.public;
+    input r1 as field.private;
+    add r0 r1 into r2;
+    add r0 r1 into r3;
+    add r0 r1 into r4;
+    add r0 r1 into r5;
+    add r0 r1 into r6;
+    add r0 r1 into r7;
+    add r0 r1 into r8;
+    add r0 r1 into r9;
+    add r0 r1 into r10;
+    add r0 r1 into r11;
+    output r11 as field.private;";
+
+        let expected = Function::<AleoProgram>::from_str(function_string);
+        let expected_bytes = expected.to_bytes_le().unwrap();
+        println!("String size: {:?}, Bytecode size: {:?}", function_string.as_bytes().len(), expected_bytes.len());
+
+        let candidate = Function::<AleoProgram>::from_bytes_le(&expected_bytes).unwrap();
+        assert_eq!(expected.to_string(), candidate.to_string());
+        assert_eq!(expected_bytes, candidate.to_bytes_le().unwrap());
+    }
 }

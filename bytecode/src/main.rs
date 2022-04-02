@@ -53,7 +53,6 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_utilities::{FromBytes, ToBytes};
 
     #[test]
     fn test_hello_world() {
@@ -71,33 +70,6 @@ mod tests {
         }
     }
 
-    //     #[test]
-    //     fn test_to_and_from_bytes() {
-    //         type M = AleoProgram;
-    //         let function_string = r"
-    // function main:
-    //     input r0 field.public;
-    //     input r1 field.private;
-    //     add r2 r0 r1;
-    //     add r3 r0 r1;
-    //     add r4 r0 r1;
-    //     add r5 r0 r1;
-    //     add r6 r0 r1;
-    //     add r7 r0 r1;
-    //     add r8 r0 r1;
-    //     add r9 r0 r1;
-    //     add r10 r0 r1;
-    //     add r11 r0 r1;
-    //     output r2 field.private;
-    // ";
-    //         let function_from_string = Function::<M>::from_str(function_string);
-    //         let bytes = function_from_string.to_bytes_le().unwrap();
-    //
-    //         println!("String size: {:?}, Bytecode size: {:?}", function_string.as_bytes().len(), bytes.len());
-    //
-    //         Function::<M>::from_bytes_le(&bytes).unwrap();
-    //     }
-    //
     //     #[test]
     //     fn test_marlin() {
     //         pub struct HelloWorld;
