@@ -14,7 +14,22 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Function, Identifier, Template};
+pub mod aleo;
+pub use aleo::*;
+
+pub mod function;
+pub use function::*;
+
+pub mod helpers;
+pub use helpers::*;
+
+pub mod literal;
+pub use literal::*;
+
+pub mod template;
+pub use template::*;
+
+use crate::program::{Function, Identifier, Template};
 use snarkvm_circuits_types::{environment::Environment, Field, Group, Scalar};
 
 pub trait Program: Environment {

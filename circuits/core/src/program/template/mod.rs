@@ -16,7 +16,7 @@
 
 mod member;
 
-use crate::{template::member::Member, Identifier, Sanitizer};
+use crate::program::{template::member::Member, Identifier, Sanitizer};
 use snarkvm_circuits_types::prelude::*;
 
 use core::fmt;
@@ -116,7 +116,7 @@ impl<E: Environment> fmt::Display for Template<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Annotation;
+    use crate::program::Annotation;
     use snarkvm_circuits_types::environment::Circuit;
 
     type E = Circuit;

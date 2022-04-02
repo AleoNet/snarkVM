@@ -14,7 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{algorithms::Poseidon, Function, Identifier, Program, Template};
+use crate::{
+    algorithms::Poseidon,
+    program::{Function, Identifier, Program, Template},
+};
 use snarkvm_algorithms::crypto_hash::hash_to_curve;
 use snarkvm_circuits_types::{
     environment::{prelude::*, Circuit},

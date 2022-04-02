@@ -28,7 +28,7 @@ use registers::*;
 
 mod parsers;
 
-use crate::{Annotation, Identifier, Program, Sanitizer, Value};
+use crate::program::{Annotation, Identifier, Program, Sanitizer, Value};
 use snarkvm_circuits_types::prelude::*;
 
 use indexmap::IndexSet;
@@ -333,7 +333,7 @@ impl<P: Program> fmt::Display for Function<P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Aleo;
+    use crate::program::Aleo;
 
     #[test]
     fn test_function_evaluate() {

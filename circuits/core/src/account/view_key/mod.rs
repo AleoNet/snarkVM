@@ -17,23 +17,23 @@
 #[cfg(test)]
 use snarkvm_circuits_types::environment::assert_scope;
 
-use crate::Program;
+use crate::program::Program;
 use snarkvm_circuits_types::{environment::prelude::*, Scalar};
 
 /// The account view key is able to decrypt records and ciphertext messages.
-pub struct ViewKey<A: Program>(Scalar<A>);
+pub struct ViewKey<P: Program>(Scalar<P>);
 
-impl<A: Program> Inject for ViewKey<A> {
-    type Primitive = A::ScalarField;
+impl<P: Program> Inject for ViewKey<P> {
+    type Primitive = P::ScalarField;
 
     /// Initializes an account view key from the given mode and scalar field element.
-    fn new(mode: Mode, value: Self::Primitive) -> ViewKey<A> {
+    fn new(mode: Mode, value: Self::Primitive) -> ViewKey<P> {
         Self(Scalar::new(mode, value))
     }
 }
 
-impl<A: Program> Eject for ViewKey<A> {
-    type Primitive = A::ScalarField;
+impl<P: Program> Eject for ViewKey<P> {
+    type Primitive = P::ScalarField;
 
     ///
     /// Ejects the mode of the view key.
@@ -53,7 +53,7 @@ impl<A: Program> Eject for ViewKey<A> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Aleo as Circuit;
+    use crate::program::Aleo as Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 1000;

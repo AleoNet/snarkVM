@@ -17,7 +17,7 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
-use crate::Identifier;
+use crate::program::Identifier;
 use snarkvm_circuits_types::prelude::*;
 
 use core::{cmp::Ordering, fmt};

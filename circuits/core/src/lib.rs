@@ -22,12 +22,7 @@ extern crate enum_index_derive;
 
 pub mod account;
 pub mod algorithms;
-
 pub mod program;
-pub use program::*;
 
-pub mod programs;
-pub use programs::*;
-
-pub mod aleo;
-pub use aleo::*;
+// TODO (howardwu): Remove this.
+pub use program::{Literal, LiteralType};

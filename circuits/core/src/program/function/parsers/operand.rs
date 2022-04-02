@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{helpers::Register, Value};
+use crate::program::{helpers::Register, Value};
 use snarkvm_circuits_types::prelude::*;
 
 use core::fmt;
@@ -136,7 +136,7 @@ impl<E: Environment> fmt::Display for Operand<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::programs::{Literal, Register, Value};
+    use crate::program::{Literal, Register, Value};
     use snarkvm_circuits_types::environment::{Circuit, Parser};
 
     type E = Circuit;

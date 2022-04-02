@@ -19,25 +19,25 @@ pub mod verify;
 #[cfg(test)]
 use snarkvm_circuits_types::environment::assert_scope;
 
-use crate::{Literal, Program};
+use crate::program::{Literal, Program};
 use snarkvm_circuits_types::{environment::prelude::*, Address, Boolean, Field, Group, Scalar};
 
-pub struct Signature<A: Program> {
+pub struct Signature<P: Program> {
     /// The prover response to the challenge.
-    prover_response: Scalar<A>,
+    prover_response: Scalar<P>,
     /// The verifier challenge to check against.
-    verifier_challenge: Scalar<A>,
+    verifier_challenge: Scalar<P>,
     /// The x-coordinate of the signature public key `pk_sig` := G^sk_sig.
-    pk_sig: Group<A>,
+    pk_sig: Group<P>,
     /// The x-coordinate of the signature public randomizer `pr_sig` := G^r_sig.
-    pr_sig: Group<A>,
+    pr_sig: Group<P>,
 }
 
-impl<A: Program> Inject for Signature<A> {
-    type Primitive = (A::ScalarField, A::ScalarField, A::BaseField, A::BaseField);
+impl<P: Program> Inject for Signature<P> {
+    type Primitive = (P::ScalarField, P::ScalarField, P::BaseField, P::BaseField);
 
     /// Initializes a signature from the given mode and `(prover_response, verifier_challenge, pk_sig, pr_sig)`.
-    fn new(mode: Mode, (prover_response, verifier_challenge, pk_sig, pr_sig): Self::Primitive) -> Signature<A> {
+    fn new(mode: Mode, (prover_response, verifier_challenge, pk_sig, pr_sig): Self::Primitive) -> Signature<P> {
         Self {
             prover_response: Scalar::new(mode, prover_response),
             verifier_challenge: Scalar::new(mode, verifier_challenge),
@@ -47,8 +47,8 @@ impl<A: Program> Inject for Signature<A> {
     }
 }
 
-impl<A: Program> Eject for Signature<A> {
-    type Primitive = (A::ScalarField, A::ScalarField, A::BaseField, A::BaseField);
+impl<P: Program> Eject for Signature<P> {
+    type Primitive = (P::ScalarField, P::ScalarField, P::BaseField, P::BaseField);
 
     ///
     /// Ejects the mode of the signature.
@@ -74,7 +74,7 @@ impl<A: Program> Eject for Signature<A> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Aleo as Circuit;
+    use crate::program::Aleo as Circuit;
     use snarkvm_curves::AffineCurve;
     use snarkvm_utilities::{test_rng, UniformRand};
 

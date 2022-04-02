@@ -20,6 +20,9 @@ pub use compute_key::*;
 pub mod private_key;
 pub use private_key::*;
 
+pub mod record;
+pub use record::*;
+
 pub mod signature;
 pub use signature::*;
 

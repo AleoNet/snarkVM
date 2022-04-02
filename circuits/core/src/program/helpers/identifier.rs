@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::helpers::Register;
+use crate::program::helpers::Register;
 use snarkvm_circuits_types::prelude::*;
 use snarkvm_utilities::error;
 
@@ -67,14 +67,6 @@ const KEYWORDS: &[&str] = &[
 /// The identifier must not start with a number.
 /// The identifier must not be a keyword.
 /// The identifier must not be a register format.
-///
-/// # Example
-/// ```
-/// use snarkvm_circuits_core::Identifier;
-/// use snarkvm_circuits_types::environment::{Circuit, Parser};
-/// let identifier = Identifier::<Circuit>::from_str("foo");
-/// assert_eq!(identifier.to_string(), "foo");
-/// ```
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Identifier<E: Environment>(String, PhantomData<E>);
 
@@ -96,14 +88,6 @@ impl<E: Environment> Parser for Identifier<E> {
     /// The identifier must not start with a number.
     /// The identifier must not be a keyword.
     /// The identifier must not be a register format.
-    ///
-    /// # Example
-    /// ```
-    /// use snarkvm_circuits_core::Identifier;
-    /// use snarkvm_circuits_types::environment::{Circuit, Parser};
-    /// let identifier = Identifier::<Circuit>::parse("foo_bar_baz");
-    /// assert!(identifier.is_ok());
-    /// ```
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Check for alphanumeric characters and underscores.

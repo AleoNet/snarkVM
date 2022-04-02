@@ -17,23 +17,23 @@
 // #[cfg(test)]
 // use snarkvm_circuits_types::environment::assert_scope;
 
-use crate::{Literal, Value};
+use crate::program::{Literal, Program, Value};
 use snarkvm_circuits_types::{environment::prelude::*, Address, I64};
 
 // TODO (howardwu): Check mode is only public/private, not constant.
 #[derive(Debug, Clone)]
-pub struct Record<E: Environment> {
-    owner: Address<E>,
-    value: I64<E>,
-    data: Vec<Value<E>>,
-    // program_id: Vec<Boolean<E>>,
-    // randomizer: BaseField<E>,
-    // record_view_key: BaseField<E>,
+pub struct Record<P: Program> {
+    owner: Address<P>,
+    value: I64<P>,
+    data: Vec<Value<P>>,
+    // program_id: Vec<Boolean<P>>>,
+    // randomizer: BaseField<P>>,
+    // record_view_key: BaseField<P>>,
 }
 
-impl<E: Environment> Record<E> {
+impl<P: Program> Record<P> {
     /// Returns the members of the record.
-    pub fn members(&self) -> Vec<Value<E>> {
+    pub fn members(&self) -> Vec<Value<P>> {
         [Value::Literal(Literal::Address(self.owner.clone())), Value::Literal(Literal::I64(self.value.clone()))]
             .into_iter()
             .chain(self.data.iter().cloned())
@@ -41,22 +41,22 @@ impl<E: Environment> Record<E> {
     }
 
     /// Returns the record owner.
-    pub fn owner(&self) -> &Address<E> {
+    pub fn owner(&self) -> &Address<P> {
         &self.owner
     }
 
     /// Returns the record value.
-    pub fn value(&self) -> &I64<E> {
+    pub fn value(&self) -> &I64<P> {
         &self.value
     }
 
     /// Returns the record data.
-    pub fn data(&self) -> &Vec<Value<E>> {
+    pub fn data(&self) -> &Vec<Value<P>> {
         &self.data
     }
 }
 
-impl<E: Environment> TypeName for Record<E> {
+impl<P: Program> TypeName for Record<P> {
     fn type_name() -> &'static str {
         "record"
     }
@@ -65,7 +65,8 @@ impl<E: Environment> TypeName for Record<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_circuits_types::{environment::Circuit, Group};
+    use crate::program::Aleo as Circuit;
+    use snarkvm_circuits_types::Group;
 
     #[test]
     fn test_record() {
@@ -73,7 +74,7 @@ mod tests {
         let second = Value::Literal(Literal::from_str("true.private"));
         let third = Value::Literal(Literal::from_str("99i64.public"));
 
-        let _candidate = Record {
+        let _candidate = Record::<Circuit> {
             owner: Address::from(Group::from_str("2group.private")),
             value: I64::from_str("1i64.private"),
             data: vec![first, second, third],
