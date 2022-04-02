@@ -16,11 +16,11 @@
 
 use crate::snark::marlin::ahp::matrices::{make_matrices_square, padded_matrix_dim, to_matrix_helper};
 use snarkvm_fields::Field;
-use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem, Index as VarIndex, LinearCombination, Variable};
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem as CS, Index as VarIndex, LinearCombination, Variable};
 use snarkvm_utilities::serialize::*;
 
 /// Stores constraints during index generation.
-pub(crate) struct IndexerConstraintSystem<F: Field> {
+pub(crate) struct ConstraintSystem<F: Field> {
     pub(crate) a: Vec<Vec<(F, VarIndex)>>,
     pub(crate) b: Vec<Vec<(F, VarIndex)>>,
     pub(crate) c: Vec<Vec<(F, VarIndex)>>,
@@ -29,7 +29,7 @@ pub(crate) struct IndexerConstraintSystem<F: Field> {
     pub(crate) num_constraints: usize,
 }
 
-impl<F: Field> IndexerConstraintSystem<F> {
+impl<F: Field> ConstraintSystem<F> {
     #[inline]
     pub(crate) fn new() -> Self {
         Self {
@@ -76,7 +76,7 @@ impl<F: Field> IndexerConstraintSystem<F> {
     }
 }
 
-impl<F: Field> ConstraintSystem<F> for IndexerConstraintSystem<F> {
+impl<F: Field> CS<F> for ConstraintSystem<F> {
     type Root = Self;
 
     #[inline]

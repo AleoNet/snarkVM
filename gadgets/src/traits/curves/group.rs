@@ -104,7 +104,7 @@ pub trait GroupGadget<G: AffineCurve, F: Field>:
     {
         for (i, (bit, base_power)) in scalar_bits_with_base_powers.enumerate() {
             let new_encoded =
-                self.add_constant(&mut cs.ns(|| format!("Add {}-th base power", i)), &base_power.into_affine())?;
+                self.add_constant(&mut cs.ns(|| format!("Add {}-th base power", i)), &base_power.to_affine())?;
             *self = Self::conditionally_select(
                 &mut cs.ns(|| format!("Conditional Select {}", i)),
                 bit.borrow(),
@@ -127,7 +127,7 @@ pub trait GroupGadget<G: AffineCurve, F: Field>:
         G: 'a,
     {
         for (i, (bit, base_power)) in scalar_bits_with_base_powers.enumerate() {
-            let base_power = base_power.into_affine();
+            let base_power = base_power.to_affine();
             let new_encoded_plus =
                 self.add_constant(&mut cs.ns(|| format!("Add {}-th base power plus", i)), &base_power)?;
             let new_encoded_minus =

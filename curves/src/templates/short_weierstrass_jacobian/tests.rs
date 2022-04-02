@@ -37,7 +37,7 @@ pub fn sw_curve_serialization_test<P: ShortWeierstrassParameters>() {
 
     for _ in 0..10 {
         let a = Projective::<P>::rand(&mut rng);
-        let mut a = a.into_affine();
+        let mut a = a.to_affine();
         {
             let mut serialized = vec![0; buf_size];
             let mut cursor = Cursor::new(&mut serialized[..]);
@@ -120,7 +120,7 @@ pub fn sw_from_random_bytes<P: ShortWeierstrassParameters>() {
 
     for _ in 0..ITERATIONS {
         let a = Projective::<P>::rand(&mut rng);
-        let a = a.into_affine();
+        let a = a.to_affine();
         {
             let mut serialized = vec![0; buf_size];
             let mut cursor = Cursor::new(&mut serialized[..]);

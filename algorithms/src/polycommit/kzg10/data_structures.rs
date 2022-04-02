@@ -16,7 +16,8 @@
 
 use crate::{
     fft::{DensePolynomial, EvaluationDomain},
-    polycommit::{PCCommitment, PCProof, PCRandomness, PCUniversalParams, PowersOfG},
+    polycommit::kzg10::PowersOfG,
+    snark::marlin::{params::OptimizationType, FiatShamirError, FiatShamirRng},
 };
 use snarkvm_curves::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, PrimeField, ToConstraintField, Zero};
@@ -32,7 +33,7 @@ use snarkvm_utilities::{
 };
 
 use anyhow::Result;
-use core::ops::{Add, AddAssign, Mul};
+use core::ops::{Add, AddAssign};
 use parking_lot::RwLock;
 use rand_core::RngCore;
 use std::{collections::BTreeMap, io, sync::Arc};
@@ -107,7 +108,7 @@ impl<E: PairingEngine> CanonicalDeserialize for UniversalParams<E> {
 impl<E: PairingEngine> UniversalParams<E> {
     pub fn lagrange_basis(&self, domain: EvaluationDomain<E::Fr>) -> Vec<E::G1Affine> {
         let basis = domain
-            .ifft(&self.powers_of_beta_g(0, domain.size()).iter().map(|e| (*e).into_projective()).collect::<Vec<_>>());
+            .ifft(&self.powers_of_beta_g(0, domain.size()).iter().map(|e| (*e).to_projective()).collect::<Vec<_>>());
         E::G1Projective::batch_normalization_into_affine(basis)
     }
 
@@ -209,16 +210,16 @@ impl<E: PairingEngine> ToBytes for UniversalParams<E> {
     }
 }
 
-impl<E: PairingEngine> PCUniversalParams for UniversalParams<E> {
-    fn max_degree(&self) -> usize {
+impl<E: PairingEngine> UniversalParams<E> {
+    pub fn max_degree(&self) -> usize {
         self.powers.read().len() - 1
     }
 
-    fn supported_degree_bounds(&self) -> &[usize] {
+    pub fn supported_degree_bounds(&self) -> &[usize] {
         &self.supported_degree_bounds
     }
 
-    fn increase_degree(&self, degree: usize) -> Result<()> {
+    pub fn increase_degree(&self, degree: usize) -> Result<()> {
         self.download_up_to(degree)
     }
 }
@@ -366,27 +367,18 @@ impl<E: PairingEngine> ToMinimalBits for Commitment<E> {
     }
 }
 
-impl<E: PairingEngine> PCCommitment for Commitment<E> {
+impl<E: PairingEngine> Commitment<E> {
     #[inline]
-    fn empty() -> Self {
+    pub fn empty() -> Self {
         Commitment(E::G1Affine::zero())
     }
 
-    fn has_degree_bound(&self) -> bool {
+    pub fn has_degree_bound(&self) -> bool {
         false
     }
 
-    fn is_in_correct_subgroup_assuming_on_curve(&self) -> bool {
+    pub fn is_in_correct_subgroup_assuming_on_curve(&self) -> bool {
         self.0.is_in_correct_subgroup_assuming_on_curve()
-    }
-}
-
-impl<'a, E: PairingEngine> AddAssign<(E::Fr, &'a Commitment<E>)> for Commitment<E> {
-    #[inline]
-    fn add_assign(&mut self, (f, other): (E::Fr, &'a Commitment<E>)) {
-        let mut other = other.0.mul(f).into_projective();
-        other.add_assign_mixed(&self.0);
-        self.0 = other.into();
     }
 }
 
@@ -453,12 +445,12 @@ impl<E: PairingEngine> Randomness<E> {
     }
 }
 
-impl<E: PairingEngine> PCRandomness for Randomness<E> {
-    fn empty() -> Self {
+impl<E: PairingEngine> Randomness<E> {
+    pub fn empty() -> Self {
         Self { blinding_polynomial: DensePolynomial::zero() }
     }
 
-    fn rand<R: RngCore>(hiding_bound: usize, _: bool, rng: &mut R) -> Self {
+    pub fn rand<R: RngCore>(hiding_bound: usize, _: bool, rng: &mut R) -> Self {
         let mut randomness = Randomness::empty();
         let hiding_poly_degree = Self::calculate_hiding_polynomial_degree(hiding_bound);
         randomness.blinding_polynomial = DensePolynomial::rand(hiding_poly_degree, rng);
@@ -511,6 +503,17 @@ pub struct Proof<E: PairingEngine> {
     /// the evaluation proof was produced.
     pub random_v: Option<E::Fr>,
 }
+
+impl<E: PairingEngine> Proof<E> {
+    pub fn absorb_into_sponge<S: FiatShamirRng<E::Fr, E::Fq>>(&self, sponge: &mut S) -> Result<(), FiatShamirError> {
+        sponge.absorb_native_field_elements(&self.w.to_field_elements()?);
+        if let Some(random_v) = self.random_v {
+            sponge.absorb_nonnative_field_elements([random_v], OptimizationType::Weight);
+        }
+        Ok(())
+    }
+}
+
 impl<E: PairingEngine> FromBytes for Proof<E> {
     fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
         CanonicalDeserialize::deserialize(&mut reader).map_err(|_| error("could not deserialize proof"))
@@ -523,8 +526,8 @@ impl<E: PairingEngine> ToBytes for Proof<E> {
     }
 }
 
-impl<E: PairingEngine> PCProof for Proof<E> {
-    fn is_hiding(&self) -> bool {
+impl<E: PairingEngine> Proof<E> {
+    pub fn is_hiding(&self) -> bool {
         self.random_v.is_some()
     }
 }
