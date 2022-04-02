@@ -16,9 +16,9 @@
 
 use super::*;
 
-impl<P: Program> PrivateKey<P> {
+impl<A: Aleo> PrivateKey<A> {
     /// Returns the account compute key for this account private key.
-    pub fn to_compute_key(&self) -> ComputeKey<P> {
+    pub fn to_compute_key(&self) -> ComputeKey<A> {
         ComputeKey::from_private_key(self)
     }
 }
@@ -26,7 +26,7 @@ impl<P: Program> PrivateKey<P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{account::from_private_key::tests::generate_private_and_compute_key, program::Aleo as Circuit};
+    use crate::{account::from_private_key::tests::generate_private_and_compute_key, Devnet as Circuit};
 
     const ITERATIONS: usize = 100;
 

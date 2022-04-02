@@ -16,21 +16,21 @@
 
 use super::*;
 
-impl<P: Program> Signature<P> {
+impl<A: Aleo> Signature<A> {
     /// Returns `true` if the signature is valid for the given `address` and `message`.
-    pub fn verify(&self, address: &Address<P>, message: &[Literal<P>]) -> Boolean<P> {
+    pub fn verify(&self, address: &Address<A>, message: &[Literal<A>]) -> Boolean<A> {
         // Compute G^sk_sig^c.
         let pk_sig_c = &self.pk_sig * &self.verifier_challenge;
 
         // Compute G^r := G^s G^sk_sig^c.
-        let g_r = P::g_scalar_multiply(&self.prover_response) + pk_sig_c;
+        let g_r = A::g_scalar_multiply(&self.prover_response) + pk_sig_c;
 
         // Compute the candidate verifier challenge.
         let candidate_verifier_challenge = {
             // Convert the message into little-endian bits.
             let message_bits = message.to_bits_le();
             let message_elements =
-                message_bits.chunks(P::BaseField::size_in_data_bits()).map(FromBits::from_bits_le).collect::<Vec<_>>();
+                message_bits.chunks(A::BaseField::size_in_data_bits()).map(FromBits::from_bits_le).collect::<Vec<_>>();
 
             // Construct the hash input (G^sk_sig G^r_sig G^sk_prf, G^r, message).
             let mut preimage = Vec::with_capacity(3 + message_elements.len());
@@ -40,16 +40,16 @@ impl<P: Program> Signature<P> {
             preimage.extend_from_slice(&message_elements);
 
             // Hash to derive the verifier challenge.
-            P::hash_to_scalar(&preimage)
+            A::hash_to_scalar(&preimage)
         };
 
         // Compute the candidate public key as (G^sk_sig G^r_sig G^sk_prf).
         let candidate_address = {
             // Compute sk_prf := RO(G^sk_sig || G^r_sig).
-            let sk_prf = P::hash_to_scalar(&[self.pk_sig.to_x_coordinate(), self.pr_sig.to_x_coordinate()]);
+            let sk_prf = A::hash_to_scalar(&[self.pk_sig.to_x_coordinate(), self.pr_sig.to_x_coordinate()]);
 
             // Compute G^sk_prf.
-            let pk_prf = P::g_scalar_multiply(&sk_prf);
+            let pk_prf = A::g_scalar_multiply(&sk_prf);
 
             // Compute G^sk_sig G^r_sig G^sk_prf.
             &self.pk_sig + &self.pr_sig + pk_prf
@@ -65,12 +65,8 @@ impl<P: Program> Signature<P> {
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
-    use crate::program::{Aleo as Circuit, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT};
-    use snarkvm_algorithms::{
-        signature::{AleoSignature, AleoSignatureScheme},
-        SignatureScheme,
-        SignatureSchemeOperations,
-    };
+    use crate::Devnet as Circuit;
+    use snarkvm_algorithms::{signature::AleoSignature, SignatureScheme, SignatureSchemeOperations};
     use snarkvm_curves::AffineCurve;
     use snarkvm_utilities::{test_crypto_rng, test_rng, UniformRand};
 
@@ -79,11 +75,10 @@ pub(crate) mod tests {
     pub type NativeAffine = <Circuit as Environment>::Affine;
     pub type NativeAffineParameters = <Circuit as Environment>::AffineParameters;
     pub type NativeScalarField = <Circuit as Environment>::ScalarField;
-    pub type NativeSignatureScheme = AleoSignatureScheme<NativeAffineParameters>;
 
     pub(crate) fn generate_private_key_and_address() -> (NativeScalarField, NativeScalarField, NativeAffine) {
         // Compute the signature parameters.
-        let native = NativeSignatureScheme::setup(ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT);
+        let native = Circuit::native_signature_scheme();
 
         // Sample a random private key.
         let rng = &mut test_rng();
@@ -109,7 +104,7 @@ pub(crate) mod tests {
         message: &[Literal<Circuit>],
     ) -> AleoSignature<NativeAffineParameters> {
         let rng = &mut test_crypto_rng();
-        let native = NativeSignatureScheme::setup(ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT);
+        let native = Circuit::native_signature_scheme();
 
         // Compute the signature.
         let message = message.to_bits_le().eject_value();

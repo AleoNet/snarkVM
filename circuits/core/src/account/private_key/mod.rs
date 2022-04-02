@@ -19,18 +19,18 @@ pub mod to_compute_key;
 #[cfg(test)]
 use snarkvm_circuits_types::environment::assert_scope;
 
-use crate::{account::ComputeKey, program::Program};
+use crate::{account::ComputeKey, Aleo};
 use snarkvm_circuits_types::{environment::prelude::*, Scalar};
 
-pub struct PrivateKey<P: Program> {
+pub struct PrivateKey<A: Aleo> {
     /// The signature secret key.
-    sk_sig: Scalar<P>,
+    sk_sig: Scalar<A>,
     /// The signature secret randomizer.
-    r_sig: Scalar<P>,
+    r_sig: Scalar<A>,
 }
 
-impl<P: Program> Inject for PrivateKey<P> {
-    type Primitive = (P::ScalarField, P::ScalarField);
+impl<A: Aleo> Inject for PrivateKey<A> {
+    type Primitive = (A::ScalarField, A::ScalarField);
 
     /// Initializes an account private key from the given mode and `(sk_sig, r_sig)`.
     fn new(mode: Mode, (sk_sig, r_sig): Self::Primitive) -> Self {
@@ -38,20 +38,20 @@ impl<P: Program> Inject for PrivateKey<P> {
     }
 }
 
-impl<P: Program> PrivateKey<P> {
+impl<A: Aleo> PrivateKey<A> {
     /// Returns the signature secret key.
-    pub fn sk_sig(&self) -> &Scalar<P> {
+    pub fn sk_sig(&self) -> &Scalar<A> {
         &self.sk_sig
     }
 
     /// Returns the signature randomizer.
-    pub fn r_sig(&self) -> &Scalar<P> {
+    pub fn r_sig(&self) -> &Scalar<A> {
         &self.r_sig
     }
 }
 
-impl<P: Program> Eject for PrivateKey<P> {
-    type Primitive = (P::ScalarField, P::ScalarField);
+impl<A: Aleo> Eject for PrivateKey<A> {
+    type Primitive = (A::ScalarField, A::ScalarField);
 
     ///
     /// Ejects the mode of the account private key.

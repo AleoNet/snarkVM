@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod aleo;
-pub use aleo::*;
+pub mod aleo_program;
+pub use aleo_program::*;
 
 pub mod function;
 pub use function::*;
@@ -29,10 +29,13 @@ pub use literal::*;
 pub mod template;
 pub use template::*;
 
-use crate::program::{Function, Identifier, Template};
-use snarkvm_circuits_types::{environment::Environment, Field, Group, Scalar};
+use crate::{
+    program::{Function, Identifier, Template},
+    Aleo,
+};
 
-pub trait Program: Environment {
+// pub trait Program: Aleo {
+pub trait Program: snarkvm_circuits_types::environment::Environment {
     /// Adds a new template for the program.
     ///
     /// # Errors
@@ -50,10 +53,4 @@ pub trait Program: Environment {
 
     /// Returns the template with the given name.
     fn get_template(name: &Identifier<Self>) -> Option<Template<Self>>;
-
-    /// Returns the scalar multiplication on the group bases.
-    fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self>;
-
-    /// Returns a hash on the scalar field for the given input.
-    fn hash_to_scalar(input: &[Field<Self>]) -> Scalar<Self>;
 }

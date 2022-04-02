@@ -17,23 +17,26 @@
 // #[cfg(test)]
 // use snarkvm_circuits_types::environment::assert_scope;
 
-use crate::program::{Literal, Program, Value};
+use crate::{
+    program::{Literal, Value},
+    Aleo,
+};
 use snarkvm_circuits_types::{environment::prelude::*, Address, I64};
 
 // TODO (howardwu): Check mode is only public/private, not constant.
 #[derive(Debug, Clone)]
-pub struct Record<P: Program> {
-    owner: Address<P>,
-    value: I64<P>,
-    data: Vec<Value<P>>,
+pub struct Record<A: Aleo> {
+    owner: Address<A>,
+    value: I64<A>,
+    data: Vec<Value<A>>,
     // program_id: Vec<Boolean<P>>>,
     // randomizer: BaseField<P>>,
     // record_view_key: BaseField<P>>,
 }
 
-impl<P: Program> Record<P> {
+impl<A: Aleo> Record<A> {
     /// Returns the members of the record.
-    pub fn members(&self) -> Vec<Value<P>> {
+    pub fn members(&self) -> Vec<Value<A>> {
         [Value::Literal(Literal::Address(self.owner.clone())), Value::Literal(Literal::I64(self.value.clone()))]
             .into_iter()
             .chain(self.data.iter().cloned())
@@ -41,22 +44,22 @@ impl<P: Program> Record<P> {
     }
 
     /// Returns the record owner.
-    pub fn owner(&self) -> &Address<P> {
+    pub fn owner(&self) -> &Address<A> {
         &self.owner
     }
 
     /// Returns the record value.
-    pub fn value(&self) -> &I64<P> {
+    pub fn value(&self) -> &I64<A> {
         &self.value
     }
 
     /// Returns the record data.
-    pub fn data(&self) -> &Vec<Value<P>> {
+    pub fn data(&self) -> &Vec<Value<A>> {
         &self.data
     }
 }
 
-impl<P: Program> TypeName for Record<P> {
+impl<A: Aleo> TypeName for Record<A> {
     fn type_name() -> &'static str {
         "record"
     }
@@ -65,7 +68,7 @@ impl<P: Program> TypeName for Record<P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::program::Aleo as Circuit;
+    use crate::Devnet as Circuit;
     use snarkvm_circuits_types::Group;
 
     #[test]

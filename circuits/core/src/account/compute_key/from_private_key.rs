@@ -16,20 +16,20 @@
 
 use super::*;
 
-impl<P: Program> ComputeKey<P> {
+impl<A: Aleo> ComputeKey<A> {
     /// Returns the account compute key for this account private key.
-    pub fn from_private_key(private_key: &PrivateKey<P>) -> Self {
+    pub fn from_private_key(private_key: &PrivateKey<A>) -> Self {
         // Extract (sk_sig, r_sig).
         let (sk_sig, r_sig) = (private_key.sk_sig(), private_key.r_sig());
 
         // Compute G^sk_sig.
-        let pk_sig = P::g_scalar_multiply(sk_sig);
+        let pk_sig = A::g_scalar_multiply(sk_sig);
 
         // Compute G^r_sig.
-        let pr_sig = P::g_scalar_multiply(r_sig);
+        let pr_sig = A::g_scalar_multiply(r_sig);
 
         // Compute sk_prf := RO(G^sk_sig || G^r_sig).
-        let sk_prf = P::hash_to_scalar(&[pk_sig.to_x_coordinate(), pr_sig.to_x_coordinate()]);
+        let sk_prf = A::hash_to_scalar(&[pk_sig.to_x_coordinate(), pr_sig.to_x_coordinate()]);
 
         // Return the compute key.
         Self { pk_sig, pr_sig, sk_prf }
@@ -39,8 +39,8 @@ impl<P: Program> ComputeKey<P> {
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
-    use crate::program::{Aleo as Circuit, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT};
-    use snarkvm_algorithms::{signature::AleoSignatureScheme, SignatureScheme, SignatureSchemeOperations};
+    use crate::Devnet as Circuit;
+    use snarkvm_algorithms::SignatureSchemeOperations;
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 100;
@@ -54,9 +54,7 @@ pub(crate) mod tests {
         <Circuit as Environment>::ScalarField,
     ) {
         // Compute the signature parameters.
-        let native = AleoSignatureScheme::<<Circuit as Environment>::AffineParameters>::setup(
-            ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT,
-        );
+        let native = Circuit::native_signature_scheme();
 
         // Sample a random private key.
         let rng = &mut test_rng();

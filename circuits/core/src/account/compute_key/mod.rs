@@ -19,20 +19,20 @@ pub mod from_private_key;
 #[cfg(test)]
 use snarkvm_circuits_types::environment::assert_scope;
 
-use crate::{account::PrivateKey, program::Program};
+use crate::{account::PrivateKey, Aleo};
 use snarkvm_circuits_types::{environment::prelude::*, Group, Scalar};
 
-pub struct ComputeKey<P: Program> {
+pub struct ComputeKey<A: Aleo> {
     /// The signature public key `pk_sig` := G^sk_sig.
-    pk_sig: Group<P>,
+    pk_sig: Group<A>,
     /// The signature public randomizer `pr_sig` := G^r_sig.
-    pr_sig: Group<P>,
+    pr_sig: Group<A>,
     /// The PRF secret key `sk_prf` := RO(G^sk_sig || G^r_sig).
-    sk_prf: Scalar<P>,
+    sk_prf: Scalar<A>,
 }
 
-impl<P: Program> Inject for ComputeKey<P> {
-    type Primitive = (P::Affine, P::Affine, P::ScalarField);
+impl<A: Aleo> Inject for ComputeKey<A> {
+    type Primitive = (A::Affine, A::Affine, A::ScalarField);
 
     /// Initializes an account compute key from the given mode and `(pk_sig, pr_sig, sk_prf)`.
     fn new(mode: Mode, (pk_sig, pr_sig, sk_prf): Self::Primitive) -> Self {
@@ -40,25 +40,25 @@ impl<P: Program> Inject for ComputeKey<P> {
     }
 }
 
-impl<P: Program> ComputeKey<P> {
+impl<A: Aleo> ComputeKey<A> {
     /// Returns the signature public key.
-    pub fn pk_sig(&self) -> &Group<P> {
+    pub fn pk_sig(&self) -> &Group<A> {
         &self.pk_sig
     }
 
     /// Returns the signature public randomizer.
-    pub fn pr_sig(&self) -> &Group<P> {
+    pub fn pr_sig(&self) -> &Group<A> {
         &self.pr_sig
     }
 
     /// Returns the PRF secret key.
-    pub fn sk_prf(&self) -> &Scalar<P> {
+    pub fn sk_prf(&self) -> &Scalar<A> {
         &self.sk_prf
     }
 }
 
-impl<P: Program> Eject for ComputeKey<P> {
-    type Primitive = (P::Affine, P::Affine, P::ScalarField);
+impl<A: Aleo> Eject for ComputeKey<A> {
+    type Primitive = (A::Affine, A::Affine, A::ScalarField);
 
     ///
     /// Ejects the mode of the compute key.
@@ -78,7 +78,7 @@ impl<P: Program> Eject for ComputeKey<P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::program::Aleo as Circuit;
+    use crate::Devnet as Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 1000;
