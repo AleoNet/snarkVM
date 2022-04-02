@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Argument, Memory, Operation, Sanitizer};
-use snarkvm_circuits::{LiteralType, Parser, ParserResult};
+use crate::{program::LiteralType, Argument, Memory, Operation, Sanitizer};
+use snarkvm_circuits::{Parser, ParserResult};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::{fmt, ops};

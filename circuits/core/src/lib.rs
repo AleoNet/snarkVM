@@ -17,20 +17,11 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
-#[macro_use]
-extern crate enum_index_derive;
-
 pub mod account;
 pub mod algorithms;
 
-pub mod literal;
-pub use literal::*;
-
 pub mod devnet;
 pub use devnet::*;
-
-// TODO (howardwu): Remove this.
-pub use literal::{Literal, LiteralType};
 
 use snarkvm_circuits_types::{environment::Environment, Field, Group, Scalar};
 

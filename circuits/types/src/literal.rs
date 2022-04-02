@@ -14,21 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod literal_type;
-pub use literal_type::*;
-
-pub mod primitive;
-pub use primitive::*;
-
-use snarkvm_circuits_types::prelude::*;
+use crate::prelude::*;
 use snarkvm_utilities::{
     io::{Read, Result as IoResult, Write},
     FromBytes,
     ToBytes,
 };
-
-#[allow(unused_imports)]
-use enum_index::EnumIndex;
 
 /// The literal enum represents all supported circuit types in snarkVM.
 #[derive(Clone, EnumIndex)]

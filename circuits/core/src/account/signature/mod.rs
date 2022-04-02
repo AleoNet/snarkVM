@@ -19,8 +19,8 @@ pub mod verify;
 #[cfg(test)]
 use snarkvm_circuits_types::environment::assert_scope;
 
-use crate::{Aleo, Literal};
-use snarkvm_circuits_types::{environment::prelude::*, Address, Boolean, Field, Group, Scalar};
+use crate::Aleo;
+use snarkvm_circuits_types::{environment::prelude::*, Address, Boolean, Field, Group, Literal, Scalar};
 
 pub struct Signature<A: Aleo> {
     /// The prover response to the challenge.
