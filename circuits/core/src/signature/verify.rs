@@ -100,7 +100,7 @@ pub(crate) mod tests {
         let pk_prf = native.g_scalar_multiply(&sk_prf);
 
         // Return the private key components and address.
-        (sk_sig, r_sig, pk_sig + pr_sig + pk_prf)
+        (sk_sig, r_sig, (pk_sig + pr_sig + pk_prf).into())
     }
 
     pub(crate) fn generate_signature(

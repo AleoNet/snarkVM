@@ -52,23 +52,6 @@ impl<N: Network> Program<N> {
         Ok(program)
     }
 
-    // TODO (raychu86): Remove this. Left in for now as an example of how programs are constructed.
-    /// Initializes an instance of the noop program.
-    pub fn new_noop() -> Result<Self> {
-        // Initialize a new functions tree, and add all functions to the tree.
-        let mut program = Self {
-            tree: MerkleTree::<N::ProgramIDParameters>::new::<N::FunctionID>(
-                Arc::new(N::program_id_parameters().clone()),
-                &[],
-            )?,
-            functions: Default::default(),
-            last_function_index: 0,
-        };
-        program.add(Arc::new(Noop::<N>::setup()?))?;
-
-        Ok(program)
-    }
-
     /// Returns the program ID.
     pub fn program_id(&self) -> N::ProgramID {
         (*self.tree.root()).into()
@@ -101,6 +84,7 @@ impl<N: Network> Program<N> {
 
 impl<N: Network> Program<N> {
     /// Adds the given function to the tree, returning its function index in the tree.
+    #[allow(unused)]
     fn add(&mut self, function: Arc<dyn Function<N>>) -> Result<u8> {
         // Ensure the function does not already exist in the tree.
         if self.contains_function(&function.function_id()) {

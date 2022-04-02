@@ -14,10 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    polycommit::{BatchLCProof, PCCommitment, PolynomialCommitment},
-    snark::marlin::ahp::prover::ProverMessage,
-};
+use crate::{polycommit::sonic_pc, snark::marlin::ahp};
+
+use snarkvm_curves::PairingEngine;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{
     error,
@@ -27,98 +26,108 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
+#[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
+pub struct Commitments<E: PairingEngine> {
+    /// Commitment to the `w` polynomial.
+    pub w: sonic_pc::Commitment<E>,
+    /// Commitment to the `z_a` polynomial.
+    pub z_a: sonic_pc::Commitment<E>,
+    /// Commitment to the `z_b` polynomial.
+    pub z_b: sonic_pc::Commitment<E>,
+    /// Commitment to the masking polynomial.
+    pub mask_poly: Option<sonic_pc::Commitment<E>>,
+    /// Commitment to the `g_1` polynomial.
+    pub g_1: sonic_pc::Commitment<E>,
+    /// Commitment to the `h_1` polynomial.
+    pub h_1: sonic_pc::Commitment<E>,
+    /// Commitment to the `g_a` polynomial.
+    pub g_a: sonic_pc::Commitment<E>,
+    /// Commitment to the `g_b` polynomial.
+    pub g_b: sonic_pc::Commitment<E>,
+    /// Commitment to the `g_c` polynomial.
+    pub g_c: sonic_pc::Commitment<E>,
+    /// Commitment to the `h_2` polynomial.
+    pub h_2: sonic_pc::Commitment<E>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
+pub struct Evaluations<F: PrimeField> {
+    /// Evaluation of `z_b` at `beta`.
+    pub z_b_eval: F,
+    /// Evaluation of `g_1` at `beta`.
+    pub g_1_eval: F,
+    /// Evaluation of `g_a` at `beta`.
+    pub g_a_eval: F,
+    /// Evaluation of `g_b` at `gamma`.
+    pub g_b_eval: F,
+    /// Evaluation of `g_c` at `gamma`.
+    pub g_c_eval: F,
+}
+
+impl<F: PrimeField> Evaluations<F> {
+    pub(crate) fn from_map(map: &std::collections::BTreeMap<String, F>) -> Self {
+        Self {
+            z_b_eval: map["z_b"],
+            g_1_eval: map["g_1"],
+            g_a_eval: map["g_a"],
+            g_b_eval: map["g_b"],
+            g_c_eval: map["g_c"],
+        }
+    }
+
+    pub(crate) fn get(&self, label: &str) -> Option<F> {
+        match label {
+            "z_b" => Some(self.z_b_eval),
+            "g_1" => Some(self.g_1_eval),
+            "g_a" => Some(self.g_a_eval),
+            "g_b" => Some(self.g_b_eval),
+            "g_c" => Some(self.g_c_eval),
+            _ => None,
+        }
+    }
+}
+
+impl<F: PrimeField> Evaluations<F> {
+    pub fn to_field_elements(&self) -> [F; 5] {
+        [self.z_b_eval, self.g_1_eval, self.g_a_eval, self.g_b_eval, self.g_c_eval]
+    }
+}
+
 /// A zkSNARK proof.
 #[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
-pub struct Proof<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> {
-    /// Commitments to the polynomials produced by the AHP prover.
-    pub commitments: Vec<Vec<PC::Commitment>>,
-    /// Evaluations of these polynomials.
-    pub evaluations: Vec<F>,
-    /// The field elements sent by the prover.
-    pub prover_messages: Vec<ProverMessage<F>>,
+pub struct Proof<E: PairingEngine> {
+    /// Commitments to prover polynomials.
+    pub commitments: Commitments<E>,
+
+    /// Evaluations of some of the committed polynomials.
+    pub evaluations: Evaluations<E::Fr>,
+
+    /// Prover message: sum_a, sum_b, sum_c
+    pub msg: ahp::prover::ThirdMessage<E::Fr>,
+
     /// An evaluation proof from the polynomial commitment.
-    pub pc_proof: BatchLCProof<F, CF, PC>,
+    pub pc_proof: sonic_pc::BatchLCProof<E>,
 }
 
-impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> Proof<F, CF, PC> {
+impl<E: PairingEngine> Proof<E> {
     /// Construct a new proof.
     pub fn new(
-        commitments: Vec<Vec<PC::Commitment>>,
-        evaluations: Vec<F>,
-        prover_messages: Vec<ProverMessage<F>>,
-        pc_proof: BatchLCProof<F, CF, PC>,
+        commitments: Commitments<E>,
+        evaluations: Evaluations<E::Fr>,
+        msg: ahp::prover::ThirdMessage<E::Fr>,
+        pc_proof: sonic_pc::BatchLCProof<E>,
     ) -> Self {
-        Self { commitments, evaluations, prover_messages, pc_proof }
-    }
-
-    /// Prints information about the size of the proof.
-    pub fn print_size_info(&self) {
-        let size_of_fe_in_bytes = F::zero().to_repr().as_ref().len() * 8;
-        let mut num_comms_without_degree_bounds = 0;
-        let mut num_comms_with_degree_bounds = 0;
-        let mut size_bytes_comms_without_degree_bounds = 0;
-        let mut size_bytes_comms_with_degree_bounds = 0;
-        let mut size_bytes_proofs = 0;
-        for c in self.commitments.iter().flatten() {
-            if !c.has_degree_bound() {
-                num_comms_without_degree_bounds += 1;
-                size_bytes_comms_without_degree_bounds += c.serialized_size();
-            } else {
-                num_comms_with_degree_bounds += 1;
-                size_bytes_comms_with_degree_bounds += c.serialized_size();
-            }
-        }
-
-        let proofs: Vec<PC::Proof> = self.pc_proof.proof.clone().into();
-        let num_proofs = proofs.len();
-        for proof in &proofs {
-            size_bytes_proofs += proof.serialized_size();
-        }
-
-        let num_evaluations = self.evaluations.len();
-        let evaluation_size_in_bytes = num_evaluations * size_of_fe_in_bytes;
-        let num_prover_messages: usize = self.prover_messages.iter().map(|v| v.field_elements.len()).sum();
-        let prover_message_size_in_bytes = num_prover_messages * size_of_fe_in_bytes;
-        let argument_size = size_bytes_comms_with_degree_bounds
-            + size_bytes_comms_without_degree_bounds
-            + size_bytes_proofs
-            + prover_message_size_in_bytes
-            + evaluation_size_in_bytes;
-        let statistics = format!(
-            "Argument size in bytes: {}\n\n\
-             Number of commitments without degree bounds: {}\n\
-             Size (in bytes) of commitments without degree bounds: {}\n\
-             Number of commitments with degree bounds: {}\n\
-             Size (in bytes) of commitments with degree bounds: {}\n\n\
-             Number of evaluation proofs: {}\n\
-             Size (in bytes) of evaluation proofs: {}\n\n\
-             Number of evaluations: {}\n\
-             Size (in bytes) of evaluations: {}\n\n\
-             Number of field elements in prover messages: {}\n\
-             Size (in bytes) of prover message: {}\n",
-            argument_size,
-            num_comms_without_degree_bounds,
-            size_bytes_comms_without_degree_bounds,
-            num_comms_with_degree_bounds,
-            size_bytes_comms_with_degree_bounds,
-            num_proofs,
-            size_bytes_proofs,
-            num_evaluations,
-            evaluation_size_in_bytes,
-            num_prover_messages,
-            prover_message_size_in_bytes,
-        );
-        add_to_trace!(|| "Statistics about proof", || statistics);
+        Self { commitments, evaluations, msg, pc_proof }
     }
 }
 
-impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> ToBytes for Proof<F, CF, PC> {
+impl<E: PairingEngine> ToBytes for Proof<E> {
     fn write_le<W: Write>(&self, mut w: W) -> io::Result<()> {
         CanonicalSerialize::serialize(self, &mut w).map_err(|_| error("could not serialize Proof"))
     }
 }
 
-impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>> FromBytes for Proof<F, CF, PC> {
+impl<E: PairingEngine> FromBytes for Proof<E> {
     fn read_le<R: Read>(mut r: R) -> io::Result<Self> {
         CanonicalDeserialize::deserialize(&mut r).map_err(|_| error("could not deserialize Proof"))
     }

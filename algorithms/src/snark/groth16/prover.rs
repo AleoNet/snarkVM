@@ -177,7 +177,7 @@ where
     let a_query = &params.a_query;
     let r_g1 = params.delta_g1.mul(r);
 
-    let g_a = calculate_coeff(r_g1.into(), a_query, params.vk.alpha_g1, &assignment);
+    let g_a = calculate_coeff(r_g1, a_query, params.vk.alpha_g1, &assignment);
 
     end_timer!(a_acc_time);
 
@@ -188,7 +188,7 @@ where
         let b_g1_acc_time = start_timer!(|| "Compute B in G1");
 
         pool.add_job(|| {
-            let s_g1 = params.delta_g1.mul(s).into();
+            let s_g1 = params.delta_g1.mul(s);
             let b_query = &params.b_g1_query;
             let res = calculate_coeff(s_g1, b_query, params.beta_g1, &assignment);
             ResultWrapper::from_g1(res)
@@ -201,7 +201,7 @@ where
     pool.add_job(|| {
         let b_query = &params.b_g2_query;
         let s_g2 = params.vk.delta_g2.mul(s);
-        let res = calculate_coeff(s_g2.into(), b_query, params.vk.beta_g2, &assignment);
+        let res = calculate_coeff(s_g2, b_query, params.vk.beta_g2, &assignment);
         ResultWrapper::from_g2(res)
     });
 
@@ -231,7 +231,7 @@ where
 
     let s_g_a = g_a.mul(s);
     let r_g1_b = g1_b.mul(r);
-    let r_s_delta_g1 = params.delta_g1.into_projective().mul(r).mul(s);
+    let r_s_delta_g1 = params.delta_g1.to_projective().mul(r).mul(s);
 
     let mut g_c = s_g_a;
     g_c += r_g1_b;
@@ -242,7 +242,7 @@ where
 
     end_timer!(prover_time);
 
-    Ok(Proof { a: g_a.into_affine(), b: g2_b.into_affine(), c: g_c.into_affine(), compressed: true })
+    Ok(Proof { a: g_a.to_affine(), b: g2_b.to_affine(), c: g_c.to_affine(), compressed: true })
 }
 
 fn calculate_coeff<G: AffineCurve>(

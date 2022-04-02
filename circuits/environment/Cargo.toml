@@ -37,7 +37,7 @@ version = "0.7.5"
 default-features = false
 
 [dependencies.indexmap]
-version = "1.8.0"
+version = "1.8.1"
 
 [dependencies.itertools]
 version = "0.10.1"
