@@ -70,71 +70,70 @@ mod tests {
         }
     }
 
-    //     #[test]
-    //     fn test_marlin() {
-    //         pub struct HelloWorld;
-    //
-    //         impl HelloWorld {
-    //             /// Initializes a new instance of `HelloWorld` with the given inputs.
-    //             pub fn run<M: Memory>(inputs: &[Literal<M::Environment>]) -> Vec<Literal<M::Environment>> {
-    //                 Function::<M>::from_str(
-    //                     r"
-    // function main:
-    //     input r0 u8.public;
-    //     input r1 u8.private;
-    //     add r2 r0 r1;
-    //     output r2 u8.private;
-    // ",
-    //                 )
-    //                 .evaluate(inputs)
-    //             }
-    //         }
-    //
-    //         // Initialize the inputs.
-    //         let input = [Literal::from_str("1u8.public"), Literal::from_str("1u8.private")];
-    //
-    //         // Run the function.
-    //         let _output = HelloWorld::run::<AleoProgram>(&input);
-    //
-    //         // Marlin setup, prove, and verify.
-    //         {
-    //             use snarkvm_algorithms::{
-    //                 crypto_hash::PoseidonSponge,
-    //                 polycommit::sonic_pc::SonicKZG10,
-    //                 snark::marlin::{
-    //                     ahp::AHPForR1CS,
-    //                     fiat_shamir::FiatShamirAlgebraicSpongeRng,
-    //                     MarlinHidingMode,
-    //                     MarlinSNARK,
-    //                 },
-    //             };
-    //             use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
-    //             use snarkvm_utilities::rand::test_rng;
-    //
-    //             type MultiPC = SonicKZG10<Bls12_377>;
-    //             type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
-    //             type MarlinInst = MarlinSNARK<Fr, Fq, MultiPC, FS, MarlinHidingMode, Vec<Fr>>;
-    //
-    //             let rng = &mut test_rng();
-    //
-    //             let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(200, 200, 300).unwrap();
-    //             let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
-    //
-    //             let (index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &Circuit).unwrap();
-    //             println!("Called circuit setup");
-    //
-    //             let proof = MarlinInst::prove(&index_pk, &Circuit, rng).unwrap();
-    //             println!("Called prover");
-    //
-    //             let zero = <Circuit as Environment>::BaseField::zero();
-    //             let one = <Circuit as Environment>::BaseField::one();
-    //
-    //             assert!(
-    //                 MarlinInst::verify(&index_vk, &[one, one, zero, zero, zero, zero, zero, zero, zero], &proof).unwrap()
-    //             );
-    //             println!("Called verifier");
-    //             println!("\nShould not verify (i.e. verifier messages should print below):");
-    //             assert!(!MarlinInst::verify(&index_vk, &[one, one + one], &proof).unwrap());
-    //         }
-    //     }
+    #[test]
+    fn test_marlin() {
+        pub struct HelloWorld;
+
+        impl HelloWorld {
+            /// Initializes a new instance of `HelloWorld` with the given inputs.
+            pub fn run<P: Program>(inputs: &[Value<P>]) -> Vec<Value<P>> {
+                Function::<P>::from_str(
+                    r"
+function main:
+    input r0 as u8.public;
+    input r1 as u8.private;
+    add r0 r1 into r2;
+    output r2 as u8.private;",
+                )
+                .evaluate(inputs)
+            }
+        }
+
+        // Initialize the inputs.
+        let input = [Value::from_str("1u8.public"), Value::from_str("1u8.private")];
+
+        // Run the function.
+        let _output = HelloWorld::run::<AleoProgram>(&input);
+
+        // Marlin setup, prove, and verify.
+        {
+            use snarkvm_algorithms::{
+                crypto_hash::PoseidonSponge,
+                polycommit::sonic_pc::SonicKZG10,
+                snark::marlin::{
+                    ahp::AHPForR1CS,
+                    fiat_shamir::FiatShamirAlgebraicSpongeRng,
+                    MarlinHidingMode,
+                    MarlinSNARK,
+                },
+            };
+            use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
+            use snarkvm_utilities::rand::test_rng;
+
+            type MultiPC = SonicKZG10<Bls12_377>;
+            type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
+            type MarlinInst = MarlinSNARK<Fr, Fq, MultiPC, FS, MarlinHidingMode, Vec<Fr>>;
+
+            let rng = &mut test_rng();
+
+            let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(200, 200, 300).unwrap();
+            let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
+
+            let (index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &Circuit).unwrap();
+            println!("Called circuit setup");
+
+            let proof = MarlinInst::prove(&index_pk, &Circuit, rng).unwrap();
+            println!("Called prover");
+
+            let zero = <Circuit as Environment>::BaseField::zero();
+            let one = <Circuit as Environment>::BaseField::one();
+
+            assert!(
+                MarlinInst::verify(&index_vk, &[one, one, zero, zero, zero, zero, zero, zero, zero], &proof).unwrap()
+            );
+            println!("Called verifier");
+            println!("\nShould not verify (i.e. verifier messages should print below):");
+            assert!(!MarlinInst::verify(&index_vk, &[one, one + one], &proof).unwrap());
+        }
+    }
 }
