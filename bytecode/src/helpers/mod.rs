@@ -14,23 +14,22 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod annotation;
-pub use annotation::*;
+pub(super) mod annotation;
+pub(super) use annotation::*;
 
-pub mod identifier;
-pub use identifier::*;
+pub(super) mod identifier;
+pub(super) use identifier::*;
 
-pub mod literal_type;
-pub use literal_type::*;
+pub(super) mod literal_type;
+pub(super) use literal_type::*;
 
 pub(super) mod register;
 pub(super) use register::*;
 
-pub mod sanitizer;
-pub use sanitizer::*;
+pub(super) mod sanitizer;
+pub(super) use sanitizer::*;
 
 pub mod value;
 pub use value::*;
 
-pub mod variable_length;
-pub use variable_length::*;
+pub(super) mod variable_length;
