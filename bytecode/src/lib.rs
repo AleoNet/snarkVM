@@ -41,8 +41,6 @@ pub trait Program: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
 
     /// The maximum number of bytes for an identifier.
     const NUM_IDENTIFIER_BYTES: usize = 31;
-    /// The maximum number of characters in human-readable identifiers (such as function name).
-    const NUM_CHARACTERS: usize = u8::MAX as usize;
     /// The maximum number of inputs for a function.
     const NUM_INPUTS: usize = u16::MAX as usize;
     /// The maximum number of instructions for a function.
