@@ -80,7 +80,7 @@ mod tests {
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
 
                 // Check for equivalency of the bases.
-                native.parameters().iter().flatten().zip(circuit.bases.iter().flatten()).for_each(
+                native.parameters().iter().flatten().zip_eq(circuit.bases.iter().flatten()).for_each(
                     |(expected, candidate)| {
                         assert_eq!(expected.to_affine(), candidate.eject_value());
                     },
