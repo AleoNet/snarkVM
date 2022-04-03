@@ -25,9 +25,3 @@ pub mod algorithms;
 
 pub mod helpers;
 pub use helpers::*;
-
-pub mod pedersen;
-pub use pedersen::*;
-
-pub mod pedersen_compressed;
-pub use pedersen_compressed::*;

@@ -16,21 +16,21 @@
 
 mod hash;
 
-use super::PedersenCRH;
+use crate::algorithms::Pedersen;
 use snarkvm_circuits_types::Environment;
 
-pub struct PedersenCompressedCRH<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
-    crh: PedersenCRH<E, NUM_WINDOWS, WINDOW_SIZE>,
+pub struct PedersenCompressed<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
+    crh: Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>,
 }
 
 impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    PedersenCompressedCRH<E, NUM_WINDOWS, WINDOW_SIZE>
+    PedersenCompressed<E, NUM_WINDOWS, WINDOW_SIZE>
 {
     pub fn setup(message: &str) -> Self {
-        Self { crh: PedersenCRH::setup(message) }
+        Self { crh: Pedersen::setup(message) }
     }
 
-    pub fn parameters(&self) -> &PedersenCRH<E, NUM_WINDOWS, WINDOW_SIZE> {
+    pub fn parameters(&self) -> &Pedersen<E, NUM_WINDOWS, WINDOW_SIZE> {
         &self.crh
     }
 }

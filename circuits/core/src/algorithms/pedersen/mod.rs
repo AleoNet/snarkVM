@@ -20,14 +20,11 @@ use snarkvm_algorithms::crypto_hash::hash_to_curve;
 use snarkvm_circuits_environment::Mode;
 use snarkvm_circuits_types::{Double, Environment, Group, Inject};
 
-#[cfg(test)]
-const WINDOW_SIZE_MULTIPLIER: usize = 8;
-
-pub struct PedersenCRH<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
+pub struct Pedersen<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
     bases: Vec<Vec<Group<E>>>,
 }
 
-impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> PedersenCRH<E, NUM_WINDOWS, WINDOW_SIZE> {
+impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Pedersen<E, NUM_WINDOWS, WINDOW_SIZE> {
     pub fn setup(message: &str) -> Self {
         let bases = (0..NUM_WINDOWS)
             .map(|index| {
@@ -55,18 +52,19 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Pederse
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_algorithms::{crh::PedersenCRH as NativePedersen, CRH};
+    use snarkvm_algorithms::{crh::PedersenCRH, CRH};
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_circuits_types::Eject;
     use snarkvm_curves::{edwards_bls12::EdwardsProjective, ProjectiveCurve};
 
     const ITERATIONS: usize = 10;
     const MESSAGE: &str = "pedersen_gadget_setup_test";
+    const WINDOW_SIZE_MULTIPLIER: usize = 8;
 
     fn check_setup<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>() {
         for _ in 0..ITERATIONS {
-            let native_hasher = NativePedersen::<EdwardsProjective, { NUM_WINDOWS }, { WINDOW_SIZE }>::setup(MESSAGE);
-            let circuit_hasher = PedersenCRH::<Circuit, { NUM_WINDOWS }, { WINDOW_SIZE }>::setup(MESSAGE);
+            let native_hasher = PedersenCRH::<EdwardsProjective, { NUM_WINDOWS }, { WINDOW_SIZE }>::setup(MESSAGE);
+            let circuit_hasher = Pedersen::<Circuit, { NUM_WINDOWS }, { WINDOW_SIZE }>::setup(MESSAGE);
 
             // Check for equivalency of bases.
             native_hasher.parameters().iter().zip(circuit_hasher.parameters().iter()).for_each(

@@ -14,16 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::PedersenCRH;
-
-#[cfg(test)]
-use super::WINDOW_SIZE_MULTIPLIER;
+use super::*;
 
 use snarkvm_circuits_types::{Boolean, Environment, Group, Inject, Itertools, Ternary, Zero};
 
 use std::borrow::Cow;
 
-impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> PedersenCRH<E, NUM_WINDOWS, WINDOW_SIZE> {
+impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Pedersen<E, NUM_WINDOWS, WINDOW_SIZE> {
     pub fn hash(&self, input: &[Boolean<E>]) -> Group<E> {
         let constant_false = Boolean::<E>::constant(false);
 
@@ -52,7 +49,7 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Pederse
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_algorithms::{crh::PedersenCRH as NativePedersen, CRH};
+    use snarkvm_algorithms::{crh::PedersenCRH, CRH};
     use snarkvm_circuits_environment::{Circuit, Mode};
     use snarkvm_circuits_types::Eject;
     use snarkvm_curves::edwards_bls12::{EdwardsAffine, EdwardsProjective};
@@ -60,10 +57,11 @@ mod tests {
 
     const ITERATIONS: usize = 10;
     const MESSAGE: &str = "pedersen_circuit";
+    const WINDOW_SIZE_MULTIPLIER: usize = 8;
 
     fn check_hash<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(mode: Mode, input_value: &[bool]) {
-        let native_hasher = NativePedersen::<EdwardsProjective, { NUM_WINDOWS }, { WINDOW_SIZE }>::setup(MESSAGE);
-        let circuit_hasher = PedersenCRH::<Circuit, { NUM_WINDOWS }, { WINDOW_SIZE }>::setup(MESSAGE);
+        let native_hasher = PedersenCRH::<EdwardsProjective, { NUM_WINDOWS }, { WINDOW_SIZE }>::setup(MESSAGE);
+        let circuit_hasher = Pedersen::<Circuit, { NUM_WINDOWS }, { WINDOW_SIZE }>::setup(MESSAGE);
 
         for i in 0..ITERATIONS {
             let native_hash: EdwardsAffine = native_hasher.hash(input_value).expect("should be able to hash input");
@@ -89,7 +87,7 @@ mod tests {
 
     #[test]
     fn test_hash_constant() {
-        hash::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Constant);
+        hash::<1, { WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
         hash::<2, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
         hash::<3, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
         hash::<4, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
@@ -103,7 +101,7 @@ mod tests {
 
     #[test]
     fn test_hash_public() {
-        hash::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Public);
+        hash::<1, { WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
         hash::<2, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
         hash::<3, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
         hash::<4, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
@@ -117,7 +115,7 @@ mod tests {
 
     #[test]
     fn test_hash_private() {
-        hash::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Private);
+        hash::<1, { WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
         hash::<2, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
         hash::<3, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
         hash::<4, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
