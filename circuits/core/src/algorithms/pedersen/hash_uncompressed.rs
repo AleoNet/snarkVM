@@ -191,35 +191,52 @@ mod tests {
     }
 
     #[test]
-    fn test_pedersen128_homomorphism_private() {
-        // Initialize Pedersen128.
-        let pedersen = Pedersen128::setup("Pedersen128HomomorphismTest");
+    fn test_pedersen_homomorphism_private() {
+        fn check_pedersen_homomorphism(
+            pedersen: &impl HashUncompressed<Input = Boolean<Circuit>, Output = Group<Circuit>>,
+        ) {
+            for _ in 0..ITERATIONS {
+                // Sample two random unsigned integers, with the MSB set to 0.
+                let first = U8::<Circuit>::new(Mode::Private, u8::rand(&mut test_rng()) >> 1);
+                let second = U8::new(Mode::Private, u8::rand(&mut test_rng()) >> 1);
+                check_homomorphic_addition(pedersen, first, second);
 
-        for _ in 0..ITERATIONS {
-            // Sample two random unsigned integers, with the MSB set to 0.
-            let first = U8::<Circuit>::new(Mode::Private, u8::rand(&mut test_rng()) >> 1);
-            let second = U8::new(Mode::Private, u8::rand(&mut test_rng()) >> 1);
-            check_homomorphic_addition(&pedersen, first, second);
+                // Sample two random unsigned integers, with the MSB set to 0.
+                let first = U16::<Circuit>::new(Mode::Private, u16::rand(&mut test_rng()) >> 1);
+                let second = U16::new(Mode::Private, u16::rand(&mut test_rng()) >> 1);
+                check_homomorphic_addition(pedersen, first, second);
 
-            // Sample two random unsigned integers, with the MSB set to 0.
-            let first = U16::<Circuit>::new(Mode::Private, u16::rand(&mut test_rng()) >> 1);
-            let second = U16::new(Mode::Private, u16::rand(&mut test_rng()) >> 1);
-            check_homomorphic_addition(&pedersen, first, second);
+                // Sample two random unsigned integers, with the MSB set to 0.
+                let first = U32::<Circuit>::new(Mode::Private, u32::rand(&mut test_rng()) >> 1);
+                let second = U32::new(Mode::Private, u32::rand(&mut test_rng()) >> 1);
+                check_homomorphic_addition(pedersen, first, second);
 
-            // Sample two random unsigned integers, with the MSB set to 0.
-            let first = U32::<Circuit>::new(Mode::Private, u32::rand(&mut test_rng()) >> 1);
-            let second = U32::new(Mode::Private, u32::rand(&mut test_rng()) >> 1);
-            check_homomorphic_addition(&pedersen, first, second);
+                // Sample two random unsigned integers, with the MSB set to 0.
+                let first = U64::<Circuit>::new(Mode::Private, u64::rand(&mut test_rng()) >> 1);
+                let second = U64::new(Mode::Private, u64::rand(&mut test_rng()) >> 1);
+                check_homomorphic_addition(pedersen, first, second);
 
-            // Sample two random unsigned integers, with the MSB set to 0.
-            let first = U64::<Circuit>::new(Mode::Private, u64::rand(&mut test_rng()) >> 1);
-            let second = U64::new(Mode::Private, u64::rand(&mut test_rng()) >> 1);
-            check_homomorphic_addition(&pedersen, first, second);
-
-            // Sample two random unsigned integers, with the MSB set to 0.
-            let first = U128::<Circuit>::new(Mode::Private, u128::rand(&mut test_rng()) >> 1);
-            let second = U128::new(Mode::Private, u128::rand(&mut test_rng()) >> 1);
-            check_homomorphic_addition(&pedersen, first, second);
+                // Sample two random unsigned integers, with the MSB set to 0.
+                let first = U128::<Circuit>::new(Mode::Private, u128::rand(&mut test_rng()) >> 1);
+                let second = U128::new(Mode::Private, u128::rand(&mut test_rng()) >> 1);
+                check_homomorphic_addition(pedersen, first, second);
+            }
         }
+
+        // Check Pedersen128.
+        let pedersen128 = Pedersen128::setup("Pedersen128HomomorphismTest");
+        check_pedersen_homomorphism(&pedersen128);
+
+        // Check Pedersen256.
+        let pedersen256 = Pedersen256::setup("Pedersen256HomomorphismTest");
+        check_pedersen_homomorphism(&pedersen256);
+
+        // Check Pedersen512.
+        let pedersen512 = Pedersen512::setup("Pedersen512HomomorphismTest");
+        check_pedersen_homomorphism(&pedersen512);
+
+        // Check Pedersen1024.
+        let pedersen1024 = Pedersen1024::setup("Pedersen1024HomomorphismTest");
+        check_pedersen_homomorphism(&pedersen1024);
     }
 }
