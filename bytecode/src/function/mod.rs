@@ -271,7 +271,7 @@ impl<P: Program> Function<P> {
                 match P::get_definition(definition_name) {
                     Some(definition) => {
                         // Ensure the value matches its expected definition.
-                        if !definition.matches(&value) {
+                        if !definition.matches(value) {
                             P::halt(format!("Input value does not match \'{definition}\'"))
                         }
                     }
