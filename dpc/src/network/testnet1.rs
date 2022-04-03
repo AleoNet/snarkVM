@@ -117,7 +117,7 @@ impl Network for Testnet1 {
     const HEADER_PROOF_SIZE_IN_BYTES: usize = 796;
     const PROGRAM_PROOF_SIZE_IN_BYTES: usize = 193;
     const PROGRAM_ID_SIZE_IN_BYTES: usize = 32;
-    const RECORD_CIPHERTEXT_SIZE_IN_BYTES: usize = 294;
+    const RECORD_CIPHERTEXT_SIZE_IN_BYTES: usize = 292;
     const RECORD_PAYLOAD_SIZE_IN_BYTES: usize = 128;
     const RECORD_VIEW_KEY_SIZE_IN_BYTES: usize = 32;
     const SIGNATURE_SIZE_IN_BYTES: usize = 128;
