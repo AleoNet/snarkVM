@@ -17,7 +17,8 @@
 // #[cfg(test)]
 // use snarkvm_circuits_types::environment::assert_scope;
 
-use snarkvm_circuits_types::{environment::prelude::*, Address, Literal, I64};
+use crate::Literal;
+use snarkvm_circuits_types::{environment::prelude::*, Address, I64};
 
 // TODO (howardwu): Check mode is only public/private, not constant.
 pub struct Record<E: Environment> {

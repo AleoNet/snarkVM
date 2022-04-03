@@ -65,7 +65,7 @@ impl<A: Account> Signature<A> {
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
-    use crate::{Aleo as Circuit, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT};
+    use crate::account::{Aleo as Circuit, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT};
     use snarkvm_algorithms::{
         signature::{AleoSignature, AleoSignatureScheme},
         SignatureScheme,

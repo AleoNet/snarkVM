@@ -19,7 +19,7 @@ pub mod to_compute_key;
 #[cfg(test)]
 use snarkvm_circuits_types::environment::assert_scope;
 
-use crate::{Account, ComputeKey};
+use crate::account::{Account, ComputeKey};
 use snarkvm_circuits_types::{environment::prelude::*, Scalar};
 
 pub struct PrivateKey<A: Account> {

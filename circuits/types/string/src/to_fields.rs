@@ -84,7 +84,7 @@ mod tests {
         let given: String = (0..Circuit::NUM_STRING_BYTES / 4).map(|_| rng.gen::<char>()).collect();
 
         let expected = native_string_to_fields(&given);
-        let candidate = StringType::<Circuit>::new(Mode::Constant, &given);
+        let candidate = StringType::<Circuit>::new(Mode::Constant, given);
         check_to_fields("Constant", &expected, &candidate, 0, 0, 0, 0);
     }
 
@@ -96,7 +96,7 @@ mod tests {
         let given: String = (0..Circuit::NUM_STRING_BYTES / 4).map(|_| rng.gen::<char>()).collect();
 
         let expected = native_string_to_fields(&given);
-        let candidate = StringType::<Circuit>::new(Mode::Public, &given);
+        let candidate = StringType::<Circuit>::new(Mode::Public, given);
         check_to_fields("Public", &expected, &candidate, 0, 0, 0, 0);
     }
 
@@ -108,7 +108,7 @@ mod tests {
         let given: String = (0..Circuit::NUM_STRING_BYTES / 4).map(|_| rng.gen::<char>()).collect();
 
         let expected = native_string_to_fields(&given);
-        let candidate = StringType::<Circuit>::new(Mode::Private, &given);
+        let candidate = StringType::<Circuit>::new(Mode::Private, given);
         check_to_fields("Private", &expected, &candidate, 0, 0, 0, 0);
     }
 }

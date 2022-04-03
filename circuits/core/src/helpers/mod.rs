@@ -14,27 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![forbid(unsafe_code)]
+pub mod literal;
+pub use literal::*;
 
-pub use snarkvm_circuits_environment as environment;
-pub use snarkvm_circuits_types_address as address;
-pub use snarkvm_circuits_types_boolean as boolean;
-pub use snarkvm_circuits_types_field as field;
-pub use snarkvm_circuits_types_group as group;
-pub use snarkvm_circuits_types_integers as integers;
-pub use snarkvm_circuits_types_scalar as scalar;
-pub use snarkvm_circuits_types_string as string;
+pub mod primitive;
+pub use primitive::*;
 
-pub use address::Address;
-pub use boolean::Boolean;
-pub use environment::prelude::*;
-pub use field::Field;
-pub use group::Group;
-pub use integers::{I128, I16, I32, I64, I8, U128, U16, U32, U64, U8};
-pub use scalar::Scalar;
-pub use string::StringType;
-
-pub mod prelude {
-    pub use super::*;
-    pub use environment::prelude::*;
-}
+pub mod type_;
+pub use type_::*;

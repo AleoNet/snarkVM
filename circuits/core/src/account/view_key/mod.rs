@@ -17,7 +17,7 @@
 #[cfg(test)]
 use snarkvm_circuits_types::environment::assert_scope;
 
-use crate::Account;
+use crate::account::Account;
 use snarkvm_circuits_types::{environment::prelude::*, Scalar};
 
 /// The account view key is able to decrypt records and ciphertext messages.
@@ -53,7 +53,7 @@ impl<A: Account> Eject for ViewKey<A> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Aleo as Circuit;
+    use crate::account::Aleo as Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 1000;

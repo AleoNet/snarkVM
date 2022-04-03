@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::prelude::*;
+use crate::Literal;
+use snarkvm_circuits_types::prelude::*;
 use snarkvm_utilities::{
     error,
     io::{Read, Result as IoResult, Write},
@@ -62,7 +63,7 @@ pub enum Type<E: Environment> {
 
 impl<E: Environment> Type<E> {
     /// Returns the type name.
-    pub fn type_name(&self) -> &'static str {
+    pub fn type_name(&self) -> &str {
         match self {
             Self::Address(..) => Address::<E>::type_name(),
             Self::Boolean(..) => Boolean::<E>::type_name(),
@@ -131,7 +132,7 @@ impl<E: Environment> From<Literal<E>> for Type<E> {
 impl<E: Environment> From<&Literal<E>> for Type<E> {
     #[inline]
     fn from(literal: &Literal<E>) -> Self {
-        let mode = literal.mode();
+        let mode = literal.eject_mode();
         match literal {
             Literal::Address(..) => Self::Address(mode),
             Literal::Boolean(..) => Self::Boolean(mode),
