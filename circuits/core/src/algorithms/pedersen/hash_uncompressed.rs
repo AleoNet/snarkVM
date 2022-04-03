@@ -48,80 +48,94 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Pederse
 mod tests {
     use super::*;
     use snarkvm_algorithms::{crh::PedersenCRH, CRH};
-    use snarkvm_circuits_environment::{Circuit, Mode};
-    use snarkvm_circuits_types::Eject;
-    use snarkvm_curves::edwards_bls12::{EdwardsAffine, EdwardsProjective};
-    use snarkvm_utilities::{test_rng, ToBits, UniformRand};
+    use snarkvm_circuits_environment::Circuit;
+    use snarkvm_curves::AffineCurve;
+    use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 10;
-    const MESSAGE: &str = "pedersen_circuit";
+    const MESSAGE: &str = "PedersenCircuit0";
     const WINDOW_SIZE_MULTIPLIER: usize = 8;
 
-    fn check_hash<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(mode: Mode, input_value: &[bool]) {
-        let native_hasher = PedersenCRH::<EdwardsProjective, { NUM_WINDOWS }, { WINDOW_SIZE }>::setup(MESSAGE);
-        let circuit_hasher = Pedersen::<Circuit, { NUM_WINDOWS }, { WINDOW_SIZE }>::setup(MESSAGE);
+    type Projective = <<Circuit as Environment>::Affine as AffineCurve>::Projective;
+
+    fn check_hash_uncompressed<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(
+        mode: Mode,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) {
+        // Initialize the Pedersen hash.
+        let native = PedersenCRH::<Projective, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
+        let circuit = Pedersen::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
+        // Determine the number of inputs.
+        let num_input_bits = NUM_WINDOWS * WINDOW_SIZE;
 
         for i in 0..ITERATIONS {
-            let native_hash: EdwardsAffine = native_hasher.hash(input_value).expect("should be able to hash input");
-            let circuit_input = input_value.iter().map(|b| Boolean::<_>::new(mode, *b)).collect::<Vec<Boolean<_>>>();
+            // Sample a random input.
+            let input = (0..num_input_bits).map(|_| bool::rand(&mut test_rng())).collect::<Vec<bool>>();
+            // Compute the expected hash.
+            let expected = native.hash(&input).expect("Failed to hash native input");
+            // Prepare the circuit input.
+            let circuit_input: Vec<Boolean<_>> = Inject::new(mode, input);
 
             Circuit::scope(format!("Pedersen {mode} {i}"), || {
-                let circuit_hash: EdwardsAffine = circuit_hasher.hash_uncompressed(&circuit_input).eject_value();
-                assert_eq!(native_hash, circuit_hash);
+                // Perform the hash operation.
+                let candidate = circuit.hash_uncompressed(&circuit_input);
+                assert_scope!(num_constants, num_public, num_private, num_constraints);
+                assert_eq!(expected, candidate.eject_value());
             });
         }
     }
 
-    fn check_hash_uncompressed<const NUM_ELEMENTS: usize, const WINDOW_SIZE: usize>(mode: Mode) {
-        let rng = &mut test_rng();
-        let bits = (0..NUM_ELEMENTS)
-            .map(|_| <Circuit as Environment>::BaseField::rand(rng))
-            .collect::<Vec<_>>()
-            .iter()
-            .flat_map(|el| el.to_bits_le())
-            .collect::<Vec<_>>();
-        check_hash::<WINDOW_SIZE, 32>(mode, &bits);
+    #[test]
+    fn test_hash_uncompressed_constant() {
+        // Set the number of windows, and modulate the window size.
+        check_hash_uncompressed::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Constant, 32, 0, 0, 0);
+        check_hash_uncompressed::<1, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant, 64, 0, 0, 0);
+        check_hash_uncompressed::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant, 96, 0, 0, 0);
+        check_hash_uncompressed::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant, 128, 0, 0, 0);
+        check_hash_uncompressed::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant, 160, 0, 0, 0);
+
+        // Set the window size, and modulate the number of windows.
+        check_hash_uncompressed::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Constant, 32, 0, 0, 0);
+        check_hash_uncompressed::<2, WINDOW_SIZE_MULTIPLIER>(Mode::Constant, 64, 0, 0, 0);
+        check_hash_uncompressed::<3, WINDOW_SIZE_MULTIPLIER>(Mode::Constant, 96, 0, 0, 0);
+        check_hash_uncompressed::<4, WINDOW_SIZE_MULTIPLIER>(Mode::Constant, 128, 0, 0, 0);
+        check_hash_uncompressed::<5, WINDOW_SIZE_MULTIPLIER>(Mode::Constant, 160, 0, 0, 0);
     }
 
     #[test]
-    fn test_hash_constant() {
-        check_hash_uncompressed::<1, { WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
-        check_hash_uncompressed::<2, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
-        check_hash_uncompressed::<3, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
-        check_hash_uncompressed::<4, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
-        check_hash_uncompressed::<5, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
-        check_hash_uncompressed::<6, { 6 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
-        check_hash_uncompressed::<7, { 7 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
-        check_hash_uncompressed::<8, { 8 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
-        check_hash_uncompressed::<9, { 9 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
-        check_hash_uncompressed::<10, { 10 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
+    fn test_hash_uncompressed_public() {
+        // Set the number of windows, and modulate the window size.
+        check_hash_uncompressed::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Public, 16, 0, 45, 45);
+        check_hash_uncompressed::<1, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public, 32, 0, 93, 93);
+        check_hash_uncompressed::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public, 48, 0, 141, 141);
+        check_hash_uncompressed::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public, 64, 0, 189, 189);
+        check_hash_uncompressed::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public, 80, 0, 237, 237);
+
+        // Set the window size, and modulate the number of windows.
+        check_hash_uncompressed::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Public, 16, 0, 45, 45);
+        check_hash_uncompressed::<2, WINDOW_SIZE_MULTIPLIER>(Mode::Public, 32, 0, 93, 93);
+        check_hash_uncompressed::<3, WINDOW_SIZE_MULTIPLIER>(Mode::Public, 48, 0, 141, 141);
+        check_hash_uncompressed::<4, WINDOW_SIZE_MULTIPLIER>(Mode::Public, 64, 0, 189, 189);
+        check_hash_uncompressed::<5, WINDOW_SIZE_MULTIPLIER>(Mode::Public, 80, 0, 237, 237);
     }
 
     #[test]
-    fn test_hash_public() {
-        check_hash_uncompressed::<1, { WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
-        check_hash_uncompressed::<2, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
-        check_hash_uncompressed::<3, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
-        check_hash_uncompressed::<4, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
-        check_hash_uncompressed::<5, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
-        check_hash_uncompressed::<6, { 6 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
-        check_hash_uncompressed::<7, { 7 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
-        check_hash_uncompressed::<8, { 8 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
-        check_hash_uncompressed::<9, { 9 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
-        check_hash_uncompressed::<10, { 10 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
-    }
+    fn test_hash_uncompressed_private() {
+        // Set the number of windows, and modulate the window size.
+        check_hash_uncompressed::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Private, 16, 0, 45, 45);
+        check_hash_uncompressed::<1, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private, 32, 0, 93, 93);
+        check_hash_uncompressed::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private, 48, 0, 141, 141);
+        check_hash_uncompressed::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private, 64, 0, 189, 189);
+        check_hash_uncompressed::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private, 80, 0, 237, 237);
 
-    #[test]
-    fn test_hash_private() {
-        check_hash_uncompressed::<1, { WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
-        check_hash_uncompressed::<2, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
-        check_hash_uncompressed::<3, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
-        check_hash_uncompressed::<4, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
-        check_hash_uncompressed::<5, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
-        check_hash_uncompressed::<6, { 6 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
-        check_hash_uncompressed::<7, { 7 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
-        check_hash_uncompressed::<8, { 8 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
-        check_hash_uncompressed::<9, { 9 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
-        check_hash_uncompressed::<10, { 10 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
+        // Set the window size, and modulate the number of windows.
+        check_hash_uncompressed::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Private, 16, 0, 45, 45);
+        check_hash_uncompressed::<2, WINDOW_SIZE_MULTIPLIER>(Mode::Private, 32, 0, 93, 93);
+        check_hash_uncompressed::<3, WINDOW_SIZE_MULTIPLIER>(Mode::Private, 48, 0, 141, 141);
+        check_hash_uncompressed::<4, WINDOW_SIZE_MULTIPLIER>(Mode::Private, 64, 0, 189, 189);
+        check_hash_uncompressed::<5, WINDOW_SIZE_MULTIPLIER>(Mode::Private, 80, 0, 237, 237);
     }
 }
