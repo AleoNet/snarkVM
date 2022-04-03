@@ -169,6 +169,14 @@ impl<'a, F: Field> DenseOrSparsePolynomial<'a, F> {
     }
 
     #[inline]
+    pub fn as_dense_mut(&mut self) -> Option<&mut DensePolynomial<F>> {
+        match self {
+            DPolynomial(p) => Some(p.to_mut()),
+            _ => None,
+        }
+    }
+
+    #[inline]
     pub fn as_sparse(&self) -> Option<&SparsePolynomial<F>> {
         match self {
             SPolynomial(p) => Some(p.as_ref()),

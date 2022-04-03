@@ -72,7 +72,7 @@ mod tests {
             native_hasher.parameters().iter().zip(circuit_hasher.parameters().iter()).for_each(
                 |(native_bases, circuit_bases)| {
                     native_bases.iter().zip(circuit_bases.iter()).for_each(|(native_base, circuit_base)| {
-                        assert_eq!(native_base.into_affine(), circuit_base.eject_value());
+                        assert_eq!(native_base.to_affine(), circuit_base.eject_value());
                     })
                 },
             );

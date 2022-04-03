@@ -16,7 +16,7 @@
 
 use crate::{AccountError, Network, PrivateKey};
 use snarkvm_algorithms::SignatureSchemeOperations;
-use snarkvm_curves::AffineCurve;
+use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use rand::thread_rng;
@@ -56,6 +56,10 @@ impl<N: Network> ComputeKey<N> {
 
         // Compute G^r_sig.
         let pr_sig = N::account_signature_scheme().g_scalar_multiply(&private_key.r_sig);
+
+        let mut to_normalize = [pk_sig, pr_sig];
+        <N::ProgramAffineCurve as AffineCurve>::Projective::batch_normalization(&mut to_normalize);
+        let [pk_sig, pr_sig] = to_normalize.map(|c| c.to_affine());
 
         Self::new(pk_sig, pr_sig)
     }
@@ -99,7 +103,7 @@ impl<N: Network> ComputeKey<N> {
         // Compute G^sk_prf.
         let pk_prf = N::account_signature_scheme().g_scalar_multiply(&self.sk_prf);
 
-        self.pk_sig + self.pr_sig + pk_prf
+        (self.pk_sig.to_projective() + self.pr_sig.to_projective() + pk_prf).into()
     }
 }
 

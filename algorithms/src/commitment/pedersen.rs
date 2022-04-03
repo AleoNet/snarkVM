@@ -40,7 +40,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
 
         // Next, compute the random base.
         let (generator, _, _) = hash_to_curve::<G::Affine>(&format!("{message} for random base"));
-        let mut base = generator.into_projective();
+        let mut base = generator.to_projective();
 
         let num_scalar_bits = G::ScalarField::size_in_bits();
         let mut random_base = Vec::with_capacity(num_scalar_bits);
@@ -54,7 +54,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
     }
 
     fn commit(&self, input: &[bool], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError> {
-        let mut output = self.crh.hash(input)?.into_projective();
+        let mut output = self.crh.hash(input)?.to_projective();
 
         // Compute h^r.
         let scalar_bits = BitIteratorLE::new(randomness.to_repr()).take(G::ScalarField::size_in_bits());
@@ -64,7 +64,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
             }
         }
 
-        Ok(output.into_affine())
+        Ok(output.to_affine())
     }
 
     fn parameters(&self) -> Self::Parameters {

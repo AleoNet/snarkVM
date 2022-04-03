@@ -16,15 +16,6 @@
 
 #![forbid(unsafe_code)]
 
-#[macro_use]
-extern crate enum_index_derive;
-
-pub mod literal;
-pub use literal::*;
-
-pub mod type_;
-pub use type_::*;
-
 pub use snarkvm_circuits_environment as environment;
 pub use snarkvm_circuits_types_address as address;
 pub use snarkvm_circuits_types_boolean as boolean;

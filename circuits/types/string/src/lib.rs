@@ -35,11 +35,11 @@ pub struct StringType<E: Environment> {
 
 impl<E: Environment> StringTrait for StringType<E> {}
 
-impl<E: Environment> StringType<E> {
-    ///
-    /// Initializes a new instance of an address from an affine group.
-    ///
-    pub fn new(mode: Mode, string: &str) -> Self {
+impl<E: Environment> Inject for StringType<E> {
+    type Primitive = String;
+
+    /// Initializes a new instance of a string.
+    fn new(mode: Mode, string: String) -> Self {
         // Ensure the string is within the allowed capacity.
         let num_bytes = string.len();
         match num_bytes <= E::NUM_STRING_BYTES as usize {
@@ -88,8 +88,8 @@ impl<E: Environment> Parser for StringType<E> {
         let (string, mode) = opt(pair(tag("."), Mode::parse))(string)?;
 
         match mode {
-            Some((_, mode)) => Ok((string, StringType::new(mode, &value))),
-            None => Ok((string, StringType::new(Mode::Constant, &value))),
+            Some((_, mode)) => Ok((string, StringType::new(mode, value))),
+            None => Ok((string, StringType::new(Mode::Constant, value))),
         }
     }
 }

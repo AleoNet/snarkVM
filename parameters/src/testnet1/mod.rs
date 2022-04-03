@@ -19,9 +19,13 @@ pub use genesis::*;
 
 const REMOTE_URL: &str = "https://s3-us-west-1.amazonaws.com/aleo.parameters";
 
-// Inner Circuit
-impl_remote!(InnerProvingKeyBytes, REMOTE_URL, "./resources/", "inner", "proving");
-impl_local!(InnerVerifyingKeyBytes, "./resources/", "inner", "verifying");
+// Input Circuit
+impl_remote!(InputProvingKeyBytes, REMOTE_URL, "./resources/", "input", "proving");
+impl_local!(InputVerifyingKeyBytes, "./resources/", "input", "verifying");
+
+// Output Circuit
+impl_remote!(OutputProvingKeyBytes, REMOTE_URL, "./resources/", "output", "proving");
+impl_local!(OutputVerifyingKeyBytes, "./resources/", "output", "verifying");
 
 // PoSW Circuit
 impl_remote!(PoSWProvingKeyBytes, REMOTE_URL, "./resources/", "posw", "proving");

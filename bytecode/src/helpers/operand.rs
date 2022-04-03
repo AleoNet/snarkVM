@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Memory, Register};
-use snarkvm_circuits::{Environment, Literal, Mode, Parser, ParserResult};
+use snarkvm_circuits::{Eject, Environment, Literal, Mode, Parser, ParserResult};
 use snarkvm_utilities::{error, FromBytes, ToBytes};
 
 use core::fmt;
@@ -51,7 +51,7 @@ impl<E: Environment> Operand<E> {
 impl<E: Environment> From<Literal<E>> for Operand<E> {
     /// Ensures that the given literal is a constant.
     fn from(literal: Literal<E>) -> Operand<E> {
-        match literal.mode() {
+        match literal.eject_mode() {
             Mode::Constant => Operand::Literal(literal),
             mode => E::halt(format!("Attempted to assign a {} literal", mode)),
         }

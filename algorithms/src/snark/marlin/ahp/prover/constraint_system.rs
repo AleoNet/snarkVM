@@ -16,9 +16,9 @@
 
 use crate::snark::marlin::ahp::matrices::make_matrices_square;
 use snarkvm_fields::Field;
-use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem, Index as VarIndex, LinearCombination, Variable};
+use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem as CS, Index as VarIndex, LinearCombination, Variable};
 
-pub(crate) struct ProverConstraintSystem<F: Field> {
+pub(crate) struct ConstraintSystem<F: Field> {
     pub(crate) public_variables: Vec<F>,
     pub(crate) private_variables: Vec<F>,
     pub(crate) num_public_variables: usize,
@@ -26,7 +26,7 @@ pub(crate) struct ProverConstraintSystem<F: Field> {
     pub(crate) num_constraints: usize,
 }
 
-impl<F: Field> ProverConstraintSystem<F> {
+impl<F: Field> ConstraintSystem<F> {
     pub(crate) fn new() -> Self {
         Self {
             public_variables: vec![F::one()],
@@ -58,7 +58,7 @@ impl<F: Field> ProverConstraintSystem<F> {
     }
 }
 
-impl<F: Field> ConstraintSystem<F> for ProverConstraintSystem<F> {
+impl<F: Field> CS<F> for ConstraintSystem<F> {
     type Root = Self;
 
     #[inline]

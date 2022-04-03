@@ -19,19 +19,44 @@ use snarkvm_algorithms::prelude::*;
 use snarkvm_r1cs::{ConstraintSynthesizer, ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::ToBytes;
 
+use itertools::Itertools;
 use rand::thread_rng;
 
-fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize) {
+fn dpc_execute_circuits_test<N: Network>(
+    expected_input_num_constraints: usize,
+    expected_output_num_constraints: usize,
+    num_inputs: usize,
+    num_outputs: usize,
+) {
     let rng = &mut thread_rng();
 
+    let sender = Account::new(rng);
     let recipient = Account::new(rng);
-    let amount = AleoAmount::from_gate(10);
-    let request: Request<N> = Request::new_coinbase(recipient.address(), amount, false, rng).unwrap();
-    let response: Response<N> = ResponseBuilder::new()
-        .add_request(request.clone())
-        .add_output(Output::new(recipient.address(), amount, None, None).unwrap())
-        .build(rng)
-        .unwrap();
+    let amount = AleoAmount::from_gate(0);
+
+    let mut records = Vec::new();
+    let mut ledger_proofs = Vec::new();
+    for _ in 0..num_inputs {
+        let record = Record::new_noop(sender.address(), rng).unwrap();
+        let ledger_proof = LedgerProof::default();
+
+        records.push(record.clone());
+        ledger_proofs.push(ledger_proof);
+    }
+
+    // Coinbase transactions do not have input proofs, so we use a dummy transfer to test both
+    // the input and output circuits.
+    let request: Request<N> =
+        Request::new_transfer(sender.private_key(), records, ledger_proofs, recipient.address(), amount, false, rng)
+            .unwrap();
+
+    let mut response_builder = ResponseBuilder::new().add_request(request.clone());
+
+    for _ in 0..num_outputs {
+        response_builder = response_builder.add_output(Output::new(recipient.address(), amount, None, None).unwrap());
+    }
+
+    let response: Response<N> = response_builder.build(rng).unwrap();
 
     //////////////////////////////////////////////////////////////////////////
 
@@ -45,10 +70,10 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize) 
 
     // Compute the value balance.
     let mut value_balance = AleoAmount::ZERO;
-    for record in request.records().iter().take(N::NUM_INPUT_RECORDS) {
+    for record in request.records().iter() {
         value_balance = value_balance.add(record.value());
     }
-    for record in response.records().iter().take(N::NUM_OUTPUT_RECORDS) {
+    for record in response.records().iter() {
         value_balance = value_balance.sub(record.value());
     }
 
@@ -60,83 +85,192 @@ fn dpc_execute_circuits_test<N: Network>(expected_inner_num_constraints: usize) 
 
     //////////////////////////////////////////////////////////////////////////
 
-    // Construct the inner circuit public and private variables.
-    let inner_public = InnerPublicVariables::new(
-        serial_numbers,
-        commitments,
-        value_balance,
-        response.input_value_commitments().clone(),
-        response.output_value_commitments().clone(),
-        response.value_balance_commitment().clone(),
-        ledger_root,
-        local_transitions_root,
-        program_id,
-    );
-    let inner_private = InnerPrivateVariables::new(&request, &response).unwrap();
+    // Generate input circuit parameters and proof.
+    let (input_proving_key, input_verifying_key) =
+        <N as Network>::InputSNARK::setup(&InputCircuit::<N>::blank(), &mut SRS::CircuitSpecific(rng)).unwrap();
 
-    // Check that the core check constraint system was satisfied.
-    let mut inner_cs = TestConstraintSystem::<N::InnerScalarField>::new();
+    // Compute the input circuit proofs.
+    let mut input_proofs = Vec::with_capacity(N::NUM_INPUTS as usize);
+    let mut input_public_variables = Vec::with_capacity(N::NUM_INPUTS as usize);
+    for (
+        ((((record, serial_number), ledger_proof), signature), input_value_commitment),
+        input_value_commitment_randomness,
+    ) in request
+        .records()
+        .iter()
+        .zip_eq(request.to_serial_numbers().unwrap().iter())
+        .zip_eq(request.ledger_proofs())
+        .zip_eq(request.signatures())
+        .zip_eq(response.input_value_commitments())
+        .zip_eq(response.input_value_commitment_randomness())
+    {
+        // Check that the input constraint system was satisfied.
+        let mut input_cs = TestConstraintSystem::<N::InnerScalarField>::new();
 
-    let inner_circuit = InnerCircuit::new(inner_public.clone(), inner_private);
-    inner_circuit.generate_constraints(&mut inner_cs.ns(|| "Inner circuit")).unwrap();
+        let input_public = InputPublicVariables::<N>::new(
+            *serial_number,
+            input_value_commitment.clone(),
+            ledger_root,
+            local_transitions_root,
+            program_id,
+        );
+        let input_private = InputPrivateVariables::<N>::new(
+            record.clone(),
+            ledger_proof.clone(),
+            signature.clone(),
+            *input_value_commitment_randomness,
+        )
+        .unwrap();
 
-    let candidate_inner_num_constraints = inner_cs.num_constraints();
-    let (num_non_zero_a, num_non_zero_b, num_non_zero_c) = inner_cs.num_non_zero();
+        let input_circuit = InputCircuit::<N>::new(input_public.clone(), input_private);
+        input_circuit.generate_constraints(&mut input_cs.ns(|| "Input circuit")).unwrap();
 
-    if !inner_cs.is_satisfied() {
+        let candidate_input_num_constraints = input_cs.num_constraints();
+        let (num_non_zero_a, num_non_zero_b, num_non_zero_c) = input_cs.num_non_zero();
+
+        if !dbg!(input_cs.is_satisfied()) {
+            println!("=========================================================");
+            println!("Input circuit num constraints: {}", candidate_input_num_constraints);
+            println!("Unsatisfied constraints:\n{}", input_cs.which_is_unsatisfied().unwrap());
+            println!("=========================================================");
+        }
+
         println!("=========================================================");
-        println!("Inner circuit num constraints: {}", candidate_inner_num_constraints);
-        println!("Unsatisfied constraints:\n{}", inner_cs.which_is_unsatisfied().unwrap());
+        println!("Input circuit num constraints: {}", candidate_input_num_constraints);
+        assert_eq!(expected_input_num_constraints, candidate_input_num_constraints);
         println!("=========================================================");
+
+        println!("=========================================================");
+        println!("Input circuit num non_zero_a: {}", num_non_zero_a);
+        println!("Input circuit num non_zero_b: {}", num_non_zero_b);
+        println!("Input circuit num non_zero_c: {}", num_non_zero_c);
+        println!("=========================================================");
+
+        assert!(input_cs.is_satisfied());
+
+        //////////////////////////////////////////////////////////////////////////
+
+        let input_proof = <N as Network>::InputSNARK::prove(&input_proving_key, &input_circuit, rng).unwrap();
+        assert_eq!(N::INPUT_PROOF_SIZE_IN_BYTES, input_proof.to_bytes_le().unwrap().len());
+
+        // Verify that the inner circuit proof passes.
+        assert!(<N as Network>::InputSNARK::verify(&input_verifying_key, &input_public, &input_proof).unwrap());
+
+        //////////////////////////////////////////////////////////////////////////
+
+        input_proofs.push(input_proof.into());
+        input_public_variables.push(input_public);
     }
-
-    println!("=========================================================");
-    println!("Inner circuit num constraints: {}", candidate_inner_num_constraints);
-    assert_eq!(expected_inner_num_constraints, candidate_inner_num_constraints);
-    println!("=========================================================");
-
-    println!("=========================================================");
-    println!("Inner circuit num non_zero_a: {}", num_non_zero_a);
-    println!("Inner circuit num non_zero_b: {}", num_non_zero_b);
-    println!("Inner circuit num non_zero_c: {}", num_non_zero_c);
-    println!("=========================================================");
-
-    assert!(inner_cs.is_satisfied());
 
     //////////////////////////////////////////////////////////////////////////
 
-    // Generate inner circuit parameters and proof for verification in the outer circuit.
-    let (inner_proving_key, inner_verifying_key) =
-        <N as Network>::InnerSNARK::setup(&InnerCircuit::<N>::blank(), &mut SRS::CircuitSpecific(rng)).unwrap();
+    // Generate output circuit parameters and proof.
+    let (output_proving_key, output_verifying_key) =
+        <N as Network>::OutputSNARK::setup(&OutputCircuit::<N>::blank(), &mut SRS::CircuitSpecific(rng)).unwrap();
 
-    // // NOTE: Do not change this to `N::inner_circuit_id()` as that will load the *saved* inner circuit VK.
-    // let inner_circuit_id: N::InnerCircuitID = <N as Network>::inner_circuit_id_crh()
-    //     .hash_bits(&inner_verifying_key.to_minimal_bits())
-    //     .unwrap()
-    //     .into();
+    // Compute the output circuit proofs.
+    let mut output_proofs = Vec::with_capacity(N::NUM_OUTPUTS as usize);
+    let mut output_public_variables = Vec::with_capacity(N::NUM_OUTPUTS as usize);
+    for (
+        (((record, commitment), encryption_randomness), output_value_commitment),
+        output_value_commitment_randomness,
+    ) in response
+        .records()
+        .iter()
+        .zip_eq(response.commitments())
+        .zip_eq(response.encryption_randomness())
+        .zip_eq(response.output_value_commitments())
+        .zip_eq(response.output_value_commitment_randomness())
+    {
+        // Check that the output constraint system was satisfied.
+        let mut output_cs = TestConstraintSystem::<N::InnerScalarField>::new();
 
-    let inner_proof = <N as Network>::InnerSNARK::prove(&inner_proving_key, &inner_circuit, rng).unwrap();
-    assert_eq!(N::INNER_PROOF_SIZE_IN_BYTES, inner_proof.to_bytes_le().unwrap().len());
+        let output_public = OutputPublicVariables::<N>::new(commitment, output_value_commitment.clone(), program_id);
+        let output_private = OutputPrivateVariables::<N>::new(
+            record.clone(),
+            *encryption_randomness,
+            *output_value_commitment_randomness,
+        )
+        .unwrap();
 
-    // Verify that the inner circuit proof passes.
-    assert!(<N as Network>::InnerSNARK::verify(&inner_verifying_key, &inner_public, &inner_proof).unwrap());
+        let output_circuit = OutputCircuit::<N>::new(output_public.clone(), output_private);
+        output_circuit.generate_constraints(&mut output_cs.ns(|| "Output circuit")).unwrap();
+
+        let candidate_output_num_constraints = output_cs.num_constraints();
+        let (num_non_zero_a, num_non_zero_b, num_non_zero_c) = output_cs.num_non_zero();
+
+        if !dbg!(output_cs.is_satisfied()) {
+            println!("=========================================================");
+            println!("Output circuit num constraints: {}", candidate_output_num_constraints);
+            println!("Unsatisfied constraints:\n{}", output_cs.which_is_unsatisfied().unwrap());
+            println!("=========================================================");
+        }
+
+        println!("=========================================================");
+        println!("Output circuit num constraints: {}", candidate_output_num_constraints);
+        assert_eq!(expected_output_num_constraints, candidate_output_num_constraints);
+        println!("=========================================================");
+
+        println!("=========================================================");
+        println!("Output circuit num non_zero_a: {}", num_non_zero_a);
+        println!("Output circuit num non_zero_b: {}", num_non_zero_b);
+        println!("Output circuit num non_zero_c: {}", num_non_zero_c);
+        println!("=========================================================");
+
+        assert!(output_cs.is_satisfied());
+
+        //////////////////////////////////////////////////////////////////////////
+
+        let output_proof = <N as Network>::OutputSNARK::prove(&output_proving_key, &output_circuit, rng).unwrap();
+        assert_eq!(N::OUTPUT_PROOF_SIZE_IN_BYTES, output_proof.to_bytes_le().unwrap().len());
+
+        // Verify that the inner circuit proof passes.
+        assert!(<N as Network>::OutputSNARK::verify(&output_verifying_key, &output_public, &output_proof).unwrap());
+
+        //////////////////////////////////////////////////////////////////////////
+
+        output_proofs.push(output_proof.into());
+        output_public_variables.push(output_public);
+    }
 
     //////////////////////////////////////////////////////////////////////////
 
     // Construct the execution.
-    let execution = Execution::<N>::from(None, inner_proof.into()).unwrap();
+    let execution = Execution::<N>::from(None, input_proofs, output_proofs).unwrap();
 
     // Verify that the program proof passes.
-    assert!(execution.verify(&inner_verifying_key, &inner_public, transition_id));
+    assert!(execution.verify(
+        &input_verifying_key,
+        &output_verifying_key,
+        &input_public_variables,
+        &output_public_variables,
+        transition_id
+    ));
 }
 
 mod testnet1 {
     use super::*;
     use crate::testnet1::*;
 
+    const EXPECTED_INPUT_NUM_CONSTRAINTS: usize = 113181;
+    const EXPECTED_OUTPUT_NUM_CONSTRAINTS: usize = 18731;
+
     #[test]
     fn test_dpc_execute_circuits() {
-        dpc_execute_circuits_test::<Testnet1>(257471);
+        dpc_execute_circuits_test::<Testnet1>(EXPECTED_INPUT_NUM_CONSTRAINTS, EXPECTED_OUTPUT_NUM_CONSTRAINTS, 1, 1);
+    }
+
+    // TODO (raychu86): Move these tests upstream to the VM when variable size output transfers are supported.
+    #[test]
+    fn test_dpc_execute_circuits_variable_inputs_and_outputs() {
+        dpc_execute_circuits_test::<Testnet1>(EXPECTED_INPUT_NUM_CONSTRAINTS, EXPECTED_OUTPUT_NUM_CONSTRAINTS, 2, 2);
+        dpc_execute_circuits_test::<Testnet1>(EXPECTED_INPUT_NUM_CONSTRAINTS, EXPECTED_OUTPUT_NUM_CONSTRAINTS, 4, 4);
+    }
+
+    #[test]
+    fn test_dpc_execute_circuits_variable_inputs_and_outputs_large() {
+        dpc_execute_circuits_test::<Testnet1>(EXPECTED_INPUT_NUM_CONSTRAINTS, EXPECTED_OUTPUT_NUM_CONSTRAINTS, 1, 8);
+        dpc_execute_circuits_test::<Testnet1>(EXPECTED_INPUT_NUM_CONSTRAINTS, EXPECTED_OUTPUT_NUM_CONSTRAINTS, 8, 1);
     }
 }
 
@@ -144,8 +278,23 @@ mod testnet2 {
     use super::*;
     use crate::testnet2::*;
 
+    const EXPECTED_INPUT_NUM_CONSTRAINTS: usize = 113181;
+    const EXPECTED_OUTPUT_NUM_CONSTRAINTS: usize = 18731;
+
     #[test]
     fn test_dpc_execute_circuits() {
-        dpc_execute_circuits_test::<Testnet2>(257471);
+        dpc_execute_circuits_test::<Testnet2>(EXPECTED_INPUT_NUM_CONSTRAINTS, EXPECTED_OUTPUT_NUM_CONSTRAINTS, 1, 1);
+    }
+
+    #[test]
+    fn test_dpc_execute_circuits_variable_inputs_and_outputs() {
+        dpc_execute_circuits_test::<Testnet2>(EXPECTED_INPUT_NUM_CONSTRAINTS, EXPECTED_OUTPUT_NUM_CONSTRAINTS, 2, 2);
+        dpc_execute_circuits_test::<Testnet2>(EXPECTED_INPUT_NUM_CONSTRAINTS, EXPECTED_OUTPUT_NUM_CONSTRAINTS, 4, 4);
+    }
+
+    #[test]
+    fn test_dpc_execute_circuits_variable_inputs_and_outputs_large() {
+        dpc_execute_circuits_test::<Testnet2>(EXPECTED_INPUT_NUM_CONSTRAINTS, EXPECTED_OUTPUT_NUM_CONSTRAINTS, 1, 8);
+        dpc_execute_circuits_test::<Testnet2>(EXPECTED_INPUT_NUM_CONSTRAINTS, EXPECTED_OUTPUT_NUM_CONSTRAINTS, 8, 1);
     }
 }
