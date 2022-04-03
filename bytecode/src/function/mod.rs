@@ -254,6 +254,21 @@ impl<P: Program> Function<P> {
                 P::halt(format!("Output \'{register}\' has an incorrect annotation of {}", value.annotation()))
             }
 
+            // TODO (howardwu): When handling the TODO below, relax this to exclude checking the mode.
+            // If the output annotation is a composite, ensure the output value matches the definition.
+            if let Annotation::Composite(definition_name) = output.annotation() {
+                // Retrieve the definition from the program.
+                match P::get_definition(definition_name) {
+                    // Ensure the value matches its expected definition.
+                    Some(definition) => {
+                        if !definition.matches(&value) {
+                            P::halt(format!("Output \'{register}\' does not match \'{definition_name}\'"))
+                        }
+                    }
+                    None => P::halt("Output \'{register}\' references a non-existent definition"),
+                }
+            }
+
             // TODO (howardwu): Add encryption against the caller's address for all private literals,
             //  and inject the ciphertext as Mode::Public, along with a constraint enforcing equality.
             //  For constant outputs, add an assert_eq on the register value - if it's constant,
@@ -301,16 +316,23 @@ impl<P: Program> Function<P> {
     fn assign_inputs(&mut self, values: &[Value<P>]) {
         // Zip the input statements and input values together.
         for (input, value) in self.inputs.borrow().iter().zip_eq(values.iter()) {
+            // Ensure the input value annotation matches the expected input annotation.
+            let register = input.register();
+            if &value.annotation() != input.annotation() {
+                P::halt(format!("Input \'{register}\' has an incorrect annotation of {}", value.annotation()))
+            }
+
             // If the input annotation is a composite, ensure the input value matches the definition.
             if let Annotation::Composite(definition_name) = input.annotation() {
+                // Retrieve the definition from the program.
                 match P::get_definition(definition_name) {
+                    // Ensure the value matches its expected definition.
                     Some(definition) => {
-                        // Ensure the value matches its expected definition.
                         if !definition.matches(value) {
-                            P::halt(format!("Input value does not match \'{definition}\'"))
+                            P::halt(format!("Input \'{register}\' does not match \'{definition_name}\'"))
                         }
                     }
-                    None => P::halt("Input annotation references non-existent definition"),
+                    None => P::halt("Input \'{register}\' references a non-existent definition"),
                 }
             }
 
