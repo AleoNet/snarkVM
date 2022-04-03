@@ -91,7 +91,7 @@ impl<N: Network> Response<N> {
 
     /// Returns the commitments.
     pub fn commitments(&self) -> Vec<N::Commitment> {
-        self.records.iter().take(N::MAX_NUM_OUTPUT_RECORDS).map(Record::commitment).collect()
+        self.records.iter().take(N::NUM_OUTPUTS as usize).map(Record::commitment).collect()
     }
 
     /// Returns a reference to the records.
@@ -101,7 +101,7 @@ impl<N: Network> Response<N> {
 
     /// Returns the ciphertexts.
     pub fn ciphertexts(&self) -> Vec<N::RecordCiphertext> {
-        self.records.iter().take(N::MAX_NUM_OUTPUT_RECORDS).map(Record::ciphertext).cloned().collect()
+        self.records.iter().take(N::NUM_OUTPUTS as usize).map(Record::ciphertext).cloned().collect()
     }
 
     /// Returns a reference to the encryption randomness.

@@ -16,7 +16,7 @@
 
 use crate::{Address, AleoAmount, FunctionInputs, Network};
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
-use snarkvm_utilities::{FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
+use snarkvm_utilities::{error, FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
 
 use anyhow::{anyhow, Result};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
@@ -106,7 +106,7 @@ impl<N: Network> FromBytes for Operation<N> {
                 let function_inputs = FromBytes::read_le(&mut reader)?;
                 Ok(Self::Evaluate(function_id, function_inputs))
             }
-            _ => Err(std::io::ErrorKind::InvalidData.into()),
+            4.. => Err(error("Invalid operation ID during deserialization")),
         }
     }
 }
@@ -159,7 +159,7 @@ impl<N: Network> FromStr for Operation<N> {
                 let function_inputs = serde_json::from_value(operation["function_inputs"].clone())?;
                 Ok(Self::Evaluate(function_id, function_inputs))
             }
-            _ => unreachable!("Invalid operation id {}", operation_id),
+            4.. => Err(error("Invalid operation ID during deserialization").into()),
         }
     }
 }
