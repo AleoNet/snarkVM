@@ -35,6 +35,7 @@ pub enum Operation<N: Network> {
     Noop,
     /// Generates the given amount to the recipient address.
     Coinbase(Recipient<N>, AleoAmount),
+    // TODO (raychu86): Refactor transfers to support multiple recipients.
     /// Transfers the given amount from the caller to the recipient address.
     Transfer(Caller<N>, Recipient<N>, AleoAmount),
     /// Invokes the given records on the function and inputs.

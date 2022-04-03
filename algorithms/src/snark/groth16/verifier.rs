@@ -15,10 +15,14 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::{PreparedVerifyingKey, Proof, VerifyingKey};
-use snarkvm_curves::traits::{PairingCurve, PairingEngine};
+use snarkvm_curves::{
+    traits::{PairingCurve, PairingEngine},
+    AffineCurve,
+    ProjectiveCurve,
+};
 use snarkvm_r1cs::errors::SynthesisError;
 
-use core::ops::{AddAssign, Mul, Neg};
+use core::ops::{Mul, Neg};
 
 pub fn prepare_verifying_key<E: PairingEngine>(vk: VerifyingKey<E>) -> PreparedVerifyingKey<E> {
     let alpha_g1_beta_g2 = E::pairing(vk.alpha_g1, vk.beta_g2);
@@ -37,10 +41,11 @@ pub fn verify_proof<E: PairingEngine>(
         return Err(SynthesisError::MalformedVerifyingKey(public_inputs.len() + 1, pvk.gamma_abc_g1().len()));
     }
 
-    let mut g_ic = pvk.gamma_abc_g1()[0];
+    let mut g_ic = pvk.gamma_abc_g1()[0].to_projective();
     for (i, b) in public_inputs.iter().zip(pvk.gamma_abc_g1().iter().skip(1)) {
-        g_ic.add_assign(b.mul(*i));
+        g_ic += &b.mul(*i);
     }
+    let g_ic = g_ic.to_affine();
 
     let qap = E::miller_loop(
         [

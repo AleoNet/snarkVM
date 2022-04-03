@@ -16,6 +16,8 @@
 
 use core::fmt;
 
+use snarkvm_fields::ConstraintFieldError;
+
 /// A `enum` specifying the possible failure modes of `FiatShamir`.
 #[derive(Debug)]
 pub enum FiatShamirError {
@@ -23,11 +25,20 @@ pub enum FiatShamirError {
     R1CSError(snarkvm_r1cs::SynthesisError),
     /// The RNG has not been initialized.
     UninitializedRNG,
+
+    /// Conversion to field elements failed.
+    CFError(ConstraintFieldError),
 }
 
 impl From<snarkvm_r1cs::SynthesisError> for FiatShamirError {
     fn from(err: snarkvm_r1cs::SynthesisError) -> Self {
         FiatShamirError::R1CSError(err)
+    }
+}
+
+impl From<ConstraintFieldError> for FiatShamirError {
+    fn from(err: ConstraintFieldError) -> Self {
+        FiatShamirError::CFError(err)
     }
 }
 
@@ -39,6 +50,9 @@ impl fmt::Display for FiatShamirError {
             }
             FiatShamirError::UninitializedRNG => {
                 write!(f, "{:?}", "uninitialized rng")
+            }
+            FiatShamirError::CFError(error) => {
+                write!(f, "{:?}", error)
             }
         }
     }

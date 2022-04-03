@@ -244,7 +244,6 @@ mod tests {
         {
             use snarkvm_algorithms::{
                 crypto_hash::PoseidonSponge,
-                polycommit::sonic_pc::SonicKZG10,
                 snark::marlin::{
                     ahp::AHPForR1CS,
                     fiat_shamir::FiatShamirAlgebraicSpongeRng,
@@ -255,11 +254,8 @@ mod tests {
             use snarkvm_curves::bls12_377::{Bls12_377, Fq};
             use snarkvm_utilities::rand::test_rng;
 
-            type MultiPC = SonicKZG10<Bls12_377>;
             type MarlinInst = MarlinSNARK<
-                Fr,
-                Fq,
-                MultiPC,
+                Bls12_377,
                 FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>,
                 MarlinHidingMode,
                 Vec<Fr>,
