@@ -23,7 +23,7 @@ use std::io::{Read, Result as IoResult, Write};
 
 /// An member statement defines a name for an annotation, and is of the form
 /// `{identifier} as {annotation};`.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Member<P: Program> {
     /// The name of the member.
     name: Identifier<P>,

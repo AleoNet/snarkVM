@@ -100,8 +100,8 @@ impl Parser for Process {
         let (string, _) = Sanitizer::parse(string)?;
         // Parse the definition or function from the string.
         let (string, _) = many1(alt((
-            map(Definition::parse, |definition| Self::new_definition(definition)),
-            map(Function::parse, |function| Self::new_function(function)),
+            map(Definition::parse, Self::new_definition),
+            map(Function::parse, Self::new_function),
         )))(string)?;
         // Parse the whitespace and comments from the string.
         let (string, _) = Sanitizer::parse(string)?;

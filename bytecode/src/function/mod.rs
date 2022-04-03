@@ -268,12 +268,12 @@ impl<P: Program> Function<P> {
         for (input, value) in self.inputs.borrow().iter().zip_eq(values.iter()) {
             // If the input annotation is a composite, ensure the input value matches the definition.
             if let Annotation::Composite(definition_name) = input.annotation() {
-                match P::get_definition(&definition_name) {
+                match P::get_definition(definition_name) {
                     Some(definition) => {
-                        // TODO (howardwu): Check that it matches expected format.
-                        // if !definition.matches(&value) {
-                        //     P::halt(format!("Input value does not match \'{definition}\'"))
-                        // }
+                        // Ensure the value matches its expected definition.
+                        if !definition.matches(&value) {
+                            P::halt(format!("Input value does not match \'{definition}\'"))
+                        }
                     }
                     None => P::halt("Input annotation references non-existent definition"),
                 }

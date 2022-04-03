@@ -16,7 +16,7 @@
 
 mod member;
 
-use crate::{definition::member::Member, Identifier, Program, Sanitizer};
+use crate::{definition::member::Member, Annotation, Identifier, Program, Sanitizer, Value};
 use snarkvm_circuits::prelude::*;
 use snarkvm_utilities::{error, FromBytes, ToBytes};
 
@@ -32,7 +32,7 @@ use std::io::{Read, Result as IoResult, Write};
 /// A register member format is used to access individual members of a definition. For example,
 /// if the `record` definition is assigned to register `r0`, individual members can be accessed
 /// as `r0.owner` or `r0.value`. This generalizes to the format, i.e. `r{locator}.{member}`.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Definition<P: Program> {
     /// A custom type consists of its name and a list of members.
     Type(Identifier<P>, Vec<Member<P>>),
@@ -56,6 +56,23 @@ impl<P: Program> Definition<P> {
         match self {
             Self::Type(_, members) => members,
             Self::Record(_, members) => members,
+        }
+    }
+
+    /// Returns `true` if the definition matches the format of the given value.
+    #[inline]
+    pub fn matches(&self, value: &Value<P>) -> bool {
+        match value {
+            Value::Literal(..) => false,
+            Value::Composite(name, literals) => {
+                name == self.name()
+                    && literals.len() == self.members().len()
+                    && literals
+                        .iter()
+                        .zip_eq(self.members().iter())
+                        // Members in the value are literals.
+                        .all(|(literal, member)| &Annotation::Literal(literal.into()) == member.annotation())
+            }
         }
     }
 }
