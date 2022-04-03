@@ -16,14 +16,14 @@
 
 use crate::{Network, ProgramPublicVariables};
 use snarkvm_algorithms::{merkle_tree::MerklePath, SNARK};
-use snarkvm_utilities::{FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
+use snarkvm_utilities::{error, FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
 
 use anyhow::Result;
 use itertools::Itertools;
 use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
     fmt,
-    io::{Error, ErrorKind, Read, Result as IoResult, Write},
+    io::{Read, Result as IoResult, Write},
     str::FromStr,
 };
 
@@ -144,20 +144,14 @@ impl<N: Network> FromBytes for Execution<N> {
             false => None,
         };
 
-        let num_input_proofs: u32 = FromBytes::read_le(&mut reader)?;
-        if num_input_proofs > 1000 {
-            return Err(std::io::ErrorKind::InvalidData.into());
-        }
+        let num_input_proofs = u16::read_le(&mut reader)?;
 
         let mut input_proofs = Vec::with_capacity(num_input_proofs as usize);
         for _ in 0..num_input_proofs {
             input_proofs.push(FromBytes::read_le(&mut reader)?);
         }
 
-        let num_output_proofs: u32 = FromBytes::read_le(&mut reader)?;
-        if num_output_proofs > 1000 {
-            return Err(std::io::ErrorKind::InvalidData.into());
-        }
+        let num_output_proofs = u16::read_le(&mut reader)?;
 
         let mut output_proofs = Vec::with_capacity(num_output_proofs as usize);
         for _ in 0..num_output_proofs {
@@ -165,7 +159,7 @@ impl<N: Network> FromBytes for Execution<N> {
         }
 
         Self::from(program_execution, input_proofs, output_proofs)
-            .map_err(|error| Error::new(ErrorKind::Other, format!("{}", error)))
+            .map_err(|e| error(format!("Failed to deserialize execution: {e}")))
     }
 }
 
@@ -183,9 +177,20 @@ impl<N: Network> ToBytes for Execution<N> {
             None => false.write_le(&mut writer)?,
         }
 
-        (self.input_proofs.len() as u32).write_le(&mut writer)?;
+        // Ensure the number of input proofs is within bounds.
+        if self.input_proofs.len() > N::NUM_INPUTS as usize {
+            return Err(error(format!("The number of input proofs cannot exceed {}", N::NUM_INPUTS)));
+        }
+
+        (self.input_proofs.len() as u16).write_le(&mut writer)?;
         self.input_proofs.write_le(&mut writer)?;
-        (self.output_proofs.len() as u32).write_le(&mut writer)?;
+
+        // Ensure the number of output proofs is within bounds.
+        if self.output_proofs.len() > N::NUM_OUTPUTS as usize {
+            return Err(error(format!("The number of output proofs cannot exceed {}", N::NUM_OUTPUTS)));
+        }
+
+        (self.output_proofs.len() as u16).write_le(&mut writer)?;
         self.output_proofs.write_le(&mut writer)
     }
 }
