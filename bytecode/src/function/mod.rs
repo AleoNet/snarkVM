@@ -73,7 +73,7 @@ impl<P: Program> Function<P> {
     /// Adds the input statement into memory.
     /// This method is called before a function is run.
     /// This method is only called before `new_instruction` is ever called.
-    /// If the given input annotation is for a template, then the template must be added before this method is called.
+    /// If the given input annotation is for a definition, then the definition must be added before this method is called.
     ///
     /// # Errors
     /// This method will halt if there are instructions or output statements in memory already.
@@ -83,7 +83,7 @@ impl<P: Program> Function<P> {
     /// This method will halt if the given input register is not new.
     /// This method will halt if the given input register has a previously saved annotation in memory.
     /// This method will halt if the given inputs are not incrementing monotonically.
-    /// This method will halt if the given input annotation references a non-existent template.
+    /// This method will halt if the given input annotation references a non-existent definition.
     #[inline]
     pub fn add_input(&mut self, input: Input<P>) {
         // Ensure there are no instructions or output statements in memory.
@@ -104,10 +104,10 @@ impl<P: Program> Function<P> {
             P::halt(format!("Input \'{register}\' was previously added"))
         }
 
-        // If the input annotation is a composite, ensure the input is referencing a valid template.
-        if let Annotation::Composite(template) = input.annotation() {
-            if !P::contains_template(template) {
-                P::halt(format!("Input type \'{template}\' does not exist"))
+        // If the input annotation is a composite, ensure the input is referencing a valid definition.
+        if let Annotation::Composite(definition) = input.annotation() {
+            if !P::contains_definition(definition) {
+                P::halt(format!("Input type \'{definition}\' does not exist"))
             }
         }
 
@@ -162,7 +162,7 @@ impl<P: Program> Function<P> {
 
     /// Adds the output statement into memory.
     /// This method is called before a function is run.
-    /// If the given output is for a template, then the template must be added before this method is called.
+    /// If the given output is for a definition, then the definition must be added before this method is called.
     ///
     /// # Errors
     /// This method will halt if there are no input statements or instructions in memory.
@@ -170,7 +170,7 @@ impl<P: Program> Function<P> {
     /// This method will halt if any registers are already assigned.
     /// This method will halt if the given output register is new.
     /// This method will halt if the given output register is already set.
-    /// This method will halt if the given output annotation references a non-existent template.
+    /// This method will halt if the given output annotation references a non-existent definition.
     #[inline]
     pub fn add_output(&mut self, output: Output<P>) {
         // Ensure there are input statements and instructions in memory.
@@ -194,10 +194,10 @@ impl<P: Program> Function<P> {
             P::halt(format!("Output register {register} is missing"))
         }
 
-        // If the output annotation is for a composite, ensure the output is referencing a valid template.
+        // If the output annotation is for a composite, ensure the output is referencing a valid definition.
         if let Annotation::Composite(identifier) = output.annotation() {
-            if !P::contains_template(identifier) {
-                P::halt("Output annotation references non-existent composite template")
+            if !P::contains_definition(identifier) {
+                P::halt("Output annotation references non-existent composite definition")
             }
         }
 
@@ -269,16 +269,16 @@ impl<P: Program> Function<P> {
                 P::halt(format!("Register {register} is not an input register"))
             }
 
-            // If the input annotation is a composite, ensure the input value matches the template.
-            if let Annotation::Composite(template_name) = input.annotation() {
-                match P::get_template(&template_name) {
-                    Some(template) => {
+            // If the input annotation is a composite, ensure the input value matches the definition.
+            if let Annotation::Composite(definition_name) = input.annotation() {
+                match P::get_definition(&definition_name) {
+                    Some(definition) => {
                         // TODO (howardwu): Check that it matches expected format.
-                        // if !template.matches(&value) {
-                        //     P::halt(format!("Input value does not match template {template}"))
+                        // if !definition.matches(&value) {
+                        //     P::halt(format!("Input value does not match \'{definition}\'"))
                         // }
                     }
-                    None => P::halt("Input annotation references non-existent template"),
+                    None => P::halt("Input annotation references non-existent definition"),
                 }
             }
 

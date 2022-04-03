@@ -22,14 +22,14 @@ extern crate enum_index_derive;
 pub mod aleo_program;
 pub use aleo_program::*;
 
+pub mod definition;
+pub use definition::*;
+
 pub mod function;
 pub use function::*;
 
 pub mod helpers;
 pub use helpers::*;
-
-pub mod template;
-pub use template::*;
 
 use crate::Identifier;
 use snarkvm_circuits::{Aleo, Environment};
@@ -48,11 +48,11 @@ pub trait Program: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
     /// The maximum number of outputs for a function.
     const NUM_OUTPUTS: usize = u16::MAX as usize;
 
-    /// Adds a new template for the program.
+    /// Adds a new definition to the program.
     ///
     /// # Errors
-    /// This method will halt if the template was previously added.
-    fn new_template(template: Template<Self>);
+    /// This method will halt if the definition was previously added.
+    fn new_definition(definition: Definition<Self>);
 
     /// Adds a new function to the program.
     ///
@@ -60,11 +60,11 @@ pub trait Program: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
     /// This method will halt if the function was previously added.
     fn new_function(function: Function<Self>);
 
-    /// Returns `true` if the program contains a template with the given name.
-    fn contains_template(name: &Identifier<Self>) -> bool;
+    /// Returns `true` if the program contains a definition with the given name.
+    fn contains_definition(name: &Identifier<Self>) -> bool;
 
-    /// Returns the template with the given name.
-    fn get_template(name: &Identifier<Self>) -> Option<Template<Self>>;
+    /// Returns the definition with the given name.
+    fn get_definition(name: &Identifier<Self>) -> Option<Definition<Self>>;
 
     /// Halts the program from further synthesis, evaluation, and execution in the current environment.
     fn halt<S: Into<String>, T>(message: S) -> T {

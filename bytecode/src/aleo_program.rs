@@ -14,16 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Function, Identifier, Program, Template};
-use snarkvm_circuits::Devnet;
+use crate::{Definition, Function, Identifier, Program, Sanitizer};
+use snarkvm_circuits::{prelude::*, Devnet};
 
 use indexmap::IndexMap;
 use std::cell::RefCell;
 
 thread_local! {
-    /// The templates declared for the program.
-    /// This is a map from the template name to the template.
-    static TEMPLATES: RefCell<IndexMap<Identifier<AleoProgram>, Template<AleoProgram >>> = Default::default();
+    /// The definitions declared for the program.
+    /// This is a map from the definition name to the definition.
+    static DEFINITIONS: RefCell<IndexMap<Identifier<AleoProgram>, Definition<AleoProgram >>> = Default::default();
     /// The functions declared for the program.
     /// This is a map from the function name to the function.
     static FUNCTIONS: RefCell<IndexMap<Identifier<AleoProgram>, Function<AleoProgram >>> = Default::default();
@@ -35,18 +35,18 @@ pub struct AleoProgram;
 impl Program for AleoProgram {
     type Environment = Devnet;
 
-    /// Adds a new template to the program.
+    /// Adds a new definition to the program.
     ///
     /// # Errors
-    /// This method will halt if the template was previously added.
+    /// This method will halt if the definition was previously added.
     #[inline]
-    fn new_template(template: Template<Self>) {
-        TEMPLATES.with(|templates| {
-            // Add the template to the map.
-            // Ensure the template was not previously added.
-            let name = template.name().clone();
-            if let Some(..) = templates.borrow_mut().insert(name.clone(), template) {
-                Self::halt(format!("Template \'{name}\' was previously added"))
+    fn new_definition(definition: Definition<Self>) {
+        DEFINITIONS.with(|definitions| {
+            // Add the definition to the map.
+            // Ensure the definition was not previously added.
+            let name = definition.name().clone();
+            if let Some(..) = definitions.borrow_mut().insert(name.clone(), definition) {
+                Self::halt(format!("Definition \'{name}\' was previously added"))
             }
         });
     }
@@ -67,13 +67,60 @@ impl Program for AleoProgram {
         });
     }
 
-    /// Returns `true` if the program contains a template with the given name.
-    fn contains_template(name: &Identifier<Self>) -> bool {
-        TEMPLATES.with(|templates| templates.borrow().contains_key(name))
+    /// Returns `true` if the program contains a definition with the given name.
+    fn contains_definition(name: &Identifier<Self>) -> bool {
+        DEFINITIONS.with(|definitions| definitions.borrow().contains_key(name))
     }
 
-    /// Returns the template with the given name.
-    fn get_template(name: &Identifier<Self>) -> Option<Template<Self>> {
-        TEMPLATES.with(|templates| templates.borrow().get(name).cloned())
+    /// Returns the definition with the given name.
+    fn get_definition(name: &Identifier<Self>) -> Option<Definition<Self>> {
+        DEFINITIONS.with(|definitions| definitions.borrow().get(name).cloned())
+    }
+}
+
+impl Parser for AleoProgram {
+    type Environment = <Self as Program>::Environment;
+
+    /// Parses a string into a program.
+    #[inline]
+    fn parse(string: &str) -> ParserResult<Self> {
+        // Parse the whitespace and comments from the string.
+        let (string, _) = Sanitizer::parse(string)?;
+        // Parse the definition or function from the string.
+        let (string, _) = many1(alt((
+            map(Definition::parse, |definition| Self::new_definition(definition)),
+            map(Function::parse, |function| Self::new_function(function)),
+        )))(string)?;
+        // Parse the whitespace and comments from the string.
+        let (string, _) = Sanitizer::parse(string)?;
+        Ok((string, Self))
+    }
+}
+
+impl fmt::Display for AleoProgram {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Initialize a string for the program.
+        let mut program = String::new();
+
+        // Write the definitions.
+        DEFINITIONS.with(|definitions| {
+            definitions.borrow().values().for_each(|definition| {
+                program.push_str(definition.to_string().as_str());
+                program.push('\n');
+            });
+        });
+
+        // Write the functions.
+        FUNCTIONS.with(|functions| {
+            functions.borrow().values().for_each(|function| {
+                program.push_str(function.to_string().as_str());
+                program.push('\n');
+            });
+        });
+
+        // Remove the last newline.
+        program.pop();
+
+        write!(f, "{}", program)
     }
 }

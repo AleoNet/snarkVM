@@ -20,7 +20,7 @@ use snarkvm_utilities::{error, FromBytes, ToBytes};
 
 use std::io::{Read, Result as IoResult, Write};
 
-/// An annotation defines the type parameters for a function or template.
+/// An annotation defines the type parameter for a register.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Annotation<P: Program> {
     /// A literal annotation contains its type name and mode.

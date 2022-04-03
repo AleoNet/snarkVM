@@ -16,32 +16,32 @@
 
 mod member;
 
-use crate::{template::member::Member, Identifier, Program, Sanitizer};
+use crate::{definition::member::Member, Identifier, Program, Sanitizer};
 use snarkvm_circuits::prelude::*;
 use snarkvm_utilities::{error, FromBytes, ToBytes};
 
 use core::fmt;
 use std::io::{Read, Result as IoResult, Write};
 
-/// A template is a custom type or record type that represents a collection of circuits.
-/// A template does not have a mode; rather its individual members are annotated with modes.
-/// A template is defined by an identifier (such as `message`) and a list of members,
+/// A definition is a custom type or record type that represents a collection of circuits.
+/// A definition does not have a mode; rather its individual members are annotated with modes.
+/// A definition is defined by an identifier (such as `message`) and a list of members,
 /// such as `[(sender, address.public), (amount, i64.private)]`, where the left entry is an identifier,
 /// and the right entry is a type annotation.
 ///
-/// A register member format is used to access individual members of a template. For example,
-/// if the `record` template is assigned to register `r0`, individual members can be accessed
+/// A register member format is used to access individual members of a definition. For example,
+/// if the `record` definition is assigned to register `r0`, individual members can be accessed
 /// as `r0.owner` or `r0.value`. This generalizes to the format, i.e. `r{locator}.{member}`.
 #[derive(Clone, Debug)]
-pub enum Template<P: Program> {
+pub enum Definition<P: Program> {
     /// A custom type consists of its name and a list of members.
     Type(Identifier<P>, Vec<Member<P>>),
     /// A record type consists of its name and a list of members.
     Record(Identifier<P>, Vec<Member<P>>),
 }
 
-impl<P: Program> Template<P> {
-    /// Returns the name of the template.
+impl<P: Program> Definition<P> {
+    /// Returns the name of the definition.
     #[inline]
     pub fn name(&self) -> &Identifier<P> {
         match self {
@@ -50,7 +50,7 @@ impl<P: Program> Template<P> {
         }
     }
 
-    /// Returns the members of the template.
+    /// Returns the members of the definition.
     #[inline]
     pub fn members(&self) -> &[Member<P>] {
         match self {
@@ -60,10 +60,10 @@ impl<P: Program> Template<P> {
     }
 }
 
-impl<P: Program> Parser for Template<P> {
+impl<P: Program> Parser for Definition<P> {
     type Environment = P::Environment;
 
-    /// Parses a string into a template.
+    /// Parses a string into a definition.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the whitespace and comments from the string.
@@ -98,7 +98,7 @@ impl<P: Program> Parser for Template<P> {
     }
 }
 
-impl<P: Program> fmt::Display for Template<P> {
+impl<P: Program> fmt::Display for Definition<P> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let (type_name, name, members) = match self {
@@ -115,7 +115,7 @@ impl<P: Program> fmt::Display for Template<P> {
     }
 }
 
-impl<P: Program> FromBytes for Template<P> {
+impl<P: Program> FromBytes for Definition<P> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         // Read the variant.
         let variant = u8::read_le(&mut reader)?;
@@ -130,12 +130,12 @@ impl<P: Program> FromBytes for Template<P> {
         match variant {
             0 => Ok(Self::Type(name, members)),
             1 => Ok(Self::Record(name, members)),
-            variant => Err(error(format!("Failed to deserialize template variant {variant}"))),
+            variant => Err(error(format!("Failed to deserialize definition variant {variant}"))),
         }
     }
 }
 
-impl<P: Program> ToBytes for Template<P> {
+impl<P: Program> ToBytes for Definition<P> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         match self {
             Self::Type(name, members) => {
@@ -162,8 +162,8 @@ mod tests {
     type P = AleoProgram;
 
     #[test]
-    fn test_template_parse() {
-        let message = Template::<P>::parse(
+    fn test_definition_parse() {
+        let message = Definition::<P>::parse(
             r"
 type message:
     sender as address.public;
@@ -179,7 +179,7 @@ type message:
         assert_eq!(message.members()[1].name(), &Identifier::from_str("amount"));
         assert_eq!(message.members()[1].annotation(), &Annotation::from_str("i64.private"));
 
-        let token = Template::<P>::parse(
+        let token = Definition::<P>::parse(
             r"
 record token:
     owner as address.public;
@@ -197,13 +197,13 @@ record token:
     }
 
     #[test]
-    fn test_template_display() {
+    fn test_definition_display() {
         let expected = "type message:\n    sender as address.public;\n    amount as i64.private;";
-        let message = Template::<P>::parse(expected).unwrap().1;
+        let message = Definition::<P>::parse(expected).unwrap().1;
         assert_eq!(expected, format!("{}", message));
 
         let expected = "record token:\n    owner as address.public;\n    amount as i64.private;";
-        let token = Template::<P>::parse(expected).unwrap().1;
+        let token = Definition::<P>::parse(expected).unwrap().1;
         assert_eq!(expected, format!("{}", token));
     }
 }

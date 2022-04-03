@@ -152,16 +152,16 @@ impl<P: Program> Registers<P> {
                 // Halts if the value is not a composite.
                 Value::Literal(..) => P::halt("Cannot load a register member from a literal"),
                 // Retrieve the value of the member (from the value).
-                Value::Composite(template, members) => {
-                    // Retrieve the member index of the identifier (from the template).
-                    let member_index = match P::get_template(&template) {
-                        Some(template) => {
-                            template.members().iter().position(|member| member.name() == member_name).unwrap_or_else(
-                                || P::halt(format!("Failed to locate \'{member_name}\' in \'{template}\'")),
+                Value::Composite(definition, members) => {
+                    // Retrieve the member index of the identifier (from the definition).
+                    let member_index = match P::get_definition(&definition) {
+                        Some(definition) => {
+                            definition.members().iter().position(|member| member.name() == member_name).unwrap_or_else(
+                                || P::halt(format!("Failed to locate \'{member_name}\' in \'{definition}\'")),
                             )
                         }
-                        // Halts if the template does not exist.
-                        None => P::halt(format!("Failed to locate \'{template}\'")),
+                        // Halts if the definition does not exist.
+                        None => P::halt(format!("Failed to locate \'{definition}\'")),
                     };
                     // Return the value of the member.
                     match members.get(member_index) {
