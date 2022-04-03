@@ -17,6 +17,9 @@
 mod hash;
 mod hash_uncompressed;
 
+#[cfg(test)]
+use snarkvm_circuits_environment::assert_scope;
+
 use snarkvm_algorithms::crypto_hash::hash_to_curve;
 use snarkvm_circuits_types::prelude::*;
 
@@ -61,31 +64,45 @@ mod tests {
 
     type Projective = <<Circuit as Environment>::Affine as AffineCurve>::Projective;
 
-    fn check_setup<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>() {
+    fn check_setup<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) {
         for _ in 0..ITERATIONS {
+            // Initialize the native Pedersen hash.
             let native = PedersenCRH::<Projective, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
-            let circuit = Pedersen::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
 
-            // Check for equivalency of the bases.
-            native.parameters().iter().flatten().zip(circuit.bases.iter().flatten()).for_each(
-                |(expected, candidate)| {
-                    assert_eq!(expected.to_affine(), candidate.eject_value());
-                },
-            );
+            Circuit::scope("Pedersen::setup", || {
+                // Perform the setup operation.
+                let circuit = Pedersen::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
+                assert_scope!(num_constants, num_public, num_private, num_constraints);
+
+                // Check for equivalency of the bases.
+                native.parameters().iter().flatten().zip(circuit.bases.iter().flatten()).for_each(
+                    |(expected, candidate)| {
+                        assert_eq!(expected.to_affine(), candidate.eject_value());
+                    },
+                );
+            });
         }
     }
 
     #[test]
-    fn test_setup_constant() {
-        check_setup::<1, WINDOW_SIZE_MULTIPLIER>();
-        check_setup::<2, { 2 * WINDOW_SIZE_MULTIPLIER }>();
-        check_setup::<3, { 3 * WINDOW_SIZE_MULTIPLIER }>();
-        check_setup::<4, { 4 * WINDOW_SIZE_MULTIPLIER }>();
-        check_setup::<5, { 5 * WINDOW_SIZE_MULTIPLIER }>();
-        check_setup::<6, { 6 * WINDOW_SIZE_MULTIPLIER }>();
-        check_setup::<7, { 7 * WINDOW_SIZE_MULTIPLIER }>();
-        check_setup::<8, { 8 * WINDOW_SIZE_MULTIPLIER }>();
-        check_setup::<9, { 9 * WINDOW_SIZE_MULTIPLIER }>();
-        check_setup::<10, { 10 * WINDOW_SIZE_MULTIPLIER }>();
+    fn test_pedersen_setup_constant() {
+        // Set the number of windows, and modulate the window size.
+        check_setup::<1, WINDOW_SIZE_MULTIPLIER>(28, 0, 0, 0);
+        check_setup::<1, { 2 * WINDOW_SIZE_MULTIPLIER }>(52, 0, 0, 0);
+        check_setup::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(76, 0, 0, 0);
+        check_setup::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(100, 0, 0, 0);
+        check_setup::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(124, 0, 0, 0);
+
+        // Set the window size, and modulate the number of windows.
+        check_setup::<1, WINDOW_SIZE_MULTIPLIER>(28, 0, 0, 0);
+        check_setup::<2, WINDOW_SIZE_MULTIPLIER>(56, 0, 0, 0);
+        check_setup::<3, WINDOW_SIZE_MULTIPLIER>(84, 0, 0, 0);
+        check_setup::<4, WINDOW_SIZE_MULTIPLIER>(112, 0, 0, 0);
+        check_setup::<5, WINDOW_SIZE_MULTIPLIER>(140, 0, 0, 0);
     }
 }
