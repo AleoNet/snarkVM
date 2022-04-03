@@ -29,7 +29,6 @@ use snarkvm_curves::{
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_utilities::{
     io::{Read, Result as IoResult, Write},
-    ops::Mul,
     rand::UniformRand,
     serialize::*,
     FromBits,
@@ -138,7 +137,7 @@ where
         let g_bases = {
             let (base, _, _) = hash_to_curve::<TEAffine<TE>>(message);
 
-            let mut g = base.into_projective();
+            let mut g = base.to_projective();
             let mut g_bases = Vec::with_capacity(TE::ScalarField::size_in_bits());
             for _ in 0..TE::ScalarField::size_in_bits() {
                 g_bases.push(g);
@@ -176,14 +175,19 @@ where
         // Compute G^r_sig.
         let g_r_sig = self.g_scalar_multiply(r_sig);
 
+        // We do a batch inversion to save one inversion.
+        let mut to_invert = [g_sk_sig, g_r_sig];
+        TEProjective::<TE>::batch_normalization(&mut to_invert);
+        let [g_sk_sig_affine, g_r_sig_affine] = to_invert.map(|a| a.to_affine());
+
         // Compute sk_prf := RO(G^sk_sig || G^r_sig).
-        let sk_prf = self.hash_to_scalar_field(&[g_sk_sig.x, g_r_sig.x]);
+        let sk_prf = self.hash_to_scalar_field(&[g_sk_sig_affine.to_x_coordinate(), g_r_sig_affine.to_x_coordinate()]);
 
         // Compute G^sk_prf.
         let g_sk_prf = self.g_scalar_multiply(&sk_prf);
 
         // Compute G^sk_sig G^r_sig G^sk_prf.
-        g_sk_sig + g_r_sig + g_sk_prf
+        (g_sk_sig + g_r_sig + g_sk_prf).into()
     }
 
     ///
@@ -212,21 +216,25 @@ where
         // Compute G^r_sig.
         let g_r_sig = self.g_scalar_multiply(r_sig);
 
+        let mut to_invert = [g_sk_sig, g_r_sig, g_r];
+        TEProjective::<TE>::batch_normalization(&mut to_invert);
+        let [g_sk_sig_affine, g_r_sig_affine, g_r_affine] = to_invert.map(|a| a.to_affine());
+
         // Compute sk_prf := RO(G^sk_sig || G^r_sig).
-        let sk_prf = self.hash_to_scalar_field(&[g_sk_sig.x, g_r_sig.x]);
+        let sk_prf = self.hash_to_scalar_field(&[g_sk_sig_affine.to_x_coordinate(), g_r_sig_affine.to_x_coordinate()]);
 
         // Compute G^sk_prf.
         let g_sk_prf = self.g_scalar_multiply(&sk_prf);
 
         // Compute G^sk_sig G^r_sig G^sk_prf.
-        let public_key = g_sk_sig + g_r_sig + g_sk_prf;
+        let public_key = (g_sk_sig + g_r_sig + g_sk_prf).to_affine();
 
         // Compute the verifier challenge.
         let verifier_challenge = {
             // Construct the hash input (G^sk_sig G^r_sig G^sk_prf, G^r, message).
             let mut preimage = vec![];
-            preimage.extend_from_slice(&public_key.x.to_field_elements()?);
-            preimage.extend_from_slice(&g_r.x.to_field_elements()?);
+            preimage.extend_from_slice(&public_key.to_x_coordinate().to_field_elements()?);
+            preimage.extend_from_slice(&g_r_affine.to_x_coordinate().to_field_elements()?);
             preimage.push(TE::BaseField::from(message.len() as u128));
             preimage.extend_from_slice(&message.to_field_elements()?);
 
@@ -240,8 +248,8 @@ where
         Ok(AleoSignature {
             prover_response,
             verifier_challenge,
-            root_public_key: g_sk_sig.x,
-            root_randomizer: g_r_sig.x,
+            root_public_key: g_sk_sig_affine.to_x_coordinate(),
+            root_randomizer: g_r_sig_affine.to_x_coordinate(),
         })
     }
 
@@ -257,17 +265,17 @@ where
         let g_sk_sig = Self::recover_from_x_coordinate(root_public_key)?;
 
         // Compute G^sk_sig^c.
-        let g_sk_sig_c = self.scalar_multiply(g_sk_sig.into_projective(), verifier_challenge);
+        let g_sk_sig_c = self.scalar_multiply(g_sk_sig, verifier_challenge);
 
         // Compute G^r := G^s G^sk_sig^c.
-        let g_r = self.g_scalar_multiply(prover_response) + g_sk_sig_c;
+        let g_r = (self.g_scalar_multiply(prover_response) + g_sk_sig_c).to_affine();
 
         // Compute the candidate verifier challenge.
         let candidate_verifier_challenge = {
             // Construct the hash input (G^sk_sig G^r_sig G^sk_prf, G^r, message).
             let mut preimage = vec![];
-            preimage.extend_from_slice(&public_key.x.to_field_elements()?);
-            preimage.extend_from_slice(&g_r.x.to_field_elements()?);
+            preimage.extend_from_slice(&public_key.to_x_coordinate().to_field_elements()?);
+            preimage.extend_from_slice(&g_r.to_x_coordinate().to_field_elements()?);
             preimage.push(TE::BaseField::from(message.len() as u128));
             preimage.extend_from_slice(&message.to_field_elements()?);
 
@@ -281,13 +289,13 @@ where
         // Compute the candidate public key as (G^sk_sig G^r_sig G^sk_prf).
         let candidate_public_key = {
             // Compute sk_prf := RO(G^sk_sig || G^r_sig).
-            let sk_prf = self.hash_to_scalar_field(&[g_sk_sig.x, g_r_sig.x]);
+            let sk_prf = self.hash_to_scalar_field(&[g_sk_sig.to_x_coordinate(), g_r_sig.to_x_coordinate()]);
 
             // Compute G^sk_prf.
             let g_sk_prf = self.g_scalar_multiply(&sk_prf);
 
             // Compute G^sk_sig G^r_sig G^sk_prf.
-            g_sk_sig + g_r_sig + g_sk_prf
+            g_sk_sig.to_projective() + g_sk_prf + g_r_sig.to_projective()
         };
 
         Ok(*verifier_challenge == candidate_verifier_challenge && *public_key == candidate_public_key)
@@ -311,7 +319,7 @@ where
         Self::recover_from_x_coordinate(&signature.root_randomizer)
     }
 
-    fn g_scalar_multiply(&self, scalar: &Self::ScalarField) -> Self::AffineCurve {
+    fn g_scalar_multiply(&self, scalar: &Self::ScalarField) -> <Self::AffineCurve as AffineCurve>::Projective {
         self.g_bases
             .iter()
             .zip_eq(&scalar.to_bits_le())
@@ -320,7 +328,6 @@ where
                 false => None,
             })
             .sum::<TEProjective<TE>>()
-            .into_affine()
     }
 
     fn hash_to_scalar_field(&self, input: &[Self::BaseField]) -> Self::ScalarField {
@@ -345,8 +352,8 @@ impl<TE: TwistedEdwardsParameters> AleoSignatureScheme<TE>
 where
     TE::BaseField: PrimeField,
 {
-    fn scalar_multiply(&self, base: TEProjective<TE>, scalar: &TE::ScalarField) -> TEAffine<TE> {
-        base.mul(*scalar).into_affine()
+    fn scalar_multiply(&self, base: TEAffine<TE>, scalar: &TE::ScalarField) -> TEProjective<TE> {
+        base * *scalar
     }
 
     fn recover_from_x_coordinate(x_coordinate: &TE::BaseField) -> Result<TEAffine<TE>> {

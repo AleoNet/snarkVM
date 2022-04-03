@@ -21,7 +21,7 @@ use crate::{
         domain::{FFTPrecomputation, IFFTPrecomputation},
         EvaluationDomain,
     },
-    polycommit::LabeledPolynomial,
+    polycommit::sonic_pc::LabeledPolynomial,
     snark::marlin::{ahp::matrices::MatrixArithmetization, AHPForR1CS, CircuitInfo, MarlinMode, Matrix},
 };
 use snarkvm_fields::PrimeField;

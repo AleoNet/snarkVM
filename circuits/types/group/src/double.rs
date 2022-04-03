@@ -67,6 +67,7 @@ impl<E: Environment> Double for &Group<E> {
 mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
+    use snarkvm_curves::ProjectiveCurve;
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 250;
@@ -76,8 +77,8 @@ mod tests {
         // Constant variables
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let expected = point.double();
+            let point = <Circuit as Environment>::Affine::rand(&mut test_rng());
+            let expected = point.to_projective().double();
 
             let affine = Group::<Circuit>::new(Mode::Constant, point);
 
@@ -92,8 +93,8 @@ mod tests {
         // Public variables
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let expected = point.double();
+            let point = <Circuit as Environment>::Affine::rand(&mut test_rng());
+            let expected = point.to_projective().double();
 
             let affine = Group::<Circuit>::new(Mode::Public, point);
 
@@ -108,8 +109,9 @@ mod tests {
         // Private variables
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let expected = point.double();
+
+            let point = <Circuit as Environment>::Affine::rand(&mut test_rng());
+            let expected = point.to_projective().double();
 
             let affine = Group::<Circuit>::new(Mode::Private, point);
 
@@ -125,8 +127,8 @@ mod tests {
     #[test]
     fn test_double_matches() {
         // Sample two random elements.
-        let a: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-        let expected = a + a;
+        let a = <Circuit as Environment>::Affine::rand(&mut test_rng());
+        let expected: <Circuit as Environment>::Affine = (a.to_projective() + a.to_projective()).into();
 
         // Constant
         let candidate_a = Group::<Circuit>::new(Mode::Constant, a).double();

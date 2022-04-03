@@ -512,7 +512,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> EncryptionGadge
         let num_powers = private_key_bits.len();
 
         let mut generator_powers = Vec::with_capacity(num_powers);
-        let mut generator = self.encryption.parameters().into_projective();
+        let mut generator = self.encryption.parameters().to_projective();
         for _ in 0..num_powers {
             generator_powers.push(generator);
             generator.double_in_place();

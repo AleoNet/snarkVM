@@ -36,7 +36,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
             .map(|index| {
                 // Construct an indexed message to attempt to sample a base.
                 let (generator, _, _) = hash_to_curve::<G::Affine>(&format!("{message} at {index}"));
-                let mut base = generator.into_projective();
+                let mut base = generator.to_projective();
                 let mut powers = Vec::with_capacity(WINDOW_SIZE);
                 for _ in 0..WINDOW_SIZE {
                     powers.push(base);
@@ -69,7 +69,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CRH
                 })
             })
             .sum::<G>()
-            .into_affine())
+            .to_affine())
     }
 
     fn parameters(&self) -> &Self::Parameters {

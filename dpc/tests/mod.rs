@@ -27,7 +27,7 @@ use snarkvm_algorithms::{
     SNARKError,
     SRS,
 };
-use snarkvm_curves::bls12_377::Fr;
+use snarkvm_curves::bls12_377::{Bls12_377, Fr};
 use snarkvm_dpc::{testnet2::Testnet2, BlockTemplate, Network, PoSWError, PoSWScheme};
 
 use rand::{rngs::ThreadRng, thread_rng};
@@ -102,9 +102,9 @@ fn test_posw_setup_vs_load_weak_sanity_check() {
     };
     let loaded_posw = Testnet2::posw().clone();
 
-    let generated_proving_key: &CircuitProvingKey<Fr, _, _, MarlinNonHidingMode> =
+    let generated_proving_key: &CircuitProvingKey<Bls12_377, MarlinNonHidingMode> =
         generated_posw.proving_key().as_ref().unwrap();
-    let loaded_proving_key: &CircuitProvingKey<Fr, _, _, MarlinNonHidingMode> =
+    let loaded_proving_key: &CircuitProvingKey<Bls12_377, MarlinNonHidingMode> =
         loaded_posw.proving_key().as_ref().unwrap();
 
     let a = generated_proving_key.committer_key.max_degree;

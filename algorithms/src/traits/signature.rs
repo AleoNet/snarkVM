@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use snarkvm_curves::AffineCurve;
+use snarkvm_fields::{Field, PrimeField};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::Result;
@@ -45,13 +47,13 @@ pub trait SignatureScheme: Sized + Debug + Clone + Eq + Send + Sync {
 }
 
 pub trait SignatureSchemeOperations {
-    type AffineCurve: Clone + Debug + Default + ToBytes + FromBytes + Hash + Eq + Send + Sync;
-    type BaseField: Clone + Debug + Default + ToBytes + FromBytes + PartialEq + Eq;
-    type ScalarField: Clone + Debug + Default + ToBytes + FromBytes + PartialEq + Eq;
+    type AffineCurve: AffineCurve<BaseField = Self::BaseField>;
+    type BaseField: Field;
+    type ScalarField: PrimeField;
     type Signature: Clone + Debug + Default + ToBytes + FromBytes + PartialEq + Eq;
 
     fn pk_sig(signature: &Self::Signature) -> Result<Self::AffineCurve>;
     fn pr_sig(signature: &Self::Signature) -> Result<Self::AffineCurve>;
-    fn g_scalar_multiply(&self, scalar: &Self::ScalarField) -> Self::AffineCurve;
+    fn g_scalar_multiply(&self, scalar: &Self::ScalarField) -> <Self::AffineCurve as AffineCurve>::Projective;
     fn hash_to_scalar_field(&self, input: &[Self::BaseField]) -> Self::ScalarField;
 }

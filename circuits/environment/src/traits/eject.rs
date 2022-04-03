@@ -132,7 +132,7 @@ impl<C: Eject<Primitive = P>, P: Default> Eject for &[C] {
             Some(first) => {
                 eject_mode(first.eject_mode(), &self.iter().skip(1).map(Eject::eject_mode).collect::<Vec<_>>())
             }
-            None => eject_mode(Mode::Constant, &self.iter().skip(1).map(Eject::eject_mode).collect::<Vec<_>>()),
+            None => Mode::Constant,
             // None => panic!("Attempted to eject the mode on an empty circuit"),
         }
     }

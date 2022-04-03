@@ -14,7 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Block, Ciphertext, InnerPublicVariables, PoSWScheme, ProgramPublicVariables, ValueBalanceCommitment};
+use crate::{
+    Block,
+    Ciphertext,
+    InputPublicVariables,
+    OutputPublicVariables,
+    PoSWScheme,
+    ProgramPublicVariables,
+    ValueBalanceCommitment,
+};
 use snarkvm_algorithms::prelude::*;
 use snarkvm_curves::{AffineCurve, PairingEngine, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{Field, PrimeField, ToConstraintField};
@@ -34,9 +42,8 @@ use snarkvm_utilities::{
 };
 
 use anyhow::Result;
-use rand::{CryptoRng, Rng};
 use serde::{de::DeserializeOwned, Serialize};
-use std::{borrow::Borrow, cell::RefCell, ops::Deref, rc::Rc, str::FromStr};
+use std::{borrow::Borrow, ops::Deref, str::FromStr};
 
 pub trait Bech32Locator<F: Field>:
     From<F>
@@ -91,11 +98,11 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const NETWORK_ID: u16;
     const NETWORK_NAME: &'static str;
 
-    const NUM_INPUT_RECORDS: usize;
-    const NUM_OUTPUT_RECORDS: usize;
-    const NUM_TOTAL_RECORDS: usize = Self::NUM_INPUT_RECORDS + Self::NUM_OUTPUT_RECORDS;
     const NUM_TRANSITIONS: u8;
     const NUM_EVENTS: u16;
+
+    const MAX_NUM_INPUT_RECORDS: usize;
+    const MAX_NUM_OUTPUT_RECORDS: usize;
 
     const BLOCK_HASH_PREFIX: u16;
     const LEDGER_ROOT_PREFIX: u16;
@@ -109,24 +116,29 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const HEADER_NONCE_PREFIX: u16;
     const HEADER_ROOT_PREFIX: u16;
     const HEADER_TRANSACTIONS_ROOT_PREFIX: u16;
-    const INNER_CIRCUIT_ID_PREFIX: u16;
     const RECORD_RANDOMIZER_PREFIX: u16;
     const RECORD_VIEW_KEY_COMMITMENT_PREFIX: u16;
     const SERIAL_NUMBER_PREFIX: u16;
 
     const HEADER_PROOF_PREFIX: u32;
-    const INNER_PROOF_PREFIX: u32;
     const PROGRAM_PROOF_PREFIX: u32;
     const RECORD_CIPHERTEXT_PREFIX: u32;
     const RECORD_VIEW_KEY_PREFIX: u32;
     const SIGNATURE_PREFIX: u32;
     const VALUE_COMMITMENT_PREFIX: u32;
     const VALUE_BALANCE_COMMITMENT_PREFIX: u32;
+    
+    /// Split circuit id prefixes.
+    const INPUT_CIRCUIT_ID_PREFIX: u16;
+    const OUTPUT_CIRCUIT_ID_PREFIX: u16;
+
+    /// Split circuit proof prefixes.
+    const INPUT_PROOF_PREFIX: u32;
+    const OUTPUT_PROOF_PREFIX: u32;
 
     const ADDRESS_SIZE_IN_BYTES: usize;
     const HEADER_SIZE_IN_BYTES: usize;
     const HEADER_PROOF_SIZE_IN_BYTES: usize;
-    const INNER_PROOF_SIZE_IN_BYTES: usize;
     const PROGRAM_PROOF_SIZE_IN_BYTES: usize;
     const PROGRAM_ID_SIZE_IN_BYTES: usize;
     const RECORD_CIPHERTEXT_SIZE_IN_BYTES: usize;
@@ -135,6 +147,10 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     const SIGNATURE_SIZE_IN_BYTES: usize;
     const VALUE_COMMITMENT_SIZE_IN_BYTES: usize;
     const VALUE_BALANCE_COMMITMENT_SIZE_IN_BYTES: usize;
+
+    /// Split circuit proof sizes.
+    const INPUT_PROOF_SIZE_IN_BYTES: usize;
+    const OUTPUT_PROOF_SIZE_IN_BYTES: usize;
 
     const HEADER_TRANSACTIONS_TREE_DEPTH: usize;
     const HEADER_TREE_DEPTH: usize;
@@ -163,10 +179,14 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type ProgramProjectiveCurve: ProjectiveCurve<BaseField = Self::InnerScalarField>;
     type ProgramCurveParameters: TwistedEdwardsParameters;
     type ProgramScalarField: PrimeField;
-
-    /// SNARK for inner circuit proof generation.
-    type InnerSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::InnerBaseField, VerifierInput = InnerPublicVariables<Self>>;
-    type InnerProof: Bech32Object<<Self::InnerSNARK as SNARK>::Proof>;
+    
+    /// SNARK for record inputs.
+    type InputSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::InnerBaseField, VerifierInput = InputPublicVariables<Self>>;
+    type InputProof: Bech32Object<<Self::InputSNARK as SNARK>::Proof>;
+    
+    /// SNARK for record outputs.
+    type OutputSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::InnerBaseField, VerifierInput = OutputPublicVariables<Self>>;
+    type OutputProof: Bech32Object<<Self::OutputSNARK as SNARK>::Proof>;
 
     /// SNARK for Aleo program functions.
     type ProgramSNARK: SNARK<ScalarField = Self::InnerScalarField, BaseField = Self::InnerBaseField, VerifierInput = ProgramPublicVariables<Self>, ProvingKey = Self::ProgramProvingKey, VerifyingKey = Self::ProgramVerifyingKey, UniversalSetupConfig = usize>;
@@ -219,10 +239,14 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type FunctionInputsCRH: CRH<Output = Self::InnerScalarField>;
     type FunctionInputsCRHGadget: CRHGadget<Self::FunctionInputsCRH, Self::InnerScalarField>;
     type FunctionInputsHash: Bech32Locator<<Self::FunctionInputsCRH as CRH>::Output>;
+    
+    /// CRH for hash of the `Self::InputSNARK` verifying keys. Invoked only over `Self::OuterScalarField`.
+    type InputCircuitIDCRH: CRH<Output = Self::InnerBaseField>;
+    type InputCircuitID: Bech32Locator<<Self::InputCircuitIDCRH as CRH>::Output>;
 
-    /// CRH for hash of the `Self::InnerSNARK` verifying keys. Invoked only over `Self::OuterScalarField`.
-    type InnerCircuitIDCRH: CRH<Output = Self::InnerBaseField>;
-    type InnerCircuitID: Bech32Locator<<Self::InnerCircuitIDCRH as CRH>::Output>;
+    /// CRH for hash of the `Self::OutputSNARK` verifying keys. Invoked only over `Self::OuterScalarField`.
+    type OutputCircuitIDCRH: CRH<Output = Self::InnerBaseField>;
+    type OutputCircuitID: Bech32Locator<<Self::OutputCircuitIDCRH as CRH>::Output>;
 
     /// Merkle scheme for computing the ledger root. Invoked only over `Self::InnerScalarField`.
     type LedgerRootCRH: CRH<Output = Self::InnerScalarField>;
@@ -286,7 +310,6 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     fn block_header_root_parameters() -> &'static Self::BlockHeaderRootParameters;
     fn commitment_scheme() -> &'static Self::CommitmentScheme;
     fn function_id_crh() -> &'static Self::FunctionIDCRH;
-    fn inner_circuit_id_crh() -> &'static Self::InnerCircuitIDCRH;
     fn ledger_root_parameters() -> &'static Self::LedgerRootParameters;
     fn program_id_parameters() -> &'static Self::ProgramIDParameters;
     fn transactions_root_parameters() -> &'static Self::TransactionsRootParameters;
@@ -294,9 +317,16 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     fn transition_id_parameters() -> &'static Self::TransitionIDParameters;
     fn value_commitment_scheme() -> &'static Self::ValueCommitmentScheme;
 
-    fn inner_circuit_id() -> &'static Self::InnerCircuitID;
-    fn inner_proving_key() -> &'static <Self::InnerSNARK as SNARK>::ProvingKey;
-    fn inner_verifying_key() -> &'static <Self::InnerSNARK as SNARK>::VerifyingKey;
+    fn input_circuit_id_crh() -> &'static Self::InputCircuitIDCRH;
+    fn output_circuit_id_crh() -> &'static Self::OutputCircuitIDCRH;
+
+    fn input_circuit_id() -> &'static Self::InputCircuitID;
+    fn input_proving_key() -> &'static <Self::InputSNARK as SNARK>::ProvingKey;
+    fn input_verifying_key() -> &'static <Self::InputSNARK as SNARK>::VerifyingKey;
+
+    fn output_circuit_id() -> &'static Self::OutputCircuitID;
+    fn output_proving_key() -> &'static <Self::OutputSNARK as SNARK>::ProvingKey;
+    fn output_verifying_key() -> &'static <Self::OutputSNARK as SNARK>::VerifyingKey;
     
     fn posw_proving_key() -> &'static <Self::PoSWSNARK as SNARK>::ProvingKey;
     fn posw_verifying_key() -> &'static <Self::PoSWSNARK as SNARK>::VerifyingKey;
@@ -310,9 +340,4 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     ) -> Result<Self::FunctionID> {
         Ok(Self::function_id_crh().hash(&verifying_key.to_minimal_bits())?.into())
     }
-
-    /// Returns the program SRS for Aleo applications.
-    fn program_srs<R: Rng + CryptoRng>(
-        rng: &mut R,
-    ) -> Rc<RefCell<SRS<R, <Self::ProgramSNARK as SNARK>::UniversalSetupParameters>>>;
 }
