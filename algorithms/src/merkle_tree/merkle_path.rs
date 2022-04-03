@@ -125,6 +125,9 @@ impl<P: MerkleParameters> FromBytes for MerklePath<P> {
         //  If you are seeing this message, please be proactive in bringing it up :)
         let parameters = {
             let setup_message_length: u64 = FromBytes::read_le(&mut reader)?;
+            if setup_message_length > 1024 * 1024 * 10 {
+                return Err(std::io::ErrorKind::InvalidData.into());
+            }
 
             let mut setup_message_bytes = vec![0u8; setup_message_length as usize];
             reader.read_exact(&mut setup_message_bytes)?;
@@ -135,6 +138,10 @@ impl<P: MerkleParameters> FromBytes for MerklePath<P> {
         };
 
         let path_length: u64 = FromBytes::read_le(&mut reader)?;
+        if path_length > 1024 * 1024 * 10 {
+            return Err(std::io::ErrorKind::InvalidData.into());
+        }
+
         let mut path = Vec::with_capacity(path_length as usize);
         for _ in 0..path_length {
             path.push(FromBytes::read_le(&mut reader)?);
