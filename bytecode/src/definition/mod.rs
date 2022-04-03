@@ -147,7 +147,7 @@ impl<P: Program> FromBytes for Definition<P> {
         match variant {
             0 => Ok(Self::Type(name, members)),
             1 => Ok(Self::Record(name, members)),
-            variant => Err(error(format!("Failed to deserialize definition variant {variant}"))),
+            2.. => Err(error(format!("Failed to deserialize definition variant {variant}"))),
         }
     }
 }
