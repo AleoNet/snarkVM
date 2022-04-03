@@ -29,6 +29,7 @@ use crate::{
     VirtualMachine,
 };
 use snarkvm_utilities::{
+    error,
     has_duplicates,
     io::{Read, Result as IoResult, Write},
     FromBytes,
@@ -119,7 +120,7 @@ impl<N: Network> Transaction<N> {
         }
 
         // Returns `false` if the number of serial numbers in the transaction is incorrect.
-        if self.serial_numbers().count() > num_transitions * N::MAX_NUM_INPUT_RECORDS {
+        if self.serial_numbers().count() > num_transitions * N::NUM_INPUTS as usize {
             eprintln!("Transaction contains incorrect number of serial numbers");
             return false;
         }
@@ -131,7 +132,7 @@ impl<N: Network> Transaction<N> {
         }
 
         // Returns `false` if the number of commitments in the transaction is incorrect.
-        if self.commitments().count() > num_transitions * N::MAX_NUM_OUTPUT_RECORDS {
+        if self.commitments().count() > num_transitions * N::NUM_OUTPUTS as usize {
             eprintln!("Transaction contains incorrect number of commitments");
             return false;
         }
@@ -143,7 +144,7 @@ impl<N: Network> Transaction<N> {
         }
 
         // Returns `false` if the number of record ciphertexts in the transaction is incorrect.
-        if self.ciphertexts().count() > num_transitions * N::MAX_NUM_OUTPUT_RECORDS {
+        if self.ciphertexts().count() > num_transitions * N::NUM_OUTPUTS as usize {
             eprintln!("Transaction contains incorrect number of record ciphertexts");
             return false;
         }
@@ -348,8 +349,8 @@ impl<N: Network> FromBytes for Transaction<N> {
             transitions.push(FromBytes::read_le(&mut reader)?);
         }
 
-        Ok(Self::from(input_circuit_id, output_circuit_id, ledger_root, transitions)
-            .expect("Failed to deserialize a transaction"))
+        Self::from(input_circuit_id, output_circuit_id, ledger_root, transitions)
+            .map_err(|e| error(format!("Failed to deserialize a transaction: {e}")))
     }
 }
 
@@ -359,6 +360,12 @@ impl<N: Network> ToBytes for Transaction<N> {
         self.input_circuit_id.write_le(&mut writer)?;
         self.output_circuit_id.write_le(&mut writer)?;
         self.ledger_root.write_le(&mut writer)?;
+
+        // Ensure the number of transitions is within bounds.
+        if self.transitions.len() > N::NUM_TRANSITIONS as usize {
+            return Err(error(format!("The number of transitions cannot exceed {}", N::NUM_TRANSITIONS)));
+        }
+
         (self.transitions.len() as u16).write_le(&mut writer)?;
         self.transitions.write_le(&mut writer)
     }
@@ -491,7 +498,7 @@ mod tests {
         // Serialize
         let expected_string = expected_transaction.to_string();
         let candidate_string = serde_json::to_string(&expected_transaction).unwrap();
-        assert_eq!(3022, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(3019, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(expected_string, candidate_string);
 
         // Deserialize
@@ -511,7 +518,7 @@ mod tests {
         // Serialize
         let expected_bytes = expected_transaction.to_bytes_le().unwrap();
         let candidate_bytes = bincode::serialize(&expected_transaction).unwrap();
-        assert_eq!(1521, expected_bytes.len(), "Update me if serialization has changed");
+        assert_eq!(1511, expected_bytes.len(), "Update me if serialization has changed");
         // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
         assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
 

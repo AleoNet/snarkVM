@@ -90,8 +90,8 @@ fn dpc_execute_circuits_test<N: Network>(
         <N as Network>::InputSNARK::setup(&InputCircuit::<N>::blank(), &mut SRS::CircuitSpecific(rng)).unwrap();
 
     // Compute the input circuit proofs.
-    let mut input_proofs = Vec::with_capacity(N::MAX_NUM_INPUT_RECORDS);
-    let mut input_public_variables = Vec::with_capacity(N::MAX_NUM_INPUT_RECORDS);
+    let mut input_proofs = Vec::with_capacity(N::NUM_INPUTS as usize);
+    let mut input_public_variables = Vec::with_capacity(N::NUM_INPUTS as usize);
     for (
         ((((record, serial_number), ledger_proof), signature), input_value_commitment),
         input_value_commitment_randomness,
@@ -169,8 +169,8 @@ fn dpc_execute_circuits_test<N: Network>(
         <N as Network>::OutputSNARK::setup(&OutputCircuit::<N>::blank(), &mut SRS::CircuitSpecific(rng)).unwrap();
 
     // Compute the output circuit proofs.
-    let mut output_proofs = Vec::with_capacity(N::MAX_NUM_OUTPUT_RECORDS);
-    let mut output_public_variables = Vec::with_capacity(N::MAX_NUM_OUTPUT_RECORDS);
+    let mut output_proofs = Vec::with_capacity(N::NUM_OUTPUTS as usize);
+    let mut output_public_variables = Vec::with_capacity(N::NUM_OUTPUTS as usize);
     for (
         (((record, commitment), encryption_randomness), output_value_commitment),
         output_value_commitment_randomness,

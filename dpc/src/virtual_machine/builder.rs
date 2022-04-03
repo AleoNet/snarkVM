@@ -41,9 +41,9 @@ impl<N: Network> ResponseBuilder<N> {
     pub fn new() -> Self {
         Self {
             request: OnceCell::new(),
-            outputs: Vec::with_capacity(N::MAX_NUM_OUTPUT_RECORDS),
-            events: Vec::new(),
-            errors: Vec::new(),
+            outputs: Vec::with_capacity(N::NUM_OUTPUTS as usize),
+            events: Vec::with_capacity(N::NUM_EVENTS as usize),
+            errors: Vec::with_capacity(N::NUM_TRANSITIONS as usize),
         }
     }
 
@@ -68,7 +68,7 @@ impl<N: Network> ResponseBuilder<N> {
             self.errors.push("Builder cannot add new outputs before adding a request".into());
         }
 
-        match self.outputs.len() < N::MAX_NUM_OUTPUT_RECORDS {
+        match self.outputs.len() < N::NUM_OUTPUTS as usize {
             true => self.outputs.push(output),
             false => self.errors.push("Builder exceeded maximum outputs".into()),
         };
@@ -129,7 +129,7 @@ impl<N: Network> ResponseBuilder<N> {
             .outputs
             .iter()
             .enumerate()
-            .take(N::MAX_NUM_OUTPUT_RECORDS)
+            .take(N::NUM_OUTPUTS as usize)
             .map(|(i, output)| {
                 let (record, encryption_randomness) = output.to_record(rng)?;
 
@@ -145,7 +145,7 @@ impl<N: Network> ResponseBuilder<N> {
             .unzip();
 
         // Ensure the input records have the correct program ID.
-        for (i, input_record) in input_records.iter().enumerate().take(N::MAX_NUM_INPUT_RECORDS) {
+        for (i, input_record) in input_records.iter().enumerate().take(N::NUM_INPUTS as usize) {
             if input_record.program_id() != program_id {
                 return Err(anyhow!("Program ID in input record {} is incorrect", i));
             }
@@ -160,15 +160,14 @@ impl<N: Network> ResponseBuilder<N> {
         // }
 
         // Compute the commitments.
-        let commitments: Vec<_> =
-            output_records.iter().take(N::MAX_NUM_OUTPUT_RECORDS).map(Record::commitment).collect();
+        let commitments: Vec<_> = output_records.iter().take(N::NUM_OUTPUTS as usize).map(Record::commitment).collect();
 
         // Compute the value balance.
         let mut value_balance = AleoAmount::ZERO;
-        for record in input_records.iter().take(N::MAX_NUM_INPUT_RECORDS) {
+        for record in input_records.iter().take(N::NUM_INPUTS as usize) {
             value_balance = value_balance.add(record.value());
         }
-        for record in output_records.iter().take(N::MAX_NUM_OUTPUT_RECORDS) {
+        for record in output_records.iter().take(N::NUM_OUTPUTS as usize) {
             value_balance = value_balance.sub(record.value());
         }
 
@@ -187,8 +186,8 @@ impl<N: Network> ResponseBuilder<N> {
         // Construct the input value commitments.
         let input_record_values: Vec<AleoAmount> = request.records().iter().map(|x| x.value()).collect();
 
-        let mut input_value_commitments = Vec::with_capacity(N::MAX_NUM_INPUT_RECORDS);
-        let mut input_value_commitment_randomness = Vec::with_capacity(N::MAX_NUM_INPUT_RECORDS);
+        let mut input_value_commitments = Vec::with_capacity(N::NUM_INPUTS as usize);
+        let mut input_value_commitment_randomness = Vec::with_capacity(N::NUM_INPUTS as usize);
 
         for value in input_record_values.iter() {
             let commitment_randomness = N::ProgramScalarField::rand(rng);
@@ -202,8 +201,8 @@ impl<N: Network> ResponseBuilder<N> {
         // Construct the output value commitments.
         let output_record_values: Vec<AleoAmount> = output_records.iter().map(|x| x.value()).collect();
 
-        let mut output_value_commitments = Vec::with_capacity(N::MAX_NUM_OUTPUT_RECORDS);
-        let mut output_value_commitment_randomness = Vec::with_capacity(N::MAX_NUM_OUTPUT_RECORDS);
+        let mut output_value_commitments = Vec::with_capacity(N::NUM_OUTPUTS as usize);
+        let mut output_value_commitment_randomness = Vec::with_capacity(N::NUM_OUTPUTS as usize);
 
         for value in output_record_values.iter() {
             let commitment_randomness = N::ProgramScalarField::rand(rng);
