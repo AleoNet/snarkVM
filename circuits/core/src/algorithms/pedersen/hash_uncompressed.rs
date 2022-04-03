@@ -19,25 +19,25 @@ use super::*;
 use std::borrow::Cow;
 
 impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Pedersen<E, NUM_WINDOWS, WINDOW_SIZE> {
+    /// Returns the Pedersen hash of the given input as an affine group element.
     pub fn hash_uncompressed(&self, input: &[Boolean<E>]) -> Group<E> {
-        let constant_false = Boolean::<E>::constant(false);
-
+        // Ensure the input is within the size bounds.
         let mut input = Cow::Borrowed(input);
         match input.len() <= WINDOW_SIZE * NUM_WINDOWS {
             // Pad the input if it is under the required parameter size.
-            true => input.to_mut().resize(WINDOW_SIZE * NUM_WINDOWS, constant_false),
-            // Ensure the input size is within the parameter size,
-            false => E::halt("incorrect input length for pedersen hash"),
+            true => input.to_mut().resize(WINDOW_SIZE * NUM_WINDOWS, Boolean::constant(false)),
+            // Ensure the input size is within the parameter size.
+            false => E::halt(format!("The Pedersen hash input cannot exceed {} bits.", WINDOW_SIZE * NUM_WINDOWS)),
         }
 
-        // Compute sum of h_i^{m_i} for all i.
+        // Compute the sum of base_i^{input_i} for all i.
         input
             .chunks(WINDOW_SIZE)
             .zip_eq(&self.bases)
             .flat_map(|(bits, powers)| {
                 bits.iter()
                     .zip_eq(powers)
-                    .map(|(bit, base)| Group::<E>::ternary(bit, base, &Group::<E>::zero()))
+                    .map(|(bit, base)| Group::ternary(bit, base, &Group::zero()))
                     .collect::<Vec<Group<E>>>()
             })
             .fold(Group::<E>::zero(), |acc, x| acc + x)
