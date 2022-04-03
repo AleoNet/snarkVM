@@ -18,9 +18,14 @@ use super::*;
 
 use std::borrow::Cow;
 
-impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Pedersen<E, NUM_WINDOWS, WINDOW_SIZE> {
+impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> HashUncompressed
+    for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
+{
+    type Input = Boolean<E>;
+    type Output = Group<E>;
+
     /// Returns the Pedersen hash of the given input as an affine group element.
-    pub fn hash_uncompressed(&self, input: &[Boolean<E>]) -> Group<E> {
+    fn hash_uncompressed(&self, input: &[Self::Input]) -> Self::Output {
         // Ensure the input is within the size bounds.
         let mut input = Cow::Borrowed(input);
         match input.len() <= WINDOW_SIZE * NUM_WINDOWS {
@@ -88,6 +93,24 @@ mod tests {
         }
     }
 
+    fn check_homomorphic_addition<C: Display + Eject + Add<Output = C> + ToBits<Boolean = Boolean<Circuit>>>(
+        pedersen: &impl HashUncompressed<Input = Boolean<Circuit>, Output = Group<Circuit>>,
+        first: C,
+        second: C,
+    ) {
+        println!("Checking homomorphic addition on {} + {}", first, second);
+
+        // Compute the expected hash, by hashing them individually and summing their results.
+        let a = pedersen.hash_uncompressed(&first.to_bits_le());
+        let b = pedersen.hash_uncompressed(&second.to_bits_le());
+        let expected = a + b;
+
+        // Sum the two integers, and then hash the sum.
+        let candidate = pedersen.hash_uncompressed(&(first + second).to_bits_le());
+        assert_eq!(expected.eject(), candidate.eject());
+        assert!(Circuit::is_satisfied());
+    }
+
     #[test]
     fn test_hash_uncompressed_constant() {
         // Set the number of windows, and modulate the window size.
@@ -137,5 +160,66 @@ mod tests {
         check_hash_uncompressed::<3, WINDOW_SIZE_MULTIPLIER>(Mode::Private, 48, 0, 141, 141);
         check_hash_uncompressed::<4, WINDOW_SIZE_MULTIPLIER>(Mode::Private, 64, 0, 189, 189);
         check_hash_uncompressed::<5, WINDOW_SIZE_MULTIPLIER>(Mode::Private, 80, 0, 237, 237);
+    }
+
+    #[test]
+    fn test_pedersen64_homomorphism_private() {
+        // Initialize Pedersen64.
+        let pedersen = Pedersen64::setup("Pedersen64HomomorphismTest");
+
+        for _ in 0..ITERATIONS {
+            // Sample two random unsigned integers, with the MSB set to 0.
+            let first = U8::<Circuit>::new(Mode::Private, u8::rand(&mut test_rng()) >> 1);
+            let second = U8::new(Mode::Private, u8::rand(&mut test_rng()) >> 1);
+            check_homomorphic_addition(&pedersen, first, second);
+
+            // Sample two random unsigned integers, with the MSB set to 0.
+            let first = U16::<Circuit>::new(Mode::Private, u16::rand(&mut test_rng()) >> 1);
+            let second = U16::new(Mode::Private, u16::rand(&mut test_rng()) >> 1);
+            check_homomorphic_addition(&pedersen, first, second);
+
+            // Sample two random unsigned integers, with the MSB set to 0.
+            let first = U32::<Circuit>::new(Mode::Private, u32::rand(&mut test_rng()) >> 1);
+            let second = U32::new(Mode::Private, u32::rand(&mut test_rng()) >> 1);
+            check_homomorphic_addition(&pedersen, first, second);
+
+            // Sample two random unsigned integers, with the MSB set to 0.
+            let first = U64::<Circuit>::new(Mode::Private, u64::rand(&mut test_rng()) >> 1);
+            let second = U64::new(Mode::Private, u64::rand(&mut test_rng()) >> 1);
+            check_homomorphic_addition(&pedersen, first, second);
+        }
+    }
+
+    #[test]
+    fn test_pedersen128_homomorphism_private() {
+        // Initialize Pedersen128.
+        let pedersen = Pedersen128::setup("Pedersen128HomomorphismTest");
+
+        for _ in 0..ITERATIONS {
+            // Sample two random unsigned integers, with the MSB set to 0.
+            let first = U8::<Circuit>::new(Mode::Private, u8::rand(&mut test_rng()) >> 1);
+            let second = U8::new(Mode::Private, u8::rand(&mut test_rng()) >> 1);
+            check_homomorphic_addition(&pedersen, first, second);
+
+            // Sample two random unsigned integers, with the MSB set to 0.
+            let first = U16::<Circuit>::new(Mode::Private, u16::rand(&mut test_rng()) >> 1);
+            let second = U16::new(Mode::Private, u16::rand(&mut test_rng()) >> 1);
+            check_homomorphic_addition(&pedersen, first, second);
+
+            // Sample two random unsigned integers, with the MSB set to 0.
+            let first = U32::<Circuit>::new(Mode::Private, u32::rand(&mut test_rng()) >> 1);
+            let second = U32::new(Mode::Private, u32::rand(&mut test_rng()) >> 1);
+            check_homomorphic_addition(&pedersen, first, second);
+
+            // Sample two random unsigned integers, with the MSB set to 0.
+            let first = U64::<Circuit>::new(Mode::Private, u64::rand(&mut test_rng()) >> 1);
+            let second = U64::new(Mode::Private, u64::rand(&mut test_rng()) >> 1);
+            check_homomorphic_addition(&pedersen, first, second);
+
+            // Sample two random unsigned integers, with the MSB set to 0.
+            let first = U128::<Circuit>::new(Mode::Private, u128::rand(&mut test_rng()) >> 1);
+            let second = U128::new(Mode::Private, u128::rand(&mut test_rng()) >> 1);
+            check_homomorphic_addition(&pedersen, first, second);
+        }
     }
 }

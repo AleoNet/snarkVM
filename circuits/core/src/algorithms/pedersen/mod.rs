@@ -20,12 +20,13 @@ mod hash_uncompressed;
 #[cfg(test)]
 use snarkvm_circuits_environment::assert_scope;
 
+use crate::{Hash, HashUncompressed};
 use snarkvm_algorithms::crypto_hash::hash_to_curve;
 use snarkvm_circuits_types::prelude::*;
 
-/// Pedersen64 is a *homomorphic* collision-resistant hash function that takes a 64-bit input.
+/// Pedersen64 is an *additively-homomorphic* collision-resistant hash function that takes a 64-bit input.
 pub type Pedersen64<E> = Pedersen<E, 1, 64>;
-/// Pedersen128 is a *homomorphic* collision-resistant hash function that takes a 128-bit input.
+/// Pedersen128 is an *additively-homomorphic* collision-resistant hash function that takes a 128-bit input.
 pub type Pedersen128<E> = Pedersen<E, 1, 128>;
 /// Pedersen256 is a collision-resistant hash function that takes a 256-bit input.
 pub type Pedersen256<E> = Pedersen<E, 2, 128>;

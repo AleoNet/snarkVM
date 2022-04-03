@@ -16,9 +16,14 @@
 
 use super::*;
 
-impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Pedersen<E, NUM_WINDOWS, WINDOW_SIZE> {
+impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Hash
+    for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
+{
+    type Input = Boolean<E>;
+    type Output = Field<E>;
+
     /// Returns the Pedersen hash of the given input as a field element.
-    pub fn hash(&self, input: &[Boolean<E>]) -> Field<E> {
+    fn hash(&self, input: &[Self::Input]) -> Self::Output {
         // Compute the Pedersen hash as an affine group element, and return the x-coordinate.
         self.hash_uncompressed(input).to_x_coordinate()
     }
