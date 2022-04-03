@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_circuits_types::prelude::*;
+use crate::prelude::*;
 use snarkvm_utilities::{
     error,
     io::{Read, Result as IoResult, Write},
@@ -24,7 +24,7 @@ use snarkvm_utilities::{
 
 use enum_index::EnumIndex;
 
-#[derive(Debug, PartialEq, Eq, EnumIndex)]
+#[derive(Debug, PartialEq, Eq, Hash, EnumIndex)]
 pub enum Primitive<E: Environment> {
     /// The Aleo address type.
     Address(<Address<E> as Eject>::Primitive),
@@ -91,7 +91,7 @@ impl<E: Environment> FromBytes for Primitive<E> {
                 reader.read_exact(&mut buffer)?;
                 Self::String(String::from_utf8(buffer).map_err(|e| error(format!("{e}")))?)
             }
-            _ => return Err(error(format!("FromBytes failed to parse a primitive of type {index}"))),
+            16.. => return Err(error(format!("Failed to deserialize primitive variant {index}"))),
         };
         Ok(literal)
     }

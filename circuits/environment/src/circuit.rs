@@ -30,7 +30,7 @@ thread_local! {
     pub(super) static ONE: LinearCombination<Fq> = LinearCombination::one();
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Circuit;
 
 impl Environment for Circuit {

@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<A: Account> Signature<A> {
+impl<A: Aleo> Signature<A> {
     /// Returns `true` if the signature is valid for the given `address` and `message`.
     pub fn verify(&self, address: &Address<A>, message: &[Literal<A>]) -> Boolean<A> {
         // Compute G^sk_sig^c.
@@ -65,12 +65,8 @@ impl<A: Account> Signature<A> {
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
-    use crate::account::{Aleo as Circuit, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT};
-    use snarkvm_algorithms::{
-        signature::{AleoSignature, AleoSignatureScheme},
-        SignatureScheme,
-        SignatureSchemeOperations,
-    };
+    use crate::Devnet as Circuit;
+    use snarkvm_algorithms::{signature::AleoSignature, SignatureScheme, SignatureSchemeOperations};
     use snarkvm_curves::{AffineCurve, ProjectiveCurve};
     use snarkvm_utilities::{test_crypto_rng, test_rng, UniformRand};
 
@@ -79,11 +75,10 @@ pub(crate) mod tests {
     pub type NativeAffine = <Circuit as Environment>::Affine;
     pub type NativeAffineParameters = <Circuit as Environment>::AffineParameters;
     pub type NativeScalarField = <Circuit as Environment>::ScalarField;
-    pub type NativeSignatureScheme = AleoSignatureScheme<NativeAffineParameters>;
 
     pub(crate) fn generate_private_key_and_address() -> (NativeScalarField, NativeScalarField, NativeAffine) {
         // Compute the signature parameters.
-        let native = NativeSignatureScheme::setup(ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT);
+        let native = Circuit::native_signature_scheme();
 
         // Sample a random private key.
         let rng = &mut test_rng();
@@ -110,7 +105,7 @@ pub(crate) mod tests {
         message: &[Literal<Circuit>],
     ) -> AleoSignature<NativeAffineParameters> {
         let rng = &mut test_crypto_rng();
-        let native = NativeSignatureScheme::setup(ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT);
+        let native = Circuit::native_signature_scheme();
 
         // Compute the signature.
         let message = message.to_bits_le().eject_value();

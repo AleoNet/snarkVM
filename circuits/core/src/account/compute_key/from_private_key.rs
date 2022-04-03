@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<A: Account> ComputeKey<A> {
+impl<A: Aleo> ComputeKey<A> {
     /// Returns the account compute key for this account private key.
     pub fn from_private_key(private_key: &PrivateKey<A>) -> Self {
         // Extract (sk_sig, r_sig).
@@ -39,8 +39,8 @@ impl<A: Account> ComputeKey<A> {
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
-    use crate::account::{Aleo as Circuit, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT};
-    use snarkvm_algorithms::{signature::AleoSignatureScheme, SignatureScheme, SignatureSchemeOperations};
+    use crate::Devnet as Circuit;
+    use snarkvm_algorithms::SignatureSchemeOperations;
     use snarkvm_curves::ProjectiveCurve;
     use snarkvm_utilities::{test_rng, UniformRand};
 
@@ -55,9 +55,7 @@ pub(crate) mod tests {
         <Circuit as Environment>::ScalarField,
     ) {
         // Compute the signature parameters.
-        let native = AleoSignatureScheme::<<Circuit as Environment>::AffineParameters>::setup(
-            ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT,
-        );
+        let native = Circuit::native_signature_scheme();
 
         // Sample a random private key.
         let rng = &mut test_rng();

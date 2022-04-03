@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::algorithms::Poseidon;
+use crate::{algorithms::Poseidon, Aleo};
 use snarkvm_algorithms::crypto_hash::hash_to_curve;
 use snarkvm_circuits_types::{
     environment::{prelude::*, Circuit},
@@ -26,29 +26,22 @@ use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 
 use core::fmt;
 
-pub trait Account: Environment {
-    /// Returns the scalar multiplication on the group bases.
-    fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self>;
-
-    /// Returns a hash on the scalar field for the given input.
-    fn hash_to_scalar(input: &[Field<Self>]) -> Scalar<Self>;
-}
-
 pub type E = Circuit;
 
-pub static ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT: &str = "AleoAccountEncryptionAndSignatureScheme0";
+/// The setup message for the Aleo encryption and signature scheme.
+static ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT: &str = "AleoAccountEncryptionAndSignatureScheme0";
 
 thread_local! {
     /// The Poseidon hash function.
-    static POSEIDON: Poseidon<Aleo> = Poseidon::<Aleo>::new();
+    static POSEIDON: Poseidon<Devnet> = Poseidon::<Devnet>::new();
     /// The group bases for the Aleo signature and encryption schemes.
-    static BASES: Vec<Group<Aleo>> = Aleo::new_bases(ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT);
+    static BASES: Vec<Group<Devnet >> = Devnet::new_bases(ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT);
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
-pub struct Aleo;
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
+pub struct Devnet;
 
-impl Aleo {
+impl Devnet {
     /// Initializes a new instance of group bases from a given input domain message.
     #[inline]
     fn new_bases(message: &str) -> Vec<Group<Self>> {
@@ -67,9 +60,16 @@ impl Aleo {
         }
         bases
     }
+
+    /// Returns a native signature scheme.
+    #[cfg(test)]
+    pub fn native_signature_scheme()
+    -> snarkvm_algorithms::signature::AleoSignatureScheme<<E as Environment>::AffineParameters> {
+        snarkvm_algorithms::SignatureScheme::setup(ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT)
+    }
 }
 
-impl Account for Aleo {
+impl Aleo for Devnet {
     /// Returns the scalar multiplication on the group bases.
     #[inline]
     fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self> {
@@ -87,7 +87,7 @@ impl Account for Aleo {
     }
 }
 
-impl Environment for Aleo {
+impl Environment for Devnet {
     type Affine = <E as Environment>::Affine;
     type AffineParameters = <E as Environment>::AffineParameters;
     type BaseField = <E as Environment>::BaseField;
@@ -212,10 +212,10 @@ impl Environment for Aleo {
     }
 }
 
-impl fmt::Display for Aleo {
+impl fmt::Display for Devnet {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // TODO (howardwu): Find a better way to print the circuit.
-        Circuit.fmt(f)
+        fmt::Display::fmt(&Circuit, f)
     }
 }
 
@@ -250,23 +250,23 @@ mod tests {
 
     #[test]
     fn test_print_circuit() {
-        let _candidate = create_example_circuit::<Aleo>();
-        let output = format!("{}", Aleo);
+        let _candidate = create_example_circuit::<Devnet>();
+        let output = format!("{}", Devnet);
         println!("{}", output);
     }
 
     #[test]
     fn test_circuit_scope() {
-        Aleo::scope("test_circuit_scope", || {
-            assert_eq!(0, Aleo::num_constants());
-            assert_eq!(1, Aleo::num_public());
-            assert_eq!(0, Aleo::num_private());
-            assert_eq!(0, Aleo::num_constraints());
+        Devnet::scope("test_circuit_scope", || {
+            assert_eq!(0, Devnet::num_constants());
+            assert_eq!(1, Devnet::num_public());
+            assert_eq!(0, Devnet::num_private());
+            assert_eq!(0, Devnet::num_constraints());
 
-            assert_eq!(0, Aleo::num_constants_in_scope());
-            assert_eq!(0, Aleo::num_public_in_scope());
-            assert_eq!(0, Aleo::num_private_in_scope());
-            assert_eq!(0, Aleo::num_constraints_in_scope());
+            assert_eq!(0, Devnet::num_constants_in_scope());
+            assert_eq!(0, Devnet::num_public_in_scope());
+            assert_eq!(0, Devnet::num_private_in_scope());
+            assert_eq!(0, Devnet::num_constraints_in_scope());
         })
     }
 }

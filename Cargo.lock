@@ -2049,6 +2049,9 @@ dependencies = [
 name = "snarkvm-bytecode"
 version = "0.7.5"
 dependencies = [
+ "enum_index",
+ "enum_index_derive",
+ "indexmap",
  "nom",
  "once_cell",
  "snarkvm-algorithms",
@@ -2072,9 +2075,6 @@ dependencies = [
 name = "snarkvm-circuits-core"
 version = "0.7.5"
 dependencies = [
- "enum_index",
- "enum_index_derive",
- "nom",
  "snarkvm-algorithms",
  "snarkvm-circuits-environment",
  "snarkvm-circuits-types",
@@ -2120,6 +2120,8 @@ version = "0.7.5"
 name = "snarkvm-circuits-types"
 version = "0.7.5"
 dependencies = [
+ "enum_index",
+ "enum_index_derive",
  "snarkvm-circuits-environment",
  "snarkvm-circuits-types-address",
  "snarkvm-circuits-types-boolean",
@@ -2128,6 +2130,7 @@ dependencies = [
  "snarkvm-circuits-types-integers",
  "snarkvm-circuits-types-scalar",
  "snarkvm-circuits-types-string",
+ "snarkvm-utilities",
 ]
 
 [[package]]
