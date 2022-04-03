@@ -2076,6 +2076,7 @@ name = "snarkvm-circuits-core"
 version = "0.7.5"
 dependencies = [
  "snarkvm-algorithms",
+ "snarkvm-circuits-environment",
  "snarkvm-circuits-types",
  "snarkvm-curves",
  "snarkvm-fields",

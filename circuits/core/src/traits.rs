@@ -14,24 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![forbid(unsafe_code)]
-#![allow(clippy::too_many_arguments)]
+/// A trait for a hash function.
+pub trait Hash {
+    type Input;
+    type Output;
 
-pub mod account;
-pub mod algorithms;
+    /// Returns the hash of the given input.
+    fn hash(&self, input: &[Self::Input]) -> Self::Output;
+}
 
-pub mod devnet;
-pub use devnet::*;
+/// A trait for a hash function of an uncompressed variant.
+pub trait HashUncompressed {
+    type Input;
+    type Output;
 
-pub mod traits;
-pub use traits::*;
-
-use snarkvm_circuits_types::{environment::Environment, Field, Group, Scalar};
-
-pub trait Aleo: Environment {
-    /// Returns the scalar multiplication on the group bases.
-    fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self>;
-
-    /// Returns a hash on the scalar field for the given input.
-    fn hash_to_scalar(input: &[Field<Self>]) -> Scalar<Self>;
+    /// Returns the hash of the given input.
+    fn hash_uncompressed(&self, input: &[Self::Input]) -> Self::Output;
 }
