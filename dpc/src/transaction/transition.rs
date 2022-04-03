@@ -437,7 +437,7 @@ impl<N: Network> FromBytes for Transition<N> {
 
         let execution: Execution<N> = FromBytes::read_le(&mut reader)?;
 
-        Ok(Self::from(
+        Self::from(
             transition_id,
             serial_numbers,
             ciphertexts,
@@ -448,7 +448,7 @@ impl<N: Network> FromBytes for Transition<N> {
             events,
             execution,
         )
-        .expect("Failed to deserialize a transition from bytes"))
+        .map_err(|_| std::io::ErrorKind::InvalidData.into())
     }
 }
 
