@@ -17,48 +17,56 @@
 // #[cfg(test)]
 // use snarkvm_circuits_types::environment::assert_scope;
 
-use crate::Literal;
-use snarkvm_circuits_types::{environment::prelude::*, Address, I64};
+use crate::Aleo;
+use snarkvm_circuits_types::{environment::prelude::*, Address, Literal, I64};
 
 // TODO (howardwu): Check mode is only public/private, not constant.
-pub struct Record<E: Environment> {
-    owner: Address<E>,
-    value: I64<E>,
-    data: Vec<Literal<E>>,
-    // program_id: Vec<Boolean<E>>,
-    // randomizer: BaseField<E>,
-    // record_view_key: BaseField<E>,
+#[derive(Debug, Clone)]
+pub struct Record<A: Aleo> {
+    owner: Address<A>,
+    value: I64<A>,
+    data: Vec<Literal<A>>,
+    // program_id: Vec<Boolean<P>>>,
+    // randomizer: BaseField<P>>,
+    // record_view_key: BaseField<P>>,
 }
 
-impl<E: Environment> Record<E> {
+impl<A: Aleo> Record<A> {
     /// Returns the record owner.
-    pub fn owner(&self) -> &Address<E> {
+    pub fn owner(&self) -> &Address<A> {
         &self.owner
     }
 
     /// Returns the record value.
-    pub fn value(&self) -> &I64<E> {
+    pub fn value(&self) -> &I64<A> {
         &self.value
     }
 
     /// Returns the record data.
-    pub fn data(&self) -> &Vec<Literal<E>> {
+    pub fn data(&self) -> &Vec<Literal<A>> {
         &self.data
+    }
+}
+
+impl<A: Aleo> TypeName for Record<A> {
+    fn type_name() -> &'static str {
+        "record"
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_circuits_types::{environment::Circuit, Group};
+    use crate::Devnet as Circuit;
+    use snarkvm_circuits_types::Group;
 
     #[test]
-    fn test_record_data() {
+    fn test_record() {
         let first = Literal::<Circuit>::from_str("10field.public");
         let second = Literal::from_str("true.private");
         let third = Literal::from_str("99i64.public");
 
-        let _candidate = Record {
+        let _candidate = Record::<Circuit> {
             owner: Address::from(Group::from_str("2group.private")),
             value: I64::from_str("1i64.private"),
             data: vec![first, second, third],

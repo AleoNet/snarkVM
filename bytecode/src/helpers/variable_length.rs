@@ -22,14 +22,14 @@ use snarkvm_utilities::{
 
 /// Returns the variable length integer of the given value.
 /// https://en.bitcoin.it/wiki/Protocol_documentation#Variable_length_integer
-pub fn variable_length_integer(value: u64) -> Vec<u8> {
+pub fn variable_length_integer(value: &u64) -> Vec<u8> {
     match value {
         // bounded by u8::max_value()
-        0..=252 => vec![value as u8],
+        0..=252 => vec![*value as u8],
         // bounded by u16::max_value()
-        253..=65535 => [vec![0xfd], (value as u16).to_le_bytes().to_vec()].concat(),
+        253..=65535 => [vec![0xfd], (*value as u16).to_le_bytes().to_vec()].concat(),
         // bounded by u32::max_value()
-        65536..=4_294_967_295 => [vec![0xfe], (value as u32).to_le_bytes().to_vec()].concat(),
+        65536..=4_294_967_295 => [vec![0xfe], (*value as u32).to_le_bytes().to_vec()].concat(),
         // bounded by u64::max_value()
         _ => [vec![0xff], value.to_le_bytes().to_vec()].concat(),
     }
@@ -81,7 +81,7 @@ mod test {
     #[test]
     fn test_variable_length_integer() {
         LENGTH_VALUES.iter().for_each(|(size, expected_output)| {
-            let variable_length_int = variable_length_integer(*size);
+            let variable_length_int = variable_length_integer(size);
             let pruned_expected_output = &expected_output[..variable_length_int.len()];
             assert_eq!(pruned_expected_output, &variable_length_int[..]);
         });
@@ -90,7 +90,7 @@ mod test {
     #[test]
     fn test_read_variable_length_integer() {
         LENGTH_VALUES.iter().for_each(|(expected_size, _expected_output)| {
-            let variable_length_int = variable_length_integer(*expected_size);
+            let variable_length_int = variable_length_integer(expected_size);
             let size = read_variable_length_integer(&variable_length_int[..]).unwrap();
             assert_eq!(*expected_size, size);
         });

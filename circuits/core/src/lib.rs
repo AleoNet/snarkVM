@@ -17,11 +17,18 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
-#[macro_use]
-extern crate enum_index_derive;
-
 pub mod account;
 pub mod algorithms;
 
-pub mod helpers;
-pub use helpers::*;
+pub mod devnet;
+pub use devnet::*;
+
+use snarkvm_circuits_types::{environment::Environment, Field, Group, Scalar};
+
+pub trait Aleo: Environment {
+    /// Returns the scalar multiplication on the group bases.
+    fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self>;
+
+    /// Returns a hash on the scalar field for the given input.
+    fn hash_to_scalar(input: &[Field<Self>]) -> Scalar<Self>;
+}

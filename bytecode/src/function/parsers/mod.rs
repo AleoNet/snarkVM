@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub(crate) mod binary;
-pub(crate) use binary::*;
+pub(super) mod binary;
+pub(super) use binary::*;
 
-pub(crate) mod sanitizer;
-pub(crate) use sanitizer::*;
+pub(super) mod operand;
+pub(super) use operand::*;
 
-pub(crate) mod unary;
-pub(crate) use unary::*;
+pub(super) mod unary;
+pub(super) use unary::*;

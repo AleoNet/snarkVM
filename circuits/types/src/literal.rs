@@ -14,19 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod to_bits;
-
-use crate::Primitive;
-use snarkvm_circuits_types::prelude::*;
+use crate::prelude::*;
 use snarkvm_utilities::{
     io::{Read, Result as IoResult, Write},
     FromBytes,
     ToBytes,
 };
 
-#[allow(unused_imports)]
-use enum_index::EnumIndex;
-
+/// The literal enum represents all supported circuit types in snarkVM.
 #[derive(Clone, EnumIndex)]
 pub enum Literal<E: Environment> {
     /// The Aleo address type.
@@ -239,13 +234,67 @@ impl<E: Environment> Display for Literal<E> {
     }
 }
 
-impl<E: Environment> PartialEq for Literal<E> {
-    fn eq(&self, other: &Self) -> bool {
-        self.eject_mode() == other.eject_mode() && self.eject_value() == other.eject_value()
+impl<E: Environment> ToBits for Literal<E> {
+    type Boolean = Boolean<E>;
+
+    /// Returns the little-endian bits of the literal.
+    fn to_bits_le(&self) -> Vec<Boolean<E>> {
+        (&self).to_bits_le()
+    }
+
+    /// Returns the big-endian bits of the literal.
+    fn to_bits_be(&self) -> Vec<Boolean<E>> {
+        (&self).to_bits_be()
     }
 }
 
-impl<E: Environment> Eq for Literal<E> {}
+impl<E: Environment> ToBits for &Literal<E> {
+    type Boolean = Boolean<E>;
+
+    /// Returns the little-endian bits of the literal.
+    fn to_bits_le(&self) -> Vec<Boolean<E>> {
+        match self {
+            Literal::Address(literal) => literal.to_bits_le(),
+            Literal::Boolean(literal) => literal.to_bits_le(),
+            Literal::Field(literal) => literal.to_bits_le(),
+            Literal::Group(literal) => literal.to_bits_le(),
+            Literal::I8(literal) => literal.to_bits_le(),
+            Literal::I16(literal) => literal.to_bits_le(),
+            Literal::I32(literal) => literal.to_bits_le(),
+            Literal::I64(literal) => literal.to_bits_le(),
+            Literal::I128(literal) => literal.to_bits_le(),
+            Literal::U8(literal) => literal.to_bits_le(),
+            Literal::U16(literal) => literal.to_bits_le(),
+            Literal::U32(literal) => literal.to_bits_le(),
+            Literal::U64(literal) => literal.to_bits_le(),
+            Literal::U128(literal) => literal.to_bits_le(),
+            Literal::Scalar(literal) => literal.to_bits_le(),
+            Literal::String(literal) => literal.to_bits_le(),
+        }
+    }
+
+    /// Returns the big-endian bits of the literal.
+    fn to_bits_be(&self) -> Vec<Boolean<E>> {
+        match self {
+            Literal::Address(literal) => literal.to_bits_be(),
+            Literal::Boolean(literal) => literal.to_bits_be(),
+            Literal::Field(literal) => literal.to_bits_be(),
+            Literal::Group(literal) => literal.to_bits_be(),
+            Literal::I8(literal) => literal.to_bits_be(),
+            Literal::I16(literal) => literal.to_bits_be(),
+            Literal::I32(literal) => literal.to_bits_be(),
+            Literal::I64(literal) => literal.to_bits_be(),
+            Literal::I128(literal) => literal.to_bits_be(),
+            Literal::U8(literal) => literal.to_bits_be(),
+            Literal::U16(literal) => literal.to_bits_be(),
+            Literal::U32(literal) => literal.to_bits_be(),
+            Literal::U64(literal) => literal.to_bits_be(),
+            Literal::U128(literal) => literal.to_bits_be(),
+            Literal::Scalar(literal) => literal.to_bits_be(),
+            Literal::String(literal) => literal.to_bits_be(),
+        }
+    }
+}
 
 impl<E: Environment> FromBytes for Literal<E> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {

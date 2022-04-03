@@ -95,16 +95,23 @@ impl<E: Environment> Parser for Group<E> {
     /// Parses a string into an affine group circuit.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
+        // Parse the optional negative sign '-' from the string.
+        let (string, negation) = map(opt(tag("-")), |neg: Option<&str>| neg.is_some())(string)?;
         // Parse the digits from the string.
         let (string, primitive) = recognize(many1(terminated(one_of("0123456789"), many0(char('_')))))(string)?;
         // Parse the x-coordinate from the string.
-        let (string, x_coordinate) = map_res(tag(Self::type_name()), |_| primitive.replace('_', "").parse())(string)?;
+        let (string, x_coordinate): (&str, E::BaseField) =
+            map_res(tag(Self::type_name()), |_| primitive.replace('_', "").parse())(string)?;
         // Parse the mode from the string.
         let (string, mode) = opt(pair(tag("."), Mode::parse))(string)?;
-
+        // Recover and negate the group element if the negative sign was present.
+        let group = match negation {
+            true => -E::affine_from_x_coordinate(x_coordinate),
+            false => E::affine_from_x_coordinate(x_coordinate),
+        };
         match mode {
-            Some((_, mode)) => Ok((string, Group::new(mode, E::affine_from_x_coordinate(x_coordinate)))),
-            None => Ok((string, Group::new(Mode::Constant, E::affine_from_x_coordinate(x_coordinate)))),
+            Some((_, mode)) => Ok((string, Group::new(mode, group))),
+            None => Ok((string, Group::new(Mode::Constant, group))),
         }
     }
 }
