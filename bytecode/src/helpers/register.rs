@@ -87,7 +87,7 @@ impl<P: Program> FromBytes for Register<P> {
         match variant {
             0 => Ok(Self::Locator(locator)),
             1 => Ok(Self::Member(locator, Identifier::read_le(&mut reader)?)),
-            variant => Err(error(format!("Failed to deserialize register variant {variant}"))),
+            2.. => Err(error(format!("Failed to deserialize register variant {variant}"))),
         }
     }
 }

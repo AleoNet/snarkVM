@@ -91,7 +91,7 @@ impl<E: Environment> FromBytes for Primitive<E> {
                 reader.read_exact(&mut buffer)?;
                 Self::String(String::from_utf8(buffer).map_err(|e| error(format!("{e}")))?)
             }
-            _ => return Err(error(format!("Failed to deserialize primitive variant {index}"))),
+            16.. => return Err(error(format!("Failed to deserialize primitive variant {index}"))),
         };
         Ok(literal)
     }

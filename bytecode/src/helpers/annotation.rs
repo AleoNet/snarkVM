@@ -77,7 +77,7 @@ impl<P: Program> FromBytes for Annotation<P> {
         match variant {
             0 => Ok(Self::Literal(LiteralType::read_le(&mut reader)?)),
             1 => Ok(Self::Composite(Identifier::read_le(&mut reader)?)),
-            variant => Err(error(format!("Failed to deserialize annotation variant {variant}"))),
+            2.. => Err(error(format!("Failed to deserialize annotation variant {variant}"))),
         }
     }
 }

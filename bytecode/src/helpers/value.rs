@@ -114,7 +114,7 @@ impl<P: Program> FromBytes for Value<P> {
                 }
                 Ok(Self::Composite(name, members))
             }
-            variant => Err(error(format!("Failed to deserialize value variant {variant}"))),
+            2.. => Err(error(format!("Failed to deserialize value variant {variant}"))),
         }
     }
 }

@@ -245,7 +245,7 @@ impl<P: Program> FromBytes for LiteralType<P> {
             13 => Self::U128(mode),
             14 => Self::Scalar(mode),
             15 => Self::String(mode, None),
-            _ => return Err(error(format!("Failed to deserialize literal type variant {index}"))),
+            16.. => return Err(error(format!("Failed to deserialize literal type variant {index}"))),
         };
         Ok(literal)
     }

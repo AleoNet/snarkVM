@@ -140,12 +140,12 @@ impl<P: Program> fmt::Display for Instruction<P> {
 
 impl<P: Program> FromBytes for Instruction<P> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        match u16::read_le(&mut reader) {
-            Ok(0) => Ok(Self::Add(Add::read_le(&mut reader)?)),
-            Ok(1) => Ok(Self::Neg(Neg::read_le(&mut reader)?)),
-            Ok(2) => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
-            Ok(code) => Err(error(format!("Failed to deserialize an instruction of code {code}"))),
-            Err(err) => Err(err),
+        let code = u16::read_le(&mut reader)?;
+        match code {
+            0 => Ok(Self::Add(Add::read_le(&mut reader)?)),
+            1 => Ok(Self::Neg(Neg::read_le(&mut reader)?)),
+            2 => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
+            3.. => Err(error(format!("Failed to deserialize an instruction of code {code}"))),
         }
     }
 }
