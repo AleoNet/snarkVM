@@ -15,10 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 mod hash;
+mod hash_uncompressed;
 
 use snarkvm_algorithms::crypto_hash::hash_to_curve;
-use snarkvm_circuits_environment::Mode;
-use snarkvm_circuits_types::{Double, Environment, Group, Inject};
+use snarkvm_circuits_types::prelude::*;
 
 pub struct Pedersen<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
     bases: Vec<Vec<Group<E>>>,
@@ -79,7 +79,7 @@ mod tests {
 
     #[test]
     fn test_setup_constant() {
-        check_setup::<1, WINDOW_SIZE_MULTIPLIER>();
+        check_setup::<1, { WINDOW_SIZE_MULTIPLIER }>();
         check_setup::<2, { 2 * WINDOW_SIZE_MULTIPLIER }>();
         check_setup::<3, { 3 * WINDOW_SIZE_MULTIPLIER }>();
         check_setup::<4, { 4 * WINDOW_SIZE_MULTIPLIER }>();
