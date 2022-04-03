@@ -29,6 +29,7 @@ use crate::{
     VirtualMachine,
 };
 use snarkvm_utilities::{
+    error,
     has_duplicates,
     io::{Read, Result as IoResult, Write},
     FromBytes,
@@ -348,10 +349,8 @@ impl<N: Network> FromBytes for Transaction<N> {
             transitions.push(FromBytes::read_le(&mut reader)?);
         }
 
-        let tx = Self::from(input_circuit_id, output_circuit_id, ledger_root, transitions)
-            .map_err(|_| std::io::ErrorKind::InvalidData)?;
-
-        Ok(tx)
+        Self::from(input_circuit_id, output_circuit_id, ledger_root, transitions)
+            .map_err(|e| error(format!("Failed to deserialize a transaction: {e}")))
     }
 }
 
