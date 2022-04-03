@@ -55,7 +55,7 @@ impl<P: Program> Opcode for Neg<P> {
 impl<P: Program> Operation<P> for Neg<P> {
     /// Evaluates the operation.
     #[inline]
-    fn evaluate(&self, registers: &mut Registers<P>) {
+    fn evaluate(&self, registers: &Registers<P>) {
         // Load the values for the first and second operands.
         let first = match registers.load(self.operation.first()) {
             Value::Literal(literal) => literal,

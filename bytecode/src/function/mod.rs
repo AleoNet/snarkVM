@@ -90,7 +90,7 @@ impl<P: Program> Function<P> {
     /// This method will halt if the given inputs are not incrementing monotonically.
     /// This method will halt if the given input annotation references a non-existent definition.
     #[inline]
-    pub fn add_input(&mut self, input: Input<P>) {
+    pub fn add_input(&self, input: Input<P>) {
         // Ensure there are no instructions or output statements in memory.
         if !self.instructions.borrow().is_empty() {
             P::halt("Cannot add inputs after instructions have been added")
@@ -135,7 +135,7 @@ impl<P: Program> Function<P> {
     /// This method will halt if any operand register does not already exist in memory.
     /// This method will halt if any registers are already set.
     #[inline]
-    pub fn add_instruction(&mut self, instruction: Instruction<P>) {
+    pub fn add_instruction(&self, instruction: Instruction<P>) {
         // Ensure there are input statements in memory.
         if self.inputs.borrow().is_empty() {
             P::halt("Cannot add instruction before input statements have been added")
@@ -177,7 +177,7 @@ impl<P: Program> Function<P> {
     /// This method will halt if the given output register is already set.
     /// This method will halt if the given output annotation references a non-existent definition.
     #[inline]
-    pub fn add_output(&mut self, output: Output<P>) {
+    pub fn add_output(&self, output: Output<P>) {
         // Ensure there are input statements and instructions in memory.
         if self.inputs.borrow().is_empty() || self.instructions.borrow().is_empty() {
             P::halt("Cannot add output statement before input statements or instructions have been added")
@@ -217,7 +217,7 @@ impl<P: Program> Function<P> {
     /// This method will halt if any registers are already assigned.
     /// This method will halt if the given inputs are not the same length as the input statements.
     #[inline]
-    pub fn evaluate(&mut self, inputs: &[Value<P>]) -> Vec<Value<P>> {
+    pub fn evaluate(&self, inputs: &[Value<P>]) -> Vec<Value<P>> {
         // Ensure there are input statements and instructions in memory.
         if self.inputs.borrow().is_empty() || self.instructions.borrow().is_empty() {
             P::halt("Cannot evaluate a function without input statements or instructions")
@@ -238,7 +238,7 @@ impl<P: Program> Function<P> {
 
         // Evaluate the instructions.
         for instruction in self.instructions.borrow().iter() {
-            instruction.evaluate(&mut self.registers);
+            instruction.evaluate(&self.registers);
         }
 
         // Load the outputs.
@@ -313,7 +313,7 @@ impl<P: Program> Function<P> {
     /// This method will halt if the input statement does not exist.
     /// This method will halt if the annotation does not match.
     #[inline]
-    fn assign_inputs(&mut self, values: &[Value<P>]) {
+    fn assign_inputs(&self, values: &[Value<P>]) {
         // Zip the input statements and input values together.
         for (input, value) in self.inputs.borrow().iter().zip_eq(values.iter()) {
             // Ensure the input value annotation matches the expected input annotation.
@@ -370,7 +370,7 @@ impl<P: Program> Parser for Function<P> {
         let (string, outputs) = many0(Output::parse)(string)?;
 
         // Initialize a new function.
-        let mut function = Self::new(name.as_str());
+        let function = Self::new(name.as_str());
         inputs.into_iter().for_each(|input| function.add_input(input));
         instructions.into_iter().for_each(|instruction| function.add_instruction(instruction));
         outputs.into_iter().for_each(|output| function.add_output(output));
@@ -428,7 +428,7 @@ impl<P: Program> FromBytes for Function<P> {
         }
 
         // Initialize a new function.
-        let mut function = Self::new(name.as_str());
+        let function = Self::new(name.as_str());
         inputs.into_iter().for_each(|input| function.add_input(input));
         instructions.into_iter().for_each(|instruction| function.add_instruction(instruction));
         outputs.into_iter().for_each(|output| function.add_output(output));
@@ -492,7 +492,7 @@ mod tests {
 
     #[test]
     fn test_function_evaluate() {
-        let mut function = Function::<P>::from_str(
+        let function = Function::<P>::from_str(
             r"
 function foo:
     input r0 as field.public;

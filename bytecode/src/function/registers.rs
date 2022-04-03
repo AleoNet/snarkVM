@@ -69,7 +69,7 @@ impl<P: Program> Registers<P> {
     /// This method wil halt if the register is a register member.
     /// This method will halt if the register is already defined.
     #[inline]
-    pub fn define(&mut self, register: &Register<P>) {
+    pub fn define(&self, register: &Register<P>) {
         // Ensure the register definitions are monotonically increasing.
         if *self.num_defined.borrow() != *register.locator() {
             P::halt(format!(
@@ -103,7 +103,7 @@ impl<P: Program> Registers<P> {
     /// This method will halt if the given register is a register member.
     /// This method will halt if the register was previously stored.
     #[inline]
-    pub fn assign<V: Into<Value<P>>>(&mut self, register: &Register<P>, value: V) {
+    pub fn assign<V: Into<Value<P>>>(&self, register: &Register<P>, value: V) {
         // Ensure the register assignments are monotonically increasing.
         if *self.num_assigned.borrow() != *register.locator() {
             P::halt(format!(
@@ -195,7 +195,7 @@ impl<P: Program> Registers<P> {
     /// Clears the registers of their assignments, preserving the register definitions.
     /// This allows a function to be re-executed without having to re-define the registers.
     #[inline]
-    pub fn clear_assignments(&mut self) {
+    pub fn clear_assignments(&self) {
         // Clear the assignments in each register.
         self.registers.borrow_mut().values_mut().for_each(|value| *value = None);
         // Reset the number of assigned registers.

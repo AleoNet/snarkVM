@@ -52,7 +52,7 @@ pub trait Operation<P: Program>: Parser + Into<Instruction<P>> {
     ///
     /// Evaluates the operation.
     ///
-    fn evaluate(&self, registers: &mut Registers<P>);
+    fn evaluate(&self, registers: &Registers<P>);
 }
 
 pub enum Instruction<P: Program> {
@@ -97,7 +97,7 @@ impl<P: Program> Instruction<P> {
 
     /// Evaluates the instruction.
     #[inline]
-    pub(crate) fn evaluate(&self, registers: &mut Registers<P>) {
+    pub(crate) fn evaluate(&self, registers: &Registers<P>) {
         match self {
             Self::Add(instruction) => instruction.evaluate(registers),
             Self::Neg(instruction) => instruction.evaluate(registers),
