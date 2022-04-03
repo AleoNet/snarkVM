@@ -21,27 +21,30 @@ use snarkvm_algorithms::crypto_hash::hash_to_curve;
 use snarkvm_circuits_types::prelude::*;
 
 pub struct Pedersen<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
+    /// The base windows for the Pedersen hash.
     bases: Vec<Vec<Group<E>>>,
 }
 
 impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Pedersen<E, NUM_WINDOWS, WINDOW_SIZE> {
+    /// Initializes a new instance of Pedersen with the given setup message.
     pub fn setup(message: &str) -> Self {
-        let bases = (0..NUM_WINDOWS)
-            .map(|index| {
-                // Construct an indexed message to attempt to sample a base.
-                let (generator, _, _) = hash_to_curve(&format!("{message} at {index}"));
-                // Inject the new base.
-                let mut base = Group::new(Mode::Constant, generator);
-                let mut powers = Vec::with_capacity(WINDOW_SIZE);
-                for _ in 0..WINDOW_SIZE {
-                    powers.push(base.clone());
-                    base = base.double();
-                }
-                powers
-            })
-            .collect();
-
-        Self { bases }
+        Self {
+            bases: (0..NUM_WINDOWS)
+                .map(|index| {
+                    // Construct an indexed message to attempt to sample a base.
+                    let (generator, _, _) = hash_to_curve(&format!("{message} at {index}"));
+                    // Inject the new base.
+                    let mut base = Group::constant(generator);
+                    // Construct the window with the base.
+                    let mut powers = Vec::with_capacity(WINDOW_SIZE);
+                    for _ in 0..WINDOW_SIZE {
+                        powers.push(base.clone());
+                        base = base.double();
+                    }
+                    powers
+                })
+                .collect(),
+        }
     }
 }
 
@@ -50,24 +53,23 @@ mod tests {
     use super::*;
     use snarkvm_algorithms::{crh::PedersenCRH, CRH};
     use snarkvm_circuits_environment::Circuit;
-    use snarkvm_circuits_types::Eject;
-    use snarkvm_curves::{edwards_bls12::EdwardsProjective, ProjectiveCurve};
+    use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 
     const ITERATIONS: usize = 10;
-    const MESSAGE: &str = "pedersen_gadget_setup_test";
+    const MESSAGE: &str = "PedersenCircuit0";
     const WINDOW_SIZE_MULTIPLIER: usize = 8;
+
+    type Projective = <<Circuit as Environment>::Affine as AffineCurve>::Projective;
 
     fn check_setup<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>() {
         for _ in 0..ITERATIONS {
-            let native_hasher = PedersenCRH::<EdwardsProjective, { NUM_WINDOWS }, { WINDOW_SIZE }>::setup(MESSAGE);
-            let circuit_hasher = Pedersen::<Circuit, { NUM_WINDOWS }, { WINDOW_SIZE }>::setup(MESSAGE);
+            let native = PedersenCRH::<Projective, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
+            let circuit = Pedersen::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
 
-            // Check for equivalency of bases.
-            native_hasher.parameters().iter().zip(circuit_hasher.bases.iter()).for_each(
-                |(native_bases, circuit_bases)| {
-                    native_bases.iter().zip(circuit_bases.iter()).for_each(|(native_base, circuit_base)| {
-                        assert_eq!(native_base.to_affine(), circuit_base.eject_value());
-                    })
+            // Check for equivalency of the bases.
+            native.parameters().iter().flatten().zip(circuit.bases.iter().flatten()).for_each(
+                |(expected, candidate)| {
+                    assert_eq!(expected.to_affine(), candidate.eject_value());
                 },
             );
         }
@@ -75,7 +77,7 @@ mod tests {
 
     #[test]
     fn test_setup_constant() {
-        check_setup::<1, { WINDOW_SIZE_MULTIPLIER }>();
+        check_setup::<1, WINDOW_SIZE_MULTIPLIER>();
         check_setup::<2, { 2 * WINDOW_SIZE_MULTIPLIER }>();
         check_setup::<3, { 3 * WINDOW_SIZE_MULTIPLIER }>();
         check_setup::<4, { 4 * WINDOW_SIZE_MULTIPLIER }>();
