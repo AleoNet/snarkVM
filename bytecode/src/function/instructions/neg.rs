@@ -120,12 +120,12 @@ mod tests {
     type P = Process;
 
     fn check_neg(first: Value<P>, expected: Value<P>) {
-        let mut registers = Registers::<P>::default();
+        let registers = Registers::<P>::default();
         registers.define(&Register::from_str("r0"));
         registers.define(&Register::from_str("r1"));
         registers.assign(&Register::from_str("r0"), first);
 
-        Neg::from_str("r0 into r1").evaluate(&mut registers);
+        Neg::from_str("r0 into r1").evaluate(&registers);
         let candidate = registers.load(&Register::from_str("r1"));
         assert_eq!(expected, candidate);
     }

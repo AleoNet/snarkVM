@@ -124,14 +124,14 @@ mod tests {
     type P = Process;
 
     fn check_sub(first: Value<P>, second: Value<P>, expected: Value<P>) {
-        let mut registers = Registers::<P>::default();
+        let registers = Registers::<P>::default();
         registers.define(&Register::from_str("r0"));
         registers.define(&Register::from_str("r1"));
         registers.define(&Register::from_str("r2"));
         registers.assign(&Register::from_str("r0"), first);
         registers.assign(&Register::from_str("r1"), second);
 
-        Sub::from_str("r0 r1 into r2").evaluate(&mut registers);
+        Sub::from_str("r0 r1 into r2").evaluate(&registers);
         let candidate = registers.load(&Register::from_str("r2"));
         assert_eq!(expected, candidate);
     }

@@ -179,7 +179,7 @@ function compute:
         );
 
         // Add the function to the process.
-        Process::new_function(function.clone());
+        Process::new_function(function);
 
         // Ensure the function was added.
         assert!(Process::contains_function(&Identifier::from_str("compute")));
