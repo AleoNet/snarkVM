@@ -27,8 +27,11 @@ use indexmap::IndexMap;
 /// The registers contains a mapping of the registers to their corresponding values in a function.
 #[derive(Debug, Default)]
 pub struct Registers<P: Program> {
+    /// The mapping of registers to their values.
     registers: IndexMap<Locator, Option<Value<P>>>,
+    /// The number of registers defined in the function.
     num_defined: Locator,
+    /// The number of registers assigned in the function.
     num_assigned: Locator,
 }
 
