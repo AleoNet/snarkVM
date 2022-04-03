@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_bytecode::{AleoProgram, Function, Program, Value};
+use snarkvm_bytecode::{Identifier, Process, Program, Value};
 use snarkvm_circuits::prelude::*;
 
 pub struct HelloWorld;
@@ -22,15 +22,15 @@ pub struct HelloWorld;
 impl HelloWorld {
     /// Initializes a new instance of `HelloWorld` with the given inputs.
     pub fn run<P: Program>(inputs: [Value<P>; 2]) -> Vec<Value<P>> {
-        Function::<P>::from_str(
+        P::from_str(
             r"
 function main:
     input r0 as field.public;
     input r1 as field.private;
     add r0 r1 into r2;
     output r2 as field.private;",
-        )
-        .evaluate(&inputs)
+        );
+        P::get_function(&Identifier::from_str("main")).unwrap().evaluate(&inputs)
     }
 }
 
@@ -38,8 +38,8 @@ fn main() {
     let first = Value::from_str("1field.public");
     let second = Value::from_str("1field.private");
 
-    let expected = Value::<AleoProgram>::from_str("2field.private");
-    let candidate = HelloWorld::run::<AleoProgram>([first, second]);
+    let expected = Value::<Process>::from_str("2field.private");
+    let candidate = HelloWorld::run::<Process>([first, second]);
 
     match (&expected, &candidate[0]) {
         (Value::Literal(Literal::Field(expected)), Value::Literal(Literal::Field(candidate))) => {
@@ -59,8 +59,8 @@ mod tests {
         let first = Value::from_str("1field.public");
         let second = Value::from_str("1field.private");
 
-        let expected = Value::<AleoProgram>::from_str("2field.private");
-        let candidate = HelloWorld::run::<AleoProgram>([first, second]);
+        let expected = Value::<Process>::from_str("2field.private");
+        let candidate = HelloWorld::run::<Process>([first, second]);
 
         match (&expected, &candidate[0]) {
             (Value::Literal(Literal::Field(expected)), Value::Literal(Literal::Field(candidate))) => {
@@ -77,15 +77,15 @@ mod tests {
         impl HelloWorld {
             /// Initializes a new instance of `HelloWorld` with the given inputs.
             pub fn run<P: Program>(inputs: &[Value<P>]) -> Vec<Value<P>> {
-                Function::<P>::from_str(
+                P::from_str(
                     r"
 function main:
     input r0 as u8.public;
     input r1 as u8.private;
     add r0 r1 into r2;
     output r2 as u8.private;",
-                )
-                .evaluate(inputs)
+                );
+                P::get_function(&Identifier::from_str("main")).unwrap().evaluate(inputs)
             }
         }
 
@@ -93,7 +93,7 @@ function main:
         let input = [Value::from_str("1u8.public"), Value::from_str("1u8.private")];
 
         // Run the function.
-        let _output = HelloWorld::run::<AleoProgram>(&input);
+        let _output = HelloWorld::run::<Process>(&input);
 
         // Marlin setup, prove, and verify.
         {

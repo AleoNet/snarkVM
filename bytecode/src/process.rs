@@ -21,21 +21,23 @@ use indexmap::IndexMap;
 use std::cell::RefCell;
 
 thread_local! {
-    /// The definitions declared for the program.
+    /// The definitions declared for the process.
     /// This is a map from the definition name to the definition.
-    static DEFINITIONS: RefCell<IndexMap<Identifier<AleoProgram>, Definition<AleoProgram >>> = Default::default();
-    /// The functions declared for the program.
+    static DEFINITIONS: RefCell<IndexMap<Identifier<Process>, Definition<Process>>> = Default::default();
+    /// The functions declared for the process.
     /// This is a map from the function name to the function.
-    static FUNCTIONS: RefCell<IndexMap<Identifier<AleoProgram>, Function<AleoProgram >>> = Default::default();
+    static FUNCTIONS: RefCell<IndexMap<Identifier<Process>, Function<Process>>> = Default::default();
 }
 
+/// A process is a threaded-instance of a program. This design paradigm is used to allow for
+/// the re-execution of a program, and to allow for multiple programs to be run concurrently.
 #[derive(Copy, Clone, Debug, Default, Eq, PartialEq, Hash)]
-pub struct AleoProgram;
+pub struct Process;
 
-impl Program for AleoProgram {
-    type Environment = Devnet;
+impl Program for Process {
+    type Aleo = Devnet;
 
-    /// Adds a new definition to the program.
+    /// Adds a new definition to the process.
     ///
     /// # Errors
     /// This method will halt if the definition was previously added.
@@ -51,7 +53,7 @@ impl Program for AleoProgram {
         });
     }
 
-    /// Adds a new function to the program.
+    /// Adds a new function to the process.
     ///
     /// # Errors
     /// This method will halt if the function was previously added.
@@ -67,19 +69,29 @@ impl Program for AleoProgram {
         });
     }
 
-    /// Returns `true` if the program contains a definition with the given name.
+    /// Returns `true` if the process contains a definition with the given name.
     fn contains_definition(name: &Identifier<Self>) -> bool {
         DEFINITIONS.with(|definitions| definitions.borrow().contains_key(name))
+    }
+
+    /// Returns `true` if the process contains a function with the given name.
+    fn contains_function(name: &Identifier<Self>) -> bool {
+        FUNCTIONS.with(|functions| functions.borrow().contains_key(name))
     }
 
     /// Returns the definition with the given name.
     fn get_definition(name: &Identifier<Self>) -> Option<Definition<Self>> {
         DEFINITIONS.with(|definitions| definitions.borrow().get(name).cloned())
     }
+
+    /// Returns the function with the given name.
+    fn get_function(name: &Identifier<Self>) -> Option<Function<Self>> {
+        FUNCTIONS.with(|functions| functions.borrow().get(name).cloned())
+    }
 }
 
-impl Parser for AleoProgram {
-    type Environment = <Self as Program>::Environment;
+impl Parser for Process {
+    type Environment = <Self as Program>::Aleo;
 
     /// Parses a string into a program.
     #[inline]
@@ -97,7 +109,7 @@ impl Parser for AleoProgram {
     }
 }
 
-impl fmt::Display for AleoProgram {
+impl fmt::Display for Process {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Initialize a string for the program.
         let mut program = String::new();

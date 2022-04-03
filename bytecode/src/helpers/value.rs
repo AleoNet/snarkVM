@@ -152,9 +152,9 @@ impl<P: Program> PartialEq for Value<P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::AleoProgram;
+    use crate::Process;
 
-    type P = AleoProgram;
+    type P = Process;
 
     #[test]
     fn test_value_parse() {

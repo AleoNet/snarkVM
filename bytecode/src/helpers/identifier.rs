@@ -145,9 +145,9 @@ impl<P: Program> ToBytes for Identifier<P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::AleoProgram;
+    use crate::Process;
 
-    type P = AleoProgram;
+    type P = Process;
 
     #[test]
     fn test_identifier_parse() {

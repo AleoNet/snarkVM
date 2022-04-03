@@ -23,37 +23,42 @@ use crate::{
 use snarkvm_circuits::prelude::*;
 
 use indexmap::IndexMap;
+use std::{cell::RefCell, rc::Rc};
 
 /// The registers contains a mapping of the registers to their corresponding values in a function.
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct Registers<P: Program> {
     /// The mapping of registers to their values.
-    registers: IndexMap<Locator, Option<Value<P>>>,
+    registers: Rc<RefCell<IndexMap<Locator, Option<Value<P>>>>>,
     /// The number of registers defined in the function.
-    num_defined: Locator,
+    num_defined: Rc<RefCell<Locator>>,
     /// The number of registers assigned in the function.
-    num_assigned: Locator,
+    num_assigned: Rc<RefCell<Locator>>,
 }
 
 impl<P: Program> Registers<P> {
     /// Initializes a new instance of the registers.
     #[inline]
     pub fn new() -> Self {
-        Self { registers: IndexMap::new(), num_defined: 0, num_assigned: 0 }
+        Self {
+            registers: Rc::new(RefCell::new(IndexMap::new())),
+            num_defined: Default::default(),
+            num_assigned: Default::default(),
+        }
     }
 
     /// Returns `true` if the given register is defined.
     #[inline]
     pub fn is_defined(&self, register: &Register<P>) -> bool {
         // Checks if the register is defined.
-        self.registers.contains_key(register.locator())
+        self.registers.borrow().contains_key(register.locator())
     }
 
     /// Returns `true` if the given register is assigned.
     #[inline]
     pub fn is_assigned(&self, register: &Register<P>) -> bool {
         // Checks if the register is assigned.
-        matches!(self.registers.get(register.locator()), Some(Some(_)))
+        matches!(self.registers.borrow().get(register.locator()), Some(Some(_)))
     }
 
     /// Defines the given register, assuming it is not already defined.
@@ -66,12 +71,15 @@ impl<P: Program> Registers<P> {
     #[inline]
     pub fn define(&mut self, register: &Register<P>) {
         // Ensure the register definitions are monotonically increasing.
-        if self.num_defined != *register.locator() {
-            P::halt(format!("Expected \'{}\', found \'{register}\'", Register::<P>::Locator(self.num_defined)))
+        if *self.num_defined.borrow() != *register.locator() {
+            P::halt(format!(
+                "Expected \'{}\', found \'{register}\'",
+                Register::<P>::Locator(*self.num_defined.borrow())
+            ))
         }
 
         // Ensure no registers have been assigned.
-        if self.num_assigned != 0 {
+        if *self.num_assigned.borrow() != 0 {
             P::halt("Illegal operation, cannot define a new register after assigning it")
         }
 
@@ -80,9 +88,9 @@ impl<P: Program> Registers<P> {
             // Define the register.
             Register::Locator(locator) => {
                 // Insert the unassigned register into the registers map.
-                self.registers.insert(*locator, None);
+                self.registers.borrow_mut().insert(*locator, None);
                 // Increment the number of defined registers.
-                self.num_defined += 1;
+                *self.num_defined.borrow_mut() += 1;
             }
             // Halt if the register is a register member.
             Register::Member(..) => P::halt("Illegal operation, cannot define a register member"),
@@ -97,14 +105,17 @@ impl<P: Program> Registers<P> {
     #[inline]
     pub fn assign<V: Into<Value<P>>>(&mut self, register: &Register<P>, value: V) {
         // Ensure the register assignments are monotonically increasing.
-        if self.num_assigned != *register.locator() {
-            P::halt(format!("Expected \'{}\', found \'{register}\'", Register::<P>::Locator(self.num_assigned)))
+        if *self.num_assigned.borrow() != *register.locator() {
+            P::halt(format!(
+                "Expected \'{}\', found \'{register}\'",
+                Register::<P>::Locator(*self.num_assigned.borrow())
+            ))
         }
 
         // Store the value in the register.
         let previous = match register {
             // Store the value for a register.
-            Register::Locator(locator) => self.registers.insert(*locator, Some(value.into())),
+            Register::Locator(locator) => self.registers.borrow_mut().insert(*locator, Some(value.into())),
             // Store the value for a register member.
             Register::Member(..) => P::halt(format!("Cannot store directly to \'{register}\'")),
         };
@@ -114,7 +125,7 @@ impl<P: Program> Registers<P> {
             // Halt if the register was previously stored.
             Some(Some(..)) => P::halt(format!("Register \'{register}\' was previously assigned")),
             // Increment the number of assigned registers.
-            Some(None) => self.num_assigned += 1,
+            Some(None) => *self.num_assigned.borrow_mut() += 1,
             // Halt if the register was not previously defined.
             None => P::halt(format!("Register \'{register}\' was not defined before assignment")),
         }
@@ -136,7 +147,7 @@ impl<P: Program> Registers<P> {
         };
 
         // Retrieve the value from the register.
-        let value = match self.registers.get(register.locator()) {
+        let value = match self.registers.borrow().get(register.locator()) {
             // Return the value if it exists.
             Some(Some(value)) => (*value).clone(),
             // Halts if the value does not exist.
@@ -178,7 +189,7 @@ impl<P: Program> Registers<P> {
     #[inline]
     pub fn is_dirty(&self) -> bool {
         // Return `true` if the number of assigned registers is greater than zero.
-        self.num_assigned > 0
+        *self.num_assigned.borrow() > 0
     }
 
     /// Clears the registers of their assignments, preserving the register definitions.
@@ -186,8 +197,8 @@ impl<P: Program> Registers<P> {
     #[inline]
     pub fn clear(&mut self) {
         // Clear the assignments in each register.
-        self.registers.values_mut().for_each(|value| *value = None);
+        self.registers.borrow_mut().values_mut().for_each(|value| *value = None);
         // Reset the number of assigned registers.
-        self.num_assigned = 0;
+        *self.num_assigned.borrow_mut() = 0;
     }
 }

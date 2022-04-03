@@ -33,8 +33,13 @@ use snarkvm_circuits::prelude::*;
 use snarkvm_utilities::{error, FromBytes, ToBytes};
 
 use indexmap::IndexSet;
-use std::io::{Read, Result as IoResult, Write};
+use std::{
+    cell::RefCell,
+    io::{Read, Result as IoResult, Write},
+    rc::Rc,
+};
 
+#[derive(Clone)]
 pub struct Function<P: Program> {
     /// The name of the function.
     name: Identifier<P>,
@@ -45,12 +50,12 @@ pub struct Function<P: Program> {
     registers: Registers<P>,
     /// The input statements, added in order of the input registers.
     /// Input assignments are ensured to match the ordering of the input statements.
-    inputs: IndexSet<Input<P>>,
+    inputs: Rc<RefCell<IndexSet<Input<P>>>>,
     /// The instructions, in order of execution.
-    instructions: Vec<Instruction<P>>,
+    instructions: Rc<RefCell<Vec<Instruction<P>>>>,
     /// The output statements, in order of the desired output.
     /// There is no expectation that the output registers are in any ordering.
-    outputs: IndexSet<Output<P>>,
+    outputs: Rc<RefCell<IndexSet<Output<P>>>>,
 }
 
 impl<P: Program> Function<P> {
@@ -59,9 +64,9 @@ impl<P: Program> Function<P> {
         Self {
             name: Identifier::from_str(name),
             registers: Registers::new(),
-            inputs: IndexSet::new(),
-            instructions: Vec::new(),
-            outputs: IndexSet::new(),
+            inputs: Rc::new(RefCell::new(IndexSet::new())),
+            instructions: Rc::new(RefCell::new(Vec::new())),
+            outputs: Rc::new(RefCell::new(IndexSet::new())),
         }
     }
 
@@ -87,20 +92,20 @@ impl<P: Program> Function<P> {
     #[inline]
     pub fn add_input(&mut self, input: Input<P>) {
         // Ensure there are no instructions or output statements in memory.
-        if !self.instructions.is_empty() {
+        if !self.instructions.borrow().is_empty() {
             P::halt("Cannot add inputs after instructions have been added")
-        } else if !self.outputs.is_empty() {
+        } else if !self.outputs.borrow().is_empty() {
             P::halt("Cannot add inputs after outputs have been added")
         }
 
         // Ensure the maximum number of inputs has not been exceeded.
-        if self.inputs.len() >= P::NUM_INPUTS {
+        if self.inputs.borrow().len() >= P::NUM_INPUTS {
             P::halt("Attempted to exceed the maximum number of inputs")
         }
 
         // Ensure the input statement was not previously added.
         let register = input.register();
-        if self.inputs.contains(&input) {
+        if self.inputs.borrow().contains(&input) {
             P::halt(format!("Input \'{register}\' was previously added"))
         }
 
@@ -114,7 +119,7 @@ impl<P: Program> Function<P> {
         // Define the input register.
         self.registers.define(register);
         // Insert the input statement.
-        self.inputs.insert(input);
+        self.inputs.borrow_mut().insert(input);
     }
 
     // TODO (howardwu): Instructions should have annotations, and we should check them here.
@@ -132,12 +137,12 @@ impl<P: Program> Function<P> {
     #[inline]
     pub fn add_instruction(&mut self, instruction: Instruction<P>) {
         // Ensure there are input statements in memory.
-        if self.inputs.is_empty() {
+        if self.inputs.borrow().is_empty() {
             P::halt("Cannot add instruction before input statements have been added")
         }
 
         // Ensure the maximum number of instructions has not been exceeded.
-        if self.instructions.len() >= P::NUM_INSTRUCTIONS {
+        if self.instructions.borrow().len() >= P::NUM_INSTRUCTIONS {
             P::halt("Attempted to exceed the maximum number of instructions")
         }
 
@@ -157,7 +162,7 @@ impl<P: Program> Function<P> {
         // Define the destination register.
         self.registers.define(instruction.destination());
         // Add the instruction to the memory.
-        self.instructions.push(instruction);
+        self.instructions.borrow_mut().push(instruction);
     }
 
     /// Adds the output statement into memory.
@@ -174,12 +179,12 @@ impl<P: Program> Function<P> {
     #[inline]
     pub fn add_output(&mut self, output: Output<P>) {
         // Ensure there are input statements and instructions in memory.
-        if self.inputs.is_empty() || self.instructions.is_empty() {
+        if self.inputs.borrow().is_empty() || self.instructions.borrow().is_empty() {
             P::halt("Cannot add output statement before input statements or instructions have been added")
         }
 
         // Ensure the maximum number of outputs has not been exceeded.
-        if self.outputs.len() >= P::NUM_OUTPUTS {
+        if self.outputs.borrow().len() >= P::NUM_OUTPUTS {
             P::halt("Attempted to exceed the maximum number of outputs")
         }
 
@@ -202,7 +207,7 @@ impl<P: Program> Function<P> {
         }
 
         // Insert the output statement to memory.
-        self.outputs.insert(output);
+        self.outputs.borrow_mut().insert(output);
     }
 
     /// Evaluates the function on the given inputs.
@@ -214,7 +219,7 @@ impl<P: Program> Function<P> {
     #[inline]
     pub fn evaluate(&mut self, inputs: &[Value<P>]) -> Vec<Value<P>> {
         // Ensure there are input statements and instructions in memory.
-        if self.inputs.is_empty() || self.instructions.is_empty() {
+        if self.inputs.borrow().is_empty() || self.instructions.borrow().is_empty() {
             P::halt("Cannot evaluate a function without input statements or instructions")
         }
 
@@ -224,21 +229,21 @@ impl<P: Program> Function<P> {
         }
 
         // Ensure the number of inputs matches the number of input statements.
-        if self.inputs.len() != inputs.len() {
-            P::halt(format!("Expected {} inputs, but given {}", self.inputs.len(), inputs.len()))
+        if self.inputs.borrow().len() != inputs.len() {
+            P::halt(format!("Expected {} inputs, but given {}", self.inputs.borrow().len(), inputs.len()))
         }
 
         // Assign the inputs and ensure they matches the input statements.
         self.assign_inputs(inputs);
 
         // Evaluate the instructions.
-        for instruction in self.instructions.iter() {
+        for instruction in self.instructions.borrow().iter() {
             instruction.evaluate(&mut self.registers);
         }
 
         // Load the outputs.
-        let mut outputs = Vec::with_capacity(self.outputs.len());
-        for output in self.outputs.iter() {
+        let mut outputs = Vec::with_capacity(self.outputs.borrow().len());
+        for output in self.outputs.borrow().iter() {
             outputs.push(self.registers.load(output.register()));
         }
 
@@ -254,21 +259,13 @@ impl<P: Program> Function<P> {
     /// This method is called before a function is run.
     ///
     /// # Errors
-    /// This method will halt if the input registers are not assigned monotonically.
     /// This method will halt if the input register was previously stored.
-    /// This method will halt if the register is not an input register.
     /// This method will halt if the input statement does not exist.
     /// This method will halt if the annotation does not match.
     #[inline]
     fn assign_inputs(&mut self, values: &[Value<P>]) {
         // Zip the input statements and input values together.
-        for (input, value) in self.inputs.iter().zip_eq(values.iter()) {
-            // Ensure the input is an input register.
-            let register = input.register();
-            if !self.inputs.contains(input) {
-                P::halt(format!("Register {register} is not an input register"))
-            }
-
+        for (input, value) in self.inputs.borrow().iter().zip_eq(values.iter()) {
             // If the input annotation is a composite, ensure the input value matches the definition.
             if let Annotation::Composite(definition_name) = input.annotation() {
                 match P::get_definition(&definition_name) {
@@ -284,7 +281,7 @@ impl<P: Program> Function<P> {
 
             // Assign the input value to the register.
             // This call will halt if the register is a register member, or if the register is already assigned.
-            self.registers.assign(register, value.clone());
+            self.registers.assign(input.register(), value.clone());
 
             // TODO (howardwu): If input is a record, add all the safety hooks we need to use the record data.
         }
@@ -335,17 +332,13 @@ impl<P: Program> TypeName for Function<P> {
 
 impl<P: Program> fmt::Display for Function<P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Write the function to a string.
         let mut function = format!("{} {}:\n", Self::type_name(), self.name);
-        for input in &self.inputs {
-            function += &format!("    {}\n", input);
-        }
-        for instruction in &self.instructions {
-            function += &format!("    {}\n", instruction);
-        }
-        for output in &self.outputs {
-            function += &format!("    {}\n", output);
-        }
+        self.inputs.borrow().iter().for_each(|input| function.push_str(&format!("    {}\n", input)));
+        self.instructions.borrow().iter().for_each(|instruction| function.push_str(&format!("    {}\n", instruction)));
+        self.outputs.borrow().iter().for_each(|output| function.push_str(&format!("    {}\n", output)));
         function.pop(); // trailing newline
+
         write!(f, "{}", function)
     }
 }
@@ -394,38 +387,38 @@ impl<P: Program> ToBytes for Function<P> {
         self.name.write_le(&mut writer)?;
 
         // Write the number of inputs for the function.
-        let num_inputs = self.inputs.len();
+        let num_inputs = self.inputs.borrow().len();
         match num_inputs <= P::NUM_INPUTS {
             true => (num_inputs as u16).write_le(&mut writer)?,
             false => return Err(error(format!("Failed to write {num_inputs} inputs as bytes"))),
         }
 
         // Write the inputs.
-        for input in &self.inputs {
+        for input in self.inputs.borrow().iter() {
             input.write_le(&mut writer)?;
         }
 
         // Write the number of instructions for the function.
-        let num_instructions = self.instructions.len();
+        let num_instructions = self.instructions.borrow().len();
         match num_instructions <= P::NUM_INPUTS {
             true => (num_instructions as u32).write_le(&mut writer)?,
             false => return Err(error(format!("Failed to write {num_instructions} instructions as bytes"))),
         }
 
         // Write the instructions.
-        for instruction in &self.instructions {
+        for instruction in self.instructions.borrow().iter() {
             instruction.write_le(&mut writer)?;
         }
 
         // Write the number of outputs for the function.
-        let num_outputs = self.outputs.len();
+        let num_outputs = self.outputs.borrow().len();
         match num_outputs <= P::NUM_INPUTS {
             true => (num_outputs as u16).write_le(&mut writer)?,
             false => return Err(error(format!("Failed to write {num_outputs} outputs as bytes"))),
         }
 
         // Write the outputs.
-        for output in &self.outputs {
+        for output in self.outputs.borrow().iter() {
             output.write_le(&mut writer)?;
         }
 
@@ -436,11 +429,13 @@ impl<P: Program> ToBytes for Function<P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::AleoProgram;
+    use crate::Process;
+
+    type P = Process;
 
     #[test]
     fn test_function_evaluate() {
-        let mut function = Function::<AleoProgram>::from_str(
+        let mut function = Function::<P>::from_str(
             r"
 function foo:
     input r0 as field.public;
@@ -448,23 +443,23 @@ function foo:
     add r0 r1 into r2;
     output r2 as field.private;",
         );
-        let first = Value::<AleoProgram>::from_str("2field.public");
+        let first = Value::<P>::from_str("2field.public");
         let second = Value::from_str("3field.private");
 
         // Run the function.
-        let expected = Value::<AleoProgram>::from_str("5field.private");
+        let expected = Value::<P>::from_str("5field.private");
         let candidate = function.evaluate(&[first.clone(), second.clone()]);
         assert_eq!(expected.to_string(), candidate[0].to_string());
 
         // Re-run to ensure state continues to work.
-        let expected = Value::<AleoProgram>::from_str("5field.private");
+        let expected = Value::<P>::from_str("5field.private");
         let candidate = function.evaluate(&[first, second]);
         assert_eq!(expected.to_string(), candidate[0].to_string());
     }
 
     #[test]
     fn test_function_parse() {
-        let function = Function::<AleoProgram>::parse(
+        let function = Function::<P>::parse(
             r"
 function foo:
     input r0 as field.public;
@@ -476,9 +471,9 @@ function foo:
         .unwrap()
         .1;
         assert_eq!("foo", function.name().to_string());
-        assert_eq!(2, function.inputs.len());
-        assert_eq!(1, function.instructions.len());
-        assert_eq!(1, function.outputs.len());
+        assert_eq!(2, function.inputs.borrow().len());
+        assert_eq!(1, function.instructions.borrow().len());
+        assert_eq!(1, function.outputs.borrow().len());
     }
 
     #[test]
@@ -488,7 +483,7 @@ function foo:
     input r1 as field.private;
     add r0 r1 into r2;
     output r2 as field.private;";
-        let function = Function::<AleoProgram>::parse(expected).unwrap().1;
+        let function = Function::<P>::parse(expected).unwrap().1;
         assert_eq!(expected, format!("{function}"),);
     }
 
@@ -510,11 +505,11 @@ function main:
     add r0 r1 into r11;
     output r11 as field.private;";
 
-        let expected = Function::<AleoProgram>::from_str(function_string);
+        let expected = Function::<P>::from_str(function_string);
         let expected_bytes = expected.to_bytes_le().unwrap();
         println!("String size: {:?}, Bytecode size: {:?}", function_string.as_bytes().len(), expected_bytes.len());
 
-        let candidate = Function::<AleoProgram>::from_bytes_le(&expected_bytes).unwrap();
+        let candidate = Function::<P>::from_bytes_le(&expected_bytes).unwrap();
         assert_eq!(expected.to_string(), candidate.to_string());
         assert_eq!(expected_bytes, candidate.to_bytes_le().unwrap());
     }

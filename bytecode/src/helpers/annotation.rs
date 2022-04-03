@@ -100,9 +100,9 @@ impl<P: Program> ToBytes for Annotation<P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::AleoProgram;
+    use crate::Process;
 
-    type P = AleoProgram;
+    type P = Process;
 
     #[test]
     fn test_annotation_parse() {

@@ -115,10 +115,12 @@ impl<P: Program> Into<Instruction<P>> for Neg<P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{AleoProgram as Circuit, Register};
+    use crate::{Process, Register};
 
-    fn check_neg(first: Value<Circuit>, expected: Value<Circuit>) {
-        let mut registers = Registers::<Circuit>::default();
+    type P = Process;
+
+    fn check_neg(first: Value<P>, expected: Value<P>) {
+        let mut registers = Registers::<P>::default();
         registers.define(&Register::from_str("r0"));
         registers.define(&Register::from_str("r1"));
         registers.assign(&Register::from_str("r0"), first);
@@ -130,15 +132,15 @@ mod tests {
 
     #[test]
     fn test_neg_field() {
-        let first = Value::<Circuit>::from_str("1field.public");
-        let expected = Value::<Circuit>::from_str("-1field.private");
+        let first = Value::<P>::from_str("1field.public");
+        let expected = Value::<P>::from_str("-1field.private");
         check_neg(first, expected);
     }
 
     #[test]
     fn test_neg_group() {
-        let first = Value::<Circuit>::from_str("2group.public");
-        let expected = Value::<Circuit>::from_str("-2group.private");
+        let first = Value::<P>::from_str("2group.public");
+        let expected = Value::<P>::from_str("-2group.private");
         check_neg(first, expected);
     }
 }

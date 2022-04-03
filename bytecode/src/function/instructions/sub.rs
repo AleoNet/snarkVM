@@ -119,10 +119,12 @@ impl<P: Program> Into<Instruction<P>> for Sub<P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{AleoProgram as Circuit, Register};
+    use crate::{Process, Register};
 
-    fn check_sub(first: Value<Circuit>, second: Value<Circuit>, expected: Value<Circuit>) {
-        let mut registers = Registers::<Circuit>::default();
+    type P = Process;
+
+    fn check_sub(first: Value<P>, second: Value<P>, expected: Value<P>) {
+        let mut registers = Registers::<P>::default();
         registers.define(&Register::from_str("r0"));
         registers.define(&Register::from_str("r1"));
         registers.define(&Register::from_str("r2"));
@@ -136,17 +138,17 @@ mod tests {
 
     #[test]
     fn test_sub_field() {
-        let first = Value::<Circuit>::from_str("3field.public");
-        let second = Value::<Circuit>::from_str("2field.private");
-        let expected = Value::<Circuit>::from_str("1field.private");
+        let first = Value::<P>::from_str("3field.public");
+        let second = Value::<P>::from_str("2field.private");
+        let expected = Value::<P>::from_str("1field.private");
         check_sub(first, second, expected);
     }
 
     #[test]
     fn test_sub_group() {
-        let first = Value::<Circuit>::from_str("2group.public");
-        let second = Value::<Circuit>::from_str("0group.private");
-        let expected = Value::<Circuit>::from_str("2group.private");
+        let first = Value::<P>::from_str("2group.public");
+        let second = Value::<P>::from_str("0group.private");
+        let expected = Value::<P>::from_str("2group.private");
         check_sub(first, second, expected);
     }
 }

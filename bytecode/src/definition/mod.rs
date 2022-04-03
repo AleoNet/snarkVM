@@ -157,9 +157,9 @@ impl<P: Program> ToBytes for Definition<P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{AleoProgram, Annotation};
+    use crate::{Annotation, Process};
 
-    type P = AleoProgram;
+    type P = Process;
 
     #[test]
     fn test_definition_parse() {

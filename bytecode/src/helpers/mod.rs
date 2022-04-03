@@ -17,8 +17,8 @@
 pub(super) mod annotation;
 pub(super) use annotation::*;
 
-pub(super) mod identifier;
-pub(super) use identifier::*;
+pub mod identifier;
+pub use identifier::*;
 
 pub(super) mod literal_type;
 pub(super) use literal_type::*;

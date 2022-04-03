@@ -89,9 +89,9 @@ impl<P: Program> ToBytes for Member<P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::AleoProgram;
+    use crate::Process;
 
-    type P = AleoProgram;
+    type P = Process;
 
     #[test]
     fn test_member_parse() {

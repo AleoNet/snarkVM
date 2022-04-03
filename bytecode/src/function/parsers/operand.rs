@@ -164,10 +164,10 @@ impl<P: Program> ToBytes for Operand<P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{AleoProgram, Register, Value};
+    use crate::{Process, Register, Value};
     use snarkvm_circuits::{environment::Parser, Literal};
 
-    type P = AleoProgram;
+    type P = Process;
 
     #[test]
     fn test_operand_value() {

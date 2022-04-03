@@ -19,9 +19,6 @@
 #[macro_use]
 extern crate enum_index_derive;
 
-pub mod aleo_program;
-pub use aleo_program::*;
-
 pub mod definition;
 pub use definition::*;
 
@@ -31,13 +28,15 @@ pub use function::*;
 pub mod helpers;
 pub use helpers::*;
 
-use crate::Identifier;
-use snarkvm_circuits::{Aleo, Environment};
+pub mod process;
+pub use process::*;
 
-use core::{fmt, hash};
+use snarkvm_circuits::{Aleo, Environment, Parser};
 
-pub trait Program: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
-    type Environment: Aleo;
+use core::{fmt::Debug, hash::Hash};
+
+pub trait Program: Copy + Clone + Debug + Eq + PartialEq + Hash + Parser<Environment = Self::Aleo> {
+    type Aleo: Aleo;
 
     /// The maximum number of bytes for an identifier.
     const NUM_IDENTIFIER_BYTES: usize = 31;
@@ -63,11 +62,17 @@ pub trait Program: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
     /// Returns `true` if the program contains a definition with the given name.
     fn contains_definition(name: &Identifier<Self>) -> bool;
 
+    /// Returns `true` if the program contains a function with the given name.
+    fn contains_function(name: &Identifier<Self>) -> bool;
+
     /// Returns the definition with the given name.
     fn get_definition(name: &Identifier<Self>) -> Option<Definition<Self>>;
 
+    /// Returns the function with the given name.
+    fn get_function(name: &Identifier<Self>) -> Option<Function<Self>>;
+
     /// Halts the program from further synthesis, evaluation, and execution in the current environment.
     fn halt<S: Into<String>, T>(message: S) -> T {
-        Self::Environment::halt(message)
+        Self::Aleo::halt(message)
     }
 }
