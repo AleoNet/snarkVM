@@ -19,7 +19,7 @@ use snarkvm_algorithms::traits::*;
 use snarkvm_gadgets::{
     algorithms::merkle_tree::merkle_path::MerklePathGadget,
     bits::{Boolean, ToBytesGadget},
-    integers::{int::Int64, uint::UInt8},
+    integers::uint::UInt8,
     traits::{
         algorithms::{CRHGadget, CommitmentGadget, EncryptionGadget, PRFGadget, SignatureGadget},
         alloc::AllocGadget,
@@ -192,7 +192,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InputCircuit<N> 
         let (
             given_owner,
             given_is_dummy,
-            given_value,
+            given_value_bytes,
             given_payload,
             given_program_id,
             given_randomizer,
@@ -215,7 +215,8 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InputCircuit<N> 
 
             let given_is_dummy = Boolean::alloc(&mut declare_cs.ns(|| "given_is_dummy"), || Ok(record.is_dummy()))?;
 
-            let given_value = Int64::alloc(&mut declare_cs.ns(|| "given_value"), || Ok(record.value().as_i64()))?;
+            let given_value_bytes =
+                UInt8::alloc_vec(&mut declare_cs.ns(|| "given_value"), &record.value().to_bytes_le()?)?;
 
             // Use an empty payload if the record does not have one.
             let payload = if let Some(payload) = record.payload().clone() { payload } else { Payload::default() };
@@ -247,7 +248,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InputCircuit<N> 
             (
                 given_owner,
                 given_is_dummy,
-                given_value,
+                given_value_bytes,
                 given_payload,
                 given_program_id,
                 given_randomizer,
@@ -267,7 +268,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InputCircuit<N> 
 
             let given_is_dummy_bytes =
                 given_is_dummy.to_bytes(&mut commitment_cs.ns(|| "Convert given_is_dummy to bytes"))?;
-            let given_value_bytes = given_value.to_bytes(&mut commitment_cs.ns(|| "Convert given_value to bytes"))?;
 
             let input_program_id_bytes = {
                 let given_value_field_elements = given_value_bytes

@@ -17,7 +17,7 @@
 use crate::{Network, OutputPrivateVariables, OutputPublicVariables, Payload};
 use snarkvm_gadgets::{
     bits::{Boolean, ToBytesGadget},
-    integers::{int::Int64, uint::UInt8},
+    integers::uint::UInt8,
     traits::{
         algorithms::{CRHGadget, CommitmentGadget, EncryptionGadget},
         alloc::AllocGadget,
@@ -110,7 +110,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for OutputCircuit<N>
 
         let cs = &mut cs.ns(|| "Process output record");
 
-        let (given_owner, given_is_dummy, given_value, given_payload, given_program_id, given_randomizer) = {
+        let (given_owner, given_is_dummy, given_value_bytes, given_payload, given_program_id, given_randomizer) = {
             let declare_cs = &mut cs.ns(|| "Declare output record");
 
             let given_owner = <N::AccountEncryptionGadget as EncryptionGadget<
@@ -122,7 +122,8 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for OutputCircuit<N>
 
             let given_is_dummy = Boolean::alloc(&mut declare_cs.ns(|| "given_is_dummy"), || Ok(record.is_dummy()))?;
 
-            let given_value = Int64::alloc(&mut declare_cs.ns(|| "given_value"), || Ok(record.value().as_i64()))?;
+            let given_value_bytes =
+                UInt8::alloc_vec(&mut declare_cs.ns(|| "given_value"), &record.value().to_bytes_le()?)?;
 
             // Use an empty payload if the record does not have one.
             let payload = record.payload().clone().unwrap_or_default();
@@ -141,7 +142,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for OutputCircuit<N>
                 &mut declare_cs.ns(|| "given_randomizer"), || Ok(record.randomizer())
             )?;
 
-            (given_owner, given_is_dummy, given_value, given_payload, given_program_id, given_randomizer)
+            (given_owner, given_is_dummy, given_value_bytes, given_payload, given_program_id, given_randomizer)
         };
         // ********************************************************************
 
@@ -157,7 +158,6 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for OutputCircuit<N>
 
             let given_is_dummy_bytes =
                 given_is_dummy.to_bytes(&mut commitment_cs.ns(|| "Convert given_is_dummy to bytes"))?;
-            let given_value_bytes = given_value.to_bytes(&mut commitment_cs.ns(|| "Convert given_value to bytes"))?;
 
             {
                 let given_value_field_elements = given_value_bytes
