@@ -105,7 +105,7 @@ impl<N: Network> Request<N> {
             return Err(anyhow!("There must be at least one record consumed."));
         }
 
-        let mut signatures = Vec::with_capacity(N::MAX_NUM_INPUT_RECORDS);
+        let mut signatures = Vec::with_capacity(N::NUM_INPUTS as usize);
         for record in records.iter() {
             // Ensure the caller and record owner match.
             if caller_address != record.owner() {
@@ -141,12 +141,8 @@ impl<N: Network> Request<N> {
     /// Returns `true` if the request signature is valid.
     pub fn is_valid(&self) -> bool {
         // Ensure the number of records is correct.
-        if self.records.len() > N::MAX_NUM_INPUT_RECORDS {
-            eprintln!(
-                "Incorrect number of request records. Maximum {}, found {}",
-                N::MAX_NUM_INPUT_RECORDS,
-                self.records.len()
-            );
+        if self.records.len() > (N::NUM_INPUTS as usize) {
+            eprintln!("Incorrect number of request records. Maximum {}, found {}", N::NUM_INPUTS, self.records.len());
             return false;
         }
 

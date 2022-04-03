@@ -120,7 +120,7 @@ impl<N: Network> Transaction<N> {
         }
 
         // Returns `false` if the number of serial numbers in the transaction is incorrect.
-        if self.serial_numbers().count() > num_transitions * N::MAX_NUM_INPUT_RECORDS {
+        if self.serial_numbers().count() > num_transitions * N::NUM_INPUTS as usize {
             eprintln!("Transaction contains incorrect number of serial numbers");
             return false;
         }
@@ -132,7 +132,7 @@ impl<N: Network> Transaction<N> {
         }
 
         // Returns `false` if the number of commitments in the transaction is incorrect.
-        if self.commitments().count() > num_transitions * N::MAX_NUM_OUTPUT_RECORDS {
+        if self.commitments().count() > num_transitions * N::NUM_OUTPUTS as usize {
             eprintln!("Transaction contains incorrect number of commitments");
             return false;
         }
@@ -144,7 +144,7 @@ impl<N: Network> Transaction<N> {
         }
 
         // Returns `false` if the number of record ciphertexts in the transaction is incorrect.
-        if self.ciphertexts().count() > num_transitions * N::MAX_NUM_OUTPUT_RECORDS {
+        if self.ciphertexts().count() > num_transitions * N::NUM_OUTPUTS as usize {
             eprintln!("Transaction contains incorrect number of record ciphertexts");
             return false;
         }
@@ -360,6 +360,12 @@ impl<N: Network> ToBytes for Transaction<N> {
         self.input_circuit_id.write_le(&mut writer)?;
         self.output_circuit_id.write_le(&mut writer)?;
         self.ledger_root.write_le(&mut writer)?;
+
+        // Ensure the number of transitions is within bounds.
+        if self.transitions.len() > N::NUM_TRANSITIONS as usize {
+            return Err(error(format!("The number of transitions cannot exceed {}", N::NUM_TRANSITIONS)));
+        }
+
         (self.transitions.len() as u16).write_le(&mut writer)?;
         self.transitions.write_le(&mut writer)
     }

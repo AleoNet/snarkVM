@@ -19,7 +19,7 @@ use crate::{
     prelude::*,
 };
 use snarkvm_algorithms::merkle_tree::{MerklePath, MerkleTree};
-use snarkvm_utilities::{FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
+use snarkvm_utilities::{error, FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
 
 use anyhow::{anyhow, Result};
 use itertools::Itertools;
@@ -181,7 +181,7 @@ impl<N: Network> Transition<N> {
 
         let program_id = self.execution.program_execution.as_ref().map(|x| x.program_id);
 
-        let mut input_public_variables = Vec::with_capacity(N::MAX_NUM_INPUT_RECORDS);
+        let mut input_public_variables = Vec::with_capacity(N::NUM_INPUTS as usize);
         for (serial_number, input_value_commitment) in self.serial_numbers().zip_eq(self.input_value_commitments()) {
             let input_public = InputPublicVariables::<N>::new(
                 *serial_number,
@@ -194,7 +194,7 @@ impl<N: Network> Transition<N> {
             input_public_variables.push(input_public);
         }
 
-        let mut output_public_variables = Vec::with_capacity(N::MAX_NUM_OUTPUT_RECORDS);
+        let mut output_public_variables = Vec::with_capacity(N::NUM_OUTPUTS as usize);
         for (commitment, output_value_commitment) in self.commitments().zip_eq(self.output_value_commitments()) {
             let output_public =
                 OutputPublicVariables::<N>::new(*commitment, output_value_commitment.clone(), program_id);
@@ -359,12 +359,8 @@ impl<N: Network> Transition<N> {
         // Construct the leaves of the transition tree.
         let leaves: Vec<Vec<u8>> = vec![
             // TODO (raychu86): split - handle padding serial numbers and commitments. (i.e. leaf 1 - 16 = serial numbers, 17 - 32 = commitments)
-            serial_numbers
-                .iter()
-                .take(N::MAX_NUM_INPUT_RECORDS)
-                .map(ToBytes::to_bytes_le)
-                .collect::<Result<Vec<_>>>()?,
-            commitments.iter().take(N::MAX_NUM_OUTPUT_RECORDS).map(ToBytes::to_bytes_le).collect::<Result<Vec<_>>>()?,
+            serial_numbers.iter().take(N::NUM_INPUTS as usize).map(ToBytes::to_bytes_le).collect::<Result<Vec<_>>>()?,
+            commitments.iter().take(N::NUM_OUTPUTS as usize).map(ToBytes::to_bytes_le).collect::<Result<Vec<_>>>()?,
         ]
         .concat();
 
@@ -395,20 +391,14 @@ impl<N: Network> FromBytes for Transition<N> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let transition_id: N::TransitionID = FromBytes::read_le(&mut reader)?;
 
-        let num_input_records: u32 = FromBytes::read_le(&mut reader)?;
-        if num_input_records > 1000 {
-            return Err(std::io::ErrorKind::InvalidData.into());
-        }
+        let num_input_records: u16 = FromBytes::read_le(&mut reader)?;
 
         let mut serial_numbers = Vec::<N::SerialNumber>::with_capacity(num_input_records as usize);
         for _ in 0..num_input_records {
             serial_numbers.push(FromBytes::read_le(&mut reader)?);
         }
 
-        let num_output_records: u32 = FromBytes::read_le(&mut reader)?;
-        if num_output_records > 1000 {
-            return Err(std::io::ErrorKind::InvalidData.into());
-        }
+        let num_output_records: u16 = FromBytes::read_le(&mut reader)?;
 
         let mut ciphertexts = Vec::<N::RecordCiphertext>::with_capacity(num_output_records as usize);
         for _ in 0..num_output_records {
@@ -448,7 +438,7 @@ impl<N: Network> FromBytes for Transition<N> {
             events,
             execution,
         )
-        .map_err(|_| std::io::ErrorKind::InvalidData.into())
+        .map_err(|e| error(format!("Failed to deserialize a transition from bytes: {e}")))
     }
 }
 
@@ -456,16 +446,36 @@ impl<N: Network> ToBytes for Transition<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.transition_id.write_le(&mut writer)?;
-        (self.serial_numbers.len() as u32).write_le(&mut writer)?;
+
+        // Ensure the number of serial numbers is within bounds.
+        if self.serial_numbers.len() > N::NUM_INPUTS as usize {
+            return Err(error(format!("The number of serial numbers cannot exceed {}", N::NUM_INPUTS)));
+        }
+
+        (self.serial_numbers.len() as u16).write_le(&mut writer)?;
         self.serial_numbers.write_le(&mut writer)?;
-        (self.ciphertexts.len() as u32).write_le(&mut writer)?;
+
+        // Ensure the number of ciphertexts is within bounds.
+        if self.ciphertexts.len() > N::NUM_OUTPUTS as usize {
+            return Err(error(format!("The number of ciphertexts cannot exceed {}", N::NUM_OUTPUTS)));
+        }
+
+        (self.ciphertexts.len() as u16).write_le(&mut writer)?;
         self.ciphertexts.write_le(&mut writer)?;
+
         self.value_balance.write_le(&mut writer)?;
         self.input_value_commitments.write_le(&mut writer)?;
         self.output_value_commitments.write_le(&mut writer)?;
         self.value_balance_commitment.write_le(&mut writer)?;
+
+        // Ensure the number of events is within bounds.
+        if self.events.len() > N::NUM_EVENTS as usize {
+            return Err(error(format!("The number of events cannot exceed {}", N::NUM_EVENTS)));
+        }
+
         (self.events.len() as u16).write_le(&mut writer)?;
         self.events.write_le(&mut writer)?;
+
         self.execution.write_le(&mut writer)
     }
 }
