@@ -14,13 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-/// First message of the verifier.
-#[derive(Copy, Clone, Debug)]
-pub struct VerifierFirstMessage<F> {
-    /// Query for the random polynomial.
-    pub alpha: F,
-    /// Randomizer for the lincheck for `B`.
-    pub eta_b: F,
-    /// Randomizer for the lincheck for `C`.
-    pub eta_c: F,
-}
+pub mod input_circuit;
+pub use input_circuit::*;
+
+pub(crate) mod input_private_variables;
+pub(crate) use input_private_variables::*;
+
+pub(crate) mod input_public_variables;
+pub(crate) use input_public_variables::*;

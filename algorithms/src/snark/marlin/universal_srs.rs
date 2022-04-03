@@ -14,7 +14,5 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::polycommit::PolynomialCommitment;
-
 /// The universal public parameters for the argument system.
-pub type UniversalSRS<F, CF, PC> = <PC as PolynomialCommitment<F, CF>>::UniversalParams;
+pub type UniversalSRS<E> = crate::polycommit::sonic_pc::UniversalParams<E>;

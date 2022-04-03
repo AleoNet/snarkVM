@@ -41,6 +41,7 @@ pub(crate) mod tests {
     use super::*;
     use crate::account::{Aleo as Circuit, ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT};
     use snarkvm_algorithms::{signature::AleoSignatureScheme, SignatureScheme, SignatureSchemeOperations};
+    use snarkvm_curves::ProjectiveCurve;
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 100;
@@ -64,9 +65,9 @@ pub(crate) mod tests {
         let r_sig: <Circuit as Environment>::ScalarField = UniformRand::rand(rng);
 
         // Compute G^sk_sig.
-        let pk_sig = native.g_scalar_multiply(&sk_sig);
+        let pk_sig = native.g_scalar_multiply(&sk_sig).to_affine();
         // Compute G^r_sig.
-        let pr_sig = native.g_scalar_multiply(&r_sig);
+        let pr_sig = native.g_scalar_multiply(&r_sig).to_affine();
         // Compute sk_prf := RO(G^sk_sig || G^r_sig).
         let sk_prf = native.hash_to_scalar_field(&[pk_sig.x, pr_sig.x]);
 

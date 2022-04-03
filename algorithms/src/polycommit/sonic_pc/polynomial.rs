@@ -73,6 +73,11 @@ impl<F: Field> LabeledPolynomial<F> {
         &self.polynomial
     }
 
+    /// Retrieve a mutable reference to the enclosed polynomial.
+    pub fn polynomial_mut(&mut self) -> &mut DenseOrSparsePolynomial<'static, F> {
+        &mut self.polynomial
+    }
+
     /// Evaluate the polynomial in `self`.
     pub fn evaluate(&self, point: F) -> F {
         self.polynomial.evaluate(point)

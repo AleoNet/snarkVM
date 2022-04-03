@@ -42,7 +42,7 @@ where
 {
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
-        let affine = self.into_affine();
+        let affine = self.to_affine();
         let mut x_fe = affine.x.to_field_elements()?;
         let y_fe = affine.y.to_field_elements()?;
         x_fe.extend_from_slice(&y_fe);
@@ -71,7 +71,7 @@ where
 {
     #[inline]
     fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
-        let affine = self.into_affine();
+        let affine = self.to_affine();
         let mut x_fe = affine.x.to_field_elements()?;
         let y_fe = affine.y.to_field_elements()?;
         x_fe.extend_from_slice(&y_fe);

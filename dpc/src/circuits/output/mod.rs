@@ -14,9 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-/// Second verifier message.
-#[derive(Copy, Clone, Debug)]
-pub struct VerifierSecondMessage<F> {
-    /// Query for the second round of polynomials.
-    pub beta: F,
-}
+pub mod output_circuit;
+pub use output_circuit::*;
+
+pub(crate) mod output_private_variables;
+pub(crate) use output_private_variables::*;
+
+pub(crate) mod output_public_variables;
+pub(crate) use output_public_variables::*;

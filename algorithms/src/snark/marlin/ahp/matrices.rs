@@ -18,7 +18,7 @@
 
 use crate::{
     fft::{EvaluationDomain, Evaluations as EvaluationsOnDomain},
-    polycommit::LabeledPolynomial,
+    polycommit::sonic_pc::LabeledPolynomial,
     snark::marlin::ahp::{indexer::Matrix, UnnormalizedBivariateLagrangePoly},
 };
 use itertools::Itertools;

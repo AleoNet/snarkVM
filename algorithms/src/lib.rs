@@ -17,6 +17,10 @@
 #![allow(clippy::module_inception)]
 #![allow(clippy::type_complexity)]
 
+#[cfg(feature = "wasm")]
+#[macro_use]
+extern crate alloc;
+
 #[allow(unused_imports)]
 #[macro_use]
 extern crate aleo_std;
