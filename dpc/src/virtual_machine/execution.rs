@@ -145,12 +145,20 @@ impl<N: Network> FromBytes for Execution<N> {
         };
 
         let num_input_proofs: u32 = FromBytes::read_le(&mut reader)?;
+        if num_input_proofs > 1000 {
+            return Err(std::io::ErrorKind::InvalidData.into());
+        }
+
         let mut input_proofs = Vec::with_capacity(num_input_proofs as usize);
         for _ in 0..num_input_proofs {
             input_proofs.push(FromBytes::read_le(&mut reader)?);
         }
 
         let num_output_proofs: u32 = FromBytes::read_le(&mut reader)?;
+        if num_output_proofs > 1000 {
+            return Err(std::io::ErrorKind::InvalidData.into());
+        }
+
         let mut output_proofs = Vec::with_capacity(num_output_proofs as usize);
         for _ in 0..num_output_proofs {
             output_proofs.push(FromBytes::read_le(&mut reader)?);

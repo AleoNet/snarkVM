@@ -396,12 +396,20 @@ impl<N: Network> FromBytes for Transition<N> {
         let transition_id: N::TransitionID = FromBytes::read_le(&mut reader)?;
 
         let num_input_records: u32 = FromBytes::read_le(&mut reader)?;
+        if num_input_records > 1000 {
+            return Err(std::io::ErrorKind::InvalidData.into());
+        }
+
         let mut serial_numbers = Vec::<N::SerialNumber>::with_capacity(num_input_records as usize);
         for _ in 0..num_input_records {
             serial_numbers.push(FromBytes::read_le(&mut reader)?);
         }
 
         let num_output_records: u32 = FromBytes::read_le(&mut reader)?;
+        if num_output_records > 1000 {
+            return Err(std::io::ErrorKind::InvalidData.into());
+        }
+
         let mut ciphertexts = Vec::<N::RecordCiphertext>::with_capacity(num_output_records as usize);
         for _ in 0..num_output_records {
             ciphertexts.push(FromBytes::read_le(&mut reader)?);
@@ -429,7 +437,7 @@ impl<N: Network> FromBytes for Transition<N> {
 
         let execution: Execution<N> = FromBytes::read_le(&mut reader)?;
 
-        Ok(Self::from(
+        Self::from(
             transition_id,
             serial_numbers,
             ciphertexts,
@@ -440,7 +448,7 @@ impl<N: Network> FromBytes for Transition<N> {
             events,
             execution,
         )
-        .expect("Failed to deserialize a transition from bytes"))
+        .map_err(|_| std::io::ErrorKind::InvalidData.into())
     }
 }
 

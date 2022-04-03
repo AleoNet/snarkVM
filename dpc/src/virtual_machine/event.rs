@@ -63,7 +63,7 @@ impl<N: Network> FromBytes for Event<N> {
                 Ok(Self::RecordViewKey(index, record_view_key))
             }
             2 => Ok(Self::Operation(FromBytes::read_le(&mut reader)?)),
-            _ => unreachable!("Invalid event ID during deserialization"),
+            _ => Err(std::io::ErrorKind::InvalidData.into()),
         }
     }
 }

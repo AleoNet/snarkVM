@@ -106,7 +106,7 @@ impl<N: Network> FromBytes for Operation<N> {
                 let function_inputs = FromBytes::read_le(&mut reader)?;
                 Ok(Self::Evaluate(function_id, function_inputs))
             }
-            _ => unreachable!("Invalid operation during deserialization"),
+            _ => Err(std::io::ErrorKind::InvalidData.into()),
         }
     }
 }

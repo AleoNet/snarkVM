@@ -348,8 +348,10 @@ impl<N: Network> FromBytes for Transaction<N> {
             transitions.push(FromBytes::read_le(&mut reader)?);
         }
 
-        Ok(Self::from(input_circuit_id, output_circuit_id, ledger_root, transitions)
-            .expect("Failed to deserialize a transaction"))
+        let tx = Self::from(input_circuit_id, output_circuit_id, ledger_root, transitions)
+            .map_err(|_| std::io::ErrorKind::InvalidData)?;
+
+        Ok(tx)
     }
 }
 
