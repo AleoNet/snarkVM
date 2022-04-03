@@ -129,7 +129,8 @@ impl<P: MerkleParameters> FromBytes for MerklePath<P> {
 
             let mut setup_message_bytes = vec![0u8; setup_message_length as usize];
             reader.read_exact(&mut setup_message_bytes)?;
-            let setup_message = String::from_utf8(setup_message_bytes).map_err(|_| std::io::ErrorKind::InvalidData)?;
+            let setup_message = String::from_utf8(setup_message_bytes)
+                .map_err(|_| error("Failed to parse setup message for Merkle parameters"))?;
 
             Arc::new(P::setup(&setup_message))
         };
