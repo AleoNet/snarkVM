@@ -43,10 +43,6 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Pederse
 
         Self { bases }
     }
-
-    pub fn parameters(&self) -> Vec<Vec<Group<E>>> {
-        self.bases.clone()
-    }
 }
 
 #[cfg(test)]
@@ -67,7 +63,7 @@ mod tests {
             let circuit_hasher = Pedersen::<Circuit, { NUM_WINDOWS }, { WINDOW_SIZE }>::setup(MESSAGE);
 
             // Check for equivalency of bases.
-            native_hasher.parameters().iter().zip(circuit_hasher.parameters().iter()).for_each(
+            native_hasher.parameters().iter().zip(circuit_hasher.bases.iter()).for_each(
                 |(native_bases, circuit_bases)| {
                     native_bases.iter().zip(circuit_bases.iter()).for_each(|(native_base, circuit_base)| {
                         assert_eq!(native_base.to_affine(), circuit_base.eject_value());
