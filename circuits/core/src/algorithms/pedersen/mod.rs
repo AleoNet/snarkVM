@@ -90,7 +90,7 @@ mod tests {
     }
 
     #[test]
-    fn test_pedersen_setup_constant() {
+    fn test_setup_constant() {
         // Set the number of windows, and modulate the window size.
         check_setup::<1, WINDOW_SIZE_MULTIPLIER>(28, 0, 0, 0);
         check_setup::<1, { 2 * WINDOW_SIZE_MULTIPLIER }>(52, 0, 0, 0);
