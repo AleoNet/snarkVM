@@ -245,7 +245,14 @@ impl<P: Program> Function<P> {
         let mut outputs = Vec::with_capacity(self.outputs.borrow().len());
         for output in self.outputs.borrow().iter() {
             // Load the value from the output register.
-            let value = self.registers.load(output.register());
+            let register = output.register();
+            let value = self.registers.load(register);
+
+            // TODO (howardwu): When handling the TODO below, relax this to exclude checking the mode.
+            // Ensure the output value type matches the annotation.
+            if &value.annotation() != output.annotation() {
+                P::halt(format!("Output \'{register}\' has an incorrect annotation of {}", value.annotation()))
+            }
 
             // TODO (howardwu): Add encryption against the caller's address for all private literals,
             //  and inject the ciphertext as Mode::Public, along with a constraint enforcing equality.
@@ -276,7 +283,7 @@ impl<P: Program> Function<P> {
         }
 
         // Clear the register assignments.
-        self.registers.clear();
+        self.registers.clear_assignments();
 
         outputs
     }

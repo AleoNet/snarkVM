@@ -195,7 +195,7 @@ impl<P: Program> Registers<P> {
     /// Clears the registers of their assignments, preserving the register definitions.
     /// This allows a function to be re-executed without having to re-define the registers.
     #[inline]
-    pub fn clear(&mut self) {
+    pub fn clear_assignments(&mut self) {
         // Clear the assignments in each register.
         self.registers.borrow_mut().values_mut().for_each(|value| *value = None);
         // Reset the number of assigned registers.
