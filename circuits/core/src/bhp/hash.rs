@@ -16,6 +16,8 @@
 
 use super::*;
 
+use snarkvm_curves::{MontgomeryParameters, TwistedEdwardsParameters};
+
 impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHPCRH<E, NUM_WINDOWS, WINDOW_SIZE> {
     pub fn hash(&self, input: &[Boolean<E>]) -> Field<E> {
         self.hash_bits_inner(input).to_x_coordinate()
@@ -43,8 +45,11 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHPCRH<
         input
             .chunks(WINDOW_SIZE * BHP_CHUNK_SIZE)
             .zip(self.bases.iter())
-            .flat_map(|(bits, bases)| {
-                bits.chunks(BHP_CHUNK_SIZE).zip(bases).map(|(chunk_bits, base)| {
+            .map(|(bits, bases)| {
+                let mut x_sum = Field::zero();
+                let mut y_sum = Field::zero();
+
+                bits.chunks(BHP_CHUNK_SIZE).zip(bases).for_each(|(chunk_bits, base)| {
                     // One iteration is 6 constraints.
 
                     let mut x_bases = Vec::with_capacity(4);
@@ -104,11 +109,43 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHPCRH<
                         }); // 1 constraint
                     }
 
-                    let edwards_x = &montgomery_x / montgomery_y; // 2 constraints
-                    let edwards_y = (&montgomery_x - Field::one()) / (montgomery_x + Field::one()); // 2 constraints
+                    {
+                        let coeff_a = Field::constant(
+                            <E::AffineParameters as TwistedEdwardsParameters>::MontgomeryParameters::COEFF_A,
+                        );
+                        let coeff_b = Field::constant(
+                            <E::AffineParameters as TwistedEdwardsParameters>::MontgomeryParameters::COEFF_B,
+                        );
 
-                    Group::from_xy_coordinates(edwards_x, edwards_y) // 3 constraints
-                })
+                        let lambda = witness!(|montgomery_x, montgomery_y, x_sum, y_sum| {
+                            (montgomery_y - y_sum) / (montgomery_x - x_sum)
+                        });
+                        E::assert_eq(&lambda * (&montgomery_x - &x_sum), &montgomery_y - &y_sum);
+
+                        // Compute x'' = B*lambda^2 - A - x - x'
+                        let xprime = witness!(|lambda, montgomery_x, x_sum, coeff_a, coeff_b| {
+                            lambda.square() * coeff_b - coeff_a - x_sum - montgomery_x
+                        });
+
+                        let xprime_lc = &x_sum + &montgomery_x + &xprime + &coeff_a;
+
+                        // (lambda) * (lambda) = (A + x + x' + x'')
+                        let lambda_b = &lambda * &coeff_b;
+                        E::assert_eq(lambda_b * &lambda, xprime_lc);
+
+                        let yprime =
+                            witness!(|lambda, xprime, x_sum, y_sum| { -(y_sum + (lambda * (xprime - x_sum))) });
+
+                        E::assert_eq(lambda * (&x_sum - &xprime), &y_sum + &yprime);
+
+                        x_sum = xprime;
+                        y_sum = yprime;
+                    }
+                });
+
+                let edwards_x = &x_sum / y_sum; // 2 constraints
+                let edwards_y = (&x_sum - Field::one()) / (x_sum + Field::one()); // 2 constraints
+                Group::from_xy_coordinates(edwards_x, edwards_y) // 3 constraints
             })
             .fold(Group::zero(), |acc, group| acc + group)
     }
@@ -140,6 +177,7 @@ mod tests {
         let circuit = BHPCRH::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
         // Determine the number of inputs.
         let num_input_bits = NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE;
+        // let num_input_bits = 128*8;
 
         for i in 0..ITERATIONS {
             // Sample a random input.
@@ -171,6 +209,6 @@ mod tests {
 
     #[test]
     fn test_hash_private() {
-        check_hash::<32, 48>(Mode::Private, 44544, 0, 21501, 23037);
+        check_hash::<32, 48>(Mode::Private, 41600, 0, 12669, 12701);
     }
 }
