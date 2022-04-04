@@ -17,9 +17,7 @@
 mod hash;
 
 use snarkvm_algorithms::crypto_hash::hash_to_curve;
-use snarkvm_circuits_environment::Mode;
-use snarkvm_circuits_types::{Double, Environment, Group, Inject, Zero};
-use snarkvm_fields::PrimeField;
+use snarkvm_circuits_types::prelude::*;
 use snarkvm_utilities::BigInteger;
 
 pub const BHP_CHUNK_SIZE: usize = 3;

@@ -16,16 +16,12 @@
 
 use super::*;
 
-use snarkvm_circuits_types::{Boolean, Environment, Field, Group, Neg, Ternary};
-
 impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHPCRH<E, NUM_WINDOWS, WINDOW_SIZE> {
     pub fn hash(&self, input: &[Boolean<E>]) -> Field<E> {
         self.hash_bits_inner(input).to_x_coordinate()
     }
 
     fn hash_bits_inner(&self, input: &[Boolean<E>]) -> Group<E> {
-        let constant_false = Boolean::<E>::constant(false);
-
         // Ensure the input size is within the parameter size,
         if input.len() > NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE {
             E::halt("Incorrect input length")
@@ -35,7 +31,7 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHPCRH<
         let mut input = input.to_vec();
         if input.len() % BHP_CHUNK_SIZE != 0 {
             let padding = BHP_CHUNK_SIZE - (input.len() % BHP_CHUNK_SIZE);
-            input.extend_from_slice(&vec![constant_false; BHP_CHUNK_SIZE][..padding]);
+            input.extend_from_slice(&vec![Boolean::constant(false); BHP_CHUNK_SIZE][..padding]);
             assert_eq!(input.len() % BHP_CHUNK_SIZE, 0);
         }
 
@@ -44,38 +40,59 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHPCRH<
         //
         // Note: `.zip()` is used here (as opposed to `.zip_eq()`) as the input can be less than
         // `NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE` in length, which is the parameter size here.
-        let zero = Field::<E>::zero();
+        // let zero = Field::<E>::zero();
+        // input
+        //     .chunks(WINDOW_SIZE * BHP_CHUNK_SIZE)
+        //     .zip(self.bases.iter())
+        //     .flat_map(|(bits, bases)| {
+        //         bits.chunks(BHP_CHUNK_SIZE).zip(bases).map(|(chunk_bits, base)| {
+        //             let mut x_coeffs = Vec::with_capacity(4);
+        //             let mut y_coeffs = Vec::with_capacity(4);
+        //             let mut acc_power = base.clone();
+        //             for _ in 0..4 {
+        //                 x_coeffs.push(acc_power.to_x_coordinate());
+        //                 y_coeffs.push(acc_power.to_y_coordinate());
+        //                 acc_power += base;
+        //             }
+        //
+        //             let precomp = &chunk_bits[0] & &chunk_bits[1];
+        //             let mut x = Field::<E>::zero();
+        //             x += &x_coeffs[0];
+        //             x += Field::ternary(&chunk_bits[0], &(&x_coeffs[1] - &x_coeffs[0]), &zero);
+        //             x += Field::ternary(&chunk_bits[1], &(&x_coeffs[2] - &x_coeffs[0]), &zero);
+        //             x += Field::ternary(&precomp, &(&x_coeffs[3] - &x_coeffs[2] - &x_coeffs[1] + &x_coeffs[0]), &zero);
+        //
+        //             // // Three bit conditional neg lookup for Y
+        //             // let y = Field::ternary(
+        //             //     &chunk_bits[0],
+        //             //     &Field::ternary(&chunk_bits[1], &y_coeffs[3], &y_coeffs[1]),
+        //             //     &Field::ternary(&chunk_bits[1], &y_coeffs[2], &y_coeffs[0]),
+        //             // );
+        //             //
+        //             // let y = Field::ternary(&chunk_bits[2], &y.clone().neg(), &y);
+        //
+        //             Group::from_x_coordinate(x)
+        //         })
+        //     })
+        //     .fold(Group::zero(), |acc, x| acc + x)
+
         input
             .chunks(WINDOW_SIZE * BHP_CHUNK_SIZE)
-            .zip(self.bases.iter())
+            .zip(&self.bases)
             .flat_map(|(bits, bases)| {
                 bits.chunks(BHP_CHUNK_SIZE).zip(bases).map(|(chunk_bits, base)| {
-                    let mut x_coeffs = Vec::with_capacity(4);
-                    let mut y_coeffs = Vec::with_capacity(4);
-                    let mut acc_power = base.clone();
-                    for _ in 0..4 {
-                        x_coeffs.push(acc_power.to_x_coordinate());
-                        y_coeffs.push(acc_power.to_y_coordinate());
-                        acc_power += base;
+                    // base[(chunk_bits[0] as usize) | (chunk_bits[1] as usize) << 1 | (chunk_bits[2] as usize) << 2]
+                    let mut encoded = base.clone();
+                    if chunk_bits[0].eject_value() {
+                        encoded += base;
                     }
-
-                    let precomp = &chunk_bits[0] & &chunk_bits[1];
-                    let mut x = Field::<E>::zero();
-                    x += &x_coeffs[0];
-                    x += Field::ternary(&chunk_bits[0], &(&x_coeffs[1] - &x_coeffs[0]), &zero);
-                    x += Field::ternary(&chunk_bits[1], &(&x_coeffs[2] - &x_coeffs[0]), &zero);
-                    x += Field::ternary(&precomp, &(&x_coeffs[3] - &x_coeffs[2] - &x_coeffs[1] + &x_coeffs[0]), &zero);
-
-                    // Three bit conditional neg lookup for Y
-                    let y = Field::ternary(
-                        &chunk_bits[0],
-                        &Field::ternary(&chunk_bits[1], &y_coeffs[3], &y_coeffs[1]),
-                        &Field::ternary(&chunk_bits[1], &y_coeffs[2], &y_coeffs[0]),
-                    );
-
-                    let y = Field::ternary(&chunk_bits[2], &y.clone().neg(), &y);
-
-                    Group::from_xy_coordinates(x, y)
+                    if chunk_bits[1].eject_value() {
+                        encoded += &base.double();
+                    }
+                    if chunk_bits[2].eject_value() {
+                        encoded = -encoded;
+                    }
+                    encoded
                 })
             })
             .fold(Group::zero(), |acc, x| acc + x)
@@ -88,47 +105,50 @@ mod tests {
     use snarkvm_algorithms::{crh::BHPCRH as NativeBHP, CRH};
     use snarkvm_circuits_environment::{Circuit, Mode};
     use snarkvm_circuits_types::Eject;
-    use snarkvm_curves::edwards_bls12::EdwardsProjective;
-
+    use snarkvm_curves::AffineCurve;
     use snarkvm_utilities::{test_rng, ToBits, UniformRand};
 
     const ITERATIONS: usize = 10;
-    const MESSAGE: &str = "bhp_gadget_setup_test";
+    const MESSAGE: &str = "BHPCircuit0";
+    const WINDOW_SIZE_MULTIPLIER: usize = 8;
 
-    fn check_hash(mode: Mode) {
-        let rng = &mut test_rng();
-        let native_hasher = NativeBHP::<EdwardsProjective, 8, 32>::setup(MESSAGE);
-        let circuit_hasher = BHPCRH::<Circuit, 8, 32>::setup(MESSAGE);
+    type Projective = <<Circuit as Environment>::Affine as AffineCurve>::Projective;
+
+    fn check_hash<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(mode: Mode) {
+        // Initialize the BHP hash.
+        let native = NativeBHP::<Projective, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
+        let circuit = BHPCRH::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
+        // Determine the number of inputs.
+        let num_input_bits = NUM_WINDOWS * WINDOW_SIZE;
 
         for i in 0..ITERATIONS {
-            let bits = (0..1)
-                .map(|_| <Circuit as Environment>::BaseField::rand(rng))
-                .collect::<Vec<_>>()
-                .iter()
-                .flat_map(|el| el.to_bits_le())
-                .collect::<Vec<_>>();
-            let native_hash = native_hasher.hash(&bits).unwrap();
-            let circuit_input = bits.iter().map(|b| Boolean::<_>::new(mode, *b)).collect::<Vec<Boolean<_>>>();
+            // Sample a random input.
+            let input = (0..num_input_bits).map(|_| bool::rand(&mut test_rng())).collect::<Vec<bool>>();
+            // Compute the expected hash.
+            let expected = native.hash(&input).expect("Failed to hash native input");
+            // Prepare the circuit input.
+            let circuit_input: Vec<Boolean<_>> = Inject::new(mode, input);
 
             Circuit::scope(format!("BHP {mode} {i}"), || {
-                let circuit_hash = circuit_hasher.hash(&circuit_input).eject_value();
-                assert_eq!(native_hash, circuit_hash);
+                // Perform the hash operation.
+                let candidate = circuit.hash(&circuit_input);
+                assert_eq!(expected, candidate.eject_value());
             });
         }
     }
 
     #[test]
     fn test_hash_constant() {
-        check_hash(Mode::Constant);
+        check_hash::<8, 32>(Mode::Constant);
     }
 
     #[test]
     fn test_hash_public() {
-        check_hash(Mode::Public);
+        check_hash::<8, 32>(Mode::Public);
     }
 
     #[test]
     fn test_hash_private() {
-        check_hash(Mode::Private);
+        check_hash::<8, 32>(Mode::Private);
     }
 }
