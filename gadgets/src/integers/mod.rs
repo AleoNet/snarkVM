@@ -21,8 +21,5 @@ pub use alloc::*;
 pub mod eq;
 pub use eq::*;
 
-pub mod int;
-pub use int::*;
-
 pub mod uint;
 pub use uint::*;

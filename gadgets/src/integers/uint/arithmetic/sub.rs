@@ -50,4 +50,4 @@ macro_rules! sub_int_impl {
     )*)
 }
 
-sub_int_impl!(UInt8, UInt16, UInt32, UInt64, UInt128);
+sub_int_impl!(UInt8);
