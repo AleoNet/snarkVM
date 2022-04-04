@@ -19,8 +19,6 @@ use super::*;
 use snarkvm_algorithms::crypto_hash::hash_to_curve;
 use snarkvm_circuits_types::prelude::*;
 
-use std::borrow::Cow;
-
 pub struct PedersenCommitment<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
     pedersen_gadget: Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>,
     random_base: Vec<Group<E>>,
@@ -29,7 +27,8 @@ pub struct PedersenCommitment<E: Environment, const NUM_WINDOWS: usize, const WI
 impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     PedersenCommitment<E, NUM_WINDOWS, WINDOW_SIZE>
 {
-    fn setup(message: &str) -> Self {
+    /// Initializes a new instance of the Pedersen commitment gadget with the given setup message.
+    pub fn setup(message: &str) -> Self {
         let pedersen_gadget = Pedersen::setup(message);
 
         // Compute the random base
@@ -46,7 +45,9 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
         Self { pedersen_gadget, random_base }
     }
 
-    fn commit(&self, input: &[Boolean<E>], randomness: &[Boolean<E>]) -> Group<E> {
+    /// Returns the Pedersen commitment of the given input with the given randomness
+    /// as an affine group element.
+    pub fn commit(&self, input: &[Boolean<E>], randomness: &[Boolean<E>]) -> Group<E> {
         let hash = self.pedersen_gadget.hash_uncompressed(input);
 
         // Compute h^r
@@ -54,6 +55,6 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
             .iter()
             .zip_eq(&self.random_base)
             .map(|(bit, power)| Group::ternary(bit, &power, &Group::zero()))
-            .fold(Group::<E>::zero(), |acc, x| acc + x)
+            .fold(hash, |acc, x| acc + x)
     }
 }
