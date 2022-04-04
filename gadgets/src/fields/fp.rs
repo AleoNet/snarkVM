@@ -670,7 +670,7 @@ impl<F: PrimeField> ThreeBitCondNegLookupGadget<F> for AllocatedFp<F> {
         // the constraint, which makes it more efficient for Marlin.
         cs.enforce(
             || "Enforce lookup",
-            |_| b[2].lc(one, F::one()) + &LinearCombination::from((F::half(), one)),
+            |_| b[2].lc(one, F::one()) + &LinearCombination::from((-F::half(), one)),
             |_| -(y_lc.clone() + y_lc.clone()),
             |lc| result.get_variable() + lc,
         );
