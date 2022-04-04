@@ -16,6 +16,7 @@
 
 use super::*;
 
+use snarkvm_algorithms::crypto_hash::hash_to_curve;
 use snarkvm_circuits_types::prelude::*;
 
 use std::borrow::Cow;
@@ -28,6 +29,23 @@ pub struct PedersenCommitment<E: Environment, const NUM_WINDOWS: usize, const WI
 impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     PedersenCommitment<E, NUM_WINDOWS, WINDOW_SIZE>
 {
+    fn setup(message: &str) -> Self {
+        let pedersen_gadget = Pedersen::setup(message);
+
+        // Compute the random base
+        let (generator, _, _) = hash_to_curve(&format!("{message} for random base"));
+        let mut base = Group::constant(generator);
+
+        let num_scalar_bits = E::ScalarField::size_in_bits();
+        let mut random_base = Vec::with_capacity(num_scalar_bits);
+        for _ in 0..num_scalar_bits {
+            random_base.push(base.clone());
+            base = base.double();
+        }
+
+        Self { pedersen_gadget, random_base }
+    }
+
     fn commit(&self, input: &[Boolean<E>], randomness: &[Boolean<E>]) -> Group<E> {
         let hash = self.pedersen_gadget.hash_uncompressed(input);
 
