@@ -101,12 +101,3 @@ pub trait TypeName {
     ///
     fn type_name() -> &'static str;
 }
-
-// TODO: The `TYPE` generic parameter is only used to circumvent coherence rules.
-
-pub trait Operation<TYPE> {
-    type Input;
-    type Output;
-
-    fn invoke(input: Self::Input) -> Self::Output;
-}

@@ -42,17 +42,6 @@ impl<E: Environment, I: IntegerType> AddWrapped<Self> for Integer<E, I> {
     }
 }
 
-impl<E: Environment, I: IntegerType> Operation<Integer<E, I>>
-    for dyn AddWrapped<Integer<E, I>, Output = Integer<E, I>>
-{
-    type Input = (Integer<E, I>, Integer<E, I>);
-    type Output = Integer<E, I>;
-
-    fn invoke(input: Self::Input) -> Self::Output {
-        input.0.add_wrapped(&input.1)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

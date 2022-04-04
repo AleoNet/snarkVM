@@ -15,9 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 pub mod integers;
 
-pub mod macros;
-pub use macros::*;
-
+// TODO: Composition of metrics.
 /// A metric is a required value that can be measured for a circuit.
 #[derive(Clone, Debug)]
 pub enum Metric<V: PartialOrd> {
@@ -49,9 +47,18 @@ impl<V: PartialOrd> Metric<V> {
     }
 }
 
-/// Defines a set of metrics for a given operation.
-pub trait MetricForOperation {
+// TODO: This trait is used to make explicit the operation on which a metric is defined.
+//   There may be a use for this design in dispatching opcodes. If we do go down that route, do we
+//   then implement Metrics on opcodes?
+pub trait Operation {
     type Input;
+    type Output;
+
+    fn invoke(input: Self::Input) -> Self::Output;
+}
+
+/// Defines a metric for a given operation.
+pub trait MetricForOperation: Operation {
     type Metric;
 
     /// Returns the metric for the given input.
