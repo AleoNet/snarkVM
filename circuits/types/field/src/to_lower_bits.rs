@@ -39,7 +39,7 @@ impl<E: Environment> ToLowerBits for Field<E> {
         let mut accumulator = Field::zero();
         let mut coefficient = Field::one();
         for bit in &bits {
-            accumulator += Field::from(bit) * &coefficient;
+            accumulator += Field::from_boolean(bit) * &coefficient;
             coefficient = coefficient.double();
         }
 

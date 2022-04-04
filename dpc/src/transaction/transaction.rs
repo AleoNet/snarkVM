@@ -29,6 +29,7 @@ use crate::{
     VirtualMachine,
 };
 use snarkvm_utilities::{
+    error,
     has_duplicates,
     io::{Read, Result as IoResult, Write},
     FromBytes,
@@ -51,8 +52,10 @@ use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Seri
 pub struct Transaction<N: Network> {
     /// The ID of this transaction.
     transaction_id: N::TransactionID,
-    /// The ID of the inner circuit used to execute each transition.
-    inner_circuit_id: N::InnerCircuitID,
+    /// The ID of the input circuit used to execute each transition.
+    input_circuit_id: N::InputCircuitID,
+    /// The ID of the output circuit used to execute each transition.
+    output_circuit_id: N::OutputCircuitID,
     /// The ledger root used to prove inclusion of ledger-consumed records.
     ledger_root: N::LedgerRoot,
     /// The state transition.
@@ -83,13 +86,14 @@ impl<N: Network> Transaction<N> {
     /// Initializes an instance of `Transaction` from the given inputs.
     #[inline]
     pub fn from(
-        inner_circuit_id: N::InnerCircuitID,
+        input_circuit_id: N::InputCircuitID,
+        output_circuit_id: N::OutputCircuitID,
         ledger_root: N::LedgerRoot,
         transitions: Vec<Transition<N>>,
     ) -> Result<Self> {
         let transaction_id = Self::compute_transaction_id(&transitions)?;
 
-        let transaction = Self { transaction_id, inner_circuit_id, ledger_root, transitions };
+        let transaction = Self { transaction_id, input_circuit_id, output_circuit_id, ledger_root, transitions };
 
         match transaction.is_valid() {
             true => Ok(transaction),
@@ -116,7 +120,7 @@ impl<N: Network> Transaction<N> {
         }
 
         // Returns `false` if the number of serial numbers in the transaction is incorrect.
-        if self.serial_numbers().count() != num_transitions * N::NUM_INPUT_RECORDS {
+        if self.serial_numbers().count() > num_transitions * N::NUM_INPUTS as usize {
             eprintln!("Transaction contains incorrect number of serial numbers");
             return false;
         }
@@ -128,7 +132,7 @@ impl<N: Network> Transaction<N> {
         }
 
         // Returns `false` if the number of commitments in the transaction is incorrect.
-        if self.commitments().count() != num_transitions * N::NUM_OUTPUT_RECORDS {
+        if self.commitments().count() > num_transitions * N::NUM_OUTPUTS as usize {
             eprintln!("Transaction contains incorrect number of commitments");
             return false;
         }
@@ -140,7 +144,7 @@ impl<N: Network> Transaction<N> {
         }
 
         // Returns `false` if the number of record ciphertexts in the transaction is incorrect.
-        if self.ciphertexts().count() != num_transitions * N::NUM_OUTPUT_RECORDS {
+        if self.ciphertexts().count() > num_transitions * N::NUM_OUTPUTS as usize {
             eprintln!("Transaction contains incorrect number of record ciphertexts");
             return false;
         }
@@ -171,7 +175,7 @@ impl<N: Network> Transaction<N> {
         // Returns `false` if any transition is invalid.
         for transition in &self.transitions {
             // Returns `false` if the transition is invalid.
-            if !transition.verify(self.inner_circuit_id, self.ledger_root, transitions.root()) {
+            if !transition.verify(self.input_circuit_id, self.output_circuit_id, self.ledger_root, transitions.root()) {
                 eprintln!("Transaction contains an invalid transition");
                 return false;
             }
@@ -219,10 +223,16 @@ impl<N: Network> Transaction<N> {
         self.transaction_id
     }
 
-    /// Returns the inner circuit ID.
+    /// Returns the input circuit ID.
     #[inline]
-    pub fn inner_circuit_id(&self) -> N::InnerCircuitID {
-        self.inner_circuit_id
+    pub fn input_circuit_id(&self) -> N::InputCircuitID {
+        self.input_circuit_id
+    }
+
+    /// Returns the output circuit ID.
+    #[inline]
+    pub fn output_circuit_id(&self) -> N::OutputCircuitID {
+        self.output_circuit_id
     }
 
     /// Returns the ledger root used to execute the transitions.
@@ -329,7 +339,8 @@ impl<N: Network> Hash for Transaction<N> {
 impl<N: Network> FromBytes for Transaction<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let inner_circuit_id = FromBytes::read_le(&mut reader)?;
+        let input_circuit_id = FromBytes::read_le(&mut reader)?;
+        let output_circuit_id = FromBytes::read_le(&mut reader)?;
         let ledger_root = FromBytes::read_le(&mut reader)?;
 
         let num_transitions: u16 = FromBytes::read_le(&mut reader)?;
@@ -338,15 +349,23 @@ impl<N: Network> FromBytes for Transaction<N> {
             transitions.push(FromBytes::read_le(&mut reader)?);
         }
 
-        Ok(Self::from(inner_circuit_id, ledger_root, transitions).expect("Failed to deserialize a transaction"))
+        Self::from(input_circuit_id, output_circuit_id, ledger_root, transitions)
+            .map_err(|e| error(format!("Failed to deserialize a transaction: {e}")))
     }
 }
 
 impl<N: Network> ToBytes for Transaction<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.inner_circuit_id.write_le(&mut writer)?;
+        self.input_circuit_id.write_le(&mut writer)?;
+        self.output_circuit_id.write_le(&mut writer)?;
         self.ledger_root.write_le(&mut writer)?;
+
+        // Ensure the number of transitions is within bounds.
+        if self.transitions.len() > N::NUM_TRANSITIONS as usize {
+            return Err(error(format!("The number of transitions cannot exceed {}", N::NUM_TRANSITIONS)));
+        }
+
         (self.transitions.len() as u16).write_le(&mut writer)?;
         self.transitions.write_le(&mut writer)
     }
@@ -370,9 +389,10 @@ impl<N: Network> Serialize for Transaction<N> {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => {
-                let mut transaction = serializer.serialize_struct("Transaction", 4)?;
+                let mut transaction = serializer.serialize_struct("Transaction", 5)?;
                 transaction.serialize_field("transaction_id", &self.transaction_id)?;
-                transaction.serialize_field("inner_circuit_id", &self.inner_circuit_id)?;
+                transaction.serialize_field("input_circuit_id", &self.input_circuit_id)?;
+                transaction.serialize_field("output_circuit_id", &self.output_circuit_id)?;
                 transaction.serialize_field("ledger_root", &self.ledger_root)?;
                 transaction.serialize_field("transitions", &self.transitions)?;
                 transaction.end()
@@ -392,7 +412,8 @@ impl<'de, N: Network> Deserialize<'de> for Transaction<N> {
 
                 // Recover the transaction.
                 let transaction = Self::from(
-                    serde_json::from_value(transaction["inner_circuit_id"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(transaction["input_circuit_id"].clone()).map_err(de::Error::custom)?,
+                    serde_json::from_value(transaction["output_circuit_id"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(transaction["ledger_root"].clone()).map_err(de::Error::custom)?,
                     serde_json::from_value(transaction["transitions"].clone()).map_err(de::Error::custom)?,
                 )
@@ -452,7 +473,7 @@ mod tests {
             Transaction::new_coinbase(account.address(), AleoAmount(1234), true, rng).unwrap();
 
         let public_records = transaction.to_records().collect::<Vec<_>>();
-        assert_eq!(public_records.len(), 2);
+        assert_eq!(public_records.len(), 1);
         // TODO (howardwu): Reenable this after fixing how payloads are handled.
         // assert_eq!(public_records.len(), 1); // Excludes dummy records upon decryption.
 
@@ -477,7 +498,7 @@ mod tests {
         // Serialize
         let expected_string = expected_transaction.to_string();
         let candidate_string = serde_json::to_string(&expected_transaction).unwrap();
-        assert_eq!(2927, candidate_string.len(), "Update me if serialization has changed");
+        assert_eq!(3019, candidate_string.len(), "Update me if serialization has changed");
         assert_eq!(expected_string, candidate_string);
 
         // Deserialize
@@ -497,7 +518,7 @@ mod tests {
         // Serialize
         let expected_bytes = expected_transaction.to_bytes_le().unwrap();
         let candidate_bytes = bincode::serialize(&expected_transaction).unwrap();
-        assert_eq!(1358, expected_bytes.len(), "Update me if serialization has changed");
+        assert_eq!(1511, expected_bytes.len(), "Update me if serialization has changed");
         // TODO (howardwu): Serialization - Handle the inconsistency between ToBytes and Serialize (off by a length encoding).
         assert_eq!(&expected_bytes[..], &candidate_bytes[8..]);
 

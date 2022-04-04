@@ -21,16 +21,16 @@ use snarkvm_curves::{
 };
 
 use core::{cell::RefCell, fmt};
-use once_cell::unsync::Lazy;
+use std::rc::Rc;
 
 thread_local! {
-    pub(super) static CIRCUIT: Lazy<RefCell<R1CS<Fq>>> = Lazy::new(|| RefCell::new(R1CS::<Fq>::new()));
-    pub(super) static IN_WITNESS: Lazy<RefCell<bool>> = Lazy::new(|| RefCell::new(false));
-    pub(super) static ZERO: Lazy<LinearCombination<Fq>> = Lazy::new(LinearCombination::zero);
-    pub(super) static ONE: Lazy<LinearCombination<Fq>> = Lazy::new(LinearCombination::one);
+    pub(super) static CIRCUIT: Rc<RefCell<R1CS<Fq>>> = Rc::new(RefCell::new(R1CS::<Fq>::new()));
+    pub(super) static IN_WITNESS: Rc<RefCell<bool>> = Rc::new(RefCell::new(false));
+    pub(super) static ZERO: LinearCombination<Fq> = LinearCombination::zero();
+    pub(super) static ONE: LinearCombination<Fq> = LinearCombination::one();
 }
 
-#[derive(Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
 pub struct Circuit;
 
 impl Environment for Circuit {
@@ -44,12 +44,12 @@ impl Environment for Circuit {
 
     /// Returns the `zero` constant.
     fn zero() -> LinearCombination<Self::BaseField> {
-        ZERO.with(|zero| (**zero).clone())
+        ZERO.with(|zero| zero.clone())
     }
 
     /// Returns the `one` constant.
     fn one() -> LinearCombination<Self::BaseField> {
-        ONE.with(|one| (**one).clone())
+        ONE.with(|one| one.clone())
     }
 
     /// Returns a new variable of the given mode and value.

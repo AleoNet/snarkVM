@@ -17,6 +17,7 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
+pub mod add;
 pub mod compare;
 pub mod equal;
 pub mod from_bits;
@@ -37,19 +38,16 @@ use snarkvm_utilities::{FromBits as FBits, ToBits as TBits};
 
 #[derive(Clone)]
 pub struct Scalar<E: Environment> {
+    /// The little-endian bit representation of the scalar.
     bits_le: Vec<Boolean<E>>,
 }
 
-impl<E: Environment> ScalarTrait<Boolean<E>> for Scalar<E> {}
-
-impl<E: Environment> DataType<Boolean<E>> for Scalar<E> {}
+impl<E: Environment> ScalarTrait for Scalar<E> {}
 
 impl<E: Environment> Inject for Scalar<E> {
     type Primitive = E::ScalarField;
 
-    ///
     /// Initializes a new instance of a scalar field from a primitive scalar field value.
-    ///
     fn new(mode: Mode, value: Self::Primitive) -> Self {
         Self { bits_le: Inject::new(mode, value.to_bits_le()) }
     }
@@ -96,12 +94,20 @@ impl<E: Environment> Parser for Scalar<E> {
     /// Parses a string into a scalar field circuit.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
+        // Parse the optional negative sign '-' from the string.
+        let (string, negation) = map(opt(tag("-")), |neg: Option<&str>| neg.is_some())(string)?;
         // Parse the digits from the string.
         let (string, primitive) = recognize(many1(terminated(one_of("0123456789"), many0(char('_')))))(string)?;
         // Parse the value from the string.
-        let (string, value) = map_res(tag(Self::type_name()), |_| primitive.replace('_', "").parse())(string)?;
+        let (string, value): (&str, E::ScalarField) =
+            map_res(tag(Self::type_name()), |_| primitive.replace('_', "").parse())(string)?;
         // Parse the mode from the string.
         let (string, mode) = opt(pair(tag("."), Mode::parse))(string)?;
+        // Negate the value if the negative sign was present.
+        let value = match negation {
+            true => -value,
+            false => value,
+        };
 
         match mode {
             Some((_, mode)) => Ok((string, Scalar::new(mode, value))),

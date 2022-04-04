@@ -14,54 +14,22 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod argument;
-pub use argument::*;
+pub(super) mod annotation;
+pub(super) use annotation::*;
 
-pub mod operand;
-pub use operand::*;
+pub mod identifier;
+pub use identifier::*;
 
-pub mod register;
-pub use register::*;
+pub(super) mod literal_type;
+pub(super) use literal_type::*;
 
-pub mod variable_length;
-pub use variable_length::*;
+pub(super) mod register;
+pub(super) use register::*;
 
-use crate::Memory;
-use snarkvm_circuits::ParserResult;
+pub(super) mod sanitizer;
+pub(super) use sanitizer::*;
 
-use core::fmt::Display;
+pub mod value;
+pub use value::*;
 
-// pub trait Operation: Parser + Into<Instruction<Self::Memory>> {
-pub trait Operation: Display {
-    type Memory: Memory;
-
-    ///
-    /// Returns the opcode of the instruction.
-    ///
-    fn opcode() -> &'static str;
-
-    ///
-    /// Parses a string literal into an object.
-    ///
-    fn parse(string: &str, memory: Self::Memory) -> ParserResult<Self>
-    where
-        Self: Sized;
-
-    ///
-    /// Evaluates the instruction in-place.
-    ///
-    fn evaluate(&self, memory: &Self::Memory);
-
-    ///
-    /// Returns an object from a string literal.
-    ///
-    fn from_str(string: &str, memory: &Self::Memory) -> Self
-    where
-        Self: Sized,
-    {
-        match Self::parse(string, memory.clone()) {
-            Ok((_, circuit)) => circuit,
-            Err(error) => Self::Memory::halt(format!("Failed to parse: {}", error)),
-        }
-    }
-}
+pub(super) mod variable_length;

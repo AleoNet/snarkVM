@@ -376,7 +376,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> SignatureGadget
         &self,
         mut cs: CS,
         public_key: &Self::PublicKeyGadget,
-        message: &[UInt8],
+        message: &[Boolean],
         signature: &Self::SignatureGadget,
     ) -> Result<Boolean, SynthesisError> {
         // Prepare the zero element in affine form for use.
@@ -397,7 +397,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> SignatureGadget
         let g_s = {
             let mut g_s = zero_affine.clone();
             for (i, (base, bit)) in self.signature.parameters().iter().zip_eq(s).enumerate() {
-                let added = g_s.add_constant(cs.ns(|| format!("add_g_s_{}", i)), &base.into_affine())?;
+                let added = g_s.add_constant(cs.ns(|| format!("add_g_s_{}", i)), &base.to_affine())?;
 
                 g_s = TEAffineGadget::<TE, F>::conditionally_select(
                     cs.ns(|| format!("cond_select_g_s_{}", i)),
@@ -486,7 +486,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> SignatureGadget
             let g_sk_prf = {
                 let mut g_sk_prf = zero_affine;
                 for (i, (base, bit)) in self.signature.parameters().iter().zip_eq(sk_prf).enumerate() {
-                    let added = g_sk_prf.add_constant(cs.ns(|| format!("add_g_sk_prf_{}", i)), &base.into_affine())?;
+                    let added = g_sk_prf.add_constant(cs.ns(|| format!("add_g_sk_prf_{}", i)), &base.to_affine())?;
 
                     g_sk_prf = TEAffineGadget::<TE, F>::conditionally_select(
                         cs.ns(|| format!("cond_select_g_sk_prf_{}", i)),

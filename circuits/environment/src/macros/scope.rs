@@ -23,7 +23,7 @@ macro_rules! scope {
 
 #[macro_export]
 macro_rules! print_scope {
-    () => {
+    () => {{
         println!(
             "Circuit::scope(Constants: {:?}, Public: {:?}, Private: {:?}, Constraints: {:?})\n",
             Circuit::num_constants_in_scope(),
@@ -31,17 +31,17 @@ macro_rules! print_scope {
             Circuit::num_private_in_scope(),
             Circuit::num_constraints_in_scope()
         );
-    };
+    }};
 }
 
 #[macro_export]
 macro_rules! assert_scope {
-    () => {
+    () => {{
         $crate::print_scope!();
 
         assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
-    };
-    ($num_constants:expr, $num_public:expr, $num_private:expr, $num_constraints:expr) => {
+    }};
+    ($num_constants:expr, $num_public:expr, $num_private:expr, $num_constraints:expr) => {{
         $crate::print_scope!();
 
         assert_eq!($num_constants, Circuit::num_constants_in_scope(), "(num_constants)");
@@ -49,8 +49,8 @@ macro_rules! assert_scope {
         assert_eq!($num_private, Circuit::num_private_in_scope(), "(num_private)");
         assert_eq!($num_constraints, Circuit::num_constraints_in_scope(), "(num_constraints)");
         assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
-    };
-    ($case:expr, $num_constants:expr, $num_public:expr, $num_private:expr, $num_constraints:expr) => {
+    }};
+    ($case:expr, $num_constants:expr, $num_public:expr, $num_private:expr, $num_constraints:expr) => {{
         $crate::print_scope!();
 
         assert_eq!($num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", $case);
@@ -58,17 +58,17 @@ macro_rules! assert_scope {
         assert_eq!($num_private, Circuit::num_private_in_scope(), "{} (num_private)", $case);
         assert_eq!($num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", $case);
         assert!(Circuit::is_satisfied_in_scope(), "{} (is_satisfied_in_scope)", $case);
-    };
+    }};
 }
 
 #[macro_export]
 macro_rules! assert_scope_fails {
-    () => {
+    () => {{
         $crate::print_scope!();
 
         assert!(!Circuit::is_satisfied_in_scope(), "(!is_satisfied_in_scope)");
-    };
-    ($num_constants:expr, $num_public:expr, $num_private:expr, $num_constraints:expr) => {
+    }};
+    ($num_constants:expr, $num_public:expr, $num_private:expr, $num_constraints:expr) => {{
         $crate::print_scope!();
 
         assert_eq!($num_constants, Circuit::num_constants_in_scope(), "(num_constants)");
@@ -76,8 +76,8 @@ macro_rules! assert_scope_fails {
         assert_eq!($num_private, Circuit::num_private_in_scope(), "(num_private)");
         assert_eq!($num_constraints, Circuit::num_constraints_in_scope(), "(num_constraints)");
         assert!(!Circuit::is_satisfied_in_scope(), "(!is_satisfied_in_scope)");
-    };
-    ($case:expr, $num_constants:expr, $num_public:expr, $num_private:expr, $num_constraints:expr) => {
+    }};
+    ($case:expr, $num_constants:expr, $num_public:expr, $num_private:expr, $num_constraints:expr) => {{
         $crate::print_scope!();
 
         assert_eq!($num_constants, Circuit::num_constants_in_scope(), "{} (num_constants)", $case);
@@ -85,5 +85,5 @@ macro_rules! assert_scope_fails {
         assert_eq!($num_private, Circuit::num_private_in_scope(), "{} (num_private)", $case);
         assert_eq!($num_constraints, Circuit::num_constraints_in_scope(), "{} (num_constraints)", $case);
         assert!(!Circuit::is_satisfied_in_scope(), "{} (!is_satisfied_in_scope)", $case);
-    };
+    }};
 }

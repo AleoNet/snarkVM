@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_dpc::{testnet2::Testnet2, Account, Address, PrivateKey, ViewKey};
+use snarkvm_utilities::ToBits;
 
 use core::str::FromStr;
 use wasm_bindgen_test::*;
@@ -45,12 +46,12 @@ fn test_account_sign() {
         let account = Account::<Testnet2>::new(rng);
 
         // Sign a message with the account private key.
-        let result = account.private_key().sign(b"hello world!", rng);
+        let result = account.private_key().sign(&b"hello world!".to_bits_le(), rng);
         assert!(result.is_ok(), "Failed to generate a signature");
 
         // Verify the signed message.
         let signature = result.unwrap();
-        let result = account.address().verify_signature(b"hello world!", &signature);
+        let result = account.address().verify_signature(&b"hello world!".to_bits_le(), &signature);
         assert!(result.is_ok(), "Failed to execute signature verification");
         assert!(result.unwrap(), "Signature is invalid");
     }

@@ -23,6 +23,7 @@ pub mod div;
 pub mod double;
 pub mod equal;
 pub mod from_bits;
+pub mod from_boolean;
 pub mod inv;
 pub mod mul;
 pub mod neg;
@@ -52,9 +53,7 @@ pub struct Field<E: Environment> {
     bits_le: OnceCell<Vec<Boolean<E>>>,
 }
 
-impl<E: Environment> FieldTrait<Boolean<E>> for Field<E> {}
-
-impl<E: Environment> DataType<Boolean<E>> for Field<E> {}
+impl<E: Environment> FieldTrait for Field<E> {}
 
 impl<E: Environment> Inject for Field<E> {
     type Primitive = E::BaseField;
@@ -64,15 +63,6 @@ impl<E: Environment> Inject for Field<E> {
     ///
     fn new(mode: Mode, value: Self::Primitive) -> Self {
         Self { linear_combination: E::new_variable(mode, value).into(), bits_le: Default::default() }
-    }
-}
-
-impl<E: Environment> Field<E> {
-    ///
-    /// Initializes a new instance of a base field from a boolean.
-    ///
-    pub fn from(boolean: &Boolean<E>) -> Self {
-        (&**boolean).into()
     }
 }
 
@@ -100,12 +90,20 @@ impl<E: Environment> Parser for Field<E> {
     /// Parses a string into a base field circuit.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
+        // Parse the optional negative sign '-' from the string.
+        let (string, negation) = map(opt(tag("-")), |neg: Option<&str>| neg.is_some())(string)?;
         // Parse the digits from the string.
         let (string, primitive) = recognize(many1(terminated(one_of("0123456789"), many0(char('_')))))(string)?;
         // Parse the value from the string.
-        let (string, value) = map_res(tag(Self::type_name()), |_| primitive.replace('_', "").parse())(string)?;
+        let (string, value): (&str, E::BaseField) =
+            map_res(tag(Self::type_name()), |_| primitive.replace('_', "").parse())(string)?;
         // Parse the mode from the string.
         let (string, mode) = opt(pair(tag("."), Mode::parse))(string)?;
+        // Negate the value if the negative sign was present.
+        let value = match negation {
+            true => -value,
+            false => value,
+        };
 
         match mode {
             Some((_, mode)) => Ok((string, Field::new(mode, value))),

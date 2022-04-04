@@ -31,7 +31,6 @@ use crate::{
 use snarkvm_utilities::ops::Neg;
 
 /// Conversion of field elements by converting them to boolean sequences
-/// Used by Groth16 and Gm17
 #[derive(Clone)]
 pub struct BooleanInputGadget<F: PrimeField, CF: PrimeField> {
     pub val: Vec<Vec<Boolean>>,

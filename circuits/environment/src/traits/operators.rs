@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{BooleanTrait, FieldTrait};
+use crate::BooleanTrait;
 
 /// Trait for equality comparisons.
 pub trait Equal<Rhs: ?Sized = Self> {
@@ -296,78 +296,4 @@ pub trait MSB {
 
     /// Returns the MSB of the value.
     fn msb(&self) -> &Self::Boolean;
-}
-
-/// Unary operator for instantiating from bits.
-pub trait FromBits {
-    type Boolean: BooleanTrait;
-
-    fn from_bits_le(bits_le: &[Self::Boolean]) -> Self
-    where
-        Self: Sized;
-
-    fn from_bits_be(bits_be: &[Self::Boolean]) -> Self
-    where
-        Self: Sized;
-}
-
-/// Unary operator for converting to bits.
-pub trait ToBits {
-    type Boolean: BooleanTrait;
-
-    fn to_bits_le(&self) -> Vec<Self::Boolean>;
-
-    fn to_bits_be(&self) -> Vec<Self::Boolean>;
-}
-
-/// Unary operator for converting to `k` number of bits.
-pub trait ToLowerBits {
-    type Boolean: BooleanTrait;
-
-    ///
-    /// Outputs the lower `k` bits of an `n`-bit element in little-endian representation.
-    /// Enforces that the upper `n - k` bits are zero.
-    ///
-    fn to_lower_bits_le(&self, k: usize) -> Vec<Self::Boolean>;
-
-    ///
-    /// Outputs the lower `k` bits of an `n`-bit element in big-endian representation.
-    /// Enforces that the upper `n - k` bits are zero.
-    ///
-    fn to_lower_bits_be(&self, k: usize) -> Vec<Self::Boolean>;
-}
-
-/// Unary operator for converting to `k` number of bits.
-pub trait ToUpperBits {
-    type Boolean: BooleanTrait;
-
-    ///
-    /// Outputs the upper `k` bits of an `n`-bit element in little-endian representation.
-    /// Enforces that the lower `n - k` bits are zero.
-    ///
-    fn to_upper_bits_le(&self, k: usize) -> Vec<Self::Boolean>;
-
-    ///
-    /// Outputs the upper `k` bits of an `n`-bit element in big-endian representation.
-    /// Enforces that the lower `n - k` bits are zero.
-    ///
-    fn to_upper_bits_be(&self, k: usize) -> Vec<Self::Boolean>;
-}
-
-/// Unary operator for converting to a base field.
-pub trait ToField {
-    type Boolean: BooleanTrait;
-    type Field: FieldTrait<Self::Boolean>;
-
-    /// Casts a circuit into a base field.
-    fn to_field(&self) -> Self::Field;
-}
-
-/// Unary operator for converting to a list of base fields.
-pub trait ToFields {
-    type Boolean: BooleanTrait;
-    type Field: FieldTrait<Self::Boolean>;
-
-    /// Casts a circuit into a list of base fields.
-    fn to_fields(&self) -> Vec<Self::Field>;
 }

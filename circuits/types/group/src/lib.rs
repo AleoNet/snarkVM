@@ -21,11 +21,15 @@ pub mod add;
 pub mod double;
 pub mod equal;
 pub mod from_bits;
+pub mod from_x_coordinate;
+pub mod from_xy_coordinates;
 pub mod mul;
 pub mod neg;
 pub mod sub;
 pub mod ternary;
 pub mod to_bits;
+pub mod to_x_coordinate;
+pub mod to_y_coordinate;
 pub mod zero;
 
 #[cfg(test)]
@@ -43,9 +47,7 @@ pub struct Group<E: Environment> {
     y: Field<E>,
 }
 
-impl<E: Environment> GroupTrait<Boolean<E>, Scalar<E>> for Group<E> {}
-
-impl<E: Environment> DataType<Boolean<E>> for Group<E> {}
+impl<E: Environment> GroupTrait<Scalar<E>> for Group<E> {}
 
 impl<E: Environment> Inject for Group<E> {
     type Primitive = E::Affine;
@@ -63,51 +65,7 @@ impl<E: Environment> Inject for Group<E> {
         let x = Field::new(mode, value.to_x_coordinate());
         let y = Field::new(mode, value.to_y_coordinate());
 
-        Self::from(x, y)
-    }
-}
-
-impl<E: Environment> Group<E> {
-    ///
-    /// Initializes a new affine group element from a mode and x-coordinate circuit field element.
-    ///
-    /// For safety, the resulting point is always enforced to be on the curve with constraints.
-    /// regardless of whether the y-coordinate was recovered.
-    ///
-    pub fn from_x_coordinate(mode: Mode, x: Field<E>) -> Self {
-        // Derive the y-coordinate.
-        let y = Field::new(mode, E::affine_from_x_coordinate(x.eject_value()).to_y_coordinate());
-
-        Self::from(x, y)
-    }
-
-    ///
-    /// For safety, the resulting point is always enforced to be on the curve with constraints.
-    /// regardless of whether the y-coordinate was recovered.
-    ///
-    pub fn from(x: Field<E>, y: Field<E>) -> Self {
-        //
-        // Check the point is on the curve.
-        //
-        // Ensure ax^2 + y^2 = 1 + dx^2y^2
-        // by checking that y^2 * (dx^2 - 1) = (ax^2 - 1)
-        //
-        {
-            let a = Field::constant(E::AffineParameters::COEFF_A);
-            let d = Field::constant(E::AffineParameters::COEFF_D);
-
-            let x2 = x.square();
-            let y2 = y.square();
-
-            let first = y2;
-            let second = (d * &x2) - &Field::one();
-            let third = (a * x2) - Field::one();
-
-            // Ensure y^2 * (dx^2 - 1) = (ax^2 - 1).
-            E::enforce(|| (first, second, third));
-        }
-
-        Self { x, y }
+        Self::from_xy_coordinates(x, y)
     }
 }
 
@@ -137,16 +95,23 @@ impl<E: Environment> Parser for Group<E> {
     /// Parses a string into an affine group circuit.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
+        // Parse the optional negative sign '-' from the string.
+        let (string, negation) = map(opt(tag("-")), |neg: Option<&str>| neg.is_some())(string)?;
         // Parse the digits from the string.
         let (string, primitive) = recognize(many1(terminated(one_of("0123456789"), many0(char('_')))))(string)?;
         // Parse the x-coordinate from the string.
-        let (string, x_coordinate) = map_res(tag(Self::type_name()), |_| primitive.replace('_', "").parse())(string)?;
+        let (string, x_coordinate): (&str, E::BaseField) =
+            map_res(tag(Self::type_name()), |_| primitive.replace('_', "").parse())(string)?;
         // Parse the mode from the string.
         let (string, mode) = opt(pair(tag("."), Mode::parse))(string)?;
-
+        // Recover and negate the group element if the negative sign was present.
+        let group = match negation {
+            true => -E::affine_from_x_coordinate(x_coordinate),
+            false => E::affine_from_x_coordinate(x_coordinate),
+        };
         match mode {
-            Some((_, mode)) => Ok((string, Group::new(mode, E::affine_from_x_coordinate(x_coordinate)))),
-            None => Ok((string, Group::new(Mode::Constant, E::affine_from_x_coordinate(x_coordinate)))),
+            Some((_, mode)) => Ok((string, Group::new(mode, group))),
+            None => Ok((string, Group::new(Mode::Constant, group))),
         }
     }
 }
@@ -225,59 +190,6 @@ mod tests {
                 let affine = Group::<Circuit>::new(Mode::Private, point);
                 assert_eq!(point, affine.eject_value());
                 assert_scope!(2, 0, 4, 3);
-            });
-        }
-    }
-
-    #[test]
-    fn test_from_x_coordinate() {
-        // Constant variables
-        for i in 0..ITERATIONS {
-            // Sample a random element.
-            let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-
-            // Verify the recovery method is behaving correctly.
-            let recovered = Circuit::affine_from_x_coordinate(point.to_x_coordinate());
-            assert_eq!(point.to_x_coordinate(), recovered.to_x_coordinate());
-            assert_eq!(point.to_y_coordinate(), recovered.to_y_coordinate());
-
-            // Inject the x-coordinate.
-            let x_coordinate = Field::new(Mode::Constant, point.to_x_coordinate());
-
-            Circuit::scope(&format!("Constant {}", i), || {
-                let affine = Group::<Circuit>::from_x_coordinate(Mode::Constant, x_coordinate);
-                assert_eq!(point, affine.eject_value());
-                assert_scope!(3, 0, 0, 0);
-            });
-        }
-
-        // Public variables
-        for i in 0..ITERATIONS {
-            // Sample a random element.
-            let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-
-            // Inject the x-coordinate.
-            let x_coordinate = Field::new(Mode::Public, point.to_x_coordinate());
-
-            Circuit::scope(&format!("Public {}", i), || {
-                let affine = Group::<Circuit>::from_x_coordinate(Mode::Public, x_coordinate);
-                assert_eq!(point, affine.eject_value());
-                assert_scope!(2, 1, 2, 3);
-            });
-        }
-
-        // Private variables
-        for i in 0..ITERATIONS {
-            // Sample a random element.
-            let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-
-            // Inject the x-coordinate.
-            let x_coordinate = Field::new(Mode::Private, point.to_x_coordinate());
-
-            Circuit::scope(&format!("Private {}", i), || {
-                let affine = Group::<Circuit>::from_x_coordinate(Mode::Private, x_coordinate);
-                assert_eq!(point, affine.eject_value());
-                assert_scope!(2, 0, 3, 3);
             });
         }
     }

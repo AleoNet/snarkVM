@@ -43,8 +43,6 @@ pub struct Boolean<E: Environment>(LinearCombination<E::BaseField>);
 
 impl<E: Environment> BooleanTrait for Boolean<E> {}
 
-impl<E: Environment> DataType<Boolean<E>> for Boolean<E> {}
-
 impl<E: Environment> Inject for Boolean<E> {
     type Primitive = bool;
 

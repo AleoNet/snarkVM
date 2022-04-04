@@ -33,9 +33,6 @@ use snarkvm_r1cs::{errors::SynthesisError, Assignment, ConstraintSystem, LinearC
 use core::fmt::Debug;
 
 uint_impl!(UInt8, u8, 8);
-uint_impl!(UInt16, u16, 16);
-uint_impl!(UInt32, u32, 32);
-uint_impl!(UInt64, u64, 64);
 
 pub trait UInt: Integer {
     /// Returns the inverse `UInt`

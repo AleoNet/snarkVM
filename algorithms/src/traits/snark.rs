@@ -23,8 +23,9 @@ use snarkvm_r1cs::ConstraintSynthesizer;
 use std::{fmt::Debug, sync::atomic::AtomicBool};
 
 /// Defines a trait that describes preparing from an unprepared version to a prepare version.
-pub trait Prepare<T> {
-    fn prepare(&self) -> T;
+pub trait Prepare {
+    type Prepared;
+    fn prepare(&self) -> Self::Prepared;
 }
 
 /// An abstraction layer to enable a circuit-specific SRS or universal SRS.
@@ -34,11 +35,10 @@ pub enum SRS<'a, R: Rng + CryptoRng, T> {
     Universal(&'a T),
 }
 
-pub trait SNARK: Clone + Debug {
+pub trait SNARK {
     type ScalarField: Clone + PrimeField;
     type BaseField: Clone + PrimeField;
 
-    type PreparedVerifyingKey: Clone;
     type Proof: Clone + Debug + ToBytes + FromBytes + PartialEq + Eq + Send + Sync;
     type ProvingKey: Clone + ToBytes + FromBytes + Send + Sync;
 
@@ -52,8 +52,8 @@ pub trait SNARK: Clone + Debug {
         + Sync
         + ToBytes
         + FromBytes
-        + Prepare<Self::PreparedVerifyingKey>
-        + From<Self::PreparedVerifyingKey>
+        + Prepare
+        + for<'a> From<&'a Self::ProvingKey>
         + From<Self::ProvingKey>
         + ToConstraintField<Self::BaseField>
         + ToMinimalBits;
@@ -86,7 +86,7 @@ pub trait SNARK: Clone + Debug {
     ) -> Result<Self::Proof, SNARKError>;
 
     fn verify_prepared(
-        prepared_verifying_key: &Self::PreparedVerifyingKey,
+        prepared_verifying_key: &<Self::VerifyingKey as Prepare>::Prepared,
         input: &Self::VerifierInput,
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError>;

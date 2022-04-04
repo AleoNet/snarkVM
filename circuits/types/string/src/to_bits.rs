@@ -71,7 +71,7 @@ mod tests {
             let expected_num_bytes = expected.len();
             assert!(expected_num_bytes <= Circuit::NUM_STRING_BYTES as usize);
 
-            let candidate = StringType::<Circuit>::new(mode, &expected);
+            let candidate = StringType::<Circuit>::new(mode, expected.clone());
 
             Circuit::scope(&format!("{} {}", mode, i), || {
                 let candidate = candidate.to_bits_le();
@@ -102,7 +102,7 @@ mod tests {
             let expected_num_bytes = expected.len();
             assert!(expected_num_bytes <= Circuit::NUM_STRING_BYTES as usize);
 
-            let candidate = StringType::<Circuit>::new(mode, &expected);
+            let candidate = StringType::<Circuit>::new(mode, expected.clone());
 
             Circuit::scope(&format!("{} {}", mode, i), || {
                 let candidate = candidate.to_bits_be();
