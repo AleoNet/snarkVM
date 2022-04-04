@@ -24,19 +24,21 @@ impl<E: Environment> Add<Field<E>> for Field<E> {
     }
 }
 
+impl<E: Environment> Add<&Field<E>> for Field<E> {
+    type Output = Field<E>;
+
+    fn add(self, other: &Field<E>) -> Self::Output {
+        let mut result = self;
+        result += other;
+        result
+    }
+}
+
 impl<E: Environment> Add<Field<E>> for &Field<E> {
     type Output = Field<E>;
 
     fn add(self, other: Field<E>) -> Self::Output {
         self + &other
-    }
-}
-
-impl<E: Environment> Add<&Field<E>> for Field<E> {
-    type Output = Field<E>;
-
-    fn add(self, other: &Field<E>) -> Self::Output {
-        &self + other
     }
 }
 

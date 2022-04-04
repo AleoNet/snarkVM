@@ -669,16 +669,9 @@ impl<F: PrimeField> ThreeBitCondNegLookupGadget<F> for AllocatedFp<F> {
         // * b[2] == 1 -> result =  1/2 * -2 * y_lc = -y_lc
         // We take this approach because it reduces the number of non-zero entries in
         // the constraint, which makes it more efficient for Marlin.
-
-        // Compute 1/2 `(p+1)/2` as `1/2`.
-        // This is cheaper than `P::BaseField::one().double().inverse()`
-        let mut two_inv = F::Parameters::MODULUS;
-        two_inv.add_nocarry(&1u64.into());
-        two_inv.div2();
-        let neg_two_inv = -F::from_repr(two_inv).unwrap();
         cs.enforce(
             || "Enforce lookup",
-            |_| b[2].lc(one, F::one()) + &LinearCombination::from((neg_two_inv, one)),
+            |_| b[2].lc(one, F::one()) + &LinearCombination::from((F::half(), one)),
             |_| -(y_lc.clone() + y_lc.clone()),
             |lc| result.get_variable() + lc,
         );

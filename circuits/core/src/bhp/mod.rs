@@ -16,6 +16,9 @@
 
 mod hash;
 
+#[cfg(test)]
+use snarkvm_circuits_environment::assert_scope;
+
 use snarkvm_algorithms::crypto_hash::hash_to_curve;
 use snarkvm_circuits_types::prelude::*;
 use snarkvm_utilities::BigInteger;

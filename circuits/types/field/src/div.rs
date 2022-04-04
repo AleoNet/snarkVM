@@ -24,11 +24,29 @@ impl<E: Environment> Div<Self> for Field<E> {
     }
 }
 
-impl<E: Environment> Div<&Self> for Field<E> {
+impl<E: Environment> Div<&Field<E>> for Field<E> {
     type Output = Self;
 
-    fn div(self, other: &Self) -> Self::Output {
+    fn div(self, other: &Field<E>) -> Self::Output {
         let mut output = self;
+        output /= other;
+        output
+    }
+}
+
+impl<E: Environment> Div<Field<E>> for &Field<E> {
+    type Output = Field<E>;
+
+    fn div(self, other: Field<E>) -> Self::Output {
+        self / &other
+    }
+}
+
+impl<E: Environment> Div<&Field<E>> for &Field<E> {
+    type Output = Field<E>;
+
+    fn div(self, other: &Field<E>) -> Self::Output {
+        let mut output = self.clone();
         output /= other;
         output
     }

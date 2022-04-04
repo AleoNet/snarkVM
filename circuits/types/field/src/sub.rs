@@ -28,7 +28,17 @@ impl<E: Environment> Sub<&Field<E>> for Field<E> {
     type Output = Self;
 
     fn sub(self, other: &Field<E>) -> Self::Output {
-        &self - other
+        let mut result = self;
+        result -= other;
+        result
+    }
+}
+
+impl<E: Environment> Sub<Field<E>> for &Field<E> {
+    type Output = Field<E>;
+
+    fn sub(self, other: Field<E>) -> Self::Output {
+        self - &other
     }
 }
 
