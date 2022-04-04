@@ -16,7 +16,7 @@
 
 use crate::{Address, AleoAmount, FunctionInputs, Network};
 use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
-use snarkvm_utilities::{FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
+use snarkvm_utilities::{error, FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
 
 use anyhow::{anyhow, Result};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
@@ -35,6 +35,7 @@ pub enum Operation<N: Network> {
     Noop,
     /// Generates the given amount to the recipient address.
     Coinbase(Recipient<N>, AleoAmount),
+    // TODO (raychu86): Refactor transfers to support multiple recipients.
     /// Transfers the given amount from the caller to the recipient address.
     Transfer(Caller<N>, Recipient<N>, AleoAmount),
     /// Invokes the given records on the function and inputs.
@@ -105,7 +106,7 @@ impl<N: Network> FromBytes for Operation<N> {
                 let function_inputs = FromBytes::read_le(&mut reader)?;
                 Ok(Self::Evaluate(function_id, function_inputs))
             }
-            _ => unreachable!("Invalid operation during deserialization"),
+            4.. => Err(error("Invalid operation ID during deserialization")),
         }
     }
 }
@@ -158,7 +159,7 @@ impl<N: Network> FromStr for Operation<N> {
                 let function_inputs = serde_json::from_value(operation["function_inputs"].clone())?;
                 Ok(Self::Evaluate(function_id, function_inputs))
             }
-            _ => unreachable!("Invalid operation id {}", operation_id),
+            4.. => Err(error("Invalid operation ID during deserialization").into()),
         }
     }
 }

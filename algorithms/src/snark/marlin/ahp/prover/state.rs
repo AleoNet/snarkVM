@@ -19,10 +19,11 @@ use crate::{
         domain::{FFTPrecomputation, IFFTPrecomputation},
         DensePolynomial,
         EvaluationDomain,
+        Evaluations as EvaluationsOnDomain,
     },
-    polycommit::LabeledPolynomial,
+    polycommit::sonic_pc::LabeledPolynomial,
     snark::marlin::{
-        ahp::{indexer::Circuit, prover::ProverConstraintSystem, verifier::VerifierFirstMessage},
+        ahp::{indexer::Circuit, verifier},
         AHPError,
         MarlinMode,
     },
@@ -31,24 +32,25 @@ use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::SynthesisError;
 
 /// State for the AHP prover.
-pub struct ProverState<'a, F: PrimeField, MM: MarlinMode> {
+pub struct State<'a, F: PrimeField, MM: MarlinMode> {
     pub(super) padded_public_variables: Vec<F>,
     pub(super) private_variables: Vec<F>,
     /// Query bound b
-    pub(super) zk_bound: usize,
+    pub(super) zk_bound: Option<usize>,
     /// Az.
     pub(super) z_a: Option<Vec<F>>,
     /// Bz.
     pub(super) z_b: Option<Vec<F>>,
 
+    pub(super) x_poly: DensePolynomial<F>,
     pub(super) w_poly: Option<LabeledPolynomial<F>>,
     pub(super) mz_polys: Option<(LabeledPolynomial<F>, LabeledPolynomial<F>)>,
-    pub(super) mz_poly_randomizer: Option<(F, F)>,
+    pub(super) mz_poly_randomizer: Option<F>,
 
     pub(super) index: &'a Circuit<F, MM>,
 
     /// The challenges sent by the verifier in the first round
-    pub(super) verifier_first_message: Option<VerifierFirstMessage<F>>,
+    pub(super) verifier_first_message: Option<verifier::FirstMessage<F>>,
 
     /// the blinding polynomial for the first round
     pub(super) mask_poly: Option<LabeledPolynomial<F>>,
@@ -72,11 +74,11 @@ pub struct ProverState<'a, F: PrimeField, MM: MarlinMode> {
     pub(super) sums: Option<[F; 3]>,
 }
 
-impl<'a, F: PrimeField, MM: MarlinMode> ProverState<'a, F, MM> {
+impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
     pub fn initialize(
         padded_public_input: Vec<F>,
         private_variables: Vec<F>,
-        zk_bound: usize,
+        zk_bound: impl Into<Option<usize>>,
         index: &'a Circuit<F, MM>,
     ) -> Result<Self, AHPError> {
         let index_info = &index.index_info;
@@ -93,10 +95,13 @@ impl<'a, F: PrimeField, MM: MarlinMode> ProverState<'a, F, MM> {
         let input_domain =
             EvaluationDomain::new(padded_public_input.len()).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
+        let x_poly = EvaluationsOnDomain::from_vec_and_domain(padded_public_input.clone(), input_domain).interpolate();
+
         Ok(Self {
             padded_public_variables: padded_public_input,
+            x_poly,
             private_variables,
-            zk_bound,
+            zk_bound: zk_bound.into(),
             index,
             input_domain,
             constraint_domain,
@@ -117,7 +122,7 @@ impl<'a, F: PrimeField, MM: MarlinMode> ProverState<'a, F, MM> {
 
     /// Get the public input.
     pub fn public_input(&self) -> Vec<F> {
-        ProverConstraintSystem::unformat_public_input(&self.padded_public_variables)
+        super::ConstraintSystem::unformat_public_input(&self.padded_public_variables)
     }
 
     /// Get the padded public input.

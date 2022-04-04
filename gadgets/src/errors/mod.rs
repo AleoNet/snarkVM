@@ -14,8 +14,5 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod signed_integer;
-pub use self::signed_integer::*;
-
 pub mod unsigned_integer;
 pub use self::unsigned_integer::*;

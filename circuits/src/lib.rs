@@ -21,17 +21,9 @@ pub use snarkvm_circuits_edge::*;
 pub use snarkvm_circuits_environment::*;
 pub use snarkvm_circuits_types::*;
 
+pub use snarkvm_circuits_environment as environment;
+
 pub mod prelude {
     pub use super::*;
     pub use snarkvm_circuits_environment::*;
-}
-
-pub trait Library<E: Environment> {
-    const VERSION: u32;
-}
-
-pub type V1 = Literal<Circuit>;
-
-impl Library<Circuit> for V1 {
-    const VERSION: u32 = 1;
 }

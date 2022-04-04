@@ -14,14 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod inner_circuit;
-pub use inner_circuit::*;
+pub mod input;
+pub use input::*;
 
-pub(crate) mod inner_private_variables;
-pub(crate) use inner_private_variables::*;
-
-pub(crate) mod inner_public_variables;
-pub(crate) use inner_public_variables::*;
+pub mod output;
+pub use output::*;
 
 #[cfg(test)]
 mod tests;

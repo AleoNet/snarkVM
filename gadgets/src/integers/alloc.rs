@@ -21,7 +21,7 @@ use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use crate::{
     bits::boolean::{AllocatedBit, Boolean},
-    integers::{int::*, uint::*},
+    integers::uint::*,
     traits::{alloc::AllocGadget, integers::Integer},
 };
 
@@ -86,4 +86,4 @@ macro_rules! alloc_gadget_int_impl {
     )*)
 }
 
-alloc_gadget_int_impl!(Int8 Int16 Int32 Int64 Int128 UInt8 UInt16 UInt32 UInt64 UInt128);
+alloc_gadget_int_impl!(UInt8);

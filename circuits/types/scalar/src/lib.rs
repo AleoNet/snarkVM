@@ -94,12 +94,20 @@ impl<E: Environment> Parser for Scalar<E> {
     /// Parses a string into a scalar field circuit.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
+        // Parse the optional negative sign '-' from the string.
+        let (string, negation) = map(opt(tag("-")), |neg: Option<&str>| neg.is_some())(string)?;
         // Parse the digits from the string.
         let (string, primitive) = recognize(many1(terminated(one_of("0123456789"), many0(char('_')))))(string)?;
         // Parse the value from the string.
-        let (string, value) = map_res(tag(Self::type_name()), |_| primitive.replace('_', "").parse())(string)?;
+        let (string, value): (&str, E::ScalarField) =
+            map_res(tag(Self::type_name()), |_| primitive.replace('_', "").parse())(string)?;
         // Parse the mode from the string.
         let (string, mode) = opt(pair(tag("."), Mode::parse))(string)?;
+        // Negate the value if the negative sign was present.
+        let value = match negation {
+            true => -value,
+            false => value,
+        };
 
         match mode {
             Some((_, mode)) => Ok((string, Scalar::new(mode, value))),

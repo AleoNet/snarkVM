@@ -84,8 +84,13 @@ pub trait Parser: Display {
         Self: Sized,
     {
         match Self::parse(string) {
-            Ok((_, circuit)) => circuit,
-            Err(error) => Self::Environment::halt(format!("Failed to parse: {}", error)),
+            Ok((remainder, circuit)) => match remainder.is_empty() {
+                true => circuit,
+                false => Self::Environment::halt(format!(
+                    "Failed to parse string. Found invalid character in: \"{remainder}\""
+                )),
+            },
+            Err(error) => Self::Environment::halt(format!("Failed to parse string. {error}")),
         }
     }
 }

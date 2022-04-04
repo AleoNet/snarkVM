@@ -41,7 +41,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
 
         // Next, compute the random base.
         let (generator, _, _) = hash_to_curve::<G::Affine>(&format!("{message} for random base"));
-        let mut base = generator.into_projective();
+        let mut base = generator.to_projective();
 
         let num_scalar_bits = G::ScalarField::size_in_bits();
         let mut random_base = Vec::with_capacity(num_scalar_bits);
@@ -65,7 +65,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
             }
         }
 
-        let affine = output.into_affine();
+        let affine = output.to_affine();
         debug_assert!(affine.is_in_correct_subgroup_assuming_on_curve());
         Ok(affine.to_x_coordinate())
     }

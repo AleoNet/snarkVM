@@ -37,12 +37,14 @@ impl<C: ToBits<Boolean = B>, B: BooleanTrait> ToBits for Vec<C> {
     /// A helper method to return a concatenated list of little-endian bits from the circuits.
     #[inline]
     fn to_bits_le(&self) -> Vec<Self::Boolean> {
+        // The vector is order-preserving, meaning the first circuit in is the first circuit bits out.
         self.as_slice().to_bits_le()
     }
 
     /// A helper method to return a concatenated list of big-endian bits from the circuits.
     #[inline]
     fn to_bits_be(&self) -> Vec<Self::Boolean> {
+        // The vector is order-preserving, meaning the first circuit in is the first circuit bits out.
         self.as_slice().to_bits_be()
     }
 }
@@ -53,12 +55,14 @@ impl<C: ToBits<Boolean = B>, B: BooleanTrait, const N: usize> ToBits for [C; N] 
     /// A helper method to return a concatenated list of little-endian bits from the circuits.
     #[inline]
     fn to_bits_le(&self) -> Vec<Self::Boolean> {
+        // The slice is order-preserving, meaning the first circuit in is the first circuit bits out.
         self.as_slice().to_bits_le()
     }
 
     /// A helper method to return a concatenated list of big-endian bits from the circuits.
     #[inline]
     fn to_bits_be(&self) -> Vec<Self::Boolean> {
+        // The slice is order-preserving, meaning the first circuit in is the first circuit bits out.
         self.as_slice().to_bits_be()
     }
 }
@@ -69,12 +73,36 @@ impl<C: ToBits<Boolean = B>, B: BooleanTrait> ToBits for &[C] {
     /// A helper method to return a concatenated list of little-endian bits from the circuits.
     #[inline]
     fn to_bits_le(&self) -> Vec<Self::Boolean> {
+        // The slice is order-preserving, meaning the first circuit in is the first circuit bits out.
         self.iter().flat_map(|c| c.to_bits_le()).collect()
     }
 
     /// A helper method to return a concatenated list of big-endian bits from the circuits.
     #[inline]
     fn to_bits_be(&self) -> Vec<Self::Boolean> {
+        // The slice is order-preserving, meaning the first circuit in is the first circuit bits out.
         self.iter().flat_map(|c| c.to_bits_be()).collect()
+    }
+}
+
+/********************/
+/****** Tuples ******/
+/********************/
+
+impl<'a, C0: ToBits<Boolean = B>, C1: ToBits<Boolean = B>, B: BooleanTrait> ToBits for (&'a C0, &'a C1) {
+    type Boolean = B;
+
+    /// A helper method to return a concatenated list of little-endian bits from the circuits.
+    #[inline]
+    fn to_bits_le(&self) -> Vec<Self::Boolean> {
+        // The tuple is order-preserving, meaning the first circuit in is the first circuit bits out.
+        self.0.to_bits_le().into_iter().chain(self.1.to_bits_le().into_iter()).collect()
+    }
+
+    /// A helper method to return a concatenated list of big-endian bits from the circuits.
+    #[inline]
+    fn to_bits_be(&self) -> Vec<Self::Boolean> {
+        // The tuple is order-preserving, meaning the first circuit in is the first circuit bits out.
+        self.0.to_bits_be().into_iter().chain(self.1.to_bits_be().into_iter()).collect()
     }
 }

@@ -85,4 +85,4 @@ macro_rules! pow_int_impl {
     )*)
 }
 
-pow_int_impl!(UInt8, UInt16, UInt32, UInt64);
+pow_int_impl!(UInt8);

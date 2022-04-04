@@ -208,34 +208,6 @@ mod tests {
     }
 
     #[test]
-    fn test_groth16() {
-        let _candidate_output = create_example_circuit::<Circuit>();
-        let one = <Circuit as Environment>::BaseField::one();
-
-        // Groth16 setup, prove, and verify.
-        {
-            use snarkvm_algorithms::snark::groth16::{
-                create_random_proof,
-                generate_random_parameters,
-                prepare_verifying_key,
-                verify_proof,
-            };
-            use snarkvm_curves::bls12_377::Bls12_377;
-            use snarkvm_utilities::rand::test_rng;
-
-            let rng = &mut test_rng();
-
-            let parameters = generate_random_parameters::<Bls12_377, _, _>(&Circuit, rng).unwrap();
-
-            let proof = create_random_proof(&Circuit, &parameters, rng).unwrap();
-            let pvk = prepare_verifying_key::<Bls12_377>(parameters.vk.clone());
-
-            assert!(verify_proof(&pvk, &proof, &[one, one]).unwrap());
-            assert!(!verify_proof(&pvk, &proof, &[one, one + one]).unwrap());
-        }
-    }
-
-    #[test]
     fn test_marlin() {
         let _candidate_output = create_example_circuit::<Circuit>();
         let one = <Circuit as Environment>::BaseField::one();
@@ -244,7 +216,6 @@ mod tests {
         {
             use snarkvm_algorithms::{
                 crypto_hash::PoseidonSponge,
-                polycommit::sonic_pc::SonicKZG10,
                 snark::marlin::{
                     ahp::AHPForR1CS,
                     fiat_shamir::FiatShamirAlgebraicSpongeRng,
@@ -255,11 +226,8 @@ mod tests {
             use snarkvm_curves::bls12_377::{Bls12_377, Fq};
             use snarkvm_utilities::rand::test_rng;
 
-            type MultiPC = SonicKZG10<Bls12_377>;
             type MarlinInst = MarlinSNARK<
-                Fr,
-                Fq,
-                MultiPC,
+                Bls12_377,
                 FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>,
                 MarlinHidingMode,
                 Vec<Fr>,

@@ -88,7 +88,7 @@ fn eject_mode(start_mode: Mode, modes: &[Mode]) -> Mode {
 /****** Arrays ******/
 /********************/
 
-impl<C: Eject<Primitive = P>, P: Default> Eject for Vec<C> {
+impl<C: Eject<Primitive = P>, P> Eject for Vec<C> {
     type Primitive = Vec<P>;
 
     /// A helper method to deduce the mode from a list of `Eject` circuits.
@@ -104,7 +104,7 @@ impl<C: Eject<Primitive = P>, P: Default> Eject for Vec<C> {
     }
 }
 
-impl<C: Eject<Primitive = P>, P: Default, const N: usize> Eject for [C; N] {
+impl<C: Eject<Primitive = P>, P, const N: usize> Eject for [C; N] {
     type Primitive = Vec<P>;
 
     /// A helper method to deduce the mode from a list of `Eject` circuits.
@@ -120,7 +120,7 @@ impl<C: Eject<Primitive = P>, P: Default, const N: usize> Eject for [C; N] {
     }
 }
 
-impl<C: Eject<Primitive = P>, P: Default> Eject for &[C] {
+impl<C: Eject<Primitive = P>, P> Eject for &[C] {
     type Primitive = Vec<P>;
 
     /// A helper method to deduce the mode from a list of `Eject` circuits.
@@ -132,7 +132,7 @@ impl<C: Eject<Primitive = P>, P: Default> Eject for &[C] {
             Some(first) => {
                 eject_mode(first.eject_mode(), &self.iter().skip(1).map(Eject::eject_mode).collect::<Vec<_>>())
             }
-            None => eject_mode(Mode::Constant, &self.iter().skip(1).map(Eject::eject_mode).collect::<Vec<_>>()),
+            None => Mode::Constant,
             // None => panic!("Attempted to eject the mode on an empty circuit"),
         }
     }
