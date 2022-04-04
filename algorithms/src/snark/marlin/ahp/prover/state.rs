@@ -21,7 +21,6 @@ use crate::{
         EvaluationDomain,
         Evaluations as EvaluationsOnDomain,
     },
-    polycommit::sonic_pc::LabeledPolynomial,
     snark::marlin::{
         ahp::{indexer::Circuit, verifier},
         AHPError,
@@ -33,27 +32,7 @@ use snarkvm_r1cs::SynthesisError;
 
 /// State for the AHP prover.
 pub struct State<'a, F: PrimeField, MM: MarlinMode> {
-    pub(super) padded_public_variables: Vec<F>,
-    pub(super) private_variables: Vec<F>,
-    /// Query bound b
-    pub(super) zk_bound: Option<usize>,
-    /// Az.
-    pub(super) z_a: Option<Vec<F>>,
-    /// Bz.
-    pub(super) z_b: Option<Vec<F>>,
-
-    pub(super) x_poly: DensePolynomial<F>,
-    pub(super) w_poly: Option<LabeledPolynomial<F>>,
-    pub(super) mz_polys: Option<(LabeledPolynomial<F>, LabeledPolynomial<F>)>,
-    pub(super) mz_poly_randomizer: Option<F>,
-
     pub(super) index: &'a Circuit<F, MM>,
-
-    /// The challenges sent by the verifier in the first round
-    pub(super) verifier_first_message: Option<verifier::FirstMessage<F>>,
-
-    /// the blinding polynomial for the first round
-    pub(super) mask_poly: Option<LabeledPolynomial<F>>,
 
     /// A domain that is sized for the public input.
     pub(super) input_domain: EvaluationDomain<F>,
@@ -67,6 +46,22 @@ pub struct State<'a, F: PrimeField, MM: MarlinMode> {
     pub(super) non_zero_b_domain: EvaluationDomain<F>,
     /// A domain that is sized for the number of non-zero elements in C.
     pub(super) non_zero_c_domain: EvaluationDomain<F>,
+    /// Query bound b
+    pub(super) zk_bound: Option<usize>,
+
+    pub(super) padded_public_variables: Vec<Vec<F>>,
+    pub(super) private_variables: Vec<Vec<F>>,
+    /// Az.
+    pub(super) z_a: Option<Vec<Vec<F>>>,
+    /// Bz.
+    pub(super) z_b: Option<Vec<Vec<F>>>,
+
+    pub(super) x_poly: Vec<DensePolynomial<F>>,
+    pub(super) first_round_oracles: Option<super::FirstOracles<'a, F>>,
+    pub(super) mz_poly_randomizer: Option<Vec<F>>,
+
+    /// The challenges sent by the verifier in the first round
+    pub(super) verifier_first_message: Option<verifier::FirstMessage<F>>,
 
     /// Polynomials involved in the holographic sumcheck.
     pub(super) lhs_polynomials: Option<[DensePolynomial<F>; 3]>,
@@ -76,8 +71,8 @@ pub struct State<'a, F: PrimeField, MM: MarlinMode> {
 
 impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
     pub fn initialize(
-        padded_public_input: Vec<F>,
-        private_variables: Vec<F>,
+        padded_public_input: Vec<Vec<F>>,
+        private_variables: Vec<Vec<F>>,
         zk_bound: impl Into<Option<usize>>,
         index: &'a Circuit<F, MM>,
     ) -> Result<Self, AHPError> {
@@ -93,9 +88,14 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
             EvaluationDomain::new(index_info.num_non_zero_c).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
         let input_domain =
-            EvaluationDomain::new(padded_public_input.len()).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
+            EvaluationDomain::new(padded_public_input[0].len()).ok_or(SynthesisError::PolynomialDegreeTooLarge)?;
 
-        let x_poly = EvaluationsOnDomain::from_vec_and_domain(padded_public_input.clone(), input_domain).interpolate();
+        let x_poly = padded_public_input
+            .iter()
+            .map(|padded_public_input| {
+                EvaluationsOnDomain::from_vec_and_domain(padded_public_input.clone(), input_domain).interpolate()
+            })
+            .collect();
 
         Ok(Self {
             padded_public_variables: padded_public_input,
@@ -108,26 +108,24 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
             non_zero_a_domain,
             non_zero_b_domain,
             non_zero_c_domain,
-            mask_poly: None,
-            verifier_first_message: None,
-            w_poly: None,
-            mz_poly_randomizer: None,
-            mz_polys: None,
             z_a: None,
             z_b: None,
+            first_round_oracles: None,
+            mz_poly_randomizer: None,
+            verifier_first_message: None,
             lhs_polynomials: None,
             sums: None,
         })
     }
 
     /// Get the public input.
-    pub fn public_input(&self) -> Vec<F> {
-        super::ConstraintSystem::unformat_public_input(&self.padded_public_variables)
+    pub fn public_input(&self, i: usize) -> Vec<F> {
+        super::ConstraintSystem::unformat_public_input(&self.padded_public_variables[i])
     }
 
     /// Get the padded public input.
-    pub fn padded_public_input(&self) -> &[F] {
-        &self.padded_public_variables
+    pub fn padded_public_input(&self, i: usize) -> &[F] {
+        &self.padded_public_variables[i]
     }
 
     pub fn fft_precomputation(&self) -> &FFTPrecomputation<F> {

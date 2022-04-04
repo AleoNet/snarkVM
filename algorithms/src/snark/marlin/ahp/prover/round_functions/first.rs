@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use core::convert::TryInto;
-
 use crate::{
     fft::{DensePolynomial, EvaluationDomain, Evaluations as EvaluationsOnDomain, SparsePolynomial},
     polycommit::sonic_pc::{LabeledPolynomial, LabeledPolynomialWithBasis, PolynomialWithBasis},
@@ -49,37 +47,47 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     pub fn prover_first_round<'a, R: RngCore>(
         mut state: prover::State<'a, F, MM>,
         rng: &mut R,
-    ) -> Result<(prover::FirstOracles<'a, F>, prover::State<'a, F, MM>), AHPError> {
+    ) -> Result<prover::State<'a, F, MM>, AHPError> {
         let round_time = start_timer!(|| "AHP::Prover::FirstRound");
         let constraint_domain = state.constraint_domain;
         let zk_bound = state.zk_bound;
 
-        let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(3);
         let z_a = state.z_a.take().unwrap();
         let z_b = state.z_b.take().unwrap();
         let private_variables = core::mem::take(&mut state.private_variables);
-        job_pool.add_job(|| Self::calculate_w(private_variables, &state));
+        let mut r_b_s = Vec::with_capacity(z_a.len());
 
-        job_pool.add_job(|| Self::calculate_z_m("z_a", z_a, false, &state, None));
+        let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(3 * z_a.len());
+        for (z_a, z_b, private_variables, x_poly) in itertools::izip!(z_a, z_b, private_variables, &state.x_poly) {
+            job_pool.add_job(|| Self::calculate_w(private_variables, x_poly.clone(), &state));
+            job_pool.add_job(|| Self::calculate_z_m("z_a", z_a, false, &state, None));
+            let r_b = F::rand(rng);
+            job_pool.add_job(|| Self::calculate_z_m("z_b", z_b, true, &state, Some(r_b)));
+            if MM::ZK {
+                r_b_s.push(r_b);
+            }
+        }
 
-        let r_b = Some(F::rand(rng));
-        job_pool.add_job(|| Self::calculate_z_m("z_b", z_b, true, &state, r_b));
-        let [w, z_a, z_b]: [PoolResult<F>; 3] = job_pool.execute_all().try_into().unwrap();
-        let w_poly = w.witness().unwrap();
-        let (z_a_poly, z_a) = z_a.z_m().unwrap();
-        let (z_b_poly, z_b) = z_b.z_m().unwrap();
+        let batches = job_pool
+            .execute_all()
+            .chunks_exact(3)
+            .map(|[w, z_a, z_b]| {
+                let w_poly = w.witness().unwrap();
+                let (z_a_poly, z_a) = z_a.z_m().unwrap();
+                let (z_b_poly, z_b) = z_b.z_m().unwrap();
+
+                prover::SingleEntry { z_a, z_b, w_poly, z_a_poly, z_b_poly }
+            })
+            .collect();
 
         let mask_poly = Self::calculate_mask_poly(constraint_domain, zk_bound, rng);
 
-        let oracles = prover::FirstOracles { z_a, z_b, mask_poly: mask_poly.clone(), z_a_poly, z_b_poly, w_poly };
-
-        state.w_poly = Some(oracles.w_poly.clone());
-        state.mz_polys = Some((oracles.z_a_poly.clone(), oracles.z_b_poly.clone()));
-        state.mz_poly_randomizer = r_b;
-        state.mask_poly = mask_poly;
+        let oracles = prover::FirstOracles { batches, mask_poly: mask_poly.clone() };
+        state.first_round_oracles = Some(oracles);
+        state.mz_poly_randomizer = MM::ZK.then(|| r_b_s);
         end_timer!(round_time);
 
-        Ok((oracles, state))
+        Ok(state)
     }
 
     fn calculate_mask_poly<R: RngCore>(
@@ -114,7 +122,11 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             .map(|mask_poly| LabeledPolynomial::new("mask_poly".to_string(), mask_poly, None, None))
     }
 
-    fn calculate_w<'a>(private_variables: Vec<F>, state: &prover::State<'a, F, MM>) -> PoolResult<'a, F> {
+    fn calculate_w<'a>(
+        private_variables: Vec<F>,
+        x_poly: DensePolynomial<F>,
+        state: &prover::State<'a, F, MM>,
+    ) -> PoolResult<'a, F> {
         let constraint_domain = state.constraint_domain;
         let input_domain = state.input_domain;
 
@@ -123,7 +135,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         w_extended.resize(constraint_domain.size() - input_domain.size(), F::zero());
 
         let x_evals = {
-            let mut coeffs = state.x_poly.coeffs.clone();
+            let mut coeffs = x_poly.coeffs;
             coeffs.resize(constraint_domain.size(), F::zero());
             constraint_domain.in_order_fft_in_place_with_pc(&mut coeffs, state.fft_precomputation());
             coeffs
@@ -166,7 +178,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             poly += &(&v_H * r.unwrap());
         }
 
-        let hiding_bound = if MM::ZK { Some(1) } else { None };
+        let hiding_bound = MM::ZK.then(|| 1);
 
         let poly_for_opening = LabeledPolynomial::new(label.to_string(), poly, None, hiding_bound);
         if should_randomize {
