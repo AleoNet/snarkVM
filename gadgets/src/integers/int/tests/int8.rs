@@ -25,8 +25,6 @@ use crate::{
     integers::int::*,
     traits::{alloc::AllocGadget, integers::*},
 };
-use snarkvm_algorithms::snark::groth16::KeypairAssembly;
-use snarkvm_curves::bls12_377::Bls12_377;
 
 fn check_all_constant_bits(expected: i8, actual: Int8) {
     for (i, b) in actual.bits.iter().enumerate() {
@@ -388,13 +386,7 @@ fn test_int8_div_corner_case_2() {
 
 #[test]
 fn test_int8_div_setup_mode() {
-    let mut cs = KeypairAssembly::<Bls12_377> {
-        num_public_variables: 0,
-        num_private_variables: 0,
-        at: vec![],
-        bt: vec![],
-        ct: vec![],
-    };
+    let mut cs = TestConstraintSystem::<Fr>::new();
 
     let a: i8 = 1i8;
     let b: i8 = 2i8;

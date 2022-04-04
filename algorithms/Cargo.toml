@@ -68,19 +68,9 @@ path = "benches/signature/aleo.rs"
 harness = false
 
 [[bench]]
-name = "snark-groth16"
-path = "benches/snark/groth16.rs"
-harness = false
-
-[[bench]]
-name = "snark-marlin"
+name = "marlin"
 path = "benches/snark/marlin.rs"
 harness = false
-
-[[example]]
-name = "groth16"
-path = "examples/snark/groth16.rs"
-required-features = ["snark"]
 
 [dependencies.snarkvm-curves]
 path = "../curves"

@@ -37,10 +37,7 @@ use snarkvm_algorithms::{
     prelude::*,
     prf::PoseidonPRF,
     signature::AleoSignatureScheme,
-    snark::{
-        groth16::Groth16,
-        marlin::{FiatShamirAlgebraicSpongeRng, MarlinHidingMode, MarlinNonHidingMode, MarlinSNARK},
-    },
+    snark::marlin::{FiatShamirAlgebraicSpongeRng, MarlinHidingMode, MarlinNonHidingMode, MarlinSNARK},
 };
 use snarkvm_curves::{
     bls12_377::Bls12_377,
@@ -155,7 +152,7 @@ impl Network for Testnet1 {
     type OutputSNARK = MarlinSNARK<Self::InnerCurve, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::InnerBaseField, PoseidonSponge<Self::InnerBaseField, 6, 1>>, MarlinHidingMode, OutputPublicVariables<Self>>;
     type OutputProof = AleoObject<<Self::OutputSNARK as SNARK>::Proof, { Self::OUTPUT_PROOF_PREFIX }, { Self::OUTPUT_PROOF_SIZE_IN_BYTES }>;
 
-    type ProgramSNARK = Groth16<Self::InnerCurve, ProgramPublicVariables<Self>>;
+    type ProgramSNARK = MarlinSNARK<Self::InnerCurve, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::InnerBaseField, PoseidonSponge<Self::InnerBaseField, 6, 1>>, MarlinHidingMode, ProgramPublicVariables<Self>>;
     type ProgramProvingKey = <Self::ProgramSNARK as SNARK>::ProvingKey;
     type ProgramVerifyingKey = <Self::ProgramSNARK as SNARK>::VerifyingKey;
     type ProgramProof = AleoObject<<Self::ProgramSNARK as SNARK>::Proof, { Self::PROGRAM_PROOF_PREFIX }, { Self::PROGRAM_PROOF_SIZE_IN_BYTES }>;
