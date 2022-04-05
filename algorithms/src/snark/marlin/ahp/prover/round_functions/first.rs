@@ -33,8 +33,8 @@ use rayon::prelude::*;
 
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Output the number of oracles sent by the prover in the first round.
-    pub fn prover_num_first_round_oracles() -> usize {
-        if MM::ZK { 4 } else { 3 }
+    pub fn prover_num_first_round_oracles(batch_size: usize) -> usize {
+        3 * batch_size + (MM::ZK as usize)
     }
 
     /// Output the degree bounds of oracles in the first round.
@@ -55,8 +55,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let z_a = state.z_a.take().unwrap();
         let z_b = state.z_b.take().unwrap();
         let private_variables = core::mem::take(&mut state.private_variables);
-        assert_eq!(z_a.len(), z_b.len());
-        assert_eq!(z_a.len(), private_variables.len());
+        assert_eq!(z_a.len(), state.batch_size);
+        assert_eq!(z_b.len(), state.batch_size);
+        assert_eq!(private_variables.len(), state.batch_size);
         let mut r_b_s = Vec::with_capacity(z_a.len());
 
         let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(3 * z_a.len());

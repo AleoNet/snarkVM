@@ -38,7 +38,7 @@ use crate::{
     },
 };
 use snarkvm_fields::PrimeField;
-use snarkvm_utilities::cfg_iter_mut;
+use snarkvm_utilities::{cfg_iter, cfg_iter_mut, ExecutionPool};
 
 use itertools::Itertools;
 use rand_core::RngCore;
@@ -70,21 +70,27 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let constraint_domain = state.constraint_domain;
         let zk_bound = state.zk_bound;
 
-        let verifier::FirstMessage { alpha, eta_b, eta_c } = *verifier_message;
+        let verifier::FirstMessage { alpha, eta_b, eta_c, batch_combiners } = verifier_message;
 
-        let (summed_z_m, t) = Self::calculate_summed_z_m_and_t(&mut state, alpha, eta_b, eta_c);
+        let (summed_z_m, t) = Self::calculate_summed_z_m_and_t(&mut state, *alpha, *eta_b, *eta_c, batch_combiners);
 
         let z_time = start_timer!(|| "Compute z poly");
 
-        let w_poly = state.w_poly.as_ref().and_then(|p| p.polynomial().as_dense()).unwrap();
+        let w_poly = cfg_iter!(state.first_round_oracles.as_ref().unwrap().batches)
+            .zip_eq(batch_combiners)
+            .map(|(b, &coeff)| b.w_poly.polynomial().as_dense().unwrap() * coeff)
+            .sum::<DensePolynomial<F>>();
+
         let mut z = w_poly.mul_by_vanishing_poly(state.input_domain);
         // Zip safety: `x_poly` is smaller than `z_poly`.
-        cfg_iter_mut!(z.coeffs).zip(&state.x_poly.coeffs).for_each(|(z, x)| *z += x);
+        let x_poly =
+            cfg_iter!(&state.x_poly).zip_eq(batch_combiners).map(|(x, &coeff)| x * coeff).sum::<DensePolynomial<F>>();
+        cfg_iter_mut!(z.coeffs).zip(x_poly.coeffs).for_each(|(z, x)| *z += x);
         assert!(z.degree() <= constraint_domain.size());
 
         end_timer!(z_time);
 
-        let sumcheck_lhs = Self::calculate_lhs(&mut state, t, summed_z_m, z, alpha);
+        let sumcheck_lhs = Self::calculate_lhs(&mut state, t, summed_z_m, z, *alpha);
 
         let sumcheck_time = start_timer!(|| "Compute sumcheck h and g polys");
         let (h_1, x_g_1) = sumcheck_lhs.divide_by_vanishing_poly(constraint_domain).unwrap();
@@ -100,7 +106,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             h_1: LabeledPolynomial::new("h_1".into(), h_1, None, None),
         };
 
-        state.w_poly = None;
         state.verifier_first_message = Some(*verifier_message);
         end_timer!(round_time);
 
@@ -117,7 +122,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let constraint_domain = state.constraint_domain;
         let q_1_time = start_timer!(|| "Compute LHS of sumcheck");
 
-        let mask_poly = state.mask_poly.take();
+        let mask_poly = state.first_round_oracles.as_ref().unwrap().mask_poly.as_ref();
         assert_eq!(MM::ZK, mask_poly.is_some());
 
         let mul_domain_size = (constraint_domain.size() + summed_z_m.coeffs.len()).max(t.coeffs.len() + z.len());
@@ -150,53 +155,57 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         alpha: F,
         eta_b: F,
         eta_c: F,
+        batch_combiners: &[F],
     ) -> (DensePolynomial<F>, DensePolynomial<F>) {
         let constraint_domain = state.constraint_domain;
         let summed_z_m_poly_time = start_timer!(|| "Compute z_m poly");
 
-        let (z_a, mut z_b) = state.mz_polys.take().unwrap();
-        let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(2);
-        job_pool.add_job(|| {
-            let z_a = z_a.polynomial().as_dense().unwrap();
-            let z_b = z_b.polynomial_mut().as_dense_mut().unwrap();
-            assert!(z_a.degree() < constraint_domain.size());
-            if MM::ZK {
-                assert_eq!(z_b.degree(), constraint_domain.size());
-            } else {
-                assert!(z_b.degree() < constraint_domain.size());
-            }
+        let mut job_pool = ExecutionPool::with_capacity(2 * state.batch_size);
+        let first_msg = state.first_round_oracles.as_ref().unwrap();
+        for (entry, coeff) in first_msg.batches.iter().zip_eq(batch_combiners) {
+            job_pool.add_job(|| {
+                let z_a = entry.z_a_poly.polynomial().as_dense().unwrap();
+                let z_b = entry.z_b_poly.polynomial().as_dense().unwrap();
+                assert!(z_a.degree() < constraint_domain.size());
+                if MM::ZK {
+                    assert_eq!(z_b.degree(), constraint_domain.size());
+                } else {
+                    assert!(z_b.degree() < constraint_domain.size());
+                }
 
-            // we want to calculate z_a + eta_b * z_b + eta_c * z_a * z_b;
-            // we rewrite this as  z_a * (eta_c * z_b + 1) + eta_b * z_b;
-            // This is better since it reduces the number of required
-            // multiplications by `constraint_domain.size()`.
-            let z_c = {
-                // Mutate z_b in place to compute eta_c * z_b + 1
-                // This saves us an additional memory allocation.
-                cfg_iter_mut!(z_b.coeffs).for_each(|b| *b *= eta_c);
-                z_b.coeffs[0] += F::one();
-                let mut multiplier = PolyMultiplier::new();
-                multiplier.add_polynomial_ref(z_a, "z_a");
-                multiplier.add_polynomial_ref(z_b, "eta_c_z_b_plus_one");
-                multiplier.add_precomputation(state.fft_precomputation(), state.ifft_precomputation());
-                let result = multiplier.multiply().unwrap();
-                // Start undoing in place mutation, by first subtracting the 1 that we added...
-                z_b.coeffs[0] -= F::one();
-                result
-            };
-            // ... and then multiplying by eta_b/eta_c, instead of just eta_b.
-            let eta_b_over_eta_c = eta_b * eta_c.inverse().unwrap();
-            let mut summed_z_m_coeffs = z_c.coeffs;
-            // Note: Can't combine these two loops, because z_c_poly has 2x the degree
-            // of z_a_poly and z_b_poly, so the second loop gets truncated due to
-            // the `zip`s.
-            cfg_iter_mut!(summed_z_m_coeffs).zip(&z_b.coeffs).for_each(|(c, b)| *c += eta_b_over_eta_c * b);
+                // we want to calculate z_a + eta_b * z_b + eta_c * z_a * z_b;
+                // we rewrite this as  z_a * (eta_c * z_b + 1) + eta_b * z_b;
+                // This is better since it reduces the number of required
+                // multiplications by `constraint_domain.size()`.
+                let z_c = {
+                    // Mutate z_b in place to compute eta_c * z_b + 1
+                    // This saves us an additional memory allocation.
+                    cfg_iter_mut!(z_b.coeffs).for_each(|b| *b *= eta_c);
+                    z_b.coeffs[0] += F::one();
+                    let mut multiplier = PolyMultiplier::new();
+                    multiplier.add_polynomial_ref(z_a, "z_a");
+                    multiplier.add_polynomial_ref(z_b, "eta_c_z_b_plus_one");
+                    multiplier.add_precomputation(state.fft_precomputation(), state.ifft_precomputation());
+                    let result = multiplier.multiply().unwrap();
+                    // Start undoing in place mutation, by first subtracting the 1 that we added...
+                    z_b.coeffs[0] -= F::one();
+                    result
+                };
+                // ... and then multiplying by eta_b/eta_c, instead of just eta_b.
+                let eta_b_over_eta_c = eta_b * eta_c.inverse().unwrap();
+                let mut summed_z_m_coeffs = z_c.coeffs;
+                cfg_iter_mut!(summed_z_m_coeffs).zip(&z_b.coeffs).for_each(|(c, b)| *c += eta_b_over_eta_c * b);
 
-            let summed_z_m = DensePolynomial::from_coefficients_vec(summed_z_m_coeffs);
-            assert_eq!(summed_z_m.degree(), z_a.degree() + z_b.degree());
-            end_timer!(summed_z_m_poly_time);
-            summed_z_m
-        });
+                //Multiply by linear combination coefficient.
+                cfg_iter_mut!(summed_z_m_coeffs).for_each(|c| *c *= coeff);
+
+                let summed_z_m = DensePolynomial::from_coefficients_vec(summed_z_m_coeffs);
+                assert_eq!(summed_z_m.degree(), z_a.degree() + z_b.degree());
+                end_timer!(summed_z_m_poly_time);
+                summed_z_m
+            });
+        }
+
         job_pool.add_job(|| {
             let t_poly_time = start_timer!(|| "Compute t poly");
 

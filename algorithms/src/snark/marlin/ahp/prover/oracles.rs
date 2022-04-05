@@ -43,15 +43,15 @@ impl<'a, F: PrimeField> FirstOracles<'a, F> {
 #[derive(Debug, Clone)]
 pub(in crate::snark::marlin::ahp) struct SingleEntry<'a, F: PrimeField> {
     /// The evaluations of `Az`.
-    z_a: LabeledPolynomialWithBasis<'a, F>,
+    pub(super) z_a: LabeledPolynomialWithBasis<'a, F>,
     /// The evaluations of `Bz`.
-    z_b: LabeledPolynomialWithBasis<'a, F>,
+    pub(super) z_b: LabeledPolynomialWithBasis<'a, F>,
     /// The LDE of `w`.
-    w_poly: LabeledPolynomial<F>,
+    pub(super) w_poly: LabeledPolynomial<F>,
     /// The LDE of `Az`.
-    z_a_poly: LabeledPolynomial<F>,
+    pub(super) z_a_poly: LabeledPolynomial<F>,
     /// The LDE of `Bz`.
-    z_b_poly: LabeledPolynomial<F>,
+    pub(super) z_b_poly: LabeledPolynomial<F>,
 }
 
 impl<'a, F: PrimeField> SingleEntry<'a, F> {

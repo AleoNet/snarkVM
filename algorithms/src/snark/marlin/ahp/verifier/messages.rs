@@ -19,7 +19,7 @@ use snarkvm_fields::PrimeField;
 use crate::snark::marlin::MarlinMode;
 
 /// First message of the verifier.
-#[derive(Copy, Clone, Debug)]
+#[derive(Clone, Debug)]
 pub struct FirstMessage<F> {
     /// Query for the random polynomial.
     pub alpha: F,
@@ -27,6 +27,8 @@ pub struct FirstMessage<F> {
     pub eta_b: F,
     /// Randomizer for the lincheck for `C`.
     pub eta_c: F,
+    /// Randomizers for combining vectors from the batch.
+    pub batch_combiners: Vec<F>,
 }
 
 /// Second verifier message.
