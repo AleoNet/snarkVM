@@ -43,8 +43,6 @@ use snarkvm_utilities::ToBits as TBits;
 
 #[cfg(test)]
 use snarkvm_circuits_environment::assert_scope;
-#[allow(unused_imports)]
-use snarkvm_circuits_environment::test_utilities::*;
 
 #[derive(Clone)]
 pub struct Field<E: Environment> {

@@ -35,8 +35,6 @@ use snarkvm_utilities::{FromBits as FBits, ToBits as TBits};
 
 #[cfg(test)]
 use snarkvm_circuits_environment::assert_scope;
-#[allow(unused_imports)]
-use snarkvm_circuits_environment::test_utilities::*;
 
 #[derive(Clone)]
 pub struct Scalar<E: Environment> {
