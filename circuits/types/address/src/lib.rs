@@ -81,13 +81,14 @@ impl<E: Environment> Parser for Address<E> {
     /// Parses a string into an address circuit.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        // Parse the 'aleo1' keyword from the string.
-        let (string, _) = tag("aleo1")(string)?;
-        // Parse the digits from the string.
-        let (string, primitive) =
-            recognize(many1(terminated(one_of("qpzry9x8gf2tvdw0s3jn54khce6mua7l"), many0(char('_')))))(string)?;
+        // Prepare a parser for the Aleo address.
+        let address_parser = recognize(pair(
+            tag("aleo1"),
+            many1(terminated(one_of("qpzry9x8gf2tvdw0s3jn54khce6mua7l"), many0(char('_')))),
+        ));
+
         // Parse the value from the string.
-        let (string, value) = map_res(tag(Self::type_name()), |_| {
+        let (string, value) = map_res(address_parser, |primitive: &str| {
             let address = primitive.replace('_', "");
             if address.len() != 63 {
                 return Err(error(format!("Invalid address length of {}", address.len())));
@@ -155,11 +156,9 @@ mod tests {
     use snarkvm_circuits_environment::Circuit;
 
     #[test]
-    fn test_address_parse() -> Result<(), String> {
-        let address = "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.public";
-        match Address::<Circuit>::parse(address) {
-            Ok(_) => Ok(()),
-            Err(error) => Err(error.to_string()),
-        }
+    fn test_address_parse() {
+        let expected = "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.public";
+        let address = Address::<Circuit>::parse(expected).unwrap().1;
+        assert_eq!(expected, &format!("{address}"));
     }
 }
