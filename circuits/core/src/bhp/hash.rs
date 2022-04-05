@@ -97,7 +97,7 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHPCRH<
                 let mut sum_x = Field::zero();
                 let mut sum_y = Field::zero();
 
-                // One iteration costs 2 constraints.
+                // One iteration costs 5 constraints.
                 bits.chunks(BHP_CHUNK_SIZE).zip(bases).for_each(|(chunk_bits, base)| {
                     let mut x_bases = Vec::with_capacity(4);
                     let mut y_bases = Vec::with_capacity(4);
@@ -149,11 +149,12 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHPCRH<
                     };
 
                     // Sum the new Montgomery point into the accumulating sum.
-                    (sum_x, sum_y) = montgomery_add((&sum_x, &sum_y), (&montgomery_x, &montgomery_y));
+                    (sum_x, sum_y) = montgomery_add((&sum_x, &sum_y), (&montgomery_x, &montgomery_y)); // 3 constraints
                 });
 
-                let edwards_x = &sum_x / sum_y; // 2 constraints
-                let edwards_y = (&sum_x - Field::one()) / (sum_x + Field::one()); // 2 constraints
+                // Convert the accumulated sum into a point on the twisted Edwards curve.
+                let edwards_x = &sum_x / sum_y; // 1 constraint
+                let edwards_y = (&sum_x - Field::one()) / (sum_x + Field::one()); // 1 constraint
                 Group::from_xy_coordinates(edwards_x, edwards_y) // 3 constraints
             })
             .fold(Group::zero(), |acc, group| acc + group) // 6 constraints
@@ -185,8 +186,8 @@ mod tests {
         let native = NativeBHP::<Projective, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
         let circuit = BHPCRH::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
         // Determine the number of inputs.
-        let num_input_bits = NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE;
-        // let num_input_bits = 128 * 8;
+        // let num_input_bits = NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE;
+        let num_input_bits = 128 * 8;
 
         for i in 0..ITERATIONS {
             // Sample a random input.
