@@ -56,29 +56,29 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHPCRH<
         let montgomery_add = |(this_x, this_y): (&Field<E>, &Field<E>), (that_x, that_y): (&Field<E>, &Field<E>)| {
             // Construct `lambda` as a witness defined as:
             // `lambda := (that_y - this_y) / (that_x - this_x)`
-            let lambda = witness!(|this_x, this_y, that_x, that_y| (that_y - this_y) / (that_x - this_x));
+            let lambda: Field<E> = witness!(|this_x, this_y, that_x, that_y| (that_y - this_y) / (that_x - this_x));
 
             // Ensure `lambda` is correct by enforcing:
             // `lambda * (that_x - this_x) == (that_y - this_y)`
-            E::assert_eq(&lambda * (that_x - this_x), that_y - this_y);
+            E::enforce(|| (&lambda, that_x - this_x, that_y - this_y));
 
             // Construct `sum_x` as a witness defined as:
             // `sum_x := (B * lambda^2) - A - this_x - that_x`
-            let sum_x = witness!(|lambda, that_x, this_x, coeff_a, coeff_b| {
+            let sum_x: Field<E> = witness!(|lambda, that_x, this_x, coeff_a, coeff_b| {
                 coeff_b * lambda.square() - coeff_a - this_x - that_x
             });
 
             // Ensure `sum_x` is correct by enforcing:
-            // `(B * lambda^2) == (A + this_x + that_x + sum_x)`
-            E::assert_eq(&coeff_b * &lambda.square(), &coeff_a + this_x + that_x + &sum_x);
+            // `(B * lambda) * lambda == (A + this_x + that_x + sum_x)`
+            E::enforce(|| (&coeff_b * &lambda, &lambda, &coeff_a + this_x + that_x + &sum_x));
 
             // Construct `sum_y` as a witness defined as:
             // `sum_y := -(this_y + (lambda * (this_x - sum_x)))`
-            let sum_y = witness!(|lambda, sum_x, this_x, this_y| -(this_y + (lambda * (sum_x - this_x))));
+            let sum_y: Field<E> = witness!(|lambda, sum_x, this_x, this_y| -(this_y + (lambda * (sum_x - this_x))));
 
             // Ensure `sum_y` is correct by enforcing:
             // `(lambda * (this_x - sum_x)) == (this_y + sum_y)`
-            E::assert_eq(lambda * (this_x - &sum_x), this_y + &sum_y);
+            E::enforce(|| (&lambda, this_x - &sum_x, this_y + &sum_y));
 
             (sum_x, sum_y)
         };
