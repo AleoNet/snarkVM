@@ -19,6 +19,8 @@ use super::*;
 use snarkvm_algorithms::crypto_hash::hash_to_curve;
 use snarkvm_circuits_types::prelude::*;
 
+/// PedersenCommitment is an additively-homomorphic commitment scheme that takes variable-length
+/// input.
 pub struct PedersenCommitment<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
     pedersen_gadget: Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>,
     random_base: Vec<Group<E>>,
@@ -56,5 +58,59 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
             .zip_eq(&self.random_base)
             .map(|(bit, power)| Group::ternary(bit, &power, &Group::zero()))
             .fold(hash, |acc, x| acc + x)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_algorithms::{commitment::PedersenCommitment as NativePedersenCommitment, CommitmentScheme};
+    use snarkvm_circuits_environment::Circuit;
+    use snarkvm_curves::{AffineCurve, ProjectiveCurve};
+
+    const ITERATIONS: usize = 10;
+    const MESSAGE: &str = "PedersenCommitmentCircuit0";
+    const WINDOW_SIZE_MULTIPLIER: usize = 8;
+
+    type Projective = <<Circuit as Environment>::Affine as AffineCurve>::Projective;
+
+    fn check_setup<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) {
+        for _ in 0..ITERATIONS {
+            // Initialize the native Pedersen hash.
+            let native = NativePedersenCommitment::<Projective, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
+
+            Circuit::scope("Pedersen::setup", || {
+                // Perform the setup operation.
+                let circuit = PedersenCommitment::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
+                assert_scope!(num_constants, num_public, num_private, num_constraints);
+
+                // Check for equivalency of the random base.
+                native.random_base.iter().zip_eq(circuit.random_base.iter()).for_each(|(expected, candidate)| {
+                    assert_eq!(expected.to_affine(), candidate.eject_value());
+                });
+            });
+        }
+    }
+
+    #[test]
+    fn test_setup_constant() {
+        // Set the number of windows, and modulate the window size.
+        check_setup::<1, WINDOW_SIZE_MULTIPLIER>(785, 0, 0, 0);
+        check_setup::<1, { 2 * WINDOW_SIZE_MULTIPLIER }>(809, 0, 0, 0);
+        check_setup::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(833, 0, 0, 0);
+        check_setup::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(857, 0, 0, 0);
+        check_setup::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(881, 0, 0, 0);
+
+        // Set the window size, and modulate the number of windows.
+        check_setup::<1, WINDOW_SIZE_MULTIPLIER>(785, 0, 0, 0);
+        check_setup::<2, WINDOW_SIZE_MULTIPLIER>(813, 0, 0, 0);
+        check_setup::<3, WINDOW_SIZE_MULTIPLIER>(841, 0, 0, 0);
+        check_setup::<4, WINDOW_SIZE_MULTIPLIER>(869, 0, 0, 0);
+        check_setup::<5, WINDOW_SIZE_MULTIPLIER>(897, 0, 0, 0);
     }
 }
