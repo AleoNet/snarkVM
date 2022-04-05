@@ -18,9 +18,6 @@ mod canonical_deserialize;
 
 mod canonical_serialize;
 
-mod test_with_metrics;
-
-use proc_macro_error::{abort_call_site, proc_macro_error};
 use syn::*;
 
 #[proc_macro_derive(CanonicalSerialize)]
@@ -33,13 +30,4 @@ pub fn derive_canonical_serialize(input: proc_macro::TokenStream) -> proc_macro:
 pub fn derive_canonical_deserialize(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
     proc_macro::TokenStream::from(canonical_deserialize::impl_canonical_deserialize(&ast))
-}
-
-#[proc_macro_error]
-#[proc_macro_attribute]
-pub fn test_with_metrics(_: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    match parse::<ItemFn>(item.clone()) {
-        Ok(function) => test_with_metrics::generate_test_function(function),
-        _ => abort_call_site!("test_with_metrics only works on functions"),
-    }
 }
