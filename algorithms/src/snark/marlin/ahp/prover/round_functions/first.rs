@@ -55,6 +55,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let z_a = state.z_a.take().unwrap();
         let z_b = state.z_b.take().unwrap();
         let private_variables = core::mem::take(&mut state.private_variables);
+        assert_eq!(z_a.len(), z_b.len());
+        assert_eq!(z_a.len(), private_variables.len());
         let mut r_b_s = Vec::with_capacity(z_a.len());
 
         let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(3 * z_a.len());

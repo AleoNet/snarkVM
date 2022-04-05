@@ -49,15 +49,35 @@ pub struct State<'a, F: PrimeField, MM: MarlinMode> {
     /// Query bound b
     pub(super) zk_bound: Option<usize>,
 
+    /// The number of instances being proved in this batch.
+    pub(super) batch_size: usize,
+
+    /// The list of public inputs for each instance in the batch.
+    /// The length of this list must be equal to the batch size.
     pub(super) padded_public_variables: Vec<Vec<F>>,
+
+    /// The list of private variables for each instance in the batch.
+    /// The length of this list must be equal to the batch size.
     pub(super) private_variables: Vec<Vec<F>>,
-    /// Az.
+
+    /// The list of Az vectors for each instance in the batch.
+    /// The length of this list must be equal to the batch size.
     pub(super) z_a: Option<Vec<Vec<F>>>,
-    /// Bz.
+
+    /// The list of Bz vectors for each instance in the batch.
+    /// The length of this list must be equal to the batch size.
     pub(super) z_b: Option<Vec<Vec<F>>>,
 
+    /// A list of polynomials corresponding to the interpolation of the public input.
+    /// The length of this list must be equal to the batch size.
     pub(super) x_poly: Vec<DensePolynomial<F>>,
+
+    /// The first round oracles sent by the prover.
+    /// The length of this list must be equal to the batch size.
     pub(super) first_round_oracles: Option<super::FirstOracles<'a, F>>,
+
+    /// Randomizers for z_b.
+    /// The length of this list must be equal to the batch size.
     pub(super) mz_poly_randomizer: Option<Vec<F>>,
 
     /// The challenges sent by the verifier in the first round
@@ -96,18 +116,21 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
                 EvaluationsOnDomain::from_vec_and_domain(padded_public_input.clone(), input_domain).interpolate()
             })
             .collect();
+        let batch_size = private_variables.len();
+        assert_eq!(padded_public_input.len(), batch_size);
 
         Ok(Self {
-            padded_public_variables: padded_public_input,
-            x_poly,
-            private_variables,
-            zk_bound: zk_bound.into(),
             index,
             input_domain,
             constraint_domain,
             non_zero_a_domain,
             non_zero_b_domain,
             non_zero_c_domain,
+            zk_bound: zk_bound.into(),
+            batch_size,
+            padded_public_variables: padded_public_input,
+            x_poly,
+            private_variables,
             z_a: None,
             z_b: None,
             first_round_oracles: None,
