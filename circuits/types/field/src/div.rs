@@ -59,9 +59,25 @@ impl<E: Environment> DivAssign<Self> for Field<E> {
 }
 
 impl<E: Environment> DivAssign<&Self> for Field<E> {
-    #[allow(clippy::suspicious_op_assign_impl)]
     fn div_assign(&mut self, other: &Self) {
-        *self *= other.inv();
+        // If `other` is a constant, we can perform the multiplication and inversion
+        // without paying for any private variables or constraints.
+        if other.is_constant() {
+            *self *= other.inv();
+        }
+        // Otherwise, we can perform division with 1 constraint by using a `quotient` witness,
+        // and ensuring that `quotient * other == self`.
+        else {
+            // Construct the quotient as a witness.
+            let quotient = witness!(|self, other| self / other);
+
+            // Ensure the quotient is correct by enforcing:
+            // `quotient * other == self`.
+            E::enforce(|| (&quotient, other, &*self));
+
+            // Assign the quotient to `self`.
+            *self = quotient;
+        }
     }
 }
 
@@ -124,12 +140,12 @@ mod tests {
 
     #[test]
     fn test_public_div_public() {
-        check_div(Mode::Public, Mode::Public, 0, 0, 2, 2);
+        check_div(Mode::Public, Mode::Public, 0, 0, 1, 1);
     }
 
     #[test]
     fn test_public_div_private() {
-        check_div(Mode::Public, Mode::Private, 0, 0, 2, 2);
+        check_div(Mode::Public, Mode::Private, 0, 0, 1, 1);
     }
 
     #[test]
@@ -139,12 +155,12 @@ mod tests {
 
     #[test]
     fn test_private_div_public() {
-        check_div(Mode::Private, Mode::Public, 0, 0, 2, 2);
+        check_div(Mode::Private, Mode::Public, 0, 0, 1, 1);
     }
 
     #[test]
     fn test_private_div_private() {
-        check_div(Mode::Private, Mode::Private, 0, 0, 2, 2);
+        check_div(Mode::Private, Mode::Private, 0, 0, 1, 1);
     }
 
     #[test]

@@ -139,10 +139,10 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHPCRH<
                         let montgomery_y: Field<E> = witness!(|chunk_bits, y| if chunk_bits[2] { -y } else { y });
 
                         // Ensure the conditional negation of `witness_y` is correct as follows (1 constraint):
-                        //     `(chunk_bits[2] - 1/2) * (-2 * y) == montgomery_y`
+                        //     `(bit_2 - 1/2) * (-2 * y) == montgomery_y`
                         // which is equivalent to:
-                        //     if `chunk_bits[2] == 0`, then `montgomery_y = -1/2 * -2 * y = y`
-                        //     if `chunk_bits[2] == 1`, then `montgomery_y = 1/2 * -2 * y = -y`
+                        //     if `bit_2 == 0`, then `montgomery_y = -1/2 * -2 * y = y`
+                        //     if `bit_2 == 1`, then `montgomery_y = 1/2 * -2 * y = -y`
                         E::enforce(|| (bit_2 - &one_half, -y.double(), &montgomery_y)); // 1 constraint
 
                         montgomery_y
@@ -156,7 +156,7 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHPCRH<
                 let edwards_y = (&sum_x - Field::one()) / (sum_x + Field::one()); // 2 constraints
                 Group::from_xy_coordinates(edwards_x, edwards_y) // 3 constraints
             })
-            .fold(Group::zero(), |acc, group| acc + group)
+            .fold(Group::zero(), |acc, group| acc + group) // 6 constraints
     }
 }
 
