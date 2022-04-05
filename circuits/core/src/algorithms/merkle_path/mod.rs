@@ -16,54 +16,51 @@
 
 mod to_root;
 
-use crate::algorithms::Poseidon;
+use crate::traits::Hash;
 use snarkvm_circuits_environment::prelude::*;
-use snarkvm_circuits_types::{Boolean, Field};
+use snarkvm_circuits_types::Boolean;
 
 // TODO (raychu86): Remove use of `INPUT_SIZE_FE` as it is merely a requirement for
 //  the `PoseidonCRH` implementation. Ideally merkle trees are updated to deal directly
 //  with bits and field elements instead of bytes to prevent padding requirements.
-pub struct MerklePath<E: Environment, const INPUT_SIZE_FE: usize> {
-    // TODO (raychu86): Add support for generic hash functions.
-    /// The Poseidon hash function.
-    crh: Poseidon<E>,
+pub struct MerklePath<E: Environment, H: Hash, const INPUT_SIZE_FE: usize> {
     /// `traversal[i]` is 0 (false) iff ith node from bottom to top is left.
     traversal: Vec<Boolean<E>>,
     /// `path[i]` is the entry of sibling of ith node from bottom to top.
-    path: Vec<Field<E>>,
+    path: Vec<H::Input>,
 }
 
-impl<E: Environment, const INPUT_SIZE_FE: usize> Inject for MerklePath<E, INPUT_SIZE_FE> {
-    type Primitive = (Vec<bool>, Vec<E::BaseField>);
+impl<E: Environment, H: Hash, const INPUT_SIZE_FE: usize> Inject for MerklePath<E, H, INPUT_SIZE_FE> {
+    type Primitive = (Vec<bool>, Vec<<H::Input as Inject>::Primitive>);
 
     /// Initializes a merkle path from the given mode and `path`.
-    fn new(mode: Mode, (traversal, path): Self::Primitive) -> MerklePath<E, INPUT_SIZE_FE> {
+    fn new(mode: Mode, (traversal, path): Self::Primitive) -> Self {
         let mut circuit_traversal = vec![];
         for position in traversal.iter() {
             circuit_traversal.push(Boolean::new(mode, *position));
         }
 
         let mut circuit_path = vec![];
-        for node in path.iter() {
-            circuit_path.push(Field::new(mode, *node));
+        for node in path.into_iter() {
+            circuit_path.push(H::Input::new(mode, node));
         }
 
-        Self { crh: Poseidon::new(), traversal: circuit_traversal, path: circuit_path }
+        Self { traversal: circuit_traversal, path: circuit_path }
     }
 }
 
-impl<E: Environment, const INPUT_SIZE_FE: usize> Eject for MerklePath<E, INPUT_SIZE_FE> {
-    type Primitive = (Vec<bool>, Vec<E::BaseField>);
+impl<E: Environment, H: Hash, const INPUT_SIZE_FE: usize> Eject for MerklePath<E, H, INPUT_SIZE_FE> {
+    type Primitive = (Vec<bool>, Vec<<H::Input as Eject>::Primitive>);
 
     ///
-    /// Ejects the mode of the account private key.
+    /// Ejects the mode of the merkle path.
     ///
     fn eject_mode(&self) -> Mode {
         (&self.traversal, &self.path).eject_mode()
     }
 
     ///
-    /// Ejects the account private key as `(sk_sig, r_sig)`.
+    /// Ejects the merkle path as `(traversal, path)`.
     ///
     fn eject_value(&self) -> Self::Primitive {
         (&self.traversal, &self.path).eject_value()

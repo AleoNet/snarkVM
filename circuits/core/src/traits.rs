@@ -14,9 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use snarkvm_circuits_environment::{Eject, Inject};
+
 /// A trait for a hash function.
 pub trait Hash {
-    type Input;
+    type Input: Inject + Eject;
     type Output;
 
     /// Returns the hash of the given input.
