@@ -23,9 +23,6 @@ pub mod algorithms;
 pub mod devnet;
 pub use devnet::*;
 
-pub mod merkle_path;
-pub use merkle_path::*;
-
 pub mod traits;
 pub use traits::*;
 

@@ -14,63 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::algorithms::Poseidon;
-use snarkvm_circuits_environment::prelude::*;
-use snarkvm_circuits_types::{Boolean, Field};
-
-// TODO (raychu86): Remove use of `INPUT_SIZE_FE` as it is merely a requirement for
-//  the `PoseidonCRH` implementation. Ideally merkle trees are updated to deal directly
-//  with bits and field elements instead of bytes to prevent padding requirements.
-pub struct MerklePath<E: Environment, const INPUT_SIZE_FE: usize> {
-    // TODO (raychu86): Add support for generic hash functions.
-    /// The Poseidon hash function.
-    crh: Poseidon<E>,
-    /// `traversal[i]` is 0 (false) iff ith node from bottom to top is left.
-    traversal: Vec<Boolean<E>>,
-    /// `path[i]` is the entry of sibling of ith node from bottom to top.
-    path: Vec<Field<E>>,
-}
-
-impl<E: Environment, const INPUT_SIZE_FE: usize> Inject for MerklePath<E, INPUT_SIZE_FE> {
-    type Primitive = (Vec<bool>, Vec<E::BaseField>);
-
-    /// Initializes a merkle path from the given mode and `path`.
-    fn new(mode: Mode, (traversal, path): Self::Primitive) -> MerklePath<E, INPUT_SIZE_FE> {
-        let mut circuit_traversal = vec![];
-        for position in traversal.iter() {
-            circuit_traversal.push(Boolean::new(mode, *position));
-        }
-
-        let mut circuit_path = vec![];
-        for node in path.iter() {
-            circuit_path.push(Field::new(mode, *node));
-        }
-
-        Self { crh: Poseidon::new(), traversal: circuit_traversal, path: circuit_path }
-    }
-}
-
-impl<E: Environment, const INPUT_SIZE_FE: usize> Eject for MerklePath<E, INPUT_SIZE_FE> {
-    type Primitive = (Vec<bool>, Vec<E::BaseField>);
-
-    ///
-    /// Ejects the mode of the account private key.
-    ///
-    fn eject_mode(&self) -> Mode {
-        (&self.traversal, &self.path).eject_mode()
-    }
-
-    ///
-    /// Ejects the account private key as `(sk_sig, r_sig)`.
-    ///
-    fn eject_value(&self) -> Self::Primitive {
-        (&self.traversal, &self.path).eject_value()
-    }
-}
+use super::*;
 
 impl<E: Environment, const INPUT_SIZE_FE: usize> MerklePath<E, INPUT_SIZE_FE> {
     /// Calculate the root of the merkle tree given the leaf node.
-    pub fn calculate_root(&self, leaf: Field<E>) -> Field<E> {
+    pub fn to_root(&self, leaf: &Field<E>) -> Field<E> {
         let num_bits = E::BaseField::size_in_data_bits();
         let byte_size = num_bits + num_bits % 8;
         let input_size_bits: usize = INPUT_SIZE_FE * num_bits;
@@ -134,22 +82,6 @@ impl<E: Environment, const INPUT_SIZE_FE: usize> MerklePath<E, INPUT_SIZE_FE> {
     //
     //     curr_hash
     // }
-
-    pub fn verify(&self, leaf: Field<E>, root: Field<E>) {
-        let expected_root = self.calculate_root(leaf);
-        E::assert_eq(&expected_root, &root);
-    }
-
-    pub fn conditionally_verify(&self, leaf: Field<E>, root: Field<E>, condition: Boolean<E>) {
-        let expected_root = self.calculate_root(leaf);
-        let is_equal = expected_root.is_equal(&root);
-
-        // TODO (raychu86): Consider adding a conditional_assert_eq function.
-        // If `condition` is true, we check that the root is equal to the expected root,
-        // however if `condition` is false, we trivially check that `false` is equal to `false`.
-        let final_condition = &condition & is_equal;
-        E::assert_eq(&condition, &final_condition);
-    }
 }
 
 #[cfg(test)]
@@ -172,7 +104,7 @@ mod tests {
     type H = NativePoseidon<Fr, INPUT_SIZE_FE>;
     type EdwardsMerkleParameters = MaskedMerkleTreeParameters<H, TREE_DEPTH>;
 
-    fn check_merkle_path(
+    fn check_to_root(
         mode: Mode,
         use_bad_root: bool,
         num_inputs: usize,
@@ -205,11 +137,10 @@ mod tests {
                 let merkle_path = MerklePath::<Circuit, INPUT_SIZE_FE>::new(mode, (traversal, path));
 
                 let circuit_leaf = Field::new(mode, *leaf);
-                let circuit_root = Field::new(mode, *root);
+                let candidate_root = merkle_path.to_root(&circuit_leaf);
 
-                assert_eq!(circuit_leaf.eject_value(), *leaf);
-
-                merkle_path.verify(circuit_leaf, circuit_root);
+                assert_eq!(*leaf, circuit_leaf.eject_value());
+                assert_eq!(*root, candidate_root.eject_value());
 
                 let case = format!("(mode = {mode}, num_inputs = {num_inputs})");
                 assert_scope!(case, num_constants, num_public, num_private, num_constraints);
@@ -219,17 +150,17 @@ mod tests {
 
     #[test]
     fn good_root_test_constant() {
-        check_merkle_path(Mode::Constant, false, 0, 2774, 0, 0, 0);
+        check_to_root(Mode::Constant, false, 0, 2773, 0, 0, 0);
     }
 
     #[test]
     fn good_root_test_public() {
-        check_merkle_path(Mode::Public, false, 0, 487, 10, 4005, 4019);
+        check_to_root(Mode::Public, false, 0, 487, 9, 4005, 4018);
     }
 
     #[test]
     fn good_root_test_private() {
-        check_merkle_path(Mode::Private, false, 0, 487, 0, 4015, 4019);
+        check_to_root(Mode::Private, false, 0, 487, 0, 4014, 4018);
     }
 
     // Bad root test for constants is omitted because it will always be accepted by the circuit, despite having invalid enforcements.
@@ -237,12 +168,12 @@ mod tests {
     #[should_panic]
     #[test]
     fn bad_root_test_public() {
-        check_merkle_path(Mode::Public, true, 0, 487, 10, 4005, 4019);
+        check_to_root(Mode::Public, true, 0, 487, 9, 4005, 4018);
     }
 
     #[should_panic]
     #[test]
     fn bad_root_test_private() {
-        check_merkle_path(Mode::Private, true, 0, 487, 0, 4015, 4019);
+        check_to_root(Mode::Private, true, 0, 487, 0, 4014, 4018);
     }
 }
