@@ -24,7 +24,7 @@ impl<E: Environment> Compare<Scalar<E>> for Scalar<E> {
     fn is_less_than(&self, other: &Self) -> Self::Boolean {
         debug_assert!(match E::ScalarField::modulus().to_bytes_le() {
             Ok(modulus_bytes) => match E::BaseField::from_bytes_le(&modulus_bytes) {
-                Ok(modulus) => modulus.to_repr() <= E::BaseField::modulus(),
+                Ok(modulus) => modulus.to_repr() <= E::BaseField::modulus_minus_one_div_two(),
                 Err(error) => E::halt(format!("Failed to load the scalar modulus as a constant: {error}")),
             },
             Err(error) => E::halt(format!("Failed to retrieve the scalar modulus as bytes: {error}")),
@@ -38,7 +38,10 @@ impl<E: Environment> Compare<Scalar<E>> for Scalar<E> {
         if self.is_constant() && other.is_constant() {
             Boolean::new(Mode::Constant, self.eject_value() < other.eject_value())
         } else {
-            (self.to_field() - other.to_field()).double().to_bits_be().pop().unwrap()
+            match (self.to_field() - other.to_field()).double().to_bits_be().pop() {
+                Some(bit) => bit,
+                None => E::halt("Expected at least one bit the bit representation of the base field."),
+            }
         }
     }
 
@@ -79,45 +82,36 @@ mod tests {
             let first: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
             let second: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
 
-            // Check `is_less_than`.
             let a = Scalar::<Circuit>::new(mode_a, first);
             let b = Scalar::<Circuit>::new(mode_b, second);
+
+            // Check `is_less_than`.
             Circuit::scope(&format!("Less Than: {} {}", mode_a, mode_b), || {
-                let candidate = a.is_less_than(&b);
+                let candidate = (&a).is_less_than(&b);
                 assert_eq!(first < second, candidate.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
             });
-            Circuit::reset();
 
             // Check `is_less_than_or_equal`
-            let a = Scalar::<Circuit>::new(mode_a, first);
-            let b = Scalar::<Circuit>::new(mode_b, second);
             Circuit::scope(&format!("Less Than Or Equal: {} {}", mode_a, mode_b), || {
-                let candidate = a.is_less_than_or_equal(&b);
+                let candidate = (&a).is_less_than_or_equal(&b);
                 assert_eq!(first <= second, candidate.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
             });
-            Circuit::reset();
 
             // Check `is_greater_than`
-            let a = Scalar::<Circuit>::new(mode_a, first);
-            let b = Scalar::<Circuit>::new(mode_b, second);
             Circuit::scope(&format!("Greater Than: {} {}", mode_a, mode_b), || {
-                let candidate = a.is_greater_than(&b);
+                let candidate = (&a).is_greater_than(&b);
                 assert_eq!(first > second, candidate.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
             });
-            Circuit::reset();
 
             // Check `is_greater_than_or_equal`
-            let a = Scalar::<Circuit>::new(mode_a, first);
-            let b = Scalar::<Circuit>::new(mode_b, second);
             Circuit::scope(&format!("Greater Than Or Equal: {} {}", mode_a, mode_b), || {
-                let candidate = a.is_greater_than_or_equal(&b);
+                let candidate = (&a).is_greater_than_or_equal(&b);
                 assert_eq!(first >= second, candidate.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
             });
-            Circuit::reset();
         }
     }
 

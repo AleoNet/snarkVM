@@ -65,10 +65,10 @@ use snarkvm_circuits_environment::prelude::*;
 use snarkvm_circuits_types_boolean::Boolean;
 use snarkvm_circuits_types_field::Field;
 
-use core::marker::PhantomData;
-
 #[cfg(test)]
 use snarkvm_circuits_environment::assert_scope;
+
+use core::marker::PhantomData;
 
 #[derive(Clone)]
 pub struct Integer<E: Environment, I: IntegerType> {
@@ -616,19 +616,6 @@ pub mod test_utilities {
         Circuit::scope(name, || {
             let _candidate = operation(input);
             assert_scope_fails!(case, num_constants, num_public, num_private, num_constraints);
-        });
-        Circuit::reset();
-    }
-
-    pub fn check_unary_operation_fails_without_counts<IN, OUT>(
-        name: &str,
-        case: &str,
-        input: IN,
-        operation: impl FnOnce(IN) -> OUT,
-    ) {
-        Circuit::scope(name, || {
-            let _candidate = operation(input);
-            assert!(!Circuit::is_satisfied(), "{} (!is_satisfied)", case);
         });
         Circuit::reset();
     }

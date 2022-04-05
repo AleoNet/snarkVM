@@ -24,42 +24,48 @@ impl<E: Environment> Compare<Field<E>> for Field<E> {
         if self.is_constant() && other.is_constant() {
             Boolean::constant(self.eject_value() < other.eject_value())
         } else if self.is_constant() {
-            // For advanced users: this implementation saves us from instantiating 253 constants for
-            // the bits of `self`.
-            let self_bits_le = self.eject_value().to_bits_le();
-
-            let bit_pairs_le = self_bits_le.into_iter().zip_eq(other.to_bits_le());
-
-            bit_pairs_le.fold(Boolean::constant(false), |rest_is_less, (self_bit, other_bit)| {
-                if self_bit {
-                    Boolean::ternary(&!&other_bit, &other_bit, &rest_is_less)
-                } else {
-                    Boolean::ternary(&other_bit, &other_bit, &rest_is_less)
-                }
-            })
+            // (For advanced users) this implementation saves us from instantiating 253 constants for
+            // the bits of `self`. The implementation in the `else` case invokes `to_bits_le` on
+            // `self` which would allocate 253 constants. Since `self` is constant, we can directly
+            // inspect its bits and construct an equivalent but reduced ternary expression.
+            self.eject_value().to_bits_le().into_iter().zip_eq(other.to_bits_le()).fold(
+                Boolean::constant(false),
+                |rest_is_less, (self_bit, other_bit)| {
+                    if self_bit {
+                        Boolean::ternary(&!&other_bit, &other_bit, &rest_is_less)
+                    } else {
+                        Boolean::ternary(&other_bit, &other_bit, &rest_is_less)
+                    }
+                },
+            )
         } else if other.is_constant() {
-            // For advanced users: this implementation saves us from instantiating 253 constants for
-            // the bits of `self`.
-            let self_bits_le = self.to_bits_le();
-
-            let bit_pairs_le = self_bits_le.iter().zip_eq(other.eject_value().to_bits_le());
-
-            bit_pairs_le.fold(Boolean::constant(false), |rest_is_less, (self_bit, other_bit)| {
-                if other_bit {
-                    Boolean::ternary(&!self_bit, &!self_bit, &rest_is_less)
-                } else {
-                    Boolean::ternary(self_bit, &!self_bit, &rest_is_less)
-                }
-            })
+            // (For advanced users) this implementation saves us from instantiating 253 constants for
+            // the bits of `other`. The implementation in the `else` case invokes `to_bits_le` on
+            // `other` which would allocate 253 constants. Since `other` is constant, we can directly
+            // inspect its bits and construct an equivalent but reduced ternary expression.
+            self.to_bits_le().iter().zip_eq(other.eject_value().to_bits_le()).fold(
+                Boolean::constant(false),
+                |rest_is_less, (self_bit, other_bit)| {
+                    if other_bit {
+                        Boolean::ternary(&!self_bit, &!self_bit, &rest_is_less)
+                    } else {
+                        Boolean::ternary(self_bit, &!self_bit, &rest_is_less)
+                    }
+                },
+            )
         } else {
-            // Initialize an iterator over `self` and `other` from MSB to LSB.
-            let self_bits_le = self.to_bits_le();
-            let other_bits_le = other.to_bits_le();
-            let bits_le = self_bits_le.iter().zip_eq(&other_bits_le);
-
-            bits_le.fold(Boolean::constant(false), |rest_is_less, (self_bit, other_bit)| {
-                Boolean::ternary(&self_bit.bitxor(other_bit), other_bit, &rest_is_less)
-            })
+            // Zip `self.to_bits_le()` and `other.to_bits_le()` together and construct a check on the sequence of bit pairs.
+            // The bitwise check begins with the most-significant bit pair and ends with the least-significant bit pair.
+            // For each bit pair,
+            // - If `self_bit` and `other_bit` are different signs, then if `self_bit` is `true`, return false.
+            // - If `self_bit` and `other_bit` are different signs, then if `self_bit` is `false`, return true.
+            // - If `self_bit` and `other_bit` are the same sign, then check the following bits.
+            self.to_bits_le().iter().zip_eq(other.to_bits_le()).fold(
+                Boolean::constant(false),
+                |rest_is_less, (self_bit, other_bit)| {
+                    Boolean::ternary(&self_bit.bitxor(&other_bit), &other_bit, &rest_is_less)
+                },
+            )
         }
     }
 
@@ -108,7 +114,6 @@ mod tests {
                 assert_eq!(first < second, candidate.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
             });
-            Circuit::reset();
 
             // Check `is_less_than_or_equal`
             let a = Field::<Circuit>::new(mode_a, first);
@@ -118,7 +123,6 @@ mod tests {
                 assert_eq!(first <= second, candidate.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
             });
-            Circuit::reset();
 
             // Check `is_greater_than`
             let a = Field::<Circuit>::new(mode_a, first);
@@ -128,7 +132,6 @@ mod tests {
                 assert_eq!(first > second, candidate.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
             });
-            Circuit::reset();
 
             // Check `is_greater_than_or_equal`
             let a = Field::<Circuit>::new(mode_a, first);
@@ -138,7 +141,6 @@ mod tests {
                 assert_eq!(first >= second, candidate.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
             });
-            Circuit::reset();
         }
     }
 

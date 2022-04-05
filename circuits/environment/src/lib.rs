@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 #![forbid(unsafe_code)]
-#![allow(clippy::too_many_arguments)]
 #![allow(clippy::type_complexity)]
 
 #[macro_use]

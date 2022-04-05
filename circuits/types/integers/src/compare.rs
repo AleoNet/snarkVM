@@ -87,39 +87,27 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
-        // Note that we need to use "fresh" circuits for each of the test cases, otherwise number of
-        // variables and constraints are incorrectly counted.
+        let a = Integer::<Circuit, I>::new(mode_a, first);
+        let b = Integer::<Circuit, I>::new(mode_b, second);
 
         // Check `is_less_than`.
         let expected = first < second;
         let case = format!("({} < {})", first, second);
-
-        let a = Integer::<Circuit, I>::new(mode_a, first);
-        let b = Integer::<Circuit, I>::new(mode_b, second);
         check_operation_passes(name, &case, expected, &a, &b, Integer::is_less_than, num_constants, num_public, num_private, num_constraints);
 
         // Check `is_less_than_or_equal`
         let expected = first <= second;
         let case = format!("({} <= {})", first, second);
-
-        let a = Integer::<Circuit, I>::new(mode_a, first);
-        let b = Integer::<Circuit, I>::new(mode_b, second);
         check_operation_passes(name, &case, expected, &a, &b, Integer::is_less_than_or_equal, num_constants, num_public, num_private, num_constraints);
 
         // Check `is_greater_than`
         let expected = first > second;
         let case = format!("({} > {})", first, second);
-
-        let a = Integer::<Circuit, I>::new(mode_a, first);
-        let b = Integer::<Circuit, I>::new(mode_b, second);
         check_operation_passes(name, &case, expected, &a, &b, Integer::is_greater_than, num_constants, num_public, num_private, num_constraints);
 
         // Check `is_greater_than_or_equal`
         let expected = first >= second;
         let case = format!("({} >= {})", first, second);
-
-        let a = Integer::<Circuit, I>::new(mode_a, first);
-        let b = Integer::<Circuit, I>::new(mode_b, second);
         check_operation_passes(name, &case, expected, &a, &b, Integer::is_greater_than_or_equal, num_constants, num_public, num_private, num_constraints);
     }
 
