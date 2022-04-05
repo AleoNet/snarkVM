@@ -24,9 +24,17 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHPCRH<
     }
 
     fn hash_bits_inner(&self, input: &[Boolean<E>]) -> Group<E> {
-        // Ensure the input size is within the parameter size,
+        // Ensure the input size is at least the window size.
+        if input.len() <= WINDOW_SIZE * BHP_CHUNK_SIZE {
+            E::halt(format!("Inputs to this BHP variant must be greater than {} bits", WINDOW_SIZE * BHP_CHUNK_SIZE))
+        }
+
+        // Ensure the input size is within the parameter size.
         if input.len() > NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE {
-            E::halt("Incorrect input length")
+            E::halt(format!(
+                "Inputs to this BHP variant cannot exceed {} bits",
+                NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE
+            ))
         }
 
         // Pad the input to a multiple of `BHP_CHUNK_SIZE` for hashing.
@@ -37,6 +45,44 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHPCRH<
             assert_eq!(input.len() % BHP_CHUNK_SIZE, 0);
         }
 
+        // Declare the 1/2 constant field element.
+        let one_half = Field::constant(E::BaseField::half());
+
+        // Declare the constant coefficients A and B for the Montgomery curve.
+        let coeff_a = Field::constant(<E::AffineParameters as TwistedEdwardsParameters>::MontgomeryParameters::COEFF_A);
+        let coeff_b = Field::constant(<E::AffineParameters as TwistedEdwardsParameters>::MontgomeryParameters::COEFF_B);
+
+        // Implements the incomplete addition formulae of two Montgomery curve points.
+        let montgomery_add = |(this_x, this_y): (&Field<E>, &Field<E>), (that_x, that_y): (&Field<E>, &Field<E>)| {
+            // Construct `lambda` as a witness defined as:
+            // `lambda := (that_y - this_y) / (that_x - this_x)`
+            let lambda = witness!(|this_x, this_y, that_x, that_y| (that_y - this_y) / (that_x - this_x));
+
+            // Ensure `lambda` is correct by enforcing:
+            // `lambda * (that_x - this_x) == (that_y - this_y)`
+            E::assert_eq(&lambda * (that_x - this_x), that_y - this_y);
+
+            // Construct `sum_x` as a witness defined as:
+            // `sum_x := (B * lambda^2) - A - this_x - that_x`
+            let sum_x = witness!(|lambda, that_x, this_x, coeff_a, coeff_b| {
+                coeff_b * lambda.square() - coeff_a - this_x - that_x
+            });
+
+            // Ensure `sum_x` is correct by enforcing:
+            // `(B * lambda^2) == (A + this_x + that_x + sum_x)`
+            E::assert_eq(&coeff_b * &lambda.square(), &coeff_a + this_x + that_x + &sum_x);
+
+            // Construct `sum_y` as a witness defined as:
+            // `sum_y := -(this_y + (lambda * (this_x - sum_x)))`
+            let sum_y = witness!(|lambda, sum_x, this_x, this_y| -(this_y + (lambda * (sum_x - this_x))));
+
+            // Ensure `sum_y` is correct by enforcing:
+            // `(lambda * (this_x - sum_x)) == (this_y + sum_y)`
+            E::assert_eq(lambda * (this_x - &sum_x), this_y + &sum_y);
+
+            (sum_x, sum_y)
+        };
+
         // Compute sum of h_i^{sum of (1-2*c_{i,j,2})*(1+c_{i,j,0}+2*c_{i,j,1})*2^{4*(j-1)} for all j in segment}
         // for all i. Described in section 5.4.1.7 in the Zcash protocol specification.
         //
@@ -46,12 +92,12 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHPCRH<
             .chunks(WINDOW_SIZE * BHP_CHUNK_SIZE)
             .zip(self.bases.iter())
             .map(|(bits, bases)| {
-                let mut x_sum = Field::zero();
-                let mut y_sum = Field::zero();
+                // Initialize accumulating sum variables for the x- and y-coordinates.
+                let mut sum_x = Field::zero();
+                let mut sum_y = Field::zero();
 
+                // One iteration costs 2 constraints.
                 bits.chunks(BHP_CHUNK_SIZE).zip(bases).for_each(|(chunk_bits, base)| {
-                    // One iteration is 6 constraints.
-
                     let mut x_bases = Vec::with_capacity(4);
                     let mut y_bases = Vec::with_capacity(4);
                     let mut acc_power = base.clone();
@@ -65,86 +111,48 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHPCRH<
                         acc_power += base;
                     }
 
+                    // Cast each input chunk bit as a field element.
                     let bit_0 = Field::from_boolean(&chunk_bits[0]);
                     let bit_1 = Field::from_boolean(&chunk_bits[1]);
                     let bit_2 = Field::from_boolean(&chunk_bits[2]);
                     let bit_0_and_1 = Field::from_boolean(&(&chunk_bits[0] & &chunk_bits[1])); // 1 constraint
 
+                    // Compute the x-coordinate of the Montgomery curve point.
                     let montgomery_x: Field<E> = &x_bases[0]
                         + &bit_0 * (&x_bases[1] - &x_bases[0])
                         + &bit_1 * (&x_bases[2] - &x_bases[0])
                         + &bit_0_and_1 * (&x_bases[3] - &x_bases[2] - &x_bases[1] + &x_bases[0]);
 
-                    let montgomery_y: Field<E> = witness!(|chunk_bits, y_bases| {
-                        let y = match (chunk_bits[0], chunk_bits[1]) {
-                            (false, false) => y_bases[0],
-                            (false, true) => y_bases[2],
-                            (true, false) => y_bases[1],
-                            (true, true) => y_bases[3],
-                        };
-                        if chunk_bits[2] { -y } else { y }
-                    });
-
-                    // Conditional negation:
-                    // We want to set the result to be a conditional negation of y_lc as follows:
-                    // if b[2] == 0, result := y_lc
-                    // if b[2] == 1, result := -y_lc
-                    //
-                    // We write this as follows:
-                    // result = (b[2] - 1/2) * (-2 * y_lc);
-                    //
-                    // This works because
-                    // * b[2] == 0 -> result = -1/2 * -2 * y_lc =  y_lc
-                    // * b[2] == 1 -> result =  1/2 * -2 * y_lc = -y_lc
-                    // We take this approach because it reduces the number of non-zero entries in
-                    // the constraint, which makes it more efficient for Marlin.
-                    {
-                        let y_lc: Field<E> = &y_bases[0]
+                    // Compute the y-coordinate of the Montgomery curve point.
+                    let montgomery_y = {
+                        // Compute the y-coordinate of the Montgomery curve point, without any negation.
+                        let y: Field<E> = &y_bases[0]
                             + bit_0 * (&y_bases[1] - &y_bases[0])
                             + bit_1 * (&y_bases[2] - &y_bases[0])
                             + bit_0_and_1 * (&y_bases[3] - &y_bases[2] - &y_bases[1] + &y_bases[0]);
 
-                        E::enforce::<_, Field<E>, Field<E>, &Field<E>>(|| {
-                            (bit_2 - Field::constant(E::BaseField::half()), -y_lc.double(), &montgomery_y)
-                        }); // 1 constraint
-                    }
+                        // Determine the correct sign of the y-coordinate, as a witness.
+                        //
+                        // Instead of using `Field::ternary`, we create a witness & custom constraint to reduce
+                        // the number of nonzero entries in the circuit, improving setup & proving time for Marlin.
+                        let montgomery_y: Field<E> = witness!(|chunk_bits, y| if chunk_bits[2] { -y } else { y });
 
-                    {
-                        let coeff_a = Field::constant(
-                            <E::AffineParameters as TwistedEdwardsParameters>::MontgomeryParameters::COEFF_A,
-                        );
-                        let coeff_b = Field::constant(
-                            <E::AffineParameters as TwistedEdwardsParameters>::MontgomeryParameters::COEFF_B,
-                        );
+                        // Ensure the conditional negation of `witness_y` is correct as follows (1 constraint):
+                        //     `(chunk_bits[2] - 1/2) * (-2 * y) == montgomery_y`
+                        // which is equivalent to:
+                        //     if `chunk_bits[2] == 0`, then `montgomery_y = -1/2 * -2 * y = y`
+                        //     if `chunk_bits[2] == 1`, then `montgomery_y = 1/2 * -2 * y = -y`
+                        E::enforce(|| (bit_2 - &one_half, -y.double(), &montgomery_y)); // 1 constraint
 
-                        let lambda = witness!(|montgomery_x, montgomery_y, x_sum, y_sum| {
-                            (montgomery_y - y_sum) / (montgomery_x - x_sum)
-                        });
-                        E::assert_eq(&lambda * (&montgomery_x - &x_sum), &montgomery_y - &y_sum);
+                        montgomery_y
+                    };
 
-                        // Compute x'' = B*lambda^2 - A - x - x'
-                        let xprime = witness!(|lambda, montgomery_x, x_sum, coeff_a, coeff_b| {
-                            lambda.square() * coeff_b - coeff_a - x_sum - montgomery_x
-                        });
-
-                        let xprime_lc = &x_sum + &montgomery_x + &xprime + &coeff_a;
-
-                        // (lambda) * (lambda) = (A + x + x' + x'')
-                        let lambda_b = &lambda * &coeff_b;
-                        E::assert_eq(lambda_b * &lambda, xprime_lc);
-
-                        let yprime =
-                            witness!(|lambda, xprime, x_sum, y_sum| { -(y_sum + (lambda * (xprime - x_sum))) });
-
-                        E::assert_eq(lambda * (&x_sum - &xprime), &y_sum + &yprime);
-
-                        x_sum = xprime;
-                        y_sum = yprime;
-                    }
+                    // Sum the new Montgomery point into the accumulating sum.
+                    (sum_x, sum_y) = montgomery_add((&sum_x, &sum_y), (&montgomery_x, &montgomery_y));
                 });
 
-                let edwards_x = &x_sum / y_sum; // 2 constraints
-                let edwards_y = (&x_sum - Field::one()) / (x_sum + Field::one()); // 2 constraints
+                let edwards_x = &sum_x / sum_y; // 2 constraints
+                let edwards_y = (&sum_x - Field::one()) / (sum_x + Field::one()); // 2 constraints
                 Group::from_xy_coordinates(edwards_x, edwards_y) // 3 constraints
             })
             .fold(Group::zero(), |acc, group| acc + group)
@@ -176,8 +184,8 @@ mod tests {
         let native = NativeBHP::<Projective, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
         let circuit = BHPCRH::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
         // Determine the number of inputs.
-        let num_input_bits = NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE;
-        // let num_input_bits = 128*8;
+        // let num_input_bits = NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE;
+        let num_input_bits = 128 * 8;
 
         for i in 0..ITERATIONS {
             // Sample a random input.
