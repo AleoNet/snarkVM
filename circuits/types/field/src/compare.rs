@@ -19,12 +19,13 @@ use super::*;
 impl<E: Environment> Compare<Field<E>> for Field<E> {
     type Boolean = Boolean<E>;
 
-    // TODO (@pranav) See if this can be deduped. Consider using witness!.
     /// Returns `true` if `self` is less than `other`.
     fn is_less_than(&self, other: &Self) -> Self::Boolean {
         if self.is_constant() && other.is_constant() {
             Boolean::constant(self.eject_value() < other.eject_value())
         } else if self.is_constant() {
+            // For advanced users: this implementation saves us from instantiating 253 constants for
+            // the bits of `self`.
             let self_bits_le = self.eject_value().to_bits_le();
 
             let bit_pairs_le = self_bits_le.into_iter().zip_eq(other.to_bits_le());
@@ -37,6 +38,8 @@ impl<E: Environment> Compare<Field<E>> for Field<E> {
                 }
             })
         } else if other.is_constant() {
+            // For advanced users: this implementation saves us from instantiating 253 constants for
+            // the bits of `self`.
             let self_bits_le = self.to_bits_le();
 
             let bit_pairs_le = self_bits_le.iter().zip_eq(other.eject_value().to_bits_le());
@@ -85,54 +88,6 @@ mod tests {
     const ITERATIONS: usize = 1000;
 
     #[rustfmt::skip]
-    fn check_compare(
-        name: &str,
-        first: <Circuit as Environment>::BaseField,
-        second: <Circuit as Environment>::BaseField,
-        mode_a: Mode,
-        mode_b: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        // Note that we need to use "fresh" circuits for each of the test cases, otherwise number of
-        // variables and constraints are incorrectly counted.
-
-        // Check `is_less_than`.
-        let expected = first < second;
-        let case = format!("({} < {})", first, second);
-
-        let a = Field::<Circuit>::new(mode_a, first);
-        let b = Field::<Circuit>::new(mode_b, second);
-        check_operation_passes(name, &case, expected, &a, &b, Field::is_less_than, num_constants, num_public, num_private, num_constraints);
-
-        // Check `is_less_than_or_equal`
-        let expected = first <= second;
-        let case = format!("({} <= {})", first, second);
-
-        let a = Field::<Circuit>::new(mode_a, first);
-        let b = Field::<Circuit>::new(mode_b, second);
-        check_operation_passes(name, &case, expected, &a, &b, Field::is_less_than_or_equal, num_constants, num_public, num_private, num_constraints);
-
-        // Check `is_greater_than`
-        let expected = first > second;
-        let case = format!("({} > {})", first, second);
-
-        let a = Field::<Circuit>::new(mode_a, first);
-        let b = Field::<Circuit>::new(mode_b, second);
-        check_operation_passes(name, &case, expected, &a, &b, Field::is_greater_than, num_constants, num_public, num_private, num_constraints);
-
-        // Check `is_greater_than_or_equal`
-        let expected = first >= second;
-        let case = format!("({} >= {})", first, second);
-
-        let a = Field::<Circuit>::new(mode_a, first);
-        let b = Field::<Circuit>::new(mode_b, second);
-        check_operation_passes(name, &case, expected, &a, &b, Field::is_greater_than_or_equal, num_constants, num_public, num_private, num_constraints);
-    }
-
-    #[rustfmt::skip]
     fn run_test(
         mode_a: Mode,
         mode_b: Mode,
@@ -141,12 +96,49 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
-        for i in 0..ITERATIONS {
+        for _i in 0..ITERATIONS {
             let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
             let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
 
-            let name = format!("Compare: {}, {}, {}", mode_a, mode_b, i);
-            check_compare(&name, first, second, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+            // Check `is_less_than`.
+            let a = Field::<Circuit>::new(mode_a, first);
+            let b = Field::<Circuit>::new(mode_b, second);
+            Circuit::scope(&format!("Less Than: {} {}", mode_a, mode_b), || {
+                let candidate = a.is_less_than(&b);
+                assert_eq!(first < second, candidate.eject_value());
+                assert_scope!(num_constants, num_public, num_private, num_constraints);
+            });
+            Circuit::reset();
+
+            // Check `is_less_than_or_equal`
+            let a = Field::<Circuit>::new(mode_a, first);
+            let b = Field::<Circuit>::new(mode_b, second);
+            Circuit::scope(&format!("Less Than Or Equal: {} {}", mode_a, mode_b), || {
+                let candidate = a.is_less_than_or_equal(&b);
+                assert_eq!(first <= second, candidate.eject_value());
+                assert_scope!(num_constants, num_public, num_private, num_constraints);
+            });
+            Circuit::reset();
+
+            // Check `is_greater_than`
+            let a = Field::<Circuit>::new(mode_a, first);
+            let b = Field::<Circuit>::new(mode_b, second);
+            Circuit::scope(&format!("Greater Than: {} {}", mode_a, mode_b), || {
+                let candidate = a.is_greater_than(&b);
+                assert_eq!(first > second, candidate.eject_value());
+                assert_scope!(num_constants, num_public, num_private, num_constraints);
+            });
+            Circuit::reset();
+
+            // Check `is_greater_than_or_equal`
+            let a = Field::<Circuit>::new(mode_a, first);
+            let b = Field::<Circuit>::new(mode_b, second);
+            Circuit::scope(&format!("Greater Than Or Equal: {} {}", mode_a, mode_b), || {
+                let candidate = a.is_greater_than_or_equal(&b);
+                assert_eq!(first >= second, candidate.eject_value());
+                assert_scope!(num_constants, num_public, num_private, num_constraints);
+            });
+            Circuit::reset();
         }
     }
 
