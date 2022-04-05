@@ -30,19 +30,20 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHPCRH<
         }
 
         // Ensure the input size is within the parameter size.
-        if input.len() > NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE {
-            E::halt(format!(
+        let mut input = input.to_vec();
+        match input.len() <= NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE {
+            true => {
+                // Pad the input to a multiple of `BHP_CHUNK_SIZE` for hashing.
+                if input.len() % BHP_CHUNK_SIZE != 0 {
+                    let padding = BHP_CHUNK_SIZE - (input.len() % BHP_CHUNK_SIZE);
+                    input.resize(input.len() + padding, Boolean::constant(false));
+                    assert_eq!(input.len() % BHP_CHUNK_SIZE, 0);
+                }
+            }
+            false => E::halt(format!(
                 "Inputs to this BHP variant cannot exceed {} bits",
                 NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE
-            ))
-        }
-
-        // Pad the input to a multiple of `BHP_CHUNK_SIZE` for hashing.
-        let mut input = input.to_vec();
-        if input.len() % BHP_CHUNK_SIZE != 0 {
-            let padding = BHP_CHUNK_SIZE - (input.len() % BHP_CHUNK_SIZE);
-            input.extend_from_slice(&vec![Boolean::constant(false); BHP_CHUNK_SIZE][..padding]);
-            assert_eq!(input.len() % BHP_CHUNK_SIZE, 0);
+            )),
         }
 
         // Declare the 1/2 constant field element.
@@ -184,8 +185,8 @@ mod tests {
         let native = NativeBHP::<Projective, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
         let circuit = BHPCRH::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
         // Determine the number of inputs.
-        // let num_input_bits = NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE;
-        let num_input_bits = 128 * 8;
+        let num_input_bits = NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE;
+        // let num_input_bits = 128 * 8;
 
         for i in 0..ITERATIONS {
             // Sample a random input.
