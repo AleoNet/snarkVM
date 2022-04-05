@@ -20,7 +20,7 @@ use std::iter;
 impl<E: Environment> FromBits for Field<E> {
     type Boolean = Boolean<E>;
 
-    /// Initializes a new base field element from a list of little-endian bits *without* trailing zeros.
+    /// Initializes a new base field element from a list of little-endian bits.
     fn from_bits_le(bits_le: &[Self::Boolean]) -> Self {
         // Retrieve the data and field size.
         let size_in_data_bits = E::BaseField::size_in_data_bits();
@@ -32,7 +32,12 @@ impl<E: Environment> FromBits for Field<E> {
             // Check if all excess bits are zero.
             let should_be_zero = bits_le[size_in_bits..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit);
             // Ensure `should_be_zero` is zero.
-            E::assert_eq(E::zero(), should_be_zero);
+            // TODO: `E::assert_eq` does not enforce constant constraints.
+            if should_be_zero.is_constant() && should_be_zero.eject_value() {
+                E::halt("The excess bits are not zero.")
+            } else {
+                E::assert_eq(E::zero(), should_be_zero)
+            }
         }
 
         // If the number of bits is greater than `size_in_data_bits`, then check that it is a valid field element.
@@ -42,9 +47,9 @@ impl<E: Environment> FromBits for Field<E> {
             let modulus_minus_one = -E::BaseField::one();
             let modulus_minus_one_bits_le = modulus_minus_one.to_bits_le();
 
-            // Pad `bits_le` with zeros to the size of the base field modulus.
+            // Pad `bits_le` with zeros to the size of the base field modulus, if necessary.
             let boolean_false = Boolean::constant(false);
-            let padded_bits_le = bits_le.iter().chain(iter::repeat(&boolean_false).take(size_in_bits - num_bits));
+            let padded_bits_le = bits_le.iter().chain(iter::repeat(&boolean_false)).take(size_in_bits);
 
             // Initialize an iterator over `self` and `other` from MSB to LSB.
             let bit_pairs_le = modulus_minus_one_bits_le.iter().zip_eq(padded_bits_le);
@@ -60,19 +65,23 @@ impl<E: Environment> FromBits for Field<E> {
 
             // Enforce that BaseField::MODULUS - 1 is not less than the field element given by `bits_le`.
             // In other words, enforce that BaseField::MODULUS - 1 is greater than or equal to the field element given by `bits_le`.
-            // Note that we need to match over the following cases since `E::assert` does not enforce constant constraints.
-            match modulus_minus_one_less_than_bits.is_constant() {
-                true => {
-                    if modulus_minus_one_less_than_bits.eject_value() {
-                        E::halt(
-                            "Attempted to instantiate a scalar field element that greater than or equal to the modulus.",
-                        )
-                    }
-                }
-                false => E::assert(!modulus_minus_one_less_than_bits),
+            // TODO: `E::assert` does not enforce constant constraints.
+            if modulus_minus_one_less_than_bits.is_constant() && modulus_minus_one_less_than_bits.eject_value() {
+                E::halt("Attempted to instantiate a base field element that greater than or equal to the modulus.")
+            } else {
+                E::assert(!modulus_minus_one_less_than_bits)
             }
         }
-        
+
+        // Reconstruct the bits as a linear combination representing the original field value.
+        // `output` := (2^i * b_i + ... + 2^0 * b_0)
+        let mut output = Field::zero();
+        let mut coefficient = Field::one();
+        for bit in bits_le.iter().take(size_in_bits) {
+            output += Field::from_boolean(bit) * &coefficient;
+            coefficient = coefficient.double();
+        }
+
         // Construct the sanitized list of bits, resizing up if necessary.
         let mut bits_le = bits_le.iter().take(size_in_bits).cloned().collect::<Vec<_>>();
         bits_le.resize(size_in_bits, Boolean::constant(false));
@@ -85,7 +94,7 @@ impl<E: Environment> FromBits for Field<E> {
         output
     }
 
-    /// Initializes a new base field element from a list of big-endian bits *without* leading zeros.
+    /// Initializes a new base field element from a list of big-endian bits.
     fn from_bits_be(bits_be: &[Self::Boolean]) -> Self {
         // Reverse the given bits from big-endian into little-endian.
         // Note: This is safe as the bit representation is consistent (there are no leading zeros).
@@ -99,7 +108,7 @@ impl<E: Environment> FromBits for Field<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_circuits_environment::Circuit;
+    use snarkvm_circuits_environment::{assert_scope_fails, Circuit};
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 100;
@@ -117,7 +126,7 @@ mod tests {
             let given_bits = Field::<Circuit>::new(mode, expected).to_bits_le();
             let expected_size_in_bits = given_bits.len();
 
-            // Check case where `bits_le` is less than the scalar field modulus.
+            // Check the case where `bits_le` is less than the base field modulus.
             Circuit::scope(format!("{mode} {i}"), || {
                 let candidate = Field::<Circuit>::from_bits_le(&given_bits);
                 assert_eq!(expected, candidate.eject_value());
@@ -129,11 +138,12 @@ mod tests {
                 assert_eq!(expected_size_in_bits, candidate_bits.len());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
             });
+            Circuit::reset();
 
             // Add excess zero bits.
-            let candidate = vec![given_bits, vec![Boolean::new(mode, false); i]].concat();
+            let candidate = vec![given_bits.clone(), vec![Boolean::new(mode, false); i]].concat();
 
-            Circuit::scope(&format!("Excess {} {}", mode, i), || {
+            Circuit::scope(&format!("Excess Zero: {} {}", mode, i), || {
                 let candidate = Field::<Circuit>::from_bits_le(&candidate);
                 assert_eq!(expected, candidate.eject_value());
                 assert_eq!(expected_size_in_bits, candidate.bits_le.get().expect("Caching failed").len());
@@ -146,32 +156,47 @@ mod tests {
                     }
                 };
             });
+            Circuit::reset();
+
+            // Add excess one bits.
+            let candidate = vec![given_bits, vec![Boolean::new(mode, true); i + 1]].concat();
+
+            match mode.is_constant() {
+                true => {
+                    let result = std::panic::catch_unwind(|| Field::<Circuit>::from_bits_le(&candidate));
+                    assert!(result.is_err());
+                }
+                _ => {
+                    Circuit::scope(format!("Excess One: {mode}"), || {
+                        let _ = Field::<Circuit>::from_bits_le(&candidate);
+                        assert_scope_fails!(num_constants, num_public, num_private + i, num_constraints + i + 1);
+                    });
+                    Circuit::reset();
+                }
+            }
         }
 
-        // Check case where `bits_le` is equal to the scalar field modulus.
-        let mut candidate = Field::<Circuit>::zero().to_bits_le();
-        // Set the two most significant bits to true.
-        let len = candidate.len();
-        candidate[len - 1] = Boolean::new(mode, true);
-        candidate[len - 2] = Boolean::new(mode, true);
-        match mode {
-            Mode::Constant => check_unary_operation_halts(candidate, |bits_le: Vec<Boolean<Circuit>>| {
-                Field::<Circuit>::from_bits_le(&bits_le)
-            }),
-            _ => check_unary_operation_fails_without_counts(
-                "FromBitsLE",
-                &format!("{}", mode),
-                candidate,
-                |bits_le: Vec<Boolean<Circuit>>| Field::<Circuit>::from_bits_le(&bits_le),
-            ),
-        }
+        // Check the case where `bits_le` is equal to the base field modulus.
+        let modulus = <Circuit as Environment>::BaseField::modulus()
+            .to_bits_le()
+            .iter()
+            .map(|b| Boolean::new(mode, *b))
+            .take(<Circuit as Environment>::BaseField::size_in_bits())
+            .collect::<Vec<_>>();
 
-        // Check case where `bits_le.len()` is greater than the size of the scalar field.
-        let mut candidate = Field::<Circuit>::zero().to_bits_le();
-        candidate.push(Boolean::new(mode, false));
-        check_unary_operation_halts(candidate, |bits_le: Vec<Boolean<Circuit>>| {
-            Field::<Circuit>::from_bits_le(&bits_le)
-        });
+        match mode.is_constant() {
+            true => {
+                let result = std::panic::catch_unwind(|| Field::<Circuit>::from_bits_le(&modulus));
+                assert!(result.is_err());
+            }
+            _ => {
+                Circuit::scope(format!("Modulus: {mode}"), || {
+                    let _ = Field::<Circuit>::from_bits_le(&modulus);
+                    assert_scope_fails!(num_constants, num_public, num_private, num_constraints);
+                });
+                Circuit::reset();
+            }
+        }
     }
 
     fn check_from_bits_be(
@@ -187,7 +212,7 @@ mod tests {
             let given_bits = Field::<Circuit>::new(mode, expected).to_bits_be();
             let expected_size_in_bits = given_bits.len();
 
-            // Check case where `bits_be` is less than the scalar field modulus.
+            // Check the case where `bits_be` is less than the base field modulus.
             Circuit::scope(format!("{mode} {i}"), || {
                 let candidate = Field::<Circuit>::from_bits_be(&given_bits);
                 assert_eq!(expected, candidate.eject_value());
@@ -199,11 +224,12 @@ mod tests {
                 assert_eq!(expected_size_in_bits, candidate_bits.len());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
             });
+            Circuit::reset();
 
             // Add excess zero bits.
-            let candidate = vec![vec![Boolean::new(mode, false); i], given_bits].concat();
+            let candidate = vec![vec![Boolean::new(mode, false); i], given_bits.clone()].concat();
 
-            Circuit::scope(&format!("Excess {} {}", mode, i), || {
+            Circuit::scope(&format!("Excess Zero: {} {}", mode, i), || {
                 let candidate = Field::<Circuit>::from_bits_be(&candidate);
                 assert_eq!(expected, candidate.eject_value());
                 assert_eq!(expected_size_in_bits, candidate.bits_le.get().expect("Caching failed").len());
@@ -216,31 +242,48 @@ mod tests {
                     }
                 };
             });
+            Circuit::reset();
+
+            // Add excess one bits.
+            let candidate = vec![vec![Boolean::new(mode, true); i + 1], given_bits].concat();
+
+            match mode.is_constant() {
+                true => {
+                    let result = std::panic::catch_unwind(|| Field::<Circuit>::from_bits_be(&candidate));
+                    assert!(result.is_err());
+                }
+                false => {
+                    Circuit::scope(format!("Excess One: {mode}"), || {
+                        let _ = Field::<Circuit>::from_bits_be(&candidate);
+                        assert_scope_fails!(num_constants, num_public, num_private + i, num_constraints + i + 1);
+                    });
+                    Circuit::reset();
+                }
+            }
         }
 
-        // Check case where `bits_be` is equal to the scalar field modulus.
-        let mut candidate = Field::<Circuit>::zero().to_bits_be();
-        // Set the two most significant bits to true.
-        candidate[0] = Boolean::new(mode, true);
-        candidate[1] = Boolean::new(mode, true);
-        match mode {
-            Mode::Constant => check_unary_operation_halts(candidate, |bits_be: Vec<Boolean<Circuit>>| {
-                Field::<Circuit>::from_bits_be(&bits_be)
-            }),
-            _ => check_unary_operation_fails_without_counts(
-                "FromBitsBE",
-                &format!("{}", mode),
-                candidate,
-                |bits_be: Vec<Boolean<Circuit>>| Field::<Circuit>::from_bits_be(&bits_be),
-            ),
-        }
+        // Check the case where `bits_be` is equal to the base field modulus.
+        let modulus = <Circuit as Environment>::BaseField::modulus()
+            .to_bits_le()
+            .iter()
+            .map(|b| Boolean::new(mode, *b))
+            .take(<Circuit as Environment>::BaseField::size_in_bits())
+            .rev()
+            .collect::<Vec<_>>();
 
-        // Check case where `bits_be.len()` is greater than the size of the scalar field.
-        let mut candidate = Field::<Circuit>::zero().to_bits_be();
-        candidate.push(Boolean::new(mode, false));
-        check_unary_operation_halts(candidate, |bits_be: Vec<Boolean<Circuit>>| {
-            Field::<Circuit>::from_bits_be(&bits_be)
-        });
+        match mode.is_constant() {
+            true => {
+                let result = std::panic::catch_unwind(|| Field::<Circuit>::from_bits_be(&modulus));
+                assert!(result.is_err());
+            }
+            false => {
+                Circuit::scope(format!("Modulus: {mode}"), || {
+                    let _ = Field::<Circuit>::from_bits_be(&modulus);
+                    assert_scope_fails!(num_constants, num_public, num_private, num_constraints);
+                });
+                Circuit::reset();
+            }
+        }
     }
 
     #[test]
