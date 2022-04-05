@@ -148,3 +148,18 @@ impl<E: Environment> Display for Address<E> {
         write!(f, "{}.{}", address, self.eject_mode())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_circuits_environment::Circuit;
+
+    #[test]
+    fn test_address_parse() -> Result<(), String> {
+        let address = "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.public";
+        match Address::<Circuit>::parse(address) {
+            Ok(_) => Ok(()),
+            Err(error) => Err(error.to_string()),
+        }
+    }
+}
