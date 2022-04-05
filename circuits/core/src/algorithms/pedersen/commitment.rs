@@ -19,7 +19,18 @@ use super::*;
 use snarkvm_algorithms::crypto_hash::hash_to_curve;
 use snarkvm_circuits_types::prelude::*;
 
-/// PedersenCommitment is an additively-homomorphic commitment scheme that takes variable-length
+/// PedersenCommitment64 is an *additively-homomorphic* commitment scheme that takes a 64-bit input.
+pub type PedersenCommitment64<E> = PedersenCommitment<E, 1, 64>;
+/// PedersenCommitment128 is an *additively-homomorphic* commitment scheme that takes a 128-bit input.
+pub type PedersenCommitment128<E> = PedersenCommitment<E, 1, 128>;
+/// PedersenCommitment256 is a commitment scheme that takes a 256-bit input.
+pub type PedersenCommitment256<E> = PedersenCommitment<E, 2, 128>;
+/// PedersenCommitment512 is a commitment scheme that takes a 512-bit input.
+pub type PedersenCommitment512<E> = PedersenCommitment<E, 4, 128>;
+/// PedersenCommitment1024 is a commitment scheme that takes a 1024-bit input.
+pub type PedersenCommitment1024<E> = PedersenCommitment<E, 8, 128>;
+
+/// PedersenCommitment is an additively-homomorphic commitment scheme that takes a variable-length
 /// input.
 pub struct PedersenCommitment<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
     /// The underlying Pedersen gadget, used to produce hashes of input bits.
@@ -58,7 +69,7 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
         randomness
             .iter()
             .zip_eq(&self.random_base)
-            .map(|(bit, power)| Group::ternary(bit, &power, &Group::zero()))
+            .map(|(bit, power)| Group::ternary(bit, power, &Group::zero()))
             .fold(hash, |acc, x| acc + x)
     }
 }

@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 mod commitment;
+pub use commitment::*;
 mod hash;
 mod hash_uncompressed;
 
