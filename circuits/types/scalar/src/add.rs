@@ -160,41 +160,41 @@ mod tests {
 
     #[test]
     fn test_scalar_constant_plus_public() {
-        run_test(Mode::Constant, Mode::Public, 254, 0, 1021, 1023);
+        run_test(Mode::Constant, Mode::Public, 1, 0, 758, 760);
     }
 
     #[test]
     fn test_scalar_constant_plus_private() {
-        run_test(Mode::Constant, Mode::Private, 254, 0, 1021, 1023);
+        run_test(Mode::Constant, Mode::Private, 1, 0, 758, 760);
     }
 
     #[test]
     fn test_scalar_public_plus_constant() {
-        run_test(Mode::Public, Mode::Constant, 254, 0, 1021, 1023);
+        run_test(Mode::Public, Mode::Constant, 1, 0, 758, 760);
     }
 
     #[test]
     fn test_scalar_private_plus_constant() {
-        run_test(Mode::Private, Mode::Constant, 254, 0, 1021, 1023);
+        run_test(Mode::Private, Mode::Constant, 1, 0, 758, 760);
     }
 
     #[test]
     fn test_scalar_public_plus_public() {
-        run_test(Mode::Public, Mode::Public, 254, 0, 1021, 1023);
+        run_test(Mode::Public, Mode::Public, 1, 0, 758, 760);
     }
 
     #[test]
     fn test_scalar_public_plus_private() {
-        run_test(Mode::Public, Mode::Private, 254, 0, 1021, 1023);
+        run_test(Mode::Public, Mode::Private, 1, 0, 758, 760);
     }
 
     #[test]
     fn test_scalar_private_plus_public() {
-        run_test(Mode::Private, Mode::Public, 254, 0, 1021, 1023);
+        run_test(Mode::Private, Mode::Public, 1, 0, 758, 760);
     }
 
     #[test]
     fn test_scalar_private_plus_private() {
-        run_test(Mode::Private, Mode::Private, 254, 0, 1021, 1023);
+        run_test(Mode::Private, Mode::Private, 1, 0, 758, 760);
     }
 }
