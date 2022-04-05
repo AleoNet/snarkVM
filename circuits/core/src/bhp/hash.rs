@@ -186,8 +186,8 @@ mod tests {
         let native = NativeBHP::<Projective, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
         let circuit = BHPCRH::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
         // Determine the number of inputs.
-        // let num_input_bits = NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE;
-        let num_input_bits = 128 * 8;
+        let num_input_bits = NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE;
+        // let num_input_bits = 128 * 8;
 
         for i in 0..ITERATIONS {
             // Sample a random input.
@@ -200,9 +200,8 @@ mod tests {
             Circuit::scope(format!("BHP {mode} {i}"), || {
                 // Perform the hash operation.
                 let candidate = circuit.hash(&circuit_input);
-                assert_eq!(expected, candidate.eject_value());
-
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
+                assert_eq!(expected, candidate.eject_value());
             });
         }
     }
@@ -219,6 +218,6 @@ mod tests {
 
     #[test]
     fn test_hash_private() {
-        check_hash::<32, 48>(Mode::Private, 41600, 0, 12669, 12701);
+        check_hash::<32, 48>(Mode::Private, 36995, 0, 7997, 8029);
     }
 }
