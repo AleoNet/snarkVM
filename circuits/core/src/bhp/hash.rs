@@ -98,19 +98,9 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHPCRH<
                 let mut sum_y = Field::zero();
 
                 // One iteration costs 5 constraints.
-                bits.chunks(BHP_CHUNK_SIZE).zip(bases).for_each(|(chunk_bits, base)| {
-                    let mut x_bases = Vec::with_capacity(4);
-                    let mut y_bases = Vec::with_capacity(4);
-                    let mut acc_power = base.clone();
-                    for _ in 0..4 {
-                        let x =
-                            (Field::one() + acc_power.to_y_coordinate()) / (Field::one() - acc_power.to_y_coordinate());
-                        let y = &x / acc_power.to_x_coordinate();
-
-                        x_bases.push(x);
-                        y_bases.push(y);
-                        acc_power += base;
-                    }
+                bits.chunks(BHP_CHUNK_SIZE).zip(bases).for_each(|(chunk_bits, base_lookups)| {
+                    // Unzip the base lookups into `x_bases` and `y_bases`.
+                    let (x_bases, y_bases) = base_lookups;
 
                     // Cast each input chunk bit as a field element.
                     let bit_0 = Field::from_boolean(&chunk_bits[0]);
@@ -217,6 +207,6 @@ mod tests {
 
     #[test]
     fn test_hash_private() {
-        check_hash::<32, 48>(Mode::Private, 36995, 0, 7997, 8029);
+        check_hash::<32, 48>(Mode::Private, 131, 0, 7997, 8029);
     }
 }
