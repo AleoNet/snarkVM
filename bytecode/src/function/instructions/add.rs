@@ -20,7 +20,7 @@ use crate::{
     Program,
     Value,
 };
-use snarkvm_circuits::{Literal, Parser, ParserResult};
+use snarkvm_circuits::{AddChecked, Literal, Parser, ParserResult};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
@@ -70,8 +70,17 @@ impl<P: Program> Operation<P> for Add<P> {
         let result = match (first, second) {
             (Literal::Field(a), Literal::Field(b)) => Literal::Field(a + b),
             (Literal::Group(a), Literal::Group(b)) => Literal::Group(a + b),
-            (Literal::I8(a), Literal::I8(b)) => Literal::I8(a + b),
-            (Literal::U8(a), Literal::U8(b)) => Literal::U8(a + b),
+            (Literal::I8(a), Literal::I8(b)) => Literal::I8(a.add_checked(&b)),
+            (Literal::I16(a), Literal::I16(b)) => Literal::I16(a.add_checked(&b)),
+            (Literal::I32(a), Literal::I32(b)) => Literal::I32(a.add_checked(&b)),
+            (Literal::I64(a), Literal::I64(b)) => Literal::I64(a.add_checked(&b)),
+            (Literal::I128(a), Literal::I128(b)) => Literal::I128(a.add_checked(&b)),
+            (Literal::U8(a), Literal::U8(b)) => Literal::U8(a.add_checked(&b)),
+            (Literal::U16(a), Literal::U16(b)) => Literal::U16(a.add_checked(&b)),
+            (Literal::U32(a), Literal::U32(b)) => Literal::U32(a.add_checked(&b)),
+            (Literal::U64(a), Literal::U64(b)) => Literal::U64(a.add_checked(&b)),
+            (Literal::U128(a), Literal::U128(b)) => Literal::U128(a.add_checked(&b)),
+            (Literal::Scalar(a), Literal::Scalar(b)) => Literal::Scalar(a + b),
             _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
         };
 
@@ -119,11 +128,11 @@ impl<P: Program> Into<Instruction<P>> for Add<P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Process, Register};
+    use crate::{Identifier, Process, Register};
 
     type P = Process;
 
-    fn check_add(first: Value<P>, second: Value<P>, expected: Value<P>) {
+    fn check_add_test(first: Value<P>, second: Value<P>, expected: Value<P>) {
         let registers = Registers::<P>::default();
         registers.define(&Register::from_str("r0"));
         registers.define(&Register::from_str("r1"));
@@ -138,17 +147,64 @@ mod tests {
 
     #[test]
     fn test_add_field() {
-        let first = Value::<P>::from_str("1field.public");
-        let second = Value::<P>::from_str("2field.private");
-        let expected = Value::<P>::from_str("3field.private");
-        check_add(first, second, expected);
+        let one = Value::<P>::from_str("1field.public");
+        let two = Value::<P>::from_str("2field.private");
+        let three = Value::<P>::from_str("3field.private");
+        check_add_test(one, two, three);
     }
 
     #[test]
     fn test_add_group() {
-        let first = Value::<P>::from_str("2group.public");
-        let second = Value::<P>::from_str("0group.private");
-        let expected = Value::<P>::from_str("2group.private");
-        check_add(first, second, expected);
+        let two = Value::<P>::from_str("2group.private");
+        let zero = Value::<P>::from_str("0group.private");
+        check_add_test(two.clone(), zero, two);
+    }
+
+    #[test]
+    fn test_add_scalar() {
+        let one = Value::<P>::from_str("1scalar.public");
+        let two = Value::<P>::from_str("2scalar.private");
+        let three = Value::<P>::from_str("3scalar.private");
+        check_add_test(one, two, three);
+    }
+
+    #[test]
+    #[should_panic(expected = "message is not a literal")]
+    fn test_halts_on_composite() {
+        let composite = Value::<P>::Composite(Identifier::from_str("message"), vec![
+            Literal::from_str("2group.public"),
+            Literal::from_str("10field.private"),
+        ]);
+        let second = Value::<P>::from_str("4scalar.public");
+
+        check_add_test(composite, second, Value::<P>::from_str("\"Unreachable\".private"));
+    }
+
+    #[test]
+    #[should_panic(expected = "Invalid 'add' instruction")]
+    fn test_halts_on_string_operand() {
+        let invalid_add_literal = Value::<P>::from_str("\"hello world\".public");
+        let second = Value::<P>::from_str("4scalar.public");
+
+        check_add_test(invalid_add_literal, second, Value::<P>::from_str("\"Unreachable\".private"));
+    }
+
+    #[test]
+    #[should_panic(expected = "Invalid 'add' instruction")]
+    fn test_halts_on_address_operand() {
+        let invalid_add_literal =
+            Value::<P>::from_str("aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.public");
+        let second = Value::<P>::from_str("4scalar.public");
+
+        check_add_test(invalid_add_literal, second, Value::<P>::from_str("\"Unreachable\".private"));
+    }
+
+    #[test]
+    #[should_panic(expected = "Invalid 'add' instruction")]
+    fn test_halts_on_boolean_operand() {
+        let invalid_add_literal = Value::<P>::from_str("true.public");
+        let second = Value::<P>::from_str("4scalar.public");
+
+        check_add_test(invalid_add_literal, second, Value::<P>::from_str("\"Unreachable\".private"));
     }
 }
