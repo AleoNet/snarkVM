@@ -39,6 +39,11 @@ where
             let left_input: Vec<H::Input> = left_hash.into();
             let right_input: Vec<H::Input> = right_hash.into();
 
+            // TODO (raychu86): Handle issue with merkle tree inner node hashing.
+            //  The native tree hashes bytes, whereas the circuit tree hashes bits, which means the padding is incorrectly done.
+            //  Native input = left_hash bits + padding (to fill bytes) + right_hash bits + padding
+            //  Circuit input = left_hash bits + right_hash bits + padding.
+
             curr_hash = crh.hash(&[left_input, right_input].concat());
         }
 
@@ -135,22 +140,16 @@ mod tests {
     fn test_good_root_private() {
         check_to_root(Mode::Private, false, 0, 487, 0, 4014, 4018);
     }
-    //
-    // #[should_panic]
-    // #[test]
-    // fn test_bad_root_public() {
-    //     let merkle_tree_parameters = Parameters::setup(MESSAGE);
-    //     let pedersen = H::setup(MESSAGE);
-    //
-    //     check_to_root(Mode::Public, merkle_tree_parameters, &pedersen, true, 0, 487, 9, 4005, 4018);
-    // }
-    //
-    // #[should_panic]
-    // #[test]
-    // fn test_bad_root_private() {
-    //     let merkle_tree_parameters = Parameters::setup(MESSAGE);
-    //     let pedersen = H::setup(MESSAGE);
-    //
-    //     check_to_root(Mode::Private, merkle_tree_parameters, &pedersen, true, 0, 487, 0, 4014, 4018);
-    // }
+
+    #[should_panic]
+    #[test]
+    fn test_bad_root_public() {
+        check_to_root(Mode::Public, true, 0, 487, 9, 4005, 4018);
+    }
+
+    #[should_panic]
+    #[test]
+    fn test_bad_root_private() {
+        check_to_root(Mode::Private, true, 0, 487, 0, 4014, 4018);
+    }
 }
