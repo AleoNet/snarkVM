@@ -20,9 +20,6 @@
 pub mod account;
 pub mod algorithms;
 
-pub mod bhp;
-pub use bhp::*;
-
 pub mod devnet;
 pub use devnet::*;
 
