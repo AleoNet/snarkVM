@@ -15,12 +15,15 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 mod hash;
+mod hash_uncompressed;
 
 #[cfg(test)]
 use snarkvm_circuits_environment::assert_scope;
 
+use crate::{Hash, HashUncompressed};
 use snarkvm_algorithms::crypto_hash::hash_to_curve;
 use snarkvm_circuits_types::prelude::*;
+use snarkvm_curves::{MontgomeryParameters, TwistedEdwardsParameters};
 use snarkvm_utilities::BigInteger;
 
 pub const BHP_CHUNK_SIZE: usize = 3;
@@ -29,11 +32,11 @@ pub const BHP_LOOKUP_SIZE: usize = 4;
 /// The x-coordinate and y-coordinate of each base on the Montgomery curve.
 type BaseLookups<E> = (Vec<Field<E>>, Vec<Field<E>>);
 
-pub struct BHPCRH<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
+pub struct BHP<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
     bases: Vec<Vec<BaseLookups<E>>>,
 }
 
-impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHPCRH<E, NUM_WINDOWS, WINDOW_SIZE> {
+impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP<E, NUM_WINDOWS, WINDOW_SIZE> {
     pub fn setup(message: &str) -> Self {
         // Calculate the maximum window size.
         let mut maximum_window_size = 0;
