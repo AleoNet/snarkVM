@@ -36,7 +36,7 @@ impl<E: Environment> Add<&Self> for Group<E> {
         else if other.is_constant() && other.eject_value().is_zero() {
             self
         }
-        // Otherwise, compute te sum of `self` and `other`.
+        // Otherwise, compute the sum of `self` and `other`.
         else {
             // This swap reduces the number of constants by one.
             let (this, that) = match other.is_constant() {
