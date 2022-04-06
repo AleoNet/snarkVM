@@ -226,6 +226,7 @@ mod tests {
         Circuit::reset();
     }
 
+    #[allow(clippy::identity_op)]
     #[test]
     fn test_constant_times_scalar_constant() {
         use snarkvm_utilities::BigInteger;
