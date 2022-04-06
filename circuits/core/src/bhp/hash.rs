@@ -187,7 +187,6 @@ mod tests {
         let circuit = BHPCRH::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
         // Determine the number of inputs.
         let num_input_bits = NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE;
-        // let num_input_bits = 128 * 8;
 
         for i in 0..ITERATIONS {
             // Sample a random input.

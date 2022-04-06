@@ -24,7 +24,7 @@ use snarkvm_circuits_types::prelude::*;
 use snarkvm_utilities::BigInteger;
 
 pub const BHP_CHUNK_SIZE: usize = 3;
-pub const BHP_LOOKUP_SIZE: usize = 2usize.pow(BHP_CHUNK_SIZE as u32);
+pub const BHP_LOOKUP_SIZE: usize = 4;
 
 pub struct BHPCRH<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
     bases: Vec<Vec<Group<E>>>,
@@ -47,18 +47,20 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHPCRH<
             .map(|index| {
                 // Construct an indexed message to attempt to sample a base.
                 let (generator, _, _) = hash_to_curve(&format!("{message} at {index}"));
-                let mut base = Group::new(Mode::Constant, generator);
+                // Inject the new base.
+                let mut base = Group::constant(generator);
+                // Construct the window with the base.
                 let mut powers = Vec::with_capacity(WINDOW_SIZE);
                 for _ in 0..WINDOW_SIZE {
                     powers.push(base.clone());
-                    for _ in 0..4 {
+                    for _ in 0..BHP_LOOKUP_SIZE {
                         base = base.double();
                     }
                 }
                 powers
             })
             .collect::<Vec<Vec<Group<E>>>>();
-        debug_assert_eq!(bases.len(), NUM_WINDOWS, "Incorrect number of windows ({:?}) for BHP", bases.len());
+        debug_assert_eq!(bases.len(), NUM_WINDOWS, "Incorrect number of windows ({}) for BHP", bases.len());
         bases.iter().for_each(|window| debug_assert_eq!(window.len(), WINDOW_SIZE));
 
         Self { bases }
