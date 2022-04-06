@@ -110,7 +110,7 @@ mod tests {
             let leaf_bits = leaf.to_bits_le();
             let root = if use_bad_root { Default::default() } else { *root };
 
-            Circuit::scope(format!("Poseidon {mode} merkle tree {i}"), || {
+            Circuit::scope(format!("{mode} {MESSAGE} {i}"), || {
                 let traversal = proof.position_list().collect::<Vec<_>>();
                 let path = proof.path.clone();
                 let merkle_path = MerklePath::<Circuit, H>::new(mode, (traversal, path));
