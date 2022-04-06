@@ -123,6 +123,7 @@ mod tests {
                     (_, _) => assert_scope!(num_constants, num_public, num_private, num_constraints),
                 }
             });
+            Circuit::reset();
 
             // Check `is_less_than_or_equal`
             let a = Field::<Circuit>::new(mode_a, first);
@@ -142,6 +143,7 @@ mod tests {
                     (_, _) => assert_scope!(num_constants, num_public, num_private, num_constraints),
                 }
             });
+            Circuit::reset();
 
             // Check `is_greater_than`
             let a = Field::<Circuit>::new(mode_a, first);
@@ -161,6 +163,7 @@ mod tests {
                     (_, _) => assert_scope!(num_constants, num_public, num_private, num_constraints),
                 }
             });
+            Circuit::reset();
 
             // Check `is_greater_than_or_equal`
             let a = Field::<Circuit>::new(mode_a, first);
@@ -180,6 +183,7 @@ mod tests {
                     (_, _) => assert_scope!(num_constants, num_public, num_private, num_constraints),
                 }
             });
+            Circuit::reset()
         }
     }
 
