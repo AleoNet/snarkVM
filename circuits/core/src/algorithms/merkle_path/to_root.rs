@@ -85,7 +85,6 @@ mod tests {
     fn check_to_root(
         mode: Mode,
         use_bad_root: bool,
-        num_inputs: usize,
         num_constants: usize,
         num_public: usize,
         num_private: usize,
@@ -124,7 +123,7 @@ mod tests {
                 assert_eq!(*leaf.to_bits_le(), circuit_leaf.eject_value());
                 assert_eq!(root, candidate_root.eject_value());
 
-                let case = format!("(mode = {mode}, num_inputs = {num_inputs})");
+                let case = format!("mode = {mode}");
                 assert_scope!(case, num_constants, num_public, num_private, num_constraints);
             });
         }
@@ -132,28 +131,28 @@ mod tests {
 
     #[test]
     fn test_good_root_constant() {
-        check_to_root(Mode::Constant, false, 0, 12526, 0, 0, 0);
+        check_to_root(Mode::Constant, false, 12526, 0, 0, 0);
     }
 
     #[test]
     fn test_good_root_public() {
-        check_to_root(Mode::Public, false, 0, 5121, 261, 16528, 16793);
+        check_to_root(Mode::Public, false, 5121, 261, 16528, 16793);
     }
 
     #[test]
     fn test_good_root_private() {
-        check_to_root(Mode::Private, false, 0, 5121, 0, 16789, 16793);
+        check_to_root(Mode::Private, false, 5121, 0, 16789, 16793);
     }
 
     #[should_panic]
     #[test]
     fn test_bad_root_public() {
-        check_to_root(Mode::Public, true, 0, 5121, 9, 4005, 16793);
+        check_to_root(Mode::Public, true, 5121, 9, 4005, 16793);
     }
 
     #[should_panic]
     #[test]
     fn test_bad_root_private() {
-        check_to_root(Mode::Private, true, 0, 5121, 0, 4014, 16793);
+        check_to_root(Mode::Private, true, 5121, 0, 4014, 16793);
     }
 }

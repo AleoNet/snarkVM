@@ -90,14 +90,7 @@ mod tests {
 
     type H = Pedersen<Circuit, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
 
-    fn check_new(
-        mode: Mode,
-        num_inputs: usize,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
+    fn check_new(mode: Mode, num_constants: usize, num_public: usize, num_private: usize, num_constraints: usize) {
         let merkle_tree_parameters = Parameters::setup(MESSAGE);
 
         let mut rng = test_rng();
@@ -118,7 +111,7 @@ mod tests {
 
                 assert_eq!((traversal, path), merkle_path.eject_value());
 
-                let case = format!("(mode = {mode}, num_inputs = {num_inputs})");
+                let case = format!("mode = {mode}");
                 assert_scope!(case, num_constants, num_public, num_private, num_constraints);
             });
         }
@@ -126,8 +119,8 @@ mod tests {
 
     #[test]
     fn test_merkle_path_new() {
-        check_new(Mode::Constant, 0, 8, 0, 0, 0);
-        check_new(Mode::Private, 0, 0, 0, 8, 4);
-        check_new(Mode::Public, 0, 0, 8, 0, 4);
+        check_new(Mode::Constant, 8, 0, 0, 0);
+        check_new(Mode::Private, 0, 0, 8, 4);
+        check_new(Mode::Public, 0, 8, 0, 4);
     }
 }
