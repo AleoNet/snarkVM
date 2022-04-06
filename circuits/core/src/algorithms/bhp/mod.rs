@@ -32,11 +32,14 @@ pub const BHP_LOOKUP_SIZE: usize = 4;
 /// The x-coordinate and y-coordinate of each base on the Montgomery curve.
 type BaseLookups<E> = (Vec<Field<E>>, Vec<Field<E>>);
 
+/// BHP is a collision-resistant hash function that takes a variable-length input.
+/// The BHP hash function does *not* behave like a random oracle, see Poseidon for one.
 pub struct BHP<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
     bases: Vec<Vec<BaseLookups<E>>>,
 }
 
 impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP<E, NUM_WINDOWS, WINDOW_SIZE> {
+    /// Initializes a new instance of BHP with the given setup message.
     pub fn setup(message: &str) -> Self {
         // Calculate the maximum window size.
         let mut maximum_window_size = 0;
@@ -86,30 +89,37 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP<E, 
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use snarkvm_algorithms::{crh::BHPCRH as NativeBHP, CRH};
-//     use snarkvm_circuits_environment::Circuit;
-//     use snarkvm_circuits_types::Eject;
-//     use snarkvm_curves::{edwards_bls12::EdwardsProjective, ProjectiveCurve};
-//
-//     const ITERATIONS: usize = 10;
-//     const MESSAGE: &str = "bhp_gadget_setup_test";
-//
-//     #[test]
-//     fn test_setup_constant() {
-//         for _ in 0..ITERATIONS {
-//             let native_hasher = NativeBHP::<EdwardsProjective, 8, 32>::setup(MESSAGE);
-//             let circuit_hasher = BHPCRH::<Circuit, 8, 32>::setup(MESSAGE);
-//
-//             native_hasher.parameters().iter().zip(circuit_hasher.parameters().iter()).for_each(
-//                 |(native_bases, circuit_bases)| {
-//                     native_bases.iter().zip(circuit_bases).for_each(|(native_base, circuit_base)| {
-//                         assert_eq!(native_base.to_affine(), circuit_base.eject_value());
-//                     })
-//                 },
-//             );
-//         }
-//     }
-// }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_algorithms::{crh::BHPCRH, CRH};
+    use snarkvm_circuits_environment::Circuit;
+    use snarkvm_circuits_types::Eject;
+    use snarkvm_curves::{edwards_bls12::EdwardsProjective, AffineCurve, ProjectiveCurve};
+
+    const ITERATIONS: usize = 10;
+    const MESSAGE: &str = "BHPCircuit0";
+
+    #[test]
+    fn test_setup_constant() {
+        for _ in 0..ITERATIONS {
+            let native = BHPCRH::<EdwardsProjective, 8, 32>::setup(MESSAGE);
+            let circuit = BHP::<Circuit, 8, 32>::setup(MESSAGE);
+
+            native.parameters().iter().zip(circuit.bases.iter()).for_each(|(native_bases, circuit_bases)| {
+                native_bases.iter().zip(circuit_bases).for_each(|(native_base, circuit_base_lookups)| {
+                    // Check the first circuit base (when converted back to twisted Edwards) matches the native one.
+                    let (circuit_x, circuit_y) = {
+                        let (x_bases, y_bases) = circuit_base_lookups;
+                        // Convert the Montgomery point to a twisted Edwards point.
+                        let edwards_x = &x_bases[0] / &y_bases[0]; // 1 constraint
+                        let edwards_y = (&x_bases[0] - Field::one()) / (&x_bases[0] + Field::one());
+                        (edwards_x, edwards_y)
+                    };
+                    assert_eq!(native_base.to_affine().to_x_coordinate(), circuit_x.eject_value());
+                    assert_eq!(native_base.to_affine().to_y_coordinate(), circuit_y.eject_value());
+                })
+            });
+        }
+    }
+}
