@@ -20,18 +20,15 @@ use crate::traits::Hash;
 use snarkvm_circuits_environment::prelude::*;
 use snarkvm_circuits_types::Boolean;
 
-// TODO (raychu86): Remove use of `INPUT_SIZE_FE` as it is merely a requirement for
-//  the `PoseidonCRH` implementation. Ideally merkle trees are updated to deal directly
-//  with bits and field elements instead of bytes to prevent padding requirements.
-pub struct MerklePath<E: Environment, H: Hash, const INPUT_SIZE_FE: usize> {
+pub struct MerklePath<E: Environment, H: Hash> {
     /// `traversal[i]` is 0 (false) iff ith node from bottom to top is left.
     traversal: Vec<Boolean<E>>,
     /// `path[i]` is the entry of sibling of ith node from bottom to top.
-    path: Vec<H::Input>,
+    path: Vec<H::Output>,
 }
 
-impl<E: Environment, H: Hash, const INPUT_SIZE_FE: usize> Inject for MerklePath<E, H, INPUT_SIZE_FE> {
-    type Primitive = (Vec<bool>, Vec<<H::Input as Inject>::Primitive>);
+impl<E: Environment, H: Hash> Inject for MerklePath<E, H> {
+    type Primitive = (Vec<bool>, Vec<<H::Output as Inject>::Primitive>);
 
     /// Initializes a merkle path from the given mode and `path`.
     fn new(mode: Mode, (traversal, path): Self::Primitive) -> Self {
@@ -42,15 +39,15 @@ impl<E: Environment, H: Hash, const INPUT_SIZE_FE: usize> Inject for MerklePath<
 
         let mut circuit_path = vec![];
         for node in path.into_iter() {
-            circuit_path.push(H::Input::new(mode, node));
+            circuit_path.push(H::Output::new(mode, node));
         }
 
         Self { traversal: circuit_traversal, path: circuit_path }
     }
 }
 
-impl<E: Environment, H: Hash, const INPUT_SIZE_FE: usize> Eject for MerklePath<E, H, INPUT_SIZE_FE> {
-    type Primitive = (Vec<bool>, Vec<<H::Input as Eject>::Primitive>);
+impl<E: Environment, H: Hash> Eject for MerklePath<E, H> {
+    type Primitive = (Vec<bool>, Vec<<H::Output as Eject>::Primitive>);
 
     ///
     /// Ejects the mode of the merkle path.

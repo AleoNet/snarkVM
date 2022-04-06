@@ -15,7 +15,8 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_circuits_environment::{Eject, FromBits, Inject, Ternary, ToBits};
-use snarkvm_utilities::fmt::Debug;
+
+use core::fmt::Debug;
 
 /// A trait for a hash function.
 pub trait Hash {

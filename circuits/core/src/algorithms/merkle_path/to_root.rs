@@ -18,94 +18,63 @@ use super::*;
 
 use crate::traits::Hash;
 
-impl<E: Environment, H: Hash, const INPUT_SIZE_FE: usize> MerklePath<E, H, INPUT_SIZE_FE> {
-    // /// Calculate the root of the merkle tree given the leaf node.
-    // pub fn to_root(&self, crh: &H, leaf: &H::Input) -> H::Output {
-    //     let num_bits = E::BaseField::size_in_data_bits();
-    //     let byte_size = num_bits + num_bits % 8;
-    //     let input_size_bits: usize = INPUT_SIZE_FE * num_bits;
-    //
-    //     // Pad the leaf according to the PoseidonCRH function.
-    //     let mut leaf_bits = leaf.to_bits_le();
-    //     leaf_bits.resize(byte_size, Boolean::new(Mode::Constant, false));
-    //
-    //     let field_input: Vec<Field<E>> = leaf_bits.chunks(num_bits).map(Field::from_bits_le).collect();
-    //     let mut curr_hash = crh.hash(&field_input);
-    //
-    //     // To traverse up a MT, we iterate over the path from bottom to top
-    //
-    //     // At any given bit, the bit being 0 indicates our currently hashed value is the left,
-    //     // and the bit being 1 indicates our currently hashed value is on the right.
-    //     // Thus `left_hash` is the sibling if bit is 1, and it's the computed hash if bit is 0
-    //     for (bit, sibling) in self.traversal.iter().zip_eq(&self.path) {
-    //         let left_hash = Field::ternary(bit, sibling, &curr_hash);
-    //         let right_hash = Field::ternary(bit, &curr_hash, sibling);
-    //
-    //         // TODO (raychu86) Avoid this by using the Fields as input.
-    //         let mut left_hash_bits = left_hash.to_bits_le();
-    //         let mut right_hash_bits = right_hash.to_bits_le();
-    //
-    //         // Pad the bits to the input size according to the native PoseidonCRH function.
-    //         let input_field_elements: Vec<Field<E>> = {
-    //             left_hash_bits.resize(byte_size, Boolean::new(Mode::Constant, false));
-    //             right_hash_bits.resize(byte_size, Boolean::new(Mode::Constant, false));
-    //
-    //             let mut input_bits: Vec<Boolean<E>> = [left_hash_bits, right_hash_bits].concat();
-    //             assert!(input_bits.len() <= input_size_bits, "PoseidonCRH input bits exceeds supported input size");
-    //
-    //             if input_bits.len() < input_size_bits {
-    //                 input_bits.resize(input_size_bits, Boolean::new(Mode::Constant, false));
-    //             }
-    //
-    //             input_bits.chunks(num_bits).map(Field::from_bits_le).collect()
-    //         };
-    //
-    //         curr_hash = crh.hash(&input_field_elements);
-    //     }
-    //
-    //     curr_hash
-    // }
+impl<E: Environment, H: Hash> MerklePath<E, H>
+where
+    <<H as Hash>::Output as Ternary>::Boolean: From<Boolean<E>>,
+    <H as Hash>::Output: From<<<H as Hash>::Output as Ternary>::Output>,
+    Vec<<H as Hash>::Input>: From<<H as Hash>::Output>,
+{
+    pub fn to_root(&self, crh: &H, leaf: &[H::Input]) -> H::Output {
+        let mut curr_hash = crh.hash(leaf);
 
-    // TODO (raychu86): Ideally use the following implementation without bit padding.
-    // pub fn calculate_root(&self, leaf: Field<E>) -> Field<E> {
-    //     let mut curr_hash = self.crh.hash(&[leaf]);
-    //
-    //     // To traverse up a MT, we iterate over the path from bottom to top
-    //
-    //     // At any given bit, the bit being 0 indicates our currently hashed value is the left,
-    //     // and the bit being 1 indicates our currently hashed value is on the right.
-    //     // Thus `left_hash` is the sibling if bit is 1, and it's the computed hash if bit is 0
-    //     for (bit, sibling) in self.traversal.iter().zip_eq(&self.path) {
-    //         let left_hash = Field::ternary(bit, sibling, &curr_hash);
-    //         let right_hash = Field::ternary(bit, &curr_hash, sibling);
-    //
-    //         curr_hash = self.crh.hash(&[left_hash, right_hash]);
-    //     }
-    //
-    //     curr_hash
-    // }
+        // To traverse up a MT, we iterate over the path from bottom to top
+
+        // At any given bit, the bit being 0 indicates our currently hashed value is the left,
+        // and the bit being 1 indicates our currently hashed value is on the right.
+        // Thus `left_hash` is the sibling if bit is 1, and it's the computed hash if bit is 0
+        for (bit, sibling) in self.traversal.iter().zip_eq(&self.path) {
+            let left_hash: H::Output = H::Output::ternary(&bit.clone().into(), sibling, &curr_hash).into();
+            let right_hash: H::Output = H::Output::ternary(&bit.clone().into(), &curr_hash, sibling).into();
+
+            let left_input: Vec<H::Input> = left_hash.into();
+            let right_input: Vec<H::Input> = right_hash.into();
+
+            curr_hash = crh.hash(&[left_input, right_input].concat());
+        }
+
+        curr_hash
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::algorithms::Pedersen;
+
     use snarkvm_algorithms::{
-        crh::PoseidonCRH as NativePoseidon,
+        crh::PedersenCompressedCRH as NativePedersen,
         merkle_tree::{MaskedMerkleTreeParameters, MerkleTree},
-        traits::{MerkleParameters, CRH},
+        traits::MerkleParameters,
     };
+
     use snarkvm_circuits_environment::{assert_scope, Circuit, Mode};
-    use snarkvm_curves::bls12_377::Fr;
-    use snarkvm_utilities::{test_rng, UniformRand};
+    use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsProjective};
+    use snarkvm_utilities::{test_rng, ToBits, UniformRand};
 
     use std::sync::Arc;
 
-    const INPUT_SIZE_FE: usize = 3;
+    const PEDERSEN_NUM_WINDOWS: usize = 256;
+    const PEDERSEN_WINDOW_SIZE: usize = 4;
+    const TREE_DEPTH: usize = 4;
+    const MESSAGE: &str = "Pedersen merkle path test";
 
-    fn check_to_root<P: MerkleParameters, H: Hash>(
+    type NativeH = NativePedersen<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
+    type Parameters = MaskedMerkleTreeParameters<NativeH, TREE_DEPTH>;
+
+    type H = Pedersen<Circuit, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
+
+    fn check_to_root(
         mode: Mode,
-        native_crh: P,
-        crh: &H,
         use_bad_root: bool,
         num_inputs: usize,
         num_constants: usize,
@@ -113,31 +82,38 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
+        let merkle_tree_parameters = Parameters::setup(MESSAGE);
+        let crh = H::setup(MESSAGE);
+
         let mut rng = test_rng();
         let mut leaves = Vec::new();
-        for _ in 0..1 << P::DEPTH {
+        for _ in 0..1 << Parameters::DEPTH {
             leaves.push(Fr::rand(&mut rng));
         }
 
-        let merkle_tree = MerkleTree::new(Arc::new(native_crh), &leaves).unwrap();
+        let merkle_tree = MerkleTree::new(Arc::new(merkle_tree_parameters), &leaves).unwrap();
         let root = merkle_tree.root();
 
         for (i, leaf) in leaves.iter().enumerate() {
             let proof = merkle_tree.generate_proof(i, &leaf).unwrap();
             assert!(proof.verify(root, &leaf).unwrap());
 
-            let root = if use_bad_root { &Default::default() } else { root };
+            let leaf_bits = leaf.to_bits_le();
+            let root = if use_bad_root { Default::default() } else { *root };
 
             Circuit::scope(format!("Poseidon {mode} merkle tree {i}"), || {
                 let traversal = proof.position_list().collect::<Vec<_>>();
                 let path = proof.path.clone();
-                let merkle_path = MerklePath::<Circuit, INPUT_SIZE_FE>::new(mode, (traversal, path));
+                let merkle_path = MerklePath::<Circuit, H>::new(mode, (traversal, path));
 
-                let circuit_leaf = Field::new(mode, *leaf);
-                let candidate_root = merkle_path.to_root(crh, &circuit_leaf);
+                let circuit_leaf = leaf_bits
+                    .iter()
+                    .map(|bit| <H as Hash>::Input::new(mode, *bit))
+                    .collect::<Vec<<H as Hash>::Input>>();
+                let candidate_root = merkle_path.to_root(&crh, &circuit_leaf);
 
-                assert_eq!(*leaf, circuit_leaf.eject_value());
-                assert_eq!(*root, candidate_root.eject_value());
+                assert_eq!(*leaf.to_bits_le(), circuit_leaf.eject_value());
+                assert_eq!(root, candidate_root.eject_value());
 
                 let case = format!("(mode = {mode}, num_inputs = {num_inputs})");
                 assert_scope!(case, num_constants, num_public, num_private, num_constraints);
@@ -145,54 +121,36 @@ mod tests {
         }
     }
 
-    mod merkle_root_poseidon {
-        use super::*;
-
-        const TREE_DEPTH: usize = 4;
-
-        type H = NativePoseidon<Fr, INPUT_SIZE_FE>;
-        type Parameters = MaskedMerkleTreeParameters<H, TREE_DEPTH>;
-
-        #[test]
-        fn test_good_root_constant_poseidon() {
-            let merkle_tree_parameters = Parameters::setup("Poseidon merkle path test");
-            let poseidon = Poseidon::<Circuit>::new();
-
-            check_to_root(Mode::Constant, merkle_tree_parameters, &poseidon, false, 0, 2773, 0, 0, 0);
-        }
-
-        #[test]
-        fn test_good_root_public_poseidon() {
-            let merkle_tree_parameters = Parameters::setup("Poseidon merkle path test");
-            let poseidon = Poseidon::<Circuit>::new();
-
-            check_to_root(Mode::Public, merkle_tree_parameters, &poseidon, false, 0, 487, 9, 4005, 4018);
-        }
-
-        #[test]
-        fn test_good_root_private_poseidon() {
-            let merkle_tree_parameters = Parameters::setup("Poseidon merkle path test");
-            let poseidon = Poseidon::<Circuit>::new();
-
-            check_to_root(Mode::Private, merkle_tree_parameters, &poseidon, false, 0, 487, 0, 4014, 4018);
-        }
-
-        // Bad root test for constants is omitted because it will always be accepted by the circuit, despite having invalid enforcements.
-
-        #[should_panic]
-        #[test]
-        fn test_bad_root_public_poseidon() {
-            let merkle_tree_parameters = Parameters::setup("Poseidon merkle path test");
-            let poseidon = Poseidon::<Circuit>::new();
-            check_to_root(Mode::Public, merkle_tree_parameters, &poseidon, true, 0, 487, 9, 4005, 4018);
-        }
-
-        #[should_panic]
-        #[test]
-        fn test_bad_root_private_poseidon() {
-            let merkle_tree_parameters = Parameters::setup("Poseidon merkle path test");
-            let poseidon = Poseidon::<Circuit>::new();
-            check_to_root(Mode::Private, merkle_tree_parameters, &poseidon, true, 0, 487, 0, 4014, 4018);
-        }
+    #[test]
+    fn test_good_root_constant() {
+        check_to_root(Mode::Constant, false, 0, 2773, 0, 0, 0);
     }
+
+    #[test]
+    fn test_good_root_public() {
+        check_to_root(Mode::Public, false, 0, 487, 9, 4005, 4018);
+    }
+
+    #[test]
+    fn test_good_root_private() {
+        check_to_root(Mode::Private, false, 0, 487, 0, 4014, 4018);
+    }
+    //
+    // #[should_panic]
+    // #[test]
+    // fn test_bad_root_public() {
+    //     let merkle_tree_parameters = Parameters::setup(MESSAGE);
+    //     let pedersen = H::setup(MESSAGE);
+    //
+    //     check_to_root(Mode::Public, merkle_tree_parameters, &pedersen, true, 0, 487, 9, 4005, 4018);
+    // }
+    //
+    // #[should_panic]
+    // #[test]
+    // fn test_bad_root_private() {
+    //     let merkle_tree_parameters = Parameters::setup(MESSAGE);
+    //     let pedersen = H::setup(MESSAGE);
+    //
+    //     check_to_root(Mode::Private, merkle_tree_parameters, &pedersen, true, 0, 487, 0, 4014, 4018);
+    // }
 }
