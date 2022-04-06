@@ -156,6 +156,18 @@ impl<E: Environment> From<&Field<E>> for LinearCombination<E::BaseField> {
     }
 }
 
+impl<E: Environment> From<Field<E>> for Vec<Boolean<E>> {
+    fn from(field: Field<E>) -> Self {
+        field.to_bits_le()
+    }
+}
+
+impl<E: Environment> From<&Field<E>> for Vec<Boolean<E>> {
+    fn from(field: &Field<E>) -> Self {
+        field.to_bits_le()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
