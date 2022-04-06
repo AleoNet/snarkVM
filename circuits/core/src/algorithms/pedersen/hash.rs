@@ -76,51 +76,51 @@ mod tests {
     #[test]
     fn test_hash_constant() {
         // Set the number of windows, and modulate the window size.
-        check_hash::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Constant, 32, 0, 0, 0);
-        check_hash::<1, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant, 64, 0, 0, 0);
-        check_hash::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant, 96, 0, 0, 0);
-        check_hash::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant, 128, 0, 0, 0);
-        check_hash::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant, 160, 0, 0, 0);
+        check_hash::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Constant, 16, 0, 0, 0);
+        check_hash::<1, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant, 24, 0, 0, 0);
+        check_hash::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant, 32, 0, 0, 0);
+        check_hash::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant, 40, 0, 0, 0);
+        check_hash::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant, 48, 0, 0, 0);
 
         // Set the window size, and modulate the number of windows.
-        check_hash::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Constant, 32, 0, 0, 0);
-        check_hash::<2, WINDOW_SIZE_MULTIPLIER>(Mode::Constant, 64, 0, 0, 0);
-        check_hash::<3, WINDOW_SIZE_MULTIPLIER>(Mode::Constant, 96, 0, 0, 0);
-        check_hash::<4, WINDOW_SIZE_MULTIPLIER>(Mode::Constant, 128, 0, 0, 0);
-        check_hash::<5, WINDOW_SIZE_MULTIPLIER>(Mode::Constant, 160, 0, 0, 0);
+        check_hash::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Constant, 16, 0, 0, 0);
+        check_hash::<2, WINDOW_SIZE_MULTIPLIER>(Mode::Constant, 24, 0, 0, 0);
+        check_hash::<3, WINDOW_SIZE_MULTIPLIER>(Mode::Constant, 32, 0, 0, 0);
+        check_hash::<4, WINDOW_SIZE_MULTIPLIER>(Mode::Constant, 40, 0, 0, 0);
+        check_hash::<5, WINDOW_SIZE_MULTIPLIER>(Mode::Constant, 48, 0, 0, 0);
     }
 
     #[test]
     fn test_hash_public() {
         // Set the number of windows, and modulate the window size.
-        check_hash::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Public, 16, 0, 45, 45);
-        check_hash::<1, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public, 32, 0, 93, 93);
-        check_hash::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public, 48, 0, 141, 141);
-        check_hash::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public, 64, 0, 189, 189);
-        check_hash::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public, 80, 0, 237, 237);
+        check_hash::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Public, 14, 0, 42, 42);
+        check_hash::<1, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public, 30, 0, 90, 90);
+        check_hash::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public, 46, 0, 138, 138);
+        check_hash::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public, 62, 0, 186, 186);
+        check_hash::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public, 78, 0, 234, 234);
 
         // Set the window size, and modulate the number of windows.
-        check_hash::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Public, 16, 0, 45, 45);
-        check_hash::<2, WINDOW_SIZE_MULTIPLIER>(Mode::Public, 32, 0, 93, 93);
-        check_hash::<3, WINDOW_SIZE_MULTIPLIER>(Mode::Public, 48, 0, 141, 141);
-        check_hash::<4, WINDOW_SIZE_MULTIPLIER>(Mode::Public, 64, 0, 189, 189);
-        check_hash::<5, WINDOW_SIZE_MULTIPLIER>(Mode::Public, 80, 0, 237, 237);
+        check_hash::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Public, 14, 0, 42, 42);
+        check_hash::<2, WINDOW_SIZE_MULTIPLIER>(Mode::Public, 30, 0, 90, 90);
+        check_hash::<3, WINDOW_SIZE_MULTIPLIER>(Mode::Public, 46, 0, 138, 138);
+        check_hash::<4, WINDOW_SIZE_MULTIPLIER>(Mode::Public, 62, 0, 186, 186);
+        check_hash::<5, WINDOW_SIZE_MULTIPLIER>(Mode::Public, 78, 0, 234, 234);
     }
 
     #[test]
     fn test_hash_private() {
         // Set the number of windows, and modulate the window size.
-        check_hash::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Private, 16, 0, 45, 45);
-        check_hash::<1, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private, 32, 0, 93, 93);
-        check_hash::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private, 48, 0, 141, 141);
-        check_hash::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private, 64, 0, 189, 189);
-        check_hash::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private, 80, 0, 237, 237);
+        check_hash::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Private, 14, 0, 42, 42);
+        check_hash::<1, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private, 30, 0, 90, 90);
+        check_hash::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private, 46, 0, 138, 138);
+        check_hash::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private, 62, 0, 186, 186);
+        check_hash::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private, 78, 0, 234, 234);
 
         // Set the window size, and modulate the number of windows.
-        check_hash::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Private, 16, 0, 45, 45);
-        check_hash::<2, WINDOW_SIZE_MULTIPLIER>(Mode::Private, 32, 0, 93, 93);
-        check_hash::<3, WINDOW_SIZE_MULTIPLIER>(Mode::Private, 48, 0, 141, 141);
-        check_hash::<4, WINDOW_SIZE_MULTIPLIER>(Mode::Private, 64, 0, 189, 189);
-        check_hash::<5, WINDOW_SIZE_MULTIPLIER>(Mode::Private, 80, 0, 237, 237);
+        check_hash::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Private, 14, 0, 42, 42);
+        check_hash::<2, WINDOW_SIZE_MULTIPLIER>(Mode::Private, 30, 0, 90, 90);
+        check_hash::<3, WINDOW_SIZE_MULTIPLIER>(Mode::Private, 46, 0, 138, 138);
+        check_hash::<4, WINDOW_SIZE_MULTIPLIER>(Mode::Private, 62, 0, 186, 186);
+        check_hash::<5, WINDOW_SIZE_MULTIPLIER>(Mode::Private, 78, 0, 234, 234);
     }
 }

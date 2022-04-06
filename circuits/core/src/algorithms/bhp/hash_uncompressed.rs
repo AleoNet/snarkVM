@@ -159,8 +159,7 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> HashUnc
                     Some((sum_x, sum_y)) => {
                         // Convert the accumulated sum into a point on the twisted Edwards curve.
                         let edwards_x = sum_x / sum_y; // 1 constraint
-                        let edwards_y = (sum_x - Field::one()) / (sum_x + Field::one()); // 1 constraint
-                        Group::from_xy_coordinates(edwards_x, edwards_y) // 3 constraints
+                        Group::from_x_coordinate(edwards_x) // 3 constraints
                     }
                     None => E::halt("Invalid iteration of BHP detected, a window was not evaluated"),
                 }
@@ -220,12 +219,12 @@ mod tests {
 
     #[test]
     fn test_hash_uncompressed_public() {
-        check_hash_uncompressed::<32, 48>(Mode::Public, 129, 0, 7898, 7930);
+        check_hash_uncompressed::<32, 48>(Mode::Public, 129, 0, 7898, 7898);
     }
 
     #[test]
     fn test_hash_uncompressed_private() {
-        check_hash_uncompressed::<32, 48>(Mode::Private, 129, 0, 7898, 7930);
+        check_hash_uncompressed::<32, 48>(Mode::Private, 129, 0, 7898, 7898);
     }
 
     // #[test]
