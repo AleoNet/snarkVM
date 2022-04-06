@@ -26,8 +26,11 @@ use snarkvm_utilities::BigInteger;
 pub const BHP_CHUNK_SIZE: usize = 3;
 pub const BHP_LOOKUP_SIZE: usize = 4;
 
+/// The x-coordinate and y-coordinate of each base on the Montgomery curve.
+type BaseLookups<E> = (Vec<Field<E>>, Vec<Field<E>>);
+
 pub struct BHPCRH<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
-    bases: Vec<Vec<(Vec<Field<E>>, Vec<Field<E>>)>>,
+    bases: Vec<Vec<BaseLookups<E>>>,
 }
 
 impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHPCRH<E, NUM_WINDOWS, WINDOW_SIZE> {
@@ -72,7 +75,7 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHPCRH<
                 }
                 powers
             })
-            .collect::<Vec<Vec<(Vec<Field<E>>, Vec<Field<E>>)>>>();
+            .collect::<Vec<Vec<BaseLookups<E>>>>();
         debug_assert_eq!(bases.len(), NUM_WINDOWS, "Incorrect number of windows ({}) for BHP", bases.len());
         bases.iter().for_each(|window| debug_assert_eq!(window.len(), WINDOW_SIZE));
 

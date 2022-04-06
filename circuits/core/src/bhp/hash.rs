@@ -195,15 +195,15 @@ mod tests {
         }
     }
 
-    // #[test]
-    // fn test_hash_constant() {
-    //     check_hash::<8, 32>(Mode::Constant);
-    // }
+    #[test]
+    fn test_hash_constant() {
+        check_hash::<32, 48>(Mode::Constant, 6403, 0, 0, 0);
+    }
 
-    // #[test]
-    // fn test_hash_public() {
-    //     check_hash::<8, 32>(Mode::Public);
-    // }
+    #[test]
+    fn test_hash_public() {
+        check_hash::<32, 48>(Mode::Public, 131, 0, 7997, 8029);
+    }
 
     #[test]
     fn test_hash_private() {
