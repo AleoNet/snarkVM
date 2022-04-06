@@ -101,6 +101,20 @@ mod tests {
         num_private: usize,
         num_constraints: usize,
     ) {
+        let check_counts = |num_constants, num_public, num_private, num_constraints| {
+            match (mode_a, mode_b) {
+                (Mode::Constant, Mode::Constant) => assert_scope!(num_constants, num_public, num_private, num_constraints),
+                (Mode::Constant, _) | (_, Mode::Constant) => {
+                    assert!(Circuit::num_constants_in_scope() <= num_constants, "(num_constants)");
+                    assert!(Circuit::num_public_in_scope() <= num_public, "(num_public)");
+                    assert!(Circuit::num_private_in_scope() <= num_private, "(num_private)");
+                    assert!(Circuit::num_constraints_in_scope() <= num_constraints, "(num_constraints)");
+                    assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
+                },
+                (_, _) => assert_scope!(num_constants, num_public, num_private, num_constraints),
+            }
+        };
+
         for _i in 0..ITERATIONS {
             let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
             let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
@@ -111,17 +125,7 @@ mod tests {
             Circuit::scope(&format!("Less Than: {} {}", mode_a, mode_b), || {
                 let candidate = a.is_less_than(&b);
                 assert_eq!(first < second, candidate.eject_value());
-                match (mode_a, mode_b) {
-                    (Mode::Constant, Mode::Constant) => assert_scope!(num_constants, num_public, num_private, num_constraints),
-                    (Mode::Constant, _) | (_, Mode::Constant) => {
-                        assert!(Circuit::num_constants_in_scope() <= num_constants, "(num_constants)");
-                        assert!(Circuit::num_public_in_scope() <= num_public, "(num_public)");
-                        assert!(Circuit::num_private_in_scope() <= num_private, "(num_private)");
-                        assert!(Circuit::num_constraints_in_scope() <= num_constraints, "(num_constraints)");
-                        assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
-                    },
-                    (_, _) => assert_scope!(num_constants, num_public, num_private, num_constraints),
-                }
+                check_counts(num_constants, num_public, num_private, num_constraints);
             });
             Circuit::reset();
 
@@ -131,17 +135,7 @@ mod tests {
             Circuit::scope(&format!("Less Than Or Equal: {} {}", mode_a, mode_b), || {
                 let candidate = a.is_less_than_or_equal(&b);
                 assert_eq!(first <= second, candidate.eject_value());
-                match (mode_a, mode_b) {
-                    (Mode::Constant, Mode::Constant) => assert_scope!(num_constants, num_public, num_private, num_constraints),
-                    (Mode::Constant, _) | (_, Mode::Constant) => {
-                        assert!(Circuit::num_constants_in_scope() <= num_constants, "(num_constants)");
-                        assert!(Circuit::num_public_in_scope() <= num_public, "(num_public)");
-                        assert!(Circuit::num_private_in_scope() <= num_private, "(num_private)");
-                        assert!(Circuit::num_constraints_in_scope() <= num_constraints, "(num_constraints)");
-                        assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
-                    },
-                    (_, _) => assert_scope!(num_constants, num_public, num_private, num_constraints),
-                }
+                check_counts(num_constants, num_public, num_private, num_constraints);
             });
             Circuit::reset();
 
@@ -151,17 +145,7 @@ mod tests {
             Circuit::scope(&format!("Greater Than: {} {}", mode_a, mode_b), || {
                 let candidate = a.is_greater_than(&b);
                 assert_eq!(first > second, candidate.eject_value());
-                match (mode_a, mode_b) {
-                    (Mode::Constant, Mode::Constant) => assert_scope!(num_constants, num_public, num_private, num_constraints),
-                    (Mode::Constant, _) | (_, Mode::Constant) => {
-                        assert!(Circuit::num_constants_in_scope() <= num_constants, "(num_constants)");
-                        assert!(Circuit::num_public_in_scope() <= num_public, "(num_public)");
-                        assert!(Circuit::num_private_in_scope() <= num_private, "(num_private)");
-                        assert!(Circuit::num_constraints_in_scope() <= num_constraints, "(num_constraints)");
-                        assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
-                    },
-                    (_, _) => assert_scope!(num_constants, num_public, num_private, num_constraints),
-                }
+                check_counts(num_constants, num_public, num_private, num_constraints);
             });
             Circuit::reset();
 
@@ -171,19 +155,9 @@ mod tests {
             Circuit::scope(&format!("Greater Than Or Equal: {} {}", mode_a, mode_b), || {
                 let candidate = a.is_greater_than_or_equal(&b);
                 assert_eq!(first >= second, candidate.eject_value());
-                match (mode_a, mode_b) {
-                    (Mode::Constant, Mode::Constant) => assert_scope!(num_constants, num_public, num_private, num_constraints),
-                    (Mode::Constant, _) | (_, Mode::Constant) => {
-                        assert!(Circuit::num_constants_in_scope() <= num_constants, "(num_constants)");
-                        assert!(Circuit::num_public_in_scope() <= num_public, "(num_public)");
-                        assert!(Circuit::num_private_in_scope() <= num_private, "(num_private)");
-                        assert!(Circuit::num_constraints_in_scope() <= num_constraints, "(num_constraints)");
-                        assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
-                    },
-                    (_, _) => assert_scope!(num_constants, num_public, num_private, num_constraints),
-                }
+                check_counts(num_constants, num_public, num_private, num_constraints);
             });
-            Circuit::reset()
+            Circuit::reset();
         }
     }
 
