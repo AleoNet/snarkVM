@@ -115,49 +115,45 @@ mod tests {
             }
         };
 
-        for _i in 0..ITERATIONS {
+        for i in 0..ITERATIONS {
             let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
             let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
 
             // Check `is_less_than`.
             let a = Field::<Circuit>::new(mode_a, first);
             let b = Field::<Circuit>::new(mode_b, second);
-            Circuit::scope(&format!("Less Than: {} {}", mode_a, mode_b), || {
+            Circuit::scope(&format!("Less Than {}: {} {}", i, mode_a, mode_b), || {
                 let candidate = a.is_less_than(&b);
                 assert_eq!(first < second, candidate.eject_value());
                 check_counts(num_constants, num_public, num_private, num_constraints);
             });
-            Circuit::reset();
 
             // Check `is_less_than_or_equal`
             let a = Field::<Circuit>::new(mode_a, first);
             let b = Field::<Circuit>::new(mode_b, second);
-            Circuit::scope(&format!("Less Than Or Equal: {} {}", mode_a, mode_b), || {
+            Circuit::scope(&format!("Less Than Or Equal {}: {} {}", i, mode_a, mode_b), || {
                 let candidate = a.is_less_than_or_equal(&b);
                 assert_eq!(first <= second, candidate.eject_value());
                 check_counts(num_constants, num_public, num_private, num_constraints);
             });
-            Circuit::reset();
 
             // Check `is_greater_than`
             let a = Field::<Circuit>::new(mode_a, first);
             let b = Field::<Circuit>::new(mode_b, second);
-            Circuit::scope(&format!("Greater Than: {} {}", mode_a, mode_b), || {
+            Circuit::scope(&format!("Greater Than {}: {} {}", i, mode_a, mode_b), || {
                 let candidate = a.is_greater_than(&b);
                 assert_eq!(first > second, candidate.eject_value());
                 check_counts(num_constants, num_public, num_private, num_constraints);
             });
-            Circuit::reset();
 
             // Check `is_greater_than_or_equal`
             let a = Field::<Circuit>::new(mode_a, first);
             let b = Field::<Circuit>::new(mode_b, second);
-            Circuit::scope(&format!("Greater Than Or Equal: {} {}", mode_a, mode_b), || {
+            Circuit::scope(&format!("Greater Than Or Equal {}: {} {}", i, mode_a, mode_b), || {
                 let candidate = a.is_greater_than_or_equal(&b);
                 assert_eq!(first >= second, candidate.eject_value());
                 check_counts(num_constants, num_public, num_private, num_constraints);
             });
-            Circuit::reset();
         }
     }
 
