@@ -169,6 +169,176 @@ mod tests {
     }
 
     #[test]
+    fn test_add_i8() {
+        let negative_one = Value::<P>::from_str("-1i8.public");
+        let two = Value::<P>::from_str("2i8.private");
+        let one = Value::<P>::from_str("1i8.private");
+        check_add_test(negative_one, two, one);
+    }
+
+    #[test]
+    #[should_panic(expected = "Integer overflow on addition of two constants")]
+    fn test_add_i8_constant_overflow_halts() {
+        let max = Value::<P>::from_str(&format!("{}i8.constant", i8::MAX));
+        let one = Value::<P>::from_str("1i8.constant");
+        let unreachable = Value::<P>::from_str("\"Unreachable\".constant");
+        check_add_test(max, one, unreachable);
+    }
+
+    #[test]
+    fn test_add_i16() {
+        let negative_one = Value::<P>::from_str("-1i16.public");
+        let two = Value::<P>::from_str("2i16.private");
+        let one = Value::<P>::from_str("1i16.private");
+        check_add_test(negative_one, two, one);
+    }
+
+    #[test]
+    #[should_panic(expected = "Integer overflow on addition of two constants")]
+    fn test_add_i16_constant_overflow_halts() {
+        let max = Value::<P>::from_str(&format!("{}i16.constant", i16::MAX));
+        let one = Value::<P>::from_str("1i16.constant");
+        let unreachable = Value::<P>::from_str("\"Unreachable\".constant");
+        check_add_test(max, one, unreachable);
+    }
+
+    #[test]
+    fn test_add_i32() {
+        let negative_one = Value::<P>::from_str("-1i32.public");
+        let two = Value::<P>::from_str("2i32.private");
+        let one = Value::<P>::from_str("1i32.private");
+        check_add_test(negative_one, two, one);
+    }
+
+    #[test]
+    #[should_panic(expected = "Integer overflow on addition of two constants")]
+    fn test_add_i32_constant_overflow_halts() {
+        let max = Value::<P>::from_str(&format!("{}i32.constant", i32::MAX));
+        let one = Value::<P>::from_str("1i32.constant");
+        let unreachable = Value::<P>::from_str("\"Unreachable\".constant");
+        check_add_test(max, one, unreachable);
+    }
+
+    #[test]
+    fn test_add_i64() {
+        let negative_one = Value::<P>::from_str("-1i64.public");
+        let two = Value::<P>::from_str("2i64.private");
+        let one = Value::<P>::from_str("1i64.private");
+        check_add_test(negative_one, two, one);
+    }
+
+    #[test]
+    #[should_panic(expected = "Integer overflow on addition of two constants")]
+    fn test_add_i64_constant_overflow_halts() {
+        let max = Value::<P>::from_str(&format!("{}i64.constant", i64::MAX));
+        let one = Value::<P>::from_str("1i64.constant");
+        let unreachable = Value::<P>::from_str("\"Unreachable\".constant");
+        check_add_test(max, one, unreachable);
+    }
+
+    #[test]
+    fn test_add_i128() {
+        let negative_one = Value::<P>::from_str("-1i128.public");
+        let two = Value::<P>::from_str("2i128.private");
+        let one = Value::<P>::from_str("1i128.private");
+        check_add_test(negative_one, two, one);
+    }
+
+    #[test]
+    #[should_panic(expected = "Integer overflow on addition of two constants")]
+    fn test_add_i128_constant_overflow_halts() {
+        let max = Value::<P>::from_str(&format!("{}i128.constant", i128::MAX));
+        let one = Value::<P>::from_str("1i128.constant");
+        let unreachable = Value::<P>::from_str("\"Unreachable\".constant");
+        check_add_test(max, one, unreachable);
+    }
+
+    #[test]
+    fn test_add_u8() {
+        let one = Value::<P>::from_str("1u8.public");
+        let two = Value::<P>::from_str("2u8.private");
+        let three = Value::<P>::from_str("3u8.private");
+        check_add_test(one, two, three);
+    }
+
+    #[test]
+    #[should_panic(expected = "Integer overflow on addition of two constants")]
+    fn test_add_u8_constant_overflow_halts() {
+        let max = Value::<P>::from_str(&format!("{}u8.constant", u8::MAX));
+        let one = Value::<P>::from_str("1u8.constant");
+        let unreachable = Value::<P>::from_str("\"Unreachable\".constant");
+        check_add_test(max, one, unreachable);
+    }
+
+    #[test]
+    fn test_add_u16() {
+        let one = Value::<P>::from_str("1u16.public");
+        let two = Value::<P>::from_str("2u16.private");
+        let three = Value::<P>::from_str("3u16.private");
+        check_add_test(one, two, three);
+    }
+
+    #[test]
+    #[should_panic(expected = "Integer overflow on addition of two constants")]
+    fn test_add_u16_constant_overflow_halts() {
+        let max = Value::<P>::from_str(&format!("{}u16.constant", u16::MAX));
+        let one = Value::<P>::from_str("1u16.constant");
+        let unreachable = Value::<P>::from_str("\"Unreachable\".constant");
+        check_add_test(max, one, unreachable);
+    }
+
+    #[test]
+    fn test_add_u32() {
+        let one = Value::<P>::from_str("1u32.public");
+        let two = Value::<P>::from_str("2u32.private");
+        let three = Value::<P>::from_str("3u32.private");
+        check_add_test(one, two, three);
+    }
+
+    #[test]
+    #[should_panic(expected = "Integer overflow on addition of two constants")]
+    fn test_add_u32_constant_overflow_halts() {
+        let max = Value::<P>::from_str(&format!("{}u32.constant", u32::MAX));
+        let one = Value::<P>::from_str("1u32.constant");
+        let unreachable = Value::<P>::from_str("\"Unreachable\".constant");
+        check_add_test(max, one, unreachable);
+    }
+
+    #[test]
+    fn test_add_u64() {
+        let one = Value::<P>::from_str("1u64.public");
+        let two = Value::<P>::from_str("2u64.private");
+        let three = Value::<P>::from_str("3u64.private");
+        check_add_test(one, two, three);
+    }
+
+    #[test]
+    #[should_panic(expected = "Integer overflow on addition of two constants")]
+    fn test_add_u64_constant_overflow_halts() {
+        let max = Value::<P>::from_str(&format!("{}u64.constant", u64::MAX));
+        let one = Value::<P>::from_str("1u64.constant");
+        let unreachable = Value::<P>::from_str("\"Unreachable\".constant");
+        check_add_test(max, one, unreachable);
+    }
+
+    #[test]
+    fn test_add_u128() {
+        let one = Value::<P>::from_str("1u128.public");
+        let two = Value::<P>::from_str("2u128.private");
+        let three = Value::<P>::from_str("3u128.private");
+        check_add_test(one, two, three);
+    }
+
+    #[test]
+    #[should_panic(expected = "Integer overflow on addition of two constants")]
+    fn test_add_u128_constant_overflow_halts() {
+        let max = Value::<P>::from_str(&format!("{}u128.constant", u128::MAX));
+        let one = Value::<P>::from_str("1u128.constant");
+        let unreachable = Value::<P>::from_str("\"Unreachable\".constant");
+        check_add_test(max, one, unreachable);
+    }
+
+    #[test]
     #[should_panic(expected = "message is not a literal")]
     fn test_halts_on_composite() {
         let composite = Value::<P>::Composite(Identifier::from_str("message"), vec![
@@ -176,8 +346,9 @@ mod tests {
             Literal::from_str("10field.private"),
         ]);
         let second = Value::<P>::from_str("4scalar.public");
+        let unreachable = Value::<P>::from_str("\"Unreachable\".constant");
 
-        check_add_test(composite, second, Value::<P>::from_str("\"Unreachable\".private"));
+        check_add_test(composite, second, unreachable);
     }
 
     #[test]
@@ -185,8 +356,9 @@ mod tests {
     fn test_halts_on_string_operand() {
         let invalid_add_literal = Value::<P>::from_str("\"hello world\".public");
         let second = Value::<P>::from_str("4scalar.public");
+        let unreachable = Value::<P>::from_str("\"Unreachable\".constant");
 
-        check_add_test(invalid_add_literal, second, Value::<P>::from_str("\"Unreachable\".private"));
+        check_add_test(invalid_add_literal, second, unreachable);
     }
 
     #[test]
@@ -195,8 +367,9 @@ mod tests {
         let invalid_add_literal =
             Value::<P>::from_str("aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.public");
         let second = Value::<P>::from_str("4scalar.public");
+        let unreachable = Value::<P>::from_str("\"Unreachable\".constant");
 
-        check_add_test(invalid_add_literal, second, Value::<P>::from_str("\"Unreachable\".private"));
+        check_add_test(invalid_add_literal, second, unreachable);
     }
 
     #[test]
@@ -204,7 +377,8 @@ mod tests {
     fn test_halts_on_boolean_operand() {
         let invalid_add_literal = Value::<P>::from_str("true.public");
         let second = Value::<P>::from_str("4scalar.public");
+        let unreachable = Value::<P>::from_str("\"Unreachable\".constant");
 
-        check_add_test(invalid_add_literal, second, Value::<P>::from_str("\"Unreachable\".private"));
+        check_add_test(invalid_add_literal, second, unreachable);
     }
 }
