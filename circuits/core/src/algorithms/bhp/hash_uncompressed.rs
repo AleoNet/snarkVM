@@ -23,6 +23,9 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> HashUnc
     type Output = Group<E>;
 
     /// Returns the BHP hash of the given input as an affine group element.
+    ///
+    /// This uncompressed variant of the BHP hash function is provided to support
+    /// the BHP commitment scheme, as it is typically not used by applications.
     fn hash_uncompressed(&self, input: &[Self::Input]) -> Self::Output {
         // Ensure the input size is at least the window size.
         if input.len() <= WINDOW_SIZE * BHP_CHUNK_SIZE {
@@ -154,7 +157,7 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> HashUnc
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_algorithms::{crh::BHPCRH as NativeBHP, CRH};
+    use snarkvm_algorithms::{crh::BHPCRH, CRH};
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_curves::AffineCurve;
     use snarkvm_utilities::{test_rng, UniformRand};
@@ -173,7 +176,7 @@ mod tests {
         num_constraints: usize,
     ) {
         // Initialize the BHP hash.
-        let native = NativeBHP::<Projective, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
+        let native = BHPCRH::<Projective, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
         let circuit = BHP::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
         // Determine the number of inputs.
         let num_input_bits = NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE;
@@ -188,9 +191,9 @@ mod tests {
 
             Circuit::scope(format!("BHP {mode} {i}"), || {
                 // Perform the hash operation.
-                let candidate = circuit.hash(&circuit_input);
+                let candidate = circuit.hash_uncompressed(&circuit_input);
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
-                assert_eq!(expected, candidate.eject_value());
+                assert_eq!(Circuit::affine_from_x_coordinate(expected), candidate.eject_value());
             });
         }
     }

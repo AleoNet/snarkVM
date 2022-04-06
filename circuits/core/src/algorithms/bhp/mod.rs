@@ -32,6 +32,13 @@ pub const BHP_LOOKUP_SIZE: usize = 4;
 /// The x-coordinate and y-coordinate of each base on the Montgomery curve.
 type BaseLookups<E> = (Vec<Field<E>>, Vec<Field<E>>);
 
+/// BHP256 is a collision-resistant hash function that takes a 256-bit input.
+pub type BHP256<E> = BHP<E, 2, 63>;
+/// BHP512 is a collision-resistant hash function that takes a 512-bit input.
+pub type BHP512<E> = BHP<E, 9, 19>;
+/// BHP1024 is a collision-resistant hash function that takes a 1024-bit input.
+pub type BHP1024<E> = BHP<E, 6, 63>;
+
 /// BHP is a collision-resistant hash function that takes a variable-length input.
 /// The BHP hash function does *not* behave like a random oracle, see Poseidon for one.
 pub struct BHP<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
