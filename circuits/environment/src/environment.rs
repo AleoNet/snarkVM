@@ -21,7 +21,7 @@ use snarkvm_fields::traits::*;
 use core::{fmt, hash};
 
 pub trait Environment: Copy + Clone + fmt::Debug + fmt::Display + Eq + PartialEq + hash::Hash {
-    type Affine: AffineCurve<BaseField = Self::BaseField>;
+    type Affine: AffineCurve<BaseField = Self::BaseField, Coordinates = (Self::BaseField, Self::BaseField)>;
     type AffineParameters: TwistedEdwardsParameters<BaseField = Self::BaseField>;
     type BaseField: PrimeField + Copy;
     type ScalarField: PrimeField + Copy;

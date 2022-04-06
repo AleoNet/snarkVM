@@ -83,9 +83,7 @@ impl<E: Environment> Eject for Group<E> {
     /// Ejects the group as a constant group element.
     ///
     fn eject_value(&self) -> E::Affine {
-        let value = E::affine_from_x_coordinate(self.x.eject_value());
-        assert_eq!(value.to_y_coordinate(), self.y.eject_value());
-        value
+        E::Affine::from_coordinates((self.x.eject_value(), self.y.eject_value()))
     }
 }
 
