@@ -15,20 +15,13 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_utilities::{FromBytes, ToBytes};
 
 impl<E: Environment> Compare<Scalar<E>> for Scalar<E> {
     type Boolean = Boolean<E>;
 
     /// Returns `true` if `self` is less than `other`.
     fn is_less_than(&self, other: &Self) -> Self::Boolean {
-        debug_assert!(match E::ScalarField::modulus().to_bytes_le() {
-            Ok(modulus_bytes) => match E::BaseField::from_bytes_le(&modulus_bytes) {
-                Ok(modulus) => modulus.to_repr() <= E::BaseField::modulus_minus_one_div_two(),
-                Err(error) => E::halt(format!("Failed to load the scalar modulus as a constant: {error}")),
-            },
-            Err(error) => E::halt(format!("Failed to retrieve the scalar modulus as bytes: {error}")),
-        });
+        debug_assert!(E::ScalarField::modulus() < E::BaseField::modulus_minus_one_div_two());
 
         // If all elements of the scalar field are less than (p - 1)/2, where p is the modulus of
         // the base field, then we can perform an optimized check for `less_than`.
@@ -38,10 +31,11 @@ impl<E: Environment> Compare<Scalar<E>> for Scalar<E> {
         if self.is_constant() && other.is_constant() {
             Boolean::new(Mode::Constant, self.eject_value() < other.eject_value())
         } else {
-            match (self.to_field() - other.to_field()).double().to_bits_be().pop() {
-                Some(bit) => bit,
-                None => E::halt("Expected at least one bit the bit representation of the base field."),
-            }
+            (self.to_field() - other.to_field())
+                .double()
+                .to_bits_be()
+                .pop()
+                .unwrap_or_else(|| E::halt("Expected at least one bit the bit representation of the base field."))
         }
     }
 
@@ -69,7 +63,6 @@ mod tests {
 
     const ITERATIONS: usize = 100;
 
-    #[rustfmt::skip]
     fn run_test(
         mode_a: Mode,
         mode_b: Mode,

@@ -23,34 +23,20 @@ impl<E: Environment> Compare<Field<E>> for Field<E> {
     fn is_less_than(&self, other: &Self) -> Self::Boolean {
         if self.is_constant() && other.is_constant() {
             Boolean::constant(self.eject_value() < other.eject_value())
+        } else if other.is_constant() {
+            // The below expression is equivalent to !(self >= other).
+            // We invoke it directly to deduplicate logic for the case where exactly one operand is constant
+            !other.is_less_than(self)
         } else if self.is_constant() {
             // (For advanced users) this implementation saves us from instantiating 253 constants for
             // the bits of `self`. The implementation in the `else` case invokes `to_bits_le` on
             // `self` which would allocate 253 constants. Since `self` is constant, we can directly
-            // inspect its bits and construct an equivalent but reduced ternary expression.
+            // inspect its bits and construct an equivalent ternary expression to that in the `else`
+            // case. See the truth table below to understand the logical equivalence.
             self.eject_value().to_bits_le().into_iter().zip_eq(other.to_bits_le()).fold(
                 Boolean::constant(false),
                 |rest_is_less, (self_bit, other_bit)| {
-                    if self_bit {
-                        Boolean::ternary(&!&other_bit, &other_bit, &rest_is_less)
-                    } else {
-                        Boolean::ternary(&other_bit, &other_bit, &rest_is_less)
-                    }
-                },
-            )
-        } else if other.is_constant() {
-            // (For advanced users) this implementation saves us from instantiating 253 constants for
-            // the bits of `other`. The implementation in the `else` case invokes `to_bits_le` on
-            // `other` which would allocate 253 constants. Since `other` is constant, we can directly
-            // inspect its bits and construct an equivalent but reduced ternary expression.
-            self.to_bits_le().iter().zip_eq(other.eject_value().to_bits_le()).fold(
-                Boolean::constant(false),
-                |rest_is_less, (self_bit, other_bit)| {
-                    if other_bit {
-                        Boolean::ternary(&!self_bit, &!self_bit, &rest_is_less)
-                    } else {
-                        Boolean::ternary(self_bit, &!self_bit, &rest_is_less)
-                    }
+                    if self_bit { other_bit.bitand(&rest_is_less) } else { other_bit.bitor(&rest_is_less) }
                 },
             )
         } else {
@@ -60,6 +46,19 @@ impl<E: Environment> Compare<Field<E>> for Field<E> {
             // - If `self_bit` and `other_bit` are different signs, then if `self_bit` is `true`, return false.
             // - If `self_bit` and `other_bit` are different signs, then if `self_bit` is `false`, return true.
             // - If `self_bit` and `other_bit` are the same sign, then check the following bits.
+            //
+            // The truth table is as follows:
+            // | self_bit | other_bit | rest_is_less | result |
+            // |----------+-----------+--------------+--------|
+            // | `true`   | `true`    | `true`       | `true` |
+            // | `true`   | `true`    | `false`      | `false`|
+            // | `true`   | `false`   | `true`       | `true` |
+            // | `true`   | `false`   | `false`      | `true` |
+            // | `false`  | `true`    | `true`       | `false`|
+            // | `false`  | `true`    | `false`      | `false`|
+            // | `false`  | `false`   | `true`       | `true` |
+            // | `false`  | `false`   | `false`      | `false`|
+            //
             self.to_bits_le().iter().zip_eq(other.to_bits_le()).fold(
                 Boolean::constant(false),
                 |rest_is_less, (self_bit, other_bit)| {
@@ -112,7 +111,17 @@ mod tests {
             Circuit::scope(&format!("Less Than: {} {}", mode_a, mode_b), || {
                 let candidate = a.is_less_than(&b);
                 assert_eq!(first < second, candidate.eject_value());
-                assert_scope!(num_constants, num_public, num_private, num_constraints);
+                match (mode_a, mode_b) {
+                    (Mode::Constant, Mode::Constant) => assert_scope!(num_constants, num_public, num_private, num_constraints),
+                    (Mode::Constant, _) | (_, Mode::Constant) => {
+                        assert!(Circuit::num_constants_in_scope() <= num_constants, "(num_constants)");
+                        assert!(Circuit::num_public_in_scope() <= num_public, "(num_public)");
+                        assert!(Circuit::num_private_in_scope() <= num_private, "(num_private)");
+                        assert!(Circuit::num_constraints_in_scope() <= num_constraints, "(num_constraints)");
+                        assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
+                    },
+                    (_, _) => assert_scope!(num_constants, num_public, num_private, num_constraints),
+                }
             });
 
             // Check `is_less_than_or_equal`
@@ -121,7 +130,17 @@ mod tests {
             Circuit::scope(&format!("Less Than Or Equal: {} {}", mode_a, mode_b), || {
                 let candidate = a.is_less_than_or_equal(&b);
                 assert_eq!(first <= second, candidate.eject_value());
-                assert_scope!(num_constants, num_public, num_private, num_constraints);
+                match (mode_a, mode_b) {
+                    (Mode::Constant, Mode::Constant) => assert_scope!(num_constants, num_public, num_private, num_constraints),
+                    (Mode::Constant, _) | (_, Mode::Constant) => {
+                        assert!(Circuit::num_constants_in_scope() <= num_constants, "(num_constants)");
+                        assert!(Circuit::num_public_in_scope() <= num_public, "(num_public)");
+                        assert!(Circuit::num_private_in_scope() <= num_private, "(num_private)");
+                        assert!(Circuit::num_constraints_in_scope() <= num_constraints, "(num_constraints)");
+                        assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
+                    },
+                    (_, _) => assert_scope!(num_constants, num_public, num_private, num_constraints),
+                }
             });
 
             // Check `is_greater_than`
@@ -130,7 +149,17 @@ mod tests {
             Circuit::scope(&format!("Greater Than: {} {}", mode_a, mode_b), || {
                 let candidate = a.is_greater_than(&b);
                 assert_eq!(first > second, candidate.eject_value());
-                assert_scope!(num_constants, num_public, num_private, num_constraints);
+                match (mode_a, mode_b) {
+                    (Mode::Constant, Mode::Constant) => assert_scope!(num_constants, num_public, num_private, num_constraints),
+                    (Mode::Constant, _) | (_, Mode::Constant) => {
+                        assert!(Circuit::num_constants_in_scope() <= num_constants, "(num_constants)");
+                        assert!(Circuit::num_public_in_scope() <= num_public, "(num_public)");
+                        assert!(Circuit::num_private_in_scope() <= num_private, "(num_private)");
+                        assert!(Circuit::num_constraints_in_scope() <= num_constraints, "(num_constraints)");
+                        assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
+                    },
+                    (_, _) => assert_scope!(num_constants, num_public, num_private, num_constraints),
+                }
             });
 
             // Check `is_greater_than_or_equal`
@@ -139,7 +168,17 @@ mod tests {
             Circuit::scope(&format!("Greater Than Or Equal: {} {}", mode_a, mode_b), || {
                 let candidate = a.is_greater_than_or_equal(&b);
                 assert_eq!(first >= second, candidate.eject_value());
-                assert_scope!(num_constants, num_public, num_private, num_constraints);
+                match (mode_a, mode_b) {
+                    (Mode::Constant, Mode::Constant) => assert_scope!(num_constants, num_public, num_private, num_constraints),
+                    (Mode::Constant, _) | (_, Mode::Constant) => {
+                        assert!(Circuit::num_constants_in_scope() <= num_constants, "(num_constants)");
+                        assert!(Circuit::num_public_in_scope() <= num_public, "(num_public)");
+                        assert!(Circuit::num_private_in_scope() <= num_private, "(num_private)");
+                        assert!(Circuit::num_constraints_in_scope() <= num_constraints, "(num_constraints)");
+                        assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
+                    },
+                    (_, _) => assert_scope!(num_constants, num_public, num_private, num_constraints),
+                }
             });
         }
     }

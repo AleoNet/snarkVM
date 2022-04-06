@@ -35,12 +35,12 @@ impl<E: Environment> FromBits for Field<E> {
             // Check if all excess bits are zero.
             let should_be_zero = bits_le[size_in_bits..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit);
             // Ensure `should_be_zero` is zero.
-            match should_be_zero.is_constant() {
-                true => match should_be_zero.eject_value() {
-                    false => (), // Constraint is satisfied.
-                    true => E::halt("Detected nonzero excess bits while initializing a base field element from bits."),
-                },
-                false => E::assert_eq(E::zero(), should_be_zero),
+            match (should_be_zero.is_constant(), should_be_zero.eject_value()) {
+                (true, true) => {
+                    E::halt("Detected nonzero excess bits while initializing a base field element from bits.")
+                }
+                (true, false) => (), // Constraint is satisfied.
+                (false, _) => E::assert(!should_be_zero),
             }
         }
 
@@ -69,12 +69,12 @@ impl<E: Environment> FromBits for Field<E> {
 
             // Enforce that BaseField::MODULUS - 1 is not less than the field element given by `bits_le`.
             // In other words, enforce that BaseField::MODULUS - 1 is greater than or equal to the field element given by `bits_le`.
-            match modulus_minus_one_less_than_bits.is_constant() {
-                true => match modulus_minus_one_less_than_bits.eject_value() {
-                    false => (), // Constraint is satisfied.
-                    true => E::halt("Detected nonzero excess bits while initializing a base field element from bits."),
-                },
-                false => E::assert(!modulus_minus_one_less_than_bits),
+            match (modulus_minus_one_less_than_bits.is_constant(), modulus_minus_one_less_than_bits.eject_value()) {
+                (true, true) => {
+                    E::halt("Detected nonzero excess bits while initializing a base field element from bits.")
+                }
+                (true, false) => (), // Constraint is satisfied.
+                (false, _) => E::assert(!modulus_minus_one_less_than_bits),
             }
         }
 
@@ -148,7 +148,7 @@ mod tests {
             });
 
             // Add excess zero bits.
-            let candidate = vec![given_bits.clone(), vec![Boolean::new(mode, false); i]].concat();
+            let candidate = [given_bits.clone(), vec![Boolean::new(mode, false); i]].concat();
 
             Circuit::scope(&format!("Excess Zero: {} {}", mode, i), || {
                 let candidate = Field::<Circuit>::from_bits_le(&candidate);
@@ -165,7 +165,7 @@ mod tests {
             });
 
             // Add excess one bits.
-            let candidate = vec![given_bits, vec![Boolean::new(mode, true); i + 1]].concat();
+            let candidate = [given_bits, vec![Boolean::new(mode, true); i + 1]].concat();
 
             match mode.is_constant() {
                 true => assert!(std::panic::catch_unwind(|| Field::<Circuit>::from_bits_le(&candidate)).is_err()),
@@ -224,7 +224,7 @@ mod tests {
             });
 
             // Add excess zero bits.
-            let candidate = vec![vec![Boolean::new(mode, false); i], given_bits.clone()].concat();
+            let candidate = [vec![Boolean::new(mode, false); i], given_bits.clone()].concat();
 
             Circuit::scope(&format!("Excess Zero: {} {}", mode, i), || {
                 let candidate = Field::<Circuit>::from_bits_be(&candidate);
@@ -241,7 +241,7 @@ mod tests {
             });
 
             // Add excess one bits.
-            let candidate = vec![vec![Boolean::new(mode, true); i + 1], given_bits].concat();
+            let candidate = [vec![Boolean::new(mode, true); i + 1], given_bits].concat();
 
             match mode.is_constant() {
                 true => assert!(std::panic::catch_unwind(|| Field::<Circuit>::from_bits_be(&candidate)).is_err()),
