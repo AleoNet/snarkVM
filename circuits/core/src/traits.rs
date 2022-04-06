@@ -31,3 +31,13 @@ pub trait HashUncompressed {
     /// Returns the hash of the given input.
     fn hash_uncompressed(&self, input: &[Self::Input]) -> Self::Output;
 }
+
+/// A trait for a commitment scheme.
+pub trait CommitmentScheme {
+    type Input;
+    type Output;
+    type Randomness;
+
+    /// Returns the commitment to the given input and randomness.
+    fn commit(&self, input: &[Self::Input], randomness: &[Self::Randomness]) -> Self::Output;
+}

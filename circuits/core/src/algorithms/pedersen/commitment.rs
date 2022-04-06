@@ -18,10 +18,16 @@ use super::*;
 
 use snarkvm_circuits_types::prelude::*;
 
-impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Pedersen<E, NUM_WINDOWS, WINDOW_SIZE> {
+impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CommitmentScheme
+    for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
+{
+    type Input = Boolean<E>;
+    type Output = Group<E>;
+    type Randomness = Boolean<E>;
+
     /// Returns the Pedersen commitment of the given input with the given randomness
     /// as an affine group element.
-    pub fn commit(&self, input: &[Boolean<E>], randomness: &[Boolean<E>]) -> Group<E> {
+    fn commit(&self, input: &[Self::Input], randomness: &[Self::Randomness]) -> Self::Output {
         let hash = self.hash_uncompressed(input);
 
         // Compute h^r
@@ -36,10 +42,13 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Pederse
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_algorithms::{commitment::PedersenCommitment as NativePedersenCommitment, CommitmentScheme};
+    use snarkvm_algorithms::{
+        commitment::PedersenCommitment as NativePedersenCommitment,
+        CommitmentScheme as NativeCommitmentScheme,
+    };
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_curves::AffineCurve;
-    use snarkvm_utilities::{test_rng, ToBits, UniformRand};
+    use snarkvm_utilities::{test_rng, ToBits as NativeToBits, UniformRand};
 
     const ITERATIONS: usize = 10;
     const MESSAGE: &str = "PedersenCommitmentCircuit0";
@@ -131,5 +140,115 @@ mod tests {
         check_commitment::<3, WINDOW_SIZE_MULTIPLIER>(Mode::Private, 550, 0, 1647, 1647);
         check_commitment::<4, WINDOW_SIZE_MULTIPLIER>(Mode::Private, 566, 0, 1695, 1695);
         check_commitment::<5, WINDOW_SIZE_MULTIPLIER>(Mode::Private, 582, 0, 1743, 1743);
+    }
+
+    fn check_homomorphic_addition<C: Display + Eject + Add<Output = C> + ToBits<Boolean = Boolean<Circuit>>>(
+        pedersen: &impl CommitmentScheme<Input = Boolean<Circuit>, Randomness = Boolean<Circuit>, Output = Group<Circuit>>,
+        first: C,
+        second: C,
+    ) {
+        println!("Checking homomorphic addition on {} + {}", first, second);
+
+        // Sample randomness
+        let first_randomness = ScalarField::rand(&mut test_rng());
+        let second_randomness = ScalarField::rand(&mut test_rng());
+        // Prepare the circuit randomness.
+        let first_circuit_randomness: Vec<Boolean<_>> = Inject::new(Mode::Private, first_randomness.to_bits_le());
+        let second_circuit_randomness: Vec<Boolean<_>> = Inject::new(Mode::Private, second_randomness.to_bits_le());
+
+        // Compute the expected commitment, by committing them individually and summing their results.
+        let a = pedersen.commit(&first.to_bits_le(), &first_circuit_randomness);
+        let b = pedersen.commit(&second.to_bits_le(), &second_circuit_randomness);
+        let expected = a + b;
+
+        let combined_randomness = first_randomness + second_randomness;
+        let circuit_combined_randomness: Vec<Boolean<_>> = Inject::new(Mode::Private, combined_randomness.to_bits_le());
+
+        // Sum the two integers, and then commit the sum.
+        let candidate = pedersen.commit(&(first + second).to_bits_le(), &circuit_combined_randomness);
+        assert_eq!(expected.eject(), candidate.eject());
+        assert!(Circuit::is_satisfied());
+    }
+
+    #[test]
+    fn test_pedersen64_homomorphism_private() {
+        // Initialize Pedersen64.
+        let pedersen = Pedersen64::setup("Pedersen64HomomorphismTest");
+
+        for _ in 0..ITERATIONS {
+            // Sample two random unsigned integers, with the MSB set to 0.
+            let first = U8::<Circuit>::new(Mode::Private, u8::rand(&mut test_rng()) >> 1);
+            let second = U8::new(Mode::Private, u8::rand(&mut test_rng()) >> 1);
+            check_homomorphic_addition(&pedersen, first, second);
+
+            // Sample two random unsigned integers, with the MSB set to 0.
+            let first = U16::<Circuit>::new(Mode::Private, u16::rand(&mut test_rng()) >> 1);
+            let second = U16::new(Mode::Private, u16::rand(&mut test_rng()) >> 1);
+            check_homomorphic_addition(&pedersen, first, second);
+
+            // Sample two random unsigned integers, with the MSB set to 0.
+            let first = U32::<Circuit>::new(Mode::Private, u32::rand(&mut test_rng()) >> 1);
+            let second = U32::new(Mode::Private, u32::rand(&mut test_rng()) >> 1);
+            check_homomorphic_addition(&pedersen, first, second);
+
+            // Sample two random unsigned integers, with the MSB set to 0.
+            let first = U64::<Circuit>::new(Mode::Private, u64::rand(&mut test_rng()) >> 1);
+            let second = U64::new(Mode::Private, u64::rand(&mut test_rng()) >> 1);
+            check_homomorphic_addition(&pedersen, first, second);
+        }
+    }
+
+    #[test]
+    fn test_pedersen_homomorphism_private() {
+        fn check_pedersen_homomorphism(
+            pedersen: &impl CommitmentScheme<
+                Input = Boolean<Circuit>,
+                Randomness = Boolean<Circuit>,
+                Output = Group<Circuit>,
+            >,
+        ) {
+            for _ in 0..ITERATIONS {
+                // Sample two random unsigned integers, with the MSB set to 0.
+                let first = U8::<Circuit>::new(Mode::Private, u8::rand(&mut test_rng()) >> 1);
+                let second = U8::new(Mode::Private, u8::rand(&mut test_rng()) >> 1);
+                check_homomorphic_addition(pedersen, first, second);
+
+                // Sample two random unsigned integers, with the MSB set to 0.
+                let first = U16::<Circuit>::new(Mode::Private, u16::rand(&mut test_rng()) >> 1);
+                let second = U16::new(Mode::Private, u16::rand(&mut test_rng()) >> 1);
+                check_homomorphic_addition(pedersen, first, second);
+
+                // Sample two random unsigned integers, with the MSB set to 0.
+                let first = U32::<Circuit>::new(Mode::Private, u32::rand(&mut test_rng()) >> 1);
+                let second = U32::new(Mode::Private, u32::rand(&mut test_rng()) >> 1);
+                check_homomorphic_addition(pedersen, first, second);
+
+                // Sample two random unsigned integers, with the MSB set to 0.
+                let first = U64::<Circuit>::new(Mode::Private, u64::rand(&mut test_rng()) >> 1);
+                let second = U64::new(Mode::Private, u64::rand(&mut test_rng()) >> 1);
+                check_homomorphic_addition(pedersen, first, second);
+
+                // Sample two random unsigned integers, with the MSB set to 0.
+                let first = U128::<Circuit>::new(Mode::Private, u128::rand(&mut test_rng()) >> 1);
+                let second = U128::new(Mode::Private, u128::rand(&mut test_rng()) >> 1);
+                check_homomorphic_addition(pedersen, first, second);
+            }
+        }
+
+        // Check Pedersen128.
+        let pedersen128 = Pedersen128::setup("Pedersen128HomomorphismTest");
+        check_pedersen_homomorphism(&pedersen128);
+
+        // Check Pedersen256.
+        let pedersen256 = Pedersen256::setup("Pedersen256HomomorphismTest");
+        check_pedersen_homomorphism(&pedersen256);
+
+        // Check Pedersen512.
+        let pedersen512 = Pedersen512::setup("Pedersen512HomomorphismTest");
+        check_pedersen_homomorphism(&pedersen512);
+
+        // Check Pedersen1024.
+        let pedersen1024 = Pedersen1024::setup("Pedersen1024HomomorphismTest");
+        check_pedersen_homomorphism(&pedersen1024);
     }
 }
