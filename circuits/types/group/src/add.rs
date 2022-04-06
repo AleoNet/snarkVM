@@ -28,53 +28,64 @@ impl<E: Environment> Add<&Self> for Group<E> {
     type Output = Self;
 
     fn add(self, other: &Self) -> Self::Output {
-        // This swap reduces the number of constants by one.
-        let (this, that) = match other.is_constant() {
-            true => (&self, other),
-            false => (other, &self),
-        };
+        // If `self` is constant *and* `self` is zero, then return `other`.
+        if self.is_constant() && self.eject_value().is_zero() {
+            other.clone()
+        }
+        // If `other` is constant *and* `other` is zero, then return `self`.
+        else if other.is_constant() && other.eject_value().is_zero() {
+            self
+        }
+        // Otherwise, compute te sum of `self` and `other`.
+        else {
+            // This swap reduces the number of constants by one.
+            let (this, that) = match other.is_constant() {
+                true => (&self, other),
+                false => (other, &self),
+            };
 
-        let a = Field::constant(E::AffineParameters::COEFF_A);
-        let d = Field::constant(E::AffineParameters::COEFF_D);
+            let a = Field::constant(E::AffineParameters::COEFF_A);
+            let d = Field::constant(E::AffineParameters::COEFF_D);
 
-        // Compute U = (-A * x1 + y1) * (x2 + y2)
-        let u1 = (&this.x * &-&a) + &this.y;
-        let u2 = &that.x + &that.y;
-        let u = u1 * u2;
+            // Compute U = (-A * x1 + y1) * (x2 + y2)
+            let u1 = (&this.x * &-&a) + &this.y;
+            let u2 = &that.x + &that.y;
+            let u = u1 * u2;
 
-        // Compute v0 = x1 * y2
-        let v0 = &this.x * &that.y;
+            // Compute v0 = x1 * y2
+            let v0 = &this.x * &that.y;
 
-        // Compute v1 = x2 * y1
-        let v1 = &that.x * &this.y;
+            // Compute v1 = x2 * y1
+            let v1 = &that.x * &this.y;
 
-        // Compute v2 = d * v0 * v1
-        let v2 = (&v0 * &v1) * d;
+            // Compute v2 = d * v0 * v1
+            let v2 = (&v0 * &v1) * d;
 
-        // Compute x3 and y3.
-        let (x3, y3) = witness!(|a, u, v0, v1, v2| {
-            // Assign x3 = (v0 + v1) / (v2 + 1).
-            let x3 = (v0 + v1) / (v2 + E::BaseField::one());
-            // Assign y3 = (U + a * v0 - v1) / (1 - v2).
-            let y3 = (u + (v0 * a) - v1) / (E::BaseField::one() - v2);
-            // Return (x3, y3).
-            (x3, y3)
-        });
+            // Compute x3 and y3.
+            let (x3, y3) = witness!(|a, u, v0, v1, v2| {
+                // Assign x3 = (v0 + v1) / (v2 + 1).
+                let x3 = (v0 + v1) / (v2 + E::BaseField::one());
+                // Assign y3 = (U + a * v0 - v1) / (1 - v2).
+                let y3 = (u + (v0 * a) - v1) / (E::BaseField::one() - v2);
+                // Return (x3, y3).
+                (x3, y3)
+            });
 
-        // Ensure x3 is well-formed.
-        // x3 * (v2 + 1) = v0 + v1
-        let v2_plus_one = &v2 + &Field::one();
-        let v0_plus_v1 = &v0 + &v1;
-        E::enforce(|| (&x3, v2_plus_one, v0_plus_v1));
+            // Ensure x3 is well-formed.
+            // x3 * (v2 + 1) = v0 + v1
+            let v2_plus_one = &v2 + &Field::one();
+            let v0_plus_v1 = &v0 + &v1;
+            E::enforce(|| (&x3, v2_plus_one, v0_plus_v1));
 
-        // Ensure y3 is well-formed.
-        // y3 * (1 - v2) = u + (a * v0) - v1
-        let one_minus_v2 = Field::one() - v2;
-        let a_v0 = v0 * a;
-        let u_plus_a_v0_minus_v1 = u + a_v0 - v1;
-        E::enforce(|| (&y3, one_minus_v2, u_plus_a_v0_minus_v1));
+            // Ensure y3 is well-formed.
+            // y3 * (1 - v2) = u + (a * v0) - v1
+            let one_minus_v2 = Field::one() - v2;
+            let a_v0 = v0 * a;
+            let u_plus_a_v0_minus_v1 = u + a_v0 - v1;
+            E::enforce(|| (&y3, one_minus_v2, u_plus_a_v0_minus_v1));
 
-        Self { x: x3, y: y3 }
+            Self { x: x3, y: y3 }
+        }
     }
 }
 

@@ -97,8 +97,7 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> HashUnc
             .zip(self.bases.iter())
             .map(|(bits, bases)| {
                 // Initialize accumulating sum variables for the x- and y-coordinates.
-                let mut sum_x = Field::zero();
-                let mut sum_y = Field::zero();
+                let mut sum = None;
 
                 // One iteration costs 5 constraints.
                 bits.chunks(BHP_CHUNK_SIZE).zip(bases).for_each(|(chunk_bits, base_lookups)| {
@@ -141,14 +140,30 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> HashUnc
                         montgomery_y
                     };
 
-                    // Sum the new Montgomery point into the accumulating sum.
-                    (sum_x, sum_y) = montgomery_add((&sum_x, &sum_y), (&montgomery_x, &montgomery_y)); // 3 constraints
+                    // Update the accumulating sum, with a constraint-saving technique as follows:
+                    match &sum {
+                        // If `(sum_x, sum_y)` is `None`, then this is the first iteration,
+                        // and we can save constraints by initializing `(sum_x, sum_y)` as
+                        // `(montgomery_x, montgomery_y)` (instead of calling `montgomery_add`).
+                        None => sum = Some((montgomery_x, montgomery_y)),
+                        // Otherwise, call `montgomery_add` to add  to the accumulating sum.
+                        Some((sum_x, sum_y)) => {
+                            // Sum the new Montgomery point into the accumulating sum.
+                            sum = Some(montgomery_add((sum_x, sum_y), (&montgomery_x, &montgomery_y))); // 3 constraints
+                        }
+                    }
                 });
 
-                // Convert the accumulated sum into a point on the twisted Edwards curve.
-                let edwards_x = &sum_x / sum_y; // 1 constraint
-                let edwards_y = (&sum_x - Field::one()) / (sum_x + Field::one()); // 1 constraint
-                Group::from_xy_coordinates(edwards_x, edwards_y) // 3 constraints
+                // Convert the accumulating sum into the twisted Edwards point.
+                match &sum {
+                    Some((sum_x, sum_y)) => {
+                        // Convert the accumulated sum into a point on the twisted Edwards curve.
+                        let edwards_x = sum_x / sum_y; // 1 constraint
+                        let edwards_y = (sum_x - Field::one()) / (sum_x + Field::one()); // 1 constraint
+                        Group::from_xy_coordinates(edwards_x, edwards_y) // 3 constraints
+                    }
+                    None => E::halt("Invalid iteration of BHP detected, a window was not evaluated"),
+                }
             })
             .fold(Group::zero(), |acc, group| acc + group) // 6 constraints
     }
@@ -200,16 +215,35 @@ mod tests {
 
     #[test]
     fn test_hash_uncompressed_constant() {
-        check_hash_uncompressed::<32, 48>(Mode::Constant, 6403, 0, 0, 0);
+        check_hash_uncompressed::<32, 48>(Mode::Constant, 6303, 0, 0, 0);
     }
 
     #[test]
     fn test_hash_uncompressed_public() {
-        check_hash_uncompressed::<32, 48>(Mode::Public, 131, 0, 7997, 8029);
+        check_hash_uncompressed::<32, 48>(Mode::Public, 129, 0, 7898, 7930);
     }
 
     #[test]
     fn test_hash_uncompressed_private() {
-        check_hash_uncompressed::<32, 48>(Mode::Private, 131, 0, 7997, 8029);
+        check_hash_uncompressed::<32, 48>(Mode::Private, 129, 0, 7898, 7930);
     }
+
+    // #[test]
+    // fn test_bhp_sizes() {
+    //     // Determine the number of inputs.
+    //     let num_input_bits = 512;
+    //
+    //     // Initialize the BHP hash.
+    //     let bhp = BHP::<Circuit, 3, 57>::setup(MESSAGE);
+    //     // Sample a random input.
+    //     let input = (0..num_input_bits).map(|_| bool::rand(&mut test_rng())).collect::<Vec<bool>>();
+    //     // Prepare the circuit input.
+    //     let input: Vec<Boolean<_>> = Inject::new(Mode::Private, input);
+    //
+    //     Circuit::scope(format!("BHP"), || {
+    //         // Perform the hash operation.
+    //         let candidate = bhp.hash_uncompressed(&input);
+    //         assert_scope!(0, 0, 0, 0);
+    //     });
+    // }
 }
