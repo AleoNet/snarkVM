@@ -42,8 +42,8 @@ where
             let mut left_input: Vec<H::Input> = left_hash.into();
             let mut right_input: Vec<H::Input> = right_hash.into();
 
-            // Pad the inputs to the closest number of bytes. This is required due to the nature of the
-            // native merkle tree hashing.
+            // Pad the inputs to the closest factor of 8 (byte representation). This is required due to the
+            // native merkle tree hashing implementation.
             let num_bytes = ((left_input.len() + 7) / 8) * 8;
             left_input.resize(num_bytes, padding.clone());
             right_input.resize(num_bytes, padding.clone());
