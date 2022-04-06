@@ -10,7 +10,7 @@ edition = "2021"
 path = "../../algorithms"
 version = "0.7.5"
 default-features = false
-features = ["commitment", "crypto_hash", "crh"]
+features = ["crypto_hash"]
 
 [dependencies.snarkvm-curves]
 path = "../../curves"
@@ -33,7 +33,7 @@ version = "0.7.5"
 path = "../../algorithms"
 version = "0.7.5"
 default-features = false
-features = ["prf", "signature"]
+features = ["commitment", "crh", "prf", "signature"]
 
 [dev-dependencies.snarkvm-utilities]
 path = "../../utilities"
