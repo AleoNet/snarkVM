@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::FpGadget;
-use snarkvm_algorithms::traits::{AlgebraicSponge, DefaultCapacityAlgebraicSponge};
+use snarkvm_algorithms::traits::AlgebraicSponge;
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
@@ -35,8 +35,6 @@ pub trait AlgebraicSpongeVar<
     /// Initialize a new instance of the sponge.
     fn with_parameters<CS: ConstraintSystem<CF>>(cs: CS, params: &S::Parameters) -> Self;
 
-    fn constant<CS: ConstraintSystem<CF>>(cs: CS, sponge: &S) -> Self;
-
     /// Absorb an input into the sponge.
     fn absorb<'a, CS: ConstraintSystem<CF>, I: Iterator<Item = &'a FpGadget<CF>>>(
         &mut self,
@@ -45,18 +43,9 @@ pub trait AlgebraicSpongeVar<
     ) -> Result<(), SynthesisError>;
 
     /// Squeeze `num_elements` field elements from the sponge.
-    fn squeeze_field_elements<CS: ConstraintSystem<CF>>(
+    fn squeeze<CS: ConstraintSystem<CF>>(
         &mut self,
         cs: CS,
         num_elements: usize,
     ) -> Result<Vec<FpGadget<CF>>, SynthesisError>;
-}
-
-/// Trait for an algebraic sponge such as Poseidon.
-pub trait DefaultCapacityAlgebraicSpongeVar<
-    CF: PrimeField,
-    PS: DefaultCapacityAlgebraicSponge<CF, RATE>,
-    const RATE: usize,
->: AlgebraicSpongeVar<CF, PS, RATE, 1>
-{
 }

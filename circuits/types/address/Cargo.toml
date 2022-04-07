@@ -1,0 +1,35 @@
+[package]
+name = "snarkvm-circuits-types-address"
+version = "0.7.5"
+authors = [ "The Aleo Team <hello@aleo.org>" ]
+description = "Address circuit for a decentralized virtual machine"
+license = "GPL-3.0"
+edition = "2021"
+
+[dependencies.snarkvm-circuits-environment]
+path = "../../environment"
+version = "0.7.5"
+
+[dependencies.snarkvm-circuits-types-boolean]
+path = "../boolean"
+version = "0.7.5"
+
+[dependencies.snarkvm-circuits-types-group]
+path = "../group"
+version = "0.7.5"
+
+[dependencies.snarkvm-circuits-types-scalar]
+path = "../scalar"
+version = "0.7.5"
+
+[dependencies.snarkvm-curves]
+path = "../../../curves"
+version = "0.7.5"
+
+[dependencies.snarkvm-utilities]
+path = "../../../utilities"
+version = "0.7.5"
+default-features = false
+
+[dependencies.bech32]
+version = "0.8"

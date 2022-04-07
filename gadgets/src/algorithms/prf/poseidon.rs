@@ -14,26 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    algorithms::crypto_hash::PoseidonCryptoHashGadget,
-    traits::alloc::AllocGadget,
-    CryptoHashGadget,
-    FpGadget,
-    PRFGadget,
-};
-use snarkvm_algorithms::{crypto_hash::PoseidonDefaultParametersField, prf::PoseidonPRF};
+use crate::{algorithms::crypto_hash::PoseidonCryptoHashGadget, FpGadget, PRFGadget};
+use snarkvm_algorithms::prf::PoseidonPRF;
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
 
 use std::marker::PhantomData;
 
-pub struct PoseidonPRFGadget<
-    F: PrimeField + PoseidonDefaultParametersField,
-    const RATE: usize,
-    const OPTIMIZED_FOR_WEIGHTS: bool,
->(PhantomData<F>);
+pub struct PoseidonPRFGadget<F: PrimeField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool>(PhantomData<F>);
 
-impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool>
+impl<F: PrimeField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool>
     PRFGadget<PoseidonPRF<F, RATE, OPTIMIZED_FOR_WEIGHTS>, F> for PoseidonPRFGadget<F, RATE, OPTIMIZED_FOR_WEIGHTS>
 {
     type Input = Vec<FpGadget<F>>;
@@ -53,7 +43,7 @@ impl<F: PrimeField + PoseidonDefaultParametersField, const RATE: usize, const OP
         };
 
         // Allocate the input length as a field element.
-        let input_length_gadget = FpGadget::<F>::alloc(cs.ns(|| "Allocate input length"), || Ok(&input_length))?;
+        let input_length_gadget = FpGadget::<F>::Constant(input_length);
 
         // Construct the preimage.
         let mut preimage = vec![seed.clone()];
@@ -74,7 +64,7 @@ mod tests {
         algorithms::prf::*,
         traits::{algorithms::PRFGadget, alloc::AllocGadget, eq::EqGadget},
     };
-    use snarkvm_algorithms::{prf::PoseidonPRF, traits::PRF};
+    use snarkvm_algorithms::{prf::PoseidonPRF, PRF};
     use snarkvm_curves::bls12_377::Fr;
     use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 
@@ -88,7 +78,7 @@ mod tests {
 
         let seed = rng.gen();
         let input = vec![rng.gen()];
-        let output = PoseidonPRF::<Fr, 4, false>::evaluate(&seed, &input).unwrap();
+        let output = PoseidonPRF::<Fr, 4, false>::evaluate(&seed, &input);
 
         let seed_gadget =
             <PoseidonPRFGadget<Fr, 4, false> as PRFGadget<_, Fr>>::Seed::alloc(&mut cs.ns(|| "seed"), || Ok(seed))

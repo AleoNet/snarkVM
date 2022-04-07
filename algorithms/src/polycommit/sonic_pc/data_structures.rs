@@ -15,19 +15,24 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    crh::sha256::sha256,
+    crypto_hash::sha256::sha256,
     fft::EvaluationDomain,
-    polycommit::{kzg10, PCCommitterKey, PCVerifierKey},
+    polycommit::kzg10,
+    snark::marlin::{FiatShamirError, FiatShamirRng},
     Prepare,
 };
-use snarkvm_curves::{
-    traits::{PairingCurve, PairingEngine},
-    Group,
-};
-use snarkvm_fields::{ConstraintFieldError, ToConstraintField};
+use hashbrown::HashMap;
+use snarkvm_curves::{PairingCurve, PairingEngine, ProjectiveCurve};
+use snarkvm_fields::{ConstraintFieldError, Field, PrimeField, ToConstraintField};
 use snarkvm_utilities::{error, serialize::*, FromBytes, ToBytes};
 
-use std::{borrow::Cow, collections::BTreeMap};
+use std::{
+    borrow::{Borrow, Cow},
+    collections::{BTreeMap, BTreeSet},
+    ops::{AddAssign, MulAssign, SubAssign},
+};
+
+use super::LabeledPolynomial;
 
 /// `UniversalParams` are the universal parameters for the KZG10 scheme.
 pub type UniversalParams<E> = kzg10::UniversalParams<E>;
@@ -41,7 +46,9 @@ pub type Commitment<E> = kzg10::Commitment<E>;
 /// `PreparedCommitment` is the prepared commitment for the KZG10 scheme.
 pub type PreparedCommitment<E> = kzg10::PreparedCommitment<E>;
 
-impl<E: PairingEngine> Prepare<PreparedCommitment<E>> for Commitment<E> {
+impl<E: PairingEngine> Prepare for Commitment<E> {
+    type Prepared = PreparedCommitment<E>;
+
     /// prepare `PreparedCommitment` from `Commitment`
     fn prepare(&self) -> PreparedCommitment<E> {
         let mut prepared_comm = Vec::<E::G1Affine>::new();
@@ -55,11 +62,8 @@ impl<E: PairingEngine> Prepare<PreparedCommitment<E>> for Commitment<E> {
     }
 }
 
-/// `ComitterKey` is used to commit to, and create evaluation proofs for, a given
-/// polynomial.
-#[derive(Derivative)]
-#[derivative(Default(bound = ""), Hash(bound = ""), Clone(bound = ""), Debug(bound = ""))]
-#[derive(CanonicalSerialize, CanonicalDeserialize)]
+/// `CommitterKey` is used to commit to, and create evaluation proofs for, a given polynomial.
+#[derive(Clone, Debug, Default, Hash, CanonicalSerialize, CanonicalDeserialize)]
 pub struct CommitterKey<E: PairingEngine> {
     /// The key used to commit to polynomials.
     pub powers_of_beta_g: Vec<E::G1Affine>,
@@ -356,19 +360,18 @@ impl<E: PairingEngine> CommitterKey<E> {
     }
 }
 
-impl<E: PairingEngine> PCCommitterKey for CommitterKey<E> {
-    fn max_degree(&self) -> usize {
+impl<E: PairingEngine> CommitterKey<E> {
+    pub fn max_degree(&self) -> usize {
         self.max_degree
     }
 
-    fn supported_degree(&self) -> usize {
+    pub fn supported_degree(&self) -> usize {
         self.powers_of_beta_g.len() - 1
     }
 }
 
 /// `VerifierKey` is used to check evaluation proofs for a given commitment.
-#[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
-#[derivative(Default(bound = ""), Clone(bound = ""), Debug(bound = ""), PartialEq(bound = ""), Eq(bound = ""))]
+#[derive(Clone, Debug, Default, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct VerifierKey<E: PairingEngine> {
     /// The verification key for the underlying KZG10 scheme.
     pub vk: kzg10::VerifierKey<E>,
@@ -416,12 +419,12 @@ impl<E: PairingEngine> VerifierKey<E> {
     }
 }
 
-impl<E: PairingEngine> PCVerifierKey for VerifierKey<E> {
-    fn max_degree(&self) -> usize {
+impl<E: PairingEngine> VerifierKey<E> {
+    pub fn max_degree(&self) -> usize {
         self.max_degree
     }
 
-    fn supported_degree(&self) -> usize {
+    pub fn supported_degree(&self) -> usize {
         self.supported_degree
     }
 }
@@ -444,8 +447,7 @@ impl<E: PairingEngine> ToConstraintField<E::Fq> for VerifierKey<E> {
 }
 
 /// `PreparedVerifierKey` is used to check evaluation proofs for a given commitment.
-#[derive(Derivative)]
-#[derivative(Clone(bound = ""), Debug(bound = ""))]
+#[derive(Clone, Debug)]
 pub struct PreparedVerifierKey<E: PairingEngine> {
     /// The verification key for the underlying KZG10 scheme.
     pub prepared_vk: kzg10::PreparedVerifierKey<E>,
@@ -470,7 +472,9 @@ impl<E: PairingEngine> PreparedVerifierKey<E> {
     }
 }
 
-impl<E: PairingEngine> Prepare<PreparedVerifierKey<E>> for VerifierKey<E> {
+impl<E: PairingEngine> Prepare for VerifierKey<E> {
+    type Prepared = PreparedVerifierKey<E>;
+
     /// prepare `PreparedVerifierKey` from `VerifierKey`
     fn prepare(&self) -> PreparedVerifierKey<E> {
         let prepared_vk = kzg10::PreparedVerifierKey::<E>::prepare(&self.vk);
@@ -485,13 +489,279 @@ impl<E: PairingEngine> Prepare<PreparedVerifierKey<E>> for VerifierKey<E> {
 }
 
 /// Evaluation proof at a query set.
-#[derive(Derivative)]
-#[derivative(
-    Default(bound = ""),
-    Hash(bound = ""),
-    Clone(bound = ""),
-    Debug(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, CanonicalSerialize, CanonicalDeserialize)]
 pub struct BatchProof<E: PairingEngine>(pub(crate) Vec<kzg10::Proof<E>>);
+
+impl<E: PairingEngine> BatchProof<E> {
+    pub fn is_hiding(&self) -> bool {
+        self.0.iter().any(|c| c.is_hiding())
+    }
+}
+
+impl<E: PairingEngine> BatchProof<E> {
+    pub(crate) fn absorb_into_sponge<S: FiatShamirRng<E::Fr, E::Fq>>(
+        &self,
+        fs_rng: &mut S,
+    ) -> Result<(), FiatShamirError> {
+        for proof in self.0.iter() {
+            proof.absorb_into_sponge(fs_rng)?;
+        }
+        Ok(())
+    }
+}
+
+/// Labels a `LabeledPolynomial` or a `LabeledCommitment`.
+pub type PolynomialLabel = String;
+
+/// A commitment along with information about its degree bound (if any).
+#[derive(Clone, Debug, CanonicalSerialize, PartialEq, Eq)]
+pub struct LabeledCommitment<C: CanonicalSerialize> {
+    label: PolynomialLabel,
+    commitment: C,
+    degree_bound: Option<usize>,
+}
+
+impl<F: Field, C: CanonicalSerialize + ToConstraintField<F>> ToConstraintField<F> for LabeledCommitment<C> {
+    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
+        self.commitment.to_field_elements()
+    }
+}
+
+// NOTE: Serializing the LabeledCommitments struct is done by serializing
+// _WITHOUT_ the labels or the degree bound. Deserialization is _NOT_ supported,
+// and you should construct the struct via the `LabeledCommitment::new` method after
+// deserializing the Commitment.
+impl<C: CanonicalSerialize + ToBytes> ToBytes for LabeledCommitment<C> {
+    fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
+        CanonicalSerialize::serialize(&self.commitment, &mut writer).map_err(|_| error("could not serialize struct"))
+    }
+}
+
+impl<C: CanonicalSerialize> LabeledCommitment<C> {
+    /// Instantiate a new polynomial_context.
+    pub fn new(label: PolynomialLabel, commitment: C, degree_bound: Option<usize>) -> Self {
+        Self { label, commitment, degree_bound }
+    }
+
+    /// Return the label for `self`.
+    pub fn label(&self) -> &String {
+        &self.label
+    }
+
+    /// Retrieve the commitment from `self`.
+    pub fn commitment(&self) -> &C {
+        &self.commitment
+    }
+
+    /// Retrieve the degree bound in `self`.
+    pub fn degree_bound(&self) -> Option<usize> {
+        self.degree_bound
+    }
+}
+
+/// A term in a linear combination.
+#[derive(Hash, Ord, PartialOrd, Clone, Eq, PartialEq, Debug)]
+pub enum LCTerm {
+    /// The constant term representing `one`.
+    One,
+    /// Label for a polynomial.
+    PolyLabel(String),
+}
+
+impl LCTerm {
+    /// Returns `true` if `self == LCTerm::One`
+    #[inline]
+    pub fn is_one(&self) -> bool {
+        matches!(self, LCTerm::One)
+    }
+}
+
+impl From<PolynomialLabel> for LCTerm {
+    fn from(other: PolynomialLabel) -> Self {
+        Self::PolyLabel(other)
+    }
+}
+
+impl<'a> From<&'a str> for LCTerm {
+    fn from(other: &str) -> Self {
+        Self::PolyLabel(other.into())
+    }
+}
+
+impl core::convert::TryInto<PolynomialLabel> for LCTerm {
+    type Error = ();
+
+    fn try_into(self) -> Result<PolynomialLabel, ()> {
+        match self {
+            Self::One => Err(()),
+            Self::PolyLabel(l) => Ok(l),
+        }
+    }
+}
+
+impl<'a> core::convert::TryInto<&'a PolynomialLabel> for &'a LCTerm {
+    type Error = ();
+
+    fn try_into(self) -> Result<&'a PolynomialLabel, ()> {
+        match self {
+            LCTerm::One => Err(()),
+            LCTerm::PolyLabel(l) => Ok(l),
+        }
+    }
+}
+
+impl<B: Borrow<String>> PartialEq<B> for LCTerm {
+    fn eq(&self, other: &B) -> bool {
+        match self {
+            Self::One => false,
+            Self::PolyLabel(l) => l == other.borrow(),
+        }
+    }
+}
+
+/// A labeled linear combinations of polynomials.
+#[derive(Clone, Debug)]
+pub struct LinearCombination<F> {
+    /// The label.
+    pub label: String,
+    /// The linear combination of `(coeff, poly_label)` pairs.
+    pub terms: Vec<(F, LCTerm)>,
+}
+
+impl<F: Field> LinearCombination<F> {
+    /// Construct an empty labeled linear combination.
+    pub fn empty(label: impl Into<String>) -> Self {
+        Self { label: label.into(), terms: Vec::new() }
+    }
+
+    /// Construct a new labeled linear combination.
+    /// with the terms specified in `term`.
+    pub fn new(label: impl Into<String>, terms: Vec<(F, impl Into<LCTerm>)>) -> Self {
+        let terms = terms.into_iter().map(|(c, t)| (c, t.into())).collect();
+        Self { label: label.into(), terms }
+    }
+
+    /// Returns the label of the linear combination.
+    pub fn label(&self) -> &String {
+        &self.label
+    }
+
+    /// Returns `true` if the linear combination has no terms.
+    pub fn is_empty(&self) -> bool {
+        self.terms.is_empty()
+    }
+
+    /// Add a term to the linear combination.
+    pub fn push(&mut self, term: (F, LCTerm)) -> &mut Self {
+        self.terms.push(term);
+        self
+    }
+}
+
+impl<'a, F: Field> AddAssign<(F, &'a LinearCombination<F>)> for LinearCombination<F> {
+    #[allow(clippy::suspicious_op_assign_impl)]
+    fn add_assign(&mut self, (coeff, other): (F, &'a LinearCombination<F>)) {
+        self.terms.extend(other.terms.iter().map(|(c, t)| (coeff * c, t.clone())));
+    }
+}
+
+impl<'a, F: Field> SubAssign<(F, &'a LinearCombination<F>)> for LinearCombination<F> {
+    #[allow(clippy::suspicious_op_assign_impl)]
+    fn sub_assign(&mut self, (coeff, other): (F, &'a LinearCombination<F>)) {
+        self.terms.extend(other.terms.iter().map(|(c, t)| (-coeff * c, t.clone())));
+    }
+}
+
+impl<'a, F: Field> AddAssign<&'a LinearCombination<F>> for LinearCombination<F> {
+    fn add_assign(&mut self, other: &'a LinearCombination<F>) {
+        self.terms.extend(other.terms.iter().cloned());
+    }
+}
+
+impl<'a, F: Field> SubAssign<&'a LinearCombination<F>> for LinearCombination<F> {
+    fn sub_assign(&mut self, other: &'a LinearCombination<F>) {
+        self.terms.extend(other.terms.iter().map(|(c, t)| (-*c, t.clone())));
+    }
+}
+
+impl<F: Field> AddAssign<F> for LinearCombination<F> {
+    fn add_assign(&mut self, coeff: F) {
+        self.terms.push((coeff, LCTerm::One));
+    }
+}
+
+impl<F: Field> SubAssign<F> for LinearCombination<F> {
+    fn sub_assign(&mut self, coeff: F) {
+        self.terms.push((-coeff, LCTerm::One));
+    }
+}
+
+impl<F: Field> MulAssign<F> for LinearCombination<F> {
+    fn mul_assign(&mut self, coeff: F) {
+        self.terms.iter_mut().for_each(|(c, _)| *c *= &coeff);
+    }
+}
+
+impl<F: Field> core::ops::Deref for LinearCombination<F> {
+    type Target = [(F, LCTerm)];
+
+    fn deref(&self) -> &Self::Target {
+        &self.terms
+    }
+}
+
+/// `QuerySet` is the set of queries that are to be made to a set of labeled polynomials/equations
+/// `p` that have previously been committed to. Each element of a `QuerySet` is a `(label, query)`
+/// pair, where `label` is the label of a polynomial in `p`, and `query` is the field element
+/// that `p[label]` is to be queried at.
+///
+/// Added the third field: the point name.
+pub type QuerySet<'a, T> = BTreeSet<(String, (String, T))>;
+
+/// `Evaluations` is the result of querying a set of labeled polynomials or equations
+/// `p` at a `QuerySet` `Q`. It maps each element of `Q` to the resulting evaluation.
+/// That is, if `(label, query)` is an element of `Q`, then `evaluation.get((label, query))`
+/// should equal `p[label].evaluate(query)`.
+pub type Evaluations<'a, F> = BTreeMap<(String, F), F>;
+
+/// Evaluate the given polynomials at `query_set`.
+pub fn evaluate_query_set<'a, F: PrimeField>(
+    polys: impl IntoIterator<Item = &'a LabeledPolynomial<F>>,
+    query_set: &QuerySet<'a, F>,
+) -> Evaluations<'a, F> {
+    let polys: HashMap<_, _> = polys.into_iter().map(|p| (p.label(), p)).collect();
+    let mut evaluations = Evaluations::new();
+    for (label, (_point_name, point)) in query_set {
+        let poly = polys.get(label).expect("polynomial in evaluated lc is not found");
+        let eval = poly.evaluate(*point);
+        evaluations.insert((label.clone(), *point), eval);
+    }
+    evaluations
+}
+
+/// A proof of satisfaction of linear combinations.
+#[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
+pub struct BatchLCProof<E: PairingEngine> {
+    /// Evaluation proof.
+    pub proof: BatchProof<E>,
+    /// Evaluations required to verify the proof.
+    pub evaluations: Option<Vec<E::Fr>>,
+}
+
+impl<E: PairingEngine> BatchLCProof<E> {
+    pub fn is_hiding(&self) -> bool {
+        self.proof.is_hiding()
+    }
+}
+
+impl<E: PairingEngine> FromBytes for BatchLCProof<E> {
+    fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
+        CanonicalDeserialize::deserialize(&mut reader).map_err(|_| error("could not deserialize struct"))
+    }
+}
+
+impl<E: PairingEngine> ToBytes for BatchLCProof<E> {
+    fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
+        CanonicalSerialize::serialize(self, &mut writer).map_err(|_| error("could not serialize struct"))
+    }
+}

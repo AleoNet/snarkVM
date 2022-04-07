@@ -1,0 +1,49 @@
+[package]
+name = "snarkvm-circuits-types"
+version = "0.7.5"
+authors = [ "The Aleo Team <hello@aleo.org>" ]
+description = "Primitive circuits for a decentralized virtual machine"
+license = "GPL-3.0"
+edition = "2021"
+
+[dependencies.snarkvm-circuits-environment]
+path = "../environment"
+version = "0.7.5"
+
+[dependencies.snarkvm-circuits-types-address]
+path = "./address"
+version = "0.7.5"
+
+[dependencies.snarkvm-circuits-types-boolean]
+path = "./boolean"
+version = "0.7.5"
+
+[dependencies.snarkvm-circuits-types-field]
+path = "./field"
+version = "0.7.5"
+
+[dependencies.snarkvm-circuits-types-group]
+path = "./group"
+version = "0.7.5"
+
+[dependencies.snarkvm-circuits-types-integers]
+path = "./integers"
+version = "0.7.5"
+
+[dependencies.snarkvm-circuits-types-scalar]
+path = "./scalar"
+version = "0.7.5"
+
+[dependencies.snarkvm-circuits-types-string]
+path = "./string"
+version = "0.7.5"
+
+[dependencies.enum_index]
+version = "0.2"
+
+[dependencies.enum_index_derive]
+version = "0.2"
+
+[dependencies.snarkvm-utilities]
+path = "../../utilities"
+version = "0.7.5"

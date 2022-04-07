@@ -17,9 +17,9 @@
 use crate::{
     impl_sw_curve_serializer,
     templates::short_weierstrass_jacobian::Projective,
-    traits::{AffineCurve, Group, ProjectiveCurve, ShortWeierstrassParameters as Parameters},
+    traits::{AffineCurve, ProjectiveCurve, ShortWeierstrassParameters as Parameters},
 };
-use snarkvm_fields::{impl_add_sub_from_field_ref, Field, One, PrimeField, SquareRootField, Zero};
+use snarkvm_fields::{Field, One, PrimeField, SquareRootField, Zero};
 use snarkvm_utilities::{
     bititerator::BitIteratorBE,
     rand::UniformRand,
@@ -38,7 +38,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     fmt::{Display, Formatter, Result as FmtResult},
     io::{Error, ErrorKind, Read, Result as IoResult, Write},
-    ops::{Add, AddAssign, Mul, MulAssign, Neg, Sub, SubAssign},
+    ops::{Mul, Neg},
 };
 
 #[derive(Derivative, Serialize, Deserialize)]
@@ -93,6 +93,7 @@ impl<P: Parameters> PartialEq<Projective<P>> for Affine<P> {
 impl<P: Parameters> AffineCurve for Affine<P> {
     type BaseField = P::BaseField;
     type Projective = Projective<P>;
+    type ScalarField = P::ScalarField;
 
     #[inline]
     fn prime_subgroup_generator() -> Self {
@@ -156,11 +157,11 @@ impl<P: Parameters> AffineCurve for Affine<P> {
     }
 
     fn mul_by_cofactor_inv(&self) -> Self {
-        self.mul(P::COFACTOR_INV)
+        (*self * P::COFACTOR_INV).into()
     }
 
     #[inline]
-    fn into_projective(&self) -> Projective<P> {
+    fn to_projective(&self) -> Projective<P> {
         (*self).into()
     }
 
@@ -252,24 +253,6 @@ impl<P: Parameters> ToMinimalBits for Affine<P> {
     }
 }
 
-impl<P: Parameters> Group for Affine<P> {
-    type ScalarField = P::ScalarField;
-
-    #[inline]
-    #[must_use]
-    fn double(&self) -> Self {
-        let mut tmp = *self;
-        tmp += self;
-        tmp
-    }
-
-    #[inline]
-    fn double_in_place(&mut self) {
-        let tmp = *self;
-        *self = tmp.double();
-    }
-}
-
 impl<P: Parameters> Neg for Affine<P> {
     type Output = Self;
 
@@ -279,53 +262,11 @@ impl<P: Parameters> Neg for Affine<P> {
     }
 }
 
-impl_add_sub_from_field_ref!(Affine, Parameters);
-
-impl<'a, P: Parameters> Add<&'a Self> for Affine<P> {
-    type Output = Self;
-
-    fn add(self, other: &'a Self) -> Self {
-        let mut copy = self;
-        copy += other;
-        copy
-    }
-}
-
-impl<'a, P: Parameters> AddAssign<&'a Self> for Affine<P> {
-    fn add_assign(&mut self, other: &'a Self) {
-        let mut projective = Projective::from(*self);
-        projective.add_assign_mixed(other);
-        *self = projective.into();
-    }
-}
-
-impl<'a, P: Parameters> Sub<&'a Self> for Affine<P> {
-    type Output = Self;
-
-    fn sub(self, other: &'a Self) -> Self {
-        let mut copy = self;
-        copy -= other;
-        copy
-    }
-}
-
-impl<'a, P: Parameters> SubAssign<&'a Self> for Affine<P> {
-    fn sub_assign(&mut self, other: &'a Self) {
-        *self += &(-(*other));
-    }
-}
-
 impl<P: Parameters> Mul<P::ScalarField> for Affine<P> {
-    type Output = Self;
+    type Output = Projective<P>;
 
-    fn mul(self, other: P::ScalarField) -> Self {
-        self.mul_bits(BitIteratorBE::new(other.to_repr())).into()
-    }
-}
-
-impl<P: Parameters> MulAssign<P::ScalarField> for Affine<P> {
-    fn mul_assign(&mut self, other: P::ScalarField) {
-        *self = self.mul(other)
+    fn mul(self, other: P::ScalarField) -> Self::Output {
+        self.mul_bits(BitIteratorBE::new(other.to_repr()))
     }
 }
 

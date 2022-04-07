@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    algorithms::crypto_hash::poseidon::PoseidonSpongeGadget,
+    algorithms::crypto_hash::PoseidonSpongeGadget,
     AlgebraicSpongeVar,
     AllocGadget,
     Boolean,
@@ -29,15 +29,10 @@ use crate::{
     ToBytesGadget,
     UInt8,
 };
-use snarkvm_algorithms::{
-    crypto_hash::PoseidonDefaultParametersField,
-    encryption::ECIESPoseidonEncryption,
-    EncryptionScheme,
-};
+use snarkvm_algorithms::{encryption::ECIESPoseidonEncryption, EncryptionScheme};
 use snarkvm_curves::{
     templates::twisted_edwards_extended::{Affine as TEAffine, Projective as TEProjective},
     AffineCurve,
-    Group,
     ProjectiveCurve,
     TwistedEdwardsParameters,
 };
@@ -326,18 +321,13 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> ToBytesGadget<F
     Eq(bound = "TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField"),
     Debug(bound = "TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField")
 )]
-pub struct ECIESPoseidonEncryptionGadget<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField>
-where
-    TE::BaseField: PoseidonDefaultParametersField,
-{
+pub struct ECIESPoseidonEncryptionGadget<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> {
     encryption: ECIESPoseidonEncryption<TE>,
     f_phantom: PhantomData<F>,
 }
 
 impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> AllocGadget<ECIESPoseidonEncryption<TE>, F>
     for ECIESPoseidonEncryptionGadget<TE, F>
-where
-    TE::BaseField: PoseidonDefaultParametersField,
 {
     fn alloc_constant<
         Fn: FnOnce() -> Result<T, SynthesisError>,
@@ -459,12 +449,12 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> EqGadget<F>
 
 /// On input the symmetric key, outputs
 /// the symmetric key commitment.
-fn symmetric_key_commitment<F: PoseidonDefaultParametersField>(
+fn symmetric_key_commitment<F: PrimeField>(
     mut cs: impl ConstraintSystem<F>,
     symmetric_key: &FpGadget<F>,
 ) -> Result<FpGadget<F>, SynthesisError> {
     // Prepare the sponge.
-    let params = Arc::new(F::get_default_poseidon_parameters::<4>(false).unwrap());
+    let params = Arc::new(F::default_poseidon_parameters::<4>(false).unwrap());
     let mut sponge = PoseidonSpongeGadget::with_parameters(cs.ns(|| "sponge"), &params);
     let domain_separator = FpGadget::alloc_constant(cs.ns(|| "domain_separator"), || {
         Ok(F::from_bytes_le_mod_order(b"AleoSymmetricKeyCommitment0"))
@@ -472,18 +462,18 @@ fn symmetric_key_commitment<F: PoseidonDefaultParametersField>(
     sponge.absorb(cs.ns(|| "absorb"), IntoIterator::into_iter([&domain_separator, symmetric_key]))?;
 
     // Obtain the symmetric key commitment from Poseidon.
-    Ok(sponge.squeeze_field_elements(cs.ns(|| "squeeze for symmetric key commitment"), 1)?[0].clone())
+    Ok(sponge.squeeze(cs.ns(|| "squeeze for symmetric key commitment"), 1)?[0].clone())
 }
 
 /// On input the symmetric key and the plaintext, outputs
 /// the ciphertext.
-fn symmetric_encryption<F: PoseidonDefaultParametersField>(
+fn symmetric_encryption<F: PrimeField>(
     mut cs: impl ConstraintSystem<F>,
     symmetric_key: &FpGadget<F>,
     encoded_message: &[FpGadget<F>],
 ) -> Result<Vec<FpGadget<F>>, SynthesisError> {
     // Prepare the sponge.
-    let params = Arc::new(F::get_default_poseidon_parameters::<4>(false).unwrap());
+    let params = Arc::new(F::default_poseidon_parameters::<4>(false).unwrap());
     let mut sponge = PoseidonSpongeGadget::with_parameters(cs.ns(|| "sponge"), &params);
     let domain_separator = FpGadget::alloc_constant(cs.ns(|| "domain_separator"), || {
         Ok(F::from_bytes_le_mod_order(b"AleoSymmetricEncryption0"))
@@ -491,8 +481,7 @@ fn symmetric_encryption<F: PoseidonDefaultParametersField>(
     sponge.absorb(cs.ns(|| "absorb"), IntoIterator::into_iter([&domain_separator, symmetric_key]))?;
 
     // Obtain random field elements from Poseidon.
-    let sponge_randomizers =
-        sponge.squeeze_field_elements(cs.ns(|| "squeeze for random elements"), encoded_message.len())?;
+    let sponge_randomizers = sponge.squeeze(cs.ns(|| "squeeze for random elements"), encoded_message.len())?;
 
     let mut ciphertext = encoded_message.to_vec();
     for (i, (element, randomizer)) in ciphertext.iter_mut().zip_eq(sponge_randomizers).enumerate() {
@@ -502,8 +491,8 @@ fn symmetric_encryption<F: PoseidonDefaultParametersField>(
     Ok(ciphertext)
 }
 
-impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaultParametersField>
-    EncryptionGadget<ECIESPoseidonEncryption<TE>, F> for ECIESPoseidonEncryptionGadget<TE, F>
+impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> EncryptionGadget<ECIESPoseidonEncryption<TE>, F>
+    for ECIESPoseidonEncryptionGadget<TE, F>
 {
     type CiphertextRandomizer = ECIESPoseidonCiphertextRandomizerGadget<TE, F>;
     type PrivateKeyGadget = ECIESPoseidonEncryptionPrivateKeyGadget<TE, F>;
@@ -522,16 +511,13 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
 
         let num_powers = private_key_bits.len();
 
-        let generator_powers: Vec<TEAffine<TE>> = {
-            let mut generator_powers = Vec::new();
-            let mut generator = self.encryption.parameters().into_projective();
-            for _ in 0..num_powers {
-                generator_powers.push(generator);
-                generator.double_in_place();
-            }
-            TEProjective::<TE>::batch_normalization(&mut generator_powers);
-            generator_powers.into_iter().map(|v| v.into()).collect()
-        };
+        let mut generator_powers = Vec::with_capacity(num_powers);
+        let mut generator = self.encryption.parameters().to_projective();
+        for _ in 0..num_powers {
+            generator_powers.push(generator);
+            generator.double_in_place();
+        }
+        TEProjective::<TE>::batch_normalization(&mut generator_powers);
 
         public_key.scalar_multiplication(
             cs.ns(|| "check_public_key_gadget"),

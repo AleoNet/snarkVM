@@ -14,9 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::snark::marlin::FiatShamirError;
+
 /// The error type for `PolynomialCommitment`.
 #[derive(Debug)]
 pub enum PCError {
+    FSError(FiatShamirError),
     /// The query set contains a label for a polynomial that was not provided as
     /// input to the `PC::open`.
     MissingPolynomial {
@@ -97,9 +100,16 @@ pub enum PCError {
 
 impl snarkvm_utilities::error::Error for PCError {}
 
+impl From<FiatShamirError> for PCError {
+    fn from(other: FiatShamirError) -> Self {
+        Self::FSError(other)
+    }
+}
+
 impl core::fmt::Display for PCError {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
+            PCError::FSError(e) => write!(f, "{e}"),
             PCError::MissingPolynomial { label } => {
                 write!(f, "`QuerySet` refers to polynomial \"{}\", but it was not provided.", label)
             }

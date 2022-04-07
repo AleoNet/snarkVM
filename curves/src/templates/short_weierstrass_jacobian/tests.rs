@@ -15,10 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::{Affine, Projective};
-use crate::traits::{
-    pairing_engine::{AffineCurve, ProjectiveCurve},
-    ShortWeierstrassParameters,
-};
+use crate::{AffineCurve, ProjectiveCurve, ShortWeierstrassParameters};
 use snarkvm_fields::Zero;
 use snarkvm_utilities::{
     io::Cursor,
@@ -40,7 +37,7 @@ pub fn sw_curve_serialization_test<P: ShortWeierstrassParameters>() {
 
     for _ in 0..10 {
         let a = Projective::<P>::rand(&mut rng);
-        let mut a = a.into_affine();
+        let mut a = a.to_affine();
         {
             let mut serialized = vec![0; buf_size];
             let mut cursor = Cursor::new(&mut serialized[..]);
@@ -123,7 +120,7 @@ pub fn sw_from_random_bytes<P: ShortWeierstrassParameters>() {
 
     for _ in 0..ITERATIONS {
         let a = Projective::<P>::rand(&mut rng);
-        let a = a.into_affine();
+        let a = a.to_affine();
         {
             let mut serialized = vec![0; buf_size];
             let mut cursor = Cursor::new(&mut serialized[..]);

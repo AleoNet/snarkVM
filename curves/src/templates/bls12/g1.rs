@@ -19,7 +19,7 @@ use crate::{
         bls12::Bls12Parameters,
         short_weierstrass_jacobian::{Affine, Projective},
     },
-    traits::pairing_engine::AffineCurve,
+    traits::AffineCurve,
 };
 use snarkvm_fields::Zero;
 use snarkvm_utilities::{serialize::*, FromBytes, ToBytes};

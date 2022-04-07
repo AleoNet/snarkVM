@@ -15,33 +15,15 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 #![forbid(unsafe_code)]
-#![allow(clippy::identity_op)]
-#![allow(clippy::module_inception)]
-#![allow(clippy::needless_borrow)]
-#![allow(clippy::too_many_arguments)]
-#![allow(clippy::type_complexity)]
 
-pub mod address;
-pub use address::*;
+pub use snarkvm_circuits_core::*;
+pub use snarkvm_circuits_edge::*;
+pub use snarkvm_circuits_environment::*;
+pub use snarkvm_circuits_types::*;
 
-pub mod boolean;
-pub use boolean::*;
+pub use snarkvm_circuits_environment as environment;
 
-pub mod fields;
-pub use fields::*;
-
-pub mod group;
-pub use group::*;
-
-// TODO (howardwu): This is temporary until the models interface is stabilized.
-#[allow(unused)]
-pub mod models;
-pub use models::*;
-
-// TODO (howardwu): This is temporary until the programs interface is stabilized.
-#[allow(unused)]
-pub mod programs;
-pub use programs::*;
-
-pub mod traits;
-pub use traits::*;
+pub mod prelude {
+    pub use super::*;
+    pub use snarkvm_circuits_environment::*;
+}

@@ -17,8 +17,9 @@
 use std::ops::Mul;
 
 use snarkvm_curves::{
-    bls12_377::{Bls12_377, Fq, Fr, G1Projective, G2Projective},
+    bls12_377::{Bls12_377, Fq, Fr, G1Affine, G2Affine},
     traits::PairingEngine,
+    ProjectiveCurve,
 };
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
@@ -37,12 +38,12 @@ use crate::{
 fn bls12_377_gadget_bilinearity_test() {
     let mut cs = TestConstraintSystem::<Fq>::new();
 
-    let a: G1Projective = rand::random();
-    let b: G2Projective = rand::random();
+    let a: G1Affine = rand::random();
+    let b: G2Affine = rand::random();
     let s: Fr = rand::random();
 
-    let sa = a.mul(s);
-    let sb = b.mul(s);
+    let sa = a.mul(s).to_affine();
+    let sb = b.mul(s).to_affine();
 
     let a_g = G1Gadget::alloc(&mut cs.ns(|| "a"), || Ok(a)).unwrap();
     let b_g = G2Gadget::alloc(&mut cs.ns(|| "b"), || Ok(b)).unwrap();

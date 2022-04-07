@@ -16,7 +16,7 @@
 
 use snarkvm_curves::{
     bls12_377::{Fq, Fr, G1Affine, G1Projective},
-    traits::{AffineCurve, Group},
+    traits::{AffineCurve, ProjectiveCurve},
 };
 use snarkvm_fields::{PrimeField, Zero};
 use snarkvm_utilities::BitIteratorBE;
@@ -454,7 +454,7 @@ mod tests {
         for _ in 0..count {
             let mut out = vec![];
             for _ in 0..cardinality {
-                let point = G1Projective::rand(&mut rng).into_affine();
+                let point = G1Projective::rand(&mut rng).to_affine();
                 out.push(CudaAffine { x: point.x, y: point.y });
             }
             inputs.push(out);
@@ -580,7 +580,7 @@ mod tests {
         for (input, output) in inputs.iter().zip(output.iter()) {
             let a = G1Affine::new(input[0].x, input[0].y, false);
             let b = G1Affine::new(input[1].x, input[1].y, false);
-            let rust_out: G1Projective = a.into_projective() + b.into_projective();
+            let rust_out: G1Projective = a.to_projective() + b.to_projective();
             assert_eq!(&rust_out, output);
         }
     }
@@ -641,7 +641,7 @@ mod tests {
         let inputs = vec![vec![cuda_infinite.clone(), cuda_infinite]];
         let output: Vec<G1Projective> = run_roundtrip("add_affine_test", &inputs[..]);
 
-        let rust_out: G1Projective = infinite.into_projective() + infinite.into_projective();
+        let rust_out: G1Projective = infinite.to_projective() + infinite.to_projective();
         assert_eq!(rust_out, output[0]);
     }
 

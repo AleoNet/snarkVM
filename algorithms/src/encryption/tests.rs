@@ -18,10 +18,11 @@ mod ecies {
     use crate::{encryption::ECIESPoseidonEncryption, EncryptionScheme};
     use snarkvm_curves::edwards_bls12::{EdwardsParameters, Fq};
     use snarkvm_fields::One;
-    use snarkvm_utilities::{FromBytes, ToBytes};
+    use snarkvm_utilities::{test_crypto_rng, FromBytes, ToBytes};
+
     use std::ops::AddAssign;
 
-    use rand::{thread_rng, Rng};
+    use rand::Rng;
 
     pub const ITERATIONS: usize = 1000;
 
@@ -29,7 +30,7 @@ mod ecies {
 
     #[test]
     fn test_encrypt_and_decrypt() {
-        let rng = &mut thread_rng();
+        let rng = &mut test_crypto_rng();
         let encryption = TestEncryptionScheme::setup("simple_encryption");
 
         let private_key = encryption.generate_private_key(rng);
@@ -49,7 +50,7 @@ mod ecies {
 
     #[test]
     fn test_encryption_public_key_to_bytes_le() {
-        let rng = &mut thread_rng();
+        let rng = &mut test_crypto_rng();
         let encryption = TestEncryptionScheme::setup("encryption_public_key_serialization");
 
         for _ in 0..ITERATIONS {
@@ -65,7 +66,7 @@ mod ecies {
 
     #[test]
     fn test_encryption_symmetric_key_commitment() {
-        let rng = &mut thread_rng();
+        let rng = &mut test_crypto_rng();
         let encryption = TestEncryptionScheme::setup("encryption_symmetric_key_commitment");
 
         // Compute the symmetric key commitment.
@@ -109,7 +110,7 @@ mod ecies {
 
     #[test]
     fn test_ciphertext_random_manipulation() {
-        let rng = &mut thread_rng();
+        let rng = &mut test_crypto_rng();
         let encryption = TestEncryptionScheme::setup("simple_encryption");
 
         let private_key = encryption.generate_private_key(rng);

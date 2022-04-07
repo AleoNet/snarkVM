@@ -18,8 +18,7 @@
 extern crate criterion;
 
 use snarkvm_algorithms::{
-    crypto_hash::poseidon::PoseidonSponge,
-    polycommit::sonic_pc::SonicKZG10,
+    crypto_hash::PoseidonSponge,
     snark::marlin::{ahp::AHPForR1CS, FiatShamirAlgebraicSpongeRng, MarlinHidingMode, MarlinSNARK},
 };
 use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
@@ -30,9 +29,7 @@ use snarkvm_utilities::{ops::MulAssign, UniformRand};
 use criterion::Criterion;
 use rand::{self, thread_rng};
 
-type MarlinInst = MarlinSNARK<Fr, Fq, PC, FS, MarlinHidingMode, Vec<Fr>>;
-
-type PC = SonicKZG10<Bls12_377>;
+type MarlinInst = MarlinSNARK<Bls12_377, FS, MarlinHidingMode, Vec<Fr>>;
 type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
 
 #[derive(Copy, Clone)]

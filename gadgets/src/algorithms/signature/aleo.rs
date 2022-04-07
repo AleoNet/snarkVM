@@ -26,17 +26,19 @@ use crate::{
         select::CondSelectGadget,
     },
     CompressedGroupGadget,
-    CryptoHashGadget,
     FpGadget,
     ToBitsLEGadget,
     ToConstraintFieldGadget,
 };
 use snarkvm_algorithms::{
-    crypto_hash::PoseidonDefaultParametersField,
     signature::{AleoSignature, AleoSignatureScheme},
     SignatureScheme,
 };
-use snarkvm_curves::{templates::twisted_edwards_extended::Affine as TEAffine, TwistedEdwardsParameters};
+use snarkvm_curves::{
+    templates::twisted_edwards_extended::Affine as TEAffine,
+    ProjectiveCurve,
+    TwistedEdwardsParameters,
+};
 use snarkvm_fields::{FieldParameters, PrimeField};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 use snarkvm_utilities::{FromBytes, ToBytes};
@@ -309,16 +311,13 @@ impl<F: PrimeField> ToBitsLEGadget<F> for AleoComputeKeyGadget {
     }
 }
 
-pub struct AleoSignatureSchemeGadget<
-    TE: TwistedEdwardsParameters<BaseField = F>,
-    F: PrimeField + PoseidonDefaultParametersField,
-> {
+pub struct AleoSignatureSchemeGadget<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> {
     pub(crate) signature: AleoSignatureScheme<TE>,
     pub(crate) _engine: PhantomData<F>,
 }
 
-impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaultParametersField>
-    AllocGadget<AleoSignatureScheme<TE>, F> for AleoSignatureSchemeGadget<TE, F>
+impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> AllocGadget<AleoSignatureScheme<TE>, F>
+    for AleoSignatureSchemeGadget<TE, F>
 {
     fn alloc_constant<
         Fn: FnOnce() -> Result<T, SynthesisError>,
@@ -350,8 +349,8 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
     }
 }
 
-impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaultParametersField>
-    SignatureGadget<AleoSignatureScheme<TE>, F> for AleoSignatureSchemeGadget<TE, F>
+impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField> SignatureGadget<AleoSignatureScheme<TE>, F>
+    for AleoSignatureSchemeGadget<TE, F>
 {
     type ComputeKeyGadget = AleoComputeKeyGadget;
     type PublicKeyGadget = AleoSignaturePublicKeyGadget<TE, F>;
@@ -369,7 +368,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
 
         // Truncate the output to CAPACITY bits (1 bit less than MODULUS_BITS) in the scalar field.
         let mut sk_prf_bits = output.to_bits_le_strict(&mut cs.ns(|| "Output hash to bytes"))?;
-        sk_prf_bits.resize(<TE::ScalarField as PrimeField>::Parameters::CAPACITY as usize, Boolean::Constant(false));
+        sk_prf_bits.resize(TE::ScalarField::size_in_data_bits(), Boolean::Constant(false));
         Ok(AleoComputeKeyGadget { sk_prf_bits })
     }
 
@@ -377,7 +376,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         &self,
         mut cs: CS,
         public_key: &Self::PublicKeyGadget,
-        message: &[UInt8],
+        message: &[Boolean],
         signature: &Self::SignatureGadget,
     ) -> Result<Boolean, SynthesisError> {
         // Prepare the zero element in affine form for use.
@@ -398,7 +397,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
         let g_s = {
             let mut g_s = zero_affine.clone();
             for (i, (base, bit)) in self.signature.parameters().iter().zip_eq(s).enumerate() {
-                let added = g_s.add_constant(cs.ns(|| format!("add_g_s_{}", i)), base)?;
+                let added = g_s.add_constant(cs.ns(|| format!("add_g_s_{}", i)), &base.to_affine())?;
 
                 g_s = TEAffineGadget::<TE, F>::conditionally_select(
                     cs.ns(|| format!("cond_select_g_s_{}", i)),
@@ -487,7 +486,7 @@ impl<TE: TwistedEdwardsParameters<BaseField = F>, F: PrimeField + PoseidonDefaul
             let g_sk_prf = {
                 let mut g_sk_prf = zero_affine;
                 for (i, (base, bit)) in self.signature.parameters().iter().zip_eq(sk_prf).enumerate() {
-                    let added = g_sk_prf.add_constant(cs.ns(|| format!("add_g_sk_prf_{}", i)), base)?;
+                    let added = g_sk_prf.add_constant(cs.ns(|| format!("add_g_sk_prf_{}", i)), &base.to_affine())?;
 
                     g_sk_prf = TEAffineGadget::<TE, F>::conditionally_select(
                         cs.ns(|| format!("cond_select_g_sk_prf_{}", i)),

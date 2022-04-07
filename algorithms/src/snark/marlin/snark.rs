@@ -15,47 +15,45 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    crypto_hash::PoseidonDefaultParametersField,
-    polycommit::PolynomialCommitment,
     snark::marlin::{
         fiat_shamir::FiatShamirRng,
         CircuitProvingKey,
         CircuitVerifyingKey,
         MarlinMode,
         MarlinSNARK,
-        PreparedCircuitVerifyingKey,
         Proof,
         UniversalSRS,
     },
+    Prepare,
     SNARKError,
     SNARK,
     SRS,
 };
+use snarkvm_curves::PairingEngine;
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_r1cs::ConstraintSynthesizer;
 
 use core::sync::atomic::AtomicBool;
 use rand::{CryptoRng, Rng};
 
-impl<TargetField, BaseField, PC, FS, MM, Input> SNARK for MarlinSNARK<TargetField, BaseField, PC, FS, MM, Input>
+impl<E: PairingEngine, FS, MM, Input> SNARK for MarlinSNARK<E, FS, MM, Input>
 where
-    TargetField: PrimeField,
-    BaseField: PrimeField + PoseidonDefaultParametersField,
-    PC: PolynomialCommitment<TargetField, BaseField>,
-    FS: FiatShamirRng<TargetField, BaseField>,
+    E::Fr: PrimeField,
+    E::Fq: PrimeField,
+    FS: FiatShamirRng<E::Fr, E::Fq>,
     MM: MarlinMode,
-    Input: ToConstraintField<TargetField>,
+    Input: Clone + ToConstraintField<E::Fr>,
 {
-    type BaseField = BaseField;
-    type PreparedVerifyingKey = PreparedCircuitVerifyingKey<TargetField, BaseField, PC, MM>;
-    type Proof = Proof<TargetField, BaseField, PC>;
-    type ProvingKey = CircuitProvingKey<TargetField, BaseField, PC, MM>;
-    type ScalarField = TargetField;
+    type BaseField = E::Fq;
+    type Proof = Proof<E>;
+    type ProvingKey = CircuitProvingKey<E, MM>;
+    type ScalarField = E::Fr;
     type UniversalSetupConfig = usize;
-    type UniversalSetupParameters = UniversalSRS<TargetField, BaseField, PC>;
+    type UniversalSetupParameters = UniversalSRS<E>;
     type VerifierInput = Input;
-    type VerifyingKey = CircuitVerifyingKey<TargetField, BaseField, PC, MM>;
+    type VerifyingKey = CircuitVerifyingKey<E, MM>;
 
+    #[allow(clippy::only_used_in_recursion)]
     fn universal_setup<R: Rng + CryptoRng>(
         max_degree: &Self::UniversalSetupConfig,
         rng: &mut R,
@@ -67,7 +65,7 @@ where
         Ok(srs)
     }
 
-    fn setup<C: ConstraintSynthesizer<TargetField>, R: Rng + CryptoRng>(
+    fn setup<C: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
         circuit: &C,
         srs: &mut SRS<R, Self::UniversalSetupParameters>,
     ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError> {
@@ -78,7 +76,8 @@ where
         .map_err(SNARKError::from)
     }
 
-    fn prove_with_terminator<C: ConstraintSynthesizer<TargetField>, R: Rng + CryptoRng>(
+    #[allow(clippy::only_used_in_recursion)]
+    fn prove_with_terminator<C: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
         parameters: &Self::ProvingKey,
         circuit: &C,
         terminator: &AtomicBool,
@@ -88,7 +87,7 @@ where
     }
 
     fn verify_prepared(
-        prepared_verifying_key: &Self::PreparedVerifyingKey,
+        prepared_verifying_key: &<Self::VerifyingKey as Prepare>::Prepared,
         input: &Self::VerifierInput,
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError> {
@@ -100,8 +99,7 @@ where
 pub mod test {
     use super::*;
     use crate::{
-        crypto_hash::poseidon::PoseidonSponge,
-        polycommit::sonic_pc::SonicKZG10,
+        crypto_hash::PoseidonSponge,
         snark::marlin::{fiat_shamir::FiatShamirAlgebraicSpongeRng, MarlinHidingMode, MarlinSNARK},
         SRS,
     };
@@ -149,9 +147,8 @@ pub mod test {
         }
     }
 
-    type PC = SonicKZG10<Bls12_377>;
     type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
-    type TestSNARK = MarlinSNARK<Fr, Fq, PC, FS, MarlinHidingMode, Vec<Fr>>;
+    type TestSNARK = MarlinSNARK<Bls12_377, FS, MarlinHidingMode, Vec<Fr>>;
 
     #[test]
     fn marlin_snark_test() {

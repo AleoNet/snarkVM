@@ -14,8 +14,4 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod uint128;
-pub mod uint16;
-pub mod uint32;
-pub mod uint64;
 pub mod uint8;

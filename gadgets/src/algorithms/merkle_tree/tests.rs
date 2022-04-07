@@ -24,7 +24,10 @@ use snarkvm_algorithms::{
     merkle_tree::{MaskedMerkleTreeParameters, MerkleTree},
     traits::{MaskedMerkleParameters, MerkleParameters, CRH},
 };
-use snarkvm_curves::{bls12_377::Fr, edwards_bls12::EdwardsProjective};
+use snarkvm_curves::{
+    bls12_377::Fr,
+    edwards_bls12::{EdwardsAffine, EdwardsProjective},
+};
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 use snarkvm_utilities::ToBytes;
@@ -213,11 +216,11 @@ fn update_merkle_tree<P: MerkleParameters, F: PrimeField, HG: CRHGadget<P::H, F>
     assert!(satisfied);
 }
 
-mod merkle_tree_pedersen_crh_on_projective {
+mod merkle_tree_pedersen_crh {
     use super::*;
 
     type H = PedersenCRH<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
-    type HG = PedersenCRHGadget<EdwardsProjective, Fr, EdwardsBls12Gadget, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
+    type HG = PedersenCRHGadget<EdwardsAffine, Fr, EdwardsBls12Gadget, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
 
     type EdwardsMerkleParameters = MaskedMerkleTreeParameters<H, 4>;
 
@@ -262,17 +265,12 @@ mod merkle_tree_pedersen_crh_on_projective {
     }
 }
 
-mod merkle_tree_compressed_pedersen_crh_on_projective {
+mod merkle_tree_compressed_pedersen_crh {
     use super::*;
 
     type H = PedersenCompressedCRH<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
-    type HG = PedersenCompressedCRHGadget<
-        EdwardsProjective,
-        Fr,
-        EdwardsBls12Gadget,
-        PEDERSEN_NUM_WINDOWS,
-        PEDERSEN_WINDOW_SIZE,
-    >;
+    type HG =
+        PedersenCompressedCRHGadget<EdwardsAffine, Fr, EdwardsBls12Gadget, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
 
     type EdwardsMerkleParameters = MaskedMerkleTreeParameters<H, 4>;
 
@@ -344,11 +342,11 @@ mod merkle_tree_compressed_pedersen_crh_on_projective {
     }
 }
 
-mod merkle_tree_bowe_hopwood_pedersen_crh_on_projective {
+mod merkle_tree_bowe_hopwood_pedersen_crh {
     use super::*;
 
     type H = BHPCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
-    type HG = BHPCRHGadget<EdwardsProjective, Fr, EdwardsBls12Gadget, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
+    type HG = BHPCRHGadget<EdwardsAffine, Fr, EdwardsBls12Gadget, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
 
     type EdwardsMerkleParameters = MaskedMerkleTreeParameters<H, 4>;
 

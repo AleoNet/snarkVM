@@ -14,19 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use snarkvm_curves::AffineCurve;
+use snarkvm_fields::{Field, PrimeField};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use anyhow::Result;
 use rand::{CryptoRng, Rng};
 use std::{fmt::Debug, hash::Hash};
 
-pub trait SignatureScheme:
-    Sized + ToBytes + FromBytes + Debug + Clone + Eq + Send + Sync + From<<Self as SignatureScheme>::Parameters>
-{
+pub trait SignatureScheme: Sized + Debug + Clone + Eq + Send + Sync {
     type Parameters: Clone + Debug + Eq;
     type PublicKey: Clone + Debug + Default + ToBytes + FromBytes + Hash + Eq + Send + Sync;
     type PrivateKey: Clone + Debug + Default + ToBytes + FromBytes + PartialEq + Eq;
-    type Signature: Clone + Debug + Default + ToBytes + FromBytes + Send + Sync + PartialEq + Eq;
+    type Signature: Copy + Clone + Debug + Default + ToBytes + FromBytes + Send + Sync + PartialEq + Eq;
 
     fn setup(message: &str) -> Self;
 
@@ -39,21 +39,21 @@ pub trait SignatureScheme:
     fn sign<R: Rng + CryptoRng>(
         &self,
         private_key: &Self::PrivateKey,
-        message: &[u8],
+        message: &[bool],
         rng: &mut R,
     ) -> Result<Self::Signature>;
 
-    fn verify(&self, public_key: &Self::PublicKey, message: &[u8], signature: &Self::Signature) -> Result<bool>;
+    fn verify(&self, public_key: &Self::PublicKey, message: &[bool], signature: &Self::Signature) -> Result<bool>;
 }
 
 pub trait SignatureSchemeOperations {
-    type AffineCurve: Clone + Debug + Default + ToBytes + FromBytes + Hash + Eq + Send + Sync;
-    type BaseField: Clone + Debug + Default + ToBytes + FromBytes + PartialEq + Eq;
-    type ScalarField: Clone + Debug + Default + ToBytes + FromBytes + PartialEq + Eq;
+    type AffineCurve: AffineCurve<BaseField = Self::BaseField>;
+    type BaseField: Field;
+    type ScalarField: PrimeField;
     type Signature: Clone + Debug + Default + ToBytes + FromBytes + PartialEq + Eq;
 
     fn pk_sig(signature: &Self::Signature) -> Result<Self::AffineCurve>;
     fn pr_sig(signature: &Self::Signature) -> Result<Self::AffineCurve>;
-    fn g_scalar_multiply(&self, scalar: &Self::ScalarField) -> Self::AffineCurve;
+    fn g_scalar_multiply(&self, scalar: &Self::ScalarField) -> <Self::AffineCurve as AffineCurve>::Projective;
     fn hash_to_scalar_field(&self, input: &[Self::BaseField]) -> Self::ScalarField;
 }

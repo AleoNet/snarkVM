@@ -18,7 +18,7 @@
 
 use crate::{
     fft::{EvaluationDomain, Evaluations as EvaluationsOnDomain},
-    polycommit::LabeledPolynomial,
+    polycommit::sonic_pc::LabeledPolynomial,
     snark::marlin::ahp::{indexer::Matrix, UnnormalizedBivariateLagrangePoly},
 };
 use itertools::Itertools;
@@ -90,9 +90,7 @@ pub(crate) fn make_matrices_square<F: Field, CS: ConstraintSystem<F>>(cs: &mut C
     }
 }
 
-#[derive(derivative::Derivative)]
-#[derivative(Clone(bound = "F: PrimeField"))]
-#[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct MatrixEvals<F: PrimeField> {
     /// Evaluations of the `row` polynomial.
     pub row: EvaluationsOnDomain<F>,
@@ -106,9 +104,7 @@ pub struct MatrixEvals<F: PrimeField> {
 
 /// Contains information about the arithmetization of the matrix M^*.
 /// Here `M^*(i, j) := M(j, i) * u_H(j, j)`. For more details, see [\[COS20\]](https://eprint.iacr.org/2019/1076).
-#[derive(derivative::Derivative)]
-#[derivative(Clone(bound = "F: PrimeField"))]
-#[derive(Debug, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct MatrixArithmetization<F: PrimeField> {
     /// LDE of the row indices of M^*.
     pub row: LabeledPolynomial<F>,

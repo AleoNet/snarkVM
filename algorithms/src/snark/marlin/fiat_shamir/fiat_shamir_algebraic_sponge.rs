@@ -26,7 +26,6 @@ use snarkvm_fields::{FieldParameters, PrimeField, ToConstraintField};
 use snarkvm_utilities::{BigInteger, FromBits, ToBits};
 
 use core::marker::PhantomData;
-use rand_core::{Error, RngCore};
 use smallvec::SmallVec;
 
 /// An RNG from any algebraic sponge
@@ -51,19 +50,11 @@ where
 {
     type Parameters = S::Parameters;
 
-    fn sample_params() -> Self::Parameters {
-        S::sample_parameters()
-    }
-
     fn new() -> Self {
-        Self { s: S::with_default_parameters(), _phantom: PhantomData }
+        Self { s: S::new(&S::sample_parameters()), _phantom: PhantomData }
     }
 
-    fn with_parameters(params: &Self::Parameters) -> Self {
-        Self { s: S::with_parameters(params), _phantom: PhantomData }
-    }
-
-    fn absorb_nonnative_field_elements(&mut self, elems: &[TargetField], ty: OptimizationType) {
+    fn absorb_nonnative_field_elements(&mut self, elems: impl IntoIterator<Item = TargetField>, ty: OptimizationType) {
         Self::push_elements_to_sponge(&mut self.s, elems, ty);
     }
 
@@ -107,68 +98,11 @@ where
     }
 
     fn squeeze_native_field_elements(&mut self, num: usize) -> Result<SmallVec<[BaseField; 10]>, FiatShamirError> {
-        Ok(self.s.squeeze_field_elements(num))
+        Ok(self.s.squeeze(num))
     }
 
-    fn squeeze_128_bits_nonnative_field_elements(&mut self, num: usize) -> Result<Vec<TargetField>, FiatShamirError> {
+    fn squeeze_short_nonnative_field_elements(&mut self, num: usize) -> Result<Vec<TargetField>, FiatShamirError> {
         Ok(Self::get_elements_from_sponge(&mut self.s, num, true))
-    }
-}
-
-impl<TargetField: PrimeField, BaseField: PrimeField, S: DefaultCapacityAlgebraicSponge<BaseField, 6>> RngCore
-    for FiatShamirAlgebraicSpongeRng<TargetField, BaseField, S>
-{
-    fn next_u32(&mut self) -> u32 {
-        assert!(BaseField::size_in_bits() > 128, "The native field of the algebraic sponge is too small.");
-
-        let mut dest = [0u8; 4];
-        self.fill_bytes(&mut dest);
-
-        u32::from_be_bytes(dest)
-    }
-
-    fn next_u64(&mut self) -> u64 {
-        assert!(BaseField::size_in_bits() > 128, "The native field of the algebraic sponge is too small.");
-
-        let mut dest = [0u8; 8];
-        self.fill_bytes(&mut dest);
-
-        u64::from_be_bytes(dest)
-    }
-
-    fn fill_bytes(&mut self, dest: &mut [u8]) {
-        assert!(BaseField::size_in_bits() > 128, "The native field of the algebraic sponge is too small.");
-
-        let capacity = BaseField::size_in_bits() - 128;
-        let len = dest.len() * 8;
-
-        let num_of_elements = (capacity + len - 1) / len;
-        let elements = self.s.squeeze_field_elements(num_of_elements);
-
-        let mut bits = Vec::<bool>::new();
-        for elem in elements.iter() {
-            let mut elem_bits = elem.to_repr().to_bits_be();
-            elem_bits.reverse();
-            bits.extend_from_slice(&elem_bits[0..capacity]);
-        }
-
-        bits.truncate(len);
-        bits.chunks_exact(8).enumerate().for_each(|(i, bits_per_byte)| {
-            let mut byte = 0;
-            for (j, bit) in bits_per_byte.iter().enumerate() {
-                if *bit {
-                    byte += 1 << j;
-                }
-            }
-            dest[i] = byte;
-        });
-    }
-
-    fn try_fill_bytes(&mut self, dest: &mut [u8]) -> Result<(), Error> {
-        assert!(BaseField::size_in_bits() > 128, "The native field of the algebraic sponge is too small.");
-
-        self.fill_bytes(dest);
-        Ok(())
     }
 }
 
@@ -260,11 +194,11 @@ impl<TargetField: PrimeField, BaseField: PrimeField, S: DefaultCapacityAlgebraic
     }
 
     /// Push elements to sponge, treated in the non-native field representations.
-    pub fn push_elements_to_sponge(sponge: &mut S, src: &[TargetField], ty: OptimizationType) {
+    pub fn push_elements_to_sponge(sponge: &mut S, src: impl IntoIterator<Item = TargetField>, ty: OptimizationType) {
         let mut src_limbs = Vec::<(BaseField, BaseField)>::new();
 
-        for elem in src.iter() {
-            let limbs = Self::get_limbs_representations(elem, ty).unwrap();
+        for elem in src {
+            let limbs = Self::get_limbs_representations(&elem, ty).unwrap();
             for limb in limbs.iter() {
                 src_limbs.push((*limb, BaseField::one()));
                 // specifically set to one, since most gadgets in the constraint world would not have zero noise (due to the relatively weak normal form testing in `alloc`)
@@ -281,7 +215,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField, S: DefaultCapacityAlgebraic
         let bits_per_element = BaseField::size_in_bits() - 1;
         let num_elements = (num_bits + bits_per_element - 1) / bits_per_element;
 
-        let src_elements = sponge.squeeze_field_elements(num_elements);
+        let src_elements = sponge.squeeze(num_elements);
         let mut dest_bits = Vec::<bool>::new();
 
         let skip = (BaseField::Parameters::REPR_SHAVE_BITS + 1) as usize;
@@ -302,7 +236,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField, S: DefaultCapacityAlgebraic
         outputs_short_elements: bool,
     ) -> Vec<TargetField> {
         let num_bits_per_nonnative = if outputs_short_elements {
-            128
+            168
         } else {
             TargetField::size_in_bits() - 1 // also omit the highest bit
         };

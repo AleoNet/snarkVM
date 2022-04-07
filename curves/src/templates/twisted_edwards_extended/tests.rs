@@ -24,11 +24,7 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
-use crate::traits::{
-    pairing_engine::{AffineCurve, ProjectiveCurve},
-    MontgomeryParameters,
-    TwistedEdwardsParameters,
-};
+use crate::traits::{AffineCurve, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{Field, One, PrimeField, Zero};
 
 pub const ITERATIONS: usize = 10;
@@ -62,7 +58,7 @@ pub fn edwards_curve_serialization_test<P: TwistedEdwardsParameters>() {
 
     for _ in 0..10 {
         let a = Projective::<P>::rand(&mut rng);
-        let a = a.into_affine();
+        let a = a.to_affine();
         {
             let mut serialized = vec![0; buf_size];
             let mut cursor = Cursor::new(&mut serialized[..]);
@@ -128,7 +124,7 @@ where
 
     for _ in 0..ITERATIONS {
         let a = Projective::<P>::rand(&mut rng);
-        let a = a.into_affine();
+        let a = a.to_affine();
         {
             let mut serialized = vec![0; buf_size];
             let mut cursor = Cursor::new(&mut serialized[..]);
@@ -161,7 +157,7 @@ where
 
     for _ in 0..ITERATIONS {
         let a = Projective::<P>::rand(&mut rng);
-        let a = a.into_affine();
+        let a = a.to_affine();
         {
             let x = a.x;
 

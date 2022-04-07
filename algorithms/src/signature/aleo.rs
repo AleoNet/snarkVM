@@ -15,9 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    crypto_hash::{PoseidonCryptoHash, PoseidonDefaultParametersField},
-    hash_to_curve::hash_to_curve,
-    CryptoHash,
+    crypto_hash::{hash_to_curve, Poseidon},
     SignatureError,
     SignatureScheme,
     SignatureSchemeOperations,
@@ -25,14 +23,12 @@ use crate::{
 use snarkvm_curves::{
     templates::twisted_edwards_extended::{Affine as TEAffine, Projective as TEProjective},
     AffineCurve,
-    Group,
     ProjectiveCurve,
     TwistedEdwardsParameters,
 };
-use snarkvm_fields::{ConstraintFieldError, Field, FieldParameters, PrimeField, ToConstraintField};
+use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_utilities::{
     io::{Read, Result as IoResult, Write},
-    ops::Mul,
     rand::UniformRand,
     serialize::*,
     FromBits,
@@ -45,15 +41,7 @@ use anyhow::Result;
 use itertools::Itertools;
 use rand::{CryptoRng, Rng};
 
-#[derive(Derivative)]
-#[derivative(
-    Copy(bound = "TE: TwistedEdwardsParameters"),
-    Clone(bound = "TE: TwistedEdwardsParameters"),
-    PartialEq(bound = "TE: TwistedEdwardsParameters"),
-    Eq(bound = "TE: TwistedEdwardsParameters"),
-    Debug(bound = "TE: TwistedEdwardsParameters"),
-    Default(bound = "TE: TwistedEdwardsParameters")
-)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq)]
 pub struct AleoSignature<TE: TwistedEdwardsParameters> {
     pub prover_response: TE::ScalarField,
     pub verifier_challenge: TE::ScalarField,
@@ -124,24 +112,18 @@ impl<TE: TwistedEdwardsParameters> ToBytes for AleoSignature<TE> {
     }
 }
 
-#[derive(Derivative)]
-#[derivative(
-    Clone(bound = "TE: TwistedEdwardsParameters"),
-    Debug(bound = "TE: TwistedEdwardsParameters"),
-    PartialEq(bound = "TE: TwistedEdwardsParameters"),
-    Eq(bound = "TE: TwistedEdwardsParameters")
-)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AleoSignatureScheme<TE: TwistedEdwardsParameters>
 where
-    TE::BaseField: PoseidonDefaultParametersField,
+    TE::BaseField: PrimeField,
 {
     g_bases: Vec<TEProjective<TE>>,
-    crypto_hash: PoseidonCryptoHash<TE::BaseField, 4, false>,
+    poseidon: Poseidon<TE::BaseField, 4, false>,
 }
 
 impl<TE: TwistedEdwardsParameters> SignatureScheme for AleoSignatureScheme<TE>
 where
-    TE::BaseField: PoseidonDefaultParametersField,
+    TE::BaseField: PrimeField,
 {
     type Parameters = Vec<TEProjective<TE>>;
     type PrivateKey = (TE::ScalarField, TE::ScalarField);
@@ -149,26 +131,24 @@ where
     type Signature = AleoSignature<TE>;
 
     fn setup(message: &str) -> Self {
-        assert!(
-            <TE::ScalarField as PrimeField>::Parameters::CAPACITY < <TE::BaseField as PrimeField>::Parameters::CAPACITY
-        );
+        assert!(TE::ScalarField::size_in_data_bits() < TE::BaseField::size_in_data_bits());
 
         // Compute the powers of G.
         let g_bases = {
             let (base, _, _) = hash_to_curve::<TEAffine<TE>>(message);
 
-            let mut g = base.into_projective();
-            let mut g_bases = Vec::with_capacity(<TE::ScalarField as PrimeField>::Parameters::MODULUS_BITS as usize);
-            for _ in 0..<TE::ScalarField as PrimeField>::Parameters::MODULUS_BITS as usize {
+            let mut g = base.to_projective();
+            let mut g_bases = Vec::with_capacity(TE::ScalarField::size_in_bits());
+            for _ in 0..TE::ScalarField::size_in_bits() {
                 g_bases.push(g);
                 g.double_in_place();
             }
             g_bases
         };
 
-        let crypto_hash = PoseidonCryptoHash::<TE::BaseField, 4, false>::setup();
+        let crypto_hash = Poseidon::<TE::BaseField, 4, false>::setup();
 
-        Self { g_bases, crypto_hash }
+        Self { g_bases, poseidon: crypto_hash }
     }
 
     fn parameters(&self) -> &Self::Parameters {
@@ -195,14 +175,19 @@ where
         // Compute G^r_sig.
         let g_r_sig = self.g_scalar_multiply(r_sig);
 
+        // We do a batch inversion to save one inversion.
+        let mut to_invert = [g_sk_sig, g_r_sig];
+        TEProjective::<TE>::batch_normalization(&mut to_invert);
+        let [g_sk_sig_affine, g_r_sig_affine] = to_invert.map(|a| a.to_affine());
+
         // Compute sk_prf := RO(G^sk_sig || G^r_sig).
-        let sk_prf = self.hash_to_scalar_field(&[g_sk_sig.x, g_r_sig.x]);
+        let sk_prf = self.hash_to_scalar_field(&[g_sk_sig_affine.to_x_coordinate(), g_r_sig_affine.to_x_coordinate()]);
 
         // Compute G^sk_prf.
         let g_sk_prf = self.g_scalar_multiply(&sk_prf);
 
         // Compute G^sk_sig G^r_sig G^sk_prf.
-        g_sk_sig + g_r_sig + g_sk_prf
+        (g_sk_sig + g_r_sig + g_sk_prf).into()
     }
 
     ///
@@ -213,7 +198,7 @@ where
     fn sign<R: Rng + CryptoRng>(
         &self,
         private_key: &Self::PrivateKey,
-        message: &[u8],
+        message: &[bool],
         rng: &mut R,
     ) -> Result<Self::Signature> {
         // Sample a random scalar field element.
@@ -231,21 +216,25 @@ where
         // Compute G^r_sig.
         let g_r_sig = self.g_scalar_multiply(r_sig);
 
+        let mut to_invert = [g_sk_sig, g_r_sig, g_r];
+        TEProjective::<TE>::batch_normalization(&mut to_invert);
+        let [g_sk_sig_affine, g_r_sig_affine, g_r_affine] = to_invert.map(|a| a.to_affine());
+
         // Compute sk_prf := RO(G^sk_sig || G^r_sig).
-        let sk_prf = self.hash_to_scalar_field(&[g_sk_sig.x, g_r_sig.x]);
+        let sk_prf = self.hash_to_scalar_field(&[g_sk_sig_affine.to_x_coordinate(), g_r_sig_affine.to_x_coordinate()]);
 
         // Compute G^sk_prf.
         let g_sk_prf = self.g_scalar_multiply(&sk_prf);
 
         // Compute G^sk_sig G^r_sig G^sk_prf.
-        let public_key = g_sk_sig + g_r_sig + g_sk_prf;
+        let public_key = (g_sk_sig + g_r_sig + g_sk_prf).to_affine();
 
         // Compute the verifier challenge.
         let verifier_challenge = {
             // Construct the hash input (G^sk_sig G^r_sig G^sk_prf, G^r, message).
             let mut preimage = vec![];
-            preimage.extend_from_slice(&public_key.x.to_field_elements()?);
-            preimage.extend_from_slice(&g_r.x.to_field_elements()?);
+            preimage.extend_from_slice(&public_key.to_x_coordinate().to_field_elements()?);
+            preimage.extend_from_slice(&g_r_affine.to_x_coordinate().to_field_elements()?);
             preimage.push(TE::BaseField::from(message.len() as u128));
             preimage.extend_from_slice(&message.to_field_elements()?);
 
@@ -259,8 +248,8 @@ where
         Ok(AleoSignature {
             prover_response,
             verifier_challenge,
-            root_public_key: g_sk_sig.x,
-            root_randomizer: g_r_sig.x,
+            root_public_key: g_sk_sig_affine.to_x_coordinate(),
+            root_randomizer: g_r_sig_affine.to_x_coordinate(),
         })
     }
 
@@ -268,7 +257,7 @@ where
     /// Verifies (c == c') && (public_key == G^sk_sig G^r_sig G^sk_prf) where:
     ///     c' := Hash(G^sk_sig G^r_sig G^sk_prf, G^s G^sk_sig^c, message)
     ///
-    fn verify(&self, public_key: &Self::PublicKey, message: &[u8], signature: &Self::Signature) -> Result<bool> {
+    fn verify(&self, public_key: &Self::PublicKey, message: &[bool], signature: &Self::Signature) -> Result<bool> {
         // Extract the signature contents.
         let AleoSignature { prover_response, verifier_challenge, root_public_key, root_randomizer } = signature;
 
@@ -276,17 +265,17 @@ where
         let g_sk_sig = Self::recover_from_x_coordinate(root_public_key)?;
 
         // Compute G^sk_sig^c.
-        let g_sk_sig_c = self.scalar_multiply(g_sk_sig.into_projective(), verifier_challenge);
+        let g_sk_sig_c = self.scalar_multiply(g_sk_sig, verifier_challenge);
 
         // Compute G^r := G^s G^sk_sig^c.
-        let g_r = self.g_scalar_multiply(prover_response) + g_sk_sig_c;
+        let g_r = (self.g_scalar_multiply(prover_response) + g_sk_sig_c).to_affine();
 
         // Compute the candidate verifier challenge.
         let candidate_verifier_challenge = {
             // Construct the hash input (G^sk_sig G^r_sig G^sk_prf, G^r, message).
             let mut preimage = vec![];
-            preimage.extend_from_slice(&public_key.x.to_field_elements()?);
-            preimage.extend_from_slice(&g_r.x.to_field_elements()?);
+            preimage.extend_from_slice(&public_key.to_x_coordinate().to_field_elements()?);
+            preimage.extend_from_slice(&g_r.to_x_coordinate().to_field_elements()?);
             preimage.push(TE::BaseField::from(message.len() as u128));
             preimage.extend_from_slice(&message.to_field_elements()?);
 
@@ -300,13 +289,13 @@ where
         // Compute the candidate public key as (G^sk_sig G^r_sig G^sk_prf).
         let candidate_public_key = {
             // Compute sk_prf := RO(G^sk_sig || G^r_sig).
-            let sk_prf = self.hash_to_scalar_field(&[g_sk_sig.x, g_r_sig.x]);
+            let sk_prf = self.hash_to_scalar_field(&[g_sk_sig.to_x_coordinate(), g_r_sig.to_x_coordinate()]);
 
             // Compute G^sk_prf.
             let g_sk_prf = self.g_scalar_multiply(&sk_prf);
 
             // Compute G^sk_sig G^r_sig G^sk_prf.
-            g_sk_sig + g_r_sig + g_sk_prf
+            g_sk_sig.to_projective() + g_sk_prf + g_r_sig.to_projective()
         };
 
         Ok(*verifier_challenge == candidate_verifier_challenge && *public_key == candidate_public_key)
@@ -315,7 +304,7 @@ where
 
 impl<TE: TwistedEdwardsParameters> SignatureSchemeOperations for AleoSignatureScheme<TE>
 where
-    TE::BaseField: PoseidonDefaultParametersField,
+    TE::BaseField: PrimeField,
 {
     type AffineCurve = TEAffine<TE>;
     type BaseField = TE::BaseField;
@@ -330,7 +319,7 @@ where
         Self::recover_from_x_coordinate(&signature.root_randomizer)
     }
 
-    fn g_scalar_multiply(&self, scalar: &Self::ScalarField) -> Self::AffineCurve {
+    fn g_scalar_multiply(&self, scalar: &Self::ScalarField) -> <Self::AffineCurve as AffineCurve>::Projective {
         self.g_bases
             .iter()
             .zip_eq(&scalar.to_bits_le())
@@ -339,16 +328,15 @@ where
                 false => None,
             })
             .sum::<TEProjective<TE>>()
-            .into_affine()
     }
 
     fn hash_to_scalar_field(&self, input: &[Self::BaseField]) -> Self::ScalarField {
         // Use Poseidon as a random oracle.
-        let output = self.crypto_hash.evaluate(input);
+        let output = self.poseidon.evaluate(input);
 
         // Truncate the output to CAPACITY bits (1 bit less than MODULUS_BITS) in the scalar field.
-        let mut bits = output.to_repr().to_bits_le();
-        bits.resize(<TE::ScalarField as PrimeField>::Parameters::CAPACITY as usize, false);
+        let mut bits = output.to_bits_le();
+        bits.resize(TE::ScalarField::size_in_data_bits(), false);
 
         // Output the scalar field.
         let biginteger = <TE::ScalarField as PrimeField>::BigInteger::from_bits_le(&bits);
@@ -362,10 +350,10 @@ where
 
 impl<TE: TwistedEdwardsParameters> AleoSignatureScheme<TE>
 where
-    TE::BaseField: PoseidonDefaultParametersField,
+    TE::BaseField: PrimeField,
 {
-    fn scalar_multiply(&self, base: TEProjective<TE>, scalar: &TE::ScalarField) -> TEAffine<TE> {
-        base.mul(*scalar).into_affine()
+    fn scalar_multiply(&self, base: TEAffine<TE>, scalar: &TE::ScalarField) -> TEProjective<TE> {
+        base * *scalar
     }
 
     fn recover_from_x_coordinate(x_coordinate: &TE::BaseField) -> Result<TEAffine<TE>> {
@@ -385,53 +373,50 @@ where
     }
 }
 
-impl<TE: TwistedEdwardsParameters> From<Vec<TEProjective<TE>>> for AleoSignatureScheme<TE>
-where
-    TE::BaseField: PoseidonDefaultParametersField,
-{
-    fn from(g_bases: Vec<TEProjective<TE>>) -> Self {
-        let crypto_hash = PoseidonCryptoHash::<TE::BaseField, 4, false>::setup();
-        Self { g_bases, crypto_hash }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_curves::{
+        edwards_bls12::EdwardsParameters as EdwardsBls12,
+        edwards_bw6::EdwardsParameters as EdwardsBW6,
+    };
+    use snarkvm_utilities::test_crypto_rng;
+
+    fn sign_and_verify<S: SignatureScheme>(message: &[bool]) {
+        let rng = &mut test_crypto_rng();
+        let signature_scheme = S::setup("sign_and_verify");
+
+        let private_key = signature_scheme.generate_private_key(rng);
+        let public_key = signature_scheme.generate_public_key(&private_key);
+        let signature = signature_scheme.sign(&private_key, message, rng).unwrap();
+        assert!(signature_scheme.verify(&public_key, message, &signature).unwrap());
     }
-}
 
-impl<TE: TwistedEdwardsParameters> ToBytes for AleoSignatureScheme<TE>
-where
-    TE::BaseField: PoseidonDefaultParametersField,
-{
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (self.g_bases.len() as u32).write_le(&mut writer)?;
-        for g in &self.g_bases {
-            g.into_affine().write_le(&mut writer)?;
-        }
+    fn failed_verification<S: SignatureScheme>(message: &[bool], bad_message: &[bool]) {
+        let rng = &mut test_crypto_rng();
+        let signature_scheme = S::setup("failed_verification");
 
-        Ok(())
+        let private_key = signature_scheme.generate_private_key(rng);
+        let public_key = signature_scheme.generate_public_key(&private_key);
+        let signature = signature_scheme.sign(&private_key, message, rng).unwrap();
+        assert!(!signature_scheme.verify(&public_key, bad_message, &signature).unwrap());
     }
-}
 
-impl<TE: TwistedEdwardsParameters> FromBytes for AleoSignatureScheme<TE>
-where
-    TE::BaseField: PoseidonDefaultParametersField,
-{
-    #[inline]
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let g_bases_length: u32 = FromBytes::read_le(&mut reader)?;
-        let mut g_bases = Vec::with_capacity(g_bases_length as usize);
-        for _ in 0..g_bases_length {
-            let g: TEAffine<TE> = FromBytes::read_le(&mut reader)?;
-            g_bases.push(g.into_projective());
-        }
+    #[test]
+    fn test_aleo_signature_on_edwards_bls12_377() {
+        type TestSignature = AleoSignatureScheme<EdwardsBls12>;
 
-        Ok(Self::from(g_bases))
+        let message = "Hi, I am an Aleo signature!";
+        sign_and_verify::<TestSignature>(&message.as_bytes().to_bits_le());
+        failed_verification::<TestSignature>(&message.as_bytes().to_bits_le(), &b"Bad message".to_bits_le());
     }
-}
 
-impl<F: Field, TE: TwistedEdwardsParameters + ToConstraintField<F>> ToConstraintField<F> for AleoSignatureScheme<TE>
-where
-    TE::BaseField: PoseidonDefaultParametersField,
-{
-    #[inline]
-    fn to_field_elements(&self) -> Result<Vec<F>, ConstraintFieldError> {
-        Ok(Vec::new())
+    #[test]
+    fn test_aleo_signature_on_edwards_bw6() {
+        type TestSignature = AleoSignatureScheme<EdwardsBW6>;
+
+        let message = "Hi, I am an Aleo signature!";
+        sign_and_verify::<TestSignature>(&message.as_bytes().to_bits_le());
+        failed_verification::<TestSignature>(&message.as_bytes().to_bits_le(), &b"Bad message".to_bits_le());
     }
 }

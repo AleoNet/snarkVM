@@ -15,10 +15,10 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    polycommit::PolynomialCommitment,
+    polycommit::sonic_pc,
     snark::marlin::{ahp::indexer::*, CircuitVerifyingKey, MarlinMode},
 };
-use snarkvm_fields::PrimeField;
+use snarkvm_curves::PairingEngine;
 use snarkvm_utilities::{
     io::{self, Read, Write},
     serialize::*,
@@ -27,23 +27,19 @@ use snarkvm_utilities::{
 };
 
 /// Proving key for a specific circuit (i.e., R1CS matrices).
-#[derive(derivative::Derivative)]
-#[derivative(Clone(bound = ""))]
-#[derive(Debug)]
-pub struct CircuitProvingKey<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinMode> {
+#[derive(Clone, Debug)]
+pub struct CircuitProvingKey<E: PairingEngine, MM: MarlinMode> {
     /// The circuit verifying key.
-    pub circuit_verifying_key: CircuitVerifyingKey<F, CF, PC, MM>,
+    pub circuit_verifying_key: CircuitVerifyingKey<E, MM>,
     /// The randomness for the circuit polynomial commitments.
-    pub circuit_commitment_randomness: Vec<PC::Randomness>,
+    pub circuit_commitment_randomness: Vec<sonic_pc::Randomness<E>>,
     /// The circuit itself.
-    pub circuit: Circuit<F, MM>,
+    pub circuit: Circuit<E::Fr, MM>,
     /// The committer key for this index, trimmed from the universal SRS.
-    pub committer_key: PC::CommitterKey,
+    pub committer_key: sonic_pc::CommitterKey<E>,
 }
 
-impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinMode> ToBytes
-    for CircuitProvingKey<F, CF, PC, MM>
-{
+impl<E: PairingEngine, MM: MarlinMode> ToBytes for CircuitProvingKey<E, MM> {
     fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
         CanonicalSerialize::serialize(&self.circuit_verifying_key, &mut writer)?;
         CanonicalSerialize::serialize(&self.circuit_commitment_randomness, &mut writer)?;
@@ -53,15 +49,13 @@ impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinM
     }
 }
 
-impl<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinMode> FromBytes
-    for CircuitProvingKey<F, CF, PC, MM>
-{
+impl<E: PairingEngine, MM: MarlinMode> FromBytes for CircuitProvingKey<E, MM> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
         let circuit_verifying_key = CanonicalDeserialize::deserialize(&mut reader)?;
         let circuit_commitment_randomness = CanonicalDeserialize::deserialize(&mut reader)?;
         let circuit = CanonicalDeserialize::deserialize(&mut reader)?;
-        let committer_key: PC::CommitterKey = FromBytes::read_le(&mut reader)?;
+        let committer_key = FromBytes::read_le(&mut reader)?;
 
         Ok(Self { circuit_verifying_key, circuit_commitment_randomness, circuit, committer_key })
     }

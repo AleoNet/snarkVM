@@ -37,6 +37,16 @@ pub struct Response<N: Network> {
     encryption_randomness: Vec<EncryptionRandomness<N>>,
     /// A value balance is the difference between the input and output record values.
     value_balance: Amount,
+    /// The commitments on the input record values.
+    input_value_commitments: Vec<N::ValueCommitment>,
+    /// The commitments on the output record values.
+    output_value_commitments: Vec<N::ValueCommitment>,
+    /// The randomness used to generate the input value commitments.
+    input_value_commitment_randomness: Vec<N::ProgramScalarField>,
+    /// The randomness used to generate the output value commitments.
+    output_value_commitment_randomness: Vec<N::ProgramScalarField>,
+    /// The value balance commitment.
+    value_balance_commitment: N::ValueBalanceCommitment,
     /// The events emitted from the execution.
     events: Vec<Event<N>>,
 }
@@ -48,14 +58,30 @@ impl<N: Network> Response<N> {
         records: Vec<Record<N>>,
         encryption_randomness: Vec<EncryptionRandomness<N>>,
         value_balance: Amount,
+        input_value_commitments: Vec<N::ValueCommitment>,
+        output_value_commitments: Vec<N::ValueCommitment>,
+        input_value_commitment_randomness: Vec<N::ProgramScalarField>,
+        output_value_commitment_randomness: Vec<N::ProgramScalarField>,
+        value_balance_commitment: N::ValueBalanceCommitment,
         events: Vec<Event<N>>,
     ) -> Result<Self> {
-        Ok(Self { transition_id, records, encryption_randomness, value_balance, events })
+        Ok(Self {
+            transition_id,
+            records,
+            encryption_randomness,
+            value_balance,
+            input_value_commitments,
+            output_value_commitments,
+            input_value_commitment_randomness,
+            output_value_commitment_randomness,
+            value_balance_commitment,
+            events,
+        })
     }
 
     /// Returns `true` if the output records are the noop program.
     pub fn is_noop(&self) -> bool {
-        self.records.iter().filter(|output| output.is_dummy()).count() == N::NUM_OUTPUT_RECORDS
+        self.records.iter().all(|output| output.is_dummy())
     }
 
     /// Returns the transition ID.
@@ -65,7 +91,7 @@ impl<N: Network> Response<N> {
 
     /// Returns the commitments.
     pub fn commitments(&self) -> Vec<N::Commitment> {
-        self.records.iter().take(N::NUM_OUTPUT_RECORDS).map(Record::commitment).collect()
+        self.records.iter().take(N::NUM_OUTPUTS as usize).map(Record::commitment).collect()
     }
 
     /// Returns a reference to the records.
@@ -75,7 +101,7 @@ impl<N: Network> Response<N> {
 
     /// Returns the ciphertexts.
     pub fn ciphertexts(&self) -> Vec<N::RecordCiphertext> {
-        self.records.iter().take(N::NUM_OUTPUT_RECORDS).map(Record::ciphertext).cloned().collect()
+        self.records.iter().take(N::NUM_OUTPUTS as usize).map(Record::ciphertext).cloned().collect()
     }
 
     /// Returns a reference to the encryption randomness.
@@ -86,6 +112,31 @@ impl<N: Network> Response<N> {
     /// Returns the value balance.
     pub fn value_balance(&self) -> Amount {
         self.value_balance
+    }
+
+    /// Returns the commitments on the input record values.
+    pub fn input_value_commitments(&self) -> &Vec<N::ValueCommitment> {
+        &self.input_value_commitments
+    }
+
+    /// Returns the commitments on the output record values.
+    pub fn output_value_commitments(&self) -> &Vec<N::ValueCommitment> {
+        &self.output_value_commitments
+    }
+
+    /// Returns the randomness used to generate the input value commitments.
+    pub fn input_value_commitment_randomness(&self) -> &Vec<N::ProgramScalarField> {
+        &self.input_value_commitment_randomness
+    }
+
+    /// Returns the randomness used to generate the output value commitments.
+    pub fn output_value_commitment_randomness(&self) -> &Vec<N::ProgramScalarField> {
+        &self.output_value_commitment_randomness
+    }
+
+    /// Returns the value balance commitment.
+    pub fn value_balance_commitment(&self) -> &N::ValueBalanceCommitment {
+        &self.value_balance_commitment
     }
 
     /// Returns a reference to the events.
@@ -99,17 +150,43 @@ impl<N: Network> FromBytes for Response<N> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let transition_id = FromBytes::read_le(&mut reader)?;
 
-        let mut records = Vec::with_capacity(N::NUM_INPUT_RECORDS);
-        for _ in 0..N::NUM_INPUT_RECORDS {
+        let num_output_records: u32 = FromBytes::read_le(&mut reader)?;
+
+        let mut records = Vec::with_capacity(num_output_records as usize);
+        for _ in 0..num_output_records {
             records.push(FromBytes::read_le(&mut reader)?);
         }
 
-        let mut encryption_randomness = Vec::with_capacity(N::NUM_INPUT_RECORDS);
-        for _ in 0..N::NUM_INPUT_RECORDS {
+        let mut encryption_randomness = Vec::with_capacity(num_output_records as usize);
+        for _ in 0..num_output_records {
             encryption_randomness.push(FromBytes::read_le(&mut reader)?);
         }
 
         let value_balance = FromBytes::read_le(&mut reader)?;
+
+        let num_input_records: u32 = FromBytes::read_le(&mut reader)?;
+
+        let mut input_value_commitments = Vec::with_capacity(num_input_records as usize);
+        for _ in 0..num_input_records {
+            input_value_commitments.push(FromBytes::read_le(&mut reader)?);
+        }
+
+        let mut output_value_commitments = Vec::with_capacity(num_output_records as usize);
+        for _ in 0..num_output_records {
+            output_value_commitments.push(FromBytes::read_le(&mut reader)?);
+        }
+
+        let mut input_value_commitment_randomness = Vec::with_capacity(num_input_records as usize);
+        for _ in 0..num_input_records {
+            input_value_commitment_randomness.push(FromBytes::read_le(&mut reader)?);
+        }
+
+        let mut output_value_commitment_randomness = Vec::with_capacity(num_output_records as usize);
+        for _ in 0..num_output_records {
+            output_value_commitment_randomness.push(FromBytes::read_le(&mut reader)?);
+        }
+
+        let value_balance_commitment = FromBytes::read_le(&mut reader)?;
 
         let num_events: u16 = FromBytes::read_le(&mut reader)?;
         let mut events = Vec::with_capacity(num_events as usize);
@@ -117,7 +194,18 @@ impl<N: Network> FromBytes for Response<N> {
             events.push(FromBytes::read_le(&mut reader)?);
         }
 
-        Ok(Self { transition_id, records, encryption_randomness, value_balance, events })
+        Ok(Self {
+            transition_id,
+            records,
+            encryption_randomness,
+            value_balance,
+            input_value_commitments,
+            output_value_commitments,
+            input_value_commitment_randomness,
+            output_value_commitment_randomness,
+            value_balance_commitment,
+            events,
+        })
     }
 }
 
@@ -125,9 +213,16 @@ impl<N: Network> ToBytes for Response<N> {
     #[inline]
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.transition_id.write_le(&mut writer)?;
+        (self.records.len() as u32).write_le(&mut writer)?;
         self.records.write_le(&mut writer)?;
         self.encryption_randomness.write_le(&mut writer)?;
         self.value_balance.write_le(&mut writer)?;
+        (self.input_value_commitments.len() as u32).write_le(&mut writer)?;
+        self.input_value_commitments.write_le(&mut writer)?;
+        self.output_value_commitments.write_le(&mut writer)?;
+        self.input_value_commitment_randomness.write_le(&mut writer)?;
+        self.output_value_commitment_randomness.write_le(&mut writer)?;
+        self.value_balance_commitment.write_le(&mut writer)?;
         (self.events.len() as u16).write_le(&mut writer)?;
         self.events.write_le(&mut writer)
     }

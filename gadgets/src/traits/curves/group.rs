@@ -22,14 +22,14 @@ use crate::{
         select::CondSelectGadget,
     },
 };
-use snarkvm_curves::traits::{AffineCurve, Group, ProjectiveCurve};
+use snarkvm_curves::traits::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use itertools::Itertools;
 use std::{borrow::Borrow, fmt::Debug};
 
-pub trait GroupGadget<G: Group, F: Field>:
+pub trait GroupGadget<G: AffineCurve, F: Field>:
     Sized
     + ToBytesGadget<F>
     + NEqGadget<F>
@@ -98,12 +98,13 @@ pub trait GroupGadget<G: Group, F: Field>:
     ) -> Result<(), SynthesisError>
     where
         CS: ConstraintSystem<F>,
-        I: Iterator<Item = (B, &'a G)>,
+        I: Iterator<Item = (B, &'a G::Projective)>,
         B: Borrow<Boolean>,
         G: 'a,
     {
         for (i, (bit, base_power)) in scalar_bits_with_base_powers.enumerate() {
-            let new_encoded = self.add_constant(&mut cs.ns(|| format!("Add {}-th base power", i)), base_power)?;
+            let new_encoded =
+                self.add_constant(&mut cs.ns(|| format!("Add {}-th base power", i)), &base_power.to_affine())?;
             *self = Self::conditionally_select(
                 &mut cs.ns(|| format!("Conditional Select {}", i)),
                 bit.borrow(),
@@ -121,13 +122,14 @@ pub trait GroupGadget<G: Group, F: Field>:
     ) -> Result<(), SynthesisError>
     where
         CS: ConstraintSystem<F>,
-        I: Iterator<Item = (B, &'a G)>,
+        I: Iterator<Item = (B, &'a G::Projective)>,
         B: Borrow<Boolean>,
         G: 'a,
     {
         for (i, (bit, base_power)) in scalar_bits_with_base_powers.enumerate() {
+            let base_power = base_power.to_affine();
             let new_encoded_plus =
-                self.add_constant(&mut cs.ns(|| format!("Add {}-th base power plus", i)), base_power)?;
+                self.add_constant(&mut cs.ns(|| format!("Add {}-th base power plus", i)), &base_power)?;
             let new_encoded_minus =
                 self.add_constant(&mut cs.ns(|| format!("Add {}-th base power minus", i)), &base_power.neg())?;
             *self = Self::conditionally_select(
@@ -143,7 +145,7 @@ pub trait GroupGadget<G: Group, F: Field>:
     fn masked_scalar_multiplication<'a, CS, I, B>(&mut self, _: CS, _: I, _: I) -> Result<(), SynthesisError>
     where
         CS: ConstraintSystem<F>,
-        I: Iterator<Item = (B, &'a G)>,
+        I: Iterator<Item = (B, &'a G::Projective)>,
         B: Borrow<Boolean>,
         G: 'a,
     {
@@ -160,7 +162,7 @@ pub trait GroupGadget<G: Group, F: Field>:
         I: Borrow<[Boolean]>,
         J: Iterator<Item = I>,
         K: Iterator<Item = J>,
-        B: Borrow<[G]>,
+        B: Borrow<[G::Projective]>,
     {
         Err(SynthesisError::AssignmentMissing)
     }
@@ -172,7 +174,7 @@ pub trait GroupGadget<G: Group, F: Field>:
         CS: ConstraintSystem<F>,
         T: 'a + ToBitsBEGadget<F> + ?Sized,
         I: Iterator<Item = &'a T>,
-        B: Borrow<[G]>,
+        B: Borrow<[G::Projective]>,
     {
         let mut result = Self::zero(&mut cs.ns(|| "Declare Result"))?;
         // Compute Σᵢ(bitᵢ * baseᵢ) for all i.
@@ -193,7 +195,7 @@ pub trait GroupGadget<G: Group, F: Field>:
         CS: ConstraintSystem<F>,
         T: 'a + ToBitsBEGadget<F> + ?Sized,
         I: Iterator<Item = &'a T>,
-        B: Borrow<[G]>,
+        B: Borrow<[G::Projective]>,
     {
         let mut result = Self::zero(&mut cs.ns(|| "Declare Result"))?;
         // Compute ∏(h_i^{1  - 2*m_i}) for all i.
@@ -222,7 +224,7 @@ pub trait GroupGadget<G: Group, F: Field>:
         CS: ConstraintSystem<F>,
         T: 'a + ToBitsBEGadget<F> + ?Sized,
         I: Iterator<Item = &'a T>,
-        B: Borrow<[G]>,
+        B: Borrow<[G::Projective]>,
     {
         let mut result = Self::zero(&mut cs.ns(|| "Declare Result"))?;
         for (i, (((scalar, mask), base_powers), mask_powers)) in
@@ -250,14 +252,12 @@ pub trait GroupGadget<G: Group, F: Field>:
     fn cost_of_double() -> usize;
 }
 
-pub trait CurveGadget<G: ProjectiveCurve, F: Field>: GroupGadget<G, F, Value = G> + AllocGadget<G::Affine, F> {}
-
-pub trait CompressedGroupGadget<G: ProjectiveCurve, F: Field>: CurveGadget<G, F> {
+pub trait CompressedGroupGadget<G: AffineCurve, F: Field>: GroupGadget<G, F> {
     type BaseFieldGadget: ToBytesGadget<F>
         + ToBitsBEGadget<F>
         + EqGadget<F>
         + CondSelectGadget<F>
-        + AllocGadget<<G::Affine as AffineCurve>::BaseField, F>
+        + AllocGadget<G::BaseField, F>
         + Clone
         + Debug;
 

@@ -15,16 +15,15 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    polycommit::PolynomialCommitment,
+    polycommit::sonic_pc,
     snark::marlin::{CircuitVerifyingKey, MarlinMode},
 };
-use snarkvm_fields::PrimeField;
+use snarkvm_curves::PairingEngine;
 
 /// Verification key, prepared (preprocessed) for use in pairings.
 
-#[derive(derivative::Derivative)]
-#[derivative(Clone(bound = "F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinMode"))]
-pub struct PreparedCircuitVerifyingKey<F: PrimeField, CF: PrimeField, PC: PolynomialCommitment<F, CF>, MM: MarlinMode> {
+#[derive(Clone)]
+pub struct PreparedCircuitVerifyingKey<E: PairingEngine, MM: MarlinMode> {
     /// Size of the variable domain.
     pub constraint_domain_size: u64,
     /// Size of the domain that represents A.
@@ -34,11 +33,11 @@ pub struct PreparedCircuitVerifyingKey<F: PrimeField, CF: PrimeField, PC: Polyno
     /// Size of the domain that represents C.
     pub non_zero_c_domain_size: u64,
     /// Commitments to the index polynomials, prepared.
-    pub prepared_index_comms: Vec<PC::PreparedCommitment>,
+    pub prepared_index_comms: Vec<sonic_pc::PreparedCommitment<E>>,
     /// Prepared version of the poly-commit scheme's verification key.
-    pub prepared_verifier_key: PC::PreparedVerifierKey,
+    pub prepared_verifier_key: sonic_pc::PreparedVerifierKey<E>,
     /// Non-prepared verification key, for use in native "prepared verify" (which
     /// is actually standard verify), as well as in absorbing the original vk into
     /// the Fiat-Shamir sponge.
-    pub orig_vk: CircuitVerifyingKey<F, CF, PC, MM>,
+    pub orig_vk: CircuitVerifyingKey<E, MM>,
 }

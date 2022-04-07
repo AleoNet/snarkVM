@@ -14,12 +14,28 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::Group;
+use crate::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::{One, Zero};
 use snarkvm_utilities::rand::{test_rng, UniformRand};
 
 #[allow(clippy::eq_op)]
-pub fn group_test<G: Group>(a: G, mut b: G) {
+pub fn affine_test<G: AffineCurve>(a: G) {
+    let zero = G::zero();
+    let fr_zero = G::ScalarField::zero();
+    let fr_one = G::ScalarField::one();
+    assert!(zero == zero);
+    assert!(zero.is_zero()); // true
+    assert_eq!(a * fr_one, a);
+    assert_eq!(a.mul(fr_zero), zero);
+
+    // a == a
+    assert!(a == a);
+    assert_eq!(a.mul_by_cofactor_to_projective(), a.mul_by_cofactor());
+    assert_eq!(a.mul_by_cofactor_inv().mul_by_cofactor(), a);
+}
+
+#[allow(clippy::eq_op)]
+pub fn projective_test<G: ProjectiveCurve>(a: G, mut b: G) {
     let mut rng = test_rng();
 
     let zero = G::zero();

@@ -33,6 +33,11 @@ path = "benches/posw.rs"
 harness = false
 
 [[bench]]
+name = "record"
+path = "benches/record.rs"
+harness = false
+
+[[bench]]
 name = "transaction"
 path = "benches/transaction.rs"
 harness = false
@@ -73,7 +78,7 @@ version = "0.7.5"
 default-features = false
 
 [dependencies.aleo-std]
-version = "0.1.10"
+version = "0.1.12"
 optional = true
 
 [dependencies.anyhow]
@@ -102,7 +107,7 @@ version = "0.4.3"
 version = "0.10.3"
 
 [dependencies.once_cell]
-version = "1.9.0"
+version = "1.10.0"
 
 [dependencies.rand]
 version = "0.8"
@@ -121,7 +126,7 @@ version = "1.0"
 version = "1.0"
 
 [dependencies.time]
-version = "0.3.7"
+version = "0.3.9"
 
 [dev-dependencies.criterion]
 version = "0.3.5"

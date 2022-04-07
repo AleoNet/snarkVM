@@ -1,0 +1,19 @@
+[package]
+name = "snarkvm-circuits-types-boolean"
+version = "0.7.5"
+authors = [ "The Aleo Team <hello@aleo.org>" ]
+description = "Boolean circuit for a decentralized virtual machine"
+license = "GPL-3.0"
+edition = "2021"
+
+[[bench]]
+name = "and"
+path = "benches/and.rs"
+harness = false
+
+[dependencies.snarkvm-circuits-environment]
+path = "../../environment"
+version = "0.7.5"
+
+[dev-dependencies.criterion]
+version = "0.3"

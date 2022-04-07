@@ -16,10 +16,7 @@
 
 use std::fmt::Debug;
 
-use snarkvm_curves::{
-    templates::bls12::{Bls12Parameters, G1Prepared},
-    traits::ProjectiveCurve,
-};
+use snarkvm_curves::templates::bls12::{Bls12Parameters, G1Prepared};
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSystem};
 
 use crate::{
@@ -50,7 +47,7 @@ pub struct G1PreparedGadget<P: Bls12Parameters>(pub G1Gadget<P>);
 
 impl<P: Bls12Parameters> G1PreparedGadget<P> {
     pub fn get_value(&self) -> Option<G1Prepared<P>> {
-        Some(G1Prepared::from_affine(self.0.get_value().unwrap().into_affine()))
+        Some(G1Prepared::from_affine(self.0.get_value().unwrap()))
     }
 
     pub fn from_affine<CS: ConstraintSystem<P::Fp>>(_cs: CS, q: G1Gadget<P>) -> Result<Self, SynthesisError> {

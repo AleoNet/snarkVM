@@ -16,7 +16,7 @@
 
 use crate::{
     templates::short_weierstrass_jacobian::Affine,
-    traits::{AffineCurve, Group, ProjectiveCurve, ShortWeierstrassParameters as Parameters},
+    traits::{AffineCurve, ProjectiveCurve, ShortWeierstrassParameters as Parameters},
 };
 use snarkvm_fields::{impl_add_sub_from_field_ref, Field, One, PrimeField, Zero};
 use snarkvm_utilities::{bititerator::BitIteratorBE, rand::UniformRand, serialize::*, FromBytes, ToBytes};
@@ -53,7 +53,7 @@ impl<P: Parameters> Projective<P> {
 
 impl<P: Parameters> Display for Projective<P> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "{}", self.into_affine())
+        write!(f, "{}", self.to_affine())
     }
 }
 
@@ -154,6 +154,7 @@ impl<P: Parameters> Zero for Projective<P> {
 impl<P: Parameters> ProjectiveCurve for Projective<P> {
     type Affine = Affine<P>;
     type BaseField = P::BaseField;
+    type ScalarField = P::ScalarField;
 
     #[inline]
     fn prime_subgroup_generator() -> Self {
@@ -309,25 +310,6 @@ impl<P: Parameters> ProjectiveCurve for Projective<P> {
     }
 
     #[inline]
-    fn into_affine(&self) -> Affine<P> {
-        (*self).into()
-    }
-
-    #[inline]
-    fn recommended_wnaf_for_scalar(scalar: <Self::ScalarField as PrimeField>::BigInteger) -> usize {
-        P::empirical_recommended_wnaf_for_scalar(scalar)
-    }
-
-    #[inline]
-    fn recommended_wnaf_for_num_scalars(num_scalars: usize) -> usize {
-        P::empirical_recommended_wnaf_for_num_scalars(num_scalars)
-    }
-}
-
-impl<P: Parameters> Group for Projective<P> {
-    type ScalarField = P::ScalarField;
-
-    #[inline]
     #[must_use]
     fn double(&self) -> Self {
         let mut tmp = *self;
@@ -408,6 +390,11 @@ impl<P: Parameters> Group for Projective<P> {
             // Z3 = (Y1+Z1)^2-YY-ZZ
             self.z = (old_y + self.z).square() - yy - zz;
         }
+    }
+
+    #[inline]
+    fn to_affine(&self) -> Affine<P> {
+        (*self).into()
     }
 }
 

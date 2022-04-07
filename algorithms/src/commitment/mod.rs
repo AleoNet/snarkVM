@@ -17,5 +17,5 @@
 pub mod bhp;
 pub use bhp::*;
 
-#[cfg(test)]
-mod tests;
+pub mod pedersen;
+pub use pedersen::*;

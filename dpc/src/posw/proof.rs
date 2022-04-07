@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Network, PoSWError};
-use snarkvm_algorithms::{crh::sha256d_to_u64, SNARK};
+use snarkvm_algorithms::{crypto_hash::sha256d_to_u64, SNARK};
 use snarkvm_utilities::{
     fmt,
     io::{Read, Result as IoResult, Write},
@@ -70,7 +70,8 @@ impl<N: Network> PoSWProof<N> {
         match self {
             Self::NonHiding(proof) => {
                 // Ensure the proof is valid.
-                if !<<N as Network>::PoSWSNARK as SNARK>::verify(verifying_key, &inputs.to_vec(), proof).unwrap() {
+                let check = <<N as Network>::PoSWSNARK as SNARK>::verify(verifying_key, &inputs.to_vec(), proof);
+                if check.is_err() || !check.unwrap() {
                     #[cfg(debug_assertions)]
                     eprintln!("PoSW proof verification failed");
                     return false;
@@ -241,7 +242,7 @@ mod tests {
             // Serialize
             let expected_string = proof.to_string();
             let candidate_string = serde_json::to_string(&proof).unwrap();
-            assert_eq!(1441, candidate_string.len(), "Update me if serialization has changed");
+            assert_eq!(1302, candidate_string.len(), "Update me if serialization has changed");
             assert_eq!(expected_string, candidate_string);
 
             // Deserialize
@@ -254,7 +255,7 @@ mod tests {
             // Serialize
             let expected_string = proof.to_string();
             let candidate_string = serde_json::to_string(&proof).unwrap();
-            assert_eq!(1441, candidate_string.len(), "Update me if serialization has changed");
+            assert_eq!(1302, candidate_string.len(), "Update me if serialization has changed");
             assert_eq!(expected_string, candidate_string);
 
             // Deserialize

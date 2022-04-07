@@ -17,10 +17,13 @@
 #![allow(clippy::module_inception)]
 #![allow(clippy::type_complexity)]
 
+#[cfg(feature = "wasm")]
+#[macro_use]
+extern crate alloc;
+
+#[allow(unused_imports)]
 #[macro_use]
 extern crate aleo_std;
-#[macro_use]
-extern crate derivative;
 #[macro_use]
 extern crate thiserror;
 
@@ -43,9 +46,6 @@ pub use errors::*;
 
 #[cfg(feature = "fft")]
 pub mod fft;
-
-#[cfg(feature = "hash_to_curve")]
-pub mod hash_to_curve;
 
 #[cfg(feature = "merkle_tree")]
 pub mod merkle_tree;

@@ -31,7 +31,7 @@ mod test {
         traits::{alloc::AllocGadget, eq::EqGadget},
         Boolean,
     };
-    use snarkvm_curves::edwards_bls12::{EdwardsParameters, EdwardsProjective, Fq};
+    use snarkvm_curves::edwards_bls12::{EdwardsAffine, EdwardsParameters, Fq};
     use snarkvm_r1cs::{ConstraintSystem, TestConstraintSystem};
 
     #[test]
@@ -52,21 +52,21 @@ mod test {
     fn edwards_bls12_group_gadgets_test() {
         let mut cs = TestConstraintSystem::<Fq>::new();
 
-        let a: EdwardsProjective = rand::random();
-        let b: EdwardsProjective = rand::random();
+        let a: EdwardsAffine = rand::random();
+        let b: EdwardsAffine = rand::random();
 
         let a = EdwardsBls12Gadget::alloc(&mut cs.ns(|| "generate_a"), || Ok(a)).unwrap();
         let b = EdwardsBls12Gadget::alloc(&mut cs.ns(|| "generate_b"), || Ok(b)).unwrap();
-        group_test::<_, EdwardsProjective, _, _>(&mut cs.ns(|| "GroupTest(a, b)"), a, b);
+        group_test::<_, EdwardsAffine, _, _>(&mut cs.ns(|| "GroupTest(a, b)"), a, b);
     }
 
     #[test]
     fn edwards_bls12_group_gadgets_is_eq_test() {
         let mut cs = TestConstraintSystem::<Fq>::new();
 
-        let a: EdwardsProjective = rand::random();
-        let b: EdwardsProjective = a;
-        let c: EdwardsProjective = rand::random();
+        let a: EdwardsAffine = rand::random();
+        let b: EdwardsAffine = a;
+        let c: EdwardsAffine = rand::random();
 
         let a = EdwardsBls12Gadget::alloc(&mut cs.ns(|| "generate_a"), || Ok(a)).unwrap();
         let b = EdwardsBls12Gadget::alloc(&mut cs.ns(|| "generate_b"), || Ok(b)).unwrap();

@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::errors::PRFError;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use std::{fmt::Debug, hash::Hash};
@@ -24,5 +23,5 @@ pub trait PRF {
     type Output: ToBytes + Eq + Clone + Default + Debug + Hash;
     type Seed: FromBytes + ToBytes + PartialEq + Eq + Clone + Default + Debug;
 
-    fn evaluate(seed: &Self::Seed, input: &Self::Input) -> Result<Self::Output, PRFError>;
+    fn evaluate(seed: &Self::Seed, input: &Self::Input) -> Self::Output;
 }

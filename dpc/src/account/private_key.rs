@@ -51,7 +51,7 @@ impl<N: Network> PrivateKey<N> {
     }
 
     /// Signs a message using the account private key.
-    pub fn sign<R: Rng + CryptoRng>(&self, message: &[u8], rng: &mut R) -> Result<N::AccountSignature, AccountError> {
+    pub fn sign<R: Rng + CryptoRng>(&self, message: &[bool], rng: &mut R) -> Result<N::AccountSignature, AccountError> {
         Ok(N::account_signature_scheme().sign(&(self.sk_sig, self.r_sig), message, rng)?.into())
     }
 
@@ -84,10 +84,8 @@ impl<N: Network> From<&N::AccountSeed> for PrivateKey<N> {
 
         Self {
             seed: seed.clone(),
-            sk_sig: N::AccountSeedPRF::evaluate(seed, &vec![sk_sig_domain])
-                .expect("Failed to derive private key component for PRF(seed, sk_sig_domain)"),
-            r_sig: N::AccountSeedPRF::evaluate(seed, &vec![r_sig_domain])
-                .expect("Failed to derive private key component for PRF(seed, r_sig_domain)"),
+            sk_sig: N::AccountSeedPRF::evaluate(seed, &vec![sk_sig_domain]),
+            r_sig: N::AccountSeedPRF::evaluate(seed, &vec![r_sig_domain]),
         }
     }
 }

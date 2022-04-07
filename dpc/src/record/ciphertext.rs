@@ -16,7 +16,7 @@
 
 use crate::{DecryptionKey, Network, RecordError, ViewKey};
 use snarkvm_algorithms::traits::{EncryptionScheme, CRH};
-use snarkvm_utilities::{io::Result as IoResult, to_bytes_le, FromBytes, Read, ToBytes, Write};
+use snarkvm_utilities::{error, io::Result as IoResult, to_bytes_le, FromBytes, Read, ToBytes, Write};
 
 use anyhow::{anyhow, Result};
 use core::hash::{Hash, Hasher};
@@ -45,7 +45,13 @@ impl<N: Network> Ciphertext<N> {
 
         // Compute the commitment.
         let commitment = N::commitment_scheme()
-            .hash(&to_bytes_le![randomizer, record_view_key_commitment, record_elements, program_id_bytes, is_dummy]?)?
+            .hash_bytes(&to_bytes_le![
+                randomizer,
+                record_view_key_commitment,
+                record_elements,
+                program_id_bytes,
+                is_dummy
+            ]?)?
             .into();
 
         Ok(Self { commitment, randomizer, record_view_key_commitment, record_elements, program_id, is_dummy })
@@ -143,7 +149,9 @@ impl<N: Network> FromBytes for Ciphertext<N> {
         let ciphertext_randomizer = N::RecordRandomizer::read_le(&mut reader)?;
         let record_view_key_commitment = N::RecordViewKeyCommitment::read_le(&mut reader)?;
 
-        let num_elements: u32 = FromBytes::read_le(&mut reader)?;
+        // Decode the number of ciphertext elements.
+        let num_elements: u16 = FromBytes::read_le(&mut reader)?;
+
         let mut record_elements = Vec::with_capacity(num_elements as usize);
         for _ in 0..num_elements {
             record_elements.push(FromBytes::read_le(&mut reader)?);
@@ -167,7 +175,12 @@ impl<N: Network> ToBytes for Ciphertext<N> {
         self.randomizer.write_le(&mut writer)?;
         self.record_view_key_commitment.write_le(&mut writer)?;
 
-        (self.record_elements.len() as u32).write_le(&mut writer)?;
+        // Ensure the number of elements is within bounds.
+        if self.record_elements.len() > (u16::MAX as usize) {
+            return Err(error(format!("The number of ciphertext elements cannot exceed {} elements", u16::MAX)));
+        }
+
+        (self.record_elements.len() as u16).write_le(&mut writer)?;
         for element in &self.record_elements {
             element.write_le(&mut writer)?;
         }

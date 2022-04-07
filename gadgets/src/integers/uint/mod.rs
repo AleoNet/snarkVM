@@ -32,8 +32,5 @@ pub use relational::*;
 pub mod uint_impl;
 pub use uint_impl::*;
 
-pub mod uint128;
-pub use uint128::*;
-
 #[cfg(test)]
 mod tests;

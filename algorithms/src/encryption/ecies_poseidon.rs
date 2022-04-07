@@ -15,9 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    crypto_hash::{PoseidonDefaultParametersField, PoseidonParameters, PoseidonSponge},
-    hash_to_curve::hash_to_curve,
-    AlgebraicSponge,
+    crypto_hash::{hash_to_curve, Poseidon},
     EncryptionError,
     EncryptionScheme,
 };
@@ -27,92 +25,26 @@ use snarkvm_curves::{
     ProjectiveCurve,
     TwistedEdwardsParameters,
 };
-use snarkvm_fields::{ConstraintFieldError, FieldParameters, PrimeField, ToConstraintField};
-use snarkvm_utilities::{
-    io::Result as IoResult,
-    ops::Mul,
-    serialize::*,
-    BitIteratorBE,
-    FromBits,
-    FromBytes,
-    Read,
-    ToBits,
-    ToBytes,
-    UniformRand,
-    Write,
-};
+use snarkvm_fields::{FieldParameters, PrimeField};
+use snarkvm_utilities::{ops::Mul, serialize::*, BitIteratorBE, FromBits, ToBits, UniformRand};
 
 use itertools::Itertools;
 use rand::{CryptoRng, Rng};
-use std::sync::Arc;
 
-#[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
-#[derivative(
-    Copy(bound = "TE: TwistedEdwardsParameters"),
-    Clone(bound = "TE: TwistedEdwardsParameters"),
-    PartialEq(bound = "TE: TwistedEdwardsParameters"),
-    Eq(bound = "TE: TwistedEdwardsParameters"),
-    Debug(bound = "TE: TwistedEdwardsParameters"),
-    Hash(bound = "TE: TwistedEdwardsParameters")
-)]
-pub struct ECIESPoseidonPublicKey<TE: TwistedEdwardsParameters>(pub TEAffine<TE>);
-
-impl<TE: TwistedEdwardsParameters> ToBytes for ECIESPoseidonPublicKey<TE> {
-    /// Writes the x-coordinate of the encryption public key.
-    #[inline]
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.0.to_x_coordinate().write_le(&mut writer)
-    }
-}
-
-impl<TE: TwistedEdwardsParameters> FromBytes for ECIESPoseidonPublicKey<TE> {
-    /// Reads the x-coordinate of the encryption public key.
-    #[inline]
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let x_coordinate = TE::BaseField::read_le(&mut reader)?;
-
-        if let Some(element) = TEAffine::<TE>::from_x_coordinate(x_coordinate, true) {
-            if element.is_in_correct_subgroup_assuming_on_curve() {
-                return Ok(Self(element));
-            }
-        }
-
-        if let Some(element) = TEAffine::<TE>::from_x_coordinate(x_coordinate, false) {
-            if element.is_in_correct_subgroup_assuming_on_curve() {
-                return Ok(Self(element));
-            }
-        }
-
-        Err(EncryptionError::Message("Failed to read encryption public key".into()).into())
-    }
-}
-
-impl<TE: TwistedEdwardsParameters> Default for ECIESPoseidonPublicKey<TE> {
-    fn default() -> Self {
-        Self(TEAffine::<TE>::default())
-    }
-}
-
-#[derive(Derivative)]
-#[derivative(
-    Clone(bound = "TE: TwistedEdwardsParameters"),
-    Debug(bound = "TE: TwistedEdwardsParameters"),
-    PartialEq(bound = "TE: TwistedEdwardsParameters"),
-    Eq(bound = "TE: TwistedEdwardsParameters")
-)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ECIESPoseidonEncryption<TE: TwistedEdwardsParameters>
 where
-    TE::BaseField: PoseidonDefaultParametersField,
+    TE::BaseField: PrimeField,
 {
     generator: TEAffine<TE>,
-    poseidon_parameters: Arc<PoseidonParameters<TE::BaseField, 4, 1>>,
+    poseidon: Poseidon<TE::BaseField, 4, false>,
     symmetric_key_commitment_domain: TE::BaseField,
     symmetric_encryption_domain: TE::BaseField,
 }
 
 impl<TE: TwistedEdwardsParameters> EncryptionScheme for ECIESPoseidonEncryption<TE>
 where
-    TE::BaseField: PoseidonDefaultParametersField,
+    TE::BaseField: PrimeField,
 {
     type CiphertextRandomizer = TE::BaseField;
     type MessageType = TE::BaseField;
@@ -125,7 +57,11 @@ where
 
     fn setup(message: &str) -> Self {
         let (generator, _, _) = hash_to_curve::<TEAffine<TE>>(message);
-        Self::from(generator)
+        let poseidon = Poseidon::<TE::BaseField, 4, false>::setup();
+        let symmetric_key_commitment_domain = TE::BaseField::from_bytes_le_mod_order(b"AleoSymmetricKeyCommitment0");
+        let symmetric_encryption_domain = TE::BaseField::from_bytes_le_mod_order(b"AleoSymmetricEncryption0");
+
+        Self { generator, poseidon, symmetric_key_commitment_domain, symmetric_encryption_domain }
     }
 
     fn generate_private_key<R: Rng + CryptoRng>(&self, rng: &mut R) -> Self::PrivateKey {
@@ -133,7 +69,7 @@ where
     }
 
     fn generate_public_key(&self, private_key: &Self::PrivateKey) -> Self::PublicKey {
-        self.generator.into_projective().mul(*private_key).into_affine()
+        self.generator.to_projective().mul(*private_key).to_affine()
     }
 
     ///
@@ -164,7 +100,7 @@ where
         let mut batch = [ciphertext_randomizer, symmetric_key];
         Projective::<TE>::batch_normalization(&mut batch);
         let (ciphertext_randomizer, symmetric_key) =
-            (batch[0].into_affine().to_x_coordinate(), batch[1].into_affine().to_x_coordinate());
+            (batch[0].to_affine().to_x_coordinate(), batch[1].to_affine().to_x_coordinate());
 
         (randomness, ciphertext_randomizer, symmetric_key)
     }
@@ -200,7 +136,7 @@ where
         randomizer.map(|randomizer| {
             randomizer
                 .mul_bits(BitIteratorBE::new_without_leading_zeros(private_key.to_repr()))
-                .into_affine()
+                .to_affine()
                 .to_x_coordinate()
         })
     }
@@ -214,9 +150,7 @@ where
     ///
     fn generate_symmetric_key_commitment(&self, symmetric_key: &Self::SymmetricKey) -> Self::SymmetricKeyCommitment {
         // Compute the symmetric key commitment.
-        let mut sponge = PoseidonSponge::with_parameters(&self.poseidon_parameters);
-        sponge.absorb(&[self.symmetric_key_commitment_domain, *symmetric_key]);
-        sponge.squeeze_field_elements(1)[0]
+        self.poseidon.evaluate(&[self.symmetric_key_commitment_domain, *symmetric_key])
     }
 
     ///
@@ -297,30 +231,24 @@ where
     /// ```
     ///
     fn encrypt(&self, symmetric_key: &Self::SymmetricKey, message: &[Self::MessageType]) -> Vec<Self::MessageType> {
-        // Initialize the sponge state.
-        let mut sponge = PoseidonSponge::with_parameters(&self.poseidon_parameters);
-        sponge.absorb(&[self.symmetric_encryption_domain, *symmetric_key]);
-
         // Obtain random field elements from Poseidon.
-        let sponge_randomizers = sponge.squeeze_field_elements(message.len());
+        let randomizers =
+            self.poseidon.evaluate_many(&[self.symmetric_encryption_domain, *symmetric_key], message.len());
 
         // Add the random field elements to the plaintext elements.
-        message.iter().zip_eq(sponge_randomizers).map(|(plaintext, randomizer)| *plaintext + randomizer).collect()
+        message.iter().zip_eq(randomizers).map(|(plaintext, randomizer)| *plaintext + randomizer).collect()
     }
 
     ///
     /// Decrypts the given ciphertext with the given symmetric key.
     ///
     fn decrypt(&self, symmetric_key: &Self::SymmetricKey, ciphertext: &[Self::MessageType]) -> Vec<Self::MessageType> {
-        // Initialize sponge state.
-        let mut sponge = PoseidonSponge::with_parameters(&self.poseidon_parameters);
-        sponge.absorb(&[self.symmetric_encryption_domain, *symmetric_key]);
-
         // Obtain random field elements from Poseidon.
-        let sponge_randomizers = sponge.squeeze_field_elements(ciphertext.len());
+        let randomizers =
+            self.poseidon.evaluate_many(&[self.symmetric_encryption_domain, *symmetric_key], ciphertext.len());
 
         // Subtract the random field elements to the ciphertext elements.
-        ciphertext.iter().zip_eq(sponge_randomizers).map(|(ciphertext, randomizer)| *ciphertext - randomizer).collect()
+        ciphertext.iter().zip_eq(randomizers).map(|(ciphertext, randomizer)| *ciphertext - randomizer).collect()
     }
 
     fn parameters(&self) -> &<Self as EncryptionScheme>::Parameters {
@@ -329,49 +257,5 @@ where
 
     fn private_key_size_in_bits() -> usize {
         Self::PrivateKey::size_in_bits()
-    }
-}
-
-impl<TE: TwistedEdwardsParameters> From<TEAffine<TE>> for ECIESPoseidonEncryption<TE>
-where
-    TE::BaseField: PoseidonDefaultParametersField,
-{
-    fn from(generator: TEAffine<TE>) -> Self {
-        let poseidon_parameters = Arc::new(
-            <TE::BaseField as PoseidonDefaultParametersField>::get_default_poseidon_parameters::<4>(false).unwrap(),
-        );
-        let symmetric_key_commitment_domain = TE::BaseField::from_bytes_le_mod_order(b"AleoSymmetricKeyCommitment0");
-        let symmetric_encryption_domain = TE::BaseField::from_bytes_le_mod_order(b"AleoSymmetricEncryption0");
-
-        Self { generator, poseidon_parameters, symmetric_key_commitment_domain, symmetric_encryption_domain }
-    }
-}
-
-impl<TE: TwistedEdwardsParameters> ToBytes for ECIESPoseidonEncryption<TE>
-where
-    TE::BaseField: PoseidonDefaultParametersField,
-{
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.generator.write_le(&mut writer)
-    }
-}
-
-impl<TE: TwistedEdwardsParameters> FromBytes for ECIESPoseidonEncryption<TE>
-where
-    TE::BaseField: PoseidonDefaultParametersField,
-{
-    #[inline]
-    fn read_le<R: Read>(reader: R) -> IoResult<Self> {
-        Ok(Self::from(TEAffine::<TE>::read_le(reader)?))
-    }
-}
-
-impl<TE: TwistedEdwardsParameters> ToConstraintField<TE::BaseField> for ECIESPoseidonEncryption<TE>
-where
-    TE::BaseField: PoseidonDefaultParametersField,
-{
-    #[inline]
-    fn to_field_elements(&self) -> Result<Vec<TE::BaseField>, ConstraintFieldError> {
-        Ok(Vec::new())
     }
 }

@@ -51,7 +51,7 @@ fn bhp_commitment_evaluation(c: &mut Criterion) {
         b.iter(|| {
             let randomness =
                 <BHPCommitment<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CommitmentScheme>::Randomness::rand(rng);
-            <BHPCommitment<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CommitmentScheme>::commit(
+            <BHPCommitment<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE> as CommitmentScheme>::commit_bytes(
                 &parameters,
                 &input,
                 &randomness,

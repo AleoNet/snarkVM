@@ -14,11 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{FftField, FieldParameters};
+use crate::{FftField, FieldError, FieldParameters, PoseidonDefaultField};
 use snarkvm_utilities::{biginteger::BigInteger, cmp::min, str::FromStr};
 
 /// The interface for a prime field.
-pub trait PrimeField: FftField<FftParameters = <Self as PrimeField>::Parameters> + FromStr {
+pub trait PrimeField:
+    FftField<FftParameters = <Self as PrimeField>::Parameters> + PoseidonDefaultField + FromStr<Err = FieldError>
+{
     type Parameters: FieldParameters<BigInteger = Self::BigInteger>;
     type BigInteger: BigInteger;
 
@@ -28,15 +30,27 @@ pub trait PrimeField: FftField<FftParameters = <Self as PrimeField>::Parameters>
     /// Returns the underlying representation of the prime field element.
     fn to_repr(&self) -> Self::BigInteger;
 
-    /// Returns a prime field element from its underlying raw representation.
-    fn from_repr_unchecked(repr: Self::BigInteger) -> Self;
-
     /// Returns the underlying raw representation of the prime field element.
     fn to_repr_unchecked(&self) -> Self::BigInteger;
 
     /// Returns the field size in bits.
     fn size_in_bits() -> usize {
         Self::Parameters::MODULUS_BITS as usize
+    }
+
+    /// Returns the capacity size for data bits.
+    fn size_in_data_bits() -> usize {
+        Self::Parameters::CAPACITY as usize
+    }
+
+    /// Returns the modulus.
+    fn modulus() -> Self::BigInteger {
+        Self::Parameters::MODULUS
+    }
+
+    /// Returns the modulus minus one divided by two.
+    fn modulus_minus_one_div_two() -> Self::BigInteger {
+        Self::Parameters::MODULUS_MINUS_ONE_DIV_TWO
     }
 
     /// Returns the trace.
@@ -47,11 +61,6 @@ pub trait PrimeField: FftField<FftParameters = <Self as PrimeField>::Parameters>
     /// Returns the trace minus one divided by two.
     fn trace_minus_one_div_two() -> Self::BigInteger {
         Self::Parameters::T_MINUS_ONE_DIV_TWO
-    }
-
-    /// Returns the modulus minus one divided by two.
-    fn modulus_minus_one_div_two() -> Self::BigInteger {
-        Self::Parameters::MODULUS_MINUS_ONE_DIV_TWO
     }
 
     /// Reads bytes in big-endian, and converts them to a field element.

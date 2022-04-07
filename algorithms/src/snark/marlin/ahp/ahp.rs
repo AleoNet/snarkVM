@@ -19,16 +19,17 @@ use crate::{
         domain::{FFTPrecomputation, IFFTPrecomputation},
         EvaluationDomain,
     },
-    polycommit::{LCTerm, LabeledPolynomial, LinearCombination},
+    polycommit::sonic_pc::{LCTerm, LabeledPolynomial, LinearCombination},
     snark::marlin::{
-        ahp::{matrices, prover::ProverConstraintSystem, verifier, AHPError, CircuitInfo},
-        prover::ProverMessage,
+        ahp::{matrices, verifier, AHPError, CircuitInfo},
+        prover,
         MarlinMode,
     },
 };
 use snarkvm_fields::{Field, PrimeField};
 
 use core::{borrow::Borrow, marker::PhantomData};
+use std::collections::BTreeMap;
 
 /// The algebraic holographic proof defined in [CHMMVW19](https://eprint.iacr.org/2019/1047).
 /// Currently, this AHP only supports inputs of size one
@@ -49,7 +50,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     ];
     /// The linear combinations that are statically known to evaluate to zero.
     #[rustfmt::skip]
-    pub const LC_WITH_ZERO_EVAL: [&'static str; 2] = ["inner_sumcheck", "outer_sumcheck"];
+    pub const LC_WITH_ZERO_EVAL: [&'static str; 2] = ["matrix_sumcheck", "lincheck_sumcheck"];
     /// The labels for the polynomials output by the AHP prover.
     #[rustfmt::skip]
     pub const PROVER_POLYNOMIALS_WITHOUT_ZK: [&'static str; 9] = [
@@ -174,9 +175,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     pub fn construct_linear_combinations<E: EvaluationsProvider<F>>(
         public_input: &[F],
         evals: &E,
-        prover_third_message: &ProverMessage<F>,
-        state: &verifier::VerifierState<F, MM>,
-    ) -> Result<Vec<LinearCombination<F>>, AHPError> {
+        prover_third_message: &prover::ThirdMessage<F>,
+        state: &verifier::State<F, MM>,
+    ) -> Result<BTreeMap<String, LinearCombination<F>>, AHPError> {
         let constraint_domain = state.constraint_domain;
         let non_zero_a_domain = state.non_zero_a_domain;
         let non_zero_b_domain = state.non_zero_b_domain;
@@ -184,7 +185,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let largest_non_zero_domain =
             Self::max_non_zero_domain_helper(state.non_zero_a_domain, state.non_zero_b_domain, state.non_zero_c_domain);
 
-        let public_input = ProverConstraintSystem::format_public_input(public_input);
+        let public_input = prover::ConstraintSystem::format_public_input(public_input);
         if !Self::formatted_public_input_is_admissible(&public_input) {
             return Err(AHPError::InvalidPublicInputLength);
         }
@@ -195,24 +196,22 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let eta_a = F::one();
         let eta_b = first_round_msg.eta_b;
         let eta_c = first_round_msg.eta_c;
+        let prover::ThirdMessage { sum_a, sum_b, sum_c } = prover_third_message;
 
-        let a_at_beta = prover_third_message.field_elements[0];
-        let b_at_beta = prover_third_message.field_elements[1];
-        let c_at_beta = prover_third_message.field_elements[2];
         #[rustfmt::skip]
         let t_at_beta =
-            eta_a * state.non_zero_a_domain.size_as_field_element * a_at_beta +
-            eta_b * state.non_zero_b_domain.size_as_field_element * b_at_beta +
-            eta_c * state.non_zero_c_domain.size_as_field_element * c_at_beta;
+            eta_a * state.non_zero_a_domain.size_as_field_element * sum_a +
+            eta_b * state.non_zero_b_domain.size_as_field_element * sum_b +
+            eta_c * state.non_zero_c_domain.size_as_field_element * sum_c;
         let r_b = state.third_round_message.as_ref().unwrap().r_b;
         let r_c = state.third_round_message.as_ref().unwrap().r_c;
 
         let beta = state.second_round_message.unwrap().beta;
         let gamma = state.gamma.unwrap();
 
-        let mut linear_combinations = Vec::with_capacity(9);
+        let mut linear_combinations = BTreeMap::new();
 
-        // Outer sumcheck:
+        // Lincheck sumcheck:
         let z_b = LinearCombination::new("z_b", vec![(F::one(), "z_b")]);
         let g_1 = LinearCombination::new("g_1", vec![(F::one(), "g_1")]);
 
@@ -232,7 +231,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             .fold(F::zero(), |x, y| x + y);
 
         #[rustfmt::skip]
-        let outer_sumcheck = {
+        let lincheck_sumcheck = {
             let mut lc_terms = vec![];
             if MM::ZK {
                 lc_terms.push((F::one(), "mask_poly".into()));
@@ -243,72 +242,47 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             lc_terms.push((-t_at_beta * x_at_beta, LCTerm::One));
             lc_terms.push((-v_H_at_beta, "h_1".into()));
             lc_terms.push((-beta * g_1_at_beta, LCTerm::One));
-            LinearCombination::new("outer_sumcheck", lc_terms)
+            LinearCombination::new("lincheck_sumcheck", lc_terms)
         };
-        assert!(evals.get_lc_eval(&outer_sumcheck, beta)?.is_zero());
+        debug_assert!(evals.get_lc_eval(&lincheck_sumcheck, beta)?.is_zero());
 
-        linear_combinations.push(z_b);
-        linear_combinations.push(g_1);
-        linear_combinations.push(outer_sumcheck);
+        linear_combinations.insert("z_b".into(), z_b);
+        linear_combinations.insert("g_1".into(), g_1);
+        linear_combinations.insert("lincheck_sumcheck".into(), lincheck_sumcheck);
 
-        //  Inner sumcheck:
-        let mut inner_sumcheck = LinearCombination::empty("inner_sumcheck");
+        //  Matrix sumcheck:
+        let mut matrix_sumcheck = LinearCombination::empty("matrix_sumcheck");
 
         let g_a = LinearCombination::new("g_a", vec![(F::one(), "g_a")]);
         let g_a_at_gamma = evals.get_lc_eval(&g_a, gamma)?;
         let selector_a = largest_non_zero_domain.evaluate_selector_polynomial(non_zero_a_domain, gamma);
-        let lhs_a = Self::construct_lhs(
-            "a",
-            alpha,
-            beta,
-            gamma,
-            v_H_at_alpha * v_H_at_beta,
-            g_a_at_gamma,
-            a_at_beta,
-            selector_a,
-        );
-        inner_sumcheck += &lhs_a;
+        let lhs_a =
+            Self::construct_lhs("a", alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_a_at_gamma, *sum_a, selector_a);
+        matrix_sumcheck += &lhs_a;
 
         let g_b = LinearCombination::new("g_b", vec![(F::one(), "g_b")]);
         let g_b_at_gamma = evals.get_lc_eval(&g_b, gamma)?;
         let selector_b = largest_non_zero_domain.evaluate_selector_polynomial(non_zero_b_domain, gamma);
-        let lhs_b = Self::construct_lhs(
-            "b",
-            alpha,
-            beta,
-            gamma,
-            v_H_at_alpha * v_H_at_beta,
-            g_b_at_gamma,
-            b_at_beta,
-            selector_b,
-        );
-        inner_sumcheck += (r_b, &lhs_b);
+        let lhs_b =
+            Self::construct_lhs("b", alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_b_at_gamma, *sum_b, selector_b);
+        matrix_sumcheck += (r_b, &lhs_b);
 
         let g_c = LinearCombination::new("g_c", vec![(F::one(), "g_c")]);
         let g_c_at_gamma = evals.get_lc_eval(&g_c, gamma)?;
         let selector_c = largest_non_zero_domain.evaluate_selector_polynomial(non_zero_c_domain, gamma);
-        let lhs_c = Self::construct_lhs(
-            "c",
-            alpha,
-            beta,
-            gamma,
-            v_H_at_alpha * v_H_at_beta,
-            g_c_at_gamma,
-            c_at_beta,
-            selector_c,
-        );
-        inner_sumcheck += (r_c, &lhs_c);
+        let lhs_c =
+            Self::construct_lhs("c", alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_c_at_gamma, *sum_c, selector_c);
+        matrix_sumcheck += (r_c, &lhs_c);
 
-        inner_sumcheck -=
+        matrix_sumcheck -=
             &LinearCombination::new("h_2", vec![(largest_non_zero_domain.evaluate_vanishing_polynomial(gamma), "h_2")]);
-        debug_assert!(evals.get_lc_eval(&inner_sumcheck, gamma)?.is_zero());
+        debug_assert!(evals.get_lc_eval(&matrix_sumcheck, gamma)?.is_zero());
 
-        linear_combinations.push(g_a);
-        linear_combinations.push(g_b);
-        linear_combinations.push(g_c);
-        linear_combinations.push(inner_sumcheck);
+        linear_combinations.insert("g_a".into(), g_a);
+        linear_combinations.insert("g_b".into(), g_b);
+        linear_combinations.insert("g_c".into(), g_c);
+        linear_combinations.insert("matrix_sumcheck".into(), matrix_sumcheck);
 
-        linear_combinations.sort_by_key(|a| a.label.clone());
         Ok(linear_combinations)
     }
 
@@ -353,7 +327,7 @@ pub trait EvaluationsProvider<F: PrimeField> {
     fn get_lc_eval(&self, lc: &LinearCombination<F>, point: F) -> Result<F, AHPError>;
 }
 
-impl<'a, F: PrimeField> EvaluationsProvider<F> for crate::polycommit::Evaluations<'a, F> {
+impl<'a, F: PrimeField> EvaluationsProvider<F> for crate::polycommit::sonic_pc::Evaluations<'a, F> {
     fn get_lc_eval(&self, lc: &LinearCombination<F>, point: F) -> Result<F, AHPError> {
         let key = (lc.label.clone(), point);
         self.get(&key).copied().ok_or_else(|| AHPError::MissingEval(lc.label.clone()))
@@ -366,10 +340,7 @@ impl<F: PrimeField, T: Borrow<LabeledPolynomial<F>>> EvaluationsProvider<F> for 
         for (coeff, term) in lc.iter() {
             let value = if let LCTerm::PolyLabel(label) = term {
                 self.iter()
-                    .find(|p| {
-                        let p: &LabeledPolynomial<F> = (*p).borrow();
-                        p.label() == label
-                    })
+                    .find(|p| (*p).borrow().label() == label)
                     .ok_or_else(|| AHPError::MissingEval(format!("Missing {} for {}", label, lc.label)))?
                     .borrow()
                     .evaluate(point)
@@ -415,9 +386,12 @@ impl<F: PrimeField> UnnormalizedBivariateLagrangePoly<F> for EvaluationDomain<F>
         x: F,
         domain: &EvaluationDomain<F>,
     ) -> Vec<F> {
+        use snarkvm_utilities::{cfg_iter, cfg_iter_mut};
+
+        #[cfg(not(feature = "parallel"))]
+        use itertools::Itertools;
         #[cfg(feature = "parallel")]
         use rayon::prelude::*;
-        use snarkvm_utilities::{cfg_iter, cfg_iter_mut};
 
         let vanish_x = self.evaluate_vanishing_polynomial(x);
         let elements = domain.elements().collect::<Vec<_>>();

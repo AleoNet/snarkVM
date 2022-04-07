@@ -24,9 +24,8 @@
 use crate::{
     fft::{DenseOrSparsePolynomial, DensePolynomial},
     msm::{FixedBase, VariableBase},
-    polycommit::{PCError, PCRandomness},
+    polycommit::PCError,
 };
-use itertools::Itertools;
 use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{Field, One, PrimeField, Zero};
 use snarkvm_utilities::{cfg_iter, rand::UniformRand, BitIteratorBE};
@@ -36,8 +35,10 @@ use core::{
     ops::Mul,
     sync::atomic::{AtomicBool, Ordering},
 };
+use itertools::Itertools;
+use parking_lot::RwLock;
 use rand_core::RngCore;
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::Arc};
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -45,7 +46,10 @@ use rayon::prelude::*;
 mod data_structures;
 pub use data_structures::*;
 
-use super::LabeledPolynomialWithBasis;
+mod powers;
+pub use powers::*;
+
+use super::sonic_pc::LabeledPolynomialWithBasis;
 
 #[derive(Debug, PartialEq, Eq)]
 #[allow(deprecated)]
@@ -191,14 +195,14 @@ impl<E: PairingEngine> KZG10<E> {
             };
         end_timer!(inverse_neg_powers_of_beta_h_time);
 
-        let beta_h = h.mul(beta).into_affine();
-        let h = h.into_affine();
+        let beta_h = h.mul(beta).to_affine();
+        let h = h.to_affine();
         let prepared_h = h.prepare();
         let prepared_beta_h = beta_h.prepare();
 
+        let powers: PowersOfG<E> = (powers_of_beta_g, powers_of_beta_times_gamma_g).into();
         let pp = UniversalParams {
-            powers_of_beta_g,
-            powers_of_beta_times_gamma_g,
+            powers: Arc::new(RwLock::new(powers)),
             h,
             beta_h,
             supported_degree_bounds,
@@ -240,8 +244,7 @@ impl<E: PairingEngine> KZG10<E> {
                 commitment
             }
             DenseOrSparsePolynomial::SPolynomial(polynomial) => polynomial
-                .coeffs
-                .iter()
+                .coeffs()
                 .map(|(i, coeff)| {
                     powers.powers_of_beta_g[*i].mul_bits(BitIteratorBE::new_without_leading_zeros(coeff.to_repr()))
                 })
@@ -265,7 +268,7 @@ impl<E: PairingEngine> KZG10<E> {
         let random_ints = convert_to_bigints(&randomness.blinding_polynomial.coeffs);
         let msm_time = start_timer!(|| "MSM to compute commitment to random poly");
         let random_commitment =
-            VariableBase::msm(&powers.powers_of_beta_times_gamma_g, random_ints.as_slice()).into_affine();
+            VariableBase::msm(&powers.powers_of_beta_times_gamma_g, random_ints.as_slice()).to_affine();
         end_timer!(msm_time);
 
         if terminator.load(Ordering::Relaxed) {
@@ -321,7 +324,7 @@ impl<E: PairingEngine> KZG10<E> {
         let random_ints = convert_to_bigints(&randomness.blinding_polynomial.coeffs);
         let msm_time = start_timer!(|| "MSM to compute commitment to random poly");
         let random_commitment =
-            VariableBase::msm(&lagrange_basis.powers_of_beta_times_gamma_g, random_ints.as_slice()).into_affine();
+            VariableBase::msm(&lagrange_basis.powers_of_beta_times_gamma_g, random_ints.as_slice()).to_affine();
         end_timer!(msm_time);
 
         if terminator.load(Ordering::Relaxed) {
@@ -394,7 +397,7 @@ impl<E: PairingEngine> KZG10<E> {
             None
         };
 
-        Ok(Proof { w: w.into_affine(), random_v })
+        Ok(Proof { w: w.to_affine(), random_v })
     }
 
     /// On input a polynomial `p` and a point `point`, outputs a proof for the same.
@@ -428,13 +431,13 @@ impl<E: PairingEngine> KZG10<E> {
         proof: &Proof<E>,
     ) -> Result<bool, PCError> {
         let check_time = start_timer!(|| "Checking evaluation");
-        let mut inner = commitment.0.into_projective() - vk.g.into_projective().mul(value);
+        let mut inner = commitment.0.to_projective() - vk.g.to_projective().mul(value);
         if let Some(random_v) = proof.random_v {
-            inner -= &vk.gamma_g.mul(random_v).into();
+            inner -= &vk.gamma_g.mul(random_v);
         }
         let lhs = E::pairing(inner, vk.h);
 
-        let inner = vk.beta_h.into_projective() - vk.h.mul(point).into_projective();
+        let inner = vk.beta_h.to_projective() - vk.h.mul(point);
         let rhs = E::pairing(proof.w, inner);
 
         end_timer!(check_time, || format!("Result: {}", lhs == rhs));
@@ -452,8 +455,8 @@ impl<E: PairingEngine> KZG10<E> {
         rng: &mut R,
     ) -> Result<bool, PCError> {
         let check_time = start_timer!(|| format!("Checking {} evaluation proofs", commitments.len()));
-        let g = vk.g.into_projective();
-        let gamma_g = vk.gamma_g.into_projective();
+        let g = vk.g.to_projective();
+        let gamma_g = vk.gamma_g.to_projective();
 
         let mut total_c = <E::G1Projective>::zero();
         let mut total_w = <E::G1Projective>::zero();
@@ -466,7 +469,7 @@ impl<E: PairingEngine> KZG10<E> {
         let mut gamma_g_multiplier = E::Fr::zero();
         for (((c, z), v), proof) in commitments.iter().zip_eq(points).zip_eq(values).zip_eq(proofs) {
             let w = proof.w;
-            let mut temp = w.mul(*z).into_projective();
+            let mut temp = w.mul(*z);
             temp.add_assign_mixed(&c.0);
             let c = temp;
             g_multiplier += &(randomizer * v);
@@ -474,7 +477,7 @@ impl<E: PairingEngine> KZG10<E> {
                 gamma_g_multiplier += &(randomizer * random_v);
             }
             total_c += &c.mul(randomizer);
-            total_w += &w.mul(randomizer).into();
+            total_w += &w.mul(randomizer);
             // We don't need to sample randomizers from the full field,
             // only from 128-bit strings.
             randomizer = u128::rand(rng).into();
@@ -572,7 +575,6 @@ mod tests {
     #![allow(non_camel_case_types)]
     #![allow(clippy::needless_borrow)]
     use super::*;
-    use crate::polycommit::data_structures::PCCommitment;
     use snarkvm_curves::bls12_377::{Bls12_377, Fr};
     use snarkvm_utilities::{rand::test_rng, FromBytes, ToBytes};
 
@@ -587,17 +589,17 @@ mod tests {
             if supported_degree == 1 {
                 supported_degree += 1;
             }
-            let powers_of_beta_g = pp.powers_of_beta_g[..=supported_degree].to_vec();
+            let powers_of_beta_g = pp.powers_of_beta_g(0, supported_degree + 1).to_vec();
             let powers_of_beta_times_gamma_g =
-                (0..=supported_degree).map(|i| pp.powers_of_beta_times_gamma_g[&i]).collect();
+                (0..=supported_degree).map(|i| pp.get_powers_times_gamma_g()[&i]).collect();
 
             let powers = Powers {
                 powers_of_beta_g: Cow::Owned(powers_of_beta_g),
                 powers_of_beta_times_gamma_g: Cow::Owned(powers_of_beta_times_gamma_g),
             };
             let vk = VerifierKey {
-                g: pp.powers_of_beta_g[0],
-                gamma_g: pp.powers_of_beta_times_gamma_g[&0],
+                g: pp.power_of_beta_g(0),
+                gamma_g: pp.get_powers_times_gamma_g()[&0],
                 h: pp.h,
                 beta_h: pp.beta_h,
                 prepared_h: pp.prepared_h.clone(),
@@ -619,34 +621,6 @@ mod tests {
         let pp_recovered_bytes = pp_recovered.to_bytes_le().unwrap();
 
         assert_eq!(&pp_bytes, &pp_recovered_bytes);
-    }
-
-    #[test]
-    fn test_add_commitments() {
-        let rng = &mut test_rng();
-        let p = DensePolynomial::from_coefficients_slice(&[
-            Fr::rand(rng),
-            Fr::rand(rng),
-            Fr::rand(rng),
-            Fr::rand(rng),
-            Fr::rand(rng),
-        ]);
-        let f = Fr::rand(rng);
-        let mut f_p = DensePolynomial::zero();
-        f_p += (f, &p);
-
-        let degree = 4;
-        let pp = KZG_Bls12_377::setup(degree, &KZG10DegreeBoundsConfig::NONE, false, rng).unwrap();
-        let (powers, _) = KZG_Bls12_377::trim(&pp, degree);
-
-        let hiding_bound = None;
-        let (comm, _) = KZG10::commit(&powers, &(&p).into(), hiding_bound, &AtomicBool::new(false), Some(rng)).unwrap();
-        let (f_comm, _) =
-            KZG10::commit(&powers, &(&f_p).into(), hiding_bound, &AtomicBool::new(false), Some(rng)).unwrap();
-        let mut f_comm_2 = Commitment::empty();
-        f_comm_2 += (f, &comm);
-
-        assert_eq!(f_comm, f_comm_2);
     }
 
     fn end_to_end_test_template<E: PairingEngine>() -> Result<(), PCError> {

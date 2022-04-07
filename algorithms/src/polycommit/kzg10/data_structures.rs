@@ -16,12 +16,10 @@
 
 use crate::{
     fft::{DensePolynomial, EvaluationDomain},
-    polycommit::{PCCommitment, PCProof, PCRandomness, PCUniversalParams},
+    polycommit::kzg10::PowersOfG,
+    snark::marlin::{params::OptimizationType, FiatShamirError, FiatShamirRng},
 };
-use snarkvm_curves::{
-    traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve},
-    Group,
-};
+use snarkvm_curves::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, PrimeField, ToConstraintField, Zero};
 use snarkvm_utilities::{
     borrow::Cow,
@@ -29,25 +27,25 @@ use snarkvm_utilities::{
     io::{Read, Write},
     serialize::{CanonicalDeserialize, CanonicalSerialize},
     FromBytes,
+    SerializationError,
     ToBytes,
     ToMinimalBits,
 };
 
-use core::ops::{Add, AddAssign, Mul};
+use anyhow::Result;
+use core::ops::{Add, AddAssign};
+use parking_lot::RwLock;
 use rand_core::RngCore;
-use std::{collections::BTreeMap, io};
+use std::{collections::BTreeMap, io, sync::Arc};
 
 /// `UniversalParams` are the universal parameters for the KZG10 scheme.
-#[derive(Derivative)]
-#[derivative(Default(bound = ""), Clone(bound = ""), Debug(bound = ""))]
-#[derive(CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Debug, Default)]
 pub struct UniversalParams<E: PairingEngine> {
-    /// Group elements of the form `{ \beta^i G }`, where `i` ranges from 0 to `degree`.
-    /// These represent the monomial basis evaluated at `beta`.
-    pub powers_of_beta_g: Vec<E::G1Affine>,
-    /// Group elements of the form `{ \beta^i \gamma G }`, where `i` ranges from 0 to `degree`.
-    /// These are used for hiding.
-    pub powers_of_beta_times_gamma_g: BTreeMap<usize, E::G1Affine>,
+    /// Group elements of the form `{ \beta^i G }`, where `i` ranges from 0 to `degree`,
+    /// and group elements of the form `{ \beta^i \gamma G }`, where `i` ranges from 0 to `degree`.
+    /// This struct provides an abstraction over the powers which are located on-disk
+    /// to reduce memory usage.
+    pub powers: Arc<RwLock<PowersOfG<E>>>,
     /// The generator of G2.
     pub h: E::G2Affine,
     /// \beta times the above generator of G2.
@@ -58,40 +56,83 @@ pub struct UniversalParams<E: PairingEngine> {
     /// This one is used for deriving the verifying key.
     pub inverse_neg_powers_of_beta_h: BTreeMap<usize, E::G2Affine>,
     /// The generator of G2, prepared for use in pairings.
-    #[derivative(Debug = "ignore")]
     pub prepared_h: <E::G2Affine as PairingCurve>::Prepared,
     /// \beta times the above generator of G2, prepared for use in pairings.
-    #[derivative(Debug = "ignore")]
     pub prepared_beta_h: <E::G2Affine as PairingCurve>::Prepared,
+}
+
+impl<E: PairingEngine> CanonicalSerialize for UniversalParams<E> {
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), SerializationError> {
+        self.powers.read().serialize(writer)?;
+        self.h.serialize(writer)?;
+        self.beta_h.serialize(writer)?;
+        self.supported_degree_bounds.serialize(writer)?;
+        self.inverse_neg_powers_of_beta_h.serialize(writer)?;
+        self.prepared_h.serialize(writer)?;
+        self.prepared_beta_h.serialize(writer)
+    }
+
+    fn serialized_size(&self) -> usize {
+        self.powers.read().serialized_size()
+            + self.h.serialized_size()
+            + self.beta_h.serialized_size()
+            + self.supported_degree_bounds.serialized_size()
+            + self.inverse_neg_powers_of_beta_h.serialized_size()
+            + self.prepared_h.serialized_size()
+            + self.prepared_beta_h.serialized_size()
+    }
+}
+
+impl<E: PairingEngine> CanonicalDeserialize for UniversalParams<E> {
+    fn deserialize<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
+        let powers: PowersOfG<E> = CanonicalDeserialize::deserialize(reader)?;
+        let h: E::G2Affine = CanonicalDeserialize::deserialize(reader)?;
+        let beta_h: E::G2Affine = CanonicalDeserialize::deserialize(reader)?;
+        let supported_degree_bounds: Vec<usize> = CanonicalDeserialize::deserialize(reader)?;
+        let inverse_neg_powers_of_beta_h: BTreeMap<usize, E::G2Affine> = CanonicalDeserialize::deserialize(reader)?;
+        let prepared_h: <E::G2Affine as PairingCurve>::Prepared = CanonicalDeserialize::deserialize(reader)?;
+        let prepared_beta_h: <E::G2Affine as PairingCurve>::Prepared = CanonicalDeserialize::deserialize(reader)?;
+
+        Ok(Self {
+            powers: Arc::new(RwLock::new(powers)),
+            h,
+            beta_h,
+            supported_degree_bounds,
+            inverse_neg_powers_of_beta_h,
+            prepared_h,
+            prepared_beta_h,
+        })
+    }
 }
 
 impl<E: PairingEngine> UniversalParams<E> {
     pub fn lagrange_basis(&self, domain: EvaluationDomain<E::Fr>) -> Vec<E::G1Affine> {
         let basis = domain
-            .ifft(&self.powers_of_beta_g[..domain.size()].iter().map(|e| e.into_projective()).collect::<Vec<_>>());
+            .ifft(&self.powers_of_beta_g(0, domain.size()).iter().map(|e| (*e).to_projective()).collect::<Vec<_>>());
         E::G1Projective::batch_normalization_into_affine(basis)
+    }
+
+    pub fn power_of_beta_g(&self, which_power: usize) -> E::G1Affine {
+        self.powers.write().power_of_beta_g(which_power)
+    }
+
+    pub fn powers_of_beta_g(&self, lower: usize, upper: usize) -> Vec<E::G1Affine> {
+        self.powers.write().powers_of_beta_g(lower, upper)
+    }
+
+    pub fn get_powers_times_gamma_g(&self) -> BTreeMap<usize, E::G1Affine> {
+        self.powers.read().get_powers_times_gamma_g().clone()
+    }
+
+    pub fn download_up_to(&self, degree: usize) -> Result<()> {
+        self.powers.write().download_up_to(degree)
     }
 }
 
 impl<E: PairingEngine> FromBytes for UniversalParams<E> {
     fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
-        // Deserialize `powers_of_beta_g`.
-        let powers_of_beta_g_len: u32 = FromBytes::read_le(&mut reader)?;
-        let mut powers_of_beta_g = Vec::with_capacity(powers_of_beta_g_len as usize);
-        for _ in 0..powers_of_beta_g_len {
-            let power_of_g: E::G1Affine = FromBytes::read_le(&mut reader)?;
-            powers_of_beta_g.push(power_of_g);
-        }
-
-        // Deserialize `powers_of_beta_times_gamma_g`.
-        let mut powers_of_beta_times_gamma_g = BTreeMap::new();
-        let powers_of_gamma_g_num_elements: u32 = FromBytes::read_le(&mut reader)?;
-        for _ in 0..powers_of_gamma_g_num_elements {
-            let key: u32 = FromBytes::read_le(&mut reader)?;
-            let power_of_gamma_g: E::G1Affine = FromBytes::read_le(&mut reader)?;
-
-            powers_of_beta_times_gamma_g.insert(key as usize, power_of_gamma_g);
-        }
+        // Deserialize `powers`.
+        let powers: PowersOfG<E> = FromBytes::read_le(&mut reader)?;
 
         // Deserialize `h`.
         let h: E::G2Affine = FromBytes::read_le(&mut reader)?;
@@ -124,8 +165,7 @@ impl<E: PairingEngine> FromBytes for UniversalParams<E> {
         let prepared_beta_h: <E::G2Affine as PairingCurve>::Prepared = FromBytes::read_le(&mut reader)?;
 
         Ok(Self {
-            powers_of_beta_g,
-            powers_of_beta_times_gamma_g,
+            powers: Arc::new(RwLock::new(powers)),
             h,
             beta_h,
             supported_degree_bounds,
@@ -138,18 +178,8 @@ impl<E: PairingEngine> FromBytes for UniversalParams<E> {
 
 impl<E: PairingEngine> ToBytes for UniversalParams<E> {
     fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
-        // Serialize `powers_of_beta_g`.
-        (self.powers_of_beta_g.len() as u32).write_le(&mut writer)?;
-        for power in &self.powers_of_beta_g {
-            power.write_le(&mut writer)?;
-        }
-
-        // Serialize `powers_of_beta_times_gamma_g`.
-        (self.powers_of_beta_times_gamma_g.len() as u32).write_le(&mut writer)?;
-        for (key, power_of_gamma_g) in &self.powers_of_beta_times_gamma_g {
-            (*key as u32).write_le(&mut writer)?;
-            power_of_gamma_g.write_le(&mut writer)?;
-        }
+        // Serialize powers.
+        self.powers.read().write_le(&mut writer)?;
 
         // Serialize `h`.
         self.h.write_le(&mut writer)?;
@@ -180,20 +210,22 @@ impl<E: PairingEngine> ToBytes for UniversalParams<E> {
     }
 }
 
-impl<E: PairingEngine> PCUniversalParams for UniversalParams<E> {
-    fn max_degree(&self) -> usize {
-        self.powers_of_beta_g.len() - 1
+impl<E: PairingEngine> UniversalParams<E> {
+    pub fn max_degree(&self) -> usize {
+        self.powers.read().len() - 1
     }
 
-    fn supported_degree_bounds(&self) -> &[usize] {
+    pub fn supported_degree_bounds(&self) -> &[usize] {
         &self.supported_degree_bounds
+    }
+
+    pub fn increase_degree(&self, degree: usize) -> Result<()> {
+        self.download_up_to(degree)
     }
 }
 
-/// `Powers` is used to commit to and create evaluation proofs for a given
-/// polynomial.
-#[derive(Derivative)]
-#[derivative(Default(bound = ""), Hash(bound = ""), Clone(bound = ""), Debug(bound = ""))]
+/// `Powers` is used to commit to and create evaluation proofs for a given polynomial.
+#[derive(Clone, Debug, Default, Hash)]
 pub struct Powers<'a, E: PairingEngine> {
     /// Group elements of the form `β^i G`, for different values of `i`.
     pub powers_of_beta_g: Cow<'a, [E::G1Affine]>,
@@ -207,10 +239,8 @@ impl<E: PairingEngine> Powers<'_, E> {
         self.powers_of_beta_g.len()
     }
 }
-/// `LagrangeBasis` is used to commit to and create evaluation proofs for a given
-/// polynomial.
-#[derive(Derivative)]
-#[derivative(Hash(bound = ""), Clone(bound = ""), Debug(bound = ""))]
+/// `LagrangeBasis` is used to commit to and create evaluation proofs for a given polynomial.
+#[derive(Clone, Debug, Hash)]
 pub struct LagrangeBasis<'a, E: PairingEngine> {
     /// Group elements of the form `β^i G`, for different values of `i`.
     pub lagrange_basis_at_beta_g: Cow<'a, [E::G1Affine]>,
@@ -229,8 +259,7 @@ impl<E: PairingEngine> LagrangeBasis<'_, E> {
 }
 
 /// `VerifierKey` is used to check evaluation proofs for a given commitment.
-#[derive(Derivative, CanonicalSerialize, CanonicalDeserialize)]
-#[derivative(Default(bound = ""), Clone(bound = ""), Debug(bound = ""), PartialEq(bound = ""), Eq(bound = ""))]
+#[derive(Clone, Debug, Default, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct VerifierKey<E: PairingEngine> {
     /// The generator of G1.
     pub g: E::G1Affine,
@@ -241,10 +270,8 @@ pub struct VerifierKey<E: PairingEngine> {
     /// \beta times the above generator of G2.
     pub beta_h: E::G2Affine,
     /// The generator of G2, prepared for use in pairings.
-    #[derivative(Debug = "ignore")]
     pub prepared_h: <E::G2Affine as PairingCurve>::Prepared,
     /// \beta times the above generator of G2, prepared for use in pairings.
-    #[derivative(Debug = "ignore")]
     pub prepared_beta_h: <E::G2Affine as PairingCurve>::Prepared,
 }
 
@@ -275,8 +302,7 @@ impl<E: PairingEngine> ToConstraintField<E::Fq> for VerifierKey<E> {
 
 /// `PreparedVerifierKey` is the fully prepared version for checking evaluation proofs for a given commitment.
 /// We omit gamma here for simplicity.
-#[derive(Derivative)]
-#[derivative(Default(bound = ""), Clone(bound = ""), Debug(bound = ""))]
+#[derive(Clone, Debug, Default)]
 pub struct PreparedVerifierKey<E: PairingEngine> {
     /// The generator of G1, prepared for power series.
     pub prepared_g: Vec<E::G1Affine>,
@@ -317,17 +343,7 @@ impl<E: PairingEngine> PreparedVerifierKey<E> {
 }
 
 /// `Commitment` commits to a polynomial. It is output by `KZG10::commit`.
-#[derive(Derivative)]
-#[derivative(
-    Default(bound = ""),
-    Hash(bound = ""),
-    Clone(bound = ""),
-    Copy(bound = ""),
-    Debug(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
-#[derive(CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Commitment<E: PairingEngine>(
     /// The commitment is a group element.
     pub E::G1Affine,
@@ -351,27 +367,18 @@ impl<E: PairingEngine> ToMinimalBits for Commitment<E> {
     }
 }
 
-impl<E: PairingEngine> PCCommitment for Commitment<E> {
+impl<E: PairingEngine> Commitment<E> {
     #[inline]
-    fn empty() -> Self {
+    pub fn empty() -> Self {
         Commitment(E::G1Affine::zero())
     }
 
-    fn has_degree_bound(&self) -> bool {
+    pub fn has_degree_bound(&self) -> bool {
         false
     }
 
-    fn is_in_correct_subgroup_assuming_on_curve(&self) -> bool {
+    pub fn is_in_correct_subgroup_assuming_on_curve(&self) -> bool {
         self.0.is_in_correct_subgroup_assuming_on_curve()
-    }
-}
-
-impl<'a, E: PairingEngine> AddAssign<(E::Fr, &'a Commitment<E>)> for Commitment<E> {
-    #[inline]
-    fn add_assign(&mut self, (f, other): (E::Fr, &'a Commitment<E>)) {
-        let mut other = other.0.mul(f).into_projective();
-        other.add_assign_mixed(&self.0);
-        self.0 = other.into();
     }
 }
 
@@ -382,15 +389,7 @@ impl<E: PairingEngine> ToConstraintField<E::Fq> for Commitment<E> {
 }
 
 /// `PreparedCommitment` commits to a polynomial and prepares for mul_bits.
-#[derive(Derivative)]
-#[derivative(
-    Default(bound = ""),
-    Hash(bound = ""),
-    Clone(bound = ""),
-    Debug(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct PreparedCommitment<E: PairingEngine>(
     /// The commitment is a group element.
     pub Vec<E::G1Affine>,
@@ -414,16 +413,7 @@ impl<E: PairingEngine> PreparedCommitment<E> {
 }
 
 /// `Randomness` hides the polynomial inside a commitment. It is output by `KZG10::commit`.
-#[derive(Derivative)]
-#[derivative(
-    Default(bound = ""),
-    Hash(bound = ""),
-    Clone(bound = ""),
-    Debug(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
-#[derive(CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, Hash, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Randomness<E: PairingEngine> {
     /// For KZG10, the commitment randomness is a random polynomial.
     pub blinding_polynomial: DensePolynomial<E::Fr>,
@@ -455,12 +445,12 @@ impl<E: PairingEngine> Randomness<E> {
     }
 }
 
-impl<E: PairingEngine> PCRandomness for Randomness<E> {
-    fn empty() -> Self {
+impl<E: PairingEngine> Randomness<E> {
+    pub fn empty() -> Self {
         Self { blinding_polynomial: DensePolynomial::zero() }
     }
 
-    fn rand<R: RngCore>(hiding_bound: usize, _: bool, rng: &mut R) -> Self {
+    pub fn rand<R: RngCore>(hiding_bound: usize, _: bool, rng: &mut R) -> Self {
         let mut randomness = Randomness::empty();
         let hiding_poly_degree = Self::calculate_hiding_polynomial_degree(hiding_bound);
         randomness.blinding_polynomial = DensePolynomial::rand(hiding_poly_degree, rng);
@@ -503,17 +493,7 @@ impl<'a, E: PairingEngine> AddAssign<(E::Fr, &'a Randomness<E>)> for Randomness<
 }
 
 /// `Proof` is an evaluation proof that is output by `KZG10::open`.
-#[derive(Derivative)]
-#[derivative(
-    Default(bound = ""),
-    Hash(bound = ""),
-    Clone(bound = ""),
-    Copy(bound = ""),
-    Debug(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
-#[derive(CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Proof<E: PairingEngine> {
     /// This is a commitment to the witness polynomial; see [\[KZG10\]][kzg] for more details.
     ///
@@ -523,6 +503,17 @@ pub struct Proof<E: PairingEngine> {
     /// the evaluation proof was produced.
     pub random_v: Option<E::Fr>,
 }
+
+impl<E: PairingEngine> Proof<E> {
+    pub fn absorb_into_sponge<S: FiatShamirRng<E::Fr, E::Fq>>(&self, sponge: &mut S) -> Result<(), FiatShamirError> {
+        sponge.absorb_native_field_elements(&self.w.to_field_elements()?);
+        if let Some(random_v) = self.random_v {
+            sponge.absorb_nonnative_field_elements([random_v], OptimizationType::Weight);
+        }
+        Ok(())
+    }
+}
+
 impl<E: PairingEngine> FromBytes for Proof<E> {
     fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
         CanonicalDeserialize::deserialize(&mut reader).map_err(|_| error("could not deserialize proof"))
@@ -535,8 +526,8 @@ impl<E: PairingEngine> ToBytes for Proof<E> {
     }
 }
 
-impl<E: PairingEngine> PCProof for Proof<E> {
-    fn is_hiding(&self) -> bool {
+impl<E: PairingEngine> Proof<E> {
+    pub fn is_hiding(&self) -> bool {
         self.random_v.is_some()
     }
 }

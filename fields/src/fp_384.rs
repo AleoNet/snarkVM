@@ -23,6 +23,8 @@ use crate::{
     FieldParameters,
     LegendreSymbol,
     One,
+    PoseidonDefaultField,
+    PoseidonDefaultParameters,
     PrimeField,
     SquareRootField,
     Zero,
@@ -448,12 +450,6 @@ impl<P: Fp384Parameters> PrimeField for Fp384<P> {
     }
 
     #[inline]
-    fn from_repr_unchecked(r: BigInteger) -> Self {
-        let r = Fp384(r, PhantomData);
-        if r.is_valid() { r } else { Self::zero() }
-    }
-
-    #[inline]
     fn to_repr_unchecked(&self) -> BigInteger {
         self.0
     }
@@ -520,6 +516,8 @@ impl<P: Fp384Parameters> PartialOrd for Fp384<P> {
         Some(self.cmp(other))
     }
 }
+
+impl<P: Fp384Parameters + PoseidonDefaultParameters> PoseidonDefaultField for Fp384<P> {}
 
 impl_primefield_from_int!(Fp384, u128, Fp384Parameters);
 impl_primefield_from_int!(Fp384, u64, Fp384Parameters);

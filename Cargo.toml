@@ -20,15 +20,28 @@ edition = "2021"
 [workspace]
 members = [
   "algorithms",
+  "bytecode",
   "circuits",
+  "circuits/core",
+  "circuits/edge",
+  "circuits/environment",
+  "circuits/environment/witness",
+  "circuits/types",
+  "circuits/types/address",
+  "circuits/types/boolean",
+  "circuits/types/field",
+  "circuits/types/integers",
+  "circuits/types/group",
+  "circuits/types/scalar",
+  "circuits/types/string",
   "curves",
-  "derives", # excluded from [features], for internal use primarily
   "dpc",
   "fields",
   "gadgets",
   "parameters",
   "r1cs",
   "utilities",
+  "utilities/derives", # excluded from [features], for internal use primarily
   "wasm", # excluded from [features], WASM contexts will typically import this crate directly
   ".integration" # excluded from [features], for CI only
 ]
@@ -66,7 +79,7 @@ cuda = ["snarkvm-algorithms/cuda"]
 parameters_no_std_out = ["snarkvm-parameters/no_std_out"]
 
 ## snarkVM CLI ##
-cli = ["anyhow", "colored", "self_update", "structopt", "thiserror"]
+cli = ["anyhow", "clap", "colored", "self_update", "thiserror"]
 
 ## CI ##
 noconfig = []
@@ -120,11 +133,12 @@ version = "2"
 optional = true
 
 [dependencies.self_update]
-version = "0.28"
+version = "0.29"
 optional = true
 
-[dependencies.structopt]
-version = "0.3"
+[dependencies.clap]
+version = "3.1"
+features = ["derive"]
 optional = true
 
 [dependencies.thiserror]

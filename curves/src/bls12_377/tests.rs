@@ -35,9 +35,9 @@ use crate::{
     },
     templates::{short_weierstrass_jacobian::tests::sw_tests, twisted_edwards_extended::tests::edwards_test},
     traits::{
-        tests_curve::curve_tests,
         tests_field::{field_serialization_test, field_test, frobenius_test, primefield_test, sqrt_field_test},
-        tests_group::group_test,
+        tests_group::*,
+        tests_projective::curve_tests,
         AffineCurve,
         PairingEngine,
         ProjectiveCurve,
@@ -560,7 +560,7 @@ fn test_g1_projective_curve() {
 fn test_g1_projective_group() {
     let a: G1Projective = rand::random();
     let b: G1Projective = rand::random();
-    group_test(a, b);
+    projective_test(a, b);
 }
 
 #[test]
@@ -580,7 +580,7 @@ fn test_g2_projective_curve() {
 fn test_g2_projective_group() {
     let a: G2Projective = rand::random();
     let b: G2Projective = rand::random();
-    group_test(a, b);
+    projective_test(a, b);
 }
 
 #[test]
