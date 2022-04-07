@@ -168,3 +168,125 @@ impl<P: Program> ToBytes for Instruction<P> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[macro_export]
+    macro_rules! binary_instruction_test {
+        ($test_name: ident, $instruction: ident, $a: expr, $b: expr, $c: expr, $assert_equal: expr) => {
+            #[test]
+            fn $test_name() {
+                use $crate::{
+                    function::{Operation, Registers},
+                    Parser,
+                    Process,
+                    Register,
+                    Value,
+                };
+                type P = Process;
+
+                let a = Value::<P>::from_str($a);
+                let b = Value::<P>::from_str($b);
+                let expected = Value::<P>::from_str($c);
+
+                let registers = Registers::<P>::default();
+                registers.define(&Register::from_str("r0"));
+                registers.define(&Register::from_str("r1"));
+                registers.define(&Register::from_str("r2"));
+                registers.assign(&Register::from_str("r0"), a);
+                registers.assign(&Register::from_str("r1"), b);
+
+                $instruction::from_str("r0 r1 into r2").evaluate(&registers);
+                let candidate = registers.load(&Register::from_str("r2"));
+                if $assert_equal {
+                    assert_eq!(expected, candidate);
+                } else {
+                    // The equality check should fail due to mismatched Modes.
+                    assert_ne!(expected, candidate);
+                }
+            }
+        };
+    }
+
+    #[macro_export]
+    macro_rules! test_modes {
+        ($type: ident, $instruction: ident, $a: expr, $b: expr, $expected: expr) => {
+            mod $type {
+                use super::*;
+                use $crate::binary_instruction_test;
+
+                binary_instruction_test!(
+                    test_public_and_public_is_not_public,
+                    $instruction,
+                    concat!($a, ".public"),
+                    concat!($b, ".public"),
+                    concat!($expected, ".public"),
+                    false
+                );
+
+                binary_instruction_test!(
+                    test_public_and_public_is_private,
+                    $instruction,
+                    concat!($a, ".public"),
+                    concat!($b, ".public"),
+                    concat!($expected, ".private"),
+                    true
+                );
+
+                binary_instruction_test!(
+                    test_public_and_private_is_not_public,
+                    $instruction,
+                    concat!($a, ".public"),
+                    concat!($b, ".private"),
+                    concat!($expected, ".public"),
+                    false
+                );
+
+                binary_instruction_test!(
+                    test_public_and_private_is_private,
+                    $instruction,
+                    concat!($a, ".public"),
+                    concat!($b, ".private"),
+                    concat!($expected, ".private"),
+                    true
+                );
+
+                binary_instruction_test!(
+                    test_private_and_public_is_not_public,
+                    $instruction,
+                    concat!($a, ".private"),
+                    concat!($b, ".public"),
+                    concat!($expected, ".public"),
+                    false
+                );
+
+                binary_instruction_test!(
+                    test_private_and_public_is_private,
+                    $instruction,
+                    concat!($a, ".private"),
+                    concat!($b, ".public"),
+                    concat!($expected, ".private"),
+                    true
+                );
+
+                binary_instruction_test!(
+                    test_private_and_private_is_not_public,
+                    $instruction,
+                    concat!($a, ".private"),
+                    concat!($b, ".private"),
+                    concat!($expected, ".public"),
+                    false
+                );
+
+                binary_instruction_test!(
+                    test_private_and_private_is_private,
+                    $instruction,
+                    concat!($a, ".private"),
+                    concat!($b, ".private"),
+                    concat!($expected, ".private"),
+                    true
+                );
+            }
+        };
+    }
+}
