@@ -878,7 +878,6 @@ impl<F: Field> ToBytesGadget<F> for Boolean {
         Ok(vec![byte])
     }
 
-    /// Additionally checks if the produced list of booleans is 'valid'.
     fn to_bytes_strict<CS: ConstraintSystem<F>>(&self, cs: CS) -> Result<Vec<UInt8>, SynthesisError> {
         self.to_bytes(cs)
     }
