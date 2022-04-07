@@ -307,7 +307,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InputCircuit<N> 
             };
 
             // *******************************************************************
-            // Compute the record commitment and check that it matches the declared commitment.
+            // Compute the record commitment.
             // *******************************************************************
 
             // TODO (howardwu): CRITICAL - Use given_owner by exposing the FpGadget in the signature trait.
