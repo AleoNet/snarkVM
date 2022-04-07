@@ -26,7 +26,6 @@ members = [
   "circuits/edge",
   "circuits/environment",
   "circuits/environment/witness",
-  "circuits/metrics",
   "circuits/types",
   "circuits/types/address",
   "circuits/types/boolean",

@@ -16,6 +16,23 @@
 
 use crate::BooleanTrait;
 
+/// Trait for uniformly invoking operations.
+pub trait Operation {
+    type Input;
+    type Output;
+
+    fn invoke(input: Self::Input) -> Self::Output;
+}
+
+/// Trait for metadata on operations.
+pub trait MetadataForOp<Op: Operation + ?Sized> {
+    type Input;
+    type Metadata;
+
+    /// Returns metadata for the given operation.
+    fn get_metric(input: &Self::Input) -> Self::Metadata;
+}
+
 /// Trait for equality comparisons.
 pub trait Equal<Rhs: ?Sized = Self> {
     type Boolean: BooleanTrait;

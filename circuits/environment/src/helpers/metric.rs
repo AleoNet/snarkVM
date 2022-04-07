@@ -37,7 +37,7 @@ impl Count {
 
     /// Returns a new `Count` whose constituent metrics are all exclusive `UpperBound`.
     pub fn less_than(num_constants: usize, num_public: usize, num_private: usize, num_constraints: usize) -> Self {
-        CircuitMetric(
+        Count(
             Metric::UpperBound(Clusivity::Exclusive, num_constants),
             Metric::UpperBound(Clusivity::Exclusive, num_public),
             Metric::UpperBound(Clusivity::Exclusive, num_private),
@@ -46,8 +46,13 @@ impl Count {
     }
 
     /// Returns a new `Count` whose constituent metrics are all inclusive `UpperBound`.
-    pub fn less_than_or_equal(num_constants: usize, num_public: usize, num_private: usize, num_constraints: usize) -> Self {
-        CircuitMetric(
+    pub fn less_than_or_equal(
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) -> Self {
+        Count(
             Metric::UpperBound(Clusivity::Inclusive, num_constants),
             Metric::UpperBound(Clusivity::Inclusive, num_public),
             Metric::UpperBound(Clusivity::Inclusive, num_private),
@@ -56,24 +61,24 @@ impl Count {
     }
 
     /// Returns `true` if all constituent metrics are satisfied.
-    pub fn is_satisfied(&self, num_constants: usize, num_public: usize, num_private: usize, num_constraints: usize) -> bool {
-        self.0.is_satisfied(num_constants) &&
-        self.1.is_satisfied(num_public) &&
-        self.2.is_satisfied(num_private) &&
-        self.3.is_satisfied(num_constraints)
+    pub fn is_satisfied(
+        &self,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) -> bool {
+        self.0.is_satisfied(num_constants)
+            && self.1.is_satisfied(num_public)
+            && self.2.is_satisfied(num_private)
+            && self.3.is_satisfied(num_constraints)
     }
 
     /// Composes this `Count` with another `Count` by composing its constituent metrics.
     pub fn compose(&self, other: &Self) -> Self {
-        CircuitMetric(
-            self.0.compose(&other.0),
-            self.1.compose(&other.1),
-            self.2.compose(&other.2),
-            self.3.compose(&other.3),
-        )
+        Count(self.0.compose(&other.0), self.1.compose(&other.1), self.2.compose(&other.2), self.3.compose(&other.3))
     }
 }
-
 
 /// `Clusivity` indicates whether or not a bound is inclusive or exclusive.
 #[derive(Clone, Copy, Debug)]
