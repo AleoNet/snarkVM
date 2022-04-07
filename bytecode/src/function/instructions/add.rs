@@ -132,118 +132,122 @@ mod tests {
 
     type P = Process;
 
-    macro_rules! impl_add_test {
-        ($test_name: ident, $a: expr, $b: expr, $c: expr, $assert_equal: expr) => {
-            #[test]
-            fn $test_name() {
-                let a = Value::<P>::from_str($a);
-                let b = Value::<P>::from_str($b);
-                let expected = Value::<P>::from_str($c);
+    mod modes {
+        use super::*;
 
-                let registers = Registers::<P>::default();
-                registers.define(&Register::from_str("r0"));
-                registers.define(&Register::from_str("r1"));
-                registers.define(&Register::from_str("r2"));
-                registers.assign(&Register::from_str("r0"), a);
-                registers.assign(&Register::from_str("r1"), b);
+        macro_rules! add_test {
+            ($test_name: ident, $a: expr, $b: expr, $c: expr, $assert_equal: expr) => {
+                #[test]
+                fn $test_name() {
+                    let a = Value::<P>::from_str($a);
+                    let b = Value::<P>::from_str($b);
+                    let expected = Value::<P>::from_str($c);
 
-                Add::from_str("r0 r1 into r2").evaluate(&registers);
-                let candidate = registers.load(&Register::from_str("r2"));
-                if $assert_equal {
-                    assert_eq!(expected, candidate);
-                } else {
-                    // The equality check should fail due to mismatched Modes.
-                    assert_ne!(expected, candidate);
+                    let registers = Registers::<P>::default();
+                    registers.define(&Register::from_str("r0"));
+                    registers.define(&Register::from_str("r1"));
+                    registers.define(&Register::from_str("r2"));
+                    registers.assign(&Register::from_str("r0"), a);
+                    registers.assign(&Register::from_str("r1"), b);
+
+                    Add::from_str("r0 r1 into r2").evaluate(&registers);
+                    let candidate = registers.load(&Register::from_str("r2"));
+                    if $assert_equal {
+                        assert_eq!(expected, candidate);
+                    } else {
+                        // The equality check should fail due to mismatched Modes.
+                        assert_ne!(expected, candidate);
+                    }
                 }
-            }
-        };
+            };
+        }
+
+        macro_rules! test_modes {
+            ($type: ident, $a: expr, $b: expr, $expected: expr) => {
+                mod $type {
+                    use super::*;
+
+                    add_test!(
+                        test_public_add_public_is_not_public,
+                        concat!($a, ".public"),
+                        concat!($b, ".public"),
+                        concat!($expected, ".public"),
+                        false
+                    );
+
+                    add_test!(
+                        test_public_add_public_is_private,
+                        concat!($a, ".public"),
+                        concat!($b, ".public"),
+                        concat!($expected, ".private"),
+                        true
+                    );
+
+                    add_test!(
+                        test_public_add_private_is_not_public,
+                        concat!($a, ".public"),
+                        concat!($b, ".private"),
+                        concat!($expected, ".public"),
+                        false
+                    );
+
+                    add_test!(
+                        test_public_add_private_is_private,
+                        concat!($a, ".public"),
+                        concat!($b, ".private"),
+                        concat!($expected, ".private"),
+                        true
+                    );
+
+                    add_test!(
+                        test_private_add_public_is_not_public,
+                        concat!($a, ".private"),
+                        concat!($b, ".public"),
+                        concat!($expected, ".public"),
+                        false
+                    );
+
+                    add_test!(
+                        test_private_add_public_is_private,
+                        concat!($a, ".private"),
+                        concat!($b, ".public"),
+                        concat!($expected, ".private"),
+                        true
+                    );
+
+                    add_test!(
+                        test_private_add_private_is_not_public,
+                        concat!($a, ".private"),
+                        concat!($b, ".private"),
+                        concat!($expected, ".public"),
+                        false
+                    );
+
+                    add_test!(
+                        test_private_add_private_is_private,
+                        concat!($a, ".private"),
+                        concat!($b, ".private"),
+                        concat!($expected, ".private"),
+                        true
+                    );
+                }
+            };
+        }
+
+        test_modes!(field, "1field", "2field", "3field");
+        test_modes!(group, "2group", "0group", "2group");
+        test_modes!(i8, "-1i8", "2i8", "1i8");
+        test_modes!(i16, "-1i16", "2i16", "1i16");
+        test_modes!(i32, "-1i32", "2i32", "1i32");
+        test_modes!(i64, "-1i64", "2i64", "1i64");
+        test_modes!(i128, "-1i128", "2i128", "1i128");
+        test_modes!(u8, "1u8", "2u8", "3u8");
+        test_modes!(u16, "1u16", "2u16", "3u16");
+        test_modes!(u32, "1u32", "2u32", "3u32");
+        test_modes!(u64, "1u64", "2u64", "3u64");
+        test_modes!(u128, "1u128", "2u128", "3u128");
+        test_modes!(scalar, "1scalar", "2scalar", "3scalar");
     }
-
-    macro_rules! test_modes {
-        ($type: ident, $a: expr, $b: expr, $expected: expr) => {
-            mod $type {
-                use super::*;
-
-                impl_add_test!(
-                    test_0,
-                    concat!($a, ".public"),
-                    concat!($b, ".public"),
-                    concat!($expected, ".public"),
-                    false
-                );
-
-                impl_add_test!(
-                    test_1,
-                    concat!($a, ".public"),
-                    concat!($b, ".public"),
-                    concat!($expected, ".private"),
-                    true
-                );
-
-                impl_add_test!(
-                    test_2,
-                    concat!($a, ".public"),
-                    concat!($b, ".private"),
-                    concat!($expected, ".public"),
-                    false
-                );
-
-                impl_add_test!(
-                    test_3,
-                    concat!($a, ".public"),
-                    concat!($b, ".private"),
-                    concat!($expected, ".private"),
-                    true
-                );
-
-                impl_add_test!(
-                    test_4,
-                    concat!($a, ".private"),
-                    concat!($b, ".public"),
-                    concat!($expected, ".public"),
-                    false
-                );
-
-                impl_add_test!(
-                    test_5,
-                    concat!($a, ".private"),
-                    concat!($b, ".public"),
-                    concat!($expected, ".private"),
-                    true
-                );
-
-                impl_add_test!(
-                    test_6,
-                    concat!($a, ".private"),
-                    concat!($b, ".private"),
-                    concat!($expected, ".public"),
-                    false
-                );
-
-                impl_add_test!(
-                    test_7,
-                    concat!($a, ".private"),
-                    concat!($b, ".private"),
-                    concat!($expected, ".private"),
-                    true
-                );
-            }
-        };
-    }
-
-    test_modes!(field, "1field", "2field", "3field");
-    test_modes!(group, "2group", "0group", "2group");
-    test_modes!(i8, "-1i8", "2i8", "1i8");
-    test_modes!(i16, "-1i16", "2i16", "1i16");
-    test_modes!(i32, "-1i32", "2i32", "1i32");
-    test_modes!(i64, "-1i64", "2i64", "1i64");
-    test_modes!(i128, "-1i128", "2i128", "1i128");
-    test_modes!(u8, "1u8", "2u8", "3u8");
-    test_modes!(u16, "1u16", "2u16", "3u16");
-    test_modes!(u32, "1u32", "2u32", "3u32");
-    test_modes!(u64, "1u64", "2u64", "3u64");
-    test_modes!(u128, "1u128", "2u128", "3u128");
-    test_modes!(scalar, "1scalar", "2scalar", "3scalar");
 
     fn check_add_test(first: Value<P>, second: Value<P>, expected: Value<P>) {
         let registers = Registers::<P>::default();
