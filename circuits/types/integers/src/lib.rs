@@ -61,12 +61,12 @@ pub type U32<E> = Integer<E, u32>;
 pub type U64<E> = Integer<E, u64>;
 pub type U128<E> = Integer<E, u128>;
 
+#[cfg(test)]
+use snarkvm_circuits_environment::assert_scope;
+
 use snarkvm_circuits_environment::prelude::*;
 use snarkvm_circuits_types_boolean::Boolean;
 use snarkvm_circuits_types_field::Field;
-
-#[cfg(test)]
-use snarkvm_circuits_environment::assert_scope;
 
 use core::marker::PhantomData;
 
@@ -101,7 +101,7 @@ impl<E: Environment, I: IntegerType> Inject for Integer<E, I> {
 /// For example, the `dual` type of `I8` is `U8` and the `dual` type of `U8` is `I8`.
 ///
 impl<E: Environment, I: IntegerType> Integer<E, I> {
-    pub(crate) fn cast_as_dual(self) -> Integer<E, I::Dual> {
+    fn cast_as_dual(self) -> Integer<E, I::Dual> {
         Integer::<E, I::Dual> { bits_le: self.bits_le, phantom: Default::default() }
     }
 }

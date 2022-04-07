@@ -37,12 +37,12 @@ pub mod to_lower_bits;
 pub mod to_upper_bits;
 pub mod zero;
 
+#[cfg(test)]
+use snarkvm_circuits_environment::assert_scope;
+
 use snarkvm_circuits_environment::prelude::*;
 use snarkvm_circuits_types_boolean::Boolean;
 use snarkvm_utilities::ToBits as TBits;
-
-#[cfg(test)]
-use snarkvm_circuits_environment::assert_scope;
 
 #[derive(Clone)]
 pub struct Field<E: Environment> {
