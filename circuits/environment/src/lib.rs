@@ -20,7 +20,9 @@
 #[macro_use]
 extern crate num_derive;
 
+extern crate core;
 extern crate snarkvm_circuits_environment_witness;
+
 pub use snarkvm_circuits_environment_witness::rename_selfs;
 
 pub mod circuit;

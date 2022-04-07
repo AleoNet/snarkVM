@@ -13,39 +13,8 @@
 
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+
 pub mod integers;
-
-// TODO: Composition of metrics.
-/// A metric is a required value that can be measured for a circuit.
-#[derive(Clone, Debug)]
-pub enum Metric<V: PartialOrd> {
-    Equal(V),
-    LowerBound(V),
-    UpperBound(V),
-}
-
-impl<V: PartialOrd> Metric<V> {
-    pub fn equal(value: V) -> Self {
-        Metric::Equal(value)
-    }
-
-    pub fn lower_bound(value: V) -> Self {
-        Metric::LowerBound(value)
-    }
-
-    pub fn upper_bound(value: V) -> Self {
-        Metric::UpperBound(value)
-    }
-
-    /// Returns `true` if the value satisfies the metric.
-    pub fn is_satisfied(&self, value: V) -> bool {
-        match self {
-            Metric::Equal(target) => value == *target,
-            Metric::LowerBound(lower_bound) => value >= *lower_bound,
-            Metric::UpperBound(upper_bound) => value <= *upper_bound,
-        }
-    }
-}
 
 // TODO: This trait is used to make explicit the operation on which a metric is defined.
 //   There may be a use for this design in dispatching opcodes. If we do go down that route, do we
