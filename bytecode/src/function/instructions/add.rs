@@ -135,8 +135,8 @@ mod tests {
     mod modes {
         use super::*;
 
-        macro_rules! add_test {
-            ($test_name: ident, $a: expr, $b: expr, $c: expr, $assert_equal: expr) => {
+        macro_rules! binary_instruction_test {
+            ($test_name: ident, $instruction: ident, $a: expr, $b: expr, $c: expr, $assert_equal: expr) => {
                 #[test]
                 fn $test_name() {
                     let a = Value::<P>::from_str($a);
@@ -150,7 +150,7 @@ mod tests {
                     registers.assign(&Register::from_str("r0"), a);
                     registers.assign(&Register::from_str("r1"), b);
 
-                    Add::from_str("r0 r1 into r2").evaluate(&registers);
+                    $instruction::from_str("r0 r1 into r2").evaluate(&registers);
                     let candidate = registers.load(&Register::from_str("r2"));
                     if $assert_equal {
                         assert_eq!(expected, candidate);
@@ -163,68 +163,76 @@ mod tests {
         }
 
         macro_rules! test_modes {
-            ($type: ident, $a: expr, $b: expr, $expected: expr) => {
+            ($type: ident, $instruction: ident, $a: expr, $b: expr, $expected: expr) => {
                 mod $type {
                     use super::*;
 
-                    add_test!(
-                        test_public_add_public_is_not_public,
+                    binary_instruction_test!(
+                        test_public_and_public_is_not_public,
+                        $instruction,
                         concat!($a, ".public"),
                         concat!($b, ".public"),
                         concat!($expected, ".public"),
                         false
                     );
 
-                    add_test!(
-                        test_public_add_public_is_private,
+                    binary_instruction_test!(
+                        test_public_and_public_is_private,
+                        $instruction,
                         concat!($a, ".public"),
                         concat!($b, ".public"),
                         concat!($expected, ".private"),
                         true
                     );
 
-                    add_test!(
-                        test_public_add_private_is_not_public,
+                    binary_instruction_test!(
+                        test_public_and_private_is_not_public,
+                        $instruction,
                         concat!($a, ".public"),
                         concat!($b, ".private"),
                         concat!($expected, ".public"),
                         false
                     );
 
-                    add_test!(
-                        test_public_add_private_is_private,
+                    binary_instruction_test!(
+                        test_public_and_private_is_private,
+                        $instruction,
                         concat!($a, ".public"),
                         concat!($b, ".private"),
                         concat!($expected, ".private"),
                         true
                     );
 
-                    add_test!(
-                        test_private_add_public_is_not_public,
+                    binary_instruction_test!(
+                        test_private_and_public_is_not_public,
+                        $instruction,
                         concat!($a, ".private"),
                         concat!($b, ".public"),
                         concat!($expected, ".public"),
                         false
                     );
 
-                    add_test!(
-                        test_private_add_public_is_private,
+                    binary_instruction_test!(
+                        test_private_and_public_is_private,
+                        $instruction,
                         concat!($a, ".private"),
                         concat!($b, ".public"),
                         concat!($expected, ".private"),
                         true
                     );
 
-                    add_test!(
-                        test_private_add_private_is_not_public,
+                    binary_instruction_test!(
+                        test_private_and_private_is_not_public,
+                        $instruction,
                         concat!($a, ".private"),
                         concat!($b, ".private"),
                         concat!($expected, ".public"),
                         false
                     );
 
-                    add_test!(
-                        test_private_add_private_is_private,
+                    binary_instruction_test!(
+                        test_private_and_private_is_private,
+                        $instruction,
                         concat!($a, ".private"),
                         concat!($b, ".private"),
                         concat!($expected, ".private"),
@@ -234,22 +242,22 @@ mod tests {
             };
         }
 
-        test_modes!(field, "1field", "2field", "3field");
-        test_modes!(group, "2group", "0group", "2group");
-        test_modes!(i8, "-1i8", "2i8", "1i8");
-        test_modes!(i16, "-1i16", "2i16", "1i16");
-        test_modes!(i32, "-1i32", "2i32", "1i32");
-        test_modes!(i64, "-1i64", "2i64", "1i64");
-        test_modes!(i128, "-1i128", "2i128", "1i128");
-        test_modes!(u8, "1u8", "2u8", "3u8");
-        test_modes!(u16, "1u16", "2u16", "3u16");
-        test_modes!(u32, "1u32", "2u32", "3u32");
-        test_modes!(u64, "1u64", "2u64", "3u64");
-        test_modes!(u128, "1u128", "2u128", "3u128");
-        test_modes!(scalar, "1scalar", "2scalar", "3scalar");
+        test_modes!(field, Add, "1field", "2field", "3field");
+        test_modes!(group, Add, "2group", "0group", "2group");
+        test_modes!(i8, Add, "-1i8", "2i8", "1i8");
+        test_modes!(i16, Add, "-1i16", "2i16", "1i16");
+        test_modes!(i32, Add, "-1i32", "2i32", "1i32");
+        test_modes!(i64, Add, "-1i64", "2i64", "1i64");
+        test_modes!(i128, Add, "-1i128", "2i128", "1i128");
+        test_modes!(u8, Add, "1u8", "2u8", "3u8");
+        test_modes!(u16, Add, "1u16", "2u16", "3u16");
+        test_modes!(u32, Add, "1u32", "2u32", "3u32");
+        test_modes!(u64, Add, "1u64", "2u64", "3u64");
+        test_modes!(u128, Add, "1u128", "2u128", "3u128");
+        test_modes!(scalar, Add, "1scalar", "2scalar", "3scalar");
     }
 
-    fn check_add_test(first: Value<P>, second: Value<P>, expected: Value<P>) {
+    fn check_binary_instruction_test(first: Value<P>, second: Value<P>, expected: Value<P>) {
         let registers = Registers::<P>::default();
         registers.define(&Register::from_str("r0"));
         registers.define(&Register::from_str("r1"));
@@ -267,14 +275,14 @@ mod tests {
         let one = Value::<P>::from_str("1field.public");
         let two = Value::<P>::from_str("2field.private");
         let three = Value::<P>::from_str("3field.private");
-        check_add_test(one, two, three);
+        check_binary_instruction_test(one, two, three);
     }
 
     #[test]
     fn test_add_group() {
         let two = Value::<P>::from_str("2group.private");
         let zero = Value::<P>::from_str("0group.private");
-        check_add_test(two.clone(), zero, two);
+        check_binary_instruction_test(two.clone(), zero, two);
     }
 
     #[test]
@@ -282,7 +290,7 @@ mod tests {
         let one = Value::<P>::from_str("1scalar.public");
         let two = Value::<P>::from_str("2scalar.private");
         let three = Value::<P>::from_str("3scalar.private");
-        check_add_test(one, two, three);
+        check_binary_instruction_test(one, two, three);
     }
 
     #[test]
@@ -290,7 +298,7 @@ mod tests {
         let negative_one = Value::<P>::from_str("-1i8.public");
         let two = Value::<P>::from_str("2i8.private");
         let one = Value::<P>::from_str("1i8.private");
-        check_add_test(negative_one, two, one);
+        check_binary_instruction_test(negative_one, two, one);
     }
 
     #[test]
@@ -299,7 +307,7 @@ mod tests {
         let max = Value::<P>::from_str(&format!("{}i8.constant", i8::MAX));
         let one = Value::<P>::from_str("1i8.constant");
         let unreachable = Value::<P>::from_str("\"Unreachable\".constant");
-        check_add_test(max, one, unreachable);
+        check_binary_instruction_test(max, one, unreachable);
     }
 
     #[test]
@@ -307,7 +315,7 @@ mod tests {
         let negative_one = Value::<P>::from_str("-1i16.public");
         let two = Value::<P>::from_str("2i16.private");
         let one = Value::<P>::from_str("1i16.private");
-        check_add_test(negative_one, two, one);
+        check_binary_instruction_test(negative_one, two, one);
     }
 
     #[test]
@@ -316,7 +324,7 @@ mod tests {
         let max = Value::<P>::from_str(&format!("{}i16.constant", i16::MAX));
         let one = Value::<P>::from_str("1i16.constant");
         let unreachable = Value::<P>::from_str("\"Unreachable\".constant");
-        check_add_test(max, one, unreachable);
+        check_binary_instruction_test(max, one, unreachable);
     }
 
     #[test]
@@ -324,7 +332,7 @@ mod tests {
         let negative_one = Value::<P>::from_str("-1i32.public");
         let two = Value::<P>::from_str("2i32.private");
         let one = Value::<P>::from_str("1i32.private");
-        check_add_test(negative_one, two, one);
+        check_binary_instruction_test(negative_one, two, one);
     }
 
     #[test]
@@ -333,7 +341,7 @@ mod tests {
         let max = Value::<P>::from_str(&format!("{}i32.constant", i32::MAX));
         let one = Value::<P>::from_str("1i32.constant");
         let unreachable = Value::<P>::from_str("\"Unreachable\".constant");
-        check_add_test(max, one, unreachable);
+        check_binary_instruction_test(max, one, unreachable);
     }
 
     #[test]
@@ -341,7 +349,7 @@ mod tests {
         let negative_one = Value::<P>::from_str("-1i64.public");
         let two = Value::<P>::from_str("2i64.private");
         let one = Value::<P>::from_str("1i64.private");
-        check_add_test(negative_one, two, one);
+        check_binary_instruction_test(negative_one, two, one);
     }
 
     #[test]
@@ -350,7 +358,7 @@ mod tests {
         let max = Value::<P>::from_str(&format!("{}i64.constant", i64::MAX));
         let one = Value::<P>::from_str("1i64.constant");
         let unreachable = Value::<P>::from_str("\"Unreachable\".constant");
-        check_add_test(max, one, unreachable);
+        check_binary_instruction_test(max, one, unreachable);
     }
 
     #[test]
@@ -358,7 +366,7 @@ mod tests {
         let negative_one = Value::<P>::from_str("-1i128.public");
         let two = Value::<P>::from_str("2i128.private");
         let one = Value::<P>::from_str("1i128.private");
-        check_add_test(negative_one, two, one);
+        check_binary_instruction_test(negative_one, two, one);
     }
 
     #[test]
@@ -367,7 +375,7 @@ mod tests {
         let max = Value::<P>::from_str(&format!("{}i128.constant", i128::MAX));
         let one = Value::<P>::from_str("1i128.constant");
         let unreachable = Value::<P>::from_str("\"Unreachable\".constant");
-        check_add_test(max, one, unreachable);
+        check_binary_instruction_test(max, one, unreachable);
     }
 
     #[test]
@@ -375,7 +383,7 @@ mod tests {
         let one = Value::<P>::from_str("1u8.public");
         let two = Value::<P>::from_str("2u8.private");
         let three = Value::<P>::from_str("3u8.private");
-        check_add_test(one, two, three);
+        check_binary_instruction_test(one, two, three);
     }
 
     #[test]
@@ -384,7 +392,7 @@ mod tests {
         let max = Value::<P>::from_str(&format!("{}u8.constant", u8::MAX));
         let one = Value::<P>::from_str("1u8.constant");
         let unreachable = Value::<P>::from_str("\"Unreachable\".constant");
-        check_add_test(max, one, unreachable);
+        check_binary_instruction_test(max, one, unreachable);
     }
 
     #[test]
@@ -392,7 +400,7 @@ mod tests {
         let one = Value::<P>::from_str("1u16.public");
         let two = Value::<P>::from_str("2u16.private");
         let three = Value::<P>::from_str("3u16.private");
-        check_add_test(one, two, three);
+        check_binary_instruction_test(one, two, three);
     }
 
     #[test]
@@ -401,7 +409,7 @@ mod tests {
         let max = Value::<P>::from_str(&format!("{}u16.constant", u16::MAX));
         let one = Value::<P>::from_str("1u16.constant");
         let unreachable = Value::<P>::from_str("\"Unreachable\".constant");
-        check_add_test(max, one, unreachable);
+        check_binary_instruction_test(max, one, unreachable);
     }
 
     #[test]
@@ -409,7 +417,7 @@ mod tests {
         let one = Value::<P>::from_str("1u32.public");
         let two = Value::<P>::from_str("2u32.private");
         let three = Value::<P>::from_str("3u32.private");
-        check_add_test(one, two, three);
+        check_binary_instruction_test(one, two, three);
     }
 
     #[test]
@@ -418,7 +426,7 @@ mod tests {
         let max = Value::<P>::from_str(&format!("{}u32.constant", u32::MAX));
         let one = Value::<P>::from_str("1u32.constant");
         let unreachable = Value::<P>::from_str("\"Unreachable\".constant");
-        check_add_test(max, one, unreachable);
+        check_binary_instruction_test(max, one, unreachable);
     }
 
     #[test]
@@ -426,7 +434,7 @@ mod tests {
         let one = Value::<P>::from_str("1u64.public");
         let two = Value::<P>::from_str("2u64.private");
         let three = Value::<P>::from_str("3u64.private");
-        check_add_test(one, two, three);
+        check_binary_instruction_test(one, two, three);
     }
 
     #[test]
@@ -435,7 +443,7 @@ mod tests {
         let max = Value::<P>::from_str(&format!("{}u64.constant", u64::MAX));
         let one = Value::<P>::from_str("1u64.constant");
         let unreachable = Value::<P>::from_str("\"Unreachable\".constant");
-        check_add_test(max, one, unreachable);
+        check_binary_instruction_test(max, one, unreachable);
     }
 
     #[test]
@@ -443,7 +451,7 @@ mod tests {
         let one = Value::<P>::from_str("1u128.public");
         let two = Value::<P>::from_str("2u128.private");
         let three = Value::<P>::from_str("3u128.private");
-        check_add_test(one, two, three);
+        check_binary_instruction_test(one, two, three);
     }
 
     #[test]
@@ -452,7 +460,7 @@ mod tests {
         let max = Value::<P>::from_str(&format!("{}u128.constant", u128::MAX));
         let one = Value::<P>::from_str("1u128.constant");
         let unreachable = Value::<P>::from_str("\"Unreachable\".constant");
-        check_add_test(max, one, unreachable);
+        check_binary_instruction_test(max, one, unreachable);
     }
 
     #[test]
@@ -465,7 +473,7 @@ mod tests {
         let second = Value::<P>::from_str("4scalar.public");
         let unreachable = Value::<P>::from_str("\"Unreachable\".constant");
 
-        check_add_test(composite, second, unreachable);
+        check_binary_instruction_test(composite, second, unreachable);
     }
 
     #[test]
@@ -475,7 +483,7 @@ mod tests {
         let second = Value::<P>::from_str("4scalar.public");
         let unreachable = Value::<P>::from_str("\"Unreachable\".constant");
 
-        check_add_test(invalid_add_literal, second, unreachable);
+        check_binary_instruction_test(invalid_add_literal, second, unreachable);
     }
 
     #[test]
@@ -486,7 +494,7 @@ mod tests {
         let second = Value::<P>::from_str("4scalar.public");
         let unreachable = Value::<P>::from_str("\"Unreachable\".constant");
 
-        check_add_test(invalid_add_literal, second, unreachable);
+        check_binary_instruction_test(invalid_add_literal, second, unreachable);
     }
 
     #[test]
@@ -496,6 +504,6 @@ mod tests {
         let second = Value::<P>::from_str("4scalar.public");
         let unreachable = Value::<P>::from_str("\"Unreachable\".constant");
 
-        check_add_test(invalid_add_literal, second, unreachable);
+        check_binary_instruction_test(invalid_add_literal, second, unreachable);
     }
 }
