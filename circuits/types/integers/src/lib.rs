@@ -491,7 +491,7 @@ mod tests {
 }
 
 #[cfg(test)]
-pub mod test_utilities {
+mod test_utilities {
     use super::*;
     use core::{
         fmt::{Debug, Display},
