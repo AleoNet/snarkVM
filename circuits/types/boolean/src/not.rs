@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use snarkvm_circuits_environment::Count;
 use std::rc::Rc;
 
 impl<E: Environment> Not for Boolean<E> {
@@ -44,6 +45,18 @@ impl<E: Environment> Not for &Boolean<E> {
                 true => Boolean(&self.0 - Variable::Public(0, Rc::new(E::BaseField::one()))),
                 false => Boolean(&self.0 + Variable::Public(0, Rc::new(E::BaseField::one()))),
             }
+        }
+    }
+}
+
+impl<E: Environment> MetadataForOp<dyn Not<Output = Boolean<E>>> for Boolean<E> {
+    type Input = Mode;
+    type Metadata = Count;
+
+    fn get_metadata(input: &Self::Input) -> Self::Metadata {
+        match input.is_constant() {
+            true => Count::exact(0, 0, 0, 0),
+            false => Count::exact(0, 0, 1, 1),
         }
     }
 }

@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use snarkvm_circuits_environment::Count;
 
 impl<E: Environment, I: IntegerType> Add<Integer<E, I>> for Integer<E, I> {
     type Output = Self;
@@ -105,6 +106,26 @@ impl<E: Environment, I: IntegerType> AddChecked<Self> for Integer<E, I> {
 
             // Return the sum of `self` and `other`.
             sum
+        }
+    }
+}
+
+impl<E: Environment, I: IntegerType> MetadataForOp<dyn Add<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
+    type Input = (Mode, Mode);
+    type Metadata = Count;
+
+    fn get_metadata(input: &Self::Input) -> Self::Metadata {
+        match I::is_signed() {
+            false => match (input.0, input.1) {
+                (Mode::Constant, Mode::Constant) => Count::exact(I::BITS, 0, 0, 0),
+                (_, _) => Count::exact(0, 0, I::BITS + 1, I::BITS + 3),
+            },
+            true => match (input.0, input.1) {
+                (Mode::Constant, Mode::Constant) => Count::exact(I::BITS, 0, 0, 0),
+                (Mode::Constant, _) => Count::exact(0, 0, I::BITS + 2, I::BITS + 4),
+                (_, Mode::Constant) => Count::exact(0, 0, I::BITS + 3, I::BITS + 5),
+                (_, _) => Count::exact(0, 0, I::BITS + 4, I::BITS + 6),
+            },
         }
     }
 }

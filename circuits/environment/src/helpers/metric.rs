@@ -205,3 +205,5 @@ impl<V: Ord + Add<Output = V> + Copy> Metric<V> {
         }
     }
 }
+
+// TODO (@pranav) Test out metrics implementation.

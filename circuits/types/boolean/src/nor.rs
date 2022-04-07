@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use snarkvm_circuits_environment::Count;
 
 impl<E: Environment> Nor<Self> for Boolean<E> {
     type Output = Boolean<E>;
@@ -53,6 +54,18 @@ impl<E: Environment> Nor<Self> for Boolean<E> {
             E::enforce(|| (E::one() - &self.0, E::one() - &other.0, &output));
 
             output
+        }
+    }
+}
+
+impl<E: Environment> MetadataForOp<dyn Nor<Boolean<E>, Output = Boolean<E>>> for Boolean<E> {
+    type Input = (Mode, Mode);
+    type Metadata = Count;
+
+    fn get_metadata(input: &Self::Input) -> Self::Metadata {
+        match input.0.is_constant() || input.1.is_constant() {
+            true => Count::exact(0, 0, 0, 0),
+            false => Count::exact(0, 0, 1, 1),
         }
     }
 }

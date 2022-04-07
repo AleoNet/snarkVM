@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use snarkvm_circuits_environment::Count;
 
 impl<E: Environment, I: IntegerType> Not for Integer<E, I> {
     type Output = Integer<E, I>;
@@ -30,6 +31,15 @@ impl<E: Environment, I: IntegerType> Not for &Integer<E, I> {
     fn not(self) -> Self::Output {
         // Flip each bit in the representation of the `self` integer.
         Integer { bits_le: self.bits_le.iter().map(|b| !b).collect(), phantom: Default::default() }
+    }
+}
+
+impl<E: Environment, I: IntegerType> MetadataForOp<dyn Not<Output = Integer<E, I>>> for Integer<E, I> {
+    type Input = Mode;
+    type Metadata = Count;
+
+    fn get_metadata(_input: &Self::Input) -> Self::Metadata {
+        Count::exact(0, 0, 0, 0)
     }
 }
 

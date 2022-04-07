@@ -16,21 +16,21 @@
 
 use crate::BooleanTrait;
 
-/// Trait for uniformly invoking operations.
-pub trait Operation {
-    type Input;
-    type Output;
-
-    fn invoke(input: Self::Input) -> Self::Output;
-}
+// /// Trait for uniformly invoking operations.
+// pub trait Operation<Op: ?Sized> {
+//     type Input;
+//     type Output;
+//
+//     fn invoke(input: Self::Input) -> Self::Output;
+// }
 
 /// Trait for metadata on operations.
-pub trait MetadataForOp<Op: Operation + ?Sized> {
+pub trait MetadataForOp<Op: ?Sized> {
     type Input;
     type Metadata;
 
     /// Returns metadata for the given operation.
-    fn get_metric(input: &Self::Input) -> Self::Metadata;
+    fn get_metadata(input: &Self::Input) -> Self::Metadata;
 }
 
 /// Trait for equality comparisons.

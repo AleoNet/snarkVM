@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use snarkvm_circuits_environment::Count;
 
 impl<E: Environment> Add<Field<E>> for Field<E> {
     type Output = Field<E>;
@@ -60,6 +61,15 @@ impl<E: Environment> AddAssign<&Field<E>> for Field<E> {
     fn add_assign(&mut self, other: &Field<E>) {
         self.linear_combination += &other.linear_combination;
         self.bits_le = Default::default();
+    }
+}
+
+impl<E: Environment> MetadataForOp<dyn Add<Field<E>, Output = Field<E>>> for Field<E> {
+    type Input = (Mode, Mode);
+    type Metadata = Count;
+
+    fn get_metadata(_input: &Self::Input) -> Self::Metadata {
+        Count::exact(0, 0, 0, 0)
     }
 }
 

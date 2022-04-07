@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use snarkvm_circuits_environment::Count;
 
 impl<E: Environment> Add<Self> for Group<E> {
     type Output = Self;
@@ -95,6 +96,19 @@ impl<E: Environment> AddAssign<Self> for Group<E> {
 impl<E: Environment> AddAssign<&Self> for Group<E> {
     fn add_assign(&mut self, other: &Self) {
         *self = self.clone() + other;
+    }
+}
+
+impl<E: Environment> MetadataForOp<dyn Add<Group<E>, Output = Group<E>>> for Group<E> {
+    type Input = (Mode, Mode);
+    type Metadata = Count;
+
+    fn get_metadata(input: &Self::Input) -> Self::Metadata {
+        match (input.0, input.1) {
+            (Mode::Constant, Mode::Constant) => Count::exact(4, 0, 0, 0),
+            (Mode::Constant, _) | (_, Mode::Constant) => Count::exact(2, 0, 3, 3),
+            (_, _) => Count::exact(2, 0, 6, 6),
+        }
     }
 }
 

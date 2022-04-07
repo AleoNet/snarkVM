@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use snarkvm_circuits_environment::Count;
 
 impl<E: Environment> Inv for Field<E> {
     type Output = Self;
@@ -37,6 +38,18 @@ impl<E: Environment> Inv for &Field<E> {
         E::enforce(|| (self, &inverse, E::one()));
 
         inverse
+    }
+}
+
+impl<E: Environment> MetadataForOp<dyn Inv<Output = Field<E>>> for Field<E> {
+    type Input = Mode;
+    type Metadata = Count;
+
+    fn get_metadata(input: &Self::Input) -> Self::Metadata {
+        match input.is_constant() {
+            true => Count::exact(1, 0, 0, 0),
+            false => Count::exact(0, 0, 1, 1),
+        }
     }
 }
 
