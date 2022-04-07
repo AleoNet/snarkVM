@@ -103,6 +103,11 @@ impl<N: Network> Ledger<N> {
 
     /// Adds the given orphan block, if it is well-formed and does not already exist.
     pub fn add_orphan_block(&mut self, block: &Block<N>) -> Result<()> {
+        // Verify that the block is well formed.
+        if !block.is_valid() {
+            return Err(anyhow!("Orphan block is invalid."));
+        }
+
         // Ensure the block does not exist in canon.
         if self.canon_blocks.contains_block_hash(&block.hash()) {
             return Err(anyhow!("Orphan block already exists in canon chain"));
