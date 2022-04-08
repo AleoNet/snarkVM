@@ -71,10 +71,10 @@ fn dpc_execute_circuits_test<N: Network>(
     // Compute the value balance.
     let mut value_balance = Amount::ZERO;
     for record in request.records().iter() {
-        value_balance = value_balance + record.value();
+        value_balance += record.value();
     }
     for record in response.records().iter() {
-        value_balance = value_balance - record.value();
+        value_balance -= record.value();
     }
 
     // Compute the local transitions root.

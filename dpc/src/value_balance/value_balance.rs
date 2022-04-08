@@ -286,7 +286,7 @@ pub(crate) mod tests {
         let mut output_value_commitments = vec![];
 
         for input_amount in input_amounts {
-            value_balance = value_balance + input_amount;
+            value_balance += input_amount;
 
             let value_commit_randomness = UniformRand::rand(rng);
             let value_commitment = N::value_commitment_scheme()
@@ -298,7 +298,7 @@ pub(crate) mod tests {
         }
 
         for output_amount in output_amounts {
-            value_balance = value_balance - output_amount;
+            value_balance -= output_amount;
 
             let value_commit_randomness = UniformRand::rand(rng);
             let value_commitment = N::value_commitment_scheme()

@@ -165,10 +165,10 @@ impl<N: Network> ResponseBuilder<N> {
         // Compute the value balance.
         let mut value_balance = Amount::ZERO;
         for record in input_records.iter().take(N::NUM_INPUTS as usize) {
-            value_balance = value_balance + record.value();
+            value_balance += record.value();
         }
         for record in output_records.iter().take(N::NUM_OUTPUTS as usize) {
-            value_balance = value_balance - record.value();
+            value_balance -= record.value();
         }
 
         // Ensure the value balance matches the fee from the request.
