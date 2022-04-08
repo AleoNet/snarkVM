@@ -20,7 +20,7 @@ use crate::{
     Program,
     Value,
 };
-use snarkvm_circuits::{Literal, Parser, ParserResult};
+use snarkvm_circuits::{Literal, Parser, ParserResult, SubChecked};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
@@ -70,6 +70,16 @@ impl<P: Program> Operation<P> for Sub<P> {
         let result = match (first, second) {
             (Literal::Field(a), Literal::Field(b)) => Literal::Field(a - b),
             (Literal::Group(a), Literal::Group(b)) => Literal::Group(a - b),
+            (Literal::I8(a), Literal::I8(b)) => Literal::I8(a.sub_checked(&b)),
+            (Literal::I16(a), Literal::I16(b)) => Literal::I16(a.sub_checked(&b)),
+            (Literal::I32(a), Literal::I32(b)) => Literal::I32(a.sub_checked(&b)),
+            (Literal::I64(a), Literal::I64(b)) => Literal::I64(a.sub_checked(&b)),
+            (Literal::I128(a), Literal::I128(b)) => Literal::I128(a.sub_checked(&b)),
+            (Literal::U8(a), Literal::U8(b)) => Literal::U8(a.sub_checked(&b)),
+            (Literal::U16(a), Literal::U16(b)) => Literal::U16(a.sub_checked(&b)),
+            (Literal::U32(a), Literal::U32(b)) => Literal::U32(a.sub_checked(&b)),
+            (Literal::U64(a), Literal::U64(b)) => Literal::U64(a.sub_checked(&b)),
+            (Literal::U128(a), Literal::U128(b)) => Literal::U128(a.sub_checked(&b)),
             _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
         };
 
@@ -119,36 +129,18 @@ impl<P: Program> Into<Instruction<P>> for Sub<P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Process, Register};
+    use crate::test_modes;
 
-    type P = Process;
-
-    fn check_sub(first: Value<P>, second: Value<P>, expected: Value<P>) {
-        let registers = Registers::<P>::default();
-        registers.define(&Register::from_str("r0"));
-        registers.define(&Register::from_str("r1"));
-        registers.define(&Register::from_str("r2"));
-        registers.assign(&Register::from_str("r0"), first);
-        registers.assign(&Register::from_str("r1"), second);
-
-        Sub::from_str("r0 r1 into r2").evaluate(&registers);
-        let candidate = registers.load(&Register::from_str("r2"));
-        assert_eq!(expected, candidate);
-    }
-
-    #[test]
-    fn test_sub_field() {
-        let first = Value::<P>::from_str("3field.public");
-        let second = Value::<P>::from_str("2field.private");
-        let expected = Value::<P>::from_str("1field.private");
-        check_sub(first, second, expected);
-    }
-
-    #[test]
-    fn test_sub_group() {
-        let first = Value::<P>::from_str("2group.public");
-        let second = Value::<P>::from_str("0group.private");
-        let expected = Value::<P>::from_str("2group.private");
-        check_sub(first, second, expected);
-    }
+    test_modes!(field, Sub, "3field", "2field", "1field");
+    test_modes!(group, Sub, "2group", "0group", "2group");
+    test_modes!(i8, Sub, "1i8", "2i8", "-1i8");
+    test_modes!(i16, Sub, "1i16", "2i16", "-1i16");
+    test_modes!(i32, Sub, "1i32", "2i32", "-1i32");
+    test_modes!(i64, Sub, "1i64", "2i64", "-1i64");
+    test_modes!(i128, Sub, "1i128", "2i128", "-1i128");
+    test_modes!(u8, Sub, "3u8", "2u8", "1u8");
+    test_modes!(u16, Sub, "3u16", "2u16", "1u16");
+    test_modes!(u32, Sub, "3u32", "2u32", "1u32");
+    test_modes!(u64, Sub, "3u64", "2u64", "1u64");
+    test_modes!(u128, Sub, "3u128", "2u128", "1u128");
 }
