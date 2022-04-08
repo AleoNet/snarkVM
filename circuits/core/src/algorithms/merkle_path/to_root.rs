@@ -22,7 +22,7 @@ impl<E: Environment, H: Hash> MerklePath<E, H>
 where
     <<H as Hash>::Output as Ternary>::Boolean: From<Boolean<E>>,
     <H as Hash>::Output: From<<<H as Hash>::Output as Ternary>::Output>,
-    Vec<<H as Hash>::Input>: From<<H as Hash>::Output>,
+    Vec<<H as Hash>::Input>: From<Vec<<<H as Hash>::Output as ToBits>::Boolean>>,
 {
     pub fn to_root(&self, crh: &H, leaf: &[H::Input]) -> H::Output {
         let mut curr_hash = crh.hash(leaf);
@@ -39,8 +39,8 @@ where
             let left_hash: H::Output = H::Output::ternary(&bit.clone().into(), sibling, &curr_hash).into();
             let right_hash: H::Output = H::Output::ternary(&bit.clone().into(), &curr_hash, sibling).into();
 
-            let mut left_input: Vec<H::Input> = left_hash.into();
-            let mut right_input: Vec<H::Input> = right_hash.into();
+            let mut left_input: Vec<H::Input> = left_hash.to_bits_le().into();
+            let mut right_input: Vec<H::Input> = right_hash.to_bits_le().into();
 
             // Pad the inputs to the closest factor of 8 (byte representation). This is required due to the
             // native merkle tree hashing implementation.
