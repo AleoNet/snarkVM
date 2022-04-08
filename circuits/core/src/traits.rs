@@ -16,12 +16,10 @@
 
 use snarkvm_circuits_environment::{Eject, FromBits, Inject, Ternary, ToBits};
 
-use core::fmt::Debug;
-
 /// A trait for a hash function.
 pub trait Hash {
-    type Input: Inject + Eject + Ternary + ToBits + FromBits + Clone + Debug;
-    type Output: Inject + Eject + Ternary + ToBits + FromBits + Clone + Debug;
+    type Input: Inject + Eject + Ternary + ToBits + FromBits + Clone;
+    type Output: Inject + Eject + Ternary + ToBits + FromBits + Clone;
 
     /// Returns the hash of the given input.
     fn hash(&self, input: &[Self::Input]) -> Self::Output;
