@@ -147,70 +147,70 @@ mod tests {
     test_modes!(scalar, Add, "1scalar", "2scalar", "3scalar");
 
     test_instruction_halts!(
-        i8_overflow,
+        i8_overflow_halts,
         Add,
         "Integer overflow on addition of two constants",
         &format!("{}i8.constant", i8::MAX),
         "1i8.constant"
     );
     test_instruction_halts!(
-        i16_overflow,
+        i16_overflow_halts,
         Add,
         "Integer overflow on addition of two constants",
         &format!("{}i16.constant", i16::MAX),
         "1i16.constant"
     );
     test_instruction_halts!(
-        i32_overflow,
+        i32_overflow_halts,
         Add,
         "Integer overflow on addition of two constants",
         &format!("{}i32.constant", i32::MAX),
         "1i32.constant"
     );
     test_instruction_halts!(
-        i64_overflow,
+        i64_overflow_halts,
         Add,
         "Integer overflow on addition of two constants",
         &format!("{}i64.constant", i64::MAX),
         "1i64.constant"
     );
     test_instruction_halts!(
-        i128_overflow,
+        i128_overflow_halts,
         Add,
         "Integer overflow on addition of two constants",
         &format!("{}i128.constant", i128::MAX),
         "1i128.constant"
     );
     test_instruction_halts!(
-        u8_overflow,
+        u8_overflow_halts,
         Add,
         "Integer overflow on addition of two constants",
         &format!("{}u8.constant", u8::MAX),
         "1u8.constant"
     );
     test_instruction_halts!(
-        u16_overflow,
+        u16_overflow_halts,
         Add,
         "Integer overflow on addition of two constants",
         &format!("{}u16.constant", u16::MAX),
         "1u16.constant"
     );
     test_instruction_halts!(
-        u32_overflow,
+        u32_overflow_halts,
         Add,
         "Integer overflow on addition of two constants",
         &format!("{}u32.constant", u32::MAX),
         "1u32.constant"
     );
     test_instruction_halts!(
-        u64_overflow,
+        u64_overflow_halts,
         Add,
         "Integer overflow on addition of two constants",
         &format!("{}u64.constant", u64::MAX),
         "1u64.constant"
     );
     test_instruction_halts!(
-        u128_overflow,
+        u128_overflow_halts,
         Add,
         "Integer overflow on addition of two constants",
         &format!("{}u128.constant", u128::MAX),
@@ -218,18 +218,18 @@ mod tests {
     );
 
     test_instruction_halts!(
-        address,
+        address_halts,
         Add,
         "Invalid 'add' instruction",
         "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.constant",
         "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.constant"
     );
-    test_instruction_halts!(boolean, Add, "Invalid 'add' instruction", "true.constant", "true.constant");
-    test_instruction_halts!(string, Add, "Invalid 'add' instruction", "\"hello\".constant", "\"world\".constant");
+    test_instruction_halts!(boolean_halts, Add, "Invalid 'add' instruction", "true.constant", "true.constant");
+    test_instruction_halts!(string_halts, Add, "Invalid 'add' instruction", "\"hello\".constant", "\"world\".constant");
 
     #[test]
     #[should_panic(expected = "message is not a literal")]
-    fn test_halts_on_composite() {
+    fn test_composite_halts() {
         let first = Value::<P>::Composite(Identifier::from_str("message"), vec![
             Literal::from_str("2group.public"),
             Literal::from_str("10field.private"),
