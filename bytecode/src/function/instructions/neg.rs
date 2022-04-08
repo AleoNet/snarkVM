@@ -67,7 +67,10 @@ impl<P: Program> Operation<P> for Neg<P> {
             Literal::Field(a) => Literal::Field(-a),
             Literal::Group(a) => Literal::Group(-a),
             Literal::I8(a) => Literal::I8(-a),
-            Literal::U8(a) => Literal::U8(-a),
+            Literal::I16(a) => Literal::I16(-a),
+            Literal::I32(a) => Literal::I32(-a),
+            Literal::I64(a) => Literal::I64(-a),
+            Literal::I128(a) => Literal::I128(-a),
             _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
         };
 
@@ -115,39 +118,26 @@ impl<P: Program> Into<Instruction<P>> for Neg<P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Process, Register};
-
-    type P = Process;
+    use crate::unary_instruction_test;
 
     mod modes {
         use super::Neg;
         use crate::test_modes;
 
         test_modes!(field, Neg, "1field", "-1field");
+        test_modes!(group, Neg, "2group", "-2group");
+        test_modes!(i8, Neg, "1i8", "-1i8");
+        test_modes!(i16, Neg, "1i16", "-1i16");
+        test_modes!(i32, Neg, "1i32", "-1i32");
+        test_modes!(i64, Neg, "1i64", "-1i64");
+        test_modes!(i128, Neg, "1i128", "-1i128");
     }
 
-    fn check_neg(first: Value<P>, expected: Value<P>) {
-        let registers = Registers::<P>::default();
-        registers.define(&Register::from_str("r0"));
-        registers.define(&Register::from_str("r1"));
-        registers.assign(&Register::from_str("r0"), first);
-
-        Neg::from_str("r0 into r1").evaluate(&registers);
-        let candidate = registers.load(&Register::from_str("r1"));
-        assert_eq!(expected, candidate);
-    }
-
-    #[test]
-    fn test_neg_field() {
-        let first = Value::<P>::from_str("1field.public");
-        let expected = Value::<P>::from_str("-1field.private");
-        check_neg(first, expected);
-    }
-
-    #[test]
-    fn test_neg_group() {
-        let first = Value::<P>::from_str("2group.public");
-        let expected = Value::<P>::from_str("-2group.private");
-        check_neg(first, expected);
-    }
+    unary_instruction_test!(field, Neg, "1field.private", "-1field.private");
+    unary_instruction_test!(group, Neg, "2group.private", "-2group.private");
+    unary_instruction_test!(i8, Neg, "1i8.private", "-1i8.private");
+    unary_instruction_test!(i16, Neg, "1i16.private", "-1i16.private");
+    unary_instruction_test!(i32, Neg, "1i32.private", "-1i32.private");
+    unary_instruction_test!(i64, Neg, "1i64.private", "-1i64.private");
+    unary_instruction_test!(i128, Neg, "1i128.private", "-1i128.private");
 }
