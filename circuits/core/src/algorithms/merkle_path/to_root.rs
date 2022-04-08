@@ -21,7 +21,6 @@ use crate::traits::Hash;
 impl<E: Environment, H: Hash> MerklePath<E, H>
 where
     <<H as Hash>::Output as Ternary>::Boolean: From<Boolean<E>>,
-    <H as Hash>::Output: From<<<H as Hash>::Output as Ternary>::Output>,
     Vec<<H as Hash>::Input>: From<Vec<<<H as Hash>::Output as ToBits>::Boolean>>,
 {
     pub fn to_root(&self, crh: &H, leaf: &[H::Input]) -> H::Output {

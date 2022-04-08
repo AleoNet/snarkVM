@@ -19,7 +19,7 @@ use snarkvm_circuits_environment::{Eject, Inject, Ternary, ToBits};
 /// A trait for a hash function.
 pub trait Hash {
     type Input: Inject + Eject + Clone;
-    type Output: Inject + Eject + Ternary + ToBits + Clone;
+    type Output: Inject + Eject + Ternary<Output = Self::Output> + ToBits + Clone;
 
     /// Returns the hash of the given input.
     fn hash(&self, input: &[Self::Input]) -> Self::Output;
