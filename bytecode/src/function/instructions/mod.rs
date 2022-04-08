@@ -172,6 +172,36 @@ impl<P: Program> ToBytes for Instruction<P> {
 #[cfg(test)]
 mod tests {
     #[macro_export]
+    macro_rules! test_instruction_halts {
+        ($test_name:ident, $instruction: ident, $reason: expr, $a: expr, $b: expr) => {
+            #[test]
+            #[should_panic(expected = $reason)]
+            fn $test_name() {
+                use $crate::{
+                    function::{Operation, Registers},
+                    Parser,
+                    Process,
+                    Register,
+                    Value,
+                };
+                type P = Process;
+
+                let a = Value::<P>::from_str($a);
+                let b = Value::<P>::from_str($b);
+
+                let registers = Registers::<P>::default();
+                registers.define(&Register::from_str("r0"));
+                registers.define(&Register::from_str("r1"));
+                registers.define(&Register::from_str("r2"));
+                registers.assign(&Register::from_str("r0"), a);
+                registers.assign(&Register::from_str("r1"), b);
+
+                $instruction::from_str("r0 r1 into r2").evaluate(&registers);
+            }
+        };
+    }
+
+    #[macro_export]
     macro_rules! unary_instruction_test {
         ($test_name: ident, $instruction: ident, $input: expr, $expected: expr) => {
             #[test]
