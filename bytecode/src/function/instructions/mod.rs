@@ -17,6 +17,9 @@
 pub(super) mod add;
 pub(super) use add::*;
 
+pub(super) mod mul;
+pub(super) use mul::*;
+
 pub(super) mod neg;
 pub(super) use neg::*;
 
@@ -58,6 +61,8 @@ pub trait Operation<P: Program>: Parser + Into<Instruction<P>> {
 pub enum Instruction<P: Program> {
     /// Adds `first` with `second`, storing the outcome in `destination`.
     Add(Add<P>),
+    /// Multiplies `first` with `second`, storing the outcome in `destination`.
+    Mul(Mul<P>),
     /// Negates `first`, storing the outcome in `destination`.
     Neg(Neg<P>),
     /// Subtracts `first` from `second`, storing the outcome in `destination`.
@@ -70,6 +75,7 @@ impl<P: Program> Instruction<P> {
     pub(crate) fn opcode(&self) -> &'static str {
         match self {
             Self::Add(..) => Add::<P>::opcode(),
+            Self::Mul(..) => Mul::<P>::opcode(),
             Self::Neg(..) => Neg::<P>::opcode(),
             Self::Sub(..) => Sub::<P>::opcode(),
         }
@@ -80,6 +86,7 @@ impl<P: Program> Instruction<P> {
     pub(crate) fn operands(&self) -> Vec<Operand<P>> {
         match self {
             Self::Add(add) => add.operands(),
+            Self::Mul(mul) => mul.operands(),
             Self::Neg(neg) => neg.operands(),
             Self::Sub(sub) => sub.operands(),
         }
@@ -90,6 +97,7 @@ impl<P: Program> Instruction<P> {
     pub(crate) fn destination(&self) -> &Register<P> {
         match self {
             Self::Add(add) => add.destination(),
+            Self::Mul(mul) => mul.destination(),
             Self::Neg(neg) => neg.destination(),
             Self::Sub(sub) => sub.destination(),
         }
@@ -100,6 +108,7 @@ impl<P: Program> Instruction<P> {
     pub(crate) fn evaluate(&self, registers: &Registers<P>) {
         match self {
             Self::Add(instruction) => instruction.evaluate(registers),
+            Self::Mul(instruction) => instruction.evaluate(registers),
             Self::Neg(instruction) => instruction.evaluate(registers),
             Self::Sub(instruction) => instruction.evaluate(registers),
         }
@@ -132,6 +141,7 @@ impl<P: Program> fmt::Display for Instruction<P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::Add(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::Mul(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Neg(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Sub(instruction) => write!(f, "{} {};", self.opcode(), instruction),
         }
@@ -143,9 +153,10 @@ impl<P: Program> FromBytes for Instruction<P> {
         let code = u16::read_le(&mut reader)?;
         match code {
             0 => Ok(Self::Add(Add::read_le(&mut reader)?)),
-            1 => Ok(Self::Neg(Neg::read_le(&mut reader)?)),
-            2 => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
-            3.. => Err(error(format!("Failed to deserialize an instruction of code {code}"))),
+            1 => Ok(Self::Mul(Mul::read_le(&mut reader)?)),
+            2 => Ok(Self::Neg(Neg::read_le(&mut reader)?)),
+            3 => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
+            4.. => Err(error(format!("Failed to deserialize an instruction of code {code}"))),
         }
     }
 }
@@ -155,6 +166,10 @@ impl<P: Program> ToBytes for Instruction<P> {
         match self {
             Self::Add(instruction) => {
                 u16::write_le(&0u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::Mul(instruction) => {
+                u16::write_le(&1u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
             Self::Neg(instruction) => {
