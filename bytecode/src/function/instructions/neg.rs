@@ -118,26 +118,13 @@ impl<P: Program> Into<Instruction<P>> for Neg<P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::unary_instruction_test;
+    use crate::test_modes;
 
-    mod modes {
-        use super::Neg;
-        use crate::test_modes;
-
-        test_modes!(field, Neg, "1field", "-1field");
-        test_modes!(group, Neg, "2group", "-2group");
-        test_modes!(i8, Neg, "1i8", "-1i8");
-        test_modes!(i16, Neg, "1i16", "-1i16");
-        test_modes!(i32, Neg, "1i32", "-1i32");
-        test_modes!(i64, Neg, "1i64", "-1i64");
-        test_modes!(i128, Neg, "1i128", "-1i128");
-    }
-
-    unary_instruction_test!(field, Neg, "1field.private", "-1field.private");
-    unary_instruction_test!(group, Neg, "2group.private", "-2group.private");
-    unary_instruction_test!(i8, Neg, "1i8.private", "-1i8.private");
-    unary_instruction_test!(i16, Neg, "1i16.private", "-1i16.private");
-    unary_instruction_test!(i32, Neg, "1i32.private", "-1i32.private");
-    unary_instruction_test!(i64, Neg, "1i64.private", "-1i64.private");
-    unary_instruction_test!(i128, Neg, "1i128.private", "-1i128.private");
+    test_modes!(field, Neg, "1field", "-1field");
+    test_modes!(group, Neg, "2group", "-2group");
+    test_modes!(i8, Neg, "1i8", "-1i8");
+    test_modes!(i16, Neg, "1i16", "-1i16");
+    test_modes!(i32, Neg, "1i32", "-1i32");
+    test_modes!(i64, Neg, "1i64", "-1i64");
+    test_modes!(i128, Neg, "1i128", "-1i128");
 }
