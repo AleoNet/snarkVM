@@ -18,12 +18,12 @@ use super::*;
 
 use crate::traits::Hash;
 
-impl<E: Environment, H: Hash> MerklePath<E, H>
-where
-    <<H as Hash>::Output as Ternary>::Boolean: From<Boolean<E>>,
-    Vec<<H as Hash>::Input>: From<Vec<<<H as Hash>::Output as ToBits>::Boolean>>,
-{
-    pub fn to_root(&self, crh: &H, leaf: &[H::Input]) -> H::Output {
+impl<E: Environment, H: Hash> MerklePath<E, H> {
+    pub fn to_root(&self, crh: &H, leaf: &[H::Input]) -> H::Output
+    where
+        <<H as Hash>::Output as Ternary>::Boolean: From<Boolean<E>>,
+        Vec<<H as Hash>::Input>: From<Vec<<<H as Hash>::Output as ToBits>::Boolean>>,
+    {
         let mut curr_hash = crh.hash(leaf);
 
         // Padding used to match the native merkle tre.
