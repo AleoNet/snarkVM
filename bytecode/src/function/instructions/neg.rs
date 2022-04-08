@@ -119,6 +119,13 @@ mod tests {
 
     type P = Process;
 
+    mod modes {
+        use super::Neg;
+        use crate::test_modes;
+
+        test_modes!(field, Neg, "1field", "-1field");
+    }
+
     fn check_neg(first: Value<P>, expected: Value<P>) {
         let registers = Registers::<P>::default();
         registers.define(&Register::from_str("r0"));

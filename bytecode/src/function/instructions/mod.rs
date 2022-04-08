@@ -172,8 +172,37 @@ impl<P: Program> ToBytes for Instruction<P> {
 #[cfg(test)]
 mod tests {
     #[macro_export]
+    macro_rules! unary_instruction_test {
+        ($test_name: ident, $instruction: ident, $input: expr, $expected: expr) => {
+            #[test]
+            fn $test_name() {
+                use $crate::{
+                    function::{Operation, Registers},
+                    Parser,
+                    Process,
+                    Register,
+                    Value,
+                };
+                type P = Process;
+
+                let input = Value::<P>::from_str($input);
+                let expected = Value::<P>::from_str($expected);
+
+                let registers = Registers::<P>::default();
+                registers.define(&Register::from_str("r0"));
+                registers.define(&Register::from_str("r1"));
+                registers.assign(&Register::from_str("r0"), input);
+
+                $instruction::from_str("r0 into r1").evaluate(&registers);
+                let candidate = registers.load(&Register::from_str("r1"));
+                assert_eq!(expected, candidate);
+            }
+        };
+    }
+
+    #[macro_export]
     macro_rules! binary_instruction_test {
-        ($test_name: ident, $instruction: ident, $a: expr, $b: expr, $c: expr, $assert_equal: expr) => {
+        ($test_name: ident, $instruction: ident, $a: expr, $b: expr, $c: expr) => {
             #[test]
             fn $test_name() {
                 use $crate::{
@@ -198,12 +227,7 @@ mod tests {
 
                 $instruction::from_str("r0 r1 into r2").evaluate(&registers);
                 let candidate = registers.load(&Register::from_str("r2"));
-                if $assert_equal {
-                    assert_eq!(expected, candidate);
-                } else {
-                    // The equality check should fail due to mismatched Modes.
-                    assert_ne!(expected, candidate);
-                }
+                assert_eq!(expected, candidate);
             }
         };
     }
@@ -216,75 +240,103 @@ mod tests {
                 use $crate::binary_instruction_test;
 
                 binary_instruction_test!(
-                    test_public_and_public_is_not_public,
+                    test_public_and_public_yields_private,
                     $instruction,
                     concat!($a, ".public"),
                     concat!($b, ".public"),
-                    concat!($expected, ".public"),
-                    false
+                    concat!($expected, ".private")
                 );
 
                 binary_instruction_test!(
-                    test_public_and_public_is_private,
+                    test_public_and_constant_yields_private,
                     $instruction,
                     concat!($a, ".public"),
-                    concat!($b, ".public"),
-                    concat!($expected, ".private"),
-                    true
+                    concat!($b, ".constant"),
+                    concat!($expected, ".private")
                 );
 
                 binary_instruction_test!(
-                    test_public_and_private_is_not_public,
+                    test_public_and_private_yields_private,
                     $instruction,
                     concat!($a, ".public"),
                     concat!($b, ".private"),
-                    concat!($expected, ".public"),
-                    false
+                    concat!($expected, ".private")
                 );
 
                 binary_instruction_test!(
-                    test_public_and_private_is_private,
+                    test_private_and_constant_yields_private,
                     $instruction,
-                    concat!($a, ".public"),
-                    concat!($b, ".private"),
-                    concat!($expected, ".private"),
-                    true
+                    concat!($a, ".private"),
+                    concat!($b, ".constant"),
+                    concat!($expected, ".private")
                 );
 
                 binary_instruction_test!(
-                    test_private_and_public_is_not_public,
+                    test_private_and_public_yields_private,
                     $instruction,
                     concat!($a, ".private"),
                     concat!($b, ".public"),
-                    concat!($expected, ".public"),
-                    false
+                    concat!($expected, ".private")
                 );
 
                 binary_instruction_test!(
-                    test_private_and_public_is_private,
+                    test_private_and_private_yields_private,
                     $instruction,
                     concat!($a, ".private"),
+                    concat!($b, ".private"),
+                    concat!($expected, ".private")
+                );
+
+                binary_instruction_test!(
+                    test_constant_and_private_yields_private,
+                    $instruction,
+                    concat!($a, ".constant"),
+                    concat!($b, ".private"),
+                    concat!($expected, ".private")
+                );
+
+                binary_instruction_test!(
+                    test_constant_and_public_yields_private,
+                    $instruction,
+                    concat!($a, ".constant"),
                     concat!($b, ".public"),
-                    concat!($expected, ".private"),
-                    true
+                    concat!($expected, ".private")
                 );
 
                 binary_instruction_test!(
-                    test_private_and_private_is_not_public,
+                    test_constant_and_constant_yields_constant,
                     $instruction,
-                    concat!($a, ".private"),
-                    concat!($b, ".private"),
-                    concat!($expected, ".public"),
-                    false
+                    concat!($a, ".constant"),
+                    concat!($b, ".constant"),
+                    concat!($expected, ".constant")
+                );
+            }
+        };
+
+        ($type: ident, $instruction: ident, $input: expr, $expected: expr) => {
+            mod $type {
+                use super::*;
+                use $crate::unary_instruction_test;
+
+                unary_instruction_test!(
+                    test_public_yields_private,
+                    $instruction,
+                    concat!($input, ".public"),
+                    concat!($expected, ".private")
                 );
 
-                binary_instruction_test!(
-                    test_private_and_private_is_private,
+                unary_instruction_test!(
+                    test_private_yields_private,
                     $instruction,
-                    concat!($a, ".private"),
-                    concat!($b, ".private"),
-                    concat!($expected, ".private"),
-                    true
+                    concat!($input, ".private"),
+                    concat!($expected, ".private")
+                );
+
+                unary_instruction_test!(
+                    test_constant_yields_constant,
+                    $instruction,
+                    concat!($input, ".constant"),
+                    concat!($expected, ".constant")
                 );
             }
         };
