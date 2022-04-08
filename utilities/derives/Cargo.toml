@@ -24,13 +24,13 @@ proc-macro = true
 proc-macro2 = "1.0"
 quote = "1.0"
 
-  [dependencies.proc-macro-crate]
-  version = "0.1"
+[dependencies.proc-macro-crate]
+version = "0.1"
 
-  [dependencies.proc-macro-error]
-  version = "1"
-  default-features = false
+[dependencies.proc-macro-error]
+version = "1"
+default-features = false
 
-  [dependencies.syn]
-  version = "1.0"
-  features = [ "full" ]
+[dependencies.syn]
+version = "1.0"
+features = [ "full" ]
