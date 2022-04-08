@@ -59,13 +59,19 @@ impl<E: Environment> Nor<Self> for Boolean<E> {
 }
 
 impl<E: Environment> MetadataForOp<dyn Nor<Boolean<E>, Output = Boolean<E>>> for Boolean<E> {
-    type Input = (Mode, Mode);
-    type Metadata = Count;
+    type Case = (Mode, Mode);
 
-    fn get_metadata(input: &Self::Input) -> Self::Metadata {
+    fn count(input: &Self::Case) -> Count {
         match input.0.is_constant() || input.1.is_constant() {
             true => Count::exact(0, 0, 0, 0),
             false => Count::exact(0, 0, 1, 1),
+        }
+    }
+
+    fn output_mode(input: &Self::Case) -> Mode {
+        match (input.0, input.1) {
+            (Mode::Constant, Mode::Constant) => Mode::Constant,
+            (_, _) => Mode::Private,
         }
     }
 }

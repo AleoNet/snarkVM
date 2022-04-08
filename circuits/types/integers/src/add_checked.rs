@@ -111,10 +111,9 @@ impl<E: Environment, I: IntegerType> AddChecked<Self> for Integer<E, I> {
 }
 
 impl<E: Environment, I: IntegerType> MetadataForOp<dyn Add<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
-    type Input = (Mode, Mode);
-    type Metadata = Count;
+    type Case = (Mode, Mode);
 
-    fn get_metadata(input: &Self::Input) -> Self::Metadata {
+    fn count(input: &Self::Case) -> Count {
         match I::is_signed() {
             false => match (input.0, input.1) {
                 (Mode::Constant, Mode::Constant) => Count::exact(I::BITS, 0, 0, 0),
@@ -126,6 +125,13 @@ impl<E: Environment, I: IntegerType> MetadataForOp<dyn Add<Integer<E, I>, Output
                 (_, Mode::Constant) => Count::exact(0, 0, I::BITS + 3, I::BITS + 5),
                 (_, _) => Count::exact(0, 0, I::BITS + 4, I::BITS + 6),
             },
+        }
+    }
+
+    fn output_mode(input: &Self::Case) -> Mode {
+        match (input.0, input.1) {
+            (Mode::Constant, Mode::Constant) => Mode::Constant,
+            (_, _) => Mode::Private,
         }
     }
 }

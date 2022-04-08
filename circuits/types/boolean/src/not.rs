@@ -50,14 +50,17 @@ impl<E: Environment> Not for &Boolean<E> {
 }
 
 impl<E: Environment> MetadataForOp<dyn Not<Output = Boolean<E>>> for Boolean<E> {
-    type Input = Mode;
-    type Metadata = Count;
+    type Case = Mode;
 
-    fn get_metadata(input: &Self::Input) -> Self::Metadata {
+    fn count(input: &Self::Case) -> Count {
         match input.is_constant() {
             true => Count::exact(0, 0, 0, 0),
             false => Count::exact(0, 0, 1, 1),
         }
+    }
+
+    fn output_mode(input: &Self::Case) -> Mode {
+        *input
     }
 }
 

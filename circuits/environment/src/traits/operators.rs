@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::BooleanTrait;
+use crate::{BooleanTrait, Count, Mode};
 
 // /// Trait for uniformly invoking operations.
 // pub trait Operation<Op: ?Sized> {
@@ -26,11 +26,13 @@ use crate::BooleanTrait;
 
 /// Trait for metadata on operations.
 pub trait MetadataForOp<Op: ?Sized> {
-    type Input;
-    type Metadata;
+    type Case;
 
-    /// Returns metadata for the given operation.
-    fn get_metadata(input: &Self::Input) -> Self::Metadata;
+    /// Returns the number of constants, public inputs, private inputs, and constraints.
+    fn count(input: &Self::Case) -> Count;
+
+    /// Returns the mode of the output of the operation.
+    fn output_mode(input: &Self::Case) -> Mode;
 }
 
 /// Trait for equality comparisons.

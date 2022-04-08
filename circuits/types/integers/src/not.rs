@@ -35,11 +35,14 @@ impl<E: Environment, I: IntegerType> Not for &Integer<E, I> {
 }
 
 impl<E: Environment, I: IntegerType> MetadataForOp<dyn Not<Output = Integer<E, I>>> for Integer<E, I> {
-    type Input = Mode;
-    type Metadata = Count;
+    type Case = Mode;
 
-    fn get_metadata(_input: &Self::Input) -> Self::Metadata {
+    fn count(_input: &Self::Case) -> Count {
         Count::exact(0, 0, 0, 0)
+    }
+
+    fn output_mode(input: &Self::Case) -> Mode {
+        *input
     }
 }
 

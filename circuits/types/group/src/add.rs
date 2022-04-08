@@ -100,14 +100,20 @@ impl<E: Environment> AddAssign<&Self> for Group<E> {
 }
 
 impl<E: Environment> MetadataForOp<dyn Add<Group<E>, Output = Group<E>>> for Group<E> {
-    type Input = (Mode, Mode);
-    type Metadata = Count;
+    type Case = (Mode, Mode);
 
-    fn get_metadata(input: &Self::Input) -> Self::Metadata {
+    fn count(input: &Self::Case) -> Count {
         match (input.0, input.1) {
             (Mode::Constant, Mode::Constant) => Count::exact(4, 0, 0, 0),
             (Mode::Constant, _) | (_, Mode::Constant) => Count::exact(2, 0, 3, 3),
             (_, _) => Count::exact(2, 0, 6, 6),
+        }
+    }
+
+    fn output_mode(input: &Self::Case) -> Mode {
+        match (input.0, input.1) {
+            (Mode::Constant, Mode::Constant) => Mode::Constant,
+            (_, _) => Mode::Private,
         }
     }
 }

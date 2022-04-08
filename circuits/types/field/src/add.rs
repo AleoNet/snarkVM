@@ -65,11 +65,17 @@ impl<E: Environment> AddAssign<&Field<E>> for Field<E> {
 }
 
 impl<E: Environment> MetadataForOp<dyn Add<Field<E>, Output = Field<E>>> for Field<E> {
-    type Input = (Mode, Mode);
-    type Metadata = Count;
+    type Case = (Mode, Mode);
 
-    fn get_metadata(_input: &Self::Input) -> Self::Metadata {
+    fn count(_input: &Self::Case) -> Count {
         Count::exact(0, 0, 0, 0)
+    }
+
+    fn output_mode(input: &Self::Case) -> Mode {
+        match (input.0, input.1) {
+            (Mode::Constant, Mode::Constant) => Mode::Constant,
+            (_, _) => Mode::Private,
+        }
     }
 }
 
