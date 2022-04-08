@@ -130,29 +130,29 @@ mod tests {
     }
 
     #[test]
-    fn test_good_root_constant() {
+    fn test_to_root_constant() {
         check_to_root(Mode::Constant, false, 12526, 0, 0, 0);
     }
 
     #[test]
-    fn test_good_root_public() {
+    fn test_to_root_public() {
         check_to_root(Mode::Public, false, 5121, 261, 16528, 16793);
     }
 
     #[test]
-    fn test_good_root_private() {
+    fn test_to_root_private() {
         check_to_root(Mode::Private, false, 5121, 0, 16789, 16793);
     }
 
     #[should_panic]
     #[test]
-    fn test_bad_root_public() {
+    fn test_root_public_fails() {
         check_to_root(Mode::Public, true, 5121, 9, 4005, 16793);
     }
 
     #[should_panic]
     #[test]
-    fn test_bad_root_private() {
+    fn test_root_private_fails() {
         check_to_root(Mode::Private, true, 5121, 0, 4014, 16793);
     }
 }
