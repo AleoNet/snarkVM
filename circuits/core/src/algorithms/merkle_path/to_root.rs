@@ -35,8 +35,8 @@ where
         // and the bit being 1 indicates our currently hashed value is on the right.
         // Thus `left_hash` is the sibling if bit is 1, and it's the computed hash if bit is 0.
         for (bit, sibling) in self.traversal.iter().zip_eq(&self.path) {
-            let left_hash: H::Output = H::Output::ternary(&bit.clone().into(), sibling, &curr_hash).into();
-            let right_hash: H::Output = H::Output::ternary(&bit.clone().into(), &curr_hash, sibling).into();
+            let left_hash: H::Output = Ternary::ternary(&bit.clone().into(), sibling, &curr_hash);
+            let right_hash: H::Output = Ternary::ternary(&bit.clone().into(), &curr_hash, sibling);
 
             let mut left_input: Vec<H::Input> = left_hash.to_bits_le().into();
             let mut right_input: Vec<H::Input> = right_hash.to_bits_le().into();
