@@ -14,13 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod commitment;
+pub use commitment::*;
 mod hash;
 mod hash_uncompressed;
 
 #[cfg(test)]
 use snarkvm_circuits_environment::assert_scope;
 
-use crate::{Hash, HashUncompressed};
+use crate::{CommitmentScheme, Hash, HashUncompressed};
 use snarkvm_algorithms::crypto_hash::hash_to_curve;
 use snarkvm_circuits_types::prelude::*;
 
@@ -40,6 +42,8 @@ pub type Pedersen1024<E> = Pedersen<E, 8, 128>;
 pub struct Pedersen<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
     /// The base windows for the Pedersen hash.
     bases: Vec<Vec<Group<E>>>,
+    /// A vector of random bases, used for computing the commitment.
+    random_base: Vec<Group<E>>,
 }
 
 impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Pedersen<E, NUM_WINDOWS, WINDOW_SIZE> {
@@ -61,6 +65,19 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Pederse
                     powers
                 })
                 .collect(),
+            random_base: {
+                // Compute the random base
+                let (generator, _, _) = hash_to_curve(&format!("{message} for random base"));
+                let mut base = Group::constant(generator);
+
+                let num_scalar_bits = E::ScalarField::size_in_bits();
+                let mut random_base = Vec::with_capacity(num_scalar_bits);
+                for _ in 0..num_scalar_bits {
+                    random_base.push(base.clone());
+                    base = base.double();
+                }
+                random_base
+            },
         }
     }
 }
@@ -68,7 +85,7 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Pederse
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_algorithms::{crh::PedersenCRH, CRH};
+    use snarkvm_algorithms::{commitment::PedersenCommitment, CommitmentScheme, CRH};
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 
@@ -86,7 +103,7 @@ mod tests {
     ) {
         for _ in 0..ITERATIONS {
             // Initialize the native Pedersen hash.
-            let native = PedersenCRH::<Projective, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
+            let native = PedersenCommitment::<Projective, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
 
             Circuit::scope("Pedersen::setup", || {
                 // Perform the setup operation.
@@ -94,11 +111,16 @@ mod tests {
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
 
                 // Check for equivalency of the bases.
-                native.parameters().iter().flatten().zip_eq(circuit.bases.iter().flatten()).for_each(
+                native.crh.parameters().iter().flatten().zip_eq(circuit.bases.iter().flatten()).for_each(
                     |(expected, candidate)| {
                         assert_eq!(expected.to_affine(), candidate.eject_value());
                     },
                 );
+
+                // Check for equality of the random base.
+                native.random_base.iter().zip_eq(circuit.random_base.iter()).for_each(|(expected, candidate)| {
+                    assert_eq!(expected.to_affine(), candidate.eject_value());
+                });
             });
         }
     }
@@ -106,17 +128,17 @@ mod tests {
     #[test]
     fn test_setup_constant() {
         // Set the number of windows, and modulate the window size.
-        check_setup::<1, WINDOW_SIZE_MULTIPLIER>(28, 0, 0, 0);
-        check_setup::<1, { 2 * WINDOW_SIZE_MULTIPLIER }>(52, 0, 0, 0);
-        check_setup::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(76, 0, 0, 0);
-        check_setup::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(100, 0, 0, 0);
-        check_setup::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(124, 0, 0, 0);
+        check_setup::<1, WINDOW_SIZE_MULTIPLIER>(785, 0, 0, 0);
+        check_setup::<1, { 2 * WINDOW_SIZE_MULTIPLIER }>(809, 0, 0, 0);
+        check_setup::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(833, 0, 0, 0);
+        check_setup::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(857, 0, 0, 0);
+        check_setup::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(881, 0, 0, 0);
 
         // Set the window size, and modulate the number of windows.
-        check_setup::<1, WINDOW_SIZE_MULTIPLIER>(28, 0, 0, 0);
-        check_setup::<2, WINDOW_SIZE_MULTIPLIER>(56, 0, 0, 0);
-        check_setup::<3, WINDOW_SIZE_MULTIPLIER>(84, 0, 0, 0);
-        check_setup::<4, WINDOW_SIZE_MULTIPLIER>(112, 0, 0, 0);
-        check_setup::<5, WINDOW_SIZE_MULTIPLIER>(140, 0, 0, 0);
+        check_setup::<1, WINDOW_SIZE_MULTIPLIER>(785, 0, 0, 0);
+        check_setup::<2, WINDOW_SIZE_MULTIPLIER>(813, 0, 0, 0);
+        check_setup::<3, WINDOW_SIZE_MULTIPLIER>(841, 0, 0, 0);
+        check_setup::<4, WINDOW_SIZE_MULTIPLIER>(869, 0, 0, 0);
+        check_setup::<5, WINDOW_SIZE_MULTIPLIER>(897, 0, 0, 0);
     }
 }
