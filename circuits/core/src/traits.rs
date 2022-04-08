@@ -14,12 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_circuits_environment::{Eject, FromBits, Inject, Ternary, ToBits};
+use snarkvm_circuits_environment::{Eject, Inject, Ternary, ToBits};
 
 /// A trait for a hash function.
 pub trait Hash {
-    type Input: Inject + Eject + Ternary + ToBits + FromBits + Clone;
-    type Output: Inject + Eject + Ternary + ToBits + FromBits + Clone;
+    type Input: Inject + Eject + Clone;
+    type Output: Inject + Eject + Ternary + ToBits + Clone;
 
     /// Returns the hash of the given input.
     fn hash(&self, input: &[Self::Input]) -> Self::Output;
