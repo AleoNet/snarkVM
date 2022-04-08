@@ -128,28 +128,23 @@ impl<P: Program> Into<Instruction<P>> for Add<P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Identifier, Process, Register};
+    use crate::{test_modes, Identifier, Process, Register};
 
     type P = Process;
 
-    mod modes {
-        use super::Add;
-        use crate::test_modes;
-
-        test_modes!(field, Add, "1field", "2field", "3field");
-        test_modes!(group, Add, "2group", "0group", "2group");
-        test_modes!(i8, Add, "-1i8", "2i8", "1i8");
-        test_modes!(i16, Add, "-1i16", "2i16", "1i16");
-        test_modes!(i32, Add, "-1i32", "2i32", "1i32");
-        test_modes!(i64, Add, "-1i64", "2i64", "1i64");
-        test_modes!(i128, Add, "-1i128", "2i128", "1i128");
-        test_modes!(u8, Add, "1u8", "2u8", "3u8");
-        test_modes!(u16, Add, "1u16", "2u16", "3u16");
-        test_modes!(u32, Add, "1u32", "2u32", "3u32");
-        test_modes!(u64, Add, "1u64", "2u64", "3u64");
-        test_modes!(u128, Add, "1u128", "2u128", "3u128");
-        test_modes!(scalar, Add, "1scalar", "2scalar", "3scalar");
-    }
+    test_modes!(field, Add, "1field", "2field", "3field");
+    test_modes!(group, Add, "2group", "0group", "2group");
+    test_modes!(i8, Add, "-1i8", "2i8", "1i8");
+    test_modes!(i16, Add, "-1i16", "2i16", "1i16");
+    test_modes!(i32, Add, "-1i32", "2i32", "1i32");
+    test_modes!(i64, Add, "-1i64", "2i64", "1i64");
+    test_modes!(i128, Add, "-1i128", "2i128", "1i128");
+    test_modes!(u8, Add, "1u8", "2u8", "3u8");
+    test_modes!(u16, Add, "1u16", "2u16", "3u16");
+    test_modes!(u32, Add, "1u32", "2u32", "3u32");
+    test_modes!(u64, Add, "1u64", "2u64", "3u64");
+    test_modes!(u128, Add, "1u128", "2u128", "3u128");
+    test_modes!(scalar, Add, "1scalar", "2scalar", "3scalar");
 
     fn check_add_test(first: Value<P>, second: Value<P>, expected: Value<P>) {
         let registers = Registers::<P>::default();
@@ -165,51 +160,12 @@ mod tests {
     }
 
     #[test]
-    fn test_add_field() {
-        let one = Value::<P>::from_str("1field.public");
-        let two = Value::<P>::from_str("2field.private");
-        let three = Value::<P>::from_str("3field.private");
-        check_add_test(one, two, three);
-    }
-
-    #[test]
-    fn test_add_group() {
-        let two = Value::<P>::from_str("2group.private");
-        let zero = Value::<P>::from_str("0group.private");
-        check_add_test(two.clone(), zero, two);
-    }
-
-    #[test]
-    fn test_add_scalar() {
-        let one = Value::<P>::from_str("1scalar.public");
-        let two = Value::<P>::from_str("2scalar.private");
-        let three = Value::<P>::from_str("3scalar.private");
-        check_add_test(one, two, three);
-    }
-
-    #[test]
-    fn test_add_i8() {
-        let negative_one = Value::<P>::from_str("-1i8.public");
-        let two = Value::<P>::from_str("2i8.private");
-        let one = Value::<P>::from_str("1i8.private");
-        check_add_test(negative_one, two, one);
-    }
-
-    #[test]
     #[should_panic(expected = "Integer overflow on addition of two constants")]
     fn test_add_i8_constant_overflow_halts() {
         let max = Value::<P>::from_str(&format!("{}i8.constant", i8::MAX));
         let one = Value::<P>::from_str("1i8.constant");
         let unreachable = Value::<P>::from_str("\"Unreachable\".constant");
         check_add_test(max, one, unreachable);
-    }
-
-    #[test]
-    fn test_add_i16() {
-        let negative_one = Value::<P>::from_str("-1i16.public");
-        let two = Value::<P>::from_str("2i16.private");
-        let one = Value::<P>::from_str("1i16.private");
-        check_add_test(negative_one, two, one);
     }
 
     #[test]
@@ -222,28 +178,12 @@ mod tests {
     }
 
     #[test]
-    fn test_add_i32() {
-        let negative_one = Value::<P>::from_str("-1i32.public");
-        let two = Value::<P>::from_str("2i32.private");
-        let one = Value::<P>::from_str("1i32.private");
-        check_add_test(negative_one, two, one);
-    }
-
-    #[test]
     #[should_panic(expected = "Integer overflow on addition of two constants")]
     fn test_add_i32_constant_overflow_halts() {
         let max = Value::<P>::from_str(&format!("{}i32.constant", i32::MAX));
         let one = Value::<P>::from_str("1i32.constant");
         let unreachable = Value::<P>::from_str("\"Unreachable\".constant");
         check_add_test(max, one, unreachable);
-    }
-
-    #[test]
-    fn test_add_i64() {
-        let negative_one = Value::<P>::from_str("-1i64.public");
-        let two = Value::<P>::from_str("2i64.private");
-        let one = Value::<P>::from_str("1i64.private");
-        check_add_test(negative_one, two, one);
     }
 
     #[test]
@@ -256,28 +196,12 @@ mod tests {
     }
 
     #[test]
-    fn test_add_i128() {
-        let negative_one = Value::<P>::from_str("-1i128.public");
-        let two = Value::<P>::from_str("2i128.private");
-        let one = Value::<P>::from_str("1i128.private");
-        check_add_test(negative_one, two, one);
-    }
-
-    #[test]
     #[should_panic(expected = "Integer overflow on addition of two constants")]
     fn test_add_i128_constant_overflow_halts() {
         let max = Value::<P>::from_str(&format!("{}i128.constant", i128::MAX));
         let one = Value::<P>::from_str("1i128.constant");
         let unreachable = Value::<P>::from_str("\"Unreachable\".constant");
         check_add_test(max, one, unreachable);
-    }
-
-    #[test]
-    fn test_add_u8() {
-        let one = Value::<P>::from_str("1u8.public");
-        let two = Value::<P>::from_str("2u8.private");
-        let three = Value::<P>::from_str("3u8.private");
-        check_add_test(one, two, three);
     }
 
     #[test]
@@ -290,28 +214,12 @@ mod tests {
     }
 
     #[test]
-    fn test_add_u16() {
-        let one = Value::<P>::from_str("1u16.public");
-        let two = Value::<P>::from_str("2u16.private");
-        let three = Value::<P>::from_str("3u16.private");
-        check_add_test(one, two, three);
-    }
-
-    #[test]
     #[should_panic(expected = "Integer overflow on addition of two constants")]
     fn test_add_u16_constant_overflow_halts() {
         let max = Value::<P>::from_str(&format!("{}u16.constant", u16::MAX));
         let one = Value::<P>::from_str("1u16.constant");
         let unreachable = Value::<P>::from_str("\"Unreachable\".constant");
         check_add_test(max, one, unreachable);
-    }
-
-    #[test]
-    fn test_add_u32() {
-        let one = Value::<P>::from_str("1u32.public");
-        let two = Value::<P>::from_str("2u32.private");
-        let three = Value::<P>::from_str("3u32.private");
-        check_add_test(one, two, three);
     }
 
     #[test]
@@ -324,28 +232,12 @@ mod tests {
     }
 
     #[test]
-    fn test_add_u64() {
-        let one = Value::<P>::from_str("1u64.public");
-        let two = Value::<P>::from_str("2u64.private");
-        let three = Value::<P>::from_str("3u64.private");
-        check_add_test(one, two, three);
-    }
-
-    #[test]
     #[should_panic(expected = "Integer overflow on addition of two constants")]
     fn test_add_u64_constant_overflow_halts() {
         let max = Value::<P>::from_str(&format!("{}u64.constant", u64::MAX));
         let one = Value::<P>::from_str("1u64.constant");
         let unreachable = Value::<P>::from_str("\"Unreachable\".constant");
         check_add_test(max, one, unreachable);
-    }
-
-    #[test]
-    fn test_add_u128() {
-        let one = Value::<P>::from_str("1u128.public");
-        let two = Value::<P>::from_str("2u128.private");
-        let three = Value::<P>::from_str("3u128.private");
-        check_add_test(one, two, three);
     }
 
     #[test]
