@@ -129,7 +129,7 @@ impl<P: Program> Into<Instruction<P>> for Sub<P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_modes;
+    use crate::{test_instruction_halts, test_modes};
 
     test_modes!(field, Sub, "3field", "2field", "1field");
     test_modes!(group, Sub, "2group", "0group", "2group");
@@ -143,4 +143,85 @@ mod tests {
     test_modes!(u32, Sub, "3u32", "2u32", "1u32");
     test_modes!(u64, Sub, "3u64", "2u64", "1u64");
     test_modes!(u128, Sub, "3u128", "2u128", "1u128");
+
+    test_instruction_halts!(
+        i8_underflow_halts,
+        Sub,
+        "Integer underflow on subtraction of two constants",
+        &format!("{}i8.constant", i8::MIN),
+        "1i8.constant"
+    );
+    test_instruction_halts!(
+        i16_underflow_halts,
+        Sub,
+        "Integer underflow on subtraction of two constants",
+        &format!("{}i16.constant", i16::MIN),
+        "1i16.constant"
+    );
+    test_instruction_halts!(
+        i32_underflow_halts,
+        Sub,
+        "Integer underflow on subtraction of two constants",
+        &format!("{}i32.constant", i32::MIN),
+        "1i32.constant"
+    );
+    test_instruction_halts!(
+        i64_underflow_halts,
+        Sub,
+        "Integer underflow on subtraction of two constants",
+        &format!("{}i64.constant", i64::MIN),
+        "1i64.constant"
+    );
+    test_instruction_halts!(
+        i128_underflow_halts,
+        Sub,
+        "Integer underflow on subtraction of two constants",
+        &format!("{}i128.constant", i128::MIN),
+        "1i128.constant"
+    );
+    test_instruction_halts!(
+        u8_underflow_halts,
+        Sub,
+        "Integer underflow on subtraction of two constants",
+        &format!("{}u8.constant", u8::MIN),
+        "1u8.constant"
+    );
+    test_instruction_halts!(
+        u16_underflow_halts,
+        Sub,
+        "Integer underflow on subtraction of two constants",
+        &format!("{}u16.constant", u16::MIN),
+        "1u16.constant"
+    );
+    test_instruction_halts!(
+        u32_underflow_halts,
+        Sub,
+        "Integer underflow on subtraction of two constants",
+        &format!("{}u32.constant", u32::MIN),
+        "1u32.constant"
+    );
+    test_instruction_halts!(
+        u64_underflow_halts,
+        Sub,
+        "Integer underflow on subtraction of two constants",
+        &format!("{}u64.constant", u64::MIN),
+        "1u64.constant"
+    );
+    test_instruction_halts!(
+        u128_underflow_halts,
+        Sub,
+        "Integer underflow on subtraction of two constants",
+        &format!("{}u128.constant", u128::MIN),
+        "1u128.constant"
+    );
+
+    test_instruction_halts!(
+        address_halts,
+        Sub,
+        "Invalid 'sub' instruction",
+        "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.constant",
+        "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.constant"
+    );
+    test_instruction_halts!(boolean_halts, Sub, "Invalid 'sub' instruction", "true.constant", "true.constant");
+    test_instruction_halts!(string_halts, Sub, "Invalid 'sub' instruction", "\"hello\".constant", "\"world\".constant");
 }
