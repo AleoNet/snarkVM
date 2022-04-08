@@ -30,6 +30,8 @@ use crate::{
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::SynthesisError;
 
+use super::FirstOracles;
+
 /// State for the AHP prover.
 pub struct State<'a, F: PrimeField, MM: MarlinMode> {
     pub(super) index: &'a Circuit<F, MM>,
@@ -50,7 +52,7 @@ pub struct State<'a, F: PrimeField, MM: MarlinMode> {
     pub(super) zk_bound: Option<usize>,
 
     /// The number of instances being proved in this batch.
-    pub(super) batch_size: usize,
+    pub(in crate::snark) batch_size: usize,
 
     /// The list of public inputs for each instance in the batch.
     /// The length of this list must be equal to the batch size.
@@ -74,7 +76,7 @@ pub struct State<'a, F: PrimeField, MM: MarlinMode> {
 
     /// The first round oracles sent by the prover.
     /// The length of this list must be equal to the batch size.
-    pub(super) first_round_oracles: Option<super::FirstOracles<'a, F>>,
+    pub(in crate::snark) first_round_oracles: Option<super::FirstOracles<'a, F>>,
 
     /// Randomizers for z_b.
     /// The length of this list must be equal to the batch size.
@@ -141,14 +143,34 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
         })
     }
 
-    /// Get the public input.
-    pub fn public_input(&self, i: usize) -> Vec<F> {
-        super::ConstraintSystem::unformat_public_input(&self.padded_public_variables[i])
+    /// Get the batch size.
+    pub fn batch_size(&self) -> usize {
+        self.batch_size
+    }
+
+    /// Get the first round oracles.
+    pub fn first_round_oracles(&self) -> Option<&FirstOracles<'a, F>> {
+        self.first_round_oracles.as_ref()
+    }
+
+    /// Get the public inputs for the entire batch.
+    pub fn public_inputs(&self) -> Vec<Vec<F>> {
+        self.padded_public_variables.iter().map(|v| super::ConstraintSystem::unformat_public_input(*&v)).collect()
+    }
+
+    /// Get the padded public inputs for the entire batch.
+    pub fn padded_public_inputs(&self) -> Vec<Vec<F>> {
+        self.padded_public_variables.clone()
     }
 
     /// Get the padded public input.
-    pub fn padded_public_input(&self, i: usize) -> &[F] {
+    pub(crate) fn padded_public_input(&self, i: usize) -> &[F] {
         &self.padded_public_variables[i]
+    }
+
+    /// Get the public input.
+    pub(crate) fn public_input(&self, i: usize) -> Vec<F> {
+        super::ConstraintSystem::unformat_public_input(&self.padded_public_variables[i])
     }
 
     pub fn fft_precomputation(&self) -> &FFTPrecomputation<F> {

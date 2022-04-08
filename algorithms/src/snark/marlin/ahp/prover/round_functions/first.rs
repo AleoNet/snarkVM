@@ -61,11 +61,13 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let mut r_b_s = Vec::with_capacity(z_a.len());
 
         let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(3 * z_a.len());
-        for (z_a, z_b, private_variables, x_poly) in itertools::izip!(z_a, z_b, private_variables, &state.x_poly) {
-            job_pool.add_job(|| Self::calculate_w(private_variables, x_poly.clone(), &state));
-            job_pool.add_job(|| Self::calculate_z_m("z_a", z_a, false, &state, None));
+        for (i, (z_a, z_b, private_variables, x_poly)) in
+            itertools::izip!(z_a, z_b, private_variables, &state.x_poly).enumerate()
+        {
+            job_pool.add_job(|| Self::calculate_w(i, private_variables, x_poly.clone(), &state));
+            job_pool.add_job(|| Self::calculate_z_m(format!("z_a {i}"), z_a, false, &state, None));
             let r_b = F::rand(rng);
-            job_pool.add_job(|| Self::calculate_z_m("z_b", z_b, true, &state, Some(r_b)));
+            job_pool.add_job(|| Self::calculate_z_m(format!("z_b {i}"), z_b, true, &state, Some(r_b)));
             if MM::ZK {
                 r_b_s.push(r_b);
             }
@@ -126,6 +128,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     }
 
     fn calculate_w<'a>(
+        instance_number: usize,
         private_variables: Vec<F>,
         x_poly: DensePolynomial<F>,
         state: &prover::State<'a, F, MM>,
@@ -158,7 +161,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         assert!(w_poly.degree() < constraint_domain.size() - input_domain.size());
         end_timer!(w_poly_time);
-        PoolResult::Witness(LabeledPolynomial::new("w".to_string(), w_poly, None, state.zk_bound))
+        PoolResult::Witness(LabeledPolynomial::new(format!("w {instance_number}"), w_poly, None, state.zk_bound))
     }
 
     fn calculate_z_m<'a>(

@@ -25,7 +25,6 @@ use crate::{
         prover,
         CircuitProvingKey,
         CircuitVerifyingKey,
-        Commitments,
         MarlinError,
         MarlinMode,
         PreparedCircuitVerifyingKey,
@@ -170,26 +169,30 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
 
         Self::terminate(terminator)?;
 
-        let prover_init_state = AHPForR1CS::<_, MM>::init_prover(&circuit_proving_key.circuit, circuit)?;
-        let public_input = prover_init_state.public_input();
-        let padded_public_input = prover_init_state.padded_public_input();
+        let prover_state =
+            AHPForR1CS::<_, MM>::init_prover(&circuit_proving_key.circuit, std::slice::from_ref(circuit))?;
+        let public_input = prover_state.public_inputs();
+        let padded_public_input = prover_state.padded_public_inputs();
 
         let mut fs_rng = FS::new();
         fs_rng.absorb_bytes(&to_bytes_le![&Self::PROTOCOL_NAME].unwrap());
+        fs_rng.absorb_bytes(&prover_state.batch_size().to_le_bytes());
         fs_rng.absorb_native_field_elements(&circuit_proving_key.circuit_verifying_key.circuit_commitments);
-        fs_rng.absorb_nonnative_field_elements(padded_public_input.to_vec(), OptimizationType::Weight);
+        for input in padded_public_input {
+            fs_rng.absorb_nonnative_field_elements(input, OptimizationType::Weight);
+        }
 
         // --------------------------------------------------------------------
         // First round
 
         Self::terminate(terminator)?;
-        let (first_oracles, prover_state) = AHPForR1CS::<_, MM>::prover_first_round(prover_init_state, zk_rng)?;
+        let prover_state = AHPForR1CS::<_, MM>::prover_first_round(prover_state, zk_rng)?;
         Self::terminate(terminator)?;
 
         let first_round_comm_time = start_timer!(|| "Committing to first round polys");
         let (first_commitments, first_commitment_randomnesses) = SonicKZG10::<E, FS>::commit(
             &circuit_proving_key.committer_key,
-            first_oracles.iter_for_commit(),
+            prover_state.first_round_oracles().unwrap().iter_for_commit(),
             Some(zk_rng),
         )?;
         end_timer!(first_round_comm_time);
@@ -199,6 +202,7 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
 
         let (verifier_first_message, verifier_state) = AHPForR1CS::<_, MM>::verifier_first_round(
             circuit_proving_key.circuit_verifying_key.circuit_info,
+            prover_state.batch_size(),
             &mut fs_rng,
         )?;
         // --------------------------------------------------------------------
@@ -279,7 +283,7 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
         let polynomials: Vec<_> = circuit_proving_key
             .circuit
             .iter() // 12 items
-            .chain(first_oracles.iter_for_open()) // 3 or 4 items
+            .chain(prover_state.first_round_oracles.as_ref().unwrap().iter_for_open()) // 3 or 4 items
             .chain(second_oracles.iter())// 2 items
             .chain(third_oracles.iter())// 3 items
             .chain(fourth_oracles.iter())// 1 item
@@ -291,12 +295,19 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
         assert_eq!(polynomials.len(), AHPForR1CS::<E::Fr, MM>::polynomial_labels().count());
 
         // Gather commitments in one vector.
+        let witness_commitments = first_commitments.chunks_exact(3);
+        let mask_poly = MM::ZK.then(|| *witness_commitments.remainder()[0].commitment());
+        let witness_commitments = witness_commitments
+            .map(|c| proof::WitnessCommitments {
+                w: *c[0].commitment(),
+                z_a: *c[1].commitment(),
+                z_b: *c[2].commitment(),
+            })
+            .collect();
         #[rustfmt::skip]
-        let commitments = Commitments {
-            w: *first_commitments[0].commitment(),
-            z_a: *first_commitments[1].commitment(),
-            z_b: *first_commitments[2].commitment(),
-            mask_poly: MM::ZK.then(||  *first_commitments[3].commitment()),
+        let commitments = proof::Commitments {
+            witness_commitments,
+            mask_poly,
 
             g_1: *second_commitments[0].commitment(),
             h_1: *second_commitments[1].commitment(),
@@ -379,7 +390,7 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
 
         Self::terminate(terminator)?;
 
-        let proof = Proof::<E>::new(commitments, evaluations, prover_third_message, pc_proof);
+        let proof = Proof::<E>::new(prover_state.batch_size, commitments, evaluations, prover_third_message, pc_proof);
         assert_eq!(proof.pc_proof.is_hiding(), MM::ZK);
         end_timer!(prover_time);
 

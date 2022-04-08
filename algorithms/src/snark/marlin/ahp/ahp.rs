@@ -173,7 +173,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Public input should be unformatted.
     #[allow(non_snake_case)]
     pub fn construct_linear_combinations<E: EvaluationsProvider<F>>(
-        public_input: &[F],
+        public_input: &[Vec<F>],
         evals: &E,
         prover_third_message: &prover::ThirdMessage<F>,
         state: &verifier::State<F, MM>,
