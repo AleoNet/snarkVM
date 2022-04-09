@@ -23,7 +23,7 @@ path = "benches/msm/variable_base.rs"
 harness = false
 
 [[bench]]
-name = "commitment-bhp"
+name = "commitment_bhp"
 path = "benches/commitment/bhp.rs"
 harness = false
 
@@ -40,6 +40,11 @@ harness = false
 [[bench]]
 name = "hash_to_curve"
 path = "benches/crypto_hash/hash_to_curve.rs"
+harness = false
+
+[[bench]]
+name = "merkle_tree_bhp"
+path = "benches/merkle_tree/merkle_tree.rs"
 harness = false
 
 [[bench]]
