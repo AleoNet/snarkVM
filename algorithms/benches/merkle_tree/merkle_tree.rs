@@ -29,7 +29,7 @@ use std::sync::Arc;
 
 use criterion::Criterion;
 
-const SETUP_MESSAGE: &str = "bhp_merkle_tree_benchmark";
+const SETUP_MESSAGE: &str = "merkle_tree_bhp_benchmark";
 
 const NUM_WINDOWS: usize = 3;
 const WINDOW_SIZE: usize = 57;
