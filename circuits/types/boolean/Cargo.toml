@@ -15,5 +15,10 @@ harness = false
 path = "../../environment"
 version = "0.7.5"
 
+[dependencies.snarkvm-utilities]
+path = "../../../utilities"
+version = "0.7.5"
+default-features = false
+
 [dev-dependencies.criterion]
 version = "0.3"

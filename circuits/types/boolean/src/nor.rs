@@ -15,7 +15,9 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+
 use snarkvm_circuits_environment::Count;
+use snarkvm_utilities::generate_metadata_impl;
 
 impl<E: Environment> Nor<Self> for Boolean<E> {
     type Output = Boolean<E>;
@@ -58,6 +60,7 @@ impl<E: Environment> Nor<Self> for Boolean<E> {
     }
 }
 
+#[generate_metadata_impl(generate = true, runs = 128)]
 impl<E: Environment> MetadataForOp<dyn Nor<Boolean<E>, Output = Boolean<E>>> for Boolean<E> {
     type Case = (Mode, Mode);
 

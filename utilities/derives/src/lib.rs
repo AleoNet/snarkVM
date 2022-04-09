@@ -18,6 +18,8 @@ mod canonical_deserialize;
 
 mod canonical_serialize;
 
+mod generate_metadata;
+
 use syn::*;
 
 #[proc_macro_derive(CanonicalSerialize)]
@@ -30,4 +32,11 @@ pub fn derive_canonical_serialize(input: proc_macro::TokenStream) -> proc_macro:
 pub fn derive_canonical_deserialize(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
     proc_macro::TokenStream::from(canonical_deserialize::impl_canonical_deserialize(&ast))
+}
+
+#[proc_macro_attribute]
+pub fn generate_metadata_impl(attr: proc_macro::TokenStream, item: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let attributes = parse_macro_input!(attr as AttributeArgs);
+    let ast = parse_macro_input!(item as Item);
+    proc_macro::TokenStream::from(generate_metadata::generate_impl(attributes, ast))
 }
