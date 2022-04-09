@@ -57,15 +57,13 @@ macro_rules! generate_random_leaves {
 }
 
 fn new(c: &mut Criterion) {
-    let parameters = P::setup(SETUP_MESSAGE);
-
     for entries in NUM_ENTRIES {
+        let parameters = P::setup(SETUP_MESSAGE);
         let leaves = generate_random_leaves!(*entries, LEAF_SIZE);
-        let mut merkle_tree = MerkleTree::<P>::new(Arc::new(parameters.clone()), &[[0u8; LEAF_SIZE]]).unwrap();
 
         c.bench_function(&format!("New Merkle Tree ({} entries)", entries), move |b| {
             b.iter(|| {
-                merkle_tree = merkle_tree.rebuild(1, &leaves).unwrap();
+                MerkleTree::<P>::new(Arc::new(parameters.clone()), &leaves).unwrap();
             })
         });
     }
