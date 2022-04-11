@@ -38,7 +38,7 @@ const TREE_DEPTH: usize = 32;
 type H = BHPCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE>;
 type P = MerkleTreeParameters<H, TREE_DEPTH>;
 
-const NUM_ENTRIES: &[usize] = &[10, 100, 1000, 10000];
+const NUM_ENTRIES: &[usize] = &[100000];
 const LEAF_SIZE: usize = 32;
 
 /// Generates the specified number of random Merkle tree leaves.
@@ -58,23 +58,23 @@ macro_rules! generate_random_leaves {
 
 fn new(c: &mut Criterion) {
     for entries in NUM_ENTRIES {
-        let parameters = P::setup(SETUP_MESSAGE);
+        let parameters = Arc::new(P::setup(SETUP_MESSAGE));
         let leaves = generate_random_leaves!(*entries, LEAF_SIZE);
 
         c.bench_function(&format!("New Merkle Tree ({} entries)", entries), move |b| {
             b.iter(|| {
-                MerkleTree::<P>::new(Arc::new(parameters.clone()), &leaves).unwrap();
+                MerkleTree::<P>::new(parameters.clone(), &leaves).unwrap();
             })
         });
     }
 }
 
 fn insert(c: &mut Criterion) {
-    let parameters = P::setup(SETUP_MESSAGE);
+    let parameters = Arc::new(P::setup(SETUP_MESSAGE));
 
     for entries in NUM_ENTRIES {
         let leaves = generate_random_leaves!(*entries, LEAF_SIZE);
-        let mut merkle_tree = MerkleTree::<P>::new(Arc::new(parameters.clone()), &[[0u8; LEAF_SIZE]]).unwrap();
+        let mut merkle_tree = MerkleTree::<P>::new(parameters.clone(), &[[0u8; LEAF_SIZE]]).unwrap();
 
         c.bench_function(&format!("Insert Merkle Tree ({} entries)", entries), move |b| {
             b.iter(|| {
