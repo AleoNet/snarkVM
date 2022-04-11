@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_circuits_environment::Count;
 use super::*;
+use snarkvm_circuits_environment::Count;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 impl<E: Environment> Add<Scalar<E>> for Scalar<E> {
@@ -101,8 +101,7 @@ impl<E: Environment> AddAssign<&Scalar<E>> for Scalar<E> {
     }
 }
 
-impl<E: Environment> MetadataForOp<dyn Add<Scalar<E>, Output = Scalar<E>>> for Scalar<E>
-{
+impl<E: Environment> MetadataForOp<dyn Add<Scalar<E>, Output = Scalar<E>>> for Scalar<E> {
     type Case = (Mode, Mode);
 
     fn count(input: &Self::Case) -> Count {

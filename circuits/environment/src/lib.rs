@@ -41,7 +41,17 @@ pub mod traits;
 pub use traits::*;
 
 pub mod prelude {
-    pub use crate::{rename_selfs, traits::*, witness, witness_mode, Environment, LinearCombination, Mode, Variable};
+    pub use crate::{
+        rename_selfs,
+        traits::*,
+        witness,
+        witness_mode,
+        Count,
+        Environment,
+        LinearCombination,
+        Mode,
+        Variable,
+    };
     pub use snarkvm_fields::{Field as F, One as O, PrimeField, Zero as Z};
 
     pub use core::{

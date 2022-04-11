@@ -138,6 +138,18 @@ impl<E: Environment, I: IntegerType> MetadataForOp<dyn AddChecked<Integer<E, I>,
     }
 }
 
+impl<E: Environment, I: IntegerType> MetadataForOp<dyn Add<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
+    type Case = (Mode, Mode);
+
+    fn count(input: &Self::Case) -> Count {
+        <Self as MetadataForOp<dyn AddChecked<Integer<E, I>, Output = Integer<E, I>>>>::count(input)
+    }
+
+    fn output_mode(input: &Self::Case) -> Mode {
+        <Self as MetadataForOp<dyn AddChecked<Integer<E, I>, Output = Integer<E, I>>>>::output_mode(input)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
