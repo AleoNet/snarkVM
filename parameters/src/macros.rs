@@ -24,7 +24,7 @@ macro_rules! checksum {
 #[macro_export]
 macro_rules! checksum_error {
     ($expected: expr, $candidate: expr) => {
-        Err(crate::errors::ParameterError::ChecksumMismatch($expected, $candidate))
+        Err($crate::errors::ParameterError::ChecksumMismatch($expected, $candidate))
     };
 }
 
@@ -35,7 +35,7 @@ macro_rules! impl_local {
         pub struct $name;
 
         impl $name {
-            pub fn load_bytes() -> Result<Vec<u8>, crate::errors::ParameterError> {
+            pub fn load_bytes() -> Result<Vec<u8>, $crate::errors::ParameterError> {
                 const METADATA: &'static str = include_str!(concat!($local_dir, $fname, ".metadata"));
 
                 let metadata: serde_json::Value =
@@ -49,7 +49,7 @@ macro_rules! impl_local {
 
                 // Ensure the size matches.
                 if expected_size != buffer.len() {
-                    return Err(crate::errors::ParameterError::SizeMismatch(expected_size, buffer.len()));
+                    return Err($crate::errors::ParameterError::SizeMismatch(expected_size, buffer.len()));
                 }
 
                 // Ensure the checksum matches.
@@ -79,7 +79,7 @@ macro_rules! impl_remote {
         pub struct $name;
 
         impl $name {
-            pub fn load_bytes() -> Result<Vec<u8>, crate::errors::ParameterError> {
+            pub fn load_bytes() -> Result<Vec<u8>, $crate::errors::ParameterError> {
                 const METADATA: &'static str = include_str!(concat!($local_dir, $fname, ".metadata"));
 
                 let metadata: serde_json::Value = serde_json::from_str(METADATA).expect("Metadata was not well-formatted");
@@ -160,14 +160,14 @@ macro_rules! impl_remote {
 
                             buffer
                         } else {
-                            return Err(crate::errors::ParameterError::RemoteFetchDisabled);
+                            return Err($crate::errors::ParameterError::RemoteFetchDisabled);
                         }
                     }
                 };
 
                  // Ensure the size matches.
                 if expected_size != buffer.len() {
-                    return Err(crate::errors::ParameterError::SizeMismatch(expected_size, buffer.len()));
+                    return Err($crate::errors::ParameterError::SizeMismatch(expected_size, buffer.len()));
                 }
 
                 // Ensure the checksum matches.
@@ -183,7 +183,7 @@ macro_rules! impl_remote {
             fn store_bytes(
                 buffer: &[u8],
                 file_path: &std::path::Path,
-            ) -> Result<(), crate::errors::ParameterError> {
+            ) -> Result<(), $crate::errors::ParameterError> {
                 use snarkvm_utilities::Write;
 
                 #[cfg(not(feature = "no_std_out"))]
@@ -203,7 +203,7 @@ macro_rules! impl_remote {
             }
 
             #[cfg(not(feature = "wasm"))]
-            fn remote_fetch(buffer: &mut Vec<u8>, url: &str) -> Result<(), crate::errors::ParameterError> {
+            fn remote_fetch(buffer: &mut Vec<u8>, url: &str) -> Result<(), $crate::errors::ParameterError> {
                 let mut easy = curl::easy::Easy::new();
                 easy.url(url)?;
                 #[cfg(not(feature = "no_std_out"))]
@@ -231,7 +231,7 @@ macro_rules! impl_remote {
             }
 
             #[cfg(feature = "wasm")]
-            fn remote_fetch(buffer: alloc::sync::Weak<parking_lot::RwLock<Vec<u8>>>, url: &'static str) -> Result<(), crate::errors::ParameterError> {
+            fn remote_fetch(buffer: alloc::sync::Weak<parking_lot::RwLock<Vec<u8>>>, url: &'static str) -> Result<(), $crate::errors::ParameterError> {
                 // NOTE(julesdesmit): We spawn a local thread here in order to be
                 // able to accommodate the async syntax from reqwest.
                 wasm_bindgen_futures::spawn_local(async move {
