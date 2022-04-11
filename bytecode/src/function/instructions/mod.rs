@@ -29,6 +29,9 @@ pub(super) use neg::*;
 pub(super) mod sub;
 pub(super) use sub::*;
 
+pub(super) mod sub_wrapped;
+pub(super) use sub_wrapped::*;
+
 use crate::{
     function::{parsers::Operand, registers::Registers},
     helpers::Register,
@@ -72,6 +75,8 @@ pub enum Instruction<P: Program> {
     Neg(Neg<P>),
     /// Subtracts `second` from `first`, storing the outcome in `destination`.
     Sub(Sub<P>),
+    /// Subtracts `second` from `first`, wrapping around on overflow, and storing the outcome in `destination`.
+    SubWrapped(SubWrapped<P>),
 }
 
 impl<P: Program> Instruction<P> {
@@ -84,6 +89,7 @@ impl<P: Program> Instruction<P> {
             Self::Mul(..) => Mul::<P>::opcode(),
             Self::Neg(..) => Neg::<P>::opcode(),
             Self::Sub(..) => Sub::<P>::opcode(),
+            Self::SubWrapped(..) => SubWrapped::<P>::opcode(),
         }
     }
 
@@ -96,6 +102,7 @@ impl<P: Program> Instruction<P> {
             Self::Mul(mul) => mul.operands(),
             Self::Neg(neg) => neg.operands(),
             Self::Sub(sub) => sub.operands(),
+            Self::SubWrapped(sub_wrapped) => sub_wrapped.operands(),
         }
     }
 
@@ -108,6 +115,7 @@ impl<P: Program> Instruction<P> {
             Self::Mul(mul) => mul.destination(),
             Self::Neg(neg) => neg.destination(),
             Self::Sub(sub) => sub.destination(),
+            Self::SubWrapped(sub_wrapped) => sub_wrapped.destination(),
         }
     }
 
@@ -120,6 +128,7 @@ impl<P: Program> Instruction<P> {
             Self::Mul(instruction) => instruction.evaluate(registers),
             Self::Neg(instruction) => instruction.evaluate(registers),
             Self::Sub(instruction) => instruction.evaluate(registers),
+            Self::SubWrapped(instruction) => instruction.evaluate(registers),
         }
     }
 }
@@ -140,6 +149,7 @@ impl<P: Program> Parser for Instruction<P> {
             preceded(pair(tag(Mul::<P>::opcode()), tag(" ")), map(Mul::parse, Into::into)),
             preceded(pair(tag(Neg::<P>::opcode()), tag(" ")), map(Neg::parse, Into::into)),
             preceded(pair(tag(Sub::<P>::opcode()), tag(" ")), map(Sub::parse, Into::into)),
+            preceded(pair(tag(SubWrapped::<P>::opcode()), tag(" ")), map(SubWrapped::parse, Into::into)),
         ))(string)?;
         // Parse the semicolon from the string.
         let (string, _) = tag(";")(string)?;
@@ -156,6 +166,7 @@ impl<P: Program> fmt::Display for Instruction<P> {
             Self::Mul(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Neg(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Sub(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::SubWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
         }
     }
 }
@@ -169,7 +180,8 @@ impl<P: Program> FromBytes for Instruction<P> {
             2 => Ok(Self::Mul(Mul::read_le(&mut reader)?)),
             3 => Ok(Self::Neg(Neg::read_le(&mut reader)?)),
             4 => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
-            5.. => Err(error(format!("Failed to deserialize an instruction of code {code}"))),
+            5 => Ok(Self::SubWrapped(SubWrapped::read_le(&mut reader)?)),
+            6.. => Err(error(format!("Failed to deserialize an instruction of code {code}"))),
         }
     }
 }
@@ -194,6 +206,10 @@ impl<P: Program> ToBytes for Instruction<P> {
                 instruction.write_le(&mut writer)
             }
             Self::Sub(instruction) => {
+                u16::write_le(&3u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::SubWrapped(instruction) => {
                 u16::write_le(&3u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
