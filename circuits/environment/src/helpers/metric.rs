@@ -22,6 +22,7 @@ pub type Private = Metric<usize>;
 pub type Constraints = Metric<usize>;
 
 /// A helper struct for tracking the number of constants, public inputs, private inputs, and constraints.
+#[derive(Debug)]
 pub struct Count(pub Constant, pub Public, pub Private, pub Constraints);
 
 impl Count {
@@ -68,6 +69,14 @@ impl Count {
         num_private: usize,
         num_constraints: usize,
     ) -> bool {
+        println!("{:?}", self.0.is_satisfied(num_constants));
+        println!("{:?}, {:?}", self, num_public);
+        println!("{:?}", self.1.is_satisfied(num_public));
+        println!("{:?}, {:?}", self, num_public);
+        println!("{:?}", self.2.is_satisfied(num_private));
+        println!("{:?}, {:?}", self, num_public);
+        println!("{:?}", self.3.is_satisfied(num_constraints));
+
         self.0.is_satisfied(num_constants)
             && self.1.is_satisfied(num_public)
             && self.2.is_satisfied(num_private)

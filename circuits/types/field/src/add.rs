@@ -92,15 +92,19 @@ mod tests {
         expected: &<Circuit as Environment>::BaseField,
         a: &Field<Circuit>,
         b: &Field<Circuit>,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
     ) {
         Circuit::scope(name, || {
             let candidate = a + b;
             assert_eq!(*expected, candidate.eject_value(), "({} + {})", a.eject_value(), b.eject_value());
-            assert_scope!(num_constants, num_public, num_private, num_constraints);
+
+            // TODO: Refactor into a cleaner macro invocation.
+            let count = <Field<Circuit> as MetadataForOp::<dyn Add<Field<Circuit>, Output = Field<Circuit>>>>::count(&(a.eject_mode(), b.eject_mode()));
+            assert!(count.is_satisfied(Circuit::num_constants_in_scope(), Circuit::num_public_in_scope(), Circuit::num_private_in_scope(), Circuit::num_constraints_in_scope()));
+
+            let output_mode = <Field<Circuit> as MetadataForOp::<dyn Add<Field<Circuit>, Output = Field<Circuit>>>>::output_mode(&(a.eject_mode(), b.eject_mode()));
+            assert_eq!(output_mode, candidate.eject_mode());
+
+            assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
         });
     }
 
@@ -109,16 +113,20 @@ mod tests {
         expected: &<Circuit as Environment>::BaseField,
         a: &Field<Circuit>,
         b: &Field<Circuit>,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
     ) {
         Circuit::scope(name, || {
             let mut candidate = a.clone();
             candidate += b;
             assert_eq!(*expected, candidate.eject_value(), "({} + {})", a.eject_value(), b.eject_value());
-            assert_scope!(num_constants, num_public, num_private, num_constraints);
+
+            // TODO: Refactor into a cleaner macro invocation.
+            let count = <Field<Circuit> as MetadataForOp::<dyn Add<Field<Circuit>, Output = Field<Circuit>>>>::count(&(a.eject_mode(), b.eject_mode()));
+            assert!(count.is_satisfied(Circuit::num_constants_in_scope(), Circuit::num_public_in_scope(), Circuit::num_private_in_scope(), Circuit::num_constraints_in_scope()));
+
+            let output_mode = <Field<Circuit> as MetadataForOp::<dyn Add<Field<Circuit>, Output = Field<Circuit>>>>::output_mode(&(a.eject_mode(), b.eject_mode()));
+            assert_eq!(output_mode, candidate.eject_mode());
+
+            assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
         });
     }
 
@@ -133,9 +141,9 @@ mod tests {
             let b = Field::<Circuit>::new(Mode::Constant, second);
 
             let name = format!("Add: a + b {}", i);
-            check_add(&name, &expected, &a, &b, 0, 0, 0, 0);
+            check_add(&name, &expected, &a, &b);
             let name = format!("AddAssign: a + b {}", i);
-            check_add_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
+            check_add_assign(&name, &expected, &a, &b);
         }
     }
 
@@ -150,9 +158,9 @@ mod tests {
             let b = Field::<Circuit>::new(Mode::Public, second);
 
             let name = format!("Add: a + b {}", i);
-            check_add(&name, &expected, &a, &b, 0, 0, 0, 0);
+            check_add(&name, &expected, &a, &b);
             let name = format!("AddAssign: a + b {}", i);
-            check_add_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
+            check_add_assign(&name, &expected, &a, &b);
         }
     }
 
@@ -167,9 +175,9 @@ mod tests {
             let b = Field::<Circuit>::new(Mode::Constant, second);
 
             let name = format!("Add: a + b {}", i);
-            check_add(&name, &expected, &a, &b, 0, 0, 0, 0);
+            check_add(&name, &expected, &a, &b);
             let name = format!("AddAssign: a + b {}", i);
-            check_add_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
+            check_add_assign(&name, &expected, &a, &b);
         }
     }
 
@@ -184,9 +192,9 @@ mod tests {
             let b = Field::<Circuit>::new(Mode::Private, second);
 
             let name = format!("Add: a + b {}", i);
-            check_add(&name, &expected, &a, &b, 0, 0, 0, 0);
+            check_add(&name, &expected, &a, &b);
             let name = format!("AddAssign: a + b {}", i);
-            check_add_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
+            check_add_assign(&name, &expected, &a, &b);
         }
     }
 
@@ -201,9 +209,9 @@ mod tests {
             let b = Field::<Circuit>::new(Mode::Constant, second);
 
             let name = format!("Add: a + b {}", i);
-            check_add(&name, &expected, &a, &b, 0, 0, 0, 0);
+            check_add(&name, &expected, &a, &b);
             let name = format!("AddAssign: a + b {}", i);
-            check_add_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
+            check_add_assign(&name, &expected, &a, &b);
         }
     }
 
@@ -218,9 +226,9 @@ mod tests {
             let b = Field::<Circuit>::new(Mode::Public, second);
 
             let name = format!("Add: a + b {}", i);
-            check_add(&name, &expected, &a, &b, 0, 0, 0, 0);
+            check_add(&name, &expected, &a, &b);
             let name = format!("AddAssign: a + b {}", i);
-            check_add_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
+            check_add_assign(&name, &expected, &a, &b);
         }
     }
 
@@ -235,9 +243,9 @@ mod tests {
             let b = Field::<Circuit>::new(Mode::Private, second);
 
             let name = format!("Add: a + b {}", i);
-            check_add(&name, &expected, &a, &b, 0, 0, 0, 0);
+            check_add(&name, &expected, &a, &b);
             let name = format!("AddAssign: a + b {}", i);
-            check_add_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
+            check_add_assign(&name, &expected, &a, &b);
         }
     }
 
@@ -252,9 +260,9 @@ mod tests {
             let b = Field::<Circuit>::new(Mode::Public, second);
 
             let name = format!("Add: a + b {}", i);
-            check_add(&name, &expected, &a, &b, 0, 0, 0, 0);
+            check_add(&name, &expected, &a, &b);
             let name = format!("AddAssign: a + b {}", i);
-            check_add_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
+            check_add_assign(&name, &expected, &a, &b);
         }
     }
 
@@ -269,9 +277,9 @@ mod tests {
             let b = Field::<Circuit>::new(Mode::Private, second);
 
             let name = format!("Add: a + b {}", i);
-            check_add(&name, &expected, &a, &b, 0, 0, 0, 0);
+            check_add(&name, &expected, &a, &b);
             let name = format!("AddAssign: a + b {}", i);
-            check_add_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
+            check_add_assign(&name, &expected, &a, &b);
         }
     }
 

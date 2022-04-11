@@ -52,7 +52,10 @@ impl<E: Environment> MetadataForOp<dyn Inv<Output = Field<E>>> for Field<E> {
     }
 
     fn output_mode(input: &Self::Case) -> Mode {
-        *input
+        match input {
+            Mode::Constant => Mode::Constant,
+            _ => Mode::Private
+        }
     }
 }
 
@@ -67,10 +70,6 @@ mod tests {
     fn check_inv(
         name: &str,
         mode: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
     ) {
         for _ in 0..ITERATIONS {
             // Sample a random element.
@@ -80,8 +79,17 @@ mod tests {
                 let candidate = Field::<Circuit>::new(mode, given);
 
                 Circuit::scope(name, || {
-                    assert_eq!(expected, candidate.inv().eject_value());
-                    assert_scope!(num_constants, num_public, num_private, num_constraints);
+                    let result = candidate.inv();
+                    assert_eq!(expected, result.eject_value());
+
+                    // TODO: Refactor into a cleaner macro invocation.
+                    let count = <Field<Circuit> as MetadataForOp::<dyn Inv<Output = Field<Circuit>>>>::count(&mode);
+                    assert!(count.is_satisfied(Circuit::num_constants_in_scope(), Circuit::num_public_in_scope(), Circuit::num_private_in_scope(), Circuit::num_constraints_in_scope()));
+
+                    let output_mode = <Field<Circuit> as MetadataForOp::<dyn Inv<Output = Field<Circuit>>>>::output_mode(&mode);
+                    assert_eq!(output_mode, result.eject_mode());
+
+                    assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
                 });
                 Circuit::reset();
             }
@@ -90,9 +98,9 @@ mod tests {
 
     #[test]
     fn test_inv() {
-        check_inv("Constant", Mode::Constant, 1, 0, 0, 0);
-        check_inv("Public", Mode::Public, 0, 0, 1, 1);
-        check_inv("Private", Mode::Private, 0, 0, 1, 1);
+        check_inv("Constant", Mode::Constant);
+        check_inv("Public", Mode::Public);
+        check_inv("Private", Mode::Private);
     }
 
     #[test]
