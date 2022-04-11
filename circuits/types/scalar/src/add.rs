@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use snarkvm_circuits_environment::Count;
 use super::*;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -100,10 +101,29 @@ impl<E: Environment> AddAssign<&Scalar<E>> for Scalar<E> {
     }
 }
 
+impl<E: Environment> MetadataForOp<dyn Add<Scalar<E>, Output = Scalar<E>>> for Scalar<E>
+{
+    type Case = (Mode, Mode);
+
+    fn count(input: &Self::Case) -> Count {
+        match (input.0, input.1) {
+            (Mode::Constant, Mode::Constant) => Count::exact(251, 0, 0, 0),
+            (_, _) => Count::exact(254, 0, 1021, 1023),
+        }
+    }
+
+    fn output_mode(input: &Self::Case) -> Mode {
+        match (input.0, input.1) {
+            (Mode::Constant, Mode::Constant) => Mode::Constant,
+            (_, _) => Mode::Private,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_circuits_environment::Circuit;
+    use snarkvm_circuits_environment::{assert_count, assert_output_mode, Circuit};
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 128;
@@ -115,10 +135,6 @@ mod tests {
         second: <Circuit as Environment>::ScalarField,
         mode_a: Mode,
         mode_b: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
     ) {
         let a = Scalar::<Circuit>::new(mode_a, first);
         let b = Scalar::<Circuit>::new(mode_b, second);
@@ -128,7 +144,8 @@ mod tests {
         Circuit::scope(name, || {
             let candidate = a + b;
             assert_eq!(expected, candidate.eject_value(), "{}", case);
-            assert_scope!(case, num_constants, num_public, num_private, num_constraints);
+            assert_count!(Scalar<Circuit>, Add<Scalar<Circuit>, Output=Scalar<Circuit>>, &(mode_a, mode_b));
+            assert_output_mode!(candidate, Scalar<Circuit>, Add<Scalar<Circuit>, Output=Scalar<Circuit>>, &(mode_a, mode_b));
         });
     }
 
@@ -136,65 +153,61 @@ mod tests {
     fn run_test(
         mode_a: Mode,
         mode_b: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
     ) {
         for i in 0..ITERATIONS {
             let first = UniformRand::rand(&mut test_rng());
             let second = UniformRand::rand(&mut test_rng());
 
             let name = format!("Add: {} + {} {}", mode_a, mode_b, i);
-            check_add(&name, first, second, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+            check_add(&name, first, second, mode_a, mode_b);
 
             let name = format!("Add: {} + {} {} (commutative)", mode_a, mode_b, i);
-            check_add(&name, second, first, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+            check_add(&name, second, first, mode_a, mode_b);
         }
     }
 
     #[test]
     fn test_scalar_constant_plus_constant() {
-        run_test(Mode::Constant, Mode::Constant, 251, 0, 0, 0);
+        run_test(Mode::Constant, Mode::Constant);
     }
 
     #[test]
     fn test_scalar_constant_plus_public() {
-        run_test(Mode::Constant, Mode::Public, 254, 0, 1021, 1023);
+        run_test(Mode::Constant, Mode::Public);
     }
 
     #[test]
     fn test_scalar_constant_plus_private() {
-        run_test(Mode::Constant, Mode::Private, 254, 0, 1021, 1023);
+        run_test(Mode::Constant, Mode::Private);
     }
 
     #[test]
     fn test_scalar_public_plus_constant() {
-        run_test(Mode::Public, Mode::Constant, 254, 0, 1021, 1023);
+        run_test(Mode::Public, Mode::Constant);
     }
 
     #[test]
     fn test_scalar_private_plus_constant() {
-        run_test(Mode::Private, Mode::Constant, 254, 0, 1021, 1023);
+        run_test(Mode::Private, Mode::Constant);
     }
 
     #[test]
     fn test_scalar_public_plus_public() {
-        run_test(Mode::Public, Mode::Public, 254, 0, 1021, 1023);
+        run_test(Mode::Public, Mode::Public);
     }
 
     #[test]
     fn test_scalar_public_plus_private() {
-        run_test(Mode::Public, Mode::Private, 254, 0, 1021, 1023);
+        run_test(Mode::Public, Mode::Private);
     }
 
     #[test]
     fn test_scalar_private_plus_public() {
-        run_test(Mode::Private, Mode::Public, 254, 0, 1021, 1023);
+        run_test(Mode::Private, Mode::Public);
     }
 
     #[test]
     fn test_scalar_private_plus_private() {
-        run_test(Mode::Private, Mode::Private, 254, 0, 1021, 1023);
+        run_test(Mode::Private, Mode::Private);
     }
 }
