@@ -23,7 +23,7 @@ macro_rules! cond_select_int_impl {
                 first: &Self,
                 second: &Self,
             ) -> Result<Self, SynthesisError> {
-                use crate::traits::integers::Integer;
+                use $crate::traits::integers::Integer;
 
                 if let Boolean::Constant(cond) = *cond {
                     if cond { Ok(first.clone()) } else { Ok(second.clone()) }
@@ -78,7 +78,7 @@ macro_rules! uint_impl_common {
             pub value: Option<$_type>,
         }
 
-        impl crate::traits::integers::Integer for $name {
+        impl $crate::traits::integers::Integer for $name {
             type IntegerType = $_type;
             type UnsignedGadget = $name;
             type UnsignedIntegerType = $_type;

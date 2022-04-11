@@ -176,7 +176,7 @@ mod tests {
             .unwrap();
 
         let value_balance_bytes =
-            UInt8::alloc_vec(cs.ns(|| "value_balance_bytes"), &(value_balance.0.abs() as u64).to_le_bytes()).unwrap();
+            UInt8::alloc_vec(cs.ns(|| "value_balance_bytes"), &(value_balance.0.unsigned_abs()).to_le_bytes()).unwrap();
 
         let is_negative =
             Boolean::alloc(&mut cs.ns(|| "value_balance_is_negative"), || Ok(value_balance.is_negative())).unwrap();
