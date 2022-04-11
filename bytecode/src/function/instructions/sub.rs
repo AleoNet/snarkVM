@@ -27,7 +27,7 @@ use core::fmt;
 use nom::combinator::map;
 use std::io::{Read, Result as IoResult, Write};
 
-/// Subtracts `first` from `second`, storing the outcome in `destination`.
+/// Subtracts `second` from `first`, storing the outcome in `destination`.
 pub struct Sub<P: Program> {
     operation: BinaryOperation<P>,
 }

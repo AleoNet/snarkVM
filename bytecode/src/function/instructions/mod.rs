@@ -65,7 +65,7 @@ pub enum Instruction<P: Program> {
     Mul(Mul<P>),
     /// Negates `first`, storing the outcome in `destination`.
     Neg(Neg<P>),
-    /// Subtracts `first` from `second`, storing the outcome in `destination`.
+    /// Subtracts `second` from `first`, storing the outcome in `destination`.
     Sub(Sub<P>),
 }
 
