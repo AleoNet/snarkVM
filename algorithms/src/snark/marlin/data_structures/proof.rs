@@ -46,14 +46,12 @@ pub struct Commitments<E: PairingEngine> {
 }
 
 impl<E: PairingEngine> Commitments<E> {
-    #[allow(unused_mut, unused_variables)]
     fn serialize<W: snarkvm_utilities::Write>(
         &self,
-        batch_size: usize,
         writer: &mut W,
     ) -> Result<(), snarkvm_utilities::SerializationError> {
-        for i in 0..batch_size {
-            self.witness_commitments[i].serialize(writer)?;
+        for comm in &self.witness_commitments {
+            comm.serialize(writer)?;
         }
         CanonicalSerialize::serialize(&self.mask_poly, writer)?;
         CanonicalSerialize::serialize(&self.g_1, writer)?;
@@ -65,10 +63,9 @@ impl<E: PairingEngine> Commitments<E> {
         Ok(())
     }
 
-    #[allow(unused_mut, unused_variables)]
-    fn serialized_size(&self, batch_size: usize) -> usize {
+    fn serialized_size(&self) -> usize {
         let mut size = 0;
-        size += batch_size * CanonicalSerialize::serialized_size(&self.witness_commitments[0]);
+        size += self.witness_commitments.len() * CanonicalSerialize::serialized_size(&self.witness_commitments[0]);
         size += CanonicalSerialize::serialized_size(&self.mask_poly);
         size += CanonicalSerialize::serialized_size(&self.g_1);
         size += CanonicalSerialize::serialized_size(&self.h_1);
@@ -79,14 +76,12 @@ impl<E: PairingEngine> Commitments<E> {
         size
     }
 
-    #[allow(unused_mut, unused_variables)]
     fn serialize_uncompressed<W: snarkvm_utilities::Write>(
         &self,
-        batch_size: usize,
         writer: &mut W,
     ) -> Result<(), snarkvm_utilities::SerializationError> {
-        for i in 0..batch_size {
-            self.witness_commitments[i].serialize_uncompressed(writer)?;
+        for comm in &self.witness_commitments {
+            comm.serialize_uncompressed(writer)?;
         }
         CanonicalSerialize::serialize_uncompressed(&self.mask_poly, writer)?;
         CanonicalSerialize::serialize_uncompressed(&self.g_1, writer)?;
@@ -98,10 +93,9 @@ impl<E: PairingEngine> Commitments<E> {
         Ok(())
     }
 
-    #[allow(unused_mut, unused_variables)]
-    fn uncompressed_size(&self, batch_size: usize) -> usize {
+    fn uncompressed_size(&self) -> usize {
         let mut size = 0;
-        size += batch_size * CanonicalSerialize::uncompressed_size(&self.witness_commitments[0]);
+        size += self.witness_commitments.len() * CanonicalSerialize::uncompressed_size(&self.witness_commitments[0]);
         size += CanonicalSerialize::uncompressed_size(&self.mask_poly);
         size += CanonicalSerialize::uncompressed_size(&self.g_1);
         size += CanonicalSerialize::uncompressed_size(&self.h_1);
@@ -112,7 +106,6 @@ impl<E: PairingEngine> Commitments<E> {
         size
     }
 
-    #[allow(unused_mut, unused_variables)]
     fn deserialize<R: snarkvm_utilities::Read>(
         batch_size: usize,
         reader: &mut R,
@@ -135,7 +128,6 @@ impl<E: PairingEngine> Commitments<E> {
         }
     }
 
-    #[allow(unused_mut, unused_variables)]
     fn deserialize_uncompressed<R: snarkvm_utilities::Read>(
         batch_size: usize,
         reader: &mut R,
@@ -169,10 +161,10 @@ pub struct WitnessCommitments<E: PairingEngine> {
     pub z_b: sonic_pc::Commitment<E>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Evaluations<F: PrimeField> {
-    /// Evaluation of `\sum_r_i z_b_i` at `beta`.
-    pub z_b_eval: F,
+    /// Evaluation of `z_b_i`'s at `beta`.
+    pub z_b_evals: Vec<F>,
     /// Evaluation of `g_1` at `beta`.
     pub g_1_eval: F,
     /// Evaluation of `g_a` at `beta`.
@@ -184,31 +176,120 @@ pub struct Evaluations<F: PrimeField> {
 }
 
 impl<F: PrimeField> Evaluations<F> {
-    pub(crate) fn from_map(map: &std::collections::BTreeMap<String, F>) -> Self {
-        Self {
-            z_b_eval: map["z_b"],
-            g_1_eval: map["g_1"],
-            g_a_eval: map["g_a"],
-            g_b_eval: map["g_b"],
-            g_c_eval: map["g_c"],
+    fn serialize<W: snarkvm_utilities::Write>(
+        &self,
+        writer: &mut W,
+    ) -> Result<(), snarkvm_utilities::SerializationError> {
+        for z_b_eval in &self.z_b_evals {
+            CanonicalSerialize::serialize(z_b_eval, writer)?;
+        }
+        CanonicalSerialize::serialize(&self.g_1_eval, writer)?;
+        CanonicalSerialize::serialize(&self.g_a_eval, writer)?;
+        CanonicalSerialize::serialize(&self.g_b_eval, writer)?;
+        CanonicalSerialize::serialize(&self.g_c_eval, writer)?;
+        Ok(())
+    }
+
+    fn serialized_size(&self) -> usize {
+        let mut size = 0;
+        size += self.z_b_evals.len() * CanonicalSerialize::serialized_size(&self.z_b_evals[0]);
+        size += CanonicalSerialize::serialized_size(&self.g_1_eval);
+        size += CanonicalSerialize::serialized_size(&self.g_a_eval);
+        size += CanonicalSerialize::serialized_size(&self.g_b_eval);
+        size += CanonicalSerialize::serialized_size(&self.g_c_eval);
+        size
+    }
+
+    fn serialize_uncompressed<W: snarkvm_utilities::Write>(
+        &self,
+        writer: &mut W,
+    ) -> Result<(), snarkvm_utilities::SerializationError> {
+        for z_b_eval in &self.z_b_evals {
+            CanonicalSerialize::serialize_uncompressed(z_b_eval, writer)?;
+        }
+        CanonicalSerialize::serialize_uncompressed(&self.g_1_eval, writer)?;
+        CanonicalSerialize::serialize_uncompressed(&self.g_a_eval, writer)?;
+        CanonicalSerialize::serialize_uncompressed(&self.g_b_eval, writer)?;
+        CanonicalSerialize::serialize_uncompressed(&self.g_c_eval, writer)?;
+        Ok(())
+    }
+
+    fn uncompressed_size(&self) -> usize {
+        let mut size = 0;
+        size += self.z_b_evals.len() * CanonicalSerialize::uncompressed_size(&self.z_b_evals[0]);
+        size += CanonicalSerialize::uncompressed_size(&self.g_1_eval);
+        size += CanonicalSerialize::uncompressed_size(&self.g_a_eval);
+        size += CanonicalSerialize::uncompressed_size(&self.g_b_eval);
+        size += CanonicalSerialize::uncompressed_size(&self.g_c_eval);
+        size
+    }
+
+    fn deserialize<R: snarkvm_utilities::Read>(
+        batch_size: usize,
+        reader: &mut R,
+    ) -> Result<Self, snarkvm_utilities::SerializationError> {
+        {
+            let mut z_b_evals = Vec::with_capacity(batch_size);
+            for _ in 0..batch_size {
+                z_b_evals.push(CanonicalDeserialize::deserialize(reader)?);
+            }
+            Ok(Evaluations {
+                z_b_evals,
+                g_1_eval: CanonicalDeserialize::deserialize(reader)?,
+                g_a_eval: CanonicalDeserialize::deserialize(reader)?,
+                g_b_eval: CanonicalDeserialize::deserialize(reader)?,
+                g_c_eval: CanonicalDeserialize::deserialize(reader)?,
+            })
         }
     }
 
-    pub(crate) fn get(&self, label: &str) -> Option<F> {
-        match label {
-            "z_b" => Some(self.z_b_eval),
-            "g_1" => Some(self.g_1_eval),
-            "g_a" => Some(self.g_a_eval),
-            "g_b" => Some(self.g_b_eval),
-            "g_c" => Some(self.g_c_eval),
-            _ => None,
+    fn deserialize_uncompressed<R: snarkvm_utilities::Read>(
+        batch_size: usize,
+        reader: &mut R,
+    ) -> Result<Self, snarkvm_utilities::SerializationError> {
+        {
+            let mut z_b_evals = Vec::with_capacity(batch_size);
+            for _ in 0..batch_size {
+                z_b_evals.push(CanonicalDeserialize::deserialize_uncompressed(reader)?);
+            }
+            Ok(Evaluations {
+                z_b_evals,
+                g_1_eval: CanonicalDeserialize::deserialize_uncompressed(reader)?,
+                g_a_eval: CanonicalDeserialize::deserialize_uncompressed(reader)?,
+                g_b_eval: CanonicalDeserialize::deserialize_uncompressed(reader)?,
+                g_c_eval: CanonicalDeserialize::deserialize_uncompressed(reader)?,
+            })
         }
     }
 }
 
 impl<F: PrimeField> Evaluations<F> {
-    pub fn to_field_elements(&self) -> [F; 5] {
-        [self.z_b_eval, self.g_1_eval, self.g_a_eval, self.g_b_eval, self.g_c_eval]
+    pub(crate) fn from_map(map: &std::collections::BTreeMap<String, F>, batch_size: usize) -> Self {
+        let z_b_evals = map.iter().filter_map(|(k, v)| k.starts_with("z_b_").then(|| *v)).collect::<Vec<_>>();
+        assert_eq!(z_b_evals.len(), batch_size);
+        Self { z_b_evals, g_1_eval: map["g_1"], g_a_eval: map["g_a"], g_b_eval: map["g_b"], g_c_eval: map["g_c"] }
+    }
+
+    pub(crate) fn get(&self, label: &str) -> Option<F> {
+        if label.starts_with("z_b_") {
+            self.z_b_evals.get(label[5..].parse::<usize>().unwrap()).copied()
+        } else {
+            match label {
+                "g_1" => Some(self.g_1_eval),
+                "g_a" => Some(self.g_a_eval),
+                "g_b" => Some(self.g_b_eval),
+                "g_c" => Some(self.g_c_eval),
+                _ => None,
+            }
+        }
+    }
+}
+
+impl<F: PrimeField> Evaluations<F> {
+    pub fn to_field_elements(&self) -> Vec<F> {
+        let mut result = self.z_b_evals.clone();
+        result.extend([self.g_1_eval, self.g_a_eval, self.g_b_eval, self.g_c_eval]);
+        result
     }
 }
 
@@ -245,49 +326,45 @@ impl<E: PairingEngine> Proof<E> {
 }
 
 impl<E: PairingEngine> CanonicalSerialize for Proof<E> {
-    #[allow(unused_mut, unused_variables)]
     fn serialize<W: snarkvm_utilities::Write>(
         &self,
         writer: &mut W,
     ) -> Result<(), snarkvm_utilities::SerializationError> {
         CanonicalSerialize::serialize(&self.batch_size, writer)?;
-        Commitments::serialize(&self.commitments, self.batch_size, writer)?;
-        CanonicalSerialize::serialize(&self.evaluations, writer)?;
+        Commitments::serialize(&self.commitments, writer)?;
+        Evaluations::serialize(&self.evaluations, writer)?;
         CanonicalSerialize::serialize(&self.msg, writer)?;
         CanonicalSerialize::serialize(&self.pc_proof, writer)?;
         Ok(())
     }
 
-    #[allow(unused_mut, unused_variables)]
     fn serialized_size(&self) -> usize {
         let mut size = 0;
         size += CanonicalSerialize::serialized_size(&self.batch_size);
-        size += Commitments::serialized_size(&self.commitments, self.batch_size);
-        size += CanonicalSerialize::serialized_size(&self.evaluations);
+        size += Commitments::serialized_size(&self.commitments);
+        size += Evaluations::serialized_size(&self.evaluations);
         size += CanonicalSerialize::serialized_size(&self.msg);
         size += CanonicalSerialize::serialized_size(&self.pc_proof);
         size
     }
 
-    #[allow(unused_mut, unused_variables)]
     fn serialize_uncompressed<W: snarkvm_utilities::Write>(
         &self,
         writer: &mut W,
     ) -> Result<(), snarkvm_utilities::SerializationError> {
         CanonicalSerialize::serialize_uncompressed(&self.batch_size, writer)?;
-        Commitments::serialize_uncompressed(&self.commitments, self.batch_size, writer)?;
-        CanonicalSerialize::serialize_uncompressed(&self.evaluations, writer)?;
+        Commitments::serialize_uncompressed(&self.commitments, writer)?;
+        Evaluations::serialize_uncompressed(&self.evaluations, writer)?;
         CanonicalSerialize::serialize_uncompressed(&self.msg, writer)?;
         CanonicalSerialize::serialize_uncompressed(&self.pc_proof, writer)?;
         Ok(())
     }
 
-    #[allow(unused_mut, unused_variables)]
     fn uncompressed_size(&self) -> usize {
         let mut size = 0;
         size += CanonicalSerialize::uncompressed_size(&self.batch_size);
-        size += Commitments::uncompressed_size(&self.commitments, self.batch_size);
-        size += CanonicalSerialize::uncompressed_size(&self.evaluations);
+        size += Commitments::uncompressed_size(&self.commitments);
+        size += Evaluations::uncompressed_size(&self.evaluations);
         size += CanonicalSerialize::uncompressed_size(&self.msg);
         size += CanonicalSerialize::uncompressed_size(&self.pc_proof);
         size
@@ -295,21 +372,19 @@ impl<E: PairingEngine> CanonicalSerialize for Proof<E> {
 }
 
 impl<E: PairingEngine> CanonicalDeserialize for Proof<E> {
-    #[allow(unused_mut, unused_variables)]
     fn deserialize<R: snarkvm_utilities::Read>(reader: &mut R) -> Result<Self, snarkvm_utilities::SerializationError> {
         {
             let batch_size = CanonicalDeserialize::deserialize(reader)?;
             Ok(Proof {
                 batch_size,
                 commitments: Commitments::deserialize(batch_size, reader)?,
-                evaluations: CanonicalDeserialize::deserialize(reader)?,
+                evaluations: Evaluations::deserialize(batch_size, reader)?,
                 msg: CanonicalDeserialize::deserialize(reader)?,
                 pc_proof: CanonicalDeserialize::deserialize(reader)?,
             })
         }
     }
 
-    #[allow(unused_mut, unused_variables)]
     fn deserialize_uncompressed<R: snarkvm_utilities::Read>(
         reader: &mut R,
     ) -> Result<Self, snarkvm_utilities::SerializationError> {
@@ -318,7 +393,7 @@ impl<E: PairingEngine> CanonicalDeserialize for Proof<E> {
             Ok(Proof {
                 batch_size,
                 commitments: Commitments::deserialize_uncompressed(batch_size, reader)?,
-                evaluations: CanonicalDeserialize::deserialize_uncompressed(reader)?,
+                evaluations: Evaluations::deserialize_uncompressed(batch_size, reader)?,
                 msg: CanonicalDeserialize::deserialize_uncompressed(reader)?,
                 pc_proof: CanonicalDeserialize::deserialize_uncompressed(reader)?,
             })

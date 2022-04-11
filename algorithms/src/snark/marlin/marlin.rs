@@ -165,7 +165,6 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
         zk_rng: &mut R,
     ) -> Result<Proof<E>, MarlinError> {
         let prover_time = start_timer!(|| "Marlin::Prover");
-        // TODO: Add check that c is in the correct mode.
 
         Self::terminate(terminator)?;
 

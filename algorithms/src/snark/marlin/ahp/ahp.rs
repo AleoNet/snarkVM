@@ -185,9 +185,13 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let largest_non_zero_domain =
             Self::max_non_zero_domain_helper(state.non_zero_a_domain, state.non_zero_b_domain, state.non_zero_c_domain);
 
-        let public_input = prover::ConstraintSystem::format_public_input(public_input);
-        if !Self::formatted_public_input_is_admissible(&public_input) {
-            return Err(AHPError::InvalidPublicInputLength);
+        let public_input =
+            public_input.iter().map(|p| prover::ConstraintSystem::format_public_input(p)).collect::<Vec<_>>();
+
+        for public_input in public_input {
+            if !Self::formatted_public_input_is_admissible(&public_input) {
+                return Err(AHPError::InvalidPublicInputLength);
+            }
         }
         let input_domain = EvaluationDomain::new(public_input.len()).ok_or(AHPError::PolynomialDegreeTooLarge)?;
 
@@ -196,6 +200,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let eta_a = F::one();
         let eta_b = first_round_msg.eta_b;
         let eta_c = first_round_msg.eta_c;
+        let batch_combiners = &first_round_msg.batch_combiners;
         let prover::ThirdMessage { sum_a, sum_b, sum_c } = prover_third_message;
 
         #[rustfmt::skip]
@@ -212,7 +217,12 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let mut linear_combinations = BTreeMap::new();
 
         // Lincheck sumcheck:
-        let z_b = LinearCombination::new("z_b", vec![(F::one(), "z_b")]);
+        let z_b_s = (0..state.batch_size)
+            .map(|i| {
+                let z_b_i = format!("z_b_{i}");
+                LinearCombination::new(&z_b_i, vec![(F::one(), "z_b")])
+            })
+            .collect::<Vec<_>>();
         let g_1 = LinearCombination::new("g_1", vec![(F::one(), "g_1")]);
 
         let r_alpha_at_beta = constraint_domain.eval_unnormalized_bivariate_lagrange_poly(alpha, beta);
@@ -220,13 +230,24 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let v_H_at_beta = constraint_domain.evaluate_vanishing_polynomial(beta);
         let v_X_at_beta = input_domain.evaluate_vanishing_polynomial(beta);
 
-        let z_b_at_beta = evals.get_lc_eval(&z_b, beta)?;
+        let z_b_s_at_beta = z_b_s.iter().map(|z_b| evals.get_lc_eval(&z_b, beta)).collect::<Result<Vec<_>, _>>()?;
+        let batch_z_b_at_beta: F =
+            z_b_s_at_beta.iter().zip(batch_combiners).map(|(z_b_at_beta, combiner)| *z_b_at_beta * combiner).sum();
         let g_1_at_beta = evals.get_lc_eval(&g_1, beta)?;
 
+        let combined_input = batch_combiners.iter().zip(&public_input).fold(
+            vec![F::zero(); public_input[0].len()],
+            |mut prev, (combiner, input)| {
+                prev.iter_mut().zip(input).for_each(|(prev, input)| {
+                    *prev = *combiner * input;
+                });
+                prev
+            },
+        );
         let x_at_beta = input_domain
             .evaluate_all_lagrange_coefficients(beta)
             .into_iter()
-            .zip(public_input)
+            .zip(combined_input)
             .map(|(l, x)| l * x)
             .fold(F::zero(), |x, y| x + y);
 
@@ -236,8 +257,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             if MM::ZK {
                 lc_terms.push((F::one(), "mask_poly".into()));
             }
-            lc_terms.push((r_alpha_at_beta * (eta_a + (eta_c * z_b_at_beta)), "z_a".into()));
-            lc_terms.push((r_alpha_at_beta * eta_b * z_b_at_beta, LCTerm::One));
+            for (i, z_b_i_at_beta) in z_b_s_at_beta.iter().enumerate() {
+                lc_terms.push((r_alpha_at_beta * (eta_a + (eta_c * z_b_i_at_beta)), format!("z_a_{i}").into()));
+            }
+            lc_terms.push((r_alpha_at_beta * eta_b * batch_z_b_at_beta, LCTerm::One));
             lc_terms.push((-t_at_beta * v_X_at_beta, "w".into()));
             lc_terms.push((-t_at_beta * x_at_beta, LCTerm::One));
             lc_terms.push((-v_H_at_beta, "h_1".into()));
@@ -246,7 +269,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         };
         debug_assert!(evals.get_lc_eval(&lincheck_sumcheck, beta)?.is_zero());
 
-        linear_combinations.insert("z_b".into(), z_b);
+        for z_b in z_b_s {
+            linear_combinations.insert(z_b.label.clone(), z_b);
+        }
         linear_combinations.insert("g_1".into(), g_1);
         linear_combinations.insert("lincheck_sumcheck".into(), lincheck_sumcheck);
 
