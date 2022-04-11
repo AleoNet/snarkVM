@@ -82,29 +82,26 @@ impl<E: Environment> MetadataForOp<dyn Add<Field<E>, Output = Field<E>>> for Fie
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_circuits_environment::Circuit;
+    use snarkvm_circuits_environment::{assert_count, assert_output_mode, Circuit};
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 10_000;
 
-    fn check_add(
-        name: &str,
-        expected: &<Circuit as Environment>::BaseField,
-        a: &Field<Circuit>,
-        b: &Field<Circuit>,
-    ) {
+    fn check_add(name: &str, expected: &<Circuit as Environment>::BaseField, a: &Field<Circuit>, b: &Field<Circuit>) {
         Circuit::scope(name, || {
             let candidate = a + b;
             assert_eq!(*expected, candidate.eject_value(), "({} + {})", a.eject_value(), b.eject_value());
-
-            // TODO: Refactor into a cleaner macro invocation.
-            let count = <Field<Circuit> as MetadataForOp::<dyn Add<Field<Circuit>, Output = Field<Circuit>>>>::count(&(a.eject_mode(), b.eject_mode()));
-            assert!(count.is_satisfied(Circuit::num_constants_in_scope(), Circuit::num_public_in_scope(), Circuit::num_private_in_scope(), Circuit::num_constraints_in_scope()));
-
-            let output_mode = <Field<Circuit> as MetadataForOp::<dyn Add<Field<Circuit>, Output = Field<Circuit>>>>::output_mode(&(a.eject_mode(), b.eject_mode()));
-            assert_eq!(output_mode, candidate.eject_mode());
-
-            assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
+            assert_count!(
+                Field<Circuit>,
+                Add<Field<Circuit>, Output = Field<Circuit>>,
+                &(a.eject_mode(), b.eject_mode())
+            );
+            assert_output_mode!(
+                candidate,
+                Field<Circuit>,
+                Add<Field<Circuit>, Output = Field<Circuit>>,
+                &(a.eject_mode(), b.eject_mode())
+            );
         });
     }
 
@@ -120,10 +117,22 @@ mod tests {
             assert_eq!(*expected, candidate.eject_value(), "({} + {})", a.eject_value(), b.eject_value());
 
             // TODO: Refactor into a cleaner macro invocation.
-            let count = <Field<Circuit> as MetadataForOp::<dyn Add<Field<Circuit>, Output = Field<Circuit>>>>::count(&(a.eject_mode(), b.eject_mode()));
-            assert!(count.is_satisfied(Circuit::num_constants_in_scope(), Circuit::num_public_in_scope(), Circuit::num_private_in_scope(), Circuit::num_constraints_in_scope()));
+            let count = <Field<Circuit> as MetadataForOp<dyn Add<Field<Circuit>, Output = Field<Circuit>>>>::count(&(
+                a.eject_mode(),
+                b.eject_mode(),
+            ));
+            assert!(count.is_satisfied(
+                Circuit::num_constants_in_scope(),
+                Circuit::num_public_in_scope(),
+                Circuit::num_private_in_scope(),
+                Circuit::num_constraints_in_scope()
+            ));
 
-            let output_mode = <Field<Circuit> as MetadataForOp::<dyn Add<Field<Circuit>, Output = Field<Circuit>>>>::output_mode(&(a.eject_mode(), b.eject_mode()));
+            let output_mode =
+                <Field<Circuit> as MetadataForOp<dyn Add<Field<Circuit>, Output = Field<Circuit>>>>::output_mode(&(
+                    a.eject_mode(),
+                    b.eject_mode(),
+                ));
             assert_eq!(output_mode, candidate.eject_mode());
 
             assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");

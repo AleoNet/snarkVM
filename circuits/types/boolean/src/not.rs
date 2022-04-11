@@ -67,26 +67,15 @@ impl<E: Environment> MetadataForOp<dyn Not<Output = Boolean<E>>> for Boolean<E> 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_circuits_environment::Circuit;
+    use snarkvm_circuits_environment::{assert_count, assert_output_mode, Circuit};
 
-    fn check_not(
-        name: &str,
-        expected: bool,
-        candidate_input: Boolean<Circuit>,
-    ) {
+    fn check_not(name: &str, expected: bool, candidate_input: Boolean<Circuit>) {
         Circuit::scope(name, || {
             let mode = candidate_input.mode();
             let candidate_output = !candidate_input;
             assert_eq!(expected, candidate_output.eject_value());
-
-            // TODO: Refactor into a cleaner macro invocation.
-            let count = <Boolean<Circuit> as MetadataForOp::<dyn Not<Output = Boolean<Circuit>>>>::count(&mode);
-            assert!(count.is_satisfied(Circuit::num_constants_in_scope(), Circuit::num_public_in_scope(), Circuit::num_private_in_scope(), Circuit::num_constraints_in_scope()));
-
-            let output_mode = <Boolean<Circuit> as MetadataForOp::<dyn Not<Output = Boolean<Circuit>>>>::output_mode(&mode);
-            assert_eq!(output_mode, candidate_output.mode());
-
-            assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
+            assert_count!(Boolean<Circuit>, Not<Output = Boolean<Circuit>>, &mode);
+            assert_output_mode!(candidate_output, Boolean<Circuit>, Not<Output = Boolean<Circuit>>, &mode);
         });
     }
 

@@ -83,26 +83,23 @@ impl<E: Environment> MetadataForOp<dyn Nor<Boolean<E>, Output = Boolean<E>>> for
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_circuits_environment::{Circuit, Metric, print_scope};
+    use snarkvm_circuits_environment::{assert_count, assert_output_mode, Circuit};
 
-    fn check_nor(
-        name: &str,
-        expected: bool,
-        a: Boolean<Circuit>,
-        b: Boolean<Circuit>,
-    ) {
+    fn check_nor(name: &str, expected: bool, a: Boolean<Circuit>, b: Boolean<Circuit>) {
         Circuit::scope(name, || {
             let candidate = a.nor(&b);
             assert_eq!(expected, candidate.eject_value(), "({} NOR {})", a.eject_value(), b.eject_value());
-
-            // TODO: Refactor into a cleaner macro invocation.
-            let count = <Boolean<Circuit> as MetadataForOp::<dyn Nor<Boolean<Circuit>, Output = Boolean<Circuit>>>>::count(&(a.mode(), b.mode()));
-            assert!(count.is_satisfied(Circuit::num_constants_in_scope(), Circuit::num_public_in_scope(), Circuit::num_private_in_scope(), Circuit::num_constraints_in_scope()));
-
-            let output_mode = <Boolean<Circuit> as MetadataForOp::<dyn Nor<Boolean<Circuit>, Output = Boolean<Circuit>>>>::output_mode(&(a.mode(), b.mode()));
-            assert_eq!(output_mode, candidate.mode());
-
-            assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
+            assert_count!(
+                Boolean<Circuit>,
+                Nor<Boolean<Circuit>, Output = Boolean<Circuit>>,
+                &(a.eject_mode(), b.eject_mode())
+            );
+            assert_output_mode!(
+                candidate,
+                Boolean<Circuit>,
+                Nor<Boolean<Circuit>, Output = Boolean<Circuit>>,
+                &(a.eject_mode(), b.eject_mode())
+            );
         });
         Circuit::reset();
     }

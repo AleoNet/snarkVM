@@ -110,7 +110,9 @@ impl<E: Environment, I: IntegerType> AddChecked<Self> for Integer<E, I> {
     }
 }
 
-impl<E: Environment, I: IntegerType> MetadataForOp<dyn Add<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
+impl<E: Environment, I: IntegerType> MetadataForOp<dyn AddChecked<Integer<E, I>, Output = Integer<E, I>>>
+    for Integer<E, I>
+{
     type Case = (Mode, Mode);
 
     fn count(input: &Self::Case) -> Count {
@@ -139,7 +141,7 @@ impl<E: Environment, I: IntegerType> MetadataForOp<dyn Add<Integer<E, I>, Output
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_circuits_environment::Circuit;
+    use snarkvm_circuits_environment::{assert_count, assert_count_fails, assert_output_mode, Circuit};
     use snarkvm_utilities::{test_rng, UniformRand};
     use test_utilities::*;
 
@@ -163,29 +165,14 @@ mod tests {
             Some(expected) => Circuit::scope(name, || {
                 let candidate = a.add_checked(&b);
                 assert_eq!(expected, candidate.eject_value());
-
-                // TODO: Use `test_utilities` once they use `MetadataForOp`.
-                let count = <Integer<Circuit, I> as MetadataForOp::<dyn Add<Integer<Circuit, I>, Output = Integer<Circuit, I>>>>::count(&(a.eject_mode(), b.eject_mode()));
-                assert!(count.is_satisfied(Circuit::num_constants_in_scope(), Circuit::num_public_in_scope(), Circuit::num_private_in_scope(), Circuit::num_constraints_in_scope()));
-
-                let output_mode = <Integer<Circuit, I> as MetadataForOp::<dyn Add<Integer<Circuit, I>, Output = Integer<Circuit, I>>>>::output_mode(&(a.eject_mode(), b.eject_mode()));
-                assert_eq!(output_mode, candidate.eject_mode());
-
-                assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
+                assert_count!(Integer<Circuit, I>, AddChecked<Integer<Circuit, I>, Output=Integer<Circuit, I>>, &(mode_a, mode_b));
+                assert_output_mode!(candidate, Integer<Circuit, I>, AddChecked<Integer<Circuit, I>, Output=Integer<Circuit, I>>, &(mode_a, mode_b));
             }),
             None => match mode_a.is_constant() && mode_b.is_constant() {
                 true => check_operation_halts(&a, &b, Integer::add_checked),
                 false => Circuit::scope(name, || {
                     let candidate = a.add_checked(&b);
-
-                    // TODO: Use `test_utilities` once they use `MetadataForOp`.
-                    let count = <Integer<Circuit, I> as MetadataForOp::<dyn Add<Integer<Circuit, I>, Output = Integer<Circuit, I>>>>::count(&(a.eject_mode(), b.eject_mode()));
-                    assert!(count.is_satisfied(Circuit::num_constants_in_scope(), Circuit::num_public_in_scope(), Circuit::num_private_in_scope(), Circuit::num_constraints_in_scope()));
-
-                    let output_mode = <Integer<Circuit, I> as MetadataForOp::<dyn Add<Integer<Circuit, I>, Output = Integer<Circuit, I>>>>::output_mode(&(a.eject_mode(), b.eject_mode()));
-                    assert_eq!(output_mode, candidate.eject_mode());
-
-                    assert!(!Circuit::is_satisfied_in_scope(), "(!is_satisfied_in_scope)");
+                    assert_count_fails!(Integer<Circuit, I>, AddChecked<Integer<Circuit, I>, Output=Integer<Circuit, I>>, &(mode_a, mode_b));
                 }),
             },
         }

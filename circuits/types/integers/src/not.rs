@@ -52,7 +52,7 @@ impl<E: Environment, I: IntegerType> MetadataForOp<dyn Not<Output = Integer<E, I
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_circuits_environment::{Circuit, print_scope};
+    use snarkvm_circuits_environment::{assert_count, assert_output_mode, Circuit};
     use snarkvm_utilities::{test_rng, UniformRand};
     use test_utilities::*;
 
@@ -72,22 +72,12 @@ mod tests {
         Circuit::scope(name, || {
             let candidate = a.not();
             assert_eq!(expected, candidate.eject_value());
-
-            print_scope!();
-
-            let count = <Integer<Circuit, I> as MetadataForOp::<dyn Not<Output = Integer<Circuit, I>>>>::count(&mode);
-            assert!(count.is_satisfied(Circuit::num_constants_in_scope(), Circuit::num_public_in_scope(), Circuit::num_private_in_scope(), Circuit::num_constraints_in_scope()));
-
-            let output_mode = <Integer<Circuit, I> as MetadataForOp::<dyn Not<Output = Integer<Circuit, I>>>>::output_mode(&mode);
-            assert_eq!(output_mode, candidate.eject_mode());
-
-            assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
+            assert_count!(Integer<Circuit, I>, Not<Output=Integer<Circuit, I>>, &mode);
+            assert_output_mode!(candidate, Integer<Circuit, I>, Not<Output=Integer<Circuit, I>>, &mode);
         });
     }
 
-    fn run_test<I: IntegerType + Not<Output = I>>(
-        mode: Mode,
-    ) {
+    fn run_test<I: IntegerType + Not<Output = I>>(mode: Mode) {
         for i in 0..ITERATIONS {
             let name = format!("Not: {} {}", mode, i);
             let value: I = UniformRand::rand(&mut test_rng());

@@ -121,29 +121,26 @@ impl<E: Environment> MetadataForOp<dyn Add<Group<E>, Output = Group<E>>> for Gro
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_circuits_environment::Circuit;
+    use snarkvm_circuits_environment::{assert_count, assert_output_mode, Circuit};
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 100;
 
-    fn check_add(
-        name: &str,
-        expected: &<Circuit as Environment>::Affine,
-        a: &Group<Circuit>,
-        b: &Group<Circuit>,
-    ) {
+    fn check_add(name: &str, expected: &<Circuit as Environment>::Affine, a: &Group<Circuit>, b: &Group<Circuit>) {
         Circuit::scope(name, || {
             let candidate = a + b;
             assert_eq!(*expected, candidate.eject_value(), "({} + {})", a.eject_value(), b.eject_value());
-
-            // TODO: Refactor into a cleaner macro invocation.
-            let count = <Group<Circuit> as MetadataForOp::<dyn Add<Group<Circuit>, Output = Group<Circuit>>>>::count(&(a.eject_mode(), b.eject_mode()));
-            assert!(count.is_satisfied(Circuit::num_constants_in_scope(), Circuit::num_public_in_scope(), Circuit::num_private_in_scope(), Circuit::num_constraints_in_scope()));
-
-            let output_mode = <Group<Circuit> as MetadataForOp::<dyn Add<Group<Circuit>, Output = Group<Circuit>>>>::output_mode(&(a.eject_mode(), b.eject_mode()));
-            assert_eq!(output_mode, candidate.eject_mode());
-
-            assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
+            assert_count!(
+                Group<Circuit>,
+                Add<Group<Circuit>, Output = Group<Circuit>>,
+                &(a.eject_mode(), b.eject_mode())
+            );
+            assert_output_mode!(
+                candidate,
+                Group<Circuit>,
+                Add<Group<Circuit>, Output = Group<Circuit>>,
+                &(a.eject_mode(), b.eject_mode())
+            );
         });
     }
 
@@ -159,10 +156,22 @@ mod tests {
             assert_eq!(*expected, candidate.eject_value(), "({} + {})", a.eject_value(), b.eject_value());
 
             // TODO: Refactor into a cleaner macro invocation
-            let count = <Group<Circuit> as MetadataForOp::<dyn Add<Group<Circuit>, Output = Group<Circuit>>>>::count(&(a.eject_mode(), b.eject_mode()));
-            assert!(count.is_satisfied(Circuit::num_constants_in_scope(), Circuit::num_public_in_scope(), Circuit::num_private_in_scope(), Circuit::num_constraints_in_scope()));
+            let count = <Group<Circuit> as MetadataForOp<dyn Add<Group<Circuit>, Output = Group<Circuit>>>>::count(&(
+                a.eject_mode(),
+                b.eject_mode(),
+            ));
+            assert!(count.is_satisfied(
+                Circuit::num_constants_in_scope(),
+                Circuit::num_public_in_scope(),
+                Circuit::num_private_in_scope(),
+                Circuit::num_constraints_in_scope()
+            ));
 
-            let output_mode = <Group<Circuit> as MetadataForOp::<dyn Add<Group<Circuit>, Output = Group<Circuit>>>>::output_mode(&(a.eject_mode(), b.eject_mode()));
+            let output_mode =
+                <Group<Circuit> as MetadataForOp<dyn Add<Group<Circuit>, Output = Group<Circuit>>>>::output_mode(&(
+                    a.eject_mode(),
+                    b.eject_mode(),
+                ));
             assert_eq!(output_mode, candidate.eject_mode());
 
             assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");

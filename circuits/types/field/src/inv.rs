@@ -54,7 +54,7 @@ impl<E: Environment> MetadataForOp<dyn Inv<Output = Field<E>>> for Field<E> {
     fn output_mode(input: &Self::Case) -> Mode {
         match input {
             Mode::Constant => Mode::Constant,
-            _ => Mode::Private
+            _ => Mode::Private,
         }
     }
 }
@@ -62,15 +62,12 @@ impl<E: Environment> MetadataForOp<dyn Inv<Output = Field<E>>> for Field<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_circuits_environment::Circuit;
+    use snarkvm_circuits_environment::{assert_count, assert_output_mode, Circuit};
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 1_000;
 
-    fn check_inv(
-        name: &str,
-        mode: Mode,
-    ) {
+    fn check_inv(name: &str, mode: Mode) {
         for _ in 0..ITERATIONS {
             // Sample a random element.
             let given: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
@@ -81,15 +78,8 @@ mod tests {
                 Circuit::scope(name, || {
                     let result = candidate.inv();
                     assert_eq!(expected, result.eject_value());
-
-                    // TODO: Refactor into a cleaner macro invocation.
-                    let count = <Field<Circuit> as MetadataForOp::<dyn Inv<Output = Field<Circuit>>>>::count(&mode);
-                    assert!(count.is_satisfied(Circuit::num_constants_in_scope(), Circuit::num_public_in_scope(), Circuit::num_private_in_scope(), Circuit::num_constraints_in_scope()));
-
-                    let output_mode = <Field<Circuit> as MetadataForOp::<dyn Inv<Output = Field<Circuit>>>>::output_mode(&mode);
-                    assert_eq!(output_mode, result.eject_mode());
-
-                    assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
+                    assert_count!(Field<Circuit>, Nor<Field<Circuit>, Output = Field<Circuit>>, &mode);
+                    assert_output_mode!(candidate, Field<Circuit>, Nor<Field<Circuit>, Output = Field<Circuit>>, &mode);
                 });
                 Circuit::reset();
             }
