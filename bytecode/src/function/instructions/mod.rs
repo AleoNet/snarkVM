@@ -215,6 +215,30 @@ mod tests {
                 $instruction::from_str("r0 r1 into r2").evaluate(&registers);
             }
         };
+
+        ($test_name:ident, $instruction: ident, $reason: expr, $input: expr) => {
+            #[test]
+            #[should_panic(expected = $reason)]
+            fn $test_name() {
+                use $crate::{
+                    function::{Operation, Registers},
+                    Parser,
+                    Process,
+                    Register,
+                    Value,
+                };
+                type P = Process;
+
+                let input = Value::<P>::from_str($input);
+
+                let registers = Registers::<P>::default();
+                registers.define(&Register::from_str("r0"));
+                registers.define(&Register::from_str("r1"));
+                registers.assign(&Register::from_str("r0"), input);
+
+                $instruction::from_str("r0 into r1").evaluate(&registers);
+            }
+        };
     }
 
     #[macro_export]

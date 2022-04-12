@@ -118,7 +118,7 @@ impl<P: Program> Into<Instruction<P>> for Neg<P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_modes;
+    use crate::{test_instruction_halts, test_modes};
 
     test_modes!(field, Neg, "1field", "-1field");
     test_modes!(group, Neg, "2group", "-2group");
@@ -127,4 +127,49 @@ mod tests {
     test_modes!(i32, Neg, "1i32", "-1i32");
     test_modes!(i64, Neg, "1i64", "-1i64");
     test_modes!(i128, Neg, "1i128", "-1i128");
+
+    test_instruction_halts!(
+        i8_min_neg_halts,
+        Neg,
+        "Integer overflow on addition of two constants",
+        &format!("{}i8", i8::MIN)
+    );
+    test_instruction_halts!(
+        i16_min_neg_halts,
+        Neg,
+        "Integer overflow on addition of two constants",
+        &format!("{}i16", i16::MIN)
+    );
+    test_instruction_halts!(
+        i32_min_neg_halts,
+        Neg,
+        "Integer overflow on addition of two constants",
+        &format!("{}i32", i32::MIN)
+    );
+    test_instruction_halts!(
+        i64_min_neg_halts,
+        Neg,
+        "Integer overflow on addition of two constants",
+        &format!("{}i64", i64::MIN)
+    );
+    test_instruction_halts!(
+        i128_min_neg_halts,
+        Neg,
+        "Integer overflow on addition of two constants",
+        &format!("{}i128", i128::MIN)
+    );
+    test_instruction_halts!(u8_neg_halts, Neg, "Invalid 'neg' instruction", "1u8");
+    test_instruction_halts!(u16_neg_halts, Neg, "Invalid 'neg' instruction", "1u16");
+    test_instruction_halts!(u32_neg_halts, Neg, "Invalid 'neg' instruction", "1u32");
+    test_instruction_halts!(u64_neg_halts, Neg, "Invalid 'neg' instruction", "1u64");
+    test_instruction_halts!(u128_neg_halts, Neg, "Invalid 'neg' instruction", "1u128");
+    test_instruction_halts!(scalar_neg_halts, Neg, "Invalid 'neg' instruction", "1scalar.constant");
+    test_instruction_halts!(
+        address_neg_halts,
+        Neg,
+        "Invalid 'neg' instruction",
+        "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.constant"
+    );
+    test_instruction_halts!(boolean_neg_halts, Neg, "Invalid 'neg' instruction", "true.constant");
+    test_instruction_halts!(string_neg_halts, Neg, "Invalid 'neg' instruction", "\"hello\".constant");
 }
