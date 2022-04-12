@@ -25,6 +25,15 @@ use snarkvm_utilities::{
 
 use enum_index::EnumIndex;
 
+/// Trait to infer the output type of an instruction.
+pub trait OutputType {
+    type Input;
+    // Note that `Output` is expected to be a `LiteralType` or a tuple of `LiteralType`s.
+    type Output;
+
+    fn output_type(input_type: &Self::Input) -> Self::Output;
+}
+
 #[derive(Copy, Clone, PartialEq, Eq, Hash, EnumIndex)]
 pub enum LiteralType<P> {
     /// The Aleo address type.

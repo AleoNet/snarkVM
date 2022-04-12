@@ -84,7 +84,7 @@ impl<E: Environment> MetadataForOp<dyn Nor<Boolean<E>, Output = Boolean<E>>> for
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_circuits_environment::{assert_count, assert_output_mode, Circuit};
+    use snarkvm_circuits_environment::Circuit;
 
     fn check_nor(name: &str, expected: bool, a: Boolean<Circuit>, b: Boolean<Circuit>) {
         Circuit::scope(name, || {

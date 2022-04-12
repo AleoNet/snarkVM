@@ -18,10 +18,24 @@ use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Registers},
     helpers::Register,
     LiteralType,
+    OutputType,
     Program,
     Value,
 };
-use snarkvm_circuits::{count, CircuitCount, Count, Field, Group, Literal, Parser, ParserResult, I8, U8};
+use snarkvm_circuits::{
+    count,
+    output_mode,
+    CircuitCount,
+    Count,
+    Field,
+    Group,
+    Literal,
+    OutputMode,
+    Parser,
+    ParserResult,
+    I8,
+    U8,
+};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
@@ -94,6 +108,29 @@ impl<P: Program> Count<Self> for Neg<P> {
             }
             LiteralType::U8(mode) => {
                 count!(U8<P::Environment>, NegOp<Output = U8<P::Environment>>, mode)
+            }
+            _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
+        }
+    }
+}
+
+impl<P: Program> OutputType for Neg<P> {
+    type Input = LiteralType<P>;
+    type Output = LiteralType<P>;
+
+    fn output_type(input_type: &Self::Input) -> Self::Output {
+        match input_type {
+            LiteralType::Field(mode) => {
+                LiteralType::Field(output_mode!(Field<P::Environment>, NegOp<Output = Field<P::Environment>>, mode))
+            }
+            LiteralType::Group(mode) => {
+                LiteralType::Group(output_mode!(Group<P::Environment>, NegOp<Output = Group<P::Environment>>, mode))
+            }
+            LiteralType::I8(mode) => {
+                LiteralType::I8(output_mode!(I8<P::Environment>, NegOp<Output = I8<P::Environment>>, mode))
+            }
+            LiteralType::U8(mode) => {
+                LiteralType::U8(output_mode!(U8<P::Environment>, NegOp<Output = U8<P::Environment>>, mode))
             }
             _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
         }

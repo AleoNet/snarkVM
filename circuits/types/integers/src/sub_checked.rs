@@ -185,7 +185,7 @@ mod tests {
     ) {
         let a = Integer::<Circuit, I>::new(mode_a, first);
         let b = Integer::<Circuit, I>::new(mode_b, second);
-        let case = format!("({} - {})", a.eject_value(), b.eject_value());
+        let _case = format!("({} - {})", a.eject_value(), b.eject_value());
         match first.checked_sub(&second) {
             Some(expected) => Circuit::scope(name, || {
                 let candidate = a.sub_checked(&b);
@@ -196,7 +196,7 @@ mod tests {
             None => match mode_a.is_constant() && mode_b.is_constant() {
                 true => check_operation_halts(&a, &b, Integer::sub_checked),
                 false => Circuit::scope(name, || {
-                    let candidate = a.sub_checked(&b);
+                    let _candidate = a.sub_checked(&b);
                     assert_count_fails!(Integer<Circuit, I>, Sub<Integer<Circuit, I>, Output=Integer<Circuit, I>>, &(mode_a, mode_b));
                 }),
             },

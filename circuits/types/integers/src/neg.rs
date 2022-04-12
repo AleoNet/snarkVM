@@ -81,7 +81,7 @@ mod tests {
         mode: Mode,
     ) {
         let a = Integer::<Circuit, I>::new(mode, value);
-        let case = format!("(-{})", a.eject_value());
+        let _case = format!("(-{})", a.eject_value());
         match value.checked_neg() {
             Some(expected) => Circuit::scope(name, || {
                 let candidate = a.neg();

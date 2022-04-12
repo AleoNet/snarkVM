@@ -18,11 +18,25 @@ use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Registers},
     helpers::Register,
     LiteralType,
+    OutputType,
     Program,
     Value,
 };
 
-use snarkvm_circuits::{count, CircuitCount, Count, Field, Group, Literal, Parser, ParserResult, I8, U8};
+use snarkvm_circuits::{
+    count,
+    output_mode,
+    CircuitCount,
+    Count,
+    Field,
+    Group,
+    Literal,
+    OutputMode,
+    Parser,
+    ParserResult,
+    I8,
+    U8,
+};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
@@ -113,6 +127,37 @@ impl<P: Program> Count<Self> for Sub<P> {
             (LiteralType::U8(mode_a), LiteralType::U8(mode_b)) => {
                 count!(U8<P::Environment>, SubOp<U8<P::Environment>, Output = U8<P::Environment>>, &(*mode_a, *mode_b))
             }
+            _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
+        }
+    }
+}
+
+impl<P: Program> OutputType for Sub<P> {
+    type Input = (LiteralType<P>, LiteralType<P>);
+    type Output = LiteralType<P>;
+
+    fn output_type(input_type: &Self::Input) -> Self::Output {
+        match input_type {
+            (LiteralType::Field(mode_a), LiteralType::Field(mode_b)) => LiteralType::Field(output_mode!(
+                Field<P::Environment>,
+                SubOp<Field<P::Environment>, Output = Field<P::Environment>>,
+                &(*mode_a, *mode_b)
+            )),
+            (LiteralType::Group(mode_a), LiteralType::Group(mode_b)) => LiteralType::Group(output_mode!(
+                Group<P::Environment>,
+                SubOp<Group<P::Environment>, Output = Group<P::Environment>>,
+                &(*mode_a, *mode_b)
+            )),
+            (LiteralType::I8(mode_a), LiteralType::I8(mode_b)) => LiteralType::I8(output_mode!(
+                I8<P::Environment>,
+                SubOp<I8<P::Environment>, Output = I8<P::Environment>>,
+                &(*mode_a, *mode_b)
+            )),
+            (LiteralType::U8(mode_a), LiteralType::U8(mode_b)) => LiteralType::U8(output_mode!(
+                U8<P::Environment>,
+                SubOp<U8<P::Environment>, Output = U8<P::Environment>>,
+                &(*mode_a, *mode_b)
+            )),
             _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
         }
     }

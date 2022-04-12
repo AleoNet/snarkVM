@@ -73,7 +73,7 @@ impl<E: Environment> MetadataForOp<dyn Not<Output = Boolean<E>>> for Boolean<E> 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_circuits_environment::{assert_count, assert_output_mode, Circuit};
+    use snarkvm_circuits_environment::Circuit;
 
     fn check_not(name: &str, expected: bool, candidate_input: Boolean<Circuit>) {
         Circuit::scope(name, || {

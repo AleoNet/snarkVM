@@ -128,7 +128,7 @@ impl<E: Environment> MetadataForOp<dyn Add<Scalar<E>, Output = Scalar<E>>> for S
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_circuits_environment::{assert_count, assert_output_mode, Circuit};
+    use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 128;

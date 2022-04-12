@@ -58,9 +58,8 @@ impl<E: Environment, I: IntegerType> MetadataForOp<dyn Not<Output = Integer<E, I
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_circuits_environment::{assert_count, assert_output_mode, Circuit};
+    use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
-    use test_utilities::*;
 
     const ITERATIONS: usize = 128;
 
@@ -71,7 +70,7 @@ mod tests {
         mode: Mode,
     ) {
         let a = Integer::<Circuit, I>::new(mode, first);
-        let case = format!("(!{})", a.eject_value());
+        let _case = format!("(!{})", a.eject_value());
         let expected = !first;
 
         // TODO: Use `test_utilities` once they use `MetadataForOp`.

@@ -32,7 +32,7 @@ use crate::{Annotation, Identifier, Program, Sanitizer, Value};
 use snarkvm_circuits::prelude::*;
 use snarkvm_utilities::{error, FromBytes, ToBytes};
 
-use indexmap::IndexSet;
+use indexmap::{IndexMap, IndexSet};
 use std::{
     cell::RefCell,
     io::{Read, Result as IoResult, Write},
@@ -346,11 +346,10 @@ impl<P: Program> Function<P> {
 }
 
 impl<P: Program> Count<Self> for Function<P> {
-    type Case = ();
+    type Case = Self;
 
-    fn count(input: &Self::Case) -> CircuitCount {
+    fn count(function: &Self::Case) -> CircuitCount {
         todo!()
-        // Infer types of the instructions and compose the circuit counts.
     }
 }
 
