@@ -129,23 +129,17 @@ mod tests {
 
     type P = Process;
 
-    // Tests that the AddWrapped instruction will wrap around on overflow in every mode.
-    test_modes!(i8, AddWrapped, "127i8", "1i8", "-128i8");
-    test_modes!(i16, AddWrapped, "32767i16", "1i16", "-32768i16");
-    test_modes!(i32, AddWrapped, "2147483647i32", "1i32", "-2147483648i32");
-    test_modes!(i64, AddWrapped, "9223372036854775807i64", "1i64", "-9223372036854775808i64");
-    test_modes!(
-        i128,
-        AddWrapped,
-        "170141183460469231731687303715884105727i128",
-        "1i128",
-        "-170141183460469231731687303715884105728i128"
-    );
-    test_modes!(u8, AddWrapped, "255u8", "1u8", "0u8");
-    test_modes!(u16, AddWrapped, "65535u16", "1u16", "0u16");
-    test_modes!(u32, AddWrapped, "4294967295u32", "1u32", "0u32");
-    test_modes!(u64, AddWrapped, "18446744073709551615u64", "1u64", "0u64");
-    test_modes!(u128, AddWrapped, "340282366920938463463374607431768211455u128", "1u128", "0u128");
+    // Tests that the AddWrapped instruction will wrap around at the boundary of the type in every mode.
+    test_modes!(i8, AddWrapped, &format!("{}i8", i8::MAX), "1i8", &format!("{}i8", i8::MIN));
+    test_modes!(i16, AddWrapped, &format!("{}i16", i16::MAX), "1i16", &format!("{}i16", i16::MIN));
+    test_modes!(i32, AddWrapped, &format!("{}i32", i32::MAX), "1i32", &format!("{}i32", i32::MIN));
+    test_modes!(i64, AddWrapped, &format!("{}i64", i64::MAX), "1i64", &format!("{}i64", i64::MIN));
+    test_modes!(i128, AddWrapped, &format!("{}i128", i128::MAX), "1i128", &format!("{}i128", i128::MIN));
+    test_modes!(u8, AddWrapped, &format!("{}u8", u8::MAX), "1u8", &format!("{}u8", u8::MIN));
+    test_modes!(u16, AddWrapped, &format!("{}u16", u16::MAX), "1u16", &format!("{}u16", u16::MIN));
+    test_modes!(u32, AddWrapped, &format!("{}u32", u32::MAX), "1u32", &format!("{}u32", u32::MIN));
+    test_modes!(u64, AddWrapped, &format!("{}u64", u64::MAX), "1u64", &format!("{}u64", u64::MIN));
+    test_modes!(u128, AddWrapped, &format!("{}u128", u128::MAX), "1u128", &format!("{}u128", u128::MIN));
 
     test_instruction_halts!(
         address_halts,

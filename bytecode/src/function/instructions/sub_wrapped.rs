@@ -130,22 +130,16 @@ mod tests {
     type P = Process;
 
     // Tests that the SubWrapped instruction will wrap around on underflow in every mode.
-    test_modes!(i8, SubWrapped, "-128i8", "1i8", "127i8");
-    test_modes!(i16, SubWrapped, "-32768i16", "1i16", "32767i16");
-    test_modes!(i32, SubWrapped, "-2147483648i32", "1i32", "2147483647i32");
-    test_modes!(i64, SubWrapped, "-9223372036854775808i64", "1i64", "9223372036854775807i64");
-    test_modes!(
-        i128,
-        SubWrapped,
-        "-170141183460469231731687303715884105728i128",
-        "1i128",
-        "170141183460469231731687303715884105727i128"
-    );
-    test_modes!(u8, SubWrapped, "0u8", "1u8", "255u8");
-    test_modes!(u16, SubWrapped, "0u16", "1u16", "65535u16");
-    test_modes!(u32, SubWrapped, "0u32", "1u32", "4294967295u32");
-    test_modes!(u64, SubWrapped, "0u64", "1u64", "18446744073709551615u64");
-    test_modes!(u128, SubWrapped, "0u128", "1u128", "340282366920938463463374607431768211455u128");
+    test_modes!(i8, SubWrapped, &format!("{}i8", i8::MIN), "1i8", &format!("{}i8", i8::MAX));
+    test_modes!(i16, SubWrapped, &format!("{}i16", i16::MIN), "1i16", &format!("{}i16", i16::MAX));
+    test_modes!(i32, SubWrapped, &format!("{}i32", i32::MIN), "1i32", &format!("{}i32", i32::MAX));
+    test_modes!(i64, SubWrapped, &format!("{}i64", i64::MIN), "1i64", &format!("{}i64", i64::MAX));
+    test_modes!(i128, SubWrapped, &format!("{}i128", i128::MIN), "1i128", &format!("{}i128", i128::MAX));
+    test_modes!(u8, SubWrapped, &format!("{}u8", u8::MIN), "1u8", &format!("{}u8", u8::MAX));
+    test_modes!(u16, SubWrapped, &format!("{}u16", u16::MIN), "1u16", &format!("{}u16", u16::MAX));
+    test_modes!(u32, SubWrapped, &format!("{}u32", u32::MIN), "1u32", &format!("{}u32", u32::MAX));
+    test_modes!(u64, SubWrapped, &format!("{}u64", u64::MIN), "1u64", &format!("{}u64", u64::MAX));
+    test_modes!(u128, SubWrapped, &format!("{}u128", u128::MIN), "1u128", &format!("{}u128", u128::MAX));
 
     test_instruction_halts!(
         address_halts,

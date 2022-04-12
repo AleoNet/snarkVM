@@ -67,7 +67,7 @@ pub trait Operation<P: Program>: Parser + Into<Instruction<P>> {
 pub enum Instruction<P: Program> {
     /// Adds `first` with `second`, storing the outcome in `destination`.
     Add(Add<P>),
-    /// Adds `first` with `second`, wrapping around on overflow, and storing the outcome in `destination`.
+    /// Adds `first` with `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
     AddWrapped(AddWrapped<P>),
     /// Multiplies `first` with `second`, storing the outcome in `destination`.
     Mul(Mul<P>),
@@ -75,7 +75,7 @@ pub enum Instruction<P: Program> {
     Neg(Neg<P>),
     /// Subtracts `second` from `first`, storing the outcome in `destination`.
     Sub(Sub<P>),
-    /// Subtracts `second` from `first`, wrapping around on overflow, and storing the outcome in `destination`.
+    /// Subtracts `second` from `first`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
     SubWrapped(SubWrapped<P>),
 }
 
@@ -344,73 +344,73 @@ mod tests {
                 binary_instruction_test!(
                     test_public_and_public_yields_private,
                     $instruction,
-                    concat!($a, ".public"),
-                    concat!($b, ".public"),
-                    concat!($expected, ".private")
+                    &format!("{}.public", $a),
+                    &format!("{}.public", $b),
+                    &format!("{}.private", $expected)
                 );
 
                 binary_instruction_test!(
                     test_public_and_constant_yields_private,
                     $instruction,
-                    concat!($a, ".public"),
-                    concat!($b, ".constant"),
-                    concat!($expected, ".private")
+                    &format!("{}.public", $a),
+                    &format!("{}.constant", $b),
+                    &format!("{}.private", $expected)
                 );
 
                 binary_instruction_test!(
                     test_public_and_private_yields_private,
                     $instruction,
-                    concat!($a, ".public"),
-                    concat!($b, ".private"),
-                    concat!($expected, ".private")
+                    &format!("{}.public", $a),
+                    &format!("{}.private", $b),
+                    &format!("{}.private", $expected)
                 );
 
                 binary_instruction_test!(
                     test_private_and_constant_yields_private,
                     $instruction,
-                    concat!($a, ".private"),
-                    concat!($b, ".constant"),
-                    concat!($expected, ".private")
+                    &format!("{}.private", $a),
+                    &format!("{}.constant", $b),
+                    &format!("{}.private", $expected)
                 );
 
                 binary_instruction_test!(
                     test_private_and_public_yields_private,
                     $instruction,
-                    concat!($a, ".private"),
-                    concat!($b, ".public"),
-                    concat!($expected, ".private")
+                    &format!("{}.private", $a),
+                    &format!("{}.public", $b),
+                    &format!("{}.private", $expected)
                 );
 
                 binary_instruction_test!(
                     test_private_and_private_yields_private,
                     $instruction,
-                    concat!($a, ".private"),
-                    concat!($b, ".private"),
-                    concat!($expected, ".private")
+                    &format!("{}.private", $a),
+                    &format!("{}.private", $b),
+                    &format!("{}.private", $expected)
                 );
 
                 binary_instruction_test!(
                     test_constant_and_private_yields_private,
                     $instruction,
-                    concat!($a, ".constant"),
-                    concat!($b, ".private"),
-                    concat!($expected, ".private")
+                    &format!("{}.constant", $a),
+                    &format!("{}.private", $b),
+                    &format!("{}.private", $expected)
                 );
 
                 binary_instruction_test!(
                     test_constant_and_public_yields_private,
                     $instruction,
-                    concat!($a, ".constant"),
-                    concat!($b, ".public"),
-                    concat!($expected, ".private")
+                    &format!("{}.constant", $a),
+                    &format!("{}.public", $b),
+                    &format!("{}.private", $expected)
                 );
 
                 binary_instruction_test!(
                     test_constant_and_constant_yields_constant,
                     $instruction,
-                    concat!($a, ".constant"),
-                    concat!($b, ".constant"),
-                    concat!($expected, ".constant")
+                    &format!("{}.constant", $a),
+                    &format!("{}.constant", $b),
+                    &format!("{}.constant", $expected)
                 );
             }
         };
@@ -423,22 +423,22 @@ mod tests {
                 unary_instruction_test!(
                     test_public_yields_private,
                     $instruction,
-                    concat!($input, ".public"),
-                    concat!($expected, ".private")
+                    &format!("{}.public", $input),
+                    &format!("{}.private", $expected)
                 );
 
                 unary_instruction_test!(
                     test_private_yields_private,
                     $instruction,
-                    concat!($input, ".private"),
-                    concat!($expected, ".private")
+                    &format!("{}.private", $input),
+                    &format!("{}.private", $expected)
                 );
 
                 unary_instruction_test!(
                     test_constant_yields_constant,
                     $instruction,
-                    concat!($input, ".constant"),
-                    concat!($expected, ".constant")
+                    &format!("{}.constant", $input),
+                    &format!("{}.constant", $expected)
                 );
             }
         };
