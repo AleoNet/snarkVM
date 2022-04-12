@@ -110,7 +110,7 @@ impl<E: Environment, I: IntegerType> AddChecked<Self> for Integer<E, I> {
     }
 }
 
-impl<E: Environment, I: IntegerType> MetadataForOp<dyn AddChecked<Integer<E, I>, Output = Integer<E, I>>>
+impl<E: Environment, I: IntegerType> CountForOp<dyn AddChecked<Integer<E, I>, Output = Integer<E, I>>>
     for Integer<E, I>
 {
     type Case = (Mode, Mode);
@@ -129,6 +129,12 @@ impl<E: Environment, I: IntegerType> MetadataForOp<dyn AddChecked<Integer<E, I>,
             },
         }
     }
+}
+
+impl<E: Environment, I: IntegerType> OutputModeForOp<dyn AddChecked<Integer<E, I>, Output = Integer<E, I>>>
+    for Integer<E, I>
+{
+    type Case = (Mode, Mode);
 
     fn output_mode(input: &Self::Case) -> Mode {
         match (input.0, input.1) {
@@ -138,17 +144,28 @@ impl<E: Environment, I: IntegerType> MetadataForOp<dyn AddChecked<Integer<E, I>,
     }
 }
 
-impl<E: Environment, I: IntegerType> MetadataForOp<dyn Add<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
+impl<E: Environment, I: IntegerType> MetadataForOp<dyn AddChecked<Integer<E, I>, Output = Integer<E, I>>>
+    for Integer<E, I>
+{
+}
+
+impl<E: Environment, I: IntegerType> CountForOp<dyn Add<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
     type Case = (Mode, Mode);
 
     fn count(input: &Self::Case) -> Count {
-        <Self as MetadataForOp<dyn AddChecked<Integer<E, I>, Output = Integer<E, I>>>>::count(input)
-    }
-
-    fn output_mode(input: &Self::Case) -> Mode {
-        <Self as MetadataForOp<dyn AddChecked<Integer<E, I>, Output = Integer<E, I>>>>::output_mode(input)
+        <Self as CountForOp<dyn AddChecked<Integer<E, I>, Output = Integer<E, I>>>>::count(input)
     }
 }
+
+impl<E: Environment, I: IntegerType> OutputModeForOp<dyn Add<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
+    type Case = (Mode, Mode);
+
+    fn output_mode(input: &Self::Case) -> Mode {
+        <Self as OutputModeForOp<dyn AddChecked<Integer<E, I>, Output = Integer<E, I>>>>::output_mode(input)
+    }
+}
+
+impl<E: Environment, I: IntegerType> MetadataForOp<dyn Add<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {}
 
 #[cfg(test)]
 mod tests {

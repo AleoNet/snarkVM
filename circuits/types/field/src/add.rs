@@ -64,12 +64,16 @@ impl<E: Environment> AddAssign<&Field<E>> for Field<E> {
     }
 }
 
-impl<E: Environment> MetadataForOp<dyn Add<Field<E>, Output = Field<E>>> for Field<E> {
+impl<E: Environment> CountForOp<dyn Add<Field<E>, Output = Field<E>>> for Field<E> {
     type Case = (Mode, Mode);
 
     fn count(_input: &Self::Case) -> Count {
         Count::exact(0, 0, 0, 0)
     }
+}
+
+impl<E: Environment> OutputModeForOp<dyn Add<Field<E>, Output = Field<E>>> for Field<E> {
+    type Case = (Mode, Mode);
 
     fn output_mode(input: &Self::Case) -> Mode {
         match (input.0, input.1) {
@@ -78,6 +82,8 @@ impl<E: Environment> MetadataForOp<dyn Add<Field<E>, Output = Field<E>>> for Fie
         }
     }
 }
+
+impl<E: Environment> MetadataForOp<dyn Add<Field<E>, Output = Field<E>>> for Field<E> {}
 
 #[cfg(test)]
 mod tests {
@@ -115,27 +121,17 @@ mod tests {
             let mut candidate = a.clone();
             candidate += b;
             assert_eq!(*expected, candidate.eject_value(), "({} + {})", a.eject_value(), b.eject_value());
-
-            // TODO: Refactor into a cleaner macro invocation.
-            let count = <Field<Circuit> as MetadataForOp<dyn Add<Field<Circuit>, Output = Field<Circuit>>>>::count(&(
-                a.eject_mode(),
-                b.eject_mode(),
-            ));
-            assert!(count.is_satisfied(
-                Circuit::num_constants_in_scope(),
-                Circuit::num_public_in_scope(),
-                Circuit::num_private_in_scope(),
-                Circuit::num_constraints_in_scope()
-            ));
-
-            let output_mode =
-                <Field<Circuit> as MetadataForOp<dyn Add<Field<Circuit>, Output = Field<Circuit>>>>::output_mode(&(
-                    a.eject_mode(),
-                    b.eject_mode(),
-                ));
-            assert_eq!(output_mode, candidate.eject_mode());
-
-            assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
+            assert_count!(
+                Field<Circuit>,
+                Add<Field<Circuit>, Output = Field<Circuit>>,
+                &(a.eject_mode(), b.eject_mode())
+            );
+            assert_output_mode!(
+                candidate,
+                Field<Circuit>,
+                Add<Field<Circuit>, Output = Field<Circuit>>,
+                &(a.eject_mode(), b.eject_mode())
+            );
         });
     }
 

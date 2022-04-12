@@ -24,14 +24,23 @@ use crate::{BooleanTrait, Count, Mode};
 //     fn invoke(input: Self::Input) -> Self::Output;
 // }
 
+// TODO: Remove this trait if it is not used.
 /// Trait for metadata on operations.
-pub trait MetadataForOp<Op: ?Sized> {
+pub trait MetadataForOp<Op: ?Sized>: CountForOp<Op> + OutputModeForOp<Op> {}
+
+/// Trait for determining the number of constants, public input, private inputs, and constraints for an operation.
+pub trait CountForOp<Op: ?Sized> {
     type Case;
 
     /// Returns the number of constants, public inputs, private inputs, and constraints.
     fn count(input: &Self::Case) -> Count;
+}
 
-    /// Returns the mode of the output of the operation.
+/// Trait for determining the mode of the output of an operation.
+pub trait OutputModeForOp<Op: ?Sized> {
+    type Case;
+
+    /// Returns the mode of the output.
     fn output_mode(input: &Self::Case) -> Mode;
 }
 

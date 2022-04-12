@@ -41,7 +41,7 @@ impl<E: Environment> Inv for &Field<E> {
     }
 }
 
-impl<E: Environment> MetadataForOp<dyn Inv<Output = Field<E>>> for Field<E> {
+impl<E: Environment> CountForOp<dyn Inv<Output = Field<E>>> for Field<E> {
     type Case = Mode;
 
     fn count(input: &Self::Case) -> Count {
@@ -50,6 +50,10 @@ impl<E: Environment> MetadataForOp<dyn Inv<Output = Field<E>>> for Field<E> {
             false => Count::exact(0, 0, 1, 1),
         }
     }
+}
+
+impl<E: Environment> OutputModeForOp<dyn Inv<Output = Field<E>>> for Field<E> {
+    type Case = Mode;
 
     fn output_mode(input: &Self::Case) -> Mode {
         match input {
@@ -58,6 +62,8 @@ impl<E: Environment> MetadataForOp<dyn Inv<Output = Field<E>>> for Field<E> {
         }
     }
 }
+
+impl<E: Environment> MetadataForOp<dyn Inv<Output = Field<E>>> for Field<E> {}
 
 #[cfg(test)]
 mod tests {
@@ -79,7 +85,7 @@ mod tests {
                     let result = candidate.inv();
                     assert_eq!(expected, result.eject_value());
                     assert_count!(Field<Circuit>, Inv<Output = Field<Circuit>>, &mode);
-                    assert_output_mode!(candidate, Field<Circuit>, Inv<Output = Field<Circuit>>, &mode);
+                    assert_output_mode!(result, Field<Circuit>, Inv<Output = Field<Circuit>>, &mode);
                 });
                 Circuit::reset();
             }

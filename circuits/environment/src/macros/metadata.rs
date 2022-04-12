@@ -22,7 +22,7 @@ macro_rules! assert_count {
         $crate::print_scope!();
 
         let Count(num_constants, num_public, num_private, num_constraints) =
-            <$type_ as MetadataForOp<dyn $oper>>::count($case);
+            <$type_ as CountForOp<dyn $oper>>::count($case);
         assert!(num_constants.is_satisfied(Circuit::num_constants_in_scope()), "(num_constants)");
         assert!(num_public.is_satisfied(Circuit::num_public_in_scope()), "(num_public)");
         assert!(num_private.is_satisfied(Circuit::num_private_in_scope()), "(num_private)");
@@ -37,7 +37,7 @@ macro_rules! assert_count_fails {
         $crate::print_scope!();
 
         let Count(num_constants, num_public, num_private, num_constraints) =
-            <$type_ as MetadataForOp<dyn $oper>>::count($case);
+            <$type_ as CountForOp<dyn $oper>>::count($case);
         assert!(num_constants.is_satisfied(Circuit::num_constants_in_scope()), "(num_constants)");
         assert!(num_public.is_satisfied(Circuit::num_public_in_scope()), "(num_public)");
         assert!(num_private.is_satisfied(Circuit::num_private_in_scope()), "(num_private)");
@@ -49,7 +49,7 @@ macro_rules! assert_count_fails {
 #[macro_export]
 macro_rules! assert_output_mode {
     ($candidate: expr, $type_:ty, $oper:path, $case:expr) => {
-        let expected_mode = <$type_ as MetadataForOp<dyn $oper>>::output_mode($case);
+        let expected_mode = <$type_ as OutputModeForOp<dyn $oper>>::output_mode($case);
         assert_eq!(expected_mode, $candidate.eject_mode());
     };
 }

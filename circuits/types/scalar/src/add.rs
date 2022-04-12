@@ -101,7 +101,7 @@ impl<E: Environment> AddAssign<&Scalar<E>> for Scalar<E> {
     }
 }
 
-impl<E: Environment> MetadataForOp<dyn Add<Scalar<E>, Output = Scalar<E>>> for Scalar<E> {
+impl<E: Environment> CountForOp<dyn Add<Scalar<E>, Output = Scalar<E>>> for Scalar<E> {
     type Case = (Mode, Mode);
 
     fn count(input: &Self::Case) -> Count {
@@ -110,6 +110,10 @@ impl<E: Environment> MetadataForOp<dyn Add<Scalar<E>, Output = Scalar<E>>> for S
             (_, _) => Count::exact(254, 0, 1021, 1023),
         }
     }
+}
+
+impl<E: Environment> OutputModeForOp<dyn Add<Scalar<E>, Output = Scalar<E>>> for Scalar<E> {
+    type Case = (Mode, Mode);
 
     fn output_mode(input: &Self::Case) -> Mode {
         match (input.0, input.1) {
@@ -118,6 +122,8 @@ impl<E: Environment> MetadataForOp<dyn Add<Scalar<E>, Output = Scalar<E>>> for S
         }
     }
 }
+
+impl<E: Environment> MetadataForOp<dyn Add<Scalar<E>, Output = Scalar<E>>> for Scalar<E> {}
 
 #[cfg(test)]
 mod tests {

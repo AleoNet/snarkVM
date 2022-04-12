@@ -57,7 +57,7 @@ impl<E: Environment> Nor<Self> for Boolean<E> {
     }
 }
 
-impl<E: Environment> MetadataForOp<dyn Nor<Boolean<E>, Output = Boolean<E>>> for Boolean<E> {
+impl<E: Environment> CountForOp<dyn Nor<Boolean<E>, Output = Boolean<E>>> for Boolean<E> {
     type Case = (Mode, Mode);
 
     fn count(input: &Self::Case) -> Count {
@@ -66,15 +66,20 @@ impl<E: Environment> MetadataForOp<dyn Nor<Boolean<E>, Output = Boolean<E>>> for
             false => Count::exact(0, 0, 1, 1),
         }
     }
+}
+
+impl<E: Environment> OutputModeForOp<dyn Nor<Boolean<E>, Output = Boolean<E>>> for Boolean<E> {
+    type Case = (Mode, Mode);
 
     fn output_mode(input: &Self::Case) -> Mode {
-        println!("{:?}", input);
         match (input.0, input.1) {
             (Mode::Constant, Mode::Constant) => Mode::Constant,
             (_, _) => Mode::Private,
         }
     }
 }
+
+impl<E: Environment> MetadataForOp<dyn Nor<Boolean<E>, Output = Boolean<E>>> for Boolean<E> {}
 
 #[cfg(test)]
 mod tests {

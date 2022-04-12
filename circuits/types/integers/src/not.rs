@@ -34,12 +34,16 @@ impl<E: Environment, I: IntegerType> Not for &Integer<E, I> {
     }
 }
 
-impl<E: Environment, I: IntegerType> MetadataForOp<dyn Not<Output = Integer<E, I>>> for Integer<E, I> {
+impl<E: Environment, I: IntegerType> CountForOp<dyn Not<Output = Integer<E, I>>> for Integer<E, I> {
     type Case = Mode;
 
     fn count(_input: &Self::Case) -> Count {
         Count::exact(0, 0, 0, 0)
     }
+}
+
+impl<E: Environment, I: IntegerType> OutputModeForOp<dyn Not<Output = Integer<E, I>>> for Integer<E, I> {
+    type Case = Mode;
 
     fn output_mode(input: &Self::Case) -> Mode {
         match input {
@@ -48,6 +52,8 @@ impl<E: Environment, I: IntegerType> MetadataForOp<dyn Not<Output = Integer<E, I
         }
     }
 }
+
+impl<E: Environment, I: IntegerType> MetadataForOp<dyn Not<Output = Integer<E, I>>> for Integer<E, I> {}
 
 #[cfg(test)]
 mod tests {

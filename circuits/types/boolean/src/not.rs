@@ -49,12 +49,16 @@ impl<E: Environment> Not for &Boolean<E> {
     }
 }
 
-impl<E: Environment> MetadataForOp<dyn Not<Output = Boolean<E>>> for Boolean<E> {
+impl<E: Environment> CountForOp<dyn Not<Output = Boolean<E>>> for Boolean<E> {
     type Case = Mode;
 
     fn count(_input: &Self::Case) -> Count {
         Count::exact(0, 0, 0, 0)
     }
+}
+
+impl<E: Environment> OutputModeForOp<dyn Not<Output = Boolean<E>>> for Boolean<E> {
+    type Case = Mode;
 
     fn output_mode(input: &Self::Case) -> Mode {
         match input {
@@ -63,6 +67,8 @@ impl<E: Environment> MetadataForOp<dyn Not<Output = Boolean<E>>> for Boolean<E> 
         }
     }
 }
+
+impl<E: Environment> MetadataForOp<dyn Not<Output = Boolean<E>>> for Boolean<E> {}
 
 #[cfg(test)]
 mod tests {

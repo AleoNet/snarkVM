@@ -99,7 +99,7 @@ impl<E: Environment> AddAssign<&Self> for Group<E> {
     }
 }
 
-impl<E: Environment> MetadataForOp<dyn Add<Group<E>, Output = Group<E>>> for Group<E> {
+impl<E: Environment> CountForOp<dyn Add<Group<E>, Output = Group<E>>> for Group<E> {
     type Case = (Mode, Mode);
 
     fn count(input: &Self::Case) -> Count {
@@ -109,6 +109,10 @@ impl<E: Environment> MetadataForOp<dyn Add<Group<E>, Output = Group<E>>> for Gro
             (_, _) => Count::exact(2, 0, 6, 6),
         }
     }
+}
+
+impl<E: Environment> OutputModeForOp<dyn Add<Group<E>, Output = Group<E>>> for Group<E> {
+    type Case = (Mode, Mode);
 
     fn output_mode(input: &Self::Case) -> Mode {
         match (input.0, input.1) {
@@ -117,6 +121,8 @@ impl<E: Environment> MetadataForOp<dyn Add<Group<E>, Output = Group<E>>> for Gro
         }
     }
 }
+
+impl<E: Environment> MetadataForOp<dyn Add<Group<E>, Output = Group<E>>> for Group<E> {}
 
 #[cfg(test)]
 mod tests {
@@ -154,27 +160,17 @@ mod tests {
             let mut candidate = a.clone();
             candidate += b;
             assert_eq!(*expected, candidate.eject_value(), "({} + {})", a.eject_value(), b.eject_value());
-
-            // TODO: Refactor into a cleaner macro invocation
-            let count = <Group<Circuit> as MetadataForOp<dyn Add<Group<Circuit>, Output = Group<Circuit>>>>::count(&(
-                a.eject_mode(),
-                b.eject_mode(),
-            ));
-            assert!(count.is_satisfied(
-                Circuit::num_constants_in_scope(),
-                Circuit::num_public_in_scope(),
-                Circuit::num_private_in_scope(),
-                Circuit::num_constraints_in_scope()
-            ));
-
-            let output_mode =
-                <Group<Circuit> as MetadataForOp<dyn Add<Group<Circuit>, Output = Group<Circuit>>>>::output_mode(&(
-                    a.eject_mode(),
-                    b.eject_mode(),
-                ));
-            assert_eq!(output_mode, candidate.eject_mode());
-
-            assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
+            assert_count!(
+                Group<Circuit>,
+                Add<Group<Circuit>, Output = Group<Circuit>>,
+                &(a.eject_mode(), b.eject_mode())
+            );
+            assert_output_mode!(
+                candidate,
+                Group<Circuit>,
+                Add<Group<Circuit>, Output = Group<Circuit>>,
+                &(a.eject_mode(), b.eject_mode())
+            );
         });
     }
 
