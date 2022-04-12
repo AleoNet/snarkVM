@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_circuits_environment::Count;
+use snarkvm_circuits_environment::CircuitCount;
 use std::rc::Rc;
 
 impl<E: Environment> Not for Boolean<E> {
@@ -49,15 +49,15 @@ impl<E: Environment> Not for &Boolean<E> {
     }
 }
 
-impl<E: Environment> CountForOp<dyn Not<Output = Boolean<E>>> for Boolean<E> {
+impl<E: Environment> Count<dyn Not<Output = Boolean<E>>> for Boolean<E> {
     type Case = Mode;
 
-    fn count(_input: &Self::Case) -> Count {
-        Count::exact(0, 0, 0, 0)
+    fn count(_input: &Self::Case) -> CircuitCount {
+        CircuitCount::exact(0, 0, 0, 0)
     }
 }
 
-impl<E: Environment> OutputModeForOp<dyn Not<Output = Boolean<E>>> for Boolean<E> {
+impl<E: Environment> OutputMode<dyn Not<Output = Boolean<E>>> for Boolean<E> {
     type Case = Mode;
 
     fn output_mode(input: &Self::Case) -> Mode {

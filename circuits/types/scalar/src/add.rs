@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_circuits_environment::Count;
+use snarkvm_circuits_environment::CircuitCount;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 impl<E: Environment> Add<Scalar<E>> for Scalar<E> {
@@ -101,18 +101,18 @@ impl<E: Environment> AddAssign<&Scalar<E>> for Scalar<E> {
     }
 }
 
-impl<E: Environment> CountForOp<dyn Add<Scalar<E>, Output = Scalar<E>>> for Scalar<E> {
+impl<E: Environment> Count<dyn Add<Scalar<E>, Output = Scalar<E>>> for Scalar<E> {
     type Case = (Mode, Mode);
 
-    fn count(input: &Self::Case) -> Count {
+    fn count(input: &Self::Case) -> CircuitCount {
         match (input.0, input.1) {
-            (Mode::Constant, Mode::Constant) => Count::exact(251, 0, 0, 0),
-            (_, _) => Count::exact(254, 0, 1021, 1023),
+            (Mode::Constant, Mode::Constant) => CircuitCount::exact(251, 0, 0, 0),
+            (_, _) => CircuitCount::exact(254, 0, 1021, 1023),
         }
     }
 }
 
-impl<E: Environment> OutputModeForOp<dyn Add<Scalar<E>, Output = Scalar<E>>> for Scalar<E> {
+impl<E: Environment> OutputMode<dyn Add<Scalar<E>, Output = Scalar<E>>> for Scalar<E> {
     type Case = (Mode, Mode);
 
     fn output_mode(input: &Self::Case) -> Mode {

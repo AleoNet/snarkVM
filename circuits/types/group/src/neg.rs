@@ -34,15 +34,15 @@ impl<E: Environment> Neg for &Group<E> {
     }
 }
 
-impl<E: Environment> CountForOp<dyn Neg<Output = Group<E>>> for Group<E> {
+impl<E: Environment> Count<dyn Neg<Output = Group<E>>> for Group<E> {
     type Case = Mode;
 
-    fn count(_input: &Self::Case) -> Count {
-        Count::exact(0, 0, 0, 0)
+    fn count(_input: &Self::Case) -> CircuitCount {
+        CircuitCount::exact(0, 0, 0, 0)
     }
 }
 
-impl<E: Environment> OutputModeForOp<dyn Neg<Output = Group<E>>> for Group<E> {
+impl<E: Environment> OutputMode<dyn Neg<Output = Group<E>>> for Group<E> {
     type Case = Mode;
 
     fn output_mode(input: &Self::Case) -> Mode {

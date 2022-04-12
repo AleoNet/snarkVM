@@ -23,12 +23,12 @@ pub type Constraints = Metric<usize>;
 
 /// A helper struct for tracking the number of constants, public inputs, private inputs, and constraints.
 #[derive(Debug)]
-pub struct Count(pub Constant, pub Public, pub Private, pub Constraints);
+pub struct CircuitCount(pub Constant, pub Public, pub Private, pub Constraints);
 
-impl Count {
-    /// Returns a new `Count` whose constituent metrics are all `Exact`.
+impl CircuitCount {
+    /// Returns a new `CircuitCount` whose constituent metrics are all `Exact`.
     pub fn exact(num_constants: usize, num_public: usize, num_private: usize, num_constraints: usize) -> Self {
-        Count(
+        CircuitCount(
             Metric::Exact(num_constants),
             Metric::Exact(num_public),
             Metric::Exact(num_private),
@@ -36,9 +36,9 @@ impl Count {
         )
     }
 
-    /// Returns a new `Count` whose constituent metrics are all exclusive `UpperBound`.
+    /// Returns a new `CircuitCount` whose constituent metrics are all exclusive `UpperBound`.
     pub fn less_than(num_constants: usize, num_public: usize, num_private: usize, num_constraints: usize) -> Self {
-        Count(
+        CircuitCount(
             Metric::UpperBound(Clusivity::Exclusive, num_constants),
             Metric::UpperBound(Clusivity::Exclusive, num_public),
             Metric::UpperBound(Clusivity::Exclusive, num_private),
@@ -46,14 +46,14 @@ impl Count {
         )
     }
 
-    /// Returns a new `Count` whose constituent metrics are all inclusive `UpperBound`.
+    /// Returns a new `CircuitCount` whose constituent metrics are all inclusive `UpperBound`.
     pub fn less_than_or_equal(
         num_constants: usize,
         num_public: usize,
         num_private: usize,
         num_constraints: usize,
     ) -> Self {
-        Count(
+        CircuitCount(
             Metric::UpperBound(Clusivity::Inclusive, num_constants),
             Metric::UpperBound(Clusivity::Inclusive, num_public),
             Metric::UpperBound(Clusivity::Inclusive, num_private),
@@ -69,23 +69,20 @@ impl Count {
         num_private: usize,
         num_constraints: usize,
     ) -> bool {
-        println!("{:?}", self.0.is_satisfied(num_constants));
-        println!("{:?}, {:?}", self, num_public);
-        println!("{:?}", self.1.is_satisfied(num_public));
-        println!("{:?}, {:?}", self, num_public);
-        println!("{:?}", self.2.is_satisfied(num_private));
-        println!("{:?}, {:?}", self, num_public);
-        println!("{:?}", self.3.is_satisfied(num_constraints));
-
         self.0.is_satisfied(num_constants)
             && self.1.is_satisfied(num_public)
             && self.2.is_satisfied(num_private)
             && self.3.is_satisfied(num_constraints)
     }
 
-    /// Composes this `Count` with another `Count` by composing its constituent metrics.
+    /// Composes this `CircuitCount` with another `CircuitCount` by composing its constituent metrics.
     pub fn compose(&self, other: &Self) -> Self {
-        Count(self.0.compose(&other.0), self.1.compose(&other.1), self.2.compose(&other.2), self.3.compose(&other.3))
+        CircuitCount(
+            self.0.compose(&other.0),
+            self.1.compose(&other.1),
+            self.2.compose(&other.2),
+            self.3.compose(&other.3),
+        )
     }
 }
 

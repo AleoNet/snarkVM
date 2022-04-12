@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_circuits_environment::Count;
+use snarkvm_circuits_environment::CircuitCount;
 
 impl<E: Environment, I: IntegerType> Not for Integer<E, I> {
     type Output = Integer<E, I>;
@@ -34,15 +34,15 @@ impl<E: Environment, I: IntegerType> Not for &Integer<E, I> {
     }
 }
 
-impl<E: Environment, I: IntegerType> CountForOp<dyn Not<Output = Integer<E, I>>> for Integer<E, I> {
+impl<E: Environment, I: IntegerType> Count<dyn Not<Output = Integer<E, I>>> for Integer<E, I> {
     type Case = Mode;
 
-    fn count(_input: &Self::Case) -> Count {
-        Count::exact(0, 0, 0, 0)
+    fn count(_input: &Self::Case) -> CircuitCount {
+        CircuitCount::exact(0, 0, 0, 0)
     }
 }
 
-impl<E: Environment, I: IntegerType> OutputModeForOp<dyn Not<Output = Integer<E, I>>> for Integer<E, I> {
+impl<E: Environment, I: IntegerType> OutputMode<dyn Not<Output = Integer<E, I>>> for Integer<E, I> {
     type Case = Mode;
 
     fn output_mode(input: &Self::Case) -> Mode {

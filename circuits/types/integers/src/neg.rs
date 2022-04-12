@@ -38,21 +38,21 @@ impl<E: Environment, I: IntegerType> Neg for &Integer<E, I> {
     }
 }
 
-impl<E: Environment, I: IntegerType> CountForOp<dyn Neg<Output = Integer<E, I>>> for Integer<E, I> {
+impl<E: Environment, I: IntegerType> Count<dyn Neg<Output = Integer<E, I>>> for Integer<E, I> {
     type Case = Mode;
 
-    fn count(input: &Self::Case) -> Count {
+    fn count(input: &Self::Case) -> CircuitCount {
         match I::is_signed() {
             false => E::halt("Unsigned integers cannot be negated"),
             true => match input {
-                Mode::Constant => Count::exact(2 * I::BITS, 0, 0, 0),
-                _ => Count::exact(I::BITS, 0, I::BITS + 2, I::BITS + 4),
+                Mode::Constant => CircuitCount::exact(2 * I::BITS, 0, 0, 0),
+                _ => CircuitCount::exact(I::BITS, 0, I::BITS + 2, I::BITS + 4),
             },
         }
     }
 }
 
-impl<E: Environment, I: IntegerType> OutputModeForOp<dyn Neg<Output = Integer<E, I>>> for Integer<E, I> {
+impl<E: Environment, I: IntegerType> OutputMode<dyn Neg<Output = Integer<E, I>>> for Integer<E, I> {
     type Case = Mode;
 
     fn output_mode(input: &Self::Case) -> Mode {

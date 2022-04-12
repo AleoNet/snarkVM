@@ -52,19 +52,19 @@ impl<E: Environment> SubAssign<&Self> for Group<E> {
     }
 }
 
-impl<E: Environment> CountForOp<dyn Sub<Group<E>, Output = Group<E>>> for Group<E> {
+impl<E: Environment> Count<dyn Sub<Group<E>, Output = Group<E>>> for Group<E> {
     type Case = (Mode, Mode);
 
-    fn count(input: &Self::Case) -> Count {
+    fn count(input: &Self::Case) -> CircuitCount {
         match (input.0, input.1) {
-            (Mode::Constant, Mode::Constant) => Count::exact(4, 0, 0, 0),
-            (Mode::Constant, _) | (_, Mode::Constant) => Count::exact(2, 0, 3, 3),
-            (_, _) => Count::exact(2, 0, 6, 6),
+            (Mode::Constant, Mode::Constant) => CircuitCount::exact(4, 0, 0, 0),
+            (Mode::Constant, _) | (_, Mode::Constant) => CircuitCount::exact(2, 0, 3, 3),
+            (_, _) => CircuitCount::exact(2, 0, 6, 6),
         }
     }
 }
 
-impl<E: Environment> OutputModeForOp<dyn Sub<Group<E>, Output = Group<E>>> for Group<E> {
+impl<E: Environment> OutputMode<dyn Sub<Group<E>, Output = Group<E>>> for Group<E> {
     type Case = (Mode, Mode);
 
     fn output_mode(input: &Self::Case) -> Mode {

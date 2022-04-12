@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_circuits_environment::Count;
+use snarkvm_circuits_environment::CircuitCount;
 
 impl<E: Environment> Add<Field<E>> for Field<E> {
     type Output = Field<E>;
@@ -64,15 +64,15 @@ impl<E: Environment> AddAssign<&Field<E>> for Field<E> {
     }
 }
 
-impl<E: Environment> CountForOp<dyn Add<Field<E>, Output = Field<E>>> for Field<E> {
+impl<E: Environment> Count<dyn Add<Field<E>, Output = Field<E>>> for Field<E> {
     type Case = (Mode, Mode);
 
-    fn count(_input: &Self::Case) -> Count {
-        Count::exact(0, 0, 0, 0)
+    fn count(_input: &Self::Case) -> CircuitCount {
+        CircuitCount::exact(0, 0, 0, 0)
     }
 }
 
-impl<E: Environment> OutputModeForOp<dyn Add<Field<E>, Output = Field<E>>> for Field<E> {
+impl<E: Environment> OutputMode<dyn Add<Field<E>, Output = Field<E>>> for Field<E> {
     type Case = (Mode, Mode);
 
     fn output_mode(input: &Self::Case) -> Mode {

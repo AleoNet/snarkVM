@@ -21,7 +21,7 @@ use crate::{
     Program,
     Value,
 };
-use snarkvm_circuits::{count, Count, CountForOp, Field, Group, Literal, Parser, ParserResult, I8, U8};
+use snarkvm_circuits::{count, CircuitCount, Count, Field, Group, Literal, Parser, ParserResult, I8, U8};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
@@ -82,10 +82,10 @@ impl<P: Program> Operation<P> for Neg<P> {
     }
 }
 
-impl<P: Program> CountForOp<Self> for Neg<P> {
+impl<P: Program> Count<Self> for Neg<P> {
     type Case = LiteralType<P>;
 
-    fn count(input: &Self::Case) -> Count {
+    fn count(input: &Self::Case) -> CircuitCount {
         match input {
             LiteralType::Field(mode) => count!(Field<P::Environment>, NegOp<Output = Field<P::Environment>>, mode),
             LiteralType::Group(mode) => count!(Group<P::Environment>, NegOp<Output = Group<P::Environment>>, mode),

@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_circuits_environment::Count;
+use snarkvm_circuits_environment::CircuitCount;
 
 impl<E: Environment, I: IntegerType> Add<Integer<E, I>> for Integer<E, I> {
     type Output = Self;
@@ -110,28 +110,26 @@ impl<E: Environment, I: IntegerType> AddChecked<Self> for Integer<E, I> {
     }
 }
 
-impl<E: Environment, I: IntegerType> CountForOp<dyn AddChecked<Integer<E, I>, Output = Integer<E, I>>>
-    for Integer<E, I>
-{
+impl<E: Environment, I: IntegerType> Count<dyn AddChecked<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
     type Case = (Mode, Mode);
 
-    fn count(input: &Self::Case) -> Count {
+    fn count(input: &Self::Case) -> CircuitCount {
         match I::is_signed() {
             false => match (input.0, input.1) {
-                (Mode::Constant, Mode::Constant) => Count::exact(I::BITS, 0, 0, 0),
-                (_, _) => Count::exact(0, 0, I::BITS + 1, I::BITS + 3),
+                (Mode::Constant, Mode::Constant) => CircuitCount::exact(I::BITS, 0, 0, 0),
+                (_, _) => CircuitCount::exact(0, 0, I::BITS + 1, I::BITS + 3),
             },
             true => match (input.0, input.1) {
-                (Mode::Constant, Mode::Constant) => Count::exact(I::BITS, 0, 0, 0),
-                (Mode::Constant, _) => Count::exact(0, 0, I::BITS + 2, I::BITS + 4),
-                (_, Mode::Constant) => Count::exact(0, 0, I::BITS + 3, I::BITS + 5),
-                (_, _) => Count::exact(0, 0, I::BITS + 4, I::BITS + 6),
+                (Mode::Constant, Mode::Constant) => CircuitCount::exact(I::BITS, 0, 0, 0),
+                (Mode::Constant, _) => CircuitCount::exact(0, 0, I::BITS + 2, I::BITS + 4),
+                (_, Mode::Constant) => CircuitCount::exact(0, 0, I::BITS + 3, I::BITS + 5),
+                (_, _) => CircuitCount::exact(0, 0, I::BITS + 4, I::BITS + 6),
             },
         }
     }
 }
 
-impl<E: Environment, I: IntegerType> OutputModeForOp<dyn AddChecked<Integer<E, I>, Output = Integer<E, I>>>
+impl<E: Environment, I: IntegerType> OutputMode<dyn AddChecked<Integer<E, I>, Output = Integer<E, I>>>
     for Integer<E, I>
 {
     type Case = (Mode, Mode);
@@ -149,19 +147,19 @@ impl<E: Environment, I: IntegerType> MetadataForOp<dyn AddChecked<Integer<E, I>,
 {
 }
 
-impl<E: Environment, I: IntegerType> CountForOp<dyn Add<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
+impl<E: Environment, I: IntegerType> Count<dyn Add<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
     type Case = (Mode, Mode);
 
-    fn count(input: &Self::Case) -> Count {
-        <Self as CountForOp<dyn AddChecked<Integer<E, I>, Output = Integer<E, I>>>>::count(input)
+    fn count(input: &Self::Case) -> CircuitCount {
+        <Self as Count<dyn AddChecked<Integer<E, I>, Output = Integer<E, I>>>>::count(input)
     }
 }
 
-impl<E: Environment, I: IntegerType> OutputModeForOp<dyn Add<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
+impl<E: Environment, I: IntegerType> OutputMode<dyn Add<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
     type Case = (Mode, Mode);
 
     fn output_mode(input: &Self::Case) -> Mode {
-        <Self as OutputModeForOp<dyn AddChecked<Integer<E, I>, Output = Integer<E, I>>>>::output_mode(input)
+        <Self as OutputMode<dyn AddChecked<Integer<E, I>, Output = Integer<E, I>>>>::output_mode(input)
     }
 }
 

@@ -54,15 +54,15 @@ impl<E: Environment> SubAssign<&Field<E>> for Field<E> {
     }
 }
 
-impl<E: Environment> CountForOp<dyn Sub<Field<E>, Output = Field<E>>> for Field<E> {
+impl<E: Environment> Count<dyn Sub<Field<E>, Output = Field<E>>> for Field<E> {
     type Case = (Mode, Mode);
 
-    fn count(_input: &Self::Case) -> Count {
-        Count::exact(0, 0, 0, 0)
+    fn count(_input: &Self::Case) -> CircuitCount {
+        CircuitCount::exact(0, 0, 0, 0)
     }
 }
 
-impl<E: Environment> OutputModeForOp<dyn Sub<Field<E>, Output = Field<E>>> for Field<E> {
+impl<E: Environment> OutputMode<dyn Sub<Field<E>, Output = Field<E>>> for Field<E> {
     type Case = (Mode, Mode);
 
     fn output_mode(input: &Self::Case) -> Mode {

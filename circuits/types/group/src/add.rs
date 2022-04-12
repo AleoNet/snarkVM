@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_circuits_environment::Count;
+use snarkvm_circuits_environment::CircuitCount;
 
 impl<E: Environment> Add<Self> for Group<E> {
     type Output = Self;
@@ -99,19 +99,19 @@ impl<E: Environment> AddAssign<&Self> for Group<E> {
     }
 }
 
-impl<E: Environment> CountForOp<dyn Add<Group<E>, Output = Group<E>>> for Group<E> {
+impl<E: Environment> Count<dyn Add<Group<E>, Output = Group<E>>> for Group<E> {
     type Case = (Mode, Mode);
 
-    fn count(input: &Self::Case) -> Count {
+    fn count(input: &Self::Case) -> CircuitCount {
         match (input.0, input.1) {
-            (Mode::Constant, Mode::Constant) => Count::exact(4, 0, 0, 0),
-            (Mode::Constant, _) | (_, Mode::Constant) => Count::exact(2, 0, 3, 3),
-            (_, _) => Count::exact(2, 0, 6, 6),
+            (Mode::Constant, Mode::Constant) => CircuitCount::exact(4, 0, 0, 0),
+            (Mode::Constant, _) | (_, Mode::Constant) => CircuitCount::exact(2, 0, 3, 3),
+            (_, _) => CircuitCount::exact(2, 0, 6, 6),
         }
     }
 }
 
-impl<E: Environment> OutputModeForOp<dyn Add<Group<E>, Output = Group<E>>> for Group<E> {
+impl<E: Environment> OutputMode<dyn Add<Group<E>, Output = Group<E>>> for Group<E> {
     type Case = (Mode, Mode);
 
     fn output_mode(input: &Self::Case) -> Mode {

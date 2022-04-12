@@ -345,6 +345,15 @@ impl<P: Program> Function<P> {
     }
 }
 
+impl<P: Program> Count<Self> for Function<P> {
+    type Case = ();
+
+    fn count(input: &Self::Case) -> CircuitCount {
+        todo!()
+        // Infer types of the instructions and compose the circuit counts.
+    }
+}
+
 impl<P: Program> Parser for Function<P> {
     type Environment = P::Environment;
 
