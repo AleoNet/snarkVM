@@ -20,6 +20,9 @@ pub(super) use add::*;
 pub(super) mod add_wrapped;
 pub(super) use add_wrapped::*;
 
+pub(super) mod div;
+pub(super) use div::*;
+
 pub(super) mod mul;
 pub(super) use mul::*;
 
@@ -72,6 +75,8 @@ pub enum Instruction<P: Program> {
     Add(Add<P>),
     /// Adds `first` with `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
     AddWrapped(AddWrapped<P>),
+    /// Divides `first` by `second`, storing the outcome in `destination`.
+    Div(Div<P>),
     /// Multiplies `first` with `second`, storing the outcome in `destination`.
     Mul(Mul<P>),
     /// Multiplies `first` with `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
@@ -91,6 +96,7 @@ impl<P: Program> Instruction<P> {
         match self {
             Self::Add(..) => Add::<P>::opcode(),
             Self::AddWrapped(..) => AddWrapped::<P>::opcode(),
+            Self::Div(..) => Div::<P>::opcode(),
             Self::Mul(..) => Mul::<P>::opcode(),
             Self::MulWrapped(..) => MulWrapped::<P>::opcode(),
             Self::Neg(..) => Neg::<P>::opcode(),
@@ -105,6 +111,7 @@ impl<P: Program> Instruction<P> {
         match self {
             Self::Add(add) => add.operands(),
             Self::AddWrapped(add_wrapped) => add_wrapped.operands(),
+            Self::Div(div) => div.operands(),
             Self::Mul(mul) => mul.operands(),
             Self::MulWrapped(mul_wrapped) => mul_wrapped.operands(),
             Self::Neg(neg) => neg.operands(),
@@ -119,6 +126,7 @@ impl<P: Program> Instruction<P> {
         match self {
             Self::Add(add) => add.destination(),
             Self::AddWrapped(add_wrapped) => add_wrapped.destination(),
+            Self::Div(div) => div.destination(),
             Self::Mul(mul) => mul.destination(),
             Self::MulWrapped(mul_wrapped) => mul_wrapped.destination(),
             Self::Neg(neg) => neg.destination(),
@@ -133,6 +141,7 @@ impl<P: Program> Instruction<P> {
         match self {
             Self::Add(instruction) => instruction.evaluate(registers),
             Self::AddWrapped(instruction) => instruction.evaluate(registers),
+            Self::Div(instruction) => instruction.evaluate(registers),
             Self::Mul(instruction) => instruction.evaluate(registers),
             Self::MulWrapped(instruction) => instruction.evaluate(registers),
             Self::Neg(instruction) => instruction.evaluate(registers),
@@ -155,6 +164,7 @@ impl<P: Program> Parser for Instruction<P> {
             // Note that order of the individual parsers matters.
             preceded(pair(tag(Add::<P>::opcode()), tag(" ")), map(Add::parse, Into::into)),
             preceded(pair(tag(AddWrapped::<P>::opcode()), tag(" ")), map(AddWrapped::parse, Into::into)),
+            preceded(pair(tag(Div::<P>::opcode()), tag(" ")), map(Div::parse, Into::into)),
             preceded(pair(tag(Mul::<P>::opcode()), tag(" ")), map(Mul::parse, Into::into)),
             preceded(pair(tag(MulWrapped::<P>::opcode()), tag(" ")), map(MulWrapped::parse, Into::into)),
             preceded(pair(tag(Neg::<P>::opcode()), tag(" ")), map(Neg::parse, Into::into)),
@@ -173,6 +183,7 @@ impl<P: Program> fmt::Display for Instruction<P> {
         match self {
             Self::Add(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::AddWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::Div(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Mul(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::MulWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Neg(instruction) => write!(f, "{} {};", self.opcode(), instruction),
@@ -188,12 +199,13 @@ impl<P: Program> FromBytes for Instruction<P> {
         match code {
             0 => Ok(Self::Add(Add::read_le(&mut reader)?)),
             1 => Ok(Self::AddWrapped(AddWrapped::read_le(&mut reader)?)),
-            2 => Ok(Self::Mul(Mul::read_le(&mut reader)?)),
-            3 => Ok(Self::MulWrapped(MulWrapped::read_le(&mut reader)?)),
-            4 => Ok(Self::Neg(Neg::read_le(&mut reader)?)),
-            5 => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
-            6 => Ok(Self::SubWrapped(SubWrapped::read_le(&mut reader)?)),
-            7.. => Err(error(format!("Failed to deserialize an instruction of code {code}"))),
+            2 => Ok(Self::Div(Div::read_le(&mut reader)?)),
+            3 => Ok(Self::Mul(Mul::read_le(&mut reader)?)),
+            4 => Ok(Self::MulWrapped(MulWrapped::read_le(&mut reader)?)),
+            5 => Ok(Self::Neg(Neg::read_le(&mut reader)?)),
+            6 => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
+            7 => Ok(Self::SubWrapped(SubWrapped::read_le(&mut reader)?)),
+            8.. => Err(error(format!("Failed to deserialize an instruction of code {code}"))),
         }
     }
 }
@@ -207,6 +219,10 @@ impl<P: Program> ToBytes for Instruction<P> {
             }
             Self::AddWrapped(instruction) => {
                 u16::write_le(&1u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::Div(instruction) => {
+                u16::write_le(&2u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
             Self::Mul(instruction) => {
