@@ -28,10 +28,12 @@ use registers::*;
 
 mod parsers;
 
-use crate::{Annotation, Identifier, Program, Sanitizer, Value};
+use crate::{Annotation, Identifier, LiteralType, OutputType, Program, Register, Sanitizer, Value};
+
 use snarkvm_circuits::prelude::*;
 use snarkvm_utilities::{error, FromBytes, ToBytes};
 
+use crate::function::parsers::Operand;
 use indexmap::{IndexMap, IndexSet};
 use std::{
     cell::RefCell,
@@ -349,7 +351,125 @@ impl<P: Program> Count<Self> for Function<P> {
     type Case = Self;
 
     fn count(function: &Self::Case) -> CircuitCount {
-        todo!()
+        let mut type_map = IndexMap::new();
+
+        // Load all the types of the inputs.
+        // If the input is a composite, load all the types of the members.
+        function.inputs.borrow().iter().for_each(|input| {
+            match input.register() {
+                Register::Locator(locator) => {
+                    match input.annotation() {
+                        Annotation::Literal(literal_type) => {
+                            type_map.insert(Register::Locator(*locator), *literal_type);
+                        }
+                        Annotation::Composite(identifier) => {
+                            match P::get_definition(identifier) {
+                                Some(definition) => {
+                                    definition.members().iter().for_each(|member| {
+                                        match member.annotation() {
+                                            Annotation::Literal(literal_type) => {
+                                                type_map.insert(
+                                                    Register::Member(*locator, member.name().clone()),
+                                                    *literal_type,
+                                                );
+                                            }
+                                            // We assume that nested composite types are not supported since the `Member` variant of
+                                            // `Register` does not allow for multiple identifiers to be specified.
+                                            // TODO (@pranav) Verify that this is the case.
+                                            Annotation::Composite(..) => {
+                                                P::halt("Nested composite types are not supported.")
+                                            }
+                                        }
+                                    });
+                                }
+                                None => P::halt("Input references a non-existent definition"),
+                            }
+                        }
+                    }
+                }
+                Register::Member(..) => P::halt("Input register cannot be a register member."),
+            }
+        });
+
+        // Infer the types of the instructions, composing `CircuitCount`s as each instruction is processed.
+        function
+            .instructions
+            .borrow()
+            .iter()
+            .map(|instruction| {
+                match instruction {
+                    Instruction::Add(instruction) => {
+                        // Get input types of the operands.
+                        let operand_types = instruction
+                            .operands()
+                            .iter()
+                            .map(|operand| match operand {
+                                Operand::Register(register) => {
+                                    *type_map.get(register).expect("Type not found for register")
+                                }
+                                Operand::Value(value) => match value {
+                                    Value::Literal(literal) => LiteralType::from(literal),
+                                    Value::Composite(..) => P::halt("An operand cannot be a composite value."),
+                                },
+                            })
+                            .collect::<Vec<_>>();
+
+                        // Infer the output type of the instruction based on the input types.
+                        let output_type = instructions::Add::<P>::output_type(&(operand_types[0], operand_types[1]));
+                        type_map.insert(instruction.destination().clone(), output_type);
+
+                        // Return the associated count.
+                        instructions::Add::<P>::count(&(operand_types[0], operand_types[1]))
+                    }
+                    Instruction::Neg(instruction) => {
+                        // Get input types of the operands.
+                        let operand_types = instruction
+                            .operands()
+                            .iter()
+                            .map(|operand| match operand {
+                                Operand::Register(register) => {
+                                    *type_map.get(register).expect("Type not found for register")
+                                }
+                                Operand::Value(value) => match value {
+                                    Value::Literal(literal) => LiteralType::from(literal),
+                                    Value::Composite(..) => P::halt("An operand cannot be a composite value."),
+                                },
+                            })
+                            .collect::<Vec<_>>();
+
+                        // Infer the output type of the instruction based on the input types.
+                        let output_type = instructions::Neg::<P>::output_type(&operand_types[0]);
+                        type_map.insert(instruction.destination().clone(), output_type);
+
+                        // Return the associated count.
+                        instructions::Neg::<P>::count(&operand_types[0])
+                    }
+                    Instruction::Sub(instruction) => {
+                        // Get input types of the operands.
+                        let operand_types = instruction
+                            .operands()
+                            .iter()
+                            .map(|operand| match operand {
+                                Operand::Register(register) => {
+                                    *type_map.get(register).expect("Type not found for register")
+                                }
+                                Operand::Value(value) => match value {
+                                    Value::Literal(literal) => LiteralType::from(literal),
+                                    Value::Composite(..) => P::halt("An operand cannot be a composite value."),
+                                },
+                            })
+                            .collect::<Vec<_>>();
+
+                        // Infer the output type of the instruction based on the input types.
+                        let output_type = instructions::Sub::<P>::output_type(&(operand_types[0], operand_types[1]));
+                        type_map.insert(instruction.destination().clone(), output_type);
+
+                        // Return the associated count.
+                        instructions::Sub::<P>::count(&(operand_types[0], operand_types[1]))
+                    }
+                }
+            })
+            .fold(CircuitCount::exact(0, 0, 0, 0), |total, count| total.compose(&count))
     }
 }
 
