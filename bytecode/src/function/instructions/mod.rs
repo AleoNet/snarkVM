@@ -127,6 +127,7 @@ impl<P: Program> Parser for Instruction<P> {
         let (string, instruction) = alt((
             // Note that order of the individual parsers matters.
             preceded(pair(tag(Add::<P>::opcode()), tag(" ")), map(Add::parse, Into::into)),
+            preceded(pair(tag(Mul::<P>::opcode()), tag(" ")), map(Mul::parse, Into::into)),
             preceded(pair(tag(Neg::<P>::opcode()), tag(" ")), map(Neg::parse, Into::into)),
             preceded(pair(tag(Sub::<P>::opcode()), tag(" ")), map(Sub::parse, Into::into)),
         ))(string)?;
