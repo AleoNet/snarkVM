@@ -200,7 +200,7 @@ mod tests {
         );
 
         binary_instruction_test!(
-            test_constant_and_public_yields_private,
+            test_constant_and_public_yields_public,
             Mul,
             "1field.constant",
             "2field.public",
