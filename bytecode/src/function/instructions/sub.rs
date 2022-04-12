@@ -17,15 +17,19 @@
 use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Registers},
     helpers::Register,
+    LiteralType,
     Program,
     Value,
 };
-use snarkvm_circuits::{Literal, Parser, ParserResult, SubChecked};
+use snarkvm_circuits::{count, Count, CountForOp, Field, Group, Literal, Parser, ParserResult, I8, SubChecked, U8};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
 use nom::combinator::map;
-use std::io::{Read, Result as IoResult, Write};
+use std::{
+    io::{Read, Result as IoResult, Write},
+    ops::Sub as SubOp,
+};
 
 /// Subtracts `second` from `first`, storing the outcome in `destination`.
 pub struct Sub<P: Program> {
@@ -84,6 +88,32 @@ impl<P: Program> Operation<P> for Sub<P> {
         };
 
         registers.assign(self.operation.destination(), result);
+    }
+}
+
+impl<P: Program> CountForOp<Self> for Sub<P> {
+    type Case = (LiteralType<P>, LiteralType<P>);
+
+    fn count(input: &Self::Case) -> Count {
+        match input {
+            (LiteralType::Field(mode_a), LiteralType::Field(mode_b)) => count!(
+                Field<P::Environment>,
+                SubOp<Field<P::Environment>, Output = Field<P::Environment>>,
+                &(*mode_a, *mode_b)
+            ),
+            (LiteralType::Group(mode_a), LiteralType::Group(mode_b)) => count!(
+                Group<P::Environment>,
+                SubOp<Group<P::Environment>, Output = Group<P::Environment>>,
+                &(*mode_a, *mode_b)
+            ),
+            (LiteralType::I8(mode_a), LiteralType::I8(mode_b)) => {
+                count!(I8<P::Environment>, SubOp<I8<P::Environment>, Output = I8<P::Environment>>, &(*mode_a, *mode_b))
+            }
+            (LiteralType::U8(mode_a), LiteralType::U8(mode_b)) => {
+                count!(U8<P::Environment>, SubOp<U8<P::Environment>, Output = U8<P::Environment>>, &(*mode_a, *mode_b))
+            }
+            _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
+        }
     }
 }
 

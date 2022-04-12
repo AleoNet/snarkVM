@@ -54,6 +54,27 @@ impl<E: Environment> SubAssign<&Field<E>> for Field<E> {
     }
 }
 
+impl<E: Environment> CountForOp<dyn Sub<Field<E>, Output = Field<E>>> for Field<E> {
+    type Case = (Mode, Mode);
+
+    fn count(_input: &Self::Case) -> Count {
+        Count::exact(0, 0, 0, 0)
+    }
+}
+
+impl<E: Environment> OutputModeForOp<dyn Sub<Field<E>, Output = Field<E>>> for Field<E> {
+    type Case = (Mode, Mode);
+
+    fn output_mode(input: &Self::Case) -> Mode {
+        match (input.0, input.1) {
+            (Mode::Constant, Mode::Constant) => Mode::Constant,
+            (_, _) => Mode::Private,
+        }
+    }
+}
+
+impl<E: Environment> MetadataForOp<dyn Sub<Field<E>, Output = Field<E>>> for Field<E> {}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -62,20 +83,21 @@ mod tests {
 
     const ITERATIONS: usize = 10_000;
 
-    fn check_sub(
-        name: &str,
-        expected: &<Circuit as Environment>::BaseField,
-        a: &Field<Circuit>,
-        b: &Field<Circuit>,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
+    fn check_sub(name: &str, expected: &<Circuit as Environment>::BaseField, a: &Field<Circuit>, b: &Field<Circuit>) {
         Circuit::scope(name, || {
             let candidate = a - b;
             assert_eq!(*expected, candidate.eject_value(), "({} + {})", a.eject_value(), b.eject_value());
-            assert_scope!(num_constants, num_public, num_private, num_constraints);
+            assert_count!(
+                Field<Circuit>,
+                Sub<Field<Circuit>, Output = Field<Circuit>>,
+                &(a.eject_mode(), b.eject_mode())
+            );
+            assert_output_mode!(
+                candidate,
+                Field<Circuit>,
+                Sub<Field<Circuit>, Output = Field<Circuit>>,
+                &(a.eject_mode(), b.eject_mode())
+            );
         });
     }
 
@@ -84,16 +106,22 @@ mod tests {
         expected: &<Circuit as Environment>::BaseField,
         a: &Field<Circuit>,
         b: &Field<Circuit>,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
     ) {
         Circuit::scope(name, || {
             let mut candidate = a.clone();
             candidate -= b;
             assert_eq!(*expected, candidate.eject_value(), "({} + {})", a.eject_value(), b.eject_value());
-            assert_scope!(num_constants, num_public, num_private, num_constraints);
+            assert_count!(
+                Field<Circuit>,
+                Sub<Field<Circuit>, Output = Field<Circuit>>,
+                &(a.eject_mode(), b.eject_mode())
+            );
+            assert_output_mode!(
+                candidate,
+                Field<Circuit>,
+                Sub<Field<Circuit>, Output = Field<Circuit>>,
+                &(a.eject_mode(), b.eject_mode())
+            );
         });
     }
 
@@ -108,9 +136,9 @@ mod tests {
             let b = Field::<Circuit>::new(Mode::Constant, second);
 
             let name = format!("Sub: a - b {}", i);
-            check_sub(&name, &expected, &a, &b, 0, 0, 0, 0);
+            check_sub(&name, &expected, &a, &b);
             let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
+            check_sub_assign(&name, &expected, &a, &b);
         }
     }
 
@@ -125,9 +153,9 @@ mod tests {
             let b = Field::<Circuit>::new(Mode::Public, second);
 
             let name = format!("Sub: a - b {}", i);
-            check_sub(&name, &expected, &a, &b, 0, 0, 0, 0);
+            check_sub(&name, &expected, &a, &b);
             let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
+            check_sub_assign(&name, &expected, &a, &b);
         }
     }
 
@@ -142,9 +170,9 @@ mod tests {
             let b = Field::<Circuit>::new(Mode::Constant, second);
 
             let name = format!("Sub: a - b {}", i);
-            check_sub(&name, &expected, &a, &b, 0, 0, 0, 0);
+            check_sub(&name, &expected, &a, &b);
             let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
+            check_sub_assign(&name, &expected, &a, &b);
         }
     }
 
@@ -159,9 +187,9 @@ mod tests {
             let b = Field::<Circuit>::new(Mode::Private, second);
 
             let name = format!("Sub: a - b {}", i);
-            check_sub(&name, &expected, &a, &b, 0, 0, 0, 0);
+            check_sub(&name, &expected, &a, &b);
             let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
+            check_sub_assign(&name, &expected, &a, &b);
         }
     }
 
@@ -176,9 +204,9 @@ mod tests {
             let b = Field::<Circuit>::new(Mode::Constant, second);
 
             let name = format!("Sub: a - b {}", i);
-            check_sub(&name, &expected, &a, &b, 0, 0, 0, 0);
+            check_sub(&name, &expected, &a, &b);
             let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
+            check_sub_assign(&name, &expected, &a, &b);
         }
     }
 
@@ -193,9 +221,9 @@ mod tests {
             let b = Field::<Circuit>::new(Mode::Public, second);
 
             let name = format!("Sub: a - b {}", i);
-            check_sub(&name, &expected, &a, &b, 0, 0, 0, 0);
+            check_sub(&name, &expected, &a, &b);
             let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
+            check_sub_assign(&name, &expected, &a, &b);
         }
     }
 
@@ -210,9 +238,9 @@ mod tests {
             let b = Field::<Circuit>::new(Mode::Private, second);
 
             let name = format!("Sub: a - b {}", i);
-            check_sub(&name, &expected, &a, &b, 0, 0, 0, 0);
+            check_sub(&name, &expected, &a, &b);
             let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
+            check_sub_assign(&name, &expected, &a, &b);
         }
     }
 
@@ -227,9 +255,9 @@ mod tests {
             let b = Field::<Circuit>::new(Mode::Public, second);
 
             let name = format!("Sub: a - b {}", i);
-            check_sub(&name, &expected, &a, &b, 0, 0, 0, 0);
+            check_sub(&name, &expected, &a, &b);
             let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
+            check_sub_assign(&name, &expected, &a, &b);
         }
     }
 
@@ -244,9 +272,9 @@ mod tests {
             let b = Field::<Circuit>::new(Mode::Private, second);
 
             let name = format!("Sub: a - b {}", i);
-            check_sub(&name, &expected, &a, &b, 0, 0, 0, 0);
+            check_sub(&name, &expected, &a, &b);
             let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
+            check_sub_assign(&name, &expected, &a, &b);
         }
     }
 

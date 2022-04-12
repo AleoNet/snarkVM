@@ -52,6 +52,31 @@ impl<E: Environment> SubAssign<&Self> for Group<E> {
     }
 }
 
+impl<E: Environment> CountForOp<dyn Sub<Group<E>, Output = Group<E>>> for Group<E> {
+    type Case = (Mode, Mode);
+
+    fn count(input: &Self::Case) -> Count {
+        match (input.0, input.1) {
+            (Mode::Constant, Mode::Constant) => Count::exact(4, 0, 0, 0),
+            (Mode::Constant, _) | (_, Mode::Constant) => Count::exact(2, 0, 3, 3),
+            (_, _) => Count::exact(2, 0, 6, 6),
+        }
+    }
+}
+
+impl<E: Environment> OutputModeForOp<dyn Sub<Group<E>, Output = Group<E>>> for Group<E> {
+    type Case = (Mode, Mode);
+
+    fn output_mode(input: &Self::Case) -> Mode {
+        match (input.0, input.1) {
+            (Mode::Constant, Mode::Constant) => Mode::Constant,
+            (_, _) => Mode::Private,
+        }
+    }
+}
+
+impl<E: Environment> MetadataForOp<dyn Sub<Group<E>, Output = Group<E>>> for Group<E> {}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -60,20 +85,21 @@ mod tests {
 
     const ITERATIONS: usize = 100;
 
-    fn check_sub(
-        name: &str,
-        expected: &<Circuit as Environment>::Affine,
-        a: &Group<Circuit>,
-        b: &Group<Circuit>,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
+    fn check_sub(name: &str, expected: &<Circuit as Environment>::Affine, a: &Group<Circuit>, b: &Group<Circuit>) {
         Circuit::scope(name, || {
             let candidate = a - b;
             assert_eq!(*expected, candidate.eject_value(), "({} - {})", a.eject_value(), b.eject_value());
-            assert_scope!(num_constants, num_public, num_private, num_constraints);
+            assert_count!(
+                Group<Circuit>,
+                Add<Group<Circuit>, Output = Group<Circuit>>,
+                &(a.eject_mode(), b.eject_mode())
+            );
+            assert_output_mode!(
+                candidate,
+                Group<Circuit>,
+                Add<Group<Circuit>, Output = Group<Circuit>>,
+                &(a.eject_mode(), b.eject_mode())
+            );
         });
     }
 
@@ -82,16 +108,22 @@ mod tests {
         expected: &<Circuit as Environment>::Affine,
         a: &Group<Circuit>,
         b: &Group<Circuit>,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
     ) {
         Circuit::scope(name, || {
             let mut candidate = a.clone();
             candidate -= b;
             assert_eq!(*expected, candidate.eject_value(), "({} - {})", a.eject_value(), b.eject_value());
-            assert_scope!(num_constants, num_public, num_private, num_constraints);
+            assert_count!(
+                Group<Circuit>,
+                Add<Group<Circuit>, Output = Group<Circuit>>,
+                &(a.eject_mode(), b.eject_mode())
+            );
+            assert_output_mode!(
+                candidate,
+                Group<Circuit>,
+                Add<Group<Circuit>, Output = Group<Circuit>>,
+                &(a.eject_mode(), b.eject_mode())
+            );
         });
     }
 
@@ -106,9 +138,9 @@ mod tests {
             let b = Group::<Circuit>::new(Mode::Constant, second);
 
             let name = format!("Sub: a - b {}", i);
-            check_sub(&name, &expected, &a, &b, 4, 0, 0, 0);
+            check_sub(&name, &expected, &a, &b);
             let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, &expected, &a, &b, 4, 0, 0, 0);
+            check_sub_assign(&name, &expected, &a, &b);
         }
     }
 
@@ -123,9 +155,9 @@ mod tests {
             let b = Group::<Circuit>::new(Mode::Public, second);
 
             let name = format!("Sub: a - b {}", i);
-            check_sub(&name, &expected, &a, &b, 2, 0, 3, 3);
+            check_sub(&name, &expected, &a, &b);
             let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, &expected, &a, &b, 2, 0, 3, 3);
+            check_sub_assign(&name, &expected, &a, &b);
         }
     }
 
@@ -140,9 +172,9 @@ mod tests {
             let b = Group::<Circuit>::new(Mode::Constant, second);
 
             let name = format!("Sub: a - b {}", i);
-            check_sub(&name, &expected, &a, &b, 2, 0, 3, 3);
+            check_sub(&name, &expected, &a, &b);
             let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, &expected, &a, &b, 2, 0, 3, 3);
+            check_sub_assign(&name, &expected, &a, &b);
         }
     }
 
@@ -157,9 +189,9 @@ mod tests {
             let b = Group::<Circuit>::new(Mode::Private, second);
 
             let name = format!("Sub: a - b {}", i);
-            check_sub(&name, &expected, &a, &b, 2, 0, 3, 3);
+            check_sub(&name, &expected, &a, &b);
             let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, &expected, &a, &b, 2, 0, 3, 3);
+            check_sub_assign(&name, &expected, &a, &b);
         }
     }
 
@@ -174,9 +206,9 @@ mod tests {
             let b = Group::<Circuit>::new(Mode::Constant, second);
 
             let name = format!("Sub: a - b {}", i);
-            check_sub(&name, &expected, &a, &b, 2, 0, 3, 3);
+            check_sub(&name, &expected, &a, &b);
             let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, &expected, &a, &b, 2, 0, 3, 3);
+            check_sub_assign(&name, &expected, &a, &b);
         }
     }
 
@@ -191,9 +223,9 @@ mod tests {
             let b = Group::<Circuit>::new(Mode::Public, second);
 
             let name = format!("Sub: a - b {}", i);
-            check_sub(&name, &expected, &a, &b, 2, 0, 6, 6);
+            check_sub(&name, &expected, &a, &b);
             let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, &expected, &a, &b, 2, 0, 6, 6);
+            check_sub_assign(&name, &expected, &a, &b);
         }
     }
 
@@ -208,9 +240,9 @@ mod tests {
             let b = Group::<Circuit>::new(Mode::Private, second);
 
             let name = format!("Sub: a - b {}", i);
-            check_sub(&name, &expected, &a, &b, 2, 0, 6, 6);
+            check_sub(&name, &expected, &a, &b);
             let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, &expected, &a, &b, 2, 0, 6, 6);
+            check_sub_assign(&name, &expected, &a, &b);
         }
     }
 
@@ -225,9 +257,9 @@ mod tests {
             let b = Group::<Circuit>::new(Mode::Public, second);
 
             let name = format!("Sub: a - b {}", i);
-            check_sub(&name, &expected, &a, &b, 2, 0, 6, 6);
+            check_sub(&name, &expected, &a, &b);
             let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, &expected, &a, &b, 2, 0, 6, 6);
+            check_sub_assign(&name, &expected, &a, &b);
         }
     }
 
@@ -242,9 +274,9 @@ mod tests {
             let b = Group::<Circuit>::new(Mode::Private, second);
 
             let name = format!("Sub: a - b {}", i);
-            check_sub(&name, &expected, &a, &b, 2, 0, 6, 6);
+            check_sub(&name, &expected, &a, &b);
             let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, &expected, &a, &b, 2, 0, 6, 6);
+            check_sub_assign(&name, &expected, &a, &b);
         }
     }
 

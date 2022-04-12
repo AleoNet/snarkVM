@@ -194,14 +194,14 @@ mod tests {
             Some(expected) => Circuit::scope(name, || {
                 let candidate = a.add_checked(&b);
                 assert_eq!(expected, candidate.eject_value());
-                assert_count!(Integer<Circuit, I>, AddChecked<Integer<Circuit, I>, Output=Integer<Circuit, I>>, &(mode_a, mode_b));
-                assert_output_mode!(candidate, Integer<Circuit, I>, AddChecked<Integer<Circuit, I>, Output=Integer<Circuit, I>>, &(mode_a, mode_b));
+                assert_count!(Integer<Circuit, I>, Add<Integer<Circuit, I>, Output=Integer<Circuit, I>>, &(mode_a, mode_b));
+                assert_output_mode!(candidate, Integer<Circuit, I>, Add<Integer<Circuit, I>, Output=Integer<Circuit, I>>, &(mode_a, mode_b));
             }),
             None => match mode_a.is_constant() && mode_b.is_constant() {
                 true => check_operation_halts(&a, &b, Integer::add_checked),
                 false => Circuit::scope(name, || {
                     let candidate = a.add_checked(&b);
-                    assert_count_fails!(Integer<Circuit, I>, AddChecked<Integer<Circuit, I>, Output=Integer<Circuit, I>>, &(mode_a, mode_b));
+                    assert_count_fails!(Integer<Circuit, I>, Add<Integer<Circuit, I>, Output=Integer<Circuit, I>>, &(mode_a, mode_b));
                 }),
             },
         }
