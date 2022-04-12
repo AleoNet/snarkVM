@@ -17,15 +17,20 @@
 use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Registers},
     helpers::Register,
+    Annotation,
+    LiteralType,
     Program,
     Value,
 };
-use snarkvm_circuits::{AddChecked, Literal, Parser, ParserResult};
+use snarkvm_circuits::{count, AddChecked, Count, CountForOp, Field, Group, Literal, Parser, ParserResult, I8, U8};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
 use nom::combinator::map;
-use std::io::{Read, Result as IoResult, Write};
+use std::{
+    io::{Read, Result as IoResult, Write},
+    ops::Add as AddOp,
+};
 
 /// Adds `first` with `second`, storing the outcome in `destination`.
 pub struct Add<P: Program> {
@@ -85,6 +90,32 @@ impl<P: Program> Operation<P> for Add<P> {
         };
 
         registers.assign(self.operation.destination(), result);
+    }
+}
+
+impl<P: Program> CountForOp<Self> for Add<P> {
+    type Case = (LiteralType<P>, LiteralType<P>);
+
+    fn count(input: &Self::Case) -> Count {
+        match input {
+            (LiteralType::Field(mode_a), LiteralType::Field(mode_b)) => count!(
+                Field<P::Environment>,
+                AddOp<Field<P::Environment>, Output = Field<P::Environment>>,
+                &(*mode_a, *mode_b)
+            ),
+            (LiteralType::Group(mode_a), LiteralType::Group(mode_b)) => count!(
+                Group<P::Environment>,
+                AddOp<Group<P::Environment>, Output = Group<P::Environment>>,
+                &(*mode_a, *mode_b)
+            ),
+            (LiteralType::I8(mode_a), LiteralType::I8(mode_b)) => {
+                count!(I8<P::Environment>, AddOp<I8<P::Environment>, Output = I8<P::Environment>>, &(*mode_a, *mode_b))
+            }
+            (LiteralType::U8(mode_a), LiteralType::U8(mode_b)) => {
+                count!(U8<P::Environment>, AddOp<U8<P::Environment>, Output = U8<P::Environment>>, &(*mode_a, *mode_b))
+            }
+            _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
+        }
     }
 }
 

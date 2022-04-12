@@ -17,12 +17,25 @@
 // TODO: Refactor macros one all operations implement `MetadataForOp`.
 
 #[macro_export]
+macro_rules! count {
+    ($type_:ty, $oper:path, $case:expr) => {
+        <$type_ as CountForOp<dyn $oper>>::count($case)
+    };
+}
+
+#[macro_export]
+macro_rules! output_mode {
+    ($type_:ty, $oper:path, $case:expr) => {
+        <$type_ as CountForOp<dyn $oper>>::output_mode($case)
+    };
+}
+
+#[macro_export]
 macro_rules! assert_count {
     ($type_:ty, $oper:path, $case:expr) => {
         $crate::print_scope!();
 
-        let Count(num_constants, num_public, num_private, num_constraints) =
-            <$type_ as CountForOp<dyn $oper>>::count($case);
+        let Count(num_constants, num_public, num_private, num_constraints) = count!($type_, $oper, $case);
         assert!(num_constants.is_satisfied(Circuit::num_constants_in_scope()), "(num_constants)");
         assert!(num_public.is_satisfied(Circuit::num_public_in_scope()), "(num_public)");
         assert!(num_private.is_satisfied(Circuit::num_private_in_scope()), "(num_private)");
@@ -36,8 +49,7 @@ macro_rules! assert_count_fails {
     ($type_:ty, $oper:path, $case:expr) => {
         $crate::print_scope!();
 
-        let Count(num_constants, num_public, num_private, num_constraints) =
-            <$type_ as CountForOp<dyn $oper>>::count($case);
+        let Count(num_constants, num_public, num_private, num_constraints) = count!($type_, $oper, $case);
         assert!(num_constants.is_satisfied(Circuit::num_constants_in_scope()), "(num_constants)");
         assert!(num_public.is_satisfied(Circuit::num_public_in_scope()), "(num_public)");
         assert!(num_private.is_satisfied(Circuit::num_private_in_scope()), "(num_private)");
@@ -49,7 +61,7 @@ macro_rules! assert_count_fails {
 #[macro_export]
 macro_rules! assert_output_mode {
     ($candidate: expr, $type_:ty, $oper:path, $case:expr) => {
-        let expected_mode = <$type_ as OutputModeForOp<dyn $oper>>::output_mode($case);
+        let expected_mode = output_mode!($type_, $oper, $case);
         assert_eq!(expected_mode, $candidate.eject_mode());
     };
 }
