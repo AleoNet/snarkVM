@@ -17,7 +17,6 @@
 use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Registers},
     helpers::Register,
-    Annotation,
     LiteralType,
     Program,
     Value,

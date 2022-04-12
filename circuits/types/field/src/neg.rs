@@ -34,10 +34,33 @@ impl<E: Environment> Neg for &Field<E> {
     }
 }
 
+impl<E: Environment> CountForOp<dyn Neg<Output = Field<E>>> for Field<E> {
+    type Case = Mode;
+
+    fn count(_input: &Self::Case) -> Count {
+        Count::exact(0, 0, 0, 0)
+    }
+}
+
+impl<E: Environment> OutputModeForOp<dyn Neg<Output = Field<E>>> for Field<E> {
+    type Case = Mode;
+
+    fn output_mode(input: &Self::Case) -> Mode {
+        match input {
+            Mode::Constant => Mode::Constant,
+            _ => Mode::Private,
+        }
+    }
+}
+
+impl<E: Environment> MetadataForOp<dyn Neg<Output = Field<E>>> for Field<E> {}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
+
+    // TODO: Add tests checking the count and output mode.
 
     #[test]
     fn test_zero() {

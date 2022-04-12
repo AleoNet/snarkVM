@@ -62,7 +62,14 @@ pub type U64<E> = Integer<E, u64>;
 pub type U128<E> = Integer<E, u128>;
 
 #[cfg(test)]
-use snarkvm_circuits_environment::assert_scope;
+use snarkvm_circuits_environment::{
+    assert_count,
+    assert_count_fails,
+    assert_output_mode,
+    assert_scope,
+    count,
+    output_mode,
+};
 
 use snarkvm_circuits_environment::prelude::*;
 use snarkvm_circuits_types_boolean::Boolean;

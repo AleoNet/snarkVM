@@ -26,7 +26,7 @@ macro_rules! count {
 #[macro_export]
 macro_rules! output_mode {
     ($type_:ty, $oper:path, $case:expr) => {
-        <$type_ as CountForOp<dyn $oper>>::output_mode($case)
+        <$type_ as OutputModeForOp<dyn $oper>>::output_mode($case)
     };
 }
 
@@ -62,6 +62,6 @@ macro_rules! assert_count_fails {
 macro_rules! assert_output_mode {
     ($candidate: expr, $type_:ty, $oper:path, $case:expr) => {
         let expected_mode = output_mode!($type_, $oper, $case);
-        assert_eq!(expected_mode, $candidate.eject_mode());
+        assert_eq!($candidate.eject_mode(), expected_mode);
     };
 }

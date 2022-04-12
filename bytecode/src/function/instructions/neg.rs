@@ -17,15 +17,19 @@
 use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Registers},
     helpers::Register,
+    LiteralType,
     Program,
     Value,
 };
-use snarkvm_circuits::{Literal, Parser, ParserResult};
+use snarkvm_circuits::{count, Count, CountForOp, Field, Group, Literal, Parser, ParserResult, I8, U8};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
 use nom::combinator::map;
-use std::io::{Read, Result as IoResult, Write};
+use std::{
+    io::{Read, Result as IoResult, Write},
+    ops::Neg as NegOp,
+};
 
 /// Negates `first`, storing the outcome in `destination`.
 pub struct Neg<P: Program> {
@@ -75,6 +79,24 @@ impl<P: Program> Operation<P> for Neg<P> {
         };
 
         registers.assign(self.operation.destination(), result);
+    }
+}
+
+impl<P: Program> CountForOp<Self> for Neg<P> {
+    type Case = LiteralType<P>;
+
+    fn count(input: &Self::Case) -> Count {
+        match input {
+            LiteralType::Field(mode) => count!(Field<P::Environment>, NegOp<Output = Field<P::Environment>>, mode),
+            LiteralType::Group(mode) => count!(Group<P::Environment>, NegOp<Output = Group<P::Environment>>, mode),
+            LiteralType::I8(mode) => {
+                count!(I8<P::Environment>, NegOp<Output = I8<P::Environment>>, mode)
+            }
+            LiteralType::U8(mode) => {
+                count!(U8<P::Environment>, NegOp<Output = U8<P::Environment>>, mode)
+            }
+            _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
+        }
     }
 }
 
