@@ -23,6 +23,9 @@ pub(super) use add_wrapped::*;
 pub(super) mod mul;
 pub(super) use mul::*;
 
+pub(super) mod mul_wrapped;
+pub(super) use mul_wrapped::*;
+
 pub(super) mod neg;
 pub(super) use neg::*;
 
@@ -71,6 +74,8 @@ pub enum Instruction<P: Program> {
     AddWrapped(AddWrapped<P>),
     /// Multiplies `first` with `second`, storing the outcome in `destination`.
     Mul(Mul<P>),
+    /// Multiplies `first` with `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
+    MulWrapped(MulWrapped<P>),
     /// Negates `first`, storing the outcome in `destination`.
     Neg(Neg<P>),
     /// Subtracts `second` from `first`, storing the outcome in `destination`.
@@ -87,6 +92,7 @@ impl<P: Program> Instruction<P> {
             Self::Add(..) => Add::<P>::opcode(),
             Self::AddWrapped(..) => AddWrapped::<P>::opcode(),
             Self::Mul(..) => Mul::<P>::opcode(),
+            Self::MulWrapped(..) => MulWrapped::<P>::opcode(),
             Self::Neg(..) => Neg::<P>::opcode(),
             Self::Sub(..) => Sub::<P>::opcode(),
             Self::SubWrapped(..) => SubWrapped::<P>::opcode(),
@@ -100,6 +106,7 @@ impl<P: Program> Instruction<P> {
             Self::Add(add) => add.operands(),
             Self::AddWrapped(add_wrapped) => add_wrapped.operands(),
             Self::Mul(mul) => mul.operands(),
+            Self::MulWrapped(mul_wrapped) => mul_wrapped.operands(),
             Self::Neg(neg) => neg.operands(),
             Self::Sub(sub) => sub.operands(),
             Self::SubWrapped(sub_wrapped) => sub_wrapped.operands(),
@@ -113,6 +120,7 @@ impl<P: Program> Instruction<P> {
             Self::Add(add) => add.destination(),
             Self::AddWrapped(add_wrapped) => add_wrapped.destination(),
             Self::Mul(mul) => mul.destination(),
+            Self::MulWrapped(mul_wrapped) => mul_wrapped.destination(),
             Self::Neg(neg) => neg.destination(),
             Self::Sub(sub) => sub.destination(),
             Self::SubWrapped(sub_wrapped) => sub_wrapped.destination(),
@@ -126,6 +134,7 @@ impl<P: Program> Instruction<P> {
             Self::Add(instruction) => instruction.evaluate(registers),
             Self::AddWrapped(instruction) => instruction.evaluate(registers),
             Self::Mul(instruction) => instruction.evaluate(registers),
+            Self::MulWrapped(instruction) => instruction.evaluate(registers),
             Self::Neg(instruction) => instruction.evaluate(registers),
             Self::Sub(instruction) => instruction.evaluate(registers),
             Self::SubWrapped(instruction) => instruction.evaluate(registers),
@@ -147,6 +156,7 @@ impl<P: Program> Parser for Instruction<P> {
             preceded(pair(tag(Add::<P>::opcode()), tag(" ")), map(Add::parse, Into::into)),
             preceded(pair(tag(AddWrapped::<P>::opcode()), tag(" ")), map(AddWrapped::parse, Into::into)),
             preceded(pair(tag(Mul::<P>::opcode()), tag(" ")), map(Mul::parse, Into::into)),
+            preceded(pair(tag(MulWrapped::<P>::opcode()), tag(" ")), map(MulWrapped::parse, Into::into)),
             preceded(pair(tag(Neg::<P>::opcode()), tag(" ")), map(Neg::parse, Into::into)),
             preceded(pair(tag(Sub::<P>::opcode()), tag(" ")), map(Sub::parse, Into::into)),
             preceded(pair(tag(SubWrapped::<P>::opcode()), tag(" ")), map(SubWrapped::parse, Into::into)),
@@ -164,6 +174,7 @@ impl<P: Program> fmt::Display for Instruction<P> {
             Self::Add(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::AddWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Mul(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::MulWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Neg(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Sub(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::SubWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
@@ -178,10 +189,11 @@ impl<P: Program> FromBytes for Instruction<P> {
             0 => Ok(Self::Add(Add::read_le(&mut reader)?)),
             1 => Ok(Self::AddWrapped(AddWrapped::read_le(&mut reader)?)),
             2 => Ok(Self::Mul(Mul::read_le(&mut reader)?)),
-            3 => Ok(Self::Neg(Neg::read_le(&mut reader)?)),
-            4 => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
-            5 => Ok(Self::SubWrapped(SubWrapped::read_le(&mut reader)?)),
-            6.. => Err(error(format!("Failed to deserialize an instruction of code {code}"))),
+            3 => Ok(Self::MulWrapped(MulWrapped::read_le(&mut reader)?)),
+            4 => Ok(Self::Neg(Neg::read_le(&mut reader)?)),
+            5 => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
+            6 => Ok(Self::SubWrapped(SubWrapped::read_le(&mut reader)?)),
+            7.. => Err(error(format!("Failed to deserialize an instruction of code {code}"))),
         }
     }
 }
@@ -199,6 +211,10 @@ impl<P: Program> ToBytes for Instruction<P> {
             }
             Self::Mul(instruction) => {
                 u16::write_le(&1u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::MulWrapped(instruction) => {
+                u16::write_le(&2u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
             Self::Neg(instruction) => {
