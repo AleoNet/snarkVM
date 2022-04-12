@@ -32,7 +32,7 @@ use std::{
     ops::{AddAssign, MulAssign, SubAssign},
 };
 
-use super::LabeledPolynomial;
+use super::{LabeledPolynomial, PolynomialInfo};
 
 /// `UniversalParams` are the universal parameters for the KZG10 scheme.
 pub type UniversalParams<E> = kzg10::UniversalParams<E>;
@@ -541,6 +541,10 @@ impl<C: CanonicalSerialize> LabeledCommitment<C> {
     /// Instantiate a new polynomial_context.
     pub fn new(label: PolynomialLabel, commitment: C, degree_bound: Option<usize>) -> Self {
         Self { label, commitment, degree_bound }
+    }
+
+    pub fn new_with_info(info: &PolynomialInfo, commitment: C) -> Self {
+        Self { label: info.label().clone(), commitment, degree_bound: info.degree_bound() }
     }
 
     /// Return the label for `self`.

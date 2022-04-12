@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use core::convert::TryInto;
+use std::collections::BTreeMap;
 
 use crate::{
     fft,
@@ -25,7 +26,7 @@ use crate::{
         EvaluationDomain,
         SparsePolynomial,
     },
-    polycommit::sonic_pc::LabeledPolynomial,
+    polycommit::sonic_pc::{LabeledPolynomial, PolynomialInfo, PolynomialLabel},
     snark::marlin::{
         ahp::{
             indexer::{CircuitInfo, Matrix},
@@ -48,15 +49,20 @@ use rayon::prelude::*;
 
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Output the number of oracles sent by the prover in the second round.
-    pub fn prover_num_second_round_oracles() -> usize {
+    pub fn num_second_round_oracles() -> usize {
         2
     }
 
-    /// Output the degree bounds of oracles in the second round.
-    pub fn prover_second_round_degree_bounds(info: &CircuitInfo<F>) -> impl Iterator<Item = Option<usize>> {
+    /// Output the degree bounds of oracles in the first round.
+    pub fn second_round_polynomial_info(info: &CircuitInfo<F>) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
         let constraint_domain_size = EvaluationDomain::<F>::compute_size_of_domain(info.num_constraints).unwrap();
-
-        [Some(constraint_domain_size - 2), None].into_iter()
+        [
+            PolynomialInfo::new("g_1".into(), Some(constraint_domain_size - 2), Self::zk_bound()),
+            PolynomialInfo::new("h_1".into(), None, None),
+        ]
+        .into_iter()
+        .map(|info| (info.label().clone(), info))
+        .collect()
     }
 
     /// Output the second round message and the next state.
@@ -68,7 +74,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let round_time = start_timer!(|| "AHP::Prover::SecondRound");
 
         let constraint_domain = state.constraint_domain;
-        let zk_bound = state.zk_bound;
+        let zk_bound = Self::zk_bound();
 
         let verifier::FirstMessage { alpha, eta_b, eta_c, batch_combiners } = verifier_message;
 
@@ -105,6 +111,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             g_1: LabeledPolynomial::new("g_1".into(), g_1, Some(constraint_domain.size() - 2), zk_bound),
             h_1: LabeledPolynomial::new("h_1".into(), h_1, None, None),
         };
+        assert!(oracles.matches_info(&Self::second_round_polynomial_info(&state.index.index_info)));
 
         state.verifier_first_message = Some(*verifier_message);
         end_timer!(round_time);

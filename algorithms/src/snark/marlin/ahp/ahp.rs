@@ -40,48 +40,12 @@ pub struct AHPForR1CS<F: Field, MM: MarlinMode> {
 }
 
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
-    /// The labels for the polynomials output by the AHP indexer.
-    #[rustfmt::skip]
-    pub const INDEXER_POLYNOMIALS: [&'static str; 12] = [
-        // Polynomials for M
-        "row_a", "col_a", "val_a", "row_col_a",
-        "row_b", "col_b", "val_b", "row_col_b",
-        "row_c", "col_c", "val_c", "row_col_c",
-    ];
     /// The linear combinations that are statically known to evaluate to zero.
     #[rustfmt::skip]
     pub const LC_WITH_ZERO_EVAL: [&'static str; 2] = ["matrix_sumcheck", "lincheck_sumcheck"];
-    /// The labels for the polynomials output by the AHP prover.
-    #[rustfmt::skip]
-    pub const PROVER_POLYNOMIALS_WITHOUT_ZK: [&'static str; 9] = [
-        // First sumcheck
-        "w", "z_a", "z_b", "g_1", "h_1",
-        // Second sumcheck
-        "g_a", "g_b", "g_c", "h_2",
-    ];
-    /// The labels for the polynomials output by the AHP prover.
-    #[rustfmt::skip]
-    pub const PROVER_POLYNOMIALS_WITH_ZK: [&'static str; 10] = [
-        // First sumcheck
-        "w", "z_a", "z_b", "mask_poly", "g_1", "h_1",
-        // Second sumcheck
-        "g_a", "g_b", "g_c", "h_2",
-    ];
 
-    pub(crate) fn indexer_polynomials() -> impl Iterator<Item = &'static str> {
-        Self::INDEXER_POLYNOMIALS.as_ref().iter().copied()
-    }
-
-    pub(crate) fn prover_polynomials() -> impl Iterator<Item = &'static str> {
-        if MM::ZK {
-            Self::PROVER_POLYNOMIALS_WITH_ZK.as_ref().iter().copied()
-        } else {
-            Self::PROVER_POLYNOMIALS_WITHOUT_ZK.as_ref().iter().copied()
-        }
-    }
-
-    pub(crate) fn polynomial_labels() -> impl Iterator<Item = String> {
-        Self::indexer_polynomials().chain(Self::prover_polynomials()).map(|s| s.to_string())
+    pub fn zk_bound() -> Option<usize> {
+        MM::ZK.then(|| 1)
     }
 
     /// Check that the (formatted) public input is of the form 2^n for some integer n.

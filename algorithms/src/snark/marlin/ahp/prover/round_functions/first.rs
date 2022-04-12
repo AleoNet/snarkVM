@@ -14,11 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use std::collections::BTreeMap;
+
 use crate::{
     fft::{DensePolynomial, EvaluationDomain, Evaluations as EvaluationsOnDomain, SparsePolynomial},
-    polycommit::sonic_pc::{LabeledPolynomial, LabeledPolynomialWithBasis, PolynomialWithBasis},
+    polycommit::sonic_pc::{
+        LabeledPolynomial,
+        LabeledPolynomialWithBasis,
+        PolynomialInfo,
+        PolynomialLabel,
+        PolynomialWithBasis,
+    },
     snark::marlin::{
-        ahp::{indexer::CircuitInfo, AHPError, AHPForR1CS},
+        ahp::{AHPError, AHPForR1CS},
         prover,
         MarlinMode,
     },
@@ -33,13 +41,22 @@ use rayon::prelude::*;
 
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Output the number of oracles sent by the prover in the first round.
-    pub fn prover_num_first_round_oracles(batch_size: usize) -> usize {
+    pub fn num_first_round_oracles(batch_size: usize) -> usize {
         3 * batch_size + (MM::ZK as usize)
     }
 
     /// Output the degree bounds of oracles in the first round.
-    pub fn prover_first_round_degree_bounds(_info: &CircuitInfo<F>) -> impl Iterator<Item = Option<usize>> {
-        if MM::ZK { core::iter::repeat(None).take(4) } else { core::iter::repeat(None).take(3) }
+    pub fn first_round_polynomial_info(batch_size: usize) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
+        let mut polynomials = Vec::new();
+        for i in 0..batch_size {
+            polynomials.push(PolynomialInfo::new(format!("w_{i}"), None, None));
+            polynomials.push(PolynomialInfo::new(format!("z_a_{i}"), None, None));
+            polynomials.push(PolynomialInfo::new(format!("z_b_{i}"), None, None));
+        }
+        if MM::ZK {
+            polynomials.push(PolynomialInfo::new("mask_poly".to_string(), None, None));
+        }
+        polynomials.into_iter().map(|info| (info.label().clone(), info)).collect()
     }
 
     /// Output the first round message and the next state.
@@ -50,7 +67,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     ) -> Result<prover::State<'a, F, MM>, AHPError> {
         let round_time = start_timer!(|| "AHP::Prover::FirstRound");
         let constraint_domain = state.constraint_domain;
-        let zk_bound = state.zk_bound;
 
         let z_a = state.z_a.take().unwrap();
         let z_b = state.z_b.take().unwrap();
@@ -65,9 +81,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             itertools::izip!(z_a, z_b, private_variables, &state.x_poly).enumerate()
         {
             job_pool.add_job(|| Self::calculate_w(i, private_variables, x_poly.clone(), &state));
-            job_pool.add_job(|| Self::calculate_z_m(format!("z_a {i}"), z_a, false, &state, None));
+            job_pool.add_job(|| Self::calculate_z_m(format!("z_a_{i}"), z_a, false, &state, None));
             let r_b = F::rand(rng);
-            job_pool.add_job(|| Self::calculate_z_m(format!("z_b {i}"), z_b, true, &state, Some(r_b)));
+            job_pool.add_job(|| Self::calculate_z_m(format!("z_b_{i}"), z_b, true, &state, Some(r_b)));
             if MM::ZK {
                 r_b_s.push(r_b);
             }
@@ -85,9 +101,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             })
             .collect();
 
-        let mask_poly = Self::calculate_mask_poly(constraint_domain, zk_bound, rng);
+        let mask_poly = Self::calculate_mask_poly(constraint_domain, rng);
 
         let oracles = prover::FirstOracles { batches, mask_poly: mask_poly.clone() };
+        assert!(oracles.matches_info(&Self::first_round_polynomial_info(state.batch_size)));
         state.first_round_oracles = Some(oracles);
         state.mz_poly_randomizer = MM::ZK.then(|| r_b_s);
         end_timer!(round_time);
@@ -97,7 +114,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
     fn calculate_mask_poly<R: RngCore>(
         constraint_domain: EvaluationDomain<F>,
-        zk_bound: Option<usize>,
         rng: &mut R,
     ) -> Option<LabeledPolynomial<F>> {
         MM::ZK
@@ -119,7 +135,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 mask_poly += &g_1_mask;
                 debug_assert!(constraint_domain.elements().map(|z| mask_poly.evaluate(z)).sum::<F>().is_zero());
                 assert_eq!(mask_poly.degree(), constraint_domain.size() + 3);
-                assert!(mask_poly.degree() <= 3 * constraint_domain.size() + 2 * zk_bound.unwrap() - 3);
+                assert!(mask_poly.degree() <= 3 * constraint_domain.size() + 2 * Self::zk_bound().unwrap() - 3);
 
                 end_timer!(mask_poly_time);
                 mask_poly
@@ -161,7 +177,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         assert!(w_poly.degree() < constraint_domain.size() - input_domain.size());
         end_timer!(w_poly_time);
-        PoolResult::Witness(LabeledPolynomial::new(format!("w {instance_number}"), w_poly, None, state.zk_bound))
+        PoolResult::Witness(LabeledPolynomial::new(format!("w_{instance_number}"), w_poly, None, Self::zk_bound()))
     }
 
     fn calculate_z_m<'a>(
@@ -184,11 +200,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             poly += &(&v_H * r.unwrap());
         }
 
-        let hiding_bound = MM::ZK.then(|| 1);
-
-        let poly_for_opening = LabeledPolynomial::new(label.to_string(), poly, None, hiding_bound);
+        let poly_for_opening = LabeledPolynomial::new(label.to_string(), poly, None, Self::zk_bound());
         if should_randomize {
-            assert!(poly_for_opening.degree() < constraint_domain.size() + hiding_bound.unwrap());
+            assert!(poly_for_opening.degree() < constraint_domain.size() + Self::zk_bound().unwrap());
         } else {
             assert!(poly_for_opening.degree() < constraint_domain.size());
         }
@@ -198,9 +212,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 (F::one(), PolynomialWithBasis::new_lagrange_basis(evals)),
                 (F::one(), PolynomialWithBasis::new_sparse_monomial_basis(&v_H * r.unwrap(), None)),
             ];
-            LabeledPolynomialWithBasis::new_linear_combination(label, poly_terms, hiding_bound)
+            LabeledPolynomialWithBasis::new_linear_combination(label, poly_terms, Self::zk_bound())
         } else {
-            LabeledPolynomialWithBasis::new_lagrange_basis(label, evals, hiding_bound)
+            LabeledPolynomialWithBasis::new_lagrange_basis(label, evals, Self::zk_bound())
         };
         end_timer!(poly_time);
 

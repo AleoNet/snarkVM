@@ -25,6 +25,8 @@ use core::marker::PhantomData;
 /// entries in any of the constraint matrices.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct CircuitInfo<F> {
+    /// The number of public inputs after padding.
+    pub num_public_inputs: usize,
     /// The total number of variables in the constraint system.
     pub num_variables: usize,
     /// The number of constraints.
@@ -50,6 +52,7 @@ impl<F: PrimeField> CircuitInfo<F> {
 
 impl<F: PrimeField> ToBytes for CircuitInfo<F> {
     fn write_le<W: Write>(&self, mut w: W) -> Result<(), io::Error> {
+        (self.num_public_inputs as u64).write_le(&mut w)?;
         (self.num_variables as u64).write_le(&mut w)?;
         (self.num_constraints as u64).write_le(&mut w)?;
         (self.num_non_zero_a as u64).write_le(&mut w)?;

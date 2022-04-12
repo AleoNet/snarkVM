@@ -48,8 +48,6 @@ pub struct State<'a, F: PrimeField, MM: MarlinMode> {
     pub(super) non_zero_b_domain: EvaluationDomain<F>,
     /// A domain that is sized for the number of non-zero elements in C.
     pub(super) non_zero_c_domain: EvaluationDomain<F>,
-    /// Query bound b
-    pub(super) zk_bound: Option<usize>,
 
     /// The number of instances being proved in this batch.
     pub(in crate::snark) batch_size: usize,
@@ -95,7 +93,6 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
     pub fn initialize(
         padded_public_input: Vec<Vec<F>>,
         private_variables: Vec<Vec<F>>,
-        zk_bound: impl Into<Option<usize>>,
         index: &'a Circuit<F, MM>,
     ) -> Result<Self, AHPError> {
         let index_info = &index.index_info;
@@ -128,7 +125,6 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
             non_zero_a_domain,
             non_zero_b_domain,
             non_zero_c_domain,
-            zk_bound: zk_bound.into(),
             batch_size,
             padded_public_variables: padded_public_input,
             x_poly,

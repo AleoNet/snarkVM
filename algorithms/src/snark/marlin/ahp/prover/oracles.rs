@@ -14,9 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use std::collections::BTreeMap;
+
 use snarkvm_fields::PrimeField;
 
-use crate::polycommit::sonic_pc::{LabeledPolynomial, LabeledPolynomialWithBasis};
+use crate::polycommit::sonic_pc::{LabeledPolynomial, LabeledPolynomialWithBasis, PolynomialInfo, PolynomialLabel};
 
 /// The first set of prover oracles.
 #[derive(Debug, Clone)]
@@ -37,6 +39,11 @@ impl<'a, F: PrimeField> FirstOracles<'a, F> {
     /// Intended for use when opening.
     pub fn iter_for_open(&'a self) -> impl Iterator<Item = &'a LabeledPolynomial<F>> {
         self.batches.iter().flat_map(|b| b.iter_for_open()).chain(self.mask_poly.as_ref())
+    }
+
+    pub fn matches_info(&self, info: &BTreeMap<PolynomialLabel, PolynomialInfo>) -> bool {
+        self.batches.iter().all(|b| b.matches_info(info))
+            && self.mask_poly.as_ref().map_or(true, |p| p.info() == &info[p.label()])
     }
 }
 
@@ -66,6 +73,14 @@ impl<'a, F: PrimeField> SingleEntry<'a, F> {
     pub fn iter_for_open(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
         [(&self.w_poly), &self.z_a_poly, &self.z_b_poly].into_iter()
     }
+
+    pub fn matches_info(&self, info: &BTreeMap<PolynomialLabel, PolynomialInfo>) -> bool {
+        self.w_poly.info() == &info[self.w_poly.label()]
+            && self.z_a.info() == &info[self.z_a.label()]
+            && self.z_b.info() == &info[self.z_b.label()]
+            && self.z_a_poly.info() == &info[self.z_a_poly.label()]
+            && self.z_b_poly.info() == &info[self.z_b_poly.label()]
+    }
 }
 
 /// The second set of prover oracles.
@@ -81,6 +96,10 @@ impl<F: PrimeField> SecondOracles<F> {
     /// Iterate over the polynomials output by the prover in the second round.
     pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
         [&self.g_1, &self.h_1].into_iter()
+    }
+
+    pub fn matches_info(&self, info: &BTreeMap<PolynomialLabel, PolynomialInfo>) -> bool {
+        self.h_1.info() == &info[self.h_1.label()] && self.g_1.info() == &info[self.g_1.label()]
     }
 }
 
@@ -100,6 +119,12 @@ impl<F: PrimeField> ThirdOracles<F> {
     pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
         [&self.g_a, &self.g_b, &self.g_c].into_iter()
     }
+
+    pub fn matches_info(&self, info: &BTreeMap<PolynomialLabel, PolynomialInfo>) -> bool {
+        self.g_a.info() == &info[self.g_a.label()]
+            && self.g_b.info() == &info[self.g_b.label()]
+            && self.g_c.info() == &info[self.g_c.label()]
+    }
 }
 
 #[derive(Debug)]
@@ -112,5 +137,9 @@ impl<F: PrimeField> FourthOracles<F> {
     /// Iterate over the polynomials output by the prover in the third round.
     pub fn iter(&self) -> impl Iterator<Item = &LabeledPolynomial<F>> {
         [&self.h_2].into_iter()
+    }
+
+    pub fn matches_info(&self, info: &BTreeMap<PolynomialLabel, PolynomialInfo>) -> bool {
+        self.h_2.info() == &info[self.h_2.label()]
     }
 }
