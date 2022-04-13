@@ -17,6 +17,9 @@
 pub(super) mod add;
 pub(super) use add::*;
 
+pub(super) mod and;
+pub(super) use and::*;
+
 pub(super) mod add_wrapped;
 pub(super) use add_wrapped::*;
 
@@ -114,6 +117,8 @@ pub enum Instruction<P: Program> {
     Add(Add<P>),
     /// Adds `first` with `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
     AddWrapped(AddWrapped<P>),
+    /// Performs a bitwise AND operation on `first` and `second`, storing the outcome in `destination`.
+    And(And<P>),
     /// Divides `first` by `second`, storing the outcome in `destination`.
     Div(Div<P>),
     /// Divides `first` by `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
@@ -139,6 +144,7 @@ impl<P: Program> Instruction<P> {
         match self {
             Self::Add(..) => Add::<P>::opcode(),
             Self::AddWrapped(..) => AddWrapped::<P>::opcode(),
+            Self::And(..) => And::<P>::opcode(),
             Self::Div(..) => Div::<P>::opcode(),
             Self::DivWrapped(..) => DivWrapped::<P>::opcode(),
             Self::Equal(..) => Equal::<P>::opcode(),
@@ -156,6 +162,7 @@ impl<P: Program> Instruction<P> {
         match self {
             Self::Add(add) => add.operands(),
             Self::AddWrapped(add_wrapped) => add_wrapped.operands(),
+            Self::And(and) => and.operands(),
             Self::Div(div) => div.operands(),
             Self::DivWrapped(div_wrapped) => div_wrapped.operands(),
             Self::Equal(equal) => equal.operands(),
@@ -173,6 +180,7 @@ impl<P: Program> Instruction<P> {
         match self {
             Self::Add(add) => add.destination(),
             Self::AddWrapped(add_wrapped) => add_wrapped.destination(),
+            Self::And(and) => and.destination(),
             Self::Div(div) => div.destination(),
             Self::DivWrapped(div_wrapped) => div_wrapped.destination(),
             Self::Equal(equal) => equal.destination(),
@@ -190,6 +198,7 @@ impl<P: Program> Instruction<P> {
         match self {
             Self::Add(instruction) => instruction.evaluate(registers),
             Self::AddWrapped(instruction) => instruction.evaluate(registers),
+            Self::And(instruction) => instruction.evaluate(registers),
             Self::Div(instruction) => instruction.evaluate(registers),
             Self::DivWrapped(instruction) => instruction.evaluate(registers),
             Self::Equal(instruction) => instruction.evaluate(registers),
@@ -215,6 +224,7 @@ impl<P: Program> Parser for Instruction<P> {
             // Note that order of the individual parsers matters.
             preceded(pair(tag(Add::<P>::opcode()), tag(" ")), map(Add::parse, Into::into)),
             preceded(pair(tag(AddWrapped::<P>::opcode()), tag(" ")), map(AddWrapped::parse, Into::into)),
+            preceded(pair(tag(And::<P>::opcode()), tag(" ")), map(And::parse, Into::into)),
             preceded(pair(tag(Div::<P>::opcode()), tag(" ")), map(Div::parse, Into::into)),
             preceded(pair(tag(DivWrapped::<P>::opcode()), tag(" ")), map(DivWrapped::parse, Into::into)),
             preceded(pair(tag(Equal::<P>::opcode()), tag(" ")), map(Equal::parse, Into::into)),
@@ -236,6 +246,7 @@ impl<P: Program> fmt::Display for Instruction<P> {
         match self {
             Self::Add(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::AddWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::And(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Div(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::DivWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Equal(instruction) => write!(f, "{} {};", self.opcode(), instruction),
@@ -254,15 +265,16 @@ impl<P: Program> FromBytes for Instruction<P> {
         match code {
             0 => Ok(Self::Add(Add::read_le(&mut reader)?)),
             1 => Ok(Self::AddWrapped(AddWrapped::read_le(&mut reader)?)),
-            2 => Ok(Self::Div(Div::read_le(&mut reader)?)),
-            3 => Ok(Self::DivWrapped(DivWrapped::read_le(&mut reader)?)),
-            4 => Ok(Self::Equal(Equal::read_le(&mut reader)?)),
-            5 => Ok(Self::Mul(Mul::read_le(&mut reader)?)),
-            6 => Ok(Self::MulWrapped(MulWrapped::read_le(&mut reader)?)),
-            7 => Ok(Self::Neg(Neg::read_le(&mut reader)?)),
-            8 => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
-            9 => Ok(Self::SubWrapped(SubWrapped::read_le(&mut reader)?)),
-            10.. => Err(error(format!("Failed to deserialize an instruction of code {code}"))),
+            2 => Ok(Self::And(And::read_le(&mut reader)?)),
+            3 => Ok(Self::Div(Div::read_le(&mut reader)?)),
+            4 => Ok(Self::DivWrapped(DivWrapped::read_le(&mut reader)?)),
+            5 => Ok(Self::Equal(Equal::read_le(&mut reader)?)),
+            6 => Ok(Self::Mul(Mul::read_le(&mut reader)?)),
+            7 => Ok(Self::MulWrapped(MulWrapped::read_le(&mut reader)?)),
+            8 => Ok(Self::Neg(Neg::read_le(&mut reader)?)),
+            9 => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
+            10 => Ok(Self::SubWrapped(SubWrapped::read_le(&mut reader)?)),
+            11.. => Err(error(format!("Failed to deserialize an instruction of code {code}"))),
         }
     }
 }
@@ -276,6 +288,10 @@ impl<P: Program> ToBytes for Instruction<P> {
             }
             Self::AddWrapped(instruction) => {
                 u16::write_le(&1u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::And(instruction) => {
+                u16::write_le(&2u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
             Self::Div(instruction) => {
@@ -429,86 +445,171 @@ mod tests {
                 assert_eq!(expected, candidate);
             }
         };
+
+        ($test_name: ident, $instruction: ident, $a: expr, $a_mode: expr, $b: expr, $b_mode: expr, $expected: expr, $expected_mode: expr) => {
+            #[test]
+            fn $test_name() {
+                use $crate::{
+                    function::{Operation, Registers},
+                    Parser,
+                    Process,
+                    Register,
+                    Value,
+                };
+                type P = Process;
+
+                let a = Value::<P>::from_str(&format!("{}.{}", $a, $a_mode));
+                let b = Value::<P>::from_str(&format!("{}.{}", $b, $b_mode));
+                let expected = Value::<P>::from_str(&format!("{}.{}", $expected, $expected_mode));
+
+                let registers = Registers::<P>::default();
+                registers.define(&Register::from_str("r0"));
+                registers.define(&Register::from_str("r1"));
+                registers.define(&Register::from_str("r2"));
+                registers.assign(&Register::from_str("r0"), a);
+                registers.assign(&Register::from_str("r1"), b);
+
+                $instruction::from_str("r0 r1 into r2").evaluate(&registers);
+                let candidate = registers.load(&Register::from_str("r2"));
+                assert_eq!(expected, candidate);
+            }
+        };
+    }
+
+    #[macro_export]
+    macro_rules! test_modes_inner {
+        ($type: ident, $instruction: ident, $a: expr, $b: expr, $expected: expr, $mode_tests: expr) => {
+            use super::*;
+            use $crate::binary_instruction_test;
+
+            binary_instruction_test!(
+                test_mode_0,
+                $instruction,
+                $a,
+                $mode_tests[0][0],
+                $b,
+                $mode_tests[0][1],
+                $expected,
+                $mode_tests[0][2]
+            );
+
+            binary_instruction_test!(
+                test_mode_1,
+                $instruction,
+                $a,
+                $mode_tests[1][0],
+                $b,
+                $mode_tests[1][1],
+                $expected,
+                $mode_tests[1][2]
+            );
+
+            binary_instruction_test!(
+                test_mode_2,
+                $instruction,
+                $a,
+                $mode_tests[2][0],
+                $b,
+                $mode_tests[2][1],
+                $expected,
+                $mode_tests[2][2]
+            );
+
+            binary_instruction_test!(
+                test_mode_3,
+                $instruction,
+                $a,
+                $mode_tests[3][0],
+                $b,
+                $mode_tests[3][1],
+                $expected,
+                $mode_tests[3][2]
+            );
+
+            binary_instruction_test!(
+                test_mode_4,
+                $instruction,
+                $a,
+                $mode_tests[4][0],
+                $b,
+                $mode_tests[4][1],
+                $expected,
+                $mode_tests[4][2]
+            );
+
+            binary_instruction_test!(
+                test_mode_5,
+                $instruction,
+                $a,
+                $mode_tests[5][0],
+                $b,
+                $mode_tests[5][1],
+                $expected,
+                $mode_tests[5][2]
+            );
+
+            binary_instruction_test!(
+                test_mode_6,
+                $instruction,
+                $a,
+                $mode_tests[6][0],
+                $b,
+                $mode_tests[6][1],
+                $expected,
+                $mode_tests[6][2]
+            );
+
+            binary_instruction_test!(
+                test_mode_7,
+                $instruction,
+                $a,
+                $mode_tests[7][0],
+                $b,
+                $mode_tests[7][1],
+                $expected,
+                $mode_tests[7][2]
+            );
+
+            binary_instruction_test!(
+                test_mode_8,
+                $instruction,
+                $a,
+                $mode_tests[8][0],
+                $b,
+                $mode_tests[8][1],
+                $expected,
+                $mode_tests[8][2]
+            );
+        };
     }
 
     #[macro_export]
     macro_rules! test_modes {
         ($type: ident, $instruction: ident, $a: expr, $b: expr, $expected: expr) => {
             mod $type {
-                use super::*;
-                use $crate::binary_instruction_test;
+                use $crate::test_modes_inner;
 
-                binary_instruction_test!(
-                    test_public_and_public_yields_private,
-                    $instruction,
-                    &format!("{}.public", $a),
-                    &format!("{}.public", $b),
-                    &format!("{}.private", $expected)
-                );
+                const DEFAULT_MODES: [[&str; 3]; 9] = [
+                    ["public", "public", "private"],
+                    ["public", "constant", "private"],
+                    ["public", "private", "private"],
+                    ["private", "constant", "private"],
+                    ["private", "public", "private"],
+                    ["private", "private", "private"],
+                    ["constant", "private", "private"],
+                    ["constant", "public", "private"],
+                    ["constant", "constant", "constant"],
+                ];
 
-                binary_instruction_test!(
-                    test_public_and_constant_yields_private,
-                    $instruction,
-                    &format!("{}.public", $a),
-                    &format!("{}.constant", $b),
-                    &format!("{}.private", $expected)
-                );
+                test_modes_inner!($type, $instruction, $a, $b, $expected, DEFAULT_MODES);
+            }
+        };
 
-                binary_instruction_test!(
-                    test_public_and_private_yields_private,
-                    $instruction,
-                    &format!("{}.public", $a),
-                    &format!("{}.private", $b),
-                    &format!("{}.private", $expected)
-                );
+        ($type: ident, $instruction: ident, $a: expr, $b: expr, $expected: expr, $modes: expr) => {
+            mod $type {
+                use $crate::test_modes_inner;
 
-                binary_instruction_test!(
-                    test_private_and_constant_yields_private,
-                    $instruction,
-                    &format!("{}.private", $a),
-                    &format!("{}.constant", $b),
-                    &format!("{}.private", $expected)
-                );
-
-                binary_instruction_test!(
-                    test_private_and_public_yields_private,
-                    $instruction,
-                    &format!("{}.private", $a),
-                    &format!("{}.public", $b),
-                    &format!("{}.private", $expected)
-                );
-
-                binary_instruction_test!(
-                    test_private_and_private_yields_private,
-                    $instruction,
-                    &format!("{}.private", $a),
-                    &format!("{}.private", $b),
-                    &format!("{}.private", $expected)
-                );
-
-                binary_instruction_test!(
-                    test_constant_and_private_yields_private,
-                    $instruction,
-                    &format!("{}.constant", $a),
-                    &format!("{}.private", $b),
-                    &format!("{}.private", $expected)
-                );
-
-                binary_instruction_test!(
-                    test_constant_and_public_yields_private,
-                    $instruction,
-                    &format!("{}.constant", $a),
-                    &format!("{}.public", $b),
-                    &format!("{}.private", $expected)
-                );
-
-                binary_instruction_test!(
-                    test_constant_and_constant_yields_constant,
-                    $instruction,
-                    &format!("{}.constant", $a),
-                    &format!("{}.constant", $b),
-                    &format!("{}.constant", $expected)
-                );
+                test_modes_inner!($type, $instruction, $a, $b, $expected, $modes);
             }
         };
 
