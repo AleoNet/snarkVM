@@ -26,5 +26,8 @@ pub use merkle_tree::*;
 pub mod merkle_tree_parameters;
 pub use merkle_tree_parameters::*;
 
+pub mod new_merkle_tree;
+pub use new_merkle_tree::*;
+
 #[cfg(test)]
 pub mod tests;
