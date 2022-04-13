@@ -128,7 +128,7 @@ impl<P: Program> Into<Instruction<P>> for And<P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{test_instruction_halts, test_modes};
+    use crate::{test_instruction_halts, test_modes, Identifier, Process};
 
     const SIGNED_INTEGER_MODE_TESTS: [[&str; 3]; 9] = [
         ["public", "public", "private"],
@@ -178,4 +178,23 @@ mod tests {
     test_instruction_halts!(field_halts, And, "Invalid 'and' instruction", "1field.constant", "1field.constant");
     test_instruction_halts!(group_halts, And, "Invalid 'and' instruction", "2group.constant", "2group.constant");
     test_instruction_halts!(scalar_halts, And, "Invalid 'and' instruction", "1scalar.constant", "1scalar.constant");
+
+    #[test]
+    #[should_panic(expected = "message is not a literal")]
+    fn test_composite_halts() {
+        let first = Value::<Process>::Composite(Identifier::from_str("message"), vec![
+            Literal::from_str("2group.public"),
+            Literal::from_str("10field.private"),
+        ]);
+        let second = first.clone();
+
+        let registers = Registers::<Process>::default();
+        registers.define(&Register::from_str("r0"));
+        registers.define(&Register::from_str("r1"));
+        registers.define(&Register::from_str("r2"));
+        registers.assign(&Register::from_str("r0"), first);
+        registers.assign(&Register::from_str("r1"), second);
+
+        And::from_str("r0 r1 into r2").evaluate(&registers);
+    }
 }
