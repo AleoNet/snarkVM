@@ -27,6 +27,7 @@ use snarkvm_circuits::{
     count,
     output_mode,
     CircuitCount,
+    CircuitOrMode,
     Count,
     Field,
     Group,
@@ -114,18 +115,26 @@ impl<P: Program> Count<Self> for Sub<P> {
             (LiteralType::Field(mode_a), LiteralType::Field(mode_b)) => count!(
                 Field<P::Environment>,
                 SubOp<Field<P::Environment>, Output = Field<P::Environment>>,
-                &(*mode_a, *mode_b)
+                &(CircuitOrMode::Mode(*mode_a), CircuitOrMode::Mode(*mode_b))
             ),
             (LiteralType::Group(mode_a), LiteralType::Group(mode_b)) => count!(
                 Group<P::Environment>,
                 SubOp<Group<P::Environment>, Output = Group<P::Environment>>,
-                &(*mode_a, *mode_b)
+                &(CircuitOrMode::Mode(*mode_a), CircuitOrMode::Mode(*mode_b))
             ),
             (LiteralType::I8(mode_a), LiteralType::I8(mode_b)) => {
-                count!(I8<P::Environment>, SubOp<I8<P::Environment>, Output = I8<P::Environment>>, &(*mode_a, *mode_b))
+                count!(
+                    I8<P::Environment>,
+                    SubOp<I8<P::Environment>, Output = I8<P::Environment>>,
+                    &(CircuitOrMode::Mode(*mode_a), CircuitOrMode::Mode(*mode_b))
+                )
             }
             (LiteralType::U8(mode_a), LiteralType::U8(mode_b)) => {
-                count!(U8<P::Environment>, SubOp<U8<P::Environment>, Output = U8<P::Environment>>, &(*mode_a, *mode_b))
+                count!(
+                    U8<P::Environment>,
+                    SubOp<U8<P::Environment>, Output = U8<P::Environment>>,
+                    &(CircuitOrMode::Mode(*mode_a), CircuitOrMode::Mode(*mode_b))
+                )
             }
             _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
         }
@@ -141,22 +150,22 @@ impl<P: Program> OutputType for Sub<P> {
             (LiteralType::Field(mode_a), LiteralType::Field(mode_b)) => LiteralType::Field(output_mode!(
                 Field<P::Environment>,
                 SubOp<Field<P::Environment>, Output = Field<P::Environment>>,
-                &(*mode_a, *mode_b)
+                &(CircuitOrMode::Mode(*mode_a), CircuitOrMode::Mode(*mode_b))
             )),
             (LiteralType::Group(mode_a), LiteralType::Group(mode_b)) => LiteralType::Group(output_mode!(
                 Group<P::Environment>,
                 SubOp<Group<P::Environment>, Output = Group<P::Environment>>,
-                &(*mode_a, *mode_b)
+                &(CircuitOrMode::Mode(*mode_a), CircuitOrMode::Mode(*mode_b))
             )),
             (LiteralType::I8(mode_a), LiteralType::I8(mode_b)) => LiteralType::I8(output_mode!(
                 I8<P::Environment>,
                 SubOp<I8<P::Environment>, Output = I8<P::Environment>>,
-                &(*mode_a, *mode_b)
+                &(CircuitOrMode::Mode(*mode_a), CircuitOrMode::Mode(*mode_b))
             )),
             (LiteralType::U8(mode_a), LiteralType::U8(mode_b)) => LiteralType::U8(output_mode!(
                 U8<P::Environment>,
                 SubOp<U8<P::Environment>, Output = U8<P::Environment>>,
-                &(*mode_a, *mode_b)
+                &(CircuitOrMode::Mode(*mode_a), CircuitOrMode::Mode(*mode_b))
             )),
             _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
         }

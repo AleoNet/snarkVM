@@ -24,6 +24,7 @@ use snarkvm_utilities::{
 };
 
 use enum_index::EnumIndex;
+use snarkvm_circuits::static_parameter::StaticParameter;
 
 /// Trait to infer the output type of an instruction.
 pub trait OutputType {
@@ -162,6 +163,8 @@ impl<P: Program> From<&Literal<P::Environment>> for LiteralType<P> {
         }
     }
 }
+
+impl<P> StaticParameter for LiteralType<P> {}
 
 #[allow(clippy::let_and_return)]
 impl<P: Program> Parser for LiteralType<P> {

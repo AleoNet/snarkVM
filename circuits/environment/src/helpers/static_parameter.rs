@@ -14,49 +14,46 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-// Sealed trait pattern for `StaticParameter`
-pub(super) mod parameter {
-    use crate::{Eject, Mode};
+use crate::{Eject, Mode};
 
-    pub enum CircuitOrMode<T: Eject> {
-        Circuit(T),
-        Mode(Mode),
-    }
+pub trait StaticParameter {}
 
-    impl<T: Eject> CircuitOrMode<T> {
-        pub fn mode(&self) -> Mode {
-            match self {
-                CircuitOrMode::Circuit(circuit) => circuit.eject_mode(),
-                CircuitOrMode::Mode(mode) => *mode,
-            }
-        }
+pub enum CircuitOrMode<T: Eject> {
+    Circuit(T),
+    Mode(Mode),
+}
 
-        pub fn is_constant(&self) -> bool {
-            self.mode().is_constant()
-        }
-
-        pub fn is_circuit(&self) -> bool {
-            match self {
-                CircuitOrMode::Circuit(_) => true,
-                CircuitOrMode::Mode(_) => false,
-            }
-        }
-
-        pub fn is_mode(&self) -> bool {
-            match self {
-                CircuitOrMode::Circuit(_) => false,
-                CircuitOrMode::Mode(_) => true,
-            }
+impl<T: Eject> CircuitOrMode<T> {
+    pub fn mode(&self) -> Mode {
+        match self {
+            CircuitOrMode::Circuit(circuit) => circuit.eject_mode(),
+            CircuitOrMode::Mode(mode) => *mode,
         }
     }
 
-    pub trait StaticParameter {}
-
-    impl<T: Eject> StaticParameter for CircuitOrMode<T> {}
-    impl<T0: Eject, T1: Eject> StaticParameter for (CircuitOrMode<T0>, CircuitOrMode<T1>) {}
-    impl<T0: Eject, T1: Eject, T2: Eject> StaticParameter for (CircuitOrMode<T0>, CircuitOrMode<T1>, CircuitOrMode<T2>) {}
-    impl<T0: Eject, T1: Eject, T2: Eject, T3: Eject> StaticParameter
-        for (CircuitOrMode<T0>, CircuitOrMode<T1>, CircuitOrMode<T2>, CircuitOrMode<T3>)
-    {
+    pub fn is_constant(&self) -> bool {
+        self.mode().is_constant()
     }
+
+    pub fn is_circuit(&self) -> bool {
+        match self {
+            CircuitOrMode::Circuit(_) => true,
+            CircuitOrMode::Mode(_) => false,
+        }
+    }
+
+    pub fn is_mode(&self) -> bool {
+        match self {
+            CircuitOrMode::Circuit(_) => false,
+            CircuitOrMode::Mode(_) => true,
+        }
+    }
+}
+
+impl<T: Eject> StaticParameter for CircuitOrMode<T> {}
+impl<P0: StaticParameter, P1: StaticParameter> StaticParameter for (P0, P1) {}
+impl<P0: StaticParameter, P1: StaticParameter, P2: StaticParameter> StaticParameter for (P0, P1, P2) {}
+impl<P0: StaticParameter, P1: StaticParameter, P2: StaticParameter, P3: StaticParameter> StaticParameter
+    for (P0, P1, P2, P3)
+{
 }

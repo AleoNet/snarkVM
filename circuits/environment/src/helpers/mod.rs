@@ -35,7 +35,7 @@ pub mod mode;
 pub use mode::*;
 
 pub mod static_parameter;
-pub use static_parameter::parameter::{CircuitOrMode, StaticParameter};
+pub use static_parameter::*;
 
 pub mod variable;
 pub use variable::*;
