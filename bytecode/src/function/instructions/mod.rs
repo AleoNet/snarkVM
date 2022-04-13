@@ -53,6 +53,9 @@ pub(super) use sub::*;
 pub(super) mod sub_wrapped;
 pub(super) use sub_wrapped::*;
 
+pub(super) mod xor;
+pub(super) use xor::*;
+
 use crate::{
     function::{parsers::Operand, registers::Registers},
     helpers::Register,
@@ -145,6 +148,8 @@ pub enum Instruction<P: Program> {
     Sub(Sub<P>),
     /// Subtracts `second` from `first`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
     SubWrapped(SubWrapped<P>),
+    /// Performs a bitwise Xor on `first` and `second`, storing the outcome in `destination`.
+    Xor(Xor<P>),
 }
 
 impl<P: Program> Instruction<P> {
@@ -165,6 +170,7 @@ impl<P: Program> Instruction<P> {
             Self::Or(..) => Or::<P>::opcode(),
             Self::Sub(..) => Sub::<P>::opcode(),
             Self::SubWrapped(..) => SubWrapped::<P>::opcode(),
+            Self::Xor(..) => Xor::<P>::opcode(),
         }
     }
 
@@ -185,6 +191,7 @@ impl<P: Program> Instruction<P> {
             Self::Or(or) => or.operands(),
             Self::Sub(sub) => sub.operands(),
             Self::SubWrapped(sub_wrapped) => sub_wrapped.operands(),
+            Self::Xor(xor) => xor.operands(),
         }
     }
 
@@ -205,6 +212,7 @@ impl<P: Program> Instruction<P> {
             Self::Or(or) => or.destination(),
             Self::Sub(sub) => sub.destination(),
             Self::SubWrapped(sub_wrapped) => sub_wrapped.destination(),
+            Self::Xor(xor) => xor.destination(),
         }
     }
 
@@ -225,6 +233,7 @@ impl<P: Program> Instruction<P> {
             Self::Or(instruction) => instruction.evaluate(registers),
             Self::Sub(instruction) => instruction.evaluate(registers),
             Self::SubWrapped(instruction) => instruction.evaluate(registers),
+            Self::Xor(instruction) => instruction.evaluate(registers),
         }
     }
 }
@@ -253,6 +262,7 @@ impl<P: Program> Parser for Instruction<P> {
             preceded(pair(tag(Or::<P>::opcode()), tag(" ")), map(Or::parse, Into::into)),
             preceded(pair(tag(Sub::<P>::opcode()), tag(" ")), map(Sub::parse, Into::into)),
             preceded(pair(tag(SubWrapped::<P>::opcode()), tag(" ")), map(SubWrapped::parse, Into::into)),
+            preceded(pair(tag(Xor::<P>::opcode()), tag(" ")), map(Xor::parse, Into::into)),
         ))(string)?;
         // Parse the semicolon from the string.
         let (string, _) = tag(";")(string)?;
@@ -277,6 +287,7 @@ impl<P: Program> fmt::Display for Instruction<P> {
             Self::Or(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Sub(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::SubWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::Xor(instruction) => write!(f, "{} {};", self.opcode(), instruction),
         }
     }
 }
@@ -298,7 +309,8 @@ impl<P: Program> FromBytes for Instruction<P> {
             10 => Ok(Self::Or(Or::read_le(&mut reader)?)),
             11 => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
             12 => Ok(Self::SubWrapped(SubWrapped::read_le(&mut reader)?)),
-            13.. => Err(error(format!("Failed to deserialize an instruction of code {code}"))),
+            13 => Ok(Self::Xor(Xor::read_le(&mut reader)?)),
+            14.. => Err(error(format!("Failed to deserialize an instruction of code {code}"))),
         }
     }
 }
@@ -356,6 +368,10 @@ impl<P: Program> ToBytes for Instruction<P> {
             }
             Self::SubWrapped(instruction) => {
                 u16::write_le(&10u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::Xor(instruction) => {
+                u16::write_le(&1u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
         }
