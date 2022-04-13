@@ -38,7 +38,7 @@ const TREE_DEPTH: usize = 32;
 type H = BHPCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE>;
 type P = MerkleTreeParameters<H, TREE_DEPTH>;
 
-const NUM_ENTRIES: &[usize] = &[100000];
+const NUM_ENTRIES: &[usize] = &[10, 100, 1000, 10000];
 const LEAF_SIZE: usize = 32;
 
 /// Generates the specified number of random Merkle tree leaves.
