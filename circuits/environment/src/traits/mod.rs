@@ -43,6 +43,9 @@ pub use integers::{
     IntegerTrait,
 };
 
+pub mod metadata;
+pub use metadata::*;
+
 pub mod operators;
 pub use operators::*;
 

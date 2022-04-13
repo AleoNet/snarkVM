@@ -14,35 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{BooleanTrait, CircuitCount, Mode};
-
-// /// Trait for uniformly invoking operations.
-// pub trait Operation<Op: ?Sized> {
-//     type Input;
-//     type Output;
-//
-//     fn invoke(input: Self::Input) -> Self::Output;
-// }
-
-// TODO: Remove this trait if it is not used.
-/// Trait for metadata on operations.
-pub trait MetadataForOp<Op: ?Sized>: Count<Op> + OutputMode<Op> {}
-
-/// Trait for determining the number of constants, public input, private inputs, and constraints for an operation.
-pub trait Count<Op: ?Sized> {
-    type Case;
-
-    /// Returns the number of constants, public inputs, private inputs, and constraints.
-    fn count(input: &Self::Case) -> CircuitCount;
-}
-
-/// Trait for determining the mode of the output of an operation.
-pub trait OutputMode<Op: ?Sized> {
-    type Case;
-
-    /// Returns the mode of the output.
-    fn output_mode(input: &Self::Case) -> Mode;
-}
+use crate::BooleanTrait;
 
 /// Trait for equality comparisons.
 pub trait Equal<Rhs: ?Sized = Self> {
