@@ -170,85 +170,19 @@ mod tests {
 
     type P = Process;
 
-    // Testing this manually since the constant x public mode yields a public,
-    // but the test_modes! macro expects a private.
-    // test_modes!(field, Div, "2field", "1field", "2field");
-    mod field {
-        use super::Div;
-        use crate::binary_instruction_test;
-        binary_instruction_test!(
-            test_public_and_public_yields_private,
-            Div,
-            "2field.public",
-            "1field.public",
-            "2field.private"
-        );
+    const FIELD_MODE_TESTS: [[&str; 3]; 9] = [
+        ["public", "public", "private"],
+        ["public", "constant", "public"],
+        ["public", "private", "private"],
+        ["private", "public", "private"],
+        ["private", "constant", "private"],
+        ["private", "private", "private"],
+        ["constant", "public", "private"],
+        ["constant", "constant", "constant"],
+        ["constant", "private", "private"],
+    ];
 
-        binary_instruction_test!(
-            test_public_and_constant_yields_public,
-            Div,
-            "2field.public",
-            "1field.constant",
-            "2field.public"
-        );
-
-        binary_instruction_test!(
-            test_public_and_private_yields_private,
-            Div,
-            "2field.public",
-            "1field.private",
-            "2field.private"
-        );
-
-        binary_instruction_test!(
-            test_private_and_constant_yields_private,
-            Div,
-            "2field.private",
-            "1field.constant",
-            "2field.private"
-        );
-
-        binary_instruction_test!(
-            test_private_and_public_yields_private,
-            Div,
-            "2field.private",
-            "1field.public",
-            "2field.private"
-        );
-
-        binary_instruction_test!(
-            test_private_and_private_yields_private,
-            Div,
-            "2field.private",
-            "1field.private",
-            "2field.private"
-        );
-
-        binary_instruction_test!(
-            test_constant_and_private_yields_private,
-            Div,
-            "2field.constant",
-            "1field.private",
-            "2field.private"
-        );
-
-        binary_instruction_test!(
-            test_constant_and_public_yields_private,
-            Div,
-            "2field.constant",
-            "1field.public",
-            "2field.private"
-        );
-
-        binary_instruction_test!(
-            test_constant_and_constant_yields_constant,
-            Div,
-            "2field.constant",
-            "1field.constant",
-            "2field.constant"
-        );
-    }
-
+    test_modes!(field, Div, "2field", "1field", "2field", FIELD_MODE_TESTS);
     test_modes!(i8, Div, "-4i8", "2i8", "-2i8");
     test_modes!(i16, Div, "-4i16", "2i16", "-2i16");
     test_modes!(i32, Div, "-4i32", "2i32", "-2i32");

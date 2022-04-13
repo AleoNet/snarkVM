@@ -176,91 +176,25 @@ mod tests {
 
     type P = Process;
 
+    const FIELD_MODE_TESTS: [[&str; 3]; 9] = [
+        ["public", "public", "private"],
+        ["public", "constant", "public"],
+        ["public", "private", "private"],
+        ["private", "public", "private"],
+        ["private", "constant", "private"],
+        ["private", "private", "private"],
+        ["constant", "public", "private"],
+        ["constant", "constant", "constant"],
+        ["constant", "private", "private"],
+    ];
+
     #[test]
     fn test_parse() {
         let (_, instruction) = Instruction::<Process>::parse("mul r0 r1 into r2;").unwrap();
         assert!(matches!(instruction, Instruction::Mul(_)));
     }
 
-    // Testing this manually since the constant x public mode yields a public,
-    // but the test_modes! macro expects a private.
-    // test_modes!(field, Mul, "1field", "2field", "2field");
-    mod field {
-        use super::Mul;
-        use crate::binary_instruction_test;
-        binary_instruction_test!(
-            test_public_and_public_yields_private,
-            Mul,
-            "1field.public",
-            "2field.public",
-            "2field.private"
-        );
-
-        binary_instruction_test!(
-            test_public_and_constant_yields_private,
-            Mul,
-            "1field.public",
-            "2field.constant",
-            "2field.private"
-        );
-
-        binary_instruction_test!(
-            test_public_and_private_yields_private,
-            Mul,
-            "1field.public",
-            "2field.private",
-            "2field.private"
-        );
-
-        binary_instruction_test!(
-            test_private_and_constant_yields_private,
-            Mul,
-            "1field.private",
-            "2field.constant",
-            "2field.private"
-        );
-
-        binary_instruction_test!(
-            test_private_and_public_yields_private,
-            Mul,
-            "1field.private",
-            "2field.public",
-            "2field.private"
-        );
-
-        binary_instruction_test!(
-            test_private_and_private_yields_private,
-            Mul,
-            "1field.private",
-            "2field.private",
-            "2field.private"
-        );
-
-        binary_instruction_test!(
-            test_constant_and_private_yields_private,
-            Mul,
-            "1field.constant",
-            "2field.private",
-            "2field.private"
-        );
-
-        binary_instruction_test!(
-            test_constant_and_public_yields_public,
-            Mul,
-            "1field.constant",
-            "2field.public",
-            "2field.public"
-        );
-
-        binary_instruction_test!(
-            test_constant_and_constant_yields_constant,
-            Mul,
-            "1field.constant",
-            "2field.constant",
-            "2field.constant"
-        );
-    }
-
+    test_modes!(field, Mul, "2field", "1field", "2field", FIELD_MODE_TESTS);
     test_modes!(group, Mul, "2group", "1scalar", "2group");
     test_modes!(scalar, Mul, "1scalar", "2group", "2group");
     test_modes!(i8, Mul, "1i8", "2i8", "2i8");
