@@ -41,6 +41,9 @@ pub(super) use mul_wrapped::*;
 pub(super) mod neg;
 pub(super) use neg::*;
 
+pub(super) mod not;
+pub(super) use not::*;
+
 pub(super) mod or;
 pub(super) use or::*;
 
@@ -134,6 +137,8 @@ pub enum Instruction<P: Program> {
     MulWrapped(MulWrapped<P>),
     /// Negates `first`, storing the outcome in `destination`.
     Neg(Neg<P>),
+    /// Flips each bit in the representation of `first`, storing the outcome in `destination`.
+    Not(Not<P>),
     /// Performs a bitwise Or on `first` and `second`, storing the outcome in `destination`.
     Or(Or<P>),
     /// Subtracts `second` from `first`, storing the outcome in `destination`.
@@ -156,6 +161,7 @@ impl<P: Program> Instruction<P> {
             Self::Mul(..) => Mul::<P>::opcode(),
             Self::MulWrapped(..) => MulWrapped::<P>::opcode(),
             Self::Neg(..) => Neg::<P>::opcode(),
+            Self::Not(..) => Not::<P>::opcode(),
             Self::Or(..) => Or::<P>::opcode(),
             Self::Sub(..) => Sub::<P>::opcode(),
             Self::SubWrapped(..) => SubWrapped::<P>::opcode(),
@@ -175,6 +181,7 @@ impl<P: Program> Instruction<P> {
             Self::Mul(mul) => mul.operands(),
             Self::MulWrapped(mul_wrapped) => mul_wrapped.operands(),
             Self::Neg(neg) => neg.operands(),
+            Self::Not(not) => not.operands(),
             Self::Or(or) => or.operands(),
             Self::Sub(sub) => sub.operands(),
             Self::SubWrapped(sub_wrapped) => sub_wrapped.operands(),
@@ -194,6 +201,7 @@ impl<P: Program> Instruction<P> {
             Self::Mul(mul) => mul.destination(),
             Self::MulWrapped(mul_wrapped) => mul_wrapped.destination(),
             Self::Neg(neg) => neg.destination(),
+            Self::Not(not) => not.destination(),
             Self::Or(or) => or.destination(),
             Self::Sub(sub) => sub.destination(),
             Self::SubWrapped(sub_wrapped) => sub_wrapped.destination(),
@@ -213,6 +221,7 @@ impl<P: Program> Instruction<P> {
             Self::Mul(instruction) => instruction.evaluate(registers),
             Self::MulWrapped(instruction) => instruction.evaluate(registers),
             Self::Neg(instruction) => instruction.evaluate(registers),
+            Self::Not(instruction) => instruction.evaluate(registers),
             Self::Or(instruction) => instruction.evaluate(registers),
             Self::Sub(instruction) => instruction.evaluate(registers),
             Self::SubWrapped(instruction) => instruction.evaluate(registers),
@@ -240,6 +249,7 @@ impl<P: Program> Parser for Instruction<P> {
             preceded(pair(tag(Mul::<P>::opcode()), tag(" ")), map(Mul::parse, Into::into)),
             preceded(pair(tag(MulWrapped::<P>::opcode()), tag(" ")), map(MulWrapped::parse, Into::into)),
             preceded(pair(tag(Neg::<P>::opcode()), tag(" ")), map(Neg::parse, Into::into)),
+            preceded(pair(tag(Not::<P>::opcode()), tag(" ")), map(Not::parse, Into::into)),
             preceded(pair(tag(Or::<P>::opcode()), tag(" ")), map(Or::parse, Into::into)),
             preceded(pair(tag(Sub::<P>::opcode()), tag(" ")), map(Sub::parse, Into::into)),
             preceded(pair(tag(SubWrapped::<P>::opcode()), tag(" ")), map(SubWrapped::parse, Into::into)),
@@ -263,6 +273,7 @@ impl<P: Program> fmt::Display for Instruction<P> {
             Self::Mul(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::MulWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Neg(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::Not(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Or(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Sub(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::SubWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
@@ -283,10 +294,11 @@ impl<P: Program> FromBytes for Instruction<P> {
             6 => Ok(Self::Mul(Mul::read_le(&mut reader)?)),
             7 => Ok(Self::MulWrapped(MulWrapped::read_le(&mut reader)?)),
             8 => Ok(Self::Neg(Neg::read_le(&mut reader)?)),
-            9 => Ok(Self::Or(Or::read_le(&mut reader)?)),
-            10 => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
-            11 => Ok(Self::SubWrapped(SubWrapped::read_le(&mut reader)?)),
-            12.. => Err(error(format!("Failed to deserialize an instruction of code {code}"))),
+            9 => Ok(Self::Not(Not::read_le(&mut reader)?)),
+            10 => Ok(Self::Or(Or::read_le(&mut reader)?)),
+            11 => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
+            12 => Ok(Self::SubWrapped(SubWrapped::read_le(&mut reader)?)),
+            13.. => Err(error(format!("Failed to deserialize an instruction of code {code}"))),
         }
     }
 }
@@ -328,6 +340,10 @@ impl<P: Program> ToBytes for Instruction<P> {
             }
             Self::Neg(instruction) => {
                 u16::write_le(&8u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::Not(instruction) => {
+                u16::write_le(&1u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
             Self::Or(instruction) => {
