@@ -54,7 +54,7 @@ impl<P: MerkleParameters + Send + Sync> NewMerkleTree<P> {
             return Err(MerkleError::InvalidTreeDepth(tree_depth, Self::DEPTH));
         }
 
-        let mut leaf_digests = Self::hash_row(&*parameters, &leaves[..])?;
+        let mut leaf_digests = Self::hash_row(&*parameters, &leaves)?;
         leaf_digests.resize(last_level_size, Default::default());
 
         let leaf_nodes_size = leaf_digests.len();
@@ -63,7 +63,7 @@ impl<P: MerkleParameters + Send + Sync> NewMerkleTree<P> {
         let empty_hash = parameters.hash_empty()?;
 
         // Initialize the merkle tree as array of nodes in level order
-        let mut non_leaf_nodes = (0..non_leaf_nodes_size).map(|_| empty_hash.clone()).collect::<Vec<_>>();
+        let mut non_leaf_nodes = (0..non_leaf_nodes_size).map(|_| empty_hash).collect::<Vec<_>>();
 
         // Compute the starting indices for each non-leaf level of the tree
         let mut index = 0;
@@ -106,7 +106,7 @@ impl<P: MerkleParameters + Send + Sync> NewMerkleTree<P> {
         // Now, we compute the dummy nodes until we hit our DEPTH goal.
         let mut current_depth = tree_depth;
         let mut padding_tree = Vec::with_capacity((Self::DEPTH).saturating_sub(current_depth + 1));
-        let mut current_hash = if non_leaf_nodes.len() > 0 { non_leaf_nodes[0] } else { empty_hash.clone() };
+        let mut current_hash = if !non_leaf_nodes.is_empty() { non_leaf_nodes[0] } else { empty_hash };
         while current_depth < Self::DEPTH {
             current_hash = parameters.hash_inner_node(&current_hash, &empty_hash)?;
 
@@ -230,9 +230,9 @@ impl<P: MerkleParameters + Send + Sync> NewMerkleTree<P> {
         // Finished computing actual tree.
         // Now, we compute the dummy nodes until we hit our DEPTH goal.
         let mut current_depth = tree_depth;
-        let mut current_hash = if tree.len() > 0 { tree[0] } else { empty_hash.clone() };
+        let mut current_hash = if !tree.is_empty() { tree[0] } else { empty_hash.clone() };
 
-        let non_leaf_root = if self.non_leaf_nodes.len() > 0 { self.non_leaf_nodes[0] } else { empty_hash.clone() };
+        let non_leaf_root = if !self.non_leaf_nodes.is_empty() { self.non_leaf_nodes[0] } else { empty_hash.clone() };
 
         // The whole padding tree can be reused if the current hash matches the previous one.
         let new_padding_tree = if current_hash == non_leaf_root {
@@ -307,21 +307,20 @@ impl<P: MerkleParameters + Send + Sync> NewMerkleTree<P> {
 
         let leaf_sibling_hash = if index & 1 == 0 {
             // leaf is left child
-            self.leaf_nodes[index + 1].clone()
+            self.leaf_nodes[index + 1]
         } else {
             // leaf is right child
-            self.leaf_nodes[index - 1].clone()
+            self.leaf_nodes[index - 1]
         };
 
         // path.len() = `tree height - 2`, the two missing elements being the leaf sibling hash and the root
-        let mut path = vec![];
-        path.push(leaf_sibling_hash);
+        let mut path = vec![leaf_sibling_hash];
         // Iterate from the bottom layer after the leaves, to the top, storing all sibling node's hash values.
         let mut current_node = parent(tree_index).unwrap();
 
         while !is_root(current_node) {
             let sibling_node = sibling(current_node).unwrap();
-            path.push(self.non_leaf_nodes[sibling_node].clone());
+            path.push(self.non_leaf_nodes[sibling_node]);
             current_node = parent(current_node).unwrap();
         }
 
