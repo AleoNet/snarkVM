@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_circuits_environment::CircuitCount;
+use snarkvm_circuits_environment::{CircuitCount, CircuitOrMode};
 
 impl<E: Environment> Inv for Field<E> {
     type Output = Self;
@@ -42,7 +42,7 @@ impl<E: Environment> Inv for &Field<E> {
 }
 
 impl<E: Environment> Count<dyn Inv<Output = Field<E>>> for Field<E> {
-    type Case = Mode;
+    type Case = CircuitOrMode<Field<E>>;
 
     fn count(input: &Self::Case) -> CircuitCount {
         match input.is_constant() {
@@ -53,17 +53,15 @@ impl<E: Environment> Count<dyn Inv<Output = Field<E>>> for Field<E> {
 }
 
 impl<E: Environment> OutputMode<dyn Inv<Output = Field<E>>> for Field<E> {
-    type Case = Mode;
+    type Case = CircuitOrMode<Field<E>>;
 
     fn output_mode(input: &Self::Case) -> Mode {
-        match input {
+        match input.mode() {
             Mode::Constant => Mode::Constant,
             _ => Mode::Private,
         }
     }
 }
-
-impl<E: Environment> MetadataForOp<dyn Inv<Output = Field<E>>> for Field<E> {}
 
 #[cfg(test)]
 mod tests {
@@ -84,8 +82,13 @@ mod tests {
                 Circuit::scope(name, || {
                     let result = candidate.inv();
                     assert_eq!(expected, result.eject_value());
-                    assert_count!(Field<Circuit>, Inv<Output = Field<Circuit>>, &mode);
-                    assert_output_mode!(result, Field<Circuit>, Inv<Output = Field<Circuit>>, &mode);
+                    assert_count!(Field<Circuit>, Inv<Output = Field<Circuit>>, &CircuitOrMode::Mode(mode));
+                    assert_output_mode!(
+                        result,
+                        Field<Circuit>,
+                        Inv<Output = Field<Circuit>>,
+                        &CircuitOrMode::Mode(mode)
+                    );
                 });
                 Circuit::reset();
             }

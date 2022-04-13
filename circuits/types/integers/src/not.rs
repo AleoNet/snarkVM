@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_circuits_environment::CircuitCount;
+use snarkvm_circuits_environment::{CircuitCount, CircuitOrMode};
 
 impl<E: Environment, I: IntegerType> Not for Integer<E, I> {
     type Output = Integer<E, I>;
@@ -35,7 +35,7 @@ impl<E: Environment, I: IntegerType> Not for &Integer<E, I> {
 }
 
 impl<E: Environment, I: IntegerType> Count<dyn Not<Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = Mode;
+    type Case = CircuitOrMode<Integer<E, I>>;
 
     fn count(_input: &Self::Case) -> CircuitCount {
         CircuitCount::exact(0, 0, 0, 0)
@@ -43,17 +43,15 @@ impl<E: Environment, I: IntegerType> Count<dyn Not<Output = Integer<E, I>>> for 
 }
 
 impl<E: Environment, I: IntegerType> OutputMode<dyn Not<Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = Mode;
+    type Case = CircuitOrMode<Integer<E, I>>;
 
     fn output_mode(input: &Self::Case) -> Mode {
-        match input {
+        match input.mode() {
             Mode::Constant => Mode::Constant,
             _ => Mode::Private,
         }
     }
 }
-
-impl<E: Environment, I: IntegerType> MetadataForOp<dyn Not<Output = Integer<E, I>>> for Integer<E, I> {}
 
 #[cfg(test)]
 mod tests {
@@ -77,8 +75,8 @@ mod tests {
         Circuit::scope(name, || {
             let candidate = a.not();
             assert_eq!(expected, candidate.eject_value());
-            assert_count!(Integer<Circuit, I>, Not<Output=Integer<Circuit, I>>, &mode);
-            assert_output_mode!(candidate, Integer<Circuit, I>, Not<Output=Integer<Circuit, I>>, &mode);
+            assert_count!(Integer<Circuit, I>, Not<Output=Integer<Circuit, I>>, &CircuitOrMode::Mode(mode));
+            assert_output_mode!(candidate, Integer<Circuit, I>, Not<Output=Integer<Circuit, I>>, &CircuitOrMode::Mode(mode));
         });
     }
 

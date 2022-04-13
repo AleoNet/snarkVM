@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_circuits_environment::CircuitCount;
+use snarkvm_circuits_environment::{CircuitCount, CircuitOrMode};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 impl<E: Environment> Add<Scalar<E>> for Scalar<E> {
@@ -102,10 +102,10 @@ impl<E: Environment> AddAssign<&Scalar<E>> for Scalar<E> {
 }
 
 impl<E: Environment> Count<dyn Add<Scalar<E>, Output = Scalar<E>>> for Scalar<E> {
-    type Case = (Mode, Mode);
+    type Case = (CircuitOrMode<Scalar<E>>, CircuitOrMode<Scalar<E>>);
 
     fn count(input: &Self::Case) -> CircuitCount {
-        match (input.0, input.1) {
+        match (input.0.mode(), input.1.mode()) {
             (Mode::Constant, Mode::Constant) => CircuitCount::exact(251, 0, 0, 0),
             (_, _) => CircuitCount::exact(254, 0, 1021, 1023),
         }
@@ -113,17 +113,15 @@ impl<E: Environment> Count<dyn Add<Scalar<E>, Output = Scalar<E>>> for Scalar<E>
 }
 
 impl<E: Environment> OutputMode<dyn Add<Scalar<E>, Output = Scalar<E>>> for Scalar<E> {
-    type Case = (Mode, Mode);
+    type Case = (CircuitOrMode<Scalar<E>>, CircuitOrMode<Scalar<E>>);
 
     fn output_mode(input: &Self::Case) -> Mode {
-        match (input.0, input.1) {
+        match (input.0.mode(), input.1.mode()) {
             (Mode::Constant, Mode::Constant) => Mode::Constant,
             (_, _) => Mode::Private,
         }
     }
 }
-
-impl<E: Environment> MetadataForOp<dyn Add<Scalar<E>, Output = Scalar<E>>> for Scalar<E> {}
 
 #[cfg(test)]
 mod tests {
@@ -149,8 +147,8 @@ mod tests {
         Circuit::scope(name, || {
             let candidate = a + b;
             assert_eq!(expected, candidate.eject_value(), "{}", case);
-            assert_count!(Scalar<Circuit>, Add<Scalar<Circuit>, Output=Scalar<Circuit>>, &(mode_a, mode_b));
-            assert_output_mode!(candidate, Scalar<Circuit>, Add<Scalar<Circuit>, Output=Scalar<Circuit>>, &(mode_a, mode_b));
+            assert_count!(Scalar<Circuit>, Add<Scalar<Circuit>, Output=Scalar<Circuit>>, &(CircuitOrMode::Mode(mode_a), CircuitOrMode::Mode(mode_b)));
+            assert_output_mode!(candidate, Scalar<Circuit>, Add<Scalar<Circuit>, Output=Scalar<Circuit>>, &(CircuitOrMode::Mode(mode_a), CircuitOrMode::Mode(mode_b)));
         });
     }
 

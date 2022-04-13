@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use snarkvm_circuits_environment::CircuitOrMode;
 
 impl<E: Environment> Sub<Field<E>> for Field<E> {
     type Output = Self;
@@ -55,7 +56,7 @@ impl<E: Environment> SubAssign<&Field<E>> for Field<E> {
 }
 
 impl<E: Environment> Count<dyn Sub<Field<E>, Output = Field<E>>> for Field<E> {
-    type Case = (Mode, Mode);
+    type Case = (CircuitOrMode<Field<E>>, CircuitOrMode<Field<E>>);
 
     fn count(_input: &Self::Case) -> CircuitCount {
         CircuitCount::exact(0, 0, 0, 0)
@@ -63,17 +64,15 @@ impl<E: Environment> Count<dyn Sub<Field<E>, Output = Field<E>>> for Field<E> {
 }
 
 impl<E: Environment> OutputMode<dyn Sub<Field<E>, Output = Field<E>>> for Field<E> {
-    type Case = (Mode, Mode);
+    type Case = (CircuitOrMode<Field<E>>, CircuitOrMode<Field<E>>);
 
     fn output_mode(input: &Self::Case) -> Mode {
-        match (input.0, input.1) {
+        match (input.0.mode(), input.1.mode()) {
             (Mode::Constant, Mode::Constant) => Mode::Constant,
             (_, _) => Mode::Private,
         }
     }
 }
-
-impl<E: Environment> MetadataForOp<dyn Sub<Field<E>, Output = Field<E>>> for Field<E> {}
 
 #[cfg(test)]
 mod tests {
@@ -90,13 +89,13 @@ mod tests {
             assert_count!(
                 Field<Circuit>,
                 Sub<Field<Circuit>, Output = Field<Circuit>>,
-                &(a.eject_mode(), b.eject_mode())
+                &(CircuitOrMode::Mode(a.eject_mode()), CircuitOrMode::Mode(b.eject_mode()))
             );
             assert_output_mode!(
                 candidate,
                 Field<Circuit>,
                 Sub<Field<Circuit>, Output = Field<Circuit>>,
-                &(a.eject_mode(), b.eject_mode())
+                &(CircuitOrMode::Mode(a.eject_mode()), CircuitOrMode::Mode(b.eject_mode()))
             );
         });
     }
@@ -114,13 +113,13 @@ mod tests {
             assert_count!(
                 Field<Circuit>,
                 Sub<Field<Circuit>, Output = Field<Circuit>>,
-                &(a.eject_mode(), b.eject_mode())
+                &(CircuitOrMode::Mode(a.eject_mode()), CircuitOrMode::Mode(b.eject_mode()))
             );
             assert_output_mode!(
                 candidate,
                 Field<Circuit>,
                 Sub<Field<Circuit>, Output = Field<Circuit>>,
-                &(a.eject_mode(), b.eject_mode())
+                &(CircuitOrMode::Mode(a.eject_mode()), CircuitOrMode::Mode(b.eject_mode()))
             );
         });
     }

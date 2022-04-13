@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use snarkvm_circuits_environment::CircuitOrMode;
 
 impl<E: Environment> Neg for Group<E> {
     type Output = Self;
@@ -35,7 +36,7 @@ impl<E: Environment> Neg for &Group<E> {
 }
 
 impl<E: Environment> Count<dyn Neg<Output = Group<E>>> for Group<E> {
-    type Case = Mode;
+    type Case = CircuitOrMode<Group<E>>;
 
     fn count(_input: &Self::Case) -> CircuitCount {
         CircuitCount::exact(0, 0, 0, 0)
@@ -43,17 +44,15 @@ impl<E: Environment> Count<dyn Neg<Output = Group<E>>> for Group<E> {
 }
 
 impl<E: Environment> OutputMode<dyn Neg<Output = Group<E>>> for Group<E> {
-    type Case = Mode;
+    type Case = CircuitOrMode<Group<E>>;
 
     fn output_mode(input: &Self::Case) -> Mode {
-        match input {
+        match input.mode() {
             Mode::Constant => Mode::Constant,
             _ => Mode::Private,
         }
     }
 }
-
-impl<E: Environment> MetadataForOp<dyn Neg<Output = Group<E>>> for Group<E> {}
 
 #[cfg(test)]
 mod tests {
@@ -68,8 +67,13 @@ mod tests {
             let mode = candidate_input.eject_mode();
             let candidate_output = -candidate_input;
             assert_eq!(expected, candidate_output.eject_value());
-            assert_count!(Group<Circuit>, Neg<Output = Group<Circuit>>, &mode);
-            assert_output_mode!(candidate_output, Group<Circuit>, Neg<Output = Group<Circuit>>, &mode);
+            assert_count!(Group<Circuit>, Neg<Output = Group<Circuit>>, &CircuitOrMode::Mode(mode));
+            assert_output_mode!(
+                candidate_output,
+                Group<Circuit>,
+                Neg<Output = Group<Circuit>>,
+                &CircuitOrMode::Mode(mode)
+            );
         });
     }
 

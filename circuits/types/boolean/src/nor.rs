@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use snarkvm_circuits_environment::CircuitOrMode;
 
 impl<E: Environment> Nor<Self> for Boolean<E> {
     type Output = Boolean<E>;
@@ -58,7 +59,7 @@ impl<E: Environment> Nor<Self> for Boolean<E> {
 }
 
 impl<E: Environment> Count<dyn Nor<Boolean<E>, Output = Boolean<E>>> for Boolean<E> {
-    type Case = (Mode, Mode);
+    type Case = (CircuitOrMode<Boolean<E>>, CircuitOrMode<Boolean<E>>);
 
     fn count(input: &Self::Case) -> CircuitCount {
         match input.0.is_constant() || input.1.is_constant() {
@@ -69,17 +70,29 @@ impl<E: Environment> Count<dyn Nor<Boolean<E>, Output = Boolean<E>>> for Boolean
 }
 
 impl<E: Environment> OutputMode<dyn Nor<Boolean<E>, Output = Boolean<E>>> for Boolean<E> {
-    type Case = (Mode, Mode);
+    type Case = (CircuitOrMode<Boolean<E>>, CircuitOrMode<Boolean<E>>);
 
     fn output_mode(input: &Self::Case) -> Mode {
-        match (input.0, input.1) {
+        match (input.0.mode(), input.1.mode()) {
             (Mode::Constant, Mode::Constant) => Mode::Constant,
+            (Mode::Public, Mode::Constant) => match &input.1 {
+                CircuitOrMode::Circuit(circuit) => match circuit.eject_value() {
+                    true => Mode::Constant,
+                    false => Mode::Private,
+                },
+                _ => E::halt("The circuit is required to determine the output mode of Public NOR Constant"),
+            },
+            (Mode::Constant, Mode::Public) => match &input.0 {
+                CircuitOrMode::Circuit(other) => match other.eject_value() {
+                    true => Mode::Constant,
+                    false => Mode::Private,
+                },
+                _ => E::halt("The circuit is required to determine the output mode of Constant NOR Public"),
+            },
             (_, _) => Mode::Private,
         }
     }
 }
-
-impl<E: Environment> MetadataForOp<dyn Nor<Boolean<E>, Output = Boolean<E>>> for Boolean<E> {}
 
 #[cfg(test)]
 mod tests {
@@ -93,13 +106,13 @@ mod tests {
             assert_count!(
                 Boolean<Circuit>,
                 Nor<Boolean<Circuit>, Output = Boolean<Circuit>>,
-                &(a.eject_mode(), b.eject_mode())
+                &(CircuitOrMode::Circuit(a.clone()), CircuitOrMode::Circuit(b.clone()))
             );
             assert_output_mode!(
                 candidate,
                 Boolean<Circuit>,
                 Nor<Boolean<Circuit>, Output = Boolean<Circuit>>,
-                &(a.eject_mode(), b.eject_mode())
+                &(CircuitOrMode::Circuit(a), CircuitOrMode::Circuit(b))
             );
         });
         Circuit::reset();
