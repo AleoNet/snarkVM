@@ -295,35 +295,35 @@ impl<P: Program> ToBytes for Instruction<P> {
                 instruction.write_le(&mut writer)
             }
             Self::Div(instruction) => {
-                u16::write_le(&2u16, &mut writer)?;
-                instruction.write_le(&mut writer)
-            }
-            Self::DivWrapped(instruction) => {
                 u16::write_le(&3u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Equal(instruction) => {
+            Self::DivWrapped(instruction) => {
                 u16::write_le(&4u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Mul(instruction) => {
+            Self::Equal(instruction) => {
                 u16::write_le(&5u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::MulWrapped(instruction) => {
+            Self::Mul(instruction) => {
                 u16::write_le(&6u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Neg(instruction) => {
+            Self::MulWrapped(instruction) => {
                 u16::write_le(&7u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Sub(instruction) => {
+            Self::Neg(instruction) => {
                 u16::write_le(&8u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::SubWrapped(instruction) => {
+            Self::Sub(instruction) => {
                 u16::write_le(&9u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::SubWrapped(instruction) => {
+                u16::write_le(&10u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
         }

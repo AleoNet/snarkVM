@@ -81,8 +81,21 @@ impl<P: Program> Operation<P> for Equal<P> {
 
         // Perform the operation.
         let result = match (first, second) {
+            (Literal::Address(a), Literal::Address(b)) => Literal::Boolean(a.is_equal(&b)),
+            (Literal::Boolean(a), Literal::Boolean(b)) => Literal::Boolean(a.is_equal(&b)),
+            (Literal::Field(a), Literal::Field(b)) => Literal::Boolean(a.is_equal(&b)),
+            (Literal::Group(a), Literal::Group(b)) => Literal::Boolean(a.is_equal(&b)),
             (Literal::I8(a), Literal::I8(b)) => Literal::Boolean(a.is_equal(&b)),
+            (Literal::I16(a), Literal::I16(b)) => Literal::Boolean(a.is_equal(&b)),
+            (Literal::I32(a), Literal::I32(b)) => Literal::Boolean(a.is_equal(&b)),
+            (Literal::I64(a), Literal::I64(b)) => Literal::Boolean(a.is_equal(&b)),
+            (Literal::I128(a), Literal::I128(b)) => Literal::Boolean(a.is_equal(&b)),
+            (Literal::Scalar(a), Literal::Scalar(b)) => Literal::Boolean(a.is_equal(&b)),
             (Literal::U8(a), Literal::U8(b)) => Literal::Boolean(a.is_equal(&b)),
+            (Literal::U16(a), Literal::U16(b)) => Literal::Boolean(a.is_equal(&b)),
+            (Literal::U32(a), Literal::U32(b)) => Literal::Boolean(a.is_equal(&b)),
+            (Literal::U64(a), Literal::U64(b)) => Literal::Boolean(a.is_equal(&b)),
+            (Literal::U128(a), Literal::U128(b)) => Literal::Boolean(a.is_equal(&b)),
             _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
         };
 
@@ -159,12 +172,56 @@ impl<P: Program> Into<Instruction<P>> for Equal<P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Process, Register};
+    use crate::{test_instruction_halts, test_modes, Identifier, Process, Register};
 
     type P = Process;
 
-    fn check_is_eq(first: Value<P>, second: Value<P>, expected: Value<P>) {
-        let registers = Registers::<P>::default();
+    const BOOLEAN_MODE_TESTS: [[&str; 3]; 9] = [
+        ["public", "public", "private"],
+        ["public", "constant", "public"],
+        ["public", "private", "private"],
+        ["private", "constant", "private"],
+        ["private", "public", "private"],
+        ["private", "private", "private"],
+        ["constant", "private", "private"],
+        ["constant", "public", "public"],
+        ["constant", "constant", "constant"],
+    ];
+
+    test_modes!(
+        address,
+        Equal,
+        "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah",
+        "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah",
+        "true"
+    );
+    test_modes!(boolean, Equal, "true", "true", "true", BOOLEAN_MODE_TESTS);
+    test_modes!(field, Equal, "1field", "1field", "true");
+    test_modes!(group, Equal, "2group", "2group", "true");
+    test_modes!(i8, Equal, "1i8", "1i8", "true");
+    test_modes!(i16, Equal, "1i16", "1i16", "true");
+    test_modes!(i32, Equal, "1i32", "1i32", "true");
+    test_modes!(i64, Equal, "1i64", "1i64", "true");
+    test_modes!(i128, Equal, "1i128", "1i128", "true");
+    test_modes!(scalar, Equal, "1scalar", "1scalar", "true");
+    test_modes!(u8, Equal, "1u8", "1u8", "true");
+    test_modes!(u16, Equal, "1u16", "1u16", "true");
+    test_modes!(u32, Equal, "1u32", "1u32", "true");
+    test_modes!(u64, Equal, "1u64", "1u64", "true");
+    test_modes!(u128, Equal, "1u128", "1u128", "true");
+
+    test_instruction_halts!(string_halts, Equal, "Invalid 'eq' instruction", "\"hello\"", "\"hello\"");
+
+    #[test]
+    #[should_panic(expected = "message is not a literal")]
+    fn test_composite_halts() {
+        let first = Value::<Process>::Composite(Identifier::from_str("message"), vec![
+            Literal::from_str("2group.public"),
+            Literal::from_str("10field.private"),
+        ]);
+        let second = first.clone();
+
+        let registers = Registers::<Process>::default();
         registers.define(&Register::from_str("r0"));
         registers.define(&Register::from_str("r1"));
         registers.define(&Register::from_str("r2"));
@@ -172,23 +229,5 @@ mod tests {
         registers.assign(&Register::from_str("r1"), second);
 
         Equal::from_str("r0 r1 into r2").evaluate(&registers);
-        let candidate = registers.load(&Register::from_str("r2"));
-        assert_eq!(expected, candidate);
-    }
-
-    #[test]
-    fn test_is_eq_i8() {
-        let first = Value::<P>::from_str("1i8.public");
-        let second = Value::<P>::from_str("2i8.private");
-        let expected = Value::<P>::from_str("false.private");
-        check_is_eq(first, second, expected);
-    }
-
-    #[test]
-    fn test_is_eq_u8() {
-        let first = Value::<P>::from_str("2u8.public");
-        let second = Value::<P>::from_str("2u8.private");
-        let expected = Value::<P>::from_str("true.private");
-        check_is_eq(first, second, expected);
     }
 }
