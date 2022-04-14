@@ -403,11 +403,11 @@ impl<P: Program> ToBytes for Instruction<P> {
                 instruction.write_le(&mut writer)
             }
             Self::LessThan(instruction) => {
-                u16::write_le(&5u16, &mut writer)?;
+                u16::write_le(&6u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
             Self::LessThanOrEqual(instruction) => {
-                u16::write_le(&6u16, &mut writer)?;
+                u16::write_le(&7u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
             Self::Mul(instruction) => {
