@@ -86,7 +86,7 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
             let hashings =
                 (start_index..upper_bound).map(|i| (&tree[left_child(i)], &tree[right_child(i)])).collect::<Vec<_>>();
 
-            let hashes = Self::hash_row(&*parameters, &hashings[..])?;
+            let hashes = Self::hash_row_inner(&*parameters, &hashings[..])?;
 
             let mut subsection_index = 0;
             for subsection in hashes.into_iter() {
@@ -235,17 +235,17 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
     }
 
     #[inline]
-    pub fn root(&self) -> &<P::H as CRH>::Output {
+    pub fn root(&self) -> &<P::LeafCRH as CRH>::Output {
         &self.root
     }
 
     #[inline]
-    pub fn tree(&self) -> &[<P::H as CRH>::Output] {
+    pub fn tree(&self) -> &[<P::LeafCRH as CRH>::Output] {
         &self.tree
     }
 
     #[inline]
-    pub fn hashed_leaves(&self) -> &[<P::H as CRH>::Output] {
+    pub fn hashed_leaves(&self) -> &[<P::LeafCRH as CRH>::Output] {
         &self.tree[self.hashed_leaves_index..]
     }
 
@@ -296,12 +296,26 @@ impl<P: MerkleParameters + Send + Sync> MerkleTree<P> {
     fn hash_row<L: ToBytes + Send + Sync>(
         parameters: &P,
         leaves: &[L],
-    ) -> Result<Vec<Vec<<<P as MerkleParameters>::H as CRH>::Output>>, MerkleError> {
+    ) -> Result<Vec<Vec<<<P as MerkleParameters>::LeafCRH as CRH>::Output>>, MerkleError> {
         match leaves.len() {
             0 => Ok(vec![]),
             _ => {
                 Ok(vec![crate::cfg_iter!(leaves).map(|leaf| parameters.hash_leaf(&leaf).unwrap()).collect::<Vec<_>>()])
             }
+        }
+    }
+
+    fn hash_row_inner<L: ToBytes + Send + Sync>(
+        parameters: &P,
+        inner: &[L],
+    ) -> Result<Vec<Vec<<<P as MerkleParameters>::TwoToOneCRH as CRH>::Output>>, MerkleError> {
+        match inner.len() {
+            0 => Ok(vec![]),
+            _ => Ok(vec![
+                crate::cfg_iter!(inner)
+                    .map(|inner_nodes| parameters.hash_two_to_one(&inner_nodes).unwrap())
+                    .collect::<Vec<_>>(),
+            ]),
         }
     }
 }
