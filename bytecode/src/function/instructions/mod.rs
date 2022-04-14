@@ -355,23 +355,23 @@ impl<P: Program> ToBytes for Instruction<P> {
                 instruction.write_le(&mut writer)
             }
             Self::Not(instruction) => {
-                u16::write_le(&1u16, &mut writer)?;
-                instruction.write_le(&mut writer)
-            }
-            Self::Or(instruction) => {
-                u16::write_le(&1u16, &mut writer)?;
-                instruction.write_le(&mut writer)
-            }
-            Self::Sub(instruction) => {
                 u16::write_le(&9u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::SubWrapped(instruction) => {
+            Self::Or(instruction) => {
                 u16::write_le(&10u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
+            Self::Sub(instruction) => {
+                u16::write_le(&11u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::SubWrapped(instruction) => {
+                u16::write_le(&12u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
             Self::Xor(instruction) => {
-                u16::write_le(&1u16, &mut writer)?;
+                u16::write_le(&13u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
         }
