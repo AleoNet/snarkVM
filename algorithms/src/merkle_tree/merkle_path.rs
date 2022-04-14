@@ -27,7 +27,7 @@ use std::{
     sync::Arc,
 };
 
-pub type MerkleTreeDigest<P> = <<P as MerkleParameters>::LeafCRH as CRH>::Output;
+pub type MerkleTreeDigest<P> = <<P as MerkleParameters>::TwoToOneCRH as CRH>::Output;
 
 /// Stores the hashes of a particular path (in order) from leaf to root.
 /// Our path `is_left_child()` if the boolean in `path` is true.
