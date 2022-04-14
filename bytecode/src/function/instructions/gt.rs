@@ -129,20 +129,43 @@ impl<P: Program> Into<Instruction<P>> for GreaterThan<P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{test_instruction_halts, test_modes, Identifier, Process};
+    use crate::{binary_instruction_test, test_instruction_halts, test_modes, Identifier, Process};
 
     test_modes!(field, GreaterThan, "2field", "1field", "true");
+    binary_instruction_test!(field_lt, GreaterThan, "1field.public", "2field.public", "false.private");
+
     test_modes!(i8, GreaterThan, "1i8", "-11i8", "true");
+    binary_instruction_test!(i8_lt, GreaterThan, "-1i8.public", "1i8.public", "false.private");
+
     test_modes!(i16, GreaterThan, "1i16", "-1i16", "true");
+    binary_instruction_test!(i16_lt, GreaterThan, "-1i16.public", "1i16.public", "false.private");
+
     test_modes!(i32, GreaterThan, "1i32", "-1i32", "true");
+    binary_instruction_test!(i32_lt, GreaterThan, "-1i32.public", "1i32.public", "false.private");
+
     test_modes!(i64, GreaterThan, "1i64", "-1i64", "true");
+    binary_instruction_test!(i64_lt, GreaterThan, "-1i64.public", "1i64.public", "false.private");
+
     test_modes!(i128, GreaterThan, "1i128", "-1i128", "true");
+    binary_instruction_test!(i128_lt, GreaterThan, "-1i128.public", "1i128.public", "false.private");
+
     test_modes!(scalar, GreaterThan, "2scalar", "1scalar", "true");
+    binary_instruction_test!(scalar_lt, GreaterThan, "1scalar.public", "2scalar.public", "false.private");
+
     test_modes!(u8, GreaterThan, "1u8", "0u8", "true");
+    binary_instruction_test!(u8_lt, GreaterThan, "0u8.public", "1u8.public", "false.private");
+
     test_modes!(u16, GreaterThan, "1u16", "0u16", "true");
+    binary_instruction_test!(u16_lt, GreaterThan, "0u16.public", "1u16.public", "false.private");
+
     test_modes!(u32, GreaterThan, "1u32", "0u32", "true");
+    binary_instruction_test!(u32_lt, GreaterThan, "0u32.public", "1u32.public", "false.private");
+
     test_modes!(u64, GreaterThan, "1u64", "0u64", "true");
+    binary_instruction_test!(u64_lt, GreaterThan, "0u64.public", "1u64.public", "false.private");
+
     test_modes!(u128, GreaterThan, "1u128", "0u128", "true");
+    binary_instruction_test!(u128_lt, GreaterThan, "0u128.public", "1u128.public", "false.private");
 
     test_instruction_halts!(
         address_halts,

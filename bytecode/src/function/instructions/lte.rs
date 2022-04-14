@@ -129,20 +129,55 @@ impl<P: Program> Into<Instruction<P>> for LessThanOrEqual<P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{test_instruction_halts, test_modes, Identifier, Process};
+    use crate::{binary_instruction_test, test_instruction_halts, test_modes, Identifier, Process};
 
     test_modes!(field, LessThanOrEqual, "2field", "2field", "true");
+    binary_instruction_test!(field_lt, LessThanOrEqual, "1field.public", "2field.public", "true.private");
+    binary_instruction_test!(field_gt, LessThanOrEqual, "2field.public", "1field.public", "false.private");
+
     test_modes!(i8, LessThanOrEqual, "1i8", "1i8", "true");
+    binary_instruction_test!(i8_lt, LessThanOrEqual, "-2i8.public", "-1i8.public", "true.private");
+    binary_instruction_test!(i8_gt, LessThanOrEqual, "-1i8.public", "-2i8.public", "false.private");
+
     test_modes!(i16, LessThanOrEqual, "1i16", "1i16", "true");
+    binary_instruction_test!(i16_lt, LessThanOrEqual, "-2i16.public", "-1i16.public", "true.private");
+    binary_instruction_test!(i16_gt, LessThanOrEqual, "-1i16.public", "-2i16.public", "false.private");
+
     test_modes!(i32, LessThanOrEqual, "1i32", "1i32", "true");
+    binary_instruction_test!(i32_lt, LessThanOrEqual, "-2i32.public", "-1i32.public", "true.private");
+    binary_instruction_test!(i32_gt, LessThanOrEqual, "-1i32.public", "-2i32.public", "false.private");
+
     test_modes!(i64, LessThanOrEqual, "1i64", "1i64", "true");
+    binary_instruction_test!(i64_lt, LessThanOrEqual, "-2i64.public", "-1i64.public", "true.private");
+    binary_instruction_test!(i64_gt, LessThanOrEqual, "-1i64.public", "-2i64.public", "false.private");
+
     test_modes!(i128, LessThanOrEqual, "1i128", "1i128", "true");
+    binary_instruction_test!(i128_lt, LessThanOrEqual, "-2i128.public", "-1i128.public", "true.private");
+    binary_instruction_test!(i128_gt, LessThanOrEqual, "-1i128.public", "-2i128.public", "false.private");
+
     test_modes!(scalar, LessThanOrEqual, "2scalar", "2scalar", "true");
+    binary_instruction_test!(scalar_lt, LessThanOrEqual, "1scalar.public", "2scalar.public", "true.private");
+    binary_instruction_test!(scalar_gt, LessThanOrEqual, "2scalar.public", "1scalar.public", "false.private");
+
     test_modes!(u8, LessThanOrEqual, "1u8", "1u8", "true");
+    binary_instruction_test!(u8_lt, LessThanOrEqual, "1u8.public", "2u8.public", "true.private");
+    binary_instruction_test!(u8_gt, LessThanOrEqual, "2u8.public", "1u8.public", "false.private");
+
     test_modes!(u16, LessThanOrEqual, "1u16", "1u16", "true");
+    binary_instruction_test!(u16_lt, LessThanOrEqual, "1u16.public", "2u16.public", "true.private");
+    binary_instruction_test!(u16_gt, LessThanOrEqual, "2u16.public", "1u16.public", "false.private");
+
     test_modes!(u32, LessThanOrEqual, "1u32", "1u32", "true");
+    binary_instruction_test!(u32_lt, LessThanOrEqual, "1u32.public", "2u32.public", "true.private");
+    binary_instruction_test!(u32_gt, LessThanOrEqual, "2u32.public", "1u32.public", "false.private");
+
     test_modes!(u64, LessThanOrEqual, "1u64", "1u64", "true");
+    binary_instruction_test!(u64_lt, LessThanOrEqual, "1u64.public", "2u64.public", "true.private");
+    binary_instruction_test!(u64_gt, LessThanOrEqual, "2u64.public", "1u64.public", "false.private");
+
     test_modes!(u128, LessThanOrEqual, "1u128", "1u128", "true");
+    binary_instruction_test!(u128_lt, LessThanOrEqual, "1u128.public", "2u128.public", "true.private");
+    binary_instruction_test!(u128_gt, LessThanOrEqual, "2u128.public", "1u128.public", "false.private");
 
     test_instruction_halts!(
         address_halts,
