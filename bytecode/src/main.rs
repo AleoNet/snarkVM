@@ -32,11 +32,12 @@ function main:
         );
     }
 
-    /// Initializes a new instance of `HelloWorld` with the given inputs.
+    /// Runs `HelloWorld` with the given inputs.
     pub fn run<P: Program>(inputs: [Value<P>; 2]) -> Vec<Value<P>> {
         P::get_function(&Identifier::from_str("main")).unwrap().evaluate(&inputs)
     }
 
+    /// Returns an estimated cost of running `HelloWorld`.
     pub fn count<P: Program>() -> CircuitCount {
         Function::count(&P::get_function(&Identifier::from_str("main")).unwrap())
     }
@@ -92,15 +93,44 @@ mod tests {
 
     #[test]
     fn test_hello_world() {
+        // Initialize the program.
+        HelloWorld::initialize::<Process>();
+
+        // Get estimated circuit count for the `HelloWorld` program.
+        let count = HelloWorld::count::<Process>();
+
+        // Run the `HelloWorld` program with the given inputs.
         let first = Value::from_str("1field.public");
         let second = Value::from_str("1field.private");
 
-        let expected = Value::<Process>::from_str("2field.private");
+        // Store the circuit counts before running the program.
+        let old_num_constants = <Process as Program>::Aleo::num_constants();
+        let old_num_public = <Process as Program>::Aleo::num_public();
+        let old_num_private = <Process as Program>::Aleo::num_private();
+        let old_num_constraints = <Process as Program>::Aleo::num_constraints();
+
         let candidate = HelloWorld::run::<Process>([first, second]);
+
+        // Store the circuit counts after running the program.
+        let new_num_constants = <Process as Program>::Aleo::num_constants();
+        let new_num_public = <Process as Program>::Aleo::num_public();
+        let new_num_private = <Process as Program>::Aleo::num_private();
+        let new_num_constraints = <Process as Program>::Aleo::num_constraints();
+
+        // Check that the estimated counts is correct.
+        assert!(count.is_satisfied(
+            new_num_constants - old_num_constants,
+            new_num_public - old_num_public,
+            new_num_private - old_num_private,
+            new_num_constraints - old_num_constraints
+        ));
+
+        let expected = Value::<Process>::from_str("2field.private");
 
         match (&expected, &candidate[0]) {
             (Value::Literal(Literal::Field(expected)), Value::Literal(Literal::Field(candidate))) => {
-                assert!(expected.is_equal(candidate).eject_value())
+                println!("{candidate}");
+                assert!(expected.is_equal(candidate).eject_value());
             }
             _ => panic!("Failed to load output"),
         }
@@ -111,8 +141,8 @@ mod tests {
         pub struct HelloWorld;
 
         impl HelloWorld {
-            /// Initializes a new instance of `HelloWorld` with the given inputs.
-            pub fn run<P: Program>(inputs: &[Value<P>]) -> Vec<Value<P>> {
+            /// Initializes a new instance of the `HelloWorld` program.
+            pub fn initialize<P: Program>() {
                 P::from_str(
                     r"
 function main:
@@ -121,15 +151,50 @@ function main:
     add r0 r1 into r2;
     output r2 as u8.private;",
                 );
+            }
+
+            /// Runs the `HelloWorld` with the given inputs.
+            pub fn run<P: Program>(inputs: &[Value<P>]) -> Vec<Value<P>> {
                 P::get_function(&Identifier::from_str("main")).unwrap().evaluate(inputs)
             }
+
+            /// Estimates the circuit counts for the `HelloWorld` program.
+            pub fn count<P: Program>() -> CircuitCount {
+                Function::count(&P::get_function(&Identifier::from_str("main")).unwrap())
+            }
         }
+
+        // Initialize the program.
+        HelloWorld::initialize::<Process>();
+
+        // Get estimated circuit count for the `HelloWorld` program.
+        let count = HelloWorld::count::<Process>();
 
         // Initialize the inputs.
         let input = [Value::from_str("1u8.public"), Value::from_str("1u8.private")];
 
+        // Store the circuit counts before running the program.
+        let old_num_constants = <Process as Program>::Aleo::num_constants();
+        let old_num_public = <Process as Program>::Aleo::num_public();
+        let old_num_private = <Process as Program>::Aleo::num_private();
+        let old_num_constraints = <Process as Program>::Aleo::num_constraints();
+
         // Run the function.
         let _output = HelloWorld::run::<Process>(&input);
+
+        // Store the circuit counts after running the program.
+        let new_num_constants = <Process as Program>::Aleo::num_constants();
+        let new_num_public = <Process as Program>::Aleo::num_public();
+        let new_num_private = <Process as Program>::Aleo::num_private();
+        let new_num_constraints = <Process as Program>::Aleo::num_constraints();
+
+        // Check that the estimated counts is correct.
+        assert!(count.is_satisfied(
+            new_num_constants - old_num_constants,
+            new_num_public - old_num_public,
+            new_num_private - old_num_private,
+            new_num_constraints - old_num_constraints
+        ));
 
         // Marlin setup, prove, and verify.
         {

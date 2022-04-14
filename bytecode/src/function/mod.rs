@@ -353,6 +353,8 @@ impl<P: Program> StaticParameter for Function<P> {}
 impl<P: Program> Count<Self> for Function<P> {
     type Case = Self;
 
+    /// Returns the estimated number of constants, variables, and constraints produced by this function.
+    /// Note that this calculation does not take into account the cost of initializing the inputs to the program.
     fn count(function: &Self::Case) -> CircuitCount {
         let mut type_map = IndexMap::new();
 
