@@ -172,7 +172,7 @@ impl<P: Program> Into<Instruction<P>> for Equal<P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{test_instruction_halts, test_modes, Identifier, Process, Register};
+    use crate::{binary_instruction_test, test_instruction_halts, test_modes, Identifier, Process, Register};
 
     type P = Process;
 
@@ -195,20 +195,55 @@ mod tests {
         "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah",
         "true"
     );
+    binary_instruction_test!(
+        address_ne,
+        Equal,
+        "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.public",
+        "aleo1t9r2aalldn3al4346l3pdplj8prrz5svvahsrl64gp4023342sxsrhs2yg.public",
+        "false.private"
+    );
+
     test_modes!(boolean, Equal, "true", "true", "true", BOOLEAN_MODE_TESTS);
+    binary_instruction_test!(boolean_ne, Equal, "true.public", "false.public", "false.private");
+
     test_modes!(field, Equal, "1field", "1field", "true");
+    binary_instruction_test!(field_ne, Equal, "1field.public", "2field.public", "false.private");
+
     test_modes!(group, Equal, "2group", "2group", "true");
+    binary_instruction_test!(group_ne, Equal, "2group.public", "0group.public", "false.private");
+
     test_modes!(i8, Equal, "1i8", "1i8", "true");
+    binary_instruction_test!(i8_ne, Equal, "1i8.public", "2i8.public", "false.private");
+
     test_modes!(i16, Equal, "1i16", "1i16", "true");
+    binary_instruction_test!(i16_ne, Equal, "1i16.public", "2i16.public", "false.private");
+
     test_modes!(i32, Equal, "1i32", "1i32", "true");
+    binary_instruction_test!(i32_ne, Equal, "1i32.public", "2i32.public", "false.private");
+
     test_modes!(i64, Equal, "1i64", "1i64", "true");
+    binary_instruction_test!(i64_ne, Equal, "1i64.public", "2i64.public", "false.private");
+
     test_modes!(i128, Equal, "1i128", "1i128", "true");
+    binary_instruction_test!(i128_ne, Equal, "1i128.public", "2i128.public", "false.private");
+
     test_modes!(scalar, Equal, "1scalar", "1scalar", "true");
+    binary_instruction_test!(scalar_ne, Equal, "1scalar.public", "2scalar.public", "false.private");
+
     test_modes!(u8, Equal, "1u8", "1u8", "true");
+    binary_instruction_test!(u8_ne, Equal, "1u8.public", "2u8.public", "false.private");
+
     test_modes!(u16, Equal, "1u16", "1u16", "true");
+    binary_instruction_test!(u16_ne, Equal, "1u16.public", "2u16.public", "false.private");
+
     test_modes!(u32, Equal, "1u32", "1u32", "true");
+    binary_instruction_test!(u32_ne, Equal, "1u32.public", "2u32.public", "false.private");
+
     test_modes!(u64, Equal, "1u64", "1u64", "true");
+    binary_instruction_test!(u64_ne, Equal, "1u64.public", "2u64.public", "false.private");
+
     test_modes!(u128, Equal, "1u128", "1u128", "true");
+    binary_instruction_test!(u128_ne, Equal, "1u128.public", "2u128.public", "false.private");
 
     test_instruction_halts!(string_halts, Equal, "Invalid 'eq' instruction", "\"hello\"", "\"hello\"");
 
