@@ -18,15 +18,22 @@ use crate::{MerkleParameters, CRH};
 
 /// Defines a Merkle tree using the provided hash and depth.
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct MerkleTreeParameters<H: CRH, const DEPTH: usize>(H, String);
+pub struct MerkleTreeParameters<LeafCRH: CRH, TwoToOneCRH: CRH<Output = LeafCRH::Output>, const DEPTH: usize>(
+    LeafCRH,
+    TwoToOneCRH,
+    String,
+);
 
-impl<H: CRH, const DEPTH: usize> MerkleParameters for MerkleTreeParameters<H, DEPTH> {
-    type H = H;
+impl<LeafCRH: CRH, TwoToOneCRH: CRH<Output = LeafCRH::Output>, const DEPTH: usize> MerkleParameters
+    for MerkleTreeParameters<LeafCRH, TwoToOneCRH, DEPTH>
+{
+    type LeafCRH = LeafCRH;
+    type TwoToOneCRH = TwoToOneCRH;
 
     const DEPTH: usize = DEPTH;
 
     fn setup(message: &str) -> Self {
-        Self(Self::H::setup(message), message.into())
+        Self(Self::LeafCRH::setup(message), Self::TwoToOneCRH::setup(message), message.into())
     }
 
     // TODO (howardwu): TEMPORARY - This is a temporary fix to support ToBytes/FromBytes for
@@ -37,10 +44,14 @@ impl<H: CRH, const DEPTH: usize> MerkleParameters for MerkleTreeParameters<H, DE
     //  If you are seeing this message, please be proactive in bringing it up :)
     /// Returns the saved `message` from calling the `MerkleParameters::setup()` function.
     fn setup_message(&self) -> &str {
-        &self.1
+        &self.2
     }
 
-    fn crh(&self) -> &Self::H {
+    fn crh(&self) -> &Self::LeafCRH {
         &self.0
+    }
+
+    fn two_to_one_crh(&self) -> &Self::TwoToOneCRH {
+        &self.1
     }
 }

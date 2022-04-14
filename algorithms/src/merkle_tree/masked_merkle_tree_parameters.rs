@@ -18,15 +18,28 @@ use crate::{MaskedMerkleParameters, MerkleParameters, CRH};
 
 /// Defines a Merkle tree using the provided hash and depth.
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct MaskedMerkleTreeParameters<H: CRH, const DEPTH: usize>(H, H, String);
+pub struct MaskedMerkleTreeParameters<LeafCRH: CRH, TwoToOneCRH: CRH<Output = LeafCRH::Output>, const DEPTH: usize>(
+    LeafCRH,
+    LeafCRH,
+    TwoToOneCRH,
+    String,
+);
 
-impl<H: CRH, const DEPTH: usize> MerkleParameters for MaskedMerkleTreeParameters<H, DEPTH> {
-    type H = H;
+impl<LeafCRH: CRH, TwoToOneCRH: CRH<Output = LeafCRH::Output>, const DEPTH: usize> MerkleParameters
+    for MaskedMerkleTreeParameters<LeafCRH, TwoToOneCRH, DEPTH>
+{
+    type LeafCRH = LeafCRH;
+    type TwoToOneCRH = TwoToOneCRH;
 
     const DEPTH: usize = DEPTH;
 
     fn setup(message: &str) -> Self {
-        Self(Self::H::setup(message), Self::H::setup(message), message.into())
+        Self(
+            Self::LeafCRH::setup(message),
+            Self::LeafCRH::setup(message),
+            Self::TwoToOneCRH::setup(message),
+            message.into(),
+        )
     }
 
     // TODO (howardwu): TEMPORARY - This is a temporary fix to support ToBytes/FromBytes for
@@ -37,16 +50,22 @@ impl<H: CRH, const DEPTH: usize> MerkleParameters for MaskedMerkleTreeParameters
     //  If you are seeing this message, please be proactive in bringing it up :)
     /// Returns the saved `message` from calling the `MerkleParameters::setup()` function.
     fn setup_message(&self) -> &str {
-        &self.2
+        &self.3
     }
 
-    fn crh(&self) -> &Self::H {
+    fn crh(&self) -> &Self::LeafCRH {
         &self.0
+    }
+
+    fn two_to_one_crh(&self) -> &Self::TwoToOneCRH {
+        &self.2
     }
 }
 
-impl<H: CRH, const DEPTH: usize> MaskedMerkleParameters for MaskedMerkleTreeParameters<H, DEPTH> {
-    fn mask_crh(&self) -> &Self::H {
+impl<LeafCRH: CRH, TwoToOneCRH: CRH<Output = LeafCRH::Output>, const DEPTH: usize> MaskedMerkleParameters
+    for MaskedMerkleTreeParameters<LeafCRH, TwoToOneCRH, DEPTH>
+{
+    fn mask_crh(&self) -> &Self::LeafCRH {
         &self.1
     }
 }
