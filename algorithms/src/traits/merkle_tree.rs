@@ -75,5 +75,5 @@ pub trait MerkleParameters: Clone + Debug + PartialEq + Eq + Send + Sync {
 
 pub trait MaskedMerkleParameters: MerkleParameters {
     /// Returns the collision-resistant hash function masking parameters used by the Merkle tree.
-    fn mask_crh(&self) -> &Self::LeafCRH;
+    fn mask_crh(&self) -> &Self::TwoToOneCRH;
 }

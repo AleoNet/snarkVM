@@ -65,7 +65,7 @@ impl<LeafCRH: CRH, TwoToOneCRH: CRH<Output = LeafCRH::Output>, const DEPTH: usiz
 impl<LeafCRH: CRH, TwoToOneCRH: CRH<Output = LeafCRH::Output>, const DEPTH: usize> MaskedMerkleParameters
     for MaskedMerkleTreeParameters<LeafCRH, TwoToOneCRH, DEPTH>
 {
-    fn mask_crh(&self) -> &Self::LeafCRH {
-        &self.1
+    fn mask_crh(&self) -> &Self::TwoToOneCRH {
+        &self.2
     }
 }
