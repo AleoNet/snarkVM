@@ -26,7 +26,6 @@ use snarkvm_circuits::{
     count,
     output_mode,
     CircuitCount,
-    CircuitOrMode,
     Count,
     Field,
     Group,
@@ -103,16 +102,16 @@ impl<P: Program> Count<Self> for Neg<P> {
     fn count(input: &Self::Case) -> CircuitCount {
         match input {
             LiteralType::Field(mode) => {
-                count!(Field<P::Environment>, NegOp<Output = Field<P::Environment>>, &CircuitOrMode::Mode(*mode))
+                count!(Field<P::Environment>, NegOp<Output = Field<P::Environment>>, mode)
             }
             LiteralType::Group(mode) => {
-                count!(Group<P::Environment>, NegOp<Output = Group<P::Environment>>, &CircuitOrMode::Mode(*mode))
+                count!(Group<P::Environment>, NegOp<Output = Group<P::Environment>>, mode)
             }
             LiteralType::I8(mode) => {
-                count!(I8<P::Environment>, NegOp<Output = I8<P::Environment>>, &CircuitOrMode::Mode(*mode))
+                count!(I8<P::Environment>, NegOp<Output = I8<P::Environment>>, mode)
             }
             LiteralType::U8(mode) => {
-                count!(U8<P::Environment>, NegOp<Output = U8<P::Environment>>, &CircuitOrMode::Mode(*mode))
+                count!(U8<P::Environment>, NegOp<Output = U8<P::Environment>>, mode)
             }
             _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
         }
@@ -128,22 +127,22 @@ impl<P: Program> OutputType for Neg<P> {
             LiteralType::Field(mode) => LiteralType::Field(output_mode!(
                 Field<P::Environment>,
                 NegOp<Output = Field<P::Environment>>,
-                &CircuitOrMode::Mode(*mode)
+                mode
             )),
             LiteralType::Group(mode) => LiteralType::Group(output_mode!(
                 Group<P::Environment>,
                 NegOp<Output = Group<P::Environment>>,
-                &CircuitOrMode::Mode(*mode)
+                mode
             )),
             LiteralType::I8(mode) => LiteralType::I8(output_mode!(
                 I8<P::Environment>,
                 NegOp<Output = I8<P::Environment>>,
-                &CircuitOrMode::Mode(*mode)
+                mode
             )),
             LiteralType::U8(mode) => LiteralType::U8(output_mode!(
                 U8<P::Environment>,
                 NegOp<Output = U8<P::Environment>>,
-                &CircuitOrMode::Mode(*mode)
+                mode
             )),
             _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
         }

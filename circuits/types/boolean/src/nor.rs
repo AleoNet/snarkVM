@@ -59,7 +59,7 @@ impl<E: Environment> Nor<Self> for Boolean<E> {
 }
 
 impl<E: Environment> Count<dyn Nor<Boolean<E>, Output = Boolean<E>>> for Boolean<E> {
-    type Case = (CircuitOrMode<Boolean<E>>, CircuitOrMode<Boolean<E>>);
+    type Case = (Mode, Mode);
 
     fn count(input: &Self::Case) -> CircuitCount {
         match input.0.is_constant() || input.1.is_constant() {
@@ -70,6 +70,7 @@ impl<E: Environment> Count<dyn Nor<Boolean<E>, Output = Boolean<E>>> for Boolean
 }
 
 impl<E: Environment> OutputMode<dyn Nor<Boolean<E>, Output = Boolean<E>>> for Boolean<E> {
+    // CircuitOrMode is needed since the output type of `Nor` is sometimes dependent on the value of the input.
     type Case = (CircuitOrMode<Boolean<E>>, CircuitOrMode<Boolean<E>>);
 
     fn output_mode(input: &Self::Case) -> Mode {
@@ -106,7 +107,7 @@ mod tests {
             assert_count!(
                 Boolean<Circuit>,
                 Nor<Boolean<Circuit>, Output = Boolean<Circuit>>,
-                &(CircuitOrMode::Circuit(a.clone()), CircuitOrMode::Circuit(b.clone()))
+                &(a.eject_mode(), b.eject_mode())
             );
             assert_output_mode!(
                 candidate,

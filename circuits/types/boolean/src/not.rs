@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_circuits_environment::{CircuitCount, CircuitOrMode};
 use std::rc::Rc;
 
 impl<E: Environment> Not for Boolean<E> {
@@ -50,7 +49,7 @@ impl<E: Environment> Not for &Boolean<E> {
 }
 
 impl<E: Environment> Count<dyn Not<Output = Boolean<E>>> for Boolean<E> {
-    type Case = CircuitOrMode<Boolean<E>>;
+    type Case = Mode;
 
     fn count(_input: &Self::Case) -> CircuitCount {
         CircuitCount::exact(0, 0, 0, 0)
@@ -58,10 +57,10 @@ impl<E: Environment> Count<dyn Not<Output = Boolean<E>>> for Boolean<E> {
 }
 
 impl<E: Environment> OutputMode<dyn Not<Output = Boolean<E>>> for Boolean<E> {
-    type Case = CircuitOrMode<Boolean<E>>;
+    type Case = Mode;
 
     fn output_mode(input: &Self::Case) -> Mode {
-        match input.mode() {
+        match input {
             Mode::Constant => Mode::Constant,
             _ => Mode::Private,
         }
@@ -78,12 +77,12 @@ mod tests {
             let mode = candidate_input.mode();
             let candidate_output = !candidate_input;
             assert_eq!(expected, candidate_output.eject_value());
-            assert_count!(Boolean<Circuit>, Not<Output = Boolean<Circuit>>, &CircuitOrMode::Mode(mode));
+            assert_count!(Boolean<Circuit>, Not<Output = Boolean<Circuit>>, &mode);
             assert_output_mode!(
                 candidate_output,
                 Boolean<Circuit>,
                 Not<Output = Boolean<Circuit>>,
-                &CircuitOrMode::Mode(mode)
+                &mode
             );
         });
     }

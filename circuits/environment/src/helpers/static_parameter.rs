@@ -16,8 +16,9 @@
 
 use crate::{Eject, Mode};
 
-pub trait StaticParameter {}
-
+/// Helper enum used in the case where a circuit's output mode or counts are determined by
+/// its mode and the actual value of the circuit.
+/// See Boolean::nor, where exactly one of the operands is a constant, for an example.
 pub enum CircuitOrMode<T: Eject> {
     Circuit(T),
     Mode(Mode),
@@ -50,7 +51,17 @@ impl<T: Eject> CircuitOrMode<T> {
     }
 }
 
+pub trait StaticParameter {}
+
+// Implement StaticParameter for commonly used type.
+impl StaticParameter for () {}
+impl StaticParameter for Mode {}
 impl<T: Eject> StaticParameter for CircuitOrMode<T> {}
+
+// Implement StaticParameter for composite types.
+impl<T: StaticParameter> StaticParameter for Vec<T> {}
+impl<T: StaticParameter> StaticParameter for &[T] {}
+
 impl<P0: StaticParameter, P1: StaticParameter> StaticParameter for (P0, P1) {}
 impl<P0: StaticParameter, P1: StaticParameter, P2: StaticParameter> StaticParameter for (P0, P1, P2) {}
 impl<P0: StaticParameter, P1: StaticParameter, P2: StaticParameter, P3: StaticParameter> StaticParameter

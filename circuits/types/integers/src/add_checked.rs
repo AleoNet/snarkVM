@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_circuits_environment::{CircuitCount, CircuitOrMode};
 
 impl<E: Environment, I: IntegerType> Add<Integer<E, I>> for Integer<E, I> {
     type Output = Self;
@@ -111,15 +110,15 @@ impl<E: Environment, I: IntegerType> AddChecked<Self> for Integer<E, I> {
 }
 
 impl<E: Environment, I: IntegerType> Count<dyn AddChecked<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = (CircuitOrMode<Integer<E, I>>, CircuitOrMode<Integer<E, I>>);
+    type Case = (Mode, Mode);
 
     fn count(input: &Self::Case) -> CircuitCount {
         match I::is_signed() {
-            false => match (input.0.mode(), input.1.mode()) {
+            false => match (input.0, input.1) {
                 (Mode::Constant, Mode::Constant) => CircuitCount::exact(I::BITS, 0, 0, 0),
                 (_, _) => CircuitCount::exact(0, 0, I::BITS + 1, I::BITS + 3),
             },
-            true => match (input.0.mode(), input.1.mode()) {
+            true => match (input.0, input.1) {
                 (Mode::Constant, Mode::Constant) => CircuitCount::exact(I::BITS, 0, 0, 0),
                 (Mode::Constant, _) => CircuitCount::exact(0, 0, I::BITS + 2, I::BITS + 4),
                 (_, Mode::Constant) => CircuitCount::exact(0, 0, I::BITS + 3, I::BITS + 5),
@@ -132,10 +131,10 @@ impl<E: Environment, I: IntegerType> Count<dyn AddChecked<Integer<E, I>, Output 
 impl<E: Environment, I: IntegerType> OutputMode<dyn AddChecked<Integer<E, I>, Output = Integer<E, I>>>
     for Integer<E, I>
 {
-    type Case = (CircuitOrMode<Integer<E, I>>, CircuitOrMode<Integer<E, I>>);
+    type Case = (Mode, Mode);
 
     fn output_mode(input: &Self::Case) -> Mode {
-        match (input.0.mode(), input.1.mode()) {
+        match (input.0, input.1) {
             (Mode::Constant, Mode::Constant) => Mode::Constant,
             (_, _) => Mode::Private,
         }
@@ -143,7 +142,7 @@ impl<E: Environment, I: IntegerType> OutputMode<dyn AddChecked<Integer<E, I>, Ou
 }
 
 impl<E: Environment, I: IntegerType> Count<dyn Add<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = (CircuitOrMode<Integer<E, I>>, CircuitOrMode<Integer<E, I>>);
+    type Case = (Mode, Mode);
 
     fn count(input: &Self::Case) -> CircuitCount {
         <Self as Count<dyn AddChecked<Integer<E, I>, Output = Integer<E, I>>>>::count(input)
@@ -151,7 +150,7 @@ impl<E: Environment, I: IntegerType> Count<dyn Add<Integer<E, I>, Output = Integ
 }
 
 impl<E: Environment, I: IntegerType> OutputMode<dyn Add<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = (CircuitOrMode<Integer<E, I>>, CircuitOrMode<Integer<E, I>>);
+    type Case = (Mode, Mode);
 
     fn output_mode(input: &Self::Case) -> Mode {
         <Self as OutputMode<dyn AddChecked<Integer<E, I>, Output = Integer<E, I>>>>::output_mode(input)
@@ -185,14 +184,14 @@ mod tests {
             Some(expected) => Circuit::scope(name, || {
                 let candidate = a.add_checked(&b);
                 assert_eq!(expected, candidate.eject_value());
-                assert_count!(Integer<Circuit, I>, Add<Integer<Circuit, I>, Output=Integer<Circuit, I>>, &(CircuitOrMode::Mode(mode_a), CircuitOrMode::Mode(mode_b)));
-                assert_output_mode!(candidate, Integer<Circuit, I>, Add<Integer<Circuit, I>, Output=Integer<Circuit, I>>, &(CircuitOrMode::Mode(mode_a), CircuitOrMode::Mode(mode_b)));
+                assert_count!(Integer<Circuit, I>, Add<Integer<Circuit, I>, Output=Integer<Circuit, I>>, &(mode_a, mode_b));
+                assert_output_mode!(candidate, Integer<Circuit, I>, Add<Integer<Circuit, I>, Output=Integer<Circuit, I>>, &(mode_a, mode_b));
             }),
             None => match mode_a.is_constant() && mode_b.is_constant() {
                 true => check_operation_halts(&a, &b, Integer::add_checked),
                 false => Circuit::scope(name, || {
                     let _candidate = a.add_checked(&b);
-                    assert_count_fails!(Integer<Circuit, I>, Add<Integer<Circuit, I>, Output=Integer<Circuit, I>>, &(CircuitOrMode::Mode(mode_a), CircuitOrMode::Mode(mode_b)));
+                    assert_count_fails!(Integer<Circuit, I>, Add<Integer<Circuit, I>, Output=Integer<Circuit, I>>, &(mode_a, mode_b));
                 }),
             },
         }

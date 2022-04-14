@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_circuits_environment::CircuitOrMode;
 
 impl<E: Environment> Neg for Field<E> {
     type Output = Self;
@@ -36,7 +35,7 @@ impl<E: Environment> Neg for &Field<E> {
 }
 
 impl<E: Environment> Count<dyn Neg<Output = Field<E>>> for Field<E> {
-    type Case = CircuitOrMode<Field<E>>;
+    type Case = Mode;
 
     fn count(_input: &Self::Case) -> CircuitCount {
         CircuitCount::exact(0, 0, 0, 0)
@@ -44,10 +43,10 @@ impl<E: Environment> Count<dyn Neg<Output = Field<E>>> for Field<E> {
 }
 
 impl<E: Environment> OutputMode<dyn Neg<Output = Field<E>>> for Field<E> {
-    type Case = CircuitOrMode<Field<E>>;
+    type Case = Mode;
 
     fn output_mode(input: &Self::Case) -> Mode {
-        match input.mode() {
+        match input {
             Mode::Constant => Mode::Constant,
             _ => Mode::Private,
         }

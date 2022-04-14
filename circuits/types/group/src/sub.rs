@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_circuits_environment::CircuitOrMode;
 
 impl<E: Environment> Sub<Self> for Group<E> {
     type Output = Self;
@@ -54,10 +53,10 @@ impl<E: Environment> SubAssign<&Self> for Group<E> {
 }
 
 impl<E: Environment> Count<dyn Sub<Group<E>, Output = Group<E>>> for Group<E> {
-    type Case = (CircuitOrMode<Group<E>>, CircuitOrMode<Group<E>>);
+    type Case = (Mode, Mode);
 
     fn count(input: &Self::Case) -> CircuitCount {
-        match (input.0.mode(), input.1.mode()) {
+        match (input.0, input.1) {
             (Mode::Constant, Mode::Constant) => CircuitCount::exact(4, 0, 0, 0),
             (Mode::Constant, _) | (_, Mode::Constant) => CircuitCount::exact(2, 0, 3, 3),
             (_, _) => CircuitCount::exact(2, 0, 6, 6),
@@ -66,10 +65,10 @@ impl<E: Environment> Count<dyn Sub<Group<E>, Output = Group<E>>> for Group<E> {
 }
 
 impl<E: Environment> OutputMode<dyn Sub<Group<E>, Output = Group<E>>> for Group<E> {
-    type Case = (CircuitOrMode<Group<E>>, CircuitOrMode<Group<E>>);
+    type Case = (Mode, Mode);
 
     fn output_mode(input: &Self::Case) -> Mode {
-        match (input.0.mode(), input.1.mode()) {
+        match (input.0, input.1) {
             (Mode::Constant, Mode::Constant) => Mode::Constant,
             (_, _) => Mode::Private,
         }
@@ -91,13 +90,13 @@ mod tests {
             assert_count!(
                 Group<Circuit>,
                 Add<Group<Circuit>, Output = Group<Circuit>>,
-                &(CircuitOrMode::Mode(a.eject_mode()), CircuitOrMode::Mode(b.eject_mode()))
+                &(a.eject_mode(), b.eject_mode())
             );
             assert_output_mode!(
                 candidate,
                 Group<Circuit>,
                 Add<Group<Circuit>, Output = Group<Circuit>>,
-                &(CircuitOrMode::Mode(a.eject_mode()), CircuitOrMode::Mode(b.eject_mode()))
+                &(a.eject_mode(), b.eject_mode())
             );
         });
     }
@@ -115,13 +114,13 @@ mod tests {
             assert_count!(
                 Group<Circuit>,
                 Add<Group<Circuit>, Output = Group<Circuit>>,
-                &(CircuitOrMode::Mode(a.eject_mode()), CircuitOrMode::Mode(b.eject_mode()))
+                &(a.eject_mode(), b.eject_mode())
             );
             assert_output_mode!(
                 candidate,
                 Group<Circuit>,
                 Add<Group<Circuit>, Output = Group<Circuit>>,
-                &(CircuitOrMode::Mode(a.eject_mode()), CircuitOrMode::Mode(b.eject_mode()))
+                &(a.eject_mode(), b.eject_mode())
             );
         });
     }

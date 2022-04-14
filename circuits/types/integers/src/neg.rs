@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_circuits_environment::CircuitOrMode;
 
 impl<E: Environment, I: IntegerType> Neg for Integer<E, I> {
     type Output = Integer<E, I>;
@@ -40,12 +39,12 @@ impl<E: Environment, I: IntegerType> Neg for &Integer<E, I> {
 }
 
 impl<E: Environment, I: IntegerType> Count<dyn Neg<Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = CircuitOrMode<Integer<E, I>>;
+    type Case = Mode;
 
     fn count(input: &Self::Case) -> CircuitCount {
         match I::is_signed() {
             false => E::halt("Unsigned integers cannot be negated"),
-            true => match input.mode() {
+            true => match input {
                 Mode::Constant => CircuitCount::exact(2 * I::BITS, 0, 0, 0),
                 _ => CircuitCount::exact(I::BITS, 0, I::BITS + 2, I::BITS + 4),
             },
@@ -54,10 +53,10 @@ impl<E: Environment, I: IntegerType> Count<dyn Neg<Output = Integer<E, I>>> for 
 }
 
 impl<E: Environment, I: IntegerType> OutputMode<dyn Neg<Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = CircuitOrMode<Integer<E, I>>;
+    type Case = Mode;
 
     fn output_mode(input: &Self::Case) -> Mode {
-        match input.mode() {
+        match input {
             Mode::Constant => Mode::Constant,
             _ => Mode::Private,
         }
@@ -85,16 +84,16 @@ mod tests {
             Some(expected) => Circuit::scope(name, || {
                 let candidate = a.neg();
                 assert_eq!(expected, candidate.eject_value());
-                assert_count!(Integer<Circuit, I>, Neg<Output=Integer<Circuit, I>>, &CircuitOrMode::Mode(mode));
-                assert_output_mode!(candidate, Integer<Circuit, I>, Neg<Output=Integer<Circuit, I>>, &CircuitOrMode::Mode(mode));
+                assert_count!(Integer<Circuit, I>, Neg<Output=Integer<Circuit, I>>, &mode);
+                assert_output_mode!(candidate, Integer<Circuit, I>, Neg<Output=Integer<Circuit, I>>, &mode);
             }),
             None => {
                 match mode {
                     Mode::Constant => check_unary_operation_halts(a, |a: Integer::<Circuit, I> | a.neg()),
                     _ => Circuit::scope(name, || {
                         let candidate = a.neg();
-                        assert_count_fails!(Integer<Circuit, I>, Neg<Output=Integer<Circuit, I>>, &CircuitOrMode::Mode(mode));
-                        assert_output_mode!(candidate, Integer<Circuit, I>, Neg<Output=Integer<Circuit, I>>, &CircuitOrMode::Mode(mode));
+                        assert_count_fails!(Integer<Circuit, I>, Neg<Output=Integer<Circuit, I>>, &mode);
+                        assert_output_mode!(candidate, Integer<Circuit, I>, Neg<Output=Integer<Circuit, I>>, &mode);
                     }),
                 }
             }
