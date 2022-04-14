@@ -34,7 +34,7 @@ use anyhow::Result;
 pub struct PoSWCircuit<N: Network> {
     block_header_root: N::BlockHeaderRoot,
     nonce: N::PoSWNonce,
-    hashed_leaves: Vec<<<N::BlockHeaderRootParameters as MerkleParameters>::H as CRH>::Output>,
+    hashed_leaves: Vec<<<N::BlockHeaderRootParameters as MerkleParameters>::LeafCRH as CRH>::Output>,
 }
 
 impl<N: Network> PoSWCircuit<N> {
@@ -87,7 +87,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for PoSWCircuit<N> {
         })?;
 
         let mask_crh_parameters = <N::BlockHeaderRootCRHGadget as MaskedCRHGadget<
-            <N::BlockHeaderRootParameters as MerkleParameters>::H,
+            <N::BlockHeaderRootParameters as MerkleParameters>::LeafCRH,
             N::InnerScalarField,
         >>::MaskParametersGadget::alloc_constant(
             &mut cs.ns(|| "new_mask_parameters"),
@@ -120,7 +120,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for PoSWCircuit<N> {
             .enumerate()
             .map(|(i, leaf)| {
                 <N::BlockHeaderRootCRHGadget as CRHGadget<
-                    <N::BlockHeaderRootParameters as MerkleParameters>::H,
+                    <N::BlockHeaderRootParameters as MerkleParameters>::LeafCRH,
                     N::InnerScalarField,
                 >>::OutputGadget::alloc(cs.ns(|| format!("leaf {}", i)), || Ok(leaf))
             })
@@ -128,7 +128,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for PoSWCircuit<N> {
 
         // Compute the root using the masked tree.
         let candidate_root = compute_masked_root::<
-            <N::BlockHeaderRootParameters as MerkleParameters>::H,
+            <N::BlockHeaderRootParameters as MerkleParameters>::LeafCRH,
             N::BlockHeaderRootCRHGadget,
             _,
             _,

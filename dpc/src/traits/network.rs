@@ -221,8 +221,8 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
 
     /// Masked Merkle scheme for the block header root on Proof of Succinct Work (PoSW). Invoked only over `Self::InnerScalarField`.
     type BlockHeaderRootCRH: CRH<Output = Self::InnerScalarField>;
-    type BlockHeaderRootCRHGadget: MaskedCRHGadget<<Self::BlockHeaderRootParameters as MerkleParameters>::H, Self::InnerScalarField, OutputGadget = <Self::PoSWMaskPRFGadget as PRFGadget<Self::PoSWMaskPRF, Self::InnerScalarField>>::Seed>;
-    type BlockHeaderRootParameters: MaskedMerkleParameters<H = Self::BlockHeaderRootCRH>;
+    type BlockHeaderRootCRHGadget: MaskedCRHGadget<<Self::BlockHeaderRootParameters as MerkleParameters>::LeafCRH, Self::InnerScalarField, OutputGadget = <Self::PoSWMaskPRFGadget as PRFGadget<Self::PoSWMaskPRF, Self::InnerScalarField>>::Seed>;
+    type BlockHeaderRootParameters: MaskedMerkleParameters<LeafCRH= Self::BlockHeaderRootCRH>;
     type BlockHeaderRoot: Bech32Locator<<Self::BlockHeaderRootCRH as CRH>::Output>;
 
     /// Commitment scheme for records. Invoked only over `Self::InnerScalarField`.
@@ -251,7 +251,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     /// Merkle scheme for computing the ledger root. Invoked only over `Self::InnerScalarField`.
     type LedgerRootCRH: CRH<Output = Self::InnerScalarField>;
     type LedgerRootCRHGadget: CRHGadget<Self::LedgerRootCRH, Self::InnerScalarField>;
-    type LedgerRootParameters: MerkleParameters<H = Self::LedgerRootCRH>;
+    type LedgerRootParameters: MerkleParameters<LeafCRH= Self::LedgerRootCRH>;
     type LedgerRoot: Bech32Locator<<Self::LedgerRootCRH as CRH>::Output>;
 
     /// Schemes for PoSW. Invoked only over `Self::InnerScalarField`.
@@ -261,7 +261,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
 
     /// CRH for deriving program IDs. Invoked only over `Self::OuterScalarField`.
     type ProgramIDCRH: CRH<Output = Self::InnerScalarField>;
-    type ProgramIDParameters: MerkleParameters<H = Self::ProgramIDCRH>;
+    type ProgramIDParameters: MerkleParameters<LeafCRH= Self::ProgramIDCRH>;
     type ProgramID: Bech32Locator<<Self::ProgramIDCRH as CRH>::Output>;
 
     /// Encryption scheme for records. Invoked only over `Self::InnerScalarField`.
@@ -283,19 +283,19 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     /// Merkle scheme for computing the block transactions root. Invoked only over `Self::InnerScalarField`.
     type TransactionsRootCRH: CRH<Output = Self::InnerScalarField>;
     type TransactionsRootCRHGadget: CRHGadget<Self::TransactionsRootCRH, Self::InnerScalarField>;
-    type TransactionsRootParameters: MerkleParameters<H = Self::TransactionsRootCRH>;
+    type TransactionsRootParameters: MerkleParameters<LeafCRH= Self::TransactionsRootCRH>;
     type TransactionsRoot: Bech32Locator<<Self::TransactionsRootCRH as CRH>::Output>;
 
     /// Merkle scheme for computing the transaction ID. Invoked only over `Self::InnerScalarField`.
     type TransactionIDCRH: CRH<Output = Self::InnerScalarField>;
     type TransactionIDCRHGadget: CRHGadget<Self::TransactionIDCRH, Self::InnerScalarField>;
-    type TransactionIDParameters: MerkleParameters<H = Self::TransactionIDCRH>;
+    type TransactionIDParameters: MerkleParameters<LeafCRH= Self::TransactionIDCRH>;
     type TransactionID: Bech32Locator<<Self::TransactionIDCRH as CRH>::Output>;
 
     /// Merkle scheme for computing the transition ID. Invoked only over `Self::InnerScalarField`.
     type TransitionIDCRH: CRH<Output = Self::InnerScalarField>;
     type TransitionIDCRHGadget: CRHGadget<Self::TransitionIDCRH, Self::InnerScalarField>;
-    type TransitionIDParameters: MerkleParameters<H = Self::TransitionIDCRH>;
+    type TransitionIDParameters: MerkleParameters<LeafCRH= Self::TransitionIDCRH>;
     type TransitionID: Bech32Locator<<Self::TransitionIDCRH as CRH>::Output>;
 
     /// Commitment scheme for value commitments. Invoked only over `Self::InnerScalarField`.

@@ -48,11 +48,13 @@ use crate::{
 
 const PEDERSEN_NUM_WINDOWS: usize = 256;
 const PEDERSEN_WINDOW_SIZE: usize = 4;
+const PEDERSEN_LEAF_WINDOW_SIZE: usize = 2;
 
 const BHP_NUM_WINDOWS: usize = 32;
 const BHP_WINDOW_SIZE: usize = 60;
+const BHP_LEAF_WINDOW_SIZE: usize = 30;
 
-fn generate_merkle_tree<P: MerkleParameters, F: PrimeField, HG: CRHGadget<P::H, F>>(
+fn generate_merkle_tree<P: MerkleParameters, F: PrimeField, HG: CRHGadget<P::LeafCRH, F>>(
     leaves: &[[u8; 30]],
     use_bad_root: bool,
 ) {
@@ -67,7 +69,7 @@ fn generate_merkle_tree<P: MerkleParameters, F: PrimeField, HG: CRHGadget<P::H, 
 
         // Allocate Merkle tree root
         let root = <HG as CRHGadget<_, _>>::OutputGadget::alloc(&mut cs.ns(|| format!("new_digest_{}", i)), || {
-            if use_bad_root { Ok(<P::H as CRH>::Output::default()) } else { Ok(*root) }
+            if use_bad_root { Ok(<P::LeafCRH as CRH>::Output::default()) } else { Ok(*root) }
         })
         .unwrap();
 
@@ -110,7 +112,7 @@ fn generate_merkle_tree<P: MerkleParameters, F: PrimeField, HG: CRHGadget<P::H, 
     assert!(satisfied);
 }
 
-fn generate_masked_merkle_tree<P: MaskedMerkleParameters, F: PrimeField, HG: MaskedCRHGadget<P::H, F>>(
+fn generate_masked_merkle_tree<P: MaskedMerkleParameters, F: PrimeField, HG: MaskedCRHGadget<P::LeafCRH, F>>(
     leaves: &[[u8; 30]],
     use_bad_root: bool,
 ) {
@@ -154,7 +156,7 @@ fn generate_masked_merkle_tree<P: MaskedMerkleParameters, F: PrimeField, HG: Mas
     )
     .unwrap();
 
-    let given_root = if use_bad_root { <P::H as CRH>::Output::default() } else { *root };
+    let given_root = if use_bad_root { <P::LeafCRH as CRH>::Output::default() } else { *root };
 
     let given_root_gadget =
         <HG as CRHGadget<_, _>>::OutputGadget::alloc(&mut cs.ns(|| "given root"), || Ok(given_root)).unwrap();
@@ -169,7 +171,7 @@ fn generate_masked_merkle_tree<P: MaskedMerkleParameters, F: PrimeField, HG: Mas
     assert!(cs.is_satisfied());
 }
 
-fn update_merkle_tree<P: MerkleParameters, F: PrimeField, HG: CRHGadget<P::H, F>>(leaves: &[[u8; 30]]) {
+fn update_merkle_tree<P: MerkleParameters, F: PrimeField, HG: CRHGadget<P::LeafCRH, F>>(leaves: &[[u8; 30]]) {
     let merkle_parameters = Arc::new(P::setup("merkle_tree_test"));
     let tree = MerkleTree::<P>::new(merkle_parameters.clone(), leaves).unwrap();
     let root = tree.root();
@@ -219,10 +221,11 @@ fn update_merkle_tree<P: MerkleParameters, F: PrimeField, HG: CRHGadget<P::H, F>
 mod merkle_tree_pedersen_crh {
     use super::*;
 
-    type H = PedersenCRH<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
+    type LeafCRH = PedersenCRH<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_LEAF_WINDOW_SIZE>;
+    type TwoToOneCRH = PedersenCRH<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
     type HG = PedersenCRHGadget<EdwardsAffine, Fr, EdwardsBls12Gadget, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
 
-    type EdwardsMerkleParameters = MaskedMerkleTreeParameters<H, 4>;
+    type EdwardsMerkleParameters = MaskedMerkleTreeParameters<LeafCRH, TwoToOneCRH, 4>;
 
     #[test]
     fn good_root_test() {
@@ -268,11 +271,12 @@ mod merkle_tree_pedersen_crh {
 mod merkle_tree_compressed_pedersen_crh {
     use super::*;
 
-    type H = PedersenCompressedCRH<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
+    type LeafCRH = PedersenCompressedCRH<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_LEAF_WINDOW_SIZE>;
+    type TwoToOneCRH = PedersenCompressedCRH<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
     type HG =
         PedersenCompressedCRHGadget<EdwardsAffine, Fr, EdwardsBls12Gadget, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
 
-    type EdwardsMerkleParameters = MaskedMerkleTreeParameters<H, 4>;
+    type EdwardsMerkleParameters = MaskedMerkleTreeParameters<LeafCRH, TwoToOneCRH, 4>;
 
     #[test]
     fn good_root_test() {
@@ -345,10 +349,11 @@ mod merkle_tree_compressed_pedersen_crh {
 mod merkle_tree_bowe_hopwood_pedersen_crh {
     use super::*;
 
-    type H = BHPCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
+    type LeafCRH = BHPCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_LEAF_WINDOW_SIZE>;
+    type TwoToOneCRH = BHPCRH<EdwardsProjective, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
     type HG = BHPCRHGadget<EdwardsAffine, Fr, EdwardsBls12Gadget, BHP_NUM_WINDOWS, BHP_WINDOW_SIZE>;
 
-    type EdwardsMerkleParameters = MaskedMerkleTreeParameters<H, 4>;
+    type EdwardsMerkleParameters = MaskedMerkleTreeParameters<LeafCRH, TwoToOneCRH, 4>;
 
     #[test]
     fn good_root_test() {
@@ -399,7 +404,7 @@ mod merkle_tree_poseidon {
     type H = PoseidonCRH<Fr, 3>;
     type HG = PoseidonCRHGadget<Fr, 3>;
 
-    type EdwardsMerkleParameters = MaskedMerkleTreeParameters<H, 4>;
+    type EdwardsMerkleParameters = MaskedMerkleTreeParameters<H, H, 4>;
 
     #[test]
     fn good_root_test() {

@@ -30,14 +30,14 @@ use crate::{
     EqGadget,
 };
 
-pub struct MerklePathGadget<P: MerkleParameters, HG: CRHGadget<P::H, F>, F: PrimeField> {
+pub struct MerklePathGadget<P: MerkleParameters, HG: CRHGadget<P::LeafCRH, F>, F: PrimeField> {
     /// `traversal[i]` is 0 (false) iff ith node from bottom to top is left.
     traversal: Vec<Boolean>,
     /// `path[i]` is the entry of sibling of ith node from bottom to top.
     path: Vec<HG::OutputGadget>,
 }
 
-impl<P: MerkleParameters, HG: CRHGadget<P::H, F>, F: PrimeField> MerklePathGadget<P, HG, F> {
+impl<P: MerkleParameters, HG: CRHGadget<P::LeafCRH, F>, F: PrimeField> MerklePathGadget<P, HG, F> {
     pub fn calculate_root<CS: ConstraintSystem<F>>(
         &self,
         mut cs: CS,
@@ -66,7 +66,7 @@ impl<P: MerkleParameters, HG: CRHGadget<P::H, F>, F: PrimeField> MerklePathGadge
                 sibling,
             )?;
 
-            curr_hash = hash_inner_node_gadget::<P::H, HG, F, _>(
+            curr_hash = hash_inner_node_gadget::<P::LeafCRH, HG, F, _>(
                 &mut cs.ns(|| format!("hash_inner_node_{}", i)),
                 crh,
                 &left_hash,
@@ -184,7 +184,7 @@ where
 impl<P, HGadget, F> AllocGadget<MerklePath<P>, F> for MerklePathGadget<P, HGadget, F>
 where
     P: MerkleParameters,
-    HGadget: CRHGadget<P::H, F>,
+    HGadget: CRHGadget<P::LeafCRH, F>,
     F: PrimeField,
 {
     fn alloc<Fn, T, CS: ConstraintSystem<F>>(mut cs: CS, value_gen: Fn) -> Result<Self, SynthesisError>
