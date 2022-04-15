@@ -19,6 +19,10 @@ use crate::{Eject, Mode};
 /// Helper enum used in the case where a circuit's output mode or counts are determined by
 /// its mode and the actual value of the circuit.
 /// See Boolean::nor, where exactly one of the operands is a constant, for an example.
+// TODO: CircuitOrMode::Circuit is only used in the case where the circuit is a constant.
+//       Need to enforce this in the enum. Or refactor to Mode and Primitive
+// TODO: References to the circuit
+#[derive(Debug, Clone)]
 pub enum CircuitOrMode<T: Eject> {
     Circuit(T),
     Mode(Mode),
@@ -60,6 +64,7 @@ impl<T: Eject> StaticParameter for CircuitOrMode<T> {}
 
 // Implement StaticParameter for composite types.
 impl<T: StaticParameter> StaticParameter for Vec<T> {}
+impl<T: StaticParameter> StaticParameter for [T] {}
 impl<T: StaticParameter> StaticParameter for &[T] {}
 
 impl<P0: StaticParameter, P1: StaticParameter> StaticParameter for (P0, P1) {}
