@@ -222,7 +222,9 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     /// Masked Merkle scheme for the block header root on Proof of Succinct Work (PoSW). Invoked only over `Self::InnerScalarField`.
     type BlockHeaderRootCRH: CRH<Output = Self::InnerScalarField>;
     type BlockHeaderRootCRHGadget: MaskedCRHGadget<<Self::BlockHeaderRootParameters as MerkleParameters>::LeafCRH, Self::InnerScalarField, OutputGadget = <Self::PoSWMaskPRFGadget as PRFGadget<Self::PoSWMaskPRF, Self::InnerScalarField>>::Seed>;
-    type BlockHeaderRootParameters: MaskedMerkleParameters<LeafCRH= Self::BlockHeaderRootCRH>;
+    type BlockHeaderRootTwoToOneCRH: CRH<Output = Self::InnerScalarField>;
+    type BlockHeaderRootTwoToOneCRHGadget: MaskedCRHGadget<<Self::BlockHeaderRootParameters as MerkleParameters>::TwoToOneCRH, Self::InnerScalarField, OutputGadget = <Self::PoSWMaskPRFGadget as PRFGadget<Self::PoSWMaskPRF, Self::InnerScalarField>>::Seed>;
+    type BlockHeaderRootParameters: MaskedMerkleParameters<LeafCRH= Self::BlockHeaderRootCRH, TwoToOneCRH= Self::BlockHeaderRootTwoToOneCRH>;
     type BlockHeaderRoot: Bech32Locator<<Self::BlockHeaderRootCRH as CRH>::Output>;
 
     /// Commitment scheme for records. Invoked only over `Self::InnerScalarField`.
@@ -250,8 +252,10 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
 
     /// Merkle scheme for computing the ledger root. Invoked only over `Self::InnerScalarField`.
     type LedgerRootCRH: CRH<Output = Self::InnerScalarField>;
-    type LedgerRootCRHGadget: CRHGadget<Self::LedgerRootCRH, Self::InnerScalarField>;
-    type LedgerRootParameters: MerkleParameters<LeafCRH= Self::LedgerRootCRH>;
+    type LedgerRootCRHGadget: CRHGadget<Self::LedgerRootCRH, Self::InnerScalarField, OutputGadget=<Self::LedgerRootTwoToOneCRHGadget as CRHGadget<Self::LedgerRootTwoToOneCRH, Self::InnerScalarField>>::OutputGadget>;
+    type LedgerRootTwoToOneCRH: CRH<Output = Self::InnerScalarField>;
+    type LedgerRootTwoToOneCRHGadget: CRHGadget<Self::LedgerRootTwoToOneCRH, Self::InnerScalarField>;
+    type LedgerRootParameters: MerkleParameters<LeafCRH= Self::LedgerRootCRH, TwoToOneCRH= Self::LedgerRootTwoToOneCRH>;
     type LedgerRoot: Bech32Locator<<Self::LedgerRootCRH as CRH>::Output>;
 
     /// Schemes for PoSW. Invoked only over `Self::InnerScalarField`.
@@ -261,7 +265,8 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
 
     /// CRH for deriving program IDs. Invoked only over `Self::OuterScalarField`.
     type ProgramIDCRH: CRH<Output = Self::InnerScalarField>;
-    type ProgramIDParameters: MerkleParameters<LeafCRH= Self::ProgramIDCRH>;
+    type ProgramIDTwoToOneCRH: CRH<Output = Self::InnerScalarField>;
+    type ProgramIDParameters: MerkleParameters<LeafCRH= Self::ProgramIDCRH, TwoToOneCRH= Self::ProgramIDTwoToOneCRH>;
     type ProgramID: Bech32Locator<<Self::ProgramIDCRH as CRH>::Output>;
 
     /// Encryption scheme for records. Invoked only over `Self::InnerScalarField`.
@@ -282,20 +287,26 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
 
     /// Merkle scheme for computing the block transactions root. Invoked only over `Self::InnerScalarField`.
     type TransactionsRootCRH: CRH<Output = Self::InnerScalarField>;
-    type TransactionsRootCRHGadget: CRHGadget<Self::TransactionsRootCRH, Self::InnerScalarField>;
-    type TransactionsRootParameters: MerkleParameters<LeafCRH= Self::TransactionsRootCRH>;
+    type TransactionsRootCRHGadget: CRHGadget<Self::TransactionsRootCRH, Self::InnerScalarField, OutputGadget=<Self::TransactionsRootTwoToOneCRHGadget as CRHGadget<Self::TransactionsRootTwoToOneCRH, Self::InnerScalarField>>::OutputGadget>;
+    type TransactionsRootTwoToOneCRH: CRH<Output = Self::InnerScalarField>;
+    type TransactionsRootTwoToOneCRHGadget: CRHGadget<Self::TransactionsRootTwoToOneCRH, Self::InnerScalarField>;
+    type TransactionsRootParameters: MerkleParameters<LeafCRH= Self::TransactionsRootCRH, TwoToOneCRH= Self::TransactionsRootTwoToOneCRH>;
     type TransactionsRoot: Bech32Locator<<Self::TransactionsRootCRH as CRH>::Output>;
 
     /// Merkle scheme for computing the transaction ID. Invoked only over `Self::InnerScalarField`.
     type TransactionIDCRH: CRH<Output = Self::InnerScalarField>;
-    type TransactionIDCRHGadget: CRHGadget<Self::TransactionIDCRH, Self::InnerScalarField>;
-    type TransactionIDParameters: MerkleParameters<LeafCRH= Self::TransactionIDCRH>;
+    type TransactionIDCRHGadget: CRHGadget<Self::TransactionIDCRH, Self::InnerScalarField, OutputGadget=<Self::TransactionIDTwoToOneCRHGadget as CRHGadget<Self::TransactionIDTwoToOneCRH, Self::InnerScalarField>>::OutputGadget>;
+    type TransactionIDTwoToOneCRH: CRH<Output = Self::InnerScalarField>;
+    type TransactionIDTwoToOneCRHGadget: CRHGadget<Self::TransactionIDTwoToOneCRH, Self::InnerScalarField>;
+    type TransactionIDParameters: MerkleParameters<LeafCRH= Self::TransactionIDCRH, TwoToOneCRH= Self::TransactionIDTwoToOneCRH>;
     type TransactionID: Bech32Locator<<Self::TransactionIDCRH as CRH>::Output>;
 
     /// Merkle scheme for computing the transition ID. Invoked only over `Self::InnerScalarField`.
     type TransitionIDCRH: CRH<Output = Self::InnerScalarField>;
-    type TransitionIDCRHGadget: CRHGadget<Self::TransitionIDCRH, Self::InnerScalarField>;
-    type TransitionIDParameters: MerkleParameters<LeafCRH= Self::TransitionIDCRH>;
+    type TransitionIDCRHGadget: CRHGadget<Self::TransitionIDCRH, Self::InnerScalarField, OutputGadget=<Self::TransitionIDTwoToOneCRHGadget as CRHGadget<Self::TransitionIDTwoToOneCRH, Self::InnerScalarField>>::OutputGadget>;
+    type TransitionIDTwoToOneCRH: CRH<Output = Self::InnerScalarField>;
+    type TransitionIDTwoToOneCRHGadget: CRHGadget<Self::TransitionIDTwoToOneCRH, Self::InnerScalarField>;
+    type TransitionIDParameters: MerkleParameters<LeafCRH= Self::TransitionIDCRH, TwoToOneCRH= Self::TransitionIDTwoToOneCRH>;
     type TransitionID: Bech32Locator<<Self::TransitionIDCRH as CRH>::Output>;
 
     /// Commitment scheme for value commitments. Invoked only over `Self::InnerScalarField`.
