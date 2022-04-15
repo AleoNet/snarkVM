@@ -184,8 +184,8 @@ impl Network for Testnet2 {
     type BlockHashCRHGadget = BHPCRHGadget<Self::ProgramAffineCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 3, 57>;
     type BlockHash = AleoLocator<<Self::BlockHashCRH as CRH>::Output, { Self::BLOCK_HASH_PREFIX }>;
 
-    type BlockHeaderRootCRH = PedersenCompressedCRH<Self::ProgramProjectiveCurve, 4, 64>;
-    type BlockHeaderRootCRHGadget = PedersenCompressedCRHGadget<Self::ProgramAffineCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 4, 64>;
+    type BlockHeaderRootCRH = PedersenCompressedCRH<Self::ProgramProjectiveCurve, 8, 36>;
+    type BlockHeaderRootCRHGadget = PedersenCompressedCRHGadget<Self::ProgramAffineCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 8, 36>;
     type BlockHeaderRootTwoToOneCRH = PedersenCompressedCRH<Self::ProgramProjectiveCurve, 4, 128>;
     type BlockHeaderRootTwoToOneCRHGadget = PedersenCompressedCRHGadget<Self::ProgramAffineCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 4, 128>;
     type BlockHeaderRootParameters = MaskedMerkleTreeParameters<Self::BlockHeaderRootCRH, Self::BlockHeaderRootTwoToOneCRH, { Self::HEADER_TREE_DEPTH }>;

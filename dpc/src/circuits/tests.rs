@@ -252,7 +252,7 @@ mod testnet1 {
     use super::*;
     use crate::testnet1::*;
 
-    const EXPECTED_INPUT_NUM_CONSTRAINTS: usize = 112157;
+    const EXPECTED_INPUT_NUM_CONSTRAINTS: usize = 112285;
     const EXPECTED_OUTPUT_NUM_CONSTRAINTS: usize = 18731;
 
     #[test]
@@ -278,7 +278,7 @@ mod testnet2 {
     use super::*;
     use crate::testnet2::*;
 
-    const EXPECTED_INPUT_NUM_CONSTRAINTS: usize = 112157;
+    const EXPECTED_INPUT_NUM_CONSTRAINTS: usize = 112285;
     const EXPECTED_OUTPUT_NUM_CONSTRAINTS: usize = 18731;
 
     #[test]
