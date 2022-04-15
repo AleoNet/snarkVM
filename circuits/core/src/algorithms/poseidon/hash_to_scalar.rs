@@ -16,17 +16,36 @@
 
 use super::*;
 
-impl<E: Environment> Poseidon<E> {
+impl<E: Environment> HashToScalar for Poseidon<E> {
+    type Input = Field<E>;
+    type Scalar = Scalar<E>;
+
     /// Returns a scalar from hashing the input.
     /// This method uses truncation (up to data bits) to project onto the scalar field.
     #[inline]
-    pub fn hash_to_scalar(&self, input: &[Field<E>]) -> Scalar<E> {
+    fn hash_to_scalar(&self, input: &[Self::Input]) -> Self::Scalar {
         // Hash the input to the base field.
         let output = self.hash(input);
 
         // Truncate the output to the size in data bits (1 bit less than the MODULUS) of the scalar.
         // Slicing here is safe as the base field is larger than the scalar field.
         Scalar::from_bits_le(&output.to_bits_le()[..E::ScalarField::size_in_data_bits()])
+    }
+}
+
+impl<E: Environment> Count<dyn HashToScalar<Input = Field<E>, Scalar = Field<E>>> for Poseidon<E> {
+    type Case = ();
+
+    fn count(_parameter: &Self::Case) -> CircuitCount {
+        todo!()
+    }
+}
+
+impl<E: Environment> OutputMode<dyn HashToScalar<Input = Field<E>, Scalar = Field<E>>> for Poseidon<E> {
+    type Case = ();
+
+    fn output_mode(_input: &Self::Case) -> Mode {
+        todo!()
     }
 }
 

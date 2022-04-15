@@ -78,12 +78,7 @@ mod tests {
             let candidate_output = !candidate_input;
             assert_eq!(expected, candidate_output.eject_value());
             assert_count!(Boolean<Circuit>, Not<Output = Boolean<Circuit>>, &mode);
-            assert_output_mode!(
-                candidate_output,
-                Boolean<Circuit>,
-                Not<Output = Boolean<Circuit>>,
-                &mode
-            );
+            assert_output_mode!(candidate_output, Boolean<Circuit>, Not<Output = Boolean<Circuit>>, &mode);
         });
     }
 

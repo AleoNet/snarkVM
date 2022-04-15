@@ -82,12 +82,7 @@ mod tests {
                     let result = candidate.inv();
                     assert_eq!(expected, result.eject_value());
                     assert_count!(Field<Circuit>, Inv<Output = Field<Circuit>>, &mode);
-                    assert_output_mode!(
-                        result,
-                        Field<Circuit>,
-                        Inv<Output = Field<Circuit>>,
-                        &mode
-                    );
+                    assert_output_mode!(result, Field<Circuit>, Inv<Output = Field<Circuit>>, &mode);
                 });
                 Circuit::reset();
             }

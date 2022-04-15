@@ -16,9 +16,12 @@
 
 use super::*;
 
-impl<E: Environment> Poseidon<E> {
+impl<E: Environment> HashMany for Poseidon<E> {
+    type Input = Field<E>;
+    type Output = Field<E>;
+
     #[inline]
-    pub fn hash_many(&self, input: &[Field<E>], num_outputs: usize) -> Vec<Field<E>> {
+    fn hash_many(&self, input: &[Self::Input], num_outputs: usize) -> Vec<Self::Output> {
         // Initialize a new sponge.
         let mut state = vec![Field::zero(); RATE + CAPACITY];
         let mut mode = DuplexSpongeMode::Absorbing { next_absorb_index: 0 };
@@ -26,6 +29,22 @@ impl<E: Environment> Poseidon<E> {
         // Absorb the input and squeeze the output.
         self.absorb(&mut state, &mut mode, input);
         self.squeeze(&mut state, &mut mode, num_outputs)
+    }
+}
+
+impl<E: Environment> Count<dyn HashMany<Input = Field<E>, Output = Field<E>>> for Poseidon<E> {
+    type Case = ();
+
+    fn count(_parameter: &Self::Case) -> CircuitCount {
+        todo!()
+    }
+}
+
+impl<E: Environment> OutputMode<dyn HashMany<Input = Field<E>, Output = Field<E>>> for Poseidon<E> {
+    type Case = ();
+
+    fn output_mode(_parameter: &Self::Case) -> Mode {
+        todo!()
     }
 }
 

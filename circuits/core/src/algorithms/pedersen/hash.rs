@@ -29,6 +29,26 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Hash
     }
 }
 
+impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+    Count<dyn Hash<Input = Boolean<E>, Output = Field<E>>> for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
+{
+    type Case = ();
+
+    fn count(_input: &Self::Case) -> CircuitCount {
+        todo!()
+    }
+}
+
+impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+    OutputMode<dyn Hash<Input = Boolean<E>, Output = Field<E>>> for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
+{
+    type Case = ();
+
+    fn output_mode(_input: &Self::Case) -> Mode {
+        todo!()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

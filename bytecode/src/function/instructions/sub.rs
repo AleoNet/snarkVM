@@ -122,18 +122,10 @@ impl<P: Program> Count<Self> for Sub<P> {
                 &(*mode_a, *mode_b)
             ),
             (LiteralType::I8(mode_a), LiteralType::I8(mode_b)) => {
-                count!(
-                    I8<P::Environment>,
-                    SubOp<I8<P::Environment>, Output = I8<P::Environment>>,
-                    &(*mode_a, *mode_b)
-                )
+                count!(I8<P::Environment>, SubOp<I8<P::Environment>, Output = I8<P::Environment>>, &(*mode_a, *mode_b))
             }
             (LiteralType::U8(mode_a), LiteralType::U8(mode_b)) => {
-                count!(
-                    U8<P::Environment>,
-                    SubOp<U8<P::Environment>, Output = U8<P::Environment>>,
-                    &(*mode_a, *mode_b)
-                )
+                count!(U8<P::Environment>, SubOp<U8<P::Environment>, Output = U8<P::Environment>>, &(*mode_a, *mode_b))
             }
             _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
         }

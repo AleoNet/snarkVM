@@ -16,9 +16,13 @@
 
 use super::*;
 
-impl<E: Environment> Poseidon<E> {
+impl<E: Environment> PseudorandomFunction for Poseidon<E> {
+    type Input = Field<E>;
+    type Output = Field<E>;
+    type Seed = Field<E>;
+
     #[inline]
-    pub fn prf(&self, seed: &Field<E>, input: &[Field<E>]) -> Field<E> {
+    fn prf(&self, seed: &Self::Seed, input: &[Self::Input]) -> Self::Output {
         // Construct the preimage: seed || length(input) || input.
         let mut preimage = Vec::with_capacity(2 + input.len());
         preimage.push(seed.clone());
@@ -27,6 +31,26 @@ impl<E: Environment> Poseidon<E> {
 
         // Hash the preimage to derive the PRF output.
         self.hash(&preimage)
+    }
+}
+
+impl<E: Environment> Count<dyn PseudorandomFunction<Seed = Field<E>, Input = Field<E>, Output = Field<E>>>
+    for Poseidon<E>
+{
+    type Case = ();
+
+    fn count(_parameter: &Self::Case) -> CircuitCount {
+        todo!()
+    }
+}
+
+impl<E: Environment> OutputMode<dyn PseudorandomFunction<Seed = Field<E>, Input = Field<E>, Output = Field<E>>>
+    for Poseidon<E>
+{
+    type Case = ();
+
+    fn output_mode(_input: &Self::Case) -> Mode {
+        todo!()
     }
 }
 

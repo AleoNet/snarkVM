@@ -49,6 +49,26 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> HashUnc
     }
 }
 
+impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+    Count<dyn HashUncompressed<Input = Boolean<E>, Output = Group<E>>> for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
+{
+    type Case = ();
+
+    fn count(_parameter: &Self::Case) -> CircuitCount {
+        todo!()
+    }
+}
+
+impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+    OutputMode<dyn HashUncompressed<Input = Boolean<E>, Output = Group<E>>> for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
+{
+    type Case = ();
+
+    fn output_mode(_parameter: &Self::Case) -> Mode {
+        todo!()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
