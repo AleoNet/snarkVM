@@ -66,7 +66,9 @@ pub trait Ternary {
     type Output;
 
     /// Returns `first` if `condition` is `true`, otherwise returns `second`.
-    fn ternary(condition: &Self::Boolean, first: &Self, second: &Self) -> Self::Output;
+    fn ternary(condition: &Self::Boolean, first: &Self, second: &Self) -> Self::Output
+    where
+        Self: Sized;
 }
 
 /// Binary operator for adding two values, enforcing an overflow never occurs.
