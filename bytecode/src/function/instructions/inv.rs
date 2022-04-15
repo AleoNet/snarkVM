@@ -20,19 +20,19 @@ use crate::{
     Program,
     Value,
 };
-use snarkvm_circuits::{Double as DoubleCircuit, Literal, Parser, ParserResult};
+use snarkvm_circuits::{Inv as InvCircuit, Literal, Parser, ParserResult};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
 use nom::combinator::map;
 use std::io::{Read, Result as IoResult, Write};
 
-/// Doubles `first`, storing the outcome in `destination`.
-pub struct Double<P: Program> {
+/// Computes the multiplicative inverse of `first`, storing the outcome in `destination`.
+pub struct Inv<P: Program> {
     operation: UnaryOperation<P>,
 }
 
-impl<P: Program> Double<P> {
+impl<P: Program> Inv<P> {
     /// Returns the operands of the instruction.
     pub fn operands(&self) -> Vec<Operand<P>> {
         self.operation.operands()
@@ -44,15 +44,15 @@ impl<P: Program> Double<P> {
     }
 }
 
-impl<P: Program> Opcode for Double<P> {
+impl<P: Program> Opcode for Inv<P> {
     /// Returns the opcode as a string.
     #[inline]
     fn opcode() -> &'static str {
-        "double"
+        "inv"
     }
 }
 
-impl<P: Program> Operation<P> for Double<P> {
+impl<P: Program> Operation<P> for Inv<P> {
     /// Evaluates the operation.
     #[inline]
     fn evaluate(&self, registers: &Registers<P>) {
@@ -64,8 +64,7 @@ impl<P: Program> Operation<P> for Double<P> {
 
         // Perform the operation.
         let result = match first {
-            Literal::Field(a) => Literal::Field(a.double()),
-            Literal::Group(a) => Literal::Group(a.double()),
+            Literal::Field(a) => Literal::Field(a.inv()),
             _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
         };
 
@@ -73,10 +72,10 @@ impl<P: Program> Operation<P> for Double<P> {
     }
 }
 
-impl<P: Program> Parser for Double<P> {
+impl<P: Program> Parser for Inv<P> {
     type Environment = P::Environment;
 
-    /// Parses a string into an 'double' operation.
+    /// Parses a string into an 'inv' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the operation from the string.
@@ -84,64 +83,61 @@ impl<P: Program> Parser for Double<P> {
     }
 }
 
-impl<P: Program> fmt::Display for Double<P> {
+impl<P: Program> fmt::Display for Inv<P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.operation)
     }
 }
 
-impl<P: Program> FromBytes for Double<P> {
+impl<P: Program> FromBytes for Inv<P> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         Ok(Self { operation: UnaryOperation::read_le(&mut reader)? })
     }
 }
 
-impl<P: Program> ToBytes for Double<P> {
+impl<P: Program> ToBytes for Inv<P> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.operation.write_le(&mut writer)
     }
 }
 
 #[allow(clippy::from_over_into)]
-impl<P: Program> Into<Instruction<P>> for Double<P> {
+impl<P: Program> Into<Instruction<P>> for Inv<P> {
     /// Converts the operation into an instruction.
     fn into(self) -> Instruction<P> {
-        Instruction::Double(self)
+        Instruction::Inv(self)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{test_instruction_halts, test_modes, Identifier, Process};
+    use crate::{test_instruction_halts, test_modes, unary_instruction_test, Identifier, Process};
 
-    test_modes!(field, Double, "1field", "2field");
-    test_modes!(
-        group,
-        Double,
-        "2group",
-        "6696402423798020098358712667671415812305707015226794708266486692814448135893group"
-    );
+    test_modes!(field, Inv, "1field", "1field");
+    unary_instruction_test!(field_inv, Inv, "2field.public", "4222230874714185212124412469390773265687949667577031913967616727958704619521field.private");
 
-    test_instruction_halts!(i8_double_halts, Double, "Invalid 'double' instruction", "1i8.constant");
-    test_instruction_halts!(i16_double_halts, Double, "Invalid 'double' instruction", "1i16.constant");
-    test_instruction_halts!(i32_double_halts, Double, "Invalid 'double' instruction", "1i32.constant");
-    test_instruction_halts!(i64_double_halts, Double, "Invalid 'double' instruction", "1i64.constant");
-    test_instruction_halts!(i128_double_halts, Double, "Invalid 'double' instruction", "1i128.constant");
-    test_instruction_halts!(u8_double_halts, Double, "Invalid 'double' instruction", "1u8.constant");
-    test_instruction_halts!(u16_double_halts, Double, "Invalid 'double' instruction", "1u16.constant");
-    test_instruction_halts!(u32_double_halts, Double, "Invalid 'double' instruction", "1u32.constant");
-    test_instruction_halts!(u64_double_halts, Double, "Invalid 'double' instruction", "1u64.constant");
-    test_instruction_halts!(u128_double_halts, Double, "Invalid 'double' instruction", "1u128.constant");
-    test_instruction_halts!(scalar_double_halts, Double, "Invalid 'double' instruction", "1scalar.constant");
+    test_instruction_halts!(field_zero_inv_halts, Inv, "Failed to compute the inverse for a base field element", "0field.constant");
+    test_instruction_halts!(i8_inv_halts, Inv, "Invalid 'inv' instruction", "1i8.constant");
+    test_instruction_halts!(i16_inv_halts, Inv, "Invalid 'inv' instruction", "1i16.constant");
+    test_instruction_halts!(i32_inv_halts, Inv, "Invalid 'inv' instruction", "1i32.constant");
+    test_instruction_halts!(i64_inv_halts, Inv, "Invalid 'inv' instruction", "1i64.constant");
+    test_instruction_halts!(i128_inv_halts, Inv, "Invalid 'inv' instruction", "1i128.constant");
+    test_instruction_halts!(u8_inv_halts, Inv, "Invalid 'inv' instruction", "1u8.constant");
+    test_instruction_halts!(u16_inv_halts, Inv, "Invalid 'inv' instruction", "1u16.constant");
+    test_instruction_halts!(u32_inv_halts, Inv, "Invalid 'inv' instruction", "1u32.constant");
+    test_instruction_halts!(u64_inv_halts, Inv, "Invalid 'inv' instruction", "1u64.constant");
+    test_instruction_halts!(u128_inv_halts, Inv, "Invalid 'inv' instruction", "1u128.constant");
+    test_instruction_halts!(scalar_inv_halts, Inv, "Invalid 'inv' instruction", "1scalar.constant");
+    test_instruction_halts!(group_inv_halts, Inv, "Invalid 'inv' instruction", "2group.constant");
     test_instruction_halts!(
-        address_double_halts,
-        Double,
-        "Invalid 'double' instruction",
+        address_inv_halts,
+        Inv,
+        "Invalid 'inv' instruction",
         "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.constant"
     );
-    test_instruction_halts!(boolean_double_halts, Double, "Invalid 'double' instruction", "true.constant");
-    test_instruction_halts!(string_double_halts, Double, "Invalid 'double' instruction", "\"hello\".constant");
+    test_instruction_halts!(boolean_inv_halts, Inv, "Invalid 'inv' instruction", "true.constant");
+    test_instruction_halts!(string_inv_halts, Inv, "Invalid 'inv' instruction", "\"hello\".constant");
 
     #[test]
     #[should_panic(expected = "message is not a literal")]
@@ -156,6 +152,6 @@ mod tests {
         registers.define(&Register::from_str("r1"));
         registers.assign(&Register::from_str("r0"), first);
 
-        Double::from_str("r0 into r1").evaluate(&registers);
+        Inv::from_str("r0 into r1").evaluate(&registers);
     }
 }

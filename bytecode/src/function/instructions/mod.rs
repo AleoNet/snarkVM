@@ -35,6 +35,9 @@ pub(super) use double::*;
 pub(super) mod equal;
 pub(super) use equal::*;
 
+pub(super) mod inv;
+pub(super) use inv::*;
+
 pub(super) mod mul;
 pub(super) use mul::*;
 
@@ -148,8 +151,8 @@ pub enum Instruction<P: Program> {
     Double(Double<P>),
     /// Checks if `first` is equal to `second`, storing the outcome in `destination`.
     Equal(Equal<P>),
-    /// Returns true if `first` is not equal to `second`, storing the result in `destination`.
-    NotEqual(NotEqual<P>),
+    /// Computes the multiplicative inverse of `first`, storing the outcome in `destination`.
+    Inv(Inv<P>),
     /// Multiplies `first` with `second`, storing the outcome in `destination`.
     Mul(Mul<P>),
     /// Multiplies `first` with `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
@@ -162,6 +165,8 @@ pub enum Instruction<P: Program> {
     Nor(Nor<P>),
     /// Flips each bit in the representation of `first`, storing the outcome in `destination`.
     Not(Not<P>),
+    /// Returns true if `first` is not equal to `second`, storing the result in `destination`.
+    NotEqual(NotEqual<P>),
     /// Performs a bitwise Or on `first` and `second`, storing the outcome in `destination`.
     Or(Or<P>),
     /// Computes `first - second`, storing the outcome in `destination`.
@@ -184,6 +189,7 @@ impl<P: Program> Instruction<P> {
             Self::DivWrapped(..) => DivWrapped::<P>::opcode(),
             Self::Double(..) => Double::<P>::opcode(),
             Self::Equal(..) => Equal::<P>::opcode(),
+            Self::Inv(..) => Inv::<P>::opcode(),
             Self::Mul(..) => Mul::<P>::opcode(),
             Self::MulWrapped(..) => MulWrapped::<P>::opcode(),
             Self::Nand(..) => Nand::<P>::opcode(),
@@ -209,6 +215,7 @@ impl<P: Program> Instruction<P> {
             Self::DivWrapped(div_wrapped) => div_wrapped.operands(),
             Self::Double(double) => double.operands(),
             Self::Equal(equal) => equal.operands(),
+            Self::Inv(inv) => inv.operands(),
             Self::Mul(mul) => mul.operands(),
             Self::MulWrapped(mul_wrapped) => mul_wrapped.operands(),
             Self::Nand(nand) => nand.operands(),
@@ -234,6 +241,7 @@ impl<P: Program> Instruction<P> {
             Self::DivWrapped(div_wrapped) => div_wrapped.destination(),
             Self::Double(double) => double.destination(),
             Self::Equal(equal) => equal.destination(),
+            Self::Inv(inv) => inv.destination(),
             Self::Mul(mul) => mul.destination(),
             Self::MulWrapped(mul_wrapped) => mul_wrapped.destination(),
             Self::Nand(nand) => nand.destination(),
@@ -259,6 +267,7 @@ impl<P: Program> Instruction<P> {
             Self::DivWrapped(instruction) => instruction.evaluate(registers),
             Self::Double(instruction) => instruction.evaluate(registers),
             Self::Equal(instruction) => instruction.evaluate(registers),
+            Self::Inv(instruction) => instruction.evaluate(registers),
             Self::Mul(instruction) => instruction.evaluate(registers),
             Self::MulWrapped(instruction) => instruction.evaluate(registers),
             Self::Nand(instruction) => instruction.evaluate(registers),
@@ -292,6 +301,7 @@ impl<P: Program> Parser for Instruction<P> {
             preceded(pair(tag(DivWrapped::<P>::opcode()), tag(" ")), map(DivWrapped::parse, Into::into)),
             preceded(pair(tag(Double::<P>::opcode()), tag(" ")), map(Double::parse, Into::into)),
             preceded(pair(tag(Equal::<P>::opcode()), tag(" ")), map(Equal::parse, Into::into)),
+            preceded(pair(tag(Inv::<P>::opcode()), tag(" ")), map(Inv::parse, Into::into)),
             preceded(pair(tag(Mul::<P>::opcode()), tag(" ")), map(Mul::parse, Into::into)),
             preceded(pair(tag(MulWrapped::<P>::opcode()), tag(" ")), map(MulWrapped::parse, Into::into)),
             preceded(pair(tag(Nand::<P>::opcode()), tag(" ")), map(Nand::parse, Into::into)),
@@ -321,6 +331,7 @@ impl<P: Program> fmt::Display for Instruction<P> {
             Self::DivWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Double(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Equal(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::Inv(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Mul(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::MulWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Nand(instruction) => write!(f, "{} {};", self.opcode(), instruction),
@@ -347,18 +358,19 @@ impl<P: Program> FromBytes for Instruction<P> {
             4 => Ok(Self::DivWrapped(DivWrapped::read_le(&mut reader)?)),
             5 => Ok(Self::Double(Double::read_le(&mut reader)?)),
             6 => Ok(Self::Equal(Equal::read_le(&mut reader)?)),
-            7 => Ok(Self::Mul(Mul::read_le(&mut reader)?)),
-            8 => Ok(Self::MulWrapped(MulWrapped::read_le(&mut reader)?)),
-            9 => Ok(Self::Nand(Nand::read_le(&mut reader)?)),
-            10 => Ok(Self::Neg(Neg::read_le(&mut reader)?)),
-            11 => Ok(Self::Nor(Nor::read_le(&mut reader)?)),
-            12 => Ok(Self::Not(Not::read_le(&mut reader)?)),
-            13 => Ok(Self::NotEqual(NotEqual::read_le(&mut reader)?)),
-            14 => Ok(Self::Or(Or::read_le(&mut reader)?)),
-            15 => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
-            16 => Ok(Self::SubWrapped(SubWrapped::read_le(&mut reader)?)),
-            17 => Ok(Self::Xor(Xor::read_le(&mut reader)?)),
-            18.. => Err(error(format!("Failed to deserialize an instruction of code {code}"))),
+            7 => Ok(Self::Inv(Inv::read_le(&mut reader)?)),
+            8 => Ok(Self::Mul(Mul::read_le(&mut reader)?)),
+            9 => Ok(Self::MulWrapped(MulWrapped::read_le(&mut reader)?)),
+            10 => Ok(Self::Nand(Nand::read_le(&mut reader)?)),
+            11 => Ok(Self::Neg(Neg::read_le(&mut reader)?)),
+            12 => Ok(Self::Nor(Nor::read_le(&mut reader)?)),
+            13 => Ok(Self::Not(Not::read_le(&mut reader)?)),
+            14 => Ok(Self::NotEqual(NotEqual::read_le(&mut reader)?)),
+            15 => Ok(Self::Or(Or::read_le(&mut reader)?)),
+            16 => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
+            17 => Ok(Self::SubWrapped(SubWrapped::read_le(&mut reader)?)),
+            18 => Ok(Self::Xor(Xor::read_le(&mut reader)?)),
+            19.. => Err(error(format!("Failed to deserialize an instruction of code {code}"))),
         }
     }
 }
@@ -394,48 +406,52 @@ impl<P: Program> ToBytes for Instruction<P> {
                 u16::write_le(&6u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Mul(instruction) => {
+            Self::Inv(instruction) => {
                 u16::write_le(&7u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::MulWrapped(instruction) => {
+            Self::Mul(instruction) => {
                 u16::write_le(&8u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Nand(instruction) => {
+            Self::MulWrapped(instruction) => {
                 u16::write_le(&9u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Neg(instruction) => {
+            Self::Nand(instruction) => {
                 u16::write_le(&10u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Nor(instruction) => {
+            Self::Neg(instruction) => {
                 u16::write_le(&11u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Not(instruction) => {
+            Self::Nor(instruction) => {
                 u16::write_le(&12u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::NotEqual(instruction) => {
+            Self::Not(instruction) => {
                 u16::write_le(&13u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Or(instruction) => {
+            Self::NotEqual(instruction) => {
                 u16::write_le(&14u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Sub(instruction) => {
+            Self::Or(instruction) => {
                 u16::write_le(&15u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::SubWrapped(instruction) => {
+            Self::Sub(instruction) => {
                 u16::write_le(&16u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Xor(instruction) => {
+            Self::SubWrapped(instruction) => {
                 u16::write_le(&17u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::Xor(instruction) => {
+                u16::write_le(&18u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
         }
