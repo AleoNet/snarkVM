@@ -142,4 +142,1559 @@ impl<V: Ord + Add<Output = V> + Copy> Metric<V> {
     }
 }
 
-// TODO (@pranav) Test out metrics implementation.
+#[cfg(test)]
+mod test {
+    use super::*;
+    use snarkvm_utilities::{test_rng, UniformRand};
+
+    const ITERATIONS: usize = 1024;
+
+    #[test]
+    fn test_exact_is_satisfied() {
+        for _ in 0..ITERATIONS {
+            // Generate a random `Metric` and candidate value.
+            let value: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+            let metric = Metric::Exact(value);
+
+            // Check that the metric is only satisfied if the candidate is equal to the value.
+            assert!(metric.is_satisfied(value));
+            if candidate == value {
+                assert!(metric.is_satisfied(candidate));
+            } else {
+                assert!(!metric.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_exclusive_exclusive_range_is_satisfied() {
+        for _ in 0..ITERATIONS {
+            // Generate a random `Metric::UpperBound` and candidate value.
+            let first_bound: usize = u16::rand(&mut test_rng()) as usize;
+            let second_bound: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+            let (metric, lower_bound, upper_bound) = if first_bound <= second_bound {
+                (
+                    Metric::Range(Clusivity::Exclusive, first_bound, Clusivity::Exclusive, second_bound),
+                    first_bound,
+                    second_bound,
+                )
+            } else {
+                (
+                    Metric::Range(Clusivity::Exclusive, second_bound, Clusivity::Exclusive, first_bound),
+                    second_bound,
+                    first_bound,
+                )
+            };
+
+            // Check that the metric is only satisfied if the candidate is less than upper_bound.
+            assert!(!metric.is_satisfied(lower_bound));
+            assert!(!metric.is_satisfied(upper_bound));
+            if lower_bound < candidate && candidate < upper_bound {
+                assert!(metric.is_satisfied(candidate));
+            } else {
+                assert!(!metric.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_exclusive_inclusive_range_is_satisfied() {
+        for _ in 0..ITERATIONS {
+            // Generate a random `Metric::UpperBound` and candidate value.
+            let first_bound: usize = u16::rand(&mut test_rng()) as usize;
+            let second_bound: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+            let (metric, lower_bound, upper_bound) = if first_bound <= second_bound {
+                (
+                    Metric::Range(Clusivity::Exclusive, first_bound, Clusivity::Inclusive, second_bound),
+                    first_bound,
+                    second_bound,
+                )
+            } else {
+                (
+                    Metric::Range(Clusivity::Exclusive, second_bound, Clusivity::Inclusive, first_bound),
+                    second_bound,
+                    first_bound,
+                )
+            };
+
+            // Check that the metric is only satisfied if the candidate is less than upper_bound.
+            assert!(!metric.is_satisfied(lower_bound));
+            assert!(metric.is_satisfied(upper_bound));
+            if lower_bound < candidate && candidate <= upper_bound {
+                assert!(metric.is_satisfied(candidate));
+            } else {
+                assert!(!metric.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_inclusive_exclusive_range_is_satisfied() {
+        for _ in 0..ITERATIONS {
+            // Generate a random `Metric::UpperBound` and candidate value.
+            let first_bound: usize = u16::rand(&mut test_rng()) as usize;
+            let second_bound: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+            let (metric, lower_bound, upper_bound) = if first_bound <= second_bound {
+                (
+                    Metric::Range(Clusivity::Inclusive, first_bound, Clusivity::Exclusive, second_bound),
+                    first_bound,
+                    second_bound,
+                )
+            } else {
+                (
+                    Metric::Range(Clusivity::Inclusive, second_bound, Clusivity::Exclusive, first_bound),
+                    second_bound,
+                    first_bound,
+                )
+            };
+
+            // Check that the metric is only satisfied if the candidate is less than upper_bound.
+            assert!(metric.is_satisfied(lower_bound));
+            assert!(!metric.is_satisfied(upper_bound));
+            if lower_bound <= candidate && candidate < upper_bound {
+                assert!(metric.is_satisfied(candidate));
+            } else {
+                assert!(!metric.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_inclusive_inclusive_range_is_satisfied() {
+        for _ in 0..ITERATIONS {
+            // Generate a random `Metric::UpperBound` and candidate value.
+            let first_bound: usize = u16::rand(&mut test_rng()) as usize;
+            let second_bound: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+            let (metric, lower_bound, upper_bound) = if first_bound <= second_bound {
+                (
+                    Metric::Range(Clusivity::Inclusive, first_bound, Clusivity::Inclusive, second_bound),
+                    first_bound,
+                    second_bound,
+                )
+            } else {
+                (
+                    Metric::Range(Clusivity::Inclusive, second_bound, Clusivity::Inclusive, first_bound),
+                    second_bound,
+                    first_bound,
+                )
+            };
+
+            // Check that the metric is only satisfied if the candidate is less than upper_bound.
+            assert!(metric.is_satisfied(lower_bound));
+            assert!(metric.is_satisfied(upper_bound));
+            if lower_bound <= candidate && candidate <= upper_bound {
+                assert!(metric.is_satisfied(candidate));
+            } else {
+                assert!(!metric.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_exclusive_upper_bound_is_satisfied() {
+        for _ in 0..ITERATIONS {
+            // Generate a random `Metric::UpperBound` and candidate value.
+            let upper_bound: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+            let metric = Metric::UpperBound(Clusivity::Exclusive, upper_bound);
+
+            // Check that the metric is only satisfied if the candidate is less than upper_bound.
+            assert!(!metric.is_satisfied(upper_bound));
+            if candidate < upper_bound {
+                assert!(metric.is_satisfied(candidate));
+            } else {
+                assert!(!metric.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_inclusive_upper_bound_is_satisfied() {
+        for _ in 0..ITERATIONS {
+            // Generate a random `Metric::UpperBound` and candidate value.
+            let upper_bound: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+            let metric = Metric::UpperBound(Clusivity::Inclusive, upper_bound);
+
+            // Check that the metric is only satisfied if the candidate is less than or equal to upper_bound.
+            assert!(metric.is_satisfied(upper_bound));
+            if candidate <= upper_bound {
+                assert!(metric.is_satisfied(candidate));
+            } else {
+                assert!(!metric.is_satisfied(candidate));
+            }
+        }
+    }
+
+    // Test composition of metrics.
+
+    #[test]
+    fn test_exact_compose_with_exact() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let a = Metric::Exact(first);
+            let b = Metric::Exact(second);
+            let c = a.compose(&b);
+
+            assert!(c.is_satisfied(first + second));
+            if candidate == first + second {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_exact_compose_with_exclusive_exclusive_range() {
+        let value: usize = u16::rand(&mut test_rng()) as usize;
+        let first_bound: usize = u16::rand(&mut test_rng()) as usize;
+        let second_bound: usize = u16::rand(&mut test_rng()) as usize;
+        let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+        let a = Metric::Exact(value);
+        let (b, lower_bound, upper_bound) = if first_bound <= second_bound {
+            (
+                Metric::Range(Clusivity::Exclusive, first_bound, Clusivity::Exclusive, second_bound),
+                first_bound,
+                second_bound,
+            )
+        } else {
+            (
+                Metric::Range(Clusivity::Exclusive, second_bound, Clusivity::Exclusive, first_bound),
+                second_bound,
+                first_bound,
+            )
+        };
+        let c = a.compose(&b);
+
+        assert!(!c.is_satisfied(value + lower_bound));
+        assert!(!c.is_satisfied(value + upper_bound));
+        if value + lower_bound < candidate && candidate < value + upper_bound {
+            assert!(c.is_satisfied(candidate));
+        } else {
+            assert!(!c.is_satisfied(candidate));
+        }
+    }
+
+    #[test]
+    fn test_exact_compose_with_exclusive_inclusive_range() {
+        let value: usize = u16::rand(&mut test_rng()) as usize;
+        let first_bound: usize = u16::rand(&mut test_rng()) as usize;
+        let second_bound: usize = u16::rand(&mut test_rng()) as usize;
+        let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+        let a = Metric::Exact(value);
+        let (b, lower_bound, upper_bound) = if first_bound <= second_bound {
+            (
+                Metric::Range(Clusivity::Exclusive, first_bound, Clusivity::Inclusive, second_bound),
+                first_bound,
+                second_bound,
+            )
+        } else {
+            (
+                Metric::Range(Clusivity::Exclusive, second_bound, Clusivity::Inclusive, first_bound),
+                second_bound,
+                first_bound,
+            )
+        };
+        let c = a.compose(&b);
+
+        assert!(!c.is_satisfied(value + lower_bound));
+        assert!(c.is_satisfied(value + upper_bound));
+        if value + lower_bound < candidate && candidate <= value + upper_bound {
+            assert!(c.is_satisfied(candidate));
+        } else {
+            assert!(!c.is_satisfied(candidate));
+        }
+    }
+
+    #[test]
+    fn test_exact_compose_with_inclusive_exclusive_range() {
+        let value: usize = u16::rand(&mut test_rng()) as usize;
+        let first_bound: usize = u16::rand(&mut test_rng()) as usize;
+        let second_bound: usize = u16::rand(&mut test_rng()) as usize;
+        let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+        let a = Metric::Exact(value);
+        let (b, lower_bound, upper_bound) = if first_bound <= second_bound {
+            (
+                Metric::Range(Clusivity::Inclusive, first_bound, Clusivity::Exclusive, second_bound),
+                first_bound,
+                second_bound,
+            )
+        } else {
+            (
+                Metric::Range(Clusivity::Inclusive, second_bound, Clusivity::Exclusive, first_bound),
+                second_bound,
+                first_bound,
+            )
+        };
+        let c = a.compose(&b);
+
+        assert!(c.is_satisfied(value + lower_bound));
+        assert!(!c.is_satisfied(value + upper_bound));
+        if value + lower_bound <= candidate && candidate < value + upper_bound {
+            assert!(c.is_satisfied(candidate));
+        } else {
+            assert!(!c.is_satisfied(candidate));
+        }
+    }
+
+    #[test]
+    fn test_exact_compose_with_inclusive_inclusive_range() {
+        let value: usize = u16::rand(&mut test_rng()) as usize;
+        let first_bound: usize = u16::rand(&mut test_rng()) as usize;
+        let second_bound: usize = u16::rand(&mut test_rng()) as usize;
+        let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+        let a = Metric::Exact(value);
+        let (b, lower_bound, upper_bound) = if first_bound <= second_bound {
+            (
+                Metric::Range(Clusivity::Inclusive, first_bound, Clusivity::Inclusive, second_bound),
+                first_bound,
+                second_bound,
+            )
+        } else {
+            (
+                Metric::Range(Clusivity::Inclusive, second_bound, Clusivity::Inclusive, first_bound),
+                second_bound,
+                first_bound,
+            )
+        };
+        let c = a.compose(&b);
+
+        assert!(c.is_satisfied(value + lower_bound));
+        assert!(c.is_satisfied(value + upper_bound));
+        if value + lower_bound <= candidate && candidate <= value + upper_bound {
+            assert!(c.is_satisfied(candidate));
+        } else {
+            assert!(!c.is_satisfied(candidate));
+        }
+    }
+
+    #[test]
+    fn test_exact_compose_with_exclusive_upper_bound() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let a = Metric::Exact(first);
+            let b = Metric::UpperBound(Clusivity::Exclusive, second);
+            let c = a.compose(&b);
+
+            assert!(!c.is_satisfied(first + second));
+            if candidate < first + second {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_exact_compose_with_inclusive_upper_bound() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let a = Metric::Exact(first);
+            let b = Metric::UpperBound(Clusivity::Inclusive, second);
+            let c = a.compose(&b);
+
+            assert!(c.is_satisfied(first + second));
+            if candidate <= first + second {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_exclusive_exclusive_range_compose_with_exact() {
+        let value: usize = u16::rand(&mut test_rng()) as usize;
+        let first_bound: usize = u16::rand(&mut test_rng()) as usize;
+        let second_bound: usize = u16::rand(&mut test_rng()) as usize;
+        let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+        let (a, lower_bound, upper_bound) = if first_bound <= second_bound {
+            (
+                Metric::Range(Clusivity::Exclusive, first_bound, Clusivity::Exclusive, second_bound),
+                first_bound,
+                second_bound,
+            )
+        } else {
+            (
+                Metric::Range(Clusivity::Exclusive, second_bound, Clusivity::Exclusive, first_bound),
+                second_bound,
+                first_bound,
+            )
+        };
+        let b = Metric::Exact(value);
+        let c = a.compose(&b);
+
+        assert!(!c.is_satisfied(value + lower_bound));
+        assert!(!c.is_satisfied(value + upper_bound));
+        if value + lower_bound < candidate && candidate < value + upper_bound {
+            assert!(c.is_satisfied(candidate));
+        } else {
+            assert!(!c.is_satisfied(candidate));
+        }
+    }
+
+    #[test]
+    fn test_exclusive_inclusive_range_compose_with_exact() {
+        let value: usize = u16::rand(&mut test_rng()) as usize;
+        let first_bound: usize = u16::rand(&mut test_rng()) as usize;
+        let second_bound: usize = u16::rand(&mut test_rng()) as usize;
+        let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+        let (a, lower_bound, upper_bound) = if first_bound <= second_bound {
+            (
+                Metric::Range(Clusivity::Exclusive, first_bound, Clusivity::Inclusive, second_bound),
+                first_bound,
+                second_bound,
+            )
+        } else {
+            (
+                Metric::Range(Clusivity::Exclusive, second_bound, Clusivity::Inclusive, first_bound),
+                second_bound,
+                first_bound,
+            )
+        };
+        let b = Metric::Exact(value);
+        let c = a.compose(&b);
+
+        assert!(!c.is_satisfied(value + lower_bound));
+        assert!(c.is_satisfied(value + upper_bound));
+        if value + lower_bound < candidate && candidate <= value + upper_bound {
+            assert!(c.is_satisfied(candidate));
+        } else {
+            assert!(!c.is_satisfied(candidate));
+        }
+    }
+
+    #[test]
+    fn test_inclusive_exclusive_range_compose_with_exact() {
+        let value: usize = u16::rand(&mut test_rng()) as usize;
+        let first_bound: usize = u16::rand(&mut test_rng()) as usize;
+        let second_bound: usize = u16::rand(&mut test_rng()) as usize;
+        let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+        let (a, lower_bound, upper_bound) = if first_bound <= second_bound {
+            (
+                Metric::Range(Clusivity::Inclusive, first_bound, Clusivity::Exclusive, second_bound),
+                first_bound,
+                second_bound,
+            )
+        } else {
+            (
+                Metric::Range(Clusivity::Inclusive, second_bound, Clusivity::Exclusive, first_bound),
+                second_bound,
+                first_bound,
+            )
+        };
+        let b = Metric::Exact(value);
+        let c = a.compose(&b);
+
+        assert!(c.is_satisfied(value + lower_bound));
+        assert!(!c.is_satisfied(value + upper_bound));
+        if value + lower_bound <= candidate && candidate < value + upper_bound {
+            assert!(c.is_satisfied(candidate));
+        } else {
+            assert!(!c.is_satisfied(candidate));
+        }
+    }
+
+    #[test]
+    fn test_inclusive_inclusive_range_compose_with_exact() {
+        let value: usize = u16::rand(&mut test_rng()) as usize;
+        let first_bound: usize = u16::rand(&mut test_rng()) as usize;
+        let second_bound: usize = u16::rand(&mut test_rng()) as usize;
+        let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+        let (a, lower_bound, upper_bound) = if first_bound <= second_bound {
+            (
+                Metric::Range(Clusivity::Inclusive, first_bound, Clusivity::Inclusive, second_bound),
+                first_bound,
+                second_bound,
+            )
+        } else {
+            (
+                Metric::Range(Clusivity::Inclusive, second_bound, Clusivity::Inclusive, first_bound),
+                second_bound,
+                first_bound,
+            )
+        };
+        let b = Metric::Exact(value);
+        let c = a.compose(&b);
+
+        assert!(c.is_satisfied(value + lower_bound));
+        assert!(c.is_satisfied(value + upper_bound));
+        if value + lower_bound <= candidate && candidate <= value + upper_bound {
+            assert!(c.is_satisfied(candidate));
+        } else {
+            assert!(!c.is_satisfied(candidate));
+        }
+    }
+
+    #[test]
+    fn test_exclusive_exclusive_range_compose_with_exclusive_exclusive_range() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let third: usize = u16::rand(&mut test_rng()) as usize;
+            let fourth: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let (a, first_lower_bound, first_upper_bound) = if first <= second {
+                (Metric::Range(Clusivity::Exclusive, first, Clusivity::Exclusive, second), first, second)
+            } else {
+                (Metric::Range(Clusivity::Exclusive, second, Clusivity::Exclusive, first), second, first)
+            };
+            let (b, second_lower_bound, second_upper_bound) = if third <= fourth {
+                (Metric::Range(Clusivity::Exclusive, third, Clusivity::Exclusive, fourth), third, fourth)
+            } else {
+                (Metric::Range(Clusivity::Exclusive, fourth, Clusivity::Exclusive, third), fourth, third)
+            };
+            let c = a.compose(&b);
+
+            assert!(!c.is_satisfied(first_lower_bound + second_lower_bound));
+            assert!(!c.is_satisfied(first_upper_bound + second_upper_bound));
+            if first_lower_bound + second_lower_bound < candidate && candidate < first_upper_bound + second_upper_bound
+            {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_exclusive_exclusive_range_compose_with_exclusive_inclusive_range() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let third: usize = u16::rand(&mut test_rng()) as usize;
+            let fourth: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let (a, first_lower_bound, first_upper_bound) = if first <= second {
+                (Metric::Range(Clusivity::Exclusive, first, Clusivity::Exclusive, second), first, second)
+            } else {
+                (Metric::Range(Clusivity::Exclusive, second, Clusivity::Exclusive, first), second, first)
+            };
+            let (b, second_lower_bound, second_upper_bound) = if third <= fourth {
+                (Metric::Range(Clusivity::Exclusive, third, Clusivity::Inclusive, fourth), third, fourth)
+            } else {
+                (Metric::Range(Clusivity::Exclusive, fourth, Clusivity::Inclusive, third), fourth, third)
+            };
+            let c = a.compose(&b);
+
+            assert!(!c.is_satisfied(first_lower_bound + second_lower_bound));
+            assert!(!c.is_satisfied(first_upper_bound + second_upper_bound));
+            if first_lower_bound + second_lower_bound < candidate && candidate < first_upper_bound + second_upper_bound
+            {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_exclusive_exclusive_range_compose_with_inclusive_exclusive_range() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let third: usize = u16::rand(&mut test_rng()) as usize;
+            let fourth: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let (a, first_lower_bound, first_upper_bound) = if first <= second {
+                (Metric::Range(Clusivity::Exclusive, first, Clusivity::Exclusive, second), first, second)
+            } else {
+                (Metric::Range(Clusivity::Exclusive, second, Clusivity::Exclusive, first), second, first)
+            };
+            let (b, second_lower_bound, second_upper_bound) = if third <= fourth {
+                (Metric::Range(Clusivity::Inclusive, third, Clusivity::Exclusive, fourth), third, fourth)
+            } else {
+                (Metric::Range(Clusivity::Inclusive, fourth, Clusivity::Exclusive, third), fourth, third)
+            };
+            let c = a.compose(&b);
+
+            assert!(!c.is_satisfied(first_lower_bound + second_lower_bound));
+            assert!(!c.is_satisfied(first_upper_bound + second_upper_bound));
+            if first_lower_bound + second_lower_bound < candidate && candidate < first_upper_bound + second_upper_bound
+            {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_exclusive_exclusive_range_compose_with_inclusive_inclusive_range() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let third: usize = u16::rand(&mut test_rng()) as usize;
+            let fourth: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let (a, first_lower_bound, first_upper_bound) = if first <= second {
+                (Metric::Range(Clusivity::Exclusive, first, Clusivity::Exclusive, second), first, second)
+            } else {
+                (Metric::Range(Clusivity::Exclusive, second, Clusivity::Exclusive, first), second, first)
+            };
+            let (b, second_lower_bound, second_upper_bound) = if third <= fourth {
+                (Metric::Range(Clusivity::Inclusive, third, Clusivity::Inclusive, fourth), third, fourth)
+            } else {
+                (Metric::Range(Clusivity::Inclusive, fourth, Clusivity::Inclusive, third), fourth, third)
+            };
+            let c = a.compose(&b);
+
+            assert!(!c.is_satisfied(first_lower_bound + second_lower_bound));
+            assert!(!c.is_satisfied(first_upper_bound + second_upper_bound));
+            if first_lower_bound + second_lower_bound < candidate && candidate < first_upper_bound + second_upper_bound
+            {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_exclusive_inclusive_range_compose_with_exclusive_exclusive_range() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let third: usize = u16::rand(&mut test_rng()) as usize;
+            let fourth: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let (a, first_lower_bound, first_upper_bound) = if first <= second {
+                (Metric::Range(Clusivity::Exclusive, first, Clusivity::Inclusive, second), first, second)
+            } else {
+                (Metric::Range(Clusivity::Exclusive, second, Clusivity::Inclusive, first), second, first)
+            };
+            let (b, second_lower_bound, second_upper_bound) = if third <= fourth {
+                (Metric::Range(Clusivity::Exclusive, third, Clusivity::Exclusive, fourth), third, fourth)
+            } else {
+                (Metric::Range(Clusivity::Exclusive, fourth, Clusivity::Exclusive, third), fourth, third)
+            };
+            let c = a.compose(&b);
+
+            assert!(!c.is_satisfied(first_lower_bound + second_lower_bound));
+            assert!(!c.is_satisfied(first_upper_bound + second_upper_bound));
+            if first_lower_bound + second_lower_bound < candidate && candidate < first_upper_bound + second_upper_bound
+            {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_exclusive_inclusive_range_compose_with_exclusive_inclusive_range() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let third: usize = u16::rand(&mut test_rng()) as usize;
+            let fourth: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let (a, first_lower_bound, first_upper_bound) = if first <= second {
+                (Metric::Range(Clusivity::Exclusive, first, Clusivity::Inclusive, second), first, second)
+            } else {
+                (Metric::Range(Clusivity::Exclusive, second, Clusivity::Inclusive, first), second, first)
+            };
+            let (b, second_lower_bound, second_upper_bound) = if third <= fourth {
+                (Metric::Range(Clusivity::Exclusive, third, Clusivity::Inclusive, fourth), third, fourth)
+            } else {
+                (Metric::Range(Clusivity::Exclusive, fourth, Clusivity::Inclusive, third), fourth, third)
+            };
+            let c = a.compose(&b);
+
+            assert!(!c.is_satisfied(first_lower_bound + second_lower_bound));
+            assert!(c.is_satisfied(first_upper_bound + second_upper_bound));
+            if first_lower_bound + second_lower_bound < candidate && candidate <= first_upper_bound + second_upper_bound
+            {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_exclusive_inclusive_range_compose_with_inclusive_exclusive_range() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let third: usize = u16::rand(&mut test_rng()) as usize;
+            let fourth: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let (a, first_lower_bound, first_upper_bound) = if first <= second {
+                (Metric::Range(Clusivity::Exclusive, first, Clusivity::Inclusive, second), first, second)
+            } else {
+                (Metric::Range(Clusivity::Exclusive, second, Clusivity::Inclusive, first), second, first)
+            };
+            let (b, second_lower_bound, second_upper_bound) = if third <= fourth {
+                (Metric::Range(Clusivity::Inclusive, third, Clusivity::Exclusive, fourth), third, fourth)
+            } else {
+                (Metric::Range(Clusivity::Inclusive, fourth, Clusivity::Exclusive, third), fourth, third)
+            };
+            let c = a.compose(&b);
+
+            assert!(!c.is_satisfied(first_lower_bound + second_lower_bound));
+            assert!(!c.is_satisfied(first_upper_bound + second_upper_bound));
+            if first_lower_bound + second_lower_bound < candidate && candidate < first_upper_bound + second_upper_bound
+            {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_exclusive_inclusive_range_compose_with_inclusive_inclusive_range() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let third: usize = u16::rand(&mut test_rng()) as usize;
+            let fourth: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let (a, first_lower_bound, first_upper_bound) = if first <= second {
+                (Metric::Range(Clusivity::Exclusive, first, Clusivity::Inclusive, second), first, second)
+            } else {
+                (Metric::Range(Clusivity::Exclusive, second, Clusivity::Inclusive, first), second, first)
+            };
+            let (b, second_lower_bound, second_upper_bound) = if third <= fourth {
+                (Metric::Range(Clusivity::Inclusive, third, Clusivity::Inclusive, fourth), third, fourth)
+            } else {
+                (Metric::Range(Clusivity::Inclusive, fourth, Clusivity::Inclusive, third), fourth, third)
+            };
+            let c = a.compose(&b);
+
+            assert!(!c.is_satisfied(first_lower_bound + second_lower_bound));
+            assert!(c.is_satisfied(first_upper_bound + second_upper_bound));
+            if first_lower_bound + second_lower_bound < candidate && candidate <= first_upper_bound + second_upper_bound
+            {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_inclusive_exclusive_range_compose_with_exclusive_exclusive_range() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let third: usize = u16::rand(&mut test_rng()) as usize;
+            let fourth: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let (a, first_lower_bound, first_upper_bound) = if first <= second {
+                (Metric::Range(Clusivity::Inclusive, first, Clusivity::Exclusive, second), first, second)
+            } else {
+                (Metric::Range(Clusivity::Inclusive, second, Clusivity::Exclusive, first), second, first)
+            };
+            let (b, second_lower_bound, second_upper_bound) = if third <= fourth {
+                (Metric::Range(Clusivity::Exclusive, third, Clusivity::Exclusive, fourth), third, fourth)
+            } else {
+                (Metric::Range(Clusivity::Exclusive, fourth, Clusivity::Exclusive, third), fourth, third)
+            };
+            let c = a.compose(&b);
+
+            assert!(!c.is_satisfied(first_lower_bound + second_lower_bound));
+            assert!(!c.is_satisfied(first_upper_bound + second_upper_bound));
+            if first_lower_bound + second_lower_bound < candidate && candidate < first_upper_bound + second_upper_bound
+            {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_inclusive_exclusive_range_compose_with_exclusive_inclusive_range() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let third: usize = u16::rand(&mut test_rng()) as usize;
+            let fourth: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let (a, first_lower_bound, first_upper_bound) = if first <= second {
+                (Metric::Range(Clusivity::Inclusive, first, Clusivity::Exclusive, second), first, second)
+            } else {
+                (Metric::Range(Clusivity::Inclusive, second, Clusivity::Exclusive, first), second, first)
+            };
+            let (b, second_lower_bound, second_upper_bound) = if third <= fourth {
+                (Metric::Range(Clusivity::Exclusive, third, Clusivity::Inclusive, fourth), third, fourth)
+            } else {
+                (Metric::Range(Clusivity::Exclusive, fourth, Clusivity::Inclusive, third), fourth, third)
+            };
+            let c = a.compose(&b);
+
+            assert!(!c.is_satisfied(first_lower_bound + second_lower_bound));
+            assert!(!c.is_satisfied(first_upper_bound + second_upper_bound));
+            if first_lower_bound + second_lower_bound < candidate && candidate < first_upper_bound + second_upper_bound
+            {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_inclusive_exclusive_range_compose_with_inclusive_exclusive_range() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let third: usize = u16::rand(&mut test_rng()) as usize;
+            let fourth: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let (a, first_lower_bound, first_upper_bound) = if first <= second {
+                (Metric::Range(Clusivity::Inclusive, first, Clusivity::Exclusive, second), first, second)
+            } else {
+                (Metric::Range(Clusivity::Inclusive, second, Clusivity::Exclusive, first), second, first)
+            };
+            let (b, second_lower_bound, second_upper_bound) = if third <= fourth {
+                (Metric::Range(Clusivity::Inclusive, third, Clusivity::Exclusive, fourth), third, fourth)
+            } else {
+                (Metric::Range(Clusivity::Inclusive, fourth, Clusivity::Exclusive, third), fourth, third)
+            };
+            let c = a.compose(&b);
+
+            assert!(c.is_satisfied(first_lower_bound + second_lower_bound));
+            assert!(!c.is_satisfied(first_upper_bound + second_upper_bound));
+            if first_lower_bound + second_lower_bound <= candidate && candidate < first_upper_bound + second_upper_bound
+            {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_inclusive_exclusive_range_compose_with_inclusive_inclusive_range() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let third: usize = u16::rand(&mut test_rng()) as usize;
+            let fourth: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let (a, first_lower_bound, first_upper_bound) = if first <= second {
+                (Metric::Range(Clusivity::Inclusive, first, Clusivity::Exclusive, second), first, second)
+            } else {
+                (Metric::Range(Clusivity::Inclusive, second, Clusivity::Exclusive, first), second, first)
+            };
+            let (b, second_lower_bound, second_upper_bound) = if third <= fourth {
+                (Metric::Range(Clusivity::Inclusive, third, Clusivity::Inclusive, fourth), third, fourth)
+            } else {
+                (Metric::Range(Clusivity::Inclusive, fourth, Clusivity::Inclusive, third), fourth, third)
+            };
+            let c = a.compose(&b);
+
+            assert!(c.is_satisfied(first_lower_bound + second_lower_bound));
+            assert!(!c.is_satisfied(first_upper_bound + second_upper_bound));
+            if first_lower_bound + second_lower_bound <= candidate && candidate < first_upper_bound + second_upper_bound
+            {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_inclusive_inclusive_range_compose_with_exclusive_exclusive_range() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let third: usize = u16::rand(&mut test_rng()) as usize;
+            let fourth: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let (a, first_lower_bound, first_upper_bound) = if first <= second {
+                (Metric::Range(Clusivity::Inclusive, first, Clusivity::Inclusive, second), first, second)
+            } else {
+                (Metric::Range(Clusivity::Inclusive, second, Clusivity::Inclusive, first), second, first)
+            };
+            let (b, second_lower_bound, second_upper_bound) = if third <= fourth {
+                (Metric::Range(Clusivity::Exclusive, third, Clusivity::Exclusive, fourth), third, fourth)
+            } else {
+                (Metric::Range(Clusivity::Exclusive, fourth, Clusivity::Exclusive, third), fourth, third)
+            };
+            let c = a.compose(&b);
+
+            assert!(!c.is_satisfied(first_lower_bound + second_lower_bound));
+            assert!(!c.is_satisfied(first_upper_bound + second_upper_bound));
+            if first_lower_bound + second_lower_bound < candidate && candidate < first_upper_bound + second_upper_bound
+            {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_inclusive_inclusive_range_compose_with_exclusive_inclusive_range() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let third: usize = u16::rand(&mut test_rng()) as usize;
+            let fourth: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let (a, first_lower_bound, first_upper_bound) = if first <= second {
+                (Metric::Range(Clusivity::Inclusive, first, Clusivity::Inclusive, second), first, second)
+            } else {
+                (Metric::Range(Clusivity::Inclusive, second, Clusivity::Inclusive, first), second, first)
+            };
+            let (b, second_lower_bound, second_upper_bound) = if third <= fourth {
+                (Metric::Range(Clusivity::Exclusive, third, Clusivity::Inclusive, fourth), third, fourth)
+            } else {
+                (Metric::Range(Clusivity::Exclusive, fourth, Clusivity::Inclusive, third), fourth, third)
+            };
+            let c = a.compose(&b);
+
+            assert!(!c.is_satisfied(first_lower_bound + second_lower_bound));
+            assert!(c.is_satisfied(first_upper_bound + second_upper_bound));
+            if first_lower_bound + second_lower_bound < candidate && candidate <= first_upper_bound + second_upper_bound
+            {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_inclusive_inclusive_range_compose_with_inclusive_exclusive_range() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let third: usize = u16::rand(&mut test_rng()) as usize;
+            let fourth: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let (a, first_lower_bound, first_upper_bound) = if first <= second {
+                (Metric::Range(Clusivity::Inclusive, first, Clusivity::Inclusive, second), first, second)
+            } else {
+                (Metric::Range(Clusivity::Inclusive, second, Clusivity::Inclusive, first), second, first)
+            };
+            let (b, second_lower_bound, second_upper_bound) = if third <= fourth {
+                (Metric::Range(Clusivity::Inclusive, third, Clusivity::Exclusive, fourth), third, fourth)
+            } else {
+                (Metric::Range(Clusivity::Inclusive, fourth, Clusivity::Exclusive, third), fourth, third)
+            };
+            let c = a.compose(&b);
+
+            assert!(c.is_satisfied(first_lower_bound + second_lower_bound));
+            assert!(!c.is_satisfied(first_upper_bound + second_upper_bound));
+            if first_lower_bound + second_lower_bound <= candidate && candidate < first_upper_bound + second_upper_bound
+            {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_inclusive_inclusive_range_compose_with_inclusive_inclusive_range() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let third: usize = u16::rand(&mut test_rng()) as usize;
+            let fourth: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let (a, first_lower_bound, first_upper_bound) = if first <= second {
+                (Metric::Range(Clusivity::Inclusive, first, Clusivity::Inclusive, second), first, second)
+            } else {
+                (Metric::Range(Clusivity::Inclusive, second, Clusivity::Inclusive, first), second, first)
+            };
+            let (b, second_lower_bound, second_upper_bound) = if third <= fourth {
+                (Metric::Range(Clusivity::Inclusive, third, Clusivity::Inclusive, fourth), third, fourth)
+            } else {
+                (Metric::Range(Clusivity::Inclusive, fourth, Clusivity::Inclusive, third), fourth, third)
+            };
+            let c = a.compose(&b);
+
+            assert!(c.is_satisfied(first_lower_bound + second_lower_bound));
+            assert!(c.is_satisfied(first_upper_bound + second_upper_bound));
+            if first_lower_bound + second_lower_bound <= candidate
+                && candidate <= first_upper_bound + second_upper_bound
+            {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_exclusive_exclusive_range_compose_with_exclusive_upper_bound() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let third: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let (a, lower_bound, upper_bound) = if second <= third {
+                (Metric::Range(Clusivity::Exclusive, second, Clusivity::Exclusive, third), second, third)
+            } else {
+                (Metric::Range(Clusivity::Exclusive, third, Clusivity::Exclusive, second), third, second)
+            };
+            let b = Metric::UpperBound(Clusivity::Exclusive, first);
+            let c = a.compose(&b);
+
+            assert!(!c.is_satisfied(lower_bound));
+            assert!(!c.is_satisfied(first + upper_bound));
+            if lower_bound < candidate && candidate < first + upper_bound {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_exclusive_inclusive_range_compose_with_exclusive_upper_bound() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let third: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let (a, lower_bound, upper_bound) = if second <= third {
+                (Metric::Range(Clusivity::Exclusive, second, Clusivity::Inclusive, third), second, third)
+            } else {
+                (Metric::Range(Clusivity::Exclusive, third, Clusivity::Inclusive, second), third, second)
+            };
+            let b = Metric::UpperBound(Clusivity::Exclusive, first);
+            let c = a.compose(&b);
+
+            assert!(!c.is_satisfied(lower_bound));
+            assert!(!c.is_satisfied(first + upper_bound));
+            if lower_bound < candidate && candidate < first + upper_bound {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_inclusive_exclusive_range_compose_with_exclusive_upper_bound() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let third: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let (a, lower_bound, upper_bound) = if second <= third {
+                (Metric::Range(Clusivity::Inclusive, second, Clusivity::Exclusive, third), second, third)
+            } else {
+                (Metric::Range(Clusivity::Inclusive, third, Clusivity::Exclusive, second), third, second)
+            };
+            let b = Metric::UpperBound(Clusivity::Exclusive, first);
+            let c = a.compose(&b);
+
+            assert!(c.is_satisfied(lower_bound));
+            assert!(!c.is_satisfied(first + upper_bound));
+            if lower_bound <= candidate && candidate < first + upper_bound {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_inclusive_inclusive_range_compose_with_exclusive_upper_bound() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let third: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let (a, lower_bound, upper_bound) = if second <= third {
+                (Metric::Range(Clusivity::Inclusive, second, Clusivity::Inclusive, third), second, third)
+            } else {
+                (Metric::Range(Clusivity::Inclusive, third, Clusivity::Inclusive, second), third, second)
+            };
+            let b = Metric::UpperBound(Clusivity::Exclusive, first);
+            let c = a.compose(&b);
+
+            assert!(c.is_satisfied(lower_bound));
+            assert!(!c.is_satisfied(first + upper_bound));
+            if lower_bound <= candidate && candidate < first + upper_bound {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_exclusive_exclusive_range_compose_with_inclusive_upper_bound() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let third: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let (a, lower_bound, upper_bound) = if second <= third {
+                (Metric::Range(Clusivity::Exclusive, second, Clusivity::Exclusive, third), second, third)
+            } else {
+                (Metric::Range(Clusivity::Exclusive, third, Clusivity::Exclusive, second), third, second)
+            };
+            let b = Metric::UpperBound(Clusivity::Inclusive, first);
+            let c = a.compose(&b);
+
+            assert!(!c.is_satisfied(lower_bound));
+            assert!(!c.is_satisfied(first + upper_bound));
+            if lower_bound < candidate && candidate < first + upper_bound {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_exclusive_inclusive_range_compose_with_inclusive_upper_bound() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let third: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let (a, lower_bound, upper_bound) = if second <= third {
+                (Metric::Range(Clusivity::Exclusive, second, Clusivity::Inclusive, third), second, third)
+            } else {
+                (Metric::Range(Clusivity::Exclusive, third, Clusivity::Inclusive, second), third, second)
+            };
+            let b = Metric::UpperBound(Clusivity::Inclusive, first);
+            let c = a.compose(&b);
+
+            assert!(!c.is_satisfied(lower_bound));
+            assert!(c.is_satisfied(first + upper_bound));
+            if lower_bound < candidate && candidate <= first + upper_bound {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_inclusive_exclusive_range_compose_with_inclusive_upper_bound() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let third: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let (a, lower_bound, upper_bound) = if second <= third {
+                (Metric::Range(Clusivity::Inclusive, second, Clusivity::Exclusive, third), second, third)
+            } else {
+                (Metric::Range(Clusivity::Inclusive, third, Clusivity::Exclusive, second), third, second)
+            };
+            let b = Metric::UpperBound(Clusivity::Inclusive, first);
+            let c = a.compose(&b);
+
+            assert!(c.is_satisfied(lower_bound));
+            assert!(!c.is_satisfied(first + upper_bound));
+            if lower_bound <= candidate && candidate < first + upper_bound {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_inclusive_inclusive_range_compose_with_inclusive_upper_bound() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let third: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let (a, lower_bound, upper_bound) = if second <= third {
+                (Metric::Range(Clusivity::Inclusive, second, Clusivity::Inclusive, third), second, third)
+            } else {
+                (Metric::Range(Clusivity::Inclusive, third, Clusivity::Inclusive, second), third, second)
+            };
+            let b = Metric::UpperBound(Clusivity::Inclusive, first);
+            let c = a.compose(&b);
+
+            assert!(c.is_satisfied(lower_bound));
+            assert!(c.is_satisfied(first + upper_bound));
+            if lower_bound <= candidate && candidate <= first + upper_bound {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_exclusive_upper_bound_compose_with_exact() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let a = Metric::UpperBound(Clusivity::Exclusive, second);
+            let b = Metric::Exact(first);
+            let c = a.compose(&b);
+
+            assert!(!c.is_satisfied(first + second));
+            if candidate < first + second {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_inclusive_upper_bound_compose_with_exact() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let a = Metric::UpperBound(Clusivity::Inclusive, second);
+            let b = Metric::Exact(first);
+            let c = a.compose(&b);
+
+            assert!(c.is_satisfied(first + second));
+            if candidate <= first + second {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_exclusive_upper_bound_compose_with_exclusive_exclusive_range() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let third: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let a = Metric::UpperBound(Clusivity::Exclusive, first);
+            let (b, lower_bound, upper_bound) = if second <= third {
+                (Metric::Range(Clusivity::Exclusive, second, Clusivity::Exclusive, third), second, third)
+            } else {
+                (Metric::Range(Clusivity::Exclusive, third, Clusivity::Exclusive, second), third, second)
+            };
+            let c = a.compose(&b);
+
+            assert!(!c.is_satisfied(lower_bound));
+            assert!(!c.is_satisfied(first + upper_bound));
+            if lower_bound < candidate && candidate < first + upper_bound {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_exclusive_upper_bound_compose_with_exclusive_inclusive_range() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let third: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let a = Metric::UpperBound(Clusivity::Exclusive, first);
+            let (b, lower_bound, upper_bound) = if second <= third {
+                (Metric::Range(Clusivity::Exclusive, second, Clusivity::Inclusive, third), second, third)
+            } else {
+                (Metric::Range(Clusivity::Exclusive, third, Clusivity::Inclusive, second), third, second)
+            };
+            let c = a.compose(&b);
+
+            assert!(!c.is_satisfied(lower_bound));
+            assert!(!c.is_satisfied(first + upper_bound));
+            if lower_bound < candidate && candidate < first + upper_bound {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_exclusive_upper_bound_compose_with_inclusive_exclusive_range() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let third: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let a = Metric::UpperBound(Clusivity::Exclusive, first);
+            let (b, lower_bound, upper_bound) = if second <= third {
+                (Metric::Range(Clusivity::Inclusive, second, Clusivity::Exclusive, third), second, third)
+            } else {
+                (Metric::Range(Clusivity::Inclusive, third, Clusivity::Exclusive, second), third, second)
+            };
+            let c = a.compose(&b);
+
+            assert!(c.is_satisfied(lower_bound));
+            assert!(!c.is_satisfied(first + upper_bound));
+            if lower_bound <= candidate && candidate < first + upper_bound {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_exclusive_upper_bound_compose_with_inclusive_inclusive_range() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let third: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let a = Metric::UpperBound(Clusivity::Exclusive, first);
+            let (b, lower_bound, upper_bound) = if second <= third {
+                (Metric::Range(Clusivity::Inclusive, second, Clusivity::Inclusive, third), second, third)
+            } else {
+                (Metric::Range(Clusivity::Inclusive, third, Clusivity::Inclusive, second), third, second)
+            };
+            let c = a.compose(&b);
+
+            assert!(c.is_satisfied(lower_bound));
+            assert!(!c.is_satisfied(first + upper_bound));
+            if lower_bound <= candidate && candidate < first + upper_bound {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_inclusive_upper_bound_compose_with_exclusive_exclusive_range() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let third: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let a = Metric::UpperBound(Clusivity::Inclusive, first);
+            let (b, lower_bound, upper_bound) = if second <= third {
+                (Metric::Range(Clusivity::Exclusive, second, Clusivity::Exclusive, third), second, third)
+            } else {
+                (Metric::Range(Clusivity::Exclusive, third, Clusivity::Exclusive, second), third, second)
+            };
+            let c = a.compose(&b);
+
+            assert!(!c.is_satisfied(lower_bound));
+            assert!(!c.is_satisfied(first + upper_bound));
+            if lower_bound < candidate && candidate < first + upper_bound {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_inclusive_upper_bound_compose_with_exclusive_inclusive_range() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let third: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let a = Metric::UpperBound(Clusivity::Inclusive, first);
+            let (b, lower_bound, upper_bound) = if second <= third {
+                (Metric::Range(Clusivity::Exclusive, second, Clusivity::Inclusive, third), second, third)
+            } else {
+                (Metric::Range(Clusivity::Exclusive, third, Clusivity::Inclusive, second), third, second)
+            };
+            let c = a.compose(&b);
+
+            assert!(!c.is_satisfied(lower_bound));
+            assert!(c.is_satisfied(first + upper_bound));
+            if lower_bound < candidate && candidate <= first + upper_bound {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_inclusive_upper_bound_compose_with_inclusive_exclusive_range() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let third: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let a = Metric::UpperBound(Clusivity::Inclusive, first);
+            let (b, lower_bound, upper_bound) = if second <= third {
+                (Metric::Range(Clusivity::Inclusive, second, Clusivity::Exclusive, third), second, third)
+            } else {
+                (Metric::Range(Clusivity::Inclusive, third, Clusivity::Exclusive, second), third, second)
+            };
+            let c = a.compose(&b);
+
+            assert!(c.is_satisfied(lower_bound));
+            assert!(!c.is_satisfied(first + upper_bound));
+            if lower_bound <= candidate && candidate < first + upper_bound {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_inclusive_upper_bound_compose_with_inclusive_inclusive_range() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let third: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let a = Metric::UpperBound(Clusivity::Inclusive, first);
+            let (b, lower_bound, upper_bound) = if second <= third {
+                (Metric::Range(Clusivity::Inclusive, second, Clusivity::Inclusive, third), second, third)
+            } else {
+                (Metric::Range(Clusivity::Inclusive, third, Clusivity::Inclusive, second), third, second)
+            };
+            let c = a.compose(&b);
+
+            assert!(c.is_satisfied(lower_bound));
+            assert!(c.is_satisfied(first + upper_bound));
+            if lower_bound <= candidate && candidate <= first + upper_bound {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_exclusive_upper_bound_compose_with_exclusive_upper_bound() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let a = Metric::UpperBound(Clusivity::Exclusive, second);
+            let b = Metric::UpperBound(Clusivity::Exclusive, first);
+            let c = a.compose(&b);
+
+            assert!(!c.is_satisfied(first + second));
+            if candidate < first + second {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_exclusive_upper_bound_compose_with_inclusive_upper_bound() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let a = Metric::UpperBound(Clusivity::Exclusive, second);
+            let b = Metric::UpperBound(Clusivity::Inclusive, first);
+            let c = a.compose(&b);
+
+            assert!(!c.is_satisfied(first + second));
+            if candidate < first + second {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_inclusive_upper_bound_compose_with_exclusive_upper_bound() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let a = Metric::UpperBound(Clusivity::Inclusive, second);
+            let b = Metric::UpperBound(Clusivity::Exclusive, first);
+            let c = a.compose(&b);
+
+            assert!(!c.is_satisfied(first + second));
+            if candidate < first + second {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+
+    #[test]
+    fn test_inclusive_upper_bound_compose_with_inclusive_upper_bound() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let a = Metric::UpperBound(Clusivity::Inclusive, second);
+            let b = Metric::UpperBound(Clusivity::Inclusive, first);
+            let c = a.compose(&b);
+
+            assert!(c.is_satisfied(first + second));
+            if candidate <= first + second {
+                assert!(c.is_satisfied(candidate));
+            } else {
+                assert!(!c.is_satisfied(candidate));
+            }
+        }
+    }
+}
