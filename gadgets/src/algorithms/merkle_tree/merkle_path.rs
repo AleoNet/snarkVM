@@ -103,6 +103,7 @@ impl<
         self.calculate_root(cs.ns(|| "calculate_root"), leaf_crh, crh, &new_leaf)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn update_and_check<CS: ConstraintSystem<F>>(
         &self,
         mut cs: CS,
