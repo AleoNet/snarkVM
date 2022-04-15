@@ -82,12 +82,13 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for PoSWCircuit<N> {
         // Note: This is *not* enforced in the circuit.
         assert_eq!(usize::pow(2, N::HEADER_TREE_DEPTH as u32), self.hashed_leaves.len());
 
-        let crh_parameters = N::BlockHeaderRootCRHGadget::alloc_constant(&mut cs.ns(|| "new_parameters"), || {
-            Ok(N::block_header_root_parameters().crh())
-        })?;
+        let two_to_one_crh_parameters =
+            N::BlockHeaderRootTwoToOneCRHGadget::alloc_constant(&mut cs.ns(|| "new_parameters"), || {
+                Ok(N::block_header_root_parameters().two_to_one_crh())
+            })?;
 
-        let mask_crh_parameters = <N::BlockHeaderRootCRHGadget as MaskedCRHGadget<
-            <N::BlockHeaderRootParameters as MerkleParameters>::LeafCRH,
+        let mask_crh_parameters = <N::BlockHeaderRootTwoToOneCRHGadget as MaskedCRHGadget<
+            <N::BlockHeaderRootParameters as MerkleParameters>::TwoToOneCRH,
             N::InnerScalarField,
         >>::MaskParametersGadget::alloc_constant(
             &mut cs.ns(|| "new_mask_parameters"),
@@ -128,14 +129,14 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for PoSWCircuit<N> {
 
         // Compute the root using the masked tree.
         let candidate_root = compute_masked_root::<
-            <N::BlockHeaderRootParameters as MerkleParameters>::LeafCRH,
-            N::BlockHeaderRootCRHGadget,
+            <N::BlockHeaderRootParameters as MerkleParameters>::TwoToOneCRH,
+            N::BlockHeaderRootTwoToOneCRHGadget,
             _,
             _,
             _,
         >(
             cs.ns(|| "compute masked root"),
-            &crh_parameters,
+            &two_to_one_crh_parameters,
             &mask_crh_parameters,
             &mask_bytes,
             &hashed_leaf_gadgets,

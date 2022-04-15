@@ -221,7 +221,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
 
     /// Masked Merkle scheme for the block header root on Proof of Succinct Work (PoSW). Invoked only over `Self::InnerScalarField`.
     type BlockHeaderRootCRH: CRH<Output = Self::InnerScalarField>;
-    type BlockHeaderRootCRHGadget: MaskedCRHGadget<<Self::BlockHeaderRootParameters as MerkleParameters>::LeafCRH, Self::InnerScalarField, OutputGadget = <Self::PoSWMaskPRFGadget as PRFGadget<Self::PoSWMaskPRF, Self::InnerScalarField>>::Seed>;
+    type BlockHeaderRootCRHGadget: CRHGadget<Self::BlockHeaderRootCRH, Self::InnerScalarField, OutputGadget=<Self::BlockHeaderRootTwoToOneCRHGadget as CRHGadget<Self::BlockHeaderRootTwoToOneCRH, Self::InnerScalarField>>::OutputGadget>;
     type BlockHeaderRootTwoToOneCRH: CRH<Output = Self::InnerScalarField>;
     type BlockHeaderRootTwoToOneCRHGadget: MaskedCRHGadget<<Self::BlockHeaderRootParameters as MerkleParameters>::TwoToOneCRH, Self::InnerScalarField, OutputGadget = <Self::PoSWMaskPRFGadget as PRFGadget<Self::PoSWMaskPRF, Self::InnerScalarField>>::Seed>;
     type BlockHeaderRootParameters: MaskedMerkleParameters<LeafCRH= Self::BlockHeaderRootCRH, TwoToOneCRH= Self::BlockHeaderRootTwoToOneCRH>;
