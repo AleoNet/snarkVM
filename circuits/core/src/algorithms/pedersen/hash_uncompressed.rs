@@ -16,7 +16,6 @@
 
 use super::*;
 
-use snarkvm_circuits_environment::{count, output_mode};
 use std::borrow::Cow;
 
 impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> HashUncompressed
@@ -53,8 +52,9 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> HashUnc
 impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     Count<dyn HashUncompressed<Input = Boolean<E>, Output = Group<E>>> for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
 {
-    type Case = [Mode];
+    type Case = Vec<Mode>;
 
+    #[inline]
     fn count(parameter: &Self::Case) -> CircuitCount {
         // Calculate the counts for constructing each of the individual group elements from the bits of the input.
         let group_initialization_counts = parameter
@@ -93,8 +93,9 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
 impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     OutputMode<dyn HashUncompressed<Input = Boolean<E>, Output = Group<E>>> for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
 {
-    type Case = [Mode];
+    type Case = Vec<Mode>;
 
+    #[inline]
     fn output_mode(parameter: &Self::Case) -> Mode {
         match parameter.iter().all(|mode| mode.is_constant()) {
             true => Mode::Constant,
@@ -142,13 +143,13 @@ mod tests {
                 assert_count!(
                     Pedersen<Circuit, NUM_WINDOWS, WINDOW_SIZE>,
                     HashUncompressed<Input = Boolean<Circuit>, Output = Group<Circuit>>,
-                    modes.as_slice()
+                    &modes
                 );
                 assert_output_mode!(
                     candidate,
                     Pedersen<Circuit, NUM_WINDOWS, WINDOW_SIZE>,
                     HashUncompressed<Input = Boolean<Circuit>, Output = Group<Circuit>>,
-                    modes.as_slice()
+                    &modes
                 );
             });
         }

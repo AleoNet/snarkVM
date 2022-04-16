@@ -42,6 +42,8 @@ pub use traits::*;
 
 pub mod prelude {
     pub use crate::{
+        count,
+        output_mode,
         rename_selfs,
         traits::*,
         witness,

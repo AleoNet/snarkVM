@@ -39,14 +39,49 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Commitm
     }
 }
 
-impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+impl<'a, E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     Count<dyn CommitmentScheme<Input = Boolean<E>, Output = Group<E>, Randomness = Boolean<E>>>
     for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
 {
-    type Case = ();
+    type Case = (Vec<Mode>, Vec<Mode>);
 
-    fn count(_input: &Self::Case) -> CircuitCount {
-        todo!()
+    fn count(parameters: &Self::Case) -> CircuitCount {
+        let (input_modes, randomness_modes) = parameters;
+        let uncompressed_count = count!(Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>, HashUncompressed<Input = Boolean<E>, Output = Group<E>>, input_modes);
+        let uncompressed_mode = output_mode!(Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>, HashUncompressed<Input = Boolean<E>, Output = Group<E>>, input_modes);
+
+        // Compute the const of constructing the group elements.
+        let group_initialize_count = randomness_modes
+            .iter()
+            .map(|mode| {
+                count!(
+                    Group<E>,
+                    Ternary<Boolean = Boolean<E>, Output = Group<E>>,
+                    &(*mode, Mode::Constant, Mode::Constant)
+                )
+            })
+            .fold(CircuitCount::exact(0, 0, 0, 0), |cummulative, count| cummulative.compose(&count));
+
+        // Determine the modes of each of the group elements.
+        let modes = randomness_modes.iter().map(|mode| {
+            // The `first` and `second` inputs to `Group::ternary` are always constant so we can directly determine the mode instead of
+            // using the `output_mode` macro. This avoids the need to use `CircuitOrMode` as a parameter, simplifying the logic of this function.
+            match mode.is_constant() {
+                true => Mode::Constant,
+                false => Mode::Private,
+            }
+        });
+
+        // Calculate the cost of summing the group elements.
+        let (_, summation_count) =
+            modes.fold((uncompressed_mode, CircuitCount::exact(0, 0, 0, 0)), |(prev_mode, cumulative), curr_mode| {
+                let mode = output_mode!(Group<E>, Add<Group<E>, Output = Group<E>>, &(prev_mode, curr_mode));
+                let sum_count = count!(Group<E>, Add<Group<E>, Output = Group<E>>, &(prev_mode, curr_mode));
+                (mode, cumulative.compose(&sum_count))
+            });
+
+        // Compute the cost of summing the hash and random elements.
+        uncompressed_count.compose(&group_initialize_count).compose(&summation_count)
     }
 }
 
@@ -54,10 +89,15 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     OutputMode<dyn CommitmentScheme<Input = Boolean<E>, Output = Group<E>, Randomness = Boolean<E>>>
     for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
 {
-    type Case = ();
+    type Case = (Vec<Mode>, Vec<Mode>);
 
-    fn output_mode(_input: &Self::Case) -> Mode {
-        todo!()
+    fn output_mode(parameters: &Self::Case) -> Mode {
+        let (input_modes, randomness_modes) = parameters;
+        match input_modes.iter().all(|m| *m == Mode::Constant) && randomness_modes.iter().all(|m| *m == Mode::Constant)
+        {
+            true => Mode::Constant,
+            false => Mode::Private,
+        }
     }
 }
 
@@ -79,13 +119,7 @@ mod tests {
     type Projective = <<Circuit as Environment>::Affine as AffineCurve>::Projective;
     type ScalarField = <Circuit as Environment>::ScalarField;
 
-    fn check_commitment<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(
-        mode: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
+    fn check_commitment<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(mode: Mode) {
         // Initialize the Pedersen hash.
         let native = NativePedersenCommitment::<Projective, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
         let circuit = Pedersen::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
@@ -107,8 +141,22 @@ mod tests {
             Circuit::scope(format!("Pedersen {mode} {i}"), || {
                 // Perform the hash operation.
                 let candidate = circuit.commit(&circuit_input, &circuit_randomness);
-                assert_scope!(num_constants, num_public, num_private, num_constraints);
                 assert_eq!(expected, candidate.eject_value());
+
+                // Check constraint counts and output mode.
+                let input_modes = circuit_input.iter().map(|b| b.eject_mode()).collect::<Vec<_>>();
+                let randomness_modes = circuit_randomness.iter().map(|b| b.eject_mode()).collect::<Vec<_>>();
+                assert_count!(
+                    Pedersen<Circuit, NUM_WINDOWS, WINDOW_SIZE>,
+                    CommitmentScheme<Input = Boolean<Circuit>, Output = Group<Circuit>, Randomness = Boolean<Circuit>>,
+                    &(input_modes.clone(), randomness_modes.clone())
+                );
+                assert_output_mode!(
+                    candidate,
+                    Pedersen<Circuit, NUM_WINDOWS, WINDOW_SIZE>,
+                    CommitmentScheme<Input = Boolean<Circuit>, Output = Group<Circuit>, Randomness = Boolean<Circuit>>,
+                    &(input_modes, randomness_modes)
+                );
             });
         }
     }
@@ -116,52 +164,52 @@ mod tests {
     #[test]
     fn test_commitment_constant() {
         // Set the number of windows, and modulate the window size.
-        check_commitment::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Constant, 1036, 0, 0, 0);
-        check_commitment::<1, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant, 1068, 0, 0, 0);
-        check_commitment::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant, 1100, 0, 0, 0);
-        check_commitment::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant, 1132, 0, 0, 0);
-        check_commitment::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant, 1164, 0, 0, 0);
+        check_commitment::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Constant);
+        check_commitment::<1, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
+        check_commitment::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
+        check_commitment::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
+        check_commitment::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
 
         // Set the window size, and modulate the number of windows.
-        check_commitment::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Constant, 1036, 0, 0, 0);
-        check_commitment::<2, WINDOW_SIZE_MULTIPLIER>(Mode::Constant, 1068, 0, 0, 0);
-        check_commitment::<3, WINDOW_SIZE_MULTIPLIER>(Mode::Constant, 1100, 0, 0, 0);
-        check_commitment::<4, WINDOW_SIZE_MULTIPLIER>(Mode::Constant, 1132, 0, 0, 0);
-        check_commitment::<5, WINDOW_SIZE_MULTIPLIER>(Mode::Constant, 1164, 0, 0, 0);
+        check_commitment::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Constant);
+        check_commitment::<2, WINDOW_SIZE_MULTIPLIER>(Mode::Constant);
+        check_commitment::<3, WINDOW_SIZE_MULTIPLIER>(Mode::Constant);
+        check_commitment::<4, WINDOW_SIZE_MULTIPLIER>(Mode::Constant);
+        check_commitment::<5, WINDOW_SIZE_MULTIPLIER>(Mode::Constant);
     }
 
     #[test]
     fn test_commitment_public() {
         // Set the number of windows, and modulate the window size.
-        check_commitment::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Public, 518, 0, 1551, 1551);
-        check_commitment::<1, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public, 534, 0, 1599, 1599);
-        check_commitment::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public, 550, 0, 1647, 1647);
-        check_commitment::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public, 566, 0, 1695, 1695);
-        check_commitment::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public, 582, 0, 1743, 1743);
+        check_commitment::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Public);
+        check_commitment::<1, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
+        check_commitment::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
+        check_commitment::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
+        check_commitment::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
 
         // Set the window size, and modulate the number of windows.
-        check_commitment::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Public, 518, 0, 1551, 1551);
-        check_commitment::<2, WINDOW_SIZE_MULTIPLIER>(Mode::Public, 534, 0, 1599, 1599);
-        check_commitment::<3, WINDOW_SIZE_MULTIPLIER>(Mode::Public, 550, 0, 1647, 1647);
-        check_commitment::<4, WINDOW_SIZE_MULTIPLIER>(Mode::Public, 566, 0, 1695, 1695);
-        check_commitment::<5, WINDOW_SIZE_MULTIPLIER>(Mode::Public, 582, 0, 1743, 1743);
+        check_commitment::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Public);
+        check_commitment::<2, WINDOW_SIZE_MULTIPLIER>(Mode::Public);
+        check_commitment::<3, WINDOW_SIZE_MULTIPLIER>(Mode::Public);
+        check_commitment::<4, WINDOW_SIZE_MULTIPLIER>(Mode::Public);
+        check_commitment::<5, WINDOW_SIZE_MULTIPLIER>(Mode::Public);
     }
 
     #[test]
     fn test_commitment_private() {
         // Set the number of windows, and modulate the window size.
-        check_commitment::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Private, 518, 0, 1551, 1551);
-        check_commitment::<1, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private, 534, 0, 1599, 1599);
-        check_commitment::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private, 550, 0, 1647, 1647);
-        check_commitment::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private, 566, 0, 1695, 1695);
-        check_commitment::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private, 582, 0, 1743, 1743);
+        check_commitment::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Private);
+        check_commitment::<1, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
+        check_commitment::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
+        check_commitment::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
+        check_commitment::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
 
         // Set the window size, and modulate the number of windows.
-        check_commitment::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Private, 518, 0, 1551, 1551);
-        check_commitment::<2, WINDOW_SIZE_MULTIPLIER>(Mode::Private, 534, 0, 1599, 1599);
-        check_commitment::<3, WINDOW_SIZE_MULTIPLIER>(Mode::Private, 550, 0, 1647, 1647);
-        check_commitment::<4, WINDOW_SIZE_MULTIPLIER>(Mode::Private, 566, 0, 1695, 1695);
-        check_commitment::<5, WINDOW_SIZE_MULTIPLIER>(Mode::Private, 582, 0, 1743, 1743);
+        check_commitment::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Private);
+        check_commitment::<2, WINDOW_SIZE_MULTIPLIER>(Mode::Private);
+        check_commitment::<3, WINDOW_SIZE_MULTIPLIER>(Mode::Private);
+        check_commitment::<4, WINDOW_SIZE_MULTIPLIER>(Mode::Private);
+        check_commitment::<5, WINDOW_SIZE_MULTIPLIER>(Mode::Private);
     }
 
     fn check_homomorphic_addition<C: Display + Eject + Add<Output = C> + ToBits<Boolean = Boolean<Circuit>>>(

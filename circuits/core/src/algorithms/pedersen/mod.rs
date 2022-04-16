@@ -20,7 +20,7 @@ mod hash;
 mod hash_uncompressed;
 
 #[cfg(test)]
-use snarkvm_circuits_environment::assert_scope;
+use snarkvm_circuits_environment::{assert_count, assert_output_mode, assert_scope};
 
 use crate::{CommitmentScheme, Hash, HashUncompressed};
 use snarkvm_algorithms::crypto_hash::hash_to_curve;
