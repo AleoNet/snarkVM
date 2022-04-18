@@ -195,18 +195,18 @@ mod tests {
     }
 
     #[test]
-    fn test_is_eq_field() {
-        let first = Value::<P>::from_str("1field.public");
-        let second = Value::<P>::from_str("2field.private");
-        let expected = Value::<P>::from_str("3field.private");
+    fn test_is_eq_i8() {
+        let first = Value::<P>::from_str("1i8.public");
+        let second = Value::<P>::from_str("2i8.private");
+        let expected = Value::<P>::from_str("false.private");
         check_is_eq(first, second, expected);
     }
 
     #[test]
-    fn test_is_eq_group() {
-        let first = Value::<P>::from_str("2group.public");
-        let second = Value::<P>::from_str("0group.private");
-        let expected = Value::<P>::from_str("2group.private");
+    fn test_is_eq_u8() {
+        let first = Value::<P>::from_str("2u8.public");
+        let second = Value::<P>::from_str("2u8.private");
+        let expected = Value::<P>::from_str("true.private");
         check_is_eq(first, second, expected);
     }
 }
