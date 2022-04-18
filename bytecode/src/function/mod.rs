@@ -402,22 +402,26 @@ impl<P: Program> Count<Self> for Function<P> {
             .borrow()
             .iter()
             .map(|instruction| {
+                // Helper function to get the types of the operands of an instruction.
+                let get_operand_types = |operands: Vec<Operand<P>>| {
+                    operands
+                        .iter()
+                        .map(|operand| match operand {
+                            Operand::Register(register) => {
+                                *type_map.get(register).expect("Type not found for register")
+                            }
+                            Operand::Value(value) => match value {
+                                Value::Literal(literal) => LiteralType::from(literal),
+                                Value::Composite(..) => P::halt("An operand cannot be a composite value."),
+                            },
+                        })
+                        .collect::<Vec<_>>()
+                };
+
                 match instruction {
                     Instruction::Add(instruction) => {
                         // Get input types of the operands.
-                        let operand_types = instruction
-                            .operands()
-                            .iter()
-                            .map(|operand| match operand {
-                                Operand::Register(register) => {
-                                    *type_map.get(register).expect("Type not found for register")
-                                }
-                                Operand::Value(value) => match value {
-                                    Value::Literal(literal) => LiteralType::from(literal),
-                                    Value::Composite(..) => P::halt("An operand cannot be a composite value."),
-                                },
-                            })
-                            .collect::<Vec<_>>();
+                        let operand_types = get_operand_types(instruction.operands());
 
                         // Infer the output type of the instruction based on the input types.
                         let output_type = instructions::Add::<P>::output_type(&(operand_types[0], operand_types[1]));
@@ -428,19 +432,7 @@ impl<P: Program> Count<Self> for Function<P> {
                     }
                     Instruction::Neg(instruction) => {
                         // Get input types of the operands.
-                        let operand_types = instruction
-                            .operands()
-                            .iter()
-                            .map(|operand| match operand {
-                                Operand::Register(register) => {
-                                    *type_map.get(register).expect("Type not found for register")
-                                }
-                                Operand::Value(value) => match value {
-                                    Value::Literal(literal) => LiteralType::from(literal),
-                                    Value::Composite(..) => P::halt("An operand cannot be a composite value."),
-                                },
-                            })
-                            .collect::<Vec<_>>();
+                        let operand_types = get_operand_types(instruction.operands());
 
                         // Infer the output type of the instruction based on the input types.
                         let output_type = instructions::Neg::<P>::output_type(&operand_types[0]);
@@ -451,19 +443,7 @@ impl<P: Program> Count<Self> for Function<P> {
                     }
                     Instruction::Sub(instruction) => {
                         // Get input types of the operands.
-                        let operand_types = instruction
-                            .operands()
-                            .iter()
-                            .map(|operand| match operand {
-                                Operand::Register(register) => {
-                                    *type_map.get(register).expect("Type not found for register")
-                                }
-                                Operand::Value(value) => match value {
-                                    Value::Literal(literal) => LiteralType::from(literal),
-                                    Value::Composite(..) => P::halt("An operand cannot be a composite value."),
-                                },
-                            })
-                            .collect::<Vec<_>>();
+                        let operand_types = get_operand_types(instruction.operands());
 
                         // Infer the output type of the instruction based on the input types.
                         let output_type = instructions::Sub::<P>::output_type(&(operand_types[0], operand_types[1]));

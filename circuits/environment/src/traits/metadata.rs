@@ -16,17 +16,6 @@
 
 use crate::{CircuitCount, Mode, StaticParameter};
 
-// /// Trait for uniformly invoking operations.
-// pub trait Operation<Op: ?Sized> {
-//     type Input;
-//     type Output;
-//
-//     fn invoke(input: Self::Input) -> Self::Output;
-// }
-//
-// /// Trait for metadata on operations.
-// pub trait MetadataForOp<Op: ?Sized>: Count<Op> + OutputMode<Op> {}
-
 /// Trait for determining the number of constants, public input, private inputs, and constraints for an operation.
 pub trait Count<Op: ?Sized> {
     type Case: StaticParameter + ?Sized;
