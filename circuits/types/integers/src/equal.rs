@@ -129,22 +129,14 @@ mod tests {
         }
     }
 
-    fn run_exhaustive_test<I: IntegerType>(
-        mode_a: Mode,
-        mode_b: Mode,
-    ) where
+    fn run_exhaustive_test<I: IntegerType>(mode_a: Mode, mode_b: Mode)
+    where
         RangeInclusive<I>: Iterator<Item = I>,
     {
         for first in I::MIN..=I::MAX {
             for second in I::MIN..=I::MAX {
                 let name = format!("Equals: ({} == {})", first, second);
-                check_equals(
-                    &name,
-                    first,
-                    second,
-                    mode_a,
-                    mode_b,
-                );
+                check_equals(&name, first, second, mode_a, mode_b);
             }
         }
     }
