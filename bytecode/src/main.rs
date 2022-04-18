@@ -235,4 +235,99 @@ function main:
             assert!(!MarlinInst::verify(&index_vk, &[one, one + one], &proof).unwrap());
         }
     }
+
+    #[test]
+    fn test_silly_sudoku() {
+        pub struct SillySudoku;
+
+        impl SillySudoku {
+            /// Initializes a new instance of the `HelloWorld` program.
+            pub fn initialize<P: Program>() {
+                P::from_str(
+                    r"
+function main:
+    input r0 as u8.private;
+    input r1 as u8.private;
+    input r2 as u8.private;
+    input r3 as u8.private;
+    input r4 as u8.private;
+    input r5 as u8.private;
+    input r6 as u8.private;
+    input r7 as u8.private;
+    input r8 as u8.private;
+    add r0 r1 into r9;
+    add r2 r3 into r10;
+    add r4 r5 into r11;
+    add r6 r7 into r12;
+    add r9 r10 into r13;
+    add r11 r12 into r14;
+    add r13 r14 into r15;
+    add r15 r8 into r16;
+    eq r16 45u8 into r17;
+    output r17 as boolean.private;",
+                );
+            }
+
+            /// Runs the `SillySudoku` with the given inputs.
+            pub fn run<P: Program>(inputs: &[Value<P>]) -> Vec<Value<P>> {
+                P::get_function(&Identifier::from_str("main")).unwrap().evaluate(inputs)
+            }
+
+            /// Estimates the circuit counts for the `SillySudoku` program.
+            pub fn count<P: Program>() -> CircuitCount {
+                Function::count(&P::get_function(&Identifier::from_str("main")).unwrap())
+            }
+        }
+
+        // Initialize the program.
+        SillySudoku::initialize::<Process>();
+
+        // Get estimated circuit count for the `SillySudoku` program.
+        // This function produces 0 constants, 0 public variables, 74 private variables, and 91 constraints.
+        let count = SillySudoku::count::<Process>();
+
+        // Run the `HelloWorld` program with the given inputs.
+        let first = Value::<Process>::from_str("1u8.private");
+        let second = Value::<Process>::from_str("1u8.private");
+        let third = Value::<Process>::from_str("1u8.private");
+        let fourth = Value::<Process>::from_str("1u8.private");
+        let fifth = Value::<Process>::from_str("1u8.private");
+        let sixth = Value::<Process>::from_str("1u8.private");
+        let seventh = Value::<Process>::from_str("1u8.private");
+        let eighth = Value::<Process>::from_str("1u8.private");
+        let ninth = Value::<Process>::from_str("1u8.private");
+
+        // Store the circuit counts before running the program.
+        let old_num_constants = <Process as Program>::Aleo::num_constants();
+        let old_num_public = <Process as Program>::Aleo::num_public();
+        let old_num_private = <Process as Program>::Aleo::num_private();
+        let old_num_constraints = <Process as Program>::Aleo::num_constraints();
+
+        let candidate =
+            SillySudoku::run::<Process>(&[first, second, third, fourth, fifth, sixth, seventh, eighth, ninth]);
+
+        // Store the circuit counts after running the program.
+        let new_num_constants = <Process as Program>::Aleo::num_constants();
+        let new_num_public = <Process as Program>::Aleo::num_public();
+        let new_num_private = <Process as Program>::Aleo::num_private();
+        let new_num_constraints = <Process as Program>::Aleo::num_constraints();
+
+        // Check that the estimated counts is correct.
+        assert!(count.is_satisfied(
+            new_num_constants - old_num_constants,
+            new_num_public - old_num_public,
+            new_num_private - old_num_private,
+            new_num_constraints - old_num_constraints
+        ));
+
+        let expected = Value::<Process>::from_str("false.private");
+
+        match (&expected, &candidate[0]) {
+            (Value::Literal(Literal::Boolean(expected)), Value::Literal(Literal::Boolean(candidate))) => {
+                println!("{candidate}");
+                assert!(expected.is_equal(candidate).eject_value());
+            }
+            _ => panic!("Failed to load output"),
+        }
+    }
 }
