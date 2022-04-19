@@ -77,9 +77,8 @@ mod tests {
         // Constant variables
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let point = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
-            let expected = point.double();
-            let point = point.into_affine();
+            let point = <Circuit as Environment>::Affine::rand(&mut test_rng());
+            let expected = point.to_projective().double();
 
             let affine = Group::<Circuit>::new(Mode::Constant, point);
 
@@ -94,9 +93,8 @@ mod tests {
         // Public variables
         for i in 0..ITERATIONS {
             // Sample a random element.
-            let point = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
-            let expected = point.double();
-            let point = point.into_affine();
+            let point = <Circuit as Environment>::Affine::rand(&mut test_rng());
+            let expected = point.to_projective().double();
 
             let affine = Group::<Circuit>::new(Mode::Public, point);
 
@@ -112,9 +110,8 @@ mod tests {
         for i in 0..ITERATIONS {
             // Sample a random element.
 
-            let point = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
-            let expected = point.double();
-            let point = point.into_affine();
+            let point = <Circuit as Environment>::Affine::rand(&mut test_rng());
+            let expected = point.to_projective().double();
 
             let affine = Group::<Circuit>::new(Mode::Private, point);
 
@@ -130,9 +127,8 @@ mod tests {
     #[test]
     fn test_double_matches() {
         // Sample two random elements.
-        let a = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
-        let expected = a + a;
-        let a = a.into_affine();
+        let a = <Circuit as Environment>::Affine::rand(&mut test_rng());
+        let expected: <Circuit as Environment>::Affine = (a.to_projective() + a.to_projective()).into();
 
         // Constant
         let candidate_a = Group::<Circuit>::new(Mode::Constant, a).double();

@@ -14,107 +14,184 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Argument, Memory, Operation, Sanitizer};
-use snarkvm_circuits::{Literal, Parser, ParserResult, Type};
-use snarkvm_utilities::{FromBytes, ToBytes};
+use crate::{helpers::Register, Annotation, Program, Sanitizer};
+use snarkvm_circuits::prelude::*;
+use snarkvm_utilities::{error, FromBytes, ToBytes};
 
-use core::{fmt, ops};
-use nom::bytes::complete::tag;
-use once_cell::unsync::OnceCell;
+use core::{cmp::Ordering, fmt};
 use std::io::{Read, Result as IoResult, Write};
 
-/// Declares a function input `register` with type `annotation`.
-pub struct Input<M: Memory> {
-    /// The register and type annotations for the input.
-    argument: Argument<M::Environment>,
-    /// The assigned value for this input.
-    literal: OnceCell<Literal<M::Environment>>,
+/// An input statement defines an input argument to a function, and is of the form
+/// `input {register} as {annotation}`.
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub struct Input<P: Program> {
+    /// The input register.
+    register: Register<P>,
+    /// The input annotation.
+    annotation: Annotation<P>,
 }
 
-impl<M: Memory> Input<M> {
-    /// Assigns the given literal to the input register.
-    pub(crate) fn assign(&self, literal: Literal<M::Environment>) -> &Self {
-        // Retrieve the input annotations.
-        let register = self.argument.register();
-        let type_ = self.argument.type_annotation();
+impl<P: Program> Input<P> {
+    /// Returns the input register.
+    #[inline]
+    pub fn register(&self) -> &Register<P> {
+        &self.register
+    }
 
-        // Ensure the type matches.
-        match Type::from(&literal) == type_ {
-            // Assign the literal to this input register.
-            true => match self.literal.set(literal).is_ok() {
-                true => self,
-                false => M::halt(format!("Input register {register} is already set")),
-            },
-            false => M::halt(format!("Input register {register} is not {type_}")),
-        }
+    /// Returns the input annotation.
+    #[inline]
+    pub fn annotation(&self) -> &Annotation<P> {
+        &self.annotation
     }
 }
 
-impl<M: Memory> Operation for Input<M> {
-    type Memory = M;
-
-    /// Returns the opcode as a string.
+impl<P: Program> TypeName for Input<P> {
+    /// Returns the type name as a string.
     #[inline]
-    fn opcode() -> &'static str {
+    fn type_name() -> &'static str {
         "input"
     }
+}
 
-    /// Parses a string into an input.
+impl<P: Program> Parser for Input<P> {
+    type Environment = P::Environment;
+
+    /// Parses a string into an input statement.
+    /// The input statement is of the form `input {register} as {annotation};`.
+    ///
+    /// # Errors
+    /// This function will halt if the given register is a register member.
     #[inline]
-    fn parse(string: &str, memory: Self::Memory) -> ParserResult<Self> {
+    fn parse(string: &str) -> ParserResult<Self> {
         // Parse the whitespace and comments from the string.
         let (string, _) = Sanitizer::parse(string)?;
         // Parse the input keyword from the string.
-        let (string, _) = tag("input")(string)?;
+        let (string, _) = tag(Self::type_name())(string)?;
         // Parse the space from the string.
         let (string, _) = tag(" ")(string)?;
-        // Parse the argument from the string.
-        let (string, argument) = Argument::parse(string)?;
+        // Parse the register from the string.
+        let (string, register) = map_res(Register::parse, |register| {
+            // Ensure the register is not a register member.
+            match &register {
+                Register::Locator(..) => Ok(register),
+                Register::Member(..) => Err(error(format!("Input register {register} cannot be a register member"))),
+            }
+        })(string)?;
+        // Parse the " as " from the string.
+        let (string, _) = tag(" as ")(string)?;
+        // Parse the annotation from the string.
+        let (string, annotation) = Annotation::parse(string)?;
         // Parse the semicolon from the string.
         let (string, _) = tag(";")(string)?;
-
-        // Initialize the input register.
-        memory.initialize(argument.register());
-
-        Ok((string, Self { argument, literal: Default::default() }))
-    }
-
-    /// Evaluates the operation in-place.
-    #[inline]
-    fn evaluate(&self, memory: &Self::Memory) {
-        // Retrieve the input annotations.
-        let register = self.argument.register();
-        // Attempt to retrieve the literal this input register.
-        match self.literal.get() {
-            // Store the input into the register.
-            Some(literal) => memory.store(register, literal.clone()),
-            None => M::halt(format!("Input register {register} is not assigned yet")),
-        }
+        // Return the input statement.
+        Ok((string, Self { register, annotation }))
     }
 }
 
-impl<M: Memory> fmt::Display for Input<M> {
+impl<P: Program> fmt::Display for Input<P> {
+    /// Prints the input statement as a string.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} {};", Self::opcode(), self.argument)
+        write!(
+            f,
+            "{type_} {register} as {annotation};",
+            type_ = Self::type_name(),
+            register = self.register,
+            annotation = self.annotation
+        )
     }
 }
 
-impl<M: Memory> ops::Deref for Input<M> {
-    type Target = Argument<M::Environment>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.argument
-    }
-}
-
-impl<M: Memory> FromBytes for Input<M> {
+impl<P: Program> FromBytes for Input<P> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        Ok(Self { argument: Argument::read_le(&mut reader)?, literal: Default::default() })
+        let register = FromBytes::read_le(&mut reader)?;
+        let annotation = FromBytes::read_le(&mut reader)?;
+        Ok(Self { register, annotation })
     }
 }
 
-impl<M: Memory> ToBytes for Input<M> {
+impl<P: Program> ToBytes for Input<P> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.argument.write_le(&mut writer)
+        self.register.write_le(&mut writer)?;
+        self.annotation.write_le(&mut writer)
+    }
+}
+
+impl<P: Program> Ord for Input<P> {
+    /// Ordering is determined by the register (the annotation is ignored).
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.register().cmp(other.register())
+    }
+}
+
+impl<P: Program> PartialOrd for Input<P> {
+    /// Ordering is determined by the register (the annotation is ignored).
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Process;
+
+    type P = Process;
+
+    #[test]
+    fn test_input_type_name() {
+        assert_eq!(Input::<P>::type_name(), "input");
+    }
+
+    #[test]
+    fn test_input_parse() {
+        // Literal
+        let input = Input::<P>::parse("input r0 as field.private;").unwrap().1;
+        assert_eq!(input.register(), &Register::<P>::Locator(0));
+        assert_eq!(input.annotation(), &Annotation::<P>::from_str("field.private"));
+
+        // Composite
+        let input = Input::<P>::parse("input r1 as signature;").unwrap().1;
+        assert_eq!(input.register(), &Register::<P>::Locator(1));
+        assert_eq!(input.annotation(), &Annotation::<P>::from_str("signature"));
+    }
+
+    #[test]
+    fn test_input_display() {
+        // Literal
+        let input = Input::<P>::from_str("input r0 as field.private;");
+        assert_eq!("input r0 as field.private;", input.to_string());
+
+        // Composite
+        let input = Input::<P>::from_str("input r1 as signature;");
+        assert_eq!("input r1 as signature;", input.to_string());
+    }
+
+    #[test]
+    fn test_input_partial_ord() {
+        let input1 = Input::<P>::from_str("input r0 as field.private;");
+        let input2 = Input::<P>::from_str("input r1 as field.private;");
+
+        let input3 = Input::<P>::from_str("input r0 as signature;");
+        let input4 = Input::<P>::from_str("input r1 as signature;");
+
+        assert_eq!(input1.partial_cmp(&input1), Some(Ordering::Equal));
+        assert_eq!(input1.partial_cmp(&input2), Some(Ordering::Less));
+        assert_eq!(input1.partial_cmp(&input3), Some(Ordering::Equal));
+        assert_eq!(input1.partial_cmp(&input4), Some(Ordering::Less));
+
+        assert_eq!(input2.partial_cmp(&input1), Some(Ordering::Greater));
+        assert_eq!(input2.partial_cmp(&input2), Some(Ordering::Equal));
+        assert_eq!(input2.partial_cmp(&input3), Some(Ordering::Greater));
+        assert_eq!(input2.partial_cmp(&input4), Some(Ordering::Equal));
+
+        assert_eq!(input3.partial_cmp(&input1), Some(Ordering::Equal));
+        assert_eq!(input3.partial_cmp(&input2), Some(Ordering::Less));
+        assert_eq!(input3.partial_cmp(&input3), Some(Ordering::Equal));
+        assert_eq!(input3.partial_cmp(&input4), Some(Ordering::Less));
+
+        assert_eq!(input4.partial_cmp(&input1), Some(Ordering::Greater));
+        assert_eq!(input4.partial_cmp(&input2), Some(Ordering::Equal));
+        assert_eq!(input4.partial_cmp(&input3), Some(Ordering::Greater));
+        assert_eq!(input4.partial_cmp(&input4), Some(Ordering::Equal));
     }
 }

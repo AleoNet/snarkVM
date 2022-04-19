@@ -96,7 +96,7 @@ impl<N: Network> ValueBalanceCommitment<N> {
         }
 
         // Calculate the `combined_commitments`.
-        let mut combined_commitments = N::ProgramAffineCurve::zero().into_projective();
+        let mut combined_commitments = N::ProgramAffineCurve::zero().to_projective();
 
         for vc_input in input_value_commitments {
             combined_commitments.add_assign_mixed(&**vc_input);
@@ -139,7 +139,7 @@ impl<N: Network> ValueBalanceCommitment<N> {
         input: &[u8],
     ) -> Result<bool, ValueBalanceCommitmentError> {
         // Craft the combined value commitments (verifying key).
-        let mut combined_commitments = N::ProgramAffineCurve::zero().into_projective();
+        let mut combined_commitments = N::ProgramAffineCurve::zero().to_projective();
 
         for vc_input in input_value_commitments {
             combined_commitments.add_assign_mixed(&**vc_input);
@@ -154,7 +154,7 @@ impl<N: Network> ValueBalanceCommitment<N> {
         let c = hash_into_field::<N>(&self.commitment.to_x_coordinate().to_bytes_le()?, input);
         let recommit = N::value_commitment_scheme().commit_bytes(&0i64.to_le_bytes(), &self.blinding_factor)?;
 
-        Ok((combined_commitments.mul(c) + self.commitment.into_projective() - recommit.into_projective()).is_zero())
+        Ok((combined_commitments.mul(c) + self.commitment.to_projective() - recommit.to_projective()).is_zero())
     }
 
     /// Returns a commitment on the value balance with a randomness of zero.
@@ -194,7 +194,7 @@ impl<N: Network> ValueBalanceCommitment<N> {
         ValueBalanceCommitmentError,
     > {
         // Craft the partial combined value commitments (partial verifying key).
-        let mut partial_combined_commitments = N::ProgramAffineCurve::zero().into_projective();
+        let mut partial_combined_commitments = N::ProgramAffineCurve::zero().to_projective();
 
         for vc_input in input_value_commitments {
             partial_combined_commitments.add_assign_mixed(&**vc_input);

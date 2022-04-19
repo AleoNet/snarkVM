@@ -21,8 +21,9 @@ use crate::{
     AleoObject,
     Block,
     Ciphertext,
-    InnerPublicVariables,
+    InputPublicVariables,
     Network,
+    OutputPublicVariables,
     PoSWScheme,
     ProgramPublicVariables,
     ValueBalanceCommitment,
@@ -36,15 +37,12 @@ use snarkvm_algorithms::{
     prelude::*,
     prf::PoseidonPRF,
     signature::AleoSignatureScheme,
-    snark::{
-        groth16::Groth16,
-        marlin::{
-            FiatShamirAlgebraicSpongeRng,
-            FiatShamirChaChaRng,
-            MarlinHidingMode,
-            MarlinNonHidingMode,
-            MarlinSNARK,
-        },
+    snark::marlin::{
+        FiatShamirAlgebraicSpongeRng,
+        FiatShamirChaChaRng,
+        MarlinHidingMode,
+        MarlinNonHidingMode,
+        MarlinSNARK,
     },
 };
 use snarkvm_curves::{
@@ -72,9 +70,7 @@ use snarkvm_utilities::{FromBytes, ToMinimalBits};
 
 use blake2::Blake2s256;
 use once_cell::sync::OnceCell;
-use rand::{CryptoRng, Rng};
 use serde::{Deserialize, Serialize};
-use std::{cell::RefCell, rc::Rc};
 
 #[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Testnet2;
@@ -85,10 +81,11 @@ impl Network for Testnet2 {
     const NETWORK_ID: u16 = 2u16;
     const NETWORK_NAME: &'static str = "testnet2";
 
-    const NUM_INPUT_RECORDS: usize = 2;
-    const NUM_OUTPUT_RECORDS: usize = 2;
     const NUM_TRANSITIONS: u8 = u8::pow(2, Self::TRANSACTION_TREE_DEPTH as u32);
     const NUM_EVENTS: u16 = 2;
+
+    const NUM_INPUTS: u16 = 16;
+    const NUM_OUTPUTS: u16 = 16;
 
     const BLOCK_HASH_PREFIX: u16 = hrp2!("ab");
     const LEDGER_ROOT_PREFIX: u16 = hrp2!("al");
@@ -102,13 +99,11 @@ impl Network for Testnet2 {
     const HEADER_NONCE_PREFIX: u16 = hrp2!("hn");
     const HEADER_ROOT_PREFIX: u16 = hrp2!("hr");
     const HEADER_TRANSACTIONS_ROOT_PREFIX: u16 = hrp2!("ht");
-    const INNER_CIRCUIT_ID_PREFIX: u16 = hrp2!("ic");
     const RECORD_RANDOMIZER_PREFIX: u16 = hrp2!("rr");
     const RECORD_VIEW_KEY_COMMITMENT_PREFIX: u16 = hrp2!("rc");
     const SERIAL_NUMBER_PREFIX: u16 = hrp2!("sn");
 
     const HEADER_PROOF_PREFIX: u32 = hrp4!("hzkp");
-    const INNER_PROOF_PREFIX: u32 = hrp4!("izkp");
     const PROGRAM_PROOF_PREFIX: u32 = hrp4!("pzkp");
     const RECORD_CIPHERTEXT_PREFIX: u32 = hrp4!("recd");
     const RECORD_VIEW_KEY_PREFIX: u32 = hrp4!("rcvk");
@@ -116,24 +111,32 @@ impl Network for Testnet2 {
     const VALUE_COMMITMENT_PREFIX: u32 = hrp4!("valc");
     const VALUE_BALANCE_COMMITMENT_PREFIX: u32 = hrp4!("vbco");
 
+    const INPUT_CIRCUIT_ID_PREFIX: u16 = hrp2!("ic");
+    const OUTPUT_CIRCUIT_ID_PREFIX: u16 = hrp2!("oc");
+    
+    const INPUT_PROOF_PREFIX: u32 = hrp4!("izkp");
+    const OUTPUT_PROOF_PREFIX: u32 = hrp4!("ozkp");
+    
     const ADDRESS_SIZE_IN_BYTES: usize = 32;
     const HEADER_SIZE_IN_BYTES: usize = 928;
     const HEADER_PROOF_SIZE_IN_BYTES: usize = 796;
-    const INNER_PROOF_SIZE_IN_BYTES: usize = 193;
     const PROGRAM_PROOF_SIZE_IN_BYTES: usize = 963;
     const PROGRAM_ID_SIZE_IN_BYTES: usize = 32;
-    const RECORD_CIPHERTEXT_SIZE_IN_BYTES: usize = 294;
+    const RECORD_CIPHERTEXT_SIZE_IN_BYTES: usize = 292;
     const RECORD_PAYLOAD_SIZE_IN_BYTES: usize = 128;
     const RECORD_VIEW_KEY_SIZE_IN_BYTES: usize = 32;
     const SIGNATURE_SIZE_IN_BYTES: usize = 128;
     const VALUE_COMMITMENT_SIZE_IN_BYTES: usize = 64;
     const VALUE_BALANCE_COMMITMENT_SIZE_IN_BYTES: usize = 96;
 
+    const INPUT_PROOF_SIZE_IN_BYTES: usize = 876;
+    const OUTPUT_PROOF_SIZE_IN_BYTES: usize = 876;
+    
     const HEADER_TRANSACTIONS_TREE_DEPTH: usize = 15;
     const HEADER_TREE_DEPTH: usize = 2;
     const LEDGER_TREE_DEPTH: usize = 32;
     const PROGRAM_TREE_DEPTH: usize = 8;
-    const TRANSITION_TREE_DEPTH: usize = 2;
+    const TRANSITION_TREE_DEPTH: usize = 5;
     const TRANSACTION_TREE_DEPTH: usize = 5;
 
     const ALEO_BLOCK_TIME_IN_SECS: i64 = 20i64;
@@ -151,8 +154,11 @@ impl Network for Testnet2 {
     type ProgramCurveParameters = EdwardsParameters;
     type ProgramScalarField = <Self::ProgramCurveParameters as ModelParameters>::ScalarField;
 
-    type InnerSNARK = Groth16<Self::InnerCurve, InnerPublicVariables<Testnet2>>;
-    type InnerProof = AleoObject<<Self::InnerSNARK as SNARK>::Proof, { Self::INNER_PROOF_PREFIX }, { Self::INNER_PROOF_SIZE_IN_BYTES }>;
+    type InputSNARK = MarlinSNARK<Self::InnerCurve, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::InnerBaseField, PoseidonSponge<Self::InnerBaseField, 6, 1>>, MarlinHidingMode, InputPublicVariables<Self>>;
+    type InputProof = AleoObject<<Self::InputSNARK as SNARK>::Proof, { Self::INPUT_PROOF_PREFIX }, { Self::INPUT_PROOF_SIZE_IN_BYTES }>;
+
+    type OutputSNARK = MarlinSNARK<Self::InnerCurve, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::InnerBaseField, PoseidonSponge<Self::InnerBaseField, 6, 1>>, MarlinHidingMode, OutputPublicVariables<Self>>;
+    type OutputProof = AleoObject<<Self::OutputSNARK as SNARK>::Proof, { Self::OUTPUT_PROOF_PREFIX }, { Self::OUTPUT_PROOF_SIZE_IN_BYTES }>;
 
     type ProgramSNARK = MarlinSNARK<Self::InnerCurve, FiatShamirAlgebraicSpongeRng<Self::InnerScalarField, Self::InnerBaseField, PoseidonSponge<Self::InnerBaseField, 6, 1>>, MarlinHidingMode, ProgramPublicVariables<Self>>;
     type ProgramProvingKey = <Self::ProgramSNARK as SNARK>::ProvingKey;
@@ -195,8 +201,11 @@ impl Network for Testnet2 {
     type FunctionInputsCRHGadget = PoseidonCRHGadget<Self::InnerScalarField, 128>;
     type FunctionInputsHash = AleoLocator<<Self::FunctionInputsCRH as CRH>::Output, { Self::FUNCTION_INPUTS_HASH_PREFIX }>;
 
-    type InnerCircuitIDCRH = BHPCRH<EdwardsBW6, 59, 63>;
-    type InnerCircuitID = AleoLocator<<Self::InnerCircuitIDCRH as CRH>::Output, { Self::INNER_CIRCUIT_ID_PREFIX }>;
+    type InputCircuitIDCRH = BHPCRH<EdwardsBW6, 31, 63>;
+    type InputCircuitID = AleoLocator<<Self::InputCircuitIDCRH as CRH>::Output, { Self::INPUT_CIRCUIT_ID_PREFIX }>;
+
+    type OutputCircuitIDCRH = BHPCRH<EdwardsBW6, 27, 63>;
+    type OutputCircuitID = AleoLocator<<Self::OutputCircuitIDCRH as CRH>::Output, { Self::OUTPUT_CIRCUIT_ID_PREFIX }>;
 
     type LedgerRootCRH = BHPCRH<Self::ProgramProjectiveCurve, 3, 57>;
     type LedgerRootCRHGadget = BHPCRHGadget<Self::ProgramAffineCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 3, 57>;
@@ -246,7 +255,6 @@ impl Network for Testnet2 {
     dpc_setup!{Testnet2, block_header_root_parameters, BlockHeaderRootParameters, "AleoBlockHeaderRootCRH0"}
     dpc_setup!{Testnet2, commitment_scheme, CommitmentScheme, "AleoCommitmentScheme0"}
     dpc_setup!{Testnet2, function_id_crh, FunctionIDCRH, "AleoFunctionIDCRH0"}
-    dpc_setup!{Testnet2, inner_circuit_id_crh, InnerCircuitIDCRH, "AleoInnerCircuitIDCRH0"}
     dpc_setup!{Testnet2, ledger_root_parameters, LedgerRootParameters, "AleoLedgerRootCRH0"}
     dpc_setup!{Testnet2, program_id_parameters, ProgramIDParameters, "AleoProgramIDCRH0"}
     dpc_setup!{Testnet2, transactions_root_parameters, TransactionsRootParameters, "AleoTransactionsRootCRH0"}
@@ -254,17 +262,30 @@ impl Network for Testnet2 {
     dpc_setup!{Testnet2, transition_id_parameters, TransitionIDParameters, "AleoTransitionIDCRH0"}
     dpc_setup!{Testnet2, value_commitment_scheme, ValueCommitmentScheme, "AleoValueCommitment0"}
 
-    dpc_snark_setup!{Testnet2, inner_proving_key, InnerSNARK, ProvingKey, InnerProvingKeyBytes, "inner circuit proving key"}
-    dpc_snark_setup!{Testnet2, inner_verifying_key, InnerSNARK, VerifyingKey, InnerVerifyingKeyBytes, "inner circuit verifying key"}
+    dpc_setup!{Testnet2, input_circuit_id_crh, InputCircuitIDCRH, "AleoInputCircuitIDCRH0"}
+    dpc_setup!{Testnet2, output_circuit_id_crh, OutputCircuitIDCRH, "AleoOutputCircuitIDCRH0"}
+
+    dpc_snark_setup!{Testnet2, input_proving_key, InputSNARK, ProvingKey, InputProvingKeyBytes, "input circuit proving key"}
+    dpc_snark_setup!{Testnet2, input_verifying_key, InputSNARK, VerifyingKey, InputVerifyingKeyBytes, "input circuit verifying key"}
+    
+    dpc_snark_setup!{Testnet2, output_proving_key, OutputSNARK, ProvingKey, OutputProvingKeyBytes, "output circuit proving key"}
+    dpc_snark_setup!{Testnet2, output_verifying_key, OutputSNARK, VerifyingKey, OutputVerifyingKeyBytes, "output circuit verifying key"}
 
     dpc_snark_setup!{Testnet2, posw_proving_key, PoSWSNARK, ProvingKey, PoSWProvingKeyBytes, "posw proving key"}
     dpc_snark_setup!{Testnet2, posw_verifying_key, PoSWSNARK, VerifyingKey, PoSWVerifyingKeyBytes, "posw verifying key"}
 
-    fn inner_circuit_id() -> &'static Self::InnerCircuitID {
-        static INNER_CIRCUIT_ID: OnceCell<<Testnet2 as Network>::InnerCircuitID> = OnceCell::new();
-        INNER_CIRCUIT_ID.get_or_init(|| Self::inner_circuit_id_crh()
-            .hash(&Self::inner_verifying_key().to_minimal_bits())
-            .expect("Failed to hash inner circuit verifying key elements").into())
+    fn input_circuit_id() -> &'static Self::InputCircuitID {
+        static INPUT_CIRCUIT_ID: OnceCell<<Testnet2 as Network>::InputCircuitID> = OnceCell::new();
+        INPUT_CIRCUIT_ID.get_or_init(|| Self::input_circuit_id_crh()
+            .hash(&Self::input_verifying_key().to_minimal_bits())
+            .expect("Failed to hash input circuit verifying key elements").into())
+    }
+
+    fn output_circuit_id() -> &'static Self::OutputCircuitID {
+        static OUTPUT_CIRCUIT_ID: OnceCell<<Testnet2 as Network>::OutputCircuitID> = OnceCell::new();
+        OUTPUT_CIRCUIT_ID.get_or_init(|| Self::output_circuit_id_crh()
+            .hash(&Self::output_verifying_key().to_minimal_bits())
+            .expect("Failed to hash output circuit verifying key elements").into())
     }
 
     fn posw() -> &'static Self::PoSW {
@@ -275,15 +296,6 @@ impl Network for Testnet2 {
     fn genesis_block() -> &'static Block<Self> {
         static BLOCK: OnceCell<Block<Testnet2>> = OnceCell::new();
         BLOCK.get_or_init(|| FromBytes::read_le(&GenesisBlock::load_bytes()[..]).expect("Failed to load the genesis block"))
-    }
-    
-    /// Returns the program SRS for Aleo applications.
-    fn program_srs<R: Rng + CryptoRng>(_rng: &mut R) -> Rc<RefCell<SRS<R, <Self::ProgramSNARK as SNARK>::UniversalSetupParameters>>> {
-        static UNIVERSAL_SRS: OnceCell<<<Testnet2 as Network>::ProgramSNARK as SNARK>::UniversalSetupParameters> = OnceCell::new();
-        let universal_srs = UNIVERSAL_SRS.get_or_init(|| <Self::ProgramSNARK as SNARK>::UniversalSetupParameters::from_bytes_le(
-            &UniversalSRSBytes::load_bytes().expect("Failed to load universal SRS bytes"),
-        ).unwrap());
-        Rc::new(RefCell::new(SRS::<_, _>::Universal(universal_srs)))
     }
 }
 
@@ -297,25 +309,48 @@ mod tests {
     }
 
     #[test]
-    fn test_inner_circuit_sanity_check() {
-        // Verify the inner circuit verifying key matches the one derived from the inner circuit proving key.
+    fn test_input_circuit_sanity_check() {
+        // Verify the input circuit verifying key matches the one derived from the input circuit proving key.
         assert_eq!(
-            Testnet2::inner_verifying_key(),
-            &Testnet2::inner_proving_key().vk,
-            "The inner circuit verifying key does not correspond to the inner circuit proving key"
+            Testnet2::input_verifying_key(),
+            &Testnet2::input_proving_key().circuit_verifying_key,
+            "The input circuit verifying key does not correspond to the input circuit proving key"
         );
     }
 
     #[test]
-    fn test_inner_circuit_id_derivation() {
-        // Verify the inner circuit ID matches the one derived from the inner circuit verifying key.
+    fn test_input_circuit_id_derivation() {
+        // Verify the input circuit ID matches the one derived from the input circuit verifying key.
         assert_eq!(
-            Testnet2::inner_circuit_id(),
-            &Testnet2::inner_circuit_id_crh()
-                .hash(&Testnet2::inner_verifying_key().to_minimal_bits())
-                .expect("Failed to hash inner circuit ID")
+            Testnet2::input_circuit_id(),
+            &Testnet2::input_circuit_id_crh()
+                .hash(&Testnet2::input_verifying_key().to_minimal_bits())
+                .expect("Failed to hash input circuit ID")
                 .into(),
-            "The inner circuit ID does not correspond to the inner circuit verifying key"
+            "The input circuit ID does not correspond to the input circuit verifying key"
+        );
+    }
+
+    #[test]
+    fn test_output_circuit_sanity_check() {
+        // Verify the output circuit verifying key matches the one derived from the output circuit proving key.
+        assert_eq!(
+            Testnet2::output_verifying_key(),
+            &Testnet2::output_proving_key().circuit_verifying_key,
+            "The output circuit verifying key does not correspond to the output circuit proving key"
+        );
+    }
+
+    #[test]
+    fn test_output_circuit_id_derivation() {
+        // Verify the output circuit ID matches the one derived from the output circuit verifying key.
+        assert_eq!(
+            Testnet2::output_circuit_id(),
+            &Testnet2::output_circuit_id_crh()
+                .hash(&Testnet2::output_verifying_key().to_minimal_bits())
+                .expect("Failed to hash output circuit ID")
+                .into(),
+            "The output circuit ID does not correspond to the output circuit verifying key"
         );
     }
 

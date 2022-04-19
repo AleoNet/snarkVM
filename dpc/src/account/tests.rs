@@ -19,7 +19,7 @@ mod testnet1 {
     use crate::{testnet1::Testnet1, Account, Address, Network, PrivateKey, ViewKey};
     use snarkvm_algorithms::prelude::*;
     use snarkvm_curves::AffineCurve;
-    use snarkvm_utilities::{FromBytes, ToBytes};
+    use snarkvm_utilities::{FromBytes, ToBits, ToBytes};
 
     use rand::{thread_rng, Rng, SeedableRng};
     use rand_chacha::ChaChaRng;
@@ -147,7 +147,7 @@ mod testnet1 {
         let address = Address::<Testnet1>::from_private_key(&private_key);
 
         for i in 0..ITERATIONS {
-            let message: Vec<u8> = (0..(32 * i)).map(|_| rand::random::<u8>()).collect();
+            let message: Vec<bool> = (0..(32 * i)).map(|_| rand::random::<bool>()).collect();
             let signature = private_key.sign(&message, &mut thread_rng()).unwrap();
             let verification = address.verify_signature(&message, &signature).unwrap();
             assert!(verification);
@@ -160,10 +160,10 @@ mod testnet1 {
         let address = Address::<Testnet1>::from_private_key(&private_key);
 
         for i in 0..ITERATIONS {
-            let message = "Hi, I'm an Aleo account signature!".as_bytes();
-            let incorrect_message: Vec<u8> = (0..(32 * i)).map(|_| rand::random::<u8>()).collect();
+            let message = "Hi, I'm an Aleo account signature!".as_bytes().to_bits_le();
+            let incorrect_message: Vec<bool> = (0..(32 * i)).map(|_| rand::random::<bool>()).collect();
 
-            let signature = private_key.sign(message, &mut thread_rng()).unwrap();
+            let signature = private_key.sign(&message, &mut thread_rng()).unwrap();
             let verification = address.verify_signature(&incorrect_message, &signature).unwrap();
             assert!(!verification);
         }
@@ -185,7 +185,7 @@ mod testnet1 {
 
             // Prepare for signing.
             let rng = ChaChaRng::seed_from_u64(thread_rng().gen());
-            let message: Vec<u8> = (0..(32 * i)).map(|_| rand::random::<u8>()).collect();
+            let message: Vec<bool> = (0..(32 * i)).map(|_| rand::random::<bool>()).collect();
 
             // Ensure the Aleo signatures match.
             let expected_signature = private_key.sign(&message, &mut rng.clone()).unwrap();
@@ -218,7 +218,7 @@ mod testnet1 {
             let private_key = PrivateKey::<Testnet1>::new(&mut thread_rng());
 
             // Craft the Aleo signature.
-            let message: Vec<u8> = (0..(32 * i)).map(|_| rand::random::<u8>()).collect();
+            let message: Vec<bool> = (0..(32 * i)).map(|_| rand::random::<bool>()).collect();
             let expected_signature = private_key.sign(&message, &mut thread_rng()).unwrap();
 
             let candidate_string = &expected_signature.to_string();
@@ -234,7 +234,7 @@ mod testnet1 {
             let private_key = PrivateKey::<Testnet1>::new(&mut thread_rng());
 
             // Craft the Aleo signature.
-            let message: Vec<u8> = (0..(32 * i)).map(|_| rand::random::<u8>()).collect();
+            let message: Vec<bool> = (0..(32 * i)).map(|_| rand::random::<bool>()).collect();
             let expected_signature = private_key.sign(&message, &mut thread_rng()).unwrap();
 
             // Serialize
@@ -255,7 +255,7 @@ mod testnet1 {
             let private_key = PrivateKey::<Testnet1>::new(&mut thread_rng());
 
             // Craft the Aleo signature.
-            let message: Vec<u8> = (0..(32 * i)).map(|_| rand::random::<u8>()).collect();
+            let message: Vec<bool> = (0..(32 * i)).map(|_| rand::random::<bool>()).collect();
             let expected_signature = private_key.sign(&message, &mut thread_rng()).unwrap();
 
             // Serialize
@@ -278,7 +278,7 @@ mod testnet2 {
     use crate::{testnet2::Testnet2, Account, Address, Network, PrivateKey, ViewKey};
     use snarkvm_algorithms::prelude::*;
     use snarkvm_curves::AffineCurve;
-    use snarkvm_utilities::{FromBytes, ToBytes};
+    use snarkvm_utilities::{FromBytes, ToBits, ToBytes};
 
     use rand::{thread_rng, Rng, SeedableRng};
     use rand_chacha::ChaChaRng;
@@ -407,7 +407,7 @@ mod testnet2 {
         let address = Address::<Testnet2>::from_private_key(&private_key);
 
         for i in 0..ITERATIONS {
-            let message: Vec<u8> = (0..(32 * i)).map(|_| rand::random::<u8>()).collect();
+            let message: Vec<bool> = (0..(32 * i)).map(|_| rand::random::<bool>()).collect();
             let signature = private_key.sign(&message, &mut thread_rng()).unwrap();
             let verification = address.verify_signature(&message, &signature).unwrap();
             assert!(verification);
@@ -420,10 +420,10 @@ mod testnet2 {
         let address = Address::<Testnet2>::from_private_key(&private_key);
 
         for i in 0..ITERATIONS {
-            let message = "Hi, I'm an Aleo account signature!".as_bytes();
-            let incorrect_message: Vec<u8> = (0..(32 * i)).map(|_| rand::random::<u8>()).collect();
+            let message = "Hi, I'm an Aleo account signature!".as_bytes().to_bits_le();
+            let incorrect_message: Vec<bool> = (0..(32 * i)).map(|_| rand::random::<bool>()).collect();
 
-            let signature = private_key.sign(message, &mut thread_rng()).unwrap();
+            let signature = private_key.sign(&message, &mut thread_rng()).unwrap();
             let verification = address.verify_signature(&incorrect_message, &signature).unwrap();
             assert!(!verification);
         }
@@ -445,7 +445,7 @@ mod testnet2 {
 
             // Prepare for signing.
             let rng = ChaChaRng::seed_from_u64(thread_rng().gen());
-            let message: Vec<u8> = (0..(32 * i)).map(|_| rand::random::<u8>()).collect();
+            let message: Vec<bool> = (0..(32 * i)).map(|_| rand::random::<bool>()).collect();
 
             // Ensure the Aleo signatures match.
             let expected_signature = private_key.sign(&message, &mut rng.clone()).unwrap();
@@ -478,7 +478,7 @@ mod testnet2 {
             let private_key = PrivateKey::<Testnet2>::new(&mut thread_rng());
 
             // Craft the Aleo signature.
-            let message: Vec<u8> = (0..(32 * i)).map(|_| rand::random::<u8>()).collect();
+            let message: Vec<bool> = (0..(32 * i)).map(|_| rand::random::<bool>()).collect();
             let expected_signature = private_key.sign(&message, &mut thread_rng()).unwrap();
 
             let candidate_string = &expected_signature.to_string();
@@ -494,7 +494,7 @@ mod testnet2 {
             let private_key = PrivateKey::<Testnet2>::new(&mut thread_rng());
 
             // Craft the Aleo signature.
-            let message: Vec<u8> = (0..(32 * i)).map(|_| rand::random::<u8>()).collect();
+            let message: Vec<bool> = (0..(32 * i)).map(|_| rand::random::<bool>()).collect();
             let expected_signature = private_key.sign(&message, &mut thread_rng()).unwrap();
 
             // Serialize
@@ -515,7 +515,7 @@ mod testnet2 {
             let private_key = PrivateKey::<Testnet2>::new(&mut thread_rng());
 
             // Craft the Aleo signature.
-            let message: Vec<u8> = (0..(32 * i)).map(|_| rand::random::<u8>()).collect();
+            let message: Vec<bool> = (0..(32 * i)).map(|_| rand::random::<bool>()).collect();
             let expected_signature = private_key.sign(&message, &mut thread_rng()).unwrap();
 
             // Serialize

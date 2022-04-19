@@ -137,7 +137,7 @@ where
         let g_bases = {
             let (base, _, _) = hash_to_curve::<TEAffine<TE>>(message);
 
-            let mut g = base.into_projective();
+            let mut g = base.to_projective();
             let mut g_bases = Vec::with_capacity(TE::ScalarField::size_in_bits());
             for _ in 0..TE::ScalarField::size_in_bits() {
                 g_bases.push(g);
@@ -178,7 +178,7 @@ where
         // We do a batch inversion to save one inversion.
         let mut to_invert = [g_sk_sig, g_r_sig];
         TEProjective::<TE>::batch_normalization(&mut to_invert);
-        let [g_sk_sig_affine, g_r_sig_affine] = to_invert.map(|a| a.into_affine());
+        let [g_sk_sig_affine, g_r_sig_affine] = to_invert.map(|a| a.to_affine());
 
         // Compute sk_prf := RO(G^sk_sig || G^r_sig).
         let sk_prf = self.hash_to_scalar_field(&[g_sk_sig_affine.to_x_coordinate(), g_r_sig_affine.to_x_coordinate()]);
@@ -198,7 +198,7 @@ where
     fn sign<R: Rng + CryptoRng>(
         &self,
         private_key: &Self::PrivateKey,
-        message: &[u8],
+        message: &[bool],
         rng: &mut R,
     ) -> Result<Self::Signature> {
         // Sample a random scalar field element.
@@ -218,7 +218,7 @@ where
 
         let mut to_invert = [g_sk_sig, g_r_sig, g_r];
         TEProjective::<TE>::batch_normalization(&mut to_invert);
-        let [g_sk_sig_affine, g_r_sig_affine, g_r_affine] = to_invert.map(|a| a.into_affine());
+        let [g_sk_sig_affine, g_r_sig_affine, g_r_affine] = to_invert.map(|a| a.to_affine());
 
         // Compute sk_prf := RO(G^sk_sig || G^r_sig).
         let sk_prf = self.hash_to_scalar_field(&[g_sk_sig_affine.to_x_coordinate(), g_r_sig_affine.to_x_coordinate()]);
@@ -227,7 +227,7 @@ where
         let g_sk_prf = self.g_scalar_multiply(&sk_prf);
 
         // Compute G^sk_sig G^r_sig G^sk_prf.
-        let public_key = (g_sk_sig + g_r_sig + g_sk_prf).into_affine();
+        let public_key = (g_sk_sig + g_r_sig + g_sk_prf).to_affine();
 
         // Compute the verifier challenge.
         let verifier_challenge = {
@@ -257,7 +257,7 @@ where
     /// Verifies (c == c') && (public_key == G^sk_sig G^r_sig G^sk_prf) where:
     ///     c' := Hash(G^sk_sig G^r_sig G^sk_prf, G^s G^sk_sig^c, message)
     ///
-    fn verify(&self, public_key: &Self::PublicKey, message: &[u8], signature: &Self::Signature) -> Result<bool> {
+    fn verify(&self, public_key: &Self::PublicKey, message: &[bool], signature: &Self::Signature) -> Result<bool> {
         // Extract the signature contents.
         let AleoSignature { prover_response, verifier_challenge, root_public_key, root_randomizer } = signature;
 
@@ -268,7 +268,7 @@ where
         let g_sk_sig_c = self.scalar_multiply(g_sk_sig, verifier_challenge);
 
         // Compute G^r := G^s G^sk_sig^c.
-        let g_r = (self.g_scalar_multiply(prover_response) + g_sk_sig_c).into_affine();
+        let g_r = (self.g_scalar_multiply(prover_response) + g_sk_sig_c).to_affine();
 
         // Compute the candidate verifier challenge.
         let candidate_verifier_challenge = {
@@ -295,7 +295,7 @@ where
             let g_sk_prf = self.g_scalar_multiply(&sk_prf);
 
             // Compute G^sk_sig G^r_sig G^sk_prf.
-            g_sk_sig.into_projective() + g_sk_prf + g_r_sig.into_projective()
+            g_sk_sig.to_projective() + g_sk_prf + g_r_sig.to_projective()
         };
 
         Ok(*verifier_challenge == candidate_verifier_challenge && *public_key == candidate_public_key)
@@ -382,7 +382,7 @@ mod tests {
     };
     use snarkvm_utilities::test_crypto_rng;
 
-    fn sign_and_verify<S: SignatureScheme>(message: &[u8]) {
+    fn sign_and_verify<S: SignatureScheme>(message: &[bool]) {
         let rng = &mut test_crypto_rng();
         let signature_scheme = S::setup("sign_and_verify");
 
@@ -392,7 +392,7 @@ mod tests {
         assert!(signature_scheme.verify(&public_key, message, &signature).unwrap());
     }
 
-    fn failed_verification<S: SignatureScheme>(message: &[u8], bad_message: &[u8]) {
+    fn failed_verification<S: SignatureScheme>(message: &[bool], bad_message: &[bool]) {
         let rng = &mut test_crypto_rng();
         let signature_scheme = S::setup("failed_verification");
 
@@ -407,8 +407,8 @@ mod tests {
         type TestSignature = AleoSignatureScheme<EdwardsBls12>;
 
         let message = "Hi, I am an Aleo signature!";
-        sign_and_verify::<TestSignature>(message.as_bytes());
-        failed_verification::<TestSignature>(message.as_bytes(), b"Bad message");
+        sign_and_verify::<TestSignature>(&message.as_bytes().to_bits_le());
+        failed_verification::<TestSignature>(&message.as_bytes().to_bits_le(), &b"Bad message".to_bits_le());
     }
 
     #[test]
@@ -416,7 +416,7 @@ mod tests {
         type TestSignature = AleoSignatureScheme<EdwardsBW6>;
 
         let message = "Hi, I am an Aleo signature!";
-        sign_and_verify::<TestSignature>(message.as_bytes());
-        failed_verification::<TestSignature>(message.as_bytes(), b"Bad message");
+        sign_and_verify::<TestSignature>(&message.as_bytes().to_bits_le());
+        failed_verification::<TestSignature>(&message.as_bytes().to_bits_le(), &b"Bad message".to_bits_le());
     }
 }

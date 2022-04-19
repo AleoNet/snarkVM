@@ -103,7 +103,7 @@ pub trait ProjectiveCurve:
     /// Converts this element into its affine representation.
     #[must_use]
     #[allow(clippy::wrong_self_convention)]
-    fn into_affine(&self) -> Self::Affine;
+    fn to_affine(&self) -> Self::Affine;
 }
 
 /// Affine representation of an elliptic curve point guaranteed to be
@@ -165,7 +165,7 @@ pub trait AffineCurve:
 
     /// Converts this element into its projective representation.
     #[must_use]
-    fn into_projective(&self) -> Self::Projective;
+    fn to_projective(&self) -> Self::Projective;
 
     /// Returns a group element if the set of bytes forms a valid group element,
     /// otherwise returns None. This function is primarily intended for sampling

@@ -291,7 +291,7 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
                         a.1 += (E::Fr::one(), &b.1);
                         a
                     });
-                let comm = kzg10::Commitment(comm.into_affine());
+                let comm = kzg10::Commitment(comm.to_affine());
 
                 end_timer!(commit_time);
                 Ok((LabeledCommitment::new(label.to_string(), comm, degree_bound), rand))
@@ -390,8 +390,10 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
                 proof
             });
         }
+        let batch_proof = pool.execute_all().into_iter().collect::<Result<_, _>>().map(BatchProof);
         end_timer!(open_time);
-        pool.execute_all().into_iter().collect::<Result<_, _>>().map(BatchProof)
+
+        batch_proof
     }
 
     pub fn batch_check<'a>(
@@ -694,7 +696,7 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
         let (witness, adjusted_witness) = if let Some(randomizer) = randomizer {
             (proof.w.mul(randomizer), adjusted_witness.mul(randomizer))
         } else {
-            (proof.w.into_projective(), adjusted_witness)
+            (proof.w.to_projective(), adjusted_witness)
         };
 
         *combined_witness += witness;

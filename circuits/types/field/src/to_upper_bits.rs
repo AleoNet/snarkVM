@@ -52,7 +52,7 @@ impl<E: Environment> ToUpperBits for Field<E> {
             coefficient = coefficient.double();
         }
         for bit in bits.iter().rev() {
-            accumulator += Field::from(bit) * &coefficient;
+            accumulator += Field::from_boolean(bit) * &coefficient;
             coefficient = coefficient.double();
         }
 

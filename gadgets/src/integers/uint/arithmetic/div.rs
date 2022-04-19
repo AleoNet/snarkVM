@@ -143,4 +143,4 @@ macro_rules! div_int_impl {
     )*)
 }
 
-div_int_impl!(UInt8, UInt16, UInt32, UInt64, UInt128);
+div_int_impl!(UInt8);

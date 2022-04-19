@@ -14,88 +14,133 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Argument, Memory, Operation, Sanitizer};
-use snarkvm_circuits::{Parser, ParserResult, Type};
+use crate::{helpers::Register, Annotation, Program, Sanitizer};
+use snarkvm_circuits::prelude::*;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
-use core::{fmt, ops};
-use nom::bytes::complete::tag;
+use core::fmt;
 use std::io::{Read, Result as IoResult, Write};
 
-/// Declares a `register` as a function output with type `annotation`.
-pub struct Output<M: Memory> {
-    argument: Argument<M::Environment>,
+/// An output statement defines an output of a function, and may refer to the value
+/// in either a register or a register member. An output statement is of the form
+/// `output {register} as {annotation};`.
+#[derive(Debug, PartialEq, Eq, Hash)]
+pub struct Output<P: Program> {
+    /// The output register.
+    register: Register<P>,
+    /// The output annotation.
+    annotation: Annotation<P>,
 }
 
-impl<M: Memory> Operation for Output<M> {
-    type Memory = M;
-
-    /// Returns the opcode as a string.
+impl<P: Program> Output<P> {
+    /// Returns the output register.
     #[inline]
-    fn opcode() -> &'static str {
-        "output"
+    pub fn register(&self) -> &Register<P> {
+        &self.register
     }
 
-    /// Parses a string into an output.
+    /// Returns the output annotation.
     #[inline]
-    fn parse(string: &str, memory: Self::Memory) -> ParserResult<Self> {
+    pub fn annotation(&self) -> &Annotation<P> {
+        &self.annotation
+    }
+}
+
+impl<P: Program> TypeName for Output<P> {
+    /// Returns the type name as a string.
+    #[inline]
+    fn type_name() -> &'static str {
+        "output"
+    }
+}
+
+impl<P: Program> Parser for Output<P> {
+    type Environment = P::Environment;
+
+    /// Parses a string into an output statement.
+    /// The output statement is of the form `output {register} as {annotation};`.
+    #[inline]
+    fn parse(string: &str) -> ParserResult<Self> {
         // Parse the whitespace and comments from the string.
         let (string, _) = Sanitizer::parse(string)?;
         // Parse the output keyword from the string.
-        let (string, _) = tag("output")(string)?;
+        let (string, _) = tag(Self::type_name())(string)?;
         // Parse the space from the string.
         let (string, _) = tag(" ")(string)?;
-        // Parse the argument from the string.
-        let (string, argument) = Argument::parse(string)?;
+        // Parse the register from the string.
+        let (string, register) = Register::parse(string)?;
+        // Parse the " as " from the string.
+        let (string, _) = tag(" as ")(string)?;
+        // Parse the annotation from the string.
+        let (string, annotation) = Annotation::parse(string)?;
         // Parse the semicolon from the string.
         let (string, _) = tag(";")(string)?;
-
-        // Ensure the output register exists.
-        match memory.exists(argument.register()) {
-            true => Ok((string, Self { argument })),
-            false => M::halt(format!("Tried to set non-existent register {} as an output", argument.register())),
-        }
-    }
-
-    /// Evaluates the operation in-place.
-    #[inline]
-    fn evaluate(&self, memory: &Self::Memory) {
-        // Retrieve the output annotations.
-        let register = self.argument.register();
-        let type_ = self.argument.type_annotation();
-
-        // Load the output from memory.
-        let literal = memory.load(register);
-
-        // Ensure the type matches.
-        if Type::from(&literal) != type_ {
-            M::halt(format!("Output register {register} is not a {type_}"))
-        }
+        // Return the output statement.
+        Ok((string, Self { register, annotation }))
     }
 }
 
-impl<M: Memory> fmt::Display for Output<M> {
+impl<P: Program> fmt::Display for Output<P> {
+    /// Prints the output statement as a string.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{} {};", Self::opcode(), self.argument)
+        write!(
+            f,
+            "{type_} {register} as {annotation};",
+            type_ = Self::type_name(),
+            register = self.register,
+            annotation = self.annotation
+        )
     }
 }
 
-impl<M: Memory> ops::Deref for Output<M> {
-    type Target = Argument<M::Environment>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.argument
-    }
-}
-
-impl<M: Memory> FromBytes for Output<M> {
+impl<P: Program> FromBytes for Output<P> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        Ok(Self { argument: Argument::read_le(&mut reader)? })
+        let register = FromBytes::read_le(&mut reader)?;
+        let annotation = FromBytes::read_le(&mut reader)?;
+        Ok(Self { register, annotation })
     }
 }
 
-impl<M: Memory> ToBytes for Output<M> {
+impl<P: Program> ToBytes for Output<P> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.argument.write_le(&mut writer)
+        self.register.write_le(&mut writer)?;
+        self.annotation.write_le(&mut writer)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Process;
+
+    type P = Process;
+
+    #[test]
+    fn test_output_type_name() {
+        assert_eq!(Output::<P>::type_name(), "output");
+    }
+
+    #[test]
+    fn test_output_parse() {
+        // Literal
+        let output = Output::<P>::parse("output r0 as field.private;").unwrap().1;
+        assert_eq!(output.register(), &Register::<P>::Locator(0));
+        assert_eq!(output.annotation(), &Annotation::<P>::from_str("field.private"));
+
+        // Composite
+        let output = Output::<P>::parse("output r1 as signature;").unwrap().1;
+        assert_eq!(output.register(), &Register::<P>::Locator(1));
+        assert_eq!(output.annotation(), &Annotation::<P>::from_str("signature"));
+    }
+
+    #[test]
+    fn test_output_display() {
+        // Literal
+        let output = Output::<P>::parse("output r0 as field.private;").unwrap().1;
+        assert_eq!(format!("{}", output), "output r0 as field.private;");
+
+        // Composite
+        let output = Output::<P>::parse("output r1 as signature;").unwrap().1;
+        assert_eq!(format!("{}", output), "output r1 as signature;");
     }
 }

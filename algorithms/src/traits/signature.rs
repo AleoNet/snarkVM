@@ -39,11 +39,11 @@ pub trait SignatureScheme: Sized + Debug + Clone + Eq + Send + Sync {
     fn sign<R: Rng + CryptoRng>(
         &self,
         private_key: &Self::PrivateKey,
-        message: &[u8],
+        message: &[bool],
         rng: &mut R,
     ) -> Result<Self::Signature>;
 
-    fn verify(&self, public_key: &Self::PublicKey, message: &[u8], signature: &Self::Signature) -> Result<bool>;
+    fn verify(&self, public_key: &Self::PublicKey, message: &[bool], signature: &Self::Signature) -> Result<bool>;
 }
 
 pub trait SignatureSchemeOperations {

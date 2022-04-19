@@ -195,8 +195,8 @@ impl<E: PairingEngine> KZG10<E> {
             };
         end_timer!(inverse_neg_powers_of_beta_h_time);
 
-        let beta_h = h.mul(beta).into_affine();
-        let h = h.into_affine();
+        let beta_h = h.mul(beta).to_affine();
+        let h = h.to_affine();
         let prepared_h = h.prepare();
         let prepared_beta_h = beta_h.prepare();
 
@@ -268,7 +268,7 @@ impl<E: PairingEngine> KZG10<E> {
         let random_ints = convert_to_bigints(&randomness.blinding_polynomial.coeffs);
         let msm_time = start_timer!(|| "MSM to compute commitment to random poly");
         let random_commitment =
-            VariableBase::msm(&powers.powers_of_beta_times_gamma_g, random_ints.as_slice()).into_affine();
+            VariableBase::msm(&powers.powers_of_beta_times_gamma_g, random_ints.as_slice()).to_affine();
         end_timer!(msm_time);
 
         if terminator.load(Ordering::Relaxed) {
@@ -324,7 +324,7 @@ impl<E: PairingEngine> KZG10<E> {
         let random_ints = convert_to_bigints(&randomness.blinding_polynomial.coeffs);
         let msm_time = start_timer!(|| "MSM to compute commitment to random poly");
         let random_commitment =
-            VariableBase::msm(&lagrange_basis.powers_of_beta_times_gamma_g, random_ints.as_slice()).into_affine();
+            VariableBase::msm(&lagrange_basis.powers_of_beta_times_gamma_g, random_ints.as_slice()).to_affine();
         end_timer!(msm_time);
 
         if terminator.load(Ordering::Relaxed) {
@@ -397,7 +397,7 @@ impl<E: PairingEngine> KZG10<E> {
             None
         };
 
-        Ok(Proof { w: w.into_affine(), random_v })
+        Ok(Proof { w: w.to_affine(), random_v })
     }
 
     /// On input a polynomial `p` and a point `point`, outputs a proof for the same.
@@ -431,13 +431,13 @@ impl<E: PairingEngine> KZG10<E> {
         proof: &Proof<E>,
     ) -> Result<bool, PCError> {
         let check_time = start_timer!(|| "Checking evaluation");
-        let mut inner = commitment.0.into_projective() - vk.g.into_projective().mul(value);
+        let mut inner = commitment.0.to_projective() - vk.g.to_projective().mul(value);
         if let Some(random_v) = proof.random_v {
             inner -= &vk.gamma_g.mul(random_v);
         }
         let lhs = E::pairing(inner, vk.h);
 
-        let inner = vk.beta_h.into_projective() - vk.h.mul(point);
+        let inner = vk.beta_h.to_projective() - vk.h.mul(point);
         let rhs = E::pairing(proof.w, inner);
 
         end_timer!(check_time, || format!("Result: {}", lhs == rhs));
@@ -455,8 +455,8 @@ impl<E: PairingEngine> KZG10<E> {
         rng: &mut R,
     ) -> Result<bool, PCError> {
         let check_time = start_timer!(|| format!("Checking {} evaluation proofs", commitments.len()));
-        let g = vk.g.into_projective();
-        let gamma_g = vk.gamma_g.into_projective();
+        let g = vk.g.to_projective();
+        let gamma_g = vk.gamma_g.to_projective();
 
         let mut total_c = <E::G1Projective>::zero();
         let mut total_w = <E::G1Projective>::zero();

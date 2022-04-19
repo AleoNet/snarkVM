@@ -26,6 +26,9 @@ pub use eject::*;
 pub mod field;
 pub use field::*;
 
+pub mod from;
+pub use from::*;
+
 pub mod group;
 pub use group::*;
 
@@ -49,13 +52,16 @@ pub use scalar::*;
 pub mod string;
 pub use string::*;
 
+pub mod to;
+pub use to::*;
+
+pub mod to_bits;
+pub use to_bits::*;
+
 use crate::Environment;
 
 use core::fmt::Display;
 use nom::{error::VerboseError, IResult};
-
-/// Operations to convert to and from bit representation in a circuit environment.
-pub trait DataType<B: BooleanTrait>: FromBits<Boolean = B> + ToBits<Boolean = B> {}
 
 pub type ParserResult<'a, O> = IResult<&'a str, O, VerboseError<&'a str>>;
 
@@ -78,8 +84,13 @@ pub trait Parser: Display {
         Self: Sized,
     {
         match Self::parse(string) {
-            Ok((_, circuit)) => circuit,
-            Err(error) => Self::Environment::halt(format!("Failed to parse: {}", error)),
+            Ok((remainder, circuit)) => match remainder.is_empty() {
+                true => circuit,
+                false => Self::Environment::halt(format!(
+                    "Failed to parse string. Found invalid character in: \"{remainder}\""
+                )),
+            },
+            Err(error) => Self::Environment::halt(format!("Failed to parse string. {error}")),
         }
     }
 }

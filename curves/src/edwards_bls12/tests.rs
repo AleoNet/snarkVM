@@ -84,8 +84,8 @@ fn test_generator() {
 fn test_conversion() {
     let a: EdwardsAffine = rand::random();
     let b: EdwardsAffine = rand::random();
-    assert_eq!(a.into_projective().into_affine(), a);
-    assert_eq!(b.into_projective().into_affine(), b);
+    assert_eq!(a.to_projective().to_affine(), a);
+    assert_eq!(b.to_projective().to_affine(), b);
 }
 
 #[test]

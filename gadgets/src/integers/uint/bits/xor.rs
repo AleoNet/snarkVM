@@ -45,4 +45,4 @@ macro_rules! uint_xor_impl {
     )*)
 }
 
-uint_xor_impl!(UInt8, UInt16, UInt32, UInt64, UInt128);
+uint_xor_impl!(UInt8);

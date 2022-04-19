@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{Network, Operation};
-use snarkvm_utilities::{FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
+use snarkvm_utilities::{error, FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
 
 use serde::{de, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer};
 use std::{
@@ -63,7 +63,7 @@ impl<N: Network> FromBytes for Event<N> {
                 Ok(Self::RecordViewKey(index, record_view_key))
             }
             2 => Ok(Self::Operation(FromBytes::read_le(&mut reader)?)),
-            _ => unreachable!("Invalid event ID during deserialization"),
+            3.. => Err(error("Invalid event ID during deserialization")),
         }
     }
 }
@@ -149,7 +149,7 @@ impl<'de, N: Network> Deserialize<'de> for Event<N> {
                     2 => Ok(Self::Operation(
                         serde_json::from_value(event["operation"].clone()).map_err(de::Error::custom)?,
                     )),
-                    _ => unreachable!("Invalid event id {}", event_id),
+                    3.. => Err(error("Invalid event ID during deserialization")).map_err(de::Error::custom),
                 }
             }
             false => FromBytesDeserializer::<Self>::deserialize_with_size_encoding(deserializer, "event"),

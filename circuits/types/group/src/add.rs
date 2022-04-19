@@ -144,12 +144,12 @@ mod tests {
     #[test]
     fn test_constant_plus_constant() {
         for i in 0..ITERATIONS {
-            let first = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
-            let second = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
+            let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
+            let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
 
-            let expected = (first + second).into();
-            let a = Group::<Circuit>::new(Mode::Constant, first.into());
-            let b = Group::<Circuit>::new(Mode::Constant, second.into());
+            let expected = (first.to_projective() + second.to_projective()).into();
+            let a = Group::<Circuit>::new(Mode::Constant, first);
+            let b = Group::<Circuit>::new(Mode::Constant, second);
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, &expected, &a, &b, 4, 0, 0, 0);
@@ -161,12 +161,12 @@ mod tests {
     #[test]
     fn test_constant_plus_public() {
         for i in 0..ITERATIONS {
-            let first = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
-            let second = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
+            let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
+            let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
 
-            let expected = (first + second).into();
-            let a = Group::<Circuit>::new(Mode::Constant, first.into());
-            let b = Group::<Circuit>::new(Mode::Public, second.into());
+            let expected = (first.to_projective() + second.to_projective()).into();
+            let a = Group::<Circuit>::new(Mode::Constant, first);
+            let b = Group::<Circuit>::new(Mode::Public, second);
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, &expected, &a, &b, 2, 0, 3, 3);
@@ -178,12 +178,12 @@ mod tests {
     #[test]
     fn test_public_plus_constant() {
         for i in 0..ITERATIONS {
-            let first = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
-            let second = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
+            let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
+            let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
 
-            let expected = (first + second).into();
-            let a = Group::<Circuit>::new(Mode::Public, first.into());
-            let b = Group::<Circuit>::new(Mode::Constant, second.into());
+            let expected = (first.to_projective() + second.to_projective()).into();
+            let a = Group::<Circuit>::new(Mode::Public, first);
+            let b = Group::<Circuit>::new(Mode::Constant, second);
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, &expected, &a, &b, 2, 0, 3, 3);
@@ -195,12 +195,12 @@ mod tests {
     #[test]
     fn test_constant_plus_private() {
         for i in 0..ITERATIONS {
-            let first = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
-            let second = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
+            let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
+            let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
 
-            let expected = (first + second).into();
-            let a = Group::<Circuit>::new(Mode::Constant, first.into());
-            let b = Group::<Circuit>::new(Mode::Private, second.into());
+            let expected = (first.to_projective() + second.to_projective()).into();
+            let a = Group::<Circuit>::new(Mode::Constant, first);
+            let b = Group::<Circuit>::new(Mode::Private, second);
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, &expected, &a, &b, 2, 0, 3, 3);
@@ -212,12 +212,12 @@ mod tests {
     #[test]
     fn test_private_plus_constant() {
         for i in 0..ITERATIONS {
-            let first = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
-            let second = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
+            let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
+            let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
 
-            let expected = (first + second).into();
-            let a = Group::<Circuit>::new(Mode::Private, first.into());
-            let b = Group::<Circuit>::new(Mode::Constant, second.into());
+            let expected = (first.to_projective() + second.to_projective()).into();
+            let a = Group::<Circuit>::new(Mode::Private, first);
+            let b = Group::<Circuit>::new(Mode::Constant, second);
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, &expected, &a, &b, 2, 0, 3, 3);
@@ -229,12 +229,12 @@ mod tests {
     #[test]
     fn test_public_plus_public() {
         for i in 0..ITERATIONS {
-            let first = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
-            let second = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
+            let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
+            let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
 
-            let expected = (first + second).into();
-            let a = Group::<Circuit>::new(Mode::Public, first.into());
-            let b = Group::<Circuit>::new(Mode::Public, second.into());
+            let expected = (first.to_projective() + second.to_projective()).into();
+            let a = Group::<Circuit>::new(Mode::Public, first);
+            let b = Group::<Circuit>::new(Mode::Public, second);
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, &expected, &a, &b, 2, 0, 6, 6);
@@ -246,12 +246,12 @@ mod tests {
     #[test]
     fn test_public_plus_private() {
         for i in 0..ITERATIONS {
-            let first = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
-            let second = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
+            let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
+            let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
 
-            let expected = (first + second).into();
-            let a = Group::<Circuit>::new(Mode::Public, first.into());
-            let b = Group::<Circuit>::new(Mode::Private, second.into());
+            let expected = (first.to_projective() + second.to_projective()).into();
+            let a = Group::<Circuit>::new(Mode::Public, first);
+            let b = Group::<Circuit>::new(Mode::Private, second);
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, &expected, &a, &b, 2, 0, 6, 6);
@@ -263,12 +263,12 @@ mod tests {
     #[test]
     fn test_private_plus_public() {
         for i in 0..ITERATIONS {
-            let first = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
-            let second = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
+            let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
+            let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
 
-            let expected = (first + second).into();
-            let a = Group::<Circuit>::new(Mode::Private, first.into());
-            let b = Group::<Circuit>::new(Mode::Public, second.into());
+            let expected = (first.to_projective() + second.to_projective()).into();
+            let a = Group::<Circuit>::new(Mode::Private, first);
+            let b = Group::<Circuit>::new(Mode::Public, second);
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, &expected, &a, &b, 2, 0, 6, 6);
@@ -280,12 +280,12 @@ mod tests {
     #[test]
     fn test_private_plus_private() {
         for i in 0..ITERATIONS {
-            let first = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
-            let second = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
+            let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
+            let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
 
-            let expected = (first + second).into();
-            let a = Group::<Circuit>::new(Mode::Private, first.into());
-            let b = Group::<Circuit>::new(Mode::Private, second.into());
+            let expected = (first.to_projective() + second.to_projective()).into();
+            let a = Group::<Circuit>::new(Mode::Private, first);
+            let b = Group::<Circuit>::new(Mode::Private, second);
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, &expected, &a, &b, 2, 0, 6, 6);
@@ -297,19 +297,19 @@ mod tests {
     #[test]
     fn test_add_matches() {
         // Sample two random elements.
-        let a = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
-        let b = <Circuit as Environment>::Affine::rand(&mut test_rng()).into_projective();
-        let expected = a + b;
+        let a = <Circuit as Environment>::Affine::rand(&mut test_rng());
+        let b = <Circuit as Environment>::Affine::rand(&mut test_rng());
+        let expected: <Circuit as Environment>::Affine = (a.to_projective() + b.to_projective()).into();
 
         // Constant
-        let first = Group::<Circuit>::new(Mode::Constant, a.into());
-        let second = Group::<Circuit>::new(Mode::Constant, b.into());
+        let first = Group::<Circuit>::new(Mode::Constant, a);
+        let second = Group::<Circuit>::new(Mode::Constant, b);
         let candidate_a = first + second;
         assert_eq!(expected, candidate_a.eject_value());
 
         // Private
-        let first = Group::<Circuit>::new(Mode::Private, a.into());
-        let second = Group::<Circuit>::new(Mode::Private, b.into());
+        let first = Group::<Circuit>::new(Mode::Private, a);
+        let second = Group::<Circuit>::new(Mode::Private, b);
         let candidate_b = first + second;
         assert_eq!(expected, candidate_b.eject_value());
     }

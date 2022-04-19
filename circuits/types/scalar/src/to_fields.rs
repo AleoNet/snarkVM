@@ -18,7 +18,6 @@ use super::*;
 use snarkvm_circuits_types_field::Field;
 
 impl<E: Environment> ToFields for Scalar<E> {
-    type Boolean = Boolean<E>;
     type Field = Field<E>;
 
     /// Casts a string into a list of base fields.

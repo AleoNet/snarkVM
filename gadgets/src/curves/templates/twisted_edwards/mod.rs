@@ -430,7 +430,7 @@ impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> Gr
                 *self = <Self as GroupGadget<TEAffine<P>, F>>::add(self, &mut cs.ns(|| "Add"), &adder)?;
             } else if bits_base_powers.len() == 1 {
                 let bit = bits_base_powers[0].0;
-                let base_power = bits_base_powers[0].1.into_affine();
+                let base_power = bits_base_powers[0].1.to_affine();
                 let new_encoded = self.add_constant(&mut cs.ns(|| "Add base power"), &base_power)?;
                 *self = Self::conditionally_select(&mut cs.ns(|| "Conditional Select"), &bit, &new_encoded, self)?;
             }
@@ -471,7 +471,7 @@ impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> Gr
                 *self = <Self as GroupGadget<TEAffine<P>, F>>::add(self, &mut cs.ns(|| "Add"), &adder)?;
             } else if bits_base_powers.len() == 1 {
                 let bit = bits_base_powers[0].0;
-                let base_power = bits_base_powers[0].1.into_affine();
+                let base_power = bits_base_powers[0].1.to_affine();
                 let new_encoded_plus = self.add_constant(&mut cs.ns(|| "Add base power plus"), &base_power)?;
                 let new_encoded_minus = self.add_constant(&mut cs.ns(|| "Add base power minus"), &base_power.neg())?;
                 *self = Self::conditionally_select(
@@ -568,7 +568,7 @@ impl<P: TwistedEdwardsParameters, F: Field, FG: FieldGadget<P::BaseField, F>> Gr
                 let mut acc_power = *base_power;
                 for _ in 0..4 {
                     let p = acc_power;
-                    let (x, y) = MontgomeryAffineGadget::<P, F, FG>::from_edwards_to_coords(&p.into_affine()).unwrap();
+                    let (x, y) = MontgomeryAffineGadget::<P, F, FG>::from_edwards_to_coords(&p.to_affine()).unwrap();
                     x_coeffs.push(x);
                     y_coeffs.push(y);
                     acc_power += base_power;

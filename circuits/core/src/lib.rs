@@ -17,20 +17,21 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
-pub mod aleo;
-pub use aleo::*;
+pub mod account;
+pub mod algorithms;
 
-pub mod compute_key;
-pub use compute_key::*;
+pub mod devnet;
+pub use devnet::*;
 
-pub mod poseidon;
-pub use poseidon::*;
+pub mod traits;
+pub use traits::*;
 
-pub mod private_key;
-pub use private_key::*;
+use snarkvm_circuits_types::{environment::Environment, Field, Group, Scalar};
 
-pub mod record;
-pub use record::*;
+pub trait Aleo: Environment {
+    /// Returns the scalar multiplication on the group bases.
+    fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self>;
 
-pub mod view_key;
-pub use view_key::*;
+    /// Returns a hash on the scalar field for the given input.
+    fn hash_to_scalar(input: &[Field<Self>]) -> Scalar<Self>;
+}
