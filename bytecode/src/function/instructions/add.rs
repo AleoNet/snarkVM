@@ -132,6 +132,12 @@ mod tests {
 
     type P = Process;
 
+    #[test]
+    fn test_parse() {
+        let (_, instruction) = Instruction::<Process>::parse("add r0 r1 into r2;").unwrap();
+        assert!(matches!(instruction, Instruction::Add(_)));
+    }
+
     test_modes!(field, Add, "1field", "2field", "3field");
     test_modes!(group, Add, "2group", "0group", "2group");
     test_modes!(i8, Add, "-1i8", "2i8", "1i8");

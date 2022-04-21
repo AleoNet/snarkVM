@@ -118,7 +118,13 @@ impl<P: Program> Into<Instruction<P>> for Neg<P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{test_instruction_halts, test_modes};
+    use crate::{test_instruction_halts, test_modes, Process};
+
+    #[test]
+    fn test_parse() {
+        let (_, instruction) = Instruction::<Process>::parse("neg r0 into r1;").unwrap();
+        assert!(matches!(instruction, Instruction::Neg(_)));
+    }
 
     test_modes!(field, Neg, "1field", "-1field");
     test_modes!(group, Neg, "2group", "-2group");

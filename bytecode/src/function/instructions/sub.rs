@@ -129,7 +129,13 @@ impl<P: Program> Into<Instruction<P>> for Sub<P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{test_instruction_halts, test_modes};
+    use crate::{test_instruction_halts, test_modes, Process};
+
+    #[test]
+    fn test_parse() {
+        let (_, instruction) = Instruction::<Process>::parse("sub r0 r1 into r2;").unwrap();
+        assert!(matches!(instruction, Instruction::Sub(_)));
+    }
 
     test_modes!(field, Sub, "3field", "2field", "1field");
     test_modes!(group, Sub, "2group", "0group", "2group");

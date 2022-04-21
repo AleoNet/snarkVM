@@ -137,6 +137,12 @@ mod tests {
 
     type P = Process;
 
+    #[test]
+    fn test_parse() {
+        let (_, instruction) = Instruction::<Process>::parse("mul r0 r1 into r2;").unwrap();
+        assert!(matches!(instruction, Instruction::Mul(_)));
+    }
+
     // Testing this manually since the constant x public mode yields a public,
     // but the test_modes! macro expects a private.
     // test_modes!(field, Mul, "1field", "2field", "2field");
