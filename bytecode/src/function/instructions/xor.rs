@@ -154,6 +154,12 @@ mod tests {
         ["constant", "private", "private"],
     ];
 
+    #[test]
+    fn test_parse() {
+        let (_, instruction) = Instruction::<Process>::parse("xor r0 r1 into r2;").unwrap();
+        assert!(matches!(instruction, Instruction::Xor(_)));
+    }
+
     // Boolean happens to produce the same modes as signed integers for Xor.
     test_modes!(boolean, Xor, "true", "false", "true", SIGNED_INTEGER_MODE_TESTS);
     test_modes!(i8, Xor, "1i8", "0i8", "1i8", SIGNED_INTEGER_MODE_TESTS);

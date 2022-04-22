@@ -155,6 +155,12 @@ mod tests {
         ["constant", "private", "private"],
     ];
 
+    #[test]
+    fn test_parse() {
+        let (_, instruction) = Instruction::<Process>::parse("and r0 r1 into r2;").unwrap();
+        assert!(matches!(instruction, Instruction::And(_)));
+    }
+
     test_modes!(boolean, And, "true", "false", "false", SIGNED_INTEGER_MODE_TESTS);
     test_modes!(i8, And, "1i8", "0i8", "0i8", SIGNED_INTEGER_MODE_TESTS);
     test_modes!(i16, And, "1i16", "0i16", "0i16", SIGNED_INTEGER_MODE_TESTS);

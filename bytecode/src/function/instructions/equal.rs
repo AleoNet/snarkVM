@@ -188,6 +188,12 @@ mod tests {
         ["constant", "constant", "constant"],
     ];
 
+    #[test]
+    fn test_parse() {
+        let (_, instruction) = Instruction::<Process>::parse("eq r0 r1 into r2;").unwrap();
+        assert!(matches!(instruction, Instruction::Equal(_)));
+    }
+
     test_modes!(
         address,
         Equal,

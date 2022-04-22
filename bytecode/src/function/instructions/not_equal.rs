@@ -134,6 +134,12 @@ mod tests {
     use super::*;
     use crate::{binary_instruction_test, test_instruction_halts, test_modes, Identifier, Process};
 
+    #[test]
+    fn test_parse() {
+        let (_, instruction) = Instruction::<Process>::parse("neq r0 r1 into r2;").unwrap();
+        assert!(matches!(instruction, Instruction::NotEqual(_)));
+    }
+
     test_modes!(
         address,
         NotEqual,

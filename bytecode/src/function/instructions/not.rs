@@ -124,6 +124,12 @@ mod tests {
     use super::*;
     use crate::{test_instruction_halts, test_modes, Identifier, Process};
 
+    #[test]
+    fn test_parse() {
+        let (_, instruction) = Instruction::<Process>::parse("not r0 into r1;").unwrap();
+        assert!(matches!(instruction, Instruction::Not(_)));
+    }
+
     test_modes!(boolean, Not, "true", "false");
     test_modes!(i8, Not, "0i8", "-1i8");
     test_modes!(i16, Not, "0i16", "-1i16");

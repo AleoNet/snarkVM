@@ -120,6 +120,12 @@ mod tests {
     use super::*;
     use crate::{binary_instruction_test, test_instruction_halts, test_modes, Identifier, Process};
 
+    #[test]
+    fn test_parse() {
+        let (_, instruction) = Instruction::<Process>::parse("nor r0 r1 into r2;").unwrap();
+        assert!(matches!(instruction, Instruction::Nor(_)));
+    }
+
     test_modes!(boolean, Nor, "false", "false", "true");
     binary_instruction_test!(boolean_nor, Nor, "true.public", "false.public", "false.private");
 

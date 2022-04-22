@@ -120,6 +120,12 @@ mod tests {
     use super::*;
     use crate::{binary_instruction_test, test_instruction_halts, test_modes, Identifier, Process};
 
+    #[test]
+    fn test_parse() {
+        let (_, instruction) = Instruction::<Process>::parse("nand r0 r1 into r2;").unwrap();
+        assert!(matches!(instruction, Instruction::Nand(_)));
+    }
+
     test_modes!(boolean, Nand, "true", "true", "false");
     binary_instruction_test!(boolean_nand_true_and_false, Nand, "true.public", "false.public", "true.private");
     binary_instruction_test!(boolean_nand_false_and_true, Nand, "false.public", "true.public", "true.private");
