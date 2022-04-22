@@ -131,6 +131,12 @@ mod tests {
     use super::*;
     use crate::{binary_instruction_test, test_instruction_halts, test_modes, Identifier, Process};
 
+    #[test]
+    fn test_parse() {
+        let (_, instruction) = Instruction::<Process>::parse("lte r0 r1 into r2;").unwrap();
+        assert!(matches!(instruction, Instruction::LessThanOrEqual(_)));
+    }
+
     test_modes!(field, LessThanOrEqual, "2field", "2field", "true");
     binary_instruction_test!(field_lt, LessThanOrEqual, "1field.public", "2field.public", "true.private");
     binary_instruction_test!(field_gt, LessThanOrEqual, "2field.public", "1field.public", "false.private");
