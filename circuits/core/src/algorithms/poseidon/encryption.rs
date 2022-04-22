@@ -23,16 +23,18 @@ use snarkvm_fields::{FieldParameters, PrimeField};
 pub struct ECIESPoseidonEncryption<E: Environment> {
     generator: E::Affine,
     poseidon: Poseidon<E>,
-    symmetric_key_commitment_domain: E::BaseField,
-    symmetric_encryption_domain: E::BaseField,
+    symmetric_key_commitment_domain: Field<E>,
+    symmetric_encryption_domain: Field<E>,
 }
 
 impl<E: Environment> ECIESPoseidonEncryption<E> {
     pub fn setup(message: &str) -> Self {
         let (generator, _, _) = hash_to_curve::<_>(message);
         let poseidon = Poseidon::<E>::new();
-        let symmetric_key_commitment_domain = E::BaseField::from_bytes_le_mod_order(b"AleoSymmetricKeyCommitment0");
-        let symmetric_encryption_domain = E::BaseField::from_bytes_le_mod_order(b"AleoSymmetricEncryption0");
+        let symmetric_key_commitment_domain =
+            Field::constant(E::BaseField::from_bytes_le_mod_order(b"AleoSymmetricKeyCommitment0"));
+        let symmetric_encryption_domain =
+            Field::constant(E::BaseField::from_bytes_le_mod_order(b"AleoSymmetricEncryption0"));
 
         Self { generator, poseidon, symmetric_key_commitment_domain, symmetric_encryption_domain }
     }
@@ -61,7 +63,6 @@ impl<E: Environment> ECIESPoseidonEncryption<E> {
 
         // Drop all the ending zeros and the last "1" bit.
         // Note that there must be at least one "1" bit because the last element is not zero.
-        // TODO: how do i do this without ejecting
         loop {
             if bits.pop().unwrap().eject_value() == true {
                 break;
@@ -73,5 +74,19 @@ impl<E: Environment> ECIESPoseidonEncryption<E> {
         } else {
             bits
         }
+    }
+
+    pub fn encrypt(&self, symmetric_key: Field<E>, message: &[Field<E>]) -> Vec<Field<E>> {
+        let randomizers =
+            self.poseidon.hash_many(&[self.symmetric_encryption_domain.clone(), symmetric_key], message.len());
+
+        message.iter().zip_eq(randomizers).map(|(plaintext, randomizer)| plaintext + randomizer).collect()
+    }
+
+    pub fn decrypt(&self, symmetric_key: Field<E>, ciphertext: &[Field<E>]) -> Vec<Field<E>> {
+        let randomizers =
+            self.poseidon.hash_many(&[self.symmetric_encryption_domain.clone(), symmetric_key], ciphertext.len());
+
+        ciphertext.iter().zip_eq(randomizers).map(|(ciphertext, randomizer)| ciphertext - &randomizer).collect()
     }
 }
