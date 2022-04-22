@@ -74,6 +74,9 @@ pub(super) use sub::*;
 pub(super) mod sub_wrapped;
 pub(super) use sub_wrapped::*;
 
+pub(super) mod ternary;
+pub(super) use ternary::*;
+
 pub(super) mod xor;
 pub(super) use xor::*;
 
@@ -179,11 +182,12 @@ pub enum Instruction<P: Program> {
     Shr(Shr<P>),
     /// Shifts `first` right by `second` bits, wrapping around at the boundary of the type, storing the outcome in `destination`.
     ShrWrapped(ShrWrapped<P>),
-    /// Subtracts `second` from `first`, storing the outcome in `destination`.
     /// Computes `first - second`, storing the outcome in `destination`.
     Sub(Sub<P>),
     /// Computes `first - second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
     SubWrapped(SubWrapped<P>),
+    /// Selects `first`, if `condition` is true, otherwise selects `second`, storing the result in `destination`.
+    Ternary(Ternary<P>),
     /// Performs a bitwise Xor on `first` and `second`, storing the outcome in `destination`.
     Xor(Xor<P>),
 }
@@ -213,6 +217,7 @@ impl<P: Program> Instruction<P> {
             Self::ShrWrapped(..) => ShrWrapped::<P>::opcode(),
             Self::Sub(..) => Sub::<P>::opcode(),
             Self::SubWrapped(..) => SubWrapped::<P>::opcode(),
+            Self::Ternary(..) => Ternary::<P>::opcode(),
             Self::Xor(..) => Xor::<P>::opcode(),
         }
     }
@@ -241,6 +246,7 @@ impl<P: Program> Instruction<P> {
             Self::ShrWrapped(shr_wrapped) => shr_wrapped.operands(),
             Self::Sub(sub) => sub.operands(),
             Self::SubWrapped(sub_wrapped) => sub_wrapped.operands(),
+            Self::Ternary(ternary) => ternary.operands(),
             Self::Xor(xor) => xor.operands(),
         }
     }
@@ -269,6 +275,7 @@ impl<P: Program> Instruction<P> {
             Self::ShrWrapped(shr_wrapped) => shr_wrapped.destination(),
             Self::Sub(sub) => sub.destination(),
             Self::SubWrapped(sub_wrapped) => sub_wrapped.destination(),
+            Self::Ternary(ternary) => ternary.destination(),
             Self::Xor(xor) => xor.destination(),
         }
     }
@@ -297,6 +304,7 @@ impl<P: Program> Instruction<P> {
             Self::ShrWrapped(instruction) => instruction.evaluate(registers),
             Self::Sub(instruction) => instruction.evaluate(registers),
             Self::SubWrapped(instruction) => instruction.evaluate(registers),
+            Self::Ternary(instruction) => instruction.evaluate(registers),
             Self::Xor(instruction) => instruction.evaluate(registers),
         }
     }
@@ -319,21 +327,24 @@ impl<P: Program> Parser for Instruction<P> {
             preceded(pair(tag(Div::<P>::opcode()), tag(" ")), map(Div::parse, Into::into)),
             preceded(pair(tag(DivWrapped::<P>::opcode()), tag(" ")), map(DivWrapped::parse, Into::into)),
             preceded(pair(tag(Equal::<P>::opcode()), tag(" ")), map(Equal::parse, Into::into)),
-            preceded(pair(tag(Mul::<P>::opcode()), tag(" ")), map(Mul::parse, Into::into)),
-            preceded(pair(tag(MulWrapped::<P>::opcode()), tag(" ")), map(MulWrapped::parse, Into::into)),
-            preceded(pair(tag(Nand::<P>::opcode()), tag(" ")), map(Nand::parse, Into::into)),
-            preceded(pair(tag(Neg::<P>::opcode()), tag(" ")), map(Neg::parse, Into::into)),
-            preceded(pair(tag(Nor::<P>::opcode()), tag(" ")), map(Nor::parse, Into::into)),
-            preceded(pair(tag(Not::<P>::opcode()), tag(" ")), map(Not::parse, Into::into)),
-            preceded(pair(tag(NotEqual::<P>::opcode()), tag(" ")), map(NotEqual::parse, Into::into)),
-            preceded(pair(tag(Or::<P>::opcode()), tag(" ")), map(Or::parse, Into::into)),
-            preceded(pair(tag(Shl::<P>::opcode()), tag(" ")), map(Shl::parse, Into::into)),
-            preceded(pair(tag(ShlWrapped::<P>::opcode()), tag(" ")), map(ShlWrapped::parse, Into::into)),
-            preceded(pair(tag(Shr::<P>::opcode()), tag(" ")), map(Shr::parse, Into::into)),
-            preceded(pair(tag(ShrWrapped::<P>::opcode()), tag(" ")), map(ShrWrapped::parse, Into::into)),
-            preceded(pair(tag(Sub::<P>::opcode()), tag(" ")), map(Sub::parse, Into::into)),
-            preceded(pair(tag(SubWrapped::<P>::opcode()), tag(" ")), map(SubWrapped::parse, Into::into)),
-            preceded(pair(tag(Xor::<P>::opcode()), tag(" ")), map(Xor::parse, Into::into)),
+            alt((
+                preceded(pair(tag(Mul::<P>::opcode()), tag(" ")), map(Mul::parse, Into::into)),
+                preceded(pair(tag(MulWrapped::<P>::opcode()), tag(" ")), map(MulWrapped::parse, Into::into)),
+                preceded(pair(tag(Nand::<P>::opcode()), tag(" ")), map(Nand::parse, Into::into)),
+                preceded(pair(tag(Neg::<P>::opcode()), tag(" ")), map(Neg::parse, Into::into)),
+                preceded(pair(tag(Nor::<P>::opcode()), tag(" ")), map(Nor::parse, Into::into)),
+                preceded(pair(tag(Not::<P>::opcode()), tag(" ")), map(Not::parse, Into::into)),
+                preceded(pair(tag(NotEqual::<P>::opcode()), tag(" ")), map(NotEqual::parse, Into::into)),
+                preceded(pair(tag(Or::<P>::opcode()), tag(" ")), map(Or::parse, Into::into)),
+                preceded(pair(tag(Shl::<P>::opcode()), tag(" ")), map(Shl::parse, Into::into)),
+                preceded(pair(tag(ShlWrapped::<P>::opcode()), tag(" ")), map(ShlWrapped::parse, Into::into)),
+                preceded(pair(tag(Shr::<P>::opcode()), tag(" ")), map(Shr::parse, Into::into)),
+                preceded(pair(tag(ShrWrapped::<P>::opcode()), tag(" ")), map(ShrWrapped::parse, Into::into)),
+                preceded(pair(tag(Sub::<P>::opcode()), tag(" ")), map(Sub::parse, Into::into)),
+                preceded(pair(tag(SubWrapped::<P>::opcode()), tag(" ")), map(SubWrapped::parse, Into::into)),
+                preceded(pair(tag(Ternary::<P>::opcode()), tag(" ")), map(Ternary::parse, Into::into)),
+                preceded(pair(tag(Xor::<P>::opcode()), tag(" ")), map(Xor::parse, Into::into)),
+            )),
         ))(string)?;
         // Parse the semicolon from the string.
         let (string, _) = tag(";")(string)?;
@@ -365,6 +376,7 @@ impl<P: Program> fmt::Display for Instruction<P> {
             Self::ShrWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Sub(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::SubWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::Ternary(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Xor(instruction) => write!(f, "{} {};", self.opcode(), instruction),
         }
     }
@@ -394,8 +406,9 @@ impl<P: Program> FromBytes for Instruction<P> {
             17 => Ok(Self::ShrWrapped(ShrWrapped::read_le(&mut reader)?)),
             18 => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
             19 => Ok(Self::SubWrapped(SubWrapped::read_le(&mut reader)?)),
-            20 => Ok(Self::Xor(Xor::read_le(&mut reader)?)),
-            21.. => Err(error(format!("Failed to deserialize an instruction of code {code}"))),
+            20 => Ok(Self::Ternary(Ternary::read_le(&mut reader)?)),
+            21 => Ok(Self::Xor(Xor::read_le(&mut reader)?)),
+            22.. => Err(error(format!("Failed to deserialize an instruction of code {code}"))),
         }
     }
 }
@@ -483,8 +496,12 @@ impl<P: Program> ToBytes for Instruction<P> {
                 u16::write_le(&19u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Xor(instruction) => {
+            Self::Ternary(instruction) => {
                 u16::write_le(&20u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::Xor(instruction) => {
+                u16::write_le(&21u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
         }
