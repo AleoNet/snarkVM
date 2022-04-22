@@ -125,7 +125,7 @@ version = "0.7.5"
 optional = true
 
 [dependencies.anyhow]
-version = "1.0.55"
+version = "1.0.57"
 optional = true
 
 [dependencies.colored]
