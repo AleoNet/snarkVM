@@ -131,6 +131,12 @@ mod tests {
 
     type P = Process;
 
+    #[test]
+    fn test_parse() {
+        let (_, instruction) = Instruction::<Process>::parse("mul.w r0 r1 into r2;").unwrap();
+        assert!(matches!(instruction, Instruction::MulWrapped(_)));
+    }
+
     // Test that multiplication wraps around at the boundary of the type for all modes.
     test_modes!(i8, MulWrapped, &format!("{}i8", i8::MAX), "2i8", "-2i8");
     test_modes!(i16, MulWrapped, &format!("{}i16", i16::MAX), "2i16", "-2i16");

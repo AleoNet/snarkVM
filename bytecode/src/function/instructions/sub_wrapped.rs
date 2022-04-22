@@ -129,6 +129,12 @@ mod tests {
 
     type P = Process;
 
+    #[test]
+    fn test_parse() {
+        let (_, instruction) = Instruction::<Process>::parse("sub.w r0 r1 into r2;").unwrap();
+        assert!(matches!(instruction, Instruction::SubWrapped(_)));
+    }
+
     // Tests that the SubWrapped instruction will wrap around on underflow in every mode.
     test_modes!(i8, SubWrapped, &format!("{}i8", i8::MIN), "1i8", &format!("{}i8", i8::MAX));
     test_modes!(i16, SubWrapped, &format!("{}i16", i16::MIN), "1i16", &format!("{}i16", i16::MAX));

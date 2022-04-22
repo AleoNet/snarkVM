@@ -129,6 +129,12 @@ mod tests {
 
     type P = Process;
 
+    #[test]
+    fn test_parse() {
+        let (_, instruction) = Instruction::<Process>::parse("add.w r0 r1 into r2;").unwrap();
+        assert!(matches!(instruction, Instruction::AddWrapped(_)));
+    }
+
     // Tests that the AddWrapped instruction will wrap around at the boundary of the type in every mode.
     test_modes!(i8, AddWrapped, &format!("{}i8", i8::MAX), "1i8", &format!("{}i8", i8::MIN));
     test_modes!(i16, AddWrapped, &format!("{}i16", i16::MAX), "1i16", &format!("{}i16", i16::MIN));

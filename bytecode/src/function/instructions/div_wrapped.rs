@@ -129,6 +129,12 @@ mod tests {
 
     type P = Process;
 
+    #[test]
+    fn test_parse() {
+        let (_, instruction) = Instruction::<Process>::parse("div r0 r1 into r2;").unwrap();
+        assert!(matches!(instruction, Instruction::Div(_)));
+    }
+
     test_modes!(i8, DivWrapped, &format!("{}i8", i8::MIN), "-1i8", &format!("{}i8", i8::MIN));
     test_modes!(i16, DivWrapped, &format!("{}i16", i16::MIN), "-1i16", &format!("{}i16", i16::MIN));
     test_modes!(i32, DivWrapped, &format!("{}i32", i32::MIN), "-1i32", &format!("{}i32", i32::MIN));
