@@ -48,7 +48,7 @@ impl<E: Environment> ECIESPoseidonEncryption<E> {
         let capacity = <<E::BaseField as PrimeField>::Parameters as FieldParameters>::CAPACITY as usize;
 
         // Pack the bits into field elements.
-        bits.chunks(capacity).map(|chunk| Field::from_bits_le(chunk)).collect()
+        bits.chunks(capacity).map(Field::from_bits_le).collect()
     }
 
     /// Decode a vector of field elements to a bitstring. This is used to convert back from
@@ -64,7 +64,7 @@ impl<E: Environment> ECIESPoseidonEncryption<E> {
         // Drop all the ending zeros and the last "1" bit.
         // Note that there must be at least one "1" bit because the last element is not zero.
         loop {
-            if bits.pop().unwrap().eject_value() == true {
+            if bits.pop().unwrap().eject_value() {
                 break;
             }
         }
