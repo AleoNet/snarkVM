@@ -20,6 +20,7 @@ use snarkvm_circuits_environment::prelude::*;
 use snarkvm_circuits_types::prelude::*;
 use snarkvm_fields::{FieldParameters, PrimeField};
 
+/// ECIESPoseidonEncryption is an encryption gadget which uses Poseidon under the hood.
 pub struct ECIESPoseidonEncryption<E: Environment> {
     generator: E::Affine,
     poseidon: Poseidon<E>,
@@ -28,6 +29,7 @@ pub struct ECIESPoseidonEncryption<E: Environment> {
 }
 
 impl<E: Environment> ECIESPoseidonEncryption<E> {
+    /// Initializes a new instance of the ECIES gadget with the given setup message.
     pub fn setup(message: &str) -> Self {
         let (generator, _, _) = hash_to_curve::<_>(message);
         let poseidon = Poseidon::<E>::new();
@@ -39,7 +41,9 @@ impl<E: Environment> ECIESPoseidonEncryption<E> {
         Self { generator, poseidon, symmetric_key_commitment_domain, symmetric_encryption_domain }
     }
 
-    pub fn encode_message(message: &[Boolean<E>]) -> Vec<Field<E>> {
+    /// Encode a bitstring into a vector of field elements. This is used to convert messages
+    /// to hashable [`Field`] elements.
+    pub fn encode_message(&self, message: &[Boolean<E>]) -> Vec<Field<E>> {
         // Add an extra bit to the message.
         // The final bit serves as a terminus indicator,
         // and is used during decryption to ensure the length is correct.
@@ -53,7 +57,9 @@ impl<E: Environment> ECIESPoseidonEncryption<E> {
         bits.chunks(capacity).map(|chunk| Field::from_bits_le(chunk)).collect()
     }
 
-    pub fn decode_message(encoded_message: &[Field<E>]) -> Vec<Boolean<E>> {
+    /// Decode a vector of field elements to a bitstring. This is used to convert back from
+    /// hashable [`Field`] elements to a normal message.
+    pub fn decode_message(&self, encoded_message: &[Field<E>]) -> Vec<Boolean<E>> {
         let capacity = <<E::BaseField as PrimeField>::Parameters as FieldParameters>::CAPACITY as usize;
 
         let mut bits = Vec::<Boolean<E>>::with_capacity(encoded_message.len() * capacity);
@@ -76,6 +82,7 @@ impl<E: Environment> ECIESPoseidonEncryption<E> {
         }
     }
 
+    /// Symetrically encrypt a string of plaintext, using a given symmetric key.
     pub fn encrypt(&self, symmetric_key: Field<E>, message: &[Field<E>]) -> Vec<Field<E>> {
         let randomizers =
             self.poseidon.hash_many(&[self.symmetric_encryption_domain.clone(), symmetric_key], message.len());
@@ -83,10 +90,20 @@ impl<E: Environment> ECIESPoseidonEncryption<E> {
         message.iter().zip_eq(randomizers).map(|(plaintext, randomizer)| plaintext + randomizer).collect()
     }
 
+    /// Decrypt a ciphertext with the given symmetric key.
     pub fn decrypt(&self, symmetric_key: Field<E>, ciphertext: &[Field<E>]) -> Vec<Field<E>> {
         let randomizers =
             self.poseidon.hash_many(&[self.symmetric_encryption_domain.clone(), symmetric_key], ciphertext.len());
 
         ciphertext.iter().zip_eq(randomizers).map(|(ciphertext, randomizer)| ciphertext - &randomizer).collect()
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_algorithms::encryption::ECIESPoseidonEncryption as NativeECIES;
+
+    #[test]
+    fn test_encode() {}
 }
