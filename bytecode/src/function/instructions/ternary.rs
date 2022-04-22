@@ -204,6 +204,12 @@ mod tests {
     }
 
     #[test]
+    fn test_parse() {
+        let (_, instruction) = Instruction::<P>::parse("ter r0 r1 r2 into r3;").unwrap();
+        assert!(matches!(instruction, Instruction::Ternary(_)));
+    }
+
+    #[test]
     fn test_boolean() {
         ternary_test("true.private", "true.private", "false.private", "true.private");
         ternary_test("false.private", "true.private", "false.private", "false.private");

@@ -163,6 +163,12 @@ mod tests {
         ["constant", "constant", "constant"],
     ];
 
+    #[test]
+    fn test_parse() {
+        let (_, instruction) = Instruction::<P>::parse("shl.w r0 r1 into r2;").unwrap();
+        assert!(matches!(instruction, Instruction::ShlWrapped(_)));
+    }
+
     test_modes!(i8_shl_u8, ShlWrapped, "1i8", "7u8", &format!("{}i8", 1i8 << 7), SHL_WRAPPED_MODES);
     test_modes!(i8_shl_u16, ShlWrapped, "1i8", "7u16", &format!("{}i8", 1i8 << 7), SHL_WRAPPED_MODES);
     test_modes!(i8_shl_u32, ShlWrapped, "1i8", "7u32", &format!("{}i8", 1i8 << 7), SHL_WRAPPED_MODES);
