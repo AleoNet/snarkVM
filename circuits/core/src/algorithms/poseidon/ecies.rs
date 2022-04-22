@@ -15,30 +15,24 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::algorithms::Poseidon;
-use snarkvm_algorithms::crypto_hash::hash_to_curve;
 use snarkvm_circuits_environment::prelude::*;
 use snarkvm_circuits_types::prelude::*;
 use snarkvm_fields::{FieldParameters, PrimeField};
 
 /// ECIESPoseidonEncryption is an encryption gadget which uses Poseidon under the hood.
 pub struct ECIESPoseidonEncryption<E: Environment> {
-    generator: E::Affine,
     poseidon: Poseidon<E>,
-    symmetric_key_commitment_domain: Field<E>,
     symmetric_encryption_domain: Field<E>,
 }
 
 impl<E: Environment> ECIESPoseidonEncryption<E> {
     /// Initializes a new instance of the ECIES gadget with the given setup message.
-    pub fn setup(message: &str) -> Self {
-        let (generator, _, _) = hash_to_curve::<_>(message);
+    pub fn setup() -> Self {
         let poseidon = Poseidon::<E>::new();
-        let symmetric_key_commitment_domain =
-            Field::constant(E::BaseField::from_bytes_le_mod_order(b"AleoSymmetricKeyCommitment0"));
         let symmetric_encryption_domain =
             Field::constant(E::BaseField::from_bytes_le_mod_order(b"AleoSymmetricEncryption0"));
 
-        Self { generator, poseidon, symmetric_key_commitment_domain, symmetric_encryption_domain }
+        Self { poseidon, symmetric_encryption_domain }
     }
 
     /// Encode a bitstring into a vector of field elements. This is used to convert messages
@@ -102,8 +96,94 @@ impl<E: Environment> ECIESPoseidonEncryption<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_algorithms::encryption::ECIESPoseidonEncryption as NativeECIES;
+    use snarkvm_algorithms::{encryption::ECIESPoseidonEncryption as NativeECIES, EncryptionScheme};
+    use snarkvm_circuits_environment::Circuit;
+    use snarkvm_curves::{
+        edwards_bls12::{EdwardsAffine, EdwardsParameters},
+        AffineCurve,
+    };
+    use snarkvm_utilities::{test_rng, UniformRand};
+
+    const ITERATIONS: usize = 10;
+    const MESSAGE: &str = "ECIESCircuit0";
+
+    fn check_encode_decode(mode: Mode) {
+        let circuit = ECIESPoseidonEncryption::<Circuit>::setup();
+
+        for i in 0..ITERATIONS {
+            // Sample a random input.
+            let input = (0..64).map(|_| u8::rand(&mut test_rng())).collect::<Vec<u8>>();
+
+            let expected = NativeECIES::<EdwardsParameters>::encode_message(&input).unwrap();
+
+            // Convert the message into bits.
+            let mut plaintext_bits = Vec::<Boolean<_>>::with_capacity(input.len() * 8 + 1);
+            for byte in input.iter() {
+                let mut byte = *byte;
+                for _ in 0..8 {
+                    plaintext_bits.push(Inject::new(mode, byte & 1 == 1));
+                    byte >>= 1;
+                }
+            }
+
+            Circuit::scope(format!("ECIES {mode} {i}"), || {
+                let encoded = circuit.encode_message(&plaintext_bits);
+                let circ_decoded = circuit.decode_message(&encoded);
+                assert_eq!(expected, encoded.eject_value());
+                assert_eq!(plaintext_bits.eject_value(), circ_decoded.eject_value());
+            });
+        }
+    }
 
     #[test]
-    fn test_encode() {}
+    fn test_encode_decode_constant() {
+        check_encode_decode(Mode::Constant);
+    }
+
+    #[test]
+    fn test_encode_decode_public() {
+        check_encode_decode(Mode::Public);
+    }
+
+    #[test]
+    fn test_encode_decode_private() {
+        check_encode_decode(Mode::Private);
+    }
+
+    fn check_encrypt_decrypt(mode: Mode) {
+        let native = NativeECIES::<EdwardsParameters>::setup(MESSAGE);
+        let circuit = ECIESPoseidonEncryption::<Circuit>::setup();
+
+        for i in 0..ITERATIONS {
+            // Sample a random input.
+            let input = (0..64).map(|_| u8::rand(&mut test_rng())).collect::<Vec<u8>>();
+            let encoded = NativeECIES::<EdwardsParameters>::encode_message(&input).unwrap();
+            let symmetric_key = <EdwardsAffine as AffineCurve>::BaseField::rand(&mut test_rng());
+            let circ_input = encoded.iter().map(|el| Field::new(mode, *el)).collect::<Vec<Field<_>>>();
+            let circ_symmetric_key = Field::new(mode, symmetric_key);
+            let expected = native.encrypt(&symmetric_key, &encoded);
+
+            Circuit::scope(format!("ECIES {mode} {i}"), || {
+                let encrypted = circuit.encrypt(circ_symmetric_key.clone(), &circ_input);
+                let decrypted = circuit.decrypt(circ_symmetric_key, &encrypted);
+                assert_eq!(expected, encrypted.eject_value());
+                assert_eq!(encoded, decrypted.eject_value());
+            });
+        }
+    }
+
+    #[test]
+    fn test_encrypt_decrypt_constant() {
+        check_encrypt_decrypt(Mode::Constant);
+    }
+
+    #[test]
+    fn test_encrypt_decrypt_public() {
+        check_encrypt_decrypt(Mode::Public);
+    }
+
+    #[test]
+    fn test_encrypt_decrypt_private() {
+        check_encrypt_decrypt(Mode::Private);
+    }
 }
