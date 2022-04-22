@@ -114,6 +114,12 @@ mod tests {
     use super::*;
     use crate::{test_instruction_halts, test_modes, unary_instruction_test, Identifier, Process};
 
+    #[test]
+    fn test_parse() {
+        let (_, instruction) = Instruction::<Process>::parse("inv r0 into r1;").unwrap();
+        assert!(matches!(instruction, Instruction::Inv(_)));
+    }
+
     test_modes!(field, Inv, "1field", "1field");
     unary_instruction_test!(
         field_inv,

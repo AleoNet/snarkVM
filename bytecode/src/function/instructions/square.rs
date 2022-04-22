@@ -114,6 +114,12 @@ mod tests {
     use super::*;
     use crate::{test_instruction_halts, test_modes, Identifier, Process};
 
+    #[test]
+    fn test_parse() {
+        let (_, instruction) = Instruction::<Process>::parse("square r0 into r1;").unwrap();
+        assert!(matches!(instruction, Instruction::Square(_)));
+    }
+
     test_modes!(field, Square, "2field", "4field");
 
     test_instruction_halts!(i8_square_halts, Square, "Invalid 'square' instruction", "1i8.constant");
