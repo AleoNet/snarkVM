@@ -76,7 +76,7 @@ impl<E: Environment> ECIESPoseidonEncryption<E> {
         }
     }
 
-    /// Symetrically encrypt a string of plaintext, using a given symmetric key.
+    /// Symmetrically encrypt a string of plaintext, using a given symmetric key.
     pub fn encrypt(&self, symmetric_key: Field<E>, message: &[Field<E>]) -> Vec<Field<E>> {
         let randomizers =
             self.poseidon.hash_many(&[self.symmetric_encryption_domain.clone(), symmetric_key], message.len());
