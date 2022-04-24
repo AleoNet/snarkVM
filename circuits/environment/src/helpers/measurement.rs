@@ -41,7 +41,7 @@ impl Clusivity {
 pub enum Measurement<V: Ord + Add<Output = V>> {
     Exact(V),
     Range(Clusivity, V, Clusivity, V),
-    UpperBound(Clusivity, V),
+    UpperBound(V),
 }
 
 impl<V: Ord + Add<Output = V> + Copy + Debug> Measurement<V> {
@@ -59,9 +59,7 @@ impl<V: Ord + Add<Output = V> + Copy + Debug> Measurement<V> {
                     }
                 }
             }
-            Measurement::UpperBound(clusivity, bound) => match clusivity {
-                Clusivity::Exclusive => candidate < *bound,
-            },
+            Measurement::UpperBound(bound) => candidate < *bound,
         };
 
         if !outcome {
@@ -91,8 +89,8 @@ impl<V: Ord + Add<Output = V> + Copy + Debug> Measurement<V> {
                 *self_value + *upper_bound,
             ),
             // An `Exact` metric composed with an `UpperBound` metric, produces an `UpperBound` metric.
-            (Measurement::Exact(self_value), Measurement::UpperBound(clusivity, other_value)) => {
-                Measurement::UpperBound(*clusivity, *self_value + *other_value)
+            (Measurement::Exact(self_value), Measurement::UpperBound(other_value)) => {
+                Measurement::UpperBound(*self_value + *other_value)
             }
             // A `Range` metric composed with an `Exact` metric, produces a `Range` metric.
             (
@@ -117,32 +115,21 @@ impl<V: Ord + Add<Output = V> + Copy + Debug> Measurement<V> {
             // A `Range` metric composed with an `UpperBound` metric, produces a `Range` metric.
             (
                 Measurement::Range(lower_clusivity, lower_bound, upper_clusivity, upper_bound),
-                Measurement::UpperBound(other_clusivity, other_value),
-            ) => Measurement::Range(
-                *lower_clusivity,
-                *lower_bound,
-                upper_clusivity.compose(other_clusivity),
-                *upper_bound + *other_value,
-            ),
+                Measurement::UpperBound(other_value),
+            ) => Measurement::Range(*lower_clusivity, *lower_bound, *upper_clusivity, *upper_bound + *other_value),
             // An `UpperBound` metric composed with an `UpperBound` metric, produces an `UpperBound` metric.
-            (Measurement::UpperBound(clusivity, self_value), Measurement::Exact(other_value)) => {
-                Measurement::UpperBound(*clusivity, *self_value + *other_value)
+            (Measurement::UpperBound(self_value), Measurement::Exact(other_value)) => {
+                Measurement::UpperBound(*self_value + *other_value)
             }
             // An `UpperBound` metric composed with a `Range` metric, produces an `UpperBound` metric.
             (
-                Measurement::UpperBound(self_clusivity, self_value),
+                Measurement::UpperBound(self_value),
                 Measurement::Range(lower_clusivity, lower_bound, upper_clusivity, upper_bound),
-            ) => Measurement::Range(
-                *lower_clusivity,
-                *lower_bound,
-                self_clusivity.compose(upper_clusivity),
-                *self_value + *upper_bound,
-            ),
+            ) => Measurement::Range(*lower_clusivity, *lower_bound, *upper_clusivity, *self_value + *upper_bound),
             // An `UpperBound` metric composed with an `UpperBound` metric, produces an `UpperBound` metric.
-            (
-                Measurement::UpperBound(self_clusivity, self_value),
-                Measurement::UpperBound(other_clusivity, other_value),
-            ) => Measurement::UpperBound(self_clusivity.compose(other_clusivity), *self_value + *other_value),
+            (Measurement::UpperBound(self_value), Measurement::UpperBound(other_value)) => {
+                Measurement::UpperBound(*self_value + *other_value)
+            }
         }
     }
 }
@@ -210,7 +197,7 @@ mod test {
             // Generate a random `Measurement::UpperBound` and candidate value.
             let upper_bound: usize = u16::rand(&mut test_rng()) as usize;
             let candidate: usize = u16::rand(&mut test_rng()) as usize;
-            let metric = Measurement::UpperBound(Clusivity::Exclusive, upper_bound);
+            let metric = Measurement::UpperBound(upper_bound);
 
             // Check that the metric is only satisfied if the candidate is less than upper_bound.
             assert!(!metric.matches(upper_bound));
@@ -284,7 +271,7 @@ mod test {
             let candidate: usize = u16::rand(&mut test_rng()) as usize;
 
             let a = Measurement::Exact(first);
-            let b = Measurement::UpperBound(Clusivity::Exclusive, second);
+            let b = Measurement::UpperBound(second);
             let c = a.compose(&b);
 
             assert!(!c.matches(first + second));
@@ -373,7 +360,7 @@ mod test {
             } else {
                 (Measurement::Range(Clusivity::Exclusive, third, Clusivity::Exclusive, second), third, second)
             };
-            let b = Measurement::UpperBound(Clusivity::Exclusive, first);
+            let b = Measurement::UpperBound(first);
             let c = a.compose(&b);
 
             assert!(!c.matches(lower_bound));
@@ -393,7 +380,7 @@ mod test {
             let second: usize = u16::rand(&mut test_rng()) as usize;
             let candidate: usize = u16::rand(&mut test_rng()) as usize;
 
-            let a = Measurement::UpperBound(Clusivity::Exclusive, second);
+            let a = Measurement::UpperBound(second);
             let b = Measurement::Exact(first);
             let c = a.compose(&b);
 
@@ -414,7 +401,7 @@ mod test {
             let third: usize = u16::rand(&mut test_rng()) as usize;
             let candidate: usize = u16::rand(&mut test_rng()) as usize;
 
-            let a = Measurement::UpperBound(Clusivity::Exclusive, first);
+            let a = Measurement::UpperBound(first);
             let (b, lower_bound, upper_bound) = if second <= third {
                 (Measurement::Range(Clusivity::Exclusive, second, Clusivity::Exclusive, third), second, third)
             } else {
@@ -439,8 +426,8 @@ mod test {
             let second: usize = u16::rand(&mut test_rng()) as usize;
             let candidate: usize = u16::rand(&mut test_rng()) as usize;
 
-            let a = Measurement::UpperBound(Clusivity::Exclusive, second);
-            let b = Measurement::UpperBound(Clusivity::Exclusive, first);
+            let a = Measurement::UpperBound(second);
+            let b = Measurement::UpperBound(first);
             let c = a.compose(&b);
 
             assert!(!c.matches(first + second));

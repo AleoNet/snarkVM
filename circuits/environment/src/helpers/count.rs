@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Clusivity, Measurement};
+use crate::Measurement;
 
 pub type Constant = Measurement<usize>;
 pub type Public = Measurement<usize>;
@@ -39,10 +39,10 @@ impl Count {
     /// Returns a new `Count` whose constituent metrics are all exclusive `UpperBound`.
     pub fn less_than(num_constants: usize, num_public: usize, num_private: usize, num_constraints: usize) -> Self {
         Count(
-            Measurement::UpperBound(Clusivity::Exclusive, num_constants),
-            Measurement::UpperBound(Clusivity::Exclusive, num_public),
-            Measurement::UpperBound(Clusivity::Exclusive, num_private),
-            Measurement::UpperBound(Clusivity::Exclusive, num_constraints),
+            Measurement::UpperBound(num_constants),
+            Measurement::UpperBound(num_public),
+            Measurement::UpperBound(num_private),
+            Measurement::UpperBound(num_constraints),
         )
     }
 
