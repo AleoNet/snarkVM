@@ -109,6 +109,22 @@ impl<E: Environment, I: IntegerType> SubChecked<Self> for Integer<E, I> {
     }
 }
 
+impl<E: Environment, I: IntegerType> Metrics<dyn Sub<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
+    type Case = (Mode, Mode);
+
+    fn count(case: &Self::Case) -> Count {
+        <Self as Metrics<dyn SubChecked<Integer<E, I>, Output = Integer<E, I>>>>::count(case)
+    }
+}
+
+impl<E: Environment, I: IntegerType> OutputMode<dyn Sub<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
+    type Case = (Mode, Mode);
+
+    fn output_mode(case: &Self::Case) -> Mode {
+        <Self as OutputMode<dyn SubChecked<Integer<E, I>, Output = Integer<E, I>>>>::output_mode(case)
+    }
+}
+
 impl<E: Environment, I: IntegerType> Metrics<dyn SubChecked<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
     type Case = (Mode, Mode);
 
@@ -138,22 +154,6 @@ impl<E: Environment, I: IntegerType> OutputMode<dyn SubChecked<Integer<E, I>, Ou
             (Mode::Constant, Mode::Constant) => Mode::Constant,
             (_, _) => Mode::Private,
         }
-    }
-}
-
-impl<E: Environment, I: IntegerType> Metrics<dyn Sub<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = (Mode, Mode);
-
-    fn count(case: &Self::Case) -> Count {
-        <Self as Metrics<dyn SubChecked<Integer<E, I>, Output = Integer<E, I>>>>::count(case)
-    }
-}
-
-impl<E: Environment, I: IntegerType> OutputMode<dyn Sub<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = (Mode, Mode);
-
-    fn output_mode(case: &Self::Case) -> Mode {
-        <Self as OutputMode<dyn SubChecked<Integer<E, I>, Output = Integer<E, I>>>>::output_mode(case)
     }
 }
 
