@@ -27,7 +27,7 @@ pub struct Count(pub Constant, pub Public, pub Private, pub Constraints);
 
 impl Count {
     /// Returns a new `Count` whose constituent metrics are all `Exact`.
-    pub fn is(num_constants: usize, num_public: usize, num_private: usize, num_constraints: usize) -> Self {
+    pub const fn is(num_constants: usize, num_public: usize, num_private: usize, num_constraints: usize) -> Self {
         Count(
             Measurement::Exact(num_constants),
             Measurement::Exact(num_public),
@@ -37,7 +37,12 @@ impl Count {
     }
 
     /// Returns a new `Count` whose constituent metrics are all exclusive `UpperBound`.
-    pub fn less_than(num_constants: usize, num_public: usize, num_private: usize, num_constraints: usize) -> Self {
+    pub const fn less_than(
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) -> Self {
         Count(
             Measurement::UpperBound(num_constants),
             Measurement::UpperBound(num_public),
@@ -46,6 +51,7 @@ impl Count {
         )
     }
 
+    /// TODO (howardwu): Deprecate this method and implement `PartialEq` & `Eq`.
     /// Returns `true` if all constituent metrics match.
     pub fn matches(&self, num_constants: usize, num_public: usize, num_private: usize, num_constraints: usize) -> bool {
         self.0.matches(num_constants)
@@ -54,6 +60,7 @@ impl Count {
             && self.3.matches(num_constraints)
     }
 
+    /// TODO (howardwu): Deprecate this method and implement `Add` operation.
     /// Composes this `Count` with another `Count` by composing its constituent metrics.
     pub fn compose(&self, other: &Self) -> Self {
         Count(self.0.compose(&other.0), self.1.compose(&other.1), self.2.compose(&other.2), self.3.compose(&other.3))
