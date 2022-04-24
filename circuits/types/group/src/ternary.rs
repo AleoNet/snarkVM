@@ -32,8 +32,8 @@ impl<E: Environment> Ternary for Group<E> {
 impl<E: Environment> Metrics<dyn Ternary<Boolean = Boolean<E>, Output = Group<E>>> for Group<E> {
     type Case = (Mode, Mode, Mode);
 
-    fn count(parameter: &Self::Case) -> Count {
-        match parameter {
+    fn count(case: &Self::Case) -> Count {
+        match case {
             (Mode::Constant, _, _)
             | (Mode::Public, Mode::Constant, Mode::Constant)
             | (Mode::Private, Mode::Constant, Mode::Constant) => Count::is(0, 0, 0, 0),

@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<E: Environment> PseudorandomFunction for Poseidon<E> {
+impl<E: Environment> PRF for Poseidon<E> {
     type Input = Field<E>;
     type Output = Field<E>;
     type Seed = Field<E>;
@@ -34,9 +34,7 @@ impl<E: Environment> PseudorandomFunction for Poseidon<E> {
     }
 }
 
-impl<E: Environment> Metrics<dyn PseudorandomFunction<Seed = Field<E>, Input = Field<E>, Output = Field<E>>>
-    for Poseidon<E>
-{
+impl<E: Environment> Metrics<dyn PRF<Seed = Field<E>, Input = Field<E>, Output = Field<E>>> for Poseidon<E> {
     type Case = ();
 
     fn count(_parameter: &Self::Case) -> Count {
@@ -44,9 +42,7 @@ impl<E: Environment> Metrics<dyn PseudorandomFunction<Seed = Field<E>, Input = F
     }
 }
 
-impl<E: Environment> OutputMode<dyn PseudorandomFunction<Seed = Field<E>, Input = Field<E>, Output = Field<E>>>
-    for Poseidon<E>
-{
+impl<E: Environment> OutputMode<dyn PRF<Seed = Field<E>, Input = Field<E>, Output = Field<E>>> for Poseidon<E> {
     type Case = ();
 
     fn output_mode(_case: &Self::Case) -> Mode {

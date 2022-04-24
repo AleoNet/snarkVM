@@ -62,12 +62,12 @@ pub trait HashUncompressed {
     fn hash_uncompressed(&self, input: &[Self::Input]) -> Self::Output;
 }
 
-/// A trait for a pseudo-random function.
-pub trait PseudorandomFunction {
+/// A trait for a pseudorandom function.
+pub trait PRF {
     type Seed;
     type Input;
     type Output;
 
-    /// Returns the output of the given input.
+    /// Returns the output for the given seed and input.
     fn prf(&self, seed: &Self::Seed, input: &[Self::Input]) -> Self::Output;
 }

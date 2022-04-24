@@ -23,7 +23,7 @@ pub mod prf;
 #[cfg(test)]
 use snarkvm_circuits_types::environment::assert_scope;
 
-use crate::{Hash, HashMany, HashToScalar, PseudorandomFunction};
+use crate::{Hash, HashMany, HashToScalar, PRF};
 use snarkvm_algorithms::DuplexSpongeMode;
 use snarkvm_circuits_types::{environment::prelude::*, Field, Scalar};
 use snarkvm_fields::PoseidonDefaultField;
