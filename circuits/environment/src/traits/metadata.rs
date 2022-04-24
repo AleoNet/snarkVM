@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Count, Mode, StaticParameter};
+use crate::{Count, Mode};
 
 /// Trait for determining the number of constants, public input, private inputs, and constraints for an operation.
 pub trait Measure<Op: ?Sized> {
-    type Case: StaticParameter + ?Sized;
+    type Case: ?Sized;
 
     /// Returns the number of constants, public inputs, private inputs, and constraints.
     fn count(parameter: &Self::Case) -> Count;
@@ -26,7 +26,7 @@ pub trait Measure<Op: ?Sized> {
 
 /// Trait for determining the mode of the output of an operation.
 pub trait OutputMode<Op: ?Sized> {
-    type Case: StaticParameter + ?Sized;
+    type Case: ?Sized;
 
     /// Returns the mode of the output.
     fn output_mode(input: &Self::Case) -> Mode;

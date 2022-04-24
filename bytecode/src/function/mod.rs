@@ -347,9 +347,6 @@ impl<P: Program> Function<P> {
     }
 }
 
-// This is necessary to pass in Self as the associated type to the `Count`.
-impl<P: Program> StaticParameter for Function<P> {}
-
 impl<P: Program> Measure<Self> for Function<P> {
     type Case = Self;
 

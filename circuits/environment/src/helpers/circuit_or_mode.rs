@@ -54,22 +54,3 @@ impl<T: Eject> CircuitOrMode<T> {
         }
     }
 }
-
-pub trait StaticParameter {}
-
-// Implement StaticParameter for commonly used type.
-impl StaticParameter for () {}
-impl StaticParameter for Mode {}
-impl<T: Eject> StaticParameter for CircuitOrMode<T> {}
-
-// Implement StaticParameter for composite types.
-impl<T: StaticParameter> StaticParameter for Vec<T> {}
-impl<T: StaticParameter> StaticParameter for [T] {}
-impl<T: StaticParameter> StaticParameter for &[T] {}
-
-impl<P0: StaticParameter, P1: StaticParameter> StaticParameter for (P0, P1) {}
-impl<P0: StaticParameter, P1: StaticParameter, P2: StaticParameter> StaticParameter for (P0, P1, P2) {}
-impl<P0: StaticParameter, P1: StaticParameter, P2: StaticParameter, P3: StaticParameter> StaticParameter
-    for (P0, P1, P2, P3)
-{
-}
