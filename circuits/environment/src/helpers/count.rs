@@ -46,21 +46,6 @@ impl Count {
         )
     }
 
-    /// Returns a new `Count` whose constituent metrics are all inclusive `UpperBound`.
-    pub fn less_than_or_equal(
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) -> Self {
-        Count(
-            Measurement::UpperBound(Clusivity::Inclusive, num_constants),
-            Measurement::UpperBound(Clusivity::Inclusive, num_public),
-            Measurement::UpperBound(Clusivity::Inclusive, num_private),
-            Measurement::UpperBound(Clusivity::Inclusive, num_constraints),
-        )
-    }
-
     /// Returns `true` if all constituent metrics match.
     pub fn matches(&self, num_constants: usize, num_public: usize, num_private: usize, num_constraints: usize) -> bool {
         self.0.matches(num_constants)
