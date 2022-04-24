@@ -33,7 +33,7 @@ impl<V: Ord + Add<Output = V> + Copy + Debug> Measurement<V> {
     pub fn matches(&self, candidate: V) -> bool {
         let outcome = match self {
             Measurement::Exact(expected) => *expected == candidate,
-            Measurement::Range(lower_bound, upper_bound) => candidate > *lower_bound && candidate < *upper_bound,
+            Measurement::Range(lower, upper) => candidate > *lower && candidate < *upper,
             Measurement::UpperBound(bound) => candidate < *bound,
         };
 
@@ -49,42 +49,31 @@ impl<V: Ord + Add<Output = V> + Copy + Debug> Measurement<V> {
     /// then `a + b` satisfies the resulting `Measurement`.
     pub fn compose(&self, other: &Self) -> Self {
         match (self, other) {
-            // An `Exact` metric composed with an `Exact` metric, produces an `Exact` metric.
-            (Measurement::Exact(self_value), Measurement::Exact(other_value)) => {
-                Measurement::Exact(*self_value + *other_value)
+            // `Exact` + `Exact` => `Exact`
+            (Measurement::Exact(exact_a), Measurement::Exact(exact_b)) => Measurement::Exact(*exact_a + *exact_b),
+            // `Range` + `Range` => `Range`
+            (Measurement::Range(lower_a, upper_a), Measurement::Range(lower_b, upper_b)) => {
+                Measurement::Range(*lower_a + *lower_b, *upper_a + *upper_b)
             }
-            // An `Exact` metric composed with a `Range` metric, produces a `Range` metric.
-            (Measurement::Exact(self_value), Measurement::Range(lower_bound, upper_bound)) => {
-                Measurement::Range(*self_value + *lower_bound, *self_value + *upper_bound)
+            // `UpperBound` + `UpperBound` => `UpperBound`
+            (Measurement::UpperBound(upper_a), Measurement::UpperBound(upper_b)) => {
+                Measurement::UpperBound(*upper_a + *upper_b)
             }
-            // An `Exact` metric composed with an `UpperBound` metric, produces an `UpperBound` metric.
-            (Measurement::Exact(self_value), Measurement::UpperBound(other_value)) => {
-                Measurement::UpperBound(*self_value + *other_value)
+            // `Exact` + `Range` => `Range`
+            // `Range` + `Exact` => `Range`
+            (Measurement::Exact(exact), Measurement::Range(lower, upper))
+            | (Measurement::Range(lower, upper), Measurement::Exact(exact)) => {
+                Measurement::Range(*exact + *lower, *exact + *upper)
             }
-            // A `Range` metric composed with an `Exact` metric, produces a `Range` metric.
-            (Measurement::Range(lower_bound, upper_bound), Measurement::Exact(other_value)) => {
-                Measurement::Range(*lower_bound + *other_value, *upper_bound + *other_value)
-            }
-            // A `Range` metric composed with a `Range` metric, produces a `Range` metric.
-            (
-                Measurement::Range(self_lower_bound, self_upper_bound),
-                Measurement::Range(other_lower_bound, other_upper_bound),
-            ) => Measurement::Range(*self_lower_bound + *other_lower_bound, *self_upper_bound + *other_upper_bound),
-            // A `Range` metric composed with an `UpperBound` metric, produces a `Range` metric.
-            (Measurement::Range(lower_bound, upper_bound), Measurement::UpperBound(other_value)) => {
-                Measurement::Range(*lower_bound, *upper_bound + *other_value)
-            }
-            // An `UpperBound` metric composed with an `UpperBound` metric, produces an `UpperBound` metric.
-            (Measurement::UpperBound(self_value), Measurement::Exact(other_value)) => {
-                Measurement::UpperBound(*self_value + *other_value)
-            }
-            // An `UpperBound` metric composed with a `Range` metric, produces an `UpperBound` metric.
-            (Measurement::UpperBound(self_value), Measurement::Range(lower_bound, upper_bound)) => {
-                Measurement::Range(*lower_bound, *self_value + *upper_bound)
-            }
-            // An `UpperBound` metric composed with an `UpperBound` metric, produces an `UpperBound` metric.
-            (Measurement::UpperBound(self_value), Measurement::UpperBound(other_value)) => {
-                Measurement::UpperBound(*self_value + *other_value)
+            // `Exact` + `UpperBound` => `UpperBound`
+            // `UpperBound` + `Exact` => `UpperBound`
+            (Measurement::Exact(exact), Measurement::UpperBound(upper))
+            | (Measurement::UpperBound(upper), Measurement::Exact(exact)) => Measurement::UpperBound(*exact + *upper),
+            // `Range` + `UpperBound` => `Range`
+            // `UpperBound` + `Range` => `Range`
+            (Measurement::Range(lower, upper_a), Measurement::UpperBound(upper_b))
+            | (Measurement::UpperBound(upper_a), Measurement::Range(lower, upper_b)) => {
+                Measurement::Range(*lower, *upper_a + *upper_b)
             }
         }
     }
@@ -98,7 +87,7 @@ mod test {
     const ITERATIONS: usize = 1024;
 
     #[test]
-    fn test_exact_is_satisfied() {
+    fn test_exact_matches() {
         for _ in 0..ITERATIONS {
             // Generate a random `Measurement` and candidate value.
             let value: usize = u16::rand(&mut test_rng()) as usize;
@@ -116,22 +105,22 @@ mod test {
     }
 
     #[test]
-    fn test_exclusive_exclusive_range_is_satisfied() {
+    fn test_range_matches() {
         for _ in 0..ITERATIONS {
             // Generate a random `Measurement::UpperBound` and candidate value.
             let first_bound: usize = u16::rand(&mut test_rng()) as usize;
             let second_bound: usize = u16::rand(&mut test_rng()) as usize;
             let candidate: usize = u16::rand(&mut test_rng()) as usize;
-            let (metric, lower_bound, upper_bound) = if first_bound <= second_bound {
+            let (metric, lower, upper) = if first_bound <= second_bound {
                 (Measurement::Range(first_bound, second_bound), first_bound, second_bound)
             } else {
                 (Measurement::Range(second_bound, first_bound), second_bound, first_bound)
             };
 
-            // Check that the metric is only satisfied if the candidate is less than upper_bound.
-            assert!(!metric.matches(lower_bound));
-            assert!(!metric.matches(upper_bound));
-            if lower_bound < candidate && candidate < upper_bound {
+            // Check that the metric is only satisfied if the candidate is less than upper.
+            assert!(!metric.matches(lower));
+            assert!(!metric.matches(upper));
+            if lower < candidate && candidate < upper {
                 assert!(metric.matches(candidate));
             } else {
                 assert!(!metric.matches(candidate));
@@ -140,16 +129,16 @@ mod test {
     }
 
     #[test]
-    fn test_exclusive_upper_bound_is_satisfied() {
+    fn test_upper_matches() {
         for _ in 0..ITERATIONS {
             // Generate a random `Measurement::UpperBound` and candidate value.
-            let upper_bound: usize = u16::rand(&mut test_rng()) as usize;
+            let upper: usize = u16::rand(&mut test_rng()) as usize;
             let candidate: usize = u16::rand(&mut test_rng()) as usize;
-            let metric = Measurement::UpperBound(upper_bound);
+            let metric = Measurement::UpperBound(upper);
 
-            // Check that the metric is only satisfied if the candidate is less than upper_bound.
-            assert!(!metric.matches(upper_bound));
-            if candidate < upper_bound {
+            // Check that the metric is only satisfied if the candidate is less than upper.
+            assert!(!metric.matches(upper));
+            if candidate < upper {
                 assert!(metric.matches(candidate));
             } else {
                 assert!(!metric.matches(candidate));
@@ -180,23 +169,23 @@ mod test {
     }
 
     #[test]
-    fn test_exact_compose_with_exclusive_exclusive_range() {
+    fn test_exact_compose_with_range() {
         let value: usize = u16::rand(&mut test_rng()) as usize;
         let first_bound: usize = u16::rand(&mut test_rng()) as usize;
         let second_bound: usize = u16::rand(&mut test_rng()) as usize;
         let candidate: usize = u16::rand(&mut test_rng()) as usize;
 
         let a = Measurement::Exact(value);
-        let (b, lower_bound, upper_bound) = if first_bound <= second_bound {
+        let (b, lower, upper) = if first_bound <= second_bound {
             (Measurement::Range(first_bound, second_bound), first_bound, second_bound)
         } else {
             (Measurement::Range(second_bound, first_bound), second_bound, first_bound)
         };
         let c = a.compose(&b);
 
-        assert!(!c.matches(value + lower_bound));
-        assert!(!c.matches(value + upper_bound));
-        if value + lower_bound < candidate && candidate < value + upper_bound {
+        assert!(!c.matches(value + lower));
+        assert!(!c.matches(value + upper));
+        if value + lower < candidate && candidate < value + upper {
             assert!(c.matches(candidate));
         } else {
             assert!(!c.matches(candidate));
@@ -204,7 +193,7 @@ mod test {
     }
 
     #[test]
-    fn test_exact_compose_with_exclusive_upper_bound() {
+    fn test_exact_compose_with_upper() {
         for _ in 0..ITERATIONS {
             let first: usize = u16::rand(&mut test_rng()) as usize;
             let second: usize = u16::rand(&mut test_rng()) as usize;
@@ -224,13 +213,13 @@ mod test {
     }
 
     #[test]
-    fn test_exclusive_exclusive_range_compose_with_exact() {
+    fn test_range_compose_with_exact() {
         let value: usize = u16::rand(&mut test_rng()) as usize;
         let first_bound: usize = u16::rand(&mut test_rng()) as usize;
         let second_bound: usize = u16::rand(&mut test_rng()) as usize;
         let candidate: usize = u16::rand(&mut test_rng()) as usize;
 
-        let (a, lower_bound, upper_bound) = if first_bound <= second_bound {
+        let (a, lower, upper) = if first_bound <= second_bound {
             (Measurement::Range(first_bound, second_bound), first_bound, second_bound)
         } else {
             (Measurement::Range(second_bound, first_bound), second_bound, first_bound)
@@ -238,9 +227,9 @@ mod test {
         let b = Measurement::Exact(value);
         let c = a.compose(&b);
 
-        assert!(!c.matches(value + lower_bound));
-        assert!(!c.matches(value + upper_bound));
-        if value + lower_bound < candidate && candidate < value + upper_bound {
+        assert!(!c.matches(value + lower));
+        assert!(!c.matches(value + upper));
+        if value + lower < candidate && candidate < value + upper {
             assert!(c.matches(candidate));
         } else {
             assert!(!c.matches(candidate));
@@ -248,7 +237,7 @@ mod test {
     }
 
     #[test]
-    fn test_exclusive_exclusive_range_compose_with_exclusive_exclusive_range() {
+    fn test_range_compose_with_range() {
         for _ in 0..ITERATIONS {
             let first: usize = u16::rand(&mut test_rng()) as usize;
             let second: usize = u16::rand(&mut test_rng()) as usize;
@@ -256,22 +245,21 @@ mod test {
             let fourth: usize = u16::rand(&mut test_rng()) as usize;
             let candidate: usize = u16::rand(&mut test_rng()) as usize;
 
-            let (a, first_lower_bound, first_upper_bound) = if first <= second {
+            let (a, first_lower, first_upper) = if first <= second {
                 (Measurement::Range(first, second), first, second)
             } else {
                 (Measurement::Range(second, first), second, first)
             };
-            let (b, second_lower_bound, second_upper_bound) = if third <= fourth {
+            let (b, second_lower, second_upper) = if third <= fourth {
                 (Measurement::Range(third, fourth), third, fourth)
             } else {
                 (Measurement::Range(fourth, third), fourth, third)
             };
             let c = a.compose(&b);
 
-            assert!(!c.matches(first_lower_bound + second_lower_bound));
-            assert!(!c.matches(first_upper_bound + second_upper_bound));
-            if first_lower_bound + second_lower_bound < candidate && candidate < first_upper_bound + second_upper_bound
-            {
+            assert!(!c.matches(first_lower + second_lower));
+            assert!(!c.matches(first_upper + second_upper));
+            if first_lower + second_lower < candidate && candidate < first_upper + second_upper {
                 assert!(c.matches(candidate));
             } else {
                 assert!(!c.matches(candidate));
@@ -280,14 +268,14 @@ mod test {
     }
 
     #[test]
-    fn test_exclusive_exclusive_range_compose_with_exclusive_upper_bound() {
+    fn test_range_compose_with_upper() {
         for _ in 0..ITERATIONS {
             let first: usize = u16::rand(&mut test_rng()) as usize;
             let second: usize = u16::rand(&mut test_rng()) as usize;
             let third: usize = u16::rand(&mut test_rng()) as usize;
             let candidate: usize = u16::rand(&mut test_rng()) as usize;
 
-            let (a, lower_bound, upper_bound) = if second <= third {
+            let (a, lower, upper) = if second <= third {
                 (Measurement::Range(second, third), second, third)
             } else {
                 (Measurement::Range(third, second), third, second)
@@ -295,9 +283,9 @@ mod test {
             let b = Measurement::UpperBound(first);
             let c = a.compose(&b);
 
-            assert!(!c.matches(lower_bound));
-            assert!(!c.matches(first + upper_bound));
-            if lower_bound < candidate && candidate < first + upper_bound {
+            assert!(!c.matches(lower));
+            assert!(!c.matches(first + upper));
+            if lower < candidate && candidate < first + upper {
                 assert!(c.matches(candidate));
             } else {
                 assert!(!c.matches(candidate));
@@ -306,7 +294,7 @@ mod test {
     }
 
     #[test]
-    fn test_exclusive_upper_bound_compose_with_exact() {
+    fn test_upper_compose_with_exact() {
         for _ in 0..ITERATIONS {
             let first: usize = u16::rand(&mut test_rng()) as usize;
             let second: usize = u16::rand(&mut test_rng()) as usize;
@@ -326,7 +314,7 @@ mod test {
     }
 
     #[test]
-    fn test_exclusive_upper_bound_compose_with_exclusive_exclusive_range() {
+    fn test_upper_compose_with_range() {
         for _ in 0..ITERATIONS {
             let first: usize = u16::rand(&mut test_rng()) as usize;
             let second: usize = u16::rand(&mut test_rng()) as usize;
@@ -334,16 +322,16 @@ mod test {
             let candidate: usize = u16::rand(&mut test_rng()) as usize;
 
             let a = Measurement::UpperBound(first);
-            let (b, lower_bound, upper_bound) = if second <= third {
+            let (b, lower, upper) = if second <= third {
                 (Measurement::Range(second, third), second, third)
             } else {
                 (Measurement::Range(third, second), third, second)
             };
             let c = a.compose(&b);
 
-            assert!(!c.matches(lower_bound));
-            assert!(!c.matches(first + upper_bound));
-            if lower_bound < candidate && candidate < first + upper_bound {
+            assert!(!c.matches(lower));
+            assert!(!c.matches(first + upper));
+            if lower < candidate && candidate < first + upper {
                 assert!(c.matches(candidate));
             } else {
                 assert!(!c.matches(candidate));
@@ -352,7 +340,7 @@ mod test {
     }
 
     #[test]
-    fn test_exclusive_upper_bound_compose_with_exclusive_upper_bound() {
+    fn test_upper_compose_with_upper() {
         for _ in 0..ITERATIONS {
             let first: usize = u16::rand(&mut test_rng()) as usize;
             let second: usize = u16::rand(&mut test_rng()) as usize;
