@@ -45,7 +45,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let init_time = start_timer!(|| "AHP::Prover::Init");
 
         // Perform matrix multiplications.
-        let (padded_public_variables, private_variables, z_a, z_b) = cfg_iter!(circuits)
+        let (padded_public_variables_and_private_variables, z_a_and_b): (Vec<_>, Vec<_>) = cfg_iter!(circuits)
             .map(|circuit| {
                 let constraint_time = start_timer!(|| "Generating constraints and witnesses");
                 let mut pcs = prover::ConstraintSystem::new();
@@ -107,9 +107,14 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 end_timer!(init_time);
                 Ok((padded_public_variables, private_variables, z_a, z_b))
             })
-            .collect::<Result<_, _>>()?
+            .collect::<Result<Vec<(Vec<F>, Vec<F>, Vec<F>, Vec<F>)>, _>>()?
             .into_iter()
+            .map(|(public, private, a, b)| ((public, private), (a, b)))
             .unzip();
+        let (padded_public_variables, private_variables) =
+            padded_public_variables_and_private_variables.into_iter().unzip();
+
+        let (z_a, z_b): (Vec<_>, Vec<_>) = z_a_and_b.into_iter().unzip();
 
         let mut state = prover::State::initialize(padded_public_variables, private_variables, index)?;
         state.z_a = Some(z_a);

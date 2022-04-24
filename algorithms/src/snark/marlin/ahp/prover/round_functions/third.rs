@@ -75,11 +75,12 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let verifier::FirstMessage { alpha, .. } = state
             .verifier_first_message
+            .as_ref()
             .expect("prover::State should include verifier_first_msg when prover_third_round is called");
 
         let beta = verifier_message.beta;
 
-        let v_H_at_alpha = state.constraint_domain.evaluate_vanishing_polynomial(alpha);
+        let v_H_at_alpha = state.constraint_domain.evaluate_vanishing_polynomial(*alpha);
         let v_H_at_beta = state.constraint_domain.evaluate_vanishing_polynomial(beta);
 
         let v_H_alpha_v_H_beta = v_H_at_alpha * v_H_at_beta;
@@ -91,7 +92,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 "a",
                 state.non_zero_a_domain,
                 &state.index.a_arith,
-                alpha,
+                *alpha,
                 beta,
                 v_H_alpha_v_H_beta,
                 largest_non_zero_domain_size,
@@ -105,7 +106,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 "b",
                 state.non_zero_b_domain,
                 &state.index.b_arith,
-                alpha,
+                *alpha,
                 beta,
                 v_H_alpha_v_H_beta,
                 largest_non_zero_domain_size,
@@ -119,7 +120,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 "c",
                 state.non_zero_c_domain,
                 &state.index.c_arith,
-                alpha,
+                *alpha,
                 beta,
                 v_H_alpha_v_H_beta,
                 largest_non_zero_domain_size,

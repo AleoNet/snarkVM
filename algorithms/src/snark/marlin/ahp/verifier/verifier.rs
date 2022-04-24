@@ -70,7 +70,7 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
             non_zero_a_domain,
             non_zero_b_domain,
             non_zero_c_domain,
-            first_round_message: Some(message),
+            first_round_message: Some(message.clone()),
             second_round_message: None,
             third_round_message: None,
             gamma: None,

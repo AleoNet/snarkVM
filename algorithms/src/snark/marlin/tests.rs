@@ -108,13 +108,13 @@ mod marlin {
                         let (index_pk, index_vk) = $marlin_inst::circuit_setup(&universal_srs, &circ).unwrap();
                         println!("Called circuit setup");
 
-                        let proof = $marlin_inst::prove(&index_pk, &circ, rng).unwrap();
+                        let proof = $marlin_inst::prove(&index_pk, &[circ], rng).unwrap();
                         println!("Called prover");
 
-                        assert!($marlin_inst::verify(&index_vk, &[c, d], &proof).unwrap());
+                        assert!($marlin_inst::verify(&index_vk, &[vec![c, d]], &proof).unwrap());
                         println!("Called verifier");
                         println!("\nShould not verify (i.e. verifier messages should print below):");
-                        assert!(!$marlin_inst::verify(&index_vk, &[a, a], &proof).unwrap());
+                        assert!(!$marlin_inst::verify(&index_vk, &[vec![a, a]], &proof).unwrap());
                     }
                 }
 
@@ -300,13 +300,13 @@ mod marlin_recursion {
             let (index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &circuit).unwrap();
             println!("Called circuit setup");
 
-            let proof = MarlinInst::prove(&index_pk, &circuit, rng).unwrap();
+            let proof = MarlinInst::prove(&index_pk, &[circuit], rng).unwrap();
             println!("Called prover");
 
-            assert!(MarlinInst::verify(&index_vk, &[c, d], &proof).unwrap());
+            assert!(MarlinInst::verify(&index_vk, &[vec![c, d]], &proof).unwrap());
             println!("Called verifier");
             println!("\nShould not verify (i.e. verifier messages should print below):");
-            assert!(!MarlinInst::verify(&index_vk, &[a, a], &proof).unwrap());
+            assert!(!MarlinInst::verify(&index_vk, &[vec![a, a]], &proof).unwrap());
         }
     }
 

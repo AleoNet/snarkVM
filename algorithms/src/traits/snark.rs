@@ -46,7 +46,7 @@ pub trait SNARK {
     type UniversalSetupConfig: Clone;
     type UniversalSetupParameters: FromBytes + ToBytes + Clone;
 
-    type VerifierInput: ?Sized;
+    type VerifierInput;
     type VerifyingKey: Clone
         + Send
         + Sync
@@ -59,11 +59,9 @@ pub trait SNARK {
         + ToMinimalBits;
 
     fn universal_setup<R: Rng + CryptoRng>(
-        _config: &Self::UniversalSetupConfig,
-        _rng: &mut R,
-    ) -> Result<Self::UniversalSetupParameters, SNARKError> {
-        unimplemented!()
-    }
+        config: &Self::UniversalSetupConfig,
+        rng: &mut R,
+    ) -> Result<Self::UniversalSetupParameters, SNARKError>;
 
     fn setup<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
         circuit: &C,
@@ -72,7 +70,7 @@ pub trait SNARK {
 
     fn prove<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
         proving_key: &Self::ProvingKey,
-        input_and_witness: &C,
+        input_and_witness: &[C],
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
         Self::prove_with_terminator(proving_key, input_and_witness, &AtomicBool::new(false), rng)
@@ -80,20 +78,20 @@ pub trait SNARK {
 
     fn prove_with_terminator<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
         proving_key: &Self::ProvingKey,
-        input_and_witness: &C,
+        input_and_witness: &[C],
         terminator: &AtomicBool,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError>;
 
     fn verify_prepared(
         prepared_verifying_key: &<Self::VerifyingKey as Prepare>::Prepared,
-        input: &Self::VerifierInput,
+        input: &[Self::VerifierInput],
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError>;
 
     fn verify(
         verifying_key: &Self::VerifyingKey,
-        input: &Self::VerifierInput,
+        input: &[Self::VerifierInput],
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError> {
         let processed_verifying_key = verifying_key.prepare();

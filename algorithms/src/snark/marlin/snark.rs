@@ -79,19 +79,24 @@ where
     #[allow(clippy::only_used_in_recursion)]
     fn prove_with_terminator<C: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
         parameters: &Self::ProvingKey,
-        circuit: &C,
+        circuits: &[C],
         terminator: &AtomicBool,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
-        Self::prove_with_terminator(parameters, circuit, terminator, rng).map_err(SNARKError::from)
+        Self::prove_with_terminator(parameters, circuits, terminator, rng).map_err(SNARKError::from)
     }
 
     fn verify_prepared(
         prepared_verifying_key: &<Self::VerifyingKey as Prepare>::Prepared,
-        input: &Self::VerifierInput,
+        inputs: &[Self::VerifierInput],
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError> {
-        Self::prepared_verify(prepared_verifying_key, &input.to_field_elements()?, proof).map_err(SNARKError::from)
+        Self::prepared_verify(
+            prepared_verifying_key,
+            &inputs.iter().map(|s| s.to_field_elements()).collect::<Result<Vec<_>, _>>()?,
+            proof,
+        )
+        .map_err(SNARKError::from)
     }
 }
 
@@ -170,9 +175,12 @@ pub mod test {
 
             // Test native proof and verification.
 
-            let proof = TestSNARK::prove(&pk, &circ, &mut rng).unwrap();
+            let proof = TestSNARK::prove(&pk, &[circ], &mut rng).unwrap();
 
-            assert!(TestSNARK::verify(&vk.clone(), &[c], &proof).unwrap(), "The native verification check fails.");
+            assert!(
+                TestSNARK::verify(&vk.clone(), &[vec![c]], &proof).unwrap(),
+                "The native verification check fails."
+            );
         }
     }
 }

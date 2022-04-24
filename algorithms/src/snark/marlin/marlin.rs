@@ -46,6 +46,7 @@ use core::{
     sync::atomic::{AtomicBool, Ordering},
 };
 use rand_core::RngCore;
+use std::sync::Arc;
 
 /// The Marlin proof system.
 #[derive(Clone, Debug)]
@@ -187,8 +188,9 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
         let prover_state = AHPForR1CS::<_, MM>::init_prover(&circuit_proving_key.circuit, circuits)?;
         let public_input = prover_state.public_inputs();
         let padded_public_input = prover_state.padded_public_inputs();
+        assert_eq!(prover_state.batch_size, batch_size);
 
-        let sponge = Self::init_sponge(
+        let mut sponge = Self::init_sponge(
             batch_size,
             &circuit_proving_key.circuit_verifying_key.circuit_commitments,
             &padded_public_input,
@@ -202,9 +204,10 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
         Self::terminate(terminator)?;
 
         let first_round_comm_time = start_timer!(|| "Committing to first round polys");
+        let first_round_oracles = Arc::clone(prover_state.first_round_oracles.as_ref().unwrap());
         let (first_commitments, first_commitment_randomnesses) = SonicKZG10::<E, FS>::commit(
             &circuit_proving_key.committer_key,
-            prover_state.first_round_oracles().unwrap().iter_for_commit(),
+            first_round_oracles.iter_for_commit(),
             Some(zk_rng),
         )?;
         end_timer!(first_round_comm_time);
@@ -214,7 +217,7 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
 
         let (verifier_first_message, verifier_state) = AHPForR1CS::<_, MM>::verifier_first_round(
             circuit_proving_key.circuit_verifying_key.circuit_info,
-            prover_state.batch_size(),
+            batch_size,
             &mut sponge,
         )?;
         // --------------------------------------------------------------------
@@ -295,7 +298,7 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
         let polynomials: Vec<_> = circuit_proving_key
             .circuit
             .iter() // 12 items
-            .chain(prover_state.first_round_oracles.as_ref().unwrap().iter_for_open()) // 3 or 4 items
+            .chain(first_round_oracles.iter_for_open()) // 3 or 4 items
             .chain(second_oracles.iter())// 2 items
             .chain(third_oracles.iter())// 3 items
             .chain(fourth_oracles.iter())// 1 item
@@ -397,7 +400,7 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
 
         Self::terminate(terminator)?;
 
-        let proof = Proof::<E>::new(prover_state.batch_size, commitments, evaluations, prover_third_message, pc_proof);
+        let proof = Proof::<E>::new(batch_size, commitments, evaluations, prover_third_message, pc_proof);
         assert_eq!(proof.pc_proof.is_hiding(), MM::ZK);
         end_timer!(prover_time);
 
@@ -501,7 +504,8 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
                     if cfg!(debug_assertions) {
                         println!("Number of padded public variables: {}", new_input.len());
                     }
-                    (new_input, prover::ConstraintSystem::unformat_public_input(&new_input))
+                    let unformatted = prover::ConstraintSystem::unformat_public_input(&new_input);
+                    (new_input, unformatted)
                 })
                 .unzip()
         };
@@ -537,7 +541,6 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
         // Collect degree bounds for commitments. Indexed polynomials have *no*
         // degree bounds because we know the committed index polynomial has the
         // correct degree.
-        let index_info = circuit_verifying_key.circuit_info;
 
         // Gather commitments in one vector.
         let commitments: Vec<_> = circuit_verifying_key

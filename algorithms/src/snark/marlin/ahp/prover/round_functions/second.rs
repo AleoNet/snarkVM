@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use core::convert::TryInto;
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::Arc};
 
 use crate::{
     fft,
@@ -113,7 +113,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         };
         assert!(oracles.matches_info(&Self::second_round_polynomial_info(&state.index.index_info)));
 
-        state.verifier_first_message = Some(*verifier_message);
+        state.verifier_first_message = Some(verifier_message.clone());
         end_timer!(round_time);
 
         (oracles, state)
@@ -167,12 +167,14 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let constraint_domain = state.constraint_domain;
         let summed_z_m_poly_time = start_timer!(|| "Compute z_m poly");
 
+        let fft_precomputation = &state.index.fft_precomputation;
+        let ifft_precomputation = &state.index.ifft_precomputation;
+        let first_msg = Arc::get_mut(state.first_round_oracles.as_mut().unwrap()).unwrap();
         let mut job_pool = ExecutionPool::with_capacity(2 * state.batch_size);
-        let first_msg = state.first_round_oracles.as_ref().unwrap();
-        for (entry, coeff) in first_msg.batches.iter().zip_eq(batch_combiners) {
+        for (entry, coeff) in first_msg.batches.iter_mut().zip_eq(batch_combiners) {
             job_pool.add_job(|| {
                 let z_a = entry.z_a_poly.polynomial().as_dense().unwrap();
-                let z_b = entry.z_b_poly.polynomial().as_dense().unwrap();
+                let z_b = entry.z_b_poly.polynomial_mut().as_dense_mut().unwrap();
                 assert!(z_a.degree() < constraint_domain.size());
                 if MM::ZK {
                     assert_eq!(z_b.degree(), constraint_domain.size());
@@ -192,7 +194,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     let mut multiplier = PolyMultiplier::new();
                     multiplier.add_polynomial_ref(z_a, "z_a");
                     multiplier.add_polynomial_ref(z_b, "eta_c_z_b_plus_one");
-                    multiplier.add_precomputation(state.fft_precomputation(), state.ifft_precomputation());
+                    multiplier.add_precomputation(fft_precomputation, ifft_precomputation);
                     let result = multiplier.multiply().unwrap();
                     // Start undoing in place mutation, by first subtracting the 1 that we added...
                     z_b.coeffs[0] -= F::one();
@@ -204,7 +206,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 cfg_iter_mut!(summed_z_m_coeffs).zip(&z_b.coeffs).for_each(|(c, b)| *c += eta_b_over_eta_c * b);
 
                 //Multiply by linear combination coefficient.
-                cfg_iter_mut!(summed_z_m_coeffs).for_each(|c| *c *= coeff);
+                cfg_iter_mut!(summed_z_m_coeffs).for_each(|c| *c *= *coeff);
 
                 let summed_z_m = DensePolynomial::from_coefficients_vec(summed_z_m_coeffs);
                 assert_eq!(summed_z_m.degree(), z_a.degree() + z_b.degree());
@@ -224,7 +226,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 state.input_domain,
                 state.constraint_domain,
                 &r_alpha_x_evals,
-                state.ifft_precomputation(),
+                ifft_precomputation,
             );
             end_timer!(t_poly_time);
             t

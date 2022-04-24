@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, sync::Arc};
 
 use crate::{
     fft::{DensePolynomial, EvaluationDomain, Evaluations as EvaluationsOnDomain, SparsePolynomial},
@@ -31,6 +31,7 @@ use crate::{
         MarlinMode,
     },
 };
+use itertools::Itertools;
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::cfg_into_iter;
 
@@ -75,15 +76,17 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         assert_eq!(z_b.len(), state.batch_size);
         assert_eq!(private_variables.len(), state.batch_size);
         let mut r_b_s = Vec::with_capacity(z_a.len());
+        let batch_size = state.batch_size;
 
         let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(3 * z_a.len());
+        let state_ref = &state;
         for (i, (z_a, z_b, private_variables, x_poly)) in
             itertools::izip!(z_a, z_b, private_variables, &state.x_poly).enumerate()
         {
-            job_pool.add_job(|| Self::calculate_w(i, private_variables, x_poly.clone(), &state));
-            job_pool.add_job(|| Self::calculate_z_m(format!("z_a_{i}"), z_a, false, &state, None));
+            job_pool.add_job(move || Self::calculate_w(i, private_variables, x_poly, state_ref));
+            job_pool.add_job(move || Self::calculate_z_m(format!("z_a_{i}"), z_a, false, state_ref, None));
             let r_b = F::rand(rng);
-            job_pool.add_job(|| Self::calculate_z_m(format!("z_b_{i}"), z_b, true, &state, Some(r_b)));
+            job_pool.add_job(move || Self::calculate_z_m(format!("z_b_{i}"), z_b, true, state_ref, Some(r_b)));
             if MM::ZK {
                 r_b_s.push(r_b);
             }
@@ -91,11 +94,13 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let batches = job_pool
             .execute_all()
-            .chunks_exact(3)
-            .map(|[w, z_a, z_b]| {
-                let w_poly = w.witness().unwrap();
-                let (z_a_poly, z_a) = z_a.z_m().unwrap();
-                let (z_b_poly, z_b) = z_b.z_m().unwrap();
+            .into_iter()
+            .chunks(3)
+            .into_iter()
+            .map(|mut chunk| {
+                let w_poly = chunk.next().unwrap().witness().unwrap();
+                let (z_a_poly, z_a) = chunk.next().unwrap().z_m().unwrap();
+                let (z_b_poly, z_b) = chunk.next().unwrap().z_m().unwrap();
 
                 prover::SingleEntry { z_a, z_b, w_poly, z_a_poly, z_b_poly }
             })
@@ -104,8 +109,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let mask_poly = Self::calculate_mask_poly(constraint_domain, rng);
 
         let oracles = prover::FirstOracles { batches, mask_poly: mask_poly.clone() };
-        assert!(oracles.matches_info(&Self::first_round_polynomial_info(state.batch_size)));
-        state.first_round_oracles = Some(oracles);
+        assert!(oracles.matches_info(&Self::first_round_polynomial_info(batch_size)));
+        state.first_round_oracles = Some(Arc::new(oracles));
         state.mz_poly_randomizer = MM::ZK.then(|| r_b_s);
         end_timer!(round_time);
 
@@ -146,7 +151,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     fn calculate_w<'a>(
         instance_number: usize,
         private_variables: Vec<F>,
-        x_poly: DensePolynomial<F>,
+        x_poly: &DensePolynomial<F>,
         state: &prover::State<'a, F, MM>,
     ) -> PoolResult<'a, F> {
         let constraint_domain = state.constraint_domain;
@@ -157,7 +162,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         w_extended.resize(constraint_domain.size() - input_domain.size(), F::zero());
 
         let x_evals = {
-            let mut coeffs = x_poly.coeffs;
+            let mut coeffs = x_poly.coeffs.clone();
             coeffs.resize(constraint_domain.size(), F::zero());
             constraint_domain.in_order_fft_in_place_with_pc(&mut coeffs, state.fft_precomputation());
             coeffs

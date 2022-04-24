@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use std::sync::Arc;
+
 use crate::{
     fft::{
         domain::{FFTPrecomputation, IFFTPrecomputation},
@@ -29,8 +31,6 @@ use crate::{
 };
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::SynthesisError;
-
-use super::FirstOracles;
 
 /// State for the AHP prover.
 pub struct State<'a, F: PrimeField, MM: MarlinMode> {
@@ -74,7 +74,7 @@ pub struct State<'a, F: PrimeField, MM: MarlinMode> {
 
     /// The first round oracles sent by the prover.
     /// The length of this list must be equal to the batch size.
-    pub(in crate::snark) first_round_oracles: Option<super::FirstOracles<'a, F>>,
+    pub(in crate::snark) first_round_oracles: Option<Arc<super::FirstOracles<'a, F>>>,
 
     /// Randomizers for z_b.
     /// The length of this list must be equal to the batch size.
@@ -142,11 +142,6 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
     /// Get the batch size.
     pub fn batch_size(&self) -> usize {
         self.batch_size
-    }
-
-    /// Get the first round oracles.
-    pub fn first_round_oracles(&self) -> Option<&FirstOracles<'a, F>> {
-        self.first_round_oracles.as_ref()
     }
 
     /// Get the public inputs for the entire batch.

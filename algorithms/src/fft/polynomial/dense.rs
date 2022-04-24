@@ -437,7 +437,7 @@ impl<'a, F: Field> Mul<F> for &'a DensePolynomial<F> {
 
     #[inline]
     fn mul(self, other: F) -> Self::Output {
-        let mut result = self.clone();
+        let result = self.clone();
         result * other
     }
 }

@@ -152,14 +152,14 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let public_input =
             public_input.iter().map(|p| prover::ConstraintSystem::format_public_input(p)).collect::<Vec<_>>();
 
-        for public_input in public_input {
+        for public_input in &public_input {
             if !Self::formatted_public_input_is_admissible(&public_input) {
                 return Err(AHPError::InvalidPublicInputLength);
             }
         }
-        let input_domain = EvaluationDomain::new(public_input.len()).ok_or(AHPError::PolynomialDegreeTooLarge)?;
+        let input_domain = EvaluationDomain::new(public_input[0].len()).ok_or(AHPError::PolynomialDegreeTooLarge)?;
 
-        let first_round_msg = state.first_round_message.unwrap();
+        let first_round_msg = state.first_round_message.as_ref().unwrap();
         let alpha = first_round_msg.alpha;
         let eta_a = F::one();
         let eta_b = first_round_msg.eta_b;
