@@ -17,7 +17,7 @@
 #[macro_export]
 macro_rules! count {
     ($type_:ty, $operation:path, $case:expr) => {
-        <$type_ as Count<dyn $operation>>::count($case)
+        <$type_ as Measure<dyn $operation>>::count($case)
     };
 }
 
@@ -33,7 +33,7 @@ macro_rules! assert_count {
     ($type_:ty, $operation:path, $case:expr) => {
         $crate::print_scope!();
 
-        let CircuitCount(num_constants, num_public, num_private, num_constraints) = count!($type_, $operation, $case);
+        let Count(num_constants, num_public, num_private, num_constraints) = count!($type_, $operation, $case);
         assert!(num_constants.is_satisfied(Circuit::num_constants_in_scope()), "(num_constants)");
         assert!(num_public.is_satisfied(Circuit::num_public_in_scope()), "(num_public)");
         assert!(num_private.is_satisfied(Circuit::num_private_in_scope()), "(num_private)");
@@ -47,7 +47,7 @@ macro_rules! assert_count_fails {
     ($type_:ty, $operation:path, $case:expr) => {
         $crate::print_scope!();
 
-        let CircuitCount(num_constants, num_public, num_private, num_constraints) = count!($type_, $operation, $case);
+        let Count(num_constants, num_public, num_private, num_constraints) = count!($type_, $operation, $case);
         assert!(num_constants.is_satisfied(Circuit::num_constants_in_scope()), "(num_constants)");
         assert!(num_public.is_satisfied(Circuit::num_public_in_scope()), "(num_public)");
         assert!(num_private.is_satisfied(Circuit::num_private_in_scope()), "(num_private)");

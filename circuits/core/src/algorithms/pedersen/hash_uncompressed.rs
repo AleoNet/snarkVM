@@ -50,12 +50,12 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> HashUnc
 }
 
 impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    Count<dyn HashUncompressed<Input = Boolean<E>, Output = Group<E>>> for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
+    Measure<dyn HashUncompressed<Input = Boolean<E>, Output = Group<E>>> for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
 {
     type Case = Vec<Mode>;
 
     #[inline]
-    fn count(parameter: &Self::Case) -> CircuitCount {
+    fn count(parameter: &Self::Case) -> Count {
         // Calculate the counts for constructing each of the individual group elements from the bits of the input.
         let group_initialization_counts = parameter
             .iter()
@@ -66,7 +66,7 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
                     &(*mode, Mode::Constant, Mode::Constant)
                 )
             })
-            .fold(CircuitCount::exact(0, 0, 0, 0), |cummulative, count| cummulative.compose(&count));
+            .fold(Count::is(0, 0, 0, 0), |cummulative, count| cummulative.compose(&count));
 
         // Determine the modes of each of the group elements.
         let modes = parameter.iter().map(|mode| {
@@ -80,7 +80,7 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
 
         // Calculate the cost of summing the group elements.
         let (_, sum_counts) =
-            modes.fold((Mode::Constant, CircuitCount::exact(0, 0, 0, 0)), |(prev_mode, cumulative), curr_mode| {
+            modes.fold((Mode::Constant, Count::is(0, 0, 0, 0)), |(prev_mode, cumulative), curr_mode| {
                 let mode = output_mode!(Group<E>, Add<Group<E>, Output = Group<E>>, &(prev_mode, curr_mode));
                 let sum_count = count!(Group<E>, Add<Group<E>, Output = Group<E>>, &(prev_mode, curr_mode));
                 (mode, cumulative.compose(&sum_count))

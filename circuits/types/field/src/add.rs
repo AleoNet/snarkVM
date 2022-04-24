@@ -63,11 +63,11 @@ impl<E: Environment> AddAssign<&Field<E>> for Field<E> {
     }
 }
 
-impl<E: Environment> Count<dyn Add<Field<E>, Output = Field<E>>> for Field<E> {
+impl<E: Environment> Measure<dyn Add<Field<E>, Output = Field<E>>> for Field<E> {
     type Case = (Mode, Mode);
 
-    fn count(_input: &Self::Case) -> CircuitCount {
-        CircuitCount::exact(0, 0, 0, 0)
+    fn count(_input: &Self::Case) -> Count {
+        Count::is(0, 0, 0, 0)
     }
 }
 

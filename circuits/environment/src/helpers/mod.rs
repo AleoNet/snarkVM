@@ -14,13 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod circuit_count;
-pub use circuit_count::*;
-
 pub(crate) mod constraint;
 pub(crate) use constraint::*;
 
 pub(super) mod converter;
+
+pub mod count;
+pub use count::*;
 
 pub(super) mod counter;
 pub(super) use counter::*;

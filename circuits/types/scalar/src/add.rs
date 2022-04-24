@@ -100,13 +100,13 @@ impl<E: Environment> AddAssign<&Scalar<E>> for Scalar<E> {
     }
 }
 
-impl<E: Environment> Count<dyn Add<Scalar<E>, Output = Scalar<E>>> for Scalar<E> {
+impl<E: Environment> Measure<dyn Add<Scalar<E>, Output = Scalar<E>>> for Scalar<E> {
     type Case = (Mode, Mode);
 
-    fn count(input: &Self::Case) -> CircuitCount {
+    fn count(input: &Self::Case) -> Count {
         match (input.0, input.1) {
-            (Mode::Constant, Mode::Constant) => CircuitCount::exact(251, 0, 0, 0),
-            (_, _) => CircuitCount::exact(254, 0, 1021, 1023),
+            (Mode::Constant, Mode::Constant) => Count::is(251, 0, 0, 0),
+            (_, _) => Count::is(254, 0, 1021, 1023),
         }
     }
 }

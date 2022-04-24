@@ -25,11 +25,11 @@ use crate::{
 use snarkvm_circuits::{
     count,
     output_mode,
-    CircuitCount,
     Count,
     Field,
     Group,
     Literal,
+    Measure,
     OutputMode,
     Parser,
     ParserResult,
@@ -96,10 +96,10 @@ impl<P: Program> Operation<P> for Neg<P> {
     }
 }
 
-impl<P: Program> Count<Self> for Neg<P> {
+impl<P: Program> Measure<Self> for Neg<P> {
     type Case = LiteralType<P>;
 
-    fn count(input: &Self::Case) -> CircuitCount {
+    fn count(input: &Self::Case) -> Count {
         match input {
             LiteralType::Field(mode) => {
                 count!(Field<P::Environment>, NegOp<Output = Field<P::Environment>>, mode)

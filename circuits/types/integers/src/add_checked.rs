@@ -109,20 +109,20 @@ impl<E: Environment, I: IntegerType> AddChecked<Self> for Integer<E, I> {
     }
 }
 
-impl<E: Environment, I: IntegerType> Count<dyn AddChecked<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
+impl<E: Environment, I: IntegerType> Measure<dyn AddChecked<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
     type Case = (Mode, Mode);
 
-    fn count(input: &Self::Case) -> CircuitCount {
+    fn count(input: &Self::Case) -> Count {
         match I::is_signed() {
             false => match (input.0, input.1) {
-                (Mode::Constant, Mode::Constant) => CircuitCount::exact(I::BITS, 0, 0, 0),
-                (_, _) => CircuitCount::exact(0, 0, I::BITS + 1, I::BITS + 3),
+                (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
+                (_, _) => Count::is(0, 0, I::BITS + 1, I::BITS + 3),
             },
             true => match (input.0, input.1) {
-                (Mode::Constant, Mode::Constant) => CircuitCount::exact(I::BITS, 0, 0, 0),
-                (Mode::Constant, _) => CircuitCount::exact(0, 0, I::BITS + 2, I::BITS + 4),
-                (_, Mode::Constant) => CircuitCount::exact(0, 0, I::BITS + 3, I::BITS + 5),
-                (_, _) => CircuitCount::exact(0, 0, I::BITS + 4, I::BITS + 6),
+                (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
+                (Mode::Constant, _) => Count::is(0, 0, I::BITS + 2, I::BITS + 4),
+                (_, Mode::Constant) => Count::is(0, 0, I::BITS + 3, I::BITS + 5),
+                (_, _) => Count::is(0, 0, I::BITS + 4, I::BITS + 6),
             },
         }
     }
@@ -141,11 +141,11 @@ impl<E: Environment, I: IntegerType> OutputMode<dyn AddChecked<Integer<E, I>, Ou
     }
 }
 
-impl<E: Environment, I: IntegerType> Count<dyn Add<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
+impl<E: Environment, I: IntegerType> Measure<dyn Add<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
     type Case = (Mode, Mode);
 
-    fn count(input: &Self::Case) -> CircuitCount {
-        <Self as Count<dyn AddChecked<Integer<E, I>, Output = Integer<E, I>>>>::count(input)
+    fn count(input: &Self::Case) -> Count {
+        <Self as Measure<dyn AddChecked<Integer<E, I>, Output = Integer<E, I>>>>::count(input)
     }
 }
 

@@ -40,12 +40,12 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Commitm
 }
 
 impl<'a, E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    Count<dyn CommitmentScheme<Input = Boolean<E>, Output = Group<E>, Randomness = Boolean<E>>>
+    Measure<dyn CommitmentScheme<Input = Boolean<E>, Output = Group<E>, Randomness = Boolean<E>>>
     for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
 {
     type Case = (Vec<Mode>, Vec<Mode>);
 
-    fn count(parameters: &Self::Case) -> CircuitCount {
+    fn count(parameters: &Self::Case) -> Count {
         let (input_modes, randomness_modes) = parameters;
         let uncompressed_count = count!(Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>, HashUncompressed<Input = Boolean<E>, Output = Group<E>>, input_modes);
         let uncompressed_mode = output_mode!(Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>, HashUncompressed<Input = Boolean<E>, Output = Group<E>>, input_modes);
@@ -60,7 +60,7 @@ impl<'a, E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
                     &(*mode, Mode::Constant, Mode::Constant)
                 )
             })
-            .fold(CircuitCount::exact(0, 0, 0, 0), |cummulative, count| cummulative.compose(&count));
+            .fold(Count::is(0, 0, 0, 0), |cummulative, count| cummulative.compose(&count));
 
         // Determine the modes of each of the group elements.
         let modes = randomness_modes.iter().map(|mode| {
@@ -74,7 +74,7 @@ impl<'a, E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
 
         // Calculate the cost of summing the group elements.
         let (_, summation_count) =
-            modes.fold((uncompressed_mode, CircuitCount::exact(0, 0, 0, 0)), |(prev_mode, cumulative), curr_mode| {
+            modes.fold((uncompressed_mode, Count::is(0, 0, 0, 0)), |(prev_mode, cumulative), curr_mode| {
                 let mode = output_mode!(Group<E>, Add<Group<E>, Output = Group<E>>, &(prev_mode, curr_mode));
                 let sum_count = count!(Group<E>, Add<Group<E>, Output = Group<E>>, &(prev_mode, curr_mode));
                 (mode, cumulative.compose(&sum_count))

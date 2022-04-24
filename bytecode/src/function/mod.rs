@@ -350,12 +350,12 @@ impl<P: Program> Function<P> {
 // This is necessary to pass in Self as the associated type to the `Count`.
 impl<P: Program> StaticParameter for Function<P> {}
 
-impl<P: Program> Count<Self> for Function<P> {
+impl<P: Program> Measure<Self> for Function<P> {
     type Case = Self;
 
     /// Returns the estimated number of constants, variables, and constraints produced by this function.
     /// Note that this calculation does not take into account the cost of initializing the inputs to the program.
-    fn count(function: &Self::Case) -> CircuitCount {
+    fn count(function: &Self::Case) -> Count {
         let mut type_map = IndexMap::new();
 
         // Load all the types of the inputs.
@@ -396,7 +396,7 @@ impl<P: Program> Count<Self> for Function<P> {
             }
         });
 
-        // Infer the types of the instructions, composing `CircuitCount`s as each instruction is processed.
+        // Infer the types of the instructions, composing `Count`s as each instruction is processed.
         function
             .instructions
             .borrow()
@@ -465,7 +465,7 @@ impl<P: Program> Count<Self> for Function<P> {
                     }
                 }
             })
-            .fold(CircuitCount::exact(0, 0, 0, 0), |total, count| total.compose(&count))
+            .fold(Count::is(0, 0, 0, 0), |total, count| total.compose(&count))
     }
 }
 

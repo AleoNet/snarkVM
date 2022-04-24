@@ -48,7 +48,7 @@ pub mod prelude {
         traits::*,
         witness,
         witness_mode,
-        CircuitCount,
+        Count,
         Environment,
         LinearCombination,
         Mode,

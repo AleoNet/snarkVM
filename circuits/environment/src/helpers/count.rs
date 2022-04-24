@@ -1,0 +1,82 @@
+// Copyright (C) 2019-2022 Aleo Systems Inc.
+// This file is part of the snarkVM library.
+
+// The snarkVM library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// The snarkVM library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
+
+use crate::{Clusivity, Measurement};
+
+pub type Constant = Measurement<usize>;
+pub type Public = Measurement<usize>;
+pub type Private = Measurement<usize>;
+pub type Constraints = Measurement<usize>;
+
+/// A helper struct for tracking the number of constants, public inputs, private inputs, and constraints.
+#[derive(Debug)]
+pub struct Count(pub Constant, pub Public, pub Private, pub Constraints);
+
+impl Count {
+    /// Returns a new `Count` whose constituent metrics are all `Exact`.
+    pub fn is(num_constants: usize, num_public: usize, num_private: usize, num_constraints: usize) -> Self {
+        Count(
+            Measurement::Exact(num_constants),
+            Measurement::Exact(num_public),
+            Measurement::Exact(num_private),
+            Measurement::Exact(num_constraints),
+        )
+    }
+
+    /// Returns a new `Count` whose constituent metrics are all exclusive `UpperBound`.
+    pub fn less_than(num_constants: usize, num_public: usize, num_private: usize, num_constraints: usize) -> Self {
+        Count(
+            Measurement::UpperBound(Clusivity::Exclusive, num_constants),
+            Measurement::UpperBound(Clusivity::Exclusive, num_public),
+            Measurement::UpperBound(Clusivity::Exclusive, num_private),
+            Measurement::UpperBound(Clusivity::Exclusive, num_constraints),
+        )
+    }
+
+    /// Returns a new `Count` whose constituent metrics are all inclusive `UpperBound`.
+    pub fn less_than_or_equal(
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) -> Self {
+        Count(
+            Measurement::UpperBound(Clusivity::Inclusive, num_constants),
+            Measurement::UpperBound(Clusivity::Inclusive, num_public),
+            Measurement::UpperBound(Clusivity::Inclusive, num_private),
+            Measurement::UpperBound(Clusivity::Inclusive, num_constraints),
+        )
+    }
+
+    /// Returns `true` if all constituent metrics are satisfied.
+    pub fn is_satisfied(
+        &self,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+    ) -> bool {
+        self.0.is_satisfied(num_constants)
+            && self.1.is_satisfied(num_public)
+            && self.2.is_satisfied(num_private)
+            && self.3.is_satisfied(num_constraints)
+    }
+
+    /// Composes this `Count` with another `Count` by composing its constituent metrics.
+    pub fn compose(&self, other: &Self) -> Self {
+        Count(self.0.compose(&other.0), self.1.compose(&other.1), self.2.compose(&other.2), self.3.compose(&other.3))
+    }
+}

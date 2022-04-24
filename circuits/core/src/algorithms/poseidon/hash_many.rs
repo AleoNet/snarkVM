@@ -32,10 +32,10 @@ impl<E: Environment> HashMany for Poseidon<E> {
     }
 }
 
-impl<E: Environment> Count<dyn HashMany<Input = Field<E>, Output = Field<E>>> for Poseidon<E> {
+impl<E: Environment> Measure<dyn HashMany<Input = Field<E>, Output = Field<E>>> for Poseidon<E> {
     type Case = ();
 
-    fn count(_parameter: &Self::Case) -> CircuitCount {
+    fn count(_parameter: &Self::Case) -> Count {
         todo!()
     }
 }

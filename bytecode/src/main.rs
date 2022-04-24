@@ -38,7 +38,7 @@ function main:
     }
 
     /// Returns an estimated cost of running `HelloWorld`.
-    pub fn count<P: Program>() -> CircuitCount {
+    pub fn count<P: Program>() -> Count {
         Function::count(&P::get_function(&Identifier::from_str("main")).unwrap())
     }
 }
@@ -159,7 +159,7 @@ function main:
             }
 
             /// Estimates the circuit counts for the `HelloWorld` program.
-            pub fn count<P: Program>() -> CircuitCount {
+            pub fn count<P: Program>() -> Count {
                 Function::count(&P::get_function(&Identifier::from_str("main")).unwrap())
             }
         }
@@ -274,7 +274,7 @@ function main:
             }
 
             /// Estimates the circuit counts for the `SillySudoku` program.
-            pub fn count<P: Program>() -> CircuitCount {
+            pub fn count<P: Program>() -> Count {
                 Function::count(&P::get_function(&Identifier::from_str("main")).unwrap())
             }
         }

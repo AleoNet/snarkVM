@@ -34,12 +34,12 @@ impl<E: Environment> PseudorandomFunction for Poseidon<E> {
     }
 }
 
-impl<E: Environment> Count<dyn PseudorandomFunction<Seed = Field<E>, Input = Field<E>, Output = Field<E>>>
+impl<E: Environment> Measure<dyn PseudorandomFunction<Seed = Field<E>, Input = Field<E>, Output = Field<E>>>
     for Poseidon<E>
 {
     type Case = ();
 
-    fn count(_parameter: &Self::Case) -> CircuitCount {
+    fn count(_parameter: &Self::Case) -> Count {
         todo!()
     }
 }

@@ -40,13 +40,13 @@ impl<E: Environment> Inv for &Field<E> {
     }
 }
 
-impl<E: Environment> Count<dyn Inv<Output = Field<E>>> for Field<E> {
+impl<E: Environment> Measure<dyn Inv<Output = Field<E>>> for Field<E> {
     type Case = Mode;
 
-    fn count(input: &Self::Case) -> CircuitCount {
+    fn count(input: &Self::Case) -> Count {
         match input.is_constant() {
-            true => CircuitCount::exact(1, 0, 0, 0),
-            false => CircuitCount::exact(0, 0, 1, 1),
+            true => Count::is(1, 0, 0, 0),
+            false => Count::is(0, 0, 1, 1),
         }
     }
 }

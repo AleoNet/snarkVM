@@ -26,10 +26,10 @@ use snarkvm_circuits::{
     count,
     output_mode,
     Boolean,
-    CircuitCount,
     Count,
     Equal as EqualCircuit,
     Literal,
+    Measure,
     OutputMode,
     Parser,
     ParserResult,
@@ -92,10 +92,10 @@ impl<P: Program> Operation<P> for Equal<P> {
     }
 }
 
-impl<P: Program> Count<Self> for Equal<P> {
+impl<P: Program> Measure<Self> for Equal<P> {
     type Case = (LiteralType<P>, LiteralType<P>);
 
-    fn count(input: &Self::Case) -> CircuitCount {
+    fn count(input: &Self::Case) -> Count {
         match input {
             (LiteralType::I8(mode_a), LiteralType::I8(mode_b)) => {
                 count!(

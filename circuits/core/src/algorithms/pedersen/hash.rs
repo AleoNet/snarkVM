@@ -30,12 +30,12 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Hash
 }
 
 impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    Count<dyn Hash<Input = Boolean<E>, Output = Field<E>>> for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
+    Measure<dyn Hash<Input = Boolean<E>, Output = Field<E>>> for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
 {
     type Case = Vec<Mode>;
 
     #[inline]
-    fn count(parameter: &Self::Case) -> CircuitCount {
+    fn count(parameter: &Self::Case) -> Count {
         count!(Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>, HashUncompressed<Input = Boolean<E>, Output = Group<E>>, parameter)
     }
 }

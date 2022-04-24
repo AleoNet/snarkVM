@@ -34,11 +34,11 @@ impl<E: Environment> Neg for &Group<E> {
     }
 }
 
-impl<E: Environment> Count<dyn Neg<Output = Group<E>>> for Group<E> {
+impl<E: Environment> Measure<dyn Neg<Output = Group<E>>> for Group<E> {
     type Case = Mode;
 
-    fn count(_input: &Self::Case) -> CircuitCount {
-        CircuitCount::exact(0, 0, 0, 0)
+    fn count(_input: &Self::Case) -> Count {
+        Count::is(0, 0, 0, 0)
     }
 }
 

@@ -58,13 +58,13 @@ impl<E: Environment> Nor<Self> for Boolean<E> {
     }
 }
 
-impl<E: Environment> Count<dyn Nor<Boolean<E>, Output = Boolean<E>>> for Boolean<E> {
+impl<E: Environment> Measure<dyn Nor<Boolean<E>, Output = Boolean<E>>> for Boolean<E> {
     type Case = (Mode, Mode);
 
-    fn count(input: &Self::Case) -> CircuitCount {
+    fn count(input: &Self::Case) -> Count {
         match input.0.is_constant() || input.1.is_constant() {
-            true => CircuitCount::exact(0, 0, 0, 0),
-            false => CircuitCount::exact(0, 0, 1, 1),
+            true => Count::is(0, 0, 0, 0),
+            false => Count::is(0, 0, 1, 1),
         }
     }
 }

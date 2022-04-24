@@ -33,10 +33,10 @@ impl<E: Environment> Hash for Poseidon<E> {
     }
 }
 
-impl<E: Environment> Count<dyn Hash<Input = Field<E>, Output = Field<E>>> for Poseidon<E> {
+impl<E: Environment> Measure<dyn Hash<Input = Field<E>, Output = Field<E>>> for Poseidon<E> {
     type Case = ();
 
-    fn count(_parameter: &Self::Case) -> CircuitCount {
+    fn count(_parameter: &Self::Case) -> Count {
         todo!()
     }
 }

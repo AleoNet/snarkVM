@@ -51,13 +51,13 @@ impl<E: Environment, I: IntegerType> Equal<Self> for Integer<E, I> {
     }
 }
 
-impl<E: Environment, I: IntegerType> Count<dyn Equal<Integer<E, I>, Boolean = Boolean<E>>> for Integer<E, I> {
+impl<E: Environment, I: IntegerType> Measure<dyn Equal<Integer<E, I>, Boolean = Boolean<E>>> for Integer<E, I> {
     type Case = (Mode, Mode);
 
-    fn count(input: &Self::Case) -> CircuitCount {
+    fn count(input: &Self::Case) -> Count {
         match input.0.is_constant() && input.1.is_constant() {
-            true => CircuitCount::exact(0, 0, 0, 0),
-            false => CircuitCount::exact(0, 0, 2, 3),
+            true => Count::is(0, 0, 0, 0),
+            false => Count::is(0, 0, 2, 3),
         }
     }
 }

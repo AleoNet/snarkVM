@@ -34,11 +34,11 @@ impl<E: Environment> Neg for &Field<E> {
     }
 }
 
-impl<E: Environment> Count<dyn Neg<Output = Field<E>>> for Field<E> {
+impl<E: Environment> Measure<dyn Neg<Output = Field<E>>> for Field<E> {
     type Case = Mode;
 
-    fn count(_input: &Self::Case) -> CircuitCount {
-        CircuitCount::exact(0, 0, 0, 0)
+    fn count(_input: &Self::Case) -> Count {
+        Count::is(0, 0, 0, 0)
     }
 }
 

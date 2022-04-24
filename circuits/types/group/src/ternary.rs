@@ -29,15 +29,15 @@ impl<E: Environment> Ternary for Group<E> {
     }
 }
 
-impl<E: Environment> Count<dyn Ternary<Boolean = Boolean<E>, Output = Group<E>>> for Group<E> {
+impl<E: Environment> Measure<dyn Ternary<Boolean = Boolean<E>, Output = Group<E>>> for Group<E> {
     type Case = (Mode, Mode, Mode);
 
-    fn count(parameter: &Self::Case) -> CircuitCount {
+    fn count(parameter: &Self::Case) -> Count {
         match parameter {
             (Mode::Constant, _, _)
             | (Mode::Public, Mode::Constant, Mode::Constant)
-            | (Mode::Private, Mode::Constant, Mode::Constant) => CircuitCount::exact(0, 0, 0, 0),
-            _ => CircuitCount::exact(0, 0, 2, 2),
+            | (Mode::Private, Mode::Constant, Mode::Constant) => Count::is(0, 0, 0, 0),
+            _ => Count::is(0, 0, 2, 2),
         }
     }
 }

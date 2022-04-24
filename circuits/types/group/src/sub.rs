@@ -52,14 +52,14 @@ impl<E: Environment> SubAssign<&Self> for Group<E> {
     }
 }
 
-impl<E: Environment> Count<dyn Sub<Group<E>, Output = Group<E>>> for Group<E> {
+impl<E: Environment> Measure<dyn Sub<Group<E>, Output = Group<E>>> for Group<E> {
     type Case = (Mode, Mode);
 
-    fn count(input: &Self::Case) -> CircuitCount {
+    fn count(input: &Self::Case) -> Count {
         match (input.0, input.1) {
-            (Mode::Constant, Mode::Constant) => CircuitCount::exact(4, 0, 0, 0),
-            (Mode::Constant, _) | (_, Mode::Constant) => CircuitCount::exact(2, 0, 3, 3),
-            (_, _) => CircuitCount::exact(2, 0, 6, 6),
+            (Mode::Constant, Mode::Constant) => Count::is(4, 0, 0, 0),
+            (Mode::Constant, _) | (_, Mode::Constant) => Count::is(2, 0, 3, 3),
+            (_, _) => Count::is(2, 0, 6, 6),
         }
     }
 }
