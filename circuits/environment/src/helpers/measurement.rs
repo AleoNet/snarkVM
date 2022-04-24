@@ -26,6 +26,7 @@ pub enum Measurement<V: Ord + Add<Output = V>> {
 }
 
 impl<V: Ord + Add<Output = V> + Copy + Debug> Measurement<V> {
+    /// TODO (howardwu): Deprecate this method and implement `PartialEq` & `Eq`.
     /// Returns `true` if the value matches the metric.
     /// For an `Exact` metric, `value` must be equal to the exact value defined by the metric.
     /// For a `Range` metric, `value` must be satisfy lower bound and the upper bound.
@@ -44,6 +45,7 @@ impl<V: Ord + Add<Output = V> + Copy + Debug> Measurement<V> {
         outcome
     }
 
+    /// TODO (howardwu): Deprecate this method and implement `Add` operation.
     /// Composes two variants of `Measurement` and returns the resulting `Measurement`.
     /// The composition is defined such that if a value `a` satisfies `self` and a value `b` satisfies `other`,
     /// then `a + b` satisfies the resulting `Measurement`.
