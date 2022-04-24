@@ -61,18 +61,12 @@ impl Count {
         )
     }
 
-    /// Returns `true` if all constituent metrics are satisfied.
-    pub fn is_satisfied(
-        &self,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) -> bool {
-        self.0.is_satisfied(num_constants)
-            && self.1.is_satisfied(num_public)
-            && self.2.is_satisfied(num_private)
-            && self.3.is_satisfied(num_constraints)
+    /// Returns `true` if all constituent metrics match.
+    pub fn matches(&self, num_constants: usize, num_public: usize, num_private: usize, num_constraints: usize) -> bool {
+        self.0.matches(num_constants)
+            && self.1.matches(num_public)
+            && self.2.matches(num_private)
+            && self.3.matches(num_constraints)
     }
 
     /// Composes this `Count` with another `Count` by composing its constituent metrics.

@@ -69,7 +69,7 @@ fn main() {
     let new_num_constraints = <Process as Program>::Aleo::num_constraints();
 
     // Check that the estimated counts is correct.
-    assert!(count.is_satisfied(
+    assert!(count.matches(
         new_num_constants - old_num_constants,
         new_num_public - old_num_public,
         new_num_private - old_num_private,
@@ -118,7 +118,7 @@ mod tests {
         let new_num_constraints = <Process as Program>::Aleo::num_constraints();
 
         // Check that the estimated counts is correct.
-        assert!(count.is_satisfied(
+        assert!(count.matches(
             new_num_constants - old_num_constants,
             new_num_public - old_num_public,
             new_num_private - old_num_private,
@@ -189,7 +189,7 @@ function main:
         let new_num_constraints = <Process as Program>::Aleo::num_constraints();
 
         // Check that the estimated counts is correct.
-        assert!(count.is_satisfied(
+        assert!(count.matches(
             new_num_constants - old_num_constants,
             new_num_public - old_num_public,
             new_num_private - old_num_private,
@@ -313,7 +313,7 @@ function main:
         let new_num_constraints = <Process as Program>::Aleo::num_constraints();
 
         // Check that the estimated counts is correct.
-        assert!(count.is_satisfied(
+        assert!(count.matches(
             new_num_constants - old_num_constants,
             new_num_public - old_num_public,
             new_num_private - old_num_private,

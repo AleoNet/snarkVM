@@ -130,15 +130,15 @@ impl<E: Environment, I: IntegerType> Metrics<dyn SubChecked<Integer<E, I>, Outpu
 
     fn count(case: &Self::Case) -> Count {
         match I::is_signed() {
-            false => match (case.0, case.1) {
-                (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-                (_, _) => Count::is(0, 0, I::BITS + 1, I::BITS + 3),
-            },
             true => match (case.0, case.1) {
                 (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
                 (Mode::Constant, _) => Count::is(0, 0, I::BITS + 3, I::BITS + 5),
                 (_, Mode::Constant) => Count::is(0, 0, I::BITS + 2, I::BITS + 4),
                 (_, _) => Count::is(0, 0, I::BITS + 4, I::BITS + 6),
+            },
+            false => match (case.0, case.1) {
+                (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
+                (_, _) => Count::is(0, 0, I::BITS + 1, I::BITS + 3),
             },
         }
     }

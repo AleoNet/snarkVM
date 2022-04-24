@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use std::ops::Add;
+use core::{fmt::Debug, ops::Add};
 
 /// `Clusivity` indicates whether or not a bound is inclusive or exclusive.
 #[derive(Clone, Copy, Debug)]
@@ -48,27 +48,41 @@ pub enum Measurement<V: Ord + Add<Output = V>> {
     UpperBound(Clusivity, V),
 }
 
-impl<V: Ord + Add<Output = V> + Copy> Measurement<V> {
-    /// Returns `true` if the value satisfies the metric.
+impl<V: Ord + Add<Output = V> + Copy + Debug> Measurement<V> {
+    /// Returns `true` if the value matches the metric.
     /// For an `Exact` metric, `value` must be equal to the exact value defined by the metric.
     /// For a `Range` metric, `value` must be satisfy lower bound and the upper bound and their respective clusivities.
     /// For an `UpperBound` metric, `value` must be satisfy the upper bound and its clusivity.
-    pub fn is_satisfied(&self, value: V) -> bool {
-        match self {
-            Measurement::Exact(target) => value == *target,
+    pub fn matches(&self, candidate: V) -> bool {
+        let outcome = match self {
+            Measurement::Exact(expected) => *expected == candidate,
             Measurement::Range(lower_clusivity, lower_bound, upper_clusivity, upper_bound) => {
                 match (lower_clusivity, upper_clusivity) {
-                    (Clusivity::Exclusive, Clusivity::Exclusive) => value > *lower_bound && value < *upper_bound,
-                    (Clusivity::Exclusive, Clusivity::Inclusive) => value > *lower_bound && value <= *upper_bound,
-                    (Clusivity::Inclusive, Clusivity::Exclusive) => value >= *lower_bound && value < *upper_bound,
-                    (Clusivity::Inclusive, Clusivity::Inclusive) => value >= *lower_bound && value <= *upper_bound,
+                    (Clusivity::Exclusive, Clusivity::Exclusive) => {
+                        candidate > *lower_bound && candidate < *upper_bound
+                    }
+                    (Clusivity::Exclusive, Clusivity::Inclusive) => {
+                        candidate > *lower_bound && candidate <= *upper_bound
+                    }
+                    (Clusivity::Inclusive, Clusivity::Exclusive) => {
+                        candidate >= *lower_bound && candidate < *upper_bound
+                    }
+                    (Clusivity::Inclusive, Clusivity::Inclusive) => {
+                        candidate >= *lower_bound && candidate <= *upper_bound
+                    }
                 }
             }
             Measurement::UpperBound(clusivity, bound) => match clusivity {
-                Clusivity::Inclusive => value <= *bound,
-                Clusivity::Exclusive => value < *bound,
+                Clusivity::Inclusive => candidate <= *bound,
+                Clusivity::Exclusive => candidate < *bound,
             },
+        };
+
+        if !outcome {
+            eprintln!("{:?} does not match {:?}", candidate, self);
         }
+
+        outcome
     }
 
     /// Composes two variants of `Measurement` and returns the resulting `Measurement`.
@@ -163,11 +177,11 @@ mod test {
             let metric = Measurement::Exact(value);
 
             // Check that the metric is only satisfied if the candidate is equal to the value.
-            assert!(metric.is_satisfied(value));
+            assert!(metric.matches(value));
             if candidate == value {
-                assert!(metric.is_satisfied(candidate));
+                assert!(metric.matches(candidate));
             } else {
-                assert!(!metric.is_satisfied(candidate));
+                assert!(!metric.matches(candidate));
             }
         }
     }
@@ -194,12 +208,12 @@ mod test {
             };
 
             // Check that the metric is only satisfied if the candidate is less than upper_bound.
-            assert!(!metric.is_satisfied(lower_bound));
-            assert!(!metric.is_satisfied(upper_bound));
+            assert!(!metric.matches(lower_bound));
+            assert!(!metric.matches(upper_bound));
             if lower_bound < candidate && candidate < upper_bound {
-                assert!(metric.is_satisfied(candidate));
+                assert!(metric.matches(candidate));
             } else {
-                assert!(!metric.is_satisfied(candidate));
+                assert!(!metric.matches(candidate));
             }
         }
     }
@@ -226,12 +240,12 @@ mod test {
             };
 
             // Check that the metric is only satisfied if the candidate is less than upper_bound.
-            assert!(!metric.is_satisfied(lower_bound));
-            assert!(metric.is_satisfied(upper_bound));
+            assert!(!metric.matches(lower_bound));
+            assert!(metric.matches(upper_bound));
             if lower_bound < candidate && candidate <= upper_bound {
-                assert!(metric.is_satisfied(candidate));
+                assert!(metric.matches(candidate));
             } else {
-                assert!(!metric.is_satisfied(candidate));
+                assert!(!metric.matches(candidate));
             }
         }
     }
@@ -258,12 +272,12 @@ mod test {
             };
 
             // Check that the metric is only satisfied if the candidate is less than upper_bound.
-            assert!(metric.is_satisfied(lower_bound));
-            assert!(!metric.is_satisfied(upper_bound));
+            assert!(metric.matches(lower_bound));
+            assert!(!metric.matches(upper_bound));
             if lower_bound <= candidate && candidate < upper_bound {
-                assert!(metric.is_satisfied(candidate));
+                assert!(metric.matches(candidate));
             } else {
-                assert!(!metric.is_satisfied(candidate));
+                assert!(!metric.matches(candidate));
             }
         }
     }
@@ -290,12 +304,12 @@ mod test {
             };
 
             // Check that the metric is only satisfied if the candidate is less than upper_bound.
-            assert!(metric.is_satisfied(lower_bound));
-            assert!(metric.is_satisfied(upper_bound));
+            assert!(metric.matches(lower_bound));
+            assert!(metric.matches(upper_bound));
             if lower_bound <= candidate && candidate <= upper_bound {
-                assert!(metric.is_satisfied(candidate));
+                assert!(metric.matches(candidate));
             } else {
-                assert!(!metric.is_satisfied(candidate));
+                assert!(!metric.matches(candidate));
             }
         }
     }
@@ -309,11 +323,11 @@ mod test {
             let metric = Measurement::UpperBound(Clusivity::Exclusive, upper_bound);
 
             // Check that the metric is only satisfied if the candidate is less than upper_bound.
-            assert!(!metric.is_satisfied(upper_bound));
+            assert!(!metric.matches(upper_bound));
             if candidate < upper_bound {
-                assert!(metric.is_satisfied(candidate));
+                assert!(metric.matches(candidate));
             } else {
-                assert!(!metric.is_satisfied(candidate));
+                assert!(!metric.matches(candidate));
             }
         }
     }
@@ -327,11 +341,11 @@ mod test {
             let metric = Measurement::UpperBound(Clusivity::Inclusive, upper_bound);
 
             // Check that the metric is only satisfied if the candidate is less than or equal to upper_bound.
-            assert!(metric.is_satisfied(upper_bound));
+            assert!(metric.matches(upper_bound));
             if candidate <= upper_bound {
-                assert!(metric.is_satisfied(candidate));
+                assert!(metric.matches(candidate));
             } else {
-                assert!(!metric.is_satisfied(candidate));
+                assert!(!metric.matches(candidate));
             }
         }
     }
@@ -349,11 +363,11 @@ mod test {
             let b = Measurement::Exact(second);
             let c = a.compose(&b);
 
-            assert!(c.is_satisfied(first + second));
+            assert!(c.matches(first + second));
             if candidate == first + second {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -381,12 +395,12 @@ mod test {
         };
         let c = a.compose(&b);
 
-        assert!(!c.is_satisfied(value + lower_bound));
-        assert!(!c.is_satisfied(value + upper_bound));
+        assert!(!c.matches(value + lower_bound));
+        assert!(!c.matches(value + upper_bound));
         if value + lower_bound < candidate && candidate < value + upper_bound {
-            assert!(c.is_satisfied(candidate));
+            assert!(c.matches(candidate));
         } else {
-            assert!(!c.is_satisfied(candidate));
+            assert!(!c.matches(candidate));
         }
     }
 
@@ -413,12 +427,12 @@ mod test {
         };
         let c = a.compose(&b);
 
-        assert!(!c.is_satisfied(value + lower_bound));
-        assert!(c.is_satisfied(value + upper_bound));
+        assert!(!c.matches(value + lower_bound));
+        assert!(c.matches(value + upper_bound));
         if value + lower_bound < candidate && candidate <= value + upper_bound {
-            assert!(c.is_satisfied(candidate));
+            assert!(c.matches(candidate));
         } else {
-            assert!(!c.is_satisfied(candidate));
+            assert!(!c.matches(candidate));
         }
     }
 
@@ -445,12 +459,12 @@ mod test {
         };
         let c = a.compose(&b);
 
-        assert!(c.is_satisfied(value + lower_bound));
-        assert!(!c.is_satisfied(value + upper_bound));
+        assert!(c.matches(value + lower_bound));
+        assert!(!c.matches(value + upper_bound));
         if value + lower_bound <= candidate && candidate < value + upper_bound {
-            assert!(c.is_satisfied(candidate));
+            assert!(c.matches(candidate));
         } else {
-            assert!(!c.is_satisfied(candidate));
+            assert!(!c.matches(candidate));
         }
     }
 
@@ -477,12 +491,12 @@ mod test {
         };
         let c = a.compose(&b);
 
-        assert!(c.is_satisfied(value + lower_bound));
-        assert!(c.is_satisfied(value + upper_bound));
+        assert!(c.matches(value + lower_bound));
+        assert!(c.matches(value + upper_bound));
         if value + lower_bound <= candidate && candidate <= value + upper_bound {
-            assert!(c.is_satisfied(candidate));
+            assert!(c.matches(candidate));
         } else {
-            assert!(!c.is_satisfied(candidate));
+            assert!(!c.matches(candidate));
         }
     }
 
@@ -497,11 +511,11 @@ mod test {
             let b = Measurement::UpperBound(Clusivity::Exclusive, second);
             let c = a.compose(&b);
 
-            assert!(!c.is_satisfied(first + second));
+            assert!(!c.matches(first + second));
             if candidate < first + second {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -517,11 +531,11 @@ mod test {
             let b = Measurement::UpperBound(Clusivity::Inclusive, second);
             let c = a.compose(&b);
 
-            assert!(c.is_satisfied(first + second));
+            assert!(c.matches(first + second));
             if candidate <= first + second {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -549,12 +563,12 @@ mod test {
         let b = Measurement::Exact(value);
         let c = a.compose(&b);
 
-        assert!(!c.is_satisfied(value + lower_bound));
-        assert!(!c.is_satisfied(value + upper_bound));
+        assert!(!c.matches(value + lower_bound));
+        assert!(!c.matches(value + upper_bound));
         if value + lower_bound < candidate && candidate < value + upper_bound {
-            assert!(c.is_satisfied(candidate));
+            assert!(c.matches(candidate));
         } else {
-            assert!(!c.is_satisfied(candidate));
+            assert!(!c.matches(candidate));
         }
     }
 
@@ -581,12 +595,12 @@ mod test {
         let b = Measurement::Exact(value);
         let c = a.compose(&b);
 
-        assert!(!c.is_satisfied(value + lower_bound));
-        assert!(c.is_satisfied(value + upper_bound));
+        assert!(!c.matches(value + lower_bound));
+        assert!(c.matches(value + upper_bound));
         if value + lower_bound < candidate && candidate <= value + upper_bound {
-            assert!(c.is_satisfied(candidate));
+            assert!(c.matches(candidate));
         } else {
-            assert!(!c.is_satisfied(candidate));
+            assert!(!c.matches(candidate));
         }
     }
 
@@ -613,12 +627,12 @@ mod test {
         let b = Measurement::Exact(value);
         let c = a.compose(&b);
 
-        assert!(c.is_satisfied(value + lower_bound));
-        assert!(!c.is_satisfied(value + upper_bound));
+        assert!(c.matches(value + lower_bound));
+        assert!(!c.matches(value + upper_bound));
         if value + lower_bound <= candidate && candidate < value + upper_bound {
-            assert!(c.is_satisfied(candidate));
+            assert!(c.matches(candidate));
         } else {
-            assert!(!c.is_satisfied(candidate));
+            assert!(!c.matches(candidate));
         }
     }
 
@@ -645,12 +659,12 @@ mod test {
         let b = Measurement::Exact(value);
         let c = a.compose(&b);
 
-        assert!(c.is_satisfied(value + lower_bound));
-        assert!(c.is_satisfied(value + upper_bound));
+        assert!(c.matches(value + lower_bound));
+        assert!(c.matches(value + upper_bound));
         if value + lower_bound <= candidate && candidate <= value + upper_bound {
-            assert!(c.is_satisfied(candidate));
+            assert!(c.matches(candidate));
         } else {
-            assert!(!c.is_satisfied(candidate));
+            assert!(!c.matches(candidate));
         }
     }
 
@@ -675,13 +689,13 @@ mod test {
             };
             let c = a.compose(&b);
 
-            assert!(!c.is_satisfied(first_lower_bound + second_lower_bound));
-            assert!(!c.is_satisfied(first_upper_bound + second_upper_bound));
+            assert!(!c.matches(first_lower_bound + second_lower_bound));
+            assert!(!c.matches(first_upper_bound + second_upper_bound));
             if first_lower_bound + second_lower_bound < candidate && candidate < first_upper_bound + second_upper_bound
             {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -707,13 +721,13 @@ mod test {
             };
             let c = a.compose(&b);
 
-            assert!(!c.is_satisfied(first_lower_bound + second_lower_bound));
-            assert!(!c.is_satisfied(first_upper_bound + second_upper_bound));
+            assert!(!c.matches(first_lower_bound + second_lower_bound));
+            assert!(!c.matches(first_upper_bound + second_upper_bound));
             if first_lower_bound + second_lower_bound < candidate && candidate < first_upper_bound + second_upper_bound
             {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -739,13 +753,13 @@ mod test {
             };
             let c = a.compose(&b);
 
-            assert!(!c.is_satisfied(first_lower_bound + second_lower_bound));
-            assert!(!c.is_satisfied(first_upper_bound + second_upper_bound));
+            assert!(!c.matches(first_lower_bound + second_lower_bound));
+            assert!(!c.matches(first_upper_bound + second_upper_bound));
             if first_lower_bound + second_lower_bound < candidate && candidate < first_upper_bound + second_upper_bound
             {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -771,13 +785,13 @@ mod test {
             };
             let c = a.compose(&b);
 
-            assert!(!c.is_satisfied(first_lower_bound + second_lower_bound));
-            assert!(!c.is_satisfied(first_upper_bound + second_upper_bound));
+            assert!(!c.matches(first_lower_bound + second_lower_bound));
+            assert!(!c.matches(first_upper_bound + second_upper_bound));
             if first_lower_bound + second_lower_bound < candidate && candidate < first_upper_bound + second_upper_bound
             {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -803,13 +817,13 @@ mod test {
             };
             let c = a.compose(&b);
 
-            assert!(!c.is_satisfied(first_lower_bound + second_lower_bound));
-            assert!(!c.is_satisfied(first_upper_bound + second_upper_bound));
+            assert!(!c.matches(first_lower_bound + second_lower_bound));
+            assert!(!c.matches(first_upper_bound + second_upper_bound));
             if first_lower_bound + second_lower_bound < candidate && candidate < first_upper_bound + second_upper_bound
             {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -835,13 +849,13 @@ mod test {
             };
             let c = a.compose(&b);
 
-            assert!(!c.is_satisfied(first_lower_bound + second_lower_bound));
-            assert!(c.is_satisfied(first_upper_bound + second_upper_bound));
+            assert!(!c.matches(first_lower_bound + second_lower_bound));
+            assert!(c.matches(first_upper_bound + second_upper_bound));
             if first_lower_bound + second_lower_bound < candidate && candidate <= first_upper_bound + second_upper_bound
             {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -867,13 +881,13 @@ mod test {
             };
             let c = a.compose(&b);
 
-            assert!(!c.is_satisfied(first_lower_bound + second_lower_bound));
-            assert!(!c.is_satisfied(first_upper_bound + second_upper_bound));
+            assert!(!c.matches(first_lower_bound + second_lower_bound));
+            assert!(!c.matches(first_upper_bound + second_upper_bound));
             if first_lower_bound + second_lower_bound < candidate && candidate < first_upper_bound + second_upper_bound
             {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -899,13 +913,13 @@ mod test {
             };
             let c = a.compose(&b);
 
-            assert!(!c.is_satisfied(first_lower_bound + second_lower_bound));
-            assert!(c.is_satisfied(first_upper_bound + second_upper_bound));
+            assert!(!c.matches(first_lower_bound + second_lower_bound));
+            assert!(c.matches(first_upper_bound + second_upper_bound));
             if first_lower_bound + second_lower_bound < candidate && candidate <= first_upper_bound + second_upper_bound
             {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -931,13 +945,13 @@ mod test {
             };
             let c = a.compose(&b);
 
-            assert!(!c.is_satisfied(first_lower_bound + second_lower_bound));
-            assert!(!c.is_satisfied(first_upper_bound + second_upper_bound));
+            assert!(!c.matches(first_lower_bound + second_lower_bound));
+            assert!(!c.matches(first_upper_bound + second_upper_bound));
             if first_lower_bound + second_lower_bound < candidate && candidate < first_upper_bound + second_upper_bound
             {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -963,13 +977,13 @@ mod test {
             };
             let c = a.compose(&b);
 
-            assert!(!c.is_satisfied(first_lower_bound + second_lower_bound));
-            assert!(!c.is_satisfied(first_upper_bound + second_upper_bound));
+            assert!(!c.matches(first_lower_bound + second_lower_bound));
+            assert!(!c.matches(first_upper_bound + second_upper_bound));
             if first_lower_bound + second_lower_bound < candidate && candidate < first_upper_bound + second_upper_bound
             {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -995,13 +1009,13 @@ mod test {
             };
             let c = a.compose(&b);
 
-            assert!(c.is_satisfied(first_lower_bound + second_lower_bound));
-            assert!(!c.is_satisfied(first_upper_bound + second_upper_bound));
+            assert!(c.matches(first_lower_bound + second_lower_bound));
+            assert!(!c.matches(first_upper_bound + second_upper_bound));
             if first_lower_bound + second_lower_bound <= candidate && candidate < first_upper_bound + second_upper_bound
             {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -1027,13 +1041,13 @@ mod test {
             };
             let c = a.compose(&b);
 
-            assert!(c.is_satisfied(first_lower_bound + second_lower_bound));
-            assert!(!c.is_satisfied(first_upper_bound + second_upper_bound));
+            assert!(c.matches(first_lower_bound + second_lower_bound));
+            assert!(!c.matches(first_upper_bound + second_upper_bound));
             if first_lower_bound + second_lower_bound <= candidate && candidate < first_upper_bound + second_upper_bound
             {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -1059,13 +1073,13 @@ mod test {
             };
             let c = a.compose(&b);
 
-            assert!(!c.is_satisfied(first_lower_bound + second_lower_bound));
-            assert!(!c.is_satisfied(first_upper_bound + second_upper_bound));
+            assert!(!c.matches(first_lower_bound + second_lower_bound));
+            assert!(!c.matches(first_upper_bound + second_upper_bound));
             if first_lower_bound + second_lower_bound < candidate && candidate < first_upper_bound + second_upper_bound
             {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -1091,13 +1105,13 @@ mod test {
             };
             let c = a.compose(&b);
 
-            assert!(!c.is_satisfied(first_lower_bound + second_lower_bound));
-            assert!(c.is_satisfied(first_upper_bound + second_upper_bound));
+            assert!(!c.matches(first_lower_bound + second_lower_bound));
+            assert!(c.matches(first_upper_bound + second_upper_bound));
             if first_lower_bound + second_lower_bound < candidate && candidate <= first_upper_bound + second_upper_bound
             {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -1123,13 +1137,13 @@ mod test {
             };
             let c = a.compose(&b);
 
-            assert!(c.is_satisfied(first_lower_bound + second_lower_bound));
-            assert!(!c.is_satisfied(first_upper_bound + second_upper_bound));
+            assert!(c.matches(first_lower_bound + second_lower_bound));
+            assert!(!c.matches(first_upper_bound + second_upper_bound));
             if first_lower_bound + second_lower_bound <= candidate && candidate < first_upper_bound + second_upper_bound
             {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -1155,14 +1169,14 @@ mod test {
             };
             let c = a.compose(&b);
 
-            assert!(c.is_satisfied(first_lower_bound + second_lower_bound));
-            assert!(c.is_satisfied(first_upper_bound + second_upper_bound));
+            assert!(c.matches(first_lower_bound + second_lower_bound));
+            assert!(c.matches(first_upper_bound + second_upper_bound));
             if first_lower_bound + second_lower_bound <= candidate
                 && candidate <= first_upper_bound + second_upper_bound
             {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -1183,12 +1197,12 @@ mod test {
             let b = Measurement::UpperBound(Clusivity::Exclusive, first);
             let c = a.compose(&b);
 
-            assert!(!c.is_satisfied(lower_bound));
-            assert!(!c.is_satisfied(first + upper_bound));
+            assert!(!c.matches(lower_bound));
+            assert!(!c.matches(first + upper_bound));
             if lower_bound < candidate && candidate < first + upper_bound {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -1209,12 +1223,12 @@ mod test {
             let b = Measurement::UpperBound(Clusivity::Exclusive, first);
             let c = a.compose(&b);
 
-            assert!(!c.is_satisfied(lower_bound));
-            assert!(!c.is_satisfied(first + upper_bound));
+            assert!(!c.matches(lower_bound));
+            assert!(!c.matches(first + upper_bound));
             if lower_bound < candidate && candidate < first + upper_bound {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -1235,12 +1249,12 @@ mod test {
             let b = Measurement::UpperBound(Clusivity::Exclusive, first);
             let c = a.compose(&b);
 
-            assert!(c.is_satisfied(lower_bound));
-            assert!(!c.is_satisfied(first + upper_bound));
+            assert!(c.matches(lower_bound));
+            assert!(!c.matches(first + upper_bound));
             if lower_bound <= candidate && candidate < first + upper_bound {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -1261,12 +1275,12 @@ mod test {
             let b = Measurement::UpperBound(Clusivity::Exclusive, first);
             let c = a.compose(&b);
 
-            assert!(c.is_satisfied(lower_bound));
-            assert!(!c.is_satisfied(first + upper_bound));
+            assert!(c.matches(lower_bound));
+            assert!(!c.matches(first + upper_bound));
             if lower_bound <= candidate && candidate < first + upper_bound {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -1287,12 +1301,12 @@ mod test {
             let b = Measurement::UpperBound(Clusivity::Inclusive, first);
             let c = a.compose(&b);
 
-            assert!(!c.is_satisfied(lower_bound));
-            assert!(!c.is_satisfied(first + upper_bound));
+            assert!(!c.matches(lower_bound));
+            assert!(!c.matches(first + upper_bound));
             if lower_bound < candidate && candidate < first + upper_bound {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -1313,12 +1327,12 @@ mod test {
             let b = Measurement::UpperBound(Clusivity::Inclusive, first);
             let c = a.compose(&b);
 
-            assert!(!c.is_satisfied(lower_bound));
-            assert!(c.is_satisfied(first + upper_bound));
+            assert!(!c.matches(lower_bound));
+            assert!(c.matches(first + upper_bound));
             if lower_bound < candidate && candidate <= first + upper_bound {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -1339,12 +1353,12 @@ mod test {
             let b = Measurement::UpperBound(Clusivity::Inclusive, first);
             let c = a.compose(&b);
 
-            assert!(c.is_satisfied(lower_bound));
-            assert!(!c.is_satisfied(first + upper_bound));
+            assert!(c.matches(lower_bound));
+            assert!(!c.matches(first + upper_bound));
             if lower_bound <= candidate && candidate < first + upper_bound {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -1365,12 +1379,12 @@ mod test {
             let b = Measurement::UpperBound(Clusivity::Inclusive, first);
             let c = a.compose(&b);
 
-            assert!(c.is_satisfied(lower_bound));
-            assert!(c.is_satisfied(first + upper_bound));
+            assert!(c.matches(lower_bound));
+            assert!(c.matches(first + upper_bound));
             if lower_bound <= candidate && candidate <= first + upper_bound {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -1386,11 +1400,11 @@ mod test {
             let b = Measurement::Exact(first);
             let c = a.compose(&b);
 
-            assert!(!c.is_satisfied(first + second));
+            assert!(!c.matches(first + second));
             if candidate < first + second {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -1406,11 +1420,11 @@ mod test {
             let b = Measurement::Exact(first);
             let c = a.compose(&b);
 
-            assert!(c.is_satisfied(first + second));
+            assert!(c.matches(first + second));
             if candidate <= first + second {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -1431,12 +1445,12 @@ mod test {
             };
             let c = a.compose(&b);
 
-            assert!(!c.is_satisfied(lower_bound));
-            assert!(!c.is_satisfied(first + upper_bound));
+            assert!(!c.matches(lower_bound));
+            assert!(!c.matches(first + upper_bound));
             if lower_bound < candidate && candidate < first + upper_bound {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -1457,12 +1471,12 @@ mod test {
             };
             let c = a.compose(&b);
 
-            assert!(!c.is_satisfied(lower_bound));
-            assert!(!c.is_satisfied(first + upper_bound));
+            assert!(!c.matches(lower_bound));
+            assert!(!c.matches(first + upper_bound));
             if lower_bound < candidate && candidate < first + upper_bound {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -1483,12 +1497,12 @@ mod test {
             };
             let c = a.compose(&b);
 
-            assert!(c.is_satisfied(lower_bound));
-            assert!(!c.is_satisfied(first + upper_bound));
+            assert!(c.matches(lower_bound));
+            assert!(!c.matches(first + upper_bound));
             if lower_bound <= candidate && candidate < first + upper_bound {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -1509,12 +1523,12 @@ mod test {
             };
             let c = a.compose(&b);
 
-            assert!(c.is_satisfied(lower_bound));
-            assert!(!c.is_satisfied(first + upper_bound));
+            assert!(c.matches(lower_bound));
+            assert!(!c.matches(first + upper_bound));
             if lower_bound <= candidate && candidate < first + upper_bound {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -1535,12 +1549,12 @@ mod test {
             };
             let c = a.compose(&b);
 
-            assert!(!c.is_satisfied(lower_bound));
-            assert!(!c.is_satisfied(first + upper_bound));
+            assert!(!c.matches(lower_bound));
+            assert!(!c.matches(first + upper_bound));
             if lower_bound < candidate && candidate < first + upper_bound {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -1561,12 +1575,12 @@ mod test {
             };
             let c = a.compose(&b);
 
-            assert!(!c.is_satisfied(lower_bound));
-            assert!(c.is_satisfied(first + upper_bound));
+            assert!(!c.matches(lower_bound));
+            assert!(c.matches(first + upper_bound));
             if lower_bound < candidate && candidate <= first + upper_bound {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -1587,12 +1601,12 @@ mod test {
             };
             let c = a.compose(&b);
 
-            assert!(c.is_satisfied(lower_bound));
-            assert!(!c.is_satisfied(first + upper_bound));
+            assert!(c.matches(lower_bound));
+            assert!(!c.matches(first + upper_bound));
             if lower_bound <= candidate && candidate < first + upper_bound {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -1613,12 +1627,12 @@ mod test {
             };
             let c = a.compose(&b);
 
-            assert!(c.is_satisfied(lower_bound));
-            assert!(c.is_satisfied(first + upper_bound));
+            assert!(c.matches(lower_bound));
+            assert!(c.matches(first + upper_bound));
             if lower_bound <= candidate && candidate <= first + upper_bound {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -1634,11 +1648,11 @@ mod test {
             let b = Measurement::UpperBound(Clusivity::Exclusive, first);
             let c = a.compose(&b);
 
-            assert!(!c.is_satisfied(first + second));
+            assert!(!c.matches(first + second));
             if candidate < first + second {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -1654,11 +1668,11 @@ mod test {
             let b = Measurement::UpperBound(Clusivity::Inclusive, first);
             let c = a.compose(&b);
 
-            assert!(!c.is_satisfied(first + second));
+            assert!(!c.matches(first + second));
             if candidate < first + second {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -1674,11 +1688,11 @@ mod test {
             let b = Measurement::UpperBound(Clusivity::Exclusive, first);
             let c = a.compose(&b);
 
-            assert!(!c.is_satisfied(first + second));
+            assert!(!c.matches(first + second));
             if candidate < first + second {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }
@@ -1694,11 +1708,11 @@ mod test {
             let b = Measurement::UpperBound(Clusivity::Inclusive, first);
             let c = a.compose(&b);
 
-            assert!(c.is_satisfied(first + second));
+            assert!(c.matches(first + second));
             if candidate <= first + second {
-                assert!(c.is_satisfied(candidate));
+                assert!(c.matches(candidate));
             } else {
-                assert!(!c.is_satisfied(candidate));
+                assert!(!c.matches(candidate));
             }
         }
     }

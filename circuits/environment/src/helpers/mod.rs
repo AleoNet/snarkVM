@@ -28,8 +28,8 @@ pub(super) use counter::*;
 pub mod linear_combination;
 pub use linear_combination::*;
 
-pub mod metric;
-pub use metric::*;
+pub mod measurement;
+pub use measurement::*;
 
 pub mod mode;
 pub use mode::*;
