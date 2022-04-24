@@ -67,10 +67,8 @@ mod tests {
         mode: Mode,
     ) {
         let a = Integer::<Circuit, I>::new(mode, first);
-        let _case = format!("(!{})", a.eject_value());
         let expected = !first;
 
-        // TODO: Use `test_utilities` once they use `MetadataForOp`.
         Circuit::scope(name, || {
             let candidate = a.not();
             assert_eq!(expected, candidate.eject_value());

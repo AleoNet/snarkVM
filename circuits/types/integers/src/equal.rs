@@ -92,8 +92,6 @@ mod tests {
         mode_b: Mode,
     ) {
         let expected = first == second;
-        let _case = format!("({} == {})", first, second);
-
         let a = Integer::<Circuit, I>::new(mode_a, first);
         let b = Integer::<Circuit, I>::new(mode_b, second);
         Circuit::scope(name, || {

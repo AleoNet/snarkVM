@@ -14,28 +14,26 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-// TODO: Refactor macros once all operations implement `MetadataForOp`.
-
 #[macro_export]
 macro_rules! count {
-    ($type_:ty, $oper:path, $case:expr) => {
-        <$type_ as Count<dyn $oper>>::count($case)
+    ($type_:ty, $operation:path, $case:expr) => {
+        <$type_ as Count<dyn $operation>>::count($case)
     };
 }
 
 #[macro_export]
 macro_rules! output_mode {
-    ($type_:ty, $oper:path, $case:expr) => {
-        <$type_ as OutputMode<dyn $oper>>::output_mode($case)
+    ($type_:ty, $operation:path, $case:expr) => {
+        <$type_ as OutputMode<dyn $operation>>::output_mode($case)
     };
 }
 
 #[macro_export]
 macro_rules! assert_count {
-    ($type_:ty, $oper:path, $case:expr) => {
+    ($type_:ty, $operation:path, $case:expr) => {
         $crate::print_scope!();
 
-        let CircuitCount(num_constants, num_public, num_private, num_constraints) = count!($type_, $oper, $case);
+        let CircuitCount(num_constants, num_public, num_private, num_constraints) = count!($type_, $operation, $case);
         assert!(num_constants.is_satisfied(Circuit::num_constants_in_scope()), "(num_constants)");
         assert!(num_public.is_satisfied(Circuit::num_public_in_scope()), "(num_public)");
         assert!(num_private.is_satisfied(Circuit::num_private_in_scope()), "(num_private)");
@@ -46,10 +44,10 @@ macro_rules! assert_count {
 
 #[macro_export]
 macro_rules! assert_count_fails {
-    ($type_:ty, $oper:path, $case:expr) => {
+    ($type_:ty, $operation:path, $case:expr) => {
         $crate::print_scope!();
 
-        let CircuitCount(num_constants, num_public, num_private, num_constraints) = count!($type_, $oper, $case);
+        let CircuitCount(num_constants, num_public, num_private, num_constraints) = count!($type_, $operation, $case);
         assert!(num_constants.is_satisfied(Circuit::num_constants_in_scope()), "(num_constants)");
         assert!(num_public.is_satisfied(Circuit::num_public_in_scope()), "(num_public)");
         assert!(num_private.is_satisfied(Circuit::num_private_in_scope()), "(num_private)");
@@ -60,8 +58,8 @@ macro_rules! assert_count_fails {
 
 #[macro_export]
 macro_rules! assert_output_mode {
-    ($candidate: expr, $type_:ty, $oper:path, $case:expr) => {
-        let expected_mode = output_mode!($type_, $oper, $case);
+    ($candidate: expr, $type_:ty, $operation:path, $case:expr) => {
+        let expected_mode = output_mode!($type_, $operation, $case);
         assert_eq!($candidate.eject_mode(), expected_mode);
     };
 }

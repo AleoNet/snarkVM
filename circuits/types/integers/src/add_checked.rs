@@ -178,8 +178,6 @@ mod tests {
     ) {
         let a = Integer::<Circuit, I>::new(mode_a, first);
         let b = Integer::new(mode_b, second);
-        let _case = format!("({} + {})", a.eject_value(), b.eject_value());
-
         match first.checked_add(&second) {
             Some(expected) => Circuit::scope(name, || {
                 let candidate = a.add_checked(&b);
