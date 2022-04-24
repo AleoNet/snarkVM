@@ -103,8 +103,8 @@ impl<E: Environment> AddAssign<&Scalar<E>> for Scalar<E> {
 impl<E: Environment> Metrics<dyn Add<Scalar<E>, Output = Scalar<E>>> for Scalar<E> {
     type Case = (Mode, Mode);
 
-    fn count(input: &Self::Case) -> Count {
-        match (input.0, input.1) {
+    fn count(case: &Self::Case) -> Count {
+        match (case.0, case.1) {
             (Mode::Constant, Mode::Constant) => Count::is(251, 0, 0, 0),
             (_, _) => Count::is(254, 0, 1021, 1023),
         }
@@ -114,8 +114,8 @@ impl<E: Environment> Metrics<dyn Add<Scalar<E>, Output = Scalar<E>>> for Scalar<
 impl<E: Environment> OutputMode<dyn Add<Scalar<E>, Output = Scalar<E>>> for Scalar<E> {
     type Case = (Mode, Mode);
 
-    fn output_mode(input: &Self::Case) -> Mode {
-        match (input.0, input.1) {
+    fn output_mode(case: &Self::Case) -> Mode {
+        match (case.0, case.1) {
             (Mode::Constant, Mode::Constant) => Mode::Constant,
             (_, _) => Mode::Private,
         }

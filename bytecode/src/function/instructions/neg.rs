@@ -99,8 +99,8 @@ impl<P: Program> Operation<P> for Neg<P> {
 impl<P: Program> Metrics<Self> for Neg<P> {
     type Case = LiteralType<P>;
 
-    fn count(input: &Self::Case) -> Count {
-        match input {
+    fn count(case: &Self::Case) -> Count {
+        match case {
             LiteralType::Field(mode) => {
                 count!(Field<P::Environment>, NegOp<Output = Field<P::Environment>>, mode)
             }

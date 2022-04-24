@@ -44,7 +44,7 @@ impl<E: Environment> Metrics<dyn HashToScalar<Input = Field<E>, Scalar = Field<E
 impl<E: Environment> OutputMode<dyn HashToScalar<Input = Field<E>, Scalar = Field<E>>> for Poseidon<E> {
     type Case = ();
 
-    fn output_mode(_input: &Self::Case) -> Mode {
+    fn output_mode(_case: &Self::Case) -> Mode {
         todo!()
     }
 }

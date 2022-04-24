@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_circuits_environment::CircuitOrMode;
+use snarkvm_circuits_environment::ModeOrCircuit;
 
 impl<E: Environment> Nor<Self> for Boolean<E> {
     type Output = Boolean<E>;
@@ -61,8 +61,8 @@ impl<E: Environment> Nor<Self> for Boolean<E> {
 impl<E: Environment> Metrics<dyn Nor<Boolean<E>, Output = Boolean<E>>> for Boolean<E> {
     type Case = (Mode, Mode);
 
-    fn count(input: &Self::Case) -> Count {
-        match input.0.is_constant() || input.1.is_constant() {
+    fn count(case: &Self::Case) -> Count {
+        match case.0.is_constant() || case.1.is_constant() {
             true => Count::is(0, 0, 0, 0),
             false => Count::is(0, 0, 1, 1),
         }
@@ -70,25 +70,25 @@ impl<E: Environment> Metrics<dyn Nor<Boolean<E>, Output = Boolean<E>>> for Boole
 }
 
 impl<E: Environment> OutputMode<dyn Nor<Boolean<E>, Output = Boolean<E>>> for Boolean<E> {
-    // CircuitOrMode is needed since the output type of `Nor` is sometimes dependent on the value of the input.
-    type Case = (CircuitOrMode<Boolean<E>>, CircuitOrMode<Boolean<E>>);
+    // ModeOrCircuit is needed since the output type of `Nor` is sometimes dependent on the value of the input.
+    type Case = (ModeOrCircuit<Boolean<E>>, ModeOrCircuit<Boolean<E>>);
 
-    fn output_mode(input: &Self::Case) -> Mode {
-        match (input.0.mode(), input.1.mode()) {
+    fn output_mode(case: &Self::Case) -> Mode {
+        match (case.0.mode(), case.1.mode()) {
             (Mode::Constant, Mode::Constant) => Mode::Constant,
-            (Mode::Public, Mode::Constant) => match &input.1 {
-                CircuitOrMode::Circuit(circuit) => match circuit.eject_value() {
+            (Mode::Public, Mode::Constant) => match &case.1 {
+                ModeOrCircuit::Circuit(constant) => match constant.eject_value() {
                     true => Mode::Constant,
                     false => Mode::Private,
                 },
-                _ => E::halt("The circuit is required to determine the output mode of Public NOR Constant"),
+                _ => E::halt("The constant is required to determine the output mode of Public NOR Constant"),
             },
-            (Mode::Constant, Mode::Public) => match &input.0 {
-                CircuitOrMode::Circuit(other) => match other.eject_value() {
+            (Mode::Constant, Mode::Public) => match &case.0 {
+                ModeOrCircuit::Circuit(constant) => match constant.eject_value() {
                     true => Mode::Constant,
                     false => Mode::Private,
                 },
-                _ => E::halt("The circuit is required to determine the output mode of Constant NOR Public"),
+                _ => E::halt("The constant is required to determine the output mode of Constant NOR Public"),
             },
             (_, _) => Mode::Private,
         }
@@ -113,7 +113,7 @@ mod tests {
                 candidate,
                 Boolean<Circuit>,
                 Nor<Boolean<Circuit>, Output = Boolean<Circuit>>,
-                &(CircuitOrMode::Circuit(a), CircuitOrMode::Circuit(b))
+                &(ModeOrCircuit::Circuit(a), ModeOrCircuit::Circuit(b))
             );
         });
         Circuit::reset();

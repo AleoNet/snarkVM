@@ -112,13 +112,13 @@ impl<E: Environment, I: IntegerType> SubChecked<Self> for Integer<E, I> {
 impl<E: Environment, I: IntegerType> Metrics<dyn SubChecked<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
     type Case = (Mode, Mode);
 
-    fn count(input: &Self::Case) -> Count {
+    fn count(case: &Self::Case) -> Count {
         match I::is_signed() {
-            false => match (input.0, input.1) {
+            false => match (case.0, case.1) {
                 (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
                 (_, _) => Count::is(0, 0, I::BITS + 1, I::BITS + 3),
             },
-            true => match (input.0, input.1) {
+            true => match (case.0, case.1) {
                 (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
                 (Mode::Constant, _) => Count::is(0, 0, I::BITS + 3, I::BITS + 5),
                 (_, Mode::Constant) => Count::is(0, 0, I::BITS + 2, I::BITS + 4),
@@ -133,8 +133,8 @@ impl<E: Environment, I: IntegerType> OutputMode<dyn SubChecked<Integer<E, I>, Ou
 {
     type Case = (Mode, Mode);
 
-    fn output_mode(input: &Self::Case) -> Mode {
-        match (input.0, input.1) {
+    fn output_mode(case: &Self::Case) -> Mode {
+        match (case.0, case.1) {
             (Mode::Constant, Mode::Constant) => Mode::Constant,
             (_, _) => Mode::Private,
         }
@@ -144,16 +144,16 @@ impl<E: Environment, I: IntegerType> OutputMode<dyn SubChecked<Integer<E, I>, Ou
 impl<E: Environment, I: IntegerType> Metrics<dyn Sub<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
     type Case = (Mode, Mode);
 
-    fn count(input: &Self::Case) -> Count {
-        <Self as Metrics<dyn SubChecked<Integer<E, I>, Output = Integer<E, I>>>>::count(input)
+    fn count(case: &Self::Case) -> Count {
+        <Self as Metrics<dyn SubChecked<Integer<E, I>, Output = Integer<E, I>>>>::count(case)
     }
 }
 
 impl<E: Environment, I: IntegerType> OutputMode<dyn Sub<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
     type Case = (Mode, Mode);
 
-    fn output_mode(input: &Self::Case) -> Mode {
-        <Self as OutputMode<dyn SubChecked<Integer<E, I>, Output = Integer<E, I>>>>::output_mode(input)
+    fn output_mode(case: &Self::Case) -> Mode {
+        <Self as OutputMode<dyn SubChecked<Integer<E, I>, Output = Integer<E, I>>>>::output_mode(case)
     }
 }
 

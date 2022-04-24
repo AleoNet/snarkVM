@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_circuits_environment::CircuitOrMode;
+use snarkvm_circuits_environment::ModeOrCircuit;
 
 impl<E: Environment> Ternary for Group<E> {
     type Boolean = Boolean<E>;
@@ -43,18 +43,18 @@ impl<E: Environment> Metrics<dyn Ternary<Boolean = Boolean<E>, Output = Group<E>
 }
 
 impl<E: Environment> OutputMode<dyn Ternary<Boolean = Boolean<E>, Output = Self>> for Group<E> {
-    type Case = (CircuitOrMode<Boolean<E>>, Mode, Mode);
+    type Case = (ModeOrCircuit<Boolean<E>>, Mode, Mode);
 
     fn output_mode(parameter: &Self::Case) -> Mode {
-        match parameter.0.is_constant() {
-            false => Mode::Private,
+        match parameter.0.mode().is_constant() {
             true => match &parameter.0 {
-                CircuitOrMode::Mode(..) => E::halt("Circuit is required to determine output mode."),
-                CircuitOrMode::Circuit(circuit) => match circuit.eject_value() {
+                ModeOrCircuit::Mode(..) => E::halt("Circuit is required to determine output mode."),
+                ModeOrCircuit::Circuit(circuit) => match circuit.eject_value() {
                     true => parameter.1,
                     false => parameter.2,
                 },
             },
+            false => Mode::Private,
         }
     }
 }
@@ -85,7 +85,7 @@ mod tests {
                 candidate,
                 Group<Circuit>,
                 Ternary<Boolean = Boolean<Circuit>, Output = Group<Circuit>>,
-                &(CircuitOrMode::Circuit(condition), a.eject_mode(), b.eject_mode())
+                &(ModeOrCircuit::Circuit(condition), a.eject_mode(), b.eject_mode())
             );
         });
     }

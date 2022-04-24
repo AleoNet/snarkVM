@@ -71,7 +71,7 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
         // Determine the modes of each of the group elements.
         let modes = parameter.iter().map(|mode| {
             // The `first` and `second` inputs to `Group::ternary` are always constant so we can directly determine the mode instead of
-            // using the `output_mode` macro. This avoids the need to use `CircuitOrMode` as a parameter, simplifying the logic of this function.
+            // using the `output_mode` macro. This avoids the need to use `ModeOrCircuit` as a parameter, simplifying the logic of this function.
             match mode.is_constant() {
                 true => Mode::Constant,
                 false => Mode::Private,

@@ -36,7 +36,7 @@ impl<E: Environment, I: IntegerType> Not for &Integer<E, I> {
 impl<E: Environment, I: IntegerType> Metrics<dyn Not<Output = Integer<E, I>>> for Integer<E, I> {
     type Case = Mode;
 
-    fn count(_input: &Self::Case) -> Count {
+    fn count(_case: &Self::Case) -> Count {
         Count::is(0, 0, 0, 0)
     }
 }
@@ -44,8 +44,8 @@ impl<E: Environment, I: IntegerType> Metrics<dyn Not<Output = Integer<E, I>>> fo
 impl<E: Environment, I: IntegerType> OutputMode<dyn Not<Output = Integer<E, I>>> for Integer<E, I> {
     type Case = Mode;
 
-    fn output_mode(input: &Self::Case) -> Mode {
-        match input {
+    fn output_mode(case: &Self::Case) -> Mode {
+        match case {
             Mode::Constant => Mode::Constant,
             _ => Mode::Private,
         }

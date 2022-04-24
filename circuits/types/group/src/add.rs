@@ -101,8 +101,8 @@ impl<E: Environment> AddAssign<&Self> for Group<E> {
 impl<E: Environment> Metrics<dyn Add<Group<E>, Output = Group<E>>> for Group<E> {
     type Case = (Mode, Mode);
 
-    fn count(input: &Self::Case) -> Count {
-        match (input.0, input.1) {
+    fn count(case: &Self::Case) -> Count {
+        match (case.0, case.1) {
             (Mode::Constant, Mode::Constant) => Count::is(4, 0, 0, 0),
             (Mode::Constant, _) | (_, Mode::Constant) => Count::is(2, 0, 3, 3),
             (_, _) => Count::is(2, 0, 6, 6),
@@ -113,8 +113,8 @@ impl<E: Environment> Metrics<dyn Add<Group<E>, Output = Group<E>>> for Group<E> 
 impl<E: Environment> OutputMode<dyn Add<Group<E>, Output = Group<E>>> for Group<E> {
     type Case = (Mode, Mode);
 
-    fn output_mode(input: &Self::Case) -> Mode {
-        match (input.0, input.1) {
+    fn output_mode(case: &Self::Case) -> Mode {
+        match (case.0, case.1) {
             (Mode::Constant, Mode::Constant) => Mode::Constant,
             (_, _) => Mode::Private,
         }

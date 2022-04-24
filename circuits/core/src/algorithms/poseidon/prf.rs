@@ -49,7 +49,7 @@ impl<E: Environment> OutputMode<dyn PseudorandomFunction<Seed = Field<E>, Input 
 {
     type Case = ();
 
-    fn output_mode(_input: &Self::Case) -> Mode {
+    fn output_mode(_case: &Self::Case) -> Mode {
         todo!()
     }
 }

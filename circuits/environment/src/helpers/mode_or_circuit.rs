@@ -19,38 +19,20 @@ use crate::{Eject, Mode};
 /// Helper enum used in the case where a circuit's output mode or counts are determined by
 /// its mode and the actual value of the circuit.
 /// See Boolean::nor, where exactly one of the operands is a constant, for an example.
-// TODO: CircuitOrMode::Circuit is only used in the case where the circuit is a constant.
+// TODO: ModeOrCircuit::Circuit is only used in the case where the circuit is a constant.
 //       Need to enforce this in the enum. Or refactor to Mode and Primitive
 // TODO: References to the circuit
 #[derive(Debug, Clone)]
-pub enum CircuitOrMode<T: Eject> {
+pub enum ModeOrCircuit<T: Eject> {
     Circuit(T),
     Mode(Mode),
 }
 
-impl<T: Eject> CircuitOrMode<T> {
+impl<T: Eject> ModeOrCircuit<T> {
     pub fn mode(&self) -> Mode {
         match self {
-            CircuitOrMode::Circuit(circuit) => circuit.eject_mode(),
-            CircuitOrMode::Mode(mode) => *mode,
-        }
-    }
-
-    pub fn is_constant(&self) -> bool {
-        self.mode().is_constant()
-    }
-
-    pub fn is_circuit(&self) -> bool {
-        match self {
-            CircuitOrMode::Circuit(_) => true,
-            CircuitOrMode::Mode(_) => false,
-        }
-    }
-
-    pub fn is_mode(&self) -> bool {
-        match self {
-            CircuitOrMode::Circuit(_) => false,
-            CircuitOrMode::Mode(_) => true,
+            ModeOrCircuit::Circuit(constant) => constant.eject_mode(),
+            ModeOrCircuit::Mode(mode) => *mode,
         }
     }
 }

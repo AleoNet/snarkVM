@@ -43,8 +43,8 @@ impl<E: Environment> Inv for &Field<E> {
 impl<E: Environment> Metrics<dyn Inv<Output = Field<E>>> for Field<E> {
     type Case = Mode;
 
-    fn count(input: &Self::Case) -> Count {
-        match input.is_constant() {
+    fn count(case: &Self::Case) -> Count {
+        match case.is_constant() {
             true => Count::is(1, 0, 0, 0),
             false => Count::is(0, 0, 1, 1),
         }
@@ -54,8 +54,8 @@ impl<E: Environment> Metrics<dyn Inv<Output = Field<E>>> for Field<E> {
 impl<E: Environment> OutputMode<dyn Inv<Output = Field<E>>> for Field<E> {
     type Case = Mode;
 
-    fn output_mode(input: &Self::Case) -> Mode {
-        match input {
+    fn output_mode(case: &Self::Case) -> Mode {
+        match case {
             Mode::Constant => Mode::Constant,
             _ => Mode::Private,
         }

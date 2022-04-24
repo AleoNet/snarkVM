@@ -95,8 +95,8 @@ impl<P: Program> Operation<P> for Equal<P> {
 impl<P: Program> Metrics<Self> for Equal<P> {
     type Case = (LiteralType<P>, LiteralType<P>);
 
-    fn count(input: &Self::Case) -> Count {
-        match input {
+    fn count(case: &Self::Case) -> Count {
+        match case {
             (LiteralType::I8(mode_a), LiteralType::I8(mode_b)) => {
                 count!(
                     I8<P::Environment>,

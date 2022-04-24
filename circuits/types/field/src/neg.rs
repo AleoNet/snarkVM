@@ -37,7 +37,7 @@ impl<E: Environment> Neg for &Field<E> {
 impl<E: Environment> Metrics<dyn Neg<Output = Field<E>>> for Field<E> {
     type Case = Mode;
 
-    fn count(_input: &Self::Case) -> Count {
+    fn count(_case: &Self::Case) -> Count {
         Count::is(0, 0, 0, 0)
     }
 }
@@ -45,8 +45,8 @@ impl<E: Environment> Metrics<dyn Neg<Output = Field<E>>> for Field<E> {
 impl<E: Environment> OutputMode<dyn Neg<Output = Field<E>>> for Field<E> {
     type Case = Mode;
 
-    fn output_mode(input: &Self::Case) -> Mode {
-        match input {
+    fn output_mode(case: &Self::Case) -> Mode {
+        match case {
             Mode::Constant => Mode::Constant,
             _ => Mode::Private,
         }

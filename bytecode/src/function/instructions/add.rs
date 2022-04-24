@@ -110,8 +110,8 @@ impl<P: Program> Operation<P> for Add<P> {
 impl<P: Program> Metrics<Self> for Add<P> {
     type Case = (LiteralType<P>, LiteralType<P>);
 
-    fn count(input: &Self::Case) -> Count {
-        match input {
+    fn count(case: &Self::Case) -> Count {
+        match case {
             (LiteralType::Field(mode_a), LiteralType::Field(mode_b)) => count!(
                 Field<P::Environment>,
                 AddOp<Field<P::Environment>, Output = Field<P::Environment>>,

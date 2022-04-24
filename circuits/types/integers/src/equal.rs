@@ -54,8 +54,8 @@ impl<E: Environment, I: IntegerType> Equal<Self> for Integer<E, I> {
 impl<E: Environment, I: IntegerType> Metrics<dyn Equal<Integer<E, I>, Boolean = Boolean<E>>> for Integer<E, I> {
     type Case = (Mode, Mode);
 
-    fn count(input: &Self::Case) -> Count {
-        match input.0.is_constant() && input.1.is_constant() {
+    fn count(case: &Self::Case) -> Count {
+        match case.0.is_constant() && case.1.is_constant() {
             true => Count::is(0, 0, 0, 0),
             false => Count::is(0, 0, 2, 3),
         }
@@ -65,8 +65,8 @@ impl<E: Environment, I: IntegerType> Metrics<dyn Equal<Integer<E, I>, Boolean = 
 impl<E: Environment, I: IntegerType> OutputMode<dyn Equal<Integer<E, I>, Boolean = Boolean<E>>> for Integer<E, I> {
     type Case = (Mode, Mode);
 
-    fn output_mode(input: &Self::Case) -> Mode {
-        match input.0.is_constant() && input.1.is_constant() {
+    fn output_mode(case: &Self::Case) -> Mode {
+        match case.0.is_constant() && case.1.is_constant() {
             true => Mode::Constant,
             false => Mode::Private,
         }

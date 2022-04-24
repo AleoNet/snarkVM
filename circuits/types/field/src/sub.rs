@@ -57,7 +57,7 @@ impl<E: Environment> SubAssign<&Field<E>> for Field<E> {
 impl<E: Environment> Metrics<dyn Sub<Field<E>, Output = Field<E>>> for Field<E> {
     type Case = (Mode, Mode);
 
-    fn count(_input: &Self::Case) -> Count {
+    fn count(_case: &Self::Case) -> Count {
         Count::is(0, 0, 0, 0)
     }
 }
@@ -65,8 +65,8 @@ impl<E: Environment> Metrics<dyn Sub<Field<E>, Output = Field<E>>> for Field<E> 
 impl<E: Environment> OutputMode<dyn Sub<Field<E>, Output = Field<E>>> for Field<E> {
     type Case = (Mode, Mode);
 
-    fn output_mode(input: &Self::Case) -> Mode {
-        match (input.0, input.1) {
+    fn output_mode(case: &Self::Case) -> Mode {
+        match (case.0, case.1) {
             (Mode::Constant, Mode::Constant) => Mode::Constant,
             (_, _) => Mode::Private,
         }
