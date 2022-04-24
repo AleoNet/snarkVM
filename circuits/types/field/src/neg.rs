@@ -34,7 +34,7 @@ impl<E: Environment> Neg for &Field<E> {
     }
 }
 
-impl<E: Environment> Measure<dyn Neg<Output = Field<E>>> for Field<E> {
+impl<E: Environment> Metrics<dyn Neg<Output = Field<E>>> for Field<E> {
     type Case = Mode;
 
     fn count(_input: &Self::Case) -> Count {

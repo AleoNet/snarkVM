@@ -33,7 +33,7 @@ impl<E: Environment> HashToScalar for Poseidon<E> {
     }
 }
 
-impl<E: Environment> Measure<dyn HashToScalar<Input = Field<E>, Scalar = Field<E>>> for Poseidon<E> {
+impl<E: Environment> Metrics<dyn HashToScalar<Input = Field<E>, Scalar = Field<E>>> for Poseidon<E> {
     type Case = ();
 
     fn count(_parameter: &Self::Case) -> Count {

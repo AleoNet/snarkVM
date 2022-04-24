@@ -347,7 +347,7 @@ impl<P: Program> Function<P> {
     }
 }
 
-impl<P: Program> Measure<Self> for Function<P> {
+impl<P: Program> Metrics<Self> for Function<P> {
     type Case = Self;
 
     /// Returns the estimated number of constants, variables, and constraints produced by this function.

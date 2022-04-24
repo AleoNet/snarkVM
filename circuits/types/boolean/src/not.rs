@@ -48,7 +48,7 @@ impl<E: Environment> Not for &Boolean<E> {
     }
 }
 
-impl<E: Environment> Measure<dyn Not<Output = Boolean<E>>> for Boolean<E> {
+impl<E: Environment> Metrics<dyn Not<Output = Boolean<E>>> for Boolean<E> {
     type Case = Mode;
 
     fn count(_input: &Self::Case) -> Count {

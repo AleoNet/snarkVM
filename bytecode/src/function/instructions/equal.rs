@@ -29,7 +29,7 @@ use snarkvm_circuits::{
     Count,
     Equal as EqualCircuit,
     Literal,
-    Measure,
+    Metrics,
     OutputMode,
     Parser,
     ParserResult,
@@ -92,7 +92,7 @@ impl<P: Program> Operation<P> for Equal<P> {
     }
 }
 
-impl<P: Program> Measure<Self> for Equal<P> {
+impl<P: Program> Metrics<Self> for Equal<P> {
     type Case = (LiteralType<P>, LiteralType<P>);
 
     fn count(input: &Self::Case) -> Count {

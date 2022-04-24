@@ -40,7 +40,7 @@ impl<E: Environment> Inv for &Field<E> {
     }
 }
 
-impl<E: Environment> Measure<dyn Inv<Output = Field<E>>> for Field<E> {
+impl<E: Environment> Metrics<dyn Inv<Output = Field<E>>> for Field<E> {
     type Case = Mode;
 
     fn count(input: &Self::Case) -> Count {

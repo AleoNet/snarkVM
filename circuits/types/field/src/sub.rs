@@ -54,7 +54,7 @@ impl<E: Environment> SubAssign<&Field<E>> for Field<E> {
     }
 }
 
-impl<E: Environment> Measure<dyn Sub<Field<E>, Output = Field<E>>> for Field<E> {
+impl<E: Environment> Metrics<dyn Sub<Field<E>, Output = Field<E>>> for Field<E> {
     type Case = (Mode, Mode);
 
     fn count(_input: &Self::Case) -> Count {

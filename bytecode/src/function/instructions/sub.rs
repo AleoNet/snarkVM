@@ -30,7 +30,7 @@ use snarkvm_circuits::{
     Field,
     Group,
     Literal,
-    Measure,
+    Metrics,
     OutputMode,
     Parser,
     ParserResult,
@@ -106,7 +106,7 @@ impl<P: Program> Operation<P> for Sub<P> {
     }
 }
 
-impl<P: Program> Measure<Self> for Sub<P> {
+impl<P: Program> Metrics<Self> for Sub<P> {
     type Case = (LiteralType<P>, LiteralType<P>);
 
     fn count(input: &Self::Case) -> Count {

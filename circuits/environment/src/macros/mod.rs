@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod metadata;
-pub use metadata::*;
+pub mod metrics;
+pub use metrics::*;
 
 pub mod scope;
 pub use scope::*;

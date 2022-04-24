@@ -38,7 +38,7 @@ impl<E: Environment, I: IntegerType> Neg for &Integer<E, I> {
     }
 }
 
-impl<E: Environment, I: IntegerType> Measure<dyn Neg<Output = Integer<E, I>>> for Integer<E, I> {
+impl<E: Environment, I: IntegerType> Metrics<dyn Neg<Output = Integer<E, I>>> for Integer<E, I> {
     type Case = Mode;
 
     fn count(input: &Self::Case) -> Count {

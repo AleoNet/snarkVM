@@ -29,7 +29,7 @@ impl<E: Environment> Ternary for Group<E> {
     }
 }
 
-impl<E: Environment> Measure<dyn Ternary<Boolean = Boolean<E>, Output = Group<E>>> for Group<E> {
+impl<E: Environment> Metrics<dyn Ternary<Boolean = Boolean<E>, Output = Group<E>>> for Group<E> {
     type Case = (Mode, Mode, Mode);
 
     fn count(parameter: &Self::Case) -> Count {

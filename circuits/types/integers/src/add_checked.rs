@@ -109,7 +109,7 @@ impl<E: Environment, I: IntegerType> AddChecked<Self> for Integer<E, I> {
     }
 }
 
-impl<E: Environment, I: IntegerType> Measure<dyn AddChecked<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
+impl<E: Environment, I: IntegerType> Metrics<dyn AddChecked<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
     type Case = (Mode, Mode);
 
     fn count(input: &Self::Case) -> Count {
@@ -141,11 +141,11 @@ impl<E: Environment, I: IntegerType> OutputMode<dyn AddChecked<Integer<E, I>, Ou
     }
 }
 
-impl<E: Environment, I: IntegerType> Measure<dyn Add<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
+impl<E: Environment, I: IntegerType> Metrics<dyn Add<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
     type Case = (Mode, Mode);
 
     fn count(input: &Self::Case) -> Count {
-        <Self as Measure<dyn AddChecked<Integer<E, I>, Output = Integer<E, I>>>>::count(input)
+        <Self as Metrics<dyn AddChecked<Integer<E, I>, Output = Integer<E, I>>>>::count(input)
     }
 }
 

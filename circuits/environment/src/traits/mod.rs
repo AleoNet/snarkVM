@@ -43,8 +43,8 @@ pub use integers::{
     IntegerTrait,
 };
 
-pub mod metadata;
-pub use metadata::*;
+pub mod metrics;
+pub use metrics::*;
 
 pub mod operators;
 pub use operators::*;

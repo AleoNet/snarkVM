@@ -63,7 +63,7 @@ impl<E: Environment> AddAssign<&Field<E>> for Field<E> {
     }
 }
 
-impl<E: Environment> Measure<dyn Add<Field<E>, Output = Field<E>>> for Field<E> {
+impl<E: Environment> Metrics<dyn Add<Field<E>, Output = Field<E>>> for Field<E> {
     type Case = (Mode, Mode);
 
     fn count(_input: &Self::Case) -> Count {

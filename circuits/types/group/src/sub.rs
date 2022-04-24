@@ -52,7 +52,7 @@ impl<E: Environment> SubAssign<&Self> for Group<E> {
     }
 }
 
-impl<E: Environment> Measure<dyn Sub<Group<E>, Output = Group<E>>> for Group<E> {
+impl<E: Environment> Metrics<dyn Sub<Group<E>, Output = Group<E>>> for Group<E> {
     type Case = (Mode, Mode);
 
     fn count(input: &Self::Case) -> Count {

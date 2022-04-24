@@ -58,7 +58,7 @@ impl<E: Environment> Nor<Self> for Boolean<E> {
     }
 }
 
-impl<E: Environment> Measure<dyn Nor<Boolean<E>, Output = Boolean<E>>> for Boolean<E> {
+impl<E: Environment> Metrics<dyn Nor<Boolean<E>, Output = Boolean<E>>> for Boolean<E> {
     type Case = (Mode, Mode);
 
     fn count(input: &Self::Case) -> Count {

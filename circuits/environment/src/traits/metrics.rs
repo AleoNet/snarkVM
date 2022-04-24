@@ -17,7 +17,7 @@
 use crate::{Count, Mode};
 
 /// Trait for determining the number of constants, public input, private inputs, and constraints for an operation.
-pub trait Measure<Op: ?Sized> {
+pub trait Metrics<Op: ?Sized> {
     type Case: ?Sized;
 
     /// Returns the number of constants, public inputs, private inputs, and constraints.

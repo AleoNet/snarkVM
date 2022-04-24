@@ -100,7 +100,7 @@ impl<E: Environment> AddAssign<&Scalar<E>> for Scalar<E> {
     }
 }
 
-impl<E: Environment> Measure<dyn Add<Scalar<E>, Output = Scalar<E>>> for Scalar<E> {
+impl<E: Environment> Metrics<dyn Add<Scalar<E>, Output = Scalar<E>>> for Scalar<E> {
     type Case = (Mode, Mode);
 
     fn count(input: &Self::Case) -> Count {

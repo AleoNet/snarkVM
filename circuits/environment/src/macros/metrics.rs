@@ -17,7 +17,7 @@
 #[macro_export]
 macro_rules! count {
     ($type_:ty, $operation:path, $case:expr) => {
-        <$type_ as Measure<dyn $operation>>::count($case)
+        <$type_ as Metrics<dyn $operation>>::count($case)
     };
 }
 

@@ -51,7 +51,7 @@ impl<E: Environment, I: IntegerType> Equal<Self> for Integer<E, I> {
     }
 }
 
-impl<E: Environment, I: IntegerType> Measure<dyn Equal<Integer<E, I>, Boolean = Boolean<E>>> for Integer<E, I> {
+impl<E: Environment, I: IntegerType> Metrics<dyn Equal<Integer<E, I>, Boolean = Boolean<E>>> for Integer<E, I> {
     type Case = (Mode, Mode);
 
     fn count(input: &Self::Case) -> Count {

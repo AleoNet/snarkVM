@@ -34,7 +34,7 @@ impl<E: Environment> PseudorandomFunction for Poseidon<E> {
     }
 }
 
-impl<E: Environment> Measure<dyn PseudorandomFunction<Seed = Field<E>, Input = Field<E>, Output = Field<E>>>
+impl<E: Environment> Metrics<dyn PseudorandomFunction<Seed = Field<E>, Input = Field<E>, Output = Field<E>>>
     for Poseidon<E>
 {
     type Case = ();

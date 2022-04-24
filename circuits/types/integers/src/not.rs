@@ -33,7 +33,7 @@ impl<E: Environment, I: IntegerType> Not for &Integer<E, I> {
     }
 }
 
-impl<E: Environment, I: IntegerType> Measure<dyn Not<Output = Integer<E, I>>> for Integer<E, I> {
+impl<E: Environment, I: IntegerType> Metrics<dyn Not<Output = Integer<E, I>>> for Integer<E, I> {
     type Case = Mode;
 
     fn count(_input: &Self::Case) -> Count {
