@@ -23,7 +23,7 @@ use crate::polycommit::sonic_pc::{LabeledPolynomial, LabeledPolynomialWithBasis,
 /// The first set of prover oracles.
 #[derive(Debug, Clone)]
 pub struct FirstOracles<'a, F: PrimeField> {
-    pub batches: Vec<SingleEntry<'a, F>>,
+    pub(in crate::snark::marlin) batches: Vec<SingleEntry<'a, F>>,
     /// The sum-check hiding polynomial.
     pub mask_poly: Option<LabeledPolynomial<F>>,
 }
@@ -48,7 +48,7 @@ impl<'a, F: PrimeField> FirstOracles<'a, F> {
 }
 
 #[derive(Debug, Clone)]
-pub(in crate::snark::marlin::ahp) struct SingleEntry<'a, F: PrimeField> {
+pub(in crate::snark::marlin) struct SingleEntry<'a, F: PrimeField> {
     /// The evaluations of `Az`.
     pub(super) z_a: LabeledPolynomialWithBasis<'a, F>,
     /// The evaluations of `Bz`.

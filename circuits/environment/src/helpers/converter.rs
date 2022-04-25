@@ -36,7 +36,7 @@ impl snarkvm_r1cs::ConstraintSynthesizer<Fq> for Circuit {
     }
 }
 
-impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for R1CS<F> {
+impl<F: PrimeField> R1CS<F> {
     /// Synthesizes the constraints from the environment into a `snarkvm_r1cs`-compliant constraint system.
     fn generate_constraints<CS: snarkvm_r1cs::ConstraintSystem<F>>(
         &self,
@@ -164,6 +164,7 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for R1CS<F> {
 
 #[cfg(test)]
 mod tests {
+    use snarkvm_algorithms::SNARK;
     use snarkvm_circuits::prelude::*;
     use snarkvm_curves::bls12_377::Fr;
     use snarkvm_r1cs::ConstraintSynthesizer;
@@ -213,41 +214,40 @@ mod tests {
         let one = <Circuit as Environment>::BaseField::one();
 
         // Marlin setup, prove, and verify.
-        {
-            use snarkvm_algorithms::{
-                crypto_hash::PoseidonSponge,
-                snark::marlin::{
-                    ahp::AHPForR1CS,
-                    fiat_shamir::FiatShamirAlgebraicSpongeRng,
-                    MarlinHidingMode,
-                    MarlinSNARK,
-                },
-            };
-            use snarkvm_curves::bls12_377::{Bls12_377, Fq};
-            use snarkvm_utilities::rand::test_rng;
 
-            type MarlinInst = MarlinSNARK<
-                Bls12_377,
-                FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>,
+        use snarkvm_algorithms::{
+            crypto_hash::PoseidonSponge,
+            snark::marlin::{
+                ahp::AHPForR1CS,
+                fiat_shamir::FiatShamirAlgebraicSpongeRng,
                 MarlinHidingMode,
-                Vec<Fr>,
-            >;
+                MarlinSNARK,
+            },
+        };
+        use snarkvm_curves::bls12_377::{Bls12_377, Fq};
+        use snarkvm_utilities::rand::test_crypto_rng;
 
-            let rng = &mut test_rng();
+        type MarlinInst = MarlinSNARK<
+            Bls12_377,
+            FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>,
+            MarlinHidingMode,
+            [Fr],
+        >;
 
-            let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(200, 200, 300).unwrap();
-            let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
+        let rng = &mut test_crypto_rng();
 
-            let (index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &Circuit).unwrap();
-            println!("Called circuit setup");
+        let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(200, 200, 300).unwrap();
+        let universal_srs = MarlinInst::universal_setup(&max_degree, rng).unwrap();
 
-            let proof = MarlinInst::prove(&index_pk, &Circuit, rng).unwrap();
-            println!("Called prover");
+        let (index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &Circuit).unwrap();
+        println!("Called circuit setup");
 
-            assert!(MarlinInst::verify(&index_vk, &[one, one], &proof).unwrap());
-            println!("Called verifier");
-            println!("\nShould not verify (i.e. verifier messages should print below):");
-            assert!(!MarlinInst::verify(&index_vk, &[one, one + one], &proof).unwrap());
-        }
+        let proof = MarlinInst::prove(&index_pk, &Circuit, rng).unwrap();
+        println!("Called prover");
+
+        assert!(MarlinInst::verify(&index_vk, [one, one], &proof).unwrap());
+        println!("Called verifier");
+        println!("\nShould not verify (i.e. verifier messages should print below):");
+        assert!(!MarlinInst::verify(&index_vk, [one, one + one], &proof).unwrap());
     }
 }

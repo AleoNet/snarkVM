@@ -153,7 +153,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             public_input.iter().map(|p| prover::ConstraintSystem::format_public_input(p)).collect::<Vec<_>>();
 
         for public_input in &public_input {
-            if !Self::formatted_public_input_is_admissible(&public_input) {
+            if !Self::formatted_public_input_is_admissible(public_input) {
                 return Err(AHPError::InvalidPublicInputLength);
             }
         }
@@ -194,7 +194,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let v_H_at_beta = constraint_domain.evaluate_vanishing_polynomial(beta);
         let v_X_at_beta = input_domain.evaluate_vanishing_polynomial(beta);
 
-        let z_b_s_at_beta = z_b_s.iter().map(|z_b| evals.get_lc_eval(&z_b, beta)).collect::<Result<Vec<_>, _>>()?;
+        let z_b_s_at_beta = z_b_s.iter().map(|z_b| evals.get_lc_eval(z_b, beta)).collect::<Result<Vec<_>, _>>()?;
         let batch_z_b_at_beta: F =
             z_b_s_at_beta.iter().zip(batch_combiners).map(|(z_b_at_beta, combiner)| *z_b_at_beta * combiner).sum();
         let g_1_at_beta = evals.get_lc_eval(&g_1, beta)?;

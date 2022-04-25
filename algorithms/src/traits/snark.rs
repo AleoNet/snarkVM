@@ -20,7 +20,7 @@ use snarkvm_utilities::{FromBytes, ToBytes, ToMinimalBits};
 use rand::{CryptoRng, Rng};
 use snarkvm_fields::{PrimeField, ToConstraintField};
 use snarkvm_r1cs::ConstraintSynthesizer;
-use std::{fmt::Debug, sync::atomic::AtomicBool};
+use std::{borrow::Borrow, fmt::Debug, sync::atomic::AtomicBool};
 
 /// Defines a trait that describes preparing from an unprepared version to a prepare version.
 pub trait Prepare {
@@ -46,7 +46,7 @@ pub trait SNARK {
     type UniversalSetupConfig: Clone;
     type UniversalSetupParameters: FromBytes + ToBytes + Clone;
 
-    type VerifierInput;
+    type VerifierInput: ?Sized;
     type VerifyingKey: Clone
         + Send
         + Sync
@@ -68,33 +68,58 @@ pub trait SNARK {
         srs: &mut SRS<R, Self::UniversalSetupParameters>,
     ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError>;
 
-    fn prove<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
+    fn prove_batch<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
         proving_key: &Self::ProvingKey,
         input_and_witness: &[C],
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError> {
-        Self::prove_with_terminator(proving_key, input_and_witness, &AtomicBool::new(false), rng)
+        Self::prove_batch_with_terminator(proving_key, input_and_witness, &AtomicBool::new(false), rng)
     }
 
-    fn prove_with_terminator<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
+    fn prove<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
+        proving_key: &Self::ProvingKey,
+        input_and_witness: &C,
+        rng: &mut R,
+    ) -> Result<Self::Proof, SNARKError> {
+        Self::prove_batch(proving_key, std::slice::from_ref(input_and_witness), rng)
+    }
+
+    fn prove_batch_with_terminator<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
         proving_key: &Self::ProvingKey,
         input_and_witness: &[C],
         terminator: &AtomicBool,
         rng: &mut R,
     ) -> Result<Self::Proof, SNARKError>;
 
-    fn verify_prepared(
+    fn prove_with_terminator<C: ConstraintSynthesizer<Self::ScalarField>, R: Rng + CryptoRng>(
+        proving_key: &Self::ProvingKey,
+        input_and_witness: &C,
+        terminator: &AtomicBool,
+        rng: &mut R,
+    ) -> Result<Self::Proof, SNARKError> {
+        Self::prove_batch_with_terminator(proving_key, std::slice::from_ref(input_and_witness), terminator, rng)
+    }
+
+    fn verify_batch_prepared<B: Borrow<Self::VerifierInput>>(
         prepared_verifying_key: &<Self::VerifyingKey as Prepare>::Prepared,
-        input: &[Self::VerifierInput],
+        input: &[B],
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError>;
 
-    fn verify(
+    fn verify_batch<B: Borrow<Self::VerifierInput>>(
         verifying_key: &Self::VerifyingKey,
-        input: &[Self::VerifierInput],
+        input: &[B],
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError> {
         let processed_verifying_key = verifying_key.prepare();
-        Self::verify_prepared(&processed_verifying_key, input, proof)
+        Self::verify_batch_prepared(&processed_verifying_key, input, proof)
+    }
+
+    fn verify<B: Borrow<Self::VerifierInput>>(
+        verifying_key: &Self::VerifyingKey,
+        input: B,
+        proof: &Self::Proof,
+    ) -> Result<bool, SNARKError> {
+        Self::verify_batch(verifying_key, &[input], proof)
     }
 }

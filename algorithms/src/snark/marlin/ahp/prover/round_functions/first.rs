@@ -108,7 +108,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let mask_poly = Self::calculate_mask_poly(constraint_domain, rng);
 
-        let oracles = prover::FirstOracles { batches, mask_poly: mask_poly.clone() };
+        let oracles = prover::FirstOracles { batches, mask_poly };
         assert!(oracles.matches_info(&Self::first_round_polynomial_info(batch_size)));
         state.first_round_oracles = Some(Arc::new(oracles));
         state.mz_poly_randomizer = MM::ZK.then(|| r_b_s);

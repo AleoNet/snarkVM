@@ -27,16 +27,23 @@ use crate::{
         CircuitVerifyingKey,
         MarlinError,
         MarlinMode,
-        PreparedCircuitVerifyingKey,
         Proof,
         UniversalSRS,
     },
+    Prepare,
+    SNARKError,
+    SNARK,
+    SRS,
 };
 use itertools::Itertools;
+use rand::{CryptoRng, Rng};
+use rand_core::RngCore;
 use snarkvm_curves::PairingEngine;
-use snarkvm_fields::{One, ToConstraintField, Zero};
+use snarkvm_fields::{One, PrimeField, ToConstraintField, Zero};
 use snarkvm_r1cs::ConstraintSynthesizer;
 use snarkvm_utilities::{to_bytes_le, ToBytes};
+
+use std::{borrow::Borrow, sync::Arc};
 
 #[cfg(not(feature = "std"))]
 use snarkvm_utilities::println;
@@ -45,8 +52,6 @@ use core::{
     marker::PhantomData,
     sync::atomic::{AtomicBool, Ordering},
 };
-use rand_core::RngCore;
-use std::sync::Arc;
 
 /// The Marlin proof system.
 #[derive(Clone, Debug)]
@@ -54,24 +59,15 @@ pub struct MarlinSNARK<
     E: PairingEngine,
     FS: FiatShamirRng<E::Fr, E::Fq>,
     MM: MarlinMode,
-    Input: ToConstraintField<E::Fr>,
+    Input: ToConstraintField<E::Fr> + ?Sized,
 >(#[doc(hidden)] PhantomData<(E, FS, MM, Input)>);
 
-impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: ToConstraintField<E::Fr>>
+impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: ToConstraintField<E::Fr> + ?Sized>
     MarlinSNARK<E, FS, MM, Input>
 {
     /// The personalization string for this protocol.
     /// Used to personalize the Fiat-Shamir RNG.
     pub const PROTOCOL_NAME: &'static [u8] = b"MARLIN-2019";
-
-    /// Generates the universal proving and verifying keys for the argument system.
-    pub fn universal_setup<R: RngCore>(max_degree: usize, rng: &mut R) -> Result<UniversalSRS<E>, MarlinError> {
-        let setup_time = start_timer!(|| { format!("Marlin::UniversalSetup with max_degree {}", max_degree,) });
-
-        let srs = SonicKZG10::<E, FS>::setup(max_degree, rng).map_err(Into::into);
-        end_timer!(setup_time);
-        srs
-    }
 
     /// Generate the index-specific (i.e., circuit-specific) prover and verifier
     /// keys. This is a trusted setup.
@@ -82,12 +78,12 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
     /// In production, one should instead perform a universal setup via [`Self::universal_setup`],
     /// and then deterministically specialize the resulting universal SRS via [`Self::circuit_setup`].
     #[allow(clippy::type_complexity)]
-    pub fn circuit_specific_setup<C: ConstraintSynthesizer<E::Fr>, R: RngCore>(
+    pub fn circuit_specific_setup<C: ConstraintSynthesizer<E::Fr>, R: RngCore + CryptoRng>(
         c: &C,
         rng: &mut R,
-    ) -> Result<(CircuitProvingKey<E, MM>, CircuitVerifyingKey<E, MM>), MarlinError> {
+    ) -> Result<(CircuitProvingKey<E, MM>, CircuitVerifyingKey<E, MM>), SNARKError> {
         let circuit = AHPForR1CS::<_, MM>::index(c)?;
-        let srs = Self::universal_setup(circuit.max_degree(), rng)?;
+        let srs = Self::universal_setup(&circuit.max_degree(), rng)?;
         Self::circuit_setup(&srs, c)
     }
 
@@ -97,7 +93,7 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
     pub fn circuit_setup<C: ConstraintSynthesizer<E::Fr>>(
         universal_srs: &UniversalSRS<E>,
         circuit: &C,
-    ) -> Result<(CircuitProvingKey<E, MM>, CircuitVerifyingKey<E, MM>), MarlinError> {
+    ) -> Result<(CircuitProvingKey<E, MM>, CircuitVerifyingKey<E, MM>), SNARKError> {
         let index_time = start_timer!(|| "Marlin::CircuitSetup");
 
         // TODO: Add check that c is in the correct mode.
@@ -145,15 +141,6 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
         Ok((circuit_proving_key, circuit_verifying_key))
     }
 
-    /// Create a zkSNARK asserting that the constraint system is satisfied.
-    pub fn prove<C: ConstraintSynthesizer<E::Fr>, R: RngCore>(
-        circuit_proving_key: &CircuitProvingKey<E, MM>,
-        circuits: &[C],
-        zk_rng: &mut R,
-    ) -> Result<Proof<E>, MarlinError> {
-        Self::prove_with_terminator(circuit_proving_key, circuits, &AtomicBool::new(false), zk_rng)
-    }
-
     fn terminate(terminator: &AtomicBool) -> Result<(), MarlinError> {
         if terminator.load(Ordering::Relaxed) { Err(MarlinError::Terminated) } else { Ok(()) }
     }
@@ -173,13 +160,76 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
         sponge
     }
 
-    /// Same as [`Self::prove`] with an added termination flag, `terminator`.
-    pub fn prove_with_terminator<C: ConstraintSynthesizer<E::Fr>, R: RngCore>(
+    fn absorb_labeled_with_msg(
+        comms: &[LabeledCommitment<Commitment<E>>],
+        message: &prover::ThirdMessage<E::Fr>,
+        sponge: &mut FS,
+    ) {
+        let commitments: Vec<_> = comms.iter().map(|c| *c.commitment()).collect();
+        Self::absorb_with_msg(&commitments, message, sponge)
+    }
+
+    fn absorb_labeled(comms: &[LabeledCommitment<Commitment<E>>], sponge: &mut FS) {
+        let commitments: Vec<_> = comms.iter().map(|c| *c.commitment()).collect();
+        Self::absorb(&commitments, sponge)
+    }
+
+    fn absorb(commitments: &[Commitment<E>], sponge: &mut FS) {
+        sponge.absorb_native_field_elements(commitments);
+    }
+
+    fn absorb_with_msg(commitments: &[Commitment<E>], msg: &prover::ThirdMessage<E::Fr>, sponge: &mut FS) {
+        Self::absorb(commitments, sponge);
+        sponge.absorb_nonnative_field_elements([msg.sum_a, msg.sum_b, msg.sum_c], OptimizationType::Weight);
+    }
+}
+
+impl<E: PairingEngine, FS, MM, Input> SNARK for MarlinSNARK<E, FS, MM, Input>
+where
+    E::Fr: PrimeField,
+    E::Fq: PrimeField,
+    FS: FiatShamirRng<E::Fr, E::Fq>,
+    MM: MarlinMode,
+    Input: ToConstraintField<E::Fr> + ?Sized,
+{
+    type BaseField = E::Fq;
+    type Proof = Proof<E>;
+    type ProvingKey = CircuitProvingKey<E, MM>;
+    type ScalarField = E::Fr;
+    type UniversalSetupConfig = usize;
+    type UniversalSetupParameters = UniversalSRS<E>;
+    type VerifierInput = Input;
+    type VerifyingKey = CircuitVerifyingKey<E, MM>;
+
+    fn universal_setup<R: Rng + CryptoRng>(
+        max_degree: &Self::UniversalSetupConfig,
+        rng: &mut R,
+    ) -> Result<Self::UniversalSetupParameters, SNARKError> {
+        let setup_time = start_timer!(|| { format!("Marlin::UniversalSetup with max_degree {}", max_degree,) });
+
+        let srs = SonicKZG10::<E, FS>::setup(*max_degree, rng).map_err(Into::into);
+        end_timer!(setup_time);
+        srs
+    }
+
+    fn setup<C: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
+        circuit: &C,
+        srs: &mut SRS<R, Self::UniversalSetupParameters>,
+    ) -> Result<(Self::ProvingKey, Self::VerifyingKey), SNARKError> {
+        match srs {
+            SRS::CircuitSpecific(rng) => Self::circuit_specific_setup(circuit, rng),
+            SRS::Universal(srs) => Self::circuit_setup(srs, circuit),
+        }
+        .map_err(SNARKError::from)
+    }
+
+    #[allow(clippy::only_used_in_recursion)]
+    fn prove_batch_with_terminator<C: ConstraintSynthesizer<E::Fr>, R: Rng + CryptoRng>(
         circuit_proving_key: &CircuitProvingKey<E, MM>,
         circuits: &[C],
         terminator: &AtomicBool,
         zk_rng: &mut R,
-    ) -> Result<Proof<E>, MarlinError> {
+    ) -> Result<Self::Proof, SNARKError> {
         let prover_time = start_timer!(|| "Marlin::Prover");
         let batch_size = circuits.len();
 
@@ -212,7 +262,7 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
         )?;
         end_timer!(first_round_comm_time);
 
-        Self::verifier_absorb_labeled(&first_commitments, &mut sponge);
+        Self::absorb_labeled(&first_commitments, &mut sponge);
         Self::terminate(terminator)?;
 
         let (verifier_first_message, verifier_state) = AHPForR1CS::<_, MM>::verifier_first_round(
@@ -239,7 +289,7 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
         )?;
         end_timer!(second_round_comm_time);
 
-        Self::verifier_absorb_labeled(&second_commitments, &mut sponge);
+        Self::absorb_labeled(&second_commitments, &mut sponge);
         Self::terminate(terminator)?;
 
         let (verifier_second_msg, verifier_state) =
@@ -264,7 +314,7 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
         )?;
         end_timer!(third_round_comm_time);
 
-        Self::verifier_absorb_labeled_with_msg(&third_commitments, &prover_third_message, &mut sponge);
+        Self::absorb_labeled_with_msg(&third_commitments, &prover_third_message, &mut sponge);
 
         let (verifier_third_msg, verifier_state) =
             AHPForR1CS::<_, MM>::verifier_third_round(verifier_state, &mut sponge)?;
@@ -287,7 +337,7 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
         )?;
         end_timer!(fourth_round_comm_time);
 
-        Self::verifier_absorb_labeled(&fourth_commitments, &mut sponge);
+        Self::absorb_labeled(&fourth_commitments, &mut sponge);
 
         let verifier_state = AHPForR1CS::<_, MM>::verifier_fourth_round(verifier_state, &mut sponge)?;
         // --------------------------------------------------------------------
@@ -407,36 +457,12 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
         Ok(proof)
     }
 
-    fn verifier_absorb_labeled_with_msg(
-        comms: &[LabeledCommitment<Commitment<E>>],
-        message: &prover::ThirdMessage<E::Fr>,
-        sponge: &mut FS,
-    ) {
-        let commitments: Vec<_> = comms.iter().map(|c| *c.commitment()).collect();
-        Self::verifier_absorb_with_msg(&commitments, message, sponge)
-    }
-
-    fn verifier_absorb_labeled(comms: &[LabeledCommitment<Commitment<E>>], sponge: &mut FS) {
-        let commitments: Vec<_> = comms.iter().map(|c| *c.commitment()).collect();
-        Self::verifier_absorb(&commitments, sponge)
-    }
-
-    fn verifier_absorb(commitments: &[Commitment<E>], sponge: &mut FS) {
-        sponge.absorb_native_field_elements(commitments);
-    }
-
-    fn verifier_absorb_with_msg(commitments: &[Commitment<E>], msg: &prover::ThirdMessage<E::Fr>, sponge: &mut FS) {
-        Self::verifier_absorb(commitments, sponge);
-        sponge.absorb_nonnative_field_elements([msg.sum_a, msg.sum_b, msg.sum_c], OptimizationType::Weight);
-    }
-
-    /// Verify that a proof for the constraint system defined by `C` asserts that
-    /// all constraints are satisfied.
-    pub fn verify(
-        circuit_verifying_key: &CircuitVerifyingKey<E, MM>,
-        public_inputs: &[Vec<E::Fr>],
-        proof: &Proof<E>,
-    ) -> Result<bool, MarlinError> {
+    fn verify_batch_prepared<B: Borrow<Self::VerifierInput>>(
+        prepared_verifying_key: &<Self::VerifyingKey as Prepare>::Prepared,
+        public_inputs: &[B],
+        proof: &Self::Proof,
+    ) -> Result<bool, SNARKError> {
+        let circuit_verifying_key = &prepared_verifying_key.orig_vk;
         let verifier_time = start_timer!(|| "Marlin::Verify");
 
         let comms = &proof.commitments;
@@ -470,7 +496,7 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
             .collect::<Vec<_>>();
         if MM::ZK {
             first_commitments.push(LabeledCommitment::new_with_info(
-                first_round_info.get(&format!("mask_poly")).unwrap(),
+                first_round_info.get("mask_poly").unwrap(),
                 comms.mask_poly.unwrap(),
             ));
         }
@@ -498,8 +524,9 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
             public_inputs
                 .iter()
                 .map(|input| {
+                    let input = input.borrow().to_field_elements().unwrap();
                     let mut new_input = vec![E::Fr::one()];
-                    new_input.extend_from_slice(input);
+                    new_input.extend_from_slice(&input);
                     new_input.resize(input.len().max(input_domain.size()), E::Fr::zero());
                     if cfg!(debug_assertions) {
                         println!("Number of padded public variables: {}", new_input.len());
@@ -515,26 +542,26 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
 
         // --------------------------------------------------------------------
         // First round
-        Self::verifier_absorb_labeled(&first_commitments, &mut sponge);
+        Self::absorb_labeled(&first_commitments, &mut sponge);
         let (_, verifier_state) =
             AHPForR1CS::<_, MM>::verifier_first_round(circuit_verifying_key.circuit_info, batch_size, &mut sponge)?;
         // --------------------------------------------------------------------
 
         // --------------------------------------------------------------------
         // Second round
-        Self::verifier_absorb_labeled(&second_commitments, &mut sponge);
+        Self::absorb_labeled(&second_commitments, &mut sponge);
         let (_, verifier_state) = AHPForR1CS::<_, MM>::verifier_second_round(verifier_state, &mut sponge)?;
         // --------------------------------------------------------------------
 
         // --------------------------------------------------------------------
         // Third round
-        Self::verifier_absorb_labeled_with_msg(&third_commitments, &proof.msg, &mut sponge);
+        Self::absorb_labeled_with_msg(&third_commitments, &proof.msg, &mut sponge);
         let (_, verifier_state) = AHPForR1CS::<_, MM>::verifier_third_round(verifier_state, &mut sponge)?;
         // --------------------------------------------------------------------
 
         // --------------------------------------------------------------------
         // Fourth round
-        Self::verifier_absorb_labeled(&fourth_commitments, &mut sponge);
+        Self::absorb_labeled(&fourth_commitments, &mut sponge);
         let verifier_state = AHPForR1CS::<_, MM>::verifier_fourth_round(verifier_state, &mut sponge)?;
         // --------------------------------------------------------------------
 
@@ -596,14 +623,86 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
         ));
         Ok(evaluations_are_correct & proof_has_correct_zk_mode)
     }
+}
 
-    /// Verify that a proof for the constraint system defined by `C` asserts that
-    /// all constraints are satisfied using the prepared verifying key.
-    pub fn prepared_verify(
-        prepared_vk: &PreparedCircuitVerifyingKey<E, MM>,
-        public_inputs: &[Vec<E::Fr>],
-        proof: &Proof<E>,
-    ) -> Result<bool, MarlinError> {
-        Self::verify(&prepared_vk.orig_vk, public_inputs, proof)
+#[cfg(test)]
+pub mod test {
+    use super::*;
+    use crate::{
+        crypto_hash::PoseidonSponge,
+        snark::marlin::{fiat_shamir::FiatShamirAlgebraicSpongeRng, MarlinHidingMode, MarlinSNARK},
+        SRS,
+    };
+    use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
+    use snarkvm_fields::Field;
+    use snarkvm_r1cs::{ConstraintSystem, SynthesisError};
+    use snarkvm_utilities::{test_crypto_rng, UniformRand};
+
+    use core::ops::MulAssign;
+
+    const ITERATIONS: usize = 10;
+
+    #[derive(Copy, Clone)]
+    pub struct Circuit<F: Field> {
+        pub a: Option<F>,
+        pub b: Option<F>,
+        pub num_constraints: usize,
+        pub num_variables: usize,
+    }
+
+    impl<ConstraintF: Field> ConstraintSynthesizer<ConstraintF> for Circuit<ConstraintF> {
+        fn generate_constraints<CS: ConstraintSystem<ConstraintF>>(&self, cs: &mut CS) -> Result<(), SynthesisError> {
+            let a = cs.alloc(|| "a", || self.a.ok_or(SynthesisError::AssignmentMissing))?;
+            let b = cs.alloc(|| "b", || self.b.ok_or(SynthesisError::AssignmentMissing))?;
+            let c = cs.alloc_input(
+                || "c",
+                || {
+                    let mut a = self.a.ok_or(SynthesisError::AssignmentMissing)?;
+                    let b = self.b.ok_or(SynthesisError::AssignmentMissing)?;
+
+                    a.mul_assign(&b);
+                    Ok(a)
+                },
+            )?;
+
+            for i in 0..(self.num_variables - 3) {
+                let _ = cs.alloc(|| format!("var {}", i), || self.a.ok_or(SynthesisError::AssignmentMissing))?;
+            }
+
+            for i in 0..(self.num_constraints - 1) {
+                cs.enforce(|| format!("constraint {}", i), |lc| lc + a, |lc| lc + b, |lc| lc + c);
+            }
+
+            Ok(())
+        }
+    }
+
+    type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
+    type TestSNARK = MarlinSNARK<Bls12_377, FS, MarlinHidingMode, Vec<Fr>>;
+
+    #[test]
+    fn marlin_snark_test() {
+        let mut rng = test_crypto_rng();
+
+        for _ in 0..ITERATIONS {
+            // Construct the circuit.
+
+            let a = Fr::rand(&mut rng);
+            let b = Fr::rand(&mut rng);
+            let mut c = a;
+            c.mul_assign(&b);
+
+            let circ = Circuit { a: Some(a), b: Some(b), num_constraints: 100, num_variables: 25 };
+
+            // Generate the circuit parameters.
+
+            let (pk, vk) = TestSNARK::setup(&circ, &mut SRS::CircuitSpecific(&mut rng)).unwrap();
+
+            // Test native proof and verification.
+
+            let proof = TestSNARK::prove(&pk, &circ, &mut rng).unwrap();
+
+            assert!(TestSNARK::verify(&vk.clone(), &vec![c], &proof).unwrap(), "The native verification check fails.");
+        }
     }
 }

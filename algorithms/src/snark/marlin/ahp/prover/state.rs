@@ -146,22 +146,12 @@ impl<'a, F: PrimeField, MM: MarlinMode> State<'a, F, MM> {
 
     /// Get the public inputs for the entire batch.
     pub fn public_inputs(&self) -> Vec<Vec<F>> {
-        self.padded_public_variables.iter().map(|v| super::ConstraintSystem::unformat_public_input(*&v)).collect()
+        self.padded_public_variables.iter().map(|v| super::ConstraintSystem::unformat_public_input(v)).collect()
     }
 
     /// Get the padded public inputs for the entire batch.
     pub fn padded_public_inputs(&self) -> Vec<Vec<F>> {
         self.padded_public_variables.clone()
-    }
-
-    /// Get the padded public input.
-    pub(crate) fn padded_public_input(&self, i: usize) -> &[F] {
-        &self.padded_public_variables[i]
-    }
-
-    /// Get the public input.
-    pub(crate) fn public_input(&self, i: usize) -> Vec<F> {
-        super::ConstraintSystem::unformat_public_input(&self.padded_public_variables[i])
     }
 
     pub fn fft_precomputation(&self) -> &FFTPrecomputation<F> {

@@ -17,6 +17,8 @@
 use snarkvm_fields::ConstraintFieldError;
 use snarkvm_r1cs::SynthesisError;
 
+use crate::snark::marlin::{AHPError, MarlinError};
+
 #[derive(Debug, Error)]
 pub enum SNARKError {
     #[error("{}", _0)]
@@ -44,5 +46,30 @@ pub enum SNARKError {
 impl From<SynthesisError> for SNARKError {
     fn from(error: SynthesisError) -> Self {
         SNARKError::SynthesisError(error)
+    }
+}
+
+impl From<MarlinError> for SNARKError {
+    fn from(error: MarlinError) -> Self {
+        match error {
+            MarlinError::Terminated => SNARKError::Terminated,
+            err => SNARKError::Crate("marlin", format!("{:?}", err)),
+        }
+    }
+}
+
+impl From<AHPError> for SNARKError {
+    fn from(err: AHPError) -> Self {
+        MarlinError::AHPError(err).into()
+    }
+}
+
+impl From<crate::polycommit::PCError> for SNARKError {
+    fn from(err: crate::polycommit::PCError) -> Self {
+        match err {
+            crate::polycommit::PCError::Terminated => MarlinError::Terminated,
+            err => MarlinError::PolynomialCommitmentError(err),
+        }
+        .into()
     }
 }

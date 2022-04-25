@@ -59,9 +59,5 @@ pub use mode::*;
 ///
 pub mod params;
 
-/// Implementation of the `SNARK` trait for [`MarlinSNARK`].
-mod snark;
-pub use snark::*;
-
 #[cfg(test)]
 pub mod tests;
