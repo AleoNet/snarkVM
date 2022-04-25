@@ -18,7 +18,10 @@ use std::collections::BTreeMap;
 
 use snarkvm_fields::PrimeField;
 
-use crate::polycommit::sonic_pc::{LabeledPolynomial, LabeledPolynomialWithBasis, PolynomialInfo, PolynomialLabel};
+use crate::{
+    fft::DensePolynomial,
+    polycommit::sonic_pc::{LabeledPolynomial, LabeledPolynomialWithBasis, PolynomialInfo, PolynomialLabel},
+};
 
 /// The first set of prover oracles.
 #[derive(Debug, Clone)]
@@ -31,8 +34,10 @@ pub struct FirstOracles<'a, F: PrimeField> {
 impl<'a, F: PrimeField> FirstOracles<'a, F> {
     /// Iterate over the polynomials output by the prover in the first round.
     /// Intended for use when committing.
-    pub fn iter_for_commit(&'a self) -> impl Iterator<Item = LabeledPolynomialWithBasis<'a, F>> {
-        self.batches.iter().flat_map(|b| b.iter_for_commit()).chain(self.mask_poly.as_ref().map(Into::into))
+    #[allow(clippy::needless_collect)]
+    pub fn iter_for_commit(&mut self) -> impl Iterator<Item = LabeledPolynomialWithBasis<'a, F>> {
+        let t = self.batches.iter_mut().flat_map(|b| b.iter_for_commit()).collect::<Vec<_>>();
+        t.into_iter().chain(self.mask_poly.clone().map(Into::into))
     }
 
     /// Iterate over the polynomials output by the prover in the first round.
@@ -64,8 +69,16 @@ pub(in crate::snark::marlin) struct SingleEntry<'a, F: PrimeField> {
 impl<'a, F: PrimeField> SingleEntry<'a, F> {
     /// Iterate over the polynomials output by the prover in the first round.
     /// Intended for use when committing.
-    pub fn iter_for_commit(&'a self) -> impl Iterator<Item = LabeledPolynomialWithBasis<'a, F>> {
-        [(&self.w_poly).into(), self.z_a.clone(), self.z_b.clone()].into_iter()
+    pub fn iter_for_commit(&mut self) -> impl Iterator<Item = LabeledPolynomialWithBasis<'a, F>> {
+        let w_poly = self.w_poly.clone();
+        self.w_poly = LabeledPolynomial { polynomial: DensePolynomial::zero().into(), info: w_poly.info().clone() };
+
+        let z_a = self.z_a.clone();
+        self.z_a = LabeledPolynomialWithBasis { polynomial: vec![], info: z_a.info().clone() };
+
+        let z_b = self.z_b.clone();
+        self.z_b = LabeledPolynomialWithBasis { polynomial: vec![], info: z_b.info().clone() };
+        [w_poly.into(), z_a, z_b].into_iter()
     }
 
     /// Iterate over the polynomials output by the prover in the first round.

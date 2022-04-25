@@ -250,16 +250,18 @@ where
         // First round
 
         Self::terminate(terminator)?;
-        let prover_state = AHPForR1CS::<_, MM>::prover_first_round(prover_state, zk_rng)?;
+        let mut prover_state = AHPForR1CS::<_, MM>::prover_first_round(prover_state, zk_rng)?;
         Self::terminate(terminator)?;
 
         let first_round_comm_time = start_timer!(|| "Committing to first round polys");
-        let first_round_oracles = Arc::clone(prover_state.first_round_oracles.as_ref().unwrap());
-        let (first_commitments, first_commitment_randomnesses) = SonicKZG10::<E, FS>::commit(
-            &circuit_proving_key.committer_key,
-            first_round_oracles.iter_for_commit(),
-            Some(zk_rng),
-        )?;
+        let (first_commitments, first_commitment_randomnesses) = {
+            let first_round_oracles = Arc::get_mut(prover_state.first_round_oracles.as_mut().unwrap()).unwrap();
+            SonicKZG10::<E, FS>::commit(
+                &circuit_proving_key.committer_key,
+                first_round_oracles.iter_for_commit(),
+                Some(zk_rng),
+            )?
+        };
         end_timer!(first_round_comm_time);
 
         Self::absorb_labeled(&first_commitments, &mut sponge);
@@ -325,6 +327,7 @@ where
 
         Self::terminate(terminator)?;
 
+        let first_round_oracles = Arc::clone(prover_state.first_round_oracles.as_ref().unwrap());
         let fourth_oracles = AHPForR1CS::<_, MM>::prover_fourth_round(&verifier_third_msg, prover_state, zk_rng)?;
         Self::terminate(terminator)?;
 

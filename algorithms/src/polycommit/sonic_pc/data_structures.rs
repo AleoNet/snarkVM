@@ -515,7 +515,7 @@ pub type PolynomialLabel = String;
 
 /// A commitment along with information about its degree bound (if any).
 #[derive(Clone, Debug, CanonicalSerialize, PartialEq, Eq)]
-pub struct LabeledCommitment<C: CanonicalSerialize> {
+pub struct LabeledCommitment<C: CanonicalSerialize + 'static> {
     label: PolynomialLabel,
     commitment: C,
     degree_bound: Option<usize>,

@@ -72,11 +72,11 @@ impl PolynomialInfo {
 /// the amount of protection that will be provided to a commitment for this polynomial.
 #[derive(Debug, Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct LabeledPolynomial<F: Field> {
-    info: PolynomialInfo,
-    polynomial: DenseOrSparsePolynomial<'static, F>,
+    pub info: PolynomialInfo,
+    pub polynomial: DenseOrSparsePolynomial<'static, F>,
 }
 
-impl<'a, F: Field> core::ops::Deref for LabeledPolynomial<F> {
+impl<F: Field> core::ops::Deref for LabeledPolynomial<F> {
     type Target = DenseOrSparsePolynomial<'static, F>;
 
     fn deref(&self) -> &Self::Target {
@@ -143,7 +143,7 @@ impl<F: Field> LabeledPolynomial<F> {
 
 #[derive(Debug, Clone)]
 pub struct LabeledPolynomialWithBasis<'a, F: PrimeField> {
-    info: PolynomialInfo,
+    pub info: PolynomialInfo,
     pub polynomial: Vec<(F, PolynomialWithBasis<'a, F>)>,
 }
 
@@ -307,6 +307,16 @@ impl<'a, F: PrimeField> From<&'a LabeledPolynomial<F>> for LabeledPolynomialWith
         let polynomial = PolynomialWithBasis::Monomial {
             polynomial: Cow::Borrowed(other.polynomial()),
             degree_bound: other.degree_bound(),
+        };
+        Self { info: other.info.clone(), polynomial: vec![(F::one(), polynomial)] }
+    }
+}
+
+impl<'a, F: PrimeField> From<LabeledPolynomial<F>> for LabeledPolynomialWithBasis<'a, F> {
+    fn from(other: LabeledPolynomial<F>) -> Self {
+        let polynomial = PolynomialWithBasis::Monomial {
+            polynomial: Cow::Owned(other.polynomial),
+            degree_bound: other.info.degree_bound,
         };
         Self { info: other.info.clone(), polynomial: vec![(F::one(), polynomial)] }
     }

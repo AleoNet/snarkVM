@@ -184,7 +184,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let z_b_s = (0..state.batch_size)
             .map(|i| {
                 let z_b_i = format!("z_b_{i}");
-                LinearCombination::new(&z_b_i, vec![(F::one(), "z_b")])
+                LinearCombination::new(&z_b_i, vec![(F::one(), format!("z_b_{i}"))])
             })
             .collect::<Vec<_>>();
         let g_1 = LinearCombination::new("g_1", vec![(F::one(), "g_1")]);
@@ -221,11 +221,11 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             if MM::ZK {
                 lc_terms.push((F::one(), "mask_poly".into()));
             }
-            for (i, z_b_i_at_beta) in z_b_s_at_beta.iter().enumerate() {
-                lc_terms.push((r_alpha_at_beta * (eta_a + (eta_c * z_b_i_at_beta)), format!("z_a_{i}").into()));
+            for (i, (z_b_i_at_beta, combiner)) in z_b_s_at_beta.iter().zip(batch_combiners).enumerate() {
+                lc_terms.push((r_alpha_at_beta * combiner * (eta_a + (eta_c * z_b_i_at_beta)), format!("z_a_{i}").into()));
+                lc_terms.push((-t_at_beta * v_X_at_beta * combiner, format!("w_{i}").into()));
             }
             lc_terms.push((r_alpha_at_beta * eta_b * batch_z_b_at_beta, LCTerm::One));
-            lc_terms.push((-t_at_beta * v_X_at_beta, "w".into()));
             lc_terms.push((-t_at_beta * x_at_beta, LCTerm::One));
             lc_terms.push((-v_H_at_beta, "h_1".into()));
             lc_terms.push((-beta * g_1_at_beta, LCTerm::One));

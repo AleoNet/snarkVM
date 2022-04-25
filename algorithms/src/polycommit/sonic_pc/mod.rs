@@ -200,9 +200,9 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
     /// If for some `i`, `polynomials[i].degree_bound().is_some()`, then that
     /// polynomial will have the corresponding degree bound enforced.
     #[allow(clippy::type_complexity)]
-    pub fn commit<'a>(
+    pub fn commit<'b>(
         ck: &CommitterKey<E>,
-        polynomials: impl IntoIterator<Item = LabeledPolynomialWithBasis<'a, E::Fr>>,
+        polynomials: impl IntoIterator<Item = LabeledPolynomialWithBasis<'b, E::Fr>>,
         rng: Option<&mut dyn RngCore>,
     ) -> Result<(Vec<LabeledCommitment<Commitment<E>>>, Vec<Randomness<E>>), PCError> {
         Self::commit_with_terminator(ck, polynomials, &AtomicBool::new(false), rng)

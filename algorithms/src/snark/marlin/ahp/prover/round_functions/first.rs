@@ -50,9 +50,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     pub fn first_round_polynomial_info(batch_size: usize) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
         let mut polynomials = Vec::new();
         for i in 0..batch_size {
-            polynomials.push(PolynomialInfo::new(format!("w_{i}"), None, None));
-            polynomials.push(PolynomialInfo::new(format!("z_a_{i}"), None, None));
-            polynomials.push(PolynomialInfo::new(format!("z_b_{i}"), None, None));
+            polynomials.push(PolynomialInfo::new(format!("w_{i}"), None, Self::zk_bound()));
+            polynomials.push(PolynomialInfo::new(format!("z_a_{i}"), None, Self::zk_bound()));
+            polynomials.push(PolynomialInfo::new(format!("z_b_{i}"), None, Self::zk_bound()));
         }
         if MM::ZK {
             polynomials.push(PolynomialInfo::new("mask_poly".to_string(), None, None));
