@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::algorithms::Poseidon;
+use crate::{algorithms::Poseidon, HashMany};
+
 use snarkvm_circuits_environment::prelude::*;
 use snarkvm_circuits_types::prelude::*;
 use snarkvm_fields::{FieldParameters, PrimeField};

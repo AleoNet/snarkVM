@@ -17,10 +17,12 @@
 use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Registers},
     helpers::Register,
+    LiteralType,
+    OutputType,
     Program,
     Value,
 };
-use snarkvm_circuits::{Literal, MulChecked, Parser, ParserResult};
+use snarkvm_circuits::{Count, Literal, Metrics, MulChecked, Parser, ParserResult};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
@@ -88,6 +90,25 @@ impl<P: Program> Operation<P> for Mul<P> {
         };
 
         registers.assign(self.operation.destination(), result);
+    }
+}
+
+impl<P: Program> Metrics<Self> for Mul<P> {
+    type Case = (LiteralType<P>, LiteralType<P>);
+
+    fn count(_case: &Self::Case) -> Count {
+        // TODO (@pranav): Implement Metrics for Mul.
+        P::halt(format!("Invalid '{}' instruction", Self::opcode()))
+    }
+}
+
+impl<P: Program> OutputType for Mul<P> {
+    type Input = (LiteralType<P>, LiteralType<P>);
+    type Output = LiteralType<P>;
+
+    fn output_type(_input_type: &Self::Input) -> Self::Output {
+        // TODO (@pranav): Implement OutputType for Mul.
+        P::halt(format!("Invalid '{}' instruction", Self::opcode()))
     }
 }
 

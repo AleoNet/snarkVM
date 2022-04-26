@@ -438,6 +438,17 @@ impl<P: Program> Metrics<Self> for Function<P> {
                         // Return the associated count.
                         instructions::Equal::<P>::count(&(operand_types[0], operand_types[1]))
                     }
+                    Instruction::Mul(instruction) => {
+                        // Get input types of the operands.
+                        let operand_types = get_operand_types(instruction.operands());
+
+                        // Infer the output type of the instruction based on the input types.
+                        let output_type = instructions::Mul::<P>::output_type(&(operand_types[0], operand_types[1]));
+                        type_map.insert(instruction.destination().clone(), output_type);
+
+                        // Return the associated count.
+                        instructions::Mul::<P>::count(&(operand_types[0], operand_types[1]))
+                    }
                     Instruction::Neg(instruction) => {
                         // Get input types of the operands.
                         let operand_types = get_operand_types(instruction.operands());

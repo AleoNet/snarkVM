@@ -33,8 +33,11 @@ use snarkvm_circuits::{
     OutputMode,
     Parser,
     ParserResult,
+    I128,
+    I16,
+    I32,
+    I64,
     I8,
-    U8,
 };
 use snarkvm_utilities::{FromBytes, ToBytes};
 
@@ -42,7 +45,7 @@ use core::fmt;
 use nom::combinator::map;
 use std::{
     io::{Read, Result as IoResult, Write},
-    ops::Neg as NegOp,
+    ops::Neg as NativeNeg,
 };
 
 /// Negates `first`, storing the outcome in `destination`.
@@ -102,16 +105,25 @@ impl<P: Program> Metrics<Self> for Neg<P> {
     fn count(case: &Self::Case) -> Count {
         match case {
             LiteralType::Field(mode) => {
-                count!(Field<P::Environment>, NegOp<Output = Field<P::Environment>>, mode)
+                count!(Field<P::Environment>, NativeNeg<Output = Field<P::Environment>>, mode)
             }
             LiteralType::Group(mode) => {
-                count!(Group<P::Environment>, NegOp<Output = Group<P::Environment>>, mode)
+                count!(Group<P::Environment>, NativeNeg<Output = Group<P::Environment>>, mode)
             }
             LiteralType::I8(mode) => {
-                count!(I8<P::Environment>, NegOp<Output = I8<P::Environment>>, mode)
+                count!(I8<P::Environment>, NativeNeg<Output = I8<P::Environment>>, mode)
             }
-            LiteralType::U8(mode) => {
-                count!(U8<P::Environment>, NegOp<Output = U8<P::Environment>>, mode)
+            LiteralType::I16(mode) => {
+                count!(I16<P::Environment>, NativeNeg<Output = I16<P::Environment>>, mode)
+            }
+            LiteralType::I32(mode) => {
+                count!(I32<P::Environment>, NativeNeg<Output = I32<P::Environment>>, mode)
+            }
+            LiteralType::I64(mode) => {
+                count!(I64<P::Environment>, NativeNeg<Output = I64<P::Environment>>, mode)
+            }
+            LiteralType::I128(mode) => {
+                count!(I128<P::Environment>, NativeNeg<Output = I128<P::Environment>>, mode)
             }
             _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
         }
@@ -125,16 +137,25 @@ impl<P: Program> OutputType for Neg<P> {
     fn output_type(input_type: &Self::Input) -> Self::Output {
         match input_type {
             LiteralType::Field(mode) => {
-                LiteralType::Field(output_mode!(Field<P::Environment>, NegOp<Output = Field<P::Environment>>, mode))
+                LiteralType::Field(output_mode!(Field<P::Environment>, NativeNeg<Output = Field<P::Environment>>, mode))
             }
             LiteralType::Group(mode) => {
-                LiteralType::Group(output_mode!(Group<P::Environment>, NegOp<Output = Group<P::Environment>>, mode))
+                LiteralType::Group(output_mode!(Group<P::Environment>, NativeNeg<Output = Group<P::Environment>>, mode))
             }
             LiteralType::I8(mode) => {
-                LiteralType::I8(output_mode!(I8<P::Environment>, NegOp<Output = I8<P::Environment>>, mode))
+                LiteralType::I8(output_mode!(I8<P::Environment>, NativeNeg<Output = I8<P::Environment>>, mode))
             }
-            LiteralType::U8(mode) => {
-                LiteralType::U8(output_mode!(U8<P::Environment>, NegOp<Output = U8<P::Environment>>, mode))
+            LiteralType::I16(mode) => {
+                LiteralType::I16(output_mode!(I16<P::Environment>, NativeNeg<Output = I16<P::Environment>>, mode))
+            }
+            LiteralType::I32(mode) => {
+                LiteralType::I32(output_mode!(I32<P::Environment>, NativeNeg<Output = I32<P::Environment>>, mode))
+            }
+            LiteralType::I64(mode) => {
+                LiteralType::I64(output_mode!(I64<P::Environment>, NativeNeg<Output = I64<P::Environment>>, mode))
+            }
+            LiteralType::I128(mode) => {
+                LiteralType::I128(output_mode!(I128<P::Environment>, NativeNeg<Output = I128<P::Environment>>, mode))
             }
             _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
         }
