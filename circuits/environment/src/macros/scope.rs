@@ -25,11 +25,12 @@ macro_rules! scope {
 macro_rules! print_scope {
     () => {{
         println!(
-            "Circuit::scope(Constants: {:?}, Public: {:?}, Private: {:?}, Constraints: {:?})\n",
+            "Circuit::scope(Constants: {:?}, Public: {:?}, Private: {:?}, Constraints: {:?}, Gates: {:?})\n",
             Circuit::num_constants_in_scope(),
             Circuit::num_public_in_scope(),
             Circuit::num_private_in_scope(),
-            Circuit::num_constraints_in_scope()
+            Circuit::num_constraints_in_scope(),
+            Circuit::num_gates_in_scope(),
         );
     }};
 }

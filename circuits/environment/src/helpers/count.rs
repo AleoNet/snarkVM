@@ -20,19 +20,27 @@ pub type Constant = Measurement<usize>;
 pub type Public = Measurement<usize>;
 pub type Private = Measurement<usize>;
 pub type Constraints = Measurement<usize>;
+pub type Gates = Measurement<usize>;
 
 /// A helper struct for tracking the number of constants, public inputs, private inputs, and constraints.
 #[derive(Debug)]
-pub struct Count(pub Constant, pub Public, pub Private, pub Constraints);
+pub struct Count(pub Constant, pub Public, pub Private, pub Constraints, pub Gates);
 
 impl Count {
     /// Returns a new `Count` whose constituent metrics are all `Exact`.
-    pub const fn is(num_constants: usize, num_public: usize, num_private: usize, num_constraints: usize) -> Self {
+    pub const fn is(
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+        num_gates: usize,
+    ) -> Self {
         Count(
             Measurement::Exact(num_constants),
             Measurement::Exact(num_public),
             Measurement::Exact(num_private),
             Measurement::Exact(num_constraints),
+            Measurement::Exact(num_gates),
         )
     }
 
@@ -42,28 +50,44 @@ impl Count {
         num_public: usize,
         num_private: usize,
         num_constraints: usize,
+        num_gates: usize,
     ) -> Self {
         Count(
             Measurement::UpperBound(num_constants),
             Measurement::UpperBound(num_public),
             Measurement::UpperBound(num_private),
             Measurement::UpperBound(num_constraints),
+            Measurement::UpperBound(num_gates),
         )
     }
 
     /// TODO (howardwu): Deprecate this method and implement `PartialEq` & `Eq`.
     /// Returns `true` if all constituent metrics match.
-    pub fn matches(&self, num_constants: usize, num_public: usize, num_private: usize, num_constraints: usize) -> bool {
+    pub fn matches(
+        &self,
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+        num_gates: usize,
+    ) -> bool {
         self.0.matches(num_constants)
             && self.1.matches(num_public)
             && self.2.matches(num_private)
             && self.3.matches(num_constraints)
+            && self.4.matches(num_gates)
     }
 
     /// TODO (howardwu): Deprecate this method and implement `Add` operation.
     /// Composes this `Count` with another `Count` by composing its constituent metrics.
     pub fn compose(&self, other: &Self) -> Self {
-        Count(self.0.compose(&other.0), self.1.compose(&other.1), self.2.compose(&other.2), self.3.compose(&other.3))
+        Count(
+            self.0.compose(&other.0),
+            self.1.compose(&other.1),
+            self.2.compose(&other.2),
+            self.3.compose(&other.3),
+            self.4.compose(&other.4),
+        )
     }
 }
 

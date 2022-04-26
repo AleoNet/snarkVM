@@ -33,11 +33,13 @@ macro_rules! assert_count {
     ($type_:ty, $operation:path, $case:expr) => {
         $crate::print_scope!();
 
-        let Count(num_constants, num_public, num_private, num_constraints) = count!($type_, $operation, $case);
+        let Count(num_constants, num_public, num_private, num_constraints, num_gates) =
+            count!($type_, $operation, $case);
         assert!(num_constants.matches(Circuit::num_constants_in_scope()), "(num_constants)");
         assert!(num_public.matches(Circuit::num_public_in_scope()), "(num_public)");
         assert!(num_private.matches(Circuit::num_private_in_scope()), "(num_private)");
         assert!(num_constraints.matches(Circuit::num_constraints_in_scope()), "(num_constraints)");
+        assert!(num_gates.matches(Circuit::num_gates_in_scope()), "(num_gates)");
         assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
     };
 }
@@ -47,11 +49,13 @@ macro_rules! assert_count_fails {
     ($type_:ty, $operation:path, $case:expr) => {
         $crate::print_scope!();
 
-        let Count(num_constants, num_public, num_private, num_constraints) = count!($type_, $operation, $case);
+        let Count(num_constants, num_public, num_private, num_constraints, num_gates) =
+            count!($type_, $operation, $case);
         assert!(num_constants.matches(Circuit::num_constants_in_scope()), "(num_constants)");
         assert!(num_public.matches(Circuit::num_public_in_scope()), "(num_public)");
         assert!(num_private.matches(Circuit::num_private_in_scope()), "(num_private)");
         assert!(num_constraints.matches(Circuit::num_constraints_in_scope()), "(num_constraints)");
+        assert!(num_gates.matches(Circuit::num_gates_in_scope()), "(num_gates)");
         assert!(!Circuit::is_satisfied_in_scope(), "(!is_satisfied_in_scope)");
     };
 }
