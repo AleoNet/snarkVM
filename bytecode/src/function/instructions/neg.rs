@@ -67,7 +67,10 @@ impl<P: Program> Operation<P> for Neg<P> {
             Literal::Field(a) => Literal::Field(-a),
             Literal::Group(a) => Literal::Group(-a),
             Literal::I8(a) => Literal::I8(-a),
-            Literal::U8(a) => Literal::U8(-a),
+            Literal::I16(a) => Literal::I16(-a),
+            Literal::I32(a) => Literal::I32(-a),
+            Literal::I64(a) => Literal::I64(-a),
+            Literal::I128(a) => Literal::I128(-a),
             _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
         };
 
@@ -115,32 +118,64 @@ impl<P: Program> Into<Instruction<P>> for Neg<P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Process, Register};
-
-    type P = Process;
-
-    fn check_neg(first: Value<P>, expected: Value<P>) {
-        let registers = Registers::<P>::default();
-        registers.define(&Register::from_str("r0"));
-        registers.define(&Register::from_str("r1"));
-        registers.assign(&Register::from_str("r0"), first);
-
-        Neg::from_str("r0 into r1").evaluate(&registers);
-        let candidate = registers.load(&Register::from_str("r1"));
-        assert_eq!(expected, candidate);
-    }
+    use crate::{test_instruction_halts, test_modes, Process};
 
     #[test]
-    fn test_neg_field() {
-        let first = Value::<P>::from_str("1field.public");
-        let expected = Value::<P>::from_str("-1field.private");
-        check_neg(first, expected);
+    fn test_parse() {
+        let (_, instruction) = Instruction::<Process>::parse("neg r0 into r1;").unwrap();
+        assert!(matches!(instruction, Instruction::Neg(_)));
     }
 
-    #[test]
-    fn test_neg_group() {
-        let first = Value::<P>::from_str("2group.public");
-        let expected = Value::<P>::from_str("-2group.private");
-        check_neg(first, expected);
-    }
+    test_modes!(field, Neg, "1field", "-1field");
+    test_modes!(group, Neg, "2group", "-2group");
+    test_modes!(i8, Neg, "1i8", "-1i8");
+    test_modes!(i16, Neg, "1i16", "-1i16");
+    test_modes!(i32, Neg, "1i32", "-1i32");
+    test_modes!(i64, Neg, "1i64", "-1i64");
+    test_modes!(i128, Neg, "1i128", "-1i128");
+
+    test_instruction_halts!(
+        i8_min_neg_halts,
+        Neg,
+        "Integer overflow on addition of two constants",
+        &format!("{}i8", i8::MIN)
+    );
+    test_instruction_halts!(
+        i16_min_neg_halts,
+        Neg,
+        "Integer overflow on addition of two constants",
+        &format!("{}i16", i16::MIN)
+    );
+    test_instruction_halts!(
+        i32_min_neg_halts,
+        Neg,
+        "Integer overflow on addition of two constants",
+        &format!("{}i32", i32::MIN)
+    );
+    test_instruction_halts!(
+        i64_min_neg_halts,
+        Neg,
+        "Integer overflow on addition of two constants",
+        &format!("{}i64", i64::MIN)
+    );
+    test_instruction_halts!(
+        i128_min_neg_halts,
+        Neg,
+        "Integer overflow on addition of two constants",
+        &format!("{}i128", i128::MIN)
+    );
+    test_instruction_halts!(u8_neg_halts, Neg, "Invalid 'neg' instruction", "1u8");
+    test_instruction_halts!(u16_neg_halts, Neg, "Invalid 'neg' instruction", "1u16");
+    test_instruction_halts!(u32_neg_halts, Neg, "Invalid 'neg' instruction", "1u32");
+    test_instruction_halts!(u64_neg_halts, Neg, "Invalid 'neg' instruction", "1u64");
+    test_instruction_halts!(u128_neg_halts, Neg, "Invalid 'neg' instruction", "1u128");
+    test_instruction_halts!(scalar_neg_halts, Neg, "Invalid 'neg' instruction", "1scalar.constant");
+    test_instruction_halts!(
+        address_neg_halts,
+        Neg,
+        "Invalid 'neg' instruction",
+        "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.constant"
+    );
+    test_instruction_halts!(boolean_neg_halts, Neg, "Invalid 'neg' instruction", "true.constant");
+    test_instruction_halts!(string_neg_halts, Neg, "Invalid 'neg' instruction", "\"hello\".constant");
 }

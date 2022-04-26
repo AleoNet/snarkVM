@@ -17,6 +17,9 @@
 pub(super) mod add;
 pub(super) use add::*;
 
+pub(super) mod mul;
+pub(super) use mul::*;
+
 pub(super) mod neg;
 pub(super) use neg::*;
 
@@ -58,9 +61,11 @@ pub trait Operation<P: Program>: Parser + Into<Instruction<P>> {
 pub enum Instruction<P: Program> {
     /// Adds `first` with `second`, storing the outcome in `destination`.
     Add(Add<P>),
+    /// Multiplies `first` with `second`, storing the outcome in `destination`.
+    Mul(Mul<P>),
     /// Negates `first`, storing the outcome in `destination`.
     Neg(Neg<P>),
-    /// Subtracts `first` from `second`, storing the outcome in `destination`.
+    /// Subtracts `second` from `first`, storing the outcome in `destination`.
     Sub(Sub<P>),
 }
 
@@ -70,6 +75,7 @@ impl<P: Program> Instruction<P> {
     pub(crate) fn opcode(&self) -> &'static str {
         match self {
             Self::Add(..) => Add::<P>::opcode(),
+            Self::Mul(..) => Mul::<P>::opcode(),
             Self::Neg(..) => Neg::<P>::opcode(),
             Self::Sub(..) => Sub::<P>::opcode(),
         }
@@ -80,6 +86,7 @@ impl<P: Program> Instruction<P> {
     pub(crate) fn operands(&self) -> Vec<Operand<P>> {
         match self {
             Self::Add(add) => add.operands(),
+            Self::Mul(mul) => mul.operands(),
             Self::Neg(neg) => neg.operands(),
             Self::Sub(sub) => sub.operands(),
         }
@@ -90,6 +97,7 @@ impl<P: Program> Instruction<P> {
     pub(crate) fn destination(&self) -> &Register<P> {
         match self {
             Self::Add(add) => add.destination(),
+            Self::Mul(mul) => mul.destination(),
             Self::Neg(neg) => neg.destination(),
             Self::Sub(sub) => sub.destination(),
         }
@@ -100,6 +108,7 @@ impl<P: Program> Instruction<P> {
     pub(crate) fn evaluate(&self, registers: &Registers<P>) {
         match self {
             Self::Add(instruction) => instruction.evaluate(registers),
+            Self::Mul(instruction) => instruction.evaluate(registers),
             Self::Neg(instruction) => instruction.evaluate(registers),
             Self::Sub(instruction) => instruction.evaluate(registers),
         }
@@ -118,6 +127,7 @@ impl<P: Program> Parser for Instruction<P> {
         let (string, instruction) = alt((
             // Note that order of the individual parsers matters.
             preceded(pair(tag(Add::<P>::opcode()), tag(" ")), map(Add::parse, Into::into)),
+            preceded(pair(tag(Mul::<P>::opcode()), tag(" ")), map(Mul::parse, Into::into)),
             preceded(pair(tag(Neg::<P>::opcode()), tag(" ")), map(Neg::parse, Into::into)),
             preceded(pair(tag(Sub::<P>::opcode()), tag(" ")), map(Sub::parse, Into::into)),
         ))(string)?;
@@ -132,6 +142,7 @@ impl<P: Program> fmt::Display for Instruction<P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::Add(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::Mul(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Neg(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Sub(instruction) => write!(f, "{} {};", self.opcode(), instruction),
         }
@@ -143,9 +154,10 @@ impl<P: Program> FromBytes for Instruction<P> {
         let code = u16::read_le(&mut reader)?;
         match code {
             0 => Ok(Self::Add(Add::read_le(&mut reader)?)),
-            1 => Ok(Self::Neg(Neg::read_le(&mut reader)?)),
-            2 => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
-            3.. => Err(error(format!("Failed to deserialize an instruction of code {code}"))),
+            1 => Ok(Self::Mul(Mul::read_le(&mut reader)?)),
+            2 => Ok(Self::Neg(Neg::read_le(&mut reader)?)),
+            3 => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
+            4.. => Err(error(format!("Failed to deserialize an instruction of code {code}"))),
         }
     }
 }
@@ -157,14 +169,246 @@ impl<P: Program> ToBytes for Instruction<P> {
                 u16::write_le(&0u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Neg(instruction) => {
+            Self::Mul(instruction) => {
                 u16::write_le(&1u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Sub(instruction) => {
+            Self::Neg(instruction) => {
                 u16::write_le(&2u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
+            Self::Sub(instruction) => {
+                u16::write_le(&3u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[macro_export]
+    macro_rules! test_instruction_halts {
+        ($test_name:ident, $instruction: ident, $reason: expr, $a: expr, $b: expr) => {
+            #[test]
+            #[should_panic(expected = $reason)]
+            fn $test_name() {
+                use $crate::{
+                    function::{Operation, Registers},
+                    Parser,
+                    Process,
+                    Register,
+                    Value,
+                };
+                type P = Process;
+
+                let a = Value::<P>::from_str($a);
+                let b = Value::<P>::from_str($b);
+
+                let registers = Registers::<P>::default();
+                registers.define(&Register::from_str("r0"));
+                registers.define(&Register::from_str("r1"));
+                registers.define(&Register::from_str("r2"));
+                registers.assign(&Register::from_str("r0"), a);
+                registers.assign(&Register::from_str("r1"), b);
+
+                $instruction::from_str("r0 r1 into r2").evaluate(&registers);
+            }
+        };
+
+        ($test_name:ident, $instruction: ident, $reason: expr, $input: expr) => {
+            #[test]
+            #[should_panic(expected = $reason)]
+            fn $test_name() {
+                use $crate::{
+                    function::{Operation, Registers},
+                    Parser,
+                    Process,
+                    Register,
+                    Value,
+                };
+                type P = Process;
+
+                let input = Value::<P>::from_str($input);
+
+                let registers = Registers::<P>::default();
+                registers.define(&Register::from_str("r0"));
+                registers.define(&Register::from_str("r1"));
+                registers.assign(&Register::from_str("r0"), input);
+
+                $instruction::from_str("r0 into r1").evaluate(&registers);
+            }
+        };
+    }
+
+    #[macro_export]
+    macro_rules! unary_instruction_test {
+        ($test_name: ident, $instruction: ident, $input: expr, $expected: expr) => {
+            #[test]
+            fn $test_name() {
+                use $crate::{
+                    function::{Operation, Registers},
+                    Parser,
+                    Process,
+                    Register,
+                    Value,
+                };
+                type P = Process;
+
+                let input = Value::<P>::from_str($input);
+                let expected = Value::<P>::from_str($expected);
+
+                let registers = Registers::<P>::default();
+                registers.define(&Register::from_str("r0"));
+                registers.define(&Register::from_str("r1"));
+                registers.assign(&Register::from_str("r0"), input);
+
+                $instruction::from_str("r0 into r1").evaluate(&registers);
+                let candidate = registers.load(&Register::from_str("r1"));
+                assert_eq!(expected, candidate);
+            }
+        };
+    }
+
+    #[macro_export]
+    macro_rules! binary_instruction_test {
+        ($test_name: ident, $instruction: ident, $a: expr, $b: expr, $c: expr) => {
+            #[test]
+            fn $test_name() {
+                use $crate::{
+                    function::{Operation, Registers},
+                    Parser,
+                    Process,
+                    Register,
+                    Value,
+                };
+                type P = Process;
+
+                let a = Value::<P>::from_str($a);
+                let b = Value::<P>::from_str($b);
+                let expected = Value::<P>::from_str($c);
+
+                let registers = Registers::<P>::default();
+                registers.define(&Register::from_str("r0"));
+                registers.define(&Register::from_str("r1"));
+                registers.define(&Register::from_str("r2"));
+                registers.assign(&Register::from_str("r0"), a);
+                registers.assign(&Register::from_str("r1"), b);
+
+                $instruction::from_str("r0 r1 into r2").evaluate(&registers);
+                let candidate = registers.load(&Register::from_str("r2"));
+                assert_eq!(expected, candidate);
+            }
+        };
+    }
+
+    #[macro_export]
+    macro_rules! test_modes {
+        ($type: ident, $instruction: ident, $a: expr, $b: expr, $expected: expr) => {
+            mod $type {
+                use super::*;
+                use $crate::binary_instruction_test;
+
+                binary_instruction_test!(
+                    test_public_and_public_yields_private,
+                    $instruction,
+                    concat!($a, ".public"),
+                    concat!($b, ".public"),
+                    concat!($expected, ".private")
+                );
+
+                binary_instruction_test!(
+                    test_public_and_constant_yields_private,
+                    $instruction,
+                    concat!($a, ".public"),
+                    concat!($b, ".constant"),
+                    concat!($expected, ".private")
+                );
+
+                binary_instruction_test!(
+                    test_public_and_private_yields_private,
+                    $instruction,
+                    concat!($a, ".public"),
+                    concat!($b, ".private"),
+                    concat!($expected, ".private")
+                );
+
+                binary_instruction_test!(
+                    test_private_and_constant_yields_private,
+                    $instruction,
+                    concat!($a, ".private"),
+                    concat!($b, ".constant"),
+                    concat!($expected, ".private")
+                );
+
+                binary_instruction_test!(
+                    test_private_and_public_yields_private,
+                    $instruction,
+                    concat!($a, ".private"),
+                    concat!($b, ".public"),
+                    concat!($expected, ".private")
+                );
+
+                binary_instruction_test!(
+                    test_private_and_private_yields_private,
+                    $instruction,
+                    concat!($a, ".private"),
+                    concat!($b, ".private"),
+                    concat!($expected, ".private")
+                );
+
+                binary_instruction_test!(
+                    test_constant_and_private_yields_private,
+                    $instruction,
+                    concat!($a, ".constant"),
+                    concat!($b, ".private"),
+                    concat!($expected, ".private")
+                );
+
+                binary_instruction_test!(
+                    test_constant_and_public_yields_private,
+                    $instruction,
+                    concat!($a, ".constant"),
+                    concat!($b, ".public"),
+                    concat!($expected, ".private")
+                );
+
+                binary_instruction_test!(
+                    test_constant_and_constant_yields_constant,
+                    $instruction,
+                    concat!($a, ".constant"),
+                    concat!($b, ".constant"),
+                    concat!($expected, ".constant")
+                );
+            }
+        };
+
+        ($type: ident, $instruction: ident, $input: expr, $expected: expr) => {
+            mod $type {
+                use super::*;
+                use $crate::unary_instruction_test;
+
+                unary_instruction_test!(
+                    test_public_yields_private,
+                    $instruction,
+                    concat!($input, ".public"),
+                    concat!($expected, ".private")
+                );
+
+                unary_instruction_test!(
+                    test_private_yields_private,
+                    $instruction,
+                    concat!($input, ".private"),
+                    concat!($expected, ".private")
+                );
+
+                unary_instruction_test!(
+                    test_constant_yields_constant,
+                    $instruction,
+                    concat!($input, ".constant"),
+                    concat!($expected, ".constant")
+                );
+            }
+        };
     }
 }
