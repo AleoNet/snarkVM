@@ -88,7 +88,7 @@ impl<P: Program> Operation<P> for DivWrapped<P> {
 impl<P: Program> Parser for DivWrapped<P> {
     type Environment = P::Environment;
 
-    /// Parses a string into an 'div.w' operation.
+    /// Parses a string into a 'div.w' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the operation from the string.

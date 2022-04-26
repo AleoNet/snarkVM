@@ -27,7 +27,7 @@ use core::fmt;
 use nom::combinator::map;
 use std::io::{Read, Result as IoResult, Write};
 
-/// Adds `first` with `second`, wrapping around on overflow, and storing the outcome in `destination`.
+/// Adds `first` with `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
 pub struct AddWrapped<P: Program> {
     operation: BinaryOperation<P>,
 }
@@ -88,7 +88,7 @@ impl<P: Program> Operation<P> for AddWrapped<P> {
 impl<P: Program> Parser for AddWrapped<P> {
     type Environment = P::Environment;
 
-    /// Parses a string into an 'AddWrapped' operation.
+    /// Parses a string into an 'add.w' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the operation from the string.

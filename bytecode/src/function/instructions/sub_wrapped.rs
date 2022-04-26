@@ -27,7 +27,7 @@ use core::fmt;
 use nom::combinator::map;
 use std::io::{Read, Result as IoResult, Write};
 
-/// Subtracts `second` from `first`, wrapping around on underflow, and storing the outcome in `destination`.
+/// Subtracts `second` from `first`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
 pub struct SubWrapped<P: Program> {
     operation: BinaryOperation<P>,
 }
@@ -88,7 +88,7 @@ impl<P: Program> Operation<P> for SubWrapped<P> {
 impl<P: Program> Parser for SubWrapped<P> {
     type Environment = P::Environment;
 
-    /// Parses a string into an 'SubWrapped' operation.
+    /// Parses a string into a 'sub.w' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the operation from the string.

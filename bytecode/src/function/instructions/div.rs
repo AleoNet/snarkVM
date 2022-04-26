@@ -89,7 +89,7 @@ impl<P: Program> Operation<P> for Div<P> {
 impl<P: Program> Parser for Div<P> {
     type Environment = P::Environment;
 
-    /// Parses a string into an 'div' operation.
+    /// Parses a string into a 'div' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the operation from the string.
