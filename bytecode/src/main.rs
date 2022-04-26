@@ -55,25 +55,21 @@ fn main() {
     let second = Value::from_str("1field.private");
 
     // Store the circuit counts before running the program.
-    let old_num_constants = <Process as Program>::Aleo::num_constants();
-    let old_num_public = <Process as Program>::Aleo::num_public();
-    let old_num_private = <Process as Program>::Aleo::num_private();
-    let old_num_constraints = <Process as Program>::Aleo::num_constraints();
+    let (num_constants_before, num_public_before, num_private_before, num_constraints_before, _num_gates_before) =
+        <Process as Program>::Aleo::count();
 
     let candidate = HelloWorld::run::<Process>([first, second]);
 
     // Store the circuit counts after running the program.
-    let new_num_constants = <Process as Program>::Aleo::num_constants();
-    let new_num_public = <Process as Program>::Aleo::num_public();
-    let new_num_private = <Process as Program>::Aleo::num_private();
-    let new_num_constraints = <Process as Program>::Aleo::num_constraints();
+    let (num_constants_after, num_public_after, num_private_after, num_constraints_after, _num_gates_after) =
+        <Process as Program>::Aleo::count();
 
     // Check that the estimated counts is correct.
     assert!(count.matches(
-        new_num_constants - old_num_constants,
-        new_num_public - old_num_public,
-        new_num_private - old_num_private,
-        new_num_constraints - old_num_constraints
+        num_constants_after - num_constants_before,
+        num_public_after - num_public_before,
+        num_private_after - num_private_before,
+        num_constraints_after - num_constraints_before,
     ));
 
     let expected = Value::<Process>::from_str("2field.private");
@@ -104,25 +100,21 @@ mod tests {
         let second = Value::from_str("1field.private");
 
         // Store the circuit counts before running the program.
-        let old_num_constants = <Process as Program>::Aleo::num_constants();
-        let old_num_public = <Process as Program>::Aleo::num_public();
-        let old_num_private = <Process as Program>::Aleo::num_private();
-        let old_num_constraints = <Process as Program>::Aleo::num_constraints();
+        let (num_constants_before, num_public_before, num_private_before, num_constraints_before, _num_gates_before) =
+            <Process as Program>::Aleo::count();
 
         let candidate = HelloWorld::run::<Process>([first, second]);
 
         // Store the circuit counts after running the program.
-        let new_num_constants = <Process as Program>::Aleo::num_constants();
-        let new_num_public = <Process as Program>::Aleo::num_public();
-        let new_num_private = <Process as Program>::Aleo::num_private();
-        let new_num_constraints = <Process as Program>::Aleo::num_constraints();
+        let (num_constants_after, num_public_after, num_private_after, num_constraints_after, _num_gates_after) =
+            <Process as Program>::Aleo::count();
 
         // Check that the estimated counts is correct.
         assert!(count.matches(
-            new_num_constants - old_num_constants,
-            new_num_public - old_num_public,
-            new_num_private - old_num_private,
-            new_num_constraints - old_num_constraints
+            num_constants_after - num_constants_before,
+            num_public_after - num_public_before,
+            num_private_after - num_private_before,
+            num_constraints_after - num_constraints_before
         ));
 
         let expected = Value::<Process>::from_str("2field.private");
@@ -174,26 +166,22 @@ function main:
         let input = [Value::from_str("1u8.public"), Value::from_str("1u8.private")];
 
         // Store the circuit counts before running the program.
-        let old_num_constants = <Process as Program>::Aleo::num_constants();
-        let old_num_public = <Process as Program>::Aleo::num_public();
-        let old_num_private = <Process as Program>::Aleo::num_private();
-        let old_num_constraints = <Process as Program>::Aleo::num_constraints();
+        let (num_constants_before, num_public_before, num_private_before, num_constraints_before, _num_gates_before) =
+            <Process as Program>::Aleo::count();
 
         // Run the function.
         let _output = HelloWorld::run::<Process>(&input);
 
         // Store the circuit counts after running the program.
-        let new_num_constants = <Process as Program>::Aleo::num_constants();
-        let new_num_public = <Process as Program>::Aleo::num_public();
-        let new_num_private = <Process as Program>::Aleo::num_private();
-        let new_num_constraints = <Process as Program>::Aleo::num_constraints();
+        let (num_constants_after, num_public_after, num_private_after, num_constraints_after, _num_gates_after) =
+            <Process as Program>::Aleo::count();
 
         // Check that the estimated counts is correct.
         assert!(count.matches(
-            new_num_constants - old_num_constants,
-            new_num_public - old_num_public,
-            new_num_private - old_num_private,
-            new_num_constraints - old_num_constraints
+            num_constants_after - num_constants_before,
+            num_public_after - num_public_before,
+            num_private_after - num_private_before,
+            num_constraints_after - num_constraints_before,
         ));
 
         // Marlin setup, prove, and verify.
@@ -298,26 +286,22 @@ function main:
         let ninth = Value::<Process>::from_str("1u8.private");
 
         // Store the circuit counts before running the program.
-        let old_num_constants = <Process as Program>::Aleo::num_constants();
-        let old_num_public = <Process as Program>::Aleo::num_public();
-        let old_num_private = <Process as Program>::Aleo::num_private();
-        let old_num_constraints = <Process as Program>::Aleo::num_constraints();
+        let (num_constants_before, num_public_before, num_private_before, num_constraints_before, _num_gates_before) =
+            <Process as Program>::Aleo::count();
 
         let candidate =
             SillySudoku::run::<Process>(&[first, second, third, fourth, fifth, sixth, seventh, eighth, ninth]);
 
         // Store the circuit counts after running the program.
-        let new_num_constants = <Process as Program>::Aleo::num_constants();
-        let new_num_public = <Process as Program>::Aleo::num_public();
-        let new_num_private = <Process as Program>::Aleo::num_private();
-        let new_num_constraints = <Process as Program>::Aleo::num_constraints();
+        let (num_constants_after, num_public_after, num_private_after, num_constraints_after, _num_gates_after) =
+            <Process as Program>::Aleo::count();
 
         // Check that the estimated counts is correct.
         assert!(count.matches(
-            new_num_constants - old_num_constants,
-            new_num_public - old_num_public,
-            new_num_private - old_num_private,
-            new_num_constraints - old_num_constraints
+            num_constants_after - num_constants_before,
+            num_public_after - num_public_before,
+            num_private_after - num_private_before,
+            num_constraints_after - num_constraints_before,
         ));
 
         let expected = Value::<Process>::from_str("false.private");

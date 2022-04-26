@@ -89,6 +89,11 @@ pub trait Environment: Copy + Clone + fmt::Debug + fmt::Display + Eq + PartialEq
     /// Returns the number of gates in the entire environment.
     fn num_gates() -> usize;
 
+    /// Returns a tuple containing the number of constants, public variables, private variables, constraints, and gates in the entire environment.
+    fn count() -> (usize, usize, usize, usize, usize) {
+        (Self::num_constants(), Self::num_public(), Self::num_private(), Self::num_constraints(), Self::num_gates())
+    }
+
     /// Returns the number of constants for the current scope.
     fn num_constants_in_scope() -> usize;
 
@@ -103,6 +108,17 @@ pub trait Environment: Copy + Clone + fmt::Debug + fmt::Display + Eq + PartialEq
 
     /// Returns the number of gates for the current scope.
     fn num_gates_in_scope() -> usize;
+
+    /// Returns a tuple containing the number of constants, public variables, private variables, constraints, and gates for the current scope.
+    fn count_in_scope() -> (usize, usize, usize, usize, usize) {
+        (
+            Self::num_constants_in_scope(),
+            Self::num_public_in_scope(),
+            Self::num_private_in_scope(),
+            Self::num_constraints_in_scope(),
+            Self::num_gates_in_scope(),
+        )
+    }
 
     /// A helper method to recover the y-coordinate given the x-coordinate for
     /// a twisted Edwards point, returning the affine curve point.
