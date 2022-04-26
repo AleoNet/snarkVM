@@ -63,8 +63,8 @@ impl<E: Environment> Metrics<dyn Nor<Boolean<E>, Output = Boolean<E>>> for Boole
 
     fn count(case: &Self::Case) -> Count {
         match case.0.is_constant() || case.1.is_constant() {
-            true => Count::is(0, 0, 0, 0),
-            false => Count::is(0, 0, 1, 1),
+            true => Count::is(0, 0, 0, 0, 0),
+            false => Count::is(0, 0, 1, 1, 3),
         }
     }
 }

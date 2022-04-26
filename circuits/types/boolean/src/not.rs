@@ -52,7 +52,7 @@ impl<E: Environment> Metrics<dyn Not<Output = Boolean<E>>> for Boolean<E> {
     type Case = Mode;
 
     fn count(_case: &Self::Case) -> Count {
-        Count::is(0, 0, 0, 0)
+        Count::is(0, 0, 0, 0, 0)
     }
 }
 
