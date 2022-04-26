@@ -135,7 +135,6 @@ mod tests {
         ["public", "constant", "constant"],
         ["public", "private", "private"],
         ["private", "public", "private"],
-        // Why does this pass?? Feels like private & constant should yield a private
         ["private", "constant", "constant"],
         ["private", "private", "private"],
         ["constant", "public", "public"],

@@ -79,7 +79,7 @@ impl<P: Program> Operation<P> for Nor<P> {
 impl<P: Program> Parser for Nor<P> {
     type Environment = P::Environment;
 
-    /// Parses a string into an 'nor' operation.
+    /// Parses a string into a 'nor' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the operation from the string.
