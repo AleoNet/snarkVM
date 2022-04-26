@@ -16,7 +16,7 @@
 
 use core::{fmt::Debug, ops::Add};
 
-pub type Constant = Measurement<usize>;
+pub type Constants = Measurement<usize>;
 pub type Public = Measurement<usize>;
 pub type Private = Measurement<usize>;
 pub type Constraints = Measurement<usize>;
@@ -24,7 +24,7 @@ pub type Gates = Measurement<usize>;
 
 /// A helper struct for tracking the number of constants, public inputs, private inputs, and constraints.
 #[derive(Debug)]
-pub struct Count(pub Constant, pub Public, pub Private, pub Constraints, pub Gates);
+pub struct Count(pub Constants, pub Public, pub Private, pub Constraints, pub Gates);
 
 impl Count {
     /// Returns a new `Count` whose constituent metrics are all `Exact`.
