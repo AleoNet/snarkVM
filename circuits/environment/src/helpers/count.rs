@@ -44,6 +44,23 @@ impl Count {
         )
     }
 
+    /// Returns a new `Count` whose constituent metrics are all `Exact`, except for `num_gates` which is `UpperBound`.
+    pub const fn is_and_gates_less_than(
+        num_constants: usize,
+        num_public: usize,
+        num_private: usize,
+        num_constraints: usize,
+        num_gates: usize,
+    ) -> Self {
+        Count(
+            Measurement::Exact(num_constants),
+            Measurement::Exact(num_public),
+            Measurement::Exact(num_private),
+            Measurement::Exact(num_constraints),
+            Measurement::UpperBound(num_gates),
+        )
+    }
+
     /// Returns a new `Count` whose constituent metrics are all exclusive `UpperBound`.
     pub const fn less_than(
         num_constants: usize,

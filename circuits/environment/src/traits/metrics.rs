@@ -21,7 +21,7 @@ pub trait Metrics<Op: ?Sized> {
     type Case: ?Sized;
 
     /// Returns the number of constants, public inputs, private inputs, and constraints.
-    fn count(parameter: &Self::Case) -> Count;
+    fn count(case: &Self::Case) -> Count;
 }
 
 /// Trait for determining the mode of the output of an operation.
@@ -29,5 +29,5 @@ pub trait OutputMode<Op: ?Sized> {
     type Case: ?Sized;
 
     /// Returns the mode of the output.
-    fn output_mode(input: &Self::Case) -> Mode;
+    fn output_mode(case: &Self::Case) -> Mode;
 }

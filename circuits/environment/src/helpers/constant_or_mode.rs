@@ -61,10 +61,10 @@ impl<T: Eject> ConstantOrMode<T> {
 /// Initializes a new `ModeOrConstant` from a circuit.
 /// If the circuit is constant, the `ModeOrConstant` will be a `Constant`.
 /// Otherwise, the `ModeOrConstant` will be a `Mode`.
-impl<T: Eject> From<T> for ConstantOrMode<T> {
-    fn from(circuit: T) -> Self {
+impl<T: Eject + Clone> From<&T> for ConstantOrMode<T> {
+    fn from(circuit: &T) -> Self {
         match circuit.eject_mode() {
-            Mode::Constant => ConstantOrMode::Constant(Constant(circuit)),
+            Mode::Constant => ConstantOrMode::Constant(Constant(circuit.clone())),
             _ => ConstantOrMode::Mode(circuit.eject_mode()),
         }
     }

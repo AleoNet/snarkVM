@@ -275,7 +275,9 @@ pub trait Zero {
     type Boolean: BooleanTrait;
 
     /// Returns a new zero constant.
-    fn zero() -> Self;
+    fn zero() -> Self
+    where
+        Self: Sized;
 
     /// Returns `true` if `self` is zero.
     fn is_zero(&self) -> Self::Boolean;
@@ -286,7 +288,9 @@ pub trait One {
     type Boolean: BooleanTrait;
 
     /// Returns a new one constant.
-    fn one() -> Self;
+    fn one() -> Self
+    where
+        Self: Sized;
 
     /// Returns `true` if `self` is one.
     fn is_one(&self) -> Self::Boolean;

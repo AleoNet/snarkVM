@@ -105,8 +105,9 @@ impl<E: Environment> Metrics<dyn Add<Scalar<E>, Output = Scalar<E>>> for Scalar<
 
     fn count(case: &Self::Case) -> Count {
         match (case.0, case.1) {
-            (Mode::Constant, Mode::Constant) => Count::is(251, 0, 0, 0),
-            (_, _) => Count::is(254, 0, 1021, 1023),
+            (Mode::Constant, Mode::Constant) => Count::is(251, 0, 0, 0, 0),
+            (Mode::Constant, _) | (_, Mode::Constant) => Count::is_and_gates_less_than(254, 0, 1021, 1023, 3185),
+            (_, _) => Count::is(254, 0, 1021, 1023, 3434),
         }
     }
 }
@@ -165,6 +166,13 @@ mod tests {
 
             let name = format!("Add: {} + {} {} (commutative)", mode_a, mode_b, i);
             check_add(&name, second, first, mode_a, mode_b);
+
+            // Test identity.
+            let name = format!("Add: a + 0 {}", i);
+            check_add(&name, first, <Circuit as Environment>::ScalarField::zero(), mode_a, mode_b);
+
+            let name = format!("Add: 0 + b {}", i);
+            check_add(&name, <Circuit as Environment>::ScalarField::zero(), second, mode_a, mode_b);
         }
     }
 
