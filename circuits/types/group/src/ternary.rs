@@ -36,8 +36,8 @@ impl<E: Environment> Metrics<dyn Ternary<Boolean = Boolean<E>, Output = Group<E>
         match case {
             (Mode::Constant, _, _)
             | (Mode::Public, Mode::Constant, Mode::Constant)
-            | (Mode::Private, Mode::Constant, Mode::Constant) => Count::is(0, 0, 0, 0),
-            _ => Count::is(0, 0, 2, 2),
+            | (Mode::Private, Mode::Constant, Mode::Constant) => Count::is(0, 0, 0, 0, 0),
+            _ => Count::is(0, 0, 2, 2, 6),
         }
     }
 }
@@ -85,7 +85,7 @@ mod tests {
                 candidate,
                 Group<Circuit>,
                 Ternary<Boolean = Boolean<Circuit>, Output = Group<Circuit>>,
-                &(ConstantOrMode::Constant(condition), a.eject_mode(), b.eject_mode())
+                &(ConstantOrMode::from(&condition), a.eject_mode(), b.eject_mode())
             );
         });
     }

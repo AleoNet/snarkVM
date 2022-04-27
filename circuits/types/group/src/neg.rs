@@ -38,7 +38,7 @@ impl<E: Environment> Metrics<dyn Neg<Output = Group<E>>> for Group<E> {
     type Case = Mode;
 
     fn count(_case: &Self::Case) -> Count {
-        Count::is(0, 0, 0, 0)
+        Count::is(0, 0, 0, 0, 0)
     }
 }
 
@@ -71,8 +71,7 @@ mod tests {
         });
     }
 
-    #[test]
-    fn test_neg_constant() {
+    fn run_test(mode: Mode) {
         for i in 0..ITERATIONS {
             // Sample a random element.
             let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
@@ -80,37 +79,24 @@ mod tests {
             assert!(expected.is_on_curve());
             assert!(expected.is_in_correct_subgroup_assuming_on_curve());
 
-            let candidate_input = Group::<Circuit>::new(Mode::Constant, point);
-            check_neg(&format!("NEG Constant {}", i), expected, candidate_input);
+            let candidate_input = Group::<Circuit>::new(mode, point);
+            check_neg(&format!("NEG {} {}", mode, i), expected, candidate_input);
         }
+    }
+
+    #[test]
+    fn test_neg_constant() {
+        run_test(Mode::Constant);
     }
 
     #[test]
     fn test_neg_public() {
-        for i in 0..ITERATIONS {
-            // Sample a random element.
-            let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let expected = -point;
-            assert!(expected.is_on_curve());
-            assert!(expected.is_in_correct_subgroup_assuming_on_curve());
-
-            let candidate_input = Group::<Circuit>::new(Mode::Public, point);
-            check_neg(&format!("NEG Public {}", i), expected, candidate_input);
-        }
+        run_test(Mode::Public);
     }
 
     #[test]
     fn test_neg_private() {
-        for i in 0..ITERATIONS {
-            // Sample a random element.
-            let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let expected = -point;
-            assert!(expected.is_on_curve());
-            assert!(expected.is_in_correct_subgroup_assuming_on_curve());
-
-            let candidate_input = Group::<Circuit>::new(Mode::Private, point);
-            check_neg(&format!("NEG Private {}", i), expected, candidate_input);
-        }
+        run_test(Mode::Private);
     }
 
     #[test]

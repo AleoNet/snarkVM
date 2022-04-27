@@ -103,9 +103,9 @@ impl<E: Environment> Metrics<dyn Add<Group<E>, Output = Group<E>>> for Group<E> 
 
     fn count(case: &Self::Case) -> Count {
         match (case.0, case.1) {
-            (Mode::Constant, Mode::Constant) => Count::is(4, 0, 0, 0),
-            (Mode::Constant, _) | (_, Mode::Constant) => Count::is(2, 0, 3, 3),
-            (_, _) => Count::is(2, 0, 6, 6),
+            (Mode::Constant, Mode::Constant) => Count::is(4, 0, 0, 0, 0),
+            (Mode::Constant, _) | (_, Mode::Constant) => Count::is_and_gates_less_than(2, 0, 3, 3, 8),
+            (_, _) => Count::is(2, 0, 6, 6, 13),
         }
     }
 }
@@ -171,157 +171,78 @@ mod tests {
         });
     }
 
-    #[test]
-    fn test_constant_plus_constant() {
+    fn run_test(mode_a: Mode, mode_b: Mode) {
         for i in 0..ITERATIONS {
-            let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
-            let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
+            let first: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+            let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
 
             let expected = (first.to_projective() + second.to_projective()).into();
-            let a = Group::<Circuit>::new(Mode::Constant, first);
-            let b = Group::<Circuit>::new(Mode::Constant, second);
+            let a = Group::<Circuit>::new(mode_a, first);
+            let b = Group::<Circuit>::new(mode_b, second);
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, &expected, &a, &b);
             let name = format!("AddAssign: a + b {}", i);
             check_add_assign(&name, &expected, &a, &b);
+
+            // Test identity.
+            let name = format!("Add: a + 0 {}", i);
+            let zero = Group::<Circuit>::new(mode_b, <Circuit as Environment>::Affine::zero());
+            check_add(&name, &first, &a, &zero);
+            let name = format!("AddAssign: a + 0 {}", i);
+            check_add_assign(&name, &first, &a, &zero);
+
+            let name = format!("Add: 0 + b {}", i);
+            let zero = Group::<Circuit>::new(mode_a, <Circuit as Environment>::Affine::zero());
+            check_add(&name, &second, &zero, &b);
+            let name = format!("AddAssign: 0 + b {}", i);
+            check_add_assign(&name, &second, &zero, &b);
         }
+    }
+
+    #[test]
+    fn test_constant_plus_constant() {
+        run_test(Mode::Constant, Mode::Constant);
     }
 
     #[test]
     fn test_constant_plus_public() {
-        for i in 0..ITERATIONS {
-            let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
-            let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
-
-            let expected = (first.to_projective() + second.to_projective()).into();
-            let a = Group::<Circuit>::new(Mode::Constant, first);
-            let b = Group::<Circuit>::new(Mode::Public, second);
-
-            let name = format!("Add: a + b {}", i);
-            check_add(&name, &expected, &a, &b);
-            let name = format!("AddAssign: a + b {}", i);
-            check_add_assign(&name, &expected, &a, &b);
-        }
+        run_test(Mode::Constant, Mode::Public);
     }
 
     #[test]
     fn test_public_plus_constant() {
-        for i in 0..ITERATIONS {
-            let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
-            let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
-
-            let expected = (first.to_projective() + second.to_projective()).into();
-            let a = Group::<Circuit>::new(Mode::Public, first);
-            let b = Group::<Circuit>::new(Mode::Constant, second);
-
-            let name = format!("Add: a + b {}", i);
-            check_add(&name, &expected, &a, &b);
-            let name = format!("AddAssign: a + b {}", i);
-            check_add_assign(&name, &expected, &a, &b);
-        }
+        run_test(Mode::Public, Mode::Constant);
     }
 
     #[test]
     fn test_constant_plus_private() {
-        for i in 0..ITERATIONS {
-            let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
-            let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
-
-            let expected = (first.to_projective() + second.to_projective()).into();
-            let a = Group::<Circuit>::new(Mode::Constant, first);
-            let b = Group::<Circuit>::new(Mode::Private, second);
-
-            let name = format!("Add: a + b {}", i);
-            check_add(&name, &expected, &a, &b);
-            let name = format!("AddAssign: a + b {}", i);
-            check_add_assign(&name, &expected, &a, &b);
-        }
+        run_test(Mode::Constant, Mode::Private);
     }
 
     #[test]
     fn test_private_plus_constant() {
-        for i in 0..ITERATIONS {
-            let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
-            let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
-
-            let expected = (first.to_projective() + second.to_projective()).into();
-            let a = Group::<Circuit>::new(Mode::Private, first);
-            let b = Group::<Circuit>::new(Mode::Constant, second);
-
-            let name = format!("Add: a + b {}", i);
-            check_add(&name, &expected, &a, &b);
-            let name = format!("AddAssign: a + b {}", i);
-            check_add_assign(&name, &expected, &a, &b);
-        }
+        run_test(Mode::Private, Mode::Constant);
     }
 
     #[test]
     fn test_public_plus_public() {
-        for i in 0..ITERATIONS {
-            let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
-            let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
-
-            let expected = (first.to_projective() + second.to_projective()).into();
-            let a = Group::<Circuit>::new(Mode::Public, first);
-            let b = Group::<Circuit>::new(Mode::Public, second);
-
-            let name = format!("Add: a + b {}", i);
-            check_add(&name, &expected, &a, &b);
-            let name = format!("AddAssign: a + b {}", i);
-            check_add_assign(&name, &expected, &a, &b);
-        }
+        run_test(Mode::Public, Mode::Public);
     }
 
     #[test]
     fn test_public_plus_private() {
-        for i in 0..ITERATIONS {
-            let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
-            let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
-
-            let expected = (first.to_projective() + second.to_projective()).into();
-            let a = Group::<Circuit>::new(Mode::Public, first);
-            let b = Group::<Circuit>::new(Mode::Private, second);
-
-            let name = format!("Add: a + b {}", i);
-            check_add(&name, &expected, &a, &b);
-            let name = format!("AddAssign: a + b {}", i);
-            check_add_assign(&name, &expected, &a, &b);
-        }
+        run_test(Mode::Public, Mode::Private);
     }
 
     #[test]
     fn test_private_plus_public() {
-        for i in 0..ITERATIONS {
-            let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
-            let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
-
-            let expected = (first.to_projective() + second.to_projective()).into();
-            let a = Group::<Circuit>::new(Mode::Private, first);
-            let b = Group::<Circuit>::new(Mode::Public, second);
-
-            let name = format!("Add: a + b {}", i);
-            check_add(&name, &expected, &a, &b);
-            let name = format!("AddAssign: a + b {}", i);
-            check_add_assign(&name, &expected, &a, &b);
-        }
+        run_test(Mode::Private, Mode::Public);
     }
 
     #[test]
     fn test_private_plus_private() {
-        for i in 0..ITERATIONS {
-            let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
-            let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
-
-            let expected = (first.to_projective() + second.to_projective()).into();
-            let a = Group::<Circuit>::new(Mode::Private, first);
-            let b = Group::<Circuit>::new(Mode::Private, second);
-
-            let name = format!("Add: a + b {}", i);
-            check_add(&name, &expected, &a, &b);
-            let name = format!("AddAssign: a + b {}", i);
-            check_add_assign(&name, &expected, &a, &b);
-        }
+        run_test(Mode::Private, Mode::Private);
     }
 
     #[test]
