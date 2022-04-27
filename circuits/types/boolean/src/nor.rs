@@ -113,7 +113,7 @@ mod tests {
                 candidate,
                 Boolean<Circuit>,
                 Nor<Boolean<Circuit>, Output = Boolean<Circuit>>,
-                &(ConstantOrMode::from(a), ConstantOrMode::from(b))
+                &(ConstantOrMode::from(&a), ConstantOrMode::from(&b))
             );
         });
         Circuit::reset();
