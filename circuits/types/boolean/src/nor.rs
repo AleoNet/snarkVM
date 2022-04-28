@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_circuits_environment::ModeOrCircuit;
+use snarkvm_circuits_environment::ConstantOrMode;
 
 impl<E: Environment> Nor<Self> for Boolean<E> {
     type Output = Boolean<E>;
@@ -70,21 +70,21 @@ impl<E: Environment> Metrics<dyn Nor<Boolean<E>, Output = Boolean<E>>> for Boole
 }
 
 impl<E: Environment> OutputMode<dyn Nor<Boolean<E>, Output = Boolean<E>>> for Boolean<E> {
-    // ModeOrCircuit is needed since the output type of `Nor` is sometimes dependent on the value of the input.
-    type Case = (ModeOrCircuit<Boolean<E>>, ModeOrCircuit<Boolean<E>>);
+    // ConstantOrMode is needed since the output type of `Nor` is sometimes dependent on the value of the input.
+    type Case = (ConstantOrMode<Boolean<E>>, ConstantOrMode<Boolean<E>>);
 
     fn output_mode(case: &Self::Case) -> Mode {
         match (case.0.mode(), case.1.mode()) {
             (Mode::Constant, Mode::Constant) => Mode::Constant,
             (Mode::Public, Mode::Constant) => match &case.1 {
-                ModeOrCircuit::Circuit(constant) => match constant.eject_value() {
+                ConstantOrMode::Constant(constant) => match constant.eject_value() {
                     true => Mode::Constant,
                     false => Mode::Private,
                 },
                 _ => E::halt("The constant is required to determine the output mode of Public NOR Constant"),
             },
             (Mode::Constant, Mode::Public) => match &case.0 {
-                ModeOrCircuit::Circuit(constant) => match constant.eject_value() {
+                ConstantOrMode::Constant(constant) => match constant.eject_value() {
                     true => Mode::Constant,
                     false => Mode::Private,
                 },
@@ -113,7 +113,7 @@ mod tests {
                 candidate,
                 Boolean<Circuit>,
                 Nor<Boolean<Circuit>, Output = Boolean<Circuit>>,
-                &(ModeOrCircuit::Circuit(a), ModeOrCircuit::Circuit(b))
+                &(ConstantOrMode::from(&a), ConstantOrMode::from(&b))
             );
         });
         Circuit::reset();
