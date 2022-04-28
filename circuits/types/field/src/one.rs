@@ -28,6 +28,22 @@ impl<E: Environment> One for Field<E> {
     }
 }
 
+impl<E: Environment> Metrics<dyn One<Boolean = Boolean<E>>> for Field<E> {
+    type Case = ();
+
+    fn count(_parameter: &Self::Case) -> Count {
+        Count::is(0, 0, 0, 0)
+    }
+}
+
+impl<E: Environment> OutputMode<dyn One<Boolean = Boolean<E>>> for Field<E> {
+    type Case = ();
+
+    fn output_mode(_input: &Self::Case) -> Mode {
+        Mode::Constant
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -41,7 +57,8 @@ mod tests {
             assert_scope!(0, 0, 0, 0);
             let candidate = Field::<Circuit>::one();
             assert_eq!(one, candidate.eject_value());
-            assert_scope!(0, 0, 0, 0);
+            assert_count!(Field<Circuit>, One<Boolean = Boolean<Circuit>>, &());
+            assert_output_mode!(candidate, Field<Circuit>, One<Boolean = Boolean<Circuit>>, &());
         });
     }
 
