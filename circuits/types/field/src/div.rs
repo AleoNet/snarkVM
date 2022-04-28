@@ -15,22 +15,39 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use snarkvm_circuits_environment::ConstantOrMode;
 
-impl<E: Environment> Div<Self> for Field<E> {
-    type Output = Self;
+impl<E: Environment> Div<Field<E>> for Field<E> {
+    type Output = Field<E>;
 
-    fn div(self, other: Self) -> Self::Output {
+    fn div(self, other: Field<E>) -> Self::Output {
         self / &other
     }
 }
 
-impl<E: Environment> Div<&Self> for Field<E> {
-    type Output = Self;
+impl<E: Environment> Div<Field<E>> for &Field<E> {
+    type Output = Field<E>;
 
-    fn div(self, other: &Self) -> Self::Output {
-        let mut output = self;
-        output /= other;
-        output
+    fn div(self, other: Field<E>) -> Self::Output {
+        self / &other
+    }
+}
+
+impl<E: Environment> Div<&Field<E>> for Field<E> {
+    type Output = Field<E>;
+
+    fn div(self, other: &Field<E>) -> Self::Output {
+        &self / other
+    }
+}
+
+impl<E: Environment> Div<&Field<E>> for &Field<E> {
+    type Output = Field<E>;
+
+    fn div(self, other: &Field<E>) -> Self::Output {
+        let mut result = self.clone();
+        result /= other;
+        result
     }
 }
 
@@ -47,86 +64,152 @@ impl<E: Environment> DivAssign<&Self> for Field<E> {
     }
 }
 
+impl<E: Environment> Metrics<dyn Div<Field<E>, Output = Field<E>>> for Field<E> {
+    type Case = (Mode, Mode);
+
+    fn count(case: &Self::Case) -> Count {
+        match case {
+            (Mode::Constant, Mode::Constant) | (_, Mode::Constant) => Count::is(1, 0, 0, 0),
+            (Mode::Constant, _) => Count::is(0, 0, 1, 1),
+            (_, _) => Count::is(0, 0, 2, 2),
+        }
+    }
+}
+
+impl<E: Environment> OutputMode<dyn Div<Field<E>, Output = Field<E>>> for Field<E> {
+    type Case = (ConstantOrMode<Field<E>>, ConstantOrMode<Field<E>>);
+
+    fn output_mode(case: &Self::Case) -> Mode {
+        match (case.0.mode(), case.1.mode()) {
+            (Mode::Constant, Mode::Constant) => Mode::Constant,
+            (Mode::Public, Mode::Constant) => match &case.1 {
+                ConstantOrMode::Constant(constant) => match constant.eject_value() == E::BaseField::one() {
+                    true => Mode::Public,
+                    false => Mode::Private,
+                },
+                _ => E::halt("The constant is required to determine the output mode of Public + Constant"),
+            },
+            (_, _) => Mode::Private,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
+    use snarkvm_utilities::{test_rng, UniformRand};
 
-    const ITERATIONS: usize = 25;
+    const ITERATIONS: usize = 1000;
 
-    fn check_div(
-        mode_a: Mode,
-        mode_b: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
+    fn check_div(name: &str, expected: &<Circuit as Environment>::BaseField, a: &Field<Circuit>, b: &Field<Circuit>) {
+        Circuit::scope(name, || {
+            let candidate = a / b;
+            assert_eq!(*expected, candidate.eject_value(), "({} / {})", a.eject_value(), b.eject_value());
+            assert_count!(
+                Field<Circuit>,
+                Div<Field<Circuit>, Output = Field<Circuit>>,
+                &(a.eject_mode(), b.eject_mode())
+            );
+            assert_output_mode!(
+                candidate,
+                Field<Circuit>,
+                Div<Field<Circuit>, Output = Field<Circuit>>,
+                &(ConstantOrMode::from(a), ConstantOrMode::from(b))
+            );
+        });
+    }
+
+    fn check_div_assign(
+        name: &str,
+        expected: &<Circuit as Environment>::BaseField,
+        a: &Field<Circuit>,
+        b: &Field<Circuit>,
     ) {
-        let one = <Circuit as Environment>::BaseField::one();
+        Circuit::scope(name, || {
+            let mut candidate = a.clone();
+            candidate /= b;
+            assert_eq!(*expected, candidate.eject_value(), "({} / {})", a.eject_value(), b.eject_value());
+            assert_count!(
+                Field<Circuit>,
+                Div<Field<Circuit>, Output = Field<Circuit>>,
+                &(a.eject_mode(), b.eject_mode())
+            );
+            assert_output_mode!(
+                candidate,
+                Field<Circuit>,
+                Div<Field<Circuit>, Output = Field<Circuit>>,
+                &(ConstantOrMode::from(a), ConstantOrMode::from(b))
+            );
+        });
+    }
 
-        let mut dividend = one;
+    fn run_test(mode_a: Mode, mode_b: Mode) {
         for i in 0..ITERATIONS {
-            let mut divisor = one;
-            for j in 0..ITERATIONS {
-                let a = Field::<Circuit>::new(mode_a, dividend);
-                let b = Field::new(mode_b, divisor);
+            let first = UniformRand::rand(&mut test_rng());
+            let second = UniformRand::rand(&mut test_rng());
 
-                Circuit::scope(&format!("{} / {} - ({}, {})", mode_a, mode_b, i, j), || {
-                    let expected_quotient = dividend / divisor;
-                    let candidate_quotient = a / b;
-                    assert_eq!(expected_quotient, candidate_quotient.eject_value());
-                    assert_scope!(num_constants, num_public, num_private, num_constraints);
+            let expected = first / second;
+            let a = Field::<Circuit>::new(mode_a, first);
+            let b = Field::<Circuit>::new(mode_b, second);
 
-                    divisor += one;
-                });
-            }
-            dividend += one;
+            let name = format!("Div: a / b {}", i);
+            check_div(&name, &expected, &a, &b);
+            let name = format!("DivAssign: a / b {}", i);
+            check_div_assign(&name, &expected, &a, &b);
+
+            // Check division by one.
+            let one = Field::<Circuit>::new(mode_b, <Circuit as Environment>::BaseField::one());
+            let name = format!("Div By One {}", i);
+            check_div(&name, &first, &a, &one);
+            let name = format!("DivAssign By One {}", i);
+            check_div_assign(&name, &first, &a, &one);
         }
     }
 
     #[test]
     fn test_constant_div_constant() {
-        check_div(Mode::Constant, Mode::Constant, 1, 0, 0, 0);
+        run_test(Mode::Constant, Mode::Constant);
     }
 
     #[test]
     fn test_constant_div_public() {
-        check_div(Mode::Constant, Mode::Public, 0, 0, 1, 1);
+        run_test(Mode::Constant, Mode::Public);
     }
 
     #[test]
     fn test_constant_div_private() {
-        check_div(Mode::Constant, Mode::Private, 0, 0, 1, 1);
+        run_test(Mode::Constant, Mode::Private);
     }
 
     #[test]
     fn test_public_div_constant() {
-        check_div(Mode::Public, Mode::Constant, 1, 0, 0, 0);
+        run_test(Mode::Public, Mode::Constant);
     }
 
     #[test]
     fn test_public_div_public() {
-        check_div(Mode::Public, Mode::Public, 0, 0, 2, 2);
+        run_test(Mode::Public, Mode::Public);
     }
 
     #[test]
     fn test_public_div_private() {
-        check_div(Mode::Public, Mode::Private, 0, 0, 2, 2);
+        run_test(Mode::Public, Mode::Private);
     }
 
     #[test]
     fn test_private_div_constant() {
-        check_div(Mode::Private, Mode::Constant, 1, 0, 0, 0);
+        run_test(Mode::Private, Mode::Constant);
     }
 
     #[test]
     fn test_private_div_public() {
-        check_div(Mode::Private, Mode::Public, 0, 0, 2, 2);
+        run_test(Mode::Private, Mode::Public);
     }
 
     #[test]
     fn test_private_div_private() {
-        check_div(Mode::Private, Mode::Private, 0, 0, 2, 2);
+        run_test(Mode::Private, Mode::Private);
     }
 
     #[test]
