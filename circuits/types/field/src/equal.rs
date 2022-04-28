@@ -132,16 +132,148 @@ impl<E: Environment> Equal<Self> for Field<E> {
     }
 }
 
+impl<E: Environment> Metrics<dyn Equal<Field<E>, Boolean = Boolean<E>>> for Field<E> {
+    type Case = (Mode, Mode);
+
+    // TODO: How to deal where both operands are the same field element, since it changes the number of gates produced? We could use upper bounds.
+    fn count(case: &Self::Case) -> Count {
+        match case {
+            (Mode::Constant, Mode::Constant) => Count::is(1, 0, 0, 0),
+            _ => Count::is(0, 0, 2, 3),
+        }
+    }
+}
+
+impl<E: Environment> OutputMode<dyn Equal<Field<E>, Boolean = Boolean<E>>> for Field<E> {
+    type Case = (Mode, Mode);
+
+    fn output_mode(case: &Self::Case) -> Mode {
+        match case {
+            (Mode::Constant, Mode::Constant) => Mode::Constant,
+            _ => Mode::Private,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
+    use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 200;
 
+    fn check_is_equal(name: &str, expected: bool, a: &Field<Circuit>, b: &Field<Circuit>) {
+        Circuit::scope(name, || {
+            let candidate = a.is_equal(b);
+            assert_eq!(expected, candidate.eject_value(), "({} == {})", a.eject_value(), b.eject_value());
+            assert_count!(
+                Field<Circuit>,
+                Equal<Field<Circuit>, Boolean = Boolean<Circuit>>,
+                &(a.eject_mode(), b.eject_mode())
+            );
+            assert_output_mode!(
+                candidate,
+                Field<Circuit>,
+                Equal<Field<Circuit>, Boolean = Boolean<Circuit>>,
+                &(a.eject_mode(), b.eject_mode())
+            );
+        });
+    }
+
+    fn check_is_not_equal(name: &str, expected: bool, a: &Field<Circuit>, b: &Field<Circuit>) {
+        Circuit::scope(name, || {
+            let candidate = a.is_not_equal(b);
+            assert_eq!(expected, candidate.eject_value(), "({} != {})", a.eject_value(), b.eject_value());
+            assert_count!(
+                Field<Circuit>,
+                Equal<Field<Circuit>, Boolean = Boolean<Circuit>>,
+                &(a.eject_mode(), b.eject_mode())
+            );
+            assert_output_mode!(
+                candidate,
+                Field<Circuit>,
+                Equal<Field<Circuit>, Boolean = Boolean<Circuit>>,
+                &(a.eject_mode(), b.eject_mode())
+            );
+        });
+    }
+
+    fn run_test(mode_a: Mode, mode_b: Mode) {
+        for i in 0..ITERATIONS {
+            let first = UniformRand::rand(&mut test_rng());
+            let second = UniformRand::rand(&mut test_rng());
+
+            let a = Field::<Circuit>::new(mode_a, first);
+            let b = Field::<Circuit>::new(mode_b, second);
+
+            let name = format!("Equal: a == b {}", i);
+            check_is_equal(&name, first == second, &a, &b);
+
+            let name = format!("Not Equal: a != b {}", i);
+            check_is_not_equal(&name, first != second, &a, &b);
+
+            // Check first is equal to first.
+            let a = Field::<Circuit>::new(mode_a, first);
+            let b = Field::<Circuit>::new(mode_b, first);
+            let name = format!("{} == {}", first, first);
+            check_is_equal(&name, true, &a, &b);
+
+            // Check second is equal to second.
+            let a = Field::<Circuit>::new(mode_a, second);
+            let b = Field::<Circuit>::new(mode_b, second);
+            let name = format!("{} == {}", second, second);
+            check_is_equal(&name, true, &a, &b);
+        }
+    }
+
     #[test]
-    fn test_is_equal() {
-        let zero = <Circuit as Environment>::BaseField::zero();
+    fn test_constant_is_equal_to_constant() {
+        run_test(Mode::Constant, Mode::Constant);
+    }
+
+    #[test]
+    fn test_constant_is_not_equal_to_public() {
+        run_test(Mode::Constant, Mode::Public);
+    }
+
+    #[test]
+    fn test_constant_is_not_equal_to_private() {
+        run_test(Mode::Constant, Mode::Private);
+    }
+
+    #[test]
+    fn test_public_is_equal_to_constant() {
+        run_test(Mode::Public, Mode::Constant);
+    }
+
+    #[test]
+    fn test_private_is_equal_to_constant() {
+        run_test(Mode::Private, Mode::Constant);
+    }
+
+    #[test]
+    fn test_public_is_equal_to_public() {
+        run_test(Mode::Public, Mode::Public);
+    }
+
+    #[test]
+    fn test_public_is_not_equal_to_private() {
+        run_test(Mode::Public, Mode::Private);
+    }
+
+    #[test]
+    fn test_private_is_equal_to_public() {
+        run_test(Mode::Private, Mode::Public);
+    }
+
+    #[test]
+    fn test_private_is_equal_to_private() {
+        run_test(Mode::Private, Mode::Private);
+    }
+
+    #[test]
+    fn test_is_eq_cases() {
         let one = <Circuit as Environment>::BaseField::one();
 
         // Basic `true` and `false` cases
@@ -167,68 +299,6 @@ mod tests {
                 accumulator += one;
             }
         }
-
-        // Constant == Constant
-        Circuit::scope("Constant == Constant", || {
-            let mut accumulator = zero;
-
-            for i in 0..ITERATIONS {
-                let a = Field::<Circuit>::new(Mode::Constant, accumulator);
-                let b = Field::<Circuit>::new(Mode::Constant, accumulator);
-
-                let is_eq = a.is_equal(&b);
-                assert!(is_eq.eject_value());
-                assert_scope!((i + 1) * 3, 0, 0, 0);
-
-                accumulator += one;
-            }
-        });
-
-        // Public == Public
-        Circuit::scope("Public == Public", || {
-            let mut accumulator = zero;
-
-            for i in 0..ITERATIONS {
-                let a = Field::<Circuit>::new(Mode::Public, accumulator);
-                let b = Field::<Circuit>::new(Mode::Public, accumulator);
-                let is_eq = a.is_equal(&b);
-                assert!(is_eq.eject_value());
-                assert_scope!(0, (i + 1) * 2, (i + 1) * 2, (i + 1) * 3);
-
-                accumulator += one;
-            }
-        });
-
-        // Public == Private
-        Circuit::scope("Public == Private", || {
-            let mut accumulator = zero;
-
-            for i in 0..ITERATIONS {
-                let a = Field::<Circuit>::new(Mode::Public, accumulator);
-                let b = Field::<Circuit>::new(Mode::Private, accumulator);
-                let is_eq = a.is_equal(&b);
-                assert!(is_eq.eject_value());
-                assert_scope!(0, i + 1, (i + 1) * 3, (i + 1) * 3);
-
-                accumulator += one;
-            }
-        });
-
-        // Private == Private
-        Circuit::scope("Private == Private", || {
-            let mut accumulator = zero;
-
-            for i in 0..ITERATIONS {
-                let a = Field::<Circuit>::new(Mode::Private, accumulator);
-                let b = Field::<Circuit>::new(Mode::Private, accumulator);
-                let is_eq = a.is_equal(&b);
-                assert!(is_eq.eject_value());
-                assert!(Circuit::is_satisfied());
-                assert_scope!(0, 0, (i + 1) * 4, (i + 1) * 3);
-
-                accumulator += one;
-            }
-        });
     }
 
     #[test]
