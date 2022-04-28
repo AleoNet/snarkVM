@@ -25,18 +25,28 @@ impl<E: Environment> FromBoolean for Field<E> {
     }
 }
 
+impl<E: Environment> Metrics<dyn FromBoolean<Boolean = Boolean<E>>> for Field<E> {
+    type Case = ();
+
+    fn count(_case: &Self::Case) -> Count {
+        Count::is(0, 0, 0, 0)
+    }
+}
+
+impl<E: Environment> OutputMode<dyn FromBoolean<Boolean = Boolean<E>>> for Field<E> {
+    type Case = Mode;
+
+    fn output_mode(case: &Self::Case) -> Mode {
+        *case
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
 
-    fn check_from_boolean(
-        mode: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
+    fn check_from_boolean(mode: Mode) {
         for expected in &[true, false] {
             // Inject the boolean.
             let given = Boolean::<Circuit>::new(mode, *expected);
@@ -47,23 +57,24 @@ mod tests {
                     true => assert_eq!(<Circuit as Environment>::BaseField::one(), candidate.eject_value()),
                     false => assert_eq!(<Circuit as Environment>::BaseField::zero(), candidate.eject_value()),
                 }
-                assert_scope!(num_constants, num_public, num_private, num_constraints);
+                assert_count!(Field<Circuit>, FromBoolean<Boolean = Boolean<Circuit>>, &());
+                assert_output_mode!(candidate, Field<Circuit>, FromBoolean<Boolean = Boolean<Circuit>>, &mode);
             });
         }
     }
 
     #[test]
     fn test_from_boolean_constant() {
-        check_from_boolean(Mode::Constant, 0, 0, 0, 0);
+        check_from_boolean(Mode::Constant);
     }
 
     #[test]
     fn test_from_boolean_public() {
-        check_from_boolean(Mode::Public, 0, 0, 0, 0);
+        check_from_boolean(Mode::Public);
     }
 
     #[test]
     fn test_from_boolean_private() {
-        check_from_boolean(Mode::Private, 0, 0, 0, 0);
+        check_from_boolean(Mode::Private);
     }
 }
