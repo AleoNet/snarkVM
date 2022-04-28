@@ -131,14 +131,17 @@ impl<E: Environment, I: IntegerType> Metrics<dyn SubChecked<Integer<E, I>, Outpu
     fn count(case: &Self::Case) -> Count {
         match I::is_signed() {
             true => match (case.0, case.1) {
-                (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-                (Mode::Constant, _) => Count::is(0, 0, I::BITS + 3, I::BITS + 5),
-                (_, Mode::Constant) => Count::is(0, 0, I::BITS + 2, I::BITS + 4),
-                (_, _) => Count::is(0, 0, I::BITS + 4, I::BITS + 6),
+                (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0, 0),
+                (Mode::Constant, _) => Count::is_and_gates_less_than(0, 0, I::BITS + 3, I::BITS + 5, 5 * I::BITS + 4),
+                (_, Mode::Constant) => Count::is_and_gates_less_than(0, 0, I::BITS + 2, I::BITS + 4, 4 * I::BITS + 7),
+                (_, _) => Count::is(0, 0, I::BITS + 4, I::BITS + 6, 5 * I::BITS + 13),
             },
             false => match (case.0, case.1) {
-                (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-                (_, _) => Count::is(0, 0, I::BITS + 1, I::BITS + 3),
+                (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0, 0),
+                (Mode::Constant, _) | (_, Mode::Constant) => {
+                    Count::is_and_gates_less_than(0, 0, I::BITS + 1, I::BITS + 3, 4 * I::BITS + 6)
+                }
+                (_, _) => Count::is(0, 0, I::BITS + 1, I::BITS + 3, 5 * I::BITS + 5),
             },
         }
     }

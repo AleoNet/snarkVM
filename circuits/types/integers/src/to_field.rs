@@ -31,6 +31,25 @@ impl<E: Environment, I: IntegerType> ToField for Integer<E, I> {
     }
 }
 
+impl<E: Environment, I: IntegerType> Metrics<dyn ToField<Field = Field<E>>> for Integer<E, I> {
+    type Case = ();
+
+    fn count(_case: &Self::Case) -> Count {
+        Count::is(0, 0, 0, 0, 0)
+    }
+}
+
+impl<E: Environment, I: IntegerType> OutputMode<dyn ToField<Field = Field<E>>> for Integer<E, I> {
+    type Case = Mode;
+
+    fn output_mode(case: &Self::Case) -> Mode {
+        match case.is_constant() {
+            true => Mode::Constant,
+            false => Mode::Private,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -43,12 +62,13 @@ mod tests {
         for i in 0..ITERATIONS {
             // Sample a random integer.
             let expected = UniformRand::rand(&mut test_rng());
-            let candidate = Integer::<Circuit, I>::new(Mode::Constant, expected);
+            let candidate = Integer::<Circuit, I>::new(mode, expected);
 
             Circuit::scope(format!("{mode} {expected} {i}"), || {
                 // Perform the operation.
                 let candidate = candidate.to_field();
-                assert_scope!(0, 0, 0, 0);
+                assert_count!(Integer<Circuit, I>, ToField<Field=Field<Circuit>>, &());
+                assert_output_mode!(candidate, Integer<Circuit, I>, ToField<Field=Field<Circuit>>, &mode);
 
                 // Extract the bits from the base field representation.
                 let candidate_bits_le = candidate.eject_value().to_bits_le();
@@ -65,7 +85,6 @@ mod tests {
                     assert!(!candidate_bit);
                 }
             });
-            Circuit::reset();
         }
     }
 

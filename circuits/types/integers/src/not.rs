@@ -37,7 +37,7 @@ impl<E: Environment, I: IntegerType> Metrics<dyn Not<Output = Integer<E, I>>> fo
     type Case = Mode;
 
     fn count(_case: &Self::Case) -> Count {
-        Count::is(0, 0, 0, 0)
+        Count::is(0, 0, 0, 0, 0)
     }
 }
 

@@ -45,8 +45,8 @@ impl<E: Environment, I: IntegerType> Metrics<dyn Neg<Output = Integer<E, I>>> fo
         match I::is_signed() {
             false => E::halt("Unsigned integers cannot be negated"),
             true => match case {
-                Mode::Constant => Count::is(2 * I::BITS, 0, 0, 0),
-                _ => Count::is(I::BITS, 0, I::BITS + 2, I::BITS + 4),
+                Mode::Constant => Count::is(2 * I::BITS, 0, 0, 0, 0),
+                _ => Count::is(I::BITS, 0, I::BITS + 2, I::BITS + 4, 4 * I::BITS + 6),
             },
         }
     }
