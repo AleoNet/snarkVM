@@ -28,7 +28,7 @@ use registers::*;
 
 mod parsers;
 
-use crate::{Annotation, Identifier, LiteralType, OutputType, Program, Register, Sanitizer, Value};
+use crate::{Annotation, Identifier, LiteralOrType, OutputType, Program, Register, Sanitizer, Value};
 
 use snarkvm_circuits::prelude::*;
 use snarkvm_utilities::{error, FromBytes, ToBytes};
@@ -405,10 +405,10 @@ impl<P: Program> Metrics<Self> for Function<P> {
                         .iter()
                         .map(|operand| match operand {
                             Operand::Register(register) => {
-                                *type_map.get(register).expect("Type not found for register")
+                                LiteralOrType::Type(*type_map.get(register).expect("Type not found for register"))
                             }
                             Operand::Value(value) => match value {
-                                Value::Literal(literal) => LiteralType::from(literal),
+                                Value::Literal(literal) => LiteralOrType::Literal(literal.clone()),
                                 Value::Composite(..) => P::halt("An operand cannot be a composite value."),
                             },
                         })
@@ -421,55 +421,61 @@ impl<P: Program> Metrics<Self> for Function<P> {
                         let operand_types = get_operand_types(instruction.operands());
 
                         // Infer the output type of the instruction based on the input types.
-                        let output_type = instructions::Add::<P>::output_type(&(operand_types[0], operand_types[1]));
+                        let output_type =
+                            instructions::Add::<P>::output_type(&(operand_types[0].clone(), operand_types[1].clone()));
                         type_map.insert(instruction.destination().clone(), output_type);
 
                         // Return the associated count.
-                        instructions::Add::<P>::count(&(operand_types[0], operand_types[1]))
+                        instructions::Add::<P>::count(&(operand_types[0].type_(), operand_types[1].type_()))
                     }
                     Instruction::Equal(instruction) => {
                         // Get input types of the operands.
                         let operand_types = get_operand_types(instruction.operands());
 
                         // Infer the output type of the instruction based on the input types.
-                        let output_type = instructions::Equal::<P>::output_type(&(operand_types[0], operand_types[1]));
+                        let output_type = instructions::Equal::<P>::output_type(&(
+                            operand_types[0].type_(),
+                            operand_types[1].type_(),
+                        ));
                         type_map.insert(instruction.destination().clone(), output_type);
 
                         // Return the associated count.
-                        instructions::Equal::<P>::count(&(operand_types[0], operand_types[1]))
+                        instructions::Equal::<P>::count(&(operand_types[0].type_(), operand_types[1].type_()))
                     }
                     Instruction::Mul(instruction) => {
                         // Get input types of the operands.
                         let operand_types = get_operand_types(instruction.operands());
 
                         // Infer the output type of the instruction based on the input types.
-                        let output_type = instructions::Mul::<P>::output_type(&(operand_types[0], operand_types[1]));
+                        let output_type =
+                            instructions::Mul::<P>::output_type(&(operand_types[0].type_(), operand_types[1].type_()));
                         type_map.insert(instruction.destination().clone(), output_type);
 
                         // Return the associated count.
-                        instructions::Mul::<P>::count(&(operand_types[0], operand_types[1]))
+                        instructions::Mul::<P>::count(&(operand_types[0].type_(), operand_types[1].type_()))
                     }
                     Instruction::Neg(instruction) => {
                         // Get input types of the operands.
                         let operand_types = get_operand_types(instruction.operands());
 
                         // Infer the output type of the instruction based on the input types.
-                        let output_type = instructions::Neg::<P>::output_type(&operand_types[0]);
+                        let output_type = instructions::Neg::<P>::output_type(&operand_types[0].type_());
                         type_map.insert(instruction.destination().clone(), output_type);
 
                         // Return the associated count.
-                        instructions::Neg::<P>::count(&operand_types[0])
+                        instructions::Neg::<P>::count(&operand_types[0].type_())
                     }
                     Instruction::Sub(instruction) => {
                         // Get input types of the operands.
                         let operand_types = get_operand_types(instruction.operands());
 
                         // Infer the output type of the instruction based on the input types.
-                        let output_type = instructions::Sub::<P>::output_type(&(operand_types[0], operand_types[1]));
+                        let output_type =
+                            instructions::Sub::<P>::output_type(&(operand_types[0].clone(), operand_types[1].clone()));
                         type_map.insert(instruction.destination().clone(), output_type);
 
                         // Return the associated count.
-                        instructions::Sub::<P>::count(&(operand_types[0], operand_types[1]))
+                        instructions::Sub::<P>::count(&(operand_types[0].type_(), operand_types[1].type_()))
                     }
                 }
             })
