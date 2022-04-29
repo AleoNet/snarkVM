@@ -448,7 +448,7 @@ impl<P: Program> Metrics<Self> for Function<P> {
 
                         // Infer the output type of the instruction based on the input types.
                         let output_type =
-                            instructions::Mul::<P>::output_type(&(operand_types[0].type_(), operand_types[1].type_()));
+                            instructions::Mul::<P>::output_type(&(operand_types[0].clone(), operand_types[1].clone()));
                         type_map.insert(instruction.destination().clone(), output_type);
 
                         // Return the associated count.
