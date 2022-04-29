@@ -642,6 +642,7 @@ pub struct LinearCombination<F> {
     pub terms: BTreeMap<LCTerm, F>,
 }
 
+#[allow(clippy::or_fun_call)]
 impl<F: Field> LinearCombination<F> {
     /// Construct an empty labeled linear combination.
     pub fn empty(label: impl Into<String>) -> Self {

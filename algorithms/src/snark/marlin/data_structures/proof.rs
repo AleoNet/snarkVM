@@ -271,8 +271,8 @@ impl<F: PrimeField> Evaluations<F> {
     }
 
     pub(crate) fn get(&self, label: &str) -> Option<F> {
-        if label.starts_with("z_b_") {
-            self.z_b_evals.get(label[4..].parse::<usize>().unwrap()).copied()
+        if let Some(index) = label.strip_prefix("z_b_") {
+            self.z_b_evals.get(index.parse::<usize>().unwrap()).copied()
         } else {
             match label {
                 "g_1" => Some(self.g_1_eval),
