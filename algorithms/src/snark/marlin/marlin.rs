@@ -351,7 +351,7 @@ where
         let polynomials: Vec<_> = circuit_proving_key
             .circuit
             .iter() // 12 items
-            .chain(first_round_oracles.iter_for_open()) // 3 or 4 items
+            .chain(first_round_oracles.iter_for_open()) // 3 * batch_size + (MM::ZK as usize) items
             .chain(second_oracles.iter())// 2 items
             .chain(third_oracles.iter())// 3 items
             .chain(fourth_oracles.iter())// 1 item

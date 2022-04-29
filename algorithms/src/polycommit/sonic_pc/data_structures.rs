@@ -29,6 +29,7 @@ use snarkvm_utilities::{error, serialize::*, FromBytes, ToBytes};
 use std::{
     borrow::{Borrow, Cow},
     collections::{BTreeMap, BTreeSet},
+    fmt,
     ops::{AddAssign, MulAssign, SubAssign},
 };
 
@@ -564,12 +565,21 @@ impl<C: CanonicalSerialize> LabeledCommitment<C> {
 }
 
 /// A term in a linear combination.
-#[derive(Hash, Ord, PartialOrd, Clone, Eq, PartialEq, Debug)]
+#[derive(Hash, Ord, PartialOrd, Clone, Eq, PartialEq)]
 pub enum LCTerm {
     /// The constant term representing `one`.
     One,
     /// Label for a polynomial.
     PolyLabel(String),
+}
+
+impl fmt::Debug for LCTerm {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            LCTerm::One => write!(f, "1"),
+            LCTerm::PolyLabel(label) => write!(f, "{label}"),
+        }
+    }
 }
 
 impl LCTerm {
@@ -629,19 +639,23 @@ pub struct LinearCombination<F> {
     /// The label.
     pub label: String,
     /// The linear combination of `(coeff, poly_label)` pairs.
-    pub terms: Vec<(F, LCTerm)>,
+    pub terms: BTreeMap<LCTerm, F>,
 }
 
 impl<F: Field> LinearCombination<F> {
     /// Construct an empty labeled linear combination.
     pub fn empty(label: impl Into<String>) -> Self {
-        Self { label: label.into(), terms: Vec::new() }
+        Self { label: label.into(), terms: BTreeMap::new() }
     }
 
     /// Construct a new labeled linear combination.
     /// with the terms specified in `term`.
-    pub fn new(label: impl Into<String>, terms: Vec<(F, impl Into<LCTerm>)>) -> Self {
-        let terms = terms.into_iter().map(|(c, t)| (c, t.into())).collect();
+    pub fn new(label: impl Into<String>, _terms: impl IntoIterator<Item = (F, impl Into<LCTerm>)>) -> Self {
+        let mut terms = BTreeMap::new();
+        for (c, l) in _terms.into_iter().map(|(c, t)| (c, t.into())) {
+            *terms.entry(l).or_insert(F::zero()) += c;
+        }
+
         Self { label: label.into(), terms }
     }
 
@@ -656,61 +670,73 @@ impl<F: Field> LinearCombination<F> {
     }
 
     /// Add a term to the linear combination.
-    pub fn push(&mut self, term: (F, LCTerm)) -> &mut Self {
-        self.terms.push(term);
+    pub fn add(&mut self, (c, t): (F, impl Into<LCTerm>)) -> &mut Self {
+        let t = t.into();
+        *self.terms.entry(t.clone()).or_insert(F::zero()) += c;
+        if self.terms[&t].is_zero() {
+            self.terms.remove(&t);
+        }
         self
+    }
+
+    pub fn len(&self) -> usize {
+        self.terms.len()
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&F, &LCTerm)> {
+        self.terms.iter().map(|(t, c)| (c, t))
     }
 }
 
 impl<'a, F: Field> AddAssign<(F, &'a LinearCombination<F>)> for LinearCombination<F> {
     #[allow(clippy::suspicious_op_assign_impl)]
     fn add_assign(&mut self, (coeff, other): (F, &'a LinearCombination<F>)) {
-        self.terms.extend(other.terms.iter().map(|(c, t)| (coeff * c, t.clone())));
+        for (t, c) in other.terms.iter() {
+            self.add((coeff * c, t.clone()));
+        }
     }
 }
 
 impl<'a, F: Field> SubAssign<(F, &'a LinearCombination<F>)> for LinearCombination<F> {
     #[allow(clippy::suspicious_op_assign_impl)]
     fn sub_assign(&mut self, (coeff, other): (F, &'a LinearCombination<F>)) {
-        self.terms.extend(other.terms.iter().map(|(c, t)| (-coeff * c, t.clone())));
+        for (t, c) in other.terms.iter() {
+            self.add((-coeff * c, t.clone()));
+        }
     }
 }
 
 impl<'a, F: Field> AddAssign<&'a LinearCombination<F>> for LinearCombination<F> {
     fn add_assign(&mut self, other: &'a LinearCombination<F>) {
-        self.terms.extend(other.terms.iter().cloned());
+        for (t, c) in other.terms.iter() {
+            self.add((*c, t.clone()));
+        }
     }
 }
 
 impl<'a, F: Field> SubAssign<&'a LinearCombination<F>> for LinearCombination<F> {
     fn sub_assign(&mut self, other: &'a LinearCombination<F>) {
-        self.terms.extend(other.terms.iter().map(|(c, t)| (-*c, t.clone())));
+        for (t, &c) in other.terms.iter() {
+            self.add((-c, t.clone()));
+        }
     }
 }
 
 impl<F: Field> AddAssign<F> for LinearCombination<F> {
     fn add_assign(&mut self, coeff: F) {
-        self.terms.push((coeff, LCTerm::One));
+        self.add((coeff, LCTerm::One));
     }
 }
 
 impl<F: Field> SubAssign<F> for LinearCombination<F> {
     fn sub_assign(&mut self, coeff: F) {
-        self.terms.push((-coeff, LCTerm::One));
+        self.add((-coeff, LCTerm::One));
     }
 }
 
 impl<F: Field> MulAssign<F> for LinearCombination<F> {
     fn mul_assign(&mut self, coeff: F) {
-        self.terms.iter_mut().for_each(|(c, _)| *c *= &coeff);
-    }
-}
-
-impl<F: Field> core::ops::Deref for LinearCombination<F> {
-    type Target = [(F, LCTerm)];
-
-    fn deref(&self) -> &Self::Target {
-        &self.terms
+        self.terms.values_mut().for_each(|c| *c *= &coeff);
     }
 }
 

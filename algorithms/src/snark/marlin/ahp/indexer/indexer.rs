@@ -149,7 +149,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             map.insert(format!("row_{matrix}"), PolynomialInfo::new(format!("row_{matrix}"), None, None));
             map.insert(format!("col_{matrix}"), PolynomialInfo::new(format!("col_{matrix}"), None, None));
             map.insert(format!("val_{matrix}"), PolynomialInfo::new(format!("val_{matrix}"), None, None));
-            map.insert(format!("rowcol_{matrix}"), PolynomialInfo::new(format!("rowcol_{matrix}"), None, None));
+            map.insert(format!("row_col_{matrix}"), PolynomialInfo::new(format!("row_col_{matrix}"), None, None));
         }
         map
     }

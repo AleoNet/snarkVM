@@ -81,22 +81,24 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let (summed_z_m, t) = Self::calculate_summed_z_m_and_t(&mut state, *alpha, *eta_b, *eta_c, batch_combiners);
 
         let z_time = start_timer!(|| "Compute z poly");
-
-        let w_poly = cfg_iter!(state.first_round_oracles.as_ref().unwrap().batches)
+        let z = cfg_iter!(state.first_round_oracles.as_ref().unwrap().batches)
             .zip_eq(batch_combiners)
-            .map(|(b, &coeff)| b.w_poly.polynomial().as_dense().unwrap() * coeff)
+            .zip(&state.x_poly)
+            .map(|((b, &coeff), x_poly)| {
+                let mut z = b.w_poly.polynomial().as_dense().unwrap().mul_by_vanishing_poly(state.input_domain);
+                // Zip safety: `x_poly` is smaller than `z_poly`.
+                z.coeffs.iter_mut().zip(&x_poly.coeffs).for_each(|(z, x)| *z += x);
+                cfg_iter_mut!(z.coeffs).for_each(|z| *z *= &coeff);
+                z
+            })
             .sum::<DensePolynomial<F>>();
-
-        let mut z = w_poly.mul_by_vanishing_poly(state.input_domain);
-        // Zip safety: `x_poly` is smaller than `z_poly`.
-        let x_poly =
-            cfg_iter!(&state.x_poly).zip_eq(batch_combiners).map(|(x, &coeff)| x * coeff).sum::<DensePolynomial<F>>();
-        cfg_iter_mut!(z.coeffs).zip(x_poly.coeffs).for_each(|(z, x)| *z += x);
         assert!(z.degree() <= constraint_domain.size());
 
         end_timer!(z_time);
 
         let sumcheck_lhs = Self::calculate_lhs(&mut state, t, summed_z_m, z, *alpha);
+
+        debug_assert!(constraint_domain.elements().map(|e| sumcheck_lhs.evaluate(e)).sum::<F>().is_zero());
 
         let sumcheck_time = start_timer!(|| "Compute sumcheck h and g polys");
         let (h_1, x_g_1) = sumcheck_lhs.divide_by_vanishing_poly(constraint_domain).unwrap();
@@ -171,7 +173,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let ifft_precomputation = &state.index.ifft_precomputation;
         let first_msg = Arc::get_mut(state.first_round_oracles.as_mut().unwrap()).unwrap();
         let mut job_pool = ExecutionPool::with_capacity(2 * state.batch_size);
-        for (entry, coeff) in first_msg.batches.iter_mut().zip_eq(batch_combiners) {
+        let eta_b_over_eta_c = eta_b * eta_c.inverse().unwrap();
+        for (entry, combiner) in first_msg.batches.iter_mut().zip_eq(batch_combiners) {
             job_pool.add_job(|| {
                 let z_a = entry.z_a_poly.polynomial().as_dense().unwrap();
                 let z_b = entry.z_b_poly.polynomial_mut().as_dense_mut().unwrap();
@@ -182,11 +185,11 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     assert!(z_b.degree() < constraint_domain.size());
                 }
 
-                // we want to calculate z_a + eta_b * z_b + eta_c * z_a * z_b;
-                // we rewrite this as  z_a * (eta_c * z_b + 1) + eta_b * z_b;
+                // we want to calculate r_i * (z_a + eta_b * z_b + eta_c * z_a * z_b);
+                // we rewrite this as  r_i * (z_a * (eta_c * z_b + 1) + eta_b * z_b);
                 // This is better since it reduces the number of required
                 // multiplications by `constraint_domain.size()`.
-                let z_c = {
+                let mut summed_z_m = {
                     // Mutate z_b in place to compute eta_c * z_b + 1
                     // This saves us an additional memory allocation.
                     cfg_iter_mut!(z_b.coeffs).for_each(|b| *b *= eta_c);
@@ -201,14 +204,11 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     result
                 };
                 // ... and then multiplying by eta_b/eta_c, instead of just eta_b.
-                let eta_b_over_eta_c = eta_b * eta_c.inverse().unwrap();
-                let mut summed_z_m_coeffs = z_c.coeffs;
-                cfg_iter_mut!(summed_z_m_coeffs).zip(&z_b.coeffs).for_each(|(c, b)| *c += eta_b_over_eta_c * b);
+                cfg_iter_mut!(summed_z_m.coeffs).zip(&z_b.coeffs).for_each(|(c, b)| *c += eta_b_over_eta_c * b);
 
-                //Multiply by linear combination coefficient.
-                cfg_iter_mut!(summed_z_m_coeffs).for_each(|c| *c *= *coeff);
+                // Multiply by linear combination coefficient.
+                cfg_iter_mut!(summed_z_m.coeffs).for_each(|c| *c *= *combiner);
 
-                let summed_z_m = DensePolynomial::from_coefficients_vec(summed_z_m_coeffs);
                 assert_eq!(summed_z_m.degree(), z_a.degree() + z_b.degree());
                 end_timer!(summed_z_m_poly_time);
                 summed_z_m

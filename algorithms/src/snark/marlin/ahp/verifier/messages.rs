@@ -50,6 +50,7 @@ pub struct ThirdMessage<F> {
 /// Query set of the verifier.
 #[derive(Clone, Debug)]
 pub struct QuerySet<F> {
+    pub batch_size: usize,
     pub g_1_query: (String, F),
     pub z_b_query: (String, F),
     pub lincheck_sumcheck_query: (String, F),
@@ -73,6 +74,7 @@ impl<F: PrimeField> QuerySet<F> {
         // We also use an optimization: instead of explicitly calculating z_c, we
         // use the "virtual oracle" z_a * z_b
         Self {
+            batch_size: state.batch_size,
             g_1_query: ("beta".into(), beta),
             z_b_query: ("beta".into(), beta),
             lincheck_sumcheck_query: ("beta".into(), beta),
@@ -88,7 +90,9 @@ impl<F: PrimeField> QuerySet<F> {
     /// `(polynomial_label, (query_label, query))`.
     pub fn to_set(&self) -> crate::polycommit::sonic_pc::QuerySet<'_, F> {
         let mut query_set = crate::polycommit::sonic_pc::QuerySet::new();
-        query_set.insert(("z_b".into(), self.z_b_query.clone()));
+        for i in 0..self.batch_size {
+            query_set.insert((format!("z_b_{i}"), self.z_b_query.clone()));
+        }
         query_set.insert(("g_1".into(), self.g_1_query.clone()));
         query_set.insert(("lincheck_sumcheck".into(), self.lincheck_sumcheck_query.clone()));
 
