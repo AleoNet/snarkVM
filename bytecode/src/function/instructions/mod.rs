@@ -20,8 +20,17 @@ mod boilerplate;
 pub(super) mod add;
 pub(super) use add::*;
 
+pub(super) mod add_wrapped;
+pub(super) use add_wrapped::*;
+
 pub(super) mod commit;
 pub(super) use commit::*;
+
+pub(super) mod div;
+pub(super) use div::*;
+
+pub(super) mod div_wrapped;
+pub(super) use div_wrapped::*;
 
 pub(super) mod hash;
 pub(super) use hash::*;
@@ -29,11 +38,17 @@ pub(super) use hash::*;
 pub(super) mod mul;
 pub(super) use mul::*;
 
+pub(super) mod mul_wrapped;
+pub(super) use mul_wrapped::*;
+
 pub(super) mod neg;
 pub(super) use neg::*;
 
 pub(super) mod sub;
 pub(super) use sub::*;
+
+pub(super) mod sub_wrapped;
+pub(super) use sub_wrapped::*;
 
 use crate::{
     function::{parsers::Operand, registers::Registers},
@@ -70,12 +85,22 @@ pub trait Operation<P: Program>: Parser + Into<Instruction<P>> {
 pub enum Instruction<P: Program> {
     /// Adds `first` with `second`, storing the outcome in `destination`.
     Add(Add<P>),
+    /// Adds `first` with `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
+    AddWrapped(AddWrapped<P>),
+    /// Divides `first` by `second`, storing the outcome in `destination`.
+    Div(Div<P>),
+    /// Divides `first` by `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
+    DivWrapped(DivWrapped<P>),
     /// Multiplies `first` with `second`, storing the outcome in `destination`.
     Mul(Mul<P>),
+    /// Multiplies `first` with `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
+    MulWrapped(MulWrapped<P>),
     /// Negates `first`, storing the outcome in `destination`.
     Neg(Neg<P>),
     /// Subtracts `second` from `first`, storing the outcome in `destination`.
     Sub(Sub<P>),
+    /// Subtracts `second` from `first`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
+    SubWrapped(SubWrapped<P>),
     /// Performs a Pedersen hash taking a 64-bit value as input.
     Ped64(Ped64<P>),
     /// Performs a Pedersen hash taking a 128-bit value as input.
@@ -110,9 +135,14 @@ impl<P: Program> Instruction<P> {
     pub(crate) fn opcode(&self) -> &'static str {
         match self {
             Self::Add(..) => Add::<P>::opcode(),
+            Self::AddWrapped(..) => AddWrapped::<P>::opcode(),
+            Self::Div(..) => Div::<P>::opcode(),
+            Self::DivWrapped(..) => DivWrapped::<P>::opcode(),
             Self::Mul(..) => Mul::<P>::opcode(),
+            Self::MulWrapped(..) => MulWrapped::<P>::opcode(),
             Self::Neg(..) => Neg::<P>::opcode(),
             Self::Sub(..) => Sub::<P>::opcode(),
+            Self::SubWrapped(..) => SubWrapped::<P>::opcode(),
             Self::Ped64(..) => Ped64::<P>::opcode(),
             Self::Ped128(..) => Ped128::<P>::opcode(),
             Self::Ped256(..) => Ped256::<P>::opcode(),
@@ -134,9 +164,14 @@ impl<P: Program> Instruction<P> {
     pub(crate) fn operands(&self) -> Vec<Operand<P>> {
         match self {
             Self::Add(add) => add.operands(),
+            Self::AddWrapped(add_wrapped) => add_wrapped.operands(),
+            Self::Div(div) => div.operands(),
+            Self::DivWrapped(div_wrapped) => div_wrapped.operands(),
             Self::Mul(mul) => mul.operands(),
+            Self::MulWrapped(mul_wrapped) => mul_wrapped.operands(),
             Self::Neg(neg) => neg.operands(),
             Self::Sub(sub) => sub.operands(),
+            Self::SubWrapped(sub_wrapped) => sub_wrapped.operands(),
             Self::Ped64(ped64) => ped64.operands(),
             Self::Ped128(ped128) => ped128.operands(),
             Self::Ped256(ped256) => ped256.operands(),
@@ -158,9 +193,14 @@ impl<P: Program> Instruction<P> {
     pub(crate) fn destination(&self) -> &Register<P> {
         match self {
             Self::Add(add) => add.destination(),
+            Self::AddWrapped(add_wrapped) => add_wrapped.destination(),
+            Self::Div(div) => div.destination(),
+            Self::DivWrapped(div_wrapped) => div_wrapped.destination(),
             Self::Mul(mul) => mul.destination(),
+            Self::MulWrapped(mul_wrapped) => mul_wrapped.destination(),
             Self::Neg(neg) => neg.destination(),
             Self::Sub(sub) => sub.destination(),
+            Self::SubWrapped(sub_wrapped) => sub_wrapped.destination(),
             Self::Ped64(ped64) => ped64.destination(),
             Self::Ped128(ped128) => ped128.destination(),
             Self::Ped256(ped256) => ped256.destination(),
@@ -182,9 +222,14 @@ impl<P: Program> Instruction<P> {
     pub(crate) fn evaluate(&self, registers: &Registers<P>) {
         match self {
             Self::Add(instruction) => instruction.evaluate(registers),
+            Self::AddWrapped(instruction) => instruction.evaluate(registers),
+            Self::Div(instruction) => instruction.evaluate(registers),
+            Self::DivWrapped(instruction) => instruction.evaluate(registers),
             Self::Mul(instruction) => instruction.evaluate(registers),
+            Self::MulWrapped(instruction) => instruction.evaluate(registers),
             Self::Neg(instruction) => instruction.evaluate(registers),
             Self::Sub(instruction) => instruction.evaluate(registers),
+            Self::SubWrapped(instruction) => instruction.evaluate(registers),
             Self::Ped64(instruction) => instruction.evaluate(registers),
             Self::Ped128(instruction) => instruction.evaluate(registers),
             Self::Ped256(instruction) => instruction.evaluate(registers),
@@ -214,9 +259,14 @@ impl<P: Program> Parser for Instruction<P> {
         let (string, instruction) = alt((
             // Note that order of the individual parsers matters.
             preceded(pair(tag(Add::<P>::opcode()), tag(" ")), map(Add::parse, Into::into)),
+            preceded(pair(tag(AddWrapped::<P>::opcode()), tag(" ")), map(AddWrapped::parse, Into::into)),
+            preceded(pair(tag(Div::<P>::opcode()), tag(" ")), map(Div::parse, Into::into)),
+            preceded(pair(tag(DivWrapped::<P>::opcode()), tag(" ")), map(DivWrapped::parse, Into::into)),
             preceded(pair(tag(Mul::<P>::opcode()), tag(" ")), map(Mul::parse, Into::into)),
+            preceded(pair(tag(MulWrapped::<P>::opcode()), tag(" ")), map(MulWrapped::parse, Into::into)),
             preceded(pair(tag(Neg::<P>::opcode()), tag(" ")), map(Neg::parse, Into::into)),
             preceded(pair(tag(Sub::<P>::opcode()), tag(" ")), map(Sub::parse, Into::into)),
+            preceded(pair(tag(SubWrapped::<P>::opcode()), tag(" ")), map(SubWrapped::parse, Into::into)),
             preceded(pair(tag(Ped64::<P>::opcode()), tag(" ")), map(Ped64::parse, Into::into)),
             preceded(pair(tag(Ped128::<P>::opcode()), tag(" ")), map(Ped128::parse, Into::into)),
             preceded(pair(tag(Ped256::<P>::opcode()), tag(" ")), map(Ped256::parse, Into::into)),
@@ -228,8 +278,11 @@ impl<P: Program> Parser for Instruction<P> {
             preceded(pair(tag(PedComm64::<P>::opcode()), tag(" ")), map(PedComm64::parse, Into::into)),
             preceded(pair(tag(PedComm128::<P>::opcode()), tag(" ")), map(PedComm128::parse, Into::into)),
             preceded(pair(tag(PedComm256::<P>::opcode()), tag(" ")), map(PedComm256::parse, Into::into)),
-            preceded(pair(tag(PedComm512::<P>::opcode()), tag(" ")), map(PedComm512::parse, Into::into)),
-            preceded(pair(tag(PedComm1024::<P>::opcode()), tag(" ")), map(PedComm1024::parse, Into::into)),
+            // `alt` only takes a max of 21 parsers in a tuple, so we need to nest here.
+            alt((
+                preceded(pair(tag(PedComm512::<P>::opcode()), tag(" ")), map(PedComm512::parse, Into::into)),
+                preceded(pair(tag(PedComm1024::<P>::opcode()), tag(" ")), map(PedComm1024::parse, Into::into)),
+            )),
         ))(string)?;
         // Parse the semicolon from the string.
         let (string, _) = tag(";")(string)?;
@@ -242,9 +295,14 @@ impl<P: Program> fmt::Display for Instruction<P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::Add(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::AddWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::Div(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::DivWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Mul(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::MulWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Neg(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Sub(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::SubWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Ped64(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Ped128(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Ped256(instruction) => write!(f, "{} {};", self.opcode(), instruction),
@@ -267,23 +325,28 @@ impl<P: Program> FromBytes for Instruction<P> {
         let code = u16::read_le(&mut reader)?;
         match code {
             0 => Ok(Self::Add(Add::read_le(&mut reader)?)),
-            1 => Ok(Self::Mul(Mul::read_le(&mut reader)?)),
-            2 => Ok(Self::Neg(Neg::read_le(&mut reader)?)),
-            3 => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
-            4 => Ok(Self::Ped64(Ped64::read_le(&mut reader)?)),
-            5 => Ok(Self::Ped128(Ped128::read_le(&mut reader)?)),
-            6 => Ok(Self::Ped256(Ped256::read_le(&mut reader)?)),
-            7 => Ok(Self::Ped512(Ped512::read_le(&mut reader)?)),
-            8 => Ok(Self::Ped1024(Ped1024::read_le(&mut reader)?)),
-            9 => Ok(Self::Psd2(Psd2::read_le(&mut reader)?)),
-            10 => Ok(Self::Psd4(Psd4::read_le(&mut reader)?)),
-            11 => Ok(Self::Psd8(Psd8::read_le(&mut reader)?)),
-            12 => Ok(Self::PedComm64(PedComm64::read_le(&mut reader)?)),
-            13 => Ok(Self::PedComm128(PedComm128::read_le(&mut reader)?)),
-            14 => Ok(Self::PedComm256(PedComm256::read_le(&mut reader)?)),
-            15 => Ok(Self::PedComm512(PedComm512::read_le(&mut reader)?)),
-            16 => Ok(Self::PedComm1024(PedComm1024::read_le(&mut reader)?)),
-            17.. => Err(error(format!("Failed to deserialize an instruction of code {code}"))),
+            1 => Ok(Self::AddWrapped(AddWrapped::read_le(&mut reader)?)),
+            2 => Ok(Self::Div(Div::read_le(&mut reader)?)),
+            3 => Ok(Self::DivWrapped(DivWrapped::read_le(&mut reader)?)),
+            4 => Ok(Self::Mul(Mul::read_le(&mut reader)?)),
+            5 => Ok(Self::MulWrapped(MulWrapped::read_le(&mut reader)?)),
+            6 => Ok(Self::Neg(Neg::read_le(&mut reader)?)),
+            7 => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
+            8 => Ok(Self::SubWrapped(SubWrapped::read_le(&mut reader)?)),
+            9 => Ok(Self::Ped64(Ped64::read_le(&mut reader)?)),
+            10 => Ok(Self::Ped128(Ped128::read_le(&mut reader)?)),
+            11 => Ok(Self::Ped256(Ped256::read_le(&mut reader)?)),
+            12 => Ok(Self::Ped512(Ped512::read_le(&mut reader)?)),
+            13 => Ok(Self::Ped1024(Ped1024::read_le(&mut reader)?)),
+            14 => Ok(Self::Psd2(Psd2::read_le(&mut reader)?)),
+            15 => Ok(Self::Psd4(Psd4::read_le(&mut reader)?)),
+            16 => Ok(Self::Psd8(Psd8::read_le(&mut reader)?)),
+            17 => Ok(Self::PedComm64(PedComm64::read_le(&mut reader)?)),
+            18 => Ok(Self::PedComm128(PedComm128::read_le(&mut reader)?)),
+            19 => Ok(Self::PedComm256(PedComm256::read_le(&mut reader)?)),
+            20 => Ok(Self::PedComm512(PedComm512::read_le(&mut reader)?)),
+            21 => Ok(Self::PedComm1024(PedComm1024::read_le(&mut reader)?)),
+            22.. => Err(error(format!("Failed to deserialize an instruction of code {code}"))),
         }
     }
 }
@@ -295,68 +358,88 @@ impl<P: Program> ToBytes for Instruction<P> {
                 u16::write_le(&0u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Mul(instruction) => {
+            Self::AddWrapped(instruction) => {
                 u16::write_le(&1u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Neg(instruction) => {
+            Self::Div(instruction) => {
                 u16::write_le(&2u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Sub(instruction) => {
+            Self::DivWrapped(instruction) => {
                 u16::write_le(&3u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Ped64(instruction) => {
+            Self::Mul(instruction) => {
                 u16::write_le(&4u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Ped128(instruction) => {
+            Self::MulWrapped(instruction) => {
                 u16::write_le(&5u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Ped256(instruction) => {
+            Self::Neg(instruction) => {
                 u16::write_le(&6u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Ped512(instruction) => {
+            Self::Sub(instruction) => {
                 u16::write_le(&7u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Ped1024(instruction) => {
+            Self::SubWrapped(instruction) => {
                 u16::write_le(&8u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Psd2(instruction) => {
+            Self::Ped64(instruction) => {
                 u16::write_le(&9u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Psd4(instruction) => {
+            Self::Ped128(instruction) => {
                 u16::write_le(&10u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Psd8(instruction) => {
+            Self::Ped256(instruction) => {
                 u16::write_le(&11u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::PedComm64(instruction) => {
+            Self::Ped512(instruction) => {
                 u16::write_le(&12u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::PedComm128(instruction) => {
+            Self::Ped1024(instruction) => {
                 u16::write_le(&13u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::PedComm256(instruction) => {
+            Self::Psd2(instruction) => {
                 u16::write_le(&14u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::PedComm512(instruction) => {
+            Self::Psd4(instruction) => {
                 u16::write_le(&15u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::PedComm1024(instruction) => {
+            Self::Psd8(instruction) => {
                 u16::write_le(&16u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::PedComm64(instruction) => {
+                u16::write_le(&17u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::PedComm128(instruction) => {
+                u16::write_le(&18u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::PedComm256(instruction) => {
+                u16::write_le(&19u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::PedComm512(instruction) => {
+                u16::write_le(&20u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::PedComm1024(instruction) => {
+                u16::write_le(&21u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
         }
@@ -490,73 +573,73 @@ mod tests {
                 binary_instruction_test!(
                     test_public_and_public_yields_private,
                     $instruction,
-                    concat!($a, ".public"),
-                    concat!($b, ".public"),
-                    concat!($expected, ".private")
+                    &format!("{}.public", $a),
+                    &format!("{}.public", $b),
+                    &format!("{}.private", $expected)
                 );
 
                 binary_instruction_test!(
                     test_public_and_constant_yields_private,
                     $instruction,
-                    concat!($a, ".public"),
-                    concat!($b, ".constant"),
-                    concat!($expected, ".private")
+                    &format!("{}.public", $a),
+                    &format!("{}.constant", $b),
+                    &format!("{}.private", $expected)
                 );
 
                 binary_instruction_test!(
                     test_public_and_private_yields_private,
                     $instruction,
-                    concat!($a, ".public"),
-                    concat!($b, ".private"),
-                    concat!($expected, ".private")
+                    &format!("{}.public", $a),
+                    &format!("{}.private", $b),
+                    &format!("{}.private", $expected)
                 );
 
                 binary_instruction_test!(
                     test_private_and_constant_yields_private,
                     $instruction,
-                    concat!($a, ".private"),
-                    concat!($b, ".constant"),
-                    concat!($expected, ".private")
+                    &format!("{}.private", $a),
+                    &format!("{}.constant", $b),
+                    &format!("{}.private", $expected)
                 );
 
                 binary_instruction_test!(
                     test_private_and_public_yields_private,
                     $instruction,
-                    concat!($a, ".private"),
-                    concat!($b, ".public"),
-                    concat!($expected, ".private")
+                    &format!("{}.private", $a),
+                    &format!("{}.public", $b),
+                    &format!("{}.private", $expected)
                 );
 
                 binary_instruction_test!(
                     test_private_and_private_yields_private,
                     $instruction,
-                    concat!($a, ".private"),
-                    concat!($b, ".private"),
-                    concat!($expected, ".private")
+                    &format!("{}.private", $a),
+                    &format!("{}.private", $b),
+                    &format!("{}.private", $expected)
                 );
 
                 binary_instruction_test!(
                     test_constant_and_private_yields_private,
                     $instruction,
-                    concat!($a, ".constant"),
-                    concat!($b, ".private"),
-                    concat!($expected, ".private")
+                    &format!("{}.constant", $a),
+                    &format!("{}.private", $b),
+                    &format!("{}.private", $expected)
                 );
 
                 binary_instruction_test!(
                     test_constant_and_public_yields_private,
                     $instruction,
-                    concat!($a, ".constant"),
-                    concat!($b, ".public"),
-                    concat!($expected, ".private")
+                    &format!("{}.constant", $a),
+                    &format!("{}.public", $b),
+                    &format!("{}.private", $expected)
                 );
 
                 binary_instruction_test!(
                     test_constant_and_constant_yields_constant,
                     $instruction,
-                    concat!($a, ".constant"),
-                    concat!($b, ".constant"),
-                    concat!($expected, ".constant")
+                    &format!("{}.constant", $a),
+                    &format!("{}.constant", $b),
+                    &format!("{}.constant", $expected)
                 );
             }
         };
@@ -569,22 +652,22 @@ mod tests {
                 unary_instruction_test!(
                     test_public_yields_private,
                     $instruction,
-                    concat!($input, ".public"),
-                    concat!($expected, ".private")
+                    &format!("{}.public", $input),
+                    &format!("{}.private", $expected)
                 );
 
                 unary_instruction_test!(
                     test_private_yields_private,
                     $instruction,
-                    concat!($input, ".private"),
-                    concat!($expected, ".private")
+                    &format!("{}.private", $input),
+                    &format!("{}.private", $expected)
                 );
 
                 unary_instruction_test!(
                     test_constant_yields_constant,
                     $instruction,
-                    concat!($input, ".constant"),
-                    concat!($expected, ".constant")
+                    &format!("{}.constant", $input),
+                    &format!("{}.constant", $expected)
                 );
             }
         };
