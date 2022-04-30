@@ -64,6 +64,28 @@ impl<E: Environment> ToBits for &Field<E> {
     }
 }
 
+impl<E: Environment> Metrics<dyn ToBits<Boolean = Boolean<E>>> for Field<E> {
+    type Case = Mode;
+
+    fn count(case: &Self::Case) -> Count {
+        match case {
+            Mode::Constant => Count::is(253, 0, 0, 0),
+            _ => Count::is(0, 0, 253, 254),
+        }
+    }
+}
+
+impl<E: Environment> OutputMode<dyn ToBits<Boolean = Boolean<E>>> for Field<E> {
+    type Case = Mode;
+
+    fn output_mode(case: &Self::Case) -> Mode {
+        match case {
+            Mode::Constant => Mode::Constant,
+            _ => Mode::Private,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -72,13 +94,7 @@ mod tests {
 
     const ITERATIONS: usize = 100;
 
-    fn check_to_bits_le(
-        mode: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
+    fn check_to_bits_le(mode: Mode) {
         let expected_number_of_bits = <<Circuit as Environment>::BaseField as PrimeField>::size_in_bits();
 
         for i in 0..ITERATIONS {
@@ -92,23 +108,19 @@ mod tests {
                 for (expected_bit, candidate_bit) in expected.to_bits_le().iter().zip_eq(&candidate_bits) {
                     assert_eq!(*expected_bit, candidate_bit.eject_value());
                 }
-                assert_scope!(num_constants, num_public, num_private, num_constraints);
+                assert_count!(Field<Circuit>, ToBits<Boolean = Boolean<Circuit>>, &mode);
+                assert_output_mode!(candidate_bits, Field<Circuit>, ToBits<Boolean = Boolean<Circuit>>, &mode);
 
                 // Ensure a second call to `to_bits_le` does not incur additional costs.
                 let candidate_bits = candidate.to_bits_le();
                 assert_eq!(expected_number_of_bits, candidate_bits.len());
-                assert_scope!(num_constants, num_public, num_private, num_constraints);
+                assert_count!(Field<Circuit>, ToBits<Boolean = Boolean<Circuit>>, &mode);
+                assert_output_mode!(candidate_bits, Field<Circuit>, ToBits<Boolean = Boolean<Circuit>>, &mode);
             });
         }
     }
 
-    fn check_to_bits_be(
-        mode: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
+    fn check_to_bits_be(mode: Mode) {
         let expected_number_of_bits = <<Circuit as Environment>::BaseField as PrimeField>::size_in_bits();
 
         for i in 0..ITERATIONS {
@@ -122,44 +134,46 @@ mod tests {
                 for (expected_bit, candidate_bit) in expected.to_bits_be().iter().zip_eq(&candidate_bits) {
                     assert_eq!(*expected_bit, candidate_bit.eject_value());
                 }
-                assert_scope!(num_constants, num_public, num_private, num_constraints);
+                assert_count!(Field<Circuit>, ToBits<Boolean = Boolean<Circuit>>, &mode);
+                assert_output_mode!(candidate_bits, Field<Circuit>, ToBits<Boolean = Boolean<Circuit>>, &mode);
 
                 // Ensure a second call to `to_bits_be` does not incur additional costs.
                 let candidate_bits = candidate.to_bits_be();
                 assert_eq!(expected_number_of_bits, candidate_bits.len());
-                assert_scope!(num_constants, num_public, num_private, num_constraints);
+                assert_count!(Field<Circuit>, ToBits<Boolean = Boolean<Circuit>>, &mode);
+                assert_output_mode!(candidate_bits, Field<Circuit>, ToBits<Boolean = Boolean<Circuit>>, &mode);
             });
         }
     }
 
     #[test]
     fn test_to_bits_le_constant() {
-        check_to_bits_le(Mode::Constant, 253, 0, 0, 0);
+        check_to_bits_le(Mode::Constant);
     }
 
     #[test]
     fn test_to_bits_le_public() {
-        check_to_bits_le(Mode::Public, 0, 0, 253, 254);
+        check_to_bits_le(Mode::Public);
     }
 
     #[test]
     fn test_to_bits_le_private() {
-        check_to_bits_le(Mode::Private, 0, 0, 253, 254);
+        check_to_bits_le(Mode::Private);
     }
 
     #[test]
     fn test_to_bits_be_constant() {
-        check_to_bits_be(Mode::Constant, 253, 0, 0, 0);
+        check_to_bits_be(Mode::Constant);
     }
 
     #[test]
     fn test_to_bits_be_public() {
-        check_to_bits_be(Mode::Public, 0, 0, 253, 254);
+        check_to_bits_be(Mode::Public);
     }
 
     #[test]
     fn test_to_bits_be_private() {
-        check_to_bits_be(Mode::Private, 0, 0, 253, 254);
+        check_to_bits_be(Mode::Private);
     }
 
     #[test]

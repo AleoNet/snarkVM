@@ -17,12 +17,25 @@
 use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Registers},
     helpers::Register,
+    LiteralOrType,
     LiteralType,
     OutputType,
     Program,
     Value,
 };
-use snarkvm_circuits::{Count, Literal, Metrics, MulChecked, Parser, ParserResult};
+use snarkvm_circuits::{
+    count,
+    output_mode,
+    ConstantOrMode,
+    Count,
+    Field,
+    Literal,
+    Metrics,
+    MulChecked,
+    OutputMode,
+    Parser,
+    ParserResult,
+};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
@@ -96,19 +109,31 @@ impl<P: Program> Operation<P> for Mul<P> {
 impl<P: Program> Metrics<Self> for Mul<P> {
     type Case = (LiteralType<P>, LiteralType<P>);
 
-    fn count(_case: &Self::Case) -> Count {
-        // TODO (@pranav): Implement Metrics for Mul.
-        P::halt(format!("Invalid '{}' instruction", Self::opcode()))
+    fn count(case: &Self::Case) -> Count {
+        match case {
+            (LiteralType::Field(mode_a), LiteralType::Field(mode_b)) => count!(
+                Field<P::Environment>,
+                NativeMul<Field<P::Environment>, Output = Field<P::Environment>>,
+                &(*mode_a, *mode_b)
+            ),
+            _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
+        }
     }
 }
 
 impl<P: Program> OutputType for Mul<P> {
-    type Input = (LiteralType<P>, LiteralType<P>);
+    type Input = (LiteralOrType<P>, LiteralOrType<P>);
     type Output = LiteralType<P>;
 
-    fn output_type(_input_type: &Self::Input) -> Self::Output {
-        // TODO (@pranav): Implement OutputType for Mul.
-        P::halt(format!("Invalid '{}' instruction", Self::opcode()))
+    fn output_type(case: &Self::Input) -> Self::Output {
+        match (case.0.type_(), case.1.type_()) {
+            (LiteralType::Field(_), LiteralType::Field(_)) => LiteralType::Field(output_mode!(
+                Field<P::Environment>,
+                NativeMul<Field<P::Environment>, Output = Field<P::Environment>>,
+                &(ConstantOrMode::from(&case.0), ConstantOrMode::from(&case.1))
+            )),
+            _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
+        }
     }
 }
 

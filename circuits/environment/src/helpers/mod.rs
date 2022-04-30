@@ -31,8 +31,8 @@ pub use linear_combination::*;
 pub mod mode;
 pub use mode::*;
 
-pub mod mode_or_circuit;
-pub use mode_or_circuit::*;
+pub mod constant_or_mode;
+pub use constant_or_mode::*;
 
 pub mod variable;
 pub use variable::*;

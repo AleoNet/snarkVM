@@ -55,9 +55,9 @@ impl<E: Environment> OutputMode<dyn Inv<Output = Field<E>>> for Field<E> {
     type Case = Mode;
 
     fn output_mode(case: &Self::Case) -> Mode {
-        match case {
-            Mode::Constant => Mode::Constant,
-            _ => Mode::Private,
+        match case.is_constant() {
+            true => Mode::Constant,
+            false => Mode::Private,
         }
     }
 }

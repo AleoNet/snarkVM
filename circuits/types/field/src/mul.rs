@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use snarkvm_circuits_environment::ConstantOrMode;
 
 impl<E: Environment> Mul<Field<E>> for Field<E> {
     type Output = Field<E>;
@@ -73,28 +74,69 @@ impl<E: Environment> MulAssign<&Field<E>> for Field<E> {
     }
 }
 
+impl<E: Environment> Metrics<dyn Mul<Field<E>, Output = Field<E>>> for Field<E> {
+    type Case = (Mode, Mode);
+
+    fn count(case: &Self::Case) -> Count {
+        match case.0.is_constant() || case.1.is_constant() {
+            true => Count::is(0, 0, 0, 0),
+            false => Count::is(0, 0, 1, 1),
+        }
+    }
+}
+
+impl<E: Environment> OutputMode<dyn Mul<Field<E>, Output = Field<E>>> for Field<E> {
+    type Case = (ConstantOrMode<Field<E>>, ConstantOrMode<Field<E>>);
+
+    fn output_mode(case: &Self::Case) -> Mode {
+        match (case.0.mode(), case.1.mode()) {
+            (Mode::Constant, Mode::Constant) => Mode::Constant,
+            (Mode::Constant, Mode::Public) => match &case.0 {
+                ConstantOrMode::Constant(constant) => match constant.eject_value() {
+                    // TODO: Should this be a constant?
+                    //value if value == E::BaseField::zero() => Mode::Constant,
+                    value if value == E::BaseField::one() => Mode::Public,
+                    _ => Mode::Private,
+                },
+                _ => E::halt("The constant is required to determine the output mode of Public * Constant"),
+            },
+            (Mode::Public, Mode::Constant) => match &case.1 {
+                ConstantOrMode::Constant(constant) => match constant.eject_value() {
+                    // TODO: Should this be a constant?
+                    //value if value == E::BaseField::zero() => Mode::Constant,
+                    value if value == E::BaseField::one() => Mode::Public,
+                    _ => Mode::Private,
+                },
+                _ => E::halt("The constant is required to determine the output mode of Public * Constant"),
+            },
+            (_, _) => Mode::Private,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
-    const ITERATIONS: usize = 10;
+    const ITERATIONS: usize = 100;
 
-    fn check_mul(
-        name: &str,
-        expected: &<Circuit as Environment>::BaseField,
-        a: &Field<Circuit>,
-        b: &Field<Circuit>,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
+    fn check_mul(name: &str, expected: &<Circuit as Environment>::BaseField, a: &Field<Circuit>, b: &Field<Circuit>) {
         Circuit::scope(name, || {
             let candidate = a * b;
             assert_eq!(*expected, candidate.eject_value(), "({} * {})", a.eject_value(), b.eject_value());
-            assert_scope!(num_constants, num_public, num_private, num_constraints);
+            assert_count!(
+                Field<Circuit>,
+                Mul<Field<Circuit>, Output = Field<Circuit>>,
+                &(a.eject_mode(), b.eject_mode())
+            );
+            assert_output_mode!(
+                candidate,
+                Field<Circuit>,
+                Mul<Field<Circuit>, Output = Field<Circuit>>,
+                &(ConstantOrMode::from(a), ConstantOrMode::from(b))
+            );
         });
     }
 
@@ -103,170 +145,110 @@ mod tests {
         expected: &<Circuit as Environment>::BaseField,
         a: &Field<Circuit>,
         b: &Field<Circuit>,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
     ) {
         Circuit::scope(name, || {
             let mut candidate = a.clone();
             candidate *= b;
             assert_eq!(*expected, candidate.eject_value(), "({} * {})", a.eject_value(), b.eject_value());
-            assert_scope!(num_constants, num_public, num_private, num_constraints);
+            assert_count!(
+                Field<Circuit>,
+                Mul<Field<Circuit>, Output = Field<Circuit>>,
+                &(a.eject_mode(), b.eject_mode())
+            );
+            assert_output_mode!(
+                candidate,
+                Field<Circuit>,
+                Mul<Field<Circuit>, Output = Field<Circuit>>,
+                &(ConstantOrMode::from(a), ConstantOrMode::from(b))
+            );
         });
+    }
+
+    fn run_test(mode_a: Mode, mode_b: Mode) {
+        for i in 0..ITERATIONS {
+            let first = UniformRand::rand(&mut test_rng());
+            let second = UniformRand::rand(&mut test_rng());
+
+            let expected = first * second;
+            let a = Field::<Circuit>::new(mode_a, first);
+            let b = Field::<Circuit>::new(mode_b, second);
+
+            let name = format!("Mul: a + b {}", i);
+            check_mul(&name, &expected, &a, &b);
+            let name = format!("MulAssign: a + b {}", i);
+            check_mul_assign(&name, &expected, &a, &b);
+
+            // Test identity.
+            let name = format!("Mul: a * 1 {}", i);
+            let one = Field::<Circuit>::new(mode_b, <Circuit as Environment>::BaseField::one());
+            check_mul(&name, &first, &a, &one);
+            let name = format!("MulAssign: a * 1 {}", i);
+            check_mul_assign(&name, &first, &a, &one);
+
+            let name = format!("Mul: 1 * b {}", i);
+            let one = Field::<Circuit>::new(mode_a, <Circuit as Environment>::BaseField::one());
+            check_mul(&name, &second, &one, &b);
+            let name = format!("MulAssign: 1 * b {}", i);
+            check_mul_assign(&name, &second, &one, &b);
+
+            // Test zero.
+            let name = format!("Mul: a * 0 {}", i);
+            let zero = Field::<Circuit>::new(mode_b, <Circuit as Environment>::BaseField::zero());
+            check_mul(&name, &<Circuit as Environment>::BaseField::zero(), &a, &zero);
+            let name = format!("MulAssign: a * 0 {}", i);
+            check_mul_assign(&name, &<Circuit as Environment>::BaseField::zero(), &a, &zero);
+
+            let name = format!("Mul: 0 * b {}", i);
+            let zero = Field::<Circuit>::new(mode_a, <Circuit as Environment>::BaseField::zero());
+            check_mul(&name, &<Circuit as Environment>::BaseField::zero(), &zero, &b);
+            let name = format!("MulAssign: 0 * b {}", i);
+            check_mul_assign(&name, &<Circuit as Environment>::BaseField::zero(), &zero, &b);
+        }
     }
 
     #[test]
     fn test_constant_times_constant() {
-        for i in 0..ITERATIONS {
-            let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
-            let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
-
-            let expected = first * second;
-            let a = Field::<Circuit>::new(Mode::Constant, first);
-            let b = Field::<Circuit>::new(Mode::Constant, second);
-
-            let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b, 0, 0, 0, 0);
-            let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
-        }
+        run_test(Mode::Constant, Mode::Constant);
     }
 
     #[test]
     fn test_constant_times_public() {
-        for i in 0..ITERATIONS {
-            let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
-            let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
-
-            let expected = first * second;
-            let a = Field::<Circuit>::new(Mode::Constant, first);
-            let b = Field::<Circuit>::new(Mode::Public, second);
-
-            let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b, 0, 0, 0, 0);
-            let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
-        }
+        run_test(Mode::Constant, Mode::Public);
     }
 
     #[test]
     fn test_constant_times_private() {
-        for i in 0..ITERATIONS {
-            let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
-            let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
-
-            let expected = first * second;
-            let a = Field::<Circuit>::new(Mode::Constant, first);
-            let b = Field::<Circuit>::new(Mode::Private, second);
-
-            let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b, 0, 0, 0, 0);
-            let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
-        }
+        run_test(Mode::Constant, Mode::Private);
     }
 
     #[test]
     fn test_public_times_constant() {
-        for i in 0..ITERATIONS {
-            let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
-            let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
-
-            let expected = first * second;
-            let a = Field::<Circuit>::new(Mode::Public, first);
-            let b = Field::<Circuit>::new(Mode::Constant, second);
-
-            let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b, 0, 0, 0, 0);
-            let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
-        }
+        run_test(Mode::Public, Mode::Constant);
     }
 
     #[test]
     fn test_private_times_constant() {
-        for i in 0..ITERATIONS {
-            let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
-            let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
-
-            let expected = first * second;
-            let a = Field::<Circuit>::new(Mode::Private, first);
-            let b = Field::<Circuit>::new(Mode::Constant, second);
-
-            let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b, 0, 0, 0, 0);
-            let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
-        }
+        run_test(Mode::Private, Mode::Constant);
     }
 
     #[test]
     fn test_public_times_public() {
-        for i in 0..ITERATIONS {
-            let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
-            let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
-
-            let expected = first * second;
-            let a = Field::<Circuit>::new(Mode::Public, first);
-            let b = Field::<Circuit>::new(Mode::Public, second);
-
-            let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b, 0, 0, 1, 1);
-            let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b, 0, 0, 1, 1);
-        }
+        run_test(Mode::Public, Mode::Public);
     }
 
     #[test]
     fn test_public_times_private() {
-        for i in 0..ITERATIONS {
-            let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
-            let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
-
-            let expected = first * second;
-            let a = Field::<Circuit>::new(Mode::Public, first);
-            let b = Field::<Circuit>::new(Mode::Private, second);
-
-            let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b, 0, 0, 1, 1);
-            let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b, 0, 0, 1, 1);
-        }
+        run_test(Mode::Public, Mode::Private);
     }
 
     #[test]
     fn test_private_times_public() {
-        for i in 0..ITERATIONS {
-            let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
-            let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
-
-            let expected = first * second;
-            let a = Field::<Circuit>::new(Mode::Private, first);
-            let b = Field::<Circuit>::new(Mode::Public, second);
-
-            let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b, 0, 0, 1, 1);
-            let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b, 0, 0, 1, 1);
-        }
+        run_test(Mode::Private, Mode::Public);
     }
 
     #[test]
     fn test_private_times_private() {
-        for i in 0..ITERATIONS {
-            let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
-            let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
-
-            let expected = first * second;
-            let a = Field::<Circuit>::new(Mode::Private, first);
-            let b = Field::<Circuit>::new(Mode::Private, second);
-
-            let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b, 0, 0, 1, 1);
-            let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b, 0, 0, 1, 1);
-        }
+        run_test(Mode::Private, Mode::Private);
     }
 
     #[test]

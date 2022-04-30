@@ -31,7 +31,7 @@ pub trait OutputType {
     // Note that `Output` is expected to be a `LiteralType` or a tuple of `LiteralType`s.
     type Output;
 
-    fn output_type(input_type: &Self::Input) -> Self::Output;
+    fn output_type(case: &Self::Input) -> Self::Output;
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, EnumIndex)]

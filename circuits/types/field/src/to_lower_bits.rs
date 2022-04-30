@@ -61,6 +61,28 @@ impl<E: Environment> ToLowerBits for Field<E> {
     }
 }
 
+impl<E: Environment> Metrics<dyn ToLowerBits<Boolean = Boolean<E>>> for Field<E> {
+    type Case = (Mode, usize);
+
+    fn count(case: &Self::Case) -> Count {
+        match case {
+            (Mode::Constant, k) => Count::is(*k, 0, 0, 0),
+            (_, k) => Count::is(0, 0, *k, k + 1),
+        }
+    }
+}
+
+impl<E: Environment> OutputMode<dyn ToLowerBits<Boolean = Boolean<E>>> for Field<E> {
+    type Case = Mode;
+
+    fn output_mode(case: &Self::Case) -> Mode {
+        match case {
+            Mode::Constant => Mode::Constant,
+            _ => Mode::Private,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -72,10 +94,6 @@ mod tests {
     #[rustfmt::skip]
     fn check_to_lower_k_bits_le<I: IntegerType + Unsigned + ToBytes>(
         mode: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
     ) {
         let size_in_bits = <Circuit as Environment>::BaseField::size_in_bits();
         let size_in_bytes = (size_in_bits + 7) / 8;
@@ -98,7 +116,8 @@ mod tests {
                 for (i, (expected_bit, candidate_bit)) in expected.iter().zip_eq(candidate.iter()).enumerate() {
                     assert_eq!(*expected_bit, candidate_bit.eject_value(), "LSB+{}", i);
                 }
-                assert_scope!(num_constants, num_public, num_private, num_constraints);
+                assert_count!(Field<Circuit>, ToLowerBits<Boolean = Boolean<Circuit>>, &(mode, I::BITS));
+                assert_output_mode!(candidate, Field<Circuit>, ToLowerBits<Boolean = Boolean<Circuit>>, &mode);
             });
         }
     }
@@ -107,84 +126,84 @@ mod tests {
 
     #[test]
     fn test_to_8_bits_constant() {
-        check_to_lower_k_bits_le::<u8>(Mode::Constant, 8, 0, 0, 0);
+        check_to_lower_k_bits_le::<u8>(Mode::Constant);
     }
 
     #[test]
     fn test_to_8_bits_public() {
-        check_to_lower_k_bits_le::<u8>(Mode::Public, 0, 0, 8, 9);
+        check_to_lower_k_bits_le::<u8>(Mode::Public);
     }
 
     #[test]
     fn test_to_8_bits_private() {
-        check_to_lower_k_bits_le::<u8>(Mode::Private, 0, 0, 8, 9);
+        check_to_lower_k_bits_le::<u8>(Mode::Private);
     }
 
     // 16 bits
 
     #[test]
     fn test_to_16_bits_constant() {
-        check_to_lower_k_bits_le::<u16>(Mode::Constant, 16, 0, 0, 0);
+        check_to_lower_k_bits_le::<u16>(Mode::Constant);
     }
 
     #[test]
     fn test_to_16_bits_public() {
-        check_to_lower_k_bits_le::<u16>(Mode::Public, 0, 0, 16, 17);
+        check_to_lower_k_bits_le::<u16>(Mode::Public);
     }
 
     #[test]
     fn test_to_16_bits_private() {
-        check_to_lower_k_bits_le::<u16>(Mode::Private, 0, 0, 16, 17);
+        check_to_lower_k_bits_le::<u16>(Mode::Private);
     }
 
     // 32 bits
 
     #[test]
     fn test_to_32_bits_constant() {
-        check_to_lower_k_bits_le::<u32>(Mode::Constant, 32, 0, 0, 0);
+        check_to_lower_k_bits_le::<u32>(Mode::Constant);
     }
 
     #[test]
     fn test_to_32_bits_public() {
-        check_to_lower_k_bits_le::<u32>(Mode::Public, 0, 0, 32, 33);
+        check_to_lower_k_bits_le::<u32>(Mode::Public);
     }
 
     #[test]
     fn test_to_32_bits_private() {
-        check_to_lower_k_bits_le::<u32>(Mode::Private, 0, 0, 32, 33);
+        check_to_lower_k_bits_le::<u32>(Mode::Private);
     }
 
     // 64 bits
 
     #[test]
     fn test_to_64_bits_constant() {
-        check_to_lower_k_bits_le::<u64>(Mode::Constant, 64, 0, 0, 0);
+        check_to_lower_k_bits_le::<u64>(Mode::Constant);
     }
 
     #[test]
     fn test_to_64_bits_public() {
-        check_to_lower_k_bits_le::<u64>(Mode::Public, 0, 0, 64, 65);
+        check_to_lower_k_bits_le::<u64>(Mode::Public);
     }
 
     #[test]
     fn test_to_64_bits_private() {
-        check_to_lower_k_bits_le::<u64>(Mode::Private, 0, 0, 64, 65);
+        check_to_lower_k_bits_le::<u64>(Mode::Private);
     }
 
     // 128 bits
 
     #[test]
     fn test_to_128_bits_constant() {
-        check_to_lower_k_bits_le::<u128>(Mode::Constant, 128, 0, 0, 0);
+        check_to_lower_k_bits_le::<u128>(Mode::Constant);
     }
 
     #[test]
     fn test_to_128_bits_public() {
-        check_to_lower_k_bits_le::<u128>(Mode::Public, 0, 0, 128, 129);
+        check_to_lower_k_bits_le::<u128>(Mode::Public);
     }
 
     #[test]
     fn test_to_128_bits_private() {
-        check_to_lower_k_bits_le::<u128>(Mode::Private, 0, 0, 128, 129);
+        check_to_lower_k_bits_le::<u128>(Mode::Private);
     }
 }

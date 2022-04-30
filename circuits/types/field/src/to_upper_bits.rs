@@ -64,6 +64,28 @@ impl<E: Environment> ToUpperBits for Field<E> {
     }
 }
 
+impl<E: Environment> Metrics<dyn ToUpperBits<Boolean = Boolean<E>>> for Field<E> {
+    type Case = (Mode, usize);
+
+    fn count(case: &Self::Case) -> Count {
+        match case {
+            (Mode::Constant, k) => Count::is(*k, 0, 0, 0),
+            (_, k) => Count::is(0, 0, *k, k + 1),
+        }
+    }
+}
+
+impl<E: Environment> OutputMode<dyn ToUpperBits<Boolean = Boolean<E>>> for Field<E> {
+    type Case = Mode;
+
+    fn output_mode(case: &Self::Case) -> Mode {
+        match case {
+            Mode::Constant => Mode::Constant,
+            _ => Mode::Private,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -75,10 +97,6 @@ mod tests {
     #[rustfmt::skip]
     fn check_to_upper_k_bits_be<I: IntegerType + Unsigned + ToBytes>(
         mode: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
     ) {
         let size_in_bits = <Circuit as Environment>::BaseField::size_in_bits();
         let size_in_bytes = (size_in_bits + 7) / 8;
@@ -123,7 +141,8 @@ mod tests {
                 for (i, (expected_bit, candidate_bit)) in expected.iter().zip_eq(candidate.iter().skip(1)).enumerate() {
                     assert_eq!(*expected_bit, candidate_bit.eject_value(), "MSB-{}", i);
                 }
-                assert_scope!(num_constants, num_public, num_private, num_constraints);
+                assert_count!(Field<Circuit>, ToLowerBits<Boolean = Boolean<Circuit>>, &(mode, num_bits_with_capacity));
+                assert_output_mode!(candidate, Field<Circuit>, ToLowerBits<Boolean = Boolean<Circuit>>, &mode);
             });
         }
     }
@@ -132,84 +151,84 @@ mod tests {
 
     #[test]
     fn test_to_8_bits_constant() {
-        check_to_upper_k_bits_be::<u8>(Mode::Constant, 9, 0, 0, 0); // This actually tests 9 bits.
+        check_to_upper_k_bits_be::<u8>(Mode::Constant); // This actually tests 9 bits.
     }
 
     #[test]
     fn test_to_8_bits_public() {
-        check_to_upper_k_bits_be::<u8>(Mode::Public, 0, 0, 9, 10); // This actually tests 9 bits.
+        check_to_upper_k_bits_be::<u8>(Mode::Public); // This actually tests 9 bits.
     }
 
     #[test]
     fn test_to_8_bits_private() {
-        check_to_upper_k_bits_be::<u8>(Mode::Private, 0, 0, 9, 10); // This actually tests 9 bits.
+        check_to_upper_k_bits_be::<u8>(Mode::Private); // This actually tests 9 bits.
     }
 
     // 16 bits
 
     #[test]
     fn test_to_16_bits_constant() {
-        check_to_upper_k_bits_be::<u16>(Mode::Constant, 17, 0, 0, 0); // This actually tests 17 bits.
+        check_to_upper_k_bits_be::<u16>(Mode::Constant); // This actually tests 17 bits.
     }
 
     #[test]
     fn test_to_16_bits_public() {
-        check_to_upper_k_bits_be::<u16>(Mode::Public, 0, 0, 17, 18); // This actually tests 17 bits.
+        check_to_upper_k_bits_be::<u16>(Mode::Public); // This actually tests 17 bits.
     }
 
     #[test]
     fn test_to_16_bits_private() {
-        check_to_upper_k_bits_be::<u16>(Mode::Private, 0, 0, 17, 18); // This actually tests 17 bits.
+        check_to_upper_k_bits_be::<u16>(Mode::Private); // This actually tests 17 bits.
     }
 
     // 32 bits
 
     #[test]
     fn test_to_32_bits_constant() {
-        check_to_upper_k_bits_be::<u32>(Mode::Constant, 33, 0, 0, 0); // This actually tests 33 bits.
+        check_to_upper_k_bits_be::<u32>(Mode::Constant); // This actually tests 33 bits.
     }
 
     #[test]
     fn test_to_32_bits_public() {
-        check_to_upper_k_bits_be::<u32>(Mode::Public, 0, 0, 33, 34); // This actually tests 33 bits.
+        check_to_upper_k_bits_be::<u32>(Mode::Public); // This actually tests 33 bits.
     }
 
     #[test]
     fn test_to_32_bits_private() {
-        check_to_upper_k_bits_be::<u32>(Mode::Private, 0, 0, 33, 34); // This actually tests 33 bits.
+        check_to_upper_k_bits_be::<u32>(Mode::Private); // This actually tests 33 bits.
     }
 
     // 64 bits
 
     #[test]
     fn test_to_64_bits_constant() {
-        check_to_upper_k_bits_be::<u64>(Mode::Constant, 65, 0, 0, 0); // This actually tests 65 bits.
+        check_to_upper_k_bits_be::<u64>(Mode::Constant); // This actually tests 65 bits.
     }
 
     #[test]
     fn test_to_64_bits_public() {
-        check_to_upper_k_bits_be::<u64>(Mode::Public, 0, 0, 65, 66); // This actually tests 65 bits.
+        check_to_upper_k_bits_be::<u64>(Mode::Public); // This actually tests 65 bits.
     }
 
     #[test]
     fn test_to_64_bits_private() {
-        check_to_upper_k_bits_be::<u64>(Mode::Private, 0, 0, 65, 66); // This actually tests 65 bits.
+        check_to_upper_k_bits_be::<u64>(Mode::Private); // This actually tests 65 bits.
     }
 
     // 128 bits
 
     #[test]
     fn test_to_128_bits_constant() {
-        check_to_upper_k_bits_be::<u128>(Mode::Constant, 129, 0, 0, 0); // This actually tests 129 bits.
+        check_to_upper_k_bits_be::<u128>(Mode::Constant); // This actually tests 129 bits.
     }
 
     #[test]
     fn test_to_128_bits_public() {
-        check_to_upper_k_bits_be::<u128>(Mode::Public, 0, 0, 129, 130); // This actually tests 129 bits.
+        check_to_upper_k_bits_be::<u128>(Mode::Public); // This actually tests 129 bits.
     }
 
     #[test]
     fn test_to_128_bits_private() {
-        check_to_upper_k_bits_be::<u128>(Mode::Private, 0, 0, 129, 130); // This actually tests 129 bits.
+        check_to_upper_k_bits_be::<u128>(Mode::Private); // This actually tests 129 bits.
     }
 }

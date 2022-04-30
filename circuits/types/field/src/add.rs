@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use snarkvm_circuits_environment::ConstantOrMode;
 
 impl<E: Environment> Add<Field<E>> for Field<E> {
     type Output = Field<E>;
@@ -72,11 +73,25 @@ impl<E: Environment> Metrics<dyn Add<Field<E>, Output = Field<E>>> for Field<E> 
 }
 
 impl<E: Environment> OutputMode<dyn Add<Field<E>, Output = Field<E>>> for Field<E> {
-    type Case = (Mode, Mode);
+    type Case = (ConstantOrMode<Field<E>>, ConstantOrMode<Field<E>>);
 
     fn output_mode(case: &Self::Case) -> Mode {
-        match (case.0, case.1) {
+        match (case.0.mode(), case.1.mode()) {
             (Mode::Constant, Mode::Constant) => Mode::Constant,
+            (Mode::Constant, Mode::Public) => match &case.0 {
+                ConstantOrMode::Constant(constant) => match constant.eject_value() == E::BaseField::zero() {
+                    true => Mode::Public,
+                    false => Mode::Private,
+                },
+                _ => E::halt("The constant is required to determine the output mode of Public + Constant"),
+            },
+            (Mode::Public, Mode::Constant) => match &case.1 {
+                ConstantOrMode::Constant(constant) => match constant.eject_value() == E::BaseField::zero() {
+                    true => Mode::Public,
+                    false => Mode::Private,
+                },
+                _ => E::halt("The constant is required to determine the output mode of Public + Constant"),
+            },
             (_, _) => Mode::Private,
         }
     }
@@ -103,7 +118,7 @@ mod tests {
                 candidate,
                 Field<Circuit>,
                 Add<Field<Circuit>, Output = Field<Circuit>>,
-                &(a.eject_mode(), b.eject_mode())
+                &(ConstantOrMode::from(a), ConstantOrMode::from(b))
             );
         });
     }
@@ -127,162 +142,83 @@ mod tests {
                 candidate,
                 Field<Circuit>,
                 Add<Field<Circuit>, Output = Field<Circuit>>,
-                &(a.eject_mode(), b.eject_mode())
+                &(ConstantOrMode::from(a), ConstantOrMode::from(b))
             );
         });
     }
 
-    #[test]
-    fn test_constant_plus_constant() {
+    fn run_test(mode_a: Mode, mode_b: Mode) {
         for i in 0..ITERATIONS {
             let first = UniformRand::rand(&mut test_rng());
             let second = UniformRand::rand(&mut test_rng());
 
             let expected = first + second;
-            let a = Field::<Circuit>::new(Mode::Constant, first);
-            let b = Field::<Circuit>::new(Mode::Constant, second);
+            let a = Field::<Circuit>::new(mode_a, first);
+            let b = Field::<Circuit>::new(mode_b, second);
 
             let name = format!("Add: a + b {}", i);
             check_add(&name, &expected, &a, &b);
             let name = format!("AddAssign: a + b {}", i);
             check_add_assign(&name, &expected, &a, &b);
+
+            // Test identity.
+            let name = format!("Add: a + 0 {}", i);
+            let zero = Field::<Circuit>::new(mode_b, <Circuit as Environment>::BaseField::zero());
+            check_add(&name, &first, &a, &zero);
+            let name = format!("AddAssign: a + 0 {}", i);
+            check_add_assign(&name, &first, &a, &zero);
+
+            let name = format!("Add: 0 + b {}", i);
+            let zero = Field::<Circuit>::new(mode_a, <Circuit as Environment>::BaseField::zero());
+            check_add(&name, &second, &zero, &b);
+            let name = format!("AddAssign: 0 + b {}", i);
+            check_add_assign(&name, &second, &zero, &b);
         }
+    }
+
+    #[test]
+    fn test_constant_plus_constant() {
+        run_test(Mode::Constant, Mode::Constant);
     }
 
     #[test]
     fn test_constant_plus_public() {
-        for i in 0..ITERATIONS {
-            let first = UniformRand::rand(&mut test_rng());
-            let second = UniformRand::rand(&mut test_rng());
-
-            let expected = first + second;
-            let a = Field::<Circuit>::new(Mode::Constant, first);
-            let b = Field::<Circuit>::new(Mode::Public, second);
-
-            let name = format!("Add: a + b {}", i);
-            check_add(&name, &expected, &a, &b);
-            let name = format!("AddAssign: a + b {}", i);
-            check_add_assign(&name, &expected, &a, &b);
-        }
+        run_test(Mode::Constant, Mode::Public);
     }
 
     #[test]
     fn test_public_plus_constant() {
-        for i in 0..ITERATIONS {
-            let first = UniformRand::rand(&mut test_rng());
-            let second = UniformRand::rand(&mut test_rng());
-
-            let expected = first + second;
-            let a = Field::<Circuit>::new(Mode::Public, first);
-            let b = Field::<Circuit>::new(Mode::Constant, second);
-
-            let name = format!("Add: a + b {}", i);
-            check_add(&name, &expected, &a, &b);
-            let name = format!("AddAssign: a + b {}", i);
-            check_add_assign(&name, &expected, &a, &b);
-        }
+        run_test(Mode::Public, Mode::Constant);
     }
 
     #[test]
     fn test_constant_plus_private() {
-        for i in 0..ITERATIONS {
-            let first = UniformRand::rand(&mut test_rng());
-            let second = UniformRand::rand(&mut test_rng());
-
-            let expected = first + second;
-            let a = Field::<Circuit>::new(Mode::Constant, first);
-            let b = Field::<Circuit>::new(Mode::Private, second);
-
-            let name = format!("Add: a + b {}", i);
-            check_add(&name, &expected, &a, &b);
-            let name = format!("AddAssign: a + b {}", i);
-            check_add_assign(&name, &expected, &a, &b);
-        }
+        run_test(Mode::Constant, Mode::Private);
     }
 
     #[test]
     fn test_private_plus_constant() {
-        for i in 0..ITERATIONS {
-            let first = UniformRand::rand(&mut test_rng());
-            let second = UniformRand::rand(&mut test_rng());
-
-            let expected = first + second;
-            let a = Field::<Circuit>::new(Mode::Private, first);
-            let b = Field::<Circuit>::new(Mode::Constant, second);
-
-            let name = format!("Add: a + b {}", i);
-            check_add(&name, &expected, &a, &b);
-            let name = format!("AddAssign: a + b {}", i);
-            check_add_assign(&name, &expected, &a, &b);
-        }
+        run_test(Mode::Private, Mode::Constant);
     }
 
     #[test]
     fn test_public_plus_public() {
-        for i in 0..ITERATIONS {
-            let first = UniformRand::rand(&mut test_rng());
-            let second = UniformRand::rand(&mut test_rng());
-
-            let expected = first + second;
-            let a = Field::<Circuit>::new(Mode::Public, first);
-            let b = Field::<Circuit>::new(Mode::Public, second);
-
-            let name = format!("Add: a + b {}", i);
-            check_add(&name, &expected, &a, &b);
-            let name = format!("AddAssign: a + b {}", i);
-            check_add_assign(&name, &expected, &a, &b);
-        }
+        run_test(Mode::Public, Mode::Public);
     }
 
     #[test]
     fn test_public_plus_private() {
-        for i in 0..ITERATIONS {
-            let first = UniformRand::rand(&mut test_rng());
-            let second = UniformRand::rand(&mut test_rng());
-
-            let expected = first + second;
-            let a = Field::<Circuit>::new(Mode::Public, first);
-            let b = Field::<Circuit>::new(Mode::Private, second);
-
-            let name = format!("Add: a + b {}", i);
-            check_add(&name, &expected, &a, &b);
-            let name = format!("AddAssign: a + b {}", i);
-            check_add_assign(&name, &expected, &a, &b);
-        }
+        run_test(Mode::Public, Mode::Private);
     }
 
     #[test]
     fn test_private_plus_public() {
-        for i in 0..ITERATIONS {
-            let first = UniformRand::rand(&mut test_rng());
-            let second = UniformRand::rand(&mut test_rng());
-
-            let expected = first + second;
-            let a = Field::<Circuit>::new(Mode::Private, first);
-            let b = Field::<Circuit>::new(Mode::Public, second);
-
-            let name = format!("Add: a + b {}", i);
-            check_add(&name, &expected, &a, &b);
-            let name = format!("AddAssign: a + b {}", i);
-            check_add_assign(&name, &expected, &a, &b);
-        }
+        run_test(Mode::Private, Mode::Public);
     }
 
     #[test]
     fn test_private_plus_private() {
-        for i in 0..ITERATIONS {
-            let first = UniformRand::rand(&mut test_rng());
-            let second = UniformRand::rand(&mut test_rng());
-
-            let expected = first + second;
-            let a = Field::<Circuit>::new(Mode::Private, first);
-            let b = Field::<Circuit>::new(Mode::Private, second);
-
-            let name = format!("Add: a + b {}", i);
-            check_add(&name, &expected, &a, &b);
-            let name = format!("AddAssign: a + b {}", i);
-            check_add_assign(&name, &expected, &a, &b);
-        }
+        run_test(Mode::Private, Mode::Private);
     }
 
     #[test]
