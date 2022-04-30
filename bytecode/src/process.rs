@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Committer, Definition, Function, Hasher, Identifier, Program, Sanitizer};
+use crate::{Definition, Function, Identifier, Program, Sanitizer};
 use snarkvm_circuits::{prelude::*, Devnet};
 
 use indexmap::IndexMap;
@@ -27,17 +27,6 @@ thread_local! {
     /// The functions declared for the process.
     /// This is a map from the function name to the function.
     static FUNCTIONS: RefCell<IndexMap<Identifier<Process>, Function<Process>>> = Default::default();
-    /// The hashers declared for the process.
-    /// This is a map from the hash opcode to the hasher.
-    static HASHERS: RefCell<IndexMap<String, Hasher<Process>>> = Default::default();
-    // NOTE: I'm not sure if it would actually be better to abstract more over the gadgets,
-    // so that we can compose them into different structs for different usecases to avoid
-    // multiple instantiations of the same gadget. But, I'm also not sure if we actually want
-    // this or not - maybe setup messages should differ between using Pedersen for commitments
-    // or hashes for instance.
-    /// The committers declared for the process.
-    /// This is a map from the commitment opcode to the committer.
-    static COMMITTERS: RefCell<IndexMap<String, Committer<Process>>> = Default::default();
 }
 
 /// A process is a threaded-instance of a program. This design paradigm is used to allow for
@@ -98,50 +87,6 @@ impl Program for Process {
     /// Returns the function with the given name.
     fn get_function(name: &Identifier<Self>) -> Option<Function<Self>> {
         FUNCTIONS.with(|functions| functions.borrow().get(name).cloned())
-    }
-
-    /// Returns the hashing gadget with the given name.
-    /// Note that, if given a valid name, a hashing gadget will always
-    /// be returned, as these gadgets should always be available.
-    ///
-    /// # Errors
-    /// This method will halt if the given name does not reference any
-    /// implemented hashing gadget.
-    fn get_hasher(name: &str) -> Hasher<Self> {
-        HASHERS.with(|hashers| {
-            let mut hashers = hashers.borrow_mut();
-            if let Some(hasher) = hashers.get(&name.to_string()) {
-                // NOTE: does cloning here impact circuit sizes?
-                // The whole point of this logic is to avoid injecting
-                // too many values where they're not necessary.
-                hasher.clone()
-            } else {
-                hashers.insert(name.to_string(), Hasher::new(name));
-                hashers.get(&name.to_string()).unwrap().clone()
-            }
-        })
-    }
-
-    /// Returns the commitment gadget with the given name.
-    /// Note that, if given a valid name, a commitment gadget will always
-    /// be returned, as these gadgets should always be available.
-    ///
-    /// # Errors
-    /// This method will halt if the given name does not reference any
-    /// implemented commitment gadget.
-    fn get_committer(name: &str) -> Committer<Self> {
-        COMMITTERS.with(|committers| {
-            let mut committers = committers.borrow_mut();
-            if let Some(committer) = committers.get(&name.to_string()) {
-                // NOTE: does cloning here impact circuit sizes?
-                // The whole point of this logic is to avoid injecting
-                // too many values where they're not necessary.
-                committer.clone()
-            } else {
-                committers.insert(name.to_string(), Committer::new(name));
-                committers.get(&name.to_string()).unwrap().clone()
-            }
-        })
     }
 }
 

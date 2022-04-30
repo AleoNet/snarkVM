@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    algorithms::{Pedersen1024, Pedersen128, Pedersen256, Pedersen512, Pedersen64, Poseidon},
+    algorithms::{Pedersen1024, Pedersen128, Pedersen256, Pedersen512, Pedersen64, Poseidon2, Poseidon4, Poseidon8},
     Aleo,
     CommitmentScheme,
     Hash,
@@ -41,11 +41,11 @@ static PEDERSEN_MESSAGE: &str = "PedersenCircuit0";
 
 thread_local! {
     /// The Poseidon hash function, using a rate of 2.
-    static POSEIDON_2: Poseidon<Devnet, 2> = Poseidon::<Devnet, 2>::new();
+    static POSEIDON_2: Poseidon2<Devnet> = Poseidon2::<Devnet>::new();
     /// The Poseidon hash function, using a rate of 4.
-    static POSEIDON_4: Poseidon<Devnet, 4> = Poseidon::<Devnet, 4>::new();
+    static POSEIDON_4: Poseidon4<Devnet> = Poseidon4::<Devnet>::new();
     /// The Poseidon hash function, using a rate of 8.
-    static POSEIDON_8: Poseidon<Devnet, 8> = Poseidon::<Devnet, 8>::new();
+    static POSEIDON_8: Poseidon8<Devnet> = Poseidon8::<Devnet>::new();
     /// The Pedersen gadget, which can take an input of up to 64 bits.
     static PEDERSEN_64: Pedersen64<Devnet> = Pedersen64::<Devnet>::setup(PEDERSEN_MESSAGE);
     /// The Pedersen gadget, which can take an input of up to 128 bits.

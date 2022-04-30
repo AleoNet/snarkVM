@@ -16,7 +16,8 @@
 
 macro_rules! impl_hash_instruction {
     ($instruction:ident) => {
-        use crate::function::{Operation, Registers};
+        use crate::function::{Literal, Operation, Registers};
+        use snarkvm_circuits::{Aleo, ToBits};
 
         impl<P: Program> Operation<P> for $instruction<P> {
             /// Evaluates the operation.
@@ -28,11 +29,8 @@ macro_rules! impl_hash_instruction {
                     Value::Composite(name, ..) => P::halt(format!("{name} is not a literal")),
                 };
 
-                // Fetch the gadget from the program environment.
-                let hasher = P::get_hasher(Self::opcode());
-
-                // Perform the operation.
-                let result = hasher.hash(first);
+                // Fetch the result from the program environment.
+                let result = Literal::Field(P::Aleo::hash_to_field(Self::opcode(), &first.to_bits_le()));
 
                 registers.assign(self.operation.destination(), result);
             }
