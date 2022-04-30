@@ -237,8 +237,9 @@ jobs:
     docker:
       - image: cimg/rust:1.59
     resource_class: 2xlarge
+    parallelism: 20
     steps:
-      - run_serial:
+      - run_parallel:
           workspace_member: circuits/types/integers
           cache_key: snarkvm-circuits-types-integers-cache
           flags: -- --ignored

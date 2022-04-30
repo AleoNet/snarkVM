@@ -528,28 +528,30 @@ mod test_utilities {
     /// Invokes `test_integer_case!` on all combinations of `Mode`s.
     #[macro_export]
     macro_rules! test_integer {
-        ($test_fn:ident, $primitive:ident) => {
-            test_integer_case!($test_fn, $primitive, Mode::Constant, Mode::Constant, constant_plus_constant);
-            test_integer_case!($test_fn, $primitive, Mode::Constant, Mode::Public, constant_plus_public);
-            test_integer_case!($test_fn, $primitive, Mode::Constant, Mode::Private, constant_plus_private);
-            test_integer_case!($test_fn, $primitive, Mode::Public, Mode::Constant, public_plus_constant);
-            test_integer_case!($test_fn, $primitive, Mode::Private, Mode::Constant, private_plus_constant);
-            test_integer_case!($test_fn, $primitive, Mode::Public, Mode::Public, public_plus_public);
-            test_integer_case!($test_fn, $primitive, Mode::Public, Mode::Private, public_plus_private);
-            test_integer_case!($test_fn, $primitive, Mode::Private, Mode::Public, private_plus_public);
-            test_integer_case!($test_fn, $primitive, Mode::Private, Mode::Private, private_plus_private);
-        };
-        (#[$meta:meta], $test_fn:ident, $primitive:ident, $description:ident) => {
+        ($test_fn:ident, $primitive:ident, $description:ident) => {
             paste::paste! {
-                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Constant, Mode::Constant, [<$description _ constant_plus_constant>]);
-                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Constant, Mode::Public, [<$description _ constant_plus_public>]);
-                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Constant, Mode::Private, [<$description _ constant_plus_private>]);
-                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Public, Mode::Constant, [<$description _ public_plus_constant>]);
-                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Private, Mode::Constant, [<$description _ private_plus_constant>]);
-                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Public, Mode::Public, [<$description _ public_plus_public>]);
-                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Public, Mode::Private, [<$description _ public_plus_private>]);
-                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Private, Mode::Public, [<$description _ private_plus_public>]);
-                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Private, Mode::Private, [<$description _ private_plus_private>]);
+                test_integer_case!($test_fn, $primitive, Mode::Constant, Mode::Constant, [<constant _ $description _ constant>]);
+                test_integer_case!($test_fn, $primitive, Mode::Constant, Mode::Public, [<constant _ $description _ public>]);
+                test_integer_case!($test_fn, $primitive, Mode::Constant, Mode::Private, [<constant _ $description _ private>]);
+                test_integer_case!($test_fn, $primitive, Mode::Public, Mode::Constant, [<public _ $description _ constant>]);
+                test_integer_case!($test_fn, $primitive, Mode::Private, Mode::Constant, [<private _ $description _ constant>]);
+                test_integer_case!($test_fn, $primitive, Mode::Public, Mode::Public, [<public _ $description _ public>]);
+                test_integer_case!($test_fn, $primitive, Mode::Public, Mode::Private, [<public _ $description _ private>]);
+                test_integer_case!($test_fn, $primitive, Mode::Private, Mode::Public, [<private _ $description _ public>]);
+                test_integer_case!($test_fn, $primitive, Mode::Private, Mode::Private, [<private _ $description _ private>]);
+            }
+        };
+        (#[$meta:meta], $test_fn:ident, $primitive:ident, $description:ident, $variant:ident) => {
+            paste::paste! {
+                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Constant, Mode::Constant, [<constant _ $description _ constant _ $variant>]);
+                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Constant, Mode::Public, [<constant _ $description _ public _ $variant>]);
+                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Constant, Mode::Private, [<constant _ $description _ private _ $variant>]);
+                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Public, Mode::Constant, [<public _ $description _ constant _ $variant>]);
+                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Private, Mode::Constant, [<private _ $description _ constant _ $variant>]);
+                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Public, Mode::Public, [<public _ $description _ public _ $variant>]);
+                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Public, Mode::Private, [<public _ $description _ private _ $variant>]);
+                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Private, Mode::Public, [<private _ $description _ public _ $variant>]);
+                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Private, Mode::Private, [<private _ $description _ private _ $variant>]);
             }
         };
     }

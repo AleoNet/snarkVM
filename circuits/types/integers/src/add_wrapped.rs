@@ -104,9 +104,7 @@ mod tests {
 
             let name = format!("Add: {} + {} {}", mode_a, mode_b, i);
             check_add(&name, first, second, mode_a, mode_b);
-
-            let name = format!("Add: {} + {} {} (commutative)", mode_a, mode_b, i);
-            check_add(&name, second, first, mode_a, mode_b);
+            check_add(&name, second, first, mode_a, mode_b); // Commute the operation.
         }
 
         // Overflow
@@ -132,18 +130,18 @@ mod tests {
         }
     }
 
-    test_integer!(run_test, i8);
-    test_integer!(run_test, i16);
-    test_integer!(run_test, i32);
-    test_integer!(run_test, i64);
-    test_integer!(run_test, i128);
+    test_integer!(run_test, i8, plus);
+    test_integer!(run_test, i16, plus);
+    test_integer!(run_test, i32, plus);
+    test_integer!(run_test, i64, plus);
+    test_integer!(run_test, i128, plus);
 
-    test_integer!(run_test, u8);
-    test_integer!(run_test, u16);
-    test_integer!(run_test, u32);
-    test_integer!(run_test, u64);
-    test_integer!(run_test, u128);
+    test_integer!(run_test, u8, plus);
+    test_integer!(run_test, u16, plus);
+    test_integer!(run_test, u32, plus);
+    test_integer!(run_test, u64, plus);
+    test_integer!(run_test, u128, plus);
 
-    test_integer!(#[ignore], run_exhaustive_test, u8, exhaustive);
-    test_integer!(#[ignore], run_exhaustive_test, i8, exhaustive);
+    test_integer!(#[ignore], run_exhaustive_test, u8, plus, exhaustive);
+    test_integer!(#[ignore], run_exhaustive_test, i8, plus, exhaustive);
 }
