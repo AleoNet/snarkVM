@@ -14,6 +14,30 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+macro_rules! impl_hash_instruction {
+    ($instruction:ident) => {
+        impl<P: Program> Operation<P> for $instruction<P> {
+            /// Evaluates the operation.
+            #[inline]
+            fn evaluate(&self, registers: &Registers<P>) {
+                // Load the values for the first and second operands.
+                let first = match registers.load(self.operation.first()) {
+                    Value::Literal(literal) => literal,
+                    Value::Composite(name, ..) => P::halt(format!("{name} is not a literal")),
+                };
+
+                // Fetch the gadget from the program environment.
+                let hasher = P::get_hasher(Self::opcode());
+
+                // Perform the operation.
+                let result = hasher.hash(first);
+
+                registers.assign(self.operation.destination(), result);
+            }
+        }
+    };
+}
+
 pub(crate) mod ped64;
 pub(crate) use ped64::*;
 
