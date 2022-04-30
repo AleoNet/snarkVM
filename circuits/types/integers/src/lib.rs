@@ -675,25 +675,6 @@ mod test_utilities {
         assert!(result.is_err());
     }
 
-    pub fn check_unary_operation_passes<V: Debug + Display + PartialEq, IN, OUT: Eject<Primitive = V>>(
-        name: &str,
-        case: &str,
-        expected: V,
-        input: IN,
-        operation: impl FnOnce(IN) -> OUT,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        Circuit::scope(name, || {
-            let candidate = operation(input);
-            assert_eq!(expected, candidate.eject_value(), "{}", case);
-            assert_scope!(case, num_constants, num_public, num_private, num_constraints);
-        });
-        Circuit::reset();
-    }
-
     pub fn check_unary_operation_halts<IN: UnwindSafe, OUT>(input: IN, operation: impl FnOnce(IN) -> OUT + UnwindSafe) {
         let result = std::panic::catch_unwind(|| operation(input));
         assert!(result.is_err());
