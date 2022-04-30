@@ -60,6 +60,6 @@ macro_rules! assert_count_fails {
 macro_rules! assert_output_mode {
     ($candidate: expr, $type_:ty, $operation:path, $case:expr) => {
         let expected_mode = output_mode!($type_, $operation, $case);
-        assert_eq!($candidate.eject_mode(), expected_mode);
+        assert_eq!(expected_mode, $candidate.eject_mode());
     };
 }

@@ -155,7 +155,7 @@ mod tests {
     const ITERATIONS: usize = 32;
 
     #[rustfmt::skip]
-    fn check_div<I: IntegerType + std::panic::RefUnwindSafe>(
+    fn check_div<I: IntegerType + RefUnwindSafe>(
         name: &str,
         first: I,
         second: I,
@@ -188,7 +188,7 @@ mod tests {
         Circuit::reset();
     }
 
-    fn run_test<I: IntegerType + std::panic::RefUnwindSafe>(mode_a: Mode, mode_b: Mode) {
+    fn run_test<I: IntegerType + RefUnwindSafe>(mode_a: Mode, mode_b: Mode) {
         for _ in 0..ITERATIONS {
             let first: I = UniformRand::rand(&mut test_rng());
             let second: I = UniformRand::rand(&mut test_rng());

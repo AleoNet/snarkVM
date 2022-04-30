@@ -58,14 +58,11 @@ mod tests {
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
+    use core::ops::RangeInclusive;
+
     const ITERATIONS: usize = 128;
 
-    #[rustfmt::skip]
-    fn check_not<I: IntegerType + Not<Output=I>>(
-        name: &str,
-        first: I,
-        mode: Mode,
-    ) {
+    fn check_not<I: IntegerType + Not<Output = I>>(name: &str, first: I, mode: Mode) {
         let a = Integer::<Circuit, I>::new(mode, first);
         let expected = !first;
 
@@ -93,115 +90,28 @@ mod tests {
         check_not(&name, I::one(), mode);
     }
 
-    #[test]
-    fn test_u8_not() {
-        type I = u8;
-        run_test::<I>(Mode::Constant);
-        run_test::<I>(Mode::Public);
-        run_test::<I>(Mode::Private);
-    }
-
-    #[test]
-    fn test_i8_not() {
-        type I = i8;
-        run_test::<I>(Mode::Constant);
-        run_test::<I>(Mode::Public);
-        run_test::<I>(Mode::Private);
-    }
-
-    #[test]
-    fn test_u16_not() {
-        type I = u16;
-        run_test::<I>(Mode::Constant);
-        run_test::<I>(Mode::Public);
-        run_test::<I>(Mode::Private);
-    }
-
-    #[test]
-    fn test_i16_not() {
-        type I = i16;
-        run_test::<I>(Mode::Constant);
-        run_test::<I>(Mode::Public);
-        run_test::<I>(Mode::Private);
-    }
-
-    #[test]
-    fn test_u32_not() {
-        type I = u32;
-        run_test::<I>(Mode::Constant);
-        run_test::<I>(Mode::Public);
-        run_test::<I>(Mode::Private);
-    }
-
-    #[test]
-    fn test_i32_not() {
-        type I = i32;
-        run_test::<I>(Mode::Constant);
-        run_test::<I>(Mode::Public);
-        run_test::<I>(Mode::Private);
-    }
-
-    #[test]
-    fn test_u64_not() {
-        type I = u64;
-        run_test::<I>(Mode::Constant);
-        run_test::<I>(Mode::Public);
-        run_test::<I>(Mode::Private);
-    }
-
-    #[test]
-    fn test_i64_not() {
-        type I = i64;
-        run_test::<I>(Mode::Constant);
-        run_test::<I>(Mode::Public);
-        run_test::<I>(Mode::Private);
-    }
-
-    #[test]
-    fn test_u128_not() {
-        type I = u128;
-        run_test::<I>(Mode::Constant);
-        run_test::<I>(Mode::Public);
-        run_test::<I>(Mode::Private);
-    }
-
-    #[test]
-    fn test_i128_not() {
-        type I = i128;
-        run_test::<I>(Mode::Constant);
-        run_test::<I>(Mode::Public);
-        run_test::<I>(Mode::Private);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_u8_not() {
-        type I = u8;
+    fn run_exhaustive_test<I: IntegerType + Not<Output = I>>(mode: Mode)
+    where
+        RangeInclusive<I>: Iterator<Item = I>,
+    {
         for value in I::MIN..=I::MAX {
-            let name = format!("Not: {}", Mode::Constant);
-            check_not(&name, value, Mode::Constant);
-
-            let name = format!("Not: {}", Mode::Public);
-            check_not(&name, value, Mode::Public);
-
-            let name = format!("Not: {}", Mode::Private);
-            check_not(&name, value, Mode::Private);
+            let name = format!("Not: {}", mode);
+            check_not(&name, value, mode);
         }
     }
 
-    #[test]
-    #[ignore]
-    fn test_exhaustive_i8_not() {
-        type I = i8;
-        for value in I::MIN..=I::MAX {
-            let name = format!("Not: {}", Mode::Constant);
-            check_not(&name, value, Mode::Constant);
+    test_integer_unary!(run_test, i8, not);
+    test_integer_unary!(run_test, i16, not);
+    test_integer_unary!(run_test, i32, not);
+    test_integer_unary!(run_test, i64, not);
+    test_integer_unary!(run_test, i128, not);
 
-            let name = format!("Not: {}", Mode::Public);
-            check_not(&name, value, Mode::Public);
+    test_integer_unary!(run_test, u8, not);
+    test_integer_unary!(run_test, u16, not);
+    test_integer_unary!(run_test, u32, not);
+    test_integer_unary!(run_test, u64, not);
+    test_integer_unary!(run_test, u128, not);
 
-            let name = format!("Not: {}", Mode::Private);
-            check_not(&name, value, Mode::Private);
-        }
-    }
+    test_integer_unary!(#[ignore], run_exhaustive_test, u8, not, exhaustive);
+    test_integer_unary!(#[ignore], run_exhaustive_test, i8, not, exhaustive);
 }

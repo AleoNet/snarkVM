@@ -164,12 +164,12 @@ mod tests {
     use snarkvm_utilities::{test_rng, UniformRand};
     use test_utilities::*;
 
-    use std::{ops::RangeInclusive, panic::RefUnwindSafe};
+    use core::{ops::RangeInclusive, panic::RefUnwindSafe};
 
     const ITERATIONS: usize = 128;
 
     #[rustfmt::skip]
-    fn check_sub<I: IntegerType + std::panic::RefUnwindSafe>(
+    fn check_sub<I: IntegerType + RefUnwindSafe>(
         name: &str,
         first: I,
         second: I,
@@ -197,7 +197,7 @@ mod tests {
     }
 
     #[rustfmt::skip]
-    fn run_test<I: IntegerType + std::panic::RefUnwindSafe>(
+    fn run_test<I: IntegerType + RefUnwindSafe>(
         mode_a: Mode,
         mode_b: Mode,
     ) {
@@ -219,11 +219,8 @@ mod tests {
         check_sub("MIN - 1", I::MIN, I::one());
     }
 
-    #[rustfmt::skip]
-    fn run_exhaustive_test<I: IntegerType + RefUnwindSafe>(
-        mode_a: Mode,
-        mode_b: Mode,
-    ) where
+    fn run_exhaustive_test<I: IntegerType + RefUnwindSafe>(mode_a: Mode, mode_b: Mode)
+    where
         RangeInclusive<I>: Iterator<Item = I>,
     {
         for first in I::MIN..=I::MAX {

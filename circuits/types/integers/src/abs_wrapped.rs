@@ -115,7 +115,8 @@ mod tests {
         RangeInclusive<I>: Iterator<Item = I>,
     {
         for value in I::MIN..=I::MAX {
-            check_abs(&format!("Abs: {}", mode), value, mode);
+            let name = format!("Abs: {}", mode);
+            check_abs(&name, value, mode);
         }
     }
 

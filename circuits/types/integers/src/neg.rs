@@ -99,10 +99,7 @@ mod tests {
         }
     }
 
-    #[rustfmt::skip]
-    fn run_test<I: IntegerType + std::panic::UnwindSafe + Neg<Output = I> >(
-        mode: Mode,
-    ) {
+    fn run_test<I: IntegerType + std::panic::UnwindSafe + Neg<Output = I>>(mode: Mode) {
         // Check the 0 case.
         check_neg(&format!("Neg: {} zero", mode), I::zero(), mode);
         // Check the 1 case.

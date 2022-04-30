@@ -90,33 +90,19 @@ impl<E: Environment, I: IntegerType> OutputMode<dyn BitAnd<Integer<E, I>, Output
     fn output_mode(case: &Self::Case) -> Mode {
         match (case.0.mode(), case.1.mode()) {
             (Mode::Constant, Mode::Constant) => Mode::Constant,
-            (Mode::Public, Mode::Constant) => match &case.1 {
+            (Mode::Constant, mode_b) => match &case.0 {
                 ConstantOrMode::Constant(constant) => match constant.eject_value().is_zero() {
                     true => Mode::Constant,
-                    false => Mode::Public,
+                    false => mode_b,
                 },
-                _ => E::halt("The constant is required to determine the output mode of Public AND Constant"),
+                _ => E::halt(format!("The constant is required to determine the output mode of Constant AND {mode_b}")),
             },
-            (Mode::Private, Mode::Constant) => match &case.1 {
+            (mode_a, Mode::Constant) => match &case.1 {
                 ConstantOrMode::Constant(constant) => match constant.eject_value().is_zero() {
                     true => Mode::Constant,
-                    false => Mode::Private,
+                    false => mode_a,
                 },
-                _ => E::halt("The constant is required to determine the output mode of Private AND Constant"),
-            },
-            (Mode::Constant, Mode::Public) => match &case.0 {
-                ConstantOrMode::Constant(constant) => match constant.eject_value().is_zero() {
-                    true => Mode::Constant,
-                    false => Mode::Public,
-                },
-                _ => E::halt("The constant is required to determine the output mode of Constant AND Public"),
-            },
-            (Mode::Constant, Mode::Private) => match &case.0 {
-                ConstantOrMode::Constant(constant) => match constant.eject_value().is_zero() {
-                    true => Mode::Constant,
-                    false => Mode::Private,
-                },
-                _ => E::halt("The constant is required to determine the output mode of Constant AND Private"),
+                _ => E::halt(format!("The constant is required to determine the output mode of {mode_a} AND Constant")),
             },
             (_, _) => Mode::Private,
         }
