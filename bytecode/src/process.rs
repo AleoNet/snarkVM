@@ -101,14 +101,15 @@ impl Program for Process {
     /// implemented hashing gadget.
     fn get_hasher(name: &str) -> Hasher<Self> {
         HASHERS.with(|hashers| {
-            if let Some(hasher) = hashers.borrow().get(&name.to_string()) {
+            let mut hashers = hashers.borrow_mut();
+            if let Some(hasher) = hashers.get(&name.to_string()) {
                 // NOTE: does cloning here impact circuit sizes?
                 // The whole point of this logic is to avoid injecting
                 // too many values where they're not necessary.
                 hasher.clone()
             } else {
-                hashers.borrow_mut().insert(name.to_string(), Hasher::new(name));
-                hashers.borrow().get(&name.to_string()).unwrap().clone()
+                hashers.insert(name.to_string(), Hasher::new(name));
+                hashers.get(&name.to_string()).unwrap().clone()
             }
         })
     }

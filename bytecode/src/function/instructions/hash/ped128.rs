@@ -36,3 +36,84 @@ pub struct Ped128<P: Program> {
 impl_instruction_boilerplate!(Ped128, UnaryOperation, "hash.ped128");
 
 impl_hash_instruction!(Ped128);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{test_instruction_halts, test_modes, Process};
+
+    type P = Process;
+
+    #[test]
+    fn test_parse() {
+        let (_, instruction) = Instruction::<P>::parse("hash.ped128 r0 into r1;").unwrap();
+        assert!(matches!(instruction, Instruction::Ped128(_)));
+    }
+
+    test_modes!(
+        bool,
+        Ped128,
+        "true",
+        "6816575380758169283574189990529538788132696333761268862790291443715450461314field"
+    );
+    test_modes!(i8, Ped128, "1i8", "6816575380758169283574189990529538788132696333761268862790291443715450461314field");
+    test_modes!(
+        i16,
+        Ped128,
+        "1i16",
+        "6816575380758169283574189990529538788132696333761268862790291443715450461314field"
+    );
+    test_modes!(
+        i32,
+        Ped128,
+        "1i32",
+        "6816575380758169283574189990529538788132696333761268862790291443715450461314field"
+    );
+    test_modes!(
+        i64,
+        Ped128,
+        "1i64",
+        "6816575380758169283574189990529538788132696333761268862790291443715450461314field"
+    );
+    test_modes!(
+        i128,
+        Ped128,
+        "1i128",
+        "6816575380758169283574189990529538788132696333761268862790291443715450461314field"
+    );
+    test_modes!(u8, Ped128, "1u8", "6816575380758169283574189990529538788132696333761268862790291443715450461314field");
+    test_modes!(
+        u16,
+        Ped128,
+        "1u16",
+        "6816575380758169283574189990529538788132696333761268862790291443715450461314field"
+    );
+    test_modes!(
+        u32,
+        Ped128,
+        "1u32",
+        "6816575380758169283574189990529538788132696333761268862790291443715450461314field"
+    );
+    test_modes!(
+        u64,
+        Ped128,
+        "1u64",
+        "6816575380758169283574189990529538788132696333761268862790291443715450461314field"
+    );
+    test_modes!(
+        u128,
+        Ped128,
+        "1u128",
+        "6816575380758169283574189990529538788132696333761268862790291443715450461314field"
+    );
+
+    test_instruction_halts!(
+        address_halts,
+        Ped128,
+        "Invalid input size for Pedersen128 hash",
+        "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.constant"
+    );
+    test_instruction_halts!(field_halts, Ped128, "Invalid input size for Pedersen128 hash", "1field");
+    test_instruction_halts!(group_halts, Ped128, "Invalid input size for Pedersen128 hash", "2group");
+    test_instruction_halts!(scalar_halts, Ped128, "Invalid input size for Pedersen128 hash", "1scalar");
+}
