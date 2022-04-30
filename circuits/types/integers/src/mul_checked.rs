@@ -227,9 +227,11 @@ mod tests {
 
             let name = format!("Mul: {} * {} {}", mode_a, mode_b, i);
             check_mul(&name, first, second, mode_a, mode_b);
+            check_mul(&name, second, first, mode_a, mode_b); // Commute the operation.
 
             let name = format!("Double: {} * {} {}", mode_a, mode_b, i);
             check_mul(&name, first, I::one() + I::one(), mode_a, mode_b);
+            check_mul(&name, I::one() + I::one(), first, mode_a, mode_b); // Commute the operation.
 
             let name = format!("Square: {} * {} {}", mode_a, mode_b, i);
             check_mul(&name, first, first, mode_a, mode_b);
