@@ -72,6 +72,7 @@ mod tests {
             assert_count!(Integer<Circuit, I>, Not<Output=Integer<Circuit, I>>, &mode);
             assert_output_mode!(candidate, Integer<Circuit, I>, Not<Output=Integer<Circuit, I>>, &mode);
         });
+        Circuit::reset();
     }
 
     fn run_test<I: IntegerType + Not<Output = I>>(mode: Mode) {

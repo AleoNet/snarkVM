@@ -100,6 +100,7 @@ mod tests {
             assert_count!(Integer<Circuit, I>, Equal<Integer<Circuit, I>, Boolean=Boolean<Circuit>>, &(mode_a, mode_b));
             assert_output_mode!(candidate, Integer<Circuit, I>, Equal<Integer<Circuit, I>, Boolean=Boolean<Circuit>>, &(mode_a, mode_b));
         });
+        Circuit::reset();
     }
 
     fn run_test<I: IntegerType>(mode_a: Mode, mode_b: Mode) {

@@ -92,6 +92,7 @@ mod tests {
                 }),
             },
         }
+        Circuit::reset();
     }
 
     fn run_test<I: IntegerType + UnwindSafe + Neg<Output = I>>(mode: Mode) {

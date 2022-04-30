@@ -104,14 +104,53 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
     }
 }
 
+impl<E: Environment, I: IntegerType> Metrics<dyn MulWrapped<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
+    type Case = (Mode, Mode);
+
+    fn count(case: &Self::Case) -> Count {
+        // Case 1 - 2 integers fit in 1 field element (u8, u16, u32, u64, i8, i16, i32, i64).
+        if 2 * I::BITS < E::BaseField::size_in_bits() - 1 {
+            match (case.0, case.1) {
+                (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
+                (Mode::Constant, _) | (_, Mode::Constant) => Count::is(0, 0, 2 * I::BITS, (2 * I::BITS) + 1),
+                (_, _) => Count::is(0, 0, (2 * I::BITS) + 1, (2 * I::BITS) + 2),
+            }
+        }
+        // Case 2 - 1.5 integers fit in 1 field element (u128, i128).
+        else if (I::BITS + I::BITS / 2) < E::BaseField::size_in_bits() - 1 {
+            match (case.0, case.1) {
+                (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
+                (Mode::Constant, _) | (_, Mode::Constant) => Count::is(0, 0, I::BITS + 65, I::BITS + 66),
+                (_, _) => Count::is(0, 0, I::BITS + 68, I::BITS + 69),
+            }
+        } else {
+            // TODO (@pranav) Do we need to handle this case? The current integers can
+            //   be handled by the code above.
+            todo!()
+        }
+    }
+}
+
+impl<E: Environment, I: IntegerType> OutputMode<dyn MulWrapped<Integer<E, I>, Output = Integer<E, I>>>
+    for Integer<E, I>
+{
+    type Case = (Mode, Mode);
+
+    fn output_mode(case: &Self::Case) -> Mode {
+        match (case.0, case.1) {
+            (Mode::Constant, Mode::Constant) => Mode::Constant,
+            (_, _) => Mode::Private,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
-    use test_utilities::*;
 
-    use std::ops::RangeInclusive;
+    use core::ops::RangeInclusive;
 
     const ITERATIONS: usize = 32;
 
@@ -122,33 +161,20 @@ mod tests {
         second: I,
         mode_a: Mode,
         mode_b: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
     ) {
         let a = Integer::<Circuit, I>::new(mode_a, first);
         let b = Integer::<Circuit, I>::new(mode_b, second);
-        let case = format!("({} * {})", a.eject_value(), b.eject_value());
         let expected = first.wrapping_mul(&second);
-        check_operation_passes(name, &case, expected, &a, &b, Integer::mul_wrapped, num_constants, num_public, num_private, num_constraints);
-        // Commute the operation.
-        let a = Integer::<Circuit, I>::new(mode_a, second);
-        let b = Integer::<Circuit, I>::new(mode_b, first);
-        check_operation_passes(name, &case, expected, &a, &b, Integer::mul_wrapped, num_constants, num_public, num_private, num_constraints);
+        Circuit::scope(name, || {
+            let candidate = a.mul_wrapped(&b);
+            assert_eq!(expected, candidate.eject_value());
+            assert_count!(Integer<Circuit, I>, MulWrapped<Integer<Circuit, I>, Output=Integer<Circuit, I>>, &(mode_a, mode_b));
+            assert_output_mode!(candidate, Integer<Circuit, I>, MulWrapped<Integer<Circuit, I>, Output=Integer<Circuit, I>>, &(mode_a, mode_b));
+        });
+        Circuit::reset();
     }
 
-    #[rustfmt::skip]
-    fn run_test<I: IntegerType>(
-        mode_a: Mode,
-        mode_b: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        let check_mul = | name: &str, first: I, second: I | check_mul(name, first, second, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
-
+    fn run_test<I: IntegerType>(mode_a: Mode, mode_b: Mode) {
         for i in 0..ITERATIONS {
             // TODO (@pranav) Uniform random sampling almost always produces arguments that result in an overflow.
             //  Is there a better method for sampling arguments?
@@ -156,746 +182,67 @@ mod tests {
             let second: I = UniformRand::rand(&mut test_rng());
 
             let name = format!("Mul: {} * {} {}", mode_a, mode_b, i);
-            check_mul(&name, first, second);
+            check_mul(&name, first, second, mode_a, mode_b);
+            check_mul(&name, second, first, mode_a, mode_b); // Commute the operation.
 
             let name = format!("Double: {} * {} {}", mode_a, mode_b, i);
-            check_mul(&name, first, I::one() + I::one());
+            check_mul(&name, first, I::one() + I::one(), mode_a, mode_b);
+            check_mul(&name, I::one() + I::one(), first, mode_a, mode_b); // Commute the operation.
 
-            let name = format!("Square: {} * {} {}", mode_a, mode_a, i);
-            check_mul(&name, first, first);
+            let name = format!("Square: {} * {} {}", mode_a, mode_b, i);
+            check_mul(&name, first, first, mode_a, mode_b);
         }
 
         // Check specific cases common to signed and unsigned integers.
-        check_mul("1 * MAX", I::one(), I::MAX);
-        check_mul("MAX * 1", I::MAX, I::one());
-        check_mul("1 * MIN",I::one(), I::MIN);
-        check_mul("MIN * 1",I::MIN, I::one());
-        check_mul("0 * MAX", I::zero(), I::MAX);
-        check_mul( "MAX * 0", I::MAX, I::zero());
-        check_mul( "0 * MIN", I::zero(), I::MIN);
-        check_mul( "MIN * 0", I::MIN, I::zero());
-        check_mul("1 * 1", I::one(), I::one());
+        check_mul("1 * MAX", I::one(), I::MAX, mode_a, mode_b);
+        check_mul("MAX * 1", I::MAX, I::one(), mode_a, mode_b);
+        check_mul("1 * MIN", I::one(), I::MIN, mode_a, mode_b);
+        check_mul("MIN * 1", I::MIN, I::one(), mode_a, mode_b);
+        check_mul("0 * MAX", I::zero(), I::MAX, mode_a, mode_b);
+        check_mul("MAX * 0", I::MAX, I::zero(), mode_a, mode_b);
+        check_mul("0 * MIN", I::zero(), I::MIN, mode_a, mode_b);
+        check_mul("MIN * 0", I::MIN, I::zero(), mode_a, mode_b);
+        check_mul("1 * 1", I::one(), I::one(), mode_a, mode_b);
 
         // Check common overflow cases.
-        check_mul("MAX * 2", I::MAX, I::one() + I::one());
-        check_mul("2 * MAX", I::one() + I::one(), I::MAX);
+        check_mul("MAX * 2", I::MAX, I::one() + I::one(), mode_a, mode_b);
+        check_mul("2 * MAX", I::one() + I::one(), I::MAX, mode_a, mode_b);
 
         // Check additional corner cases for signed integers.
         if I::is_signed() {
-            check_mul("MAX * -1", I::MAX, I::zero() - I::one());
-            check_mul("-1 * MAX", I::zero() - I::one(), I::MAX);
-
-            check_mul("MIN * -1", I::MIN, I::zero() - I::one());
-            check_mul("-1 * MIN", I::zero() - I::one(), I::MIN);
-            check_mul("MIN * -2", I::MIN, I::zero() - I::one() - I::one());
-            check_mul("-2 * MIN", I::zero() - I::one() - I::one(), I::MIN);
+            check_mul("MAX * -1", I::MAX, I::zero() - I::one(), mode_a, mode_b);
+            check_mul("-1 * MAX", I::zero() - I::one(), I::MAX, mode_a, mode_b);
+            check_mul("MIN * -1", I::MIN, I::zero() - I::one(), mode_a, mode_b);
+            check_mul("-1 * MIN", I::zero() - I::one(), I::MIN, mode_a, mode_b);
+            check_mul("MIN * -2", I::MIN, I::zero() - I::one() - I::one(), mode_a, mode_b);
+            check_mul("-2 * MIN", I::zero() - I::one() - I::one(), I::MIN, mode_a, mode_b);
         }
     }
 
-    #[rustfmt::skip]
-    fn run_exhaustive_test<I: IntegerType>(
-        mode_a: Mode,
-        mode_b: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) where
-        RangeInclusive<I>: Iterator<Item = I>
+    fn run_exhaustive_test<I: IntegerType>(mode_a: Mode, mode_b: Mode)
+    where
+        RangeInclusive<I>: Iterator<Item = I>,
     {
         for first in I::MIN..=I::MAX {
             for second in I::MIN..=I::MAX {
                 let name = format!("Mul: ({} * {})", first, second);
-                check_mul(&name, first, second, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+                check_mul(&name, first, second, mode_a, mode_b);
             }
         }
     }
 
-    #[test]
-    fn test_u8_constant_times_constant() {
-        type I = u8;
-        run_test::<I>(Mode::Constant, Mode::Constant, 8, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_u8_constant_times_public() {
-        type I = u8;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 16, 17);
-    }
-
-    #[test]
-    fn test_u8_constant_times_private() {
-        type I = u8;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 16, 17);
-    }
-
-    #[test]
-    fn test_u8_public_times_constant() {
-        type I = u8;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 16, 17);
-    }
-
-    #[test]
-    fn test_u8_private_times_constant() {
-        type I = u8;
-        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 16, 17);
-    }
-
-    #[test]
-    fn test_u8_public_times_public() {
-        type I = u8;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 17, 18);
-    }
-
-    #[test]
-    fn test_u8_public_times_private() {
-        type I = u8;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 17, 18);
-    }
-
-    #[test]
-    fn test_u8_private_times_public() {
-        type I = u8;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 17, 18);
-    }
-
-    #[test]
-    fn test_u8_private_times_private() {
-        type I = u8;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 17, 18);
-    }
-
-    // Tests for i8
-
-    #[test]
-    fn test_i8_constant_times_constant() {
-        type I = i8;
-        run_test::<I>(Mode::Constant, Mode::Constant, 8, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i8_constant_times_public() {
-        type I = i8;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 16, 17);
-    }
-
-    #[test]
-    fn test_i8_constant_times_private() {
-        type I = i8;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 16, 17);
-    }
-
-    #[test]
-    fn test_i8_public_times_constant() {
-        type I = i8;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 16, 17);
-    }
-
-    #[test]
-    fn test_i8_private_times_constant() {
-        type I = i8;
-        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 16, 17);
-    }
-
-    #[test]
-    fn test_i8_public_times_public() {
-        type I = i8;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 17, 18);
-    }
-
-    #[test]
-    fn test_i8_public_times_private() {
-        type I = i8;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 17, 18);
-    }
-
-    #[test]
-    fn test_i8_private_times_public() {
-        type I = i8;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 17, 18);
-    }
-
-    #[test]
-    fn test_i8_private_times_private() {
-        type I = i8;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 17, 18);
-    }
-
-    // Tests for u16
-
-    #[test]
-    fn test_u16_constant_times_constant() {
-        type I = u16;
-        run_test::<I>(Mode::Constant, Mode::Constant, 16, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_u16_constant_times_public() {
-        type I = u16;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 32, 33);
-    }
-
-    #[test]
-    fn test_u16_constant_times_private() {
-        type I = u16;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 32, 33);
-    }
-
-    #[test]
-    fn test_u16_public_times_constant() {
-        type I = u16;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 32, 33);
-    }
-
-    #[test]
-    fn test_u16_private_times_constant() {
-        type I = u16;
-        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 32, 33);
-    }
-
-    #[test]
-    fn test_u16_public_times_public() {
-        type I = u16;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 33, 34);
-    }
-
-    #[test]
-    fn test_u16_public_times_private() {
-        type I = u16;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 33, 34);
-    }
-
-    #[test]
-    fn test_u16_private_times_public() {
-        type I = u16;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 33, 34);
-    }
-
-    #[test]
-    fn test_u16_private_times_private() {
-        type I = u16;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 33, 34);
-    }
-
-    // Tests for i16
-
-    #[test]
-    fn test_i16_constant_times_constant() {
-        type I = i16;
-        run_test::<I>(Mode::Constant, Mode::Constant, 16, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i16_constant_times_public() {
-        type I = i16;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 32, 33);
-    }
-
-    #[test]
-    fn test_i16_constant_times_private() {
-        type I = i16;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 32, 33);
-    }
-
-    #[test]
-    fn test_i16_public_times_constant() {
-        type I = i16;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 32, 33);
-    }
-
-    #[test]
-    fn test_i16_private_times_constant() {
-        type I = i16;
-        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 32, 33);
-    }
-
-    #[test]
-    fn test_i16_public_times_public() {
-        type I = i16;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 33, 34);
-    }
-
-    #[test]
-    fn test_i16_public_times_private() {
-        type I = i16;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 33, 34);
-    }
-
-    #[test]
-    fn test_i16_private_times_public() {
-        type I = i16;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 33, 34);
-    }
-
-    #[test]
-    fn test_i16_private_times_private() {
-        type I = i16;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 33, 34);
-    }
-
-    // Tests for u32
-
-    #[test]
-    fn test_u32_constant_times_constant() {
-        type I = u32;
-        run_test::<I>(Mode::Constant, Mode::Constant, 32, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_u32_constant_times_public() {
-        type I = u32;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 64, 65);
-    }
-
-    #[test]
-    fn test_u32_constant_times_private() {
-        type I = u32;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 64, 65);
-    }
-
-    #[test]
-    fn test_u32_public_times_constant() {
-        type I = u32;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 64, 65);
-    }
-
-    #[test]
-    fn test_u32_private_times_constant() {
-        type I = u32;
-        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 64, 65);
-    }
-
-    #[test]
-    fn test_u32_public_times_public() {
-        type I = u32;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 65, 66);
-    }
-
-    #[test]
-    fn test_u32_public_times_private() {
-        type I = u32;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 65, 66);
-    }
-
-    #[test]
-    fn test_u32_private_times_public() {
-        type I = u32;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 65, 66);
-    }
-
-    #[test]
-    fn test_u32_private_times_private() {
-        type I = u32;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 65, 66);
-    }
-
-    // Tests for i32
-
-    #[test]
-    fn test_i32_constant_times_constant() {
-        type I = i32;
-        run_test::<I>(Mode::Constant, Mode::Constant, 32, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i32_constant_times_public() {
-        type I = i32;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 64, 65);
-    }
-
-    #[test]
-    fn test_i32_constant_times_private() {
-        type I = i32;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 64, 65);
-    }
-
-    #[test]
-    fn test_i32_public_times_constant() {
-        type I = i32;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 64, 65);
-    }
-
-    #[test]
-    fn test_i32_private_times_constant() {
-        type I = i32;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 64, 65);
-    }
-
-    #[test]
-    fn test_i32_public_times_public() {
-        type I = i32;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 65, 66);
-    }
-
-    #[test]
-    fn test_i32_public_times_private() {
-        type I = i32;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 65, 66);
-    }
-
-    #[test]
-    fn test_i32_private_times_public() {
-        type I = i32;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 65, 66);
-    }
-
-    #[test]
-    fn test_i32_private_times_private() {
-        type I = i32;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 65, 66);
-    }
-
-    // Tests for u64
-
-    #[test]
-    fn test_u64_constant_times_constant() {
-        type I = u64;
-        run_test::<I>(Mode::Constant, Mode::Constant, 64, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_u64_constant_times_public() {
-        type I = u64;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 128, 129);
-    }
-
-    #[test]
-    fn test_u64_constant_times_private() {
-        type I = u64;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 128, 129);
-    }
-
-    #[test]
-    fn test_u64_public_times_constant() {
-        type I = u64;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 128, 129);
-    }
-
-    #[test]
-    fn test_u64_private_times_constant() {
-        type I = u64;
-        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 128, 129);
-    }
-
-    #[test]
-    fn test_u64_public_times_public() {
-        type I = u64;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 129, 130);
-    }
-
-    #[test]
-    fn test_u64_public_times_private() {
-        type I = u64;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 129, 130);
-    }
-
-    #[test]
-    fn test_u64_private_times_public() {
-        type I = u64;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 129, 130);
-    }
-
-    #[test]
-    fn test_u64_private_times_private() {
-        type I = u64;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 129, 130);
-    }
-
-    // Tests for i64
-
-    #[test]
-    fn test_i64_constant_times_constant() {
-        type I = i64;
-        run_test::<I>(Mode::Constant, Mode::Constant, 64, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i64_constant_times_public() {
-        type I = i64;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 128, 129);
-    }
-
-    #[test]
-    fn test_i64_constant_times_private() {
-        type I = i64;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 128, 129);
-    }
-
-    #[test]
-    fn test_i64_public_times_constant() {
-        type I = i64;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 128, 129);
-    }
-
-    #[test]
-    fn test_i64_private_times_constant() {
-        type I = i64;
-        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 128, 129);
-    }
-
-    #[test]
-    fn test_i64_public_times_public() {
-        type I = i64;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 129, 130);
-    }
-
-    #[test]
-    fn test_i64_public_times_private() {
-        type I = i64;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 129, 130);
-    }
-
-    #[test]
-    fn test_i64_private_times_public() {
-        type I = i64;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 129, 130);
-    }
-
-    #[test]
-    fn test_i64_private_times_private() {
-        type I = i64;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 129, 130);
-    }
-
-    // Tests for u128
-
-    #[test]
-    fn test_u128_constant_times_constant() {
-        type I = u128;
-        run_test::<I>(Mode::Constant, Mode::Constant, 128, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_u128_constant_times_public() {
-        type I = u128;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 193, 194);
-    }
-
-    #[test]
-    fn test_u128_constant_times_private() {
-        type I = u128;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 193, 194);
-    }
-
-    #[test]
-    fn test_u128_public_times_constant() {
-        type I = u128;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 193, 194);
-    }
-
-    #[test]
-    fn test_u128_private_times_constant() {
-        type I = u128;
-        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 193, 194);
-    }
-
-    #[test]
-    fn test_u128_public_times_public() {
-        type I = u128;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 196, 197);
-    }
-
-    #[test]
-    fn test_u128_public_times_private() {
-        type I = u128;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 196, 197);
-    }
-
-    #[test]
-    fn test_u128_private_times_public() {
-        type I = u128;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 196, 197);
-    }
-
-    #[test]
-    fn test_u128_private_times_private() {
-        type I = u128;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 196, 197);
-    }
-
-    // Tests for i128
-
-    #[test]
-    fn test_i128_constant_times_constant() {
-        type I = i128;
-        run_test::<I>(Mode::Constant, Mode::Constant, 128, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i128_constant_times_public() {
-        type I = i128;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 193, 194);
-    }
-
-    #[test]
-    fn test_i128_constant_times_private() {
-        type I = i128;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 193, 194);
-    }
-
-    #[test]
-    fn test_i128_public_times_constant() {
-        type I = i128;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 193, 194);
-    }
-
-    #[test]
-    fn test_i128_private_times_constant() {
-        type I = i128;
-        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 193, 194);
-    }
-
-    #[test]
-    fn test_i128_public_times_public() {
-        type I = i128;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 196, 197);
-    }
-
-    #[test]
-    fn test_i128_public_times_private() {
-        type I = i128;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 196, 197);
-    }
-
-    #[test]
-    fn test_i128_private_times_public() {
-        type I = i128;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 196, 197);
-    }
-
-    #[test]
-    fn test_i128_private_times_private() {
-        type I = i128;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 196, 197);
-    }
-
-    // Exhaustive tests for u8.
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_u8_constant_times_constant() {
-        type I = u8;
-        run_exhaustive_test::<I>(Mode::Constant, Mode::Constant, 8, 0, 0, 0);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_u8_constant_times_public() {
-        type I = u8;
-        run_exhaustive_test::<I>(Mode::Constant, Mode::Public, 0, 0, 16, 17);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_u8_constant_times_private() {
-        type I = u8;
-        run_exhaustive_test::<I>(Mode::Constant, Mode::Private, 0, 0, 16, 17);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_u8_public_times_constant() {
-        type I = u8;
-        run_exhaustive_test::<I>(Mode::Public, Mode::Constant, 0, 0, 16, 17);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_u8_private_times_constant() {
-        type I = u8;
-        run_exhaustive_test::<I>(Mode::Private, Mode::Constant, 0, 0, 16, 17);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_u8_public_times_public() {
-        type I = u8;
-        run_exhaustive_test::<I>(Mode::Public, Mode::Public, 0, 0, 17, 18);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_u8_public_times_private() {
-        type I = u8;
-        run_exhaustive_test::<I>(Mode::Public, Mode::Private, 0, 0, 17, 18);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_u8_private_times_public() {
-        type I = u8;
-        run_exhaustive_test::<I>(Mode::Private, Mode::Public, 0, 0, 17, 18);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_u8_private_times_private() {
-        type I = u8;
-        run_exhaustive_test::<I>(Mode::Private, Mode::Private, 0, 0, 17, 18);
-    }
-
-    // Exhaustive tests for i8.
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_i8_constant_times_constant() {
-        type I = i8;
-        run_exhaustive_test::<I>(Mode::Constant, Mode::Constant, 8, 0, 0, 0);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_i8_constant_times_public() {
-        type I = i8;
-        run_exhaustive_test::<I>(Mode::Constant, Mode::Public, 0, 0, 16, 17);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_i8_constant_times_private() {
-        type I = i8;
-        run_exhaustive_test::<I>(Mode::Constant, Mode::Private, 0, 0, 16, 17);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_i8_public_times_constant() {
-        type I = i8;
-        run_exhaustive_test::<I>(Mode::Public, Mode::Constant, 0, 0, 16, 17);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_i8_private_times_constant() {
-        type I = i8;
-        run_exhaustive_test::<I>(Mode::Private, Mode::Constant, 0, 0, 16, 17);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_i8_public_times_public() {
-        type I = i8;
-        run_exhaustive_test::<I>(Mode::Public, Mode::Public, 0, 0, 17, 18);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_i8_public_times_private() {
-        type I = i8;
-        run_exhaustive_test::<I>(Mode::Public, Mode::Private, 0, 0, 17, 18);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_i8_private_times_public() {
-        type I = i8;
-        run_exhaustive_test::<I>(Mode::Private, Mode::Public, 0, 0, 17, 18);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_i8_private_times_private() {
-        type I = i8;
-        run_exhaustive_test::<I>(Mode::Private, Mode::Private, 0, 0, 17, 18);
-    }
+    test_integer_binary!(run_test, i8, times);
+    test_integer_binary!(run_test, i16, times);
+    test_integer_binary!(run_test, i32, times);
+    test_integer_binary!(run_test, i64, times);
+    test_integer_binary!(run_test, i128, times);
+
+    test_integer_binary!(run_test, u8, times);
+    test_integer_binary!(run_test, u16, times);
+    test_integer_binary!(run_test, u32, times);
+    test_integer_binary!(run_test, u64, times);
+    test_integer_binary!(run_test, u128, times);
+
+    test_integer_binary!(#[ignore], run_exhaustive_test, u8, times, exhaustive);
+    test_integer_binary!(#[ignore], run_exhaustive_test, i8, times, exhaustive);
 }

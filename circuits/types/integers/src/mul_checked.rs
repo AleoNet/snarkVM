@@ -216,6 +216,7 @@ mod tests {
                 }
             }
         }
+        Circuit::reset();
     }
 
     fn run_test<I: IntegerType + RefUnwindSafe>(mode_a: Mode, mode_b: Mode) {
