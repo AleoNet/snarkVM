@@ -25,8 +25,10 @@ macro_rules! impl_commit_instruction {
             fn evaluate(&self, registers: &Registers<P>) {
                 // Load the values for the first and second operands.
                 let first = match registers.load(self.operation.first()) {
-                    Value::Literal(literal) => literal,
-                    Value::Composite(name, ..) => P::halt(format!("{name} is not a literal")),
+                    Value::Literal(literal) => literal.to_bits_le(),
+                    Value::Composite(_name, literals) => {
+                        literals.iter().flat_map(|literal| literal.to_bits_le()).collect()
+                    }
                 };
                 let second = match registers.load(self.operation.second()) {
                     Value::Literal(literal) => literal,
@@ -34,7 +36,7 @@ macro_rules! impl_commit_instruction {
                 };
 
                 // Fetch the result from the program environment.
-                let result = Literal::Group(P::Aleo::commit(Self::opcode(), &first.to_bits_le(), &second.to_bits_le()));
+                let result = Literal::Group(P::Aleo::commit(Self::opcode(), &first, &second.to_bits_le()));
 
                 registers.assign(self.operation.destination(), result);
             }
