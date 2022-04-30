@@ -38,6 +38,44 @@ macro_rules! impl_hash_instruction {
     };
 }
 
+macro_rules! impl_psd_hash_instruction {
+    ($instruction:ident, $rate:expr) => {
+        use crate::function::{Literal, Operation, Registers};
+        use snarkvm_circuits::{Aleo, ToFields};
+
+        impl<P: Program> Operation<P> for $instruction<P> {
+            /// Evaluates the operation.
+            #[inline]
+            fn evaluate(&self, registers: &Registers<P>) {
+                // Load the values for the first and second operands.
+                let first = match registers.load(self.operation.first()) {
+                    Value::Literal(literal) => literal,
+                    Value::Composite(name, ..) => P::halt(format!("{name} is not a literal")),
+                };
+
+                // Fetch the result from the program environment.
+                let result = match first {
+                    Literal::Field(a) => Literal::Scalar(P::Aleo::hash_to_scalar(&[a], $rate)),
+                    Literal::I8(a) => Literal::Scalar(P::Aleo::hash_to_scalar(&a.to_fields(), $rate)),
+                    Literal::I16(a) => Literal::Scalar(P::Aleo::hash_to_scalar(&a.to_fields(), $rate)),
+                    Literal::I32(a) => Literal::Scalar(P::Aleo::hash_to_scalar(&a.to_fields(), $rate)),
+                    Literal::I64(a) => Literal::Scalar(P::Aleo::hash_to_scalar(&a.to_fields(), $rate)),
+                    Literal::I128(a) => Literal::Scalar(P::Aleo::hash_to_scalar(&a.to_fields(), $rate)),
+                    Literal::U8(a) => Literal::Scalar(P::Aleo::hash_to_scalar(&a.to_fields(), $rate)),
+                    Literal::U16(a) => Literal::Scalar(P::Aleo::hash_to_scalar(&a.to_fields(), $rate)),
+                    Literal::U32(a) => Literal::Scalar(P::Aleo::hash_to_scalar(&a.to_fields(), $rate)),
+                    Literal::U64(a) => Literal::Scalar(P::Aleo::hash_to_scalar(&a.to_fields(), $rate)),
+                    Literal::U128(a) => Literal::Scalar(P::Aleo::hash_to_scalar(&a.to_fields(), $rate)),
+                    Literal::Scalar(a) => Literal::Scalar(P::Aleo::hash_to_scalar(&a.to_fields(), $rate)),
+                    _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
+                };
+
+                registers.assign(self.operation.destination(), result);
+            }
+        }
+    };
+}
+
 pub(crate) mod ped64;
 pub(crate) use ped64::*;
 
@@ -52,3 +90,12 @@ pub(crate) use ped512::*;
 
 pub(crate) mod ped1024;
 pub(crate) use ped1024::*;
+
+pub(crate) mod psd2;
+pub(crate) use psd2::*;
+
+pub(crate) mod psd4;
+pub(crate) use psd4::*;
+
+pub(crate) mod psd8;
+pub(crate) use psd8::*;

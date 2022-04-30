@@ -20,6 +20,9 @@ mod boilerplate;
 pub(super) mod add;
 pub(super) use add::*;
 
+pub(super) mod commit;
+pub(super) use commit::*;
+
 pub(super) mod hash;
 pub(super) use hash::*;
 
@@ -83,6 +86,22 @@ pub enum Instruction<P: Program> {
     Ped512(Ped512<P>),
     /// Performs a Pedersen hash taking a 1024-bit value as input.
     Ped1024(Ped1024<P>),
+    /// Performs a Poseidon hash with an input rate of 2.
+    Psd2(Psd2<P>),
+    /// Performs a Poseidon hash with an input rate of 4.
+    Psd4(Psd4<P>),
+    /// Performs a Poseidon hash with an input rate of 8.
+    Psd8(Psd8<P>),
+    /// Performs a Pedersen commitment taking a 64-bit value as input.
+    PedComm64(PedComm64<P>),
+    /// Performs a Pedersen commitment taking a 128-bit value as input.
+    PedComm128(PedComm128<P>),
+    /// Performs a Pedersen commitment taking a 256-bit value as input.
+    PedComm256(PedComm256<P>),
+    /// Performs a Pedersen commitment taking a 512-bit value as input.
+    PedComm512(PedComm512<P>),
+    /// Performs a Pedersen commitment taking a 1024-bit value as input.
+    PedComm1024(PedComm1024<P>),
 }
 
 impl<P: Program> Instruction<P> {
@@ -99,6 +118,14 @@ impl<P: Program> Instruction<P> {
             Self::Ped256(..) => Ped256::<P>::opcode(),
             Self::Ped512(..) => Ped512::<P>::opcode(),
             Self::Ped1024(..) => Ped1024::<P>::opcode(),
+            Self::Psd2(..) => Psd2::<P>::opcode(),
+            Self::Psd4(..) => Psd4::<P>::opcode(),
+            Self::Psd8(..) => Psd8::<P>::opcode(),
+            Self::PedComm64(..) => PedComm64::<P>::opcode(),
+            Self::PedComm128(..) => PedComm128::<P>::opcode(),
+            Self::PedComm256(..) => PedComm256::<P>::opcode(),
+            Self::PedComm512(..) => PedComm512::<P>::opcode(),
+            Self::PedComm1024(..) => PedComm1024::<P>::opcode(),
         }
     }
 
@@ -115,6 +142,14 @@ impl<P: Program> Instruction<P> {
             Self::Ped256(ped256) => ped256.operands(),
             Self::Ped512(ped512) => ped512.operands(),
             Self::Ped1024(ped1024) => ped1024.operands(),
+            Self::Psd2(psd2) => psd2.operands(),
+            Self::Psd4(psd4) => psd4.operands(),
+            Self::Psd8(psd8) => psd8.operands(),
+            Self::PedComm64(ped64) => ped64.operands(),
+            Self::PedComm128(ped128) => ped128.operands(),
+            Self::PedComm256(ped256) => ped256.operands(),
+            Self::PedComm512(ped512) => ped512.operands(),
+            Self::PedComm1024(ped1024) => ped1024.operands(),
         }
     }
 
@@ -131,6 +166,14 @@ impl<P: Program> Instruction<P> {
             Self::Ped256(ped256) => ped256.destination(),
             Self::Ped512(ped512) => ped512.destination(),
             Self::Ped1024(ped1024) => ped1024.destination(),
+            Self::Psd2(psd2) => psd2.destination(),
+            Self::Psd4(psd4) => psd4.destination(),
+            Self::Psd8(psd8) => psd8.destination(),
+            Self::PedComm64(ped64) => ped64.destination(),
+            Self::PedComm128(ped128) => ped128.destination(),
+            Self::PedComm256(ped256) => ped256.destination(),
+            Self::PedComm512(ped512) => ped512.destination(),
+            Self::PedComm1024(ped1024) => ped1024.destination(),
         }
     }
 
@@ -147,6 +190,14 @@ impl<P: Program> Instruction<P> {
             Self::Ped256(instruction) => instruction.evaluate(registers),
             Self::Ped512(instruction) => instruction.evaluate(registers),
             Self::Ped1024(instruction) => instruction.evaluate(registers),
+            Self::Psd2(instruction) => instruction.evaluate(registers),
+            Self::Psd4(instruction) => instruction.evaluate(registers),
+            Self::Psd8(instruction) => instruction.evaluate(registers),
+            Self::PedComm64(instruction) => instruction.evaluate(registers),
+            Self::PedComm128(instruction) => instruction.evaluate(registers),
+            Self::PedComm256(instruction) => instruction.evaluate(registers),
+            Self::PedComm512(instruction) => instruction.evaluate(registers),
+            Self::PedComm1024(instruction) => instruction.evaluate(registers),
         }
     }
 }
@@ -171,6 +222,14 @@ impl<P: Program> Parser for Instruction<P> {
             preceded(pair(tag(Ped256::<P>::opcode()), tag(" ")), map(Ped256::parse, Into::into)),
             preceded(pair(tag(Ped512::<P>::opcode()), tag(" ")), map(Ped512::parse, Into::into)),
             preceded(pair(tag(Ped1024::<P>::opcode()), tag(" ")), map(Ped1024::parse, Into::into)),
+            preceded(pair(tag(Psd2::<P>::opcode()), tag(" ")), map(Psd2::parse, Into::into)),
+            preceded(pair(tag(Psd4::<P>::opcode()), tag(" ")), map(Psd4::parse, Into::into)),
+            preceded(pair(tag(Psd8::<P>::opcode()), tag(" ")), map(Psd8::parse, Into::into)),
+            preceded(pair(tag(PedComm64::<P>::opcode()), tag(" ")), map(PedComm64::parse, Into::into)),
+            preceded(pair(tag(PedComm128::<P>::opcode()), tag(" ")), map(PedComm128::parse, Into::into)),
+            preceded(pair(tag(PedComm256::<P>::opcode()), tag(" ")), map(PedComm256::parse, Into::into)),
+            preceded(pair(tag(PedComm512::<P>::opcode()), tag(" ")), map(PedComm512::parse, Into::into)),
+            preceded(pair(tag(PedComm1024::<P>::opcode()), tag(" ")), map(PedComm1024::parse, Into::into)),
         ))(string)?;
         // Parse the semicolon from the string.
         let (string, _) = tag(";")(string)?;
@@ -191,6 +250,14 @@ impl<P: Program> fmt::Display for Instruction<P> {
             Self::Ped256(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Ped512(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Ped1024(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::Psd2(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::Psd4(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::Psd8(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::PedComm64(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::PedComm128(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::PedComm256(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::PedComm512(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::PedComm1024(instruction) => write!(f, "{} {};", self.opcode(), instruction),
         }
     }
 }
@@ -208,7 +275,15 @@ impl<P: Program> FromBytes for Instruction<P> {
             6 => Ok(Self::Ped256(Ped256::read_le(&mut reader)?)),
             7 => Ok(Self::Ped512(Ped512::read_le(&mut reader)?)),
             8 => Ok(Self::Ped1024(Ped1024::read_le(&mut reader)?)),
-            9.. => Err(error(format!("Failed to deserialize an instruction of code {code}"))),
+            9 => Ok(Self::Psd2(Psd2::read_le(&mut reader)?)),
+            10 => Ok(Self::Psd4(Psd4::read_le(&mut reader)?)),
+            11 => Ok(Self::Psd8(Psd8::read_le(&mut reader)?)),
+            12 => Ok(Self::PedComm64(PedComm64::read_le(&mut reader)?)),
+            13 => Ok(Self::PedComm128(PedComm128::read_le(&mut reader)?)),
+            14 => Ok(Self::PedComm256(PedComm256::read_le(&mut reader)?)),
+            15 => Ok(Self::PedComm512(PedComm512::read_le(&mut reader)?)),
+            16 => Ok(Self::PedComm1024(PedComm1024::read_le(&mut reader)?)),
+            17.. => Err(error(format!("Failed to deserialize an instruction of code {code}"))),
         }
     }
 }
@@ -250,6 +325,38 @@ impl<P: Program> ToBytes for Instruction<P> {
             }
             Self::Ped1024(instruction) => {
                 u16::write_le(&8u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::Psd2(instruction) => {
+                u16::write_le(&9u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::Psd4(instruction) => {
+                u16::write_le(&10u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::Psd8(instruction) => {
+                u16::write_le(&11u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::PedComm64(instruction) => {
+                u16::write_le(&12u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::PedComm128(instruction) => {
+                u16::write_le(&13u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::PedComm256(instruction) => {
+                u16::write_le(&14u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::PedComm512(instruction) => {
+                u16::write_le(&15u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::PedComm1024(instruction) => {
+                u16::write_le(&16u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
         }
