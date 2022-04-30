@@ -19,6 +19,9 @@
 #[macro_use]
 extern crate enum_index_derive;
 
+pub mod committer;
+pub use committer::*;
+
 pub mod definition;
 pub use definition::*;
 
@@ -82,6 +85,15 @@ pub trait Program: Copy + Clone + Debug + Eq + PartialEq + Hash + Parser<Environ
     /// This method will halt if the given name does not reference any
     /// implemented hashing gadget.
     fn get_hasher(name: &str) -> Hasher<Self>;
+
+    /// Returns the commitment gadget with the given name.
+    /// Note that, if given a valid name, a commitment gadget will always
+    /// be returned, as these gadgets should always be available.
+    ///
+    /// # Errors
+    /// This method will halt if the given name does not reference any
+    /// implemented commitment gadget.
+    fn get_committer(name: &str) -> Committer<Self>;
 
     /// Halts the program from further synthesis, evaluation, and execution in the current environment.
     fn halt<S: Into<String>, T>(message: S) -> T {
