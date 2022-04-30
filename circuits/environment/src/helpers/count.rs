@@ -36,7 +36,7 @@ impl Count {
         )
     }
 
-    /// Returns a new `Count` whose constituent metrics are all exclusive `UpperBound`.
+    /// Returns a new `Count` whose constituent metrics are all inclusive `UpperBound`.
     pub const fn less_than(
         num_constants: usize,
         num_public: usize,
@@ -79,18 +79,19 @@ pub enum Measurement<V: Ord + Add<Output = V>> {
 impl<V: Ord + Add<Output = V> + Copy + Debug> Measurement<V> {
     /// TODO (howardwu): Deprecate this method and implement `PartialEq` & `Eq`.
     /// Returns `true` if the value matches the metric.
+    ///
     /// For an `Exact` metric, `value` must be equal to the exact value defined by the metric.
     /// For a `Range` metric, `value` must be satisfy lower bound and the upper bound.
     /// For an `UpperBound` metric, `value` must be satisfy the upper bound.
     pub fn matches(&self, candidate: V) -> bool {
         let outcome = match self {
             Measurement::Exact(expected) => *expected == candidate,
-            Measurement::Range(lower, upper) => candidate > *lower && candidate < *upper,
-            Measurement::UpperBound(bound) => candidate < *bound,
+            Measurement::Range(lower, upper) => candidate >= *lower && candidate <= *upper,
+            Measurement::UpperBound(bound) => candidate <= *bound,
         };
 
         if !outcome {
-            eprintln!("Expected {:?}, found {:?}", self, candidate);
+            eprintln!("Metrics claims the count should be {:?}, found {:?} during synthesis", self, candidate);
         }
 
         outcome
@@ -158,6 +159,24 @@ mod test {
     }
 
     #[test]
+    fn test_upper_matches() {
+        for _ in 0..ITERATIONS {
+            // Generate a random `Measurement::UpperBound` and candidate value.
+            let upper: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+            let metric = Measurement::UpperBound(upper);
+
+            // Check that the metric is only satisfied if the candidate is less than upper.
+            assert!(metric.matches(upper));
+            if candidate <= upper {
+                assert!(metric.matches(candidate));
+            } else {
+                assert!(!metric.matches(candidate));
+            }
+        }
+    }
+
+    #[test]
     fn test_range_matches() {
         for _ in 0..ITERATIONS {
             // Generate a random `Measurement::UpperBound` and candidate value.
@@ -171,27 +190,9 @@ mod test {
             };
 
             // Check that the metric is only satisfied if the candidate is less than upper.
-            assert!(!metric.matches(lower));
-            assert!(!metric.matches(upper));
-            if lower < candidate && candidate < upper {
-                assert!(metric.matches(candidate));
-            } else {
-                assert!(!metric.matches(candidate));
-            }
-        }
-    }
-
-    #[test]
-    fn test_upper_matches() {
-        for _ in 0..ITERATIONS {
-            // Generate a random `Measurement::UpperBound` and candidate value.
-            let upper: usize = u16::rand(&mut test_rng()) as usize;
-            let candidate: usize = u16::rand(&mut test_rng()) as usize;
-            let metric = Measurement::UpperBound(upper);
-
-            // Check that the metric is only satisfied if the candidate is less than upper.
-            assert!(!metric.matches(upper));
-            if candidate < upper {
+            assert!(metric.matches(lower));
+            assert!(metric.matches(upper));
+            if lower <= candidate && candidate <= upper {
                 assert!(metric.matches(candidate));
             } else {
                 assert!(!metric.matches(candidate));
@@ -222,6 +223,26 @@ mod test {
     }
 
     #[test]
+    fn test_exact_compose_with_upper() {
+        for _ in 0..ITERATIONS {
+            let first: usize = u16::rand(&mut test_rng()) as usize;
+            let second: usize = u16::rand(&mut test_rng()) as usize;
+            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+
+            let a = Measurement::Exact(first);
+            let b = Measurement::UpperBound(second);
+            let c = a.compose(&b);
+
+            assert!(c.matches(first + second));
+            if candidate <= first + second {
+                assert!(c.matches(candidate));
+            } else {
+                assert!(!c.matches(candidate));
+            }
+        }
+    }
+
+    #[test]
     fn test_exact_compose_with_range() {
         let value: usize = u16::rand(&mut test_rng()) as usize;
         let first_bound: usize = u16::rand(&mut test_rng()) as usize;
@@ -236,32 +257,12 @@ mod test {
         };
         let c = a.compose(&b);
 
-        assert!(!c.matches(value + lower));
-        assert!(!c.matches(value + upper));
-        if value + lower < candidate && candidate < value + upper {
+        assert!(c.matches(value + lower));
+        assert!(c.matches(value + upper));
+        if value + lower <= candidate && candidate <= value + upper {
             assert!(c.matches(candidate));
         } else {
             assert!(!c.matches(candidate));
-        }
-    }
-
-    #[test]
-    fn test_exact_compose_with_upper() {
-        for _ in 0..ITERATIONS {
-            let first: usize = u16::rand(&mut test_rng()) as usize;
-            let second: usize = u16::rand(&mut test_rng()) as usize;
-            let candidate: usize = u16::rand(&mut test_rng()) as usize;
-
-            let a = Measurement::Exact(first);
-            let b = Measurement::UpperBound(second);
-            let c = a.compose(&b);
-
-            assert!(!c.matches(first + second));
-            if candidate < first + second {
-                assert!(c.matches(candidate));
-            } else {
-                assert!(!c.matches(candidate));
-            }
         }
     }
 
@@ -280,9 +281,9 @@ mod test {
         let b = Measurement::Exact(value);
         let c = a.compose(&b);
 
-        assert!(!c.matches(value + lower));
-        assert!(!c.matches(value + upper));
-        if value + lower < candidate && candidate < value + upper {
+        assert!(c.matches(value + lower));
+        assert!(c.matches(value + upper));
+        if value + lower <= candidate && candidate <= value + upper {
             assert!(c.matches(candidate));
         } else {
             assert!(!c.matches(candidate));
@@ -310,9 +311,9 @@ mod test {
             };
             let c = a.compose(&b);
 
-            assert!(!c.matches(first_lower + second_lower));
-            assert!(!c.matches(first_upper + second_upper));
-            if first_lower + second_lower < candidate && candidate < first_upper + second_upper {
+            assert!(c.matches(first_lower + second_lower));
+            assert!(c.matches(first_upper + second_upper));
+            if first_lower + second_lower <= candidate && candidate <= first_upper + second_upper {
                 assert!(c.matches(candidate));
             } else {
                 assert!(!c.matches(candidate));
@@ -336,9 +337,9 @@ mod test {
             let b = Measurement::UpperBound(first);
             let c = a.compose(&b);
 
-            assert!(!c.matches(lower));
-            assert!(!c.matches(first + upper));
-            if lower < candidate && candidate < first + upper {
+            assert!(c.matches(lower));
+            assert!(c.matches(first + upper));
+            if lower <= candidate && candidate <= first + upper {
                 assert!(c.matches(candidate));
             } else {
                 assert!(!c.matches(candidate));
@@ -357,8 +358,8 @@ mod test {
             let b = Measurement::Exact(first);
             let c = a.compose(&b);
 
-            assert!(!c.matches(first + second));
-            if candidate < first + second {
+            assert!(c.matches(first + second));
+            if candidate <= first + second {
                 assert!(c.matches(candidate));
             } else {
                 assert!(!c.matches(candidate));
@@ -382,9 +383,9 @@ mod test {
             };
             let c = a.compose(&b);
 
-            assert!(!c.matches(lower));
-            assert!(!c.matches(first + upper));
-            if lower < candidate && candidate < first + upper {
+            assert!(c.matches(lower));
+            assert!(c.matches(first + upper));
+            if lower <= candidate && candidate <= first + upper {
                 assert!(c.matches(candidate));
             } else {
                 assert!(!c.matches(candidate));
@@ -403,8 +404,8 @@ mod test {
             let b = Measurement::UpperBound(first);
             let c = a.compose(&b);
 
-            assert!(!c.matches(first + second));
-            if candidate < first + second {
+            assert!(c.matches(first + second));
+            if candidate <= first + second {
                 assert!(c.matches(candidate));
             } else {
                 assert!(!c.matches(candidate));
