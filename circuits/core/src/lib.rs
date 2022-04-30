@@ -33,10 +33,13 @@ pub trait Aleo: Environment {
     fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self>;
 
     /// Returns a hash on the scalar field for the given input.
-    fn hash_to_scalar(input: &[Field<Self>], rate: usize) -> Scalar<Self>;
+    fn hash_to_scalar(input: &[Field<Self>]) -> Scalar<Self>;
 
-    /// Returns a hash on the base field for the given input.
-    fn hash_to_field(selector: &str, input: &[Boolean<Self>]) -> Field<Self>;
+    /// Returns a Pedersen hash on the base field for the given input.
+    fn pedersen_hash(selector: &str, input: &[Boolean<Self>]) -> Field<Self>;
+
+    /// Returns a Poseidon hash on the base field for the given input.
+    fn poseidon_hash(selector: &str, input: &[Field<Self>]) -> Field<Self>;
 
     /// Returns a commitment for the given input and randomness.
     fn commit(selector: &str, input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Group<Self>;

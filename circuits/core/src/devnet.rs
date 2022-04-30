@@ -104,23 +104,28 @@ impl Aleo for Devnet {
     }
 
     /// Returns a hash on the scalar field for the given input.
-    fn hash_to_scalar(input: &[Field<Self>], rate: usize) -> Scalar<Self> {
-        match rate {
-            2 => POSEIDON_2.with(|poseidon| poseidon.hash_to_scalar(input)),
-            4 => POSEIDON_4.with(|poseidon| poseidon.hash_to_scalar(input)),
-            8 => POSEIDON_8.with(|poseidon| poseidon.hash_to_scalar(input)),
-            _ => Self::halt("Invalid rate selected for hashing to scalar"),
-        }
+    fn hash_to_scalar(input: &[Field<Self>]) -> Scalar<Self> {
+        POSEIDON_4.with(|poseidon| poseidon.hash_to_scalar(input))
     }
 
-    /// Returns a hash on the base field for the given input.
-    fn hash_to_field(selector: &str, input: &[Boolean<Self>]) -> Field<Self> {
+    /// Returns a Pedersen hash on the base field for the given input.
+    fn pedersen_hash(selector: &str, input: &[Boolean<Self>]) -> Field<Self> {
         match selector {
             "hash.ped64" => PEDERSEN_64.with(|pedersen| pedersen.hash(input)),
             "hash.ped128" => PEDERSEN_128.with(|pedersen| pedersen.hash(input)),
             "hash.ped256" => PEDERSEN_256.with(|pedersen| pedersen.hash(input)),
             "hash.ped512" => PEDERSEN_512.with(|pedersen| pedersen.hash(input)),
             "hash.ped1024" => PEDERSEN_1024.with(|pedersen| pedersen.hash(input)),
+            _ => Self::halt("Invalid selector provided for hashing to field"),
+        }
+    }
+
+    /// Returns a Poseidon hash on the base field for the given input.
+    fn poseidon_hash(selector: &str, input: &[Field<Self>]) -> Field<Self> {
+        match selector {
+            "hash.psd2" => POSEIDON_2.with(|poseidon| poseidon.hash(input)),
+            "hash.psd4" => POSEIDON_4.with(|poseidon| poseidon.hash(input)),
+            "hash.psd8" => POSEIDON_8.with(|poseidon| poseidon.hash(input)),
             _ => Self::halt("Invalid selector provided for hashing to field"),
         }
     }

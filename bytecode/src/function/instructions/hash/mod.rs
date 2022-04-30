@@ -30,7 +30,7 @@ macro_rules! impl_hash_instruction {
                 };
 
                 // Fetch the result from the program environment.
-                let result = Literal::Field(P::Aleo::hash_to_field(Self::opcode(), &first.to_bits_le()));
+                let result = Literal::Field(P::Aleo::pedersen_hash(Self::opcode(), &first.to_bits_le()));
 
                 registers.assign(self.operation.destination(), result);
             }
@@ -39,7 +39,7 @@ macro_rules! impl_hash_instruction {
 }
 
 macro_rules! impl_psd_hash_instruction {
-    ($instruction:ident, $rate:expr) => {
+    ($instruction:ident) => {
         use crate::function::{Literal, Operation, Registers};
         use snarkvm_circuits::{Aleo, ToFields};
 
@@ -55,18 +55,19 @@ macro_rules! impl_psd_hash_instruction {
 
                 // Fetch the result from the program environment.
                 let result = match first {
-                    Literal::Field(a) => Literal::Scalar(P::Aleo::hash_to_scalar(&[a], $rate)),
-                    Literal::I8(a) => Literal::Scalar(P::Aleo::hash_to_scalar(&a.to_fields(), $rate)),
-                    Literal::I16(a) => Literal::Scalar(P::Aleo::hash_to_scalar(&a.to_fields(), $rate)),
-                    Literal::I32(a) => Literal::Scalar(P::Aleo::hash_to_scalar(&a.to_fields(), $rate)),
-                    Literal::I64(a) => Literal::Scalar(P::Aleo::hash_to_scalar(&a.to_fields(), $rate)),
-                    Literal::I128(a) => Literal::Scalar(P::Aleo::hash_to_scalar(&a.to_fields(), $rate)),
-                    Literal::U8(a) => Literal::Scalar(P::Aleo::hash_to_scalar(&a.to_fields(), $rate)),
-                    Literal::U16(a) => Literal::Scalar(P::Aleo::hash_to_scalar(&a.to_fields(), $rate)),
-                    Literal::U32(a) => Literal::Scalar(P::Aleo::hash_to_scalar(&a.to_fields(), $rate)),
-                    Literal::U64(a) => Literal::Scalar(P::Aleo::hash_to_scalar(&a.to_fields(), $rate)),
-                    Literal::U128(a) => Literal::Scalar(P::Aleo::hash_to_scalar(&a.to_fields(), $rate)),
-                    Literal::Scalar(a) => Literal::Scalar(P::Aleo::hash_to_scalar(&a.to_fields(), $rate)),
+                    Literal::Field(a) => Literal::Field(P::Aleo::poseidon_hash(Self::opcode(), &[a])),
+                    Literal::I8(a) => Literal::Field(P::Aleo::poseidon_hash(Self::opcode(), &a.to_fields())),
+                    Literal::I16(a) => Literal::Field(P::Aleo::poseidon_hash(Self::opcode(), &a.to_fields())),
+                    Literal::I32(a) => Literal::Field(P::Aleo::poseidon_hash(Self::opcode(), &a.to_fields())),
+                    Literal::I64(a) => Literal::Field(P::Aleo::poseidon_hash(Self::opcode(), &a.to_fields())),
+                    Literal::I128(a) => Literal::Field(P::Aleo::poseidon_hash(Self::opcode(), &a.to_fields())),
+                    Literal::U8(a) => Literal::Field(P::Aleo::poseidon_hash(Self::opcode(), &a.to_fields())),
+                    Literal::U16(a) => Literal::Field(P::Aleo::poseidon_hash(Self::opcode(), &a.to_fields())),
+                    Literal::U32(a) => Literal::Field(P::Aleo::poseidon_hash(Self::opcode(), &a.to_fields())),
+                    Literal::U64(a) => Literal::Field(P::Aleo::poseidon_hash(Self::opcode(), &a.to_fields())),
+                    Literal::U128(a) => Literal::Field(P::Aleo::poseidon_hash(Self::opcode(), &a.to_fields())),
+                    Literal::Scalar(a) => Literal::Field(P::Aleo::poseidon_hash(Self::opcode(), &a.to_fields())),
+                    Literal::String(a) => Literal::Field(P::Aleo::poseidon_hash(Self::opcode(), &a.to_fields())),
                     _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
                 };
 

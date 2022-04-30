@@ -21,4 +21,66 @@ pub struct Psd2<P: Program> {
 
 impl_instruction_boilerplate!(Psd2, UnaryOperation, "hash.psd2");
 
-impl_psd_hash_instruction!(Psd2, 2);
+impl_psd_hash_instruction!(Psd2);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{test_instruction_halts, test_modes, Process};
+
+    type P = Process;
+
+    #[test]
+    fn test_parse() {
+        let (_, instruction) = Instruction::<P>::parse("hash.psd2 r0 into r1;").unwrap();
+        assert!(matches!(instruction, Instruction::Psd2(_)));
+    }
+
+    test_modes!(
+        field,
+        Psd2,
+        "1field",
+        "895920223209807336032370141805192618496779881680412280727415085489332840844field"
+    );
+    test_modes!(i8, Psd2, "1i8", "895920223209807336032370141805192618496779881680412280727415085489332840844field");
+    test_modes!(i16, Psd2, "1i16", "895920223209807336032370141805192618496779881680412280727415085489332840844field");
+    test_modes!(i32, Psd2, "1i32", "895920223209807336032370141805192618496779881680412280727415085489332840844field");
+    test_modes!(i64, Psd2, "1i64", "895920223209807336032370141805192618496779881680412280727415085489332840844field");
+    test_modes!(
+        i128,
+        Psd2,
+        "1i128",
+        "895920223209807336032370141805192618496779881680412280727415085489332840844field"
+    );
+    test_modes!(u8, Psd2, "1u8", "895920223209807336032370141805192618496779881680412280727415085489332840844field");
+    test_modes!(u16, Psd2, "1u16", "895920223209807336032370141805192618496779881680412280727415085489332840844field");
+    test_modes!(u32, Psd2, "1u32", "895920223209807336032370141805192618496779881680412280727415085489332840844field");
+    test_modes!(u64, Psd2, "1u64", "895920223209807336032370141805192618496779881680412280727415085489332840844field");
+    test_modes!(
+        u128,
+        Psd2,
+        "1u128",
+        "895920223209807336032370141805192618496779881680412280727415085489332840844field"
+    );
+    test_modes!(
+        scalar,
+        Psd2,
+        "1scalar",
+        "895920223209807336032370141805192618496779881680412280727415085489332840844field"
+    );
+    test_modes!(
+        string,
+        Psd2,
+        "\"aaaaaaaa\"",
+        "3304929462283992873125391937087251720796648284457823938893125121531366375892field"
+    );
+
+    test_instruction_halts!(bool_halts, Psd2, "Invalid 'hash.psd2' instruction", "true");
+    test_instruction_halts!(
+        address_halts,
+        Psd2,
+        "Invalid 'hash.psd2' instruction",
+        "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah"
+    );
+    test_instruction_halts!(group_halts, Psd2, "Invalid 'hash.psd2' instruction", "2group");
+}

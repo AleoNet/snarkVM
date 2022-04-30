@@ -29,7 +29,7 @@ impl<A: Aleo> ComputeKey<A> {
         let pr_sig = A::g_scalar_multiply(r_sig);
 
         // Compute sk_prf := RO(G^sk_sig || G^r_sig).
-        let sk_prf = A::hash_to_scalar(&[pk_sig.to_x_coordinate(), pr_sig.to_x_coordinate()], 4);
+        let sk_prf = A::hash_to_scalar(&[pk_sig.to_x_coordinate(), pr_sig.to_x_coordinate()]);
 
         // Return the compute key.
         Self { pk_sig, pr_sig, sk_prf }
