@@ -20,15 +20,15 @@ use snarkvm_circuits_types::prelude::*;
 use snarkvm_fields::{FieldParameters, PrimeField};
 
 /// ECIESPoseidonEncryption is an encryption gadget which uses Poseidon under the hood.
-pub struct ECIESPoseidonEncryption<E: Environment> {
-    poseidon: Poseidon<E>,
+pub struct ECIESPoseidonEncryption<E: Environment, const RATE: usize> {
+    poseidon: Poseidon<E, RATE>,
     symmetric_encryption_domain: Field<E>,
 }
 
-impl<E: Environment> ECIESPoseidonEncryption<E> {
+impl<E: Environment, const RATE: usize> ECIESPoseidonEncryption<E, RATE> {
     /// Initializes a new instance of the ECIES gadget with the given setup message.
     pub fn setup() -> Self {
-        let poseidon = Poseidon::<E>::new();
+        let poseidon = Poseidon::<E, RATE>::new();
         let symmetric_encryption_domain =
             Field::constant(E::BaseField::from_bytes_le_mod_order(b"AleoSymmetricEncryption0"));
 
@@ -106,9 +106,10 @@ mod tests {
 
     const ITERATIONS: usize = 10;
     const MESSAGE: &str = "ECIESCircuit0";
+    const RATE: usize = 4;
 
     fn check_encode_decode(mode: Mode) {
-        let circuit = ECIESPoseidonEncryption::<Circuit>::setup();
+        let circuit = ECIESPoseidonEncryption::<Circuit, RATE>::setup();
 
         for i in 0..ITERATIONS {
             // Sample a random input.
@@ -152,7 +153,7 @@ mod tests {
 
     fn check_encrypt_decrypt(mode: Mode) {
         let native = NativeECIES::<EdwardsParameters>::setup(MESSAGE);
-        let circuit = ECIESPoseidonEncryption::<Circuit>::setup();
+        let circuit = ECIESPoseidonEncryption::<Circuit, RATE>::setup();
 
         for i in 0..ITERATIONS {
             // Sample a random input.

@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<E: Environment> Poseidon<E> {
+impl<E: Environment, const RATE: usize> Poseidon<E, RATE> {
     #[inline]
     pub fn hash_many(&self, input: &[Field<E>], num_outputs: usize) -> Vec<Field<E>> {
         // Initialize a new sponge.
@@ -37,6 +37,7 @@ mod tests {
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 10;
+    const RATE: usize = 4;
 
     fn check_hash_many(
         mode: Mode,
@@ -49,7 +50,7 @@ mod tests {
     ) {
         let rng = &mut test_rng();
         let native_poseidon = NativePoseidon::<_, RATE, OPTIMIZED_FOR_WEIGHTS>::setup();
-        let poseidon = Poseidon::new();
+        let poseidon = Poseidon::<_, RATE>::new();
 
         for i in 0..ITERATIONS {
             // Prepare the preimage.

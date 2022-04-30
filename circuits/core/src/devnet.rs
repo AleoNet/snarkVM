@@ -14,10 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{algorithms::Poseidon, Aleo};
+use crate::{
+    algorithms::{Pedersen1024, Pedersen128, Pedersen256, Pedersen512, Pedersen64, Poseidon},
+    Aleo,
+    CommitmentScheme,
+    Hash,
+};
 use snarkvm_algorithms::crypto_hash::hash_to_curve;
 use snarkvm_circuits_types::{
     environment::{prelude::*, Circuit},
+    Boolean,
     Field,
     Group,
     Scalar,
@@ -30,10 +36,26 @@ pub type E = Circuit;
 
 /// The setup message for the Aleo encryption and signature scheme.
 static ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT: &str = "AleoAccountEncryptionAndSignatureScheme0";
+/// The setup message for the Pedersen gadget.
+static PEDERSEN_MESSAGE: &str = "PedersenCircuit0";
 
 thread_local! {
-    /// The Poseidon hash function.
-    static POSEIDON: Poseidon<Devnet> = Poseidon::<Devnet>::new();
+    /// The Poseidon hash function, using a rate of 2.
+    static POSEIDON_2: Poseidon<Devnet, 2> = Poseidon::<Devnet, 2>::new();
+    /// The Poseidon hash function, using a rate of 4.
+    static POSEIDON_4: Poseidon<Devnet, 4> = Poseidon::<Devnet, 4>::new();
+    /// The Poseidon hash function, using a rate of 8.
+    static POSEIDON_8: Poseidon<Devnet, 8> = Poseidon::<Devnet, 8>::new();
+    /// The Pedersen gadget, which can take an input of up to 64 bits.
+    static PEDERSEN_64: Pedersen64<Devnet> = Pedersen64::<Devnet>::setup(PEDERSEN_MESSAGE);
+    /// The Pedersen gadget, which can take an input of up to 128 bits.
+    static PEDERSEN_128: Pedersen128<Devnet> = Pedersen128::<Devnet>::setup(PEDERSEN_MESSAGE);
+    /// The Pedersen gadget, which can take an input of up to 256 bits.
+    static PEDERSEN_256: Pedersen256<Devnet> = Pedersen256::<Devnet>::setup(PEDERSEN_MESSAGE);
+    /// The Pedersen gadget, which can take an input of up to 512 bits.
+    static PEDERSEN_512: Pedersen512<Devnet> = Pedersen512::<Devnet>::setup(PEDERSEN_MESSAGE);
+    /// The Pedersen gadget, which can take an input of up to 1024 bits.
+    static PEDERSEN_1024: Pedersen1024<Devnet> = Pedersen1024::<Devnet>::setup(PEDERSEN_MESSAGE);
     /// The group bases for the Aleo signature and encryption schemes.
     static BASES: Vec<Group<Devnet >> = Devnet::new_bases(ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT);
 }
@@ -82,8 +104,37 @@ impl Aleo for Devnet {
     }
 
     /// Returns a hash on the scalar field for the given input.
-    fn hash_to_scalar(input: &[Field<Self>]) -> Scalar<Self> {
-        POSEIDON.with(|poseidon| poseidon.hash_to_scalar(input))
+    fn hash_to_scalar(input: &[Field<Self>], rate: usize) -> Scalar<Self> {
+        match rate {
+            2 => POSEIDON_2.with(|poseidon| poseidon.hash_to_scalar(input)),
+            4 => POSEIDON_4.with(|poseidon| poseidon.hash_to_scalar(input)),
+            8 => POSEIDON_8.with(|poseidon| poseidon.hash_to_scalar(input)),
+            _ => Self::halt("Invalid rate selected for hashing to scalar"),
+        }
+    }
+
+    /// Returns a hash on the base field for the given input.
+    fn hash_to_field(selector: &str, input: &[Boolean<Self>]) -> Field<Self> {
+        match selector {
+            "hash.ped64" => PEDERSEN_64.with(|pedersen| pedersen.hash(input)),
+            "hash.ped128" => PEDERSEN_128.with(|pedersen| pedersen.hash(input)),
+            "hash.ped256" => PEDERSEN_256.with(|pedersen| pedersen.hash(input)),
+            "hash.ped512" => PEDERSEN_512.with(|pedersen| pedersen.hash(input)),
+            "hash.ped1024" => PEDERSEN_1024.with(|pedersen| pedersen.hash(input)),
+            _ => Self::halt("Invalid selector provided for hashing to field"),
+        }
+    }
+
+    /// Returns a commitment for the given input and randomness.
+    fn commit(selector: &str, input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Group<Self> {
+        match selector {
+            "commit.ped64" => PEDERSEN_64.with(|pedersen| pedersen.commit(input, randomness)),
+            "commit.ped128" => PEDERSEN_128.with(|pedersen| pedersen.commit(input, randomness)),
+            "commit.ped256" => PEDERSEN_256.with(|pedersen| pedersen.commit(input, randomness)),
+            "commit.ped512" => PEDERSEN_512.with(|pedersen| pedersen.commit(input, randomness)),
+            "commit.ped1024" => PEDERSEN_1024.with(|pedersen| pedersen.commit(input, randomness)),
+            _ => Self::halt("Invalid selector provided for commitment"),
+        }
     }
 }
 

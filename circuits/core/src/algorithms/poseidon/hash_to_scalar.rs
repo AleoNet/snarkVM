@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<E: Environment> Poseidon<E> {
+impl<E: Environment, const RATE: usize> Poseidon<E, RATE> {
     /// Returns a scalar from hashing the input.
     /// This method uses truncation (up to data bits) to project onto the scalar field.
     #[inline]
@@ -38,6 +38,7 @@ mod tests {
     use snarkvm_utilities::{test_rng, FromBits, ToBits, UniformRand};
 
     const ITERATIONS: usize = 10;
+    const RATE: usize = 4;
 
     fn check_hash_to_scalar(
         mode: Mode,
@@ -49,7 +50,7 @@ mod tests {
     ) {
         let rng = &mut test_rng();
         let native_poseidon = NativePoseidon::<_, RATE, OPTIMIZED_FOR_WEIGHTS>::setup();
-        let poseidon = Poseidon::new();
+        let poseidon = Poseidon::<_, RATE>::new();
 
         for i in 0..ITERATIONS {
             // Prepare the preimage.

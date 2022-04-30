@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<E: Environment> Poseidon<E> {
+impl<E: Environment, const RATE: usize> Poseidon<E, RATE> {
     #[inline]
     pub fn hash(&self, input: &[Field<E>]) -> Field<E> {
         // Initialize a new sponge.
@@ -29,7 +29,7 @@ impl<E: Environment> Poseidon<E> {
     }
 }
 
-impl<E: Environment> Poseidon<E> {
+impl<E: Environment, const RATE: usize> Poseidon<E, RATE> {
     /// Absorbs the input elements into state.
     #[inline]
     pub(super) fn absorb(&self, state: &mut [Field<E>], mode: &mut DuplexSpongeMode, input: &[Field<E>]) {
@@ -199,6 +199,7 @@ mod tests {
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 10;
+    const RATE: usize = 4;
 
     fn check_hash(
         mode: Mode,
@@ -210,7 +211,7 @@ mod tests {
     ) {
         let rng = &mut test_rng();
         let native_poseidon = NativePoseidon::<_, RATE, OPTIMIZED_FOR_WEIGHTS>::setup();
-        let poseidon = Poseidon::new();
+        let poseidon = Poseidon::<_, RATE>::new();
 
         for i in 0..ITERATIONS {
             // Prepare the preimage.

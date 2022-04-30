@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<E: Environment> Poseidon<E> {
+impl<E: Environment, const RATE: usize> Poseidon<E, RATE> {
     #[inline]
     pub fn prf(&self, seed: &Field<E>, input: &[Field<E>]) -> Field<E> {
         // Construct the preimage: seed || length(input) || input.
@@ -38,6 +38,7 @@ mod tests {
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 10;
+    const RATE: usize = 4;
 
     fn check_prf(
         mode: Mode,
@@ -48,7 +49,7 @@ mod tests {
         num_constraints: usize,
     ) {
         let rng = &mut test_rng();
-        let poseidon = Poseidon::new();
+        let poseidon = Poseidon::<_, RATE>::new();
 
         for i in 0..ITERATIONS {
             // Prepare the seed.
