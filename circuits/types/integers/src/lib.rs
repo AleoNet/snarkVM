@@ -501,6 +501,59 @@ mod test_utilities {
     };
     use snarkvm_circuits_environment::{assert_scope, assert_scope_fails, Circuit, Eject, Environment};
 
+    /// A generic template for an integer test case.
+    #[macro_export]
+    macro_rules! test_integer_case {
+        // Typical test instantiation.
+        ($test_fn:ident, $primitive:ident, $mode_a: expr, $mode_b: expr, $description: ident) => {
+            paste::paste! {
+                #[test]
+                fn [<test_ $primitive _ $description>]() {
+                    $test_fn::<$primitive>($mode_a, $mode_b);
+                }
+            }
+        };
+        // Typically used to ignore exhaustive tests by default.
+        (#[$meta:meta], $test_fn:ident, $primitive:ident, $mode_a: expr, $mode_b: expr, $description: ident) => {
+            paste::paste! {
+                #[test]
+                #[$meta]
+                fn [<test_ $primitive _ $description>]() {
+                    $test_fn::<$primitive>($mode_a, $mode_b);
+                }
+            }
+        };
+    }
+
+    /// Invokes `test_integer_case!` on all combinations of `Mode`s.
+    #[macro_export]
+    macro_rules! test_integer {
+        ($test_fn:ident, $primitive:ident) => {
+            test_integer_case!($test_fn, $primitive, Mode::Constant, Mode::Constant, constant_plus_constant);
+            test_integer_case!($test_fn, $primitive, Mode::Constant, Mode::Public, constant_plus_public);
+            test_integer_case!($test_fn, $primitive, Mode::Constant, Mode::Private, constant_plus_private);
+            test_integer_case!($test_fn, $primitive, Mode::Public, Mode::Constant, public_plus_constant);
+            test_integer_case!($test_fn, $primitive, Mode::Private, Mode::Constant, private_plus_constant);
+            test_integer_case!($test_fn, $primitive, Mode::Public, Mode::Public, public_plus_public);
+            test_integer_case!($test_fn, $primitive, Mode::Public, Mode::Private, public_plus_private);
+            test_integer_case!($test_fn, $primitive, Mode::Private, Mode::Public, private_plus_public);
+            test_integer_case!($test_fn, $primitive, Mode::Private, Mode::Private, private_plus_private);
+        };
+        (#[$meta:meta], $test_fn:ident, $primitive:ident, $description:ident) => {
+            paste::paste! {
+                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Constant, Mode::Constant, [<$description _ constant_plus_constant>]);
+                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Constant, Mode::Public, [<$description _ constant_plus_public>]);
+                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Constant, Mode::Private, [<$description _ constant_plus_private>]);
+                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Public, Mode::Constant, [<$description _ public_plus_constant>]);
+                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Private, Mode::Constant, [<$description _ private_plus_constant>]);
+                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Public, Mode::Public, [<$description _ public_plus_public>]);
+                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Public, Mode::Private, [<$description _ public_plus_private>]);
+                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Private, Mode::Public, [<$description _ private_plus_public>]);
+                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Private, Mode::Private, [<$description _ private_plus_private>]);
+            }
+        };
+    }
+
     pub fn check_operation_passes<V: Debug + Display + PartialEq, LHS, RHS, OUT: Eject<Primitive = V>>(
         name: &str,
         case: &str,

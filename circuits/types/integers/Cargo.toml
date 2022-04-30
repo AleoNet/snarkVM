@@ -18,6 +18,9 @@ version = "0.7.5"
 path = "../field"
 version = "0.7.5"
 
+[dependencies.paste]
+version = "1"
+
 [dev-dependencies.snarkvm-utilities]
 path = "../../../utilities"
 version = "0.7.5"

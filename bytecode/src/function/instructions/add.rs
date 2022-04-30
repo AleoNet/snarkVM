@@ -37,6 +37,7 @@ use snarkvm_circuits::{
     OutputMode,
     Parser,
     ParserResult,
+    Scalar,
     I128,
     I16,
     I32,
@@ -52,10 +53,7 @@ use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
 use nom::combinator::map;
-use std::{
-    io::{Read, Result as IoResult, Write},
-    ops::Add as NativeAdd,
-};
+use std::io::{Read, Result as IoResult, Write};
 
 /// Adds `first` with `second`, storing the outcome in `destination`.
 pub struct Add<P: Program> {
@@ -125,81 +123,88 @@ impl<P: Program> Metrics<Self> for Add<P> {
         match case {
             (LiteralType::Field(mode_a), LiteralType::Field(mode_b)) => count!(
                 Field<P::Environment>,
-                NativeAdd<Field<P::Environment>, Output = Field<P::Environment>>,
+                core::ops::Add<Field<P::Environment>, Output = Field<P::Environment>>,
                 &(*mode_a, *mode_b)
             ),
             (LiteralType::Group(mode_a), LiteralType::Group(mode_b)) => count!(
                 Group<P::Environment>,
-                NativeAdd<Group<P::Environment>, Output = Group<P::Environment>>,
+                core::ops::Add<Group<P::Environment>, Output = Group<P::Environment>>,
                 &(*mode_a, *mode_b)
             ),
             (LiteralType::I8(mode_a), LiteralType::I8(mode_b)) => {
                 count!(
                     I8<P::Environment>,
-                    NativeAdd<I8<P::Environment>, Output = I8<P::Environment>>,
+                    core::ops::Add<I8<P::Environment>, Output = I8<P::Environment>>,
                     &(*mode_a, *mode_b)
                 )
             }
             (LiteralType::I16(mode_a), LiteralType::I16(mode_b)) => {
                 count!(
                     I16<P::Environment>,
-                    NativeAdd<I16<P::Environment>, Output = I16<P::Environment>>,
+                    core::ops::Add<I16<P::Environment>, Output = I16<P::Environment>>,
                     &(*mode_a, *mode_b)
                 )
             }
             (LiteralType::I32(mode_a), LiteralType::I32(mode_b)) => {
                 count!(
                     I32<P::Environment>,
-                    NativeAdd<I32<P::Environment>, Output = I32<P::Environment>>,
+                    core::ops::Add<I32<P::Environment>, Output = I32<P::Environment>>,
                     &(*mode_a, *mode_b)
                 )
             }
             (LiteralType::I64(mode_a), LiteralType::I64(mode_b)) => {
                 count!(
                     I64<P::Environment>,
-                    NativeAdd<I64<P::Environment>, Output = I64<P::Environment>>,
+                    core::ops::Add<I64<P::Environment>, Output = I64<P::Environment>>,
                     &(*mode_a, *mode_b)
                 )
             }
             (LiteralType::I128(mode_a), LiteralType::I128(mode_b)) => {
                 count!(
                     I128<P::Environment>,
-                    NativeAdd<I128<P::Environment>, Output = I128<P::Environment>>,
+                    core::ops::Add<I128<P::Environment>, Output = I128<P::Environment>>,
                     &(*mode_a, *mode_b)
                 )
             }
             (LiteralType::U8(mode_a), LiteralType::U8(mode_b)) => {
                 count!(
                     U8<P::Environment>,
-                    NativeAdd<U8<P::Environment>, Output = U8<P::Environment>>,
+                    core::ops::Add<U8<P::Environment>, Output = U8<P::Environment>>,
                     &(*mode_a, *mode_b)
                 )
             }
             (LiteralType::U16(mode_a), LiteralType::U16(mode_b)) => {
                 count!(
                     U16<P::Environment>,
-                    NativeAdd<U16<P::Environment>, Output = U16<P::Environment>>,
+                    core::ops::Add<U16<P::Environment>, Output = U16<P::Environment>>,
                     &(*mode_a, *mode_b)
                 )
             }
             (LiteralType::U32(mode_a), LiteralType::U32(mode_b)) => {
                 count!(
                     U32<P::Environment>,
-                    NativeAdd<U32<P::Environment>, Output = U32<P::Environment>>,
+                    core::ops::Add<U32<P::Environment>, Output = U32<P::Environment>>,
                     &(*mode_a, *mode_b)
                 )
             }
             (LiteralType::U64(mode_a), LiteralType::U64(mode_b)) => {
                 count!(
                     U64<P::Environment>,
-                    NativeAdd<U64<P::Environment>, Output = U64<P::Environment>>,
+                    core::ops::Add<U64<P::Environment>, Output = U64<P::Environment>>,
                     &(*mode_a, *mode_b)
                 )
             }
             (LiteralType::U128(mode_a), LiteralType::U128(mode_b)) => {
                 count!(
                     U128<P::Environment>,
-                    NativeAdd<U128<P::Environment>, Output = U128<P::Environment>>,
+                    core::ops::Add<U128<P::Environment>, Output = U128<P::Environment>>,
+                    &(*mode_a, *mode_b)
+                )
+            }
+            (LiteralType::Scalar(mode_a), LiteralType::Scalar(mode_b)) => {
+                count!(
+                    Scalar<P::Environment>,
+                    core::ops::Add<Scalar<P::Environment>, Output = Scalar<P::Environment>>,
                     &(*mode_a, *mode_b)
                 )
             }
@@ -216,62 +221,67 @@ impl<P: Program> OutputType for Add<P> {
         match (case.0.type_(), case.1.type_()) {
             (LiteralType::Field(_), LiteralType::Field(_)) => LiteralType::Field(output_mode!(
                 Field<P::Environment>,
-                NativeAdd<Field<P::Environment>, Output = Field<P::Environment>>,
+                core::ops::Add<Field<P::Environment>, Output = Field<P::Environment>>,
                 &(ConstantOrMode::from(&case.0), ConstantOrMode::from(&case.1))
             )),
             (LiteralType::Group(mode_a), LiteralType::Group(mode_b)) => LiteralType::Group(output_mode!(
                 Group<P::Environment>,
-                NativeAdd<Group<P::Environment>, Output = Group<P::Environment>>,
+                core::ops::Add<Group<P::Environment>, Output = Group<P::Environment>>,
                 &(mode_a, mode_b)
             )),
             (LiteralType::I8(mode_a), LiteralType::I8(mode_b)) => LiteralType::I8(output_mode!(
                 I8<P::Environment>,
-                NativeAdd<I8<P::Environment>, Output = I8<P::Environment>>,
+                core::ops::Add<I8<P::Environment>, Output = I8<P::Environment>>,
                 &(mode_a, mode_b)
             )),
             (LiteralType::I16(mode_a), LiteralType::I16(mode_b)) => LiteralType::I16(output_mode!(
                 I16<P::Environment>,
-                NativeAdd<I16<P::Environment>, Output = I16<P::Environment>>,
+                core::ops::Add<I16<P::Environment>, Output = I16<P::Environment>>,
                 &(mode_a, mode_b)
             )),
             (LiteralType::I32(mode_a), LiteralType::I32(mode_b)) => LiteralType::I32(output_mode!(
                 I32<P::Environment>,
-                NativeAdd<I32<P::Environment>, Output = I32<P::Environment>>,
+                core::ops::Add<I32<P::Environment>, Output = I32<P::Environment>>,
                 &(mode_a, mode_b)
             )),
             (LiteralType::I64(mode_a), LiteralType::I64(mode_b)) => LiteralType::I64(output_mode!(
                 I64<P::Environment>,
-                NativeAdd<I64<P::Environment>, Output = I64<P::Environment>>,
+                core::ops::Add<I64<P::Environment>, Output = I64<P::Environment>>,
                 &(mode_a, mode_b)
             )),
             (LiteralType::I128(mode_a), LiteralType::I128(mode_b)) => LiteralType::I128(output_mode!(
                 I128<P::Environment>,
-                NativeAdd<I128<P::Environment>, Output = I128<P::Environment>>,
+                core::ops::Add<I128<P::Environment>, Output = I128<P::Environment>>,
                 &(mode_a, mode_b)
             )),
             (LiteralType::U8(mode_a), LiteralType::U8(mode_b)) => LiteralType::U8(output_mode!(
                 U8<P::Environment>,
-                NativeAdd<U8<P::Environment>, Output = U8<P::Environment>>,
+                core::ops::Add<U8<P::Environment>, Output = U8<P::Environment>>,
                 &(mode_a, mode_b)
             )),
             (LiteralType::U16(mode_a), LiteralType::U16(mode_b)) => LiteralType::U16(output_mode!(
                 U16<P::Environment>,
-                NativeAdd<U16<P::Environment>, Output = U16<P::Environment>>,
+                core::ops::Add<U16<P::Environment>, Output = U16<P::Environment>>,
                 &(mode_a, mode_b)
             )),
             (LiteralType::U32(mode_a), LiteralType::U32(mode_b)) => LiteralType::U32(output_mode!(
                 U32<P::Environment>,
-                NativeAdd<U32<P::Environment>, Output = U32<P::Environment>>,
+                core::ops::Add<U32<P::Environment>, Output = U32<P::Environment>>,
                 &(mode_a, mode_b)
             )),
             (LiteralType::U64(mode_a), LiteralType::U64(mode_b)) => LiteralType::U64(output_mode!(
                 U64<P::Environment>,
-                NativeAdd<U64<P::Environment>, Output = U64<P::Environment>>,
+                core::ops::Add<U64<P::Environment>, Output = U64<P::Environment>>,
                 &(mode_a, mode_b)
             )),
             (LiteralType::U128(mode_a), LiteralType::U128(mode_b)) => LiteralType::U128(output_mode!(
                 U128<P::Environment>,
-                NativeAdd<U128<P::Environment>, Output = U128<P::Environment>>,
+                core::ops::Add<U128<P::Environment>, Output = U128<P::Environment>>,
+                &(mode_a, mode_b)
+            )),
+            (LiteralType::Scalar(mode_a), LiteralType::Scalar(mode_b)) => LiteralType::Scalar(output_mode!(
+                Scalar<P::Environment>,
+                core::ops::Add<Scalar<P::Environment>, Output = Scalar<P::Environment>>,
                 &(mode_a, mode_b)
             )),
             _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
