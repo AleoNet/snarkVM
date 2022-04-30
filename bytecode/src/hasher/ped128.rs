@@ -22,10 +22,16 @@ const SETUP_MESSAGE: &str = "Pedersen128";
 #[derive(Clone)]
 pub struct Pedersen128<P: Program>(Pedersen128Gadget<P::Environment>);
 
+impl<P: Program> Default for Pedersen128<P> {
+    fn default() -> Self {
+        Self::new(SETUP_MESSAGE)
+    }
+}
+
 impl<P: Program> Pedersen128<P> {
     /// Creates a new instance of `Pedersen128`.
-    pub fn new() -> Self {
-        Self(Pedersen128Gadget::setup(SETUP_MESSAGE))
+    pub fn new(message: &str) -> Self {
+        Self(Pedersen128Gadget::setup(message))
     }
 
     /// Hash the given `value`. Halts if given a value that exceeds the input size.

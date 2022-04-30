@@ -46,11 +46,11 @@ impl<P: Program> Hasher<P> {
     /// Creates a new `Hasher` for a given opcode.
     pub fn new(name: &str) -> Self {
         match name {
-            "ped64" => Self::Pedersen64(Pedersen64::new()),
-            "ped128" => Self::Pedersen128(Pedersen128::new()),
-            "ped256" => Self::Pedersen256(Pedersen256::new()),
-            "ped512" => Self::Pedersen512(Pedersen512::new()),
-            "ped1024" => Self::Pedersen1024(Pedersen1024::new()),
+            "ped64" => Self::Pedersen64(Pedersen64::default()),
+            "ped128" => Self::Pedersen128(Pedersen128::default()),
+            "ped256" => Self::Pedersen256(Pedersen256::default()),
+            "ped512" => Self::Pedersen512(Pedersen512::default()),
+            "ped1024" => Self::Pedersen1024(Pedersen1024::default()),
             _ => P::halt(format!("Hasher \'{name}\' is not implemented")),
         }
     }
