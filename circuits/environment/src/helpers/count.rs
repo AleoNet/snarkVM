@@ -90,7 +90,7 @@ impl<V: Ord + Add<Output = V> + Copy + Debug> Measurement<V> {
         };
 
         if !outcome {
-            eprintln!("{:?} does not match {:?}", candidate, self);
+            eprintln!("Expected {:?}, found {:?}", self, candidate);
         }
 
         outcome
