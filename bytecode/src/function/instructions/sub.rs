@@ -17,6 +17,7 @@
 use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Registers},
     helpers::Register,
+    impl_instruction_boilerplate,
     Program,
     Value,
 };
@@ -32,25 +33,7 @@ pub struct Sub<P: Program> {
     operation: BinaryOperation<P>,
 }
 
-impl<P: Program> Sub<P> {
-    /// Returns the operands of the instruction.
-    pub fn operands(&self) -> Vec<Operand<P>> {
-        self.operation.operands()
-    }
-
-    /// Returns the destination register of the instruction.
-    pub fn destination(&self) -> &Register<P> {
-        self.operation.destination()
-    }
-}
-
-impl<P: Program> Opcode for Sub<P> {
-    /// Returns the opcode as a string.
-    #[inline]
-    fn opcode() -> &'static str {
-        "sub"
-    }
-}
+impl_instruction_boilerplate!(Sub, BinaryOperation, "sub");
 
 impl<P: Program> Operation<P> for Sub<P> {
     /// Evaluates the operation.
@@ -84,45 +67,6 @@ impl<P: Program> Operation<P> for Sub<P> {
         };
 
         registers.assign(self.operation.destination(), result);
-    }
-}
-
-impl<P: Program> Parser for Sub<P> {
-    type Environment = P::Environment;
-
-    /// Parses a string into an 'sub' operation.
-    #[inline]
-    fn parse(string: &str) -> ParserResult<Self> {
-        // Parse the operation from the string.
-        let (string, operation) = map(BinaryOperation::parse, |operation| Self { operation })(string)?;
-        // Return the operation.
-        Ok((string, operation))
-    }
-}
-
-impl<P: Program> fmt::Display for Sub<P> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.operation)
-    }
-}
-
-impl<P: Program> FromBytes for Sub<P> {
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        Ok(Self { operation: BinaryOperation::read_le(&mut reader)? })
-    }
-}
-
-impl<P: Program> ToBytes for Sub<P> {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.operation.write_le(&mut writer)
-    }
-}
-
-#[allow(clippy::from_over_into)]
-impl<P: Program> Into<Instruction<P>> for Sub<P> {
-    /// Converts the operation into an instruction.
-    fn into(self) -> Instruction<P> {
-        Instruction::Sub(self)
     }
 }
 

@@ -17,6 +17,12 @@
 pub(super) mod add;
 pub(super) use add::*;
 
+// pub(super) mod commit;
+// pub(super) use commit::*;
+//
+// pub(super) mod hash;
+// pub(super) use hash::*;
+
 pub(super) mod mul;
 pub(super) use mul::*;
 
@@ -67,6 +73,8 @@ pub enum Instruction<P: Program> {
     Neg(Neg<P>),
     /// Subtracts `second` from `first`, storing the outcome in `destination`.
     Sub(Sub<P>),
+    // Performs a Pedersen hash taking a 64-bit value as input.
+    // Ped64(Ped64<P>),
 }
 
 impl<P: Program> Instruction<P> {
@@ -78,6 +86,7 @@ impl<P: Program> Instruction<P> {
             Self::Mul(..) => Mul::<P>::opcode(),
             Self::Neg(..) => Neg::<P>::opcode(),
             Self::Sub(..) => Sub::<P>::opcode(),
+            // Self::Ped64(..) => Ped64::<P>::opcode(),
         }
     }
 
@@ -89,6 +98,7 @@ impl<P: Program> Instruction<P> {
             Self::Mul(mul) => mul.operands(),
             Self::Neg(neg) => neg.operands(),
             Self::Sub(sub) => sub.operands(),
+            // Self::Ped64(ped64) => ped64.operands(),
         }
     }
 
@@ -100,6 +110,7 @@ impl<P: Program> Instruction<P> {
             Self::Mul(mul) => mul.destination(),
             Self::Neg(neg) => neg.destination(),
             Self::Sub(sub) => sub.destination(),
+            // Self::Ped64(ped64) => ped64.destination(),
         }
     }
 
@@ -111,6 +122,7 @@ impl<P: Program> Instruction<P> {
             Self::Mul(instruction) => instruction.evaluate(registers),
             Self::Neg(instruction) => instruction.evaluate(registers),
             Self::Sub(instruction) => instruction.evaluate(registers),
+            // Self::Ped64(instruction) => instruction.evaluate(registers),
         }
     }
 }
@@ -130,6 +142,7 @@ impl<P: Program> Parser for Instruction<P> {
             preceded(pair(tag(Mul::<P>::opcode()), tag(" ")), map(Mul::parse, Into::into)),
             preceded(pair(tag(Neg::<P>::opcode()), tag(" ")), map(Neg::parse, Into::into)),
             preceded(pair(tag(Sub::<P>::opcode()), tag(" ")), map(Sub::parse, Into::into)),
+            // preceded(pair(tag(Ped64::<P>::opcode()), tag(" ")), map(Ped64::parse, Into::into)),
         ))(string)?;
         // Parse the semicolon from the string.
         let (string, _) = tag(";")(string)?;
@@ -145,6 +158,7 @@ impl<P: Program> fmt::Display for Instruction<P> {
             Self::Mul(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Neg(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Sub(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            // Self::Ped64(instruction) => write!(f, "{} {};", self.opcode(), instruction),
         }
     }
 }
@@ -157,6 +171,7 @@ impl<P: Program> FromBytes for Instruction<P> {
             1 => Ok(Self::Mul(Mul::read_le(&mut reader)?)),
             2 => Ok(Self::Neg(Neg::read_le(&mut reader)?)),
             3 => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
+            // 4 => Ok(Self::Ped64(Ped64::read_le(&mut reader)?)),
             4.. => Err(error(format!("Failed to deserialize an instruction of code {code}"))),
         }
     }
@@ -180,9 +195,75 @@ impl<P: Program> ToBytes for Instruction<P> {
             Self::Sub(instruction) => {
                 u16::write_le(&3u16, &mut writer)?;
                 instruction.write_le(&mut writer)
-            }
+            } // Self::Ped64(instruction) => {
+              //     u16::write_le(&4u16, &mut writer)?;
+              //     instruction.write_le(&mut writer)
+              // }
         }
     }
+}
+
+#[macro_export]
+macro_rules! impl_instruction_boilerplate {
+    ($instruction:ident, $op_type:ident, $op_code:expr) => {
+        impl<P: Program> $instruction<P> {
+            /// Returns the operands of the instruction.
+            pub fn operands(&self) -> Vec<Operand<P>> {
+                self.operation.operands()
+            }
+
+            /// Returns the destination register of the instruction.
+            pub fn destination(&self) -> &Register<P> {
+                self.operation.destination()
+            }
+        }
+
+        impl<P: Program> Opcode for $instruction<P> {
+            /// Returns the opcode as a string.
+            #[inline]
+            fn opcode() -> &'static str {
+                $op_code
+            }
+        }
+
+        impl<P: Program> Parser for $instruction<P> {
+            type Environment = P::Environment;
+
+            #[inline]
+            fn parse(string: &str) -> ParserResult<Self> {
+                // Parse the operation from the string.
+                let (string, operation) = map($op_type::parse, |operation| Self { operation })(string)?;
+                // Return the operation.
+                Ok((string, operation))
+            }
+        }
+
+        impl<P: Program> fmt::Display for $instruction<P> {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                write!(f, "{}", self.operation)
+            }
+        }
+
+        impl<P: Program> FromBytes for $instruction<P> {
+            fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+                Ok(Self { operation: $op_type::read_le(&mut reader)? })
+            }
+        }
+
+        impl<P: Program> ToBytes for $instruction<P> {
+            fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+                self.operation.write_le(&mut writer)
+            }
+        }
+
+        #[allow(clippy::from_over_into)]
+        impl<P: Program> Into<Instruction<P>> for $instruction<P> {
+            /// Converts the operation into an instruction.
+            fn into(self) -> Instruction<P> {
+                Instruction::$instruction(self)
+            }
+        }
+    };
 }
 
 #[cfg(test)]

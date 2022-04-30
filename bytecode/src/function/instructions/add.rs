@@ -17,6 +17,7 @@
 use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Registers},
     helpers::Register,
+    impl_instruction_boilerplate,
     Program,
     Value,
 };
@@ -32,25 +33,7 @@ pub struct Add<P: Program> {
     operation: BinaryOperation<P>,
 }
 
-impl<P: Program> Add<P> {
-    /// Returns the operands of the instruction.
-    pub fn operands(&self) -> Vec<Operand<P>> {
-        self.operation.operands()
-    }
-
-    /// Returns the destination register of the instruction.
-    pub fn destination(&self) -> &Register<P> {
-        self.operation.destination()
-    }
-}
-
-impl<P: Program> Opcode for Add<P> {
-    /// Returns the opcode as a string.
-    #[inline]
-    fn opcode() -> &'static str {
-        "add"
-    }
-}
+impl_instruction_boilerplate!(Add, BinaryOperation, "add");
 
 impl<P: Program> Operation<P> for Add<P> {
     /// Evaluates the operation.
@@ -85,43 +68,6 @@ impl<P: Program> Operation<P> for Add<P> {
         };
 
         registers.assign(self.operation.destination(), result);
-    }
-}
-
-impl<P: Program> Parser for Add<P> {
-    type Environment = P::Environment;
-
-    /// Parses a string into an 'add' operation.
-    #[inline]
-    fn parse(string: &str) -> ParserResult<Self> {
-        // Parse the operation from the string.
-        map(BinaryOperation::parse, |operation| Self { operation })(string)
-    }
-}
-
-impl<P: Program> fmt::Display for Add<P> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.operation)
-    }
-}
-
-impl<P: Program> FromBytes for Add<P> {
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        Ok(Self { operation: BinaryOperation::read_le(&mut reader)? })
-    }
-}
-
-impl<P: Program> ToBytes for Add<P> {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.operation.write_le(&mut writer)
-    }
-}
-
-#[allow(clippy::from_over_into)]
-impl<P: Program> Into<Instruction<P>> for Add<P> {
-    /// Converts the operation into an instruction.
-    fn into(self) -> Instruction<P> {
-        Instruction::Add(self)
     }
 }
 

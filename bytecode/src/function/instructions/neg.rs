@@ -17,6 +17,7 @@
 use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Registers},
     helpers::Register,
+    impl_instruction_boilerplate,
     Program,
     Value,
 };
@@ -32,25 +33,7 @@ pub struct Neg<P: Program> {
     operation: UnaryOperation<P>,
 }
 
-impl<P: Program> Neg<P> {
-    /// Returns the operands of the instruction.
-    pub fn operands(&self) -> Vec<Operand<P>> {
-        self.operation.operands()
-    }
-
-    /// Returns the destination register of the instruction.
-    pub fn destination(&self) -> &Register<P> {
-        self.operation.destination()
-    }
-}
-
-impl<P: Program> Opcode for Neg<P> {
-    /// Returns the opcode as a string.
-    #[inline]
-    fn opcode() -> &'static str {
-        "neg"
-    }
-}
+impl_instruction_boilerplate!(Neg, UnaryOperation, "neg");
 
 impl<P: Program> Operation<P> for Neg<P> {
     /// Evaluates the operation.
@@ -75,43 +58,6 @@ impl<P: Program> Operation<P> for Neg<P> {
         };
 
         registers.assign(self.operation.destination(), result);
-    }
-}
-
-impl<P: Program> Parser for Neg<P> {
-    type Environment = P::Environment;
-
-    /// Parses a string into an 'neg' operation.
-    #[inline]
-    fn parse(string: &str) -> ParserResult<Self> {
-        // Parse the operation from the string.
-        map(UnaryOperation::parse, |operation| Self { operation })(string)
-    }
-}
-
-impl<P: Program> fmt::Display for Neg<P> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.operation)
-    }
-}
-
-impl<P: Program> FromBytes for Neg<P> {
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        Ok(Self { operation: UnaryOperation::read_le(&mut reader)? })
-    }
-}
-
-impl<P: Program> ToBytes for Neg<P> {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.operation.write_le(&mut writer)
-    }
-}
-
-#[allow(clippy::from_over_into)]
-impl<P: Program> Into<Instruction<P>> for Neg<P> {
-    /// Converts the operation into an instruction.
-    fn into(self) -> Instruction<P> {
-        Instruction::Neg(self)
     }
 }
 
