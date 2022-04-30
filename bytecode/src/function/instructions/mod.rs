@@ -17,11 +17,8 @@
 pub(super) mod add;
 pub(super) use add::*;
 
-// pub(super) mod commit;
-// pub(super) use commit::*;
-//
-// pub(super) mod hash;
-// pub(super) use hash::*;
+pub(super) mod hash;
+pub(super) use hash::*;
 
 pub(super) mod mul;
 pub(super) use mul::*;
@@ -73,8 +70,16 @@ pub enum Instruction<P: Program> {
     Neg(Neg<P>),
     /// Subtracts `second` from `first`, storing the outcome in `destination`.
     Sub(Sub<P>),
-    // Performs a Pedersen hash taking a 64-bit value as input.
-    // Ped64(Ped64<P>),
+    /// Performs a Pedersen hash taking a 64-bit value as input.
+    Ped64(Ped64<P>),
+    /// Performs a Pedersen hash taking a 128-bit value as input.
+    Ped128(Ped128<P>),
+    /// Performs a Pedersen hash taking a 256-bit value as input.
+    Ped256(Ped256<P>),
+    /// Performs a Pedersen hash taking a 512-bit value as input.
+    Ped512(Ped512<P>),
+    /// Performs a Pedersen hash taking a 1024-bit value as input.
+    Ped1024(Ped1024<P>),
 }
 
 impl<P: Program> Instruction<P> {
@@ -86,7 +91,11 @@ impl<P: Program> Instruction<P> {
             Self::Mul(..) => Mul::<P>::opcode(),
             Self::Neg(..) => Neg::<P>::opcode(),
             Self::Sub(..) => Sub::<P>::opcode(),
-            // Self::Ped64(..) => Ped64::<P>::opcode(),
+            Self::Ped64(..) => Ped64::<P>::opcode(),
+            Self::Ped128(..) => Ped128::<P>::opcode(),
+            Self::Ped256(..) => Ped256::<P>::opcode(),
+            Self::Ped512(..) => Ped512::<P>::opcode(),
+            Self::Ped1024(..) => Ped1024::<P>::opcode(),
         }
     }
 
@@ -98,7 +107,11 @@ impl<P: Program> Instruction<P> {
             Self::Mul(mul) => mul.operands(),
             Self::Neg(neg) => neg.operands(),
             Self::Sub(sub) => sub.operands(),
-            // Self::Ped64(ped64) => ped64.operands(),
+            Self::Ped64(ped64) => ped64.operands(),
+            Self::Ped128(ped128) => ped128.operands(),
+            Self::Ped256(ped256) => ped256.operands(),
+            Self::Ped512(ped512) => ped512.operands(),
+            Self::Ped1024(ped1024) => ped1024.operands(),
         }
     }
 
@@ -110,7 +123,11 @@ impl<P: Program> Instruction<P> {
             Self::Mul(mul) => mul.destination(),
             Self::Neg(neg) => neg.destination(),
             Self::Sub(sub) => sub.destination(),
-            // Self::Ped64(ped64) => ped64.destination(),
+            Self::Ped64(ped64) => ped64.destination(),
+            Self::Ped128(ped128) => ped128.destination(),
+            Self::Ped256(ped256) => ped256.destination(),
+            Self::Ped512(ped512) => ped512.destination(),
+            Self::Ped1024(ped1024) => ped1024.destination(),
         }
     }
 
@@ -122,7 +139,11 @@ impl<P: Program> Instruction<P> {
             Self::Mul(instruction) => instruction.evaluate(registers),
             Self::Neg(instruction) => instruction.evaluate(registers),
             Self::Sub(instruction) => instruction.evaluate(registers),
-            // Self::Ped64(instruction) => instruction.evaluate(registers),
+            Self::Ped64(instruction) => instruction.evaluate(registers),
+            Self::Ped128(instruction) => instruction.evaluate(registers),
+            Self::Ped256(instruction) => instruction.evaluate(registers),
+            Self::Ped512(instruction) => instruction.evaluate(registers),
+            Self::Ped1024(instruction) => instruction.evaluate(registers),
         }
     }
 }
@@ -142,7 +163,11 @@ impl<P: Program> Parser for Instruction<P> {
             preceded(pair(tag(Mul::<P>::opcode()), tag(" ")), map(Mul::parse, Into::into)),
             preceded(pair(tag(Neg::<P>::opcode()), tag(" ")), map(Neg::parse, Into::into)),
             preceded(pair(tag(Sub::<P>::opcode()), tag(" ")), map(Sub::parse, Into::into)),
-            // preceded(pair(tag(Ped64::<P>::opcode()), tag(" ")), map(Ped64::parse, Into::into)),
+            preceded(pair(tag(Ped64::<P>::opcode()), tag(" ")), map(Ped64::parse, Into::into)),
+            preceded(pair(tag(Ped128::<P>::opcode()), tag(" ")), map(Ped128::parse, Into::into)),
+            preceded(pair(tag(Ped256::<P>::opcode()), tag(" ")), map(Ped256::parse, Into::into)),
+            preceded(pair(tag(Ped512::<P>::opcode()), tag(" ")), map(Ped512::parse, Into::into)),
+            preceded(pair(tag(Ped1024::<P>::opcode()), tag(" ")), map(Ped1024::parse, Into::into)),
         ))(string)?;
         // Parse the semicolon from the string.
         let (string, _) = tag(";")(string)?;
@@ -158,7 +183,11 @@ impl<P: Program> fmt::Display for Instruction<P> {
             Self::Mul(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Neg(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Sub(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            // Self::Ped64(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::Ped64(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::Ped128(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::Ped256(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::Ped512(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::Ped1024(instruction) => write!(f, "{} {};", self.opcode(), instruction),
         }
     }
 }
@@ -171,8 +200,12 @@ impl<P: Program> FromBytes for Instruction<P> {
             1 => Ok(Self::Mul(Mul::read_le(&mut reader)?)),
             2 => Ok(Self::Neg(Neg::read_le(&mut reader)?)),
             3 => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
-            // 4 => Ok(Self::Ped64(Ped64::read_le(&mut reader)?)),
-            4.. => Err(error(format!("Failed to deserialize an instruction of code {code}"))),
+            4 => Ok(Self::Ped64(Ped64::read_le(&mut reader)?)),
+            5 => Ok(Self::Ped128(Ped128::read_le(&mut reader)?)),
+            6 => Ok(Self::Ped256(Ped256::read_le(&mut reader)?)),
+            7 => Ok(Self::Ped512(Ped512::read_le(&mut reader)?)),
+            8 => Ok(Self::Ped1024(Ped1024::read_le(&mut reader)?)),
+            9.. => Err(error(format!("Failed to deserialize an instruction of code {code}"))),
         }
     }
 }
@@ -195,10 +228,27 @@ impl<P: Program> ToBytes for Instruction<P> {
             Self::Sub(instruction) => {
                 u16::write_le(&3u16, &mut writer)?;
                 instruction.write_le(&mut writer)
-            } // Self::Ped64(instruction) => {
-              //     u16::write_le(&4u16, &mut writer)?;
-              //     instruction.write_le(&mut writer)
-              // }
+            }
+            Self::Ped64(instruction) => {
+                u16::write_le(&4u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::Ped128(instruction) => {
+                u16::write_le(&5u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::Ped256(instruction) => {
+                u16::write_le(&6u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::Ped512(instruction) => {
+                u16::write_le(&7u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::Ped1024(instruction) => {
+                u16::write_le(&8u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
         }
     }
 }
@@ -231,10 +281,7 @@ macro_rules! impl_instruction_boilerplate {
 
             #[inline]
             fn parse(string: &str) -> ParserResult<Self> {
-                // Parse the operation from the string.
-                let (string, operation) = map($op_type::parse, |operation| Self { operation })(string)?;
-                // Return the operation.
-                Ok((string, operation))
+                map($op_type::parse, |operation| Self { operation })(string)
             }
         }
 
