@@ -14,19 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    function::{parsers::*, Instruction, Opcode, Operation, Registers},
-    helpers::Register,
-    Program,
-    Value,
-};
-use snarkvm_circuits::{Parser, ParserResult};
-use snarkvm_utilities::{FromBytes, ToBytes};
-
-use core::fmt;
-use nom::combinator::map;
-use std::io::{Read, Result as IoResult, Write};
-
 /// Performs a Pedersen hash taking a 128-bit value as input.
 pub struct Ped128<P: Program> {
     operation: UnaryOperation<P>,

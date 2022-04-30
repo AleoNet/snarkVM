@@ -14,21 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    function::{parsers::*, Instruction, Opcode, Operation, Registers},
-    helpers::Register,
-    Program,
-    Value,
-};
-use snarkvm_circuits::{Literal, MulChecked, Parser, ParserResult};
-use snarkvm_utilities::{FromBytes, ToBytes};
-
-use core::fmt;
-use nom::combinator::map;
-use std::{
-    io::{Read, Result as IoResult, Write},
-    ops::Mul as NativeMul,
-};
+use crate::function::{Operation, Registers};
+use snarkvm_circuits::{Literal, MulChecked};
+use std::ops::Mul as NativeMul;
 
 /// Multiplies `first` and `second`, storing the outcome in `destination`.
 pub struct Mul<P: Program> {

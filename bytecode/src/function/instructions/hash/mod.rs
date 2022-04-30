@@ -16,6 +16,8 @@
 
 macro_rules! impl_hash_instruction {
     ($instruction:ident) => {
+        use crate::function::{Operation, Registers};
+
         impl<P: Program> Operation<P> for $instruction<P> {
             /// Evaluates the operation.
             #[inline]

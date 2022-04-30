@@ -14,18 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{
-    function::{parsers::*, Instruction, Opcode, Operation, Registers},
-    helpers::Register,
-    Program,
-    Value,
-};
-use snarkvm_circuits::{Literal, Parser, ParserResult};
-use snarkvm_utilities::{FromBytes, ToBytes};
-
-use core::fmt;
-use nom::combinator::map;
-use std::io::{Read, Result as IoResult, Write};
+use crate::function::{Operation, Registers};
+use snarkvm_circuits::Literal;
 
 /// Negates `first`, storing the outcome in `destination`.
 pub struct Neg<P: Program> {
