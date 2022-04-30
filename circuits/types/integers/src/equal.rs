@@ -125,18 +125,18 @@ mod tests {
         }
     }
 
-    test_integer!(run_test, i8, equals);
-    test_integer!(run_test, i16, equals);
-    test_integer!(run_test, i32, equals);
-    test_integer!(run_test, i64, equals);
-    test_integer!(run_test, i128, equals);
+    test_integer_binary!(run_test, i8, equals);
+    test_integer_binary!(run_test, i16, equals);
+    test_integer_binary!(run_test, i32, equals);
+    test_integer_binary!(run_test, i64, equals);
+    test_integer_binary!(run_test, i128, equals);
 
-    test_integer!(run_test, u8, equals);
-    test_integer!(run_test, u16, equals);
-    test_integer!(run_test, u32, equals);
-    test_integer!(run_test, u64, equals);
-    test_integer!(run_test, u128, equals);
+    test_integer_binary!(run_test, u8, equals);
+    test_integer_binary!(run_test, u16, equals);
+    test_integer_binary!(run_test, u32, equals);
+    test_integer_binary!(run_test, u64, equals);
+    test_integer_binary!(run_test, u128, equals);
 
-    test_integer!(#[ignore], run_exhaustive_test, u8, equals, exhaustive);
-    test_integer!(#[ignore], run_exhaustive_test, i8, equals, exhaustive);
+    test_integer_binary!(#[ignore], run_exhaustive_test, u8, equals, exhaustive);
+    test_integer_binary!(#[ignore], run_exhaustive_test, i8, equals, exhaustive);
 }

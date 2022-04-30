@@ -160,7 +160,7 @@ impl<E: Environment, I: IntegerType> OutputMode<dyn AddChecked<Integer<E, I>, Ou
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_integer;
+    use crate::test_integer_binary;
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
     use test_utilities::*;
@@ -197,11 +197,7 @@ mod tests {
         Circuit::reset();
     }
 
-    #[rustfmt::skip]
-    fn run_test<I: IntegerType + RefUnwindSafe>(
-        mode_a: Mode,
-        mode_b: Mode,
-    ) {
+    fn run_test<I: IntegerType + RefUnwindSafe>(mode_a: Mode, mode_b: Mode) {
         for i in 0..ITERATIONS {
             let first: I = UniformRand::rand(&mut test_rng());
             let second: I = UniformRand::rand(&mut test_rng());
@@ -222,11 +218,8 @@ mod tests {
         }
     }
 
-    #[rustfmt::skip]
-    fn run_exhaustive_test<I: IntegerType + RefUnwindSafe>(
-        mode_a: Mode,
-        mode_b: Mode,
-    ) where
+    fn run_exhaustive_test<I: IntegerType + RefUnwindSafe>(mode_a: Mode, mode_b: Mode)
+    where
         RangeInclusive<I>: Iterator<Item = I>,
     {
         for first in I::MIN..=I::MAX {
@@ -237,18 +230,18 @@ mod tests {
         }
     }
 
-    test_integer!(run_test, i8, plus);
-    test_integer!(run_test, i16, plus);
-    test_integer!(run_test, i32, plus);
-    test_integer!(run_test, i64, plus);
-    test_integer!(run_test, i128, plus);
+    test_integer_binary!(run_test, i8, plus);
+    test_integer_binary!(run_test, i16, plus);
+    test_integer_binary!(run_test, i32, plus);
+    test_integer_binary!(run_test, i64, plus);
+    test_integer_binary!(run_test, i128, plus);
 
-    test_integer!(run_test, u8, plus);
-    test_integer!(run_test, u16, plus);
-    test_integer!(run_test, u32, plus);
-    test_integer!(run_test, u64, plus);
-    test_integer!(run_test, u128, plus);
+    test_integer_binary!(run_test, u8, plus);
+    test_integer_binary!(run_test, u16, plus);
+    test_integer_binary!(run_test, u32, plus);
+    test_integer_binary!(run_test, u64, plus);
+    test_integer_binary!(run_test, u128, plus);
 
-    test_integer!(#[ignore], run_exhaustive_test, u8, plus, exhaustive);
-    test_integer!(#[ignore], run_exhaustive_test, i8, plus, exhaustive);
+    test_integer_binary!(#[ignore], run_exhaustive_test, u8, plus, exhaustive);
+    test_integer_binary!(#[ignore], run_exhaustive_test, i8, plus, exhaustive);
 }

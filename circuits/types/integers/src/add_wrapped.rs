@@ -69,7 +69,7 @@ impl<E: Environment, I: IntegerType> OutputMode<dyn AddWrapped<Integer<E, I>, Ou
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_integer;
+    use crate::test_integer_binary;
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
@@ -130,18 +130,18 @@ mod tests {
         }
     }
 
-    test_integer!(run_test, i8, plus);
-    test_integer!(run_test, i16, plus);
-    test_integer!(run_test, i32, plus);
-    test_integer!(run_test, i64, plus);
-    test_integer!(run_test, i128, plus);
+    test_integer_binary!(run_test, i8, plus);
+    test_integer_binary!(run_test, i16, plus);
+    test_integer_binary!(run_test, i32, plus);
+    test_integer_binary!(run_test, i64, plus);
+    test_integer_binary!(run_test, i128, plus);
 
-    test_integer!(run_test, u8, plus);
-    test_integer!(run_test, u16, plus);
-    test_integer!(run_test, u32, plus);
-    test_integer!(run_test, u64, plus);
-    test_integer!(run_test, u128, plus);
+    test_integer_binary!(run_test, u8, plus);
+    test_integer_binary!(run_test, u16, plus);
+    test_integer_binary!(run_test, u32, plus);
+    test_integer_binary!(run_test, u64, plus);
+    test_integer_binary!(run_test, u128, plus);
 
-    test_integer!(#[ignore], run_exhaustive_test, u8, plus, exhaustive);
-    test_integer!(#[ignore], run_exhaustive_test, i8, plus, exhaustive);
+    test_integer_binary!(#[ignore], run_exhaustive_test, u8, plus, exhaustive);
+    test_integer_binary!(#[ignore], run_exhaustive_test, i8, plus, exhaustive);
 }

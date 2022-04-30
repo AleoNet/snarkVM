@@ -184,18 +184,18 @@ mod tests {
         }
     }
 
-    test_integer!(run_test, i8, div);
-    test_integer!(run_test, i16, div);
-    test_integer!(run_test, i32, div);
-    test_integer!(run_test, i64, div);
-    test_integer!(run_test, i128, div);
+    test_integer_binary!(run_test, i8, div);
+    test_integer_binary!(run_test, i16, div);
+    test_integer_binary!(run_test, i32, div);
+    test_integer_binary!(run_test, i64, div);
+    test_integer_binary!(run_test, i128, div);
 
-    test_integer!(run_test, u8, div);
-    test_integer!(run_test, u16, div);
-    test_integer!(run_test, u32, div);
-    test_integer!(run_test, u64, div);
-    test_integer!(run_test, u128, div);
+    test_integer_binary!(run_test, u8, div);
+    test_integer_binary!(run_test, u16, div);
+    test_integer_binary!(run_test, u32, div);
+    test_integer_binary!(run_test, u64, div);
+    test_integer_binary!(run_test, u128, div);
 
-    test_integer!(#[ignore], run_exhaustive_test, u8, div, exhaustive);
-    test_integer!(#[ignore], run_exhaustive_test, i8, div, exhaustive);
+    test_integer_binary!(#[ignore], run_exhaustive_test, u8, div, exhaustive);
+    test_integer_binary!(#[ignore], run_exhaustive_test, i8, div, exhaustive);
 }
