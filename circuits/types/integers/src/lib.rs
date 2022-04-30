@@ -504,6 +504,15 @@ mod test_utilities {
     /// A generic template for an integer test case.
     #[macro_export]
     macro_rules! test_integer_case {
+        // Typical test instantiation (static).
+        ($test_fn:ident, $primitive:ident, $description: ident) => {
+            paste::paste! {
+                #[test]
+                fn [<test_ $primitive _ $description>]() {
+                    $test_fn::<$primitive>();
+                }
+            }
+        };
         // Typical test instantiation (unary).
         ($test_fn:ident, $primitive:ident, $mode: expr, $description: ident) => {
             paste::paste! {
@@ -541,6 +550,14 @@ mod test_utilities {
                     $test_fn::<$primitive>($mode_a, $mode_b);
                 }
             }
+        };
+    }
+
+    /// Invokes `test_integer_case!` on all combinations of `Mode`s.
+    #[macro_export]
+    macro_rules! test_integer_static {
+        ($test_fn:ident, $primitive:ident, $description:ident) => {
+            test_integer_case!($test_fn, $primitive, $description);
         };
     }
 

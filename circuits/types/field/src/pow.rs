@@ -101,7 +101,7 @@ impl<E: Environment> Metrics<dyn Pow<Field<E>, Output = Field<E>>> for Field<E> 
                     Count::is(253, 0, num_private, num_constraints)
                 }
                 ConstantOrMode::Mode(_) => E::halt(format!(
-                    "Constant is required to determine the `Count` for {} ^ {}",
+                    "Constant is required to determine the `Count` for {} POW {}",
                     case.0.mode(),
                     case.1.mode()
                 )),

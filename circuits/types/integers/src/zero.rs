@@ -28,6 +28,22 @@ impl<E: Environment, I: IntegerType> Zero for Integer<E, I> {
     }
 }
 
+impl<E: Environment, I: IntegerType> Metrics<dyn Zero<Boolean = Boolean<E>>> for Integer<E, I> {
+    type Case = ();
+
+    fn count(_case: &Self::Case) -> Count {
+        Count::is(I::BITS, 0, 0, 0)
+    }
+}
+
+impl<E: Environment, I: IntegerType> OutputMode<dyn Zero<Boolean = Boolean<E>>> for Integer<E, I> {
+    type Case = ();
+
+    fn output_mode(_case: &Self::Case) -> Mode {
+        Mode::Constant
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -36,64 +52,28 @@ mod tests {
     fn check_zero<I: IntegerType>() {
         Circuit::scope("Zero", || {
             assert_scope!(0, 0, 0, 0);
-            assert_eq!(I::zero(), Integer::<Circuit, I>::zero().eject_value());
-            assert_scope!(I::BITS, 0, 0, 0);
+            let candidate = Integer::<Circuit, I>::zero();
+            assert_eq!(I::zero(), candidate.eject_value());
+            assert_count!(Integer<Circuit, I>, Zero<Boolean = Boolean<Circuit>>, &());
+            assert_output_mode!(candidate, Integer<Circuit, I>, Zero<Boolean = Boolean<Circuit>>, &());
         });
-
-        let candidate = Integer::<Circuit, I>::zero();
         // Should equal 0.
-        assert!(candidate.is_zero().eject_value());
+        assert!(Integer::<Circuit, I>::zero().is_zero().eject_value());
         // Should not equal 1.
-        assert!(!candidate.is_one().eject_value());
+        assert!(!Integer::<Circuit, I>::zero().is_one().eject_value());
+        // Reset the circuit.
+        Circuit::reset();
     }
 
-    #[test]
-    fn test_u8_zero() {
-        check_zero::<u8>();
-    }
+    test_integer_static!(check_zero, i8, zero);
+    test_integer_static!(check_zero, i16, zero);
+    test_integer_static!(check_zero, i32, zero);
+    test_integer_static!(check_zero, i64, zero);
+    test_integer_static!(check_zero, i128, zero);
 
-    #[test]
-    fn test_i8_zero() {
-        check_zero::<i8>();
-    }
-
-    #[test]
-    fn test_u16_zero() {
-        check_zero::<u16>();
-    }
-
-    #[test]
-    fn test_i16_zero() {
-        check_zero::<i16>();
-    }
-
-    #[test]
-    fn test_u32_zero() {
-        check_zero::<u32>();
-    }
-
-    #[test]
-    fn test_i32_zero() {
-        check_zero::<i32>();
-    }
-
-    #[test]
-    fn test_u64_zero() {
-        check_zero::<u64>();
-    }
-
-    #[test]
-    fn test_i64_zero() {
-        check_zero::<i64>();
-    }
-
-    #[test]
-    fn test_u128_zero() {
-        check_zero::<u128>();
-    }
-
-    #[test]
-    fn test_i128_zero() {
-        check_zero::<i128>();
-    }
+    test_integer_static!(check_zero, u8, zero);
+    test_integer_static!(check_zero, u16, zero);
+    test_integer_static!(check_zero, u32, zero);
+    test_integer_static!(check_zero, u64, zero);
+    test_integer_static!(check_zero, u128, zero);
 }

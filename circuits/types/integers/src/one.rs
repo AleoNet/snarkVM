@@ -28,6 +28,22 @@ impl<E: Environment, I: IntegerType> One for Integer<E, I> {
     }
 }
 
+impl<E: Environment, I: IntegerType> Metrics<dyn One<Boolean = Boolean<E>>> for Integer<E, I> {
+    type Case = ();
+
+    fn count(_case: &Self::Case) -> Count {
+        Count::is(I::BITS, 0, 0, 0)
+    }
+}
+
+impl<E: Environment, I: IntegerType> OutputMode<dyn One<Boolean = Boolean<E>>> for Integer<E, I> {
+    type Case = ();
+
+    fn output_mode(_case: &Self::Case) -> Mode {
+        Mode::Constant
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -36,62 +52,28 @@ mod tests {
     fn check_one<I: IntegerType>() {
         Circuit::scope("One", || {
             assert_scope!(0, 0, 0, 0);
-            assert_eq!(I::one(), Integer::<Circuit, I>::one().eject_value());
-            assert_scope!(I::BITS, 0, 0, 0);
+            let candidate = Integer::<Circuit, I>::one();
+            assert_eq!(I::one(), candidate.eject_value());
+            assert_count!(Integer<Circuit, I>, One<Boolean = Boolean<Circuit>>, &());
+            assert_output_mode!(candidate, Integer<Circuit, I>, One<Boolean = Boolean<Circuit>>, &());
         });
         // Should equal 1.
         assert!(Integer::<Circuit, I>::one().is_one().eject_value());
         // Should not equal 0.
         assert!(!Integer::<Circuit, I>::one().is_zero().eject_value());
+        // Reset the circuit.
+        Circuit::reset();
     }
 
-    #[test]
-    fn test_u8_one() {
-        check_one::<u8>();
-    }
+    test_integer_static!(check_one, i8, one);
+    test_integer_static!(check_one, i16, one);
+    test_integer_static!(check_one, i32, one);
+    test_integer_static!(check_one, i64, one);
+    test_integer_static!(check_one, i128, one);
 
-    #[test]
-    fn test_i8_one() {
-        check_one::<i8>();
-    }
-
-    #[test]
-    fn test_u16_one() {
-        check_one::<u16>();
-    }
-
-    #[test]
-    fn test_i16_one() {
-        check_one::<i16>();
-    }
-
-    #[test]
-    fn test_u32_one() {
-        check_one::<u32>();
-    }
-
-    #[test]
-    fn test_i32_one() {
-        check_one::<i32>();
-    }
-
-    #[test]
-    fn test_u64_one() {
-        check_one::<u64>();
-    }
-
-    #[test]
-    fn test_i64_one() {
-        check_one::<i64>();
-    }
-
-    #[test]
-    fn test_u128_one() {
-        check_one::<u128>();
-    }
-
-    #[test]
-    fn test_i128_one() {
-        check_one::<i128>();
-    }
+    test_integer_static!(check_one, u8, one);
+    test_integer_static!(check_one, u16, one);
+    test_integer_static!(check_one, u32, one);
+    test_integer_static!(check_one, u64, one);
+    test_integer_static!(check_one, u128, one);
 }
