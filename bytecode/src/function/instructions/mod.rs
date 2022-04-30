@@ -17,14 +17,29 @@
 pub(super) mod add;
 pub(super) use add::*;
 
+pub(super) mod add_wrapped;
+pub(super) use add_wrapped::*;
+
+pub(super) mod div;
+pub(super) use div::*;
+
+pub(super) mod div_wrapped;
+pub(super) use div_wrapped::*;
+
 pub(super) mod mul;
 pub(super) use mul::*;
+
+pub(super) mod mul_wrapped;
+pub(super) use mul_wrapped::*;
 
 pub(super) mod neg;
 pub(super) use neg::*;
 
 pub(super) mod sub;
 pub(super) use sub::*;
+
+pub(super) mod sub_wrapped;
+pub(super) use sub_wrapped::*;
 
 use crate::{
     function::{parsers::Operand, registers::Registers},
@@ -61,12 +76,22 @@ pub trait Operation<P: Program>: Parser + Into<Instruction<P>> {
 pub enum Instruction<P: Program> {
     /// Adds `first` with `second`, storing the outcome in `destination`.
     Add(Add<P>),
+    /// Adds `first` with `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
+    AddWrapped(AddWrapped<P>),
+    /// Divides `first` by `second`, storing the outcome in `destination`.
+    Div(Div<P>),
+    /// Divides `first` by `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
+    DivWrapped(DivWrapped<P>),
     /// Multiplies `first` with `second`, storing the outcome in `destination`.
     Mul(Mul<P>),
+    /// Multiplies `first` with `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
+    MulWrapped(MulWrapped<P>),
     /// Negates `first`, storing the outcome in `destination`.
     Neg(Neg<P>),
     /// Subtracts `second` from `first`, storing the outcome in `destination`.
     Sub(Sub<P>),
+    /// Subtracts `second` from `first`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
+    SubWrapped(SubWrapped<P>),
 }
 
 impl<P: Program> Instruction<P> {
@@ -75,9 +100,14 @@ impl<P: Program> Instruction<P> {
     pub(crate) fn opcode(&self) -> &'static str {
         match self {
             Self::Add(..) => Add::<P>::opcode(),
+            Self::AddWrapped(..) => AddWrapped::<P>::opcode(),
+            Self::Div(..) => Div::<P>::opcode(),
+            Self::DivWrapped(..) => DivWrapped::<P>::opcode(),
             Self::Mul(..) => Mul::<P>::opcode(),
+            Self::MulWrapped(..) => MulWrapped::<P>::opcode(),
             Self::Neg(..) => Neg::<P>::opcode(),
             Self::Sub(..) => Sub::<P>::opcode(),
+            Self::SubWrapped(..) => SubWrapped::<P>::opcode(),
         }
     }
 
@@ -86,9 +116,14 @@ impl<P: Program> Instruction<P> {
     pub(crate) fn operands(&self) -> Vec<Operand<P>> {
         match self {
             Self::Add(add) => add.operands(),
+            Self::AddWrapped(add_wrapped) => add_wrapped.operands(),
+            Self::Div(div) => div.operands(),
+            Self::DivWrapped(div_wrapped) => div_wrapped.operands(),
             Self::Mul(mul) => mul.operands(),
+            Self::MulWrapped(mul_wrapped) => mul_wrapped.operands(),
             Self::Neg(neg) => neg.operands(),
             Self::Sub(sub) => sub.operands(),
+            Self::SubWrapped(sub_wrapped) => sub_wrapped.operands(),
         }
     }
 
@@ -97,9 +132,14 @@ impl<P: Program> Instruction<P> {
     pub(crate) fn destination(&self) -> &Register<P> {
         match self {
             Self::Add(add) => add.destination(),
+            Self::AddWrapped(add_wrapped) => add_wrapped.destination(),
+            Self::Div(div) => div.destination(),
+            Self::DivWrapped(div_wrapped) => div_wrapped.destination(),
             Self::Mul(mul) => mul.destination(),
+            Self::MulWrapped(mul_wrapped) => mul_wrapped.destination(),
             Self::Neg(neg) => neg.destination(),
             Self::Sub(sub) => sub.destination(),
+            Self::SubWrapped(sub_wrapped) => sub_wrapped.destination(),
         }
     }
 
@@ -108,9 +148,14 @@ impl<P: Program> Instruction<P> {
     pub(crate) fn evaluate(&self, registers: &Registers<P>) {
         match self {
             Self::Add(instruction) => instruction.evaluate(registers),
+            Self::AddWrapped(instruction) => instruction.evaluate(registers),
+            Self::Div(instruction) => instruction.evaluate(registers),
+            Self::DivWrapped(instruction) => instruction.evaluate(registers),
             Self::Mul(instruction) => instruction.evaluate(registers),
+            Self::MulWrapped(instruction) => instruction.evaluate(registers),
             Self::Neg(instruction) => instruction.evaluate(registers),
             Self::Sub(instruction) => instruction.evaluate(registers),
+            Self::SubWrapped(instruction) => instruction.evaluate(registers),
         }
     }
 }
@@ -127,9 +172,14 @@ impl<P: Program> Parser for Instruction<P> {
         let (string, instruction) = alt((
             // Note that order of the individual parsers matters.
             preceded(pair(tag(Add::<P>::opcode()), tag(" ")), map(Add::parse, Into::into)),
+            preceded(pair(tag(AddWrapped::<P>::opcode()), tag(" ")), map(AddWrapped::parse, Into::into)),
+            preceded(pair(tag(Div::<P>::opcode()), tag(" ")), map(Div::parse, Into::into)),
+            preceded(pair(tag(DivWrapped::<P>::opcode()), tag(" ")), map(DivWrapped::parse, Into::into)),
             preceded(pair(tag(Mul::<P>::opcode()), tag(" ")), map(Mul::parse, Into::into)),
+            preceded(pair(tag(MulWrapped::<P>::opcode()), tag(" ")), map(MulWrapped::parse, Into::into)),
             preceded(pair(tag(Neg::<P>::opcode()), tag(" ")), map(Neg::parse, Into::into)),
             preceded(pair(tag(Sub::<P>::opcode()), tag(" ")), map(Sub::parse, Into::into)),
+            preceded(pair(tag(SubWrapped::<P>::opcode()), tag(" ")), map(SubWrapped::parse, Into::into)),
         ))(string)?;
         // Parse the semicolon from the string.
         let (string, _) = tag(";")(string)?;
@@ -142,9 +192,14 @@ impl<P: Program> fmt::Display for Instruction<P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::Add(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::AddWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::Div(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::DivWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Mul(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::MulWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Neg(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Sub(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::SubWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
         }
     }
 }
@@ -154,10 +209,15 @@ impl<P: Program> FromBytes for Instruction<P> {
         let code = u16::read_le(&mut reader)?;
         match code {
             0 => Ok(Self::Add(Add::read_le(&mut reader)?)),
-            1 => Ok(Self::Mul(Mul::read_le(&mut reader)?)),
-            2 => Ok(Self::Neg(Neg::read_le(&mut reader)?)),
-            3 => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
-            4.. => Err(error(format!("Failed to deserialize an instruction of code {code}"))),
+            1 => Ok(Self::AddWrapped(AddWrapped::read_le(&mut reader)?)),
+            2 => Ok(Self::Div(Div::read_le(&mut reader)?)),
+            3 => Ok(Self::DivWrapped(DivWrapped::read_le(&mut reader)?)),
+            4 => Ok(Self::Mul(Mul::read_le(&mut reader)?)),
+            5 => Ok(Self::MulWrapped(MulWrapped::read_le(&mut reader)?)),
+            6 => Ok(Self::Neg(Neg::read_le(&mut reader)?)),
+            7 => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
+            8 => Ok(Self::SubWrapped(SubWrapped::read_le(&mut reader)?)),
+            9.. => Err(error(format!("Failed to deserialize an instruction of code {code}"))),
         }
     }
 }
@@ -169,16 +229,36 @@ impl<P: Program> ToBytes for Instruction<P> {
                 u16::write_le(&0u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Mul(instruction) => {
+            Self::AddWrapped(instruction) => {
                 u16::write_le(&1u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Neg(instruction) => {
+            Self::Div(instruction) => {
                 u16::write_le(&2u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Sub(instruction) => {
+            Self::DivWrapped(instruction) => {
                 u16::write_le(&3u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::Mul(instruction) => {
+                u16::write_le(&4u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::MulWrapped(instruction) => {
+                u16::write_le(&5u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::Neg(instruction) => {
+                u16::write_le(&6u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::Sub(instruction) => {
+                u16::write_le(&7u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::SubWrapped(instruction) => {
+                u16::write_le(&8u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
         }
@@ -312,73 +392,73 @@ mod tests {
                 binary_instruction_test!(
                     test_public_and_public_yields_private,
                     $instruction,
-                    concat!($a, ".public"),
-                    concat!($b, ".public"),
-                    concat!($expected, ".private")
+                    &format!("{}.public", $a),
+                    &format!("{}.public", $b),
+                    &format!("{}.private", $expected)
                 );
 
                 binary_instruction_test!(
                     test_public_and_constant_yields_private,
                     $instruction,
-                    concat!($a, ".public"),
-                    concat!($b, ".constant"),
-                    concat!($expected, ".private")
+                    &format!("{}.public", $a),
+                    &format!("{}.constant", $b),
+                    &format!("{}.private", $expected)
                 );
 
                 binary_instruction_test!(
                     test_public_and_private_yields_private,
                     $instruction,
-                    concat!($a, ".public"),
-                    concat!($b, ".private"),
-                    concat!($expected, ".private")
+                    &format!("{}.public", $a),
+                    &format!("{}.private", $b),
+                    &format!("{}.private", $expected)
                 );
 
                 binary_instruction_test!(
                     test_private_and_constant_yields_private,
                     $instruction,
-                    concat!($a, ".private"),
-                    concat!($b, ".constant"),
-                    concat!($expected, ".private")
+                    &format!("{}.private", $a),
+                    &format!("{}.constant", $b),
+                    &format!("{}.private", $expected)
                 );
 
                 binary_instruction_test!(
                     test_private_and_public_yields_private,
                     $instruction,
-                    concat!($a, ".private"),
-                    concat!($b, ".public"),
-                    concat!($expected, ".private")
+                    &format!("{}.private", $a),
+                    &format!("{}.public", $b),
+                    &format!("{}.private", $expected)
                 );
 
                 binary_instruction_test!(
                     test_private_and_private_yields_private,
                     $instruction,
-                    concat!($a, ".private"),
-                    concat!($b, ".private"),
-                    concat!($expected, ".private")
+                    &format!("{}.private", $a),
+                    &format!("{}.private", $b),
+                    &format!("{}.private", $expected)
                 );
 
                 binary_instruction_test!(
                     test_constant_and_private_yields_private,
                     $instruction,
-                    concat!($a, ".constant"),
-                    concat!($b, ".private"),
-                    concat!($expected, ".private")
+                    &format!("{}.constant", $a),
+                    &format!("{}.private", $b),
+                    &format!("{}.private", $expected)
                 );
 
                 binary_instruction_test!(
                     test_constant_and_public_yields_private,
                     $instruction,
-                    concat!($a, ".constant"),
-                    concat!($b, ".public"),
-                    concat!($expected, ".private")
+                    &format!("{}.constant", $a),
+                    &format!("{}.public", $b),
+                    &format!("{}.private", $expected)
                 );
 
                 binary_instruction_test!(
                     test_constant_and_constant_yields_constant,
                     $instruction,
-                    concat!($a, ".constant"),
-                    concat!($b, ".constant"),
-                    concat!($expected, ".constant")
+                    &format!("{}.constant", $a),
+                    &format!("{}.constant", $b),
+                    &format!("{}.constant", $expected)
                 );
             }
         };
@@ -391,22 +471,22 @@ mod tests {
                 unary_instruction_test!(
                     test_public_yields_private,
                     $instruction,
-                    concat!($input, ".public"),
-                    concat!($expected, ".private")
+                    &format!("{}.public", $input),
+                    &format!("{}.private", $expected)
                 );
 
                 unary_instruction_test!(
                     test_private_yields_private,
                     $instruction,
-                    concat!($input, ".private"),
-                    concat!($expected, ".private")
+                    &format!("{}.private", $input),
+                    &format!("{}.private", $expected)
                 );
 
                 unary_instruction_test!(
                     test_constant_yields_constant,
                     $instruction,
-                    concat!($input, ".constant"),
-                    concat!($expected, ".constant")
+                    &format!("{}.constant", $input),
+                    &format!("{}.constant", $expected)
                 );
             }
         };
