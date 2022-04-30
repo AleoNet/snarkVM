@@ -22,20 +22,16 @@ use crate::{
     Program,
     Value,
 };
-
 use snarkvm_circuits::{
     count,
     output_mode,
-    AddChecked,
+    AddWrapped as AddWrappedCircuit,
     Count,
-    Field,
-    Group,
     Literal,
     Metrics,
     OutputMode,
     Parser,
     ParserResult,
-    Scalar,
     I128,
     I16,
     I32,
@@ -53,12 +49,12 @@ use core::fmt;
 use nom::combinator::map;
 use std::io::{Read, Result as IoResult, Write};
 
-/// Adds `first` with `second`, storing the outcome in `destination`.
-pub struct Add<P: Program> {
+/// Adds `first` with `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
+pub struct AddWrapped<P: Program> {
     operation: BinaryOperation<P>,
 }
 
-impl<P: Program> Add<P> {
+impl<P: Program> AddWrapped<P> {
     /// Returns the operands of the instruction.
     pub fn operands(&self) -> Vec<Operand<P>> {
         self.operation.operands()
@@ -70,15 +66,15 @@ impl<P: Program> Add<P> {
     }
 }
 
-impl<P: Program> Opcode for Add<P> {
+impl<P: Program> Opcode for AddWrapped<P> {
     /// Returns the opcode as a string.
     #[inline]
     fn opcode() -> &'static str {
-        "add"
+        "add.w"
     }
 }
 
-impl<P: Program> Operation<P> for Add<P> {
+impl<P: Program> Operation<P> for AddWrapped<P> {
     /// Evaluates the operation.
     #[inline]
     fn evaluate(&self, registers: &Registers<P>) {
@@ -94,19 +90,16 @@ impl<P: Program> Operation<P> for Add<P> {
 
         // Perform the operation.
         let result = match (first, second) {
-            (Literal::Field(a), Literal::Field(b)) => Literal::Field(a + b),
-            (Literal::Group(a), Literal::Group(b)) => Literal::Group(a + b),
-            (Literal::I8(a), Literal::I8(b)) => Literal::I8(a.add_checked(&b)),
-            (Literal::I16(a), Literal::I16(b)) => Literal::I16(a.add_checked(&b)),
-            (Literal::I32(a), Literal::I32(b)) => Literal::I32(a.add_checked(&b)),
-            (Literal::I64(a), Literal::I64(b)) => Literal::I64(a.add_checked(&b)),
-            (Literal::I128(a), Literal::I128(b)) => Literal::I128(a.add_checked(&b)),
-            (Literal::U8(a), Literal::U8(b)) => Literal::U8(a.add_checked(&b)),
-            (Literal::U16(a), Literal::U16(b)) => Literal::U16(a.add_checked(&b)),
-            (Literal::U32(a), Literal::U32(b)) => Literal::U32(a.add_checked(&b)),
-            (Literal::U64(a), Literal::U64(b)) => Literal::U64(a.add_checked(&b)),
-            (Literal::U128(a), Literal::U128(b)) => Literal::U128(a.add_checked(&b)),
-            (Literal::Scalar(a), Literal::Scalar(b)) => Literal::Scalar(a + b),
+            (Literal::I8(a), Literal::I8(b)) => Literal::I8(a.add_wrapped(&b)),
+            (Literal::I16(a), Literal::I16(b)) => Literal::I16(a.add_wrapped(&b)),
+            (Literal::I32(a), Literal::I32(b)) => Literal::I32(a.add_wrapped(&b)),
+            (Literal::I64(a), Literal::I64(b)) => Literal::I64(a.add_wrapped(&b)),
+            (Literal::I128(a), Literal::I128(b)) => Literal::I128(a.add_wrapped(&b)),
+            (Literal::U8(a), Literal::U8(b)) => Literal::U8(a.add_wrapped(&b)),
+            (Literal::U16(a), Literal::U16(b)) => Literal::U16(a.add_wrapped(&b)),
+            (Literal::U32(a), Literal::U32(b)) => Literal::U32(a.add_wrapped(&b)),
+            (Literal::U64(a), Literal::U64(b)) => Literal::U64(a.add_wrapped(&b)),
+            (Literal::U128(a), Literal::U128(b)) => Literal::U128(a.add_wrapped(&b)),
             _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
         };
 
@@ -114,95 +107,78 @@ impl<P: Program> Operation<P> for Add<P> {
     }
 }
 
-impl<P: Program> Metrics<Self> for Add<P> {
+impl<P: Program> Metrics<Self> for AddWrapped<P> {
     type Case = (LiteralType<P>, LiteralType<P>);
 
     fn count(case: &Self::Case) -> Count {
         match case {
-            (LiteralType::Field(mode_a), LiteralType::Field(mode_b)) => count!(
-                Field<P::Environment>,
-                core::ops::Add<Field<P::Environment>, Output = Field<P::Environment>>,
-                &(*mode_a, *mode_b)
-            ),
-            (LiteralType::Group(mode_a), LiteralType::Group(mode_b)) => count!(
-                Group<P::Environment>,
-                core::ops::Add<Group<P::Environment>, Output = Group<P::Environment>>,
-                &(*mode_a, *mode_b)
-            ),
             (LiteralType::I8(mode_a), LiteralType::I8(mode_b)) => {
                 count!(
                     I8<P::Environment>,
-                    core::ops::Add<I8<P::Environment>, Output = I8<P::Environment>>,
+                    AddWrappedCircuit<I8<P::Environment>, Output = I8<P::Environment>>,
                     &(*mode_a, *mode_b)
                 )
             }
             (LiteralType::I16(mode_a), LiteralType::I16(mode_b)) => {
                 count!(
                     I16<P::Environment>,
-                    core::ops::Add<I16<P::Environment>, Output = I16<P::Environment>>,
+                    AddWrappedCircuit<I16<P::Environment>, Output = I16<P::Environment>>,
                     &(*mode_a, *mode_b)
                 )
             }
             (LiteralType::I32(mode_a), LiteralType::I32(mode_b)) => {
                 count!(
                     I32<P::Environment>,
-                    core::ops::Add<I32<P::Environment>, Output = I32<P::Environment>>,
+                    AddWrappedCircuit<I32<P::Environment>, Output = I32<P::Environment>>,
                     &(*mode_a, *mode_b)
                 )
             }
             (LiteralType::I64(mode_a), LiteralType::I64(mode_b)) => {
                 count!(
                     I64<P::Environment>,
-                    core::ops::Add<I64<P::Environment>, Output = I64<P::Environment>>,
+                    AddWrappedCircuit<I64<P::Environment>, Output = I64<P::Environment>>,
                     &(*mode_a, *mode_b)
                 )
             }
             (LiteralType::I128(mode_a), LiteralType::I128(mode_b)) => {
                 count!(
                     I128<P::Environment>,
-                    core::ops::Add<I128<P::Environment>, Output = I128<P::Environment>>,
+                    AddWrappedCircuit<I128<P::Environment>, Output = I128<P::Environment>>,
                     &(*mode_a, *mode_b)
                 )
             }
             (LiteralType::U8(mode_a), LiteralType::U8(mode_b)) => {
                 count!(
                     U8<P::Environment>,
-                    core::ops::Add<U8<P::Environment>, Output = U8<P::Environment>>,
+                    AddWrappedCircuit<U8<P::Environment>, Output = U8<P::Environment>>,
                     &(*mode_a, *mode_b)
                 )
             }
             (LiteralType::U16(mode_a), LiteralType::U16(mode_b)) => {
                 count!(
                     U16<P::Environment>,
-                    core::ops::Add<U16<P::Environment>, Output = U16<P::Environment>>,
+                    AddWrappedCircuit<U16<P::Environment>, Output = U16<P::Environment>>,
                     &(*mode_a, *mode_b)
                 )
             }
             (LiteralType::U32(mode_a), LiteralType::U32(mode_b)) => {
                 count!(
                     U32<P::Environment>,
-                    core::ops::Add<U32<P::Environment>, Output = U32<P::Environment>>,
+                    AddWrappedCircuit<U32<P::Environment>, Output = U32<P::Environment>>,
                     &(*mode_a, *mode_b)
                 )
             }
             (LiteralType::U64(mode_a), LiteralType::U64(mode_b)) => {
                 count!(
                     U64<P::Environment>,
-                    core::ops::Add<U64<P::Environment>, Output = U64<P::Environment>>,
+                    AddWrappedCircuit<U64<P::Environment>, Output = U64<P::Environment>>,
                     &(*mode_a, *mode_b)
                 )
             }
             (LiteralType::U128(mode_a), LiteralType::U128(mode_b)) => {
                 count!(
                     U128<P::Environment>,
-                    core::ops::Add<U128<P::Environment>, Output = U128<P::Environment>>,
-                    &(*mode_a, *mode_b)
-                )
-            }
-            (LiteralType::Scalar(mode_a), LiteralType::Scalar(mode_b)) => {
-                count!(
-                    Scalar<P::Environment>,
-                    core::ops::Add<Scalar<P::Environment>, Output = Scalar<P::Environment>>,
+                    AddWrappedCircuit<U128<P::Environment>, Output = U128<P::Environment>>,
                     &(*mode_a, *mode_b)
                 )
             }
@@ -211,75 +187,60 @@ impl<P: Program> Metrics<Self> for Add<P> {
     }
 }
 
-impl<P: Program> OutputType for Add<P> {
+impl<P: Program> OutputType for AddWrapped<P> {
     type Input = (LiteralType<P>, LiteralType<P>);
     type Output = LiteralType<P>;
 
     fn output_type(input_type: &Self::Input) -> Self::Output {
         match input_type {
-            (LiteralType::Field(mode_a), LiteralType::Field(mode_b)) => LiteralType::Field(output_mode!(
-                Field<P::Environment>,
-                core::ops::Add<Field<P::Environment>, Output = Field<P::Environment>>,
-                &(*mode_a, *mode_b)
-            )),
-            (LiteralType::Group(mode_a), LiteralType::Group(mode_b)) => LiteralType::Group(output_mode!(
-                Group<P::Environment>,
-                core::ops::Add<Group<P::Environment>, Output = Group<P::Environment>>,
-                &(*mode_a, *mode_b)
-            )),
             (LiteralType::I8(mode_a), LiteralType::I8(mode_b)) => LiteralType::I8(output_mode!(
                 I8<P::Environment>,
-                core::ops::Add<I8<P::Environment>, Output = I8<P::Environment>>,
+                AddWrappedCircuit<I8<P::Environment>, Output = I8<P::Environment>>,
                 &(*mode_a, *mode_b)
             )),
             (LiteralType::I16(mode_a), LiteralType::I16(mode_b)) => LiteralType::I16(output_mode!(
                 I16<P::Environment>,
-                core::ops::Add<I16<P::Environment>, Output = I16<P::Environment>>,
+                AddWrappedCircuit<I16<P::Environment>, Output = I16<P::Environment>>,
                 &(*mode_a, *mode_b)
             )),
             (LiteralType::I32(mode_a), LiteralType::I32(mode_b)) => LiteralType::I32(output_mode!(
                 I32<P::Environment>,
-                core::ops::Add<I32<P::Environment>, Output = I32<P::Environment>>,
+                AddWrappedCircuit<I32<P::Environment>, Output = I32<P::Environment>>,
                 &(*mode_a, *mode_b)
             )),
             (LiteralType::I64(mode_a), LiteralType::I64(mode_b)) => LiteralType::I64(output_mode!(
                 I64<P::Environment>,
-                core::ops::Add<I64<P::Environment>, Output = I64<P::Environment>>,
+                AddWrappedCircuit<I64<P::Environment>, Output = I64<P::Environment>>,
                 &(*mode_a, *mode_b)
             )),
             (LiteralType::I128(mode_a), LiteralType::I128(mode_b)) => LiteralType::I128(output_mode!(
                 I128<P::Environment>,
-                core::ops::Add<I128<P::Environment>, Output = I128<P::Environment>>,
+                AddWrappedCircuit<I128<P::Environment>, Output = I128<P::Environment>>,
                 &(*mode_a, *mode_b)
             )),
             (LiteralType::U8(mode_a), LiteralType::U8(mode_b)) => LiteralType::U8(output_mode!(
                 U8<P::Environment>,
-                core::ops::Add<U8<P::Environment>, Output = U8<P::Environment>>,
+                AddWrappedCircuit<U8<P::Environment>, Output = U8<P::Environment>>,
                 &(*mode_a, *mode_b)
             )),
             (LiteralType::U16(mode_a), LiteralType::U16(mode_b)) => LiteralType::U16(output_mode!(
                 U16<P::Environment>,
-                core::ops::Add<U16<P::Environment>, Output = U16<P::Environment>>,
+                AddWrappedCircuit<U16<P::Environment>, Output = U16<P::Environment>>,
                 &(*mode_a, *mode_b)
             )),
             (LiteralType::U32(mode_a), LiteralType::U32(mode_b)) => LiteralType::U32(output_mode!(
                 U32<P::Environment>,
-                core::ops::Add<U32<P::Environment>, Output = U32<P::Environment>>,
+                AddWrappedCircuit<U32<P::Environment>, Output = U32<P::Environment>>,
                 &(*mode_a, *mode_b)
             )),
             (LiteralType::U64(mode_a), LiteralType::U64(mode_b)) => LiteralType::U64(output_mode!(
                 U64<P::Environment>,
-                core::ops::Add<U64<P::Environment>, Output = U64<P::Environment>>,
+                AddWrappedCircuit<U64<P::Environment>, Output = U64<P::Environment>>,
                 &(*mode_a, *mode_b)
             )),
             (LiteralType::U128(mode_a), LiteralType::U128(mode_b)) => LiteralType::U128(output_mode!(
                 U128<P::Environment>,
-                core::ops::Add<U128<P::Environment>, Output = U128<P::Environment>>,
-                &(*mode_a, *mode_b)
-            )),
-            (LiteralType::Scalar(mode_a), LiteralType::Scalar(mode_b)) => LiteralType::Scalar(output_mode!(
-                Scalar<P::Environment>,
-                core::ops::Add<Scalar<P::Environment>, Output = Scalar<P::Environment>>,
+                AddWrappedCircuit<U128<P::Environment>, Output = U128<P::Environment>>,
                 &(*mode_a, *mode_b)
             )),
             _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
@@ -287,10 +248,10 @@ impl<P: Program> OutputType for Add<P> {
     }
 }
 
-impl<P: Program> Parser for Add<P> {
+impl<P: Program> Parser for AddWrapped<P> {
     type Environment = P::Environment;
 
-    /// Parses a string into an 'add' operation.
+    /// Parses a string into an 'add.w' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the operation from the string.
@@ -298,29 +259,29 @@ impl<P: Program> Parser for Add<P> {
     }
 }
 
-impl<P: Program> fmt::Display for Add<P> {
+impl<P: Program> fmt::Display for AddWrapped<P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.operation)
     }
 }
 
-impl<P: Program> FromBytes for Add<P> {
+impl<P: Program> FromBytes for AddWrapped<P> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         Ok(Self { operation: BinaryOperation::read_le(&mut reader)? })
     }
 }
 
-impl<P: Program> ToBytes for Add<P> {
+impl<P: Program> ToBytes for AddWrapped<P> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.operation.write_le(&mut writer)
     }
 }
 
 #[allow(clippy::from_over_into)]
-impl<P: Program> Into<Instruction<P>> for Add<P> {
+impl<P: Program> Into<Instruction<P>> for AddWrapped<P> {
     /// Converts the operation into an instruction.
     fn into(self) -> Instruction<P> {
-        Instruction::Add(self)
+        Instruction::AddWrapped(self)
     }
 }
 
@@ -333,104 +294,37 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        let (_, instruction) = Instruction::<Process>::parse("add r0 r1 into r2;").unwrap();
-        assert!(matches!(instruction, Instruction::Add(_)));
+        let (_, instruction) = Instruction::<Process>::parse("add.w r0 r1 into r2;").unwrap();
+        assert!(matches!(instruction, Instruction::AddWrapped(_)));
     }
 
-    test_modes!(field, Add, "1field", "2field", "3field");
-    test_modes!(group, Add, "2group", "0group", "2group");
-    test_modes!(i8, Add, "-1i8", "2i8", "1i8");
-    test_modes!(i16, Add, "-1i16", "2i16", "1i16");
-    test_modes!(i32, Add, "-1i32", "2i32", "1i32");
-    test_modes!(i64, Add, "-1i64", "2i64", "1i64");
-    test_modes!(i128, Add, "-1i128", "2i128", "1i128");
-    test_modes!(u8, Add, "1u8", "2u8", "3u8");
-    test_modes!(u16, Add, "1u16", "2u16", "3u16");
-    test_modes!(u32, Add, "1u32", "2u32", "3u32");
-    test_modes!(u64, Add, "1u64", "2u64", "3u64");
-    test_modes!(u128, Add, "1u128", "2u128", "3u128");
-    test_modes!(scalar, Add, "1scalar", "2scalar", "3scalar");
-
-    test_instruction_halts!(
-        i8_overflow_halts,
-        Add,
-        "Integer overflow on addition of two constants",
-        &format!("{}i8.constant", i8::MAX),
-        "1i8.constant"
-    );
-    test_instruction_halts!(
-        i16_overflow_halts,
-        Add,
-        "Integer overflow on addition of two constants",
-        &format!("{}i16.constant", i16::MAX),
-        "1i16.constant"
-    );
-    test_instruction_halts!(
-        i32_overflow_halts,
-        Add,
-        "Integer overflow on addition of two constants",
-        &format!("{}i32.constant", i32::MAX),
-        "1i32.constant"
-    );
-    test_instruction_halts!(
-        i64_overflow_halts,
-        Add,
-        "Integer overflow on addition of two constants",
-        &format!("{}i64.constant", i64::MAX),
-        "1i64.constant"
-    );
-    test_instruction_halts!(
-        i128_overflow_halts,
-        Add,
-        "Integer overflow on addition of two constants",
-        &format!("{}i128.constant", i128::MAX),
-        "1i128.constant"
-    );
-    test_instruction_halts!(
-        u8_overflow_halts,
-        Add,
-        "Integer overflow on addition of two constants",
-        &format!("{}u8.constant", u8::MAX),
-        "1u8.constant"
-    );
-    test_instruction_halts!(
-        u16_overflow_halts,
-        Add,
-        "Integer overflow on addition of two constants",
-        &format!("{}u16.constant", u16::MAX),
-        "1u16.constant"
-    );
-    test_instruction_halts!(
-        u32_overflow_halts,
-        Add,
-        "Integer overflow on addition of two constants",
-        &format!("{}u32.constant", u32::MAX),
-        "1u32.constant"
-    );
-    test_instruction_halts!(
-        u64_overflow_halts,
-        Add,
-        "Integer overflow on addition of two constants",
-        &format!("{}u64.constant", u64::MAX),
-        "1u64.constant"
-    );
-    test_instruction_halts!(
-        u128_overflow_halts,
-        Add,
-        "Integer overflow on addition of two constants",
-        &format!("{}u128.constant", u128::MAX),
-        "1u128.constant"
-    );
+    // Tests that the AddWrapped instruction will wrap around at the boundary of the type in every mode.
+    test_modes!(i8, AddWrapped, &format!("{}i8", i8::MAX), "1i8", &format!("{}i8", i8::MIN));
+    test_modes!(i16, AddWrapped, &format!("{}i16", i16::MAX), "1i16", &format!("{}i16", i16::MIN));
+    test_modes!(i32, AddWrapped, &format!("{}i32", i32::MAX), "1i32", &format!("{}i32", i32::MIN));
+    test_modes!(i64, AddWrapped, &format!("{}i64", i64::MAX), "1i64", &format!("{}i64", i64::MIN));
+    test_modes!(i128, AddWrapped, &format!("{}i128", i128::MAX), "1i128", &format!("{}i128", i128::MIN));
+    test_modes!(u8, AddWrapped, &format!("{}u8", u8::MAX), "1u8", &format!("{}u8", u8::MIN));
+    test_modes!(u16, AddWrapped, &format!("{}u16", u16::MAX), "1u16", &format!("{}u16", u16::MIN));
+    test_modes!(u32, AddWrapped, &format!("{}u32", u32::MAX), "1u32", &format!("{}u32", u32::MIN));
+    test_modes!(u64, AddWrapped, &format!("{}u64", u64::MAX), "1u64", &format!("{}u64", u64::MIN));
+    test_modes!(u128, AddWrapped, &format!("{}u128", u128::MAX), "1u128", &format!("{}u128", u128::MIN));
 
     test_instruction_halts!(
         address_halts,
-        Add,
-        "Invalid 'add' instruction",
+        AddWrapped,
+        "Invalid 'add.w' instruction",
         "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.constant",
         "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.constant"
     );
-    test_instruction_halts!(boolean_halts, Add, "Invalid 'add' instruction", "true.constant", "true.constant");
-    test_instruction_halts!(string_halts, Add, "Invalid 'add' instruction", "\"hello\".constant", "\"world\".constant");
+    test_instruction_halts!(boolean_halts, AddWrapped, "Invalid 'add.w' instruction", "true.constant", "true.constant");
+    test_instruction_halts!(
+        string_halts,
+        AddWrapped,
+        "Invalid 'add.w' instruction",
+        "\"hello\".constant",
+        "\"world\".constant"
+    );
 
     #[test]
     #[should_panic(expected = "message is not a literal")]
@@ -448,6 +342,6 @@ mod tests {
         registers.assign(&Register::from_str("r0"), first);
         registers.assign(&Register::from_str("r1"), second);
 
-        Add::from_str("r0 r1 into r2").evaluate(&registers);
+        AddWrapped::from_str("r0 r1 into r2").evaluate(&registers);
     }
 }

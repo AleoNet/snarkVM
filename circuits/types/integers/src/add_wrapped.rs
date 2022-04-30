@@ -42,12 +42,35 @@ impl<E: Environment, I: IntegerType> AddWrapped<Self> for Integer<E, I> {
     }
 }
 
+impl<E: Environment, I: IntegerType> Metrics<dyn AddWrapped<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
+    type Case = (Mode, Mode);
+
+    fn count(case: &Self::Case) -> Count {
+        match (case.0, case.1) {
+            (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
+            (_, _) => Count::is(0, 0, I::BITS + 1, I::BITS + 2),
+        }
+    }
+}
+
+impl<E: Environment, I: IntegerType> OutputMode<dyn AddWrapped<Integer<E, I>, Output = Integer<E, I>>>
+    for Integer<E, I>
+{
+    type Case = (Mode, Mode);
+
+    fn output_mode(case: &Self::Case) -> Mode {
+        match (case.0, case.1) {
+            (Mode::Constant, Mode::Constant) => Mode::Constant,
+            (_, _) => Mode::Private,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
-    use test_utilities::*;
 
     use core::ops::RangeInclusive;
 
@@ -60,46 +83,43 @@ mod tests {
         second: I,
         mode_a: Mode,
         mode_b: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
     ) {
         let a = Integer::<Circuit, I>::new(mode_a, first);
-        let b = Integer::<Circuit, I>::new(mode_b, second);
-        let case = format!("({} + {})", a.eject_value(), b.eject_value());
+        let b = Integer::new(mode_b, second);
         let expected = first.wrapping_add(&second);
-        check_operation_passes(name, &case, expected, &a, &b, Integer::add_wrapped, num_constants, num_public, num_private, num_constraints);
+        Circuit::scope(name, || {
+            let candidate = a.add_wrapped(&b);
+            assert_eq!(expected, candidate.eject_value());
+            assert_count!(Integer<Circuit, I>, AddWrapped<Integer<Circuit, I>, Output=Integer<Circuit, I>>, &(mode_a, mode_b));
+            assert_output_mode!(candidate, Integer<Circuit, I>, AddWrapped<Integer<Circuit, I>, Output=Integer<Circuit, I>>, &(mode_a, mode_b));
+        });
+        Circuit::reset();
     }
 
     #[rustfmt::skip]
     fn run_test<I: IntegerType>(
         mode_a: Mode,
         mode_b: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
     ) {
         for i in 0..ITERATIONS {
             let first: I = UniformRand::rand(&mut test_rng());
             let second: I = UniformRand::rand(&mut test_rng());
 
             let name = format!("Add: {} + {} {}", mode_a, mode_b, i);
-            check_add(&name, first, second, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+            check_add(&name, first, second, mode_a, mode_b);
 
             let name = format!("Add: {} + {} {} (commutative)", mode_a, mode_b, i);
-            check_add(&name, second, first, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+            check_add(&name, second, first, mode_a, mode_b);
         }
 
         // Overflow
-        check_add("MAX + 1", I::MAX, I::one(), mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
-        check_add("1 + MAX", I::one(), I::MAX, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+        check_add("MAX + 1", I::MAX, I::one(), mode_a, mode_b);
+        check_add("1 + MAX", I::one(), I::MAX, mode_a, mode_b);
 
         // Underflow
         if I::is_signed() {
-            check_add("MIN + (-1)", I::MIN, I::zero() - I::one(), mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
-            check_add("-1 + MIN", I::zero() - I::one(), I::MIN, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+            check_add("MIN + (-1)", I::MIN, I::zero() - I::one(), mode_a, mode_b);
+            check_add("-1 + MIN", I::zero() - I::one(), I::MIN, mode_a, mode_b);
         }
     }
 
@@ -107,17 +127,13 @@ mod tests {
     fn run_exhaustive_test<I: IntegerType>(
         mode_a: Mode,
         mode_b: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
     ) where
         RangeInclusive<I>: Iterator<Item = I>
     {
         for first in I::MIN..=I::MAX {
             for second in I::MIN..=I::MAX {
                 let name = format!("Add: ({} + {})", first, second);
-                check_add(&name, first, second, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+                check_add(&name, first, second, mode_a, mode_b);
             }
         }
     }
@@ -125,55 +141,55 @@ mod tests {
     #[test]
     fn test_u8_constant_plus_constant() {
         type I = u8;
-        run_test::<I>(Mode::Constant, Mode::Constant, 8, 0, 0, 0);
+        run_test::<I>(Mode::Constant, Mode::Constant);
     }
 
     #[test]
     fn test_u8_constant_plus_public() {
         type I = u8;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 9, 10);
+        run_test::<I>(Mode::Constant, Mode::Public);
     }
 
     #[test]
     fn test_u8_constant_plus_private() {
         type I = u8;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 9, 10);
+        run_test::<I>(Mode::Constant, Mode::Private);
     }
 
     #[test]
     fn test_u8_public_plus_constant() {
         type I = u8;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 9, 10);
+        run_test::<I>(Mode::Public, Mode::Constant);
     }
 
     #[test]
     fn test_u8_private_plus_constant() {
         type I = u8;
-        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 9, 10);
+        run_test::<I>(Mode::Private, Mode::Constant);
     }
 
     #[test]
     fn test_u8_public_plus_public() {
         type I = u8;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 9, 10);
+        run_test::<I>(Mode::Public, Mode::Public);
     }
 
     #[test]
     fn test_u8_public_plus_private() {
         type I = u8;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 9, 10);
+        run_test::<I>(Mode::Public, Mode::Private);
     }
 
     #[test]
     fn test_u8_private_plus_public() {
         type I = u8;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 9, 10);
+        run_test::<I>(Mode::Private, Mode::Public);
     }
 
     #[test]
     fn test_u8_private_plus_private() {
         type I = u8;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 9, 10);
+        run_test::<I>(Mode::Private, Mode::Private);
     }
 
     // Tests for i8
@@ -181,55 +197,55 @@ mod tests {
     #[test]
     fn test_i8_constant_plus_constant() {
         type I = i8;
-        run_test::<I>(Mode::Constant, Mode::Constant, 8, 0, 0, 0);
+        run_test::<I>(Mode::Constant, Mode::Constant);
     }
 
     #[test]
     fn test_i8_constant_plus_public() {
         type I = i8;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 9, 10);
+        run_test::<I>(Mode::Constant, Mode::Public);
     }
 
     #[test]
     fn test_i8_constant_plus_private() {
         type I = i8;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 9, 10);
+        run_test::<I>(Mode::Constant, Mode::Private);
     }
 
     #[test]
     fn test_i8_public_plus_constant() {
         type I = i8;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 9, 10);
+        run_test::<I>(Mode::Public, Mode::Constant);
     }
 
     #[test]
     fn test_i8_private_plus_constant() {
         type I = i8;
-        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 9, 10);
+        run_test::<I>(Mode::Private, Mode::Constant);
     }
 
     #[test]
     fn test_i8_public_plus_public() {
         type I = i8;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 9, 10);
+        run_test::<I>(Mode::Public, Mode::Public);
     }
 
     #[test]
     fn test_i8_public_plus_private() {
         type I = i8;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 9, 10);
+        run_test::<I>(Mode::Public, Mode::Private);
     }
 
     #[test]
     fn test_i8_private_plus_public() {
         type I = i8;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 9, 10);
+        run_test::<I>(Mode::Private, Mode::Public);
     }
 
     #[test]
     fn test_i8_private_plus_private() {
         type I = i8;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 9, 10);
+        run_test::<I>(Mode::Private, Mode::Private);
     }
 
     // Tests for u16
@@ -237,55 +253,55 @@ mod tests {
     #[test]
     fn test_u16_constant_plus_constant() {
         type I = u16;
-        run_test::<I>(Mode::Constant, Mode::Constant, 16, 0, 0, 0);
+        run_test::<I>(Mode::Constant, Mode::Constant);
     }
 
     #[test]
     fn test_u16_constant_plus_public() {
         type I = u16;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 17, 18);
+        run_test::<I>(Mode::Constant, Mode::Public);
     }
 
     #[test]
     fn test_u16_constant_plus_private() {
         type I = u16;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 17, 18);
+        run_test::<I>(Mode::Constant, Mode::Private);
     }
 
     #[test]
     fn test_u16_public_plus_constant() {
         type I = u16;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 17, 18);
+        run_test::<I>(Mode::Public, Mode::Constant);
     }
 
     #[test]
     fn test_u16_private_plus_constant() {
         type I = u16;
-        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 17, 18);
+        run_test::<I>(Mode::Private, Mode::Constant);
     }
 
     #[test]
     fn test_u16_public_plus_public() {
         type I = u16;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 17, 18);
+        run_test::<I>(Mode::Public, Mode::Public);
     }
 
     #[test]
     fn test_u16_public_plus_private() {
         type I = u16;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 17, 18);
+        run_test::<I>(Mode::Public, Mode::Private);
     }
 
     #[test]
     fn test_u16_private_plus_public() {
         type I = u16;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 17, 18);
+        run_test::<I>(Mode::Private, Mode::Public);
     }
 
     #[test]
     fn test_u16_private_plus_private() {
         type I = u16;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 17, 18);
+        run_test::<I>(Mode::Private, Mode::Private);
     }
 
     // Tests for i16
@@ -293,55 +309,55 @@ mod tests {
     #[test]
     fn test_i16_constant_plus_constant() {
         type I = i16;
-        run_test::<I>(Mode::Constant, Mode::Constant, 16, 0, 0, 0);
+        run_test::<I>(Mode::Constant, Mode::Constant);
     }
 
     #[test]
     fn test_i16_constant_plus_public() {
         type I = i16;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 17, 18);
+        run_test::<I>(Mode::Constant, Mode::Public);
     }
 
     #[test]
     fn test_i16_constant_plus_private() {
         type I = i16;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 17, 18);
+        run_test::<I>(Mode::Constant, Mode::Private);
     }
 
     #[test]
     fn test_i16_public_plus_constant() {
         type I = i16;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 17, 18);
+        run_test::<I>(Mode::Public, Mode::Constant);
     }
 
     #[test]
     fn test_i16_private_plus_constant() {
         type I = i16;
-        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 17, 18);
+        run_test::<I>(Mode::Private, Mode::Constant);
     }
 
     #[test]
     fn test_i16_public_plus_public() {
         type I = i16;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 17, 18);
+        run_test::<I>(Mode::Public, Mode::Public);
     }
 
     #[test]
     fn test_i16_public_plus_private() {
         type I = i16;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 17, 18);
+        run_test::<I>(Mode::Public, Mode::Private);
     }
 
     #[test]
     fn test_i16_private_plus_public() {
         type I = i16;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 17, 18);
+        run_test::<I>(Mode::Private, Mode::Public);
     }
 
     #[test]
     fn test_i16_private_plus_private() {
         type I = i16;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 17, 18);
+        run_test::<I>(Mode::Private, Mode::Private);
     }
 
     // Tests for u32
@@ -349,55 +365,55 @@ mod tests {
     #[test]
     fn test_u32_constant_plus_constant() {
         type I = u32;
-        run_test::<I>(Mode::Constant, Mode::Constant, 32, 0, 0, 0);
+        run_test::<I>(Mode::Constant, Mode::Constant);
     }
 
     #[test]
     fn test_u32_constant_plus_public() {
         type I = u32;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 33, 34);
+        run_test::<I>(Mode::Constant, Mode::Public);
     }
 
     #[test]
     fn test_u32_constant_plus_private() {
         type I = u32;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 33, 34);
+        run_test::<I>(Mode::Constant, Mode::Private);
     }
 
     #[test]
     fn test_u32_public_plus_constant() {
         type I = u32;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 33, 34);
+        run_test::<I>(Mode::Public, Mode::Constant);
     }
 
     #[test]
     fn test_u32_private_plus_constant() {
         type I = u32;
-        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 33, 34);
+        run_test::<I>(Mode::Private, Mode::Constant);
     }
 
     #[test]
     fn test_u32_public_plus_public() {
         type I = u32;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 33, 34);
+        run_test::<I>(Mode::Public, Mode::Public);
     }
 
     #[test]
     fn test_u32_public_plus_private() {
         type I = u32;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 33, 34);
+        run_test::<I>(Mode::Public, Mode::Private);
     }
 
     #[test]
     fn test_u32_private_plus_public() {
         type I = u32;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 33, 34);
+        run_test::<I>(Mode::Private, Mode::Public);
     }
 
     #[test]
     fn test_u32_private_plus_private() {
         type I = u32;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 33, 34);
+        run_test::<I>(Mode::Private, Mode::Private);
     }
 
     // Tests for i32
@@ -405,55 +421,55 @@ mod tests {
     #[test]
     fn test_i32_constant_plus_constant() {
         type I = i32;
-        run_test::<I>(Mode::Constant, Mode::Constant, 32, 0, 0, 0);
+        run_test::<I>(Mode::Constant, Mode::Constant);
     }
 
     #[test]
     fn test_i32_constant_plus_public() {
         type I = i32;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 33, 34);
+        run_test::<I>(Mode::Constant, Mode::Public);
     }
 
     #[test]
     fn test_i32_constant_plus_private() {
         type I = i32;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 33, 34);
+        run_test::<I>(Mode::Constant, Mode::Private);
     }
 
     #[test]
     fn test_i32_public_plus_constant() {
         type I = i32;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 33, 34);
+        run_test::<I>(Mode::Public, Mode::Constant);
     }
 
     #[test]
     fn test_i32_private_plus_constant() {
         type I = i32;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 33, 34);
+        run_test::<I>(Mode::Private, Mode::Public);
     }
 
     #[test]
     fn test_i32_public_plus_public() {
         type I = i32;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 33, 34);
+        run_test::<I>(Mode::Public, Mode::Public);
     }
 
     #[test]
     fn test_i32_public_plus_private() {
         type I = i32;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 33, 34);
+        run_test::<I>(Mode::Public, Mode::Private);
     }
 
     #[test]
     fn test_i32_private_plus_public() {
         type I = i32;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 33, 34);
+        run_test::<I>(Mode::Private, Mode::Public);
     }
 
     #[test]
     fn test_i32_private_plus_private() {
         type I = i32;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 33, 34);
+        run_test::<I>(Mode::Private, Mode::Private);
     }
 
     // Tests for u64
@@ -461,55 +477,55 @@ mod tests {
     #[test]
     fn test_u64_constant_plus_constant() {
         type I = u64;
-        run_test::<I>(Mode::Constant, Mode::Constant, 64, 0, 0, 0);
+        run_test::<I>(Mode::Constant, Mode::Constant);
     }
 
     #[test]
     fn test_u64_constant_plus_public() {
         type I = u64;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 65, 66);
+        run_test::<I>(Mode::Constant, Mode::Public);
     }
 
     #[test]
     fn test_u64_constant_plus_private() {
         type I = u64;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 65, 66);
+        run_test::<I>(Mode::Constant, Mode::Private);
     }
 
     #[test]
     fn test_u64_public_plus_constant() {
         type I = u64;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 65, 66);
+        run_test::<I>(Mode::Public, Mode::Constant);
     }
 
     #[test]
     fn test_u64_private_plus_constant() {
         type I = u64;
-        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 65, 66);
+        run_test::<I>(Mode::Private, Mode::Constant);
     }
 
     #[test]
     fn test_u64_public_plus_public() {
         type I = u64;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 65, 66);
+        run_test::<I>(Mode::Public, Mode::Public);
     }
 
     #[test]
     fn test_u64_public_plus_private() {
         type I = u64;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 65, 66);
+        run_test::<I>(Mode::Public, Mode::Private);
     }
 
     #[test]
     fn test_u64_private_plus_public() {
         type I = u64;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 65, 66);
+        run_test::<I>(Mode::Private, Mode::Public);
     }
 
     #[test]
     fn test_u64_private_plus_private() {
         type I = u64;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 65, 66);
+        run_test::<I>(Mode::Private, Mode::Private);
     }
 
     // Tests for i64
@@ -517,55 +533,55 @@ mod tests {
     #[test]
     fn test_i64_constant_plus_constant() {
         type I = i64;
-        run_test::<I>(Mode::Constant, Mode::Constant, 64, 0, 0, 0);
+        run_test::<I>(Mode::Constant, Mode::Constant);
     }
 
     #[test]
     fn test_i64_constant_plus_public() {
         type I = i64;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 65, 66);
+        run_test::<I>(Mode::Constant, Mode::Public);
     }
 
     #[test]
     fn test_i64_constant_plus_private() {
         type I = i64;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 65, 66);
+        run_test::<I>(Mode::Constant, Mode::Private);
     }
 
     #[test]
     fn test_i64_public_plus_constant() {
         type I = i64;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 65, 66);
+        run_test::<I>(Mode::Public, Mode::Constant);
     }
 
     #[test]
     fn test_i64_private_plus_constant() {
         type I = i64;
-        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 65, 66);
+        run_test::<I>(Mode::Private, Mode::Constant);
     }
 
     #[test]
     fn test_i64_public_plus_public() {
         type I = i64;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 65, 66);
+        run_test::<I>(Mode::Public, Mode::Public);
     }
 
     #[test]
     fn test_i64_public_plus_private() {
         type I = i64;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 65, 66);
+        run_test::<I>(Mode::Public, Mode::Private);
     }
 
     #[test]
     fn test_i64_private_plus_public() {
         type I = i64;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 65, 66);
+        run_test::<I>(Mode::Private, Mode::Public);
     }
 
     #[test]
     fn test_i64_private_plus_private() {
         type I = i64;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 65, 66);
+        run_test::<I>(Mode::Private, Mode::Private);
     }
 
     // Tests for u128
@@ -573,55 +589,55 @@ mod tests {
     #[test]
     fn test_u128_constant_plus_constant() {
         type I = u128;
-        run_test::<I>(Mode::Constant, Mode::Constant, 128, 0, 0, 0);
+        run_test::<I>(Mode::Constant, Mode::Constant);
     }
 
     #[test]
     fn test_u128_constant_plus_public() {
         type I = u128;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 129, 130);
+        run_test::<I>(Mode::Constant, Mode::Public);
     }
 
     #[test]
     fn test_u128_constant_plus_private() {
         type I = u128;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 129, 130);
+        run_test::<I>(Mode::Constant, Mode::Private);
     }
 
     #[test]
     fn test_u128_public_plus_constant() {
         type I = u128;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 129, 130);
+        run_test::<I>(Mode::Public, Mode::Constant);
     }
 
     #[test]
     fn test_u128_private_plus_constant() {
         type I = u128;
-        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 129, 130);
+        run_test::<I>(Mode::Private, Mode::Constant);
     }
 
     #[test]
     fn test_u128_public_plus_public() {
         type I = u128;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 129, 130);
+        run_test::<I>(Mode::Public, Mode::Public);
     }
 
     #[test]
     fn test_u128_public_plus_private() {
         type I = u128;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 129, 130);
+        run_test::<I>(Mode::Public, Mode::Private);
     }
 
     #[test]
     fn test_u128_private_plus_public() {
         type I = u128;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 129, 130);
+        run_test::<I>(Mode::Private, Mode::Public);
     }
 
     #[test]
     fn test_u128_private_plus_private() {
         type I = u128;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 129, 130);
+        run_test::<I>(Mode::Private, Mode::Private);
     }
 
     // Tests for i128
@@ -629,55 +645,55 @@ mod tests {
     #[test]
     fn test_i128_constant_plus_constant() {
         type I = i128;
-        run_test::<I>(Mode::Constant, Mode::Constant, 128, 0, 0, 0);
+        run_test::<I>(Mode::Constant, Mode::Constant);
     }
 
     #[test]
     fn test_i128_constant_plus_public() {
         type I = i128;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 129, 130);
+        run_test::<I>(Mode::Constant, Mode::Public);
     }
 
     #[test]
     fn test_i128_constant_plus_private() {
         type I = i128;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 129, 130);
+        run_test::<I>(Mode::Constant, Mode::Private);
     }
 
     #[test]
     fn test_i128_public_plus_constant() {
         type I = i128;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 129, 130);
+        run_test::<I>(Mode::Public, Mode::Constant);
     }
 
     #[test]
     fn test_i128_private_plus_constant() {
         type I = i128;
-        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 129, 130);
+        run_test::<I>(Mode::Private, Mode::Constant);
     }
 
     #[test]
     fn test_i128_public_plus_public() {
         type I = i128;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 129, 130);
+        run_test::<I>(Mode::Public, Mode::Public);
     }
 
     #[test]
     fn test_i128_public_plus_private() {
         type I = i128;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 129, 130);
+        run_test::<I>(Mode::Public, Mode::Private);
     }
 
     #[test]
     fn test_i128_private_plus_public() {
         type I = i128;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 129, 130);
+        run_test::<I>(Mode::Private, Mode::Public);
     }
 
     #[test]
     fn test_i128_private_plus_private() {
         type I = i128;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 129, 130);
+        run_test::<I>(Mode::Private, Mode::Private);
     }
 
     // Exhaustive tests for u8.
@@ -686,63 +702,63 @@ mod tests {
     #[ignore]
     fn test_exhaustive_u8_constant_plus_constant() {
         type I = u8;
-        run_exhaustive_test::<I>(Mode::Constant, Mode::Constant, 8, 0, 0, 0);
+        run_exhaustive_test::<I>(Mode::Constant, Mode::Constant);
     }
 
     #[test]
     #[ignore]
     fn test_exhaustive_u8_constant_plus_public() {
         type I = u8;
-        run_exhaustive_test::<I>(Mode::Constant, Mode::Public, 0, 0, 9, 10);
+        run_exhaustive_test::<I>(Mode::Constant, Mode::Public);
     }
 
     #[test]
     #[ignore]
     fn test_exhaustive_u8_constant_plus_private() {
         type I = u8;
-        run_exhaustive_test::<I>(Mode::Constant, Mode::Private, 0, 0, 9, 10);
+        run_exhaustive_test::<I>(Mode::Constant, Mode::Private);
     }
 
     #[test]
     #[ignore]
     fn test_exhaustive_u8_public_plus_constant() {
         type I = u8;
-        run_exhaustive_test::<I>(Mode::Public, Mode::Constant, 0, 0, 9, 10);
+        run_exhaustive_test::<I>(Mode::Public, Mode::Constant);
     }
 
     #[test]
     #[ignore]
     fn test_exhaustive_u8_private_plus_constant() {
         type I = u8;
-        run_exhaustive_test::<I>(Mode::Private, Mode::Constant, 0, 0, 9, 10);
+        run_exhaustive_test::<I>(Mode::Private, Mode::Constant);
     }
 
     #[test]
     #[ignore]
     fn test_exhaustive_u8_public_plus_public() {
         type I = u8;
-        run_exhaustive_test::<I>(Mode::Public, Mode::Public, 0, 0, 9, 10);
+        run_exhaustive_test::<I>(Mode::Public, Mode::Public);
     }
 
     #[test]
     #[ignore]
     fn test_exhaustive_u8_public_plus_private() {
         type I = u8;
-        run_exhaustive_test::<I>(Mode::Public, Mode::Private, 0, 0, 9, 10);
+        run_exhaustive_test::<I>(Mode::Public, Mode::Private);
     }
 
     #[test]
     #[ignore]
     fn test_exhaustive_u8_private_plus_public() {
         type I = u8;
-        run_exhaustive_test::<I>(Mode::Private, Mode::Public, 0, 0, 9, 10);
+        run_exhaustive_test::<I>(Mode::Private, Mode::Public);
     }
 
     #[test]
     #[ignore]
     fn test_exhaustive_u8_private_plus_private() {
         type I = u8;
-        run_exhaustive_test::<I>(Mode::Private, Mode::Private, 0, 0, 9, 10);
+        run_exhaustive_test::<I>(Mode::Private, Mode::Private);
     }
 
     // Exhaustive tests for i8
@@ -751,62 +767,62 @@ mod tests {
     #[ignore]
     fn test_exhaustive_i8_constant_plus_constant() {
         type I = i8;
-        run_exhaustive_test::<I>(Mode::Constant, Mode::Constant, 8, 0, 0, 0);
+        run_exhaustive_test::<I>(Mode::Constant, Mode::Constant);
     }
 
     #[test]
     #[ignore]
     fn test_exhaustive_i8_constant_plus_public() {
         type I = i8;
-        run_exhaustive_test::<I>(Mode::Constant, Mode::Public, 0, 0, 9, 10);
+        run_exhaustive_test::<I>(Mode::Constant, Mode::Public);
     }
 
     #[test]
     #[ignore]
     fn test_exhaustive_i8_constant_plus_private() {
         type I = i8;
-        run_exhaustive_test::<I>(Mode::Constant, Mode::Private, 0, 0, 9, 10);
+        run_exhaustive_test::<I>(Mode::Constant, Mode::Private);
     }
 
     #[test]
     #[ignore]
     fn test_exhaustive_i8_public_plus_constant() {
         type I = i8;
-        run_exhaustive_test::<I>(Mode::Public, Mode::Constant, 0, 0, 9, 10);
+        run_exhaustive_test::<I>(Mode::Public, Mode::Constant);
     }
 
     #[test]
     #[ignore]
     fn test_exhaustive_i8_private_plus_constant() {
         type I = i8;
-        run_exhaustive_test::<I>(Mode::Private, Mode::Constant, 0, 0, 9, 10);
+        run_exhaustive_test::<I>(Mode::Private, Mode::Constant);
     }
 
     #[test]
     #[ignore]
     fn test_exhaustive_i8_public_plus_public() {
         type I = i8;
-        run_exhaustive_test::<I>(Mode::Public, Mode::Public, 0, 0, 9, 10);
+        run_exhaustive_test::<I>(Mode::Public, Mode::Public);
     }
 
     #[test]
     #[ignore]
     fn test_exhaustive_i8_public_plus_private() {
         type I = i8;
-        run_exhaustive_test::<I>(Mode::Public, Mode::Private, 0, 0, 9, 10);
+        run_exhaustive_test::<I>(Mode::Public, Mode::Private);
     }
 
     #[test]
     #[ignore]
     fn test_exhaustive_i8_private_plus_public() {
         type I = i8;
-        run_exhaustive_test::<I>(Mode::Private, Mode::Public, 0, 0, 9, 10);
+        run_exhaustive_test::<I>(Mode::Private, Mode::Public);
     }
 
     #[test]
     #[ignore]
     fn test_exhaustive_i8_private_plus_private() {
         type I = i8;
-        run_exhaustive_test::<I>(Mode::Private, Mode::Private, 0, 0, 9, 10);
+        run_exhaustive_test::<I>(Mode::Private, Mode::Private);
     }
 }

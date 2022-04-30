@@ -160,7 +160,7 @@ impl<E: Environment, I: IntegerType> OutputMode<dyn AddChecked<Integer<E, I>, Ou
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_circuits_environment::{assert_count, assert_count_fails, assert_output_mode, Circuit};
+    use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
     use test_utilities::*;
 
