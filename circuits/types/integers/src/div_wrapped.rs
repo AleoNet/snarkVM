@@ -89,7 +89,7 @@ impl<E: Environment, I: IntegerType> Metrics<dyn DivWrapped<Integer<E, I>, Outpu
 }
 
 impl<E: Environment, I: IntegerType> OutputMode<dyn DivWrapped<Integer<E, I>, Output = Integer<E, I>>>
-for Integer<E, I>
+    for Integer<E, I>
 {
     type Case = (Mode, Mode);
 
@@ -136,10 +136,7 @@ mod tests {
         Circuit::reset();
     }
 
-    fn run_test<I: IntegerType + std::panic::RefUnwindSafe>(
-        mode_a: Mode,
-        mode_b: Mode
-    ) {
+    fn run_test<I: IntegerType + std::panic::RefUnwindSafe>(mode_a: Mode, mode_b: Mode) {
         for _ in 0..ITERATIONS {
             let first: I = UniformRand::rand(&mut test_rng());
             let second: I = UniformRand::rand(&mut test_rng());
@@ -165,7 +162,7 @@ mod tests {
         check_div("MAX / 0", I::MAX, I::zero(), mode_a, mode_b);
         check_div("MIN / 0", I::MIN, I::zero(), mode_a, mode_b);
         check_div("1 / 0", I::one(), I::zero(), mode_a, mode_b);
-        check_div("0 / 0", I::zero(),I::zero(), mode_a, mode_b);
+        check_div("0 / 0", I::zero(), I::zero(), mode_a, mode_b);
 
         // Check some additional corner cases for signed integer division.
         if I::is_signed() {
@@ -175,11 +172,9 @@ mod tests {
         }
     }
 
-    fn run_exhaustive_test<I: IntegerType + RefUnwindSafe>(
-        mode_a: Mode,
-        mode_b: Mode
-    ) where
-        RangeInclusive<I>: Iterator<Item = I>
+    fn run_exhaustive_test<I: IntegerType + RefUnwindSafe>(mode_a: Mode, mode_b: Mode)
+    where
+        RangeInclusive<I>: Iterator<Item = I>,
     {
         for first in I::MIN..=I::MAX {
             for second in I::MIN..=I::MAX {
