@@ -42,6 +42,7 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
         that: &Integer<E, I>,
         include_carry_bits: bool,
     ) -> (Integer<E, I>, Vec<Boolean<E>>) {
+        // Case 1 - 2 integers fit in 1 field element (u8, u16, u32, u64, i8, i16, i32, i64).
         if 2 * I::BITS < E::BaseField::size_in_bits() - 1 {
             // Instead of multiplying the bits of `self` and `other` directly, the integers are
             // converted into a field elements, and multiplied, before being converted back to integers.
@@ -53,7 +54,9 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
 
             // Return the product of `self` and `other`, along with the carry bits.
             (Integer::from_bits_le(bits_le), carry.to_vec())
-        } else if (I::BITS + I::BITS / 2) < E::BaseField::size_in_bits() - 1 {
+        }
+        // Case 2 - 1.5 integers fit in 1 field element (u128, i128).
+        else if (I::BITS + I::BITS / 2) < E::BaseField::size_in_bits() - 1 {
             // Perform multiplication by decomposing it into operations on its upper and lower bits.
             // See this page for reference: https://en.wikipedia.org/wiki/Karatsuba_algorithm.
             // Note: We follow the naming convention given in the `Basic Step` section of the cited page.
