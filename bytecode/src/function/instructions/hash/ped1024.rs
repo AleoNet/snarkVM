@@ -40,7 +40,7 @@ impl_hash_instruction!(Ped1024);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{test_modes, Process};
+    use crate::{test_instruction_halts, test_modes, Process};
 
     type P = Process;
 
@@ -139,5 +139,18 @@ mod tests {
         Ped1024,
         "1scalar",
         "2735878956944204282034515986614586323780043889637881845468543426547714835261field"
+    );
+    test_modes!(
+        string,
+        Ped1024,
+        "\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"",
+        "4823687538796085678706395592605314872047221564256175161093057716327805678675field"
+    );
+
+    test_instruction_halts!(
+        string_halts,
+        Ped1024,
+        "Invalid input size for Pedersen1024 hash",
+        "\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\""
     );
 }

@@ -106,14 +106,21 @@ mod tests {
         "1u128",
         "6816575380758169283574189990529538788132696333761268862790291443715450461314field"
     );
+    test_modes!(
+        string,
+        Ped128,
+        "\"aaaaaaaaaaaaaaaa\"",
+        "5428388910589880193258972690867108267462909934274443788717808710029318581740field"
+    );
 
     test_instruction_halts!(
         address_halts,
         Ped128,
         "Invalid input size for Pedersen128 hash",
-        "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.constant"
+        "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah"
     );
     test_instruction_halts!(field_halts, Ped128, "Invalid input size for Pedersen128 hash", "1field");
     test_instruction_halts!(group_halts, Ped128, "Invalid input size for Pedersen128 hash", "2group");
     test_instruction_halts!(scalar_halts, Ped128, "Invalid input size for Pedersen128 hash", "1scalar");
+    test_instruction_halts!(string_halts, Ped128, "Invalid input size for Pedersen128 hash", "\"aaaaaaaaaaaaaaaaaa\"");
 }

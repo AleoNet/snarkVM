@@ -46,6 +46,14 @@ impl<P: Program> Pedersen64<P> {
             Literal::U16(a) => Literal::Field(self.0.hash(&a.to_bits_le())),
             Literal::U32(a) => Literal::Field(self.0.hash(&a.to_bits_le())),
             Literal::U64(a) => Literal::Field(self.0.hash(&a.to_bits_le())),
+            Literal::String(a) => {
+                let bits = a.to_bits_le();
+                if bits.len() > 64 {
+                    P::halt("Invalid input size for Pedersen64 hash")
+                } else {
+                    Literal::Field(self.0.hash(&bits))
+                }
+            }
             _ => P::halt("Invalid input size for Pedersen64 hash"),
         }
     }

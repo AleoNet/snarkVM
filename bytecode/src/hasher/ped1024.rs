@@ -52,7 +52,14 @@ impl<P: Program> Pedersen1024<P> {
             Literal::U64(a) => Literal::Field(self.0.hash(&a.to_bits_le())),
             Literal::U128(a) => Literal::Field(self.0.hash(&a.to_bits_le())),
             Literal::Scalar(a) => Literal::Field(self.0.hash(&a.to_bits_le())),
-            _ => P::halt("Invalid input size for Pedersen1024 hash"),
+            Literal::String(a) => {
+                let bits = a.to_bits_le();
+                if bits.len() > 1024 {
+                    P::halt("Invalid input size for Pedersen1024 hash")
+                } else {
+                    Literal::Field(self.0.hash(&bits))
+                }
+            }
         }
     }
 }

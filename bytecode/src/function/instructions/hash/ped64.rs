@@ -94,16 +94,23 @@ mod tests {
         "1u64",
         "7196659803296294243777457885733673378668319525819811655288865404872703603579field"
     );
+    test_modes!(
+        string,
+        Ped64,
+        "\"aaaaaaaa\"",
+        "6172358674434921834827729424693250887189681745640668002709561840641541178852field"
+    );
 
     test_instruction_halts!(
         address_halts,
         Ped64,
         "Invalid input size for Pedersen64 hash",
-        "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.constant"
+        "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah"
     );
     test_instruction_halts!(field_halts, Ped64, "Invalid input size for Pedersen64 hash", "1field");
     test_instruction_halts!(group_halts, Ped64, "Invalid input size for Pedersen64 hash", "2group");
     test_instruction_halts!(scalar_halts, Ped64, "Invalid input size for Pedersen64 hash", "1scalar");
     test_instruction_halts!(i128_halts, Ped64, "Invalid input size for Pedersen64 hash", "1i128");
     test_instruction_halts!(u128_halts, Ped64, "Invalid input size for Pedersen64 hash", "1u128");
+    test_instruction_halts!(string_halts, Ped64, "Invalid input size for Pedersen64 hash", "\"aaaaaaaaa\"");
 }
