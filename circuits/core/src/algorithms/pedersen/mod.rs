@@ -39,6 +39,7 @@ pub type Pedersen1024<E> = Pedersen<E, 8, 128>;
 
 /// Pedersen is a collision-resistant hash function that takes a variable-length input.
 /// The Pedersen hash function does *not* behave like a random oracle, see Poseidon for one.
+#[derive(Clone)]
 pub struct Pedersen<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
     /// The base windows for the Pedersen hash.
     bases: Vec<Vec<Group<E>>>,

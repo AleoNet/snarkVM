@@ -31,6 +31,7 @@ const RATE: usize = 4;
 const OPTIMIZED_FOR_WEIGHTS: bool = false;
 const CAPACITY: usize = 1;
 
+#[derive(Clone)]
 pub struct Poseidon<E: Environment> {
     /// The number of rounds in a full-round operation.
     full_rounds: usize,

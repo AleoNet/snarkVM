@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Definition, Function, Identifier, Program, Sanitizer};
+use crate::{Definition, Function, Hasher, Identifier, Program, Sanitizer};
 use snarkvm_circuits::{prelude::*, Devnet};
 
 use indexmap::IndexMap;
@@ -27,6 +27,9 @@ thread_local! {
     /// The functions declared for the process.
     /// This is a map from the function name to the function.
     static FUNCTIONS: RefCell<IndexMap<Identifier<Process>, Function<Process>>> = Default::default();
+    /// The hashers declared for the process.
+    /// This is a map from the hash opcode to the hasher.
+    static HASHERS: RefCell<IndexMap<String, Hasher<Process>>> = Default::default();
 }
 
 /// A process is a threaded-instance of a program. This design paradigm is used to allow for
@@ -87,6 +90,23 @@ impl Program for Process {
     /// Returns the function with the given name.
     fn get_function(name: &Identifier<Self>) -> Option<Function<Self>> {
         FUNCTIONS.with(|functions| functions.borrow().get(name).cloned())
+    }
+
+    /// Returns the hashing gadget with the given name.
+    /// Note that, if given a valid name, a hashing gadget will always
+    /// be returned, as these gadgets should always be available.
+    ///
+    /// # Errors
+    /// This method will halt if the given name does not reference any
+    /// implemented hashing gadget.
+    fn get_hasher(name: &str) -> Hasher<Self> {
+        HASHERS.with(|hashers| {
+            if let Some(hasher) = hashers.borrow().get(&name.to_string()) {
+                hasher.clone()
+            } else {
+                hashers.borrow_mut().insert(name.to_string(), Hasher::new(name)).unwrap()
+            }
+        })
     }
 }
 
