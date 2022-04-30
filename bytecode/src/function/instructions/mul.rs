@@ -17,7 +17,6 @@
 use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Registers},
     helpers::Register,
-    impl_instruction_boilerplate,
     Program,
     Value,
 };
