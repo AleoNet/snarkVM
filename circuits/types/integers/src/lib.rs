@@ -496,7 +496,7 @@ mod test_utilities {
         fmt::{Debug, Display},
         panic::UnwindSafe,
     };
-    use snarkvm_circuits_environment::{assert_scope, assert_scope_fails, Circuit, Eject, Environment};
+    use snarkvm_circuits_environment::{Circuit, Eject, Environment};
 
     /// A generic template for an integer test case.
     #[macro_export]
@@ -708,26 +708,6 @@ mod test_utilities {
         };
     }
 
-    pub fn check_operation_passes<V: Debug + Display + PartialEq, LHS, RHS, OUT: Eject<Primitive = V>>(
-        name: &str,
-        case: &str,
-        expected: V,
-        a: LHS,
-        b: RHS,
-        operation: impl FnOnce(LHS, RHS) -> OUT,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        Circuit::scope(name, || {
-            let candidate = operation(a, b);
-            assert_eq!(expected, candidate.eject_value(), "{} != {} := {}", expected, candidate.eject_value(), case);
-            assert_scope!(case, num_constants, num_public, num_private, num_constraints);
-        });
-        Circuit::reset();
-    }
-
     pub fn check_operation_passes_without_counts<
         V: Debug + Display + PartialEq,
         LHS,
@@ -744,24 +724,6 @@ mod test_utilities {
         Circuit::scope(name, || {
             let candidate = operation(a, b);
             assert_eq!(expected, candidate.eject_value(), "{} != {} := {}", expected, candidate.eject_value(), case);
-        });
-        Circuit::reset();
-    }
-
-    pub fn check_operation_fails<LHS, RHS, OUT>(
-        name: &str,
-        case: &str,
-        a: LHS,
-        b: RHS,
-        operation: impl FnOnce(LHS, RHS) -> OUT,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        Circuit::scope(name, || {
-            let _candidate = operation(a, b);
-            assert_scope_fails!(case, num_constants, num_public, num_private, num_constraints);
         });
         Circuit::reset();
     }
