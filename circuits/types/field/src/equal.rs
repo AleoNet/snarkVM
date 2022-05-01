@@ -46,7 +46,10 @@ impl<E: Environment> Equal<Self> for Field<E> {
                 // Assign the expected multiplier.
                 let multiplier: Field<E> = witness!(|self, other| {
                     match self != other {
-                        true => (self - other).inverse().expect("Failed to compute a native inverse"),
+                        true => match (self - other).inverse() {
+                            Some(inverse) => inverse,
+                            None => E::halt("Failed to compute the native inverse of a field element"),
+                        },
                         false => E::BaseField::one(),
                     }
                 });

@@ -122,9 +122,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> OutputMode<dyn PowChecked<Int
                     true => Mode::Constant,
                     false => Mode::Private,
                 },
-                _ => E::halt(format!(
-                    "The constant is required to determine the output mode of a `pow_wrapped` with a constant."
-                )),
+                _ => E::halt(format!("The constant is required for the output mode of `pow_wrapped` with a constant.")),
             },
             (_, _) => Mode::Private,
         }
@@ -157,7 +155,7 @@ mod tests {
                 let candidate = a.pow_checked(&b);
                 assert_eq!(expected, candidate.eject_value());
                 // assert_count!(Integer<Circuit, I>, PowChecked<Integer<Circuit, M>, Output=Integer<Circuit, I>>, &(mode_a, mode_b));
-                assert_output_mode!(candidate, Integer<Circuit, I>, PowChecked<Integer<Circuit, M>, Output=Integer<Circuit, I>>, &(mode_a, ConstantOrMode::from(&b)));
+                // assert_output_mode!(candidate, Integer<Circuit, I>, PowChecked<Integer<Circuit, M>, Output=Integer<Circuit, I>>, &(mode_a, ConstantOrMode::from(&b)));
             }),
             None => {
                 match (mode_a, mode_b) {
