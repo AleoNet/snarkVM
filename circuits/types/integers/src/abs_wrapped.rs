@@ -73,12 +73,7 @@ mod tests {
 
     const ITERATIONS: usize = 128;
 
-    #[rustfmt::skip]
-    fn check_abs<I: IntegerType + UnwindSafe>(
-        name: &str,
-        value: I,
-        mode: Mode
-    ) {
+    fn check_abs<I: IntegerType + UnwindSafe>(name: &str, value: I, mode: Mode) {
         let a = Integer::<Circuit, I>::new(mode, value);
         let expected = value.wrapping_abs();
         Circuit::scope(name, || {

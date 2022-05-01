@@ -104,14 +104,7 @@ mod tests {
 
     const ITERATIONS: usize = 100;
 
-    #[rustfmt::skip]
-    fn check_compare<I: IntegerType>(
-        name: &str,
-        first: I,
-        second: I,
-        mode_a: Mode,
-        mode_b: Mode
-    ) {
+    fn check_compare<I: IntegerType>(name: &str, first: I, second: I, mode_a: Mode, mode_b: Mode) {
         let a = Integer::<Circuit, I>::new(mode_a, first);
         let b = Integer::<Circuit, I>::new(mode_b, second);
 

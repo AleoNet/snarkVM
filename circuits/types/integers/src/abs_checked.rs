@@ -74,12 +74,7 @@ mod tests {
 
     const ITERATIONS: usize = 128;
 
-    #[rustfmt::skip]
-    fn check_abs<I: IntegerType + UnwindSafe>(
-        name: &str,
-        value: I,
-        mode: Mode
-    ) {
+    fn check_abs<I: IntegerType + UnwindSafe>(name: &str, value: I, mode: Mode) {
         let a = Integer::<Circuit, I>::new(mode, value);
         match value.checked_abs() {
             Some(expected) => Circuit::scope(name, || {
@@ -93,8 +88,8 @@ mod tests {
                 _ => Circuit::scope(name, || {
                     let _candidate = a.abs_checked();
                     assert_count_fails!(Integer<Circuit, I>, AbsChecked<Output = Integer<Circuit, I>>, &mode);
-                })
-            }
+                }),
+            },
         }
         Circuit::reset();
     }

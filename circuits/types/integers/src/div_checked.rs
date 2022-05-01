@@ -154,14 +154,7 @@ mod tests {
 
     const ITERATIONS: usize = 32;
 
-    #[rustfmt::skip]
-    fn check_div<I: IntegerType + RefUnwindSafe>(
-        name: &str,
-        first: I,
-        second: I,
-        mode_a: Mode,
-        mode_b: Mode
-    ) {
+    fn check_div<I: IntegerType + RefUnwindSafe>(name: &str, first: I, second: I, mode_a: Mode, mode_b: Mode) {
         let a = Integer::<Circuit, I>::new(mode_a, first);
         let b = Integer::<Circuit, I>::new(mode_b, second);
         if second == I::zero() {
@@ -169,20 +162,18 @@ mod tests {
         } else {
             match first.checked_div(&second) {
                 Some(expected) => Circuit::scope(name, || {
-                        let candidate = a.div_checked(&b);
-                        assert_eq!(expected, candidate.eject_value());
-                        assert_count!(Integer<Circuit, I>, DivChecked<Integer<Circuit, I>, Output = Integer<Circuit, I>>, &(mode_a, mode_b));
-                        assert_output_mode!(candidate, Integer<Circuit, I>, DivChecked<Integer<Circuit, I>, Output = Integer<Circuit, I>>, &(mode_a, mode_b));
+                    let candidate = a.div_checked(&b);
+                    assert_eq!(expected, candidate.eject_value());
+                    assert_count!(Integer<Circuit, I>, DivChecked<Integer<Circuit, I>, Output = Integer<Circuit, I>>, &(mode_a, mode_b));
+                    assert_output_mode!(candidate, Integer<Circuit, I>, DivChecked<Integer<Circuit, I>, Output = Integer<Circuit, I>>, &(mode_a, mode_b));
+                }),
+                None => match (mode_a, mode_b) {
+                    (Mode::Constant, Mode::Constant) => check_operation_halts(&a, &b, Integer::div_checked),
+                    _ => Circuit::scope(name, || {
+                        let _candidate = a.div_checked(&b);
+                        assert_count_fails!(Integer<Circuit, I>, DivChecked<Integer<Circuit, I>, Output = Integer<Circuit, I>>, &(mode_a, mode_b));
                     }),
-                None => {
-                    match (mode_a, mode_b) {
-                        (Mode::Constant, Mode::Constant) => check_operation_halts(&a, &b, Integer::div_checked),
-                        _ => Circuit::scope(name, || {
-                            let _candidate = a.div_checked(&b);
-                            assert_count_fails!(Integer<Circuit, I>, DivChecked<Integer<Circuit, I>, Output = Integer<Circuit, I>>, &(mode_a, mode_b));
-                        })
-                    }
-                }
+                },
             }
         }
         Circuit::reset();

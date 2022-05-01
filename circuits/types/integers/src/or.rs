@@ -118,14 +118,7 @@ mod tests {
 
     const ITERATIONS: usize = 128;
 
-    #[rustfmt::skip]
-    fn check_or<I: IntegerType + BitOr<Output = I>>(
-        name: &str,
-        first: I,
-        second: I,
-        mode_a: Mode,
-        mode_b: Mode,
-    ) {
+    fn check_or<I: IntegerType + BitOr<Output = I>>(name: &str, first: I, second: I, mode_a: Mode, mode_b: Mode) {
         let a = Integer::<Circuit, I>::new(mode_a, first);
         let b = Integer::new(mode_b, second);
         let expected = first | second;

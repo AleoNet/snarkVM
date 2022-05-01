@@ -189,14 +189,7 @@ mod tests {
 
     const ITERATIONS: usize = 32;
 
-    #[rustfmt::skip]
-    fn check_mul<I: IntegerType + RefUnwindSafe>(
-        name: &str,
-        first: I,
-        second: I,
-        mode_a: Mode,
-        mode_b: Mode,
-    ) {
+    fn check_mul<I: IntegerType + RefUnwindSafe>(name: &str, first: I, second: I, mode_a: Mode, mode_b: Mode) {
         let a = Integer::<Circuit, I>::new(mode_a, first);
         let b = Integer::<Circuit, I>::new(mode_b, second);
         match first.checked_mul(&second) {
@@ -206,15 +199,13 @@ mod tests {
                 assert_count!(Integer<Circuit, I>, MulChecked<Integer<Circuit, I>, Output=Integer<Circuit, I>>, &(mode_a, mode_b));
                 assert_output_mode!(candidate, Integer<Circuit, I>, MulChecked<Integer<Circuit, I>, Output=Integer<Circuit, I>>, &(mode_a, mode_b));
             }),
-            None => {
-                match (mode_a, mode_b) {
-                    (Mode::Constant, Mode::Constant) => check_operation_halts(&a, &b, Integer::mul_checked),
-                    _ => Circuit::scope(name, || {
-                        let _candidate = a.mul_checked(&b);
-                        assert_count_fails!(Integer<Circuit, I>, MulChecked<Integer<Circuit, I>, Output=Integer<Circuit, I>>, &(mode_a, mode_b));
-                    })
-                }
-            }
+            None => match (mode_a, mode_b) {
+                (Mode::Constant, Mode::Constant) => check_operation_halts(&a, &b, Integer::mul_checked),
+                _ => Circuit::scope(name, || {
+                    let _candidate = a.mul_checked(&b);
+                    assert_count_fails!(Integer<Circuit, I>, MulChecked<Integer<Circuit, I>, Output=Integer<Circuit, I>>, &(mode_a, mode_b));
+                }),
+            },
         }
         Circuit::reset();
     }
