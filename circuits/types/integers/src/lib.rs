@@ -708,40 +708,6 @@ mod test_utilities {
         };
     }
 
-    pub fn check_operation_passes_without_counts<
-        V: Debug + Display + PartialEq,
-        LHS,
-        RHS,
-        OUT: Eject<Primitive = V>,
-    >(
-        name: &str,
-        case: &str,
-        expected: V,
-        a: LHS,
-        b: RHS,
-        operation: impl FnOnce(LHS, RHS) -> OUT,
-    ) {
-        Circuit::scope(name, || {
-            let candidate = operation(a, b);
-            assert_eq!(expected, candidate.eject_value(), "{} != {} := {}", expected, candidate.eject_value(), case);
-        });
-        Circuit::reset();
-    }
-
-    pub fn check_operation_fails_without_counts<LHS, RHS, OUT>(
-        name: &str,
-        case: &str,
-        a: LHS,
-        b: RHS,
-        operation: impl FnOnce(LHS, RHS) -> OUT,
-    ) {
-        Circuit::scope(name, || {
-            let _candidate = operation(a, b);
-            assert!(!Circuit::is_satisfied(), "{} (!is_satisfied)", case);
-        });
-        Circuit::reset();
-    }
-
     pub fn check_operation_halts<LHS: UnwindSafe, RHS: UnwindSafe, OUT>(
         a: LHS,
         b: RHS,
