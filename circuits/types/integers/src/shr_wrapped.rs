@@ -43,7 +43,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShrWrapped<Integer<E, M>> for
                 // If the shift amount is a constant, then we can manually shift in bits and truncate the result.
                 let shift_amount = rhs_as_u8.eject_value() as usize;
 
-                let mut bits_le = Vec::with_capacity(I::BITS + shift_amount);
+                let mut bits_le = Vec::with_capacity(I::BITS as usize + shift_amount);
                 bits_le.extend_from_slice(&self.bits_le);
 
                 match I::is_signed() {
@@ -54,7 +54,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShrWrapped<Integer<E, M>> for
                 };
 
                 bits_le.reverse();
-                bits_le.truncate(I::BITS);
+                bits_le.truncate(I::BITS as usize);
                 bits_le.reverse();
 
                 Self { bits_le, phantom: Default::default() }
@@ -70,7 +70,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShrWrapped<Integer<E, M>> for
 
                 // TODO (@pranav) Avoid initializing the integer.
                 let shift_as_divisor =
-                    Self { bits_le: shift_in_field.to_lower_bits_le(I::BITS), phantom: Default::default() };
+                    Self { bits_le: shift_in_field.to_lower_bits_le(I::BITS as usize), phantom: Default::default() };
 
                 if I::is_signed() {
                     // Divide the absolute value of `self` and `shift` (as a divisor) in the base field.
@@ -119,8 +119,8 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metrics<dyn ShrWrapped<Intege
 
     fn count(case: &Self::Case) -> Count {
         // A quick hack that matches `(u8 -> 0, u16 -> 1, u32 -> 2, u64 -> 3, u128 -> 4)`.
-        let index = |num_bits: usize| match [8, 16, 32, 64, 128].iter().position(|&bits| bits == num_bits) {
-            Some(index) => index,
+        let index = |num_bits: u64| match [8, 16, 32, 64, 128].iter().position(|&bits| bits == num_bits) {
+            Some(index) => index as u64,
             None => E::halt(format!("Integer of {num_bits} bits is not supported")),
         };
 

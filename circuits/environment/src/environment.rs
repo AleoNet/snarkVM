@@ -75,42 +75,42 @@ pub trait Environment: Copy + Clone + fmt::Debug + fmt::Display + Eq + PartialEq
     fn is_satisfied_in_scope() -> bool;
 
     /// Returns the number of constants in the entire environment.
-    fn num_constants() -> usize;
+    fn num_constants() -> u64;
 
     /// Returns the number of public variables in the entire environment.
-    fn num_public() -> usize;
+    fn num_public() -> u64;
 
     /// Returns the number of private variables in the entire environment.
-    fn num_private() -> usize;
+    fn num_private() -> u64;
 
     /// Returns the number of constraints in the entire environment.
-    fn num_constraints() -> usize;
+    fn num_constraints() -> u64;
 
     /// Returns the number of gates in the entire environment.
-    fn num_gates() -> usize;
+    fn num_gates() -> u64;
 
     /// Returns a tuple containing the number of constants, public variables, private variables, constraints, and gates in the entire environment.
-    fn count() -> (usize, usize, usize, usize, usize) {
+    fn count() -> (u64, u64, u64, u64, u64) {
         (Self::num_constants(), Self::num_public(), Self::num_private(), Self::num_constraints(), Self::num_gates())
     }
 
     /// Returns the number of constants for the current scope.
-    fn num_constants_in_scope() -> usize;
+    fn num_constants_in_scope() -> u64;
 
     /// Returns the number of public variables for the current scope.
-    fn num_public_in_scope() -> usize;
+    fn num_public_in_scope() -> u64;
 
     /// Returns the number of private variables for the current scope.
-    fn num_private_in_scope() -> usize;
+    fn num_private_in_scope() -> u64;
 
     /// Returns the number of constraints for the current scope.
-    fn num_constraints_in_scope() -> usize;
+    fn num_constraints_in_scope() -> u64;
 
     /// Returns the number of gates for the current scope.
-    fn num_gates_in_scope() -> usize;
+    fn num_gates_in_scope() -> u64;
 
     /// Returns a tuple containing the number of constants, public variables, private variables, constraints, and gates for the current scope.
-    fn count_in_scope() -> (usize, usize, usize, usize, usize) {
+    fn count_in_scope() -> (u64, u64, u64, u64, u64) {
         (
             Self::num_constants_in_scope(),
             Self::num_public_in_scope(),

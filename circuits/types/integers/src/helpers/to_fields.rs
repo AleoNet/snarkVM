@@ -31,7 +31,7 @@ mod tests {
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, ToBits as TBits, UniformRand};
 
-    const ITERATIONS: usize = 128;
+    const ITERATIONS: u64 = 128;
 
     fn check_to_fields<I: IntegerType>(mode: Mode) {
         for i in 0..ITERATIONS {
@@ -51,12 +51,14 @@ mod tests {
 
                 // Ensure all integer bits match with the expected result.
                 let expected_bits = expected.to_bytes_le().unwrap().to_bits_le();
-                for (expected_bit, candidate_bit) in expected_bits.iter().zip_eq(&candidate_bits_le[0..I::BITS]) {
+                for (expected_bit, candidate_bit) in
+                    expected_bits.iter().zip_eq(&candidate_bits_le[0..I::BITS as usize])
+                {
                     assert_eq!(expected_bit, candidate_bit);
                 }
 
                 // Ensure all remaining bits are 0.
-                for candidate_bit in &candidate_bits_le[I::BITS..] {
+                for candidate_bit in &candidate_bits_le[I::BITS as usize..] {
                     assert!(!candidate_bit);
                 }
             });

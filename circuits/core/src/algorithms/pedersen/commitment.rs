@@ -60,7 +60,7 @@ impl<'a, E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
                     &(*mode, Mode::Constant, Mode::Constant)
                 )
             })
-            .fold(Count::is(0, 0, 0, 0), |cummulative, count| cummulative.compose(&count));
+            .fold(Count::is(0, 0, 0, 0), |cummulative, count| cummulative + count);
 
         // Determine the modes of each of the group elements.
         let modes = randomness_modes.iter().map(|mode| {
@@ -77,11 +77,11 @@ impl<'a, E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
             modes.fold((uncompressed_mode, Count::is(0, 0, 0, 0)), |(prev_mode, cumulative), curr_mode| {
                 let mode = output_mode!(Group<E>, Add<Group<E>, Output = Group<E>>, &(prev_mode, curr_mode));
                 let sum_count = count!(Group<E>, Add<Group<E>, Output = Group<E>>, &(prev_mode, curr_mode));
-                (mode, cumulative.compose(&sum_count))
+                (mode, cumulative + sum_count)
             });
 
         // Compute the cost of summing the hash and random elements.
-        uncompressed_count.compose(&group_initialize_count).compose(&summation_count)
+        uncompressed_count + group_initialize_count + summation_count
     }
 }
 

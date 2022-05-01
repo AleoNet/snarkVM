@@ -104,8 +104,8 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metrics<dyn ShrChecked<Intege
 
     fn count(case: &Self::Case) -> Count {
         // A quick hack that matches `(u8 -> 0, u16 -> 1, u32 -> 2, u64 -> 3, u128 -> 4)`.
-        let index = |num_bits: usize| match [8, 16, 32, 64, 128].iter().position(|&bits| bits == num_bits) {
-            Some(index) => index,
+        let index = |num_bits: u64| match [8, 16, 32, 64, 128].iter().position(|&bits| bits == num_bits) {
+            Some(index) => index as u64,
             None => E::halt(format!("Integer of {num_bits} bits is not supported")),
         };
 
@@ -114,7 +114,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metrics<dyn ShrChecked<Intege
             (_, Mode::Constant) => Count::is(0, 0, 0, 0),
             (Mode::Constant, _) | (_, _) => {
                 let wrapped_count = count!(Integer<E, I>, ShrWrapped<Integer<E, M>, Output=Integer<E, I>>, case);
-                wrapped_count.compose(&Count::is(0, 0, M::BITS - 4 - index(I::BITS), M::BITS - 3 - index(I::BITS)))
+                wrapped_count + Count::is(0, 0, M::BITS - 4 - index(I::BITS), M::BITS - 3 - index(I::BITS))
             }
         }
     }

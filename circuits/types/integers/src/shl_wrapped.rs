@@ -46,7 +46,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShlWrapped<Integer<E, M>> for
                 let mut bits_le = vec![Boolean::constant(false); shift_amount as usize];
 
                 bits_le.extend_from_slice(&self.bits_le);
-                bits_le.truncate(I::BITS);
+                bits_le.truncate(I::BITS as usize);
 
                 Self { bits_le, phantom: Default::default() }
             } else {
@@ -60,7 +60,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShlWrapped<Integer<E, M>> for
                 }
                 // TODO (@pranav) Avoid initializing the integer.
                 let shift_as_multiplicand =
-                    Self { bits_le: shift_in_field.to_lower_bits_le(I::BITS), phantom: Default::default() };
+                    Self { bits_le: shift_in_field.to_lower_bits_le(I::BITS as usize), phantom: Default::default() };
                 self.mul_wrapped(&shift_as_multiplicand)
             }
         }
@@ -74,13 +74,13 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metrics<dyn ShlWrapped<Intege
 
     fn count(case: &Self::Case) -> Count {
         // A quick hack that matches `(u8 -> 0, u16 -> 1, u32 -> 2, u64 -> 3, u128 -> 4)`.
-        let index = |num_bits: usize| match [8, 16, 32, 64, 128].iter().position(|&bits| bits == num_bits) {
-            Some(index) => index,
+        let index = |num_bits: u64| match [8, 16, 32, 64, 128].iter().position(|&bits| bits == num_bits) {
+            Some(index) => index as u64,
             None => E::halt(format!("Integer of {num_bits} bits is not supported")),
         };
 
         // Case 1 - 2 integers fit in 1 field element (u8, u16, u32, u64, i8, i16, i32, i64).
-        if 2 * I::BITS < E::BaseField::size_in_bits() - 1 {
+        if 2 * I::BITS < (E::BaseField::size_in_bits() - 1) as u64 {
             match (case.0, case.1) {
                 (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
                 (_, Mode::Constant) => Count::is(0, 0, 0, 0),
@@ -93,7 +93,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metrics<dyn ShlWrapped<Intege
             }
         }
         // Case 2 - 1.5 integers fit in 1 field element (u128, i128).
-        else if (I::BITS + I::BITS / 2) < E::BaseField::size_in_bits() - 1 {
+        else if (I::BITS + I::BITS / 2) < (E::BaseField::size_in_bits() - 1) as u64 {
             match (case.0, case.1) {
                 (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
                 (_, Mode::Constant) => Count::is(0, 0, 0, 0),

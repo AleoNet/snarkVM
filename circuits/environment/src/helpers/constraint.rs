@@ -26,7 +26,7 @@ pub(crate) struct Constraint<F: PrimeField>(
 
 impl<F: PrimeField> Constraint<F> {
     /// Returns the number of gates consumed by this constraint.
-    pub(crate) fn num_gates(&self) -> usize {
+    pub(crate) fn num_gates(&self) -> u64 {
         let (a, b, c) = (&self.1, &self.2, &self.3);
         1 + a.num_additions() + b.num_additions() + c.num_additions()
     }

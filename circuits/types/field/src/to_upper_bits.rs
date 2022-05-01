@@ -65,7 +65,7 @@ impl<E: Environment> ToUpperBits for Field<E> {
 }
 
 impl<E: Environment> Metrics<dyn ToUpperBits<Boolean = Boolean<E>>> for Field<E> {
-    type Case = (Mode, usize);
+    type Case = (Mode, u64);
 
     fn count(case: &Self::Case) -> Count {
         match case {

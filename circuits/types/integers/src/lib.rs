@@ -89,7 +89,7 @@ impl<E: Environment, I: IntegerType> Inject for Integer<E, I> {
 
     /// Initializes a new integer.
     fn new(mode: Mode, value: Self::Primitive) -> Self {
-        let mut bits_le = Vec::with_capacity(I::BITS);
+        let mut bits_le = Vec::with_capacity(I::BITS as usize);
         let mut value = value.to_le();
         for _ in 0..I::BITS {
             bits_le.push(Boolean::new(mode, value & I::one() == I::one()));
@@ -196,14 +196,14 @@ mod tests {
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
-    const ITERATIONS: usize = 100;
+    const ITERATIONS: u64 = 100;
 
     fn check_new<I: IntegerType>(
         mode: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
     ) {
         for _ in 0..ITERATIONS {
             let expected: I = UniformRand::rand(&mut test_rng());
@@ -222,10 +222,10 @@ mod tests {
 
     fn check_parse<I: IntegerType>(
         mode: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
     ) {
         for _ in 0..ITERATIONS {
             let value: I = UniformRand::rand(&mut test_rng());

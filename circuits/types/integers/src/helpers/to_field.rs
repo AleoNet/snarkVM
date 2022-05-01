@@ -24,7 +24,7 @@ impl<E: Environment, I: IntegerType> ToField for Integer<E, I> {
         // Note: We are reconstituting the integer as a base field.
         // This is safe as the number of bits in the integer is less than the base field modulus,
         // and thus will always fit within a single base field element.
-        debug_assert!(I::BITS < E::BaseField::size_in_bits());
+        debug_assert!(I::BITS < E::BaseField::size_in_bits() as u64);
 
         // Reconstruct the bits as a linear combination representing the original field value.
         Field::from_bits_le(&self.bits_le)
@@ -56,12 +56,14 @@ mod tests {
 
                 // Ensure all integer bits match with the expected result.
                 let expected_bits = expected.to_bytes_le().unwrap().to_bits_le();
-                for (expected_bit, candidate_bit) in expected_bits.iter().zip_eq(&candidate_bits_le[0..I::BITS]) {
+                for (expected_bit, candidate_bit) in
+                    expected_bits.iter().zip_eq(&candidate_bits_le[0..I::BITS as usize])
+                {
                     assert_eq!(expected_bit, candidate_bit);
                 }
 
                 // Ensure all remaining bits are 0.
-                for candidate_bit in &candidate_bits_le[I::BITS..] {
+                for candidate_bit in &candidate_bits_le[I::BITS as usize..] {
                     assert!(!candidate_bit);
                 }
             });

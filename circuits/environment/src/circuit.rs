@@ -190,52 +190,52 @@ impl Environment for Circuit {
     }
 
     /// Returns the number of constants in the entire circuit.
-    fn num_constants() -> usize {
+    fn num_constants() -> u64 {
         CIRCUIT.with(|circuit| (**circuit).borrow().num_constants())
     }
 
     /// Returns the number of public variables in the entire circuit.
-    fn num_public() -> usize {
+    fn num_public() -> u64 {
         CIRCUIT.with(|circuit| (**circuit).borrow().num_public())
     }
 
     /// Returns the number of private variables in the entire circuit.
-    fn num_private() -> usize {
+    fn num_private() -> u64 {
         CIRCUIT.with(|circuit| (**circuit).borrow().num_private())
     }
 
     /// Returns the number of constraints in the entire circuit.
-    fn num_constraints() -> usize {
+    fn num_constraints() -> u64 {
         CIRCUIT.with(|circuit| (**circuit).borrow().num_constraints())
     }
 
     /// Returns the number of gates in the entire circuit.
-    fn num_gates() -> usize {
+    fn num_gates() -> u64 {
         CIRCUIT.with(|circuit| (**circuit).borrow().num_gates())
     }
 
     /// Returns the number of constants for the current scope.
-    fn num_constants_in_scope() -> usize {
+    fn num_constants_in_scope() -> u64 {
         CIRCUIT.with(|circuit| (**circuit).borrow().num_constants_in_scope())
     }
 
     /// Returns the number of public variables for the current scope.
-    fn num_public_in_scope() -> usize {
+    fn num_public_in_scope() -> u64 {
         CIRCUIT.with(|circuit| (**circuit).borrow().num_public_in_scope())
     }
 
     /// Returns the number of private variables for the current scope.
-    fn num_private_in_scope() -> usize {
+    fn num_private_in_scope() -> u64 {
         CIRCUIT.with(|circuit| (**circuit).borrow().num_private_in_scope())
     }
 
     /// Returns the number of constraints for the current scope.
-    fn num_constraints_in_scope() -> usize {
+    fn num_constraints_in_scope() -> u64 {
         CIRCUIT.with(|circuit| (**circuit).borrow().num_constraints_in_scope())
     }
 
     /// Returns the number of gates for the current scope.
-    fn num_gates_in_scope() -> usize {
+    fn num_gates_in_scope() -> u64 {
         CIRCUIT.with(|circuit| (**circuit).borrow().num_gates_in_scope())
     }
 

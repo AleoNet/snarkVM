@@ -52,14 +52,14 @@ mod tests {
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
-    const ITERATIONS: usize = 128;
+    const ITERATIONS: u64 = 128;
 
     fn check_to_bits_le<I: IntegerType>(
         mode: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
     ) {
         for i in 0..ITERATIONS {
             // Sample a random element.
@@ -68,7 +68,7 @@ mod tests {
 
             Circuit::scope(&format!("{} {}", mode, i), || {
                 let candidate = candidate.to_bits_le();
-                assert_eq!(I::BITS, candidate.len());
+                assert_eq!(I::BITS, candidate.len() as u64);
 
                 // Ensure every bit matches.
                 let mut expected = expected.to_le();
@@ -83,10 +83,10 @@ mod tests {
 
     fn check_to_bits_be<I: IntegerType>(
         mode: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
     ) {
         for i in 0..ITERATIONS {
             // Sample a random element.
@@ -95,7 +95,7 @@ mod tests {
 
             Circuit::scope(&format!("{} {}", mode, i), || {
                 let candidate = candidate.to_bits_be();
-                assert_eq!(I::BITS, candidate.len());
+                assert_eq!(I::BITS, candidate.len() as u64);
 
                 // Ensure every bit matches.
                 let mut expected = expected.to_le();

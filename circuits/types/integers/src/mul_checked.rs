@@ -90,7 +90,7 @@ impl<E: Environment, I: IntegerType> MulChecked<Self> for Integer<E, I> {
             // If the product should be negative, then it cannot exceed the absolute value of the signed minimum.
             let negative_product_underflows = {
                 let lower_product_bits_nonzero =
-                    product.bits_le[..(I::BITS - 1)].iter().fold(Boolean::constant(false), |a, b| a | b);
+                    product.bits_le[..(I::BITS as usize - 1)].iter().fold(Boolean::constant(false), |a, b| a | b);
                 let negative_product_lt_or_eq_signed_min =
                     !product.msb() | (product.msb() & !lower_product_bits_nonzero);
                 !operands_same_sign & !negative_product_lt_or_eq_signed_min
@@ -121,7 +121,7 @@ impl<E: Environment, I: IntegerType> Metrics<dyn MulChecked<Integer<E, I>, Outpu
 
     fn count(case: &Self::Case) -> Count {
         // Case 1 - 2 integers fit in 1 field element (u8, u16, u32, u64, i8, i16, i32, i64).
-        if 2 * I::BITS < E::BaseField::size_in_bits() - 1 {
+        if 2 * I::BITS < (E::BaseField::size_in_bits() - 1) as u64 {
             match I::is_signed() {
                 // Signed case
                 true => match (case.0, case.1) {
@@ -140,7 +140,7 @@ impl<E: Environment, I: IntegerType> Metrics<dyn MulChecked<Integer<E, I>, Outpu
             }
         }
         // Case 2 - 1.5 integers fit in 1 field element (u128, i128).
-        else if (I::BITS + I::BITS / 2) < E::BaseField::size_in_bits() - 1 {
+        else if (I::BITS + I::BITS / 2) < (E::BaseField::size_in_bits() - 1) as u64 {
             match I::is_signed() {
                 // Signed case
                 true => match (case.0, case.1) {

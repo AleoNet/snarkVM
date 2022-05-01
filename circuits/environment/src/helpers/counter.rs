@@ -21,11 +21,11 @@ use snarkvm_fields::PrimeField;
 pub(crate) struct Counter<F: PrimeField> {
     scope: Scope,
     constraints: Vec<Constraint<F>>,
-    constants: usize,
-    public: usize,
-    private: usize,
-    gates: usize,
-    parents: Vec<(Scope, Vec<Constraint<F>>, usize, usize, usize, usize)>,
+    constants: u64,
+    public: u64,
+    private: u64,
+    gates: u64,
+    parents: Vec<(Scope, Vec<Constraint<F>>, u64, u64, u64, u64)>,
 }
 
 impl<F: PrimeField> Counter<F> {
@@ -124,27 +124,27 @@ impl<F: PrimeField> Counter<F> {
     }
 
     /// Returns the number of constants in scope in scope.
-    pub(crate) fn num_constants_in_scope(&self) -> usize {
+    pub(crate) fn num_constants_in_scope(&self) -> u64 {
         self.constants
     }
 
     /// Returns the number of public variables in scope.
-    pub(crate) fn num_public_in_scope(&self) -> usize {
+    pub(crate) fn num_public_in_scope(&self) -> u64 {
         self.public
     }
 
     /// Returns the number of private variables in scope.
-    pub(crate) fn num_private_in_scope(&self) -> usize {
+    pub(crate) fn num_private_in_scope(&self) -> u64 {
         self.private
     }
 
     /// Returns the number of constraints in scope.
-    pub(crate) fn num_constraints_in_scope(&self) -> usize {
-        self.constraints.len()
+    pub(crate) fn num_constraints_in_scope(&self) -> u64 {
+        self.constraints.len() as u64
     }
 
     /// Returns the number of gates in scope.
-    pub(crate) fn num_gates_in_scope(&self) -> usize {
+    pub(crate) fn num_gates_in_scope(&self) -> u64 {
         self.gates
     }
 }

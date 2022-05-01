@@ -53,8 +53,9 @@ impl<E: Environment, I: IntegerType, M: Magnitude> PowChecked<Integer<E, M>> for
 
                     // If the product should be negative, then it cannot exceed the absolute value of the signed minimum.
                     let negative_product_underflows = {
-                        let lower_product_bits_nonzero =
-                            product.bits_le[..(I::BITS - 1)].iter().fold(Boolean::constant(false), |a, b| a | b);
+                        let lower_product_bits_nonzero = product.bits_le[..(I::BITS as usize - 1)]
+                            .iter()
+                            .fold(Boolean::constant(false), |a, b| a | b);
                         let negative_product_lt_or_eq_signed_min =
                             !product.msb() | (product.msb() & !lower_product_bits_nonzero);
                         !operands_same_sign & !negative_product_lt_or_eq_signed_min

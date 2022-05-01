@@ -479,7 +479,7 @@ impl<P: Program> Metrics<Self> for Function<P> {
                     }
                 }
             })
-            .fold(Count::is(0, 0, 0, 0), |total, count| total.compose(&count))
+            .fold(Count::is(0, 0, 0, 0), |total, count| total + count)
     }
 }
 

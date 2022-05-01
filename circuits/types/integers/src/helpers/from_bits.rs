@@ -22,17 +22,18 @@ impl<E: Environment, I: IntegerType> FromBits for Integer<E, I> {
     /// Initializes a new integer from a list of little-endian bits *with* trailing zeros.
     fn from_bits_le(bits_le: &[Self::Boolean]) -> Self {
         // Ensure the list of booleans is within the allowed size in bits.
-        let num_bits = bits_le.len();
+        let num_bits = bits_le.len() as u64;
         if num_bits > I::BITS {
             // Check if all excess bits are zero.
-            let should_be_zero = bits_le[I::BITS..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit);
+            let should_be_zero =
+                bits_le[I::BITS as usize..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit);
             // Ensure `should_be_zero` is zero.
             E::assert_eq(E::zero(), should_be_zero);
         }
 
         // Construct the sanitized list of bits, resizing up if necessary.
-        let mut bits_le = bits_le.iter().take(I::BITS).cloned().collect::<Vec<_>>();
-        bits_le.resize(I::BITS, Boolean::constant(false));
+        let mut bits_le = bits_le.iter().take(I::BITS as usize).cloned().collect::<Vec<_>>();
+        bits_le.resize(I::BITS as usize, Boolean::constant(false));
 
         Self { bits_le, phantom: Default::default() }
     }
@@ -54,14 +55,14 @@ mod tests {
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
-    const ITERATIONS: usize = 128;
+    const ITERATIONS: u64 = 128;
 
     fn check_from_bits_le<I: IntegerType>(
         mode: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
     ) {
         for i in 0..ITERATIONS {
             // Sample a random integer.
@@ -77,7 +78,7 @@ mod tests {
             });
 
             // Add excess zero bits.
-            let candidate = vec![given_bits, vec![Boolean::new(mode, false); i]].concat();
+            let candidate = vec![given_bits, vec![Boolean::new(mode, false); i as usize]].concat();
 
             Circuit::scope(&format!("Excess {} {}", mode, i), || {
                 let candidate = Integer::<Circuit, I>::from_bits_le(&candidate);
@@ -97,10 +98,10 @@ mod tests {
 
     fn check_from_bits_be<I: IntegerType>(
         mode: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
     ) {
         for i in 0..ITERATIONS {
             // Sample a random integer.
@@ -116,7 +117,7 @@ mod tests {
             });
 
             // Add excess zero bits.
-            let candidate = vec![vec![Boolean::new(mode, false); i], given_bits].concat();
+            let candidate = vec![vec![Boolean::new(mode, false); i as usize], given_bits].concat();
 
             Circuit::scope(&format!("Excess {} {}", mode, i), || {
                 let candidate = Integer::<Circuit, I>::from_bits_be(&candidate);

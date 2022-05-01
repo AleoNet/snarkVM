@@ -47,12 +47,13 @@ pub mod prelude {
         traits::*,
         witness,
         witness_mode,
+        ConstantOrMode,
         Count,
         Environment,
         LinearCombination,
         Mode,
         OutputMode,
-        Variable,ConstantOrMode
+        Variable,
     };
     pub use snarkvm_fields::{Field as F, One as O, PrimeField, Zero as Z};
 

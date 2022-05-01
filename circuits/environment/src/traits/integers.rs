@@ -278,7 +278,7 @@ pub(super) mod integer_type {
     pub trait IntegerProperties: PrimInt + Debug + Display {
         type Dual: IntegerType;
         /// Returns the number of bits required to represent this integer.
-        const BITS: usize;
+        const BITS: u64;
         /// Returns the maximum value representable by this integer.
         const MAX: Self;
         /// Returns the minimum value representable by this integer.
@@ -299,7 +299,7 @@ pub(super) mod integer_type {
             impl IntegerProperties for $t {
                 type Dual = $dual;
 
-                const BITS: usize = <$t>::BITS as usize;
+                const BITS: u64 = <$t>::BITS as u64;
                 const MAX: $t = <$t>::MAX;
                 const MIN: $t = <$t>::MIN;
 

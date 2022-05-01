@@ -33,7 +33,7 @@ impl<E: Environment, I: IntegerType> Compare<Self> for Integer<E, I> {
             let self_is_negative_and_other_is_positive = self.msb() & !other.msb();
             let negative_one_plus_difference_plus_one =
                 Integer::constant(I::zero() - I::one()).to_field() + self.to_field() - other.to_field() + Field::one();
-            match negative_one_plus_difference_plus_one.to_lower_bits_le(I::BITS + 1).last() {
+            match negative_one_plus_difference_plus_one.to_lower_bits_le(I::BITS as usize + 1).last() {
                 Some(bit) => Self::Boolean::ternary(&same_sign, &!bit, &self_is_negative_and_other_is_positive),
                 None => E::halt("Malformed expression detected during signed integer comparison."),
             }
@@ -42,7 +42,7 @@ impl<E: Environment, I: IntegerType> Compare<Self> for Integer<E, I> {
             // If I::MAX + a - b + 1 overflows, then a >= b, otherwise a < b.
             let max_plus_difference_plus_one =
                 Integer::constant(I::MAX).to_field() + self.to_field() - other.to_field() + Field::one();
-            match max_plus_difference_plus_one.to_lower_bits_le(I::BITS + 1).last() {
+            match max_plus_difference_plus_one.to_lower_bits_le(I::BITS as usize + 1).last() {
                 Some(bit) => !bit,
                 None => E::halt("Malformed expression detected during unsigned integer comparison."),
             }

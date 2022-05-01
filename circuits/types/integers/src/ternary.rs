@@ -67,13 +67,14 @@ impl<E: Environment, I: IntegerType> OutputMode<dyn Ternary<Boolean = Boolean<E>
 {
     type Case = (ConstantOrMode<Boolean<E>>, Mode, Mode);
 
-    fn output_mode(parameter: &Self::Case) -> Mode {
-        match parameter.0.mode().is_constant() {
-            true => match &parameter.0 {
+    fn output_mode(case: &Self::Case) -> Mode {
+        let (condition, mode_a, mode_b) = case;
+        match condition.mode().is_constant() {
+            true => match condition {
                 ConstantOrMode::Mode(..) => E::halt("The constant condition is required to determine output mode."),
                 ConstantOrMode::Constant(constant) => match constant.eject_value() {
-                    true => parameter.1,
-                    false => parameter.2,
+                    true => *mode_a,
+                    false => *mode_b,
                 },
             },
             false => Mode::Private,

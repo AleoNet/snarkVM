@@ -32,7 +32,7 @@ impl<E: Environment, I: IntegerType> AddWrapped<Self> for Integer<E, I> {
             let sum = self.to_field() + other.to_field();
 
             // Extract the integer bits from the field element, with a carry bit.
-            let mut bits_le = sum.to_lower_bits_le(I::BITS + 1);
+            let mut bits_le = sum.to_lower_bits_le(I::BITS as usize + 1);
             // Drop the carry bit as the operation is wrapped addition.
             bits_le.pop();
 

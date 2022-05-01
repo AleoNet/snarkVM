@@ -92,8 +92,8 @@ impl<E: Environment> Metrics<dyn Pow<Field<E>, Output = Field<E>>> for Field<E> 
                     // Calculate the number of squares and multiplications as follows:
                     //   `num_squares` := number of remaining bits after the first nonzero bit (from MSB -> LSB)
                     //   `num_multiplications` := number of `true` bits after the first nonzero bit (from MSB -> LSB)
-                    let num_squares = <Circuit as Environment>::BaseField::size_in_bits() - index - 1;
-                    let num_multiplications = exponent_bits[index + 1..].iter().map(|bit| *bit as usize).sum::<usize>();
+                    let num_squares = (<Circuit as Environment>::BaseField::size_in_bits() - index - 1) as u64;
+                    let num_multiplications = exponent_bits[index + 1..].iter().map(|bit| *bit as u64).sum::<u64>();
 
                     // The number of private variables, constraints, and gates are both: num_squares + num_multiplications
                     let num_private = num_squares + num_multiplications;

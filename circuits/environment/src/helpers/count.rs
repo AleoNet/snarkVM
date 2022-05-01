@@ -14,20 +14,23 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use core::{fmt::Debug, ops::Add};
+use core::{
+    fmt::Debug,
+    ops::{Add, Mul, Sub},
+};
 
-pub type Constant = Measurement<usize>;
-pub type Public = Measurement<usize>;
-pub type Private = Measurement<usize>;
-pub type Constraints = Measurement<usize>;
+pub type Constant = Measurement<u64>;
+pub type Public = Measurement<u64>;
+pub type Private = Measurement<u64>;
+pub type Constraints = Measurement<u64>;
 
 /// A helper struct for tracking the number of constants, public inputs, private inputs, and constraints.
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct Count(pub Constant, pub Public, pub Private, pub Constraints);
 
 impl Count {
     /// Returns a new `Count` whose constituent metrics are all `Exact`.
-    pub const fn is(num_constants: usize, num_public: usize, num_private: usize, num_constraints: usize) -> Self {
+    pub const fn is(num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) -> Self {
         Count(
             Measurement::Exact(num_constants),
             Measurement::Exact(num_public),
@@ -37,12 +40,7 @@ impl Count {
     }
 
     /// Returns a new `Count` whose constituent metrics are all inclusive `UpperBound`.
-    pub const fn less_than(
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) -> Self {
+    pub const fn less_than(num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) -> Self {
         Count(
             Measurement::UpperBound(num_constants),
             Measurement::UpperBound(num_public),
@@ -51,33 +49,52 @@ impl Count {
         )
     }
 
-    /// TODO (howardwu): Deprecate this method and implement `PartialEq` & `Eq`.
     /// Returns `true` if all constituent metrics match.
-    pub fn matches(&self, num_constants: usize, num_public: usize, num_private: usize, num_constraints: usize) -> bool {
+    pub fn matches(&self, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) -> bool {
         self.0.matches(num_constants)
             && self.1.matches(num_public)
             && self.2.matches(num_private)
             && self.3.matches(num_constraints)
     }
+}
 
-    /// TODO (howardwu): Deprecate this method and implement `Add` operation.
-    /// Composes this `Count` with another `Count` by composing its constituent metrics.
-    pub fn compose(&self, other: &Self) -> Self {
-        Count(self.0.compose(&other.0), self.1.compose(&other.1), self.2.compose(&other.2), self.3.compose(&other.3))
+impl Add for Count {
+    type Output = Count;
+
+    /// Adds the `Count` to another `Count` by summing its constituent metrics.
+    fn add(self, other: Count) -> Self::Output {
+        Count(self.0 + other.0, self.1 + other.1, self.2 + other.2, self.3 + other.3)
+    }
+}
+
+impl Mul<u64> for Count {
+    type Output = Count;
+
+    /// Scales the `Count` by a `u64`.
+    fn mul(self, other: u64) -> Self::Output {
+        Count(self.0 * other, self.1 * other, self.2 * other, self.3 * other)
+    }
+}
+
+impl Mul<Count> for u64 {
+    type Output = Count;
+
+    /// Scales the `Count` by a `u64`.
+    fn mul(self, other: Count) -> Self::Output {
+        other * self
     }
 }
 
 /// A `Measurement` is a quantity that can be measured.
 /// The variants of the `Measurement` defines a condition associated with the measurable quantity.
-#[derive(Clone, Debug)]
-pub enum Measurement<V: Ord + Add<Output = V>> {
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum Measurement<V: Copy + Debug + Ord + Add<Output = V> + Sub<Output = V> + Mul<Output = V>> {
     Exact(V),
     Range(V, V),
     UpperBound(V),
 }
 
-impl<V: Ord + Add<Output = V> + Copy + Debug> Measurement<V> {
-    /// TODO (howardwu): Deprecate this method and implement `PartialEq` & `Eq`.
+impl<V: Copy + Debug + Ord + Add<Output = V> + Sub<Output = V> + Mul<Output = V>> Measurement<V> {
     /// Returns `true` if the value matches the metric.
     ///
     /// For an `Exact` metric, `value` must be equal to the exact value defined by the metric.
@@ -96,39 +113,53 @@ impl<V: Ord + Add<Output = V> + Copy + Debug> Measurement<V> {
 
         outcome
     }
+}
 
-    /// TODO (howardwu): Deprecate this method and implement `Add` operation.
-    /// Composes two variants of `Measurement` and returns the resulting `Measurement`.
-    /// The composition is defined such that if a value `a` satisfies `self` and a value `b` satisfies `other`,
-    /// then `a + b` satisfies the resulting `Measurement`.
-    pub fn compose(&self, other: &Self) -> Self {
+impl<V: Copy + Debug + Ord + Add<Output = V> + Sub<Output = V> + Mul<Output = V>> Add for Measurement<V> {
+    type Output = Measurement<V>;
+
+    /// Adds two variants of `Measurement` together, returning the newly-summed `Measurement`.
+    fn add(self, other: Measurement<V>) -> Self::Output {
         match (self, other) {
             // `Exact` + `Exact` => `Exact`
-            (Measurement::Exact(exact_a), Measurement::Exact(exact_b)) => Measurement::Exact(*exact_a + *exact_b),
+            (Measurement::Exact(exact_a), Measurement::Exact(exact_b)) => Measurement::Exact(exact_a + exact_b),
             // `Range` + `Range` => `Range`
             (Measurement::Range(lower_a, upper_a), Measurement::Range(lower_b, upper_b)) => {
-                Measurement::Range(*lower_a + *lower_b, *upper_a + *upper_b)
+                Measurement::Range(lower_a + lower_b, upper_a + upper_b)
             }
             // `UpperBound` + `UpperBound` => `UpperBound`
             (Measurement::UpperBound(upper_a), Measurement::UpperBound(upper_b)) => {
-                Measurement::UpperBound(*upper_a + *upper_b)
+                Measurement::UpperBound(upper_a + upper_b)
             }
             // `Exact` + `Range` => `Range`
             // `Range` + `Exact` => `Range`
             (Measurement::Exact(exact), Measurement::Range(lower, upper))
             | (Measurement::Range(lower, upper), Measurement::Exact(exact)) => {
-                Measurement::Range(*exact + *lower, *exact + *upper)
+                Measurement::Range(exact + lower, exact + upper)
             }
             // `Exact` + `UpperBound` => `UpperBound`
             // `UpperBound` + `Exact` => `UpperBound`
             (Measurement::Exact(exact), Measurement::UpperBound(upper))
-            | (Measurement::UpperBound(upper), Measurement::Exact(exact)) => Measurement::UpperBound(*exact + *upper),
+            | (Measurement::UpperBound(upper), Measurement::Exact(exact)) => Measurement::UpperBound(exact + upper),
             // `Range` + `UpperBound` => `Range`
             // `UpperBound` + `Range` => `Range`
             (Measurement::Range(lower, upper_a), Measurement::UpperBound(upper_b))
             | (Measurement::UpperBound(upper_a), Measurement::Range(lower, upper_b)) => {
-                Measurement::Range(*lower, *upper_a + *upper_b)
+                Measurement::Range(lower, upper_a + upper_b)
             }
+        }
+    }
+}
+
+impl<V: Copy + Debug + Ord + Add<Output = V> + Sub<Output = V> + Mul<Output = V>> Mul<V> for Measurement<V> {
+    type Output = Measurement<V>;
+
+    /// Scales the `Measurement` by a value.
+    fn mul(self, other: V) -> Self::Output {
+        match self {
+            Measurement::Exact(value) => Measurement::Exact(value * other),
+            Measurement::Range(lower, upper) => Measurement::Range(lower * other, upper * other),
+            Measurement::UpperBound(bound) => Measurement::UpperBound(bound * other),
         }
     }
 }
@@ -138,14 +169,14 @@ mod test {
     use super::*;
     use snarkvm_utilities::{test_rng, UniformRand};
 
-    const ITERATIONS: usize = 1024;
+    const ITERATIONS: u64 = 1024;
 
     #[test]
     fn test_exact_matches() {
         for _ in 0..ITERATIONS {
             // Generate a random `Measurement` and candidate value.
-            let value: usize = u16::rand(&mut test_rng()) as usize;
-            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+            let value = u32::rand(&mut test_rng()) as u64;
+            let candidate = u32::rand(&mut test_rng()) as u64;
             let metric = Measurement::Exact(value);
 
             // Check that the metric is only satisfied if the candidate is equal to the value.
@@ -162,8 +193,8 @@ mod test {
     fn test_upper_matches() {
         for _ in 0..ITERATIONS {
             // Generate a random `Measurement::UpperBound` and candidate value.
-            let upper: usize = u16::rand(&mut test_rng()) as usize;
-            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+            let upper = u32::rand(&mut test_rng()) as u64;
+            let candidate = u32::rand(&mut test_rng()) as u64;
             let metric = Measurement::UpperBound(upper);
 
             // Check that the metric is only satisfied if the candidate is less than upper.
@@ -180,9 +211,9 @@ mod test {
     fn test_range_matches() {
         for _ in 0..ITERATIONS {
             // Generate a random `Measurement::UpperBound` and candidate value.
-            let first_bound: usize = u16::rand(&mut test_rng()) as usize;
-            let second_bound: usize = u16::rand(&mut test_rng()) as usize;
-            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+            let first_bound = u32::rand(&mut test_rng()) as u64;
+            let second_bound = u32::rand(&mut test_rng()) as u64;
+            let candidate = u32::rand(&mut test_rng()) as u64;
             let (metric, lower, upper) = if first_bound <= second_bound {
                 (Measurement::Range(first_bound, second_bound), first_bound, second_bound)
             } else {
@@ -200,18 +231,18 @@ mod test {
         }
     }
 
-    // Test composition of metrics.
+    // Test addition.
 
     #[test]
-    fn test_exact_compose_with_exact() {
+    fn test_exact_plus_exact() {
         for _ in 0..ITERATIONS {
-            let first: usize = u16::rand(&mut test_rng()) as usize;
-            let second: usize = u16::rand(&mut test_rng()) as usize;
-            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+            let first = u32::rand(&mut test_rng()) as u64;
+            let second = u32::rand(&mut test_rng()) as u64;
+            let candidate = u32::rand(&mut test_rng()) as u64;
 
             let a = Measurement::Exact(first);
             let b = Measurement::Exact(second);
-            let c = a.compose(&b);
+            let c = a + b;
 
             assert!(c.matches(first + second));
             if candidate == first + second {
@@ -223,15 +254,15 @@ mod test {
     }
 
     #[test]
-    fn test_exact_compose_with_upper() {
+    fn test_exact_plus_upper() {
         for _ in 0..ITERATIONS {
-            let first: usize = u16::rand(&mut test_rng()) as usize;
-            let second: usize = u16::rand(&mut test_rng()) as usize;
-            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+            let first = u32::rand(&mut test_rng()) as u64;
+            let second = u32::rand(&mut test_rng()) as u64;
+            let candidate = u32::rand(&mut test_rng()) as u64;
 
             let a = Measurement::Exact(first);
             let b = Measurement::UpperBound(second);
-            let c = a.compose(&b);
+            let c = a + b;
 
             assert!(c.matches(first + second));
             if candidate <= first + second {
@@ -243,11 +274,11 @@ mod test {
     }
 
     #[test]
-    fn test_exact_compose_with_range() {
-        let value: usize = u16::rand(&mut test_rng()) as usize;
-        let first_bound: usize = u16::rand(&mut test_rng()) as usize;
-        let second_bound: usize = u16::rand(&mut test_rng()) as usize;
-        let candidate: usize = u16::rand(&mut test_rng()) as usize;
+    fn test_exact_plus_range() {
+        let value = u32::rand(&mut test_rng()) as u64;
+        let first_bound = u32::rand(&mut test_rng()) as u64;
+        let second_bound = u32::rand(&mut test_rng()) as u64;
+        let candidate = u32::rand(&mut test_rng()) as u64;
 
         let a = Measurement::Exact(value);
         let (b, lower, upper) = if first_bound <= second_bound {
@@ -255,7 +286,7 @@ mod test {
         } else {
             (Measurement::Range(second_bound, first_bound), second_bound, first_bound)
         };
-        let c = a.compose(&b);
+        let c = a + b;
 
         assert!(c.matches(value + lower));
         assert!(c.matches(value + upper));
@@ -267,11 +298,11 @@ mod test {
     }
 
     #[test]
-    fn test_range_compose_with_exact() {
-        let value: usize = u16::rand(&mut test_rng()) as usize;
-        let first_bound: usize = u16::rand(&mut test_rng()) as usize;
-        let second_bound: usize = u16::rand(&mut test_rng()) as usize;
-        let candidate: usize = u16::rand(&mut test_rng()) as usize;
+    fn test_range_plus_exact() {
+        let value = u32::rand(&mut test_rng()) as u64;
+        let first_bound = u32::rand(&mut test_rng()) as u64;
+        let second_bound = u32::rand(&mut test_rng()) as u64;
+        let candidate = u32::rand(&mut test_rng()) as u64;
 
         let (a, lower, upper) = if first_bound <= second_bound {
             (Measurement::Range(first_bound, second_bound), first_bound, second_bound)
@@ -279,7 +310,7 @@ mod test {
             (Measurement::Range(second_bound, first_bound), second_bound, first_bound)
         };
         let b = Measurement::Exact(value);
-        let c = a.compose(&b);
+        let c = a + b;
 
         assert!(c.matches(value + lower));
         assert!(c.matches(value + upper));
@@ -291,13 +322,13 @@ mod test {
     }
 
     #[test]
-    fn test_range_compose_with_range() {
+    fn test_range_plus_range() {
         for _ in 0..ITERATIONS {
-            let first: usize = u16::rand(&mut test_rng()) as usize;
-            let second: usize = u16::rand(&mut test_rng()) as usize;
-            let third: usize = u16::rand(&mut test_rng()) as usize;
-            let fourth: usize = u16::rand(&mut test_rng()) as usize;
-            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+            let first = u32::rand(&mut test_rng()) as u64;
+            let second = u32::rand(&mut test_rng()) as u64;
+            let third = u32::rand(&mut test_rng()) as u64;
+            let fourth = u32::rand(&mut test_rng()) as u64;
+            let candidate = u32::rand(&mut test_rng()) as u64;
 
             let (a, first_lower, first_upper) = if first <= second {
                 (Measurement::Range(first, second), first, second)
@@ -309,7 +340,7 @@ mod test {
             } else {
                 (Measurement::Range(fourth, third), fourth, third)
             };
-            let c = a.compose(&b);
+            let c = a + b;
 
             assert!(c.matches(first_lower + second_lower));
             assert!(c.matches(first_upper + second_upper));
@@ -322,12 +353,12 @@ mod test {
     }
 
     #[test]
-    fn test_range_compose_with_upper() {
+    fn test_range_plus_upper() {
         for _ in 0..ITERATIONS {
-            let first: usize = u16::rand(&mut test_rng()) as usize;
-            let second: usize = u16::rand(&mut test_rng()) as usize;
-            let third: usize = u16::rand(&mut test_rng()) as usize;
-            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+            let first = u32::rand(&mut test_rng()) as u64;
+            let second = u32::rand(&mut test_rng()) as u64;
+            let third = u32::rand(&mut test_rng()) as u64;
+            let candidate = u32::rand(&mut test_rng()) as u64;
 
             let (a, lower, upper) = if second <= third {
                 (Measurement::Range(second, third), second, third)
@@ -335,7 +366,7 @@ mod test {
                 (Measurement::Range(third, second), third, second)
             };
             let b = Measurement::UpperBound(first);
-            let c = a.compose(&b);
+            let c = a + b;
 
             assert!(c.matches(lower));
             assert!(c.matches(first + upper));
@@ -348,15 +379,15 @@ mod test {
     }
 
     #[test]
-    fn test_upper_compose_with_exact() {
+    fn test_upper_plus_exact() {
         for _ in 0..ITERATIONS {
-            let first: usize = u16::rand(&mut test_rng()) as usize;
-            let second: usize = u16::rand(&mut test_rng()) as usize;
-            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+            let first = u32::rand(&mut test_rng()) as u64;
+            let second = u32::rand(&mut test_rng()) as u64;
+            let candidate = u32::rand(&mut test_rng()) as u64;
 
             let a = Measurement::UpperBound(second);
             let b = Measurement::Exact(first);
-            let c = a.compose(&b);
+            let c = a + b;
 
             assert!(c.matches(first + second));
             if candidate <= first + second {
@@ -368,12 +399,12 @@ mod test {
     }
 
     #[test]
-    fn test_upper_compose_with_range() {
+    fn test_upper_plus_range() {
         for _ in 0..ITERATIONS {
-            let first: usize = u16::rand(&mut test_rng()) as usize;
-            let second: usize = u16::rand(&mut test_rng()) as usize;
-            let third: usize = u16::rand(&mut test_rng()) as usize;
-            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+            let first = u32::rand(&mut test_rng()) as u64;
+            let second = u32::rand(&mut test_rng()) as u64;
+            let third = u32::rand(&mut test_rng()) as u64;
+            let candidate = u32::rand(&mut test_rng()) as u64;
 
             let a = Measurement::UpperBound(first);
             let (b, lower, upper) = if second <= third {
@@ -381,7 +412,7 @@ mod test {
             } else {
                 (Measurement::Range(third, second), third, second)
             };
-            let c = a.compose(&b);
+            let c = a + b;
 
             assert!(c.matches(lower));
             assert!(c.matches(first + upper));
@@ -394,15 +425,15 @@ mod test {
     }
 
     #[test]
-    fn test_upper_compose_with_upper() {
+    fn test_upper_plus_upper() {
         for _ in 0..ITERATIONS {
-            let first: usize = u16::rand(&mut test_rng()) as usize;
-            let second: usize = u16::rand(&mut test_rng()) as usize;
-            let candidate: usize = u16::rand(&mut test_rng()) as usize;
+            let first = u32::rand(&mut test_rng()) as u64;
+            let second = u32::rand(&mut test_rng()) as u64;
+            let candidate = u32::rand(&mut test_rng()) as u64;
 
             let a = Measurement::UpperBound(second);
             let b = Measurement::UpperBound(first);
-            let c = a.compose(&b);
+            let c = a + b;
 
             assert!(c.matches(first + second));
             if candidate <= first + second {
@@ -410,6 +441,45 @@ mod test {
             } else {
                 assert!(!c.matches(candidate));
             }
+        }
+    }
+
+    // Test multiplication.
+
+    #[test]
+    fn test_exact_mul() {
+        for _ in 0..ITERATIONS {
+            let start = u32::rand(&mut test_rng()) as u64;
+            let scalar = u32::rand(&mut test_rng()) as u64;
+
+            let expected = Measurement::Exact(start * scalar);
+            let candidate = Measurement::Exact(start) * scalar;
+            assert_eq!(candidate, expected);
+        }
+    }
+
+    #[test]
+    fn test_upper_bound_mul() {
+        for _ in 0..ITERATIONS {
+            let start = u32::rand(&mut test_rng()) as u64;
+            let scalar = u32::rand(&mut test_rng()) as u64;
+
+            let expected = Measurement::UpperBound(start * scalar);
+            let candidate = Measurement::UpperBound(start) * scalar;
+            assert_eq!(candidate, expected);
+        }
+    }
+
+    #[test]
+    fn test_range_mul() {
+        for _ in 0..ITERATIONS {
+            let start = u32::rand(&mut test_rng()) as u64;
+            let end = u32::rand(&mut test_rng()) as u64;
+            let scalar = u32::rand(&mut test_rng()) as u64;
+
+            let expected = Measurement::Range(start * scalar, end * scalar);
+            let candidate = Measurement::Range(start, end) * scalar;
+            assert_eq!(candidate, expected);
         }
     }
 }
