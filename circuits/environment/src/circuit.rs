@@ -291,7 +291,7 @@ mod tests {
         let one = <E as Environment>::BaseField::one();
         let two = one + one;
 
-        const EXPONENT: usize = 64;
+        const EXPONENT: u64 = 64;
 
         // Compute 2^EXPONENT - 1, in a purposefully constraint-inefficient manner for testing.
         let mut candidate = Field::<E>::new(Mode::Public, one);
