@@ -17,6 +17,9 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
+mod helpers;
+use helpers::*;
+
 pub mod abs_checked;
 pub mod abs_wrapped;
 pub mod add_checked;
@@ -26,8 +29,6 @@ pub mod compare;
 pub mod div_checked;
 pub mod div_wrapped;
 pub mod equal;
-pub mod from_bits;
-pub mod msb;
 pub mod mul_checked;
 pub mod mul_wrapped;
 pub mod neg;
@@ -43,9 +44,6 @@ pub mod shr_wrapped;
 pub mod sub_checked;
 pub mod sub_wrapped;
 pub mod ternary;
-pub mod to_bits;
-pub mod to_field;
-pub mod to_fields;
 pub mod xor;
 pub mod zero;
 
