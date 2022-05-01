@@ -102,7 +102,7 @@ mod tests {
     use snarkvm_circuits_environment::{assert_count, assert_output_mode, Circuit};
     use snarkvm_utilities::{test_rng, UniformRand};
 
-    const ITERATIONS: usize = 10_000;
+    const ITERATIONS: u64 = 10_000;
 
     fn check_add(name: &str, expected: &<Circuit as Environment>::BaseField, a: &Field<Circuit>, b: &Field<Circuit>) {
         Circuit::scope(name, || {

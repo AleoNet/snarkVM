@@ -47,10 +47,10 @@ mod tests {
         a: Boolean<Circuit>,
         b: Boolean<Circuit>,
         c: Boolean<Circuit>,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
     ) {
         Circuit::scope(name, || {
             let case = format!("({} SUB {} WITH {})", a.eject_value(), b.eject_value(), c.eject_value());
@@ -66,10 +66,10 @@ mod tests {
         mode_a: Mode,
         mode_b: Mode,
         mode_c: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64
     ) {
         // false SUB false WITH false => (false, false)
         let expected_difference = false;
@@ -85,10 +85,10 @@ mod tests {
         mode_a: Mode,
         mode_b: Mode,
         mode_c: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64
     ) {
         // false SUB false WITH true => (true, true)
         let expected_difference = true;
@@ -104,10 +104,10 @@ mod tests {
         mode_a: Mode,
         mode_b: Mode,
         mode_c: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64
     ) {
         // false SUB true WITH false => (true, true)
         let expected_difference = true;
@@ -123,10 +123,10 @@ mod tests {
         mode_a: Mode,
         mode_b: Mode,
         mode_c: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64
     ) {
         // false SUB true WITH true => (false, true)
         let expected_difference = false;
@@ -142,10 +142,10 @@ mod tests {
         mode_a: Mode,
         mode_b: Mode,
         mode_c: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64
     ) {
         // true SUB false WITH false => (true, false)
         let expected_difference = true;
@@ -161,10 +161,10 @@ mod tests {
         mode_a: Mode,
         mode_b: Mode,
         mode_c: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64
     ) {
         // true SUB false WITH true => (false, false)
         let expected_difference = false;
@@ -180,10 +180,10 @@ mod tests {
         mode_a: Mode,
         mode_b: Mode,
         mode_c: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64
     ) {
         // true SUB true WITH false => (false, false)
         let expected_difference = false;
@@ -199,10 +199,10 @@ mod tests {
         mode_a: Mode,
         mode_b: Mode,
         mode_c: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64
     ) {
         // true SUB true WITH true => (true, true)
         let expected_difference = true;

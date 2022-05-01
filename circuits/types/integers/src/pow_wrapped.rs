@@ -93,7 +93,7 @@ mod tests {
     use core::{ops::RangeInclusive, panic::RefUnwindSafe};
 
     // Lowered to 4; we run (~6 * ITERATIONS) cases for most tests.
-    const ITERATIONS: usize = 4;
+    const ITERATIONS: u64 = 4;
 
     fn check_pow<I: IntegerType + RefUnwindSafe, M: Magnitude + RefUnwindSafe>(
         name: &str,

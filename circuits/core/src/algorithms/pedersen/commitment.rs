@@ -60,7 +60,7 @@ impl<'a, E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
                     &(*mode, Mode::Constant, Mode::Constant)
                 )
             })
-            .fold(Count::is(0, 0, 0, 0), |cummulative, count| cummulative + count);
+            .fold(Count::is(0, 0, 0, 0), |cumulative, count| cumulative + count);
 
         // Determine the modes of each of the group elements.
         let modes = randomness_modes.iter().map(|mode| {
@@ -112,7 +112,7 @@ mod tests {
     use snarkvm_curves::AffineCurve;
     use snarkvm_utilities::{test_rng, ToBits as NativeToBits, UniformRand};
 
-    const ITERATIONS: usize = 10;
+    const ITERATIONS: u64 = 10;
     const MESSAGE: &str = "PedersenCommitmentCircuit0";
     const WINDOW_SIZE_MULTIPLIER: usize = 8;
 

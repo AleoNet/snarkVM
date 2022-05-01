@@ -89,7 +89,7 @@ mod tests {
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{bytes_from_bits_le, test_rng, FromBytes, ToBytes, UniformRand};
 
-    const ITERATIONS: usize = 100;
+    const ITERATIONS: u64 = 100;
 
     #[rustfmt::skip]
     fn check_to_lower_k_bits_le<I: IntegerType + Unsigned + ToBytes>(
@@ -111,8 +111,8 @@ mod tests {
             };
 
             Circuit::scope(&format!("{} {}", mode, i), || {
-                let candidate = candidate.to_lower_bits_le(I::BITS);
-                assert_eq!(I::BITS, candidate.len());
+                let candidate = candidate.to_lower_bits_le(I::BITS as usize);
+                assert_eq!(I::BITS, candidate.len() as u64);
                 for (i, (expected_bit, candidate_bit)) in expected.iter().zip_eq(candidate.iter()).enumerate() {
                     assert_eq!(*expected_bit, candidate_bit.eject_value(), "LSB+{}", i);
                 }

@@ -57,10 +57,10 @@ mod tests {
         name: &str,
         expected: &[<Circuit as Environment>::BaseField],
         candidate: &StringType<Circuit>,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
     ) {
         Circuit::scope(name, || {
             // Perform the operation.

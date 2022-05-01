@@ -50,15 +50,9 @@ mod tests {
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, ToBits as TBits, UniformRand};
 
-    const ITERATIONS: usize = 100;
+    const ITERATIONS: u64 = 100;
 
-    fn check_to_bits_le(
-        mode: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
+    fn check_to_bits_le(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
         let expected_number_of_bits = <<Circuit as Environment>::BaseField as PrimeField>::size_in_bits();
 
         for i in 0..ITERATIONS {
@@ -79,13 +73,7 @@ mod tests {
         }
     }
 
-    fn check_to_bits_be(
-        mode: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
+    fn check_to_bits_be(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
         let expected_number_of_bits = <<Circuit as Environment>::BaseField as PrimeField>::size_in_bits();
 
         for i in 0..ITERATIONS {

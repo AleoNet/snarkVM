@@ -60,7 +60,7 @@ mod tests {
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
-    const ITERATIONS: usize = 500;
+    const ITERATIONS: u64 = 500;
 
     fn check_square(name: &str, expected: &<Circuit as Environment>::BaseField, a: &Field<Circuit>) {
         Circuit::scope(name, || {

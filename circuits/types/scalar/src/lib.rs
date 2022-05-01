@@ -156,16 +156,16 @@ mod tests {
 
     use core::str::FromStr;
 
-    const ITERATIONS: usize = 250;
+    const ITERATIONS: u64 = 250;
 
     fn check_new(
         name: &str,
         expected: <Circuit as Environment>::ScalarField,
         mode: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
     ) {
         Circuit::scope(name, || {
             let candidate = Scalar::<Circuit>::new(mode, expected);

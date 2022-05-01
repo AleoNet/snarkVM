@@ -92,7 +92,7 @@ mod tests {
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{bytes_from_bits_le, test_rng, FromBytes, ToBytes, UniformRand};
 
-    const ITERATIONS: usize = 100;
+    const ITERATIONS: u64 = 100;
 
     #[rustfmt::skip]
     fn check_to_upper_k_bits_be<I: IntegerType + Unsigned + ToBytes>(
@@ -136,8 +136,8 @@ mod tests {
 
             Circuit::scope(&format!("{} {}", mode, i), || {
                 let num_bits_with_capacity = I::BITS + 1;
-                let candidate = candidate.to_upper_bits_be(num_bits_with_capacity);
-                assert_eq!(num_bits_with_capacity, candidate.len());
+                let candidate = candidate.to_upper_bits_be(num_bits_with_capacity as usize);
+                assert_eq!(num_bits_with_capacity, candidate.len() as u64);
                 for (i, (expected_bit, candidate_bit)) in expected.iter().zip_eq(candidate.iter().skip(1)).enumerate() {
                     assert_eq!(*expected_bit, candidate_bit.eject_value(), "MSB-{}", i);
                 }

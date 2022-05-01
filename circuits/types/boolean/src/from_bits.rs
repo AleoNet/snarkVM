@@ -47,10 +47,10 @@ mod tests {
         name: &str,
         expected: bool,
         candidate: &Boolean<Circuit>,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
     ) {
         Circuit::scope(name, || {
             let candidate = Boolean::from_bits_le(&[(*candidate).clone()]);
@@ -64,10 +64,10 @@ mod tests {
         name: &str,
         expected: bool,
         candidate: &Boolean<Circuit>,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
     ) {
         Circuit::scope(name, || {
             let candidate = Boolean::from_bits_be(&[(*candidate).clone()]);

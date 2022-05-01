@@ -144,7 +144,7 @@ mod tests {
 
     use core::str::FromStr;
 
-    const ITERATIONS: usize = 128;
+    const ITERATIONS: u64 = 128;
 
     /// Attempts to construct an affine group element from the given x-coordinate and mode.
     fn check_debug(mode: Mode, point: <Circuit as Environment>::Affine) {

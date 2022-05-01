@@ -164,7 +164,7 @@ mod tests {
 
     use std::str::FromStr;
 
-    const ITERATIONS: usize = 10_000;
+    const ITERATIONS: u64 = 10_000;
 
     /// Attempts to construct a field from the given element and mode,
     /// format it in debug mode, and recover a field from it.

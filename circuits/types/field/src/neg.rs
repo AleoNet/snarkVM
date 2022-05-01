@@ -59,7 +59,7 @@ mod tests {
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
-    const ITERATIONS: usize = 1_000;
+    const ITERATIONS: u64 = 1_000;
 
     fn check_neg(name: &str, mode: Mode) {
         let check_neg = |given: <Circuit as Environment>::BaseField| {

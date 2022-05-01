@@ -112,7 +112,7 @@ mod tests {
     use snarkvm_curves::AffineCurve;
     use snarkvm_utilities::{test_rng, UniformRand};
 
-    const ITERATIONS: usize = 10;
+    const ITERATIONS: u64 = 10;
     const MESSAGE: &str = "PedersenCircuit0";
     const WINDOW_SIZE_MULTIPLIER: usize = 8;
 

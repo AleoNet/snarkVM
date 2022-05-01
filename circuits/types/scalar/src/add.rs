@@ -128,7 +128,7 @@ mod tests {
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
-    const ITERATIONS: usize = 128;
+    const ITERATIONS: u64 = 128;
 
     #[rustfmt::skip]
     fn check_add(

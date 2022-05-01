@@ -81,7 +81,7 @@ mod tests {
 
     use std::ops::RangeInclusive;
 
-    const ITERATIONS: usize = 100;
+    const ITERATIONS: u64 = 100;
 
     fn check_equals<I: IntegerType>(name: &str, first: I, second: I, mode_a: Mode, mode_b: Mode) {
         let expected = first == second;

@@ -50,13 +50,7 @@ mod tests {
 
     const ITERATIONS: u32 = 100;
 
-    fn check_from_bits_le(
-        mode: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
+    fn check_from_bits_le(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
         let rng = &mut test_rng();
 
         for i in 0..ITERATIONS {
@@ -76,13 +70,7 @@ mod tests {
         }
     }
 
-    fn check_from_bits_be(
-        mode: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
+    fn check_from_bits_be(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
         let rng = &mut test_rng();
 
         for i in 0..ITERATIONS {

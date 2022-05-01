@@ -118,7 +118,7 @@ mod tests {
 
     use std::ops::RangeInclusive;
 
-    const ITERATIONS: usize = 128;
+    const ITERATIONS: u64 = 128;
 
     fn check_and<I: IntegerType + BitAnd<Output = I>>(name: &str, first: I, second: I, mode_a: Mode, mode_b: Mode) {
         let a = Integer::<Circuit, I>::new(mode_a, first);

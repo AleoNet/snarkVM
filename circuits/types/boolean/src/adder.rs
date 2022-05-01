@@ -47,10 +47,10 @@ mod tests {
         a: Boolean<Circuit>,
         b: Boolean<Circuit>,
         c: Boolean<Circuit>,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
     ) {
         Circuit::scope(name, || {
             let case = format!("({} ADD {} WITH {})", a.eject_value(), b.eject_value(), c.eject_value());
@@ -66,10 +66,10 @@ mod tests {
         mode_a: Mode,
         mode_b: Mode,
         mode_c: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64
     ) {
         // false ADD false WITH false => (false, false)
         let expected_sum = false;
@@ -85,10 +85,10 @@ mod tests {
         mode_a: Mode,
         mode_b: Mode,
         mode_c: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64
     ) {
         // false ADD false WITH true => (true, false)
         let expected_sum = true;
@@ -104,10 +104,10 @@ mod tests {
         mode_a: Mode,
         mode_b: Mode,
         mode_c: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64
     ) {
         // false ADD true WITH false => (true, false)
         let expected_sum = true;
@@ -123,10 +123,10 @@ mod tests {
         mode_a: Mode,
         mode_b: Mode,
         mode_c: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64
     ) {
         // false ADD true WITH true => (false, true)
         let expected_sum = false;
@@ -142,10 +142,10 @@ mod tests {
         mode_a: Mode,
         mode_b: Mode,
         mode_c: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64
     ) {
         // true ADD false WITH false => (true, false)
         let expected_sum = true;
@@ -161,10 +161,10 @@ mod tests {
         mode_a: Mode,
         mode_b: Mode,
         mode_c: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64
     ) {
         // true ADD false WITH true => (false, true)
         let expected_sum = false;
@@ -180,10 +180,10 @@ mod tests {
         mode_a: Mode,
         mode_b: Mode,
         mode_c: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64
     ) {
         // true ADD true WITH false => (false, true)
         let expected_sum = false;
@@ -199,10 +199,10 @@ mod tests {
         mode_a: Mode,
         mode_b: Mode,
         mode_c: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64
     ) {
         // true ADD true WITH true => (true, true)
         let expected_sum = true;

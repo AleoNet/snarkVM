@@ -37,7 +37,7 @@ mod tests {
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, ToBits as TBits, UniformRand};
 
-    const ITERATIONS: usize = 128;
+    const ITERATIONS: u64 = 128;
 
     fn check_to_field<I: IntegerType>(mode: Mode) {
         for i in 0..ITERATIONS {

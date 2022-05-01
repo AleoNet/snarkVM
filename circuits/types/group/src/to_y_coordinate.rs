@@ -29,7 +29,7 @@ mod tests {
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
-    const ITERATIONS: usize = 100;
+    const ITERATIONS: u64 = 100;
 
     fn check_to_y_coordinate(mode: Mode) {
         for i in 0..ITERATIONS {

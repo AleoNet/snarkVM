@@ -60,7 +60,7 @@ mod tests {
 
     use core::ops::RangeInclusive;
 
-    const ITERATIONS: usize = 128;
+    const ITERATIONS: u64 = 128;
 
     fn check_not<I: IntegerType + Not<Output = I>>(name: &str, first: I, mode: Mode) {
         let a = Integer::<Circuit, I>::new(mode, first);

@@ -68,7 +68,7 @@ mod tests {
     use snarkvm_circuits_environment::{assert_count, assert_output_mode, Circuit};
     use snarkvm_utilities::{test_rng, UniformRand};
 
-    const ITERATIONS: usize = 1_000;
+    const ITERATIONS: u64 = 1_000;
 
     fn check_inv(name: &str, mode: Mode) {
         for _ in 0..ITERATIONS {

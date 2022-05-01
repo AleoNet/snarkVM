@@ -146,52 +146,52 @@ impl Environment for Devnet {
     }
 
     /// Returns the number of constants in the entire circuit.
-    fn num_constants() -> usize {
+    fn num_constants() -> u64 {
         E::num_constants()
     }
 
     /// Returns the number of public variables in the entire circuit.
-    fn num_public() -> usize {
+    fn num_public() -> u64 {
         E::num_public()
     }
 
     /// Returns the number of private variables in the entire circuit.
-    fn num_private() -> usize {
+    fn num_private() -> u64 {
         E::num_private()
     }
 
     /// Returns the number of constraints in the entire circuit.
-    fn num_constraints() -> usize {
+    fn num_constraints() -> u64 {
         E::num_constraints()
     }
 
     /// Returns the number of gates in the entire circuit.
-    fn num_gates() -> usize {
+    fn num_gates() -> u64 {
         E::num_gates()
     }
 
     /// Returns the number of constants for the current scope.
-    fn num_constants_in_scope() -> usize {
+    fn num_constants_in_scope() -> u64 {
         E::num_constants_in_scope()
     }
 
     /// Returns the number of public variables for the current scope.
-    fn num_public_in_scope() -> usize {
+    fn num_public_in_scope() -> u64 {
         E::num_public_in_scope()
     }
 
     /// Returns the number of private variables for the current scope.
-    fn num_private_in_scope() -> usize {
+    fn num_private_in_scope() -> u64 {
         E::num_private_in_scope()
     }
 
     /// Returns the number of constraints for the current scope.
-    fn num_constraints_in_scope() -> usize {
+    fn num_constraints_in_scope() -> u64 {
         E::num_constraints_in_scope()
     }
 
     /// Returns the number of gates for the current scope.
-    fn num_gates_in_scope() -> usize {
+    fn num_gates_in_scope() -> u64 {
         E::num_gates_in_scope()
     }
 
@@ -229,7 +229,7 @@ mod tests {
         let one = <E as Environment>::BaseField::one();
         let two = one + one;
 
-        const EXPONENT: usize = 64;
+        const EXPONENT: u64 = 64;
 
         // Compute 2^EXPONENT - 1, in a purposefully constraint-inefficient manner for testing.
         let mut candidate = Field::<E>::new(Mode::Public, one);

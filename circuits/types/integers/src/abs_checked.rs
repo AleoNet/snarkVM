@@ -72,7 +72,7 @@ mod tests {
 
     use core::{ops::RangeInclusive, panic::UnwindSafe};
 
-    const ITERATIONS: usize = 128;
+    const ITERATIONS: u64 = 128;
 
     fn check_abs<I: IntegerType + UnwindSafe>(name: &str, value: I, mode: Mode) {
         let a = Integer::<Circuit, I>::new(mode, value);
