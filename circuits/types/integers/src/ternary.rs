@@ -120,6 +120,6 @@ mod tests {
     test_integer_ternary!(run_test, u64, if, then, else);
     test_integer_ternary!(run_test, u128, if, then, else);
 
-    // test_integer_ternary!(#[ignore], run_exhaustive_test, u8, if, then, else, exhaustive);
-    // test_integer_ternary!(#[ignore], run_exhaustive_test, i8, if, then, else, exhaustive);
+    test_integer_ternary!(#[ignore], run_exhaustive_test, u8, if, then, else, exhaustive);
+    test_integer_ternary!(#[ignore], run_exhaustive_test, i8, if, then, else, exhaustive);
 }
