@@ -236,7 +236,7 @@ jobs:
   circuits-types-integers:
     docker:
       - image: cimg/rust:1.59
-    resource_class: 2xlarge
+    resource_class: xlarge
     parallelism: 100
     steps:
       - run_parallel:
