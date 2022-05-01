@@ -26,7 +26,7 @@ impl_commit_instruction!(PedComm1024);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{test_instruction_halts, test_modes, Process};
+    use crate::{test_instruction_halts, test_modes, Identifier, Process};
 
     type P = Process;
 
@@ -156,4 +156,50 @@ mod tests {
         "\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"",
         "1scalar"
     );
+
+    #[test]
+    fn test_composite() {
+        let first = Value::<P>::Composite(Identifier::from_str("message"), vec![
+            Literal::from_str("true.public"),
+            Literal::from_str("false.private"),
+        ]);
+        let second = Value::<P>::from_str("1scalar");
+
+        let registers = Registers::<P>::default();
+        registers.define(&Register::from_str("r0"));
+        registers.define(&Register::from_str("r1"));
+        registers.define(&Register::from_str("r2"));
+        registers.assign(&Register::from_str("r0"), first);
+        registers.assign(&Register::from_str("r1"), second);
+
+        PedComm1024::from_str("r0 r1 into r2").evaluate(&registers);
+
+        let value = registers.load(&Register::from_str("r2"));
+        let expected = Value::<P>::from_str(
+            "7143232585354596727088537818886269936493413322580429357859918031397884359807group.private",
+        );
+        assert_eq!(expected, value);
+    }
+
+    #[test]
+    #[should_panic(expected = "The Pedersen hash input cannot exceed 1024 bits.")]
+    fn test_composite_halts() {
+        let first = Value::<P>::Composite(Identifier::from_str("message"), vec![
+            Literal::from_str("1field.public"),
+            Literal::from_str("2field.private"),
+            Literal::from_str("3field.private"),
+            Literal::from_str("4field.private"),
+            Literal::from_str("5field.private"),
+        ]);
+        let second = Value::<P>::from_str("1scalar");
+
+        let registers = Registers::<P>::default();
+        registers.define(&Register::from_str("r0"));
+        registers.define(&Register::from_str("r1"));
+        registers.define(&Register::from_str("r2"));
+        registers.assign(&Register::from_str("r0"), first);
+        registers.assign(&Register::from_str("r1"), second);
+
+        PedComm1024::from_str("r0 r1 into r2").evaluate(&registers);
+    }
 }

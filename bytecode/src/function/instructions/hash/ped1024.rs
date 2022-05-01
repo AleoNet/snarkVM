@@ -26,7 +26,7 @@ impl_hash_instruction!(Ped1024);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{test_instruction_halts, test_modes, Process};
+    use crate::{test_instruction_halts, test_modes, Identifier, Process};
 
     type P = Process;
 
@@ -139,4 +139,44 @@ mod tests {
         "The Pedersen hash input cannot exceed 1024 bits.",
         "\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\""
     );
+
+    #[test]
+    fn test_composite() {
+        let first = Value::<P>::Composite(Identifier::from_str("message"), vec![
+            Literal::from_str("true.public"),
+            Literal::from_str("false.private"),
+        ]);
+
+        let registers = Registers::<P>::default();
+        registers.define(&Register::from_str("r0"));
+        registers.define(&Register::from_str("r1"));
+        registers.assign(&Register::from_str("r0"), first);
+
+        Ped1024::from_str("r0 into r1").evaluate(&registers);
+
+        let value = registers.load(&Register::from_str("r1"));
+        let expected = Value::<P>::from_str(
+            "6122249396247477588925765696834100286827340493907798245233656838221917119242field.private",
+        );
+        assert_eq!(expected, value);
+    }
+
+    #[test]
+    #[should_panic(expected = "The Pedersen hash input cannot exceed 1024 bits.")]
+    fn test_composite_halts() {
+        let first = Value::<P>::Composite(Identifier::from_str("message"), vec![
+            Literal::from_str("1field.public"),
+            Literal::from_str("2field.private"),
+            Literal::from_str("3field.private"),
+            Literal::from_str("4field.private"),
+            Literal::from_str("5field.private"),
+        ]);
+
+        let registers = Registers::<P>::default();
+        registers.define(&Register::from_str("r0"));
+        registers.define(&Register::from_str("r1"));
+        registers.assign(&Register::from_str("r0"), first);
+
+        Ped1024::from_str("r0 into r1").evaluate(&registers);
+    }
 }

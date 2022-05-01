@@ -26,7 +26,7 @@ impl_psd_hash_instruction!(Psd8);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{test_instruction_halts, test_modes, Process};
+    use crate::{test_instruction_halts, test_modes, Identifier, Process};
 
     type P = Process;
 
@@ -83,4 +83,25 @@ mod tests {
         "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah"
     );
     test_instruction_halts!(group_halts, Psd8, "Invalid 'hash.psd8' instruction", "2group");
+
+    #[test]
+    fn test_composite() {
+        let first = Value::<P>::Composite(Identifier::from_str("message"), vec![
+            Literal::from_str("1field.public"),
+            Literal::from_str("2field.private"),
+        ]);
+
+        let registers = Registers::<P>::default();
+        registers.define(&Register::from_str("r0"));
+        registers.define(&Register::from_str("r1"));
+        registers.assign(&Register::from_str("r0"), first);
+
+        Psd8::from_str("r0 into r1").evaluate(&registers);
+
+        let value = registers.load(&Register::from_str("r1"));
+        let expected = Value::<P>::from_str(
+            "2132636093982099992808836832692348220698310395516022520468979890154979376079field.private",
+        );
+        assert_eq!(expected, value);
+    }
 }
