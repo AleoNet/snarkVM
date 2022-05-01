@@ -103,22 +103,18 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metrics<dyn ShrChecked<Intege
     type Case = (Mode, Mode);
 
     fn count(case: &Self::Case) -> Count {
-        match I::is_signed() {
-            // Signed case
-            true => {
+        // A quick hack that matches `(u8 -> 0, u16 -> 1, u32 -> 2, u64 -> 3, u128 -> 4)`.
+        let index = |num_bits: usize| match [8, 16, 32, 64, 128].iter().position(|&bits| bits == num_bits) {
+            Some(index) => index,
+            None => E::halt(format!("Integer of {num_bits} bits is not supported")),
+        };
+
+        match (case.0, case.1) {
+            (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
+            (_, Mode::Constant) => Count::is(0, 0, 0, 0),
+            (Mode::Constant, _) | (_, _) => {
                 let wrapped_count = count!(Integer<E, I>, ShrWrapped<Integer<E, M>, Output=Integer<E, I>>, case);
-                wrapped_count.compose(&Count::is(0, 0, 4 + M::BITS / 2, 7 + M::BITS / 2))
-            }
-            // Unsigned case
-            false => {
-                let wrapped_count = count!(Integer<E, I>, ShrWrapped<Integer<E, M>, Output=Integer<E, I>>, case);
-                wrapped_count
-                // wrapped_count.compose(&Count::is(
-                //     0,
-                //     0,
-                //     4 + M::BITS / 2,
-                //     7 + M::BITS / 2,
-                // ))
+                wrapped_count.compose(&Count::is(0, 0, M::BITS - 4 - index(I::BITS), M::BITS - 3 - index(I::BITS)))
             }
         }
     }
@@ -203,25 +199,25 @@ mod tests {
         }
     }
 
-    // test_integer_binary!(run_test, i8, u8, shr);
-    // test_integer_binary!(run_test, i8, u16, shr);
-    // test_integer_binary!(run_test, i8, u32, shr);
-    //
-    // test_integer_binary!(run_test, i16, u8, shr);
-    // test_integer_binary!(run_test, i16, u16, shr);
-    // test_integer_binary!(run_test, i16, u32, shr);
-    //
-    // test_integer_binary!(run_test, i32, u8, shr);
-    // test_integer_binary!(run_test, i32, u16, shr);
-    // test_integer_binary!(run_test, i32, u32, shr);
-    //
-    // test_integer_binary!(run_test, i64, u8, shr);
-    // test_integer_binary!(run_test, i64, u16, shr);
-    // test_integer_binary!(run_test, i64, u32, shr);
-    //
-    // test_integer_binary!(run_test, i128, u8, shr);
-    // test_integer_binary!(run_test, i128, u16, shr);
-    // test_integer_binary!(run_test, i128, u32, shr);
+    test_integer_binary!(run_test, i8, u8, shr);
+    test_integer_binary!(run_test, i8, u16, shr);
+    test_integer_binary!(run_test, i8, u32, shr);
+
+    test_integer_binary!(run_test, i16, u8, shr);
+    test_integer_binary!(run_test, i16, u16, shr);
+    test_integer_binary!(run_test, i16, u32, shr);
+
+    test_integer_binary!(run_test, i32, u8, shr);
+    test_integer_binary!(run_test, i32, u16, shr);
+    test_integer_binary!(run_test, i32, u32, shr);
+
+    test_integer_binary!(run_test, i64, u8, shr);
+    test_integer_binary!(run_test, i64, u16, shr);
+    test_integer_binary!(run_test, i64, u32, shr);
+
+    test_integer_binary!(run_test, i128, u8, shr);
+    test_integer_binary!(run_test, i128, u16, shr);
+    test_integer_binary!(run_test, i128, u32, shr);
 
     test_integer_binary!(run_test, u8, u8, shr);
     test_integer_binary!(run_test, u8, u16, shr);
@@ -231,18 +227,18 @@ mod tests {
     test_integer_binary!(run_test, u16, u16, shr);
     test_integer_binary!(run_test, u16, u32, shr);
 
-    // test_integer_binary!(run_test, u32, u8, shr);
-    // test_integer_binary!(run_test, u32, u16, shr);
-    // test_integer_binary!(run_test, u32, u32, shr);
-    //
-    // test_integer_binary!(run_test, u64, u8, shr);
-    // test_integer_binary!(run_test, u64, u16, shr);
-    // test_integer_binary!(run_test, u64, u32, shr);
-    //
-    // test_integer_binary!(run_test, u128, u8, shr);
-    // test_integer_binary!(run_test, u128, u16, shr);
-    // test_integer_binary!(run_test, u128, u32, shr);
-    //
-    // test_integer_binary!(#[ignore], run_exhaustive_test, u8, u8, shr, exhaustive);
-    // test_integer_binary!(#[ignore], run_exhaustive_test, i8, u8, shr, exhaustive);
+    test_integer_binary!(run_test, u32, u8, shr);
+    test_integer_binary!(run_test, u32, u16, shr);
+    test_integer_binary!(run_test, u32, u32, shr);
+
+    test_integer_binary!(run_test, u64, u8, shr);
+    test_integer_binary!(run_test, u64, u16, shr);
+    test_integer_binary!(run_test, u64, u32, shr);
+
+    test_integer_binary!(run_test, u128, u8, shr);
+    test_integer_binary!(run_test, u128, u16, shr);
+    test_integer_binary!(run_test, u128, u32, shr);
+
+    test_integer_binary!(#[ignore], run_exhaustive_test, u8, u8, shr, exhaustive);
+    test_integer_binary!(#[ignore], run_exhaustive_test, i8, u8, shr, exhaustive);
 }
