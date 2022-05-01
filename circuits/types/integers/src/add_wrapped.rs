@@ -69,7 +69,6 @@ impl<E: Environment, I: IntegerType> OutputMode<dyn AddWrapped<Integer<E, I>, Ou
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::test_integer_binary;
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
@@ -77,14 +76,7 @@ mod tests {
 
     const ITERATIONS: usize = 128;
 
-    #[rustfmt::skip]
-    fn check_add<I: IntegerType>(
-        name: &str,
-        first: I,
-        second: I,
-        mode_a: Mode,
-        mode_b: Mode,
-    ) {
+    fn check_add<I: IntegerType>(name: &str, first: I, second: I, mode_a: Mode, mode_b: Mode) {
         let a = Integer::<Circuit, I>::new(mode_a, first);
         let b = Integer::new(mode_b, second);
         let expected = first.wrapping_add(&second);

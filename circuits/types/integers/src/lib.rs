@@ -502,7 +502,7 @@ mod test_utilities {
     #[macro_export]
     macro_rules! test_integer_case {
         // Typical test instantiation (static).
-        ($test_fn:ident, $primitive:ident, $description: ident) => {
+        ($test_fn:ident, $primitive:ident, $description:ident) => {
             paste::paste! {
                 #[test]
                 fn [<test_ $primitive _ $description>]() {
@@ -511,7 +511,7 @@ mod test_utilities {
             }
         };
         // Typical test instantiation (unary).
-        ($test_fn:ident, $primitive:ident, $mode: expr, $description: ident) => {
+        ($test_fn:ident, $primitive:ident, $mode:expr, $description:ident) => {
             paste::paste! {
                 #[test]
                 fn [<test_ $primitive _ $description>]() {
@@ -520,7 +520,7 @@ mod test_utilities {
             }
         };
         // Typical test instantiation (binary).
-        ($test_fn:ident, $primitive:ident, $mode_a: expr, $mode_b: expr, $description: ident) => {
+        ($test_fn:ident, $primitive:ident, $mode_a:expr, $mode_b:expr, $description:ident) => {
             paste::paste! {
                 #[test]
                 fn [<test_ $primitive _ $description>]() {
@@ -529,7 +529,7 @@ mod test_utilities {
             }
         };
         // Typical test instantiation (binary).
-        ($test_fn:ident, $primitive:ident, $mode_a: expr, $mode_b: expr, $mode_c: expr, $description: ident) => {
+        ($test_fn:ident, $primitive:ident, $mode_a:expr, $mode_b:expr, $mode_c:expr, $description:ident) => {
             paste::paste! {
                 #[test]
                 fn [<test_ $primitive _ $description>]() {
@@ -538,7 +538,7 @@ mod test_utilities {
             }
         };
         // Typically used to ignore exhaustive tests by default (unary).
-        (#[$meta:meta], $test_fn:ident, $primitive:ident, $mode: expr, $description: ident) => {
+        (#[$meta:meta], $test_fn:ident, $primitive:ident, $mode:expr, $description:ident) => {
             paste::paste! {
                 #[test]
                 #[$meta]
@@ -548,12 +548,22 @@ mod test_utilities {
             }
         };
         // Typically used to ignore exhaustive tests by default (binary).
-        (#[$meta:meta], $test_fn:ident, $primitive:ident, $mode_a: expr, $mode_b: expr, $description: ident) => {
+        (#[$meta:meta], $test_fn:ident, $primitive:ident, $mode_a:expr, $mode_b:expr, $description:ident) => {
             paste::paste! {
                 #[test]
                 #[$meta]
                 fn [<test_ $primitive _ $description>]() {
                     $test_fn::<$primitive>($mode_a, $mode_b);
+                }
+            }
+        };
+        // Typically used to ignore exhaustive tests by default (binary).
+        (#[$meta:meta], $test_fn:ident, $primitive:ident, $mode_a:expr, $mode_b:expr, $mode_c:expr, $description:ident) => {
+            paste::paste! {
+                #[test]
+                #[$meta]
+                fn [<test_ $primitive _ $description>]() {
+                    $test_fn::<$primitive>($mode_a, $mode_b, $mode_c);
                 }
             }
         };
