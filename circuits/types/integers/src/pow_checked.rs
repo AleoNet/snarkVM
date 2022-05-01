@@ -122,7 +122,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> OutputMode<dyn PowChecked<Int
                     true => Mode::Constant,
                     false => Mode::Private,
                 },
-                _ => E::halt(format!("The constant is required for the output mode of `pow_wrapped` with a constant.")),
+                _ => E::halt("The constant is required for the output mode of `pow_wrapped` with a constant."),
             },
             (_, _) => Mode::Private,
         }
