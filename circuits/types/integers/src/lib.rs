@@ -492,11 +492,7 @@ mod tests {
 
 #[cfg(test)]
 mod test_utilities {
-    use core::{
-        fmt::{Debug, Display},
-        panic::UnwindSafe,
-    };
-    use snarkvm_circuits_environment::{Circuit, Eject, Environment};
+    use core::panic::UnwindSafe;
 
     /// A generic template for an integer test case.
     #[macro_export]
