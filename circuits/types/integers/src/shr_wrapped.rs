@@ -224,46 +224,46 @@ mod tests {
         }
     }
 
-    test_integer_binary!(run_test, i8, u8, minus);
-    test_integer_binary!(run_test, i8, u16, minus);
-    test_integer_binary!(run_test, i8, u32, minus);
+    test_integer_binary!(run_test, i8, u8, shr);
+    test_integer_binary!(run_test, i8, u16, shr);
+    test_integer_binary!(run_test, i8, u32, shr);
 
-    test_integer_binary!(run_test, i16, u8, minus);
-    test_integer_binary!(run_test, i16, u16, minus);
-    test_integer_binary!(run_test, i16, u32, minus);
+    test_integer_binary!(run_test, i16, u8, shr);
+    test_integer_binary!(run_test, i16, u16, shr);
+    test_integer_binary!(run_test, i16, u32, shr);
 
-    test_integer_binary!(run_test, i32, u8, minus);
-    test_integer_binary!(run_test, i32, u16, minus);
-    test_integer_binary!(run_test, i32, u32, minus);
+    test_integer_binary!(run_test, i32, u8, shr);
+    test_integer_binary!(run_test, i32, u16, shr);
+    test_integer_binary!(run_test, i32, u32, shr);
 
-    test_integer_binary!(run_test, i64, u8, minus);
-    test_integer_binary!(run_test, i64, u16, minus);
-    test_integer_binary!(run_test, i64, u32, minus);
+    test_integer_binary!(run_test, i64, u8, shr);
+    test_integer_binary!(run_test, i64, u16, shr);
+    test_integer_binary!(run_test, i64, u32, shr);
 
-    test_integer_binary!(run_test, i128, u8, minus);
-    test_integer_binary!(run_test, i128, u16, minus);
-    test_integer_binary!(run_test, i128, u32, minus);
+    test_integer_binary!(run_test, i128, u8, shr);
+    test_integer_binary!(run_test, i128, u16, shr);
+    test_integer_binary!(run_test, i128, u32, shr);
 
-    test_integer_binary!(run_test, u8, u8, minus);
-    test_integer_binary!(run_test, u8, u16, minus);
-    test_integer_binary!(run_test, u8, u32, minus);
+    test_integer_binary!(run_test, u8, u8, shr);
+    test_integer_binary!(run_test, u8, u16, shr);
+    test_integer_binary!(run_test, u8, u32, shr);
 
-    test_integer_binary!(run_test, u16, u8, minus);
-    test_integer_binary!(run_test, u16, u16, minus);
-    test_integer_binary!(run_test, u16, u32, minus);
+    test_integer_binary!(run_test, u16, u8, shr);
+    test_integer_binary!(run_test, u16, u16, shr);
+    test_integer_binary!(run_test, u16, u32, shr);
 
-    test_integer_binary!(run_test, u32, u8, minus);
-    test_integer_binary!(run_test, u32, u16, minus);
-    test_integer_binary!(run_test, u32, u32, minus);
+    test_integer_binary!(run_test, u32, u8, shr);
+    test_integer_binary!(run_test, u32, u16, shr);
+    test_integer_binary!(run_test, u32, u32, shr);
 
-    test_integer_binary!(run_test, u64, u8, minus);
-    test_integer_binary!(run_test, u64, u16, minus);
-    test_integer_binary!(run_test, u64, u32, minus);
+    test_integer_binary!(run_test, u64, u8, shr);
+    test_integer_binary!(run_test, u64, u16, shr);
+    test_integer_binary!(run_test, u64, u32, shr);
 
-    test_integer_binary!(run_test, u128, u8, minus);
-    test_integer_binary!(run_test, u128, u16, minus);
-    test_integer_binary!(run_test, u128, u32, minus);
+    test_integer_binary!(run_test, u128, u8, shr);
+    test_integer_binary!(run_test, u128, u16, shr);
+    test_integer_binary!(run_test, u128, u32, shr);
 
-    test_integer_binary!(#[ignore], run_exhaustive_test, u8, u8, minus, exhaustive);
-    test_integer_binary!(#[ignore], run_exhaustive_test, i8, u8, minus, exhaustive);
+    test_integer_binary!(#[ignore], run_exhaustive_test, u8, u8, shr, exhaustive);
+    test_integer_binary!(#[ignore], run_exhaustive_test, i8, u8, shr, exhaustive);
 }
