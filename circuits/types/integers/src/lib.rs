@@ -32,7 +32,6 @@ pub mod mul_checked;
 pub mod mul_wrapped;
 pub mod neg;
 pub mod not;
-pub mod one;
 pub mod or;
 pub mod pow_checked;
 pub mod pow_wrapped;
@@ -44,7 +43,6 @@ pub mod sub_checked;
 pub mod sub_wrapped;
 pub mod ternary;
 pub mod xor;
-pub mod zero;
 
 pub type I8<E> = Integer<E, i8>;
 pub type I16<E> = Integer<E, i16>;

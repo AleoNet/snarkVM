@@ -16,10 +16,5 @@
 
 use super::*;
 
-pub mod from_bits;
-pub mod msb;
-pub mod one;
 pub mod to_bits;
-pub mod to_field;
-pub mod to_fields;
-pub mod zero;
+pub mod to_group;

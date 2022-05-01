@@ -16,10 +16,11 @@
 
 use super::*;
 
+pub mod double;
 pub mod from_bits;
-pub mod msb;
+pub mod from_boolean;
 pub mod one;
 pub mod to_bits;
-pub mod to_field;
-pub mod to_fields;
+pub mod to_lower_bits;
+pub mod to_upper_bits;
 pub mod zero;

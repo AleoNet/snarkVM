@@ -22,3 +22,4 @@ pub mod from_xy_coordinates;
 pub mod to_bits;
 pub mod to_x_coordinate;
 pub mod to_y_coordinate;
+pub mod zero;

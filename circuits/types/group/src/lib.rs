@@ -26,7 +26,6 @@ pub mod mul;
 pub mod neg;
 pub mod sub;
 pub mod ternary;
-pub mod zero;
 
 #[cfg(test)]
 use snarkvm_circuits_environment::{assert_count, assert_output_mode, assert_scope, count, output_mode};
