@@ -17,19 +17,15 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
+mod helpers;
+
 pub mod add;
 pub mod double;
 pub mod equal;
-pub mod from_bits;
-pub mod from_x_coordinate;
-pub mod from_xy_coordinates;
 pub mod mul;
 pub mod neg;
 pub mod sub;
 pub mod ternary;
-pub mod to_bits;
-pub mod to_x_coordinate;
-pub mod to_y_coordinate;
 pub mod zero;
 
 #[cfg(test)]
