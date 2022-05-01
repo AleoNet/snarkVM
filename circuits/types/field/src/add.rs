@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_circuits_environment::ConstantOrMode;
 
 impl<E: Environment> Add<Field<E>> for Field<E> {
     type Output = Field<E>;

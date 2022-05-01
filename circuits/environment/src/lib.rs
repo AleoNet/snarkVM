@@ -52,7 +52,7 @@ pub mod prelude {
         LinearCombination,
         Mode,
         OutputMode,
-        Variable,
+        Variable,ConstantOrMode
     };
     pub use snarkvm_fields::{Field as F, One as O, PrimeField, Zero as Z};
 

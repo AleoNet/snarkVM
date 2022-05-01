@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_circuits_environment::ConstantOrMode;
 
 impl<E: Environment, I: IntegerType> BitAnd<Integer<E, I>> for Integer<E, I> {
     type Output = Integer<E, I>;
@@ -91,6 +90,7 @@ impl<E: Environment, I: IntegerType> OutputMode<dyn BitAnd<Integer<E, I>, Output
         match (case.0.mode(), case.1.mode()) {
             (Mode::Constant, Mode::Constant) => Mode::Constant,
             (Mode::Constant, mode_b) => match &case.0 {
+                // Determine if the constant is all zeros.
                 ConstantOrMode::Constant(constant) => match constant.eject_value().is_zero() {
                     true => Mode::Constant,
                     false => mode_b,
@@ -98,6 +98,7 @@ impl<E: Environment, I: IntegerType> OutputMode<dyn BitAnd<Integer<E, I>, Output
                 _ => E::halt(format!("The constant is required to determine the output mode of Constant AND {mode_b}")),
             },
             (mode_a, Mode::Constant) => match &case.1 {
+                // Determine if the constant is all zeros.
                 ConstantOrMode::Constant(constant) => match constant.eject_value().is_zero() {
                     true => Mode::Constant,
                     false => mode_a,

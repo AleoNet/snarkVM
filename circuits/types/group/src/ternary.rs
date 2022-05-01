@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_circuits_environment::ConstantOrMode;
 
 impl<E: Environment> Ternary for Group<E> {
     type Boolean = Boolean<E>;
@@ -48,8 +47,8 @@ impl<E: Environment> OutputMode<dyn Ternary<Boolean = Boolean<E>, Output = Self>
     fn output_mode(parameter: &Self::Case) -> Mode {
         match parameter.0.mode().is_constant() {
             true => match &parameter.0 {
-                ConstantOrMode::Mode(..) => E::halt("Circuit is required to determine output mode."),
-                ConstantOrMode::Constant(circuit) => match circuit.eject_value() {
+                ConstantOrMode::Mode(..) => E::halt("The constant condition is required to determine output mode."),
+                ConstantOrMode::Constant(constant) => match constant.eject_value() {
                     true => parameter.1,
                     false => parameter.2,
                 },

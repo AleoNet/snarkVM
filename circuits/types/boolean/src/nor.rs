@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_circuits_environment::ConstantOrMode;
 
 impl<E: Environment> Nor<Self> for Boolean<E> {
     type Output = Boolean<E>;
