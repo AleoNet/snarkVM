@@ -68,17 +68,17 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     ) -> Result<prover::State<'a, F, MM>, AHPError> {
         let round_time = start_timer!(|| "AHP::Prover::FirstRound");
         let constraint_domain = state.constraint_domain;
+        let batch_size = state.batch_size;
 
         let z_a = state.z_a.take().unwrap();
         let z_b = state.z_b.take().unwrap();
         let private_variables = core::mem::take(&mut state.private_variables);
-        assert_eq!(z_a.len(), state.batch_size);
-        assert_eq!(z_b.len(), state.batch_size);
-        assert_eq!(private_variables.len(), state.batch_size);
-        let mut r_b_s = Vec::with_capacity(z_a.len());
-        let batch_size = state.batch_size;
+        assert_eq!(z_a.len(), batch_size);
+        assert_eq!(z_b.len(), batch_size);
+        assert_eq!(private_variables.len(), batch_size);
+        let mut r_b_s = Vec::with_capacity(batch_size);
 
-        let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(3 * z_a.len());
+        let mut job_pool = snarkvm_utilities::ExecutionPool::with_capacity(3 * batch_size);
         let state_ref = &state;
         for (i, (z_a, z_b, private_variables, x_poly)) in
             itertools::izip!(z_a, z_b, private_variables, &state.x_poly).enumerate()
@@ -95,16 +95,16 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let batches = job_pool
             .execute_all()
             .into_iter()
-            .chunks(3)
-            .into_iter()
-            .map(|mut chunk| {
-                let w_poly = chunk.next().unwrap().witness().unwrap();
-                let (z_a_poly, z_a) = chunk.next().unwrap().z_m().unwrap();
-                let (z_b_poly, z_b) = chunk.next().unwrap().z_m().unwrap();
+            .tuples()
+            .map(|(w, z_a, z_b)| {
+                let w_poly = w.witness().unwrap();
+                let (z_a_poly, z_a) = z_a.z_m().unwrap();
+                let (z_b_poly, z_b) = z_b.z_m().unwrap();
 
                 prover::SingleEntry { z_a, z_b, w_poly, z_a_poly, z_b_poly }
             })
-            .collect();
+            .collect::<Vec<_>>();
+        assert_eq!(batches.len(), batch_size);
 
         let mask_poly = Self::calculate_mask_poly(constraint_domain, rng);
 
@@ -204,6 +204,13 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         if should_randomize {
             poly += &(&v_H * r.unwrap());
         }
+        debug_assert!(
+            poly.evaluate_over_domain_by_ref(constraint_domain)
+                .evaluations
+                .into_iter()
+                .zip(&evals.evaluations)
+                .all(|(z, e)| z == *e)
+        );
 
         let poly_for_opening = LabeledPolynomial::new(label.to_string(), poly, None, Self::zk_bound());
         if should_randomize {

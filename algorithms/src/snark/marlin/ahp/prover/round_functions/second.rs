@@ -98,7 +98,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let sumcheck_lhs = Self::calculate_lhs(&mut state, t, summed_z_m, z, *alpha);
 
-        debug_assert!(constraint_domain.elements().map(|e| sumcheck_lhs.evaluate(e)).sum::<F>().is_zero());
+        debug_assert!(
+            sumcheck_lhs.evaluate_over_domain_by_ref(constraint_domain).evaluations.into_iter().sum::<F>().is_zero()
+        );
 
         let sumcheck_time = start_timer!(|| "Compute sumcheck h and g polys");
         let (h_1, x_g_1) = sumcheck_lhs.divide_by_vanishing_poly(constraint_domain).unwrap();
