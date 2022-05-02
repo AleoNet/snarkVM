@@ -161,7 +161,7 @@ impl<E: PairingEngine> From<(Vec<E::G1Affine>, BTreeMap<usize, E::G1Affine>)> fo
             .expect("should be able to create tmp powers of g");
 
         for power in value.0 {
-            power.serialize(&mut file).unwrap();
+            power.write_le(&mut file).unwrap();
         }
 
         drop(file);
@@ -221,7 +221,7 @@ impl<E: PairingEngine> PowersOfG<E> {
         reader.seek(SeekFrom::Start(index_start as u64)).expect("could not seek to element starting index");
 
         // Now read it out, deserialize it, and return it.
-        E::G1Affine::deserialize(&mut reader).expect("powers of g corrupted")
+        FromBytes::read_le(&mut reader).expect("powers of g corrupted")
     }
 
     /// Slices the underlying file to return a vector of affine elements
@@ -238,7 +238,7 @@ impl<E: PairingEngine> PowersOfG<E> {
         // Now iterate until we fill a vector with all desired elements.
         let mut powers = Vec::with_capacity((upper - lower) as usize);
         for _ in lower..upper {
-            let power = E::G1Affine::deserialize(&mut reader).expect("powers of g corrupted");
+            let power: E::G1Affine = FromBytes::read_le(&mut reader).expect("powers of g corrupted");
             powers.push(power);
         }
 
