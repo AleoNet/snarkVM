@@ -29,7 +29,6 @@ use registers::*;
 mod parsers;
 
 use crate::{Annotation, Identifier, LiteralOrType, OutputType, Program, Register, Sanitizer, Value};
-
 use snarkvm_circuits::prelude::*;
 use snarkvm_utilities::{error, FromBytes, ToBytes};
 
@@ -350,8 +349,7 @@ impl<P: Program> Function<P> {
 impl<P: Program> Metrics<Self> for Function<P> {
     type Case = Self;
 
-    /// Returns the estimated number of constants, variables, and constraints produced by this function.
-    /// Note that this calculation does not take into account the cost of initializing the inputs to the program.
+    /// Returns the estimated count for this function.
     fn count(function: &Self::Case) -> Count {
         let mut type_map = IndexMap::new();
 
@@ -428,6 +426,46 @@ impl<P: Program> Metrics<Self> for Function<P> {
                         // Return the associated count.
                         instructions::Add::<P>::count(&(operand_types[0].type_(), operand_types[1].type_()))
                     }
+                    Instruction::AddWrapped(instruction) => {
+                        // Get input types of the operands.
+                        let operand_types = get_operand_types(instruction.operands());
+
+                        // Infer the output type of the instruction based on the input types.
+                        let output_type = instructions::AddWrapped::<P>::output_type(&(
+                            operand_types[0].clone(),
+                            operand_types[1].clone(),
+                        ));
+                        type_map.insert(instruction.destination().clone(), output_type);
+
+                        // Return the associated count.
+                        instructions::AddWrapped::<P>::count(&(operand_types[0].type_(), operand_types[1].type_()))
+                    }
+                    Instruction::Div(instruction) => {
+                        // Get input types of the operands.
+                        let operand_types = get_operand_types(instruction.operands());
+
+                        // Infer the output type of the instruction based on the input types.
+                        let output_type =
+                            instructions::Div::<P>::output_type(&(operand_types[0].clone(), operand_types[1].clone()));
+                        type_map.insert(instruction.destination().clone(), output_type);
+
+                        // Return the associated count.
+                        instructions::Div::<P>::count(&(operand_types[0].type_(), operand_types[1].type_()))
+                    }
+                    Instruction::DivWrapped(instruction) => {
+                        // Get input types of the operands.
+                        let operand_types = get_operand_types(instruction.operands());
+
+                        // Infer the output type of the instruction based on the input types.
+                        let output_type = instructions::DivWrapped::<P>::output_type(&(
+                            operand_types[0].clone(),
+                            operand_types[1].clone(),
+                        ));
+                        type_map.insert(instruction.destination().clone(), output_type);
+
+                        // Return the associated count.
+                        instructions::DivWrapped::<P>::count(&(operand_types[0].type_(), operand_types[1].type_()))
+                    }
                     Instruction::Equal(instruction) => {
                         // Get input types of the operands.
                         let operand_types = get_operand_types(instruction.operands());
@@ -454,6 +492,20 @@ impl<P: Program> Metrics<Self> for Function<P> {
                         // Return the associated count.
                         instructions::Mul::<P>::count(&(operand_types[0].type_(), operand_types[1].type_()))
                     }
+                    Instruction::MulWrapped(instruction) => {
+                        // Get input types of the operands.
+                        let operand_types = get_operand_types(instruction.operands());
+
+                        // Infer the output type of the instruction based on the input types.
+                        let output_type = instructions::MulWrapped::<P>::output_type(&(
+                            operand_types[0].clone(),
+                            operand_types[1].clone(),
+                        ));
+                        type_map.insert(instruction.destination().clone(), output_type);
+
+                        // Return the associated count.
+                        instructions::MulWrapped::<P>::count(&(operand_types[0].type_(), operand_types[1].type_()))
+                    }
                     Instruction::Neg(instruction) => {
                         // Get input types of the operands.
                         let operand_types = get_operand_types(instruction.operands());
@@ -476,6 +528,20 @@ impl<P: Program> Metrics<Self> for Function<P> {
 
                         // Return the associated count.
                         instructions::Sub::<P>::count(&(operand_types[0].type_(), operand_types[1].type_()))
+                    }
+                    Instruction::SubWrapped(instruction) => {
+                        // Get input types of the operands.
+                        let operand_types = get_operand_types(instruction.operands());
+
+                        // Infer the output type of the instruction based on the input types.
+                        let output_type = instructions::SubWrapped::<P>::output_type(&(
+                            operand_types[0].clone(),
+                            operand_types[1].clone(),
+                        ));
+                        type_map.insert(instruction.destination().clone(), output_type);
+
+                        // Return the associated count.
+                        instructions::SubWrapped::<P>::count(&(operand_types[0].type_(), operand_types[1].type_()))
                     }
                 }
             })

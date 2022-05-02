@@ -107,6 +107,22 @@ impl<E: Environment, I: IntegerType> DivChecked<Self> for Integer<E, I> {
     }
 }
 
+impl<E: Environment, I: IntegerType> Metrics<dyn Div<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
+    type Case = (Mode, Mode);
+
+    fn count(case: &Self::Case) -> Count {
+        <Self as Metrics<dyn DivChecked<Integer<E, I>, Output = Integer<E, I>>>>::count(case)
+    }
+}
+
+impl<E: Environment, I: IntegerType> OutputMode<dyn Div<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
+    type Case = (Mode, Mode);
+
+    fn output_mode(case: &Self::Case) -> Mode {
+        <Self as OutputMode<dyn DivChecked<Integer<E, I>, Output = Integer<E, I>>>>::output_mode(case)
+    }
+}
+
 impl<E: Environment, I: IntegerType> Metrics<dyn DivChecked<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
     type Case = (Mode, Mode);
 

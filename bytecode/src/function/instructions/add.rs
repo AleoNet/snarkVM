@@ -23,7 +23,6 @@ use crate::{
     Program,
     Value,
 };
-
 use snarkvm_circuits::{
     count,
     output_mode,

@@ -17,10 +17,33 @@
 use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Registers},
     helpers::Register,
+    LiteralOrType,
+    LiteralType,
+    OutputType,
     Program,
     Value,
 };
-use snarkvm_circuits::{Literal, MulWrapped as MulWrappedCircuit, Parser, ParserResult};
+use snarkvm_circuits::{
+    count,
+    output_mode,
+    Count,
+    Literal,
+    Metrics,
+    MulWrapped as MulWrappedCircuit,
+    OutputMode,
+    Parser,
+    ParserResult,
+    I128,
+    I16,
+    I32,
+    I64,
+    I8,
+    U128,
+    U16,
+    U32,
+    U64,
+    U8,
+};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
@@ -82,6 +105,147 @@ impl<P: Program> Operation<P> for MulWrapped<P> {
         };
 
         registers.assign(self.operation.destination(), result);
+    }
+}
+
+impl<P: Program> Metrics<Self> for MulWrapped<P> {
+    type Case = (LiteralType<P>, LiteralType<P>);
+
+    fn count(case: &Self::Case) -> Count {
+        match case {
+            (LiteralType::I8(mode_a), LiteralType::I8(mode_b)) => {
+                count!(
+                    I8<P::Environment>,
+                    MulWrappedCircuit<I8<P::Environment>, Output = I8<P::Environment>>,
+                    &(*mode_a, *mode_b)
+                )
+            }
+            (LiteralType::I16(mode_a), LiteralType::I16(mode_b)) => {
+                count!(
+                    I16<P::Environment>,
+                    MulWrappedCircuit<I16<P::Environment>, Output = I16<P::Environment>>,
+                    &(*mode_a, *mode_b)
+                )
+            }
+            (LiteralType::I32(mode_a), LiteralType::I32(mode_b)) => {
+                count!(
+                    I32<P::Environment>,
+                    MulWrappedCircuit<I32<P::Environment>, Output = I32<P::Environment>>,
+                    &(*mode_a, *mode_b)
+                )
+            }
+            (LiteralType::I64(mode_a), LiteralType::I64(mode_b)) => {
+                count!(
+                    I64<P::Environment>,
+                    MulWrappedCircuit<I64<P::Environment>, Output = I64<P::Environment>>,
+                    &(*mode_a, *mode_b)
+                )
+            }
+            (LiteralType::I128(mode_a), LiteralType::I128(mode_b)) => {
+                count!(
+                    I128<P::Environment>,
+                    MulWrappedCircuit<I128<P::Environment>, Output = I128<P::Environment>>,
+                    &(*mode_a, *mode_b)
+                )
+            }
+            (LiteralType::U8(mode_a), LiteralType::U8(mode_b)) => {
+                count!(
+                    U8<P::Environment>,
+                    MulWrappedCircuit<U8<P::Environment>, Output = U8<P::Environment>>,
+                    &(*mode_a, *mode_b)
+                )
+            }
+            (LiteralType::U16(mode_a), LiteralType::U16(mode_b)) => {
+                count!(
+                    U16<P::Environment>,
+                    MulWrappedCircuit<U16<P::Environment>, Output = U16<P::Environment>>,
+                    &(*mode_a, *mode_b)
+                )
+            }
+            (LiteralType::U32(mode_a), LiteralType::U32(mode_b)) => {
+                count!(
+                    U32<P::Environment>,
+                    MulWrappedCircuit<U32<P::Environment>, Output = U32<P::Environment>>,
+                    &(*mode_a, *mode_b)
+                )
+            }
+            (LiteralType::U64(mode_a), LiteralType::U64(mode_b)) => {
+                count!(
+                    U64<P::Environment>,
+                    MulWrappedCircuit<U64<P::Environment>, Output = U64<P::Environment>>,
+                    &(*mode_a, *mode_b)
+                )
+            }
+            (LiteralType::U128(mode_a), LiteralType::U128(mode_b)) => {
+                count!(
+                    U128<P::Environment>,
+                    MulWrappedCircuit<U128<P::Environment>, Output = U128<P::Environment>>,
+                    &(*mode_a, *mode_b)
+                )
+            }
+            _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
+        }
+    }
+}
+
+impl<P: Program> OutputType for MulWrapped<P> {
+    type Input = (LiteralOrType<P>, LiteralOrType<P>);
+    type Output = LiteralType<P>;
+
+    fn output_type(case: &Self::Input) -> Self::Output {
+        match (case.0.type_(), case.1.type_()) {
+            (LiteralType::I8(mode_a), LiteralType::I8(mode_b)) => LiteralType::I8(output_mode!(
+                I8<P::Environment>,
+                MulWrappedCircuit<I8<P::Environment>, Output = I8<P::Environment>>,
+                &(mode_a, mode_b)
+            )),
+            (LiteralType::I16(mode_a), LiteralType::I16(mode_b)) => LiteralType::I16(output_mode!(
+                I16<P::Environment>,
+                MulWrappedCircuit<I16<P::Environment>, Output = I16<P::Environment>>,
+                &(mode_a, mode_b)
+            )),
+            (LiteralType::I32(mode_a), LiteralType::I32(mode_b)) => LiteralType::I32(output_mode!(
+                I32<P::Environment>,
+                MulWrappedCircuit<I32<P::Environment>, Output = I32<P::Environment>>,
+                &(mode_a, mode_b)
+            )),
+            (LiteralType::I64(mode_a), LiteralType::I64(mode_b)) => LiteralType::I64(output_mode!(
+                I64<P::Environment>,
+                MulWrappedCircuit<I64<P::Environment>, Output = I64<P::Environment>>,
+                &(mode_a, mode_b)
+            )),
+            (LiteralType::I128(mode_a), LiteralType::I128(mode_b)) => LiteralType::I128(output_mode!(
+                I128<P::Environment>,
+                MulWrappedCircuit<I128<P::Environment>, Output = I128<P::Environment>>,
+                &(mode_a, mode_b)
+            )),
+            (LiteralType::U8(mode_a), LiteralType::U8(mode_b)) => LiteralType::U8(output_mode!(
+                U8<P::Environment>,
+                MulWrappedCircuit<U8<P::Environment>, Output = U8<P::Environment>>,
+                &(mode_a, mode_b)
+            )),
+            (LiteralType::U16(mode_a), LiteralType::U16(mode_b)) => LiteralType::U16(output_mode!(
+                U16<P::Environment>,
+                MulWrappedCircuit<U16<P::Environment>, Output = U16<P::Environment>>,
+                &(mode_a, mode_b)
+            )),
+            (LiteralType::U32(mode_a), LiteralType::U32(mode_b)) => LiteralType::U32(output_mode!(
+                U32<P::Environment>,
+                MulWrappedCircuit<U32<P::Environment>, Output = U32<P::Environment>>,
+                &(mode_a, mode_b)
+            )),
+            (LiteralType::U64(mode_a), LiteralType::U64(mode_b)) => LiteralType::U64(output_mode!(
+                U64<P::Environment>,
+                MulWrappedCircuit<U64<P::Environment>, Output = U64<P::Environment>>,
+                &(mode_a, mode_b)
+            )),
+            (LiteralType::U128(mode_a), LiteralType::U128(mode_b)) => LiteralType::U128(output_mode!(
+                U128<P::Environment>,
+                MulWrappedCircuit<U128<P::Environment>, Output = U128<P::Environment>>,
+                &(mode_a, mode_b)
+            )),
+            _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
+        }
     }
 }
 

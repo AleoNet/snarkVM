@@ -97,6 +97,22 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShrChecked<Integer<E, M>> for
     }
 }
 
+impl<E: Environment, I: IntegerType> Metrics<dyn Shr<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
+    type Case = (Mode, Mode);
+
+    fn count(case: &Self::Case) -> Count {
+        <Self as Metrics<dyn DivChecked<Integer<E, I>, Output = Integer<E, I>>>>::count(case)
+    }
+}
+
+impl<E: Environment, I: IntegerType> OutputMode<dyn Shr<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
+    type Case = (Mode, Mode);
+
+    fn output_mode(case: &Self::Case) -> Mode {
+        <Self as OutputMode<dyn DivChecked<Integer<E, I>, Output = Integer<E, I>>>>::output_mode(case)
+    }
+}
+
 impl<E: Environment, I: IntegerType, M: Magnitude> Metrics<dyn ShrChecked<Integer<E, M>, Output = Integer<E, I>>>
     for Integer<E, I>
 {
