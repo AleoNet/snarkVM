@@ -204,12 +204,13 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         if should_randomize {
             poly += &(&v_H * r.unwrap());
         }
+
         debug_assert!(
             poly.evaluate_over_domain_by_ref(constraint_domain)
                 .evaluations
                 .into_iter()
                 .zip(&evals.evaluations)
-                .all(|(z, e)| z == *e)
+                .all(|(z, e)| z + r.unwrap_or(F::zero()) == *e)
         );
 
         let poly_for_opening = LabeledPolynomial::new(label.to_string(), poly, None, Self::zk_bound());
