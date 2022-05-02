@@ -57,7 +57,7 @@ default-features = false
 optional = true
 
 [dependencies.num-integer]
-version = "0.1.44"
+version = "0.1.45"
 default-features = false
 optional = true
 
