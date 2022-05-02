@@ -85,9 +85,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             return Err(AHPError::NonSquareMatrix);
         }
 
-        if !Self::num_formatted_public_inputs_is_admissible(num_padded_public_variables) {
-            return Err(AHPError::InvalidPublicInputLength);
-        }
+        Self::num_formatted_public_inputs_is_admissible(num_padded_public_variables)?;
 
         let index_info = CircuitInfo {
             num_public_inputs: num_padded_public_variables,

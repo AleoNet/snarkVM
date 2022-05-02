@@ -50,12 +50,15 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     }
 
     /// Check that the (formatted) public input is of the form 2^n for some integer n.
-    pub fn num_formatted_public_inputs_is_admissible(num_inputs: usize) -> bool {
-        num_inputs.count_ones() == 1
+    pub fn num_formatted_public_inputs_is_admissible(num_inputs: usize) -> Result<(), AHPError> {
+        match num_inputs.count_ones() == 1 {
+            true => Ok(()),
+            false => Err(AHPError::InvalidPublicInputLength),
+        }
     }
 
     /// Check that the (formatted) public input is of the form 2^n for some integer n.
-    pub fn formatted_public_input_is_admissible(input: &[F]) -> bool {
+    pub fn formatted_public_input_is_admissible(input: &[F]) -> Result<(), AHPError> {
         Self::num_formatted_public_inputs_is_admissible(input.len())
     }
 
@@ -152,14 +155,14 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let largest_non_zero_domain =
             Self::max_non_zero_domain_helper(state.non_zero_a_domain, state.non_zero_b_domain, state.non_zero_c_domain);
 
-        let public_input =
-            public_input.iter().map(|p| prover::ConstraintSystem::format_public_input(p)).collect::<Vec<_>>();
+        let public_input = public_input
+            .iter()
+            .map(|p| {
+                let public_input = prover::ConstraintSystem::format_public_input(p);
+                Self::formatted_public_input_is_admissible(&public_input).map(|_| public_input)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
 
-        for public_input in &public_input {
-            if !Self::formatted_public_input_is_admissible(public_input) {
-                return Err(AHPError::InvalidPublicInputLength);
-            }
-        }
         let input_domain = EvaluationDomain::new(public_input[0].len()).ok_or(AHPError::PolynomialDegreeTooLarge)?;
 
         let first_round_msg = state.first_round_message.as_ref().unwrap();
