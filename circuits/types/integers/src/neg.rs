@@ -80,15 +80,14 @@ mod tests {
             Some(expected) => Circuit::scope(name, || {
                 let candidate = a.neg();
                 assert_eq!(expected, candidate.eject_value());
-                assert_count!(Integer<Circuit, I>, Neg<Output=Integer<Circuit, I>>, &mode);
-                assert_output_mode!(candidate, Integer<Circuit, I>, Neg<Output=Integer<Circuit, I>>, &mode);
+                assert_count!(Neg(Integer<I>) => Integer<I>, &mode);
+                assert_output_mode!(Neg(Integer<I>) => Integer<I>, &mode, candidate);
             }),
             None => match mode {
                 Mode::Constant => check_unary_operation_halts(a, |a: Integer<Circuit, I>| a.neg()),
                 _ => Circuit::scope(name, || {
-                    let candidate = a.neg();
-                    assert_count_fails!(Integer<Circuit, I>, Neg<Output=Integer<Circuit, I>>, &mode);
-                    assert_output_mode!(candidate, Integer<Circuit, I>, Neg<Output=Integer<Circuit, I>>, &mode);
+                    let _candidate = a.neg();
+                    assert_count_fails!(Neg(Integer<I>) => Integer<I>, &mode);
                 }),
             },
         }

@@ -122,8 +122,8 @@ mod tests {
             Circuit::scope(name, || {
                 let candidate = a.div_wrapped(&b);
                 assert_eq!(expected, candidate.eject_value());
-                assert_count!(Integer<Circuit, I>, DivWrapped<Integer<Circuit, I>, Output = Integer<Circuit, I>>, &(mode_a, mode_b));
-                assert_output_mode!(candidate, Integer<Circuit, I>, DivWrapped<Integer<Circuit, I>, Output = Integer<Circuit, I>>, &(mode_a, mode_b));
+                assert_count!(DivWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
+                assert_output_mode!(DivWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b), candidate);
             })
         }
         Circuit::reset();

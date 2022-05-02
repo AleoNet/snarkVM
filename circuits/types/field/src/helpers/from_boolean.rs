@@ -57,8 +57,8 @@ mod tests {
                     true => assert_eq!(<Circuit as Environment>::BaseField::one(), candidate.eject_value()),
                     false => assert_eq!(<Circuit as Environment>::BaseField::zero(), candidate.eject_value()),
                 }
-                assert_count!(Field<Circuit>, FromBoolean<Boolean = Boolean<Circuit>>, &());
-                assert_output_mode!(candidate, Field<Circuit>, FromBoolean<Boolean = Boolean<Circuit>>, &mode);
+                assert_count!(FromBoolean(Boolean) => Field, &());
+                assert_output_mode!(FromBoolean(Boolean) => Field, &mode, candidate);
             });
         }
     }

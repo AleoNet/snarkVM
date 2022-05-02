@@ -17,15 +17,15 @@
 use super::*;
 
 impl<E: Environment> Equal<Self> for Address<E> {
-    type Boolean = Boolean<E>;
+    type Output = Boolean<E>;
 
     /// Returns `true` if `self` and `other` are equal.
-    fn is_equal(&self, other: &Self) -> Self::Boolean {
+    fn is_equal(&self, other: &Self) -> Self::Output {
         self.0.is_equal(&other.0)
     }
 
     /// Returns `true` if `self` and `other` are *not* equal.
-    fn is_not_equal(&self, other: &Self) -> Self::Boolean {
+    fn is_not_equal(&self, other: &Self) -> Self::Output {
         self.0.is_not_equal(&other.0)
     }
 }

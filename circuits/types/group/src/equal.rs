@@ -17,14 +17,14 @@
 use super::*;
 
 impl<E: Environment> Equal<Self> for Group<E> {
-    type Boolean = Boolean<E>;
+    type Output = Boolean<E>;
 
     ///
     /// Returns `true` if `self` and `other` are equal.
     ///
     /// This method costs 8 constraints.
     ///
-    fn is_equal(&self, other: &Self) -> Self::Boolean {
+    fn is_equal(&self, other: &Self) -> Self::Output {
         let is_x_eq = self.x.is_equal(&other.x);
         let is_y_eq = self.y.is_equal(&other.y);
         is_x_eq & is_y_eq
@@ -38,7 +38,7 @@ impl<E: Environment> Equal<Self> for Group<E> {
     ///
     /// This method costs 8 constraints.
     ///
-    fn is_not_equal(&self, other: &Self) -> Self::Boolean {
+    fn is_not_equal(&self, other: &Self) -> Self::Output {
         !self.is_equal(other)
     }
 }

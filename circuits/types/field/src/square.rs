@@ -66,8 +66,8 @@ mod tests {
         Circuit::scope(name, || {
             let result = a.square();
             assert_eq!(*expected, result.eject_value());
-            assert_count!(Field<Circuit>, Square<Output = Field<Circuit>>, &a.eject_mode());
-            assert_output_mode!(result, Field<Circuit>, Square<Output = Field<Circuit>>, &a.eject_mode());
+            assert_count!(Square(Field) => Field, &(a.eject_mode()));
+            assert_output_mode!(Square(Field) => Field, &(a.eject_mode()), result);
         });
     }
 

@@ -100,20 +100,20 @@ impl<P: Program> Metrics<Self> for Equal<P> {
         match case {
             (LiteralType::Field(mode_a), LiteralType::Field(mode_b)) => count!(
                 Field<P::Environment>,
-                CircuitEqual<Field<P::Environment>, Boolean = Boolean<P::Environment>>,
+                CircuitEqual<Field<P::Environment>, Output = Boolean<P::Environment>>,
                 &(*mode_a, *mode_b)
             ),
             (LiteralType::I8(mode_a), LiteralType::I8(mode_b)) => {
                 count!(
                     I8<P::Environment>,
-                    CircuitEqual<I8<P::Environment>, Boolean = Boolean<P::Environment>>,
+                    CircuitEqual<I8<P::Environment>, Output = Boolean<P::Environment>>,
                     &(*mode_a, *mode_b)
                 )
             }
             (LiteralType::U8(mode_a), LiteralType::U8(mode_b)) => {
                 count!(
                     U8<P::Environment>,
-                    CircuitEqual<U8<P::Environment>, Boolean = Boolean<P::Environment>>,
+                    CircuitEqual<U8<P::Environment>, Output = Boolean<P::Environment>>,
                     &(*mode_a, *mode_b)
                 )
             }
@@ -130,17 +130,17 @@ impl<P: Program> OutputType for Equal<P> {
         match input_type {
             (LiteralType::Field(mode_a), LiteralType::Field(mode_b)) => LiteralType::Boolean(output_mode!(
                 Field<P::Environment>,
-                CircuitEqual<Field<P::Environment>, Boolean = Boolean<P::Environment>>,
+                CircuitEqual<Field<P::Environment>, Output = Boolean<P::Environment>>,
                 &(*mode_a, *mode_b)
             )),
             (LiteralType::I8(mode_a), LiteralType::I8(mode_b)) => LiteralType::Boolean(output_mode!(
                 I8<P::Environment>,
-                CircuitEqual<I8<P::Environment>, Boolean = Boolean<P::Environment>>,
+                CircuitEqual<I8<P::Environment>, Output = Boolean<P::Environment>>,
                 &(*mode_a, *mode_b)
             )),
             (LiteralType::U8(mode_a), LiteralType::U8(mode_b)) => LiteralType::Boolean(output_mode!(
                 U8<P::Environment>,
-                CircuitEqual<U8<P::Environment>, Boolean = Boolean<P::Environment>>,
+                CircuitEqual<U8<P::Environment>, Output = Boolean<P::Environment>>,
                 &(*mode_a, *mode_b)
             )),
             _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),

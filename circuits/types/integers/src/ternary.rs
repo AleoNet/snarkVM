@@ -102,8 +102,8 @@ mod tests {
             Circuit::scope(name, || {
                 let candidate = Integer::ternary(&condition, &a, &b);
                 assert_eq!(expected, candidate.eject_value());
-                assert_count!(Integer<Circuit, I>, Ternary<Boolean = Boolean<Circuit>, Output = Integer<Circuit, I>>, &(mode_condition, mode_a, mode_b));
-                assert_output_mode!(candidate, Integer<Circuit, I>, Ternary<Boolean = Boolean<Circuit>, Output = Integer<Circuit, I>>, &(ConstantOrMode::from(&condition), mode_a, mode_b));
+                assert_count!(Ternary(Boolean, Integer<I>, Integer<I>) => Integer<I>, &(mode_condition, mode_a, mode_b));
+                assert_output_mode!(Ternary(Boolean, Integer<I>, Integer<I>) => Integer<I>, &(ConstantOrMode::from(&condition), mode_a, mode_b), candidate);
             });
             Circuit::reset();
         }

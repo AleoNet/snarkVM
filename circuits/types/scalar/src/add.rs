@@ -146,8 +146,8 @@ mod tests {
         Circuit::scope(name, || {
             let candidate = a + b;
             assert_eq!(expected, candidate.eject_value(), "{}", case);
-            assert_count!(Scalar<Circuit>, Add<Scalar<Circuit>, Output=Scalar<Circuit>>, &(mode_a, mode_b));
-            assert_output_mode!(candidate, Scalar<Circuit>, Add<Scalar<Circuit>, Output=Scalar<Circuit>>, &(mode_a, mode_b));
+            assert_count!(Add(Scalar, Scalar) => Scalar, &(mode_a, mode_b));
+            assert_output_mode!(Add(Scalar, Scalar) => Scalar, &(mode_a, mode_b), candidate);
         });
     }
 

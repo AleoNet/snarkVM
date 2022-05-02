@@ -66,8 +66,8 @@ mod tests {
             let mode = candidate_input.eject_mode();
             let candidate_output = -candidate_input;
             assert_eq!(expected, candidate_output.eject_value());
-            assert_count!(Group<Circuit>, Neg<Output = Group<Circuit>>, &mode);
-            assert_output_mode!(candidate_output, Group<Circuit>, Neg<Output = Group<Circuit>>, &mode);
+            assert_count!(Neg(Group) => Group, &mode);
+            assert_output_mode!(Neg(Group) => Group, &mode, candidate_output);
         });
     }
 

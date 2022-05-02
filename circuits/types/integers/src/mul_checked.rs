@@ -212,14 +212,14 @@ mod tests {
             Some(expected) => Circuit::scope(name, || {
                 let candidate = a.mul_checked(&b);
                 assert_eq!(expected, candidate.eject_value());
-                assert_count!(Integer<Circuit, I>, MulChecked<Integer<Circuit, I>, Output=Integer<Circuit, I>>, &(mode_a, mode_b));
-                assert_output_mode!(candidate, Integer<Circuit, I>, MulChecked<Integer<Circuit, I>, Output=Integer<Circuit, I>>, &(mode_a, mode_b));
+                assert_count!(MulChecked(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
+                assert_output_mode!(MulChecked(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b), candidate);
             }),
             None => match (mode_a, mode_b) {
                 (Mode::Constant, Mode::Constant) => check_operation_halts(&a, &b, Integer::mul_checked),
                 _ => Circuit::scope(name, || {
                     let _candidate = a.mul_checked(&b);
-                    assert_count_fails!(Integer<Circuit, I>, MulChecked<Integer<Circuit, I>, Output=Integer<Circuit, I>>, &(mode_a, mode_b));
+                    assert_count_fails!(MulChecked(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
                 }),
             },
         }

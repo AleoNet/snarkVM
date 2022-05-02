@@ -141,8 +141,8 @@ mod tests {
                 for (i, (expected_bit, candidate_bit)) in expected.iter().zip_eq(candidate.iter().skip(1)).enumerate() {
                     assert_eq!(*expected_bit, candidate_bit.eject_value(), "MSB-{}", i);
                 }
-                assert_count!(Field<Circuit>, ToLowerBits<Boolean = Boolean<Circuit>>, &(mode, num_bits_with_capacity));
-                assert_output_mode!(candidate, Field<Circuit>, ToLowerBits<Boolean = Boolean<Circuit>>, &mode);
+                assert_count!(ToUpperBits<Boolean>() => Field, &(mode, num_bits_with_capacity));
+                assert_output_mode!(ToUpperBits<Boolean>() => Field, &mode, candidate);
             });
         }
     }

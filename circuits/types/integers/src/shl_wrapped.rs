@@ -155,8 +155,8 @@ mod tests {
         Circuit::scope(name, || {
             let candidate = a.shl_wrapped(&b);
             assert_eq!(expected, candidate.eject_value());
-            assert_count!(Integer<Circuit, I>, ShlWrapped<Integer<Circuit, M>, Output=Integer<Circuit, I>>, &(mode_a, mode_b));
-            assert_output_mode!(candidate, Integer<Circuit, I>, ShlWrapped<Integer<Circuit, M>, Output=Integer<Circuit, I>>, &(mode_a, mode_b));
+            assert_count!(ShlWrapped(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b));
+            assert_output_mode!(ShlWrapped(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b), candidate);
         });
         Circuit::reset();
     }

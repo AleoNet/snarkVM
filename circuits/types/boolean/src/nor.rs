@@ -103,17 +103,8 @@ mod tests {
         Circuit::scope(name, || {
             let candidate = a.nor(&b);
             assert_eq!(expected, candidate.eject_value(), "({} NOR {})", a.eject_value(), b.eject_value());
-            assert_count!(
-                Boolean<Circuit>,
-                Nor<Boolean<Circuit>, Output = Boolean<Circuit>>,
-                &(a.eject_mode(), b.eject_mode())
-            );
-            assert_output_mode!(
-                candidate,
-                Boolean<Circuit>,
-                Nor<Boolean<Circuit>, Output = Boolean<Circuit>>,
-                &(ConstantOrMode::from(&a), ConstantOrMode::from(&b))
-            );
+            assert_count!(Nor(Boolean, Boolean) => Boolean, &(a.eject_mode(), b.eject_mode()));
+            assert_output_mode!(Nor(Boolean, Boolean) => Boolean, &(ConstantOrMode::from(&a), ConstantOrMode::from(&b)), candidate);
         });
         Circuit::reset();
     }

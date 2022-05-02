@@ -80,14 +80,14 @@ mod tests {
             Some(expected) => Circuit::scope(name, || {
                 let candidate = a.abs_checked();
                 assert_eq!(expected, candidate.eject_value());
-                assert_count!(Integer<Circuit, I>, AbsChecked<Output = Integer<Circuit, I>>, &mode);
-                assert_output_mode!(candidate, Integer<Circuit, I>, AbsChecked<Output = Integer<Circuit, I>>, &mode);
+                assert_count!(AbsChecked(Integer<I>) => Integer<I>, &mode);
+                assert_output_mode!(AbsChecked(Integer<I>) => Integer<I>, &mode, candidate);
             }),
             None => match mode {
                 Mode::Constant => check_unary_operation_halts(a, |a: Integer<Circuit, I>| a.abs_checked()),
                 _ => Circuit::scope(name, || {
                     let _candidate = a.abs_checked();
-                    assert_count_fails!(Integer<Circuit, I>, AbsChecked<Output = Integer<Circuit, I>>, &mode);
+                    assert_count_fails!(AbsChecked(Integer<I>) => Integer<I>, &mode);
                 }),
             },
         }

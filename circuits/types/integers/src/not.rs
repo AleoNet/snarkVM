@@ -69,8 +69,8 @@ mod tests {
         Circuit::scope(name, || {
             let candidate = a.not();
             assert_eq!(expected, candidate.eject_value());
-            assert_count!(Integer<Circuit, I>, Not<Output=Integer<Circuit, I>>, &mode);
-            assert_output_mode!(candidate, Integer<Circuit, I>, Not<Output=Integer<Circuit, I>>, &mode);
+            assert_count!(Not(Integer<I>) => Integer<I>, &mode);
+            assert_output_mode!(Not(Integer<I>) => Integer<I>, &mode, candidate);
         });
         Circuit::reset();
     }

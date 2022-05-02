@@ -75,17 +75,8 @@ mod tests {
             let case = format!("({} ? {} : {})", condition.eject_value(), a.eject_value(), b.eject_value());
             let candidate = Group::ternary(&condition, &a, &b);
             assert_eq!(expected, candidate.eject_value(), "{case}");
-            assert_count!(
-                Group<Circuit>,
-                Ternary<Boolean = Boolean<Circuit>, Output = Group<Circuit>>,
-                &(condition.eject_mode(), a.eject_mode(), b.eject_mode())
-            );
-            assert_output_mode!(
-                candidate,
-                Group<Circuit>,
-                Ternary<Boolean = Boolean<Circuit>, Output = Group<Circuit>>,
-                &(ConstantOrMode::from(&condition), a.eject_mode(), b.eject_mode())
-            );
+            assert_count!(Ternary(Boolean, Group, Group) => Group, &(condition.eject_mode(), a.eject_mode(), b.eject_mode()));
+            assert_output_mode!(Ternary(Boolean, Group, Group) => Group, &(ConstantOrMode::from(&condition), a.eject_mode(), b.eject_mode()), candidate);
         });
     }
 

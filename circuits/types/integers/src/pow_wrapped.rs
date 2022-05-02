@@ -106,8 +106,8 @@ mod tests {
         Circuit::scope(name, || {
             let candidate = a.pow_wrapped(&b);
             assert_eq!(expected, candidate.eject_value());
-            // assert_count!(Integer<Circuit, I>, PowWrapped<Integer<Circuit, M>, Output=Integer<Circuit, I>>, &(mode_a, mode_b));
-            // assert_output_mode!(candidate, Integer<Circuit, I>, PowWrapped<Integer<Circuit, M>, Output=Integer<Circuit, I>>, &(mode_a, ConstantOrMode::from(&b)));
+            // assert_count!(PowWrapped(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b));
+            // assert_output_mode!(PowWrapped(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, ConstantOrMode::from(&b)), candidate);
         });
         Circuit::reset();
     }

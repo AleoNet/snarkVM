@@ -116,8 +116,8 @@ mod tests {
                 for (i, (expected_bit, candidate_bit)) in expected.iter().zip_eq(candidate.iter()).enumerate() {
                     assert_eq!(*expected_bit, candidate_bit.eject_value(), "LSB+{}", i);
                 }
-                assert_count!(Field<Circuit>, ToLowerBits<Boolean = Boolean<Circuit>>, &(mode, I::BITS));
-                assert_output_mode!(candidate, Field<Circuit>, ToLowerBits<Boolean = Boolean<Circuit>>, &mode);
+                assert_count!(ToLowerBits<Boolean>() => Field, &(mode, I::BITS));
+                assert_output_mode!(ToLowerBits<Boolean>() => Field, &mode, candidate);
             });
         }
     }

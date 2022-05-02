@@ -139,17 +139,8 @@ mod tests {
             let case = format!("({} ? {} : {})", condition.eject_value(), a.eject_value(), b.eject_value());
             let candidate = Field::ternary(&condition, &a, &b);
             assert_eq!(expected, candidate.eject_value(), "{case}");
-            assert_count!(
-                Field<Circuit>,
-                Ternary<Boolean = Boolean<Circuit>, Output = Field<Circuit>>,
-                &(condition.eject_mode(), a.eject_mode(), b.eject_mode())
-            );
-            assert_output_mode!(
-                candidate,
-                Field<Circuit>,
-                Ternary<Boolean = Boolean<Circuit>, Output = Field<Circuit>>,
-                &(ConstantOrMode::from(&condition), a.eject_mode(), b.eject_mode())
-            );
+            assert_count!(Ternary(Boolean, Field, Field) => Field, &(condition.eject_mode(), a.eject_mode(), b.eject_mode()));
+            assert_output_mode!(Ternary(Boolean, Field, Field) => Field, &(ConstantOrMode::from(&condition), a.eject_mode(), b.eject_mode()), candidate);
         });
     }
 

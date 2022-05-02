@@ -146,10 +146,10 @@ mod tests {
                     &modes
                 );
                 assert_output_mode!(
-                    candidate,
                     Pedersen<Circuit, NUM_WINDOWS, WINDOW_SIZE>,
                     HashUncompressed<Input = Boolean<Circuit>, Output = Group<Circuit>>,
-                    &modes
+                    &modes,
+                    candidate
                 );
             });
         }

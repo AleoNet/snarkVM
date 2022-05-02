@@ -152,10 +152,10 @@ mod tests {
                     &(input_modes.clone(), randomness_modes.clone())
                 );
                 assert_output_mode!(
-                    candidate,
                     Pedersen<Circuit, NUM_WINDOWS, WINDOW_SIZE>,
                     CommitmentScheme<Input = Boolean<Circuit>, Output = Group<Circuit>, Randomness = Boolean<Circuit>>,
-                    &(input_modes, randomness_modes)
+                    &(input_modes, randomness_modes),
+                    candidate
                 );
             });
         }

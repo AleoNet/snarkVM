@@ -18,30 +18,30 @@ use crate::BooleanTrait;
 
 /// Trait for equality comparisons.
 pub trait Equal<Rhs: ?Sized = Self> {
-    type Boolean: BooleanTrait;
+    type Output: BooleanTrait;
 
     /// Returns `true` if `self` and `other` are equal.
-    fn is_equal(&self, other: &Rhs) -> Self::Boolean;
+    fn is_equal(&self, other: &Rhs) -> Self::Output;
 
     /// Returns `true` if `self` and `other` are *not* equal.
-    fn is_not_equal(&self, other: &Rhs) -> Self::Boolean;
+    fn is_not_equal(&self, other: &Rhs) -> Self::Output;
 }
 
 /// Trait for comparator operations.
 pub trait Compare<Rhs: ?Sized = Self> {
-    type Boolean: BooleanTrait;
+    type Output: BooleanTrait;
 
     /// Returns `true` if `self` is less than `other`.
-    fn is_less_than(&self, other: &Rhs) -> Self::Boolean;
+    fn is_less_than(&self, other: &Rhs) -> Self::Output;
 
     /// Returns `true` if `self` is greater than `other`.
-    fn is_greater_than(&self, other: &Rhs) -> Self::Boolean;
+    fn is_greater_than(&self, other: &Rhs) -> Self::Output;
 
     /// Returns `true` if `self` is less than or equal to `other`.
-    fn is_less_than_or_equal(&self, other: &Rhs) -> Self::Boolean;
+    fn is_less_than_or_equal(&self, other: &Rhs) -> Self::Output;
 
     /// Returns `true` if `self` is greater than or equal to `other`.
-    fn is_greater_than_or_equal(&self, other: &Rhs) -> Self::Boolean;
+    fn is_greater_than_or_equal(&self, other: &Rhs) -> Self::Output;
 }
 
 /// Binary operator for performing `NOT (a AND b)`.

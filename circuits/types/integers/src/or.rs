@@ -125,8 +125,8 @@ mod tests {
         Circuit::scope(name, || {
             let candidate = (&a).bitor(&b);
             assert_eq!(expected, candidate.eject_value());
-            assert_count!(Integer<Circuit, I>, BitOr<Integer<Circuit, I>, Output=Integer<Circuit, I>>, &(mode_a, mode_b));
-            assert_output_mode!(candidate, Integer<Circuit, I>, BitOr<Integer<Circuit, I>, Output=Integer<Circuit, I>>, &(ConstantOrMode::from(&a), ConstantOrMode::from(&b)));
+            assert_count!(BitOr(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
+            assert_output_mode!(BitOr(Integer<I>, Integer<I>) => Integer<I>, &(ConstantOrMode::from(&a), ConstantOrMode::from(&b)), candidate);
         });
         Circuit::reset();
     }

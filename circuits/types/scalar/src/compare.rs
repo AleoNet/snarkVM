@@ -17,10 +17,10 @@
 use super::*;
 
 impl<E: Environment> Compare<Scalar<E>> for Scalar<E> {
-    type Boolean = Boolean<E>;
+    type Output = Boolean<E>;
 
     /// Returns `true` if `self` is less than `other`.
-    fn is_less_than(&self, other: &Self) -> Self::Boolean {
+    fn is_less_than(&self, other: &Self) -> Self::Output {
         let mut is_less_than = Boolean::constant(false);
         let mut are_previous_bits_equal = Boolean::constant(true);
 
@@ -41,17 +41,17 @@ impl<E: Environment> Compare<Scalar<E>> for Scalar<E> {
     }
 
     /// Returns `true` if `self` is greater than `other`.
-    fn is_greater_than(&self, other: &Self) -> Self::Boolean {
+    fn is_greater_than(&self, other: &Self) -> Self::Output {
         other.is_less_than(self)
     }
 
     /// Returns `true` if `self` is less than or equal to `other`.
-    fn is_less_than_or_equal(&self, other: &Self) -> Self::Boolean {
+    fn is_less_than_or_equal(&self, other: &Self) -> Self::Output {
         other.is_greater_than_or_equal(self)
     }
 
     /// Returns `true` if `self` is greater than or equal to `other`.
-    fn is_greater_than_or_equal(&self, other: &Self) -> Self::Boolean {
+    fn is_greater_than_or_equal(&self, other: &Self) -> Self::Output {
         !self.is_less_than(other)
     }
 }

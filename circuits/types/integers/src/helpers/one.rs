@@ -54,8 +54,8 @@ mod tests {
             assert_scope!(0, 0, 0, 0);
             let candidate = Integer::<Circuit, I>::one();
             assert_eq!(I::one(), candidate.eject_value());
-            assert_count!(Integer<Circuit, I>, One<Boolean = Boolean<Circuit>>, &());
-            assert_output_mode!(candidate, Integer<Circuit, I>, One<Boolean = Boolean<Circuit>>, &());
+            assert_count!(One<Boolean>() => Integer<I>, &());
+            assert_output_mode!(One<Boolean>() => Integer<I>, &(), candidate);
         });
         // Should equal 1.
         assert!(Integer::<Circuit, I>::one().is_one().eject_value());

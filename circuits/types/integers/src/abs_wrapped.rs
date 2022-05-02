@@ -79,8 +79,8 @@ mod tests {
         Circuit::scope(name, || {
             let candidate = a.abs_wrapped();
             assert_eq!(expected, candidate.eject_value());
-            assert_count!(Integer<Circuit, I>, AbsWrapped<Output = Integer<Circuit, I>>, &mode);
-            assert_output_mode!(candidate, Integer<Circuit, I>, AbsWrapped<Output = Integer<Circuit, I>>, &mode);
+            assert_count!(AbsWrapped(Integer<I>) => Integer<I>, &mode);
+            assert_output_mode!(AbsWrapped(Integer<I>) => Integer<I>, &mode, candidate);
         });
         Circuit::reset();
     }

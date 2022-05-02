@@ -143,17 +143,8 @@ mod tests {
         Circuit::scope(name, || {
             let candidate = a.pow(b);
             assert_eq!(*expected, candidate.eject_value(), "({}^{})", a.eject_value(), b.eject_value());
-            assert_count!(
-                Field<Circuit>,
-                Pow<Field<Circuit>, Output = Field<Circuit>>,
-                &(ConstantOrMode::from(a), ConstantOrMode::from(b))
-            );
-            assert_output_mode!(
-                candidate,
-                Field<Circuit>,
-                Pow<Field<Circuit>, Output = Field<Circuit>>,
-                &(ConstantOrMode::from(a), ConstantOrMode::from(b))
-            );
+            assert_count!(Pow(Field, Field) => Field, &(ConstantOrMode::from(a), ConstantOrMode::from(b)));
+            assert_output_mode!(Pow(Field, Field) => Field, &(ConstantOrMode::from(a), ConstantOrMode::from(b)), candidate);
         });
     }
 

@@ -68,8 +68,8 @@ mod tests {
             Circuit::scope(name, || {
                 let result = candidate.double();
                 assert_eq!(given.double(), result.eject_value());
-                assert_count!(Field<Circuit>, Double<Output = Field<Circuit>>, &mode);
-                assert_output_mode!(result, Field<Circuit>, Double<Output = Field<Circuit>>, &mode);
+                assert_count!(Double(Field) => Field, &mode);
+                assert_output_mode!(Double(Field) => Field, &mode, result);
             });
         }
     }

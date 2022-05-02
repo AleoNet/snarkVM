@@ -175,14 +175,14 @@ mod tests {
             Some(expected) => Circuit::scope(name, || {
                 let candidate = a.sub_checked(&b);
                 assert_eq!(expected, candidate.eject_value());
-                assert_count!(Integer<Circuit, I>, Sub<Integer<Circuit, I>, Output=Integer<Circuit, I>>, &(mode_a, mode_b));
-                assert_output_mode!(candidate, Integer<Circuit, I>, Sub<Integer<Circuit, I>, Output=Integer<Circuit, I>>, &(mode_a, mode_b));
+                assert_count!(Sub(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
+                assert_output_mode!(Sub(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b), candidate);
             }),
             None => match mode_a.is_constant() && mode_b.is_constant() {
                 true => check_operation_halts(&a, &b, Integer::sub_checked),
                 false => Circuit::scope(name, || {
                     let _candidate = a.sub_checked(&b);
-                    assert_count_fails!(Integer<Circuit, I>, Sub<Integer<Circuit, I>, Output=Integer<Circuit, I>>, &(mode_a, mode_b));
+                    assert_count_fails!(Sub(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
                 }),
             },
         }

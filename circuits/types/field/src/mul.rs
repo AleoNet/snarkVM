@@ -125,17 +125,8 @@ mod tests {
         Circuit::scope(name, || {
             let candidate = a * b;
             assert_eq!(*expected, candidate.eject_value(), "({} * {})", a.eject_value(), b.eject_value());
-            assert_count!(
-                Field<Circuit>,
-                Mul<Field<Circuit>, Output = Field<Circuit>>,
-                &(a.eject_mode(), b.eject_mode())
-            );
-            assert_output_mode!(
-                candidate,
-                Field<Circuit>,
-                Mul<Field<Circuit>, Output = Field<Circuit>>,
-                &(ConstantOrMode::from(a), ConstantOrMode::from(b))
-            );
+            assert_count!(Mul(Field, Field) => Field, &(a.eject_mode(), b.eject_mode()));
+            assert_output_mode!(Mul(Field, Field) => Field, &(ConstantOrMode::from(a), ConstantOrMode::from(b)), candidate);
         });
     }
 
@@ -149,17 +140,8 @@ mod tests {
             let mut candidate = a.clone();
             candidate *= b;
             assert_eq!(*expected, candidate.eject_value(), "({} * {})", a.eject_value(), b.eject_value());
-            assert_count!(
-                Field<Circuit>,
-                Mul<Field<Circuit>, Output = Field<Circuit>>,
-                &(a.eject_mode(), b.eject_mode())
-            );
-            assert_output_mode!(
-                candidate,
-                Field<Circuit>,
-                Mul<Field<Circuit>, Output = Field<Circuit>>,
-                &(ConstantOrMode::from(a), ConstantOrMode::from(b))
-            );
+            assert_count!(Mul(Field, Field) => Field, &(a.eject_mode(), b.eject_mode()));
+            assert_output_mode!(Mul(Field, Field) => Field, &(ConstantOrMode::from(a), ConstantOrMode::from(b)), candidate);
         });
     }
 

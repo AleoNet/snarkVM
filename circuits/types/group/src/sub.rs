@@ -87,17 +87,8 @@ mod tests {
         Circuit::scope(name, || {
             let candidate = a - b;
             assert_eq!(*expected, candidate.eject_value(), "({} - {})", a.eject_value(), b.eject_value());
-            assert_count!(
-                Group<Circuit>,
-                Add<Group<Circuit>, Output = Group<Circuit>>,
-                &(a.eject_mode(), b.eject_mode())
-            );
-            assert_output_mode!(
-                candidate,
-                Group<Circuit>,
-                Add<Group<Circuit>, Output = Group<Circuit>>,
-                &(a.eject_mode(), b.eject_mode())
-            );
+            assert_count!(Sub(Group, Group) => Group, &(a.eject_mode(), b.eject_mode()));
+            assert_output_mode!(Sub(Group, Group) => Group, &(a.eject_mode(), b.eject_mode()), candidate);
         });
     }
 
@@ -111,17 +102,8 @@ mod tests {
             let mut candidate = a.clone();
             candidate -= b;
             assert_eq!(*expected, candidate.eject_value(), "({} - {})", a.eject_value(), b.eject_value());
-            assert_count!(
-                Group<Circuit>,
-                Add<Group<Circuit>, Output = Group<Circuit>>,
-                &(a.eject_mode(), b.eject_mode())
-            );
-            assert_output_mode!(
-                candidate,
-                Group<Circuit>,
-                Add<Group<Circuit>, Output = Group<Circuit>>,
-                &(a.eject_mode(), b.eject_mode())
-            );
+            assert_count!(Sub(Group, Group) => Group, &(a.eject_mode(), b.eject_mode()));
+            assert_output_mode!(Sub(Group, Group) => Group, &(a.eject_mode(), b.eject_mode()), candidate);
         });
     }
 

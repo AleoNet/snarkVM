@@ -154,15 +154,15 @@ mod tests {
             Some(expected) => Circuit::scope(name, || {
                 let candidate = a.pow_checked(&b);
                 assert_eq!(expected, candidate.eject_value());
-                // assert_count!(Integer<Circuit, I>, PowChecked<Integer<Circuit, M>, Output=Integer<Circuit, I>>, &(mode_a, mode_b));
-                // assert_output_mode!(candidate, Integer<Circuit, I>, PowChecked<Integer<Circuit, M>, Output=Integer<Circuit, I>>, &(mode_a, ConstantOrMode::from(&b)));
+                // assert_count!(PowChecked(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b));
+                // assert_output_mode!(PowChecked(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, ConstantOrMode::from(&b)), candidate);
             }),
             None => {
                 match (mode_a, mode_b) {
                     (Mode::Constant, Mode::Constant) => check_operation_halts(&a, &b, Integer::pow_checked),
                     _ => Circuit::scope(name, || {
                         let _candidate = a.pow_checked(&b);
-                        // assert_count_fails!(Integer<Circuit, I>, PowChecked<Integer<Circuit, M>, Output=Integer<Circuit, I>>, &(mode_a, mode_b));
+                        // assert_count_fails!(PowChecked(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b));
                     }),
                 }
             }

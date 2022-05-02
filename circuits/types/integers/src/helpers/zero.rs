@@ -54,8 +54,8 @@ mod tests {
             assert_scope!(0, 0, 0, 0);
             let candidate = Integer::<Circuit, I>::zero();
             assert_eq!(I::zero(), candidate.eject_value());
-            assert_count!(Integer<Circuit, I>, Zero<Boolean = Boolean<Circuit>>, &());
-            assert_output_mode!(candidate, Integer<Circuit, I>, Zero<Boolean = Boolean<Circuit>>, &());
+            assert_count!(Zero<Boolean>() => Integer<I>, &());
+            assert_output_mode!(Zero<Boolean>() => Integer<I>, &(), candidate);
         });
         // Should equal 0.
         assert!(Integer::<Circuit, I>::zero().is_zero().eject_value());

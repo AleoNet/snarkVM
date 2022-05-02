@@ -71,8 +71,8 @@ mod tests {
             Circuit::scope(name, || {
                 let result = candidate.neg();
                 assert_eq!(expected, result.eject_value());
-                assert_count!(Field<Circuit>, Neg<Output = Field<Circuit>>, &mode);
-                assert_output_mode!(result, Field<Circuit>, Neg<Output = Field<Circuit>>, &mode);
+                assert_count!(Neg(Field) => Field, &mode);
+                assert_output_mode!(Neg(Field) => Field, &mode, result);
             });
         };
 

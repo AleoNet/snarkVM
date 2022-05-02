@@ -57,8 +57,8 @@ mod tests {
             assert_scope!(0, 0, 0, 0);
             let candidate = Field::<Circuit>::one();
             assert_eq!(one, candidate.eject_value());
-            assert_count!(Field<Circuit>, One<Boolean = Boolean<Circuit>>, &());
-            assert_output_mode!(candidate, Field<Circuit>, One<Boolean = Boolean<Circuit>>, &());
+            assert_count!(One<Boolean>() => Field, &());
+            assert_output_mode!(One<Boolean>() => Field, &(), candidate);
         });
     }
 
