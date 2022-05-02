@@ -237,7 +237,7 @@ jobs:
     docker:
       - image: cimg/rust:1.59
     resource_class: xlarge
-    parallelism: 25 # Do NOT arbitrarily increase this. If tests slowed down, ensure you are Circuit::reset()'ing tests.
+    parallelism: 20 # Do NOT arbitrarily increase this. If tests slowed down, ensure you are Circuit::reset()'ing tests.
     steps:
       - run_parallel:
           workspace_member: circuits/types/integers
