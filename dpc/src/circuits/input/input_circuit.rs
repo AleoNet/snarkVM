@@ -151,7 +151,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InputCircuit<N> 
 
             let transition_id_crh = N::TransitionIDCRHGadget::alloc_constant(
                 &mut cs.ns(|| "Declare the transition ID CRH parameters"),
-                || Ok(N::transition_id_parameters().crh()),
+                || Ok(N::transition_id_parameters().leaf_crh()),
             )?;
 
             let transition_id_two_to_one_crh = N::TransitionIDTwoToOneCRHGadget::alloc_constant(
@@ -161,7 +161,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InputCircuit<N> 
 
             let transaction_id_crh = N::TransactionIDCRHGadget::alloc_constant(
                 &mut cs.ns(|| "Declare the transaction CRH parameters"),
-                || Ok(N::transaction_id_parameters().crh()),
+                || Ok(N::transaction_id_parameters().leaf_crh()),
             )?;
 
             let transaction_id_two_to_one_crh = N::TransactionIDTwoToOneCRHGadget::alloc_constant(
@@ -171,7 +171,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InputCircuit<N> 
 
             let transactions_root_crh = N::TransactionsRootCRHGadget::alloc_constant(
                 &mut cs.ns(|| "Declare the transactions root CRH parameters"),
-                || Ok(N::transactions_root_parameters().crh()),
+                || Ok(N::transactions_root_parameters().leaf_crh()),
             )?;
 
             let transactions_root_two_to_one_crh = N::TransactionsRootTwoToOneCRHGadget::alloc_constant(
@@ -181,7 +181,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InputCircuit<N> 
 
             let block_header_root_crh = N::BlockHeaderRootCRHGadget::alloc_constant(
                 &mut cs.ns(|| "Declare the block header root CRH parameters"),
-                || Ok(N::block_header_root_parameters().crh()),
+                || Ok(N::block_header_root_parameters().leaf_crh()),
             )?;
 
             let block_header_root_two_to_one_crh = N::BlockHeaderRootTwoToOneCRHGadget::alloc_constant(
@@ -196,7 +196,7 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InputCircuit<N> 
 
             let ledger_root_crh = N::LedgerRootCRHGadget::alloc_constant(
                 &mut cs.ns(|| "Declare the ledger root CRH parameters"),
-                || Ok(N::ledger_root_parameters().crh()),
+                || Ok(N::ledger_root_parameters().leaf_crh()),
             )?;
 
             let ledger_root_two_to_one_crh = N::LedgerRootTwoToOneCRHGadget::alloc_constant(

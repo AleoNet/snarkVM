@@ -53,7 +53,7 @@ impl<LeafCRH: CRH, TwoToOneCRH: CRH<Output = LeafCRH::Output>, const DEPTH: usiz
         &self.3
     }
 
-    fn crh(&self) -> &Self::LeafCRH {
+    fn leaf_crh(&self) -> &Self::LeafCRH {
         &self.0
     }
 

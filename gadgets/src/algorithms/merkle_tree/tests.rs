@@ -87,7 +87,7 @@ fn generate_merkle_tree<
         // Allocate CRH
         let leaf_crh_parameters =
             LeafCRHGadget::alloc_constant(&mut cs.ns(|| format!("new_leaf_parameters_{}", i)), || {
-                Ok(parameters.crh().clone())
+                Ok(parameters.leaf_crh().clone())
             })
             .unwrap();
         let two_to_one_crh_parameters =
@@ -236,7 +236,7 @@ fn update_merkle_tree<
         let mut cs = TestConstraintSystem::<F>::new();
 
         let leaf_crh =
-            LeafCRHGadget::alloc_constant(&mut cs.ns(|| "leaf_crh"), || Ok(merkle_parameters.crh())).unwrap();
+            LeafCRHGadget::alloc_constant(&mut cs.ns(|| "leaf_crh"), || Ok(merkle_parameters.leaf_crh())).unwrap();
         let two_to_one_crh = TwoToOneCRHGadget::alloc_constant(&mut cs.ns(|| "two_to_one_crh"), || {
             Ok(merkle_parameters.two_to_one_crh())
         })

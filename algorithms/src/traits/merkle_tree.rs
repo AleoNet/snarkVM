@@ -38,14 +38,14 @@ pub trait MerkleParameters: Clone + Debug + PartialEq + Eq + Send + Sync {
     fn setup_message(&self) -> &str;
 
     /// Returns the collision-resistant hash function used by the Merkle tree.
-    fn crh(&self) -> &Self::LeafCRH;
+    fn leaf_crh(&self) -> &Self::LeafCRH;
 
     /// Returns the collision-resistant hash function used by the Merkle tree for parent nodes.
     fn two_to_one_crh(&self) -> &Self::TwoToOneCRH;
 
     /// Returns the hash of a given leaf.
     fn hash_leaf<L: ToBytes>(&self, leaf: &L) -> Result<<Self::LeafCRH as CRH>::Output, MerkleError> {
-        Ok(self.crh().hash_bytes(&leaf.to_bytes_le()?)?)
+        Ok(self.leaf_crh().hash_bytes(&leaf.to_bytes_le()?)?)
     }
 
     /// Returns the parent hash of two children.

@@ -82,9 +82,9 @@ impl<P: MerkleParameters> MerklePath<P> {
     /// Returns: (left, right)
     fn select_left_right_bytes(
         index: u64,
-        computed_hash: &<P::LeafCRH as CRH>::Output,
-        sibling_hash: &<P::LeafCRH as CRH>::Output,
-    ) -> Result<(<P::LeafCRH as CRH>::Output, <P::LeafCRH as CRH>::Output), MerkleError> {
+        computed_hash: &<P::TwoToOneCRH as CRH>::Output,
+        sibling_hash: &<P::TwoToOneCRH as CRH>::Output,
+    ) -> Result<(<P::TwoToOneCRH as CRH>::Output, <P::TwoToOneCRH as CRH>::Output), MerkleError> {
         let is_left = index & 1 == 0;
         let mut left_bytes = computed_hash;
         let mut right_bytes = sibling_hash;

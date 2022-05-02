@@ -90,7 +90,7 @@ fn run_bad_root_test<P: MerkleParameters>() {
 
 fn depth_2_merkle_tree_test<P: MerkleParameters>() {
     let parameters = &P::setup("merkle_tree_test");
-    let leaf_crh = parameters.crh();
+    let leaf_crh = parameters.leaf_crh();
     let two_to_one_crh = parameters.two_to_one_crh();
 
     // Evaluate the Merkle tree root.
@@ -120,7 +120,7 @@ fn depth_2_merkle_tree_test<P: MerkleParameters>() {
 
 fn padded_merkle_tree_test<P: MerkleParameters>() {
     let parameters = &P::setup("merkle_tree_test");
-    let leaf_crh = parameters.crh();
+    let leaf_crh = parameters.leaf_crh();
     let two_to_one_crh = parameters.two_to_one_crh();
 
     // Evaluate the Merkle tree root
@@ -353,8 +353,8 @@ mod pedersen_compressed_crh_on_projective {
         let _proof = tree.generate_proof(0, &leaves[0]).unwrap();
         _proof.verify(tree.root(), &leaves[0]).unwrap();
 
-        let leaf1 = parameters.crh().hash_bytes(&leaves[0]).unwrap();
-        let leaf2 = parameters.crh().hash_bytes(&leaves[1]).unwrap();
+        let leaf1 = parameters.leaf_crh().hash_bytes(&leaves[0]).unwrap();
+        let leaf2 = parameters.leaf_crh().hash_bytes(&leaves[1]).unwrap();
 
         // proof for non-leaf node
         let raw_nodes = to_bytes_le![leaf1, leaf2].unwrap();
@@ -367,7 +367,7 @@ mod pedersen_compressed_crh_on_projective {
         let leaves = generate_random_leaves!(4, 64);
 
         let parameters = &MTParameters::setup("merkle_tree_test");
-        let leaf_crh = parameters.crh();
+        let leaf_crh = parameters.leaf_crh();
         let two_to_one_crh = parameters.two_to_one_crh();
 
         // Evaluate the Merkle tree root.
