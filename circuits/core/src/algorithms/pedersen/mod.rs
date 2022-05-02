@@ -20,7 +20,7 @@ mod hash;
 mod hash_uncompressed;
 
 #[cfg(test)]
-use snarkvm_circuits_environment::assert_scope;
+use snarkvm_circuits_environment::{assert_count, assert_output_mode, assert_scope};
 
 use crate::{CommitmentScheme, Hash, HashUncompressed};
 use snarkvm_algorithms::crypto_hash::hash_to_curve;
@@ -89,17 +89,17 @@ mod tests {
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 
-    const ITERATIONS: usize = 10;
+    const ITERATIONS: u64 = 10;
     const MESSAGE: &str = "PedersenCircuit0";
     const WINDOW_SIZE_MULTIPLIER: usize = 8;
 
     type Projective = <<Circuit as Environment>::Affine as AffineCurve>::Projective;
 
     fn check_setup<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
     ) {
         for _ in 0..ITERATIONS {
             // Initialize the native Pedersen hash.

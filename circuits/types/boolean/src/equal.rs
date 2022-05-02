@@ -17,15 +17,15 @@
 use super::*;
 
 impl<E: Environment> Equal<Self> for Boolean<E> {
-    type Boolean = Boolean<E>;
+    type Output = Boolean<E>;
 
     /// Returns `true` if `self` and `other` are equal.
-    fn is_equal(&self, other: &Self) -> Self::Boolean {
+    fn is_equal(&self, other: &Self) -> Self::Output {
         !self.is_not_equal(other)
     }
 
     /// Returns `true` if `self` and `other` are *not* equal.
-    fn is_not_equal(&self, other: &Self) -> Self::Boolean {
+    fn is_not_equal(&self, other: &Self) -> Self::Output {
         self ^ other
     }
 }
@@ -40,10 +40,10 @@ mod tests {
         expected: bool,
         a: Boolean<Circuit>,
         b: Boolean<Circuit>,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
     ) {
         Circuit::scope(name, || {
             let candidate = a.is_equal(&b);

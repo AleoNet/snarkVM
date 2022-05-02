@@ -81,9 +81,9 @@ mod tests {
     use crate::Devnet as Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
-    const ITERATIONS: usize = 1000;
+    const ITERATIONS: u64 = 1000;
 
-    fn check_new(mode: Mode, num_constants: usize, num_public: usize, num_private: usize, num_constraints: usize) {
+    fn check_new(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
         let rng = &mut test_rng();
 
         for _ in 0..ITERATIONS {

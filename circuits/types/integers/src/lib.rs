@@ -17,6 +17,8 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
+mod helpers;
+
 pub mod abs_checked;
 pub mod abs_wrapped;
 pub mod add_checked;
@@ -26,13 +28,10 @@ pub mod compare;
 pub mod div_checked;
 pub mod div_wrapped;
 pub mod equal;
-pub mod from_bits;
-pub mod msb;
 pub mod mul_checked;
 pub mod mul_wrapped;
 pub mod neg;
 pub mod not;
-pub mod one;
 pub mod or;
 pub mod pow_checked;
 pub mod pow_wrapped;
@@ -43,11 +42,7 @@ pub mod shr_wrapped;
 pub mod sub_checked;
 pub mod sub_wrapped;
 pub mod ternary;
-pub mod to_bits;
-pub mod to_field;
-pub mod to_fields;
 pub mod xor;
-pub mod zero;
 
 pub type I8<E> = Integer<E, i8>;
 pub type I16<E> = Integer<E, i16>;
@@ -62,7 +57,14 @@ pub type U64<E> = Integer<E, u64>;
 pub type U128<E> = Integer<E, u128>;
 
 #[cfg(test)]
-use snarkvm_circuits_environment::assert_scope;
+use snarkvm_circuits_environment::{
+    assert_count,
+    assert_count_fails,
+    assert_output_mode,
+    assert_scope,
+    count,
+    output_mode,
+};
 
 use snarkvm_circuits_environment::prelude::*;
 use snarkvm_circuits_types_boolean::Boolean;
@@ -85,7 +87,7 @@ impl<E: Environment, I: IntegerType> Inject for Integer<E, I> {
 
     /// Initializes a new integer.
     fn new(mode: Mode, value: Self::Primitive) -> Self {
-        let mut bits_le = Vec::with_capacity(I::BITS);
+        let mut bits_le = Vec::with_capacity(I::BITS as usize);
         let mut value = value.to_le();
         for _ in 0..I::BITS {
             bits_le.push(Boolean::new(mode, value & I::one() == I::one()));
@@ -192,14 +194,14 @@ mod tests {
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
-    const ITERATIONS: usize = 100;
+    const ITERATIONS: u64 = 100;
 
     fn check_new<I: IntegerType>(
         mode: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
     ) {
         for _ in 0..ITERATIONS {
             let expected: I = UniformRand::rand(&mut test_rng());
@@ -218,10 +220,10 @@ mod tests {
 
     fn check_parse<I: IntegerType>(
         mode: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
     ) {
         for _ in 0..ITERATIONS {
             let value: I = UniformRand::rand(&mut test_rng());
@@ -488,82 +490,216 @@ mod tests {
 
 #[cfg(test)]
 mod test_utilities {
-    use core::{
-        fmt::{Debug, Display},
-        panic::UnwindSafe,
-    };
-    use snarkvm_circuits_environment::{assert_scope, assert_scope_fails, Circuit, Eject, Environment};
+    use core::panic::UnwindSafe;
 
-    pub fn check_operation_passes<V: Debug + Display + PartialEq, LHS, RHS, OUT: Eject<Primitive = V>>(
-        name: &str,
-        case: &str,
-        expected: V,
-        a: LHS,
-        b: RHS,
-        operation: impl FnOnce(LHS, RHS) -> OUT,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        Circuit::scope(name, || {
-            let candidate = operation(a, b);
-            assert_eq!(expected, candidate.eject_value(), "{} != {} := {}", expected, candidate.eject_value(), case);
-            assert_scope!(case, num_constants, num_public, num_private, num_constraints);
-        });
-        Circuit::reset();
+    /// A generic template for an integer test case.
+    #[macro_export]
+    macro_rules! test_integer_case {
+        // Typical test instantiation (static).
+        ($test_fn:ident, $primitive:ident, $description:ident) => {
+            paste::paste! {
+                #[test]
+                fn [<test_ $primitive _ $description>]() {
+                    $test_fn::<$primitive>();
+                }
+            }
+        };
+        // Typical test instantiation (unary).
+        ($test_fn:ident, $primitive:ident, $mode:expr, $description:ident) => {
+            paste::paste! {
+                #[test]
+                fn [<test_ $primitive _ $description>]() {
+                    $test_fn::<$primitive>($mode);
+                }
+            }
+        };
+        // Typical test instantiation (binary).
+        ($test_fn:ident, $primitive:ident, $mode_a:expr, $mode_b:expr, $description:ident) => {
+            paste::paste! {
+                #[test]
+                fn [<test_ $primitive _ $description>]() {
+                    $test_fn::<$primitive>($mode_a, $mode_b);
+                }
+            }
+        };
+        // Typical test instantiation (binary).
+        ($test_fn:ident, $primitive_a:ident, $primitive_b:ident, $mode_a:expr, $mode_b:expr, $description:ident) => {
+            paste::paste! {
+                #[test]
+                fn [<test_ $primitive_a _ $description _ $primitive_b>]() {
+                    $test_fn::<$primitive_a, $primitive_b>($mode_a, $mode_b);
+                }
+            }
+        };
+        // Typical test instantiation (ternary).
+        ($test_fn:ident, $primitive:ident, $mode_a:expr, $mode_b:expr, $mode_c:expr, $description:ident) => {
+            paste::paste! {
+                #[test]
+                fn [<test_ $primitive _ $description>]() {
+                    $test_fn::<$primitive>($mode_a, $mode_b, $mode_c);
+                }
+            }
+        };
+        // Typically used to ignore exhaustive tests by default (unary).
+        (#[$meta:meta], $test_fn:ident, $primitive:ident, $mode:expr, $description:ident) => {
+            paste::paste! {
+                #[test]
+                #[$meta]
+                fn [<test_ $primitive _ $description>]() {
+                    $test_fn::<$primitive>($mode);
+                }
+            }
+        };
+        // Typically used to ignore exhaustive tests by default (binary).
+        (#[$meta:meta], $test_fn:ident, $primitive:ident, $mode_a:expr, $mode_b:expr, $description:ident) => {
+            paste::paste! {
+                #[test]
+                #[$meta]
+                fn [<test_ $primitive _ $description>]() {
+                    $test_fn::<$primitive>($mode_a, $mode_b);
+                }
+            }
+        };
+        // Typically used to ignore exhaustive tests by default (binary).
+        (#[$meta:meta], $test_fn:ident, $primitive_a:ident, $primitive_b:ident, $mode_a:expr, $mode_b:expr, $description:ident) => {
+            paste::paste! {
+                #[test]
+                #[$meta]
+                fn [<test_ $primitive_a _ $description _ $primitive_b>]() {
+                    $test_fn::<$primitive_a, $primitive_b>($mode_a, $mode_b);
+                }
+            }
+        };
+        // Typically used to ignore exhaustive tests by default (ternary).
+        (#[$meta:meta], $test_fn:ident, $primitive:ident, $mode_a:expr, $mode_b:expr, $mode_c:expr, $description:ident) => {
+            paste::paste! {
+                #[test]
+                #[$meta]
+                fn [<test_ $primitive _ $description>]() {
+                    $test_fn::<$primitive>($mode_a, $mode_b, $mode_c);
+                }
+            }
+        };
     }
 
-    pub fn check_operation_passes_without_counts<
-        V: Debug + Display + PartialEq,
-        LHS,
-        RHS,
-        OUT: Eject<Primitive = V>,
-    >(
-        name: &str,
-        case: &str,
-        expected: V,
-        a: LHS,
-        b: RHS,
-        operation: impl FnOnce(LHS, RHS) -> OUT,
-    ) {
-        Circuit::scope(name, || {
-            let candidate = operation(a, b);
-            assert_eq!(expected, candidate.eject_value(), "{} != {} := {}", expected, candidate.eject_value(), case);
-        });
-        Circuit::reset();
+    /// Invokes `test_integer_case!` on all combinations of `Mode`s.
+    #[macro_export]
+    macro_rules! test_integer_static {
+        ($test_fn:ident, $primitive:ident, $description:ident) => {
+            test_integer_case!($test_fn, $primitive, $description);
+        };
     }
 
-    pub fn check_operation_fails<LHS, RHS, OUT>(
-        name: &str,
-        case: &str,
-        a: LHS,
-        b: RHS,
-        operation: impl FnOnce(LHS, RHS) -> OUT,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        Circuit::scope(name, || {
-            let _candidate = operation(a, b);
-            assert_scope_fails!(case, num_constants, num_public, num_private, num_constraints);
-        });
-        Circuit::reset();
+    /// Invokes `test_integer_case!` on all combinations of `Mode`s.
+    #[macro_export]
+    macro_rules! test_integer_unary {
+        ($test_fn:ident, $primitive:ident, $description:ident) => {
+            paste::paste! {
+                test_integer_case!($test_fn, $primitive, Mode::Constant, [<$description _ constant>]);
+                test_integer_case!($test_fn, $primitive, Mode::Public, [<$description _ public>]);
+                test_integer_case!($test_fn, $primitive, Mode::Private, [<$description _ private>]);
+            }
+        };
+        (#[$meta:meta], $test_fn:ident, $primitive:ident, $description:ident, $variant:ident) => {
+            paste::paste! {
+                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Constant, [<$description _ constant _ $variant>]);
+                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Public, [<$description _ public _ $variant>]);
+                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Private, [<$description _ private _ $variant>]);
+            }
+        };
     }
 
-    pub fn check_operation_fails_without_counts<LHS, RHS, OUT>(
-        name: &str,
-        case: &str,
-        a: LHS,
-        b: RHS,
-        operation: impl FnOnce(LHS, RHS) -> OUT,
-    ) {
-        Circuit::scope(name, || {
-            let _candidate = operation(a, b);
-            assert!(!Circuit::is_satisfied(), "{} (!is_satisfied)", case);
-        });
-        Circuit::reset();
+    /// Invokes `test_integer_case!` on all combinations of `Mode`s.
+    #[macro_export]
+    macro_rules! test_integer_binary {
+        ($test_fn:ident, $primitive:ident, $description:ident) => {
+            paste::paste! {
+                test_integer_case!($test_fn, $primitive, Mode::Constant, Mode::Constant, [<constant _ $description _ constant>]);
+                test_integer_case!($test_fn, $primitive, Mode::Constant, Mode::Public, [<constant _ $description _ public>]);
+                test_integer_case!($test_fn, $primitive, Mode::Constant, Mode::Private, [<constant _ $description _ private>]);
+                test_integer_case!($test_fn, $primitive, Mode::Public, Mode::Constant, [<public _ $description _ constant>]);
+                test_integer_case!($test_fn, $primitive, Mode::Public, Mode::Public, [<public _ $description _ public>]);
+                test_integer_case!($test_fn, $primitive, Mode::Public, Mode::Private, [<public _ $description _ private>]);
+                test_integer_case!($test_fn, $primitive, Mode::Private, Mode::Constant, [<private _ $description _ constant>]);
+                test_integer_case!($test_fn, $primitive, Mode::Private, Mode::Public, [<private _ $description _ public>]);
+                test_integer_case!($test_fn, $primitive, Mode::Private, Mode::Private, [<private _ $description _ private>]);
+            }
+        };
+        ($test_fn:ident, $primitive_a:ident, $primitive_b:ident, $description:ident) => {
+            paste::paste! {
+                test_integer_case!($test_fn, $primitive_a, $primitive_b, Mode::Constant, Mode::Constant, [<constant _ $description _ constant>]);
+                test_integer_case!($test_fn, $primitive_a, $primitive_b, Mode::Constant, Mode::Public, [<constant _ $description _ public>]);
+                test_integer_case!($test_fn, $primitive_a, $primitive_b, Mode::Constant, Mode::Private, [<constant _ $description _ private>]);
+                test_integer_case!($test_fn, $primitive_a, $primitive_b, Mode::Public, Mode::Constant, [<public _ $description _ constant>]);
+                test_integer_case!($test_fn, $primitive_a, $primitive_b, Mode::Public, Mode::Public, [<public _ $description _ public>]);
+                test_integer_case!($test_fn, $primitive_a, $primitive_b, Mode::Public, Mode::Private, [<public _ $description _ private>]);
+                test_integer_case!($test_fn, $primitive_a, $primitive_b, Mode::Private, Mode::Constant, [<private _ $description _ constant>]);
+                test_integer_case!($test_fn, $primitive_a, $primitive_b, Mode::Private, Mode::Public, [<private _ $description _ public>]);
+                test_integer_case!($test_fn, $primitive_a, $primitive_b, Mode::Private, Mode::Private, [<private _ $description _ private>]);
+            }
+        };
+        (#[$meta:meta], $test_fn:ident, $primitive:ident, $description:ident, $variant:ident) => {
+            paste::paste! {
+                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Constant, Mode::Constant, [<constant _ $description _ constant _ $variant>]);
+                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Constant, Mode::Public, [<constant _ $description _ public _ $variant>]);
+                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Constant, Mode::Private, [<constant _ $description _ private _ $variant>]);
+                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Public, Mode::Constant, [<public _ $description _ constant _ $variant>]);
+                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Public, Mode::Public, [<public _ $description _ public _ $variant>]);
+                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Public, Mode::Private, [<public _ $description _ private _ $variant>]);
+                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Private, Mode::Constant, [<private _ $description _ constant _ $variant>]);
+                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Private, Mode::Public, [<private _ $description _ public _ $variant>]);
+                test_integer_case!(#[$meta], $test_fn, $primitive, Mode::Private, Mode::Private, [<private _ $description _ private _ $variant>]);
+            }
+        };
+        (#[$meta:meta], $test_fn:ident, $primitive_a:ident, $primitive_b:ident, $description:ident, $variant:ident) => {
+            paste::paste! {
+                test_integer_case!(#[$meta], $test_fn, $primitive_a, $primitive_b, Mode::Constant, Mode::Constant, [<constant _ $description _ constant _ $variant>]);
+                test_integer_case!(#[$meta], $test_fn, $primitive_a, $primitive_b, Mode::Constant, Mode::Public, [<constant _ $description _ public _ $variant>]);
+                test_integer_case!(#[$meta], $test_fn, $primitive_a, $primitive_b, Mode::Constant, Mode::Private, [<constant _ $description _ private _ $variant>]);
+                test_integer_case!(#[$meta], $test_fn, $primitive_a, $primitive_b, Mode::Public, Mode::Constant, [<public _ $description _ constant _ $variant>]);
+                test_integer_case!(#[$meta], $test_fn, $primitive_a, $primitive_b, Mode::Public, Mode::Public, [<public _ $description _ public _ $variant>]);
+                test_integer_case!(#[$meta], $test_fn, $primitive_a, $primitive_b, Mode::Public, Mode::Private, [<public _ $description _ private _ $variant>]);
+                test_integer_case!(#[$meta], $test_fn, $primitive_a, $primitive_b, Mode::Private, Mode::Constant, [<private _ $description _ constant _ $variant>]);
+                test_integer_case!(#[$meta], $test_fn, $primitive_a, $primitive_b, Mode::Private, Mode::Public, [<private _ $description _ public _ $variant>]);
+                test_integer_case!(#[$meta], $test_fn, $primitive_a, $primitive_b, Mode::Private, Mode::Private, [<private _ $description _ private _ $variant>]);
+            }
+        };
+    }
+
+    /// Invokes `test_integer_case!` on all combinations of `Mode`s.
+    #[macro_export]
+    macro_rules! test_integer_ternary {
+        ($test_fn:ident, $primitive:ident, $description_a:ident, $description_b:ident, $description_c:ident) => {
+            paste::paste! {
+                test_integer_case!($test_fn, $primitive, Mode::Constant, Mode::Constant, Mode::Constant, [<$description_a _ constant _ $description_b _ constant _ $description_c _ constant>]);
+                test_integer_case!($test_fn, $primitive, Mode::Constant, Mode::Constant, Mode::Public, [<$description_a _ constant _ $description_b _ constant _ $description_c _ public>]);
+                test_integer_case!($test_fn, $primitive, Mode::Constant, Mode::Constant, Mode::Private, [<$description_a _ constant _ $description_b _ constant _ $description_c _ private>]);
+                test_integer_case!($test_fn, $primitive, Mode::Constant, Mode::Public, Mode::Constant, [<$description_a _ constant _ $description_b _ public _ $description_c _ constant>]);
+                test_integer_case!($test_fn, $primitive, Mode::Constant, Mode::Public, Mode::Public, [<$description_a _ constant _ $description_b _ public _ $description_c _ public>]);
+                test_integer_case!($test_fn, $primitive, Mode::Constant, Mode::Public, Mode::Private, [<$description_a _ constant _ $description_b _ public _ $description_c _ private>]);
+                test_integer_case!($test_fn, $primitive, Mode::Constant, Mode::Private, Mode::Constant, [<$description_a _ constant _ $description_b _ private _ $description_c _ constant>]);
+                test_integer_case!($test_fn, $primitive, Mode::Constant, Mode::Private, Mode::Public, [<$description_a _ constant _ $description_b _ private _ $description_c _ public>]);
+                test_integer_case!($test_fn, $primitive, Mode::Constant, Mode::Private, Mode::Private, [<$description_a _ constant _ $description_b _ private _ $description_c _ private>]);
+                test_integer_case!($test_fn, $primitive, Mode::Public, Mode::Constant, Mode::Constant, [<$description_a _ public _ $description_b _ constant _ $description_c _ constant>]);
+                test_integer_case!($test_fn, $primitive, Mode::Public, Mode::Constant, Mode::Public, [<$description_a _ public _ $description_b _ constant _ $description_c _ public>]);
+                test_integer_case!($test_fn, $primitive, Mode::Public, Mode::Constant, Mode::Private, [<$description_a _ public _ $description_b _ constant _ $description_c _ private>]);
+                test_integer_case!($test_fn, $primitive, Mode::Public, Mode::Public, Mode::Constant, [<$description_a _ public _ $description_b _ public _ $description_c _ constant>]);
+                test_integer_case!($test_fn, $primitive, Mode::Public, Mode::Public, Mode::Public, [<$description_a _ public _ $description_b _ public _ $description_c _ public>]);
+                test_integer_case!($test_fn, $primitive, Mode::Public, Mode::Public, Mode::Private, [<$description_a _ public _ $description_b _ public _ $description_c _ private>]);
+                test_integer_case!($test_fn, $primitive, Mode::Public, Mode::Private, Mode::Constant, [<$description_a _ public _ $description_b _ private _ $description_c _ constant>]);
+                test_integer_case!($test_fn, $primitive, Mode::Public, Mode::Private, Mode::Public, [<$description_a _ public _ $description_b _ private _ $description_c _ public>]);
+                test_integer_case!($test_fn, $primitive, Mode::Public, Mode::Private, Mode::Private, [<$description_a _ public _ $description_b _ private _ $description_c _ private>]);
+                test_integer_case!($test_fn, $primitive, Mode::Private, Mode::Constant, Mode::Constant, [<$description_a _ private _ $description_b _ constant _ $description_c _ constant>]);
+                test_integer_case!($test_fn, $primitive, Mode::Private, Mode::Constant, Mode::Public, [<$description_a _ private _ $description_b _ constant _ $description_c _ public>]);
+                test_integer_case!($test_fn, $primitive, Mode::Private, Mode::Constant, Mode::Private, [<$description_a _ private _ $description_b _ constant _ $description_c _ private>]);
+                test_integer_case!($test_fn, $primitive, Mode::Private, Mode::Public, Mode::Constant, [<$description_a _ private _ $description_b _ public _ $description_c _ constant>]);
+                test_integer_case!($test_fn, $primitive, Mode::Private, Mode::Public, Mode::Public, [<$description_a _ private _ $description_b _ public _ $description_c _ public>]);
+                test_integer_case!($test_fn, $primitive, Mode::Private, Mode::Public, Mode::Private, [<$description_a _ private _ $description_b _ public _ $description_c _ private>]);
+                test_integer_case!($test_fn, $primitive, Mode::Private, Mode::Private, Mode::Constant, [<$description_a _ private _ $description_b _ private _ $description_c _ constant>]);
+                test_integer_case!($test_fn, $primitive, Mode::Private, Mode::Private, Mode::Public, [<$description_a _ private _ $description_b _ private _ $description_c _ public>]);
+                test_integer_case!($test_fn, $primitive, Mode::Private, Mode::Private, Mode::Private, [<$description_a _ private _ $description_b _ private _ $description_c _ private>]);
+            }
+        };
     }
 
     pub fn check_operation_halts<LHS: UnwindSafe, RHS: UnwindSafe, OUT>(
@@ -573,42 +709,6 @@ mod test_utilities {
     ) {
         let result = std::panic::catch_unwind(|| operation(a, b));
         assert!(result.is_err());
-    }
-
-    pub fn check_unary_operation_passes<V: Debug + Display + PartialEq, IN, OUT: Eject<Primitive = V>>(
-        name: &str,
-        case: &str,
-        expected: V,
-        input: IN,
-        operation: impl FnOnce(IN) -> OUT,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        Circuit::scope(name, || {
-            let candidate = operation(input);
-            assert_eq!(expected, candidate.eject_value(), "{}", case);
-            assert_scope!(case, num_constants, num_public, num_private, num_constraints);
-        });
-        Circuit::reset();
-    }
-
-    pub fn check_unary_operation_fails<IN, OUT>(
-        name: &str,
-        case: &str,
-        input: IN,
-        operation: impl FnOnce(IN) -> OUT,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        Circuit::scope(name, || {
-            let _candidate = operation(input);
-            assert_scope_fails!(case, num_constants, num_public, num_private, num_constraints);
-        });
-        Circuit::reset();
     }
 
     pub fn check_unary_operation_halts<IN: UnwindSafe, OUT>(input: IN, operation: impl FnOnce(IN) -> OUT + UnwindSafe) {

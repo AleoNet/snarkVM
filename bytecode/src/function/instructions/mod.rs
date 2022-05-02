@@ -26,6 +26,9 @@ pub(super) use div::*;
 pub(super) mod div_wrapped;
 pub(super) use div_wrapped::*;
 
+pub(super) mod equal;
+pub(super) use equal::*;
+
 pub(super) mod mul;
 pub(super) use mul::*;
 
@@ -59,6 +62,76 @@ use nom::{
 };
 use std::io::{Read, Result as IoResult, Write};
 
+/// Creates a match statement that produces the count for a binary instruction.
+///
+/// ## Example
+/// ```ignore
+/// match_count!(
+///     match AddWrappedCircuit::count(case) {
+///         (I8, I8) => I8,
+///         (I16, I16) => I16,
+///         (I32, I32) => I32,
+///         (I64, I64) => I64,
+///         (I128, I128) => I128,
+///         (U8, U8) => U8,
+///         (U16, U16) => U16,
+///         (U32, U32) => U32,
+///         (U64, U64) => U64,
+///         (U128, U128) => U128,
+///     }
+/// )
+/// ```
+#[macro_export]
+macro_rules! match_count {
+    (match $operation:tt::$macro_:ident($case:expr) { $( ($input_a:ident, $input_b:ident) => $output:ident, )+ }) => {{
+        match $case {
+            $(
+                (LiteralType::$input_a(mode_a), LiteralType::$input_b(mode_b)) => {
+                    $macro_!($input_a<P::Environment>, $operation<$input_b<P::Environment>, Output = $output<P::Environment>>, &(*mode_a, *mode_b))
+                }
+            ),+
+            _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
+        }
+    }};
+}
+
+/// Creates a match statement that produces the output type for a binary instruction.
+///
+/// ## Example
+/// ```ignore
+/// match_output_type!(
+///     match AddCircuit::output_mode((case.0.type_(), case.1.type_())) {
+///         (Field, Field) => Field,
+///         (Group, Group) => Group,
+///         (I8, I8) => I8,
+///         (I16, I16) => I16,
+///         (I32, I32) => I32,
+///         (I64, I64) => I64,
+///         (I128, I128) => I128,
+///         (U8, U8) => U8,
+///         (U16, U16) => U16,
+///         (U32, U32) => U32,
+///         (U64, U64) => U64,
+///         (U128, U128) => U128,
+///         (Scalar, Scalar) => Scalar,
+///     }
+/// )
+/// ```
+#[macro_export]
+macro_rules! match_output_type {
+    (match $operation:tt::$macro_:ident($case:expr) { $( ($input_a:ident, $input_b:ident) => $output:ident, )+ }) => {{
+        match $case {
+            $(
+                (LiteralType::$input_a(mode_a), LiteralType::$input_b(mode_b)) => {
+                    let mode = $macro_!($input_a<P::Environment>, $operation<$input_b<P::Environment>, Output = $output<P::Environment>>, &(mode_a, mode_b));
+                    LiteralType::$output(mode)
+                }
+            ),+
+            _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
+        }
+    }};
+}
+
 pub trait Opcode {
     ///
     /// Returns the opcode of the operation.
@@ -82,6 +155,8 @@ pub enum Instruction<P: Program> {
     Div(Div<P>),
     /// Divides `first` by `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
     DivWrapped(DivWrapped<P>),
+    /// Checks if `first` is equal to `second`, storing the outcome in `destination`.
+    Equal(Equal<P>),
     /// Multiplies `first` with `second`, storing the outcome in `destination`.
     Mul(Mul<P>),
     /// Multiplies `first` with `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
@@ -103,6 +178,7 @@ impl<P: Program> Instruction<P> {
             Self::AddWrapped(..) => AddWrapped::<P>::opcode(),
             Self::Div(..) => Div::<P>::opcode(),
             Self::DivWrapped(..) => DivWrapped::<P>::opcode(),
+            Self::Equal(..) => Equal::<P>::opcode(),
             Self::Mul(..) => Mul::<P>::opcode(),
             Self::MulWrapped(..) => MulWrapped::<P>::opcode(),
             Self::Neg(..) => Neg::<P>::opcode(),
@@ -119,6 +195,7 @@ impl<P: Program> Instruction<P> {
             Self::AddWrapped(add_wrapped) => add_wrapped.operands(),
             Self::Div(div) => div.operands(),
             Self::DivWrapped(div_wrapped) => div_wrapped.operands(),
+            Self::Equal(equal) => equal.operands(),
             Self::Mul(mul) => mul.operands(),
             Self::MulWrapped(mul_wrapped) => mul_wrapped.operands(),
             Self::Neg(neg) => neg.operands(),
@@ -135,6 +212,7 @@ impl<P: Program> Instruction<P> {
             Self::AddWrapped(add_wrapped) => add_wrapped.destination(),
             Self::Div(div) => div.destination(),
             Self::DivWrapped(div_wrapped) => div_wrapped.destination(),
+            Self::Equal(equal) => equal.destination(),
             Self::Mul(mul) => mul.destination(),
             Self::MulWrapped(mul_wrapped) => mul_wrapped.destination(),
             Self::Neg(neg) => neg.destination(),
@@ -151,6 +229,7 @@ impl<P: Program> Instruction<P> {
             Self::AddWrapped(instruction) => instruction.evaluate(registers),
             Self::Div(instruction) => instruction.evaluate(registers),
             Self::DivWrapped(instruction) => instruction.evaluate(registers),
+            Self::Equal(instruction) => instruction.evaluate(registers),
             Self::Mul(instruction) => instruction.evaluate(registers),
             Self::MulWrapped(instruction) => instruction.evaluate(registers),
             Self::Neg(instruction) => instruction.evaluate(registers),
@@ -175,6 +254,7 @@ impl<P: Program> Parser for Instruction<P> {
             preceded(pair(tag(AddWrapped::<P>::opcode()), tag(" ")), map(AddWrapped::parse, Into::into)),
             preceded(pair(tag(Div::<P>::opcode()), tag(" ")), map(Div::parse, Into::into)),
             preceded(pair(tag(DivWrapped::<P>::opcode()), tag(" ")), map(DivWrapped::parse, Into::into)),
+            preceded(pair(tag(Equal::<P>::opcode()), tag(" ")), map(Equal::parse, Into::into)),
             preceded(pair(tag(Mul::<P>::opcode()), tag(" ")), map(Mul::parse, Into::into)),
             preceded(pair(tag(MulWrapped::<P>::opcode()), tag(" ")), map(MulWrapped::parse, Into::into)),
             preceded(pair(tag(Neg::<P>::opcode()), tag(" ")), map(Neg::parse, Into::into)),
@@ -195,6 +275,7 @@ impl<P: Program> fmt::Display for Instruction<P> {
             Self::AddWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Div(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::DivWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::Equal(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Mul(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::MulWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Neg(instruction) => write!(f, "{} {};", self.opcode(), instruction),
@@ -212,12 +293,13 @@ impl<P: Program> FromBytes for Instruction<P> {
             1 => Ok(Self::AddWrapped(AddWrapped::read_le(&mut reader)?)),
             2 => Ok(Self::Div(Div::read_le(&mut reader)?)),
             3 => Ok(Self::DivWrapped(DivWrapped::read_le(&mut reader)?)),
-            4 => Ok(Self::Mul(Mul::read_le(&mut reader)?)),
-            5 => Ok(Self::MulWrapped(MulWrapped::read_le(&mut reader)?)),
-            6 => Ok(Self::Neg(Neg::read_le(&mut reader)?)),
-            7 => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
-            8 => Ok(Self::SubWrapped(SubWrapped::read_le(&mut reader)?)),
-            9.. => Err(error(format!("Failed to deserialize an instruction of code {code}"))),
+            4 => Ok(Self::Equal(Equal::read_le(&mut reader)?)),
+            5 => Ok(Self::Mul(Mul::read_le(&mut reader)?)),
+            6 => Ok(Self::MulWrapped(MulWrapped::read_le(&mut reader)?)),
+            7 => Ok(Self::Neg(Neg::read_le(&mut reader)?)),
+            8 => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
+            9 => Ok(Self::SubWrapped(SubWrapped::read_le(&mut reader)?)),
+            10.. => Err(error(format!("Failed to deserialize an instruction of code {code}"))),
         }
     }
 }
@@ -241,24 +323,28 @@ impl<P: Program> ToBytes for Instruction<P> {
                 u16::write_le(&3u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Mul(instruction) => {
+            Self::Equal(instruction) => {
                 u16::write_le(&4u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::MulWrapped(instruction) => {
+            Self::Mul(instruction) => {
                 u16::write_le(&5u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Neg(instruction) => {
+            Self::MulWrapped(instruction) => {
                 u16::write_le(&6u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Sub(instruction) => {
+            Self::Neg(instruction) => {
                 u16::write_le(&7u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::SubWrapped(instruction) => {
+            Self::Sub(instruction) => {
                 u16::write_le(&8u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::SubWrapped(instruction) => {
+                u16::write_le(&9u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
         }

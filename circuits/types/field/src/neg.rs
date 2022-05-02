@@ -34,10 +34,65 @@ impl<E: Environment> Neg for &Field<E> {
     }
 }
 
+impl<E: Environment> Metrics<dyn Neg<Output = Field<E>>> for Field<E> {
+    type Case = Mode;
+
+    fn count(_case: &Self::Case) -> Count {
+        Count::is(0, 0, 0, 0)
+    }
+}
+
+impl<E: Environment> OutputMode<dyn Neg<Output = Field<E>>> for Field<E> {
+    type Case = Mode;
+
+    fn output_mode(case: &Self::Case) -> Mode {
+        match case {
+            Mode::Constant => Mode::Constant,
+            _ => Mode::Private,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
+    use snarkvm_utilities::{test_rng, UniformRand};
+
+    const ITERATIONS: u64 = 1_000;
+
+    fn check_neg(name: &str, mode: Mode) {
+        let check_neg = |given: <Circuit as Environment>::BaseField| {
+            // Compute it's negation.
+            let expected = given.neg();
+            let candidate = Field::<Circuit>::new(mode, given);
+
+            // Check negation.
+            Circuit::scope(name, || {
+                let result = candidate.neg();
+                assert_eq!(expected, result.eject_value());
+                assert_count!(Neg(Field) => Field, &mode);
+                assert_output_mode!(Neg(Field) => Field, &mode, result);
+            });
+        };
+
+        for _ in 0..ITERATIONS {
+            // Sample a random element.
+            let given: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
+            check_neg(given)
+        }
+        // Check zero case.
+        check_neg(<Circuit as Environment>::BaseField::zero());
+        // Check one case.
+        check_neg(<Circuit as Environment>::BaseField::one());
+    }
+
+    #[test]
+    fn test_neg() {
+        check_neg("Constant", Mode::Constant);
+        check_neg("Public", Mode::Public);
+        check_neg("Private", Mode::Private);
+    }
 
     #[test]
     fn test_zero() {

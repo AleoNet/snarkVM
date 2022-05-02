@@ -16,9 +16,13 @@
 
 use super::*;
 
-impl<E: Environment> Poseidon<E> {
+impl<E: Environment> PRF for Poseidon<E> {
+    type Input = Field<E>;
+    type Output = Field<E>;
+    type Seed = Field<E>;
+
     #[inline]
-    pub fn prf(&self, seed: &Field<E>, input: &[Field<E>]) -> Field<E> {
+    fn prf(&self, seed: &Self::Seed, input: &[Self::Input]) -> Self::Output {
         // Construct the preimage: seed || length(input) || input.
         let mut preimage = Vec::with_capacity(2 + input.len());
         preimage.push(seed.clone());
@@ -30,6 +34,22 @@ impl<E: Environment> Poseidon<E> {
     }
 }
 
+impl<E: Environment> Metrics<dyn PRF<Seed = Field<E>, Input = Field<E>, Output = Field<E>>> for Poseidon<E> {
+    type Case = ();
+
+    fn count(_parameter: &Self::Case) -> Count {
+        todo!()
+    }
+}
+
+impl<E: Environment> OutputMode<dyn PRF<Seed = Field<E>, Input = Field<E>, Output = Field<E>>> for Poseidon<E> {
+    type Case = ();
+
+    fn output_mode(_case: &Self::Case) -> Mode {
+        todo!()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -37,15 +57,15 @@ mod tests {
     use snarkvm_circuits_types::environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
-    const ITERATIONS: usize = 10;
+    const ITERATIONS: u64 = 10;
 
     fn check_prf(
         mode: Mode,
         num_inputs: usize,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
     ) {
         let rng = &mut test_rng();
         let poseidon = Poseidon::new();

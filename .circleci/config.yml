@@ -93,7 +93,7 @@ commands:
           cache_key: << parameters.cache_key >>
       - run:
           no_output_timeout: 30m
-          command: cd << parameters.workspace_member >> && RUST_MIN_STACK=67108864 cargo test
+          command: cd << parameters.workspace_member >> && RUST_MIN_STACK=67108864 cargo test << parameters.flags >>
       - clear_environment:
           cache_key: << parameters.cache_key >>
 
@@ -139,7 +139,7 @@ jobs:
       - image: cimg/rust:1.59
     resource_class: 2xlarge
     steps:
-      - run_parallel:
+      - run_serial:
           workspace_member: algorithms
           cache_key: snarkvm-algorithms-cache
 
@@ -236,11 +236,13 @@ jobs:
   circuits-types-integers:
     docker:
       - image: cimg/rust:1.59
-    resource_class: 2xlarge
+    resource_class: xlarge
+    parallelism: 20 # Do NOT arbitrarily increase this. If tests slowed down, ensure you are Circuit::reset()'ing tests.
     steps:
-      - run_serial:
+      - run_parallel:
           workspace_member: circuits/types/integers
           cache_key: snarkvm-circuits-types-integers-cache
+          flags: -- --ignored
 
   circuits-types-scalar:
     docker:

@@ -2157,6 +2157,7 @@ dependencies = [
 name = "snarkvm-circuits-types-integers"
 version = "0.7.5"
 dependencies = [
+ "paste",
  "snarkvm-circuits-environment",
  "snarkvm-circuits-types-boolean",
  "snarkvm-circuits-types-field",

@@ -14,14 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_bytecode::{Identifier, Process, Program, Value};
+use snarkvm_bytecode::{Function, Identifier, Process, Program, Value};
 use snarkvm_circuits::prelude::*;
 
 pub struct HelloWorld;
 
 impl HelloWorld {
-    /// Initializes a new instance of `HelloWorld` with the given inputs.
-    pub fn run<P: Program>(inputs: [Value<P>; 2]) -> Vec<Value<P>> {
+    /// Initializes a new instance of `HelloWorld`.
+    pub fn initialize<P: Program>() {
         P::from_str(
             r"
 function main:
@@ -30,16 +30,49 @@ function main:
     add r0 r1 into r2;
     output r2 as field.private;",
         );
+    }
+
+    /// Runs `HelloWorld` with the given inputs.
+    pub fn run<P: Program>(inputs: [Value<P>; 2]) -> Vec<Value<P>> {
         P::get_function(&Identifier::from_str("main")).unwrap().evaluate(&inputs)
+    }
+
+    /// Returns an estimated cost of running `HelloWorld`.
+    pub fn count<P: Program>() -> Count {
+        Function::count(&P::get_function(&Identifier::from_str("main")).unwrap())
     }
 }
 
 fn main() {
+    // Initialize the program.
+    HelloWorld::initialize::<Process>();
+
+    // Get estimated circuit count for the `HelloWorld` program.
+    let count = HelloWorld::count::<Process>();
+
+    // Run the `HelloWorld` program with the given inputs.
     let first = Value::from_str("1field.public");
     let second = Value::from_str("1field.private");
 
-    let expected = Value::<Process>::from_str("2field.private");
+    // Store the circuit counts before running the program.
+    let (num_constants_before, num_public_before, num_private_before, num_constraints_before, _num_gates_before) =
+        <Process as Program>::Aleo::count();
+
     let candidate = HelloWorld::run::<Process>([first, second]);
+
+    // Store the circuit counts after running the program.
+    let (num_constants_after, num_public_after, num_private_after, num_constraints_after, _num_gates_after) =
+        <Process as Program>::Aleo::count();
+
+    // Check that the estimated counts is correct.
+    assert!(count.matches(
+        num_constants_after - num_constants_before,
+        num_public_after - num_public_before,
+        num_private_after - num_private_before,
+        num_constraints_after - num_constraints_before,
+    ));
+
+    let expected = Value::<Process>::from_str("2field.private");
 
     match (&expected, &candidate[0]) {
         (Value::Literal(Literal::Field(expected)), Value::Literal(Literal::Field(candidate))) => {
@@ -56,15 +89,40 @@ mod tests {
 
     #[test]
     fn test_hello_world() {
+        // Initialize the program.
+        HelloWorld::initialize::<Process>();
+
+        // Get estimated circuit count for the `HelloWorld` program.
+        let count = HelloWorld::count::<Process>();
+
+        // Run the `HelloWorld` program with the given inputs.
         let first = Value::from_str("1field.public");
         let second = Value::from_str("1field.private");
 
-        let expected = Value::<Process>::from_str("2field.private");
+        // Store the circuit counts before running the program.
+        let (num_constants_before, num_public_before, num_private_before, num_constraints_before, _num_gates_before) =
+            <Process as Program>::Aleo::count();
+
         let candidate = HelloWorld::run::<Process>([first, second]);
+
+        // Store the circuit counts after running the program.
+        let (num_constants_after, num_public_after, num_private_after, num_constraints_after, _num_gates_after) =
+            <Process as Program>::Aleo::count();
+
+        // Check that the estimated counts is correct.
+        assert!(count.matches(
+            num_constants_after - num_constants_before,
+            num_public_after - num_public_before,
+            num_private_after - num_private_before,
+            num_constraints_after - num_constraints_before
+        ));
+
+        let expected = Value::<Process>::from_str("2field.private");
 
         match (&expected, &candidate[0]) {
             (Value::Literal(Literal::Field(expected)), Value::Literal(Literal::Field(candidate))) => {
-                assert!(expected.is_equal(candidate).eject_value())
+                println!("{candidate}");
+                assert!(expected.is_equal(candidate).eject_value());
             }
             _ => panic!("Failed to load output"),
         }
@@ -75,8 +133,8 @@ mod tests {
         pub struct HelloWorld;
 
         impl HelloWorld {
-            /// Initializes a new instance of `HelloWorld` with the given inputs.
-            pub fn run<P: Program>(inputs: &[Value<P>]) -> Vec<Value<P>> {
+            /// Initializes a new instance of the `HelloWorld` program.
+            pub fn initialize<P: Program>() {
                 P::from_str(
                     r"
 function main:
@@ -85,15 +143,46 @@ function main:
     add r0 r1 into r2;
     output r2 as u8.private;",
                 );
+            }
+
+            /// Runs the `HelloWorld` with the given inputs.
+            pub fn run<P: Program>(inputs: &[Value<P>]) -> Vec<Value<P>> {
                 P::get_function(&Identifier::from_str("main")).unwrap().evaluate(inputs)
             }
+
+            /// Estimates the circuit counts for the `HelloWorld` program.
+            pub fn count<P: Program>() -> Count {
+                Function::count(&P::get_function(&Identifier::from_str("main")).unwrap())
+            }
         }
+
+        // Initialize the program.
+        HelloWorld::initialize::<Process>();
+
+        // Get estimated circuit count for the `HelloWorld` program.
+        let count = HelloWorld::count::<Process>();
 
         // Initialize the inputs.
         let input = [Value::from_str("1u8.public"), Value::from_str("1u8.private")];
 
+        // Store the circuit counts before running the program.
+        let (num_constants_before, num_public_before, num_private_before, num_constraints_before, _num_gates_before) =
+            <Process as Program>::Aleo::count();
+
         // Run the function.
         let _output = HelloWorld::run::<Process>(&input);
+
+        // Store the circuit counts after running the program.
+        let (num_constants_after, num_public_after, num_private_after, num_constraints_after, _num_gates_after) =
+            <Process as Program>::Aleo::count();
+
+        // Check that the estimated counts is correct.
+        assert!(count.matches(
+            num_constants_after - num_constants_before,
+            num_public_after - num_public_before,
+            num_private_after - num_private_before,
+            num_constraints_after - num_constraints_before,
+        ));
 
         // Marlin setup, prove, and verify.
         {
@@ -132,6 +221,97 @@ function main:
             println!("Called verifier");
             println!("\nShould not verify (i.e. verifier messages should print below):");
             assert!(!MarlinInst::verify(&index_vk, &[one, one + one], &proof).unwrap());
+        }
+    }
+
+    #[test]
+    fn test_silly_sudoku() {
+        pub struct SillySudoku;
+
+        impl SillySudoku {
+            /// Initializes a new instance of the `HelloWorld` program.
+            pub fn initialize<P: Program>() {
+                P::from_str(
+                    r"
+function main:
+    input r0 as u8.private;
+    input r1 as u8.private;
+    input r2 as u8.private;
+    input r3 as u8.private;
+    input r4 as u8.private;
+    input r5 as u8.private;
+    input r6 as u8.private;
+    input r7 as u8.private;
+    input r8 as u8.private;
+    add r0 r1 into r9;
+    add r2 r3 into r10;
+    add r4 r5 into r11;
+    add r6 r7 into r12;
+    add r9 r10 into r13;
+    add r11 r12 into r14;
+    add r13 r14 into r15;
+    add r15 r8 into r16;
+    eq r16 45u8 into r17;
+    output r17 as boolean.private;",
+                );
+            }
+
+            /// Runs the `SillySudoku` with the given inputs.
+            pub fn run<P: Program>(inputs: &[Value<P>]) -> Vec<Value<P>> {
+                P::get_function(&Identifier::from_str("main")).unwrap().evaluate(inputs)
+            }
+
+            /// Estimates the circuit counts for the `SillySudoku` program.
+            pub fn count<P: Program>() -> Count {
+                Function::count(&P::get_function(&Identifier::from_str("main")).unwrap())
+            }
+        }
+
+        // Initialize the program.
+        SillySudoku::initialize::<Process>();
+
+        // Get estimated circuit count for the `SillySudoku` program.
+        // This function produces 0 constants, 0 public variables, 74 private variables, and 91 constraints.
+        let count = SillySudoku::count::<Process>();
+
+        // Run the `HelloWorld` program with the given inputs.
+        let first = Value::<Process>::from_str("1u8.private");
+        let second = Value::<Process>::from_str("1u8.private");
+        let third = Value::<Process>::from_str("1u8.private");
+        let fourth = Value::<Process>::from_str("1u8.private");
+        let fifth = Value::<Process>::from_str("1u8.private");
+        let sixth = Value::<Process>::from_str("1u8.private");
+        let seventh = Value::<Process>::from_str("1u8.private");
+        let eighth = Value::<Process>::from_str("1u8.private");
+        let ninth = Value::<Process>::from_str("1u8.private");
+
+        // Store the circuit counts before running the program.
+        let (num_constants_before, num_public_before, num_private_before, num_constraints_before, _num_gates_before) =
+            <Process as Program>::Aleo::count();
+
+        let candidate =
+            SillySudoku::run::<Process>(&[first, second, third, fourth, fifth, sixth, seventh, eighth, ninth]);
+
+        // Store the circuit counts after running the program.
+        let (num_constants_after, num_public_after, num_private_after, num_constraints_after, _num_gates_after) =
+            <Process as Program>::Aleo::count();
+
+        // Check that the estimated counts is correct.
+        assert!(count.matches(
+            num_constants_after - num_constants_before,
+            num_public_after - num_public_before,
+            num_private_after - num_private_before,
+            num_constraints_after - num_constraints_before,
+        ));
+
+        let expected = Value::<Process>::from_str("false.private");
+
+        match (&expected, &candidate[0]) {
+            (Value::Literal(Literal::Boolean(expected)), Value::Literal(Literal::Boolean(candidate))) => {
+                println!("{candidate}");
+                assert!(expected.is_equal(candidate).eject_value());
+            }
+            _ => panic!("Failed to load output"),
         }
     }
 }
