@@ -124,7 +124,7 @@ impl<E: Environment> OutputMode<dyn Add<Group<E>, Output = Group<E>>> for Group<
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_circuits_environment::{assert_count, assert_output_mode, Circuit};
+    use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 100;
