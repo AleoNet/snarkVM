@@ -20,7 +20,6 @@ use snarkvm_curves::traits::PairingEngine;
 use snarkvm_utilities::{
     CanonicalDeserialize,
     CanonicalSerialize,
-    ConstantSerializedSize,
     FromBytes,
     Read,
     SerializationError,
@@ -40,19 +39,19 @@ lazy_static::lazy_static! {
     static ref DEFAULT_PATH: PathBuf = PathBuf::from(format!("{}/.aleo/powers_of_g", std::env::var("HOME").unwrap()));
     static ref URLS: HashMap<usize, String> = {
         let mut m = HashMap::new();
-        m.insert(1 << 16, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_16"));
-        m.insert(1 << 17, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_17"));
-        m.insert(1 << 18, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_18"));
-        m.insert(1 << 19, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_19"));
-        m.insert(1 << 20, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_20"));
-        m.insert(1 << 21, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_21"));
-        m.insert(1 << 22, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_22"));
-        m.insert(1 << 23, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_23"));
-        m.insert(1 << 24, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_24"));
-        m.insert(1 << 25, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_25"));
-        m.insert(1 << 26, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_26"));
-        m.insert(1 << 27, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_27"));
-        m.insert(1 << 28, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_28"));
+        m.insert(1 << 16, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_16_uncompressed"));
+        m.insert(1 << 17, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_17_uncompressed"));
+        m.insert(1 << 18, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_18_uncompressed"));
+        m.insert(1 << 19, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_19_uncompressed"));
+        m.insert(1 << 20, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_20_uncompressed"));
+        m.insert(1 << 21, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_21_uncompressed"));
+        m.insert(1 << 22, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_22_uncompressed"));
+        m.insert(1 << 23, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_23_uncompressed"));
+        m.insert(1 << 24, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_24_uncompressed"));
+        m.insert(1 << 25, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_25_uncompressed"));
+        m.insert(1 << 26, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_26_uncompressed"));
+        m.insert(1 << 27, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_27_uncompressed"));
+        m.insert(1 << 28, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_28_uncompressed"));
         m
     };
     static ref BASE_POWERS: &'static [u8] = include_bytes!("./powers_of_g_15");
@@ -61,6 +60,8 @@ lazy_static::lazy_static! {
 
 // Amount of powers contained in `POWERS_TIMES_GAMMA_G`.
 const NUM_POWERS_TIMES_GAMMA_G: usize = 84;
+// Size of a serialized power of G.
+const POWER_OF_G_SERIALIZED_SIZE: usize = 97;
 
 /// An abstraction over a vector of powers of G, meant to reduce
 /// memory burden when handling universal setup parameters.
@@ -184,7 +185,7 @@ impl<E: PairingEngine> PowersOfG<E> {
             file.write_all(&BASE_POWERS)?;
         }
 
-        let degree = file.metadata()?.len() as usize / E::G1Affine::SERIALIZED_SIZE;
+        let degree = file.metadata()?.len() as usize / POWER_OF_G_SERIALIZED_SIZE;
 
         let mut powers = Self {
             file_path: String::from(file_path.to_str().expect("could not get filepath for powers of g")),
@@ -249,7 +250,7 @@ impl<E: PairingEngine> PowersOfG<E> {
     /// our powers of G.
     fn get_starting_index(&mut self, index: usize) -> usize {
         let index_start = index
-            .checked_mul(E::G1Affine::SERIALIZED_SIZE)
+            .checked_mul(POWER_OF_G_SERIALIZED_SIZE)
             .expect("attempted to index powers of G with an index greater than usize");
         self.ensure_powers_exist(index_start);
 
