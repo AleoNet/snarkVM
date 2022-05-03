@@ -95,43 +95,6 @@ macro_rules! match_count {
     }};
 }
 
-/// Creates a match statement that produces the output type for a binary instruction.
-///
-/// ## Example
-/// ```ignore
-/// match_output_type!(
-///     match AddCircuit::output_mode((case.0.type_(), case.1.type_())) {
-///         (Field, Field) => Field,
-///         (Group, Group) => Group,
-///         (I8, I8) => I8,
-///         (I16, I16) => I16,
-///         (I32, I32) => I32,
-///         (I64, I64) => I64,
-///         (I128, I128) => I128,
-///         (U8, U8) => U8,
-///         (U16, U16) => U16,
-///         (U32, U32) => U32,
-///         (U64, U64) => U64,
-///         (U128, U128) => U128,
-///         (Scalar, Scalar) => Scalar,
-///     }
-/// )
-/// ```
-#[macro_export]
-macro_rules! match_output_type {
-    (match $operation:tt::$macro_:ident($case:expr) { $( ($input_a:ident, $input_b:ident) => $output:ident, )+ }) => {{
-        match $case {
-            $(
-                (LiteralType::$input_a(mode_a), LiteralType::$input_b(mode_b)) => {
-                    let mode = $macro_!($input_a<P::Environment>, $operation<$input_b<P::Environment>, Output = $output<P::Environment>>, &(mode_a, mode_b));
-                    LiteralType::$output(mode)
-                }
-            ),+
-            _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
-        }
-    }};
-}
-
 pub trait Opcode {
     ///
     /// Returns the opcode of the operation.
