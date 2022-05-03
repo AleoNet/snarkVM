@@ -25,7 +25,7 @@ fn add(c: &mut Criterion) {
     let one = <Circuit as Environment>::BaseField::one();
     let two = one + one;
 
-    const ITERATIONS: usize = 1000;
+    const ITERATIONS: u64 = 1000;
 
     c.bench_function("LinearCombination::add", move |b| {
         b.iter(|| {

@@ -19,6 +19,9 @@ pub(crate) use constraint::*;
 
 pub(super) mod converter;
 
+pub mod count;
+pub use count::*;
+
 pub(super) mod counter;
 pub(super) use counter::*;
 
@@ -27,6 +30,9 @@ pub use linear_combination::*;
 
 pub mod mode;
 pub use mode::*;
+
+pub mod constant_or_mode;
+pub use constant_or_mode::*;
 
 pub mod variable;
 pub use variable::*;

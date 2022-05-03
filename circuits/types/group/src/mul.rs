@@ -187,17 +187,17 @@ mod tests {
     use snarkvm_curves::ProjectiveCurve;
     use snarkvm_utilities::{test_rng, UniformRand};
 
-    const ITERATIONS: usize = 10;
+    const ITERATIONS: u64 = 10;
 
     fn check_mul(
         name: &str,
         expected: &<Circuit as Environment>::Affine,
         a: &Group<Circuit>,
         b: &Scalar<Circuit>,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
     ) {
         Circuit::scope(name, || {
             let candidate = a * b;
@@ -212,10 +212,10 @@ mod tests {
         expected: &<Circuit as Environment>::Affine,
         a: &Group<Circuit>,
         b: &Scalar<Circuit>,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
     ) {
         Circuit::scope(name, || {
             let mut candidate = a.clone();
@@ -235,7 +235,7 @@ mod tests {
             let base: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
             let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
 
-            let num_nonzero_bits = scalar.to_repr().to_biguint().bits() as usize;
+            let num_nonzero_bits = scalar.to_repr().to_biguint().bits();
             let num_constant =
                 (3 /* DOUBLE private */ + 4/* public ADD private */ + 0/* TERNARY */) * (num_nonzero_bits - 1); // Typically around 760.
 
@@ -293,7 +293,7 @@ mod tests {
             let base: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
             let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
 
-            let num_nonzero_bits = scalar.to_repr().to_biguint().bits() as usize;
+            let num_nonzero_bits = scalar.to_repr().to_biguint().bits();
             let num_constant =
                 (1 /* DOUBLE private */ + 2/* public ADD private */ + 0/* TERNARY */) * (num_nonzero_bits - 1); // Typically around 760.
             let num_private =
@@ -321,7 +321,7 @@ mod tests {
             let base: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
             let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
 
-            let num_nonzero_bits = scalar.to_repr().to_biguint().bits() as usize;
+            let num_nonzero_bits = scalar.to_repr().to_biguint().bits();
             let num_constant =
                 (1 /* DOUBLE private */ + 2/* private ADD private */ + 0/* TERNARY */) * (num_nonzero_bits - 1); // Typically around 760.
             let num_private =

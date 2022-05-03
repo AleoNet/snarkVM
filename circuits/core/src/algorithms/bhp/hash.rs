@@ -42,10 +42,10 @@ mod tests {
 
     fn check_hash<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(
         mode: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
     ) {
         // Initialize the BHP hash.
         let native = BHPCRH::<Projective, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);

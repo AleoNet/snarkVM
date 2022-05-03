@@ -28,6 +28,9 @@ pub struct Member<P: Program> {
     /// The name of the member.
     name: Identifier<P>,
     /// The annotation of the member.
+    // TODO: If composites are not allowed to be nested, then this should be changed `LiteralType`.
+    //  Using `Annotation` implies that a `Member` can be a composite type and thus we can have
+    //  r0.<id1>.<id2>.
     annotation: Annotation<P>,
 }
 

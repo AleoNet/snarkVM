@@ -17,17 +17,39 @@
 use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Registers},
     helpers::Register,
+    LiteralType,
     Program,
     Value,
 };
-use snarkvm_circuits::{Literal, Parser, ParserResult};
+
+use snarkvm_circuits::{
+    count,
+    Count,
+    Field,
+    Group,
+    Literal,
+    Metrics,
+    Parser,
+    ParserResult,
+    SubChecked,
+    I128,
+    I16,
+    I32,
+    I64,
+    I8,
+    U128,
+    U16,
+    U32,
+    U64,
+    U8,
+};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
-use core::fmt;
+use core::{fmt, ops::Sub as SubCircuit};
 use nom::combinator::map;
 use std::io::{Read, Result as IoResult, Write};
 
-/// Subtracts `first` from `second`, storing the outcome in `destination`.
+/// Subtracts `second` from `first`, storing the outcome in `destination`.
 pub struct Sub<P: Program> {
     operation: BinaryOperation<P>,
 }
@@ -70,10 +92,41 @@ impl<P: Program> Operation<P> for Sub<P> {
         let result = match (first, second) {
             (Literal::Field(a), Literal::Field(b)) => Literal::Field(a - b),
             (Literal::Group(a), Literal::Group(b)) => Literal::Group(a - b),
+            (Literal::I8(a), Literal::I8(b)) => Literal::I8(a.sub_checked(&b)),
+            (Literal::I16(a), Literal::I16(b)) => Literal::I16(a.sub_checked(&b)),
+            (Literal::I32(a), Literal::I32(b)) => Literal::I32(a.sub_checked(&b)),
+            (Literal::I64(a), Literal::I64(b)) => Literal::I64(a.sub_checked(&b)),
+            (Literal::I128(a), Literal::I128(b)) => Literal::I128(a.sub_checked(&b)),
+            (Literal::U8(a), Literal::U8(b)) => Literal::U8(a.sub_checked(&b)),
+            (Literal::U16(a), Literal::U16(b)) => Literal::U16(a.sub_checked(&b)),
+            (Literal::U32(a), Literal::U32(b)) => Literal::U32(a.sub_checked(&b)),
+            (Literal::U64(a), Literal::U64(b)) => Literal::U64(a.sub_checked(&b)),
+            (Literal::U128(a), Literal::U128(b)) => Literal::U128(a.sub_checked(&b)),
             _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
         };
 
         registers.assign(self.operation.destination(), result);
+    }
+}
+
+impl<P: Program> Metrics<Self> for Sub<P> {
+    type Case = (LiteralType<P>, LiteralType<P>);
+
+    fn count(case: &Self::Case) -> Count {
+        crate::match_count!(match SubCircuit::count(case) {
+            (Field, Field) => Field,
+            (Group, Group) => Group,
+            (I8, I8) => I8,
+            (I16, I16) => I16,
+            (I32, I32) => I32,
+            (I64, I64) => I64,
+            (I128, I128) => I128,
+            (U8, U8) => U8,
+            (U16, U16) => U16,
+            (U32, U32) => U32,
+            (U64, U64) => U64,
+            (U128, U128) => U128,
+        })
     }
 }
 
@@ -119,36 +172,105 @@ impl<P: Program> Into<Instruction<P>> for Sub<P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Process, Register};
-
-    type P = Process;
-
-    fn check_sub(first: Value<P>, second: Value<P>, expected: Value<P>) {
-        let registers = Registers::<P>::default();
-        registers.define(&Register::from_str("r0"));
-        registers.define(&Register::from_str("r1"));
-        registers.define(&Register::from_str("r2"));
-        registers.assign(&Register::from_str("r0"), first);
-        registers.assign(&Register::from_str("r1"), second);
-
-        Sub::from_str("r0 r1 into r2").evaluate(&registers);
-        let candidate = registers.load(&Register::from_str("r2"));
-        assert_eq!(expected, candidate);
-    }
+    use crate::{test_instruction_halts, test_modes, Process};
 
     #[test]
-    fn test_sub_field() {
-        let first = Value::<P>::from_str("3field.public");
-        let second = Value::<P>::from_str("2field.private");
-        let expected = Value::<P>::from_str("1field.private");
-        check_sub(first, second, expected);
+    fn test_parse() {
+        let (_, instruction) = Instruction::<Process>::parse("sub r0 r1 into r2;").unwrap();
+        assert!(matches!(instruction, Instruction::Sub(_)));
     }
 
-    #[test]
-    fn test_sub_group() {
-        let first = Value::<P>::from_str("2group.public");
-        let second = Value::<P>::from_str("0group.private");
-        let expected = Value::<P>::from_str("2group.private");
-        check_sub(first, second, expected);
-    }
+    test_modes!(field, Sub, "3field", "2field", "1field");
+    test_modes!(group, Sub, "2group", "0group", "2group");
+    test_modes!(i8, Sub, "1i8", "2i8", "-1i8");
+    test_modes!(i16, Sub, "1i16", "2i16", "-1i16");
+    test_modes!(i32, Sub, "1i32", "2i32", "-1i32");
+    test_modes!(i64, Sub, "1i64", "2i64", "-1i64");
+    test_modes!(i128, Sub, "1i128", "2i128", "-1i128");
+    test_modes!(u8, Sub, "3u8", "2u8", "1u8");
+    test_modes!(u16, Sub, "3u16", "2u16", "1u16");
+    test_modes!(u32, Sub, "3u32", "2u32", "1u32");
+    test_modes!(u64, Sub, "3u64", "2u64", "1u64");
+    test_modes!(u128, Sub, "3u128", "2u128", "1u128");
+
+    test_instruction_halts!(
+        i8_underflow_halts,
+        Sub,
+        "Integer underflow on subtraction of two constants",
+        &format!("{}i8.constant", i8::MIN),
+        "1i8.constant"
+    );
+    test_instruction_halts!(
+        i16_underflow_halts,
+        Sub,
+        "Integer underflow on subtraction of two constants",
+        &format!("{}i16.constant", i16::MIN),
+        "1i16.constant"
+    );
+    test_instruction_halts!(
+        i32_underflow_halts,
+        Sub,
+        "Integer underflow on subtraction of two constants",
+        &format!("{}i32.constant", i32::MIN),
+        "1i32.constant"
+    );
+    test_instruction_halts!(
+        i64_underflow_halts,
+        Sub,
+        "Integer underflow on subtraction of two constants",
+        &format!("{}i64.constant", i64::MIN),
+        "1i64.constant"
+    );
+    test_instruction_halts!(
+        i128_underflow_halts,
+        Sub,
+        "Integer underflow on subtraction of two constants",
+        &format!("{}i128.constant", i128::MIN),
+        "1i128.constant"
+    );
+    test_instruction_halts!(
+        u8_underflow_halts,
+        Sub,
+        "Integer underflow on subtraction of two constants",
+        &format!("{}u8.constant", u8::MIN),
+        "1u8.constant"
+    );
+    test_instruction_halts!(
+        u16_underflow_halts,
+        Sub,
+        "Integer underflow on subtraction of two constants",
+        &format!("{}u16.constant", u16::MIN),
+        "1u16.constant"
+    );
+    test_instruction_halts!(
+        u32_underflow_halts,
+        Sub,
+        "Integer underflow on subtraction of two constants",
+        &format!("{}u32.constant", u32::MIN),
+        "1u32.constant"
+    );
+    test_instruction_halts!(
+        u64_underflow_halts,
+        Sub,
+        "Integer underflow on subtraction of two constants",
+        &format!("{}u64.constant", u64::MIN),
+        "1u64.constant"
+    );
+    test_instruction_halts!(
+        u128_underflow_halts,
+        Sub,
+        "Integer underflow on subtraction of two constants",
+        &format!("{}u128.constant", u128::MIN),
+        "1u128.constant"
+    );
+
+    test_instruction_halts!(
+        address_halts,
+        Sub,
+        "Invalid 'sub' instruction",
+        "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.constant",
+        "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.constant"
+    );
+    test_instruction_halts!(boolean_halts, Sub, "Invalid 'sub' instruction", "true.constant", "true.constant");
+    test_instruction_halts!(string_halts, Sub, "Invalid 'sub' instruction", "\"hello\".constant", "\"world\".constant");
 }

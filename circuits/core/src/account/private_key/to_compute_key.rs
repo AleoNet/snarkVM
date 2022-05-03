@@ -28,15 +28,9 @@ mod tests {
     use super::*;
     use crate::{account::from_private_key::tests::generate_private_and_compute_key, Devnet as Circuit};
 
-    const ITERATIONS: usize = 100;
+    const ITERATIONS: u64 = 100;
 
-    fn check_to_compute_key(
-        mode: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
+    fn check_to_compute_key(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
         for i in 0..ITERATIONS {
             // Generate the private key and compute key components.
             let (sk_sig, r_sig, pk_sig, pr_sig, sk_prf) = generate_private_and_compute_key();

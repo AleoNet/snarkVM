@@ -14,6 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use snarkvm_circuits_environment::ScalarTrait;
+
+/// A trait for a commitment scheme.
+pub trait CommitmentScheme {
+    type Input;
+    type Output;
+    type Randomness;
+
+    /// Returns the commitment to the given input and randomness.
+    fn commit(&self, input: &[Self::Input], randomness: &[Self::Randomness]) -> Self::Output;
+}
+
 /// A trait for a hash function.
 pub trait Hash {
     type Input;
@@ -23,6 +35,24 @@ pub trait Hash {
     fn hash(&self, input: &[Self::Input]) -> Self::Output;
 }
 
+/// A trait for a hash function that produces multiple outputs.
+pub trait HashMany {
+    type Input;
+    type Output;
+
+    /// Returns the hash of the given input.
+    fn hash_many(&self, input: &[Self::Input], num_outputs: usize) -> Vec<Self::Output>;
+}
+
+/// A trait for a hash function that projects the value to a scalar.
+pub trait HashToScalar {
+    type Input;
+    type Scalar: ScalarTrait;
+
+    /// Returns the hash of the given input.
+    fn hash_to_scalar(&self, input: &[Self::Input]) -> Self::Scalar;
+}
+
 /// A trait for a hash function of an uncompressed variant.
 pub trait HashUncompressed {
     type Input;
@@ -30,4 +60,14 @@ pub trait HashUncompressed {
 
     /// Returns the hash of the given input.
     fn hash_uncompressed(&self, input: &[Self::Input]) -> Self::Output;
+}
+
+/// A trait for a pseudorandom function.
+pub trait PRF {
+    type Seed;
+    type Input;
+    type Output;
+
+    /// Returns the output for the given seed and input.
+    fn prf(&self, seed: &Self::Seed, input: &[Self::Input]) -> Self::Output;
 }
