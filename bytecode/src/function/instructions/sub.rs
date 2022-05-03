@@ -17,23 +17,18 @@
 use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Registers},
     helpers::Register,
-    LiteralOrType,
     LiteralType,
-    OutputType,
     Program,
     Value,
 };
 
 use snarkvm_circuits::{
     count,
-    output_mode,
-    ConstantOrMode,
     Count,
     Field,
     Group,
     Literal,
     Metrics,
-    OutputMode,
     Parser,
     ParserResult,
     SubChecked,
@@ -52,10 +47,7 @@ use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::{fmt, ops::Sub as SubCircuit};
 use nom::combinator::map;
-use std::{
-    io::{Read, Result as IoResult, Write},
-    ops::Sub as NativeSub,
-};
+use std::io::{Read, Result as IoResult, Write};
 
 /// Subtracts `second` from `first`, storing the outcome in `destination`.
 pub struct Sub<P: Program> {
@@ -135,37 +127,6 @@ impl<P: Program> Metrics<Self> for Sub<P> {
             (U64, U64) => U64,
             (U128, U128) => U128,
         })
-    }
-}
-
-impl<P: Program> OutputType for Sub<P> {
-    type Input = (LiteralOrType<P>, LiteralOrType<P>);
-    type Output = LiteralType<P>;
-
-    fn output_type(case: &Self::Input) -> Self::Output {
-        match (case.0.type_(), case.1.type_()) {
-            (LiteralType::Field(_), LiteralType::Field(_)) => LiteralType::Field(output_mode!(
-                Field<P::Environment>,
-                NativeSub<Field<P::Environment>, Output = Field<P::Environment>>,
-                &(ConstantOrMode::from(&case.0), ConstantOrMode::from(&case.1))
-            )),
-            (LiteralType::Group(mode_a), LiteralType::Group(mode_b)) => LiteralType::Group(output_mode!(
-                Group<P::Environment>,
-                NativeSub<Group<P::Environment>, Output = Group<P::Environment>>,
-                &(mode_a, mode_b)
-            )),
-            (LiteralType::I8(mode_a), LiteralType::I8(mode_b)) => LiteralType::I8(output_mode!(
-                I8<P::Environment>,
-                NativeSub<I8<P::Environment>, Output = I8<P::Environment>>,
-                &(mode_a, mode_b)
-            )),
-            (LiteralType::U8(mode_a), LiteralType::U8(mode_b)) => LiteralType::U8(output_mode!(
-                U8<P::Environment>,
-                NativeSub<U8<P::Environment>, Output = U8<P::Environment>>,
-                &(mode_a, mode_b)
-            )),
-            _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
-        }
     }
 }
 

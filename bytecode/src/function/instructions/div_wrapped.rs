@@ -17,20 +17,16 @@
 use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Registers},
     helpers::Register,
-    LiteralOrType,
     LiteralType,
-    OutputType,
     Program,
     Value,
 };
 use snarkvm_circuits::{
     count,
-    output_mode,
     Count,
     DivWrapped as DivWrappedCircuit,
     Literal,
     Metrics,
-    OutputMode,
     Parser,
     ParserResult,
     I128,
@@ -124,67 +120,6 @@ impl<P: Program> Metrics<Self> for DivWrapped<P> {
             (U64, U64) => U64,
             (U128, U128) => U128,
         })
-    }
-}
-
-impl<P: Program> OutputType for DivWrapped<P> {
-    type Input = (LiteralOrType<P>, LiteralOrType<P>);
-    type Output = LiteralType<P>;
-
-    fn output_type(case: &Self::Input) -> Self::Output {
-        match (case.0.type_(), case.1.type_()) {
-            (LiteralType::I8(mode_a), LiteralType::I8(mode_b)) => LiteralType::I8(output_mode!(
-                I8<P::Environment>,
-                DivWrappedCircuit<I8<P::Environment>, Output = I8<P::Environment>>,
-                &(mode_a, mode_b)
-            )),
-            (LiteralType::I16(mode_a), LiteralType::I16(mode_b)) => LiteralType::I16(output_mode!(
-                I16<P::Environment>,
-                DivWrappedCircuit<I16<P::Environment>, Output = I16<P::Environment>>,
-                &(mode_a, mode_b)
-            )),
-            (LiteralType::I32(mode_a), LiteralType::I32(mode_b)) => LiteralType::I32(output_mode!(
-                I32<P::Environment>,
-                DivWrappedCircuit<I32<P::Environment>, Output = I32<P::Environment>>,
-                &(mode_a, mode_b)
-            )),
-            (LiteralType::I64(mode_a), LiteralType::I64(mode_b)) => LiteralType::I64(output_mode!(
-                I64<P::Environment>,
-                DivWrappedCircuit<I64<P::Environment>, Output = I64<P::Environment>>,
-                &(mode_a, mode_b)
-            )),
-            (LiteralType::I128(mode_a), LiteralType::I128(mode_b)) => LiteralType::I128(output_mode!(
-                I128<P::Environment>,
-                DivWrappedCircuit<I128<P::Environment>, Output = I128<P::Environment>>,
-                &(mode_a, mode_b)
-            )),
-            (LiteralType::U8(mode_a), LiteralType::U8(mode_b)) => LiteralType::U8(output_mode!(
-                U8<P::Environment>,
-                DivWrappedCircuit<U8<P::Environment>, Output = U8<P::Environment>>,
-                &(mode_a, mode_b)
-            )),
-            (LiteralType::U16(mode_a), LiteralType::U16(mode_b)) => LiteralType::U16(output_mode!(
-                U16<P::Environment>,
-                DivWrappedCircuit<U16<P::Environment>, Output = U16<P::Environment>>,
-                &(mode_a, mode_b)
-            )),
-            (LiteralType::U32(mode_a), LiteralType::U32(mode_b)) => LiteralType::U32(output_mode!(
-                U32<P::Environment>,
-                DivWrappedCircuit<U32<P::Environment>, Output = U32<P::Environment>>,
-                &(mode_a, mode_b)
-            )),
-            (LiteralType::U64(mode_a), LiteralType::U64(mode_b)) => LiteralType::U64(output_mode!(
-                U64<P::Environment>,
-                DivWrappedCircuit<U64<P::Environment>, Output = U64<P::Environment>>,
-                &(mode_a, mode_b)
-            )),
-            (LiteralType::U128(mode_a), LiteralType::U128(mode_b)) => LiteralType::U128(output_mode!(
-                U128<P::Environment>,
-                DivWrappedCircuit<U128<P::Environment>, Output = U128<P::Environment>>,
-                &(mode_a, mode_b)
-            )),
-            _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
-        }
     }
 }
 
