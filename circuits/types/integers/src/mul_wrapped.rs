@@ -47,7 +47,6 @@ impl<E: Environment, I: IntegerType> MulWrapped<Self> for Integer<E, I> {
 
             let mut bits_le = z_0_plus_z_1.to_lower_bits_le(I::BITS as usize + I::BITS as usize / 2 + 1);
 
-
             // Remove any carry bits.
             bits_le.truncate(I::BITS as usize);
 
@@ -63,7 +62,9 @@ impl<E: Environment, I: IntegerType> Metrics<dyn MulWrapped<Integer<E, I>, Outpu
     fn count(case: &Self::Case) -> Count {
         match (case.0, case.1) {
             (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-            (Mode::Constant, _) | (_, Mode::Constant) => Count::is(0, 0, I::BITS +  I::BITS / 2 + 1, I::BITS + I::BITS / 2 + 2),
+            (Mode::Constant, _) | (_, Mode::Constant) => {
+                Count::is(0, 0, I::BITS + I::BITS / 2 + 1, I::BITS + I::BITS / 2 + 2)
+            }
             (_, _) => Count::is(0, 0, I::BITS + I::BITS / 2 + 4, I::BITS + I::BITS / 2 + 5),
         }
     }
