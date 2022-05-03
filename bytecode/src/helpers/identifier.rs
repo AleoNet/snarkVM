@@ -48,7 +48,24 @@ const KEYWORDS: &[&str] = &[
     // Boolean
     "true",
     "false",
-    // TODO (howardwu): Add the instruction opcodes.
+    // Opcodes
+    "add",
+    "add.w",
+    "and",
+    "div",
+    "div.w",
+    "eq",
+    "mul",
+    "mul.w",
+    "nand",
+    "neg",
+    "neq",
+    "nor",
+    "not",
+    "or",
+    "sub",
+    "sub.w",
+    "xor",
     // Statements
     "input",
     "output",
