@@ -191,6 +191,8 @@ mod tests {
         assert!(Identifier::<P>::parse("r0").is_err());
         assert!(Identifier::<P>::parse("r123").is_err());
         assert!(Identifier::<P>::parse("r0.owner").is_err());
+        // Must not be an opcode.
+        assert!(Identifier::<P>::parse("add").is_err());
     }
 
     #[test]
