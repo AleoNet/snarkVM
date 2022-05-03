@@ -174,8 +174,6 @@ mod tests {
     use super::*;
     use crate::{binary_instruction_test, test_instruction_halts, test_modes, Identifier, Process, Register};
 
-    type P = Process;
-
     const BOOLEAN_MODE_TESTS: [[&str; 3]; 9] = [
         ["public", "public", "private"],
         ["public", "constant", "public"],
