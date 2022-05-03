@@ -46,7 +46,7 @@ use core::fmt;
 use nom::combinator::map;
 use std::io::{Read, Result as IoResult, Write};
 
-/// Subtracts `second` from `first`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
+/// Computes `first - second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
 pub struct SubWrapped<P: Program> {
     operation: BinaryOperation<P>,
 }

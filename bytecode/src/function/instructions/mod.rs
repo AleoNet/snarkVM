@@ -159,9 +159,9 @@ pub enum Instruction<P: Program> {
     Not(Not<P>),
     /// Performs a bitwise Or on `first` and `second`, storing the outcome in `destination`.
     Or(Or<P>),
-    /// Subtracts `second` from `first`, storing the outcome in `destination`.
+    /// Computes `first - second`, storing the outcome in `destination`.
     Sub(Sub<P>),
-    /// Subtracts `second` from `first`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
+    /// Computes `first - second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
     SubWrapped(SubWrapped<P>),
     /// Performs a bitwise Xor on `first` and `second`, storing the outcome in `destination`.
     Xor(Xor<P>),
@@ -428,312 +428,169 @@ impl<P: Program> ToBytes for Instruction<P> {
 
 #[cfg(test)]
 mod tests {
+    use crate::{
+        function::{instructions::Opcode, Operation, Registers},
+        Parser,
+        Process,
+        Register,
+        Value,
+    };
+
+    type P = Process;
+
+    pub fn test_binary<Op: Operation<P> + Opcode>(a_str: &str, b_str: &str, expected_str: &str) {
+        let a = Value::<P>::from_str(a_str);
+        let b = Value::<P>::from_str(b_str);
+        let expected = Value::<P>::from_str(expected_str);
+
+        let registers = Registers::<P>::default();
+        registers.define(&Register::from_str("r0"));
+        registers.define(&Register::from_str("r1"));
+        registers.define(&Register::from_str("r2"));
+        registers.assign(&Register::from_str("r0"), a);
+        registers.assign(&Register::from_str("r1"), b);
+
+        Op::from_str("r0 r1 into r2").evaluate(&registers);
+        let candidate = registers.load(&Register::from_str("r2"));
+        assert_eq!(
+            expected,
+            candidate,
+            "Expected '{} {} {}' to output {} but got {}",
+            Op::opcode(),
+            a_str,
+            b_str,
+            expected_str,
+            candidate
+        );
+    }
+
+    pub fn test_unary<Op: Operation<P> + Opcode>(input_str: &str, expected_str: &str) {
+        let input = Value::<P>::from_str(input_str);
+        let expected = Value::<P>::from_str(expected_str);
+
+        let registers = Registers::<P>::default();
+        registers.define(&Register::from_str("r0"));
+        registers.define(&Register::from_str("r1"));
+        registers.assign(&Register::from_str("r0"), input);
+
+        Op::from_str("r0 into r1").evaluate(&registers);
+        let candidate = registers.load(&Register::from_str("r1"));
+        assert_eq!(
+            expected,
+            candidate,
+            "Expected '{} {}' to output {} but got {}",
+            Op::opcode(),
+            input_str,
+            expected_str,
+            candidate
+        );
+    }
+
     #[macro_export]
     macro_rules! test_instruction_halts {
-        ($test_name:ident, $instruction: ident, $reason: expr, $a: expr, $b: expr) => {
+        ($test_name:ident, $operation: ident, $reason: expr, $a: expr, $b: expr) => {
             #[test]
             #[should_panic(expected = $reason)]
             fn $test_name() {
-                use $crate::{
-                    function::{Operation, Registers},
-                    Parser,
-                    Process,
-                    Register,
-                    Value,
-                };
-                type P = Process;
-
-                let a = Value::<P>::from_str($a);
-                let b = Value::<P>::from_str($b);
-
-                let registers = Registers::<P>::default();
-                registers.define(&Register::from_str("r0"));
-                registers.define(&Register::from_str("r1"));
-                registers.define(&Register::from_str("r2"));
-                registers.assign(&Register::from_str("r0"), a);
-                registers.assign(&Register::from_str("r1"), b);
-
-                $instruction::from_str("r0 r1 into r2").evaluate(&registers);
+                use $crate::{function::instructions::tests::test_binary, Process};
+                test_binary::<$operation<Process>>($a, $b, "\"Unreachable\"");
             }
         };
 
-        ($test_name:ident, $instruction: ident, $reason: expr, $input: expr) => {
+        ($test_name:ident, $operation: ident, $reason: expr, $input: expr) => {
             #[test]
             #[should_panic(expected = $reason)]
             fn $test_name() {
-                use $crate::{
-                    function::{Operation, Registers},
-                    Parser,
-                    Process,
-                    Register,
-                    Value,
-                };
-                type P = Process;
-
-                let input = Value::<P>::from_str($input);
-
-                let registers = Registers::<P>::default();
-                registers.define(&Register::from_str("r0"));
-                registers.define(&Register::from_str("r1"));
-                registers.assign(&Register::from_str("r0"), input);
-
-                $instruction::from_str("r0 into r1").evaluate(&registers);
+                use $crate::{function::instructions::tests::test_unary, Process};
+                test_unary::<$operation<Process>>($input, "\"Unreachable\"");
             }
         };
     }
 
     #[macro_export]
     macro_rules! unary_instruction_test {
-        ($test_name: ident, $instruction: ident, $input: expr, $expected: expr) => {
+        ($test_name:ident, $operation: ident, $input:expr, $expected:expr) => {
             #[test]
             fn $test_name() {
-                use $crate::{
-                    function::{Operation, Registers},
-                    Parser,
-                    Process,
-                    Register,
-                    Value,
-                };
-                type P = Process;
-
-                let input = Value::<P>::from_str($input);
-                let expected = Value::<P>::from_str($expected);
-
-                let registers = Registers::<P>::default();
-                registers.define(&Register::from_str("r0"));
-                registers.define(&Register::from_str("r1"));
-                registers.assign(&Register::from_str("r0"), input);
-
-                $instruction::from_str("r0 into r1").evaluate(&registers);
-                let candidate = registers.load(&Register::from_str("r1"));
-                assert_eq!(expected, candidate);
+                use $crate::{function::instructions::tests::test_unary, Process};
+                test_unary::<$operation<Process>>($input, $expected);
             }
         };
     }
 
     #[macro_export]
     macro_rules! binary_instruction_test {
-        ($test_name: ident, $instruction: ident, $a: expr, $b: expr, $c: expr) => {
+        ($test_name:ident, $operation: ident, $a:expr, $b:expr, $expected:expr) => {
             #[test]
             fn $test_name() {
-                use $crate::{
-                    function::{Operation, Registers},
-                    Parser,
-                    Process,
-                    Register,
-                    Value,
-                };
-                type P = Process;
-
-                let a = Value::<P>::from_str($a);
-                let b = Value::<P>::from_str($b);
-                let expected = Value::<P>::from_str($c);
-
-                let registers = Registers::<P>::default();
-                registers.define(&Register::from_str("r0"));
-                registers.define(&Register::from_str("r1"));
-                registers.define(&Register::from_str("r2"));
-                registers.assign(&Register::from_str("r0"), a);
-                registers.assign(&Register::from_str("r1"), b);
-
-                $instruction::from_str("r0 r1 into r2").evaluate(&registers);
-                let candidate = registers.load(&Register::from_str("r2"));
-                assert_eq!(expected, candidate);
+                use $crate::{function::instructions::tests::test_binary, Process};
+                test_binary::<$operation<Process>>($a, $b, $expected);
             }
-        };
-
-        ($test_name: ident, $instruction: ident, $a: expr, $a_mode: expr, $b: expr, $b_mode: expr, $expected: expr, $expected_mode: expr) => {
-            #[test]
-            fn $test_name() {
-                use $crate::{
-                    function::{Operation, Registers},
-                    Parser,
-                    Process,
-                    Register,
-                    Value,
-                };
-                type P = Process;
-
-                let a = Value::<P>::from_str(&format!("{}.{}", $a, $a_mode));
-                let b = Value::<P>::from_str(&format!("{}.{}", $b, $b_mode));
-                let expected = Value::<P>::from_str(&format!("{}.{}", $expected, $expected_mode));
-
-                let registers = Registers::<P>::default();
-                registers.define(&Register::from_str("r0"));
-                registers.define(&Register::from_str("r1"));
-                registers.define(&Register::from_str("r2"));
-                registers.assign(&Register::from_str("r0"), a);
-                registers.assign(&Register::from_str("r1"), b);
-
-                $instruction::from_str("r0 r1 into r2").evaluate(&registers);
-                let candidate = registers.load(&Register::from_str("r2"));
-                assert_eq!(expected, candidate);
-            }
-        };
-    }
-
-    #[macro_export]
-    macro_rules! test_modes_inner {
-        ($type: ident, $instruction: ident, $a: expr, $b: expr, $expected: expr, $mode_tests: expr) => {
-            use super::*;
-            use $crate::binary_instruction_test;
-
-            binary_instruction_test!(
-                test_mode_0,
-                $instruction,
-                $a,
-                $mode_tests[0][0],
-                $b,
-                $mode_tests[0][1],
-                $expected,
-                $mode_tests[0][2]
-            );
-
-            binary_instruction_test!(
-                test_mode_1,
-                $instruction,
-                $a,
-                $mode_tests[1][0],
-                $b,
-                $mode_tests[1][1],
-                $expected,
-                $mode_tests[1][2]
-            );
-
-            binary_instruction_test!(
-                test_mode_2,
-                $instruction,
-                $a,
-                $mode_tests[2][0],
-                $b,
-                $mode_tests[2][1],
-                $expected,
-                $mode_tests[2][2]
-            );
-
-            binary_instruction_test!(
-                test_mode_3,
-                $instruction,
-                $a,
-                $mode_tests[3][0],
-                $b,
-                $mode_tests[3][1],
-                $expected,
-                $mode_tests[3][2]
-            );
-
-            binary_instruction_test!(
-                test_mode_4,
-                $instruction,
-                $a,
-                $mode_tests[4][0],
-                $b,
-                $mode_tests[4][1],
-                $expected,
-                $mode_tests[4][2]
-            );
-
-            binary_instruction_test!(
-                test_mode_5,
-                $instruction,
-                $a,
-                $mode_tests[5][0],
-                $b,
-                $mode_tests[5][1],
-                $expected,
-                $mode_tests[5][2]
-            );
-
-            binary_instruction_test!(
-                test_mode_6,
-                $instruction,
-                $a,
-                $mode_tests[6][0],
-                $b,
-                $mode_tests[6][1],
-                $expected,
-                $mode_tests[6][2]
-            );
-
-            binary_instruction_test!(
-                test_mode_7,
-                $instruction,
-                $a,
-                $mode_tests[7][0],
-                $b,
-                $mode_tests[7][1],
-                $expected,
-                $mode_tests[7][2]
-            );
-
-            binary_instruction_test!(
-                test_mode_8,
-                $instruction,
-                $a,
-                $mode_tests[8][0],
-                $b,
-                $mode_tests[8][1],
-                $expected,
-                $mode_tests[8][2]
-            );
         };
     }
 
     #[macro_export]
     macro_rules! test_modes {
-        ($type: ident, $instruction: ident, $a: expr, $b: expr, $expected: expr) => {
-            mod $type {
-                use $crate::test_modes_inner;
+        ($type: ident, $operation: ident, $a: expr, $b: expr, $expected: expr) => {
+            test_modes!($type, $operation, $a, $b, $expected, [
+                ["public", "public", "private"],
+                ["public", "constant", "private"],
+                ["public", "private", "private"],
+                ["private", "constant", "private"],
+                ["private", "public", "private"],
+                ["private", "private", "private"],
+                ["constant", "private", "private"],
+                ["constant", "public", "private"],
+                ["constant", "constant", "constant"],
+            ]);
+        };
 
-                const DEFAULT_MODES: [[&str; 3]; 9] = [
-                    ["public", "public", "private"],
-                    ["public", "constant", "private"],
-                    ["public", "private", "private"],
-                    ["private", "constant", "private"],
-                    ["private", "public", "private"],
-                    ["private", "private", "private"],
-                    ["constant", "private", "private"],
-                    ["constant", "public", "private"],
-                    ["constant", "constant", "constant"],
-                ];
+        ($type: ident, $operation: ident, $a: expr, $b: expr, $expected: expr, $modes: expr) => {
+            paste::paste! {
+                #[test]
+                fn [<test_ $operation:lower _ $type _modes>]() {
+                    use super::*;
+                    use $crate::{
+                        function::instructions::tests::test_binary,
+                        Process,
+                    };
 
-                test_modes_inner!($type, $instruction, $a, $b, $expected, DEFAULT_MODES);
+                    for [a_mode, b_mode, expected_mode] in $modes.iter() {
+                        test_binary::<$operation<Process>>(
+                            &format!("{}.{}", $a, a_mode),
+                            &format!("{}.{}", $b, b_mode),
+                            &format!("{}.{}", $expected, expected_mode),
+                        );
+                    }
+                }
             }
         };
 
-        ($type: ident, $instruction: ident, $a: expr, $b: expr, $expected: expr, $modes: expr) => {
-            mod $type {
-                use $crate::test_modes_inner;
+        ($type: ident, $operation: ident, $input: expr, $expected: expr) => {
+            paste::paste! {
+                #[test]
+                fn [<test_ $operation:lower _ $type _modes>]() {
+                    use super::*;
+                    use $crate::{
+                        function::instructions::tests::test_unary,
+                        Process,
+                    };
 
-                test_modes_inner!($type, $instruction, $a, $b, $expected, $modes);
-            }
-        };
+                    test_unary::<$operation<Process>>(
+                        &format!("{}.{}", $input, "public"),
+                        &format!("{}.{}", $expected, "private"),
+                    );
 
-        ($type: ident, $instruction: ident, $input: expr, $expected: expr) => {
-            mod $type {
-                use super::*;
-                use $crate::unary_instruction_test;
+                    test_unary::<$operation<Process>>(
+                        &format!("{}.{}", $input, "private"),
+                        &format!("{}.{}", $expected, "private"),
+                    );
 
-                unary_instruction_test!(
-                    test_public_yields_private,
-                    $instruction,
-                    &format!("{}.public", $input),
-                    &format!("{}.private", $expected)
-                );
-
-                unary_instruction_test!(
-                    test_private_yields_private,
-                    $instruction,
-                    &format!("{}.private", $input),
-                    &format!("{}.private", $expected)
-                );
-
-                unary_instruction_test!(
-                    test_constant_yields_constant,
-                    $instruction,
-                    &format!("{}.constant", $input),
-                    &format!("{}.constant", $expected)
-                );
+                    test_unary::<$operation<Process>>(
+                        &format!("{}.{}", $input, "constant"),
+                        &format!("{}.{}", $expected, "constant"),
+                    );
+                }
             }
         };
     }

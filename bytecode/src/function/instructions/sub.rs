@@ -49,7 +49,7 @@ use core::{fmt, ops::Sub as SubCircuit};
 use nom::combinator::map;
 use std::io::{Read, Result as IoResult, Write};
 
-/// Subtracts `second` from `first`, storing the outcome in `destination`.
+/// Computes `first - second`, storing the outcome in `destination`.
 pub struct Sub<P: Program> {
     operation: BinaryOperation<P>,
 }
