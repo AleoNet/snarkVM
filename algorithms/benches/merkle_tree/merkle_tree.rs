@@ -32,11 +32,12 @@ use criterion::Criterion;
 const SETUP_MESSAGE: &str = "merkle_tree_bhp_benchmark";
 
 const NUM_WINDOWS: usize = 3;
-const WINDOW_SIZE: usize = 57;
+const LEAF_WINDOW_SIZE: usize = 29;
+const TWO_TO_ONE_WINDOW_SIZE: usize = 57;
 const TREE_DEPTH: usize = 32;
 
-type LeafCRH = BHPCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE>;
-type TwoToOneCRH = BHPCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE>;
+type LeafCRH = BHPCRH<EdwardsProjective, NUM_WINDOWS, LEAF_WINDOW_SIZE>;
+type TwoToOneCRH = BHPCRH<EdwardsProjective, NUM_WINDOWS, TWO_TO_ONE_WINDOW_SIZE>;
 type P = MerkleTreeParameters<LeafCRH, TwoToOneCRH, TREE_DEPTH>;
 
 const NUM_ENTRIES: &[usize] = &[10, 100, 1000, 10000];
