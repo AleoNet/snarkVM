@@ -652,4 +652,28 @@ function main:
         assert_eq!(46, num_constraints);
         assert_eq!(134, num_gates);
     }
+
+    #[test]
+    fn test_function_count_when_fails() {
+        // Note that when this function is run on "blank" values, it will fail because r2 is initialized to 0.
+        let function_string = r"
+function main:
+    input r0 as u8.private;
+    input r1 as u8.private;
+    input r2 as u8.private;
+    add r0 r1 into r3;
+    div r3 r2 into r4;
+    output r4 as u8.private;";
+
+        let function = Function::<P>::from_str(function_string);
+        let (num_constants, num_public, num_private, num_constraints, num_gates) = function.count();
+        assert_eq!(8, num_constants);
+        // 8 to initialize the input to r0. Total is 8 public variables.
+        assert_eq!(0, num_public);
+        // 24 to initialize the inputs to r1, r2, and r3. 9 to perform a U8::add. 19 to perform a U8::div. Total is 52 private variables.
+        assert_eq!(52, num_private);
+        // 24 to initialize the inputs to r1, r2, and r3. 11 to perform a U8::add. 22 to perform a U8::div. Total is 57 constraints.
+        assert_eq!(57, num_constraints);
+        assert_eq!(174, num_gates);
+    }
 }
