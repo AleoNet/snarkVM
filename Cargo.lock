@@ -2033,6 +2033,7 @@ dependencies = [
  "indexmap",
  "nom",
  "once_cell",
+ "paste",
  "snarkvm-algorithms",
  "snarkvm-circuits",
  "snarkvm-curves",

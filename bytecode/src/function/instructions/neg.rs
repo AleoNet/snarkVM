@@ -116,7 +116,7 @@ impl<P: Program> Metrics<Self> for Neg<P> {
 impl<P: Program> Parser for Neg<P> {
     type Environment = P::Environment;
 
-    /// Parses a string into an 'neg' operation.
+    /// Parses a string into a 'neg' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the operation from the string.
@@ -153,7 +153,7 @@ impl<P: Program> Into<Instruction<P>> for Neg<P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{test_instruction_halts, test_modes, Process};
+    use crate::{test_instruction_halts, test_modes, Identifier, Process};
 
     #[test]
     fn test_parse() {
@@ -213,4 +213,20 @@ mod tests {
     );
     test_instruction_halts!(boolean_neg_halts, Neg, "Invalid 'neg' instruction", "true.constant");
     test_instruction_halts!(string_neg_halts, Neg, "Invalid 'neg' instruction", "\"hello\".constant");
+
+    #[test]
+    #[should_panic(expected = "message is not a literal")]
+    fn test_composite_halts() {
+        let first = Value::<Process>::Composite(Identifier::from_str("message"), vec![
+            Literal::from_str("2group.public"),
+            Literal::from_str("10field.private"),
+        ]);
+
+        let registers = Registers::<Process>::default();
+        registers.define(&Register::from_str("r0"));
+        registers.define(&Register::from_str("r1"));
+        registers.assign(&Register::from_str("r0"), first);
+
+        Neg::from_str("r0 into r1").evaluate(&registers);
+    }
 }

@@ -30,6 +30,9 @@ version = "7.1"
 [dependencies.once_cell]
 version = "1.8.0"
 
+[dependencies.paste]
+version = "1.0.7"
+
 [dev-dependencies.snarkvm-algorithms]
 path = "../algorithms"
 version = "0.7.5"
