@@ -17,19 +17,15 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
+mod helpers;
+
 pub mod add;
 pub mod compare;
 pub mod equal;
-pub mod from_bits;
-pub mod one;
 pub mod ternary;
-pub mod to_bits;
-pub mod to_field;
-pub mod to_fields;
-pub mod zero;
 
 #[cfg(test)]
-use snarkvm_circuits_environment::assert_scope;
+use snarkvm_circuits_environment::{assert_count, assert_output_mode, assert_scope, count, output_mode};
 
 use snarkvm_circuits_environment::prelude::*;
 use snarkvm_circuits_types_boolean::Boolean;
@@ -156,16 +152,16 @@ mod tests {
 
     use core::str::FromStr;
 
-    const ITERATIONS: usize = 250;
+    const ITERATIONS: u64 = 250;
 
     fn check_new(
         name: &str,
         expected: <Circuit as Environment>::ScalarField,
         mode: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
     ) {
         Circuit::scope(name, || {
             let candidate = Scalar::<Circuit>::new(mode, expected);

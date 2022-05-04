@@ -72,25 +72,29 @@ mod tests {
     use std::sync::Arc;
 
     const PEDERSEN_NUM_WINDOWS: usize = 128;
-    const PEDERSEN_WINDOW_SIZE: usize = 4;
+    const PEDERSEN_LEAF_WINDOW_SIZE: usize = 2;
+    const PEDERSEN_TWO_TO_ONE_WINDOW_SIZE: usize = 4;
     const TREE_DEPTH: usize = 4;
     const MESSAGE: &str = "Pedersen merkle path test";
 
-    type NativeH = NativePedersenCompressed<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
-    type Parameters = MaskedMerkleTreeParameters<NativeH, TREE_DEPTH>;
+    type NativeLeafCRH = NativePedersenCompressed<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_LEAF_WINDOW_SIZE>;
+    type NativeTwoToOneCRH =
+        NativePedersenCompressed<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_TWO_TO_ONE_WINDOW_SIZE>;
+    type Parameters = MaskedMerkleTreeParameters<NativeLeafCRH, NativeTwoToOneCRH, TREE_DEPTH>;
 
-    type H = Pedersen<Circuit, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
+    type LeafCRH = Pedersen<Circuit, PEDERSEN_NUM_WINDOWS, PEDERSEN_LEAF_WINDOW_SIZE>;
+    type TwoToOneCRH = Pedersen<Circuit, PEDERSEN_NUM_WINDOWS, PEDERSEN_TWO_TO_ONE_WINDOW_SIZE>;
 
     fn check_to_root(
         mode: Mode,
         use_bad_root: bool,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
     ) {
         let merkle_tree_parameters = Parameters::setup(MESSAGE);
-        let crh = H::setup(MESSAGE);
+        let crh = LeafCRH::setup(MESSAGE);
 
         let mut rng = test_rng();
         let mut leaves = Vec::new();
@@ -111,12 +115,12 @@ mod tests {
             Circuit::scope(format!("{mode} {MESSAGE} {i}"), || {
                 let traversal = proof.position_list().collect::<Vec<_>>();
                 let path = proof.path.clone();
-                let merkle_path = MerklePath::<Circuit, H>::new(mode, (traversal, path));
+                let merkle_path = MerklePath::<Circuit, LeafCRH>::new(mode, (traversal, path));
 
                 let circuit_leaf = leaf_bits
                     .iter()
-                    .map(|bit| <H as Hash>::Input::new(mode, *bit))
-                    .collect::<Vec<<H as Hash>::Input>>();
+                    .map(|bit| <LeafCRH as Hash>::Input::new(mode, *bit))
+                    .collect::<Vec<<LeafCRH as Hash>::Input>>();
                 let candidate_root = merkle_path.to_root(&crh, &circuit_leaf);
 
                 assert_eq!(*leaf.to_bits_le(), circuit_leaf.eject_value());

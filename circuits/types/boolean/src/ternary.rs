@@ -89,10 +89,10 @@ mod tests {
         condition: Boolean<Circuit>,
         a: Boolean<Circuit>,
         b: Boolean<Circuit>,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
     ) {
         Circuit::scope(name, || {
             let case = format!("({} ? {} : {})", condition.eject_value(), a.eject_value(), b.eject_value());

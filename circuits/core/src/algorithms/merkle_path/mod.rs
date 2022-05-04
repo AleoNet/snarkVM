@@ -81,16 +81,20 @@ mod tests {
     use std::sync::Arc;
 
     const PEDERSEN_NUM_WINDOWS: usize = 128;
-    const PEDERSEN_WINDOW_SIZE: usize = 4;
+    const PEDERSEN_LEAF_WINDOW_SIZE: usize = 2;
+    const PEDERSEN_TWO_TO_ONE_WINDOW_SIZE: usize = 4;
     const TREE_DEPTH: usize = 4;
     const MESSAGE: &str = "Pedersen merkle path test";
 
-    type NativeH = NativePedersenCompressed<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
-    type Parameters = MaskedMerkleTreeParameters<NativeH, TREE_DEPTH>;
+    type NativeLeafCRH = NativePedersenCompressed<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_LEAF_WINDOW_SIZE>;
+    type NativeTwoToOneCRH =
+        NativePedersenCompressed<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_TWO_TO_ONE_WINDOW_SIZE>;
+    type Parameters = MaskedMerkleTreeParameters<NativeLeafCRH, NativeTwoToOneCRH, TREE_DEPTH>;
 
-    type H = Pedersen<Circuit, PEDERSEN_NUM_WINDOWS, PEDERSEN_WINDOW_SIZE>;
+    type LeafCRH = Pedersen<Circuit, PEDERSEN_NUM_WINDOWS, PEDERSEN_LEAF_WINDOW_SIZE>;
+    type TwoToOneCRH = Pedersen<Circuit, PEDERSEN_NUM_WINDOWS, PEDERSEN_TWO_TO_ONE_WINDOW_SIZE>;
 
-    fn check_new(mode: Mode, num_constants: usize, num_public: usize, num_private: usize, num_constraints: usize) {
+    fn check_new(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
         let merkle_tree_parameters = Parameters::setup(MESSAGE);
 
         let mut rng = test_rng();
@@ -107,7 +111,7 @@ mod tests {
             Circuit::scope(format!("{mode} {MESSAGE} {i}"), || {
                 let traversal = proof.position_list().collect::<Vec<_>>();
                 let path = proof.path.clone();
-                let merkle_path = MerklePath::<Circuit, H>::new(mode, (traversal.clone(), path.clone()));
+                let merkle_path = MerklePath::<Circuit, LeafCRH>::new(mode, (traversal.clone(), path.clone()));
 
                 assert_eq!((traversal, path), merkle_path.eject_value());
 

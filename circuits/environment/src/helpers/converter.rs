@@ -154,9 +154,9 @@ impl<F: PrimeField> snarkvm_r1cs::ConstraintSynthesizer<F> for R1CS<F> {
         }
 
         // Ensure the given `cs` matches in size with the first system.
-        assert_eq!(self.num_public() + 1, cs.num_public_variables());
-        assert_eq!(self.num_private(), cs.num_private_variables());
-        assert_eq!(self.num_constraints(), cs.num_constraints());
+        assert_eq!(self.num_public() + 1, cs.num_public_variables() as u64);
+        assert_eq!(self.num_private(), cs.num_private_variables() as u64);
+        assert_eq!(self.num_constraints(), cs.num_constraints() as u64);
 
         Ok(())
     }
@@ -173,7 +173,7 @@ mod tests {
         let one = <E as Environment>::BaseField::one();
         let two = one + one;
 
-        const EXPONENT: usize = 64;
+        const EXPONENT: u64 = 64;
 
         // Compute 2^EXPONENT - 1, in a purposefully constraint-inefficient manner for testing.
         let mut candidate = Field::<E>::new(Mode::Public, one);
@@ -200,9 +200,9 @@ mod tests {
         Circuit.generate_constraints(&mut cs).unwrap();
         {
             use snarkvm_r1cs::ConstraintSystem;
-            assert_eq!(Circuit::num_public() + 1, cs.num_public_variables());
-            assert_eq!(Circuit::num_private(), cs.num_private_variables());
-            assert_eq!(Circuit::num_constraints(), cs.num_constraints());
+            assert_eq!(Circuit::num_public() + 1, cs.num_public_variables() as u64);
+            assert_eq!(Circuit::num_private(), cs.num_private_variables() as u64);
+            assert_eq!(Circuit::num_constraints(), cs.num_constraints() as u64);
             assert!(cs.is_satisfied());
         }
     }

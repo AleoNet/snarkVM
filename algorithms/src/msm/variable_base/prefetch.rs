@@ -18,14 +18,14 @@
 macro_rules! prefetch_slice {
     ($curve: ident, $slice_1: ident, $slice_2: ident, $prefetch_iter: ident) => {
         if let Some((idp_1, idp_2)) = $prefetch_iter.next() {
-            crate::msm::variable_base::prefetch::prefetch::<$curve>(&$slice_1[*idp_1 as usize]);
-            crate::msm::variable_base::prefetch::prefetch::<$curve>(&$slice_2[*idp_2 as usize]);
+            $crate::msm::variable_base::prefetch::prefetch::<$curve>(&$slice_1[*idp_1 as usize]);
+            $crate::msm::variable_base::prefetch::prefetch::<$curve>(&$slice_2[*idp_2 as usize]);
         }
     };
 
     ($curve: ident, $slice_1: ident, $prefetch_iter: ident) => {
         if let Some((idp_1, _)) = $prefetch_iter.next() {
-            crate::msm::variable_base::prefetch::prefetch::<$curve>(&$slice_1[*idp_1 as usize]);
+            $crate::msm::variable_base::prefetch::prefetch::<$curve>(&$slice_1[*idp_1 as usize]);
         }
     };
 }
@@ -34,9 +34,9 @@ macro_rules! prefetch_slice {
 macro_rules! prefetch_slice_write {
     ($curve: ident, $slice_1: ident, $slice_2: ident, $prefetch_iter: ident) => {
         if let Some((idp_1, idp_2)) = $prefetch_iter.next() {
-            crate::msm::variable_base::prefetch::prefetch::<$curve>(&$slice_1[*idp_1 as usize]);
+            $crate::msm::variable_base::prefetch::prefetch::<$curve>(&$slice_1[*idp_1 as usize]);
             if *idp_2 != !0u32 {
-                crate::msm::variable_base::prefetch::prefetch::<$curve>(&$slice_2[*idp_2 as usize]);
+                $crate::msm::variable_base::prefetch::prefetch::<$curve>(&$slice_2[*idp_2 as usize]);
             }
         }
     };

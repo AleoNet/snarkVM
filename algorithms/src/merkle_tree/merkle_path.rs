@@ -27,7 +27,7 @@ use std::{
     sync::Arc,
 };
 
-pub type MerkleTreeDigest<P> = <<P as MerkleParameters>::H as CRH>::Output;
+pub type MerkleTreeDigest<P> = <<P as MerkleParameters>::TwoToOneCRH as CRH>::Output;
 
 /// Stores the hashes of a particular path (in order) from leaf to root.
 /// Our path `is_left_child()` if the boolean in `path` is true.
@@ -82,9 +82,9 @@ impl<P: MerkleParameters> MerklePath<P> {
     /// Returns: (left, right)
     fn select_left_right_bytes(
         index: u64,
-        computed_hash: &<P::H as CRH>::Output,
-        sibling_hash: &<P::H as CRH>::Output,
-    ) -> Result<(<P::H as CRH>::Output, <P::H as CRH>::Output), MerkleError> {
+        computed_hash: &<P::TwoToOneCRH as CRH>::Output,
+        sibling_hash: &<P::TwoToOneCRH as CRH>::Output,
+    ) -> Result<(<P::TwoToOneCRH as CRH>::Output, <P::TwoToOneCRH as CRH>::Output), MerkleError> {
         let is_left = index & 1 == 0;
         let mut left_bytes = computed_hash;
         let mut right_bytes = sibling_hash;

@@ -390,8 +390,10 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
                 proof
             });
         }
+        let batch_proof = pool.execute_all().into_iter().collect::<Result<_, _>>().map(BatchProof);
         end_timer!(open_time);
-        pool.execute_all().into_iter().collect::<Result<_, _>>().map(BatchProof)
+
+        batch_proof
     }
 
     pub fn batch_check<'a>(

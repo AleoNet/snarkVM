@@ -34,27 +34,40 @@ impl<E: Environment> Neg for &Group<E> {
     }
 }
 
+impl<E: Environment> Metrics<dyn Neg<Output = Group<E>>> for Group<E> {
+    type Case = Mode;
+
+    fn count(_case: &Self::Case) -> Count {
+        Count::is(0, 0, 0, 0)
+    }
+}
+
+impl<E: Environment> OutputMode<dyn Neg<Output = Group<E>>> for Group<E> {
+    type Case = Mode;
+
+    fn output_mode(case: &Self::Case) -> Mode {
+        match case {
+            Mode::Constant => Mode::Constant,
+            _ => Mode::Private,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
-    const ITERATIONS: usize = 100;
+    const ITERATIONS: u64 = 100;
 
-    fn check_neg(
-        name: &str,
-        expected: <Circuit as Environment>::Affine,
-        candidate_input: Group<Circuit>,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
+    fn check_neg(name: &str, expected: <Circuit as Environment>::Affine, candidate_input: Group<Circuit>) {
         Circuit::scope(name, || {
+            let mode = candidate_input.eject_mode();
             let candidate_output = -candidate_input;
             assert_eq!(expected, candidate_output.eject_value());
-            assert_scope!(num_constants, num_public, num_private, num_constraints);
+            assert_count!(Neg(Group) => Group, &mode);
+            assert_output_mode!(Neg(Group) => Group, &mode, candidate_output);
         });
     }
 
@@ -68,7 +81,7 @@ mod tests {
             assert!(expected.is_in_correct_subgroup_assuming_on_curve());
 
             let candidate_input = Group::<Circuit>::new(Mode::Constant, point);
-            check_neg(&format!("NEG Constant {}", i), expected, candidate_input, 0, 0, 0, 0);
+            check_neg(&format!("NEG Constant {}", i), expected, candidate_input);
         }
     }
 
@@ -82,7 +95,7 @@ mod tests {
             assert!(expected.is_in_correct_subgroup_assuming_on_curve());
 
             let candidate_input = Group::<Circuit>::new(Mode::Public, point);
-            check_neg(&format!("NEG Public {}", i), expected, candidate_input, 0, 0, 0, 0);
+            check_neg(&format!("NEG Public {}", i), expected, candidate_input);
         }
     }
 
@@ -96,7 +109,7 @@ mod tests {
             assert!(expected.is_in_correct_subgroup_assuming_on_curve());
 
             let candidate_input = Group::<Circuit>::new(Mode::Private, point);
-            check_neg(&format!("NEG Private {}", i), expected, candidate_input, 0, 0, 0, 0);
+            check_neg(&format!("NEG Private {}", i), expected, candidate_input);
         }
     }
 
@@ -105,12 +118,12 @@ mod tests {
         let expected = <Circuit as Environment>::Affine::zero();
 
         let candidate_input = Group::<Circuit>::zero();
-        check_neg("NEG Constant Zero", expected, candidate_input, 0, 0, 0, 0);
+        check_neg("NEG Constant Zero", expected, candidate_input);
 
         let candidate_input = Group::<Circuit>::new(Mode::Public, expected);
-        check_neg("NEG Public Zero", expected, candidate_input, 0, 0, 0, 0);
+        check_neg("NEG Public Zero", expected, candidate_input);
 
         let candidate_input = Group::<Circuit>::new(Mode::Private, expected);
-        check_neg("NEG Private Zero", expected, candidate_input, 0, 0, 0, 0);
+        check_neg("NEG Private Zero", expected, candidate_input);
     }
 }
