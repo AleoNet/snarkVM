@@ -124,6 +124,7 @@ pub(super) mod integer_type {
         + CheckedAbs
         + CheckedNeg
         + CheckedPow
+        + CheckedRem
         + CheckedShl
         + CheckedShr
         + Debug
@@ -187,6 +188,21 @@ pub(super) mod integer_type {
     binary_impl!(CheckedPow, i32, checked_pow, self, v, u32, Option<i32>, i32::checked_pow(*self, *v));
     binary_impl!(CheckedPow, i64, checked_pow, self, v, u32, Option<i64>, i64::checked_pow(*self, *v));
     binary_impl!(CheckedPow, i128, checked_pow, self, v, u32, Option<i128>, i128::checked_pow(*self, *v));
+
+    pub trait CheckedRem: Sized + Rem<Self, Output = Self> {
+        fn checked_rem(&self, v: &Self) -> Option<Self>;
+    }
+
+    binary_impl!(CheckedRem, u8, checked_rem, self, v, u8, Option<u8>, u8::checked_rem(*self, *v));
+    binary_impl!(CheckedRem, u16, checked_rem, self, v, u16, Option<u16>, u16::checked_rem(*self, *v));
+    binary_impl!(CheckedRem, u32, checked_rem, self, v, u32, Option<u32>, u32::checked_rem(*self, *v));
+    binary_impl!(CheckedRem, u64, checked_rem, self, v, u64, Option<u64>, u64::checked_rem(*self, *v));
+    binary_impl!(CheckedRem, u128, checked_rem, self, v, u128, Option<u128>, u128::checked_rem(*self, *v));
+    binary_impl!(CheckedRem, i8, checked_rem, self, v, i8, Option<i8>, i8::checked_rem(*self, *v));
+    binary_impl!(CheckedRem, i16, checked_rem, self, v, i16, Option<i16>, i16::checked_rem(*self, *v));
+    binary_impl!(CheckedRem, i32, checked_rem, self, v, i32, Option<i32>, i32::checked_rem(*self, *v));
+    binary_impl!(CheckedRem, i64, checked_rem, self, v, i64, Option<i64>, i64::checked_rem(*self, *v));
+    binary_impl!(CheckedRem, i128, checked_rem, self, v, i128, Option<i128>, i128::checked_rem(*self, *v));
 
     pub trait WrappingDiv: Sized + Div<Self, Output = Self> {
         fn wrapping_div(&self, v: &Self) -> Self;
