@@ -35,8 +35,9 @@ const NUM_WINDOWS: usize = 3;
 const WINDOW_SIZE: usize = 57;
 const TREE_DEPTH: usize = 32;
 
-type H = BHPCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE>;
-type P = MerkleTreeParameters<H, TREE_DEPTH>;
+type LeafCRH = BHPCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE>;
+type TwoToOneCRH = BHPCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE>;
+type P = MerkleTreeParameters<LeafCRH, TwoToOneCRH, TREE_DEPTH>;
 
 const NUM_ENTRIES: &[usize] = &[10, 100, 1000, 10000];
 const LEAF_SIZE: usize = 32;
