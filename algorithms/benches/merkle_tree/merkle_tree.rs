@@ -32,13 +32,16 @@ use criterion::Criterion;
 const SETUP_MESSAGE: &str = "merkle_tree_bhp_benchmark";
 
 const NUM_WINDOWS: usize = 3;
-const WINDOW_SIZE: usize = 57;
+const LEAF_WINDOW_SIZE: usize = 29;
+const TWO_TO_ONE_WINDOW_SIZE: usize = 57;
 const TREE_DEPTH: usize = 32;
 
-type H = BHPCRH<EdwardsProjective, NUM_WINDOWS, WINDOW_SIZE>;
-type P = MerkleTreeParameters<H, TREE_DEPTH>;
+type LeafCRH = BHPCRH<EdwardsProjective, NUM_WINDOWS, LEAF_WINDOW_SIZE>;
+type TwoToOneCRH = BHPCRH<EdwardsProjective, NUM_WINDOWS, TWO_TO_ONE_WINDOW_SIZE>;
+type P = MerkleTreeParameters<LeafCRH, TwoToOneCRH, TREE_DEPTH>;
 
 const NUM_ENTRIES: &[usize] = &[10, 100, 1000, 10000];
+const REBUILD_SIZES: &[usize] = &[10, 100, 1000];
 const LEAF_SIZE: usize = 32;
 
 /// Generates the specified number of random Merkle tree leaves.
@@ -69,27 +72,53 @@ fn new(c: &mut Criterion) {
     }
 }
 
-fn insert(c: &mut Criterion) {
+fn rebuild_single_leaf(c: &mut Criterion) {
     let parameters = Arc::new(P::setup(SETUP_MESSAGE));
 
     for entries in NUM_ENTRIES {
         let leaves = generate_random_leaves!(*entries, LEAF_SIZE);
-        let mut merkle_tree = MerkleTree::<P>::new(parameters.clone(), &[[0u8; LEAF_SIZE]]).unwrap();
+        let num_leaves = leaves.len();
+        let mut merkle_tree = MerkleTree::<P>::new(parameters.clone(), &leaves).unwrap();
+        let new_leaf = generate_random_leaves!(1, LEAF_SIZE)[0];
 
-        c.bench_function(&format!("Insert Merkle Tree ({} entries)", entries), move |b| {
-            b.iter(|| {
-                for (i, leaf) in leaves.iter().enumerate() {
-                    merkle_tree = merkle_tree.rebuild(i + 1, &[leaf]).unwrap();
-                }
-            })
-        });
+        c.bench_function(
+            &format!("Rebuild Merkle Tree (add single leaf to a tree with {} leaves)", entries),
+            move |b| {
+                b.iter(|| {
+                    merkle_tree = merkle_tree.rebuild(num_leaves, &[new_leaf]).unwrap();
+                })
+            },
+        );
+    }
+}
+
+fn rebuild_multiple_leaves(c: &mut Criterion) {
+    let parameters = Arc::new(P::setup(SETUP_MESSAGE));
+
+    for entries in NUM_ENTRIES {
+        for num_new_leaves in REBUILD_SIZES {
+            let leaves = generate_random_leaves!(*entries, LEAF_SIZE);
+            let num_leaves = leaves.len();
+            let mut merkle_tree = MerkleTree::<P>::new(parameters.clone(), &leaves).unwrap();
+
+            let new_leaves = generate_random_leaves!(*num_new_leaves, LEAF_SIZE);
+
+            c.bench_function(
+                &format!("Rebuild Merkle Tree (add {} new leaves to a tree with {} leaves)", num_new_leaves, entries),
+                move |b| {
+                    b.iter(|| {
+                        merkle_tree = merkle_tree.rebuild(num_leaves, &new_leaves).unwrap();
+                    })
+                },
+            );
+        }
     }
 }
 
 criterion_group! {
     name = merkle_tree_bhp;
     config = Criterion::default().sample_size(10);
-    targets = new, insert
+    targets = new, rebuild_single_leaf, rebuild_multiple_leaves
 }
 
 criterion_main!(merkle_tree_bhp);
