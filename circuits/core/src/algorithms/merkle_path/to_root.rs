@@ -18,16 +18,21 @@ use super::*;
 
 use crate::traits::Hash;
 
-impl<E: Environment, H: Hash> MerklePath<E, H> {
-    pub fn to_root(&self, crh: &H, leaf: &[H::Input]) -> H::Output
+impl<E: Environment, TwoToOneCRH: Hash> MerklePath<E, TwoToOneCRH> {
+    pub fn to_root<LeafCRH: Hash<Output = TwoToOneCRH::Output>>(
+        &self,
+        leaf_crh: &LeafCRH,
+        two_to_one_crh: &TwoToOneCRH,
+        leaf: &[LeafCRH::Input],
+    ) -> TwoToOneCRH::Output
     where
-        <<H as Hash>::Output as Ternary>::Boolean: From<Boolean<E>>,
-        Vec<<H as Hash>::Input>: From<Vec<<<H as Hash>::Output as ToBits>::Boolean>>,
+        <<TwoToOneCRH as Hash>::Output as Ternary>::Boolean: From<Boolean<E>>,
+        Vec<<TwoToOneCRH as Hash>::Input>: From<Vec<<<TwoToOneCRH as Hash>::Output as ToBits>::Boolean>>,
     {
-        let mut curr_hash = crh.hash(leaf);
+        let mut curr_hash = leaf_crh.hash(leaf);
 
-        // Padding used to match the native merkle tre.
-        let padding = H::Input::blank(Mode::Constant);
+        // Padding used to match the native merkle tree.
+        let padding = TwoToOneCRH::Input::blank(Mode::Constant);
 
         // To traverse up a MT, we iterate over the path from bottom to top
 
@@ -35,11 +40,11 @@ impl<E: Environment, H: Hash> MerklePath<E, H> {
         // and the bit being 1 indicates our currently hashed value is on the right.
         // Thus `left_hash` is the sibling if bit is 1, and it's the computed hash if bit is 0.
         for (bit, sibling) in self.traversal.iter().zip_eq(&self.path) {
-            let left_hash: H::Output = Ternary::ternary(&bit.clone().into(), sibling, &curr_hash);
-            let right_hash: H::Output = Ternary::ternary(&bit.clone().into(), &curr_hash, sibling);
+            let left_hash: TwoToOneCRH::Output = Ternary::ternary(&bit.clone().into(), sibling, &curr_hash);
+            let right_hash: TwoToOneCRH::Output = Ternary::ternary(&bit.clone().into(), &curr_hash, sibling);
 
-            let mut left_input: Vec<H::Input> = left_hash.to_bits_le().into();
-            let mut right_input: Vec<H::Input> = right_hash.to_bits_le().into();
+            let mut left_input: Vec<TwoToOneCRH::Input> = left_hash.to_bits_le().into();
+            let mut right_input: Vec<TwoToOneCRH::Input> = right_hash.to_bits_le().into();
 
             // Pad the inputs to the closest factor of 8 (byte representation). This is required due to the
             // native merkle tree hashing implementation.
@@ -47,7 +52,7 @@ impl<E: Environment, H: Hash> MerklePath<E, H> {
             left_input.resize(num_bytes, padding.clone());
             right_input.resize(num_bytes, padding.clone());
 
-            curr_hash = crh.hash(&[left_input, right_input].concat());
+            curr_hash = two_to_one_crh.hash(&[left_input, right_input].concat());
         }
 
         curr_hash
@@ -94,7 +99,8 @@ mod tests {
         num_constraints: u64,
     ) {
         let merkle_tree_parameters = Parameters::setup(MESSAGE);
-        let crh = LeafCRH::setup(MESSAGE);
+        let leaf_crh = LeafCRH::setup(MESSAGE);
+        let two_to_one_crh = TwoToOneCRH::setup(MESSAGE);
 
         let mut rng = test_rng();
         let mut leaves = Vec::new();
@@ -115,13 +121,13 @@ mod tests {
             Circuit::scope(format!("{mode} {MESSAGE} {i}"), || {
                 let traversal = proof.position_list().collect::<Vec<_>>();
                 let path = proof.path.clone();
-                let merkle_path = MerklePath::<Circuit, LeafCRH>::new(mode, (traversal, path));
+                let merkle_path = MerklePath::<Circuit, TwoToOneCRH>::new(mode, (traversal, path));
 
                 let circuit_leaf = leaf_bits
                     .iter()
                     .map(|bit| <LeafCRH as Hash>::Input::new(mode, *bit))
                     .collect::<Vec<<LeafCRH as Hash>::Input>>();
-                let candidate_root = merkle_path.to_root(&crh, &circuit_leaf);
+                let candidate_root = merkle_path.to_root(&leaf_crh, &two_to_one_crh, &circuit_leaf);
 
                 assert_eq!(*leaf.to_bits_le(), circuit_leaf.eject_value());
                 assert_eq!(root, candidate_root.eject_value());
@@ -134,28 +140,28 @@ mod tests {
 
     #[test]
     fn test_to_root_constant() {
-        check_to_root(Mode::Constant, false, 12526, 0, 0, 0);
+        check_to_root(Mode::Constant, false, 11502, 0, 0, 0);
     }
 
     #[test]
     fn test_to_root_public() {
-        check_to_root(Mode::Public, false, 5121, 261, 16528, 16793);
+        check_to_root(Mode::Public, false, 4609, 261, 15760, 16025);
     }
 
     #[test]
     fn test_to_root_private() {
-        check_to_root(Mode::Private, false, 5121, 0, 16789, 16793);
+        check_to_root(Mode::Private, false, 4609, 0, 16021, 16025);
     }
 
     #[should_panic]
     #[test]
     fn test_root_public_fails() {
-        check_to_root(Mode::Public, true, 5121, 9, 4005, 16793);
+        check_to_root(Mode::Public, true, 4609, 261, 15760, 16025);
     }
 
     #[should_panic]
     #[test]
     fn test_root_private_fails() {
-        check_to_root(Mode::Private, true, 5121, 0, 4014, 16793);
+        check_to_root(Mode::Private, true, 4609, 0, 16021, 16025);
     }
 }

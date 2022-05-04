@@ -20,15 +20,15 @@ use crate::traits::Hash;
 use snarkvm_circuits_environment::prelude::*;
 use snarkvm_circuits_types::Boolean;
 
-pub struct MerklePath<E: Environment, H: Hash> {
+pub struct MerklePath<E: Environment, TwoToOneCRH: Hash> {
     /// `traversal[i]` is 0 (false) iff ith node from bottom to top is left.
     traversal: Vec<Boolean<E>>,
     /// `path[i]` is the entry of sibling of ith node from bottom to top.
-    path: Vec<H::Output>,
+    path: Vec<TwoToOneCRH::Output>,
 }
 
-impl<E: Environment, H: Hash> Inject for MerklePath<E, H> {
-    type Primitive = (Vec<bool>, Vec<<H::Output as Inject>::Primitive>);
+impl<E: Environment, TwoToOneCRH: Hash> Inject for MerklePath<E, TwoToOneCRH> {
+    type Primitive = (Vec<bool>, Vec<<TwoToOneCRH::Output as Inject>::Primitive>);
 
     /// Initializes a merkle path from the given mode and `path`.
     fn new(mode: Mode, (traversal, path): Self::Primitive) -> Self {
@@ -39,15 +39,15 @@ impl<E: Environment, H: Hash> Inject for MerklePath<E, H> {
 
         let mut circuit_path = vec![];
         for node in path.into_iter() {
-            circuit_path.push(H::Output::new(mode, node));
+            circuit_path.push(TwoToOneCRH::Output::new(mode, node));
         }
 
         Self { traversal: circuit_traversal, path: circuit_path }
     }
 }
 
-impl<E: Environment, H: Hash> Eject for MerklePath<E, H> {
-    type Primitive = (Vec<bool>, Vec<<H::Output as Eject>::Primitive>);
+impl<E: Environment, TwoToOneCRH: Hash> Eject for MerklePath<E, TwoToOneCRH> {
+    type Primitive = (Vec<bool>, Vec<<TwoToOneCRH::Output as Eject>::Primitive>);
 
     ///
     /// Ejects the mode of the merkle path.
@@ -91,7 +91,6 @@ mod tests {
         NativePedersenCompressed<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_TWO_TO_ONE_WINDOW_SIZE>;
     type Parameters = MaskedMerkleTreeParameters<NativeLeafCRH, NativeTwoToOneCRH, TREE_DEPTH>;
 
-    type LeafCRH = Pedersen<Circuit, PEDERSEN_NUM_WINDOWS, PEDERSEN_LEAF_WINDOW_SIZE>;
     type TwoToOneCRH = Pedersen<Circuit, PEDERSEN_NUM_WINDOWS, PEDERSEN_TWO_TO_ONE_WINDOW_SIZE>;
 
     fn check_new(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
@@ -111,7 +110,7 @@ mod tests {
             Circuit::scope(format!("{mode} {MESSAGE} {i}"), || {
                 let traversal = proof.position_list().collect::<Vec<_>>();
                 let path = proof.path.clone();
-                let merkle_path = MerklePath::<Circuit, LeafCRH>::new(mode, (traversal.clone(), path.clone()));
+                let merkle_path = MerklePath::<Circuit, TwoToOneCRH>::new(mode, (traversal.clone(), path.clone()));
 
                 assert_eq!((traversal, path), merkle_path.eject_value());
 
