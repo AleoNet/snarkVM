@@ -68,11 +68,6 @@ impl<E: Environment, I: IntegerType> DivChecked<Self> for Integer<E, I> {
 
     #[inline]
     fn div_checked(&self, other: &Integer<E, I>) -> Self::Output {
-        // Halt on division by zero as there is no sound way to perform this operation.
-        if other.eject_value().is_zero() {
-            E::halt("Division by zero error")
-        }
-
         // Determine the variable mode.
         if self.is_constant() && other.is_constant() {
             // Compute the quotient and return the new constant.

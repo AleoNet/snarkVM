@@ -21,12 +21,6 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
 
     #[inline]
     fn div_wrapped(&self, other: &Integer<E, I>) -> Self::Output {
-        // Halt on division by zero as there is no sound way to perform
-        // this operation.
-        if other.eject_value().is_zero() {
-            E::halt("Division by zero error")
-        }
-
         // Determine the variable mode.
         if self.is_constant() && other.is_constant() {
             // Compute the quotient and return the new constant.
@@ -50,13 +44,40 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
             let overflows = self.is_equal(&min) & other.is_equal(&neg_one);
             Self::ternary(&overflows, &min, &signed_quotient)
         } else {
+            // Handle division by zero.
+            // Note that we perform the check here since the signed and unsigned variants of `div_wrapped`
+            // and `div_checked` reach this code path.
+            // Note that For the signed variants, we invoke `abs_wrapped()` on `other` which will return
+            // zero if `other` is zero. We then invoke `cast_as_dual()` on the result. However, the bitwise
+            // representation of zero for signed and unsigned integers is identical. Therefore, this
+            // check will catch division by zero errors for signed integers, even though the operands
+            // may have been modified via `abs_wrapped().cast_as_dual()`.
+            match other.is_constant() && other.eject_value().is_zero() {
+                // If `other` is a constant and its value is zero, we must halt execution.
+                true => E::halt("Division by zero error"),
+                // If `other` is not a constant, we must enforce a constraint that `other` is non-zero.
+                false => E::assert(other.is_not_equal(&Self::zero())),
+            }
+
             // Eject the dividend and divisor, to compute the quotient as a witness.
             let dividend_value = self.eject_value();
             let divisor_value = other.eject_value();
 
+            // Compute the quotient and remainder.
+            // Note that we return zero if the divisor is zero.
+            // This is safe since we enforce that the divisor is non-zero in the check above.
+            let quotient_value = match dividend_value.checked_div(&divisor_value) {
+                Some(value) => value,
+                None => I::zero(),
+            };
+            let remainder_value = match dividend_value.checked_rem(&divisor_value) {
+                Some(value) => value,
+                None => I::zero(),
+            };
+
             // Overflow is not possible for unsigned integers so we use wrapping operations.
-            let quotient = Integer::new(Mode::Private, dividend_value.wrapping_div(&divisor_value));
-            let remainder = Integer::new(Mode::Private, dividend_value.wrapping_rem(&divisor_value));
+            let quotient = Integer::new(Mode::Private, quotient_value);
+            let remainder = Integer::new(Mode::Private, remainder_value);
 
             // Ensure that Euclidean division holds for these values in the base field.
             E::assert_eq(self.to_field(), quotient.to_field() * other.to_field() + remainder.to_field());
