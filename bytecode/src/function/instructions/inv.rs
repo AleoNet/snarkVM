@@ -115,9 +115,19 @@ mod tests {
     use crate::{test_instruction_halts, test_modes, unary_instruction_test, Identifier, Process};
 
     test_modes!(field, Inv, "1field", "1field");
-    unary_instruction_test!(field_inv, Inv, "2field.public", "4222230874714185212124412469390773265687949667577031913967616727958704619521field.private");
+    unary_instruction_test!(
+        field_inv,
+        Inv,
+        "2field.public",
+        "4222230874714185212124412469390773265687949667577031913967616727958704619521field.private"
+    );
 
-    test_instruction_halts!(field_zero_inv_halts, Inv, "Failed to compute the inverse for a base field element", "0field.constant");
+    test_instruction_halts!(
+        field_zero_inv_halts,
+        Inv,
+        "Failed to compute the inverse for a base field element",
+        "0field.constant"
+    );
     test_instruction_halts!(i8_inv_halts, Inv, "Invalid 'inv' instruction", "1i8.constant");
     test_instruction_halts!(i16_inv_halts, Inv, "Invalid 'inv' instruction", "1i16.constant");
     test_instruction_halts!(i32_inv_halts, Inv, "Invalid 'inv' instruction", "1i32.constant");
