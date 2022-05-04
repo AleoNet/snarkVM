@@ -28,8 +28,6 @@ impl<E: Environment> FromBits for Scalar<E> {
 
         // Ensure the list of booleans is within the allowed size in bits.
         let num_bits = bits_le.len();
-        println!("{num_bits}");
-        println!("{size_in_bits}");
         if num_bits > size_in_bits {
             // Check if all excess bits are zero.
             let should_be_zero = bits_le[size_in_bits..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit);
