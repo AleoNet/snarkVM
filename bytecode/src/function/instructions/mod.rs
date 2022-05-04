@@ -35,14 +35,14 @@ pub(super) use equal::*;
 pub(super) mod gt;
 pub(super) use gt::*;
 
-pub(super) mod gte;
-pub(super) use gte::*;
+pub(super) mod ge;
+pub(super) use ge::*;
 
 pub(super) mod lt;
 pub(super) use lt::*;
 
-pub(super) mod lte;
-pub(super) use lte::*;
+pub(super) mod le;
+pub(super) use le::*;
 
 pub(super) mod mul;
 pub(super) use mul::*;

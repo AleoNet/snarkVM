@@ -48,7 +48,7 @@ impl<P: Program> Opcode for LessThanOrEqual<P> {
     /// Returns the opcode as a string.
     #[inline]
     fn opcode() -> &'static str {
-        "lte"
+        "le"
     }
 }
 
@@ -90,7 +90,7 @@ impl<P: Program> Operation<P> for LessThanOrEqual<P> {
 impl<P: Program> Parser for LessThanOrEqual<P> {
     type Environment = P::Environment;
 
-    /// Parses a string into an 'lte' operation.
+    /// Parses a string into an 'le' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the operation from the string.
@@ -133,7 +133,7 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        let (_, instruction) = Instruction::<Process>::parse("lte r0 r1 into r2;").unwrap();
+        let (_, instruction) = Instruction::<Process>::parse("le r0 r1 into r2;").unwrap();
         assert!(matches!(instruction, Instruction::LessThanOrEqual(_)));
     }
 
@@ -188,19 +188,19 @@ mod tests {
     test_instruction_halts!(
         address_halts,
         LessThanOrEqual,
-        "Invalid 'lte' instruction",
+        "Invalid 'le' instruction",
         "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.constant",
         "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.constant"
     );
     test_instruction_halts!(
         boolean_halts,
         LessThanOrEqual,
-        "Invalid 'lte' instruction",
+        "Invalid 'le' instruction",
         "true.constant",
         "true.constant"
     );
-    test_instruction_halts!(group_halts, LessThanOrEqual, "Invalid 'lte' instruction", "0group", "2group");
-    test_instruction_halts!(string_halts, LessThanOrEqual, "Invalid 'lte' instruction", "\"hello\"", "\"hello\"");
+    test_instruction_halts!(group_halts, LessThanOrEqual, "Invalid 'le' instruction", "0group", "2group");
+    test_instruction_halts!(string_halts, LessThanOrEqual, "Invalid 'le' instruction", "\"hello\"", "\"hello\"");
 
     #[test]
     #[should_panic(expected = "message is not a literal")]

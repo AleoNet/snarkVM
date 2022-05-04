@@ -48,7 +48,7 @@ impl<P: Program> Opcode for GreaterThanOrEqual<P> {
     /// Returns the opcode as a string.
     #[inline]
     fn opcode() -> &'static str {
-        "gte"
+        "ge"
     }
 }
 
@@ -90,7 +90,7 @@ impl<P: Program> Operation<P> for GreaterThanOrEqual<P> {
 impl<P: Program> Parser for GreaterThanOrEqual<P> {
     type Environment = P::Environment;
 
-    /// Parses a string into an 'gte' operation.
+    /// Parses a string into an 'ge' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the operation from the string.
@@ -133,7 +133,7 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        let (_, instruction) = Instruction::<Process>::parse("gte r0 r1 into r2;").unwrap();
+        let (_, instruction) = Instruction::<Process>::parse("ge r0 r1 into r2;").unwrap();
         assert!(matches!(instruction, Instruction::GreaterThanOrEqual(_)));
     }
 
@@ -188,19 +188,19 @@ mod tests {
     test_instruction_halts!(
         address_halts,
         GreaterThanOrEqual,
-        "Invalid 'gte' instruction",
+        "Invalid 'ge' instruction",
         "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.constant",
         "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah.constant"
     );
     test_instruction_halts!(
         boolean_halts,
         GreaterThanOrEqual,
-        "Invalid 'gte' instruction",
+        "Invalid 'ge' instruction",
         "true.constant",
         "true.constant"
     );
-    test_instruction_halts!(group_halts, GreaterThanOrEqual, "Invalid 'gte' instruction", "0group", "2group");
-    test_instruction_halts!(string_halts, GreaterThanOrEqual, "Invalid 'gte' instruction", "\"hello\"", "\"hello\"");
+    test_instruction_halts!(group_halts, GreaterThanOrEqual, "Invalid 'ge' instruction", "0group", "2group");
+    test_instruction_halts!(string_halts, GreaterThanOrEqual, "Invalid 'ge' instruction", "\"hello\"", "\"hello\"");
 
     #[test]
     #[should_panic(expected = "message is not a literal")]
