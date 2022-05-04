@@ -302,6 +302,65 @@ impl<P: Program> Function<P> {
 
         outputs
     }
+
+    /// Returns a tuple containing the number of constants, public variables, private variables, constraints, and gates produced by the program.
+    ///
+    /// # Errors
+    /// This method will halt if an input register references a non-existent definition.
+    /// This method will halt if a detects a nested composite definition.
+    pub fn count(&self) -> (u64, u64, u64, u64, u64) {
+        let count_before = P::Aleo::count();
+
+        let mut values = Vec::with_capacity(self.inputs.borrow().len());
+        // For each input, initialize blank values.
+        for input in self.inputs.borrow().iter() {
+            match input.annotation() {
+                // Initialize a blank literal value.
+                Annotation::Literal(literal_type) => {
+                    values.push(literal_type.blank().into());
+                }
+                // Initialize a blank composite value.
+                Annotation::Composite(identifier) => {
+                    // Find the corresponding definition.
+                    match P::get_definition(identifier) {
+                        None => P::halt("Input \'{register}\' references a non-existent definition"),
+                        Some(definition) => {
+                            // For each member in the definition, initialize its corresponding blank value.
+                            let members = definition.members();
+                            let mut component_values = Vec::with_capacity(members.len());
+                            for member in members {
+                                match member.annotation() {
+                                    Annotation::Literal(literal_type) => {
+                                        component_values.push(literal_type.blank());
+                                    }
+                                    Annotation::Composite(_) => P::halt("Composite types cannot be nested."),
+                                }
+                            }
+                            values.push(Value::Composite(identifier.clone(), component_values));
+                        }
+                    }
+                }
+            }
+        }
+
+        self.evaluate(&values);
+
+        let count_after = P::Aleo::count();
+
+        let (num_constants_before, num_public_before, num_private_before, num_constraints_before, num_gates_before) =
+            count_before;
+        let (num_constants_after, num_public_after, num_private_after, num_constraints_after, num_gates_after) =
+            count_after;
+
+        // TODO: Use Count when it is compatible with gates.
+        (
+            num_constants_after - num_constants_before,
+            num_public_after - num_public_before,
+            num_private_after - num_private_before,
+            num_constraints_after - num_constraints_before,
+            num_gates_after - num_gates_before,
+        )
+    }
 }
 
 impl<P: Program> Function<P> {
@@ -569,5 +628,28 @@ function main:
         let candidate = Function::<P>::from_bytes_le(&expected_bytes).unwrap();
         assert_eq!(expected.to_string(), candidate.to_string());
         assert_eq!(expected_bytes, candidate.to_bytes_le().unwrap());
+    }
+
+    #[test]
+    fn test_function_count() {
+        let function_string = r"
+function main:
+    input r0 as u8.public;
+    input r1 as u8.private;
+    input r2 as u8.private;
+    add r0 r1 into r3;
+    add r2 r3 into r4;
+    output r4 as u8.private;";
+
+        let function = Function::<P>::from_str(function_string);
+        let (num_constants, num_public, num_private, num_constraints, num_gates) = function.count();
+        assert_eq!(0, num_constants);
+        // 8 to initialize the input to r0. Total is 8 public variables.
+        assert_eq!(8, num_public);
+        // 16 to initialize the inputs to r1 and r2. 9 to perform a U8::add. 9 to perform a U8::add. Total is 34 private variables.
+        assert_eq!(34, num_private);
+        // 24 to initialize the inputs to r1, r2, and r3. 11 to perform a U8::add. 11 to perform a U8::add. Total is 46 constraints.
+        assert_eq!(46, num_constraints);
+        assert_eq!(134, num_gates);
     }
 }

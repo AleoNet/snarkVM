@@ -84,6 +84,28 @@ impl<P: Program> LiteralType<P> {
         }
     }
 
+    /// Returns a blank literal corresponding to the literal type.
+    pub fn blank(&self) -> Literal<P::Environment> {
+        match self {
+            Self::Address(mode) => Literal::Address(Address::<P::Environment>::blank(*mode)),
+            Self::Boolean(mode) => Literal::Boolean(Boolean::<P::Environment>::blank(*mode)),
+            Self::Field(mode) => Literal::Field(Field::<P::Environment>::blank(*mode)),
+            Self::Group(mode) => Literal::Group(Group::<P::Environment>::blank(*mode)),
+            Self::I8(mode) => Literal::I8(I8::<P::Environment>::blank(*mode)),
+            Self::I16(mode) => Literal::I16(I16::<P::Environment>::blank(*mode)),
+            Self::I32(mode) => Literal::I32(I32::<P::Environment>::blank(*mode)),
+            Self::I64(mode) => Literal::I64(I64::<P::Environment>::blank(*mode)),
+            Self::I128(mode) => Literal::I128(I128::<P::Environment>::blank(*mode)),
+            Self::U8(mode) => Literal::U8(U8::<P::Environment>::blank(*mode)),
+            Self::U16(mode) => Literal::U16(U16::<P::Environment>::blank(*mode)),
+            Self::U32(mode) => Literal::U32(U32::<P::Environment>::blank(*mode)),
+            Self::U64(mode) => Literal::U64(U64::<P::Environment>::blank(*mode)),
+            Self::U128(mode) => Literal::U128(U128::<P::Environment>::blank(*mode)),
+            Self::Scalar(mode) => Literal::Scalar(Scalar::<P::Environment>::blank(*mode)),
+            Self::String(mode, _) => Literal::String(StringType::<P::Environment>::blank(*mode)),
+        }
+    }
+
     /// Returns the mode.
     pub fn mode(&self) -> &Mode {
         match self {
