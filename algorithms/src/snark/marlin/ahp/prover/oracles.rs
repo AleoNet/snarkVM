@@ -18,10 +18,7 @@ use std::collections::BTreeMap;
 
 use snarkvm_fields::PrimeField;
 
-use crate::{
-    fft::DensePolynomial,
-    polycommit::sonic_pc::{LabeledPolynomial, LabeledPolynomialWithBasis, PolynomialInfo, PolynomialLabel},
-};
+use crate::polycommit::sonic_pc::{LabeledPolynomial, LabeledPolynomialWithBasis, PolynomialInfo, PolynomialLabel};
 
 /// The first set of prover oracles.
 #[derive(Debug, Clone)]
@@ -71,7 +68,6 @@ impl<'a, F: PrimeField> SingleEntry<'a, F> {
     /// Intended for use when committing.
     pub fn iter_for_commit(&mut self) -> impl Iterator<Item = LabeledPolynomialWithBasis<'a, F>> {
         let w_poly = self.w_poly.clone();
-        self.w_poly = LabeledPolynomial { polynomial: DensePolynomial::zero().into(), info: w_poly.info().clone() };
 
         let z_a = self.z_a.clone();
         self.z_a = LabeledPolynomialWithBasis { polynomial: vec![], info: z_a.info().clone() };

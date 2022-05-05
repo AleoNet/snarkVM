@@ -230,7 +230,6 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 .add((-beta * g_1_at_beta, LCTerm::One));
             lincheck_sumcheck
         };
-        dbg!(&lincheck_sumcheck);
         debug_assert!(evals.get_lc_eval(&lincheck_sumcheck, beta)?.is_zero());
 
         for z_b in z_b_s {
@@ -309,7 +308,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 ///
 /// Intended to provide a common interface for both the prover and the verifier
 /// when constructing linear combinations via `AHPForR1CS::construct_linear_combinations`.
-pub trait EvaluationsProvider<F: PrimeField> {
+pub trait EvaluationsProvider<F: PrimeField>: core::fmt::Debug {
     /// Get the evaluation of linear combination `lc` at `point`.
     fn get_lc_eval(&self, lc: &LinearCombination<F>, point: F) -> Result<F, AHPError>;
 }
@@ -321,7 +320,11 @@ impl<'a, F: PrimeField> EvaluationsProvider<F> for crate::polycommit::sonic_pc::
     }
 }
 
-impl<F: PrimeField, T: Borrow<LabeledPolynomial<F>>> EvaluationsProvider<F> for Vec<T> {
+impl<F, T> EvaluationsProvider<F> for Vec<T>
+where
+    F: PrimeField,
+    T: Borrow<LabeledPolynomial<F>> + core::fmt::Debug,
+{
     fn get_lc_eval(&self, lc: &LinearCombination<F>, point: F) -> Result<F, AHPError> {
         let mut eval = F::zero();
         for (coeff, term) in lc.iter() {

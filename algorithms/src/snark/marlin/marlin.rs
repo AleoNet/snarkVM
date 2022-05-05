@@ -117,10 +117,11 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
         )?;
 
         let commit_time = start_timer!(|| "Commit to index polynomials");
-        let (circuit_commitments, circuit_commitment_randomness): (_, _) =
+        let (mut circuit_commitments, circuit_commitment_randomness): (_, _) =
             SonicKZG10::<E, FS>::commit(&committer_key, index.iter().map(Into::into), None)?;
         end_timer!(commit_time);
 
+        circuit_commitments.sort_by(|c1, c2| c1.label().cmp(c2.label()));
         let circuit_commitments = circuit_commitments.into_iter().map(|c| *c.commitment()).collect();
         let circuit_verifying_key = CircuitVerifyingKey {
             circuit_info: index.index_info,

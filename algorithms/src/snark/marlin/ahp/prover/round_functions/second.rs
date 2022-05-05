@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use core::convert::TryInto;
-use std::{collections::BTreeMap, sync::Arc};
+use std::collections::BTreeMap;
 
 use crate::{
     fft,
@@ -78,7 +78,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let verifier::FirstMessage { alpha, eta_b, eta_c, batch_combiners } = verifier_message;
 
-        let (summed_z_m, t) = Self::calculate_summed_z_m_and_t(&mut state, *alpha, *eta_b, *eta_c, batch_combiners);
+        let (summed_z_m, t) = Self::calculate_summed_z_m_and_t(&state, *alpha, *eta_b, *eta_c, batch_combiners);
 
         let z_time = start_timer!(|| "Compute z poly");
         let z = cfg_iter!(state.first_round_oracles.as_ref().unwrap().batches)
@@ -96,11 +96,9 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         end_timer!(z_time);
 
-        let sumcheck_lhs = Self::calculate_lhs(&mut state, t, summed_z_m, z, *alpha);
+        let sumcheck_lhs = Self::calculate_lhs(&state, t, summed_z_m, z, *alpha);
 
-        debug_assert!(
-            sumcheck_lhs.evaluate_over_domain_by_ref(constraint_domain).evaluations.into_iter().sum::<F>().is_zero()
-        );
+        debug_assert!(constraint_domain.elements().map(|e| sumcheck_lhs.evaluate(e)).sum::<F>().is_zero());
 
         let sumcheck_time = start_timer!(|| "Compute sumcheck h and g polys");
         let (h_1, x_g_1) = sumcheck_lhs.divide_by_vanishing_poly(constraint_domain).unwrap();
@@ -124,7 +122,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     }
 
     fn calculate_lhs(
-        state: &mut prover::State<F, MM>,
+        state: &prover::State<F, MM>,
         t: DensePolynomial<F>,
         summed_z_m: DensePolynomial<F>,
         z: DensePolynomial<F>,
@@ -162,7 +160,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     }
 
     fn calculate_summed_z_m_and_t(
-        state: &mut prover::State<F, MM>,
+        state: &prover::State<F, MM>,
         alpha: F,
         eta_b: F,
         eta_c: F,
@@ -173,13 +171,13 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let fft_precomputation = &state.index.fft_precomputation;
         let ifft_precomputation = &state.index.ifft_precomputation;
-        let first_msg = Arc::get_mut(state.first_round_oracles.as_mut().unwrap()).unwrap();
+        let first_msg = state.first_round_oracles.as_ref().unwrap();
         let mut job_pool = ExecutionPool::with_capacity(2 * state.batch_size);
         let eta_b_over_eta_c = eta_b * eta_c.inverse().unwrap();
-        for (entry, combiner) in first_msg.batches.iter_mut().zip_eq(batch_combiners) {
+        for (entry, combiner) in first_msg.batches.iter().zip_eq(batch_combiners) {
             job_pool.add_job(|| {
                 let z_a = entry.z_a_poly.polynomial().as_dense().unwrap();
-                let z_b = entry.z_b_poly.polynomial_mut().as_dense_mut().unwrap();
+                let mut z_b = entry.z_b_poly.polynomial().as_dense().unwrap().clone();
                 assert!(z_a.degree() < constraint_domain.size());
                 if MM::ZK {
                     assert_eq!(z_b.degree(), constraint_domain.size());
@@ -198,7 +196,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                     z_b.coeffs[0] += F::one();
                     let mut multiplier = PolyMultiplier::new();
                     multiplier.add_polynomial_ref(z_a, "z_a");
-                    multiplier.add_polynomial_ref(z_b, "eta_c_z_b_plus_one");
+                    multiplier.add_polynomial_ref(&z_b, "eta_c_z_b_plus_one");
                     multiplier.add_precomputation(fft_precomputation, ifft_precomputation);
                     let result = multiplier.multiply().unwrap();
                     // Start undoing in place mutation, by first subtracting the 1 that we added...

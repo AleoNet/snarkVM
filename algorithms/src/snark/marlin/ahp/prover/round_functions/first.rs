@@ -210,7 +210,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 .evaluations
                 .into_iter()
                 .zip(&evals.evaluations)
-                .all(|(z, e)| z + r.unwrap_or(F::zero()) == *e)
+                .all(|(z, e)| *e == z + should_randomize.then(|| r.unwrap()).unwrap_or_default()),
+            "1: {:#?}\n2: {:#?}",
+            poly.evaluate_over_domain_by_ref(constraint_domain).evaluations,
+            &evals.evaluations,
         );
 
         let poly_for_opening = LabeledPolynomial::new(label.to_string(), poly, None, Self::zk_bound());
