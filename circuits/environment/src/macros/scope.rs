@@ -50,6 +50,15 @@ macro_rules! assert_scope {
         assert_eq!($num_constraints, Circuit::num_constraints_in_scope(), "(num_constraints)");
         assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
     }};
+    (<=$num_constants:expr, <=$num_public:expr, <=$num_private:expr, <=$num_constraints:expr) => {{
+        $crate::print_scope!();
+
+        assert!(Circuit::num_constants_in_scope() <= $num_constants, "(num_constants)");
+        assert!(Circuit::num_public_in_scope() <= $num_public, "(num_public)");
+        assert!(Circuit::num_private_in_scope() <= $num_private, "(num_private)");
+        assert!(Circuit::num_constraints_in_scope() <= $num_constraints, "(num_constraints)");
+        assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
+    }};
     ($case:expr, $num_constants:expr, $num_public:expr, $num_private:expr, $num_constraints:expr) => {{
         $crate::print_scope!();
 

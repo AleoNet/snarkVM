@@ -149,7 +149,7 @@ pub(crate) mod tests {
 
                 // TODO (howardwu): Resolve skipping the cost count checks for the burn-in round.
                 if i > 0 {
-                    assert_scope!(num_constants, num_public, num_private, num_constraints);
+                    assert_scope!(<=num_constants, <=num_public, <=num_private, <=num_constraints);
                 }
             });
         }
@@ -157,7 +157,7 @@ pub(crate) mod tests {
 
     #[test]
     fn test_verify_constant() {
-        check_verify(Mode::Constant, 4251, 0, 0, 0);
+        check_verify(Mode::Constant, 4265, 0, 0, 0);
     }
 
     #[test]
