@@ -261,8 +261,150 @@ mod tests {
         );
     }
 
-    test_modes!(group, Mul, "2group", "1scalar", "2group");
-    test_modes!(scalar, Mul, "1scalar", "2group", "2group");
+    mod group {
+        use super::*;
+        use crate::binary_instruction_test;
+
+        // 2group * 1scalar has special output mode behavior.
+        // Normally, a public variable times a constant would yield a private variable. However, since
+        // the constant is one, we return the original public variable.
+        binary_instruction_test!(
+            constant_and_constant_yields_constant,
+            Mul,
+            "2group.constant",
+            "1scalar.constant",
+            "2group.constant"
+        );
+        binary_instruction_test!(
+            constant_and_public_yields_private,
+            Mul,
+            "2group.constant",
+            "1scalar.public",
+            "2group.private"
+        );
+        binary_instruction_test!(
+            constant_and_private_yields_private,
+            Mul,
+            "2group.constant",
+            "1scalar.private",
+            "2group.private"
+        );
+        binary_instruction_test!(
+            public_and_constant_yields_public,
+            Mul,
+            "2group.public",
+            "1scalar.constant",
+            "2group.public"
+        );
+        binary_instruction_test!(
+            private_and_constant_yields_private,
+            Mul,
+            "2group.private",
+            "1scalar.constant",
+            "2group.private"
+        );
+        binary_instruction_test!(
+            public_and_public_yields_private,
+            Mul,
+            "2group.public",
+            "1scalar.public",
+            "2group.private"
+        );
+        binary_instruction_test!(
+            public_and_private_yields_private,
+            Mul,
+            "2group.public",
+            "1scalar.private",
+            "2group.private"
+        );
+        binary_instruction_test!(
+            private_and_public_yields_private,
+            Mul,
+            "2group.private",
+            "1scalar.public",
+            "2group.private"
+        );
+        binary_instruction_test!(
+            private_and_private_yields_private,
+            Mul,
+            "2group.private",
+            "1scalar.private",
+            "2group.private"
+        );
+    }
+
+    mod scalar {
+        use super::*;
+        use crate::binary_instruction_test;
+
+        // 1scalar * 2group has special output mode behavior.
+        // Normally, a constant times a public variable would yield a private variable. However, since
+        // the constant is one, we return the original public variable.
+        binary_instruction_test!(
+            constant_and_constant_yields_constant,
+            Mul,
+            "1scalar.constant",
+            "2group.constant",
+            "2group.constant"
+        );
+        binary_instruction_test!(
+            constant_and_public_yields_private,
+            Mul,
+            "1scalar.constant",
+            "2group.public",
+            "2group.public"
+        );
+        binary_instruction_test!(
+            constant_and_private_yields_private,
+            Mul,
+            "1scalar.constant",
+            "2group.private",
+            "2group.private"
+        );
+        binary_instruction_test!(
+            public_and_constant_yields_public,
+            Mul,
+            "1scalar.public",
+            "2group.constant",
+            "2group.private"
+        );
+        binary_instruction_test!(
+            private_and_constant_yields_private,
+            Mul,
+            "1scalar.private",
+            "2group.constant",
+            "2group.private"
+        );
+        binary_instruction_test!(
+            public_and_public_yields_private,
+            Mul,
+            "1scalar.public",
+            "2group.public",
+            "2group.private"
+        );
+        binary_instruction_test!(
+            public_and_private_yields_private,
+            Mul,
+            "1scalar.public",
+            "2group.private",
+            "2group.private"
+        );
+        binary_instruction_test!(
+            private_and_public_yields_private,
+            Mul,
+            "1scalar.private",
+            "2group.public",
+            "2group.private"
+        );
+        binary_instruction_test!(
+            private_and_private_yields_private,
+            Mul,
+            "1scalar.private",
+            "2group.private",
+            "2group.private"
+        );
+    }
+
     test_modes!(i8, Mul, "1i8", "2i8", "2i8");
     test_modes!(i16, Mul, "1i16", "2i16", "2i16");
     test_modes!(i32, Mul, "1i32", "2i32", "2i32");
