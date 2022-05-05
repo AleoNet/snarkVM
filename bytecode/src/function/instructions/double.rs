@@ -64,7 +64,6 @@ impl<P: Program> Operation<P> for Double<P> {
 
         // Perform the operation.
         let result = match first {
-            Literal::Field(a) => Literal::Field(a.double()),
             Literal::Group(a) => Literal::Group(a.double()),
             _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
         };
@@ -121,7 +120,6 @@ mod tests {
         assert!(matches!(instruction, Instruction::Double(_)));
     }
 
-    test_modes!(field, Double, "1field", "2field");
     test_modes!(
         group,
         Double,
@@ -129,6 +127,7 @@ mod tests {
         "6696402423798020098358712667671415812305707015226794708266486692814448135893group"
     );
 
+    test_instruction_halts!(field_double_halts, Double, "Invalid 'double' instruction", "1field.constant");
     test_instruction_halts!(i8_double_halts, Double, "Invalid 'double' instruction", "1i8.constant");
     test_instruction_halts!(i16_double_halts, Double, "Invalid 'double' instruction", "1i16.constant");
     test_instruction_halts!(i32_double_halts, Double, "Invalid 'double' instruction", "1i32.constant");
