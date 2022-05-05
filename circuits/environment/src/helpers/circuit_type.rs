@@ -49,12 +49,30 @@ pub enum CircuitType<T: Eject> {
     Private,
 }
 
-impl<T: Eject> CircuitType<T> {
-    pub fn mode(&self) -> Mode {
+impl<T: Eject> Eject for  CircuitType<T> {
+    type Primitive = T::Primitive;
+
+    fn eject_mode(&self) -> Mode {
         match self {
-            CircuitType::Constant(constant) => constant.eject_mode(),
-            CircuitType::Public => Mode::Public,
-            CircuitType::Private => Mode::Private,
+            Self::Constant(_) => Mode::Constant,
+            Self::Public => Mode::Public,
+            Self::Private => Mode::Private,
+        }
+    }
+
+    fn eject_value(&self) -> Self::Primitive {
+        match self {
+            Self::Constant(circuit) => circuit.eject_value(),
+            _ => panic!("Circuit is not constant"),
+        }
+    }
+}
+
+impl<T: Eject> CircuitType<T> {
+    pub fn circuit(&self) -> &T {
+        match self {
+            Self::Constant(circuit) => &circuit.0,
+            _ => panic!("Circuit must be a constant in order to extract the circuit."),
         }
     }
 }

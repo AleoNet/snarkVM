@@ -17,14 +17,14 @@
 #[macro_export]
 macro_rules! count {
     ($type_:ty, $operation:path, $case:expr) => {
-        <$type_ as Metrics<dyn $operation>>::count($case)
+        <$type_ as Metadata<dyn $operation>>::count($case)
     };
 }
 
 #[macro_export]
-macro_rules! output_mode {
+macro_rules! output_type {
     ($type_:ty, $operation:path, $case:expr) => {
-        <$type_ as OutputMode<dyn $operation>>::output_mode($case)
+        <$type_ as Metadata<dyn $operation>>::output_type($case)
     };
 }
 
@@ -176,12 +176,12 @@ macro_rules! assert_count_fails {
 ///
 /// ## Example
 /// ```ignore
-/// assert_output_mode!(candidate, Add(Field, Field) => Field, &(mode_a, mode_b))
+/// assert_output_type!(candidate, Add(Field, Field) => Field, &(mode_a, mode_b))
 /// ```
 #[macro_export]
-macro_rules! assert_output_mode {
+macro_rules! assert_output_type {
     ($type_:ty, $operation:path, $case:expr, $candidate:expr) => {{
-        let expected_mode = output_mode!($type_, $operation, $case);
+        let expected_mode = output_type!($type_, $operation, $case);
         assert_eq!(expected_mode, $candidate.eject_mode());
     }};
 
@@ -191,24 +191,24 @@ macro_rules! assert_output_mode {
 
     // Special case: FromBoolean trait deviates from the normal convention.
     (FromBoolean($input:ident) => $output:ident, $case:expr, $candidate:expr) => {{
-        assert_output_mode!($output<Circuit>, FromBoolean<Boolean = $input<Circuit>>, $case, $candidate)
+        assert_output_type!($output<Circuit>, FromBoolean<Boolean = $input<Circuit>>, $case, $candidate)
     }};
     // Empty case (special): Sets a Boolean associated type.
     ($operation:tt<$boolean:ident>() => $output:ident, $case:expr, $candidate:expr) => {{
-        assert_output_mode!($output<Circuit>, $operation<Boolean = $boolean<Circuit>>, $case, $candidate)
+        assert_output_type!($output<Circuit>, $operation<Boolean = $boolean<Circuit>>, $case, $candidate)
     }};
     // Unary case
     ($operation:tt($input:ident) => $output:ident, $case:expr, $candidate:expr) => {{
-        assert_output_mode!($input<Circuit>, $operation<Output = $output<Circuit>>, $case, $candidate)
+        assert_output_type!($input<Circuit>, $operation<Output = $output<Circuit>>, $case, $candidate)
     }};
     // Binary case
     ($operation:tt($input_a:ident, $input_b:ident) => $output:ident, $case:expr, $candidate:expr) => {{
-        assert_output_mode!($input_a<Circuit>, $operation<$input_b<Circuit>, Output = $output<Circuit>>, $case, $candidate)
+        assert_output_type!($input_a<Circuit>, $operation<$input_b<Circuit>, Output = $output<Circuit>>, $case, $candidate)
     }};
     // Ternary case (special): Hardcoded for a conditional ternary operator.
     // Note: $input_b is not used, as the Ternary trait does not require one.
     ($operation:tt($boolean:ident, $input_a:ident, $input_b:ident) => $output:ident, $case:expr, $candidate:expr) => {{
-        assert_output_mode!($input_a<Circuit>, $operation<Boolean = $boolean<Circuit>, Output = $output<Circuit>>, $case, $candidate)
+        assert_output_type!($input_a<Circuit>, $operation<Boolean = $boolean<Circuit>, Output = $output<Circuit>>, $case, $candidate)
     }};
 
     ////////////
@@ -217,23 +217,23 @@ macro_rules! assert_output_mode {
 
     // Empty case (special & custom): Sets a Boolean associated type.
     ($operation:tt<$boolean:ident>() => $output:ident<$($parameter:ident),+>, $case:expr, $candidate:expr) => {{
-        assert_output_mode!($output<Circuit, $($parameter),+>, $operation<Boolean = $boolean<Circuit>>, $case, $candidate)
+        assert_output_type!($output<Circuit, $($parameter),+>, $operation<Boolean = $boolean<Circuit>>, $case, $candidate)
     }};
     // Unary case (custom).
     ($operation:tt($input:ident<$($parameter_a:ident),+>) => $output:ident<$($parameter_b:ident),+>, $case:expr, $candidate:expr) => {{
-        assert_output_mode!($input<Circuit, $($parameter_a),+>, $operation<Output = $output<Circuit, $($parameter_b),+>>, $case, $candidate)
+        assert_output_type!($input<Circuit, $($parameter_a),+>, $operation<Output = $output<Circuit, $($parameter_b),+>>, $case, $candidate)
     }};
     // Binary case (custom)
     ($operation:tt($input_a:ident<$($parameter_a:ident),+>, $input_b:ident<$($parameter_b:ident),+>) => $output:ident, $case:expr, $candidate:expr) => {{
-        assert_output_mode!($input_a<Circuit, $($parameter_a),+>, $operation<$input_b<Circuit, $($parameter_b),+>, Output = $output<Circuit>>, $case, $candidate)
+        assert_output_type!($input_a<Circuit, $($parameter_a),+>, $operation<$input_b<Circuit, $($parameter_b),+>, Output = $output<Circuit>>, $case, $candidate)
     }};
     // Binary case (custom)
     ($operation:tt($input_a:ident<$($parameter_a:ident),+>, $input_b:ident<$($parameter_b:ident),+>) => $output:ident<$($parameter_c:ident),+>, $case:expr, $candidate:expr) => {{
-        assert_output_mode!($input_a<Circuit, $($parameter_a),+>, $operation<$input_b<Circuit, $($parameter_b),+>, Output = $output<Circuit, $($parameter_c),+>>, $case, $candidate)
+        assert_output_type!($input_a<Circuit, $($parameter_a),+>, $operation<$input_b<Circuit, $($parameter_b),+>, Output = $output<Circuit, $($parameter_c),+>>, $case, $candidate)
     }};
     // Ternary case (special & custom): Hardcoded for a conditional ternary operator.
     // Note: $input_b is not used, as the Ternary trait does not require one.
     ($operation:tt($boolean:ident, $input_a:ident<$($parameter_a:ident),+>, $input_b:ident<$($parameter_b:ident),+>) => $output:ident<$($parameter_c:ident),+>, $case:expr, $candidate:expr) => {{
-        assert_output_mode!($input_a<Circuit, $($parameter_a),+>, $operation<Boolean = $boolean<Circuit>, Output = $output<Circuit, $($parameter_c),+>>, $case, $candidate)
+        assert_output_type!($input_a<Circuit, $($parameter_a),+>, $operation<Boolean = $boolean<Circuit>, Output = $output<Circuit, $($parameter_c),+>>, $case, $candidate)
     }};
 }

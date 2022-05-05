@@ -42,7 +42,7 @@ pub use traits::*;
 pub mod prelude {
     pub use crate::{
         count,
-        output_mode,
+        output_type,
         rename_selfs,
         traits::*,
         witness,
@@ -51,8 +51,8 @@ pub mod prelude {
         Count,
         Environment,
         LinearCombination,
+        Metadata,
         Mode,
-        OutputMode,
         Variable,
     };
     pub use snarkvm_fields::{Field as F, One as O, PrimeField, Zero as Z};
