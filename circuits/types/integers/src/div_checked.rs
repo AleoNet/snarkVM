@@ -128,14 +128,14 @@ impl<E: Environment, I: IntegerType> Metrics<dyn DivChecked<Integer<E, I>, Outpu
                 (Mode::Constant, _) | (_, Mode::Constant) => {
                     Count::less_than(6 * I::BITS, 0, (7 * I::BITS) + 10, (8 * I::BITS) + 17)
                 }
-                (_, _) => Count::is(5 * I::BITS, 0, (8 * I::BITS) + 10, (8 * I::BITS) + 17),
+                (_, _) => Count::is(5 * I::BITS, 0, (8 * I::BITS) + 12, (8 * I::BITS) + 21),
             },
             false => match (case.0, case.1) {
                 (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
                 (Mode::Constant, _) | (_, Mode::Constant) => {
-                    Count::less_than(0, 0, (2 * I::BITS) + 1, (2 * I::BITS) + 2)
+                    Count::less_than(0, 0, (2 * I::BITS) + 3, (2 * I::BITS) + 6)
                 }
-                (_, _) => Count::is(0, 0, (2 * I::BITS) + 1, (2 * I::BITS) + 2),
+                (_, _) => Count::is(0, 0, (2 * I::BITS) + 3, (2 * I::BITS) + 6),
             },
         }
     }
@@ -169,7 +169,14 @@ mod tests {
         let a = Integer::<Circuit, I>::new(mode_a, first);
         let b = Integer::<Circuit, I>::new(mode_b, second);
         if second == I::zero() {
-            check_operation_halts(&a, &b, Integer::div_checked);
+            match mode_b {
+                Mode::Constant => check_operation_halts(&a, &b, Integer::div_wrapped),
+                _ => Circuit::scope(name, || {
+                    let candidate = a.div_wrapped(&b);
+                    assert_count_fails!(DivWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
+                    assert_output_mode!(DivWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b), candidate);
+                }),
+            }
         } else {
             match first.checked_div(&second) {
                 Some(expected) => Circuit::scope(name, || {

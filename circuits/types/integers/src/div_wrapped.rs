@@ -52,11 +52,14 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
             // representation of zero for signed and unsigned integers is identical. Therefore, this
             // check will catch division by zero errors for signed integers, even though the operands
             // may have been modified via `abs_wrapped().cast_as_dual()`.
-            match other.is_constant() && other.eject_value().is_zero() {
+            match other.is_constant() {
                 // If `other` is a constant and its value is zero, we must halt execution.
-                true => E::halt("Division by zero error"),
+                true => match other.eject_value().is_zero() {
+                    true => E::halt("Division by zero error"),
+                    false => (), // Do nothing.
+                },
                 // If `other` is not a constant, we must enforce a constraint that `other` is non-zero.
-                false => E::assert(other.is_not_equal(&Self::zero())),
+                false => E::assert(other.to_field().is_not_equal(&Field::zero())),
             }
 
             // Eject the dividend and divisor, to compute the quotient as a witness.
@@ -96,14 +99,14 @@ impl<E: Environment, I: IntegerType> Metrics<dyn DivWrapped<Integer<E, I>, Outpu
             true => match (case.0, case.1) {
                 (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
                 (Mode::Constant, _) | (_, Mode::Constant) => {
-                    Count::less_than(6 * I::BITS, 0, (7 * I::BITS) + 10, (8 * I::BITS) + 16)
+                    Count::less_than(6 * I::BITS, 0, (7 * I::BITS) + 12, (8 * I::BITS) + 20)
                 }
-                (_, _) => Count::is(5 * I::BITS, 0, (9 * I::BITS) + 10, (9 * I::BITS) + 16),
+                (_, _) => Count::is(5 * I::BITS, 0, (9 * I::BITS) + 12, (9 * I::BITS) + 20),
             },
             false => match (case.0, case.1) {
                 (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
                 (_, Mode::Constant) => Count::is(0, 0, 2 * I::BITS, (2 * I::BITS) + 1),
-                (Mode::Constant, _) | (_, _) => Count::is(0, 0, (2 * I::BITS) + 1, (2 * I::BITS) + 2),
+                (Mode::Constant, _) | (_, _) => Count::is(0, 0, (2 * I::BITS) + 3, (2 * I::BITS) + 6),
             },
         }
     }
@@ -137,7 +140,14 @@ mod tests {
         let a = Integer::<Circuit, I>::new(mode_a, first);
         let b = Integer::<Circuit, I>::new(mode_b, second);
         if second == I::zero() {
-            check_operation_halts(&a, &b, Integer::div_wrapped);
+            match mode_b {
+                Mode::Constant => check_operation_halts(&a, &b, Integer::div_wrapped),
+                _ => Circuit::scope(name, || {
+                    let candidate = a.div_wrapped(&b);
+                    assert_count_fails!(DivWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
+                    assert_output_mode!(DivWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b), candidate);
+                }),
+            }
         } else {
             let expected = first.wrapping_div(&second);
             Circuit::scope(name, || {
