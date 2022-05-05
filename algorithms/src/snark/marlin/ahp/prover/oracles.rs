@@ -45,7 +45,7 @@ impl<'a, F: PrimeField> FirstOracles<'a, F> {
 
     pub fn matches_info(&self, info: &BTreeMap<PolynomialLabel, PolynomialInfo>) -> bool {
         self.batches.iter().all(|b| b.matches_info(info))
-            && self.mask_poly.as_ref().map_or(true, |p| p.info() == &info[p.label()])
+            && self.mask_poly.as_ref().map_or(true, |p| Some(p.info()) == info.get(p.label()))
     }
 }
 
