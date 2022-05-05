@@ -110,11 +110,24 @@ impl<E: Environment> AddAssign<&Self> for Group<E> {
 }
 
 impl<E: Environment> Metrics<dyn Add<Group<E>, Output = Group<E>>> for Group<E> {
-    type Case = (Mode, Mode);
+    type Case = (CircuitType<Group<E>>, CircuitType<Group<E>>);
 
     fn count(case: &Self::Case) -> Count {
-        match (case.0, case.1) {
-            (Mode::Constant, Mode::Constant) => Count::less_than(4, 0, 0, 0),
+        // If `self` is constant *and* `self` is zero, then return `Count::zero()`.
+        if let CircuitType::Constant(constant) = &case.0 {
+            if constant.eject_value().is_zero() {
+                return Count::zero()
+            }
+        }
+        // If `other` is constant *and* `other` is zero, then return `Count::zero()`.
+        if let CircuitType::Constant(constant) = &case.1 {
+            if constant.eject_value().is_zero() {
+                return Count::zero()
+            }
+        }
+        // Otherwise, determine the count of `self` and `other`.
+        match (case.0.mode(), case.1.mode()) {
+            (Mode::Constant, Mode::Constant) => Count::is(4, 0, 0, 0),
             (Mode::Constant, _) | (_, Mode::Constant) => Count::is(2, 0, 3, 3),
             (_, _) => Count::is(2, 0, 6, 6),
         }
@@ -122,12 +135,23 @@ impl<E: Environment> Metrics<dyn Add<Group<E>, Output = Group<E>>> for Group<E> 
 }
 
 impl<E: Environment> OutputMode<dyn Add<Group<E>, Output = Group<E>>> for Group<E> {
-    type Case = (Mode, Mode);
+    type Case = (CircuitType<Group<E>>, CircuitType<Group<E>>);
 
-    // TODO: This implementation is incorrect. In the case where one operand is a constant and is equal to zero, then the output mode
-    //  is that of the other operand.
     fn output_mode(case: &Self::Case) -> Mode {
-        match (case.0, case.1) {
+        // If `self` is constant *and* `self` is zero, then return `other`.
+        if let CircuitType::Constant(constant) = &case.0 {
+            if constant.eject_value().is_zero() {
+                return case.1.mode()
+            }
+        }
+        // If `other` is constant *and* `other` is zero, then return `self`.
+        if let CircuitType::Constant(constant) = &case.1 {
+            if constant.eject_value().is_zero() {
+                return case.0.mode()
+            }
+        }
+        // Otherwise, determine the mode of `self` and `other`.
+        match (case.0.mode(), case.1.mode()) {
             (Mode::Constant, Mode::Constant) => Mode::Constant,
             (_, _) => Mode::Private,
         }
@@ -146,8 +170,8 @@ mod tests {
         Circuit::scope(name, || {
             let candidate = a + b;
             assert_eq!(*expected, candidate.eject_value(), "({} + {})", a.eject_value(), b.eject_value());
-            assert_count!(Add(Group, Group) => Group, &(a.eject_mode(), b.eject_mode()));
-            assert_output_mode!(Add(Group, Group) => Group, &(a.eject_mode(), b.eject_mode()), candidate);
+            assert_count!(Add(Group, Group) => Group, &(CircuitType::from(a), CircuitType::from(b)));
+            assert_output_mode!(Add(Group, Group) => Group, &(CircuitType::from(a), CircuitType::from(b)), candidate);
         });
     }
 
@@ -161,8 +185,8 @@ mod tests {
             let mut candidate = a.clone();
             candidate += b;
             assert_eq!(*expected, candidate.eject_value(), "({} + {})", a.eject_value(), b.eject_value());
-            assert_count!(Add(Group, Group) => Group, &(a.eject_mode(), b.eject_mode()));
-            assert_output_mode!(Add(Group, Group) => Group, &(a.eject_mode(), b.eject_mode()), candidate);
+            assert_count!(Add(Group, Group) => Group, &(CircuitType::from(a), CircuitType::from(b)));
+            assert_output_mode!(Add(Group, Group) => Group, &(CircuitType::from(a), CircuitType::from(b)), candidate);
         });
     }
 
