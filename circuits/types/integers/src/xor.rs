@@ -84,14 +84,14 @@ impl<E: Environment, I: IntegerType> Metrics<dyn BitXor<Integer<E, I>, Output = 
 }
 
 impl<E: Environment, I: IntegerType> OutputMode<dyn BitXor<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = (ConstantOrMode<Integer<E, I>>, ConstantOrMode<Integer<E, I>>);
+    type Case = (CircuitType<Integer<E, I>>, CircuitType<Integer<E, I>>);
 
     fn output_mode(case: &Self::Case) -> Mode {
         match ((case.0.mode(), &case.0), (case.1.mode(), &case.1)) {
             ((Mode::Constant, _), (Mode::Constant, _)) => Mode::Constant,
             ((Mode::Constant, case), (mode, _)) | ((mode, _), (Mode::Constant, case)) => match case {
                 // Determine if the constant is all zeros.
-                ConstantOrMode::Constant(constant) => match constant.eject_value().is_zero() {
+                CircuitType::Constant(constant) => match constant.eject_value().is_zero() {
                     true => mode,
                     false => Mode::Private,
                 },
@@ -120,7 +120,7 @@ mod tests {
             let candidate = (&a).bitxor(&b);
             assert_eq!(expected, candidate.eject_value());
             assert_count!(BitXor(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
-            assert_output_mode!(BitXor(Integer<I>, Integer<I>) => Integer<I>, &(ConstantOrMode::from(&a), ConstantOrMode::from(&b)), candidate);
+            assert_output_mode!(BitXor(Integer<I>, Integer<I>) => Integer<I>, &(CircuitType::from(&a), CircuitType::from(&b)), candidate);
         });
         Circuit::reset();
     }

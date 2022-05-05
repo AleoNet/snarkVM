@@ -28,38 +28,45 @@ impl<E: Environment> Double for &Group<E> {
     type Output = Group<E>;
 
     fn double(self) -> Self::Output {
-        let a = Field::constant(E::AffineParameters::COEFF_A);
-        let two = Field::one().double();
+        // If `self` is constant *and* `self` is zero, then return `self`.
+        if self.is_constant() && self.eject_value().is_zero() {
+            self.clone()
+        }
+        // Otherwise, compute `self` + `self`.
+        else {
+            let a = Field::constant(E::AffineParameters::COEFF_A);
+            let two = Field::one().double();
 
-        // Compute xy, xx, yy, axx.
-        let xy = &self.x * &self.y;
-        let x2 = self.x.square();
-        let y2 = self.y.square();
-        let ax2 = &x2 * &a;
+            // Compute xy, xx, yy, axx.
+            let xy = &self.x * &self.y;
+            let x2 = self.x.square();
+            let y2 = self.y.square();
+            let ax2 = &x2 * &a;
 
-        // Compute x3 and y3.
-        let (x3, y3) = witness!(|two, xy, y2, ax2| {
-            // Assign x3 = (2xy) / (ax^2 + y^2).
-            let x3 = xy.double() / (ax2 + y2);
-            // Assign y3 = (y^2 - ax^2) / (2 - ax^2 - y^2).
-            let y3 = (y2 - ax2) / (two - ax2 - y2);
-            // Return (x3, y3).
-            (x3, y3)
-        });
+            // Compute x3 and y3.
+            let (x3, y3) = witness!(|two, xy, y2, ax2| {
+                // Assign x3 = (2xy) / (ax^2 + y^2).
+                let x3 = xy.double() / (ax2 + y2);
+                // Assign y3 = (y^2 - ax^2) / (2 - ax^2 - y^2).
+                let y3 = (y2 - ax2) / (two - ax2 - y2);
+                // Return (x3, y3).
+                (x3, y3)
+            });
 
-        // Ensure x3 is well-formed.
-        // x3 * (ax^2 + y^2) = 2xy
-        let ax2_plus_y2 = &ax2 + &y2;
-        let two_xy = xy.double();
-        E::enforce(|| (&x3, &ax2_plus_y2, two_xy));
+            // Ensure x3 is well-formed.
+            // x3 * (ax^2 + y^2) = 2xy
+            let ax2_plus_y2 = &ax2 + &y2;
+            let two_xy = xy.double();
+            E::enforce(|| (&x3, &ax2_plus_y2, two_xy));
 
-        // Ensure y3 is well-formed.
-        // y3 * (2 - (ax^2 + y^2)) = y^2 - ax^2
-        let y2_minus_a_x2 = y2 - ax2;
-        let two_minus_ax2_minus_y2 = two - ax2_plus_y2;
-        E::enforce(|| (&y3, two_minus_ax2_minus_y2, y2_minus_a_x2));
+            // Ensure y3 is well-formed.
+            // y3 * (2 - (ax^2 + y^2)) = y^2 - ax^2
+            let y2_minus_a_x2 = y2 - ax2;
+            let two_minus_ax2_minus_y2 = two - ax2_plus_y2;
+            E::enforce(|| (&y3, two_minus_ax2_minus_y2, y2_minus_a_x2));
 
-        Group { x: x3, y: y3 }
+            Group { x: x3, y: y3 }
+        }
     }
 }
 

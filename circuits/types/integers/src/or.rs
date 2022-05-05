@@ -84,13 +84,13 @@ impl<E: Environment, I: IntegerType> Metrics<dyn BitOr<Integer<E, I>, Output = I
 }
 
 impl<E: Environment, I: IntegerType> OutputMode<dyn BitOr<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = (ConstantOrMode<Integer<E, I>>, ConstantOrMode<Integer<E, I>>);
+    type Case = (CircuitType<Integer<E, I>>, CircuitType<Integer<E, I>>);
 
     fn output_mode(case: &Self::Case) -> Mode {
         match ((case.0.mode(), &case.0), (case.1.mode(), &case.1)) {
             ((Mode::Constant, _), (Mode::Constant, _)) => Mode::Constant,
             ((Mode::Constant, case), (mode, _)) | ((mode, _), (Mode::Constant, case)) => match case {
-                ConstantOrMode::Constant(constant) => {
+                CircuitType::Constant(constant) => {
                     // Determine if the constant is all ones.
                     let is_all_ones = match I::is_signed() {
                         true => constant.eject_value().into_dual() == I::Dual::MAX, // Cast to unsigned
@@ -126,7 +126,7 @@ mod tests {
             let candidate = (&a).bitor(&b);
             assert_eq!(expected, candidate.eject_value());
             assert_count!(BitOr(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
-            assert_output_mode!(BitOr(Integer<I>, Integer<I>) => Integer<I>, &(ConstantOrMode::from(&a), ConstantOrMode::from(&b)), candidate);
+            assert_output_mode!(BitOr(Integer<I>, Integer<I>) => Integer<I>, &(CircuitType::from(&a), CircuitType::from(&b)), candidate);
         });
         Circuit::reset();
     }
