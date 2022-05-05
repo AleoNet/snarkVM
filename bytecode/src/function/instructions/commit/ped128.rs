@@ -15,13 +15,13 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 /// Performs a Pedersen commitment taking a 128-bit value as input.
-pub struct PedComm128<P: Program> {
+pub struct CommitPed128<P: Program> {
     operation: BinaryOperation<P>,
 }
 
-impl_instruction_boilerplate!(PedComm128, BinaryOperation, "commit.ped128");
+impl_instruction_boilerplate!(CommitPed128, BinaryOperation, "commit.ped128");
 
-impl_commit_instruction!(PedComm128);
+impl_commit_instruction!(CommitPed128);
 
 #[cfg(test)]
 mod tests {
@@ -33,89 +33,89 @@ mod tests {
     #[test]
     fn test_parse() {
         let (_, instruction) = Instruction::<P>::parse("commit.ped128 r0 r1 into r2;").unwrap();
-        assert!(matches!(instruction, Instruction::PedComm128(_)));
+        assert!(matches!(instruction, Instruction::CommitPed128(_)));
     }
 
     test_modes!(
         bool,
-        PedComm128,
+        CommitPed128,
         "true",
         "1scalar",
         "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
     );
     test_modes!(
         i8,
-        PedComm128,
+        CommitPed128,
         "1i8",
         "1scalar",
         "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
     );
     test_modes!(
         i16,
-        PedComm128,
+        CommitPed128,
         "1i16",
         "1scalar",
         "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
     );
     test_modes!(
         i32,
-        PedComm128,
+        CommitPed128,
         "1i32",
         "1scalar",
         "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
     );
     test_modes!(
         i64,
-        PedComm128,
+        CommitPed128,
         "1i64",
         "1scalar",
         "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
     );
     test_modes!(
         i128,
-        PedComm128,
+        CommitPed128,
         "1i128",
         "1scalar",
         "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
     );
     test_modes!(
         u8,
-        PedComm128,
+        CommitPed128,
         "1u8",
         "1scalar",
         "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
     );
     test_modes!(
         u16,
-        PedComm128,
+        CommitPed128,
         "1u16",
         "1scalar",
         "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
     );
     test_modes!(
         u32,
-        PedComm128,
+        CommitPed128,
         "1u32",
         "1scalar",
         "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
     );
     test_modes!(
         u64,
-        PedComm128,
+        CommitPed128,
         "1u64",
         "1scalar",
         "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
     );
     test_modes!(
         u128,
-        PedComm128,
+        CommitPed128,
         "1u128",
         "1scalar",
         "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
     );
     test_modes!(
         string,
-        PedComm128,
+        CommitPed128,
         "\"aaaaaaaaaaaaaaaa\"",
         "1scalar",
         "379417118045898520789123124736668719236348888564273665391158449346246489573group"
@@ -123,35 +123,35 @@ mod tests {
 
     test_instruction_halts!(
         address_halts,
-        PedComm128,
+        CommitPed128,
         "The Pedersen hash input cannot exceed 128 bits.",
         "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah",
         "1scalar"
     );
     test_instruction_halts!(
         field_halts,
-        PedComm128,
+        CommitPed128,
         "The Pedersen hash input cannot exceed 128 bits.",
         "1field",
         "1scalar"
     );
     test_instruction_halts!(
         group_halts,
-        PedComm128,
+        CommitPed128,
         "The Pedersen hash input cannot exceed 128 bits.",
         "2group",
         "1scalar"
     );
     test_instruction_halts!(
         scalar_halts,
-        PedComm128,
+        CommitPed128,
         "The Pedersen hash input cannot exceed 128 bits.",
         "1scalar",
         "1scalar"
     );
     test_instruction_halts!(
         string_halts,
-        PedComm128,
+        CommitPed128,
         "The Pedersen hash input cannot exceed 128 bits.",
         "\"aaaaaaaaaaaaaaaaaa\"",
         "1scalar"
@@ -172,7 +172,7 @@ mod tests {
         registers.assign(&Register::from_str("r0"), first);
         registers.assign(&Register::from_str("r1"), second);
 
-        PedComm128::from_str("r0 r1 into r2").evaluate(&registers);
+        CommitPed128::from_str("r0 r1 into r2").evaluate(&registers);
 
         let value = registers.load(&Register::from_str("r2"));
         let expected = Value::<P>::from_str(
@@ -197,6 +197,6 @@ mod tests {
         registers.assign(&Register::from_str("r0"), first);
         registers.assign(&Register::from_str("r1"), second);
 
-        PedComm128::from_str("r0 r1 into r2").evaluate(&registers);
+        CommitPed128::from_str("r0 r1 into r2").evaluate(&registers);
     }
 }

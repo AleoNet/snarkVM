@@ -87,10 +87,36 @@ pub enum Instruction<P: Program> {
     Add(Add<P>),
     /// Adds `first` with `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
     AddWrapped(AddWrapped<P>),
+    /// Performs a Pedersen commitment taking a 64-bit value as input.
+    CommitPed64(CommitPed64<P>),
+    /// Performs a Pedersen commitment taking a 128-bit value as input.
+    CommitPed128(CommitPed128<P>),
+    /// Performs a Pedersen commitment taking a 256-bit value as input.
+    CommitPed256(CommitPed256<P>),
+    /// Performs a Pedersen commitment taking a 512-bit value as input.
+    CommitPed512(CommitPed512<P>),
+    /// Performs a Pedersen commitment taking a 1024-bit value as input.
+    CommitPed1024(CommitPed1024<P>),
     /// Divides `first` by `second`, storing the outcome in `destination`.
     Div(Div<P>),
     /// Divides `first` by `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
     DivWrapped(DivWrapped<P>),
+    /// Performs a Pedersen hash taking a 64-bit value as input.
+    HashPed64(HashPed64<P>),
+    /// Performs a Pedersen hash taking a 128-bit value as input.
+    HashPed128(HashPed128<P>),
+    /// Performs a Pedersen hash taking a 256-bit value as input.
+    HashPed256(HashPed256<P>),
+    /// Performs a Pedersen hash taking a 512-bit value as input.
+    HashPed512(HashPed512<P>),
+    /// Performs a Pedersen hash taking a 1024-bit value as input.
+    HashPed1024(HashPed1024<P>),
+    /// Performs a Poseidon hash with an input rate of 2.
+    HashPsd2(HashPsd2<P>),
+    /// Performs a Poseidon hash with an input rate of 4.
+    HashPsd4(HashPsd4<P>),
+    /// Performs a Poseidon hash with an input rate of 8.
+    HashPsd8(HashPsd8<P>),
     /// Multiplies `first` with `second`, storing the outcome in `destination`.
     Mul(Mul<P>),
     /// Multiplies `first` with `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
@@ -101,32 +127,6 @@ pub enum Instruction<P: Program> {
     Sub(Sub<P>),
     /// Subtracts `second` from `first`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
     SubWrapped(SubWrapped<P>),
-    /// Performs a Pedersen hash taking a 64-bit value as input.
-    Ped64(Ped64<P>),
-    /// Performs a Pedersen hash taking a 128-bit value as input.
-    Ped128(Ped128<P>),
-    /// Performs a Pedersen hash taking a 256-bit value as input.
-    Ped256(Ped256<P>),
-    /// Performs a Pedersen hash taking a 512-bit value as input.
-    Ped512(Ped512<P>),
-    /// Performs a Pedersen hash taking a 1024-bit value as input.
-    Ped1024(Ped1024<P>),
-    /// Performs a Poseidon hash with an input rate of 2.
-    Psd2(Psd2<P>),
-    /// Performs a Poseidon hash with an input rate of 4.
-    Psd4(Psd4<P>),
-    /// Performs a Poseidon hash with an input rate of 8.
-    Psd8(Psd8<P>),
-    /// Performs a Pedersen commitment taking a 64-bit value as input.
-    PedComm64(PedComm64<P>),
-    /// Performs a Pedersen commitment taking a 128-bit value as input.
-    PedComm128(PedComm128<P>),
-    /// Performs a Pedersen commitment taking a 256-bit value as input.
-    PedComm256(PedComm256<P>),
-    /// Performs a Pedersen commitment taking a 512-bit value as input.
-    PedComm512(PedComm512<P>),
-    /// Performs a Pedersen commitment taking a 1024-bit value as input.
-    PedComm1024(PedComm1024<P>),
 }
 
 impl<P: Program> Instruction<P> {
@@ -136,6 +136,19 @@ impl<P: Program> Instruction<P> {
         match self {
             Self::Add(..) => Add::<P>::opcode(),
             Self::AddWrapped(..) => AddWrapped::<P>::opcode(),
+            Self::CommitPed64(..) => CommitPed64::<P>::opcode(),
+            Self::CommitPed128(..) => CommitPed128::<P>::opcode(),
+            Self::CommitPed256(..) => CommitPed256::<P>::opcode(),
+            Self::CommitPed512(..) => CommitPed512::<P>::opcode(),
+            Self::CommitPed1024(..) => CommitPed1024::<P>::opcode(),
+            Self::HashPed64(..) => HashPed64::<P>::opcode(),
+            Self::HashPed128(..) => HashPed128::<P>::opcode(),
+            Self::HashPed256(..) => HashPed256::<P>::opcode(),
+            Self::HashPed512(..) => HashPed512::<P>::opcode(),
+            Self::HashPed1024(..) => HashPed1024::<P>::opcode(),
+            Self::HashPsd2(..) => HashPsd2::<P>::opcode(),
+            Self::HashPsd4(..) => HashPsd4::<P>::opcode(),
+            Self::HashPsd8(..) => HashPsd8::<P>::opcode(),
             Self::Div(..) => Div::<P>::opcode(),
             Self::DivWrapped(..) => DivWrapped::<P>::opcode(),
             Self::Mul(..) => Mul::<P>::opcode(),
@@ -143,19 +156,6 @@ impl<P: Program> Instruction<P> {
             Self::Neg(..) => Neg::<P>::opcode(),
             Self::Sub(..) => Sub::<P>::opcode(),
             Self::SubWrapped(..) => SubWrapped::<P>::opcode(),
-            Self::Ped64(..) => Ped64::<P>::opcode(),
-            Self::Ped128(..) => Ped128::<P>::opcode(),
-            Self::Ped256(..) => Ped256::<P>::opcode(),
-            Self::Ped512(..) => Ped512::<P>::opcode(),
-            Self::Ped1024(..) => Ped1024::<P>::opcode(),
-            Self::Psd2(..) => Psd2::<P>::opcode(),
-            Self::Psd4(..) => Psd4::<P>::opcode(),
-            Self::Psd8(..) => Psd8::<P>::opcode(),
-            Self::PedComm64(..) => PedComm64::<P>::opcode(),
-            Self::PedComm128(..) => PedComm128::<P>::opcode(),
-            Self::PedComm256(..) => PedComm256::<P>::opcode(),
-            Self::PedComm512(..) => PedComm512::<P>::opcode(),
-            Self::PedComm1024(..) => PedComm1024::<P>::opcode(),
         }
     }
 
@@ -165,26 +165,26 @@ impl<P: Program> Instruction<P> {
         match self {
             Self::Add(add) => add.operands(),
             Self::AddWrapped(add_wrapped) => add_wrapped.operands(),
+            Self::CommitPed64(ped64) => ped64.operands(),
+            Self::CommitPed128(ped128) => ped128.operands(),
+            Self::CommitPed256(ped256) => ped256.operands(),
+            Self::CommitPed512(ped512) => ped512.operands(),
+            Self::CommitPed1024(ped1024) => ped1024.operands(),
             Self::Div(div) => div.operands(),
             Self::DivWrapped(div_wrapped) => div_wrapped.operands(),
+            Self::HashPed64(ped64) => ped64.operands(),
+            Self::HashPed128(ped128) => ped128.operands(),
+            Self::HashPed256(ped256) => ped256.operands(),
+            Self::HashPed512(ped512) => ped512.operands(),
+            Self::HashPed1024(ped1024) => ped1024.operands(),
+            Self::HashPsd2(psd2) => psd2.operands(),
+            Self::HashPsd4(psd4) => psd4.operands(),
+            Self::HashPsd8(psd8) => psd8.operands(),
             Self::Mul(mul) => mul.operands(),
             Self::MulWrapped(mul_wrapped) => mul_wrapped.operands(),
             Self::Neg(neg) => neg.operands(),
             Self::Sub(sub) => sub.operands(),
             Self::SubWrapped(sub_wrapped) => sub_wrapped.operands(),
-            Self::Ped64(ped64) => ped64.operands(),
-            Self::Ped128(ped128) => ped128.operands(),
-            Self::Ped256(ped256) => ped256.operands(),
-            Self::Ped512(ped512) => ped512.operands(),
-            Self::Ped1024(ped1024) => ped1024.operands(),
-            Self::Psd2(psd2) => psd2.operands(),
-            Self::Psd4(psd4) => psd4.operands(),
-            Self::Psd8(psd8) => psd8.operands(),
-            Self::PedComm64(ped64) => ped64.operands(),
-            Self::PedComm128(ped128) => ped128.operands(),
-            Self::PedComm256(ped256) => ped256.operands(),
-            Self::PedComm512(ped512) => ped512.operands(),
-            Self::PedComm1024(ped1024) => ped1024.operands(),
         }
     }
 
@@ -194,26 +194,26 @@ impl<P: Program> Instruction<P> {
         match self {
             Self::Add(add) => add.destination(),
             Self::AddWrapped(add_wrapped) => add_wrapped.destination(),
+            Self::CommitPed64(ped64) => ped64.destination(),
+            Self::CommitPed128(ped128) => ped128.destination(),
+            Self::CommitPed256(ped256) => ped256.destination(),
+            Self::CommitPed512(ped512) => ped512.destination(),
+            Self::CommitPed1024(ped1024) => ped1024.destination(),
             Self::Div(div) => div.destination(),
             Self::DivWrapped(div_wrapped) => div_wrapped.destination(),
+            Self::HashPed64(ped64) => ped64.destination(),
+            Self::HashPed128(ped128) => ped128.destination(),
+            Self::HashPed256(ped256) => ped256.destination(),
+            Self::HashPed512(ped512) => ped512.destination(),
+            Self::HashPed1024(ped1024) => ped1024.destination(),
+            Self::HashPsd2(psd2) => psd2.destination(),
+            Self::HashPsd4(psd4) => psd4.destination(),
+            Self::HashPsd8(psd8) => psd8.destination(),
             Self::Mul(mul) => mul.destination(),
             Self::MulWrapped(mul_wrapped) => mul_wrapped.destination(),
             Self::Neg(neg) => neg.destination(),
             Self::Sub(sub) => sub.destination(),
             Self::SubWrapped(sub_wrapped) => sub_wrapped.destination(),
-            Self::Ped64(ped64) => ped64.destination(),
-            Self::Ped128(ped128) => ped128.destination(),
-            Self::Ped256(ped256) => ped256.destination(),
-            Self::Ped512(ped512) => ped512.destination(),
-            Self::Ped1024(ped1024) => ped1024.destination(),
-            Self::Psd2(psd2) => psd2.destination(),
-            Self::Psd4(psd4) => psd4.destination(),
-            Self::Psd8(psd8) => psd8.destination(),
-            Self::PedComm64(ped64) => ped64.destination(),
-            Self::PedComm128(ped128) => ped128.destination(),
-            Self::PedComm256(ped256) => ped256.destination(),
-            Self::PedComm512(ped512) => ped512.destination(),
-            Self::PedComm1024(ped1024) => ped1024.destination(),
         }
     }
 
@@ -223,26 +223,26 @@ impl<P: Program> Instruction<P> {
         match self {
             Self::Add(instruction) => instruction.evaluate(registers),
             Self::AddWrapped(instruction) => instruction.evaluate(registers),
+            Self::CommitPed64(instruction) => instruction.evaluate(registers),
+            Self::CommitPed128(instruction) => instruction.evaluate(registers),
+            Self::CommitPed256(instruction) => instruction.evaluate(registers),
+            Self::CommitPed512(instruction) => instruction.evaluate(registers),
+            Self::CommitPed1024(instruction) => instruction.evaluate(registers),
             Self::Div(instruction) => instruction.evaluate(registers),
             Self::DivWrapped(instruction) => instruction.evaluate(registers),
+            Self::HashPed64(instruction) => instruction.evaluate(registers),
+            Self::HashPed128(instruction) => instruction.evaluate(registers),
+            Self::HashPed256(instruction) => instruction.evaluate(registers),
+            Self::HashPed512(instruction) => instruction.evaluate(registers),
+            Self::HashPed1024(instruction) => instruction.evaluate(registers),
+            Self::HashPsd2(instruction) => instruction.evaluate(registers),
+            Self::HashPsd4(instruction) => instruction.evaluate(registers),
+            Self::HashPsd8(instruction) => instruction.evaluate(registers),
             Self::Mul(instruction) => instruction.evaluate(registers),
             Self::MulWrapped(instruction) => instruction.evaluate(registers),
             Self::Neg(instruction) => instruction.evaluate(registers),
             Self::Sub(instruction) => instruction.evaluate(registers),
             Self::SubWrapped(instruction) => instruction.evaluate(registers),
-            Self::Ped64(instruction) => instruction.evaluate(registers),
-            Self::Ped128(instruction) => instruction.evaluate(registers),
-            Self::Ped256(instruction) => instruction.evaluate(registers),
-            Self::Ped512(instruction) => instruction.evaluate(registers),
-            Self::Ped1024(instruction) => instruction.evaluate(registers),
-            Self::Psd2(instruction) => instruction.evaluate(registers),
-            Self::Psd4(instruction) => instruction.evaluate(registers),
-            Self::Psd8(instruction) => instruction.evaluate(registers),
-            Self::PedComm64(instruction) => instruction.evaluate(registers),
-            Self::PedComm128(instruction) => instruction.evaluate(registers),
-            Self::PedComm256(instruction) => instruction.evaluate(registers),
-            Self::PedComm512(instruction) => instruction.evaluate(registers),
-            Self::PedComm1024(instruction) => instruction.evaluate(registers),
         }
     }
 }
@@ -260,28 +260,28 @@ impl<P: Program> Parser for Instruction<P> {
             // Note that order of the individual parsers matters.
             preceded(pair(tag(Add::<P>::opcode()), tag(" ")), map(Add::parse, Into::into)),
             preceded(pair(tag(AddWrapped::<P>::opcode()), tag(" ")), map(AddWrapped::parse, Into::into)),
+            preceded(pair(tag(CommitPed64::<P>::opcode()), tag(" ")), map(CommitPed64::parse, Into::into)),
+            preceded(pair(tag(CommitPed128::<P>::opcode()), tag(" ")), map(CommitPed128::parse, Into::into)),
+            preceded(pair(tag(CommitPed256::<P>::opcode()), tag(" ")), map(CommitPed256::parse, Into::into)),
+            preceded(pair(tag(CommitPed512::<P>::opcode()), tag(" ")), map(CommitPed512::parse, Into::into)),
+            preceded(pair(tag(CommitPed1024::<P>::opcode()), tag(" ")), map(CommitPed1024::parse, Into::into)),
             preceded(pair(tag(Div::<P>::opcode()), tag(" ")), map(Div::parse, Into::into)),
             preceded(pair(tag(DivWrapped::<P>::opcode()), tag(" ")), map(DivWrapped::parse, Into::into)),
+            preceded(pair(tag(HashPed64::<P>::opcode()), tag(" ")), map(HashPed64::parse, Into::into)),
+            preceded(pair(tag(HashPed128::<P>::opcode()), tag(" ")), map(HashPed128::parse, Into::into)),
+            preceded(pair(tag(HashPed256::<P>::opcode()), tag(" ")), map(HashPed256::parse, Into::into)),
+            preceded(pair(tag(HashPed512::<P>::opcode()), tag(" ")), map(HashPed512::parse, Into::into)),
+            preceded(pair(tag(HashPed1024::<P>::opcode()), tag(" ")), map(HashPed1024::parse, Into::into)),
+            preceded(pair(tag(HashPsd2::<P>::opcode()), tag(" ")), map(HashPsd2::parse, Into::into)),
+            preceded(pair(tag(HashPsd4::<P>::opcode()), tag(" ")), map(HashPsd4::parse, Into::into)),
+            preceded(pair(tag(HashPsd8::<P>::opcode()), tag(" ")), map(HashPsd8::parse, Into::into)),
             preceded(pair(tag(Mul::<P>::opcode()), tag(" ")), map(Mul::parse, Into::into)),
             preceded(pair(tag(MulWrapped::<P>::opcode()), tag(" ")), map(MulWrapped::parse, Into::into)),
             preceded(pair(tag(Neg::<P>::opcode()), tag(" ")), map(Neg::parse, Into::into)),
-            preceded(pair(tag(Sub::<P>::opcode()), tag(" ")), map(Sub::parse, Into::into)),
-            preceded(pair(tag(SubWrapped::<P>::opcode()), tag(" ")), map(SubWrapped::parse, Into::into)),
-            preceded(pair(tag(Ped64::<P>::opcode()), tag(" ")), map(Ped64::parse, Into::into)),
-            preceded(pair(tag(Ped128::<P>::opcode()), tag(" ")), map(Ped128::parse, Into::into)),
-            preceded(pair(tag(Ped256::<P>::opcode()), tag(" ")), map(Ped256::parse, Into::into)),
-            preceded(pair(tag(Ped512::<P>::opcode()), tag(" ")), map(Ped512::parse, Into::into)),
-            preceded(pair(tag(Ped1024::<P>::opcode()), tag(" ")), map(Ped1024::parse, Into::into)),
-            preceded(pair(tag(Psd2::<P>::opcode()), tag(" ")), map(Psd2::parse, Into::into)),
-            preceded(pair(tag(Psd4::<P>::opcode()), tag(" ")), map(Psd4::parse, Into::into)),
-            preceded(pair(tag(Psd8::<P>::opcode()), tag(" ")), map(Psd8::parse, Into::into)),
-            preceded(pair(tag(PedComm64::<P>::opcode()), tag(" ")), map(PedComm64::parse, Into::into)),
-            preceded(pair(tag(PedComm128::<P>::opcode()), tag(" ")), map(PedComm128::parse, Into::into)),
-            preceded(pair(tag(PedComm256::<P>::opcode()), tag(" ")), map(PedComm256::parse, Into::into)),
             // `alt` only takes a max of 21 parsers in a tuple, so we need to nest here.
             alt((
-                preceded(pair(tag(PedComm512::<P>::opcode()), tag(" ")), map(PedComm512::parse, Into::into)),
-                preceded(pair(tag(PedComm1024::<P>::opcode()), tag(" ")), map(PedComm1024::parse, Into::into)),
+                preceded(pair(tag(Sub::<P>::opcode()), tag(" ")), map(Sub::parse, Into::into)),
+                preceded(pair(tag(SubWrapped::<P>::opcode()), tag(" ")), map(SubWrapped::parse, Into::into)),
             )),
         ))(string)?;
         // Parse the semicolon from the string.
@@ -296,26 +296,26 @@ impl<P: Program> fmt::Display for Instruction<P> {
         match self {
             Self::Add(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::AddWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::CommitPed64(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::CommitPed128(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::CommitPed256(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::CommitPed512(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::CommitPed1024(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Div(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::DivWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::HashPed64(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::HashPed128(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::HashPed256(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::HashPed512(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::HashPed1024(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::HashPsd2(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::HashPsd4(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::HashPsd8(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Mul(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::MulWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Neg(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Sub(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::SubWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::Ped64(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::Ped128(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::Ped256(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::Ped512(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::Ped1024(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::Psd2(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::Psd4(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::Psd8(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::PedComm64(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::PedComm128(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::PedComm256(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::PedComm512(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::PedComm1024(instruction) => write!(f, "{} {};", self.opcode(), instruction),
         }
     }
 }
@@ -326,26 +326,26 @@ impl<P: Program> FromBytes for Instruction<P> {
         match code {
             0 => Ok(Self::Add(Add::read_le(&mut reader)?)),
             1 => Ok(Self::AddWrapped(AddWrapped::read_le(&mut reader)?)),
-            2 => Ok(Self::Div(Div::read_le(&mut reader)?)),
-            3 => Ok(Self::DivWrapped(DivWrapped::read_le(&mut reader)?)),
-            4 => Ok(Self::Mul(Mul::read_le(&mut reader)?)),
-            5 => Ok(Self::MulWrapped(MulWrapped::read_le(&mut reader)?)),
-            6 => Ok(Self::Neg(Neg::read_le(&mut reader)?)),
-            7 => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
-            8 => Ok(Self::SubWrapped(SubWrapped::read_le(&mut reader)?)),
-            9 => Ok(Self::Ped64(Ped64::read_le(&mut reader)?)),
-            10 => Ok(Self::Ped128(Ped128::read_le(&mut reader)?)),
-            11 => Ok(Self::Ped256(Ped256::read_le(&mut reader)?)),
-            12 => Ok(Self::Ped512(Ped512::read_le(&mut reader)?)),
-            13 => Ok(Self::Ped1024(Ped1024::read_le(&mut reader)?)),
-            14 => Ok(Self::Psd2(Psd2::read_le(&mut reader)?)),
-            15 => Ok(Self::Psd4(Psd4::read_le(&mut reader)?)),
-            16 => Ok(Self::Psd8(Psd8::read_le(&mut reader)?)),
-            17 => Ok(Self::PedComm64(PedComm64::read_le(&mut reader)?)),
-            18 => Ok(Self::PedComm128(PedComm128::read_le(&mut reader)?)),
-            19 => Ok(Self::PedComm256(PedComm256::read_le(&mut reader)?)),
-            20 => Ok(Self::PedComm512(PedComm512::read_le(&mut reader)?)),
-            21 => Ok(Self::PedComm1024(PedComm1024::read_le(&mut reader)?)),
+            2 => Ok(Self::CommitPed64(CommitPed64::read_le(&mut reader)?)),
+            3 => Ok(Self::CommitPed128(CommitPed128::read_le(&mut reader)?)),
+            4 => Ok(Self::CommitPed256(CommitPed256::read_le(&mut reader)?)),
+            5 => Ok(Self::CommitPed512(CommitPed512::read_le(&mut reader)?)),
+            6 => Ok(Self::CommitPed1024(CommitPed1024::read_le(&mut reader)?)),
+            7 => Ok(Self::Div(Div::read_le(&mut reader)?)),
+            8 => Ok(Self::DivWrapped(DivWrapped::read_le(&mut reader)?)),
+            9 => Ok(Self::HashPed64(HashPed64::read_le(&mut reader)?)),
+            10 => Ok(Self::HashPed128(HashPed128::read_le(&mut reader)?)),
+            11 => Ok(Self::HashPed256(HashPed256::read_le(&mut reader)?)),
+            12 => Ok(Self::HashPed512(HashPed512::read_le(&mut reader)?)),
+            13 => Ok(Self::HashPed1024(HashPed1024::read_le(&mut reader)?)),
+            14 => Ok(Self::HashPsd2(HashPsd2::read_le(&mut reader)?)),
+            15 => Ok(Self::HashPsd4(HashPsd4::read_le(&mut reader)?)),
+            16 => Ok(Self::HashPsd8(HashPsd8::read_le(&mut reader)?)),
+            17 => Ok(Self::Mul(Mul::read_le(&mut reader)?)),
+            18 => Ok(Self::MulWrapped(MulWrapped::read_le(&mut reader)?)),
+            19 => Ok(Self::Neg(Neg::read_le(&mut reader)?)),
+            20 => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
+            21 => Ok(Self::SubWrapped(SubWrapped::read_le(&mut reader)?)),
             22.. => Err(error(format!("Failed to deserialize an instruction of code {code}"))),
         }
     }
@@ -362,83 +362,83 @@ impl<P: Program> ToBytes for Instruction<P> {
                 u16::write_le(&1u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Div(instruction) => {
+            Self::CommitPed64(instruction) => {
                 u16::write_le(&2u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::DivWrapped(instruction) => {
+            Self::CommitPed128(instruction) => {
                 u16::write_le(&3u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Mul(instruction) => {
+            Self::CommitPed256(instruction) => {
                 u16::write_le(&4u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::MulWrapped(instruction) => {
+            Self::CommitPed512(instruction) => {
                 u16::write_le(&5u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Neg(instruction) => {
+            Self::CommitPed1024(instruction) => {
                 u16::write_le(&6u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Sub(instruction) => {
+            Self::Div(instruction) => {
                 u16::write_le(&7u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::SubWrapped(instruction) => {
+            Self::DivWrapped(instruction) => {
                 u16::write_le(&8u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Ped64(instruction) => {
+            Self::HashPed64(instruction) => {
                 u16::write_le(&9u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Ped128(instruction) => {
+            Self::HashPed128(instruction) => {
                 u16::write_le(&10u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Ped256(instruction) => {
+            Self::HashPed256(instruction) => {
                 u16::write_le(&11u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Ped512(instruction) => {
+            Self::HashPed512(instruction) => {
                 u16::write_le(&12u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Ped1024(instruction) => {
+            Self::HashPed1024(instruction) => {
                 u16::write_le(&13u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Psd2(instruction) => {
+            Self::HashPsd2(instruction) => {
                 u16::write_le(&14u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Psd4(instruction) => {
+            Self::HashPsd4(instruction) => {
                 u16::write_le(&15u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Psd8(instruction) => {
+            Self::HashPsd8(instruction) => {
                 u16::write_le(&16u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::PedComm64(instruction) => {
+            Self::Mul(instruction) => {
                 u16::write_le(&17u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::PedComm128(instruction) => {
+            Self::MulWrapped(instruction) => {
                 u16::write_le(&18u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::PedComm256(instruction) => {
+            Self::Neg(instruction) => {
                 u16::write_le(&19u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::PedComm512(instruction) => {
+            Self::Sub(instruction) => {
                 u16::write_le(&20u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::PedComm1024(instruction) => {
+            Self::SubWrapped(instruction) => {
                 u16::write_le(&21u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }

@@ -15,13 +15,13 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 /// Performs a Pedersen commitment taking a 256-bit value as input.
-pub struct PedComm256<P: Program> {
+pub struct CommitPed256<P: Program> {
     operation: BinaryOperation<P>,
 }
 
-impl_instruction_boilerplate!(PedComm256, BinaryOperation, "commit.ped256");
+impl_instruction_boilerplate!(CommitPed256, BinaryOperation, "commit.ped256");
 
-impl_commit_instruction!(PedComm256);
+impl_commit_instruction!(CommitPed256);
 
 #[cfg(test)]
 mod tests {
@@ -33,117 +33,117 @@ mod tests {
     #[test]
     fn test_parse() {
         let (_, instruction) = Instruction::<P>::parse("commit.ped256 r0 r1 into r2;").unwrap();
-        assert!(matches!(instruction, Instruction::PedComm256(_)));
+        assert!(matches!(instruction, Instruction::CommitPed256(_)));
     }
 
     test_modes!(
         address,
-        PedComm256,
+        CommitPed256,
         "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah",
         "1scalar",
         "889102317888271826718559972138868820466563749149942194168269228701119910350group"
     );
     test_modes!(
         bool,
-        PedComm256,
+        CommitPed256,
         "true",
         "1scalar",
         "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
     );
     test_modes!(
         field,
-        PedComm256,
+        CommitPed256,
         "1field",
         "1scalar",
         "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
     );
     test_modes!(
         group,
-        PedComm256,
+        CommitPed256,
         "2group",
         "1scalar",
         "2664340318215809634698318956510253812463234504768303019123996597123255397816group"
     );
     test_modes!(
         i8,
-        PedComm256,
+        CommitPed256,
         "1i8",
         "1scalar",
         "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
     );
     test_modes!(
         i16,
-        PedComm256,
+        CommitPed256,
         "1i16",
         "1scalar",
         "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
     );
     test_modes!(
         i32,
-        PedComm256,
+        CommitPed256,
         "1i32",
         "1scalar",
         "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
     );
     test_modes!(
         i64,
-        PedComm256,
+        CommitPed256,
         "1i64",
         "1scalar",
         "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
     );
     test_modes!(
         i128,
-        PedComm256,
+        CommitPed256,
         "1i128",
         "1scalar",
         "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
     );
     test_modes!(
         u8,
-        PedComm256,
+        CommitPed256,
         "1u8",
         "1scalar",
         "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
     );
     test_modes!(
         u16,
-        PedComm256,
+        CommitPed256,
         "1u16",
         "1scalar",
         "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
     );
     test_modes!(
         u32,
-        PedComm256,
+        CommitPed256,
         "1u32",
         "1scalar",
         "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
     );
     test_modes!(
         u64,
-        PedComm256,
+        CommitPed256,
         "1u64",
         "1scalar",
         "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
     );
     test_modes!(
         u128,
-        PedComm256,
+        CommitPed256,
         "1u128",
         "1scalar",
         "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
     );
     test_modes!(
         string,
-        PedComm256,
+        CommitPed256,
         "\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"",
         "1scalar",
         "4474375435433511481841568407131779761539524677297529532110325712577499017287group"
     );
     test_modes!(
         scalar,
-        PedComm256,
+        CommitPed256,
         "1scalar",
         "1scalar",
         "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
@@ -151,7 +151,7 @@ mod tests {
 
     test_instruction_halts!(
         string_halts,
-        PedComm256,
+        CommitPed256,
         "The Pedersen hash input cannot exceed 256 bits.",
         "\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"",
         "1scalar"
@@ -172,7 +172,7 @@ mod tests {
         registers.assign(&Register::from_str("r0"), first);
         registers.assign(&Register::from_str("r1"), second);
 
-        PedComm256::from_str("r0 r1 into r2").evaluate(&registers);
+        CommitPed256::from_str("r0 r1 into r2").evaluate(&registers);
 
         let value = registers.load(&Register::from_str("r2"));
         let expected = Value::<P>::from_str(
@@ -197,6 +197,6 @@ mod tests {
         registers.assign(&Register::from_str("r0"), first);
         registers.assign(&Register::from_str("r1"), second);
 
-        PedComm256::from_str("r0 r1 into r2").evaluate(&registers);
+        CommitPed256::from_str("r0 r1 into r2").evaluate(&registers);
     }
 }

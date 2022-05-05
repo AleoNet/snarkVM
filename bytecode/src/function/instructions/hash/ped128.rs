@@ -15,13 +15,13 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 /// Performs a Pedersen hash taking a 128-bit value as input.
-pub struct Ped128<P: Program> {
+pub struct HashPed128<P: Program> {
     operation: UnaryOperation<P>,
 }
 
-impl_instruction_boilerplate!(Ped128, UnaryOperation, "hash.ped128");
+impl_instruction_boilerplate!(HashPed128, UnaryOperation, "hash.ped128");
 
-impl_hash_instruction!(Ped128);
+impl_hash_instruction!(HashPed128);
 
 #[cfg(test)]
 mod tests {
@@ -33,84 +33,94 @@ mod tests {
     #[test]
     fn test_parse() {
         let (_, instruction) = Instruction::<P>::parse("hash.ped128 r0 into r1;").unwrap();
-        assert!(matches!(instruction, Instruction::Ped128(_)));
+        assert!(matches!(instruction, Instruction::HashPed128(_)));
     }
 
     test_modes!(
         bool,
-        Ped128,
+        HashPed128,
         "true",
         "6122249396247477588925765696834100286827340493907798245233656838221917119242field"
     );
-    test_modes!(i8, Ped128, "1i8", "6122249396247477588925765696834100286827340493907798245233656838221917119242field");
+    test_modes!(
+        i8,
+        HashPed128,
+        "1i8",
+        "6122249396247477588925765696834100286827340493907798245233656838221917119242field"
+    );
     test_modes!(
         i16,
-        Ped128,
+        HashPed128,
         "1i16",
         "6122249396247477588925765696834100286827340493907798245233656838221917119242field"
     );
     test_modes!(
         i32,
-        Ped128,
+        HashPed128,
         "1i32",
         "6122249396247477588925765696834100286827340493907798245233656838221917119242field"
     );
     test_modes!(
         i64,
-        Ped128,
+        HashPed128,
         "1i64",
         "6122249396247477588925765696834100286827340493907798245233656838221917119242field"
     );
     test_modes!(
         i128,
-        Ped128,
+        HashPed128,
         "1i128",
         "6122249396247477588925765696834100286827340493907798245233656838221917119242field"
     );
-    test_modes!(u8, Ped128, "1u8", "6122249396247477588925765696834100286827340493907798245233656838221917119242field");
+    test_modes!(
+        u8,
+        HashPed128,
+        "1u8",
+        "6122249396247477588925765696834100286827340493907798245233656838221917119242field"
+    );
     test_modes!(
         u16,
-        Ped128,
+        HashPed128,
         "1u16",
         "6122249396247477588925765696834100286827340493907798245233656838221917119242field"
     );
     test_modes!(
         u32,
-        Ped128,
+        HashPed128,
         "1u32",
         "6122249396247477588925765696834100286827340493907798245233656838221917119242field"
     );
     test_modes!(
         u64,
-        Ped128,
+        HashPed128,
         "1u64",
         "6122249396247477588925765696834100286827340493907798245233656838221917119242field"
     );
     test_modes!(
         u128,
-        Ped128,
+        HashPed128,
         "1u128",
         "6122249396247477588925765696834100286827340493907798245233656838221917119242field"
     );
     test_modes!(
         string,
-        Ped128,
+        HashPed128,
         "\"aaaaaaaaaaaaaaaa\"",
         "7311018268372560359075957295142034348080722421845019162102517007114103429378field"
     );
 
     test_instruction_halts!(
         address_halts,
-        Ped128,
+        HashPed128,
         "The Pedersen hash input cannot exceed 128 bits.",
         "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah"
     );
-    test_instruction_halts!(field_halts, Ped128, "The Pedersen hash input cannot exceed 128 bits.", "1field");
-    test_instruction_halts!(group_halts, Ped128, "The Pedersen hash input cannot exceed 128 bits.", "2group");
-    test_instruction_halts!(scalar_halts, Ped128, "The Pedersen hash input cannot exceed 128 bits.", "1scalar");
+    test_instruction_halts!(field_halts, HashPed128, "The Pedersen hash input cannot exceed 128 bits.", "1field");
+    test_instruction_halts!(group_halts, HashPed128, "The Pedersen hash input cannot exceed 128 bits.", "2group");
+    test_instruction_halts!(scalar_halts, HashPed128, "The Pedersen hash input cannot exceed 128 bits.", "1scalar");
     test_instruction_halts!(
         string_halts,
-        Ped128,
+        HashPed128,
         "The Pedersen hash input cannot exceed 128 bits.",
         "\"aaaaaaaaaaaaaaaaaa\""
     );
@@ -127,7 +137,7 @@ mod tests {
         registers.define(&Register::from_str("r1"));
         registers.assign(&Register::from_str("r0"), first);
 
-        Ped128::from_str("r0 into r1").evaluate(&registers);
+        HashPed128::from_str("r0 into r1").evaluate(&registers);
 
         let value = registers.load(&Register::from_str("r1"));
         let expected = Value::<P>::from_str(
@@ -149,6 +159,6 @@ mod tests {
         registers.define(&Register::from_str("r1"));
         registers.assign(&Register::from_str("r0"), first);
 
-        Ped128::from_str("r0 into r1").evaluate(&registers);
+        HashPed128::from_str("r0 into r1").evaluate(&registers);
     }
 }
