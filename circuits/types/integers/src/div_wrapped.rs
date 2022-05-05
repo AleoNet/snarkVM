@@ -23,8 +23,11 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
     fn div_wrapped(&self, other: &Integer<E, I>) -> Self::Output {
         // Determine the variable mode.
         if self.is_constant() && other.is_constant() {
-            // Compute the quotient and return the new constant.
-            Integer::new(Mode::Constant, self.eject_value().wrapping_div(&other.eject_value()))
+            // If other is non-zero, compute the quotient and return the new constant.
+            match other.eject_value().is_zero() {
+                true => E::halt("Division by zero error."),
+                false => Integer::new(Mode::Constant, self.eject_value().wrapping_div(&other.eject_value())),
+            }
         } else if I::is_signed() {
             // Divide the absolute value of `self` and `other` in the base field.
             let unsigned_dividend = self.abs_wrapped().cast_as_dual();

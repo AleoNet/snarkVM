@@ -73,7 +73,10 @@ impl<E: Environment, I: IntegerType> DivChecked<Self> for Integer<E, I> {
             // Compute the quotient and return the new constant.
             match self.eject_value().checked_div(&other.eject_value()) {
                 Some(value) => Integer::constant(value),
-                None => E::halt("Overflow or underflow on division of two integer constants"),
+                None => match other.eject_value().is_zero() {
+                    true => E::halt("Division by zero error."),
+                    false => E::halt("Overflow or underflow on division of two integer constants."),
+                },
             }
         } else if I::is_signed() {
             // Ensure that overflow cannot occur in this division.
