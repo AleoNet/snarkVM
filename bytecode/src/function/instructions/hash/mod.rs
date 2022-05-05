@@ -14,55 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-macro_rules! impl_pedersen_evaluate {
-    ($instruction:ident, $registers:ident) => {
-        // Load the values for the first and second operands.
-        let first = match $registers.load($instruction.operation.first()) {
-            Value::Literal(literal) => literal.to_bits_le(),
-            Value::Composite(_name, literals) => literals.iter().flat_map(|literal| literal.to_bits_le()).collect(),
-        };
-
-        // Fetch the result from the program environment.
-        let result = Literal::Field(P::Aleo::pedersen_hash(Self::opcode(), &first));
-
-        $registers.assign($instruction.operation.destination(), result);
-    };
-}
-
-macro_rules! impl_poseidon_evaluate {
-    ($instruction:ident, $registers:ident) => {
-        // Load the values for the first and second operands.
-        let first = match $registers.load($instruction.operation.first()) {
-            Value::Literal(literal) => vec![literal],
-            Value::Composite(_name, literals) => literals,
-        };
-
-        let first = first
-            .into_iter()
-            .flat_map(|literal| match literal {
-                Literal::Field(a) => vec![a],
-                Literal::I8(a) => a.to_fields(),
-                Literal::I16(a) => a.to_fields(),
-                Literal::I32(a) => a.to_fields(),
-                Literal::I64(a) => a.to_fields(),
-                Literal::I128(a) => a.to_fields(),
-                Literal::U8(a) => a.to_fields(),
-                Literal::U16(a) => a.to_fields(),
-                Literal::U32(a) => a.to_fields(),
-                Literal::U64(a) => a.to_fields(),
-                Literal::U128(a) => a.to_fields(),
-                Literal::Scalar(a) => a.to_fields(),
-                Literal::String(a) => a.to_fields(),
-                _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
-            })
-            .collect::<Vec<Field<P::Environment>>>();
-
-        // Fetch the result from the program environment.
-        let result = Literal::Field(P::Aleo::poseidon_hash(Self::opcode(), &first));
-
-        $registers.assign($instruction.operation.destination(), result);
-    };
-}
+#[macro_use]
+mod macros;
 
 pub(crate) mod ped64;
 pub(crate) use ped64::*;
@@ -87,3 +40,32 @@ pub(crate) use psd4::*;
 
 pub(crate) mod psd8;
 pub(crate) use psd8::*;
+
+use crate::{function::parsers::*, helpers::Register, Program};
+use snarkvm_circuits::Hash as CircuitHash;
+
+use core::fmt;
+
+/// A generic hash instruction.
+pub struct Hash<P: Program, H: CircuitHash> {
+    operation: UnaryOperation<P>,
+    hasher: H,
+}
+
+impl<P: Program, H: CircuitHash> Hash<P, H> {
+    /// Returns the operands of the instruction.
+    pub fn operands(&self) -> Vec<Operand<P>> {
+        self.operation.operands()
+    }
+
+    /// Returns the destination register of the instruction.
+    pub fn destination(&self) -> &Register<P> {
+        self.operation.destination()
+    }
+}
+
+impl<P: Program, H: CircuitHash> fmt::Display for Hash<P, H> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.operation)
+    }
+}

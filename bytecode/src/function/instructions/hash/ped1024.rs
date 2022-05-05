@@ -14,36 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use super::Hash;
 use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Registers},
-    helpers::Register,
     Program,
     Value,
 };
-use snarkvm_circuits::{Parser, ParserResult};
+use snarkvm_circuits::{algorithms::Pedersen1024, Hash as CircuitHash, Parser, ParserResult};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
-use core::fmt;
 use nom::combinator::map;
-use snarkvm_circuits::{Aleo, Literal, ToBits};
+use snarkvm_circuits::{Literal, ToBits};
 use std::io::{Read, Result as IoResult, Write};
 
-/// Performs a Pedersen hash taking a 1024-bit value as input.
-pub struct HashPed1024<P: Program> {
-    operation: UnaryOperation<P>,
-}
-
-impl<P: Program> HashPed1024<P> {
-    /// Returns the operands of the instruction.
-    pub fn operands(&self) -> Vec<Operand<P>> {
-        self.operation.operands()
-    }
-
-    /// Returns the destination register of the instruction.
-    pub fn destination(&self) -> &Register<P> {
-        self.operation.destination()
-    }
-}
+/// Performs a Pedersen hash taking a 512-bit value as input.
+pub type HashPed1024<P> = Hash<P, Pedersen1024<<P as Program>::Aleo>>;
 
 impl<P: Program> Opcode for HashPed1024<P> {
     /// Returns the opcode as a string.
@@ -58,19 +43,19 @@ impl<P: Program> Parser for HashPed1024<P> {
 
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        map(UnaryOperation::parse, |operation| Self { operation })(string)
-    }
-}
-
-impl<P: Program> fmt::Display for HashPed1024<P> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.operation)
+        map(UnaryOperation::parse, |operation| Self {
+            operation,
+            hasher: Pedersen1024::<P::Environment>::setup("PedersenCircuit0"),
+        })(string)
     }
 }
 
 impl<P: Program> FromBytes for HashPed1024<P> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        Ok(Self { operation: UnaryOperation::read_le(&mut reader)? })
+        Ok(Self {
+            operation: UnaryOperation::read_le(&mut reader)?,
+            hasher: Pedersen1024::<P::Environment>::setup("PedersenCircuit0"),
+        })
     }
 }
 
@@ -99,7 +84,7 @@ impl<P: Program> Operation<P> for HashPed1024<P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{test_instruction_halts, test_modes, Identifier, Process};
+    use crate::{test_instruction_halts, test_modes, Identifier, Process, Register};
 
     type P = Process;
 
