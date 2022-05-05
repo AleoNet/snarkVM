@@ -17,12 +17,12 @@
 use super::*;
 
 impl<E: Environment, I: IntegerType> Equal<Self> for Integer<E, I> {
-    type Boolean = Boolean<E>;
+    type Output = Boolean<E>;
 
     ///
     /// Returns `true` if `self` and `other` are equal.
     ///
-    fn is_equal(&self, other: &Self) -> Self::Boolean {
+    fn is_equal(&self, other: &Self) -> Self::Output {
         // Determine if this operation is constant or variable.
         match self.is_constant() && other.is_constant() {
             true => self
@@ -46,8 +46,30 @@ impl<E: Environment, I: IntegerType> Equal<Self> for Integer<E, I> {
     /// This method constructs a boolean that indicates if
     /// `self` and `other ` are *not* equal to each other.
     ///
-    fn is_not_equal(&self, other: &Self) -> Self::Boolean {
+    fn is_not_equal(&self, other: &Self) -> Self::Output {
         !self.is_equal(other)
+    }
+}
+
+impl<E: Environment, I: IntegerType> Metrics<dyn Equal<Integer<E, I>, Output = Boolean<E>>> for Integer<E, I> {
+    type Case = (Mode, Mode);
+
+    fn count(case: &Self::Case) -> Count {
+        match case.0.is_constant() && case.1.is_constant() {
+            true => Count::is(0, 0, 0, 0),
+            false => Count::is(0, 0, 2, 3),
+        }
+    }
+}
+
+impl<E: Environment, I: IntegerType> OutputMode<dyn Equal<Integer<E, I>, Output = Boolean<E>>> for Integer<E, I> {
+    type Case = (Mode, Mode);
+
+    fn output_mode(case: &Self::Case) -> Mode {
+        match case.0.is_constant() && case.1.is_constant() {
+            true => Mode::Constant,
+            false => Mode::Private,
+        }
     }
 }
 
@@ -56,768 +78,59 @@ mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
-    use test_utilities::*;
 
     use std::ops::RangeInclusive;
 
-    const ITERATIONS: usize = 100;
+    const ITERATIONS: u64 = 100;
 
-    #[rustfmt::skip]
-    fn check_equals<I: IntegerType>(
-        name: &str,
-        first: I,
-        second: I,
-        mode_a: Mode,
-        mode_b: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
+    fn check_equals<I: IntegerType>(name: &str, first: I, second: I, mode_a: Mode, mode_b: Mode) {
         let expected = first == second;
-        let case = format!("({} == {})", first, second);
-
         let a = Integer::<Circuit, I>::new(mode_a, first);
         let b = Integer::<Circuit, I>::new(mode_b, second);
-        check_operation_passes(name, &case, expected, &a, &b, Integer::is_equal, num_constants, num_public, num_private, num_constraints);
-
-        // Commute the operation.
-        let a = Integer::<Circuit, I>::new(mode_a, second);
-        let b = Integer::<Circuit, I>::new(mode_b, first);
-        check_operation_passes(name, &case, expected, &a, &b, Integer::is_equal, num_constants, num_public, num_private, num_constraints);
+        Circuit::scope(name, || {
+            let candidate = a.is_equal(&b);
+            assert_eq!(expected, candidate.eject_value());
+            assert_count!(Equal(Integer<I>, Integer<I>) => Boolean, &(mode_a, mode_b));
+            assert_output_mode!(Equal(Integer<I>, Integer<I>) => Boolean, &(mode_a, mode_b), candidate);
+        });
+        Circuit::reset();
     }
 
-    #[rustfmt::skip]
-    fn run_test<I: IntegerType>(
-        mode_a: Mode,
-        mode_b: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
+    fn run_test<I: IntegerType>(mode_a: Mode, mode_b: Mode) {
         for i in 0..ITERATIONS {
             let first: I = UniformRand::rand(&mut test_rng());
             let second: I = UniformRand::rand(&mut test_rng());
 
             let name = format!("Eq: {} == {} {}", mode_a, mode_b, i);
-            check_equals(&name, first, second, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
+            check_equals(&name, first, second, mode_a, mode_b);
+            check_equals(&name, second, first, mode_a, mode_b); // Commute the operation.
         }
     }
 
-    fn run_exhaustive_test<I: IntegerType>(
-        mode_a: Mode,
-        mode_b: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) where
+    fn run_exhaustive_test<I: IntegerType>(mode_a: Mode, mode_b: Mode)
+    where
         RangeInclusive<I>: Iterator<Item = I>,
     {
         for first in I::MIN..=I::MAX {
             for second in I::MIN..=I::MAX {
                 let name = format!("Equals: ({} == {})", first, second);
-                check_equals(
-                    &name,
-                    first,
-                    second,
-                    mode_a,
-                    mode_b,
-                    num_constants,
-                    num_public,
-                    num_private,
-                    num_constraints,
-                );
+                check_equals(&name, first, second, mode_a, mode_b);
             }
         }
     }
 
-    #[test]
-    fn test_u8_constant_equals_constant() {
-        type I = u8;
-        run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_u8_constant_equals_public() {
-        type I = u8;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_u8_constant_equals_private() {
-        type I = u8;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_u8_public_equals_constant() {
-        type I = u8;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_u8_private_equals_constant() {
-        type I = u8;
-        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_u8_public_equals_public() {
-        type I = u8;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_u8_public_equals_private() {
-        type I = u8;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_u8_private_equals_public() {
-        type I = u8;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_u8_private_equals_private() {
-        type I = u8;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 2, 3);
-    }
-
-    // Tests for i8
-
-    #[test]
-    fn test_i8_constant_equals_constant() {
-        type I = i8;
-        run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i8_constant_equals_public() {
-        type I = i8;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_i8_constant_equals_private() {
-        type I = i8;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_i8_public_equals_constant() {
-        type I = i8;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_i8_private_equals_constant() {
-        type I = i8;
-        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_i8_public_equals_public() {
-        type I = i8;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_i8_public_equals_private() {
-        type I = i8;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_i8_private_equals_public() {
-        type I = i8;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_i8_private_equals_private() {
-        type I = i8;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 2, 3);
-    }
-
-    // Tests for u16
-
-    #[test]
-    fn test_u16_constant_equals_constant() {
-        type I = u16;
-        run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_u16_constant_equals_public() {
-        type I = u16;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_u16_constant_equals_private() {
-        type I = u16;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_u16_public_equals_constant() {
-        type I = u16;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_u16_private_equals_constant() {
-        type I = u16;
-        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_u16_public_equals_public() {
-        type I = u16;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_u16_public_equals_private() {
-        type I = u16;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_u16_private_equals_public() {
-        type I = u16;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_u16_private_equals_private() {
-        type I = u16;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 2, 3);
-    }
-
-    // Tests for i16
-
-    #[test]
-    fn test_i16_constant_equals_constant() {
-        type I = i16;
-        run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i16_constant_equals_public() {
-        type I = i16;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_i16_constant_equals_private() {
-        type I = i16;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_i16_public_equals_constant() {
-        type I = i16;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_i16_private_equals_constant() {
-        type I = i16;
-        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_i16_public_equals_public() {
-        type I = i16;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_i16_public_equals_private() {
-        type I = i16;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_i16_private_equals_public() {
-        type I = i16;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_i16_private_equals_private() {
-        type I = i16;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 2, 3);
-    }
-
-    // Tests for u32
-
-    #[test]
-    fn test_u32_constant_equals_constant() {
-        type I = u32;
-        run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_u32_constant_equals_public() {
-        type I = u32;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_u32_constant_equals_private() {
-        type I = u32;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_u32_public_equals_constant() {
-        type I = u32;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_u32_private_equals_constant() {
-        type I = u32;
-        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_u32_public_equals_public() {
-        type I = u32;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_u32_public_equals_private() {
-        type I = u32;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_u32_private_equals_public() {
-        type I = u32;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_u32_private_equals_private() {
-        type I = u32;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 2, 3);
-    }
-
-    // Tests for i32
-
-    #[test]
-    fn test_i32_constant_equals_constant() {
-        type I = i32;
-        run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i32_constant_equals_public() {
-        type I = i32;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_i32_constant_equals_private() {
-        type I = i32;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_i32_public_equals_constant() {
-        type I = i32;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_i32_private_equals_constant() {
-        type I = i32;
-        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_i32_public_equals_public() {
-        type I = i32;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_i32_public_equals_private() {
-        type I = i32;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_i32_private_equals_public() {
-        type I = i32;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_i32_private_equals_private() {
-        type I = i32;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 2, 3);
-    }
-
-    // Tests for u64
-
-    #[test]
-    fn test_u64_constant_equals_constant() {
-        type I = u64;
-        run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_u64_constant_equals_public() {
-        type I = u64;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_u64_constant_equals_private() {
-        type I = u64;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_u64_public_equals_constant() {
-        type I = u64;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_u64_private_equals_constant() {
-        type I = u64;
-        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_u64_public_equals_public() {
-        type I = u64;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_u64_public_equals_private() {
-        type I = u64;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_u64_private_equals_public() {
-        type I = u64;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_u64_private_equals_private() {
-        type I = u64;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 2, 3);
-    }
-
-    // Tests for i64
-
-    #[test]
-    fn test_i64_constant_equals_constant() {
-        type I = i64;
-        run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i64_constant_equals_public() {
-        type I = i64;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_i64_constant_equals_private() {
-        type I = i64;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_i64_public_equals_constant() {
-        type I = i64;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_i64_private_equals_constant() {
-        type I = i64;
-        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_i64_public_equals_public() {
-        type I = i64;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_i64_public_equals_private() {
-        type I = i64;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_i64_private_equals_public() {
-        type I = i64;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_i64_private_equals_private() {
-        type I = i64;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 2, 3);
-    }
-
-    // Tests for u128
-
-    #[test]
-    fn test_u128_constant_equals_constant() {
-        type I = u128;
-        run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_u128_constant_equals_public() {
-        type I = u128;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_u128_constant_equals_private() {
-        type I = u128;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_u128_public_equals_constant() {
-        type I = u128;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_u128_private_equals_constant() {
-        type I = u128;
-        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_u128_public_equals_public() {
-        type I = u128;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_u128_public_equals_private() {
-        type I = u128;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_u128_private_equals_public() {
-        type I = u128;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_u128_private_equals_private() {
-        type I = u128;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 2, 3);
-    }
-
-    // Tests for i128
-
-    #[test]
-    fn test_i128_constant_equals_constant() {
-        type I = i128;
-        run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i128_constant_equals_public() {
-        type I = i128;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_i128_constant_equals_private() {
-        type I = i128;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_i128_public_equals_constant() {
-        type I = i128;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_i128_private_equals_constant() {
-        type I = i128;
-        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_i128_public_equals_public() {
-        type I = i128;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_i128_public_equals_private() {
-        type I = i128;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_i128_private_equals_public() {
-        type I = i128;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 2, 3);
-    }
-
-    #[test]
-    fn test_i128_private_equals_private() {
-        type I = i128;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 2, 3);
-    }
-
-    // Exhaustive tests for u8.
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_u8_constant_equals_constant() {
-        type I = u8;
-        run_exhaustive_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_u8_constant_equals_public() {
-        type I = u8;
-        run_exhaustive_test::<I>(Mode::Constant, Mode::Public, 0, 0, 2, 3);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_u8_constant_equals_private() {
-        type I = u8;
-        run_exhaustive_test::<I>(Mode::Constant, Mode::Private, 0, 0, 2, 3);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_u8_public_equals_constant() {
-        type I = u8;
-        run_exhaustive_test::<I>(Mode::Public, Mode::Constant, 0, 0, 2, 3);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_u8_private_equals_constant() {
-        type I = u8;
-        run_exhaustive_test::<I>(Mode::Private, Mode::Constant, 0, 0, 2, 3);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_u8_public_equals_public() {
-        type I = u8;
-        run_exhaustive_test::<I>(Mode::Public, Mode::Public, 0, 0, 2, 3);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_u8_public_equals_private() {
-        type I = u8;
-        run_exhaustive_test::<I>(Mode::Public, Mode::Private, 0, 0, 2, 3);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_u8_private_equals_public() {
-        type I = u8;
-        run_exhaustive_test::<I>(Mode::Private, Mode::Public, 0, 0, 2, 3);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_u8_private_equals_private() {
-        type I = u8;
-        run_exhaustive_test::<I>(Mode::Private, Mode::Private, 0, 0, 2, 3);
-    }
-
-    // Tests for i8
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_i8_constant_equals_constant() {
-        type I = i8;
-        run_exhaustive_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_i8_constant_equals_public() {
-        type I = i8;
-        run_exhaustive_test::<I>(Mode::Constant, Mode::Public, 0, 0, 2, 3);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_i8_constant_equals_private() {
-        type I = i8;
-        run_exhaustive_test::<I>(Mode::Constant, Mode::Private, 0, 0, 2, 3);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_i8_public_equals_constant() {
-        type I = i8;
-        run_exhaustive_test::<I>(Mode::Public, Mode::Constant, 0, 0, 2, 3);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_i8_private_equals_constant() {
-        type I = i8;
-        run_exhaustive_test::<I>(Mode::Private, Mode::Constant, 0, 0, 2, 3);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_i8_public_equals_public() {
-        type I = i8;
-        run_exhaustive_test::<I>(Mode::Public, Mode::Public, 0, 0, 2, 3);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_i8_public_equals_private() {
-        type I = i8;
-        run_exhaustive_test::<I>(Mode::Public, Mode::Private, 0, 0, 2, 3);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_i8_private_equals_public() {
-        type I = i8;
-        run_exhaustive_test::<I>(Mode::Private, Mode::Public, 0, 0, 2, 3);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_i8_private_equals_private() {
-        type I = i8;
-        run_exhaustive_test::<I>(Mode::Private, Mode::Private, 0, 0, 2, 3);
-    }
+    test_integer_binary!(run_test, i8, equals);
+    test_integer_binary!(run_test, i16, equals);
+    test_integer_binary!(run_test, i32, equals);
+    test_integer_binary!(run_test, i64, equals);
+    test_integer_binary!(run_test, i128, equals);
+
+    test_integer_binary!(run_test, u8, equals);
+    test_integer_binary!(run_test, u16, equals);
+    test_integer_binary!(run_test, u32, equals);
+    test_integer_binary!(run_test, u64, equals);
+    test_integer_binary!(run_test, u128, equals);
+
+    test_integer_binary!(#[ignore], run_exhaustive_test, u8, equals, exhaustive);
+    test_integer_binary!(#[ignore], run_exhaustive_test, i8, equals, exhaustive);
 }

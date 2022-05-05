@@ -17,18 +17,39 @@
 use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Registers},
     helpers::Register,
+    LiteralType,
     Program,
     Value,
 };
-use snarkvm_circuits::{Parser, ParserResult};
+
+use snarkvm_circuits::{
+    count,
+    Count,
+    Field,
+    Group,
+    Literal,
+    Metrics,
+    Parser,
+    ParserResult,
+    SubChecked,
+    I128,
+    I16,
+    I32,
+    I64,
+    I8,
+    U128,
+    U16,
+    U32,
+    U64,
+    U8,
+};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
-use core::fmt;
+use core::{fmt, ops::Sub as SubCircuit};
 use nom::combinator::map;
-use snarkvm_circuits::{Literal, SubChecked};
 use std::io::{Read, Result as IoResult, Write};
 
-/// Subtracts `second` from `first`, storing the outcome in `destination`.
+/// Computes `first - second`, storing the outcome in `destination`.
 pub struct Sub<P: Program> {
     operation: BinaryOperation<P>,
 }
@@ -50,41 +71,6 @@ impl<P: Program> Opcode for Sub<P> {
     #[inline]
     fn opcode() -> &'static str {
         "sub"
-    }
-}
-
-impl<P: Program> Parser for Sub<P> {
-    type Environment = P::Environment;
-
-    #[inline]
-    fn parse(string: &str) -> ParserResult<Self> {
-        map(BinaryOperation::parse, |operation| Self { operation })(string)
-    }
-}
-
-impl<P: Program> fmt::Display for Sub<P> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.operation)
-    }
-}
-
-impl<P: Program> FromBytes for Sub<P> {
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        Ok(Self { operation: BinaryOperation::read_le(&mut reader)? })
-    }
-}
-
-impl<P: Program> ToBytes for Sub<P> {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.operation.write_le(&mut writer)
-    }
-}
-
-#[allow(clippy::from_over_into)]
-impl<P: Program> Into<Instruction<P>> for Sub<P> {
-    /// Converts the operation into an instruction.
-    fn into(self) -> Instruction<P> {
-        Instruction::Sub(self)
     }
 }
 
@@ -123,10 +109,70 @@ impl<P: Program> Operation<P> for Sub<P> {
     }
 }
 
+impl<P: Program> Metrics<Self> for Sub<P> {
+    type Case = (LiteralType<P>, LiteralType<P>);
+
+    fn count(case: &Self::Case) -> Count {
+        crate::match_count!(match SubCircuit::count(case) {
+            (Field, Field) => Field,
+            (Group, Group) => Group,
+            (I8, I8) => I8,
+            (I16, I16) => I16,
+            (I32, I32) => I32,
+            (I64, I64) => I64,
+            (I128, I128) => I128,
+            (U8, U8) => U8,
+            (U16, U16) => U16,
+            (U32, U32) => U32,
+            (U64, U64) => U64,
+            (U128, U128) => U128,
+        })
+    }
+}
+
+impl<P: Program> Parser for Sub<P> {
+    type Environment = P::Environment;
+
+    /// Parses a string into a 'sub' operation.
+    #[inline]
+    fn parse(string: &str) -> ParserResult<Self> {
+        // Parse the operation from the string.
+        let (string, operation) = map(BinaryOperation::parse, |operation| Self { operation })(string)?;
+        // Return the operation.
+        Ok((string, operation))
+    }
+}
+
+impl<P: Program> fmt::Display for Sub<P> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.operation)
+    }
+}
+
+impl<P: Program> FromBytes for Sub<P> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        Ok(Self { operation: BinaryOperation::read_le(&mut reader)? })
+    }
+}
+
+impl<P: Program> ToBytes for Sub<P> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.operation.write_le(&mut writer)
+    }
+}
+
+#[allow(clippy::from_over_into)]
+impl<P: Program> Into<Instruction<P>> for Sub<P> {
+    /// Converts the operation into an instruction.
+    fn into(self) -> Instruction<P> {
+        Instruction::Sub(self)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{test_instruction_halts, test_modes, Process};
+    use crate::{test_instruction_halts, test_modes, Identifier, Process};
 
     #[test]
     fn test_parse() {
@@ -227,4 +273,23 @@ mod tests {
     );
     test_instruction_halts!(boolean_halts, Sub, "Invalid 'sub' instruction", "true.constant", "true.constant");
     test_instruction_halts!(string_halts, Sub, "Invalid 'sub' instruction", "\"hello\".constant", "\"world\".constant");
+
+    #[test]
+    #[should_panic(expected = "message is not a literal")]
+    fn test_composite_halts() {
+        let first = Value::<Process>::Composite(Identifier::from_str("message"), vec![
+            Literal::from_str("2group.public"),
+            Literal::from_str("10field.private"),
+        ]);
+        let second = first.clone();
+
+        let registers = Registers::<Process>::default();
+        registers.define(&Register::from_str("r0"));
+        registers.define(&Register::from_str("r1"));
+        registers.define(&Register::from_str("r2"));
+        registers.assign(&Register::from_str("r0"), first);
+        registers.assign(&Register::from_str("r1"), second);
+
+        Sub::from_str("r0 r1 into r2").evaluate(&registers);
+    }
 }

@@ -17,16 +17,19 @@
 use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Registers},
     helpers::Register,
+    LiteralType,
     Program,
     Value,
 };
-use snarkvm_circuits::{Parser, ParserResult};
+use snarkvm_circuits::{count, Count, Field, Group, Literal, Metrics, Parser, ParserResult, I128, I16, I32, I64, I8};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
 use nom::combinator::map;
-use snarkvm_circuits::Literal;
-use std::io::{Read, Result as IoResult, Write};
+use std::{
+    io::{Read, Result as IoResult, Write},
+    ops::Neg as NativeNeg,
+};
 
 /// Negates `first`, storing the outcome in `destination`.
 pub struct Neg<P: Program> {
@@ -53,9 +56,67 @@ impl<P: Program> Opcode for Neg<P> {
     }
 }
 
+impl<P: Program> Operation<P> for Neg<P> {
+    /// Evaluates the operation.
+    #[inline]
+    fn evaluate(&self, registers: &Registers<P>) {
+        // Load the values for the first and second operands.
+        let first = match registers.load(self.operation.first()) {
+            Value::Literal(literal) => literal,
+            Value::Composite(name, ..) => P::halt(format!("{name} is not a literal")),
+        };
+
+        // Perform the operation.
+        let result = match first {
+            Literal::Field(a) => Literal::Field(-a),
+            Literal::Group(a) => Literal::Group(-a),
+            Literal::I8(a) => Literal::I8(-a),
+            Literal::I16(a) => Literal::I16(-a),
+            Literal::I32(a) => Literal::I32(-a),
+            Literal::I64(a) => Literal::I64(-a),
+            Literal::I128(a) => Literal::I128(-a),
+            _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
+        };
+
+        registers.assign(self.operation.destination(), result);
+    }
+}
+
+impl<P: Program> Metrics<Self> for Neg<P> {
+    type Case = LiteralType<P>;
+
+    fn count(case: &Self::Case) -> Count {
+        match case {
+            LiteralType::Field(mode) => {
+                count!(Field<P::Environment>, NativeNeg<Output = Field<P::Environment>>, mode)
+            }
+            LiteralType::Group(mode) => {
+                count!(Group<P::Environment>, NativeNeg<Output = Group<P::Environment>>, mode)
+            }
+            LiteralType::I8(mode) => {
+                count!(I8<P::Environment>, NativeNeg<Output = I8<P::Environment>>, mode)
+            }
+            LiteralType::I16(mode) => {
+                count!(I16<P::Environment>, NativeNeg<Output = I16<P::Environment>>, mode)
+            }
+            LiteralType::I32(mode) => {
+                count!(I32<P::Environment>, NativeNeg<Output = I32<P::Environment>>, mode)
+            }
+            LiteralType::I64(mode) => {
+                count!(I64<P::Environment>, NativeNeg<Output = I64<P::Environment>>, mode)
+            }
+            LiteralType::I128(mode) => {
+                count!(I128<P::Environment>, NativeNeg<Output = I128<P::Environment>>, mode)
+            }
+            _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
+        }
+    }
+}
+
 impl<P: Program> Parser for Neg<P> {
     type Environment = P::Environment;
 
+    /// Parses a string into a 'neg' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         map(UnaryOperation::parse, |operation| Self { operation })(string)
@@ -88,36 +149,10 @@ impl<P: Program> Into<Instruction<P>> for Neg<P> {
     }
 }
 
-impl<P: Program> Operation<P> for Neg<P> {
-    /// Evaluates the operation.
-    #[inline]
-    fn evaluate(&self, registers: &Registers<P>) {
-        // Load the values for the first and second operands.
-        let first = match registers.load(self.operation.first()) {
-            Value::Literal(literal) => literal,
-            Value::Composite(name, ..) => P::halt(format!("{name} is not a literal")),
-        };
-
-        // Perform the operation.
-        let result = match first {
-            Literal::Field(a) => Literal::Field(-a),
-            Literal::Group(a) => Literal::Group(-a),
-            Literal::I8(a) => Literal::I8(-a),
-            Literal::I16(a) => Literal::I16(-a),
-            Literal::I32(a) => Literal::I32(-a),
-            Literal::I64(a) => Literal::I64(-a),
-            Literal::I128(a) => Literal::I128(-a),
-            _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
-        };
-
-        registers.assign(self.operation.destination(), result);
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{test_instruction_halts, test_modes, Process};
+    use crate::{test_instruction_halts, test_modes, Identifier, Process};
 
     #[test]
     fn test_parse() {
@@ -177,4 +212,20 @@ mod tests {
     );
     test_instruction_halts!(boolean_neg_halts, Neg, "Invalid 'neg' instruction", "true.constant");
     test_instruction_halts!(string_neg_halts, Neg, "Invalid 'neg' instruction", "\"hello\".constant");
+
+    #[test]
+    #[should_panic(expected = "message is not a literal")]
+    fn test_composite_halts() {
+        let first = Value::<Process>::Composite(Identifier::from_str("message"), vec![
+            Literal::from_str("2group.public"),
+            Literal::from_str("10field.private"),
+        ]);
+
+        let registers = Registers::<Process>::default();
+        registers.define(&Register::from_str("r0"));
+        registers.define(&Register::from_str("r1"));
+        registers.assign(&Register::from_str("r0"), first);
+
+        Neg::from_str("r0 into r1").evaluate(&registers);
+    }
 }

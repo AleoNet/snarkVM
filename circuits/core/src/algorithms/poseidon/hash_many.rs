@@ -16,9 +16,12 @@
 
 use super::*;
 
-impl<E: Environment, const RATE: usize> Poseidon<E, RATE> {
+impl<E: Environment, const RATE: usize> HashMany for Poseidon<E, RATE> {
+    type Input = Field<E>;
+    type Output = Field<E>;
+
     #[inline]
-    pub fn hash_many(&self, input: &[Field<E>], num_outputs: usize) -> Vec<Field<E>> {
+    fn hash_many(&self, input: &[Self::Input], num_outputs: usize) -> Vec<Self::Output> {
         // Initialize a new sponge.
         let mut state = vec![Field::zero(); RATE + CAPACITY];
         let mut mode = DuplexSpongeMode::Absorbing { next_absorb_index: 0 };
@@ -26,6 +29,26 @@ impl<E: Environment, const RATE: usize> Poseidon<E, RATE> {
         // Absorb the input and squeeze the output.
         self.absorb(&mut state, &mut mode, input);
         self.squeeze(&mut state, &mut mode, num_outputs)
+    }
+}
+
+impl<E: Environment, const RATE: usize> Metrics<dyn HashMany<Input = Field<E>, Output = Field<E>>>
+    for Poseidon<E, RATE>
+{
+    type Case = ();
+
+    fn count(_parameter: &Self::Case) -> Count {
+        todo!()
+    }
+}
+
+impl<E: Environment, const RATE: usize> OutputMode<dyn HashMany<Input = Field<E>, Output = Field<E>>>
+    for Poseidon<E, RATE>
+{
+    type Case = ();
+
+    fn output_mode(_parameter: &Self::Case) -> Mode {
+        todo!()
     }
 }
 
@@ -43,10 +66,10 @@ mod tests {
         mode: Mode,
         num_inputs: usize,
         num_outputs: usize,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
     ) {
         let rng = &mut test_rng();
         let native_poseidon = NativePoseidon::<_, RATE, OPTIMIZED_FOR_WEIGHTS>::setup();

@@ -48,24 +48,37 @@ impl<E: Environment> Not for &Boolean<E> {
     }
 }
 
+impl<E: Environment> Metrics<dyn Not<Output = Boolean<E>>> for Boolean<E> {
+    type Case = Mode;
+
+    fn count(_case: &Self::Case) -> Count {
+        Count::is(0, 0, 0, 0)
+    }
+}
+
+impl<E: Environment> OutputMode<dyn Not<Output = Boolean<E>>> for Boolean<E> {
+    type Case = Mode;
+
+    fn output_mode(case: &Self::Case) -> Mode {
+        match case {
+            Mode::Constant => Mode::Constant,
+            _ => Mode::Private,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
 
-    fn check_not(
-        name: &str,
-        expected: bool,
-        candidate_input: Boolean<Circuit>,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
+    fn check_not(name: &str, expected: bool, candidate_input: Boolean<Circuit>) {
         Circuit::scope(name, || {
+            let mode = candidate_input.mode();
             let candidate_output = !candidate_input;
             assert_eq!(expected, candidate_output.eject_value());
-            assert_scope!(num_constants, num_public, num_private, num_constraints);
+            assert_count!(Not(Boolean) => Boolean, &mode);
+            assert_output_mode!(Not(Boolean) => Boolean, &mode, candidate_output);
         });
     }
 
@@ -74,12 +87,12 @@ mod tests {
         // NOT false
         let expected = true;
         let candidate_input = Boolean::<Circuit>::new(Mode::Constant, false);
-        check_not("NOT false", expected, candidate_input, 0, 0, 0, 0);
+        check_not("NOT false", expected, candidate_input);
 
         // NOT true
         let expected = false;
         let candidate_input = Boolean::<Circuit>::new(Mode::Constant, true);
-        check_not("NOT true", expected, candidate_input, 0, 0, 0, 0);
+        check_not("NOT true", expected, candidate_input);
     }
 
     #[test]
@@ -87,12 +100,12 @@ mod tests {
         // NOT false
         let expected = true;
         let candidate_input = Boolean::<Circuit>::new(Mode::Public, false);
-        check_not("NOT false", expected, candidate_input, 0, 0, 0, 0);
+        check_not("NOT false", expected, candidate_input);
 
         // NOT true
         let expected = false;
         let candidate_input = Boolean::<Circuit>::new(Mode::Public, true);
-        check_not("NOT true", expected, candidate_input, 0, 0, 0, 0);
+        check_not("NOT true", expected, candidate_input);
     }
 
     #[test]
@@ -100,11 +113,11 @@ mod tests {
         // NOT false
         let expected = true;
         let candidate_input = Boolean::<Circuit>::new(Mode::Private, false);
-        check_not("NOT false", expected, candidate_input, 0, 0, 0, 0);
+        check_not("NOT false", expected, candidate_input);
 
         // NOT true
         let expected = false;
         let candidate_input = Boolean::<Circuit>::new(Mode::Private, true);
-        check_not("NOT true", expected, candidate_input, 0, 0, 0, 0);
+        check_not("NOT true", expected, candidate_input);
     }
 }

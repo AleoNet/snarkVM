@@ -17,10 +17,29 @@
 use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Registers},
     helpers::Register,
+    LiteralType,
     Program,
     Value,
 };
-use snarkvm_circuits::{Literal, MulWrapped as MulWrappedCircuit, Parser, ParserResult};
+use snarkvm_circuits::{
+    count,
+    Count,
+    Literal,
+    Metrics,
+    MulWrapped as MulWrappedCircuit,
+    Parser,
+    ParserResult,
+    I128,
+    I16,
+    I32,
+    I64,
+    I8,
+    U128,
+    U16,
+    U32,
+    U64,
+    U8,
+};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
@@ -82,6 +101,25 @@ impl<P: Program> Operation<P> for MulWrapped<P> {
         };
 
         registers.assign(self.operation.destination(), result);
+    }
+}
+
+impl<P: Program> Metrics<Self> for MulWrapped<P> {
+    type Case = (LiteralType<P>, LiteralType<P>);
+
+    fn count(case: &Self::Case) -> Count {
+        crate::match_count!(match MulWrappedCircuit::count(case) {
+            (I8, I8) => I8,
+            (I16, I16) => I16,
+            (I32, I32) => I32,
+            (I64, I64) => I64,
+            (I128, I128) => I128,
+            (U8, U8) => U8,
+            (U16, U16) => U16,
+            (U32, U32) => U32,
+            (U64, U64) => U64,
+            (U128, U128) => U128,
+        })
     }
 }
 

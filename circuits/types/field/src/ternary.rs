@@ -92,180 +92,377 @@ impl<E: Environment> Ternary for Field<E> {
     }
 }
 
+impl<E: Environment> Metrics<dyn Ternary<Boolean = Boolean<E>, Output = Field<E>>> for Field<E> {
+    type Case = (Mode, Mode, Mode);
+
+    fn count(case: &Self::Case) -> Count {
+        match case {
+            (Mode::Constant, _, _)
+            | (Mode::Public, Mode::Constant, Mode::Constant)
+            | (Mode::Private, Mode::Constant, Mode::Constant) => Count::is(0, 0, 0, 0),
+            _ => Count::is(0, 0, 1, 1),
+        }
+    }
+}
+
+impl<E: Environment> OutputMode<dyn Ternary<Boolean = Boolean<E>, Output = Field<E>>> for Field<E> {
+    type Case = (ConstantOrMode<Boolean<E>>, Mode, Mode);
+
+    fn output_mode(parameter: &Self::Case) -> Mode {
+        match parameter.0.mode().is_constant() {
+            true => match &parameter.0 {
+                ConstantOrMode::Mode(..) => E::halt("Circuit is required to determine output mode."),
+                ConstantOrMode::Constant(circuit) => match circuit.eject_value() {
+                    true => parameter.1,
+                    false => parameter.2,
+                },
+            },
+            false => Mode::Private,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
+    fn check_ternary(
+        name: &str,
+        expected: <Circuit as Environment>::BaseField,
+        condition: Boolean<Circuit>,
+        a: Field<Circuit>,
+        b: Field<Circuit>,
+    ) {
+        Circuit::scope(name, || {
+            let case = format!("({} ? {} : {})", condition.eject_value(), a.eject_value(), b.eject_value());
+            let candidate = Field::ternary(&condition, &a, &b);
+            assert_eq!(expected, candidate.eject_value(), "{case}");
+            assert_count!(Ternary(Boolean, Field, Field) => Field, &(condition.eject_mode(), a.eject_mode(), b.eject_mode()));
+            assert_output_mode!(Ternary(Boolean, Field, Field) => Field, &(ConstantOrMode::from(&condition), a.eject_mode(), b.eject_mode()), candidate);
+        });
+    }
+
     #[test]
-    fn test_ternary() {
-        // Constant ? Constant : Constant
-        {
-            let a = Field::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut test_rng()));
-            let b = Field::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut test_rng()));
+    fn test_constant_condition() {
+        let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
+        let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
 
-            let condition = Boolean::constant(true);
-            Circuit::scope("Constant(true) ? Constant : Constant", || {
-                let output = Field::ternary(&condition, &a, &b);
-                assert_scope!(0, 0, 0, 0);
+        // false ? Constant : Constant
+        let expected = second;
+        let condition = Boolean::<Circuit>::new(Mode::Constant, false);
+        let a = Field::<Circuit>::new(Mode::Constant, first);
+        let b = Field::<Circuit>::new(Mode::Constant, second);
+        check_ternary("false ? Constant : Constant", expected, condition, a, b);
 
-                assert!(output.is_equal(&a).eject_value());
-                assert!(!output.is_equal(&b).eject_value());
-            });
+        // false ? Constant : Public
+        let expected = second;
+        let condition = Boolean::<Circuit>::new(Mode::Constant, false);
+        let a = Field::<Circuit>::new(Mode::Constant, first);
+        let b = Field::<Circuit>::new(Mode::Public, second);
+        check_ternary("false ? Constant : Public", expected, condition, a, b);
 
-            let condition = Boolean::constant(false);
-            Circuit::scope("Constant(false) ? Constant : Constant", || {
-                let output = Field::ternary(&condition, &a, &b);
-                assert_scope!(0, 0, 0, 0);
+        // false ? Public : Constant
+        let expected = second;
+        let condition = Boolean::<Circuit>::new(Mode::Constant, false);
+        let a = Field::<Circuit>::new(Mode::Public, first);
+        let b = Field::<Circuit>::new(Mode::Constant, second);
+        check_ternary("false ? Public : Constant", expected, condition, a, b);
 
-                assert!(!output.is_equal(&a).eject_value());
-                assert!(output.is_equal(&b).eject_value());
-            });
-        }
+        // false ? Public : Public
+        let expected = second;
+        let condition = Boolean::<Circuit>::new(Mode::Constant, false);
+        let a = Field::<Circuit>::new(Mode::Public, first);
+        let b = Field::<Circuit>::new(Mode::Public, second);
+        check_ternary("false ? Public : Public", expected, condition, a, b);
 
-        // Constant ? Public : Private
-        {
-            let a = Field::<Circuit>::new(Mode::Public, UniformRand::rand(&mut test_rng()));
-            let b = Field::<Circuit>::new(Mode::Private, UniformRand::rand(&mut test_rng()));
+        // false ? Public : Private
+        let expected = second;
+        let condition = Boolean::<Circuit>::new(Mode::Constant, false);
+        let a = Field::<Circuit>::new(Mode::Public, first);
+        let b = Field::<Circuit>::new(Mode::Private, second);
+        check_ternary("false ? Public : Private", expected, condition, a, b);
 
-            let condition = Boolean::constant(true);
-            Circuit::scope("Constant(true) ? Public : Private", || {
-                let output = Field::ternary(&condition, &a, &b);
-                assert_scope!(0, 0, 0, 0);
+        // false ? Private : Private
+        let expected = second;
+        let condition = Boolean::<Circuit>::new(Mode::Constant, false);
+        let a = Field::<Circuit>::new(Mode::Private, first);
+        let b = Field::<Circuit>::new(Mode::Private, second);
+        check_ternary("false ? Private : Private", expected, condition, a, b);
 
-                assert!(output.is_equal(&a).eject_value());
-                assert!(!output.is_equal(&b).eject_value());
-            });
+        // true ? Constant : Constant
+        let expected = first;
+        let condition = Boolean::<Circuit>::new(Mode::Constant, true);
+        let a = Field::<Circuit>::new(Mode::Constant, first);
+        let b = Field::<Circuit>::new(Mode::Constant, second);
+        check_ternary("true ? Constant : Constant", expected, condition, a, b);
 
-            let condition = Boolean::constant(false);
-            Circuit::scope("Constant(false) ? Public : Private", || {
-                let output = Field::ternary(&condition, &a, &b);
-                assert_scope!(0, 0, 0, 0);
+        // true ? Constant : Public
+        let expected = first;
+        let condition = Boolean::<Circuit>::new(Mode::Constant, true);
+        let a = Field::<Circuit>::new(Mode::Constant, first);
+        let b = Field::<Circuit>::new(Mode::Public, second);
+        check_ternary("true ? Constant : Public", expected, condition, a, b);
 
-                assert!(!output.is_equal(&a).eject_value());
-                assert!(output.is_equal(&b).eject_value());
-            });
-        }
+        // true ? Public : Constant
+        let expected = first;
+        let condition = Boolean::<Circuit>::new(Mode::Constant, true);
+        let a = Field::<Circuit>::new(Mode::Public, first);
+        let b = Field::<Circuit>::new(Mode::Constant, second);
+        check_ternary("true ? Public : Constant", expected, condition, a, b);
 
-        // Public ? Constant : Constant
-        {
-            let a = Field::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut test_rng()));
-            let b = Field::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut test_rng()));
+        // true ? Public : Public
+        let expected = first;
+        let condition = Boolean::<Circuit>::new(Mode::Constant, true);
+        let a = Field::<Circuit>::new(Mode::Public, first);
+        let b = Field::<Circuit>::new(Mode::Public, second);
+        check_ternary("true ? Public : Public", expected, condition, a, b);
 
-            let condition = Boolean::new(Mode::Public, true);
-            Circuit::scope("Public(true) ? Constant : Constant", || {
-                let output = Field::ternary(&condition, &a, &b);
-                assert_scope!(0, 0, 0, 0);
+        // true ? Public : Private
+        let expected = first;
+        let condition = Boolean::<Circuit>::new(Mode::Constant, true);
+        let a = Field::<Circuit>::new(Mode::Public, first);
+        let b = Field::<Circuit>::new(Mode::Private, second);
+        check_ternary("true ? Public : Private", expected, condition, a, b);
 
-                assert!(output.is_equal(&a).eject_value());
-                assert!(!output.is_equal(&b).eject_value());
-            });
+        // true ? Private : Private
+        let expected = first;
+        let condition = Boolean::<Circuit>::new(Mode::Constant, true);
+        let a = Field::<Circuit>::new(Mode::Private, first);
+        let b = Field::<Circuit>::new(Mode::Private, second);
+        check_ternary("true ? Private : Private", expected, condition, a, b);
+    }
 
-            let condition = Boolean::new(Mode::Public, false);
-            Circuit::scope("Public(false) ? Constant : Constant", || {
-                let output = Field::ternary(&condition, &a, &b);
-                assert_scope!(0, 0, 0, 0);
+    #[test]
+    fn test_public_condition_and_constant_inputs() {
+        let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
+        let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
 
-                assert!(!output.is_equal(&a).eject_value());
-                assert!(output.is_equal(&b).eject_value());
-            });
-        }
+        // false ? Constant : Constant
+        let expected = second;
+        let condition = Boolean::<Circuit>::new(Mode::Public, false);
+        let a = Field::<Circuit>::new(Mode::Constant, first);
+        let b = Field::<Circuit>::new(Mode::Constant, second);
+        check_ternary("false ? Constant : Constant", expected, condition, a, b);
 
-        // Private ? Constant : Constant
-        {
-            let a = Field::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut test_rng()));
-            let b = Field::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut test_rng()));
+        // true ? Constant : Constant
+        let expected = first;
+        let condition = Boolean::<Circuit>::new(Mode::Public, true);
+        let a = Field::<Circuit>::new(Mode::Constant, first);
+        let b = Field::<Circuit>::new(Mode::Constant, second);
+        check_ternary("true ? Constant : Constant", expected, condition, a, b);
+    }
 
-            let condition = Boolean::new(Mode::Private, true);
-            Circuit::scope("Private(true) ? Constant : Constant", || {
-                let output = Field::ternary(&condition, &a, &b);
-                assert_scope!(0, 0, 0, 0);
+    #[test]
+    fn test_public_condition_and_mixed_inputs() {
+        let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
+        let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
 
-                assert!(output.is_equal(&a).eject_value());
-                assert!(!output.is_equal(&b).eject_value());
-            });
+        // false ? Constant : Public
+        let expected = second;
+        let condition = Boolean::<Circuit>::new(Mode::Public, false);
+        let a = Field::<Circuit>::new(Mode::Constant, first);
+        let b = Field::<Circuit>::new(Mode::Public, second);
+        check_ternary("false ? Constant : Public", expected, condition, a, b);
 
-            let condition = Boolean::new(Mode::Private, false);
-            Circuit::scope("Private(false) ? Constant : Constant", || {
-                let output = Field::ternary(&condition, &a, &b);
-                assert_scope!(0, 0, 0, 0);
+        // false ? Public : Constant
+        let expected = second;
+        let condition = Boolean::<Circuit>::new(Mode::Public, false);
+        let a = Field::<Circuit>::new(Mode::Public, first);
+        let b = Field::<Circuit>::new(Mode::Constant, second);
+        check_ternary("false ? Public : Constant", expected, condition, a, b);
 
-                assert!(!output.is_equal(&a).eject_value());
-                assert!(output.is_equal(&b).eject_value());
-            });
-        }
+        // true ? Constant : Public
+        let expected = first;
+        let condition = Boolean::<Circuit>::new(Mode::Public, true);
+        let a = Field::<Circuit>::new(Mode::Constant, first);
+        let b = Field::<Circuit>::new(Mode::Public, second);
+        check_ternary("true ? Constant : Public", expected, condition, a, b);
 
-        // Private ? Public : Constant
-        {
-            let a = Field::<Circuit>::new(Mode::Public, UniformRand::rand(&mut test_rng()));
-            let b = Field::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut test_rng()));
+        // true ? Public : Constant
+        let expected = first;
+        let condition = Boolean::<Circuit>::new(Mode::Public, true);
+        let a = Field::<Circuit>::new(Mode::Public, first);
+        let b = Field::<Circuit>::new(Mode::Constant, second);
+        check_ternary("true ? Public : Constant", expected, condition, a, b);
+    }
 
-            let condition = Boolean::new(Mode::Private, true);
-            Circuit::scope("Private(true) ? Public : Constant", || {
-                let output = Field::ternary(&condition, &a, &b);
-                assert_scope!(0, 0, 1, 1);
+    #[test]
+    fn test_private_condition_and_constant_inputs() {
+        let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
+        let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
 
-                assert!(output.is_equal(&a).eject_value());
-                assert!(!output.is_equal(&b).eject_value());
-            });
+        // false ? Constant : Constant
+        let expected = second;
+        let condition = Boolean::<Circuit>::new(Mode::Private, false);
+        let a = Field::<Circuit>::new(Mode::Constant, first);
+        let b = Field::<Circuit>::new(Mode::Constant, second);
+        check_ternary("false ? Constant : Constant", expected, condition, a, b);
 
-            let condition = Boolean::new(Mode::Private, false);
-            Circuit::scope("Private(false) ? Public : Constant", || {
-                let output = Field::ternary(&condition, &a, &b);
-                assert_scope!(0, 0, 1, 1);
+        // true ? Constant : Constant
+        let expected = first;
+        let condition = Boolean::<Circuit>::new(Mode::Private, true);
+        let a = Field::<Circuit>::new(Mode::Constant, first);
+        let b = Field::<Circuit>::new(Mode::Constant, second);
+        check_ternary("true ? Constant : Constant", expected, condition, a, b);
+    }
 
-                assert!(!output.is_equal(&a).eject_value());
-                assert!(output.is_equal(&b).eject_value());
-            });
-        }
+    #[test]
+    fn test_private_condition_and_mixed_inputs() {
+        let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
+        let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
 
-        // Private ? Constant : Public
-        {
-            let a = Field::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut test_rng()));
-            let b = Field::<Circuit>::new(Mode::Public, UniformRand::rand(&mut test_rng()));
+        // false ? Constant : Public
+        let expected = second;
+        let condition = Boolean::<Circuit>::new(Mode::Private, false);
+        let a = Field::<Circuit>::new(Mode::Constant, first);
+        let b = Field::<Circuit>::new(Mode::Public, second);
+        check_ternary("false ? Constant : Public", expected, condition, a, b);
 
-            let condition = Boolean::new(Mode::Private, true);
-            Circuit::scope("Private(true) ? Constant : Public", || {
-                let output = Field::ternary(&condition, &a, &b);
-                assert_scope!(0, 0, 1, 1);
+        // false ? Public : Constant
+        let expected = second;
+        let condition = Boolean::<Circuit>::new(Mode::Private, false);
+        let a = Field::<Circuit>::new(Mode::Public, first);
+        let b = Field::<Circuit>::new(Mode::Constant, second);
+        check_ternary("false ? Public : Constant", expected, condition, a, b);
 
-                assert!(output.is_equal(&a).eject_value());
-                assert!(!output.is_equal(&b).eject_value());
-            });
+        // true ? Constant : Public
+        let expected = first;
+        let condition = Boolean::<Circuit>::new(Mode::Private, true);
+        let a = Field::<Circuit>::new(Mode::Constant, first);
+        let b = Field::<Circuit>::new(Mode::Public, second);
+        check_ternary("true ? Constant : Public", expected, condition, a, b);
 
-            let condition = Boolean::new(Mode::Private, false);
-            Circuit::scope("Private(false) ? Constant : Public", || {
-                let output = Field::ternary(&condition, &a, &b);
-                assert_scope!(0, 0, 1, 1);
+        // true ? Public : Constant
+        let expected = first;
+        let condition = Boolean::<Circuit>::new(Mode::Private, true);
+        let a = Field::<Circuit>::new(Mode::Public, first);
+        let b = Field::<Circuit>::new(Mode::Constant, second);
+        check_ternary("true ? Public : Constant", expected, condition, a, b);
+    }
 
-                assert!(!output.is_equal(&a).eject_value());
-                assert!(output.is_equal(&b).eject_value());
-            });
-        }
+    #[test]
+    fn test_public_condition_and_variable_inputs() {
+        let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
+        let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
 
-        // Private ? Private : Public
-        {
-            let a = Field::<Circuit>::new(Mode::Private, UniformRand::rand(&mut test_rng()));
-            let b = Field::<Circuit>::new(Mode::Public, UniformRand::rand(&mut test_rng()));
+        // false ? Public : Public
+        let expected = second;
+        let condition = Boolean::<Circuit>::new(Mode::Public, false);
+        let a = Field::<Circuit>::new(Mode::Public, first);
+        let b = Field::<Circuit>::new(Mode::Public, second);
+        check_ternary("false ? Public : Public", expected, condition, a, b);
 
-            let condition = Boolean::new(Mode::Private, true);
-            Circuit::scope("Private(true) ? Private : Public", || {
-                let output = Field::ternary(&condition, &a, &b);
-                assert_scope!(0, 0, 1, 1);
+        // false ? Public : Private
+        let expected = second;
+        let condition = Boolean::<Circuit>::new(Mode::Public, false);
+        let a = Field::<Circuit>::new(Mode::Public, first);
+        let b = Field::<Circuit>::new(Mode::Private, second);
+        check_ternary("false ? Public : Private", expected, condition, a, b);
 
-                assert!(output.is_equal(&a).eject_value());
-                assert!(!output.is_equal(&b).eject_value());
-            });
+        // false ? Private : Public
+        let expected = second;
+        let condition = Boolean::<Circuit>::new(Mode::Public, false);
+        let a = Field::<Circuit>::new(Mode::Private, first);
+        let b = Field::<Circuit>::new(Mode::Public, second);
+        check_ternary("false ? Private : Public", expected, condition, a, b);
 
-            let condition = Boolean::new(Mode::Private, false);
-            Circuit::scope("Private(false) ? Private : Public", || {
-                let output = Field::ternary(&condition, &a, &b);
-                assert_scope!(0, 0, 1, 1);
+        // false ? Private : Private
+        let expected = second;
+        let condition = Boolean::<Circuit>::new(Mode::Public, false);
+        let a = Field::<Circuit>::new(Mode::Private, first);
+        let b = Field::<Circuit>::new(Mode::Private, second);
+        check_ternary("false ? Private : Private", expected, condition, a, b);
 
-                assert!(!output.is_equal(&a).eject_value());
-                assert!(output.is_equal(&b).eject_value());
-            });
-        }
+        // true ? Public : Public
+        let expected = first;
+        let condition = Boolean::<Circuit>::new(Mode::Public, true);
+        let a = Field::<Circuit>::new(Mode::Public, first);
+        let b = Field::<Circuit>::new(Mode::Public, second);
+        check_ternary("true ? Public : Public", expected, condition, a, b);
+
+        // true ? Public : Private
+        let expected = first;
+        let condition = Boolean::<Circuit>::new(Mode::Public, true);
+        let a = Field::<Circuit>::new(Mode::Public, first);
+        let b = Field::<Circuit>::new(Mode::Private, second);
+        check_ternary("true ? Public : Private", expected, condition, a, b);
+
+        // true ? Private : Public
+        let expected = first;
+        let condition = Boolean::<Circuit>::new(Mode::Public, true);
+        let a = Field::<Circuit>::new(Mode::Private, first);
+        let b = Field::<Circuit>::new(Mode::Public, second);
+        check_ternary("true ? Private : Public", expected, condition, a, b);
+
+        // true ? Private : Private
+        let expected = first;
+        let condition = Boolean::<Circuit>::new(Mode::Public, true);
+        let a = Field::<Circuit>::new(Mode::Private, first);
+        let b = Field::<Circuit>::new(Mode::Private, second);
+        check_ternary("true ? Private : Private", expected, condition, a, b);
+    }
+
+    #[test]
+    fn test_private_condition_and_variable_inputs() {
+        let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
+        let second: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
+
+        // false ? Public : Public
+        let expected = second;
+        let condition = Boolean::<Circuit>::new(Mode::Private, false);
+        let a = Field::<Circuit>::new(Mode::Public, first);
+        let b = Field::<Circuit>::new(Mode::Public, second);
+        check_ternary("false ? Public : Public", expected, condition, a, b);
+
+        // false ? Public : Private
+        let expected = second;
+        let condition = Boolean::<Circuit>::new(Mode::Private, false);
+        let a = Field::<Circuit>::new(Mode::Public, first);
+        let b = Field::<Circuit>::new(Mode::Private, second);
+        check_ternary("false ? Public : Private", expected, condition, a, b);
+
+        // false ? Private : Public
+        let expected = second;
+        let condition = Boolean::<Circuit>::new(Mode::Private, false);
+        let a = Field::<Circuit>::new(Mode::Private, first);
+        let b = Field::<Circuit>::new(Mode::Public, second);
+        check_ternary("false ? Private : Public", expected, condition, a, b);
+
+        // false ? Private : Private
+        let expected = second;
+        let condition = Boolean::<Circuit>::new(Mode::Private, false);
+        let a = Field::<Circuit>::new(Mode::Private, first);
+        let b = Field::<Circuit>::new(Mode::Private, second);
+        check_ternary("false ? Private : Private", expected, condition, a, b);
+
+        // true ? Public : Public
+        let expected = first;
+        let condition = Boolean::<Circuit>::new(Mode::Private, true);
+        let a = Field::<Circuit>::new(Mode::Public, first);
+        let b = Field::<Circuit>::new(Mode::Public, second);
+        check_ternary("true ? Public : Public", expected, condition, a, b);
+
+        // true ? Public : Private
+        let expected = first;
+        let condition = Boolean::<Circuit>::new(Mode::Private, true);
+        let a = Field::<Circuit>::new(Mode::Public, first);
+        let b = Field::<Circuit>::new(Mode::Private, second);
+        check_ternary("true ? Public : Private", expected, condition, a, b);
+
+        // true ? Private : Public
+        let expected = first;
+        let condition = Boolean::<Circuit>::new(Mode::Private, true);
+        let a = Field::<Circuit>::new(Mode::Private, first);
+        let b = Field::<Circuit>::new(Mode::Public, second);
+        check_ternary("true ? Private : Public", expected, condition, a, b);
+
+        // true ? Private : Private
+        let expected = first;
+        let condition = Boolean::<Circuit>::new(Mode::Private, true);
+        let a = Field::<Circuit>::new(Mode::Private, first);
+        let b = Field::<Circuit>::new(Mode::Private, second);
+        check_ternary("true ? Private : Private", expected, condition, a, b);
     }
 }

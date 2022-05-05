@@ -16,9 +16,13 @@
 
 use super::*;
 
-impl<E: Environment, const RATE: usize> Poseidon<E, RATE> {
+impl<E: Environment, const RATE: usize> PRF for Poseidon<E, RATE> {
+    type Input = Field<E>;
+    type Output = Field<E>;
+    type Seed = Field<E>;
+
     #[inline]
-    pub fn prf(&self, seed: &Field<E>, input: &[Field<E>]) -> Field<E> {
+    fn prf(&self, seed: &Self::Seed, input: &[Self::Input]) -> Self::Output {
         // Construct the preimage: seed || length(input) || input.
         let mut preimage = Vec::with_capacity(2 + input.len());
         preimage.push(seed.clone());
@@ -27,6 +31,26 @@ impl<E: Environment, const RATE: usize> Poseidon<E, RATE> {
 
         // Hash the preimage to derive the PRF output.
         self.hash(&preimage)
+    }
+}
+
+impl<E: Environment, const RATE: usize> Metrics<dyn PRF<Seed = Field<E>, Input = Field<E>, Output = Field<E>>>
+    for Poseidon<E, RATE>
+{
+    type Case = ();
+
+    fn count(_parameter: &Self::Case) -> Count {
+        todo!()
+    }
+}
+
+impl<E: Environment, const RATE: usize> OutputMode<dyn PRF<Seed = Field<E>, Input = Field<E>, Output = Field<E>>>
+    for Poseidon<E, RATE>
+{
+    type Case = ();
+
+    fn output_mode(_case: &Self::Case) -> Mode {
+        todo!()
     }
 }
 
@@ -43,10 +67,10 @@ mod tests {
     fn check_prf(
         mode: Mode,
         num_inputs: usize,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
     ) {
         let rng = &mut test_rng();
         let poseidon = Poseidon::<_, RATE>::new();

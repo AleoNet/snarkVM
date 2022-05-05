@@ -16,17 +16,40 @@
 
 use super::*;
 
-impl<E: Environment, const RATE: usize> Poseidon<E, RATE> {
+impl<E: Environment, const RATE: usize> HashToScalar for Poseidon<E, RATE> {
+    type Input = Field<E>;
+    type Scalar = Scalar<E>;
+
     /// Returns a scalar from hashing the input.
     /// This method uses truncation (up to data bits) to project onto the scalar field.
     #[inline]
-    pub fn hash_to_scalar(&self, input: &[Field<E>]) -> Scalar<E> {
+    fn hash_to_scalar(&self, input: &[Self::Input]) -> Self::Scalar {
         // Hash the input to the base field.
         let output = self.hash(input);
 
         // Truncate the output to the size in data bits (1 bit less than the MODULUS) of the scalar.
         // Slicing here is safe as the base field is larger than the scalar field.
         Scalar::from_bits_le(&output.to_bits_le()[..E::ScalarField::size_in_data_bits()])
+    }
+}
+
+impl<E: Environment, const RATE: usize> Metrics<dyn HashToScalar<Input = Field<E>, Scalar = Field<E>>>
+    for Poseidon<E, RATE>
+{
+    type Case = ();
+
+    fn count(_parameter: &Self::Case) -> Count {
+        todo!()
+    }
+}
+
+impl<E: Environment, const RATE: usize> OutputMode<dyn HashToScalar<Input = Field<E>, Scalar = Field<E>>>
+    for Poseidon<E, RATE>
+{
+    type Case = ();
+
+    fn output_mode(_case: &Self::Case) -> Mode {
+        todo!()
     }
 }
 
@@ -43,10 +66,10 @@ mod tests {
     fn check_hash_to_scalar(
         mode: Mode,
         num_inputs: usize,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
     ) {
         let rng = &mut test_rng();
         let native_poseidon = NativePoseidon::<_, RATE, OPTIMIZED_FOR_WEIGHTS>::setup();

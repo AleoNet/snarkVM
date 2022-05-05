@@ -17,15 +17,36 @@
 use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Registers},
     helpers::Register,
+    LiteralType,
     Program,
     Value,
 };
-use snarkvm_circuits::{Parser, ParserResult};
+use snarkvm_circuits::{
+    count,
+    AddChecked,
+    Count,
+    Field,
+    Group,
+    Literal,
+    Metrics,
+    Parser,
+    ParserResult,
+    Scalar,
+    I128,
+    I16,
+    I32,
+    I64,
+    I8,
+    U128,
+    U16,
+    U32,
+    U64,
+    U8,
+};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
-use core::fmt;
+use core::{fmt, ops::Add as AddCircuit};
 use nom::combinator::map;
-use snarkvm_circuits::{AddChecked, Literal};
 use std::io::{Read, Result as IoResult, Write};
 
 /// Adds `first` with `second`, storing the outcome in `destination`.
@@ -50,41 +71,6 @@ impl<P: Program> Opcode for Add<P> {
     #[inline]
     fn opcode() -> &'static str {
         "add"
-    }
-}
-
-impl<P: Program> Parser for Add<P> {
-    type Environment = P::Environment;
-
-    #[inline]
-    fn parse(string: &str) -> ParserResult<Self> {
-        map(BinaryOperation::parse, |operation| Self { operation })(string)
-    }
-}
-
-impl<P: Program> fmt::Display for Add<P> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", self.operation)
-    }
-}
-
-impl<P: Program> FromBytes for Add<P> {
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        Ok(Self { operation: BinaryOperation::read_le(&mut reader)? })
-    }
-}
-
-impl<P: Program> ToBytes for Add<P> {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.operation.write_le(&mut writer)
-    }
-}
-
-#[allow(clippy::from_over_into)]
-impl<P: Program> Into<Instruction<P>> for Add<P> {
-    /// Converts the operation into an instruction.
-    fn into(self) -> Instruction<P> {
-        Instruction::Add(self)
     }
 }
 
@@ -121,6 +107,65 @@ impl<P: Program> Operation<P> for Add<P> {
         };
 
         registers.assign(self.operation.destination(), result);
+    }
+}
+
+impl<P: Program> Metrics<Self> for Add<P> {
+    type Case = (LiteralType<P>, LiteralType<P>);
+
+    fn count(case: &Self::Case) -> Count {
+        crate::match_count!(match AddCircuit::count(case) {
+            (Field, Field) => Field,
+            (Group, Group) => Group,
+            (I8, I8) => I8,
+            (I16, I16) => I16,
+            (I32, I32) => I32,
+            (I64, I64) => I64,
+            (I128, I128) => I128,
+            (U8, U8) => U8,
+            (U16, U16) => U16,
+            (U32, U32) => U32,
+            (U64, U64) => U64,
+            (U128, U128) => U128,
+            (Scalar, Scalar) => Scalar,
+        })
+    }
+}
+
+impl<P: Program> Parser for Add<P> {
+    type Environment = P::Environment;
+
+    /// Parses a string into an 'add' operation.
+    #[inline]
+    fn parse(string: &str) -> ParserResult<Self> {
+        // Parse the operation from the string.
+        map(BinaryOperation::parse, |operation| Self { operation })(string)
+    }
+}
+
+impl<P: Program> fmt::Display for Add<P> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.operation)
+    }
+}
+
+impl<P: Program> FromBytes for Add<P> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        Ok(Self { operation: BinaryOperation::read_le(&mut reader)? })
+    }
+}
+
+impl<P: Program> ToBytes for Add<P> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.operation.write_le(&mut writer)
+    }
+}
+
+#[allow(clippy::from_over_into)]
+impl<P: Program> Into<Instruction<P>> for Add<P> {
+    /// Converts the operation into an instruction.
+    fn into(self) -> Instruction<P> {
+        Instruction::Add(self)
     }
 }
 

@@ -17,17 +17,36 @@
 use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Registers},
     helpers::Register,
+    LiteralType,
     Program,
     Value,
 };
-use snarkvm_circuits::{Literal, Parser, ParserResult, SubWrapped as SubWrappedCircuit};
+use snarkvm_circuits::{
+    count,
+    Count,
+    Literal,
+    Metrics,
+    Parser,
+    ParserResult,
+    SubWrapped as SubWrappedCircuit,
+    I128,
+    I16,
+    I32,
+    I64,
+    I8,
+    U128,
+    U16,
+    U32,
+    U64,
+    U8,
+};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
 use nom::combinator::map;
 use std::io::{Read, Result as IoResult, Write};
 
-/// Subtracts `second` from `first`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
+/// Computes `first - second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
 pub struct SubWrapped<P: Program> {
     operation: BinaryOperation<P>,
 }
@@ -82,6 +101,25 @@ impl<P: Program> Operation<P> for SubWrapped<P> {
         };
 
         registers.assign(self.operation.destination(), result);
+    }
+}
+
+impl<P: Program> Metrics<Self> for SubWrapped<P> {
+    type Case = (LiteralType<P>, LiteralType<P>);
+
+    fn count(case: &Self::Case) -> Count {
+        crate::match_count!(match SubWrappedCircuit::count(case) {
+            (I8, I8) => I8,
+            (I16, I16) => I16,
+            (I32, I32) => I32,
+            (I64, I64) => I64,
+            (I128, I128) => I128,
+            (U8, U8) => U8,
+            (U16, U16) => U16,
+            (U32, U32) => U32,
+            (U64, U64) => U64,
+            (U128, U128) => U128,
+        })
     }
 }
 

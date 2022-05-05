@@ -17,19 +17,35 @@
 use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Registers},
     helpers::Register,
+    LiteralType,
     Program,
     Value,
 };
-use snarkvm_circuits::{Parser, ParserResult};
+use snarkvm_circuits::{
+    count,
+    Count,
+    Field,
+    Literal,
+    Metrics,
+    MulChecked,
+    Parser,
+    ParserResult,
+    I128,
+    I16,
+    I32,
+    I64,
+    I8,
+    U128,
+    U16,
+    U32,
+    U64,
+    U8,
+};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
-use core::fmt;
+use core::{fmt, ops::Mul as MulCircuit};
 use nom::combinator::map;
-use snarkvm_circuits::{Literal, MulChecked};
-use std::{
-    io::{Read, Result as IoResult, Write},
-    ops::Mul as NativeMul,
-};
+use std::io::{Read, Result as IoResult, Write};
 
 /// Multiplies `first` and `second`, storing the outcome in `destination`.
 pub struct Mul<P: Program> {
@@ -56,12 +72,74 @@ impl<P: Program> Opcode for Mul<P> {
     }
 }
 
+impl<P: Program> Operation<P> for Mul<P> {
+    /// Evaluates the operation.
+    #[inline]
+    fn evaluate(&self, registers: &Registers<P>) {
+        // Load the values for the first and second operands.
+        let first = match registers.load(self.operation.first()) {
+            Value::Literal(literal) => literal,
+            Value::Composite(name, ..) => P::halt(format!("{name} is not a literal")),
+        };
+        let second = match registers.load(self.operation.second()) {
+            Value::Literal(literal) => literal,
+            Value::Composite(name, ..) => P::halt(format!("{name} is not a literal")),
+        };
+
+        // Perform the operation.
+        let result = match (first, second) {
+            (Literal::Field(a), Literal::Field(b)) => Literal::Field(a * b),
+            (Literal::Group(a), Literal::Scalar(b)) => Literal::Group(a * b),
+            (Literal::Scalar(a), Literal::Group(b)) => Literal::Group(a * b),
+            (Literal::I8(a), Literal::I8(b)) => Literal::I8(a.mul_checked(&b)),
+            (Literal::I16(a), Literal::I16(b)) => Literal::I16(a.mul_checked(&b)),
+            (Literal::I32(a), Literal::I32(b)) => Literal::I32(a.mul_checked(&b)),
+            (Literal::I64(a), Literal::I64(b)) => Literal::I64(a.mul_checked(&b)),
+            (Literal::I128(a), Literal::I128(b)) => Literal::I128(a.mul_checked(&b)),
+            (Literal::U8(a), Literal::U8(b)) => Literal::U8(a.mul_checked(&b)),
+            (Literal::U16(a), Literal::U16(b)) => Literal::U16(a.mul_checked(&b)),
+            (Literal::U32(a), Literal::U32(b)) => Literal::U32(a.mul_checked(&b)),
+            (Literal::U64(a), Literal::U64(b)) => Literal::U64(a.mul_checked(&b)),
+            (Literal::U128(a), Literal::U128(b)) => Literal::U128(a.mul_checked(&b)),
+            _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
+        };
+
+        registers.assign(self.operation.destination(), result);
+    }
+}
+
+impl<P: Program> Metrics<Self> for Mul<P> {
+    type Case = (LiteralType<P>, LiteralType<P>);
+
+    fn count(case: &Self::Case) -> Count {
+        crate::match_count!(match MulCircuit::count(case) {
+            (Field, Field) => Field,
+            // (Group, Scalar) => Group,
+            // (Scalar, Group) => Group,
+            (I8, I8) => I8,
+            (I16, I16) => I16,
+            (I32, I32) => I32,
+            (I64, I64) => I64,
+            (I128, I128) => I128,
+            (U8, U8) => U8,
+            (U16, U16) => U16,
+            (U32, U32) => U32,
+            (U64, U64) => U64,
+            (U128, U128) => U128,
+        })
+    }
+}
+
 impl<P: Program> Parser for Mul<P> {
     type Environment = P::Environment;
 
+    /// Parses a string into a 'mul' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        map(BinaryOperation::parse, |operation| Self { operation })(string)
+        // Parse the operation from the string.
+        let (string, operation) = map(BinaryOperation::parse, |operation| Self { operation })(string)?;
+        // Return the operation.
+        Ok((string, operation))
     }
 }
 
@@ -91,42 +169,6 @@ impl<P: Program> Into<Instruction<P>> for Mul<P> {
     }
 }
 
-impl<P: Program> Operation<P> for Mul<P> {
-    /// Evaluates the operation.
-    #[inline]
-    fn evaluate(&self, registers: &Registers<P>) {
-        // Load the values for the first and second operands.
-        let first = match registers.load(self.operation.first()) {
-            Value::Literal(literal) => literal,
-            Value::Composite(name, ..) => P::halt(format!("{name} is not a literal")),
-        };
-        let second = match registers.load(self.operation.second()) {
-            Value::Literal(literal) => literal,
-            Value::Composite(name, ..) => P::halt(format!("{name} is not a literal")),
-        };
-
-        // Perform the operation.
-        let result = match (first, second) {
-            (Literal::Field(a), Literal::Field(b)) => Literal::Field(a.mul(b)),
-            (Literal::Group(a), Literal::Scalar(b)) => Literal::Group(a.mul(b)),
-            (Literal::Scalar(a), Literal::Group(b)) => Literal::Group(a.mul(b)),
-            (Literal::I8(a), Literal::I8(b)) => Literal::I8(a.mul_checked(&b)),
-            (Literal::I16(a), Literal::I16(b)) => Literal::I16(a.mul_checked(&b)),
-            (Literal::I32(a), Literal::I32(b)) => Literal::I32(a.mul_checked(&b)),
-            (Literal::I64(a), Literal::I64(b)) => Literal::I64(a.mul_checked(&b)),
-            (Literal::I128(a), Literal::I128(b)) => Literal::I128(a.mul_checked(&b)),
-            (Literal::U8(a), Literal::U8(b)) => Literal::U8(a.mul_checked(&b)),
-            (Literal::U16(a), Literal::U16(b)) => Literal::U16(a.mul_checked(&b)),
-            (Literal::U32(a), Literal::U32(b)) => Literal::U32(a.mul_checked(&b)),
-            (Literal::U64(a), Literal::U64(b)) => Literal::U64(a.mul_checked(&b)),
-            (Literal::U128(a), Literal::U128(b)) => Literal::U128(a.mul_checked(&b)),
-            _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
-        };
-
-        registers.assign(self.operation.destination(), result);
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -134,91 +176,25 @@ mod tests {
 
     type P = Process;
 
+    const FIELD_MODE_TESTS: [[&str; 3]; 9] = [
+        ["public", "public", "private"],
+        ["public", "constant", "public"],
+        ["public", "private", "private"],
+        ["private", "public", "private"],
+        ["private", "constant", "private"],
+        ["private", "private", "private"],
+        ["constant", "public", "private"],
+        ["constant", "constant", "constant"],
+        ["constant", "private", "private"],
+    ];
+
     #[test]
     fn test_parse() {
         let (_, instruction) = Instruction::<Process>::parse("mul r0 r1 into r2;").unwrap();
         assert!(matches!(instruction, Instruction::Mul(_)));
     }
 
-    // Testing this manually since the constant x public mode yields a public,
-    // but the test_modes! macro expects a private.
-    // test_modes!(field, Mul, "1field", "2field", "2field");
-    mod field {
-        use super::Mul;
-        use crate::binary_instruction_test;
-        binary_instruction_test!(
-            test_public_and_public_yields_private,
-            Mul,
-            "1field.public",
-            "2field.public",
-            "2field.private"
-        );
-
-        binary_instruction_test!(
-            test_public_and_constant_yields_private,
-            Mul,
-            "1field.public",
-            "2field.constant",
-            "2field.private"
-        );
-
-        binary_instruction_test!(
-            test_public_and_private_yields_private,
-            Mul,
-            "1field.public",
-            "2field.private",
-            "2field.private"
-        );
-
-        binary_instruction_test!(
-            test_private_and_constant_yields_private,
-            Mul,
-            "1field.private",
-            "2field.constant",
-            "2field.private"
-        );
-
-        binary_instruction_test!(
-            test_private_and_public_yields_private,
-            Mul,
-            "1field.private",
-            "2field.public",
-            "2field.private"
-        );
-
-        binary_instruction_test!(
-            test_private_and_private_yields_private,
-            Mul,
-            "1field.private",
-            "2field.private",
-            "2field.private"
-        );
-
-        binary_instruction_test!(
-            test_constant_and_private_yields_private,
-            Mul,
-            "1field.constant",
-            "2field.private",
-            "2field.private"
-        );
-
-        binary_instruction_test!(
-            test_constant_and_public_yields_public,
-            Mul,
-            "1field.constant",
-            "2field.public",
-            "2field.public"
-        );
-
-        binary_instruction_test!(
-            test_constant_and_constant_yields_constant,
-            Mul,
-            "1field.constant",
-            "2field.constant",
-            "2field.constant"
-        );
-    }
-
+    test_modes!(field, Mul, "2field", "1field", "2field", FIELD_MODE_TESTS);
     test_modes!(group, Mul, "2group", "1scalar", "2group");
     test_modes!(scalar, Mul, "1scalar", "2group", "2group");
     test_modes!(i8, Mul, "1i8", "2i8", "2i8");

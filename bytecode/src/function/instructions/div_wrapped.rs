@@ -17,10 +17,29 @@
 use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Registers},
     helpers::Register,
+    LiteralType,
     Program,
     Value,
 };
-use snarkvm_circuits::{DivWrapped as DivWrappedCircuit, Literal, Parser, ParserResult};
+use snarkvm_circuits::{
+    count,
+    Count,
+    DivWrapped as DivWrappedCircuit,
+    Literal,
+    Metrics,
+    Parser,
+    ParserResult,
+    I128,
+    I16,
+    I32,
+    I64,
+    I8,
+    U128,
+    U16,
+    U32,
+    U64,
+    U8,
+};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
@@ -82,6 +101,25 @@ impl<P: Program> Operation<P> for DivWrapped<P> {
         };
 
         registers.assign(self.operation.destination(), result);
+    }
+}
+
+impl<P: Program> Metrics<Self> for DivWrapped<P> {
+    type Case = (LiteralType<P>, LiteralType<P>);
+
+    fn count(case: &Self::Case) -> Count {
+        crate::match_count!(match DivWrappedCircuit::count(case) {
+            (I8, I8) => I8,
+            (I16, I16) => I16,
+            (I32, I32) => I32,
+            (I64, I64) => I64,
+            (I128, I128) => I128,
+            (U8, U8) => U8,
+            (U16, U16) => U16,
+            (U32, U32) => U32,
+            (U64, U64) => U64,
+            (U128, U128) => U128,
+        })
     }
 }
 
@@ -148,28 +186,28 @@ mod tests {
 
     test_instruction_halts!(i8_underflow_halts, DivWrapped, "Division by zero error", "1i8.constant", "0i8.constant");
     test_instruction_halts!(
-        i16_underflow_halts,
+        i16_division_by_zero_halts,
         DivWrapped,
         "Division by zero error",
         "1i16.constant",
         "0i16.constant"
     );
     test_instruction_halts!(
-        i32_underflow_halts,
+        i32_division_by_zero_halts,
         DivWrapped,
         "Division by zero error",
         "1i32.constant",
         "0i32.constant"
     );
     test_instruction_halts!(
-        i64_underflow_halts,
+        i64_division_by_zero_halts,
         DivWrapped,
         "Division by zero error",
         "1i64.constant",
         "0i64.constant"
     );
     test_instruction_halts!(
-        i128_underflow_halts,
+        i128_division_by_zero_halts,
         DivWrapped,
         "Division by zero error",
         "1i128.constant",

@@ -35,166 +35,98 @@ impl<E: Environment, I: IntegerType> AbsWrapped for &Integer<E, I> {
     }
 }
 
+impl<E: Environment, I: IntegerType> Metrics<dyn AbsWrapped<Output = Integer<E, I>>> for Integer<E, I> {
+    type Case = Mode;
+
+    fn count(case: &Self::Case) -> Count {
+        match I::is_signed() {
+            true => match case {
+                Mode::Constant => Count::is(2 * I::BITS, 0, 0, 0),
+                _ => Count::is(I::BITS, 0, (2 * I::BITS) + 1, (2 * I::BITS) + 2),
+            },
+            false => Count::is(0, 0, 0, 0),
+        }
+    }
+}
+
+impl<E: Environment, I: IntegerType> OutputMode<dyn AbsWrapped<Output = Integer<E, I>>> for Integer<E, I> {
+    type Case = Mode;
+
+    fn output_mode(case: &Self::Case) -> Mode {
+        match I::is_signed() {
+            true => match case.is_constant() {
+                true => Mode::Constant,
+                false => Mode::Private,
+            },
+            false => *case,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
-    use test_utilities::*;
 
-    const ITERATIONS: usize = 128;
+    use core::{ops::RangeInclusive, panic::UnwindSafe};
 
-    #[rustfmt::skip]
-    fn check_abs<I: IntegerType + std::panic::UnwindSafe>(
-        name: &str,
-        value: I,
-        mode: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
+    const ITERATIONS: u64 = 128;
+
+    fn check_abs<I: IntegerType + UnwindSafe>(name: &str, value: I, mode: Mode) {
         let a = Integer::<Circuit, I>::new(mode, value);
-        let case = format!("(!{})", a.eject_value());
         let expected = value.wrapping_abs();
-        check_unary_operation_passes(name, &case, expected, a, |a: Integer<Circuit, I> | a.abs_wrapped(), num_constants, num_public, num_private, num_constraints);
+        Circuit::scope(name, || {
+            let candidate = a.abs_wrapped();
+            assert_eq!(expected, candidate.eject_value());
+            assert_count!(AbsWrapped(Integer<I>) => Integer<I>, &mode);
+            assert_output_mode!(AbsWrapped(Integer<I>) => Integer<I>, &mode, candidate);
+        });
+        Circuit::reset();
     }
 
-    fn run_test<I: IntegerType + std::panic::UnwindSafe>(
-        mode: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
+    fn run_test<I: IntegerType + UnwindSafe>(mode: Mode) {
         for i in 0..ITERATIONS {
             let name = format!("Abs: {} {}", mode, i);
             let value: I = UniformRand::rand(&mut test_rng());
-            check_abs(&name, value, mode, num_constants, num_public, num_private, num_constraints);
+            check_abs(&name, value, mode);
         }
 
         // Check the 0 case.
         let name = format!("Abs: {} zero", mode);
-        check_abs(&name, I::zero(), mode, num_constants, num_public, num_private, num_constraints);
+        check_abs(&name, I::zero(), mode);
 
         // Check the 1 case.
         let name = format!("Abs: {} one", mode);
-        check_abs(&name, I::one(), mode, num_constants, num_public, num_private, num_constraints);
+        check_abs(&name, I::one(), mode);
 
         // Check the I::MIN (wrapped) case.
         let name = format!("Abs: {} one", mode);
-        check_abs(&name, I::MIN, mode, num_constants, num_public, num_private, num_constraints);
+        check_abs(&name, I::MIN, mode);
     }
 
-    #[test]
-    fn test_u8_abs() {
-        type I = u8;
-        run_test::<I>(Mode::Constant, 0, 0, 0, 0);
-        run_test::<I>(Mode::Public, 0, 0, 0, 0);
-        run_test::<I>(Mode::Private, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i8_abs() {
-        type I = i8;
-        run_test::<I>(Mode::Constant, 16, 0, 0, 0);
-        run_test::<I>(Mode::Public, 8, 0, 17, 18);
-        run_test::<I>(Mode::Private, 8, 0, 17, 18);
-    }
-
-    #[test]
-    fn test_u16_abs() {
-        type I = u16;
-        run_test::<I>(Mode::Constant, 0, 0, 0, 0);
-        run_test::<I>(Mode::Public, 0, 0, 0, 0);
-        run_test::<I>(Mode::Private, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i16_abs() {
-        type I = i16;
-        run_test::<I>(Mode::Constant, 32, 0, 0, 0);
-        run_test::<I>(Mode::Public, 16, 0, 33, 34);
-        run_test::<I>(Mode::Private, 16, 0, 33, 34);
-    }
-
-    #[test]
-    fn test_u32_abs() {
-        type I = u32;
-        run_test::<I>(Mode::Constant, 0, 0, 0, 0);
-        run_test::<I>(Mode::Public, 0, 0, 0, 0);
-        run_test::<I>(Mode::Private, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i32_abs() {
-        type I = i32;
-        run_test::<I>(Mode::Constant, 64, 0, 0, 0);
-        run_test::<I>(Mode::Public, 32, 0, 65, 66);
-        run_test::<I>(Mode::Private, 32, 0, 65, 66);
-    }
-
-    #[test]
-    fn test_u64_abs() {
-        type I = u64;
-        run_test::<I>(Mode::Constant, 0, 0, 0, 0);
-        run_test::<I>(Mode::Public, 0, 0, 0, 0);
-        run_test::<I>(Mode::Private, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i64_abs() {
-        type I = i64;
-        run_test::<I>(Mode::Constant, 128, 0, 0, 0);
-        run_test::<I>(Mode::Public, 64, 0, 129, 130);
-        run_test::<I>(Mode::Private, 64, 0, 129, 130);
-    }
-
-    #[test]
-    fn test_u128_abs() {
-        type I = u128;
-        run_test::<I>(Mode::Constant, 0, 0, 0, 0);
-        run_test::<I>(Mode::Public, 0, 0, 0, 0);
-        run_test::<I>(Mode::Private, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i128_abs() {
-        type I = i128;
-        run_test::<I>(Mode::Constant, 256, 0, 0, 0);
-        run_test::<I>(Mode::Public, 128, 0, 257, 258);
-        run_test::<I>(Mode::Private, 128, 0, 257, 258);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_u8_abs() {
-        type I = u8;
+    fn run_exhaustive_test<I: IntegerType + UnwindSafe>(mode: Mode)
+    where
+        RangeInclusive<I>: Iterator<Item = I>,
+    {
         for value in I::MIN..=I::MAX {
-            let name = format!("Abs: {}", Mode::Constant);
-            check_abs(&name, value, Mode::Constant, 0, 0, 0, 0);
-
-            let name = format!("Abs: {}", Mode::Public);
-            check_abs(&name, value, Mode::Public, 0, 0, 0, 0);
-
-            let name = format!("Abs: {}", Mode::Private);
-            check_abs(&name, value, Mode::Private, 0, 0, 0, 0);
+            let name = format!("Abs: {}", mode);
+            check_abs(&name, value, mode);
         }
     }
 
-    #[test]
-    #[ignore]
-    fn test_exhaustive_i8_abs() {
-        type I = i8;
-        for value in I::MIN..=I::MAX {
-            let name = format!("Abs: {}", Mode::Constant);
-            check_abs(&name, value, Mode::Constant, 16, 0, 0, 0);
+    test_integer_unary!(run_test, i8, equals);
+    test_integer_unary!(run_test, i16, equals);
+    test_integer_unary!(run_test, i32, equals);
+    test_integer_unary!(run_test, i64, equals);
+    test_integer_unary!(run_test, i128, equals);
 
-            let name = format!("Abs: {}", Mode::Public);
-            check_abs(&name, value, Mode::Public, 8, 0, 17, 18);
+    test_integer_unary!(run_test, u8, equals);
+    test_integer_unary!(run_test, u16, equals);
+    test_integer_unary!(run_test, u32, equals);
+    test_integer_unary!(run_test, u64, equals);
+    test_integer_unary!(run_test, u128, equals);
 
-            let name = format!("Abs: {}", Mode::Private);
-            check_abs(&name, value, Mode::Private, 8, 0, 17, 18);
-        }
-    }
+    test_integer_unary!(#[ignore], run_exhaustive_test, u8, equals, exhaustive);
+    test_integer_unary!(#[ignore], run_exhaustive_test, i8, equals, exhaustive);
 }

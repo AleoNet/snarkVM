@@ -16,9 +16,9 @@
 
 #![forbid(unsafe_code)]
 
+mod helpers;
+
 pub mod equal;
-pub mod to_bits;
-pub mod to_group;
 
 #[cfg(test)]
 use snarkvm_circuits_environment::assert_scope;

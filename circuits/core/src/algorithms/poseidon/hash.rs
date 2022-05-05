@@ -15,10 +15,14 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use crate::Hash;
 
-impl<E: Environment, const RATE: usize> Poseidon<E, RATE> {
+impl<E: Environment, const RATE: usize> Hash for Poseidon<E, RATE> {
+    type Input = Field<E>;
+    type Output = Field<E>;
+
     #[inline]
-    pub fn hash(&self, input: &[Field<E>]) -> Field<E> {
+    fn hash(&self, input: &[Self::Input]) -> Self::Output {
         // Initialize a new sponge.
         let mut state = vec![Field::zero(); RATE + CAPACITY];
         let mut mode = DuplexSpongeMode::Absorbing { next_absorb_index: 0 };
@@ -26,6 +30,24 @@ impl<E: Environment, const RATE: usize> Poseidon<E, RATE> {
         // Absorb the input and squeeze the output.
         self.absorb(&mut state, &mut mode, input);
         self.squeeze(&mut state, &mut mode, 1)[0].clone()
+    }
+}
+
+impl<E: Environment, const RATE: usize> Metrics<dyn Hash<Input = Field<E>, Output = Field<E>>> for Poseidon<E, RATE> {
+    type Case = ();
+
+    fn count(_parameter: &Self::Case) -> Count {
+        todo!()
+    }
+}
+
+impl<E: Environment, const RATE: usize> OutputMode<dyn Hash<Input = Field<E>, Output = Field<E>>>
+    for Poseidon<E, RATE>
+{
+    type Case = ();
+
+    fn output_mode(_parameter: &Self::Case) -> Mode {
+        todo!()
     }
 }
 
@@ -204,10 +226,10 @@ mod tests {
     fn check_hash(
         mode: Mode,
         num_inputs: usize,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
     ) {
         let rng = &mut test_rng();
         let native_poseidon = NativePoseidon::<_, RATE, OPTIMIZED_FOR_WEIGHTS>::setup();

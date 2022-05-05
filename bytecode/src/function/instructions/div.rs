@@ -17,13 +17,33 @@
 use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Registers},
     helpers::Register,
+    LiteralType,
     Program,
     Value,
 };
-use snarkvm_circuits::{DivChecked, Literal, Parser, ParserResult};
+use snarkvm_circuits::{
+    count,
+    Count,
+    DivChecked,
+    Field,
+    Literal,
+    Metrics,
+    Parser,
+    ParserResult,
+    I128,
+    I16,
+    I32,
+    I64,
+    I8,
+    U128,
+    U16,
+    U32,
+    U64,
+    U8,
+};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
-use core::fmt;
+use core::{fmt, ops::Div as DivCircuit};
 use nom::combinator::map;
 use std::io::{Read, Result as IoResult, Write};
 
@@ -86,6 +106,26 @@ impl<P: Program> Operation<P> for Div<P> {
     }
 }
 
+impl<P: Program> Metrics<Self> for Div<P> {
+    type Case = (LiteralType<P>, LiteralType<P>);
+
+    fn count(case: &Self::Case) -> Count {
+        crate::match_count!(match DivCircuit::count(case) {
+            (Field, Field) => Field,
+            (I8, I8) => I8,
+            (I16, I16) => I16,
+            (I32, I32) => I32,
+            (I64, I64) => I64,
+            (I128, I128) => I128,
+            (U8, U8) => U8,
+            (U16, U16) => U16,
+            (U32, U32) => U32,
+            (U64, U64) => U64,
+            (U128, U128) => U128,
+        })
+    }
+}
+
 impl<P: Program> Parser for Div<P> {
     type Environment = P::Environment;
 
@@ -130,85 +170,19 @@ mod tests {
 
     type P = Process;
 
-    // Testing this manually since the constant x public mode yields a public,
-    // but the test_modes! macro expects a private.
-    // test_modes!(field, Div, "2field", "1field", "2field");
-    mod field {
-        use super::Div;
-        use crate::binary_instruction_test;
-        binary_instruction_test!(
-            test_public_and_public_yields_private,
-            Div,
-            "2field.public",
-            "1field.public",
-            "2field.private"
-        );
+    const FIELD_MODE_TESTS: [[&str; 3]; 9] = [
+        ["public", "public", "private"],
+        ["public", "constant", "public"],
+        ["public", "private", "private"],
+        ["private", "public", "private"],
+        ["private", "constant", "private"],
+        ["private", "private", "private"],
+        ["constant", "public", "private"],
+        ["constant", "constant", "constant"],
+        ["constant", "private", "private"],
+    ];
 
-        binary_instruction_test!(
-            test_public_and_constant_yields_public,
-            Div,
-            "2field.public",
-            "1field.constant",
-            "2field.public"
-        );
-
-        binary_instruction_test!(
-            test_public_and_private_yields_private,
-            Div,
-            "2field.public",
-            "1field.private",
-            "2field.private"
-        );
-
-        binary_instruction_test!(
-            test_private_and_constant_yields_private,
-            Div,
-            "2field.private",
-            "1field.constant",
-            "2field.private"
-        );
-
-        binary_instruction_test!(
-            test_private_and_public_yields_private,
-            Div,
-            "2field.private",
-            "1field.public",
-            "2field.private"
-        );
-
-        binary_instruction_test!(
-            test_private_and_private_yields_private,
-            Div,
-            "2field.private",
-            "1field.private",
-            "2field.private"
-        );
-
-        binary_instruction_test!(
-            test_constant_and_private_yields_private,
-            Div,
-            "2field.constant",
-            "1field.private",
-            "2field.private"
-        );
-
-        binary_instruction_test!(
-            test_constant_and_public_yields_private,
-            Div,
-            "2field.constant",
-            "1field.public",
-            "2field.private"
-        );
-
-        binary_instruction_test!(
-            test_constant_and_constant_yields_constant,
-            Div,
-            "2field.constant",
-            "1field.constant",
-            "2field.constant"
-        );
-    }
-
+    test_modes!(field, Div, "2field", "1field", "2field", FIELD_MODE_TESTS);
     test_modes!(i8, Div, "-4i8", "2i8", "-2i8");
     test_modes!(i16, Div, "-4i16", "2i16", "-2i16");
     test_modes!(i32, Div, "-4i32", "2i32", "-2i32");
