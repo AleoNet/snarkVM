@@ -41,6 +41,7 @@ pub(crate) mod tests {
     use super::*;
     use crate::Devnet as Circuit;
     use snarkvm_algorithms::SignatureSchemeOperations;
+    use snarkvm_circuits_environment::print_scope;
     use snarkvm_curves::ProjectiveCurve;
     use snarkvm_utilities::{test_rng, UniformRand};
 
@@ -89,7 +90,13 @@ pub(crate) mod tests {
 
                 // TODO (howardwu): Resolve skipping the cost count checks for the burn-in round.
                 if i > 0 {
-                    assert_scope!(num_constants, num_public, num_private, num_constraints);
+                    print_scope!();
+
+                    assert!(Circuit::num_constants_in_scope() <= num_constants, "(num_constants)");
+                    assert!(Circuit::num_public_in_scope() <= num_public, "(num_public)");
+                    assert!(Circuit::num_private_in_scope() <= num_private, "(num_private)");
+                    assert!(Circuit::num_constraints_in_scope() <= num_constraints, "(num_constraints)");
+                    assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
                 }
             });
         }
@@ -97,7 +104,7 @@ pub(crate) mod tests {
 
     #[test]
     fn test_from_private_key_constant() {
-        check_from_private_key(Mode::Constant, 2245, 0, 0, 0);
+        check_from_private_key(Mode::Constant, 2253, 0, 0, 0);
     }
 
     #[test]

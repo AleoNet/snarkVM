@@ -27,6 +27,7 @@ impl<A: Aleo> PrivateKey<A> {
 mod tests {
     use super::*;
     use crate::{account::from_private_key::tests::generate_private_and_compute_key, Devnet as Circuit};
+    use snarkvm_circuits_environment::print_scope;
 
     const ITERATIONS: u64 = 100;
 
@@ -46,7 +47,13 @@ mod tests {
 
                 // TODO (howardwu): Resolve skipping the cost count checks for the burn-in round.
                 if i > 0 {
-                    assert_scope!(num_constants, num_public, num_private, num_constraints);
+                    print_scope!();
+
+                    assert!(Circuit::num_constants_in_scope() <= num_constants, "(num_constants)");
+                    assert!(Circuit::num_public_in_scope() <= num_public, "(num_public)");
+                    assert!(Circuit::num_private_in_scope() <= num_private, "(num_private)");
+                    assert!(Circuit::num_constraints_in_scope() <= num_constraints, "(num_constraints)");
+                    assert!(Circuit::is_satisfied_in_scope(), "(is_satisfied_in_scope)");
                 }
             });
         }
@@ -54,7 +61,7 @@ mod tests {
 
     #[test]
     fn test_to_compute_key_constant() {
-        check_to_compute_key(Mode::Constant, 2241, 0, 0, 0);
+        check_to_compute_key(Mode::Constant, 2253, 0, 0, 0);
     }
 
     #[test]
