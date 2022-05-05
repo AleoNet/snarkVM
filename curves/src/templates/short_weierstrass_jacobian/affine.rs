@@ -92,8 +92,15 @@ impl<P: Parameters> PartialEq<Projective<P>> for Affine<P> {
 
 impl<P: Parameters> AffineCurve for Affine<P> {
     type BaseField = P::BaseField;
+    type Coordinates = (Self::BaseField, Self::BaseField, bool);
     type Projective = Projective<P>;
     type ScalarField = P::ScalarField;
+
+    /// Initializes a new affine group element from the given coordinates.
+    fn from_coordinates(coordinates: Self::Coordinates) -> Self {
+        let (x, y, infinity) = coordinates;
+        Self { x, y, infinity }
+    }
 
     #[inline]
     fn prime_subgroup_generator() -> Self {

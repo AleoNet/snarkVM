@@ -139,6 +139,10 @@ pub trait AffineCurve:
     type Projective: ProjectiveCurve<Affine = Self, ScalarField = Self::ScalarField> + From<Self> + Into<Self>;
     type BaseField: Field;
     type ScalarField: PrimeField + SquareRootField + Into<<Self::ScalarField as PrimeField>::BigInteger>;
+    type Coordinates;
+
+    /// Initializes a new affine group element from the given coordinates.
+    fn from_coordinates(coordinates: Self::Coordinates) -> Self;
 
     /// Returns a fixed generator of unknown exponent.
     #[must_use]

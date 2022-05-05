@@ -45,8 +45,8 @@ impl<'a, E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
 {
     type Case = (Vec<Mode>, Vec<Mode>);
 
-    fn count(parameters: &Self::Case) -> Count {
-        let (input_modes, randomness_modes) = parameters;
+    fn count(case: &Self::Case) -> Count {
+        let (input_modes, randomness_modes) = case;
         let uncompressed_count = count!(Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>, HashUncompressed<Input = Boolean<E>, Output = Group<E>>, input_modes);
         let uncompressed_mode = output_mode!(Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>, HashUncompressed<Input = Boolean<E>, Output = Group<E>>, input_modes);
 
@@ -60,12 +60,12 @@ impl<'a, E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
                     &(*mode, Mode::Constant, Mode::Constant)
                 )
             })
-            .fold(Count::is(0, 0, 0, 0), |cumulative, count| cumulative + count);
+            .fold(Count::zero(), |cumulative, count| cumulative + count);
 
         // Determine the modes of each of the group elements.
         let modes = randomness_modes.iter().map(|mode| {
             // The `first` and `second` inputs to `Group::ternary` are always constant so we can directly determine the mode instead of
-            // using the `output_mode` macro. This avoids the need to use `ModeOrCircuit` as a parameter, simplifying the logic of this function.
+            // using the `output_mode` macro. This avoids the need to use `CircuitType` as a parameter, simplifying the logic of this function.
             match mode.is_constant() {
                 true => Mode::Constant,
                 false => Mode::Private,
@@ -74,7 +74,7 @@ impl<'a, E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
 
         // Calculate the cost of summing the group elements.
         let (_, summation_count) =
-            modes.fold((uncompressed_mode, Count::is(0, 0, 0, 0)), |(prev_mode, cumulative), curr_mode| {
+            modes.fold((uncompressed_mode, Count::zero()), |(prev_mode, cumulative), curr_mode| {
                 let mode = output_mode!(Group<E>, Add<Group<E>, Output = Group<E>>, &(prev_mode, curr_mode));
                 let sum_count = count!(Group<E>, Add<Group<E>, Output = Group<E>>, &(prev_mode, curr_mode));
                 (mode, cumulative + sum_count)
