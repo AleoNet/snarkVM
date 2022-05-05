@@ -73,7 +73,7 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
             .iter()
             .map(|mode| {
                 // The `first` and `second` inputs to `Group::ternary` are always constant so we can directly determine the mode instead of
-                // using the `output_mode` macro. This avoids the need to use `ConstantOrMode` as a parameter, simplifying the logic of this function.
+                // using the `output_mode` macro. This avoids the need to use `CircuitType` as a parameter, simplifying the logic of this function.
                 match mode.is_constant() {
                     true => Mode::Constant,
                     false => Mode::Private,

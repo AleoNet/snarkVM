@@ -60,7 +60,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metrics<dyn PowWrapped<Intege
 impl<E: Environment, I: IntegerType, M: Magnitude> OutputMode<dyn PowWrapped<Integer<E, M>, Output = Integer<E, I>>>
     for Integer<E, I>
 {
-    type Case = (Mode, ConstantOrMode<Integer<E, M>>);
+    type Case = (Mode, CircuitType<Integer<E, M>>);
 
     fn output_mode(case: &Self::Case) -> Mode {
         match (case.0, (case.1.mode(), &case.1)) {
@@ -71,7 +71,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> OutputMode<dyn PowWrapped<Int
             },
             (_, (Mode::Constant, case)) => match case {
                 // Determine if the constant is all zeros.
-                ConstantOrMode::Constant(constant) => match constant.eject_value().is_zero() {
+                CircuitType::Constant(constant) => match constant.eject_value().is_zero() {
                     true => Mode::Constant,
                     false => Mode::Private,
                 },
@@ -107,7 +107,7 @@ mod tests {
             let candidate = a.pow_wrapped(&b);
             assert_eq!(expected, candidate.eject_value());
             // assert_count!(PowWrapped(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b));
-            // assert_output_mode!(PowWrapped(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, ConstantOrMode::from(&b)), candidate);
+            // assert_output_mode!(PowWrapped(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, CircuitType::from(&b)), candidate);
         });
         Circuit::reset();
     }
