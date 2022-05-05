@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::function::{Literal, Operation, Registers};
+use snarkvm_circuits::{Aleo, ToBits};
+
 /// Performs a Pedersen commitment taking a 128-bit value as input.
 pub struct CommitPed128<P: Program> {
     operation: BinaryOperation<P>,
@@ -21,7 +24,13 @@ pub struct CommitPed128<P: Program> {
 
 impl_instruction_boilerplate!(CommitPed128, BinaryOperation, "commit.ped128");
 
-impl_commit_instruction!(CommitPed128);
+impl<P: Program> Operation<P> for CommitPed128<P> {
+    /// Evaluates the operation.
+    #[inline]
+    fn evaluate(&self, registers: &Registers<P>) {
+        impl_commit_evaluate!(self, registers);
+    }
+}
 
 #[cfg(test)]
 mod tests {
