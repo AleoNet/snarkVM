@@ -113,6 +113,7 @@ mod tests {
                 let merkle_path = MerklePath::<Circuit, TwoToOneCRH>::new(mode, (traversal.clone(), path.clone()));
 
                 assert_eq!((traversal, path), merkle_path.eject_value());
+                assert_eq!(mode, merkle_path.eject_mode());
 
                 let case = format!("mode = {mode}");
                 assert_scope!(case, num_constants, num_public, num_private, num_constraints);
