@@ -57,8 +57,9 @@ impl<E: Environment> Nor<Self> for Boolean<E> {
     }
 }
 
-impl<E: Environment> Metrics<dyn Nor<Boolean<E>, Output = Boolean<E>>> for Boolean<E> {
-    type Case = (Mode, Mode);
+impl<E: Environment> Metadata<dyn Nor<Boolean<E>, Output = Boolean<E>>> for Boolean<E> {
+    type Case = (CircuitType<Boolean<E>>, CircuitType<Boolean<E>>);
+    type OutputType = CircuitType<Boolean<E>>;
 
     fn count(case: &Self::Case) -> Count {
         match case.0.is_constant() || case.1.is_constant() {
@@ -66,29 +67,25 @@ impl<E: Environment> Metrics<dyn Nor<Boolean<E>, Output = Boolean<E>>> for Boole
             false => Count::is(0, 0, 1, 1),
         }
     }
-}
 
-impl<E: Environment> OutputMode<dyn Nor<Boolean<E>, Output = Boolean<E>>> for Boolean<E> {
-    type Case = (CircuitType<Boolean<E>>, CircuitType<Boolean<E>>);
-
-    fn output_mode(case: &Self::Case) -> Mode {
-        match (case.0.mode(), case.1.mode()) {
-            (Mode::Constant, Mode::Constant) => Mode::Constant,
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        match (case.0.eject_mode(), case.1.eject_mode()) {
+            (Mode::Constant, Mode::Constant) => CircuitType::from(case.0.circuit().nor(case.1.circuit())),
             (Mode::Public, Mode::Constant) => match &case.1 {
                 CircuitType::Constant(constant) => match constant.eject_value() {
-                    true => Mode::Constant,
-                    false => Mode::Private,
+                    true => CircuitType::from(Boolean::constant(false)),
+                    false => CircuitType::Private,
                 },
                 _ => E::halt("The constant is required to determine the output mode of Public NOR Constant"),
             },
             (Mode::Constant, Mode::Public) => match &case.0 {
                 CircuitType::Constant(constant) => match constant.eject_value() {
-                    true => Mode::Constant,
-                    false => Mode::Private,
+                    true => CircuitType::from(Boolean::constant(false)),
+                    false => CircuitType::Private,
                 },
                 _ => E::halt("The constant is required to determine the output mode of Constant NOR Public"),
             },
-            (_, _) => Mode::Private,
+            (_, _) => CircuitType::Private,
         }
     }
 }
@@ -100,10 +97,12 @@ mod tests {
 
     fn check_nor(name: &str, expected: bool, a: Boolean<Circuit>, b: Boolean<Circuit>) {
         Circuit::scope(name, || {
-            let candidate = a.nor(&b);
+            let candidate = (&a).nor(&b);
             assert_eq!(expected, candidate.eject_value(), "({} NOR {})", a.eject_value(), b.eject_value());
-            assert_count!(Nor(Boolean, Boolean) => Boolean, &(a.eject_mode(), b.eject_mode()));
-            assert_output_mode!(Nor(Boolean, Boolean) => Boolean, &(CircuitType::from(&a), CircuitType::from(&b)), candidate);
+
+            let circuit_type = (CircuitType::from(a), CircuitType::from(b));
+            assert_count!(Nor(Boolean, Boolean) => Boolean, &circuit_type);
+            assert_output_type!(Nor(Boolean, Boolean) => Boolean, circuit_type, candidate);
         });
         Circuit::reset();
     }
