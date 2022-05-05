@@ -63,9 +63,9 @@ impl<E: Environment, I: IntegerType> Metrics<dyn MulWrapped<Integer<E, I>, Outpu
         match (case.0, case.1) {
             (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
             (Mode::Constant, _) | (_, Mode::Constant) => {
-                Count::is(0, 0, I::BITS + I::BITS / 2 + 1, I::BITS + I::BITS / 2 + 2)
+                Count::is(0, 0, I::BITS + (I::BITS / 2) + 1, I::BITS + (I::BITS / 2) + 2)
             }
-            (_, _) => Count::is(0, 0, I::BITS + I::BITS / 2 + 4, I::BITS + I::BITS / 2 + 5),
+            (_, _) => Count::is(0, 0, I::BITS + (I::BITS / 2) + 4, I::BITS + (I::BITS / 2) + 5),
         }
     }
 }

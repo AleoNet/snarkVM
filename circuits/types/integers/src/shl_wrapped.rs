@@ -85,14 +85,14 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metrics<dyn ShlWrapped<Intege
             (Mode::Constant, _) => Count::is(
                 0,
                 0,
-                (2 * I::BITS) + I::BITS / 2 + (2 * index(I::BITS)) + 5,
-                (2 * I::BITS) + I::BITS / 2 + (2 * index(I::BITS)) + 7,
+                (2 * I::BITS) + (I::BITS / 2) + (2 * index(I::BITS)) + 5,
+                (2 * I::BITS) + (I::BITS / 2) + (2 * index(I::BITS)) + 7,
             ),
             (_, _) => Count::is(
                 0,
                 0,
-                (2 * I::BITS) + I::BITS / 2 + (2 * index(I::BITS)) + 8,
-                (2 * I::BITS) + I::BITS / 2 + (2 * index(I::BITS)) + 10,
+                (2 * I::BITS) + (I::BITS / 2) + (2 * index(I::BITS)) + 8,
+                (2 * I::BITS) + (I::BITS / 2) + (2 * index(I::BITS)) + 10,
             ),
         }
     }
