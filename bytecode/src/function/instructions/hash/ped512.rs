@@ -14,15 +14,79 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::function::{Literal, Operation, Registers};
-use snarkvm_circuits::{Aleo, ToBits};
+use crate::{
+    function::{parsers::*, Instruction, Opcode, Operation, Registers},
+    helpers::Register,
+    Program,
+    Value,
+};
+use snarkvm_circuits::{Parser, ParserResult};
+use snarkvm_utilities::{FromBytes, ToBytes};
+
+use core::fmt;
+use nom::combinator::map;
+use snarkvm_circuits::{Aleo, Literal, ToBits};
+use std::io::{Read, Result as IoResult, Write};
 
 /// Performs a Pedersen hash taking a 512-bit value as input.
 pub struct HashPed512<P: Program> {
     operation: UnaryOperation<P>,
 }
 
-impl_instruction_boilerplate!(HashPed512, UnaryOperation, "hash.ped512");
+impl<P: Program> HashPed512<P> {
+    /// Returns the operands of the instruction.
+    pub fn operands(&self) -> Vec<Operand<P>> {
+        self.operation.operands()
+    }
+
+    /// Returns the destination register of the instruction.
+    pub fn destination(&self) -> &Register<P> {
+        self.operation.destination()
+    }
+}
+
+impl<P: Program> Opcode for HashPed512<P> {
+    /// Returns the opcode as a string.
+    #[inline]
+    fn opcode() -> &'static str {
+        "hash.ped512"
+    }
+}
+
+impl<P: Program> Parser for HashPed512<P> {
+    type Environment = P::Environment;
+
+    #[inline]
+    fn parse(string: &str) -> ParserResult<Self> {
+        map(UnaryOperation::parse, |operation| Self { operation })(string)
+    }
+}
+
+impl<P: Program> fmt::Display for HashPed512<P> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.operation)
+    }
+}
+
+impl<P: Program> FromBytes for HashPed512<P> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        Ok(Self { operation: UnaryOperation::read_le(&mut reader)? })
+    }
+}
+
+impl<P: Program> ToBytes for HashPed512<P> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.operation.write_le(&mut writer)
+    }
+}
+
+#[allow(clippy::from_over_into)]
+impl<P: Program> Into<Instruction<P>> for HashPed512<P> {
+    /// Converts the operation into an instruction.
+    fn into(self) -> Instruction<P> {
+        Instruction::HashPed512(self)
+    }
+}
 
 impl<P: Program> Operation<P> for HashPed512<P> {
     /// Evaluates the operation.

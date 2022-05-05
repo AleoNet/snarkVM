@@ -14,15 +14,79 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::function::{Field, Literal, Operation, Registers};
-use snarkvm_circuits::{Aleo, ToFields};
+use crate::{
+    function::{parsers::*, Instruction, Opcode, Operation, Registers},
+    helpers::Register,
+    Program,
+    Value,
+};
+use snarkvm_circuits::{Parser, ParserResult};
+use snarkvm_utilities::{FromBytes, ToBytes};
+
+use core::fmt;
+use nom::combinator::map;
+use snarkvm_circuits::{Aleo, Field, Literal, ToFields};
+use std::io::{Read, Result as IoResult, Write};
 
 /// Performs a Poseidon hash with an input rate of 2.
 pub struct HashPsd2<P: Program> {
     operation: UnaryOperation<P>,
 }
 
-impl_instruction_boilerplate!(HashPsd2, UnaryOperation, "hash.psd2");
+impl<P: Program> HashPsd2<P> {
+    /// Returns the operands of the instruction.
+    pub fn operands(&self) -> Vec<Operand<P>> {
+        self.operation.operands()
+    }
+
+    /// Returns the destination register of the instruction.
+    pub fn destination(&self) -> &Register<P> {
+        self.operation.destination()
+    }
+}
+
+impl<P: Program> Opcode for HashPsd2<P> {
+    /// Returns the opcode as a string.
+    #[inline]
+    fn opcode() -> &'static str {
+        "hash.psd2"
+    }
+}
+
+impl<P: Program> Parser for HashPsd2<P> {
+    type Environment = P::Environment;
+
+    #[inline]
+    fn parse(string: &str) -> ParserResult<Self> {
+        map(UnaryOperation::parse, |operation| Self { operation })(string)
+    }
+}
+
+impl<P: Program> fmt::Display for HashPsd2<P> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.operation)
+    }
+}
+
+impl<P: Program> FromBytes for HashPsd2<P> {
+    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
+        Ok(Self { operation: UnaryOperation::read_le(&mut reader)? })
+    }
+}
+
+impl<P: Program> ToBytes for HashPsd2<P> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.operation.write_le(&mut writer)
+    }
+}
+
+#[allow(clippy::from_over_into)]
+impl<P: Program> Into<Instruction<P>> for HashPsd2<P> {
+    /// Converts the operation into an instruction.
+    fn into(self) -> Instruction<P> {
+        Instruction::HashPsd2(self)
+    }
+}
 
 impl<P: Program> Operation<P> for HashPsd2<P> {
     /// Evaluates the operation.
