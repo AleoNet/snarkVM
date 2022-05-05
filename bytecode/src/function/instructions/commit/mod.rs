@@ -14,24 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-macro_rules! impl_commit_evaluate {
-    ($instruction:ident, $registers:ident) => {
-        // Load the values for the first and second operands.
-        let first = match $registers.load($instruction.operation.first()) {
-            Value::Literal(literal) => literal.to_bits_le(),
-            Value::Composite(_name, literals) => literals.iter().flat_map(|literal| literal.to_bits_le()).collect(),
-        };
-        let second = match $registers.load($instruction.operation.second()) {
-            Value::Literal(literal) => literal,
-            Value::Composite(name, ..) => P::halt(format!("{name} is not a literal")),
-        };
-
-        // Fetch the result from the program environment.
-        let result = Literal::Group(P::Aleo::commit(Self::opcode(), &first, &second.to_bits_le()));
-
-        $registers.assign($instruction.operation.destination(), result);
-    };
-}
+#[macro_use]
+mod macros;
 
 pub(crate) mod ped64;
 pub(crate) use ped64::*;
@@ -47,3 +31,32 @@ pub(crate) use ped512::*;
 
 pub(crate) mod ped1024;
 pub(crate) use ped1024::*;
+
+use crate::{function::parsers::*, helpers::Register, Program};
+use snarkvm_circuits::CommitmentScheme;
+
+use core::fmt;
+
+/// A generic commitment instruction.
+pub struct Commit<P: Program, C: CommitmentScheme> {
+    operation: BinaryOperation<P>,
+    commitment_gadget: C,
+}
+
+impl<P: Program, C: CommitmentScheme> Commit<P, C> {
+    /// Returns the operands of the instruction.
+    pub fn operands(&self) -> Vec<Operand<P>> {
+        self.operation.operands()
+    }
+
+    /// Returns the destination register of the instruction.
+    pub fn destination(&self) -> &Register<P> {
+        self.operation.destination()
+    }
+}
+
+impl<P: Program, C: CommitmentScheme> fmt::Display for Commit<P, C> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.operation)
+    }
+}
