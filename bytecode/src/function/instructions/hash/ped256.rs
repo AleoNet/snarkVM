@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::function::{Literal, Operation, Registers};
+use snarkvm_circuits::{Aleo, ToBits};
+
 /// Performs a Pedersen hash taking a 256-bit value as input.
 pub struct HashPed256<P: Program> {
     operation: UnaryOperation<P>,
@@ -21,7 +24,13 @@ pub struct HashPed256<P: Program> {
 
 impl_instruction_boilerplate!(HashPed256, UnaryOperation, "hash.ped256");
 
-impl_hash_instruction!(HashPed256);
+impl<P: Program> Operation<P> for HashPed256<P> {
+    /// Evaluates the operation.
+    #[inline]
+    fn evaluate(&self, registers: &Registers<P>) {
+        impl_pedersen_evaluate!(self, registers);
+    }
+}
 
 #[cfg(test)]
 mod tests {

@@ -14,73 +14,53 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-macro_rules! impl_hash_instruction {
-    ($instruction:ident) => {
-        use crate::function::{Literal, Operation, Registers};
-        use snarkvm_circuits::{Aleo, ToBits};
+macro_rules! impl_pedersen_evaluate {
+    ($instruction:ident, $registers:ident) => {
+        // Load the values for the first and second operands.
+        let first = match $registers.load($instruction.operation.first()) {
+            Value::Literal(literal) => literal.to_bits_le(),
+            Value::Composite(_name, literals) => literals.iter().flat_map(|literal| literal.to_bits_le()).collect(),
+        };
 
-        impl<P: Program> Operation<P> for $instruction<P> {
-            /// Evaluates the operation.
-            #[inline]
-            fn evaluate(&self, registers: &Registers<P>) {
-                // Load the values for the first and second operands.
-                let first = match registers.load(self.operation.first()) {
-                    Value::Literal(literal) => literal.to_bits_le(),
-                    Value::Composite(_name, literals) => {
-                        literals.iter().flat_map(|literal| literal.to_bits_le()).collect()
-                    }
-                };
+        // Fetch the result from the program environment.
+        let result = Literal::Field(P::Aleo::pedersen_hash(Self::opcode(), &first));
 
-                // Fetch the result from the program environment.
-                let result = Literal::Field(P::Aleo::pedersen_hash(Self::opcode(), &first));
-
-                registers.assign(self.operation.destination(), result);
-            }
-        }
+        $registers.assign($instruction.operation.destination(), result);
     };
 }
 
-macro_rules! impl_psd_hash_instruction {
-    ($instruction:ident) => {
-        use crate::function::{Field, Literal, Operation, Registers};
-        use snarkvm_circuits::{Aleo, ToFields};
+macro_rules! impl_poseidon_evaluate {
+    ($instruction:ident, $registers:ident) => {
+        // Load the values for the first and second operands.
+        let first = match $registers.load($instruction.operation.first()) {
+            Value::Literal(literal) => vec![literal],
+            Value::Composite(_name, literals) => literals,
+        };
 
-        impl<P: Program> Operation<P> for $instruction<P> {
-            /// Evaluates the operation.
-            #[inline]
-            fn evaluate(&self, registers: &Registers<P>) {
-                // Load the values for the first and second operands.
-                let first = match registers.load(self.operation.first()) {
-                    Value::Literal(literal) => vec![literal],
-                    Value::Composite(_name, literals) => literals,
-                };
+        let first = first
+            .into_iter()
+            .flat_map(|literal| match literal {
+                Literal::Field(a) => vec![a],
+                Literal::I8(a) => a.to_fields(),
+                Literal::I16(a) => a.to_fields(),
+                Literal::I32(a) => a.to_fields(),
+                Literal::I64(a) => a.to_fields(),
+                Literal::I128(a) => a.to_fields(),
+                Literal::U8(a) => a.to_fields(),
+                Literal::U16(a) => a.to_fields(),
+                Literal::U32(a) => a.to_fields(),
+                Literal::U64(a) => a.to_fields(),
+                Literal::U128(a) => a.to_fields(),
+                Literal::Scalar(a) => a.to_fields(),
+                Literal::String(a) => a.to_fields(),
+                _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
+            })
+            .collect::<Vec<Field<P::Environment>>>();
 
-                let first = first
-                    .into_iter()
-                    .flat_map(|literal| match literal {
-                        Literal::Field(a) => vec![a],
-                        Literal::I8(a) => a.to_fields(),
-                        Literal::I16(a) => a.to_fields(),
-                        Literal::I32(a) => a.to_fields(),
-                        Literal::I64(a) => a.to_fields(),
-                        Literal::I128(a) => a.to_fields(),
-                        Literal::U8(a) => a.to_fields(),
-                        Literal::U16(a) => a.to_fields(),
-                        Literal::U32(a) => a.to_fields(),
-                        Literal::U64(a) => a.to_fields(),
-                        Literal::U128(a) => a.to_fields(),
-                        Literal::Scalar(a) => a.to_fields(),
-                        Literal::String(a) => a.to_fields(),
-                        _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
-                    })
-                    .collect::<Vec<Field<P::Environment>>>();
+        // Fetch the result from the program environment.
+        let result = Literal::Field(P::Aleo::poseidon_hash(Self::opcode(), &first));
 
-                // Fetch the result from the program environment.
-                let result = Literal::Field(P::Aleo::poseidon_hash(Self::opcode(), &first));
-
-                registers.assign(self.operation.destination(), result);
-            }
-        }
+        $registers.assign($instruction.operation.destination(), result);
     };
 }
 

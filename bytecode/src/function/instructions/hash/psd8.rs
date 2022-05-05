@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::function::{Field, Literal, Operation, Registers};
+use snarkvm_circuits::{Aleo, ToFields};
+
 /// Performs a Poseidon hash with an input rate of 8.
 pub struct HashPsd8<P: Program> {
     operation: UnaryOperation<P>,
@@ -21,7 +24,13 @@ pub struct HashPsd8<P: Program> {
 
 impl_instruction_boilerplate!(HashPsd8, UnaryOperation, "hash.psd8");
 
-impl_psd_hash_instruction!(HashPsd8);
+impl<P: Program> Operation<P> for HashPsd8<P> {
+    /// Evaluates the operation.
+    #[inline]
+    fn evaluate(&self, registers: &Registers<P>) {
+        impl_poseidon_evaluate!(self, registers);
+    }
+}
 
 #[cfg(test)]
 mod tests {
