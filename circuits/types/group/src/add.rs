@@ -114,7 +114,7 @@ impl<E: Environment> Metrics<dyn Add<Group<E>, Output = Group<E>>> for Group<E> 
 
     fn count(case: &Self::Case) -> Count {
         match (case.0, case.1) {
-            (Mode::Constant, Mode::Constant) => Count::is(4, 0, 0, 0),
+            (Mode::Constant, Mode::Constant) => Count::less_than(4, 0, 0, 0),
             (Mode::Constant, _) | (_, Mode::Constant) => Count::is(2, 0, 3, 3),
             (_, _) => Count::is(2, 0, 6, 6),
         }
@@ -124,6 +124,8 @@ impl<E: Environment> Metrics<dyn Add<Group<E>, Output = Group<E>>> for Group<E> 
 impl<E: Environment> OutputMode<dyn Add<Group<E>, Output = Group<E>>> for Group<E> {
     type Case = (Mode, Mode);
 
+    // TODO: This implementation is incorrect. In the case where one operand is a constant and is equal to zero, then the output mode
+    //  is that of the other operand.
     fn output_mode(case: &Self::Case) -> Mode {
         match (case.0, case.1) {
             (Mode::Constant, Mode::Constant) => Mode::Constant,
