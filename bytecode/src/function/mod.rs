@@ -667,8 +667,7 @@ function main:
 
         let function = Function::<P>::from_str(function_string);
         let (num_constants, num_public, num_private, num_constraints, num_gates) = function.count();
-        assert_eq!(8, num_constants);
-        // 8 to initialize the input to r0. Total is 8 public variables.
+        assert_eq!(0, num_constants);
         assert_eq!(0, num_public);
         // 24 to initialize the inputs to r1, r2, and r3. 9 to perform a U8::add. 19 to perform a U8::div. Total is 52 private variables.
         assert_eq!(52, num_private);
