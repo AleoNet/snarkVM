@@ -20,8 +20,8 @@ use snarkvm_circuits::prelude::*;
 pub struct HelloWorld;
 
 impl HelloWorld {
-    /// Initializes a new instance of `HelloWorld` with the given inputs.
-    pub fn run<P: Program>(inputs: [Value<P>; 2]) -> Vec<Value<P>> {
+    /// Initializes a new instance of `HelloWorld`.
+    pub fn initialize<P: Program>() {
         P::from_str(
             r"
 function main:
@@ -30,16 +30,25 @@ function main:
     add r0 r1 into r2;
     output r2 as field.private;",
         );
+    }
+
+    /// Runs `HelloWorld` with the given inputs.
+    pub fn run<P: Program>(inputs: [Value<P>; 2]) -> Vec<Value<P>> {
         P::get_function(&Identifier::from_str("main")).unwrap().evaluate(&inputs)
     }
 }
 
 fn main() {
+    // Initialize the program.
+    HelloWorld::initialize::<Process>();
+
+    // Run the `HelloWorld` program with the given inputs.
     let first = Value::from_str("1field.public");
     let second = Value::from_str("1field.private");
 
-    let expected = Value::<Process>::from_str("2field.private");
     let candidate = HelloWorld::run::<Process>([first, second]);
+
+    let expected = Value::<Process>::from_str("2field.private");
 
     match (&expected, &candidate[0]) {
         (Value::Literal(Literal::Field(expected)), Value::Literal(Literal::Field(candidate))) => {
@@ -58,15 +67,21 @@ mod tests {
 
     #[test]
     fn test_hello_world() {
+        // Initialize the program.
+        HelloWorld::initialize::<Process>();
+
+        // Run the `HelloWorld` program with the given inputs.
         let first = Value::from_str("1field.public");
         let second = Value::from_str("1field.private");
 
-        let expected = Value::<Process>::from_str("2field.private");
         let candidate = HelloWorld::run::<Process>([first, second]);
+
+        let expected = Value::<Process>::from_str("2field.private");
 
         match (&expected, &candidate[0]) {
             (Value::Literal(Literal::Field(expected)), Value::Literal(Literal::Field(candidate))) => {
-                assert!(expected.is_equal(candidate).eject_value())
+                println!("{candidate}");
+                assert!(expected.is_equal(candidate).eject_value());
             }
             _ => panic!("Failed to load output"),
         }
@@ -77,8 +92,8 @@ mod tests {
         pub struct HelloWorld;
 
         impl HelloWorld {
-            /// Initializes a new instance of `HelloWorld` with the given inputs.
-            pub fn run<P: Program>(inputs: &[Value<P>]) -> Vec<Value<P>> {
+            /// Initializes a new instance of the `HelloWorld` program.
+            pub fn initialize<P: Program>() {
                 P::from_str(
                     r"
 function main:
@@ -87,9 +102,16 @@ function main:
     add r0 r1 into r2;
     output r2 as u8.private;",
                 );
+            }
+
+            /// Runs the `HelloWorld` with the given inputs.
+            pub fn run<P: Program>(inputs: &[Value<P>]) -> Vec<Value<P>> {
                 P::get_function(&Identifier::from_str("main")).unwrap().evaluate(inputs)
             }
         }
+
+        // Initialize the program.
+        HelloWorld::initialize::<Process>();
 
         // Initialize the inputs.
         let input = [Value::from_str("1u8.public"), Value::from_str("1u8.private")];

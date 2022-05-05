@@ -54,28 +54,46 @@ impl<E: Environment> SubAssign<&Field<E>> for Field<E> {
     }
 }
 
+impl<E: Environment> Metrics<dyn Sub<Field<E>, Output = Field<E>>> for Field<E> {
+    type Case = (Mode, Mode);
+
+    fn count(_case: &Self::Case) -> Count {
+        Count::is(0, 0, 0, 0)
+    }
+}
+
+impl<E: Environment> OutputMode<dyn Sub<Field<E>, Output = Field<E>>> for Field<E> {
+    type Case = (ConstantOrMode<Field<E>>, ConstantOrMode<Field<E>>);
+
+    fn output_mode(case: &Self::Case) -> Mode {
+        match (case.0.mode(), case.1.mode()) {
+            (Mode::Constant, Mode::Constant) => Mode::Constant,
+            (Mode::Public, Mode::Constant) => match &case.1 {
+                ConstantOrMode::Constant(constant) => match constant.eject_value() == E::BaseField::zero() {
+                    true => Mode::Public,
+                    false => Mode::Private,
+                },
+                _ => E::halt("The constant is required to determine the output mode of Public + Constant"),
+            },
+            (_, _) => Mode::Private,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
-    const ITERATIONS: usize = 10_000;
+    const ITERATIONS: u64 = 10_000;
 
-    fn check_sub(
-        name: &str,
-        expected: &<Circuit as Environment>::BaseField,
-        a: &Field<Circuit>,
-        b: &Field<Circuit>,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
+    fn check_sub(name: &str, expected: &<Circuit as Environment>::BaseField, a: &Field<Circuit>, b: &Field<Circuit>) {
         Circuit::scope(name, || {
             let candidate = a - b;
-            assert_eq!(*expected, candidate.eject_value(), "({} + {})", a.eject_value(), b.eject_value());
-            assert_scope!(num_constants, num_public, num_private, num_constraints);
+            assert_eq!(*expected, candidate.eject_value(), "({} - {})", a.eject_value(), b.eject_value());
+            assert_count!(Sub(Field, Field) => Field, &(a.eject_mode(), b.eject_mode()));
+            assert_output_mode!(Sub(Field, Field) => Field, &(ConstantOrMode::from(a), ConstantOrMode::from(b)), candidate);
         });
     }
 
@@ -84,170 +102,89 @@ mod tests {
         expected: &<Circuit as Environment>::BaseField,
         a: &Field<Circuit>,
         b: &Field<Circuit>,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
     ) {
         Circuit::scope(name, || {
             let mut candidate = a.clone();
             candidate -= b;
-            assert_eq!(*expected, candidate.eject_value(), "({} + {})", a.eject_value(), b.eject_value());
-            assert_scope!(num_constants, num_public, num_private, num_constraints);
+            assert_eq!(*expected, candidate.eject_value(), "({} - {})", a.eject_value(), b.eject_value());
+            assert_count!(Sub(Field, Field) => Field, &(a.eject_mode(), b.eject_mode()));
+            assert_output_mode!(Sub(Field, Field) => Field, &(ConstantOrMode::from(a), ConstantOrMode::from(b)), candidate);
         });
     }
 
-    #[test]
-    fn test_constant_minus_constant() {
+    fn run_test(mode_a: Mode, mode_b: Mode) {
         for i in 0..ITERATIONS {
             let first = UniformRand::rand(&mut test_rng());
             let second = UniformRand::rand(&mut test_rng());
 
             let expected = first - second;
-            let a = Field::<Circuit>::new(Mode::Constant, first);
-            let b = Field::<Circuit>::new(Mode::Constant, second);
+            let a = Field::<Circuit>::new(mode_a, first);
+            let b = Field::<Circuit>::new(mode_b, second);
 
             let name = format!("Sub: a - b {}", i);
-            check_sub(&name, &expected, &a, &b, 0, 0, 0, 0);
+            check_sub(&name, &expected, &a, &b);
             let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
+            check_sub_assign(&name, &expected, &a, &b);
+
+            // Test identity.
+            let name = format!("Sub: a - 0 {}", i);
+            let zero = Field::<Circuit>::new(mode_b, <Circuit as Environment>::BaseField::zero());
+            check_sub(&name, &first, &a, &zero);
+            let name = format!("SubAssign: a - 0 {}", i);
+            check_sub_assign(&name, &first, &a, &zero);
+
+            // Test negation.
+            let name = format!("Sub: 0 - b {}", i);
+            let zero = Field::<Circuit>::new(mode_a, <Circuit as Environment>::BaseField::zero());
+            check_sub(&name, &(-second), &zero, &b);
+            let name = format!("SubAssign: 0 - b {}", i);
+            check_sub_assign(&name, &(-second), &zero, &b);
         }
     }
 
     #[test]
-    fn test_constant_minus_public() {
-        for i in 0..ITERATIONS {
-            let first = UniformRand::rand(&mut test_rng());
-            let second = UniformRand::rand(&mut test_rng());
-
-            let expected = first - second;
-            let a = Field::<Circuit>::new(Mode::Constant, first);
-            let b = Field::<Circuit>::new(Mode::Public, second);
-
-            let name = format!("Sub: a - b {}", i);
-            check_sub(&name, &expected, &a, &b, 0, 0, 0, 0);
-            let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
-        }
+    fn test_constant_plus_constant() {
+        run_test(Mode::Constant, Mode::Constant);
     }
 
     #[test]
-    fn test_public_minus_constant() {
-        for i in 0..ITERATIONS {
-            let first = UniformRand::rand(&mut test_rng());
-            let second = UniformRand::rand(&mut test_rng());
-
-            let expected = first - second;
-            let a = Field::<Circuit>::new(Mode::Public, first);
-            let b = Field::<Circuit>::new(Mode::Constant, second);
-
-            let name = format!("Sub: a - b {}", i);
-            check_sub(&name, &expected, &a, &b, 0, 0, 0, 0);
-            let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
-        }
+    fn test_constant_plus_public() {
+        run_test(Mode::Constant, Mode::Public);
     }
 
     #[test]
-    fn test_constant_minus_private() {
-        for i in 0..ITERATIONS {
-            let first = UniformRand::rand(&mut test_rng());
-            let second = UniformRand::rand(&mut test_rng());
-
-            let expected = first - second;
-            let a = Field::<Circuit>::new(Mode::Constant, first);
-            let b = Field::<Circuit>::new(Mode::Private, second);
-
-            let name = format!("Sub: a - b {}", i);
-            check_sub(&name, &expected, &a, &b, 0, 0, 0, 0);
-            let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
-        }
+    fn test_public_plus_constant() {
+        run_test(Mode::Public, Mode::Constant);
     }
 
     #[test]
-    fn test_private_minus_constant() {
-        for i in 0..ITERATIONS {
-            let first = UniformRand::rand(&mut test_rng());
-            let second = UniformRand::rand(&mut test_rng());
-
-            let expected = first - second;
-            let a = Field::<Circuit>::new(Mode::Private, first);
-            let b = Field::<Circuit>::new(Mode::Constant, second);
-
-            let name = format!("Sub: a - b {}", i);
-            check_sub(&name, &expected, &a, &b, 0, 0, 0, 0);
-            let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
-        }
+    fn test_constant_plus_private() {
+        run_test(Mode::Constant, Mode::Private);
     }
 
     #[test]
-    fn test_public_minus_public() {
-        for i in 0..ITERATIONS {
-            let first = UniformRand::rand(&mut test_rng());
-            let second = UniformRand::rand(&mut test_rng());
-
-            let expected = first - second;
-            let a = Field::<Circuit>::new(Mode::Public, first);
-            let b = Field::<Circuit>::new(Mode::Public, second);
-
-            let name = format!("Sub: a - b {}", i);
-            check_sub(&name, &expected, &a, &b, 0, 0, 0, 0);
-            let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
-        }
+    fn test_private_plus_constant() {
+        run_test(Mode::Private, Mode::Constant);
     }
 
     #[test]
-    fn test_public_minus_private() {
-        for i in 0..ITERATIONS {
-            let first = UniformRand::rand(&mut test_rng());
-            let second = UniformRand::rand(&mut test_rng());
-
-            let expected = first - second;
-            let a = Field::<Circuit>::new(Mode::Public, first);
-            let b = Field::<Circuit>::new(Mode::Private, second);
-
-            let name = format!("Sub: a - b {}", i);
-            check_sub(&name, &expected, &a, &b, 0, 0, 0, 0);
-            let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
-        }
+    fn test_public_plus_public() {
+        run_test(Mode::Public, Mode::Public);
     }
 
     #[test]
-    fn test_private_minus_public() {
-        for i in 0..ITERATIONS {
-            let first = UniformRand::rand(&mut test_rng());
-            let second = UniformRand::rand(&mut test_rng());
-
-            let expected = first - second;
-            let a = Field::<Circuit>::new(Mode::Private, first);
-            let b = Field::<Circuit>::new(Mode::Public, second);
-
-            let name = format!("Sub: a - b {}", i);
-            check_sub(&name, &expected, &a, &b, 0, 0, 0, 0);
-            let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
-        }
+    fn test_public_plus_private() {
+        run_test(Mode::Public, Mode::Private);
     }
 
     #[test]
-    fn test_private_minus_private() {
-        for i in 0..ITERATIONS {
-            let first = UniformRand::rand(&mut test_rng());
-            let second = UniformRand::rand(&mut test_rng());
+    fn test_private_plus_public() {
+        run_test(Mode::Private, Mode::Public);
+    }
 
-            let expected = first - second;
-            let a = Field::<Circuit>::new(Mode::Private, first);
-            let b = Field::<Circuit>::new(Mode::Private, second);
-
-            let name = format!("Sub: a - b {}", i);
-            check_sub(&name, &expected, &a, &b, 0, 0, 0, 0);
-            let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, &expected, &a, &b, 0, 0, 0, 0);
-        }
+    #[test]
+    fn test_private_plus_private() {
+        run_test(Mode::Private, Mode::Private);
     }
 
     #[test]

@@ -72,785 +72,113 @@ impl<E: Environment, I: IntegerType> BitAndAssign<&Integer<E, I>> for Integer<E,
     }
 }
 
+impl<E: Environment, I: IntegerType> Metrics<dyn BitAnd<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
+    type Case = (Mode, Mode);
+
+    fn count(case: &Self::Case) -> Count {
+        match (case.0, case.1) {
+            (Mode::Constant, _) | (_, Mode::Constant) => Count::is(0, 0, 0, 0),
+            (_, _) => Count::is(0, 0, I::BITS, I::BITS),
+        }
+    }
+}
+
+impl<E: Environment, I: IntegerType> OutputMode<dyn BitAnd<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
+    type Case = (ConstantOrMode<Integer<E, I>>, ConstantOrMode<Integer<E, I>>);
+
+    fn output_mode(case: &Self::Case) -> Mode {
+        match (case.0.mode(), case.1.mode()) {
+            (Mode::Constant, Mode::Constant) => Mode::Constant,
+            (Mode::Constant, mode_b) => match &case.0 {
+                // Determine if the constant is all zeros.
+                ConstantOrMode::Constant(constant) => match constant.eject_value().is_zero() {
+                    true => Mode::Constant,
+                    false => mode_b,
+                },
+                _ => E::halt(format!("The constant is required to determine the output mode of Constant AND {mode_b}")),
+            },
+            (mode_a, Mode::Constant) => match &case.1 {
+                // Determine if the constant is all zeros.
+                ConstantOrMode::Constant(constant) => match constant.eject_value().is_zero() {
+                    true => Mode::Constant,
+                    false => mode_a,
+                },
+                _ => E::halt(format!("The constant is required to determine the output mode of {mode_a} AND Constant")),
+            },
+            (_, _) => Mode::Private,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
-    use test_utilities::*;
 
     use std::ops::RangeInclusive;
 
-    const ITERATIONS: usize = 128;
+    const ITERATIONS: u64 = 128;
 
-    #[rustfmt::skip]
-    fn check_and<I: IntegerType + BitAnd<Output = I>>(
-        name: &str,
-        first: I,
-        second: I,
-        mode_a: Mode,
-        mode_b: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
+    fn check_and<I: IntegerType + BitAnd<Output = I>>(name: &str, first: I, second: I, mode_a: Mode, mode_b: Mode) {
         let a = Integer::<Circuit, I>::new(mode_a, first);
-        let b = Integer::<Circuit, I>::new(mode_b, second);
-        let case = format!("BitAnd: ({} & {})", first, second);
+        let b = Integer::new(mode_b, second);
         let expected = first & second;
-        check_operation_passes(name, &case, expected, &a, &b, |a: &Integer<Circuit, I>, b: &Integer<Circuit, I> | { a.bitand(b) }, num_constants, num_public, num_private, num_constraints);
-        // Commute the operation.
-        let a = Integer::<Circuit, I>::new(mode_a, second);
-        let b = Integer::<Circuit, I>::new(mode_b, first);
-        check_operation_passes(name, &case, expected, &a, &b, |a: &Integer<Circuit, I>, b: &Integer<Circuit, I> | { a.bitand(b) }, num_constants, num_public, num_private, num_constraints);
+        Circuit::scope(name, || {
+            let candidate = (&a).bitand(&b);
+            assert_eq!(expected, candidate.eject_value());
+            assert_count!(BitAnd(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
+            assert_output_mode!(BitAnd(Integer<I>, Integer<I>) => Integer<I>, &(ConstantOrMode::from(&a), ConstantOrMode::from(&b)), candidate);
+        });
+        Circuit::reset();
     }
 
-    #[rustfmt::skip]
-    fn run_test<I: IntegerType + BitAnd<Output = I>>(
-        mode_a: Mode,
-        mode_b: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        let check_bitand = | name: &str, first: I, second: I | check_and(name, first, second, mode_a, mode_b, num_constants, num_public, num_private, num_constraints);
-
+    fn run_test<I: IntegerType + BitAnd<Output = I>>(mode_a: Mode, mode_b: Mode) {
         for i in 0..ITERATIONS {
-            let first : I = UniformRand::rand(&mut test_rng());
-            let second : I = UniformRand::rand(&mut test_rng());
+            let first: I = UniformRand::rand(&mut test_rng());
+            let second: I = UniformRand::rand(&mut test_rng());
 
             let name = format!("BitAnd: ({} & {}) {}", mode_a, mode_b, i);
-            check_bitand(&name, first, second);
+            check_and(&name, first, second, mode_a, mode_b);
+            check_and(&name, second, first, mode_a, mode_b); // Commute the operation.
 
             let name = format!("BitAnd Identity: ({} & {}) {}", mode_a, mode_b, i);
-            let identity_element = if I::is_signed() { I::zero() - I::one() } else { I::MAX };
-            check_bitand(&name, identity_element, first);
+            let identity = if I::is_signed() { I::zero() - I::one() } else { I::MAX };
+            check_and(&name, identity, first, mode_a, mode_b);
+            check_and(&name, first, identity, mode_a, mode_b); // Commute the operation.
         }
 
         // Check cases common to signed and unsigned integers.
-        check_bitand("0 & MAX", I::zero(), I::MAX);
-        check_bitand("MAX & 0", I::MAX, I::zero());
-        check_bitand("0 & MIN", I::zero(), I::MIN);
-        check_bitand("MIN & 0", I::MIN, I::zero());
+        check_and("0 & MAX", I::zero(), I::MAX, mode_a, mode_b);
+        check_and("MAX & 0", I::MAX, I::zero(), mode_a, mode_b);
+        check_and("0 & MIN", I::zero(), I::MIN, mode_a, mode_b);
+        check_and("MIN & 0", I::MIN, I::zero(), mode_a, mode_b);
     }
 
-    fn run_exhaustive_test<I: IntegerType + BitAnd<Output = I>>(
-        mode_a: Mode,
-        mode_b: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) where
+    fn run_exhaustive_test<I: IntegerType + BitAnd<Output = I>>(mode_a: Mode, mode_b: Mode)
+    where
         RangeInclusive<I>: Iterator<Item = I>,
     {
         for first in I::MIN..=I::MAX {
             for second in I::MIN..=I::MAX {
                 let name = format!("BitAnd: ({} & {})", first, second);
-                check_and(
-                    &name,
-                    first,
-                    second,
-                    mode_a,
-                    mode_b,
-                    num_constants,
-                    num_public,
-                    num_private,
-                    num_constraints,
-                );
+                check_and(&name, first, second, mode_a, mode_b);
             }
         }
     }
 
-    // Tests for u8
-
-    #[test]
-    fn test_u8_constant_bitand_constant() {
-        type I = u8;
-        run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_u8_constant_bitand_public() {
-        type I = u8;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_u8_constant_bitand_private() {
-        type I = u8;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_u8_public_bitand_constant() {
-        type I = u8;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_u8_private_bitand_constant() {
-        type I = u8;
-        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_u8_public_bitand_public() {
-        type I = u8;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 8, 8);
-    }
-
-    #[test]
-    fn test_u8_public_bitand_private() {
-        type I = u8;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 8, 8);
-    }
-
-    #[test]
-    fn test_u8_private_bitand_public() {
-        type I = u8;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 8, 8);
-    }
-
-    #[test]
-    fn test_u8_private_bitand_private() {
-        type I = u8;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 8, 8);
-    }
-
-    // Tests for i8
-
-    #[test]
-    fn test_i8_constant_bitand_constant() {
-        type I = i8;
-        run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i8_constant_bitand_public() {
-        type I = i8;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i8_constant_bitand_private() {
-        type I = i8;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i8_public_bitand_constant() {
-        type I = i8;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i8_private_bitand_constant() {
-        type I = i8;
-        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i8_public_bitand_public() {
-        type I = i8;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 8, 8);
-    }
-
-    #[test]
-    fn test_i8_public_bitand_private() {
-        type I = i8;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 8, 8);
-    }
-
-    #[test]
-    fn test_i8_private_bitand_public() {
-        type I = i8;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 8, 8);
-    }
-
-    #[test]
-    fn test_i8_private_bitand_private() {
-        type I = i8;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 8, 8);
-    }
-
-    // Tests for u16
-
-    #[test]
-    fn test_u16_constant_bitand_constant() {
-        type I = u16;
-        run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_u16_constant_bitand_public() {
-        type I = u16;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_u16_constant_bitand_private() {
-        type I = u16;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_u16_public_bitand_constant() {
-        type I = u16;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_u16_private_bitand_constant() {
-        type I = u16;
-        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_u16_public_bitand_public() {
-        type I = u16;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 16, 16);
-    }
-
-    #[test]
-    fn test_u16_public_bitand_private() {
-        type I = u16;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 16, 16);
-    }
-
-    #[test]
-    fn test_u16_private_bitand_public() {
-        type I = u16;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 16, 16);
-    }
-
-    #[test]
-    fn test_u16_private_bitand_private() {
-        type I = u16;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 16, 16);
-    }
-
-    // Tests for i16
-
-    #[test]
-    fn test_i16_constant_bitand_constant() {
-        type I = i16;
-        run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i16_constant_bitand_public() {
-        type I = i16;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i16_constant_bitand_private() {
-        type I = i16;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i16_public_bitand_constant() {
-        type I = i16;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i16_private_bitand_constant() {
-        type I = i16;
-        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i16_public_bitand_public() {
-        type I = i16;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 16, 16);
-    }
-
-    #[test]
-    fn test_i16_public_bitand_private() {
-        type I = i16;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 16, 16);
-    }
-
-    #[test]
-    fn test_i16_private_bitand_public() {
-        type I = i16;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 16, 16);
-    }
-
-    #[test]
-    fn test_i16_private_bitand_private() {
-        type I = i16;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 16, 16);
-    }
-
-    // Tests for u32
-
-    #[test]
-    fn test_u32_constant_bitand_constant() {
-        type I = u32;
-        run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_u32_constant_bitand_public() {
-        type I = u32;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_u32_constant_bitand_private() {
-        type I = u32;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_u32_public_bitand_constant() {
-        type I = u32;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_u32_private_bitand_constant() {
-        type I = u32;
-        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_u32_public_bitand_public() {
-        type I = u32;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 32, 32);
-    }
-
-    #[test]
-    fn test_u32_public_bitand_private() {
-        type I = u32;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 32, 32);
-    }
-
-    #[test]
-    fn test_u32_private_bitand_public() {
-        type I = u32;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 32, 32);
-    }
-
-    #[test]
-    fn test_u32_private_bitand_private() {
-        type I = u32;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 32, 32);
-    }
-
-    // Tests for i32
-
-    #[test]
-    fn test_i32_constant_bitand_constant() {
-        type I = i32;
-        run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i32_constant_bitand_public() {
-        type I = i32;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i32_constant_bitand_private() {
-        type I = i32;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i32_public_bitand_constant() {
-        type I = i32;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i32_private_bitand_constant() {
-        type I = i32;
-        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i32_public_bitand_public() {
-        type I = i32;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 32, 32);
-    }
-
-    #[test]
-    fn test_i32_public_bitand_private() {
-        type I = i32;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 32, 32);
-    }
-
-    #[test]
-    fn test_i32_private_bitand_public() {
-        type I = i32;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 32, 32);
-    }
-
-    #[test]
-    fn test_i32_private_bitand_private() {
-        type I = i32;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 32, 32);
-    }
-
-    // Tests for u64
-
-    #[test]
-    fn test_u64_constant_bitand_constant() {
-        type I = u64;
-        run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_u64_constant_bitand_public() {
-        type I = u64;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_u64_constant_bitand_private() {
-        type I = u64;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_u64_public_bitand_constant() {
-        type I = u64;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_u64_private_bitand_constant() {
-        type I = u64;
-        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_u64_public_bitand_public() {
-        type I = u64;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 64, 64);
-    }
-
-    #[test]
-    fn test_u64_public_bitand_private() {
-        type I = u64;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 64, 64);
-    }
-
-    #[test]
-    fn test_u64_private_bitand_public() {
-        type I = u64;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 64, 64);
-    }
-
-    #[test]
-    fn test_u64_private_bitand_private() {
-        type I = u64;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 64, 64);
-    }
-
-    // Tests for i64
-
-    #[test]
-    fn test_i64_constant_bitand_constant() {
-        type I = i64;
-        run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i64_constant_bitand_public() {
-        type I = i64;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i64_constant_bitand_private() {
-        type I = i64;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i64_public_bitand_constant() {
-        type I = i64;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i64_private_bitand_constant() {
-        type I = i64;
-        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i64_public_bitand_public() {
-        type I = i64;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 64, 64);
-    }
-
-    #[test]
-    fn test_i64_public_bitand_private() {
-        type I = i64;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 64, 64);
-    }
-
-    #[test]
-    fn test_i64_private_bitand_public() {
-        type I = i64;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 64, 64);
-    }
-
-    #[test]
-    fn test_i64_private_bitand_private() {
-        type I = i64;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 64, 64);
-    }
-
-    // Tests for u128
-
-    #[test]
-    fn test_u128_constant_bitand_constant() {
-        type I = u128;
-        run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_u128_constant_bitand_public() {
-        type I = u128;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_u128_constant_bitand_private() {
-        type I = u128;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_u128_public_bitand_constant() {
-        type I = u128;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_u128_private_bitand_constant() {
-        type I = u128;
-        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_u128_public_bitand_public() {
-        type I = u128;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 128, 128);
-    }
-
-    #[test]
-    fn test_u128_public_bitand_private() {
-        type I = u128;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 128, 128);
-    }
-
-    #[test]
-    fn test_u128_private_bitand_public() {
-        type I = u128;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 128, 128);
-    }
-
-    #[test]
-    fn test_u128_private_bitand_private() {
-        type I = u128;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 128, 128);
-    }
-
-    // Tests for i128
-
-    #[test]
-    fn test_i128_constant_bitand_constant() {
-        type I = i128;
-        run_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i128_constant_bitand_public() {
-        type I = i128;
-        run_test::<I>(Mode::Constant, Mode::Public, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i128_constant_bitand_private() {
-        type I = i128;
-        run_test::<I>(Mode::Constant, Mode::Private, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i128_public_bitand_constant() {
-        type I = i128;
-        run_test::<I>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i128_private_bitand_constant() {
-        type I = i128;
-        run_test::<I>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_i128_public_bitand_public() {
-        type I = i128;
-        run_test::<I>(Mode::Public, Mode::Public, 0, 0, 128, 128);
-    }
-
-    #[test]
-    fn test_i128_public_bitand_private() {
-        type I = i128;
-        run_test::<I>(Mode::Public, Mode::Private, 0, 0, 128, 128);
-    }
-
-    #[test]
-    fn test_i128_private_bitand_public() {
-        type I = i128;
-        run_test::<I>(Mode::Private, Mode::Public, 0, 0, 128, 128);
-    }
-
-    #[test]
-    fn test_i128_private_bitand_private() {
-        type I = i128;
-        run_test::<I>(Mode::Private, Mode::Private, 0, 0, 128, 128);
-    }
-
-    // Exhaustive tests for u8
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_u8_constant_bitand_constant() {
-        type I = u8;
-        run_exhaustive_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_u8_constant_bitand_public() {
-        type I = u8;
-        run_exhaustive_test::<I>(Mode::Constant, Mode::Public, 0, 0, 0, 0);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_u8_constant_bitand_private() {
-        type I = u8;
-        run_exhaustive_test::<I>(Mode::Constant, Mode::Private, 0, 0, 0, 0);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_u8_public_bitand_constant() {
-        type I = u8;
-        run_exhaustive_test::<I>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_u8_private_bitand_constant() {
-        type I = u8;
-        run_exhaustive_test::<I>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_u8_public_bitand_public() {
-        type I = u8;
-        run_exhaustive_test::<I>(Mode::Public, Mode::Public, 0, 0, 8, 8);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_u8_public_bitand_private() {
-        type I = u8;
-        run_exhaustive_test::<I>(Mode::Public, Mode::Private, 0, 0, 8, 8);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_u8_private_bitand_public() {
-        type I = u8;
-        run_exhaustive_test::<I>(Mode::Private, Mode::Public, 0, 0, 8, 8);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_u8_private_bitand_private() {
-        type I = u8;
-        run_exhaustive_test::<I>(Mode::Private, Mode::Private, 0, 0, 8, 8);
-    }
-
-    // Exhaustive tests for i8
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_i8_constant_bitand_constant() {
-        type I = i8;
-        run_exhaustive_test::<I>(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_i8_constant_bitand_public() {
-        type I = i8;
-        run_exhaustive_test::<I>(Mode::Constant, Mode::Public, 0, 0, 0, 0);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_i8_constant_bitand_private() {
-        type I = i8;
-        run_exhaustive_test::<I>(Mode::Constant, Mode::Private, 0, 0, 0, 0);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_i8_public_bitand_constant() {
-        type I = i8;
-        run_exhaustive_test::<I>(Mode::Public, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_i8_private_bitand_constant() {
-        type I = i8;
-        run_exhaustive_test::<I>(Mode::Private, Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_i8_public_bitand_public() {
-        type I = i8;
-        run_exhaustive_test::<I>(Mode::Public, Mode::Public, 0, 0, 8, 8);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_i8_public_bitand_private() {
-        type I = i8;
-        run_exhaustive_test::<I>(Mode::Public, Mode::Private, 0, 0, 8, 8);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_i8_private_bitand_public() {
-        type I = i8;
-        run_exhaustive_test::<I>(Mode::Private, Mode::Public, 0, 0, 8, 8);
-    }
-
-    #[test]
-    #[ignore]
-    fn test_exhaustive_i8_private_bitand_private() {
-        type I = i8;
-        run_exhaustive_test::<I>(Mode::Private, Mode::Private, 0, 0, 8, 8);
-    }
+    test_integer_binary!(run_test, i8, bitand);
+    test_integer_binary!(run_test, i16, bitand);
+    test_integer_binary!(run_test, i32, bitand);
+    test_integer_binary!(run_test, i64, bitand);
+    test_integer_binary!(run_test, i128, bitand);
+
+    test_integer_binary!(run_test, u8, bitand);
+    test_integer_binary!(run_test, u16, bitand);
+    test_integer_binary!(run_test, u32, bitand);
+    test_integer_binary!(run_test, u64, bitand);
+    test_integer_binary!(run_test, u128, bitand);
+
+    test_integer_binary!(#[ignore], run_exhaustive_test, u8, bitand, exhaustive);
+    test_integer_binary!(#[ignore], run_exhaustive_test, i8, bitand, exhaustive);
 }

@@ -32,40 +32,71 @@ impl<E: Environment> Square for &Field<E> {
     }
 }
 
+impl<E: Environment> Metrics<dyn Square<Output = Field<E>>> for Field<E> {
+    type Case = Mode;
+
+    fn count(case: &Self::Case) -> Count {
+        match case.is_constant() {
+            true => Count::is(0, 0, 0, 0),
+            false => Count::is(0, 0, 1, 1),
+        }
+    }
+}
+
+impl<E: Environment> OutputMode<dyn Square<Output = Field<E>>> for Field<E> {
+    type Case = Mode;
+
+    fn output_mode(input: &Self::Case) -> Mode {
+        match input.is_constant() {
+            true => Mode::Constant,
+            false => Mode::Private,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
-    const ITERATIONS: usize = 500;
+    const ITERATIONS: u64 = 500;
 
-    fn check_square(
-        name: &str,
-        mode: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
-        for _ in 0..ITERATIONS {
-            // Sample a random element.
-            let given: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
-            let candidate = Field::<Circuit>::new(mode, given);
+    fn check_square(name: &str, expected: &<Circuit as Environment>::BaseField, a: &Field<Circuit>) {
+        Circuit::scope(name, || {
+            let result = a.square();
+            assert_eq!(*expected, result.eject_value());
+            assert_count!(Square(Field) => Field, &(a.eject_mode()));
+            assert_output_mode!(Square(Field) => Field, &(a.eject_mode()), result);
+        });
+    }
 
-            Circuit::scope(name, || {
-                assert_eq!(given.square(), candidate.square().eject_value());
-                assert_scope!(num_constants, num_public, num_private, num_constraints);
-            });
-            Circuit::reset();
+    fn run_test(mode: Mode) {
+        for i in 0..ITERATIONS {
+            // Sample a random element
+            let first: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
+            let a = Field::<Circuit>::new(mode, first);
+
+            let name = format!("Square: {}", i);
+            check_square(&name, &first.square(), &a);
         }
+
+        // Test zero case.
+        let name = "Square Zero";
+        let zero = <Circuit as Environment>::BaseField::zero();
+        check_square(name, &zero, &Field::new(mode, zero));
+
+        // Test one case.
+        let name = "Square One";
+        let one = <Circuit as Environment>::BaseField::one();
+        check_square(name, &one, &Field::new(mode, one));
     }
 
     #[test]
     fn test_square() {
-        check_square("Constant", Mode::Constant, 0, 0, 0, 0);
-        check_square("Public", Mode::Public, 0, 0, 1, 1);
-        check_square("Private", Mode::Private, 0, 0, 1, 1);
+        run_test(Mode::Constant);
+        run_test(Mode::Public);
+        run_test(Mode::Private);
     }
 
     #[test]

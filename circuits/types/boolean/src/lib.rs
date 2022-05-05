@@ -17,22 +17,19 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
-pub mod adder;
+mod helpers;
+
 pub mod and;
 pub mod equal;
-pub mod from_bits;
 pub mod nand;
 pub mod nor;
 pub mod not;
 pub mod or;
-pub mod subtractor;
 pub mod ternary;
-pub mod to_bits;
-// pub mod to_field;
 pub mod xor;
 
 #[cfg(test)]
-use snarkvm_circuits_environment::assert_scope;
+use snarkvm_circuits_environment::{assert_count, assert_output_mode, assert_scope, count, output_mode};
 
 use snarkvm_circuits_environment::prelude::*;
 

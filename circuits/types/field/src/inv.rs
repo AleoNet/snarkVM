@@ -40,22 +40,37 @@ impl<E: Environment> Inv for &Field<E> {
     }
 }
 
+impl<E: Environment> Metrics<dyn Inv<Output = Field<E>>> for Field<E> {
+    type Case = Mode;
+
+    fn count(case: &Self::Case) -> Count {
+        match case.is_constant() {
+            true => Count::is(1, 0, 0, 0),
+            false => Count::is(0, 0, 1, 1),
+        }
+    }
+}
+
+impl<E: Environment> OutputMode<dyn Inv<Output = Field<E>>> for Field<E> {
+    type Case = Mode;
+
+    fn output_mode(case: &Self::Case) -> Mode {
+        match case.is_constant() {
+            true => Mode::Constant,
+            false => Mode::Private,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
-    const ITERATIONS: usize = 1_000;
+    const ITERATIONS: u64 = 1_000;
 
-    fn check_inv(
-        name: &str,
-        mode: Mode,
-        num_constants: usize,
-        num_public: usize,
-        num_private: usize,
-        num_constraints: usize,
-    ) {
+    fn check_inv(name: &str, mode: Mode) {
         for _ in 0..ITERATIONS {
             // Sample a random element.
             let given: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
@@ -64,8 +79,10 @@ mod tests {
                 let candidate = Field::<Circuit>::new(mode, given);
 
                 Circuit::scope(name, || {
-                    assert_eq!(expected, candidate.inv().eject_value());
-                    assert_scope!(num_constants, num_public, num_private, num_constraints);
+                    let result = candidate.inv();
+                    assert_eq!(expected, result.eject_value());
+                    assert_count!(Inv(Field) => Field, &mode);
+                    assert_output_mode!(Inv(Field) => Field, &mode, result);
                 });
                 Circuit::reset();
             }
@@ -74,9 +91,9 @@ mod tests {
 
     #[test]
     fn test_inv() {
-        check_inv("Constant", Mode::Constant, 1, 0, 0, 0);
-        check_inv("Public", Mode::Public, 0, 0, 1, 1);
-        check_inv("Private", Mode::Private, 0, 0, 1, 1);
+        check_inv("Constant", Mode::Constant);
+        check_inv("Public", Mode::Public);
+        check_inv("Private", Mode::Private);
     }
 
     #[test]

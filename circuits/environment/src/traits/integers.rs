@@ -278,7 +278,7 @@ pub(super) mod integer_type {
     pub trait IntegerProperties: PrimInt + Debug + Display {
         type Dual: IntegerType;
         /// Returns the number of bits required to represent this integer.
-        const BITS: usize;
+        const BITS: u64;
         /// Returns the maximum value representable by this integer.
         const MAX: Self;
         /// Returns the minimum value representable by this integer.
@@ -289,6 +289,9 @@ pub(super) mod integer_type {
 
         /// Returns the name of the integer type as a string slice. (i.e. "u8")
         fn type_name() -> &'static str;
+
+        /// Casts `self` into its dual.
+        fn into_dual(self) -> Self::Dual;
     }
 
     macro_rules! integer_properties_impl {
@@ -296,7 +299,7 @@ pub(super) mod integer_type {
             impl IntegerProperties for $t {
                 type Dual = $dual;
 
-                const BITS: usize = <$t>::BITS as usize;
+                const BITS: u64 = <$t>::BITS as u64;
                 const MAX: $t = <$t>::MAX;
                 const MIN: $t = <$t>::MIN;
 
@@ -308,6 +311,11 @@ pub(super) mod integer_type {
                 #[inline]
                 fn type_name() -> &'static str {
                     std::any::type_name::<$t>()
+                }
+
+                #[inline]
+                fn into_dual(self) -> Self::Dual {
+                    self as $dual
                 }
             }
         };

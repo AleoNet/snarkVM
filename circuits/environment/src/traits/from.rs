@@ -20,7 +20,9 @@ use crate::BooleanTrait;
 pub trait FromBoolean {
     type Boolean: BooleanTrait;
 
-    fn from_boolean(boolean: &Self::Boolean) -> Self;
+    fn from_boolean(boolean: &Self::Boolean) -> Self
+    where
+        Self: Sized;
 }
 
 /// Unary operator for instantiating from bits.

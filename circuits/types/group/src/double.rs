@@ -70,7 +70,7 @@ mod tests {
     use snarkvm_curves::ProjectiveCurve;
     use snarkvm_utilities::{test_rng, UniformRand};
 
-    const ITERATIONS: usize = 250;
+    const ITERATIONS: u64 = 250;
 
     #[test]
     fn test_double() {

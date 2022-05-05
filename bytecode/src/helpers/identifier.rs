@@ -48,7 +48,28 @@ const KEYWORDS: &[&str] = &[
     // Boolean
     "true",
     "false",
-    // TODO (howardwu): Add the instruction opcodes.
+    // Opcodes
+    "add",
+    "add.w",
+    "and",
+    "div",
+    "div.w",
+    "eq",
+    "ge",
+    "gt",
+    "le",
+    "lt",
+    "mul",
+    "mul.w",
+    "nand",
+    "neg",
+    "neq",
+    "nor",
+    "not",
+    "or",
+    "sub",
+    "sub.w",
+    "xor",
     // Statements
     "input",
     "output",
@@ -174,6 +195,8 @@ mod tests {
         assert!(Identifier::<P>::parse("r0").is_err());
         assert!(Identifier::<P>::parse("r123").is_err());
         assert!(Identifier::<P>::parse("r0.owner").is_err());
+        // Must not be an opcode.
+        assert!(Identifier::<P>::parse("add").is_err());
     }
 
     #[test]

@@ -21,6 +21,7 @@
 extern crate num_derive;
 
 extern crate snarkvm_circuits_environment_witness;
+
 pub use snarkvm_circuits_environment_witness::rename_selfs;
 
 pub mod circuit;
@@ -39,7 +40,21 @@ pub mod traits;
 pub use traits::*;
 
 pub mod prelude {
-    pub use crate::{rename_selfs, traits::*, witness, witness_mode, Environment, LinearCombination, Mode, Variable};
+    pub use crate::{
+        count,
+        output_mode,
+        rename_selfs,
+        traits::*,
+        witness,
+        witness_mode,
+        ConstantOrMode,
+        Count,
+        Environment,
+        LinearCombination,
+        Mode,
+        OutputMode,
+        Variable,
+    };
     pub use snarkvm_fields::{Field as F, One as O, PrimeField, Zero as Z};
 
     pub use core::{

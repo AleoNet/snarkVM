@@ -22,3 +22,6 @@ version = "0.7.5"
 path = "../../../utilities"
 version = "0.7.5"
 default-features = false
+
+[dev-dependencies.paste]
+version = "1"

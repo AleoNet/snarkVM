@@ -31,7 +31,7 @@ pub(crate) struct R1CS<F: PrimeField> {
     private: Vec<Variable<F>>,
     constraints: Vec<Constraint<F>>,
     counter: Counter<F>,
-    gates: usize,
+    gates: u64,
 }
 
 impl<F: PrimeField> R1CS<F> {
@@ -104,52 +104,52 @@ impl<F: PrimeField> R1CS<F> {
     }
 
     /// Returns the number of constants in the constraint system.
-    pub(crate) fn num_constants(&self) -> usize {
-        self.constants.len()
+    pub(crate) fn num_constants(&self) -> u64 {
+        self.constants.len() as u64
     }
 
     /// Returns the number of public variables in the constraint system.
-    pub(crate) fn num_public(&self) -> usize {
-        self.public.len()
+    pub(crate) fn num_public(&self) -> u64 {
+        self.public.len() as u64
     }
 
     /// Returns the number of private variables in the constraint system.
-    pub(crate) fn num_private(&self) -> usize {
-        self.private.len()
+    pub(crate) fn num_private(&self) -> u64 {
+        self.private.len() as u64
     }
 
     /// Returns the number of constraints in the constraint system.
-    pub(crate) fn num_constraints(&self) -> usize {
-        self.constraints.len()
+    pub(crate) fn num_constraints(&self) -> u64 {
+        self.constraints.len() as u64
     }
 
     /// Returns the number of gates in the constraint system.
-    pub(crate) fn num_gates(&self) -> usize {
+    pub(crate) fn num_gates(&self) -> u64 {
         self.gates
     }
 
     /// Returns the number of constants for the current scope.
-    pub(crate) fn num_constants_in_scope(&self) -> usize {
+    pub(crate) fn num_constants_in_scope(&self) -> u64 {
         self.counter.num_constants_in_scope()
     }
 
     /// Returns the number of public variables for the current scope.
-    pub(crate) fn num_public_in_scope(&self) -> usize {
+    pub(crate) fn num_public_in_scope(&self) -> u64 {
         self.counter.num_public_in_scope()
     }
 
     /// Returns the number of private variables for the current scope.
-    pub(crate) fn num_private_in_scope(&self) -> usize {
+    pub(crate) fn num_private_in_scope(&self) -> u64 {
         self.counter.num_private_in_scope()
     }
 
     /// Returns the number of constraints for the current scope.
-    pub(crate) fn num_constraints_in_scope(&self) -> usize {
+    pub(crate) fn num_constraints_in_scope(&self) -> u64 {
         self.counter.num_constraints_in_scope()
     }
 
     /// Returns the number of gates for the current scope.
-    pub(crate) fn num_gates_in_scope(&self) -> usize {
+    pub(crate) fn num_gates_in_scope(&self) -> u64 {
         self.counter.num_gates_in_scope()
     }
 

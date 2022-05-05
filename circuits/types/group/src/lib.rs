@@ -17,23 +17,18 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
+mod helpers;
+
 pub mod add;
 pub mod double;
 pub mod equal;
-pub mod from_bits;
-pub mod from_x_coordinate;
-pub mod from_xy_coordinates;
 pub mod mul;
 pub mod neg;
 pub mod sub;
 pub mod ternary;
-pub mod to_bits;
-pub mod to_x_coordinate;
-pub mod to_y_coordinate;
-pub mod zero;
 
 #[cfg(test)]
-use snarkvm_circuits_environment::assert_scope;
+use snarkvm_circuits_environment::{assert_count, assert_output_mode, assert_scope, count, output_mode};
 
 use snarkvm_circuits_environment::prelude::*;
 use snarkvm_circuits_types_boolean::Boolean;
@@ -144,7 +139,7 @@ mod tests {
 
     use core::str::FromStr;
 
-    const ITERATIONS: usize = 128;
+    const ITERATIONS: u64 = 128;
 
     /// Attempts to construct an affine group element from the given x-coordinate and mode.
     fn check_debug(mode: Mode, point: <Circuit as Environment>::Affine) {

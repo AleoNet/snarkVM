@@ -17,28 +17,22 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
+mod helpers;
+
 pub mod add;
 pub mod compare;
 pub mod div;
-pub mod double;
 pub mod equal;
-pub mod from_bits;
-pub mod from_boolean;
 pub mod inv;
 pub mod mul;
 pub mod neg;
-pub mod one;
 pub mod pow;
 pub mod square;
 pub mod sub;
 pub mod ternary;
-pub mod to_bits;
-pub mod to_lower_bits;
-pub mod to_upper_bits;
-pub mod zero;
 
 #[cfg(test)]
-use snarkvm_circuits_environment::assert_scope;
+use snarkvm_circuits_environment::{assert_count, assert_output_mode, assert_scope, count, output_mode};
 
 use snarkvm_circuits_environment::prelude::*;
 use snarkvm_circuits_types_boolean::Boolean;
@@ -164,7 +158,7 @@ mod tests {
 
     use std::str::FromStr;
 
-    const ITERATIONS: usize = 10_000;
+    const ITERATIONS: u64 = 10_000;
 
     /// Attempts to construct a field from the given element and mode,
     /// format it in debug mode, and recover a field from it.
