@@ -40,8 +40,9 @@ impl<E: Environment> Inv for &Field<E> {
     }
 }
 
-impl<E: Environment> Metrics<dyn Inv<Output = Field<E>>> for Field<E> {
-    type Case = Mode;
+impl<E: Environment> Metadata<dyn Inv<Output = Field<E>>> for Field<E> {
+    type Case = CircuitType<Field<E>>;
+    type OutputType = CircuitType<Field<E>>;
 
     fn count(case: &Self::Case) -> Count {
         match case.is_constant() {
@@ -49,15 +50,11 @@ impl<E: Environment> Metrics<dyn Inv<Output = Field<E>>> for Field<E> {
             false => Count::is(0, 0, 1, 1),
         }
     }
-}
 
-impl<E: Environment> OutputMode<dyn Inv<Output = Field<E>>> for Field<E> {
-    type Case = Mode;
-
-    fn output_mode(case: &Self::Case) -> Mode {
+    fn output_type(case: Self::Case) -> Self::OutputType {
         match case.is_constant() {
-            true => Mode::Constant,
-            false => Mode::Private,
+            true => CircuitType::from(case.circuit().inv()),
+            false => CircuitType::Private,
         }
     }
 }
@@ -79,10 +76,12 @@ mod tests {
                 let candidate = Field::<Circuit>::new(mode, given);
 
                 Circuit::scope(name, || {
-                    let result = candidate.inv();
+                    let result = (&candidate).inv();
                     assert_eq!(expected, result.eject_value());
-                    assert_count!(Inv(Field) => Field, &mode);
-                    assert_output_mode!(Inv(Field) => Field, &mode, result);
+
+                    let case = CircuitType::from(candidate);
+                    assert_count!(Inv(Field) => Field, &case);
+                    assert_output_type!(Inv(Field) => Field, case, result);
                 });
                 Circuit::reset();
             }
