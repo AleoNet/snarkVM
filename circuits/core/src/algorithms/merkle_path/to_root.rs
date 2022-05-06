@@ -62,10 +62,8 @@ impl<E: Environment, TwoToOneCRH: Hash> MerklePath<E, TwoToOneCRH> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::algorithms::Pedersen;
 
     use snarkvm_algorithms::{
-        crh::PedersenCompressedCRH as NativePedersenCompressed,
         merkle_tree::{MaskedMerkleTreeParameters, MerkleTree},
         traits::MerkleParameters,
     };
@@ -76,92 +74,192 @@ mod tests {
 
     use std::sync::Arc;
 
-    const PEDERSEN_NUM_WINDOWS: usize = 128;
-    const PEDERSEN_LEAF_WINDOW_SIZE: usize = 2;
-    const PEDERSEN_TWO_TO_ONE_WINDOW_SIZE: usize = 4;
-    const TREE_DEPTH: usize = 4;
-    const MESSAGE: &str = "Pedersen merkle path test";
+    mod pedersen {
+        use super::*;
+        use crate::algorithms::Pedersen;
+        use snarkvm_algorithms::crh::PedersenCompressedCRH as NativePedersenCompressed;
 
-    type NativeLeafCRH = NativePedersenCompressed<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_LEAF_WINDOW_SIZE>;
-    type NativeTwoToOneCRH =
-        NativePedersenCompressed<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_TWO_TO_ONE_WINDOW_SIZE>;
-    type Parameters = MaskedMerkleTreeParameters<NativeLeafCRH, NativeTwoToOneCRH, TREE_DEPTH>;
+        const PEDERSEN_NUM_WINDOWS: usize = 128;
+        const PEDERSEN_LEAF_WINDOW_SIZE: usize = 2;
+        const PEDERSEN_TWO_TO_ONE_WINDOW_SIZE: usize = 4;
+        const TREE_DEPTH: usize = 4;
+        const MESSAGE: &str = "Pedersen merkle path test";
 
-    type LeafCRH = Pedersen<Circuit, PEDERSEN_NUM_WINDOWS, PEDERSEN_LEAF_WINDOW_SIZE>;
-    type TwoToOneCRH = Pedersen<Circuit, PEDERSEN_NUM_WINDOWS, PEDERSEN_TWO_TO_ONE_WINDOW_SIZE>;
+        type NativeLeafCRH =
+            NativePedersenCompressed<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_LEAF_WINDOW_SIZE>;
+        type NativeTwoToOneCRH =
+            NativePedersenCompressed<EdwardsProjective, PEDERSEN_NUM_WINDOWS, PEDERSEN_TWO_TO_ONE_WINDOW_SIZE>;
+        type Parameters = MaskedMerkleTreeParameters<NativeLeafCRH, NativeTwoToOneCRH, TREE_DEPTH>;
 
-    fn check_to_root(
-        mode: Mode,
-        use_bad_root: bool,
-        num_constants: u64,
-        num_public: u64,
-        num_private: u64,
-        num_constraints: u64,
-    ) {
-        let merkle_tree_parameters = Parameters::setup(MESSAGE);
-        let leaf_crh = LeafCRH::setup(MESSAGE);
-        let two_to_one_crh = TwoToOneCRH::setup(MESSAGE);
+        type LeafCRH = Pedersen<Circuit, PEDERSEN_NUM_WINDOWS, PEDERSEN_LEAF_WINDOW_SIZE>;
+        type TwoToOneCRH = Pedersen<Circuit, PEDERSEN_NUM_WINDOWS, PEDERSEN_TWO_TO_ONE_WINDOW_SIZE>;
 
-        let mut rng = test_rng();
-        let mut leaves = Vec::new();
-        for _ in 0..1 << Parameters::DEPTH {
-            leaves.push(Fr::rand(&mut rng));
+        fn check_to_root(
+            mode: Mode,
+            use_bad_root: bool,
+            num_constants: u64,
+            num_public: u64,
+            num_private: u64,
+            num_constraints: u64,
+        ) {
+            let merkle_tree_parameters = Parameters::setup(MESSAGE);
+            let leaf_crh = LeafCRH::setup(MESSAGE);
+            let two_to_one_crh = TwoToOneCRH::setup(MESSAGE);
+
+            let mut rng = test_rng();
+            let mut leaves = Vec::new();
+            for _ in 0..1 << Parameters::DEPTH {
+                leaves.push(Fr::rand(&mut rng));
+            }
+
+            let merkle_tree = MerkleTree::new(Arc::new(merkle_tree_parameters), &leaves).unwrap();
+            let root = merkle_tree.root();
+
+            for (i, leaf) in leaves.iter().enumerate() {
+                let proof = merkle_tree.generate_proof(i, &leaf).unwrap();
+                assert!(proof.verify(root, &leaf).unwrap());
+
+                let leaf_bits = leaf.to_bits_le();
+                let root = if use_bad_root { Default::default() } else { *root };
+
+                let traversal = proof.position_list().collect::<Vec<_>>();
+                let path = proof.path.clone();
+                let merkle_path = MerklePath::<Circuit, TwoToOneCRH>::new(mode, (traversal, path));
+
+                let circuit_leaf: Vec<Boolean<_>> = Inject::new(mode, leaf_bits);
+                assert_eq!(*leaf.to_bits_le(), circuit_leaf.eject_value());
+
+                Circuit::scope(format!("{mode} {MESSAGE} {i}"), || {
+                    let candidate_root = merkle_path.to_root(&leaf_crh, &two_to_one_crh, &circuit_leaf);
+                    assert_eq!(root, candidate_root.eject_value());
+
+                    let case = format!("mode = {mode}");
+                    assert_scope!(case, num_constants, num_public, num_private, num_constraints);
+                });
+            }
         }
 
-        let merkle_tree = MerkleTree::new(Arc::new(merkle_tree_parameters), &leaves).unwrap();
-        let root = merkle_tree.root();
+        // TODO (raychu86): Handle this test case.
+        // Ignore this test for now. Pedersen Hashes have inconsistent constraint sizes when mode is Constant.
+        #[ignore]
+        #[test]
+        fn test_to_root_constant() {
+            check_to_root(Mode::Constant, false, 6742, 0, 0, 0);
+        }
 
-        for (i, leaf) in leaves.iter().enumerate() {
-            let proof = merkle_tree.generate_proof(i, &leaf).unwrap();
-            assert!(proof.verify(root, &leaf).unwrap());
+        #[test]
+        fn test_to_root_public() {
+            check_to_root(Mode::Public, false, 4545, 0, 15664, 15672);
+        }
 
-            let leaf_bits = leaf.to_bits_le();
-            let root = if use_bad_root { Default::default() } else { *root };
+        #[test]
+        fn test_to_root_private() {
+            check_to_root(Mode::Private, false, 4545, 0, 15664, 15672);
+        }
 
-            let traversal = proof.position_list().collect::<Vec<_>>();
-            let path = proof.path.clone();
-            let merkle_path = MerklePath::<Circuit, TwoToOneCRH>::new(mode, (traversal, path));
+        #[should_panic]
+        #[test]
+        fn test_root_public_fails() {
+            check_to_root(Mode::Public, true, 4545, 0, 15664, 15672);
+        }
 
-            let circuit_leaf: Vec<Boolean<_>> = Inject::new(mode, leaf_bits);
-            assert_eq!(*leaf.to_bits_le(), circuit_leaf.eject_value());
-
-            Circuit::scope(format!("{mode} {MESSAGE} {i}"), || {
-                let candidate_root = merkle_path.to_root(&leaf_crh, &two_to_one_crh, &circuit_leaf);
-                assert_eq!(root, candidate_root.eject_value());
-
-                let case = format!("mode = {mode}");
-                assert_scope!(case, num_constants, num_public, num_private, num_constraints);
-            });
+        #[should_panic]
+        #[test]
+        fn test_root_private_fails() {
+            check_to_root(Mode::Private, true, 4545, 0, 15664, 15672);
         }
     }
 
-    // TODO (raychu86): Handle this test case.
-    // Ignore this test for now. Pedersen Hashes have inconsistent constraint sizes when mode is Constant.
-    #[ignore]
-    #[test]
-    fn test_to_root_constant() {
-        check_to_root(Mode::Constant, false, 6742, 0, 0, 0);
-    }
+    mod bhp {
+        use super::*;
+        use crate::algorithms::BHP;
 
-    #[test]
-    fn test_to_root_public() {
-        check_to_root(Mode::Public, false, 4545, 0, 15664, 15672);
-    }
+        use snarkvm_algorithms::crh::BHPCRH as NativeBHP;
+        use snarkvm_utilities::ToBytes;
 
-    #[test]
-    fn test_to_root_private() {
-        check_to_root(Mode::Private, false, 4545, 0, 15664, 15672);
-    }
+        const BHP_NUM_WINDOWS: usize = 64;
+        const BHP_LEAF_WINDOW_SIZE: usize = 4;
+        const BHP_TWO_TO_ONE_WINDOW_SIZE: usize = 8;
+        const TREE_DEPTH: usize = 4;
+        const MESSAGE: &str = "BHP merkle path test";
 
-    #[should_panic]
-    #[test]
-    fn test_root_public_fails() {
-        check_to_root(Mode::Public, true, 4545, 0, 15664, 15672);
-    }
+        type NativeLeafCRH = NativeBHP<EdwardsProjective, BHP_NUM_WINDOWS, BHP_LEAF_WINDOW_SIZE>;
+        type NativeTwoToOneCRH = NativeBHP<EdwardsProjective, BHP_NUM_WINDOWS, BHP_TWO_TO_ONE_WINDOW_SIZE>;
+        type Parameters = MaskedMerkleTreeParameters<NativeLeafCRH, NativeTwoToOneCRH, TREE_DEPTH>;
 
-    #[should_panic]
-    #[test]
-    fn test_root_private_fails() {
-        check_to_root(Mode::Private, true, 4545, 0, 15664, 15672);
+        type LeafCRH = BHP<Circuit, BHP_NUM_WINDOWS, BHP_LEAF_WINDOW_SIZE>;
+        type TwoToOneCRH = BHP<Circuit, BHP_NUM_WINDOWS, BHP_TWO_TO_ONE_WINDOW_SIZE>;
+
+        fn check_to_root(
+            mode: Mode,
+            use_bad_root: bool,
+            num_constants: u64,
+            num_public: u64,
+            num_private: u64,
+            num_constraints: u64,
+        ) {
+            let merkle_tree_parameters = Parameters::setup(MESSAGE);
+            let leaf_crh = LeafCRH::setup(MESSAGE);
+            let two_to_one_crh = TwoToOneCRH::setup(MESSAGE);
+
+            let mut rng = test_rng();
+            let mut leaves = Vec::new();
+            for _ in 0..1 << Parameters::DEPTH {
+                leaves.push(Fr::rand(&mut rng));
+            }
+
+            let merkle_tree = MerkleTree::new(Arc::new(merkle_tree_parameters), &leaves).unwrap();
+            let root = merkle_tree.root();
+
+            for (i, leaf) in leaves.iter().enumerate() {
+                let proof = merkle_tree.generate_proof(i, &leaf).unwrap();
+                assert!(proof.verify(root, &leaf).unwrap());
+
+                // Convert the leaf to bytes before bits. This is required because Merkle trees use `hash_bytes`.
+                let leaf_bits = leaf.to_bytes_le().unwrap().to_bits_le();
+                let root = if use_bad_root { Default::default() } else { *root };
+
+                let traversal = proof.position_list().collect::<Vec<_>>();
+                let path = proof.path.clone();
+                let merkle_path = MerklePath::<Circuit, TwoToOneCRH>::new(mode, (traversal, path));
+
+                let circuit_leaf: Vec<Boolean<_>> = Inject::new(mode, leaf_bits);
+
+                Circuit::scope(format!("{mode} {MESSAGE} {i}"), || {
+                    let candidate_root = merkle_path.to_root(&leaf_crh, &two_to_one_crh, &circuit_leaf);
+                    assert_eq!(root, candidate_root.eject_value());
+
+                    let case = format!("mode = {mode}");
+                    assert_scope!(case, num_constants, num_public, num_private, num_constraints);
+                });
+            }
+        }
+
+        #[test]
+        fn test_to_root_constant() {
+            check_to_root(Mode::Constant, false, 5650, 0, 0, 0);
+        }
+
+        #[test]
+        fn test_to_root_public() {
+            check_to_root(Mode::Public, false, 450, 0, 6605, 6613);
+        }
+
+        #[test]
+        fn test_to_root_private() {
+            check_to_root(Mode::Private, false, 450, 0, 6605, 6613);
+        }
+
+        #[should_panic]
+        #[test]
+        fn test_root_public_fails() {
+            check_to_root(Mode::Public, true, 450, 0, 6605, 6613);
+        }
+
+        #[should_panic]
+        #[test]
+        fn test_root_private_fails() {
+            check_to_root(Mode::Private, true, 450, 0, 6605, 6613);
+        }
     }
 }
