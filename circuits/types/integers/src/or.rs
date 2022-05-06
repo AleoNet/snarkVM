@@ -72,38 +72,20 @@ impl<E: Environment, I: IntegerType> BitOrAssign<&Integer<E, I>> for Integer<E, 
     }
 }
 
-impl<E: Environment, I: IntegerType> Metrics<dyn BitOr<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = (Mode, Mode);
+impl<E: Environment, I: IntegerType> Metadata<dyn BitOr<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
+    type Case = (CircuitType<Self>, CircuitType<Self>);
+    type OutputType = CircuitType<Self>;
 
     fn count(case: &Self::Case) -> Count {
-        match (case.0, case.1) {
+        match (case.0.eject_mode(), case.1.eject_mode()) {
             (Mode::Constant, _) | (_, Mode::Constant) => Count::is(0, 0, 0, 0),
             (_, _) => Count::is(0, 0, I::BITS, I::BITS),
         }
     }
-}
 
-impl<E: Environment, I: IntegerType> OutputMode<dyn BitOr<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = (CircuitType<Integer<E, I>>, CircuitType<Integer<E, I>>);
-
-    fn output_mode(case: &Self::Case) -> Mode {
-        match ((case.0.mode(), &case.0), (case.1.mode(), &case.1)) {
-            ((Mode::Constant, _), (Mode::Constant, _)) => Mode::Constant,
-            ((Mode::Constant, case), (mode, _)) | ((mode, _), (Mode::Constant, case)) => match case {
-                CircuitType::Constant(constant) => {
-                    // Determine if the constant is all ones.
-                    let is_all_ones = match I::is_signed() {
-                        true => constant.eject_value().into_dual() == I::Dual::MAX, // Cast to unsigned
-                        false => constant.eject_value() == I::MAX,
-                    };
-                    match is_all_ones {
-                        true => Mode::Constant,
-                        false => mode,
-                    }
-                }
-                _ => E::halt(format!("The constant is required to determine the output mode of Constant OR {mode}")),
-            },
-            (_, _) => Mode::Private,
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        match (case.0.eject_mode(), case.1.eject_mode()) {
+            _ => todo!(),
         }
     }
 }
@@ -125,8 +107,10 @@ mod tests {
         Circuit::scope(name, || {
             let candidate = (&a).bitor(&b);
             assert_eq!(expected, candidate.eject_value());
-            assert_count!(BitOr(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
-            assert_output_mode!(BitOr(Integer<I>, Integer<I>) => Integer<I>, &(CircuitType::from(&a), CircuitType::from(&b)), candidate);
+
+            let case = (CircuitType::from(a), CircuitType::from(b));
+            assert_count!(BitOr(Integer<I>, Integer<I>) => Integer<I>, &case);
+            assert_output_type!(BitOr(Integer<I>, Integer<I>) => Integer<I>, case, candidate);
         });
         Circuit::reset();
     }

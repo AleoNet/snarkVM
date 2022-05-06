@@ -28,19 +28,16 @@ impl<E: Environment, I: IntegerType> One for Integer<E, I> {
     }
 }
 
-impl<E: Environment, I: IntegerType> Metrics<dyn One<Boolean = Boolean<E>>> for Integer<E, I> {
+impl<E: Environment, I: IntegerType> Metadata<dyn One<Boolean = Boolean<E>>> for Integer<E, I> {
     type Case = ();
+    type OutputType = CircuitType<Integer<E, I>>;
 
     fn count(_case: &Self::Case) -> Count {
         Count::is(I::BITS, 0, 0, 0)
     }
-}
 
-impl<E: Environment, I: IntegerType> OutputMode<dyn One<Boolean = Boolean<E>>> for Integer<E, I> {
-    type Case = ();
-
-    fn output_mode(_case: &Self::Case) -> Mode {
-        Mode::Constant
+    fn output_type(_case: Self::Case) -> Self::OutputType {
+        CircuitType::from(Self::one())
     }
 }
 
@@ -55,7 +52,7 @@ mod tests {
             let candidate = Integer::<Circuit, I>::one();
             assert_eq!(I::one(), candidate.eject_value());
             assert_count!(One<Boolean>() => Integer<I>, &());
-            assert_output_mode!(One<Boolean>() => Integer<I>, &(), candidate);
+            assert_output_type!(One<Boolean>() => Integer<I>, (), candidate);
         });
         // Should equal 1.
         assert!(Integer::<Circuit, I>::one().is_one().eject_value());

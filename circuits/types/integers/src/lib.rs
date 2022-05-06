@@ -60,10 +60,10 @@ pub type U128<E> = Integer<E, u128>;
 use snarkvm_circuits_environment::{
     assert_count,
     assert_count_fails,
-    assert_output_mode,
+    assert_output_type,
     assert_scope,
     count,
-    output_mode,
+    output_type,
 };
 
 use snarkvm_circuits_environment::prelude::*;

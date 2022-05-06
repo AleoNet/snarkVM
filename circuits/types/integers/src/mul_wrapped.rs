@@ -104,13 +104,14 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
     }
 }
 
-impl<E: Environment, I: IntegerType> Metrics<dyn MulWrapped<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = (Mode, Mode);
+impl<E: Environment, I: IntegerType> Metadata<dyn MulWrapped<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
+    type Case = (CircuitType<Self>, CircuitType<Self>);
+    type OutputType = CircuitType<Self>;
 
     fn count(case: &Self::Case) -> Count {
         // Case 1 - 2 integers fit in 1 field element (u8, u16, u32, u64, i8, i16, i32, i64).
         if 2 * I::BITS < (E::BaseField::size_in_bits() - 1) as u64 {
-            match (case.0, case.1) {
+            match (case.0.eject_mode(), case.1.eject_mode()) {
                 (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
                 (Mode::Constant, _) | (_, Mode::Constant) => Count::is(0, 0, 2 * I::BITS, (2 * I::BITS) + 1),
                 (_, _) => Count::is(0, 0, (2 * I::BITS) + 1, (2 * I::BITS) + 2),
@@ -118,7 +119,7 @@ impl<E: Environment, I: IntegerType> Metrics<dyn MulWrapped<Integer<E, I>, Outpu
         }
         // Case 2 - 1.5 integers fit in 1 field element (u128, i128).
         else if (I::BITS + I::BITS / 2) < (E::BaseField::size_in_bits() - 1) as u64 {
-            match (case.0, case.1) {
+            match (case.0.eject_mode(), case.1.eject_mode()) {
                 (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
                 (Mode::Constant, _) | (_, Mode::Constant) => Count::is(0, 0, I::BITS + 65, I::BITS + 66),
                 (_, _) => Count::is(0, 0, I::BITS + 68, I::BITS + 69),
@@ -129,17 +130,11 @@ impl<E: Environment, I: IntegerType> Metrics<dyn MulWrapped<Integer<E, I>, Outpu
             todo!()
         }
     }
-}
 
-impl<E: Environment, I: IntegerType> OutputMode<dyn MulWrapped<Integer<E, I>, Output = Integer<E, I>>>
-    for Integer<E, I>
-{
-    type Case = (Mode, Mode);
-
-    fn output_mode(case: &Self::Case) -> Mode {
-        match (case.0, case.1) {
-            (Mode::Constant, Mode::Constant) => Mode::Constant,
-            (_, _) => Mode::Private,
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        match (case.0.eject_mode(), case.1.eject_mode()) {
+            (Mode::Constant, Mode::Constant) => CircuitType::from(case.0.circuit().mul_wrapped(case.1.circuit())),
+            (_, _) => CircuitType::Private,
         }
     }
 }
@@ -161,8 +156,10 @@ mod tests {
         Circuit::scope(name, || {
             let candidate = a.mul_wrapped(&b);
             assert_eq!(expected, candidate.eject_value());
-            assert_count!(MulWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
-            assert_output_mode!(MulWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b), candidate);
+
+            let case = (CircuitType::from(a), CircuitType::from(b));
+            assert_count!(MulWrapped(Integer<I>, Integer<I>) => Integer<I>, &case);
+            assert_output_type!(MulWrapped(Integer<I>, Integer<I>) => Integer<I>, case, candidate);
         });
         Circuit::reset();
     }

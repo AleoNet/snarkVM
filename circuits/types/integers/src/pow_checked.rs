@@ -84,13 +84,14 @@ impl<E: Environment, I: IntegerType, M: Magnitude> PowChecked<Integer<E, M>> for
     }
 }
 
-impl<E: Environment, I: IntegerType, M: Magnitude> Metrics<dyn PowChecked<Integer<E, M>, Output = Integer<E, I>>>
+impl<E: Environment, I: IntegerType, M: Magnitude> Metadata<dyn PowChecked<Integer<E, M>, Output = Integer<E, I>>>
     for Integer<E, I>
 {
-    type Case = (Mode, Mode);
+    type Case = (CircuitType<Self>, CircuitType<Self>);
+    type OutputType = CircuitType<Self>;
 
     fn count(case: &Self::Case) -> Count {
-        match (case.0, case.1) {
+        match (case.0.eject_mode(), case.1.eject_mode()) {
             (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
             (Mode::Constant, _) | (_, Mode::Constant) => {
                 let mul_count = count!(Integer<E, I>, MulWrapped<Integer<E, I>, Output=Integer<E, I>>, case);
@@ -102,30 +103,9 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metrics<dyn PowChecked<Intege
             }
         }
     }
-}
 
-impl<E: Environment, I: IntegerType, M: Magnitude> OutputMode<dyn PowChecked<Integer<E, M>, Output = Integer<E, I>>>
-    for Integer<E, I>
-{
-    type Case = (Mode, CircuitType<Integer<E, M>>);
-
-    fn output_mode(case: &Self::Case) -> Mode {
-        match (case.0, (case.1.mode(), &case.1)) {
-            (Mode::Constant, (Mode::Constant, _)) => Mode::Constant,
-            (Mode::Constant, (mode, _)) => match mode {
-                Mode::Constant => Mode::Constant,
-                _ => Mode::Private,
-            },
-            (_, (Mode::Constant, case)) => match case {
-                // Determine if the constant is all zeros.
-                CircuitType::Constant(constant) => match constant.eject_value().is_zero() {
-                    true => Mode::Constant,
-                    false => Mode::Private,
-                },
-                _ => E::halt("The constant is required for the output mode of `pow_wrapped` with a constant."),
-            },
-            (_, _) => Mode::Private,
-        }
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        todo!()
     }
 }
 
@@ -155,7 +135,7 @@ mod tests {
                 let candidate = a.pow_checked(&b);
                 assert_eq!(expected, candidate.eject_value());
                 // assert_count!(PowChecked(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b));
-                // assert_output_mode!(PowChecked(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, CircuitType::from(&b)), candidate);
+                // assert_output_type!(PowChecked(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, CircuitType::from(&b)), candidate);
             }),
             None => {
                 match (mode_a, mode_b) {

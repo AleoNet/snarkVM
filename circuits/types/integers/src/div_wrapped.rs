@@ -67,36 +67,31 @@ impl<E: Environment, I: IntegerType> DivWrapped<Self> for Integer<E, I> {
     }
 }
 
-impl<E: Environment, I: IntegerType> Metrics<dyn DivWrapped<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = (Mode, Mode);
+impl<E: Environment, I: IntegerType> Metadata<dyn DivWrapped<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
+    type Case = (CircuitType<Self>, CircuitType<Self>);
+    type OutputType = CircuitType<Self>;
 
     fn count(case: &Self::Case) -> Count {
         match I::is_signed() {
-            true => match (case.0, case.1) {
+            true => match (case.0.eject_mode(), case.1.eject_mode()) {
                 (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
                 (Mode::Constant, _) | (_, Mode::Constant) => {
                     Count::less_than(6 * I::BITS, 0, (7 * I::BITS) + 10, (8 * I::BITS) + 16)
                 }
                 (_, _) => Count::is(5 * I::BITS, 0, (9 * I::BITS) + 10, (9 * I::BITS) + 16),
             },
-            false => match (case.0, case.1) {
+            false => match (case.0.eject_mode(), case.1.eject_mode()) {
                 (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
                 (_, Mode::Constant) => Count::is(0, 0, 2 * I::BITS, (2 * I::BITS) + 1),
                 (Mode::Constant, _) | (_, _) => Count::is(0, 0, (2 * I::BITS) + 1, (2 * I::BITS) + 2),
             },
         }
     }
-}
 
-impl<E: Environment, I: IntegerType> OutputMode<dyn DivWrapped<Integer<E, I>, Output = Integer<E, I>>>
-    for Integer<E, I>
-{
-    type Case = (Mode, Mode);
-
-    fn output_mode(case: &Self::Case) -> Mode {
-        match (case.0, case.1) {
-            (Mode::Constant, Mode::Constant) => Mode::Constant,
-            (_, _) => Mode::Private,
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        match (case.0.eject_mode(), case.1.eject_mode()) {
+            (Mode::Constant, Mode::Constant) => CircuitType::from(case.0.circuit().div_wrapped(case.1.circuit())),
+            (_, _) => CircuitType::Private,
         }
     }
 }
@@ -122,8 +117,10 @@ mod tests {
             Circuit::scope(name, || {
                 let candidate = a.div_wrapped(&b);
                 assert_eq!(expected, candidate.eject_value());
-                assert_count!(DivWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
-                assert_output_mode!(DivWrapped(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b), candidate);
+
+                let case = (CircuitType::from(a), CircuitType::from(b));
+                assert_count!(DivWrapped(Integer<I>, Integer<I>) => Integer<I>, &case);
+                assert_output_type!(DivWrapped(Integer<I>, Integer<I>) => Integer<I>, case, candidate);
             })
         }
         Circuit::reset();

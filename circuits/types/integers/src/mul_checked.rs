@@ -63,19 +63,16 @@ impl<E: Environment, I: IntegerType> MulAssign<&Integer<E, I>> for Integer<E, I>
     }
 }
 
-impl<E: Environment, I: IntegerType> Metrics<dyn Mul<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = (Mode, Mode);
+impl<E: Environment, I: IntegerType> Metadata<dyn Mul<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
+    type Case = (CircuitType<Self>, CircuitType<Self>);
+    type OutputType = CircuitType<Self>;
 
     fn count(case: &Self::Case) -> Count {
-        <Self as Metrics<dyn DivChecked<Integer<E, I>, Output = Integer<E, I>>>>::count(case)
+        count!(Self, MulChecked<Self, Output = Self>, case)
     }
-}
 
-impl<E: Environment, I: IntegerType> OutputMode<dyn Mul<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = (Mode, Mode);
-
-    fn output_mode(case: &Self::Case) -> Mode {
-        <Self as OutputMode<dyn DivChecked<Integer<E, I>, Output = Integer<E, I>>>>::output_mode(case)
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        output_type!(Self, MulChecked<Self, Output = Self>, case)
     }
 }
 
@@ -132,15 +129,16 @@ impl<E: Environment, I: IntegerType> MulChecked<Self> for Integer<E, I> {
     }
 }
 
-impl<E: Environment, I: IntegerType> Metrics<dyn MulChecked<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = (Mode, Mode);
+impl<E: Environment, I: IntegerType> Metadata<dyn MulChecked<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
+    type Case = (CircuitType<Self>, CircuitType<Self>);
+    type OutputType = CircuitType<Self>;
 
     fn count(case: &Self::Case) -> Count {
         // Case 1 - 2 integers fit in 1 field element (u8, u16, u32, u64, i8, i16, i32, i64).
         if 2 * I::BITS < (E::BaseField::size_in_bits() - 1) as u64 {
             match I::is_signed() {
                 // Signed case
-                true => match (case.0, case.1) {
+                true => match (case.0.eject_mode(), case.1.eject_mode()) {
                     (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
                     (Mode::Constant, _) | (_, Mode::Constant) => {
                         Count::is(4 * I::BITS, 0, (8 * I::BITS) + 5, (8 * I::BITS) + 9)
@@ -148,7 +146,7 @@ impl<E: Environment, I: IntegerType> Metrics<dyn MulChecked<Integer<E, I>, Outpu
                     (_, _) => Count::is(3 * I::BITS, 0, (10 * I::BITS) + 8, (10 * I::BITS) + 13),
                 },
                 // Unsigned case
-                false => match (case.0, case.1) {
+                false => match (case.0.eject_mode(), case.1.eject_mode()) {
                     (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
                     (Mode::Constant, _) | (_, Mode::Constant) => Count::is(0, 0, (3 * I::BITS) - 1, (3 * I::BITS) + 1),
                     (_, _) => Count::is(0, 0, 3 * I::BITS, (3 * I::BITS) + 2),
@@ -159,7 +157,7 @@ impl<E: Environment, I: IntegerType> Metrics<dyn MulChecked<Integer<E, I>, Outpu
         else if (I::BITS + I::BITS / 2) < (E::BaseField::size_in_bits() - 1) as u64 {
             match I::is_signed() {
                 // Signed case
-                true => match (case.0, case.1) {
+                true => match (case.0.eject_mode(), case.1.eject_mode()) {
                     (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
                     (Mode::Constant, _) | (_, Mode::Constant) => {
                         Count::is(4 * I::BITS, 0, (9 * I::BITS) + 7, (9 * I::BITS) + 12)
@@ -167,7 +165,7 @@ impl<E: Environment, I: IntegerType> Metrics<dyn MulChecked<Integer<E, I>, Outpu
                     (_, _) => Count::is(3 * I::BITS, 0, (11 * I::BITS) + 13, (11 * I::BITS) + 19),
                 },
                 // Unsigned case
-                false => match (case.0, case.1) {
+                false => match (case.0.eject_mode(), case.1.eject_mode()) {
                     (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
                     (Mode::Constant, _) | (_, Mode::Constant) => Count::is(0, 0, (4 * I::BITS) + 1, (4 * I::BITS) + 4),
                     (_, _) => Count::is(0, 0, (4 * I::BITS) + 5, (4 * I::BITS) + 8),
@@ -179,17 +177,11 @@ impl<E: Environment, I: IntegerType> Metrics<dyn MulChecked<Integer<E, I>, Outpu
             todo!()
         }
     }
-}
 
-impl<E: Environment, I: IntegerType> OutputMode<dyn MulChecked<Integer<E, I>, Output = Integer<E, I>>>
-    for Integer<E, I>
-{
-    type Case = (Mode, Mode);
-
-    fn output_mode(case: &Self::Case) -> Mode {
-        match (case.0, case.1) {
-            (Mode::Constant, Mode::Constant) => Mode::Constant,
-            (_, _) => Mode::Private,
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        match (case.0.eject_mode(), case.1.eject_mode()) {
+            (Mode::Constant, Mode::Constant) => CircuitType::from(case.0.circuit().mul_checked(case.1.circuit())),
+            (_, _) => CircuitType::Private,
         }
     }
 }
@@ -212,14 +204,18 @@ mod tests {
             Some(expected) => Circuit::scope(name, || {
                 let candidate = a.mul_checked(&b);
                 assert_eq!(expected, candidate.eject_value());
-                assert_count!(MulChecked(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
-                assert_output_mode!(MulChecked(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b), candidate);
+
+                let case = (CircuitType::from(a), CircuitType::from(b));
+                assert_count!(MulChecked(Integer<I>, Integer<I>) => Integer<I>, &case);
+                assert_output_type!(MulChecked(Integer<I>, Integer<I>) => Integer<I>, case, candidate);
             }),
             None => match (mode_a, mode_b) {
                 (Mode::Constant, Mode::Constant) => check_operation_halts(&a, &b, Integer::mul_checked),
                 _ => Circuit::scope(name, || {
                     let _candidate = a.mul_checked(&b);
-                    assert_count_fails!(MulChecked(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
+
+                    let case = (CircuitType::from(a), CircuitType::from(b));
+                    assert_count_fails!(MulChecked(Integer<I>, Integer<I>) => Integer<I>, &case);
                 }),
             },
         }

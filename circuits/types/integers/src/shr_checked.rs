@@ -97,26 +97,26 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShrChecked<Integer<E, M>> for
     }
 }
 
-impl<E: Environment, I: IntegerType> Metrics<dyn Shr<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = (Mode, Mode);
-
-    fn count(case: &Self::Case) -> Count {
-        <Self as Metrics<dyn DivChecked<Integer<E, I>, Output = Integer<E, I>>>>::count(case)
-    }
-}
-
-impl<E: Environment, I: IntegerType> OutputMode<dyn Shr<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = (Mode, Mode);
-
-    fn output_mode(case: &Self::Case) -> Mode {
-        <Self as OutputMode<dyn DivChecked<Integer<E, I>, Output = Integer<E, I>>>>::output_mode(case)
-    }
-}
-
-impl<E: Environment, I: IntegerType, M: Magnitude> Metrics<dyn ShrChecked<Integer<E, M>, Output = Integer<E, I>>>
+impl<E: Environment, I: IntegerType, M: Magnitude> Metadata<dyn Shr<Integer<E, M>, Output = Integer<E, I>>>
     for Integer<E, I>
 {
-    type Case = (Mode, Mode);
+    type Case = (CircuitType<Self>, CircuitType<Integer<E, M>>);
+    type OutputType = CircuitType<Self>;
+
+    fn count(case: &Self::Case) -> Count {
+        count!(Self, ShrChecked<Integer<E, M>, Output = Integer<E, I>>, case)
+    }
+
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        output_type!(Self, ShrChecked<Integer<E, M>, Output = Integer<E, I>>, case)
+    }
+}
+
+impl<E: Environment, I: IntegerType, M: Magnitude> Metadata<dyn ShrChecked<Integer<E, M>, Output = Integer<E, I>>>
+    for Integer<E, I>
+{
+    type Case = (CircuitType<Self>, CircuitType<Integer<E, M>>);
+    type OutputType = CircuitType<Self>;
 
     fn count(case: &Self::Case) -> Count {
         // A quick hack that matches `(u8 -> 0, u16 -> 1, u32 -> 2, u64 -> 3, u128 -> 4)`.
@@ -125,7 +125,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metrics<dyn ShrChecked<Intege
             None => E::halt(format!("Integer of {num_bits} bits is not supported")),
         };
 
-        match (case.0, case.1) {
+        match (case.0.eject_mode(), case.1.eject_mode()) {
             (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
             (_, Mode::Constant) => Count::is(0, 0, 0, 0),
             (Mode::Constant, _) | (_, _) => {
@@ -134,18 +134,13 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metrics<dyn ShrChecked<Intege
             }
         }
     }
-}
 
-impl<E: Environment, I: IntegerType, M: Magnitude> OutputMode<dyn ShrChecked<Integer<E, M>, Output = Integer<E, I>>>
-    for Integer<E, I>
-{
-    type Case = (Mode, Mode);
-
-    fn output_mode(case: &Self::Case) -> Mode {
-        match (case.0, case.1) {
-            (Mode::Constant, Mode::Constant) => Mode::Constant,
-            (mode_a, Mode::Constant) => mode_a,
-            (_, _) => Mode::Private,
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        match (case.0.eject_mode(), case.1.eject_mode()) {
+            (Mode::Constant, Mode::Constant) => CircuitType::from(case.0.circuit().shr_checked(case.1.circuit())),
+            (Mode::Public, Mode::Constant) => CircuitType::Public,
+            (Mode::Private, Mode::Constant) => CircuitType::Private,
+            (_, _) => CircuitType::Private,
         }
     }
 }
@@ -174,14 +169,18 @@ mod tests {
             Some(expected) => Circuit::scope(name, || {
                 let candidate = a.shr_checked(&b);
                 assert_eq!(expected, candidate.eject_value());
-                assert_count!(ShrChecked(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b));
-                assert_output_mode!(ShrChecked(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b), candidate);
+
+                let case = (CircuitType::from(a), CircuitType::from(b));
+                assert_count!(ShrChecked(Integer<I>, Integer<M>) => Integer<I>, &case);
+                assert_output_type!(ShrChecked(Integer<I>, Integer<M>) => Integer<I>, case, candidate);
             }),
             None => match (mode_a, mode_b) {
                 (_, Mode::Constant) => check_operation_halts(&a, &b, Integer::shr_checked),
                 _ => Circuit::scope(name, || {
                     let _candidate = a.shr_checked(&b);
-                    assert_count_fails!(ShrChecked(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b));
+
+                    let case = (CircuitType::from(a), CircuitType::from(b));
+                    assert_count_fails!(ShrChecked(Integer<I>, Integer<M>) => Integer<I>, &case);
                 }),
             },
         };

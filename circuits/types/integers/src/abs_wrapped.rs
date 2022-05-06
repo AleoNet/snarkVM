@@ -35,30 +35,27 @@ impl<E: Environment, I: IntegerType> AbsWrapped for &Integer<E, I> {
     }
 }
 
-impl<E: Environment, I: IntegerType> Metrics<dyn AbsWrapped<Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = Mode;
+impl<E: Environment, I: IntegerType> Metadata<dyn AbsWrapped<Output = Integer<E, I>>> for Integer<E, I> {
+    type Case = CircuitType<Self>;
+    type OutputType = CircuitType<Self>;
 
     fn count(case: &Self::Case) -> Count {
         match I::is_signed() {
-            true => match case {
+            true => match case.eject_mode() {
                 Mode::Constant => Count::is(2 * I::BITS, 0, 0, 0),
                 _ => Count::is(I::BITS, 0, (2 * I::BITS) + 1, (2 * I::BITS) + 2),
             },
             false => Count::is(0, 0, 0, 0),
         }
     }
-}
 
-impl<E: Environment, I: IntegerType> OutputMode<dyn AbsWrapped<Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = Mode;
-
-    fn output_mode(case: &Self::Case) -> Mode {
+    fn output_type(case: Self::Case) -> Self::OutputType {
         match I::is_signed() {
             true => match case.is_constant() {
-                true => Mode::Constant,
-                false => Mode::Private,
+                true => CircuitType::from(case.circuit().abs_wrapped()),
+                false => CircuitType::Private,
             },
-            false => *case,
+            false => case,
         }
     }
 }
@@ -78,9 +75,11 @@ mod tests {
         let expected = value.wrapping_abs();
         Circuit::scope(name, || {
             let candidate = a.abs_wrapped();
-            assert_eq!(expected, candidate.eject_value());
-            assert_count!(AbsWrapped(Integer<I>) => Integer<I>, &mode);
-            assert_output_mode!(AbsWrapped(Integer<I>) => Integer<I>, &mode, candidate);
+            assert_eq!(expected, (&candidate).eject_value());
+
+            let case = CircuitType::from(&candidate);
+            assert_count!(AbsWrapped(Integer<I>) => Integer<I>, &case);
+            assert_output_type!(AbsWrapped(Integer<I>) => Integer<I>, case, candidate);
         });
         Circuit::reset();
     }

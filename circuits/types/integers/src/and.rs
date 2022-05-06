@@ -72,40 +72,53 @@ impl<E: Environment, I: IntegerType> BitAndAssign<&Integer<E, I>> for Integer<E,
     }
 }
 
-impl<E: Environment, I: IntegerType> Metrics<dyn BitAnd<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = (Mode, Mode);
+impl<E: Environment, I: IntegerType> Metadata<dyn BitAnd<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
+    type Case = (CircuitType<Self>, CircuitType<Self>);
+    type OutputType = CircuitType<Self>;
 
     fn count(case: &Self::Case) -> Count {
-        match (case.0, case.1) {
+        match (case.0.eject_mode(), case.1.eject_mode()) {
             (Mode::Constant, _) | (_, Mode::Constant) => Count::is(0, 0, 0, 0),
             (_, _) => Count::is(0, 0, I::BITS, I::BITS),
         }
     }
-}
 
-impl<E: Environment, I: IntegerType> OutputMode<dyn BitAnd<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = (CircuitType<Integer<E, I>>, CircuitType<Integer<E, I>>);
-
-    fn output_mode(case: &Self::Case) -> Mode {
-        match (case.0.mode(), case.1.mode()) {
-            (Mode::Constant, Mode::Constant) => Mode::Constant,
-            (Mode::Constant, mode_b) => match &case.0 {
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        match (case.0.eject_mode(), case.1.eject_mode()) {
+            (Mode::Constant, Mode::Constant) => CircuitType::from(case.0.circuit().bitand(case.1.circuit())),
+            (Mode::Constant, Mode::Public) => match &case.0 {
                 // Determine if the constant is all zeros.
                 CircuitType::Constant(constant) => match constant.eject_value().is_zero() {
-                    true => Mode::Constant,
-                    false => mode_b,
+                    true => CircuitType::from(Integer::zero()),
+                    false => CircuitType::Public,
                 },
-                _ => E::halt(format!("The constant is required to determine the output mode of Constant AND {mode_b}")),
+                _ => E::halt(format!("The constant is required to determine the output mode of Constant AND Public")),
             },
-            (mode_a, Mode::Constant) => match &case.1 {
+            (Mode::Constant, Mode::Private) => match &case.0 {
                 // Determine if the constant is all zeros.
                 CircuitType::Constant(constant) => match constant.eject_value().is_zero() {
-                    true => Mode::Constant,
-                    false => mode_a,
+                    true => CircuitType::from(Integer::zero()),
+                    false => CircuitType::Private,
                 },
-                _ => E::halt(format!("The constant is required to determine the output mode of {mode_a} AND Constant")),
+                _ => E::halt(format!("The constant is required to determine the output mode of Constant AND Private")),
             },
-            (_, _) => Mode::Private,
+            (Mode::Public, Mode::Constant) => match &case.1 {
+                // Determine if the constant is all zeros.
+                CircuitType::Constant(constant) => match constant.eject_value().is_zero() {
+                    true => CircuitType::from(Integer::one()),
+                    false => CircuitType::Public,
+                },
+                _ => E::halt(format!("The constant is required to determine the output mode of Public AND Constant")),
+            },
+            (Mode::Private, Mode::Constant) => match &case.1 {
+                // Determine if the constant is all zeros.
+                CircuitType::Constant(constant) => match constant.eject_value().is_zero() {
+                    true => CircuitType::from(Integer::one()),
+                    false => CircuitType::Private,
+                },
+                _ => E::halt(format!("The constant is required to determine the output mode of Private AND Constant")),
+            },
+            (_, _) => CircuitType::Private,
         }
     }
 }
@@ -127,8 +140,10 @@ mod tests {
         Circuit::scope(name, || {
             let candidate = (&a).bitand(&b);
             assert_eq!(expected, candidate.eject_value());
-            assert_count!(BitAnd(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
-            assert_output_mode!(BitAnd(Integer<I>, Integer<I>) => Integer<I>, &(CircuitType::from(&a), CircuitType::from(&b)), candidate);
+
+            let case = (CircuitType::from(a), CircuitType::from(b));
+            assert_count!(BitAnd(Integer<I>, Integer<I>) => Integer<I>, &case);
+            assert_output_type!(BitAnd(Integer<I>, Integer<I>) => Integer<I>, case, candidate);
         });
         Circuit::reset();
     }

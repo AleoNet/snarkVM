@@ -16,6 +16,8 @@
 
 use super::*;
 
+// TODO: Split into multiple traits for coherent Metadata implementations.
+
 impl<E: Environment, I: IntegerType> Compare<Self> for Integer<E, I> {
     type Output = Boolean<E>;
 
@@ -65,31 +67,28 @@ impl<E: Environment, I: IntegerType> Compare<Self> for Integer<E, I> {
     }
 }
 
-impl<E: Environment, I: IntegerType> Metrics<dyn Compare<Integer<E, I>, Output = Boolean<E>>> for Integer<E, I> {
-    type Case = (Mode, Mode);
+impl<E: Environment, I: IntegerType> Metadata<dyn Compare<Integer<E, I>, Output = Boolean<E>>> for Integer<E, I> {
+    type Case = (CircuitType<Self>, CircuitType<Self>);
+    type OutputType = CircuitType<Boolean<E>>;
 
     fn count(case: &Self::Case) -> Count {
         match I::is_signed() {
-            true => match (case.0, case.1) {
+            true => match (case.0.eject_mode(), case.1.eject_mode()) {
                 (Mode::Constant, Mode::Constant) => Count::is(1, 0, 0, 0),
                 (Mode::Constant, _) | (_, Mode::Constant) => Count::is(I::BITS, 0, I::BITS + 2, I::BITS + 3),
                 (_, _) => Count::is(I::BITS, 0, I::BITS + 4, I::BITS + 5),
             },
-            false => match (case.0, case.1) {
+            false => match (case.0.eject_mode(), case.1.eject_mode()) {
                 (Mode::Constant, Mode::Constant) => Count::is(1, 0, 0, 0),
                 (_, _) => Count::is(I::BITS, 0, I::BITS + 1, I::BITS + 2),
             },
         }
     }
-}
 
-impl<E: Environment, I: IntegerType> OutputMode<dyn Compare<Integer<E, I>, Output = Boolean<E>>> for Integer<E, I> {
-    type Case = (Mode, Mode);
-
-    fn output_mode(case: &Self::Case) -> Mode {
-        match (case.0, case.1) {
-            (Mode::Constant, Mode::Constant) => Mode::Constant,
-            (_, _) => Mode::Private,
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        match (case.0.eject_mode(), case.1.eject_mode()) {
+            (Mode::Constant, Mode::Constant) => CircuitType::from(case.0.circuit().is_less_than(case.1.circuit())),
+            (_, _) => CircuitType::Private,
         }
     }
 }
@@ -113,8 +112,10 @@ mod tests {
         Circuit::scope(name, || {
             let candidate = a.is_less_than(&b);
             assert_eq!(expected, candidate.eject_value());
-            assert_count!(Compare(Integer<I>, Integer<I>) => Boolean, &(mode_a, mode_b));
-            assert_output_mode!(Compare(Integer<I>, Integer<I>) => Boolean, &(mode_a, mode_b), candidate);
+
+            let case = (CircuitType::from(&a), CircuitType::from(&b));
+            assert_count!(Compare(Integer<I>, Integer<I>) => Boolean, &case);
+            assert_output_type!(Compare(Integer<I>, Integer<I>) => Boolean, case, candidate);
         });
         Circuit::reset();
 
@@ -123,8 +124,10 @@ mod tests {
         Circuit::scope(name, || {
             let candidate = a.is_less_than_or_equal(&b);
             assert_eq!(expected, candidate.eject_value());
-            assert_count!(Compare(Integer<I>, Integer<I>) => Boolean, &(mode_a, mode_b));
-            assert_output_mode!(Compare(Integer<I>, Integer<I>) => Boolean, &(mode_a, mode_b), candidate);
+
+            let case = (CircuitType::from(&a), CircuitType::from(&b));
+            assert_count!(Compare(Integer<I>, Integer<I>) => Boolean, &case);
+            assert_output_type!(Compare(Integer<I>, Integer<I>) => Boolean, case, candidate);
         });
         Circuit::reset();
 
@@ -133,8 +136,10 @@ mod tests {
         Circuit::scope(name, || {
             let candidate = a.is_greater_than(&b);
             assert_eq!(expected, candidate.eject_value());
-            assert_count!(Compare(Integer<I>, Integer<I>) => Boolean, &(mode_a, mode_b));
-            assert_output_mode!(Compare(Integer<I>, Integer<I>) => Boolean, &(mode_a, mode_b), candidate);
+
+            let case = (CircuitType::from(&a), CircuitType::from(&b));
+            assert_count!(Compare(Integer<I>, Integer<I>) => Boolean, &case);
+            assert_output_type!(Compare(Integer<I>, Integer<I>) => Boolean, case, candidate);
         });
         Circuit::reset();
 
@@ -143,8 +148,10 @@ mod tests {
         Circuit::scope(name, || {
             let candidate = a.is_greater_than_or_equal(&b);
             assert_eq!(expected, candidate.eject_value());
-            assert_count!(Compare(Integer<I>, Integer<I>) => Boolean, &(mode_a, mode_b));
-            assert_output_mode!(Compare(Integer<I>, Integer<I>) => Boolean, &(mode_a, mode_b), candidate);
+
+            let case = (CircuitType::from(a), CircuitType::from(b));
+            assert_count!(Compare(Integer<I>, Integer<I>) => Boolean, &case);
+            assert_output_type!(Compare(Integer<I>, Integer<I>) => Boolean, case, candidate);
         });
         Circuit::reset();
     }

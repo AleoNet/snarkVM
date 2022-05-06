@@ -35,30 +35,27 @@ impl<E: Environment, I: IntegerType> AbsChecked for &Integer<E, I> {
     }
 }
 
-impl<E: Environment, I: IntegerType> Metrics<dyn AbsChecked<Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = Mode;
+impl<E: Environment, I: IntegerType> Metadata<dyn AbsChecked<Output = Integer<E, I>>> for Integer<E, I> {
+    type Case = CircuitType<Integer<E, I>>;
+    type OutputType = CircuitType<Integer<E, I>>;
 
     fn count(case: &Self::Case) -> Count {
         match I::is_signed() {
-            true => match case {
+            true => match case.eject_mode() {
                 Mode::Constant => Count::is(2 * I::BITS, 0, 0, 0),
                 _ => Count::is(I::BITS, 0, (2 * I::BITS) + 3, (2 * I::BITS) + 5),
             },
             false => Count::is(0, 0, 0, 0),
         }
     }
-}
 
-impl<E: Environment, I: IntegerType> OutputMode<dyn AbsChecked<Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = Mode;
-
-    fn output_mode(case: &Self::Case) -> Mode {
+    fn output_type(case: Self::Case) -> Self::OutputType {
         match I::is_signed() {
             true => match case.is_constant() {
-                true => Mode::Constant,
-                false => Mode::Private,
+                true => CircuitType::from(case.circuit().abs_checked()),
+                false => CircuitType::Private,
             },
-            false => *case,
+            false => case,
         }
     }
 }
@@ -78,16 +75,20 @@ mod tests {
         let a = Integer::<Circuit, I>::new(mode, value);
         match value.checked_abs() {
             Some(expected) => Circuit::scope(name, || {
-                let candidate = a.abs_checked();
+                let candidate = (&a).abs_checked();
                 assert_eq!(expected, candidate.eject_value());
-                assert_count!(AbsChecked(Integer<I>) => Integer<I>, &mode);
-                assert_output_mode!(AbsChecked(Integer<I>) => Integer<I>, &mode, candidate);
+
+                let case = CircuitType::from(a);
+                assert_count!(AbsChecked(Integer<I>) => Integer<I>, &case);
+                assert_output_type!(AbsChecked(Integer<I>) => Integer<I>, case, candidate);
             }),
             None => match mode {
                 Mode::Constant => check_unary_operation_halts(a, |a: Integer<Circuit, I>| a.abs_checked()),
                 _ => Circuit::scope(name, || {
-                    let _candidate = a.abs_checked();
-                    assert_count_fails!(AbsChecked(Integer<I>) => Integer<I>, &mode);
+                    let _candidate = (&a).abs_checked();
+
+                    let case = CircuitType::from(a);
+                    assert_count_fails!(AbsChecked(Integer<I>) => Integer<I>, &case);
                 }),
             },
         }
@@ -124,18 +125,18 @@ mod tests {
         }
     }
 
-    test_integer_unary!(run_test, i8, equals);
-    test_integer_unary!(run_test, i16, equals);
-    test_integer_unary!(run_test, i32, equals);
-    test_integer_unary!(run_test, i64, equals);
-    test_integer_unary!(run_test, i128, equals);
+    test_integer_unary!(run_test, i8, abs_checked);
+    test_integer_unary!(run_test, i16, abs_checked);
+    test_integer_unary!(run_test, i32, abs_checked);
+    test_integer_unary!(run_test, i64, abs_checked);
+    test_integer_unary!(run_test, i128, abs_checked);
 
-    test_integer_unary!(run_test, u8, equals);
-    test_integer_unary!(run_test, u16, equals);
-    test_integer_unary!(run_test, u32, equals);
-    test_integer_unary!(run_test, u64, equals);
-    test_integer_unary!(run_test, u128, equals);
+    test_integer_unary!(run_test, u8, abs_checked);
+    test_integer_unary!(run_test, u16, abs_checked);
+    test_integer_unary!(run_test, u32, abs_checked);
+    test_integer_unary!(run_test, u64, abs_checked);
+    test_integer_unary!(run_test, u128, abs_checked);
 
-    test_integer_unary!(#[ignore], run_exhaustive_test, u8, equals, exhaustive);
-    test_integer_unary!(#[ignore], run_exhaustive_test, i8, equals, exhaustive);
+    test_integer_unary!(#[ignore], run_exhaustive_test, u8, abs_checked, exhaustive);
+    test_integer_unary!(#[ignore], run_exhaustive_test, i8, abs_checked, exhaustive);
 }

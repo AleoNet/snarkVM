@@ -33,21 +33,18 @@ impl<E: Environment, I: IntegerType> Not for &Integer<E, I> {
     }
 }
 
-impl<E: Environment, I: IntegerType> Metrics<dyn Not<Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = Mode;
+impl<E: Environment, I: IntegerType> Metadata<dyn Not<Output = Integer<E, I>>> for Integer<E, I> {
+    type Case = CircuitType<Self>;
+    type OutputType = CircuitType<Self>;
 
     fn count(_case: &Self::Case) -> Count {
         Count::is(0, 0, 0, 0)
     }
-}
 
-impl<E: Environment, I: IntegerType> OutputMode<dyn Not<Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = Mode;
-
-    fn output_mode(case: &Self::Case) -> Mode {
-        match case {
-            Mode::Constant => Mode::Constant,
-            _ => Mode::Private,
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        match case.eject_mode() {
+            Mode::Constant => CircuitType::from(case.circuit().not()),
+            _ => CircuitType::Private,
         }
     }
 }
@@ -67,10 +64,12 @@ mod tests {
         let expected = !first;
 
         Circuit::scope(name, || {
-            let candidate = a.not();
+            let candidate = (&a).not();
             assert_eq!(expected, candidate.eject_value());
-            assert_count!(Not(Integer<I>) => Integer<I>, &mode);
-            assert_output_mode!(Not(Integer<I>) => Integer<I>, &mode, candidate);
+
+            let case = CircuitType::from(a);
+            assert_count!(Not(Integer<I>) => Integer<I>, &case);
+            assert_output_type!(Not(Integer<I>) => Integer<I>, case, candidate);
         });
         Circuit::reset();
     }

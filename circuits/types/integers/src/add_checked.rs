@@ -109,50 +109,42 @@ impl<E: Environment, I: IntegerType> AddChecked<Self> for Integer<E, I> {
     }
 }
 
-impl<E: Environment, I: IntegerType> Metrics<dyn Add<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = (Mode, Mode);
+impl<E: Environment, I: IntegerType> Metadata<dyn Add<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
+    type Case = (CircuitType<Self>, CircuitType<Self>);
+    type OutputType = CircuitType<Self>;
 
     fn count(case: &Self::Case) -> Count {
-        <Self as Metrics<dyn AddChecked<Integer<E, I>, Output = Integer<E, I>>>>::count(case)
+        count!(Self, AddChecked<Self, Output = Self>, case)
+    }
+
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        output_type!(Self, AddChecked<Self, Output = Self>, case)
     }
 }
 
-impl<E: Environment, I: IntegerType> OutputMode<dyn Add<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = (Mode, Mode);
-
-    fn output_mode(case: &Self::Case) -> Mode {
-        <Self as OutputMode<dyn AddChecked<Integer<E, I>, Output = Integer<E, I>>>>::output_mode(case)
-    }
-}
-
-impl<E: Environment, I: IntegerType> Metrics<dyn AddChecked<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = (Mode, Mode);
+impl<E: Environment, I: IntegerType> Metadata<dyn AddChecked<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
+    type Case = (CircuitType<Self>, CircuitType<Self>);
+    type OutputType = CircuitType<Self>;
 
     fn count(case: &Self::Case) -> Count {
         match I::is_signed() {
-            true => match (case.0, case.1) {
+            true => match (case.0.eject_mode(), case.1.eject_mode()) {
                 (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
                 (Mode::Constant, _) => Count::is(0, 0, I::BITS + 2, I::BITS + 4),
                 (_, Mode::Constant) => Count::is(0, 0, I::BITS + 3, I::BITS + 5),
                 (_, _) => Count::is(0, 0, I::BITS + 4, I::BITS + 6),
             },
-            false => match (case.0, case.1) {
+            false => match (case.0.eject_mode(), case.1.eject_mode()) {
                 (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
                 (_, _) => Count::is(0, 0, I::BITS + 1, I::BITS + 3),
             },
         }
     }
-}
 
-impl<E: Environment, I: IntegerType> OutputMode<dyn AddChecked<Integer<E, I>, Output = Integer<E, I>>>
-    for Integer<E, I>
-{
-    type Case = (Mode, Mode);
-
-    fn output_mode(case: &Self::Case) -> Mode {
-        match (case.0, case.1) {
-            (Mode::Constant, Mode::Constant) => Mode::Constant,
-            (_, _) => Mode::Private,
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        match (case.0.eject_mode(), case.1.eject_mode()) {
+            (Mode::Constant, Mode::Constant) => CircuitType::from(case.0.circuit().add_checked(case.1.circuit())),
+            (_, _) => CircuitType::Private,
         }
     }
 }
@@ -176,14 +168,18 @@ mod tests {
             Some(expected) => Circuit::scope(name, || {
                 let candidate = a.add_checked(&b);
                 assert_eq!(expected, candidate.eject_value());
-                assert_count!(Add(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
-                assert_output_mode!(Add(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b), candidate);
+
+                let case = (CircuitType::from(a), CircuitType::from(b));
+                assert_count!(Add(Integer<I>, Integer<I>) => Integer<I>, &case);
+                assert_output_type!(Add(Integer<I>, Integer<I>) => Integer<I>, case, candidate);
             }),
             None => match mode_a.is_constant() && mode_b.is_constant() {
                 true => check_operation_halts(&a, &b, Integer::add_checked),
                 false => Circuit::scope(name, || {
                     let _candidate = a.add_checked(&b);
-                    assert_count_fails!(Add(Integer<I>, Integer<I>) => Integer<I>, &(mode_a, mode_b));
+
+                    let case = (CircuitType::from(a), CircuitType::from(b));
+                    assert_count_fails!(Add(Integer<I>, Integer<I>) => Integer<I>, &case);
                 }),
             },
         }
