@@ -63,16 +63,26 @@ impl<E: Environment, I: IntegerType> Metadata<dyn Ternary<Boolean = Boolean<E>, 
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        let (condition, a, b) = case;
-        match condition.eject_mode().is_constant() {
-            true => match condition {
-                CircuitType::Constant(constant) => match constant.eject_value() {
-                    true => a,
-                    false => b,
-                },
-                _ => E::halt("The constant condition is required to determine output mode."),
+        match case {
+            (CircuitType::Constant(constant), _, _) => match constant.eject_value() {
+                true => case.1,
+                false => case.2,
             },
-            false => CircuitType::Private,
+            (_, CircuitType::Constant(_), CircuitType::Constant(_)) => {
+                let bit_pairs = case.1.circuit().bits_le.iter().zip_eq(case.2.circuit().bits_le.iter());
+                let conditioned_bits = bit_pairs
+                    .map(|(a, b)| {
+                        let case = (case.0, CircuitType::from(a), CircuitType::from(b));
+                        output_type!(Boolean<E>, Ternary<Boolean = Boolean<E>, Output = Boolean<E>>, case)
+                    })
+                    .collect::<Vec<_>>();
+                match conditioned_bits {
+                    bits if bits.iter().any(|bit| bit.is_private()) => CircuitType::Private,
+                    bits if bits.iter().any(|bit| bit.is_public()) => CircuitType::Public,
+                    _ => case.1,
+                }
+            }
+            _ => CircuitType::Private,
         }
     }
 }
@@ -82,27 +92,57 @@ mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
+    use std::{ops::RangeInclusive, panic::RefUnwindSafe};
+
+    fn check_ternary<I: IntegerType>(
+        name: &str,
+        flag: &bool,
+        first: I,
+        second: I,
+        mode_condition: Mode,
+        mode_a: Mode,
+        mode_b: Mode,
+    ) {
+        let a = Integer::<Circuit, I>::new(mode_a, first);
+        let b = Integer::<Circuit, I>::new(mode_b, second);
+        let condition = Boolean::<Circuit>::new(mode_condition, *flag);
+
+        let expected = if *flag { first } else { second };
+
+        Circuit::scope(name, || {
+            let candidate = Integer::ternary(&condition, &a, &b);
+            assert_eq!(expected, candidate.eject_value());
+
+            println!("Ternary: if {:?} then {:?} else {:?}", condition.eject_value(), a.eject_value(), b.eject_value());
+            let case = (CircuitType::from(condition), CircuitType::from(a), CircuitType::from(b));
+            assert_count!(Ternary(Boolean, Integer<I>, Integer<I>) => Integer<I>, &case);
+            assert_output_type!(Ternary(Boolean, Integer<I>, Integer<I>) => Integer<I>, case, candidate);
+        });
+        Circuit::reset();
+    }
 
     fn run_test<I: IntegerType>(mode_condition: Mode, mode_a: Mode, mode_b: Mode) {
         for flag in &[true, false] {
             let first: I = UniformRand::rand(&mut test_rng());
             let second: I = UniformRand::rand(&mut test_rng());
-            let expected = if *flag { first } else { second };
-
-            let condition = Boolean::<Circuit>::new(mode_condition, *flag);
-            let a = Integer::<Circuit, I>::new(mode_a, first);
-            let b = Integer::new(mode_b, second);
 
             let name = format!("Ternary({}): if ({}) then ({}) else ({})", flag, mode_condition, mode_a, mode_b);
-            Circuit::scope(name, || {
-                let candidate = Integer::ternary(&condition, &a, &b);
-                assert_eq!(expected, candidate.eject_value());
+            check_ternary(&name, flag, first, second, mode_condition, mode_a, mode_b);
+        }
+    }
 
-                let case = (CircuitType::from(condition), CircuitType::from(a), CircuitType::from(b));
-                assert_count!(Ternary(Boolean, Integer<I>, Integer<I>) => Integer<I>, &case);
-                assert_output_type!(Ternary(Boolean, Integer<I>, Integer<I>) => Integer<I>, case, candidate);
-            });
-            Circuit::reset();
+    fn run_exhaustive_test<I: IntegerType + RefUnwindSafe>(mode_condition: Mode, mode_a: Mode, mode_b: Mode)
+    where
+        RangeInclusive<I>: Iterator<Item = I>,
+    {
+        for flag in &[true, false] {
+            for first in I::MIN..=I::MAX {
+                for second in I::MIN..=I::MAX {
+                    let name =
+                        format!("Ternary({}): if ({}) then ({}) else ({})", flag, mode_condition, mode_a, mode_b);
+                    check_ternary(&name, flag, first, second, mode_condition, mode_a, mode_b);
+                }
+            }
         }
     }
 
@@ -117,4 +157,7 @@ mod tests {
     test_integer_ternary!(run_test, u32, if, then, else);
     test_integer_ternary!(run_test, u64, if, then, else);
     test_integer_ternary!(run_test, u128, if, then, else);
+
+    test_integer_ternary!(#[ignore], run_exhaustive_test, u8, if, then, else, exhaustive);
+    test_integer_ternary!(#[ignore], run_exhaustive_test, i8, if, then, else, exhaustive);
 }
