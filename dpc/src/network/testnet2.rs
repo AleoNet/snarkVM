@@ -184,9 +184,11 @@ impl Network for Testnet2 {
     type BlockHashCRHGadget = BHPCRHGadget<Self::ProgramAffineCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 3, 57>;
     type BlockHash = AleoLocator<<Self::BlockHashCRH as CRH>::Output, { Self::BLOCK_HASH_PREFIX }>;
 
-    type BlockHeaderRootCRH = PedersenCompressedCRH<Self::ProgramProjectiveCurve, 4, 128>;
-    type BlockHeaderRootCRHGadget = PedersenCompressedCRHGadget<Self::ProgramAffineCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 4, 128>;
-    type BlockHeaderRootParameters = MaskedMerkleTreeParameters<Self::BlockHeaderRootCRH, { Self::HEADER_TREE_DEPTH }>;
+    type BlockHeaderRootCRH = PedersenCompressedCRH<Self::ProgramProjectiveCurve, 8, 36>;
+    type BlockHeaderRootCRHGadget = PedersenCompressedCRHGadget<Self::ProgramAffineCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 8, 36>;
+    type BlockHeaderRootTwoToOneCRH = PedersenCompressedCRH<Self::ProgramProjectiveCurve, 4, 128>;
+    type BlockHeaderRootTwoToOneCRHGadget = PedersenCompressedCRHGadget<Self::ProgramAffineCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 4, 128>;
+    type BlockHeaderRootParameters = MaskedMerkleTreeParameters<Self::BlockHeaderRootCRH, Self::BlockHeaderRootTwoToOneCRH, { Self::HEADER_TREE_DEPTH }>;
     type BlockHeaderRoot = AleoLocator<<Self::BlockHeaderRootCRH as CRH>::Output, { Self::HEADER_ROOT_PREFIX }>;
 
     type CommitmentScheme = BHPCRH<Self::ProgramProjectiveCurve, 41, 63>;
@@ -207,17 +209,20 @@ impl Network for Testnet2 {
     type OutputCircuitIDCRH = BHPCRH<EdwardsBW6, 27, 63>;
     type OutputCircuitID = AleoLocator<<Self::OutputCircuitIDCRH as CRH>::Output, { Self::OUTPUT_CIRCUIT_ID_PREFIX }>;
 
-    type LedgerRootCRH = BHPCRH<Self::ProgramProjectiveCurve, 3, 57>;
-    type LedgerRootCRHGadget = BHPCRHGadget<Self::ProgramAffineCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 3, 57>;
-    type LedgerRootParameters = MerkleTreeParameters<Self::LedgerRootCRH, { Self::LEDGER_TREE_DEPTH }>;
+    type LedgerRootCRH = BHPCRH<Self::ProgramProjectiveCurve, 2, 43>;
+    type LedgerRootCRHGadget = BHPCRHGadget<Self::ProgramAffineCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 2, 43>;
+    type LedgerRootTwoToOneCRH = BHPCRH<Self::ProgramProjectiveCurve, 3, 57>;
+    type LedgerRootTwoToOneCRHGadget = BHPCRHGadget<Self::ProgramAffineCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 3, 57>;
+    type LedgerRootParameters = MerkleTreeParameters<Self::LedgerRootCRH, Self::LedgerRootTwoToOneCRH, { Self::LEDGER_TREE_DEPTH }>;
     type LedgerRoot = AleoLocator<<Self::LedgerRootCRH as CRH>::Output, { Self::LEDGER_ROOT_PREFIX }>;
 
     type PoSWMaskPRF = PoseidonPRF<Self::InnerScalarField, 4, false>;
     type PoSWMaskPRFGadget = PoseidonPRFGadget<Self::InnerScalarField, 4, false>;
     type PoSWNonce = AleoLocator<Self::InnerScalarField, { Self::HEADER_NONCE_PREFIX }>;
 
-    type ProgramIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 8, 32>;
-    type ProgramIDParameters = MerkleTreeParameters<Self::ProgramIDCRH, { Self::PROGRAM_TREE_DEPTH }>;
+    type ProgramIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 8, 16>;
+    type ProgramIDTwoToOneCRH = BHPCRH<Self::ProgramProjectiveCurve, 8, 32>;
+    type ProgramIDParameters = MerkleTreeParameters<Self::ProgramIDCRH, Self::ProgramIDTwoToOneCRH, { Self::PROGRAM_TREE_DEPTH }>;
     type ProgramID = AleoLocator<<Self::ProgramIDCRH as CRH>::Output, { Self::PROGRAM_ID_PREFIX }>;
 
     type RecordCiphertext = AleoObject<Ciphertext<Self>, { Self::RECORD_CIPHERTEXT_PREFIX }, { Self::RECORD_CIPHERTEXT_SIZE_IN_BYTES }>;
@@ -229,19 +234,25 @@ impl Network for Testnet2 {
     type SerialNumberPRFGadget = PoseidonPRFGadget<Self::InnerScalarField, 4, false>;
     type SerialNumber = AleoLocator<<Self::SerialNumberPRF as PRF>::Output, { Self::SERIAL_NUMBER_PREFIX }>;
 
-    type TransactionsRootCRH = BHPCRH<Self::ProgramProjectiveCurve, 3, 57>;
-    type TransactionsRootCRHGadget = BHPCRHGadget<Self::ProgramAffineCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 3, 57>;
-    type TransactionsRootParameters = MerkleTreeParameters<Self::TransactionsRootCRH, { Self::HEADER_TRANSACTIONS_TREE_DEPTH }>;
+    type TransactionsRootCRH = BHPCRH<Self::ProgramProjectiveCurve, 2, 43>;
+    type TransactionsRootCRHGadget = BHPCRHGadget<Self::ProgramAffineCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 2, 43>;
+    type TransactionsRootTwoToOneCRH = BHPCRH<Self::ProgramProjectiveCurve, 3, 57>;
+    type TransactionsRootTwoToOneCRHGadget = BHPCRHGadget<Self::ProgramAffineCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 3, 57>;
+    type TransactionsRootParameters = MerkleTreeParameters<Self::TransactionsRootCRH, Self::TransactionsRootTwoToOneCRH, { Self::HEADER_TRANSACTIONS_TREE_DEPTH }>;
     type TransactionsRoot = AleoLocator<<Self::TransactionsRootCRH as CRH>::Output, { Self::HEADER_TRANSACTIONS_ROOT_PREFIX }>;
 
-    type TransactionIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 3, 57>;
-    type TransactionIDCRHGadget = BHPCRHGadget<Self::ProgramAffineCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 3, 57>;
-    type TransactionIDParameters = MerkleTreeParameters<Self::TransactionIDCRH, { Self::TRANSACTION_TREE_DEPTH }>;
+    type TransactionIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 2, 43>;
+    type TransactionIDCRHGadget = BHPCRHGadget<Self::ProgramAffineCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 2, 43>;
+    type TransactionIDTwoToOneCRH = BHPCRH<Self::ProgramProjectiveCurve, 3, 57>;
+    type TransactionIDTwoToOneCRHGadget = BHPCRHGadget<Self::ProgramAffineCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 3, 57>;
+    type TransactionIDParameters = MerkleTreeParameters<Self::TransactionIDCRH, Self::TransactionIDTwoToOneCRH, { Self::TRANSACTION_TREE_DEPTH }>;
     type TransactionID = AleoLocator<<Self::TransactionIDCRH as CRH>::Output, { Self::TRANSACTION_ID_PREFIX }>;
 
-    type TransitionIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 3, 57>;
-    type TransitionIDCRHGadget = BHPCRHGadget<Self::ProgramAffineCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 3, 57>;
-    type TransitionIDParameters = MerkleTreeParameters<Self::TransitionIDCRH, { Self::TRANSITION_TREE_DEPTH }>;
+    type TransitionIDCRH = BHPCRH<Self::ProgramProjectiveCurve, 2, 43>;
+    type TransitionIDCRHGadget = BHPCRHGadget<Self::ProgramAffineCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 2, 43>;
+    type TransitionIDTwoToOneCRH = BHPCRH<Self::ProgramProjectiveCurve, 3, 57>;
+    type TransitionIDTwoToOneCRHGadget = BHPCRHGadget<Self::ProgramAffineCurve, Self::InnerScalarField, Self::ProgramAffineCurveGadget, 3, 57>;
+    type TransitionIDParameters = MerkleTreeParameters<Self::TransitionIDCRH, Self::TransactionIDTwoToOneCRH, { Self::TRANSITION_TREE_DEPTH }>;
     type TransitionID = AleoLocator<<Self::TransitionIDCRH as CRH>::Output, { Self::TRANSITION_ID_PREFIX }>;
 
     type ValueCommitmentScheme = PedersenCommitment<Self::ProgramProjectiveCurve, 4, 32>;

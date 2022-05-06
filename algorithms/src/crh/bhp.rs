@@ -119,7 +119,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP
         let mut input = input.to_vec();
         if input.len() % BHP_CHUNK_SIZE != 0 {
             let padding = BHP_CHUNK_SIZE - (input.len() % BHP_CHUNK_SIZE);
-            input.extend_from_slice(&[false; BHP_CHUNK_SIZE][..padding]);
+            input.resize(input.len() + padding, false);
             assert_eq!(input.len() % BHP_CHUNK_SIZE, 0);
         }
 
