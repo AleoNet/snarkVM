@@ -16,6 +16,8 @@
 
 use super::*;
 
+// TODO: Split into separate files to be consistent with Metadata.
+
 impl<E: Environment> Compare<Scalar<E>> for Scalar<E> {
     type Output = Boolean<E>;
 

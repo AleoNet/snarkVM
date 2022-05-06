@@ -139,7 +139,7 @@ impl<E: Environment> Metadata<dyn Equal<Field<E>, Output = Boolean<E>>> for Fiel
     type Case = (CircuitType<Field<E>>, CircuitType<Field<E>>);
     type OutputType = CircuitType<Boolean<E>>;
 
-    // TODO: How to deal where both operands are the same field element, since it changes the number of gates produced? We could use upper bounds.
+    // TODO: How to deal where both operands are the same field element in memory, since it changes the number of gates produced? We could use upper bounds.
     fn count(case: &Self::Case) -> Count {
         match (case.0.eject_mode(), case.1.eject_mode()) {
             (Mode::Constant, Mode::Constant) => Count::is(1, 0, 0, 0),
