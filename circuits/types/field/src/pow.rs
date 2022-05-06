@@ -74,11 +74,12 @@ impl<E: Environment> Pow<&Field<E>> for &Field<E> {
     }
 }
 
-impl<E: Environment> Metrics<dyn Pow<Field<E>, Output = Field<E>>> for Field<E> {
+impl<E: Environment> Metadata<dyn Pow<Field<E>, Output = Field<E>>> for Field<E> {
     type Case = (CircuitType<Field<E>>, CircuitType<Field<E>>);
+    type OutputType = CircuitType<Field<E>>;
 
     fn count(case: &Self::Case) -> Count {
-        match (case.0.mode(), case.1.mode()) {
+        match (case.0.eject_mode(), case.1.eject_mode()) {
             (Mode::Constant, Mode::Constant) => Count::is(253, 0, 0, 0),
             (_, Mode::Constant) => match &case.1 {
                 CircuitType::Constant(constant) => {
@@ -102,31 +103,45 @@ impl<E: Environment> Metrics<dyn Pow<Field<E>, Output = Field<E>>> for Field<E> 
                 }
                 _ => E::halt(format!(
                     "Constant is required to determine the `Count` for {} POW {}",
-                    case.0.mode(),
-                    case.1.mode()
+                    case.0.eject_mode(),
+                    case.1.eject_mode()
                 )),
             },
             (Mode::Constant, _) => Count::is(0, 0, 757, 758),
             (_, _) => Count::is(0, 0, 1010, 1011),
         }
     }
-}
 
-impl<E: Environment> OutputMode<dyn Pow<Field<E>, Output = Field<E>>> for Field<E> {
-    type Case = (CircuitType<Field<E>>, CircuitType<Field<E>>);
-
-    fn output_mode(case: &Self::Case) -> Mode {
-        match (case.0.mode(), case.1.mode()) {
-            (Mode::Constant, Mode::Constant) => Mode::Constant,
-            (mode_a, Mode::Constant) => match &case.1 {
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        match (case.0.eject_mode(), case.1.eject_mode()) {
+            (Mode::Constant, Mode::Constant) => CircuitType::from(case.0.circuit().pow(case.1.circuit())),
+            // TODO: Should this be the case?
+            //(Mode::Constant, Mode::Public) => match &case.0 {
+            //    CircuitType::Constant(constant) => match constant.eject_value() {
+            //        base if base.is_zero() => CircuitType::from(Field::zero()),
+            //        base if base.is_one() => CircuitType::from(Field::one()),
+            //        _ => CircuitType::Private,
+            //    },
+            //    _ => E::halt("The constant is required to determine the output mode of Public + Constant"),
+            //},
+            (Mode::Constant, Mode::Public) => CircuitType::Private,
+            (Mode::Public, Mode::Constant) => match &case.1 {
                 CircuitType::Constant(constant) => match constant.eject_value() {
-                    value if value == E::BaseField::zero() => Mode::Constant,
-                    value if value == E::BaseField::one() => mode_a,
-                    _ => Mode::Private,
+                    exponent if exponent.is_zero() => CircuitType::from(Field::one()),
+                    exponent if exponent.is_one() => CircuitType::Public,
+                    _ => CircuitType::Private,
                 },
-                _ => E::halt("The constant is required to determine the output mode of Public * Constant"),
+                _ => E::halt("The constant is required to determine the output mode of Public + Constant"),
             },
-            (_, _) => Mode::Private,
+            (Mode::Private, Mode::Constant) => match &case.1 {
+                CircuitType::Constant(constant) => match constant.eject_value() {
+                    exponent if exponent.is_zero() => CircuitType::from(Field::one()),
+                    exponent if exponent.is_one() => CircuitType::Private,
+                    _ => CircuitType::Private,
+                },
+                _ => E::halt("The constant is required to determine the output mode of Public + Constant"),
+            },
+            (_, _) => CircuitType::Private,
         }
     }
 }
@@ -143,8 +158,12 @@ mod tests {
         Circuit::scope(name, || {
             let candidate = a.pow(b);
             assert_eq!(*expected, candidate.eject_value(), "({}^{})", a.eject_value(), b.eject_value());
-            assert_count!(Pow(Field, Field) => Field, &(CircuitType::from(a), CircuitType::from(b)));
-            assert_output_mode!(Pow(Field, Field) => Field, &(CircuitType::from(a), CircuitType::from(b)), candidate);
+
+            println!("{}^{} = {}", a.eject_value(), b.eject_value(), candidate.eject_value());
+
+            let case = (CircuitType::from(a), CircuitType::from(b));
+            assert_count!(Pow(Field, Field) => Field, &case);
+            assert_output_type!(Pow(Field, Field) => Field, case, candidate);
         });
     }
 
@@ -189,7 +208,7 @@ mod tests {
         let one = <Circuit as Environment>::BaseField::one();
 
         // Test 0 ^ 0.
-        let name = "Mul: 0 ^ 0";
+        let name = "Pow: 0 ^ 0";
         check_pow(name, &one, &Field::<Circuit>::new(mode_a, zero), &Field::<Circuit>::new(mode_b, zero));
 
         // Test 1 ^ 0.
