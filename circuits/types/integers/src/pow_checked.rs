@@ -42,7 +42,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> PowChecked<Integer<E, M>> for
                 let result_times_self = if I::is_signed() {
                     // Multiply the absolute value of `self` and `other` in the base field.
                     // Note that it is safe to use abs_wrapped since we want I::MIN to be interpreted as an unsigned number.
-                    let (product, carry) = Self::mul_with_carry(&(&result).abs_wrapped(), &self.abs_wrapped(), true);
+                    let (product, carry) = Self::mul_with_carry(&(&result).abs_wrapped(), &self.abs_wrapped());
 
                     // We need to check that the abs(a) * abs(b) did not exceed the unsigned maximum.
                     let carry_bits_nonzero = carry.iter().fold(Boolean::constant(false), |a, b| a | b);
@@ -67,7 +67,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> PowChecked<Integer<E, M>> for
                     // Return the product of `self` and `other` with the appropriate sign.
                     Self::ternary(operands_same_sign, &product, &(!&product).add_wrapped(&Self::one()))
                 } else {
-                    let (product, carry) = Self::mul_with_carry(&result, self, true);
+                    let (product, carry) = Self::mul_with_carry(&result, self);
 
                     // For unsigned multiplication, check that the none of the carry bits are set.
                     let overflow = carry.iter().fold(Boolean::constant(false), |a, b| a | b);

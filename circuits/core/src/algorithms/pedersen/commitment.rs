@@ -39,7 +39,7 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Commitm
     }
 }
 
-impl<'a, E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     Metrics<dyn CommitmentScheme<Input = Boolean<E>, Output = Group<E>, Randomness = Boolean<E>>>
     for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
 {

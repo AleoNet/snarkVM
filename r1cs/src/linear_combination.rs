@@ -421,7 +421,7 @@ impl<F: Field> Sub<(F, LinearCombination<F>)> for &LinearCombination<F> {
     }
 }
 
-impl<'a, F: Field> Sub<(F, LinearCombination<F>)> for LinearCombination<F> {
+impl<F: Field> Sub<(F, LinearCombination<F>)> for LinearCombination<F> {
     type Output = LinearCombination<F>;
 
     fn sub(self, (coeff, other): (F, LinearCombination<F>)) -> LinearCombination<F> {
