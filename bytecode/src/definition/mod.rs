@@ -115,6 +115,7 @@ impl<P: Program> Parser for Definition<P> {
     }
 }
 
+#[allow(clippy::format_push_string)]
 impl<P: Program> fmt::Display for Definition<P> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

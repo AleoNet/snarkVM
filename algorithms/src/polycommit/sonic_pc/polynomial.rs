@@ -44,7 +44,7 @@ pub struct LabeledPolynomial<F: Field> {
     hiding_bound: Option<usize>,
 }
 
-impl<'a, F: Field> core::ops::Deref for LabeledPolynomial<F> {
+impl<F: Field> core::ops::Deref for LabeledPolynomial<F> {
     type Target = DenseOrSparsePolynomial<'static, F>;
 
     fn deref(&self) -> &Self::Target {
