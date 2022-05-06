@@ -34,21 +34,18 @@ impl<E: Environment> Neg for &Field<E> {
     }
 }
 
-impl<E: Environment> Metrics<dyn Neg<Output = Field<E>>> for Field<E> {
-    type Case = Mode;
+impl<E: Environment> Metadata<dyn Neg<Output = Field<E>>> for Field<E> {
+    type Case = CircuitType<Field<E>>;
+    type OutputType = CircuitType<Field<E>>;
 
     fn count(_case: &Self::Case) -> Count {
         Count::is(0, 0, 0, 0)
     }
-}
 
-impl<E: Environment> OutputMode<dyn Neg<Output = Field<E>>> for Field<E> {
-    type Case = Mode;
-
-    fn output_mode(case: &Self::Case) -> Mode {
-        match case {
-            Mode::Constant => Mode::Constant,
-            _ => Mode::Private,
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        match case.is_constant() {
+            true => CircuitType::from(case.circuit().neg()),
+            false => CircuitType::Private,
         }
     }
 }
@@ -69,10 +66,12 @@ mod tests {
 
             // Check negation.
             Circuit::scope(name, || {
-                let result = candidate.neg();
+                let result = (&candidate).neg();
                 assert_eq!(expected, result.eject_value());
-                assert_count!(Neg(Field) => Field, &mode);
-                assert_output_mode!(Neg(Field) => Field, &mode, result);
+
+                let case = CircuitType::from(candidate);
+                assert_count!(Neg(Field) => Field, &case);
+                assert_output_type!(Neg(Field) => Field, case, result);
             });
         };
 
