@@ -49,12 +49,12 @@ pub enum CircuitType<T: Eject> {
     Private,
 }
 
-impl<T: Eject> Eject for  CircuitType<T> {
+impl<T: Eject> Eject for CircuitType<T> {
     type Primitive = T::Primitive;
 
     fn eject_mode(&self) -> Mode {
         match self {
-            Self::Constant(_) => Mode::Constant,
+            Self::Constant(circuit) => circuit.eject_mode(),
             Self::Public => Mode::Public,
             Self::Private => Mode::Private,
         }

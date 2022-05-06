@@ -181,8 +181,11 @@ macro_rules! assert_count_fails {
 #[macro_export]
 macro_rules! assert_output_type {
     ($type_:ty, $operation:path, $case:expr, $candidate:expr) => {{
-        let expected_mode = output_type!($type_, $operation, $case);
-        assert_eq!(expected_mode, $candidate.eject_mode());
+        let expected_type = output_type!($type_, $operation, $case);
+        assert_eq!(expected_type.eject_mode(), $candidate.eject_mode());
+        if expected_type.is_constant() {
+            assert_eq!(expected_type.eject_value(), $candidate.eject_value());
+        }
     }};
 
     //////////////

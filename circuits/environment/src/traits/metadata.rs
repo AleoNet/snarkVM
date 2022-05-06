@@ -22,8 +22,8 @@ pub trait Metadata<Op: ?Sized> {
     type OutputType: ?Sized;
 
     /// Returns the number of constants, public inputs, private inputs, and constraints.
-    fn count(parameter: &Self::Case) -> Count;
+    fn count(case: &Self::Case) -> Count;
 
     /// Returns the output type of the operation.
-    fn output_type(parameter: Self::Case) -> Self::OutputType;
+    fn output_type(case: Self::Case) -> Self::OutputType;
 }
