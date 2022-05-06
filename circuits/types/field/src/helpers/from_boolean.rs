@@ -25,19 +25,16 @@ impl<E: Environment> FromBoolean for Field<E> {
     }
 }
 
-impl<E: Environment> Metrics<dyn FromBoolean<Boolean = Boolean<E>>> for Field<E> {
-    type Case = ();
+impl<E: Environment> Metadata<dyn FromBoolean<Boolean = Boolean<E>>> for Field<E> {
+    type Case = CircuitType<Boolean<E>>;
+    type OutputType = CircuitType<Boolean<E>>;
 
     fn count(_case: &Self::Case) -> Count {
         Count::is(0, 0, 0, 0)
     }
-}
 
-impl<E: Environment> OutputMode<dyn FromBoolean<Boolean = Boolean<E>>> for Field<E> {
-    type Case = Mode;
-
-    fn output_mode(case: &Self::Case) -> Mode {
-        *case
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        case
     }
 }
 
@@ -57,8 +54,10 @@ mod tests {
                     true => assert_eq!(<Circuit as Environment>::BaseField::one(), candidate.eject_value()),
                     false => assert_eq!(<Circuit as Environment>::BaseField::zero(), candidate.eject_value()),
                 }
-                assert_count!(FromBoolean(Boolean) => Field, &());
-                assert_output_mode!(FromBoolean(Boolean) => Field, &mode, candidate);
+
+                let case = CircuitType::from(given);
+                assert_count!(FromBoolean(Boolean) => Field, &case);
+                assert_output_type!(FromBoolean(Boolean) => Field, case, candidate);
             });
         }
     }
