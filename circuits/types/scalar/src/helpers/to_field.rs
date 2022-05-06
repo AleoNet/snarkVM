@@ -38,6 +38,22 @@ impl<E: Environment> ToField for Scalar<E> {
     }
 }
 
+impl<E: Environment> Metadata<dyn ToField<Field = Field<E>>> for Scalar<E> {
+    type Case = CircuitType<Self>;
+    type OutputType = CircuitType<Field<E>>;
+
+    fn count(_case: &Self::Case) -> Count {
+        Count::is(0, 0, 0, 0)
+    }
+
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        match case {
+            CircuitType::Constant(_) => CircuitType::from(case.circuit().to_field()),
+            _ => CircuitType::Private,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -45,10 +61,13 @@ mod tests {
     use snarkvm_utilities::{test_rng, UniformRand};
 
     fn check_to_field(name: &str, expected: &[bool], candidate: &Scalar<Circuit>) {
+        let case = CircuitType::from(candidate);
         Circuit::scope(name, || {
             // Perform the operation.
             let candidate = candidate.to_field();
-            assert_scope!(0, 0, 0, 0);
+
+            assert_count!(Scalar<Circuit>, ToField<Field = Field<Circuit>>, &case);
+            assert_output_type!(Scalar<Circuit>, ToField<Field = Field<Circuit>>, case, candidate);
 
             // Extract the bits from the base field representation.
             let candidate_bits_le = candidate.eject_value().to_bits_le();

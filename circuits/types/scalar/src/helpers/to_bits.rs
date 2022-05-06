@@ -16,6 +16,8 @@
 
 use super::*;
 
+// TODO: Split into separate traits for coherence with metadata.
+
 impl<E: Environment> ToBits for Scalar<E> {
     type Boolean = Boolean<E>;
 
@@ -46,51 +48,58 @@ impl<E: Environment> ToBits for &Scalar<E> {
     }
 }
 
+impl<E: Environment> Metadata<dyn ToBits<Boolean = Boolean<E>>> for Scalar<E> {
+    type Case = CircuitType<Self>;
+    type OutputType = CircuitType<Vec<Boolean<E>>>;
+
+    fn count(_case: &Self::Case) -> Count {
+        Count::is(0, 0, 0, 0)
+    }
+
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        match case {
+            CircuitType::Constant(_) => CircuitType::from(case.circuit().to_bits_le()),
+            CircuitType::Public => CircuitType::Public,
+            CircuitType::Private => CircuitType::Private,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
-    fn check_to_bits_le(
-        name: &str,
-        expected: &[bool],
-        candidate: &Scalar<Circuit>,
-        num_constants: u64,
-        num_public: u64,
-        num_private: u64,
-        num_constraints: u64,
-    ) {
+    fn check_to_bits_le(name: &str, expected: &[bool], candidate: &Scalar<Circuit>) {
         let expected_number_of_bits = <<Circuit as Environment>::ScalarField as PrimeField>::size_in_bits();
 
         Circuit::scope(name, || {
-            let candidate = candidate.to_bits_le();
-            assert_eq!(expected_number_of_bits, candidate.len());
-            for (expected_bit, candidate_bit) in expected.iter().zip_eq(candidate.iter()) {
+            let result = candidate.to_bits_le();
+            assert_eq!(expected_number_of_bits, result.len());
+            for (expected_bit, candidate_bit) in expected.iter().zip_eq(result.iter()) {
                 assert_eq!(*expected_bit, candidate_bit.eject_value());
             }
-            assert_scope!(num_constants, num_public, num_private, num_constraints);
+
+            let case = CircuitType::from(candidate);
+            assert_count!(ToBits<Boolean>() => Scalar, &case);
+            assert_output_type!(ToBits<Boolean>() => Scalar, case, result);
         });
     }
 
-    fn check_to_bits_be(
-        name: &str,
-        expected: &[bool],
-        candidate: Scalar<Circuit>,
-        num_constants: u64,
-        num_public: u64,
-        num_private: u64,
-        num_constraints: u64,
-    ) {
+    fn check_to_bits_be(name: &str, expected: &[bool], candidate: Scalar<Circuit>) {
         let expected_number_of_bits = <<Circuit as Environment>::ScalarField as PrimeField>::size_in_bits();
 
         Circuit::scope(name, || {
-            let candidate = candidate.to_bits_be();
-            assert_eq!(expected_number_of_bits, candidate.len());
-            for (expected_bit, candidate_bit) in expected.iter().zip_eq(candidate.iter()) {
+            let result = candidate.to_bits_be();
+            assert_eq!(expected_number_of_bits, result.len());
+            for (expected_bit, candidate_bit) in expected.iter().zip_eq(result.iter()) {
                 assert_eq!(*expected_bit, candidate_bit.eject_value());
             }
-            assert_scope!(num_constants, num_public, num_private, num_constraints);
+
+            let case = CircuitType::from(candidate);
+            assert_count!(ToBits<Boolean>() => Scalar, &case);
+            assert_output_type!(ToBits<Boolean>() => Scalar, case, result);
         });
     }
 
@@ -98,24 +107,24 @@ mod tests {
     fn test_to_bits_constant() {
         let expected = UniformRand::rand(&mut test_rng());
         let candidate = Scalar::<Circuit>::new(Mode::Constant, expected);
-        check_to_bits_le("Constant", &expected.to_bits_le(), &candidate, 0, 0, 0, 0);
-        check_to_bits_be("Constant", &expected.to_bits_be(), candidate, 0, 0, 0, 0);
+        check_to_bits_le("Constant", &expected.to_bits_le(), &candidate);
+        check_to_bits_be("Constant", &expected.to_bits_be(), candidate);
     }
 
     #[test]
     fn test_to_bits_public() {
         let expected = UniformRand::rand(&mut test_rng());
         let candidate = Scalar::<Circuit>::new(Mode::Public, expected);
-        check_to_bits_le("Public", &expected.to_bits_le(), &candidate, 0, 0, 0, 0);
-        check_to_bits_be("Public", &expected.to_bits_be(), candidate, 0, 0, 0, 0);
+        check_to_bits_le("Public", &expected.to_bits_le(), &candidate);
+        check_to_bits_be("Public", &expected.to_bits_be(), candidate);
     }
 
     #[test]
     fn test_to_bits_private() {
         let expected = UniformRand::rand(&mut test_rng());
         let candidate = Scalar::<Circuit>::new(Mode::Private, expected);
-        check_to_bits_le("Private", &expected.to_bits_le(), &candidate, 0, 0, 0, 0);
-        check_to_bits_be("Private", &expected.to_bits_be(), candidate, 0, 0, 0, 0);
+        check_to_bits_le("Private", &expected.to_bits_le(), &candidate);
+        check_to_bits_be("Private", &expected.to_bits_be(), candidate);
     }
 
     #[test]

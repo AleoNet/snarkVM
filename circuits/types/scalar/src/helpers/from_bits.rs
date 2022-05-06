@@ -17,6 +17,8 @@
 use super::*;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
+// TODO: Split into multiple traits for coherence with Metadata
+
 impl<E: Environment> FromBits for Scalar<E> {
     type Boolean = Boolean<E>;
 

@@ -28,6 +28,19 @@ impl<E: Environment> Zero for Scalar<E> {
     }
 }
 
+impl<E: Environment> Metadata<dyn Zero<Boolean = Boolean<E>>> for Scalar<E> {
+    type Case = ();
+    type OutputType = CircuitType<Self>;
+
+    fn count(_case: &Self::Case) -> Count {
+        Count::is(251, 0, 0, 0)
+    }
+
+    fn output_type(_case: Self::Case) -> Self::OutputType {
+        CircuitType::from(Scalar::zero())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -41,7 +54,8 @@ mod tests {
             assert_scope!(0, 0, 0, 0);
             let candidate = Scalar::<Circuit>::zero();
             assert_eq!(zero, candidate.eject_value());
-            assert_scope!(251, 0, 0, 0);
+            assert_count!(Zero<Boolean>() => Scalar, &());
+            assert_output_type!(Zero<Boolean>() => Scalar, (), candidate);
         });
     }
 

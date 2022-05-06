@@ -20,9 +20,25 @@ use snarkvm_circuits_types_field::Field;
 impl<E: Environment> ToFields for Scalar<E> {
     type Field = Field<E>;
 
-    /// Casts a string into a list of base fields.
+    /// Casts a scalar into a list of base fields.
     fn to_fields(&self) -> Vec<Self::Field> {
         vec![self.to_field()]
+    }
+}
+
+impl<E: Environment> Metadata<dyn ToFields<Field = Field<E>>> for Scalar<E> {
+    type Case = CircuitType<Self>;
+    type OutputType = CircuitType<Vec<Field<E>>>;
+
+    fn count(case: &Self::Case) -> Count {
+        count!(Self, ToField<Field = Field<E>>, case)
+    }
+
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        match case {
+            CircuitType::Constant(_) => CircuitType::from(case.circuit().to_fields()),
+            _ => CircuitType::Private,
+        }
     }
 }
 
@@ -37,7 +53,10 @@ mod tests {
             // Perform the operation.
             let fields = candidate.to_fields();
             assert_eq!(1, fields.len());
-            assert_scope!(0, 0, 0, 0);
+
+            let case = CircuitType::from(candidate);
+            assert_count!(Scalar<Circuit>, ToFields<Field = Field<Circuit>>, &case);
+            assert_output_type!(Scalar<Circuit>, ToFields<Field = Field<Circuit>>, case, fields);
 
             // Extract the bits from the base field representation.
             let number_of_base_field_bits = <<Circuit as Environment>::BaseField as PrimeField>::size_in_bits();
