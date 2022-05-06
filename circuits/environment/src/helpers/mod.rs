@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+pub mod circuit_type;
+pub use circuit_type::*;
+
 pub(crate) mod constraint;
 pub(crate) use constraint::*;
 
@@ -30,9 +33,6 @@ pub use linear_combination::*;
 
 pub mod mode;
 pub use mode::*;
-
-pub mod constant_or_mode;
-pub use constant_or_mode::*;
 
 pub mod variable;
 pub use variable::*;

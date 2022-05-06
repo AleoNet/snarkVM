@@ -162,7 +162,7 @@ impl<'de, T: FromBytes> FromBytesDeserializer<T> {
 
 pub struct FromBytesVisitor<'a>(&'a mut Vec<u8>, String, Option<usize>);
 
-impl<'a, 'de> FromBytesVisitor<'a> {
+impl<'a> FromBytesVisitor<'a> {
     pub fn new(buffer: &'a mut Vec<u8>, name: &str) -> Self {
         Self(buffer, name.to_string(), None)
     }

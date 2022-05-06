@@ -42,7 +42,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> PowChecked<Integer<E, M>> for
                 let result_times_self = if I::is_signed() {
                     // Multiply the absolute value of `self` and `other` in the base field.
                     // Note that it is safe to use abs_wrapped since we want I::MIN to be interpreted as an unsigned number.
-                    let (product, carry) = Self::mul_with_carry(&(&result).abs_wrapped(), &self.abs_wrapped(), true);
+                    let (product, carry) = Self::mul_with_carry(&(&result).abs_wrapped(), &self.abs_wrapped());
 
                     // We need to check that the abs(a) * abs(b) did not exceed the unsigned maximum.
                     let carry_bits_nonzero = carry.iter().fold(Boolean::constant(false), |a, b| a | b);
@@ -67,7 +67,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> PowChecked<Integer<E, M>> for
                     // Return the product of `self` and `other` with the appropriate sign.
                     Self::ternary(operands_same_sign, &product, &(!&product).add_wrapped(&Self::one()))
                 } else {
-                    let (product, carry) = Self::mul_with_carry(&result, self, true);
+                    let (product, carry) = Self::mul_with_carry(&result, self);
 
                     // For unsigned multiplication, check that the none of the carry bits are set.
                     let overflow = carry.iter().fold(Boolean::constant(false), |a, b| a | b);
@@ -107,7 +107,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metrics<dyn PowChecked<Intege
 impl<E: Environment, I: IntegerType, M: Magnitude> OutputMode<dyn PowChecked<Integer<E, M>, Output = Integer<E, I>>>
     for Integer<E, I>
 {
-    type Case = (Mode, ConstantOrMode<Integer<E, M>>);
+    type Case = (Mode, CircuitType<Integer<E, M>>);
 
     fn output_mode(case: &Self::Case) -> Mode {
         match (case.0, (case.1.mode(), &case.1)) {
@@ -118,7 +118,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> OutputMode<dyn PowChecked<Int
             },
             (_, (Mode::Constant, case)) => match case {
                 // Determine if the constant is all zeros.
-                ConstantOrMode::Constant(constant) => match constant.eject_value().is_zero() {
+                CircuitType::Constant(constant) => match constant.eject_value().is_zero() {
                     true => Mode::Constant,
                     false => Mode::Private,
                 },
@@ -155,7 +155,7 @@ mod tests {
                 let candidate = a.pow_checked(&b);
                 assert_eq!(expected, candidate.eject_value());
                 // assert_count!(PowChecked(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b));
-                // assert_output_mode!(PowChecked(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, ConstantOrMode::from(&b)), candidate);
+                // assert_output_mode!(PowChecked(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, CircuitType::from(&b)), candidate);
             }),
             None => {
                 match (mode_a, mode_b) {

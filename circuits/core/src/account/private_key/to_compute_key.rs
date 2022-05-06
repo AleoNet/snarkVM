@@ -46,7 +46,7 @@ mod tests {
 
                 // TODO (howardwu): Resolve skipping the cost count checks for the burn-in round.
                 if i > 0 {
-                    assert_scope!(num_constants, num_public, num_private, num_constraints);
+                    assert_scope!(<=num_constants, <=num_public, <=num_private, <=num_constraints);
                 }
             });
         }
@@ -54,16 +54,16 @@ mod tests {
 
     #[test]
     fn test_to_compute_key_constant() {
-        check_to_compute_key(Mode::Constant, 2261, 0, 0, 0);
+        check_to_compute_key(Mode::Constant, 2253, 0, 0, 0);
     }
 
     #[test]
     fn test_to_compute_key_public() {
-        check_to_compute_key(Mode::Public, 1008, 0, 3093, 3094);
+        check_to_compute_key(Mode::Public, 1000, 0, 3093, 3094);
     }
 
     #[test]
     fn test_to_compute_key_private() {
-        check_to_compute_key(Mode::Private, 1008, 0, 3093, 3094);
+        check_to_compute_key(Mode::Private, 1000, 0, 3093, 3094);
     }
 }
