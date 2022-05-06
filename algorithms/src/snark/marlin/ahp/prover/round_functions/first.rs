@@ -28,6 +28,7 @@ use crate::{
     snark::marlin::{
         ahp::{AHPError, AHPForR1CS},
         prover,
+        witness_label,
         MarlinMode,
     },
 };
@@ -49,10 +50,11 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Output the degree bounds of oracles in the first round.
     pub fn first_round_polynomial_info(batch_size: usize) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
         let mut polynomials = Vec::new();
+
         for i in 0..batch_size {
-            polynomials.push(PolynomialInfo::new(format!("w_{i}"), None, Self::zk_bound()));
-            polynomials.push(PolynomialInfo::new(format!("z_a_{i}"), None, Self::zk_bound()));
-            polynomials.push(PolynomialInfo::new(format!("z_b_{i}"), None, Self::zk_bound()));
+            polynomials.push(PolynomialInfo::new(witness_label("w", i), None, Self::zk_bound()));
+            polynomials.push(PolynomialInfo::new(witness_label("z_a", i), None, Self::zk_bound()));
+            polynomials.push(PolynomialInfo::new(witness_label("z_b", i), None, Self::zk_bound()));
         }
         if MM::ZK {
             polynomials.push(PolynomialInfo::new("mask_poly".to_string(), None, None));
@@ -83,10 +85,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         for (i, (z_a, z_b, private_variables, x_poly)) in
             itertools::izip!(z_a, z_b, private_variables, &state.x_poly).enumerate()
         {
-            job_pool.add_job(move || Self::calculate_w(i, private_variables, x_poly, state_ref));
-            job_pool.add_job(move || Self::calculate_z_m(format!("z_a_{i}"), z_a, false, state_ref, None));
+            job_pool.add_job(move || Self::calculate_w(witness_label("w", i), private_variables, x_poly, state_ref));
+            job_pool.add_job(move || Self::calculate_z_m(witness_label("z_a", i), z_a, false, state_ref, None));
             let r_b = F::rand(rng);
-            job_pool.add_job(move || Self::calculate_z_m(format!("z_b_{i}"), z_b, true, state_ref, Some(r_b)));
+            job_pool.add_job(move || Self::calculate_z_m(witness_label("z_b", i), z_b, true, state_ref, Some(r_b)));
             if MM::ZK {
                 r_b_s.push(r_b);
             }
@@ -149,7 +151,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     }
 
     fn calculate_w<'a>(
-        instance_number: usize,
+        label: String,
         private_variables: Vec<F>,
         x_poly: &DensePolynomial<F>,
         state: &prover::State<'a, F, MM>,
@@ -182,7 +184,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         assert!(w_poly.degree() < constraint_domain.size() - input_domain.size());
         end_timer!(w_poly_time);
-        PoolResult::Witness(LabeledPolynomial::new(format!("w_{instance_number}"), w_poly, None, Self::zk_bound()))
+        PoolResult::Witness(LabeledPolynomial::new(label, w_poly, None, Self::zk_bound()))
     }
 
     fn calculate_z_m<'a>(

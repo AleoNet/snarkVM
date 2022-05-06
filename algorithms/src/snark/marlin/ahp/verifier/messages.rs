@@ -16,7 +16,7 @@
 
 use snarkvm_fields::PrimeField;
 
-use crate::snark::marlin::MarlinMode;
+use crate::snark::marlin::{witness_label, MarlinMode};
 
 /// First message of the verifier.
 #[derive(Clone, Debug)]
@@ -91,7 +91,7 @@ impl<F: PrimeField> QuerySet<F> {
     pub fn to_set(&self) -> crate::polycommit::sonic_pc::QuerySet<'_, F> {
         let mut query_set = crate::polycommit::sonic_pc::QuerySet::new();
         for i in 0..self.batch_size {
-            query_set.insert((format!("z_b_{i}"), self.z_b_query.clone()));
+            query_set.insert((witness_label("z_b", i), self.z_b_query.clone()));
         }
         query_set.insert(("g_1".into(), self.g_1_query.clone()));
         query_set.insert(("lincheck_sumcheck".into(), self.lincheck_sumcheck_query.clone()));

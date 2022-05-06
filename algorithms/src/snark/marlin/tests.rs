@@ -96,7 +96,7 @@ mod marlin {
                     let max_degree = AHPForR1CS::<Fr, $marlin_mode>::max_degree(100, 25, 300).unwrap();
                     let universal_srs = $marlin_inst::universal_setup(&max_degree, rng).unwrap();
 
-                    for _ in 0..100 {
+                    for _ in 0..50 {
                         let a = Fr::rand(rng);
                         let b = Fr::rand(rng);
                         let mut c = a;
@@ -116,6 +116,45 @@ mod marlin {
                         println!("Called verifier");
                         println!("\nShould not verify (i.e. verifier messages should print below):");
                         assert!(!$marlin_inst::verify(&index_vk, [a, a], &proof).unwrap());
+                    }
+
+                    for _ in 0..10 {
+                        for batch_size in (0..5).map(|i| 2usize.pow(i)) {
+                            let (circuit_batch, input_batch): (Vec<_>, Vec<_>) = (0..batch_size)
+                                .map(|_| {
+                                    let a = Fr::rand(rng);
+                                    let b = Fr::rand(rng);
+                                    let mut c = a;
+                                    c.mul_assign(&b);
+                                    let mut d = c;
+                                    d.mul_assign(&b);
+
+                                    let circ = Circuit { a: Some(a), b: Some(b), num_constraints, num_variables };
+                                    (circ, [c, d])
+                                })
+                                .unzip();
+                            let (index_pk, index_vk) =
+                                $marlin_inst::circuit_setup(&universal_srs, &circuit_batch[0]).unwrap();
+                            println!("Called circuit setup");
+
+                            let proof = $marlin_inst::prove_batch(&index_pk, &circuit_batch, rng).unwrap();
+                            println!("Called prover");
+
+                            assert!(
+                                $marlin_inst::verify_batch(&index_vk, &input_batch, &proof).unwrap(),
+                                "Batch verification failed with {batch_size} inputs"
+                            );
+                            println!("Called verifier");
+                            println!("\nShould not verify (i.e. verifier messages should print below):");
+                            assert!(
+                                !$marlin_inst::verify_batch(
+                                    &index_vk,
+                                    &vec![[Fr::rand(rng), Fr::rand(rng)]; batch_size],
+                                    &proof
+                                )
+                                .unwrap()
+                            );
+                        }
                     }
                 }
 

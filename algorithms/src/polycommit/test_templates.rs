@@ -437,7 +437,7 @@ fn equation_test_template<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>>(
                 for (k, label) in labels.iter().enumerate() {
                     if should_have_degree_bounds {
                         value += &polynomials[k].evaluate(point);
-                        lc.add((E::Fr::one(), label.clone()));
+                        lc.add(E::Fr::one(), label.clone());
                         break;
                     } else {
                         let poly = &polynomials[k];
@@ -447,7 +447,7 @@ fn equation_test_template<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>>(
                             assert!(poly.degree_bound().is_none());
                             let coeff = E::Fr::rand(rng);
                             value += &(coeff * poly.evaluate(point));
-                            lc.add((coeff, label.clone()));
+                            lc.add(coeff, label.clone());
                         }
                     }
                 }

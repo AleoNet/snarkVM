@@ -23,6 +23,7 @@ use crate::{
         params::OptimizationType,
         proof,
         prover,
+        witness_label,
         CircuitProvingKey,
         CircuitVerifyingKey,
         MarlinError,
@@ -416,12 +417,12 @@ where
 
         // Compute the AHP verifier's query set.
         let (query_set, verifier_state) = AHPForR1CS::<_, MM>::verifier_query_set(verifier_state);
-        let lc_s = AHPForR1CS::<_, MM>::construct_linear_combinations(
+        let lc_s = dbg!(AHPForR1CS::<_, MM>::construct_linear_combinations(
             &public_input,
             &polynomials,
             &prover_third_message,
             &verifier_state,
-        )?;
+        )?);
 
         Self::terminate(terminator)?;
 
@@ -492,9 +493,9 @@ where
             .enumerate()
             .flat_map(|(i, c)| {
                 [
-                    LabeledCommitment::new_with_info(&first_round_info[&format!("w_{i}")], c.w),
-                    LabeledCommitment::new_with_info(&first_round_info[&format!("z_a_{i}")], c.z_a),
-                    LabeledCommitment::new_with_info(&first_round_info[&format!("z_b_{i}")], c.z_b),
+                    LabeledCommitment::new_with_info(&first_round_info[&witness_label("w", i)], c.w),
+                    LabeledCommitment::new_with_info(&first_round_info[&witness_label("z_a", i)], c.z_a),
+                    LabeledCommitment::new_with_info(&first_round_info[&witness_label("z_b", i)], c.z_b),
                 ]
             })
             .collect::<Vec<_>>();
@@ -600,12 +601,12 @@ where
             }
         }
 
-        let lc_s = AHPForR1CS::<_, MM>::construct_linear_combinations(
+        let lc_s = dbg!(AHPForR1CS::<_, MM>::construct_linear_combinations(
             &public_inputs,
             &evaluations,
             &proof.msg,
             &verifier_state,
-        )?;
+        )?);
 
         let evaluations_are_correct = SonicKZG10::<E, FS>::check_combinations(
             &circuit_verifying_key.verifier_key,

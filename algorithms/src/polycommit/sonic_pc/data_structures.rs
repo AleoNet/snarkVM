@@ -671,7 +671,7 @@ impl<F: Field> LinearCombination<F> {
     }
 
     /// Add a term to the linear combination.
-    pub fn add(&mut self, (c, t): (F, impl Into<LCTerm>)) -> &mut Self {
+    pub fn add(&mut self, c: F, t: impl Into<LCTerm>) -> &mut Self {
         let t = t.into();
         *self.terms.entry(t.clone()).or_insert(F::zero()) += c;
         if self.terms[&t].is_zero() {
@@ -693,7 +693,7 @@ impl<'a, F: Field> AddAssign<(F, &'a LinearCombination<F>)> for LinearCombinatio
     #[allow(clippy::suspicious_op_assign_impl)]
     fn add_assign(&mut self, (coeff, other): (F, &'a LinearCombination<F>)) {
         for (t, c) in other.terms.iter() {
-            self.add((coeff * c, t.clone()));
+            self.add(coeff * c, t.clone());
         }
     }
 }
@@ -702,7 +702,7 @@ impl<'a, F: Field> SubAssign<(F, &'a LinearCombination<F>)> for LinearCombinatio
     #[allow(clippy::suspicious_op_assign_impl)]
     fn sub_assign(&mut self, (coeff, other): (F, &'a LinearCombination<F>)) {
         for (t, c) in other.terms.iter() {
-            self.add((-coeff * c, t.clone()));
+            self.add(-coeff * c, t.clone());
         }
     }
 }
@@ -710,7 +710,7 @@ impl<'a, F: Field> SubAssign<(F, &'a LinearCombination<F>)> for LinearCombinatio
 impl<'a, F: Field> AddAssign<&'a LinearCombination<F>> for LinearCombination<F> {
     fn add_assign(&mut self, other: &'a LinearCombination<F>) {
         for (t, c) in other.terms.iter() {
-            self.add((*c, t.clone()));
+            self.add(*c, t.clone());
         }
     }
 }
@@ -718,20 +718,20 @@ impl<'a, F: Field> AddAssign<&'a LinearCombination<F>> for LinearCombination<F> 
 impl<'a, F: Field> SubAssign<&'a LinearCombination<F>> for LinearCombination<F> {
     fn sub_assign(&mut self, other: &'a LinearCombination<F>) {
         for (t, &c) in other.terms.iter() {
-            self.add((-c, t.clone()));
+            self.add(-c, t.clone());
         }
     }
 }
 
 impl<F: Field> AddAssign<F> for LinearCombination<F> {
     fn add_assign(&mut self, coeff: F) {
-        self.add((coeff, LCTerm::One));
+        self.add(coeff, LCTerm::One);
     }
 }
 
 impl<F: Field> SubAssign<F> for LinearCombination<F> {
     fn sub_assign(&mut self, coeff: F) {
-        self.add((-coeff, LCTerm::One));
+        self.add(-coeff, LCTerm::One);
     }
 }
 

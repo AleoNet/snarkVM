@@ -40,6 +40,10 @@ pub struct AHPForR1CS<F: Field, MM: MarlinMode> {
     mode: PhantomData<MM>,
 }
 
+pub(crate) fn witness_label(poly: &str, i: usize) -> String {
+    format!("{poly}_{:0>8}", i)
+}
+
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// The linear combinations that are statically known to evaluate to zero.
     #[rustfmt::skip]
@@ -189,7 +193,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         // Lincheck sumcheck:
         let z_b_s = (0..state.batch_size)
             .map(|i| {
-                let z_b_i = format!("z_b_{i}");
+                let z_b_i = witness_label("z_b", i);
                 LinearCombination::new(z_b_i.clone(), [(F::one(), z_b_i)])
             })
             .collect::<Vec<_>>();
@@ -216,18 +220,18 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let lincheck_sumcheck = {
             let mut lincheck_sumcheck = LinearCombination::empty("lincheck_sumcheck");
             if MM::ZK {
-                lincheck_sumcheck.add((F::one(), "mask_poly"));
+                lincheck_sumcheck.add(F::one(), "mask_poly");
             }
             for (i, (z_b_i_at_beta, combiner)) in z_b_s_at_beta.iter().zip_eq(batch_combiners).enumerate() {
                 lincheck_sumcheck
-                    .add((r_alpha_at_beta * combiner * (eta_a + eta_c * z_b_i_at_beta), format!("z_a_{i}")))
-                    .add((-t_at_beta * v_X_at_beta * combiner, format!("w_{i}")));
+                    .add(r_alpha_at_beta * combiner * (eta_a + eta_c * z_b_i_at_beta), witness_label("z_a", i))
+                    .add(-t_at_beta * v_X_at_beta * combiner, witness_label("w", i));
             }
             lincheck_sumcheck
-                .add((r_alpha_at_beta * eta_b * batch_z_b_at_beta, LCTerm::One))
-                .add((-t_at_beta * combined_x_at_beta, LCTerm::One))
-                .add((-v_H_at_beta, "h_1"))
-                .add((-beta * g_1_at_beta, LCTerm::One));
+                .add(r_alpha_at_beta * eta_b * batch_z_b_at_beta, LCTerm::One)
+                .add(-t_at_beta * combined_x_at_beta, LCTerm::One)
+                .add(-v_H_at_beta, "h_1")
+                .add(-beta * g_1_at_beta, LCTerm::One);
             lincheck_sumcheck
         };
         debug_assert!(evals.get_lc_eval(&lincheck_sumcheck, beta)?.is_zero());
