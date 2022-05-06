@@ -194,7 +194,7 @@ impl<P: Fp2Parameters> Field for Fp2<P> {
     }
 }
 
-impl<'a, P: Fp2Parameters> SquareRootField for Fp2<P>
+impl<P: Fp2Parameters> SquareRootField for Fp2<P>
 where
     P::Fp: SquareRootField,
 {

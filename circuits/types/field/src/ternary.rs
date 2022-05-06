@@ -106,16 +106,16 @@ impl<E: Environment> Metrics<dyn Ternary<Boolean = Boolean<E>, Output = Field<E>
 }
 
 impl<E: Environment> OutputMode<dyn Ternary<Boolean = Boolean<E>, Output = Field<E>>> for Field<E> {
-    type Case = (ConstantOrMode<Boolean<E>>, Mode, Mode);
+    type Case = (CircuitType<Boolean<E>>, Mode, Mode);
 
     fn output_mode(parameter: &Self::Case) -> Mode {
         match parameter.0.mode().is_constant() {
             true => match &parameter.0 {
-                ConstantOrMode::Mode(..) => E::halt("Circuit is required to determine output mode."),
-                ConstantOrMode::Constant(circuit) => match circuit.eject_value() {
+                CircuitType::Constant(circuit) => match circuit.eject_value() {
                     true => parameter.1,
                     false => parameter.2,
                 },
+                _ => E::halt("Circuit is required to determine output mode."),
             },
             false => Mode::Private,
         }
@@ -140,7 +140,7 @@ mod tests {
             let candidate = Field::ternary(&condition, &a, &b);
             assert_eq!(expected, candidate.eject_value(), "{case}");
             assert_count!(Ternary(Boolean, Field, Field) => Field, &(condition.eject_mode(), a.eject_mode(), b.eject_mode()));
-            assert_output_mode!(Ternary(Boolean, Field, Field) => Field, &(ConstantOrMode::from(&condition), a.eject_mode(), b.eject_mode()), candidate);
+            assert_output_mode!(Ternary(Boolean, Field, Field) => Field, &(CircuitType::from(&condition), a.eject_mode(), b.eject_mode()), candidate);
         });
     }
 

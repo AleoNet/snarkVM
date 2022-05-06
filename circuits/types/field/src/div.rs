@@ -24,14 +24,6 @@ impl<E: Environment> Div<Field<E>> for Field<E> {
     }
 }
 
-impl<E: Environment> Div<Field<E>> for &Field<E> {
-    type Output = Field<E>;
-
-    fn div(self, other: Field<E>) -> Self::Output {
-        self / &other
-    }
-}
-
 impl<E: Environment> Div<&Field<E>> for Field<E> {
     type Output = Field<E>;
 
@@ -40,13 +32,21 @@ impl<E: Environment> Div<&Field<E>> for Field<E> {
     }
 }
 
+impl<E: Environment> Div<Field<E>> for &Field<E> {
+    type Output = Field<E>;
+
+    fn div(self, other: Field<E>) -> Self::Output {
+        self / &other
+    }
+}
+
 impl<E: Environment> Div<&Field<E>> for &Field<E> {
     type Output = Field<E>;
 
     fn div(self, other: &Field<E>) -> Self::Output {
-        let mut result = self.clone();
-        result /= other;
-        result
+        let mut output = self.clone();
+        output /= other;
+        output
     }
 }
 
@@ -57,9 +57,25 @@ impl<E: Environment> DivAssign<Self> for Field<E> {
 }
 
 impl<E: Environment> DivAssign<&Self> for Field<E> {
-    #[allow(clippy::suspicious_op_assign_impl)]
     fn div_assign(&mut self, other: &Self) {
-        *self *= other.inv();
+        // If `other` is a constant, we can perform the multiplication and inversion
+        // without paying for any private variables or constraints.
+        if other.is_constant() {
+            *self *= other.inv();
+        }
+        // Otherwise, we can perform division with 1 constraint by using a `quotient` witness,
+        // and ensuring that `quotient * other == self`.
+        else {
+            // Construct the quotient as a witness.
+            let quotient = witness!(|self, other| self / other);
+
+            // Ensure the quotient is correct by enforcing:
+            // `quotient * other == self`.
+            E::enforce(|| (&quotient, other, &*self));
+
+            // Assign the quotient to `self`.
+            *self = quotient;
+        }
     }
 }
 
@@ -70,19 +86,19 @@ impl<E: Environment> Metrics<dyn Div<Field<E>, Output = Field<E>>> for Field<E> 
         match case {
             (Mode::Constant, Mode::Constant) | (_, Mode::Constant) => Count::is(1, 0, 0, 0),
             (Mode::Constant, _) => Count::is(0, 0, 1, 1),
-            (_, _) => Count::is(0, 0, 2, 2),
+            (_, _) => Count::is(0, 0, 1, 1),
         }
     }
 }
 
 impl<E: Environment> OutputMode<dyn Div<Field<E>, Output = Field<E>>> for Field<E> {
-    type Case = (ConstantOrMode<Field<E>>, ConstantOrMode<Field<E>>);
+    type Case = (CircuitType<Field<E>>, CircuitType<Field<E>>);
 
     fn output_mode(case: &Self::Case) -> Mode {
         match (case.0.mode(), case.1.mode()) {
             (Mode::Constant, Mode::Constant) => Mode::Constant,
             (Mode::Public, Mode::Constant) => match &case.1 {
-                ConstantOrMode::Constant(constant) => match constant.eject_value() == E::BaseField::one() {
+                CircuitType::Constant(constant) => match constant.eject_value() == E::BaseField::one() {
                     true => Mode::Public,
                     false => Mode::Private,
                 },
@@ -106,7 +122,7 @@ mod tests {
             let candidate = a / b;
             assert_eq!(*expected, candidate.eject_value(), "({} / {})", a.eject_value(), b.eject_value());
             assert_count!(Div(Field, Field) => Field, &(a.eject_mode(), b.eject_mode()));
-            assert_output_mode!(Div(Field, Field) => Field, &(ConstantOrMode::from(a), ConstantOrMode::from(b)), candidate);
+            assert_output_mode!(Div(Field, Field) => Field, &(CircuitType::from(a), CircuitType::from(b)), candidate);
         });
     }
 
@@ -121,7 +137,7 @@ mod tests {
             candidate /= b;
             assert_eq!(*expected, candidate.eject_value(), "({} / {})", a.eject_value(), b.eject_value());
             assert_count!(Div(Field, Field) => Field, &(a.eject_mode(), b.eject_mode()));
-            assert_output_mode!(Div(Field, Field) => Field, &(ConstantOrMode::from(a), ConstantOrMode::from(b)), candidate);
+            assert_output_mode!(Div(Field, Field) => Field, &(CircuitType::from(a), CircuitType::from(b)), candidate);
         });
     }
 

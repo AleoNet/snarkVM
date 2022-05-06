@@ -39,11 +39,11 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> HashUnc
         input
             .chunks(WINDOW_SIZE)
             .zip_eq(&self.bases)
-            .flat_map(|(bits, powers)| {
+            .map(|(bits, powers)| {
                 bits.iter()
                     .zip_eq(powers)
                     .map(|(bit, base)| Group::ternary(bit, base, &Group::zero()))
-                    .collect::<Vec<Group<E>>>()
+                    .fold(Group::<E>::zero(), |acc, x| acc + x)
             })
             .fold(Group::<E>::zero(), |acc, x| acc + x)
     }
@@ -55,9 +55,9 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     type Case = Vec<Mode>;
 
     #[inline]
-    fn count(parameter: &Self::Case) -> Count {
+    fn count(case: &Self::Case) -> Count {
         // Calculate the counts for constructing each of the individual group elements from the bits of the input.
-        let group_initialization_counts = parameter
+        let group_initialization_counts = case
             .iter()
             .map(|mode| {
                 count!(
@@ -66,25 +66,35 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
                     &(*mode, Mode::Constant, Mode::Constant)
                 )
             })
-            .fold(Count::is(0, 0, 0, 0), |cummulative, count| cummulative + count);
+            .fold(Count::zero(), |cumulative, count| cumulative + count);
 
         // Determine the modes of each of the group elements.
-        let modes = parameter.iter().map(|mode| {
-            // The `first` and `second` inputs to `Group::ternary` are always constant so we can directly determine the mode instead of
-            // using the `output_mode` macro. This avoids the need to use `ModeOrCircuit` as a parameter, simplifying the logic of this function.
-            match mode.is_constant() {
-                true => Mode::Constant,
-                false => Mode::Private,
-            }
-        });
+        let modes = case
+            .iter()
+            .map(|mode| {
+                // The `first` and `second` inputs to `Group::ternary` are always constant so we can directly determine the mode instead of
+                // using the `output_mode` macro. This avoids the need to use `CircuitType` as a parameter, simplifying the logic of this function.
+                match mode.is_constant() {
+                    true => Mode::Constant,
+                    false => Mode::Private,
+                }
+            })
+            .collect::<Vec<_>>();
 
         // Calculate the cost of summing the group elements.
-        let (_, sum_counts) =
-            modes.fold((Mode::Constant, Count::is(0, 0, 0, 0)), |(prev_mode, cumulative), curr_mode| {
-                let mode = output_mode!(Group<E>, Add<Group<E>, Output = Group<E>>, &(prev_mode, curr_mode));
-                let sum_count = count!(Group<E>, Add<Group<E>, Output = Group<E>>, &(prev_mode, curr_mode));
-                (mode, cumulative + sum_count)
-            });
+        let sum_counts = match modes.split_first() {
+            Some((start_mode, modes)) => {
+                modes
+                    .iter()
+                    .fold((*start_mode, Count::zero()), |(prev_mode, cumulative), curr_mode| {
+                        let mode = output_mode!(Group<E>, Add<Group<E>, Output = Group<E>>, &(prev_mode, *curr_mode));
+                        let sum_count = count!(Group<E>, Add<Group<E>, Output = Group<E>>, &(prev_mode, *curr_mode));
+                        (mode, cumulative + sum_count)
+                    })
+                    .1
+            }
+            None => Count::zero(),
+        };
 
         group_initialization_counts + sum_counts
     }

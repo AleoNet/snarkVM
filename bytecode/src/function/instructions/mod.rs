@@ -14,6 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+pub(super) mod abs;
+pub(super) use abs::*;
+
+pub(super) mod abs_wrapped;
+pub(super) use abs_wrapped::*;
+
 pub(super) mod add;
 pub(super) use add::*;
 
@@ -32,6 +38,9 @@ pub(super) use div::*;
 pub(super) mod div_wrapped;
 pub(super) use div_wrapped::*;
 
+pub(super) mod double;
+pub(super) use double::*;
+
 pub(super) mod equal;
 pub(super) use equal::*;
 
@@ -43,6 +52,9 @@ pub(super) use ge::*;
 
 pub(super) mod hash;
 pub(super) use hash::*;
+
+pub(super) mod inv;
+pub(super) use inv::*;
 
 pub(super) mod lt;
 pub(super) use lt::*;
@@ -73,6 +85,15 @@ pub(super) use not_equal::*;
 
 pub(super) mod or;
 pub(super) use or::*;
+
+pub(super) mod pow;
+pub(super) use pow::*;
+
+pub(super) mod pow_wrapped;
+pub(super) use pow_wrapped::*;
+
+pub(super) mod square;
+pub(super) use square::*;
 
 pub(super) mod sub;
 pub(super) use sub::*;
@@ -149,6 +170,10 @@ pub trait Operation<P: Program>: Parser + Into<Instruction<P>> {
 }
 
 pub enum Instruction<P: Program> {
+    /// Compute the absolute value of `first`, checking for overflow, and storing the outcome in `destination`.
+    Abs(Abs<P>),
+    /// Compute the absolute value of `first`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
+    AbsWrapped(AbsWrapped<P>),
     /// Adds `first` with `second`, storing the outcome in `destination`.
     Add(Add<P>),
     /// Adds `first` with `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
@@ -169,6 +194,8 @@ pub enum Instruction<P: Program> {
     Div(Div<P>),
     /// Divides `first` by `second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
     DivWrapped(DivWrapped<P>),
+    /// Doubles `first`, storing the outcome in `destination`.
+    Double(Double<P>),
     /// Checks if `first` is equal to `second`, storing the outcome in `destination`.
     Equal(Equal<P>),
     /// Checks if `first` is greater than `second`, storing the result in `destination`.
@@ -191,6 +218,8 @@ pub enum Instruction<P: Program> {
     HashPsd4(HashPsd4<P>),
     /// Performs a Poseidon hash with an input rate of 8.
     HashPsd8(HashPsd8<P>),
+    /// Computes the multiplicative inverse of `first`, storing the outcome in `destination`.
+    Inv(Inv<P>),
     /// Checks if `first` is less than `second`, storing the outcome in `destination`.
     LessThan(LessThan<P>),
     /// Checks if `first` is less than or equal to `second`, storing the outcome in `destination`.
@@ -211,6 +240,12 @@ pub enum Instruction<P: Program> {
     NotEqual(NotEqual<P>),
     /// Performs a bitwise Or on `first` and `second`, storing the outcome in `destination`.
     Or(Or<P>),
+    /// Raises `first` to the power of `second`, storing the outcome in `destination`.
+    Pow(Pow<P>),
+    /// Raises `first` to the power of `second`, wrapping around at the boundary of the type, storing the outcome in `destination`.
+    PowWrapped(PowWrapped<P>),
+    /// Squares 'first', storing the outcome in `destination`.
+    Square(Square<P>),
     /// Computes `first - second`, storing the outcome in `destination`.
     Sub(Sub<P>),
     /// Computes `first - second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
@@ -224,6 +259,8 @@ impl<P: Program> Instruction<P> {
     #[inline]
     pub(crate) fn opcode(&self) -> &'static str {
         match self {
+            Self::Abs(..) => Abs::<P>::opcode(),
+            Self::AbsWrapped(..) => AbsWrapped::<P>::opcode(),
             Self::Add(..) => Add::<P>::opcode(),
             Self::AddWrapped(..) => AddWrapped::<P>::opcode(),
             Self::And(..) => And::<P>::opcode(),
@@ -234,6 +271,7 @@ impl<P: Program> Instruction<P> {
             Self::CommitPed1024(..) => CommitPed1024::<P>::opcode(),
             Self::Div(..) => Div::<P>::opcode(),
             Self::DivWrapped(..) => DivWrapped::<P>::opcode(),
+            Self::Double(..) => Double::<P>::opcode(),
             Self::Equal(..) => Equal::<P>::opcode(),
             Self::GreaterThan(..) => GreaterThan::<P>::opcode(),
             Self::GreaterThanOrEqual(..) => GreaterThanOrEqual::<P>::opcode(),
@@ -245,6 +283,7 @@ impl<P: Program> Instruction<P> {
             Self::HashPsd2(..) => HashPsd2::<P>::opcode(),
             Self::HashPsd4(..) => HashPsd4::<P>::opcode(),
             Self::HashPsd8(..) => HashPsd8::<P>::opcode(),
+            Self::Inv(..) => Inv::<P>::opcode(),
             Self::LessThan(..) => LessThan::<P>::opcode(),
             Self::LessThanOrEqual(..) => LessThanOrEqual::<P>::opcode(),
             Self::Mul(..) => Mul::<P>::opcode(),
@@ -255,6 +294,9 @@ impl<P: Program> Instruction<P> {
             Self::Not(..) => Not::<P>::opcode(),
             Self::NotEqual(..) => NotEqual::<P>::opcode(),
             Self::Or(..) => Or::<P>::opcode(),
+            Self::Pow(..) => Pow::<P>::opcode(),
+            Self::PowWrapped(..) => PowWrapped::<P>::opcode(),
+            Self::Square(..) => Square::<P>::opcode(),
             Self::Sub(..) => Sub::<P>::opcode(),
             Self::SubWrapped(..) => SubWrapped::<P>::opcode(),
             Self::Xor(..) => Xor::<P>::opcode(),
@@ -265,6 +307,8 @@ impl<P: Program> Instruction<P> {
     #[inline]
     pub(crate) fn operands(&self) -> Vec<Operand<P>> {
         match self {
+            Self::Abs(abs) => abs.operands(),
+            Self::AbsWrapped(abs) => abs.operands(),
             Self::Add(add) => add.operands(),
             Self::AddWrapped(add_wrapped) => add_wrapped.operands(),
             Self::And(and) => and.operands(),
@@ -275,6 +319,7 @@ impl<P: Program> Instruction<P> {
             Self::CommitPed1024(ped1024) => ped1024.operands(),
             Self::Div(div) => div.operands(),
             Self::DivWrapped(div_wrapped) => div_wrapped.operands(),
+            Self::Double(double) => double.operands(),
             Self::Equal(equal) => equal.operands(),
             Self::GreaterThan(greater_than) => greater_than.operands(),
             Self::GreaterThanOrEqual(greater_than_or_equal) => greater_than_or_equal.operands(),
@@ -286,6 +331,7 @@ impl<P: Program> Instruction<P> {
             Self::HashPsd2(psd2) => psd2.operands(),
             Self::HashPsd4(psd4) => psd4.operands(),
             Self::HashPsd8(psd8) => psd8.operands(),
+            Self::Inv(inv) => inv.operands(),
             Self::LessThan(less_than) => less_than.operands(),
             Self::LessThanOrEqual(less_than_or_equal) => less_than_or_equal.operands(),
             Self::Mul(mul) => mul.operands(),
@@ -296,6 +342,9 @@ impl<P: Program> Instruction<P> {
             Self::Not(not) => not.operands(),
             Self::NotEqual(not_equal) => not_equal.operands(),
             Self::Or(or) => or.operands(),
+            Self::Pow(pow) => pow.operands(),
+            Self::PowWrapped(pow_wrapped) => pow_wrapped.operands(),
+            Self::Square(square) => square.operands(),
             Self::Sub(sub) => sub.operands(),
             Self::SubWrapped(sub_wrapped) => sub_wrapped.operands(),
             Self::Xor(xor) => xor.operands(),
@@ -306,6 +355,8 @@ impl<P: Program> Instruction<P> {
     #[inline]
     pub(crate) fn destination(&self) -> &Register<P> {
         match self {
+            Self::Abs(abs) => abs.destination(),
+            Self::AbsWrapped(abs) => abs.destination(),
             Self::Add(add) => add.destination(),
             Self::AddWrapped(add_wrapped) => add_wrapped.destination(),
             Self::And(and) => and.destination(),
@@ -316,6 +367,7 @@ impl<P: Program> Instruction<P> {
             Self::CommitPed1024(ped1024) => ped1024.destination(),
             Self::Div(div) => div.destination(),
             Self::DivWrapped(div_wrapped) => div_wrapped.destination(),
+            Self::Double(double) => double.destination(),
             Self::Equal(equal) => equal.destination(),
             Self::GreaterThan(greater_than) => greater_than.destination(),
             Self::GreaterThanOrEqual(greater_than_or_equal) => greater_than_or_equal.destination(),
@@ -327,6 +379,7 @@ impl<P: Program> Instruction<P> {
             Self::HashPsd2(psd2) => psd2.destination(),
             Self::HashPsd4(psd4) => psd4.destination(),
             Self::HashPsd8(psd8) => psd8.destination(),
+            Self::Inv(inv) => inv.destination(),
             Self::LessThan(less_than) => less_than.destination(),
             Self::LessThanOrEqual(less_than_or_equal) => less_than_or_equal.destination(),
             Self::Mul(mul) => mul.destination(),
@@ -337,6 +390,9 @@ impl<P: Program> Instruction<P> {
             Self::Not(not) => not.destination(),
             Self::NotEqual(not_equal) => not_equal.destination(),
             Self::Or(or) => or.destination(),
+            Self::Pow(pow) => pow.destination(),
+            Self::PowWrapped(pow_wrapped) => pow_wrapped.destination(),
+            Self::Square(square) => square.destination(),
             Self::Sub(sub) => sub.destination(),
             Self::SubWrapped(sub_wrapped) => sub_wrapped.destination(),
             Self::Xor(xor) => xor.destination(),
@@ -347,6 +403,8 @@ impl<P: Program> Instruction<P> {
     #[inline]
     pub(crate) fn evaluate(&self, registers: &Registers<P>) {
         match self {
+            Self::Abs(abs) => abs.evaluate(registers),
+            Self::AbsWrapped(abs) => abs.evaluate(registers),
             Self::Add(instruction) => instruction.evaluate(registers),
             Self::AddWrapped(instruction) => instruction.evaluate(registers),
             Self::And(instruction) => instruction.evaluate(registers),
@@ -357,6 +415,7 @@ impl<P: Program> Instruction<P> {
             Self::CommitPed1024(instruction) => instruction.evaluate(registers),
             Self::Div(instruction) => instruction.evaluate(registers),
             Self::DivWrapped(instruction) => instruction.evaluate(registers),
+            Self::Double(instruction) => instruction.evaluate(registers),
             Self::Equal(instruction) => instruction.evaluate(registers),
             Self::GreaterThan(instruction) => instruction.evaluate(registers),
             Self::GreaterThanOrEqual(instruction) => instruction.evaluate(registers),
@@ -368,6 +427,7 @@ impl<P: Program> Instruction<P> {
             Self::HashPsd2(instruction) => instruction.evaluate(registers),
             Self::HashPsd4(instruction) => instruction.evaluate(registers),
             Self::HashPsd8(instruction) => instruction.evaluate(registers),
+            Self::Inv(instruction) => instruction.evaluate(registers),
             Self::LessThan(instruction) => instruction.evaluate(registers),
             Self::LessThanOrEqual(instruction) => instruction.evaluate(registers),
             Self::Mul(instruction) => instruction.evaluate(registers),
@@ -378,6 +438,9 @@ impl<P: Program> Instruction<P> {
             Self::Not(instruction) => instruction.evaluate(registers),
             Self::NotEqual(instruction) => instruction.evaluate(registers),
             Self::Or(instruction) => instruction.evaluate(registers),
+            Self::Pow(instruction) => instruction.evaluate(registers),
+            Self::PowWrapped(instruction) => instruction.evaluate(registers),
+            Self::Square(instruction) => instruction.evaluate(registers),
             Self::Sub(instruction) => instruction.evaluate(registers),
             Self::SubWrapped(instruction) => instruction.evaluate(registers),
             Self::Xor(instruction) => instruction.evaluate(registers),
@@ -395,33 +458,40 @@ impl<P: Program> Parser for Instruction<P> {
         let (string, _) = Sanitizer::parse(string)?;
         // Parse the instruction from the string.
         let (string, instruction) = alt((
+            // nom documentation notes that alt supports a maximum of 21 parsers.
+            // The documentation suggests to nest alt to support more parsers, as we do here.
             // Note that order of the individual parsers matters.
-            preceded(pair(tag(Add::<P>::opcode()), tag(" ")), map(Add::parse, Into::into)),
-            preceded(pair(tag(AddWrapped::<P>::opcode()), tag(" ")), map(AddWrapped::parse, Into::into)),
-            preceded(pair(tag(And::<P>::opcode()), tag(" ")), map(And::parse, Into::into)),
-            preceded(pair(tag(CommitPed64::<P>::opcode()), tag(" ")), map(CommitPed64::parse, Into::into)),
-            preceded(pair(tag(CommitPed128::<P>::opcode()), tag(" ")), map(CommitPed128::parse, Into::into)),
-            preceded(pair(tag(CommitPed256::<P>::opcode()), tag(" ")), map(CommitPed256::parse, Into::into)),
-            preceded(pair(tag(CommitPed512::<P>::opcode()), tag(" ")), map(CommitPed512::parse, Into::into)),
-            preceded(pair(tag(CommitPed1024::<P>::opcode()), tag(" ")), map(CommitPed1024::parse, Into::into)),
-            preceded(pair(tag(Div::<P>::opcode()), tag(" ")), map(Div::parse, Into::into)),
-            preceded(pair(tag(DivWrapped::<P>::opcode()), tag(" ")), map(DivWrapped::parse, Into::into)),
-            preceded(pair(tag(Equal::<P>::opcode()), tag(" ")), map(Equal::parse, Into::into)),
-            preceded(pair(tag(GreaterThan::<P>::opcode()), tag(" ")), map(GreaterThan::parse, Into::into)),
-            preceded(
-                pair(tag(GreaterThanOrEqual::<P>::opcode()), tag(" ")),
-                map(GreaterThanOrEqual::parse, Into::into),
-            ),
-            preceded(pair(tag(HashPed64::<P>::opcode()), tag(" ")), map(HashPed64::parse, Into::into)),
-            preceded(pair(tag(HashPed128::<P>::opcode()), tag(" ")), map(HashPed128::parse, Into::into)),
-            preceded(pair(tag(HashPed256::<P>::opcode()), tag(" ")), map(HashPed256::parse, Into::into)),
-            preceded(pair(tag(HashPed512::<P>::opcode()), tag(" ")), map(HashPed512::parse, Into::into)),
-            // `alt` only takes a max of 21 parsers in a tuple, so we need to nest here.
             alt((
-                preceded(pair(tag(HashPed1024::<P>::opcode()), tag(" ")), map(HashPed1024::parse, Into::into)),
+                alt((
+                    preceded(pair(tag(Abs::<P>::opcode()), tag(" ")), map(Abs::parse, Into::into)),
+                    preceded(pair(tag(AbsWrapped::<P>::opcode()), tag(" ")), map(AbsWrapped::parse, Into::into)),
+                    preceded(pair(tag(Add::<P>::opcode()), tag(" ")), map(Add::parse, Into::into)),
+                    preceded(pair(tag(AddWrapped::<P>::opcode()), tag(" ")), map(AddWrapped::parse, Into::into)),
+                    preceded(pair(tag(And::<P>::opcode()), tag(" ")), map(And::parse, Into::into)),
+                    preceded(pair(tag(CommitPed64::<P>::opcode()), tag(" ")), map(CommitPed64::parse, Into::into)),
+                    preceded(pair(tag(CommitPed128::<P>::opcode()), tag(" ")), map(CommitPed128::parse, Into::into)),
+                    preceded(pair(tag(CommitPed256::<P>::opcode()), tag(" ")), map(CommitPed256::parse, Into::into)),
+                    preceded(pair(tag(CommitPed512::<P>::opcode()), tag(" ")), map(CommitPed512::parse, Into::into)),
+                    preceded(pair(tag(CommitPed1024::<P>::opcode()), tag(" ")), map(CommitPed1024::parse, Into::into)),
+                    preceded(pair(tag(Div::<P>::opcode()), tag(" ")), map(Div::parse, Into::into)),
+                    preceded(pair(tag(DivWrapped::<P>::opcode()), tag(" ")), map(DivWrapped::parse, Into::into)),
+                    preceded(pair(tag(Double::<P>::opcode()), tag(" ")), map(Double::parse, Into::into)),
+                    preceded(pair(tag(Equal::<P>::opcode()), tag(" ")), map(Equal::parse, Into::into)),
+                    preceded(pair(tag(GreaterThan::<P>::opcode()), tag(" ")), map(GreaterThan::parse, Into::into)),
+                    preceded(
+                        pair(tag(GreaterThanOrEqual::<P>::opcode()), tag(" ")),
+                        map(GreaterThanOrEqual::parse, Into::into),
+                    ),
+                    preceded(pair(tag(HashPed64::<P>::opcode()), tag(" ")), map(HashPed64::parse, Into::into)),
+                    preceded(pair(tag(HashPed128::<P>::opcode()), tag(" ")), map(HashPed128::parse, Into::into)),
+                    preceded(pair(tag(HashPed256::<P>::opcode()), tag(" ")), map(HashPed256::parse, Into::into)),
+                    preceded(pair(tag(HashPed512::<P>::opcode()), tag(" ")), map(HashPed512::parse, Into::into)),
+                    preceded(pair(tag(HashPed1024::<P>::opcode()), tag(" ")), map(HashPed1024::parse, Into::into)),
+                )),
                 preceded(pair(tag(HashPsd2::<P>::opcode()), tag(" ")), map(HashPsd2::parse, Into::into)),
                 preceded(pair(tag(HashPsd4::<P>::opcode()), tag(" ")), map(HashPsd4::parse, Into::into)),
                 preceded(pair(tag(HashPsd8::<P>::opcode()), tag(" ")), map(HashPsd8::parse, Into::into)),
+                preceded(pair(tag(Inv::<P>::opcode()), tag(" ")), map(Inv::parse, Into::into)),
                 preceded(pair(tag(LessThan::<P>::opcode()), tag(" ")), map(LessThan::parse, Into::into)),
                 preceded(pair(tag(LessThanOrEqual::<P>::opcode()), tag(" ")), map(LessThanOrEqual::parse, Into::into)),
                 preceded(pair(tag(Mul::<P>::opcode()), tag(" ")), map(Mul::parse, Into::into)),
@@ -432,6 +502,9 @@ impl<P: Program> Parser for Instruction<P> {
                 preceded(pair(tag(Not::<P>::opcode()), tag(" ")), map(Not::parse, Into::into)),
                 preceded(pair(tag(NotEqual::<P>::opcode()), tag(" ")), map(NotEqual::parse, Into::into)),
                 preceded(pair(tag(Or::<P>::opcode()), tag(" ")), map(Or::parse, Into::into)),
+                preceded(pair(tag(Pow::<P>::opcode()), tag(" ")), map(Pow::parse, Into::into)),
+                preceded(pair(tag(PowWrapped::<P>::opcode()), tag(" ")), map(PowWrapped::parse, Into::into)),
+                preceded(pair(tag(Square::<P>::opcode()), tag(" ")), map(Square::parse, Into::into)),
                 preceded(pair(tag(Sub::<P>::opcode()), tag(" ")), map(Sub::parse, Into::into)),
                 preceded(pair(tag(SubWrapped::<P>::opcode()), tag(" ")), map(SubWrapped::parse, Into::into)),
                 preceded(pair(tag(Xor::<P>::opcode()), tag(" ")), map(Xor::parse, Into::into)),
@@ -447,6 +520,8 @@ impl<P: Program> Parser for Instruction<P> {
 impl<P: Program> fmt::Display for Instruction<P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            Self::Abs(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::AbsWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Add(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::AddWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::And(instruction) => write!(f, "{} {};", self.opcode(), instruction),
@@ -457,6 +532,7 @@ impl<P: Program> fmt::Display for Instruction<P> {
             Self::CommitPed1024(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Div(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::DivWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::Double(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Equal(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::GreaterThan(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::GreaterThanOrEqual(instruction) => write!(f, "{} {};", self.opcode(), instruction),
@@ -468,6 +544,7 @@ impl<P: Program> fmt::Display for Instruction<P> {
             Self::HashPsd2(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::HashPsd4(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::HashPsd8(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::Inv(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::LessThan(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::LessThanOrEqual(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Mul(instruction) => write!(f, "{} {};", self.opcode(), instruction),
@@ -478,6 +555,9 @@ impl<P: Program> fmt::Display for Instruction<P> {
             Self::Not(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::NotEqual(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Or(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::Pow(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::PowWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::Square(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Sub(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::SubWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Xor(instruction) => write!(f, "{} {};", self.opcode(), instruction),
@@ -489,41 +569,48 @@ impl<P: Program> FromBytes for Instruction<P> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let code = u16::read_le(&mut reader)?;
         match code {
-            0 => Ok(Self::Add(Add::read_le(&mut reader)?)),
-            1 => Ok(Self::AddWrapped(AddWrapped::read_le(&mut reader)?)),
-            2 => Ok(Self::And(And::read_le(&mut reader)?)),
-            3 => Ok(Self::CommitPed64(CommitPed64::read_le(&mut reader)?)),
-            4 => Ok(Self::CommitPed128(CommitPed128::read_le(&mut reader)?)),
-            5 => Ok(Self::CommitPed256(CommitPed256::read_le(&mut reader)?)),
-            6 => Ok(Self::CommitPed512(CommitPed512::read_le(&mut reader)?)),
-            7 => Ok(Self::CommitPed1024(CommitPed1024::read_le(&mut reader)?)),
-            8 => Ok(Self::Div(Div::read_le(&mut reader)?)),
-            9 => Ok(Self::DivWrapped(DivWrapped::read_le(&mut reader)?)),
-            10 => Ok(Self::Equal(Equal::read_le(&mut reader)?)),
-            11 => Ok(Self::GreaterThan(GreaterThan::read_le(&mut reader)?)),
-            12 => Ok(Self::GreaterThanOrEqual(GreaterThanOrEqual::read_le(&mut reader)?)),
-            13 => Ok(Self::HashPed64(HashPed64::read_le(&mut reader)?)),
-            14 => Ok(Self::HashPed128(HashPed128::read_le(&mut reader)?)),
-            15 => Ok(Self::HashPed256(HashPed256::read_le(&mut reader)?)),
-            16 => Ok(Self::HashPed512(HashPed512::read_le(&mut reader)?)),
-            17 => Ok(Self::HashPed1024(HashPed1024::read_le(&mut reader)?)),
-            18 => Ok(Self::HashPsd2(HashPsd2::read_le(&mut reader)?)),
-            19 => Ok(Self::HashPsd4(HashPsd4::read_le(&mut reader)?)),
-            20 => Ok(Self::HashPsd8(HashPsd8::read_le(&mut reader)?)),
-            21 => Ok(Self::LessThan(LessThan::read_le(&mut reader)?)),
-            22 => Ok(Self::LessThanOrEqual(LessThanOrEqual::read_le(&mut reader)?)),
-            23 => Ok(Self::Mul(Mul::read_le(&mut reader)?)),
-            24 => Ok(Self::MulWrapped(MulWrapped::read_le(&mut reader)?)),
-            25 => Ok(Self::Nand(Nand::read_le(&mut reader)?)),
-            26 => Ok(Self::Neg(Neg::read_le(&mut reader)?)),
-            27 => Ok(Self::Nor(Nor::read_le(&mut reader)?)),
-            28 => Ok(Self::Not(Not::read_le(&mut reader)?)),
-            29 => Ok(Self::NotEqual(NotEqual::read_le(&mut reader)?)),
-            30 => Ok(Self::Or(Or::read_le(&mut reader)?)),
-            31 => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
-            32 => Ok(Self::SubWrapped(SubWrapped::read_le(&mut reader)?)),
-            33 => Ok(Self::Xor(Xor::read_le(&mut reader)?)),
-            34.. => Err(error(format!("Failed to deserialize an instruction of code {code}"))),
+            0 => Ok(Self::Abs(Abs::read_le(&mut reader)?)),
+            1 => Ok(Self::AbsWrapped(AbsWrapped::read_le(&mut reader)?)),
+            2 => Ok(Self::Add(Add::read_le(&mut reader)?)),
+            3 => Ok(Self::AddWrapped(AddWrapped::read_le(&mut reader)?)),
+            4 => Ok(Self::And(And::read_le(&mut reader)?)),
+            5 => Ok(Self::CommitPed64(CommitPed64::read_le(&mut reader)?)),
+            6 => Ok(Self::CommitPed128(CommitPed128::read_le(&mut reader)?)),
+            7 => Ok(Self::CommitPed256(CommitPed256::read_le(&mut reader)?)),
+            8 => Ok(Self::CommitPed512(CommitPed512::read_le(&mut reader)?)),
+            9 => Ok(Self::CommitPed1024(CommitPed1024::read_le(&mut reader)?)),
+            10 => Ok(Self::Div(Div::read_le(&mut reader)?)),
+            11 => Ok(Self::DivWrapped(DivWrapped::read_le(&mut reader)?)),
+            12 => Ok(Self::Double(Double::read_le(&mut reader)?)),
+            13 => Ok(Self::Equal(Equal::read_le(&mut reader)?)),
+            14 => Ok(Self::GreaterThan(GreaterThan::read_le(&mut reader)?)),
+            15 => Ok(Self::GreaterThanOrEqual(GreaterThanOrEqual::read_le(&mut reader)?)),
+            16 => Ok(Self::HashPed64(HashPed64::read_le(&mut reader)?)),
+            17 => Ok(Self::HashPed128(HashPed128::read_le(&mut reader)?)),
+            18 => Ok(Self::HashPed256(HashPed256::read_le(&mut reader)?)),
+            19 => Ok(Self::HashPed512(HashPed512::read_le(&mut reader)?)),
+            20 => Ok(Self::HashPed1024(HashPed1024::read_le(&mut reader)?)),
+            21 => Ok(Self::HashPsd2(HashPsd2::read_le(&mut reader)?)),
+            22 => Ok(Self::HashPsd4(HashPsd4::read_le(&mut reader)?)),
+            23 => Ok(Self::HashPsd8(HashPsd8::read_le(&mut reader)?)),
+            24 => Ok(Self::Inv(Inv::read_le(&mut reader)?)),
+            25 => Ok(Self::LessThan(LessThan::read_le(&mut reader)?)),
+            26 => Ok(Self::LessThanOrEqual(LessThanOrEqual::read_le(&mut reader)?)),
+            27 => Ok(Self::Mul(Mul::read_le(&mut reader)?)),
+            28 => Ok(Self::MulWrapped(MulWrapped::read_le(&mut reader)?)),
+            29 => Ok(Self::Nand(Nand::read_le(&mut reader)?)),
+            30 => Ok(Self::Neg(Neg::read_le(&mut reader)?)),
+            31 => Ok(Self::Nor(Nor::read_le(&mut reader)?)),
+            32 => Ok(Self::Not(Not::read_le(&mut reader)?)),
+            33 => Ok(Self::NotEqual(NotEqual::read_le(&mut reader)?)),
+            34 => Ok(Self::Or(Or::read_le(&mut reader)?)),
+            35 => Ok(Self::Pow(Pow::read_le(&mut reader)?)),
+            36 => Ok(Self::PowWrapped(PowWrapped::read_le(&mut reader)?)),
+            37 => Ok(Self::Square(Square::read_le(&mut reader)?)),
+            38 => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
+            39 => Ok(Self::SubWrapped(SubWrapped::read_le(&mut reader)?)),
+            40 => Ok(Self::Xor(Xor::read_le(&mut reader)?)),
+            41.. => Err(error(format!("Failed to deserialize an instruction of code {code}"))),
         }
     }
 }
@@ -531,16 +618,24 @@ impl<P: Program> FromBytes for Instruction<P> {
 impl<P: Program> ToBytes for Instruction<P> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         match self {
-            Self::Add(instruction) => {
+            Self::Abs(instruction) => {
                 u16::write_le(&0u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::AddWrapped(instruction) => {
+            Self::AbsWrapped(instruction) => {
                 u16::write_le(&1u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::And(instruction) => {
+            Self::Add(instruction) => {
                 u16::write_le(&2u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::AddWrapped(instruction) => {
+                u16::write_le(&3u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::And(instruction) => {
+                u16::write_le(&4u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
             Self::CommitPed64(instruction) => {
@@ -564,23 +659,27 @@ impl<P: Program> ToBytes for Instruction<P> {
                 instruction.write_le(&mut writer)
             }
             Self::Div(instruction) => {
-                u16::write_le(&8u16, &mut writer)?;
+                u16::write_le(&5u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
             Self::DivWrapped(instruction) => {
-                u16::write_le(&9u16, &mut writer)?;
+                u16::write_le(&6u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::Double(instruction) => {
+                u16::write_le(&7u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
             Self::Equal(instruction) => {
-                u16::write_le(&10u16, &mut writer)?;
+                u16::write_le(&8u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
             Self::GreaterThan(instruction) => {
-                u16::write_le(&11u16, &mut writer)?;
+                u16::write_le(&9u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
             Self::GreaterThanOrEqual(instruction) => {
-                u16::write_le(&12u16, &mut writer)?;
+                u16::write_le(&10u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
             Self::HashPed64(instruction) => {
@@ -615,56 +714,72 @@ impl<P: Program> ToBytes for Instruction<P> {
                 u16::write_le(&20u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
+            Self::Inv(instruction) => {
+                u16::write_le(&11u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
             Self::LessThan(instruction) => {
-                u16::write_le(&21u16, &mut writer)?;
+                u16::write_le(&12u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
             Self::LessThanOrEqual(instruction) => {
-                u16::write_le(&22u16, &mut writer)?;
+                u16::write_le(&13u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
             Self::Mul(instruction) => {
-                u16::write_le(&23u16, &mut writer)?;
+                u16::write_le(&14u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
             Self::MulWrapped(instruction) => {
-                u16::write_le(&24u16, &mut writer)?;
+                u16::write_le(&15u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
             Self::Nand(instruction) => {
-                u16::write_le(&25u16, &mut writer)?;
+                u16::write_le(&16u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
             Self::Neg(instruction) => {
-                u16::write_le(&26u16, &mut writer)?;
+                u16::write_le(&17u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
             Self::Nor(instruction) => {
-                u16::write_le(&27u16, &mut writer)?;
+                u16::write_le(&18u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
             Self::Not(instruction) => {
-                u16::write_le(&28u16, &mut writer)?;
+                u16::write_le(&19u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
             Self::NotEqual(instruction) => {
-                u16::write_le(&29u16, &mut writer)?;
+                u16::write_le(&20u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
             Self::Or(instruction) => {
-                u16::write_le(&30u16, &mut writer)?;
+                u16::write_le(&21u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::Pow(instruction) => {
+                u16::write_le(&22u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::PowWrapped(instruction) => {
+                u16::write_le(&23u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::Square(instruction) => {
+                u16::write_le(&24u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
             Self::Sub(instruction) => {
-                u16::write_le(&31u16, &mut writer)?;
+                u16::write_le(&25u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
             Self::SubWrapped(instruction) => {
-                u16::write_le(&32u16, &mut writer)?;
+                u16::write_le(&26u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
             Self::Xor(instruction) => {
-                u16::write_le(&33u16, &mut writer)?;
+                u16::write_le(&27u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
         }

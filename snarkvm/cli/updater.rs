@@ -28,6 +28,7 @@ impl Updater {
     const SNARKVM_REPO_OWNER: &'static str = "AleoHQ";
 
     /// Show all available releases for `snarkvm`.
+    #[allow(clippy::format_push_string)]
     pub fn show_available_releases() -> Result<String, UpdaterError> {
         let releases = github::ReleaseList::configure()
             .repo_owner(Self::SNARKVM_REPO_OWNER)
