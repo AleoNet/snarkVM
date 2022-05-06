@@ -135,25 +135,22 @@ impl<E: Environment> Equal<Self> for Field<E> {
     }
 }
 
-impl<E: Environment> Metrics<dyn Equal<Field<E>, Output = Boolean<E>>> for Field<E> {
-    type Case = (Mode, Mode);
+impl<E: Environment> Metadata<dyn Equal<Field<E>, Output = Boolean<E>>> for Field<E> {
+    type Case = (CircuitType<Field<E>>, CircuitType<Field<E>>);
+    type OutputType = CircuitType<Boolean<E>>;
 
     // TODO: How to deal where both operands are the same field element, since it changes the number of gates produced? We could use upper bounds.
     fn count(case: &Self::Case) -> Count {
-        match case {
+        match (case.0.eject_mode(), case.1.eject_mode()) {
             (Mode::Constant, Mode::Constant) => Count::is(1, 0, 0, 0),
             _ => Count::is(0, 0, 2, 3),
         }
     }
-}
 
-impl<E: Environment> OutputMode<dyn Equal<Field<E>, Output = Boolean<E>>> for Field<E> {
-    type Case = (Mode, Mode);
-
-    fn output_mode(case: &Self::Case) -> Mode {
-        match case {
-            (Mode::Constant, Mode::Constant) => Mode::Constant,
-            _ => Mode::Private,
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        match (case.0.eject_mode(), case.1.eject_mode()) {
+            (Mode::Constant, Mode::Constant) => CircuitType::from(case.0.circuit().is_equal(case.1.circuit())),
+            _ => CircuitType::Private,
         }
     }
 }
@@ -170,8 +167,10 @@ mod tests {
         Circuit::scope(name, || {
             let candidate = a.is_equal(b);
             assert_eq!(expected, candidate.eject_value(), "({} == {})", a.eject_value(), b.eject_value());
-            assert_count!(Equal(Field, Field) => Boolean, &(a.eject_mode(), b.eject_mode()));
-            assert_output_mode!(Equal(Field, Field) => Boolean, &(a.eject_mode(), b.eject_mode()), candidate);
+
+            let case = (CircuitType::from(a), CircuitType::from(b));
+            assert_count!(Equal(Field, Field) => Boolean, &case);
+            assert_output_type!(Equal(Field, Field) => Boolean, case, candidate);
         });
     }
 
@@ -179,8 +178,10 @@ mod tests {
         Circuit::scope(name, || {
             let candidate = a.is_not_equal(b);
             assert_eq!(expected, candidate.eject_value(), "({} != {})", a.eject_value(), b.eject_value());
-            assert_count!(Equal(Field, Field) => Boolean, &(a.eject_mode(), b.eject_mode()));
-            assert_output_mode!(Equal(Field, Field) => Boolean, &(a.eject_mode(), b.eject_mode()), candidate);
+
+            let case = (CircuitType::from(a), CircuitType::from(b));
+            assert_count!(Equal(Field, Field) => Boolean, &case);
+            assert_output_type!(Equal(Field, Field) => Boolean, case, candidate);
         });
     }
 
