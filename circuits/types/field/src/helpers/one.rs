@@ -28,19 +28,16 @@ impl<E: Environment> One for Field<E> {
     }
 }
 
-impl<E: Environment> Metrics<dyn One<Boolean = Boolean<E>>> for Field<E> {
+impl<E: Environment> Metadata<dyn One<Boolean = Boolean<E>>> for Field<E> {
     type Case = ();
+    type OutputType = CircuitType<Field<E>>;
 
     fn count(_parameter: &Self::Case) -> Count {
         Count::is(0, 0, 0, 0)
     }
-}
 
-impl<E: Environment> OutputMode<dyn One<Boolean = Boolean<E>>> for Field<E> {
-    type Case = ();
-
-    fn output_mode(_input: &Self::Case) -> Mode {
-        Mode::Constant
+    fn output_type(_case: Self::Case) -> Self::OutputType {
+        CircuitType::from(Field::one())
     }
 }
 
@@ -58,7 +55,7 @@ mod tests {
             let candidate = Field::<Circuit>::one();
             assert_eq!(one, candidate.eject_value());
             assert_count!(One<Boolean>() => Field, &());
-            assert_output_mode!(One<Boolean>() => Field, &(), candidate);
+            assert_output_type!(One<Boolean>() => Field, (), candidate);
         });
     }
 
