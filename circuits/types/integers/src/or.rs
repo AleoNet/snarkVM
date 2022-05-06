@@ -84,8 +84,23 @@ impl<E: Environment, I: IntegerType> Metadata<dyn BitOr<Integer<E, I>, Output = 
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match (case.0.eject_mode(), case.1.eject_mode()) {
-            _ => todo!(),
+        match case {
+            (CircuitType::Constant(_), CircuitType::Constant(_)) => {
+                CircuitType::from(case.0.circuit().bitor(case.1.circuit()))
+            }
+            (CircuitType::Constant(constant), other_type) | (other_type, CircuitType::Constant(constant)) => {
+                match I::is_signed() {
+                    true => match constant.eject_value() == I::zero() - I::one() {
+                        true => CircuitType::Constant(constant),
+                        false => other_type,
+                    },
+                    false => match constant.eject_value() == I::MAX {
+                        true => CircuitType::Constant(constant),
+                        false => other_type,
+                    },
+                }
+            }
+            (_, _) => CircuitType::Private,
         }
     }
 }
@@ -108,6 +123,7 @@ mod tests {
             let candidate = (&a).bitor(&b);
             assert_eq!(expected, candidate.eject_value());
 
+            println!("{} | {} = {}", &a.eject_value(), &b.eject_value(), &candidate.eject_value());
             let case = (CircuitType::from(a), CircuitType::from(b));
             assert_count!(BitOr(Integer<I>, Integer<I>) => Integer<I>, &case);
             assert_output_type!(BitOr(Integer<I>, Integer<I>) => Integer<I>, case, candidate);

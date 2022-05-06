@@ -75,8 +75,30 @@ impl<E: Environment, I: IntegerType> Metadata<dyn DivWrapped<Integer<E, I>, Outp
         match I::is_signed() {
             true => match (case.0.eject_mode(), case.1.eject_mode()) {
                 (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
+                (_, _) => {
+                    // Divide the absolute value of `self` and `other` in the base field.
+                    let unsigned_dividend = self.abs_wrapped().cast_as_dual();
+                    let unsigned_divisor = other.abs_wrapped().cast_as_dual();
+                    let unsigned_quotient = unsigned_dividend.div_wrapped(&unsigned_divisor);
+
+                    // TODO (@pranav) Do we need to check that the quotient cannot exceed abs(I::MIN)?
+                    //  This is implicitly true since the dividend <= abs(I::MIN) and 0 <= quotient <= dividend.
+                    let signed_quotient = Self { bits_le: unsigned_quotient.bits_le, phantom: Default::default() };
+                    let operands_same_sign = &self.msb().is_equal(other.msb());
+                    let signed_quotient = Self::ternary(
+                        operands_same_sign,
+                        &signed_quotient,
+                        &Self::zero().sub_wrapped(&signed_quotient),
+                    );
+
+                    // Signed integer division wraps when the dividend is I::MIN and the divisor is -1.
+                    let min = Self::constant(I::MIN);
+                    let neg_one = Self::constant(I::zero() - I::one());
+                    let overflows = self.is_equal(&min) & other.is_equal(&neg_one);
+                    Self::ternary(&overflows, &min, &signed_quotient)
+                }
                 (Mode::Constant, _) | (_, Mode::Constant) => {
-                    Count::less_than(6 * I::BITS, 0, (7 * I::BITS) + 10, (8 * I::BITS) + 16)
+                    Count::is(6 * I::BITS, 0, (7 * I::BITS) + 10, (8 * I::BITS) + 16)
                 }
                 (_, _) => Count::is(5 * I::BITS, 0, (9 * I::BITS) + 10, (9 * I::BITS) + 16),
             },

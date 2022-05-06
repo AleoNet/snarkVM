@@ -72,7 +72,7 @@ impl<E: Environment, I: IntegerType> Metadata<dyn Ternary<Boolean = Boolean<E>, 
                 let bit_pairs = case.1.circuit().bits_le.iter().zip_eq(case.2.circuit().bits_le.iter());
                 let conditioned_bits = bit_pairs
                     .map(|(a, b)| {
-                        let case = (case.0, CircuitType::from(a), CircuitType::from(b));
+                        let case = (case.0.clone(), CircuitType::from(a), CircuitType::from(b));
                         output_type!(Boolean<E>, Ternary<Boolean = Boolean<E>, Output = Boolean<E>>, case)
                     })
                     .collect::<Vec<_>>();

@@ -87,25 +87,15 @@ impl<E: Environment, I: IntegerType, M: Magnitude> PowChecked<Integer<E, M>> for
 impl<E: Environment, I: IntegerType, M: Magnitude> Metadata<dyn PowChecked<Integer<E, M>, Output = Integer<E, I>>>
     for Integer<E, I>
 {
-    type Case = (CircuitType<Self>, CircuitType<Self>);
+    type Case = (CircuitType<Self>, CircuitType<Integer<E, M>>);
     type OutputType = CircuitType<Self>;
 
     fn count(case: &Self::Case) -> Count {
-        match (case.0.eject_mode(), case.1.eject_mode()) {
-            (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-            (Mode::Constant, _) | (_, Mode::Constant) => {
-                let mul_count = count!(Integer<E, I>, MulWrapped<Integer<E, I>, Output=Integer<E, I>>, case);
-                (2 * M::BITS * mul_count) + Count::is(2 * I::BITS, 0, I::BITS, I::BITS)
-            }
-            (_, _) => {
-                let mul_count = count!(Integer<E, I>, MulWrapped<Integer<E, I>, Output=Integer<E, I>>, case);
-                (2 * M::BITS * mul_count) + Count::is(2 * I::BITS, 0, I::BITS, I::BITS)
-            }
-        }
+        count!(Self, PowWrapped<Integer<E, M>, Output = Self>, case)
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        todo!()
+        output_type!(Self, PowWrapped<Integer<E, M>, Output = Self>, case)
     }
 }
 
@@ -134,18 +124,20 @@ mod tests {
             Some(expected) => Circuit::scope(name, || {
                 let candidate = a.pow_checked(&b);
                 assert_eq!(expected, candidate.eject_value());
-                // assert_count!(PowChecked(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b));
-                // assert_output_type!(PowChecked(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, CircuitType::from(&b)), candidate);
+
+                let case = (CircuitType::from(a), CircuitType::from(b));
+                assert_count!(PowChecked(Integer<I>, Integer<M>) => Integer<I>, &case);
+                assert_output_type!(PowChecked(Integer<I>, Integer<M>) => Integer<I>, case, candidate);
             }),
-            None => {
-                match (mode_a, mode_b) {
-                    (Mode::Constant, Mode::Constant) => check_operation_halts(&a, &b, Integer::pow_checked),
-                    _ => Circuit::scope(name, || {
-                        let _candidate = a.pow_checked(&b);
-                        // assert_count_fails!(PowChecked(Integer<I>, Integer<M>) => Integer<I>, &(mode_a, mode_b));
-                    }),
-                }
-            }
+            None => match (mode_a, mode_b) {
+                (Mode::Constant, Mode::Constant) => check_operation_halts(&a, &b, Integer::pow_checked),
+                _ => Circuit::scope(name, || {
+                    let _candidate = a.pow_checked(&b);
+
+                    let case = (CircuitType::from(a), CircuitType::from(b));
+                    assert_count_fails!(PowChecked(Integer<I>, Integer<M>) => Integer<I>, &case);
+                }),
+            },
         }
         Circuit::reset();
     }

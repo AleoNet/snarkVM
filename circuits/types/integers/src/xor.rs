@@ -84,7 +84,18 @@ impl<E: Environment, I: IntegerType> Metadata<dyn BitXor<Integer<E, I>, Output =
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        todo!()
+        match case {
+            (CircuitType::Constant(_), CircuitType::Constant(_)) => {
+                CircuitType::from(case.0.circuit().bitxor(case.1.circuit()))
+            }
+            (CircuitType::Constant(constant), other_type) | (other_type, CircuitType::Constant(constant)) => {
+                match constant.eject_value().is_zero() {
+                    true => other_type,
+                    false => CircuitType::Private,
+                }
+            }
+            (_, _) => CircuitType::Private,
+        }
     }
 }
 
