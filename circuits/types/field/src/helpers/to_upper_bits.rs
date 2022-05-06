@@ -16,6 +16,9 @@
 
 use super::*;
 
+// TODO: Split into ToUpperBitsLE and ToUpperBitsBE
+// TODO: Resolve usize vs u64
+
 impl<E: Environment> ToUpperBits for Field<E> {
     type Boolean = Boolean<E>;
 
@@ -48,7 +51,7 @@ impl<E: Environment> ToUpperBits for Field<E> {
         // Reconstruct the bits as a linear combination representing the original field value.
         let mut accumulator = Field::zero();
         let mut coefficient = Field::one();
-        for _ in 0..(E::BaseField::size_in_bits() - k) {
+        for _ in 0..(E::BaseField::size_in_bits() - k as usize) {
             coefficient = coefficient.double();
         }
         for bit in bits.iter().rev() {
@@ -64,24 +67,21 @@ impl<E: Environment> ToUpperBits for Field<E> {
     }
 }
 
-impl<E: Environment> Metrics<dyn ToUpperBits<Boolean = Boolean<E>>> for Field<E> {
-    type Case = (Mode, u64);
+impl<E: Environment> Metadata<dyn ToUpperBits<Boolean = Boolean<E>>> for Field<E> {
+    type Case = (CircuitType<Field<E>>, usize);
+    type OutputType = CircuitType<Vec<Boolean<E>>>;
 
     fn count(case: &Self::Case) -> Count {
-        match case {
-            (Mode::Constant, k) => Count::is(*k, 0, 0, 0),
-            (_, k) => Count::is(0, 0, *k, k + 1),
+        match (case.0.eject_mode(), case.1) {
+            (Mode::Constant, k) => Count::is(k as u64, 0, 0, 0),
+            (_, k) => Count::is(0, 0, k as u64, k as u64 + 1),
         }
     }
-}
 
-impl<E: Environment> OutputMode<dyn ToUpperBits<Boolean = Boolean<E>>> for Field<E> {
-    type Case = Mode;
-
-    fn output_mode(case: &Self::Case) -> Mode {
-        match case {
-            Mode::Constant => Mode::Constant,
-            _ => Mode::Private,
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        match case.0.eject_mode() {
+            Mode::Constant => CircuitType::from(case.0.circuit().to_upper_bits_be(case.1)),
+            _ => CircuitType::Private,
         }
     }
 }
@@ -136,13 +136,15 @@ mod tests {
 
             Circuit::scope(&format!("{} {}", mode, i), || {
                 let num_bits_with_capacity = I::BITS + 1;
-                let candidate = candidate.to_upper_bits_be(num_bits_with_capacity as usize);
-                assert_eq!(num_bits_with_capacity, candidate.len() as u64);
-                for (i, (expected_bit, candidate_bit)) in expected.iter().zip_eq(candidate.iter().skip(1)).enumerate() {
+                let result = candidate.to_upper_bits_be(num_bits_with_capacity as usize);
+                assert_eq!(num_bits_with_capacity, result.len() as u64);
+                for (i, (expected_bit, candidate_bit)) in expected.iter().zip_eq(result.iter().skip(1)).enumerate() {
                     assert_eq!(*expected_bit, candidate_bit.eject_value(), "MSB-{}", i);
                 }
-                assert_count!(ToUpperBits<Boolean>() => Field, &(mode, num_bits_with_capacity));
-                assert_output_mode!(ToUpperBits<Boolean>() => Field, &mode, candidate);
+
+                let case = (CircuitType::from(candidate), num_bits_with_capacity as usize);
+                assert_count!(ToUpperBits<Boolean>() => Field, &case);
+                assert_output_type!(ToUpperBits<Boolean>() => Field, case, result);
             });
         }
     }
