@@ -90,8 +90,15 @@ impl<P: Parameters> Display for Affine<P> {
 
 impl<P: Parameters> AffineCurve for Affine<P> {
     type BaseField = P::BaseField;
+    type Coordinates = (Self::BaseField, Self::BaseField);
     type Projective = Projective<P>;
     type ScalarField = P::ScalarField;
+
+    /// Initializes a new affine group element from the given coordinates.
+    fn from_coordinates(coordinates: Self::Coordinates) -> Self {
+        let (x, y) = coordinates;
+        Self { x, y }
+    }
 
     #[inline]
     fn prime_subgroup_generator() -> Self {

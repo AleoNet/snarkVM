@@ -69,21 +69,20 @@ impl<E: Environment> Metrics<dyn Nor<Boolean<E>, Output = Boolean<E>>> for Boole
 }
 
 impl<E: Environment> OutputMode<dyn Nor<Boolean<E>, Output = Boolean<E>>> for Boolean<E> {
-    // ConstantOrMode is needed since the output type of `Nor` is sometimes dependent on the value of the input.
-    type Case = (ConstantOrMode<Boolean<E>>, ConstantOrMode<Boolean<E>>);
+    type Case = (CircuitType<Boolean<E>>, CircuitType<Boolean<E>>);
 
     fn output_mode(case: &Self::Case) -> Mode {
         match (case.0.mode(), case.1.mode()) {
             (Mode::Constant, Mode::Constant) => Mode::Constant,
             (Mode::Public, Mode::Constant) => match &case.1 {
-                ConstantOrMode::Constant(constant) => match constant.eject_value() {
+                CircuitType::Constant(constant) => match constant.eject_value() {
                     true => Mode::Constant,
                     false => Mode::Private,
                 },
                 _ => E::halt("The constant is required to determine the output mode of Public NOR Constant"),
             },
             (Mode::Constant, Mode::Public) => match &case.0 {
-                ConstantOrMode::Constant(constant) => match constant.eject_value() {
+                CircuitType::Constant(constant) => match constant.eject_value() {
                     true => Mode::Constant,
                     false => Mode::Private,
                 },
@@ -104,7 +103,7 @@ mod tests {
             let candidate = a.nor(&b);
             assert_eq!(expected, candidate.eject_value(), "({} NOR {})", a.eject_value(), b.eject_value());
             assert_count!(Nor(Boolean, Boolean) => Boolean, &(a.eject_mode(), b.eject_mode()));
-            assert_output_mode!(Nor(Boolean, Boolean) => Boolean, &(ConstantOrMode::from(&a), ConstantOrMode::from(&b)), candidate);
+            assert_output_mode!(Nor(Boolean, Boolean) => Boolean, &(CircuitType::from(&a), CircuitType::from(&b)), candidate);
         });
         Circuit::reset();
     }

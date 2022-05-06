@@ -35,8 +35,8 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     type Case = Vec<Mode>;
 
     #[inline]
-    fn count(parameter: &Self::Case) -> Count {
-        count!(Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>, HashUncompressed<Input = Boolean<E>, Output = Group<E>>, parameter)
+    fn count(case: &Self::Case) -> Count {
+        count!(Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>, HashUncompressed<Input = Boolean<E>, Output = Group<E>>, case)
     }
 }
 
