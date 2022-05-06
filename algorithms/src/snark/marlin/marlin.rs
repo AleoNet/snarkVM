@@ -420,12 +420,12 @@ where
 
         // Compute the AHP verifier's query set.
         let (query_set, verifier_state) = AHPForR1CS::<_, MM>::verifier_query_set(verifier_state);
-        let lc_s = dbg!(AHPForR1CS::<_, MM>::construct_linear_combinations(
+        let lc_s = AHPForR1CS::<_, MM>::construct_linear_combinations(
             &public_input,
             &polynomials,
             &prover_third_message,
             &verifier_state,
-        )?);
+        )?;
 
         Self::terminate(terminator)?;
 
@@ -607,12 +607,12 @@ where
             }
         }
 
-        let lc_s = dbg!(AHPForR1CS::<_, MM>::construct_linear_combinations(
+        let lc_s = AHPForR1CS::<_, MM>::construct_linear_combinations(
             &public_inputs,
             &evaluations,
             &proof.msg,
             &verifier_state,
-        )?);
+        )?;
 
         let evaluations_are_correct = SonicKZG10::<E, FS>::check_combinations(
             &circuit_verifying_key.verifier_key,
