@@ -78,6 +78,42 @@ impl<E: Environment> Ternary for Boolean<E> {
     }
 }
 
+impl<E: Environment> Metadata<dyn Ternary<Boolean = Boolean<E>, Output = Boolean<E>>> for Boolean<E> {
+    type Case = (CircuitType<Boolean<E>>, CircuitType<Boolean<E>>, CircuitType<Boolean<E>>);
+    type OutputType = CircuitType<Boolean<E>>;
+
+    fn count(case: &Self::Case) -> Count {
+        match case {
+            (CircuitType::Constant(_), _, _) => Count::is(0, 0, 0, 0),
+            (_, _, _) => Count::is(0, 0, 1, 1),
+        }
+    }
+
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        match case {
+            (CircuitType::Constant(constant), _, _) => match constant.eject_value() {
+                true => case.1,
+                false => case.2,
+            },
+            (condition_type, CircuitType::Constant(constant), second_type) => match constant.eject_value() {
+                true => output_type!(Self, BitOr<Self, Output = Self>, (condition_type, second_type)),
+                false => {
+                    let not_output_type = output_type!(Self, Not<Output = Self>, condition_type);
+                    output_type!(Self, BitAnd<Self, Output = Self>, (not_output_type, second_type))
+                }
+            },
+            (condition_type, first_type, CircuitType::Constant(constant)) => match constant.eject_value() {
+                true => {
+                    let not_output_type = output_type!(Self, Not<Output = Self>, condition_type);
+                    output_type!(Self, BitOr<Self, Output = Self>, (not_output_type, first_type))
+                }
+                false => output_type!(Self, BitAnd<Self, Output = Self>, (condition_type, first_type)),
+            },
+            (_, _, _) => CircuitType::Private,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
