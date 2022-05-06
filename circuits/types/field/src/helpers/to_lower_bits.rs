@@ -16,6 +16,9 @@
 
 use super::*;
 
+// TODO: Split into ToLowerBitsLE and ToLowerBitsBE
+// TODO: Resolve usize vs u64
+
 impl<E: Environment> ToLowerBits for Field<E> {
     type Boolean = Boolean<E>;
 
@@ -61,24 +64,21 @@ impl<E: Environment> ToLowerBits for Field<E> {
     }
 }
 
-impl<E: Environment> Metrics<dyn ToLowerBits<Boolean = Boolean<E>>> for Field<E> {
-    type Case = (Mode, u64);
+impl<E: Environment> Metadata<dyn ToLowerBits<Boolean = Boolean<E>>> for Field<E> {
+    type Case = (CircuitType<Field<E>>, usize);
+    type OutputType = CircuitType<Vec<Boolean<E>>>;
 
     fn count(case: &Self::Case) -> Count {
-        match case {
-            (Mode::Constant, k) => Count::is(*k, 0, 0, 0),
-            (_, k) => Count::is(0, 0, *k, k + 1),
+        match (case.0.eject_mode(), case.1) {
+            (Mode::Constant, k) => Count::is(k as u64, 0, 0, 0),
+            (_, k) => Count::is(0, 0, k as u64, k as u64 + 1),
         }
     }
-}
 
-impl<E: Environment> OutputMode<dyn ToLowerBits<Boolean = Boolean<E>>> for Field<E> {
-    type Case = Mode;
-
-    fn output_mode(case: &Self::Case) -> Mode {
-        match case {
-            Mode::Constant => Mode::Constant,
-            _ => Mode::Private,
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        match case.0.eject_mode() {
+            Mode::Constant => CircuitType::from(case.0.circuit().to_lower_bits_le(case.1)),
+            _ => CircuitType::Private,
         }
     }
 }
@@ -111,13 +111,15 @@ mod tests {
             };
 
             Circuit::scope(&format!("{} {}", mode, i), || {
-                let candidate = candidate.to_lower_bits_le(I::BITS as usize);
-                assert_eq!(I::BITS, candidate.len() as u64);
-                for (i, (expected_bit, candidate_bit)) in expected.iter().zip_eq(candidate.iter()).enumerate() {
+                let result = candidate.to_lower_bits_le(I::BITS as usize);
+                assert_eq!(I::BITS, result.len() as u64);
+                for (i, (expected_bit, candidate_bit)) in expected.iter().zip_eq(result.iter()).enumerate() {
                     assert_eq!(*expected_bit, candidate_bit.eject_value(), "LSB+{}", i);
                 }
-                assert_count!(ToLowerBits<Boolean>() => Field, &(mode, I::BITS));
-                assert_output_mode!(ToLowerBits<Boolean>() => Field, &mode, candidate);
+
+                let case = (CircuitType::from(candidate), I::BITS as usize);
+                assert_count!(ToLowerBits<Boolean>() => Field, &case);
+                assert_output_type!(ToLowerBits<Boolean>() => Field, case, result);
             });
         }
     }
