@@ -34,18 +34,15 @@ impl<E: Environment> PRF for Poseidon<E> {
     }
 }
 
-impl<E: Environment> Metrics<dyn PRF<Seed = Field<E>, Input = Field<E>, Output = Field<E>>> for Poseidon<E> {
+impl<E: Environment> Metadata<dyn PRF<Seed = Field<E>, Input = Field<E>, Output = Field<E>>> for Poseidon<E> {
     type Case = ();
+    type OutputType = CircuitType<Field<E>>;
 
-    fn count(_parameter: &Self::Case) -> Count {
+    fn count(_case: &Self::Case) -> Count {
         todo!()
     }
-}
 
-impl<E: Environment> OutputMode<dyn PRF<Seed = Field<E>, Input = Field<E>, Output = Field<E>>> for Poseidon<E> {
-    type Case = ();
-
-    fn output_mode(_case: &Self::Case) -> Mode {
+    fn output_type(case: Self::Case) -> Self::OutputType {
         todo!()
     }
 }

@@ -32,18 +32,15 @@ impl<E: Environment> HashMany for Poseidon<E> {
     }
 }
 
-impl<E: Environment> Metrics<dyn HashMany<Input = Field<E>, Output = Field<E>>> for Poseidon<E> {
+impl<E: Environment> Metadata<dyn HashMany<Input = Field<E>, Output = Field<E>>> for Poseidon<E> {
     type Case = ();
+    type OutputType = CircuitType<Field<E>>;
 
     fn count(_parameter: &Self::Case) -> Count {
         todo!()
     }
-}
 
-impl<E: Environment> OutputMode<dyn HashMany<Input = Field<E>, Output = Field<E>>> for Poseidon<E> {
-    type Case = ();
-
-    fn output_mode(_parameter: &Self::Case) -> Mode {
+    fn output_type(case: Self::Case) -> Self::OutputType {
         todo!()
     }
 }

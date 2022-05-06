@@ -198,6 +198,7 @@ macro_rules! assert_output_type {
     //////////////
     // Standard //
     //////////////
+    // TODO: Fix rules for ToBits
 
     // Special case: FromBoolean trait deviates from the normal convention.
     (FromBoolean($input:ident) => $output:ident, $case:expr, $candidate:expr) => {{

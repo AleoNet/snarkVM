@@ -39,65 +39,19 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Commitm
     }
 }
 
-impl<'a, E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    Metrics<dyn CommitmentScheme<Input = Boolean<E>, Output = Group<E>, Randomness = Boolean<E>>>
+impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+    Metadata<dyn CommitmentScheme<Input = Boolean<E>, Output = Group<E>, Randomness = Boolean<E>>>
     for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
 {
-    type Case = (Vec<Mode>, Vec<Mode>);
+    type Case = (CircuitType<Vec<Boolean<E>>>, CircuitType<Vec<Boolean<E>>>);
+    type OutputType = CircuitType<Group<E>>;
 
     fn count(case: &Self::Case) -> Count {
-        let (input_modes, randomness_modes) = case;
-        let uncompressed_count = count!(Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>, HashUncompressed<Input = Boolean<E>, Output = Group<E>>, input_modes);
-        let uncompressed_mode = output_mode!(Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>, HashUncompressed<Input = Boolean<E>, Output = Group<E>>, input_modes);
-
-        // Compute the const of constructing the group elements.
-        let group_initialize_count = randomness_modes
-            .iter()
-            .map(|mode| {
-                count!(
-                    Group<E>,
-                    Ternary<Boolean = Boolean<E>, Output = Group<E>>,
-                    &(*mode, Mode::Constant, Mode::Constant)
-                )
-            })
-            .fold(Count::zero(), |cumulative, count| cumulative + count);
-
-        // Determine the modes of each of the group elements.
-        let modes = randomness_modes.iter().map(|mode| {
-            // The `first` and `second` inputs to `Group::ternary` are always constant so we can directly determine the mode instead of
-            // using the `output_mode` macro. This avoids the need to use `CircuitType` as a parameter, simplifying the logic of this function.
-            match mode.is_constant() {
-                true => Mode::Constant,
-                false => Mode::Private,
-            }
-        });
-
-        // Calculate the cost of summing the group elements.
-        let (_, summation_count) =
-            modes.fold((uncompressed_mode, Count::zero()), |(prev_mode, cumulative), curr_mode| {
-                let mode = output_mode!(Group<E>, Add<Group<E>, Output = Group<E>>, &(prev_mode, curr_mode));
-                let sum_count = count!(Group<E>, Add<Group<E>, Output = Group<E>>, &(prev_mode, curr_mode));
-                (mode, cumulative + sum_count)
-            });
-
-        // Compute the cost of summing the hash and random elements.
-        uncompressed_count + group_initialize_count + summation_count
+        todo!()
     }
-}
 
-impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    OutputMode<dyn CommitmentScheme<Input = Boolean<E>, Output = Group<E>, Randomness = Boolean<E>>>
-    for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
-{
-    type Case = (Vec<Mode>, Vec<Mode>);
-
-    fn output_mode(parameters: &Self::Case) -> Mode {
-        let (input_modes, randomness_modes) = parameters;
-        match input_modes.iter().all(|m| *m == Mode::Constant) && randomness_modes.iter().all(|m| *m == Mode::Constant)
-        {
-            true => Mode::Constant,
-            false => Mode::Private,
-        }
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        todo!()
     }
 }
 
@@ -151,7 +105,7 @@ mod tests {
                     CommitmentScheme<Input = Boolean<Circuit>, Output = Group<Circuit>, Randomness = Boolean<Circuit>>,
                     &(input_modes.clone(), randomness_modes.clone())
                 );
-                assert_output_mode!(
+                assert_output_type!(
                     Pedersen<Circuit, NUM_WINDOWS, WINDOW_SIZE>,
                     CommitmentScheme<Input = Boolean<Circuit>, Output = Group<Circuit>, Randomness = Boolean<Circuit>>,
                     &(input_modes, randomness_modes),

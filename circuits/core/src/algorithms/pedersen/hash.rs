@@ -30,24 +30,19 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Hash
 }
 
 impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    Metrics<dyn Hash<Input = Boolean<E>, Output = Field<E>>> for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
+    Metadata<dyn Hash<Input = Boolean<E>, Output = Field<E>>> for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
 {
-    type Case = Vec<Mode>;
+    type Case = CircuitType<Vec<Boolean<E>>>;
+    type OutputType = CircuitType<Field<E>>;
 
     #[inline]
     fn count(case: &Self::Case) -> Count {
         count!(Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>, HashUncompressed<Input = Boolean<E>, Output = Group<E>>, case)
     }
-}
-
-impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    OutputMode<dyn Hash<Input = Boolean<E>, Output = Field<E>>> for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
-{
-    type Case = Vec<Mode>;
 
     #[inline]
-    fn output_mode(parameter: &Self::Case) -> Mode {
-        output_mode!(Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>, HashUncompressed<Input = Boolean<E>, Output = Group<E>>, parameter)
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        todo!()
     }
 }
 
@@ -92,7 +87,7 @@ mod tests {
                     HashUncompressed<Input = Boolean<Circuit>, Output = Group<Circuit>>,
                     &modes
                 );
-                assert_output_mode!(
+                assert_output_type!(
                     Pedersen<Circuit, NUM_WINDOWS, WINDOW_SIZE>,
                     HashUncompressed<Input = Boolean<Circuit>, Output = Group<Circuit>>,
                     &modes,

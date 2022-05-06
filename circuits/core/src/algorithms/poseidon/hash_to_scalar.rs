@@ -33,18 +33,15 @@ impl<E: Environment> HashToScalar for Poseidon<E> {
     }
 }
 
-impl<E: Environment> Metrics<dyn HashToScalar<Input = Field<E>, Scalar = Field<E>>> for Poseidon<E> {
+impl<E: Environment> Metadata<dyn HashToScalar<Input = Field<E>, Scalar = Field<E>>> for Poseidon<E> {
     type Case = ();
+    type OutputType = CircuitType<Scalar<E>>;
 
     fn count(_parameter: &Self::Case) -> Count {
         todo!()
     }
-}
 
-impl<E: Environment> OutputMode<dyn HashToScalar<Input = Field<E>, Scalar = Field<E>>> for Poseidon<E> {
-    type Case = ();
-
-    fn output_mode(_case: &Self::Case) -> Mode {
+    fn output_type(case: Self::Case) -> Self::OutputType {
         todo!()
     }
 }
