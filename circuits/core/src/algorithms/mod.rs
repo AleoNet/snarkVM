@@ -17,6 +17,9 @@
 pub mod bhp;
 pub use bhp::*;
 
+pub mod merkle_path;
+pub use merkle_path::*;
+
 pub mod pedersen;
 pub use pedersen::*;
 
