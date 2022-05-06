@@ -106,22 +106,19 @@ impl<E: Environment> FromBits for Field<E> {
     }
 }
 
-impl<E: Environment> Metrics<dyn FromBits<Boolean = Boolean<E>>> for Field<E> {
-    type Case = Vec<Mode>;
+impl<E: Environment> Metadata<dyn FromBits<Boolean = Boolean<E>>> for Field<E> {
+    type Case = CircuitType<Vec<Boolean<E>>>;
+    type OutputType = CircuitType<Field<E>>;
 
     fn count(_modes: &Self::Case) -> Count {
         // TODO: Waiting for PR#711 to land as it significantly changes the counts.
         todo!()
     }
-}
 
-impl<E: Environment> OutputMode<dyn FromBits<Boolean = Boolean<E>>> for Field<E> {
-    type Case = Vec<Mode>;
-
-    fn output_mode(case: &Self::Case) -> Mode {
-        match case.iter().all(|mode| mode.is_constant()) {
-            true => Mode::Constant,
-            false => Mode::Private,
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        match case.is_constant() {
+            true => CircuitType::from(Field::from_bits_be(case.circuit())),
+            false => CircuitType::Private,
         }
     }
 }
