@@ -75,8 +75,9 @@ impl<E: Environment> MulAssign<&Field<E>> for Field<E> {
     }
 }
 
-impl<E: Environment> Metrics<dyn Mul<Field<E>, Output = Field<E>>> for Field<E> {
-    type Case = (Mode, Mode);
+impl<E: Environment> Metadata<dyn Mul<Field<E>, Output = Field<E>>> for Field<E> {
+    type Case = (CircuitType<Field<E>>, CircuitType<Field<E>>);
+    type OutputType = CircuitType<Field<E>>;
 
     fn count(case: &Self::Case) -> Count {
         match case.0.is_constant() || case.1.is_constant() {
@@ -84,20 +85,16 @@ impl<E: Environment> Metrics<dyn Mul<Field<E>, Output = Field<E>>> for Field<E> 
             false => Count::is(0, 0, 1, 1),
         }
     }
-}
 
-impl<E: Environment> OutputMode<dyn Mul<Field<E>, Output = Field<E>>> for Field<E> {
-    type Case = (CircuitType<Field<E>>, CircuitType<Field<E>>);
-
-    fn output_mode(case: &Self::Case) -> Mode {
-        match (case.0.mode(), case.1.mode()) {
-            (Mode::Constant, Mode::Constant) => Mode::Constant,
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        match (case.0.eject_mode(), case.1.eject_mode()) {
+            (Mode::Constant, Mode::Constant) => CircuitType::from(case.0.circuit().mul(case.1.circuit())),
             (Mode::Constant, Mode::Public) => match &case.0 {
                 CircuitType::Constant(constant) => match constant.eject_value() {
                     // TODO: Should this be a constant?
                     //value if value == E::BaseField::zero() => Mode::Constant,
-                    value if value == E::BaseField::one() => Mode::Public,
-                    _ => Mode::Private,
+                    value if value.is_one() => CircuitType::Public,
+                    _ => CircuitType::Private,
                 },
                 _ => E::halt("The constant is required to determine the output mode of Public * Constant"),
             },
@@ -105,12 +102,12 @@ impl<E: Environment> OutputMode<dyn Mul<Field<E>, Output = Field<E>>> for Field<
                 CircuitType::Constant(constant) => match constant.eject_value() {
                     // TODO: Should this be a constant?
                     //value if value == E::BaseField::zero() => Mode::Constant,
-                    value if value == E::BaseField::one() => Mode::Public,
-                    _ => Mode::Private,
+                    value if value.is_one() => CircuitType::Public,
+                    _ => CircuitType::Private,
                 },
                 _ => E::halt("The constant is required to determine the output mode of Public * Constant"),
             },
-            (_, _) => Mode::Private,
+            (_, _) => CircuitType::Private,
         }
     }
 }
@@ -127,8 +124,10 @@ mod tests {
         Circuit::scope(name, || {
             let candidate = a * b;
             assert_eq!(*expected, candidate.eject_value(), "({} * {})", a.eject_value(), b.eject_value());
-            assert_count!(Mul(Field, Field) => Field, &(a.eject_mode(), b.eject_mode()));
-            assert_output_mode!(Mul(Field, Field) => Field, &(CircuitType::from(a), CircuitType::from(b)), candidate);
+
+            let case = (CircuitType::from(a), CircuitType::from(b));
+            assert_count!(Mul(Field, Field) => Field, &case);
+            assert_output_type!(Mul(Field, Field) => Field, case, candidate);
         });
     }
 
@@ -142,8 +141,10 @@ mod tests {
             let mut candidate = a.clone();
             candidate *= b;
             assert_eq!(*expected, candidate.eject_value(), "({} * {})", a.eject_value(), b.eject_value());
-            assert_count!(Mul(Field, Field) => Field, &(a.eject_mode(), b.eject_mode()));
-            assert_output_mode!(Mul(Field, Field) => Field, &(CircuitType::from(a), CircuitType::from(b)), candidate);
+
+            let case = (CircuitType::from(a), CircuitType::from(b));
+            assert_count!(Mul(Field, Field) => Field, &case);
+            assert_output_type!(Mul(Field, Field) => Field, case, candidate);
         });
     }
 
