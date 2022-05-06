@@ -186,28 +186,28 @@ mod tests {
 
     test_instruction_halts!(i8_underflow_halts, DivWrapped, "Division by zero error", "1i8.constant", "0i8.constant");
     test_instruction_halts!(
-        i16_underflow_halts,
+        i16_division_by_zero_halts,
         DivWrapped,
         "Division by zero error",
         "1i16.constant",
         "0i16.constant"
     );
     test_instruction_halts!(
-        i32_underflow_halts,
+        i32_division_by_zero_halts,
         DivWrapped,
         "Division by zero error",
         "1i32.constant",
         "0i32.constant"
     );
     test_instruction_halts!(
-        i64_underflow_halts,
+        i64_division_by_zero_halts,
         DivWrapped,
         "Division by zero error",
         "1i64.constant",
         "0i64.constant"
     );
     test_instruction_halts!(
-        i128_underflow_halts,
+        i128_division_by_zero_halts,
         DivWrapped,
         "Division by zero error",
         "1i128.constant",

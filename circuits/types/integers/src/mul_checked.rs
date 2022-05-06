@@ -91,7 +91,7 @@ impl<E: Environment, I: IntegerType> MulChecked<Self> for Integer<E, I> {
         } else if I::is_signed() {
             // Multiply the absolute value of `self` and `other` in the base field.
             // Note that it is safe to use abs_wrapped since we want I::MIN to be interpreted as an unsigned number.
-            let (product, carry) = Self::mul_with_carry(&self.abs_wrapped(), &other.abs_wrapped(), true);
+            let (product, carry) = Self::mul_with_carry(&self.abs_wrapped(), &other.abs_wrapped());
 
             // We need to check that the abs(a) * abs(b) did not exceed the unsigned maximum.
             let carry_bits_nonzero = carry.iter().fold(Boolean::constant(false), |a, b| a | b);
@@ -117,7 +117,7 @@ impl<E: Environment, I: IntegerType> MulChecked<Self> for Integer<E, I> {
             Self::ternary(operands_same_sign, &product, &Self::zero().sub_wrapped(&product))
         } else {
             // Compute the product of `self` and `other`.
-            let (product, carry) = Self::mul_with_carry(self, other, true);
+            let (product, carry) = Self::mul_with_carry(self, other);
 
             // For unsigned multiplication, check that none of the carry bits are set.
             let overflow = carry.iter().fold(Boolean::constant(false), |a, b| a | b);
@@ -125,6 +125,58 @@ impl<E: Environment, I: IntegerType> MulChecked<Self> for Integer<E, I> {
 
             // Return the product of `self` and `other`.
             product
+        }
+    }
+}
+
+impl<E: Environment, I: IntegerType> Integer<E, I> {
+    /// Multiply the integer bits of `this` and `that` in the base field.
+    #[inline]
+    pub(super) fn mul_with_carry(this: &Integer<E, I>, that: &Integer<E, I>) -> (Integer<E, I>, Vec<Boolean<E>>) {
+        // Case 1 - 2 integers fit in 1 field element (u8, u16, u32, u64, i8, i16, i32, i64).
+        if 2 * I::BITS < (E::BaseField::size_in_bits() - 1) as u64 {
+            // Instead of multiplying the bits of `self` and `other` directly, the integers are
+            // converted into a field elements, and multiplied, before being converted back to integers.
+            // Note: This is safe as the field is larger than the maximum integer type supported.
+            let product = (this.to_field() * that.to_field()).to_lower_bits_le(2 * I::BITS as usize);
+
+            // Split the integer bits into product bits and carry bits.
+            let (bits_le, carry) = product.split_at(I::BITS as usize);
+
+            // Return the product of `self` and `other`, along with the carry bits.
+            (Integer::from_bits_le(bits_le), carry.to_vec())
+        }
+        // Case 2 - 1.5 integers fit in 1 field element (u128, i128).
+        else if (I::BITS + I::BITS / 2) < (E::BaseField::size_in_bits() - 1) as u64 {
+            // Perform multiplication by decomposing it into operations on its upper and lower bits.
+            // See this page for reference: https://en.wikipedia.org/wiki/Karatsuba_algorithm.
+            // Note: We follow the naming convention given in the `Basic Step` section of the cited page.
+            let x_1 = Field::from_bits_le(&this.bits_le[(I::BITS as usize / 2)..]);
+            let x_0 = Field::from_bits_le(&this.bits_le[..(I::BITS as usize / 2)]);
+            let y_1 = Field::from_bits_le(&that.bits_le[(I::BITS as usize / 2)..]);
+            let y_0 = Field::from_bits_le(&that.bits_le[..(I::BITS as usize / 2)]);
+
+            let z_0 = &x_0 * &y_0;
+            let z_1 = (&x_1 * &y_0) + (&x_0 * &y_1);
+
+            let mut b_m_bits = vec![Boolean::constant(false); I::BITS as usize / 2];
+            b_m_bits.push(Boolean::constant(true));
+
+            let b_m = Field::from_bits_le(&b_m_bits);
+            let z_0_plus_z_1 = &z_0 + (&z_1 * &b_m);
+
+            let mut bits_le = z_0_plus_z_1.to_lower_bits_le(I::BITS as usize + I::BITS as usize / 2 + 1);
+
+            let z_2 = &x_1 * &y_1;
+            bits_le.append(&mut z_2.to_lower_bits_le(I::BITS as usize));
+
+            // Split the integer bits into product bits and carry bits.
+            let (bits_le, carry) = bits_le.split_at(I::BITS as usize);
+
+            // Return the product of `self` and `other`, along with the carry bits.
+            (Integer::from_bits_le(bits_le), carry.to_vec())
+        } else {
+            E::halt(format!("Multiplication of integers of size {} is not supported", I::BITS))
         }
     }
 }
@@ -172,9 +224,7 @@ impl<E: Environment, I: IntegerType> Metadata<dyn MulChecked<Integer<E, I>, Outp
                 },
             }
         } else {
-            // TODO (@pranav) Do we need to handle this case? The current integers can
-            //   be handled by the code above.
-            todo!()
+            E::halt(format!("Multiplication of integers of size {} is not supported", I::BITS))
         }
     }
 

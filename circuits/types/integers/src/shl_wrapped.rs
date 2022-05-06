@@ -80,41 +80,21 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metadata<dyn ShlWrapped<Integ
             None => E::halt(format!("Integer of {num_bits} bits is not supported")),
         };
 
-        // Case 1 - 2 integers fit in 1 field element (u8, u16, u32, u64, i8, i16, i32, i64).
-        if 2 * I::BITS < (E::BaseField::size_in_bits() - 1) as u64 {
-            match (case.0.eject_mode(), case.1.eject_mode()) {
-                (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-                (_, Mode::Constant) => Count::is(0, 0, 0, 0),
-                (Mode::Constant, _) => {
-                    Count::is(0, 0, (3 * I::BITS) + (2 * index(I::BITS)) + 4, (3 * I::BITS) + (2 * index(I::BITS)) + 6)
-                }
-                (_, _) => {
-                    Count::is(0, 0, (3 * I::BITS) + (2 * index(I::BITS)) + 5, (3 * I::BITS) + (2 * index(I::BITS)) + 7)
-                }
-            }
-        }
-        // Case 2 - 1.5 integers fit in 1 field element (u128, i128).
-        else if (I::BITS + I::BITS / 2) < (E::BaseField::size_in_bits() - 1) as u64 {
-            match (case.0.eject_mode(), case.1.eject_mode()) {
-                (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-                (_, Mode::Constant) => Count::is(0, 0, 0, 0),
-                (Mode::Constant, _) => Count::is(
-                    0,
-                    0,
-                    (2 * I::BITS) + (I::BITS / 2) + (2 * index(I::BITS)) + 5,
-                    (2 * I::BITS) + (I::BITS / 2) + (2 * index(I::BITS)) + 7,
-                ),
-                (_, _) => Count::is(
-                    0,
-                    0,
-                    (2 * I::BITS) + (I::BITS / 2) + (2 * index(I::BITS)) + 8,
-                    (2 * I::BITS) + (I::BITS / 2) + (2 * index(I::BITS)) + 10,
-                ),
-            }
-        } else {
-            // TODO (@pranav) Do we need to handle this case? The current integers can
-            //   be handled by the code above.
-            todo!()
+        match (case.0.eject_mode(), case.1.eject_mode()) {
+            (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
+            (_, Mode::Constant) => Count::is(0, 0, 0, 0),
+            (Mode::Constant, _) => Count::is(
+                0,
+                0,
+                (2 * I::BITS) + (I::BITS / 2) + (2 * index(I::BITS)) + 5,
+                (2 * I::BITS) + (I::BITS / 2) + (2 * index(I::BITS)) + 7,
+            ),
+            (_, _) => Count::is(
+                0,
+                0,
+                (2 * I::BITS) + (I::BITS / 2) + (2 * index(I::BITS)) + 8,
+                (2 * I::BITS) + (I::BITS / 2) + (2 * index(I::BITS)) + 10,
+            ),
         }
     }
 

@@ -79,6 +79,7 @@ impl<P: Program> Parser for Value<P> {
     }
 }
 
+#[allow(clippy::format_push_string)]
 impl<P: Program> fmt::Display for Value<P> {
     /// Prints the value as a string.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
