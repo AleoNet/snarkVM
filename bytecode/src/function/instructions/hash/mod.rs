@@ -43,8 +43,10 @@ pub(crate) use psd8::*;
 
 use crate::{function::parsers::*, helpers::Register, Program};
 use snarkvm_circuits::Hash as CircuitHash;
+use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
+use std::io::{Read, Result as IoResult, Write};
 
 /// A generic hash instruction.
 pub struct Hash<P: Program, H: CircuitHash> {
@@ -67,5 +69,11 @@ impl<P: Program, H: CircuitHash> Hash<P, H> {
 impl<P: Program, H: CircuitHash> fmt::Display for Hash<P, H> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.operation)
+    }
+}
+
+impl<P: Program, H: CircuitHash> ToBytes for Hash<P, H> {
+    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
+        self.operation.write_le(&mut writer)
     }
 }

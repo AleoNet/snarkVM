@@ -21,11 +21,11 @@ use crate::{
     Value,
 };
 use snarkvm_circuits::{algorithms::Poseidon2, Hash as CircuitHash, Parser, ParserResult};
-use snarkvm_utilities::{FromBytes, ToBytes};
+use snarkvm_utilities::FromBytes;
 
 use nom::combinator::map;
 use snarkvm_circuits::{Field, Literal, ToFields};
-use std::io::{Read, Result as IoResult, Write};
+use std::io::{Read, Result as IoResult};
 
 /// Performs a Poseidon hash with an input rate of 2.
 pub type HashPsd2<P> = Hash<P, Poseidon2<<P as Program>::Aleo>>;
@@ -50,12 +50,6 @@ impl<P: Program> Parser for HashPsd2<P> {
 impl<P: Program> FromBytes for HashPsd2<P> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         Ok(Self { operation: UnaryOperation::read_le(&mut reader)?, hasher: Poseidon2::<P::Environment>::new() })
-    }
-}
-
-impl<P: Program> ToBytes for HashPsd2<P> {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.operation.write_le(&mut writer)
     }
 }
 

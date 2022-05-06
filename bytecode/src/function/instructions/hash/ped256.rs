@@ -21,11 +21,11 @@ use crate::{
     Value,
 };
 use snarkvm_circuits::{algorithms::Pedersen256, Hash as CircuitHash, Parser, ParserResult};
-use snarkvm_utilities::{FromBytes, ToBytes};
+use snarkvm_utilities::FromBytes;
 
 use nom::combinator::map;
 use snarkvm_circuits::{Literal, ToBits};
-use std::io::{Read, Result as IoResult, Write};
+use std::io::{Read, Result as IoResult};
 
 /// Performs a Pedersen hash taking a 256-bit value as input.
 pub type HashPed256<P> = Hash<P, Pedersen256<<P as Program>::Aleo>>;
@@ -56,12 +56,6 @@ impl<P: Program> FromBytes for HashPed256<P> {
             operation: UnaryOperation::read_le(&mut reader)?,
             hasher: Pedersen256::<P::Environment>::setup("PedersenCircuit0"),
         })
-    }
-}
-
-impl<P: Program> ToBytes for HashPed256<P> {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.operation.write_le(&mut writer)
     }
 }
 
