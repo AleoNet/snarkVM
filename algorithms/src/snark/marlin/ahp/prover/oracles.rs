@@ -84,11 +84,11 @@ impl<'a, F: PrimeField> SingleEntry<'a, F> {
     }
 
     pub fn matches_info(&self, info: &BTreeMap<PolynomialLabel, PolynomialInfo>) -> bool {
-        self.w_poly.info() == &info[self.w_poly.label()]
-            && self.z_a.info() == &info[self.z_a.label()]
-            && self.z_b.info() == &info[self.z_b.label()]
-            && self.z_a_poly.info() == &info[self.z_a_poly.label()]
-            && self.z_b_poly.info() == &info[self.z_b_poly.label()]
+        Some(self.w_poly.info()) == info.get(self.w_poly.label())
+            && Some(self.z_a.info()) == info.get(self.z_a.label())
+            && Some(self.z_b.info()) == info.get(self.z_b.label())
+            && Some(self.z_a_poly.info()) == info.get(self.z_a_poly.label())
+            && Some(self.z_b_poly.info()) == info.get(self.z_b_poly.label())
     }
 }
 
@@ -108,7 +108,7 @@ impl<F: PrimeField> SecondOracles<F> {
     }
 
     pub fn matches_info(&self, info: &BTreeMap<PolynomialLabel, PolynomialInfo>) -> bool {
-        self.h_1.info() == &info[self.h_1.label()] && self.g_1.info() == &info[self.g_1.label()]
+        Some(self.h_1.info()) == info.get(self.h_1.label()) && Some(self.g_1.info()) == info.get(self.g_1.label())
     }
 }
 
@@ -130,9 +130,9 @@ impl<F: PrimeField> ThirdOracles<F> {
     }
 
     pub fn matches_info(&self, info: &BTreeMap<PolynomialLabel, PolynomialInfo>) -> bool {
-        self.g_a.info() == &info[self.g_a.label()]
-            && self.g_b.info() == &info[self.g_b.label()]
-            && self.g_c.info() == &info[self.g_c.label()]
+        Some(self.g_a.info()) == info.get(self.g_a.label())
+            && Some(self.g_b.info()) == info.get(self.g_b.label())
+            && Some(self.g_c.info()) == info.get(self.g_c.label())
     }
 }
 
@@ -149,6 +149,6 @@ impl<F: PrimeField> FourthOracles<F> {
     }
 
     pub fn matches_info(&self, info: &BTreeMap<PolynomialLabel, PolynomialInfo>) -> bool {
-        self.h_2.info() == &info[self.h_2.label()]
+        Some(self.h_2.info()) == info.get(self.h_2.label())
     }
 }
