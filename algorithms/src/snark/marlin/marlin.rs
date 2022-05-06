@@ -234,6 +234,9 @@ where
     ) -> Result<Self::Proof, SNARKError> {
         let prover_time = start_timer!(|| "Marlin::Prover");
         let batch_size = circuits.len();
+        if batch_size == 0 {
+            return Err(SNARKError::EmptyBatch);
+        }
 
         Self::terminate(terminator)?;
 
@@ -468,6 +471,9 @@ where
         proof: &Self::Proof,
     ) -> Result<bool, SNARKError> {
         let circuit_verifying_key = &prepared_verifying_key.orig_vk;
+        if public_inputs.is_empty() {
+            return Err(SNARKError::EmptyBatch);
+        }
         let verifier_time = start_timer!(|| "Marlin::Verify");
 
         let comms = &proof.commitments;

@@ -145,11 +145,12 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Public input should be unformatted.
     #[allow(non_snake_case)]
     pub fn construct_linear_combinations<E: EvaluationsProvider<F>>(
-        public_input: &[Vec<F>],
+        public_inputs: &[Vec<F>],
         evals: &E,
         prover_third_message: &prover::ThirdMessage<F>,
         state: &verifier::State<F, MM>,
     ) -> Result<BTreeMap<String, LinearCombination<F>>, AHPError> {
+        assert!(!public_inputs.is_empty());
         let constraint_domain = state.constraint_domain;
 
         let non_zero_a_domain = state.non_zero_a_domain;
@@ -159,7 +160,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let largest_non_zero_domain =
             Self::max_non_zero_domain_helper(state.non_zero_a_domain, state.non_zero_b_domain, state.non_zero_c_domain);
 
-        let public_input = public_input
+        let public_inputs = public_inputs
             .iter()
             .map(|p| {
                 let public_input = prover::ConstraintSystem::format_public_input(p);
@@ -167,7 +168,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             })
             .collect::<Result<Vec<_>, _>>()?;
 
-        let input_domain = EvaluationDomain::new(public_input[0].len()).ok_or(AHPError::PolynomialDegreeTooLarge)?;
+        let input_domain = EvaluationDomain::new(public_inputs[0].len()).ok_or(AHPError::PolynomialDegreeTooLarge)?;
 
         let first_round_msg = state.first_round_message.as_ref().unwrap();
         let alpha = first_round_msg.alpha;
@@ -212,7 +213,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let lag_at_beta = input_domain.evaluate_all_lagrange_coefficients(beta);
         let combined_x_at_beta = batch_combiners
             .iter()
-            .zip_eq(&public_input)
+            .zip_eq(&public_inputs)
             .map(|(c, x)| x.iter().zip_eq(&lag_at_beta).map(|(x, l)| *x * l).sum::<F>() * c)
             .sum::<F>();
 
