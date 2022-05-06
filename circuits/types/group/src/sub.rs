@@ -52,25 +52,22 @@ impl<E: Environment> SubAssign<&Self> for Group<E> {
     }
 }
 
-impl<E: Environment> Metrics<dyn Sub<Group<E>, Output = Group<E>>> for Group<E> {
-    type Case = (Mode, Mode);
+impl<E: Environment> Metadata<dyn Sub<Group<E>, Output = Group<E>>> for Group<E> {
+    type Case = (CircuitType<Group<E>>, CircuitType<Group<E>>);
+    type OutputType = CircuitType<Group<E>>;
 
     fn count(case: &Self::Case) -> Count {
-        match (case.0, case.1) {
+        match (case.0.eject_mode(), case.1.eject_mode()) {
             (Mode::Constant, Mode::Constant) => Count::is(4, 0, 0, 0),
             (Mode::Constant, _) | (_, Mode::Constant) => Count::is(2, 0, 3, 3),
             (_, _) => Count::is(2, 0, 6, 6),
         }
     }
-}
 
-impl<E: Environment> OutputMode<dyn Sub<Group<E>, Output = Group<E>>> for Group<E> {
-    type Case = (Mode, Mode);
-
-    fn output_mode(case: &Self::Case) -> Mode {
-        match (case.0, case.1) {
-            (Mode::Constant, Mode::Constant) => Mode::Constant,
-            (_, _) => Mode::Private,
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        match (case.0.eject_mode(), case.1.eject_mode()) {
+            (Mode::Constant, Mode::Constant) => CircuitType::from(case.0.circuit().sub(case.1.circuit())),
+            (_, _) => CircuitType::Private,
         }
     }
 }
@@ -87,8 +84,10 @@ mod tests {
         Circuit::scope(name, || {
             let candidate = a - b;
             assert_eq!(*expected, candidate.eject_value(), "({} - {})", a.eject_value(), b.eject_value());
-            assert_count!(Sub(Group, Group) => Group, &(a.eject_mode(), b.eject_mode()));
-            assert_output_mode!(Sub(Group, Group) => Group, &(a.eject_mode(), b.eject_mode()), candidate);
+
+            let case = (CircuitType::from(a), CircuitType::from(b));
+            assert_count!(Sub(Group, Group) => Group, &case);
+            assert_output_type!(Sub(Group, Group) => Group, case, candidate);
         });
     }
 
@@ -102,8 +101,10 @@ mod tests {
             let mut candidate = a.clone();
             candidate -= b;
             assert_eq!(*expected, candidate.eject_value(), "({} - {})", a.eject_value(), b.eject_value());
-            assert_count!(Sub(Group, Group) => Group, &(a.eject_mode(), b.eject_mode()));
-            assert_output_mode!(Sub(Group, Group) => Group, &(a.eject_mode(), b.eject_mode()), candidate);
+
+            let case = (CircuitType::from(a), CircuitType::from(b));
+            assert_count!(Sub(Group, Group) => Group, &case);
+            assert_output_type!(Sub(Group, Group) => Group, case, candidate);
         });
     }
 

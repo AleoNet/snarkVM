@@ -34,21 +34,18 @@ impl<E: Environment> Neg for &Group<E> {
     }
 }
 
-impl<E: Environment> Metrics<dyn Neg<Output = Group<E>>> for Group<E> {
-    type Case = Mode;
+impl<E: Environment> Metadata<dyn Neg<Output = Group<E>>> for Group<E> {
+    type Case = CircuitType<Group<E>>;
+    type OutputType = CircuitType<Group<E>>;
 
     fn count(_case: &Self::Case) -> Count {
         Count::is(0, 0, 0, 0)
     }
-}
 
-impl<E: Environment> OutputMode<dyn Neg<Output = Group<E>>> for Group<E> {
-    type Case = Mode;
-
-    fn output_mode(case: &Self::Case) -> Mode {
-        match case {
-            Mode::Constant => Mode::Constant,
-            _ => Mode::Private,
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        match case.is_constant() {
+            true => CircuitType::from(case.circuit().neg()),
+            false => CircuitType::Private,
         }
     }
 }
@@ -63,11 +60,12 @@ mod tests {
 
     fn check_neg(name: &str, expected: <Circuit as Environment>::Affine, candidate_input: Group<Circuit>) {
         Circuit::scope(name, || {
-            let mode = candidate_input.eject_mode();
-            let candidate_output = -candidate_input;
+            let candidate_output = -&(candidate_input);
             assert_eq!(expected, candidate_output.eject_value());
-            assert_count!(Neg(Group) => Group, &mode);
-            assert_output_mode!(Neg(Group) => Group, &mode, candidate_output);
+
+            let case = CircuitType::from(candidate_input);
+            assert_count!(Neg(Group) => Group, &case);
+            assert_output_type!(Neg(Group) => Group, case, candidate_output);
         });
     }
 
