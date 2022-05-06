@@ -49,7 +49,7 @@ use core::{fmt, ops::Sub as SubCircuit};
 use nom::combinator::map;
 use std::io::{Read, Result as IoResult, Write};
 
-/// Subtracts `second` from `first`, storing the outcome in `destination`.
+/// Computes `first - second`, storing the outcome in `destination`.
 pub struct Sub<P: Program> {
     operation: BinaryOperation<P>,
 }
@@ -133,7 +133,7 @@ impl<P: Program> Metrics<Self> for Sub<P> {
 impl<P: Program> Parser for Sub<P> {
     type Environment = P::Environment;
 
-    /// Parses a string into an 'sub' operation.
+    /// Parses a string into a 'sub' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the operation from the string.
@@ -172,7 +172,7 @@ impl<P: Program> Into<Instruction<P>> for Sub<P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{test_instruction_halts, test_modes, Process};
+    use crate::{test_instruction_halts, test_modes, Identifier, Process};
 
     #[test]
     fn test_parse() {
@@ -181,7 +181,79 @@ mod tests {
     }
 
     test_modes!(field, Sub, "3field", "2field", "1field");
-    test_modes!(group, Sub, "2group", "0group", "2group");
+
+    mod group {
+        use super::*;
+        use crate::binary_instruction_test;
+
+        // 2group - 0group has special output mode behavior.
+        // Normally, a public variable minus a constant would yield a private variable. However, since
+        // the constant is zero, we return the original public variable.
+        binary_instruction_test!(
+            constant_and_constant_yields_constant,
+            Sub,
+            "2group.constant",
+            "0group.constant",
+            "2group.constant"
+        );
+        binary_instruction_test!(
+            constant_and_public_yields_private,
+            Sub,
+            "2group.constant",
+            "0group.public",
+            "2group.private"
+        );
+        binary_instruction_test!(
+            constant_and_private_yields_private,
+            Sub,
+            "2group.constant",
+            "0group.private",
+            "2group.private"
+        );
+        binary_instruction_test!(
+            public_and_constant_yields_public,
+            Sub,
+            "2group.public",
+            "0group.constant",
+            "2group.public"
+        );
+        binary_instruction_test!(
+            private_and_constant_yields_private,
+            Sub,
+            "2group.private",
+            "0group.constant",
+            "2group.private"
+        );
+        binary_instruction_test!(
+            public_and_public_yields_private,
+            Sub,
+            "2group.public",
+            "0group.public",
+            "2group.private"
+        );
+        binary_instruction_test!(
+            public_and_private_yields_private,
+            Sub,
+            "2group.public",
+            "0group.private",
+            "2group.private"
+        );
+        binary_instruction_test!(
+            private_and_public_yields_private,
+            Sub,
+            "2group.private",
+            "0group.public",
+            "2group.private"
+        );
+        binary_instruction_test!(
+            private_and_private_yields_private,
+            Sub,
+            "2group.private",
+            "0group.private",
+            "2group.private"
+        );
+    }
+
     test_modes!(i8, Sub, "1i8", "2i8", "-1i8");
     test_modes!(i16, Sub, "1i16", "2i16", "-1i16");
     test_modes!(i32, Sub, "1i32", "2i32", "-1i32");
@@ -273,4 +345,23 @@ mod tests {
     );
     test_instruction_halts!(boolean_halts, Sub, "Invalid 'sub' instruction", "true.constant", "true.constant");
     test_instruction_halts!(string_halts, Sub, "Invalid 'sub' instruction", "\"hello\".constant", "\"world\".constant");
+
+    #[test]
+    #[should_panic(expected = "message is not a literal")]
+    fn test_composite_halts() {
+        let first = Value::<Process>::Composite(Identifier::from_str("message"), vec![
+            Literal::from_str("2group.public"),
+            Literal::from_str("10field.private"),
+        ]);
+        let second = first.clone();
+
+        let registers = Registers::<Process>::default();
+        registers.define(&Register::from_str("r0"));
+        registers.define(&Register::from_str("r1"));
+        registers.define(&Register::from_str("r2"));
+        registers.assign(&Register::from_str("r0"), first);
+        registers.assign(&Register::from_str("r1"), second);
+
+        Sub::from_str("r0 r1 into r2").evaluate(&registers);
+    }
 }

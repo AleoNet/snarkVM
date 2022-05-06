@@ -116,11 +116,16 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InputCircuit<N> 
             record_commitment_parameters,
             value_commitment_parameters,
             transition_id_crh,
+            transition_id_two_to_one_crh,
             transaction_id_crh,
+            transaction_id_two_to_one_crh,
             transactions_root_crh,
+            transactions_root_two_to_one_crh,
             block_header_root_crh,
+            block_header_root_two_to_one_crh,
             block_hash_crh,
             ledger_root_crh,
+            ledger_root_two_to_one_crh,
         ) = {
             let cs = &mut cs.ns(|| "Declare parameters");
 
@@ -146,22 +151,42 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InputCircuit<N> 
 
             let transition_id_crh = N::TransitionIDCRHGadget::alloc_constant(
                 &mut cs.ns(|| "Declare the transition ID CRH parameters"),
-                || Ok(N::transition_id_parameters().crh()),
+                || Ok(N::transition_id_parameters().leaf_crh()),
+            )?;
+
+            let transition_id_two_to_one_crh = N::TransitionIDTwoToOneCRHGadget::alloc_constant(
+                &mut cs.ns(|| "Declare the transition ID two to one CRH parameters"),
+                || Ok(N::transition_id_parameters().two_to_one_crh()),
             )?;
 
             let transaction_id_crh = N::TransactionIDCRHGadget::alloc_constant(
                 &mut cs.ns(|| "Declare the transaction CRH parameters"),
-                || Ok(N::transaction_id_parameters().crh()),
+                || Ok(N::transaction_id_parameters().leaf_crh()),
+            )?;
+
+            let transaction_id_two_to_one_crh = N::TransactionIDTwoToOneCRHGadget::alloc_constant(
+                &mut cs.ns(|| "Declare the transaction two to one CRH parameters"),
+                || Ok(N::transaction_id_parameters().two_to_one_crh()),
             )?;
 
             let transactions_root_crh = N::TransactionsRootCRHGadget::alloc_constant(
                 &mut cs.ns(|| "Declare the transactions root CRH parameters"),
-                || Ok(N::transactions_root_parameters().crh()),
+                || Ok(N::transactions_root_parameters().leaf_crh()),
+            )?;
+
+            let transactions_root_two_to_one_crh = N::TransactionsRootTwoToOneCRHGadget::alloc_constant(
+                &mut cs.ns(|| "Declare the transactions root two to one CRH parameters"),
+                || Ok(N::transactions_root_parameters().two_to_one_crh()),
             )?;
 
             let block_header_root_crh = N::BlockHeaderRootCRHGadget::alloc_constant(
                 &mut cs.ns(|| "Declare the block header root CRH parameters"),
-                || Ok(N::block_header_root_parameters().crh()),
+                || Ok(N::block_header_root_parameters().leaf_crh()),
+            )?;
+
+            let block_header_root_two_to_one_crh = N::BlockHeaderRootTwoToOneCRHGadget::alloc_constant(
+                &mut cs.ns(|| "Declare the block header root two to one CRH parameters"),
+                || Ok(N::block_header_root_parameters().two_to_one_crh()),
             )?;
 
             let block_hash_crh =
@@ -171,7 +196,12 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InputCircuit<N> 
 
             let ledger_root_crh = N::LedgerRootCRHGadget::alloc_constant(
                 &mut cs.ns(|| "Declare the ledger root CRH parameters"),
-                || Ok(N::ledger_root_parameters().crh()),
+                || Ok(N::ledger_root_parameters().leaf_crh()),
+            )?;
+
+            let ledger_root_two_to_one_crh = N::LedgerRootTwoToOneCRHGadget::alloc_constant(
+                &mut cs.ns(|| "Declare the ledger root two to one CRH parameters"),
+                || Ok(N::ledger_root_parameters().two_to_one_crh()),
             )?;
 
             (
@@ -180,11 +210,16 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InputCircuit<N> 
                 record_commitment_parameters,
                 value_commitment_parameters,
                 transition_id_crh,
+                transition_id_two_to_one_crh,
                 transaction_id_crh,
+                transaction_id_two_to_one_crh,
                 transactions_root_crh,
+                transactions_root_two_to_one_crh,
                 block_header_root_crh,
+                block_header_root_two_to_one_crh,
                 block_hash_crh,
                 ledger_root_crh,
+                ledger_root_two_to_one_crh,
             )
         };
 
@@ -435,24 +470,28 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InputCircuit<N> 
             let ledger_cs = &mut cs.ns(|| "Check ledger proof");
 
             // Compute the transition ID.
-            let transition_inclusion_proof = MerklePathGadget::<_, N::TransitionIDCRHGadget, _>::alloc(
-                &mut ledger_cs.ns(|| "Declare the transition ID inclusion proof"),
-                || Ok(ledger_proof.transition_inclusion_proof()),
-            )?;
+            let transition_inclusion_proof =
+                MerklePathGadget::<_, N::TransitionIDCRHGadget, N::TransitionIDTwoToOneCRHGadget, _>::alloc(
+                    &mut ledger_cs.ns(|| "Declare the transition ID inclusion proof"),
+                    || Ok(ledger_proof.transition_inclusion_proof()),
+                )?;
             let candidate_transition_id = transition_inclusion_proof.calculate_root(
                 &mut ledger_cs.ns(|| "Perform the transition inclusion proof computation"),
                 &transition_id_crh,
+                &transition_id_two_to_one_crh,
                 &commitment,
             )?;
 
             // Compute the transaction ID.
-            let transaction_id_inclusion_proof = MerklePathGadget::<_, N::TransactionIDCRHGadget, _>::alloc(
-                &mut ledger_cs.ns(|| "Declare the transaction ID inclusion proof"),
-                || Ok(ledger_proof.transaction_inclusion_proof()),
-            )?;
+            let transaction_id_inclusion_proof =
+                MerklePathGadget::<_, N::TransactionIDCRHGadget, N::TransactionIDTwoToOneCRHGadget, _>::alloc(
+                    &mut ledger_cs.ns(|| "Declare the transaction ID inclusion proof"),
+                    || Ok(ledger_proof.transaction_inclusion_proof()),
+                )?;
             let candidate_transaction_id = transaction_id_inclusion_proof.calculate_root(
                 &mut ledger_cs.ns(|| "Perform the transaction ID inclusion proof computation"),
                 &transaction_id_crh,
+                &transaction_id_two_to_one_crh,
                 &candidate_transition_id,
             )?;
 
@@ -471,24 +510,27 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InputCircuit<N> 
 
             // Compute the transactions root.
             let ledger_transactions_root_inclusion_proof =
-                MerklePathGadget::<_, N::TransactionsRootCRHGadget, _>::alloc(
+                MerklePathGadget::<_, N::TransactionsRootCRHGadget, N::TransactionsRootTwoToOneCRHGadget, _>::alloc(
                     &mut ledger_cs.ns(|| "Declare the ledger transactions root inclusion proof"),
                     || Ok(ledger_proof.transactions_inclusion_proof()),
                 )?;
             let candidate_ledger_transactions_root = ledger_transactions_root_inclusion_proof.calculate_root(
                 &mut ledger_cs.ns(|| "Perform the ledger transactions root inclusion proof computation"),
                 &transactions_root_crh,
+                &transactions_root_two_to_one_crh,
                 &candidate_transaction_id,
             )?;
 
             // Compute the block header root.
-            let block_header_root_inclusion_proof = MerklePathGadget::<_, N::BlockHeaderRootCRHGadget, _>::alloc(
-                &mut ledger_cs.ns(|| "Declare the block header root inclusion proof"),
-                || Ok(ledger_proof.block_header_inclusion_proof()),
-            )?;
+            let block_header_root_inclusion_proof =
+                MerklePathGadget::<_, N::BlockHeaderRootCRHGadget, N::BlockHeaderRootTwoToOneCRHGadget, _>::alloc(
+                    &mut ledger_cs.ns(|| "Declare the block header root inclusion proof"),
+                    || Ok(ledger_proof.block_header_inclusion_proof()),
+                )?;
             let candidate_block_header_root = block_header_root_inclusion_proof.calculate_root(
                 &mut ledger_cs.ns(|| "Perform the block header root inclusion proof computation"),
                 &block_header_root_crh,
+                &block_header_root_two_to_one_crh,
                 &candidate_ledger_transactions_root,
             )?;
 
@@ -509,13 +551,15 @@ impl<N: Network> ConstraintSynthesizer<N::InnerScalarField> for InputCircuit<N> 
                 block_hash_crh.check_evaluation_gadget(&mut ledger_cs.ns(|| "Compute the block hash"), preimage)?;
 
             // Ensure the ledger root inclusion proof is valid.
-            let ledger_root_inclusion_proof = MerklePathGadget::<_, N::LedgerRootCRHGadget, _>::alloc(
-                &mut ledger_cs.ns(|| "Declare the ledger root inclusion proof"),
-                || Ok(ledger_proof.ledger_root_inclusion_proof()),
-            )?;
+            let ledger_root_inclusion_proof =
+                MerklePathGadget::<_, N::LedgerRootCRHGadget, N::LedgerRootTwoToOneCRHGadget, _>::alloc(
+                    &mut ledger_cs.ns(|| "Declare the ledger root inclusion proof"),
+                    || Ok(ledger_proof.ledger_root_inclusion_proof()),
+                )?;
             ledger_root_inclusion_proof.conditionally_check_membership(
                 &mut ledger_cs.ns(|| "Perform the ledger root inclusion proof check"),
                 &ledger_root_crh,
+                &ledger_root_two_to_one_crh,
                 &ledger_root,
                 &candidate_block_hash,
                 &is_local_or_dummy.not(),
