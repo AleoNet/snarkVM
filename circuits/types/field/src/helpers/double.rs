@@ -32,21 +32,18 @@ impl<E: Environment> Double for &Field<E> {
     }
 }
 
-impl<E: Environment> Metrics<dyn Double<Output = Field<E>>> for Field<E> {
-    type Case = Mode;
+impl<E: Environment> Metadata<dyn Double<Output = Field<E>>> for Field<E> {
+    type Case = CircuitType<Field<E>>;
+    type OutputType = CircuitType<Field<E>>;
 
-    fn count(_parameter: &Self::Case) -> Count {
+    fn count(_case: &Self::Case) -> Count {
         Count::is(0, 0, 0, 0)
     }
-}
 
-impl<E: Environment> OutputMode<dyn Double<Output = Field<E>>> for Field<E> {
-    type Case = Mode;
-
-    fn output_mode(input: &Self::Case) -> Mode {
-        match input.is_constant() {
-            true => Mode::Constant,
-            false => Mode::Private,
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        match case.is_constant() {
+            true => CircuitType::from(case.circuit().double()),
+            false => CircuitType::Private,
         }
     }
 }
@@ -66,10 +63,12 @@ mod tests {
             let candidate = Field::<Circuit>::new(mode, given);
 
             Circuit::scope(name, || {
-                let result = candidate.double();
+                let result = (&candidate).double();
                 assert_eq!(given.double(), result.eject_value());
-                assert_count!(Double(Field) => Field, &mode);
-                assert_output_mode!(Double(Field) => Field, &mode, result);
+
+                let case = CircuitType::from(candidate);
+                assert_count!(Double(Field) => Field, &case);
+                assert_output_type!(Double(Field) => Field, case, result);
             });
         }
     }
