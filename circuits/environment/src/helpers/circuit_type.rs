@@ -42,30 +42,45 @@ impl<T: Eject> Eject for Constant<T> {
 
 /// Helper enum used in the case where a circuit's output mode or counts are determined by
 /// its mode and the actual value of the circuit.
-/// See Boolean::nor, where exactly one of the operands is a constant, for an example.
 #[derive(Debug, Clone)]
-pub enum ConstantOrMode<T: Eject> {
+pub enum CircuitType<T: Eject> {
     Constant(Constant<T>),
-    Mode(Mode),
+    Public,
+    Private,
 }
 
-impl<T: Eject> ConstantOrMode<T> {
+impl<T: Eject> CircuitType<T> {
     pub fn mode(&self) -> Mode {
         match self {
-            ConstantOrMode::Constant(constant) => constant.eject_mode(),
-            ConstantOrMode::Mode(mode) => *mode,
+            CircuitType::Constant(constant) => constant.eject_mode(),
+            CircuitType::Public => Mode::Public,
+            CircuitType::Private => Mode::Private,
         }
     }
 }
 
-/// Initializes a new `ModeOrConstant` from a circuit.
-/// If the circuit is constant, the `ModeOrConstant` will be a `Constant`.
-/// Otherwise, the `ModeOrConstant` will be a `Mode`.
-impl<T: Eject + Clone> From<&T> for ConstantOrMode<T> {
+/// Initializes a new `CircuitType` from a circuit.
+/// If the circuit is constant, the `CircuitType` will be `Constant(circuit)`.
+/// Otherwise, the `CircuitType` will be `Public` or `Private`.
+impl<T: Eject + Clone> From<T> for CircuitType<T> {
+    fn from(circuit: T) -> Self {
+        match circuit.eject_mode() {
+            Mode::Constant => CircuitType::Constant(Constant(circuit)),
+            Mode::Public => CircuitType::Public,
+            Mode::Private => CircuitType::Private,
+        }
+    }
+}
+
+/// Initializes a new `CircuitType` from a circuit.
+/// If the circuit is constant, the `CircuitType` will be `Constant(circuit)`.
+/// Otherwise, the `CircuitType` will be `Public` or `Private`.
+impl<T: Eject + Clone> From<&T> for CircuitType<T> {
     fn from(circuit: &T) -> Self {
         match circuit.eject_mode() {
-            Mode::Constant => ConstantOrMode::Constant(Constant(circuit.clone())),
-            _ => ConstantOrMode::Mode(circuit.eject_mode()),
+            Mode::Constant => CircuitType::Constant(Constant(circuit.clone())),
+            Mode::Public => CircuitType::Public,
+            Mode::Private => CircuitType::Private,
         }
     }
 }

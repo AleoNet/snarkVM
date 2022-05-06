@@ -26,44 +26,15 @@ impl<E: Environment, I: IntegerType> MulWrapped<Self> for Integer<E, I> {
             // Compute the product and return the new constant.
             witness!(|self, other| self.wrapping_mul(&other))
         } else {
-            // Compute the product of `self` and `other`.
-            let (product, _) = Self::mul_with_carry(self, other, false);
-            // Return the product of `self` and `other`.
-            product
-        }
-    }
-}
-
-impl<E: Environment, I: IntegerType> Integer<E, I> {
-    /// Multiply the integer bits of `this` and `that` in the base field.
-    #[inline]
-    pub(super) fn mul_with_carry(
-        this: &Integer<E, I>,
-        that: &Integer<E, I>,
-        include_carry_bits: bool,
-    ) -> (Integer<E, I>, Vec<Boolean<E>>) {
-        // Case 1 - 2 integers fit in 1 field element (u8, u16, u32, u64, i8, i16, i32, i64).
-        if 2 * I::BITS < (E::BaseField::size_in_bits() - 1) as u64 {
-            // Instead of multiplying the bits of `self` and `other` directly, the integers are
-            // converted into a field elements, and multiplied, before being converted back to integers.
-            // Note: This is safe as the field is larger than the maximum integer type supported.
-            let product = (this.to_field() * that.to_field()).to_lower_bits_le(2 * I::BITS as usize);
-
-            // Split the integer bits into product bits and carry bits.
-            let (bits_le, carry) = product.split_at(I::BITS as usize);
-
-            // Return the product of `self` and `other`, along with the carry bits.
-            (Integer::from_bits_le(bits_le), carry.to_vec())
-        }
-        // Case 2 - 1.5 integers fit in 1 field element (u128, i128).
-        else if (I::BITS + I::BITS / 2) < (E::BaseField::size_in_bits() - 1) as u64 {
             // Perform multiplication by decomposing it into operations on its upper and lower bits.
             // See this page for reference: https://en.wikipedia.org/wiki/Karatsuba_algorithm.
             // Note: We follow the naming convention given in the `Basic Step` section of the cited page.
-            let x_1 = Field::from_bits_le(&this.bits_le[(I::BITS as usize / 2)..]);
-            let x_0 = Field::from_bits_le(&this.bits_le[..(I::BITS as usize / 2)]);
-            let y_1 = Field::from_bits_le(&that.bits_le[(I::BITS as usize / 2)..]);
-            let y_0 = Field::from_bits_le(&that.bits_le[..(I::BITS as usize / 2)]);
+            // For integers with size less than 128, this algorithm saves approximately 0.5 * I::BITS
+            // constraints compared to a field multiplication.
+            let x_1 = Field::from_bits_le(&self.bits_le[(I::BITS as usize / 2)..]);
+            let x_0 = Field::from_bits_le(&self.bits_le[..(I::BITS as usize / 2)]);
+            let y_1 = Field::from_bits_le(&other.bits_le[(I::BITS as usize / 2)..]);
+            let y_0 = Field::from_bits_le(&other.bits_le[..(I::BITS as usize / 2)]);
 
             let z_0 = &x_0 * &y_0;
             let z_1 = (&x_1 * &y_0) + (&x_0 * &y_1);
@@ -76,30 +47,11 @@ impl<E: Environment, I: IntegerType> Integer<E, I> {
 
             let mut bits_le = z_0_plus_z_1.to_lower_bits_le(I::BITS as usize + I::BITS as usize / 2 + 1);
 
-            match include_carry_bits {
-                // Only `mul_checked` requires these bits to perform overflow/underflow checks.
-                true => {
-                    let z_2 = &x_1 * &y_1;
-                    bits_le.append(&mut z_2.to_lower_bits_le(I::BITS as usize));
+            // Remove any carry bits.
+            bits_le.truncate(I::BITS as usize);
 
-                    // Split the integer bits into product bits and carry bits.
-                    let (bits_le, carry) = bits_le.split_at(I::BITS as usize);
-
-                    // Return the product of `self` and `other`, along with the carry bits.
-                    (Integer::from_bits_le(bits_le), carry.to_vec())
-                }
-                false => {
-                    // Remove any carry bits.
-                    bits_le.truncate(I::BITS as usize);
-
-                    // Return the product of `self` and `other`, without the carry bits.
-                    (Integer { bits_le, phantom: Default::default() }, vec![])
-                }
-            }
-        } else {
-            // TODO (@pranav) Do we need to handle this case? The current integers can
-            //   be handled by the code above.
-            todo!()
+            // Return the product of `self` and `other`, without the carry bits.
+            Integer { bits_le, phantom: Default::default() }
         }
     }
 }
@@ -108,25 +60,12 @@ impl<E: Environment, I: IntegerType> Metrics<dyn MulWrapped<Integer<E, I>, Outpu
     type Case = (Mode, Mode);
 
     fn count(case: &Self::Case) -> Count {
-        // Case 1 - 2 integers fit in 1 field element (u8, u16, u32, u64, i8, i16, i32, i64).
-        if 2 * I::BITS < (E::BaseField::size_in_bits() - 1) as u64 {
-            match (case.0, case.1) {
-                (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-                (Mode::Constant, _) | (_, Mode::Constant) => Count::is(0, 0, 2 * I::BITS, (2 * I::BITS) + 1),
-                (_, _) => Count::is(0, 0, (2 * I::BITS) + 1, (2 * I::BITS) + 2),
+        match (case.0, case.1) {
+            (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
+            (Mode::Constant, _) | (_, Mode::Constant) => {
+                Count::is(0, 0, I::BITS + (I::BITS / 2) + 1, I::BITS + (I::BITS / 2) + 2)
             }
-        }
-        // Case 2 - 1.5 integers fit in 1 field element (u128, i128).
-        else if (I::BITS + I::BITS / 2) < (E::BaseField::size_in_bits() - 1) as u64 {
-            match (case.0, case.1) {
-                (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-                (Mode::Constant, _) | (_, Mode::Constant) => Count::is(0, 0, I::BITS + 65, I::BITS + 66),
-                (_, _) => Count::is(0, 0, I::BITS + 68, I::BITS + 69),
-            }
-        } else {
-            // TODO (@pranav) Do we need to handle this case? The current integers can
-            //   be handled by the code above.
-            todo!()
+            (_, _) => Count::is(0, 0, I::BITS + (I::BITS / 2) + 4, I::BITS + (I::BITS / 2) + 5),
         }
     }
 }

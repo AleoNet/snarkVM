@@ -387,6 +387,7 @@ impl<P: Program> TypeName for Function<P> {
     }
 }
 
+#[allow(clippy::format_push_string)]
 impl<P: Program> fmt::Display for Function<P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // Write the function to a string.

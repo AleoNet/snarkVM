@@ -211,7 +211,7 @@ impl<'a, 'b, F: Field> Add<&'a DensePolynomial<F>> for &'b DensePolynomial<F> {
     }
 }
 
-impl<'a, 'b, F: Field> AddAssign<&'a DensePolynomial<F>> for DensePolynomial<F> {
+impl<'a, F: Field> AddAssign<&'a DensePolynomial<F>> for DensePolynomial<F> {
     fn add_assign(&mut self, other: &'a DensePolynomial<F>) {
         if self.is_zero() {
             self.coeffs.clear();
@@ -234,7 +234,7 @@ impl<'a, 'b, F: Field> AddAssign<&'a DensePolynomial<F>> for DensePolynomial<F> 
     }
 }
 
-impl<'a, 'b, F: Field> AddAssign<&'a DenseOrSparsePolynomial<'a, F>> for DensePolynomial<F> {
+impl<'a, F: Field> AddAssign<&'a DenseOrSparsePolynomial<'a, F>> for DensePolynomial<F> {
     fn add_assign(&mut self, other: &'a DenseOrSparsePolynomial<F>) {
         match other {
             DenseOrSparsePolynomial::SPolynomial(p) => *self += &Self::from(p.to_owned().into_owned()),
@@ -243,7 +243,7 @@ impl<'a, 'b, F: Field> AddAssign<&'a DenseOrSparsePolynomial<'a, F>> for DensePo
     }
 }
 
-impl<'a, 'b, F: Field> AddAssign<(F, &'a DenseOrSparsePolynomial<'a, F>)> for DensePolynomial<F> {
+impl<'a, F: Field> AddAssign<(F, &'a DenseOrSparsePolynomial<'a, F>)> for DensePolynomial<F> {
     fn add_assign(&mut self, (f, other): (F, &'a DenseOrSparsePolynomial<F>)) {
         match other {
             DenseOrSparsePolynomial::SPolynomial(p) => *self += (f, &Self::from(p.to_owned().into_owned())),
@@ -252,7 +252,7 @@ impl<'a, 'b, F: Field> AddAssign<(F, &'a DenseOrSparsePolynomial<'a, F>)> for De
     }
 }
 
-impl<'a, 'b, F: Field> AddAssign<(F, &'a DensePolynomial<F>)> for DensePolynomial<F> {
+impl<'a, F: Field> AddAssign<(F, &'a DensePolynomial<F>)> for DensePolynomial<F> {
     #[allow(clippy::suspicious_op_assign_impl)]
     fn add_assign(&mut self, (f, other): (F, &'a DensePolynomial<F>)) {
         if self.is_zero() {
@@ -330,7 +330,7 @@ impl<'a, 'b, F: Field> Sub<&'a DensePolynomial<F>> for &'b DensePolynomial<F> {
     }
 }
 
-impl<'a, 'b, F: Field> SubAssign<&'a DensePolynomial<F>> for DensePolynomial<F> {
+impl<'a, F: Field> SubAssign<&'a DensePolynomial<F>> for DensePolynomial<F> {
     #[inline]
     fn sub_assign(&mut self, other: &'a DensePolynomial<F>) {
         if self.is_zero() {

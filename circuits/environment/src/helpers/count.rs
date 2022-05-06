@@ -30,6 +30,11 @@ pub struct Count(pub Constant, pub Public, pub Private, pub Constraints);
 
 impl Count {
     /// Returns a new `Count` whose constituent metrics are all `Exact`.
+    pub const fn zero() -> Self {
+        Count(Measurement::Exact(0), Measurement::Exact(0), Measurement::Exact(0), Measurement::Exact(0))
+    }
+
+    /// Returns a new `Count` whose constituent metrics are all `Exact`.
     pub const fn is(num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) -> Self {
         Count(
             Measurement::Exact(num_constants),
