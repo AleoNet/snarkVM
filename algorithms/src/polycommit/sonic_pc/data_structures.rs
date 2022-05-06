@@ -545,11 +545,11 @@ impl<C: CanonicalSerialize> LabeledCommitment<C> {
     }
 
     pub fn new_with_info(info: &PolynomialInfo, commitment: C) -> Self {
-        Self { label: info.label().clone(), commitment, degree_bound: info.degree_bound() }
+        Self { label: info.label().to_string(), commitment, degree_bound: info.degree_bound() }
     }
 
     /// Return the label for `self`.
-    pub fn label(&self) -> &String {
+    pub fn label(&self) -> &str {
         &self.label
     }
 
@@ -661,7 +661,7 @@ impl<F: Field> LinearCombination<F> {
     }
 
     /// Returns the label of the linear combination.
-    pub fn label(&self) -> &String {
+    pub fn label(&self) -> &str {
         &self.label
     }
 
@@ -763,7 +763,7 @@ pub fn evaluate_query_set<'a, F: PrimeField>(
     let polys: HashMap<_, _> = polys.into_iter().map(|p| (p.label(), p)).collect();
     let mut evaluations = Evaluations::new();
     for (label, (_point_name, point)) in query_set {
-        let poly = polys.get(label).expect("polynomial in evaluated lc is not found");
+        let poly = polys.get(label as &str).expect("polynomial in evaluated lc is not found");
         let eval = poly.evaluate(*point);
         evaluations.insert((label.clone(), *point), eval);
     }

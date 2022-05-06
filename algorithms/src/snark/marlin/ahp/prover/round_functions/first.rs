@@ -59,7 +59,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         if MM::ZK {
             polynomials.push(PolynomialInfo::new("mask_poly".to_string(), None, None));
         }
-        polynomials.into_iter().map(|info| (info.label().clone(), info)).collect()
+        polynomials.into_iter().map(|info| (info.label().into(), info)).collect()
     }
 
     /// Output the first round message and the next state.

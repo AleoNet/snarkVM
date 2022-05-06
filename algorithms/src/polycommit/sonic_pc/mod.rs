@@ -240,7 +240,7 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
             )?;
             let degree_bound = p.degree_bound();
             let hiding_bound = p.hiding_bound();
-            let label = p.label().clone();
+            let label = p.label().to_string();
 
             pool.add_job(move || {
                 let mut rng = seed.map(rand::rngs::StdRng::from_seed);
@@ -375,7 +375,7 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
 
             for label in labels {
                 let (polynomial, rand, comm) =
-                    poly_rand_comm.get(label).ok_or(PCError::MissingPolynomial { label: label.to_string() })?;
+                    poly_rand_comm.get(label as &str).ok_or(PCError::MissingPolynomial { label: label.to_string() })?;
 
                 query_polys.push(*polynomial);
                 query_rands.push(*rand);
@@ -489,7 +489,7 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
         let mut lc_info = Vec::new();
 
         for lc in linear_combinations {
-            let lc_label = lc.label().clone();
+            let lc_label = lc.label().to_string();
             let mut poly = DensePolynomial::zero();
             let mut degree_bound = None;
             let mut hiding_bound = None;
@@ -501,7 +501,7 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
             for (coeff, label) in lc.iter().filter(|(_, l)| !l.is_one()) {
                 let label: &String = label.try_into().expect("cannot be one!");
                 let &(cur_poly, cur_rand, cur_comm) =
-                    label_map.get(label).ok_or(PCError::MissingPolynomial { label: label.to_string() })?;
+                    label_map.get(label as &str).ok_or(PCError::MissingPolynomial { label: label.to_string() })?;
                 if num_polys == 1 && cur_poly.degree_bound().is_some() {
                     assert!(coeff.is_one(), "Coefficient must be one for degree-bounded equations");
                     degree_bound = cur_poly.degree_bound();
@@ -564,7 +564,7 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
 
         let lc_processing_time = start_timer!(|| "Combining commitments");
         for lc in linear_combinations {
-            let lc_label = lc.label().clone();
+            let lc_label = lc.label().to_string();
             let num_polys = lc.len();
 
             let mut degree_bound = None;
@@ -579,8 +579,9 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
                     }
                 } else {
                     let label: &String = label.try_into().unwrap();
-                    let &cur_comm =
-                        label_comm_map.get(label).ok_or(PCError::MissingPolynomial { label: label.to_string() })?;
+                    let &cur_comm = label_comm_map
+                        .get(label as &str)
+                        .ok_or(PCError::MissingPolynomial { label: label.to_string() })?;
 
                     if num_polys == 1 && cur_comm.degree_bound().is_some() {
                         assert!(coeff.is_one(), "Coefficient must be one for degree-bounded equations");

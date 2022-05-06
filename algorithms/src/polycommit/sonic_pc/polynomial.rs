@@ -47,7 +47,7 @@ impl PolynomialInfo {
     }
 
     /// Return the label for `self`.
-    pub fn label(&self) -> &String {
+    pub fn label(&self) -> &str {
         &self.label
     }
 
@@ -101,7 +101,7 @@ impl<F: Field> LabeledPolynomial<F> {
     }
 
     /// Return the label for `self`.
-    pub fn label(&self) -> &String {
+    pub fn label(&self) -> &str {
         &self.info.label
     }
 
@@ -191,7 +191,7 @@ impl<'a, F: PrimeField> LabeledPolynomialWithBasis<'a, F> {
     }
 
     /// Return the label for `self`.
-    pub fn label(&self) -> &String {
+    pub fn label(&self) -> &str {
         &self.info.label
     }
 

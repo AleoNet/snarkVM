@@ -61,7 +61,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             PolynomialInfo::new("h_1".into(), None, None),
         ]
         .into_iter()
-        .map(|info| (info.label().clone(), info))
+        .map(|info| (info.label().into(), info))
         .collect()
     }
 
