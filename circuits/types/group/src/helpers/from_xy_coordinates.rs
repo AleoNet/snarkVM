@@ -16,6 +16,8 @@
 
 use super::*;
 
+// TODO: Should a trait be created for this?
+
 impl<E: Environment> Group<E> {
     /// Initializes an affine group element from a given x- and y-coordinate field element.
     /// For safety, the resulting point is always enforced to be on the curve with constraints.

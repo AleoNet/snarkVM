@@ -16,6 +16,8 @@
 
 use super::*;
 
+// TODO: Split into multiple traits.
+
 impl<E: Environment> Equal<Self> for Group<E> {
     type Output = Boolean<E>;
 
@@ -40,6 +42,27 @@ impl<E: Environment> Equal<Self> for Group<E> {
     ///
     fn is_not_equal(&self, other: &Self) -> Self::Output {
         !self.is_equal(other)
+    }
+}
+
+impl<E: Environment> Metadata<dyn Equal<Group<E>, Output = Boolean<E>>> for Group<E> {
+    type Case = (CircuitType<Self>, CircuitType<Self>);
+    type OutputType = CircuitType<Boolean<E>>;
+
+    fn count(case: &Self::Case) -> Count {
+        match case {
+            (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(2, 0, 0, 0),
+            _ => Count::is(0, 0, 5, 7),
+        }
+    }
+
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        match case {
+            (CircuitType::Constant(_), CircuitType::Constant(_)) => {
+                CircuitType::from(case.0.circuit().is_equal(case.1.circuit()))
+            }
+            _ => CircuitType::Private,
+        }
     }
 }
 

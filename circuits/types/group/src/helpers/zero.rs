@@ -30,6 +30,19 @@ impl<E: Environment> Zero for Group<E> {
     }
 }
 
+impl<E: Environment> Metadata<dyn Zero<Boolean = Boolean<E>>> for Group<E> {
+    type Case = ();
+    type OutputType = CircuitType<Self>;
+
+    fn count(_case: &Self::Case) -> Count {
+        Count::is(0, 0, 0, 0)
+    }
+
+    fn output_type(_case: Self::Case) -> Self::OutputType {
+        CircuitType::from(Group::zero())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -42,10 +55,12 @@ mod tests {
 
         Circuit::scope("Zero", || {
             assert_scope!(0, 0, 0, 0);
-            let candidate = Group::<Circuit>::zero().eject_value();
-            assert_eq!(zero, candidate.to_x_coordinate());
-            assert_eq!(one, candidate.to_y_coordinate());
-            assert_scope!(0, 0, 0, 0);
+            let candidate = Group::<Circuit>::zero();
+            let value = candidate.eject_value();
+            assert_eq!(zero, value.to_x_coordinate());
+            assert_eq!(one, value.to_y_coordinate());
+            assert_count!(Zero<Boolean>() => Group, &());
+            assert_output_type!(Zero<Boolean>() => Group, (), candidate);
         });
     }
 

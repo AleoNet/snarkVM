@@ -16,6 +16,8 @@
 
 use super::*;
 
+// TODO: Should a trait be created for this?
+
 impl<E: Environment> Group<E> {
     /// Returns the y-coordinate of the group element.
     pub fn to_y_coordinate(&self) -> Field<E> {

@@ -16,6 +16,8 @@
 
 use super::*;
 
+use snarkvm_utilities::BigInteger;
+
 impl<E: Environment> Mul<Scalar<E>> for Group<E> {
     type Output = Group<E>;
 
@@ -180,6 +182,45 @@ impl<E: Environment> MulAssign<&[Boolean<E>]> for Group<E> {
     }
 }
 
+impl<E: Environment> Metadata<dyn Mul<Scalar<E>, Output = Group<E>>> for Group<E> {
+    type Case = (CircuitType<Self>, CircuitType<Scalar<E>>);
+    type OutputType = CircuitType<Self>;
+
+    fn count(case: &Self::Case) -> Count {
+        match case {
+            (CircuitType::Constant(_), CircuitType::Constant(_)) => {
+                let scalar = case.1.eject_value();
+                let num_nonzero_bits = scalar.to_repr().to_biguint().bits();
+                let num_constant =
+                    (3 /* DOUBLE private */ + 4/* public ADD private */ + 0/* TERNARY */) * (num_nonzero_bits - 1); // Typically around 760.
+                Count::is(num_constant, 0, 0, 0)
+            }
+            (CircuitType::Constant(_), _) => Count::is(750, 0, 2500, 2500),
+            (_, CircuitType::Constant(_)) => {
+                let scalar = case.1.eject_value();
+                let num_nonzero_bits = scalar.to_repr().to_biguint().bits();
+                let num_constant =
+                    (1 /* DOUBLE private */ + 2/* public ADD private */ + 0/* TERNARY */) * (num_nonzero_bits - 1); // Typically around 760.
+                let num_private =
+                    (5 /* DOUBLE private */ + 6/* public ADD private */ + 0/* TERNARY */) * (num_nonzero_bits - 1); // Typically around 2700.
+                let num_constraints =
+                    (5 /* DOUBLE private */ + 6/* public ADD private */ + 0/* TERNARY */) * (num_nonzero_bits - 1); // Typically around 2700.
+                Count::is(num_constant, 0, num_private, num_constraints)
+            }
+            (_, _) => Count::is(750, 0, 3252, 3252),
+        }
+    }
+
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        match case {
+            (CircuitType::Constant(_), CircuitType::Constant(_)) => {
+                CircuitType::from(case.0.circuit().mul(case.1.circuit()))
+            }
+            _ => CircuitType::Private,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -189,20 +230,14 @@ mod tests {
 
     const ITERATIONS: u64 = 10;
 
-    fn check_mul(
-        name: &str,
-        expected: &<Circuit as Environment>::Affine,
-        a: &Group<Circuit>,
-        b: &Scalar<Circuit>,
-        num_constants: u64,
-        num_public: u64,
-        num_private: u64,
-        num_constraints: u64,
-    ) {
+    fn check_mul(name: &str, expected: &<Circuit as Environment>::Affine, a: &Group<Circuit>, b: &Scalar<Circuit>) {
         Circuit::scope(name, || {
             let candidate = a * b;
             assert_eq!(*expected, candidate.eject_value(), "({} * {})", a.eject_value(), b.eject_value());
-            assert_scope!(num_constants, num_public, num_private, num_constraints);
+
+            let case = (CircuitType::from(a), CircuitType::from(b));
+            assert_count!(Mul(Group, Scalar) => Group, &case);
+            assert_output_type!(Mul(Group, Scalar) => Group, case, candidate);
         });
         Circuit::reset();
     }
@@ -212,16 +247,15 @@ mod tests {
         expected: &<Circuit as Environment>::Affine,
         a: &Group<Circuit>,
         b: &Scalar<Circuit>,
-        num_constants: u64,
-        num_public: u64,
-        num_private: u64,
-        num_constraints: u64,
     ) {
         Circuit::scope(name, || {
             let mut candidate = a.clone();
             candidate *= b;
             assert_eq!(*expected, candidate.eject_value(), "({} * {})", a.eject_value(), b.eject_value());
-            assert_scope!(num_constants, num_public, num_private, num_constraints);
+
+            let case = (CircuitType::from(a), CircuitType::from(b));
+            assert_count!(Mul(Group, Scalar) => Group, &case);
+            assert_output_type!(Mul(Group, Scalar) => Group, case, candidate);
         });
         Circuit::reset();
     }
@@ -244,9 +278,9 @@ mod tests {
             let b = Scalar::<Circuit>::new(Mode::Constant, scalar);
 
             let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b, num_constant, 0, 0, 0);
+            check_mul(&name, &expected, &a, &b);
             let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b, num_constant, 0, 0, 0);
+            check_mul_assign(&name, &expected, &a, &b);
         }
     }
 
@@ -261,9 +295,9 @@ mod tests {
             let b = Scalar::<Circuit>::new(Mode::Public, scalar);
 
             let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b, 750, 0, 2500, 2500);
+            check_mul(&name, &expected, &a, &b);
             let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b, 750, 0, 2500, 2500);
+            check_mul_assign(&name, &expected, &a, &b);
         }
     }
 
@@ -278,9 +312,9 @@ mod tests {
             let b = Scalar::<Circuit>::new(Mode::Private, scalar);
 
             let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b, 750, 0, 2500, 2500);
+            check_mul(&name, &expected, &a, &b);
             let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b, 750, 0, 2500, 2500);
+            check_mul_assign(&name, &expected, &a, &b);
         }
     }
 
@@ -293,22 +327,14 @@ mod tests {
             let base: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
             let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
 
-            let num_nonzero_bits = scalar.to_repr().to_biguint().bits();
-            let num_constant =
-                (1 /* DOUBLE private */ + 2/* public ADD private */ + 0/* TERNARY */) * (num_nonzero_bits - 1); // Typically around 760.
-            let num_private =
-                (5 /* DOUBLE private */ + 6/* public ADD private */ + 0/* TERNARY */) * (num_nonzero_bits - 1); // Typically around 2700.
-            let num_constraints =
-                (5 /* DOUBLE private */ + 6/* public ADD private */ + 0/* TERNARY */) * (num_nonzero_bits - 1); // Typically around 2700.
-
             let expected = (base * scalar).into();
             let a = Group::<Circuit>::new(Mode::Public, base);
             let b = Scalar::<Circuit>::new(Mode::Constant, scalar);
 
             let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b, num_constant, 0, num_private, num_constraints);
+            check_mul(&name, &expected, &a, &b);
             let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b, num_constant, 0, num_private, num_constraints);
+            check_mul_assign(&name, &expected, &a, &b);
         }
     }
 
@@ -321,22 +347,14 @@ mod tests {
             let base: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
             let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
 
-            let num_nonzero_bits = scalar.to_repr().to_biguint().bits();
-            let num_constant =
-                (1 /* DOUBLE private */ + 2/* private ADD private */ + 0/* TERNARY */) * (num_nonzero_bits - 1); // Typically around 760.
-            let num_private =
-                (5 /* DOUBLE private */ + 6/* private ADD private */ + 0/* TERNARY */) * (num_nonzero_bits - 1); // Typically around 2700.
-            let num_constraints =
-                (5 /* DOUBLE private */ + 6/* private ADD private */ + 0/* TERNARY */) * (num_nonzero_bits - 1); // Typically around 2700.
-
             let expected = (base * scalar).into();
             let a = Group::<Circuit>::new(Mode::Private, base);
             let b = Scalar::<Circuit>::new(Mode::Constant, scalar);
 
             let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b, num_constant, 0, num_private, num_constraints);
+            check_mul(&name, &expected, &a, &b);
             let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b, num_constant, 0, num_private, num_constraints);
+            check_mul_assign(&name, &expected, &a, &b);
         }
     }
 
@@ -351,9 +369,9 @@ mod tests {
             let b = Scalar::<Circuit>::new(Mode::Public, scalar);
 
             let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b, 750, 0, 3252, 3252);
+            check_mul(&name, &expected, &a, &b);
             let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b, 750, 0, 3252, 3252);
+            check_mul_assign(&name, &expected, &a, &b);
         }
     }
 
@@ -368,9 +386,9 @@ mod tests {
             let b = Scalar::<Circuit>::new(Mode::Private, scalar);
 
             let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b, 750, 0, 3252, 3252);
+            check_mul(&name, &expected, &a, &b);
             let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b, 750, 0, 3252, 3252);
+            check_mul_assign(&name, &expected, &a, &b);
         }
     }
 
@@ -385,9 +403,9 @@ mod tests {
             let b = Scalar::<Circuit>::new(Mode::Public, scalar);
 
             let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b, 750, 0, 3252, 3252);
+            check_mul(&name, &expected, &a, &b);
             let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b, 750, 0, 3252, 3252);
+            check_mul_assign(&name, &expected, &a, &b);
         }
     }
 
@@ -402,9 +420,9 @@ mod tests {
             let b = Scalar::<Circuit>::new(Mode::Private, scalar);
 
             let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b, 750, 0, 3252, 3252);
+            check_mul(&name, &expected, &a, &b);
             let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b, 750, 0, 3252, 3252);
+            check_mul_assign(&name, &expected, &a, &b);
         }
     }
 

@@ -70,6 +70,25 @@ impl<E: Environment> Double for &Group<E> {
     }
 }
 
+impl<E: Environment> Metadata<dyn Double<Output = Group<E>>> for Group<E> {
+    type Case = CircuitType<Self>;
+    type OutputType = CircuitType<Self>;
+
+    fn count(case: &Self::Case) -> Count {
+        match case {
+            CircuitType::Constant(_) => Count::is(3, 0, 0, 0),
+            _ => Count::is(1, 0, 5, 5),
+        }
+    }
+
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        match case {
+            CircuitType::Constant(_) => CircuitType::from(case.circuit().double()),
+            _ => CircuitType::Private,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

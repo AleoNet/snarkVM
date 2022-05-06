@@ -16,6 +16,8 @@
 
 use super::*;
 
+// TODO: Split into separate traits for consistency with metadata.
+
 impl<E: Environment> FromBits for Group<E> {
     type Boolean = Boolean<E>;
 
@@ -33,6 +35,25 @@ impl<E: Environment> FromBits for Group<E> {
         let x = Field::from_bits_be(bits_be);
         // Recover the y-coordinate and return the affine group element.
         Self::from_x_coordinate(x)
+    }
+}
+
+impl<E: Environment> Metadata<dyn FromBits<Boolean = Boolean<E>>> for Group<E> {
+    type Case = CircuitType<Vec<Boolean<E>>>;
+    type OutputType = CircuitType<Self>;
+
+    fn count(case: &Self::Case) -> Count {
+        match case {
+            CircuitType::Constant(_) => Count::is(3, 0, 0, 0),
+            _ => Count::is(2, 0, 255, 421),
+        }
+    }
+
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        match case {
+            CircuitType::Constant(_) => CircuitType::from(Group::from_bits_le(case.circuit())),
+            _ => CircuitType::Private,
+        }
     }
 }
 
