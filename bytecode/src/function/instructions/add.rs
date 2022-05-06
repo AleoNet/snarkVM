@@ -183,7 +183,79 @@ mod tests {
     }
 
     test_modes!(field, Add, "1field", "2field", "3field");
-    test_modes!(group, Add, "2group", "0group", "2group");
+
+    mod group {
+        use super::*;
+        use crate::binary_instruction_test;
+
+        // 2group + 0group has special output mode behavior.
+        // Normally, a public variable plus a constant would yield a private variable. However, since
+        // the constant is zero, we return the original public variable.
+        binary_instruction_test!(
+            constant_and_constant_yields_constant,
+            Add,
+            "2group.constant",
+            "0group.constant",
+            "2group.constant"
+        );
+        binary_instruction_test!(
+            constant_and_public_yields_private,
+            Add,
+            "2group.constant",
+            "0group.public",
+            "2group.private"
+        );
+        binary_instruction_test!(
+            constant_and_private_yields_private,
+            Add,
+            "2group.constant",
+            "0group.private",
+            "2group.private"
+        );
+        binary_instruction_test!(
+            public_and_constant_yields_public,
+            Add,
+            "2group.public",
+            "0group.constant",
+            "2group.public"
+        );
+        binary_instruction_test!(
+            private_and_constant_yields_private,
+            Add,
+            "2group.private",
+            "0group.constant",
+            "2group.private"
+        );
+        binary_instruction_test!(
+            public_and_public_yields_private,
+            Add,
+            "2group.public",
+            "0group.public",
+            "2group.private"
+        );
+        binary_instruction_test!(
+            public_and_private_yields_private,
+            Add,
+            "2group.public",
+            "0group.private",
+            "2group.private"
+        );
+        binary_instruction_test!(
+            private_and_public_yields_private,
+            Add,
+            "2group.private",
+            "0group.public",
+            "2group.private"
+        );
+        binary_instruction_test!(
+            private_and_private_yields_private,
+            Add,
+            "2group.private",
+            "0group.private",
+            "2group.private"
+        );
+    }
+
     test_modes!(i8, Add, "-1i8", "2i8", "1i8");
     test_modes!(i16, Add, "-1i16", "2i16", "1i16");
     test_modes!(i32, Add, "-1i32", "2i32", "1i32");

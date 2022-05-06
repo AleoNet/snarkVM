@@ -28,7 +28,17 @@ impl<E: Environment> Sub<&Field<E>> for Field<E> {
     type Output = Self;
 
     fn sub(self, other: &Field<E>) -> Self::Output {
-        &self - other
+        let mut result = self;
+        result -= other;
+        result
+    }
+}
+
+impl<E: Environment> Sub<Field<E>> for &Field<E> {
+    type Output = Field<E>;
+
+    fn sub(self, other: Field<E>) -> Self::Output {
+        self - &other
     }
 }
 
@@ -63,13 +73,13 @@ impl<E: Environment> Metrics<dyn Sub<Field<E>, Output = Field<E>>> for Field<E> 
 }
 
 impl<E: Environment> OutputMode<dyn Sub<Field<E>, Output = Field<E>>> for Field<E> {
-    type Case = (ConstantOrMode<Field<E>>, ConstantOrMode<Field<E>>);
+    type Case = (CircuitType<Field<E>>, CircuitType<Field<E>>);
 
     fn output_mode(case: &Self::Case) -> Mode {
         match (case.0.mode(), case.1.mode()) {
             (Mode::Constant, Mode::Constant) => Mode::Constant,
             (Mode::Public, Mode::Constant) => match &case.1 {
-                ConstantOrMode::Constant(constant) => match constant.eject_value() == E::BaseField::zero() {
+                CircuitType::Constant(constant) => match constant.eject_value() == E::BaseField::zero() {
                     true => Mode::Public,
                     false => Mode::Private,
                 },
@@ -93,7 +103,7 @@ mod tests {
             let candidate = a - b;
             assert_eq!(*expected, candidate.eject_value(), "({} - {})", a.eject_value(), b.eject_value());
             assert_count!(Sub(Field, Field) => Field, &(a.eject_mode(), b.eject_mode()));
-            assert_output_mode!(Sub(Field, Field) => Field, &(ConstantOrMode::from(a), ConstantOrMode::from(b)), candidate);
+            assert_output_mode!(Sub(Field, Field) => Field, &(CircuitType::from(a), CircuitType::from(b)), candidate);
         });
     }
 
@@ -108,7 +118,7 @@ mod tests {
             candidate -= b;
             assert_eq!(*expected, candidate.eject_value(), "({} - {})", a.eject_value(), b.eject_value());
             assert_count!(Sub(Field, Field) => Field, &(a.eject_mode(), b.eject_mode()));
-            assert_output_mode!(Sub(Field, Field) => Field, &(ConstantOrMode::from(a), ConstantOrMode::from(b)), candidate);
+            assert_output_mode!(Sub(Field, Field) => Field, &(CircuitType::from(a), CircuitType::from(b)), candidate);
         });
     }
 

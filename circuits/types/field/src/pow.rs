@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_circuits_environment::{Circuit, ConstantOrMode};
+use snarkvm_circuits_environment::{Circuit, CircuitType};
 
 #[allow(clippy::only_used_in_recursion)]
 impl<E: Environment> Pow<Field<E>> for Field<E> {
@@ -75,13 +75,13 @@ impl<E: Environment> Pow<&Field<E>> for &Field<E> {
 }
 
 impl<E: Environment> Metrics<dyn Pow<Field<E>, Output = Field<E>>> for Field<E> {
-    type Case = (ConstantOrMode<Field<E>>, ConstantOrMode<Field<E>>);
+    type Case = (CircuitType<Field<E>>, CircuitType<Field<E>>);
 
     fn count(case: &Self::Case) -> Count {
         match (case.0.mode(), case.1.mode()) {
             (Mode::Constant, Mode::Constant) => Count::is(253, 0, 0, 0),
             (_, Mode::Constant) => match &case.1 {
-                ConstantOrMode::Constant(constant) => {
+                CircuitType::Constant(constant) => {
                     // Find the first instance (from the MSB) of a `true` bit.
                     let exponent_bits = constant.eject_value().to_bits_be();
                     let index = exponent_bits
@@ -100,7 +100,7 @@ impl<E: Environment> Metrics<dyn Pow<Field<E>, Output = Field<E>>> for Field<E> 
                     let num_constraints = num_private;
                     Count::is(253, 0, num_private, num_constraints)
                 }
-                ConstantOrMode::Mode(_) => E::halt(format!(
+                _ => E::halt(format!(
                     "Constant is required to determine the `Count` for {} POW {}",
                     case.0.mode(),
                     case.1.mode()
@@ -113,13 +113,13 @@ impl<E: Environment> Metrics<dyn Pow<Field<E>, Output = Field<E>>> for Field<E> 
 }
 
 impl<E: Environment> OutputMode<dyn Pow<Field<E>, Output = Field<E>>> for Field<E> {
-    type Case = (ConstantOrMode<Field<E>>, ConstantOrMode<Field<E>>);
+    type Case = (CircuitType<Field<E>>, CircuitType<Field<E>>);
 
     fn output_mode(case: &Self::Case) -> Mode {
         match (case.0.mode(), case.1.mode()) {
             (Mode::Constant, Mode::Constant) => Mode::Constant,
             (mode_a, Mode::Constant) => match &case.1 {
-                ConstantOrMode::Constant(constant) => match constant.eject_value() {
+                CircuitType::Constant(constant) => match constant.eject_value() {
                     value if value == E::BaseField::zero() => Mode::Constant,
                     value if value == E::BaseField::one() => mode_a,
                     _ => Mode::Private,
@@ -143,8 +143,8 @@ mod tests {
         Circuit::scope(name, || {
             let candidate = a.pow(b);
             assert_eq!(*expected, candidate.eject_value(), "({}^{})", a.eject_value(), b.eject_value());
-            assert_count!(Pow(Field, Field) => Field, &(ConstantOrMode::from(a), ConstantOrMode::from(b)));
-            assert_output_mode!(Pow(Field, Field) => Field, &(ConstantOrMode::from(a), ConstantOrMode::from(b)), candidate);
+            assert_count!(Pow(Field, Field) => Field, &(CircuitType::from(a), CircuitType::from(b)));
+            assert_output_mode!(Pow(Field, Field) => Field, &(CircuitType::from(a), CircuitType::from(b)), candidate);
         });
     }
 
