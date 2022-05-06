@@ -27,8 +27,6 @@ use snarkvm_utilities::cfg_iter;
 #[cfg(not(feature = "std"))]
 use snarkvm_utilities::println;
 
-#[cfg(not(feature = "parallel"))]
-use itertools::Itertools;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 

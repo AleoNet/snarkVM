@@ -382,8 +382,6 @@ impl<F: PrimeField> UnnormalizedBivariateLagrangePoly<F> for EvaluationDomain<F>
     ) -> Vec<F> {
         use snarkvm_utilities::{cfg_iter, cfg_iter_mut};
 
-        #[cfg(not(feature = "parallel"))]
-        use itertools::Itertools;
         #[cfg(feature = "parallel")]
         use rayon::prelude::*;
 

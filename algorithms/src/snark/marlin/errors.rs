@@ -14,7 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::snark::marlin::{ahp::AHPError, fiat_shamir::FiatShamirError};
+use crate::{
+    snark::marlin::{ahp::AHPError, fiat_shamir::FiatShamirError},
+    SNARKError,
+};
 
 use core::fmt::Debug;
 
@@ -58,5 +61,30 @@ impl From<crate::polycommit::PCError> for MarlinError {
             crate::polycommit::PCError::Terminated => MarlinError::Terminated,
             err => MarlinError::PolynomialCommitmentError(err),
         }
+    }
+}
+
+impl From<MarlinError> for SNARKError {
+    fn from(error: MarlinError) -> Self {
+        match error {
+            MarlinError::Terminated => SNARKError::Terminated,
+            err => SNARKError::Crate("marlin", format!("{:?}", err)),
+        }
+    }
+}
+
+impl From<AHPError> for SNARKError {
+    fn from(err: AHPError) -> Self {
+        MarlinError::AHPError(err).into()
+    }
+}
+
+impl From<crate::polycommit::PCError> for SNARKError {
+    fn from(err: crate::polycommit::PCError) -> Self {
+        match err {
+            crate::polycommit::PCError::Terminated => MarlinError::Terminated,
+            err => MarlinError::PolynomialCommitmentError(err),
+        }
+        .into()
     }
 }
