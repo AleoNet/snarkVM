@@ -16,6 +16,7 @@
 
 use super::*;
 
+// TODO: Split into ToBitsLE and ToBitsBE so that Metadata is coherent.
 impl<E: Environment> ToBits for Field<E> {
     type Boolean = Boolean<E>;
 
@@ -64,24 +65,21 @@ impl<E: Environment> ToBits for &Field<E> {
     }
 }
 
-impl<E: Environment> Metrics<dyn ToBits<Boolean = Boolean<E>>> for Field<E> {
-    type Case = Mode;
+impl<E: Environment> Metadata<dyn ToBits<Boolean = Boolean<E>>> for Field<E> {
+    type Case = CircuitType<Field<E>>;
+    type OutputType = CircuitType<Vec<Boolean<E>>>;
 
     fn count(case: &Self::Case) -> Count {
-        match case {
-            Mode::Constant => Count::is(253, 0, 0, 0),
-            _ => Count::is(0, 0, 253, 254),
+        match case.is_constant() {
+            true => Count::is(253, 0, 0, 0),
+            false => Count::is(0, 0, 253, 254),
         }
     }
-}
 
-impl<E: Environment> OutputMode<dyn ToBits<Boolean = Boolean<E>>> for Field<E> {
-    type Case = Mode;
-
-    fn output_mode(case: &Self::Case) -> Mode {
-        match case {
-            Mode::Constant => Mode::Constant,
-            _ => Mode::Private,
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        match case.is_constant() {
+            true => CircuitType::from(case.circuit().to_bits_le()),
+            false => CircuitType::Private,
         }
     }
 }
@@ -108,14 +106,18 @@ mod tests {
                 for (expected_bit, candidate_bit) in expected.to_bits_le().iter().zip_eq(&candidate_bits) {
                     assert_eq!(*expected_bit, candidate_bit.eject_value());
                 }
-                assert_count!(ToBits<Boolean>() => Field, &mode);
-                assert_output_mode!(ToBits<Boolean>() => Field, &mode, candidate_bits);
+
+                let case = CircuitType::from(&candidate);
+                assert_count!(ToBits<Boolean>() => Field, &case);
+                assert_output_type!(ToBits<Boolean>() => Field, case, candidate_bits);
 
                 // Ensure a second call to `to_bits_le` does not incur additional costs.
                 let candidate_bits = candidate.to_bits_le();
                 assert_eq!(expected_number_of_bits, candidate_bits.len());
-                assert_count!(ToBits<Boolean>() => Field, &mode);
-                assert_output_mode!(ToBits<Boolean>() => Field, &mode, candidate_bits);
+
+                let case = CircuitType::from(&candidate);
+                assert_count!(ToBits<Boolean>() => Field, &case);
+                assert_output_type!(ToBits<Boolean>() => Field, case, candidate_bits);
             });
         }
     }
@@ -134,14 +136,18 @@ mod tests {
                 for (expected_bit, candidate_bit) in expected.to_bits_be().iter().zip_eq(&candidate_bits) {
                     assert_eq!(*expected_bit, candidate_bit.eject_value());
                 }
-                assert_count!(ToBits<Boolean>() => Field, &mode);
-                assert_output_mode!(ToBits<Boolean>() => Field, &mode, candidate_bits);
+
+                let case = CircuitType::from(&candidate);
+                assert_count!(ToBits<Boolean>() => Field, &case);
+                assert_output_type!(ToBits<Boolean>() => Field, case, candidate_bits);
 
                 // Ensure a second call to `to_bits_be` does not incur additional costs.
                 let candidate_bits = candidate.to_bits_be();
                 assert_eq!(expected_number_of_bits, candidate_bits.len());
-                assert_count!(ToBits<Boolean>() => Field, &mode);
-                assert_output_mode!(ToBits<Boolean>() => Field, &mode, candidate_bits);
+
+                let case = CircuitType::from(candidate);
+                assert_count!(ToBits<Boolean>() => Field, &case);
+                assert_output_type!(ToBits<Boolean>() => Field, case, candidate_bits);
             });
         }
     }
