@@ -92,32 +92,29 @@ impl<E: Environment> Ternary for Field<E> {
     }
 }
 
-impl<E: Environment> Metrics<dyn Ternary<Boolean = Boolean<E>, Output = Field<E>>> for Field<E> {
-    type Case = (Mode, Mode, Mode);
+impl<E: Environment> Metadata<dyn Ternary<Boolean = Boolean<E>, Output = Field<E>>> for Field<E> {
+    type Case = (CircuitType<Boolean<E>>, CircuitType<Field<E>>, CircuitType<Field<E>>);
+    type OutputType = CircuitType<Field<E>>;
 
     fn count(case: &Self::Case) -> Count {
-        match case {
+        match (case.0.eject_mode(), case.1.eject_mode(), case.2.eject_mode()) {
             (Mode::Constant, _, _)
             | (Mode::Public, Mode::Constant, Mode::Constant)
             | (Mode::Private, Mode::Constant, Mode::Constant) => Count::is(0, 0, 0, 0),
             _ => Count::is(0, 0, 1, 1),
         }
     }
-}
 
-impl<E: Environment> OutputMode<dyn Ternary<Boolean = Boolean<E>, Output = Field<E>>> for Field<E> {
-    type Case = (CircuitType<Boolean<E>>, Mode, Mode);
-
-    fn output_mode(parameter: &Self::Case) -> Mode {
-        match parameter.0.mode().is_constant() {
-            true => match &parameter.0 {
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        match case.0.eject_mode().is_constant() {
+            true => match &case.0 {
                 CircuitType::Constant(circuit) => match circuit.eject_value() {
-                    true => parameter.1,
-                    false => parameter.2,
+                    true => case.1,
+                    false => case.2,
                 },
                 _ => E::halt("Circuit is required to determine output mode."),
             },
-            false => Mode::Private,
+            false => CircuitType::Private,
         }
     }
 }
@@ -139,8 +136,10 @@ mod tests {
             let case = format!("({} ? {} : {})", condition.eject_value(), a.eject_value(), b.eject_value());
             let candidate = Field::ternary(&condition, &a, &b);
             assert_eq!(expected, candidate.eject_value(), "{case}");
-            assert_count!(Ternary(Boolean, Field, Field) => Field, &(condition.eject_mode(), a.eject_mode(), b.eject_mode()));
-            assert_output_mode!(Ternary(Boolean, Field, Field) => Field, &(CircuitType::from(&condition), a.eject_mode(), b.eject_mode()), candidate);
+
+            let case = (CircuitType::from(condition), CircuitType::from(a), CircuitType::from(b));
+            assert_count!(Ternary(Boolean, Field, Field) => Field, &case);
+            assert_output_type!(Ternary(Boolean, Field, Field) => Field, case, candidate);
         });
     }
 
