@@ -25,7 +25,7 @@ pub mod equal;
 pub mod ternary;
 
 #[cfg(test)]
-use snarkvm_circuits_environment::{assert_count, assert_output_mode, assert_scope, count, output_mode};
+use snarkvm_circuits_environment::{assert_count, assert_output_type, assert_scope, count, output_type};
 
 use snarkvm_circuits_environment::prelude::*;
 use snarkvm_circuits_types_boolean::Boolean;

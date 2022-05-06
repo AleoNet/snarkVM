@@ -100,24 +100,21 @@ impl<E: Environment> AddAssign<&Scalar<E>> for Scalar<E> {
     }
 }
 
-impl<E: Environment> Metrics<dyn Add<Scalar<E>, Output = Scalar<E>>> for Scalar<E> {
-    type Case = (Mode, Mode);
+impl<E: Environment> Metadata<dyn Add<Scalar<E>, Output = Scalar<E>>> for Scalar<E> {
+    type Case = (CircuitType<Scalar<E>>, CircuitType<Scalar<E>>);
+    type OutputType = CircuitType<Scalar<E>>;
 
     fn count(case: &Self::Case) -> Count {
-        match (case.0, case.1) {
+        match (case.0.eject_mode(), case.1.eject_mode()) {
             (Mode::Constant, Mode::Constant) => Count::is(251, 0, 0, 0),
             (_, _) => Count::is(254, 0, 1021, 1023),
         }
     }
-}
 
-impl<E: Environment> OutputMode<dyn Add<Scalar<E>, Output = Scalar<E>>> for Scalar<E> {
-    type Case = (Mode, Mode);
-
-    fn output_mode(case: &Self::Case) -> Mode {
-        match (case.0, case.1) {
-            (Mode::Constant, Mode::Constant) => Mode::Constant,
-            (_, _) => Mode::Private,
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        match (case.0.eject_mode(), case.1.eject_mode()) {
+            (Mode::Constant, Mode::Constant) => CircuitType::from(case.0.circuit().add(case.1.circuit())),
+            (_, _) => CircuitType::Private,
         }
     }
 }
@@ -144,10 +141,12 @@ mod tests {
         let expected = first + second;
 
         Circuit::scope(name, || {
-            let candidate = a + b;
+            let candidate = &a + &b;
             assert_eq!(expected, candidate.eject_value(), "{}", case);
-            assert_count!(Add(Scalar, Scalar) => Scalar, &(mode_a, mode_b));
-            assert_output_mode!(Add(Scalar, Scalar) => Scalar, &(mode_a, mode_b), candidate);
+
+            let case = (CircuitType::from(a), CircuitType::from(b));
+            assert_count!(Add(Scalar, Scalar) => Scalar, &case);
+            assert_output_type!(Add(Scalar, Scalar) => Scalar, case, candidate);
         });
     }
 
