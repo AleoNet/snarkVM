@@ -639,147 +639,147 @@ impl<P: Program> ToBytes for Instruction<P> {
                 instruction.write_le(&mut writer)
             }
             Self::CommitPed64(instruction) => {
-                u16::write_le(&3u16, &mut writer)?;
+                u16::write_le(&5u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
             Self::CommitPed128(instruction) => {
-                u16::write_le(&4u16, &mut writer)?;
+                u16::write_le(&6u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
             Self::CommitPed256(instruction) => {
-                u16::write_le(&5u16, &mut writer)?;
+                u16::write_le(&7u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
             Self::CommitPed512(instruction) => {
-                u16::write_le(&6u16, &mut writer)?;
-                instruction.write_le(&mut writer)
-            }
-            Self::CommitPed1024(instruction) => {
-                u16::write_le(&7u16, &mut writer)?;
-                instruction.write_le(&mut writer)
-            }
-            Self::Div(instruction) => {
-                u16::write_le(&5u16, &mut writer)?;
-                instruction.write_le(&mut writer)
-            }
-            Self::DivWrapped(instruction) => {
-                u16::write_le(&6u16, &mut writer)?;
-                instruction.write_le(&mut writer)
-            }
-            Self::Double(instruction) => {
-                u16::write_le(&7u16, &mut writer)?;
-                instruction.write_le(&mut writer)
-            }
-            Self::Equal(instruction) => {
                 u16::write_le(&8u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::GreaterThan(instruction) => {
+            Self::CommitPed1024(instruction) => {
                 u16::write_le(&9u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::GreaterThanOrEqual(instruction) => {
+            Self::Div(instruction) => {
                 u16::write_le(&10u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::HashPed64(instruction) => {
-                u16::write_le(&13u16, &mut writer)?;
-                instruction.write_le(&mut writer)
-            }
-            Self::HashPed128(instruction) => {
-                u16::write_le(&14u16, &mut writer)?;
-                instruction.write_le(&mut writer)
-            }
-            Self::HashPed256(instruction) => {
-                u16::write_le(&15u16, &mut writer)?;
-                instruction.write_le(&mut writer)
-            }
-            Self::HashPed512(instruction) => {
-                u16::write_le(&16u16, &mut writer)?;
-                instruction.write_le(&mut writer)
-            }
-            Self::HashPed1024(instruction) => {
-                u16::write_le(&17u16, &mut writer)?;
-                instruction.write_le(&mut writer)
-            }
-            Self::HashPsd2(instruction) => {
-                u16::write_le(&18u16, &mut writer)?;
-                instruction.write_le(&mut writer)
-            }
-            Self::HashPsd4(instruction) => {
-                u16::write_le(&19u16, &mut writer)?;
-                instruction.write_le(&mut writer)
-            }
-            Self::HashPsd8(instruction) => {
-                u16::write_le(&20u16, &mut writer)?;
-                instruction.write_le(&mut writer)
-            }
-            Self::Inv(instruction) => {
+            Self::DivWrapped(instruction) => {
                 u16::write_le(&11u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::LessThan(instruction) => {
+            Self::Double(instruction) => {
                 u16::write_le(&12u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::LessThanOrEqual(instruction) => {
+            Self::Equal(instruction) => {
                 u16::write_le(&13u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Mul(instruction) => {
+            Self::GreaterThan(instruction) => {
                 u16::write_le(&14u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::MulWrapped(instruction) => {
+            Self::GreaterThanOrEqual(instruction) => {
                 u16::write_le(&15u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Nand(instruction) => {
+            Self::HashPed64(instruction) => {
                 u16::write_le(&16u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Neg(instruction) => {
+            Self::HashPed128(instruction) => {
                 u16::write_le(&17u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Nor(instruction) => {
+            Self::HashPed256(instruction) => {
                 u16::write_le(&18u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Not(instruction) => {
+            Self::HashPed512(instruction) => {
                 u16::write_le(&19u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::NotEqual(instruction) => {
+            Self::HashPed1024(instruction) => {
                 u16::write_le(&20u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Or(instruction) => {
+            Self::HashPsd2(instruction) => {
                 u16::write_le(&21u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Pow(instruction) => {
+            Self::HashPsd4(instruction) => {
                 u16::write_le(&22u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::PowWrapped(instruction) => {
+            Self::HashPsd8(instruction) => {
                 u16::write_le(&23u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Square(instruction) => {
+            Self::Inv(instruction) => {
                 u16::write_le(&24u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Sub(instruction) => {
+            Self::LessThan(instruction) => {
                 u16::write_le(&25u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::SubWrapped(instruction) => {
+            Self::LessThanOrEqual(instruction) => {
                 u16::write_le(&26u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Xor(instruction) => {
+            Self::Mul(instruction) => {
                 u16::write_le(&27u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::MulWrapped(instruction) => {
+                u16::write_le(&28u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::Nand(instruction) => {
+                u16::write_le(&29u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::Neg(instruction) => {
+                u16::write_le(&30u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::Nor(instruction) => {
+                u16::write_le(&31u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::Not(instruction) => {
+                u16::write_le(&32u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::NotEqual(instruction) => {
+                u16::write_le(&33u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::Or(instruction) => {
+                u16::write_le(&34u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::Pow(instruction) => {
+                u16::write_le(&35u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::PowWrapped(instruction) => {
+                u16::write_le(&36u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::Square(instruction) => {
+                u16::write_le(&37u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::Sub(instruction) => {
+                u16::write_le(&38u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::SubWrapped(instruction) => {
+                u16::write_le(&39u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::Xor(instruction) => {
+                u16::write_le(&40u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
         }
