@@ -16,9 +16,6 @@
 
 #![forbid(unsafe_code)]
 
-#[macro_use]
-extern crate enum_index_derive;
-
 pub mod definition;
 pub use definition::*;
 
