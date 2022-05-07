@@ -59,6 +59,18 @@ pub trait Aleo: Environment {
     /// Returns the Poseidon hash with an input rate of 8.
     fn hash_psd8(input: &[Field<Self>]) -> Field<Self>;
 
-    /// Returns a commitment for the given input and randomness.
-    fn commit(selector: &str, input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Group<Self>;
+    /// Returns a commitment for the given (up to) 64-bit input and randomness.
+    fn commit_ped64(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Group<Self>;
+
+    /// Returns a commitment for the given (up to) 128-bit input and randomness.
+    fn commit_ped128(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Group<Self>;
+
+    /// Returns a commitment for the given (up to) 256-bit input and randomness.
+    fn commit_ped256(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Group<Self>;
+
+    /// Returns a commitment for the given (up to) 512-bit input and randomness.
+    fn commit_ped512(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Group<Self>;
+
+    /// Returns a commitment for the given (up to) 1024-bit input and randomness.
+    fn commit_ped1024(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Group<Self>;
 }

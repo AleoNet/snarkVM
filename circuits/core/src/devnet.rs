@@ -149,16 +149,29 @@ impl Aleo for Devnet {
         POSEIDON_8.with(|poseidon| poseidon.hash(input))
     }
 
-    /// Returns a commitment for the given input and randomness.
-    fn commit(selector: &str, input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Group<Self> {
-        match selector {
-            "commit.ped64" => PEDERSEN_64.with(|pedersen| pedersen.commit(input, randomness)),
-            "commit.ped128" => PEDERSEN_128.with(|pedersen| pedersen.commit(input, randomness)),
-            "commit.ped256" => PEDERSEN_256.with(|pedersen| pedersen.commit(input, randomness)),
-            "commit.ped512" => PEDERSEN_512.with(|pedersen| pedersen.commit(input, randomness)),
-            "commit.ped1024" => PEDERSEN_1024.with(|pedersen| pedersen.commit(input, randomness)),
-            _ => Self::halt("Invalid selector provided for commitment"),
-        }
+    /// Returns a commitment for the given (up to) 64-bit input and randomness.
+    fn commit_ped64(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Group<Self> {
+        PEDERSEN_64.with(|pedersen| pedersen.commit(input, randomness))
+    }
+
+    /// Returns a commitment for the given (up to) 128-bit input and randomness.
+    fn commit_ped128(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Group<Self> {
+        PEDERSEN_128.with(|pedersen| pedersen.commit(input, randomness))
+    }
+
+    /// Returns a commitment for the given (up to) 256-bit input and randomness.
+    fn commit_ped256(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Group<Self> {
+        PEDERSEN_256.with(|pedersen| pedersen.commit(input, randomness))
+    }
+
+    /// Returns a commitment for the given (up to) 512-bit input and randomness.
+    fn commit_ped512(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Group<Self> {
+        PEDERSEN_512.with(|pedersen| pedersen.commit(input, randomness))
+    }
+
+    /// Returns a commitment for the given (up to) 1024-bit input and randomness.
+    fn commit_ped1024(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Group<Self> {
+        PEDERSEN_1024.with(|pedersen| pedersen.commit(input, randomness))
     }
 }
 
