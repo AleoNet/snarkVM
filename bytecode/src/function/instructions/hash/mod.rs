@@ -44,7 +44,7 @@ use crate::{
     Program,
     Value,
 };
-use snarkvm_circuits::{Aleo, Environment, FromBits, Literal, Parser, ParserResult, PrimeField, ToBits};
+use snarkvm_circuits::{Aleo, Boolean, Environment, FromBits, Literal, Parser, ParserResult, PrimeField, ToBits};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::{fmt, marker::PhantomData};
@@ -91,33 +91,23 @@ impl<P: Program, Op: HashOpcode> Operation<P> for Hash<P, Op> {
             Value::Composite(_name, literals) => literals.iter().flat_map(|literal| literal.to_bits_le()).collect(),
         };
 
+        // (Optional) Closure for converting a list of booleans into a list of packed field elements.
+        let to_field_elements = |bits: &[Boolean<_>]| {
+            bits.chunks(<P::Aleo as Environment>::BaseField::size_in_data_bits())
+                .map(FromBits::from_bits_le)
+                .collect::<Vec<_>>()
+        };
+
         // Compute the digest for the given input.
         let digest = match Self::opcode() {
-            Ped64::OPCODE | Ped128::OPCODE | Ped256::OPCODE | Ped512::OPCODE | Ped1024::OPCODE => {
-                match Self::opcode() {
-                    Ped64::OPCODE => P::Aleo::pedersen_hash(Self::opcode(), &input),
-                    Ped128::OPCODE => P::Aleo::pedersen_hash(Self::opcode(), &input),
-                    Ped256::OPCODE => P::Aleo::pedersen_hash(Self::opcode(), &input),
-                    Ped512::OPCODE => P::Aleo::pedersen_hash(Self::opcode(), &input),
-                    Ped1024::OPCODE => P::Aleo::pedersen_hash(Self::opcode(), &input),
-                    _ => P::halt("Invalid option provided for the `hash` instruction"),
-                }
-            }
-            Psd2::OPCODE | Psd4::OPCODE | Psd8::OPCODE => {
-                // Pack the input bits into field elements.
-                let input_elements = input
-                    .chunks(<P::Aleo as Environment>::BaseField::size_in_data_bits())
-                    .map(FromBits::from_bits_le)
-                    .collect::<Vec<_>>();
-
-                // Compute the digest for the given input as field elements.
-                match Self::opcode() {
-                    Psd2::OPCODE => P::Aleo::poseidon_hash(Self::opcode(), &input_elements),
-                    Psd4::OPCODE => P::Aleo::poseidon_hash(Self::opcode(), &input_elements),
-                    Psd8::OPCODE => P::Aleo::poseidon_hash(Self::opcode(), &input_elements),
-                    _ => P::halt("Invalid option provided for the `hash` instruction"),
-                }
-            }
+            Ped64::OPCODE => P::Aleo::hash_ped64(&input),
+            Ped128::OPCODE => P::Aleo::hash_ped128(&input),
+            Ped256::OPCODE => P::Aleo::hash_ped256(&input),
+            Ped512::OPCODE => P::Aleo::hash_ped512(&input),
+            Ped1024::OPCODE => P::Aleo::hash_ped1024(&input),
+            Psd2::OPCODE => P::Aleo::hash_psd2(&to_field_elements(&input)),
+            Psd4::OPCODE => P::Aleo::hash_psd4(&to_field_elements(&input)),
+            Psd8::OPCODE => P::Aleo::hash_psd8(&to_field_elements(&input)),
             _ => P::halt("Invalid option provided for the `hash` instruction"),
         };
 

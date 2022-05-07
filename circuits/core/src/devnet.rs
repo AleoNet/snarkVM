@@ -41,12 +41,9 @@ static ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT: &str = "AleoAccountEncryptionAndS
 static PEDERSEN_MESSAGE: &str = "PedersenCircuit0";
 
 thread_local! {
-    /// The Poseidon hash function, using a rate of 2.
-    static POSEIDON_2: Poseidon2<Devnet> = Poseidon2::<Devnet>::new();
-    /// The Poseidon hash function, using a rate of 4.
-    static POSEIDON_4: Poseidon4<Devnet> = Poseidon4::<Devnet>::new();
-    /// The Poseidon hash function, using a rate of 8.
-    static POSEIDON_8: Poseidon8<Devnet> = Poseidon8::<Devnet>::new();
+    /// The group bases for the Aleo signature and encryption schemes.
+    static BASES: Vec<Group<Devnet >> = Devnet::new_bases(ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT);
+
     /// The Pedersen gadget, which can take an input of up to 64 bits.
     static PEDERSEN_64: Pedersen64<Devnet> = Pedersen64::<Devnet>::setup(PEDERSEN_MESSAGE);
     /// The Pedersen gadget, which can take an input of up to 128 bits.
@@ -57,8 +54,13 @@ thread_local! {
     static PEDERSEN_512: Pedersen512<Devnet> = Pedersen512::<Devnet>::setup(PEDERSEN_MESSAGE);
     /// The Pedersen gadget, which can take an input of up to 1024 bits.
     static PEDERSEN_1024: Pedersen1024<Devnet> = Pedersen1024::<Devnet>::setup(PEDERSEN_MESSAGE);
-    /// The group bases for the Aleo signature and encryption schemes.
-    static BASES: Vec<Group<Devnet >> = Devnet::new_bases(ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT);
+
+    /// The Poseidon hash function, using a rate of 2.
+    static POSEIDON_2: Poseidon2<Devnet> = Poseidon2::<Devnet>::new();
+    /// The Poseidon hash function, using a rate of 4.
+    static POSEIDON_4: Poseidon4<Devnet> = Poseidon4::<Devnet>::new();
+    /// The Poseidon hash function, using a rate of 8.
+    static POSEIDON_8: Poseidon8<Devnet> = Poseidon8::<Devnet>::new();
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
@@ -109,26 +111,44 @@ impl Aleo for Devnet {
         POSEIDON_4.with(|poseidon| poseidon.hash_to_scalar(input))
     }
 
-    /// Returns a Pedersen hash on the base field for the given input.
-    fn pedersen_hash(selector: &str, input: &[Boolean<Self>]) -> Field<Self> {
-        match selector {
-            "hash.ped64" => PEDERSEN_64.with(|pedersen| pedersen.hash(input)),
-            "hash.ped128" => PEDERSEN_128.with(|pedersen| pedersen.hash(input)),
-            "hash.ped256" => PEDERSEN_256.with(|pedersen| pedersen.hash(input)),
-            "hash.ped512" => PEDERSEN_512.with(|pedersen| pedersen.hash(input)),
-            "hash.ped1024" => PEDERSEN_1024.with(|pedersen| pedersen.hash(input)),
-            _ => Self::halt("Invalid selector provided for hashing to field"),
-        }
+    /// Returns the Pedersen hash for a given (up to) 64-bit input.
+    fn hash_ped64(input: &[Boolean<Self>]) -> Field<Self> {
+        PEDERSEN_64.with(|pedersen| pedersen.hash(input))
     }
 
-    /// Returns a Poseidon hash on the base field for the given input.
-    fn poseidon_hash(selector: &str, input: &[Field<Self>]) -> Field<Self> {
-        match selector {
-            "hash.psd2" => POSEIDON_2.with(|poseidon| poseidon.hash(input)),
-            "hash.psd4" => POSEIDON_4.with(|poseidon| poseidon.hash(input)),
-            "hash.psd8" => POSEIDON_8.with(|poseidon| poseidon.hash(input)),
-            _ => Self::halt("Invalid selector provided for hashing to field"),
-        }
+    /// Returns the Pedersen hash for a given (up to) 128-bit input.
+    fn hash_ped128(input: &[Boolean<Self>]) -> Field<Self> {
+        PEDERSEN_128.with(|pedersen| pedersen.hash(input))
+    }
+
+    /// Returns the Pedersen hash for a given (up to) 256-bit input.
+    fn hash_ped256(input: &[Boolean<Self>]) -> Field<Self> {
+        PEDERSEN_256.with(|pedersen| pedersen.hash(input))
+    }
+
+    /// Returns the Pedersen hash for a given (up to) 512-bit input.
+    fn hash_ped512(input: &[Boolean<Self>]) -> Field<Self> {
+        PEDERSEN_512.with(|pedersen| pedersen.hash(input))
+    }
+
+    /// Returns the Pedersen hash for a given (up to) 1024-bit input.
+    fn hash_ped1024(input: &[Boolean<Self>]) -> Field<Self> {
+        PEDERSEN_1024.with(|pedersen| pedersen.hash(input))
+    }
+
+    /// Returns the Poseidon hash with an input rate of 2.
+    fn hash_psd2(input: &[Field<Self>]) -> Field<Self> {
+        POSEIDON_2.with(|poseidon| poseidon.hash(input))
+    }
+
+    /// Returns the Poseidon hash with an input rate of 4.
+    fn hash_psd4(input: &[Field<Self>]) -> Field<Self> {
+        POSEIDON_4.with(|poseidon| poseidon.hash(input))
+    }
+
+    /// Returns the Poseidon hash with an input rate of 8.
+    fn hash_psd8(input: &[Field<Self>]) -> Field<Self> {
+        POSEIDON_8.with(|poseidon| poseidon.hash(input))
     }
 
     /// Returns a commitment for the given input and randomness.
