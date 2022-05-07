@@ -93,6 +93,31 @@ impl Devnet {
 }
 
 impl Aleo for Devnet {
+    /// Returns a commitment for the given (up to) 64-bit input and randomness.
+    fn commit_ped64(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Group<Self> {
+        PEDERSEN_64.with(|pedersen| pedersen.commit(input, randomness))
+    }
+
+    /// Returns a commitment for the given (up to) 128-bit input and randomness.
+    fn commit_ped128(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Group<Self> {
+        PEDERSEN_128.with(|pedersen| pedersen.commit(input, randomness))
+    }
+
+    /// Returns a commitment for the given (up to) 256-bit input and randomness.
+    fn commit_ped256(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Group<Self> {
+        PEDERSEN_256.with(|pedersen| pedersen.commit(input, randomness))
+    }
+
+    /// Returns a commitment for the given (up to) 512-bit input and randomness.
+    fn commit_ped512(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Group<Self> {
+        PEDERSEN_512.with(|pedersen| pedersen.commit(input, randomness))
+    }
+
+    /// Returns a commitment for the given (up to) 1024-bit input and randomness.
+    fn commit_ped1024(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Group<Self> {
+        PEDERSEN_1024.with(|pedersen| pedersen.commit(input, randomness))
+    }
+
     /// Returns the scalar multiplication on the group bases.
     #[inline]
     fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self> {
@@ -147,31 +172,6 @@ impl Aleo for Devnet {
     /// Returns the Poseidon hash with an input rate of 8.
     fn hash_psd8(input: &[Field<Self>]) -> Field<Self> {
         POSEIDON_8.with(|poseidon| poseidon.hash(input))
-    }
-
-    /// Returns a commitment for the given (up to) 64-bit input and randomness.
-    fn commit_ped64(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Group<Self> {
-        PEDERSEN_64.with(|pedersen| pedersen.commit(input, randomness))
-    }
-
-    /// Returns a commitment for the given (up to) 128-bit input and randomness.
-    fn commit_ped128(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Group<Self> {
-        PEDERSEN_128.with(|pedersen| pedersen.commit(input, randomness))
-    }
-
-    /// Returns a commitment for the given (up to) 256-bit input and randomness.
-    fn commit_ped256(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Group<Self> {
-        PEDERSEN_256.with(|pedersen| pedersen.commit(input, randomness))
-    }
-
-    /// Returns a commitment for the given (up to) 512-bit input and randomness.
-    fn commit_ped512(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Group<Self> {
-        PEDERSEN_512.with(|pedersen| pedersen.commit(input, randomness))
-    }
-
-    /// Returns a commitment for the given (up to) 1024-bit input and randomness.
-    fn commit_ped1024(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Group<Self> {
-        PEDERSEN_1024.with(|pedersen| pedersen.commit(input, randomness))
     }
 }
 
