@@ -15,9 +15,21 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    algorithms::{Pedersen1024, Pedersen128, Pedersen256, Pedersen512, Pedersen64, Poseidon2, Poseidon4, Poseidon8},
+    algorithms::{
+        Pedersen1024,
+        Pedersen128,
+        Pedersen256,
+        Pedersen512,
+        Pedersen64,
+        Poseidon2,
+        Poseidon4,
+        Poseidon8,
+        BHP1024,
+        BHP256,
+        BHP512,
+    },
     Aleo,
-    CommitmentScheme,
+    Commit,
     Hash,
     HashToScalar,
 };
@@ -41,6 +53,13 @@ static ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT: &str = "AleoAccountEncryptionAndS
 thread_local! {
     /// The group bases for the Aleo signature and encryption schemes.
     static BASES: Vec<Group<Devnet >> = Devnet::new_bases(ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT);
+
+    /// The BHP gadget, which can take an input of up to 256 bits.
+    static BHP_256: BHP256<Devnet> = BHP256::<Devnet>::setup("AleoBHP256");
+    /// The BHP gadget, which can take an input of up to 512 bits.
+    static BHP_512: BHP512<Devnet> = BHP512::<Devnet>::setup("AleoBHP512");
+    /// The BHP gadget, which can take an input of up to 1024 bits.
+    static BHP_1024: BHP1024<Devnet> = BHP1024::<Devnet>::setup("AleoBHP1024");
 
     /// The Pedersen gadget, which can take an input of up to 64 bits.
     static PEDERSEN_64: Pedersen64<Devnet> = Pedersen64::<Devnet>::setup("AleoPedersen64");
@@ -93,28 +112,43 @@ impl Devnet {
 }
 
 impl Aleo for Devnet {
-    /// Returns a commitment for the given (up to) 64-bit input and randomness.
-    fn commit_ped64(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Group<Self> {
+    /// Returns a BHP commitment for the given (up to) 256-bit input and randomness.
+    fn commit_bhp256(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Field<Self> {
+        BHP_256.with(|bhp| bhp.commit(input, randomness))
+    }
+
+    /// Returns a BHP commitment for the given (up to) 512-bit input and randomness.
+    fn commit_bhp512(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Field<Self> {
+        BHP_512.with(|bhp| bhp.commit(input, randomness))
+    }
+
+    /// Returns a BHP commitment for the given (up to) 1024-bit input and randomness.
+    fn commit_bhp1024(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Field<Self> {
+        BHP_1024.with(|bhp| bhp.commit(input, randomness))
+    }
+
+    /// Returns a Pedersen commitment for the given (up to) 64-bit input and randomness.
+    fn commit_ped64(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Field<Self> {
         PEDERSEN_64.with(|pedersen| pedersen.commit(input, randomness))
     }
 
-    /// Returns a commitment for the given (up to) 128-bit input and randomness.
-    fn commit_ped128(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Group<Self> {
+    /// Returns a Pedersen commitment for the given (up to) 128-bit input and randomness.
+    fn commit_ped128(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Field<Self> {
         PEDERSEN_128.with(|pedersen| pedersen.commit(input, randomness))
     }
 
-    /// Returns a commitment for the given (up to) 256-bit input and randomness.
-    fn commit_ped256(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Group<Self> {
+    /// Returns a Pedersen commitment for the given (up to) 256-bit input and randomness.
+    fn commit_ped256(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Field<Self> {
         PEDERSEN_256.with(|pedersen| pedersen.commit(input, randomness))
     }
 
-    /// Returns a commitment for the given (up to) 512-bit input and randomness.
-    fn commit_ped512(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Group<Self> {
+    /// Returns a Pedersen commitment for the given (up to) 512-bit input and randomness.
+    fn commit_ped512(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Field<Self> {
         PEDERSEN_512.with(|pedersen| pedersen.commit(input, randomness))
     }
 
-    /// Returns a commitment for the given (up to) 1024-bit input and randomness.
-    fn commit_ped1024(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Group<Self> {
+    /// Returns a Pedersen commitment for the given (up to) 1024-bit input and randomness.
+    fn commit_ped1024(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Field<Self> {
         PEDERSEN_1024.with(|pedersen| pedersen.commit(input, randomness))
     }
 
@@ -132,6 +166,21 @@ impl Aleo for Devnet {
     /// Returns a hash on the scalar field for the given input.
     fn hash_to_scalar(input: &[Field<Self>]) -> Scalar<Self> {
         POSEIDON_4.with(|poseidon| poseidon.hash_to_scalar(input))
+    }
+
+    /// Returns the BHP hash for a given (up to) 256-bit input.
+    fn hash_bhp256(input: &[Boolean<Self>]) -> Field<Self> {
+        BHP_256.with(|bhp| bhp.hash(input))
+    }
+
+    /// Returns the BHP hash for a given (up to) 512-bit input.
+    fn hash_bhp512(input: &[Boolean<Self>]) -> Field<Self> {
+        BHP_512.with(|bhp| bhp.hash(input))
+    }
+
+    /// Returns the BHP hash for a given (up to) 1024-bit input.
+    fn hash_bhp1024(input: &[Boolean<Self>]) -> Field<Self> {
+        BHP_1024.with(|bhp| bhp.hash(input))
     }
 
     /// Returns the Pedersen hash for a given (up to) 64-bit input.

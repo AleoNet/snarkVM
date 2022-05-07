@@ -14,13 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod commit;
+mod commit_uncompressed;
 mod hash;
 mod hash_uncompressed;
 
 #[cfg(test)]
 use snarkvm_circuits_environment::assert_scope;
 
-use crate::{Hash, HashUncompressed};
+use crate::{Commit, CommitUncompressed, Hash, HashUncompressed};
 use snarkvm_algorithms::crypto_hash::hash_to_curve;
 use snarkvm_circuits_types::prelude::*;
 use snarkvm_curves::{MontgomeryParameters, TwistedEdwardsParameters};
@@ -33,16 +35,18 @@ pub const BHP_LOOKUP_SIZE: usize = 4;
 type BaseLookups<E> = (Vec<Field<E>>, Vec<Field<E>>);
 
 /// BHP256 is a collision-resistant hash function that takes a 256-bit input.
-pub type BHP256<E> = BHP<E, 2, 63>;
+pub type BHP256<E> = BHP<E, 2, 43>;
 /// BHP512 is a collision-resistant hash function that takes a 512-bit input.
-pub type BHP512<E> = BHP<E, 9, 19>;
+pub type BHP512<E> = BHP<E, 3, 57>;
 /// BHP1024 is a collision-resistant hash function that takes a 1024-bit input.
-pub type BHP1024<E> = BHP<E, 6, 63>;
+pub type BHP1024<E> = BHP<E, 6, 57>;
 
 /// BHP is a collision-resistant hash function that takes a variable-length input.
 /// The BHP hash function does *not* behave like a random oracle, see Poseidon for one.
 pub struct BHP<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
     bases: Vec<Vec<BaseLookups<E>>>,
+    /// The random base for computing the commitment.
+    random_base: Vec<Group<E>>,
 }
 
 impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP<E, NUM_WINDOWS, WINDOW_SIZE> {
@@ -92,7 +96,21 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP<E, 
         debug_assert_eq!(bases.len(), NUM_WINDOWS, "Incorrect number of windows ({}) for BHP", bases.len());
         bases.iter().for_each(|window| debug_assert_eq!(window.len(), WINDOW_SIZE));
 
-        Self { bases }
+        // Compute the random base.
+        let random_base = {
+            let (generator, _, _) = hash_to_curve(&format!("{message} for random base"));
+            let mut base = Group::constant(generator);
+
+            let num_scalar_bits = E::ScalarField::size_in_bits();
+            let mut random_base = Vec::with_capacity(num_scalar_bits);
+            for _ in 0..num_scalar_bits {
+                random_base.push(base.clone());
+                base = base.double();
+            }
+            random_base
+        };
+
+        Self { bases, random_base }
     }
 }
 

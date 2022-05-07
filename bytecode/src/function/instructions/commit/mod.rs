@@ -14,6 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+pub(crate) mod bhp256;
+pub(crate) use bhp256::*;
+
+pub(crate) mod bhp512;
+pub(crate) use bhp512::*;
+
+pub(crate) mod bhp1024;
+pub(crate) use bhp1024::*;
+
 pub(crate) mod ped64;
 pub(crate) use ped64::*;
 
@@ -87,15 +96,18 @@ impl<P: Program, Op: CommitOpcode> Operation<P> for Commit<P, Op> {
 
         // Compute the digest for the given input.
         let commitment = match Self::opcode() {
+            BHP256::OPCODE => P::Aleo::commit_bhp256(&first, &second),
+            BHP512::OPCODE => P::Aleo::commit_bhp512(&first, &second),
+            BHP1024::OPCODE => P::Aleo::commit_bhp1024(&first, &second),
             Ped64::OPCODE => P::Aleo::commit_ped64(&first, &second),
             Ped128::OPCODE => P::Aleo::commit_ped128(&first, &second),
             Ped256::OPCODE => P::Aleo::commit_ped256(&first, &second),
             Ped512::OPCODE => P::Aleo::commit_ped512(&first, &second),
             Ped1024::OPCODE => P::Aleo::commit_ped1024(&first, &second),
-            _ => P::halt("Invalid option provided for the `hash` instruction"),
+            _ => P::halt("Invalid option provided for the `commit` instruction"),
         };
 
-        registers.assign(self.operation.destination(), Literal::Group(commitment));
+        registers.assign(self.operation.destination(), Literal::Field(commitment));
     }
 }
 
@@ -131,6 +143,15 @@ impl<P: Program, Op: CommitOpcode> Into<Instruction<P>> for Commit<P, Op> {
     /// Converts the operation into an instruction.
     fn into(self) -> Instruction<P> {
         match Self::opcode() {
+            BHP256::OPCODE => {
+                Instruction::CommitBHP256(CommitBHP256 { operation: self.operation, _phantom: PhantomData })
+            }
+            BHP512::OPCODE => {
+                Instruction::CommitBHP512(CommitBHP512 { operation: self.operation, _phantom: PhantomData })
+            }
+            BHP1024::OPCODE => {
+                Instruction::CommitBHP1024(CommitBHP1024 { operation: self.operation, _phantom: PhantomData })
+            }
             Ped64::OPCODE => Instruction::CommitPed64(CommitPed64 { operation: self.operation, _phantom: PhantomData }),
             Ped128::OPCODE => {
                 Instruction::CommitPed128(CommitPed128 { operation: self.operation, _phantom: PhantomData })
@@ -144,7 +165,7 @@ impl<P: Program, Op: CommitOpcode> Into<Instruction<P>> for Commit<P, Op> {
             Ped1024::OPCODE => {
                 Instruction::CommitPed1024(CommitPed1024 { operation: self.operation, _phantom: PhantomData })
             }
-            _ => P::halt("Invalid option provided for the `hash` instruction"),
+            _ => P::halt("Invalid option provided for the `commit` instruction"),
         }
     }
 }

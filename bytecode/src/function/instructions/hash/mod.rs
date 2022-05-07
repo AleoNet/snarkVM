@@ -14,6 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+pub(crate) mod bhp256;
+pub(crate) use bhp256::*;
+
+pub(crate) mod bhp512;
+pub(crate) use bhp512::*;
+
+pub(crate) mod bhp1024;
+pub(crate) use bhp1024::*;
+
 pub(crate) mod ped64;
 pub(crate) use ped64::*;
 
@@ -135,6 +144,9 @@ impl<P: Program, Op: HashOpcode> Operation<P> for Hash<P, Op> {
 
         // Compute the digest for the given input.
         let digest = match Self::opcode() {
+            BHP256::OPCODE => P::Aleo::hash_bhp256(&input.to_bits_le()),
+            BHP512::OPCODE => P::Aleo::hash_bhp512(&input.to_bits_le()),
+            BHP1024::OPCODE => P::Aleo::hash_bhp1024(&input.to_bits_le()),
             Ped64::OPCODE => P::Aleo::hash_ped64(&input.to_bits_le()),
             Ped128::OPCODE => P::Aleo::hash_ped128(&input.to_bits_le()),
             Ped256::OPCODE => P::Aleo::hash_ped256(&input.to_bits_le()),
@@ -182,6 +194,11 @@ impl<P: Program, Op: HashOpcode> Into<Instruction<P>> for Hash<P, Op> {
     /// Converts the operation into an instruction.
     fn into(self) -> Instruction<P> {
         match Self::opcode() {
+            BHP256::OPCODE => Instruction::HashBHP256(HashBHP256 { operation: self.operation, _phantom: PhantomData }),
+            BHP512::OPCODE => Instruction::HashBHP512(HashBHP512 { operation: self.operation, _phantom: PhantomData }),
+            BHP1024::OPCODE => {
+                Instruction::HashBHP1024(HashBHP1024 { operation: self.operation, _phantom: PhantomData })
+            }
             Ped64::OPCODE => Instruction::HashPed64(HashPed64 { operation: self.operation, _phantom: PhantomData }),
             Ped128::OPCODE => Instruction::HashPed128(HashPed128 { operation: self.operation, _phantom: PhantomData }),
             Ped256::OPCODE => Instruction::HashPed256(HashPed256 { operation: self.operation, _phantom: PhantomData }),
