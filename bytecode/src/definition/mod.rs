@@ -34,8 +34,8 @@ use std::io::{Read, Result as IoResult, Write};
 /// as `r0.owner` or `r0.value`. This generalizes to the format, i.e. `r{locator}.{member}`.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Definition<P: Program> {
-    /// A custom type consists of its name and a list of members.
-    Type(Identifier<P>, Vec<Member<P>>),
+    /// A custom struct consists of its name and a list of members.
+    Struct(Identifier<P>, Vec<Member<P>>),
     /// A record type consists of its name and a list of members.
     Record(Identifier<P>, Vec<Member<P>>),
 }
@@ -45,7 +45,7 @@ impl<P: Program> Definition<P> {
     #[inline]
     pub fn name(&self) -> &Identifier<P> {
         match self {
-            Self::Type(name, _) => name,
+            Self::Struct(name, _) => name,
             Self::Record(name, _) => name,
         }
     }
@@ -54,7 +54,7 @@ impl<P: Program> Definition<P> {
     #[inline]
     pub fn members(&self) -> &[Member<P>] {
         match self {
-            Self::Type(_, members) => members,
+            Self::Struct(_, members) => members,
             Self::Record(_, members) => members,
         }
     }
@@ -89,15 +89,15 @@ impl<P: Program> Parser for Definition<P> {
         alt((
             |string| {
                 // Parse the keyword and space from the string.
-                let (string, _) = tag("type ")(string)?;
-                // Parse the type name from the string.
+                let (string, _) = tag("struct ")(string)?;
+                // Parse the struct name from the string.
                 let (string, name) = Identifier::parse(string)?;
                 // Parse the colon ':' keyword from the string.
                 let (string, _) = tag(":")(string)?;
                 // Parse the members from the string.
                 let (string, members) = many1(Member::parse)(string)?;
 
-                Ok((string, Self::Type(name, members)))
+                Ok((string, Self::Struct(name, members)))
             },
             |string| {
                 // Parse the keyword and space from the string.
@@ -120,7 +120,7 @@ impl<P: Program> fmt::Display for Definition<P> {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let (type_name, name, members) = match self {
-            Self::Type(name, members) => ("type", name, members),
+            Self::Struct(name, members) => ("struct", name, members),
             Self::Record(name, members) => ("record", name, members),
         };
 
@@ -146,7 +146,7 @@ impl<P: Program> FromBytes for Definition<P> {
             members.push(Member::read_le(&mut reader)?);
         }
         match variant {
-            0 => Ok(Self::Type(name, members)),
+            0 => Ok(Self::Struct(name, members)),
             1 => Ok(Self::Record(name, members)),
             2.. => Err(error(format!("Failed to deserialize definition variant {variant}"))),
         }
@@ -156,7 +156,7 @@ impl<P: Program> FromBytes for Definition<P> {
 impl<P: Program> ToBytes for Definition<P> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         match self {
-            Self::Type(name, members) => {
+            Self::Struct(name, members) => {
                 u8::write_le(&0u8, &mut writer)?;
                 name.write_le(&mut writer)?;
                 (members.len() as u16).write_le(&mut writer)?;
@@ -183,7 +183,7 @@ mod tests {
     fn test_definition_parse() {
         let message = Definition::<P>::parse(
             r"
-type message:
+struct message:
     sender as address.public;
     amount as i64.private;
 ",
@@ -216,7 +216,7 @@ record token:
 
     #[test]
     fn test_definition_display() {
-        let expected = "type message:\n    sender as address.public;\n    amount as i64.private;";
+        let expected = "struct message:\n    sender as address.public;\n    amount as i64.private;";
         let message = Definition::<P>::parse(expected).unwrap().1;
         assert_eq!(expected, format!("{}", message));
 

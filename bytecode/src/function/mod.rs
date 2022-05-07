@@ -338,7 +338,7 @@ impl<P: Program> Function<P> {
 
             // Assign the input value to the register.
             // This call will halt if the register is a register member, or if the register is already assigned.
-            self.registers.assign(input.register(), value.clone());
+            self.registers.assign(register, value.clone());
 
             // TODO (howardwu): If input is a record, add all the safety hooks we need to use the record data.
         }
