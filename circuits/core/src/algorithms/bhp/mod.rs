@@ -33,11 +33,11 @@ pub const BHP_LOOKUP_SIZE: usize = 4;
 type BaseLookups<E> = (Vec<Field<E>>, Vec<Field<E>>);
 
 /// BHP256 is a collision-resistant hash function that takes a 256-bit input.
-pub type BHP256<E> = BHP<E, 2, 63>;
+pub type BHP256<E> = BHP<E, 2, 43>;
 /// BHP512 is a collision-resistant hash function that takes a 512-bit input.
-pub type BHP512<E> = BHP<E, 9, 19>;
+pub type BHP512<E> = BHP<E, 3, 57>;
 /// BHP1024 is a collision-resistant hash function that takes a 1024-bit input.
-pub type BHP1024<E> = BHP<E, 6, 63>;
+pub type BHP1024<E> = BHP<E, 6, 57>;
 
 /// BHP is a collision-resistant hash function that takes a variable-length input.
 /// The BHP hash function does *not* behave like a random oracle, see Poseidon for one.
