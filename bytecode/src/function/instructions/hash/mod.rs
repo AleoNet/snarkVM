@@ -102,6 +102,7 @@ impl<P: Program, Op: HashOpcode> Operation<P> for Hash<P, Op> {
             Value::Composite(_name, literals) => literals,
         };
 
+        // TODO (howardwu): Implement `Literal::to_fields()` to replace this closure.
         // (Optional) Closure for converting a list of literals into a list of field elements.
         //
         // If the list is comprised of `Address`, `Field`, `Group`, and/or `Scalar`, then the closure
