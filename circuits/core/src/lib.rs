@@ -35,6 +35,15 @@ pub trait Aleo: Environment {
     /// Returns a hash on the scalar field for the given input.
     fn hash_to_scalar(input: &[Field<Self>]) -> Scalar<Self>;
 
+    /// Returns the BHP hash for a given (up to) 256-bit input.
+    fn hash_bhp256(input: &[Boolean<Self>]) -> Field<Self>;
+
+    /// Returns the BHP hash for a given (up to) 512-bit input.
+    fn hash_bhp512(input: &[Boolean<Self>]) -> Field<Self>;
+
+    /// Returns the BHP hash for a given (up to) 1024-bit input.
+    fn hash_bhp1024(input: &[Boolean<Self>]) -> Field<Self>;
+
     /// Returns the Pedersen hash for a given (up to) 64-bit input.
     fn hash_ped64(input: &[Boolean<Self>]) -> Field<Self>;
 
