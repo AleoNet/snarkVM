@@ -87,6 +87,11 @@ path = "../fields"
 version = "0.7.5"
 default-features = false
 
+[dependencies.snarkvm-parameters]
+path = "../parameters"
+version = "0.7.5"
+default-features = false
+
 [dependencies.snarkvm-r1cs]
 path = "../r1cs"
 version = "0.7.5"
@@ -228,6 +233,7 @@ default = [
   "parallel",
   "snarkvm-curves/default",
   "snarkvm-fields/default",
+  "snarkvm-parameters/default",
   "snarkvm-r1cs/default",
   "snarkvm-utilities/default"
 ]
@@ -255,6 +261,7 @@ wasm = [
   "prf",
   "signature",
   "snark",
+  "snarkvm-parameters/wasm",
   "getrandom",
   "wasm-bindgen-futures",
   "reqwest"

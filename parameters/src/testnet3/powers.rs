@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use super::*;
 use anyhow::{anyhow, Result};
 use rand::Rng;
 use snarkvm_curves::traits::PairingEngine;
@@ -29,7 +30,7 @@ use snarkvm_utilities::{
 
 use itertools::Itertools;
 use std::{
-    collections::{BTreeMap, HashMap},
+    collections::BTreeMap,
     fs::{File, OpenOptions},
     io::{BufReader, Seek, SeekFrom},
     path::PathBuf,
@@ -37,24 +38,7 @@ use std::{
 
 lazy_static::lazy_static! {
     static ref DEFAULT_PATH: PathBuf = PathBuf::from(format!("{}/.aleo/powers_of_g", std::env::var("HOME").unwrap()));
-    static ref URLS: HashMap<usize, String> = {
-        let mut m = HashMap::new();
-        m.insert(1 << 16, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_16_uncompressed"));
-        m.insert(1 << 17, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_17_uncompressed"));
-        m.insert(1 << 18, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_18_uncompressed"));
-        m.insert(1 << 19, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_19_uncompressed"));
-        m.insert(1 << 20, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_20_uncompressed"));
-        m.insert(1 << 21, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_21_uncompressed"));
-        m.insert(1 << 22, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_22_uncompressed"));
-        m.insert(1 << 23, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_23_uncompressed"));
-        m.insert(1 << 24, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_24_uncompressed"));
-        m.insert(1 << 25, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_25_uncompressed"));
-        m.insert(1 << 26, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_26_uncompressed"));
-        m.insert(1 << 27, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_27_uncompressed"));
-        m.insert(1 << 28, String::from("https://f002.backblazeb2.com/file/aleo-snarkos/srs/powers_of_g_28_uncompressed"));
-        m
-    };
-    static ref BASE_POWERS: &'static [u8] = include_bytes!("./powers_of_g_15");
+    static ref BASE_POWERS: &'static [u8] = include_bytes!("./powers_of_g_15.96b5d79");
     static ref POWERS_TIMES_GAMMA_G: &'static [u8] = include_bytes!("./gamma_powers");
 }
 
@@ -62,6 +46,20 @@ lazy_static::lazy_static! {
 const NUM_POWERS_TIMES_GAMMA_G: usize = 84;
 // Size of a serialized power of G.
 const POWER_OF_G_SERIALIZED_SIZE: usize = 97;
+
+const DEGREE_16: usize = 1 << 16;
+const DEGREE_17: usize = 1 << 17;
+const DEGREE_18: usize = 1 << 18;
+const DEGREE_19: usize = 1 << 19;
+const DEGREE_20: usize = 1 << 20;
+const DEGREE_21: usize = 1 << 21;
+const DEGREE_22: usize = 1 << 22;
+const DEGREE_23: usize = 1 << 23;
+const DEGREE_24: usize = 1 << 24;
+const DEGREE_25: usize = 1 << 25;
+const DEGREE_26: usize = 1 << 26;
+const DEGREE_27: usize = 1 << 27;
+const DEGREE_28: usize = 1 << 28;
 
 /// An abstraction over a vector of powers of G, meant to reduce
 /// memory burden when handling universal setup parameters.
@@ -279,63 +277,28 @@ impl<E: PairingEngine> PowersOfG<E> {
     }
 
     /// Download the transcript up to `degree`.
-    #[cfg(not(feature = "wasm"))]
-    pub fn download_up_to(&mut self, degree: usize) -> Result<()> {
-        println!("called download");
-        let degrees_to_download = self.get_degrees_to_download(degree);
-        for d in &degrees_to_download {
-            println!("downloading new degree");
-            if let Some(link) = URLS.get(d) {
-                let mut easy = curl::easy::Easy::new();
-                easy.url(link)?;
-                let mut transfer = easy.transfer();
-                transfer.write_function(|data| {
-                    self.file.seek(SeekFrom::End(0)).unwrap();
-                    self.file.write_all(data).unwrap();
-                    Ok(data.len())
-                })?;
-                transfer.perform()?;
-            } else {
-                return Err(anyhow!("incorrect degree selected - {}", degree));
-            }
-        }
-
-        self.degree = *degrees_to_download.last().unwrap();
-        self.regenerate_powers_of_beta_times_gamma_g();
-
-        Ok(())
-    }
-
-    /// Download the transcript up to `degree`.
-    #[cfg(feature = "wasm")]
     pub fn download_up_to(&mut self, degree: usize) -> Result<()> {
         let degrees_to_download = self.get_degrees_to_download(degree);
         for d in &degrees_to_download {
-            if let Some(link) = URLS.get(d) {
-                let buffer = alloc::sync::Arc::new(parking_lot::RwLock::new(vec![]));
-                let url = String::from(link);
+            let bytes = match *d {
+                DEGREE_16 => Degree16::load_bytes()?,
+                DEGREE_17 => Degree17::load_bytes()?,
+                DEGREE_18 => Degree18::load_bytes()?,
+                DEGREE_19 => Degree19::load_bytes()?,
+                DEGREE_20 => Degree20::load_bytes()?,
+                DEGREE_21 => Degree21::load_bytes()?,
+                DEGREE_22 => Degree22::load_bytes()?,
+                DEGREE_23 => Degree23::load_bytes()?,
+                DEGREE_24 => Degree24::load_bytes()?,
+                DEGREE_25 => Degree25::load_bytes()?,
+                DEGREE_26 => Degree26::load_bytes()?,
+                DEGREE_27 => Degree27::load_bytes()?,
+                DEGREE_28 => Degree28::load_bytes()?,
+                _ => return Err(anyhow!("incorrect degree selected")),
+            };
 
-                // NOTE(julesdesmit): I'm leaking memory here so that I can get a
-                // static reference to the url, which is needed to pass it into
-                // the local thread which downloads the file.
-                let buffer_clone = alloc::sync::Arc::downgrade(&buffer);
-                // NOTE(julesdesmit): We spawn a local thread here in order to be
-                // able to accommodate the async syntax from reqwest.
-                wasm_bindgen_futures::spawn_local(async move {
-                    let content = reqwest::get(url).await.unwrap().text().await.unwrap();
-
-                    let buffer = buffer_clone.upgrade().unwrap();
-                    buffer.write().extend_from_slice(content.as_bytes());
-                    drop(buffer);
-                });
-                // Recover the bytes.
-                let buffer = alloc::sync::Arc::try_unwrap(buffer).unwrap();
-                let buffer = buffer.write().clone();
-                self.file.seek(SeekFrom::End(0))?;
-                self.file.write_all(&buffer)?;
-            } else {
-                return Err(anyhow!("incorrect degree selected - {}", degree));
-            }
+            self.file.seek(SeekFrom::End(0))?;
+            self.file.write_all(&bytes)?;
         }
 
         self.degree = *degrees_to_download.last().unwrap();

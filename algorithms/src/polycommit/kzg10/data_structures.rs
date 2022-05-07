@@ -16,11 +16,11 @@
 
 use crate::{
     fft::{DensePolynomial, EvaluationDomain},
-    polycommit::kzg10::PowersOfG,
     snark::marlin::{params::OptimizationType, FiatShamirError, FiatShamirRng},
 };
 use snarkvm_curves::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, PrimeField, ToConstraintField, Zero};
+use snarkvm_parameters::testnet3::PowersOfG;
 use snarkvm_utilities::{
     borrow::Cow,
     error,

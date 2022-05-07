@@ -17,20 +17,21 @@ include = [ "Cargo.toml", "src", "README.md", "LICENSE.md" ]
 license = "GPL-3.0"
 edition = "2021"
 
-[dependencies.snarkvm-algorithms]
-path = "../algorithms"
-version = "0.7.5"
+[dependencies.snarkvm-curves]
+path = "../curves"
 default-features = false
 
 [dependencies.snarkvm-utilities]
 path = "../utilities"
 version = "0.7.5"
-default-features = false
 
 [dependencies.aleo-std]
 version = "0.1.12"
 
 [dependencies.anyhow]
+version = "1"
+
+[dependencies.bincode]
 version = "1"
 
 [dependencies.cfg-if]
@@ -43,14 +44,27 @@ optional = true
 [dependencies.hex]
 version = "0.4.3"
 
+[dependencies.itertools]
+version = "0.10.3"
+
+[dependencies.lazy_static]
+version = "1.4"
+
 [dependencies.paste]
 version = "1"
 
 [dependencies.serde_json]
 version = "1"
 
+[dependencies.sha2]
+version = "0.10"
+default-features = false
+
 [dependencies.thiserror]
 version = "1.0"
+
+[dependencies.rand]
+version = "0.8"
 
 [dependencies.reqwest]
 version = "0.11"
@@ -65,8 +79,9 @@ version = "0.11"
 features = [ "wasm-bindgen" ]
 optional = true
 
-[dev-dependencies.snarkvm-curves]
-path = "../curves"
+[dev-dependencies.snarkvm-algorithms]
+path = "../algorithms"
+version = "0.7.5"
 default-features = false
 
 [dev-dependencies.snarkvm-dpc]
