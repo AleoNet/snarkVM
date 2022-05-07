@@ -29,23 +29,41 @@ pub use traits::*;
 use snarkvm_circuits_types::{environment::Environment, Boolean, Field, Group, Scalar};
 
 pub trait Aleo: Environment {
-    /// Returns a commitment for the given (up to) 64-bit input and randomness.
-    fn commit_ped64(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Group<Self>;
+    /// Returns a BHP commitment for the given (up to) 256-bit input and randomness.
+    fn commit_bhp256(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Field<Self>;
 
-    /// Returns a commitment for the given (up to) 128-bit input and randomness.
-    fn commit_ped128(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Group<Self>;
+    /// Returns a BHP commitment for the given (up to) 512-bit input and randomness.
+    fn commit_bhp512(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Field<Self>;
 
-    /// Returns a commitment for the given (up to) 256-bit input and randomness.
-    fn commit_ped256(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Group<Self>;
+    /// Returns a BHP commitment for the given (up to) 1024-bit input and randomness.
+    fn commit_bhp1024(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Field<Self>;
 
-    /// Returns a commitment for the given (up to) 512-bit input and randomness.
-    fn commit_ped512(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Group<Self>;
+    /// Returns a Pedersen commitment for the given (up to) 64-bit input and randomness.
+    fn commit_ped64(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Field<Self>;
 
-    /// Returns a commitment for the given (up to) 1024-bit input and randomness.
-    fn commit_ped1024(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Group<Self>;
+    /// Returns a Pedersen commitment for the given (up to) 128-bit input and randomness.
+    fn commit_ped128(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Field<Self>;
+
+    /// Returns a Pedersen commitment for the given (up to) 256-bit input and randomness.
+    fn commit_ped256(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Field<Self>;
+
+    /// Returns a Pedersen commitment for the given (up to) 512-bit input and randomness.
+    fn commit_ped512(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Field<Self>;
+
+    /// Returns a Pedersen commitment for the given (up to) 1024-bit input and randomness.
+    fn commit_ped1024(input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Field<Self>;
 
     /// Returns the scalar multiplication on the group bases.
     fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self>;
+
+    /// Returns the BHP hash for a given (up to) 256-bit input.
+    fn hash_bhp256(input: &[Boolean<Self>]) -> Field<Self>;
+
+    /// Returns the BHP hash for a given (up to) 512-bit input.
+    fn hash_bhp512(input: &[Boolean<Self>]) -> Field<Self>;
+
+    /// Returns the BHP hash for a given (up to) 1024-bit input.
+    fn hash_bhp1024(input: &[Boolean<Self>]) -> Field<Self>;
 
     /// Returns a hash on the scalar field for the given input.
     fn hash_to_scalar(input: &[Field<Self>]) -> Scalar<Self>;
