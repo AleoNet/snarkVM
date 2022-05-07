@@ -95,41 +95,19 @@ impl<P: Program, Op: CommitOpcode> Operation<P> for Commit<P, Op> {
         };
 
         // Compute the digest for the given input.
-        match Self::opcode() {
-            BHP256::OPCODE => {
-                let commitment = P::Aleo::commit_bhp256(&first, &second);
-                registers.assign(self.operation.destination(), Literal::Field(commitment));
-            }
-            BHP512::OPCODE => {
-                let commitment = P::Aleo::commit_bhp512(&first, &second);
-                registers.assign(self.operation.destination(), Literal::Field(commitment));
-            }
-            BHP1024::OPCODE => {
-                let commitment = P::Aleo::commit_bhp1024(&first, &second);
-                registers.assign(self.operation.destination(), Literal::Field(commitment));
-            }
-            Ped64::OPCODE => {
-                let commitment = P::Aleo::commit_ped64(&first, &second);
-                registers.assign(self.operation.destination(), Literal::Group(commitment));
-            }
-            Ped128::OPCODE => {
-                let commitment = P::Aleo::commit_ped128(&first, &second);
-                registers.assign(self.operation.destination(), Literal::Group(commitment));
-            }
-            Ped256::OPCODE => {
-                let commitment = P::Aleo::commit_ped256(&first, &second);
-                registers.assign(self.operation.destination(), Literal::Group(commitment));
-            }
-            Ped512::OPCODE => {
-                let commitment = P::Aleo::commit_ped512(&first, &second);
-                registers.assign(self.operation.destination(), Literal::Group(commitment));
-            }
-            Ped1024::OPCODE => {
-                let commitment = P::Aleo::commit_ped1024(&first, &second);
-                registers.assign(self.operation.destination(), Literal::Group(commitment));
-            }
+        let commitment = match Self::opcode() {
+            BHP256::OPCODE => P::Aleo::commit_bhp256(&first, &second),
+            BHP512::OPCODE => P::Aleo::commit_bhp512(&first, &second),
+            BHP1024::OPCODE => P::Aleo::commit_bhp1024(&first, &second),
+            Ped64::OPCODE => P::Aleo::commit_ped64(&first, &second),
+            Ped128::OPCODE => P::Aleo::commit_ped128(&first, &second),
+            Ped256::OPCODE => P::Aleo::commit_ped256(&first, &second),
+            Ped512::OPCODE => P::Aleo::commit_ped512(&first, &second),
+            Ped1024::OPCODE => P::Aleo::commit_ped1024(&first, &second),
             _ => P::halt("Invalid option provided for the `commit` instruction"),
-        }
+        };
+
+        registers.assign(self.operation.destination(), Literal::Field(commitment));
     }
 }
 
