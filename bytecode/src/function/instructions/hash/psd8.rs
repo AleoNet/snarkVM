@@ -144,7 +144,7 @@ mod tests {
 
     #[test]
     fn test_composite() {
-        let first = Value::<P>::Composite(Identifier::from_str("message"), vec![
+        let first = Value::<P>::Definition(Identifier::from_str("message"), vec![
             Literal::from_str("1field.public"),
             Literal::from_str("2field.private"),
         ]);

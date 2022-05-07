@@ -163,7 +163,7 @@ impl<P: Program> Registers<P> {
                 // Halts if the value is not a composite.
                 Value::Literal(..) => P::halt("Cannot load a register member from a literal"),
                 // Retrieve the value of the member (from the value).
-                Value::Composite(definition, members) => {
+                Value::Definition(definition, members) => {
                     // Retrieve the member index of the identifier (from the definition).
                     let member_index = match P::get_definition(&definition) {
                         Some(definition) => {

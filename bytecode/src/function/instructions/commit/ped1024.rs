@@ -160,7 +160,7 @@ mod tests {
 
     #[test]
     fn test_composite() {
-        let first = Value::<P>::Composite(Identifier::from_str("message"), vec![
+        let first = Value::<P>::Definition(Identifier::from_str("message"), vec![
             Literal::from_str("true.public"),
             Literal::from_str("false.private"),
         ]);
@@ -185,7 +185,7 @@ mod tests {
     #[test]
     #[should_panic(expected = "The Pedersen hash input cannot exceed 1024 bits.")]
     fn test_composite_halts() {
-        let first = Value::<P>::Composite(Identifier::from_str("message"), vec![
+        let first = Value::<P>::Definition(Identifier::from_str("message"), vec![
             Literal::from_str("1field.public"),
             Literal::from_str("2field.private"),
             Literal::from_str("3field.private"),

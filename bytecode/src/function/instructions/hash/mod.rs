@@ -108,7 +108,7 @@ impl<P: Program, Op: HashOpcode> Operation<P> for Hash<P, Op> {
         // Load the input from the operand.
         let input = match registers.load(self.operation.first()) {
             Value::Literal(literal) => vec![literal],
-            Value::Composite(_name, literals) => literals,
+            Value::Definition(_name, literals) => literals,
         };
 
         // TODO (howardwu): Implement `Literal::to_fields()` to replace this closure.

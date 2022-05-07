@@ -64,7 +64,7 @@ impl<P: Program> Definition<P> {
     pub fn matches(&self, value: &Value<P>) -> bool {
         match value {
             Value::Literal(..) => false,
-            Value::Composite(name, literals) => {
+            Value::Definition(name, literals) => {
                 name == self.name()
                     && literals.len() == self.members().len()
                     && literals

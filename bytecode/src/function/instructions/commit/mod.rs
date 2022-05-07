@@ -87,11 +87,11 @@ impl<P: Program, Op: CommitOpcode> Operation<P> for Commit<P, Op> {
         // Load the input from the operand.
         let first = match registers.load(self.operation.first()) {
             Value::Literal(literal) => literal.to_bits_le(),
-            Value::Composite(_name, literals) => literals.iter().flat_map(|literal| literal.to_bits_le()).collect(),
+            Value::Definition(_name, literals) => literals.iter().flat_map(|literal| literal.to_bits_le()).collect(),
         };
         let second = match registers.load(self.operation.second()) {
             Value::Literal(literal) => literal.to_bits_le(),
-            Value::Composite(name, ..) => P::halt(format!("{name} is not a literal")),
+            Value::Definition(name, ..) => P::halt(format!("{name} is not a literal")),
         };
 
         // Compute the digest for the given input.

@@ -26,8 +26,8 @@ use std::io::{Read, Result as IoResult, Write};
 pub enum Value<P: Program> {
     /// A literal contains its declared literal value.
     Literal(Literal<P::Environment>),
-    /// A composite contains its declared member literals.
-    Composite(Identifier<P>, Vec<Literal<P::Environment>>),
+    /// A definition contains its identifier and declared member literals.
+    Definition(Identifier<P>, Vec<Literal<P::Environment>>),
 }
 
 impl<P: Program> From<Literal<P::Environment>> for Value<P> {
@@ -42,7 +42,7 @@ impl<P: Program> Value<P> {
     pub fn annotation(&self) -> Annotation<P> {
         match self {
             Self::Literal(literal) => Annotation::Literal(LiteralType::from(literal)),
-            Self::Composite(name, _) => Annotation::Composite(name.clone()),
+            Self::Definition(name, _) => Annotation::Composite(name.clone()),
         }
     }
 
@@ -51,7 +51,7 @@ impl<P: Program> Value<P> {
     pub fn is_constant(&self) -> bool {
         match self {
             Self::Literal(literal) => literal.is_constant(),
-            Self::Composite(_, members) => members.iter().all(|literal| literal.is_constant()),
+            Self::Definition(_, members) => members.iter().all(|literal| literal.is_constant()),
         }
     }
 }
@@ -69,13 +69,14 @@ impl<P: Program> Parser for Value<P> {
                 literals.push(literal);
                 literals
             });
-        // Parses a composite of form: name literal literal ... literal
-        let composite_parser = map(pair(pair(Identifier::parse, tag(" ")), sequence_parse), |((name, _), literals)| {
-            Self::Composite(name, literals)
-        });
+        // Parses a definition of form: name literal literal ... literal
+        let definition_parser =
+            map(pair(pair(Identifier::parse, tag(" ")), sequence_parse), |((name, _), literals)| {
+                Self::Definition(name, literals)
+            });
 
         // Parse to determine the value (order matters).
-        alt((map(Literal::parse, |literal| Self::Literal(literal)), composite_parser))(string)
+        alt((map(Literal::parse, |literal| Self::Literal(literal)), definition_parser))(string)
     }
 }
 
@@ -86,8 +87,8 @@ impl<P: Program> fmt::Display for Value<P> {
         match self {
             // Prints the literal, i.e. 10field.private
             Self::Literal(literal) => fmt::Display::fmt(literal, f),
-            // Prints the composite, i.e. message aleo1xxx.public 10i64.private
-            Self::Composite(name, members) => {
+            // Prints the definition, i.e. message aleo1xxx.public 10i64.private
+            Self::Definition(name, members) => {
                 let mut output = format!("{name} ");
                 for value in members.iter() {
                     output += &format!("{value} ");
@@ -113,7 +114,7 @@ impl<P: Program> FromBytes for Value<P> {
                 for _ in 0..num_members {
                     members.push(Literal::read_le(&mut reader)?);
                 }
-                Ok(Self::Composite(name, members))
+                Ok(Self::Definition(name, members))
             }
             2.. => Err(error(format!("Failed to deserialize value variant {variant}"))),
         }
@@ -127,7 +128,7 @@ impl<P: Program> ToBytes for Value<P> {
                 u8::write_le(&0u8, &mut writer)?;
                 literal.write_le(&mut writer)
             }
-            Self::Composite(name, members) => {
+            Self::Definition(name, members) => {
                 u8::write_le(&1u8, &mut writer)?;
                 name.write_le(&mut writer)?;
                 (members.len() as u16).write_le(&mut writer)?;
@@ -142,7 +143,7 @@ impl<P: Program> PartialEq for Value<P> {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Literal(literal), Self::Literal(other_literal)) => literal.eject() == other_literal.eject(),
-            (Self::Composite(name, members), Self::Composite(other_name, other_members)) => {
+            (Self::Definition(name, members), Self::Definition(other_name, other_members)) => {
                 name == other_name && members.eject() == other_members.eject()
             }
             _ => false,
@@ -165,9 +166,9 @@ mod tests {
             Value::parse("10field.private").unwrap().1,
         );
 
-        // Test parsing a composite.
+        // Test parsing a definition.
         assert_eq!(
-            Value::<P>::Composite(Identifier::from_str("message"), vec![
+            Value::<P>::Definition(Identifier::from_str("message"), vec![
                 Literal::from_str("2group.public"),
                 Literal::from_str("10field.private"),
             ]),

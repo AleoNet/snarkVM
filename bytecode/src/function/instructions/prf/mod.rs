@@ -85,12 +85,12 @@ impl<P: Program, Op: PRFOpcode> Operation<P> for PRF<P, Op> {
         // Load the seed from the operand.
         let first = match registers.load(self.operation.first()) {
             Value::Literal(literal) => literal,
-            Value::Composite(name, ..) => P::halt(format!("{name} is not a literal")),
+            Value::Definition(name, ..) => P::halt(format!("{name} is not a literal")),
         };
         // Load the input from the operand.
         let second = match registers.load(self.operation.second()) {
             Value::Literal(literal) => vec![literal],
-            Value::Composite(_name, literals) => literals,
+            Value::Definition(_name, literals) => literals,
         };
 
         // Ensure `first` is a Field.
