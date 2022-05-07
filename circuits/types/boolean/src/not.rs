@@ -72,11 +72,11 @@ mod tests {
     fn check_not(name: &str, expected: bool, candidate_input: Boolean<Circuit>) {
         Circuit::scope(name, || {
             let candidate_output = !&candidate_input;
-
-            let circuit_type = CircuitType::from(candidate_input);
             assert_eq!(expected, candidate_output.eject_value());
-            assert_count!(Not(Boolean) => Boolean, &circuit_type);
-            assert_output_type!(Not(Boolean) => Boolean, circuit_type, candidate_output);
+
+            let case = CircuitType::from(candidate_input);
+            assert_count!(Not(Boolean) => Boolean, &case);
+            assert_output_type!(Not(Boolean) => Boolean, case, candidate_output);
         });
     }
 

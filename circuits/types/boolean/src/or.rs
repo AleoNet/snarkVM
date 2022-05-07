@@ -146,165 +146,60 @@ mod tests {
         });
     }
 
+    fn run_test(mode_a: Mode, mode_b: Mode) {
+        for first in [true, false] {
+            for second in [true, false] {
+                let a = Boolean::<Circuit>::new(mode_a, first);
+                let b = Boolean::<Circuit>::new(mode_b, second);
+
+                let name = format!("{} OR {}", mode_a, mode_b);
+                check_or(&name, first | second, a, b);
+            }
+        }
+    }
+
     #[test]
     fn test_constant_or_constant() {
-        // false OR false
-        let expected = false;
-        let a = Boolean::<Circuit>::new(Mode::Constant, false);
-        let b = Boolean::<Circuit>::new(Mode::Constant, false);
-        check_or("false OR false", expected, a, b);
-
-        // false OR true
-        let expected = true;
-        let a = Boolean::<Circuit>::new(Mode::Constant, false);
-        let b = Boolean::<Circuit>::new(Mode::Constant, true);
-        check_or("false OR true", expected, a, b);
-
-        // true OR false
-        let expected = true;
-        let a = Boolean::<Circuit>::new(Mode::Constant, true);
-        let b = Boolean::<Circuit>::new(Mode::Constant, false);
-        check_or("true OR false", expected, a, b);
-
-        // true OR true
-        let expected = true;
-        let a = Boolean::<Circuit>::new(Mode::Constant, true);
-        let b = Boolean::<Circuit>::new(Mode::Constant, true);
-        check_or("true OR true", expected, a, b);
+        run_test(Mode::Constant, Mode::Constant)
     }
 
     #[test]
     fn test_constant_or_public() {
-        // false OR false
-        let expected = false;
-        let a = Boolean::<Circuit>::new(Mode::Constant, false);
-        let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_or("false OR false", expected, a, b);
+        run_test(Mode::Constant, Mode::Public)
+    }
 
-        // false OR true
-        let expected = true;
-        let a = Boolean::<Circuit>::new(Mode::Constant, false);
-        let b = Boolean::<Circuit>::new(Mode::Public, true);
-        check_or("false OR true", expected, a, b);
-
-        // true OR false
-        let expected = true;
-        let a = Boolean::<Circuit>::new(Mode::Constant, true);
-        let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_or("true OR false", expected, a, b);
-
-        // true OR true
-        let expected = true;
-        let a = Boolean::<Circuit>::new(Mode::Constant, true);
-        let b = Boolean::<Circuit>::new(Mode::Public, true);
-        check_or("true OR true", expected, a, b);
+    #[test]
+    fn test_constant_or_private() {
+        run_test(Mode::Constant, Mode::Private)
     }
 
     #[test]
     fn test_public_or_constant() {
-        // false OR false
-        let expected = false;
-        let a = Boolean::<Circuit>::new(Mode::Public, false);
-        let b = Boolean::<Circuit>::new(Mode::Constant, false);
-        check_or("false OR false", expected, a, b);
+        run_test(Mode::Public, Mode::Constant)
+    }
 
-        // false OR true
-        let expected = true;
-        let a = Boolean::<Circuit>::new(Mode::Public, false);
-        let b = Boolean::<Circuit>::new(Mode::Constant, true);
-        check_or("false OR true", expected, a, b);
-
-        // true OR false
-        let expected = true;
-        let a = Boolean::<Circuit>::new(Mode::Public, true);
-        let b = Boolean::<Circuit>::new(Mode::Constant, false);
-        check_or("true OR false", expected, a, b);
-
-        // true OR true
-        let expected = true;
-        let a = Boolean::<Circuit>::new(Mode::Public, true);
-        let b = Boolean::<Circuit>::new(Mode::Constant, true);
-        check_or("true OR true", expected, a, b);
+    #[test]
+    fn test_private_or_constant() {
+        run_test(Mode::Private, Mode::Constant)
     }
 
     #[test]
     fn test_public_or_public() {
-        // false OR false
-        let expected = false;
-        let a = Boolean::<Circuit>::new(Mode::Public, false);
-        let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_or("false OR false", expected, a, b);
-
-        // false OR true
-        let expected = true;
-        let a = Boolean::<Circuit>::new(Mode::Public, false);
-        let b = Boolean::<Circuit>::new(Mode::Public, true);
-        check_or("false OR true", expected, a, b);
-
-        // true OR false
-        let expected = true;
-        let a = Boolean::<Circuit>::new(Mode::Public, true);
-        let b = Boolean::<Circuit>::new(Mode::Public, false);
-        check_or("true OR false", expected, a, b);
-
-        // true OR true
-        let expected = true;
-        let a = Boolean::<Circuit>::new(Mode::Public, true);
-        let b = Boolean::<Circuit>::new(Mode::Public, true);
-        check_or("true OR true", expected, a, b);
+        run_test(Mode::Public, Mode::Public)
     }
 
     #[test]
     fn test_public_or_private() {
-        // false OR false
-        let expected = false;
-        let a = Boolean::<Circuit>::new(Mode::Public, false);
-        let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_or("false OR false", expected, a, b);
+        run_test(Mode::Public, Mode::Private)
+    }
 
-        // false OR true
-        let expected = true;
-        let a = Boolean::<Circuit>::new(Mode::Public, false);
-        let b = Boolean::<Circuit>::new(Mode::Private, true);
-        check_or("false OR true", expected, a, b);
-
-        // true OR false
-        let expected = true;
-        let a = Boolean::<Circuit>::new(Mode::Public, true);
-        let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_or("true OR false", expected, a, b);
-
-        // true OR true
-        let expected = true;
-        let a = Boolean::<Circuit>::new(Mode::Public, true);
-        let b = Boolean::<Circuit>::new(Mode::Private, true);
-        check_or("true OR true", expected, a, b);
+    #[test]
+    fn test_private_or_public() {
+        run_test(Mode::Private, Mode::Public)
     }
 
     #[test]
     fn test_private_or_private() {
-        // false OR false
-        let expected = false;
-        let a = Boolean::<Circuit>::new(Mode::Private, false);
-        let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_or("false OR false", expected, a, b);
-
-        // false OR true
-        let expected = true;
-        let a = Boolean::<Circuit>::new(Mode::Private, false);
-        let b = Boolean::<Circuit>::new(Mode::Private, true);
-        check_or("false OR true", expected, a, b);
-
-        // true OR false
-        let expected = true;
-        let a = Boolean::<Circuit>::new(Mode::Private, true);
-        let b = Boolean::<Circuit>::new(Mode::Private, false);
-        check_or("true OR false", expected, a, b);
-
-        // true OR true
-        let expected = true;
-        let a = Boolean::<Circuit>::new(Mode::Private, true);
-        let b = Boolean::<Circuit>::new(Mode::Private, true);
-        check_or("true OR true", expected, a, b);
+        run_test(Mode::Private, Mode::Private)
     }
 }
