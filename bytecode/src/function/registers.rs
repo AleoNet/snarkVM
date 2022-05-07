@@ -160,7 +160,7 @@ impl<P: Program> Registers<P> {
             Register::Locator(..) => value,
             // If the register is a register member, then load the specific value.
             Register::Member(_, ref member_name) => match value {
-                // Halts if the value is not a composite.
+                // Halts if the value is not a definition.
                 Value::Literal(..) => P::halt("Cannot load a register member from a literal"),
                 // Retrieve the value of the member (from the value).
                 Value::Definition(definition, members) => {

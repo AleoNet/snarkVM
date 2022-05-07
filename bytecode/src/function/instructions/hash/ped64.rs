@@ -121,7 +121,7 @@ mod tests {
     test_instruction_halts!(string_halts, HashPed64, "The Pedersen hash input cannot exceed 64 bits.", "\"aaaaaaaaa\"");
 
     #[test]
-    fn test_composite() {
+    fn test_definition() {
         let first = Value::<P>::Definition(Identifier::from_str("message"), vec![
             Literal::from_str("true.public"),
             Literal::from_str("false.private"),
@@ -143,7 +143,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "The Pedersen hash input cannot exceed 64 bits.")]
-    fn test_composite_halts() {
+    fn test_definition_halts() {
         let first = Value::<P>::Definition(Identifier::from_str("message"), vec![
             Literal::from_str("1field.public"),
             Literal::from_str("false.private"),

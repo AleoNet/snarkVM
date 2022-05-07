@@ -150,7 +150,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "message is not a literal")]
-    fn test_composite_halts() {
+    fn test_definition_halts() {
         let first = Value::<Process>::Definition(Identifier::from_str("message"), vec![
             Literal::from_str("2group.public"),
             Literal::from_str("10field.private"),

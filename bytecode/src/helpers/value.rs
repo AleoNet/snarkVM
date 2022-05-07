@@ -42,7 +42,7 @@ impl<P: Program> Value<P> {
     pub fn annotation(&self) -> Annotation<P> {
         match self {
             Self::Literal(literal) => Annotation::Literal(LiteralType::from(literal)),
-            Self::Definition(name, _) => Annotation::Composite(name.clone()),
+            Self::Definition(name, _) => Annotation::Definition(name.clone()),
         }
     }
 

@@ -109,8 +109,8 @@ impl<P: Program> Function<P> {
             P::halt(format!("Input \'{register}\' was previously added"))
         }
 
-        // If the input annotation is a composite, ensure the input is referencing a valid definition.
-        if let Annotation::Composite(definition) = input.annotation() {
+        // If the input annotation is a definition, ensure the input is referencing a valid definition.
+        if let Annotation::Definition(definition) = input.annotation() {
             if !P::contains_definition(definition) {
                 P::halt(format!("Input type \'{definition}\' does not exist"))
             }
@@ -199,10 +199,10 @@ impl<P: Program> Function<P> {
             P::halt(format!("Output register {register} is missing"))
         }
 
-        // If the output annotation is for a composite, ensure the output is referencing a valid definition.
-        if let Annotation::Composite(identifier) = output.annotation() {
+        // If the output annotation is for a definition, ensure the output is referencing a valid definition.
+        if let Annotation::Definition(identifier) = output.annotation() {
             if !P::contains_definition(identifier) {
-                P::halt("Output annotation references non-existent composite definition")
+                P::halt("Output annotation references non-existent definition")
             }
         }
 
@@ -255,8 +255,8 @@ impl<P: Program> Function<P> {
             }
 
             // TODO (howardwu): When handling the TODO below, relax this to exclude checking the mode.
-            // If the output annotation is a composite, ensure the output value matches the definition.
-            if let Annotation::Composite(definition_name) = output.annotation() {
+            // If the output annotation is a definition, ensure the output value matches the definition.
+            if let Annotation::Definition(definition_name) = output.annotation() {
                 // Retrieve the definition from the program.
                 match P::get_definition(definition_name) {
                     // Ensure the value matches its expected definition.
@@ -322,8 +322,8 @@ impl<P: Program> Function<P> {
                 P::halt(format!("Input \'{register}\' has an incorrect annotation of {}", value.annotation()))
             }
 
-            // If the input annotation is a composite, ensure the input value matches the definition.
-            if let Annotation::Composite(definition_name) = input.annotation() {
+            // If the input annotation is a definition, ensure the input value matches the definition.
+            if let Annotation::Definition(definition_name) = input.annotation() {
                 // Retrieve the definition from the program.
                 match P::get_definition(definition_name) {
                     // Ensure the value matches its expected definition.

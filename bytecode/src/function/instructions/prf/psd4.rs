@@ -168,7 +168,7 @@ mod tests {
     );
 
     #[test]
-    fn test_composite() {
+    fn test_definition() {
         let first = Literal::from_str("1field.private");
         let second = Value::<P>::Definition(Identifier::from_str("message"), vec![
             Literal::from_str("1field.public"),

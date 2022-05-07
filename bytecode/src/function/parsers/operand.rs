@@ -25,7 +25,7 @@ use std::io::{Read, Result as IoResult, Write};
 /// This enum is designed to support instructions (such as `add {Register} {Value} into {Register}`).
 #[derive(Clone, Debug)]
 pub enum Operand<P: Program> {
-    /// A value contains a declared literal or composite.
+    /// A value contains a declared literal or definition.
     Value(Value<P>),
     /// A register contains its locator in memory.
     Register(Register<P>),

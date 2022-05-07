@@ -106,7 +106,7 @@ mod tests {
     );
 
     #[test]
-    fn test_composite() {
+    fn test_definition() {
         let first = Value::<P>::Definition(Identifier::from_str("message"), vec![
             Literal::from_str("1field.public"),
             Literal::from_str("false.private"),
@@ -128,7 +128,7 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "Inputs to this BHP variant cannot exceed 513 bits")]
-    fn test_composite_halts() {
+    fn test_definition_halts() {
         let first = Value::<P>::Definition(Identifier::from_str("message"), vec![
             Literal::from_str("1field.public"),
             Literal::from_str("2field.private"),
