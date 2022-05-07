@@ -14,20 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::Hash;
-use crate::function::Opcode;
+use super::*;
 
-/// Performs a Pedersen hash taking a 64-bit value as input.
-pub type HashPed64<P> = Hash<P, Pedersen64Hasher>;
+/// Performs a Pedersen hash taking up to a 64-bit value as input.
+pub type HashPed64<P> = Hash<P, Ped64>;
 
-pub struct Pedersen64Hasher;
-
-impl Opcode for Pedersen64Hasher {
-    /// Returns the opcode as a string.
-    #[inline]
-    fn opcode() -> &'static str {
-        "hash.ped64"
-    }
+pub struct Ped64;
+impl HashOpcode for Ped64 {
+    const OPCODE: &'static str = "hash.ped64";
 }
 
 #[cfg(test)]

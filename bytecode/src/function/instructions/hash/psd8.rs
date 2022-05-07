@@ -14,20 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::Hash;
-use crate::function::Opcode;
+use super::*;
 
 /// Performs a Poseidon hash with an input rate of 8.
-pub type HashPsd8<P> = Hash<P, Poseidon8Hasher>;
+pub type HashPsd8<P> = Hash<P, Psd8>;
 
-pub struct Poseidon8Hasher;
-
-impl Opcode for Poseidon8Hasher {
-    /// Returns the opcode as a string.
-    #[inline]
-    fn opcode() -> &'static str {
-        "hash.psd8"
-    }
+pub struct Psd8;
+impl HashOpcode for Psd8 {
+    const OPCODE: &'static str = "hash.psd8";
 }
 
 #[cfg(test)]

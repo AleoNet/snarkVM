@@ -51,25 +51,25 @@ use core::{fmt, marker::PhantomData};
 use nom::combinator::map;
 use std::io::{Read, Result as IoResult, Write};
 
-pub trait Hasher: Opcode {}
-
-const PED64: &str = "hash.ped64";
-
-/// A generic hash instruction.
-pub struct Hash<P: Program, O: Opcode> {
-    operation: UnaryOperation<P>,
-    _phantom: PhantomData<O>,
+pub trait HashOpcode {
+    const OPCODE: &'static str;
 }
 
-impl<P: Program, O: Opcode> Opcode for Hash<P, O> {
+/// A generic hash instruction.
+pub struct Hash<P: Program, Op: HashOpcode> {
+    operation: UnaryOperation<P>,
+    _phantom: PhantomData<Op>,
+}
+
+impl<P: Program, Op: HashOpcode> Opcode for Hash<P, Op> {
     /// Returns the opcode as a string.
     #[inline]
     fn opcode() -> &'static str {
-        O::opcode()
+        Op::OPCODE
     }
 }
 
-impl<P: Program, O: Opcode> Hash<P, O> {
+impl<P: Program, Op: HashOpcode> Hash<P, Op> {
     /// Returns the operands of the instruction.
     pub fn operands(&self) -> Vec<Operand<P>> {
         self.operation.operands()
@@ -81,7 +81,7 @@ impl<P: Program, O: Opcode> Hash<P, O> {
     }
 }
 
-impl<P: Program, O: Opcode> Operation<P> for Hash<P, O> {
+impl<P: Program, Op: HashOpcode> Operation<P> for Hash<P, Op> {
     /// Evaluates the operation.
     #[inline]
     fn evaluate(&self, registers: &Registers<P>) {
@@ -93,15 +93,17 @@ impl<P: Program, O: Opcode> Operation<P> for Hash<P, O> {
 
         // Compute the digest for the given input.
         let digest = match Self::opcode() {
-            PED64 | "hash.ped128" | "hash.ped256" | "hash.ped512" | "hash.ped1024" => match Self::opcode() {
-                PED64 => P::Aleo::pedersen_hash(Self::opcode(), &input),
-                "hash.ped128" => P::Aleo::pedersen_hash(Self::opcode(), &input),
-                "hash.ped256" => P::Aleo::pedersen_hash(Self::opcode(), &input),
-                "hash.ped512" => P::Aleo::pedersen_hash(Self::opcode(), &input),
-                "hash.ped1024" => P::Aleo::pedersen_hash(Self::opcode(), &input),
-                _ => P::halt("Invalid option provided for the `hash` instruction"),
-            },
-            "hash.psd2" | "hash.psd4" | "hash.psd8" => {
+            Ped64::OPCODE | Ped128::OPCODE | Ped256::OPCODE | Ped512::OPCODE | Ped1024::OPCODE => {
+                match Self::opcode() {
+                    Ped64::OPCODE => P::Aleo::pedersen_hash(Self::opcode(), &input),
+                    Ped128::OPCODE => P::Aleo::pedersen_hash(Self::opcode(), &input),
+                    Ped256::OPCODE => P::Aleo::pedersen_hash(Self::opcode(), &input),
+                    Ped512::OPCODE => P::Aleo::pedersen_hash(Self::opcode(), &input),
+                    Ped1024::OPCODE => P::Aleo::pedersen_hash(Self::opcode(), &input),
+                    _ => P::halt("Invalid option provided for the `hash` instruction"),
+                }
+            }
+            Psd2::OPCODE | Psd4::OPCODE | Psd8::OPCODE => {
                 // Pack the input bits into field elements.
                 let input_elements = input
                     .chunks(<P::Aleo as Environment>::BaseField::size_in_data_bits())
@@ -110,9 +112,9 @@ impl<P: Program, O: Opcode> Operation<P> for Hash<P, O> {
 
                 // Compute the digest for the given input as field elements.
                 match Self::opcode() {
-                    "hash.psd2" => P::Aleo::poseidon_hash(Self::opcode(), &input_elements),
-                    "hash.psd4" => P::Aleo::poseidon_hash(Self::opcode(), &input_elements),
-                    "hash.psd8" => P::Aleo::poseidon_hash(Self::opcode(), &input_elements),
+                    Psd2::OPCODE => P::Aleo::poseidon_hash(Self::opcode(), &input_elements),
+                    Psd4::OPCODE => P::Aleo::poseidon_hash(Self::opcode(), &input_elements),
+                    Psd8::OPCODE => P::Aleo::poseidon_hash(Self::opcode(), &input_elements),
                     _ => P::halt("Invalid option provided for the `hash` instruction"),
                 }
             }
@@ -123,13 +125,13 @@ impl<P: Program, O: Opcode> Operation<P> for Hash<P, O> {
     }
 }
 
-impl<P: Program, O: Opcode> fmt::Display for Hash<P, O> {
+impl<P: Program, Op: HashOpcode> fmt::Display for Hash<P, Op> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.operation)
     }
 }
 
-impl<P: Program, O: Opcode> Parser for Hash<P, O> {
+impl<P: Program, Op: HashOpcode> Parser for Hash<P, Op> {
     type Environment = P::Environment;
 
     #[inline]
@@ -138,33 +140,33 @@ impl<P: Program, O: Opcode> Parser for Hash<P, O> {
     }
 }
 
-impl<P: Program, O: Opcode> FromBytes for Hash<P, O> {
+impl<P: Program, Op: HashOpcode> FromBytes for Hash<P, Op> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         Ok(Self { operation: UnaryOperation::read_le(&mut reader)?, _phantom: PhantomData })
     }
 }
 
-impl<P: Program, O: Opcode> ToBytes for Hash<P, O> {
+impl<P: Program, Op: HashOpcode> ToBytes for Hash<P, Op> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         self.operation.write_le(&mut writer)
     }
 }
 
 #[allow(clippy::from_over_into)]
-impl<P: Program, O: Opcode> Into<Instruction<P>> for Hash<P, O> {
+impl<P: Program, Op: HashOpcode> Into<Instruction<P>> for Hash<P, Op> {
     /// Converts the operation into an instruction.
     fn into(self) -> Instruction<P> {
         match Self::opcode() {
-            "hash.ped64" => Instruction::HashPed64(HashPed64 { operation: self.operation, _phantom: PhantomData }),
-            "hash.ped128" => Instruction::HashPed128(HashPed128 { operation: self.operation, _phantom: PhantomData }),
-            "hash.ped256" => Instruction::HashPed256(HashPed256 { operation: self.operation, _phantom: PhantomData }),
-            "hash.ped512" => Instruction::HashPed512(HashPed512 { operation: self.operation, _phantom: PhantomData }),
-            "hash.ped1024" => {
+            Ped64::OPCODE => Instruction::HashPed64(HashPed64 { operation: self.operation, _phantom: PhantomData }),
+            Ped128::OPCODE => Instruction::HashPed128(HashPed128 { operation: self.operation, _phantom: PhantomData }),
+            Ped256::OPCODE => Instruction::HashPed256(HashPed256 { operation: self.operation, _phantom: PhantomData }),
+            Ped512::OPCODE => Instruction::HashPed512(HashPed512 { operation: self.operation, _phantom: PhantomData }),
+            Ped1024::OPCODE => {
                 Instruction::HashPed1024(HashPed1024 { operation: self.operation, _phantom: PhantomData })
             }
-            "hash.psd2" => Instruction::HashPsd2(HashPsd2 { operation: self.operation, _phantom: PhantomData }),
-            "hash.psd4" => Instruction::HashPsd4(HashPsd4 { operation: self.operation, _phantom: PhantomData }),
-            "hash.psd8" => Instruction::HashPsd8(HashPsd8 { operation: self.operation, _phantom: PhantomData }),
+            Psd2::OPCODE => Instruction::HashPsd2(HashPsd2 { operation: self.operation, _phantom: PhantomData }),
+            Psd4::OPCODE => Instruction::HashPsd4(HashPsd4 { operation: self.operation, _phantom: PhantomData }),
+            Psd8::OPCODE => Instruction::HashPsd8(HashPsd8 { operation: self.operation, _phantom: PhantomData }),
             _ => P::halt("Invalid option provided for the `hash` instruction"),
         }
     }
