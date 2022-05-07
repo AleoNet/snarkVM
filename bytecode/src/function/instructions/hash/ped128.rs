@@ -15,22 +15,14 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::Hash;
-use crate::{
-    function::{parsers::*, Instruction, Opcode, Operation, Registers},
-    Program,
-    Value,
-};
-use snarkvm_circuits::{algorithms::Pedersen128, Hash as CircuitHash, Parser, ParserResult};
-use snarkvm_utilities::FromBytes;
-
-use nom::combinator::map;
-use snarkvm_circuits::{Literal, ToBits};
-use std::io::{Read, Result as IoResult};
+use crate::function::Opcode;
 
 /// Performs a Pedersen hash taking a 128-bit value as input.
-pub type HashPed128<P> = Hash<P, Pedersen128<<P as Program>::Aleo>>;
+pub type HashPed128<P> = Hash<P, Pedersen128Hasher>;
 
-impl<P: Program> Opcode for HashPed128<P> {
+pub struct Pedersen128Hasher;
+
+impl Opcode for Pedersen128Hasher {
     /// Returns the opcode as a string.
     #[inline]
     fn opcode() -> &'static str {
@@ -38,47 +30,19 @@ impl<P: Program> Opcode for HashPed128<P> {
     }
 }
 
-impl<P: Program> Parser for HashPed128<P> {
-    type Environment = P::Environment;
-
-    #[inline]
-    fn parse(string: &str) -> ParserResult<Self> {
-        map(UnaryOperation::parse, |operation| Self {
-            operation,
-            hasher: Pedersen128::<P::Environment>::setup("PedersenCircuit0"),
-        })(string)
-    }
-}
-
-impl<P: Program> FromBytes for HashPed128<P> {
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        Ok(Self {
-            operation: UnaryOperation::read_le(&mut reader)?,
-            hasher: Pedersen128::<P::Environment>::setup("PedersenCircuit0"),
-        })
-    }
-}
-
-#[allow(clippy::from_over_into)]
-impl<P: Program> Into<Instruction<P>> for HashPed128<P> {
-    /// Converts the operation into an instruction.
-    fn into(self) -> Instruction<P> {
-        Instruction::HashPed128(self)
-    }
-}
-
-impl<P: Program> Operation<P> for HashPed128<P> {
-    /// Evaluates the operation.
-    #[inline]
-    fn evaluate(&self, registers: &Registers<P>) {
-        impl_pedersen_evaluate!(self, registers);
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{test_instruction_halts, test_modes, Identifier, Process, Register};
+    use crate::{
+        function::{Instruction, Operation, Registers},
+        test_instruction_halts,
+        test_modes,
+        Identifier,
+        Process,
+        Register,
+        Value,
+    };
+    use snarkvm_circuits::{Literal, Parser};
 
     type P = Process;
 

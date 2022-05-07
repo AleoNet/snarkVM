@@ -15,22 +15,14 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::Hash;
-use crate::{
-    function::{parsers::*, Instruction, Opcode, Operation, Registers},
-    Program,
-    Value,
-};
-use snarkvm_circuits::{algorithms::Poseidon4, Hash as CircuitHash, Parser, ParserResult};
-use snarkvm_utilities::FromBytes;
-
-use nom::combinator::map;
-use snarkvm_circuits::{Field, Literal, ToFields};
-use std::io::{Read, Result as IoResult};
+use crate::function::Opcode;
 
 /// Performs a Poseidon hash with an input rate of 4.
-pub type HashPsd4<P> = Hash<P, Poseidon4<<P as Program>::Aleo>>;
+pub type HashPsd4<P> = Hash<P, Poseidon4Hasher>;
 
-impl<P: Program> Opcode for HashPsd4<P> {
+pub struct Poseidon4Hasher;
+
+impl Opcode for Poseidon4Hasher {
     /// Returns the opcode as a string.
     #[inline]
     fn opcode() -> &'static str {
@@ -38,41 +30,19 @@ impl<P: Program> Opcode for HashPsd4<P> {
     }
 }
 
-impl<P: Program> Parser for HashPsd4<P> {
-    type Environment = P::Environment;
-
-    #[inline]
-    fn parse(string: &str) -> ParserResult<Self> {
-        map(UnaryOperation::parse, |operation| Self { operation, hasher: Poseidon4::<P::Environment>::new() })(string)
-    }
-}
-
-impl<P: Program> FromBytes for HashPsd4<P> {
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        Ok(Self { operation: UnaryOperation::read_le(&mut reader)?, hasher: Poseidon4::<P::Environment>::new() })
-    }
-}
-
-#[allow(clippy::from_over_into)]
-impl<P: Program> Into<Instruction<P>> for HashPsd4<P> {
-    /// Converts the operation into an instruction.
-    fn into(self) -> Instruction<P> {
-        Instruction::HashPsd4(self)
-    }
-}
-
-impl<P: Program> Operation<P> for HashPsd4<P> {
-    /// Evaluates the operation.
-    #[inline]
-    fn evaluate(&self, registers: &Registers<P>) {
-        impl_poseidon_evaluate!(self, registers);
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{test_instruction_halts, test_modes, Identifier, Process, Register};
+    use crate::{
+        function::{Instruction, Operation, Registers},
+        test_instruction_halts,
+        test_modes,
+        Identifier,
+        Process,
+        Register,
+        Value,
+    };
+    use snarkvm_circuits::{Literal, Parser};
 
     type P = Process;
 

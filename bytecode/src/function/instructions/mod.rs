@@ -163,6 +163,7 @@ pub trait Opcode {
 }
 
 pub trait Operation<P: Program>: Parser + Into<Instruction<P>> {
+    // pub trait Operation<P: Program>: Parser + Into<Instruction<P>> {
     ///
     /// Evaluates the operation.
     ///
