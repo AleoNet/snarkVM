@@ -32,6 +32,7 @@ use crate::{
     Commit,
     Hash,
     HashToScalar,
+    PRF,
 };
 use snarkvm_algorithms::crypto_hash::hash_to_curve;
 use snarkvm_circuits_types::{
@@ -221,6 +222,21 @@ impl Aleo for Devnet {
     /// Returns the Poseidon hash with an input rate of 8.
     fn hash_psd8(input: &[Field<Self>]) -> Field<Self> {
         POSEIDON_8.with(|poseidon| poseidon.hash(input))
+    }
+
+    /// Returns the Poseidon PRF with an input rate of 2.
+    fn prf_psd2(seed: &Field<Self>, input: &[Field<Self>]) -> Field<Self> {
+        POSEIDON_2.with(|poseidon| poseidon.prf(seed, input))
+    }
+
+    /// Returns the Poseidon PRF with an input rate of 4.
+    fn prf_psd4(seed: &Field<Self>, input: &[Field<Self>]) -> Field<Self> {
+        POSEIDON_4.with(|poseidon| poseidon.prf(seed, input))
+    }
+
+    /// Returns the Poseidon PRF with an input rate of 8.
+    fn prf_psd8(seed: &Field<Self>, input: &[Field<Self>]) -> Field<Self> {
+        POSEIDON_8.with(|poseidon| poseidon.prf(seed, input))
     }
 }
 
