@@ -14,71 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::Commit;
-use crate::{
-    function::{parsers::*, Instruction, Opcode, Operation, Registers},
-    Program,
-    Value,
-};
-use snarkvm_circuits::{algorithms::Pedersen64, CommitmentScheme, Parser, ParserResult};
-use snarkvm_utilities::{FromBytes, ToBytes};
-
-use nom::combinator::map;
-use snarkvm_circuits::{Literal, ToBits};
-use std::io::{Read, Result as IoResult, Write};
+use super::*;
 
 /// Performs a Pedersen commitment taking a 64-bit value as input.
-pub type CommitPed64<P> = Commit<P, Pedersen64<<P as Program>::Aleo>>;
+pub type CommitPed64<P> = Commit<P, Ped64>;
 
-impl<P: Program> Opcode for CommitPed64<P> {
-    /// Returns the opcode as a string.
-    #[inline]
-    fn opcode() -> &'static str {
-        "commit.ped64"
-    }
-}
-
-impl<P: Program> Parser for CommitPed64<P> {
-    type Environment = P::Environment;
-
-    #[inline]
-    fn parse(string: &str) -> ParserResult<Self> {
-        map(BinaryOperation::parse, |operation| Self {
-            operation,
-            commitment_gadget: Pedersen64::<P::Environment>::setup("PedersenCircuit0"),
-        })(string)
-    }
-}
-
-impl<P: Program> FromBytes for CommitPed64<P> {
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        Ok(Self {
-            operation: BinaryOperation::read_le(&mut reader)?,
-            commitment_gadget: Pedersen64::<P::Environment>::setup("PedersenCircuit0"),
-        })
-    }
-}
-
-impl<P: Program> ToBytes for CommitPed64<P> {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.operation.write_le(&mut writer)
-    }
-}
-
-#[allow(clippy::from_over_into)]
-impl<P: Program> Into<Instruction<P>> for CommitPed64<P> {
-    /// Converts the operation into an instruction.
-    fn into(self) -> Instruction<P> {
-        Instruction::CommitPed64(self)
-    }
-}
-
-impl<P: Program> Operation<P> for CommitPed64<P> {
-    /// Evaluates the operation.
-    #[inline]
-    fn evaluate(&self, registers: &Registers<P>) {
-        impl_commit_evaluate!(self, registers);
-    }
+pub struct Ped64;
+impl CommitOpcode for Ped64 {
+    const OPCODE: &'static str = "commit.ped64";
 }
 
 #[cfg(test)]
@@ -99,70 +42,70 @@ mod tests {
         CommitPed64,
         "true",
         "1scalar",
-        "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
+        "451816983925465612310036142898649792841141971816913349341750601484549023437group"
     );
     test_modes!(
         i8,
         CommitPed64,
         "1i8",
         "1scalar",
-        "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
+        "451816983925465612310036142898649792841141971816913349341750601484549023437group"
     );
     test_modes!(
         i16,
         CommitPed64,
         "1i16",
         "1scalar",
-        "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
+        "451816983925465612310036142898649792841141971816913349341750601484549023437group"
     );
     test_modes!(
         i32,
         CommitPed64,
         "1i32",
         "1scalar",
-        "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
+        "451816983925465612310036142898649792841141971816913349341750601484549023437group"
     );
     test_modes!(
         i64,
         CommitPed64,
         "1i64",
         "1scalar",
-        "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
+        "451816983925465612310036142898649792841141971816913349341750601484549023437group"
     );
     test_modes!(
         u8,
         CommitPed64,
         "1u8",
         "1scalar",
-        "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
+        "451816983925465612310036142898649792841141971816913349341750601484549023437group"
     );
     test_modes!(
         u16,
         CommitPed64,
         "1u16",
         "1scalar",
-        "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
+        "451816983925465612310036142898649792841141971816913349341750601484549023437group"
     );
     test_modes!(
         u32,
         CommitPed64,
         "1u32",
         "1scalar",
-        "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
+        "451816983925465612310036142898649792841141971816913349341750601484549023437group"
     );
     test_modes!(
         u64,
         CommitPed64,
         "1u64",
         "1scalar",
-        "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
+        "451816983925465612310036142898649792841141971816913349341750601484549023437group"
     );
     test_modes!(
         string,
         CommitPed64,
         "\"aaaaaaaa\"",
         "1scalar",
-        "3676661776668839972619997881903122186869024107388712238481736297789602888074group"
+        "5622478747945370229693309401233561591542417534378600804836808353744293560079group"
     );
 
     test_instruction_halts!(
@@ -234,7 +177,7 @@ mod tests {
 
         let value = registers.load(&Register::from_str("r2"));
         let expected = Value::<P>::from_str(
-            "7143232585354596727088537818886269936493413322580429357859918031397884359807group.private",
+            "451816983925465612310036142898649792841141971816913349341750601484549023437group.private",
         );
         assert_eq!(expected, value);
     }
