@@ -14,14 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod commitment;
+mod commit;
+mod commit_uncompressed;
 mod hash;
 mod hash_uncompressed;
 
 #[cfg(test)]
 use snarkvm_circuits_environment::assert_scope;
 
-use crate::{CommitmentScheme, Hash, HashUncompressed};
+use crate::{Commit, CommitUncompressed, Hash, HashUncompressed};
 use snarkvm_algorithms::crypto_hash::hash_to_curve;
 use snarkvm_circuits_types::prelude::*;
 use snarkvm_curves::{MontgomeryParameters, TwistedEdwardsParameters};

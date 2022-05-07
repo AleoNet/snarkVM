@@ -16,16 +16,16 @@
 
 use super::*;
 
-impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CommitmentScheme
+impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CommitUncompressed
     for BHP<E, NUM_WINDOWS, WINDOW_SIZE>
 {
     type Input = Boolean<E>;
-    type Output = Field<E>;
+    type Output = Group<E>;
     type Randomness = Boolean<E>;
 
     /// Returns the BHP commitment of the given input with the given randomness
     /// as an affine group element.
-    fn commit(&self, input: &[Self::Input], randomness: &[Self::Randomness]) -> Self::Output {
+    fn commit_uncompressed(&self, input: &[Self::Input], randomness: &[Self::Randomness]) -> Self::Output {
         let hash = self.hash_uncompressed(input);
 
         // Compute h^r.
@@ -34,7 +34,6 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Commitm
             .zip_eq(&self.random_base)
             .map(|(bit, power)| Group::ternary(bit, power, &Group::zero()))
             .fold(hash, |acc, x| acc + x)
-            .to_x_coordinate()
     }
 }
 
