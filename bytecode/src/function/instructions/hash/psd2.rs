@@ -29,7 +29,6 @@ mod tests {
     use super::*;
     use crate::{
         function::{Instruction, Operation, Registers},
-        test_instruction_halts,
         test_modes,
         Identifier,
         Process,
@@ -47,10 +46,28 @@ mod tests {
     }
 
     test_modes!(
+        address,
+        HashPsd2,
+        "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah",
+        "1514568289958193437950521941960970234475890760384450782324072324349892524013field"
+    );
+    test_modes!(
+        bool,
+        HashPsd2,
+        "true",
+        "895920223209807336032370141805192618496779881680412280727415085489332840844field"
+    );
+    test_modes!(
         field,
         HashPsd2,
         "1field",
         "895920223209807336032370141805192618496779881680412280727415085489332840844field"
+    );
+    test_modes!(
+        group,
+        HashPsd2,
+        "2group",
+        "5683685112813606545476260789417808603439881969054557143180853282078874544349field"
     );
     test_modes!(
         i8,
@@ -124,15 +141,6 @@ mod tests {
         "\"aaaaaaaa\"",
         "3304929462283992873125391937087251720796648284457823938893125121531366375892field"
     );
-
-    test_instruction_halts!(bool_halts, HashPsd2, "Invalid 'hash.psd2' instruction", "true");
-    test_instruction_halts!(
-        address_halts,
-        HashPsd2,
-        "Invalid 'hash.psd2' instruction",
-        "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah"
-    );
-    test_instruction_halts!(group_halts, HashPsd2, "Invalid 'hash.psd2' instruction", "2group");
 
     #[test]
     fn test_composite() {

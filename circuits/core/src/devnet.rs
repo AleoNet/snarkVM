@@ -37,23 +37,21 @@ pub type E = Circuit;
 
 /// The setup message for the Aleo encryption and signature scheme.
 static ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT: &str = "AleoAccountEncryptionAndSignatureScheme0";
-/// The setup message for the Pedersen gadget.
-static PEDERSEN_MESSAGE: &str = "PedersenCircuit0";
 
 thread_local! {
     /// The group bases for the Aleo signature and encryption schemes.
     static BASES: Vec<Group<Devnet >> = Devnet::new_bases(ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT);
 
     /// The Pedersen gadget, which can take an input of up to 64 bits.
-    static PEDERSEN_64: Pedersen64<Devnet> = Pedersen64::<Devnet>::setup(PEDERSEN_MESSAGE);
+    static PEDERSEN_64: Pedersen64<Devnet> = Pedersen64::<Devnet>::setup("AleoPedersen64");
     /// The Pedersen gadget, which can take an input of up to 128 bits.
-    static PEDERSEN_128: Pedersen128<Devnet> = Pedersen128::<Devnet>::setup(PEDERSEN_MESSAGE);
+    static PEDERSEN_128: Pedersen128<Devnet> = Pedersen128::<Devnet>::setup("AleoPedersen128");
     /// The Pedersen gadget, which can take an input of up to 256 bits.
-    static PEDERSEN_256: Pedersen256<Devnet> = Pedersen256::<Devnet>::setup(PEDERSEN_MESSAGE);
+    static PEDERSEN_256: Pedersen256<Devnet> = Pedersen256::<Devnet>::setup("AleoPedersen256");
     /// The Pedersen gadget, which can take an input of up to 512 bits.
-    static PEDERSEN_512: Pedersen512<Devnet> = Pedersen512::<Devnet>::setup(PEDERSEN_MESSAGE);
+    static PEDERSEN_512: Pedersen512<Devnet> = Pedersen512::<Devnet>::setup("AleoPedersen512");
     /// The Pedersen gadget, which can take an input of up to 1024 bits.
-    static PEDERSEN_1024: Pedersen1024<Devnet> = Pedersen1024::<Devnet>::setup(PEDERSEN_MESSAGE);
+    static PEDERSEN_1024: Pedersen1024<Devnet> = Pedersen1024::<Devnet>::setup("AleoPedersen1024");
 
     /// The Poseidon hash function, using a rate of 2.
     static POSEIDON_2: Poseidon2<Devnet> = Poseidon2::<Devnet>::new();

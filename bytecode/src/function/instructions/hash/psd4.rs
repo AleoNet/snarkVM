@@ -29,7 +29,6 @@ mod tests {
     use super::*;
     use crate::{
         function::{Instruction, Operation, Registers},
-        test_instruction_halts,
         test_modes,
         Identifier,
         Process,
@@ -47,10 +46,28 @@ mod tests {
     }
 
     test_modes!(
+        address,
+        HashPsd4,
+        "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah",
+        "3643441450998764817137352407460510301366206136830721502689693475105463182192field"
+    );
+    test_modes!(
+        bool,
+        HashPsd4,
+        "true",
+        "1088580045362314438112823188316979551898376415861015087020772893540491855029field"
+    );
+    test_modes!(
         field,
         HashPsd4,
         "1field",
         "1088580045362314438112823188316979551898376415861015087020772893540491855029field"
+    );
+    test_modes!(
+        group,
+        HashPsd4,
+        "2group",
+        "1275708575393142722110884605606718473266154956117494535950447535984426072340field"
     );
     test_modes!(
         i8,
@@ -124,15 +141,6 @@ mod tests {
         "\"aaaaaaaa\"",
         "4167190024968967735724650291761534994019909311594675614398942316879984619698field"
     );
-
-    test_instruction_halts!(bool_halts, HashPsd4, "Invalid 'hash.psd4' instruction", "true");
-    test_instruction_halts!(
-        address_halts,
-        HashPsd4,
-        "Invalid 'hash.psd4' instruction",
-        "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah"
-    );
-    test_instruction_halts!(group_halts, HashPsd4, "Invalid 'hash.psd4' instruction", "2group");
 
     #[test]
     fn test_composite() {

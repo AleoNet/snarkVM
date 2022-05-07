@@ -44,7 +44,18 @@ use crate::{
     Program,
     Value,
 };
-use snarkvm_circuits::{Aleo, Boolean, Environment, FromBits, Literal, Parser, ParserResult, PrimeField, ToBits};
+use snarkvm_circuits::{
+    Aleo,
+    Environment,
+    FromBits,
+    Literal,
+    Parser,
+    ParserResult,
+    PrimeField,
+    ToBits,
+    ToField,
+    ToGroup,
+};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::{fmt, marker::PhantomData};
@@ -87,24 +98,47 @@ impl<P: Program, Op: HashOpcode> Operation<P> for Hash<P, Op> {
     fn evaluate(&self, registers: &Registers<P>) {
         // Load the input from the operand.
         let input = match registers.load(self.operation.first()) {
-            Value::Literal(literal) => literal.to_bits_le(),
-            Value::Composite(_name, literals) => literals.iter().flat_map(|literal| literal.to_bits_le()).collect(),
+            Value::Literal(literal) => vec![literal],
+            Value::Composite(_name, literals) => literals,
         };
 
-        // (Optional) Closure for converting a list of booleans into a list of packed field elements.
-        let to_field_elements = |bits: &[Boolean<_>]| {
-            bits.chunks(<P::Aleo as Environment>::BaseField::size_in_data_bits())
-                .map(FromBits::from_bits_le)
-                .collect::<Vec<_>>()
+        // (Optional) Closure for converting a list of literals into a list of field elements.
+        //
+        // If the list is comprised of `Address`, `Field`, `Group`, and/or `Scalar`, then the closure
+        // will return the underlying field elements (instead of packing the literals from bits).
+        // Otherwise, the list is converted into bits, and then packed into field elements.
+        let to_field_elements = |input: &[Literal<_>]| {
+            // Determine whether the input is comprised of field-friendly literals.
+            match input.iter().all(|literal| {
+                matches!(literal, Literal::Address(_) | Literal::Field(_) | Literal::Group(_) | Literal::Scalar(_))
+            }) {
+                // Case 1 - Map each literal directly to its field representation.
+                true => input
+                    .iter()
+                    .map(|literal| match literal {
+                        Literal::Address(address) => address.to_group().to_x_coordinate(),
+                        Literal::Field(field) => field.clone(),
+                        Literal::Group(group) => group.to_x_coordinate(),
+                        Literal::Scalar(scalar) => scalar.to_field(),
+                        _ => P::halt("Unreachable literal variant detected during hashing."),
+                    })
+                    .collect::<Vec<_>>(),
+                // Case 2 - Convert the literals to bits, and then pack them into field elements.
+                false => input
+                    .to_bits_le()
+                    .chunks(<P::Aleo as Environment>::BaseField::size_in_data_bits())
+                    .map(FromBits::from_bits_le)
+                    .collect::<Vec<_>>(),
+            }
         };
 
         // Compute the digest for the given input.
         let digest = match Self::opcode() {
-            Ped64::OPCODE => P::Aleo::hash_ped64(&input),
-            Ped128::OPCODE => P::Aleo::hash_ped128(&input),
-            Ped256::OPCODE => P::Aleo::hash_ped256(&input),
-            Ped512::OPCODE => P::Aleo::hash_ped512(&input),
-            Ped1024::OPCODE => P::Aleo::hash_ped1024(&input),
+            Ped64::OPCODE => P::Aleo::hash_ped64(&input.to_bits_le()),
+            Ped128::OPCODE => P::Aleo::hash_ped128(&input.to_bits_le()),
+            Ped256::OPCODE => P::Aleo::hash_ped256(&input.to_bits_le()),
+            Ped512::OPCODE => P::Aleo::hash_ped512(&input.to_bits_le()),
+            Ped1024::OPCODE => P::Aleo::hash_ped1024(&input.to_bits_le()),
             Psd2::OPCODE => P::Aleo::hash_psd2(&to_field_elements(&input)),
             Psd4::OPCODE => P::Aleo::hash_psd4(&to_field_elements(&input)),
             Psd8::OPCODE => P::Aleo::hash_psd8(&to_field_elements(&input)),

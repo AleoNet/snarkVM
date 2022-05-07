@@ -29,7 +29,6 @@ mod tests {
     use super::*;
     use crate::{
         function::{Instruction, Operation, Registers},
-        test_instruction_halts,
         test_modes,
         Identifier,
         Process,
@@ -47,10 +46,28 @@ mod tests {
     }
 
     test_modes!(
+        address,
+        HashPsd8,
+        "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah",
+        "7357837442449203764978346428611010139582577962074937408545526785030093239177field"
+    );
+    test_modes!(
+        bool,
+        HashPsd8,
+        "true",
+        "3999071741215241790607111275574824668617854796802626587041088136954841194555field"
+    );
+    test_modes!(
         field,
         HashPsd8,
         "1field",
         "3999071741215241790607111275574824668617854796802626587041088136954841194555field"
+    );
+    test_modes!(
+        group,
+        HashPsd8,
+        "2group",
+        "6695429252493832541241314081562731262250323832040991237549108911952461806287field"
     );
     test_modes!(
         i8,
@@ -124,15 +141,6 @@ mod tests {
         "\"aaaaaaaa\"",
         "4020837770720319542691472472080405581209506316726251354702740114046129734437field"
     );
-
-    test_instruction_halts!(bool_halts, HashPsd8, "Invalid 'hash.psd8' instruction", "true");
-    test_instruction_halts!(
-        address_halts,
-        HashPsd8,
-        "Invalid 'hash.psd8' instruction",
-        "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah"
-    );
-    test_instruction_halts!(group_halts, HashPsd8, "Invalid 'hash.psd8' instruction", "2group");
 
     #[test]
     fn test_composite() {
