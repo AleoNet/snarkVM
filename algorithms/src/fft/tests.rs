@@ -328,3 +328,18 @@ fn fft_composition() {
     test_fft_composition::<Fr, Fr, _>(rng, 10);
     test_fft_composition::<Fr, G1Projective, _>(rng, 10);
 }
+
+#[test]
+fn evaluate_over_domain() {
+    let rng = &mut test_rng();
+    for domain_size in (1..10).map(|i| 2usize.pow(i)) {
+        let domain = EvaluationDomain::<Fr>::new(domain_size).unwrap();
+        for degree in [domain_size - 2, domain_size - 1, domain_size + 10] {
+            let p = DensePolynomial::rand(degree, rng);
+            assert_eq!(
+                p.evaluate_over_domain_by_ref(domain).evaluations,
+                domain.elements().map(|e| p.evaluate(e)).collect::<Vec<_>>()
+            );
+        }
+    }
+}

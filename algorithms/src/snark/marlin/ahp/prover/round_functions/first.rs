@@ -212,8 +212,8 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 .evaluations
                 .into_iter()
                 .zip(&evals.evaluations)
-                .all(|(z, e)| *e == z + should_randomize.then(|| r.unwrap()).unwrap_or_default()),
-            "1: {:#?}\n2: {:#?}",
+                .all(|(z, e)| *e == z),
+            "Label: {label}\n1: {:#?}\n2: {:#?}",
             poly.evaluate_over_domain_by_ref(constraint_domain).evaluations,
             &evals.evaluations,
         );

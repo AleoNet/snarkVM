@@ -128,6 +128,7 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
 
         let mut lagrange_bases_at_beta_g = BTreeMap::new();
         for size in supported_lagrange_sizes {
+            let lagrange_time = start_timer!(|| format!("Constructing `lagrange_bases` of size {size}"));
             if !size.is_power_of_two() {
                 return Err(PCError::LagrangeBasisSizeIsNotPowerOfTwo);
             }
@@ -138,6 +139,7 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
             let lagrange_basis_at_beta_g = pp.lagrange_basis(domain);
             assert!(lagrange_basis_at_beta_g.len().is_power_of_two());
             lagrange_bases_at_beta_g.insert(domain.size(), lagrange_basis_at_beta_g);
+            end_timer!(lagrange_time);
         }
 
         let ck = CommitterKey {
@@ -244,7 +246,7 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
 
             pool.add_job(move || {
                 let mut rng = seed.map(rand::rngs::StdRng::from_seed);
-                let commit_time = start_timer!(|| format!(
+                add_to_trace!(|| "PC::Commit", || format!(
                     "Polynomial {} of degree {}, degree bound {:?}, and hiding bound {:?}",
                     label,
                     p.degree(),
@@ -293,7 +295,6 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
                     });
                 let comm = kzg10::Commitment(comm.to_affine());
 
-                end_timer!(commit_time);
                 Ok((LabeledCommitment::new(label.to_string(), comm, degree_bound), rand))
             });
         }
