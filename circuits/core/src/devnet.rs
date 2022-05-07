@@ -14,10 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{algorithms::Poseidon, Aleo, HashToScalar};
+use crate::{
+    algorithms::{Pedersen1024, Pedersen128, Pedersen256, Pedersen512, Pedersen64, Poseidon2, Poseidon4, Poseidon8},
+    Aleo,
+    CommitmentScheme,
+    Hash,
+    HashToScalar,
+};
 use snarkvm_algorithms::crypto_hash::hash_to_curve;
 use snarkvm_circuits_types::{
     environment::{prelude::*, Circuit},
+    Boolean,
     Field,
     Group,
     Scalar,
@@ -32,10 +39,26 @@ pub type E = Circuit;
 static ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT: &str = "AleoAccountEncryptionAndSignatureScheme0";
 
 thread_local! {
-    /// The Poseidon hash function.
-    static POSEIDON: Poseidon<Devnet> = Poseidon::<Devnet>::new();
     /// The group bases for the Aleo signature and encryption schemes.
     static BASES: Vec<Group<Devnet >> = Devnet::new_bases(ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT);
+
+    /// The Pedersen gadget, which can take an input of up to 64 bits.
+    static PEDERSEN_64: Pedersen64<Devnet> = Pedersen64::<Devnet>::setup("AleoPedersen64");
+    /// The Pedersen gadget, which can take an input of up to 128 bits.
+    static PEDERSEN_128: Pedersen128<Devnet> = Pedersen128::<Devnet>::setup("AleoPedersen128");
+    /// The Pedersen gadget, which can take an input of up to 256 bits.
+    static PEDERSEN_256: Pedersen256<Devnet> = Pedersen256::<Devnet>::setup("AleoPedersen256");
+    /// The Pedersen gadget, which can take an input of up to 512 bits.
+    static PEDERSEN_512: Pedersen512<Devnet> = Pedersen512::<Devnet>::setup("AleoPedersen512");
+    /// The Pedersen gadget, which can take an input of up to 1024 bits.
+    static PEDERSEN_1024: Pedersen1024<Devnet> = Pedersen1024::<Devnet>::setup("AleoPedersen1024");
+
+    /// The Poseidon hash function, using a rate of 2.
+    static POSEIDON_2: Poseidon2<Devnet> = Poseidon2::<Devnet>::new();
+    /// The Poseidon hash function, using a rate of 4.
+    static POSEIDON_4: Poseidon4<Devnet> = Poseidon4::<Devnet>::new();
+    /// The Poseidon hash function, using a rate of 8.
+    static POSEIDON_8: Poseidon8<Devnet> = Poseidon8::<Devnet>::new();
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash)]
@@ -83,7 +106,59 @@ impl Aleo for Devnet {
 
     /// Returns a hash on the scalar field for the given input.
     fn hash_to_scalar(input: &[Field<Self>]) -> Scalar<Self> {
-        POSEIDON.with(|poseidon| poseidon.hash_to_scalar(input))
+        POSEIDON_4.with(|poseidon| poseidon.hash_to_scalar(input))
+    }
+
+    /// Returns the Pedersen hash for a given (up to) 64-bit input.
+    fn hash_ped64(input: &[Boolean<Self>]) -> Field<Self> {
+        PEDERSEN_64.with(|pedersen| pedersen.hash(input))
+    }
+
+    /// Returns the Pedersen hash for a given (up to) 128-bit input.
+    fn hash_ped128(input: &[Boolean<Self>]) -> Field<Self> {
+        PEDERSEN_128.with(|pedersen| pedersen.hash(input))
+    }
+
+    /// Returns the Pedersen hash for a given (up to) 256-bit input.
+    fn hash_ped256(input: &[Boolean<Self>]) -> Field<Self> {
+        PEDERSEN_256.with(|pedersen| pedersen.hash(input))
+    }
+
+    /// Returns the Pedersen hash for a given (up to) 512-bit input.
+    fn hash_ped512(input: &[Boolean<Self>]) -> Field<Self> {
+        PEDERSEN_512.with(|pedersen| pedersen.hash(input))
+    }
+
+    /// Returns the Pedersen hash for a given (up to) 1024-bit input.
+    fn hash_ped1024(input: &[Boolean<Self>]) -> Field<Self> {
+        PEDERSEN_1024.with(|pedersen| pedersen.hash(input))
+    }
+
+    /// Returns the Poseidon hash with an input rate of 2.
+    fn hash_psd2(input: &[Field<Self>]) -> Field<Self> {
+        POSEIDON_2.with(|poseidon| poseidon.hash(input))
+    }
+
+    /// Returns the Poseidon hash with an input rate of 4.
+    fn hash_psd4(input: &[Field<Self>]) -> Field<Self> {
+        POSEIDON_4.with(|poseidon| poseidon.hash(input))
+    }
+
+    /// Returns the Poseidon hash with an input rate of 8.
+    fn hash_psd8(input: &[Field<Self>]) -> Field<Self> {
+        POSEIDON_8.with(|poseidon| poseidon.hash(input))
+    }
+
+    /// Returns a commitment for the given input and randomness.
+    fn commit(selector: &str, input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Group<Self> {
+        match selector {
+            "commit.ped64" => PEDERSEN_64.with(|pedersen| pedersen.commit(input, randomness)),
+            "commit.ped128" => PEDERSEN_128.with(|pedersen| pedersen.commit(input, randomness)),
+            "commit.ped256" => PEDERSEN_256.with(|pedersen| pedersen.commit(input, randomness)),
+            "commit.ped512" => PEDERSEN_512.with(|pedersen| pedersen.commit(input, randomness)),
+            "commit.ped1024" => PEDERSEN_1024.with(|pedersen| pedersen.commit(input, randomness)),
+            _ => Self::halt("Invalid selector provided for commitment"),
+        }
     }
 }
 

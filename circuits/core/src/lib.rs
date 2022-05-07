@@ -26,7 +26,7 @@ pub use devnet::*;
 pub mod traits;
 pub use traits::*;
 
-use snarkvm_circuits_types::{environment::Environment, Field, Group, Scalar};
+use snarkvm_circuits_types::{environment::Environment, Boolean, Field, Group, Scalar};
 
 pub trait Aleo: Environment {
     /// Returns the scalar multiplication on the group bases.
@@ -34,4 +34,31 @@ pub trait Aleo: Environment {
 
     /// Returns a hash on the scalar field for the given input.
     fn hash_to_scalar(input: &[Field<Self>]) -> Scalar<Self>;
+
+    /// Returns the Pedersen hash for a given (up to) 64-bit input.
+    fn hash_ped64(input: &[Boolean<Self>]) -> Field<Self>;
+
+    /// Returns the Pedersen hash for a given (up to) 128-bit input.
+    fn hash_ped128(input: &[Boolean<Self>]) -> Field<Self>;
+
+    /// Returns the Pedersen hash for a given (up to) 256-bit input.
+    fn hash_ped256(input: &[Boolean<Self>]) -> Field<Self>;
+
+    /// Returns the Pedersen hash for a given (up to) 512-bit input.
+    fn hash_ped512(input: &[Boolean<Self>]) -> Field<Self>;
+
+    /// Returns the Pedersen hash for a given (up to) 1024-bit input.
+    fn hash_ped1024(input: &[Boolean<Self>]) -> Field<Self>;
+
+    /// Returns the Poseidon hash with an input rate of 2.
+    fn hash_psd2(input: &[Field<Self>]) -> Field<Self>;
+
+    /// Returns the Poseidon hash with an input rate of 4.
+    fn hash_psd4(input: &[Field<Self>]) -> Field<Self>;
+
+    /// Returns the Poseidon hash with an input rate of 8.
+    fn hash_psd8(input: &[Field<Self>]) -> Field<Self>;
+
+    /// Returns a commitment for the given input and randomness.
+    fn commit(selector: &str, input: &[Boolean<Self>], randomness: &[Boolean<Self>]) -> Group<Self>;
 }

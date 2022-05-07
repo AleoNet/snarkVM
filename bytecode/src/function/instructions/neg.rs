@@ -119,7 +119,6 @@ impl<P: Program> Parser for Neg<P> {
     /// Parses a string into a 'neg' operation.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
-        // Parse the operation from the string.
         map(UnaryOperation::parse, |operation| Self { operation })(string)
     }
 }
