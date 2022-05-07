@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Identifier, LiteralType, Program};
+use crate::{Identifier, Program};
 use snarkvm_circuits::prelude::*;
 use snarkvm_utilities::{error, FromBytes, ToBytes};
 
@@ -25,7 +25,7 @@ use std::io::{Read, Result as IoResult, Write};
 pub enum Annotation<P: Program> {
     /// A literal annotation contains its type name and mode.
     /// The format of the annotation is `<type_name>.<mode>`.
-    Literal(LiteralType<P>),
+    Literal(LiteralType<P::Environment>),
     /// A definition annotation contains its identifier.
     /// The format of the annotation is `<identifier>`.
     Definition(Identifier<P>),

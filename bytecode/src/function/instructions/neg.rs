@@ -17,11 +17,25 @@
 use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Registers},
     helpers::Register,
-    LiteralType,
     Program,
     Value,
 };
-use snarkvm_circuits::{count, Count, Field, Group, Literal, Metrics, Parser, ParserResult, I128, I16, I32, I64, I8};
+use snarkvm_circuits::{
+    count,
+    Count,
+    Field,
+    Group,
+    Literal,
+    LiteralType,
+    Metrics,
+    Parser,
+    ParserResult,
+    I128,
+    I16,
+    I32,
+    I64,
+    I8,
+};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
@@ -83,7 +97,7 @@ impl<P: Program> Operation<P> for Neg<P> {
 }
 
 impl<P: Program> Metrics<Self> for Neg<P> {
-    type Case = LiteralType<P>;
+    type Case = LiteralType<P::Environment>;
 
     fn count(case: &Self::Case) -> Count {
         match case {

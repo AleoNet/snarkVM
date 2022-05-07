@@ -17,7 +17,6 @@
 use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Registers},
     helpers::Register,
-    LiteralType,
     Program,
     Value,
 };
@@ -27,6 +26,7 @@ use snarkvm_circuits::{
     DivChecked,
     Field,
     Literal,
+    LiteralType,
     Metrics,
     Parser,
     ParserResult,
@@ -107,7 +107,7 @@ impl<P: Program> Operation<P> for Div<P> {
 }
 
 impl<P: Program> Metrics<Self> for Div<P> {
-    type Case = (LiteralType<P>, LiteralType<P>);
+    type Case = (LiteralType<P::Environment>, LiteralType<P::Environment>);
 
     fn count(case: &Self::Case) -> Count {
         crate::match_count!(match DivCircuit::count(case) {

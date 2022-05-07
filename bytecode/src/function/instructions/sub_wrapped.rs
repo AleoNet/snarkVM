@@ -17,7 +17,6 @@
 use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Registers},
     helpers::Register,
-    LiteralType,
     Program,
     Value,
 };
@@ -25,6 +24,7 @@ use snarkvm_circuits::{
     count,
     Count,
     Literal,
+    LiteralType,
     Metrics,
     Parser,
     ParserResult,
@@ -105,7 +105,7 @@ impl<P: Program> Operation<P> for SubWrapped<P> {
 }
 
 impl<P: Program> Metrics<Self> for SubWrapped<P> {
-    type Case = (LiteralType<P>, LiteralType<P>);
+    type Case = (LiteralType<P::Environment>, LiteralType<P::Environment>);
 
     fn count(case: &Self::Case) -> Count {
         crate::match_count!(match SubWrappedCircuit::count(case) {

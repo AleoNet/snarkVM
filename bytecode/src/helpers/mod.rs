@@ -20,9 +20,6 @@ pub(super) use annotation::*;
 pub mod identifier;
 pub use identifier::*;
 
-pub(super) mod literal_type;
-pub(super) use literal_type::*;
-
 pub(super) mod register;
 pub(super) use register::*;
 

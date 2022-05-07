@@ -17,7 +17,6 @@
 use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Registers},
     helpers::Register,
-    LiteralType,
     Program,
     Value,
 };
@@ -28,6 +27,7 @@ use snarkvm_circuits::{
     Equal as CircuitEqual,
     Field,
     Literal,
+    LiteralType,
     Metrics,
     Parser,
     ParserResult,
@@ -104,7 +104,7 @@ impl<P: Program> Operation<P> for Equal<P> {
 }
 
 impl<P: Program> Metrics<Self> for Equal<P> {
-    type Case = (LiteralType<P>, LiteralType<P>);
+    type Case = (LiteralType<P::Environment>, LiteralType<P::Environment>);
 
     fn count(case: &Self::Case) -> Count {
         match case {

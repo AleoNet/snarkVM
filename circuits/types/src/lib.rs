@@ -40,6 +40,9 @@ pub use string::StringType;
 mod literal;
 pub use literal::*;
 
+mod literal_type;
+pub use literal_type::*;
+
 mod primitive;
 pub use primitive::*;
 

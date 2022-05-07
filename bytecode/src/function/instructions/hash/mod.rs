@@ -136,7 +136,7 @@ impl<P: Program, Op: HashOpcode> Operation<P> for Hash<P, Op> {
                 // Case 2 - Convert the literals to bits, and then pack them into field elements.
                 false => input
                     .to_bits_le()
-                    .chunks(<P::Aleo as Environment>::BaseField::size_in_data_bits())
+                    .chunks(<P::Environment as Environment>::BaseField::size_in_data_bits())
                     .map(FromBits::from_bits_le)
                     .collect::<Vec<_>>(),
             }
