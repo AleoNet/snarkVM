@@ -56,7 +56,6 @@ pub trait ProjectiveCurve:
     + PartialEq<Self::Affine>
     + Sized
     + CanonicalSerialize
-    + ConstantSerializedSize
     + CanonicalDeserialize
     + iter::Sum
     + From<<Self as ProjectiveCurve>::Affine>
@@ -131,7 +130,6 @@ pub trait AffineCurve:
     + Serialize
     + DeserializeOwned
     + CanonicalSerialize
-    + ConstantSerializedSize
     + CanonicalDeserialize
     + From<<Self as AffineCurve>::Projective>
     + ToMinimalBits

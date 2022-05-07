@@ -44,49 +44,43 @@ pub enum DenseOrSparsePolynomial<'a, F: Field> {
 
 impl<'a, F: Field> CanonicalSerialize for DenseOrSparsePolynomial<'a, F> {
     #[allow(unused_mut, unused_variables)]
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), SerializationError> {
+    fn serialize_with_mode<W: Write>(&self, mut writer: W, compress: Compress) -> Result<(), SerializationError> {
         match self {
             SPolynomial(p) => {
                 let p: DensePolynomial<F> = p.to_owned().into_owned().into();
-                CanonicalSerialize::serialize(&p.coeffs, writer)?;
+                CanonicalSerialize::serialize_with_mode(&p.coeffs, writer, compress)
             }
-            DPolynomial(p) => {
-                CanonicalSerialize::serialize(&p.coeffs, writer)?;
-            }
-        }
-        Ok(())
-    }
-
-    #[allow(unused_mut, unused_variables)]
-    fn serialized_size(&self) -> usize {
-        match self {
-            SPolynomial(p) => {
-                let p: DensePolynomial<F> = p.to_owned().into_owned().into();
-                p.serialized_size()
-            }
-            DPolynomial(p) => p.serialized_size(),
+            DPolynomial(p) => CanonicalSerialize::serialize_with_mode(&p.coeffs, writer, compress),
         }
     }
 
     #[allow(unused_mut, unused_variables)]
-    fn serialize_uncompressed<W: Write>(&self, writer: &mut W) -> Result<(), SerializationError> {
-        self.serialize(writer)
-    }
-
-    #[allow(unused_mut, unused_variables)]
-    fn uncompressed_size(&self) -> usize {
-        self.serialized_size()
+    fn serialized_size(&self, mode: Compress) -> usize {
+        match self {
+            SPolynomial(p) => {
+                let p: DensePolynomial<F> = p.to_owned().into_owned().into();
+                p.serialized_size(mode)
+            }
+            DPolynomial(p) => p.serialized_size(mode),
+        }
     }
 }
+
+impl<'a, F: Field> Valid for DenseOrSparsePolynomial<'a, F> {
+    fn check(&self) -> Result<(), SerializationError> {
+        Ok(())
+    }
+}
+
 impl<'a, F: Field> CanonicalDeserialize for DenseOrSparsePolynomial<'a, F> {
     #[allow(unused_mut, unused_variables)]
-    fn deserialize<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
-        CanonicalDeserialize::deserialize(reader).map(Self::DPolynomial)
-    }
-
-    #[allow(unused_mut, unused_variables)]
-    fn deserialize_uncompressed<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
-        Self::deserialize(reader)
+    fn deserialize_with_mode<R: Read>(
+        reader: R,
+        compress: Compress,
+        validate: Validate,
+    ) -> Result<Self, SerializationError> {
+        DensePolynomial::<F>::deserialize_with_mode(reader, compress, validate)
+            .map(|e| Self::DPolynomial(Cow::Owned(e)))
     }
 }
 

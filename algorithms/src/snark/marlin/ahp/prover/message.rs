@@ -27,6 +27,6 @@ pub struct ThirdMessage<F: Field> {
 
 impl<F: Field> ToBytes for ThirdMessage<F> {
     fn write_le<W: Write>(&self, mut w: W) -> io::Result<()> {
-        CanonicalSerialize::serialize(self, &mut w).map_err(|_| error("Could not serialize ProverMsg"))
+        CanonicalSerialize::serialize_compressed(self, &mut w).map_err(|_| error("Could not serialize ProverMsg"))
     }
 }

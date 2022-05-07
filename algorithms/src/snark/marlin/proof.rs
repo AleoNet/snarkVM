@@ -123,12 +123,12 @@ impl<E: PairingEngine> Proof<E> {
 
 impl<E: PairingEngine> ToBytes for Proof<E> {
     fn write_le<W: Write>(&self, mut w: W) -> io::Result<()> {
-        CanonicalSerialize::serialize(self, &mut w).map_err(|_| error("could not serialize Proof"))
+        self.serialize_compressed(w).map_err(|_| error("could not serialize Proof"))
     }
 }
 
 impl<E: PairingEngine> FromBytes for Proof<E> {
     fn read_le<R: Read>(mut r: R) -> io::Result<Self> {
-        CanonicalDeserialize::deserialize(&mut r).map_err(|_| error("could not deserialize Proof"))
+        CanonicalDeserialize::deserialize_compressed(r).map_err(|_| error("could not deserialize Proof"))
     }
 }

@@ -20,11 +20,12 @@ use snarkvm_curves::traits::PairingEngine;
 use snarkvm_utilities::{
     CanonicalDeserialize,
     CanonicalSerialize,
-    ConstantSerializedSize,
+    Compress,
     FromBytes,
     Read,
     SerializationError,
     ToBytes,
+    Validate,
     Write,
 };
 
@@ -97,53 +98,74 @@ impl<E: PairingEngine> Clone for PowersOfG<E> {
 
 impl<E: PairingEngine> ToBytes for PowersOfG<E> {
     fn write_le<W: Write>(&self, mut writer: W) -> std::io::Result<()> {
-        bincode::serialize_into(&mut writer, &self.file_path).unwrap();
-
-        // Serialize `powers_of_beta_times_gamma_g`.
-        (self.powers_of_beta_times_gamma_g.len() as u32).write_le(&mut writer)?;
-        for (key, power_of_gamma_g) in &self.powers_of_beta_times_gamma_g {
-            (*key as u32).write_le(&mut writer)?;
-            power_of_gamma_g.write_le(&mut writer)?;
-        }
-
-        Ok(())
+        self.serialize_with_mode(writer, Compress::Yes)
     }
 }
 
 impl<E: PairingEngine> FromBytes for PowersOfG<E> {
     fn read_le<R: Read>(mut reader: R) -> std::io::Result<Self> {
-        let file_path: String = bincode::deserialize_from(&mut reader).unwrap();
-
-        // Deserialize `powers_of_beta_times_gamma_g`.
-        let mut powers_of_beta_times_gamma_g = BTreeMap::new();
-        let powers_of_gamma_g_num_elements: u32 = FromBytes::read_le(&mut reader)?;
-        for _ in 0..powers_of_gamma_g_num_elements {
-            let key: u32 = FromBytes::read_le(&mut reader)?;
-            let power_of_gamma_g: E::G1Affine = FromBytes::read_le(&mut reader)?;
-
-            powers_of_beta_times_gamma_g.insert(key as usize, power_of_gamma_g);
-        }
-
-        let mut powers = PowersOfG::new(PathBuf::from(file_path)).unwrap();
-        powers.powers_of_beta_times_gamma_g = powers_of_beta_times_gamma_g;
-        Ok(powers)
+        Self::deserialize_with_mode(reader, Compress::Yes, Validate::Yes)
     }
 }
 
 impl<E: PairingEngine> CanonicalSerialize for PowersOfG<E> {
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), SerializationError> {
-        self.write_le(&mut *writer)?;
+    fn serialize_with_mode<W: Write>(&self, mut writer: W, mode: Compress) -> Result<(), SerializationError> {
+        bincode::serialize_into(&mut writer, &self.file_path).unwrap();
+
+        // Serialize `powers_of_beta_times_gamma_g`.
+        (self.powers_of_beta_times_gamma_g.len() as u32).write_le(&mut writer)?;
+        for (key, power_of_gamma_g) in &self.powers_of_beta_times_gamma_g {
+            (*key as u32).serialize_with_mode(&mut writer, mode)?;
+            power_of_gamma_g.serialize_with_mode(&mut writer, mode)?;
+        }
         Ok(())
     }
 
-    fn serialized_size(&self) -> usize {
-        todo!()
+    fn serialized_size(&self, mode: Compress) -> usize {
+        let mut size = self.file_path.serialize_size(mode);
+        size += (self.powers_of_beta_times_gamma_g.len() as u32).serialized_size(mode);
+        for (key, power_of_gamma_g) in &self.powers_of_beta_times_gamma_g {
+            size += (*key as u32).serialized_size(mode);
+            size += power_of_gamma_g.serialized_size(mode);
+        }
+
+        size
+    }
+}
+
+impl<E: PairingEngine> snarkvm_utilities::Valid for PowersOfG<E> {
+    fn check(&self) -> Result<(), SerializationError> {
+        unreachable!("This should not be called directly");
     }
 }
 
 impl<E: PairingEngine> CanonicalDeserialize for PowersOfG<E> {
-    fn deserialize<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
-        Ok(FromBytes::read_le(&mut *reader)?)
+    fn deserialize_with_mode<R: Read>(
+        mut reader: R,
+        compress: Compress,
+        validate: Validate,
+    ) -> Result<Self, SerializationError> {
+        let file_path: String = bincode::deserialize_from(&mut reader).unwrap();
+
+        // Deserialize `powers_of_beta_times_gamma_g`.
+        let powers_of_gamma_g_num_elements: u32 =
+            CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
+        let mut keys = Vec::with_capacity(powers_of_gamma_g_num_elements as usize);
+        let mut values = Vec::with_capacity(powers_of_gamma_g_num_elements as usize);
+        for _ in 0..powers_of_gamma_g_num_elements {
+            let key = u32::deserialize_with_mode(&mut reader, compress, validate)?;
+            let power_of_gamma_g = E::G1Affine::deserialize_with_mode(&mut reader, compress, Validate::No)?;
+            keys.push(key as usize);
+            values.push(power_of_gamma_g);
+        }
+        if validate == Validate::Yes {
+            E::G1Affine::batch_check(&values)?;
+        }
+        let powers_of_beta_times_gamma_g = keys.into_iter().zip(values).collect();
+
+        let mut powers = PowersOfG::new(PathBuf::from(file_path)).unwrap();
+        powers.powers_of_beta_times_gamma_g = powers_of_beta_times_gamma_g;
+        Ok(powers)
     }
 }
 
