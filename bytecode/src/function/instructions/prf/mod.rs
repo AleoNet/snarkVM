@@ -52,6 +52,7 @@ pub trait PRFOpcode {
 }
 
 /// A generic PRF instruction.
+#[allow(clippy::upper_case_acronyms)]
 pub struct PRF<P: Program, Op: PRFOpcode> {
     operation: BinaryOperation<P>,
     _phantom: PhantomData<Op>,
