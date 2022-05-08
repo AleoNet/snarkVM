@@ -132,7 +132,7 @@ impl<P: Program> fmt::Display for Value<P> {
                 }
                 output.pop(); // trailing space
                 output.pop(); // trailing comma
-                output += " }}";
+                output += " }";
                 write!(f, "{output}")
             }
         }
@@ -148,7 +148,7 @@ impl<P: Program> FromBytes for Value<P> {
                 // Read the name.
                 let name = Identifier::read_le(&mut reader)?;
                 // Read the members.
-                let num_members = u8::read_le(&mut reader)?;
+                let num_members = u16::read_le(&mut reader)?;
                 let mut members = Vec::with_capacity(num_members as usize);
                 for _ in 0..num_members {
                     // Read the number of bytes for the member.
@@ -183,7 +183,7 @@ impl<P: Program> ToBytes for Value<P> {
                 // Write the name.
                 name.write_le(&mut writer)?;
                 // Write the number of members.
-                (members.len() as u8).write_le(&mut writer)?;
+                (members.len() as u16).write_le(&mut writer)?;
                 // Write the members as bytes.
                 for member in members {
                     match member.to_bytes_le() {
@@ -216,13 +216,13 @@ mod tests {
 
     #[test]
     fn test_value_parse() {
-        // Test parsing a literal.
+        // Test parsing a value literal.
         assert_eq!(
             Value::<P>::Literal(Literal::from_str("10field.private")),
             Value::parse("10field.private").unwrap().1,
         );
 
-        // Test parsing a definition.
+        // Test parsing a value definition.
         assert_eq!(
             Value::<P>::Definition(Identifier::from_str("message"), vec![
                 Value::from_str("2group.public"),
@@ -230,5 +230,64 @@ mod tests {
             ]),
             Value::parse("message { 2group.public, 10field.private }").unwrap().1,
         );
+
+        // Test parsing a value definition with a nested definition.
+        assert_eq!(
+            Value::<P>::Definition(Identifier::from_str("message"), vec![
+                Value::from_str("2group.public"),
+                Value::from_str("10field.private"),
+                Value::<P>::Definition(Identifier::from_str("signature"), vec![
+                    Value::from_str("5scalar.public"),
+                    Value::from_str("3scalar.private"),
+                ]),
+                Value::from_str("true.public"),
+            ]),
+            Value::parse(
+                "message { 2group.public, 10field.private, signature { 5scalar.public, 3scalar.private }, true.public }"
+            )
+            .unwrap()
+            .1,
+        );
+    }
+
+    #[test]
+    fn test_value_to_string() {
+        // Test a value literal.
+        let expected = "10field.private";
+        let value = Value::<P>::parse(expected).unwrap().1;
+        assert_eq!(expected, value.to_string());
+
+        // Test a value definition.
+        let expected = "message { 2group.public, 10field.private }";
+        let value = Value::<P>::parse(expected).unwrap().1;
+        assert_eq!(expected, value.to_string());
+
+        // Test a value definition with a nested definition.
+        let expected =
+            "message { 2group.public, 10field.private, signature { 5scalar.public, 3scalar.private }, true.public }";
+        let value = Value::<P>::parse(expected).unwrap().1;
+        assert_eq!(expected, value.to_string());
+    }
+
+    #[test]
+    fn test_value_serialization() {
+        // Test a value literal.
+        let expected = Value::<P>::parse("10field.private").unwrap().1;
+        let candidate = Value::from_bytes_le(&expected.to_bytes_le().unwrap()).unwrap();
+        assert_eq!(expected, candidate);
+
+        // Test a value definition.
+        let expected = Value::<P>::parse("message { 2group.public, 10field.private }").unwrap().1;
+        let candidate = Value::from_bytes_le(&expected.to_bytes_le().unwrap()).unwrap();
+        assert_eq!(expected, candidate);
+
+        // Test a value definition with a nested definition.
+        let expected = Value::<P>::parse(
+            "message { 2group.public, 10field.private, signature { 5scalar.public, 3scalar.private }, true.public }",
+        )
+        .unwrap()
+        .1;
+        let candidate = Value::from_bytes_le(&expected.to_bytes_le().unwrap()).unwrap();
+        assert_eq!(expected, candidate);
     }
 }

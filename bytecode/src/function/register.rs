@@ -102,7 +102,7 @@ impl<P: Program> FromBytes for Register<P> {
             0 => Ok(Self::Locator(locator)),
             1 => {
                 // Read the number of identifiers.
-                let num_identifiers = u8::read_le(&mut reader)?;
+                let num_identifiers = u16::read_le(&mut reader)?;
                 // Read the identifiers.
                 let mut identifiers = Vec::with_capacity(num_identifiers as usize);
                 for _ in 0..num_identifiers {
@@ -130,7 +130,7 @@ impl<P: Program> ToBytes for Register<P> {
 
                 u8::write_le(&1u8, &mut writer)?;
                 variable_length_integer(locator).write_le(&mut writer)?;
-                u8::write_le(&(identifiers.len() as u8), &mut writer)?;
+                (identifiers.len() as u16).write_le(&mut writer)?;
                 identifiers.write_le(&mut writer)
             }
         }
