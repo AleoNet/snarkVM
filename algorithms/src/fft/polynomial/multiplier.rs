@@ -20,8 +20,6 @@ use crate::fft::domain::{FFTPrecomputation, IFFTPrecomputation};
 
 /// A struct that helps multiply a batch of polynomials
 use super::*;
-#[cfg(feature = "parallel")]
-use rayon::prelude::*;
 use snarkvm_utilities::{cfg_iter, cfg_iter_mut, ExecutionPool};
 
 #[derive(Default)]

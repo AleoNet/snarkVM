@@ -26,6 +26,7 @@ use crate::{
         MarlinMode,
     },
 };
+use itertools::Itertools;
 use snarkvm_fields::{Field, PrimeField};
 
 use core::{borrow::Borrow, marker::PhantomData};
@@ -39,58 +40,29 @@ pub struct AHPForR1CS<F: Field, MM: MarlinMode> {
     mode: PhantomData<MM>,
 }
 
+pub(crate) fn witness_label(poly: &str, i: usize) -> String {
+    format!("{poly}_{:0>8}", i)
+}
+
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
-    /// The labels for the polynomials output by the AHP indexer.
-    #[rustfmt::skip]
-    pub const INDEXER_POLYNOMIALS: [&'static str; 12] = [
-        // Polynomials for M
-        "row_a", "col_a", "val_a", "row_col_a",
-        "row_b", "col_b", "val_b", "row_col_b",
-        "row_c", "col_c", "val_c", "row_col_c",
-    ];
     /// The linear combinations that are statically known to evaluate to zero.
     #[rustfmt::skip]
     pub const LC_WITH_ZERO_EVAL: [&'static str; 2] = ["matrix_sumcheck", "lincheck_sumcheck"];
-    /// The labels for the polynomials output by the AHP prover.
-    #[rustfmt::skip]
-    pub const PROVER_POLYNOMIALS_WITHOUT_ZK: [&'static str; 9] = [
-        // First sumcheck
-        "w", "z_a", "z_b", "g_1", "h_1",
-        // Second sumcheck
-        "g_a", "g_b", "g_c", "h_2",
-    ];
-    /// The labels for the polynomials output by the AHP prover.
-    #[rustfmt::skip]
-    pub const PROVER_POLYNOMIALS_WITH_ZK: [&'static str; 10] = [
-        // First sumcheck
-        "w", "z_a", "z_b", "mask_poly", "g_1", "h_1",
-        // Second sumcheck
-        "g_a", "g_b", "g_c", "h_2",
-    ];
 
-    pub(crate) fn indexer_polynomials() -> impl Iterator<Item = &'static str> {
-        Self::INDEXER_POLYNOMIALS.as_ref().iter().copied()
+    pub fn zk_bound() -> Option<usize> {
+        MM::ZK.then(|| 1)
     }
 
-    pub(crate) fn prover_polynomials() -> impl Iterator<Item = &'static str> {
-        if MM::ZK {
-            Self::PROVER_POLYNOMIALS_WITH_ZK.as_ref().iter().copied()
-        } else {
-            Self::PROVER_POLYNOMIALS_WITHOUT_ZK.as_ref().iter().copied()
+    /// Check that the (formatted) public input is of the form 2^n for some integer n.
+    pub fn num_formatted_public_inputs_is_admissible(num_inputs: usize) -> Result<(), AHPError> {
+        match num_inputs.count_ones() == 1 {
+            true => Ok(()),
+            false => Err(AHPError::InvalidPublicInputLength),
         }
     }
 
-    pub(crate) fn polynomial_labels() -> impl Iterator<Item = String> {
-        Self::indexer_polynomials().chain(Self::prover_polynomials()).map(|s| s.to_string())
-    }
-
     /// Check that the (formatted) public input is of the form 2^n for some integer n.
-    pub fn num_formatted_public_inputs_is_admissible(num_inputs: usize) -> bool {
-        num_inputs.count_ones() == 1
-    }
-
-    /// Check that the (formatted) public input is of the form 2^n for some integer n.
-    pub fn formatted_public_input_is_admissible(input: &[F]) -> bool {
+    pub fn formatted_public_input_is_admissible(input: &[F]) -> Result<(), AHPError> {
         Self::num_formatted_public_inputs_is_admissible(input.len())
     }
 
@@ -173,29 +145,37 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Public input should be unformatted.
     #[allow(non_snake_case)]
     pub fn construct_linear_combinations<E: EvaluationsProvider<F>>(
-        public_input: &[F],
+        public_inputs: &[Vec<F>],
         evals: &E,
         prover_third_message: &prover::ThirdMessage<F>,
         state: &verifier::State<F, MM>,
     ) -> Result<BTreeMap<String, LinearCombination<F>>, AHPError> {
+        assert!(!public_inputs.is_empty());
         let constraint_domain = state.constraint_domain;
+
         let non_zero_a_domain = state.non_zero_a_domain;
         let non_zero_b_domain = state.non_zero_b_domain;
         let non_zero_c_domain = state.non_zero_c_domain;
+
         let largest_non_zero_domain =
             Self::max_non_zero_domain_helper(state.non_zero_a_domain, state.non_zero_b_domain, state.non_zero_c_domain);
 
-        let public_input = prover::ConstraintSystem::format_public_input(public_input);
-        if !Self::formatted_public_input_is_admissible(&public_input) {
-            return Err(AHPError::InvalidPublicInputLength);
-        }
-        let input_domain = EvaluationDomain::new(public_input.len()).ok_or(AHPError::PolynomialDegreeTooLarge)?;
+        let public_inputs = public_inputs
+            .iter()
+            .map(|p| {
+                let public_input = prover::ConstraintSystem::format_public_input(p);
+                Self::formatted_public_input_is_admissible(&public_input).map(|_| public_input)
+            })
+            .collect::<Result<Vec<_>, _>>()?;
 
-        let first_round_msg = state.first_round_message.unwrap();
+        let input_domain = EvaluationDomain::new(public_inputs[0].len()).ok_or(AHPError::PolynomialDegreeTooLarge)?;
+
+        let first_round_msg = state.first_round_message.as_ref().unwrap();
         let alpha = first_round_msg.alpha;
         let eta_a = F::one();
         let eta_b = first_round_msg.eta_b;
         let eta_c = first_round_msg.eta_c;
+        let batch_combiners = &first_round_msg.batch_combiners;
         let prover::ThirdMessage { sum_a, sum_b, sum_c } = prover_third_message;
 
         #[rustfmt::skip]
@@ -212,62 +192,75 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let mut linear_combinations = BTreeMap::new();
 
         // Lincheck sumcheck:
-        let z_b = LinearCombination::new("z_b", vec![(F::one(), "z_b")]);
-        let g_1 = LinearCombination::new("g_1", vec![(F::one(), "g_1")]);
+        let z_b_s = (0..state.batch_size)
+            .map(|i| {
+                let z_b_i = witness_label("z_b", i);
+                LinearCombination::new(z_b_i.clone(), [(F::one(), z_b_i)])
+            })
+            .collect::<Vec<_>>();
+        let g_1 = LinearCombination::new("g_1", [(F::one(), "g_1")]);
 
         let r_alpha_at_beta = constraint_domain.eval_unnormalized_bivariate_lagrange_poly(alpha, beta);
         let v_H_at_alpha = constraint_domain.evaluate_vanishing_polynomial(alpha);
         let v_H_at_beta = constraint_domain.evaluate_vanishing_polynomial(beta);
         let v_X_at_beta = input_domain.evaluate_vanishing_polynomial(beta);
 
-        let z_b_at_beta = evals.get_lc_eval(&z_b, beta)?;
+        let z_b_s_at_beta = z_b_s.iter().map(|z_b| evals.get_lc_eval(z_b, beta)).collect::<Result<Vec<_>, _>>()?;
+        let batch_z_b_at_beta: F =
+            z_b_s_at_beta.iter().zip_eq(batch_combiners).map(|(z_b_at_beta, combiner)| *z_b_at_beta * combiner).sum();
         let g_1_at_beta = evals.get_lc_eval(&g_1, beta)?;
 
-        let x_at_beta = input_domain
-            .evaluate_all_lagrange_coefficients(beta)
-            .into_iter()
-            .zip(public_input)
-            .map(|(l, x)| l * x)
-            .fold(F::zero(), |x, y| x + y);
+        let lag_at_beta = input_domain.evaluate_all_lagrange_coefficients(beta);
+        let combined_x_at_beta = batch_combiners
+            .iter()
+            .zip_eq(&public_inputs)
+            .map(|(c, x)| x.iter().zip_eq(&lag_at_beta).map(|(x, l)| *x * l).sum::<F>() * c)
+            .sum::<F>();
 
         #[rustfmt::skip]
         let lincheck_sumcheck = {
-            let mut lc_terms = vec![];
+            let mut lincheck_sumcheck = LinearCombination::empty("lincheck_sumcheck");
             if MM::ZK {
-                lc_terms.push((F::one(), "mask_poly".into()));
+                lincheck_sumcheck.add(F::one(), "mask_poly");
             }
-            lc_terms.push((r_alpha_at_beta * (eta_a + (eta_c * z_b_at_beta)), "z_a".into()));
-            lc_terms.push((r_alpha_at_beta * eta_b * z_b_at_beta, LCTerm::One));
-            lc_terms.push((-t_at_beta * v_X_at_beta, "w".into()));
-            lc_terms.push((-t_at_beta * x_at_beta, LCTerm::One));
-            lc_terms.push((-v_H_at_beta, "h_1".into()));
-            lc_terms.push((-beta * g_1_at_beta, LCTerm::One));
-            LinearCombination::new("lincheck_sumcheck", lc_terms)
+            for (i, (z_b_i_at_beta, combiner)) in z_b_s_at_beta.iter().zip_eq(batch_combiners).enumerate() {
+                lincheck_sumcheck
+                    .add(r_alpha_at_beta * combiner * (eta_a + eta_c * z_b_i_at_beta), witness_label("z_a", i))
+                    .add(-t_at_beta * v_X_at_beta * combiner, witness_label("w", i));
+            }
+            lincheck_sumcheck
+                .add(r_alpha_at_beta * eta_b * batch_z_b_at_beta, LCTerm::One)
+                .add(-t_at_beta * combined_x_at_beta, LCTerm::One)
+                .add(-v_H_at_beta, "h_1")
+                .add(-beta * g_1_at_beta, LCTerm::One);
+            lincheck_sumcheck
         };
         debug_assert!(evals.get_lc_eval(&lincheck_sumcheck, beta)?.is_zero());
 
-        linear_combinations.insert("z_b".into(), z_b);
+        for z_b in z_b_s {
+            linear_combinations.insert(z_b.label.clone(), z_b);
+        }
         linear_combinations.insert("g_1".into(), g_1);
         linear_combinations.insert("lincheck_sumcheck".into(), lincheck_sumcheck);
 
         //  Matrix sumcheck:
         let mut matrix_sumcheck = LinearCombination::empty("matrix_sumcheck");
 
-        let g_a = LinearCombination::new("g_a", vec![(F::one(), "g_a")]);
+        let g_a = LinearCombination::new("g_a", [(F::one(), "g_a")]);
         let g_a_at_gamma = evals.get_lc_eval(&g_a, gamma)?;
         let selector_a = largest_non_zero_domain.evaluate_selector_polynomial(non_zero_a_domain, gamma);
         let lhs_a =
             Self::construct_lhs("a", alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_a_at_gamma, *sum_a, selector_a);
         matrix_sumcheck += &lhs_a;
 
-        let g_b = LinearCombination::new("g_b", vec![(F::one(), "g_b")]);
+        let g_b = LinearCombination::new("g_b", [(F::one(), "g_b")]);
         let g_b_at_gamma = evals.get_lc_eval(&g_b, gamma)?;
         let selector_b = largest_non_zero_domain.evaluate_selector_polynomial(non_zero_b_domain, gamma);
         let lhs_b =
             Self::construct_lhs("b", alpha, beta, gamma, v_H_at_alpha * v_H_at_beta, g_b_at_gamma, *sum_b, selector_b);
         matrix_sumcheck += (r_b, &lhs_b);
 
-        let g_c = LinearCombination::new("g_c", vec![(F::one(), "g_c")]);
+        let g_c = LinearCombination::new("g_c", [(F::one(), "g_c")]);
         let g_c_at_gamma = evals.get_lc_eval(&g_c, gamma)?;
         let selector_c = largest_non_zero_domain.evaluate_selector_polynomial(non_zero_c_domain, gamma);
         let lhs_c =
@@ -275,7 +268,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         matrix_sumcheck += (r_c, &lhs_c);
 
         matrix_sumcheck -=
-            &LinearCombination::new("h_2", vec![(largest_non_zero_domain.evaluate_vanishing_polynomial(gamma), "h_2")]);
+            &LinearCombination::new("h_2", [(largest_non_zero_domain.evaluate_vanishing_polynomial(gamma), "h_2")]);
         debug_assert!(evals.get_lc_eval(&matrix_sumcheck, gamma)?.is_zero());
 
         linear_combinations.insert("g_a".into(), g_a);
@@ -297,13 +290,11 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         sum: F,
         selector_at_gamma: F,
     ) -> LinearCombination<F> {
-        let a = LinearCombination::new("a_poly_".to_string() + label, vec![(
-            v_h_at_alpha_beta,
-            "val_".to_string() + label,
-        )]);
+        let a =
+            LinearCombination::new("a_poly_".to_string() + label, [(v_h_at_alpha_beta, "val_".to_string() + label)]);
         let alpha_beta = alpha * beta;
 
-        let mut b = LinearCombination::new("denom_".to_string() + label, vec![
+        let mut b = LinearCombination::new("denom_".to_string() + label, [
             (alpha_beta, LCTerm::One),
             (-alpha, ("row_".to_string() + label).into()),
             (-beta, ("col_".to_string() + label).into()),
@@ -322,7 +313,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 ///
 /// Intended to provide a common interface for both the prover and the verifier
 /// when constructing linear combinations via `AHPForR1CS::construct_linear_combinations`.
-pub trait EvaluationsProvider<F: PrimeField> {
+pub trait EvaluationsProvider<F: PrimeField>: core::fmt::Debug {
     /// Get the evaluation of linear combination `lc` at `point`.
     fn get_lc_eval(&self, lc: &LinearCombination<F>, point: F) -> Result<F, AHPError>;
 }
@@ -334,7 +325,11 @@ impl<'a, F: PrimeField> EvaluationsProvider<F> for crate::polycommit::sonic_pc::
     }
 }
 
-impl<F: PrimeField, T: Borrow<LabeledPolynomial<F>>> EvaluationsProvider<F> for Vec<T> {
+impl<F, T> EvaluationsProvider<F> for Vec<T>
+where
+    F: PrimeField,
+    T: Borrow<LabeledPolynomial<F>> + core::fmt::Debug,
+{
     fn get_lc_eval(&self, lc: &LinearCombination<F>, point: F) -> Result<F, AHPError> {
         let mut eval = F::zero();
         for (coeff, term) in lc.iter() {
@@ -388,8 +383,6 @@ impl<F: PrimeField> UnnormalizedBivariateLagrangePoly<F> for EvaluationDomain<F>
     ) -> Vec<F> {
         use snarkvm_utilities::{cfg_iter, cfg_iter_mut};
 
-        #[cfg(not(feature = "parallel"))]
-        use itertools::Itertools;
         #[cfg(feature = "parallel")]
         use rayon::prelude::*;
 

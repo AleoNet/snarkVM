@@ -161,6 +161,28 @@ impl<F: PrimeField> DensePolynomial<F> {
         let vanishing_poly = DenseOrSparsePolynomial::from(domain.vanishing_polynomial());
         self_poly.divide_with_q_and_r(&vanishing_poly)
     }
+
+    /// Evaluate `self` over `domain`.
+    pub fn evaluate_over_domain_by_ref(&self, domain: EvaluationDomain<F>) -> Evaluations<F> {
+        let poly: DenseOrSparsePolynomial<'_, F> = self.into();
+        DenseOrSparsePolynomial::<F>::evaluate_over_domain(poly, domain)
+    }
+
+    /// Evaluate `self` over `domain`.
+    pub fn evaluate_over_domain(self, domain: EvaluationDomain<F>) -> Evaluations<F> {
+        let poly: DenseOrSparsePolynomial<'_, F> = self.into();
+        DenseOrSparsePolynomial::<F>::evaluate_over_domain(poly, domain)
+    }
+}
+
+impl<F: Field> From<super::SparsePolynomial<F>> for DensePolynomial<F> {
+    fn from(other: super::SparsePolynomial<F>) -> Self {
+        let mut result = vec![F::zero(); other.degree() + 1];
+        for (i, coeff) in other.coeffs() {
+            result[*i] = *coeff;
+        }
+        DensePolynomial::from_coefficients_vec(result)
+    }
 }
 
 impl<'a, 'b, F: Field> Add<&'a DensePolynomial<F>> for &'b DensePolynomial<F> {
@@ -256,30 +278,6 @@ impl<'a, F: Field> AddAssign<(F, &'a DensePolynomial<F>)> for DensePolynomial<F>
                 self.coeffs.pop();
             }
         }
-    }
-}
-
-impl<F: PrimeField> DensePolynomial<F> {
-    /// Evaluate `self` over `domain`.
-    pub fn evaluate_over_domain_by_ref(&self, domain: EvaluationDomain<F>) -> Evaluations<F> {
-        let poly: DenseOrSparsePolynomial<'_, F> = self.into();
-        DenseOrSparsePolynomial::<F>::evaluate_over_domain(poly, domain)
-    }
-
-    /// Evaluate `self` over `domain`.
-    pub fn evaluate_over_domain(self, domain: EvaluationDomain<F>) -> Evaluations<F> {
-        let poly: DenseOrSparsePolynomial<'_, F> = self.into();
-        DenseOrSparsePolynomial::<F>::evaluate_over_domain(poly, domain)
-    }
-}
-
-impl<F: Field> From<super::SparsePolynomial<F>> for DensePolynomial<F> {
-    fn from(other: super::SparsePolynomial<F>) -> Self {
-        let mut result = vec![F::zero(); other.degree() + 1];
-        for (i, coeff) in other.coeffs() {
-            result[*i] = *coeff;
-        }
-        DensePolynomial::from_coefficients_vec(result)
     }
 }
 
@@ -427,7 +425,6 @@ impl<F: Field> Mul<F> for DensePolynomial<F> {
     type Output = Self;
 
     #[inline]
-    #[allow(clippy::suspicious_arithmetic_impl)]
     fn mul(mut self, other: F) -> Self {
         self.iter_mut().for_each(|c| *c *= other);
         self
@@ -435,11 +432,28 @@ impl<F: Field> Mul<F> for DensePolynomial<F> {
 }
 
 /// Multiplies `self` by `other: F`.
-impl<F: Field> MulAssign<F> for DensePolynomial<F> {
+impl<'a, F: Field> Mul<F> for &'a DensePolynomial<F> {
+    type Output = DensePolynomial<F>;
+
     #[inline]
+    fn mul(self, other: F) -> Self::Output {
+        let result = self.clone();
+        result * other
+    }
+}
+
+/// Multiplies `self` by `other: F`.
+impl<F: Field> MulAssign<F> for DensePolynomial<F> {
     #[allow(clippy::suspicious_arithmetic_impl)]
     fn mul_assign(&mut self, other: F) {
         cfg_iter_mut!(self).for_each(|c| *c *= other);
+    }
+}
+
+/// Multiplies `self` by `other: F`.
+impl<F: Field> std::iter::Sum for DensePolynomial<F> {
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.fold(DensePolynomial::zero(), |a, b| &a + &b)
     }
 }
 

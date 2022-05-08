@@ -14,26 +14,22 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::traits::Genesis;
+/// The Marlin circuit proving key.
+pub(super) mod circuit_proving_key;
+pub use circuit_proving_key::*;
 
-pub struct GenesisBlock;
+/// The Marlin circuit verifying key.
+pub(super) mod circuit_verifying_key;
+pub use circuit_verifying_key::*;
 
-impl Genesis for GenesisBlock {
-    const CHECKSUM: &'static str = "";
-    const SIZE: u64 = 2521;
+/// The Marlin prepared circuit verifying key.
+pub(super) mod prepared_circuit_verifying_key;
+pub use prepared_circuit_verifying_key::*;
 
-    fn load_bytes() -> Vec<u8> {
-        include_bytes!("./resources/block.genesis").to_vec()
-    }
-}
+/// The Marlin zkSNARK proof.
+pub(super) mod proof;
+pub use proof::*;
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_genesis_block() {
-        let block = GenesisBlock::load_bytes();
-        assert_eq!(GenesisBlock::SIZE, block.len() as u64);
-    }
-}
+/// The Marlin universal SRS.
+pub(super) mod universal_srs;
+pub use universal_srs::*;

@@ -110,8 +110,8 @@ impl Network for Testnet1 {
     const OUTPUT_PROOF_PREFIX: u32 = hrp4!("ozkp");
     
     const ADDRESS_SIZE_IN_BYTES: usize = 32;
-    const HEADER_SIZE_IN_BYTES: usize = 928;
-    const HEADER_PROOF_SIZE_IN_BYTES: usize = 796;
+    const HEADER_SIZE_IN_BYTES: usize = 936;
+    const HEADER_PROOF_SIZE_IN_BYTES: usize = 804;
     const PROGRAM_PROOF_SIZE_IN_BYTES: usize = 193;
     const PROGRAM_ID_SIZE_IN_BYTES: usize = 32;
     const RECORD_CIPHERTEXT_SIZE_IN_BYTES: usize = 292;
@@ -121,8 +121,8 @@ impl Network for Testnet1 {
     const VALUE_COMMITMENT_SIZE_IN_BYTES: usize = 64;
     const VALUE_BALANCE_COMMITMENT_SIZE_IN_BYTES: usize = 96;
 
-    const INPUT_PROOF_SIZE_IN_BYTES: usize = 876;
-    const OUTPUT_PROOF_SIZE_IN_BYTES: usize = 876;
+    const INPUT_PROOF_SIZE_IN_BYTES: usize = 884;
+    const OUTPUT_PROOF_SIZE_IN_BYTES: usize = 884;
 
     const HEADER_TRANSACTIONS_TREE_DEPTH: usize = 15;
     const HEADER_TREE_DEPTH: usize = 2;

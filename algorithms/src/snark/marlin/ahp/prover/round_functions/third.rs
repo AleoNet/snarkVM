@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use core::convert::TryInto;
+use std::collections::BTreeMap;
 
 use crate::{
     fft::{
@@ -24,7 +25,7 @@ use crate::{
         EvaluationDomain,
         Evaluations as EvaluationsOnDomain,
     },
-    polycommit::sonic_pc::LabeledPolynomial,
+    polycommit::sonic_pc::{LabeledPolynomial, PolynomialInfo, PolynomialLabel},
     snark::marlin::{
         ahp::{indexer::CircuitInfo, verifier, AHPError, AHPForR1CS},
         matrices::MatrixArithmetization,
@@ -44,17 +45,24 @@ use rayon::prelude::*;
 
 impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Output the number of oracles sent by the prover in the third round.
-    pub fn prover_num_third_round_oracles() -> usize {
+    pub fn num_third_round_oracles() -> usize {
         3
     }
 
-    /// Output the degree bounds of oracles in the third round.
-    pub fn prover_third_round_degree_bounds(info: &CircuitInfo<F>) -> impl Iterator<Item = Option<usize>> {
+    /// Output the degree bounds of oracles in the first round.
+    pub fn third_round_polynomial_info(info: &CircuitInfo<F>) -> BTreeMap<PolynomialLabel, PolynomialInfo> {
         let non_zero_a_size = EvaluationDomain::<F>::compute_size_of_domain(info.num_non_zero_a).unwrap();
         let non_zero_b_size = EvaluationDomain::<F>::compute_size_of_domain(info.num_non_zero_b).unwrap();
         let non_zero_c_size = EvaluationDomain::<F>::compute_size_of_domain(info.num_non_zero_c).unwrap();
 
-        [Some(non_zero_a_size - 2), Some(non_zero_b_size - 2), Some(non_zero_c_size - 2)].into_iter()
+        [
+            PolynomialInfo::new("g_a".into(), Some(non_zero_a_size - 2), None),
+            PolynomialInfo::new("g_b".into(), Some(non_zero_b_size - 2), None),
+            PolynomialInfo::new("g_c".into(), Some(non_zero_c_size - 2), None),
+        ]
+        .into_iter()
+        .map(|info| (info.label().into(), info))
+        .collect()
     }
 
     /// Output the third round message and the next state.
@@ -67,11 +75,12 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
 
         let verifier::FirstMessage { alpha, .. } = state
             .verifier_first_message
+            .as_ref()
             .expect("prover::State should include verifier_first_msg when prover_third_round is called");
 
         let beta = verifier_message.beta;
 
-        let v_H_at_alpha = state.constraint_domain.evaluate_vanishing_polynomial(alpha);
+        let v_H_at_alpha = state.constraint_domain.evaluate_vanishing_polynomial(*alpha);
         let v_H_at_beta = state.constraint_domain.evaluate_vanishing_polynomial(beta);
 
         let v_H_alpha_v_H_beta = v_H_at_alpha * v_H_at_beta;
@@ -83,7 +92,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 "a",
                 state.non_zero_a_domain,
                 &state.index.a_arith,
-                alpha,
+                *alpha,
                 beta,
                 v_H_alpha_v_H_beta,
                 largest_non_zero_domain_size,
@@ -97,7 +106,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 "b",
                 state.non_zero_b_domain,
                 &state.index.b_arith,
-                alpha,
+                *alpha,
                 beta,
                 v_H_alpha_v_H_beta,
                 largest_non_zero_domain_size,
@@ -111,7 +120,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
                 "c",
                 state.non_zero_c_domain,
                 &state.index.c_arith,
-                alpha,
+                *alpha,
                 beta,
                 v_H_alpha_v_H_beta,
                 largest_non_zero_domain_size,
@@ -127,6 +136,7 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         let oracles = prover::ThirdOracles { g_a, g_b, g_c };
         state.lhs_polynomials = Some([lhs_a, lhs_b, lhs_c]);
         state.sums = Some([sum_a, sum_b, sum_c]);
+        assert!(oracles.matches_info(&Self::third_round_polynomial_info(&state.index.index_info)));
 
         end_timer!(round_time);
 
