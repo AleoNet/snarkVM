@@ -114,42 +114,42 @@ impl Devnet {
 
 impl Aleo for Devnet {
     /// Returns a BHP commitment for the given (up to) 256-bit input and randomness.
-    fn commit_bhp256(input: &[Boolean<Self>], randomizer: &[Boolean<Self>]) -> Field<Self> {
+    fn commit_bhp256(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self> {
         BHP_256.with(|bhp| bhp.commit(input, randomizer))
     }
 
     /// Returns a BHP commitment for the given (up to) 512-bit input and randomness.
-    fn commit_bhp512(input: &[Boolean<Self>], randomizer: &[Boolean<Self>]) -> Field<Self> {
+    fn commit_bhp512(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self> {
         BHP_512.with(|bhp| bhp.commit(input, randomizer))
     }
 
     /// Returns a BHP commitment for the given (up to) 1024-bit input and randomness.
-    fn commit_bhp1024(input: &[Boolean<Self>], randomizer: &[Boolean<Self>]) -> Field<Self> {
+    fn commit_bhp1024(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self> {
         BHP_1024.with(|bhp| bhp.commit(input, randomizer))
     }
 
     /// Returns a Pedersen commitment for the given (up to) 64-bit input and randomness.
-    fn commit_ped64(input: &[Boolean<Self>], randomizer: &[Boolean<Self>]) -> Field<Self> {
+    fn commit_ped64(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self> {
         PEDERSEN_64.with(|pedersen| pedersen.commit(input, randomizer))
     }
 
     /// Returns a Pedersen commitment for the given (up to) 128-bit input and randomness.
-    fn commit_ped128(input: &[Boolean<Self>], randomizer: &[Boolean<Self>]) -> Field<Self> {
+    fn commit_ped128(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self> {
         PEDERSEN_128.with(|pedersen| pedersen.commit(input, randomizer))
     }
 
     /// Returns a Pedersen commitment for the given (up to) 256-bit input and randomness.
-    fn commit_ped256(input: &[Boolean<Self>], randomizer: &[Boolean<Self>]) -> Field<Self> {
+    fn commit_ped256(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self> {
         PEDERSEN_256.with(|pedersen| pedersen.commit(input, randomizer))
     }
 
     /// Returns a Pedersen commitment for the given (up to) 512-bit input and randomness.
-    fn commit_ped512(input: &[Boolean<Self>], randomizer: &[Boolean<Self>]) -> Field<Self> {
+    fn commit_ped512(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self> {
         PEDERSEN_512.with(|pedersen| pedersen.commit(input, randomizer))
     }
 
     /// Returns a Pedersen commitment for the given (up to) 1024-bit input and randomness.
-    fn commit_ped1024(input: &[Boolean<Self>], randomizer: &[Boolean<Self>]) -> Field<Self> {
+    fn commit_ped1024(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self> {
         PEDERSEN_1024.with(|pedersen| pedersen.commit(input, randomizer))
     }
 

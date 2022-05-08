@@ -87,24 +87,28 @@ impl<P: Program, Op: CommitOpcode> Operation<P> for Commit<P, Op> {
         let input = registers.load(self.operation.first()).to_literals();
         // Load the randomizer from the second operand.
         let randomizer = match registers.load(self.operation.second()) {
-            Value::Literal(literal) => literal.to_bits_le(),
+            Value::Literal(literal) => literal,
             Value::Definition(name, ..) => P::halt(format!("{name} is not a literal")),
         };
 
         // Compute the digest for the given input.
-        let commitment = match Self::opcode() {
-            BHP256::OPCODE => P::Aleo::commit_bhp256(&input.to_bits_le(), &randomizer),
-            BHP512::OPCODE => P::Aleo::commit_bhp512(&input.to_bits_le(), &randomizer),
-            BHP1024::OPCODE => P::Aleo::commit_bhp1024(&input.to_bits_le(), &randomizer),
-            Ped64::OPCODE => P::Aleo::commit_ped64(&input.to_bits_le(), &randomizer),
-            Ped128::OPCODE => P::Aleo::commit_ped128(&input.to_bits_le(), &randomizer),
-            Ped256::OPCODE => P::Aleo::commit_ped256(&input.to_bits_le(), &randomizer),
-            Ped512::OPCODE => P::Aleo::commit_ped512(&input.to_bits_le(), &randomizer),
-            Ped1024::OPCODE => P::Aleo::commit_ped1024(&input.to_bits_le(), &randomizer),
-            _ => P::halt("Invalid option provided for the `commit` instruction"),
-        };
+        if let Literal::Scalar(randomizer) = randomizer {
+            let commitment = match Self::opcode() {
+                BHP256::OPCODE => P::Aleo::commit_bhp256(&input.to_bits_le(), &randomizer),
+                BHP512::OPCODE => P::Aleo::commit_bhp512(&input.to_bits_le(), &randomizer),
+                BHP1024::OPCODE => P::Aleo::commit_bhp1024(&input.to_bits_le(), &randomizer),
+                Ped64::OPCODE => P::Aleo::commit_ped64(&input.to_bits_le(), &randomizer),
+                Ped128::OPCODE => P::Aleo::commit_ped128(&input.to_bits_le(), &randomizer),
+                Ped256::OPCODE => P::Aleo::commit_ped256(&input.to_bits_le(), &randomizer),
+                Ped512::OPCODE => P::Aleo::commit_ped512(&input.to_bits_le(), &randomizer),
+                Ped1024::OPCODE => P::Aleo::commit_ped1024(&input.to_bits_le(), &randomizer),
+                _ => P::halt("Invalid option provided for the `commit` instruction"),
+            };
 
-        registers.assign(self.operation.destination(), Literal::Field(commitment));
+            registers.assign(self.operation.destination(), Literal::Field(commitment));
+        } else {
+            P::halt("Invalid type provided for `randomness` in `commit` instruction")
+        }
     }
 }
 

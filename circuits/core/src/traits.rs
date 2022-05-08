@@ -23,7 +23,7 @@ pub trait Commit {
     type Randomness;
 
     /// Returns the commitment to the given input and randomness.
-    fn commit(&self, input: &[Self::Input], randomness: &[Self::Randomness]) -> Self::Output;
+    fn commit(&self, input: &[Self::Input], randomness: &Self::Randomness) -> Self::Output;
 }
 
 /// A trait for a commitment scheme.
@@ -33,7 +33,7 @@ pub trait CommitUncompressed {
     type Randomness;
 
     /// Returns the commitment to the given input and randomness.
-    fn commit_uncompressed(&self, input: &[Self::Input], randomness: &[Self::Randomness]) -> Self::Output;
+    fn commit_uncompressed(&self, input: &[Self::Input], randomness: &Self::Randomness) -> Self::Output;
 }
 
 /// A trait for a hash function.
