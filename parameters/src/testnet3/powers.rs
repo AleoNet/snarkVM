@@ -201,13 +201,6 @@ impl<E: PairingEngine> PowersOfG<E> {
         self.degree
     }
 
-    /// Returns whether or not the current powers of G are empty.
-    /// This file should never be empty since we always write at least
-    /// up to the 15th degree, so this will always return false.
-    pub fn is_empty(&self) -> bool {
-        false
-    }
-
     /// Returns the power of beta times G specified by `which_power`.
     // NOTE: `std::ops::Index` was not used here as the trait requires
     // that we return a reference. We can not return a reference to
@@ -250,16 +243,14 @@ impl<E: PairingEngine> PowersOfG<E> {
         let index_start = index
             .checked_mul(POWER_OF_G_SERIALIZED_SIZE)
             .expect("attempted to index powers of G with an index greater than usize");
-        self.ensure_powers_exist(index_start);
 
-        index_start
-    }
-
-    fn ensure_powers_exist(&mut self, index: usize) {
-        if index > self.file.metadata().expect("could not get powers of G metadata").len() as usize {
-            let degree = index.next_power_of_two();
+        // Ensure the powers exist.
+        if index_start > self.file.metadata().expect("could not get powers of G metadata").len() as usize {
+            let degree = index_start.next_power_of_two();
             self.download_up_to(degree).expect("could not download missing powers of G");
         }
+
+        index_start
     }
 
     fn get_degrees_to_download(&self, degree: usize) -> Vec<usize> {
