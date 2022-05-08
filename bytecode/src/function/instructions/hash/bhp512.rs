@@ -120,7 +120,7 @@ mod tests {
 
         let value = registers.load(&Register::from_str("r1"));
         let expected = Value::<P>::from_str(
-            "7859505366134605419571079611358314299378384003680687055919221906144872990437field.private",
+            "2753157985585563685871475533869210997788791134784713213928788532781362523382field.private",
         );
         assert_eq!(expected, value);
     }

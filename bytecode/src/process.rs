@@ -238,7 +238,7 @@ function compute:
         let compute = Process::get_function(&Identifier::from_str("compute")).unwrap();
 
         // Declare the input value.
-        let input = Value::from_str("message 2field.public 3field.private");
+        let input = Value::from_str("message { 2field.public, 3field.private }");
 
         // Declare the expected output value.
         let expected = Value::from_str("5field.private");
