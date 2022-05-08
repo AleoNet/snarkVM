@@ -132,7 +132,7 @@ impl<P: Program> fmt::Display for Value<P> {
                 }
                 output.pop(); // trailing newline
                 output.pop(); // trailing comma
-                output += &format!("\n}}");
+                output += "\n}}";
                 write!(f, "{output}")
             }
         }
