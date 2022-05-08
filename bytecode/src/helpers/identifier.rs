@@ -97,8 +97,8 @@ impl<P: Program> Identifier<P> {
         &self.0
     }
 
-    /// Returns the identifier as a string circuit.
-    pub fn to_string_circuit(&self) -> StringType<P::Environment> {
+    /// Returns the identifier as a constant string circuit.
+    pub fn to_string_constant(&self) -> StringType<P::Environment> {
         StringType::constant(self.0.clone())
     }
 }

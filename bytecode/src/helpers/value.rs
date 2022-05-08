@@ -43,7 +43,7 @@ impl<P: Program> Value<P> {
     pub fn to_literals(&self) -> Vec<Literal<P::Environment>> {
         match self {
             Value::Literal(literal) => vec![(*literal).clone()],
-            Value::Definition(name, values) => [Literal::String(name.to_string_circuit())]
+            Value::Definition(name, values) => [Literal::String(name.to_string_constant())]
                 .into_iter()
                 .chain(values.iter().cloned().flat_map(|value| value.to_literals()))
                 .collect(),
