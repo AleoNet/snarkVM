@@ -124,15 +124,15 @@ impl<P: Program> fmt::Display for Value<P> {
         match self {
             // Prints the literal, i.e. 10field.private
             Self::Literal(literal) => fmt::Display::fmt(literal, f),
-            // Prints the definition, i.e. message aleo1xxx.public 10i64.private
+            // Prints the definition, i.e. message { aleo1xxx.public, 10i64.private }
             Self::Definition(name, members) => {
-                let mut output = format!("{name} {{\n");
+                let mut output = format!("{name} {{ ");
                 for value in members.iter() {
-                    output += &format!("    {value},\n");
+                    output += &format!("{value}, ");
                 }
-                output.pop(); // trailing newline
+                output.pop(); // trailing space
                 output.pop(); // trailing comma
-                output += "\n}}";
+                output += " }}";
                 write!(f, "{output}")
             }
         }
