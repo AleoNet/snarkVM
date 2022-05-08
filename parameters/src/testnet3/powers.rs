@@ -126,7 +126,7 @@ impl<E: PairingEngine> PowersOfG<E> {
             degree,
         };
 
-        powers.regenerate_powers_of_beta_times_gamma_g();
+        powers.regenerate_powers_of_beta_times_gamma_g()?;
         Ok(powers)
     }
 
@@ -140,7 +140,7 @@ impl<E: PairingEngine> PowersOfG<E> {
     // that we return a reference. We can not return a reference to
     // something that does not exist when this function is called.
     pub fn power_of_beta_g(&mut self, which_power: usize) -> E::G1Affine {
-        let index_start = self.get_starting_index(which_power);
+        let index_start = self.get_starting_byte_index(which_power).expect("Failed to load starting byte index");
 
         // Move our offset to the start of the desired element.
         let mut reader = BufReader::new(&self.file);
@@ -154,8 +154,8 @@ impl<E: PairingEngine> PowersOfG<E> {
     /// between `lower` and `upper`.
     pub fn powers_of_beta_g(&mut self, lower: usize, upper: usize) -> Vec<E::G1Affine> {
         // Ensure index exists for upper power.
-        let _ = self.get_starting_index(upper);
-        let index_start = self.get_starting_index(lower);
+        let _ = self.get_starting_byte_index(upper).expect("Failed to load upper power index");
+        let index_start = self.get_starting_byte_index(lower).expect("Failed to load lower power index");
 
         // Move our offset to the start of the desired element.
         let mut reader = BufReader::new(&self.file);
@@ -171,20 +171,20 @@ impl<E: PairingEngine> PowersOfG<E> {
         powers
     }
 
-    /// This function returns the starting byte of the file in which we're indexing
-    /// our powers of G.
-    fn get_starting_index(&mut self, index: usize) -> usize {
-        let index_start = index
-            .checked_mul(POWER_OF_G_SERIALIZED_SIZE)
-            .expect("attempted to index powers of G with an index greater than usize");
+    /// Returns the index in the `file` for the starting byte of the `target_power` being requested.
+    fn get_starting_byte_index(&mut self, target_power: usize) -> Result<usize> {
+        let starting_byte_index = match target_power.checked_mul(POWER_OF_G_SERIALIZED_SIZE) {
+            Some(index) => index,
+            None => bail!("Attempted to load {target_power}th power of G, exceeding the bounds"),
+        };
 
-        // Ensure the powers exist.
-        if index_start > self.file.metadata().expect("could not get powers of G metadata").len() as usize {
-            let degree = index_start.next_power_of_two();
-            self.download_up_to(degree).expect("could not download missing powers of G");
+        // Ensure the powers exist, and download the missing powers if necessary.
+        if starting_byte_index > self.file.metadata()?.len() as usize {
+            let degree = starting_byte_index.next_power_of_two();
+            self.download_up_to(degree)?;
         }
 
-        index_start
+        Ok(starting_byte_index)
     }
 
     /// This method downloads the universal SRS powers up to the `next_power_of_two(target_degree)`,
@@ -227,36 +227,36 @@ impl<E: PairingEngine> PowersOfG<E> {
                 self.degree = *degree;
             }
 
-            self.regenerate_powers_of_beta_times_gamma_g();
+            self.regenerate_powers_of_beta_times_gamma_g()?;
         }
 
         Ok(())
     }
 
-    fn regenerate_powers_of_beta_times_gamma_g(&mut self) {
+    fn regenerate_powers_of_beta_times_gamma_g(&mut self) -> Result<()> {
         let mut alpha_powers_g1 = vec![];
         let mut reader = BufReader::new(*POWERS_TIMES_GAMMA_G);
         for _ in 0..NUM_POWERS_TIMES_GAMMA_G {
-            let power =
-                E::G1Affine::read_le(&mut reader).expect("hardcoded powers times gamma g should be well-formed");
-            alpha_powers_g1.push(power);
+            alpha_powers_g1.push(E::G1Affine::read_le(&mut reader)?);
         }
 
         let mut alpha_tau_powers_g1 = BTreeMap::new();
         for (i, power) in alpha_powers_g1.iter().enumerate().take(3) {
             alpha_tau_powers_g1.insert(i, *power);
         }
-        alpha_powers_g1[3..].iter().chunks(3).into_iter().enumerate().for_each(|(i, c)| {
+        alpha_powers_g1[3..].iter().chunks(3).into_iter().enumerate().for_each(|(i, powers)| {
             // Avoid underflows and just stop populating the map if we're going to.
             if self.degree() - 1 > (1 << i) {
-                let c = c.into_iter().collect::<Vec<_>>();
-                alpha_tau_powers_g1.insert(self.degree() - 1 - (1 << i) + 2, *c[0]);
-                alpha_tau_powers_g1.insert(self.degree() - 1 - (1 << i) + 3, *c[1]);
-                alpha_tau_powers_g1.insert(self.degree() - 1 - (1 << i) + 4, *c[2]);
+                let powers = powers.into_iter().collect::<Vec<_>>();
+                alpha_tau_powers_g1.insert(self.degree() - 1 - (1 << i) + 2, *powers[0]);
+                alpha_tau_powers_g1.insert(self.degree() - 1 - (1 << i) + 3, *powers[1]);
+                alpha_tau_powers_g1.insert(self.degree() - 1 - (1 << i) + 4, *powers[2]);
             }
         });
 
         self.powers_of_beta_times_gamma_g = alpha_tau_powers_g1;
+
+        Ok(())
     }
 
     pub fn get_powers_times_gamma_g(&self) -> &BTreeMap<usize, E::G1Affine> {
