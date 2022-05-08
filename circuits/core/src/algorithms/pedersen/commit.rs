@@ -18,29 +18,22 @@ use super::*;
 
 use snarkvm_circuits_types::prelude::*;
 
-impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CommitmentScheme
+impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Commit
     for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
 {
     type Input = Boolean<E>;
-    type Output = Group<E>;
+    type Output = Field<E>;
     type Randomness = Boolean<E>;
 
     /// Returns the Pedersen commitment of the given input with the given randomness
     /// as an affine group element.
-    fn commit(&self, input: &[Self::Input], randomness: &[Self::Randomness]) -> Self::Output {
-        let hash = self.hash_uncompressed(input);
-
-        // Compute h^r
-        randomness
-            .iter()
-            .zip_eq(&self.random_base)
-            .map(|(bit, power)| Group::ternary(bit, power, &Group::zero()))
-            .fold(hash, |acc, x| acc + x)
+    fn commit(&self, input: &[Self::Input], randomizer: &[Self::Randomness]) -> Self::Output {
+        self.commit_uncompressed(input, randomizer).to_x_coordinate()
     }
 }
 
 impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    Metrics<dyn CommitmentScheme<Input = Boolean<E>, Output = Group<E>, Randomness = Boolean<E>>>
+    Metrics<dyn Commit<Input = Boolean<E>, Output = Field<E>, Randomness = Boolean<E>>>
     for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
 {
     type Case = (Vec<Mode>, Vec<Mode>);
@@ -86,7 +79,7 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
 }
 
 impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    OutputMode<dyn CommitmentScheme<Input = Boolean<E>, Output = Group<E>, Randomness = Boolean<E>>>
+    OutputMode<dyn Commit<Input = Boolean<E>, Output = Field<E>, Randomness = Boolean<E>>>
     for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
 {
     type Case = (Vec<Mode>, Vec<Mode>);
@@ -141,19 +134,19 @@ mod tests {
             Circuit::scope(format!("Pedersen {mode} {i}"), || {
                 // Perform the hash operation.
                 let candidate = circuit.commit(&circuit_input, &circuit_randomness);
-                assert_eq!(expected, candidate.eject_value());
+                assert_eq!(expected.to_x_coordinate(), candidate.eject_value());
 
                 // Check constraint counts and output mode.
                 let input_modes = circuit_input.iter().map(|b| b.eject_mode()).collect::<Vec<_>>();
                 let randomness_modes = circuit_randomness.iter().map(|b| b.eject_mode()).collect::<Vec<_>>();
                 assert_count!(
                     Pedersen<Circuit, NUM_WINDOWS, WINDOW_SIZE>,
-                    CommitmentScheme<Input = Boolean<Circuit>, Output = Group<Circuit>, Randomness = Boolean<Circuit>>,
+                    Commit<Input = Boolean<Circuit>, Output = Field<Circuit>, Randomness = Boolean<Circuit>>,
                     &(input_modes.clone(), randomness_modes.clone())
                 );
                 assert_output_mode!(
                     Pedersen<Circuit, NUM_WINDOWS, WINDOW_SIZE>,
-                    CommitmentScheme<Input = Boolean<Circuit>, Output = Group<Circuit>, Randomness = Boolean<Circuit>>,
+                    Commit<Input = Boolean<Circuit>, Output = Field<Circuit>, Randomness = Boolean<Circuit>>,
                     &(input_modes, randomness_modes),
                     candidate
                 );
@@ -212,8 +205,12 @@ mod tests {
         check_commitment::<5, WINDOW_SIZE_MULTIPLIER>(Mode::Private);
     }
 
-    fn check_homomorphic_addition<C: Display + Eject + Add<Output = C> + ToBits<Boolean = Boolean<Circuit>>>(
-        pedersen: &impl CommitmentScheme<Input = Boolean<Circuit>, Randomness = Boolean<Circuit>, Output = Group<Circuit>>,
+    fn check_homomorphic_addition<
+        C: Display + Eject + Add<Output = C> + ToBits<Boolean = Boolean<Circuit>>,
+        P: Commit<Input = Boolean<Circuit>, Randomness = Boolean<Circuit>, Output = Field<Circuit>>
+            + CommitUncompressed<Input = Boolean<Circuit>, Randomness = Boolean<Circuit>, Output = Group<Circuit>>,
+    >(
+        pedersen: &P,
         first: C,
         second: C,
     ) {
@@ -227,9 +224,9 @@ mod tests {
         let second_circuit_randomness: Vec<Boolean<_>> = Inject::new(Mode::Private, second_randomness.to_bits_le());
 
         // Compute the expected commitment, by committing them individually and summing their results.
-        let a = pedersen.commit(&first.to_bits_le(), &first_circuit_randomness);
-        let b = pedersen.commit(&second.to_bits_le(), &second_circuit_randomness);
-        let expected = a + b;
+        let a = pedersen.commit_uncompressed(&first.to_bits_le(), &first_circuit_randomness);
+        let b = pedersen.commit_uncompressed(&second.to_bits_le(), &second_circuit_randomness);
+        let expected = (a + b).to_x_coordinate();
 
         let combined_randomness = first_randomness + second_randomness;
         let circuit_combined_randomness: Vec<Boolean<_>> = Inject::new(Mode::Private, combined_randomness.to_bits_le());
@@ -270,12 +267,11 @@ mod tests {
 
     #[test]
     fn test_pedersen_homomorphism_private() {
-        fn check_pedersen_homomorphism(
-            pedersen: &impl CommitmentScheme<
-                Input = Boolean<Circuit>,
-                Randomness = Boolean<Circuit>,
-                Output = Group<Circuit>,
-            >,
+        fn check_pedersen_homomorphism<
+            P: Commit<Input = Boolean<Circuit>, Randomness = Boolean<Circuit>, Output = Field<Circuit>>
+                + CommitUncompressed<Input = Boolean<Circuit>, Randomness = Boolean<Circuit>, Output = Group<Circuit>>,
+        >(
+            pedersen: &P,
         ) {
             for _ in 0..ITERATIONS {
                 // Sample two random unsigned integers, with the MSB set to 0.

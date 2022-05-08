@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Definition, Function, Identifier, Program, Sanitizer};
+use crate::{Annotation, Definition, Function, Identifier, Program, Sanitizer};
 use snarkvm_circuits::{prelude::*, Devnet};
 
 use indexmap::IndexMap;
@@ -41,14 +41,33 @@ impl Program for Process {
     ///
     /// # Errors
     /// This method will halt if the definition was previously added.
+    /// This method will halt if the definition name is already in use by a definition or function.
+    /// This method will halt if any definitions in the definition's members are not already defined.
     #[inline]
     fn new_definition(definition: Definition<Self>) {
+        FUNCTIONS.with(|functions| {
+            // Ensure the definition name was not previously used.
+            let name = definition.name();
+            if functions.borrow().contains_key(name) {
+                Self::halt(format!("Definition '{name}' already used by a function"))
+            }
+        });
         DEFINITIONS.with(|definitions| {
+            // Ensure any definitions in the members already exist.
+            // Note: This design ensures cyclic definitions are not possible.
+            for member in definition.members() {
+                if let Annotation::Definition(definition_name) = member.annotation() {
+                    if !definitions.borrow().contains_key(definition_name) {
+                        Self::halt(format!("Definition '{definition_name}' does not exist yet"))
+                    }
+                }
+            }
+
             // Add the definition to the map.
             // Ensure the definition was not previously added.
             let name = definition.name().clone();
             if let Some(..) = definitions.borrow_mut().insert(name.clone(), definition) {
-                Self::halt(format!("Definition \'{name}\' was previously added"))
+                Self::halt(format!("Definition '{name}' was previously added"))
             }
         });
     }
@@ -57,14 +76,22 @@ impl Program for Process {
     ///
     /// # Errors
     /// This method will halt if the function was previously added.
+    /// This method will halt if the function name is already in use by a definition or function.
     #[inline]
     fn new_function(function: Function<Self>) {
+        DEFINITIONS.with(|definitions| {
+            // Ensure the function name was not previously used.
+            let name = function.name();
+            if definitions.borrow().contains_key(name) {
+                Self::halt(format!("Function '{name}' already used by a definition"))
+            }
+        });
         FUNCTIONS.with(|functions| {
             // Add the function to the map.
             // Ensure the function was not previously added.
             let name = function.name().clone();
             if let Some(..) = functions.borrow_mut().insert(name.clone(), function) {
-                Self::halt(format!("Function \'{name}\' was previously added"))
+                Self::halt(format!("Function '{name}' was previously added"))
             }
         });
     }
@@ -151,7 +178,7 @@ mod tests {
         // Create a new definition.
         let definition = Definition::<Process>::from_str(
             r"
-type message:
+struct message:
     first as field.public;
     second as field.private;",
         );
@@ -190,7 +217,7 @@ function compute:
         // Create a new program.
         Process::parse(
             r"
-type message:
+struct message:
     first as field.public;
     second as field.private;
 
@@ -211,7 +238,7 @@ function compute:
         let compute = Process::get_function(&Identifier::from_str("compute")).unwrap();
 
         // Declare the input value.
-        let input = Value::from_str("message 2field.public 3field.private");
+        let input = Value::from_str("message { 2field.public, 3field.private }");
 
         // Declare the expected output value.
         let expected = Value::from_str("5field.private");
@@ -225,7 +252,7 @@ function compute:
     #[test]
     fn test_process_display() {
         // Create a new program.
-        let expected = r"type message:
+        let expected = r"struct message:
     first as field.public;
     second as field.private;
 
