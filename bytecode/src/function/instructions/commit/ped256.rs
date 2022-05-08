@@ -14,77 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::Commit;
-use crate::{
-    function::{parsers::*, Instruction, Opcode, Operation, Registers},
-    Program,
-    Value,
-};
-use snarkvm_circuits::{algorithms::Pedersen256, CommitmentScheme, Parser, ParserResult};
-use snarkvm_utilities::{FromBytes, ToBytes};
-
-use nom::combinator::map;
-use snarkvm_circuits::{Literal, ToBits};
-use std::io::{Read, Result as IoResult, Write};
+use super::*;
 
 /// Performs a Pedersen commitment taking a 256-bit value as input.
-pub type CommitPed256<P> = Commit<P, Pedersen256<<P as Program>::Aleo>>;
+pub type CommitPed256<P> = Commit<P, Ped256>;
 
-impl<P: Program> Opcode for CommitPed256<P> {
-    /// Returns the opcode as a string.
-    #[inline]
-    fn opcode() -> &'static str {
-        "commit.ped256"
-    }
-}
-
-impl<P: Program> Parser for CommitPed256<P> {
-    type Environment = P::Environment;
-
-    #[inline]
-    fn parse(string: &str) -> ParserResult<Self> {
-        map(BinaryOperation::parse, |operation| Self {
-            operation,
-            commitment_gadget: Pedersen256::<P::Environment>::setup("PedersenCircuit0"),
-        })(string)
-    }
-}
-
-impl<P: Program> FromBytes for CommitPed256<P> {
-    fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        Ok(Self {
-            operation: BinaryOperation::read_le(&mut reader)?,
-            commitment_gadget: Pedersen256::<P::Environment>::setup("PedersenCircuit0"),
-        })
-    }
-}
-
-impl<P: Program> ToBytes for CommitPed256<P> {
-    fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.operation.write_le(&mut writer)
-    }
-}
-
-#[allow(clippy::from_over_into)]
-impl<P: Program> Into<Instruction<P>> for CommitPed256<P> {
-    /// Converts the operation into an instruction.
-    fn into(self) -> Instruction<P> {
-        Instruction::CommitPed256(self)
-    }
-}
-
-impl<P: Program> Operation<P> for CommitPed256<P> {
-    /// Evaluates the operation.
-    #[inline]
-    fn evaluate(&self, registers: &Registers<P>) {
-        impl_commit_evaluate!(self, registers);
-    }
+pub struct Ped256;
+impl CommitOpcode for Ped256 {
+    const OPCODE: &'static str = "commit.ped256";
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{test_instruction_halts, test_modes, Identifier, Process, Register};
+    use crate::{function::Register, test_instruction_halts, test_modes, Identifier, Process};
 
     type P = Process;
 
@@ -99,112 +42,112 @@ mod tests {
         CommitPed256,
         "aleo1d5hg2z3ma00382pngntdp68e74zv54jdxy249qhaujhks9c72yrs33ddah",
         "1scalar",
-        "889102317888271826718559972138868820466563749149942194168269228701119910350group"
+        "3209171340981864543266405414366060789110320385800446890741891373278205263346field"
     );
     test_modes!(
         bool,
         CommitPed256,
         "true",
         "1scalar",
-        "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
+        "478157451423847009900236798818848382990838648975907384417461239031072256563field"
     );
     test_modes!(
         field,
         CommitPed256,
         "1field",
         "1scalar",
-        "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
+        "478157451423847009900236798818848382990838648975907384417461239031072256563field"
     );
     test_modes!(
         group,
         CommitPed256,
         "2group",
         "1scalar",
-        "2664340318215809634698318956510253812463234504768303019123996597123255397816group"
+        "7526860243782102044430898702968287626100250324788799205880305445717943584221field"
     );
     test_modes!(
         i8,
         CommitPed256,
         "1i8",
         "1scalar",
-        "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
+        "478157451423847009900236798818848382990838648975907384417461239031072256563field"
     );
     test_modes!(
         i16,
         CommitPed256,
         "1i16",
         "1scalar",
-        "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
+        "478157451423847009900236798818848382990838648975907384417461239031072256563field"
     );
     test_modes!(
         i32,
         CommitPed256,
         "1i32",
         "1scalar",
-        "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
+        "478157451423847009900236798818848382990838648975907384417461239031072256563field"
     );
     test_modes!(
         i64,
         CommitPed256,
         "1i64",
         "1scalar",
-        "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
+        "478157451423847009900236798818848382990838648975907384417461239031072256563field"
     );
     test_modes!(
         i128,
         CommitPed256,
         "1i128",
         "1scalar",
-        "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
+        "478157451423847009900236798818848382990838648975907384417461239031072256563field"
     );
     test_modes!(
         u8,
         CommitPed256,
         "1u8",
         "1scalar",
-        "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
+        "478157451423847009900236798818848382990838648975907384417461239031072256563field"
     );
     test_modes!(
         u16,
         CommitPed256,
         "1u16",
         "1scalar",
-        "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
+        "478157451423847009900236798818848382990838648975907384417461239031072256563field"
     );
     test_modes!(
         u32,
         CommitPed256,
         "1u32",
         "1scalar",
-        "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
+        "478157451423847009900236798818848382990838648975907384417461239031072256563field"
     );
     test_modes!(
         u64,
         CommitPed256,
         "1u64",
         "1scalar",
-        "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
+        "478157451423847009900236798818848382990838648975907384417461239031072256563field"
     );
     test_modes!(
         u128,
         CommitPed256,
         "1u128",
         "1scalar",
-        "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
+        "478157451423847009900236798818848382990838648975907384417461239031072256563field"
     );
     test_modes!(
         string,
         CommitPed256,
         "\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"",
         "1scalar",
-        "4474375435433511481841568407131779761539524677297529532110325712577499017287group"
+        "1697784346568291403184339111119715631403741153760855419498239551653716695642field"
     );
     test_modes!(
         scalar,
         CommitPed256,
         "1scalar",
         "1scalar",
-        "7143232585354596727088537818886269936493413322580429357859918031397884359807group"
+        "478157451423847009900236798818848382990838648975907384417461239031072256563field"
     );
 
     test_instruction_halts!(
@@ -216,10 +159,10 @@ mod tests {
     );
 
     #[test]
-    fn test_composite() {
-        let first = Value::<P>::Composite(Identifier::from_str("message"), vec![
-            Literal::from_str("true.public"),
-            Literal::from_str("false.private"),
+    fn test_definition() {
+        let first = Value::<P>::Definition(Identifier::from_str("message"), vec![
+            Value::from_str("true.public"),
+            Value::from_str("false.private"),
         ]);
         let second = Value::<P>::from_str("1scalar");
 
@@ -234,17 +177,17 @@ mod tests {
 
         let value = registers.load(&Register::from_str("r2"));
         let expected = Value::<P>::from_str(
-            "7143232585354596727088537818886269936493413322580429357859918031397884359807group.private",
+            "19341056535717425085758329792683924877273194890858381597697503538688102493field.private",
         );
         assert_eq!(expected, value);
     }
 
     #[test]
     #[should_panic(expected = "The Pedersen hash input cannot exceed 256 bits.")]
-    fn test_composite_halts() {
-        let first = Value::<P>::Composite(Identifier::from_str("message"), vec![
-            Literal::from_str("1field.public"),
-            Literal::from_str("2field.private"),
+    fn test_definition_halts() {
+        let first = Value::<P>::Definition(Identifier::from_str("message"), vec![
+            Value::from_str("1field.public"),
+            Value::from_str("2field.private"),
         ]);
         let second = Value::<P>::from_str("1scalar");
 

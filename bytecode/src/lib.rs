@@ -16,9 +16,6 @@
 
 #![forbid(unsafe_code)]
 
-#[macro_use]
-extern crate enum_index_derive;
-
 pub mod definition;
 pub use definition::*;
 
@@ -38,6 +35,8 @@ use core::{fmt::Debug, hash::Hash};
 pub trait Program: Copy + Clone + Debug + Eq + PartialEq + Hash + Parser<Environment = Self::Aleo> {
     type Aleo: Aleo;
 
+    /// The maximum lookup/reference depth for a value, register, or definition.
+    const NUM_DEPTH: usize = u8::MAX as usize;
     /// The maximum number of bytes for an identifier.
     const NUM_IDENTIFIER_BYTES: usize = 31;
     /// The maximum number of inputs for a function.
@@ -51,12 +50,15 @@ pub trait Program: Copy + Clone + Debug + Eq + PartialEq + Hash + Parser<Environ
     ///
     /// # Errors
     /// This method will halt if the definition was previously added.
+    /// This method will halt if the definition name is already in use by a definition or function.
+    /// This method will halt if any definitions in the definition's members are not already defined.
     fn new_definition(definition: Definition<Self>);
 
     /// Adds a new function to the program.
     ///
     /// # Errors
     /// This method will halt if the function was previously added.
+    /// This method will halt if the function name is already in use by a definition or function.
     fn new_function(function: Function<Self>);
 
     /// Returns `true` if the program contains a definition with the given name.
