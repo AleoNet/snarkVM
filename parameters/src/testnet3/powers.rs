@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use anyhow::{anyhow, Result};
+use anyhow::{bail, Result};
 use rand::Rng;
 use snarkvm_curves::traits::PairingEngine;
 use snarkvm_utilities::{
@@ -81,71 +81,6 @@ pub struct PowersOfG<E: PairingEngine> {
     degree: usize,
 }
 
-impl<E: PairingEngine> Default for PowersOfG<E> {
-    fn default() -> Self {
-        // This basically should never fail, hence the expect call.
-        Self::new(DEFAULT_PATH.clone()).expect("could not create default powers of G")
-    }
-}
-
-impl<E: PairingEngine> Clone for PowersOfG<E> {
-    fn clone(&self) -> Self {
-        Self::new(PathBuf::from(self.file_path.clone())).expect("could not clone powers of g")
-    }
-}
-
-impl<E: PairingEngine> ToBytes for PowersOfG<E> {
-    fn write_le<W: Write>(&self, mut writer: W) -> std::io::Result<()> {
-        bincode::serialize_into(&mut writer, &self.file_path).unwrap();
-
-        // Serialize `powers_of_beta_times_gamma_g`.
-        (self.powers_of_beta_times_gamma_g.len() as u32).write_le(&mut writer)?;
-        for (key, power_of_gamma_g) in &self.powers_of_beta_times_gamma_g {
-            (*key as u32).write_le(&mut writer)?;
-            power_of_gamma_g.write_le(&mut writer)?;
-        }
-
-        Ok(())
-    }
-}
-
-impl<E: PairingEngine> FromBytes for PowersOfG<E> {
-    fn read_le<R: Read>(mut reader: R) -> std::io::Result<Self> {
-        let file_path: String = bincode::deserialize_from(&mut reader).unwrap();
-
-        // Deserialize `powers_of_beta_times_gamma_g`.
-        let mut powers_of_beta_times_gamma_g = BTreeMap::new();
-        let powers_of_gamma_g_num_elements: u32 = FromBytes::read_le(&mut reader)?;
-        for _ in 0..powers_of_gamma_g_num_elements {
-            let key: u32 = FromBytes::read_le(&mut reader)?;
-            let power_of_gamma_g: E::G1Affine = FromBytes::read_le(&mut reader)?;
-
-            powers_of_beta_times_gamma_g.insert(key as usize, power_of_gamma_g);
-        }
-
-        let mut powers = PowersOfG::new(PathBuf::from(file_path)).unwrap();
-        powers.powers_of_beta_times_gamma_g = powers_of_beta_times_gamma_g;
-        Ok(powers)
-    }
-}
-
-impl<E: PairingEngine> CanonicalSerialize for PowersOfG<E> {
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), SerializationError> {
-        self.write_le(&mut *writer)?;
-        Ok(())
-    }
-
-    fn serialized_size(&self) -> usize {
-        todo!()
-    }
-}
-
-impl<E: PairingEngine> CanonicalDeserialize for PowersOfG<E> {
-    fn deserialize<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
-        Ok(FromBytes::read_le(&mut *reader)?)
-    }
-}
-
 // NOTE: this drops the powers into a tmp file.
 // I assume this is only used for testing but this needs to be verified.
 impl<E: PairingEngine> From<(Vec<E::G1Affine>, BTreeMap<usize, E::G1Affine>)> for PowersOfG<E> {
@@ -197,7 +132,7 @@ impl<E: PairingEngine> PowersOfG<E> {
     }
 
     /// Return the number of current powers of G.
-    pub fn len(&self) -> usize {
+    pub fn degree(&self) -> usize {
         self.degree
     }
 
@@ -253,47 +188,48 @@ impl<E: PairingEngine> PowersOfG<E> {
         index_start
     }
 
-    fn get_degrees_to_download(&self, degree: usize) -> Vec<usize> {
-        let mut degrees = vec![];
-        let mut starting_degree = self.degree;
-        loop {
-            let next_degree_to_download = starting_degree * 2;
-            degrees.push(next_degree_to_download);
-            if next_degree_to_download >= degree {
-                break;
+    /// This method downloads the universal SRS powers up to the `next_power_of_two(target_degree)`,
+    /// and updates `Self` in place with the new powers.
+    pub fn download_up_to(&mut self, target_degree: usize) -> Result<()> {
+        // Determine the degrees to download.
+        let mut degrees_to_download = vec![];
+        let mut current = self.degree;
+        while current < target_degree {
+            degrees_to_download.push(current * 2);
+            current *= 2;
+        }
+
+        // If the `target_degree` exceeds the current `degree`, proceed to download the new powers.
+        if !degrees_to_download.is_empty() {
+            for degree in &degrees_to_download {
+                // Download the universal SRS powers.
+                let bytes = match *degree {
+                    DEGREE_16 => Degree16::load_bytes()?,
+                    DEGREE_17 => Degree17::load_bytes()?,
+                    DEGREE_18 => Degree18::load_bytes()?,
+                    DEGREE_19 => Degree19::load_bytes()?,
+                    DEGREE_20 => Degree20::load_bytes()?,
+                    DEGREE_21 => Degree21::load_bytes()?,
+                    DEGREE_22 => Degree22::load_bytes()?,
+                    DEGREE_23 => Degree23::load_bytes()?,
+                    DEGREE_24 => Degree24::load_bytes()?,
+                    DEGREE_25 => Degree25::load_bytes()?,
+                    DEGREE_26 => Degree26::load_bytes()?,
+                    DEGREE_27 => Degree27::load_bytes()?,
+                    DEGREE_28 => Degree28::load_bytes()?,
+                    _ => bail!("Invalid degree '{degree}' selected"),
+                };
+
+                // Write the powers to the file.
+                self.file.seek(SeekFrom::End(0))?;
+                self.file.write_all(&bytes)?;
+
+                // Update the `degree`.
+                self.degree = *degree;
             }
-            starting_degree = next_degree_to_download;
+
+            self.regenerate_powers_of_beta_times_gamma_g();
         }
-        degrees
-    }
-
-    /// Download the transcript up to `degree`.
-    pub fn download_up_to(&mut self, degree: usize) -> Result<()> {
-        let degrees_to_download = self.get_degrees_to_download(degree);
-        for d in &degrees_to_download {
-            let bytes = match *d {
-                DEGREE_16 => Degree16::load_bytes()?,
-                DEGREE_17 => Degree17::load_bytes()?,
-                DEGREE_18 => Degree18::load_bytes()?,
-                DEGREE_19 => Degree19::load_bytes()?,
-                DEGREE_20 => Degree20::load_bytes()?,
-                DEGREE_21 => Degree21::load_bytes()?,
-                DEGREE_22 => Degree22::load_bytes()?,
-                DEGREE_23 => Degree23::load_bytes()?,
-                DEGREE_24 => Degree24::load_bytes()?,
-                DEGREE_25 => Degree25::load_bytes()?,
-                DEGREE_26 => Degree26::load_bytes()?,
-                DEGREE_27 => Degree27::load_bytes()?,
-                DEGREE_28 => Degree28::load_bytes()?,
-                _ => return Err(anyhow!("incorrect degree selected")),
-            };
-
-            self.file.seek(SeekFrom::End(0))?;
-            self.file.write_all(&bytes)?;
-        }
-
-        self.degree = *degrees_to_download.last().unwrap();
-        self.regenerate_powers_of_beta_times_gamma_g();
 
         Ok(())
     }
@@ -313,11 +249,11 @@ impl<E: PairingEngine> PowersOfG<E> {
         }
         alpha_powers_g1[3..].iter().chunks(3).into_iter().enumerate().for_each(|(i, c)| {
             // Avoid underflows and just stop populating the map if we're going to.
-            if self.len() - 1 > (1 << i) {
+            if self.degree() - 1 > (1 << i) {
                 let c = c.into_iter().collect::<Vec<_>>();
-                alpha_tau_powers_g1.insert(self.len() - 1 - (1 << i) + 2, *c[0]);
-                alpha_tau_powers_g1.insert(self.len() - 1 - (1 << i) + 3, *c[1]);
-                alpha_tau_powers_g1.insert(self.len() - 1 - (1 << i) + 4, *c[2]);
+                alpha_tau_powers_g1.insert(self.degree() - 1 - (1 << i) + 2, *c[0]);
+                alpha_tau_powers_g1.insert(self.degree() - 1 - (1 << i) + 3, *c[1]);
+                alpha_tau_powers_g1.insert(self.degree() - 1 - (1 << i) + 4, *c[2]);
             }
         });
 
@@ -326,5 +262,57 @@ impl<E: PairingEngine> PowersOfG<E> {
 
     pub fn get_powers_times_gamma_g(&self) -> &BTreeMap<usize, E::G1Affine> {
         &self.powers_of_beta_times_gamma_g
+    }
+}
+
+impl<E: PairingEngine> ToBytes for PowersOfG<E> {
+    fn write_le<W: Write>(&self, mut writer: W) -> std::io::Result<()> {
+        bincode::serialize_into(&mut writer, &self.file_path).unwrap();
+
+        // Serialize `powers_of_beta_times_gamma_g`.
+        (self.powers_of_beta_times_gamma_g.len() as u32).write_le(&mut writer)?;
+        for (key, power_of_gamma_g) in &self.powers_of_beta_times_gamma_g {
+            (*key as u32).write_le(&mut writer)?;
+            power_of_gamma_g.write_le(&mut writer)?;
+        }
+
+        Ok(())
+    }
+}
+
+impl<E: PairingEngine> FromBytes for PowersOfG<E> {
+    fn read_le<R: Read>(mut reader: R) -> std::io::Result<Self> {
+        let file_path: String = bincode::deserialize_from(&mut reader).unwrap();
+
+        // Deserialize `powers_of_beta_times_gamma_g`.
+        let mut powers_of_beta_times_gamma_g = BTreeMap::new();
+        let powers_of_gamma_g_num_elements: u32 = FromBytes::read_le(&mut reader)?;
+        for _ in 0..powers_of_gamma_g_num_elements {
+            let key: u32 = FromBytes::read_le(&mut reader)?;
+            let power_of_gamma_g: E::G1Affine = FromBytes::read_le(&mut reader)?;
+
+            powers_of_beta_times_gamma_g.insert(key as usize, power_of_gamma_g);
+        }
+
+        let mut powers = PowersOfG::new(PathBuf::from(file_path)).unwrap();
+        powers.powers_of_beta_times_gamma_g = powers_of_beta_times_gamma_g;
+        Ok(powers)
+    }
+}
+
+impl<E: PairingEngine> CanonicalSerialize for PowersOfG<E> {
+    fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), SerializationError> {
+        self.write_le(&mut *writer)?;
+        Ok(())
+    }
+
+    fn serialized_size(&self) -> usize {
+        todo!()
+    }
+}
+
+impl<E: PairingEngine> CanonicalDeserialize for PowersOfG<E> {
+    fn deserialize<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
+        Ok(FromBytes::read_le(&mut *reader)?)
     }
 }
