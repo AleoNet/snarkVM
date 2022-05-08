@@ -41,12 +41,19 @@ impl Program for Process {
     ///
     /// # Errors
     /// This method will halt if the definition was previously added.
+    /// This method will halt if the definition name is already in use by a definition or function.
     #[inline]
     fn new_definition(definition: Definition<Self>) {
+        FUNCTIONS.with(|functions| {
+            let name = definition.name();
+            if functions.borrow().contains_key(name) {
+                Self::halt(format!("Definition \'{name}\' already used by a function"))
+            }
+        });
         DEFINITIONS.with(|definitions| {
             // Add the definition to the map.
             // Ensure the definition was not previously added.
-            let name = definition.name().clone();
+            let name = definition.name();
             if let Some(..) = definitions.borrow_mut().insert(name.clone(), definition) {
                 Self::halt(format!("Definition \'{name}\' was previously added"))
             }
@@ -57,12 +64,19 @@ impl Program for Process {
     ///
     /// # Errors
     /// This method will halt if the function was previously added.
+    /// This method will halt if the function name is already in use by a definition or function.
     #[inline]
     fn new_function(function: Function<Self>) {
+        DEFINITIONS.with(|definitions| {
+            let name = function.name();
+            if definitions.borrow().contains_key(name) {
+                Self::halt(format!("Function \'{name}\' already used by a definition"))
+            }
+        });
         FUNCTIONS.with(|functions| {
             // Add the function to the map.
             // Ensure the function was not previously added.
-            let name = function.name().clone();
+            let name = function.name();
             if let Some(..) = functions.borrow_mut().insert(name.clone(), function) {
                 Self::halt(format!("Function \'{name}\' was previously added"))
             }
