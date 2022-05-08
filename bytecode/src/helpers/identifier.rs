@@ -16,7 +16,7 @@
 
 use crate::{function::Register, Program};
 use snarkvm_circuits::prelude::*;
-use snarkvm_utilities::{error, FromBytes, ToBytes};
+use snarkvm_utilities::{error, FromBytes, ToBits, ToBytes};
 
 use core::{fmt, marker::PhantomData};
 use nom::character::complete::{alpha1, alphanumeric1};
@@ -110,10 +110,7 @@ impl<P: Program> ToField for Identifier<P> {
 
         // Note: The string bytes themselves are **not** little-endian. Rather, they are order-preserving
         // for reconstructing the string when recovering the field element back into bytes.
-        match <P::Environment as Environment>::BaseField::from_bytes_le(&self.0.as_bytes()) {
-            Ok(field) => Field::constant(field),
-            Err(_) => P::halt(format!("Failed to convert identifier '{}' to a field element.", self.0)),
-        }
+        Field::from_bits_le(&Vec::<Boolean<_>>::constant(self.0.as_bytes().to_bits_le()))
     }
 }
 
