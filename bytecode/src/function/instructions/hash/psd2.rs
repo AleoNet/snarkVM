@@ -34,7 +34,7 @@ mod tests {
         Process,
         Value,
     };
-    use snarkvm_circuits::{Literal, Parser};
+    use snarkvm_circuits::Parser;
 
     type P = Process;
 
@@ -144,8 +144,8 @@ mod tests {
     #[test]
     fn test_definition() {
         let first = Value::<P>::Definition(Identifier::from_str("message"), vec![
-            Literal::from_str("1field.public").into(),
-            Literal::from_str("2field.private").into(),
+            Value::from_str("1field.public"),
+            Value::from_str("2field.private"),
         ]);
 
         let registers = Registers::<P>::default();

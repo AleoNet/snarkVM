@@ -225,8 +225,8 @@ mod tests {
         // Test parsing a definition.
         assert_eq!(
             Value::<P>::Definition(Identifier::from_str("message"), vec![
-                Literal::from_str("2group.public").into(),
-                Literal::from_str("10field.private").into(),
+                Value::from_str("2group.public"),
+                Value::from_str("10field.private"),
             ]),
             Value::parse("message { 2group.public, 10field.private }").unwrap().1,
         );
