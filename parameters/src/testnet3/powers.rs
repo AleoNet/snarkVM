@@ -15,8 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use anyhow::{bail, Result};
-use rand::Rng;
 use snarkvm_curves::traits::PairingEngine;
 use snarkvm_utilities::{
     CanonicalDeserialize,
@@ -28,7 +26,9 @@ use snarkvm_utilities::{
     Write,
 };
 
+use anyhow::{bail, Result};
 use itertools::Itertools;
+use rand::Rng;
 use std::{
     collections::BTreeMap,
     fs::{File, OpenOptions},
@@ -38,7 +38,7 @@ use std::{
 
 lazy_static::lazy_static! {
     static ref DEFAULT_PATH: PathBuf = PathBuf::from(format!("{}/.aleo/powers_of_g", std::env::var("HOME").unwrap()));
-    static ref BASE_POWERS: &'static [u8] = include_bytes!("./powers_of_g_15.96b5d79");
+    static ref UNIVERSAL_SRS_15: Vec<u8> = Degree15::load_bytes().expect("Failed to load universal SRS of degree 15");
     static ref POWERS_TIMES_GAMMA_G: &'static [u8] = include_bytes!("./gamma_powers");
 }
 
@@ -106,16 +106,15 @@ impl<E: PairingEngine> From<(Vec<E::G1Affine>, BTreeMap<usize, E::G1Affine>)> fo
 }
 
 impl<E: PairingEngine> PowersOfG<E> {
-    /// Returns a new instance of PowersOfG, which will store its
+    /// Returns a new instance of `PowersOfG`, which will store its
     /// powers in a file at `file_path`.
     pub fn new(file_path: PathBuf) -> Result<Self> {
         // Open the given file, creating it if it doesn't yet exist.
         let mut file = OpenOptions::new().read(true).write(true).create(true).open(file_path.clone())?;
 
-        // If the file is empty, let's write the base powers (up to degree 15)
-        // to it.
+        // If the file is empty, let's write the base powers (up to degree 15) to it.
         if file.metadata()?.len() == 0 {
-            file.write_all(&BASE_POWERS)?;
+            file.write_all(&UNIVERSAL_SRS_15)?;
         }
 
         let degree = file.metadata()?.len() as usize / POWER_OF_G_SERIALIZED_SIZE;

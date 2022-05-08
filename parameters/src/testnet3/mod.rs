@@ -19,6 +19,8 @@ pub use powers::*;
 
 const REMOTE_URL: &str = "https://s3-us-west-1.amazonaws.com/aleo.parameters";
 
+// Degree 15
+impl_local!(Degree15, "./resources/", "universal", "srs", "15");
 // Degree 16
 impl_remote!(Degree16, REMOTE_URL, "./resources/", "powers_of_g_16", "");
 // Degree 17

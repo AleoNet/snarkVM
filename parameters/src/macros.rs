@@ -71,6 +71,47 @@ macro_rules! impl_local {
             }
         }
     };
+    ($name: ident, $local_dir: expr, $fname: tt, $ftype: tt, $fdegree: tt) => {
+        #[derive(Clone, Debug, PartialEq, Eq)]
+        pub struct $name;
+
+        impl $name {
+            pub fn load_bytes() -> Result<Vec<u8>, $crate::errors::ParameterError> {
+                const METADATA: &'static str =
+                    include_str!(concat!($local_dir, $fname, ".", $ftype, ".", $fdegree, ".metadata"));
+
+                let metadata: serde_json::Value =
+                    serde_json::from_str(METADATA).expect("Metadata was not well-formatted");
+                let expected_checksum: String =
+                    metadata["checksum"].as_str().expect("Failed to parse checksum").to_string();
+                let expected_size: usize =
+                    metadata["size"].to_string().parse().expect("Failed to retrieve the file size");
+
+                let buffer = include_bytes!(concat!($local_dir, $fname, ".", $ftype, ".", $fdegree));
+
+                // Ensure the size matches.
+                if expected_size != buffer.len() {
+                    return Err($crate::errors::ParameterError::SizeMismatch(expected_size, buffer.len()));
+                }
+
+                // Ensure the checksum matches.
+                let candidate_checksum = checksum!(buffer);
+                if expected_checksum != candidate_checksum {
+                    return checksum_error!(expected_checksum, candidate_checksum);
+                }
+
+                return Ok(buffer.to_vec());
+            }
+        }
+
+        paste::item! {
+            #[cfg(test)]
+            #[test]
+            fn [< test_ $fname _ $ftype >]() {
+                assert!($name::load_bytes().is_ok());
+            }
+        }
+    };
 }
 
 #[macro_export]
