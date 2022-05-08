@@ -42,15 +42,24 @@ impl Program for Process {
     /// # Errors
     /// This method will halt if the definition was previously added.
     /// This method will halt if the definition name is already in use by a definition or function.
+    /// This method will halt if any definitions in the definition's members are not already defined.
     #[inline]
     fn new_definition(definition: Definition<Self>) {
         FUNCTIONS.with(|functions| {
+            // Ensure the definition name was not previously used.
             let name = definition.name();
             if functions.borrow().contains_key(name) {
                 Self::halt(format!("Definition \'{name}\' already used by a function"))
             }
         });
         DEFINITIONS.with(|definitions| {
+            // Ensure any definitions in the members already exist.
+            for member in definition.members() {
+                if !definitions.borrow().contains_key(member.name()) {
+                    Self::halt(format!("Definition \'{}\' does not exist yet", member.name()))
+                }
+            }
+
             // Add the definition to the map.
             // Ensure the definition was not previously added.
             let name = definition.name().clone();
@@ -68,6 +77,7 @@ impl Program for Process {
     #[inline]
     fn new_function(function: Function<Self>) {
         DEFINITIONS.with(|definitions| {
+            // Ensure the function name was not previously used.
             let name = function.name();
             if definitions.borrow().contains_key(name) {
                 Self::halt(format!("Function \'{name}\' already used by a definition"))
