@@ -237,8 +237,8 @@ impl<E: PairingEngine> PowersOfG<E> {
         let mut alpha_powers_g1 = vec![];
         let mut reader = BufReader::new(*POWERS_TIMES_GAMMA_G);
         for _ in 0..NUM_POWERS_TIMES_GAMMA_G {
-            let power: E::G1Affine =
-                FromBytes::read_le(&mut reader).expect("hardcoded powers times gamma g should be well-formed");
+            let power =
+                E::G1Affine::read_le(&mut reader).expect("hardcoded powers times gamma g should be well-formed");
             alpha_powers_g1.push(power);
         }
 
