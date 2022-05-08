@@ -90,24 +90,28 @@ impl<P: Program, Op: CommitOpcode> Operation<P> for Commit<P, Op> {
             Value::Composite(_name, literals) => literals.iter().flat_map(|literal| literal.to_bits_le()).collect(),
         };
         let second = match registers.load(self.operation.second()) {
-            Value::Literal(literal) => literal.to_bits_le(),
+            Value::Literal(literal) => literal,
             Value::Composite(name, ..) => P::halt(format!("{name} is not a literal")),
         };
 
         // Compute the digest for the given input.
-        let commitment = match Self::opcode() {
-            BHP256::OPCODE => P::Aleo::commit_bhp256(&first, &second),
-            BHP512::OPCODE => P::Aleo::commit_bhp512(&first, &second),
-            BHP1024::OPCODE => P::Aleo::commit_bhp1024(&first, &second),
-            Ped64::OPCODE => P::Aleo::commit_ped64(&first, &second),
-            Ped128::OPCODE => P::Aleo::commit_ped128(&first, &second),
-            Ped256::OPCODE => P::Aleo::commit_ped256(&first, &second),
-            Ped512::OPCODE => P::Aleo::commit_ped512(&first, &second),
-            Ped1024::OPCODE => P::Aleo::commit_ped1024(&first, &second),
-            _ => P::halt("Invalid option provided for the `commit` instruction"),
-        };
+        if let Literal::Scalar(second) = second {
+            let commitment = match Self::opcode() {
+                BHP256::OPCODE => P::Aleo::commit_bhp256(&first, &second),
+                BHP512::OPCODE => P::Aleo::commit_bhp512(&first, &second),
+                BHP1024::OPCODE => P::Aleo::commit_bhp1024(&first, &second),
+                Ped64::OPCODE => P::Aleo::commit_ped64(&first, &second),
+                Ped128::OPCODE => P::Aleo::commit_ped128(&first, &second),
+                Ped256::OPCODE => P::Aleo::commit_ped256(&first, &second),
+                Ped512::OPCODE => P::Aleo::commit_ped512(&first, &second),
+                Ped1024::OPCODE => P::Aleo::commit_ped1024(&first, &second),
+                _ => P::halt("Invalid option provided for the `commit` instruction"),
+            };
 
-        registers.assign(self.operation.destination(), Literal::Field(commitment));
+            registers.assign(self.operation.destination(), Literal::Field(commitment));
+        } else {
+            P::halt("Invalid type provided for `randomness` in `commit` instruction")
+        }
     }
 }
 

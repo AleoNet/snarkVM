@@ -19,11 +19,11 @@ use super::*;
 impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Commit for BHP<E, NUM_WINDOWS, WINDOW_SIZE> {
     type Input = Boolean<E>;
     type Output = Field<E>;
-    type Randomness = Boolean<E>;
+    type Randomness = Scalar<E>;
 
     /// Returns the BHP commitment of the given input with the given randomness
     /// as an affine group element.
-    fn commit(&self, input: &[Self::Input], randomness: &[Self::Randomness]) -> Self::Output {
+    fn commit(&self, input: &[Self::Input], randomness: &Self::Randomness) -> Self::Output {
         self.commit_uncompressed(input, randomness).to_x_coordinate()
     }
 }
@@ -34,7 +34,7 @@ mod tests {
     use snarkvm_algorithms::{commitment::BHPCommitment, CommitmentScheme as NativeCommitmentScheme};
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_curves::AffineCurve;
-    use snarkvm_utilities::{test_rng, ToBits as NativeToBits, UniformRand};
+    use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 10;
     const MESSAGE: &str = "BHPCircuit0";
@@ -65,7 +65,7 @@ mod tests {
             // Prepare the circuit input.
             let circuit_input: Vec<Boolean<_>> = Inject::new(mode, input);
             // Prepare the circuit randomness.
-            let circuit_randomness: Vec<Boolean<_>> = Inject::new(mode, randomness.to_bits_le());
+            let circuit_randomness: Scalar<_> = Inject::new(mode, randomness);
 
             Circuit::scope(format!("BHP {mode} {i}"), || {
                 // Perform the hash operation.
