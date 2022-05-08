@@ -50,12 +50,15 @@ pub trait Program: Copy + Clone + Debug + Eq + PartialEq + Hash + Parser<Environ
     ///
     /// # Errors
     /// This method will halt if the definition was previously added.
+    /// This method will halt if the definition name is already in use by a definition or function.
+    /// This method will halt if any definitions in the definition's members are not already defined.
     fn new_definition(definition: Definition<Self>);
 
     /// Adds a new function to the program.
     ///
     /// # Errors
     /// This method will halt if the function was previously added.
+    /// This method will halt if the function name is already in use by a definition or function.
     fn new_function(function: Function<Self>);
 
     /// Returns `true` if the program contains a definition with the given name.
