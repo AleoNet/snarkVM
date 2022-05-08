@@ -212,6 +212,7 @@ impl<E: PairingEngine, S: FiatShamirRng<E::Fr, E::Fq>> SonicKZG10<E, S> {
 
     /// Outputs a commitment to `polynomial`.
     #[allow(clippy::type_complexity)]
+    #[allow(clippy::format_push_string)]
     pub fn commit_with_terminator<'a>(
         ck: &CommitterKey<E>,
         polynomials: impl IntoIterator<Item = LabeledPolynomialWithBasis<'a, E::Fr>>,
