@@ -27,11 +27,11 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CommitU
 
     /// Returns the Pedersen commitment of the given input with the given randomness
     /// as an affine group element.
-    fn commit_uncompressed(&self, input: &[Self::Input], randomness: &[Self::Randomness]) -> Self::Output {
+    fn commit_uncompressed(&self, input: &[Self::Input], randomizer: &[Self::Randomness]) -> Self::Output {
         let hash = self.hash_uncompressed(input);
 
         // Compute h^r
-        randomness
+        randomizer
             .iter()
             .zip_eq(&self.random_base)
             .map(|(bit, power)| Group::ternary(bit, power, &Group::zero()))

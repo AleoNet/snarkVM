@@ -23,8 +23,8 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Commit 
 
     /// Returns the BHP commitment of the given input with the given randomness
     /// as an affine group element.
-    fn commit(&self, input: &[Self::Input], randomness: &[Self::Randomness]) -> Self::Output {
-        self.commit_uncompressed(input, randomness).to_x_coordinate()
+    fn commit(&self, input: &[Self::Input], randomizer: &[Self::Randomness]) -> Self::Output {
+        self.commit_uncompressed(input, randomizer).to_x_coordinate()
     }
 }
 

@@ -28,15 +28,14 @@ impl PRFOpcode for Psd8 {
 mod tests {
     use super::*;
     use crate::{
-        function::{Instruction, Operation, Registers},
+        function::{Instruction, Operation, Register, Registers},
         test_instruction_halts,
         test_modes,
         Identifier,
         Process,
-        Register,
         Value,
     };
-    use snarkvm_circuits::{Literal, Parser};
+    use snarkvm_circuits::Parser;
 
     type P = Process;
 
@@ -162,17 +161,17 @@ mod tests {
     test_instruction_halts!(
         wrong_seed,
         PRFPsd8,
-        "Unreachable literal variant detected during PRF calculation.",
+        "Invalid seed type for PRF, expected a field element",
         "1scalar",
         "1u8"
     );
 
     #[test]
-    fn test_composite() {
+    fn test_definition() {
         let first = Literal::from_str("1field.private");
-        let second = Value::<P>::Composite(Identifier::from_str("message"), vec![
-            Literal::from_str("1field.public"),
-            Literal::from_str("2field.private"),
+        let second = Value::<P>::Definition(Identifier::from_str("message"), vec![
+            Value::from_str("1field.public"),
+            Value::from_str("2field.private"),
         ]);
 
         let registers = Registers::<P>::default();
@@ -186,7 +185,7 @@ mod tests {
 
         let value = registers.load(&Register::from_str("r2"));
         let expected = Value::<P>::from_str(
-            "676171373589463035179027005190790325758611027032359430060965832983791475172field.private",
+            "7361945891118470894912163657103893417361583984636664095312632138077866929638field.private",
         );
         assert_eq!(expected, value);
     }

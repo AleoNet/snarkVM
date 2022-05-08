@@ -27,7 +27,7 @@ impl CommitOpcode for Ped64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{test_instruction_halts, test_modes, Identifier, Process, Register};
+    use crate::{function::Register, test_instruction_halts, test_modes, Identifier, Process};
 
     type P = Process;
 
@@ -159,10 +159,10 @@ mod tests {
     );
 
     #[test]
-    fn test_composite() {
-        let first = Value::<P>::Composite(Identifier::from_str("message"), vec![
-            Literal::from_str("true.public"),
-            Literal::from_str("false.private"),
+    fn test_definition() {
+        let first = Value::<P>::Definition(Identifier::from_str("message"), vec![
+            Value::from_str("true.public"),
+            Value::from_str("false.private"),
         ]);
         let second = Value::<P>::from_str("1scalar");
 
@@ -177,17 +177,17 @@ mod tests {
 
         let value = registers.load(&Register::from_str("r2"));
         let expected = Value::<P>::from_str(
-            "451816983925465612310036142898649792841141971816913349341750601484549023437field.private",
+            "4826640157808811027841387117081364862316332117657731002046261361216623687293field.private",
         );
         assert_eq!(expected, value);
     }
 
     #[test]
     #[should_panic(expected = "The Pedersen hash input cannot exceed 64 bits.")]
-    fn test_composite_halts() {
-        let first = Value::<P>::Composite(Identifier::from_str("message"), vec![
-            Literal::from_str("1field.public"),
-            Literal::from_str("false.private"),
+    fn test_definition_halts() {
+        let first = Value::<P>::Definition(Identifier::from_str("message"), vec![
+            Value::from_str("1field.public"),
+            Value::from_str("false.private"),
         ]);
         let second = Value::<P>::from_str("1scalar");
 

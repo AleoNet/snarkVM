@@ -27,7 +27,7 @@ impl CommitOpcode for BHP256 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{test_instruction_halts, test_modes, Identifier, Process, Register};
+    use crate::{function::Register, test_instruction_halts, test_modes, Identifier, Process};
 
     type P = Process;
 
@@ -159,10 +159,10 @@ mod tests {
     );
 
     #[test]
-    fn test_composite() {
-        let first = Value::<P>::Composite(Identifier::from_str("message"), vec![
-            Literal::from_str("1u128.public"),
-            Literal::from_str("1u8.private"),
+    fn test_definition() {
+        let first = Value::<P>::Definition(Identifier::from_str("message"), vec![
+            Value::from_str("1u128.public"),
+            Value::from_str("1u8.private"),
         ]);
         let second = Value::<P>::from_str("1scalar");
 
@@ -177,17 +177,17 @@ mod tests {
 
         let value = registers.load(&Register::from_str("r2"));
         let expected = Value::<P>::from_str(
-            "8123895763528012682481315519501864545387692985719874244681695541847032067205field.private",
+            "7011990780899172191128348191856233471462848048463198251737807495501253122629field.private",
         );
         assert_eq!(expected, value);
     }
 
     #[test]
     #[should_panic(expected = "Inputs to this BHP variant cannot exceed 258 bits")]
-    fn test_composite_halts() {
-        let first = Value::<P>::Composite(Identifier::from_str("message"), vec![
-            Literal::from_str("1field.public"),
-            Literal::from_str("2field.private"),
+    fn test_definition_halts() {
+        let first = Value::<P>::Definition(Identifier::from_str("message"), vec![
+            Value::from_str("1field.public"),
+            Value::from_str("2field.private"),
         ]);
         let second = Value::<P>::from_str("1scalar");
 

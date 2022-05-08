@@ -39,8 +39,7 @@ pub(crate) mod ped1024;
 pub(crate) use ped1024::*;
 
 use crate::{
-    function::{parsers::*, Instruction, Opcode, Operation, Program, Registers},
-    helpers::Register,
+    function::{parsers::*, Instruction, Opcode, Operation, Program, Register, Registers},
     Value,
 };
 use snarkvm_circuits::{Aleo, Literal, Parser, ParserResult, ToBits};
@@ -84,26 +83,24 @@ impl<P: Program, Op: CommitOpcode> Operation<P> for Commit<P, Op> {
     /// Evaluates the operation.
     #[inline]
     fn evaluate(&self, registers: &Registers<P>) {
-        // Load the input from the operand.
-        let first = match registers.load(self.operation.first()) {
+        // Load the input from the first operand.
+        let input = registers.load(self.operation.first()).to_literals();
+        // Load the randomizer from the second operand.
+        let randomizer = match registers.load(self.operation.second()) {
             Value::Literal(literal) => literal.to_bits_le(),
-            Value::Composite(_name, literals) => literals.iter().flat_map(|literal| literal.to_bits_le()).collect(),
-        };
-        let second = match registers.load(self.operation.second()) {
-            Value::Literal(literal) => literal.to_bits_le(),
-            Value::Composite(name, ..) => P::halt(format!("{name} is not a literal")),
+            Value::Definition(name, ..) => P::halt(format!("{name} is not a literal")),
         };
 
         // Compute the digest for the given input.
         let commitment = match Self::opcode() {
-            BHP256::OPCODE => P::Aleo::commit_bhp256(&first, &second),
-            BHP512::OPCODE => P::Aleo::commit_bhp512(&first, &second),
-            BHP1024::OPCODE => P::Aleo::commit_bhp1024(&first, &second),
-            Ped64::OPCODE => P::Aleo::commit_ped64(&first, &second),
-            Ped128::OPCODE => P::Aleo::commit_ped128(&first, &second),
-            Ped256::OPCODE => P::Aleo::commit_ped256(&first, &second),
-            Ped512::OPCODE => P::Aleo::commit_ped512(&first, &second),
-            Ped1024::OPCODE => P::Aleo::commit_ped1024(&first, &second),
+            BHP256::OPCODE => P::Aleo::commit_bhp256(&input.to_bits_le(), &randomizer),
+            BHP512::OPCODE => P::Aleo::commit_bhp512(&input.to_bits_le(), &randomizer),
+            BHP1024::OPCODE => P::Aleo::commit_bhp1024(&input.to_bits_le(), &randomizer),
+            Ped64::OPCODE => P::Aleo::commit_ped64(&input.to_bits_le(), &randomizer),
+            Ped128::OPCODE => P::Aleo::commit_ped128(&input.to_bits_le(), &randomizer),
+            Ped256::OPCODE => P::Aleo::commit_ped256(&input.to_bits_le(), &randomizer),
+            Ped512::OPCODE => P::Aleo::commit_ped512(&input.to_bits_le(), &randomizer),
+            Ped1024::OPCODE => P::Aleo::commit_ped1024(&input.to_bits_le(), &randomizer),
             _ => P::halt("Invalid option provided for the `commit` instruction"),
         };
 

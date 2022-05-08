@@ -28,15 +28,14 @@ impl HashOpcode for BHP256 {
 mod tests {
     use super::*;
     use crate::{
-        function::{Instruction, Operation, Registers},
+        function::{Instruction, Operation, Register, Registers},
         test_instruction_halts,
         test_modes,
         Identifier,
         Process,
-        Register,
         Value,
     };
-    use snarkvm_circuits::{Literal, Parser};
+    use snarkvm_circuits::Parser;
 
     type P = Process;
 
@@ -106,10 +105,10 @@ mod tests {
     );
 
     #[test]
-    fn test_composite() {
-        let first = Value::<P>::Composite(Identifier::from_str("message"), vec![
-            Literal::from_str("1u128.public"),
-            Literal::from_str("1u8.private"),
+    fn test_definition() {
+        let first = Value::<P>::Definition(Identifier::from_str("message"), vec![
+            Value::from_str("1u128.public"),
+            Value::from_str("1u8.private"),
         ]);
 
         let registers = Registers::<P>::default();
@@ -121,17 +120,17 @@ mod tests {
 
         let value = registers.load(&Register::from_str("r1"));
         let expected = Value::<P>::from_str(
-            "7037518451104647995701956748302747700592897133164811748578711064244897752727field.private",
+            "2279837715263450846614830164852377285826378386408692456763839675728322500657field.private",
         );
         assert_eq!(expected, value);
     }
 
     #[test]
     #[should_panic(expected = "Inputs to this BHP variant cannot exceed 258 bits")]
-    fn test_composite_halts() {
-        let first = Value::<P>::Composite(Identifier::from_str("message"), vec![
-            Literal::from_str("1field.public"),
-            Literal::from_str("2field.private"),
+    fn test_definition_halts() {
+        let first = Value::<P>::Definition(Identifier::from_str("message"), vec![
+            Value::from_str("1field.public"),
+            Value::from_str("2field.private"),
         ]);
 
         let registers = Registers::<P>::default();
