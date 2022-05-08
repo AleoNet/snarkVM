@@ -161,7 +161,7 @@ mod tests {
     test_instruction_halts!(
         wrong_seed,
         PRFPsd2,
-        "Unreachable literal variant detected during PRF calculation.",
+        "Invalid seed type for PRF, expected a field element",
         "1scalar",
         "1u8"
     );
@@ -185,7 +185,7 @@ mod tests {
 
         let value = registers.load(&Register::from_str("r2"));
         let expected = Value::<P>::from_str(
-            "1229961230903946015049212727085586100476924753751618406815341787923555981521field.private",
+            "2936173953694938479050221666863564687580176307078749337936915336080009144569field.private",
         );
         assert_eq!(expected, value);
     }

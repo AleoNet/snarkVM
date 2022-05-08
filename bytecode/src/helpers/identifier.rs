@@ -96,6 +96,11 @@ impl<P: Program> Identifier<P> {
     pub fn as_str(&self) -> &str {
         &self.0
     }
+
+    /// Returns the identifier as a string circuit.
+    pub fn to_string_circuit(&self) -> StringType<P::Environment> {
+        StringType::constant(self.0.clone())
+    }
 }
 
 impl<P: Program> ToField for Identifier<P> {
