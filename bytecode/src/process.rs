@@ -53,7 +53,7 @@ impl Program for Process {
         DEFINITIONS.with(|definitions| {
             // Add the definition to the map.
             // Ensure the definition was not previously added.
-            let name = definition.name();
+            let name = definition.name().clone();
             if let Some(..) = definitions.borrow_mut().insert(name.clone(), definition) {
                 Self::halt(format!("Definition \'{name}\' was previously added"))
             }
@@ -76,7 +76,7 @@ impl Program for Process {
         FUNCTIONS.with(|functions| {
             // Add the function to the map.
             // Ensure the function was not previously added.
-            let name = function.name();
+            let name = function.name().clone();
             if let Some(..) = functions.borrow_mut().insert(name.clone(), function) {
                 Self::halt(format!("Function \'{name}\' was previously added"))
             }
