@@ -37,13 +37,12 @@ use std::{
 };
 
 lazy_static::lazy_static! {
-    static ref DEFAULT_PATH: PathBuf = PathBuf::from(format!("{}/.aleo/powers_of_g", std::env::var("HOME").unwrap()));
     static ref UNIVERSAL_SRS_15: Vec<u8> = Degree15::load_bytes().expect("Failed to load universal SRS of degree 15");
-    static ref POWERS_TIMES_GAMMA_G: &'static [u8] = include_bytes!("./gamma_powers");
+    static ref UNIVERSAL_SRS_GAMMA: Vec<u8> = Gamma::load_bytes().expect("Failed to load universal SRS gamma powers");
 }
 
-// Amount of powers contained in `POWERS_TIMES_GAMMA_G`.
-const NUM_POWERS_TIMES_GAMMA_G: usize = 84;
+// Amount of powers contained in `UNIVERSAL_SRS_GAMMA`.
+const NUM_UNIVERSAL_SRS_GAMMA: usize = 84;
 // Size of a serialized power of G.
 const POWER_OF_G_SERIALIZED_SIZE: usize = 97;
 
@@ -135,12 +134,12 @@ impl<E: PairingEngine> PowersOfG<E> {
         self.degree
     }
 
-    /// Returns the power of beta times G specified by `which_power`.
+    /// Returns the power of beta times G specified by `target_power`.
     // NOTE: `std::ops::Index` was not used here as the trait requires
     // that we return a reference. We can not return a reference to
     // something that does not exist when this function is called.
-    pub fn power_of_beta_g(&mut self, which_power: usize) -> E::G1Affine {
-        let index_start = self.get_starting_byte_index(which_power).expect("Failed to load starting byte index");
+    pub fn power_of_beta_g(&mut self, target_power: usize) -> E::G1Affine {
+        let index_start = self.get_starting_byte_index(target_power).expect("Failed to load starting byte index");
 
         // Move our offset to the start of the desired element.
         let mut reader = BufReader::new(&self.file);
@@ -164,10 +163,8 @@ impl<E: PairingEngine> PowersOfG<E> {
         // Now iterate until we fill a vector with all desired elements.
         let mut powers = Vec::with_capacity((upper - lower) as usize);
         for _ in lower..upper {
-            let power: E::G1Affine = FromBytes::read_le(&mut reader).expect("powers of g corrupted");
-            powers.push(power);
+            powers.push(E::G1Affine::read_le(&mut reader).expect("powers of g corrupted"));
         }
-
         powers
     }
 
@@ -180,8 +177,7 @@ impl<E: PairingEngine> PowersOfG<E> {
 
         // Ensure the powers exist, and download the missing powers if necessary.
         if starting_byte_index > self.file.metadata()?.len() as usize {
-            let degree = starting_byte_index.next_power_of_two();
-            self.download_up_to(degree)?;
+            self.download_up_to(target_power.next_power_of_two())?;
         }
 
         Ok(starting_byte_index)
@@ -235,8 +231,8 @@ impl<E: PairingEngine> PowersOfG<E> {
 
     fn regenerate_powers_of_beta_times_gamma_g(&mut self) -> Result<()> {
         let mut alpha_powers_g1 = vec![];
-        let mut reader = BufReader::new(*POWERS_TIMES_GAMMA_G);
-        for _ in 0..NUM_POWERS_TIMES_GAMMA_G {
+        let mut reader = BufReader::new(UNIVERSAL_SRS_GAMMA.as_slice());
+        for _ in 0..NUM_UNIVERSAL_SRS_GAMMA {
             alpha_powers_g1.push(E::G1Affine::read_le(&mut reader)?);
         }
 

@@ -47,3 +47,5 @@ impl_remote!(Degree26, REMOTE_URL, "./resources/", "universal", "srs", "26");
 impl_remote!(Degree27, REMOTE_URL, "./resources/", "universal", "srs", "27");
 // Degree 28
 impl_remote!(Degree28, REMOTE_URL, "./resources/", "universal", "srs", "28");
+// Gamma
+impl_local!(Gamma, "./resources/", "universal", "srs", "gamma");
