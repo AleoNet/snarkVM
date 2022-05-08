@@ -54,6 +54,7 @@ impl Program for Process {
         });
         DEFINITIONS.with(|definitions| {
             // Ensure any definitions in the members already exist.
+            // Note: This design ensures cyclic definitions are not possible.
             for member in definition.members() {
                 if !definitions.borrow().contains_key(member.name()) {
                     Self::halt(format!("Definition \'{}\' does not exist yet", member.name()))
