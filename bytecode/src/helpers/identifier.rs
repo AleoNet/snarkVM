@@ -98,6 +98,25 @@ impl<P: Program> Identifier<P> {
     }
 }
 
+impl<P: Program> ToField for Identifier<P> {
+    type Field = Field<P::Environment>;
+
+    /// Returns the identifier as a base field element.
+    fn to_field(&self) -> Self::Field {
+        // Ensure identifier is less than or equal to `NUM_IDENTIFIER_BYTES` bytes long.
+        if self.0.as_bytes().len() > P::NUM_IDENTIFIER_BYTES {
+            P::halt(format!("Identifier is too large. Identifiers must be <= {} bytes long", P::NUM_IDENTIFIER_BYTES))
+        }
+
+        // Note: The string bytes themselves are **not** little-endian. Rather, they are order-preserving
+        // for reconstructing the string when recovering the field element back into bytes.
+        match <P::Environment as Environment>::BaseField::from_bytes_le(&self.0.as_bytes()) {
+            Ok(field) => Field::constant(field),
+            Err(_) => P::halt(format!("Failed to convert identifier '{}' to a field element.", self.0)),
+        }
+    }
+}
+
 impl<P: Program> Parser for Identifier<P> {
     type Environment = P::Environment;
 
@@ -147,9 +166,12 @@ impl<P: Program> fmt::Display for Identifier<P> {
 
 impl<P: Program> FromBytes for Identifier<P> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let size = u16::read_le(&mut reader)?;
+        // Read the number of bytes.
+        let size = u8::read_le(&mut reader)?;
+        // Read the identifier bytes.
         let mut buffer = vec![0u8; size as usize];
         reader.read_exact(&mut buffer)?;
+        // Parse the identifier.
         Ok(Self::from_str(
             &String::from_utf8(buffer).map_err(|e| error(format!("Failed to deserialize identifier: {e}")))?,
         ))
@@ -158,7 +180,15 @@ impl<P: Program> FromBytes for Identifier<P> {
 
 impl<P: Program> ToBytes for Identifier<P> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        (self.0.as_bytes().len() as u16).write_le(&mut writer)?;
+        // Ensure identifier is less than or equal to `NUM_IDENTIFIER_BYTES` bytes long.
+        if self.0.as_bytes().len() > P::NUM_IDENTIFIER_BYTES {
+            return Err(error(format!(
+                "Identifier is too large. Identifiers must be <= {} bytes long",
+                P::NUM_IDENTIFIER_BYTES
+            )));
+        }
+
+        (self.0.as_bytes().len() as u8).write_le(&mut writer)?;
         self.0.as_bytes().write_le(&mut writer)
     }
 }

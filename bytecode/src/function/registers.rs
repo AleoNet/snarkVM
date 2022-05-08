@@ -16,6 +16,7 @@
 
 use crate::{
     function::{parsers::*, Locator, Register},
+    Annotation,
     Program,
     Value,
 };
@@ -158,27 +159,67 @@ impl<P: Program> Registers<P> {
             // If the register is a locator, then return the value.
             Register::Locator(..) => value,
             // If the register is a register member, then load the specific value.
-            Register::Member(_, ref member_name) => match value {
+            Register::Member(_, ref identifiers) => match value {
                 // Halts if the value is not a definition.
                 Value::Literal(..) => P::halt("Cannot load a register member from a literal"),
                 // Retrieve the value of the member (from the value).
-                Value::Definition(definition, members) => {
-                    // Retrieve the member index of the identifier (from the definition).
-                    let member_index = match P::get_definition(&definition) {
-                        Some(definition) => {
-                            definition.members().iter().position(|member| member.name() == member_name).unwrap_or_else(
-                                || P::halt(format!("Failed to locate \'{member_name}\' in \'{definition}\'")),
-                            )
+                Value::Definition(mut definition, mut member_values) => {
+                    // Iterate through all of the identifiers to retrieve the value.
+                    for (i, identifier) in identifiers.iter().enumerate() {
+                        // Retrieve the member index and annotation of the identifier (from the definition).
+                        let (member_index, member_annotation) = match P::get_definition(&definition) {
+                            Some(definition) => definition
+                                .members()
+                                .iter()
+                                .enumerate()
+                                .filter_map(|(member_index, member)| match member.name() == identifier {
+                                    true => Some((member_index, member.annotation().clone())),
+                                    false => None,
+                                })
+                                .next()
+                                .unwrap_or_else(|| {
+                                    P::halt(format!(
+                                        "Failed to locate '{register}': missing '{identifier}' in '{definition}'"
+                                    ))
+                                }),
+                            // Halts if the definition does not exist.
+                            None => P::halt(format!("Failed to locate '{register}': missing '{definition}'")),
+                        };
+
+                        // For a standard round (that is not the last round), update the `definition` and `member_values` for the next round.
+                        if i < identifiers.len() - 1 {
+                            // Set the `definition`.
+                            match member_annotation {
+                                // If the annotation is a literal, then halt as this should not be possible since it is not the last round.
+                                Annotation::Literal(..) => P::halt("Cannot load a literal from a register member"),
+                                // If the annotation is a definition, update the `definition` to the next name.
+                                Annotation::Definition(name) => definition = name.clone(),
+                            }
+
+                            // Set the `member_values`.
+                            match member_values.get(member_index) {
+                                Some(member_value) => match member_value {
+                                    // If the value is a literal, then halt as this should not be possible since it is not the last round.
+                                    Value::Literal(..) => P::halt("Cannot load a literal from a register member"),
+                                    // If the annotation is a definition, update the `member_values` to the next list of member values.
+                                    Value::Definition(_name, members) => member_values = (*members).clone(),
+                                },
+                                // Halts if the member does not exist.
+                                None => P::halt(format!("Failed to locate '{register}': invalid member index")),
+                            }
                         }
-                        // Halts if the definition does not exist.
-                        None => P::halt(format!("Failed to locate \'{definition}\'")),
-                    };
-                    // Return the value of the member.
-                    match members.get(member_index) {
-                        Some(literal) => (*literal).clone().into(),
-                        // Halts if the member does not exist.
-                        None => P::halt(format!("Failed to locate \'{register}\'")),
+                        // If this is the last round, then retrieve and return the value.
+                        else {
+                            // Return the value of the member.
+                            match member_values.get(member_index) {
+                                Some(value) => return (*value).clone(),
+                                // Halts if the member does not exist.
+                                None => P::halt(format!("Failed to locate \'{register}\'")),
+                            }
+                        }
                     }
+
+                    P::halt(format!("Failed to locate \'{register}\'"))
                 }
             },
         }

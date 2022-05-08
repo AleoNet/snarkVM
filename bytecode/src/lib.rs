@@ -35,6 +35,8 @@ use core::{fmt::Debug, hash::Hash};
 pub trait Program: Copy + Clone + Debug + Eq + PartialEq + Hash + Parser<Environment = Self::Aleo> {
     type Aleo: Aleo;
 
+    /// The maximum lookup/reference depth for a value, register, or definition.
+    const NUM_DEPTH: usize = u8::MAX as usize;
     /// The maximum number of bytes for an identifier.
     const NUM_IDENTIFIER_BYTES: usize = 31;
     /// The maximum number of inputs for a function.

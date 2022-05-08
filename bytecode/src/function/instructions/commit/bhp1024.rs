@@ -161,8 +161,8 @@ mod tests {
     #[test]
     fn test_definition() {
         let first = Value::<P>::Definition(Identifier::from_str("message"), vec![
-            Literal::from_str("1field.public"),
-            Literal::from_str("false.private"),
+            Literal::from_str("1field.public").into(),
+            Literal::from_str("false.private").into(),
         ]);
         let second = Value::<P>::from_str("1scalar");
 
@@ -186,11 +186,11 @@ mod tests {
     #[should_panic(expected = "Inputs to this BHP variant cannot exceed 1026 bits")]
     fn test_definition_halts() {
         let first = Value::<P>::Definition(Identifier::from_str("message"), vec![
-            Literal::from_str("1field.public"),
-            Literal::from_str("2field.private"),
-            Literal::from_str("3field.private"),
-            Literal::from_str("4field.private"),
-            Literal::from_str("5field.private"),
+            Literal::from_str("1field.public").into(),
+            Literal::from_str("2field.private").into(),
+            Literal::from_str("3field.private").into(),
+            Literal::from_str("4field.private").into(),
+            Literal::from_str("5field.private").into(),
         ]);
         let second = Value::<P>::from_str("1scalar");
 

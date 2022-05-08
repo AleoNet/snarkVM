@@ -50,7 +50,6 @@ pub(crate) use psd8::*;
 use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Register, Registers},
     Program,
-    Value,
 };
 use snarkvm_circuits::{
     Aleo,
@@ -105,10 +104,7 @@ impl<P: Program, Op: HashOpcode> Operation<P> for Hash<P, Op> {
     #[inline]
     fn evaluate(&self, registers: &Registers<P>) {
         // Load the input from the operand.
-        let input = match registers.load(self.operation.first()) {
-            Value::Literal(literal) => vec![literal],
-            Value::Definition(_name, literals) => literals,
-        };
+        let input = registers.load(self.operation.first()).to_literals();
 
         // TODO (howardwu): Implement `Literal::to_fields()` to replace this closure.
         // (Optional) Closure for converting a list of literals into a list of field elements.

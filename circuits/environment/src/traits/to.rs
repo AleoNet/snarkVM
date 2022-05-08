@@ -54,7 +54,7 @@ pub trait ToUpperBits {
 pub trait ToField {
     type Field: FieldTrait;
 
-    /// Casts a circuit into a base field.
+    /// Returns a circuit as a base field element.
     fn to_field(&self) -> Self::Field;
 }
 

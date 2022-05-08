@@ -81,22 +81,20 @@ impl<P: Program, Op: PRFOpcode> Operation<P> for PRF<P, Op> {
     /// Evaluates the operation.
     #[inline]
     fn evaluate(&self, registers: &Registers<P>) {
-        // Load the seed from the operand.
-        let first = match registers.load(self.operation.first()) {
+        // Load the seed from the first operand.
+        let seed = match registers.load(self.operation.first()) {
             Value::Literal(literal) => literal,
             Value::Definition(name, ..) => P::halt(format!("{name} is not a literal")),
         };
-        // Load the input from the operand.
-        let second = match registers.load(self.operation.second()) {
-            Value::Literal(literal) => vec![literal],
-            Value::Definition(_name, literals) => literals,
+        // Load the input from the second operand.
+        let input = registers.load(self.operation.second()).to_literals();
+
+        // Ensure the `seed` is a `Field`, and extract it from the `Literal`.
+        let seed = match seed {
+            Literal::Field(field) => field,
+            _ => P::halt("Invalid seed type for PRF, expected a field element"),
         };
 
-        // Ensure `first` is a Field.
-        let first = match first {
-            Literal::Field(field) => field,
-            _ => P::halt("Unreachable literal variant detected during PRF calculation."),
-        };
         // TODO (howardwu): Implement `Literal::to_fields()` to replace this closure.
         // (Optional) Closure for converting a list of literals into a list of field elements.
         //
@@ -130,9 +128,9 @@ impl<P: Program, Op: PRFOpcode> Operation<P> for PRF<P, Op> {
 
         // Compute the digest for the given input.
         let digest = match Self::opcode() {
-            Psd2::OPCODE => P::Aleo::prf_psd2(&first, &to_field_elements(&second)),
-            Psd4::OPCODE => P::Aleo::prf_psd4(&first, &to_field_elements(&second)),
-            Psd8::OPCODE => P::Aleo::prf_psd8(&first, &to_field_elements(&second)),
+            Psd2::OPCODE => P::Aleo::prf_psd2(&seed, &to_field_elements(&input)),
+            Psd4::OPCODE => P::Aleo::prf_psd4(&seed, &to_field_elements(&input)),
+            Psd8::OPCODE => P::Aleo::prf_psd8(&seed, &to_field_elements(&input)),
             _ => P::halt("Invalid option provided for the `prf` instruction"),
         };
 

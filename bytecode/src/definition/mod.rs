@@ -18,7 +18,7 @@ mod member;
 
 use crate::{definition::member::Member, Annotation, Identifier, Program, Sanitizer, Value};
 use snarkvm_circuits::prelude::*;
-use snarkvm_utilities::{error, FromBytes, ToBytes};
+use snarkvm_utilities::{error, has_duplicates, FromBytes, ToBytes};
 
 use core::fmt;
 use std::io::{Read, Result as IoResult, Write};
@@ -60,18 +60,32 @@ impl<P: Program> Definition<P> {
     }
 
     /// Returns `true` if the definition matches the format of the given value.
+    /// This method starts by checking that the top-level members match, then recursively checks
+    /// that all nested definitions match as well.
     #[inline]
     pub fn matches(&self, value: &Value<P>) -> bool {
         match value {
             Value::Literal(..) => false,
-            Value::Definition(name, literals) => {
+            Value::Definition(name, values) => {
                 name == self.name()
-                    && literals.len() == self.members().len()
-                    && literals
+                    && values.len() == self.members().len()
+                    && values
                         .iter()
                         .zip_eq(self.members().iter())
                         // Members in the value are literals.
-                        .all(|(literal, member)| &Annotation::Literal(literal.into()) == member.annotation())
+                        .all(|(value, member)| match value.annotation() {
+                            // If the annotation is a literal, ensure the literal type matches the member type.
+                            Annotation::Literal(literal_type) => &Annotation::Literal(literal_type) == member.annotation(),
+                            // If the annotation is a definition, ensure the member value matches the definition.
+                            Annotation::Definition(definition_name) => {
+                                // Retrieve the definition from the program.
+                                match P::get_definition(&definition_name) {
+                                    // Ensure the value matches its expected definition.
+                                    Some(definition) => definition.matches(value),
+                                    None => false,
+                                }
+                            }
+                        })
             }
         }
     }
@@ -96,6 +110,14 @@ impl<P: Program> Parser for Definition<P> {
                 let (string, _) = tag(":")(string)?;
                 // Parse the members from the string.
                 let (string, members) = many1(Member::parse)(string)?;
+                // Ensure the members has no duplicate names.
+                if has_duplicates(members.iter().map(|member| member.name())) {
+                    P::halt(format!("Duplicate member names in struct '{}'", name))
+                }
+                // Ensure the number of members is within `P::NUM_DEPTH`.
+                if members.len() > P::NUM_DEPTH {
+                    P::halt("Failed to serialize struct: too many members")
+                }
 
                 Ok((string, Self::Struct(name, members)))
             },
@@ -108,6 +130,14 @@ impl<P: Program> Parser for Definition<P> {
                 let (string, _) = tag(":")(string)?;
                 // Parse the members from the string.
                 let (string, members) = many1(Member::parse)(string)?;
+                // Ensure the members has no duplicate names.
+                if has_duplicates(members.iter().map(|member| member.name())) {
+                    P::halt(format!("Duplicate member names in record '{}'", name))
+                }
+                // Ensure the number of members is within `P::NUM_DEPTH`.
+                if members.len() > P::NUM_DEPTH {
+                    P::halt("Failed to serialize record: too many members")
+                }
 
                 Ok((string, Self::Record(name, members)))
             },
@@ -140,10 +170,14 @@ impl<P: Program> FromBytes for Definition<P> {
         // Read the name.
         let name = Identifier::read_le(&mut reader)?;
         // Read the members.
-        let num_members = u16::read_le(&mut reader)?;
+        let num_members = u8::read_le(&mut reader)?;
         let mut members = Vec::with_capacity(num_members as usize);
         for _ in 0..num_members {
             members.push(Member::read_le(&mut reader)?);
+        }
+        // Ensure the members has no duplicate names.
+        if has_duplicates(members.iter().map(|member| member.name())) {
+            return Err(error(format!("Duplicate member names in definition '{}'", name)));
         }
         match variant {
             0 => Ok(Self::Struct(name, members)),
@@ -163,9 +197,18 @@ impl<P: Program> ToBytes for Definition<P> {
                 members.write_le(&mut writer)
             }
             Self::Record(name, members) => {
+                // Ensure the members has no duplicate names.
+                if has_duplicates(members.iter().map(|member| member.name())) {
+                    return Err(error(format!("Duplicate member names in definition '{}'", name)));
+                }
+                // Ensure the number of members is within `P::NUM_DEPTH`.
+                if members.len() > P::NUM_DEPTH {
+                    return Err(error("Failed to serialize definition: too many members"));
+                }
+
                 u8::write_le(&1u8, &mut writer)?;
                 name.write_le(&mut writer)?;
-                (members.len() as u16).write_le(&mut writer)?;
+                (members.len() as u8).write_le(&mut writer)?;
                 members.write_le(&mut writer)
             }
         }

@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Definition, Function, Identifier, Program, Sanitizer};
+use crate::{Annotation, Definition, Function, Identifier, Program, Sanitizer};
 use snarkvm_circuits::{prelude::*, Devnet};
 
 use indexmap::IndexMap;
@@ -49,15 +49,17 @@ impl Program for Process {
             // Ensure the definition name was not previously used.
             let name = definition.name();
             if functions.borrow().contains_key(name) {
-                Self::halt(format!("Definition \'{name}\' already used by a function"))
+                Self::halt(format!("Definition '{name}' already used by a function"))
             }
         });
         DEFINITIONS.with(|definitions| {
             // Ensure any definitions in the members already exist.
             // Note: This design ensures cyclic definitions are not possible.
             for member in definition.members() {
-                if !definitions.borrow().contains_key(member.name()) {
-                    Self::halt(format!("Definition \'{}\' does not exist yet", member.name()))
+                if let Annotation::Definition(definition_name) = member.annotation() {
+                    if !definitions.borrow().contains_key(definition_name) {
+                        Self::halt(format!("Definition '{definition_name}' does not exist yet"))
+                    }
                 }
             }
 
@@ -65,7 +67,7 @@ impl Program for Process {
             // Ensure the definition was not previously added.
             let name = definition.name().clone();
             if let Some(..) = definitions.borrow_mut().insert(name.clone(), definition) {
-                Self::halt(format!("Definition \'{name}\' was previously added"))
+                Self::halt(format!("Definition '{name}' was previously added"))
             }
         });
     }
@@ -81,7 +83,7 @@ impl Program for Process {
             // Ensure the function name was not previously used.
             let name = function.name();
             if definitions.borrow().contains_key(name) {
-                Self::halt(format!("Function \'{name}\' already used by a definition"))
+                Self::halt(format!("Function '{name}' already used by a definition"))
             }
         });
         FUNCTIONS.with(|functions| {
@@ -89,7 +91,7 @@ impl Program for Process {
             // Ensure the function was not previously added.
             let name = function.name().clone();
             if let Some(..) = functions.borrow_mut().insert(name.clone(), function) {
-                Self::halt(format!("Function \'{name}\' was previously added"))
+                Self::halt(format!("Function '{name}' was previously added"))
             }
         });
     }

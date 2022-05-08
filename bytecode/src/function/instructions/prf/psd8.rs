@@ -170,8 +170,8 @@ mod tests {
     fn test_definition() {
         let first = Literal::from_str("1field.private");
         let second = Value::<P>::Definition(Identifier::from_str("message"), vec![
-            Literal::from_str("1field.public"),
-            Literal::from_str("2field.private"),
+            Literal::from_str("1field.public").into(),
+            Literal::from_str("2field.private").into(),
         ]);
 
         let registers = Registers::<P>::default();
