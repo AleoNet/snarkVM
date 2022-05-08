@@ -15,8 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    function::parsers::*,
-    helpers::{Locator, Register},
+    function::{parsers::*, Locator, Register},
     Program,
     Value,
 };

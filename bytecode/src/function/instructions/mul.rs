@@ -15,8 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    function::{parsers::*, Instruction, Opcode, Operation, Registers},
-    helpers::Register,
+    function::{parsers::*, Instruction, Opcode, Operation, Register, Registers},
     Program,
     Value,
 };
@@ -172,7 +171,7 @@ impl<P: Program> Into<Instruction<P>> for Mul<P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{test_instruction_halts, test_modes, Identifier, Process, Register};
+    use crate::{function::Register, test_instruction_halts, test_modes, Identifier, Process};
 
     type P = Process;
 

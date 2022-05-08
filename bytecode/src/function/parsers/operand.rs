@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{helpers::Register, Program, Value};
+use crate::{function::Register, Program, Value};
 use snarkvm_circuits::prelude::*;
 use snarkvm_utilities::{error, FromBytes, ToBytes};
 
@@ -164,7 +164,7 @@ impl<P: Program> ToBytes for Operand<P> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Process, Register, Value};
+    use crate::{Process, Value};
     use snarkvm_circuits::{environment::Parser, Literal};
 
     type P = Process;

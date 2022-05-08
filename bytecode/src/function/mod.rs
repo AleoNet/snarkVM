@@ -23,10 +23,13 @@ use instructions::*;
 mod output;
 use output::*;
 
+mod parsers;
+
+mod register;
+pub(super) use register::*;
+
 mod registers;
 use registers::*;
-
-mod parsers;
 
 use crate::{Annotation, Identifier, Program, Sanitizer, Value};
 use snarkvm_circuits::prelude::*;

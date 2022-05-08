@@ -24,8 +24,7 @@ pub(crate) mod psd8;
 pub(crate) use psd8::*;
 
 use crate::{
-    function::{parsers::*, Instruction, Opcode, Operation, Registers},
-    helpers::Register,
+    function::{parsers::*, Instruction, Opcode, Operation, Register, Registers},
     Program,
     Value,
 };

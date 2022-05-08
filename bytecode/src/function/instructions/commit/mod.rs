@@ -39,8 +39,7 @@ pub(crate) mod ped1024;
 pub(crate) use ped1024::*;
 
 use crate::{
-    function::{parsers::*, Instruction, Opcode, Operation, Program, Registers},
-    helpers::Register,
+    function::{parsers::*, Instruction, Opcode, Operation, Program, Register, Registers},
     Value,
 };
 use snarkvm_circuits::{Aleo, Literal, Parser, ParserResult, ToBits};

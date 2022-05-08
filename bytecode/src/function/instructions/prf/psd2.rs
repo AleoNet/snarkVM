@@ -28,12 +28,11 @@ impl PRFOpcode for Psd2 {
 mod tests {
     use super::*;
     use crate::{
-        function::{Instruction, Operation, Registers},
+        function::{Instruction, Operation, Register, Registers},
         test_instruction_halts,
         test_modes,
         Identifier,
         Process,
-        Register,
         Value,
     };
     use snarkvm_circuits::{Literal, Parser};

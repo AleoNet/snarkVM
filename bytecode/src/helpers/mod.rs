@@ -20,9 +20,6 @@ pub(super) use annotation::*;
 pub mod identifier;
 pub use identifier::*;
 
-pub(super) mod register;
-pub(super) use register::*;
-
 pub(super) mod sanitizer;
 pub(super) use sanitizer::*;
 

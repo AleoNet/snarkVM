@@ -108,8 +108,7 @@ pub(super) mod xor;
 pub(super) use xor::*;
 
 use crate::{
-    function::{parsers::Operand, registers::Registers},
-    helpers::Register,
+    function::{parsers::Operand, registers::Registers, Register},
     Program,
     Sanitizer,
 };
@@ -936,10 +935,9 @@ impl<P: Program> ToBytes for Instruction<P> {
 #[cfg(test)]
 mod tests {
     use crate::{
-        function::{instructions::Opcode, Operation, Registers},
+        function::{instructions::Opcode, Operation, Register, Registers},
         Parser,
         Process,
-        Register,
         Value,
     };
 
