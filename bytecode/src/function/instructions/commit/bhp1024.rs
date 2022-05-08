@@ -27,7 +27,7 @@ impl CommitOpcode for BHP1024 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{test_instruction_halts, test_modes, Identifier, Process, Register};
+    use crate::{function::Register, test_instruction_halts, test_modes, Identifier, Process};
 
     type P = Process;
 
@@ -159,10 +159,10 @@ mod tests {
     );
 
     #[test]
-    fn test_composite() {
-        let first = Value::<P>::Composite(Identifier::from_str("message"), vec![
-            Literal::from_str("1field.public"),
-            Literal::from_str("false.private"),
+    fn test_definition() {
+        let first = Value::<P>::Definition(Identifier::from_str("message"), vec![
+            Value::from_str("1field.public"),
+            Value::from_str("false.private"),
         ]);
         let second = Value::<P>::from_str("1scalar");
 
@@ -177,20 +177,20 @@ mod tests {
 
         let value = registers.load(&Register::from_str("r2"));
         let expected = Value::<P>::from_str(
-            "6508586538017813241269740771062761903718479419650899989698274551452965779761field.private",
+            "1805821827158378615768625242230599442175110366985103126511344243426439868542field.private",
         );
         assert_eq!(expected, value);
     }
 
     #[test]
     #[should_panic(expected = "Inputs to this BHP variant cannot exceed 1026 bits")]
-    fn test_composite_halts() {
-        let first = Value::<P>::Composite(Identifier::from_str("message"), vec![
-            Literal::from_str("1field.public"),
-            Literal::from_str("2field.private"),
-            Literal::from_str("3field.private"),
-            Literal::from_str("4field.private"),
-            Literal::from_str("5field.private"),
+    fn test_definition_halts() {
+        let first = Value::<P>::Definition(Identifier::from_str("message"), vec![
+            Value::from_str("1field.public"),
+            Value::from_str("2field.private"),
+            Value::from_str("3field.private"),
+            Value::from_str("4field.private"),
+            Value::from_str("5field.private"),
         ]);
         let second = Value::<P>::from_str("1scalar");
 

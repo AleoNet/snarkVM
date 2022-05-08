@@ -28,15 +28,14 @@ impl HashOpcode for BHP1024 {
 mod tests {
     use super::*;
     use crate::{
-        function::{Instruction, Operation, Registers},
+        function::{Instruction, Operation, Register, Registers},
         test_instruction_halts,
         test_modes,
         Identifier,
         Process,
-        Register,
         Value,
     };
-    use snarkvm_circuits::{Literal, Parser};
+    use snarkvm_circuits::Parser;
 
     type P = Process;
 
@@ -111,10 +110,10 @@ mod tests {
     );
 
     #[test]
-    fn test_composite() {
-        let first = Value::<P>::Composite(Identifier::from_str("message"), vec![
-            Literal::from_str("1field.public"),
-            Literal::from_str("false.private"),
+    fn test_definition() {
+        let first = Value::<P>::Definition(Identifier::from_str("message"), vec![
+            Value::from_str("1field.public"),
+            Value::from_str("false.private"),
         ]);
 
         let registers = Registers::<P>::default();
@@ -126,20 +125,20 @@ mod tests {
 
         let value = registers.load(&Register::from_str("r1"));
         let expected = Value::<P>::from_str(
-            "349959275141959883733705261399296435764872842479947121120258093248412848615field.private",
+            "4899825579676170066989655542341882152621291668615292090582612568617586716417field.private",
         );
         assert_eq!(expected, value);
     }
 
     #[test]
     #[should_panic(expected = "Inputs to this BHP variant cannot exceed 1026 bits")]
-    fn test_composite_halts() {
-        let first = Value::<P>::Composite(Identifier::from_str("message"), vec![
-            Literal::from_str("1field.public"),
-            Literal::from_str("2field.private"),
-            Literal::from_str("3field.private"),
-            Literal::from_str("4field.private"),
-            Literal::from_str("5field.private"),
+    fn test_definition_halts() {
+        let first = Value::<P>::Definition(Identifier::from_str("message"), vec![
+            Value::from_str("1field.public"),
+            Value::from_str("2field.private"),
+            Value::from_str("3field.private"),
+            Value::from_str("4field.private"),
+            Value::from_str("5field.private"),
         ]);
 
         let registers = Registers::<P>::default();

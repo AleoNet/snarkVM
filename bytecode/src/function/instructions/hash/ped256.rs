@@ -28,15 +28,14 @@ impl HashOpcode for Ped256 {
 mod tests {
     use super::*;
     use crate::{
-        function::{Instruction, Operation, Registers},
+        function::{Instruction, Operation, Register, Registers},
         test_instruction_halts,
         test_modes,
         Identifier,
         Process,
-        Register,
         Value,
     };
-    use snarkvm_circuits::{Literal, Parser};
+    use snarkvm_circuits::Parser;
 
     type P = Process;
 
@@ -151,10 +150,10 @@ mod tests {
     );
 
     #[test]
-    fn test_composite() {
-        let first = Value::<P>::Composite(Identifier::from_str("message"), vec![
-            Literal::from_str("true.public"),
-            Literal::from_str("false.private"),
+    fn test_definition() {
+        let first = Value::<P>::Definition(Identifier::from_str("message"), vec![
+            Value::from_str("true.public"),
+            Value::from_str("false.private"),
         ]);
 
         let registers = Registers::<P>::default();
@@ -166,17 +165,17 @@ mod tests {
 
         let value = registers.load(&Register::from_str("r1"));
         let expected = Value::<P>::from_str(
-            "6862094408223630346583350103044196166214351587854542536995775123438608534373field.private",
+            "2507336238525241920229363127502836554394792067069106023108137013905810817541field.private",
         );
         assert_eq!(expected, value);
     }
 
     #[test]
     #[should_panic(expected = "The Pedersen hash input cannot exceed 256 bits.")]
-    fn test_composite_halts() {
-        let first = Value::<P>::Composite(Identifier::from_str("message"), vec![
-            Literal::from_str("1field.public"),
-            Literal::from_str("2field.private"),
+    fn test_definition_halts() {
+        let first = Value::<P>::Definition(Identifier::from_str("message"), vec![
+            Value::from_str("1field.public"),
+            Value::from_str("2field.private"),
         ]);
 
         let registers = Registers::<P>::default();

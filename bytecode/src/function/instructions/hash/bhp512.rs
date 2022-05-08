@@ -28,15 +28,14 @@ impl HashOpcode for BHP512 {
 mod tests {
     use super::*;
     use crate::{
-        function::{Instruction, Operation, Registers},
+        function::{Instruction, Operation, Register, Registers},
         test_instruction_halts,
         test_modes,
         Identifier,
         Process,
-        Register,
         Value,
     };
-    use snarkvm_circuits::{Literal, Parser};
+    use snarkvm_circuits::Parser;
 
     type P = Process;
 
@@ -106,10 +105,10 @@ mod tests {
     );
 
     #[test]
-    fn test_composite() {
-        let first = Value::<P>::Composite(Identifier::from_str("message"), vec![
-            Literal::from_str("1field.public"),
-            Literal::from_str("false.private"),
+    fn test_definition() {
+        let first = Value::<P>::Definition(Identifier::from_str("message"), vec![
+            Value::from_str("1field.public"),
+            Value::from_str("false.private"),
         ]);
 
         let registers = Registers::<P>::default();
@@ -121,18 +120,18 @@ mod tests {
 
         let value = registers.load(&Register::from_str("r1"));
         let expected = Value::<P>::from_str(
-            "7859505366134605419571079611358314299378384003680687055919221906144872990437field.private",
+            "2753157985585563685871475533869210997788791134784713213928788532781362523382field.private",
         );
         assert_eq!(expected, value);
     }
 
     #[test]
     #[should_panic(expected = "Inputs to this BHP variant cannot exceed 513 bits")]
-    fn test_composite_halts() {
-        let first = Value::<P>::Composite(Identifier::from_str("message"), vec![
-            Literal::from_str("1field.public"),
-            Literal::from_str("2field.private"),
-            Literal::from_str("3field.private"),
+    fn test_definition_halts() {
+        let first = Value::<P>::Definition(Identifier::from_str("message"), vec![
+            Value::from_str("1field.public"),
+            Value::from_str("2field.private"),
+            Value::from_str("3field.private"),
         ]);
 
         let registers = Registers::<P>::default();

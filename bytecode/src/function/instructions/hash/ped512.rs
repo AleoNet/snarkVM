@@ -28,15 +28,14 @@ impl HashOpcode for Ped512 {
 mod tests {
     use super::*;
     use crate::{
-        function::{Instruction, Operation, Registers},
+        function::{Instruction, Operation, Register, Registers},
         test_instruction_halts,
         test_modes,
         Identifier,
         Process,
-        Register,
         Value,
     };
-    use snarkvm_circuits::{Literal, Parser};
+    use snarkvm_circuits::Parser;
 
     type P = Process;
 
@@ -151,10 +150,10 @@ mod tests {
     );
 
     #[test]
-    fn test_composite() {
-        let first = Value::<P>::Composite(Identifier::from_str("message"), vec![
-            Literal::from_str("true.public"),
-            Literal::from_str("false.private"),
+    fn test_definition() {
+        let first = Value::<P>::Definition(Identifier::from_str("message"), vec![
+            Value::from_str("true.public"),
+            Value::from_str("false.private"),
         ]);
 
         let registers = Registers::<P>::default();
@@ -166,18 +165,18 @@ mod tests {
 
         let value = registers.load(&Register::from_str("r1"));
         let expected = Value::<P>::from_str(
-            "5977699428735859836057783079829767840487485526717429264425888196253596787835field.private",
+            "7049665342751840770504795488969963304104382420108967807703906789591411328969field.private",
         );
         assert_eq!(expected, value);
     }
 
     #[test]
     #[should_panic(expected = "The Pedersen hash input cannot exceed 512 bits.")]
-    fn test_composite_halts() {
-        let first = Value::<P>::Composite(Identifier::from_str("message"), vec![
-            Literal::from_str("1field.public"),
-            Literal::from_str("2field.private"),
-            Literal::from_str("3field.private"),
+    fn test_definition_halts() {
+        let first = Value::<P>::Definition(Identifier::from_str("message"), vec![
+            Value::from_str("1field.public"),
+            Value::from_str("2field.private"),
+            Value::from_str("3field.private"),
         ]);
 
         let registers = Registers::<P>::default();
