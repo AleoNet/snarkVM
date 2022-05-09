@@ -49,3 +49,10 @@ pub fn test_rng() -> XorShiftRng {
 pub fn test_crypto_rng() -> StdRng {
     StdRng::from_entropy()
 }
+
+/// An Rng which can be used in tests or benchmarks requiring a CryptoRng.
+/// Meant to be used only during debugging!
+pub fn test_crypto_rng_fixed() -> StdRng {
+    let seed = 1245897092u64;
+    StdRng::seed_from_u64(seed)
+}

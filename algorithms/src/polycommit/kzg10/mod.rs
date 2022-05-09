@@ -28,6 +28,7 @@ use crate::{
 };
 use snarkvm_curves::traits::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{Field, One, PrimeField, Zero};
+use snarkvm_parameters::testnet3::PowersOfG;
 use snarkvm_utilities::{cfg_iter, rand::UniformRand, BitIteratorBE};
 
 use core::{
@@ -45,9 +46,6 @@ use rayon::prelude::*;
 
 mod data_structures;
 pub use data_structures::*;
-
-mod powers;
-pub use powers::*;
 
 use super::sonic_pc::LabeledPolynomialWithBasis;
 

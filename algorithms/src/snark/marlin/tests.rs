@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::traits::SNARK;
 use snarkvm_fields::Field;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 
@@ -75,27 +76,27 @@ mod marlin {
         MarlinSNARK,
     };
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
-    use snarkvm_utilities::rand::{test_rng, UniformRand};
+    use snarkvm_utilities::rand::{test_crypto_rng, UniformRand};
 
     use blake2::Blake2s256;
     use core::ops::MulAssign;
 
-    type MarlinSonicInst = MarlinSNARK<Bls12_377, FiatShamirChaChaRng<Fr, Fq, Blake2s256>, MarlinHidingMode, Vec<Fr>>;
+    type MarlinSonicInst = MarlinSNARK<Bls12_377, FiatShamirChaChaRng<Fr, Fq, Blake2s256>, MarlinHidingMode, [Fr]>;
 
     type MarlinSonicPoswInst =
-        MarlinSNARK<Bls12_377, FiatShamirChaChaRng<Fr, Fq, Blake2s256>, MarlinNonHidingMode, Vec<Fr>>;
+        MarlinSNARK<Bls12_377, FiatShamirChaChaRng<Fr, Fq, Blake2s256>, MarlinNonHidingMode, [Fr]>;
 
     macro_rules! impl_marlin_test {
         ($test_struct: ident, $marlin_inst: tt, $marlin_mode: tt) => {
             struct $test_struct {}
             impl $test_struct {
                 pub(crate) fn test_circuit(num_constraints: usize, num_variables: usize) {
-                    let rng = &mut test_rng();
+                    let rng = &mut snarkvm_utilities::rand::test_crypto_rng();
 
                     let max_degree = AHPForR1CS::<Fr, $marlin_mode>::max_degree(100, 25, 300).unwrap();
-                    let universal_srs = $marlin_inst::universal_setup(max_degree, rng).unwrap();
+                    let universal_srs = $marlin_inst::universal_setup(&max_degree, rng).unwrap();
 
-                    for _ in 0..100 {
+                    for _ in 0..50 {
                         let a = Fr::rand(rng);
                         let b = Fr::rand(rng);
                         let mut c = a;
@@ -111,20 +112,59 @@ mod marlin {
                         let proof = $marlin_inst::prove(&index_pk, &circ, rng).unwrap();
                         println!("Called prover");
 
-                        assert!($marlin_inst::verify(&index_vk, &[c, d], &proof).unwrap());
+                        assert!($marlin_inst::verify(&index_vk, [c, d], &proof).unwrap());
                         println!("Called verifier");
                         println!("\nShould not verify (i.e. verifier messages should print below):");
-                        assert!(!$marlin_inst::verify(&index_vk, &[a, a], &proof).unwrap());
+                        assert!(!$marlin_inst::verify(&index_vk, [a, a], &proof).unwrap());
+                    }
+
+                    for _ in 0..10 {
+                        for batch_size in (0..5).map(|i| 2usize.pow(i)) {
+                            let (circuit_batch, input_batch): (Vec<_>, Vec<_>) = (0..batch_size)
+                                .map(|_| {
+                                    let a = Fr::rand(rng);
+                                    let b = Fr::rand(rng);
+                                    let mut c = a;
+                                    c.mul_assign(&b);
+                                    let mut d = c;
+                                    d.mul_assign(&b);
+
+                                    let circ = Circuit { a: Some(a), b: Some(b), num_constraints, num_variables };
+                                    (circ, [c, d])
+                                })
+                                .unzip();
+                            let (index_pk, index_vk) =
+                                $marlin_inst::circuit_setup(&universal_srs, &circuit_batch[0]).unwrap();
+                            println!("Called circuit setup");
+
+                            let proof = $marlin_inst::prove_batch(&index_pk, &circuit_batch, rng).unwrap();
+                            println!("Called prover");
+
+                            assert!(
+                                $marlin_inst::verify_batch(&index_vk, &input_batch, &proof).unwrap(),
+                                "Batch verification failed with {batch_size} inputs"
+                            );
+                            println!("Called verifier");
+                            println!("\nShould not verify (i.e. verifier messages should print below):");
+                            assert!(
+                                !$marlin_inst::verify_batch(
+                                    &index_vk,
+                                    &vec![[Fr::rand(rng), Fr::rand(rng)]; batch_size],
+                                    &proof
+                                )
+                                .unwrap()
+                            );
+                        }
                     }
                 }
 
                 pub(crate) fn test_serde_json(num_constraints: usize, num_variables: usize) {
                     use std::str::FromStr;
 
-                    let rng = &mut test_rng();
+                    let rng = &mut test_crypto_rng();
 
                     let max_degree = AHPForR1CS::<Fr, $marlin_mode>::max_degree(100, 25, 300).unwrap();
-                    let universal_srs = $marlin_inst::universal_setup(max_degree, rng).unwrap();
+                    let universal_srs = $marlin_inst::universal_setup(&max_degree, rng).unwrap();
 
                     let circ =
                         Circuit { a: Some(Fr::rand(rng)), b: Some(Fr::rand(rng)), num_constraints, num_variables };
@@ -148,10 +188,10 @@ mod marlin {
                 pub(crate) fn test_bincode(num_constraints: usize, num_variables: usize) {
                     use snarkvm_utilities::{FromBytes, ToBytes};
 
-                    let rng = &mut test_rng();
+                    let rng = &mut test_crypto_rng();
 
                     let max_degree = AHPForR1CS::<Fr, $marlin_mode>::max_degree(100, 25, 300).unwrap();
-                    let universal_srs = $marlin_inst::universal_setup(max_degree, rng).unwrap();
+                    let universal_srs = $marlin_inst::universal_setup(&max_degree, rng).unwrap();
 
                     let circ =
                         Circuit { a: Some(Fr::rand(rng)), b: Some(Fr::rand(rng)), num_constraints, num_variables };
@@ -266,7 +306,7 @@ mod marlin_recursion {
     };
     use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
     use snarkvm_utilities::{
-        rand::{test_rng, UniformRand},
+        rand::{test_crypto_rng, UniformRand},
         FromBytes,
         ToBytes,
     };
@@ -274,18 +314,14 @@ mod marlin_recursion {
     use core::ops::MulAssign;
     use std::str::FromStr;
 
-    type MarlinInst = MarlinSNARK<
-        Bls12_377,
-        FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>,
-        MarlinHidingMode,
-        Vec<Fr>,
-    >;
+    type MarlinInst =
+        MarlinSNARK<Bls12_377, FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>, MarlinHidingMode, [Fr]>;
 
     fn test_circuit(num_constraints: usize, num_variables: usize) {
-        let rng = &mut test_rng();
+        let rng = &mut test_crypto_rng();
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 25, 300).unwrap();
-        let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
+        let universal_srs = MarlinInst::universal_setup(&max_degree, rng).unwrap();
 
         for _ in 0..100 {
             let a = Fr::rand(rng);
@@ -303,18 +339,18 @@ mod marlin_recursion {
             let proof = MarlinInst::prove(&index_pk, &circuit, rng).unwrap();
             println!("Called prover");
 
-            assert!(MarlinInst::verify(&index_vk, &[c, d], &proof).unwrap());
+            assert!(MarlinInst::verify(&index_vk, [c, d], &proof).unwrap());
             println!("Called verifier");
             println!("\nShould not verify (i.e. verifier messages should print below):");
-            assert!(!MarlinInst::verify(&index_vk, &[a, a], &proof).unwrap());
+            assert!(!MarlinInst::verify(&index_vk, [a, a], &proof).unwrap());
         }
     }
 
     fn test_serde_json(num_constraints: usize, num_variables: usize) {
-        let rng = &mut test_rng();
+        let rng = &mut test_crypto_rng();
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 25, 300).unwrap();
-        let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
+        let universal_srs = MarlinInst::universal_setup(&max_degree, rng).unwrap();
 
         let circuit = Circuit { a: Some(Fr::rand(rng)), b: Some(Fr::rand(rng)), num_constraints, num_variables };
 
@@ -332,10 +368,10 @@ mod marlin_recursion {
     }
 
     fn test_bincode(num_constraints: usize, num_variables: usize) {
-        let rng = &mut test_rng();
+        let rng = &mut test_crypto_rng();
 
         let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(100, 25, 300).unwrap();
-        let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
+        let universal_srs = MarlinInst::universal_setup(&max_degree, rng).unwrap();
 
         let circuit = Circuit { a: Some(Fr::rand(rng)), b: Some(Fr::rand(rng)), num_constraints, num_variables };
 
@@ -406,7 +442,7 @@ mod marlin_recursion {
     // #[test]
     // /// Test on a constraint system that will trigger outlining.
     // fn prove_and_test_outlining() {
-    //     let rng = &mut test_rng();
+    //     let rng = &mut test_crypto_rng();
     //
     //     let universal_srs = MarlinInst::universal_setup(150, 150, 150, rng).unwrap();
     //

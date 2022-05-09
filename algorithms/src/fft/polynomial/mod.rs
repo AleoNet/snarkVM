@@ -18,11 +18,14 @@
 
 use crate::fft::{EvaluationDomain, Evaluations};
 use snarkvm_fields::{Field, PrimeField};
-use snarkvm_utilities::{serialize::*, SerializationError};
+use snarkvm_utilities::{cfg_iter_mut, serialize::*, SerializationError};
 
 use std::{borrow::Cow, convert::TryInto};
 
 use DenseOrSparsePolynomial::*;
+
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
 
 mod dense;
 pub use dense::DensePolynomial;
@@ -252,10 +255,32 @@ impl<F: PrimeField> DenseOrSparsePolynomial<'_, F> {
                 let evals = domain.elements().map(|elem| s.evaluate(elem)).collect();
                 Evaluations::from_vec_and_domain(evals, domain)
             }
-            DPolynomial(Cow::Borrowed(d)) => Evaluations::from_vec_and_domain(domain.fft(&d.coeffs), domain),
+            DPolynomial(Cow::Borrowed(d)) => {
+                if d.degree() >= domain.size() {
+                    d.coeffs
+                        .chunks(domain.size())
+                        .map(|d| Evaluations::from_vec_and_domain(domain.fft(d), domain))
+                        .fold(Evaluations::from_vec_and_domain(vec![F::zero(); domain.size()], domain), |mut acc, e| {
+                            cfg_iter_mut!(acc.evaluations).zip(e.evaluations).for_each(|(a, e)| *a += e);
+                            acc
+                        })
+                } else {
+                    Evaluations::from_vec_and_domain(domain.fft(&d.coeffs), domain)
+                }
+            }
             DPolynomial(Cow::Owned(mut d)) => {
-                domain.fft_in_place(&mut d.coeffs);
-                Evaluations::from_vec_and_domain(d.coeffs, domain)
+                if d.degree() >= domain.size() {
+                    d.coeffs
+                        .chunks(domain.size())
+                        .map(|d| Evaluations::from_vec_and_domain(domain.fft(d), domain))
+                        .fold(Evaluations::from_vec_and_domain(vec![F::zero(); domain.size()], domain), |mut acc, e| {
+                            cfg_iter_mut!(acc.evaluations).zip(e.evaluations).for_each(|(a, e)| *a += e);
+                            acc
+                        })
+                } else {
+                    domain.fft_in_place(&mut d.coeffs);
+                    Evaluations::from_vec_and_domain(d.coeffs, domain)
+                }
             }
         }
     }

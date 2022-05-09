@@ -16,11 +16,11 @@
 
 use crate::{
     fft::{DensePolynomial, EvaluationDomain},
-    polycommit::kzg10::PowersOfG,
     snark::marlin::{params::OptimizationType, FiatShamirError, FiatShamirRng},
 };
 use snarkvm_curves::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, PrimeField, ToConstraintField, Zero};
+use snarkvm_parameters::testnet3::PowersOfG;
 use snarkvm_utilities::{
     borrow::Cow,
     error,
@@ -41,7 +41,7 @@ use rand_core::RngCore;
 use std::{collections::BTreeMap, io, sync::Arc};
 
 /// `UniversalParams` are the universal parameters for the KZG10 scheme.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct UniversalParams<E: PairingEngine> {
     /// Group elements of the form `{ \beta^i G }`, where `i` ranges from 0 to `degree`,
     /// and group elements of the form `{ \beta^i \gamma G }`, where `i` ranges from 0 to `degree`.
@@ -228,7 +228,7 @@ impl<E: PairingEngine> ToBytes for UniversalParams<E> {
 
 impl<E: PairingEngine> UniversalParams<E> {
     pub fn max_degree(&self) -> usize {
-        self.powers.read().len() - 1
+        self.powers.read().degree() - 1
     }
 
     pub fn supported_degree_bounds(&self) -> &[usize] {

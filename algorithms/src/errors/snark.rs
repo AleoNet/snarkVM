@@ -37,6 +37,9 @@ pub enum SNARKError {
     #[error("{}", _0)]
     SynthesisError(SynthesisError),
 
+    #[error("Batch size was zero; must be at least 1")]
+    EmptyBatch,
+
     #[error("terminated")]
     Terminated,
 }

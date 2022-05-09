@@ -26,12 +26,78 @@ pub use devnet::*;
 pub mod traits;
 pub use traits::*;
 
-use snarkvm_circuits_types::{environment::Environment, Field, Group, Scalar};
+use snarkvm_circuits_types::{environment::Environment, Boolean, Field, Group, Scalar};
 
 pub trait Aleo: Environment {
+    /// Returns a BHP commitment for the given (up to) 256-bit input and randomness.
+    fn commit_bhp256(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self>;
+
+    /// Returns a BHP commitment for the given (up to) 512-bit input and randomness.
+    fn commit_bhp512(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self>;
+
+    /// Returns a BHP commitment for the given (up to) 1024-bit input and randomness.
+    fn commit_bhp1024(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self>;
+
+    /// Returns a Pedersen commitment for the given (up to) 64-bit input and randomness.
+    fn commit_ped64(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self>;
+
+    /// Returns a Pedersen commitment for the given (up to) 128-bit input and randomness.
+    fn commit_ped128(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self>;
+
+    /// Returns a Pedersen commitment for the given (up to) 256-bit input and randomness.
+    fn commit_ped256(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self>;
+
+    /// Returns a Pedersen commitment for the given (up to) 512-bit input and randomness.
+    fn commit_ped512(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self>;
+
+    /// Returns a Pedersen commitment for the given (up to) 1024-bit input and randomness.
+    fn commit_ped1024(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self>;
+
     /// Returns the scalar multiplication on the group bases.
     fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self>;
 
+    /// Returns the BHP hash for a given (up to) 256-bit input.
+    fn hash_bhp256(input: &[Boolean<Self>]) -> Field<Self>;
+
+    /// Returns the BHP hash for a given (up to) 512-bit input.
+    fn hash_bhp512(input: &[Boolean<Self>]) -> Field<Self>;
+
+    /// Returns the BHP hash for a given (up to) 1024-bit input.
+    fn hash_bhp1024(input: &[Boolean<Self>]) -> Field<Self>;
+
     /// Returns a hash on the scalar field for the given input.
     fn hash_to_scalar(input: &[Field<Self>]) -> Scalar<Self>;
+
+    /// Returns the Pedersen hash for a given (up to) 64-bit input.
+    fn hash_ped64(input: &[Boolean<Self>]) -> Field<Self>;
+
+    /// Returns the Pedersen hash for a given (up to) 128-bit input.
+    fn hash_ped128(input: &[Boolean<Self>]) -> Field<Self>;
+
+    /// Returns the Pedersen hash for a given (up to) 256-bit input.
+    fn hash_ped256(input: &[Boolean<Self>]) -> Field<Self>;
+
+    /// Returns the Pedersen hash for a given (up to) 512-bit input.
+    fn hash_ped512(input: &[Boolean<Self>]) -> Field<Self>;
+
+    /// Returns the Pedersen hash for a given (up to) 1024-bit input.
+    fn hash_ped1024(input: &[Boolean<Self>]) -> Field<Self>;
+
+    /// Returns the Poseidon hash with an input rate of 2.
+    fn hash_psd2(input: &[Field<Self>]) -> Field<Self>;
+
+    /// Returns the Poseidon hash with an input rate of 4.
+    fn hash_psd4(input: &[Field<Self>]) -> Field<Self>;
+
+    /// Returns the Poseidon hash with an input rate of 8.
+    fn hash_psd8(input: &[Field<Self>]) -> Field<Self>;
+
+    /// Returns the Poseidon PRF with an input rate of 2.
+    fn prf_psd2(seed: &Field<Self>, input: &[Field<Self>]) -> Field<Self>;
+
+    /// Returns the Poseidon PRF with an input rate of 4.
+    fn prf_psd4(seed: &Field<Self>, input: &[Field<Self>]) -> Field<Self>;
+
+    /// Returns the Poseidon PRF with an input rate of 8.
+    fn prf_psd8(seed: &Field<Self>, input: &[Field<Self>]) -> Field<Self>;
 }

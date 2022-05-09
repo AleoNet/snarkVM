@@ -14,11 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::MarlinMode;
 use crate::{
     fft::EvaluationDomain,
     polycommit::sonic_pc,
-    snark::marlin::{ahp::indexer::*, CircuitProvingKey, PreparedCircuitVerifyingKey},
+    snark::marlin::{ahp::indexer::*, CircuitProvingKey, MarlinMode, PreparedCircuitVerifyingKey},
     Prepare,
 };
 use snarkvm_curves::PairingEngine;
