@@ -41,9 +41,9 @@ pub struct CircuitProvingKey<E: PairingEngine, MM: MarlinMode> {
 
 impl<E: PairingEngine, MM: MarlinMode> ToBytes for CircuitProvingKey<E, MM> {
     fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
-        CanonicalSerialize::serialize(&self.circuit_verifying_key, &mut writer)?;
-        CanonicalSerialize::serialize(&self.circuit_commitment_randomness, &mut writer)?;
-        CanonicalSerialize::serialize(&self.circuit, &mut writer)?;
+        CanonicalSerialize::serialize_compressed(&self.circuit_verifying_key, &mut writer)?;
+        CanonicalSerialize::serialize_compressed(&self.circuit_commitment_randomness, &mut writer)?;
+        CanonicalSerialize::serialize_compressed(&self.circuit, &mut writer)?;
 
         self.committer_key.write_le(&mut writer)
     }
@@ -52,9 +52,9 @@ impl<E: PairingEngine, MM: MarlinMode> ToBytes for CircuitProvingKey<E, MM> {
 impl<E: PairingEngine, MM: MarlinMode> FromBytes for CircuitProvingKey<E, MM> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
-        let circuit_verifying_key = CanonicalDeserialize::deserialize(&mut reader)?;
-        let circuit_commitment_randomness = CanonicalDeserialize::deserialize(&mut reader)?;
-        let circuit = CanonicalDeserialize::deserialize(&mut reader)?;
+        let circuit_verifying_key = CanonicalDeserialize::deserialize_compressed(&mut reader)?;
+        let circuit_commitment_randomness = CanonicalDeserialize::deserialize_compressed(&mut reader)?;
+        let circuit = CanonicalDeserialize::deserialize_compressed(&mut reader)?;
         let committer_key = FromBytes::read_le(&mut reader)?;
 
         Ok(Self { circuit_verifying_key, circuit_commitment_randomness, circuit, committer_key })

@@ -101,7 +101,7 @@ impl<E: PairingEngine> CanonicalDeserialize for UniversalParams<E> {
         let h: E::G2Affine = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let beta_h: E::G2Affine = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let supported_degree_bounds: Vec<usize> =
-            CanonicalDeserialize::deserialize_with_mode(reader, compress, validate)?;
+            CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let inverse_neg_powers_of_beta_h: BTreeMap<usize, E::G2Affine> =
             CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let prepared_h: <E::G2Affine as PairingCurve>::Prepared =

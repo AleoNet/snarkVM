@@ -129,7 +129,7 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalDeserialize for Circuit<F, MM> {
         compress: Compress,
         validate: Validate,
     ) -> Result<Self, SerializationError> {
-        let index_info: CircuitInfo<F> = CanonicalDeserialize::deserialize_with_mode(reader, compress, validate)?;
+        let index_info: CircuitInfo<F> = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let constraint_domain_size = EvaluationDomain::<F>::compute_size_of_domain(index_info.num_constraints)
             .ok_or(SerializationError::InvalidData)?;
         let non_zero_a_domain_size = EvaluationDomain::<F>::compute_size_of_domain(index_info.num_non_zero_a)
@@ -148,15 +148,15 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalDeserialize for Circuit<F, MM> {
         .ok_or(SerializationError::InvalidData)?;
         Ok(Circuit {
             index_info,
-            a: CanonicalDeserialize::deserialize_with_mode(reader, compress, validate)?,
-            b: CanonicalDeserialize::deserialize_with_mode(reader, compress, validate)?,
-            c: CanonicalDeserialize::deserialize_with_mode(reader, compress, validate)?,
-            a_arith: CanonicalDeserialize::deserialize_with_mode(reader, compress, validate)?,
-            b_arith: CanonicalDeserialize::deserialize_with_mode(reader, compress, validate)?,
-            c_arith: CanonicalDeserialize::deserialize_with_mode(reader, compress, validate)?,
+            a: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            b: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            c: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            a_arith: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            b_arith: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            c_arith: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             fft_precomputation,
             ifft_precomputation,
-            mode: CanonicalDeserialize::deserialize_with_mode(reader, compress, validate)?,
+            mode: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
         })
     }
 }

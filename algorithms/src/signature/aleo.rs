@@ -50,10 +50,10 @@ pub struct AleoSignature<TE: TwistedEdwardsParameters> {
 }
 
 impl<TE: TwistedEdwardsParameters> AleoSignature<TE> {
-    #[inline]
-    pub fn size() -> usize {
-        2 * TE::ScalarField::SERIALIZED_SIZE + 2 * TE::BaseField::SERIALIZED_SIZE
-    }
+    // #[inline]
+    // pub fn size() -> usize {
+    //     2 * TE::ScalarField::SERIALIZED_SIZE + 2 * TE::BaseField::SERIALIZED_SIZE
+    // }
 
     #[inline]
     pub fn root_public_key(&self) -> Result<TEAffine<TE>> {
