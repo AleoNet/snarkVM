@@ -22,7 +22,7 @@
 //! This construction achieves extractability in the algebraic group model (AGM).
 
 use crate::{
-    fft::{DenseOrSparsePolynomial, DensePolynomial},
+    fft::{DensePolynomial, Polynomial},
     msm::{FixedBase, VariableBase},
     polycommit::PCError,
 };
@@ -215,7 +215,7 @@ impl<E: PairingEngine> KZG10<E> {
     /// Outputs a commitment to `polynomial`.
     pub fn commit(
         powers: &Powers<E>,
-        polynomial: &DenseOrSparsePolynomial<'_, E::Fr>,
+        polynomial: &Polynomial<'_, E::Fr>,
         hiding_bound: Option<usize>,
         terminator: &AtomicBool,
         rng: Option<&mut dyn RngCore>,
@@ -229,7 +229,7 @@ impl<E: PairingEngine> KZG10<E> {
         ));
 
         let mut commitment = match polynomial {
-            DenseOrSparsePolynomial::DPolynomial(polynomial) => {
+            Polynomial::Dense(polynomial) => {
                 let (num_leading_zeros, plain_coeffs) = skip_leading_zeros_and_convert_to_bigints(polynomial);
 
                 let msm_time = start_timer!(|| "MSM to compute commitment to plaintext poly");
@@ -241,7 +241,7 @@ impl<E: PairingEngine> KZG10<E> {
                 }
                 commitment
             }
-            DenseOrSparsePolynomial::SPolynomial(polynomial) => polynomial
+            Polynomial::Sparse(polynomial) => polynomial
                 .coeffs()
                 .map(|(i, coeff)| {
                     powers.powers_of_beta_g[*i].mul_bits(BitIteratorBE::new_without_leading_zeros(coeff.to_repr()))
