@@ -16,7 +16,7 @@
 
 //! A polynomial represented in coefficient form.
 
-use crate::fft::{DenseOrSparsePolynomial, EvaluationDomain, Evaluations};
+use crate::fft::{EvaluationDomain, Evaluations, Polynomial};
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_utilities::{cfg_iter_mut, serialize::*};
 
@@ -157,21 +157,21 @@ impl<F: PrimeField> DensePolynomial<F> {
         &self,
         domain: EvaluationDomain<F>,
     ) -> Option<(DensePolynomial<F>, DensePolynomial<F>)> {
-        let self_poly = DenseOrSparsePolynomial::from(self);
-        let vanishing_poly = DenseOrSparsePolynomial::from(domain.vanishing_polynomial());
+        let self_poly = Polynomial::from(self);
+        let vanishing_poly = Polynomial::from(domain.vanishing_polynomial());
         self_poly.divide_with_q_and_r(&vanishing_poly)
     }
 
     /// Evaluate `self` over `domain`.
     pub fn evaluate_over_domain_by_ref(&self, domain: EvaluationDomain<F>) -> Evaluations<F> {
-        let poly: DenseOrSparsePolynomial<'_, F> = self.into();
-        DenseOrSparsePolynomial::<F>::evaluate_over_domain(poly, domain)
+        let poly: Polynomial<'_, F> = self.into();
+        Polynomial::<F>::evaluate_over_domain(poly, domain)
     }
 
     /// Evaluate `self` over `domain`.
     pub fn evaluate_over_domain(self, domain: EvaluationDomain<F>) -> Evaluations<F> {
-        let poly: DenseOrSparsePolynomial<'_, F> = self.into();
-        DenseOrSparsePolynomial::<F>::evaluate_over_domain(poly, domain)
+        let poly: Polynomial<'_, F> = self.into();
+        Polynomial::<F>::evaluate_over_domain(poly, domain)
     }
 }
 
@@ -234,20 +234,20 @@ impl<'a, F: Field> AddAssign<&'a DensePolynomial<F>> for DensePolynomial<F> {
     }
 }
 
-impl<'a, F: Field> AddAssign<&'a DenseOrSparsePolynomial<'a, F>> for DensePolynomial<F> {
-    fn add_assign(&mut self, other: &'a DenseOrSparsePolynomial<F>) {
+impl<'a, F: Field> AddAssign<&'a Polynomial<'a, F>> for DensePolynomial<F> {
+    fn add_assign(&mut self, other: &'a Polynomial<F>) {
         match other {
-            DenseOrSparsePolynomial::SPolynomial(p) => *self += &Self::from(p.to_owned().into_owned()),
-            DenseOrSparsePolynomial::DPolynomial(p) => *self += p.as_ref(),
+            Polynomial::Sparse(p) => *self += &Self::from(p.to_owned().into_owned()),
+            Polynomial::Dense(p) => *self += p.as_ref(),
         }
     }
 }
 
-impl<'a, F: Field> AddAssign<(F, &'a DenseOrSparsePolynomial<'a, F>)> for DensePolynomial<F> {
-    fn add_assign(&mut self, (f, other): (F, &'a DenseOrSparsePolynomial<F>)) {
+impl<'a, F: Field> AddAssign<(F, &'a Polynomial<'a, F>)> for DensePolynomial<F> {
+    fn add_assign(&mut self, (f, other): (F, &'a Polynomial<F>)) {
         match other {
-            DenseOrSparsePolynomial::SPolynomial(p) => *self += (f, &Self::from(p.to_owned().into_owned())),
-            DenseOrSparsePolynomial::DPolynomial(p) => *self += (f, p.as_ref()),
+            Polynomial::Sparse(p) => *self += (f, &Self::from(p.to_owned().into_owned())),
+            Polynomial::Dense(p) => *self += (f, p.as_ref()),
         }
     }
 }
@@ -396,8 +396,8 @@ impl<'a, 'b, F: Field> Div<&'a DensePolynomial<F>> for &'b DensePolynomial<F> {
 
     #[inline]
     fn div(self, divisor: &'a DensePolynomial<F>) -> DensePolynomial<F> {
-        let a: DenseOrSparsePolynomial<_> = self.into();
-        let b: DenseOrSparsePolynomial<_> = divisor.into();
+        let a: Polynomial<_> = self.into();
+        let b: Polynomial<_> = divisor.into();
         a.divide_with_q_and_r(&b).expect("division failed").0
     }
 }
@@ -561,7 +561,7 @@ mod tests {
                 let dividend = DensePolynomial::<Fr>::rand(a_degree, rng);
                 let divisor = DensePolynomial::<Fr>::rand(b_degree, rng);
                 if let Some((quotient, remainder)) =
-                    DenseOrSparsePolynomial::divide_with_q_and_r(&(&dividend).into(), &(&divisor).into())
+                    Polynomial::divide_with_q_and_r(&(&dividend).into(), &(&divisor).into())
                 {
                     assert_eq!(dividend, &(&divisor * &quotient) + &remainder)
                 }

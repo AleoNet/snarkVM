@@ -15,13 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::PolynomialLabel;
-use crate::fft::{
-    DenseOrSparsePolynomial,
-    DensePolynomial,
-    EvaluationDomain,
-    Evaluations as EvaluationsOnDomain,
-    SparsePolynomial,
-};
+use crate::fft::{DensePolynomial, EvaluationDomain, Evaluations as EvaluationsOnDomain, Polynomial, SparsePolynomial};
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_utilities::{cfg_iter, cfg_iter_mut, CanonicalDeserialize, CanonicalSerialize};
 
@@ -73,11 +67,11 @@ impl PolynomialInfo {
 #[derive(Debug, Clone, CanonicalSerialize, CanonicalDeserialize)]
 pub struct LabeledPolynomial<F: Field> {
     pub info: PolynomialInfo,
-    pub polynomial: DenseOrSparsePolynomial<'static, F>,
+    pub polynomial: Polynomial<'static, F>,
 }
 
 impl<F: Field> core::ops::Deref for LabeledPolynomial<F> {
-    type Target = DenseOrSparsePolynomial<'static, F>;
+    type Target = Polynomial<'static, F>;
 
     fn deref(&self) -> &Self::Target {
         &self.polynomial
@@ -88,7 +82,7 @@ impl<F: Field> LabeledPolynomial<F> {
     /// Construct a new labeled polynomial by consuming `polynomial`.
     pub fn new(
         label: PolynomialLabel,
-        polynomial: impl Into<DenseOrSparsePolynomial<'static, F>>,
+        polynomial: impl Into<Polynomial<'static, F>>,
         degree_bound: Option<usize>,
         hiding_bound: Option<usize>,
     ) -> Self {
@@ -106,12 +100,12 @@ impl<F: Field> LabeledPolynomial<F> {
     }
 
     /// Retrieve the polynomial from `self`.
-    pub fn polynomial(&self) -> &DenseOrSparsePolynomial<F> {
+    pub fn polynomial(&self) -> &Polynomial<F> {
         &self.polynomial
     }
 
     /// Retrieve a mutable reference to the enclosed polynomial.
-    pub fn polynomial_mut(&mut self) -> &mut DenseOrSparsePolynomial<'static, F> {
+    pub fn polynomial_mut(&mut self) -> &mut Polynomial<'static, F> {
         &mut self.polynomial
     }
 
@@ -151,7 +145,7 @@ impl<'a, F: PrimeField> LabeledPolynomialWithBasis<'a, F> {
     /// Construct a new labeled polynomial by consuming `polynomial`.
     pub fn new_monomial_basis(
         label: PolynomialLabel,
-        polynomial: &'a DenseOrSparsePolynomial<F>,
+        polynomial: &'a Polynomial<F>,
         degree_bound: Option<usize>,
         hiding_bound: Option<usize>,
     ) -> Self {
@@ -233,9 +227,9 @@ impl<'a, F: PrimeField> LabeledPolynomialWithBasis<'a, F> {
             for (c, poly) in self.polynomial.iter() {
                 match poly {
                     Monomial { polynomial, degree_bound } => {
-                        use DenseOrSparsePolynomial::*;
+                        use Polynomial::*;
                         match polynomial.as_ref() {
-                            DPolynomial(p) => {
+                            Dense(p) => {
                                 if let Some(e) = dense_polys.get_mut(degree_bound) {
                                     // Zip safety: `p` could be of smaller degree than `e` (or vice versa),
                                     // so it's okay to just use `zip` here.
@@ -246,7 +240,7 @@ impl<'a, F: PrimeField> LabeledPolynomialWithBasis<'a, F> {
                                     dense_polys.insert(degree_bound, e);
                                 }
                             }
-                            SPolynomial(p) => sparse_poly += (*c, p.as_ref()),
+                            Sparse(p) => sparse_poly += (*c, p.as_ref()),
                         }
                     }
                     Lagrange { evaluations } => {
@@ -261,7 +255,7 @@ impl<'a, F: PrimeField> LabeledPolynomialWithBasis<'a, F> {
                     }
                 }
             }
-            let sparse_poly = DenseOrSparsePolynomial::from(sparse_poly);
+            let sparse_poly = Polynomial::from(sparse_poly);
             let sparse_poly = Monomial { polynomial: Cow::Owned(sparse_poly), degree_bound: None };
             lagrange_polys
                 .into_iter()
@@ -326,7 +320,7 @@ impl<'a, F: PrimeField> From<LabeledPolynomial<F>> for LabeledPolynomialWithBasi
 pub enum PolynomialWithBasis<'a, F: PrimeField> {
     /// A polynomial in monomial basis, along with information about
     /// its degree bound (if any).
-    Monomial { polynomial: Cow<'a, DenseOrSparsePolynomial<'a, F>>, degree_bound: Option<usize> },
+    Monomial { polynomial: Cow<'a, Polynomial<'a, F>>, degree_bound: Option<usize> },
 
     /// A polynomial in Lagrange basis, along with information about
     /// its degree bound (if any).
@@ -334,31 +328,31 @@ pub enum PolynomialWithBasis<'a, F: PrimeField> {
 }
 
 impl<'a, F: PrimeField> PolynomialWithBasis<'a, F> {
-    pub fn new_monomial_basis_ref(polynomial: &'a DenseOrSparsePolynomial<F>, degree_bound: Option<usize>) -> Self {
+    pub fn new_monomial_basis_ref(polynomial: &'a Polynomial<F>, degree_bound: Option<usize>) -> Self {
         Self::Monomial { polynomial: Cow::Borrowed(polynomial), degree_bound }
     }
 
-    pub fn new_monomial_basis(polynomial: DenseOrSparsePolynomial<'a, F>, degree_bound: Option<usize>) -> Self {
+    pub fn new_monomial_basis(polynomial: Polynomial<'a, F>, degree_bound: Option<usize>) -> Self {
         Self::Monomial { polynomial: Cow::Owned(polynomial), degree_bound }
     }
 
     pub fn new_dense_monomial_basis_ref(polynomial: &'a DensePolynomial<F>, degree_bound: Option<usize>) -> Self {
-        let polynomial = DenseOrSparsePolynomial::DPolynomial(Cow::Borrowed(polynomial));
+        let polynomial = Polynomial::Dense(Cow::Borrowed(polynomial));
         Self::Monomial { polynomial: Cow::Owned(polynomial), degree_bound }
     }
 
     pub fn new_dense_monomial_basis(polynomial: DensePolynomial<F>, degree_bound: Option<usize>) -> Self {
-        let polynomial = DenseOrSparsePolynomial::from(polynomial);
+        let polynomial = Polynomial::from(polynomial);
         Self::Monomial { polynomial: Cow::Owned(polynomial), degree_bound }
     }
 
     pub fn new_sparse_monomial_basis_ref(polynomial: &'a SparsePolynomial<F>, degree_bound: Option<usize>) -> Self {
-        let polynomial = DenseOrSparsePolynomial::SPolynomial(Cow::Borrowed(polynomial));
+        let polynomial = Polynomial::Sparse(Cow::Borrowed(polynomial));
         Self::Monomial { polynomial: Cow::Owned(polynomial), degree_bound }
     }
 
     pub fn new_sparse_monomial_basis(polynomial: SparsePolynomial<F>, degree_bound: Option<usize>) -> Self {
-        let polynomial = DenseOrSparsePolynomial::from(polynomial);
+        let polynomial = Polynomial::from(polynomial);
         Self::Monomial { polynomial: Cow::Owned(polynomial), degree_bound }
     }
 
@@ -385,7 +379,7 @@ impl<'a, F: PrimeField> PolynomialWithBasis<'a, F> {
     /// Retrieve the degree bound in `self`.
     pub fn is_sparse(&self) -> bool {
         match self {
-            Self::Monomial { polynomial, .. } => matches!(polynomial.as_ref(), DenseOrSparsePolynomial::SPolynomial(_)),
+            Self::Monomial { polynomial, .. } => matches!(polynomial.as_ref(), Polynomial::Sparse(_)),
             _ => false,
         }
     }

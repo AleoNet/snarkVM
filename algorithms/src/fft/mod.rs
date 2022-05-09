@@ -24,7 +24,7 @@ pub mod evaluations;
 pub use evaluations::Evaluations;
 
 pub mod polynomial;
-pub use polynomial::{DenseOrSparsePolynomial, DensePolynomial, SparsePolynomial};
+pub use polynomial::{DensePolynomial, Polynomial, SparsePolynomial};
 
 #[cfg(test)]
 mod tests;
