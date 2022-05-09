@@ -22,7 +22,7 @@ use snarkvm_utilities::{cfg_iter_mut, serialize::*, SerializationError};
 
 use std::{borrow::Cow, convert::TryInto};
 
-use DenseOrSparsePolynomial::*;
+use Polynomial::*;
 
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
@@ -38,22 +38,22 @@ pub use multiplier::*;
 
 /// Represents either a sparse polynomial or a dense one.
 #[derive(Clone, Debug)]
-pub enum DenseOrSparsePolynomial<'a, F: Field> {
+pub enum Polynomial<'a, F: Field> {
     /// Represents the case where `self` is a sparse polynomial
-    SPolynomial(Cow<'a, SparsePolynomial<F>>),
+    Sparse(Cow<'a, SparsePolynomial<F>>),
     /// Represents the case where `self` is a dense polynomial
-    DPolynomial(Cow<'a, DensePolynomial<F>>),
+    Dense(Cow<'a, DensePolynomial<F>>),
 }
 
-impl<'a, F: Field> CanonicalSerialize for DenseOrSparsePolynomial<'a, F> {
+impl<'a, F: Field> CanonicalSerialize for Polynomial<'a, F> {
     #[allow(unused_mut, unused_variables)]
     fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), SerializationError> {
         match self {
-            SPolynomial(p) => {
+            Sparse(p) => {
                 let p: DensePolynomial<F> = p.to_owned().into_owned().into();
                 CanonicalSerialize::serialize(&p.coeffs, writer)?;
             }
-            DPolynomial(p) => {
+            Dense(p) => {
                 CanonicalSerialize::serialize(&p.coeffs, writer)?;
             }
         }
@@ -63,11 +63,11 @@ impl<'a, F: Field> CanonicalSerialize for DenseOrSparsePolynomial<'a, F> {
     #[allow(unused_mut, unused_variables)]
     fn serialized_size(&self) -> usize {
         match self {
-            SPolynomial(p) => {
+            Sparse(p) => {
                 let p: DensePolynomial<F> = p.to_owned().into_owned().into();
                 p.serialized_size()
             }
-            DPolynomial(p) => p.serialized_size(),
+            Dense(p) => p.serialized_size(),
         }
     }
 
@@ -81,10 +81,10 @@ impl<'a, F: Field> CanonicalSerialize for DenseOrSparsePolynomial<'a, F> {
         self.serialized_size()
     }
 }
-impl<'a, F: Field> CanonicalDeserialize for DenseOrSparsePolynomial<'a, F> {
+impl<'a, F: Field> CanonicalDeserialize for Polynomial<'a, F> {
     #[allow(unused_mut, unused_variables)]
     fn deserialize<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
-        CanonicalDeserialize::deserialize(reader).map(Self::DPolynomial)
+        CanonicalDeserialize::deserialize(reader).map(Self::Dense)
     }
 
     #[allow(unused_mut, unused_variables)]
@@ -93,80 +93,80 @@ impl<'a, F: Field> CanonicalDeserialize for DenseOrSparsePolynomial<'a, F> {
     }
 }
 
-impl<F: Field> From<DensePolynomial<F>> for DenseOrSparsePolynomial<'_, F> {
+impl<F: Field> From<DensePolynomial<F>> for Polynomial<'_, F> {
     fn from(other: DensePolynomial<F>) -> Self {
-        DPolynomial(Cow::Owned(other))
+        Dense(Cow::Owned(other))
     }
 }
 
-impl<'a, F: Field> From<&'a DensePolynomial<F>> for DenseOrSparsePolynomial<'a, F> {
+impl<'a, F: Field> From<&'a DensePolynomial<F>> for Polynomial<'a, F> {
     fn from(other: &'a DensePolynomial<F>) -> Self {
-        DPolynomial(Cow::Borrowed(other))
+        Dense(Cow::Borrowed(other))
     }
 }
 
-impl<F: Field> From<SparsePolynomial<F>> for DenseOrSparsePolynomial<'_, F> {
+impl<F: Field> From<SparsePolynomial<F>> for Polynomial<'_, F> {
     fn from(other: SparsePolynomial<F>) -> Self {
-        SPolynomial(Cow::Owned(other))
+        Sparse(Cow::Owned(other))
     }
 }
 
-impl<'a, F: Field> From<&'a SparsePolynomial<F>> for DenseOrSparsePolynomial<'a, F> {
+impl<'a, F: Field> From<&'a SparsePolynomial<F>> for Polynomial<'a, F> {
     fn from(other: &'a SparsePolynomial<F>) -> Self {
-        SPolynomial(Cow::Borrowed(other))
+        Sparse(Cow::Borrowed(other))
     }
 }
 
 #[allow(clippy::from_over_into)]
-impl<F: Field> Into<DensePolynomial<F>> for DenseOrSparsePolynomial<'_, F> {
+impl<F: Field> Into<DensePolynomial<F>> for Polynomial<'_, F> {
     fn into(self) -> DensePolynomial<F> {
         match self {
-            DPolynomial(p) => p.into_owned(),
-            SPolynomial(p) => p.into_owned().into(),
+            Dense(p) => p.into_owned(),
+            Sparse(p) => p.into_owned().into(),
         }
     }
 }
 
-impl<F: Field> TryInto<SparsePolynomial<F>> for DenseOrSparsePolynomial<'_, F> {
+impl<F: Field> TryInto<SparsePolynomial<F>> for Polynomial<'_, F> {
     type Error = ();
 
     fn try_into(self) -> Result<SparsePolynomial<F>, ()> {
         match self {
-            SPolynomial(p) => Ok(p.into_owned()),
+            Sparse(p) => Ok(p.into_owned()),
             _ => Err(()),
         }
     }
 }
 
-impl<'a, F: Field> DenseOrSparsePolynomial<'a, F> {
+impl<'a, F: Field> Polynomial<'a, F> {
     /// Checks if the given polynomial is zero.
     pub fn is_zero(&self) -> bool {
         match self {
-            SPolynomial(s) => s.is_zero(),
-            DPolynomial(d) => d.is_zero(),
+            Sparse(s) => s.is_zero(),
+            Dense(d) => d.is_zero(),
         }
     }
 
     /// Return the degree of `self.
     pub fn degree(&self) -> usize {
         match self {
-            SPolynomial(s) => s.degree(),
-            DPolynomial(d) => d.degree(),
+            Sparse(s) => s.degree(),
+            Dense(d) => d.degree(),
         }
     }
 
     #[inline]
     pub fn leading_coefficient(&self) -> Option<&F> {
         match self {
-            SPolynomial(p) => p.coeffs().last().map(|(_, c)| c),
-            DPolynomial(p) => p.last(),
+            Sparse(p) => p.coeffs().last().map(|(_, c)| c),
+            Dense(p) => p.last(),
         }
     }
 
     #[inline]
     pub fn as_dense(&self) -> Option<&DensePolynomial<F>> {
         match self {
-            DPolynomial(p) => Some(p.as_ref()),
+            Dense(p) => Some(p.as_ref()),
             _ => None,
         }
     }
@@ -174,7 +174,7 @@ impl<'a, F: Field> DenseOrSparsePolynomial<'a, F> {
     #[inline]
     pub fn as_dense_mut(&mut self) -> Option<&mut DensePolynomial<F>> {
         match self {
-            DPolynomial(p) => Some(p.to_mut()),
+            Dense(p) => Some(p.to_mut()),
             _ => None,
         }
     }
@@ -182,7 +182,7 @@ impl<'a, F: Field> DenseOrSparsePolynomial<'a, F> {
     #[inline]
     pub fn as_sparse(&self) -> Option<&SparsePolynomial<F>> {
         match self {
-            SPolynomial(p) => Some(p.as_ref()),
+            Sparse(p) => Some(p.as_ref()),
             _ => None,
         }
     }
@@ -195,15 +195,15 @@ impl<'a, F: Field> DenseOrSparsePolynomial<'a, F> {
     #[inline]
     pub fn evaluate(&self, point: F) -> F {
         match self {
-            SPolynomial(p) => p.evaluate(point),
-            DPolynomial(p) => p.evaluate(point),
+            Sparse(p) => p.evaluate(point),
+            Dense(p) => p.evaluate(point),
         }
     }
 
     pub fn coeffs(&'a self) -> Box<dyn Iterator<Item = (usize, &'a F)> + 'a> {
         match self {
-            SPolynomial(p) => Box::new(p.coeffs().map(|(c, f)| (*c, f))),
-            DPolynomial(p) => Box::new(p.coeffs.iter().enumerate()),
+            Sparse(p) => Box::new(p.coeffs().map(|(c, f)| (*c, f))),
+            Dense(p) => Box::new(p.coeffs.iter().enumerate()),
         }
     }
 
@@ -226,11 +226,11 @@ impl<'a, F: Field> DenseOrSparsePolynomial<'a, F> {
                 let cur_q_degree = remainder.degree() - divisor.degree();
                 quotient[cur_q_degree] = cur_q_coeff;
 
-                if let SPolynomial(p) = divisor {
+                if let Sparse(p) = divisor {
                     for (i, div_coeff) in p.coeffs() {
                         remainder[cur_q_degree + i] -= &(cur_q_coeff * div_coeff);
                     }
-                } else if let DPolynomial(p) = divisor {
+                } else if let Dense(p) = divisor {
                     for (i, div_coeff) in p.iter().enumerate() {
                         remainder[cur_q_degree + i] -= &(cur_q_coeff * div_coeff);
                     }
@@ -244,7 +244,7 @@ impl<'a, F: Field> DenseOrSparsePolynomial<'a, F> {
         }
     }
 }
-impl<F: PrimeField> DenseOrSparsePolynomial<'_, F> {
+impl<F: PrimeField> Polynomial<'_, F> {
     /// Construct `Evaluations` by evaluating a polynomial over the domain `domain`.
     pub fn evaluate_over_domain(poly: impl Into<Self>, domain: EvaluationDomain<F>) -> Evaluations<F> {
         let poly = poly.into();
@@ -253,15 +253,15 @@ impl<F: PrimeField> DenseOrSparsePolynomial<'_, F> {
 
     fn eval_over_domain_helper(self, domain: EvaluationDomain<F>) -> Evaluations<F> {
         match self {
-            SPolynomial(Cow::Borrowed(s)) => {
+            Sparse(Cow::Borrowed(s)) => {
                 let evals = domain.elements().map(|elem| s.evaluate(elem)).collect();
                 Evaluations::from_vec_and_domain(evals, domain)
             }
-            SPolynomial(Cow::Owned(s)) => {
+            Sparse(Cow::Owned(s)) => {
                 let evals = domain.elements().map(|elem| s.evaluate(elem)).collect();
                 Evaluations::from_vec_and_domain(evals, domain)
             }
-            DPolynomial(Cow::Borrowed(d)) => {
+            Dense(Cow::Borrowed(d)) => {
                 if d.degree() >= domain.size() {
                     d.coeffs
                         .chunks(domain.size())
@@ -274,7 +274,7 @@ impl<F: PrimeField> DenseOrSparsePolynomial<'_, F> {
                     Evaluations::from_vec_and_domain(domain.fft(&d.coeffs), domain)
                 }
             }
-            DPolynomial(Cow::Owned(mut d)) => {
+            Dense(Cow::Owned(mut d)) => {
                 if d.degree() >= domain.size() {
                     d.coeffs
                         .chunks(domain.size())
