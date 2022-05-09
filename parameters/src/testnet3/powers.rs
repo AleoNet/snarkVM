@@ -302,7 +302,7 @@ impl<E: PairingEngine> CanonicalSerialize for PowersOfG<E> {
 
 impl<E: PairingEngine> Valid for PowersOfG<E> {
     fn check(&self) -> Result<(), SerializationError> {
-        unreachable!("This should not be called directly");
+        self.powers_of_beta_times_gamma_g.check()
     }
 }
 

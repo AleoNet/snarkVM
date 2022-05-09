@@ -118,7 +118,14 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalSerialize for Circuit<F, MM> {
 }
 impl<F: PrimeField, MM: MarlinMode> snarkvm_utilities::Valid for Circuit<F, MM> {
     fn check(&self) -> Result<(), SerializationError> {
-        unreachable!("This should never be called directly");
+        Ok(())
+    }
+
+    fn batch_check<'a>(_batch: impl Iterator<Item = &'a Self> + Send) -> Result<(), SerializationError>
+    where
+        Self: 'a,
+    {
+        Ok(())
     }
 }
 

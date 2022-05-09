@@ -87,7 +87,13 @@ impl<E: PairingEngine> CanonicalSerialize for UniversalParams<E> {
 
 impl<E: PairingEngine> snarkvm_utilities::Valid for UniversalParams<E> {
     fn check(&self) -> Result<(), SerializationError> {
-        unreachable!("This should not be called")
+        self.powers.read().check()?;
+        self.h.check()?;
+        self.beta_h.check()?;
+        self.supported_degree_bounds.check()?;
+        self.inverse_neg_powers_of_beta_h.check()?;
+        self.prepared_h.check()?;
+        self.prepared_beta_h.check()
     }
 }
 

@@ -193,6 +193,16 @@ impl<F: PrimeField> Evaluations<F> {
     }
 }
 
+impl<F: PrimeField> Valid for Evaluations<F> {
+    fn check(&self) -> Result<(), snarkvm_utilities::SerializationError> {
+        self.z_b_evals.check()?;
+        self.g_1_eval.check()?;
+        self.g_a_eval.check()?;
+        self.g_b_eval.check()?;
+        self.g_c_eval.check()
+    }
+}
+
 impl<F: PrimeField> Evaluations<F> {
     pub fn to_field_elements(&self) -> Vec<F> {
         let mut result = self.z_b_evals.clone();
@@ -256,7 +266,11 @@ impl<E: PairingEngine> CanonicalSerialize for Proof<E> {
 
 impl<E: PairingEngine> Valid for Proof<E> {
     fn check(&self) -> Result<(), SerializationError> {
-        unreachable!("Should not call this directly");
+        self.batch_size.check()?;
+        self.commitments.check()?;
+        self.evaluations.check()?;
+        self.msg.check()?;
+        self.pc_proof.check()
     }
 }
 
