@@ -250,7 +250,7 @@ pub trait Adder {
     type Sum;
 
     /// Returns the sum of `self` and `other` as a sum bit and carry bit.
-    fn adder(&self, other: &Self, carry: &Self) -> (Self::Sum, Self::Carry);
+    fn adder(&self, other: &Self, carry: &Self) -> (Self::Sum, Self::Carry) where Self: Sized;
 }
 
 ///
@@ -267,7 +267,7 @@ pub trait Subtractor {
     type Difference;
 
     /// Returns the difference of `self` and `other` as a difference bit and borrow bit.
-    fn subtractor(&self, other: &Self, borrow: &Self) -> (Self::Difference, Self::Borrow);
+    fn subtractor(&self, other: &Self, borrow: &Self) -> (Self::Difference, Self::Borrow) where Self: Sized;
 }
 
 /// Representation of the zero value.

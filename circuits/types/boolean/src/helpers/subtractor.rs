@@ -24,14 +24,78 @@ impl<E: Environment> Subtractor for Boolean<E> {
     fn subtractor(&self, other: &Self, borrow: &Self) -> (Self::Difference, Self::Borrow) {
         // Compute the difference bit.
         let c0 = self ^ other;
+        println!("c0_mode: {:?}", c0.eject_mode());
         let difference = &c0 ^ borrow;
+        println!("difference_mode: {:?}", difference.eject_mode());
 
         // Compute the borrow bit.
         let c1 = !self & other;
+        println!("c1_mode: {:?}", c1.eject_mode());
         let c2 = borrow & !c0;
+        println!("c2_mode: {:?}", c2.eject_mode());
         let borrow = c1 | c2;
+        println!("borrow_mode: {:?}\n", borrow.eject_mode());
 
         (difference, borrow)
+    }
+}
+
+impl<E: Environment> Metadata<dyn Subtractor<Borrow = Boolean<E>, Difference = Boolean<E>>> for Boolean<E> {
+    type Case = (CircuitType<Self>, CircuitType<Self>, CircuitType<Self>);
+    type OutputType = (CircuitType<Boolean<E>>, CircuitType<Boolean<E>>);
+
+    fn count(case: &Self::Case) -> Count {
+        let (lhs, rhs, borrow) = case.clone();
+
+        let case = (lhs.clone(), rhs.clone());
+        let c0_count = count!(Boolean<E>, BitXor<Boolean<E>, Output=Boolean<E>>, &case);
+        let c0_output_type = output_type!(Boolean<E>, BitXor<Boolean<E>, Output=Boolean<E>>, case.clone());
+
+        let case = (c0_output_type.clone(), borrow.clone());
+        let difference_count = count!(Boolean<E>, BitXor<Boolean<E>, Output=Boolean<E>>, &case);
+
+        let not_self_count = count!(Boolean<E>, Not<Output=Boolean<E>>, &lhs);
+        let not_self_output_type = output_type!(Boolean<E>, Not<Output=Boolean<E>>, lhs);
+
+        let case = (not_self_output_type, rhs);
+        let c1_count = count!(Boolean<E>, BitAnd<Boolean<E>, Output=Boolean<E>>, &case);
+        let c1_output_type = output_type!(Boolean<E>, BitAnd<Boolean<E>, Output=Boolean<E>>, case);
+
+        let not_c0_count = count!(Boolean<E>, Not<Output=Boolean<E>>, &c0_output_type);
+        let not_c0_output_type = output_type!(Boolean<E>, Not<Output=Boolean<E>>, c0_output_type);
+
+        let case = (borrow, not_c0_output_type);
+        let c2_count = count!(Boolean<E>, BitAnd<Boolean<E>, Output=Boolean<E>>, &case);
+        let c2_output_type = output_type!(Boolean<E>, BitAnd<Boolean<E>, Output=Boolean<E>>, case);
+
+        let borrow_count = count!(Boolean<E>, BitOr<Boolean<E>, Output = Boolean<E>>, &(c1_output_type, c2_output_type));
+
+        c0_count + difference_count + not_self_count + c1_count + not_c0_count + c2_count + borrow_count
+    }
+
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        let (lhs, rhs, borrow) = case.clone();
+
+        let c0_output_type = output_type!(Boolean<E>, BitXor<Boolean<E>, Output=Boolean<E>>, (lhs.clone(), rhs.clone()));
+        println!("lhs: {:?}, rhs: {:?}", lhs, rhs);
+        println!("c0_output_type: {:?}", c0_output_type);
+        let difference_output_type = output_type!(Boolean<E>, BitXor<Boolean<E>, Output=Boolean<E>>, (c0_output_type.clone(), borrow.clone()));
+        println!("difference_output_type: {:?}", difference_output_type);
+
+        let not_self_output_type = output_type!(Boolean<E>, Not<Output=Boolean<E>>, lhs);
+        println!("not_self_output_type: {:?}", not_self_output_type);
+        let c1_output_type = output_type!(Boolean<E>, BitAnd<Boolean<E>, Output=Boolean<E>>, (not_self_output_type, rhs));
+        println!("c1_output_type: {:?}", c1_output_type);
+
+        let not_c0_output_type = output_type!(Boolean<E>, Not<Output=Boolean<E>>, c0_output_type);
+        println!("not_c0_output_type: {:?}", not_c0_output_type);
+        let c2_output_type = output_type!(Boolean<E>, BitAnd<Boolean<E>, Output=Boolean<E>>, (borrow, not_c0_output_type));
+        println!("c2_output_type: {:?}", c2_output_type);
+
+        let borrow_output_type = output_type!(Boolean<E>, BitOr<Boolean<E>, Output=Boolean<E>>, (c1_output_type, c2_output_type));
+        println!("borrow_output_type: {:?}", borrow_output_type);
+
+        (difference_output_type, borrow_output_type)
     }
 }
 
@@ -47,385 +111,189 @@ mod tests {
         a: Boolean<Circuit>,
         b: Boolean<Circuit>,
         c: Boolean<Circuit>,
-        num_constants: u64,
-        num_public: u64,
-        num_private: u64,
-        num_constraints: u64,
     ) {
         Circuit::scope(name, || {
             let case = format!("({} SUB {} WITH {})", a.eject_value(), b.eject_value(), c.eject_value());
+            println!("{}", case);
             let (candidate_difference, candidate_borrow) = a.subtractor(&b, &c);
-            assert_eq!(expected_difference, candidate_difference.eject_value(), "DIFF {}", case);
+            assert_eq!(expected_difference, candidate_difference.eject_value(), "DIFFERENCE {}", case);
             assert_eq!(expected_borrow, candidate_borrow.eject_value(), "BORROW {}", case);
-            assert_scope!(case, num_constants, num_public, num_private, num_constraints);
+
+            let case = (CircuitType::from(a), CircuitType::from(b), CircuitType::from(c));
+            assert_count!(Boolean<Circuit>, Subtractor<Borrow = Boolean<Circuit>, Difference = Boolean<Circuit>>, &case);
+            let (difference_type, borrow_type) = output_type!(Boolean<Circuit>, Subtractor<Borrow= Boolean<Circuit>, Difference = Boolean<Circuit>>, case);
+
+            assert_eq!(difference_type.eject_mode(), candidate_difference.eject_mode());
+            if difference_type.is_constant() {
+                assert_eq!(difference_type.eject_value(), candidate_difference.eject_value());
+            }
+
+            assert_eq!(borrow_type.eject_mode(), candidate_borrow.eject_mode());
+            if borrow_type.is_constant() {
+                assert_eq!(borrow_type.eject_value(), candidate_borrow.eject_value());
+            }
         });
     }
 
-    #[rustfmt::skip]
-    fn check_false_sub_false_with_false(
+    fn run_test(
         mode_a: Mode,
         mode_b: Mode,
         mode_c: Mode,
-        num_constants: u64,
-        num_public: u64,
-        num_private: u64,
-        num_constraints: u64
     ) {
-        // false SUB false WITH false => (false, false)
-        let expected_difference = false;
-        let expected_carry = false;
-        let a = Boolean::<Circuit>::new(mode_a, false);
-        let b = Boolean::<Circuit>::new(mode_b, false);
-        let c = Boolean::<Circuit>::new(mode_c, false);
-        check_subtractor("false SUB false WITH false", expected_difference, expected_carry, a, b, c, num_constants, num_public, num_private, num_constraints);
-    }
+        for first in [true, false] {
+            for second in [true, false] {
+                for third in [true, false] {
+                    let a = Boolean::new(mode_a, first);
+                    let b = Boolean::new(mode_b, second);
+                    let c = Boolean::new(mode_c, third);
 
-    #[rustfmt::skip]
-    fn check_false_sub_false_with_true(
-        mode_a: Mode,
-        mode_b: Mode,
-        mode_c: Mode,
-        num_constants: u64,
-        num_public: u64,
-        num_private: u64,
-        num_constraints: u64
-    ) {
-        // false SUB false WITH true => (true, true)
-        let expected_difference = true;
-        let expected_carry = true;
-        let a = Boolean::<Circuit>::new(mode_a, false);
-        let b = Boolean::<Circuit>::new(mode_b, false);
-        let c = Boolean::<Circuit>::new(mode_c, true);
-        check_subtractor("false SUB false WITH true", expected_difference, expected_carry, a, b, c, num_constants, num_public, num_private, num_constraints);
-    }
+                    let c0 = first ^ second;
+                    let expected_difference = c0 ^ third;
 
-    #[rustfmt::skip]
-    fn check_false_sub_true_with_false(
-        mode_a: Mode,
-        mode_b: Mode,
-        mode_c: Mode,
-        num_constants: u64,
-        num_public: u64,
-        num_private: u64,
-        num_constraints: u64
-    ) {
-        // false SUB true WITH false => (true, true)
-        let expected_difference = true;
-        let expected_carry = true;
-        let a = Boolean::<Circuit>::new(mode_a, false);
-        let b = Boolean::<Circuit>::new(mode_b, true);
-        let c = Boolean::<Circuit>::new(mode_c, false);
-        check_subtractor("false SUB true WITH false", expected_difference, expected_carry, a, b, c, num_constants, num_public, num_private, num_constraints);
-    }
+                    let c1 = !first & second;
+                    let c2 = third & !c0;
+                    let expected_borrow = c1 | c2;
 
-    #[rustfmt::skip]
-    fn check_false_sub_true_with_true(
-        mode_a: Mode,
-        mode_b: Mode,
-        mode_c: Mode,
-        num_constants: u64,
-        num_public: u64,
-        num_private: u64,
-        num_constraints: u64
-    ) {
-        // false SUB true WITH true => (false, true)
-        let expected_difference = false;
-        let expected_carry = true;
-        let a = Boolean::<Circuit>::new(mode_a, false);
-        let b = Boolean::<Circuit>::new(mode_b, true);
-        let c = Boolean::<Circuit>::new(mode_c, true);
-        check_subtractor("false SUB true WITH true", expected_difference, expected_carry, a, b, c, num_constants, num_public, num_private, num_constraints);
-    }
-
-    #[rustfmt::skip]
-    fn check_true_sub_false_with_false(
-        mode_a: Mode,
-        mode_b: Mode,
-        mode_c: Mode,
-        num_constants: u64,
-        num_public: u64,
-        num_private: u64,
-        num_constraints: u64
-    ) {
-        // true SUB false WITH false => (true, false)
-        let expected_difference = true;
-        let expected_carry = false;
-        let a = Boolean::<Circuit>::new(mode_a, true);
-        let b = Boolean::<Circuit>::new(mode_b, false);
-        let c = Boolean::<Circuit>::new(mode_c, false);
-        check_subtractor("true SUB false WITH false", expected_difference, expected_carry, a, b, c, num_constants, num_public, num_private, num_constraints);
-    }
-
-    #[rustfmt::skip]
-    fn check_true_sub_false_with_true(
-        mode_a: Mode,
-        mode_b: Mode,
-        mode_c: Mode,
-        num_constants: u64,
-        num_public: u64,
-        num_private: u64,
-        num_constraints: u64
-    ) {
-        // true SUB false WITH true => (false, false)
-        let expected_difference = false;
-        let expected_carry = false;
-        let a = Boolean::<Circuit>::new(mode_a, true);
-        let b = Boolean::<Circuit>::new(mode_b, false);
-        let c = Boolean::<Circuit>::new(mode_c, true);
-        check_subtractor("true SUB false WITH true", expected_difference, expected_carry, a, b, c, num_constants, num_public, num_private, num_constraints);
-    }
-
-    #[rustfmt::skip]
-    fn check_true_sub_true_with_false(
-        mode_a: Mode,
-        mode_b: Mode,
-        mode_c: Mode,
-        num_constants: u64,
-        num_public: u64,
-        num_private: u64,
-        num_constraints: u64
-    ) {
-        // true SUB true WITH false => (false, false)
-        let expected_difference = false;
-        let expected_carry = false;
-        let a = Boolean::<Circuit>::new(mode_a, true);
-        let b = Boolean::<Circuit>::new(mode_b, true);
-        let c = Boolean::<Circuit>::new(mode_c, false);
-        check_subtractor("true SUB true WITH false", expected_difference, expected_carry, a, b, c, num_constants, num_public, num_private, num_constraints);
-    }
-
-    #[rustfmt::skip]
-    fn check_true_sub_true_with_true(
-        mode_a: Mode,
-        mode_b: Mode,
-        mode_c: Mode,
-        num_constants: u64,
-        num_public: u64,
-        num_private: u64,
-        num_constraints: u64
-    ) {
-        // true SUB true WITH true => (true, true)
-        let expected_difference = true;
-        let expected_carry = true;
-        let a = Boolean::<Circuit>::new(mode_a, true);
-        let b = Boolean::<Circuit>::new(mode_b, true);
-        let c = Boolean::<Circuit>::new(mode_c, true);
-        check_subtractor("true SUB true WITH true", expected_difference, expected_carry, a, b, c, num_constants, num_public, num_private, num_constraints);
+                    let name = format!("({} SUB {} WITH {})", mode_a, mode_b, mode_c);
+                    check_subtractor(&name, expected_difference, expected_borrow, a, b, c);
+                }
+            }
+        }
     }
 
     #[test]
-    fn test_constant_sub_constant_with_constant() {
-        check_false_sub_false_with_false(Mode::Constant, Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-        check_false_sub_false_with_true(Mode::Constant, Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-        check_false_sub_true_with_false(Mode::Constant, Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-        check_false_sub_true_with_true(Mode::Constant, Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-        check_true_sub_false_with_false(Mode::Constant, Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-        check_true_sub_false_with_true(Mode::Constant, Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-        check_true_sub_true_with_false(Mode::Constant, Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-        check_true_sub_true_with_true(Mode::Constant, Mode::Constant, Mode::Constant, 0, 0, 0, 0);
+    fn check_constant_sub_constant_with_constant() {
+        run_test(Mode::Constant, Mode::Constant, Mode::Constant);
     }
 
     #[test]
-    fn test_constant_sub_constant_with_public() {
-        check_false_sub_false_with_false(Mode::Constant, Mode::Constant, Mode::Public, 0, 0, 0, 0);
-        check_false_sub_false_with_true(Mode::Constant, Mode::Constant, Mode::Public, 0, 0, 0, 0);
-        check_false_sub_true_with_false(Mode::Constant, Mode::Constant, Mode::Public, 0, 0, 0, 0);
-        check_false_sub_true_with_true(Mode::Constant, Mode::Constant, Mode::Public, 0, 0, 0, 0);
-        check_true_sub_false_with_false(Mode::Constant, Mode::Constant, Mode::Public, 0, 0, 0, 0);
-        check_true_sub_false_with_true(Mode::Constant, Mode::Constant, Mode::Public, 0, 0, 0, 0);
-        check_true_sub_true_with_false(Mode::Constant, Mode::Constant, Mode::Public, 0, 0, 0, 0);
-        check_true_sub_true_with_true(Mode::Constant, Mode::Constant, Mode::Public, 0, 0, 0, 0);
+    fn check_constant_sub_constant_with_public() {
+        run_test(Mode::Constant, Mode::Constant, Mode::Public);
     }
 
     #[test]
-    fn test_constant_sub_constant_with_private() {
-        check_false_sub_false_with_false(Mode::Constant, Mode::Constant, Mode::Private, 0, 0, 0, 0);
-        check_false_sub_false_with_true(Mode::Constant, Mode::Constant, Mode::Private, 0, 0, 0, 0);
-        check_false_sub_true_with_false(Mode::Constant, Mode::Constant, Mode::Private, 0, 0, 0, 0);
-        check_false_sub_true_with_true(Mode::Constant, Mode::Constant, Mode::Private, 0, 0, 0, 0);
-        check_true_sub_false_with_false(Mode::Constant, Mode::Constant, Mode::Private, 0, 0, 0, 0);
-        check_true_sub_false_with_true(Mode::Constant, Mode::Constant, Mode::Private, 0, 0, 0, 0);
-        check_true_sub_true_with_false(Mode::Constant, Mode::Constant, Mode::Private, 0, 0, 0, 0);
-        check_true_sub_true_with_true(Mode::Constant, Mode::Constant, Mode::Private, 0, 0, 0, 0);
+    fn check_constant_sub_constant_with_private() {
+        run_test(Mode::Constant, Mode::Constant, Mode::Private);
     }
 
     #[test]
-    fn test_constant_sub_public_with_constant() {
-        check_false_sub_false_with_false(Mode::Constant, Mode::Public, Mode::Constant, 0, 0, 0, 0);
-        check_false_sub_false_with_true(Mode::Constant, Mode::Public, Mode::Constant, 0, 0, 1, 1); // <- Differs
-        check_false_sub_true_with_false(Mode::Constant, Mode::Public, Mode::Constant, 0, 0, 0, 0);
-        check_false_sub_true_with_true(Mode::Constant, Mode::Public, Mode::Constant, 0, 0, 1, 1); // <- Differs
-        check_true_sub_false_with_false(Mode::Constant, Mode::Public, Mode::Constant, 0, 0, 0, 0);
-        check_true_sub_false_with_true(Mode::Constant, Mode::Public, Mode::Constant, 0, 0, 0, 0);
-        check_true_sub_true_with_false(Mode::Constant, Mode::Public, Mode::Constant, 0, 0, 0, 0);
-        check_true_sub_true_with_true(Mode::Constant, Mode::Public, Mode::Constant, 0, 0, 0, 0);
+    fn check_constant_sub_public_with_constant() {
+        run_test(Mode::Constant, Mode::Public, Mode::Constant);
     }
 
     #[test]
-    fn test_constant_sub_public_with_public() {
-        check_false_sub_false_with_false(Mode::Constant, Mode::Public, Mode::Public, 0, 0, 3, 3); // <- Differs
-        check_false_sub_false_with_true(Mode::Constant, Mode::Public, Mode::Public, 0, 0, 3, 3); // <- Differs
-        check_false_sub_true_with_false(Mode::Constant, Mode::Public, Mode::Public, 0, 0, 3, 3); // <- Differs
-        check_false_sub_true_with_true(Mode::Constant, Mode::Public, Mode::Public, 0, 0, 3, 3); // <- Differs
-        check_true_sub_false_with_false(Mode::Constant, Mode::Public, Mode::Public, 0, 0, 2, 2);
-        check_true_sub_false_with_true(Mode::Constant, Mode::Public, Mode::Public, 0, 0, 2, 2);
-        check_true_sub_true_with_false(Mode::Constant, Mode::Public, Mode::Public, 0, 0, 2, 2);
-        check_true_sub_true_with_true(Mode::Constant, Mode::Public, Mode::Public, 0, 0, 2, 2);
+    fn check_constant_sub_public_with_public() {
+        run_test(Mode::Constant, Mode::Public, Mode::Public);
     }
 
     #[test]
-    fn test_constant_sub_public_with_private() {
-        check_false_sub_false_with_false(Mode::Constant, Mode::Public, Mode::Private, 0, 0, 3, 3); // <- Differs
-        check_false_sub_false_with_true(Mode::Constant, Mode::Public, Mode::Private, 0, 0, 3, 3); // <- Differs
-        check_false_sub_true_with_false(Mode::Constant, Mode::Public, Mode::Private, 0, 0, 3, 3); // <- Differs
-        check_false_sub_true_with_true(Mode::Constant, Mode::Public, Mode::Private, 0, 0, 3, 3); // <- Differs
-        check_true_sub_false_with_false(Mode::Constant, Mode::Public, Mode::Private, 0, 0, 2, 2);
-        check_true_sub_false_with_true(Mode::Constant, Mode::Public, Mode::Private, 0, 0, 2, 2);
-        check_true_sub_true_with_false(Mode::Constant, Mode::Public, Mode::Private, 0, 0, 2, 2);
-        check_true_sub_true_with_true(Mode::Constant, Mode::Public, Mode::Private, 0, 0, 2, 2);
+    fn check_constant_sub_public_with_private() {
+        run_test(Mode::Constant, Mode::Public, Mode::Private);
     }
 
     #[test]
-    fn test_constant_sub_private_with_constant() {
-        check_false_sub_false_with_false(Mode::Constant, Mode::Private, Mode::Constant, 0, 0, 0, 0);
-        check_false_sub_false_with_true(Mode::Constant, Mode::Private, Mode::Constant, 0, 0, 1, 1); // <- Differs
-        check_false_sub_true_with_false(Mode::Constant, Mode::Private, Mode::Constant, 0, 0, 0, 0);
-        check_false_sub_true_with_true(Mode::Constant, Mode::Private, Mode::Constant, 0, 0, 1, 1); // <- Differs
-        check_true_sub_false_with_false(Mode::Constant, Mode::Private, Mode::Constant, 0, 0, 0, 0);
-        check_true_sub_false_with_true(Mode::Constant, Mode::Private, Mode::Constant, 0, 0, 0, 0);
-        check_true_sub_true_with_false(Mode::Constant, Mode::Private, Mode::Constant, 0, 0, 0, 0);
-        check_true_sub_true_with_true(Mode::Constant, Mode::Private, Mode::Constant, 0, 0, 0, 0);
+    fn check_constant_sub_private_with_constant() {
+        run_test(Mode::Constant, Mode::Private, Mode::Constant);
     }
 
     #[test]
-    fn test_constant_sub_private_with_public() {
-        check_false_sub_false_with_false(Mode::Constant, Mode::Private, Mode::Public, 0, 0, 3, 3); // <- Differs
-        check_false_sub_false_with_true(Mode::Constant, Mode::Private, Mode::Public, 0, 0, 3, 3); // <- Differs
-        check_false_sub_true_with_false(Mode::Constant, Mode::Private, Mode::Public, 0, 0, 3, 3); // <- Differs
-        check_false_sub_true_with_true(Mode::Constant, Mode::Private, Mode::Public, 0, 0, 3, 3); // <- Differs
-        check_true_sub_false_with_false(Mode::Constant, Mode::Private, Mode::Public, 0, 0, 2, 2);
-        check_true_sub_false_with_true(Mode::Constant, Mode::Private, Mode::Public, 0, 0, 2, 2);
-        check_true_sub_true_with_false(Mode::Constant, Mode::Private, Mode::Public, 0, 0, 2, 2);
-        check_true_sub_true_with_true(Mode::Constant, Mode::Private, Mode::Public, 0, 0, 2, 2);
+    fn check_constant_sub_private_with_public() {
+        run_test(Mode::Constant, Mode::Private, Mode::Public);
     }
 
     #[test]
-    fn test_constant_sub_private_with_private() {
-        check_false_sub_false_with_false(Mode::Constant, Mode::Private, Mode::Private, 0, 0, 3, 3); // <- Differs
-        check_false_sub_false_with_true(Mode::Constant, Mode::Private, Mode::Private, 0, 0, 3, 3); // <- Differs
-        check_false_sub_true_with_false(Mode::Constant, Mode::Private, Mode::Private, 0, 0, 3, 3); // <- Differs
-        check_false_sub_true_with_true(Mode::Constant, Mode::Private, Mode::Private, 0, 0, 3, 3); // <- Differs
-        check_true_sub_false_with_false(Mode::Constant, Mode::Private, Mode::Private, 0, 0, 2, 2);
-        check_true_sub_false_with_true(Mode::Constant, Mode::Private, Mode::Private, 0, 0, 2, 2);
-        check_true_sub_true_with_false(Mode::Constant, Mode::Private, Mode::Private, 0, 0, 2, 2);
-        check_true_sub_true_with_true(Mode::Constant, Mode::Private, Mode::Private, 0, 0, 2, 2);
+    fn check_constant_sub_private_with_private() {
+        run_test(Mode::Constant, Mode::Private, Mode::Private);
     }
 
     #[test]
-    fn test_public_sub_constant_with_constant() {
-        check_false_sub_false_with_false(Mode::Public, Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-        check_false_sub_false_with_true(Mode::Public, Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-        check_false_sub_true_with_false(Mode::Public, Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-        check_false_sub_true_with_true(Mode::Public, Mode::Constant, Mode::Constant, 0, 0, 1, 1); // <- Differs
-        check_true_sub_false_with_false(Mode::Public, Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-        check_true_sub_false_with_true(Mode::Public, Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-        check_true_sub_true_with_false(Mode::Public, Mode::Constant, Mode::Constant, 0, 0, 0, 0);
-        check_true_sub_true_with_true(Mode::Public, Mode::Constant, Mode::Constant, 0, 0, 1, 1); // <- Differs
+    fn check_public_sub_constant_with_constant() {
+        run_test(Mode::Public, Mode::Constant, Mode::Constant);
     }
 
     #[test]
-    fn test_public_sub_constant_with_public() {
-        check_false_sub_false_with_false(Mode::Public, Mode::Constant, Mode::Public, 0, 0, 2, 2);
-        check_false_sub_false_with_true(Mode::Public, Mode::Constant, Mode::Public, 0, 0, 2, 2);
-        check_false_sub_true_with_false(Mode::Public, Mode::Constant, Mode::Public, 0, 0, 3, 3); // <- Differs
-        check_false_sub_true_with_true(Mode::Public, Mode::Constant, Mode::Public, 0, 0, 3, 3); // <- Differs
-        check_true_sub_false_with_false(Mode::Public, Mode::Constant, Mode::Public, 0, 0, 2, 2);
-        check_true_sub_false_with_true(Mode::Public, Mode::Constant, Mode::Public, 0, 0, 2, 2);
-        check_true_sub_true_with_false(Mode::Public, Mode::Constant, Mode::Public, 0, 0, 3, 3); // <- Differs
-        check_true_sub_true_with_true(Mode::Public, Mode::Constant, Mode::Public, 0, 0, 3, 3); // <- Differs
+    fn check_public_sub_constant_with_public() {
+        run_test(Mode::Public, Mode::Constant, Mode::Public);
     }
 
     #[test]
-    fn test_public_sub_constant_with_private() {
-        check_false_sub_false_with_false(Mode::Public, Mode::Constant, Mode::Private, 0, 0, 2, 2);
-        check_false_sub_false_with_true(Mode::Public, Mode::Constant, Mode::Private, 0, 0, 2, 2);
-        check_false_sub_true_with_false(Mode::Public, Mode::Constant, Mode::Private, 0, 0, 3, 3); // <- Differs
-        check_false_sub_true_with_true(Mode::Public, Mode::Constant, Mode::Private, 0, 0, 3, 3); // <- Differs
-        check_true_sub_false_with_false(Mode::Public, Mode::Constant, Mode::Private, 0, 0, 2, 2);
-        check_true_sub_false_with_true(Mode::Public, Mode::Constant, Mode::Private, 0, 0, 2, 2);
-        check_true_sub_true_with_false(Mode::Public, Mode::Constant, Mode::Private, 0, 0, 3, 3); // <- Differs
-        check_true_sub_true_with_true(Mode::Public, Mode::Constant, Mode::Private, 0, 0, 3, 3); // <- Differs
+    fn check_public_sub_constant_with_private() {
+        run_test(Mode::Public, Mode::Constant, Mode::Private);
     }
 
     #[test]
-    fn test_public_sub_public_with_constant() {
-        check_false_sub_false_with_false(Mode::Public, Mode::Public, Mode::Constant, 0, 0, 2, 2);
-        check_false_sub_false_with_true(Mode::Public, Mode::Public, Mode::Constant, 0, 0, 3, 3); // <- Differs
-        check_false_sub_true_with_false(Mode::Public, Mode::Public, Mode::Constant, 0, 0, 2, 2);
-        check_false_sub_true_with_true(Mode::Public, Mode::Public, Mode::Constant, 0, 0, 3, 3); // <- Differs
-        check_true_sub_false_with_false(Mode::Public, Mode::Public, Mode::Constant, 0, 0, 2, 2);
-        check_true_sub_false_with_true(Mode::Public, Mode::Public, Mode::Constant, 0, 0, 3, 3); // <- Differs
-        check_true_sub_true_with_false(Mode::Public, Mode::Public, Mode::Constant, 0, 0, 2, 2);
-        check_true_sub_true_with_true(Mode::Public, Mode::Public, Mode::Constant, 0, 0, 3, 3); // <- Differs
+    fn check_public_sub_public_with_constant() {
+        run_test(Mode::Public, Mode::Public, Mode::Constant);
     }
 
     #[test]
-    fn test_public_sub_public_with_public() {
-        check_false_sub_false_with_false(Mode::Public, Mode::Public, Mode::Public, 0, 0, 5, 5);
-        check_false_sub_false_with_true(Mode::Public, Mode::Public, Mode::Public, 0, 0, 5, 5);
-        check_false_sub_true_with_false(Mode::Public, Mode::Public, Mode::Public, 0, 0, 5, 5);
-        check_false_sub_true_with_true(Mode::Public, Mode::Public, Mode::Public, 0, 0, 5, 5);
-        check_true_sub_false_with_false(Mode::Public, Mode::Public, Mode::Public, 0, 0, 5, 5);
-        check_true_sub_false_with_true(Mode::Public, Mode::Public, Mode::Public, 0, 0, 5, 5);
-        check_true_sub_true_with_false(Mode::Public, Mode::Public, Mode::Public, 0, 0, 5, 5);
-        check_true_sub_true_with_true(Mode::Public, Mode::Public, Mode::Public, 0, 0, 5, 5);
+    fn check_public_sub_public_with_public() {
+        run_test(Mode::Public, Mode::Public, Mode::Public);
     }
 
     #[test]
-    fn test_public_sub_public_with_private() {
-        check_false_sub_false_with_false(Mode::Public, Mode::Public, Mode::Private, 0, 0, 5, 5);
-        check_false_sub_false_with_true(Mode::Public, Mode::Public, Mode::Private, 0, 0, 5, 5);
-        check_false_sub_true_with_false(Mode::Public, Mode::Public, Mode::Private, 0, 0, 5, 5);
-        check_false_sub_true_with_true(Mode::Public, Mode::Public, Mode::Private, 0, 0, 5, 5);
-        check_true_sub_false_with_false(Mode::Public, Mode::Public, Mode::Private, 0, 0, 5, 5);
-        check_true_sub_false_with_true(Mode::Public, Mode::Public, Mode::Private, 0, 0, 5, 5);
-        check_true_sub_true_with_false(Mode::Public, Mode::Public, Mode::Private, 0, 0, 5, 5);
-        check_true_sub_true_with_true(Mode::Public, Mode::Public, Mode::Private, 0, 0, 5, 5);
+    fn check_public_sub_public_with_private() {
+        run_test(Mode::Public, Mode::Public, Mode::Private);
     }
 
     #[test]
-    fn test_public_sub_private_with_constant() {
-        check_false_sub_false_with_false(Mode::Public, Mode::Private, Mode::Constant, 0, 0, 2, 2);
-        check_false_sub_false_with_true(Mode::Public, Mode::Private, Mode::Constant, 0, 0, 3, 3); // <- Differs
-        check_false_sub_true_with_false(Mode::Public, Mode::Private, Mode::Constant, 0, 0, 2, 2);
-        check_false_sub_true_with_true(Mode::Public, Mode::Private, Mode::Constant, 0, 0, 3, 3); // <- Differs
-        check_true_sub_false_with_false(Mode::Public, Mode::Private, Mode::Constant, 0, 0, 2, 2);
-        check_true_sub_false_with_true(Mode::Public, Mode::Private, Mode::Constant, 0, 0, 3, 3); // <- Differs
-        check_true_sub_true_with_false(Mode::Public, Mode::Private, Mode::Constant, 0, 0, 2, 2);
-        check_true_sub_true_with_true(Mode::Public, Mode::Private, Mode::Constant, 0, 0, 3, 3); // <- Differs
+    fn check_public_sub_private_with_constant() {
+        run_test(Mode::Public, Mode::Private, Mode::Constant);
     }
 
     #[test]
-    fn test_public_sub_private_with_public() {
-        check_false_sub_false_with_false(Mode::Public, Mode::Private, Mode::Public, 0, 0, 5, 5);
-        check_false_sub_false_with_true(Mode::Public, Mode::Private, Mode::Public, 0, 0, 5, 5);
-        check_false_sub_true_with_false(Mode::Public, Mode::Private, Mode::Public, 0, 0, 5, 5);
-        check_false_sub_true_with_true(Mode::Public, Mode::Private, Mode::Public, 0, 0, 5, 5);
-        check_true_sub_false_with_false(Mode::Public, Mode::Private, Mode::Public, 0, 0, 5, 5);
-        check_true_sub_false_with_true(Mode::Public, Mode::Private, Mode::Public, 0, 0, 5, 5);
-        check_true_sub_true_with_false(Mode::Public, Mode::Private, Mode::Public, 0, 0, 5, 5);
-        check_true_sub_true_with_true(Mode::Public, Mode::Private, Mode::Public, 0, 0, 5, 5);
+    fn check_public_sub_private_with_public() {
+        run_test(Mode::Public, Mode::Private, Mode::Public);
     }
 
     #[test]
-    fn test_public_sub_private_with_private() {
-        check_false_sub_false_with_false(Mode::Public, Mode::Private, Mode::Private, 0, 0, 5, 5);
-        check_false_sub_false_with_true(Mode::Public, Mode::Private, Mode::Private, 0, 0, 5, 5);
-        check_false_sub_true_with_false(Mode::Public, Mode::Private, Mode::Private, 0, 0, 5, 5);
-        check_false_sub_true_with_true(Mode::Public, Mode::Private, Mode::Private, 0, 0, 5, 5);
-        check_true_sub_false_with_false(Mode::Public, Mode::Private, Mode::Private, 0, 0, 5, 5);
-        check_true_sub_false_with_true(Mode::Public, Mode::Private, Mode::Private, 0, 0, 5, 5);
-        check_true_sub_true_with_false(Mode::Public, Mode::Private, Mode::Private, 0, 0, 5, 5);
-        check_true_sub_true_with_true(Mode::Public, Mode::Private, Mode::Private, 0, 0, 5, 5);
+    fn check_public_sub_private_with_private() {
+        run_test(Mode::Public, Mode::Private, Mode::Private);
+    }
+
+    #[test]
+    fn check_private_sub_constant_with_constant() {
+        run_test(Mode::Private, Mode::Constant, Mode::Constant);
+    }
+
+    #[test]
+    fn check_private_sub_constant_with_public() {
+        run_test(Mode::Private, Mode::Constant, Mode::Public);
+    }
+
+    #[test]
+    fn check_private_sub_constant_with_private() {
+        run_test(Mode::Private, Mode::Constant, Mode::Private);
+    }
+
+    #[test]
+    fn check_private_sub_public_with_constant() {
+        run_test(Mode::Private, Mode::Public, Mode::Constant);
+    }
+
+    #[test]
+    fn check_private_sub_public_with_public() {
+        run_test(Mode::Private, Mode::Public, Mode::Public);
+    }
+
+    #[test]
+    fn check_private_sub_public_with_private() {
+        run_test(Mode::Private, Mode::Public, Mode::Private);
+    }
+
+    #[test]
+    fn check_private_sub_private_with_constant() {
+        run_test(Mode::Private, Mode::Private, Mode::Constant);
+    }
+
+    #[test]
+    fn check_private_sub_private_with_public() {
+        run_test(Mode::Private, Mode::Private, Mode::Public);
+    }
+
+    #[test]
+    fn check_private_sub_private_with_private() {
+        run_test(Mode::Private, Mode::Private, Mode::Private);
     }
 }
+

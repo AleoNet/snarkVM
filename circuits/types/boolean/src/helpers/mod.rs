@@ -17,6 +17,9 @@
 use super::*;
 
 pub mod adder;
-pub mod from_bits;
+pub mod from_bits_be;
+pub mod from_bits_le;
 pub mod subtractor;
-pub mod to_bits;
+pub mod to_bits_be;
+pub mod to_bits_le;
+

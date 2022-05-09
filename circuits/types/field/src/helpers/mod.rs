@@ -17,7 +17,8 @@
 use super::*;
 
 pub mod double;
-pub mod from_bits;
+pub mod from_bits_be;
+pub mod from_bits_le;
 pub mod from_boolean;
 pub mod one;
 pub mod to_bits;

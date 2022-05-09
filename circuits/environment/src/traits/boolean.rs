@@ -29,7 +29,8 @@ pub trait BooleanTrait:
     + Debug
     + Eject<Primitive = bool>
     + Equal
-    + FromBits
+    + FromBitsBE
+    + FromBitsLE
     + Inject<Primitive = bool>
     + Nand
     + Nor
@@ -37,7 +38,8 @@ pub trait BooleanTrait:
     + Parser
     + Subtractor
     + Ternary
-    + ToBits
+    + ToBitsBE
+    + ToBitsLE
     + TypeName
 {
 }

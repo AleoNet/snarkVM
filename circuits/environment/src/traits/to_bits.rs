@@ -27,6 +27,23 @@ pub trait ToBits {
     fn to_bits_be(&self) -> Vec<Self::Boolean>;
 }
 
+/// Unary operator for converting to little-endian bits.
+pub trait ToBitsLE {
+    type Boolean: BooleanTrait;
+
+    /// Returns the little-endian bits of the circuit.
+    fn to_bits_le(&self) -> Vec<Self::Boolean>;
+}
+
+
+/// Unary operator for converting to big-endian bits.
+pub trait ToBitsBE {
+    type Boolean: BooleanTrait;
+
+    /// Returns the big-ending bits of the circuit.
+    fn to_bits_be(&self) -> Vec<Self::Boolean>;
+}
+
 /********************/
 /****** Arrays ******/
 /********************/
