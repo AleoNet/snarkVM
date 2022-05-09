@@ -216,7 +216,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField, S: DefaultCapacityAlgebraic
         let num_elements = (num_bits + bits_per_element - 1) / bits_per_element;
 
         let src_elements = sponge.squeeze(num_elements);
-        let mut dest_bits = Vec::<bool>::new();
+        let mut dest_bits = Vec::<bool>::with_capacity(num_elements * bits_per_element);
 
         let skip = (BaseField::Parameters::REPR_SHAVE_BITS + 1) as usize;
         for elem in src_elements.iter() {
@@ -224,6 +224,7 @@ impl<TargetField: PrimeField, BaseField: PrimeField, S: DefaultCapacityAlgebraic
             let elem_bits = elem.to_repr().to_bits_be();
             dest_bits.extend_from_slice(&elem_bits[skip..]);
         }
+        dest_bits.truncate(num_bits);
 
         dest_bits
     }
@@ -249,19 +250,21 @@ impl<TargetField: PrimeField, BaseField: PrimeField, S: DefaultCapacityAlgebraic
             cur.double_in_place();
         }
 
-        let mut dest_elements = Vec::<TargetField>::new();
-        bits.chunks_exact(num_bits_per_nonnative).for_each(|per_nonnative_bits| {
-            // technically, this can be done via BigInterger::from_bits; here, we use this method for consistency with the gadget counterpart
-            let mut res = TargetField::zero();
+        let dest_elements = bits
+            .chunks_exact(num_bits_per_nonnative)
+            .map(|per_nonnative_bits| {
+                // technically, this can be done via BigInterger::from_bits; here, we use this method for consistency with the gadget counterpart
+                let mut res = TargetField::zero();
 
-            for (i, bit) in per_nonnative_bits.iter().rev().enumerate() {
-                if *bit {
-                    res += &lookup_table[i];
+                for (i, bit) in per_nonnative_bits.iter().rev().enumerate() {
+                    if *bit {
+                        res += &lookup_table[i];
+                    }
                 }
-            }
-
-            dest_elements.push(res);
-        });
+                res
+            })
+            .collect::<Vec<_>>();
+        debug_assert_eq!(dest_elements.len(), num_elements);
 
         dest_elements
     }

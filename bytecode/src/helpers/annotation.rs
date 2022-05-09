@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{Identifier, LiteralType, Program};
+use crate::{Identifier, Program};
 use snarkvm_circuits::prelude::*;
 use snarkvm_utilities::{error, FromBytes, ToBytes};
 
@@ -25,23 +25,23 @@ use std::io::{Read, Result as IoResult, Write};
 pub enum Annotation<P: Program> {
     /// A literal annotation contains its type name and mode.
     /// The format of the annotation is `<type_name>.<mode>`.
-    Literal(LiteralType<P>),
-    /// A composite annotation contains its identifier.
+    Literal(LiteralType<P::Environment>),
+    /// A definition annotation contains its identifier.
     /// The format of the annotation is `<identifier>`.
-    Composite(Identifier<P>),
+    Definition(Identifier<P>),
 }
 
 impl<P: Program> Annotation<P> {
     /// Returns `true` if the annotation is a literal.
-    /// Returns `false` if the annotation is a composite.
+    /// Returns `false` if the annotation is a definition.
     pub fn is_literal(&self) -> bool {
         matches!(self, Annotation::Literal(..))
     }
 
-    /// Returns `true` if the annotation is a composite.
+    /// Returns `true` if the annotation is a definition.
     /// Returns `false` if the annotation is a literal.
-    pub fn is_composite(&self) -> bool {
-        matches!(self, Annotation::Composite(..))
+    pub fn is_definition(&self) -> bool {
+        matches!(self, Annotation::Definition(..))
     }
 }
 
@@ -54,7 +54,7 @@ impl<P: Program> Parser for Annotation<P> {
         // Parse to determine the annotation (order matters).
         alt((
             map(LiteralType::parse, |type_| Self::Literal(type_)),
-            map(Identifier::parse, |identifier| Self::Composite(identifier)),
+            map(Identifier::parse, |identifier| Self::Definition(identifier)),
         ))(string)
     }
 }
@@ -63,10 +63,10 @@ impl<P: Program> fmt::Display for Annotation<P> {
     /// Prints the annotation as a string.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            // Prints the type, i.e. field.private
+            // Prints the literal type, i.e. field.private
             Self::Literal(type_) => fmt::Display::fmt(type_, f),
-            // Prints the composite type, i.e. signature
-            Self::Composite(identifier) => fmt::Display::fmt(identifier, f),
+            // Prints the definition type, i.e. signature
+            Self::Definition(identifier) => fmt::Display::fmt(identifier, f),
         }
     }
 }
@@ -76,7 +76,7 @@ impl<P: Program> FromBytes for Annotation<P> {
         let variant = u8::read_le(&mut reader)?;
         match variant {
             0 => Ok(Self::Literal(LiteralType::read_le(&mut reader)?)),
-            1 => Ok(Self::Composite(Identifier::read_le(&mut reader)?)),
+            1 => Ok(Self::Definition(Identifier::read_le(&mut reader)?)),
             2.. => Err(error(format!("Failed to deserialize annotation variant {variant}"))),
         }
     }
@@ -89,7 +89,7 @@ impl<P: Program> ToBytes for Annotation<P> {
                 u8::write_le(&0u8, &mut writer)?;
                 literal_type.write_le(&mut writer)
             }
-            Self::Composite(identifier) => {
+            Self::Definition(identifier) => {
                 u8::write_le(&1u8, &mut writer)?;
                 identifier.write_le(&mut writer)
             }
@@ -112,7 +112,7 @@ mod tests {
         );
         assert_eq!(
             Annotation::parse("signature"),
-            Ok(("", Annotation::<P>::Composite(Identifier::from_str("signature"))))
+            Ok(("", Annotation::<P>::Definition(Identifier::from_str("signature"))))
         );
     }
 
@@ -130,18 +130,18 @@ mod tests {
     #[test]
     fn test_annotation_display() {
         assert_eq!(Annotation::<P>::Literal(LiteralType::Field(Mode::Private)).to_string(), "field.private");
-        assert_eq!(Annotation::<P>::Composite(Identifier::from_str("signature")).to_string(), "signature");
+        assert_eq!(Annotation::<P>::Definition(Identifier::from_str("signature")).to_string(), "signature");
     }
 
     #[test]
     fn test_annotation_is_literal() {
         assert!(Annotation::<P>::Literal(LiteralType::Field(Mode::Private)).is_literal());
-        assert!(!Annotation::<P>::Composite(Identifier::from_str("signature")).is_literal());
+        assert!(!Annotation::<P>::Definition(Identifier::from_str("signature")).is_literal());
     }
 
     #[test]
-    fn test_annotation_is_composite() {
-        assert!(!Annotation::<P>::Literal(LiteralType::Field(Mode::Private)).is_composite());
-        assert!(Annotation::<P>::Composite(Identifier::from_str("signature")).is_composite());
+    fn test_annotation_is_definition() {
+        assert!(!Annotation::<P>::Literal(LiteralType::Field(Mode::Private)).is_definition());
+        assert!(Annotation::<P>::Definition(Identifier::from_str("signature")).is_definition());
     }
 }

@@ -19,11 +19,16 @@ use crate::snark::marlin::{
     prover,
     MarlinMode,
 };
+use itertools::Itertools;
 use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::ConstraintSynthesizer;
 
+use snarkvm_utilities::cfg_iter;
 #[cfg(not(feature = "std"))]
 use snarkvm_utilities::println;
+
+#[cfg(feature = "parallel")]
+use rayon::prelude::*;
 
 mod first;
 mod fourth;
@@ -34,90 +39,102 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
     /// Initialize the AHP prover.
     pub fn init_prover<'a, C: ConstraintSynthesizer<F>>(
         index: &'a Circuit<F, MM>,
-        circuit: &C,
+        circuits: &[C],
     ) -> Result<prover::State<'a, F, MM>, AHPError> {
         let init_time = start_timer!(|| "AHP::Prover::Init");
 
-        let constraint_time = start_timer!(|| "Generating constraints and witnesses");
-        let mut pcs = prover::ConstraintSystem::new();
-        circuit.generate_constraints(&mut pcs)?;
-        end_timer!(constraint_time);
-
-        let padding_time = start_timer!(|| "Padding matrices to make them square");
-        crate::snark::marlin::ahp::matrices::pad_input_for_indexer_and_prover(&mut pcs);
-        pcs.make_matrices_square();
-        end_timer!(padding_time);
-
-        let num_non_zero_a = index.index_info.num_non_zero_a;
-        let num_non_zero_b = index.index_info.num_non_zero_b;
-        let num_non_zero_c = index.index_info.num_non_zero_c;
-
-        let prover::ConstraintSystem {
-            public_variables: padded_public_variables,
-            private_variables,
-            num_constraints,
-            num_public_variables,
-            num_private_variables,
-            ..
-        } = pcs;
-
-        assert_eq!(padded_public_variables.len(), num_public_variables);
-        assert!(padded_public_variables[0].is_one());
-        assert_eq!(private_variables.len(), num_private_variables);
-
-        if cfg!(debug_assertions) {
-            println!("Number of padded public variables in Prover::Init: {}", num_public_variables);
-            println!("Number of private variables: {}", num_private_variables);
-            println!("Number of constraints: {}", num_constraints);
-            println!("Number of non-zero entries in A: {}", num_non_zero_a);
-            println!("Number of non-zero entries in B: {}", num_non_zero_b);
-            println!("Number of non-zero entries in C: {}", num_non_zero_c);
-        }
-
-        if index.index_info.num_constraints != num_constraints
-            || index.index_info.num_variables != (num_public_variables + num_private_variables)
-        {
-            return Err(AHPError::InstanceDoesNotMatchIndex);
-        }
-
-        if !Self::formatted_public_input_is_admissible(&padded_public_variables) {
-            return Err(AHPError::InvalidPublicInputLength);
-        }
-
         // Perform matrix multiplications.
-        let inner_product = |row: &[(F, usize)]| {
-            let mut result = F::zero();
+        let (padded_public_variables, private_variables, z_a, z_b) = cfg_iter!(circuits)
+            .map(|circuit| {
+                let constraint_time = start_timer!(|| "Generating constraints and witnesses");
+                let mut pcs = prover::ConstraintSystem::new();
+                circuit.generate_constraints(&mut pcs)?;
+                end_timer!(constraint_time);
 
-            for &(ref coefficient, i) in row {
-                // Fetch the variable.
-                let variable = match i < num_public_variables {
-                    true => padded_public_variables[i],
-                    false => private_variables[i - num_public_variables],
-                };
+                let padding_time = start_timer!(|| "Padding matrices to make them square");
+                crate::snark::marlin::ahp::matrices::pad_input_for_indexer_and_prover(&mut pcs);
+                pcs.make_matrices_square();
+                end_timer!(padding_time);
 
-                result += &(if coefficient.is_one() { variable } else { variable * coefficient });
-            }
+                let num_non_zero_a = index.index_info.num_non_zero_a;
+                let num_non_zero_b = index.index_info.num_non_zero_b;
+                let num_non_zero_c = index.index_info.num_non_zero_c;
 
-            result
-        };
+                let prover::ConstraintSystem {
+                    public_variables: padded_public_variables,
+                    private_variables,
+                    num_constraints,
+                    num_public_variables,
+                    num_private_variables,
+                    ..
+                } = pcs;
 
-        let eval_z_a_time = start_timer!(|| "Evaluating z_A");
-        let z_a = index.a.iter().map(|row| inner_product(row)).collect();
-        end_timer!(eval_z_a_time);
+                assert_eq!(padded_public_variables.len(), num_public_variables);
+                assert!(padded_public_variables[0].is_one());
+                assert_eq!(private_variables.len(), num_private_variables);
 
-        let eval_z_b_time = start_timer!(|| "Evaluating z_B");
-        let z_b = index.b.iter().map(|row| inner_product(row)).collect();
-        end_timer!(eval_z_b_time);
+                if cfg!(debug_assertions) {
+                    println!("Number of padded public variables in Prover::Init: {}", num_public_variables);
+                    println!("Number of private variables: {}", num_private_variables);
+                    println!("Number of constraints: {}", num_constraints);
+                    println!("Number of non-zero entries in A: {}", num_non_zero_a);
+                    println!("Number of non-zero entries in B: {}", num_non_zero_b);
+                    println!("Number of non-zero entries in C: {}", num_non_zero_c);
+                }
 
-        let zk_bound = MM::ZK.then(|| 1); // One query is sufficient for our desired soundness
+                if index.index_info.num_constraints != num_constraints
+                    || index.index_info.num_variables != (num_public_variables + num_private_variables)
+                {
+                    return Err(AHPError::InstanceDoesNotMatchIndex);
+                }
 
-        end_timer!(init_time);
-        let mut state = prover::State::initialize(padded_public_variables, private_variables, zk_bound, index)?;
+                Self::formatted_public_input_is_admissible(&padded_public_variables)?;
+
+                let eval_z_a_time = start_timer!(|| "Evaluating z_A");
+                let z_a = cfg_iter!(index.a)
+                    .map(|row| inner_product(&padded_public_variables, &private_variables, row, num_public_variables))
+                    .collect();
+                end_timer!(eval_z_a_time);
+
+                let eval_z_b_time = start_timer!(|| "Evaluating z_B");
+                let z_b = cfg_iter!(index.b)
+                    .map(|row| inner_product(&padded_public_variables, &private_variables, row, num_public_variables))
+                    .collect();
+                end_timer!(eval_z_b_time);
+                end_timer!(init_time);
+                Ok((padded_public_variables, private_variables, z_a, z_b))
+            })
+            .collect::<Result<Vec<_>, _>>()?
+            .into_iter()
+            .multiunzip();
+
+        let mut state = prover::State::initialize(padded_public_variables, private_variables, index)?;
         state.z_a = Some(z_a);
         state.z_b = Some(z_b);
 
         Ok(state)
     }
+}
+
+fn inner_product<F: PrimeField>(
+    public_variables: &[F],
+    private_variables: &[F],
+    row: &[(F, usize)],
+    num_public_variables: usize,
+) -> F {
+    let mut result = F::zero();
+
+    for &(ref coefficient, i) in row {
+        // Fetch the variable.
+        let variable = match i < num_public_variables {
+            true => public_variables[i],
+            false => private_variables[i - num_public_variables],
+        };
+
+        result += if coefficient.is_one() { variable } else { variable * coefficient };
+    }
+
+    result
 }
 
 #[test]

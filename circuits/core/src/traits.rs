@@ -17,13 +17,23 @@
 use snarkvm_circuits_environment::{Eject, Inject, ScalarTrait, Ternary, ToBits};
 
 /// A trait for a commitment scheme.
-pub trait CommitmentScheme {
+pub trait Commit {
     type Input;
     type Output;
     type Randomness;
 
     /// Returns the commitment to the given input and randomness.
-    fn commit(&self, input: &[Self::Input], randomness: &[Self::Randomness]) -> Self::Output;
+    fn commit(&self, input: &[Self::Input], randomness: &Self::Randomness) -> Self::Output;
+}
+
+/// A trait for a commitment scheme.
+pub trait CommitUncompressed {
+    type Input;
+    type Output;
+    type Randomness;
+
+    /// Returns the commitment to the given input and randomness.
+    fn commit_uncompressed(&self, input: &[Self::Input], randomness: &Self::Randomness) -> Self::Output;
 }
 
 /// A trait for a hash function.

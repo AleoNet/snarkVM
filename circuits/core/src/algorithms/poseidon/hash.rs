@@ -17,7 +17,7 @@
 use super::*;
 use crate::Hash;
 
-impl<E: Environment> Hash for Poseidon<E> {
+impl<E: Environment, const RATE: usize> Hash for Poseidon<E, RATE> {
     type Input = Field<E>;
     type Output = Field<E>;
 
@@ -33,7 +33,7 @@ impl<E: Environment> Hash for Poseidon<E> {
     }
 }
 
-impl<E: Environment> Metrics<dyn Hash<Input = Field<E>, Output = Field<E>>> for Poseidon<E> {
+impl<E: Environment, const RATE: usize> Metrics<dyn Hash<Input = Field<E>, Output = Field<E>>> for Poseidon<E, RATE> {
     type Case = ();
 
     fn count(_parameter: &Self::Case) -> Count {
@@ -41,7 +41,9 @@ impl<E: Environment> Metrics<dyn Hash<Input = Field<E>, Output = Field<E>>> for 
     }
 }
 
-impl<E: Environment> OutputMode<dyn Hash<Input = Field<E>, Output = Field<E>>> for Poseidon<E> {
+impl<E: Environment, const RATE: usize> OutputMode<dyn Hash<Input = Field<E>, Output = Field<E>>>
+    for Poseidon<E, RATE>
+{
     type Case = ();
 
     fn output_mode(_parameter: &Self::Case) -> Mode {
@@ -49,7 +51,7 @@ impl<E: Environment> OutputMode<dyn Hash<Input = Field<E>, Output = Field<E>>> f
     }
 }
 
-impl<E: Environment> Poseidon<E> {
+impl<E: Environment, const RATE: usize> Poseidon<E, RATE> {
     /// Absorbs the input elements into state.
     #[inline]
     pub(super) fn absorb(&self, state: &mut [Field<E>], mode: &mut DuplexSpongeMode, input: &[Field<E>]) {
@@ -218,7 +220,8 @@ mod tests {
     use snarkvm_circuits_types::environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
-    const ITERATIONS: u64 = 10;
+    const ITERATIONS: usize = 10;
+    const RATE: usize = 4;
 
     fn check_hash(
         mode: Mode,
@@ -230,7 +233,7 @@ mod tests {
     ) {
         let rng = &mut test_rng();
         let native_poseidon = NativePoseidon::<_, RATE, OPTIMIZED_FOR_WEIGHTS>::setup();
-        let poseidon = Poseidon::new();
+        let poseidon = Poseidon::<_, RATE>::new();
 
         for i in 0..ITERATIONS {
             // Prepare the preimage.

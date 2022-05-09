@@ -23,12 +23,19 @@ use snarkvm_circuits_types::{environment::prelude::*, Address, Literal, I64};
 // TODO (howardwu): Check mode is only public/private, not constant.
 #[derive(Debug, Clone)]
 pub struct Record<A: Aleo> {
+    // /// The program this record belongs to.
+    // program: Field<A>,
+    // /// The Aleo address this record belongs to.
+    // owner: Data<Address<A>>,
+    // /// The balance of Aleo credits in this record.
+    // balance: Data<U64<A>>,
+    // /// The data in this record.
+    // data: Vec<Data<Value>>,
+    // /// The nonce for this record.
+    // nonce: Field<A>
     owner: Address<A>,
     value: I64<A>,
     data: Vec<Literal<A>>,
-    // program_id: Vec<Boolean<P>>>,
-    // randomizer: BaseField<P>>,
-    // record_view_key: BaseField<P>>,
 }
 
 impl<A: Aleo> Record<A> {
@@ -37,8 +44,8 @@ impl<A: Aleo> Record<A> {
         &self.owner
     }
 
-    /// Returns the record value.
-    pub fn value(&self) -> &I64<A> {
+    /// Returns the record balance.
+    pub fn balance(&self) -> &I64<A> {
         &self.value
     }
 

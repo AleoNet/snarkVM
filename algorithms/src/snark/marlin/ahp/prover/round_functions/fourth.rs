@@ -14,10 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use std::collections::BTreeMap;
+
 use crate::{
-    polycommit::sonic_pc::LabeledPolynomial,
+    polycommit::sonic_pc::{LabeledPolynomial, PolynomialInfo, PolynomialLabel},
     snark::marlin::{
-        ahp::{indexer::CircuitInfo, verifier, AHPError, AHPForR1CS},
+        ahp::{verifier, AHPError, AHPForR1CS},
         prover,
         MarlinMode,
     },
@@ -42,16 +44,17 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
         lhs_a += &lhs_c;
         let h_2 = LabeledPolynomial::new("h_2".into(), lhs_a, None, None);
         let oracles = prover::FourthOracles { h_2 };
+        assert!(oracles.matches_info(&Self::fourth_round_polynomial_info()));
         Ok(oracles)
     }
 
     /// Output the number of oracles sent by the prover in the third round.
-    pub fn prover_num_fourth_round_oracles() -> usize {
+    pub fn num_fourth_round_oracles() -> usize {
         1
     }
 
     /// Output the degree bounds of oracles in the third round.
-    pub fn prover_fourth_round_degree_bounds(_: &CircuitInfo<F>) -> impl Iterator<Item = Option<usize>> {
-        [None].into_iter()
+    pub fn fourth_round_polynomial_info() -> BTreeMap<PolynomialLabel, PolynomialInfo> {
+        [("h_2".into(), PolynomialInfo::new("h_2".into(), None, None))].into()
     }
 }
