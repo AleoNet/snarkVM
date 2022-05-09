@@ -98,6 +98,7 @@ impl<E: PairingEngine, FS: FiatShamirRng<E::Fr, E::Fq>, MM: MarlinMode, Input: T
         let index_time = start_timer!(|| "Marlin::CircuitSetup");
 
         // TODO: Add check that c is in the correct mode.
+        // Increase the universal SRS size to support the circuit size.
         let index = AHPForR1CS::<_, MM>::index(circuit)?;
         if universal_srs.max_degree() < index.max_degree() {
             universal_srs

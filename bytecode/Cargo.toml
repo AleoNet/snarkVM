@@ -31,7 +31,7 @@ version = "1.0.7"
 path = "../algorithms"
 version = "0.7.5"
 default-features = false
-features = ["polycommit", "snark"]
+features = ["polycommit_full", "snark"]
 
 [dev-dependencies.snarkvm-curves]
 path = "../curves"

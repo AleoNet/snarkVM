@@ -6,4 +6,5 @@
 **inner.proving*
 **outer.proving*
 **posw.proving*
-**universal.srs*
+**universal.srs.*.*
+!**universal.srs.*.metadata
