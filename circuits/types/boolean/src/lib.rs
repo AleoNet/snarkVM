@@ -24,6 +24,7 @@ pub mod equal;
 pub mod nand;
 pub mod nor;
 pub mod not;
+pub mod not_equal;
 pub mod or;
 pub mod ternary;
 pub mod xor;

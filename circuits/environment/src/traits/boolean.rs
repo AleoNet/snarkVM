@@ -35,6 +35,7 @@ pub trait BooleanTrait:
     + Nand
     + Nor
     + Not
+    + NotEqual
     + Parser
     + Subtractor
     + Ternary

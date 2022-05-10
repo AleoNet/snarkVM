@@ -16,8 +16,6 @@
 
 use super::*;
 
-// TODO: Split into separate files.
-
 impl<E: Environment> Equal<Self> for Field<E> {
     type Output = Boolean<E>;
 
@@ -29,119 +27,12 @@ impl<E: Environment> Equal<Self> for Field<E> {
     fn is_equal(&self, other: &Self) -> Self::Output {
         !self.is_not_equal(other)
     }
-
-    ///
-    /// Returns `true` if `self` and `other` are *not* equal.
-    ///
-    /// This method constructs a boolean that indicates if
-    /// `self` and `other ` are *not* equal to each other.
-    ///
-    /// This method costs 3 constraints.
-    ///
-    fn is_not_equal(&self, other: &Self) -> Self::Output {
-        match (self.is_constant(), other.is_constant()) {
-            (true, true) => witness!(|self, other| self != other),
-            _ => {
-                // Compute a boolean that is `true` if `this` and `that` are not equivalent.
-                let is_neq: Boolean<E> = witness!(|self, other| self != other);
-
-                // Assign the expected multiplier.
-                let multiplier: Field<E> = witness!(|self, other| {
-                    match self != other {
-                        true => match (self - other).inverse() {
-                            Some(inverse) => inverse,
-                            None => E::halt("Failed to compute the native inverse of a field element"),
-                        },
-                        false => E::BaseField::one(),
-                    }
-                });
-
-                //
-                // Inequality Enforcement
-                // ----------------------------------------------------------------
-                // Check 1:  (a - b) * multiplier = is_neq
-                // Check 2:  (a - b) * not(is_neq) = 0
-                //
-                //
-                // Case 1: a == b AND is_neq == 0 (honest)
-                // ----------------------------------------------------------------
-                // Check 1:  (a - b) * 1 = 0
-                //                 a - b = 0
-                // => As a == b, is_neq is correct.
-                //
-                // Check 2:  (a - b) * not(0) = 0
-                //                      a - b = 0
-                // => As a == b, is_neq is correct.
-                //
-                // Remark: While the multiplier = 1 here, letting multiplier := n,
-                //         for n as any field element, also holds.
-                //
-                //
-                // Case 2: a == b AND is_neq == 1 (dishonest)
-                // ----------------------------------------------------------------
-                // Check 1:  (a - b) * 1 = 1
-                //                 a - b = 1
-                // => As a == b, the is_neq is incorrect.
-                //
-                // Remark: While the multiplier = 1 here, letting multiplier := n,
-                //         for n as any field element, also holds.
-                //
-                //
-                // Case 3a: a != b AND is_neq == 0 AND multiplier = 0 (dishonest)
-                // ----------------------------------------------------------------
-                // Check 2:  (a - b) * not(0) = 0
-                //                      a - b = 0
-                // => As a != b, is_neq is incorrect.
-                //
-                // Case 3b: a != b AND is_neq == 0 AND multiplier = 1 (dishonest)
-                // ----------------------------------------------------------------
-                // Check 1:  (a - b) * 1 = 0
-                //                 a - b = 0
-                // => As a != b, is_neq is incorrect.
-                //
-                // Remark: While the multiplier = 1 here, letting multiplier = n,
-                //         for n as any field element (n != 0), also holds.
-                //
-                //
-                // Case 4a: a != b AND is_neq == 1 AND multiplier = n [!= (a - b)^(-1)] (dishonest)
-                // ---------------------------------------------------------------------------------
-                // Check 1:  (a - b) * n = 1
-                // => As n != (a - b)^(-1), is_neq is incorrect.
-                //
-                // Case 4b: a != b AND is_neq == 1 AND multiplier = (a - b)^(-1) (honest)
-                // ---------------------------------------------------------------------------------
-                // Check 1:  (a - b) * (a - b)^(-1) = 1
-                //                                1 = 1
-                // => is_neq is trivially correct.
-                //
-                // Check 2:  (a - b) * not(1) = 0
-                //                          0 = 0
-                // => is_neq is trivially correct.
-                //
-
-                // Compute `self` - `other`.
-                let delta = self - other;
-
-                // Negate `is_neq`.
-                let is_eq = !is_neq.clone();
-
-                // Check 1: (a - b) * multiplier = is_neq
-                E::enforce(|| (&delta, &multiplier, &is_neq));
-
-                // Check 2: (a - b) * not(is_neq) = 0
-                E::enforce(|| (delta, is_eq, E::zero()));
-
-                is_neq
-            }
-        }
-    }
 }
 
 impl<E: Environment> Metadata<dyn Equal<Field<E>, Output = Boolean<E>>> for Field<E> {
     type Case = (CircuitType<Field<E>>, CircuitType<Field<E>>);
     type OutputType = CircuitType<Boolean<E>>;
 
-    // TODO: How to deal where both operands are the same field element in memory, since it changes the number of gates produced? We could use upper bounds.
     fn count(case: &Self::Case) -> Count {
         match case {
             (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(1, 0, 0, 0),
@@ -178,17 +69,6 @@ mod tests {
         });
     }
 
-    fn check_is_not_equal(name: &str, expected: bool, a: &Field<Circuit>, b: &Field<Circuit>) {
-        Circuit::scope(name, || {
-            let candidate = a.is_not_equal(b);
-            assert_eq!(expected, candidate.eject_value(), "({} != {})", a.eject_value(), b.eject_value());
-
-            let case = (CircuitType::from(a), CircuitType::from(b));
-            assert_count!(Equal(Field, Field) => Boolean, &case);
-            assert_output_type!(Equal(Field, Field) => Boolean, case, candidate);
-        });
-    }
-
     fn run_test(mode_a: Mode, mode_b: Mode) {
         for i in 0..ITERATIONS {
             let first = UniformRand::rand(&mut test_rng());
@@ -199,9 +79,6 @@ mod tests {
 
             let name = format!("Equal: a == b {}", i);
             check_is_equal(&name, first == second, &a, &b);
-
-            let name = format!("Not Equal: a != b {}", i);
-            check_is_not_equal(&name, first != second, &a, &b);
 
             // Check first is equal to first.
             let a = Field::<Circuit>::new(mode_a, first);
@@ -289,116 +166,5 @@ mod tests {
                 accumulator += one;
             }
         }
-    }
-
-    #[test]
-    fn test_is_neq_cases() {
-        let zero = <Circuit as Environment>::BaseField::zero();
-        let one = <Circuit as Environment>::BaseField::one();
-        let two = one + one;
-        let five = two + two + one;
-
-        // Inequality Enforcement
-        // ----------------------------------------------------------------
-        // Check 1:  (a - b) * multiplier = is_neq
-        // Check 2:  (a - b) * not(is_neq) = 0
-
-        let enforce = |a: Field<Circuit>, b: Field<Circuit>, multiplier: Field<Circuit>, is_neq: Boolean<Circuit>| {
-            // Compute `self` - `other`.
-            let delta = &a - &b;
-
-            // Negate `is_neq`.
-            let is_eq = !is_neq.clone();
-
-            // Check 1: (a - b) * multiplier = is_neq
-            Circuit::enforce(|| (delta.clone(), multiplier, is_neq.clone()));
-
-            // Check 2: (a - b) * not(is_neq) = 0
-            Circuit::enforce(|| (delta, is_eq, Circuit::zero()));
-        };
-
-        //
-        // Case 1: a == b AND is_neq == 0 (honest)
-        // ----------------------------------------------------------------
-
-        let a = Field::<Circuit>::new(Mode::Private, five);
-        let b = Field::<Circuit>::new(Mode::Private, five);
-        let multiplier = Field::<Circuit>::new(Mode::Private, one);
-        let is_neq = Boolean::new(Mode::Private, false);
-
-        assert!(Circuit::is_satisfied());
-        enforce(a, b, multiplier, is_neq);
-        assert!(Circuit::is_satisfied());
-        Circuit::reset();
-
-        //
-        // Case 2: a == b AND is_neq == 1 (dishonest)
-        // ----------------------------------------------------------------
-
-        let a = Field::<Circuit>::new(Mode::Private, five);
-        let b = Field::<Circuit>::new(Mode::Private, five);
-        let multiplier = Field::<Circuit>::new(Mode::Private, one);
-        let is_neq = Boolean::new(Mode::Private, true);
-
-        assert!(Circuit::is_satisfied());
-        enforce(a, b, multiplier, is_neq);
-        assert!(!Circuit::is_satisfied());
-        Circuit::reset();
-
-        // Case 3a: a != b AND is_neq == 0 AND multiplier = 0 (dishonest)
-        // ----------------------------------------------------------------
-
-        let a = Field::<Circuit>::new(Mode::Private, five);
-        let b = Field::<Circuit>::new(Mode::Private, two);
-        let multiplier = Field::<Circuit>::new(Mode::Private, zero);
-        let is_neq = Boolean::new(Mode::Private, false);
-
-        assert!(Circuit::is_satisfied());
-        enforce(a, b, multiplier, is_neq);
-        assert!(!Circuit::is_satisfied());
-        Circuit::reset();
-
-        //
-        // Case 3b: a != b AND is_neq == 0 AND multiplier = 1 (dishonest)
-        // ----------------------------------------------------------------
-
-        let a = Field::<Circuit>::new(Mode::Private, five);
-        let b = Field::<Circuit>::new(Mode::Private, two);
-        let multiplier = Field::<Circuit>::new(Mode::Private, one);
-        let is_neq = Boolean::new(Mode::Private, false);
-
-        assert!(Circuit::is_satisfied());
-        enforce(a, b, multiplier, is_neq);
-        assert!(!Circuit::is_satisfied());
-        Circuit::reset();
-
-        //
-        // Case 4a: a != b AND is_neq == 1 AND multiplier = n [!= (a - b)^(-1)] (dishonest)
-        // ---------------------------------------------------------------------------------
-
-        let a = Field::<Circuit>::new(Mode::Private, five);
-        let b = Field::<Circuit>::new(Mode::Private, two);
-        let multiplier = Field::<Circuit>::new(Mode::Private, two);
-        let is_neq = Boolean::new(Mode::Private, true);
-
-        assert!(Circuit::is_satisfied());
-        enforce(a, b, multiplier, is_neq);
-        assert!(!Circuit::is_satisfied());
-        Circuit::reset();
-
-        //
-        // Case 4b: a != b AND is_neq == 1 AND multiplier = (a - b)^(-1) (honest)
-        // ---------------------------------------------------------------------------------
-
-        let a = Field::<Circuit>::new(Mode::Private, five);
-        let b = Field::<Circuit>::new(Mode::Private, two);
-        let multiplier =
-            Field::<Circuit>::new(Mode::Private, (five - two).inverse().expect("Failed to compute a native inverse"));
-        let is_neq = Boolean::new(Mode::Private, true);
-
-        assert!(Circuit::is_satisfied());
-        enforce(a, b, multiplier, is_neq);
-        assert!(Circuit::is_satisfied());
-        Circuit::reset();
     }
 }

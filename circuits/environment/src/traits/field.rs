@@ -27,13 +27,19 @@ pub trait FieldTrait:
     + Double<Output = Self>
     + Eject
     + Equal
-    + FromBits
+    + FromBitsBE
+    + FromBitsLE
     + FromBoolean
+    + GreaterThan
+    + GreaterThanOrEqual
     + Inject
     + Inv
+    + LessThan
+    + LessThanOrEqual
     + Mul<Output = Self>
     + MulAssign
     + Neg<Output = Self>
+    + NotEqual
     + One
     + Parser
     + Pow<Self, Output = Self>
@@ -41,7 +47,8 @@ pub trait FieldTrait:
     + Sub<Output = Self>
     + SubAssign
     + Ternary
-    + ToBits
+    + ToBitsBE
+    + ToBitsLE
     + TypeName
     + Zero
 {

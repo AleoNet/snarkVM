@@ -64,7 +64,6 @@ pub trait IntegerCore<I: IntegerType>:
     + BitXorAssign
     + BitXor<Output = Self>
     + Clone
-    + Compare
     + Debug
     + DivAssign
     + Div<Output = Self>
@@ -73,13 +72,18 @@ pub trait IntegerCore<I: IntegerType>:
     + Eject<Primitive = I>
     + Equal
     + FromBits
+    + GreaterThan
+    + GreaterThanOrEqual
     + Inject<Primitive = I>
+    + LessThan
+    + LessThanOrEqual
     + MulAssign
     + Mul<Output = Self>
     + MulChecked<Output = Self>
     + MulWrapped<Output = Self>
     + Neg<Output = Self>
     + Not<Output = Self>
+    + NotEqual
     + One
     + Parser
     + SubAssign

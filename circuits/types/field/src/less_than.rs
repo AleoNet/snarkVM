@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<E: Environment> Compare<Field<E>> for Field<E> {
+impl<E: Environment> LessThan<Field<E>> for Field<E> {
     type Output = Boolean<E>;
 
     /// Returns `true` if `self` is less than `other`.
@@ -41,24 +41,35 @@ impl<E: Environment> Compare<Field<E>> for Field<E> {
 
         is_less_than
     }
-
-    /// Returns `true` if `self` is greater than `other`.
-    fn is_greater_than(&self, other: &Self) -> Self::Output {
-        other.is_less_than(self)
-    }
-
-    /// Returns `true` if `self` is less than or equal to `other`.
-    fn is_less_than_or_equal(&self, other: &Self) -> Self::Output {
-        other.is_greater_than_or_equal(self)
-    }
-
-    /// Returns `true` if `self` is greater than or equal to `other`.
-    fn is_greater_than_or_equal(&self, other: &Self) -> Self::Output {
-        !self.is_less_than(other)
-    }
 }
 
-// TODO: Implement `Metrics` and `OutputMode` for `Compare`. Waiting for PR#711  to land as it significantly changes the counts.
+impl<E: Environment> Metadata<dyn LessThan<Field<E>, Output = Boolean<E>>> for Field<E> {
+    type Case = (CircuitType<Self>, CircuitType<Self>);
+    type OutputType = CircuitType<Boolean<E>>;
+
+    fn count(case: &Self::Case) -> Count {
+        match case {
+            (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(506, 0, 0, 0),
+            (other_type, CircuitType::Constant(constant)) | (CircuitType::Constant(constant), other_type) => {
+                todo!()
+            }
+            (_, _) => Count::is(0, 0, 1766, 1768),
+        }
+    }
+
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        match case {
+            (CircuitType::Constant(a), CircuitType::Constant(b)) => {
+                CircuitType::from(a.circuit().is_less_than(b.circuit()))
+            }
+            (other_type, CircuitType::Constant(constant)) | (CircuitType::Constant(constant), other_type) => {
+                // TODO: Finish this case.
+                CircuitType::Private
+            }
+            (_, _) => CircuitType::Private,
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -68,14 +79,7 @@ mod tests {
 
     const ITERATIONS: u64 = 100;
 
-    fn check_is_less_than(
-        mode_a: Mode,
-        mode_b: Mode,
-        num_constants: u64,
-        num_public: u64,
-        num_private: u64,
-        num_constraints: u64,
-    ) {
+    fn check_is_less_than(mode_a: Mode, mode_b: Mode) {
         for i in 0..ITERATIONS {
             // Sample a random element `a`.
             let expected_a: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
@@ -89,7 +93,10 @@ mod tests {
             Circuit::scope(&format!("{} {} {}", mode_a, mode_b, i), || {
                 let candidate = candidate_a.is_less_than(&candidate_b);
                 assert_eq!(expected_a < expected_b, candidate.eject_value());
-                assert_scope!(num_constants, num_public, num_private, num_constraints);
+
+                let case = (CircuitType::from(candidate_a), CircuitType::from(candidate_b));
+                assert_count!(LessThan(Field, Field) => Boolean, &case);
+                assert_output_type!(LessThan(Field, Field) => Boolean, case, candidate);
             });
             Circuit::reset();
         }
@@ -97,37 +104,36 @@ mod tests {
 
     #[test]
     fn test_constant_is_less_than_constant() {
-        check_is_less_than(Mode::Constant, Mode::Constant, 506, 0, 0, 0);
+        check_is_less_than(Mode::Constant, Mode::Constant);
     }
 
-    // TODO (howardwu): These variate in num_constraints.
-    // #[test]
-    // fn test_constant_is_less_than_public() {
-    //     check_is_less_than(Mode::Constant, Mode::Public, 0, 473, 0, 473);
-    // }
-    //
-    // #[test]
-    // fn test_constant_is_less_than_private() {
-    //     check_is_less_than(Mode::Constant, Mode::Private, 0, 0, 503, 503);
-    // }
+    #[test]
+    fn test_constant_is_less_than_public() {
+        check_is_less_than(Mode::Constant, Mode::Public);
+    }
+
+    #[test]
+    fn test_constant_is_less_than_private() {
+        check_is_less_than(Mode::Constant, Mode::Private);
+    }
 
     #[test]
     fn test_public_is_less_than_public() {
-        check_is_less_than(Mode::Public, Mode::Public, 0, 0, 1766, 1768);
+        check_is_less_than(Mode::Public, Mode::Public);
     }
 
     #[test]
     fn test_public_is_less_than_private() {
-        check_is_less_than(Mode::Public, Mode::Private, 0, 0, 1766, 1768);
+        check_is_less_than(Mode::Public, Mode::Private);
     }
 
     #[test]
     fn test_private_is_less_than_public() {
-        check_is_less_than(Mode::Private, Mode::Public, 0, 0, 1766, 1768);
+        check_is_less_than(Mode::Private, Mode::Public);
     }
 
     #[test]
     fn test_private_is_less_than_private() {
-        check_is_less_than(Mode::Private, Mode::Private, 0, 0, 1766, 1768);
+        check_is_less_than(Mode::Private, Mode::Private);
     }
 }
