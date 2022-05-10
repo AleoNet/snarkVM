@@ -35,7 +35,6 @@ pub trait ToBitsLE {
     fn to_bits_le(&self) -> Vec<Self::Boolean>;
 }
 
-
 /// Unary operator for converting to big-endian bits.
 pub trait ToBitsBE {
     type Boolean: BooleanTrait;

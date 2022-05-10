@@ -116,9 +116,7 @@ impl<E: Environment> Metadata<dyn BitOr<Boolean<E>, Output = Boolean<E>>> for Bo
 
     fn output_type(case: Self::Case) -> Self::OutputType {
         match case {
-            (CircuitType::Constant(_), CircuitType::Constant(_)) => {
-                CircuitType::from(case.0.circuit().bitor(case.1.circuit()))
-            }
+            (CircuitType::Constant(a), CircuitType::Constant(b)) => CircuitType::from(a.circuit().bitor(b.circuit())),
             (other_type, CircuitType::Constant(constant)) | (CircuitType::Constant(constant), other_type) => {
                 match constant.eject_value() {
                     true => CircuitType::from(Boolean::constant(true)),

@@ -70,9 +70,7 @@ impl<E: Environment> Metadata<dyn Nand<Boolean<E>, Output = Boolean<E>>> for Boo
 
     fn output_type(case: Self::Case) -> Self::OutputType {
         match case {
-            (CircuitType::Constant(_), CircuitType::Constant(_)) => {
-                CircuitType::from(case.0.circuit().nand(case.1.circuit()))
-            }
+            (CircuitType::Constant(a), CircuitType::Constant(b)) => CircuitType::from(a.circuit().nand(b.circuit())),
             (_, CircuitType::Constant(constant)) | (CircuitType::Constant(constant), _) => match constant.eject_value()
             {
                 false => CircuitType::from(Boolean::constant(true)),

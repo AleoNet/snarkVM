@@ -16,15 +16,9 @@
 
 use crate::{BooleanTrait, FieldTrait, GroupTrait, ScalarTrait};
 
-/// Unary operator for converting to `k` number of bits.
-pub trait ToLowerBits {
+/// Unary operator for converting to lower `k` number of big-endian bits.
+pub trait ToLowerBitsBE {
     type Boolean: BooleanTrait;
-
-    ///
-    /// Outputs the lower `k` bits of an `n`-bit element in little-endian representation.
-    /// Enforces that the upper `n - k` bits are zero.
-    ///
-    fn to_lower_bits_le(&self, k: usize) -> Vec<Self::Boolean>;
 
     ///
     /// Outputs the lower `k` bits of an `n`-bit element in big-endian representation.
@@ -33,8 +27,30 @@ pub trait ToLowerBits {
     fn to_lower_bits_be(&self, k: usize) -> Vec<Self::Boolean>;
 }
 
-/// Unary operator for converting to `k` number of bits.
-pub trait ToUpperBits {
+/// Unary operator for converting to lower `k` number of little-endian bits.
+pub trait ToLowerBitsLE {
+    type Boolean: BooleanTrait;
+
+    ///
+    /// Outputs the lower `k` bits of an `n`-bit element in little-endian representation.
+    /// Enforces that the upper `n - k` bits are zero.
+    ///
+    fn to_lower_bits_le(&self, k: usize) -> Vec<Self::Boolean>;
+}
+
+/// Unary operator for converting to upper `k` number of big-endian bits.
+pub trait ToUpperBitsBE {
+    type Boolean: BooleanTrait;
+
+    ///
+    /// Outputs the upper `k` bits of an `n`-bit element in big-endian representation.
+    /// Enforces that the lower `n - k` bits are zero.
+    ///
+    fn to_upper_bits_be(&self, k: usize) -> Vec<Self::Boolean>;
+}
+
+/// Unary operator for converting to upper `k` number of big-endian bits.
+pub trait ToUpperBitsLE {
     type Boolean: BooleanTrait;
 
     ///
@@ -42,12 +58,6 @@ pub trait ToUpperBits {
     /// Enforces that the lower `n - k` bits are zero.
     ///
     fn to_upper_bits_le(&self, k: usize) -> Vec<Self::Boolean>;
-
-    ///
-    /// Outputs the upper `k` bits of an `n`-bit element in big-endian representation.
-    /// Enforces that the lower `n - k` bits are zero.
-    ///
-    fn to_upper_bits_be(&self, k: usize) -> Vec<Self::Boolean>;
 }
 
 /// Unary operator for converting to a base field.

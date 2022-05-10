@@ -39,7 +39,7 @@ impl<E: Environment> Metadata<dyn FromBitsLE<Boolean = Boolean<E>>> for Boolean<
 
     fn output_type(case: Self::Case) -> Self::OutputType {
         match case {
-            CircuitType::Constant(_) => CircuitType::from(Boolean::from_bits_le(case.circuit())),
+            CircuitType::Constant(constant) => CircuitType::from(Boolean::from_bits_le(constant.circuit())),
             CircuitType::Public => CircuitType::Public,
             CircuitType::Private => CircuitType::Private,
         }
@@ -51,11 +51,7 @@ mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
 
-    fn check_from_bits_le(
-        name: &str,
-        expected: bool,
-        candidate: &Boolean<Circuit>,
-    ) {
+    fn check_from_bits_le(name: &str, expected: bool, candidate: &Boolean<Circuit>) {
         Circuit::scope(name, || {
             let result = Boolean::from_bits_le(&[(*candidate).clone()]);
             assert_eq!(expected, result.eject_value());

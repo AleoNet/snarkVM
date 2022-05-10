@@ -43,8 +43,8 @@ pub trait FromBitsBE {
     type Boolean: BooleanTrait;
 
     fn from_bits_be(bits_be: &[Self::Boolean]) -> Self
-        where
-            Self: Sized;
+    where
+        Self: Sized;
 }
 
 /// Unary operator for instantiating from little-endian bits.
@@ -52,8 +52,6 @@ pub trait FromBitsLE {
     type Boolean: BooleanTrait;
 
     fn from_bits_le(bits_le: &[Self::Boolean]) -> Self
-        where
-            Self: Sized;
+    where
+        Self: Sized;
 }
-
-

@@ -43,32 +43,35 @@ impl<E: Environment> Metadata<dyn Adder<Carry = Boolean<E>, Sum = Boolean<E>>> f
         let (lhs, rhs, carry) = case.clone();
 
         let case = (lhs, rhs);
-        let c0_count = count!(Boolean<E>, BitXor<Boolean<E>, Output=Boolean<E>>, &case);
-        let c1_count = count!(Boolean<E>, BitAnd<Boolean<E>, Output=Boolean<E>>, &case);
-        let c0_output_type = output_type!(Boolean<E>, BitXor<Boolean<E>, Output=Boolean<E>>, case.clone());
-        let c1_output_type = output_type!(Boolean<E>, BitAnd<Boolean<E>, Output=Boolean<E>>, case);
+        let c0_count = count!(Boolean<E>, BitXor<Boolean<E>, Output = Boolean<E>>, &case);
+        let c1_count = count!(Boolean<E>, BitAnd<Boolean<E>, Output = Boolean<E>>, &case);
+        let c0_output_type = output_type!(Boolean<E>, BitXor<Boolean<E>, Output = Boolean<E>>, case.clone());
+        let c1_output_type = output_type!(Boolean<E>, BitAnd<Boolean<E>, Output = Boolean<E>>, case);
 
         let case = (c0_output_type.clone(), carry.clone());
-        let sum_count = count!(Boolean<E>, BitXor<Boolean<E>, Output=Boolean<E>>, &case);
+        let sum_count = count!(Boolean<E>, BitXor<Boolean<E>, Output = Boolean<E>>, &case);
 
         let case = (carry, c0_output_type);
-        let c2_count = count!(Boolean<E>, BitAnd<Boolean<E>, Output=Boolean<E>>, &case);
-        let c2_output_type = output_type!(Boolean<E>, BitAnd<Boolean<E>, Output=Boolean<E>>, case);
+        let c2_count = count!(Boolean<E>, BitAnd<Boolean<E>, Output = Boolean<E>>, &case);
+        let c2_output_type = output_type!(Boolean<E>, BitAnd<Boolean<E>, Output = Boolean<E>>, case);
 
-        let carry_count = count!(Boolean<E>, BitOr<Boolean<E>, Output=Boolean<E>>, &(c1_output_type, c2_output_type));
+        let carry_count = count!(Boolean<E>, BitOr<Boolean<E>, Output = Boolean<E>>, &(c1_output_type, c2_output_type));
 
         c0_count + c1_count + sum_count + c2_count + carry_count
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
         let (lhs, rhs, carry) = case.clone();
-        let c0_output_type = output_type!(Boolean<E>, BitXor<Boolean<E>, Output=Boolean<E>>, (lhs.clone(), rhs.clone()));
-        let c1_output_type = output_type!(Boolean<E>, BitAnd<Boolean<E>, Output=Boolean<E>>, (lhs, rhs));
+        let c0_output_type =
+            output_type!(Boolean<E>, BitXor<Boolean<E>, Output = Boolean<E>>, (lhs.clone(), rhs.clone()));
+        let c1_output_type = output_type!(Boolean<E>, BitAnd<Boolean<E>, Output = Boolean<E>>, (lhs, rhs));
 
-        let sum_output_type = output_type!(Boolean<E>, BitXor<Boolean<E>, Output=Boolean<E>>, (c0_output_type.clone(), carry.clone()));
-        let c2_output_type = output_type!(Boolean<E>, BitAnd<Boolean<E>, Output=Boolean<E>>, (carry, c0_output_type));
+        let sum_output_type =
+            output_type!(Boolean<E>, BitXor<Boolean<E>, Output = Boolean<E>>, (c0_output_type.clone(), carry.clone()));
+        let c2_output_type = output_type!(Boolean<E>, BitAnd<Boolean<E>, Output = Boolean<E>>, (carry, c0_output_type));
 
-        let carry_output_type = output_type!(Boolean<E>, BitOr<Boolean<E>, Output=Boolean<E>>, (c1_output_type, c2_output_type));
+        let carry_output_type =
+            output_type!(Boolean<E>, BitOr<Boolean<E>, Output = Boolean<E>>, (c1_output_type, c2_output_type));
 
         (sum_output_type, carry_output_type)
     }
@@ -95,7 +98,8 @@ mod tests {
 
             let case = (CircuitType::from(a), CircuitType::from(b), CircuitType::from(c));
             assert_count!(Boolean<Circuit>, Adder<Carry = Boolean<Circuit>, Sum = Boolean<Circuit>>, &case);
-            let (sum_type, carry_type) = output_type!(Boolean<Circuit>, Adder<Carry = Boolean<Circuit>, Sum = Boolean<Circuit>>, case);
+            let (sum_type, carry_type) =
+                output_type!(Boolean<Circuit>, Adder<Carry = Boolean<Circuit>, Sum = Boolean<Circuit>>, case);
 
             assert_eq!(sum_type.eject_mode(), candidate_sum.eject_mode());
             if sum_type.is_constant() {
@@ -109,11 +113,7 @@ mod tests {
         });
     }
 
-    fn run_test(
-        mode_a: Mode,
-        mode_b: Mode,
-        mode_c: Mode,
-    ) {
+    fn run_test(mode_a: Mode, mode_b: Mode, mode_c: Mode) {
         for first in [true, false] {
             for second in [true, false] {
                 for third in [true, false] {

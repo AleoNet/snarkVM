@@ -44,13 +44,12 @@ impl<E: Environment> Metadata<dyn ToBitsBE<Boolean = Boolean<E>>> for Boolean<E>
 
     fn output_type(case: Self::Case) -> Self::OutputType {
         match case {
-            CircuitType::Constant(_) => CircuitType::from(case.circuit().to_bits_be()),
+            CircuitType::Constant(constant) => CircuitType::from(constant.circuit().to_bits_be()),
             CircuitType::Public => CircuitType::Public,
             CircuitType::Private => CircuitType::Private,
         }
     }
 }
-
 
 #[cfg(test)]
 mod tests {

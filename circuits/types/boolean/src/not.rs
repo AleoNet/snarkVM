@@ -54,8 +54,8 @@ impl<E: Environment> Metadata<dyn Not<Output = Boolean<E>>> for Boolean<E> {
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match case.is_constant() {
-            true => CircuitType::from(case.circuit().not()),
+        match case {
+            CircuitType::Constant(constant) => CircuitType::from(constant.circuit().not()),
             _ => CircuitType::Private,
         }
     }

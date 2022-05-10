@@ -45,8 +45,8 @@ impl<E: Environment> Metadata<dyn Equal<Boolean<E>, Output = Boolean<E>>> for Bo
 
     fn output_type(case: Self::Case) -> Self::OutputType {
         match case {
-            (CircuitType::Constant(_), CircuitType::Constant(_)) => {
-                CircuitType::from(case.0.circuit().is_equal(case.1.circuit()))
+            (CircuitType::Constant(a), CircuitType::Constant(b)) => {
+                CircuitType::from(a.circuit().is_equal(b.circuit()))
             }
             (CircuitType::Constant(constant), other_type) | (other_type, CircuitType::Constant(constant)) => {
                 match constant.eject_value() {

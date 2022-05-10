@@ -43,27 +43,28 @@ impl<E: Environment> Metadata<dyn Subtractor<Borrow = Boolean<E>, Difference = B
         let (lhs, rhs, borrow) = case.clone();
 
         let case = (lhs.clone(), rhs.clone());
-        let c0_count = count!(Boolean<E>, BitXor<Boolean<E>, Output=Boolean<E>>, &case);
-        let c0_output_type = output_type!(Boolean<E>, BitXor<Boolean<E>, Output=Boolean<E>>, case.clone());
+        let c0_count = count!(Boolean<E>, BitXor<Boolean<E>, Output = Boolean<E>>, &case);
+        let c0_output_type = output_type!(Boolean<E>, BitXor<Boolean<E>, Output = Boolean<E>>, case.clone());
 
         let case = (c0_output_type.clone(), borrow.clone());
-        let difference_count = count!(Boolean<E>, BitXor<Boolean<E>, Output=Boolean<E>>, &case);
+        let difference_count = count!(Boolean<E>, BitXor<Boolean<E>, Output = Boolean<E>>, &case);
 
-        let not_self_count = count!(Boolean<E>, Not<Output=Boolean<E>>, &lhs);
-        let not_self_output_type = output_type!(Boolean<E>, Not<Output=Boolean<E>>, lhs);
+        let not_self_count = count!(Boolean<E>, Not<Output = Boolean<E>>, &lhs);
+        let not_self_output_type = output_type!(Boolean<E>, Not<Output = Boolean<E>>, lhs);
 
         let case = (not_self_output_type, rhs);
-        let c1_count = count!(Boolean<E>, BitAnd<Boolean<E>, Output=Boolean<E>>, &case);
-        let c1_output_type = output_type!(Boolean<E>, BitAnd<Boolean<E>, Output=Boolean<E>>, case);
+        let c1_count = count!(Boolean<E>, BitAnd<Boolean<E>, Output = Boolean<E>>, &case);
+        let c1_output_type = output_type!(Boolean<E>, BitAnd<Boolean<E>, Output = Boolean<E>>, case);
 
-        let not_c0_count = count!(Boolean<E>, Not<Output=Boolean<E>>, &c0_output_type);
-        let not_c0_output_type = output_type!(Boolean<E>, Not<Output=Boolean<E>>, c0_output_type);
+        let not_c0_count = count!(Boolean<E>, Not<Output = Boolean<E>>, &c0_output_type);
+        let not_c0_output_type = output_type!(Boolean<E>, Not<Output = Boolean<E>>, c0_output_type);
 
         let case = (borrow, not_c0_output_type);
-        let c2_count = count!(Boolean<E>, BitAnd<Boolean<E>, Output=Boolean<E>>, &case);
-        let c2_output_type = output_type!(Boolean<E>, BitAnd<Boolean<E>, Output=Boolean<E>>, case);
+        let c2_count = count!(Boolean<E>, BitAnd<Boolean<E>, Output = Boolean<E>>, &case);
+        let c2_output_type = output_type!(Boolean<E>, BitAnd<Boolean<E>, Output = Boolean<E>>, case);
 
-        let borrow_count = count!(Boolean<E>, BitOr<Boolean<E>, Output = Boolean<E>>, &(c1_output_type, c2_output_type));
+        let borrow_count =
+            count!(Boolean<E>, BitOr<Boolean<E>, Output = Boolean<E>>, &(c1_output_type, c2_output_type));
 
         c0_count + difference_count + not_self_count + c1_count + not_c0_count + c2_count + borrow_count
     }
@@ -71,16 +72,21 @@ impl<E: Environment> Metadata<dyn Subtractor<Borrow = Boolean<E>, Difference = B
     fn output_type(case: Self::Case) -> Self::OutputType {
         let (lhs, rhs, borrow) = case.clone();
 
-        let c0_output_type = output_type!(Boolean<E>, BitXor<Boolean<E>, Output=Boolean<E>>, (lhs.clone(), rhs.clone()));
-        let difference_output_type = output_type!(Boolean<E>, BitXor<Boolean<E>, Output=Boolean<E>>, (c0_output_type.clone(), borrow.clone()));
+        let c0_output_type =
+            output_type!(Boolean<E>, BitXor<Boolean<E>, Output = Boolean<E>>, (lhs.clone(), rhs.clone()));
+        let difference_output_type =
+            output_type!(Boolean<E>, BitXor<Boolean<E>, Output = Boolean<E>>, (c0_output_type.clone(), borrow.clone()));
 
-        let not_self_output_type = output_type!(Boolean<E>, Not<Output=Boolean<E>>, lhs);
-        let c1_output_type = output_type!(Boolean<E>, BitAnd<Boolean<E>, Output=Boolean<E>>, (not_self_output_type, rhs));
+        let not_self_output_type = output_type!(Boolean<E>, Not<Output = Boolean<E>>, lhs);
+        let c1_output_type =
+            output_type!(Boolean<E>, BitAnd<Boolean<E>, Output = Boolean<E>>, (not_self_output_type, rhs));
 
-        let not_c0_output_type = output_type!(Boolean<E>, Not<Output=Boolean<E>>, c0_output_type);
-        let c2_output_type = output_type!(Boolean<E>, BitAnd<Boolean<E>, Output=Boolean<E>>, (borrow, not_c0_output_type));
+        let not_c0_output_type = output_type!(Boolean<E>, Not<Output = Boolean<E>>, c0_output_type);
+        let c2_output_type =
+            output_type!(Boolean<E>, BitAnd<Boolean<E>, Output = Boolean<E>>, (borrow, not_c0_output_type));
 
-        let borrow_output_type = output_type!(Boolean<E>, BitOr<Boolean<E>, Output=Boolean<E>>, (c1_output_type, c2_output_type));
+        let borrow_output_type =
+            output_type!(Boolean<E>, BitOr<Boolean<E>, Output = Boolean<E>>, (c1_output_type, c2_output_type));
 
         (difference_output_type, borrow_output_type)
     }
@@ -107,8 +113,16 @@ mod tests {
             assert_eq!(expected_borrow, candidate_borrow.eject_value(), "BORROW {}", case);
 
             let case = (CircuitType::from(a), CircuitType::from(b), CircuitType::from(c));
-            assert_count!(Boolean<Circuit>, Subtractor<Borrow = Boolean<Circuit>, Difference = Boolean<Circuit>>, &case);
-            let (difference_type, borrow_type) = output_type!(Boolean<Circuit>, Subtractor<Borrow= Boolean<Circuit>, Difference = Boolean<Circuit>>, case);
+            assert_count!(
+                Boolean<Circuit>,
+                Subtractor<Borrow = Boolean<Circuit>, Difference = Boolean<Circuit>>,
+                &case
+            );
+            let (difference_type, borrow_type) = output_type!(
+                Boolean<Circuit>,
+                Subtractor<Borrow = Boolean<Circuit>, Difference = Boolean<Circuit>>,
+                case
+            );
 
             assert_eq!(difference_type.eject_mode(), candidate_difference.eject_mode());
             if difference_type.is_constant() {
@@ -122,11 +136,7 @@ mod tests {
         });
     }
 
-    fn run_test(
-        mode_a: Mode,
-        mode_b: Mode,
-        mode_c: Mode,
-    ) {
+    fn run_test(mode_a: Mode, mode_b: Mode, mode_c: Mode) {
         for first in [true, false] {
             for second in [true, false] {
                 for third in [true, false] {
@@ -287,4 +297,3 @@ mod tests {
         run_test(Mode::Private, Mode::Private, Mode::Private);
     }
 }
-

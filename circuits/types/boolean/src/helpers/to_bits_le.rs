@@ -44,7 +44,7 @@ impl<E: Environment> Metadata<dyn ToBitsLE<Boolean = Boolean<E>>> for Boolean<E>
 
     fn output_type(case: Self::Case) -> Self::OutputType {
         match case {
-            CircuitType::Constant(_) => CircuitType::from(case.circuit().to_bits_le()),
+            CircuitType::Constant(constant) => CircuitType::from(constant.circuit().to_bits_le()),
             CircuitType::Public => CircuitType::Public,
             CircuitType::Private => CircuitType::Private,
         }
@@ -69,7 +69,6 @@ mod tests {
             assert_output_type!(ToBitsLE<Boolean>() => Boolean, case, result);
         });
     }
-
 
     #[test]
     fn test_to_bits_le_constant() {

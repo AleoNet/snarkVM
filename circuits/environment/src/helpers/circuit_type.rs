@@ -26,6 +26,11 @@ impl<T: Eject> Constant<T> {
         assert!(circuit.eject_mode().is_constant());
         Self(circuit)
     }
+
+    /// Returns a reference to the underlying circuit.
+    pub fn circuit(&self) -> &T {
+        &self.0
+    }
 }
 
 impl<T: Eject> Eject for Constant<T> {
@@ -64,15 +69,6 @@ impl<T: Eject> Eject for CircuitType<T> {
         match self {
             Self::Constant(circuit) => circuit.eject_value(),
             _ => panic!("Circuit is not constant"),
-        }
-    }
-}
-
-impl<T: Eject> CircuitType<T> {
-    pub fn circuit(&self) -> &T {
-        match self {
-            Self::Constant(circuit) => &circuit.0,
-            _ => panic!("Circuit must be a constant in order to extract the circuit."),
         }
     }
 }
