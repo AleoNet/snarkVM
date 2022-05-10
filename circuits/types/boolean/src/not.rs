@@ -40,10 +40,7 @@ impl<E: Environment> Not for &Boolean<E> {
         }
         // Public and private cases
         else {
-            match self.eject_value() {
-                true => Boolean(&self.0 - Variable::Public(0, Rc::new(E::BaseField::one()))),
-                false => Boolean(&self.0 + Variable::Public(0, Rc::new(E::BaseField::one()))),
-            }
+            Boolean(Variable::Public(0, Rc::new(E::BaseField::one())) - &self.0)
         }
     }
 }
