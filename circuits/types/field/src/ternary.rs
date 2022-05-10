@@ -97,24 +97,21 @@ impl<E: Environment> Metadata<dyn Ternary<Boolean = Boolean<E>, Output = Field<E
     type OutputType = CircuitType<Field<E>>;
 
     fn count(case: &Self::Case) -> Count {
-        match (case.0.eject_mode(), case.1.eject_mode(), case.2.eject_mode()) {
-            (Mode::Constant, _, _)
-            | (Mode::Public, Mode::Constant, Mode::Constant)
-            | (Mode::Private, Mode::Constant, Mode::Constant) => Count::is(0, 0, 0, 0),
+        match case {
+            (CircuitType::Constant(_), _, _) | (_, CircuitType::Constant(_), CircuitType::Constant(_)) => {
+                Count::is(0, 0, 0, 0)
+            }
             _ => Count::is(0, 0, 1, 1),
         }
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match case.0.eject_mode().is_constant() {
-            true => match &case.0 {
-                CircuitType::Constant(circuit) => match circuit.eject_value() {
-                    true => case.1,
-                    false => case.2,
-                },
-                _ => E::halt("Circuit is required to determine output mode."),
+        match case {
+            (CircuitType::Constant(constant), _, _) => match constant.eject_value() {
+                true => case.1,
+                false => case.2,
             },
-            false => CircuitType::Private,
+            _ => CircuitType::Private,
         }
     }
 }

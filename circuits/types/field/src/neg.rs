@@ -43,9 +43,9 @@ impl<E: Environment> Metadata<dyn Neg<Output = Field<E>>> for Field<E> {
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match case.is_constant() {
-            true => CircuitType::from(case.circuit().neg()),
-            false => CircuitType::Private,
+        match case {
+            CircuitType::Constant(constant) => CircuitType::from(constant.circuit().neg()),
+            _ => CircuitType::Private,
         }
     }
 }

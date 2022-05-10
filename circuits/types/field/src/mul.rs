@@ -87,25 +87,14 @@ impl<E: Environment> Metadata<dyn Mul<Field<E>, Output = Field<E>>> for Field<E>
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match (case.0.eject_mode(), case.1.eject_mode()) {
-            (Mode::Constant, Mode::Constant) => CircuitType::from(case.0.circuit().mul(case.1.circuit())),
-            (Mode::Constant, Mode::Public) => match &case.0 {
-                CircuitType::Constant(constant) => match constant.eject_value() {
-                    // TODO: Should this be a constant?
-                    //value if value == E::BaseField::zero() => Mode::Constant,
-                    value if value.is_one() => CircuitType::Public,
-                    _ => CircuitType::Private,
-                },
-                _ => E::halt("The constant is required to determine the output mode of Public * Constant"),
-            },
-            (Mode::Public, Mode::Constant) => match &case.1 {
-                CircuitType::Constant(constant) => match constant.eject_value() {
-                    // TODO: Should this be a constant?
-                    //value if value == E::BaseField::zero() => Mode::Constant,
-                    value if value.is_one() => CircuitType::Public,
-                    _ => CircuitType::Private,
-                },
-                _ => E::halt("The constant is required to determine the output mode of Public * Constant"),
+        match case {
+            (CircuitType::Constant(a), CircuitType::Constant(b)) => CircuitType::from(a.circuit().mul(b.circuit())),
+            (CircuitType::Constant(constant), CircuitType::Public)
+            | (CircuitType::Public, CircuitType::Constant(constant)) => match constant.eject_value() {
+                // TODO: Should this be a constant?
+                //value if value == E::BaseField::zero() => Mode::Constant,
+                value if value.is_one() => CircuitType::Public,
+                _ => CircuitType::Private,
             },
             (_, _) => CircuitType::Private,
         }

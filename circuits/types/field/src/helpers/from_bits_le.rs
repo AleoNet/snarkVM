@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<E: Environment> FromBits for Field<E> {
+impl<E: Environment> FromBitsLE for Field<E> {
     type Boolean = Boolean<E>;
 
     /// Initializes a new base field element from a list of little-endian bits *without* trailing zeros.
@@ -94,19 +94,9 @@ impl<E: Environment> FromBits for Field<E> {
 
         output
     }
-
-    /// Initializes a new base field element from a list of big-endian bits *without* leading zeros.
-    fn from_bits_be(bits_be: &[Self::Boolean]) -> Self {
-        // Reverse the given bits from big-endian into little-endian.
-        // Note: This is safe as the bit representation is consistent (there are no leading zeros).
-        let mut bits_le = bits_be.to_vec();
-        bits_le.reverse();
-
-        Self::from_bits_le(&bits_le)
-    }
 }
 
-impl<E: Environment> Metadata<dyn FromBits<Boolean = Boolean<E>>> for Field<E> {
+impl<E: Environment> Metadata<dyn FromBitsLE<Boolean = Boolean<E>>> for Field<E> {
     type Case = CircuitType<Vec<Boolean<E>>>;
     type OutputType = CircuitType<Field<E>>;
 
@@ -116,9 +106,9 @@ impl<E: Environment> Metadata<dyn FromBits<Boolean = Boolean<E>>> for Field<E> {
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match case.is_constant() {
-            true => CircuitType::from(Field::from_bits_be(case.circuit())),
-            false => CircuitType::Private,
+        match case {
+            CircuitType::Constant(constant) => CircuitType::from(Field::from_bits_le(constant.circuit())),
+            _ => CircuitType::Private,
         }
     }
 }

@@ -16,6 +16,8 @@
 
 use super::*;
 
+// TODO: Split into separate files.
+
 impl<E: Environment> Equal<Self> for Field<E> {
     type Output = Boolean<E>;
 
@@ -141,15 +143,17 @@ impl<E: Environment> Metadata<dyn Equal<Field<E>, Output = Boolean<E>>> for Fiel
 
     // TODO: How to deal where both operands are the same field element in memory, since it changes the number of gates produced? We could use upper bounds.
     fn count(case: &Self::Case) -> Count {
-        match (case.0.eject_mode(), case.1.eject_mode()) {
-            (Mode::Constant, Mode::Constant) => Count::is(1, 0, 0, 0),
+        match case {
+            (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(1, 0, 0, 0),
             _ => Count::is(0, 0, 2, 3),
         }
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match (case.0.eject_mode(), case.1.eject_mode()) {
-            (Mode::Constant, Mode::Constant) => CircuitType::from(case.0.circuit().is_equal(case.1.circuit())),
+        match case {
+            (CircuitType::Constant(a), CircuitType::Constant(b)) => {
+                CircuitType::from(a.circuit().is_equal(b.circuit()))
+            }
             _ => CircuitType::Private,
         }
     }

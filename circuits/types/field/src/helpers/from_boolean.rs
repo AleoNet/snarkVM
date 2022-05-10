@@ -27,14 +27,18 @@ impl<E: Environment> FromBoolean for Field<E> {
 
 impl<E: Environment> Metadata<dyn FromBoolean<Boolean = Boolean<E>>> for Field<E> {
     type Case = CircuitType<Boolean<E>>;
-    type OutputType = CircuitType<Boolean<E>>;
+    type OutputType = CircuitType<Field<E>>;
 
     fn count(_case: &Self::Case) -> Count {
         Count::is(0, 0, 0, 0)
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        case
+        match case {
+            CircuitType::Constant(constant) => CircuitType::from(Field::from_boolean(constant.circuit())),
+            CircuitType::Public => CircuitType::Public,
+            CircuitType::Private => CircuitType::Private,
+        }
     }
 }
 

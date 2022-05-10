@@ -16,43 +16,27 @@
 
 use super::*;
 
-impl<E: Environment> ToBitsLE for Field<E> {
+impl<E: Environment> ToBitsBE for Field<E> {
     type Boolean = Boolean<E>;
 
-    /// Outputs the little-endian bit representation of `self` *without* trailing zeros.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        (&self).to_bits_le()
+    /// Outputs the big-endian bit representation of `self` *without* leading zeros.
+    fn to_bits_be(&self) -> Vec<Self::Boolean> {
+        (&self).to_bits_be()
     }
 }
 
-impl<E: Environment> ToBitsLE for &Field<E> {
+impl<E: Environment> ToBitsBE for &Field<E> {
     type Boolean = Boolean<E>;
 
-    /// Outputs the little-endian bit representation of `self` *without* trailing zeros.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        self.bits_le
-            .get_or_init(|| {
-                // Construct a vector of `Boolean`s comprising the bits of the field value.
-                let bits_le = witness!(|self| self.to_bits_le());
-
-                // Reconstruct the bits as a linear combination representing the original field value.
-                let mut accumulator = Field::zero();
-                let mut coefficient = Field::one();
-                for bit in &bits_le {
-                    accumulator += Field::from_boolean(bit) * &coefficient;
-                    coefficient = coefficient.double();
-                }
-
-                // Ensure value * 1 == (2^i * b_i + ... + 2^0 * b_0)
-                E::assert_eq(*self, accumulator);
-
-                bits_le
-            })
-            .clone()
+    /// Outputs the big-endian bit representation of `self` *without* leading zeros.
+    fn to_bits_be(&self) -> Vec<Self::Boolean> {
+        let mut bits_le = self.to_bits_le();
+        bits_le.reverse();
+        bits_le
     }
 }
 
-impl<E: Environment> Metadata<dyn ToBitsLE<Boolean = Boolean<E>>> for Field<E> {
+impl<E: Environment> Metadata<dyn ToBitsBE<Boolean = Boolean<E>>> for Field<E> {
     type Case = CircuitType<Field<E>>;
     type OutputType = CircuitType<Vec<Boolean<E>>>;
 
@@ -65,7 +49,7 @@ impl<E: Environment> Metadata<dyn ToBitsLE<Boolean = Boolean<E>>> for Field<E> {
 
     fn output_type(case: Self::Case) -> Self::OutputType {
         match case {
-            CircuitType::Constant(constant) => CircuitType::from(constant.circuit().to_bits_le()),
+            CircuitType::Constant(constant) => CircuitType::from(constant.circuit().to_bits_be()),
             _ => CircuitType::Private,
         }
     }

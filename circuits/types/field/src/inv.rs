@@ -52,9 +52,9 @@ impl<E: Environment> Metadata<dyn Inv<Output = Field<E>>> for Field<E> {
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match case.is_constant() {
-            true => CircuitType::from(case.circuit().inv()),
-            false => CircuitType::Private,
+        match case {
+            CircuitType::Constant(constant) => CircuitType::from(constant.circuit().inv()),
+            _ => CircuitType::Private,
         }
     }
 }

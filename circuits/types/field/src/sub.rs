@@ -73,15 +73,11 @@ impl<E: Environment> Metadata<dyn Sub<Field<E>, Output = Field<E>>> for Field<E>
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match (case.0.eject_mode(), case.1.eject_mode()) {
-            (Mode::Constant, Mode::Constant) => CircuitType::from(case.0.circuit().sub(case.1.circuit())),
-            (Mode::Constant, Mode::Public) => CircuitType::Private,
-            (Mode::Public, Mode::Constant) => match &case.1 {
-                CircuitType::Constant(constant) => match constant.eject_value().is_zero() {
-                    true => CircuitType::Public,
-                    false => CircuitType::Private,
-                },
-                _ => E::halt("The constant is required to determine the output mode of Public + Constant"),
+        match case {
+            (CircuitType::Constant(a), CircuitType::Constant(b)) => CircuitType::from(a.circuit().sub(b.circuit())),
+            (CircuitType::Public, CircuitType::Constant(constant)) => match constant.eject_value().is_zero() {
+                true => CircuitType::Public,
+                false => CircuitType::Private,
             },
             (_, _) => CircuitType::Private,
         }

@@ -44,9 +44,9 @@ impl<E: Environment> Metadata<dyn Square<Output = Field<E>>> for Field<E> {
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match case.is_constant() {
-            true => CircuitType::from(case.circuit().square()),
-            false => CircuitType::Private,
+        match case {
+            CircuitType::Constant(constant) => CircuitType::from(constant.circuit().square()),
+            _ => CircuitType::Private,
         }
     }
 }

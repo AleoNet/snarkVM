@@ -113,8 +113,8 @@ impl<E: Environment> Metadata<dyn Pow<Field<E>, Output = Field<E>>> for Field<E>
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match (case.0.eject_mode(), case.1.eject_mode()) {
-            (Mode::Constant, Mode::Constant) => CircuitType::from(case.0.circuit().pow(case.1.circuit())),
+        match case {
+            (CircuitType::Constant(a), CircuitType::Constant(b)) => CircuitType::from(a.circuit().pow(b.circuit())),
             // TODO: Should this be the case?
             //(Mode::Constant, Mode::Public) => match &case.0 {
             //    CircuitType::Constant(constant) => match constant.eject_value() {
@@ -124,22 +124,10 @@ impl<E: Environment> Metadata<dyn Pow<Field<E>, Output = Field<E>>> for Field<E>
             //    },
             //    _ => E::halt("The constant is required to determine the output mode of Public + Constant"),
             //},
-            (Mode::Constant, Mode::Public) => CircuitType::Private,
-            (Mode::Public, Mode::Constant) => match &case.1 {
-                CircuitType::Constant(constant) => match constant.eject_value() {
-                    exponent if exponent.is_zero() => CircuitType::from(Field::one()),
-                    exponent if exponent.is_one() => CircuitType::Public,
-                    _ => CircuitType::Private,
-                },
-                _ => E::halt("The constant is required to determine the output mode of Public + Constant"),
-            },
-            (Mode::Private, Mode::Constant) => match &case.1 {
-                CircuitType::Constant(constant) => match constant.eject_value() {
-                    exponent if exponent.is_zero() => CircuitType::from(Field::one()),
-                    exponent if exponent.is_one() => CircuitType::Private,
-                    _ => CircuitType::Private,
-                },
-                _ => E::halt("The constant is required to determine the output mode of Public + Constant"),
+            (other_type, CircuitType::Constant(constant)) => match constant.eject_value() {
+                exponent if exponent.is_zero() => CircuitType::from(Field::one()),
+                exponent if exponent.is_one() => other_type,
+                _ => CircuitType::Private,
             },
             (_, _) => CircuitType::Private,
         }
