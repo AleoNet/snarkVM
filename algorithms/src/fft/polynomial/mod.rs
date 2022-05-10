@@ -69,7 +69,7 @@ impl<'a, F: Field> CanonicalSerialize for Polynomial<'a, F> {
     }
 }
 
-impl<'a, F: Field> Valid for DenseOrSparsePolynomial<'a, F> {
+impl<'a, F: Field> Valid for Polynomial<'a, F> {
     fn check(&self) -> Result<(), SerializationError> {
         Ok(())
     }
@@ -82,8 +82,7 @@ impl<'a, F: Field> CanonicalDeserialize for Polynomial<'a, F> {
         compress: Compress,
         validate: Validate,
     ) -> Result<Self, SerializationError> {
-        DensePolynomial::<F>::deserialize_with_mode(reader, compress, validate)
-            .map(|e| Self::Dense(Cow::Owned(e)))
+        DensePolynomial::<F>::deserialize_with_mode(reader, compress, validate).map(|e| Self::Dense(Cow::Owned(e)))
     }
 }
 
