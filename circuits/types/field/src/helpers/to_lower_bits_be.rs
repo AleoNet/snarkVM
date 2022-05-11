@@ -75,7 +75,7 @@ mod tests {
 
             // Construct the unsigned integer as a field element.
             let candidate = {
-                let mut field_bytes = bytes_from_bits_be(&expected);
+                let mut field_bytes = bytes_from_bits_le(&expected);
                 field_bytes.resize(size_in_bytes, 0u8); // Pad up to byte size.
                 Field::<Circuit>::new(mode, FromBytes::from_bytes_le(&field_bytes).unwrap())
             };
@@ -88,8 +88,8 @@ mod tests {
                 }
 
                 let case = (CircuitType::from(candidate), I::BITS as usize);
-                assert_count!(ToLowerBits<Boolean>() => Field, &case);
-                assert_output_type!(ToLowerBits<Boolean>() => Field, case, result);
+                assert_count!(ToLowerBitsBE<Boolean>() => Field, &case);
+                assert_output_type!(ToLowerBitsBE<Boolean>() => Field, case, result);
             });
         }
     }

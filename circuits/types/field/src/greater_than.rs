@@ -62,6 +62,8 @@ mod tests {
             Circuit::scope(&format!("GreaterThan: {} {} {}", mode_a, mode_b, i), || {
                 let candidate = candidate_a.is_greater_than(&candidate_b);
                 assert_eq!(expected_a > expected_b, candidate.eject_value());
+
+                let case = (CircuitType::from(candidate_a), CircuitType::from(candidate_b));
                 assert_count!(GreaterThan(Field, Field) => Boolean, &case);
                 assert_output_type!(GreaterThan(Field, Field) => Boolean, case, candidate);
             });
@@ -85,6 +87,11 @@ mod tests {
     }
 
     #[test]
+    fn test_public_is_greater_than_constant() {
+        check_is_greater_than(Mode::Public, Mode::Constant);
+    }
+
+    #[test]
     fn test_public_is_greater_than_public() {
         check_is_greater_than(Mode::Public, Mode::Public);
     }
@@ -92,6 +99,11 @@ mod tests {
     #[test]
     fn test_public_is_greater_than_private() {
         check_is_greater_than(Mode::Public, Mode::Private);
+    }
+
+    #[test]
+    fn test_private_is_greater_than_constant() {
+        check_is_greater_than(Mode::Private, Mode::Constant);
     }
 
     #[test]

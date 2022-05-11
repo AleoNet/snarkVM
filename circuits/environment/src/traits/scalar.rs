@@ -18,6 +18,24 @@ use crate::prelude::*;
 
 /// Representation of a scalar field element.
 pub trait ScalarTrait:
-    Clone + Debug + Eject + Equal + Inject + One + Parser + Ternary + ToBits + TypeName + Zero
+    Clone
+    + Debug
+    + Eject
+    + Equal
+    + FromBitsBE
+    + FromBitsLE
+    + GreaterThan
+    + GreaterThanOrEqual
+    + Inject
+    + LessThan
+    + LessThanOrEqual
+    + NotEqual
+    + One
+    + Parser
+    + Ternary
+    + ToBitsBE
+    + ToBitsLE
+    + TypeName
+    + Zero
 {
 }

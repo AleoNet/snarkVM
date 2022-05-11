@@ -107,8 +107,8 @@ mod tests {
                 }
 
                 let case = (CircuitType::from(candidate), I::BITS as usize);
-                assert_count!(ToLowerBits<Boolean>() => Field, &case);
-                assert_output_type!(ToLowerBits<Boolean>() => Field, case, result);
+                assert_count!(ToLowerBitsLE<Boolean>() => Field, &case);
+                assert_output_type!(ToLowerBitsLE<Boolean>() => Field, case, result);
             });
         }
     }

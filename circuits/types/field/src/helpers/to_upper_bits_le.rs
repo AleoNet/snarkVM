@@ -110,8 +110,8 @@ mod tests {
                 }
 
                 let case = (CircuitType::from(candidate), num_bits_with_capacity as usize);
-                assert_count!(ToUpperBits<Boolean>() => Field, &case);
-                assert_output_type!(ToUpperBits<Boolean>() => Field, case, result);
+                assert_count!(ToUpperBitsLE<Boolean>() => Field, &case);
+                assert_output_type!(ToUpperBitsLE<Boolean>() => Field, case, result);
             });
         }
     }
