@@ -29,28 +29,25 @@ impl<E: Environment> Ternary for Group<E> {
 }
 
 impl<E: Environment> Metadata<dyn Ternary<Boolean = Boolean<E>, Output = Group<E>>> for Group<E> {
-    type Case = (CircuitType<Boolean<E>>, CircuitType<Group<E>>, CircuitType<Group<E>>);
+    type Case = (CircuitType<Boolean<E>>, CircuitType<Self>, CircuitType<Self>);
     type OutputType = CircuitType<Group<E>>;
 
     fn count(case: &Self::Case) -> Count {
-        match (case.0.eject_mode(), case.1.eject_mode(), case.2.eject_mode()) {
-            (Mode::Constant, _, _)
-            | (Mode::Public, Mode::Constant, Mode::Constant)
-            | (Mode::Private, Mode::Constant, Mode::Constant) => Count::is(0, 0, 0, 0),
+        match case {
+            (CircuitType::Constant(_), _, _) | (_, CircuitType::Constant(_), CircuitType::Constant(_)) => {
+                Count::is(0, 0, 0, 0)
+            }
             _ => Count::is(0, 0, 2, 2),
         }
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match case.0.is_constant() {
-            true => match &case.0 {
-                CircuitType::Constant(constant) => match constant.eject_value() {
-                    true => case.1,
-                    false => case.2,
-                },
-                _ => E::halt("The constant condition is required to determine output mode."),
+        match case {
+            (CircuitType::Constant(constant), first_type, second_type) => match constant.eject_value() {
+                true => first_type,
+                false => second_type,
             },
-            false => CircuitType::Private,
+            _ => CircuitType::Private,
         }
     }
 }
@@ -79,325 +76,153 @@ mod tests {
         });
     }
 
-    #[test]
-    fn test_constant_condition() {
-        let first: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-        let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+    fn run_test(mode_condition: Mode, mode_a: Mode, mode_b: Mode) {
+        for flag in [true, false] {
+            let first: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+            let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
 
-        // false ? Constant : Constant
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Constant, false);
-        let a = Group::<Circuit>::new(Mode::Constant, first);
-        let b = Group::<Circuit>::new(Mode::Constant, second);
-        check_ternary("false ? Constant : Constant", expected, condition, a, b);
+            let expected = if flag { first } else { second };
+            let condition = Boolean::<Circuit>::new(mode_condition, flag);
+            let a = Group::<Circuit>::new(mode_a, first);
+            let b = Group::<Circuit>::new(mode_b, second);
 
-        // false ? Constant : Public
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Constant, false);
-        let a = Group::<Circuit>::new(Mode::Constant, first);
-        let b = Group::<Circuit>::new(Mode::Public, second);
-        check_ternary("false ? Constant : Public", expected, condition, a, b);
-
-        // false ? Public : Constant
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Constant, false);
-        let a = Group::<Circuit>::new(Mode::Public, first);
-        let b = Group::<Circuit>::new(Mode::Constant, second);
-        check_ternary("false ? Public : Constant", expected, condition, a, b);
-
-        // false ? Public : Public
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Constant, false);
-        let a = Group::<Circuit>::new(Mode::Public, first);
-        let b = Group::<Circuit>::new(Mode::Public, second);
-        check_ternary("false ? Public : Public", expected, condition, a, b);
-
-        // false ? Public : Private
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Constant, false);
-        let a = Group::<Circuit>::new(Mode::Public, first);
-        let b = Group::<Circuit>::new(Mode::Private, second);
-        check_ternary("false ? Public : Private", expected, condition, a, b);
-
-        // false ? Private : Private
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Constant, false);
-        let a = Group::<Circuit>::new(Mode::Private, first);
-        let b = Group::<Circuit>::new(Mode::Private, second);
-        check_ternary("false ? Private : Private", expected, condition, a, b);
-
-        // true ? Constant : Constant
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Constant, true);
-        let a = Group::<Circuit>::new(Mode::Constant, first);
-        let b = Group::<Circuit>::new(Mode::Constant, second);
-        check_ternary("true ? Constant : Constant", expected, condition, a, b);
-
-        // true ? Constant : Public
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Constant, true);
-        let a = Group::<Circuit>::new(Mode::Constant, first);
-        let b = Group::<Circuit>::new(Mode::Public, second);
-        check_ternary("true ? Constant : Public", expected, condition, a, b);
-
-        // true ? Public : Constant
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Constant, true);
-        let a = Group::<Circuit>::new(Mode::Public, first);
-        let b = Group::<Circuit>::new(Mode::Constant, second);
-        check_ternary("true ? Public : Constant", expected, condition, a, b);
-
-        // true ? Public : Public
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Constant, true);
-        let a = Group::<Circuit>::new(Mode::Public, first);
-        let b = Group::<Circuit>::new(Mode::Public, second);
-        check_ternary("true ? Public : Public", expected, condition, a, b);
-
-        // true ? Public : Private
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Constant, true);
-        let a = Group::<Circuit>::new(Mode::Public, first);
-        let b = Group::<Circuit>::new(Mode::Private, second);
-        check_ternary("true ? Public : Private", expected, condition, a, b);
-
-        // true ? Private : Private
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Constant, true);
-        let a = Group::<Circuit>::new(Mode::Private, first);
-        let b = Group::<Circuit>::new(Mode::Private, second);
-        check_ternary("true ? Private : Private", expected, condition, a, b);
+            let name = format!("{} ? {} : {}", flag, mode_a, mode_b);
+            check_ternary(&name, expected, condition, a, b);
+        }
     }
 
     #[test]
-    fn test_public_condition_and_constant_inputs() {
-        let first: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-        let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-
-        // false ? Constant : Constant
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Public, false);
-        let a = Group::<Circuit>::new(Mode::Constant, first);
-        let b = Group::<Circuit>::new(Mode::Constant, second);
-        check_ternary("false ? Constant : Constant", expected, condition, a, b);
-
-        // true ? Constant : Constant
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Public, true);
-        let a = Group::<Circuit>::new(Mode::Constant, first);
-        let b = Group::<Circuit>::new(Mode::Constant, second);
-        check_ternary("true ? Constant : Constant", expected, condition, a, b);
+    fn test_if_constant_then_constant_else_constant() {
+        run_test(Mode::Constant, Mode::Constant, Mode::Constant);
     }
 
     #[test]
-    fn test_public_condition_and_mixed_inputs() {
-        let first: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-        let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-
-        // false ? Constant : Public
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Public, false);
-        let a = Group::<Circuit>::new(Mode::Constant, first);
-        let b = Group::<Circuit>::new(Mode::Public, second);
-        check_ternary("false ? Constant : Public", expected, condition, a, b);
-
-        // false ? Public : Constant
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Public, false);
-        let a = Group::<Circuit>::new(Mode::Public, first);
-        let b = Group::<Circuit>::new(Mode::Constant, second);
-        check_ternary("false ? Public : Constant", expected, condition, a, b);
-
-        // true ? Constant : Public
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Public, true);
-        let a = Group::<Circuit>::new(Mode::Constant, first);
-        let b = Group::<Circuit>::new(Mode::Public, second);
-        check_ternary("true ? Constant : Public", expected, condition, a, b);
-
-        // true ? Public : Constant
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Public, true);
-        let a = Group::<Circuit>::new(Mode::Public, first);
-        let b = Group::<Circuit>::new(Mode::Constant, second);
-        check_ternary("true ? Public : Constant", expected, condition, a, b);
+    fn test_if_constant_then_constant_else_public() {
+        run_test(Mode::Constant, Mode::Constant, Mode::Public);
     }
 
     #[test]
-    fn test_private_condition_and_constant_inputs() {
-        let first: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-        let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-
-        // false ? Constant : Constant
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Private, false);
-        let a = Group::<Circuit>::new(Mode::Constant, first);
-        let b = Group::<Circuit>::new(Mode::Constant, second);
-        check_ternary("false ? Constant : Constant", expected, condition, a, b);
-
-        // true ? Constant : Constant
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Private, true);
-        let a = Group::<Circuit>::new(Mode::Constant, first);
-        let b = Group::<Circuit>::new(Mode::Constant, second);
-        check_ternary("true ? Constant : Constant", expected, condition, a, b);
+    fn test_if_constant_then_constant_else_private() {
+        run_test(Mode::Constant, Mode::Constant, Mode::Private);
     }
 
     #[test]
-    fn test_private_condition_and_mixed_inputs() {
-        let first: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-        let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-
-        // false ? Constant : Public
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Private, false);
-        let a = Group::<Circuit>::new(Mode::Constant, first);
-        let b = Group::<Circuit>::new(Mode::Public, second);
-        check_ternary("false ? Constant : Public", expected, condition, a, b);
-
-        // false ? Public : Constant
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Private, false);
-        let a = Group::<Circuit>::new(Mode::Public, first);
-        let b = Group::<Circuit>::new(Mode::Constant, second);
-        check_ternary("false ? Public : Constant", expected, condition, a, b);
-
-        // true ? Constant : Public
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Private, true);
-        let a = Group::<Circuit>::new(Mode::Constant, first);
-        let b = Group::<Circuit>::new(Mode::Public, second);
-        check_ternary("true ? Constant : Public", expected, condition, a, b);
-
-        // true ? Public : Constant
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Private, true);
-        let a = Group::<Circuit>::new(Mode::Public, first);
-        let b = Group::<Circuit>::new(Mode::Constant, second);
-        check_ternary("true ? Public : Constant", expected, condition, a, b);
+    fn test_if_constant_then_public_else_constant() {
+        run_test(Mode::Constant, Mode::Public, Mode::Constant);
     }
 
     #[test]
-    fn test_public_condition_and_variable_inputs() {
-        let first: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-        let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-
-        // false ? Public : Public
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Public, false);
-        let a = Group::<Circuit>::new(Mode::Public, first);
-        let b = Group::<Circuit>::new(Mode::Public, second);
-        check_ternary("false ? Public : Public", expected, condition, a, b);
-
-        // false ? Public : Private
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Public, false);
-        let a = Group::<Circuit>::new(Mode::Public, first);
-        let b = Group::<Circuit>::new(Mode::Private, second);
-        check_ternary("false ? Public : Private", expected, condition, a, b);
-
-        // false ? Private : Public
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Public, false);
-        let a = Group::<Circuit>::new(Mode::Private, first);
-        let b = Group::<Circuit>::new(Mode::Public, second);
-        check_ternary("false ? Private : Public", expected, condition, a, b);
-
-        // false ? Private : Private
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Public, false);
-        let a = Group::<Circuit>::new(Mode::Private, first);
-        let b = Group::<Circuit>::new(Mode::Private, second);
-        check_ternary("false ? Private : Private", expected, condition, a, b);
-
-        // true ? Public : Public
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Public, true);
-        let a = Group::<Circuit>::new(Mode::Public, first);
-        let b = Group::<Circuit>::new(Mode::Public, second);
-        check_ternary("true ? Public : Public", expected, condition, a, b);
-
-        // true ? Public : Private
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Public, true);
-        let a = Group::<Circuit>::new(Mode::Public, first);
-        let b = Group::<Circuit>::new(Mode::Private, second);
-        check_ternary("true ? Public : Private", expected, condition, a, b);
-
-        // true ? Private : Public
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Public, true);
-        let a = Group::<Circuit>::new(Mode::Private, first);
-        let b = Group::<Circuit>::new(Mode::Public, second);
-        check_ternary("true ? Private : Public", expected, condition, a, b);
-
-        // true ? Private : Private
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Public, true);
-        let a = Group::<Circuit>::new(Mode::Private, first);
-        let b = Group::<Circuit>::new(Mode::Private, second);
-        check_ternary("true ? Private : Private", expected, condition, a, b);
+    fn test_if_constant_then_public_else_public() {
+        run_test(Mode::Constant, Mode::Public, Mode::Public);
     }
 
     #[test]
-    fn test_private_condition_and_variable_inputs() {
-        let first: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-        let second: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+    fn test_if_constant_then_public_else_private() {
+        run_test(Mode::Constant, Mode::Public, Mode::Private);
+    }
 
-        // false ? Public : Public
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Private, false);
-        let a = Group::<Circuit>::new(Mode::Public, first);
-        let b = Group::<Circuit>::new(Mode::Public, second);
-        check_ternary("false ? Public : Public", expected, condition, a, b);
+    #[test]
+    fn test_if_constant_then_private_else_constant() {
+        run_test(Mode::Constant, Mode::Private, Mode::Constant);
+    }
 
-        // false ? Public : Private
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Private, false);
-        let a = Group::<Circuit>::new(Mode::Public, first);
-        let b = Group::<Circuit>::new(Mode::Private, second);
-        check_ternary("false ? Public : Private", expected, condition, a, b);
+    #[test]
+    fn test_if_constant_then_private_else_public() {
+        run_test(Mode::Constant, Mode::Private, Mode::Public);
+    }
 
-        // false ? Private : Public
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Private, false);
-        let a = Group::<Circuit>::new(Mode::Private, first);
-        let b = Group::<Circuit>::new(Mode::Public, second);
-        check_ternary("false ? Private : Public", expected, condition, a, b);
+    #[test]
+    fn test_if_constant_then_private_else_private() {
+        run_test(Mode::Constant, Mode::Private, Mode::Private);
+    }
 
-        // false ? Private : Private
-        let expected = second;
-        let condition = Boolean::<Circuit>::new(Mode::Private, false);
-        let a = Group::<Circuit>::new(Mode::Private, first);
-        let b = Group::<Circuit>::new(Mode::Private, second);
-        check_ternary("false ? Private : Private", expected, condition, a, b);
+    #[test]
+    fn test_if_public_then_constant_else_constant() {
+        run_test(Mode::Public, Mode::Constant, Mode::Constant);
+    }
 
-        // true ? Public : Public
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Private, true);
-        let a = Group::<Circuit>::new(Mode::Public, first);
-        let b = Group::<Circuit>::new(Mode::Public, second);
-        check_ternary("true ? Public : Public", expected, condition, a, b);
+    #[test]
+    fn test_if_public_then_constant_else_public() {
+        run_test(Mode::Public, Mode::Constant, Mode::Public);
+    }
 
-        // true ? Public : Private
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Private, true);
-        let a = Group::<Circuit>::new(Mode::Public, first);
-        let b = Group::<Circuit>::new(Mode::Private, second);
-        check_ternary("true ? Public : Private", expected, condition, a, b);
+    #[test]
+    fn test_if_public_then_constant_else_private() {
+        run_test(Mode::Public, Mode::Constant, Mode::Private);
+    }
 
-        // true ? Private : Public
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Private, true);
-        let a = Group::<Circuit>::new(Mode::Private, first);
-        let b = Group::<Circuit>::new(Mode::Public, second);
-        check_ternary("true ? Private : Public", expected, condition, a, b);
+    #[test]
+    fn test_if_public_then_public_else_constant() {
+        run_test(Mode::Public, Mode::Public, Mode::Constant);
+    }
 
-        // true ? Private : Private
-        let expected = first;
-        let condition = Boolean::<Circuit>::new(Mode::Private, true);
-        let a = Group::<Circuit>::new(Mode::Private, first);
-        let b = Group::<Circuit>::new(Mode::Private, second);
-        check_ternary("true ? Private : Private", expected, condition, a, b);
+    #[test]
+    fn test_if_public_then_public_else_public() {
+        run_test(Mode::Public, Mode::Public, Mode::Public);
+    }
+
+    #[test]
+    fn test_if_public_then_public_else_private() {
+        run_test(Mode::Public, Mode::Public, Mode::Private);
+    }
+
+    #[test]
+    fn test_if_public_then_private_else_constant() {
+        run_test(Mode::Public, Mode::Private, Mode::Constant);
+    }
+
+    #[test]
+    fn test_if_public_then_private_else_public() {
+        run_test(Mode::Public, Mode::Private, Mode::Public);
+    }
+
+    #[test]
+    fn test_if_public_then_private_else_private() {
+        run_test(Mode::Public, Mode::Private, Mode::Private);
+    }
+
+    #[test]
+    fn test_if_private_then_constant_else_constant() {
+        run_test(Mode::Private, Mode::Constant, Mode::Constant);
+    }
+
+    #[test]
+    fn test_if_private_then_constant_else_public() {
+        run_test(Mode::Private, Mode::Constant, Mode::Public);
+    }
+
+    #[test]
+    fn test_if_private_then_constant_else_private() {
+        run_test(Mode::Private, Mode::Constant, Mode::Private);
+    }
+
+    #[test]
+    fn test_if_private_then_public_else_constant() {
+        run_test(Mode::Private, Mode::Public, Mode::Constant);
+    }
+
+    #[test]
+    fn test_if_private_then_public_else_public() {
+        run_test(Mode::Private, Mode::Public, Mode::Public);
+    }
+
+    #[test]
+    fn test_if_private_then_public_else_private() {
+        run_test(Mode::Private, Mode::Public, Mode::Private);
+    }
+
+    #[test]
+    fn test_if_private_then_private_else_constant() {
+        run_test(Mode::Private, Mode::Private, Mode::Constant);
+    }
+
+    #[test]
+    fn test_if_private_then_private_else_public() {
+        run_test(Mode::Private, Mode::Private, Mode::Public);
+    }
+
+    #[test]
+    fn test_if_private_then_private_else_private() {
+        run_test(Mode::Private, Mode::Private, Mode::Private);
     }
 }

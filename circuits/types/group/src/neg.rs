@@ -35,17 +35,17 @@ impl<E: Environment> Neg for &Group<E> {
 }
 
 impl<E: Environment> Metadata<dyn Neg<Output = Group<E>>> for Group<E> {
-    type Case = CircuitType<Group<E>>;
-    type OutputType = CircuitType<Group<E>>;
+    type Case = CircuitType<Self>;
+    type OutputType = CircuitType<Self>;
 
     fn count(_case: &Self::Case) -> Count {
         Count::is(0, 0, 0, 0)
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match case.is_constant() {
-            true => CircuitType::from(case.circuit().neg()),
-            false => CircuitType::Private,
+        match case {
+            CircuitType::Constant(constant) => CircuitType::from(constant.circuit().neg()),
+            _ => CircuitType::Private,
         }
     }
 }

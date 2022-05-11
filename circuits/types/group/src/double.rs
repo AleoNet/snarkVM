@@ -83,7 +83,7 @@ impl<E: Environment> Metadata<dyn Double<Output = Group<E>>> for Group<E> {
 
     fn output_type(case: Self::Case) -> Self::OutputType {
         match case {
-            CircuitType::Constant(_) => CircuitType::from(case.circuit().double()),
+            CircuitType::Constant(constant) => CircuitType::from(constant.circuit().double()),
             _ => CircuitType::Private,
         }
     }
@@ -98,56 +98,28 @@ mod tests {
 
     const ITERATIONS: u64 = 250;
 
+    fn check_double(name: &str, mode: Mode) {
+        for _ in 0..ITERATIONS {
+            // Sample a random element.
+            let given: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
+            let candidate = Group::<Circuit>::new(mode, given);
+
+            Circuit::scope(name, || {
+                let result = (&candidate).double();
+                assert_eq!(given.to_projective().double(), result.eject_value());
+
+                let case = CircuitType::from(candidate);
+                assert_count!(Double(Group) => Group, &case);
+                assert_output_type!(Double(Group) => Group, case, result);
+            });
+        }
+    }
+
     #[test]
     fn test_double() {
-        // Constant variables
-        for i in 0..ITERATIONS {
-            // Sample a random element.
-            let point = <Circuit as Environment>::Affine::rand(&mut test_rng());
-            let expected = point.to_projective().double();
-
-            let affine = Group::<Circuit>::new(Mode::Constant, point);
-
-            Circuit::scope(&format!("Constant {}", i), || {
-                let candidate = affine.double();
-                assert_eq!(expected, candidate.eject_value());
-                assert_scope!(3, 0, 0, 0);
-            });
-            Circuit::reset();
-        }
-
-        // Public variables
-        for i in 0..ITERATIONS {
-            // Sample a random element.
-            let point = <Circuit as Environment>::Affine::rand(&mut test_rng());
-            let expected = point.to_projective().double();
-
-            let affine = Group::<Circuit>::new(Mode::Public, point);
-
-            Circuit::scope(&format!("Public {}", i), || {
-                let candidate = affine.double();
-                assert_eq!(expected, candidate.eject_value());
-                assert_scope!(1, 0, 5, 5);
-            });
-            Circuit::reset();
-        }
-
-        // Private variables
-        for i in 0..ITERATIONS {
-            // Sample a random element.
-
-            let point = <Circuit as Environment>::Affine::rand(&mut test_rng());
-            let expected = point.to_projective().double();
-
-            let affine = Group::<Circuit>::new(Mode::Private, point);
-
-            Circuit::scope(&format!("Private {}", i), || {
-                let candidate = affine.double();
-                assert_eq!(expected, candidate.eject_value());
-                assert_scope!(1, 0, 5, 5);
-            });
-            Circuit::reset();
-        }
+        check_double("Constant", Mode::Constant);
+        check_double("Public", Mode::Public);
+        check_double("Private", Mode::Private);
     }
 
     #[test]

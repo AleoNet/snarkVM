@@ -16,25 +16,25 @@
 
 use super::*;
 
-impl<E: Environment> ToBitsLE for Group<E> {
+impl<E: Environment> ToBitsBE for Group<E> {
     type Boolean = Boolean<E>;
 
-    /// Outputs the little-endian bit representation of `self.x` *without* trailing zeros.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        (&self).to_bits_le()
+    /// Outputs the big-endian bit representation of `self.x` *without* leading zeros.
+    fn to_bits_be(&self) -> Vec<Self::Boolean> {
+        (&self).to_bits_be()
     }
 }
 
-impl<E: Environment> ToBitsLE for &Group<E> {
+impl<E: Environment> ToBitsBE for &Group<E> {
     type Boolean = Boolean<E>;
 
-    /// Outputs the little-endian bit representation of `self.x` *without* trailing zeros.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        self.x.to_bits_le()
+    /// Outputs the big-endian bit representation of `self.x` *without* leading zeros.
+    fn to_bits_be(&self) -> Vec<Self::Boolean> {
+        self.x.to_bits_be()
     }
 }
 
-impl<E: Environment> Metadata<dyn ToBits<Boolean = Boolean<E>>> for Group<E> {
+impl<E: Environment> Metadata<dyn ToBitsBE<Boolean = Boolean<E>>> for Group<E> {
     type Case = CircuitType<Self>;
     type OutputType = CircuitType<Vec<Boolean<E>>>;
 
@@ -47,7 +47,7 @@ impl<E: Environment> Metadata<dyn ToBits<Boolean = Boolean<E>>> for Group<E> {
 
     fn output_type(case: Self::Case) -> Self::OutputType {
         match case {
-            CircuitType::Constant(constant) => CircuitType::from(constant.circuit().to_bits_le()),
+            CircuitType::Constant(constant) => CircuitType::from(constant.circuit().to_bits_be()),
             _ => CircuitType::Private,
         }
     }
@@ -61,7 +61,7 @@ mod tests {
 
     const ITERATIONS: u64 = 100;
 
-    fn check_to_bits_le(mode: Mode) {
+    fn check_to_bits_be(mode: Mode) {
         let expected_number_of_bits = <<Circuit as Environment>::BaseField as PrimeField>::size_in_bits();
 
         for i in 0..ITERATIONS {
@@ -70,10 +70,10 @@ mod tests {
             let candidate = Group::<Circuit>::new(mode, expected);
 
             Circuit::scope(&format!("{} {}", mode, i), || {
-                let result = candidate.to_bits_le();
+                let result = candidate.to_bits_be();
                 assert_eq!(expected_number_of_bits, result.len());
                 for (expected_bit, candidate_bit) in
-                    expected.to_x_coordinate().to_bits_le().iter().zip_eq(result.iter())
+                    expected.to_x_coordinate().to_bits_be().iter().zip_eq(result.iter())
                 {
                     assert_eq!(*expected_bit, candidate_bit.eject_value());
                 }
@@ -86,17 +86,17 @@ mod tests {
     }
 
     #[test]
-    fn test_to_bits_le_constant() {
-        check_to_bits_le(Mode::Constant);
+    fn test_to_bits_be_constant() {
+        check_to_bits_be(Mode::Constant);
     }
 
     #[test]
-    fn test_to_bits_le_public() {
-        check_to_bits_le(Mode::Public);
+    fn test_to_bits_be_public() {
+        check_to_bits_be(Mode::Public);
     }
 
     #[test]
-    fn test_to_bits_le_private() {
-        check_to_bits_le(Mode::Private);
+    fn test_to_bits_be_private() {
+        check_to_bits_be(Mode::Private);
     }
 }

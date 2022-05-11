@@ -114,43 +114,28 @@ impl<E: Environment> Metadata<dyn Add<Group<E>, Output = Group<E>>> for Group<E>
     type OutputType = CircuitType<Group<E>>;
 
     fn count(case: &Self::Case) -> Count {
-        // If `self` is constant *and* `self` is zero, then return `Count::zero()`.
-        if let CircuitType::Constant(constant) = &case.0 {
-            if constant.eject_value().is_zero() {
-                return Count::zero();
+        match case {
+            (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(4, 0, 0, 0),
+            (CircuitType::Constant(constant), _) | (_, CircuitType::Constant(constant)) => {
+                match constant.eject_value().is_zero() {
+                    true => Count::zero(),
+                    false => Count::is(2, 0, 3, 3),
+                }
             }
-        }
-        // If `other` is constant *and* `other` is zero, then return `Count::zero()`.
-        if let CircuitType::Constant(constant) = &case.1 {
-            if constant.eject_value().is_zero() {
-                return Count::zero();
-            }
-        }
-        // Otherwise, determine the count of `self` and `other`.
-        match (case.0.eject_mode(), case.1.eject_mode()) {
-            (Mode::Constant, Mode::Constant) => Count::is(4, 0, 0, 0),
-            (Mode::Constant, _) | (_, Mode::Constant) => Count::is(2, 0, 3, 3),
             (_, _) => Count::is(2, 0, 6, 6),
         }
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        // If `self` is constant *and* `self` is zero, then return `other`.
-        if let CircuitType::Constant(constant) = &case.0 {
-            if constant.eject_value().is_zero() {
-                return case.1;
+        match case {
+            (CircuitType::Constant(a), CircuitType::Constant(b)) => CircuitType::from(a.circuit().add(b.circuit())),
+            (CircuitType::Constant(constant), other_type) | (other_type, CircuitType::Constant(constant)) => {
+                match constant.eject_value().is_zero() {
+                    true => other_type,
+                    false => CircuitType::Private,
+                }
             }
-        }
-        // If `other` is constant *and* `other` is zero, then return `self`.
-        if let CircuitType::Constant(constant) = &case.1 {
-            if constant.eject_value().is_zero() {
-                return case.0;
-            }
-        }
-        // Otherwise, determine the mode of `self` and `other`.
-        match (case.0.eject_mode(), case.1.eject_mode()) {
-            (Mode::Constant, Mode::Constant) => CircuitType::from(case.0.circuit().add(case.1.circuit())),
-            (_, _) => CircuitType::Private,
+            _ => CircuitType::Private,
         }
     }
 }
@@ -204,6 +189,10 @@ mod tests {
             check_add(&name, &expected, &a, &b);
             let name = format!("AddAssign: a + b {}", i);
             check_add_assign(&name, &expected, &a, &b);
+            let name = format!("Add: a + 0 {}", i);
+            check_add(&name, &first, &a, &Group::<Circuit>::new(mode_b, <Circuit as Environment>::Affine::zero()));
+            let name = format!("Add: 0 + b {}", i);
+            check_add(&name, &second, &Group::<Circuit>::new(mode_a, <Circuit as Environment>::Affine::zero()), &b);
         }
     }
 

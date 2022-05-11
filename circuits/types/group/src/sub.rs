@@ -57,16 +57,16 @@ impl<E: Environment> Metadata<dyn Sub<Group<E>, Output = Group<E>>> for Group<E>
     type OutputType = CircuitType<Group<E>>;
 
     fn count(case: &Self::Case) -> Count {
-        match (case.0.eject_mode(), case.1.eject_mode()) {
-            (Mode::Constant, Mode::Constant) => Count::is(4, 0, 0, 0),
-            (Mode::Constant, _) | (_, Mode::Constant) => Count::is(2, 0, 3, 3),
+        match case {
+            (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(4, 0, 0, 0),
+            (CircuitType::Constant(_), _) | (_, CircuitType::Constant(_)) => Count::is(2, 0, 3, 3),
             (_, _) => Count::is(2, 0, 6, 6),
         }
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match (case.0.eject_mode(), case.1.eject_mode()) {
-            (Mode::Constant, Mode::Constant) => CircuitType::from(case.0.circuit().sub(case.1.circuit())),
+        match case {
+            (CircuitType::Constant(a), CircuitType::Constant(b)) => CircuitType::from(a.circuit().sub(b.circuit())),
             (_, _) => CircuitType::Private,
         }
     }
@@ -108,157 +108,65 @@ mod tests {
         });
     }
 
-    #[test]
-    fn test_constant_minus_constant() {
+    fn run_test(mode_a: Mode, mode_b: Mode) {
         for i in 0..ITERATIONS {
             let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
             let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
 
             let expected = (first.to_projective() - second.to_projective()).into();
-            let a = Group::<Circuit>::new(Mode::Constant, first);
-            let b = Group::<Circuit>::new(Mode::Constant, second);
+            let a = Group::<Circuit>::new(mode_a, first);
+            let b = Group::<Circuit>::new(mode_b, second);
 
             let name = format!("Sub: a - b {}", i);
             check_sub(&name, &expected, &a, &b);
             let name = format!("SubAssign: a - b {}", i);
             check_sub_assign(&name, &expected, &a, &b);
         }
+    }
+
+    #[test]
+    fn test_constant_minus_constant() {
+        run_test(Mode::Constant, Mode::Constant)
     }
 
     #[test]
     fn test_constant_minus_public() {
-        for i in 0..ITERATIONS {
-            let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
-            let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
-
-            let expected = (first.to_projective() - second.to_projective()).into();
-            let a = Group::<Circuit>::new(Mode::Constant, first);
-            let b = Group::<Circuit>::new(Mode::Public, second);
-
-            let name = format!("Sub: a - b {}", i);
-            check_sub(&name, &expected, &a, &b);
-            let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, &expected, &a, &b);
-        }
-    }
-
-    #[test]
-    fn test_public_minus_constant() {
-        for i in 0..ITERATIONS {
-            let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
-            let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
-
-            let expected = (first.to_projective() - second.to_projective()).into();
-            let a = Group::<Circuit>::new(Mode::Public, first);
-            let b = Group::<Circuit>::new(Mode::Constant, second);
-
-            let name = format!("Sub: a - b {}", i);
-            check_sub(&name, &expected, &a, &b);
-            let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, &expected, &a, &b);
-        }
+        run_test(Mode::Constant, Mode::Public)
     }
 
     #[test]
     fn test_constant_minus_private() {
-        for i in 0..ITERATIONS {
-            let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
-            let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
-
-            let expected = (first.to_projective() - second.to_projective()).into();
-            let a = Group::<Circuit>::new(Mode::Constant, first);
-            let b = Group::<Circuit>::new(Mode::Private, second);
-
-            let name = format!("Sub: a - b {}", i);
-            check_sub(&name, &expected, &a, &b);
-            let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, &expected, &a, &b);
-        }
+        run_test(Mode::Constant, Mode::Private)
     }
 
     #[test]
-    fn test_private_minus_constant() {
-        for i in 0..ITERATIONS {
-            let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
-            let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
-
-            let expected = (first.to_projective() - second.to_projective()).into();
-            let a = Group::<Circuit>::new(Mode::Private, first);
-            let b = Group::<Circuit>::new(Mode::Constant, second);
-
-            let name = format!("Sub: a - b {}", i);
-            check_sub(&name, &expected, &a, &b);
-            let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, &expected, &a, &b);
-        }
+    fn test_public_minus_constant() {
+        run_test(Mode::Public, Mode::Constant)
     }
 
     #[test]
     fn test_public_minus_public() {
-        for i in 0..ITERATIONS {
-            let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
-            let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
-
-            let expected = (first.to_projective() - second.to_projective()).into();
-            let a = Group::<Circuit>::new(Mode::Public, first);
-            let b = Group::<Circuit>::new(Mode::Public, second);
-
-            let name = format!("Sub: a - b {}", i);
-            check_sub(&name, &expected, &a, &b);
-            let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, &expected, &a, &b);
-        }
+        run_test(Mode::Public, Mode::Public)
     }
 
     #[test]
     fn test_public_minus_private() {
-        for i in 0..ITERATIONS {
-            let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
-            let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
+        run_test(Mode::Public, Mode::Private)
+    }
 
-            let expected = (first.to_projective() - second.to_projective()).into();
-            let a = Group::<Circuit>::new(Mode::Public, first);
-            let b = Group::<Circuit>::new(Mode::Private, second);
-
-            let name = format!("Sub: a - b {}", i);
-            check_sub(&name, &expected, &a, &b);
-            let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, &expected, &a, &b);
-        }
+    #[test]
+    fn test_private_minus_constant() {
+        run_test(Mode::Private, Mode::Constant)
     }
 
     #[test]
     fn test_private_minus_public() {
-        for i in 0..ITERATIONS {
-            let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
-            let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
-
-            let expected = (first.to_projective() - second.to_projective()).into();
-            let a = Group::<Circuit>::new(Mode::Private, first);
-            let b = Group::<Circuit>::new(Mode::Public, second);
-
-            let name = format!("Sub: a - b {}", i);
-            check_sub(&name, &expected, &a, &b);
-            let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, &expected, &a, &b);
-        }
+        run_test(Mode::Private, Mode::Public)
     }
 
     #[test]
     fn test_private_minus_private() {
-        for i in 0..ITERATIONS {
-            let first = <Circuit as Environment>::Affine::rand(&mut test_rng());
-            let second = <Circuit as Environment>::Affine::rand(&mut test_rng());
-
-            let expected = (first.to_projective() - second.to_projective()).into();
-            let a = Group::<Circuit>::new(Mode::Private, first);
-            let b = Group::<Circuit>::new(Mode::Private, second);
-
-            let name = format!("Sub: a - b {}", i);
-            check_sub(&name, &expected, &a, &b);
-            let name = format!("SubAssign: a - b {}", i);
-            check_sub_assign(&name, &expected, &a, &b);
-        }
+        run_test(Mode::Private, Mode::Private)
     }
 
     #[test]

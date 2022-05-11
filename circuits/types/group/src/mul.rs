@@ -188,16 +188,16 @@ impl<E: Environment> Metadata<dyn Mul<Scalar<E>, Output = Group<E>>> for Group<E
 
     fn count(case: &Self::Case) -> Count {
         match case {
-            (CircuitType::Constant(_), CircuitType::Constant(_)) => {
-                let scalar = case.1.eject_value();
+            (CircuitType::Constant(a), CircuitType::Constant(b)) => {
+                let scalar = b.eject_value();
                 let num_nonzero_bits = scalar.to_repr().to_biguint().bits();
                 let num_constant =
                     (3 /* DOUBLE private */ + 4/* public ADD private */ + 0/* TERNARY */) * (num_nonzero_bits - 1); // Typically around 760.
                 Count::is(num_constant, 0, 0, 0)
             }
             (CircuitType::Constant(_), _) => Count::is(750, 0, 2500, 2500),
-            (_, CircuitType::Constant(_)) => {
-                let scalar = case.1.eject_value();
+            (_, CircuitType::Constant(constant)) => {
+                let scalar = constant.eject_value();
                 let num_nonzero_bits = scalar.to_repr().to_biguint().bits();
                 let num_constant =
                     (1 /* DOUBLE private */ + 2/* public ADD private */ + 0/* TERNARY */) * (num_nonzero_bits - 1); // Typically around 760.
@@ -213,9 +213,7 @@ impl<E: Environment> Metadata<dyn Mul<Scalar<E>, Output = Group<E>>> for Group<E
 
     fn output_type(case: Self::Case) -> Self::OutputType {
         match case {
-            (CircuitType::Constant(_), CircuitType::Constant(_)) => {
-                CircuitType::from(case.0.circuit().mul(case.1.circuit()))
-            }
+            (CircuitType::Constant(a), CircuitType::Constant(b)) => CircuitType::from(a.circuit().mul(b.circuit())),
             _ => CircuitType::Private,
         }
     }
@@ -260,18 +258,10 @@ mod tests {
         Circuit::reset();
     }
 
-    #[allow(clippy::identity_op)]
-    #[test]
-    fn test_constant_times_scalar_constant() {
-        use snarkvm_utilities::BigInteger;
-
+    fn run_test(mode_a: Mode, mode_b: Mode) {
         for i in 0..ITERATIONS {
             let base: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
             let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
-
-            let num_nonzero_bits = scalar.to_repr().to_biguint().bits();
-            let num_constant =
-                (3 /* DOUBLE private */ + 4/* public ADD private */ + 0/* TERNARY */) * (num_nonzero_bits - 1); // Typically around 760.
 
             let expected = (base * scalar).into();
             let a = Group::<Circuit>::new(Mode::Constant, base);
@@ -281,149 +271,68 @@ mod tests {
             check_mul(&name, &expected, &a, &b);
             let name = format!("MulAssign: a * b {}", i);
             check_mul_assign(&name, &expected, &a, &b);
+
+            // Check zero cases.
+            let affine_zero = <Circuit as Environment>::Affine::zero();
+            let scalar_field_zero = <Circuit as Environment>::ScalarField::zero();
+
+            let group_zero = Group::<Circuit>::new(mode_a, affine_zero);
+            let scalar_zero = Scalar::<Circuit>::new(mode_b, scalar_field_zero);
+
+            let name = format!("ZeroScalar: a * 0 {}", i);
+            check_mul(&name, &affine_zero, &a, &scalar_zero);
+            let name = format!("ZeroScalarAssign: a * 0 {}", i);
+            check_mul_assign(&name, &affine_zero, &a, &scalar_zero);
+            let name = format!("ZeroGroup: 0 * b {}", i);
+            check_mul(&name, &affine_zero, &group_zero, &b);
+            let name = format!("ZeroScalarAssign: a * 0 {}", i);
+            check_mul_assign(&name, &affine_zero, &group_zero, &b);
         }
     }
 
     #[test]
-    fn test_constant_times_scalar_public() {
-        for i in 0..ITERATIONS {
-            let base: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
-
-            let expected = (base * scalar).into();
-            let a = Group::<Circuit>::new(Mode::Constant, base);
-            let b = Scalar::<Circuit>::new(Mode::Public, scalar);
-
-            let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b);
-            let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b);
-        }
+    fn test_constant_times_constant() {
+        run_test(Mode::Constant, Mode::Constant);
     }
 
     #[test]
-    fn test_constant_times_scalar_private() {
-        for i in 0..ITERATIONS {
-            let base: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
-
-            let expected = (base * scalar).into();
-            let a = Group::<Circuit>::new(Mode::Constant, base);
-            let b = Scalar::<Circuit>::new(Mode::Private, scalar);
-
-            let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b);
-            let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b);
-        }
-    }
-
-    #[allow(clippy::identity_op)]
-    #[test]
-    fn test_public_times_scalar_constant() {
-        use snarkvm_utilities::BigInteger;
-
-        for i in 0..ITERATIONS {
-            let base: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
-
-            let expected = (base * scalar).into();
-            let a = Group::<Circuit>::new(Mode::Public, base);
-            let b = Scalar::<Circuit>::new(Mode::Constant, scalar);
-
-            let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b);
-            let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b);
-        }
-    }
-
-    #[allow(clippy::identity_op)]
-    #[test]
-    fn test_private_times_scalar_constant() {
-        use snarkvm_utilities::BigInteger;
-
-        for i in 0..ITERATIONS {
-            let base: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
-
-            let expected = (base * scalar).into();
-            let a = Group::<Circuit>::new(Mode::Private, base);
-            let b = Scalar::<Circuit>::new(Mode::Constant, scalar);
-
-            let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b);
-            let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b);
-        }
+    fn test_constant_times_public() {
+        run_test(Mode::Constant, Mode::Public);
     }
 
     #[test]
-    fn test_public_times_scalar_public() {
-        for i in 0..ITERATIONS {
-            let base: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
-
-            let expected = (base * scalar).into();
-            let a = Group::<Circuit>::new(Mode::Public, base);
-            let b = Scalar::<Circuit>::new(Mode::Public, scalar);
-
-            let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b);
-            let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b);
-        }
+    fn test_constant_times_private() {
+        run_test(Mode::Constant, Mode::Private);
     }
 
     #[test]
-    fn test_public_times_scalar_private() {
-        for i in 0..ITERATIONS {
-            let base: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
-
-            let expected = (base * scalar).into();
-            let a = Group::<Circuit>::new(Mode::Public, base);
-            let b = Scalar::<Circuit>::new(Mode::Private, scalar);
-
-            let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b);
-            let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b);
-        }
+    fn test_public_times_constant() {
+        run_test(Mode::Public, Mode::Constant);
     }
 
     #[test]
-    fn test_private_times_scalar_public() {
-        for i in 0..ITERATIONS {
-            let base: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
-
-            let expected = (base * scalar).into();
-            let a = Group::<Circuit>::new(Mode::Private, base);
-            let b = Scalar::<Circuit>::new(Mode::Public, scalar);
-
-            let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b);
-            let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b);
-        }
+    fn test_public_times_public() {
+        run_test(Mode::Public, Mode::Public);
     }
 
     #[test]
-    fn test_private_times_scalar_private() {
-        for i in 0..ITERATIONS {
-            let base: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
+    fn test_public_times_private() {
+        run_test(Mode::Public, Mode::Private);
+    }
 
-            let expected = (base * scalar).into();
-            let a = Group::<Circuit>::new(Mode::Private, base);
-            let b = Scalar::<Circuit>::new(Mode::Private, scalar);
+    #[test]
+    fn test_private_times_constant() {
+        run_test(Mode::Private, Mode::Constant);
+    }
 
-            let name = format!("Mul: a * b {}", i);
-            check_mul(&name, &expected, &a, &b);
-            let name = format!("MulAssign: a * b {}", i);
-            check_mul_assign(&name, &expected, &a, &b);
-        }
+    #[test]
+    fn test_private_times_public() {
+        run_test(Mode::Private, Mode::Public);
+    }
+
+    #[test]
+    fn test_private_times_private() {
+        run_test(Mode::Private, Mode::Private);
     }
 
     #[test]

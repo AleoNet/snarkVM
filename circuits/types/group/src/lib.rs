@@ -24,6 +24,7 @@ pub mod double;
 pub mod equal;
 pub mod mul;
 pub mod neg;
+pub mod not_equal;
 pub mod sub;
 pub mod ternary;
 

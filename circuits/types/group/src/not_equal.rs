@@ -16,22 +16,23 @@
 
 use super::*;
 
-impl<E: Environment> Equal<Self> for Group<E> {
+impl<E: Environment> NotEqual<Self> for Group<E> {
     type Output = Boolean<E>;
 
     ///
-    /// Returns `true` if `self` and `other` are equal.
+    /// Returns `true` if `self` and `other` are *not* equal.
+    ///
+    /// This method constructs a boolean that indicates if
+    /// `self` and `other ` are *not* equal to each other.
     ///
     /// This method costs 8 constraints.
     ///
-    fn is_equal(&self, other: &Self) -> Self::Output {
-        let is_x_eq = self.x.is_equal(&other.x);
-        let is_y_eq = self.y.is_equal(&other.y);
-        is_x_eq & is_y_eq
+    fn is_not_equal(&self, other: &Self) -> Self::Output {
+        !self.is_equal(other)
     }
 }
 
-impl<E: Environment> Metadata<dyn Equal<Group<E>, Output = Boolean<E>>> for Group<E> {
+impl<E: Environment> Metadata<dyn NotEqual<Group<E>, Output = Boolean<E>>> for Group<E> {
     type Case = (CircuitType<Self>, CircuitType<Self>);
     type OutputType = CircuitType<Boolean<E>>;
 
@@ -60,14 +61,14 @@ mod tests {
 
     const ITERATIONS: u64 = 100;
 
-    fn check_is_equal(name: &str, expected: bool, a: &Group<Circuit>, b: &Group<Circuit>) {
+    fn check_is_not_equal(name: &str, expected: bool, a: &Group<Circuit>, b: &Group<Circuit>) {
         Circuit::scope(name, || {
-            let candidate = a.is_equal(b);
-            assert_eq!(expected, candidate.eject_value(), "({} == {})", a.eject_value(), b.eject_value());
+            let candidate = a.is_not_equal(b);
+            assert_eq!(expected, candidate.eject_value(), "({} != {})", a.eject_value(), b.eject_value());
 
             let case = (CircuitType::from(a), CircuitType::from(b));
-            assert_count!(Equal(Group, Group) => Boolean, &case);
-            assert_output_type!(Equal(Group, Group) => Boolean, case, candidate);
+            assert_count!(NotEqual(Group, Group) => Boolean, &case);
+            assert_output_type!(NotEqual(Group, Group) => Boolean, case, candidate);
         });
     }
 
@@ -79,53 +80,53 @@ mod tests {
             let a = Group::<Circuit>::new(mode_a, first);
             let b = Group::<Circuit>::new(mode_b, second);
 
-            let name = format!("Not Equal: a == b {}", i);
-            check_is_equal(&name, first == second, &a, &b);
+            let name = format!("Not Equal: a != b {}", i);
+            check_is_not_equal(&name, first != second, &a, &b);
         }
     }
 
     #[test]
-    fn test_constant_is_equal_to_constant() {
+    fn test_constant_is_not_equal_to_constant() {
         run_test(Mode::Constant, Mode::Constant);
     }
 
     #[test]
-    fn test_constant_is_equal_to_public() {
+    fn test_constant_is_not_equal_to_public() {
         run_test(Mode::Constant, Mode::Public);
     }
 
     #[test]
-    fn test_constant_is_equal_to_private() {
+    fn test_constant_is_not_equal_to_private() {
         run_test(Mode::Constant, Mode::Private);
     }
 
     #[test]
-    fn test_public_is_equal_to_constant() {
+    fn test_public_is_not_equal_to_constant() {
         run_test(Mode::Public, Mode::Constant);
     }
 
     #[test]
-    fn test_private_is_equal_to_constant() {
+    fn test_private_is_not_equal_to_constant() {
         run_test(Mode::Private, Mode::Constant);
     }
 
     #[test]
-    fn test_public_is_equal_to_public() {
+    fn test_public_is_not_equal_to_public() {
         run_test(Mode::Public, Mode::Public);
     }
 
     #[test]
-    fn test_public_is_equal_to_private() {
+    fn test_public_is_not_equal_to_private() {
         run_test(Mode::Public, Mode::Private);
     }
 
     #[test]
-    fn test_private_is_equal_to_public() {
+    fn test_private_is_not_equal_to_public() {
         run_test(Mode::Private, Mode::Public);
     }
 
     #[test]
-    fn test_private_is_equal_to_private() {
+    fn test_private_is_not_equal_to_private() {
         run_test(Mode::Private, Mode::Private);
     }
 }

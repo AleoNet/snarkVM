@@ -16,10 +16,12 @@
 
 use super::*;
 
-pub mod from_bits;
+pub mod from_bits_be;
+pub mod from_bits_le;
 pub mod from_x_coordinate;
 pub mod from_xy_coordinates;
-pub mod to_bits;
+pub mod to_bits_be;
+pub mod to_bits_le;
 pub mod to_x_coordinate;
 pub mod to_y_coordinate;
 pub mod zero;

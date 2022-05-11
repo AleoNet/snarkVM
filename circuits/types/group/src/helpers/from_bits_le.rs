@@ -16,19 +16,19 @@
 
 use super::*;
 
-impl<E: Environment> FromBitsBE for Group<E> {
+impl<E: Environment> FromBitsLE for Group<E> {
     type Boolean = Boolean<E>;
 
-    /// Initializes a new group element from the x-coordinate as a list of big-endian bits *without* leading zeros.
-    fn from_bits_be(bits_be: &[Self::Boolean]) -> Self {
+    /// Initializes a new group element from the x-coordinate as a list of little-endian bits *without* trailing zeros.
+    fn from_bits_le(bits_le: &[Self::Boolean]) -> Self {
         // Derive the x-coordinate for the affine group element.
-        let x = Field::from_bits_be(bits_be);
+        let x = Field::from_bits_le(bits_le);
         // Recover the y-coordinate and return the affine group element.
         Self::from_x_coordinate(x)
     }
 }
 
-impl<E: Environment> Metadata<dyn FromBitsBE<Boolean = Boolean<E>>> for Group<E> {
+impl<E: Environment> Metadata<dyn FromBitsLE<Boolean = Boolean<E>>> for Group<E> {
     type Case = CircuitType<Vec<Boolean<E>>>;
     type OutputType = CircuitType<Self>;
 
@@ -41,7 +41,7 @@ impl<E: Environment> Metadata<dyn FromBitsBE<Boolean = Boolean<E>>> for Group<E>
 
     fn output_type(case: Self::Case) -> Self::OutputType {
         match case {
-            CircuitType::Constant(constant) => CircuitType::from(Group::from_bits_be(constant.circuit())),
+            CircuitType::Constant(constant) => CircuitType::from(Group::from_bits_le(constant.circuit())),
             _ => CircuitType::Private,
         }
     }
@@ -55,7 +55,7 @@ mod tests {
 
     const ITERATIONS: u64 = 100;
 
-    fn check_from_bits_be(mode: Mode) {
+    fn check_from_bits_le(mode: Mode) {
         for i in 0..ITERATIONS {
             // Sample a random element.
             let expected: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
@@ -65,26 +65,26 @@ mod tests {
                 let candidate = Group::<Circuit>::from_bits_le(&given_bits);
                 assert_eq!(expected, candidate.eject_value());
 
-                let case = CircuitType::from(given_bits);
-                assert_count!(Group<Circuit>, FromBitsBE<Boolean = Boolean<Circuit>>, &case);
-                assert_output_type!(Group<Circuit>, FromBitsBE<Boolean = Boolean<Circuit>>, case, candidate);
+                let case = CircuitType::from(&given_bits);
+                assert_count!(Group<Circuit>, FromBitsLE<Boolean = Boolean<Circuit>>, &case);
+                assert_output_type!(Group<Circuit>, FromBitsLE<Boolean = Boolean<Circuit>>, case, candidate);
             });
             Circuit::reset();
         }
     }
 
     #[test]
-    fn test_from_bits_be_constant() {
-        check_from_bits_be(Mode::Constant);
+    fn test_from_bits_le_constant() {
+        check_from_bits_le(Mode::Constant);
     }
 
     #[test]
-    fn test_from_bits_be_public() {
-        check_from_bits_be(Mode::Public);
+    fn test_from_bits_le_public() {
+        check_from_bits_le(Mode::Public);
     }
 
     #[test]
-    fn test_from_bits_be_private() {
-        check_from_bits_be(Mode::Private);
+    fn test_from_bits_le_private() {
+        check_from_bits_le(Mode::Private);
     }
 }
