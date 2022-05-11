@@ -417,6 +417,12 @@ __device__ void blst_p1_add_projective_to_projective(blst_p1 *out, const blst_p1
     blst_fp_mul(s2, p2->Y, p1->Z);
     blst_fp_mul(s2, s2, z1z1);
 
+    if (is_blst_fp_eq(u1, u2) && is_blst_fp_eq(s1, s2)){
+        // The two points are equal, so we double
+        blst_p1_double(out, p1);
+        return;
+    }
+
     // H = U2-U1
     blst_fp h;
     blst_fp_sub(h, u2, u1);
