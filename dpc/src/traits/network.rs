@@ -24,6 +24,7 @@ use crate::{
     ValueBalanceCommitment,
 };
 use snarkvm_algorithms::prelude::*;
+use snarkvm_circuits::{Commit, Hash as HashCircuit, PRF as PRFCircuit};
 use snarkvm_curves::{AffineCurve, PairingEngine, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{Field, PrimeField, ToConstraintField};
 use snarkvm_gadgets::{
@@ -218,6 +219,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type BlockHashCRH: CRH<Output = Self::InnerScalarField>;
     type BlockHashCRHGadget: CRHGadget<Self::BlockHashCRH, Self::InnerScalarField>;
     type BlockHash: Bech32Locator<<Self::BlockHashCRH as CRH>::Output>;
+    type BlockHashCRHCircuit: HashCircuit;
 
     /// Masked Merkle scheme for the block header root on Proof of Succinct Work (PoSW). Invoked only over `Self::InnerScalarField`.
     type BlockHeaderRootCRH: CRH<Output = Self::InnerScalarField>;
@@ -226,22 +228,27 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type BlockHeaderRootTwoToOneCRHGadget: MaskedCRHGadget<<Self::BlockHeaderRootParameters as MerkleParameters>::TwoToOneCRH, Self::InnerScalarField, OutputGadget = <Self::PoSWMaskPRFGadget as PRFGadget<Self::PoSWMaskPRF, Self::InnerScalarField>>::Seed>;
     type BlockHeaderRootParameters: MaskedMerkleParameters<LeafCRH= Self::BlockHeaderRootCRH, TwoToOneCRH= Self::BlockHeaderRootTwoToOneCRH>;
     type BlockHeaderRoot: Bech32Locator<<Self::BlockHeaderRootCRH as CRH>::Output>;
+    type BlockHeaderRootCRHCircuit: HashCircuit;
+    type BlockHeaderRootTwoToOneCRHCircuit: HashCircuit;
 
     /// Commitment scheme for records. Invoked only over `Self::InnerScalarField`.
     type CommitmentScheme: CRH<Output = Self::InnerScalarField>;
     type CommitmentGadget: CRHGadget<Self::CommitmentScheme, Self::InnerScalarField>;
     type Commitment: Bech32Locator<<Self::CommitmentScheme as CRH>::Output>;
+    type CommitmentCircuit: HashCircuit;
 
     /// CRH for deriving function IDs. Invoked only over `Self::OuterScalarField`.
     type FunctionIDCRH: CRH<Output = Self::InnerBaseField>;
     type FunctionIDCRHGadget: CRHGadget<Self::FunctionIDCRH, Self::InnerBaseField>;
     type FunctionID: Bech32Locator<<Self::FunctionIDCRH as CRH>::Output>;
+    type FunctionIDCRHCircuit: HashCircuit;
 
     /// Crypto hash for deriving the function inputs hash. Invoked only over `Self::InnerScalarField`.
     type FunctionInputsCRH: CRH<Output = Self::InnerScalarField>;
     type FunctionInputsCRHGadget: CRHGadget<Self::FunctionInputsCRH, Self::InnerScalarField>;
     type FunctionInputsHash: Bech32Locator<<Self::FunctionInputsCRH as CRH>::Output>;
-    
+    type FunctionInputsCRHCircuit: HashCircuit;
+
     /// CRH for hash of the `Self::InputSNARK` verifying keys. Invoked only over `Self::OuterScalarField`.
     type InputCircuitIDCRH: CRH<Output = Self::InnerBaseField>;
     type InputCircuitID: Bech32Locator<<Self::InputCircuitIDCRH as CRH>::Output>;
@@ -257,6 +264,8 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type LedgerRootTwoToOneCRHGadget: CRHGadget<Self::LedgerRootTwoToOneCRH, Self::InnerScalarField>;
     type LedgerRootParameters: MerkleParameters<LeafCRH= Self::LedgerRootCRH, TwoToOneCRH= Self::LedgerRootTwoToOneCRH>;
     type LedgerRoot: Bech32Locator<<Self::LedgerRootCRH as CRH>::Output>;
+    type LedgerRootCRHCircuit: HashCircuit;
+    type LedgerRootTwoToOneCRHCircuit: HashCircuit;
 
     /// Schemes for PoSW. Invoked only over `Self::InnerScalarField`.
     type PoSWMaskPRF: PRF<Input = Vec<Self::InnerScalarField>, Seed = Self::InnerScalarField, Output = Self::InnerScalarField>;
@@ -284,6 +293,7 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
         Input = Vec<<Self::CommitmentGadget as CRHGadget<Self::CommitmentScheme, Self::InnerScalarField>>::OutputGadget>
     >;
     type SerialNumber: Bech32Locator<<Self::SerialNumberPRF as PRF>::Output>;
+    type SerialNumberPRFCircuit: PRFCircuit;
 
     /// Merkle scheme for computing the block transactions root. Invoked only over `Self::InnerScalarField`.
     type TransactionsRootCRH: CRH<Output = Self::InnerScalarField>;
@@ -292,6 +302,8 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type TransactionsRootTwoToOneCRHGadget: CRHGadget<Self::TransactionsRootTwoToOneCRH, Self::InnerScalarField>;
     type TransactionsRootParameters: MerkleParameters<LeafCRH= Self::TransactionsRootCRH, TwoToOneCRH= Self::TransactionsRootTwoToOneCRH>;
     type TransactionsRoot: Bech32Locator<<Self::TransactionsRootCRH as CRH>::Output>;
+    type TransactionsRootCRHCircuit: HashCircuit;
+    type TransactionsRootTwoToOneCRHCircuit: HashCircuit;
 
     /// Merkle scheme for computing the transaction ID. Invoked only over `Self::InnerScalarField`.
     type TransactionIDCRH: CRH<Output = Self::InnerScalarField>;
@@ -300,7 +312,9 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type TransactionIDTwoToOneCRHGadget: CRHGadget<Self::TransactionIDTwoToOneCRH, Self::InnerScalarField>;
     type TransactionIDParameters: MerkleParameters<LeafCRH= Self::TransactionIDCRH, TwoToOneCRH= Self::TransactionIDTwoToOneCRH>;
     type TransactionID: Bech32Locator<<Self::TransactionIDCRH as CRH>::Output>;
-
+    type TransactionIDCRHCircuit: HashCircuit;
+    type TransactionIDTwoToOneCRHCircuit: HashCircuit;
+    
     /// Merkle scheme for computing the transition ID. Invoked only over `Self::InnerScalarField`.
     type TransitionIDCRH: CRH<Output = Self::InnerScalarField>;
     type TransitionIDCRHGadget: CRHGadget<Self::TransitionIDCRH, Self::InnerScalarField, OutputGadget=<Self::TransitionIDTwoToOneCRHGadget as CRHGadget<Self::TransitionIDTwoToOneCRH, Self::InnerScalarField>>::OutputGadget>;
@@ -308,12 +322,15 @@ pub trait Network: 'static + Copy + Clone + Debug + Default + PartialEq + Eq + S
     type TransitionIDTwoToOneCRHGadget: CRHGadget<Self::TransitionIDTwoToOneCRH, Self::InnerScalarField>;
     type TransitionIDParameters: MerkleParameters<LeafCRH= Self::TransitionIDCRH, TwoToOneCRH= Self::TransitionIDTwoToOneCRH>;
     type TransitionID: Bech32Locator<<Self::TransitionIDCRH as CRH>::Output>;
+    type TransitionIDCRHCircuit: HashCircuit;
+    type TransitionIDTwoToOneCRHCircuit: HashCircuit;
 
     /// Commitment scheme for value commitments. Invoked only over `Self::InnerScalarField`.
     type ValueCommitmentScheme: CommitmentScheme<Randomness = Self::ProgramScalarField, Output = Self::ProgramAffineCurve>;
     type ValueCommitmentGadget: CommitmentGadget<Self::ValueCommitmentScheme, Self::InnerScalarField, OutputGadget = Self::ProgramAffineCurveGadget>;
     type ValueCommitment: Bech32Object<Self::ProgramAffineCurve>;
     type ValueBalanceCommitment: Bech32Object<ValueBalanceCommitment<Self>>;
+    type ValueCommitmentCircuit: Commit;
 
     fn account_encryption_scheme() -> &'static Self::AccountEncryptionScheme;
     fn account_signature_scheme() -> &'static Self::AccountSignatureScheme;
