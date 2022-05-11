@@ -48,7 +48,7 @@ impl<E: Environment> Metadata<dyn ToField<Field = Field<E>>> for Scalar<E> {
 
     fn output_type(case: Self::Case) -> Self::OutputType {
         match case {
-            CircuitType::Constant(_) => CircuitType::from(case.circuit().to_field()),
+            CircuitType::Constant(constant) => CircuitType::from(constant.circuit().to_field()),
             _ => CircuitType::Private,
         }
     }

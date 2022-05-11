@@ -16,9 +16,7 @@
 
 use super::*;
 
-// TODO: Split into separate files to be consistent with Metadata.
-
-impl<E: Environment> Compare<Scalar<E>> for Scalar<E> {
+impl<E: Environment> LessThan<Scalar<E>> for Scalar<E> {
     type Output = Boolean<E>;
 
     /// Returns `true` if `self` is less than `other`.
@@ -41,20 +39,32 @@ impl<E: Environment> Compare<Scalar<E>> for Scalar<E> {
 
         is_less_than
     }
+}
 
-    /// Returns `true` if `self` is greater than `other`.
-    fn is_greater_than(&self, other: &Self) -> Self::Output {
-        other.is_less_than(self)
+impl<E: Environment> Metadata<dyn LessThan<Scalar<E>, Output = Boolean<E>>> for Scalar<E> {
+    type Case = (CircuitType<Self>, CircuitType<Self>);
+    type OutputType = CircuitType<Boolean<E>>;
+
+    fn count(case: &Self::Case) -> Count {
+        match case {
+            (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(0, 0, 0, 0),
+            (CircuitType::Public, CircuitType::Constant(_)) | (CircuitType::Constant(_), CircuitType::Public) => {
+                Count::is(0, 473, 0, 473)
+            }
+            (CircuitType::Private, CircuitType::Constant(_)) | (CircuitType::Constant(_), CircuitType::Private) => {
+                Count::is(0, 0, 503, 503)
+            }
+            _ => Count::is(0, 0, 1250, 1250),
+        }
     }
 
-    /// Returns `true` if `self` is less than or equal to `other`.
-    fn is_less_than_or_equal(&self, other: &Self) -> Self::Output {
-        other.is_greater_than_or_equal(self)
-    }
-
-    /// Returns `true` if `self` is greater than or equal to `other`.
-    fn is_greater_than_or_equal(&self, other: &Self) -> Self::Output {
-        !self.is_less_than(other)
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        match case {
+            (CircuitType::Constant(a), CircuitType::Constant(b)) => {
+                CircuitType::from(a.circuit().is_less_than(b.circuit()))
+            }
+            _ => CircuitType::Private,
+        }
     }
 }
 
@@ -66,14 +76,7 @@ mod tests {
 
     const ITERATIONS: u64 = 100;
 
-    fn check_is_less_than(
-        mode_a: Mode,
-        mode_b: Mode,
-        num_constants: u64,
-        num_public: u64,
-        num_private: u64,
-        num_constraints: u64,
-    ) {
+    fn check_is_less_than(mode_a: Mode, mode_b: Mode) {
         for i in 0..ITERATIONS {
             // Sample a random element `a`.
             let expected_a: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
@@ -87,7 +90,10 @@ mod tests {
             Circuit::scope(&format!("{} {} {}", mode_a, mode_b, i), || {
                 let candidate = candidate_a.is_less_than(&candidate_b);
                 assert_eq!(expected_a < expected_b, candidate.eject_value());
-                assert_scope!(num_constants, num_public, num_private, num_constraints);
+
+                let case = (CircuitType::from(candidate_a), CircuitType::from(candidate_b));
+                assert_count!(LessThan(Scalar, Scalar) => Boolean, &case);
+                assert_output_type!(LessThan(Scalar, Scalar) => Boolean, case, candidate);
             });
             Circuit::reset();
         }
@@ -95,37 +101,46 @@ mod tests {
 
     #[test]
     fn test_constant_is_less_than_constant() {
-        check_is_less_than(Mode::Constant, Mode::Constant, 0, 0, 0, 0);
+        check_is_less_than(Mode::Constant, Mode::Constant);
     }
 
-    // TODO (howardwu): These variate in num_constraints.
-    // #[test]
-    // fn test_constant_is_less_than_public() {
-    //     check_is_less_than(Mode::Constant, Mode::Public, 0, 473, 0, 473);
-    // }
-    //
-    // #[test]
-    // fn test_constant_is_less_than_private() {
-    //     check_is_less_than(Mode::Constant, Mode::Private, 0, 0, 503, 503);
-    // }
+    #[test]
+    fn test_constant_is_less_than_public() {
+        check_is_less_than(Mode::Constant, Mode::Public);
+    }
+
+    #[test]
+    fn test_constant_is_less_than_private() {
+        check_is_less_than(Mode::Constant, Mode::Private);
+    }
+
+    #[test]
+    fn test_public_is_less_than_constant() {
+        check_is_less_than(Mode::Public, Mode::Constant);
+    }
 
     #[test]
     fn test_public_is_less_than_public() {
-        check_is_less_than(Mode::Public, Mode::Public, 0, 0, 1250, 1250);
+        check_is_less_than(Mode::Public, Mode::Public);
     }
 
     #[test]
     fn test_public_is_less_than_private() {
-        check_is_less_than(Mode::Public, Mode::Private, 0, 0, 1250, 1250);
+        check_is_less_than(Mode::Public, Mode::Private);
+    }
+
+    #[test]
+    fn test_private_is_less_than_constant() {
+        check_is_less_than(Mode::Private, Mode::Constant);
     }
 
     #[test]
     fn test_private_is_less_than_public() {
-        check_is_less_than(Mode::Private, Mode::Public, 0, 0, 1250, 1250);
+        check_is_less_than(Mode::Private, Mode::Public);
     }
 
     #[test]
     fn test_private_is_less_than_private() {
-        check_is_less_than(Mode::Private, Mode::Private, 0, 0, 1250, 1250);
+        check_is_less_than(Mode::Private, Mode::Private);
     }
 }

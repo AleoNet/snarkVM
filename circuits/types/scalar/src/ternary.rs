@@ -37,24 +37,21 @@ impl<E: Environment> Metadata<dyn Ternary<Boolean = Boolean<E>, Output = Scalar<
     type OutputType = CircuitType<Self>;
 
     fn count(case: &Self::Case) -> Count {
-        match (case.0.eject_mode(), case.1.eject_mode(), case.2.eject_mode()) {
-            (Mode::Constant, _, _)
-            | (Mode::Public, Mode::Constant, Mode::Constant)
-            | (Mode::Private, Mode::Constant, Mode::Constant) => Count::is(0, 0, 0, 0),
+        match case {
+            (CircuitType::Constant(_), _, _) | (_, CircuitType::Constant(_), CircuitType::Constant(_)) => {
+                Count::is(0, 0, 0, 0)
+            }
             _ => Count::is(0, 0, 251, 251),
         }
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match case.0.is_constant() {
-            true => match &case.0 {
-                CircuitType::Constant(constant) => match constant.eject_value() {
-                    true => case.1,
-                    false => case.2,
-                },
-                _ => E::halt("The constant condition is required to determine output mode."),
+        match case {
+            (CircuitType::Constant(constant), first_type, second_type) => match constant.eject_value() {
+                true => first_type,
+                false => second_type,
             },
-            false => CircuitType::Private,
+            _ => CircuitType::Private,
         }
     }
 }
@@ -65,216 +62,171 @@ mod tests {
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
+    fn check_ternary(
+        name: &str,
+        expected: <Circuit as Environment>::ScalarField,
+        condition: Boolean<Circuit>,
+        a: Scalar<Circuit>,
+        b: Scalar<Circuit>,
+    ) {
+        Circuit::scope(name, || {
+            let case = format!("({} ? {} : {})", condition.eject_value(), a.eject_value(), b.eject_value());
+            let candidate = Scalar::ternary(&condition, &a, &b);
+            assert_eq!(expected, candidate.eject_value(), "{case}");
+
+            let case = (CircuitType::from(condition), CircuitType::from(a), CircuitType::from(b));
+            assert_count!(Ternary(Boolean, Scalar, Scalar) => Scalar, &case);
+            assert_output_type!(Ternary(Boolean, Scalar, Scalar) => Scalar, case, candidate);
+        });
+    }
+
+    fn run_test(mode_condition: Mode, mode_a: Mode, mode_b: Mode) {
+        for flag in [true, false] {
+            let first: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
+            let second: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
+
+            let expected = if flag { first } else { second };
+            let condition = Boolean::<Circuit>::new(mode_condition, flag);
+            let a = Scalar::<Circuit>::new(mode_a, first);
+            let b = Scalar::<Circuit>::new(mode_b, second);
+
+            let name = format!("{} ? {} : {}", flag, mode_a, mode_b);
+            check_ternary(&name, expected, condition, a, b);
+        }
+    }
+
     #[test]
-    fn test_ternary() {
-        // Constant ? Constant : Constant
-        {
-            let a = Scalar::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut test_rng()));
-            let b = Scalar::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut test_rng()));
+    fn test_if_constant_then_constant_else_constant() {
+        run_test(Mode::Constant, Mode::Constant, Mode::Constant);
+    }
 
-            let condition = Boolean::constant(true);
-            Circuit::scope("Constant(true) ? Constant : Constant", || {
-                let output = Scalar::ternary(&condition, &a, &b);
+    #[test]
+    fn test_if_constant_then_constant_else_public() {
+        run_test(Mode::Constant, Mode::Constant, Mode::Public);
+    }
 
-                let case = (CircuitType::from(condition), CircuitType::from(&a), CircuitType::from(&b));
-                assert_count!(Ternary(Boolean, Scalar, Scalar) => Scalar, &case);
-                assert_output_type!(Ternary(Boolean, Scalar, Scalar) => Scalar, case, output);
+    #[test]
+    fn test_if_constant_then_constant_else_private() {
+        run_test(Mode::Constant, Mode::Constant, Mode::Private);
+    }
 
-                assert!(output.is_equal(&a).eject_value());
-                assert!(!output.is_equal(&b).eject_value());
-            });
+    #[test]
+    fn test_if_constant_then_public_else_constant() {
+        run_test(Mode::Constant, Mode::Public, Mode::Constant);
+    }
 
-            let condition = Boolean::constant(false);
-            Circuit::scope("Constant(false) ? Constant : Constant", || {
-                let output = Scalar::ternary(&condition, &a, &b);
+    #[test]
+    fn test_if_constant_then_public_else_public() {
+        run_test(Mode::Constant, Mode::Public, Mode::Public);
+    }
 
-                let case = (CircuitType::from(condition), CircuitType::from(&a), CircuitType::from(&b));
-                assert_count!(Ternary(Boolean, Scalar, Scalar) => Scalar, &case);
-                assert_output_type!(Ternary(Boolean, Scalar, Scalar) => Scalar, case, output);
+    #[test]
+    fn test_if_constant_then_public_else_private() {
+        run_test(Mode::Constant, Mode::Public, Mode::Private);
+    }
 
-                assert!(!output.is_equal(&a).eject_value());
-                assert!(output.is_equal(&b).eject_value());
-            });
-        }
+    #[test]
+    fn test_if_constant_then_private_else_constant() {
+        run_test(Mode::Constant, Mode::Private, Mode::Constant);
+    }
 
-        // Constant ? Public : Private
-        {
-            let a = Scalar::<Circuit>::new(Mode::Public, UniformRand::rand(&mut test_rng()));
-            let b = Scalar::<Circuit>::new(Mode::Private, UniformRand::rand(&mut test_rng()));
+    #[test]
+    fn test_if_constant_then_private_else_public() {
+        run_test(Mode::Constant, Mode::Private, Mode::Public);
+    }
 
-            let condition = Boolean::constant(true);
-            Circuit::scope("Constant(true) ? Public : Private", || {
-                let output = Scalar::ternary(&condition, &a, &b);
+    #[test]
+    fn test_if_constant_then_private_else_private() {
+        run_test(Mode::Constant, Mode::Private, Mode::Private);
+    }
 
-                let case = (CircuitType::from(condition), CircuitType::from(&a), CircuitType::from(&b));
-                assert_count!(Ternary(Boolean, Scalar, Scalar) => Scalar, &case);
-                assert_output_type!(Ternary(Boolean, Scalar, Scalar) => Scalar, case, output);
+    #[test]
+    fn test_if_public_then_constant_else_constant() {
+        run_test(Mode::Public, Mode::Constant, Mode::Constant);
+    }
 
-                assert!(output.is_equal(&a).eject_value());
-                assert!(!output.is_equal(&b).eject_value());
-            });
+    #[test]
+    fn test_if_public_then_constant_else_public() {
+        run_test(Mode::Public, Mode::Constant, Mode::Public);
+    }
 
-            let condition = Boolean::constant(false);
-            Circuit::scope("Constant(false) ? Public : Private", || {
-                let output = Scalar::ternary(&condition, &a, &b);
+    #[test]
+    fn test_if_public_then_constant_else_private() {
+        run_test(Mode::Public, Mode::Constant, Mode::Private);
+    }
 
-                let case = (CircuitType::from(condition), CircuitType::from(&a), CircuitType::from(&b));
-                assert_count!(Ternary(Boolean, Scalar, Scalar) => Scalar, &case);
-                assert_output_type!(Ternary(Boolean, Scalar, Scalar) => Scalar, case, output);
+    #[test]
+    fn test_if_public_then_public_else_constant() {
+        run_test(Mode::Public, Mode::Public, Mode::Constant);
+    }
 
-                assert!(!output.is_equal(&a).eject_value());
-                assert!(output.is_equal(&b).eject_value());
-            });
-        }
+    #[test]
+    fn test_if_public_then_public_else_public() {
+        run_test(Mode::Public, Mode::Public, Mode::Public);
+    }
 
-        // Public ? Constant : Constant
-        {
-            let a = Scalar::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut test_rng()));
-            let b = Scalar::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut test_rng()));
+    #[test]
+    fn test_if_public_then_public_else_private() {
+        run_test(Mode::Public, Mode::Public, Mode::Private);
+    }
 
-            let condition = Boolean::new(Mode::Public, true);
-            Circuit::scope("Public(true) ? Constant : Constant", || {
-                let output = Scalar::ternary(&condition, &a, &b);
+    #[test]
+    fn test_if_public_then_private_else_constant() {
+        run_test(Mode::Public, Mode::Private, Mode::Constant);
+    }
 
-                let case = (CircuitType::from(condition), CircuitType::from(&a), CircuitType::from(&b));
-                assert_count!(Ternary(Boolean, Scalar, Scalar) => Scalar, &case);
-                assert_output_type!(Ternary(Boolean, Scalar, Scalar) => Scalar, case, output);
+    #[test]
+    fn test_if_public_then_private_else_public() {
+        run_test(Mode::Public, Mode::Private, Mode::Public);
+    }
 
-                assert!(output.is_equal(&a).eject_value());
-                assert!(!output.is_equal(&b).eject_value());
-            });
+    #[test]
+    fn test_if_public_then_private_else_private() {
+        run_test(Mode::Public, Mode::Private, Mode::Private);
+    }
 
-            let condition = Boolean::new(Mode::Public, false);
-            Circuit::scope("Public(false) ? Constant : Constant", || {
-                let output = Scalar::ternary(&condition, &a, &b);
+    #[test]
+    fn test_if_private_then_constant_else_constant() {
+        run_test(Mode::Private, Mode::Constant, Mode::Constant);
+    }
 
-                let case = (CircuitType::from(condition), CircuitType::from(&a), CircuitType::from(&b));
-                assert_count!(Ternary(Boolean, Scalar, Scalar) => Scalar, &case);
-                assert_output_type!(Ternary(Boolean, Scalar, Scalar) => Scalar, case, output);
+    #[test]
+    fn test_if_private_then_constant_else_public() {
+        run_test(Mode::Private, Mode::Constant, Mode::Public);
+    }
 
-                assert!(!output.is_equal(&a).eject_value());
-                assert!(output.is_equal(&b).eject_value());
-            });
-        }
+    #[test]
+    fn test_if_private_then_constant_else_private() {
+        run_test(Mode::Private, Mode::Constant, Mode::Private);
+    }
 
-        // Private ? Constant : Constant
-        {
-            let a = Scalar::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut test_rng()));
-            let b = Scalar::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut test_rng()));
+    #[test]
+    fn test_if_private_then_public_else_constant() {
+        run_test(Mode::Private, Mode::Public, Mode::Constant);
+    }
 
-            let condition = Boolean::new(Mode::Private, true);
-            Circuit::scope("Private(true) ? Constant : Constant", || {
-                let output = Scalar::ternary(&condition, &a, &b);
+    #[test]
+    fn test_if_private_then_public_else_public() {
+        run_test(Mode::Private, Mode::Public, Mode::Public);
+    }
 
-                let case = (CircuitType::from(condition), CircuitType::from(&a), CircuitType::from(&b));
-                assert_count!(Ternary(Boolean, Scalar, Scalar) => Scalar, &case);
-                assert_output_type!(Ternary(Boolean, Scalar, Scalar) => Scalar, case, output);
+    #[test]
+    fn test_if_private_then_public_else_private() {
+        run_test(Mode::Private, Mode::Public, Mode::Private);
+    }
 
-                assert!(output.is_equal(&a).eject_value());
-                assert!(!output.is_equal(&b).eject_value());
-            });
+    #[test]
+    fn test_if_private_then_private_else_constant() {
+        run_test(Mode::Private, Mode::Private, Mode::Constant);
+    }
 
-            let condition = Boolean::new(Mode::Private, false);
-            Circuit::scope("Private(false) ? Constant : Constant", || {
-                let output = Scalar::ternary(&condition, &a, &b);
+    #[test]
+    fn test_if_private_then_private_else_public() {
+        run_test(Mode::Private, Mode::Private, Mode::Public);
+    }
 
-                let case = (CircuitType::from(condition), CircuitType::from(&a), CircuitType::from(&b));
-                assert_count!(Ternary(Boolean, Scalar, Scalar) => Scalar, &case);
-                assert_output_type!(Ternary(Boolean, Scalar, Scalar) => Scalar, case, output);
-
-                assert!(!output.is_equal(&a).eject_value());
-                assert!(output.is_equal(&b).eject_value());
-            });
-        }
-
-        // Private ? Public : Constant
-        {
-            let a = Scalar::<Circuit>::new(Mode::Public, UniformRand::rand(&mut test_rng()));
-            let b = Scalar::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut test_rng()));
-
-            let condition = Boolean::new(Mode::Private, true);
-            Circuit::scope("Private(true) ? Public : Constant", || {
-                let output = Scalar::ternary(&condition, &a, &b);
-
-                let case = (CircuitType::from(condition), CircuitType::from(&a), CircuitType::from(&b));
-                assert_count!(Ternary(Boolean, Scalar, Scalar) => Scalar, &case);
-                assert_output_type!(Ternary(Boolean, Scalar, Scalar) => Scalar, case, output);
-
-                assert!(output.is_equal(&a).eject_value());
-                assert!(!output.is_equal(&b).eject_value());
-            });
-
-            let condition = Boolean::new(Mode::Private, false);
-            Circuit::scope("Private(false) ? Public : Constant", || {
-                let output = Scalar::ternary(&condition, &a, &b);
-
-                let case = (CircuitType::from(condition), CircuitType::from(&a), CircuitType::from(&b));
-                assert_count!(Ternary(Boolean, Scalar, Scalar) => Scalar, &case);
-                assert_output_type!(Ternary(Boolean, Scalar, Scalar) => Scalar, case, output);
-
-                assert!(!output.is_equal(&a).eject_value());
-                assert!(output.is_equal(&b).eject_value());
-            });
-        }
-
-        // Private ? Constant : Public
-        {
-            let a = Scalar::<Circuit>::new(Mode::Constant, UniformRand::rand(&mut test_rng()));
-            let b = Scalar::<Circuit>::new(Mode::Public, UniformRand::rand(&mut test_rng()));
-
-            let condition = Boolean::new(Mode::Private, true);
-            Circuit::scope("Private(true) ? Constant : Public", || {
-                let output = Scalar::ternary(&condition, &a, &b);
-
-                let case = (CircuitType::from(condition), CircuitType::from(&a), CircuitType::from(&b));
-                assert_count!(Ternary(Boolean, Scalar, Scalar) => Scalar, &case);
-                assert_output_type!(Ternary(Boolean, Scalar, Scalar) => Scalar, case, output);
-
-                assert!(output.is_equal(&a).eject_value());
-                assert!(!output.is_equal(&b).eject_value());
-            });
-
-            let condition = Boolean::new(Mode::Private, false);
-            Circuit::scope("Private(false) ? Constant : Public", || {
-                let output = Scalar::ternary(&condition, &a, &b);
-
-                let case = (CircuitType::from(condition), CircuitType::from(&a), CircuitType::from(&b));
-                assert_count!(Ternary(Boolean, Scalar, Scalar) => Scalar, &case);
-                assert_output_type!(Ternary(Boolean, Scalar, Scalar) => Scalar, case, output);
-
-                assert!(!output.is_equal(&a).eject_value());
-                assert!(output.is_equal(&b).eject_value());
-            });
-        }
-
-        // Private ? Private : Public
-        {
-            let a = Scalar::<Circuit>::new(Mode::Private, UniformRand::rand(&mut test_rng()));
-            let b = Scalar::<Circuit>::new(Mode::Public, UniformRand::rand(&mut test_rng()));
-
-            let condition = Boolean::new(Mode::Private, true);
-            Circuit::scope("Private(true) ? Private : Public", || {
-                let output = Scalar::ternary(&condition, &a, &b);
-
-                let case = (CircuitType::from(condition), CircuitType::from(&a), CircuitType::from(&b));
-                assert_count!(Ternary(Boolean, Scalar, Scalar) => Scalar, &case);
-                assert_output_type!(Ternary(Boolean, Scalar, Scalar) => Scalar, case, output);
-
-                assert!(output.is_equal(&a).eject_value());
-                assert!(!output.is_equal(&b).eject_value());
-            });
-
-            let condition = Boolean::new(Mode::Private, false);
-            Circuit::scope("Private(false) ? Private : Public", || {
-                let output = Scalar::ternary(&condition, &a, &b);
-
-                let case = (CircuitType::from(condition), CircuitType::from(&a), CircuitType::from(&b));
-                assert_count!(Ternary(Boolean, Scalar, Scalar) => Scalar, &case);
-                assert_output_type!(Ternary(Boolean, Scalar, Scalar) => Scalar, case, output);
-
-                assert!(!output.is_equal(&a).eject_value());
-                assert!(output.is_equal(&b).eject_value());
-            });
-        }
+    #[test]
+    fn test_if_private_then_private_else_private() {
+        run_test(Mode::Private, Mode::Private, Mode::Private);
     }
 }

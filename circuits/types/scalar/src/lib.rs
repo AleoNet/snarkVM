@@ -20,8 +20,12 @@
 mod helpers;
 
 pub mod add;
-pub mod compare;
 pub mod equal;
+pub mod greater_than;
+pub mod greater_than_or_equal;
+pub mod less_than;
+pub mod less_than_or_equal;
+pub mod not_equal;
 pub mod ternary;
 
 #[cfg(test)]

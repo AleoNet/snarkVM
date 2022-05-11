@@ -17,9 +17,7 @@
 use super::*;
 use snarkvm_utilities::{FromBytes, ToBytes};
 
-// TODO: Split into multiple traits for coherence with Metadata
-
-impl<E: Environment> FromBits for Scalar<E> {
+impl<E: Environment> FromBitsLE for Scalar<E> {
     type Boolean = Boolean<E>;
 
     /// Initializes a new scalar field element from a list of little-endian bits *without* trailing zeros.
@@ -66,15 +64,24 @@ impl<E: Environment> FromBits for Scalar<E> {
 
         output
     }
+}
 
-    /// Initializes a new scalar field element from a list of big-endian bits *without* leading zeros.
-    fn from_bits_be(bits_be: &[Self::Boolean]) -> Self {
-        // Reverse the given bits from big-endian into little-endian.
-        // Note: This is safe as the bit representation is consistent (there are no leading zeros).
-        let mut bits_le = bits_be.to_vec();
-        bits_le.reverse();
+impl<E: Environment> Metadata<dyn FromBitsLE<Boolean = Boolean<E>>> for Scalar<E> {
+    type Case = CircuitType<Vec<Boolean<E>>>;
+    type OutputType = CircuitType<Self>;
 
-        Self::from_bits_le(&bits_le)
+    fn count(case: &Self::Case) -> Count {
+        match case {
+            CircuitType::Constant(_) => Count::is(507, 0, 0, 0),
+            _ => Count::is(254, 0, 769, 771),
+        }
+    }
+
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        match case {
+            CircuitType::Constant(constant) => CircuitType::from(Scalar::from_bits_le(constant.circuit())),
+            _ => CircuitType::Private,
+        }
     }
 }
 
@@ -86,7 +93,7 @@ mod tests {
 
     const ITERATIONS: u64 = 100;
 
-    fn check_from_bits_le(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
+    fn check_from_bits_le(mode: Mode) {
         for i in 0..ITERATIONS {
             // Sample a random element.
             let expected: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
@@ -97,88 +104,39 @@ mod tests {
                 let candidate = Scalar::<Circuit>::from_bits_le(&given_bits);
                 assert_eq!(expected, candidate.eject_value());
                 assert_eq!(expected_size_in_bits, candidate.bits_le.len());
-                assert_scope!(num_constants, num_public, num_private, num_constraints);
+
+                let case = CircuitType::from(&given_bits);
+                assert_count!(Scalar<Circuit>, FromBitsLE<Boolean = Boolean<Circuit>>, &case);
+                assert_output_type!(Scalar<Circuit>, FromBitsLE<Boolean = Boolean<Circuit>>, case, candidate);
             });
 
             // Add excess zero bits.
-            let candidate = vec![given_bits, vec![Boolean::new(mode, false); i as usize]].concat();
+            let given_bits = vec![given_bits, vec![Boolean::new(mode, false); i as usize]].concat();
 
             Circuit::scope(&format!("Excess {} {}", mode, i), || {
-                let candidate = Scalar::<Circuit>::from_bits_le(&candidate);
+                let candidate = Scalar::<Circuit>::from_bits_le(&given_bits);
                 assert_eq!(expected, candidate.eject_value());
                 assert_eq!(expected_size_in_bits, candidate.bits_le.len());
-                match mode.is_constant() {
-                    true => assert_scope!(num_constants, num_public, num_private, num_constraints),
-                    // `num_private` gets 1 free excess bit, then is incremented by one for each excess bit.
-                    // `num_constraints` is incremented by one for each excess bit.
-                    false => {
-                        assert_scope!(num_constants, num_public, num_private + i.saturating_sub(1), num_constraints + i)
-                    }
-                };
-            });
-        }
-    }
 
-    fn check_from_bits_be(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
-        for i in 0..ITERATIONS {
-            // Sample a random element.
-            let expected: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
-            let given_bits = Scalar::<Circuit>::new(mode, expected).to_bits_be();
-            let expected_size_in_bits = given_bits.len();
-
-            Circuit::scope(&format!("{} {}", mode, i), || {
-                let candidate = Scalar::<Circuit>::from_bits_be(&given_bits);
-                assert_eq!(expected, candidate.eject_value());
-                assert_eq!(expected_size_in_bits, candidate.to_bits_be().len());
-                assert_scope!(num_constants, num_public, num_private, num_constraints);
-            });
-
-            // Add excess zero bits.
-            let candidate = vec![vec![Boolean::new(mode, false); i as usize], given_bits].concat();
-
-            Circuit::scope(&format!("Excess {} {}", mode, i), || {
-                let candidate = Scalar::<Circuit>::from_bits_be(&candidate);
-                assert_eq!(expected, candidate.eject_value());
-                assert_eq!(expected_size_in_bits, candidate.bits_le.len());
-                match mode.is_constant() {
-                    true => assert_scope!(num_constants, num_public, num_private, num_constraints),
-                    // `num_private` gets 1 free excess bit, then is incremented by one for each excess bit.
-                    // `num_constraints` is incremented by one for each excess bit.
-                    false => {
-                        assert_scope!(num_constants, num_public, num_private + i.saturating_sub(1), num_constraints + i)
-                    }
-                };
+                let case = CircuitType::from(&given_bits);
+                assert_count!(Scalar<Circuit>, FromBitsLE<Boolean = Boolean<Circuit>>, &case);
+                assert_output_type!(Scalar<Circuit>, FromBitsLE<Boolean = Boolean<Circuit>>, case, candidate);
             });
         }
     }
 
     #[test]
     fn test_from_bits_le_constant() {
-        check_from_bits_le(Mode::Constant, 507, 0, 0, 0);
+        check_from_bits_le(Mode::Constant);
     }
 
     #[test]
     fn test_from_bits_le_public() {
-        check_from_bits_le(Mode::Public, 254, 0, 769, 771);
+        check_from_bits_le(Mode::Public);
     }
 
     #[test]
     fn test_from_bits_le_private() {
-        check_from_bits_le(Mode::Private, 254, 0, 769, 771);
-    }
-
-    #[test]
-    fn test_from_bits_be_constant() {
-        check_from_bits_be(Mode::Constant, 507, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_from_bits_be_public() {
-        check_from_bits_be(Mode::Public, 254, 0, 769, 771);
-    }
-
-    #[test]
-    fn test_from_bits_be_private() {
-        check_from_bits_be(Mode::Private, 254, 0, 769, 771);
+        check_from_bits_le(Mode::Private);
     }
 }

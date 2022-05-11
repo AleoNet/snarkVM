@@ -16,18 +16,18 @@
 
 use super::*;
 
-impl<E: Environment> Equal<Self> for Scalar<E> {
+impl<E: Environment> NotEqual<Self> for Scalar<E> {
     type Output = Boolean<E>;
 
     ///
-    /// Returns `true` if `self` and `other` are equal.
+    /// Returns `true` if `self` and `other` are *not* equal.
     ///
-    fn is_equal(&self, other: &Self) -> Self::Output {
-        self.to_field().is_equal(&other.to_field())
+    fn is_not_equal(&self, other: &Self) -> Self::Output {
+        !self.is_equal(other)
     }
 }
 
-impl<E: Environment> Metadata<dyn Equal<Scalar<E>, Output = Boolean<E>>> for Scalar<E> {
+impl<E: Environment> Metadata<dyn NotEqual<Scalar<E>, Output = Boolean<E>>> for Scalar<E> {
     type Case = (CircuitType<Self>, CircuitType<Self>);
     type OutputType = CircuitType<Boolean<E>>;
 
@@ -41,7 +41,7 @@ impl<E: Environment> Metadata<dyn Equal<Scalar<E>, Output = Boolean<E>>> for Sca
     fn output_type(case: Self::Case) -> Self::OutputType {
         match case {
             (CircuitType::Constant(a), CircuitType::Constant(b)) => {
-                CircuitType::from(a.circuit().is_equal(b.circuit()))
+                CircuitType::from(a.circuit().is_not_equal(b.circuit()))
             }
             _ => CircuitType::Private,
         }
@@ -56,14 +56,14 @@ mod tests {
 
     const ITERATIONS: u64 = 100;
 
-    fn check_is_equal(name: &str, expected: bool, a: Scalar<Circuit>, b: Scalar<Circuit>) {
+    fn check_is_not_equal(name: &str, expected: bool, a: Scalar<Circuit>, b: Scalar<Circuit>) {
         Circuit::scope(name, || {
-            let candidate = a.is_equal(&b);
-            assert_eq!(expected, candidate.eject_value(), "({} == {})", a.eject_value(), b.eject_value());
+            let candidate = a.is_not_equal(&b);
+            assert_eq!(expected, candidate.eject_value(), "({} != {})", a.eject_value(), b.eject_value());
 
             let case = (CircuitType::from(a), CircuitType::from(b));
-            assert_count!(Equal(Scalar, Scalar) => Boolean, &case);
-            assert_output_type!(Equal(Scalar, Scalar) => Boolean, case, candidate);
+            assert_count!(NotEqual(Scalar, Scalar) => Boolean, &case);
+            assert_output_type!(NotEqual(Scalar, Scalar) => Boolean, case, candidate);
         });
         Circuit::reset();
     }
@@ -73,58 +73,58 @@ mod tests {
             let first = UniformRand::rand(&mut test_rng());
             let second = UniformRand::rand(&mut test_rng());
 
-            // a == b
-            let expected = first == second;
+            // a != b
+            let expected = first != second;
             let a = Scalar::<Circuit>::new(Mode::Constant, first);
             let b = Scalar::<Circuit>::new(Mode::Constant, second);
 
-            let name = format!("Equal: {} {} {}", mode_a, mode_b, i);
-            check_is_equal(&name, expected, a, b);
+            let name = format!("NotEqual: {} {} {}", mode_a, mode_b, i);
+            check_is_not_equal(&name, expected, a, b);
         }
     }
 
     #[test]
-    fn test_constant_is_equal_constant() {
+    fn test_constant_is_not_equal_constant() {
         run_test(Mode::Constant, Mode::Constant);
     }
 
     #[test]
-    fn test_constant_is_equal_public() {
+    fn test_constant_is_not_equal_public() {
         run_test(Mode::Constant, Mode::Public);
     }
 
     #[test]
-    fn test_constant_is_equal_private() {
+    fn test_constant_is_not_equal_private() {
         run_test(Mode::Constant, Mode::Private);
     }
 
     #[test]
-    fn test_public_is_equal_constant() {
+    fn test_public_is_not_equal_constant() {
         run_test(Mode::Public, Mode::Constant);
     }
 
     #[test]
-    fn test_public_is_equal_public() {
+    fn test_public_is_not_equal_public() {
         run_test(Mode::Public, Mode::Public);
     }
 
     #[test]
-    fn test_public_is_equal_private() {
+    fn test_public_is_not_equal_private() {
         run_test(Mode::Public, Mode::Private);
     }
 
     #[test]
-    fn test_private_is_equal_constant() {
+    fn test_private_is_not_equal_constant() {
         run_test(Mode::Private, Mode::Constant);
     }
 
     #[test]
-    fn test_private_is_equal_public() {
+    fn test_private_is_not_equal_public() {
         run_test(Mode::Private, Mode::Public);
     }
 
     #[test]
-    fn test_private_is_equal_private() {
+    fn test_private_is_not_equal_private() {
         run_test(Mode::Private, Mode::Private);
     }
 }

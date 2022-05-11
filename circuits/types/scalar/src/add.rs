@@ -105,16 +105,16 @@ impl<E: Environment> Metadata<dyn Add<Scalar<E>, Output = Scalar<E>>> for Scalar
     type OutputType = CircuitType<Scalar<E>>;
 
     fn count(case: &Self::Case) -> Count {
-        match (case.0.eject_mode(), case.1.eject_mode()) {
-            (Mode::Constant, Mode::Constant) => Count::is(251, 0, 0, 0),
-            (_, _) => Count::is(254, 0, 1021, 1023),
+        match case {
+            (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(251, 0, 0, 0),
+            _ => Count::is(254, 0, 1021, 1023),
         }
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match (case.0.eject_mode(), case.1.eject_mode()) {
-            (Mode::Constant, Mode::Constant) => CircuitType::from(case.0.circuit().add(case.1.circuit())),
-            (_, _) => CircuitType::Private,
+        match case {
+            (CircuitType::Constant(a), CircuitType::Constant(b)) => CircuitType::from(a.circuit().add(b.circuit())),
+            _ => CircuitType::Private,
         }
     }
 }

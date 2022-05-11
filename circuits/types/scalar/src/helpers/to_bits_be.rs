@@ -16,15 +16,8 @@
 
 use super::*;
 
-// TODO: Split into separate traits for coherence with metadata.
-
-impl<E: Environment> ToBits for Scalar<E> {
+impl<E: Environment> ToBitsBE for Scalar<E> {
     type Boolean = Boolean<E>;
-
-    /// Outputs the little-endian bit representation of `self` *without* trailing zeros.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        (&self).to_bits_le()
-    }
 
     /// Outputs the big-endian bit representation of `self` *without* leading zeros.
     fn to_bits_be(&self) -> Vec<Self::Boolean> {
@@ -32,13 +25,8 @@ impl<E: Environment> ToBits for Scalar<E> {
     }
 }
 
-impl<E: Environment> ToBits for &Scalar<E> {
+impl<E: Environment> ToBitsBE for &Scalar<E> {
     type Boolean = Boolean<E>;
-
-    /// Outputs the little-endian bit representation of `self` *without* trailing zeros.
-    fn to_bits_le(&self) -> Vec<Self::Boolean> {
-        self.bits_le.clone()
-    }
 
     /// Outputs the big-endian bit representation of `self` *without* leading zeros.
     fn to_bits_be(&self) -> Vec<Self::Boolean> {
@@ -48,7 +36,7 @@ impl<E: Environment> ToBits for &Scalar<E> {
     }
 }
 
-impl<E: Environment> Metadata<dyn ToBits<Boolean = Boolean<E>>> for Scalar<E> {
+impl<E: Environment> Metadata<dyn ToBitsBE<Boolean = Boolean<E>>> for Scalar<E> {
     type Case = CircuitType<Self>;
     type OutputType = CircuitType<Vec<Boolean<E>>>;
 
@@ -58,7 +46,7 @@ impl<E: Environment> Metadata<dyn ToBits<Boolean = Boolean<E>>> for Scalar<E> {
 
     fn output_type(case: Self::Case) -> Self::OutputType {
         match case {
-            CircuitType::Constant(_) => CircuitType::from(case.circuit().to_bits_le()),
+            CircuitType::Constant(constant) => CircuitType::from(constant.circuit().to_bits_be()),
             CircuitType::Public => CircuitType::Public,
             CircuitType::Private => CircuitType::Private,
         }
@@ -71,22 +59,6 @@ mod tests {
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
-    fn check_to_bits_le(name: &str, expected: &[bool], candidate: &Scalar<Circuit>) {
-        let expected_number_of_bits = <<Circuit as Environment>::ScalarField as PrimeField>::size_in_bits();
-
-        Circuit::scope(name, || {
-            let result = candidate.to_bits_le();
-            assert_eq!(expected_number_of_bits, result.len());
-            for (expected_bit, candidate_bit) in expected.iter().zip_eq(result.iter()) {
-                assert_eq!(*expected_bit, candidate_bit.eject_value());
-            }
-
-            let case = CircuitType::from(candidate);
-            assert_count!(ToBits<Boolean>() => Scalar, &case);
-            assert_output_type!(ToBits<Boolean>() => Scalar, case, result);
-        });
-    }
-
     fn check_to_bits_be(name: &str, expected: &[bool], candidate: Scalar<Circuit>) {
         let expected_number_of_bits = <<Circuit as Environment>::ScalarField as PrimeField>::size_in_bits();
 
@@ -98,47 +70,34 @@ mod tests {
             }
 
             let case = CircuitType::from(candidate);
-            assert_count!(ToBits<Boolean>() => Scalar, &case);
-            assert_output_type!(ToBits<Boolean>() => Scalar, case, result);
+            assert_count!(ToBitsBE<Boolean>() => Scalar, &case);
+            assert_output_type!(ToBitsBE<Boolean>() => Scalar, case, result);
         });
     }
 
     #[test]
-    fn test_to_bits_constant() {
+    fn test_to_bit_bes_constant() {
         let expected = UniformRand::rand(&mut test_rng());
         let candidate = Scalar::<Circuit>::new(Mode::Constant, expected);
-        check_to_bits_le("Constant", &expected.to_bits_le(), &candidate);
         check_to_bits_be("Constant", &expected.to_bits_be(), candidate);
     }
 
     #[test]
-    fn test_to_bits_public() {
+    fn test_to_bits_be_public() {
         let expected = UniformRand::rand(&mut test_rng());
         let candidate = Scalar::<Circuit>::new(Mode::Public, expected);
-        check_to_bits_le("Public", &expected.to_bits_le(), &candidate);
         check_to_bits_be("Public", &expected.to_bits_be(), candidate);
     }
 
     #[test]
-    fn test_to_bits_private() {
+    fn test_to_bits_be_private() {
         let expected = UniformRand::rand(&mut test_rng());
         let candidate = Scalar::<Circuit>::new(Mode::Private, expected);
-        check_to_bits_le("Private", &expected.to_bits_le(), &candidate);
         check_to_bits_be("Private", &expected.to_bits_be(), candidate);
     }
 
     #[test]
     fn test_one() {
-        /// Checks that the field element, when converted to little-endian bits, is well-formed.
-        fn check_bits_le(candidate: Scalar<Circuit>) {
-            for (i, bit) in candidate.to_bits_le().iter().enumerate() {
-                match i == 0 {
-                    true => assert!(bit.eject_value()),
-                    false => assert!(!bit.eject_value()),
-                }
-            }
-        }
-
         /// Checks that the field element, when converted to big-endian bits, is well-formed.
         fn check_bits_be(candidate: Scalar<Circuit>) {
             for (i, bit) in candidate.to_bits_be().iter().rev().enumerate() {
@@ -152,13 +111,10 @@ mod tests {
         let one = <Circuit as Environment>::ScalarField::one();
 
         // Constant
-        check_bits_le(Scalar::<Circuit>::new(Mode::Constant, one));
         check_bits_be(Scalar::<Circuit>::new(Mode::Constant, one));
         // Public
-        check_bits_le(Scalar::<Circuit>::new(Mode::Public, one));
         check_bits_be(Scalar::<Circuit>::new(Mode::Public, one));
         // Private
-        check_bits_le(Scalar::<Circuit>::new(Mode::Private, one));
         check_bits_be(Scalar::<Circuit>::new(Mode::Private, one));
     }
 }
