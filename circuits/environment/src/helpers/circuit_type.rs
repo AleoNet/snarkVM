@@ -27,9 +27,9 @@ impl<T: Eject> Constant<T> {
         Self(circuit)
     }
 
-    /// Returns a reference to the underlying circuit.
-    pub fn circuit(&self) -> &T {
-        &self.0
+    /// Returns the underlying circuit.
+    pub fn circuit(self) -> T {
+        self.0
     }
 }
 
@@ -76,7 +76,7 @@ impl<T: Eject> Eject for CircuitType<T> {
 /// Initializes a new `CircuitType` from a circuit.
 /// If the circuit is constant, the `CircuitType` will be `Constant(circuit)`.
 /// Otherwise, the `CircuitType` will be `Public` or `Private`.
-impl<T: Eject + Clone> From<T> for CircuitType<T> {
+impl<T: Eject> From<T> for CircuitType<T> {
     fn from(circuit: T) -> Self {
         match circuit.eject_mode() {
             Mode::Constant => CircuitType::Constant(Constant(circuit)),
