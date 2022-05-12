@@ -76,7 +76,10 @@ impl<E: Environment> Metadata<dyn Double<Output = Group<E>>> for Group<E> {
 
     fn count(case: &Self::Case) -> Count {
         match case {
-            CircuitType::Constant(_) => Count::is(3, 0, 0, 0),
+            CircuitType::Constant(constant) => match constant.eject_value().is_zero() {
+                true => Count::is(0, 0, 0, 0),
+                false => Count::is(3, 0, 0, 0),
+            },
             _ => Count::is(1, 0, 5, 5),
         }
     }
@@ -98,42 +101,47 @@ mod tests {
 
     const ITERATIONS: u64 = 250;
 
-    fn check_double(name: &str, mode: Mode) {
-        for _ in 0..ITERATIONS {
+    fn check_double(name: &str, expected: &<Circuit as Environment>::Affine, candidate: &Group<Circuit>) {
+        Circuit::scope(name, || {
+            let result = (&candidate).double();
+            assert_eq!(*expected, result.eject_value());
+
+            let case = CircuitType::from(candidate);
+            assert_count!(Double(Group) => Group, &case);
+            assert_output_type!(Double(Group) => Group, case, result);
+        });
+    }
+
+    fn run_test(mode: Mode) {
+        for i in 0..ITERATIONS {
             // Sample a random element.
             let given: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
             let candidate = Group::<Circuit>::new(mode, given);
 
-            Circuit::scope(name, || {
-                let result = (&candidate).double();
-                assert_eq!(given.to_projective().double(), result.eject_value());
-
-                let case = CircuitType::from(candidate);
-                assert_count!(Double(Group) => Group, &case);
-                assert_output_type!(Double(Group) => Group, case, result);
-            });
+            let name = format!("Double: {} {}", mode, i);
+            check_double(&name, &given.to_projective().double().into(), &candidate)
         }
+
+        // Test zero case.
+        let given = <Circuit as Environment>::Affine::zero();
+        let candidate = Group::<Circuit>::new(mode, given);
+
+        let name = format!("Double Zero: {}", mode);
+        check_double(&name, &given.to_projective().double().into(), &candidate);
     }
 
     #[test]
-    fn test_double() {
-        check_double("Constant", Mode::Constant);
-        check_double("Public", Mode::Public);
-        check_double("Private", Mode::Private);
+    fn test_double_constant() {
+        run_test(Mode::Constant);
     }
 
     #[test]
-    fn test_double_matches() {
-        // Sample two random elements.
-        let a = <Circuit as Environment>::Affine::rand(&mut test_rng());
-        let expected: <Circuit as Environment>::Affine = (a.to_projective() + a.to_projective()).into();
+    fn test_double_public() {
+        run_test(Mode::Public);
+    }
 
-        // Constant
-        let candidate_a = Group::<Circuit>::new(Mode::Constant, a).double();
-        assert_eq!(expected, candidate_a.eject_value());
-
-        // Private
-        let candidate_b = Group::<Circuit>::new(Mode::Private, a).double();
-        assert_eq!(expected, candidate_b.eject_value());
+    #[test]
+    fn test_double_private() {
+        run_test(Mode::Private)
     }
 }

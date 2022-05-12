@@ -45,7 +45,7 @@ impl<E: Environment> Metadata<dyn Equal<Group<E>, Output = Boolean<E>>> for Grou
     fn output_type(case: Self::Case) -> Self::OutputType {
         match case {
             (CircuitType::Constant(a), CircuitType::Constant(b)) => {
-                CircuitType::from(a.circuit().is_equal(b.circuit()))
+                CircuitType::from(a.circuit().is_equal(&b.circuit()))
             }
             _ => CircuitType::Private,
         }
@@ -79,8 +79,14 @@ mod tests {
             let a = Group::<Circuit>::new(mode_a, first);
             let b = Group::<Circuit>::new(mode_b, second);
 
-            let name = format!("Not Equal: a == b {}", i);
+            let name = format!("Equal: a == b {}", i);
             check_is_equal(&name, first == second, &a, &b);
+
+            let name = format!("Equal: a == a {}", i);
+            check_is_equal(&name, true, &a, &a);
+
+            let name = format!("Equal: b == b {}", i);
+            check_is_equal(&name, true, &b, &b);
         }
     }
 

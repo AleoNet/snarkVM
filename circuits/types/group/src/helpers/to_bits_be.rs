@@ -36,7 +36,7 @@ impl<E: Environment> ToBitsBE for &Group<E> {
 
 impl<E: Environment> Metadata<dyn ToBitsBE<Boolean = Boolean<E>>> for Group<E> {
     type Case = CircuitType<Self>;
-    type OutputType = CircuitType<Vec<Boolean<E>>>;
+    type OutputType = Vec<CircuitType<Boolean<E>>>;
 
     fn count(case: &Self::Case) -> Count {
         match case {
@@ -47,8 +47,10 @@ impl<E: Environment> Metadata<dyn ToBitsBE<Boolean = Boolean<E>>> for Group<E> {
 
     fn output_type(case: Self::Case) -> Self::OutputType {
         match case {
-            CircuitType::Constant(constant) => CircuitType::from(constant.circuit().to_bits_be()),
-            _ => CircuitType::Private,
+            CircuitType::Constant(constant) => {
+                constant.circuit().to_bits_be().into_iter().map(|bit| CircuitType::from(bit)).collect()
+            }
+            _ => vec![CircuitType::Private; E::BaseField::size_in_bits()],
         }
     }
 }
@@ -79,8 +81,8 @@ mod tests {
                 }
 
                 let case = CircuitType::from(&candidate);
-                assert_count!(ToBits<Boolean>() => Group, &case);
-                assert_output_type!(ToBits<Boolean>() => Group, case, result);
+                assert_count!(ToBitsBE<Boolean>() => Group, &case);
+                assert_output_type!(ToBitsBE<Boolean>() => Group, case, result);
             });
         }
     }

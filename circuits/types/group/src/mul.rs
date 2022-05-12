@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use std::cmp::max;
 
 use snarkvm_utilities::BigInteger;
 
@@ -187,35 +188,60 @@ impl<E: Environment> Metadata<dyn Mul<Scalar<E>, Output = Group<E>>> for Group<E
     type OutputType = CircuitType<Self>;
 
     fn count(case: &Self::Case) -> Count {
-        match case {
-            (CircuitType::Constant(a), CircuitType::Constant(b)) => {
-                let scalar = b.eject_value();
-                let num_nonzero_bits = scalar.to_repr().to_biguint().bits();
-                let num_constant =
-                    (3 /* DOUBLE private */ + 4/* public ADD private */ + 0/* TERNARY */) * (num_nonzero_bits - 1); // Typically around 760.
-                Count::is(num_constant, 0, 0, 0)
-            }
-            (CircuitType::Constant(_), _) => Count::is(750, 0, 2500, 2500),
-            (_, CircuitType::Constant(constant)) => {
-                let scalar = constant.eject_value();
-                let num_nonzero_bits = scalar.to_repr().to_biguint().bits();
-                let num_constant =
-                    (1 /* DOUBLE private */ + 2/* public ADD private */ + 0/* TERNARY */) * (num_nonzero_bits - 1); // Typically around 760.
-                let num_private =
-                    (5 /* DOUBLE private */ + 6/* public ADD private */ + 0/* TERNARY */) * (num_nonzero_bits - 1); // Typically around 2700.
-                let num_constraints =
-                    (5 /* DOUBLE private */ + 6/* public ADD private */ + 0/* TERNARY */) * (num_nonzero_bits - 1); // Typically around 2700.
-                Count::is(num_constant, 0, num_private, num_constraints)
-            }
-            (_, _) => Count::is(750, 0, 3252, 3252),
+        let (left, right) = case.clone();
+        let to_bits_be_count = count!(Scalar<E>, ToBitsBE<Boolean = Boolean<E>>, &right);
+        let to_bits_be_type = output_type!(Scalar<E>, ToBitsBE<Boolean = Boolean<E>>, right);
+
+        let zero_count = count!(Group<E>, Zero<Boolean = Boolean<E>>, &());
+        let zero_type = output_type!(Group<E>, Zero<Boolean = Boolean<E>>, ());
+
+        let mut output_count = to_bits_be_count + zero_count;
+        let mut output_type = zero_type;
+
+        println!("output_count: {:?}", output_count);
+        println!("output_type: {:?}", output_type);
+
+        for bit in to_bits_be_type {
+            output_count = output_count + count!(Group<E>, Double<Output = Group<E>>, &output_type);
+            output_type = output_type!(Group<E>, Double<Output = Group<E>>, output_type);
+
+            let case = (left.clone(), output_type.clone());
+            let sum_count = count!(Group<E>, Add<Group<E>, Output = Group<E>>, &case);
+            let sum_output_type = output_type!(Group<E>, Add<Group<E>, Output = Group<E>>, case);
+
+            let case = (bit, sum_output_type, output_type);
+            output_count =
+                output_count + sum_count + count!(Group<E>, Ternary<Boolean = Boolean<E>, Output = Group<E>>, &case);
+            output_type = output_type!(Group<E>, Ternary<Boolean = Boolean<E>, Output = Group<E>>, case);
         }
+
+        output_count
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match case {
-            (CircuitType::Constant(a), CircuitType::Constant(b)) => CircuitType::from(a.circuit().mul(b.circuit())),
-            _ => CircuitType::Private,
+        // match case {
+        //     (CircuitType::Constant(a), CircuitType::Constant(b)) => CircuitType::from(a.circuit().mul(b.circuit())),
+        //     _ => CircuitType::Private,
+        // }
+
+        let (left, right) = case;
+        let to_bits_be_output_type = output_type!(Scalar<E>, ToBitsBE<Boolean = Boolean<E>>, right);
+
+        let zero_output_type = output_type!(Group<E>, Zero<Boolean = Boolean<E>>, ());
+
+        let mut output_type = zero_output_type;
+
+        for bit in to_bits_be_output_type {
+            output_type = output_type!(Group<E>, Double<Output = Group<E>>, output_type);
+
+            let case = (left.clone(), output_type.clone());
+            let sum_output_type = output_type!(Group<E>, Add<Group<E>, Output = Group<E>>, case);
+
+            let case = (bit, sum_output_type, output_type);
+            output_type = output_type!(Group<E>, Ternary<Boolean = Boolean<E>, Output = Group<E>>, case)
         }
+
+        output_type
     }
 }
 
@@ -226,7 +252,7 @@ mod tests {
     use snarkvm_curves::ProjectiveCurve;
     use snarkvm_utilities::{test_rng, UniformRand};
 
-    const ITERATIONS: u64 = 10;
+    const ITERATIONS: u64 = 100;
 
     fn check_mul(name: &str, expected: &<Circuit as Environment>::Affine, a: &Group<Circuit>, b: &Scalar<Circuit>) {
         Circuit::scope(name, || {
@@ -264,8 +290,8 @@ mod tests {
             let scalar: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
 
             let expected = (base * scalar).into();
-            let a = Group::<Circuit>::new(Mode::Constant, base);
-            let b = Scalar::<Circuit>::new(Mode::Constant, scalar);
+            let a = Group::<Circuit>::new(mode_a, base);
+            let b = Scalar::<Circuit>::new(mode_b, scalar);
 
             let name = format!("Mul: a * b {}", i);
             check_mul(&name, &expected, &a, &b);
@@ -275,17 +301,24 @@ mod tests {
             // Check zero cases.
             let affine_zero = <Circuit as Environment>::Affine::zero();
             let scalar_field_zero = <Circuit as Environment>::ScalarField::zero();
+            let scalar_field_one = <Circuit as Environment>::ScalarField::one();
 
             let group_zero = Group::<Circuit>::new(mode_a, affine_zero);
             let scalar_zero = Scalar::<Circuit>::new(mode_b, scalar_field_zero);
+            let scalar_one = Scalar::<Circuit>::new(mode_b, scalar_field_one);
 
             let name = format!("ZeroScalar: a * 0 {}", i);
             check_mul(&name, &affine_zero, &a, &scalar_zero);
             let name = format!("ZeroScalarAssign: a * 0 {}", i);
             check_mul_assign(&name, &affine_zero, &a, &scalar_zero);
+            let name = format!("OneScalar: a * 1 {}", i);
+            check_mul(&name, &base, &a, &scalar_one);
+            let name = format!("OneScalarAssign: a * 1 {}", i);
+            check_mul_assign(&name, &base, &a, &scalar_one);
+
             let name = format!("ZeroGroup: 0 * b {}", i);
             check_mul(&name, &affine_zero, &group_zero, &b);
-            let name = format!("ZeroScalarAssign: a * 0 {}", i);
+            let name = format!("ZeroGroupAssign: 0 * b {}", i);
             check_mul_assign(&name, &affine_zero, &group_zero, &b);
         }
     }
@@ -333,25 +366,5 @@ mod tests {
     #[test]
     fn test_private_times_private() {
         run_test(Mode::Private, Mode::Private);
-    }
-
-    #[test]
-    fn test_mul_matches() {
-        // Sample two random elements.
-        let a: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-        let b: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
-        let expected = (a * b).to_affine();
-
-        // Constant
-        let base = Group::<Circuit>::new(Mode::Constant, a);
-        let scalar = Scalar::<Circuit>::new(Mode::Constant, b);
-        let candidate_a = base * scalar;
-        assert_eq!(expected, candidate_a.eject_value());
-
-        // Private
-        let base = Group::<Circuit>::new(Mode::Private, a);
-        let scalar = Scalar::<Circuit>::new(Mode::Private, b);
-        let candidate_b = base * scalar;
-        assert_eq!(expected, candidate_b.eject_value());
     }
 }

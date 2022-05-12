@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
+use snarkvm_circuits_environment::Constant;
 
 impl<E: Environment> FromBitsBE for Group<E> {
     type Boolean = Boolean<E>;
@@ -29,21 +30,25 @@ impl<E: Environment> FromBitsBE for Group<E> {
 }
 
 impl<E: Environment> Metadata<dyn FromBitsBE<Boolean = Boolean<E>>> for Group<E> {
-    type Case = CircuitType<Vec<Boolean<E>>>;
+    type Case = Vec<CircuitType<Boolean<E>>>;
     type OutputType = CircuitType<Self>;
 
     fn count(case: &Self::Case) -> Count {
-        match case {
-            CircuitType::Constant(_) => Count::is(3, 0, 0, 0),
-            _ => Count::is(2, 0, 255, 421),
+        match case.iter().all(|bit| bit.is_constant()) {
+            true => Count::is(3, 0, 0, 0),
+            false => Count::is(2, 0, 255, 421),
         }
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match case {
-            CircuitType::Constant(constant) => CircuitType::from(Group::from_bits_be(constant.circuit())),
-            _ => CircuitType::Private,
+        let mut bits_be = Vec::with_capacity(case.len());
+        for bit in case {
+            match bit {
+                CircuitType::Constant(constant) => bits_be.push(constant.circuit()),
+                _ => return CircuitType::Private,
+            }
         }
+        CircuitType::from(Group::from_bits_be(bits_be.as_slice()))
     }
 }
 
@@ -59,13 +64,13 @@ mod tests {
         for i in 0..ITERATIONS {
             // Sample a random element.
             let expected: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let given_bits = Group::<Circuit>::new(mode, expected).to_bits_le();
+            let given_bits = Group::<Circuit>::new(mode, expected).to_bits_be();
 
             Circuit::scope(&format!("{} {}", mode, i), || {
-                let candidate = Group::<Circuit>::from_bits_le(&given_bits);
+                let candidate = Group::<Circuit>::from_bits_be(&given_bits);
                 assert_eq!(expected, candidate.eject_value());
 
-                let case = CircuitType::from(given_bits);
+                let case = given_bits.iter().map(|bit| CircuitType::from(bit)).collect();
                 assert_count!(Group<Circuit>, FromBitsBE<Boolean = Boolean<Circuit>>, &case);
                 assert_output_type!(Group<Circuit>, FromBitsBE<Boolean = Boolean<Circuit>>, case, candidate);
             });

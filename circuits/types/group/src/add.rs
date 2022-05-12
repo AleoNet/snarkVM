@@ -115,7 +115,12 @@ impl<E: Environment> Metadata<dyn Add<Group<E>, Output = Group<E>>> for Group<E>
 
     fn count(case: &Self::Case) -> Count {
         match case {
-            (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(4, 0, 0, 0),
+            (CircuitType::Constant(a), CircuitType::Constant(b)) => {
+                match a.eject_value().is_zero() || b.eject_value().is_zero() {
+                    true => Count::is(0, 0, 0, 0),
+                    false => Count::is(4, 0, 0, 0),
+                }
+            }
             (CircuitType::Constant(constant), _) | (_, CircuitType::Constant(constant)) => {
                 match constant.eject_value().is_zero() {
                     true => Count::zero(),
@@ -189,10 +194,26 @@ mod tests {
             check_add(&name, &expected, &a, &b);
             let name = format!("AddAssign: a + b {}", i);
             check_add_assign(&name, &expected, &a, &b);
+
+            // Test identity cases.
             let name = format!("Add: a + 0 {}", i);
             check_add(&name, &first, &a, &Group::<Circuit>::new(mode_b, <Circuit as Environment>::Affine::zero()));
+            let name = format!("AddAssign: a + 0 {}", i);
+            check_add_assign(
+                &name,
+                &first,
+                &a,
+                &Group::<Circuit>::new(mode_b, <Circuit as Environment>::Affine::zero()),
+            );
             let name = format!("Add: 0 + b {}", i);
             check_add(&name, &second, &Group::<Circuit>::new(mode_a, <Circuit as Environment>::Affine::zero()), &b);
+            let name = format!("AddAssign: 0 + b {}", i);
+            check_add_assign(
+                &name,
+                &second,
+                &Group::<Circuit>::new(mode_a, <Circuit as Environment>::Affine::zero()),
+                &b,
+            );
         }
     }
 
@@ -239,25 +260,5 @@ mod tests {
     #[test]
     fn test_private_plus_private() {
         run_test(Mode::Private, Mode::Private);
-    }
-
-    #[test]
-    fn test_add_matches() {
-        // Sample two random elements.
-        let a = <Circuit as Environment>::Affine::rand(&mut test_rng());
-        let b = <Circuit as Environment>::Affine::rand(&mut test_rng());
-        let expected: <Circuit as Environment>::Affine = (a.to_projective() + b.to_projective()).into();
-
-        // Constant
-        let first = Group::<Circuit>::new(Mode::Constant, a);
-        let second = Group::<Circuit>::new(Mode::Constant, b);
-        let candidate_a = first + second;
-        assert_eq!(expected, candidate_a.eject_value());
-
-        // Private
-        let first = Group::<Circuit>::new(Mode::Private, a);
-        let second = Group::<Circuit>::new(Mode::Private, b);
-        let candidate_b = first + second;
-        assert_eq!(expected, candidate_b.eject_value());
     }
 }

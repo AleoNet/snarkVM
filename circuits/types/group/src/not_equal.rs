@@ -46,7 +46,7 @@ impl<E: Environment> Metadata<dyn NotEqual<Group<E>, Output = Boolean<E>>> for G
     fn output_type(case: Self::Case) -> Self::OutputType {
         match case {
             (CircuitType::Constant(a), CircuitType::Constant(b)) => {
-                CircuitType::from(a.circuit().is_equal(b.circuit()))
+                CircuitType::from(a.circuit().is_not_equal(&b.circuit()))
             }
             _ => CircuitType::Private,
         }
@@ -82,6 +82,12 @@ mod tests {
 
             let name = format!("Not Equal: a != b {}", i);
             check_is_not_equal(&name, first != second, &a, &b);
+
+            let name = format!("Not Equal: a != a {}", i);
+            check_is_not_equal(&name, false, &a, &a);
+
+            let name = format!("Not Equal: b != b {}", i);
+            check_is_not_equal(&name, false, &b, &b);
         }
     }
 

@@ -69,8 +69,7 @@ mod tests {
         });
     }
 
-    #[test]
-    fn test_neg_constant() {
+    fn run_test(mode: Mode) {
         for i in 0..ITERATIONS {
             // Sample a random element.
             let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
@@ -78,50 +77,28 @@ mod tests {
             assert!(expected.is_on_curve());
             assert!(expected.is_in_correct_subgroup_assuming_on_curve());
 
-            let candidate_input = Group::<Circuit>::new(Mode::Constant, point);
-            check_neg(&format!("NEG Constant {}", i), expected, candidate_input);
+            let candidate_input = Group::<Circuit>::new(mode, point);
+            check_neg(&format!("NEG {} {}", mode, i), expected, candidate_input);
         }
+
+        // Test zero case.
+        let expected = <Circuit as Environment>::Affine::zero();
+        let candidate_input = Group::<Circuit>::zero();
+        check_neg(&format!("NEG {} Zero", mode), expected, candidate_input);
+    }
+
+    #[test]
+    fn test_neg_constant() {
+        run_test(Mode::Constant)
     }
 
     #[test]
     fn test_neg_public() {
-        for i in 0..ITERATIONS {
-            // Sample a random element.
-            let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let expected = -point;
-            assert!(expected.is_on_curve());
-            assert!(expected.is_in_correct_subgroup_assuming_on_curve());
-
-            let candidate_input = Group::<Circuit>::new(Mode::Public, point);
-            check_neg(&format!("NEG Public {}", i), expected, candidate_input);
-        }
+        run_test(Mode::Public);
     }
 
     #[test]
     fn test_neg_private() {
-        for i in 0..ITERATIONS {
-            // Sample a random element.
-            let point: <Circuit as Environment>::Affine = UniformRand::rand(&mut test_rng());
-            let expected = -point;
-            assert!(expected.is_on_curve());
-            assert!(expected.is_in_correct_subgroup_assuming_on_curve());
-
-            let candidate_input = Group::<Circuit>::new(Mode::Private, point);
-            check_neg(&format!("NEG Private {}", i), expected, candidate_input);
-        }
-    }
-
-    #[test]
-    fn test_zero() {
-        let expected = <Circuit as Environment>::Affine::zero();
-
-        let candidate_input = Group::<Circuit>::zero();
-        check_neg("NEG Constant Zero", expected, candidate_input);
-
-        let candidate_input = Group::<Circuit>::new(Mode::Public, expected);
-        check_neg("NEG Public Zero", expected, candidate_input);
-
-        let candidate_input = Group::<Circuit>::new(Mode::Private, expected);
-        check_neg("NEG Private Zero", expected, candidate_input);
+        run_test(Mode::Private)
     }
 }
