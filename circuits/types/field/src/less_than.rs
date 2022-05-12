@@ -60,7 +60,7 @@ impl<E: Environment> Metadata<dyn LessThan<Field<E>, Output = Boolean<E>>> for F
     fn output_type(case: Self::Case) -> Self::OutputType {
         match case {
             (CircuitType::Constant(a), CircuitType::Constant(b)) => {
-                CircuitType::from(a.circuit().is_less_than(b.circuit()))
+                CircuitType::from(a.circuit().is_less_than(&b.circuit()))
             }
             (other_type, CircuitType::Constant(constant)) | (CircuitType::Constant(constant), other_type) => {
                 // TODO: Finish this case.

@@ -35,7 +35,7 @@ impl<E: Environment> Metadata<dyn FromBoolean<Boolean = Boolean<E>>> for Field<E
 
     fn output_type(case: Self::Case) -> Self::OutputType {
         match case {
-            CircuitType::Constant(constant) => CircuitType::from(Field::from_boolean(constant.circuit())),
+            CircuitType::Constant(constant) => CircuitType::from(Field::from_boolean(&constant.circuit())),
             CircuitType::Public => CircuitType::Public,
             CircuitType::Private => CircuitType::Private,
         }

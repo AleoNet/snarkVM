@@ -107,7 +107,7 @@ impl<E: Environment> Metadata<dyn FromBitsLE<Boolean = Boolean<E>>> for Field<E>
 
     fn output_type(case: Self::Case) -> Self::OutputType {
         match case {
-            CircuitType::Constant(constant) => CircuitType::from(Field::from_bits_le(constant.circuit())),
+            CircuitType::Constant(constant) => CircuitType::from(Field::from_bits_le(&constant.circuit())),
             _ => CircuitType::Private,
         }
     }

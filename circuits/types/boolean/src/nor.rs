@@ -70,7 +70,7 @@ impl<E: Environment> Metadata<dyn Nor<Boolean<E>, Output = Boolean<E>>> for Bool
 
     fn output_type(case: Self::Case) -> Self::OutputType {
         match case {
-            (CircuitType::Constant(a), CircuitType::Constant(b)) => CircuitType::from(a.circuit().nor(b.circuit())),
+            (CircuitType::Constant(a), CircuitType::Constant(b)) => CircuitType::from(a.circuit().nor(&b.circuit())),
             (CircuitType::Constant(constant), _) | (_, CircuitType::Constant(constant)) => match constant.eject_value()
             {
                 true => CircuitType::from(Boolean::constant(false)),

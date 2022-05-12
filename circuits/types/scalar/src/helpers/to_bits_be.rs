@@ -38,7 +38,7 @@ impl<E: Environment> ToBitsBE for &Scalar<E> {
 
 impl<E: Environment> Metadata<dyn ToBitsBE<Boolean = Boolean<E>>> for Scalar<E> {
     type Case = CircuitType<Self>;
-    type OutputType = CircuitType<Vec<Boolean<E>>>;
+    type OutputType = Vec<CircuitType<Boolean<E>>>;
 
     fn count(_case: &Self::Case) -> Count {
         Count::is(0, 0, 0, 0)
@@ -46,9 +46,11 @@ impl<E: Environment> Metadata<dyn ToBitsBE<Boolean = Boolean<E>>> for Scalar<E> 
 
     fn output_type(case: Self::Case) -> Self::OutputType {
         match case {
-            CircuitType::Constant(constant) => CircuitType::from(constant.circuit().to_bits_be()),
-            CircuitType::Public => CircuitType::Public,
-            CircuitType::Private => CircuitType::Private,
+            CircuitType::Constant(constant) => {
+                constant.circuit().to_bits_be().into_iter().map(|bit| CircuitType::from(bit)).collect()
+            }
+            CircuitType::Public => vec![CircuitType::Public; E::ScalarField::size_in_bits()],
+            CircuitType::Private => vec![CircuitType::Private; E::ScalarField::size_in_bits()],
         }
     }
 }

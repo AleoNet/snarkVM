@@ -41,7 +41,7 @@ impl<E: Environment> Metadata<dyn NotEqual<Scalar<E>, Output = Boolean<E>>> for 
     fn output_type(case: Self::Case) -> Self::OutputType {
         match case {
             (CircuitType::Constant(a), CircuitType::Constant(b)) => {
-                CircuitType::from(a.circuit().is_not_equal(b.circuit()))
+                CircuitType::from(a.circuit().is_not_equal(&b.circuit()))
             }
             _ => CircuitType::Private,
         }
