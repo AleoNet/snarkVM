@@ -198,9 +198,6 @@ impl<E: Environment> Metadata<dyn Mul<Scalar<E>, Output = Group<E>>> for Group<E
         let mut output_count = to_bits_be_count + zero_count;
         let mut output_type = zero_type;
 
-        println!("output_count: {:?}", output_count);
-        println!("output_type: {:?}", output_type);
-
         for bit in to_bits_be_type {
             output_count = output_count + count!(Group<E>, Double<Output = Group<E>>, &output_type);
             output_type = output_type!(Group<E>, Double<Output = Group<E>>, output_type);
@@ -219,11 +216,6 @@ impl<E: Environment> Metadata<dyn Mul<Scalar<E>, Output = Group<E>>> for Group<E
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        // match case {
-        //     (CircuitType::Constant(a), CircuitType::Constant(b)) => CircuitType::from(a.circuit().mul(b.circuit())),
-        //     _ => CircuitType::Private,
-        // }
-
         let (left, right) = case;
         let to_bits_be_output_type = output_type!(Scalar<E>, ToBitsBE<Boolean = Boolean<E>>, right);
 
@@ -244,6 +236,8 @@ impl<E: Environment> Metadata<dyn Mul<Scalar<E>, Output = Group<E>>> for Group<E
         output_type
     }
 }
+
+// TODO: Do we need Metadata implementations for other multiplication operations? And corresponding tests.
 
 #[cfg(test)]
 mod tests {

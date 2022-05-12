@@ -30,7 +30,7 @@ impl<E: Environment> FromBitsBE for Boolean<E> {
 }
 
 impl<E: Environment> Metadata<dyn FromBitsBE<Boolean = Boolean<E>>> for Boolean<E> {
-    type Case = CircuitType<Vec<Self>>;
+    type Case = Vec<CircuitType<Self>>;
     type OutputType = CircuitType<Self>;
 
     fn count(_case: &Self::Case) -> Count {
@@ -38,10 +38,18 @@ impl<E: Environment> Metadata<dyn FromBitsBE<Boolean = Boolean<E>>> for Boolean<
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match case {
-            CircuitType::Constant(constant) => CircuitType::from(Boolean::from_bits_be(&constant.circuit())),
-            CircuitType::Public => CircuitType::Public,
-            CircuitType::Private => CircuitType::Private,
+        match case.len() == 1 {
+            false => E::halt(format!("Attempted to instantiate a boolean with {} bits", case.len())),
+            true => {
+                // This unwrap is safe since we check that the length of `case` is one.
+                match case.first().unwrap() {
+                    CircuitType::Constant(constant) => {
+                        CircuitType::from(Boolean::from_bits_be(&[constant.clone().circuit()]))
+                    }
+                    CircuitType::Public => CircuitType::Public,
+                    CircuitType::Private => CircuitType::Private,
+                }
+            }
         }
     }
 }
@@ -56,7 +64,7 @@ mod tests {
             let result = Boolean::from_bits_be(&[(*candidate).clone()]);
             assert_eq!(expected, result.eject_value());
 
-            let case = CircuitType::from(vec![candidate.clone()]);
+            let case = vec![CircuitType::from(candidate)];
             assert_count!(Boolean<Circuit>, FromBitsBE<Boolean = Boolean<Circuit>>, &case);
             assert_output_type!(Boolean<Circuit>, FromBitsBE<Boolean = Boolean<Circuit>>, case, result);
         });

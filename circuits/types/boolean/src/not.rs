@@ -77,42 +77,26 @@ mod tests {
         });
     }
 
+    fn run_test(mode: Mode) {
+        for condition in [true, false] {
+            let input = Boolean::<Circuit>::new(mode, condition);
+            let name = format!("NOT {} {}", condition, mode);
+            check_not(&name, !condition, input)
+        }
+    }
+
     #[test]
     fn test_not_constant() {
-        // NOT false
-        let expected = true;
-        let candidate_input = Boolean::<Circuit>::new(Mode::Constant, false);
-        check_not("NOT false", expected, candidate_input);
-
-        // NOT true
-        let expected = false;
-        let candidate_input = Boolean::<Circuit>::new(Mode::Constant, true);
-        check_not("NOT true", expected, candidate_input);
+        run_test(Mode::Constant)
     }
 
     #[test]
     fn test_not_public() {
-        // NOT false
-        let expected = true;
-        let candidate_input = Boolean::<Circuit>::new(Mode::Public, false);
-        check_not("NOT false", expected, candidate_input);
-
-        // NOT true
-        let expected = false;
-        let candidate_input = Boolean::<Circuit>::new(Mode::Public, true);
-        check_not("NOT true", expected, candidate_input);
+        run_test(Mode::Public)
     }
 
     #[test]
     fn test_not_private() {
-        // NOT false
-        let expected = true;
-        let candidate_input = Boolean::<Circuit>::new(Mode::Private, false);
-        check_not("NOT false", expected, candidate_input);
-
-        // NOT true
-        let expected = false;
-        let candidate_input = Boolean::<Circuit>::new(Mode::Private, true);
-        check_not("NOT true", expected, candidate_input);
+        run_test(Mode::Private)
     }
 }
