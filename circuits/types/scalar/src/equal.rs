@@ -56,7 +56,7 @@ mod tests {
 
     const ITERATIONS: u64 = 100;
 
-    fn check_is_equal(name: &str, expected: bool, a: Scalar<Circuit>, b: Scalar<Circuit>) {
+    fn check_is_equal(name: &str, expected: bool, a: &Scalar<Circuit>, b: &Scalar<Circuit>) {
         Circuit::scope(name, || {
             let candidate = a.is_equal(&b);
             assert_eq!(expected, candidate.eject_value(), "({} == {})", a.eject_value(), b.eject_value());
@@ -75,11 +75,17 @@ mod tests {
 
             // a == b
             let expected = first == second;
-            let a = Scalar::<Circuit>::new(Mode::Constant, first);
-            let b = Scalar::<Circuit>::new(Mode::Constant, second);
+            let a = &Scalar::<Circuit>::new(Mode::Constant, first);
+            let b = &Scalar::<Circuit>::new(Mode::Constant, second);
 
             let name = format!("Equal: {} {} {}", mode_a, mode_b, i);
             check_is_equal(&name, expected, a, b);
+
+            let name = format!("Equal: a == a, {}", i);
+            check_is_equal(&name, true, a, a);
+
+            let name = format!("Equal: b == b, {}", i);
+            check_is_equal(&name, true, b, b);
         }
     }
 

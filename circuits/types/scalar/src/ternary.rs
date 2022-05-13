@@ -62,6 +62,8 @@ mod tests {
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
+    const ITERATIONS: u64 = 32;
+
     fn check_ternary(
         name: &str,
         expected: <Circuit as Environment>::ScalarField,
@@ -71,27 +73,34 @@ mod tests {
     ) {
         Circuit::scope(name, || {
             let case = format!("({} ? {} : {})", condition.eject_value(), a.eject_value(), b.eject_value());
+            println!("1");
             let candidate = Scalar::ternary(&condition, &a, &b);
+            println!("2");
             assert_eq!(expected, candidate.eject_value(), "{case}");
-
+            println!("3");
             let case = (CircuitType::from(condition), CircuitType::from(a), CircuitType::from(b));
+            println!("4");
             assert_count!(Ternary(Boolean, Scalar, Scalar) => Scalar, &case);
+            println!("5");
             assert_output_type!(Ternary(Boolean, Scalar, Scalar) => Scalar, case, candidate);
+            println!("6");
         });
     }
 
     fn run_test(mode_condition: Mode, mode_a: Mode, mode_b: Mode) {
-        for flag in [true, false] {
-            let first: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
-            let second: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
+        for i in 0..ITERATIONS {
+            for flag in [true, false] {
+                let first: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
+                let second: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
 
-            let expected = if flag { first } else { second };
-            let condition = Boolean::<Circuit>::new(mode_condition, flag);
-            let a = Scalar::<Circuit>::new(mode_a, first);
-            let b = Scalar::<Circuit>::new(mode_b, second);
+                let expected = if flag { first } else { second };
+                let condition = Boolean::<Circuit>::new(mode_condition, flag);
+                let a = Scalar::<Circuit>::new(mode_a, first);
+                let b = Scalar::<Circuit>::new(mode_b, second);
 
-            let name = format!("{} ? {} : {}", flag, mode_a, mode_b);
-            check_ternary(&name, expected, condition, a, b);
+                let name = format!("{} ? {} : {}, {}", flag, mode_a, mode_b, i);
+                check_ternary(&name, expected, condition, a, b);
+            }
         }
     }
 

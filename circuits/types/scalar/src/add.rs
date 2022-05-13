@@ -164,6 +164,13 @@ mod tests {
 
             let name = format!("Add: {} + {} {} (commutative)", mode_a, mode_b, i);
             check_add(&name, second, first, mode_a, mode_b);
+
+            // Test identity cases.
+            let name = format!("Add: a + 0 {}", i);
+            check_add(&name, first, <Circuit as Environment>::ScalarField::zero(), mode_a, mode_b);
+
+            let name = format!("Add: 0 + a {}", i);
+            check_add(&name, <Circuit as Environment>::ScalarField::zero(), second, mode_a, mode_b);
         }
     }
 

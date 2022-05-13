@@ -56,9 +56,9 @@ mod tests {
 
     const ITERATIONS: u64 = 100;
 
-    fn check_is_not_equal(name: &str, expected: bool, a: Scalar<Circuit>, b: Scalar<Circuit>) {
+    fn check_is_not_equal(name: &str, expected: bool, a: &Scalar<Circuit>, b: &Scalar<Circuit>) {
         Circuit::scope(name, || {
-            let candidate = a.is_not_equal(&b);
+            let candidate = a.is_not_equal(b);
             assert_eq!(expected, candidate.eject_value(), "({} != {})", a.eject_value(), b.eject_value());
 
             let case = (CircuitType::from(a), CircuitType::from(b));
@@ -79,7 +79,13 @@ mod tests {
             let b = Scalar::<Circuit>::new(Mode::Constant, second);
 
             let name = format!("NotEqual: {} {} {}", mode_a, mode_b, i);
-            check_is_not_equal(&name, expected, a, b);
+            check_is_not_equal(&name, expected, &a, &b);
+
+            let name = format!("NotEqual: a != a {}", i);
+            check_is_not_equal(&name, false, &a, &a);
+
+            let name = format!("NotEqual: b != b {}", i);
+            check_is_not_equal(&name, false, &b, &b);
         }
     }
 

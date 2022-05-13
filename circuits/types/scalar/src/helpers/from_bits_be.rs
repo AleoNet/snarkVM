@@ -31,21 +31,25 @@ impl<E: Environment> FromBitsBE for Scalar<E> {
 }
 
 impl<E: Environment> Metadata<dyn FromBitsBE<Boolean = Boolean<E>>> for Scalar<E> {
-    type Case = CircuitType<Vec<Boolean<E>>>;
+    type Case = Vec<CircuitType<Boolean<E>>>;
     type OutputType = CircuitType<Self>;
 
     fn count(case: &Self::Case) -> Count {
-        match case {
-            CircuitType::Constant(_) => Count::is(507, 0, 0, 0),
-            _ => Count::is(254, 0, 769, 771),
+        match case.iter().all(|bit| bit.is_constant()) {
+            true => Count::is(507, 0, 0, 0),
+            false => Count::is(254, 0, 769, 771),
         }
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match case {
-            CircuitType::Constant(constant) => CircuitType::from(Scalar::from_bits_be(&constant.circuit())),
-            _ => CircuitType::Private,
+        let mut bits_le = Vec::with_capacity(case.len());
+        for bit in case {
+            match bit {
+                CircuitType::Constant(constant) => bits_le.push(constant.circuit()),
+                _ => return CircuitType::Private,
+            }
         }
+        CircuitType::from(Scalar::from_bits_le(bits_le.as_slice()))
     }
 }
 
@@ -69,7 +73,7 @@ mod tests {
                 assert_eq!(expected, candidate.eject_value());
                 assert_eq!(expected_size_in_bits, candidate.to_bits_be().len());
 
-                let case = CircuitType::from(&given_bits);
+                let case = given_bits.iter().map(|bit| CircuitType::from(bit)).collect();
                 assert_count!(Scalar<Circuit>, FromBitsBE<Boolean = Boolean<Circuit>>, &case);
                 assert_output_type!(Scalar<Circuit>, FromBitsBE<Boolean = Boolean<Circuit>>, case, candidate);
             });
@@ -82,7 +86,7 @@ mod tests {
                 assert_eq!(expected, candidate.eject_value());
                 assert_eq!(expected_size_in_bits, candidate.bits_le.len());
 
-                let case = CircuitType::from(&given_bits);
+                let case = given_bits.into_iter().map(|bit| CircuitType::from(bit)).collect();
                 assert_count!(Scalar<Circuit>, FromBitsBE<Boolean = Boolean<Circuit>>, &case);
                 assert_output_type!(Scalar<Circuit>, FromBitsBE<Boolean = Boolean<Circuit>>, case, candidate);
             });
