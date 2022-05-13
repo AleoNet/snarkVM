@@ -32,4 +32,4 @@ version = "0.7.5"
 default-features = false
 
 [dependencies.bech32]
-version = "0.8"
+version = "0.9"
