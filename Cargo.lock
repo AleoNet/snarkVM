@@ -2226,6 +2226,7 @@ dependencies = [
  "serde",
  "serde_json",
  "snarkvm-algorithms",
+ "snarkvm-circuits",
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-gadgets",
