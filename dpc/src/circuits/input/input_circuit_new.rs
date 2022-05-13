@@ -88,6 +88,8 @@ impl<A: AleoDPC, N: Network> Inject for NewInputCircuit<A, N> {
 
     /// Initializes an input circuit from the given mode and `(input_public_variables, input_private_variables)`.
     fn new(_mode: Mode, (input_public_variables, input_private_variables): Self::Primitive) -> Self {
+        // TODO (raychu86): Handle base field and scalar field mismatches.
+
         // // Initialize the public variables.
         // let serial_number = Field::<A>::new(Mode::Public, **input_public_variables.serial_number());
         // let input_value_commitment =
