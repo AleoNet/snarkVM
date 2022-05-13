@@ -75,6 +75,13 @@ impl<N: Network> InputPublicVariables<N> {
     }
 }
 
+impl<N: Network> Default for InputPublicVariables<N> {
+    #[inline]
+    fn default() -> Self {
+        Self::blank()
+    }
+}
+
 impl<N: Network> ToConstraintField<N::InnerScalarField> for InputPublicVariables<N> {
     fn to_field_elements(&self) -> Result<Vec<N::InnerScalarField>, ConstraintFieldError> {
         let mut v = Vec::new();

@@ -57,3 +57,10 @@ impl<N: Network> InputPrivateVariables<N> {
     //     })
     // }
 }
+
+impl<N: Network> Default for InputPrivateVariables<N> {
+    #[inline]
+    fn default() -> Self {
+        Self::blank()
+    }
+}
