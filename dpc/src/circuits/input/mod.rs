@@ -17,6 +17,9 @@
 pub mod input_circuit;
 pub use input_circuit::*;
 
+pub mod input_circuit_new;
+pub use input_circuit_new::*;
+
 pub(crate) mod input_private_variables;
 pub(crate) use input_private_variables::*;
 
