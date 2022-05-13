@@ -48,26 +48,107 @@ impl<E: Environment> Metadata<dyn LessThan<Field<E>, Output = Boolean<E>>> for F
     type OutputType = CircuitType<Boolean<E>>;
 
     fn count(case: &Self::Case) -> Count {
-        match case {
-            (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(506, 0, 0, 0),
-            (other_type, CircuitType::Constant(constant)) | (CircuitType::Constant(constant), other_type) => {
-                todo!()
+        let (left, right) = case.clone();
+
+        let mut total_count = Count::zero();
+
+        let mut is_less_than_type = CircuitType::from(Boolean::constant(false));
+        let mut are_previous_bits_equal_type = CircuitType::from(Boolean::constant(true));
+
+        // Get the big endian bits of self and other.
+        total_count = total_count + count!(Field<E>, ToBitsBE<Boolean = Boolean<E>>, &left);
+        let self_bits_be_type = output_type!(Field<E>, ToBitsBE<Boolean = Boolean<E>>, left);
+
+        total_count = total_count + count!(Field<E>, ToBitsBE<Boolean = Boolean<E>>, &right);
+        let other_bits_be_type = output_type!(Field<E>, ToBitsBE<Boolean = Boolean<E>>, right);
+
+        let bits_be = self_bits_be_type.into_iter().zip_eq(other_bits_be_type.into_iter());
+        let length = bits_be.len();
+
+        for (index, (self_bit, other_bit)) in bits_be.enumerate() {
+            // Compute the cost and output type of `!self_bit`.
+            let case = self_bit.clone();
+            total_count = total_count + count!(Boolean<E>, Not<Output = Boolean<E>>, &case);
+            let not_self_bit_type = output_type!(Boolean<E>, Not<Output = Boolean<E>>, case);
+
+            // Compute the cost of and output type of `!self_bit & other_bit`.
+            let case = (not_self_bit_type, other_bit.clone());
+            total_count = total_count + count!(Boolean<E>, BitAnd<Boolean<E>, Output = Boolean<E>>, &case);
+            let not_self_and_other_bit_type = output_type!(Boolean<E>, BitAnd<Boolean<E>, Output = Boolean<E>>, case);
+
+            // Compute the cost of `are_previous_bits_equal & !self_bit & other_bit`.
+            let case = (are_previous_bits_equal_type.clone(), not_self_and_other_bit_type);
+            total_count = total_count + count!(Boolean<E>, BitAnd<Boolean<E>, Output = Boolean<E>>, &case);
+            let are_previous_bits_equal_and_not_self_and_other_bit_type =
+                output_type!(Boolean<E>, BitAnd<Boolean<E>, Output = Boolean<E>>, case);
+
+            // Compute the cost of `less_than |= are_previous_bits_equal & (!self_bit & other_bit)`.
+            let case = (is_less_than_type, are_previous_bits_equal_and_not_self_and_other_bit_type);
+            total_count = total_count + count!(Boolean<E>, BitOr<Boolean<E>, Output = Boolean<E>>, &case);
+            is_less_than_type = output_type!(Boolean<E>, BitOr<Boolean<E>, Output = Boolean<E>>, case);
+
+            // Skip the update to the LSB, as this boolean is subsequently discarded.
+            if index != length - 1 {
+                // Compute the cost and output type of `self_bit.is_equal(other_bit)`.
+                let case = (self_bit, other_bit);
+                total_count = total_count + count!(Boolean<E>, Equal<Boolean<E>, Output = Boolean<E>>, &case);
+                let self_bit_is_equal_other_bit_type =
+                    output_type!(Boolean<E>, Equal<Boolean<E>, Output = Boolean<E>>, case);
+
+                // Compute the cost and output type `are_previous_bits_equal & self_bit.is_equal(other_bit)`.
+                let case = (are_previous_bits_equal_type, self_bit_is_equal_other_bit_type);
+                total_count = total_count + count!(Boolean<E>, BitAnd<Boolean<E>, Output = Boolean<E>>, &case);
+                are_previous_bits_equal_type = output_type!(Boolean<E>, BitAnd<Boolean<E>, Output = Boolean<E>>, case);
             }
-            (_, _) => Count::is(0, 0, 1766, 1768),
         }
+        total_count
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match case {
-            (CircuitType::Constant(a), CircuitType::Constant(b)) => {
-                CircuitType::from(a.circuit().is_less_than(&b.circuit()))
+        let (left, right) = case;
+
+        let mut is_less_than_type = CircuitType::from(Boolean::constant(false));
+        let mut are_previous_bits_equal_type = CircuitType::from(Boolean::constant(true));
+
+        // Get the big endian bits of self and other.
+        let self_bits_be_type = output_type!(Field<E>, ToBitsBE<Boolean = Boolean<E>>, left);
+
+        let other_bits_be_type = output_type!(Field<E>, ToBitsBE<Boolean = Boolean<E>>, right);
+
+        let bits_be = self_bits_be_type.into_iter().zip_eq(other_bits_be_type.into_iter());
+        let length = bits_be.len();
+
+        for (index, (self_bit, other_bit)) in bits_be.enumerate() {
+            // Determine the output type of `!self_bit`.
+            let case = self_bit.clone();
+            let not_self_bit_type = output_type!(Boolean<E>, Not<Output = Boolean<E>>, case);
+
+            // Determine the output type of `!self_bit & other_bit`.
+            let case = (not_self_bit_type, other_bit.clone());
+            let not_self_and_other_bit_type = output_type!(Boolean<E>, BitAnd<Boolean<E>, Output = Boolean<E>>, case);
+
+            // Determine the output type of `are_previous_bits_equal & !self_bit & other_bit`.
+            let case = (are_previous_bits_equal_type.clone(), not_self_and_other_bit_type);
+            let are_previous_bits_equal_and_not_self_and_other_bit_type =
+                output_type!(Boolean<E>, BitAnd<Boolean<E>, Output = Boolean<E>>, case);
+
+            // Determine the output type of `less_than |= are_previous_bits_equal & (!self_bit & other_bit)`.
+            let case = (is_less_than_type, are_previous_bits_equal_and_not_self_and_other_bit_type);
+            is_less_than_type = output_type!(Boolean<E>, BitOr<Boolean<E>, Output = Boolean<E>>, case);
+
+            // Skip the update to the LSB, as this boolean is subsequently discarded.
+            if index != length - 1 {
+                // Determine the output type of `self_bit.is_equal(other_bit)`.
+                let case = (self_bit, other_bit);
+                let self_bit_is_equal_other_bit_type =
+                    output_type!(Boolean<E>, Equal<Boolean<E>, Output = Boolean<E>>, case);
+
+                // Determine the output type `are_previous_bits_equal & self_bit.is_equal(other_bit)`.
+                let case = (are_previous_bits_equal_type, self_bit_is_equal_other_bit_type);
+                are_previous_bits_equal_type = output_type!(Boolean<E>, BitAnd<Boolean<E>, Output = Boolean<E>>, case);
             }
-            (other_type, CircuitType::Constant(constant)) | (CircuitType::Constant(constant), other_type) => {
-                // TODO: Finish this case.
-                CircuitType::Private
-            }
-            (_, _) => CircuitType::Private,
         }
+        is_less_than_type
     }
 }
 

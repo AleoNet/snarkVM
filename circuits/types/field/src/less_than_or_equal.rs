@@ -31,12 +31,12 @@ impl<E: Environment> Metadata<dyn LessThanOrEqual<Field<E>, Output = Boolean<E>>
 
     fn count(case: &Self::Case) -> Count {
         let (left, right) = case.clone();
-        count!(Field<E>, GreaterThanOrEqual<Self, Output = Boolean<E>>, &(right, left))
+        count!(Self, GreaterThanOrEqual<Self, Output = Boolean<E>>, &(right, left))
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
         let (left, right) = case;
-        output_type!(Field<E>, GreaterThanOrEqual<Self, Output = Boolean<E>>, (right, left))
+        output_type!(Self, GreaterThanOrEqual<Self, Output = Boolean<E>>, (right, left))
     }
 }
 
@@ -64,8 +64,8 @@ mod tests {
                 assert_eq!(expected_a <= expected_b, candidate.eject_value());
 
                 let case = (CircuitType::from(candidate_a), CircuitType::from(candidate_b));
-                assert_count!(LessThan(Field, Field) => Boolean, &case);
-                assert_output_type!(LessThan(Field, Field) => Boolean, case, candidate);
+                assert_count!(LessThanOrEqual(Field, Field) => Boolean, &case);
+                assert_output_type!(LessThanOrEqual(Field, Field) => Boolean, case, candidate);
             });
             Circuit::reset();
         }
