@@ -39,6 +39,11 @@ pub struct Record<A: Aleo> {
 }
 
 impl<A: Aleo> Record<A> {
+    /// Returns a new instance of a record.
+    pub fn new(owner: Address<A>, value: I64<A>, data: Vec<Literal<A>>) -> Self {
+        Self { owner, value, data }
+    }
+
     /// Returns the record owner.
     pub fn owner(&self) -> &Address<A> {
         &self.owner

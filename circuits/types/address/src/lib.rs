@@ -33,7 +33,7 @@ use snarkvm_utilities::{error, FromBytes, ToBytes};
 use bech32::{FromBase32, ToBase32};
 
 #[derive(Clone)]
-pub struct Address<E: Environment>(Group<E>);
+pub struct Address<E: Environment>(pub Group<E>);
 
 impl<E: Environment> AddressTrait for Address<E> {}
 

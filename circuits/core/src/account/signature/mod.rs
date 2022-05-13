@@ -71,6 +71,28 @@ impl<A: Aleo> Eject for Signature<A> {
     }
 }
 
+impl<A: Aleo> Signature<A> {
+    /// Returns the prover response.
+    pub fn prover_response(&self) -> &Scalar<A> {
+        &self.prover_response
+    }
+
+    /// Returns the verifier challenge.
+    pub fn verifier_challenge(&self) -> &Scalar<A> {
+        &self.verifier_challenge
+    }
+
+    /// Returns the signature public key.
+    pub fn pk_sig(&self) -> &Group<A> {
+        &self.pk_sig
+    }
+
+    /// Returns the signature public randomizer.
+    pub fn pr_sig(&self) -> &Group<A> {
+        &self.pr_sig
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
