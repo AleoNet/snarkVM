@@ -14,9 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{circuits::AleoDPC, InputPrivateVariables, InputPublicVariables, Network};
+use crate::{circuits::AleoDPC, InputPrivateVariables, InputPublicVariables, Network, Payload};
 use snarkvm_circuits::{
-    account::{Record, Signature},
+    account::{Ciphertext, Record, Signature},
     algorithms::{poseidon::ecies::ECIESPoseidonEncryption, MerklePath},
     prelude::*,
     Eject,
@@ -27,7 +27,6 @@ use snarkvm_circuits::{
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 // TODO (raychu86): TODOs for the input circuit:
-//  - Add ciphertext, randomizer, view_key, etc to the Record circuit
 //  - Add access to the LeafCRH and TwoToOneCRH circuits via `A: AleoDPC`
 //    - We need this to use the merkle path circuits.
 //  - Unify AleoDPC with Aleo
@@ -87,7 +86,7 @@ impl<A: AleoDPC, N: Network> Inject for NewInputCircuit<A, N> {
     type Primitive = (InputPublicVariables<N>, InputPrivateVariables<N>);
 
     /// Initializes an input circuit from the given mode and `(input_public_variables, input_private_variables)`.
-    fn new(_mode: Mode, (input_public_variables, input_private_variables): Self::Primitive) -> Self {
+    fn new(mode: Mode, (input_public_variables, input_private_variables): Self::Primitive) -> Self {
         // TODO (raychu86): Handle base field and scalar field mismatches.
 
         // // Initialize the public variables.
@@ -113,11 +112,30 @@ impl<A: AleoDPC, N: Network> Inject for NewInputCircuit<A, N> {
         //
         // // Initialize the private variables.
         //
-        // // TODO (raychu86): Fix placeholder usage of record attributes.
+        // let native_record = &input_private_variables.input_record;
+        // let payload = if let Some(payload) = native_record.payload().clone() { payload } else { Payload::default() };
+        // let program_id =
+        //     if let Some(program_id) = native_record.program_id() { program_id } else { Default::default() };
+        //
+        // let ciphertext = Ciphertext::<A>::new(
+        //     mode,
+        //     (
+        //         *native_record.commitment(),
+        //         *native_record.randomizer(),
+        //         *(*native_record.ciphertext()).record_view_key_commitment(),
+        //         (*native_record.ciphertext()).record_elements().clone(),
+        //         *program_id,
+        //         native_record.is_dummy(),
+        //     ),
+        // );
+        //
         // let input_record = Record::<A>::new(
-        //     Address::parse(format!("{}.private", input_private_variables.input_record.owner()).as_str()).unwrap().1,
-        //     I64::new(Mode::Private, input_private_variables.input_record.value().as_i64()),
-        //     vec![Literal::<A>::from_str("10field.public")],
+        //     Address::parse(format!("{}.{}", native_record.owner(), mode).as_str()).unwrap().1,
+        //     I64::new(Mode::Private, native_record.value().as_i64()),
+        //     payload.to_bytes_le().unwrap().iter().map(|byte| U8::new(mode, *byte)).collect(),
+        //     Field::new(mode, **native_record.record_view_key()),
+        //     ciphertext,
+        //     vec![],
         // );
         // let signature = Signature::<A>::new(Mode::Private, input_private_variables.signature);
         // let input_value_commitment_randomness =
@@ -217,20 +235,18 @@ impl<A: AleoDPC, N: Network> NewInputCircuit<A, N> {
         let empty_payload_bits = vec![Boolean::<A>::new(Mode::Constant, false); N::RECORD_PAYLOAD_SIZE_IN_BYTES * 8];
         let empty_program_id = Field::<A>::new(Mode::Constant, Default::default());
 
+        // Fetch the attributes from the record.
         let record_owner = private.input_record.owner();
         let record_value = private.input_record.balance();
-        let record_data = private.input_record.data();
+        let record_payload = private.input_record.payload();
+        let record_view_key = private.input_record.view_key();
+        let record_ciphertext = private.input_record.ciphertext();
+        let _record_data = private.input_record.data();
 
-        // TODO (raychu86): Implement is_dummy for the record.
-        let given_is_dummy = Boolean::<A>::new(Mode::Constant, true);
-        // TODO (raychu86): Split the record data into relevant parts. (ciphertext, program id, etc.)
-        let record_payload_bits = vec![Boolean::<A>::new(Mode::Constant, false); N::RECORD_PAYLOAD_SIZE_IN_BYTES * 8];
-        // TODO (raychu86): Derive the record view key from the record.
-        let record_view_key = Field::<A>::new(Mode::Constant, Default::default());
-        // TODO (raychu86): Derive the record randomizer from the record.
-        let record_randomizer = Field::<A>::new(Mode::Constant, Default::default());
-        // TODO (raychu86): Use the record program id
-        let record_program_id = &public.program_id;
+        let given_is_dummy = record_ciphertext.is_dummy();
+        let record_payload_bits = record_payload.to_bits_le();
+        let record_randomizer = record_ciphertext.randomizer();
+        let record_program_id = record_ciphertext.program_id();
 
         let signature = &private.signature;
 
@@ -245,18 +261,18 @@ impl<A: AleoDPC, N: Network> NewInputCircuit<A, N> {
 
             // If the input record is empty, enforce it has a value of 0
             let is_empty_value = record_value.is_equal(&zero_value);
-            A::assert(Ternary::ternary(&given_is_dummy, &is_empty_value, &valid));
+            A::assert(Ternary::ternary(given_is_dummy, &is_empty_value, &valid));
 
             // If the input record is empty, enforce it has an empty payload
             let is_empty_payload = record_payload_bits
                 .iter()
                 .zip(empty_payload_bits)
                 .fold(Boolean::<A>::new(Mode::Constant, true), |result, (a, b)| result.bitand(&a.is_equal(&b)));
-            A::assert(Ternary::ternary(&given_is_dummy, &is_empty_payload, &valid));
+            A::assert(Ternary::ternary(given_is_dummy, &is_empty_payload, &valid));
 
             // If the input record is empty, enforce it has an empty program ID
             let is_empty_program_id = record_program_id.is_equal(&empty_program_id);
-            A::assert(Ternary::ternary(&given_is_dummy, &is_empty_program_id, &valid));
+            A::assert(Ternary::ternary(given_is_dummy, &is_empty_program_id, &valid));
 
             // Ensure the program ID matches the declared program ID (conditionally).
             let is_equivalent_program_id = record_program_id.is_equal(&public.program_id);
@@ -265,7 +281,6 @@ impl<A: AleoDPC, N: Network> NewInputCircuit<A, N> {
             // *******************************************************************
             // Compute the record commitment and check that it matches the declared commitment.
             // *******************************************************************
-
             // TODO (raychu86): Move this out to the Aleo trait.
             let encryption_scheme = ECIESPoseidonEncryption::<A, 4>::setup();
 
@@ -278,20 +293,22 @@ impl<A: AleoDPC, N: Network> NewInputCircuit<A, N> {
             plaintext.extend_from_slice(&encoded_value);
             plaintext.extend_from_slice(&encoded_payload);
 
-            let ciphertext = encryption_scheme.encrypt(record_view_key, &plaintext);
+            let ciphertext = encryption_scheme.encrypt(record_view_key.clone(), &plaintext);
 
             // Derive the record view key commitment.
-            // TODO (raychu86): Implement the record view key commitment.
+            // TODO (raychu86): Implement the record view key commitment. For now, it is being derived from
+            //  the record ciphertext.
+            let record_view_key_commitment = record_ciphertext.record_view_key_commitment();
             // let record_view_key_commitment = encryption_scheme.commitment(&record_view_key);
 
             // Compute the record commitment
             let mut commitment_input = vec![];
 
             commitment_input.extend_from_slice(&record_randomizer.to_bits_le());
-            // commitment_input.extend_from_slice(&record_view_key_commitment_bytes);
+            commitment_input.extend_from_slice(&record_view_key_commitment.to_bits_le());
             commitment_input.extend_from_slice(&ciphertext.to_bits_le());
             commitment_input.extend_from_slice(&public.program_id.to_bits_le());
-            commitment_input.extend_from_slice(&[given_is_dummy]);
+            commitment_input.extend_from_slice(&[given_is_dummy.clone()]);
 
             A::hash_record_commitment_bhp(&commitment_input)
         };
@@ -303,7 +320,7 @@ impl<A: AleoDPC, N: Network> NewInputCircuit<A, N> {
             // Compute sk_prf := RO(G^sk_sig || G^r_sig).
             let sk_prf = A::hash_psd4(&[signature.pk_sig().to_x_coordinate(), signature.pr_sig().to_x_coordinate()]);
 
-            let candidate_serial_number = A::prf_serial_number_psd(&sk_prf, &vec![candidate_commitment.clone()]);
+            let candidate_serial_number = A::prf_serial_number_psd(&sk_prf, &[candidate_commitment.clone()]);
 
             A::assert_eq(&candidate_serial_number, &public.serial_number);
         }
@@ -317,7 +334,8 @@ impl<A: AleoDPC, N: Network> NewInputCircuit<A, N> {
             let record_proof = &ledger_proof.record_proof;
             let local_proof = &record_proof.local_proof;
 
-            // TODO (raychu86): Implement these checks.
+            // TODO (raychu86): Implement these checks. Allow direct access to the relevant CRHs from
+            //  the Aleo trait?
             // let candidate_transition_id = local_proof.transition_inclusion_proof.to_root(
             //     &TRANSITION_ID_CRH,
             //     &TRANSITION_ID_TWO_TO_ONE_CRH,
@@ -342,9 +360,8 @@ impl<A: AleoDPC, N: Network> NewInputCircuit<A, N> {
         // Check that the signature is valid.
         // *******************************************************************
         {
-            let mut signature_message = Vec::new();
-            signature_message.push(Literal::<A>::Field(candidate_commitment));
-            signature_message.push(Literal::<A>::Field(public.program_id.clone()));
+            let signature_message =
+                vec![Literal::<A>::Field(candidate_commitment), Literal::<A>::Field(public.program_id.clone())];
 
             A::assert(signature.verify(record_owner, &signature_message))
         }

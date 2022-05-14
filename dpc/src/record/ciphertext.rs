@@ -89,6 +89,11 @@ impl<N: Network> Ciphertext<N> {
         &self.record_view_key_commitment
     }
 
+    /// Returns the record elements.
+    pub fn record_elements(&self) -> &Vec<N::InnerScalarField> {
+        &self.record_elements
+    }
+
     /// Returns the program id of this record.
     pub fn program_id(&self) -> Option<N::ProgramID> {
         self.program_id
