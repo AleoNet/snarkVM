@@ -111,7 +111,7 @@ impl<P: Program> Operand<P> {
 }
 
 impl<P: Program> Parser for Operand<P> {
-    type Environment = E;
+    type Environment = P::Environment;
 
     /// Parses a string into a operand.
     #[inline]

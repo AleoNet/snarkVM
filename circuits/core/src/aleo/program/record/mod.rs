@@ -21,7 +21,8 @@ use crate::aleo::Aleo;
 use snarkvm_circuits_types::{environment::prelude::*, Address, Field, Literal, U64};
 
 // TODO (howardwu): Check mode is only public/private, not constant.
-#[derive(Debug, Clone)]
+/// A program's record is a set of **ciphertext** variables used by a program.
+/// Note: `Record` is the **encrypted** form of `State`.
 pub struct Record<A: Aleo> {
     /// The program this record belongs to.
     program: Field<A>,
@@ -36,6 +37,11 @@ pub struct Record<A: Aleo> {
 }
 
 impl<A: Aleo> Record<A> {
+    /// Returns the program ID.
+    pub fn program(&self) -> &Field<A> {
+        &self.program
+    }
+
     /// Returns the record owner.
     pub fn owner(&self) -> &Address<A> {
         &self.owner

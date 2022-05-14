@@ -21,22 +21,23 @@ use crate::aleo::Aleo;
 use snarkvm_circuits_types::{environment::prelude::*, Address, Field, Literal, U64};
 
 // TODO (howardwu): Check mode is only public/private, not constant.
-#[derive(Debug, Clone)]
+/// A program's state is a set of **plaintext** variables used by a program.
+/// Note: `State` is the **decrypted** form of `Record`.
 pub struct State<A: Aleo> {
-    /// The program this record belongs to.
+    /// The program this state belongs to.
     program: Field<A>,
-    /// The Aleo address this record belongs to.
+    /// The Aleo address this state belongs to.
     owner: Address<A>,
-    /// The balance of Aleo credits in this record.
+    /// The account balance in this program state.
     balance: U64<A>,
-    /// The data in this record.
+    /// The data for this program state.
     data: Vec<Literal<A>>,
-    /// The nonce for this record.
+    /// The nonce for this program state.
     nonce: Field<A>,
 }
 
 impl<A: Aleo> State<A> {
-    /// Returns the program.
+    /// Returns the program ID.
     pub fn program(&self) -> &Field<A> {
         &self.program
     }

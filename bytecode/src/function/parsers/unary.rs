@@ -45,7 +45,7 @@ impl<P: Program> UnaryOperation<P> {
 }
 
 impl<P: Program> Parser for UnaryOperation<P> {
-    type Environment = E;
+    type Environment = P::Environment;
 
     /// Parses a string into an operation.
     #[inline]
