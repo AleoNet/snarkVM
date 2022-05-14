@@ -16,6 +16,7 @@
 
 use crate::{
     fft::EvaluationDomain,
+    polycommit::sonic_pc::{PolynomialInfo, PolynomialLabel},
     snark::marlin::{
         ahp::{
             indexer::{Circuit, CircuitInfo, ConstraintSystem as IndexerConstraintSystem},
@@ -31,6 +32,7 @@ use snarkvm_fields::PrimeField;
 use snarkvm_r1cs::{errors::SynthesisError, ConstraintSynthesizer, ConstraintSystem};
 
 use core::marker::PhantomData;
+use std::collections::BTreeMap;
 
 #[cfg(not(feature = "std"))]
 use snarkvm_utilities::println;
@@ -83,11 +85,10 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             return Err(AHPError::NonSquareMatrix);
         }
 
-        if !Self::num_formatted_public_inputs_is_admissible(num_padded_public_variables) {
-            return Err(AHPError::InvalidPublicInputLength);
-        }
+        Self::num_formatted_public_inputs_is_admissible(num_padded_public_variables)?;
 
         let index_info = CircuitInfo {
+            num_public_inputs: num_padded_public_variables,
             num_variables,
             num_constraints,
             num_non_zero_a,
@@ -138,5 +139,16 @@ impl<F: PrimeField, MM: MarlinMode> AHPForR1CS<F, MM> {
             ifft_precomputation,
             mode: PhantomData,
         })
+    }
+
+    pub fn index_polynomial_info() -> BTreeMap<PolynomialLabel, PolynomialInfo> {
+        let mut map = BTreeMap::new();
+        for matrix in ["a", "b", "c"] {
+            map.insert(format!("row_{matrix}"), PolynomialInfo::new(format!("row_{matrix}"), None, None));
+            map.insert(format!("col_{matrix}"), PolynomialInfo::new(format!("col_{matrix}"), None, None));
+            map.insert(format!("val_{matrix}"), PolynomialInfo::new(format!("val_{matrix}"), None, None));
+            map.insert(format!("row_col_{matrix}"), PolynomialInfo::new(format!("row_col_{matrix}"), None, None));
+        }
+        map
     }
 }

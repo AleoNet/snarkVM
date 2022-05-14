@@ -36,6 +36,7 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
     /// Output the first message and next round state.
     pub fn verifier_first_round<BaseField: PrimeField, R: FiatShamirRng<TargetField, BaseField>>(
         index_info: CircuitInfo<TargetField>,
+        batch_size: usize,
         fs_rng: &mut R,
     ) -> Result<(FirstMessage<TargetField>, State<TargetField, MM>), AHPError> {
         // Check that the R1CS is a square matrix.
@@ -54,20 +55,22 @@ impl<TargetField: PrimeField, MM: MarlinMode> AHPForR1CS<TargetField, MM> {
         let non_zero_c_domain =
             EvaluationDomain::new(index_info.num_non_zero_c).ok_or(AHPError::PolynomialDegreeTooLarge)?;
 
-        let elems = fs_rng.squeeze_nonnative_field_elements(3, OptimizationType::Weight)?;
-        let alpha = elems[0];
-        let eta_b = elems[1];
-        let eta_c = elems[2];
+        let elems = fs_rng.squeeze_nonnative_field_elements(3 + batch_size - 1, OptimizationType::Weight)?;
+        let (first, rest) = elems.split_at(3);
+        let [alpha, eta_b, eta_c]: [_; 3] = first.try_into().unwrap();
+        let mut batch_combiners = vec![TargetField::one()];
+        batch_combiners.extend_from_slice(rest);
         assert!(!constraint_domain.evaluate_vanishing_polynomial(alpha).is_zero());
 
-        let message = FirstMessage { alpha, eta_b, eta_c };
+        let message = FirstMessage { alpha, eta_b, eta_c, batch_combiners };
 
         let new_state = State {
+            batch_size,
             constraint_domain,
             non_zero_a_domain,
             non_zero_b_domain,
             non_zero_c_domain,
-            first_round_message: Some(message),
+            first_round_message: Some(message.clone()),
             second_round_message: None,
             third_round_message: None,
             gamma: None,

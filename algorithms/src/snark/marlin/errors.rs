@@ -72,3 +72,19 @@ impl From<MarlinError> for SNARKError {
         }
     }
 }
+
+impl From<AHPError> for SNARKError {
+    fn from(err: AHPError) -> Self {
+        MarlinError::AHPError(err).into()
+    }
+}
+
+impl From<crate::polycommit::PCError> for SNARKError {
+    fn from(err: crate::polycommit::PCError) -> Self {
+        match err {
+            crate::polycommit::PCError::Terminated => MarlinError::Terminated,
+            err => MarlinError::PolynomialCommitmentError(err),
+        }
+        .into()
+    }
+}

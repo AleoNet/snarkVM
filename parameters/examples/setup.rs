@@ -29,7 +29,7 @@ use rand::{prelude::ThreadRng, thread_rng};
 use serde_json::{json, Value};
 use std::{
     fs::File,
-    io::{BufWriter, Write},
+    io::{BufWriter, Read, Write},
     path::PathBuf,
 };
 
@@ -63,6 +63,26 @@ fn write_metadata(filename: &str, metadata: &Value) -> Result<()> {
     let mut file = BufWriter::new(File::create(PathBuf::from(filename))?);
     file.write_all(&serde_json::to_vec_pretty(metadata)?)?;
     Ok(())
+}
+
+pub fn kzg_powers_metadata() {
+    for i in 16..=28 {
+        let degree_file_name = format!("powers_of_g_{}", i);
+        let degree_metadata = format!("powers_of_g_{}_metadata", i);
+        let mut degree_file = File::open(degree_file_name).unwrap();
+        let degree_file_size = degree_file.metadata().unwrap().len() as usize;
+        let mut degree_file_bytes = Vec::with_capacity(degree_file_size);
+        degree_file.read_to_end(&mut degree_file_bytes).unwrap();
+        let checksum = checksum(&degree_file_bytes);
+
+        let metadata = json!({
+            "degree": i as usize,
+            "checksum": checksum,
+            "size": degree_file_size,
+        });
+
+        write_metadata(&degree_metadata, &metadata).unwrap();
+    }
 }
 
 /// Runs the input circuit setup.

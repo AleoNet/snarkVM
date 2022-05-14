@@ -61,7 +61,7 @@ version = "1"
 path = "../../algorithms"
 version = "0.7.5"
 default-features = false
-features = ["polycommit", "snark"]
+features = ["polycommit_full", "snark"]
 
 [dev-dependencies.snarkvm-circuits]
 path = "../../circuits"

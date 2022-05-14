@@ -61,6 +61,8 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
+    use snarkvm_algorithms::SNARK;
+
     use super::*;
 
     #[test]
@@ -129,15 +131,15 @@ function main:
                 },
             };
             use snarkvm_curves::bls12_377::{Bls12_377, Fq, Fr};
-            use snarkvm_utilities::rand::test_rng;
+            use snarkvm_utilities::rand::test_crypto_rng;
 
             type FS = FiatShamirAlgebraicSpongeRng<Fr, Fq, PoseidonSponge<Fq, 6, 1>>;
-            type MarlinInst = MarlinSNARK<Bls12_377, FS, MarlinHidingMode, Vec<Fr>>;
+            type MarlinInst = MarlinSNARK<Bls12_377, FS, MarlinHidingMode, [Fr]>;
 
-            let rng = &mut test_rng();
+            let rng = &mut test_crypto_rng();
 
             let max_degree = AHPForR1CS::<Fr, MarlinHidingMode>::max_degree(200, 200, 300).unwrap();
-            let universal_srs = MarlinInst::universal_setup(max_degree, rng).unwrap();
+            let universal_srs = MarlinInst::universal_setup(&max_degree, rng).unwrap();
 
             let (index_pk, index_vk) = MarlinInst::circuit_setup(&universal_srs, &Circuit).unwrap();
             println!("Called circuit setup");
@@ -149,11 +151,11 @@ function main:
             let one = <Circuit as Environment>::BaseField::one();
 
             assert!(
-                MarlinInst::verify(&index_vk, &[one, one, zero, zero, zero, zero, zero, zero, zero], &proof).unwrap()
+                MarlinInst::verify(&index_vk, [one, one, zero, zero, zero, zero, zero, zero, zero], &proof).unwrap()
             );
             println!("Called verifier");
             println!("\nShould not verify (i.e. verifier messages should print below):");
-            assert!(!MarlinInst::verify(&index_vk, &[one, one + one], &proof).unwrap());
+            assert!(!MarlinInst::verify(&index_vk, [one, one + one], &proof).unwrap());
         }
     }
 }

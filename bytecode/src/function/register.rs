@@ -31,8 +31,8 @@ pub type Locator = u64;
 pub enum Register<P: Program> {
     /// A register contains its locator in memory.
     Locator(Locator),
-    /// A register member contains its locator and identifier in memory.
-    Member(Locator, Identifier<P>),
+    /// A register member contains its locator and identifier(s) in memory.
+    Member(Locator, Vec<Identifier<P>>),
 }
 
 impl<P: Program> Register<P> {
@@ -59,11 +59,19 @@ impl<P: Program> Parser for Register<P> {
         let (string, locator) =
             map_res(recognize(many1(one_of("0123456789"))), |locator: &str| locator.parse::<u64>())(string)?;
         // Parse the identifier from the string, if it is a register member.
-        let (string, identifier) = opt(pair(tag("."), Identifier::parse))(string)?;
+        let (string, identifiers): (&str, Vec<Identifier<P>>) =
+            map_res(many0(pair(tag("."), Identifier::parse)), |identifiers| {
+                // Ensure the number of identifiers is within `P::NUM_DEPTH`.
+                if identifiers.len() <= P::NUM_DEPTH {
+                    Ok(identifiers.iter().cloned().map(|(_, identifier)| identifier).collect())
+                } else {
+                    Err(error(format!("Register \'r{locator}\' has too many identifiers ({})", identifiers.len())))
+                }
+            })(string)?;
         // Return the register.
-        Ok((string, match identifier {
-            Some((_, identifier)) => Self::Member(locator, identifier),
-            None => Self::Locator(locator),
+        Ok((string, match identifiers.len() {
+            0 => Self::Locator(locator),
+            _ => Self::Member(locator, identifiers),
         }))
     }
 }
@@ -75,7 +83,13 @@ impl<P: Program> fmt::Display for Register<P> {
             // Prints the register, i.e. r0
             Self::Locator(locator) => write!(f, "r{locator}"),
             // Prints the register member, i.e. r0.owner
-            Self::Member(locator, identifier) => write!(f, "r{locator}.{identifier}"),
+            Self::Member(locator, identifiers) => {
+                write!(f, "r{locator}")?;
+                for identifier in identifiers {
+                    write!(f, ".{identifier}")?;
+                }
+                Ok(())
+            }
         }
     }
 }
@@ -86,7 +100,16 @@ impl<P: Program> FromBytes for Register<P> {
         let locator = read_variable_length_integer(&mut reader)?;
         match variant {
             0 => Ok(Self::Locator(locator)),
-            1 => Ok(Self::Member(locator, Identifier::read_le(&mut reader)?)),
+            1 => {
+                // Read the number of identifiers.
+                let num_identifiers = u16::read_le(&mut reader)?;
+                // Read the identifiers.
+                let mut identifiers = Vec::with_capacity(num_identifiers as usize);
+                for _ in 0..num_identifiers {
+                    identifiers.push(Identifier::read_le(&mut reader)?);
+                }
+                Ok(Self::Member(locator, identifiers))
+            }
             2.. => Err(error(format!("Failed to deserialize register variant {variant}"))),
         }
     }
@@ -99,10 +122,16 @@ impl<P: Program> ToBytes for Register<P> {
                 u8::write_le(&0u8, &mut writer)?;
                 variable_length_integer(locator).write_le(&mut writer)
             }
-            Self::Member(locator, member) => {
+            Self::Member(locator, identifiers) => {
+                // Ensure the number of identifiers is within `P::NUM_DEPTH`.
+                if identifiers.len() > P::NUM_DEPTH {
+                    return Err(error("Failed to serialize register: too many identifiers"));
+                }
+
                 u8::write_le(&1u8, &mut writer)?;
                 variable_length_integer(locator).write_le(&mut writer)?;
-                member.write_le(&mut writer)
+                (identifiers.len() as u16).write_le(&mut writer)?;
+                identifiers.write_le(&mut writer)
             }
         }
     }
@@ -139,11 +168,11 @@ mod tests {
         assert_eq!("r4", format!("{}", Register::<P>::Locator(4)));
 
         // Register::Member
-        assert_eq!("r0.owner", format!("{}", Register::<P>::Member(0, Identifier::from_str("owner"))));
-        assert_eq!("r1.owner", format!("{}", Register::<P>::Member(1, Identifier::from_str("owner"))));
-        assert_eq!("r2.owner", format!("{}", Register::<P>::Member(2, Identifier::from_str("owner"))));
-        assert_eq!("r3.owner", format!("{}", Register::<P>::Member(3, Identifier::from_str("owner"))));
-        assert_eq!("r4.owner", format!("{}", Register::<P>::Member(4, Identifier::from_str("owner"))));
+        assert_eq!("r0.owner", format!("{}", Register::<P>::Member(0, vec![Identifier::from_str("owner")])));
+        assert_eq!("r1.owner", format!("{}", Register::<P>::Member(1, vec![Identifier::from_str("owner")])));
+        assert_eq!("r2.owner", format!("{}", Register::<P>::Member(2, vec![Identifier::from_str("owner")])));
+        assert_eq!("r3.owner", format!("{}", Register::<P>::Member(3, vec![Identifier::from_str("owner")])));
+        assert_eq!("r4.owner", format!("{}", Register::<P>::Member(4, vec![Identifier::from_str("owner")])));
     }
 
     #[test]
@@ -156,18 +185,18 @@ mod tests {
         // Register::Member
         assert_eq!(
             Some(Ordering::Equal),
-            Register::<P>::Member(0, Identifier::from_str("owner"))
-                .partial_cmp(&Register::<P>::Member(0, Identifier::from_str("owner")))
+            Register::<P>::Member(0, vec![Identifier::from_str("owner")])
+                .partial_cmp(&Register::<P>::Member(0, vec![Identifier::from_str("owner")]))
         );
         assert_eq!(
             Some(Ordering::Less),
-            Register::<P>::Member(0, Identifier::from_str("owner"))
-                .partial_cmp(&Register::<P>::Member(1, Identifier::from_str("owner")))
+            Register::<P>::Member(0, vec![Identifier::from_str("owner")])
+                .partial_cmp(&Register::<P>::Member(1, vec![Identifier::from_str("owner")]))
         );
         assert_eq!(
             Some(Ordering::Greater),
-            Register::<P>::Member(1, Identifier::from_str("owner"))
-                .partial_cmp(&Register::<P>::Member(0, Identifier::from_str("owner")))
+            Register::<P>::Member(1, vec![Identifier::from_str("owner")])
+                .partial_cmp(&Register::<P>::Member(0, vec![Identifier::from_str("owner")]))
         );
     }
 
@@ -182,24 +211,24 @@ mod tests {
 
         // Register::Member
         assert_eq!(
-            Register::<P>::Member(0, Identifier::from_str("owner")),
-            Register::<P>::Member(0, Identifier::from_str("owner"))
+            Register::<P>::Member(0, vec![Identifier::from_str("owner")]),
+            Register::<P>::Member(0, vec![Identifier::from_str("owner")])
         );
         assert_ne!(
-            Register::<P>::Member(0, Identifier::from_str("owner")),
-            Register::<P>::Member(1, Identifier::from_str("owner"))
+            Register::<P>::Member(0, vec![Identifier::from_str("owner")]),
+            Register::<P>::Member(1, vec![Identifier::from_str("owner")])
         );
         assert_ne!(
-            Register::<P>::Member(0, Identifier::from_str("owner")),
-            Register::<P>::Member(2, Identifier::from_str("owner"))
+            Register::<P>::Member(0, vec![Identifier::from_str("owner")]),
+            Register::<P>::Member(2, vec![Identifier::from_str("owner")])
         );
         assert_ne!(
-            Register::<P>::Member(0, Identifier::from_str("owner")),
-            Register::<P>::Member(3, Identifier::from_str("owner"))
+            Register::<P>::Member(0, vec![Identifier::from_str("owner")]),
+            Register::<P>::Member(3, vec![Identifier::from_str("owner")])
         );
         assert_ne!(
-            Register::<P>::Member(0, Identifier::from_str("owner")),
-            Register::<P>::Member(4, Identifier::from_str("owner"))
+            Register::<P>::Member(0, vec![Identifier::from_str("owner")]),
+            Register::<P>::Member(4, vec![Identifier::from_str("owner")])
         );
     }
 
@@ -213,11 +242,11 @@ mod tests {
         assert_eq!(Register::<P>::Locator(4).to_string(), "r4".to_string());
 
         // Register::Member
-        assert_eq!(Register::<P>::Member(0, Identifier::from_str("owner")).to_string(), "r0.owner".to_string());
-        assert_eq!(Register::<P>::Member(1, Identifier::from_str("owner")).to_string(), "r1.owner".to_string());
-        assert_eq!(Register::<P>::Member(2, Identifier::from_str("owner")).to_string(), "r2.owner".to_string());
-        assert_eq!(Register::<P>::Member(3, Identifier::from_str("owner")).to_string(), "r3.owner".to_string());
-        assert_eq!(Register::<P>::Member(4, Identifier::from_str("owner")).to_string(), "r4.owner".to_string());
+        assert_eq!(Register::<P>::Member(0, vec![Identifier::from_str("owner")]).to_string(), "r0.owner".to_string());
+        assert_eq!(Register::<P>::Member(1, vec![Identifier::from_str("owner")]).to_string(), "r1.owner".to_string());
+        assert_eq!(Register::<P>::Member(2, vec![Identifier::from_str("owner")]).to_string(), "r2.owner".to_string());
+        assert_eq!(Register::<P>::Member(3, vec![Identifier::from_str("owner")]).to_string(), "r3.owner".to_string());
+        assert_eq!(Register::<P>::Member(4, vec![Identifier::from_str("owner")]).to_string(), "r4.owner".to_string());
     }
 
     #[test]
@@ -230,11 +259,26 @@ mod tests {
         assert_eq!(("", Register::<P>::Locator(4)), Register::parse("r4").unwrap());
 
         // Register::Member
-        assert_eq!(("", Register::<P>::Member(0, Identifier::from_str("owner"))), Register::parse("r0.owner").unwrap());
-        assert_eq!(("", Register::<P>::Member(1, Identifier::from_str("owner"))), Register::parse("r1.owner").unwrap());
-        assert_eq!(("", Register::<P>::Member(2, Identifier::from_str("owner"))), Register::parse("r2.owner").unwrap());
-        assert_eq!(("", Register::<P>::Member(3, Identifier::from_str("owner"))), Register::parse("r3.owner").unwrap());
-        assert_eq!(("", Register::<P>::Member(4, Identifier::from_str("owner"))), Register::parse("r4.owner").unwrap());
+        assert_eq!(
+            ("", Register::<P>::Member(0, vec![Identifier::from_str("owner")])),
+            Register::parse("r0.owner").unwrap()
+        );
+        assert_eq!(
+            ("", Register::<P>::Member(1, vec![Identifier::from_str("owner")])),
+            Register::parse("r1.owner").unwrap()
+        );
+        assert_eq!(
+            ("", Register::<P>::Member(2, vec![Identifier::from_str("owner")])),
+            Register::parse("r2.owner").unwrap()
+        );
+        assert_eq!(
+            ("", Register::<P>::Member(3, vec![Identifier::from_str("owner")])),
+            Register::parse("r3.owner").unwrap()
+        );
+        assert_eq!(
+            ("", Register::<P>::Member(4, vec![Identifier::from_str("owner")])),
+            Register::parse("r4.owner").unwrap()
+        );
     }
 
     #[test]

@@ -16,7 +16,7 @@
 
 //! A sparse polynomial represented in coefficient form.
 
-use crate::fft::{DenseOrSparsePolynomial, EvaluationDomain, Evaluations};
+use crate::fft::{EvaluationDomain, Evaluations, Polynomial};
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_utilities::serialize::*;
 
@@ -115,15 +115,15 @@ impl<F: Field> SparsePolynomial<F> {
 impl<F: PrimeField> SparsePolynomial<F> {
     /// Evaluate `self` over `domain`.
     pub fn evaluate_over_domain_by_ref(&self, domain: EvaluationDomain<F>) -> Evaluations<F> {
-        let poly: DenseOrSparsePolynomial<'_, F> = self.into();
-        DenseOrSparsePolynomial::<F>::evaluate_over_domain(poly, domain)
+        let poly: Polynomial<'_, F> = self.into();
+        Polynomial::<F>::evaluate_over_domain(poly, domain)
         // unimplemented!("current implementation does not produce evals in correct order")
     }
 
     /// Evaluate `self` over `domain`.
     pub fn evaluate_over_domain(self, domain: EvaluationDomain<F>) -> Evaluations<F> {
-        let poly: DenseOrSparsePolynomial<'_, F> = self.into();
-        DenseOrSparsePolynomial::<F>::evaluate_over_domain(poly, domain)
+        let poly: Polynomial<'_, F> = self.into();
+        Polynomial::<F>::evaluate_over_domain(poly, domain)
         // unimplemented!("current implementation does not produce evals in correct order")
     }
 }

@@ -14,8 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::Program;
-use snarkvm_circuits::prelude::*;
+use crate::prelude::*;
 use snarkvm_utilities::{
     error,
     io::{Read, Result as IoResult, Write},
@@ -26,7 +25,7 @@ use snarkvm_utilities::{
 use enum_index::EnumIndex;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, EnumIndex)]
-pub enum LiteralType<P> {
+pub enum LiteralType<E> {
     /// The Aleo address type.
     Address(Mode),
     /// The boolean type.
@@ -58,29 +57,29 @@ pub enum LiteralType<P> {
     /// The scalar type (scalar field).
     Scalar(Mode),
     /// The string type.
-    String(Mode, Option<P>),
+    String(Mode, Option<E>),
 }
 
-impl<P: Program> LiteralType<P> {
+impl<E: Environment> LiteralType<E> {
     /// Returns the literal type name.
     pub fn type_name(&self) -> &str {
         match self {
-            Self::Address(..) => Address::<P::Environment>::type_name(),
-            Self::Boolean(..) => Boolean::<P::Environment>::type_name(),
-            Self::Field(..) => Field::<P::Environment>::type_name(),
-            Self::Group(..) => Group::<P::Environment>::type_name(),
-            Self::I8(..) => I8::<P::Environment>::type_name(),
-            Self::I16(..) => I16::<P::Environment>::type_name(),
-            Self::I32(..) => I32::<P::Environment>::type_name(),
-            Self::I64(..) => I64::<P::Environment>::type_name(),
-            Self::I128(..) => I128::<P::Environment>::type_name(),
-            Self::U8(..) => U8::<P::Environment>::type_name(),
-            Self::U16(..) => U16::<P::Environment>::type_name(),
-            Self::U32(..) => U32::<P::Environment>::type_name(),
-            Self::U64(..) => U64::<P::Environment>::type_name(),
-            Self::U128(..) => U128::<P::Environment>::type_name(),
-            Self::Scalar(..) => Scalar::<P::Environment>::type_name(),
-            Self::String(..) => StringType::<P::Environment>::type_name(),
+            Self::Address(..) => Address::<E>::type_name(),
+            Self::Boolean(..) => Boolean::<E>::type_name(),
+            Self::Field(..) => Field::<E>::type_name(),
+            Self::Group(..) => Group::<E>::type_name(),
+            Self::I8(..) => I8::<E>::type_name(),
+            Self::I16(..) => I16::<E>::type_name(),
+            Self::I32(..) => I32::<E>::type_name(),
+            Self::I64(..) => I64::<E>::type_name(),
+            Self::I128(..) => I128::<E>::type_name(),
+            Self::U8(..) => U8::<E>::type_name(),
+            Self::U16(..) => U16::<E>::type_name(),
+            Self::U32(..) => U32::<E>::type_name(),
+            Self::U64(..) => U64::<E>::type_name(),
+            Self::U128(..) => U128::<E>::type_name(),
+            Self::Scalar(..) => Scalar::<E>::type_name(),
+            Self::String(..) => StringType::<E>::type_name(),
         }
     }
 
@@ -122,16 +121,16 @@ impl<P: Program> LiteralType<P> {
     }
 }
 
-impl<P: Program> From<Literal<P::Environment>> for LiteralType<P> {
+impl<E: Environment> From<Literal<E>> for LiteralType<E> {
     #[inline]
-    fn from(literal: Literal<P::Environment>) -> Self {
+    fn from(literal: Literal<E>) -> Self {
         Self::from(&literal)
     }
 }
 
-impl<P: Program> From<&Literal<P::Environment>> for LiteralType<P> {
+impl<E: Environment> From<&Literal<E>> for LiteralType<E> {
     #[inline]
-    fn from(literal: &Literal<P::Environment>) -> Self {
+    fn from(literal: &Literal<E>) -> Self {
         let mode = literal.eject_mode();
         match literal {
             Literal::Address(..) => Self::Address(mode),
@@ -155,56 +154,30 @@ impl<P: Program> From<&Literal<P::Environment>> for LiteralType<P> {
 }
 
 #[allow(clippy::let_and_return)]
-impl<P: Program> Parser for LiteralType<P> {
-    type Environment = P::Environment;
+impl<E: Environment> Parser for LiteralType<E> {
+    type Environment = E;
 
     /// Parses a string into a literal type.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
         // Parse the type from the string.
         let result = alt((
-            map(pair(pair(tag(Address::<P::Environment>::type_name()), tag(".")), Mode::parse), |(_, mode)| {
-                Self::Address(mode)
-            }),
-            map(pair(pair(tag(Boolean::<P::Environment>::type_name()), tag(".")), Mode::parse), |(_, mode)| {
-                Self::Boolean(mode)
-            }),
-            map(pair(pair(tag(Field::<P::Environment>::type_name()), tag(".")), Mode::parse), |(_, mode)| {
-                Self::Field(mode)
-            }),
-            map(pair(pair(tag(Group::<P::Environment>::type_name()), tag(".")), Mode::parse), |(_, mode)| {
-                Self::Group(mode)
-            }),
-            map(pair(pair(tag(I8::<P::Environment>::type_name()), tag(".")), Mode::parse), |(_, mode)| Self::I8(mode)),
-            map(pair(pair(tag(I16::<P::Environment>::type_name()), tag(".")), Mode::parse), |(_, mode)| {
-                Self::I16(mode)
-            }),
-            map(pair(pair(tag(I32::<P::Environment>::type_name()), tag(".")), Mode::parse), |(_, mode)| {
-                Self::I32(mode)
-            }),
-            map(pair(pair(tag(I64::<P::Environment>::type_name()), tag(".")), Mode::parse), |(_, mode)| {
-                Self::I64(mode)
-            }),
-            map(pair(pair(tag(I128::<P::Environment>::type_name()), tag(".")), Mode::parse), |(_, mode)| {
-                Self::I128(mode)
-            }),
-            map(pair(pair(tag(U8::<P::Environment>::type_name()), tag(".")), Mode::parse), |(_, mode)| Self::U8(mode)),
-            map(pair(pair(tag(U16::<P::Environment>::type_name()), tag(".")), Mode::parse), |(_, mode)| {
-                Self::U16(mode)
-            }),
-            map(pair(pair(tag(U32::<P::Environment>::type_name()), tag(".")), Mode::parse), |(_, mode)| {
-                Self::U32(mode)
-            }),
-            map(pair(pair(tag(U64::<P::Environment>::type_name()), tag(".")), Mode::parse), |(_, mode)| {
-                Self::U64(mode)
-            }),
-            map(pair(pair(tag(U128::<P::Environment>::type_name()), tag(".")), Mode::parse), |(_, mode)| {
-                Self::U128(mode)
-            }),
-            map(pair(pair(tag(Scalar::<P::Environment>::type_name()), tag(".")), Mode::parse), |(_, mode)| {
-                Self::Scalar(mode)
-            }),
-            map(pair(pair(tag(StringType::<P::Environment>::type_name()), tag(".")), Mode::parse), |(_, mode)| {
+            map(pair(pair(tag(Address::<E>::type_name()), tag(".")), Mode::parse), |(_, mode)| Self::Address(mode)),
+            map(pair(pair(tag(Boolean::<E>::type_name()), tag(".")), Mode::parse), |(_, mode)| Self::Boolean(mode)),
+            map(pair(pair(tag(Field::<E>::type_name()), tag(".")), Mode::parse), |(_, mode)| Self::Field(mode)),
+            map(pair(pair(tag(Group::<E>::type_name()), tag(".")), Mode::parse), |(_, mode)| Self::Group(mode)),
+            map(pair(pair(tag(I8::<E>::type_name()), tag(".")), Mode::parse), |(_, mode)| Self::I8(mode)),
+            map(pair(pair(tag(I16::<E>::type_name()), tag(".")), Mode::parse), |(_, mode)| Self::I16(mode)),
+            map(pair(pair(tag(I32::<E>::type_name()), tag(".")), Mode::parse), |(_, mode)| Self::I32(mode)),
+            map(pair(pair(tag(I64::<E>::type_name()), tag(".")), Mode::parse), |(_, mode)| Self::I64(mode)),
+            map(pair(pair(tag(I128::<E>::type_name()), tag(".")), Mode::parse), |(_, mode)| Self::I128(mode)),
+            map(pair(pair(tag(U8::<E>::type_name()), tag(".")), Mode::parse), |(_, mode)| Self::U8(mode)),
+            map(pair(pair(tag(U16::<E>::type_name()), tag(".")), Mode::parse), |(_, mode)| Self::U16(mode)),
+            map(pair(pair(tag(U32::<E>::type_name()), tag(".")), Mode::parse), |(_, mode)| Self::U32(mode)),
+            map(pair(pair(tag(U64::<E>::type_name()), tag(".")), Mode::parse), |(_, mode)| Self::U64(mode)),
+            map(pair(pair(tag(U128::<E>::type_name()), tag(".")), Mode::parse), |(_, mode)| Self::U128(mode)),
+            map(pair(pair(tag(Scalar::<E>::type_name()), tag(".")), Mode::parse), |(_, mode)| Self::Scalar(mode)),
+            map(pair(pair(tag(StringType::<E>::type_name()), tag(".")), Mode::parse), |(_, mode)| {
                 Self::String(mode, None)
             }),
         ))(string);
@@ -212,19 +185,19 @@ impl<P: Program> Parser for LiteralType<P> {
     }
 }
 
-impl<P: Program> Debug for LiteralType<P> {
+impl<E: Environment> Debug for LiteralType<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}.{}", self.type_name(), self.mode())
     }
 }
 
-impl<P: Program> Display for LiteralType<P> {
+impl<E: Environment> Display for LiteralType<E> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}.{}", self.type_name(), self.mode())
     }
 }
 
-impl<P: Program> FromBytes for LiteralType<P> {
+impl<E: Environment> FromBytes for LiteralType<E> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let index = u16::read_le(&mut reader)?;
         let mode = Mode::read_le(&mut reader)?;
@@ -251,7 +224,7 @@ impl<P: Program> FromBytes for LiteralType<P> {
     }
 }
 
-impl<P: Program> ToBytes for LiteralType<P> {
+impl<E: Environment> ToBytes for LiteralType<E> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
         (self.enum_index() as u16).write_le(&mut writer)?;
         self.mode().write_le(&mut writer)
