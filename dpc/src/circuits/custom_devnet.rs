@@ -38,7 +38,6 @@ use snarkvm_circuits::{
     Aleo,
     Boolean,
     Commit,
-    Devnet,
     Field,
     Group,
     Hash,
