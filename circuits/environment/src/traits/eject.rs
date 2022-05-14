@@ -195,3 +195,55 @@ impl<'a, C0: Eject, C1: Eject, C2: Eject, C3: Eject> Eject for (&'a C0, &'a C1, 
         (self.0.eject_value(), self.1.eject_value(), self.2.eject_value(), self.3.eject_value())
     }
 }
+
+impl<'a, C0: Eject, C1: Eject, C2: Eject, C3: Eject, C4: Eject> Eject for (&'a C0, &'a C1, &'a C2, &'a C3, &'a C4) {
+    type Primitive = (C0::Primitive, C1::Primitive, C2::Primitive, C3::Primitive, C4::Primitive);
+
+    /// A helper method to deduce the mode from a tuple of `Eject` circuits.
+    #[inline]
+    fn eject_mode(&self) -> Mode {
+        eject_mode(self.0.eject_mode(), &[
+            self.1.eject_mode(),
+            self.2.eject_mode(),
+            self.3.eject_mode(),
+            self.4.eject_mode(),
+        ])
+    }
+
+    /// Ejects the value from each circuit.
+    #[inline]
+    fn eject_value(&self) -> Self::Primitive {
+        (self.0.eject_value(), self.1.eject_value(), self.2.eject_value(), self.3.eject_value(), self.4.eject_value())
+    }
+}
+
+impl<'a, C0: Eject, C1: Eject, C2: Eject, C3: Eject, C4: Eject, C5: Eject> Eject
+    for (&'a C0, &'a C1, &'a C2, &'a C3, &'a C4, &'a C5)
+{
+    type Primitive = (C0::Primitive, C1::Primitive, C2::Primitive, C3::Primitive, C4::Primitive, C5::Primitive);
+
+    /// A helper method to deduce the mode from a tuple of `Eject` circuits.
+    #[inline]
+    fn eject_mode(&self) -> Mode {
+        eject_mode(self.0.eject_mode(), &[
+            self.1.eject_mode(),
+            self.2.eject_mode(),
+            self.3.eject_mode(),
+            self.4.eject_mode(),
+            self.5.eject_mode(),
+        ])
+    }
+
+    /// Ejects the value from each circuit.
+    #[inline]
+    fn eject_value(&self) -> Self::Primitive {
+        (
+            self.0.eject_value(),
+            self.1.eject_value(),
+            self.2.eject_value(),
+            self.3.eject_value(),
+            self.4.eject_value(),
+            self.5.eject_value(),
+        )
+    }
+}

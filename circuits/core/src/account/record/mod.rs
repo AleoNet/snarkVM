@@ -14,11 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-// #[cfg(test)]
-// use snarkvm_circuits_types::environment::assert_scope;
+#[cfg(test)]
+use snarkvm_circuits_types::environment::assert_scope;
+
+pub mod ciphertext;
+pub use ciphertext::*;
 
 use crate::Aleo;
-use snarkvm_circuits_types::{environment::prelude::*, Address, Literal, I64};
+use snarkvm_circuits_types::{environment::prelude::*, Address, Field, Literal, I64, U8};
 
 // TODO (howardwu): Check mode is only public/private, not constant.
 #[derive(Debug, Clone)]
@@ -35,13 +38,23 @@ pub struct Record<A: Aleo> {
     // nonce: Field<A>
     owner: Address<A>,
     value: I64<A>,
+    payload: Vec<U8<A>>,
+    view_key: Field<A>,
+    ciphertext: Ciphertext<A>,
     data: Vec<Literal<A>>,
 }
 
 impl<A: Aleo> Record<A> {
     /// Returns a new instance of a record.
-    pub fn new(owner: Address<A>, value: I64<A>, data: Vec<Literal<A>>) -> Self {
-        Self { owner, value, data }
+    pub fn new(
+        owner: Address<A>,
+        value: I64<A>,
+        payload: Vec<U8<A>>,
+        view_key: Field<A>,
+        ciphertext: Ciphertext<A>,
+        data: Vec<Literal<A>>,
+    ) -> Self {
+        Self { owner, value, payload, view_key, ciphertext, data }
     }
 
     /// Returns the record owner.
@@ -52,6 +65,21 @@ impl<A: Aleo> Record<A> {
     /// Returns the record balance.
     pub fn balance(&self) -> &I64<A> {
         &self.value
+    }
+
+    /// Returns the record payload.
+    pub fn payload(&self) -> &Vec<U8<A>> {
+        &self.payload
+    }
+
+    /// Returns the record view key.
+    pub fn view_key(&self) -> &Field<A> {
+        &self.view_key
+    }
+
+    /// Returns the record ciphertext.
+    pub fn ciphertext(&self) -> &Ciphertext<A> {
+        &self.ciphertext
     }
 
     /// Returns the record data.
@@ -81,6 +109,19 @@ mod tests {
         let _candidate = Record::<Circuit> {
             owner: Address::from(Group::from_str("2group.private")),
             value: I64::from_str("1i64.private"),
+            payload: vec![U8::from_str("1u8.private")],
+            view_key: Field::from_str("1field.private"),
+            ciphertext: Ciphertext::new(
+                Mode::Private,
+                (
+                    Default::default(),
+                    Default::default(),
+                    Default::default(),
+                    vec![Default::default()],
+                    Default::default(),
+                    true,
+                ),
+            ),
             data: vec![first, second, third],
         };
     }
