@@ -19,7 +19,7 @@ pub mod from_private_key;
 #[cfg(test)]
 use snarkvm_circuits_types::environment::assert_scope;
 
-use crate::{account::PrivateKey, Aleo};
+use crate::aleo::{Aleo, PrivateKey};
 use snarkvm_circuits_types::{environment::prelude::*, Group, Scalar};
 
 pub struct ComputeKey<A: Aleo> {
@@ -78,7 +78,7 @@ impl<A: Aleo> Eject for ComputeKey<A> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Devnet as Circuit;
+    use crate::aleo::Devnet as Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 1000;

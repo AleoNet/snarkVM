@@ -65,7 +65,7 @@ impl<A: Aleo> Signature<A> {
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
-    use crate::Devnet as Circuit;
+    use crate::aleo::Devnet as Circuit;
     use snarkvm_algorithms::{signature::AleoSignature, SignatureScheme, SignatureSchemeOperations};
     use snarkvm_curves::{AffineCurve, ProjectiveCurve};
     use snarkvm_utilities::{test_crypto_rng, test_rng, UniformRand};

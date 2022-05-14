@@ -16,7 +16,7 @@
 
 mod to_root;
 
-use crate::traits::Hash;
+use crate::algorithms::Hash;
 use snarkvm_circuits_environment::prelude::*;
 use snarkvm_circuits_types::Boolean;
 

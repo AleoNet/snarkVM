@@ -15,7 +15,11 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    aleo::Aleo,
     algorithms::{
+        Commit,
+        Hash,
+        HashToScalar,
         Pedersen1024,
         Pedersen128,
         Pedersen256,
@@ -27,12 +31,8 @@ use crate::{
         BHP1024,
         BHP256,
         BHP512,
+        PRF,
     },
-    Aleo,
-    Commit,
-    Hash,
-    HashToScalar,
-    PRF,
 };
 use snarkvm_algorithms::crypto_hash::hash_to_curve;
 use snarkvm_circuits_types::{
@@ -46,7 +46,7 @@ use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 
 use core::fmt;
 
-pub type E = Circuit;
+type E = Circuit;
 
 /// The setup message for the Aleo encryption and signature scheme.
 static ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT: &str = "AleoAccountEncryptionAndSignatureScheme0";

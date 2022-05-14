@@ -26,7 +26,7 @@ impl<A: Aleo> PrivateKey<A> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{account::from_private_key::tests::generate_private_and_compute_key, Devnet as Circuit};
+    use crate::aleo::{account::from_private_key::tests::generate_private_and_compute_key, Devnet as Circuit};
 
     const ITERATIONS: u64 = 100;
 

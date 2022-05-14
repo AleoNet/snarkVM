@@ -25,3 +25,6 @@ pub use pedersen::*;
 
 pub mod poseidon;
 pub use poseidon::*;
+
+pub mod traits;
+pub use traits::*;

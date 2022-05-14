@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::Hash;
 
 impl<E: Environment, const RATE: usize> Hash for Poseidon<E, RATE> {
     type Input = Field<E>;

@@ -16,8 +16,6 @@
 
 use super::*;
 
-use crate::traits::Hash;
-
 impl<E: Environment, TwoToOneCRH: Hash> MerklePath<E, TwoToOneCRH> {
     pub fn to_root<LeafCRH: Hash<Output = TwoToOneCRH::Output>>(
         &self,

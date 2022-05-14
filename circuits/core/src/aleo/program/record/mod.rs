@@ -17,25 +17,22 @@
 // #[cfg(test)]
 // use snarkvm_circuits_types::environment::assert_scope;
 
-use crate::Aleo;
-use snarkvm_circuits_types::{environment::prelude::*, Address, Literal, I64};
+use crate::aleo::Aleo;
+use snarkvm_circuits_types::{environment::prelude::*, Address, Field, Literal, U64};
 
 // TODO (howardwu): Check mode is only public/private, not constant.
 #[derive(Debug, Clone)]
 pub struct Record<A: Aleo> {
-    // /// The program this record belongs to.
-    // program: Field<A>,
-    // /// The Aleo address this record belongs to.
-    // owner: Data<Address<A>>,
-    // /// The balance of Aleo credits in this record.
-    // balance: Data<U64<A>>,
-    // /// The data in this record.
-    // data: Vec<Data<Value>>,
-    // /// The nonce for this record.
-    // nonce: Field<A>
+    /// The program this record belongs to.
+    program: Field<A>,
+    /// The Aleo address this record belongs to.
     owner: Address<A>,
-    value: I64<A>,
+    /// The balance of Aleo credits in this record.
+    balance: U64<A>,
+    /// The data in this record.
     data: Vec<Literal<A>>,
+    /// The nonce for this record.
+    nonce: Field<A>,
 }
 
 impl<A: Aleo> Record<A> {
@@ -45,8 +42,8 @@ impl<A: Aleo> Record<A> {
     }
 
     /// Returns the record balance.
-    pub fn balance(&self) -> &I64<A> {
-        &self.value
+    pub fn balance(&self) -> &U64<A> {
+        &self.balance
     }
 
     /// Returns the record data.
@@ -61,22 +58,22 @@ impl<A: Aleo> TypeName for Record<A> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::Devnet as Circuit;
-    use snarkvm_circuits_types::Group;
-
-    #[test]
-    fn test_record() {
-        let first = Literal::<Circuit>::from_str("10field.public");
-        let second = Literal::from_str("true.private");
-        let third = Literal::from_str("99i64.public");
-
-        let _candidate = Record::<Circuit> {
-            owner: Address::from(Group::from_str("2group.private")),
-            value: I64::from_str("1i64.private"),
-            data: vec![first, second, third],
-        };
-    }
-}
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+//     use crate::aleo::Devnet as Circuit;
+//     use snarkvm_circuits_types::Group;
+//
+//     #[test]
+//     fn test_record() {
+//         let first = Literal::<Circuit>::from_str("10field.public");
+//         let second = Literal::from_str("true.private");
+//         let third = Literal::from_str("99i64.public");
+//
+//         let _candidate = Record::<Circuit> {
+//             owner: Address::from(Group::from_str("2group.private")),
+//             value: I64::from_str("1i64.private"),
+//             data: vec![first, second, third],
+//         };
+//     }
+// }

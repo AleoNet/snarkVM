@@ -39,7 +39,7 @@ impl<A: Aleo> ComputeKey<A> {
 #[cfg(test)]
 pub(crate) mod tests {
     use super::*;
-    use crate::Devnet as Circuit;
+    use crate::aleo::Devnet as Circuit;
     use snarkvm_algorithms::SignatureSchemeOperations;
     use snarkvm_curves::ProjectiveCurve;
     use snarkvm_utilities::{test_rng, UniformRand};

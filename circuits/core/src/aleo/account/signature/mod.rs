@@ -19,7 +19,7 @@ pub mod verify;
 #[cfg(test)]
 use snarkvm_circuits_types::environment::assert_scope;
 
-use crate::Aleo;
+use crate::aleo::Aleo;
 use snarkvm_circuits_types::{environment::prelude::*, Address, Boolean, Field, Group, Literal, Scalar};
 
 pub struct Signature<A: Aleo> {
@@ -74,7 +74,7 @@ impl<A: Aleo> Eject for Signature<A> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Devnet as Circuit;
+    use crate::aleo::Devnet as Circuit;
     use snarkvm_curves::AffineCurve;
     use snarkvm_utilities::{test_rng, UniformRand};
 
