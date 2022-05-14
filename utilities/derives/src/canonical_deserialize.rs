@@ -14,95 +14,163 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use crate::canonical_serialize::IdentOrIndex;
 use proc_macro2::TokenStream;
 use quote::quote;
-use syn::{Data, Type};
+use syn::{Data, Index, Type};
 
-/// Returns two TokenStreams, one for the compressed deserialize, one for the
-/// uncompressed.
-fn impl_deserialize_field(ty: &Type) -> (TokenStream, TokenStream) {
+fn impl_valid_field(
+    check_body: &mut Vec<TokenStream>,
+    batch_check_body: &mut Vec<TokenStream>,
+    idents: &mut Vec<IdentOrIndex>,
+    ty: &Type,
+) {
     // Check if type is a tuple.
     match ty {
         Type::Tuple(tuple) => {
-            let (compressed_fields, uncompressed_fields): (Vec<_>, Vec<_>) =
-                tuple.elems.iter().map(impl_deserialize_field).unzip();
-            (quote! { (#(#compressed_fields)*), }, quote! { (#(#uncompressed_fields)*), })
+            for (i, elem_ty) in tuple.elems.iter().enumerate() {
+                let index = Index::from(i);
+                idents.push(IdentOrIndex::Index(index));
+                impl_valid_field(check_body, batch_check_body, idents, elem_ty);
+                idents.pop();
+            }
         }
-        _ => (
-            quote! { CanonicalDeserialize::deserialize(reader)?, },
-            quote! { CanonicalDeserialize::deserialize_uncompressed(reader)?, },
-        ),
+        _ => {
+            check_body.push(quote! { snarkvm_utilities::Valid::check(&self.#(#idents).*)?; });
+            batch_check_body
+                .push(quote! { snarkvm_utilities::Valid::batch_check(batch.iter().map(|v| &v.#(#idents).*))?; });
+        }
     }
 }
 
-pub(crate) fn impl_canonical_deserialize(ast: &syn::DeriveInput) -> TokenStream {
+fn impl_valid(ast: &syn::DeriveInput) -> TokenStream {
+    let name = &ast.ident;
+
+    let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
+
+    let len = if let Data::Struct(ref data_struct) = ast.data {
+        data_struct.fields.len()
+    } else {
+        panic!("`Valid` can only be derived for structs, {} is not a struct", name);
+    };
+
+    let mut check_body = Vec::<TokenStream>::with_capacity(len);
+    let mut batch_body = Vec::<TokenStream>::with_capacity(len);
+
+    match ast.data {
+        Data::Struct(ref data_struct) => {
+            let mut idents = Vec::<IdentOrIndex>::new();
+
+            for (i, field) in data_struct.fields.iter().enumerate() {
+                match field.ident {
+                    None => {
+                        let index = Index::from(i);
+                        idents.push(IdentOrIndex::Index(index));
+                    }
+                    Some(ref ident) => {
+                        idents.push(IdentOrIndex::Ident(ident.clone()));
+                    }
+                }
+
+                impl_valid_field(&mut check_body, &mut batch_body, &mut idents, &field.ty);
+
+                idents.clear();
+            }
+        }
+        _ => panic!("`Valid` can only be derived for structs, {} is not a struct", name),
+    };
+
+    let gen = quote! {
+        impl #impl_generics snarkvm_utilities::Valid for #name #ty_generics #where_clause {
+            #[allow(unused_mut, unused_variables)]
+            fn check(&self) -> Result<(), snarkvm_utilities::serialize::SerializationError> {
+                #(#check_body)*
+                Ok(())
+            }
+            #[allow(unused_mut, unused_variables)]
+            fn batch_check<'a>(batch: impl Iterator<Item = &'a Self> + Send) -> Result<(), snarkvm_utilities::serialize::SerializationError>
+                where
+            Self: 'a
+            {
+
+                let batch: Vec<_> = batch.collect();
+                #(#batch_body)*
+                Ok(())
+            }
+        }
+    };
+    gen
+}
+
+/// Returns a `TokenStream` for `deserialize_with_mode`.
+/// uncompressed.
+fn impl_deserialize_field(ty: &Type) -> TokenStream {
+    // Check if type is a tuple.
+    match ty {
+        Type::Tuple(tuple) => {
+            let compressed_fields: Vec<_> = tuple.elems.iter().map(impl_deserialize_field).collect();
+            quote! { (#(#compressed_fields)*), }
+        }
+        _ => quote! { CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?, },
+    }
+}
+
+pub(super) fn impl_canonical_deserialize(ast: &syn::DeriveInput) -> TokenStream {
+    let valid_impl = impl_valid(ast);
     let name = &ast.ident;
 
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
 
     let deserialize_body;
-    let deserialize_uncompressed_body;
 
     match ast.data {
         Data::Struct(ref data_struct) => {
+            let mut field_cases = Vec::<TokenStream>::with_capacity(data_struct.fields.len());
             let mut tuple = false;
-            let mut compressed_field_cases = Vec::<TokenStream>::with_capacity(data_struct.fields.len());
-            let mut uncompressed_field_cases = Vec::<TokenStream>::with_capacity(data_struct.fields.len());
             for field in data_struct.fields.iter() {
                 match &field.ident {
                     None => {
                         tuple = true;
-                        let (compressed, uncompressed) = impl_deserialize_field(&field.ty);
-                        compressed_field_cases.push(compressed);
-                        uncompressed_field_cases.push(uncompressed);
+                        let compressed = impl_deserialize_field(&field.ty);
+                        field_cases.push(compressed);
                     }
                     // struct field without len_type
                     Some(ident) => {
-                        let (compressed_field, uncompressed_field) = impl_deserialize_field(&field.ty);
-                        compressed_field_cases.push(quote! { #ident: #compressed_field });
-                        uncompressed_field_cases.push(quote! { #ident: #uncompressed_field });
+                        let compressed = impl_deserialize_field(&field.ty);
+                        field_cases.push(quote! { #ident: #compressed });
                     }
                 }
             }
 
-            if tuple {
-                deserialize_body = quote!({
+            deserialize_body = if tuple {
+                quote!({
                     Ok(#name (
-                        #(#compressed_field_cases)*
-                    ))
-                });
-                deserialize_uncompressed_body = quote!({
-                    Ok(#name (
-                        #(#uncompressed_field_cases)*
-                    ))
-                });
+                        #(#field_cases)*
+                     ))
+                })
             } else {
-                deserialize_body = quote!({
+                quote!({
                     Ok(#name {
-                        #(#compressed_field_cases)*
+                        #(#field_cases)*
                     })
-                });
-                deserialize_uncompressed_body = quote!({
-                    Ok(#name {
-                        #(#uncompressed_field_cases)*
-                    })
-                });
-            }
+                })
+            };
         }
-        _ => panic!("Deserialize can only be derived for structs, {} is not a Struct", name),
+        _ => panic!("`CanonicalDeserialize` can only be derived for structs, {} is not a Struct", name),
     };
 
-    let gen = quote! {
+    let mut gen = quote! {
         impl #impl_generics CanonicalDeserialize for #name #ty_generics #where_clause {
             #[allow(unused_mut,unused_variables)]
-            fn deserialize<R: snarkvm_utilities::Read>(reader: &mut R) -> Result<Self, snarkvm_utilities::SerializationError> {
+            fn deserialize_with_mode<R: snarkvm_utilities::io::Read>(
+                mut reader: R,
+                compress: snarkvm_utilities::serialize::Compress,
+                validate: snarkvm_utilities::serialize::Validate,
+            ) -> Result<Self, snarkvm_utilities::serialize::SerializationError> {
                 #deserialize_body
-            }
-            #[allow(unused_mut,unused_variables)]
-            fn deserialize_uncompressed<R: snarkvm_utilities::Read>(reader: &mut R) -> Result<Self, snarkvm_utilities::SerializationError> {
-                #deserialize_uncompressed_body
             }
         }
     };
+    gen.extend(valid_impl);
     gen
 }

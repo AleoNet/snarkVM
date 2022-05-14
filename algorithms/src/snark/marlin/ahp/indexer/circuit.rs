@@ -90,63 +90,53 @@ impl<F: PrimeField, MM: MarlinMode> Circuit<F, MM> {
 
 impl<F: PrimeField, MM: MarlinMode> CanonicalSerialize for Circuit<F, MM> {
     #[allow(unused_mut, unused_variables)]
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), SerializationError> {
-        CanonicalSerialize::serialize(&self.index_info, writer)?;
-        CanonicalSerialize::serialize(&self.a, writer)?;
-        CanonicalSerialize::serialize(&self.b, writer)?;
-        CanonicalSerialize::serialize(&self.c, writer)?;
-        CanonicalSerialize::serialize(&self.a_arith, writer)?;
-        CanonicalSerialize::serialize(&self.b_arith, writer)?;
-        CanonicalSerialize::serialize(&self.c_arith, writer)?;
-        CanonicalSerialize::serialize(&self.mode, writer)?;
+    fn serialize_with_mode<W: Write>(&self, mut writer: W, compress: Compress) -> Result<(), SerializationError> {
+        self.index_info.serialize_with_mode(&mut writer, compress)?;
+        self.a.serialize_with_mode(&mut writer, compress)?;
+        self.b.serialize_with_mode(&mut writer, compress)?;
+        self.c.serialize_with_mode(&mut writer, compress)?;
+        self.a_arith.serialize_with_mode(&mut writer, compress)?;
+        self.b_arith.serialize_with_mode(&mut writer, compress)?;
+        self.c_arith.serialize_with_mode(&mut writer, compress)?;
+        self.mode.serialize_with_mode(&mut writer, compress)?;
         Ok(())
     }
 
     #[allow(unused_mut, unused_variables)]
-    fn serialized_size(&self) -> usize {
+    fn serialized_size(&self, mode: Compress) -> usize {
         let mut size = 0;
-        size += CanonicalSerialize::serialized_size(&self.index_info);
-        size += CanonicalSerialize::serialized_size(&self.a);
-        size += CanonicalSerialize::serialized_size(&self.b);
-        size += CanonicalSerialize::serialized_size(&self.c);
-        size += CanonicalSerialize::serialized_size(&self.a_arith);
-        size += CanonicalSerialize::serialized_size(&self.b_arith);
-        size += CanonicalSerialize::serialized_size(&self.c_arith);
-        size += CanonicalSerialize::serialized_size(&self.mode);
-        size
-    }
-
-    #[allow(unused_mut, unused_variables)]
-    fn serialize_uncompressed<W: Write>(&self, writer: &mut W) -> Result<(), SerializationError> {
-        CanonicalSerialize::serialize_uncompressed(&self.index_info, writer)?;
-        CanonicalSerialize::serialize_uncompressed(&self.a, writer)?;
-        CanonicalSerialize::serialize_uncompressed(&self.b, writer)?;
-        CanonicalSerialize::serialize_uncompressed(&self.c, writer)?;
-        CanonicalSerialize::serialize_uncompressed(&self.a_arith, writer)?;
-        CanonicalSerialize::serialize_uncompressed(&self.b_arith, writer)?;
-        CanonicalSerialize::serialize_uncompressed(&self.c_arith, writer)?;
-        CanonicalSerialize::serialize_uncompressed(&self.mode, writer)?;
-        Ok(())
-    }
-
-    #[allow(unused_mut, unused_variables)]
-    fn uncompressed_size(&self) -> usize {
-        let mut size = 0;
-        size += CanonicalSerialize::uncompressed_size(&self.index_info);
-        size += CanonicalSerialize::uncompressed_size(&self.a);
-        size += CanonicalSerialize::uncompressed_size(&self.b);
-        size += CanonicalSerialize::uncompressed_size(&self.c);
-        size += CanonicalSerialize::uncompressed_size(&self.a_arith);
-        size += CanonicalSerialize::uncompressed_size(&self.b_arith);
-        size += CanonicalSerialize::uncompressed_size(&self.c_arith);
-        size += CanonicalSerialize::uncompressed_size(&self.mode);
+        size += self.index_info.serialized_size(mode);
+        size += self.a.serialized_size(mode);
+        size += self.b.serialized_size(mode);
+        size += self.c.serialized_size(mode);
+        size += self.a_arith.serialized_size(mode);
+        size += self.b_arith.serialized_size(mode);
+        size += self.c_arith.serialized_size(mode);
+        size += self.mode.serialized_size(mode);
         size
     }
 }
+impl<F: PrimeField, MM: MarlinMode> snarkvm_utilities::Valid for Circuit<F, MM> {
+    fn check(&self) -> Result<(), SerializationError> {
+        Ok(())
+    }
+
+    fn batch_check<'a>(_batch: impl Iterator<Item = &'a Self> + Send) -> Result<(), SerializationError>
+    where
+        Self: 'a,
+    {
+        Ok(())
+    }
+}
+
 impl<F: PrimeField, MM: MarlinMode> CanonicalDeserialize for Circuit<F, MM> {
     #[allow(unused_mut, unused_variables)]
-    fn deserialize<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
-        let index_info: CircuitInfo<F> = CanonicalDeserialize::deserialize(reader)?;
+    fn deserialize_with_mode<R: Read>(
+        mut reader: R,
+        compress: Compress,
+        validate: Validate,
+    ) -> Result<Self, SerializationError> {
+        let index_info: CircuitInfo<F> = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
         let constraint_domain_size = EvaluationDomain::<F>::compute_size_of_domain(index_info.num_constraints)
             .ok_or(SerializationError::InvalidData)?;
         let non_zero_a_domain_size = EvaluationDomain::<F>::compute_size_of_domain(index_info.num_non_zero_a)
@@ -165,51 +155,15 @@ impl<F: PrimeField, MM: MarlinMode> CanonicalDeserialize for Circuit<F, MM> {
         .ok_or(SerializationError::InvalidData)?;
         Ok(Circuit {
             index_info,
-            a: CanonicalDeserialize::deserialize(reader)?,
-            b: CanonicalDeserialize::deserialize(reader)?,
-            c: CanonicalDeserialize::deserialize(reader)?,
-            a_arith: CanonicalDeserialize::deserialize(reader)?,
-            b_arith: CanonicalDeserialize::deserialize(reader)?,
-            c_arith: CanonicalDeserialize::deserialize(reader)?,
+            a: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            b: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            c: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            a_arith: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            b_arith: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
+            c_arith: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
             fft_precomputation,
             ifft_precomputation,
-            mode: CanonicalDeserialize::deserialize(reader)?,
+            mode: CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?,
         })
-    }
-
-    #[allow(unused_mut, unused_variables)]
-    fn deserialize_uncompressed<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
-        {
-            let index_info: CircuitInfo<F> = CanonicalDeserialize::deserialize_uncompressed(reader)?;
-            let constraint_domain_size = EvaluationDomain::<F>::compute_size_of_domain(index_info.num_constraints)
-                .ok_or(SerializationError::InvalidData)?;
-            let non_zero_a_domain_size = EvaluationDomain::<F>::compute_size_of_domain(index_info.num_non_zero_a)
-                .ok_or(SerializationError::InvalidData)?;
-            let non_zero_b_domain_size = EvaluationDomain::<F>::compute_size_of_domain(index_info.num_non_zero_b)
-                .ok_or(SerializationError::InvalidData)?;
-            let non_zero_c_domain_size = EvaluationDomain::<F>::compute_size_of_domain(index_info.num_non_zero_c)
-                .ok_or(SerializationError::InvalidData)?;
-
-            let (fft_precomputation, ifft_precomputation) = AHPForR1CS::<F, MM>::fft_precomputation(
-                constraint_domain_size,
-                non_zero_a_domain_size,
-                non_zero_b_domain_size,
-                non_zero_c_domain_size,
-            )
-            .ok_or(SerializationError::InvalidData)?;
-
-            Ok(Circuit {
-                index_info,
-                a: CanonicalDeserialize::deserialize_uncompressed(reader)?,
-                b: CanonicalDeserialize::deserialize_uncompressed(reader)?,
-                c: CanonicalDeserialize::deserialize_uncompressed(reader)?,
-                a_arith: CanonicalDeserialize::deserialize_uncompressed(reader)?,
-                b_arith: CanonicalDeserialize::deserialize_uncompressed(reader)?,
-                c_arith: CanonicalDeserialize::deserialize_uncompressed(reader)?,
-                fft_precomputation,
-                ifft_precomputation,
-                mode: CanonicalDeserialize::deserialize_uncompressed(reader)?,
-            })
-        }
     }
 }

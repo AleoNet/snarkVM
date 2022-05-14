@@ -395,13 +395,15 @@ pub struct VerifierKey<E: PairingEngine> {
 
 impl<E: PairingEngine> FromBytes for VerifierKey<E> {
     fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
-        CanonicalDeserialize::deserialize(&mut reader).map_err(|_| error("could not deserialize VerifierKey"))
+        CanonicalDeserialize::deserialize_compressed(&mut reader)
+            .map_err(|_| error("could not deserialize VerifierKey"))
     }
 }
 
 impl<E: PairingEngine> ToBytes for VerifierKey<E> {
     fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
-        CanonicalSerialize::serialize(self, &mut writer).map_err(|_| error("could not serialize VerifierKey"))
+        CanonicalSerialize::serialize_compressed(self, &mut writer)
+            .map_err(|_| error("could not serialize VerifierKey"))
     }
 }
 
@@ -534,7 +536,8 @@ impl<F: Field, C: CanonicalSerialize + ToConstraintField<F>> ToConstraintField<F
 // deserializing the Commitment.
 impl<C: CanonicalSerialize + ToBytes> ToBytes for LabeledCommitment<C> {
     fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
-        CanonicalSerialize::serialize(&self.commitment, &mut writer).map_err(|_| error("could not serialize struct"))
+        CanonicalSerialize::serialize_compressed(&self.commitment, &mut writer)
+            .map_err(|_| error("could not serialize struct"))
     }
 }
 
@@ -787,12 +790,12 @@ impl<E: PairingEngine> BatchLCProof<E> {
 
 impl<E: PairingEngine> FromBytes for BatchLCProof<E> {
     fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
-        CanonicalDeserialize::deserialize(&mut reader).map_err(|_| error("could not deserialize struct"))
+        CanonicalDeserialize::deserialize_compressed(&mut reader).map_err(|_| error("could not deserialize struct"))
     }
 }
 
 impl<E: PairingEngine> ToBytes for BatchLCProof<E> {
     fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
-        CanonicalSerialize::serialize(self, &mut writer).map_err(|_| error("could not serialize struct"))
+        CanonicalSerialize::serialize_compressed(self, &mut writer).map_err(|_| error("could not serialize struct"))
     }
 }

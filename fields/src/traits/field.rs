@@ -23,7 +23,6 @@ use snarkvm_utilities::{
         CanonicalDeserializeWithFlags,
         CanonicalSerialize,
         CanonicalSerializeWithFlags,
-        ConstantSerializedSize,
         EmptyFlags,
         Flags,
     },
@@ -87,7 +86,6 @@ pub trait Field:
     + core::iter::Product<Self>
     + for<'a> core::iter::Product<&'a Self>
     + CanonicalSerialize
-    + ConstantSerializedSize
     + CanonicalSerializeWithFlags
     + CanonicalDeserialize
     + CanonicalDeserializeWithFlags

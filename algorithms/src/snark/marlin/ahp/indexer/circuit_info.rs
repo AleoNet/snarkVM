@@ -24,7 +24,7 @@ use core::marker::PhantomData;
 /// variables, the number of constraints, and the maximum number of non-zero
 /// entries in any of the constraint matrices.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
-pub struct CircuitInfo<F> {
+pub struct CircuitInfo<F: Sync + Send> {
     /// The number of public inputs after padding.
     pub num_public_inputs: usize,
     /// The total number of variables in the constraint system.
