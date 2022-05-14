@@ -26,37 +26,39 @@ use snarkvm_circuits_types::{environment::prelude::*, Address, Field, Literal, U
 pub struct Record<A: Aleo> {
     /// The program this record belongs to.
     program: Field<A>,
-    /// The Aleo address this record belongs to.
-    owner: Address<A>,
-    /// The balance of Aleo credits in this record.
-    balance: U64<A>,
-    /// The data in this record.
-    data: Vec<Literal<A>>,
-    /// The nonce for this record.
+    /// The **encrypted** address this record belongs to
+    /// (i.e. `state.owner.to_x_coordinate() + HashMany(G^r^view_key)[0]`).
+    owner: Field<A>,
+    /// The **encrypted** balance in this record
+    /// (i.e. `state.balance.to_field() + HashMany(G^r^view_key)[1]`).
+    balance: Field<A>,
+    /// The **encrypted** data in this record
+    /// (i.e. `state.data.to_fields() (+) HashMany(G^r^view_key)[2..]`).
+    data: Vec<Field<A>>,
+    /// The nonce for this record (i.e. `G^r`).
     nonce: Field<A>,
+    /// The MAC for this record (i.e. `H(G^r^view_key)`).
+    mac: Field<A>,
+    /// The balance commitment for this record (i.e. `G^state.balance H^r`).
+    bcm: Field<A>,
 }
 
-impl<A: Aleo> Record<A> {
-    /// Returns the program ID.
-    pub fn program(&self) -> &Field<A> {
-        &self.program
-    }
-
-    /// Returns the record owner.
-    pub fn owner(&self) -> &Address<A> {
-        &self.owner
-    }
-
-    /// Returns the record balance.
-    pub fn balance(&self) -> &U64<A> {
-        &self.balance
-    }
-
-    /// Returns the record data.
-    pub fn data(&self) -> &Vec<Literal<A>> {
-        &self.data
-    }
-}
+// impl<A: Aleo> Record<A> {
+//     /// Returns the record owner.
+//     pub fn owner(&self) -> &Address<A> {
+//         &self.owner
+//     }
+//
+//     /// Returns the record balance.
+//     pub fn balance(&self) -> &U64<A> {
+//         &self.balance
+//     }
+//
+//     /// Returns the record data.
+//     pub fn data(&self) -> &Vec<Literal<A>> {
+//         &self.data
+//     }
+// }
 
 impl<A: Aleo> TypeName for Record<A> {
     fn type_name() -> &'static str {

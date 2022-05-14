@@ -32,7 +32,7 @@ use std::{
 };
 
 /// Returns a scalar field derived from a hashed input.
-pub fn hash_into_field<N: Network>(a: &[u8], b: &[u8]) -> N::ProgramScalarField {
+pub fn hash_to_scalar<N: Network>(a: &[u8], b: &[u8]) -> N::ProgramScalarField {
     let mut hasher = Blake2bVar::new(64).unwrap();
     hasher.update(a);
     hasher.update(b);
@@ -95,35 +95,37 @@ impl<N: Network> ValueBalanceCommitment<N> {
             combined_randomness -= output_vc_randomness;
         }
 
-        // Calculate the `combined_commitments`.
-        let mut combined_commitments = N::ProgramAffineCurve::zero().to_projective();
+        {
+            // Calculate the `combined_commitments`.
+            let mut combined_commitments = N::ProgramAffineCurve::zero().to_projective();
 
-        for vc_input in input_value_commitments {
-            combined_commitments.add_assign_mixed(&**vc_input);
+            for vc_input in input_value_commitments {
+                combined_commitments.add_assign_mixed(&**vc_input);
+            }
+
+            for vc_output in output_value_commitments {
+                combined_commitments.sub_assign_mixed(&**vc_output);
+            }
+
+            combined_commitments.sub_assign_mixed(&Self::commit_without_randomness(value_balance)?);
+
+            // Make sure bvk can be derived from the cumulative randomness.
+            let expected_combined_commitments =
+                N::value_commitment_scheme().commit_bytes(&0i64.to_le_bytes(), &combined_randomness)?;
+            assert_eq!(combined_commitments, expected_combined_commitments);
         }
-
-        for vc_output in output_value_commitments {
-            combined_commitments.sub_assign_mixed(&**vc_output);
-        }
-
-        combined_commitments.sub_assign_mixed(&Self::commit_without_randomness(value_balance)?);
-
-        // Make sure bvk can be derived from the cumulative randomness.
-        let expected_combined_commitments =
-            N::value_commitment_scheme().commit_bytes(&0i64.to_le_bytes(), &combined_randomness)?;
-        assert_eq!(combined_commitments, expected_combined_commitments);
 
         // Generate final commitment randomness.
         let mut sig_rand = [0u8; 80];
         rng.fill(&mut sig_rand[..]);
 
         // Construct `c` to use as randomness.
-        let c = hash_into_field::<N>(&sig_rand[..], input);
+        let c = hash_to_scalar::<N>(&sig_rand[..], input);
 
         // Commit to 0 with `c`as randomness.
         let commitment = N::value_commitment_scheme().commit_bytes(&0i64.to_le_bytes(), &c)?;
 
-        let mut blinding_factor = hash_into_field::<N>(&commitment.to_x_coordinate().to_bytes_le()?, input);
+        let mut blinding_factor = hash_to_scalar::<N>(&commitment.to_x_coordinate().to_bytes_le()?, input);
         blinding_factor = blinding_factor.mul(&combined_randomness);
         blinding_factor = blinding_factor.add(&c);
 
@@ -151,7 +153,8 @@ impl<N: Network> ValueBalanceCommitment<N> {
 
         combined_commitments.sub_assign_mixed(&Self::commit_without_randomness(value_balance)?);
 
-        let c = hash_into_field::<N>(&self.commitment.to_x_coordinate().to_bytes_le()?, input);
+        let c = hash_to_scalar::<N>(&self.commitment.to_x_coordinate().to_bytes_le()?, input);
+
         let recommit = N::value_commitment_scheme().commit_bytes(&0i64.to_le_bytes(), &self.blinding_factor)?;
 
         Ok((combined_commitments.mul(c) + self.commitment.to_projective() - recommit.to_projective()).is_zero())
@@ -204,7 +207,7 @@ impl<N: Network> ValueBalanceCommitment<N> {
             partial_combined_commitments.sub_assign_mixed(&**vc_output);
         }
 
-        let c = hash_into_field::<N>(&self.commitment.to_x_coordinate().to_bytes_le()?, input);
+        let c = hash_to_scalar::<N>(&self.commitment.to_x_coordinate().to_bytes_le()?, input);
         let blinded_commitment =
             N::value_commitment_scheme().commit_bytes(&0i64.to_le_bytes(), &self.blinding_factor)?;
 
