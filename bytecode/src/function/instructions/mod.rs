@@ -95,6 +95,18 @@ pub(super) use pow_wrapped::*;
 pub(super) mod prf;
 pub(super) use prf::*;
 
+pub(super) mod shl;
+pub(super) use shl::*;
+
+pub(super) mod shl_wrapped;
+pub(super) use shl_wrapped::*;
+
+pub(super) mod shr;
+pub(super) use shr::*;
+
+pub(super) mod shr_wrapped;
+pub(super) use shr_wrapped::*;
+
 pub(super) mod square;
 pub(super) use square::*;
 
@@ -103,6 +115,9 @@ pub(super) use sub::*;
 
 pub(super) mod sub_wrapped;
 pub(super) use sub_wrapped::*;
+
+pub(super) mod ternary;
+pub(super) use ternary::*;
 
 pub(super) mod xor;
 pub(super) use xor::*;
@@ -265,12 +280,22 @@ pub enum Instruction<P: Program> {
     PRFPsd4(PRFPsd4<P>),
     /// Performs a Poseidon PRF with an input rate of 8.
     PRFPsd8(PRFPsd8<P>),
+    /// Shifts `first` left by `second` bits, storing the outcome in `destination`.
+    Shl(Shl<P>),
+    /// Shifts `first` left by `second` bits, wrapping around at the boundary of the type, storing the outcome in `destination`.
+    ShlWrapped(ShlWrapped<P>),
+    /// Shifts `first` right by `second` bits, storing the outcome in `destination`.
+    Shr(Shr<P>),
+    /// Shifts `first` right by `second` bits, wrapping around at the boundary of the type, storing the outcome in `destination`.
+    ShrWrapped(ShrWrapped<P>),
     /// Squares 'first', storing the outcome in `destination`.
     Square(Square<P>),
     /// Computes `first - second`, storing the outcome in `destination`.
     Sub(Sub<P>),
     /// Computes `first - second`, wrapping around at the boundary of the type, and storing the outcome in `destination`.
     SubWrapped(SubWrapped<P>),
+    /// Selects `first`, if `condition` is true, otherwise selects `second`, storing the result in `destination`.
+    Ternary(Ternary<P>),
     /// Performs a bitwise Xor on `first` and `second`, storing the outcome in `destination`.
     Xor(Xor<P>),
 }
@@ -326,9 +351,14 @@ impl<P: Program> Instruction<P> {
             Self::PRFPsd2(..) => PRFPsd2::<P>::opcode(),
             Self::PRFPsd4(..) => PRFPsd4::<P>::opcode(),
             Self::PRFPsd8(..) => PRFPsd8::<P>::opcode(),
+            Self::Shl(..) => Shl::<P>::opcode(),
+            Self::ShlWrapped(..) => ShlWrapped::<P>::opcode(),
+            Self::Shr(..) => Shr::<P>::opcode(),
+            Self::ShrWrapped(..) => ShrWrapped::<P>::opcode(),
             Self::Square(..) => Square::<P>::opcode(),
             Self::Sub(..) => Sub::<P>::opcode(),
             Self::SubWrapped(..) => SubWrapped::<P>::opcode(),
+            Self::Ternary(..) => Ternary::<P>::opcode(),
             Self::Xor(..) => Xor::<P>::opcode(),
         }
     }
@@ -383,9 +413,14 @@ impl<P: Program> Instruction<P> {
             Self::PRFPsd2(psd2) => psd2.operands(),
             Self::PRFPsd4(psd4) => psd4.operands(),
             Self::PRFPsd8(psd8) => psd8.operands(),
+            Self::Shl(shl) => shl.operands(),
+            Self::ShlWrapped(shl_wrapped) => shl_wrapped.operands(),
+            Self::Shr(shr) => shr.operands(),
+            Self::ShrWrapped(shr_wrapped) => shr_wrapped.operands(),
             Self::Square(square) => square.operands(),
             Self::Sub(sub) => sub.operands(),
             Self::SubWrapped(sub_wrapped) => sub_wrapped.operands(),
+            Self::Ternary(ternary) => ternary.operands(),
             Self::Xor(xor) => xor.operands(),
         }
     }
@@ -440,9 +475,14 @@ impl<P: Program> Instruction<P> {
             Self::PRFPsd2(psd2) => psd2.destination(),
             Self::PRFPsd4(psd4) => psd4.destination(),
             Self::PRFPsd8(psd8) => psd8.destination(),
+            Self::Shl(shl) => shl.destination(),
+            Self::ShlWrapped(shl_wrapped) => shl_wrapped.destination(),
+            Self::Shr(shr) => shr.destination(),
+            Self::ShrWrapped(shr_wrapped) => shr_wrapped.destination(),
             Self::Square(square) => square.destination(),
             Self::Sub(sub) => sub.destination(),
             Self::SubWrapped(sub_wrapped) => sub_wrapped.destination(),
+            Self::Ternary(ternary) => ternary.destination(),
             Self::Xor(xor) => xor.destination(),
         }
     }
@@ -497,9 +537,14 @@ impl<P: Program> Instruction<P> {
             Self::PRFPsd2(instruction) => instruction.evaluate(registers),
             Self::PRFPsd4(instruction) => instruction.evaluate(registers),
             Self::PRFPsd8(instruction) => instruction.evaluate(registers),
+            Self::Shl(instruction) => instruction.evaluate(registers),
+            Self::ShlWrapped(instruction) => instruction.evaluate(registers),
+            Self::Shr(instruction) => instruction.evaluate(registers),
+            Self::ShrWrapped(instruction) => instruction.evaluate(registers),
             Self::Square(instruction) => instruction.evaluate(registers),
             Self::Sub(instruction) => instruction.evaluate(registers),
             Self::SubWrapped(instruction) => instruction.evaluate(registers),
+            Self::Ternary(instruction) => instruction.evaluate(registers),
             Self::Xor(instruction) => instruction.evaluate(registers),
         }
     }
@@ -520,87 +565,66 @@ impl<P: Program> Parser for Instruction<P> {
             // Note that order of the individual parsers matters.
             alt((
                 alt((
-                    alt((
-                        preceded(pair(tag(Abs::<P>::opcode()), tag(" ")), map(Abs::parse, Into::into)),
-                        preceded(pair(tag(AbsWrapped::<P>::opcode()), tag(" ")), map(AbsWrapped::parse, Into::into)),
-                        preceded(pair(tag(Add::<P>::opcode()), tag(" ")), map(Add::parse, Into::into)),
-                        preceded(pair(tag(AddWrapped::<P>::opcode()), tag(" ")), map(AddWrapped::parse, Into::into)),
-                        preceded(pair(tag(And::<P>::opcode()), tag(" ")), map(And::parse, Into::into)),
-                        preceded(
-                            pair(tag(CommitBHP256::<P>::opcode()), tag(" ")),
-                            map(CommitBHP256::parse, Into::into),
-                        ),
-                        preceded(
-                            pair(tag(CommitBHP512::<P>::opcode()), tag(" ")),
-                            map(CommitBHP512::parse, Into::into),
-                        ),
-                        preceded(
-                            pair(tag(CommitBHP1024::<P>::opcode()), tag(" ")),
-                            map(CommitBHP1024::parse, Into::into),
-                        ),
-                        preceded(pair(tag(CommitPed64::<P>::opcode()), tag(" ")), map(CommitPed64::parse, Into::into)),
-                        preceded(
-                            pair(tag(CommitPed128::<P>::opcode()), tag(" ")),
-                            map(CommitPed128::parse, Into::into),
-                        ),
-                        preceded(
-                            pair(tag(CommitPed256::<P>::opcode()), tag(" ")),
-                            map(CommitPed256::parse, Into::into),
-                        ),
-                        preceded(
-                            pair(tag(CommitPed512::<P>::opcode()), tag(" ")),
-                            map(CommitPed512::parse, Into::into),
-                        ),
-                        preceded(
-                            pair(tag(CommitPed1024::<P>::opcode()), tag(" ")),
-                            map(CommitPed1024::parse, Into::into),
-                        ),
-                        preceded(pair(tag(Div::<P>::opcode()), tag(" ")), map(Div::parse, Into::into)),
-                        preceded(pair(tag(DivWrapped::<P>::opcode()), tag(" ")), map(DivWrapped::parse, Into::into)),
-                        preceded(pair(tag(Double::<P>::opcode()), tag(" ")), map(Double::parse, Into::into)),
-                        preceded(pair(tag(Equal::<P>::opcode()), tag(" ")), map(Equal::parse, Into::into)),
-                        preceded(pair(tag(GreaterThan::<P>::opcode()), tag(" ")), map(GreaterThan::parse, Into::into)),
-                        preceded(
-                            pair(tag(GreaterThanOrEqual::<P>::opcode()), tag(" ")),
-                            map(GreaterThanOrEqual::parse, Into::into),
-                        ),
-                        preceded(pair(tag(HashBHP256::<P>::opcode()), tag(" ")), map(HashBHP256::parse, Into::into)),
-                    )),
-                    preceded(pair(tag(HashBHP512::<P>::opcode()), tag(" ")), map(HashBHP512::parse, Into::into)),
-                    preceded(pair(tag(HashBHP1024::<P>::opcode()), tag(" ")), map(HashBHP1024::parse, Into::into)),
-                    preceded(pair(tag(HashPed64::<P>::opcode()), tag(" ")), map(HashPed64::parse, Into::into)),
-                    preceded(pair(tag(HashPed128::<P>::opcode()), tag(" ")), map(HashPed128::parse, Into::into)),
-                    preceded(pair(tag(HashPed256::<P>::opcode()), tag(" ")), map(HashPed256::parse, Into::into)),
-                    preceded(pair(tag(HashPed512::<P>::opcode()), tag(" ")), map(HashPed512::parse, Into::into)),
-                    preceded(pair(tag(HashPed1024::<P>::opcode()), tag(" ")), map(HashPed1024::parse, Into::into)),
-                    preceded(pair(tag(HashPsd2::<P>::opcode()), tag(" ")), map(HashPsd2::parse, Into::into)),
-                    preceded(pair(tag(HashPsd4::<P>::opcode()), tag(" ")), map(HashPsd4::parse, Into::into)),
-                    preceded(pair(tag(HashPsd8::<P>::opcode()), tag(" ")), map(HashPsd8::parse, Into::into)),
-                    preceded(pair(tag(Inv::<P>::opcode()), tag(" ")), map(Inv::parse, Into::into)),
-                    preceded(pair(tag(LessThan::<P>::opcode()), tag(" ")), map(LessThan::parse, Into::into)),
+                    preceded(pair(tag(Abs::<P>::opcode()), tag(" ")), map(Abs::parse, Into::into)),
+                    preceded(pair(tag(AbsWrapped::<P>::opcode()), tag(" ")), map(AbsWrapped::parse, Into::into)),
+                    preceded(pair(tag(Add::<P>::opcode()), tag(" ")), map(Add::parse, Into::into)),
+                    preceded(pair(tag(AddWrapped::<P>::opcode()), tag(" ")), map(AddWrapped::parse, Into::into)),
+                    preceded(pair(tag(And::<P>::opcode()), tag(" ")), map(And::parse, Into::into)),
+                    preceded(pair(tag(CommitBHP256::<P>::opcode()), tag(" ")), map(CommitBHP256::parse, Into::into)),
+                    preceded(pair(tag(CommitBHP512::<P>::opcode()), tag(" ")), map(CommitBHP512::parse, Into::into)),
+                    preceded(pair(tag(CommitBHP1024::<P>::opcode()), tag(" ")), map(CommitBHP1024::parse, Into::into)),
+                    preceded(pair(tag(CommitPed64::<P>::opcode()), tag(" ")), map(CommitPed64::parse, Into::into)),
+                    preceded(pair(tag(CommitPed128::<P>::opcode()), tag(" ")), map(CommitPed128::parse, Into::into)),
+                    preceded(pair(tag(CommitPed256::<P>::opcode()), tag(" ")), map(CommitPed256::parse, Into::into)),
+                    preceded(pair(tag(CommitPed512::<P>::opcode()), tag(" ")), map(CommitPed512::parse, Into::into)),
+                    preceded(pair(tag(CommitPed1024::<P>::opcode()), tag(" ")), map(CommitPed1024::parse, Into::into)),
+                    preceded(pair(tag(Div::<P>::opcode()), tag(" ")), map(Div::parse, Into::into)),
+                    preceded(pair(tag(DivWrapped::<P>::opcode()), tag(" ")), map(DivWrapped::parse, Into::into)),
+                    preceded(pair(tag(Double::<P>::opcode()), tag(" ")), map(Double::parse, Into::into)),
+                    preceded(pair(tag(Equal::<P>::opcode()), tag(" ")), map(Equal::parse, Into::into)),
+                    preceded(pair(tag(GreaterThan::<P>::opcode()), tag(" ")), map(GreaterThan::parse, Into::into)),
                     preceded(
-                        pair(tag(LessThanOrEqual::<P>::opcode()), tag(" ")),
-                        map(LessThanOrEqual::parse, Into::into),
+                        pair(tag(GreaterThanOrEqual::<P>::opcode()), tag(" ")),
+                        map(GreaterThanOrEqual::parse, Into::into),
                     ),
-                    preceded(pair(tag(Mul::<P>::opcode()), tag(" ")), map(Mul::parse, Into::into)),
-                    preceded(pair(tag(MulWrapped::<P>::opcode()), tag(" ")), map(MulWrapped::parse, Into::into)),
-                    preceded(pair(tag(Nand::<P>::opcode()), tag(" ")), map(Nand::parse, Into::into)),
-                    preceded(pair(tag(Neg::<P>::opcode()), tag(" ")), map(Neg::parse, Into::into)),
-                    preceded(pair(tag(Nor::<P>::opcode()), tag(" ")), map(Nor::parse, Into::into)),
-                    preceded(pair(tag(Not::<P>::opcode()), tag(" ")), map(Not::parse, Into::into)),
-                    preceded(pair(tag(NotEqual::<P>::opcode()), tag(" ")), map(NotEqual::parse, Into::into)),
+                    preceded(pair(tag(HashBHP256::<P>::opcode()), tag(" ")), map(HashBHP256::parse, Into::into)),
                 )),
-                preceded(pair(tag(Or::<P>::opcode()), tag(" ")), map(Or::parse, Into::into)),
-                preceded(pair(tag(Pow::<P>::opcode()), tag(" ")), map(Pow::parse, Into::into)),
-                preceded(pair(tag(PowWrapped::<P>::opcode()), tag(" ")), map(PowWrapped::parse, Into::into)),
-                preceded(pair(tag(PRFPsd2::<P>::opcode()), tag(" ")), map(PRFPsd2::parse, Into::into)),
-                preceded(pair(tag(PRFPsd4::<P>::opcode()), tag(" ")), map(PRFPsd4::parse, Into::into)),
-                preceded(pair(tag(PRFPsd8::<P>::opcode()), tag(" ")), map(PRFPsd8::parse, Into::into)),
-                preceded(pair(tag(Square::<P>::opcode()), tag(" ")), map(Square::parse, Into::into)),
-                preceded(pair(tag(Sub::<P>::opcode()), tag(" ")), map(Sub::parse, Into::into)),
-                preceded(pair(tag(SubWrapped::<P>::opcode()), tag(" ")), map(SubWrapped::parse, Into::into)),
-                preceded(pair(tag(Xor::<P>::opcode()), tag(" ")), map(Xor::parse, Into::into)),
+                preceded(pair(tag(HashBHP512::<P>::opcode()), tag(" ")), map(HashBHP512::parse, Into::into)),
+                preceded(pair(tag(HashBHP1024::<P>::opcode()), tag(" ")), map(HashBHP1024::parse, Into::into)),
+                preceded(pair(tag(HashPed64::<P>::opcode()), tag(" ")), map(HashPed64::parse, Into::into)),
+                preceded(pair(tag(HashPed128::<P>::opcode()), tag(" ")), map(HashPed128::parse, Into::into)),
+                preceded(pair(tag(HashPed256::<P>::opcode()), tag(" ")), map(HashPed256::parse, Into::into)),
+                preceded(pair(tag(HashPed512::<P>::opcode()), tag(" ")), map(HashPed512::parse, Into::into)),
+                preceded(pair(tag(HashPed1024::<P>::opcode()), tag(" ")), map(HashPed1024::parse, Into::into)),
+                preceded(pair(tag(HashPsd2::<P>::opcode()), tag(" ")), map(HashPsd2::parse, Into::into)),
+                preceded(pair(tag(HashPsd4::<P>::opcode()), tag(" ")), map(HashPsd4::parse, Into::into)),
+                preceded(pair(tag(HashPsd8::<P>::opcode()), tag(" ")), map(HashPsd8::parse, Into::into)),
+                preceded(pair(tag(Inv::<P>::opcode()), tag(" ")), map(Inv::parse, Into::into)),
+                preceded(pair(tag(LessThan::<P>::opcode()), tag(" ")), map(LessThan::parse, Into::into)),
+                preceded(pair(tag(LessThanOrEqual::<P>::opcode()), tag(" ")), map(LessThanOrEqual::parse, Into::into)),
+                preceded(pair(tag(Mul::<P>::opcode()), tag(" ")), map(Mul::parse, Into::into)),
+                preceded(pair(tag(MulWrapped::<P>::opcode()), tag(" ")), map(MulWrapped::parse, Into::into)),
+                preceded(pair(tag(Nand::<P>::opcode()), tag(" ")), map(Nand::parse, Into::into)),
+                preceded(pair(tag(Neg::<P>::opcode()), tag(" ")), map(Neg::parse, Into::into)),
+                preceded(pair(tag(Nor::<P>::opcode()), tag(" ")), map(Nor::parse, Into::into)),
+                preceded(pair(tag(Not::<P>::opcode()), tag(" ")), map(Not::parse, Into::into)),
+                preceded(pair(tag(NotEqual::<P>::opcode()), tag(" ")), map(NotEqual::parse, Into::into)),
             )),
+            preceded(pair(tag(Or::<P>::opcode()), tag(" ")), map(Or::parse, Into::into)),
+            preceded(pair(tag(Pow::<P>::opcode()), tag(" ")), map(Pow::parse, Into::into)),
+            preceded(pair(tag(PowWrapped::<P>::opcode()), tag(" ")), map(PowWrapped::parse, Into::into)),
+            preceded(pair(tag(PRFPsd2::<P>::opcode()), tag(" ")), map(PRFPsd2::parse, Into::into)),
+            preceded(pair(tag(PRFPsd4::<P>::opcode()), tag(" ")), map(PRFPsd4::parse, Into::into)),
+            preceded(pair(tag(PRFPsd8::<P>::opcode()), tag(" ")), map(PRFPsd8::parse, Into::into)),
+            preceded(pair(tag(Shl::<P>::opcode()), tag(" ")), map(Shl::parse, Into::into)),
+            preceded(pair(tag(ShlWrapped::<P>::opcode()), tag(" ")), map(ShlWrapped::parse, Into::into)),
+            preceded(pair(tag(Shr::<P>::opcode()), tag(" ")), map(Shr::parse, Into::into)),
+            preceded(pair(tag(ShrWrapped::<P>::opcode()), tag(" ")), map(ShrWrapped::parse, Into::into)),
+            preceded(pair(tag(Square::<P>::opcode()), tag(" ")), map(Square::parse, Into::into)),
+            preceded(pair(tag(Sub::<P>::opcode()), tag(" ")), map(Sub::parse, Into::into)),
+            preceded(pair(tag(SubWrapped::<P>::opcode()), tag(" ")), map(SubWrapped::parse, Into::into)),
+            preceded(pair(tag(Ternary::<P>::opcode()), tag(" ")), map(Ternary::parse, Into::into)),
+            preceded(pair(tag(Xor::<P>::opcode()), tag(" ")), map(Xor::parse, Into::into)),
         ))(string)?;
         // Parse the semicolon from the string.
         let (string, _) = tag(";")(string)?;
@@ -658,9 +682,14 @@ impl<P: Program> fmt::Display for Instruction<P> {
             Self::PRFPsd2(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::PRFPsd4(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::PRFPsd8(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::Shl(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::ShlWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::Shr(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::ShrWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Square(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Sub(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::SubWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+            Self::Ternary(instruction) => write!(f, "{} {};", self.opcode(), instruction),
             Self::Xor(instruction) => write!(f, "{} {};", self.opcode(), instruction),
         }
     }
@@ -716,11 +745,16 @@ impl<P: Program> FromBytes for Instruction<P> {
             43 => Ok(Self::PRFPsd2(PRFPsd2::read_le(&mut reader)?)),
             44 => Ok(Self::PRFPsd4(PRFPsd4::read_le(&mut reader)?)),
             45 => Ok(Self::PRFPsd8(PRFPsd8::read_le(&mut reader)?)),
-            46 => Ok(Self::Square(Square::read_le(&mut reader)?)),
-            47 => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
-            48 => Ok(Self::SubWrapped(SubWrapped::read_le(&mut reader)?)),
-            49 => Ok(Self::Xor(Xor::read_le(&mut reader)?)),
-            50.. => Err(error(format!("Failed to deserialize an instruction of code {code}"))),
+            46 => Ok(Self::Shl(Shl::read_le(&mut reader)?)),
+            47 => Ok(Self::ShlWrapped(ShlWrapped::read_le(&mut reader)?)),
+            48 => Ok(Self::Shr(Shr::read_le(&mut reader)?)),
+            49 => Ok(Self::ShrWrapped(ShrWrapped::read_le(&mut reader)?)),
+            50 => Ok(Self::Square(Square::read_le(&mut reader)?)),
+            51 => Ok(Self::Sub(Sub::read_le(&mut reader)?)),
+            52 => Ok(Self::SubWrapped(SubWrapped::read_le(&mut reader)?)),
+            53 => Ok(Self::Ternary(Ternary::read_le(&mut reader)?)),
+            54 => Ok(Self::Xor(Xor::read_le(&mut reader)?)),
+            55.. => Err(error(format!("Failed to deserialize an instruction of code {code}"))),
         }
     }
 }
@@ -912,20 +946,40 @@ impl<P: Program> ToBytes for Instruction<P> {
                 u16::write_le(&45u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Square(instruction) => {
+            Self::Shl(instruction) => {
                 u16::write_le(&46u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Sub(instruction) => {
+            Self::ShlWrapped(instruction) => {
                 u16::write_le(&47u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::SubWrapped(instruction) => {
+            Self::Shr(instruction) => {
                 u16::write_le(&48u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
-            Self::Xor(instruction) => {
+            Self::ShrWrapped(instruction) => {
                 u16::write_le(&49u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::Square(instruction) => {
+                u16::write_le(&50u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::Sub(instruction) => {
+                u16::write_le(&51u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::SubWrapped(instruction) => {
+                u16::write_le(&52u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::Ternary(instruction) => {
+                u16::write_le(&53u16, &mut writer)?;
+                instruction.write_le(&mut writer)
+            }
+            Self::Xor(instruction) => {
+                u16::write_le(&54u16, &mut writer)?;
                 instruction.write_le(&mut writer)
             }
         }

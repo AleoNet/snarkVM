@@ -48,7 +48,9 @@ const KEYWORDS: &[&str] = &[
     // Boolean
     "true",
     "false",
-    // Opcodes
+    // Instruction Opcodes
+    "abs",
+    "abs.w",
     "add",
     "add.w",
     "and",
@@ -67,8 +69,15 @@ const KEYWORDS: &[&str] = &[
     "nor",
     "not",
     "or",
+    "pow",
+    "pow.w",
+    "shl",
+    "shl.w",
+    "shr",
+    "shr.w",
     "sub",
     "sub.w",
+    "ter",
     "xor",
     // Statements
     "input",

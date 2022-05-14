@@ -286,7 +286,7 @@ impl<P: Program> Function<P> {
             //             P::Environment::assert_eq(literal, public_literal);
             //         }
             //     }
-            //     Value::Composite(_, members) => {
+            //     Value::Definition(_, members) => {
             //         for member in members.iter() {
             //             if member.is_public() {
             //                 let public_literal = Literal::new(Mode::Public, member.eject_value());

@@ -20,5 +20,8 @@ pub(super) use binary::*;
 pub(super) mod operand;
 pub(super) use operand::*;
 
+pub(super) mod ternary;
+pub(super) use ternary::*;
+
 pub(super) mod unary;
 pub(super) use unary::*;
