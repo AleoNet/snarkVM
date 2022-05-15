@@ -17,16 +17,8 @@
 use super::*;
 
 impl<A: Aleo> State<A> {
-    /// Returns the program state commitment.
-    pub fn to_commitment(&self) -> Field<A> {
-        // Retrieve the x-coordinate of the owner.
-        let owner = self.owner.to_field();
-        // Convert the balance into a field element.
-        let balance = self.balance.to_field();
-        // TODO (howardwu): Abstraction - add support for a custom BHP hash size.
-        // Compute the BHP hash of the program state.
-        let left = A::hash_bhp1024(&[&self.program, &owner, &balance, &self.data].to_bits_le());
-        let right = A::hash_bhp1024(&[&self.nonce].to_bits_le());
-        A::hash_bhp512(&[&left, &right].to_bits_le())
+    /// Initializes a new instance of `State` given a record and view key.
+    pub fn decrypt(record: &Record<A>, view_key: &ViewKey<A>) -> Self {
+        record.decrypt(view_key)
     }
 }

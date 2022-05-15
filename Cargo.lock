@@ -2123,6 +2123,7 @@ dependencies = [
  "bech32",
  "snarkvm-circuits-environment",
  "snarkvm-circuits-types-boolean",
+ "snarkvm-circuits-types-field",
  "snarkvm-circuits-types-group",
  "snarkvm-circuits-types-scalar",
  "snarkvm-curves",

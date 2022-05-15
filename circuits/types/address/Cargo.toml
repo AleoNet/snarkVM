@@ -14,6 +14,10 @@ version = "0.7.5"
 path = "../boolean"
 version = "0.7.5"
 
+[dependencies.snarkvm-circuits-types-field]
+path = "../field"
+version = "0.7.5"
+
 [dependencies.snarkvm-circuits-types-group]
 path = "../group"
 version = "0.7.5"

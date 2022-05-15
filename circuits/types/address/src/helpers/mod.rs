@@ -17,6 +17,8 @@
 use super::*;
 
 pub mod from_bits;
+pub mod from_field;
 pub mod from_group;
 pub mod to_bits;
+pub mod to_field;
 pub mod to_group;

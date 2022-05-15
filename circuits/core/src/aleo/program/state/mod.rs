@@ -17,11 +17,12 @@
 // #[cfg(test)]
 // use snarkvm_circuits_types::environment::assert_scope;
 
+mod decrypt;
 mod encrypt;
 mod to_commitment;
 
-use crate::aleo::{Aleo, Record, Scalar};
-use snarkvm_circuits_types::{environment::prelude::*, Address, Field, U64};
+use crate::aleo::{Aleo, Record, ViewKey};
+use snarkvm_circuits_types::{environment::prelude::*, Address, Field, Scalar, U64};
 
 // TODO (howardwu): Check mode is only public/private, not constant.
 /// A program's state is a set of **plaintext** variables used by a program.

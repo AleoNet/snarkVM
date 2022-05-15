@@ -34,7 +34,7 @@ impl<A: Aleo> Signature<A> {
 
             // Construct the hash input (G^sk_sig G^r_sig G^sk_prf, G^r, message).
             let mut preimage = Vec::with_capacity(3 + message_elements.len());
-            preimage.push(address.to_group().to_x_coordinate());
+            preimage.push(address.to_field());
             preimage.push(g_r.to_x_coordinate());
             preimage.push(Field::constant((message_bits.len() as u128).into())); // <- Message length *must* be constant.
             preimage.extend_from_slice(&message_elements);

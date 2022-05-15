@@ -53,20 +53,28 @@ impl<A: Aleo> Record<A> {
         self.mac.is_equal(&candidate_mac)
     }
 
-    /// Initializes a new record by encrypting the given state.
+    /// Initializes a new record by encrypting the given state with a given randomizer.
     pub fn encrypt(state: &State<A>, randomizer: &Scalar<A>) -> Self {
-        // Ensure the balance is less than or equal to 2^52.
-        A::assert(state.balance().to_bits_le()[52..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit));
         // Ensure the nonce matches the given randomizer.
         A::assert_eq(state.nonce(), A::g_scalar_multiply(randomizer).to_x_coordinate());
 
         // Compute the record view key.
         let record_view_key = (state.owner().to_group() * randomizer).to_x_coordinate();
+        // Encrypt the record.
+        let state = Self::encrypt_symmetric(state, &record_view_key);
+        // Output the state.
+        state
+    }
+
+    /// Initializes a new record by encrypting the given state with a given randomizer.
+    pub fn encrypt_symmetric(state: &State<A>, record_view_key: &Field<A>) -> Self {
+        // Ensure the balance is less than or equal to 2^52.
+        A::assert(state.balance().to_bits_le()[52..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit));
 
         // Compute the randomizers.
         let randomizers = A::hash_many_psd2(&[A::encryption_domain(), record_view_key.clone()], 2);
         // Encrypt the owner.
-        let owner = state.owner().to_group().to_x_coordinate() + &randomizers[0];
+        let owner = state.owner().to_field() + &randomizers[0];
         // Encrypt the balance.
         let balance = state.balance().to_field() + &randomizers[1];
 
@@ -74,7 +82,7 @@ impl<A: Aleo> Record<A> {
         let mac = A::hash_psd2(&[A::mac_domain(), record_view_key.clone()]);
 
         // Compute the randomizer for the balance commitment (i.e. HashToScalar(G^r^view_key));
-        let r_bcm = A::hash_to_scalar_psd2(&[A::randomizer_domain(), record_view_key]);
+        let r_bcm = A::hash_to_scalar_psd2(&[A::randomizer_domain(), record_view_key.clone()]);
         // Compute the balance commitment := G^balance H^HashToScalar(G^r^view_key).
         let bcm = A::commit_ped64(&state.balance().to_bits_le(), &r_bcm);
 
@@ -96,10 +104,20 @@ impl<A: Aleo> Record<A> {
         // Compute the record view key := G^r^view_key.
         let record_view_key = (nonce * &**view_key).to_x_coordinate();
 
+        // Decrypt the record.
+        let state = self.decrypt_symmetric(&record_view_key);
+        // Ensure the owner matches the account of the given view key.
+        A::assert_eq(state.owner(), view_key.to_address());
+        // Output the state.
+        state
+    }
+
+    /// Returns the state corresponding to the record using the given record view key.
+    pub fn decrypt_symmetric(&self, record_view_key: &Field<A>) -> State<A> {
         // Compute the randomizers.
         let randomizers = A::hash_many_psd2(&[A::encryption_domain(), record_view_key.clone()], 2);
         // Decrypt and recover the owner.
-        let owner = Address::from_group(Group::from_x_coordinate(&self.owner - &randomizers[0]));
+        let owner = Address::from_field(&self.owner - &randomizers[0]);
         // Decrypt and recover the balance.
         let balance = U64::from_field(&self.balance - &randomizers[1]);
         // Ensure the balance is less than or equal to 2^52.
@@ -111,7 +129,7 @@ impl<A: Aleo> Record<A> {
         A::assert_eq(&self.mac, &candidate_mac);
 
         // Compute the randomizer for the balance commitment (i.e. HashToScalar(G^r^view_key));
-        let r_bcm = A::hash_to_scalar_psd2(&[A::randomizer_domain(), record_view_key]);
+        let r_bcm = A::hash_to_scalar_psd2(&[A::randomizer_domain(), record_view_key.clone()]);
         // Compute the balance commitment := G^balance H^HashToScalar(G^r^view_key).
         let candidate_bcm = A::commit_ped64(&balance.to_bits_le(), &r_bcm);
         // Ensure the balance commitment matches.

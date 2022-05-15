@@ -59,6 +59,7 @@ mod tests {
                 assert_eq!(point, affine.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
             });
+            Circuit::reset();
         }
     }
 

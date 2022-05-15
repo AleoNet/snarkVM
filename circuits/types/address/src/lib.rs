@@ -25,6 +25,7 @@ use snarkvm_circuits_environment::assert_scope;
 
 use snarkvm_circuits_environment::prelude::*;
 use snarkvm_circuits_types_boolean::Boolean;
+use snarkvm_circuits_types_field::Field;
 use snarkvm_circuits_types_group::Group;
 use snarkvm_circuits_types_scalar::Scalar;
 use snarkvm_curves::AffineCurve;
@@ -147,6 +148,18 @@ impl<E: Environment> Display for Address<E> {
         };
 
         write!(f, "{}.{}", address, self.eject_mode())
+    }
+}
+
+impl<E: Environment> From<Address<E>> for LinearCombination<E::BaseField> {
+    fn from(address: Address<E>) -> Self {
+        From::from(&address)
+    }
+}
+
+impl<E: Environment> From<&Address<E>> for LinearCombination<E::BaseField> {
+    fn from(address: &Address<E>) -> Self {
+        From::from(address.to_field())
     }
 }
 

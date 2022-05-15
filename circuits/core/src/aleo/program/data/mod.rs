@@ -152,7 +152,7 @@ impl<A: Aleo, D: DataType<A>> TypeName for Data<A, D> {
 //
 //             // Construct the plaintext.
 //             let mut plaintext = Vec::with_capacity(NUM_RANDOMIZERS);
-//             plaintext.push(state.owner().to_group().to_x_coordinate());
+//             plaintext.push(state.owner().to_field());
 //             plaintext.push(state.balance().to_field());
 //             plaintext.extend_from_slice(&Self::encode_message(&state.data().to_bits_le()));
 //

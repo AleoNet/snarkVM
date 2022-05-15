@@ -121,7 +121,7 @@ impl<P: Program, Op: HashOpcode> Operation<P> for Hash<P, Op> {
                 true => input
                     .iter()
                     .map(|literal| match literal {
-                        Literal::Address(address) => address.to_group().to_x_coordinate(),
+                        Literal::Address(address) => address.to_field(),
                         Literal::Field(field) => field.clone(),
                         Literal::Group(group) => group.to_x_coordinate(),
                         Literal::Scalar(scalar) => scalar.to_field(),
