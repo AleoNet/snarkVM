@@ -28,18 +28,18 @@ use snarkvm_circuits_types::prelude::*;
 use snarkvm_curves::{MontgomeryParameters, TwistedEdwardsParameters};
 use snarkvm_utilities::BigInteger;
 
-pub const BHP_CHUNK_SIZE: usize = 3;
-pub const BHP_LOOKUP_SIZE: usize = 4;
+pub const BHP_CHUNK_SIZE: usize = 4;
+pub const BHP_LOOKUP_SIZE: usize = 8;
 
 /// The x-coordinate and y-coordinate of each base on the Montgomery curve.
 type BaseLookups<E> = (Vec<Field<E>>, Vec<Field<E>>);
 
 /// BHP256 is a collision-resistant hash function that takes a 256-bit input.
-pub type BHP256<E> = BHP<E, 2, 43>;
+pub type BHP256<E> = BHP<E, 2, 32>;
 /// BHP512 is a collision-resistant hash function that takes a 512-bit input.
-pub type BHP512<E> = BHP<E, 3, 57>;
+pub type BHP512<E> = BHP<E, 3, 43>;
 /// BHP1024 is a collision-resistant hash function that takes a 1024-bit input.
-pub type BHP1024<E> = BHP<E, 6, 57>;
+pub type BHP1024<E> = BHP<E, 4, 64>;
 
 /// BHP is a collision-resistant hash function that takes a variable-length input.
 /// The BHP hash function does *not* behave like a random oracle, see Poseidon for one.
@@ -57,7 +57,7 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP<E, 
         let mut range = <E::ScalarField as PrimeField>::BigInteger::from(2_u64);
         while range < E::ScalarField::modulus_minus_one_div_two() {
             // range < (p-1)/2
-            range.muln(4); // range * 2^4
+            range.muln(5); // range * 2^5
             maximum_window_size += 1;
         }
         assert!(WINDOW_SIZE <= maximum_window_size, "The maximum BHP window size is {maximum_window_size}");
