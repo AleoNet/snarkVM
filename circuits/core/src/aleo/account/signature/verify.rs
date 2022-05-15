@@ -40,13 +40,13 @@ impl<A: Aleo> Signature<A> {
             preimage.extend_from_slice(&message_elements);
 
             // Hash to derive the verifier challenge.
-            A::hash_to_scalar(&preimage)
+            A::hash_to_scalar_psd4(&preimage)
         };
 
         // Compute the candidate public key as (G^sk_sig G^r_sig G^sk_prf).
         let candidate_address = {
             // Compute sk_prf := RO(G^sk_sig || G^r_sig).
-            let sk_prf = A::hash_to_scalar(&[self.pk_sig.to_x_coordinate(), self.pr_sig.to_x_coordinate()]);
+            let sk_prf = A::hash_to_scalar_psd4(&[self.pk_sig.to_x_coordinate(), self.pr_sig.to_x_coordinate()]);
 
             // Compute G^sk_prf.
             let pk_prf = A::g_scalar_multiply(&sk_prf);

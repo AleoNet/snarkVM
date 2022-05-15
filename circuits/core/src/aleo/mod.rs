@@ -50,11 +50,17 @@ pub trait Aleo: Environment {
     /// Returns a Pedersen commitment for the given (up to) 1024-bit input and randomness.
     fn commit_ped1024(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self>;
 
+    /// Returns the encryption domain as a constant field element.
+    fn encryption_domain() -> Field<Self>;
+
+    /// Returns the MAC domain as a constant field element.
+    fn mac_domain() -> Field<Self>;
+
+    /// Returns the randomizer domain as a constant field element.
+    fn randomizer_domain() -> Field<Self>;
+
     /// Returns the scalar multiplication on the group bases.
     fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self>;
-
-    /// Returns a hash on the scalar field for the given input.
-    fn hash_to_scalar(input: &[Field<Self>]) -> Scalar<Self>;
 
     /// Returns the BHP hash for a given (up to) 256-bit input.
     fn hash_bhp256(input: &[Boolean<Self>]) -> Field<Self>;
@@ -97,6 +103,15 @@ pub trait Aleo: Environment {
 
     /// Returns the extended Poseidon hash with an input rate of 8.
     fn hash_many_psd8(input: &[Field<Self>], num_outputs: usize) -> Vec<Field<Self>>;
+
+    /// Returns the Poseidon hash with an input rate of 2 on the scalar field.
+    fn hash_to_scalar_psd2(input: &[Field<Self>]) -> Scalar<Self>;
+
+    /// Returns the Poseidon hash with an input rate of 4 on the scalar field.
+    fn hash_to_scalar_psd4(input: &[Field<Self>]) -> Scalar<Self>;
+
+    /// Returns the Poseidon hash with an input rate of 8 on the scalar field.
+    fn hash_to_scalar_psd8(input: &[Field<Self>]) -> Scalar<Self>;
 
     /// Returns the Poseidon PRF with an input rate of 2.
     fn prf_psd2(seed: &Field<Self>, input: &[Field<Self>]) -> Field<Self>;

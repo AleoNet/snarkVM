@@ -16,15 +16,17 @@
 
 use super::*;
 
-impl<A: Aleo> Record<A> {
-    /// Returns the record commitment.
+impl<A: Aleo> State<A> {
+    /// Returns the program state commitment.
     pub fn to_commitment(&self) -> Field<A> {
-        // TODO (howardwu): Abstraction - Replace data with an ID.
-        let data = A::hash_bhp1024(&self.data.to_bits_le());
-
+        // Retrieve the x-coordinate of the owner.
+        let owner = self.owner.to_group().to_x_coordinate();
+        // Convert the balance into a field element.
+        let balance = self.balance.to_field();
         // TODO (howardwu): Abstraction - add support for a custom BHP hash size.
-        let left = A::hash_bhp1024(&[&self.program, &self.owner, &self.balance, &data].to_bits_le());
-        let right = A::hash_bhp1024(&[&self.nonce, &self.mac, &self.bcm].to_bits_le());
+        // Compute the BHP hash of the program state.
+        let left = A::hash_bhp1024(&[&self.program, &owner, &balance, &self.data].to_bits_le());
+        let right = A::hash_bhp1024(&[&self.nonce].to_bits_le());
         A::hash_bhp512(&[&left, &right].to_bits_le())
     }
 }

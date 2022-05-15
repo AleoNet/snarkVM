@@ -18,8 +18,9 @@
 // use snarkvm_circuits_types::environment::assert_scope;
 
 mod encrypt;
+mod to_commitment;
 
-use crate::aleo::{program::NUM_DATA_FIELD_ELEMENTS, Aleo, Record, Scalar};
+use crate::aleo::{Aleo, Record, Scalar};
 use snarkvm_circuits_types::{environment::prelude::*, Address, Field, U64};
 
 // TODO (howardwu): Check mode is only public/private, not constant.
@@ -32,9 +33,9 @@ pub struct State<A: Aleo> {
     owner: Address<A>,
     /// The account balance in this program state.
     balance: U64<A>,
-    /// The data for this program state.
-    data: [Field<A>; NUM_DATA_FIELD_ELEMENTS],
-    /// The nonce for this program state.
+    /// The ID for the program data.
+    data: Field<A>,
+    /// The nonce for this program state (i.e. `G^r`).
     nonce: Field<A>,
 }
 
@@ -54,12 +55,12 @@ impl<A: Aleo> State<A> {
         &self.balance
     }
 
-    /// Returns the program data in encoded form.
-    pub fn data(&self) -> &[Field<A>; NUM_DATA_FIELD_ELEMENTS] {
+    /// Returns the program data ID.
+    pub fn data(&self) -> &Field<A> {
         &self.data
     }
 
-    /// Returns the nonce.
+    /// Returns the nonce for this program state.
     pub fn nonce(&self) -> &Field<A> {
         &self.nonce
     }

@@ -55,6 +55,12 @@ static ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT: &str = "AleoAccountEncryptionAndS
 thread_local! {
     /// The group bases for the Aleo signature and encryption schemes.
     static BASES: Vec<Group<Devnet >> = Devnet::new_bases(ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT);
+    /// The encryption domain as a constant field element.
+    static ENCRYPTION_DOMAIN: Field<Devnet> = Field::constant(<Devnet as Environment>::BaseField::from_bytes_le_mod_order(b"AleoEncryption0"));
+    /// The MAC domain as a constant field element.
+    static MAC_DOMAIN: Field<Devnet> = Field::constant(<Devnet as Environment>::BaseField::from_bytes_le_mod_order(b"AleoMAC0"));
+    /// The randomizer domain as a constant field element.
+    static RANDOMIZER_DOMAIN: Field<Devnet> = Field::constant(<Devnet as Environment>::BaseField::from_bytes_le_mod_order(b"AleoRandomizer0"));
 
     /// The BHP gadget, which can take an input of up to 256 bits.
     static BHP_256: BHP256<Devnet> = BHP256::<Devnet>::setup("AleoBHP256");
@@ -154,6 +160,21 @@ impl Aleo for Devnet {
         PEDERSEN_1024.with(|pedersen| pedersen.commit(input, randomizer))
     }
 
+    /// Returns the encryption domain as a constant field element.
+    fn encryption_domain() -> Field<Self> {
+        ENCRYPTION_DOMAIN.with(|domain| domain.clone())
+    }
+
+    /// Returns the MAC domain as a constant field element.
+    fn mac_domain() -> Field<Self> {
+        MAC_DOMAIN.with(|domain| domain.clone())
+    }
+
+    /// Returns the randomizer domain as a constant field element.
+    fn randomizer_domain() -> Field<Self> {
+        RANDOMIZER_DOMAIN.with(|domain| domain.clone())
+    }
+
     /// Returns the scalar multiplication on the group bases.
     #[inline]
     fn g_scalar_multiply(scalar: &Scalar<Self>) -> Group<Self> {
@@ -163,11 +184,6 @@ impl Aleo for Devnet {
                 .zip_eq(&scalar.to_bits_le())
                 .fold(Group::zero(), |output, (base, bit)| Group::ternary(bit, &(&output + base), &output))
         })
-    }
-
-    /// Returns a hash on the scalar field for the given input.
-    fn hash_to_scalar(input: &[Field<Self>]) -> Scalar<Self> {
-        POSEIDON_4.with(|poseidon| poseidon.hash_to_scalar(input))
     }
 
     /// Returns the BHP hash for a given (up to) 256-bit input.
@@ -238,6 +254,21 @@ impl Aleo for Devnet {
     /// Returns the extended Poseidon hash with an input rate of 8.
     fn hash_many_psd8(input: &[Field<Self>], num_outputs: usize) -> Vec<Field<Self>> {
         POSEIDON_8.with(|poseidon| poseidon.hash_many(input, num_outputs))
+    }
+
+    /// Returns the Poseidon hash with an input rate of 2 on the scalar field.
+    fn hash_to_scalar_psd2(input: &[Field<Self>]) -> Scalar<Self> {
+        POSEIDON_2.with(|poseidon| poseidon.hash_to_scalar(input))
+    }
+
+    /// Returns the Poseidon hash with an input rate of 4 on the scalar field.
+    fn hash_to_scalar_psd4(input: &[Field<Self>]) -> Scalar<Self> {
+        POSEIDON_4.with(|poseidon| poseidon.hash_to_scalar(input))
+    }
+
+    /// Returns the Poseidon hash with an input rate of 8 on the scalar field.
+    fn hash_to_scalar_psd8(input: &[Field<Self>]) -> Scalar<Self> {
+        POSEIDON_8.with(|poseidon| poseidon.hash_to_scalar(input))
     }
 
     /// Returns the Poseidon PRF with an input rate of 2.

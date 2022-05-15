@@ -37,7 +37,7 @@ pub struct Input;
 
 impl Input {
     pub fn execute<A: Aleo>(public: InputPublic<A>, private: InputPrivate<A>) {
-        let commitment = private.record.to_commitment();
+        // let commitment = private.record.to_state().to_commitment();
         // A::assert_eq(public.serial_number, private.record.to_serial_number());
     }
 }

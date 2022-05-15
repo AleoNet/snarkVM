@@ -456,9 +456,8 @@ fn symmetric_key_commitment<F: PrimeField>(
     // Prepare the sponge.
     let params = Arc::new(F::default_poseidon_parameters::<4>(false).unwrap());
     let mut sponge = PoseidonSpongeGadget::with_parameters(cs.ns(|| "sponge"), &params);
-    let domain_separator = FpGadget::alloc_constant(cs.ns(|| "domain_separator"), || {
-        Ok(F::from_bytes_le_mod_order(b"AleoSymmetricKeyCommitment0"))
-    })?;
+    let domain_separator =
+        FpGadget::alloc_constant(cs.ns(|| "domain_separator"), || Ok(F::from_bytes_le_mod_order(b"AleoMAC0")))?;
     sponge.absorb(cs.ns(|| "absorb"), IntoIterator::into_iter([&domain_separator, symmetric_key]))?;
 
     // Obtain the symmetric key commitment from Poseidon.
@@ -475,9 +474,8 @@ fn symmetric_encryption<F: PrimeField>(
     // Prepare the sponge.
     let params = Arc::new(F::default_poseidon_parameters::<4>(false).unwrap());
     let mut sponge = PoseidonSpongeGadget::with_parameters(cs.ns(|| "sponge"), &params);
-    let domain_separator = FpGadget::alloc_constant(cs.ns(|| "domain_separator"), || {
-        Ok(F::from_bytes_le_mod_order(b"AleoSymmetricEncryption0"))
-    })?;
+    let domain_separator =
+        FpGadget::alloc_constant(cs.ns(|| "domain_separator"), || Ok(F::from_bytes_le_mod_order(b"AleoEncryption0")))?;
     sponge.absorb(cs.ns(|| "absorb"), IntoIterator::into_iter([&domain_separator, symmetric_key]))?;
 
     // Obtain random field elements from Poseidon.

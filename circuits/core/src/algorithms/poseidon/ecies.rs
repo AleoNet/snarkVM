@@ -30,8 +30,7 @@ impl<E: Environment, const RATE: usize> ECIESPoseidonEncryption<E, RATE> {
     /// Initializes a new instance of the ECIES gadget with the given setup message.
     pub fn setup() -> Self {
         let poseidon = Poseidon::<E, RATE>::new();
-        let symmetric_encryption_domain =
-            Field::constant(E::BaseField::from_bytes_le_mod_order(b"AleoSymmetricEncryption0"));
+        let symmetric_encryption_domain = Field::constant(E::BaseField::from_bytes_le_mod_order(b"AleoEncryption0"));
 
         Self { poseidon, symmetric_encryption_domain }
     }

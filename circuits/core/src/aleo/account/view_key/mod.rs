@@ -20,6 +20,8 @@ use snarkvm_circuits_types::environment::assert_scope;
 use crate::aleo::Aleo;
 use snarkvm_circuits_types::{environment::prelude::*, Scalar};
 
+use core::ops::Deref;
+
 /// The account view key is able to decrypt records and ciphertext messages.
 pub struct ViewKey<A: Aleo>(Scalar<A>);
 
@@ -47,6 +49,14 @@ impl<A: Aleo> Eject for ViewKey<A> {
     ///
     fn eject_value(&self) -> Self::Primitive {
         self.0.eject_value()
+    }
+}
+
+impl<A: Aleo> Deref for ViewKey<A> {
+    type Target = Scalar<A>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 

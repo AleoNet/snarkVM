@@ -58,8 +58,8 @@ where
     fn setup(message: &str) -> Self {
         let (generator, _, _) = hash_to_curve::<TEAffine<TE>>(message);
         let poseidon = Poseidon::<TE::BaseField, 4, false>::setup();
-        let symmetric_key_commitment_domain = TE::BaseField::from_bytes_le_mod_order(b"AleoSymmetricKeyCommitment0");
-        let symmetric_encryption_domain = TE::BaseField::from_bytes_le_mod_order(b"AleoSymmetricEncryption0");
+        let symmetric_key_commitment_domain = TE::BaseField::from_bytes_le_mod_order(b"AleoMAC0");
+        let symmetric_encryption_domain = TE::BaseField::from_bytes_le_mod_order(b"AleoEncryption0");
 
         Self { generator, poseidon, symmetric_key_commitment_domain, symmetric_encryption_domain }
     }
