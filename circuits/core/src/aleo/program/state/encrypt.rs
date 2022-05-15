@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod input;
-pub use input::*;
+use super::*;
 
-pub mod record;
-pub use record::*;
-
-pub mod state;
-pub use state::*;
+impl<A: Aleo> State<A> {
+    // /// Returns the record corresponding to the state.
+    // pub fn encrypt(&self, randomizer: Scalar<A>) -> Record<A> {
+    //
+    // }
+}

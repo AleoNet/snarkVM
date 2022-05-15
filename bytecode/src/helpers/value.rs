@@ -143,7 +143,11 @@ impl<P: Program> FromBytes for Value<P> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let variant = u8::read_le(&mut reader)?;
         match variant {
-            0 => Ok(Self::Literal(Literal::read_le(&mut reader)?)),
+            0 => {
+                let mode = Mode::read_le(&mut reader)?;
+                let primitive = Primitive::read_le(&mut reader)?;
+                Ok(Self::Literal(Literal::new(mode, primitive)))
+            }
             1 => {
                 // Read the name.
                 let name = Identifier::read_le(&mut reader)?;
@@ -170,7 +174,8 @@ impl<P: Program> ToBytes for Value<P> {
         match self {
             Self::Literal(literal) => {
                 u8::write_le(&0u8, &mut writer)?;
-                literal.write_le(&mut writer)
+                literal.eject_mode().write_le(&mut writer)?;
+                literal.eject_value().write_le(&mut writer)
             }
             Self::Definition(name, members) => {
                 // Ensure the number of members is within `P::NUM_DEPTH`.

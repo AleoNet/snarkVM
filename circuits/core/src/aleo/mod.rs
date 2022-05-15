@@ -89,6 +89,15 @@ pub trait Aleo: Environment {
     /// Returns the Poseidon hash with an input rate of 8.
     fn hash_psd8(input: &[Field<Self>]) -> Field<Self>;
 
+    /// Returns the extended Poseidon hash with an input rate of 2.
+    fn hash_many_psd2(input: &[Field<Self>], num_outputs: usize) -> Vec<Field<Self>>;
+
+    /// Returns the extended Poseidon hash with an input rate of 4.
+    fn hash_many_psd4(input: &[Field<Self>], num_outputs: usize) -> Vec<Field<Self>>;
+
+    /// Returns the extended Poseidon hash with an input rate of 8.
+    fn hash_many_psd8(input: &[Field<Self>], num_outputs: usize) -> Vec<Field<Self>>;
+
     /// Returns the Poseidon PRF with an input rate of 2.
     fn prf_psd2(seed: &Field<Self>, input: &[Field<Self>]) -> Field<Self>;
 

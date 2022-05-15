@@ -19,6 +19,7 @@ use crate::{
     algorithms::{
         Commit,
         Hash,
+        HashMany,
         HashToScalar,
         Pedersen1024,
         Pedersen128,
@@ -222,6 +223,21 @@ impl Aleo for Devnet {
     /// Returns the Poseidon hash with an input rate of 8.
     fn hash_psd8(input: &[Field<Self>]) -> Field<Self> {
         POSEIDON_8.with(|poseidon| poseidon.hash(input))
+    }
+
+    /// Returns the extended Poseidon hash with an input rate of 2.
+    fn hash_many_psd2(input: &[Field<Self>], num_outputs: usize) -> Vec<Field<Self>> {
+        POSEIDON_2.with(|poseidon| poseidon.hash_many(input, num_outputs))
+    }
+
+    /// Returns the extended Poseidon hash with an input rate of 4.
+    fn hash_many_psd4(input: &[Field<Self>], num_outputs: usize) -> Vec<Field<Self>> {
+        POSEIDON_4.with(|poseidon| poseidon.hash_many(input, num_outputs))
+    }
+
+    /// Returns the extended Poseidon hash with an input rate of 8.
+    fn hash_many_psd8(input: &[Field<Self>], num_outputs: usize) -> Vec<Field<Self>> {
+        POSEIDON_8.with(|poseidon| poseidon.hash_many(input, num_outputs))
     }
 
     /// Returns the Poseidon PRF with an input rate of 2.

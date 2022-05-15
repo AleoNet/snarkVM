@@ -17,8 +17,10 @@
 // #[cfg(test)]
 // use snarkvm_circuits_types::environment::assert_scope;
 
-use crate::aleo::Aleo;
-use snarkvm_circuits_types::{environment::prelude::*, Address, Field, Literal, U64};
+mod encrypt;
+
+use crate::aleo::{program::NUM_DATA_FIELD_ELEMENTS, Aleo, Record, Scalar};
+use snarkvm_circuits_types::{environment::prelude::*, Address, Field, U64};
 
 // TODO (howardwu): Check mode is only public/private, not constant.
 /// A program's state is a set of **plaintext** variables used by a program.
@@ -31,7 +33,7 @@ pub struct State<A: Aleo> {
     /// The account balance in this program state.
     balance: U64<A>,
     /// The data for this program state.
-    data: Vec<Literal<A>>,
+    data: [Field<A>; NUM_DATA_FIELD_ELEMENTS],
     /// The nonce for this program state.
     nonce: Field<A>,
 }
@@ -52,8 +54,8 @@ impl<A: Aleo> State<A> {
         &self.balance
     }
 
-    /// Returns the program data.
-    pub fn data(&self) -> &Vec<Literal<A>> {
+    /// Returns the program data in encoded form.
+    pub fn data(&self) -> &[Field<A>; NUM_DATA_FIELD_ELEMENTS] {
         &self.data
     }
 

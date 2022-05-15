@@ -14,11 +14,22 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod input;
-pub use input::*;
+// #[cfg(test)]
+// use snarkvm_circuits_types::environment::assert_scope;
 
-pub mod record;
-pub use record::*;
+use crate::{
+    aleo::{Aleo, Record},
+    algorithms::MerklePath,
+};
+use snarkvm_circuits_types::{environment::prelude::*, Address, Field, U64};
 
-pub mod state;
-pub use state::*;
+pub struct Data {
+    /// The account data for a program.
+    data: [Literal<A>; NUM_DATA_FIELD_ELEMENTS],
+}
+
+impl TypeName for Data {
+    fn type_name() -> &'static str {
+        "data"
+    }
+}

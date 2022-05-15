@@ -17,8 +17,12 @@
 // #[cfg(test)]
 // use snarkvm_circuits_types::environment::assert_scope;
 
-use crate::aleo::Aleo;
-use snarkvm_circuits_types::{environment::prelude::*, Address, Field, Literal, U64};
+mod to_commitment;
+
+use crate::aleo::{Aleo, State};
+use snarkvm_circuits_types::{environment::prelude::*, Address, Boolean, Field, Scalar, U64};
+
+pub(super) const NUM_DATA_FIELD_ELEMENTS: usize = 4;
 
 // TODO (howardwu): Check mode is only public/private, not constant.
 /// A program's record is a set of **ciphertext** variables used by a program.
@@ -34,31 +38,103 @@ pub struct Record<A: Aleo> {
     balance: Field<A>,
     /// The **encrypted** data in this record
     /// (i.e. `state.data.to_fields() (+) HashMany(G^r^view_key)[2..]`).
-    data: Vec<Field<A>>,
+    data: [Field<A>; NUM_DATA_FIELD_ELEMENTS],
     /// The nonce for this record (i.e. `G^r`).
     nonce: Field<A>,
-    /// The MAC for this record (i.e. `H(G^r^view_key)`).
+    /// The MAC for this record (i.e. `Hash(G^r^view_key)`).
     mac: Field<A>,
     /// The balance commitment for this record (i.e. `G^state.balance H^r`).
     bcm: Field<A>,
 }
 
-// impl<A: Aleo> Record<A> {
-//     /// Returns the record owner.
-//     pub fn owner(&self) -> &Address<A> {
-//         &self.owner
-//     }
-//
-//     /// Returns the record balance.
-//     pub fn balance(&self) -> &U64<A> {
-//         &self.balance
-//     }
-//
-//     /// Returns the record data.
-//     pub fn data(&self) -> &Vec<Literal<A>> {
-//         &self.data
-//     }
-// }
+impl<A: Aleo> Record<A> {
+    /// Creates a new record from the given state.
+    pub fn from_state(state: State<A>, randomizer: Scalar<A>) -> Self {
+        // The number of ciphertext randomizers is set to encrypt the owner, balance, and data.
+        const NUM_RANDOMIZERS: usize = 2 + NUM_DATA_FIELD_ELEMENTS;
+
+        // Ensure the randomizer corresponds to the nonce.
+        A::assert_eq(state.nonce(), A::g_scalar_multiply(&randomizer).to_x_coordinate());
+
+        // Encrypt the owner, balance, and data.
+        let (record_view_key, owner, balance, data) = {
+            // Construct the plaintext.
+            let mut plaintext = Vec::with_capacity(NUM_RANDOMIZERS);
+            plaintext.push(state.owner().to_group().to_x_coordinate());
+            plaintext.push(state.balance().to_field());
+            plaintext.extend_from_slice(&Self::encode_message(&state.data().to_bits_le()));
+
+            // Ensure the number of plaintext elements is within the number of allowed randomizers.
+            if plaintext.len() > NUM_RANDOMIZERS {
+                A::halt(format!("Attempted to encrypt {} elements, maximum is {NUM_RANDOMIZERS}", plaintext.len()))
+            } else {
+                // Pad up to the number of randomizers, if there are less plaintext elements.
+                plaintext.resize(NUM_RANDOMIZERS, Field::zero());
+            }
+
+            // Compute the record view key.
+            let record_view_key = (state.owner().to_group() * &randomizer).to_x_coordinate();
+            // Compute the randomizers.
+            let randomizers = A::hash_many_psd2(
+                &[
+                    Field::constant(A::BaseField::from_bytes_le_mod_order(b"AleoSymmetricEncryption0")),
+                    record_view_key.clone(),
+                ],
+                NUM_RANDOMIZERS,
+            );
+
+            // Compute the ciphertext.
+            let ciphertext = plaintext.iter().zip_eq(randomizers).map(|(p, r)| p + r).collect::<Vec<_>>();
+
+            // Prepare the response.
+            let owner = ciphertext[0].clone();
+            let balance = ciphertext[1].clone();
+            let data: [Field<A>; NUM_DATA_FIELD_ELEMENTS] =
+                [ciphertext[2].clone(), ciphertext[3].clone(), ciphertext[4].clone(), ciphertext[5].clone()];
+
+            (record_view_key, owner, balance, data)
+        };
+
+        // Compute the MAC := Hash(G^r^view_key).
+        let mac = A::hash_psd2(&[
+            Field::constant(A::BaseField::from_bytes_le_mod_order(b"AleoSymmetricKeyCommitment0")),
+            record_view_key,
+        ]);
+
+        // Compute the balance commitment := G^state.balance H^r.
+        let bcm = A::commit_ped64(&state.balance().to_bits_le(), &randomizer);
+
+        Self { program: state.program().clone(), owner, balance, data, nonce: state.nonce().clone(), mac, bcm }
+    }
+
+    /// Encode a bitstring into a vector of field elements. This is used to convert messages
+    /// to hashable [`Field`] elements.
+    fn encode_message(message: &[Boolean<A>]) -> Vec<Field<A>> {
+        // Add an extra bit to the message.
+        // The final bit serves as a terminus indicator,
+        // and is used during decryption to ensure the length is correct.
+        let mut bits = message.to_vec();
+        bits.push(Boolean::constant(true));
+
+        // Pack the bits into field elements.
+        bits.chunks(A::BaseField::size_in_data_bits()).map(Field::from_bits_le).collect()
+    }
+
+    //     /// Returns the record owner.
+    //     pub fn owner(&self) -> &Address<A> {
+    //         &self.owner
+    //     }
+    //
+    //     /// Returns the record balance.
+    //     pub fn balance(&self) -> &U64<A> {
+    //         &self.balance
+    //     }
+    //
+    //     /// Returns the record data.
+    //     pub fn data(&self) -> &Vec<Literal<A>> {
+    //         &self.data
+    //     }
+}
 
 impl<A: Aleo> TypeName for Record<A> {
     fn type_name() -> &'static str {

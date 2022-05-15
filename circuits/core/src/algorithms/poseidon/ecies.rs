@@ -18,7 +18,7 @@ use super::*;
 
 use snarkvm_circuits_environment::prelude::*;
 use snarkvm_circuits_types::prelude::*;
-use snarkvm_fields::{FieldParameters, PrimeField};
+use snarkvm_fields::PrimeField;
 
 /// ECIESPoseidonEncryption is an encryption gadget which uses Poseidon under the hood.
 pub struct ECIESPoseidonEncryption<E: Environment, const RATE: usize> {
@@ -45,17 +45,14 @@ impl<E: Environment, const RATE: usize> ECIESPoseidonEncryption<E, RATE> {
         let mut bits = message.to_vec();
         bits.push(Boolean::constant(true));
 
-        // Determine the number of ciphertext elements.
-        let capacity = <<E::BaseField as PrimeField>::Parameters as FieldParameters>::CAPACITY as usize;
-
         // Pack the bits into field elements.
-        bits.chunks(capacity).map(Field::from_bits_le).collect()
+        bits.chunks(E::BaseField::size_in_data_bits()).map(Field::from_bits_le).collect()
     }
 
     /// Decode a vector of field elements to a bitstring. This is used to convert back from
     /// hashable [`Field`] elements to a normal message.
     pub fn decode_message(&self, encoded_message: &[Field<E>]) -> Vec<Boolean<E>> {
-        let capacity = <<E::BaseField as PrimeField>::Parameters as FieldParameters>::CAPACITY as usize;
+        let capacity = E::BaseField::size_in_data_bits();
 
         let mut bits = Vec::<Boolean<E>>::with_capacity(encoded_message.len() * capacity);
         for element in encoded_message.iter() {
@@ -137,21 +134,6 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_encode_decode_constant() {
-        check_encode_decode(Mode::Constant);
-    }
-
-    #[test]
-    fn test_encode_decode_public() {
-        check_encode_decode(Mode::Public);
-    }
-
-    #[test]
-    fn test_encode_decode_private() {
-        check_encode_decode(Mode::Private);
-    }
-
     fn check_encrypt_decrypt(mode: Mode) {
         let native = NativeECIES::<EdwardsParameters>::setup(MESSAGE);
         let circuit = ECIESPoseidonEncryption::<Circuit, RATE>::setup();
@@ -172,6 +154,21 @@ mod tests {
                 assert_eq!(encoded, decrypted.eject_value());
             });
         }
+    }
+
+    #[test]
+    fn test_encode_decode_constant() {
+        check_encode_decode(Mode::Constant);
+    }
+
+    #[test]
+    fn test_encode_decode_public() {
+        check_encode_decode(Mode::Public);
+    }
+
+    #[test]
+    fn test_encode_decode_private() {
+        check_encode_decode(Mode::Private);
     }
 
     #[test]

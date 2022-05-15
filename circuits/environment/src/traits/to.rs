@@ -68,8 +68,8 @@ pub trait ToFields {
 
 /// Unary operator for converting to an affine group.
 pub trait ToGroup {
-    type Scalar: ScalarTrait;
     type Group: GroupTrait<Self::Scalar>;
+    type Scalar: ScalarTrait;
 
     /// Casts a circuit into a base field.
     fn to_group(&self) -> &Self::Group;

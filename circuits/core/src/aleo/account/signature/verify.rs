@@ -30,7 +30,7 @@ impl<A: Aleo> Signature<A> {
             // Convert the message into little-endian bits.
             let message_bits = message.to_bits_le();
             let message_elements =
-                message_bits.chunks(A::BaseField::size_in_data_bits()).map(FromBits::from_bits_le).collect::<Vec<_>>();
+                message_bits.chunks(A::BaseField::size_in_data_bits()).map(Field::from_bits_le).collect::<Vec<_>>();
 
             // Construct the hash input (G^sk_sig G^r_sig G^sk_prf, G^r, message).
             let mut preimage = Vec::with_capacity(3 + message_elements.len());
@@ -152,21 +152,22 @@ pub(crate) mod tests {
                     assert_scope!(<=num_constants, <=num_public, <=num_private, <=num_constraints);
                 }
             });
+            Circuit::reset();
         }
     }
 
     #[test]
     fn test_verify_constant() {
-        check_verify(Mode::Constant, 4265, 0, 0, 0);
+        check_verify(Mode::Constant, 4325, 0, 0, 0);
     }
 
     #[test]
     fn test_verify_public() {
-        check_verify(Mode::Public, 1757, 0, 7322, 7327);
+        check_verify(Mode::Public, 1797, 0, 7322, 7327);
     }
 
     #[test]
     fn test_verify_private() {
-        check_verify(Mode::Private, 1757, 0, 7322, 7327);
+        check_verify(Mode::Private, 1797, 0, 7322, 7327);
     }
 }
