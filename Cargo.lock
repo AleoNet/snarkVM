@@ -1971,6 +1971,8 @@ dependencies = [
  "rusty-hook",
  "self_update",
  "snarkvm-algorithms",
+ "snarkvm-circuits",
+ "snarkvm-console",
  "snarkvm-curves",
  "snarkvm-dpc",
  "snarkvm-fields",
@@ -2188,6 +2190,10 @@ dependencies = [
  "snarkvm-circuits-types-integers",
  "snarkvm-utilities",
 ]
+
+[[package]]
+name = "snarkvm-console"
+version = "0.7.5"
 
 [[package]]
 name = "snarkvm-curves"

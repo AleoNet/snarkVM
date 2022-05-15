@@ -42,11 +42,6 @@ pub struct Record<A: Aleo> {
     bcm: Field<A>,
 }
 
-// /// The balance commitment for this record (i.e. `G^state.balance H^r`).
-//
-// // Compute the balance commitment := G^state.balance H^r.
-// let bcm = A::commit_ped64(&state.balance().to_bits_le(), &randomizer);
-
 impl<A: Aleo> Record<A> {
     /// Returns `true` if this record belongs to the account of the given view key.
     pub fn is_owner(&self, view_key: &ViewKey<A>) -> Boolean<A> {

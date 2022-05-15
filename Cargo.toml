@@ -34,6 +34,7 @@ members = [
   "circuits/types/group",
   "circuits/types/scalar",
   "circuits/types/string",
+  "console",
   "curves",
   "dpc",
   "fields",
@@ -62,10 +63,12 @@ default = ["core"]
 # If you need more granular control of members and/or member features,
 # please import the requisite crates directly and enable features as needed.
 core = ["dpc", "utilities"]
-full = ["algorithms", "curves", "dpc", "fields", "gadgets", "parameters", "r1cs", "utilities"]
+full = ["algorithms", "circuits", "console", "curves", "dpc", "fields", "gadgets", "parameters", "r1cs", "utilities"]
 
 ## snarkVM workspace ##
 algorithms = ["snarkvm-algorithms"]
+circuits = ["snarkvm-circuits"]
+console = ["snarkvm-console"]
 curves = ["snarkvm-curves"]
 dpc = ["snarkvm-dpc"]
 fields = ["snarkvm-fields"]
@@ -86,6 +89,16 @@ noconfig = []
 
 [dependencies.snarkvm-algorithms]
 path = "./algorithms"
+version = "0.7.5"
+optional = true
+
+[dependencies.snarkvm-circuits]
+path = "./circuits"
+version = "0.7.5"
+optional = true
+
+[dependencies.snarkvm-console]
+path = "./console"
 version = "0.7.5"
 optional = true
 
