@@ -34,7 +34,7 @@ impl<E: Environment> ToLowerBitsBE for Field<E> {
 
 impl<E: Environment> Metadata<dyn ToLowerBitsBE<Boolean = Boolean<E>>> for Field<E> {
     type Case = (CircuitType<Field<E>>, usize);
-    type OutputType = CircuitType<Vec<Boolean<E>>>;
+    type OutputType = Vec<CircuitType<Boolean<E>>>;
 
     fn count(case: &Self::Case) -> Count {
         match case {
@@ -45,8 +45,10 @@ impl<E: Environment> Metadata<dyn ToLowerBitsBE<Boolean = Boolean<E>>> for Field
 
     fn output_type(case: Self::Case) -> Self::OutputType {
         match case {
-            (CircuitType::Constant(constant), k) => CircuitType::from(constant.circuit().to_lower_bits_be(k)),
-            _ => CircuitType::Private,
+            (CircuitType::Constant(constant), k) => {
+                constant.circuit().to_lower_bits_be(k).into_iter().map(|bit| CircuitType::from(bit)).collect()
+            }
+            (_, k) => vec![CircuitType::Private; k],
         }
     }
 }
@@ -71,11 +73,11 @@ mod tests {
         for i in 0..ITERATIONS {
             // Sample a random unsigned integer.
             let value: I = UniformRand::rand(&mut test_rng());
-            let expected = value.to_bytes_le().unwrap().to_bits_be();
+            let expected_bytes = value.to_bytes_le().unwrap();
 
             // Construct the unsigned integer as a field element.
             let candidate = {
-                let mut field_bytes = bytes_from_bits_le(&expected);
+                let mut field_bytes = bytes_from_bits_le(&expected_bytes.to_bits_le());
                 field_bytes.resize(size_in_bytes, 0u8); // Pad up to byte size.
                 Field::<Circuit>::new(mode, FromBytes::from_bytes_le(&field_bytes).unwrap())
             };
@@ -83,7 +85,7 @@ mod tests {
             Circuit::scope(&format!("{} {}", mode, i), || {
                 let result = candidate.to_lower_bits_be(I::BITS as usize);
                 assert_eq!(I::BITS, result.len() as u64);
-                for (i, (expected_bit, candidate_bit)) in expected.iter().zip_eq(result.iter()).enumerate() {
+                for (i, (expected_bit, candidate_bit)) in expected_bytes.to_bits_be().iter().zip_eq(result.iter()).enumerate() {
                     assert_eq!(*expected_bit, candidate_bit.eject_value(), "LSB+{}", i);
                 }
 

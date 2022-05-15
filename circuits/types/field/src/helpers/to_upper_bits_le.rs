@@ -34,7 +34,7 @@ impl<E: Environment> ToUpperBitsLE for Field<E> {
 
 impl<E: Environment> Metadata<dyn ToUpperBitsLE<Boolean = Boolean<E>>> for Field<E> {
     type Case = (CircuitType<Field<E>>, usize);
-    type OutputType = CircuitType<Vec<Boolean<E>>>;
+    type OutputType = Vec<CircuitType<Boolean<E>>>;
 
     fn count(case: &Self::Case) -> Count {
         match case {
@@ -45,8 +45,10 @@ impl<E: Environment> Metadata<dyn ToUpperBitsLE<Boolean = Boolean<E>>> for Field
 
     fn output_type(case: Self::Case) -> Self::OutputType {
         match case {
-            (CircuitType::Constant(constant), k) => CircuitType::from(constant.circuit().to_upper_bits_le(k)),
-            _ => CircuitType::Private,
+            (CircuitType::Constant(constant), k) => {
+                constant.circuit().to_upper_bits_le(k).into_iter().map(|bit| CircuitType::from(bit)).collect()
+            }
+            (_, k) => vec![CircuitType::Private; k],
         }
     }
 }
@@ -88,7 +90,7 @@ mod tests {
                 //
                 let field_bytes = {
                     let mut field_bits_le_with_leading_zeros = vec![false; num_leading_zero_bits + 1];
-                    for bit in &expected {
+                    for bit in expected.iter().rev() {
                         field_bits_le_with_leading_zeros.push(*bit);
                     }
                     field_bits_le_with_leading_zeros.resize(size_in_bytes * 8, false); // Pad up to field byte-aligned size.
@@ -104,8 +106,11 @@ mod tests {
             Circuit::scope(&format!("{} {}", mode, i), || {
                 let num_bits_with_capacity = I::BITS + 1;
                 let result = candidate.to_upper_bits_le(num_bits_with_capacity as usize);
+                println!("Result: {:?}", result);
+                println!("Expected: {:?}", expected);
                 assert_eq!(num_bits_with_capacity, result.len() as u64);
-                for (i, (expected_bit, candidate_bit)) in expected.iter().zip_eq(result.iter().skip(1)).enumerate() {
+                // This cast is safe as I::BITS is never greater than 128.
+                for (i, (expected_bit, candidate_bit)) in expected.iter().zip_eq(result.iter().take(num_bits_with_capacity as usize - 1)).enumerate() {
                     assert_eq!(*expected_bit, candidate_bit.eject_value(), "MSB-{}", i);
                 }
 

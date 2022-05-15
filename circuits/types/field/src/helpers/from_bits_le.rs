@@ -97,7 +97,7 @@ impl<E: Environment> FromBitsLE for Field<E> {
 }
 
 impl<E: Environment> Metadata<dyn FromBitsLE<Boolean = Boolean<E>>> for Field<E> {
-    type Case = CircuitType<Vec<Boolean<E>>>;
+    type Case = Vec<CircuitType<Boolean<E>>>;
     type OutputType = CircuitType<Field<E>>;
 
     fn count(_modes: &Self::Case) -> Count {
@@ -106,10 +106,16 @@ impl<E: Environment> Metadata<dyn FromBitsLE<Boolean = Boolean<E>>> for Field<E>
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match case {
-            CircuitType::Constant(constant) => CircuitType::from(Field::from_bits_le(&constant.circuit())),
-            _ => CircuitType::Private,
+        let mut bits_le = Vec::with_capacity(case.len());
+        for bit in case {
+            match bit {
+                CircuitType::Constant(constant) => {
+                    bits_le.push(constant.circuit());
+                }
+                _ => return CircuitType::Private,
+            }
         }
+        CircuitType::from(Field::from_bits_le(&bits_le))
     }
 }
 

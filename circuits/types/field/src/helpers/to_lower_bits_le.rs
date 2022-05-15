@@ -55,7 +55,7 @@ impl<E: Environment> ToLowerBitsLE for Field<E> {
 
 impl<E: Environment> Metadata<dyn ToLowerBitsLE<Boolean = Boolean<E>>> for Field<E> {
     type Case = (CircuitType<Field<E>>, usize);
-    type OutputType = CircuitType<Vec<Boolean<E>>>;
+    type OutputType = Vec<CircuitType<Boolean<E>>>;
 
     fn count(case: &Self::Case) -> Count {
         match case {
@@ -66,8 +66,10 @@ impl<E: Environment> Metadata<dyn ToLowerBitsLE<Boolean = Boolean<E>>> for Field
 
     fn output_type(case: Self::Case) -> Self::OutputType {
         match case {
-            (CircuitType::Constant(constant), k) => CircuitType::from(constant.circuit().to_lower_bits_le(k)),
-            _ => CircuitType::Private,
+            (CircuitType::Constant(constant), k) => {
+                constant.circuit().to_lower_bits_le(k).into_iter().map(|bit| CircuitType::from(bit)).collect()
+            }
+            (_, k) => vec![CircuitType::Private; k],
         }
     }
 }
