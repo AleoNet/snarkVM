@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::BooleanTrait;
+use crate::{BooleanTrait, FieldTrait, GroupTrait, ScalarTrait};
 
 /// Unary operator for instantiating from a boolean.
 pub trait FromBoolean {
@@ -36,4 +36,21 @@ pub trait FromBits {
     fn from_bits_be(bits_be: &[Self::Boolean]) -> Self
     where
         Self: Sized;
+}
+
+/// Unary operator for converting from a base field.
+pub trait FromField {
+    type Field: FieldTrait;
+
+    /// Casts a circuit from a base field element.
+    fn from_field(field: Self::Field) -> Self;
+}
+
+/// Unary operator for converting from an affine group.
+pub trait FromGroup {
+    type Group: GroupTrait<Self::Scalar>;
+    type Scalar: ScalarTrait;
+
+    /// Casts a circuit from an affine group element.
+    fn from_group(group: Self::Group) -> Self;
 }

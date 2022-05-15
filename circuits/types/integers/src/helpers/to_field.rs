@@ -43,7 +43,7 @@ mod tests {
         for i in 0..ITERATIONS {
             // Sample a random integer.
             let expected = UniformRand::rand(&mut test_rng());
-            let candidate = Integer::<Circuit, I>::new(Mode::Constant, expected);
+            let candidate = Integer::<Circuit, I>::new(mode, expected);
 
             Circuit::scope(format!("{mode} {expected} {i}"), || {
                 // Perform the operation.

@@ -14,11 +14,13 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+mod to_address;
+
 #[cfg(test)]
 use snarkvm_circuits_types::environment::assert_scope;
 
 use crate::aleo::Aleo;
-use snarkvm_circuits_types::{environment::prelude::*, Scalar};
+use snarkvm_circuits_types::{environment::prelude::*, Address, Scalar};
 
 use core::ops::Deref;
 

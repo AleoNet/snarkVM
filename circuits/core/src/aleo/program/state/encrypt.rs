@@ -17,8 +17,8 @@
 use super::*;
 
 impl<A: Aleo> State<A> {
-    // /// Returns the record corresponding to the state.
-    // pub fn encrypt(&self, randomizer: Scalar<A>) -> Record<A> {
-    //
-    // }
+    /// Returns the record corresponding to the state.
+    pub fn encrypt(&self, randomizer: &Scalar<A>) -> Record<A> {
+        Record::encrypt(self, randomizer)
+    }
 }

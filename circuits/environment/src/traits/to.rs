@@ -71,6 +71,6 @@ pub trait ToGroup {
     type Group: GroupTrait<Self::Scalar>;
     type Scalar: ScalarTrait;
 
-    /// Casts a circuit into a base field.
+    /// Casts a circuit into an affine group element.
     fn to_group(&self) -> &Self::Group;
 }

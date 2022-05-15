@@ -14,7 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod ecies;
 mod hash;
 mod hash_many;
 mod hash_to_scalar;

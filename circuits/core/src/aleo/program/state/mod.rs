@@ -39,6 +39,13 @@ pub struct State<A: Aleo> {
     nonce: Field<A>,
 }
 
+impl<A: Aleo> From<(Field<A>, Address<A>, U64<A>, Field<A>, Field<A>)> for State<A> {
+    #[inline]
+    fn from((program, owner, balance, data, nonce): (Field<A>, Address<A>, U64<A>, Field<A>, Field<A>)) -> Self {
+        Self { program, owner, balance, data, nonce }
+    }
+}
+
 impl<A: Aleo> State<A> {
     /// Returns the program ID.
     pub fn program(&self) -> &Field<A> {

@@ -18,9 +18,7 @@
 // use snarkvm_circuits_types::environment::assert_scope;
 
 use crate::aleo::{Aleo, State, ViewKey};
-use snarkvm_circuits_types::{environment::prelude::*, Boolean, Field, Group, Scalar};
-
-pub(super) const NUM_DATA_FIELD_ELEMENTS: usize = 4;
+use snarkvm_circuits_types::{environment::prelude::*, Address, Boolean, Field, Group, Scalar, U64};
 
 // TODO (howardwu): Check mode is only public/private, not constant.
 /// A program's record is a set of **ciphertext** variables used by a program.
@@ -28,9 +26,9 @@ pub(super) const NUM_DATA_FIELD_ELEMENTS: usize = 4;
 pub struct Record<A: Aleo> {
     /// The program this record belongs to.
     program: Field<A>,
-    /// The **encrypted** address this record belongs to (i.e. `owner + HashMany(G^r^view_key)[0]`).
+    /// The **encrypted** address this record belongs to (i.e. `owner + HashMany(G^r^view_key, 2)[0]`).
     owner: Field<A>,
-    /// The **encrypted** balance in this record (i.e. `balance.to_field() + HashMany(G^r^view_key)[1]`).
+    /// The **encrypted** balance in this record (i.e. `balance.to_field() + HashMany(G^r^view_key, 2)[1]`).
     balance: Field<A>,
     /// The ID for the program data.
     data: Field<A>,
@@ -50,34 +48,34 @@ impl<A: Aleo> Record<A> {
         // Compute the record view key := G^r^view_key.
         let record_view_key = (nonce * &**view_key).to_x_coordinate();
         // Compute the candidate MAC := Hash(G^r^view_key).
-        let candidate = A::hash_psd2(&[A::mac_domain(), record_view_key]);
+        let candidate_mac = A::hash_psd2(&[A::mac_domain(), record_view_key]);
         // Check if the MACs match.
-        self.mac.is_equal(&candidate)
+        self.mac.is_equal(&candidate_mac)
     }
 
-    /// Creates a new record from the given state.
-    pub fn from_state(state: State<A>, randomizer: Scalar<A>) -> Self {
-        // Compute the record view key.
-        let record_view_key = (state.owner().to_group() * &randomizer).to_x_coordinate();
+    /// Initializes a new record by encrypting the given state.
+    pub fn encrypt(state: &State<A>, randomizer: &Scalar<A>) -> Self {
+        // Ensure the balance is less than or equal to 2^52.
+        A::assert(state.balance().to_bits_le()[52..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit));
+        // Ensure the nonce matches the given randomizer.
+        A::assert_eq(state.nonce(), A::g_scalar_multiply(&randomizer).to_x_coordinate());
 
-        // Encrypt the owner and balance.
-        let (owner, balance) = {
-            // Construct the plaintext.
-            let plaintext = vec![state.owner().to_group().to_x_coordinate(), state.balance().to_field()];
-            // Compute the randomizers.
-            let randomizers = A::hash_many_psd2(&[A::encryption_domain(), record_view_key.clone()], plaintext.len());
-            // Compute the ciphertext.
-            let ciphertext = plaintext.iter().zip_eq(randomizers).map(|(p, r)| p + r).collect::<Vec<_>>();
-            // Output the encrypted owner and balance.
-            (ciphertext[0].clone(), ciphertext[1].clone())
-        };
+        // Compute the record view key.
+        let record_view_key = (state.owner().to_group() * randomizer).to_x_coordinate();
+
+        // Compute the randomizers.
+        let randomizers = A::hash_many_psd2(&[A::encryption_domain(), record_view_key.clone()], 2);
+        // Encrypt the owner.
+        let owner = state.owner().to_group().to_x_coordinate() + &randomizers[0];
+        // Encrypt the balance.
+        let balance = state.balance().to_field() + &randomizers[1];
 
         // Compute the MAC := Hash(G^r^view_key).
         let mac = A::hash_psd2(&[A::mac_domain(), record_view_key.clone()]);
 
         // Compute the randomizer for the balance commitment (i.e. HashToScalar(G^r^view_key));
         let r_bcm = A::hash_to_scalar_psd2(&[A::randomizer_domain(), record_view_key]);
-        // Compute the balance commitment := G^state.balance H^HashToScalar(G^r^view_key).
+        // Compute the balance commitment := G^balance H^HashToScalar(G^r^view_key).
         let bcm = A::commit_ped64(&state.balance().to_bits_le(), &r_bcm);
 
         Self {
@@ -89,6 +87,38 @@ impl<A: Aleo> Record<A> {
             mac,
             bcm,
         }
+    }
+
+    /// Returns the state corresponding to the record using the given view key.
+    pub fn decrypt(&self, view_key: &ViewKey<A>) -> State<A> {
+        // Recover the nonce as a group.
+        let nonce = Group::from_x_coordinate(self.nonce.clone());
+        // Compute the record view key := G^r^view_key.
+        let record_view_key = (nonce * &**view_key).to_x_coordinate();
+
+        // Compute the randomizers.
+        let randomizers = A::hash_many_psd2(&[A::encryption_domain(), record_view_key.clone()], 2);
+        // Decrypt and recover the owner.
+        let owner = Address::from_group(Group::from_x_coordinate(&self.owner - &randomizers[0]));
+        // Decrypt and recover the balance.
+        let balance = U64::from_field(&self.balance - &randomizers[1]);
+        // Ensure the balance is less than or equal to 2^52.
+        A::assert(balance.to_bits_le()[52..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit));
+
+        // Compute the candidate MAC := Hash(G^r^view_key).
+        let candidate_mac = A::hash_psd2(&[A::mac_domain(), record_view_key.clone()]);
+        // Ensure the MAC matches.
+        A::assert_eq(&self.mac, &candidate_mac);
+
+        // Compute the randomizer for the balance commitment (i.e. HashToScalar(G^r^view_key));
+        let r_bcm = A::hash_to_scalar_psd2(&[A::randomizer_domain(), record_view_key]);
+        // Compute the balance commitment := G^balance H^HashToScalar(G^r^view_key).
+        let candidate_bcm = A::commit_ped64(&balance.to_bits_le(), &r_bcm);
+        // Ensure the balance commitment matches.
+        A::assert_eq(&self.bcm, &candidate_bcm);
+
+        // Output the state.
+        State::from((self.program.clone(), owner, balance, self.data.clone(), self.nonce.clone()))
     }
 }
 

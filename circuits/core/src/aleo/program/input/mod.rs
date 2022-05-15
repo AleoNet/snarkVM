@@ -17,33 +17,33 @@
 // #[cfg(test)]
 // use snarkvm_circuits_types::environment::assert_scope;
 
-use crate::{
-    aleo::{Aleo, Record},
-    algorithms::MerklePath,
-};
-use snarkvm_circuits_types::{environment::prelude::*, Address, Field, U64};
-
-pub struct InputPublic<A: Aleo> {
-    serial_number: Field<A>,
-    ledger_root: Field<A>,
-}
-
-pub struct InputPrivate<A: Aleo> {
-    record: Record<A>,
-    // merkle_proof: MerklePath<A>,
-}
-
-pub struct Input;
-
-impl Input {
-    pub fn execute<A: Aleo>(public: InputPublic<A>, private: InputPrivate<A>) {
-        // let commitment = private.record.to_state().to_commitment();
-        // A::assert_eq(public.serial_number, private.record.to_serial_number());
-    }
-}
-
-impl TypeName for Input {
-    fn type_name() -> &'static str {
-        "input"
-    }
-}
+// use crate::{
+//     aleo::{Aleo, Record},
+//     algorithms::MerklePath,
+// };
+// use snarkvm_circuits_types::{environment::prelude::*, Address, Field, U64};
+//
+// pub struct InputPublic<A: Aleo> {
+//     serial_number: Field<A>,
+//     ledger_root: Field<A>,
+// }
+//
+// pub struct InputPrivate<A: Aleo> {
+//     record: Record<A>,
+//     // merkle_proof: MerklePath<A>,
+// }
+//
+// pub struct Input;
+//
+// impl Input {
+//     pub fn execute<A: Aleo>(public: InputPublic<A>, private: InputPrivate<A>) {
+//         // let commitment = private.record.to_state().to_commitment();
+//         // A::assert_eq(public.serial_number, private.record.to_serial_number());
+//     }
+// }
+//
+// impl TypeName for Input {
+//     fn type_name() -> &'static str {
+//         "input"
+//     }
+// }
