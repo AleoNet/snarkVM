@@ -44,7 +44,7 @@ impl<E: Environment> Metadata<dyn Subtractor<Borrow = Boolean<E>, Difference = B
 
         let case = (lhs.clone(), rhs.clone());
         let c0_count = count!(Boolean<E>, BitXor<Boolean<E>, Output = Boolean<E>>, &case);
-        let c0_output_type = output_type!(Boolean<E>, BitXor<Boolean<E>, Output = Boolean<E>>, case.clone());
+        let c0_output_type = output_type!(Boolean<E>, BitXor<Boolean<E>, Output = Boolean<E>>, case);
 
         let case = (c0_output_type.clone(), borrow.clone());
         let difference_count = count!(Boolean<E>, BitXor<Boolean<E>, Output = Boolean<E>>, &case);
@@ -70,7 +70,7 @@ impl<E: Environment> Metadata<dyn Subtractor<Borrow = Boolean<E>, Difference = B
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        let (lhs, rhs, borrow) = case.clone();
+        let (lhs, rhs, borrow) = case;
 
         let c0_output_type =
             output_type!(Boolean<E>, BitXor<Boolean<E>, Output = Boolean<E>>, (lhs.clone(), rhs.clone()));

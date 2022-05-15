@@ -46,7 +46,7 @@ impl<E: Environment> Metadata<dyn ToLowerBitsBE<Boolean = Boolean<E>>> for Field
     fn output_type(case: Self::Case) -> Self::OutputType {
         match case {
             (CircuitType::Constant(constant), k) => {
-                constant.circuit().to_lower_bits_be(k).into_iter().map(|bit| CircuitType::from(bit)).collect()
+                constant.circuit().to_lower_bits_be(k).into_iter().map(CircuitType::from).collect()
             }
             (_, k) => vec![CircuitType::Private; k],
         }

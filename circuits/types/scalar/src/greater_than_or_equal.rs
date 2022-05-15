@@ -30,7 +30,7 @@ impl<E: Environment> Metadata<dyn GreaterThanOrEqual<Scalar<E>, Output = Boolean
     type OutputType = CircuitType<Boolean<E>>;
 
     fn count(case: &Self::Case) -> Count {
-        let less_than_count = count!(Self, LessThan<Self, Output = Boolean<E>>, &case);
+        let less_than_count = count!(Self, LessThan<Self, Output = Boolean<E>>, case);
         let less_than_output_type = output_type!(Self, LessThan<Self, Output = Boolean<E>>, case.clone());
 
         let not_count = count!(Boolean<E>, Not<Output = Boolean<E>>, &less_than_output_type);

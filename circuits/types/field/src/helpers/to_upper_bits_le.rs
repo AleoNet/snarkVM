@@ -46,7 +46,7 @@ impl<E: Environment> Metadata<dyn ToUpperBitsLE<Boolean = Boolean<E>>> for Field
     fn output_type(case: Self::Case) -> Self::OutputType {
         match case {
             (CircuitType::Constant(constant), k) => {
-                constant.circuit().to_upper_bits_le(k).into_iter().map(|bit| CircuitType::from(bit)).collect()
+                constant.circuit().to_upper_bits_le(k).into_iter().map(CircuitType::from).collect()
             }
             (_, k) => vec![CircuitType::Private; k],
         }
@@ -106,8 +106,6 @@ mod tests {
             Circuit::scope(&format!("{} {}", mode, i), || {
                 let num_bits_with_capacity = I::BITS + 1;
                 let result = candidate.to_upper_bits_le(num_bits_with_capacity as usize);
-                println!("Result: {:?}", result);
-                println!("Expected: {:?}", expected);
                 assert_eq!(num_bits_with_capacity, result.len() as u64);
                 // This cast is safe as I::BITS is never greater than 128.
                 for (i, (expected_bit, candidate_bit)) in expected.iter().zip_eq(result.iter().take(num_bits_with_capacity as usize - 1)).enumerate() {

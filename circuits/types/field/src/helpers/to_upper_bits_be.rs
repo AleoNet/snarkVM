@@ -70,7 +70,7 @@ impl<E: Environment> Metadata<dyn ToUpperBitsBE<Boolean = Boolean<E>>> for Field
     fn output_type(case: Self::Case) -> Self::OutputType {
         match case {
             (CircuitType::Constant(constant), k) => {
-                constant.circuit().to_upper_bits_be(k).into_iter().map(|bit| CircuitType::from(bit)).collect()
+                constant.circuit().to_upper_bits_be(k).into_iter().map(CircuitType::from).collect()
             }
             (_, k) => vec![CircuitType::Private; k],
         }

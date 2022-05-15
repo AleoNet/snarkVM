@@ -61,7 +61,7 @@ impl<E: Environment> Metadata<dyn Adder<Carry = Boolean<E>, Sum = Boolean<E>>> f
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        let (lhs, rhs, carry) = case.clone();
+        let (lhs, rhs, carry) = case;
         let c0_output_type =
             output_type!(Boolean<E>, BitXor<Boolean<E>, Output = Boolean<E>>, (lhs.clone(), rhs.clone()));
         let c1_output_type = output_type!(Boolean<E>, BitAnd<Boolean<E>, Output = Boolean<E>>, (lhs, rhs));
