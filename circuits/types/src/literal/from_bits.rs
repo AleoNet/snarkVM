@@ -93,7 +93,7 @@ mod tests {
     fn run_serialization_test(mode: Mode) {
         let rng = &mut test_rng();
 
-        for i in 0..ITERATIONS {
+        for _ in 0..ITERATIONS {
             // // Address
             // check_serialization(Literal::<Circuit>::Address(Address::new(mode, UniformRand::rand(rng))));
             // Boolean

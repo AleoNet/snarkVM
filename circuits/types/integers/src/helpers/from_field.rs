@@ -38,7 +38,7 @@ impl<E: Environment, I: IntegerType> FromField for Integer<E, I> {
 mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
-    use snarkvm_utilities::{test_rng, ToBits as TBits, UniformRand};
+    use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 128;
 

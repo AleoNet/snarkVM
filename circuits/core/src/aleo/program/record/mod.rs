@@ -58,7 +58,7 @@ impl<A: Aleo> Record<A> {
         // Ensure the balance is less than or equal to 2^52.
         A::assert(state.balance().to_bits_le()[52..].iter().fold(Boolean::constant(false), |acc, bit| acc | bit));
         // Ensure the nonce matches the given randomizer.
-        A::assert_eq(state.nonce(), A::g_scalar_multiply(&randomizer).to_x_coordinate());
+        A::assert_eq(state.nonce(), A::g_scalar_multiply(randomizer).to_x_coordinate());
 
         // Compute the record view key.
         let record_view_key = (state.owner().to_group() * randomizer).to_x_coordinate();
