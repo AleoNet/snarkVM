@@ -16,7 +16,7 @@
 
 use super::*;
 
-use enum_index::EnumIndex;
+// use enum_index::EnumIndex;
 
 impl<E: Environment> ToBits for Literal<E> {
     type Boolean = Boolean<E>;
@@ -37,8 +37,9 @@ impl<E: Environment> ToBits for &Literal<E> {
 
     /// Returns the little-endian bits of the literal.
     fn to_bits_le(&self) -> Vec<Boolean<E>> {
-        let variant = U8::constant(self.enum_index() as u8).to_bits_le();
-        let literal = match self {
+        // let variant = U8::constant(self.enum_index() as u8).to_bits_le();
+        // let literal = match self {
+        match self {
             Literal::Address(literal) => literal.to_bits_le(),
             Literal::Boolean(literal) => literal.to_bits_le(),
             Literal::Field(literal) => literal.to_bits_le(),
@@ -55,14 +56,15 @@ impl<E: Environment> ToBits for &Literal<E> {
             Literal::U128(literal) => literal.to_bits_le(),
             Literal::Scalar(literal) => literal.to_bits_le(),
             Literal::String(literal) => literal.to_bits_le(),
-        };
-        variant.into_iter().chain(literal).collect()
+        }
+        // variant.into_iter().chain(literal).collect()
     }
 
     /// Returns the big-endian bits of the literal.
     fn to_bits_be(&self) -> Vec<Boolean<E>> {
-        let variant = U8::constant(self.enum_index() as u8).to_bits_be();
-        let literal = match self {
+        // let variant = U8::constant(self.enum_index() as u8).to_bits_be();
+        // let literal = match self {
+        match self {
             Literal::Address(literal) => literal.to_bits_be(),
             Literal::Boolean(literal) => literal.to_bits_be(),
             Literal::Field(literal) => literal.to_bits_be(),
@@ -79,7 +81,7 @@ impl<E: Environment> ToBits for &Literal<E> {
             Literal::U128(literal) => literal.to_bits_be(),
             Literal::Scalar(literal) => literal.to_bits_be(),
             Literal::String(literal) => literal.to_bits_be(),
-        };
-        variant.into_iter().chain(literal).collect()
+        }
+        // variant.into_iter().chain(literal).collect()
     }
 }

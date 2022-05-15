@@ -22,9 +22,9 @@ impl<A: Aleo, D: DataType<A>> Data<A, D> {
         match self.is_valid() {
             true => match self {
                 Self::Plaintext(data, _) => A::hash_psd8(&Self::encode(data)),
-                Self::Ciphertext(data, _) => A::hash_psd8(&data),
+                Self::Ciphertext(data, _) => A::hash_psd8(data),
             },
-            false => A::halt(format!("Failed to compute the data ID as the data must be encrypted first")),
+            false => A::halt("Failed to compute the data ID as the data must be encrypted first"),
         }
     }
 }

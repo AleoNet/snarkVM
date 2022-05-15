@@ -24,10 +24,8 @@ impl<A: Aleo> Record<A> {
 
         // Compute the record view key.
         let record_view_key = (state.owner().to_group() * randomizer).to_x_coordinate();
-        // Encrypt the record.
-        let state = Self::encrypt_symmetric(state, &record_view_key);
-        // Output the state.
-        state
+        // Encrypt the record and output the state.
+        Self::encrypt_symmetric(state, &record_view_key)
     }
 
     /// Initializes a new record by encrypting the given state with a given randomizer.
