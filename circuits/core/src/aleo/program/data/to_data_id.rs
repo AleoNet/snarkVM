@@ -14,11 +14,17 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod data;
-pub use data::Data;
+use super::*;
 
-pub mod record;
-pub use record::Record;
-
-pub mod state;
-pub use state::State;
+impl<A: Aleo, D: DataType<A>> Data<A, D> {
+    /// Returns the data ID.
+    pub fn to_data_id(&self) -> Field<A> {
+        match self.is_valid() {
+            true => match self {
+                Self::Plaintext(data, _) => A::hash_psd8(&Self::encode(data)),
+                Self::Ciphertext(data, _) => A::hash_psd8(&data),
+            },
+            false => A::halt(format!("Failed to compute the data ID as the data must be encrypted first")),
+        }
+    }
+}

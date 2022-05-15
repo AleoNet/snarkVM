@@ -56,9 +56,9 @@ thread_local! {
     /// The group bases for the Aleo signature and encryption schemes.
     static BASES: Vec<Group<Devnet >> = Devnet::new_bases(ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT);
     /// The encryption domain as a constant field element.
-    static ENCRYPTION_DOMAIN: Field<Devnet> = Field::constant(<Devnet as Environment>::BaseField::from_bytes_le_mod_order(b"AleoEncryption0"));
+    static ENCRYPTION_DOMAIN: Field<Devnet> = Field::constant(<Devnet as Environment>::BaseField::from_bytes_le_mod_order(b"AleoSymmetricEncryption0"));
     /// The MAC domain as a constant field element.
-    static MAC_DOMAIN: Field<Devnet> = Field::constant(<Devnet as Environment>::BaseField::from_bytes_le_mod_order(b"AleoMAC0"));
+    static MAC_DOMAIN: Field<Devnet> = Field::constant(<Devnet as Environment>::BaseField::from_bytes_le_mod_order(b"AleoSymmetricKeyCommitment0"));
     /// The randomizer domain as a constant field element.
     static RANDOMIZER_DOMAIN: Field<Devnet> = Field::constant(<Devnet as Environment>::BaseField::from_bytes_le_mod_order(b"AleoRandomizer0"));
 

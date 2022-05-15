@@ -14,11 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod data;
-pub use data::Data;
+use super::*;
 
-pub mod record;
-pub use record::Record;
-
-pub mod state;
-pub use state::State;
+impl<A: Aleo> Record<A> {
+    /// Returns the record ID.
+    pub fn to_record_id(&self) -> Field<A> {
+        // TODO (howardwu): Abstraction - add support for a custom BHP hash size.
+        // Compute the BHP hash of the program state.
+        let left = A::hash_bhp1024(&[&self.program, &self.owner, &self.balance, &self.data].to_bits_le());
+        let right = A::hash_bhp1024(&[&self.nonce, &self.mac, &self.bcm].to_bits_le());
+        A::hash_bhp512(&[&left, &right].to_bits_le())
+    }
+}
