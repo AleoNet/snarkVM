@@ -58,7 +58,7 @@ mod tests {
 
     fn check_is_equal(name: &str, expected: bool, a: &Scalar<Circuit>, b: &Scalar<Circuit>) {
         Circuit::scope(name, || {
-            let candidate = a.is_equal(&b);
+            let candidate = a.is_equal(b);
             assert_eq!(expected, candidate.eject_value(), "({} == {})", a.eject_value(), b.eject_value());
 
             let case = (CircuitType::from(a), CircuitType::from(b));

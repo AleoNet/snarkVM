@@ -127,10 +127,10 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metadata<dyn ShrWrapped<Integ
 
         match I::is_signed() {
             // Signed case
-            true => match (case.0.eject_mode(), case.1.eject_mode()) {
-                (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-                (_, Mode::Constant) => Count::is(0, 0, 0, 0),
-                (Mode::Constant, _) => Count::is(
+            true => match case {
+                (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(I::BITS, 0, 0, 0),
+                (_, CircuitType::Constant(_)) => Count::is(0, 0, 0, 0),
+                (CircuitType::Constant(_), _) => Count::is(
                     4 * I::BITS,
                     0,
                     (6 * I::BITS) + (2 * index(I::BITS)) + 9,
@@ -144,10 +144,10 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metadata<dyn ShrWrapped<Integ
                 ),
             },
             // Unsigned case
-            false => match (case.0.eject_mode(), case.1.eject_mode()) {
-                (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-                (_, Mode::Constant) => Count::is(0, 0, 0, 0),
-                (Mode::Constant, _) | (_, _) => {
+            false => match case {
+                (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(I::BITS, 0, 0, 0),
+                (_, CircuitType::Constant(_)) => Count::is(0, 0, 0, 0),
+                (CircuitType::Constant(_), _) | (_, _) => {
                     Count::is(0, 0, (3 * I::BITS) + (2 * index(I::BITS)) + 5, (3 * I::BITS) + (2 * index(I::BITS)) + 7)
                 }
             },
@@ -155,10 +155,11 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metadata<dyn ShrWrapped<Integ
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match (case.0.eject_mode(), case.1.eject_mode()) {
-            (Mode::Constant, Mode::Constant) => CircuitType::from(case.0.circuit().shr_wrapped(case.1.circuit())),
-            (Mode::Public, Mode::Constant) => CircuitType::Public,
-            (Mode::Private, Mode::Constant) => CircuitType::Private,
+        match case {
+            (CircuitType::Constant(a), CircuitType::Constant(b)) => {
+                CircuitType::from(a.circuit().shr_wrapped(&b.circuit()))
+            }
+            (CircuitType::Public, CircuitType::Constant(_)) => CircuitType::Public,
             (_, _) => CircuitType::Private,
         }
     }

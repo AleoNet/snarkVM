@@ -80,10 +80,10 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metadata<dyn ShlWrapped<Integ
             None => E::halt(format!("Integer of {num_bits} bits is not supported")),
         };
 
-        match (case.0.eject_mode(), case.1.eject_mode()) {
-            (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-            (_, Mode::Constant) => Count::is(0, 0, 0, 0),
-            (Mode::Constant, _) => Count::is(
+        match case {
+            (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(I::BITS, 0, 0, 0),
+            (_, CircuitType::Constant(_)) => Count::is(0, 0, 0, 0),
+            (CircuitType::Constant(_), _) => Count::is(
                 0,
                 0,
                 (2 * I::BITS) + (I::BITS / 2) + (2 * index(I::BITS)) + 5,
@@ -99,10 +99,12 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metadata<dyn ShlWrapped<Integ
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match (case.0.eject_mode(), case.1.eject_mode()) {
-            (Mode::Constant, Mode::Constant) => CircuitType::from(case.0.circuit().shl_wrapped(case.1.circuit())),
-            (Mode::Public, Mode::Constant) => CircuitType::Public,
-            (Mode::Private, Mode::Constant) => CircuitType::Private,
+        match case {
+            (CircuitType::Constant(a), CircuitType::Constant(b)) => {
+                CircuitType::from(a.circuit().shl_wrapped(&b.circuit()))
+            }
+            (CircuitType::Public, CircuitType::Constant(_)) => CircuitType::Public,
+            (CircuitType::Private, CircuitType::Constant(_)) => CircuitType::Private,
             (_, _) => CircuitType::Private,
         }
     }

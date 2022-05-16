@@ -126,16 +126,16 @@ impl<E: Environment, I: IntegerType> Metadata<dyn DivChecked<Integer<E, I>, Outp
 
     fn count(case: &Self::Case) -> Count {
         match I::is_signed() {
-            true => match (case.0.eject_mode(), case.1.eject_mode()) {
-                (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-                (Mode::Constant, _) | (_, Mode::Constant) => {
+            true => match case {
+                (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(I::BITS, 0, 0, 0),
+                (CircuitType::Constant(_), _) | (_, CircuitType::Constant(_)) => {
                     Count::less_than(6 * I::BITS, 0, (7 * I::BITS) + 10, (8 * I::BITS) + 17)
                 }
                 (_, _) => Count::is(5 * I::BITS, 0, (8 * I::BITS) + 10, (8 * I::BITS) + 17),
             },
-            false => match (case.0.eject_mode(), case.1.eject_mode()) {
-                (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-                (Mode::Constant, _) | (_, Mode::Constant) => {
+            false => match case {
+                (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(I::BITS, 0, 0, 0),
+                (CircuitType::Constant(_), _) | (_, CircuitType::Constant(_)) => {
                     Count::less_than(0, 0, (2 * I::BITS) + 1, (2 * I::BITS) + 2)
                 }
                 (_, _) => Count::is(0, 0, (2 * I::BITS) + 1, (2 * I::BITS) + 2),
@@ -144,8 +144,10 @@ impl<E: Environment, I: IntegerType> Metadata<dyn DivChecked<Integer<E, I>, Outp
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match (case.0.eject_mode(), case.1.eject_mode()) {
-            (Mode::Constant, Mode::Constant) => CircuitType::from(case.0.circuit().div_checked(case.1.circuit())),
+        match case {
+            (CircuitType::Constant(a), CircuitType::Constant(b)) => {
+                CircuitType::from(a.circuit().div_checked(&b.circuit()))
+            }
             (_, _) => CircuitType::Private,
         }
     }

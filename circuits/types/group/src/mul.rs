@@ -15,9 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use std::cmp::max;
-
-use snarkvm_utilities::BigInteger;
 
 impl<E: Environment> Mul<Scalar<E>> for Group<E> {
     type Output = Group<E>;
@@ -243,7 +240,6 @@ impl<E: Environment> Metadata<dyn Mul<Scalar<E>, Output = Group<E>>> for Group<E
 mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
-    use snarkvm_curves::ProjectiveCurve;
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 100;

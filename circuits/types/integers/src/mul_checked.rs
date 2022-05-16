@@ -190,17 +190,19 @@ impl<E: Environment, I: IntegerType> Metadata<dyn MulChecked<Integer<E, I>, Outp
         if 2 * I::BITS < (E::BaseField::size_in_bits() - 1) as u64 {
             match I::is_signed() {
                 // Signed case
-                true => match (case.0.eject_mode(), case.1.eject_mode()) {
-                    (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-                    (Mode::Constant, _) | (_, Mode::Constant) => {
+                true => match case {
+                    (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(I::BITS, 0, 0, 0),
+                    (CircuitType::Constant(_), _) | (_, CircuitType::Constant(_)) => {
                         Count::is(4 * I::BITS, 0, (8 * I::BITS) + 5, (8 * I::BITS) + 9)
                     }
                     (_, _) => Count::is(3 * I::BITS, 0, (10 * I::BITS) + 8, (10 * I::BITS) + 13),
                 },
                 // Unsigned case
-                false => match (case.0.eject_mode(), case.1.eject_mode()) {
-                    (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-                    (Mode::Constant, _) | (_, Mode::Constant) => Count::is(0, 0, (3 * I::BITS) - 1, (3 * I::BITS) + 1),
+                false => match case {
+                    (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(I::BITS, 0, 0, 0),
+                    (CircuitType::Constant(_), _) | (_, CircuitType::Constant(_)) => {
+                        Count::is(0, 0, (3 * I::BITS) - 1, (3 * I::BITS) + 1)
+                    }
                     (_, _) => Count::is(0, 0, 3 * I::BITS, (3 * I::BITS) + 2),
                 },
             }
@@ -209,17 +211,19 @@ impl<E: Environment, I: IntegerType> Metadata<dyn MulChecked<Integer<E, I>, Outp
         else if (I::BITS + I::BITS / 2) < (E::BaseField::size_in_bits() - 1) as u64 {
             match I::is_signed() {
                 // Signed case
-                true => match (case.0.eject_mode(), case.1.eject_mode()) {
-                    (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-                    (Mode::Constant, _) | (_, Mode::Constant) => {
+                true => match case {
+                    (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(I::BITS, 0, 0, 0),
+                    (CircuitType::Constant(_), _) | (_, CircuitType::Constant(_)) => {
                         Count::is(4 * I::BITS, 0, (9 * I::BITS) + 7, (9 * I::BITS) + 12)
                     }
                     (_, _) => Count::is(3 * I::BITS, 0, (11 * I::BITS) + 13, (11 * I::BITS) + 19),
                 },
                 // Unsigned case
-                false => match (case.0.eject_mode(), case.1.eject_mode()) {
-                    (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-                    (Mode::Constant, _) | (_, Mode::Constant) => Count::is(0, 0, (4 * I::BITS) + 1, (4 * I::BITS) + 4),
+                false => match case {
+                    (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(I::BITS, 0, 0, 0),
+                    (CircuitType::Constant(_), _) | (_, CircuitType::Constant(_)) => {
+                        Count::is(0, 0, (4 * I::BITS) + 1, (4 * I::BITS) + 4)
+                    }
                     (_, _) => Count::is(0, 0, (4 * I::BITS) + 5, (4 * I::BITS) + 8),
                 },
             }
@@ -229,8 +233,10 @@ impl<E: Environment, I: IntegerType> Metadata<dyn MulChecked<Integer<E, I>, Outp
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match (case.0.eject_mode(), case.1.eject_mode()) {
-            (Mode::Constant, Mode::Constant) => CircuitType::from(case.0.circuit().mul_checked(case.1.circuit())),
+        match case {
+            (CircuitType::Constant(a), CircuitType::Constant(b)) => {
+                CircuitType::from(a.circuit().mul_checked(&b.circuit()))
+            }
             (_, _) => CircuitType::Private,
         }
     }

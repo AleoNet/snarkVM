@@ -39,16 +39,6 @@ impl<E: Environment, I: IntegerType> Equal<Self> for Integer<E, I> {
             }
         }
     }
-
-    ///
-    /// Returns `true` if `self` and `other` are *not* equal.
-    ///
-    /// This method constructs a boolean that indicates if
-    /// `self` and `other ` are *not* equal to each other.
-    ///
-    fn is_not_equal(&self, other: &Self) -> Self::Output {
-        !self.is_equal(other)
-    }
 }
 
 impl<E: Environment, I: IntegerType> Metadata<dyn Equal<Integer<E, I>, Output = Boolean<E>>> for Integer<E, I> {
@@ -56,16 +46,18 @@ impl<E: Environment, I: IntegerType> Metadata<dyn Equal<Integer<E, I>, Output = 
     type OutputType = CircuitType<Boolean<E>>;
 
     fn count(case: &Self::Case) -> Count {
-        match case.0.is_constant() && case.1.is_constant() {
-            true => Count::is(0, 0, 0, 0),
-            false => Count::is(0, 0, 2, 3),
+        match case {
+            (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(0, 0, 0, 0),
+            _ => Count::is(0, 0, 2, 3),
         }
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match case.0.is_constant() && case.1.is_constant() {
-            true => CircuitType::from(case.0.circuit().is_equal(&case.1.circuit())),
-            false => CircuitType::Private,
+        match case {
+            (CircuitType::Constant(a), CircuitType::Constant(b)) => {
+                CircuitType::from(a.circuit().is_equal(&b.circuit()))
+            }
+            _ => CircuitType::Private,
         }
     }
 }
@@ -80,7 +72,7 @@ mod tests {
 
     const ITERATIONS: u64 = 100;
 
-    fn check_equals<I: IntegerType>(name: &str, first: I, second: I, mode_a: Mode, mode_b: Mode) {
+    fn check_is_equal<I: IntegerType>(name: &str, first: I, second: I, mode_a: Mode, mode_b: Mode) {
         let expected = first == second;
         let a = Integer::<Circuit, I>::new(mode_a, first);
         let b = Integer::<Circuit, I>::new(mode_b, second);
@@ -101,8 +93,10 @@ mod tests {
             let second: I = UniformRand::rand(&mut test_rng());
 
             let name = format!("Eq: {} == {} {}", mode_a, mode_b, i);
-            check_equals(&name, first, second, mode_a, mode_b);
-            check_equals(&name, second, first, mode_a, mode_b); // Commute the operation.
+            check_is_equal(&name, first, second, mode_a, mode_b);
+            check_is_equal(&name, second, first, mode_a, mode_b); // Commute the operation.
+            check_is_equal(&name, first, first, mode_a, mode_b);
+            check_is_equal(&name, second, second, mode_a, mode_b);
         }
     }
 
@@ -113,23 +107,23 @@ mod tests {
         for first in I::MIN..=I::MAX {
             for second in I::MIN..=I::MAX {
                 let name = format!("Equals: ({} == {})", first, second);
-                check_equals(&name, first, second, mode_a, mode_b);
+                check_is_equal(&name, first, second, mode_a, mode_b);
             }
         }
     }
 
-    test_integer_binary!(run_test, i8, equals);
-    test_integer_binary!(run_test, i16, equals);
-    test_integer_binary!(run_test, i32, equals);
-    test_integer_binary!(run_test, i64, equals);
-    test_integer_binary!(run_test, i128, equals);
+    test_integer_binary!(run_test, i8, is_equals);
+    test_integer_binary!(run_test, i16, is_equals);
+    test_integer_binary!(run_test, i32, is_equals);
+    test_integer_binary!(run_test, i64, is_equals);
+    test_integer_binary!(run_test, i128, is_equals);
 
-    test_integer_binary!(run_test, u8, equals);
-    test_integer_binary!(run_test, u16, equals);
-    test_integer_binary!(run_test, u32, equals);
-    test_integer_binary!(run_test, u64, equals);
-    test_integer_binary!(run_test, u128, equals);
+    test_integer_binary!(run_test, u8, is_equals);
+    test_integer_binary!(run_test, u16, is_equals);
+    test_integer_binary!(run_test, u32, is_equals);
+    test_integer_binary!(run_test, u64, is_equals);
+    test_integer_binary!(run_test, u128, is_equals);
 
-    test_integer_binary!(#[ignore], run_exhaustive_test, u8, equals, exhaustive);
-    test_integer_binary!(#[ignore], run_exhaustive_test, i8, equals, exhaustive);
+    test_integer_binary!(#[ignore], run_exhaustive_test, u8, is_equals, exhaustive);
+    test_integer_binary!(#[ignore], run_exhaustive_test, i8, is_equals, exhaustive);
 }

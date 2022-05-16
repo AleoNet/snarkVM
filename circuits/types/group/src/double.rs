@@ -103,7 +103,7 @@ mod tests {
 
     fn check_double(name: &str, expected: &<Circuit as Environment>::Affine, candidate: &Group<Circuit>) {
         Circuit::scope(name, || {
-            let result = (&candidate).double();
+            let result = candidate.double();
             assert_eq!(*expected, result.eject_value());
 
             let case = CircuitType::from(candidate);

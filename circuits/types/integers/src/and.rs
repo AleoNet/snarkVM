@@ -77,17 +77,15 @@ impl<E: Environment, I: IntegerType> Metadata<dyn BitAnd<Integer<E, I>, Output =
     type OutputType = CircuitType<Self>;
 
     fn count(case: &Self::Case) -> Count {
-        match (case.0.eject_mode(), case.1.eject_mode()) {
-            (Mode::Constant, _) | (_, Mode::Constant) => Count::is(0, 0, 0, 0),
+        match case {
+            (CircuitType::Constant(_), _) | (_, CircuitType::Constant(_)) => Count::is(0, 0, 0, 0),
             (_, _) => Count::is(0, 0, I::BITS, I::BITS),
         }
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
         match case {
-            (CircuitType::Constant(_), CircuitType::Constant(_)) => {
-                CircuitType::from(case.0.circuit().bitand(case.1.circuit()))
-            }
+            (CircuitType::Constant(a), CircuitType::Constant(b)) => CircuitType::from(a.circuit().bitand(&b.circuit())),
             (CircuitType::Constant(constant), other_type) | (other_type, CircuitType::Constant(constant)) => {
                 match constant.eject_value().is_zero() {
                     true => CircuitType::from(Integer::zero()),

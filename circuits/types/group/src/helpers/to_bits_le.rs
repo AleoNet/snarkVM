@@ -48,7 +48,7 @@ impl<E: Environment> Metadata<dyn ToBitsLE<Boolean = Boolean<E>>> for Group<E> {
     fn output_type(case: Self::Case) -> Self::OutputType {
         match case {
             CircuitType::Constant(constant) => {
-                constant.circuit().to_bits_le().into_iter().map(|bit| CircuitType::from(bit)).collect()
+                constant.circuit().to_bits_le().into_iter().map(CircuitType::from).collect()
             }
             _ => vec![CircuitType::Private; E::BaseField::size_in_bits()],
         }

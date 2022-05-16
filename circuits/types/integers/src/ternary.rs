@@ -54,32 +54,35 @@ impl<E: Environment, I: IntegerType> Metadata<dyn Ternary<Boolean = Boolean<E>, 
     type OutputType = CircuitType<Self>;
 
     fn count(case: &Self::Case) -> Count {
-        match (case.0.eject_mode(), case.1.eject_mode(), case.2.eject_mode()) {
-            (Mode::Constant, _, _)
-            | (Mode::Public, Mode::Constant, Mode::Constant)
-            | (Mode::Private, Mode::Constant, Mode::Constant) => Count::is(0, 0, 0, 0),
+        match case {
+            (CircuitType::Constant(_), _, _)
+            | (CircuitType::Public, CircuitType::Constant(_), CircuitType::Constant(_))
+            | (CircuitType::Private, CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(0, 0, 0, 0),
             _ => Count::is(0, 0, I::BITS, I::BITS),
         }
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
         match case {
-            (CircuitType::Constant(constant), _, _) => match constant.eject_value() {
-                true => case.1,
-                false => case.2,
+            (CircuitType::Constant(constant), first_type, other_type) => match constant.eject_value() {
+                true => first_type,
+                false => other_type,
             },
-            (_, CircuitType::Constant(_), CircuitType::Constant(_)) => {
-                let bit_pairs = case.1.circuit().bits_le.iter().zip_eq(case.2.circuit().bits_le.iter());
-                let conditioned_bits = bit_pairs
+            (condition_type, CircuitType::Constant(a), CircuitType::Constant(b)) => {
+                let conditioned_bits = a
+                    .circuit()
+                    .bits_le
+                    .iter()
+                    .zip_eq(b.circuit().bits_le.iter())
                     .map(|(a, b)| {
-                        let case = (case.0.clone(), CircuitType::from(a), CircuitType::from(b));
+                        let case = (condition_type.clone(), CircuitType::from(a), CircuitType::from(b));
                         output_type!(Boolean<E>, Ternary<Boolean = Boolean<E>, Output = Boolean<E>>, case)
                     })
                     .collect::<Vec<_>>();
                 match conditioned_bits {
                     bits if bits.iter().any(|bit| bit.is_private()) => CircuitType::Private,
                     bits if bits.iter().any(|bit| bit.is_public()) => CircuitType::Public,
-                    _ => case.1,
+                    _ => CircuitType::Private, //TODO: Resolve
                 }
             }
             _ => CircuitType::Private,

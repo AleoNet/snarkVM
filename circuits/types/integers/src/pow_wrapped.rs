@@ -47,30 +47,26 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metadata<dyn PowWrapped<Integ
         // Note that we need to clone `case` so that we can pass it to `output_type!`.
         match case {
             (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(I::BITS, 0, 0, 0),
-            (_, _) => {
-                // We need to clone `case.1` so that we can pass it to `output_type!`.
-                let type_b = case.1.clone();
-
+            (type_a, type_b) => {
                 let one_count = count!(Integer<E, I>, One<Boolean = Boolean<E>>, &());
                 let one_type = output_type!(Integer<E, I>, One<Boolean = Boolean<E>>, ());
 
                 (0..M::BITS)
                     .rev()
                     .fold((one_type, one_count), |(prev_type, prev_count), i| {
-                        // We need to clone `case.0` so that we can pass it to `output_type!`.
-                        let type_a = case.0.clone();
-
                         let case = (prev_type.clone(), prev_type);
                         let square_count = count!(Self, MulWrapped<Self, Output=Self>, &case);
                         let square_type = output_type!(Self, MulWrapped<Self, Output = Self>, case);
 
-                        let case = (square_type.clone(), type_a);
+                        let case = (square_type.clone(), type_a.clone());
                         let mul_count = count!(Self, MulWrapped<Self, Output=Self>, &case);
                         let mul_type = output_type!(Self, MulWrapped<Self, Output=Self>, case);
 
-                        let bit_type = match type_b {
+                        let bit_type = match type_b.clone() {
                             // This case is safe as M::BITS never exceeds 32.
-                            CircuitType::Constant(_) => CircuitType::from(&type_b.circuit().bits_le[i as usize]),
+                            CircuitType::Constant(constant) => {
+                                CircuitType::from(&constant.circuit().bits_le[i as usize])
+                            }
                             CircuitType::Public => CircuitType::Public,
                             CircuitType::Private => CircuitType::Private,
                         };
@@ -88,28 +84,22 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metadata<dyn PowWrapped<Integ
 
     fn output_type(case: Self::Case) -> Self::OutputType {
         match case {
-            (CircuitType::Constant(_), CircuitType::Constant(_)) => {
-                CircuitType::from(case.0.circuit().pow_wrapped(case.1.circuit()))
+            (CircuitType::Constant(a), CircuitType::Constant(b)) => {
+                CircuitType::from(a.circuit().pow_wrapped(&b.circuit()))
             }
-            (_, _) => {
-                // We need to clone `case.1` so that we can pass it to `output_type!`.
-                let type_b = case.1.clone();
-
+            (type_a, type_b) => {
                 let one_type = output_type!(Integer<E, I>, One<Boolean = Boolean<E>>, ());
 
                 (0..M::BITS).rev().fold(one_type, |prev_type, i| {
-                    // We need to clone `case.0` so that we can pass it to `output_type!`.
-                    let type_a = case.0.clone();
-
                     let case = (prev_type.clone(), prev_type);
                     let square_type = output_type!(Self, MulWrapped<Self, Output = Self>, case);
 
-                    let case = (square_type.clone(), type_a);
+                    let case = (square_type.clone(), type_a.clone());
                     let mul_type = output_type!(Self, MulWrapped<Self, Output=Self>, case);
 
-                    let bit_type = match type_b {
+                    let bit_type = match type_b.clone() {
                         // This case is safe as M::BITS never exceeds 32.
-                        CircuitType::Constant(_) => CircuitType::from(&type_b.circuit().bits_le[i as usize]),
+                        CircuitType::Constant(constant) => CircuitType::from(&constant.circuit().bits_le[i as usize]),
                         CircuitType::Public => CircuitType::Public,
                         CircuitType::Private => CircuitType::Private,
                     };

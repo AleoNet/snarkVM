@@ -53,8 +53,8 @@ impl<E: Environment, I: IntegerType> Metadata<dyn Neg<Output = Integer<E, I>>> f
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match case.eject_mode() {
-            Mode::Constant => CircuitType::from(case.circuit().neg()),
+        match case {
+            CircuitType::Constant(constant) => CircuitType::from(constant.circuit().neg()),
             _ => CircuitType::Private,
         }
     }

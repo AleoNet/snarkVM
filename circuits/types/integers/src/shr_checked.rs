@@ -125,10 +125,10 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metadata<dyn ShrChecked<Integ
             None => E::halt(format!("Integer of {num_bits} bits is not supported")),
         };
 
-        match (case.0.eject_mode(), case.1.eject_mode()) {
-            (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-            (_, Mode::Constant) => Count::is(0, 0, 0, 0),
-            (Mode::Constant, _) | (_, _) => {
+        match case {
+            (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(I::BITS, 0, 0, 0),
+            (_, CircuitType::Constant(_)) => Count::is(0, 0, 0, 0),
+            (CircuitType::Constant(_), _) | (_, _) => {
                 let wrapped_count = count!(Integer<E, I>, ShrWrapped<Integer<E, M>, Output=Integer<E, I>>, case);
                 wrapped_count + Count::is(0, 0, M::BITS - 4 - index(I::BITS), M::BITS - 3 - index(I::BITS))
             }
@@ -136,10 +136,12 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metadata<dyn ShrChecked<Integ
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match (case.0.eject_mode(), case.1.eject_mode()) {
-            (Mode::Constant, Mode::Constant) => CircuitType::from(case.0.circuit().shr_checked(case.1.circuit())),
-            (Mode::Public, Mode::Constant) => CircuitType::Public,
-            (Mode::Private, Mode::Constant) => CircuitType::Private,
+        match case {
+            (CircuitType::Constant(a), CircuitType::Constant(b)) => {
+                CircuitType::from(a.circuit().shr_checked(&b.circuit()))
+            }
+            (CircuitType::Public, CircuitType::Constant(_)) => CircuitType::Public,
+            (CircuitType::Private, CircuitType::Constant(_)) => CircuitType::Private,
             (_, _) => CircuitType::Private,
         }
     }

@@ -113,7 +113,7 @@ mod tests {
                 assert_eq!(expected, candidate.eject_value());
                 assert_eq!(expected_size_in_bits, candidate.bits_le.len());
 
-                let case = given_bits.iter().map(|bit| CircuitType::from(bit)).collect();
+                let case = given_bits.iter().map(CircuitType::from).collect();
                 assert_count!(Scalar<Circuit>, FromBitsLE<Boolean = Boolean<Circuit>>, &case);
                 assert_output_type!(Scalar<Circuit>, FromBitsLE<Boolean = Boolean<Circuit>>, case, candidate);
             });
@@ -126,7 +126,7 @@ mod tests {
                 assert_eq!(expected, candidate.eject_value());
                 assert_eq!(expected_size_in_bits, candidate.bits_le.len());
 
-                let case = given_bits.iter().map(|bit| CircuitType::from(bit)).collect();
+                let case = given_bits.iter().map(CircuitType::from).collect();
                 assert_count!(Scalar<Circuit>, FromBitsLE<Boolean = Boolean<Circuit>>, &case);
                 assert_output_type!(Scalar<Circuit>, FromBitsLE<Boolean = Boolean<Circuit>>, case, candidate);
             });

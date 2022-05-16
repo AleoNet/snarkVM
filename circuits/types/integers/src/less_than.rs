@@ -16,9 +16,7 @@
 
 use super::*;
 
-// TODO: Split into multiple traits for coherent Metadata implementations.
-
-impl<E: Environment, I: IntegerType> Compare<Self> for Integer<E, I> {
+impl<E: Environment, I: IntegerType> LessThan<Self> for Integer<E, I> {
     type Output = Boolean<E>;
 
     /// Returns `true` if `self` is less than `other`.
@@ -50,44 +48,33 @@ impl<E: Environment, I: IntegerType> Compare<Self> for Integer<E, I> {
             }
         }
     }
-
-    /// Returns `true` if `self` is greater than `other`.
-    fn is_greater_than(&self, other: &Self) -> Self::Output {
-        other.is_less_than(self)
-    }
-
-    /// Returns `true` if `self` is less than or equal to `other`.
-    fn is_less_than_or_equal(&self, other: &Self) -> Self::Output {
-        other.is_greater_than_or_equal(self)
-    }
-
-    /// Returns `true` if `self` is greater than or equal to `other`.
-    fn is_greater_than_or_equal(&self, other: &Self) -> Self::Output {
-        !self.is_less_than(other)
-    }
 }
 
-impl<E: Environment, I: IntegerType> Metadata<dyn Compare<Integer<E, I>, Output = Boolean<E>>> for Integer<E, I> {
+impl<E: Environment, I: IntegerType> Metadata<dyn LessThan<Integer<E, I>, Output = Boolean<E>>> for Integer<E, I> {
     type Case = (CircuitType<Self>, CircuitType<Self>);
     type OutputType = CircuitType<Boolean<E>>;
 
     fn count(case: &Self::Case) -> Count {
         match I::is_signed() {
-            true => match (case.0.eject_mode(), case.1.eject_mode()) {
-                (Mode::Constant, Mode::Constant) => Count::is(1, 0, 0, 0),
-                (Mode::Constant, _) | (_, Mode::Constant) => Count::is(I::BITS, 0, I::BITS + 2, I::BITS + 3),
+            true => match case {
+                (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(1, 0, 0, 0),
+                (CircuitType::Constant(_), _) | (_, CircuitType::Constant(_)) => {
+                    Count::is(I::BITS, 0, I::BITS + 2, I::BITS + 3)
+                }
                 (_, _) => Count::is(I::BITS, 0, I::BITS + 4, I::BITS + 5),
             },
-            false => match (case.0.eject_mode(), case.1.eject_mode()) {
-                (Mode::Constant, Mode::Constant) => Count::is(1, 0, 0, 0),
+            false => match case {
+                (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(1, 0, 0, 0),
                 (_, _) => Count::is(I::BITS, 0, I::BITS + 1, I::BITS + 2),
             },
         }
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match (case.0.eject_mode(), case.1.eject_mode()) {
-            (Mode::Constant, Mode::Constant) => CircuitType::from(case.0.circuit().is_less_than(case.1.circuit())),
+        match case {
+            (CircuitType::Constant(a), CircuitType::Constant(b)) => {
+                CircuitType::from(a.circuit().is_less_than(&b.circuit()))
+            }
             (_, _) => CircuitType::Private,
         }
     }
@@ -103,7 +90,7 @@ mod tests {
 
     const ITERATIONS: u64 = 100;
 
-    fn check_compare<I: IntegerType>(name: &str, first: I, second: I, mode_a: Mode, mode_b: Mode) {
+    fn check_is_less_than<I: IntegerType>(name: &str, first: I, second: I, mode_a: Mode, mode_b: Mode) {
         let a = Integer::<Circuit, I>::new(mode_a, first);
         let b = Integer::<Circuit, I>::new(mode_b, second);
 
@@ -114,44 +101,8 @@ mod tests {
             assert_eq!(expected, candidate.eject_value());
 
             let case = (CircuitType::from(&a), CircuitType::from(&b));
-            assert_count!(Compare(Integer<I>, Integer<I>) => Boolean, &case);
-            assert_output_type!(Compare(Integer<I>, Integer<I>) => Boolean, case, candidate);
-        });
-        Circuit::reset();
-
-        // Check `is_less_than_or_equal`
-        let expected = first <= second;
-        Circuit::scope(name, || {
-            let candidate = a.is_less_than_or_equal(&b);
-            assert_eq!(expected, candidate.eject_value());
-
-            let case = (CircuitType::from(&a), CircuitType::from(&b));
-            assert_count!(Compare(Integer<I>, Integer<I>) => Boolean, &case);
-            assert_output_type!(Compare(Integer<I>, Integer<I>) => Boolean, case, candidate);
-        });
-        Circuit::reset();
-
-        // Check `is_greater_than`
-        let expected = first > second;
-        Circuit::scope(name, || {
-            let candidate = a.is_greater_than(&b);
-            assert_eq!(expected, candidate.eject_value());
-
-            let case = (CircuitType::from(&a), CircuitType::from(&b));
-            assert_count!(Compare(Integer<I>, Integer<I>) => Boolean, &case);
-            assert_output_type!(Compare(Integer<I>, Integer<I>) => Boolean, case, candidate);
-        });
-        Circuit::reset();
-
-        // Check `is_greater_than_or_equal`
-        let expected = first >= second;
-        Circuit::scope(name, || {
-            let candidate = a.is_greater_than_or_equal(&b);
-            assert_eq!(expected, candidate.eject_value());
-
-            let case = (CircuitType::from(a), CircuitType::from(b));
-            assert_count!(Compare(Integer<I>, Integer<I>) => Boolean, &case);
-            assert_output_type!(Compare(Integer<I>, Integer<I>) => Boolean, case, candidate);
+            assert_count!(LessThan(Integer<I>, Integer<I>) => Boolean, &case);
+            assert_output_type!(LessThan(Integer<I>, Integer<I>) => Boolean, case, candidate);
         });
         Circuit::reset();
     }
@@ -161,8 +112,8 @@ mod tests {
             let first: I = UniformRand::rand(&mut test_rng());
             let second: I = UniformRand::rand(&mut test_rng());
 
-            let name = format!("Compare: ({}, {}) - {}th iteration", mode_a, mode_b, i);
-            check_compare(&name, first, second, mode_a, mode_b);
+            let name = format!("LessThan: ({}, {}) - {}th iteration", mode_a, mode_b, i);
+            check_is_less_than(&name, first, second, mode_a, mode_b);
         }
     }
 
@@ -172,24 +123,24 @@ mod tests {
     {
         for first in I::MIN..=I::MAX {
             for second in I::MIN..=I::MAX {
-                let name = format!("Compare: ({}, {})", first, second);
-                check_compare(&name, first, second, mode_a, mode_b);
+                let name = format!("LessThan: ({}, {})", first, second);
+                check_is_less_than(&name, first, second, mode_a, mode_b);
             }
         }
     }
 
-    test_integer_binary!(run_test, i8, compare_with);
-    test_integer_binary!(run_test, i16, compare_with);
-    test_integer_binary!(run_test, i32, compare_with);
-    test_integer_binary!(run_test, i64, compare_with);
-    test_integer_binary!(run_test, i128, compare_with);
+    test_integer_binary!(run_test, i8, is_less_than);
+    test_integer_binary!(run_test, i16, is_less_than);
+    test_integer_binary!(run_test, i32, is_less_than);
+    test_integer_binary!(run_test, i64, is_less_than);
+    test_integer_binary!(run_test, i128, is_less_than);
 
-    test_integer_binary!(run_test, u8, compare_with);
-    test_integer_binary!(run_test, u16, compare_with);
-    test_integer_binary!(run_test, u32, compare_with);
-    test_integer_binary!(run_test, u64, compare_with);
-    test_integer_binary!(run_test, u128, compare_with);
+    test_integer_binary!(run_test, u8, is_less_than);
+    test_integer_binary!(run_test, u16, is_less_than);
+    test_integer_binary!(run_test, u32, is_less_than);
+    test_integer_binary!(run_test, u64, is_less_than);
+    test_integer_binary!(run_test, u128, is_less_than);
 
-    test_integer_binary!(#[ignore], run_exhaustive_test, u8, compare_with, exhaustive);
-    test_integer_binary!(#[ignore], run_exhaustive_test, i8, compare_with, exhaustive);
+    test_integer_binary!(#[ignore], run_exhaustive_test, u8, is_less_than, exhaustive);
+    test_integer_binary!(#[ignore], run_exhaustive_test, i8, is_less_than, exhaustive);
 }

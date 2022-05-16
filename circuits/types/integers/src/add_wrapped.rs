@@ -47,15 +47,17 @@ impl<E: Environment, I: IntegerType> Metadata<dyn AddWrapped<Integer<E, I>, Outp
     type OutputType = CircuitType<Self>;
 
     fn count(case: &Self::Case) -> Count {
-        match (case.0.eject_mode(), case.1.eject_mode()) {
-            (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
+        match case {
+            (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(I::BITS, 0, 0, 0),
             (_, _) => Count::is(0, 0, I::BITS + 1, I::BITS + 2),
         }
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match (case.0.eject_mode(), case.1.eject_mode()) {
-            (Mode::Constant, Mode::Constant) => CircuitType::from(case.0.circuit().add_wrapped(case.1.circuit())),
+        match case {
+            (CircuitType::Constant(a), CircuitType::Constant(b)) => {
+                CircuitType::from(a.circuit().add_wrapped(&b.circuit()))
+            }
             (_, _) => CircuitType::Private,
         }
     }

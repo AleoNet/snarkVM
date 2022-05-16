@@ -41,8 +41,8 @@ impl<E: Environment, I: IntegerType> Metadata<dyn AbsWrapped<Output = Integer<E,
 
     fn count(case: &Self::Case) -> Count {
         match I::is_signed() {
-            true => match case.eject_mode() {
-                Mode::Constant => Count::is(2 * I::BITS, 0, 0, 0),
+            true => match case {
+                CircuitType::Constant(_) => Count::is(2 * I::BITS, 0, 0, 0),
                 _ => Count::is(I::BITS, 0, (2 * I::BITS) + 1, (2 * I::BITS) + 2),
             },
             false => Count::is(0, 0, 0, 0),
@@ -51,9 +51,9 @@ impl<E: Environment, I: IntegerType> Metadata<dyn AbsWrapped<Output = Integer<E,
 
     fn output_type(case: Self::Case) -> Self::OutputType {
         match I::is_signed() {
-            true => match case.is_constant() {
-                true => CircuitType::from(case.circuit().abs_wrapped()),
-                false => CircuitType::Private,
+            true => match case {
+                CircuitType::Constant(constant) => CircuitType::from(constant.circuit().abs_wrapped()),
+                _ => CircuitType::Private,
             },
             false => case,
         }

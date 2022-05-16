@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use snarkvm_circuits_environment::Constant;
 
 impl<E: Environment> FromBitsBE for Group<E> {
     type Boolean = Boolean<E>;
@@ -70,7 +69,7 @@ mod tests {
                 let candidate = Group::<Circuit>::from_bits_be(&given_bits);
                 assert_eq!(expected, candidate.eject_value());
 
-                let case = given_bits.iter().map(|bit| CircuitType::from(bit)).collect();
+                let case = given_bits.iter().map(CircuitType::from).collect();
                 assert_count!(Group<Circuit>, FromBitsBE<Boolean = Boolean<Circuit>>, &case);
                 assert_output_type!(Group<Circuit>, FromBitsBE<Boolean = Boolean<Circuit>>, case, candidate);
             });
