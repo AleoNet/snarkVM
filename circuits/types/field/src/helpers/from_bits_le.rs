@@ -100,22 +100,26 @@ impl<E: Environment> Metadata<dyn FromBitsLE<Boolean = Boolean<E>>> for Field<E>
     type Case = Vec<CircuitType<Boolean<E>>>;
     type OutputType = CircuitType<Field<E>>;
 
-    fn count(_modes: &Self::Case) -> Count {
-        // TODO: Waiting for PR#711 to land as it significantly changes the counts.
-        todo!()
+    fn count(case: &Self::Case) -> Count {
+        match case.iter().all(|bit| bit.is_constant()) {
+            true => Count::is(0, 0, 0, 0),
+            false => {
+                let excess_constraints = case.len().saturating_sub(E::BaseField::size_in_bits()) as u64;
+                let excess_private = excess_constraints.saturating_sub(1);
+                Count::is(0, 0, 252 + excess_private, 418 + excess_constraints)
+            }
+        }
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        let mut bits_le = Vec::with_capacity(case.len());
-        for bit in case {
-            match bit {
-                CircuitType::Constant(constant) => {
-                    bits_le.push(constant.circuit());
-                }
-                _ => return CircuitType::Private,
+        match case.eject_mode() {
+            Mode::Constant => {
+                let bits_le = case.into_iter().map(|bit| bit.circuit()).collect::<Vec<_>>();
+                CircuitType::from(Self::from_bits_le(&bits_le))
             }
+            Mode::Public => CircuitType::Public,
+            Mode::Private => CircuitType::Private,
         }
-        CircuitType::from(Field::from_bits_le(&bits_le))
     }
 }
 
@@ -127,7 +131,7 @@ mod tests {
 
     const ITERATIONS: u64 = 100;
 
-    fn check_from_bits_le(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
+    fn check_from_bits_le(mode: Mode) {
         for i in 0..ITERATIONS {
             // Sample a random element.
             let expected: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
@@ -138,98 +142,47 @@ mod tests {
                 let candidate = Field::<Circuit>::from_bits_le(&given_bits);
                 assert_eq!(expected, candidate.eject_value());
                 assert_eq!(expected_size_in_bits, candidate.bits_le.get().expect("Caching failed").len());
-                assert_scope!(num_constants, num_public, num_private, num_constraints);
+
+                let case = given_bits.iter().map(CircuitType::from).collect();
+                assert_count!(Field<Circuit>, FromBitsLE<Boolean = Boolean<Circuit>>, &case);
+                assert_output_type!(Field<Circuit>, FromBitsLE<Boolean = Boolean<Circuit>>, case, candidate);
 
                 // Ensure a subsequent call to `to_bits_le` does not incur additional costs.
                 let candidate_bits = candidate.to_bits_le();
                 assert_eq!(expected_size_in_bits, candidate_bits.len());
-                assert_scope!(num_constants, num_public, num_private, num_constraints);
+
+                let case = candidate_bits.iter().map(CircuitType::from).collect();
+                assert_count!(Field<Circuit>, FromBitsLE<Boolean = Boolean<Circuit>>, &case);
+                assert_output_type!(Field<Circuit>, FromBitsLE<Boolean = Boolean<Circuit>>, case, candidate);
             });
 
             // Add excess zero bits.
-            let candidate = vec![given_bits, vec![Boolean::new(mode, false); i as usize]].concat();
+            let given_bits = vec![given_bits, vec![Boolean::new(mode, false); i as usize]].concat();
 
             Circuit::scope(&format!("Excess {} {}", mode, i), || {
-                let candidate = Field::<Circuit>::from_bits_le(&candidate);
+                let candidate = Field::<Circuit>::from_bits_le(&given_bits);
                 assert_eq!(expected, candidate.eject_value());
                 assert_eq!(expected_size_in_bits, candidate.bits_le.get().expect("Caching failed").len());
-                match mode.is_constant() {
-                    true => assert_scope!(num_constants, num_public, num_private, num_constraints),
-                    // `num_private` gets 1 free excess bit, then is incremented by one for each excess bit.
-                    // `num_constraints` is incremented by one for each excess bit.
-                    false => {
-                        assert_scope!(num_constants, num_public, num_private + i.saturating_sub(1), num_constraints + i)
-                    }
-                };
-            });
-        }
-    }
 
-    fn check_from_bits_be(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
-        for i in 0..ITERATIONS {
-            // Sample a random element.
-            let expected: <Circuit as Environment>::BaseField = UniformRand::rand(&mut test_rng());
-            let given_bits = Field::<Circuit>::new(mode, expected).to_bits_be();
-            let expected_size_in_bits = given_bits.len();
-
-            Circuit::scope(format!("{mode} {i}"), || {
-                let candidate = Field::<Circuit>::from_bits_be(&given_bits);
-                assert_eq!(expected, candidate.eject_value());
-                assert_eq!(expected_size_in_bits, candidate.bits_le.get().expect("Caching failed").len());
-                assert_scope!(num_constants, num_public, num_private, num_constraints);
-
-                // Ensure a subsequent call to `to_bits_be` does not incur additional costs.
-                let candidate_bits = candidate.to_bits_be();
-                assert_eq!(expected_size_in_bits, candidate_bits.len());
-                assert_scope!(num_constants, num_public, num_private, num_constraints);
-            });
-
-            // Add excess zero bits.
-            let candidate = vec![vec![Boolean::new(mode, false); i as usize], given_bits].concat();
-
-            Circuit::scope(&format!("Excess {} {}", mode, i), || {
-                let candidate = Field::<Circuit>::from_bits_be(&candidate);
-                assert_eq!(expected, candidate.eject_value());
-                assert_eq!(expected_size_in_bits, candidate.bits_le.get().expect("Caching failed").len());
-                match mode.is_constant() {
-                    true => assert_scope!(num_constants, num_public, num_private, num_constraints),
-                    // `num_private` gets 1 free excess bit, then is incremented by one for each excess bit.
-                    // `num_constraints` is incremented by one for each excess bit.
-                    false => {
-                        assert_scope!(num_constants, num_public, num_private + i.saturating_sub(1), num_constraints + i)
-                    }
-                };
+                let case = given_bits.iter().map(CircuitType::from).collect();
+                assert_count!(Field<Circuit>, FromBitsLE<Boolean = Boolean<Circuit>>, &case);
+                assert_output_type!(Field<Circuit>, FromBitsLE<Boolean = Boolean<Circuit>>, case, candidate);
             });
         }
     }
 
     #[test]
     fn test_from_bits_le_constant() {
-        check_from_bits_le(Mode::Constant, 0, 0, 0, 0);
+        check_from_bits_le(Mode::Constant);
     }
 
     #[test]
     fn test_from_bits_le_public() {
-        check_from_bits_le(Mode::Public, 0, 0, 252, 418);
+        check_from_bits_le(Mode::Public);
     }
 
     #[test]
     fn test_from_bits_le_private() {
-        check_from_bits_le(Mode::Private, 0, 0, 252, 418);
-    }
-
-    #[test]
-    fn test_from_bits_be_constant() {
-        check_from_bits_be(Mode::Constant, 0, 0, 0, 0);
-    }
-
-    #[test]
-    fn test_from_bits_be_public() {
-        check_from_bits_be(Mode::Public, 0, 0, 252, 418);
-    }
-
-    #[test]
-    fn test_from_bits_be_private() {
-        check_from_bits_be(Mode::Private, 0, 0, 252, 418);
+        check_from_bits_le(Mode::Private);
     }
 }

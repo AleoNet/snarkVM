@@ -82,14 +82,14 @@ impl<E: Environment> Metadata<dyn FromBitsLE<Boolean = Boolean<E>>> for Scalar<E
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        let mut bits_le = Vec::with_capacity(case.len());
-        for bit in case {
-            match bit {
-                CircuitType::Constant(constant) => bits_le.push(constant.circuit()),
-                _ => return CircuitType::Private,
+        match case.eject_mode() {
+            Mode::Constant => {
+                let bits_le = case.into_iter().map(|bit| bit.circuit()).collect::<Vec<_>>();
+                CircuitType::from(Self::from_bits_le(&bits_le))
             }
+            Mode::Public => CircuitType::Public,
+            Mode::Private => CircuitType::Private,
         }
-        CircuitType::from(Scalar::from_bits_le(bits_le.as_slice()))
     }
 }
 

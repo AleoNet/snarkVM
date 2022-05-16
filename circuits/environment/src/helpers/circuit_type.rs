@@ -54,6 +54,26 @@ pub enum CircuitType<T: Eject> {
     Private,
 }
 
+impl<T: Eject> CircuitType<T> {
+    /// Initializes a new `CircuitType`.
+    pub fn new(circuit: T) -> Self {
+        match circuit.eject_mode() {
+            Mode::Constant => CircuitType::Constant(Constant::new(circuit)),
+            Mode::Public => CircuitType::Public,
+            Mode::Private => CircuitType::Private,
+        }
+    }
+
+    /// Returns the underlying circuit.
+    pub fn circuit(self) -> T {
+        match self {
+            CircuitType::Constant(circuit) => circuit.circuit(),
+            CircuitType::Public => panic!("Cannot retrieve the circuit for CircuitType::Public"),
+            CircuitType::Private => panic!("Cannot retrieve the circuit for CircuitType::Private"),
+        }
+    }
+}
+
 impl<T: Eject> Eject for CircuitType<T> {
     type Primitive = T::Primitive;
 

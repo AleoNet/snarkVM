@@ -35,21 +35,18 @@ impl<E: Environment> Metadata<dyn FromBitsBE<Boolean = Boolean<E>>> for Scalar<E
     type OutputType = CircuitType<Self>;
 
     fn count(case: &Self::Case) -> Count {
-        match case.iter().all(|bit| bit.is_constant()) {
-            true => Count::is(507, 0, 0, 0),
-            false => Count::is(254, 0, 769, 771),
-        }
+        count!(Self, FromBitsLE<Boolean = Boolean<E>>, case)
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        let mut bits_le = Vec::with_capacity(case.len());
-        for bit in case {
-            match bit {
-                CircuitType::Constant(constant) => bits_le.push(constant.circuit()),
-                _ => return CircuitType::Private,
+        match case.eject_mode() {
+            Mode::Constant => {
+                let bits_be = case.into_iter().map(|bit| bit.circuit()).collect::<Vec<_>>();
+                CircuitType::from(Self::from_bits_be(&bits_be))
             }
+            Mode::Public => CircuitType::Public,
+            Mode::Private => CircuitType::Private,
         }
-        CircuitType::from(Scalar::from_bits_le(bits_le.as_slice()))
     }
 }
 
@@ -71,7 +68,7 @@ mod tests {
             Circuit::scope(&format!("{} {}", mode, i), || {
                 let candidate = Scalar::<Circuit>::from_bits_be(&given_bits);
                 assert_eq!(expected, candidate.eject_value());
-                assert_eq!(expected_size_in_bits, candidate.to_bits_be().len());
+                assert_eq!(expected_size_in_bits, candidate.bits_le.len());
 
                 let case = given_bits.iter().map(CircuitType::from).collect();
                 assert_count!(Scalar<Circuit>, FromBitsBE<Boolean = Boolean<Circuit>>, &case);
