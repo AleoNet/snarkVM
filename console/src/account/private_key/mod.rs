@@ -57,7 +57,7 @@ impl<N: Network> From<&N::Scalar> for PrivateKey<N> {
         let sk_vrf_domain = N::Scalar::from_bytes_le_mod_order(sk_vrf_input.as_bytes());
 
         Self {
-            seed: seed.clone(),
+            seed: *seed,
             sk_sig: N::AccountPRF::prf(seed, &vec![sk_sig_domain]),
             r_sig: N::AccountPRF::prf(seed, &vec![r_sig_domain]),
             sk_vrf: N::AccountPRF::prf(seed, &vec![sk_vrf_domain]),
