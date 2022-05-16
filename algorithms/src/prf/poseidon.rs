@@ -29,7 +29,7 @@ impl<F: PrimeField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool> PRF
     type Output = F;
     type Seed = F;
 
-    fn evaluate(seed: &Self::Seed, input: &Self::Input) -> Self::Output {
+    fn prf(seed: &Self::Seed, input: &Self::Input) -> Self::Output {
         // Construct the preimage.
         let mut preimage = vec![*seed];
         preimage.push(F::from(input.len() as u128)); // Input length

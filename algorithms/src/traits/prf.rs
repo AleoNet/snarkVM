@@ -23,5 +23,5 @@ pub trait PRF {
     type Output: ToBytes + Eq + Clone + Default + Debug + Hash;
     type Seed: FromBytes + ToBytes + PartialEq + Eq + Clone + Default + Debug;
 
-    fn evaluate(seed: &Self::Seed, input: &Self::Input) -> Self::Output;
+    fn prf(seed: &Self::Seed, input: &Self::Input) -> Self::Output;
 }

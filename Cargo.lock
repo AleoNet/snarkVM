@@ -2195,6 +2195,18 @@ dependencies = [
 [[package]]
 name = "snarkvm-console"
 version = "0.7.5"
+dependencies = [
+ "anyhow",
+ "base58",
+ "bech32",
+ "bincode",
+ "serde",
+ "serde_json",
+ "snarkvm-algorithms",
+ "snarkvm-curves",
+ "snarkvm-fields",
+ "snarkvm-utilities",
+]
 
 [[package]]
 name = "snarkvm-curves"

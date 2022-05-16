@@ -78,7 +78,7 @@ mod tests {
 
         let seed = rng.gen();
         let input = vec![rng.gen()];
-        let output = PoseidonPRF::<Fr, 4, false>::evaluate(&seed, &input);
+        let output = PoseidonPRF::<Fr, 4, false>::prf(&seed, &input);
 
         let seed_gadget =
             <PoseidonPRFGadget<Fr, 4, false> as PRFGadget<_, Fr>>::Seed::alloc(&mut cs.ns(|| "seed"), || Ok(seed))
