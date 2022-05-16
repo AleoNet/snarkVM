@@ -64,25 +64,37 @@ impl<E: Environment, I: IntegerType> Metadata<dyn Ternary<Boolean = Boolean<E>, 
 
     fn output_type(case: Self::Case) -> Self::OutputType {
         match case {
-            (CircuitType::Constant(constant), first_type, other_type) => match constant.eject_value() {
+            (CircuitType::Constant(constant), first_type, second_type) => match constant.eject_value() {
                 true => first_type,
-                false => other_type,
+                false => second_type,
             },
             (condition_type, CircuitType::Constant(a), CircuitType::Constant(b)) => {
-                let conditioned_bits = a
+                let output_bit_types = a
                     .circuit()
                     .bits_le
-                    .iter()
-                    .zip_eq(b.circuit().bits_le.iter())
-                    .map(|(a, b)| {
-                        let case = (condition_type.clone(), CircuitType::from(a), CircuitType::from(b));
+                    .into_iter()
+                    .zip_eq(b.circuit().bits_le.into_iter())
+                    .map(|(self_bit, other_bit)| {
+                        let case = (condition_type.clone(), CircuitType::from(self_bit), CircuitType::from(other_bit));
                         output_type!(Boolean<E>, Ternary<Boolean = Boolean<E>, Output = Boolean<E>>, case)
                     })
                     .collect::<Vec<_>>();
-                match conditioned_bits {
-                    bits if bits.iter().any(|bit| bit.is_private()) => CircuitType::Private,
-                    bits if bits.iter().any(|bit| bit.is_public()) => CircuitType::Public,
-                    _ => CircuitType::Private, //TODO: Resolve
+
+                let mut output_bits = Vec::with_capacity(output_bit_types.len());
+                let mut output_mode = Mode::Constant;
+                for bit_type in output_bit_types {
+                    match bit_type {
+                        CircuitType::Constant(bit) => output_bits.push(bit.circuit()),
+                        CircuitType::Public => {
+                            output_mode = if output_mode != Mode::Private { Mode::Public } else { output_mode }
+                        }
+                        CircuitType::Private => output_mode = Mode::Private,
+                    }
+                }
+                match output_mode {
+                    Mode::Constant => CircuitType::from(Self { bits_le: output_bits, phantom: Default::default() }),
+                    Mode::Public => CircuitType::Public,
+                    Mode::Private => CircuitType::Private,
                 }
             }
             _ => CircuitType::Private,

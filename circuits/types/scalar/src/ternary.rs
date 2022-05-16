@@ -51,6 +51,35 @@ impl<E: Environment> Metadata<dyn Ternary<Boolean = Boolean<E>, Output = Scalar<
                 true => first_type,
                 false => second_type,
             },
+            (condition_type, CircuitType::Constant(a), CircuitType::Constant(b)) => {
+                let output_bit_types = a
+                    .circuit()
+                    .bits_le
+                    .into_iter()
+                    .zip_eq(b.circuit().bits_le.into_iter())
+                    .map(|(self_bit, other_bit)| {
+                        let case = (condition_type.clone(), CircuitType::from(self_bit), CircuitType::from(other_bit));
+                        output_type!(Boolean<E>, Ternary<Boolean = Boolean<E>, Output = Boolean<E>>, case)
+                    })
+                    .collect::<Vec<_>>();
+
+                let mut output_bits = Vec::with_capacity(output_bit_types.len());
+                let mut output_mode = Mode::Constant;
+                for bit_type in output_bit_types {
+                    match bit_type {
+                        CircuitType::Constant(bit) => output_bits.push(bit.circuit()),
+                        CircuitType::Public => {
+                            output_mode = if output_mode != Mode::Private { Mode::Public } else { output_mode }
+                        }
+                        CircuitType::Private => output_mode = Mode::Private,
+                    }
+                }
+                match output_mode {
+                    Mode::Constant => CircuitType::from(Self { bits_le: output_bits }),
+                    Mode::Public => CircuitType::Public,
+                    Mode::Private => CircuitType::Private,
+                }
+            }
             _ => CircuitType::Private,
         }
     }
@@ -66,40 +95,58 @@ mod tests {
 
     fn check_ternary(
         name: &str,
-        expected: <Circuit as Environment>::ScalarField,
-        condition: Boolean<Circuit>,
-        a: Scalar<Circuit>,
-        b: Scalar<Circuit>,
+        flag: bool,
+        first: <Circuit as Environment>::ScalarField,
+        second: <Circuit as Environment>::ScalarField,
+        mode_condition: Mode,
+        mode_a: Mode,
+        mode_b: Mode,
     ) {
+        let expected = if flag { first } else { second };
+        let condition = Boolean::<Circuit>::new(mode_condition, flag);
+        let a = Scalar::<Circuit>::new(mode_a, first);
+        let b = Scalar::<Circuit>::new(mode_b, second);
+
         Circuit::scope(name, || {
             let case = format!("({} ? {} : {})", condition.eject_value(), a.eject_value(), b.eject_value());
-            println!("1");
             let candidate = Scalar::ternary(&condition, &a, &b);
-            println!("2");
             assert_eq!(expected, candidate.eject_value(), "{case}");
-            println!("3");
+
             let case = (CircuitType::from(condition), CircuitType::from(a), CircuitType::from(b));
-            println!("4");
             assert_count!(Ternary(Boolean, Scalar, Scalar) => Scalar, &case);
-            println!("5");
             assert_output_type!(Ternary(Boolean, Scalar, Scalar) => Scalar, case, candidate);
-            println!("6");
         });
     }
 
     fn run_test(mode_condition: Mode, mode_a: Mode, mode_b: Mode) {
         for i in 0..ITERATIONS {
             for flag in [true, false] {
+                let name = format!("{} ? {} : {}, {}", flag, mode_a, mode_b, i);
+                let check_ternary =
+                    |first, second| check_ternary(&name, flag, first, second, mode_condition, mode_a, mode_b);
+
                 let first: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
                 let second: <Circuit as Environment>::ScalarField = UniformRand::rand(&mut test_rng());
 
-                let expected = if flag { first } else { second };
-                let condition = Boolean::<Circuit>::new(mode_condition, flag);
-                let a = Scalar::<Circuit>::new(mode_a, first);
-                let b = Scalar::<Circuit>::new(mode_b, second);
+                check_ternary(first, second);
 
-                let name = format!("{} ? {} : {}, {}", flag, mode_a, mode_b, i);
-                check_ternary(&name, expected, condition, a, b);
+                // Test corner cases.
+                check_ternary(
+                    <Circuit as Environment>::ScalarField::zero(),
+                    <Circuit as Environment>::ScalarField::zero(),
+                );
+                check_ternary(
+                    <Circuit as Environment>::ScalarField::zero(),
+                    <Circuit as Environment>::ScalarField::one(),
+                );
+                check_ternary(
+                    <Circuit as Environment>::ScalarField::one(),
+                    <Circuit as Environment>::ScalarField::zero(),
+                );
+                check_ternary(
+                    <Circuit as Environment>::ScalarField::one(),
+                    <Circuit as Environment>::ScalarField::one(),
+                );
             }
         }
     }

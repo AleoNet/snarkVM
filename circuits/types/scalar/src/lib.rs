@@ -60,19 +60,7 @@ impl<E: Environment> Eject for Scalar<E> {
     /// Ejects the mode of the scalar field.
     ///
     fn eject_mode(&self) -> Mode {
-        let mut scalar_mode = Mode::Constant;
-        for bit_mode in self.bits_le.iter().map(Eject::eject_mode) {
-            // Check if the mode in the current iteration matches the scalar mode.
-            if scalar_mode != bit_mode {
-                // If they do not match, the scalar mode must be a constant.
-                // Otherwise, this is a malformed scalar, and the program should halt.
-                match scalar_mode == Mode::Constant {
-                    true => scalar_mode = bit_mode,
-                    false => E::halt("Detected an scalar field with a malformed mode"),
-                }
-            }
-        }
-        scalar_mode
+        self.bits_le.eject_mode()
     }
 
     ///
