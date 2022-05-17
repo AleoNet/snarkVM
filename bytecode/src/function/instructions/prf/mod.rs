@@ -14,14 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub(crate) mod psd2;
-pub(crate) use psd2::*;
+pub(super) mod psd2;
+pub(super) use psd2::*;
 
-pub(crate) mod psd4;
-pub(crate) use psd4::*;
+pub(super) mod psd4;
+pub(super) use psd4::*;
 
-pub(crate) mod psd8;
-pub(crate) use psd8::*;
+pub(super) mod psd8;
+pub(super) use psd8::*;
 
 use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Register, Registers},

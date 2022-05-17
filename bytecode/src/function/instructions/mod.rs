@@ -14,113 +14,113 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub(super) mod abs;
-pub(super) use abs::*;
+mod abs;
+use abs::*;
 
-pub(super) mod abs_wrapped;
-pub(super) use abs_wrapped::*;
+mod abs_wrapped;
+use abs_wrapped::*;
 
-pub(super) mod add;
-pub(super) use add::*;
+mod add;
+use add::*;
 
-pub(super) mod and;
-pub(super) use and::*;
+mod and;
+use and::*;
 
-pub(super) mod add_wrapped;
-pub(super) use add_wrapped::*;
+mod add_wrapped;
+use add_wrapped::*;
 
-pub(super) mod commit;
-pub(super) use commit::*;
+mod commit;
+use commit::*;
 
-pub(super) mod div;
-pub(super) use div::*;
+mod div;
+use div::*;
 
-pub(super) mod div_wrapped;
-pub(super) use div_wrapped::*;
+mod div_wrapped;
+use div_wrapped::*;
 
-pub(super) mod double;
-pub(super) use double::*;
+mod double;
+use double::*;
 
-pub(super) mod equal;
-pub(super) use equal::*;
+mod equal;
+use equal::*;
 
-pub(super) mod gt;
-pub(super) use gt::*;
+mod gt;
+use gt::*;
 
-pub(super) mod ge;
-pub(super) use ge::*;
+mod ge;
+use ge::*;
 
-pub(super) mod hash;
-pub(super) use hash::*;
+mod hash;
+use hash::*;
 
-pub(super) mod inv;
-pub(super) use inv::*;
+mod inv;
+use inv::*;
 
-pub(super) mod lt;
-pub(super) use lt::*;
+mod lt;
+use lt::*;
 
-pub(super) mod le;
-pub(super) use le::*;
+mod le;
+use le::*;
 
-pub(super) mod mul;
-pub(super) use mul::*;
+mod mul;
+use mul::*;
 
-pub(super) mod mul_wrapped;
-pub(super) use mul_wrapped::*;
+mod mul_wrapped;
+use mul_wrapped::*;
 
-pub(super) mod nand;
-pub(super) use nand::*;
+mod nand;
+use nand::*;
 
-pub(super) mod neg;
-pub(super) use neg::*;
+mod neg;
+use neg::*;
 
-pub(super) mod nor;
-pub(super) use nor::*;
+mod nor;
+use nor::*;
 
-pub(super) mod not;
-pub(super) use not::*;
+mod not;
+use not::*;
 
-pub(super) mod not_equal;
-pub(super) use not_equal::*;
+mod not_equal;
+use not_equal::*;
 
-pub(super) mod or;
-pub(super) use or::*;
+mod or;
+use or::*;
 
-pub(super) mod pow;
-pub(super) use pow::*;
+mod pow;
+use pow::*;
 
-pub(super) mod pow_wrapped;
-pub(super) use pow_wrapped::*;
+mod pow_wrapped;
+use pow_wrapped::*;
 
-pub(super) mod prf;
-pub(super) use prf::*;
+mod prf;
+use prf::*;
 
-pub(super) mod shl;
-pub(super) use shl::*;
+mod shl;
+use shl::*;
 
-pub(super) mod shl_wrapped;
-pub(super) use shl_wrapped::*;
+mod shl_wrapped;
+use shl_wrapped::*;
 
-pub(super) mod shr;
-pub(super) use shr::*;
+mod shr;
+use shr::*;
 
-pub(super) mod shr_wrapped;
-pub(super) use shr_wrapped::*;
+mod shr_wrapped;
+use shr_wrapped::*;
 
-pub(super) mod square;
-pub(super) use square::*;
+mod square;
+use square::*;
 
-pub(super) mod sub;
-pub(super) use sub::*;
+mod sub;
+use sub::*;
 
-pub(super) mod sub_wrapped;
-pub(super) use sub_wrapped::*;
+mod sub_wrapped;
+use sub_wrapped::*;
 
-pub(super) mod ternary;
-pub(super) use ternary::*;
+mod ternary;
+use ternary::*;
 
-pub(super) mod xor;
-pub(super) use xor::*;
+mod xor;
+use xor::*;
 
 use crate::{
     function::{parsers::Operand, registers::Registers, Register},

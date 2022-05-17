@@ -14,20 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub(crate) mod bhp256;
-pub(crate) use bhp256::*;
+pub(super) mod bhp256;
+pub(super) use bhp256::*;
 
-pub(crate) mod bhp512;
-pub(crate) use bhp512::*;
+pub(super) mod bhp512;
+pub(super) use bhp512::*;
 
-pub(crate) mod bhp1024;
-pub(crate) use bhp1024::*;
+pub(super) mod bhp1024;
+pub(super) use bhp1024::*;
 
-pub(crate) mod ped64;
-pub(crate) use ped64::*;
+pub(super) mod ped64;
+pub(super) use ped64::*;
 
-pub(crate) mod ped128;
-pub(crate) use ped128::*;
+pub(super) mod ped128;
+pub(super) use ped128::*;
 
 use crate::{
     function::{parsers::*, Instruction, Opcode, Operation, Program, Register, Registers},
