@@ -180,7 +180,6 @@ pub trait Opcode {
 }
 
 pub trait Operation<P: Program>: Parser + Into<Instruction<P>> {
-    // pub trait Operation<P: Program>: Parser + Into<Instruction<P>> {
     ///
     /// Evaluates the operation.
     ///
@@ -288,229 +287,162 @@ pub enum Instruction<P: Program> {
     Xor(Xor<P>),
 }
 
+/// Creates a match statement that applies the given operation for each instruction.
+///
+/// ## Example
+/// ```ignore
+/// instruction!(self, |instruction| write!(f, "{} {};", self.opcode(), instruction))
+/// ```
+/// The above example will print the opcode and the instruction to the given stream.
+/// ```ignore
+///     match self {
+///         Self::Add(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+///         Self::Sub(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+///         Self::Mul(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+///         Self::Div(instruction) => write!(f, "{} {};", self.opcode(), instruction),
+///     }
+/// )
+/// ```
+#[macro_export]
+macro_rules! instruction {
+    // A variant **with** curly braces:
+    // i.e. `instruction!(self, |instruction| { operation(instruction) })`.
+    ($object:expr, |$input:ident| $operation:block) => {{
+        instruction!(instruction, $object, |$input| $operation)
+    }};
+    // A variant **without** curly braces:
+    // i.e. `instruction!(self, |instruction| operation(instruction))`.
+    ($object:expr, |$input:ident| $operation:expr) => {{
+        instruction!(instruction, $object, |$input| { $operation })
+    }};
+    // A variant **with** curly braces:
+    // i.e. `instruction!(custom_macro, self, |instruction| { operation(instruction) })`.
+    ($macro_:ident, $object:expr, |$input:ident| $operation:block) => {{
+        $macro_!($object, |$input| $operation, {
+            Abs,
+            AbsWrapped,
+            Add,
+            AddWrapped,
+            And,
+            CommitBHP256,
+            CommitBHP512,
+            CommitBHP1024,
+            CommitPed64,
+            CommitPed128,
+            Div,
+            DivWrapped,
+            Double,
+            Equal,
+            GreaterThan,
+            GreaterThanOrEqual,
+            HashBHP256,
+            HashBHP512,
+            HashBHP1024,
+            HashPed64,
+            HashPed128,
+            HashPsd2,
+            HashPsd4,
+            HashPsd8,
+            Inv,
+            LessThan,
+            LessThanOrEqual,
+            Mul,
+            MulWrapped,
+            Nand,
+            Neg,
+            Nor,
+            Not,
+            NotEqual,
+            Or,
+            Pow,
+            PowWrapped,
+            PRFPsd2,
+            PRFPsd4,
+            PRFPsd8,
+            Shl,
+            ShlWrapped,
+            Shr,
+            ShrWrapped,
+            Square,
+            Sub,
+            SubWrapped,
+            Ternary,
+            Xor,
+        })
+    }};
+    // A variant **without** curly braces:
+    // i.e. `instruction!(custom_macro, self, |instruction| operation(instruction))`.
+    ($macro_:ident, $object:expr, |$input:ident| $operation:expr) => {{
+        instruction!($macro_, $object, |$input| { $operation })
+    }};
+    // A variant invoking a macro internally:
+    // i.e. `instruction!(instruction_to_bytes_le!(self, writer))`.
+    ($macro_:ident!($object:expr, $input:ident)) => {{
+        instruction!($macro_, $object, |$input| {})
+    }};
+
+    ////////////////////
+    // Private Macros //
+    ////////////////////
+
+    // A static variant **with** curly braces:
+    // i.e. `instruction!(self, |InstructionMember| { InstructionMember::opcode() })`.
+    ($object:expr, |InstructionMember| $operation:block, { $( $variant:ident, )+ }) => {{
+        // Build the match cases.
+        match $object {
+            $(
+                Self::$variant(..) => {{
+                    // Set the variant to be called `InstructionMember`.
+                    type InstructionMember<P> = $variant<P>;
+                    // Perform the operation.
+                    $operation
+                }}
+            ),+
+        }
+    }};
+    // A static variant **without** curly braces:
+    // i.e. `instruction!(self, |InstructionMember| InstructionMember::opcode())`.
+    ($object:expr, |InstructionMember| $operation:expr, { $( $variant:ident, )+ }) => {{
+        instruction!($object, |InstructionMember| { $operation }, { $( $variant, )+ })
+    }};
+    // A non-static variant **with** curly braces:
+    // i.e. `instruction!(self, |instruction| { operation(instruction) })`.
+    ($object:expr, |$instruction:ident| $operation:block, { $( $variant:ident, )+ }) => {{
+        // Build the match cases.
+        match $object {
+            $( Self::$variant($instruction) => { $operation } ),+
+        }
+    }};
+    // A non-static variant **without** curly braces:
+    // i.e. `instruction!(self, |instruction| operation(instruction))`.
+    ($object:expr, |$instruction:ident| $operation:expr, { $( $variant:ident, )+ }) => {{
+        instruction!($object, |$instruction| { $operation }, { $( $variant, )+ })
+    }};
+}
+
 impl<P: Program> Instruction<P> {
     /// Returns the opcode of the instruction.
     #[inline]
     pub(crate) fn opcode(&self) -> &'static str {
-        match self {
-            Self::Abs(..) => Abs::<P>::opcode(),
-            Self::AbsWrapped(..) => AbsWrapped::<P>::opcode(),
-            Self::Add(..) => Add::<P>::opcode(),
-            Self::AddWrapped(..) => AddWrapped::<P>::opcode(),
-            Self::And(..) => And::<P>::opcode(),
-            Self::CommitBHP256(..) => CommitBHP256::<P>::opcode(),
-            Self::CommitBHP512(..) => CommitBHP512::<P>::opcode(),
-            Self::CommitBHP1024(..) => CommitBHP1024::<P>::opcode(),
-            Self::CommitPed64(..) => CommitPed64::<P>::opcode(),
-            Self::CommitPed128(..) => CommitPed128::<P>::opcode(),
-            Self::Div(..) => Div::<P>::opcode(),
-            Self::DivWrapped(..) => DivWrapped::<P>::opcode(),
-            Self::Double(..) => Double::<P>::opcode(),
-            Self::Equal(..) => Equal::<P>::opcode(),
-            Self::GreaterThan(..) => GreaterThan::<P>::opcode(),
-            Self::GreaterThanOrEqual(..) => GreaterThanOrEqual::<P>::opcode(),
-            Self::HashBHP256(..) => HashBHP256::<P>::opcode(),
-            Self::HashBHP512(..) => HashBHP512::<P>::opcode(),
-            Self::HashBHP1024(..) => HashBHP1024::<P>::opcode(),
-            Self::HashPed64(..) => HashPed64::<P>::opcode(),
-            Self::HashPed128(..) => HashPed128::<P>::opcode(),
-            Self::HashPsd2(..) => HashPsd2::<P>::opcode(),
-            Self::HashPsd4(..) => HashPsd4::<P>::opcode(),
-            Self::HashPsd8(..) => HashPsd8::<P>::opcode(),
-            Self::Inv(..) => Inv::<P>::opcode(),
-            Self::LessThan(..) => LessThan::<P>::opcode(),
-            Self::LessThanOrEqual(..) => LessThanOrEqual::<P>::opcode(),
-            Self::Mul(..) => Mul::<P>::opcode(),
-            Self::MulWrapped(..) => MulWrapped::<P>::opcode(),
-            Self::Nand(..) => Nand::<P>::opcode(),
-            Self::Neg(..) => Neg::<P>::opcode(),
-            Self::Nor(..) => Nor::<P>::opcode(),
-            Self::Not(..) => Not::<P>::opcode(),
-            Self::NotEqual(..) => NotEqual::<P>::opcode(),
-            Self::Or(..) => Or::<P>::opcode(),
-            Self::Pow(..) => Pow::<P>::opcode(),
-            Self::PowWrapped(..) => PowWrapped::<P>::opcode(),
-            Self::PRFPsd2(..) => PRFPsd2::<P>::opcode(),
-            Self::PRFPsd4(..) => PRFPsd4::<P>::opcode(),
-            Self::PRFPsd8(..) => PRFPsd8::<P>::opcode(),
-            Self::Shl(..) => Shl::<P>::opcode(),
-            Self::ShlWrapped(..) => ShlWrapped::<P>::opcode(),
-            Self::Shr(..) => Shr::<P>::opcode(),
-            Self::ShrWrapped(..) => ShrWrapped::<P>::opcode(),
-            Self::Square(..) => Square::<P>::opcode(),
-            Self::Sub(..) => Sub::<P>::opcode(),
-            Self::SubWrapped(..) => SubWrapped::<P>::opcode(),
-            Self::Ternary(..) => Ternary::<P>::opcode(),
-            Self::Xor(..) => Xor::<P>::opcode(),
-        }
+        instruction!(self, |InstructionMember| InstructionMember::<P>::opcode())
     }
 
     /// Returns the operands of the instruction.
     #[inline]
     pub(crate) fn operands(&self) -> Vec<Operand<P>> {
-        match self {
-            Self::Abs(abs) => abs.operands(),
-            Self::AbsWrapped(abs) => abs.operands(),
-            Self::Add(add) => add.operands(),
-            Self::AddWrapped(add_wrapped) => add_wrapped.operands(),
-            Self::And(and) => and.operands(),
-            Self::CommitBHP256(bhp256) => bhp256.operands(),
-            Self::CommitBHP512(bhp512) => bhp512.operands(),
-            Self::CommitBHP1024(bhp1024) => bhp1024.operands(),
-            Self::CommitPed64(ped64) => ped64.operands(),
-            Self::CommitPed128(ped128) => ped128.operands(),
-            Self::Div(div) => div.operands(),
-            Self::DivWrapped(div_wrapped) => div_wrapped.operands(),
-            Self::Double(double) => double.operands(),
-            Self::Equal(equal) => equal.operands(),
-            Self::GreaterThan(greater_than) => greater_than.operands(),
-            Self::GreaterThanOrEqual(greater_than_or_equal) => greater_than_or_equal.operands(),
-            Self::HashBHP256(bhp256) => bhp256.operands(),
-            Self::HashBHP512(bhp512) => bhp512.operands(),
-            Self::HashBHP1024(bhp1024) => bhp1024.operands(),
-            Self::HashPed64(ped64) => ped64.operands(),
-            Self::HashPed128(ped128) => ped128.operands(),
-            Self::HashPsd2(psd2) => psd2.operands(),
-            Self::HashPsd4(psd4) => psd4.operands(),
-            Self::HashPsd8(psd8) => psd8.operands(),
-            Self::Inv(inv) => inv.operands(),
-            Self::LessThan(less_than) => less_than.operands(),
-            Self::LessThanOrEqual(less_than_or_equal) => less_than_or_equal.operands(),
-            Self::Mul(mul) => mul.operands(),
-            Self::MulWrapped(mul_wrapped) => mul_wrapped.operands(),
-            Self::Nand(nand) => nand.operands(),
-            Self::Neg(neg) => neg.operands(),
-            Self::Nor(nor) => nor.operands(),
-            Self::Not(not) => not.operands(),
-            Self::NotEqual(not_equal) => not_equal.operands(),
-            Self::Or(or) => or.operands(),
-            Self::Pow(pow) => pow.operands(),
-            Self::PowWrapped(pow_wrapped) => pow_wrapped.operands(),
-            Self::PRFPsd2(psd2) => psd2.operands(),
-            Self::PRFPsd4(psd4) => psd4.operands(),
-            Self::PRFPsd8(psd8) => psd8.operands(),
-            Self::Shl(shl) => shl.operands(),
-            Self::ShlWrapped(shl_wrapped) => shl_wrapped.operands(),
-            Self::Shr(shr) => shr.operands(),
-            Self::ShrWrapped(shr_wrapped) => shr_wrapped.operands(),
-            Self::Square(square) => square.operands(),
-            Self::Sub(sub) => sub.operands(),
-            Self::SubWrapped(sub_wrapped) => sub_wrapped.operands(),
-            Self::Ternary(ternary) => ternary.operands(),
-            Self::Xor(xor) => xor.operands(),
-        }
+        instruction!(self, |instruction| instruction.operands())
     }
 
     /// Returns the destination register of the instruction.
     #[inline]
     pub(crate) fn destination(&self) -> &Register<P> {
-        match self {
-            Self::Abs(abs) => abs.destination(),
-            Self::AbsWrapped(abs) => abs.destination(),
-            Self::Add(add) => add.destination(),
-            Self::AddWrapped(add_wrapped) => add_wrapped.destination(),
-            Self::And(and) => and.destination(),
-            Self::CommitBHP256(bhp256) => bhp256.destination(),
-            Self::CommitBHP512(bhp512) => bhp512.destination(),
-            Self::CommitBHP1024(bhp1024) => bhp1024.destination(),
-            Self::CommitPed64(ped64) => ped64.destination(),
-            Self::CommitPed128(ped128) => ped128.destination(),
-            Self::Div(div) => div.destination(),
-            Self::DivWrapped(div_wrapped) => div_wrapped.destination(),
-            Self::Double(double) => double.destination(),
-            Self::Equal(equal) => equal.destination(),
-            Self::GreaterThan(greater_than) => greater_than.destination(),
-            Self::GreaterThanOrEqual(greater_than_or_equal) => greater_than_or_equal.destination(),
-            Self::HashBHP256(bhp256) => bhp256.destination(),
-            Self::HashBHP512(bhp512) => bhp512.destination(),
-            Self::HashBHP1024(bhp1024) => bhp1024.destination(),
-            Self::HashPed64(ped64) => ped64.destination(),
-            Self::HashPed128(ped128) => ped128.destination(),
-            Self::HashPsd2(psd2) => psd2.destination(),
-            Self::HashPsd4(psd4) => psd4.destination(),
-            Self::HashPsd8(psd8) => psd8.destination(),
-            Self::Inv(inv) => inv.destination(),
-            Self::LessThan(less_than) => less_than.destination(),
-            Self::LessThanOrEqual(less_than_or_equal) => less_than_or_equal.destination(),
-            Self::Mul(mul) => mul.destination(),
-            Self::MulWrapped(mul_wrapped) => mul_wrapped.destination(),
-            Self::Nand(nand) => nand.destination(),
-            Self::Neg(neg) => neg.destination(),
-            Self::Nor(nor) => nor.destination(),
-            Self::Not(not) => not.destination(),
-            Self::NotEqual(not_equal) => not_equal.destination(),
-            Self::Or(or) => or.destination(),
-            Self::Pow(pow) => pow.destination(),
-            Self::PowWrapped(pow_wrapped) => pow_wrapped.destination(),
-            Self::PRFPsd2(psd2) => psd2.destination(),
-            Self::PRFPsd4(psd4) => psd4.destination(),
-            Self::PRFPsd8(psd8) => psd8.destination(),
-            Self::Shl(shl) => shl.destination(),
-            Self::ShlWrapped(shl_wrapped) => shl_wrapped.destination(),
-            Self::Shr(shr) => shr.destination(),
-            Self::ShrWrapped(shr_wrapped) => shr_wrapped.destination(),
-            Self::Square(square) => square.destination(),
-            Self::Sub(sub) => sub.destination(),
-            Self::SubWrapped(sub_wrapped) => sub_wrapped.destination(),
-            Self::Ternary(ternary) => ternary.destination(),
-            Self::Xor(xor) => xor.destination(),
-        }
+        instruction!(self, |instruction| instruction.destination())
     }
 
     /// Evaluates the instruction.
     #[inline]
     pub(crate) fn evaluate(&self, registers: &Registers<P>) {
-        match self {
-            Self::Abs(abs) => abs.evaluate(registers),
-            Self::AbsWrapped(abs) => abs.evaluate(registers),
-            Self::Add(instruction) => instruction.evaluate(registers),
-            Self::AddWrapped(instruction) => instruction.evaluate(registers),
-            Self::And(instruction) => instruction.evaluate(registers),
-            Self::CommitBHP256(instruction) => instruction.evaluate(registers),
-            Self::CommitBHP512(instruction) => instruction.evaluate(registers),
-            Self::CommitBHP1024(instruction) => instruction.evaluate(registers),
-            Self::CommitPed64(instruction) => instruction.evaluate(registers),
-            Self::CommitPed128(instruction) => instruction.evaluate(registers),
-            Self::Div(instruction) => instruction.evaluate(registers),
-            Self::DivWrapped(instruction) => instruction.evaluate(registers),
-            Self::Double(instruction) => instruction.evaluate(registers),
-            Self::Equal(instruction) => instruction.evaluate(registers),
-            Self::GreaterThan(instruction) => instruction.evaluate(registers),
-            Self::GreaterThanOrEqual(instruction) => instruction.evaluate(registers),
-            Self::HashBHP256(instruction) => instruction.evaluate(registers),
-            Self::HashBHP512(instruction) => instruction.evaluate(registers),
-            Self::HashBHP1024(instruction) => instruction.evaluate(registers),
-            Self::HashPed64(instruction) => instruction.evaluate(registers),
-            Self::HashPed128(instruction) => instruction.evaluate(registers),
-            Self::HashPsd2(instruction) => instruction.evaluate(registers),
-            Self::HashPsd4(instruction) => instruction.evaluate(registers),
-            Self::HashPsd8(instruction) => instruction.evaluate(registers),
-            Self::Inv(instruction) => instruction.evaluate(registers),
-            Self::LessThan(instruction) => instruction.evaluate(registers),
-            Self::LessThanOrEqual(instruction) => instruction.evaluate(registers),
-            Self::Mul(instruction) => instruction.evaluate(registers),
-            Self::MulWrapped(instruction) => instruction.evaluate(registers),
-            Self::Nand(instruction) => instruction.evaluate(registers),
-            Self::Neg(instruction) => instruction.evaluate(registers),
-            Self::Nor(instruction) => instruction.evaluate(registers),
-            Self::Not(instruction) => instruction.evaluate(registers),
-            Self::NotEqual(instruction) => instruction.evaluate(registers),
-            Self::Or(instruction) => instruction.evaluate(registers),
-            Self::Pow(instruction) => instruction.evaluate(registers),
-            Self::PowWrapped(instruction) => instruction.evaluate(registers),
-            Self::PRFPsd2(instruction) => instruction.evaluate(registers),
-            Self::PRFPsd4(instruction) => instruction.evaluate(registers),
-            Self::PRFPsd8(instruction) => instruction.evaluate(registers),
-            Self::Shl(instruction) => instruction.evaluate(registers),
-            Self::ShlWrapped(instruction) => instruction.evaluate(registers),
-            Self::Shr(instruction) => instruction.evaluate(registers),
-            Self::ShrWrapped(instruction) => instruction.evaluate(registers),
-            Self::Square(instruction) => instruction.evaluate(registers),
-            Self::Sub(instruction) => instruction.evaluate(registers),
-            Self::SubWrapped(instruction) => instruction.evaluate(registers),
-            Self::Ternary(instruction) => instruction.evaluate(registers),
-            Self::Xor(instruction) => instruction.evaluate(registers),
-        }
+        instruction!(self, |instruction| instruction.evaluate(registers))
     }
 }
 
@@ -593,250 +525,78 @@ impl<P: Program> Parser for Instruction<P> {
 
 impl<P: Program> fmt::Display for Instruction<P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            Self::Abs(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::AbsWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::Add(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::AddWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::And(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::CommitBHP256(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::CommitBHP512(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::CommitBHP1024(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::CommitPed64(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::CommitPed128(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::Div(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::DivWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::Double(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::Equal(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::GreaterThan(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::GreaterThanOrEqual(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::HashBHP256(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::HashBHP512(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::HashBHP1024(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::HashPed64(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::HashPed128(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::HashPsd2(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::HashPsd4(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::HashPsd8(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::Inv(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::LessThan(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::LessThanOrEqual(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::Mul(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::MulWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::Nand(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::Neg(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::Nor(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::Not(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::NotEqual(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::Or(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::Pow(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::PowWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::PRFPsd2(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::PRFPsd4(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::PRFPsd8(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::Shl(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::ShlWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::Shr(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::ShrWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::Square(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::Sub(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::SubWrapped(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::Ternary(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-            Self::Xor(instruction) => write!(f, "{} {};", self.opcode(), instruction),
-        }
+        instruction!(self, |instruction| write!(f, "{} {};", self.opcode(), instruction))
     }
-}
-
-/// Creates a match statement that produces the `FromBytes` implementation for the given instruction.
-///
-/// ## Example
-/// ```ignore
-/// match_from_bytes_le!(
-///     match FromBytes::read_le(reader) => (u16, self) {
-///         Add,
-///         Sub,
-///         Mul,
-///         Div,
-///     }
-/// )
-/// ```
-#[macro_export]
-macro_rules! match_from_bytes_le {
-    (match FromBytes::read_le($reader:expr) => ($size:tt, $object:expr) { $( $instruction:ident, )+ }) => {{
-        // A counter for the enum variant being matched.
-        const COUNTER: &[&'static str] = &[ $( stringify!($instruction), )+];
-        // Ensure the size is sufficiently large.
-        assert_eq!(COUNTER.len(), $size::MAX as usize);
-
-        // Read the enum variant index.
-        let variant = $size::read_le(&mut $reader)?;
-
-        // Build the cases for all instructions.
-        $(
-            if COUNTER[variant as usize] == stringify!($instruction) {
-                // Read the instruction.
-                let instruction = $instruction::read_le(&mut $reader)?;
-                // Return the instruction.
-                return Ok(Self::$instruction(instruction));
-            }
-        )+
-        // If the index is out of bounds, return an error.
-        Err(error(format!("Failed to deserialize an instruction of variant {variant}")))
-    }};
 }
 
 impl<P: Program> FromBytes for Instruction<P> {
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        match_from_bytes_le!(
-            match FromBytes::read_le(reader) => (u16, self) {
-                Abs,
-                AbsWrapped,
-                Add,
-                AddWrapped,
-                And,
-                CommitBHP256,
-                CommitBHP512,
-                CommitBHP1024,
-                CommitPed64,
-                CommitPed128,
-                Div,
-                DivWrapped,
-                Double,
-                Equal,
-                GreaterThan,
-                GreaterThanOrEqual,
-                HashBHP256,
-                HashBHP512,
-                HashBHP1024,
-                HashPed64,
-                HashPed128,
-                HashPsd2,
-                HashPsd4,
-                HashPsd8,
-                Inv,
-                LessThan,
-                LessThanOrEqual,
-                Mul,
-                MulWrapped,
-                Nand,
-                Neg,
-                Nor,
-                Not,
-                NotEqual,
-                Or,
-                Pow,
-                PowWrapped,
-                PRFPsd2,
-                PRFPsd4,
-                PRFPsd8,
-                Shl,
-                ShlWrapped,
-                Shr,
-                ShrWrapped,
-                Square,
-                Sub,
-                SubWrapped,
-                Ternary,
-                Xor,
-            }
-        )
-    }
-}
+        /// Creates a match statement that produces the `FromBytes` implementation for the given instruction.
+        ///
+        /// ## Example
+        /// ```ignore
+        /// instruction_from_bytes_le!(self, |reader| {}, { Add, Sub, Mul, Div })
+        /// ```
+        macro_rules! instruction_from_bytes_le {
+            ($object:expr, |$reader:ident| $_operation:block, { $( $variant:ident, )+ }) => {{
+                // A list of instruction enum variants.
+                const INSTRUCTION_VARIANTS: &[&'static str] = &[ $( stringify!($variant), )+];
+                // Ensure the size is sufficiently large.
+                assert!(INSTRUCTION_VARIANTS.len() <= u16::MAX as usize);
 
-/// Creates a match statement that produces the `ToBytes` implementation for the given instruction.
-///
-/// ## Example
-/// ```ignore
-/// match_to_bytes_le!(
-///     match ToBytes::write_le(writer) => (u16, self) {
-///         Add,
-///         Sub,
-///         Mul,
-///         Div,
-///     }
-/// )
-/// ```
-#[macro_export]
-macro_rules! match_to_bytes_le {
-    (match ToBytes::write_le($writer:expr) => ($size:tt, $object:expr) { $( $instruction:ident, )+ }) => {{
-        // A counter for the enum variant being matched.
-        const COUNTER: &[&'static str] = &[ $( stringify!($instruction), )+];
-        // Ensure the size is sufficiently large.
-        assert_eq!(COUNTER.len(), $size::MAX as usize);
+                // Read the enum variant index.
+                let variant = u16::read_le(&mut $reader)?;
 
-        // Build the match cases.
-        match $object {
-            $(
-                Self::$instruction(instruction) => {
-                    // Retrieve the enum variant index.
-                    // Note: This unwrap is guaranteed to succeed because the enum variant is known to exist.
-                    let variant = COUNTER.iter().position(|&name| stringify!($instruction) == name).unwrap();
-
-                    // Serialize the instruction.
-                    $size::write_le(&(variant as $size),&mut $writer)?;
-                    instruction.write_le(&mut $writer)?;
-                }
-            ),+
+                // Build the cases for all instructions.
+                $(
+                    if INSTRUCTION_VARIANTS[variant as usize] == stringify!($variant) {
+                        // Read the instruction.
+                        let instruction = $variant::read_le(&mut $reader)?;
+                        // Return the instruction.
+                        return Ok(Self::$variant(instruction));
+                    }
+                )+
+                // If the index is out of bounds, return an error.
+                Err(error(format!("Failed to deserialize an instruction of variant {variant}")))
+            }};
         }
-        Ok(())
-    }};
+        instruction!(instruction_from_bytes_le!(self, reader))
+    }
 }
 
 impl<P: Program> ToBytes for Instruction<P> {
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        match_to_bytes_le!(
-            match ToBytes::write_le(writer) => (u16, self) {
-                Abs,
-                AbsWrapped,
-                Add,
-                AddWrapped,
-                And,
-                CommitBHP256,
-                CommitBHP512,
-                CommitBHP1024,
-                CommitPed64,
-                CommitPed128,
-                Div,
-                DivWrapped,
-                Double,
-                Equal,
-                GreaterThan,
-                GreaterThanOrEqual,
-                HashBHP256,
-                HashBHP512,
-                HashBHP1024,
-                HashPed64,
-                HashPed128,
-                HashPsd2,
-                HashPsd4,
-                HashPsd8,
-                Inv,
-                LessThan,
-                LessThanOrEqual,
-                Mul,
-                MulWrapped,
-                Nand,
-                Neg,
-                Nor,
-                Not,
-                NotEqual,
-                Or,
-                Pow,
-                PowWrapped,
-                PRFPsd2,
-                PRFPsd4,
-                PRFPsd8,
-                Shl,
-                ShlWrapped,
-                Shr,
-                ShrWrapped,
-                Square,
-                Sub,
-                SubWrapped,
-                Ternary,
-                Xor,
-            }
-        )
+        /// Creates a match statement that produces the `ToBytes` implementation for the given instruction.
+        ///
+        /// ## Example
+        /// ```ignore
+        /// instruction_to_bytes_le!(self, |writer| {}, { Add, Sub, Mul, Div })
+        /// ```
+        macro_rules! instruction_to_bytes_le {
+            ($object:expr, |$writer:ident| $_operation:block, { $( $variant:ident, )+ }) => {{
+                // A list of instruction enum variants.
+                const INSTRUCTION_VARIANTS: &[&'static str] = &[ $( stringify!($variant), )+];
+                // Ensure the size is sufficiently large.
+                assert!(INSTRUCTION_VARIANTS.len() <= u16::MAX as usize);
+
+                // Build the match cases.
+                match $object {
+                    $(
+                        Self::$variant(instruction) => {
+                            // Retrieve the enum variant index.
+                            // Note: This unwrap is guaranteed to succeed because the enum variant is known to exist.
+                            let variant = INSTRUCTION_VARIANTS.iter().position(|&name| stringify!($variant) == name).unwrap();
+
+                            // Serialize the instruction.
+                            u16::write_le(&(variant as u16),&mut $writer)?;
+                            instruction.write_le(&mut $writer)?;
+                        }
+                    ),+
+                }
+                Ok(())
+            }};
+        }
+        instruction!(instruction_to_bytes_le!(self, writer))
     }
 }
 
