@@ -41,15 +41,6 @@ pub trait Aleo: Environment {
     /// Returns a Pedersen commitment for the given (up to) 128-bit input and randomness.
     fn commit_ped128(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self>;
 
-    /// Returns a Pedersen commitment for the given (up to) 256-bit input and randomness.
-    fn commit_ped256(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self>;
-
-    /// Returns a Pedersen commitment for the given (up to) 512-bit input and randomness.
-    fn commit_ped512(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self>;
-
-    /// Returns a Pedersen commitment for the given (up to) 1024-bit input and randomness.
-    fn commit_ped1024(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self>;
-
     /// Returns the encryption domain as a constant field element.
     fn encryption_domain() -> Field<Self>;
 
@@ -76,15 +67,6 @@ pub trait Aleo: Environment {
 
     /// Returns the Pedersen hash for a given (up to) 128-bit input.
     fn hash_ped128(input: &[Boolean<Self>]) -> Field<Self>;
-
-    /// Returns the Pedersen hash for a given (up to) 256-bit input.
-    fn hash_ped256(input: &[Boolean<Self>]) -> Field<Self>;
-
-    /// Returns the Pedersen hash for a given (up to) 512-bit input.
-    fn hash_ped512(input: &[Boolean<Self>]) -> Field<Self>;
-
-    /// Returns the Pedersen hash for a given (up to) 1024-bit input.
-    fn hash_ped1024(input: &[Boolean<Self>]) -> Field<Self>;
 
     /// Returns the Poseidon hash with an input rate of 2.
     fn hash_psd2(input: &[Field<Self>]) -> Field<Self>;

@@ -309,17 +309,5 @@ mod tests {
         // Check Pedersen128.
         let pedersen128 = Pedersen128::setup("Pedersen128HomomorphismTest");
         check_pedersen_homomorphism(&pedersen128);
-
-        // Check Pedersen256.
-        let pedersen256 = Pedersen256::setup("Pedersen256HomomorphismTest");
-        check_pedersen_homomorphism(&pedersen256);
-
-        // Check Pedersen512.
-        let pedersen512 = Pedersen512::setup("Pedersen512HomomorphismTest");
-        check_pedersen_homomorphism(&pedersen512);
-
-        // Check Pedersen1024.
-        let pedersen1024 = Pedersen1024::setup("Pedersen1024HomomorphismTest");
-        check_pedersen_homomorphism(&pedersen1024);
     }
 }

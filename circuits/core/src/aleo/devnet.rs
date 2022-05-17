@@ -21,10 +21,7 @@ use crate::{
         Hash,
         HashMany,
         HashToScalar,
-        Pedersen1024,
         Pedersen128,
-        Pedersen256,
-        Pedersen512,
         Pedersen64,
         Poseidon2,
         Poseidon4,
@@ -73,12 +70,6 @@ thread_local! {
     static PEDERSEN_64: Pedersen64<Devnet> = Pedersen64::<Devnet>::setup("AleoPedersen64");
     /// The Pedersen gadget, which can take an input of up to 128 bits.
     static PEDERSEN_128: Pedersen128<Devnet> = Pedersen128::<Devnet>::setup("AleoPedersen128");
-    /// The Pedersen gadget, which can take an input of up to 256 bits.
-    static PEDERSEN_256: Pedersen256<Devnet> = Pedersen256::<Devnet>::setup("AleoPedersen256");
-    /// The Pedersen gadget, which can take an input of up to 512 bits.
-    static PEDERSEN_512: Pedersen512<Devnet> = Pedersen512::<Devnet>::setup("AleoPedersen512");
-    /// The Pedersen gadget, which can take an input of up to 1024 bits.
-    static PEDERSEN_1024: Pedersen1024<Devnet> = Pedersen1024::<Devnet>::setup("AleoPedersen1024");
 
     /// The Poseidon hash function, using a rate of 2.
     static POSEIDON_2: Poseidon2<Devnet> = Poseidon2::<Devnet>::new();
@@ -145,21 +136,6 @@ impl Aleo for Devnet {
         PEDERSEN_128.with(|pedersen| pedersen.commit(input, randomizer))
     }
 
-    /// Returns a Pedersen commitment for the given (up to) 256-bit input and randomness.
-    fn commit_ped256(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self> {
-        PEDERSEN_256.with(|pedersen| pedersen.commit(input, randomizer))
-    }
-
-    /// Returns a Pedersen commitment for the given (up to) 512-bit input and randomness.
-    fn commit_ped512(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self> {
-        PEDERSEN_512.with(|pedersen| pedersen.commit(input, randomizer))
-    }
-
-    /// Returns a Pedersen commitment for the given (up to) 1024-bit input and randomness.
-    fn commit_ped1024(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self> {
-        PEDERSEN_1024.with(|pedersen| pedersen.commit(input, randomizer))
-    }
-
     /// Returns the encryption domain as a constant field element.
     fn encryption_domain() -> Field<Self> {
         ENCRYPTION_DOMAIN.with(|domain| domain.clone())
@@ -209,21 +185,6 @@ impl Aleo for Devnet {
     /// Returns the Pedersen hash for a given (up to) 128-bit input.
     fn hash_ped128(input: &[Boolean<Self>]) -> Field<Self> {
         PEDERSEN_128.with(|pedersen| pedersen.hash(input))
-    }
-
-    /// Returns the Pedersen hash for a given (up to) 256-bit input.
-    fn hash_ped256(input: &[Boolean<Self>]) -> Field<Self> {
-        PEDERSEN_256.with(|pedersen| pedersen.hash(input))
-    }
-
-    /// Returns the Pedersen hash for a given (up to) 512-bit input.
-    fn hash_ped512(input: &[Boolean<Self>]) -> Field<Self> {
-        PEDERSEN_512.with(|pedersen| pedersen.hash(input))
-    }
-
-    /// Returns the Pedersen hash for a given (up to) 1024-bit input.
-    fn hash_ped1024(input: &[Boolean<Self>]) -> Field<Self> {
-        PEDERSEN_1024.with(|pedersen| pedersen.hash(input))
     }
 
     /// Returns the Poseidon hash with an input rate of 2.

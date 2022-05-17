@@ -30,12 +30,6 @@ use snarkvm_circuits_types::prelude::*;
 pub type Pedersen64<E> = Pedersen<E, 1, 64>;
 /// Pedersen128 is an *additively-homomorphic* collision-resistant hash function that takes a 128-bit input.
 pub type Pedersen128<E> = Pedersen<E, 1, 128>;
-/// Pedersen256 is a collision-resistant hash function that takes a 256-bit input.
-pub type Pedersen256<E> = Pedersen<E, 2, 128>;
-/// Pedersen512 is a collision-resistant hash function that takes a 512-bit input.
-pub type Pedersen512<E> = Pedersen<E, 4, 128>;
-/// Pedersen1024 is a collision-resistant hash function that takes a 1024-bit input.
-pub type Pedersen1024<E> = Pedersen<E, 8, 128>;
 
 /// Pedersen is a collision-resistant hash function that takes a variable-length input.
 /// The Pedersen hash function does *not* behave like a random oracle, see Poseidon for one.

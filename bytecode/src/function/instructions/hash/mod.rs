@@ -29,15 +29,6 @@ pub(crate) use ped64::*;
 pub(crate) mod ped128;
 pub(crate) use ped128::*;
 
-pub(crate) mod ped256;
-pub(crate) use ped256::*;
-
-pub(crate) mod ped512;
-pub(crate) use ped512::*;
-
-pub(crate) mod ped1024;
-pub(crate) use ped1024::*;
-
 pub(crate) mod psd2;
 pub(crate) use psd2::*;
 
@@ -133,9 +124,6 @@ impl<P: Program, Op: HashOpcode> Operation<P> for Hash<P, Op> {
             BHP1024::OPCODE => P::Aleo::hash_bhp1024(&input.to_bits_le()),
             Ped64::OPCODE => P::Aleo::hash_ped64(&input.to_bits_le()),
             Ped128::OPCODE => P::Aleo::hash_ped128(&input.to_bits_le()),
-            Ped256::OPCODE => P::Aleo::hash_ped256(&input.to_bits_le()),
-            Ped512::OPCODE => P::Aleo::hash_ped512(&input.to_bits_le()),
-            Ped1024::OPCODE => P::Aleo::hash_ped1024(&input.to_bits_le()),
             Psd2::OPCODE => P::Aleo::hash_psd2(&to_field_elements(&input)),
             Psd4::OPCODE => P::Aleo::hash_psd4(&to_field_elements(&input)),
             Psd8::OPCODE => P::Aleo::hash_psd8(&to_field_elements(&input)),
@@ -185,11 +173,6 @@ impl<P: Program, Op: HashOpcode> Into<Instruction<P>> for Hash<P, Op> {
             }
             Ped64::OPCODE => Instruction::HashPed64(HashPed64 { operation: self.operation, _phantom: PhantomData }),
             Ped128::OPCODE => Instruction::HashPed128(HashPed128 { operation: self.operation, _phantom: PhantomData }),
-            Ped256::OPCODE => Instruction::HashPed256(HashPed256 { operation: self.operation, _phantom: PhantomData }),
-            Ped512::OPCODE => Instruction::HashPed512(HashPed512 { operation: self.operation, _phantom: PhantomData }),
-            Ped1024::OPCODE => {
-                Instruction::HashPed1024(HashPed1024 { operation: self.operation, _phantom: PhantomData })
-            }
             Psd2::OPCODE => Instruction::HashPsd2(HashPsd2 { operation: self.operation, _phantom: PhantomData }),
             Psd4::OPCODE => Instruction::HashPsd4(HashPsd4 { operation: self.operation, _phantom: PhantomData }),
             Psd8::OPCODE => Instruction::HashPsd8(HashPsd8 { operation: self.operation, _phantom: PhantomData }),
