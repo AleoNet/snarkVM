@@ -452,70 +452,43 @@ impl<P: Program> Parser for Instruction<P> {
     /// Parses a string into an instruction.
     #[inline]
     fn parse(string: &str) -> ParserResult<Self> {
+        /// Create an alt parser that matches the instruction.
+        ///
+        /// `nom` documentation notes that alt supports a maximum of 21 parsers.
+        /// The documentation suggests to nest alt to support more parsers, as we do here.
+        /// Note that order of the individual parsers matters.
+        macro_rules! alt_parser {
+            ($v0:expr) => {{ alt(($v0,)) }};
+            ($v0:expr, $v1:expr) => {{ alt(($v0, $v1,)) }};
+            ($v0:expr, $v1:expr, $v2:expr) => {{ alt(($v0, $v1, $v2,)) }};
+            ($v0:expr, $v1:expr, $v2:expr, $v3:expr) => {{ alt(($v0, $v1, $v2, $v3,)) }};
+            ($v0:expr, $v1:expr, $v2:expr, $v3:expr, $v4:expr) => {{ alt(($v0, $v1, $v2, $v3, $v4,)) }};
+            ($v0:expr, $v1:expr, $v2:expr, $v3:expr, $v4:expr, $v5:expr) => {{ alt(($v0, $v1, $v2, $v3, $v4, $v5,)) }};
+            ($v0:expr, $v1:expr, $v2:expr, $v3:expr, $v4:expr, $v5:expr, $v6:expr) => {{ alt(($v0, $v1, $v2, $v3, $v4, $v5, $v6,)) }};
+            ($v0:expr, $v1:expr, $v2:expr, $v3:expr, $v4:expr, $v5:expr, $v6:expr, $v7:expr) => {{ alt(($v0, $v1, $v2, $v3, $v4, $v5, $v6, $v7,)) }};
+            ($v0:expr, $v1:expr, $v2:expr, $v3:expr, $v4:expr, $v5:expr, $v6:expr, $v7:expr, $v8:expr) => {{ alt(($v0, $v1, $v2, $v3, $v4, $v5, $v6, $v7, $v8,)) }};
+            ($v0:expr, $v1:expr, $v2:expr, $v3:expr, $v4:expr, $v5:expr, $v6:expr, $v7:expr, $v8:expr, $v9:expr) => {{ alt(($v0, $v1, $v2, $v3, $v4, $v5, $v6, $v7, $v8, $v9,)) }};
+            ($v0:expr, $v1:expr, $v2:expr, $v3:expr, $v4:expr, $v5:expr, $v6:expr, $v7:expr, $v8:expr, $v9:expr, $( $variants:expr ),*) => {{ alt((
+                alt_parser!($( $variants ),*), $v0, $v1, $v2, $v3, $v4, $v5, $v6, $v7, $v8, $v9,
+            )) }};
+        }
+
+        /// Creates a parser for the given instructions.
+        ///
+        /// ## Example
+        /// ```ignore
+        /// instruction_parsers!(self, |_instruction| {}, { Add, Sub, Mul, Div })
+        /// ```
+        macro_rules! instruction_parsers {
+            ($object:expr, |_instruction| $_operation:block, { $( $variant:ident, )+ }) => {{
+                alt_parser!( $( preceded(pair(tag($variant::<P>::opcode()), tag(" ")), map($variant::parse, Into::into)) ),+ )
+            }};
+        }
+
         // Parse the whitespace and comments from the string.
         let (string, _) = Sanitizer::parse(string)?;
         // Parse the instruction from the string.
-        let (string, instruction) = alt((
-            // nom documentation notes that alt supports a maximum of 21 parsers.
-            // The documentation suggests to nest alt to support more parsers, as we do here.
-            // Note that order of the individual parsers matters.
-            alt((
-                alt((
-                    preceded(pair(tag(Abs::<P>::opcode()), tag(" ")), map(Abs::parse, Into::into)),
-                    preceded(pair(tag(AbsWrapped::<P>::opcode()), tag(" ")), map(AbsWrapped::parse, Into::into)),
-                    preceded(pair(tag(Add::<P>::opcode()), tag(" ")), map(Add::parse, Into::into)),
-                    preceded(pair(tag(AddWrapped::<P>::opcode()), tag(" ")), map(AddWrapped::parse, Into::into)),
-                    preceded(pair(tag(And::<P>::opcode()), tag(" ")), map(And::parse, Into::into)),
-                    preceded(pair(tag(CommitBHP256::<P>::opcode()), tag(" ")), map(CommitBHP256::parse, Into::into)),
-                    preceded(pair(tag(CommitBHP512::<P>::opcode()), tag(" ")), map(CommitBHP512::parse, Into::into)),
-                    preceded(pair(tag(CommitBHP1024::<P>::opcode()), tag(" ")), map(CommitBHP1024::parse, Into::into)),
-                    preceded(pair(tag(CommitPed64::<P>::opcode()), tag(" ")), map(CommitPed64::parse, Into::into)),
-                    preceded(pair(tag(CommitPed128::<P>::opcode()), tag(" ")), map(CommitPed128::parse, Into::into)),
-                    preceded(pair(tag(Div::<P>::opcode()), tag(" ")), map(Div::parse, Into::into)),
-                    preceded(pair(tag(DivWrapped::<P>::opcode()), tag(" ")), map(DivWrapped::parse, Into::into)),
-                    preceded(pair(tag(Double::<P>::opcode()), tag(" ")), map(Double::parse, Into::into)),
-                    preceded(pair(tag(Equal::<P>::opcode()), tag(" ")), map(Equal::parse, Into::into)),
-                    preceded(pair(tag(GreaterThan::<P>::opcode()), tag(" ")), map(GreaterThan::parse, Into::into)),
-                    preceded(
-                        pair(tag(GreaterThanOrEqual::<P>::opcode()), tag(" ")),
-                        map(GreaterThanOrEqual::parse, Into::into),
-                    ),
-                    preceded(pair(tag(HashBHP256::<P>::opcode()), tag(" ")), map(HashBHP256::parse, Into::into)),
-                )),
-                preceded(pair(tag(HashBHP512::<P>::opcode()), tag(" ")), map(HashBHP512::parse, Into::into)),
-                preceded(pair(tag(HashBHP1024::<P>::opcode()), tag(" ")), map(HashBHP1024::parse, Into::into)),
-                preceded(pair(tag(HashPed64::<P>::opcode()), tag(" ")), map(HashPed64::parse, Into::into)),
-                preceded(pair(tag(HashPed128::<P>::opcode()), tag(" ")), map(HashPed128::parse, Into::into)),
-                preceded(pair(tag(HashPsd2::<P>::opcode()), tag(" ")), map(HashPsd2::parse, Into::into)),
-                preceded(pair(tag(HashPsd4::<P>::opcode()), tag(" ")), map(HashPsd4::parse, Into::into)),
-                preceded(pair(tag(HashPsd8::<P>::opcode()), tag(" ")), map(HashPsd8::parse, Into::into)),
-                preceded(pair(tag(Inv::<P>::opcode()), tag(" ")), map(Inv::parse, Into::into)),
-                preceded(pair(tag(LessThan::<P>::opcode()), tag(" ")), map(LessThan::parse, Into::into)),
-                preceded(pair(tag(LessThanOrEqual::<P>::opcode()), tag(" ")), map(LessThanOrEqual::parse, Into::into)),
-                preceded(pair(tag(Mul::<P>::opcode()), tag(" ")), map(Mul::parse, Into::into)),
-                preceded(pair(tag(MulWrapped::<P>::opcode()), tag(" ")), map(MulWrapped::parse, Into::into)),
-                preceded(pair(tag(Nand::<P>::opcode()), tag(" ")), map(Nand::parse, Into::into)),
-                preceded(pair(tag(Neg::<P>::opcode()), tag(" ")), map(Neg::parse, Into::into)),
-                preceded(pair(tag(Nor::<P>::opcode()), tag(" ")), map(Nor::parse, Into::into)),
-                preceded(pair(tag(Not::<P>::opcode()), tag(" ")), map(Not::parse, Into::into)),
-                preceded(pair(tag(NotEqual::<P>::opcode()), tag(" ")), map(NotEqual::parse, Into::into)),
-            )),
-            preceded(pair(tag(Or::<P>::opcode()), tag(" ")), map(Or::parse, Into::into)),
-            preceded(pair(tag(Pow::<P>::opcode()), tag(" ")), map(Pow::parse, Into::into)),
-            preceded(pair(tag(PowWrapped::<P>::opcode()), tag(" ")), map(PowWrapped::parse, Into::into)),
-            preceded(pair(tag(PRFPsd2::<P>::opcode()), tag(" ")), map(PRFPsd2::parse, Into::into)),
-            preceded(pair(tag(PRFPsd4::<P>::opcode()), tag(" ")), map(PRFPsd4::parse, Into::into)),
-            preceded(pair(tag(PRFPsd8::<P>::opcode()), tag(" ")), map(PRFPsd8::parse, Into::into)),
-            preceded(pair(tag(Shl::<P>::opcode()), tag(" ")), map(Shl::parse, Into::into)),
-            preceded(pair(tag(ShlWrapped::<P>::opcode()), tag(" ")), map(ShlWrapped::parse, Into::into)),
-            preceded(pair(tag(Shr::<P>::opcode()), tag(" ")), map(Shr::parse, Into::into)),
-            preceded(pair(tag(ShrWrapped::<P>::opcode()), tag(" ")), map(ShrWrapped::parse, Into::into)),
-            preceded(pair(tag(Square::<P>::opcode()), tag(" ")), map(Square::parse, Into::into)),
-            preceded(pair(tag(Sub::<P>::opcode()), tag(" ")), map(Sub::parse, Into::into)),
-            preceded(pair(tag(SubWrapped::<P>::opcode()), tag(" ")), map(SubWrapped::parse, Into::into)),
-            preceded(pair(tag(Ternary::<P>::opcode()), tag(" ")), map(Ternary::parse, Into::into)),
-            preceded(pair(tag(Xor::<P>::opcode()), tag(" ")), map(Xor::parse, Into::into)),
-        ))(string)?;
+        let (string, instruction) = instruction!(instruction_parsers!(self, _instruction))(string)?;
         // Parse the semicolon from the string.
         let (string, _) = tag(";")(string)?;
 
