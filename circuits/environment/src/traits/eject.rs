@@ -72,7 +72,7 @@ fn eject_mode(start_mode: Mode, modes: &[Mode]) -> Mode {
         if !current_mode.is_private() && current_mode != *next_mode {
             // If the current mode is not Mode::Private, and they do not match:
             //  - If the next mode is Mode::Private, then set the current mode to Mode::Private.
-            //  - If the next mode is Mode::Public, then set the current mode to Mode::Private.
+            //  - If the next mode is Mode::Public, then set the current mode to Mode::Public.
             match (current_mode, next_mode) {
                 (Mode::Constant, Mode::Public) | (Mode::Constant, Mode::Private) | (Mode::Public, Mode::Private) => {
                     current_mode = *next_mode

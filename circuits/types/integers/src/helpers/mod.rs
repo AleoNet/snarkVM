@@ -16,10 +16,14 @@
 
 use super::*;
 
-pub mod from_bits;
+pub mod from_bits_be;
+pub mod from_bits_le;
+pub mod integer_circuit_type;
+pub use integer_circuit_type::*;
 pub mod msb;
 pub mod one;
-pub mod to_bits;
+pub mod to_bits_be;
+pub mod to_bits_le;
 pub mod to_field;
 pub mod to_fields;
 pub mod zero;

@@ -30,14 +30,14 @@ impl<E: Environment, I: IntegerType> Zero for Integer<E, I> {
 
 impl<E: Environment, I: IntegerType> Metadata<dyn Zero<Boolean = Boolean<E>>> for Integer<E, I> {
     type Case = ();
-    type OutputType = CircuitType<Integer<E, I>>;
+    type OutputType = IntegerCircuitType<E, I>;
 
     fn count(_case: &Self::Case) -> Count {
         Count::is(I::BITS, 0, 0, 0)
     }
 
     fn output_type(_case: Self::Case) -> Self::OutputType {
-        CircuitType::from(Self::zero())
+        IntegerCircuitType::from(Self::zero())
     }
 }
 

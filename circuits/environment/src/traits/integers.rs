@@ -71,7 +71,8 @@ pub trait IntegerCore<I: IntegerType>:
     + DivWrapped<Output = Self>
     + Eject<Primitive = I>
     + Equal
-    + FromBits
+    + FromBitsBE
+    + FromBitsLE
     + GreaterThan
     + GreaterThanOrEqual
     + Inject<Primitive = I>
@@ -91,7 +92,8 @@ pub trait IntegerCore<I: IntegerType>:
     + SubChecked<Output = Self>
     + SubWrapped<Output = Self>
     + Ternary
-    + ToBits
+    + ToBitsBE
+    + ToBitsLE
     + TypeName
     + Zero
 {

@@ -28,6 +28,19 @@ impl<E: Environment, I: IntegerType> MSB for Integer<E, I> {
     }
 }
 
+impl<E: Environment, I: IntegerType> Metadata<dyn MSB<Boolean = Boolean<E>>> for Integer<E, I> {
+    type Case = IntegerCircuitType<E, I>;
+    type OutputType = CircuitType<Boolean<E>>;
+
+    fn count(_case: &Self::Case) -> Count {
+        Count::zero()
+    }
+
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        case.bits_le().pop().unwrap()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -43,10 +56,14 @@ mod tests {
 
         Circuit::scope("MSB", || {
             assert_scope!(0, 0, 0, 0);
+            let result = value.msb();
             match I::is_signed() {
-                true => assert_eq!(expected_signed, value.msb().eject_value()),
-                false => assert_eq!(expected_unsigned, value.msb().eject_value()),
+                true => assert_eq!(expected_signed, result.eject_value()),
+                false => assert_eq!(expected_unsigned, result.eject_value()),
             }
+            let case = IntegerCircuitType::from(value);
+            assert_count!(Integer<Circuit, I>, MSB<Boolean = Boolean<Circuit>>, &case);
+            assert_output_type!(Integer<Circuit, I>, MSB<Boolean = Boolean<Circuit>>, case, result);
             assert_scope!(0, 0, 0, 0);
         });
     }

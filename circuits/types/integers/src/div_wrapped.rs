@@ -73,36 +73,72 @@ impl<E: Environment, I: IntegerType> Metadata<dyn DivWrapped<Integer<E, I>, Outp
 
     fn count(case: &Self::Case) -> Count {
         match I::is_signed() {
-            true => match case {
-                (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(I::BITS, 0, 0, 0),
-                // (_, _) => {
-                //     // // Divide the absolute value of `self` and `other` in the base field.
-                //     // let unsigned_dividend = self.abs_wrapped().cast_as_dual();
-                //     // let unsigned_divisor = other.abs_wrapped().cast_as_dual();
-                //     // let unsigned_quotient = unsigned_dividend.div_wrapped(&unsigned_divisor);
-                //     //
-                //     // // TODO (@pranav) Do we need to check that the quotient cannot exceed abs(I::MIN)?
-                //     // //  This is implicitly true since the dividend <= abs(I::MIN) and 0 <= quotient <= dividend.
-                //     // let signed_quotient = Self { bits_le: unsigned_quotient.bits_le, phantom: Default::default() };
-                //     // let operands_same_sign = &self.msb().is_equal(other.msb());
-                //     // let signed_quotient = Self::ternary(
-                //     //     operands_same_sign,
-                //     //     &signed_quotient,
-                //     //     &Self::zero().sub_wrapped(&signed_quotient),
-                //     // );
-                //     //
-                //     // // Signed integer division wraps when the dividend is I::MIN and the divisor is -1.
-                //     // let min = Self::constant(I::MIN);
-                //     // let neg_one = Self::constant(I::zero() - I::one());
-                //     // let overflows = self.is_equal(&min) & other.is_equal(&neg_one);
-                //     // Self::ternary(&overflows, &min, &signed_quotient)
-                //     todo!()
-                // }
-                (CircuitType::Constant(_), _) | (_, CircuitType::Constant(_)) => {
-                    Count::is(6 * I::BITS, 0, (7 * I::BITS) + 10, (8 * I::BITS) + 16)
-                }
-                (_, _) => Count::is(5 * I::BITS, 0, (9 * I::BITS) + 10, (9 * I::BITS) + 16),
-            },
+            true => {
+                let mut total_count = Count::zero();
+                let (dividend, divisor) = case.clone();
+
+                // Divide the absolute value of `self` and `other` in the base field.
+                // Determine the cost and output type of `self.abs_wrapped().cast_as_dual()`.
+                let unsigned_dividend_count = count!(Self, AbsWrapped<Output = Self>, &dividend);
+                let unsigned_dividend_output_type: CircuitType<Integer<E, I::Dual>> = match dividend {
+                    CircuitType::Constant(constant) => {
+                        CircuitType::from(constant.circuit().abs_wrapped().cast_as_dual())
+                    }
+                    CircuitType::Public => CircuitType::Public,
+                    CircuitType::Private => CircuitType::Private,
+                };
+
+                // Determine the cost and output type of `other.abs_wrapped().cast_as_dual()`.
+                let unsigned_divisor_count = count!(Self, AbsWrapped<Output = Self>, &divisor);
+                let unsigned_divisor_output_type: CircuitType<Integer<E, I::Dual>> = match divisor {
+                    CircuitType::Constant(constant) => {
+                        CircuitType::from(constant.circuit().abs_wrapped().cast_as_dual())
+                    }
+                    CircuitType::Public => CircuitType::Public,
+                    CircuitType::Private => CircuitType::Private,
+                };
+
+                // Determine the cost and output type of `unsigned_dividend.div_wrapped(unsigned_divisor)`.
+                let case = (unsigned_dividend_output_type, unsigned_divisor_output_type);
+                let unsigned_quotient_count =
+                    count!(Integer<E, I::Dual>, DivWrapped<Output = Integer<E, I::Dual>>, &case);
+                let unsigned_quotient_output_type =
+                    output_type!(Integer<E, I::Dual>, DivWrapped<Output = Integer<E, I::Dual>>, case);
+
+                // Determine the output type of `signed_quotient`. Note that this produces no new constraints as we directly re-use bits in
+                // `Self { bits_le: unsigned_quotient.bits_le, phantom: Default::default() }`.
+                let signed_quotient_output_type: CircuitType<Self> = match unsigned_quotient_output_type {
+                    CircuitType::Constant(constant) => {
+                        CircuitType::from(Self { bits_le: constant.circuit().bits_le, phantom: Default::default() })
+                    }
+                    CircuitType::Public => CircuitType::Public,
+                    CircuitType::Private => CircuitType::Private,
+                };
+
+                // Determine the output type of `self.msb()`. Note that this produces no new constraints as we directly reference
+                // the bits in
+                let self_msb_output_type = match dividend {
+                    CircuitType::Constant(constant) => CircuitType::from(constant.circuit().msb()),
+                    CircuitType::Public => CircuitType::Public,
+                    CircuitType::Private => CircuitType::Private,
+                };
+
+                //// TODO (@pranav) Do we need to check that the quotient cannot exceed abs(I::MIN)?
+                ////  This is implicitly true since the dividend <= abs(I::MIN) and 0 <= quotient <= dividend.
+                //let signed_quotient = Self { bits_le: unsigned_quotient.bits_le, phantom: Default::default() };
+                //let operands_same_sign = &self.msb().is_equal(other.msb());
+                //let signed_quotient =
+                //    Self::ternary(operands_same_sign, &signed_quotient, &Self::zero().sub_wrapped(&signed_quotient));
+
+                //// Signed integer division wraps when the dividend is I::MIN and the divisor is -1.
+                //let min = Self::constant(I::MIN);
+                //let neg_one = Self::constant(I::zero() - I::one());
+                //let overflows = self.is_equal(&min) & other.is_equal(&neg_one);
+                //Self::ternary(&overflows, &min, &signed_quotient)
+
+                Count::is(0, 0, 0, 0)
+            }
+
             false => match case {
                 (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(I::BITS, 0, 0, 0),
                 (_, CircuitType::Constant(_)) => Count::is(0, 0, 2 * I::BITS, (2 * I::BITS) + 1),

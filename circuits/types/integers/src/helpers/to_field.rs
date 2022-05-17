@@ -31,6 +31,22 @@ impl<E: Environment, I: IntegerType> ToField for Integer<E, I> {
     }
 }
 
+impl<E: Environment, I: IntegerType> Metadata<dyn ToField<Field = Field<E>>> for Integer<E, I> {
+    type Case = IntegerCircuitType<E, I>;
+    type OutputType = CircuitType<Field<E>>;
+
+    fn count(_case: &Self::Case) -> Count {
+        Count::zero()
+    }
+
+    fn output_type(case: Self::Case) -> Self::OutputType {
+        match case.mode() {
+            Mode::Constant => CircuitType::from(case.circuit().to_field()),
+            _ => CircuitType::Private,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -47,11 +63,12 @@ mod tests {
 
             Circuit::scope(format!("{mode} {expected} {i}"), || {
                 // Perform the operation.
-                let candidate = candidate.to_field();
-                assert_scope!(0, 0, 0, 0);
+                let result = candidate.to_field();
+                assert_count!(Integer<Circuit, I>, ToField<Field = Field<Circuit>>, &candidate);
+                assert_output_type!(Integer<Circuit, I>, ToField<Field = Field<Circuit>>, candidate);
 
                 // Extract the bits from the base field representation.
-                let candidate_bits_le = candidate.eject_value().to_bits_le();
+                let candidate_bits_le = result.eject_value().to_bits_le();
                 assert_eq!(<Circuit as Environment>::BaseField::size_in_bits(), candidate_bits_le.len());
 
                 // Ensure all integer bits match with the expected result.
