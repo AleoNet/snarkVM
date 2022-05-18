@@ -26,9 +26,11 @@ impl<G: ProjectiveCurve, const NUM_BITS: usize> CommitUncompressed for Pedersen<
         let mut output = self.hash_uncompressed(input)?.to_projective();
 
         // Compute h^r.
-        randomizer.to_bits_le().iter().zip_eq(&self.random_base).filter(|(bit, _)| **bit).for_each(|(_, base)| {
-            output += base;
-        });
+        randomizer.to_bits_le().iter().zip_eq(&self.random_base_window).filter(|(bit, _)| **bit).for_each(
+            |(_, base)| {
+                output += base;
+            },
+        );
 
         Ok(output.to_affine())
     }

@@ -33,9 +33,9 @@ use std::borrow::Cow;
 /// The Pedersen hash function does *not* behave like a random oracle, see Poseidon for one.
 pub struct Pedersen<G: ProjectiveCurve, const NUM_BITS: usize> {
     /// The base window for the Pedersen hash.
-    bases: [G; NUM_BITS],
+    base_window: [G; NUM_BITS],
     /// The random base window for the Pedersen commitment.
-    random_base: Vec<G>,
+    random_base_window: Vec<G>,
 }
 
 impl<G: ProjectiveCurve, const NUM_BITS: usize> Pedersen<G, NUM_BITS> {
@@ -43,24 +43,24 @@ impl<G: ProjectiveCurve, const NUM_BITS: usize> Pedersen<G, NUM_BITS> {
     pub fn setup(message: &str) -> Self {
         // Construct an indexed message to attempt to sample a base.
         let (generator, _, _) = hash_to_curve::<G::Affine>(&format!("Pedersen.Base.{message}"));
-        let mut base = generator.to_projective();
-        let mut bases = [G::zero(); NUM_BITS];
-        for i in 0..NUM_BITS {
-            bases[i] = base;
-            base.double_in_place();
+        let mut base_power = generator.to_projective();
+        let mut base_window = [G::zero(); NUM_BITS];
+        for base in base_window.iter_mut().take(NUM_BITS) {
+            *base = base_power;
+            base_power.double_in_place();
         }
 
         // Next, compute the random base.
         let (generator, _, _) = hash_to_curve::<G::Affine>(&format!("Pedersen.RandomBase.{message}"));
-        let mut base = generator.to_projective();
+        let mut base_power = generator.to_projective();
         let num_scalar_bits = G::ScalarField::size_in_bits();
-        let mut random_base = Vec::with_capacity(num_scalar_bits);
+        let mut random_base_window = Vec::with_capacity(num_scalar_bits);
         for _ in 0..num_scalar_bits {
-            random_base.push(base);
-            base.double_in_place();
+            random_base_window.push(base_power);
+            base_power.double_in_place();
         }
-        assert_eq!(random_base.len(), num_scalar_bits);
+        assert_eq!(random_base_window.len(), num_scalar_bits);
 
-        Self { bases, random_base }
+        Self { base_window, random_base_window }
     }
 }
