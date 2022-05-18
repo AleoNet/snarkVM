@@ -59,6 +59,4 @@ pub trait EncryptionScheme: Sized + Debug + Clone + PartialEq + Eq {
     fn decrypt(&self, symmetric_key: &Self::SymmetricKey, ciphertext: &[Self::MessageType]) -> Vec<Self::MessageType>;
 
     fn parameters(&self) -> &<Self as EncryptionScheme>::Parameters;
-
-    fn private_key_size_in_bits() -> usize;
 }

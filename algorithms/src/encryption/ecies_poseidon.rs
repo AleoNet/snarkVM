@@ -254,8 +254,4 @@ where
     fn parameters(&self) -> &<Self as EncryptionScheme>::Parameters {
         &self.generator
     }
-
-    fn private_key_size_in_bits() -> usize {
-        Self::PrivateKey::size_in_bits()
-    }
 }
