@@ -20,6 +20,9 @@ pub(super) use bhp256::*;
 pub(super) mod bhp512;
 pub(super) use bhp512::*;
 
+pub(super) mod bhp768;
+pub(super) use bhp768::*;
+
 pub(super) mod bhp1024;
 pub(super) use bhp1024::*;
 
@@ -87,6 +90,7 @@ impl<P: Program, Op: CommitOpcode> Operation<P> for Commit<P, Op> {
             let commitment = match Self::opcode() {
                 BHP256::OPCODE => P::Aleo::commit_bhp256(&input.to_bits_le(), &randomizer),
                 BHP512::OPCODE => P::Aleo::commit_bhp512(&input.to_bits_le(), &randomizer),
+                BHP768::OPCODE => P::Aleo::commit_bhp768(&input.to_bits_le(), &randomizer),
                 BHP1024::OPCODE => P::Aleo::commit_bhp1024(&input.to_bits_le(), &randomizer),
                 Ped64::OPCODE => P::Aleo::commit_ped64(&input.to_bits_le(), &randomizer),
                 Ped128::OPCODE => P::Aleo::commit_ped128(&input.to_bits_le(), &randomizer),
@@ -137,6 +141,9 @@ impl<P: Program, Op: CommitOpcode> Into<Instruction<P>> for Commit<P, Op> {
             }
             BHP512::OPCODE => {
                 Instruction::CommitBHP512(CommitBHP512 { operation: self.operation, _phantom: PhantomData })
+            }
+            BHP768::OPCODE => {
+                Instruction::CommitBHP768(CommitBHP768 { operation: self.operation, _phantom: PhantomData })
             }
             BHP1024::OPCODE => {
                 Instruction::CommitBHP1024(CommitBHP1024 { operation: self.operation, _phantom: PhantomData })

@@ -20,6 +20,9 @@ pub(super) use bhp256::*;
 pub(super) mod bhp512;
 pub(super) use bhp512::*;
 
+pub(super) mod bhp768;
+pub(super) use bhp768::*;
+
 pub(super) mod bhp1024;
 pub(super) use bhp1024::*;
 
@@ -121,6 +124,7 @@ impl<P: Program, Op: HashOpcode> Operation<P> for Hash<P, Op> {
         let digest = match Self::opcode() {
             BHP256::OPCODE => P::Aleo::hash_bhp256(&input.to_bits_le()),
             BHP512::OPCODE => P::Aleo::hash_bhp512(&input.to_bits_le()),
+            BHP768::OPCODE => P::Aleo::hash_bhp768(&input.to_bits_le()),
             BHP1024::OPCODE => P::Aleo::hash_bhp1024(&input.to_bits_le()),
             Ped64::OPCODE => P::Aleo::hash_ped64(&input.to_bits_le()),
             Ped128::OPCODE => P::Aleo::hash_ped128(&input.to_bits_le()),
@@ -168,6 +172,7 @@ impl<P: Program, Op: HashOpcode> Into<Instruction<P>> for Hash<P, Op> {
         match Self::opcode() {
             BHP256::OPCODE => Instruction::HashBHP256(HashBHP256 { operation: self.operation, _phantom: PhantomData }),
             BHP512::OPCODE => Instruction::HashBHP512(HashBHP512 { operation: self.operation, _phantom: PhantomData }),
+            BHP768::OPCODE => Instruction::HashBHP768(HashBHP768 { operation: self.operation, _phantom: PhantomData }),
             BHP1024::OPCODE => {
                 Instruction::HashBHP1024(HashBHP1024 { operation: self.operation, _phantom: PhantomData })
             }

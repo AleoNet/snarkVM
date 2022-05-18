@@ -38,6 +38,8 @@ type BaseLookups<E> = (Vec<Field<E>>, Vec<Field<E>>);
 pub type BHP256<E> = BHP<E, 2, 43>;
 /// BHP512 is a collision-resistant hash function that takes a 512-bit input.
 pub type BHP512<E> = BHP<E, 3, 57>;
+/// BHP768 is a collision-resistant hash function that takes a 768-bit input.
+pub type BHP768<E> = BHP<E, 6, 43>;
 /// BHP1024 is a collision-resistant hash function that takes a 1024-bit input.
 pub type BHP1024<E> = BHP<E, 6, 57>;
 

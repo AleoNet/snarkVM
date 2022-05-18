@@ -201,6 +201,8 @@ pub enum Instruction<P: Program> {
     CommitBHP256(CommitBHP256<P>),
     /// Performs a BHP commitment taking a 512-bit value as input.
     CommitBHP512(CommitBHP512<P>),
+    /// Performs a BHP commitment taking a 768-bit value as input.
+    CommitBHP768(CommitBHP768<P>),
     /// Performs a BHP commitment taking a 1024-bit value as input.
     CommitBHP1024(CommitBHP1024<P>),
     /// Performs a Pedersen commitment taking a 64-bit value as input.
@@ -223,6 +225,8 @@ pub enum Instruction<P: Program> {
     HashBHP256(HashBHP256<P>),
     /// Performs a BHP hash taking a 512-bit value as input.
     HashBHP512(HashBHP512<P>),
+    /// Performs a BHP hash taking a 768-bit value as input.
+    HashBHP768(HashBHP768<P>),
     /// Performs a BHP hash taking a 1024-bit value as input.
     HashBHP1024(HashBHP1024<P>),
     /// Performs a Pedersen hash taking a 64-bit value as input.
@@ -326,6 +330,7 @@ macro_rules! instruction {
             And,
             CommitBHP256,
             CommitBHP512,
+            CommitBHP768,
             CommitBHP1024,
             CommitPed64,
             CommitPed128,
@@ -337,6 +342,7 @@ macro_rules! instruction {
             GreaterThanOrEqual,
             HashBHP256,
             HashBHP512,
+            HashBHP768,
             HashBHP1024,
             HashPed64,
             HashPed128,

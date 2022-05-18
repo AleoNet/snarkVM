@@ -29,6 +29,7 @@ use crate::{
         BHP1024,
         BHP256,
         BHP512,
+        BHP768,
         PRF,
     },
 };
@@ -63,6 +64,8 @@ thread_local! {
     static BHP_256: BHP256<Devnet> = BHP256::<Devnet>::setup("AleoBHP256");
     /// The BHP gadget, which can take an input of up to 512 bits.
     static BHP_512: BHP512<Devnet> = BHP512::<Devnet>::setup("AleoBHP512");
+    /// The BHP gadget, which can take an input of up to 768 bits.
+    static BHP_768: BHP768<Devnet> = BHP768::<Devnet>::setup("AleoBHP768");
     /// The BHP gadget, which can take an input of up to 1024 bits.
     static BHP_1024: BHP1024<Devnet> = BHP1024::<Devnet>::setup("AleoBHP1024");
 
@@ -121,6 +124,11 @@ impl Aleo for Devnet {
         BHP_512.with(|bhp| bhp.commit(input, randomizer))
     }
 
+    /// Returns a BHP commitment for the given (up to) 768-bit input and randomness.
+    fn commit_bhp768(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self> {
+        BHP_768.with(|bhp| bhp.commit(input, randomizer))
+    }
+
     /// Returns a BHP commitment for the given (up to) 1024-bit input and randomness.
     fn commit_bhp1024(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self> {
         BHP_1024.with(|bhp| bhp.commit(input, randomizer))
@@ -170,6 +178,11 @@ impl Aleo for Devnet {
     /// Returns the BHP hash for a given (up to) 512-bit input.
     fn hash_bhp512(input: &[Boolean<Self>]) -> Field<Self> {
         BHP_512.with(|bhp| bhp.hash(input))
+    }
+
+    /// Returns the BHP hash for a given (up to) 768-bit input.
+    fn hash_bhp768(input: &[Boolean<Self>]) -> Field<Self> {
+        BHP_768.with(|bhp| bhp.hash(input))
     }
 
     /// Returns the BHP hash for a given (up to) 1024-bit input.

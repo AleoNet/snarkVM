@@ -32,6 +32,9 @@ pub trait Aleo: Environment {
     /// Returns a BHP commitment for the given (up to) 512-bit input and randomness.
     fn commit_bhp512(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self>;
 
+    /// Returns a BHP commitment for the given (up to) 768-bit input and randomness.
+    fn commit_bhp768(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self>;
+
     /// Returns a BHP commitment for the given (up to) 1024-bit input and randomness.
     fn commit_bhp1024(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self>;
 
@@ -58,6 +61,9 @@ pub trait Aleo: Environment {
 
     /// Returns the BHP hash for a given (up to) 512-bit input.
     fn hash_bhp512(input: &[Boolean<Self>]) -> Field<Self>;
+
+    /// Returns the BHP hash for a given (up to) 768-bit input.
+    fn hash_bhp768(input: &[Boolean<Self>]) -> Field<Self>;
 
     /// Returns the BHP hash for a given (up to) 1024-bit input.
     fn hash_bhp1024(input: &[Boolean<Self>]) -> Field<Self>;

@@ -226,23 +226,4 @@ mod tests {
     fn test_hash_uncompressed_private() {
         check_hash_uncompressed::<32, 48>(Mode::Private, 129, 0, 7898, 7898);
     }
-
-    // #[test]
-    // fn test_bhp_sizes() {
-    //     // Determine the number of inputs.
-    //     let num_input_bits = 512;
-    //
-    //     // Initialize the BHP hash.
-    //     let bhp = BHP::<Circuit, 3, 57>::setup(MESSAGE);
-    //     // Sample a random input.
-    //     let input = (0..num_input_bits).map(|_| bool::rand(&mut test_rng())).collect::<Vec<bool>>();
-    //     // Prepare the circuit input.
-    //     let input: Vec<Boolean<_>> = Inject::new(Mode::Private, input);
-    //
-    //     Circuit::scope(format!("BHP"), || {
-    //         // Perform the hash operation.
-    //         let candidate = bhp.hash_uncompressed(&input);
-    //         assert_scope!(0, 0, 0, 0);
-    //     });
-    // }
 }
