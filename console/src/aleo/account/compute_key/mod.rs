@@ -52,11 +52,11 @@ impl<N: Network> TryFrom<&PrivateKey<N>> for ComputeKey<N> {
     /// Derives the account compute key from an account private key.
     fn try_from(private_key: &PrivateKey<N>) -> Result<Self, Self::Error> {
         // Compute pk_sig := G^sk_sig.
-        let pk_sig = N::g_scalar_multiply(&private_key.sk_sig());
+        let pk_sig = N::g_scalar_multiply(private_key.sk_sig());
         // Compute pr_sig := G^r_sig.
-        let pr_sig = N::g_scalar_multiply(&private_key.r_sig());
+        let pr_sig = N::g_scalar_multiply(private_key.r_sig());
         // Compute pk_vrf := G^sk_vrf.
-        let pk_vrf = N::g_scalar_multiply(&private_key.sk_vrf());
+        let pk_vrf = N::g_scalar_multiply(private_key.sk_vrf());
 
         // Convert (pk_sig, pr_sig, pk_vrf) into affine coordinates.
         let (pk_sig, pr_sig, pk_vrf) = {
@@ -112,7 +112,7 @@ impl<N: Network> FromBytes for ComputeKey<N> {
         let pk_sig = N::affine_from_x_coordinate(N::Field::read_le(&mut reader)?).map_err(|e| error(format!("{e}")))?;
         let pr_sig = N::affine_from_x_coordinate(N::Field::read_le(&mut reader)?).map_err(|e| error(format!("{e}")))?;
         let pk_vrf = N::affine_from_x_coordinate(N::Field::read_le(&mut reader)?).map_err(|e| error(format!("{e}")))?;
-        Ok(Self::new(pk_sig, pr_sig, pk_vrf).map_err(|e| error(format!("{e}")))?)
+        Self::new(pk_sig, pr_sig, pk_vrf).map_err(|e| error(format!("{e}")))
     }
 }
 
