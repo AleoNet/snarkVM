@@ -56,8 +56,8 @@ impl<E: Environment, const RATE: usize> OutputMode<dyn HashToScalar<Input = Fiel
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_algorithms::crypto_hash::Poseidon as NativePoseidon;
     use snarkvm_circuits_types::environment::Circuit;
+    use snarkvm_console::algorithms::{HashToScalar as H, Poseidon as NativePoseidon};
     use snarkvm_utilities::{test_rng, FromBits, ToBits, UniformRand};
 
     const ITERATIONS: usize = 10;
@@ -72,8 +72,8 @@ mod tests {
         num_constraints: u64,
     ) {
         let rng = &mut test_rng();
-        let native_poseidon = NativePoseidon::<_, RATE>::setup();
-        let poseidon = Poseidon::<_, RATE>::new();
+        let native_poseidon = NativePoseidon::<<Circuit as Environment>::BaseField, RATE>::setup();
+        let poseidon = Poseidon::<Circuit, RATE>::new();
 
         for i in 0..ITERATIONS {
             // Prepare the preimage.
@@ -84,7 +84,9 @@ mod tests {
             // Compute the native hash to scalar.
             let expected = {
                 // Use Poseidon as a random oracle.
-                let output = native_poseidon.evaluate(&native_input);
+                let output = native_poseidon
+                    .hash_to_scalar::<<Circuit as Environment>::ScalarField>(&native_input)
+                    .expect("Failed to hash native input");
 
                 // Truncate the output to CAPACITY bits (1 bit less than MODULUS_BITS) in the scalar field.
                 let mut bits = output.to_bits_le();

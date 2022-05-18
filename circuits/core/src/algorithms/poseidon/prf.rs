@@ -57,8 +57,8 @@ impl<E: Environment, const RATE: usize> OutputMode<dyn PRF<Seed = Field<E>, Inpu
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_algorithms::{prf::PoseidonPRF as NativePoseidonPRF, PRF as NativePRF};
     use snarkvm_circuits_types::environment::Circuit;
+    use snarkvm_console::algorithms::{Poseidon as NativePoseidon, PRF as P};
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 10;
@@ -73,7 +73,8 @@ mod tests {
         num_constraints: u64,
     ) {
         let rng = &mut test_rng();
-        let poseidon = Poseidon::<_, RATE>::new();
+        let native_poseidon = NativePoseidon::<<Circuit as Environment>::BaseField, RATE>::setup();
+        let poseidon = Poseidon::<Circuit, RATE>::new();
 
         for i in 0..ITERATIONS {
             // Prepare the seed.
@@ -86,7 +87,8 @@ mod tests {
             let input = native_input.iter().map(|v| Field::<Circuit>::new(mode, *v)).collect::<Vec<_>>();
 
             // Compute the native hash.
-            let expected = NativePoseidonPRF::<_, RATE>::prf(&native_seed, &native_input);
+            let expected = native_poseidon.prf(&native_seed, &native_input).expect("Failed to PRF native input");
+
             // Compute the circuit hash.
             Circuit::scope(format!("Poseidon PRF {mode} {i}"), || {
                 let candidate = poseidon.prf(&seed, &input);

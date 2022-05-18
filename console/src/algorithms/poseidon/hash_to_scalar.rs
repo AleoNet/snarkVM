@@ -23,7 +23,7 @@ impl<F: PrimeField, const RATE: usize> HashToScalar for Poseidon<F, RATE> {
     /// Returns a scalar from hashing the input.
     /// This method uses truncation (up to data bits) to project onto the scalar field.
     #[inline]
-    fn hash_to_scalar<Scalar: PrimeField + FromBits>(&self, input: &[Self::Input]) -> Result<Scalar> {
+    fn hash_to_scalar<Scalar: PrimeField>(&self, input: &[Self::Input]) -> Result<Scalar> {
         // Note: We are reconstituting the base field into a scalar field.
         // This is safe as the scalar field modulus is less than the base field modulus,
         // and thus will always fit within a single base field element.
@@ -34,6 +34,13 @@ impl<F: PrimeField, const RATE: usize> HashToScalar for Poseidon<F, RATE> {
 
         // Truncate the output to the size in data bits (1 bit less than the MODULUS) of the scalar.
         // Slicing here is safe as the base field is larger than the scalar field.
-        Ok(Scalar::from_bits_le(&output.to_bits_le()[..Scalar::size_in_data_bits()]))
+        let bits = &output.to_bits_le()[..Scalar::size_in_data_bits()];
+
+        // Output the scalar field.
+        match Scalar::from_repr(Scalar::BigInteger::from_bits_le(bits)) {
+            // We know this case will always work, because we truncate the output to CAPACITY bits in the scalar field.
+            Some(scalar) => Ok(scalar),
+            _ => panic!("Failed to hash input into scalar field"),
+        }
     }
 }

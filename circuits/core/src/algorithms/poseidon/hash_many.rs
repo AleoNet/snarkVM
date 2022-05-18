@@ -55,8 +55,8 @@ impl<E: Environment, const RATE: usize> OutputMode<dyn HashMany<Input = Field<E>
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_algorithms::crypto_hash::Poseidon as NativePoseidon;
     use snarkvm_circuits_types::environment::Circuit;
+    use snarkvm_console::algorithms::{HashMany as H, Poseidon as NativePoseidon};
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 10;
@@ -72,8 +72,8 @@ mod tests {
         num_constraints: u64,
     ) {
         let rng = &mut test_rng();
-        let native_poseidon = NativePoseidon::<_, RATE>::setup();
-        let poseidon = Poseidon::<_, RATE>::new();
+        let native_poseidon = NativePoseidon::<<Circuit as Environment>::BaseField, RATE>::setup();
+        let poseidon = Poseidon::<Circuit, RATE>::new();
 
         for i in 0..ITERATIONS {
             // Prepare the preimage.
@@ -82,7 +82,7 @@ mod tests {
             let input = native_input.iter().map(|v| Field::<Circuit>::new(mode, *v)).collect::<Vec<_>>();
 
             // Compute the native hash.
-            let expected = native_poseidon.evaluate_many(&native_input, num_outputs);
+            let expected = native_poseidon.hash_many(&native_input, num_outputs);
             // Compute the circuit hash.
             Circuit::scope(format!("Poseidon {mode} {i} {num_outputs}"), || {
                 let candidate = poseidon.hash_many(&input, num_outputs);

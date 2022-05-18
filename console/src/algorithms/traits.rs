@@ -15,7 +15,6 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use snarkvm_fields::PrimeField;
-use snarkvm_utilities::FromBits;
 
 use anyhow::Result;
 
@@ -62,7 +61,7 @@ pub trait HashToScalar {
     type Input;
 
     /// Returns the hash of the given input.
-    fn hash_to_scalar<Scalar: PrimeField + FromBits>(&self, input: &[Self::Input]) -> Result<Scalar>;
+    fn hash_to_scalar<Scalar: PrimeField>(&self, input: &[Self::Input]) -> Result<Scalar>;
 }
 
 /// A trait for a hash function of an uncompressed variant.
