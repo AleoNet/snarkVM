@@ -36,14 +36,14 @@ impl<E: Environment, I: IntegerType> AbsWrapped for &Integer<E, I> {
 }
 
 impl<E: Environment, I: IntegerType> Metadata<dyn AbsWrapped<Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = CircuitType<Self>;
-    type OutputType = CircuitType<Self>;
+    type Case = IntegerCircuitType<E, I>;
+    type OutputType = IntegerCircuitType<E, I>;
 
     fn count(case: &Self::Case) -> Count {
         match I::is_signed() {
-            true => match case {
-                CircuitType::Constant(_) => Count::is(2 * I::BITS, 0, 0, 0),
-                _ => Count::is(I::BITS, 0, (2 * I::BITS) + 1, (2 * I::BITS) + 2),
+            true => match case.is_constant() {
+                true => Count::is(2 * I::BITS, 0, 0, 0),
+                false => Count::is(I::BITS, 0, (2 * I::BITS) + 1, (2 * I::BITS) + 2),
             },
             false => Count::is(0, 0, 0, 0),
         }
@@ -51,11 +51,20 @@ impl<E: Environment, I: IntegerType> Metadata<dyn AbsWrapped<Output = Integer<E,
 
     fn output_type(case: Self::Case) -> Self::OutputType {
         match I::is_signed() {
-            true => match case {
-                CircuitType::Constant(constant) => CircuitType::from(constant.circuit().abs_wrapped()),
-                _ => CircuitType::Private,
-            },
             false => case,
+            true => {
+                let self_msb_type = output_type!(Self, MSB<Boolean = Boolean<E>>, case.clone());
+
+                let zero_type = output_type!(Self, Zero<Boolean = Boolean<E>>, ());
+                let zero_sub_wrapped_self_type =
+                    output_type!(Self, SubWrapped<Self, Output = Self>, (zero_type, case.clone()));
+
+                output_type!(
+                    Self,
+                    Ternary<Boolean = Boolean<E>, Output = Self>,
+                    (self_msb_type, zero_sub_wrapped_self_type, case)
+                )
+            }
         }
     }
 }
@@ -77,7 +86,7 @@ mod tests {
             let candidate = a.abs_wrapped();
             assert_eq!(expected, (&candidate).eject_value());
 
-            let case = CircuitType::from(&candidate);
+            let case = IntegerCircuitType::from(&candidate);
             assert_count!(AbsWrapped(Integer<I>) => Integer<I>, &case);
             assert_output_type!(AbsWrapped(Integer<I>) => Integer<I>, case, candidate);
         });

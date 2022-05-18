@@ -52,7 +52,6 @@ mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
-    use std::sync::atomic::Ordering::AcqRel;
 
     const ITERATIONS: u64 = 128;
 
@@ -66,16 +65,16 @@ mod tests {
                 let result = candidate.to_bits_le();
                 assert_eq!(I::BITS, result.len() as u64);
 
+                let case = IntegerCircuitType::from(candidate);
+                assert_count!(Integer<Circuit, I>, ToBitsLE<Boolean = Boolean<Circuit>>, &case);
+                assert_output_type!(Integer<Circuit, I>, ToBitsLE<Boolean = Boolean<Circuit>>, case, result);
+
                 // Ensure every bit matches.
                 let mut expected = expected.to_le();
                 for candidate_bit in result {
                     assert_eq!(expected & I::one() == I::one(), candidate_bit.eject_value());
                     expected = expected.wrapping_shr(1);
                 }
-
-                let case = IntegerCircuitType::from(candidate);
-                assert_count!(Integer<Circuit, I>, ToBitsLE<Boolean = Boolean<Circuit>>, &case);
-                assert_output_type!(Integer<Circuit, I>, ToBitsLE<Boolean = Boolean<Circuit>>, case, result);
             });
         }
     }

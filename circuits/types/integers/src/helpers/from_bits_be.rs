@@ -42,7 +42,7 @@ impl<E: Environment, I: IntegerType> Metadata<dyn FromBitsBE<Boolean = Boolean<E
         let mut bits_le = case;
         bits_le.reverse();
 
-        IntegerCircuitType::from(bits_le)
+        output_type!(Self, FromBitsLE<Boolean = Boolean<E>>, bits_le)
     }
 }
 
@@ -91,19 +91,19 @@ mod tests {
     #[test]
     fn test_u8_from_bits_be_constant() {
         type I = u8;
-        check_from_bits_be::<I>(Mode::Constant, 0, 0, 0, 0);
+        check_from_bits_be::<I>(Mode::Constant);
     }
 
     #[test]
     fn test_u8_from_bits_be_public() {
         type I = u8;
-        check_from_bits_be::<I>(Mode::Public, 0, 0, 0, 0);
+        check_from_bits_be::<I>(Mode::Public);
     }
 
     #[test]
     fn test_u8_from_bits_be_private() {
         type I = u8;
-        check_from_bits_be::<I>(Mode::Private, 0, 0, 0, 0);
+        check_from_bits_be::<I>(Mode::Private);
     }
 
     // Tests for i8.
@@ -111,19 +111,19 @@ mod tests {
     #[test]
     fn test_i8_from_bits_be_constant() {
         type I = i8;
-        check_from_bits_be::<I>(Mode::Constant, 0, 0, 0, 0);
+        check_from_bits_be::<I>(Mode::Constant);
     }
 
     #[test]
     fn test_i8_from_bits_be_public() {
         type I = i8;
-        check_from_bits_be::<I>(Mode::Public, 0, 0, 0, 0);
+        check_from_bits_be::<I>(Mode::Public);
     }
 
     #[test]
     fn test_i8_from_bits_be_private() {
         type I = i8;
-        check_from_bits_be::<I>(Mode::Private, 0, 0, 0, 0);
+        check_from_bits_be::<I>(Mode::Private);
     }
 
     // Tests for u16.
@@ -131,19 +131,19 @@ mod tests {
     #[test]
     fn test_u16_from_bits_be_constant() {
         type I = u16;
-        check_from_bits_be::<I>(Mode::Constant, 0, 0, 0, 0);
+        check_from_bits_be::<I>(Mode::Constant);
     }
 
     #[test]
     fn test_u16_from_bits_be_public() {
         type I = u16;
-        check_from_bits_be::<I>(Mode::Public, 0, 0, 0, 0);
+        check_from_bits_be::<I>(Mode::Public);
     }
 
     #[test]
     fn test_u16_from_bits_be_private() {
         type I = u16;
-        check_from_bits_be::<I>(Mode::Private, 0, 0, 0, 0);
+        check_from_bits_be::<I>(Mode::Private);
     }
 
     // Tests for i16.
@@ -151,19 +151,19 @@ mod tests {
     #[test]
     fn test_i16_from_bits_be_constant() {
         type I = i16;
-        check_from_bits_be::<I>(Mode::Constant, 0, 0, 0, 0);
+        check_from_bits_be::<I>(Mode::Constant);
     }
 
     #[test]
     fn test_i16_from_bits_be_public() {
         type I = i16;
-        check_from_bits_be::<I>(Mode::Public, 0, 0, 0, 0);
+        check_from_bits_be::<I>(Mode::Public);
     }
 
     #[test]
     fn test_i16_from_bits_be_private() {
         type I = i16;
-        check_from_bits_be::<I>(Mode::Private, 0, 0, 0, 0);
+        check_from_bits_be::<I>(Mode::Private);
     }
 
     // Tests for u32.
@@ -171,19 +171,19 @@ mod tests {
     #[test]
     fn test_u32_from_bits_be_constant() {
         type I = u32;
-        check_from_bits_be::<I>(Mode::Constant, 0, 0, 0, 0);
+        check_from_bits_be::<I>(Mode::Constant);
     }
 
     #[test]
     fn test_u32_from_bits_be_public() {
         type I = u32;
-        check_from_bits_be::<I>(Mode::Public, 0, 0, 0, 0);
+        check_from_bits_be::<I>(Mode::Public);
     }
 
     #[test]
     fn test_u32_from_bits_be_private() {
         type I = u32;
-        check_from_bits_be::<I>(Mode::Private, 0, 0, 0, 0);
+        check_from_bits_be::<I>(Mode::Private);
     }
 
     // Tests for i32.
@@ -191,19 +191,19 @@ mod tests {
     #[test]
     fn test_i32_from_bits_be_constant() {
         type I = i32;
-        check_from_bits_be::<I>(Mode::Constant, 0, 0, 0, 0);
+        check_from_bits_be::<I>(Mode::Constant);
     }
 
     #[test]
     fn test_i32_from_bits_be_public() {
         type I = i32;
-        check_from_bits_be::<I>(Mode::Public, 0, 0, 0, 0);
+        check_from_bits_be::<I>(Mode::Public);
     }
 
     #[test]
     fn test_i32_from_bits_be_private() {
         type I = i32;
-        check_from_bits_be::<I>(Mode::Private, 0, 0, 0, 0);
+        check_from_bits_be::<I>(Mode::Private);
     }
 
     // Tests for u64.
@@ -211,19 +211,19 @@ mod tests {
     #[test]
     fn test_u64_from_bits_be_constant() {
         type I = u64;
-        check_from_bits_be::<I>(Mode::Constant, 0, 0, 0, 0);
+        check_from_bits_be::<I>(Mode::Constant);
     }
 
     #[test]
     fn test_u64_from_bits_be_public() {
         type I = u64;
-        check_from_bits_be::<I>(Mode::Public, 0, 0, 0, 0);
+        check_from_bits_be::<I>(Mode::Public);
     }
 
     #[test]
     fn test_u64_from_bits_be_private() {
         type I = u64;
-        check_from_bits_be::<I>(Mode::Private, 0, 0, 0, 0);
+        check_from_bits_be::<I>(Mode::Private);
     }
 
     // Tests for i64.
@@ -231,19 +231,19 @@ mod tests {
     #[test]
     fn test_i64_from_bits_be_constant() {
         type I = i64;
-        check_from_bits_be::<I>(Mode::Constant, 0, 0, 0, 0);
+        check_from_bits_be::<I>(Mode::Constant);
     }
 
     #[test]
     fn test_i64_from_bits_be_public() {
         type I = i64;
-        check_from_bits_be::<I>(Mode::Public, 0, 0, 0, 0);
+        check_from_bits_be::<I>(Mode::Public);
     }
 
     #[test]
     fn test_i64_from_bits_be_private() {
         type I = i64;
-        check_from_bits_be::<I>(Mode::Private, 0, 0, 0, 0);
+        check_from_bits_be::<I>(Mode::Private);
     }
 
     // Tests for u128.
@@ -251,19 +251,19 @@ mod tests {
     #[test]
     fn test_u128_from_bits_be_constant() {
         type I = u128;
-        check_from_bits_be::<I>(Mode::Constant, 0, 0, 0, 0);
+        check_from_bits_be::<I>(Mode::Constant);
     }
 
     #[test]
     fn test_u128_from_bits_be_public() {
         type I = u128;
-        check_from_bits_be::<I>(Mode::Public, 0, 0, 0, 0);
+        check_from_bits_be::<I>(Mode::Public);
     }
 
     #[test]
     fn test_u128_from_bits_be_private() {
         type I = u128;
-        check_from_bits_be::<I>(Mode::Private, 0, 0, 0, 0);
+        check_from_bits_be::<I>(Mode::Private);
     }
 
     // Tests for i128.
@@ -271,18 +271,18 @@ mod tests {
     #[test]
     fn test_i128_from_bits_be_constant() {
         type I = i128;
-        check_from_bits_be::<I>(Mode::Constant, 0, 0, 0, 0);
+        check_from_bits_be::<I>(Mode::Constant);
     }
 
     #[test]
     fn test_i128_from_bits_be_public() {
         type I = i128;
-        check_from_bits_be::<I>(Mode::Public, 0, 0, 0, 0);
+        check_from_bits_be::<I>(Mode::Public);
     }
 
     #[test]
     fn test_i128_from_bits_be_private() {
         type I = i128;
-        check_from_bits_be::<I>(Mode::Private, 0, 0, 0, 0);
+        check_from_bits_be::<I>(Mode::Private);
     }
 }

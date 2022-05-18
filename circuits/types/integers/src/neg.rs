@@ -39,8 +39,8 @@ impl<E: Environment, I: IntegerType> Neg for &Integer<E, I> {
 }
 
 impl<E: Environment, I: IntegerType> Metadata<dyn Neg<Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = CircuitType<Self>;
-    type OutputType = CircuitType<Self>;
+    type Case = IntegerCircuitType<E, I>;
+    type OutputType = IntegerCircuitType<E, I>;
 
     fn count(case: &Self::Case) -> Count {
         match I::is_signed() {
@@ -53,9 +53,9 @@ impl<E: Environment, I: IntegerType> Metadata<dyn Neg<Output = Integer<E, I>>> f
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match case {
-            CircuitType::Constant(constant) => CircuitType::from(constant.circuit().neg()),
-            _ => CircuitType::Private,
+        match case.is_constant() {
+            true => IntegerCircuitType::from(case.circuit().neg()),
+            false => IntegerCircuitType::private(),
         }
     }
 }
@@ -78,7 +78,7 @@ mod tests {
                 let candidate = (&a).neg();
                 assert_eq!(expected, candidate.eject_value());
 
-                let case = CircuitType::from(a);
+                let case = IntegerCircuitType::from(a);
                 assert_count!(Neg(Integer<I>) => Integer<I>, &case);
                 assert_output_type!(Neg(Integer<I>) => Integer<I>, case, candidate);
             }),
@@ -87,7 +87,7 @@ mod tests {
                 _ => Circuit::scope(name, || {
                     let _candidate = (&a).neg();
 
-                    let case = CircuitType::from(a);
+                    let case = IntegerCircuitType::from(a);
                     assert_count_fails!(Neg(Integer<I>) => Integer<I>, &case);
                 }),
             },

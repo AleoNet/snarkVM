@@ -18,6 +18,7 @@
 #![allow(clippy::too_many_arguments)]
 
 mod helpers;
+use helpers::IntegerCircuitType;
 
 pub mod abs_checked;
 pub mod abs_wrapped;

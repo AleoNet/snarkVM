@@ -42,23 +42,22 @@ impl<E: Environment, I: IntegerType> Equal<Self> for Integer<E, I> {
 }
 
 impl<E: Environment, I: IntegerType> Metadata<dyn Equal<Integer<E, I>, Output = Boolean<E>>> for Integer<E, I> {
-    type Case = (CircuitType<Self>, CircuitType<Self>);
+    type Case = (IntegerCircuitType<E, I>, IntegerCircuitType<E, I>);
     type OutputType = CircuitType<Boolean<E>>;
 
     fn count(case: &Self::Case) -> Count {
-        match case {
-            (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(0, 0, 0, 0),
-            _ => Count::is(0, 0, 2, 3),
+        match case.0.is_constant() && case.1.is_constant() {
+            true => Count::is(0, 0, 0, 0),
+            false => Count::is(0, 0, 2, 3),
         }
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match case {
-            (CircuitType::Constant(a), CircuitType::Constant(b)) => {
-                CircuitType::from(a.circuit().is_equal(&b.circuit()))
-            }
-            _ => CircuitType::Private,
-        }
+        let (lhs, rhs) = case;
+        let self_to_field_type = output_type!(Self, ToField<Field = Field<E>>, lhs);
+        let other_to_field_type = output_type!(Self, ToField<Field = Field<E>>, rhs);
+
+        output_type!(Field<E>, Equal<Field<E>, Output = Boolean<E>>, (self_to_field_type, other_to_field_type))
     }
 }
 
@@ -80,7 +79,7 @@ mod tests {
             let candidate = a.is_equal(&b);
             assert_eq!(expected, candidate.eject_value());
 
-            let case = (CircuitType::from(a), CircuitType::from(b));
+            let case = (IntegerCircuitType::from(a), IntegerCircuitType::from(b));
             assert_count!(Equal(Integer<I>, Integer<I>) => Boolean, &case);
             assert_output_type!(Equal(Integer<I>, Integer<I>) => Boolean, case, candidate);
         });

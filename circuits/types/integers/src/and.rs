@@ -73,26 +73,26 @@ impl<E: Environment, I: IntegerType> BitAndAssign<&Integer<E, I>> for Integer<E,
 }
 
 impl<E: Environment, I: IntegerType> Metadata<dyn BitAnd<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = (CircuitType<Self>, CircuitType<Self>);
-    type OutputType = CircuitType<Self>;
+    type Case = (IntegerCircuitType<E, I>, IntegerCircuitType<E, I>);
+    type OutputType = IntegerCircuitType<E, I>;
 
     fn count(case: &Self::Case) -> Count {
-        match case {
-            (CircuitType::Constant(_), _) | (_, CircuitType::Constant(_)) => Count::is(0, 0, 0, 0),
-            (_, _) => Count::is(0, 0, I::BITS, I::BITS),
+        match case.0.is_constant() || case.1.is_constant() {
+            true => Count::is(0, 0, 0, 0),
+            false => Count::is(0, 0, I::BITS, I::BITS),
         }
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match case {
-            (CircuitType::Constant(a), CircuitType::Constant(b)) => CircuitType::from(a.circuit().bitand(&b.circuit())),
-            (CircuitType::Constant(constant), other_type) | (other_type, CircuitType::Constant(constant)) => {
-                match constant.eject_value().is_zero() {
-                    true => CircuitType::from(Integer::zero()),
-                    false => other_type,
-                }
-            }
-            (_, _) => CircuitType::Private,
+        let (lhs, rhs) = case;
+        IntegerCircuitType {
+            bits_le: lhs
+                .bits_le
+                .into_iter()
+                .zip_eq(rhs.bits_le.into_iter())
+                .map(|(a, b)| output_type!(Boolean<E>, BitAnd<Boolean<E>, Output = Boolean<E>>, (a, b)))
+                .collect(),
+            phantom: Default::default(),
         }
     }
 }
@@ -117,7 +117,7 @@ mod tests {
 
             println!("{} & {} = {}", a.eject_value(), b.eject_value(), candidate.eject_value());
 
-            let case = (CircuitType::from(a), CircuitType::from(b));
+            let case = (IntegerCircuitType::from(a), IntegerCircuitType::from(b));
             assert_count!(BitAnd(Integer<I>, Integer<I>) => Integer<I>, &case);
             assert_output_type!(BitAnd(Integer<I>, Integer<I>) => Integer<I>, case, candidate);
         });

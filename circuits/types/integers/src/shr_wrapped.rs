@@ -115,8 +115,8 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShrWrapped<Integer<E, M>> for
 impl<E: Environment, I: IntegerType, M: Magnitude> Metadata<dyn ShrWrapped<Integer<E, M>, Output = Integer<E, I>>>
     for Integer<E, I>
 {
-    type Case = (CircuitType<Self>, CircuitType<Integer<E, M>>);
-    type OutputType = CircuitType<Self>;
+    type Case = (IntegerCircuitType<E, I>, IntegerCircuitType<E, M>);
+    type OutputType = IntegerCircuitType<E, I>;
 
     fn count(case: &Self::Case) -> Count {
         // A quick hack that matches `(u8 -> 0, u16 -> 1, u32 -> 2, u64 -> 3, u128 -> 4)`.
@@ -127,10 +127,10 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metadata<dyn ShrWrapped<Integ
 
         match I::is_signed() {
             // Signed case
-            true => match case {
-                (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(I::BITS, 0, 0, 0),
-                (_, CircuitType::Constant(_)) => Count::is(0, 0, 0, 0),
-                (CircuitType::Constant(_), _) => Count::is(
+            true => match (case.0.eject_mode(), case.1.eject_mode()) {
+                (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
+                (_, Mode::Constant) => Count::is(0, 0, 0, 0),
+                (Mode::Constant, _) => Count::is(
                     4 * I::BITS,
                     0,
                     (6 * I::BITS) + (2 * index(I::BITS)) + 9,
@@ -144,10 +144,10 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metadata<dyn ShrWrapped<Integ
                 ),
             },
             // Unsigned case
-            false => match case {
-                (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(I::BITS, 0, 0, 0),
-                (_, CircuitType::Constant(_)) => Count::is(0, 0, 0, 0),
-                (CircuitType::Constant(_), _) | (_, _) => {
+            false => match (case.0.eject_mode(), case.1.eject_mode()) {
+                (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
+                (_, Mode::Constant) => Count::is(0, 0, 0, 0),
+                (Mode::Constant, _) | (_, _) => {
                     Count::is(0, 0, (3 * I::BITS) + (2 * index(I::BITS)) + 5, (3 * I::BITS) + (2 * index(I::BITS)) + 7)
                 }
             },
@@ -155,12 +155,11 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metadata<dyn ShrWrapped<Integ
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match case {
-            (CircuitType::Constant(a), CircuitType::Constant(b)) => {
-                CircuitType::from(a.circuit().shr_wrapped(&b.circuit()))
-            }
-            (CircuitType::Public, CircuitType::Constant(_)) => CircuitType::Public,
-            (_, _) => CircuitType::Private,
+        let (lhs, rhs) = case;
+        match (lhs.eject_mode(), rhs.eject_mode()) {
+            (Mode::Constant, Mode::Constant) => IntegerCircuitType::from(lhs.circuit().shr_wrapped(&rhs.circuit())),
+            (Mode::Public, Mode::Constant) => IntegerCircuitType::public(), //todo: This will likely not suffice.
+            (_, _) => IntegerCircuitType::private(),
         }
     }
 }
@@ -189,7 +188,7 @@ mod tests {
             let candidate = a.shr_wrapped(&b);
             assert_eq!(expected, candidate.eject_value());
 
-            let case = (CircuitType::from(a), CircuitType::from(b));
+            let case = (IntegerCircuitType::from(a), IntegerCircuitType::from(b));
             assert_count!(ShrWrapped(Integer<I>, Integer<M>) => Integer<I>, &case);
             assert_output_type!(ShrWrapped(Integer<I>, Integer<M>) => Integer<I>, case, candidate);
         });

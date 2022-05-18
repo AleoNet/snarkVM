@@ -49,6 +49,7 @@ mod tests {
     fn check_msb<I: IntegerType>() {
         // Set the value to check to I::MAX.
         let value = Integer::<Circuit, I>::new(Mode::Private, I::MAX);
+        let case = IntegerCircuitType::from(&value);
 
         // Prepare the expected outputs.
         let expected_signed = false;
@@ -61,10 +62,8 @@ mod tests {
                 true => assert_eq!(expected_signed, result.eject_value()),
                 false => assert_eq!(expected_unsigned, result.eject_value()),
             }
-            let case = IntegerCircuitType::from(value);
             assert_count!(Integer<Circuit, I>, MSB<Boolean = Boolean<Circuit>>, &case);
             assert_output_type!(Integer<Circuit, I>, MSB<Boolean = Boolean<Circuit>>, case, result);
-            assert_scope!(0, 0, 0, 0);
         });
     }
 

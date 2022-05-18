@@ -70,8 +70,8 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShlWrapped<Integer<E, M>> for
 impl<E: Environment, I: IntegerType, M: Magnitude> Metadata<dyn ShlWrapped<Integer<E, M>, Output = Integer<E, I>>>
     for Integer<E, I>
 {
-    type Case = (CircuitType<Self>, CircuitType<Integer<E, M>>);
-    type OutputType = CircuitType<Self>;
+    type Case = (IntegerCircuitType<E, I>, IntegerCircuitType<E, M>);
+    type OutputType = IntegerCircuitType<E, I>;
 
     fn count(case: &Self::Case) -> Count {
         // A quick hack that matches `(u8 -> 0, u16 -> 1, u32 -> 2, u64 -> 3, u128 -> 4)`.
@@ -80,10 +80,10 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metadata<dyn ShlWrapped<Integ
             None => E::halt(format!("Integer of {num_bits} bits is not supported")),
         };
 
-        match case {
-            (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(I::BITS, 0, 0, 0),
-            (_, CircuitType::Constant(_)) => Count::is(0, 0, 0, 0),
-            (CircuitType::Constant(_), _) => Count::is(
+        match (case.0.eject_mode(), case.1.eject_mode()) {
+            (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
+            (_, Mode::Constant) => Count::is(0, 0, 0, 0),
+            (Mode::Constant, _) => Count::is(
                 0,
                 0,
                 (2 * I::BITS) + (I::BITS / 2) + (2 * index(I::BITS)) + 5,
@@ -99,13 +99,11 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metadata<dyn ShlWrapped<Integ
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match case {
-            (CircuitType::Constant(a), CircuitType::Constant(b)) => {
-                CircuitType::from(a.circuit().shl_wrapped(&b.circuit()))
-            }
-            (CircuitType::Public, CircuitType::Constant(_)) => CircuitType::Public,
-            (CircuitType::Private, CircuitType::Constant(_)) => CircuitType::Private,
-            (_, _) => CircuitType::Private,
+        let (lhs, rhs) = case;
+        match (lhs.eject_mode(), rhs.eject_mode()) {
+            (Mode::Constant, Mode::Constant) => IntegerCircuitType::from(lhs.circuit().shl_wrapped(&rhs.circuit())),
+            (Mode::Public, Mode::Constant) => IntegerCircuitType::public(), // TODO: This will likely not suffice.
+            (_, _) => IntegerCircuitType::private(),
         }
     }
 }
@@ -134,7 +132,7 @@ mod tests {
             let candidate = a.shl_wrapped(&b);
             assert_eq!(expected, candidate.eject_value());
 
-            let case = (CircuitType::from(a), CircuitType::from(b));
+            let case = (IntegerCircuitType::from(a), IntegerCircuitType::from(b));
             assert_count!(ShlWrapped(Integer<I>, Integer<M>) => Integer<I>, &case);
             assert_output_type!(ShlWrapped(Integer<I>, Integer<M>) => Integer<I>, case, candidate);
         });

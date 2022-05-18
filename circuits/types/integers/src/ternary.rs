@@ -50,54 +50,40 @@ impl<E: Environment, I: IntegerType> Ternary for Integer<E, I> {
 impl<E: Environment, I: IntegerType> Metadata<dyn Ternary<Boolean = Boolean<E>, Output = Integer<E, I>>>
     for Integer<E, I>
 {
-    type Case = (CircuitType<Boolean<E>>, CircuitType<Self>, CircuitType<Self>);
-    type OutputType = CircuitType<Self>;
+    type Case = (CircuitType<Boolean<E>>, IntegerCircuitType<E, I>, IntegerCircuitType<E, I>);
+    type OutputType = IntegerCircuitType<E, I>;
 
     fn count(case: &Self::Case) -> Count {
-        match case {
-            (CircuitType::Constant(_), _, _)
-            | (CircuitType::Public, CircuitType::Constant(_), CircuitType::Constant(_))
-            | (CircuitType::Private, CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(0, 0, 0, 0),
+        match (case.0.eject_mode(), case.1.eject_mode(), case.2.eject_mode()) {
+            (Mode::Constant, _, _)
+            | (Mode::Public, Mode::Constant, Mode::Constant)
+            | (Mode::Private, Mode::Constant, Mode::Constant) => Count::is(0, 0, 0, 0),
             _ => Count::is(0, 0, I::BITS, I::BITS),
         }
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match case {
-            (CircuitType::Constant(constant), first_type, second_type) => match constant.eject_value() {
-                true => first_type,
-                false => second_type,
+        let (condition, first, second) = case;
+        match condition.is_constant() {
+            true => match condition.eject_value() {
+                true => first,
+                false => second,
             },
-            (condition_type, CircuitType::Constant(a), CircuitType::Constant(b)) => {
-                let output_bit_types = a
-                    .circuit()
+            false => IntegerCircuitType {
+                bits_le: first
                     .bits_le
                     .into_iter()
-                    .zip_eq(b.circuit().bits_le.into_iter())
-                    .map(|(self_bit, other_bit)| {
-                        let case = (condition_type.clone(), CircuitType::from(self_bit), CircuitType::from(other_bit));
-                        output_type!(Boolean<E>, Ternary<Boolean = Boolean<E>, Output = Boolean<E>>, case)
+                    .zip_eq(second.bits_le.into_iter())
+                    .map(|(first_bit, second_bit)| {
+                        output_type!(
+                            Boolean<E>,
+                            Ternary<Boolean = Boolean<E>, Output = Boolean<E>>,
+                            (condition.clone(), first_bit, second_bit)
+                        )
                     })
-                    .collect::<Vec<_>>();
-
-                let mut output_bits = Vec::with_capacity(output_bit_types.len());
-                let mut output_mode = Mode::Constant;
-                for bit_type in output_bit_types {
-                    match bit_type {
-                        CircuitType::Constant(bit) => output_bits.push(bit.circuit()),
-                        CircuitType::Public => {
-                            output_mode = if output_mode != Mode::Private { Mode::Public } else { output_mode }
-                        }
-                        CircuitType::Private => output_mode = Mode::Private,
-                    }
-                }
-                match output_mode {
-                    Mode::Constant => CircuitType::from(Self { bits_le: output_bits, phantom: Default::default() }),
-                    Mode::Public => CircuitType::Public,
-                    Mode::Private => CircuitType::Private,
-                }
-            }
-            _ => CircuitType::Private,
+                    .collect(),
+                phantom: Default::default(),
+            },
         }
     }
 }
@@ -129,7 +115,7 @@ mod tests {
             assert_eq!(expected, candidate.eject_value());
 
             println!("Ternary: if {:?} then {:?} else {:?}", condition.eject_value(), a.eject_value(), b.eject_value());
-            let case = (CircuitType::from(condition), CircuitType::from(a), CircuitType::from(b));
+            let case = (CircuitType::from(condition), IntegerCircuitType::from(a), IntegerCircuitType::from(b));
             assert_count!(Ternary(Boolean, Integer<I>, Integer<I>) => Integer<I>, &case);
             assert_output_type!(Ternary(Boolean, Integer<I>, Integer<I>) => Integer<I>, case, candidate);
         });

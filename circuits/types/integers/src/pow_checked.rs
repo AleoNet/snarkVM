@@ -87,14 +87,15 @@ impl<E: Environment, I: IntegerType, M: Magnitude> PowChecked<Integer<E, M>> for
 impl<E: Environment, I: IntegerType, M: Magnitude> Metadata<dyn PowChecked<Integer<E, M>, Output = Integer<E, I>>>
     for Integer<E, I>
 {
-    type Case = (CircuitType<Self>, CircuitType<Integer<E, M>>);
-    type OutputType = CircuitType<Self>;
+    type Case = (IntegerCircuitType<E, I>, IntegerCircuitType<E, M>);
+    type OutputType = IntegerCircuitType<E, I>;
 
     fn count(case: &Self::Case) -> Count {
         count!(Self, PowWrapped<Integer<E, M>, Output = Self>, case)
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
+        // TODO: Check overflow.
         output_type!(Self, PowWrapped<Integer<E, M>, Output = Self>, case)
     }
 }
@@ -125,7 +126,7 @@ mod tests {
                 let candidate = a.pow_checked(&b);
                 assert_eq!(expected, candidate.eject_value());
 
-                let case = (CircuitType::from(a), CircuitType::from(b));
+                let case = (IntegerCircuitType::from(a), IntegerCircuitType::from(b));
                 assert_count!(PowChecked(Integer<I>, Integer<M>) => Integer<I>, &case);
                 assert_output_type!(PowChecked(Integer<I>, Integer<M>) => Integer<I>, case, candidate);
             }),
@@ -134,7 +135,7 @@ mod tests {
                 _ => Circuit::scope(name, || {
                     let _candidate = a.pow_checked(&b);
 
-                    let case = (CircuitType::from(a), CircuitType::from(b));
+                    let case = (IntegerCircuitType::from(a), IntegerCircuitType::from(b));
                     assert_count_fails!(PowChecked(Integer<I>, Integer<M>) => Integer<I>, &case);
                 }),
             },

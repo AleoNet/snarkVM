@@ -108,8 +108,8 @@ impl<E: Environment, I: IntegerType> DivChecked<Self> for Integer<E, I> {
 }
 
 impl<E: Environment, I: IntegerType> Metadata<dyn Div<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = (CircuitType<Self>, CircuitType<Self>);
-    type OutputType = CircuitType<Self>;
+    type Case = (IntegerCircuitType<E, I>, IntegerCircuitType<E, I>);
+    type OutputType = IntegerCircuitType<E, I>;
 
     fn count(case: &Self::Case) -> Count {
         count!(Self, DivChecked<Self, Output = Self>, case)
@@ -121,21 +121,21 @@ impl<E: Environment, I: IntegerType> Metadata<dyn Div<Integer<E, I>, Output = In
 }
 
 impl<E: Environment, I: IntegerType> Metadata<dyn DivChecked<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = (CircuitType<Self>, CircuitType<Self>);
-    type OutputType = CircuitType<Self>;
+    type Case = (IntegerCircuitType<E, I>, IntegerCircuitType<E, I>);
+    type OutputType = IntegerCircuitType<E, I>;
 
     fn count(case: &Self::Case) -> Count {
         match I::is_signed() {
-            true => match case {
-                (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(I::BITS, 0, 0, 0),
-                (CircuitType::Constant(_), _) | (_, CircuitType::Constant(_)) => {
+            true => match (case.0.eject_mode(), case.1.eject_mode()) {
+                (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
+                (Mode::Constant, _) | (_, Mode::Constant) => {
                     Count::less_than(6 * I::BITS, 0, (7 * I::BITS) + 10, (8 * I::BITS) + 17)
                 }
                 (_, _) => Count::is(5 * I::BITS, 0, (8 * I::BITS) + 10, (8 * I::BITS) + 17),
             },
-            false => match case {
-                (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(I::BITS, 0, 0, 0),
-                (CircuitType::Constant(_), _) | (_, CircuitType::Constant(_)) => {
+            false => match (case.0.eject_mode(), case.1.eject_mode()) {
+                (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
+                (Mode::Constant, _) | (_, Mode::Constant) => {
                     Count::less_than(0, 0, (2 * I::BITS) + 1, (2 * I::BITS) + 2)
                 }
                 (_, _) => Count::is(0, 0, (2 * I::BITS) + 1, (2 * I::BITS) + 2),
@@ -144,11 +144,10 @@ impl<E: Environment, I: IntegerType> Metadata<dyn DivChecked<Integer<E, I>, Outp
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match case {
-            (CircuitType::Constant(a), CircuitType::Constant(b)) => {
-                CircuitType::from(a.circuit().div_checked(&b.circuit()))
-            }
-            (_, _) => CircuitType::Private,
+        let (lhs, rhs) = case;
+        match lhs.is_constant() && rhs.is_constant() {
+            true => IntegerCircuitType::from(lhs.circuit().div_checked(&rhs.circuit())),
+            false => IntegerCircuitType::private(),
         }
     }
 }
@@ -175,7 +174,7 @@ mod tests {
                     let candidate = a.div_checked(&b);
                     assert_eq!(expected, candidate.eject_value());
 
-                    let case = (CircuitType::from(a), CircuitType::from(b));
+                    let case = (IntegerCircuitType::from(a), IntegerCircuitType::from(b));
                     assert_count!(DivChecked(Integer<I>, Integer<I>) => Integer<I>, &case);
                     assert_output_type!(DivChecked(Integer<I>, Integer<I>) => Integer<I>, case, candidate);
                 }),
@@ -184,7 +183,7 @@ mod tests {
                     _ => Circuit::scope(name, || {
                         let _candidate = a.div_checked(&b);
 
-                        let case = (CircuitType::from(a), CircuitType::from(b));
+                        let case = (IntegerCircuitType::from(a), IntegerCircuitType::from(b));
                         assert_count_fails!(DivChecked(Integer<I>, Integer<I>) => Integer<I>, &case);
                     }),
                 },

@@ -57,8 +57,9 @@ mod tests {
                 let result = candidate.to_fields();
                 assert_eq!(1, result.len());
 
-                assert_count!(Integer<Circuit, I>, ToFields<Field = Field<Circuit>>, &candidate);
-                assert_output_type!(Integer<Circuit, I>, ToFields<Field = Field<Circuit>>, candidate);
+                let case = IntegerCircuitType::from(candidate);
+                assert_count!(Integer<Circuit, I>, ToFields<Field = Field<Circuit>>, &case);
+                assert_output_type!(Integer<Circuit, I>, ToFields<Field = Field<Circuit>>, case, result);
 
                 // Extract the bits from the base field representation.
                 let candidate_bits_le = result[0].eject_value().to_bits_le();

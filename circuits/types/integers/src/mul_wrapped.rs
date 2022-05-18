@@ -57,13 +57,13 @@ impl<E: Environment, I: IntegerType> MulWrapped<Self> for Integer<E, I> {
 }
 
 impl<E: Environment, I: IntegerType> Metadata<dyn MulWrapped<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = (CircuitType<Self>, CircuitType<Self>);
-    type OutputType = CircuitType<Self>;
+    type Case = (IntegerCircuitType<E, I>, IntegerCircuitType<E, I>);
+    type OutputType = IntegerCircuitType<E, I>;
 
     fn count(case: &Self::Case) -> Count {
-        match case {
-            (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(I::BITS, 0, 0, 0),
-            (CircuitType::Constant(_), _) | (_, CircuitType::Constant(_)) => {
+        match (case.0.eject_mode(), case.1.eject_mode()) {
+            (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
+            (Mode::Constant, _) | (_, Mode::Constant) => {
                 Count::is(0, 0, I::BITS + (I::BITS / 2) + 1, I::BITS + (I::BITS / 2) + 2)
             }
             (_, _) => Count::is(0, 0, I::BITS + (I::BITS / 2) + 4, I::BITS + (I::BITS / 2) + 5),
@@ -71,11 +71,10 @@ impl<E: Environment, I: IntegerType> Metadata<dyn MulWrapped<Integer<E, I>, Outp
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match case {
-            (CircuitType::Constant(a), CircuitType::Constant(b)) => {
-                CircuitType::from(a.circuit().mul_wrapped(&b.circuit()))
-            }
-            (_, _) => CircuitType::Private,
+        let (lhs, rhs) = case;
+        match lhs.is_constant() && rhs.is_constant() {
+            true => IntegerCircuitType::from(lhs.circuit().mul_wrapped(&rhs.circuit())),
+            false => IntegerCircuitType::private(),
         }
     }
 }
@@ -98,7 +97,7 @@ mod tests {
             let candidate = a.mul_wrapped(&b);
             assert_eq!(expected, candidate.eject_value());
 
-            let case = (CircuitType::from(a), CircuitType::from(b));
+            let case = (IntegerCircuitType::from(a), IntegerCircuitType::from(b));
             assert_count!(MulWrapped(Integer<I>, Integer<I>) => Integer<I>, &case);
             assert_output_type!(MulWrapped(Integer<I>, Integer<I>) => Integer<I>, case, candidate);
         });

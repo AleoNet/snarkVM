@@ -100,8 +100,8 @@ impl<E: Environment, I: IntegerType, M: Magnitude> ShrChecked<Integer<E, M>> for
 impl<E: Environment, I: IntegerType, M: Magnitude> Metadata<dyn Shr<Integer<E, M>, Output = Integer<E, I>>>
     for Integer<E, I>
 {
-    type Case = (CircuitType<Self>, CircuitType<Integer<E, M>>);
-    type OutputType = CircuitType<Self>;
+    type Case = (IntegerCircuitType<E, I>, IntegerCircuitType<E, M>);
+    type OutputType = IntegerCircuitType<E, I>;
 
     fn count(case: &Self::Case) -> Count {
         count!(Self, ShrChecked<Integer<E, M>, Output = Integer<E, I>>, case)
@@ -115,8 +115,8 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metadata<dyn Shr<Integer<E, M
 impl<E: Environment, I: IntegerType, M: Magnitude> Metadata<dyn ShrChecked<Integer<E, M>, Output = Integer<E, I>>>
     for Integer<E, I>
 {
-    type Case = (CircuitType<Self>, CircuitType<Integer<E, M>>);
-    type OutputType = CircuitType<Self>;
+    type Case = (IntegerCircuitType<E, I>, IntegerCircuitType<E, M>);
+    type OutputType = IntegerCircuitType<E, I>;
 
     fn count(case: &Self::Case) -> Count {
         // A quick hack that matches `(u8 -> 0, u16 -> 1, u32 -> 2, u64 -> 3, u128 -> 4)`.
@@ -125,10 +125,10 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metadata<dyn ShrChecked<Integ
             None => E::halt(format!("Integer of {num_bits} bits is not supported")),
         };
 
-        match case {
-            (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(I::BITS, 0, 0, 0),
-            (_, CircuitType::Constant(_)) => Count::is(0, 0, 0, 0),
-            (CircuitType::Constant(_), _) | (_, _) => {
+        match (case.0.eject_mode(), case.1.eject_mode()) {
+            (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
+            (_, Mode::Constant) => Count::is(0, 0, 0, 0),
+            (Mode::Constant, _) | (_, _) => {
                 let wrapped_count = count!(Integer<E, I>, ShrWrapped<Integer<E, M>, Output=Integer<E, I>>, case);
                 wrapped_count + Count::is(0, 0, M::BITS - 4 - index(I::BITS), M::BITS - 3 - index(I::BITS))
             }
@@ -136,14 +136,9 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metadata<dyn ShrChecked<Integ
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match case {
-            (CircuitType::Constant(a), CircuitType::Constant(b)) => {
-                CircuitType::from(a.circuit().shr_checked(&b.circuit()))
-            }
-            (CircuitType::Public, CircuitType::Constant(_)) => CircuitType::Public,
-            (CircuitType::Private, CircuitType::Constant(_)) => CircuitType::Private,
-            (_, _) => CircuitType::Private,
-        }
+        // TODO: Check overflow.
+        // The output type for `ShrChecked` is the same as `ShrWrapped`.
+        output_type!(Self, ShrWrapped<Integer<E, M>, Output = Integer<E, I>>, case)
     }
 }
 
@@ -172,7 +167,7 @@ mod tests {
                 let candidate = a.shr_checked(&b);
                 assert_eq!(expected, candidate.eject_value());
 
-                let case = (CircuitType::from(a), CircuitType::from(b));
+                let case = (IntegerCircuitType::from(a), IntegerCircuitType::from(b));
                 assert_count!(ShrChecked(Integer<I>, Integer<M>) => Integer<I>, &case);
                 assert_output_type!(ShrChecked(Integer<I>, Integer<M>) => Integer<I>, case, candidate);
             }),
@@ -181,7 +176,7 @@ mod tests {
                 _ => Circuit::scope(name, || {
                     let _candidate = a.shr_checked(&b);
 
-                    let case = (CircuitType::from(a), CircuitType::from(b));
+                    let case = (IntegerCircuitType::from(a), IntegerCircuitType::from(b));
                     assert_count_fails!(ShrChecked(Integer<I>, Integer<M>) => Integer<I>, &case);
                 }),
             },

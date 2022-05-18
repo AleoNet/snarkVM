@@ -40,14 +40,16 @@ impl<E: Environment, I: IntegerType, M: Magnitude> PowWrapped<Integer<E, M>> for
 impl<E: Environment, I: IntegerType, M: Magnitude> Metadata<dyn PowWrapped<Integer<E, M>, Output = Integer<E, I>>>
     for Integer<E, I>
 {
-    type Case = (CircuitType<Self>, CircuitType<Integer<E, M>>);
-    type OutputType = CircuitType<Self>;
+    type Case = (IntegerCircuitType<E, I>, IntegerCircuitType<E, M>);
+    type OutputType = IntegerCircuitType<E, I>;
 
     fn count(case: &Self::Case) -> Count {
         // Note that we need to clone `case` so that we can pass it to `output_type!`.
-        match case {
-            (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(I::BITS, 0, 0, 0),
-            (type_a, type_b) => {
+        match (case.0.eject_mode(), case.1.eject_mode()) {
+            (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
+            _ => {
+                let (lhs, rhs) = case.clone();
+
                 let one_count = count!(Integer<E, I>, One<Boolean = Boolean<E>>, &());
                 let one_type = output_type!(Integer<E, I>, One<Boolean = Boolean<E>>, ());
 
@@ -58,17 +60,14 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metadata<dyn PowWrapped<Integ
                         let square_count = count!(Self, MulWrapped<Self, Output=Self>, &case);
                         let square_type = output_type!(Self, MulWrapped<Self, Output = Self>, case);
 
-                        let case = (square_type.clone(), type_a.clone());
+                        let case = (square_type.clone(), lhs.clone());
                         let mul_count = count!(Self, MulWrapped<Self, Output=Self>, &case);
                         let mul_type = output_type!(Self, MulWrapped<Self, Output=Self>, case);
 
-                        let bit_type = match type_b.clone() {
-                            // This case is safe as M::BITS never exceeds 32.
-                            CircuitType::Constant(constant) => {
-                                CircuitType::from(&constant.circuit().bits_le[i as usize])
-                            }
-                            CircuitType::Public => CircuitType::Public,
-                            CircuitType::Private => CircuitType::Private,
+                        let bit_type = match rhs.eject_mode() {
+                            Mode::Constant => rhs.bits_le[i as usize].clone(),
+                            Mode::Public => CircuitType::Public,
+                            Mode::Private => CircuitType::Private,
                         };
 
                         let case = (bit_type, mul_type, square_type);
@@ -83,34 +82,27 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metadata<dyn PowWrapped<Integ
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match case {
-            (CircuitType::Constant(a), CircuitType::Constant(b)) => {
-                CircuitType::from(a.circuit().pow_wrapped(&b.circuit()))
-            }
-            (type_a, type_b) => {
-                let one_type = output_type!(Integer<E, I>, One<Boolean = Boolean<E>>, ());
+        let (lhs, rhs) = case;
+        let one_type = output_type!(Integer<E, I>, One<Boolean = Boolean<E>>, ());
 
-                (0..M::BITS).rev().fold(one_type, |prev_type, i| {
-                    let case = (prev_type.clone(), prev_type);
-                    let square_type = output_type!(Self, MulWrapped<Self, Output = Self>, case);
+        (0..M::BITS).rev().fold(one_type, |prev_type, i| {
+            let case = (prev_type.clone(), prev_type);
+            let square_type = output_type!(Self, MulWrapped<Self, Output = Self>, case);
 
-                    let case = (square_type.clone(), type_a.clone());
-                    let mul_type = output_type!(Self, MulWrapped<Self, Output=Self>, case);
+            let case = (square_type.clone(), lhs.clone());
+            let mul_type = output_type!(Self, MulWrapped<Self, Output=Self>, case);
 
-                    let bit_type = match type_b.clone() {
-                        // This case is safe as M::BITS never exceeds 32.
-                        CircuitType::Constant(constant) => CircuitType::from(&constant.circuit().bits_le[i as usize]),
-                        CircuitType::Public => CircuitType::Public,
-                        CircuitType::Private => CircuitType::Private,
-                    };
+            let bit_type = match rhs.eject_mode() {
+                Mode::Constant => rhs.bits_le[i as usize].clone(),
+                Mode::Public => CircuitType::Public,
+                Mode::Private => CircuitType::Private,
+            };
 
-                    let case = (bit_type, mul_type, square_type);
-                    let result_type = output_type!(Self, Ternary<Boolean = Boolean<E>, Output = Self>, case);
+            let case = (bit_type, mul_type, square_type);
+            let result_type = output_type!(Self, Ternary<Boolean = Boolean<E>, Output = Self>, case);
 
-                    result_type
-                })
-            }
-        }
+            result_type
+        })
     }
 }
 
@@ -134,13 +126,12 @@ mod tests {
     ) {
         let a = Integer::<Circuit, I>::new(mode_a, first);
         let b = Integer::<Circuit, M>::new(mode_b, second);
-        let case = (CircuitType::from(&a), CircuitType::from(&b));
+        let case = (IntegerCircuitType::from(&a), IntegerCircuitType::from(&b));
 
         let expected = first.wrapping_pow(&second.to_u32().unwrap());
 
         Circuit::scope(name, || {
             let candidate = a.pow_wrapped(&b);
-            println!("{} ^ {} = {}", a.eject_value(), b.eject_value(), candidate.eject_value());
             assert_eq!(expected, candidate.eject_value());
             assert_count!(PowWrapped(Integer<I>, Integer<M>) => Integer<I>, &case);
             assert_output_type!(PowWrapped(Integer<I>, Integer<M>) => Integer<I>, case, candidate);

@@ -40,7 +40,7 @@ impl<E: Environment, I: IntegerType> Metadata<dyn ToField<Field = Field<E>>> for
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match case.mode() {
+        match case.eject_mode() {
             Mode::Constant => CircuitType::from(case.circuit().to_field()),
             _ => CircuitType::Private,
         }
@@ -64,8 +64,10 @@ mod tests {
             Circuit::scope(format!("{mode} {expected} {i}"), || {
                 // Perform the operation.
                 let result = candidate.to_field();
-                assert_count!(Integer<Circuit, I>, ToField<Field = Field<Circuit>>, &candidate);
-                assert_output_type!(Integer<Circuit, I>, ToField<Field = Field<Circuit>>, candidate);
+
+                let case = IntegerCircuitType::from(candidate);
+                assert_count!(Integer<Circuit, I>, ToField<Field = Field<Circuit>>, &case);
+                assert_output_type!(Integer<Circuit, I>, ToField<Field = Field<Circuit>>, case, result);
 
                 // Extract the bits from the base field representation.
                 let candidate_bits_le = result.eject_value().to_bits_le();

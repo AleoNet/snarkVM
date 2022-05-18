@@ -34,17 +34,17 @@ impl<E: Environment, I: IntegerType> Not for &Integer<E, I> {
 }
 
 impl<E: Environment, I: IntegerType> Metadata<dyn Not<Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = CircuitType<Self>;
-    type OutputType = CircuitType<Self>;
+    type Case = IntegerCircuitType<E, I>;
+    type OutputType = IntegerCircuitType<E, I>;
 
     fn count(_case: &Self::Case) -> Count {
         Count::is(0, 0, 0, 0)
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match case {
-            CircuitType::Constant(constant) => CircuitType::from(constant.circuit().not()),
-            _ => CircuitType::Private,
+        IntegerCircuitType {
+            bits_le: case.bits_le.into_iter().map(|b| output_type!(Boolean<E>, Not<Output = Boolean<E>>, b)).collect(),
+            phantom: Default::default(),
         }
     }
 }
@@ -67,7 +67,7 @@ mod tests {
             let candidate = (&a).not();
             assert_eq!(expected, candidate.eject_value());
 
-            let case = CircuitType::from(a);
+            let case = IntegerCircuitType::from(a);
             assert_count!(Not(Integer<I>) => Integer<I>, &case);
             assert_output_type!(Not(Integer<I>) => Integer<I>, case, candidate);
         });

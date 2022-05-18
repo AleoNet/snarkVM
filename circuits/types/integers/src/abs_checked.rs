@@ -36,14 +36,14 @@ impl<E: Environment, I: IntegerType> AbsChecked for &Integer<E, I> {
 }
 
 impl<E: Environment, I: IntegerType> Metadata<dyn AbsChecked<Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = CircuitType<Integer<E, I>>;
-    type OutputType = CircuitType<Integer<E, I>>;
+    type Case = IntegerCircuitType<E, I>;
+    type OutputType = IntegerCircuitType<E, I>;
 
     fn count(case: &Self::Case) -> Count {
         match I::is_signed() {
-            true => match case {
-                CircuitType::Constant(_) => Count::is(2 * I::BITS, 0, 0, 0),
-                _ => Count::is(I::BITS, 0, (2 * I::BITS) + 3, (2 * I::BITS) + 5),
+            true => match case.is_constant() {
+                true => Count::is(2 * I::BITS, 0, 0, 0),
+                false => Count::is(I::BITS, 0, (2 * I::BITS) + 3, (2 * I::BITS) + 5),
             },
             false => Count::is(0, 0, 0, 0),
         }
@@ -51,11 +51,20 @@ impl<E: Environment, I: IntegerType> Metadata<dyn AbsChecked<Output = Integer<E,
 
     fn output_type(case: Self::Case) -> Self::OutputType {
         match I::is_signed() {
-            true => match case {
-                CircuitType::Constant(constant) => CircuitType::from(constant.circuit().abs_checked()),
-                _ => CircuitType::Private,
-            },
             false => case,
+            true => {
+                let self_msb_type = output_type!(Self, MSB<Boolean = Boolean<E>>, case.clone());
+
+                let zero_type = output_type!(Self, Zero<Boolean = Boolean<E>>, ());
+                let zero_sub_checked_self_type =
+                    output_type!(Self, SubChecked<Self, Output = Self>, (zero_type, case.clone()));
+
+                output_type!(
+                    Self,
+                    Ternary<Boolean = Boolean<E>, Output = Self>,
+                    (self_msb_type, zero_sub_checked_self_type, case)
+                )
+            }
         }
     }
 }
@@ -78,7 +87,7 @@ mod tests {
                 let candidate = (&a).abs_checked();
                 assert_eq!(expected, candidate.eject_value());
 
-                let case = CircuitType::from(a);
+                let case = IntegerCircuitType::from(a);
                 assert_count!(AbsChecked(Integer<I>) => Integer<I>, &case);
                 assert_output_type!(AbsChecked(Integer<I>) => Integer<I>, case, candidate);
             }),
@@ -87,7 +96,7 @@ mod tests {
                 _ => Circuit::scope(name, || {
                     let _candidate = (&a).abs_checked();
 
-                    let case = CircuitType::from(a);
+                    let case = IntegerCircuitType::from(a);
                     assert_count_fails!(AbsChecked(Integer<I>) => Integer<I>, &case);
                 }),
             },

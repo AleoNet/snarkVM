@@ -28,32 +28,26 @@ impl<E: Environment, I: IntegerType> LessThanOrEqual<Self> for Integer<E, I> {
 impl<E: Environment, I: IntegerType> Metadata<dyn LessThanOrEqual<Integer<E, I>, Output = Boolean<E>>>
     for Integer<E, I>
 {
-    type Case = (CircuitType<Self>, CircuitType<Self>);
+    type Case = (IntegerCircuitType<E, I>, IntegerCircuitType<E, I>);
     type OutputType = CircuitType<Boolean<E>>;
 
     fn count(case: &Self::Case) -> Count {
         match I::is_signed() {
-            true => match case {
-                (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(1, 0, 0, 0),
-                (CircuitType::Constant(_), _) | (_, CircuitType::Constant(_)) => {
-                    Count::is(I::BITS, 0, I::BITS + 2, I::BITS + 3)
-                }
+            true => match (case.0.eject_mode(), case.1.eject_mode()) {
+                (Mode::Constant, Mode::Constant) => Count::is(1, 0, 0, 0),
+                (Mode::Constant, _) | (_, Mode::Constant) => Count::is(I::BITS, 0, I::BITS + 2, I::BITS + 3),
                 (_, _) => Count::is(I::BITS, 0, I::BITS + 4, I::BITS + 5),
             },
-            false => match case {
-                (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(1, 0, 0, 0),
-                (_, _) => Count::is(I::BITS, 0, I::BITS + 1, I::BITS + 2),
+            false => match case.0.is_constant() && case.1.is_constant() {
+                true => Count::is(1, 0, 0, 0),
+                false => Count::is(I::BITS, 0, I::BITS + 1, I::BITS + 2),
             },
         }
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match case {
-            (CircuitType::Constant(a), CircuitType::Constant(b)) => {
-                CircuitType::from(a.circuit().is_less_than_or_equal(&b.circuit()))
-            }
-            (_, _) => CircuitType::Private,
-        }
+        let (lhs, rhs) = case;
+        output_type!(Self, GreaterThanOrEqual<Self, Output = Boolean<E>>, (rhs, lhs))
     }
 }
 
@@ -77,7 +71,7 @@ mod tests {
             let candidate = a.is_less_than_or_equal(&b);
             assert_eq!(expected, candidate.eject_value());
 
-            let case = (CircuitType::from(&a), CircuitType::from(&b));
+            let case = (IntegerCircuitType::from(&a), IntegerCircuitType::from(&b));
             assert_count!(LessThanOrEqual(Integer<I>, Integer<I>) => Boolean, &case);
             assert_output_type!(LessThanOrEqual(Integer<I>, Integer<I>) => Boolean, case, candidate);
         });

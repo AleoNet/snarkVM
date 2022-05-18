@@ -55,7 +55,22 @@ impl<E: Environment, I: IntegerType> Metadata<dyn FromBitsLE<Boolean = Boolean<E
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        IntegerCircuitType::from(case)
+        // Ensure the list of booleans is within the allowed size in bits.
+        let num_bits = case.len() as u64;
+        if num_bits > I::BITS {
+            // Check if all excess bits are zero.
+            for bit in case[I::BITS as usize..].iter() {
+                if bit.is_constant() && bit.eject_value() {
+                    E::halt("Excess bits are not zero.")
+                }
+            }
+        }
+
+        // Construct the sanitized list of bits, resizing up if necessary.
+        let mut bits_le = case.iter().take(I::BITS as usize).cloned().collect::<Vec<_>>();
+        bits_le.resize(I::BITS as usize, CircuitType::from(Boolean::constant(false)));
+
+        IntegerCircuitType { bits_le, phantom: Default::default() }
     }
 }
 

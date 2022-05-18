@@ -110,8 +110,8 @@ impl<E: Environment, I: IntegerType> SubChecked<Self> for Integer<E, I> {
 }
 
 impl<E: Environment, I: IntegerType> Metadata<dyn Sub<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = (CircuitType<Self>, CircuitType<Self>);
-    type OutputType = CircuitType<Self>;
+    type Case = (IntegerCircuitType<E, I>, IntegerCircuitType<E, I>);
+    type OutputType = IntegerCircuitType<E, I>;
 
     fn count(case: &Self::Case) -> Count {
         count!(Self, SubChecked<Self, Output = Self>, case)
@@ -123,30 +123,29 @@ impl<E: Environment, I: IntegerType> Metadata<dyn Sub<Integer<E, I>, Output = In
 }
 
 impl<E: Environment, I: IntegerType> Metadata<dyn SubChecked<Integer<E, I>, Output = Integer<E, I>>> for Integer<E, I> {
-    type Case = (CircuitType<Self>, CircuitType<Self>);
-    type OutputType = CircuitType<Self>;
+    type Case = (IntegerCircuitType<E, I>, IntegerCircuitType<E, I>);
+    type OutputType = IntegerCircuitType<E, I>;
 
     fn count(case: &Self::Case) -> Count {
         match I::is_signed() {
-            true => match case {
-                (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(I::BITS, 0, 0, 0),
-                (CircuitType::Constant(_), _) => Count::is(0, 0, I::BITS + 3, I::BITS + 5),
-                (_, CircuitType::Constant(_)) => Count::is(0, 0, I::BITS + 2, I::BITS + 4),
+            true => match (case.0.eject_mode(), case.1.eject_mode()) {
+                (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
+                (Mode::Constant, _) => Count::is(0, 0, I::BITS + 3, I::BITS + 5),
+                (_, Mode::Constant) => Count::is(0, 0, I::BITS + 2, I::BITS + 4),
                 (_, _) => Count::is(0, 0, I::BITS + 4, I::BITS + 6),
             },
-            false => match case {
-                (CircuitType::Constant(_), CircuitType::Constant(_)) => Count::is(I::BITS, 0, 0, 0),
-                (_, _) => Count::is(0, 0, I::BITS + 1, I::BITS + 3),
+            false => match case.0.is_constant() && case.1.is_constant() {
+                true => Count::is(I::BITS, 0, 0, 0),
+                false => Count::is(0, 0, I::BITS + 1, I::BITS + 3),
             },
         }
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        match case {
-            (CircuitType::Constant(a), CircuitType::Constant(b)) => {
-                CircuitType::from(a.circuit().sub_checked(&b.circuit()))
-            }
-            (_, _) => CircuitType::Private,
+        let (lhs, rhs) = case;
+        match lhs.is_constant() && rhs.is_constant() {
+            true => IntegerCircuitType::from(lhs.circuit().sub_checked(&rhs.circuit())),
+            false => IntegerCircuitType::private(),
         }
     }
 }
@@ -170,7 +169,7 @@ mod tests {
                 let candidate = a.sub_checked(&b);
                 assert_eq!(expected, candidate.eject_value());
 
-                let case = (CircuitType::from(a), CircuitType::from(b));
+                let case = (IntegerCircuitType::from(a), IntegerCircuitType::from(b));
                 assert_count!(Sub(Integer<I>, Integer<I>) => Integer<I>, &case);
                 assert_output_type!(Sub(Integer<I>, Integer<I>) => Integer<I>, case, candidate);
             }),
@@ -179,7 +178,7 @@ mod tests {
                 false => Circuit::scope(name, || {
                     let _candidate = a.sub_checked(&b);
 
-                    let case = (CircuitType::from(a), CircuitType::from(b));
+                    let case = (IntegerCircuitType::from(a), IntegerCircuitType::from(b));
                     assert_count_fails!(Sub(Integer<I>, Integer<I>) => Integer<I>, &case);
                 }),
             },
