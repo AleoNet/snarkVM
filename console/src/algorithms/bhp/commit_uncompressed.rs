@@ -14,11 +14,24 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod bhp;
-pub use bhp::*;
+use super::*;
 
-pub mod pedersen;
-pub use pedersen::*;
+impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CommitUncompressed
+    for BHP<G, NUM_WINDOWS, WINDOW_SIZE>
+{
+    type Input = bool;
+    type Output = G::Affine;
+    type Randomizer = G::ScalarField;
 
-pub mod traits;
-pub use traits::*;
+    /// Returns the BHP commitment of the given input and randomizer as an affine group element.
+    fn commit_uncompressed(&self, input: &[Self::Input], randomizer: &Self::Randomizer) -> Result<Self::Output> {
+        let mut output = self.hash_uncompressed(input)?.to_projective();
+
+        // Compute h^r.
+        randomizer.to_bits_le().iter().zip_eq(&self.random_base).filter(|(bit, _)| **bit).for_each(|(_, base)| {
+            output += base;
+        });
+
+        Ok(output.to_affine())
+    }
+}

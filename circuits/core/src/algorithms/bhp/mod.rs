@@ -46,8 +46,9 @@ pub type BHP1024<E> = BHP<E, 6, 57>;
 /// BHP is a collision-resistant hash function that takes a variable-length input.
 /// The BHP hash function does *not* behave like a random oracle, see Poseidon for one.
 pub struct BHP<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
+    /// The bases for the BHP hash.
     bases: Vec<Vec<BaseLookups<E>>>,
-    /// The random base for computing the commitment.
+    /// The random base for the BHP commitment.
     random_base: Vec<Group<E>>,
 }
 

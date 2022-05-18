@@ -14,11 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod bhp;
-pub use bhp::*;
+use super::*;
 
-pub mod pedersen;
-pub use pedersen::*;
+impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Hash for BHP<G, NUM_WINDOWS, WINDOW_SIZE> {
+    type Input = bool;
+    type Output = <G::Affine as AffineCurve>::BaseField;
 
-pub mod traits;
-pub use traits::*;
+    /// Returns the BHP hash of the given input as a field element.
+    fn hash(&self, input: &[Self::Input]) -> Result<Self::Output> {
+        Ok(self.hash_uncompressed(input)?.to_x_coordinate())
+    }
+}
