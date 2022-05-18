@@ -293,7 +293,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Invalid 'ter' instruction")]
+    #[should_panic(expected = "Invalid 'ternary' instruction")]
     fn test_ternary_halts_on_mismatched_operand_types() {
         ternary_test("true.private", "1scalar.private", "1field.private", "\"unreachable\".private");
     }
