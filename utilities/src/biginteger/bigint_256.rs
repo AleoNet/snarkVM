@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    biginteger::BigInteger,
     bititerator::{BitIteratorBE, BitIteratorLE},
     io::{Read, Result as IoResult, Write},
     FromBits,
@@ -23,13 +24,12 @@ use crate::{
     ToBytes,
 };
 
-use crate::biginteger::BigInteger;
+use core::fmt::{Debug, Display};
 use num_bigint::BigUint;
 use rand::{
     distributions::{Distribution, Standard},
     Rng,
 };
-use std::fmt::{Debug, Display};
 
 #[derive(Copy, Clone, PartialEq, Eq, Default, Hash)]
 pub struct BigInteger256(pub [u64; 4]);
@@ -327,25 +327,5 @@ impl From<u64> for BigInteger256 {
         let mut repr = Self::default();
         repr.0[0] = val;
         repr
-    }
-}
-
-impl BigInteger256 {
-    pub fn from_u128(num: u128) -> Self {
-        // Takes a 256 bit buffer
-        let mut bytes = [0u8; 32];
-
-        num.write_le(bytes.as_mut()).unwrap();
-
-        Self::read_le(&bytes[..]).unwrap()
-    }
-
-    pub fn to_u128(&self) -> u128 {
-        let mut bytes = [0u8; 32];
-
-        self.write_le(bytes.as_mut()).unwrap();
-
-        // We cut off the last 128 bits here
-        u128::read_le(&bytes[..16]).unwrap()
     }
 }

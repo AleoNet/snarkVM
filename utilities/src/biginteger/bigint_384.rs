@@ -15,6 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
+    biginteger::BigInteger,
     bititerator::{BitIteratorBE, BitIteratorLE},
     io::{Read, Result as IoResult, Write},
     FromBits,
@@ -23,13 +24,12 @@ use crate::{
     ToBytes,
 };
 
-use crate::biginteger::BigInteger;
+use core::fmt::{Debug, Display};
 use num_bigint::BigUint;
 use rand::{
     distributions::{Distribution, Standard},
     Rng,
 };
-use std::fmt::{Debug, Display};
 
 #[derive(Copy, Clone, PartialEq, Eq, Default, Hash)]
 pub struct BigInteger384(pub [u64; 6]);
