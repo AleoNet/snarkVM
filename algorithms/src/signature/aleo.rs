@@ -16,7 +16,6 @@
 
 use crate::{
     crypto_hash::{hash_to_curve, Poseidon},
-    SignatureError,
     SignatureScheme,
     SignatureSchemeOperations,
 };
@@ -37,7 +36,7 @@ use snarkvm_utilities::{
     ToBytes,
 };
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use itertools::Itertools;
 use rand::{CryptoRng, Rng};
 
@@ -64,7 +63,7 @@ impl<TE: TwistedEdwardsParameters> AleoSignature<TE> {
             }
         }
 
-        Err(SignatureError::Message("Failed to read the signature root public key".into()).into())
+        bail!("Failed to read the signature root public key")
     }
 
     #[inline]
@@ -81,7 +80,7 @@ impl<TE: TwistedEdwardsParameters> AleoSignature<TE> {
             }
         }
 
-        Err(SignatureError::Message("Failed to read the signature root randomizer".into()).into())
+        bail!("Failed to read the signature root randomizer")
     }
 }
 
@@ -364,7 +363,7 @@ where
             }
         }
 
-        Err(SignatureError::Message("Failed to recover from x coordinate".into()).into())
+        bail!("Failed to recover from x coordinate")
     }
 }
 
