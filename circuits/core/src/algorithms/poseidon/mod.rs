@@ -23,11 +23,8 @@ mod prf;
 use snarkvm_circuits_types::environment::assert_scope;
 
 use crate::algorithms::{Hash, HashMany, HashToScalar, PRF};
-use snarkvm_algorithms::DuplexSpongeMode;
 use snarkvm_circuits_types::{environment::prelude::*, Field, Scalar};
 use snarkvm_fields::PoseidonDefaultField;
-
-const CAPACITY: usize = 1;
 
 /// Poseidon2 is a cryptographic hash function of input rate 2.
 pub type Poseidon2<E> = Poseidon<E, 2>;
@@ -35,6 +32,23 @@ pub type Poseidon2<E> = Poseidon<E, 2>;
 pub type Poseidon4<E> = Poseidon<E, 4>;
 /// Poseidon8 is a cryptographic hash function of input rate 8.
 pub type Poseidon8<E> = Poseidon<E, 8>;
+
+const CAPACITY: usize = 1;
+
+/// The mode structure for duplex sponges.
+#[derive(PartialEq, Eq, Clone, Debug)]
+pub enum DuplexSpongeMode {
+    /// The sponge is currently absorbing data.
+    Absorbing {
+        /// The next position of the state to be XOR-ed when absorbing.
+        next_absorb_index: usize,
+    },
+    /// The sponge is currently squeezing data out.
+    Squeezing {
+        /// The next position of the state to be outputted when squeezing.
+        next_squeeze_index: usize,
+    },
+}
 
 #[derive(Clone)]
 pub struct Poseidon<E: Environment, const RATE: usize> {

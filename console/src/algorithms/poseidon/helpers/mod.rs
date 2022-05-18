@@ -46,17 +46,17 @@ pub trait DefaultCapacityAlgebraicSponge<F: PrimeField, const RATE: usize>: Alge
     fn sample_parameters() -> Self::Parameters;
 }
 
-/// The mode structure for duplex sponges
+/// The mode structure for duplex sponges.
 #[derive(PartialEq, Eq, Clone, Debug)]
 pub enum DuplexSpongeMode {
     /// The sponge is currently absorbing data.
     Absorbing {
-        /// next position of the state to be XOR-ed when absorbing.
+        /// The next position of the state to be XOR-ed when absorbing.
         next_absorb_index: usize,
     },
     /// The sponge is currently squeezing data out.
     Squeezing {
-        /// next position of the state to be outputted when squeezing.
+        /// The next position of the state to be outputted when squeezing.
         next_squeeze_index: usize,
     },
 }
