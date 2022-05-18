@@ -175,7 +175,7 @@ mod tests {
 
                 // Check constraint counts and output mode.
                 let bases: Vec<Vec<CircuitType<Group<Circuit>>>> =
-                    circuit.bases.into_iter().map(|b| b.into_iter().map(|b| CircuitType::from(b)).collect()).collect();
+                    circuit.bases.iter().map(|b| b.iter().map(|b| CircuitType::from(b)).collect()).collect();
                 let input = circuit_input.into_iter().map(|b| CircuitType::from(b)).collect::<Vec<_>>();
                 let case = (bases, input);
                 assert_count!(

@@ -86,17 +86,17 @@ mod tests {
 
                 // Check constraint counts and output mode.
                 let bases: Vec<Vec<CircuitType<Group<Circuit>>>> =
-                    circuit.bases.into_iter().map(|b| b.into_iter().map(|b| CircuitType::from(b)).collect()).collect();
+                    circuit.bases.iter().map(|b| b.iter().map(|b| CircuitType::from(b)).collect()).collect();
                 let input = circuit_input.iter().map(|b| CircuitType::from(b)).collect::<Vec<_>>();
                 let case = (bases, input);
                 assert_count!(
                     Pedersen<Circuit, NUM_WINDOWS, WINDOW_SIZE>,
-                    Hash<Input = Boolean<Circuit>, Output = Group<Circuit>>,
+                    Hash<Input = Boolean<Circuit>, Output = Field<Circuit>>,
                     &case
                 );
                 assert_output_type!(
                     Pedersen<Circuit, NUM_WINDOWS, WINDOW_SIZE>,
-                    Hash<Input = Boolean<Circuit>, Output = Group<Circuit>>,
+                    Hash<Input = Boolean<Circuit>, Output = Field<Circuit>>,
                     case,
                     candidate
                 );
