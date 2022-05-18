@@ -40,7 +40,7 @@ version = "7.1"
 path = "../../algorithms"
 version = "0.7.5"
 default-features = false
-features = ["prf", "signature", "crh", "merkle_tree"]
+features = ["signature", "crh", "merkle_tree"]
 
 [dev-dependencies.snarkvm-console]
 path = "../../console"
