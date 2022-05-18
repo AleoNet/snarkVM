@@ -27,7 +27,6 @@ use snarkvm_algorithms::DuplexSpongeMode;
 use snarkvm_circuits_types::{environment::prelude::*, Field, Scalar};
 use snarkvm_fields::PoseidonDefaultField;
 
-const OPTIMIZED_FOR_WEIGHTS: bool = false;
 const CAPACITY: usize = 1;
 
 pub type Poseidon2<E> = Poseidon<E, 2>;
@@ -52,7 +51,7 @@ pub struct Poseidon<E: Environment, const RATE: usize> {
 impl<E: Environment, const RATE: usize> Poseidon<E, RATE> {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
-        match E::BaseField::default_poseidon_parameters::<RATE>(OPTIMIZED_FOR_WEIGHTS) {
+        match E::BaseField::default_poseidon_parameters::<RATE>() {
             Some(parameters) => {
                 let full_rounds = parameters.full_rounds;
                 let partial_rounds = parameters.partial_rounds;

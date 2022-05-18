@@ -37,7 +37,7 @@ where
     TE::BaseField: PrimeField,
 {
     generator: TEAffine<TE>,
-    poseidon: Poseidon<TE::BaseField, 4, false>,
+    poseidon: Poseidon<TE::BaseField, 4>,
     symmetric_key_commitment_domain: TE::BaseField,
     symmetric_encryption_domain: TE::BaseField,
 }
@@ -57,7 +57,7 @@ where
 
     fn setup(message: &str) -> Self {
         let (generator, _, _) = hash_to_curve::<TEAffine<TE>>(message);
-        let poseidon = Poseidon::<TE::BaseField, 4, false>::setup();
+        let poseidon = Poseidon::<TE::BaseField, 4>::setup();
         let symmetric_key_commitment_domain = TE::BaseField::from_bytes_le_mod_order(b"AleoSymmetricKeyCommitment0");
         let symmetric_encryption_domain = TE::BaseField::from_bytes_le_mod_order(b"AleoSymmetricEncryption0");
 

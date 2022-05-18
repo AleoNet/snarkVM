@@ -36,7 +36,7 @@ thread_local! {
 pub struct Testnet3;
 
 impl Network for Testnet3 {
-    type AccountPRF = PoseidonPRF<Self::Scalar, 4, false>;
+    type AccountPRF = PoseidonPRF<Self::Scalar, 4>;
     type Affine = EdwardsAffine;
     type AffineParameters = EdwardsParameters;
     type Field = Fq;

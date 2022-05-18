@@ -86,7 +86,7 @@ mod tests {
             let input = native_input.iter().map(|v| Field::<Circuit>::new(mode, *v)).collect::<Vec<_>>();
 
             // Compute the native hash.
-            let expected = NativePoseidonPRF::<_, RATE, OPTIMIZED_FOR_WEIGHTS>::prf(&native_seed, &native_input);
+            let expected = NativePoseidonPRF::<_, RATE>::prf(&native_seed, &native_input);
             // Compute the circuit hash.
             Circuit::scope(format!("Poseidon PRF {mode} {i}"), || {
                 let candidate = poseidon.prf(&seed, &input);

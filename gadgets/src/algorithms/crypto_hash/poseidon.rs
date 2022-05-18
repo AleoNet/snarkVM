@@ -317,18 +317,14 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize>
 }
 
 #[derive(Clone)]
-pub struct PoseidonCryptoHashGadget<F: PrimeField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool>(
-    PhantomData<F>,
-);
+pub struct PoseidonCryptoHashGadget<F: PrimeField, const RATE: usize>(PhantomData<F>);
 
-impl<F: PrimeField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool>
-    PoseidonCryptoHashGadget<F, RATE, OPTIMIZED_FOR_WEIGHTS>
-{
+impl<F: PrimeField, const RATE: usize> PoseidonCryptoHashGadget<F, RATE> {
     pub fn check_evaluation_gadget<CS: ConstraintSystem<F>>(
         mut cs: CS,
         input: &[FpGadget<F>],
     ) -> Result<FpGadget<F>, SynthesisError> {
-        let params = Arc::new(F::default_poseidon_parameters::<RATE>(OPTIMIZED_FOR_WEIGHTS).unwrap());
+        let params = Arc::new(F::default_poseidon_parameters::<RATE>().unwrap());
         let mut sponge = PoseidonSpongeGadget::<F, RATE, 1>::with_parameters(cs.ns(|| "alloc"), &params);
         sponge.absorb(cs.ns(|| "absorb"), input.iter())?;
         let res = sponge.squeeze(cs.ns(|| "squeeze"), 1)?;

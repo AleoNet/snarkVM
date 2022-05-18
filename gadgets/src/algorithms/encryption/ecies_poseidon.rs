@@ -454,7 +454,7 @@ fn symmetric_key_commitment<F: PrimeField>(
     symmetric_key: &FpGadget<F>,
 ) -> Result<FpGadget<F>, SynthesisError> {
     // Prepare the sponge.
-    let params = Arc::new(F::default_poseidon_parameters::<4>(false).unwrap());
+    let params = Arc::new(F::default_poseidon_parameters::<4>().unwrap());
     let mut sponge = PoseidonSpongeGadget::with_parameters(cs.ns(|| "sponge"), &params);
     let domain_separator = FpGadget::alloc_constant(cs.ns(|| "domain_separator"), || {
         Ok(F::from_bytes_le_mod_order(b"AleoSymmetricKeyCommitment0"))
@@ -473,7 +473,7 @@ fn symmetric_encryption<F: PrimeField>(
     encoded_message: &[FpGadget<F>],
 ) -> Result<Vec<FpGadget<F>>, SynthesisError> {
     // Prepare the sponge.
-    let params = Arc::new(F::default_poseidon_parameters::<4>(false).unwrap());
+    let params = Arc::new(F::default_poseidon_parameters::<4>().unwrap());
     let mut sponge = PoseidonSpongeGadget::with_parameters(cs.ns(|| "sponge"), &params);
     let domain_separator = FpGadget::alloc_constant(cs.ns(|| "domain_separator"), || {
         Ok(F::from_bytes_le_mod_order(b"AleoSymmetricEncryption0"))

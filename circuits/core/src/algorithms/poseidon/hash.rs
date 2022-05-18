@@ -231,7 +231,7 @@ mod tests {
         num_constraints: u64,
     ) {
         let rng = &mut test_rng();
-        let native_poseidon = NativePoseidon::<_, RATE, OPTIMIZED_FOR_WEIGHTS>::setup();
+        let native_poseidon = NativePoseidon::<_, RATE>::setup();
         let poseidon = Poseidon::<_, RATE>::new();
 
         for i in 0..ITERATIONS {

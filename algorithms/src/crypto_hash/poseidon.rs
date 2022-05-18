@@ -64,14 +64,14 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> IndexMut<usize> fo
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Poseidon<F: PrimeField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool> {
+pub struct Poseidon<F: PrimeField, const RATE: usize> {
     parameters: Arc<PoseidonParameters<F, RATE, 1>>,
 }
 
-impl<F: PrimeField, const RATE: usize, const OPTIMIZED_FOR_WEIGHTS: bool> Poseidon<F, RATE, OPTIMIZED_FOR_WEIGHTS> {
+impl<F: PrimeField, const RATE: usize> Poseidon<F, RATE> {
     /// Initializes a new instance of the cryptographic hash function.
     pub fn setup() -> Self {
-        Self { parameters: Arc::new(F::default_poseidon_parameters::<RATE>(OPTIMIZED_FOR_WEIGHTS).unwrap()) }
+        Self { parameters: Arc::new(F::default_poseidon_parameters::<RATE>().unwrap()) }
     }
 
     /// Evaluate the cryptographic hash function over a list of field elements as input.
@@ -116,7 +116,7 @@ pub struct PoseidonSponge<F: PrimeField, const RATE: usize, const CAPACITY: usiz
 
 impl<F: PrimeField, const RATE: usize> DefaultCapacityAlgebraicSponge<F, RATE> for PoseidonSponge<F, RATE, 1> {
     fn sample_parameters() -> Arc<PoseidonParameters<F, RATE, 1>> {
-        Arc::new(F::default_poseidon_parameters::<RATE>(false).unwrap())
+        Arc::new(F::default_poseidon_parameters::<RATE>().unwrap())
     }
 }
 

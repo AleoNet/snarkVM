@@ -113,7 +113,7 @@ where
     TE::BaseField: PrimeField,
 {
     g_bases: Vec<TEProjective<TE>>,
-    poseidon: Poseidon<TE::BaseField, 4, false>,
+    poseidon: Poseidon<TE::BaseField, 4>,
 }
 
 impl<TE: TwistedEdwardsParameters> SignatureScheme for AleoSignatureScheme<TE>
@@ -141,7 +141,7 @@ where
             g_bases
         };
 
-        let crypto_hash = Poseidon::<TE::BaseField, 4, false>::setup();
+        let crypto_hash = Poseidon::<TE::BaseField, 4>::setup();
 
         Self { g_bases, poseidon: crypto_hash }
     }

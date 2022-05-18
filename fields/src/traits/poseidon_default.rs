@@ -36,9 +36,7 @@ pub struct PoseidonParameters<F: PrimeField, const RATE: usize, const CAPACITY: 
 pub trait PoseidonDefaultField {
     /// Obtain the default Poseidon parameters for this rate and for this prime field,
     /// with a specific optimization goal.
-    fn default_poseidon_parameters<const RATE: usize>(
-        optimized_for_weights: bool,
-    ) -> Option<PoseidonParameters<Self, RATE, 1>>
+    fn default_poseidon_parameters<const RATE: usize>() -> Option<PoseidonParameters<Self, RATE, 1>>
     where
         Self: PrimeField,
     {
@@ -78,12 +76,7 @@ pub trait PoseidonDefaultField {
             (ark, mds)
         }
 
-        let default_entries = match optimized_for_weights {
-            true => Self::Parameters::PARAMS_OPT_FOR_WEIGHTS,
-            false => Self::Parameters::PARAMS_OPT_FOR_CONSTRAINTS,
-        };
-
-        default_entries.iter().find(|entry| entry.rate == RATE).map(|entry| {
+        Self::Parameters::PARAMS_OPT_FOR_CONSTRAINTS.iter().find(|entry| entry.rate == RATE).map(|entry| {
             let (ark, mds) = find_poseidon_ark_and_mds::<Self, RATE>(
                 entry.full_rounds as u64,
                 entry.partial_rounds as u64,
@@ -109,11 +102,6 @@ pub trait PoseidonDefaultParameters {
     /// Here, `skip_matrices` denote how many matrices to skip before
     /// finding one that satisfy all the requirements.
     const PARAMS_OPT_FOR_CONSTRAINTS: [PoseidonDefaultParametersEntry; 7];
-
-    /// An array of the parameters optimized for weights
-    /// (rate, alpha, full_rounds, partial_rounds, skip_matrices)
-    /// for rate = 2, 3, 4, 5, 6, 7, 8
-    const PARAMS_OPT_FOR_WEIGHTS: [PoseidonDefaultParametersEntry; 7];
 }
 
 /// An entry in the default Poseidon parameters

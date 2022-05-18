@@ -50,7 +50,7 @@ fn test_grain_lfsr_consistency() {
 #[test]
 fn test_poseidon_sponge_consistency() {
     const RATE: usize = 2;
-    let sponge_param = Arc::new(Fr::default_poseidon_parameters::<RATE>(false).unwrap());
+    let sponge_param = Arc::new(Fr::default_poseidon_parameters::<RATE>().unwrap());
     for absorb in 0..10 {
         for squeeze in 0..10 {
             let iteration_name = format!("Absorb {} and Squeeze {}", absorb, squeeze);
@@ -71,26 +71,18 @@ fn test_poseidon_sponge_consistency() {
 
 #[test]
 fn bls12_377_fr_poseidon_default_parameters_test() {
-    fn single_rate_test<const RATE: usize>(optimize_for_weights: bool) {
-        let params = Fr::default_poseidon_parameters::<RATE>(optimize_for_weights).unwrap();
-        let name = format!("rate {} and optimize_for_weights {}", RATE, optimize_for_weights);
+    fn single_rate_test<const RATE: usize>() {
+        let params = Fr::default_poseidon_parameters::<RATE>().unwrap();
+        let name = format!("rate {} and optimize_for_weights false", RATE);
         expect_file_with_name("Ark for ".to_string() + &name, params.ark);
         expect_file_with_name("MDS for ".to_string() + &name, params.mds);
     }
     // Optimize for constraints
-    single_rate_test::<2>(false);
-    single_rate_test::<3>(false);
-    single_rate_test::<4>(false);
-    single_rate_test::<5>(false);
-    single_rate_test::<6>(false);
-    single_rate_test::<7>(false);
-    single_rate_test::<8>(false);
-
-    single_rate_test::<2>(true);
-    single_rate_test::<3>(true);
-    single_rate_test::<4>(true);
-    single_rate_test::<5>(true);
-    single_rate_test::<6>(true);
-    single_rate_test::<7>(true);
-    single_rate_test::<8>(true);
+    single_rate_test::<2>();
+    single_rate_test::<3>();
+    single_rate_test::<4>();
+    single_rate_test::<5>();
+    single_rate_test::<6>();
+    single_rate_test::<7>();
+    single_rate_test::<8>();
 }
