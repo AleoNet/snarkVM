@@ -14,11 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![forbid(unsafe_code)]
-#![allow(clippy::too_many_arguments)]
+use super::*;
 
-pub mod aleo;
-pub use aleo::*;
+impl<G: ProjectiveCurve, const NUM_BITS: usize> Commit for Pedersen<G, NUM_BITS> {
+    type Input = bool;
+    type Output = <G::Affine as AffineCurve>::BaseField;
+    type Randomizer = G::ScalarField;
 
-pub mod algorithms;
-pub use algorithms::*;
+    /// Returns the Pedersen commitment of the given input and randomizer as a field element.
+    fn commit(&self, input: &[Self::Input], randomizer: &Self::Randomizer) -> Result<Self::Output> {
+        Ok(self.commit_uncompressed(input, randomizer)?.to_x_coordinate())
+    }
+}

@@ -14,11 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![forbid(unsafe_code)]
-#![allow(clippy::too_many_arguments)]
+pub mod pedersen;
+pub use pedersen::*;
 
-pub mod aleo;
-pub use aleo::*;
-
-pub mod algorithms;
-pub use algorithms::*;
+pub mod traits;
+pub use traits::*;

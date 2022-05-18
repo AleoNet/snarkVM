@@ -14,11 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-#![forbid(unsafe_code)]
-#![allow(clippy::too_many_arguments)]
+use super::*;
 
-pub mod aleo;
-pub use aleo::*;
+impl<G: ProjectiveCurve, const NUM_BITS: usize> Hash for Pedersen<G, NUM_BITS> {
+    type Input = bool;
+    type Output = <G::Affine as AffineCurve>::BaseField;
 
-pub mod algorithms;
-pub use algorithms::*;
+    /// Returns the Pedersen hash of the given input as a field element.
+    fn hash(&self, input: &[Self::Input]) -> Result<Self::Output> {
+        // Compute the Pedersen hash as an affine group element, and return the x-coordinate.
+        Ok(self.hash_uncompressed(input)?.to_x_coordinate())
+    }
+}

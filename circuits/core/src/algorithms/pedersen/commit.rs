@@ -16,24 +16,21 @@
 
 use super::*;
 
-use snarkvm_circuits_types::prelude::*;
-
 impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Commit
     for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
 {
     type Input = Boolean<E>;
     type Output = Field<E>;
-    type Randomness = Scalar<E>;
+    type Randomizer = Scalar<E>;
 
-    /// Returns the Pedersen commitment of the given input with the given randomness
-    /// as an affine group element.
-    fn commit(&self, input: &[Self::Input], randomizer: &Self::Randomness) -> Self::Output {
+    /// Returns the Pedersen commitment of the given input and randomizer as a field element.
+    fn commit(&self, input: &[Self::Input], randomizer: &Self::Randomizer) -> Self::Output {
         self.commit_uncompressed(input, randomizer).to_x_coordinate()
     }
 }
 
 impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    Metrics<dyn Commit<Input = Boolean<E>, Output = Field<E>, Randomness = Scalar<E>>>
+    Metrics<dyn Commit<Input = Boolean<E>, Output = Field<E>, Randomizer = Scalar<E>>>
     for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
 {
     type Case = (Vec<Mode>, Vec<Mode>);
@@ -79,7 +76,7 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
 }
 
 impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    OutputMode<dyn Commit<Input = Boolean<E>, Output = Field<E>, Randomness = Scalar<E>>>
+    OutputMode<dyn Commit<Input = Boolean<E>, Output = Field<E>, Randomizer = Scalar<E>>>
     for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
 {
     type Case = (Vec<Mode>, Vec<Mode>);
@@ -142,12 +139,12 @@ mod tests {
                     circuit_randomness.to_bits_le().iter().map(|b| b.eject_mode()).collect::<Vec<_>>();
                 assert_count!(
                     Pedersen<Circuit, NUM_WINDOWS, WINDOW_SIZE>,
-                    Commit<Input = Boolean<Circuit>, Output = Field<Circuit>, Randomness = Scalar<Circuit>>,
+                    Commit<Input = Boolean<Circuit>, Output = Field<Circuit>, Randomizer = Scalar<Circuit>>,
                     &(input_modes.clone(), randomness_modes.clone())
                 );
                 assert_output_mode!(
                     Pedersen<Circuit, NUM_WINDOWS, WINDOW_SIZE>,
-                    Commit<Input = Boolean<Circuit>, Output = Field<Circuit>, Randomness = Scalar<Circuit>>,
+                    Commit<Input = Boolean<Circuit>, Output = Field<Circuit>, Randomizer = Scalar<Circuit>>,
                     &(input_modes, randomness_modes),
                     candidate
                 );
@@ -208,8 +205,8 @@ mod tests {
 
     fn check_homomorphic_addition<
         C: Display + Eject + Add<Output = C> + ToBits<Boolean = Boolean<Circuit>>,
-        P: Commit<Input = Boolean<Circuit>, Randomness = Scalar<Circuit>, Output = Field<Circuit>>
-            + CommitUncompressed<Input = Boolean<Circuit>, Randomness = Scalar<Circuit>, Output = Group<Circuit>>,
+        P: Commit<Input = Boolean<Circuit>, Randomizer = Scalar<Circuit>, Output = Field<Circuit>>
+            + CommitUncompressed<Input = Boolean<Circuit>, Randomizer = Scalar<Circuit>, Output = Group<Circuit>>,
     >(
         pedersen: &P,
         first: C,
@@ -268,8 +265,8 @@ mod tests {
     #[test]
     fn test_pedersen_homomorphism_private() {
         fn check_pedersen_homomorphism<
-            P: Commit<Input = Boolean<Circuit>, Randomness = Scalar<Circuit>, Output = Field<Circuit>>
-                + CommitUncompressed<Input = Boolean<Circuit>, Randomness = Scalar<Circuit>, Output = Group<Circuit>>,
+            P: Commit<Input = Boolean<Circuit>, Randomizer = Scalar<Circuit>, Output = Field<Circuit>>
+                + CommitUncompressed<Input = Boolean<Circuit>, Randomizer = Scalar<Circuit>, Output = Group<Circuit>>,
         >(
             pedersen: &P,
         ) {

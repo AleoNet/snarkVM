@@ -16,18 +16,15 @@
 
 use super::*;
 
-use snarkvm_circuits_types::prelude::*;
-
 impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CommitUncompressed
     for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
 {
     type Input = Boolean<E>;
     type Output = Group<E>;
-    type Randomness = Scalar<E>;
+    type Randomizer = Scalar<E>;
 
-    /// Returns the Pedersen commitment of the given input with the given randomness
-    /// as an affine group element.
-    fn commit_uncompressed(&self, input: &[Self::Input], randomizer: &Self::Randomness) -> Self::Output {
+    /// Returns the Pedersen commitment of the given input and randomizer as an affine group element.
+    fn commit_uncompressed(&self, input: &[Self::Input], randomizer: &Self::Randomizer) -> Self::Output {
         let hash = self.hash_uncompressed(input);
 
         // Compute h^r
@@ -41,7 +38,7 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CommitU
 }
 
 impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    Metrics<dyn CommitUncompressed<Input = Boolean<E>, Output = Group<E>, Randomness = Scalar<E>>>
+    Metrics<dyn CommitUncompressed<Input = Boolean<E>, Output = Group<E>, Randomizer = Scalar<E>>>
     for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
 {
     type Case = (Vec<Mode>, Vec<Mode>);
@@ -87,7 +84,7 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
 }
 
 impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    OutputMode<dyn CommitUncompressed<Input = Boolean<E>, Output = Group<E>, Randomness = Scalar<E>>>
+    OutputMode<dyn CommitUncompressed<Input = Boolean<E>, Output = Group<E>, Randomizer = Scalar<E>>>
     for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
 {
     type Case = (Vec<Mode>, Vec<Mode>);
@@ -150,12 +147,12 @@ mod tests {
                     circuit_randomness.to_bits_le().iter().map(|b| b.eject_mode()).collect::<Vec<_>>();
                 assert_count!(
                     Pedersen<Circuit, NUM_WINDOWS, WINDOW_SIZE>,
-                    CommitUncompressed<Input = Boolean<Circuit>, Output = Group<Circuit>, Randomness = Scalar<Circuit>>,
+                    CommitUncompressed<Input = Boolean<Circuit>, Output = Group<Circuit>, Randomizer = Scalar<Circuit>>,
                     &(input_modes.clone(), randomness_modes.clone())
                 );
                 assert_output_mode!(
                     Pedersen<Circuit, NUM_WINDOWS, WINDOW_SIZE>,
-                    CommitUncompressed<Input = Boolean<Circuit>, Output = Group<Circuit>, Randomness = Scalar<Circuit>>,
+                    CommitUncompressed<Input = Boolean<Circuit>, Output = Group<Circuit>, Randomizer = Scalar<Circuit>>,
                     &(input_modes, randomness_modes),
                     candidate
                 );
@@ -215,7 +212,7 @@ mod tests {
     }
 
     fn check_homomorphic_addition<C: Display + Eject + Add<Output = C> + ToBits<Boolean = Boolean<Circuit>>>(
-        pedersen: &impl CommitUncompressed<Input = Boolean<Circuit>, Randomness = Scalar<Circuit>, Output = Group<Circuit>>,
+        pedersen: &impl CommitUncompressed<Input = Boolean<Circuit>, Randomizer = Scalar<Circuit>, Output = Group<Circuit>>,
         first: C,
         second: C,
     ) {
@@ -274,7 +271,7 @@ mod tests {
         fn check_pedersen_homomorphism(
             pedersen: &impl CommitUncompressed<
                 Input = Boolean<Circuit>,
-                Randomness = Scalar<Circuit>,
+                Randomizer = Scalar<Circuit>,
                 Output = Group<Circuit>,
             >,
         ) {

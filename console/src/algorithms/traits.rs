@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_circuits_environment::{Eject, Inject, ScalarTrait, Ternary, ToBits};
+use anyhow::Result;
 
 /// A trait for a commitment scheme.
 pub trait Commit {
@@ -23,7 +23,7 @@ pub trait Commit {
     type Randomizer;
 
     /// Returns the commitment to the given input and randomizer.
-    fn commit(&self, input: &[Self::Input], randomizer: &Self::Randomizer) -> Self::Output;
+    fn commit(&self, input: &[Self::Input], randomizer: &Self::Randomizer) -> Result<Self::Output>;
 }
 
 /// A trait for a commitment scheme.
@@ -33,16 +33,16 @@ pub trait CommitUncompressed {
     type Randomizer;
 
     /// Returns the commitment to the given input and randomizer.
-    fn commit_uncompressed(&self, input: &[Self::Input], randomizer: &Self::Randomizer) -> Self::Output;
+    fn commit_uncompressed(&self, input: &[Self::Input], randomizer: &Self::Randomizer) -> Result<Self::Output>;
 }
 
 /// A trait for a hash function.
 pub trait Hash {
-    type Input: Inject + Eject + Clone;
-    type Output: Inject + Eject + Ternary<Output = Self::Output> + ToBits + Clone;
+    type Input;
+    type Output;
 
     /// Returns the hash of the given input.
-    fn hash(&self, input: &[Self::Input]) -> Self::Output;
+    fn hash(&self, input: &[Self::Input]) -> Result<Self::Output>;
 }
 
 /// A trait for a hash function that produces multiple outputs.
@@ -57,7 +57,7 @@ pub trait HashMany {
 /// A trait for a hash function that projects the value to a scalar.
 pub trait HashToScalar {
     type Input;
-    type Scalar: ScalarTrait;
+    type Scalar;
 
     /// Returns the hash of the given input.
     fn hash_to_scalar(&self, input: &[Self::Input]) -> Self::Scalar;
@@ -69,7 +69,7 @@ pub trait HashUncompressed {
     type Output;
 
     /// Returns the hash of the given input.
-    fn hash_uncompressed(&self, input: &[Self::Input]) -> Self::Output;
+    fn hash_uncompressed(&self, input: &[Self::Input]) -> Result<Self::Output>;
 }
 
 /// A trait for a pseudorandom function.

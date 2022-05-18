@@ -2200,6 +2200,7 @@ dependencies = [
  "base58",
  "bech32",
  "bincode",
+ "itertools",
  "serde",
  "serde_json",
  "snarkvm-algorithms",

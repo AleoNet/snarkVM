@@ -35,6 +35,9 @@ version = "0.2"
 [dependencies.bech32]
 version = "0.9"
 
+[dependencies.itertools]
+version = "0.10.1"
+
 [dependencies.serde]
 version = "1.0"
 features = ["derive"]

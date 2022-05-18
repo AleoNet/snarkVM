@@ -19,11 +19,10 @@ use super::*;
 impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Commit for BHP<E, NUM_WINDOWS, WINDOW_SIZE> {
     type Input = Boolean<E>;
     type Output = Field<E>;
-    type Randomness = Scalar<E>;
+    type Randomizer = Scalar<E>;
 
-    /// Returns the BHP commitment of the given input with the given randomness
-    /// as an affine group element.
-    fn commit(&self, input: &[Self::Input], randomizer: &Self::Randomness) -> Self::Output {
+    /// Returns the BHP commitment of the given input and randomizer as a field element.
+    fn commit(&self, input: &[Self::Input], randomizer: &Self::Randomizer) -> Self::Output {
         self.commit_uncompressed(input, randomizer).to_x_coordinate()
     }
 }

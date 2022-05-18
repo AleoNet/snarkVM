@@ -21,11 +21,10 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CommitU
 {
     type Input = Boolean<E>;
     type Output = Group<E>;
-    type Randomness = Scalar<E>;
+    type Randomizer = Scalar<E>;
 
-    /// Returns the BHP commitment of the given input with the given randomness
-    /// as an affine group element.
-    fn commit_uncompressed(&self, input: &[Self::Input], randomizer: &Self::Randomness) -> Self::Output {
+    /// Returns the BHP commitment of the given input and randomizer as an affine group element.
+    fn commit_uncompressed(&self, input: &[Self::Input], randomizer: &Self::Randomizer) -> Self::Output {
         let hash = self.hash_uncompressed(input);
 
         // Compute h^r.

@@ -36,7 +36,7 @@ pub type Pedersen128<E> = Pedersen<E, 1, 128>;
 pub struct Pedersen<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
     /// The base windows for the Pedersen hash.
     bases: Vec<Vec<Group<E>>>,
-    /// A vector of random bases, used for computing the commitment.
+    /// The random base window for the Pedersen commitment.
     random_base: Vec<Group<E>>,
 }
 
