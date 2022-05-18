@@ -29,8 +29,10 @@ impl<A: Aleo> Signature<A> {
         let candidate_verifier_challenge = {
             // Convert the message into little-endian bits.
             let message_bits = message.to_bits_le();
-            let message_elements =
-                message_bits.chunks(A::BaseField::size_in_data_bits()).map(FromBits::from_bits_le).collect::<Vec<_>>();
+            let message_elements = message_bits
+                .chunks(A::BaseField::size_in_data_bits())
+                .map(FromBitsLE::from_bits_le)
+                .collect::<Vec<_>>();
 
             // Construct the hash input (G^sk_sig G^r_sig G^sk_prf, G^r, message).
             let mut preimage = Vec::with_capacity(3 + message_elements.len());

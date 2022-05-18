@@ -18,7 +18,7 @@ use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
 use syn::{Data, Index, Type};
 
-enum IdentOrIndex {
+pub(crate) enum IdentOrIndex {
     Ident(proc_macro2::Ident),
     Index(Index),
 }
@@ -35,8 +35,6 @@ impl ToTokens for IdentOrIndex {
 fn impl_serialize_field(
     serialize_body: &mut Vec<TokenStream>,
     serialized_size_body: &mut Vec<TokenStream>,
-    serialize_uncompressed_body: &mut Vec<TokenStream>,
-    uncompressed_size_body: &mut Vec<TokenStream>,
     idents: &mut Vec<IdentOrIndex>,
     ty: &Type,
 ) {
@@ -46,28 +44,20 @@ fn impl_serialize_field(
             for (i, elem_ty) in tuple.elems.iter().enumerate() {
                 let index = Index::from(i);
                 idents.push(IdentOrIndex::Index(index));
-                impl_serialize_field(
-                    serialize_body,
-                    serialized_size_body,
-                    serialize_uncompressed_body,
-                    uncompressed_size_body,
-                    idents,
-                    elem_ty,
-                );
+                impl_serialize_field(serialize_body, serialized_size_body, idents, elem_ty);
                 idents.pop();
             }
         }
         _ => {
-            serialize_body.push(quote! { CanonicalSerialize::serialize(&self.#(#idents).*, writer)?; });
-            serialized_size_body.push(quote! { size += CanonicalSerialize::serialized_size(&self.#(#idents).*); });
-            serialize_uncompressed_body
-                .push(quote! { CanonicalSerialize::serialize_uncompressed(&self.#(#idents).*, writer)?; });
-            uncompressed_size_body.push(quote! { size += CanonicalSerialize::uncompressed_size(&self.#(#idents).*); });
+            serialize_body
+                .push(quote! { CanonicalSerialize::serialize_with_mode(&self.#(#idents).*, &mut writer, compress)?; });
+            serialized_size_body
+                .push(quote! { size += CanonicalSerialize::serialized_size(&self.#(#idents).*, compress); });
         }
     }
 }
 
-pub(crate) fn impl_canonical_serialize(ast: &syn::DeriveInput) -> TokenStream {
+pub(super) fn impl_canonical_serialize(ast: &syn::DeriveInput) -> TokenStream {
     let name = &ast.ident;
 
     let (impl_generics, ty_generics, where_clause) = ast.generics.split_for_impl();
@@ -75,13 +65,11 @@ pub(crate) fn impl_canonical_serialize(ast: &syn::DeriveInput) -> TokenStream {
     let len = if let Data::Struct(ref data_struct) = ast.data {
         data_struct.fields.len()
     } else {
-        panic!("Serialize can only be derived for structs, {} is not a struct", name);
+        panic!("`CanonicalSerialize` can only be derived for structs, {} is not a struct", name);
     };
 
     let mut serialize_body = Vec::<TokenStream>::with_capacity(len);
     let mut serialized_size_body = Vec::<TokenStream>::with_capacity(len);
-    let mut serialize_uncompressed_body = Vec::<TokenStream>::with_capacity(len);
-    let mut uncompressed_size_body = Vec::<TokenStream>::with_capacity(len);
 
     match ast.data {
         Data::Struct(ref data_struct) => {
@@ -98,43 +86,25 @@ pub(crate) fn impl_canonical_serialize(ast: &syn::DeriveInput) -> TokenStream {
                     }
                 }
 
-                impl_serialize_field(
-                    &mut serialize_body,
-                    &mut serialized_size_body,
-                    &mut serialize_uncompressed_body,
-                    &mut uncompressed_size_body,
-                    &mut idents,
-                    &field.ty,
-                );
+                impl_serialize_field(&mut serialize_body, &mut serialized_size_body, &mut idents, &field.ty);
 
                 idents.clear();
             }
         }
-        _ => panic!("Serialize can only be derived for structs, {} is not a struct", name),
+        _ => panic!("`CanonicalSerialize` can only be derived for structs, {} is not a struct", name),
     };
 
     let gen = quote! {
-        impl #impl_generics CanonicalSerialize for #name #ty_generics #where_clause {
+        impl #impl_generics snarkvm_utilities::CanonicalSerialize for #name #ty_generics #where_clause {
             #[allow(unused_mut, unused_variables)]
-            fn serialize<W: snarkvm_utilities::Write>(&self, writer: &mut W) -> Result<(), snarkvm_utilities::SerializationError> {
+            fn serialize_with_mode<W: snarkvm_utilities::io::Write>(&self, mut writer: W, compress: snarkvm_utilities::serialize::Compress) -> Result<(), snarkvm_utilities::serialize::SerializationError> {
                 #(#serialize_body)*
                 Ok(())
             }
             #[allow(unused_mut, unused_variables)]
-            fn serialized_size(&self) -> usize {
+            fn serialized_size(&self, compress: snarkvm_utilities::serialize::Compress) -> usize {
                 let mut size = 0;
                 #(#serialized_size_body)*
-                size
-            }
-            #[allow(unused_mut, unused_variables)]
-            fn serialize_uncompressed<W: snarkvm_utilities::Write>(&self, writer: &mut W) -> Result<(), snarkvm_utilities::SerializationError> {
-                #(#serialize_uncompressed_body)*
-                Ok(())
-            }
-            #[allow(unused_mut, unused_variables)]
-            fn uncompressed_size(&self) -> usize {
-                let mut size = 0;
-                #(#uncompressed_size_body)*
                 size
             }
         }

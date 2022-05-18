@@ -27,7 +27,7 @@ impl<E: Environment, TwoToOneCRH: Hash> MerklePath<E, TwoToOneCRH> {
     ) -> TwoToOneCRH::Output
     where
         <<TwoToOneCRH as Hash>::Output as Ternary>::Boolean: From<Boolean<E>>,
-        Vec<<TwoToOneCRH as Hash>::Input>: From<Vec<<<TwoToOneCRH as Hash>::Output as ToBits>::Boolean>>,
+        Vec<<TwoToOneCRH as Hash>::Input>: From<Vec<<<TwoToOneCRH as Hash>::Output as ToBitsLE>::Boolean>>,
     {
         let mut curr_hash = leaf_crh.hash(leaf);
 

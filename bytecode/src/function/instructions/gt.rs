@@ -15,8 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::{
-    function::{parsers::*, Instruction, Opcode, Operation, Registers},
-    helpers::Register,
+    function::{parsers::*, Instruction, Opcode, Operation, Register, Registers},
     Program,
     Value,
 };
@@ -59,11 +58,11 @@ impl<P: Program> Operation<P> for GreaterThan<P> {
         // Load the values for the first and second operands.
         let first = match registers.load(self.operation.first()) {
             Value::Literal(literal) => literal,
-            Value::Composite(name, ..) => P::halt(format!("{name} is not a literal")),
+            Value::Definition(name, ..) => P::halt(format!("{name} is not a literal")),
         };
         let second = match registers.load(self.operation.second()) {
             Value::Literal(literal) => literal,
-            Value::Composite(name, ..) => P::halt(format!("{name} is not a literal")),
+            Value::Definition(name, ..) => P::halt(format!("{name} is not a literal")),
         };
 
         // Perform the operation.
@@ -186,10 +185,10 @@ mod tests {
 
     #[test]
     #[should_panic(expected = "message is not a literal")]
-    fn test_composite_halts() {
-        let first = Value::<Process>::Composite(Identifier::from_str("message"), vec![
-            Literal::from_str("2group.public"),
-            Literal::from_str("10field.private"),
+    fn test_definition_halts() {
+        let first = Value::<Process>::Definition(Identifier::from_str("message"), vec![
+            Value::from_str("2group.public"),
+            Value::from_str("10field.private"),
         ]);
         let second = first.clone();
 

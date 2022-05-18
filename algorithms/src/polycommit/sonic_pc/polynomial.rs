@@ -15,13 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::PolynomialLabel;
-use crate::fft::{
-    DenseOrSparsePolynomial,
-    DensePolynomial,
-    EvaluationDomain,
-    Evaluations as EvaluationsOnDomain,
-    SparsePolynomial,
-};
+use crate::fft::{DensePolynomial, EvaluationDomain, Evaluations as EvaluationsOnDomain, Polynomial, SparsePolynomial};
 use snarkvm_fields::{Field, PrimeField};
 use snarkvm_utilities::{cfg_iter, cfg_iter_mut, CanonicalDeserialize, CanonicalSerialize};
 
@@ -33,54 +27,22 @@ use itertools::Itertools;
 #[cfg(feature = "parallel")]
 use rayon::prelude::*;
 
-/// A polynomial along with information about its degree bound (if any), and the
-/// maximum number of queries that will be made to it. This latter number determines
-/// the amount of protection that will be provided to a commitment for this polynomial.
-#[derive(Debug, Clone, CanonicalSerialize, CanonicalDeserialize)]
-pub struct LabeledPolynomial<F: Field> {
+#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize, Eq, PartialEq)]
+pub struct PolynomialInfo {
     label: PolynomialLabel,
-    polynomial: DenseOrSparsePolynomial<'static, F>,
     degree_bound: Option<usize>,
     hiding_bound: Option<usize>,
 }
 
-impl<F: Field> core::ops::Deref for LabeledPolynomial<F> {
-    type Target = DenseOrSparsePolynomial<'static, F>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.polynomial
-    }
-}
-
-impl<F: Field> LabeledPolynomial<F> {
+impl PolynomialInfo {
     /// Construct a new labeled polynomial by consuming `polynomial`.
-    pub fn new(
-        label: PolynomialLabel,
-        polynomial: impl Into<DenseOrSparsePolynomial<'static, F>>,
-        degree_bound: Option<usize>,
-        hiding_bound: Option<usize>,
-    ) -> Self {
-        Self { label, polynomial: polynomial.into(), degree_bound, hiding_bound }
+    pub fn new(label: PolynomialLabel, degree_bound: Option<usize>, hiding_bound: Option<usize>) -> Self {
+        Self { label, degree_bound, hiding_bound }
     }
 
     /// Return the label for `self`.
-    pub fn label(&self) -> &String {
+    pub fn label(&self) -> &str {
         &self.label
-    }
-
-    /// Retrieve the polynomial from `self`.
-    pub fn polynomial(&self) -> &DenseOrSparsePolynomial<F> {
-        &self.polynomial
-    }
-
-    /// Retrieve a mutable reference to the enclosed polynomial.
-    pub fn polynomial_mut(&mut self) -> &mut DenseOrSparsePolynomial<'static, F> {
-        &mut self.polynomial
-    }
-
-    /// Evaluate the polynomial in `self`.
-    pub fn evaluate(&self, point: F) -> F {
-        self.polynomial.evaluate(point)
     }
 
     /// Retrieve the degree bound in `self`.
@@ -99,6 +61,75 @@ impl<F: Field> LabeledPolynomial<F> {
     }
 }
 
+/// A polynomial along with information about its degree bound (if any), and the
+/// maximum number of queries that will be made to it. This latter number determines
+/// the amount of protection that will be provided to a commitment for this polynomial.
+#[derive(Debug, Clone, CanonicalSerialize, CanonicalDeserialize)]
+pub struct LabeledPolynomial<F: Field> {
+    pub info: PolynomialInfo,
+    pub polynomial: Polynomial<'static, F>,
+}
+
+impl<F: Field> core::ops::Deref for LabeledPolynomial<F> {
+    type Target = Polynomial<'static, F>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.polynomial
+    }
+}
+
+impl<F: Field> LabeledPolynomial<F> {
+    /// Construct a new labeled polynomial by consuming `polynomial`.
+    pub fn new(
+        label: PolynomialLabel,
+        polynomial: impl Into<Polynomial<'static, F>>,
+        degree_bound: Option<usize>,
+        hiding_bound: Option<usize>,
+    ) -> Self {
+        let info = PolynomialInfo::new(label, degree_bound, hiding_bound);
+        Self { info, polynomial: polynomial.into() }
+    }
+
+    pub fn info(&self) -> &PolynomialInfo {
+        &self.info
+    }
+
+    /// Return the label for `self`.
+    pub fn label(&self) -> &str {
+        &self.info.label
+    }
+
+    /// Retrieve the polynomial from `self`.
+    pub fn polynomial(&self) -> &Polynomial<F> {
+        &self.polynomial
+    }
+
+    /// Retrieve a mutable reference to the enclosed polynomial.
+    pub fn polynomial_mut(&mut self) -> &mut Polynomial<'static, F> {
+        &mut self.polynomial
+    }
+
+    /// Evaluate the polynomial in `self`.
+    pub fn evaluate(&self, point: F) -> F {
+        self.polynomial.evaluate(point)
+    }
+
+    /// Retrieve the degree bound in `self`.
+    pub fn degree_bound(&self) -> Option<usize> {
+        self.info.degree_bound
+    }
+
+    /// Retrieve whether the polynomial in `self` should be hidden.
+    pub fn is_hiding(&self) -> bool {
+        self.info.hiding_bound.is_some()
+    }
+
+    /// Retrieve the hiding bound for the polynomial in `self`.
+    pub fn hiding_bound(&self) -> Option<usize> {
+        self.info.hiding_bound
+    }
+}
+
 /////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////
@@ -106,21 +137,21 @@ impl<F: Field> LabeledPolynomial<F> {
 
 #[derive(Debug, Clone)]
 pub struct LabeledPolynomialWithBasis<'a, F: PrimeField> {
-    label: PolynomialLabel,
+    pub info: PolynomialInfo,
     pub polynomial: Vec<(F, PolynomialWithBasis<'a, F>)>,
-    hiding_bound: Option<usize>,
 }
 
 impl<'a, F: PrimeField> LabeledPolynomialWithBasis<'a, F> {
     /// Construct a new labeled polynomial by consuming `polynomial`.
     pub fn new_monomial_basis(
         label: PolynomialLabel,
-        polynomial: &'a DenseOrSparsePolynomial<F>,
+        polynomial: &'a Polynomial<F>,
         degree_bound: Option<usize>,
         hiding_bound: Option<usize>,
     ) -> Self {
         let polynomial = PolynomialWithBasis::new_monomial_basis_ref(polynomial, degree_bound);
-        Self { label, polynomial: vec![(F::one(), polynomial)], hiding_bound }
+        let info = PolynomialInfo::new(label, degree_bound, hiding_bound);
+        Self { info, polynomial: vec![(F::one(), polynomial)] }
     }
 
     /// Construct a new labeled polynomial by consuming `polynomial`.
@@ -129,7 +160,8 @@ impl<'a, F: PrimeField> LabeledPolynomialWithBasis<'a, F> {
         polynomial: Vec<(F, PolynomialWithBasis<'a, F>)>,
         hiding_bound: Option<usize>,
     ) -> Self {
-        Self { label, polynomial, hiding_bound }
+        let info = PolynomialInfo::new(label, None, hiding_bound);
+        Self { info, polynomial }
     }
 
     pub fn new_lagrange_basis(
@@ -138,7 +170,8 @@ impl<'a, F: PrimeField> LabeledPolynomialWithBasis<'a, F> {
         hiding_bound: Option<usize>,
     ) -> Self {
         let polynomial = PolynomialWithBasis::new_lagrange_basis(polynomial);
-        Self { label, polynomial: vec![(F::one(), polynomial)], hiding_bound }
+        let info = PolynomialInfo::new(label, None, hiding_bound);
+        Self { info, polynomial: vec![(F::one(), polynomial)] }
     }
 
     pub fn new_lagrange_basis_ref(
@@ -147,12 +180,18 @@ impl<'a, F: PrimeField> LabeledPolynomialWithBasis<'a, F> {
         hiding_bound: Option<usize>,
     ) -> Self {
         let polynomial = PolynomialWithBasis::new_lagrange_basis_ref(polynomial);
-        Self { label, polynomial: vec![(F::one(), polynomial)], hiding_bound }
+        let info = PolynomialInfo::new(label, None, hiding_bound);
+        Self { info, polynomial: vec![(F::one(), polynomial)] }
     }
 
     /// Return the label for `self`.
-    pub fn label(&self) -> &String {
-        &self.label
+    pub fn label(&self) -> &str {
+        &self.info.label
+    }
+
+    /// Return the information about the label, degree bound, and hiding bound of `self`.
+    pub fn info(&self) -> &PolynomialInfo {
+        &self.info
     }
 
     pub fn degree(&self) -> usize {
@@ -188,9 +227,9 @@ impl<'a, F: PrimeField> LabeledPolynomialWithBasis<'a, F> {
             for (c, poly) in self.polynomial.iter() {
                 match poly {
                     Monomial { polynomial, degree_bound } => {
-                        use DenseOrSparsePolynomial::*;
+                        use Polynomial::*;
                         match polynomial.as_ref() {
-                            DPolynomial(p) => {
+                            Dense(p) => {
                                 if let Some(e) = dense_polys.get_mut(degree_bound) {
                                     // Zip safety: `p` could be of smaller degree than `e` (or vice versa),
                                     // so it's okay to just use `zip` here.
@@ -201,7 +240,7 @@ impl<'a, F: PrimeField> LabeledPolynomialWithBasis<'a, F> {
                                     dense_polys.insert(degree_bound, e);
                                 }
                             }
-                            SPolynomial(p) => sparse_poly += (*c, p.as_ref()),
+                            Sparse(p) => sparse_poly += (*c, p.as_ref()),
                         }
                     }
                     Lagrange { evaluations } => {
@@ -216,7 +255,7 @@ impl<'a, F: PrimeField> LabeledPolynomialWithBasis<'a, F> {
                     }
                 }
             }
-            let sparse_poly = DenseOrSparsePolynomial::from(sparse_poly);
+            let sparse_poly = Polynomial::from(sparse_poly);
             let sparse_poly = Monomial { polynomial: Cow::Owned(sparse_poly), degree_bound: None };
             lagrange_polys
                 .into_iter()
@@ -248,12 +287,12 @@ impl<'a, F: PrimeField> LabeledPolynomialWithBasis<'a, F> {
 
     /// Retrieve whether the polynomial in `self` should be hidden.
     pub fn is_hiding(&self) -> bool {
-        self.hiding_bound.is_some()
+        self.info.hiding_bound.is_some()
     }
 
     /// Retrieve the hiding bound for the polynomial in `self`.
     pub fn hiding_bound(&self) -> Option<usize> {
-        self.hiding_bound
+        self.info.hiding_bound
     }
 }
 
@@ -263,7 +302,17 @@ impl<'a, F: PrimeField> From<&'a LabeledPolynomial<F>> for LabeledPolynomialWith
             polynomial: Cow::Borrowed(other.polynomial()),
             degree_bound: other.degree_bound(),
         };
-        Self { label: other.label().into(), polynomial: vec![(F::one(), polynomial)], hiding_bound: other.hiding_bound }
+        Self { info: other.info.clone(), polynomial: vec![(F::one(), polynomial)] }
+    }
+}
+
+impl<'a, F: PrimeField> From<LabeledPolynomial<F>> for LabeledPolynomialWithBasis<'a, F> {
+    fn from(other: LabeledPolynomial<F>) -> Self {
+        let polynomial = PolynomialWithBasis::Monomial {
+            polynomial: Cow::Owned(other.polynomial),
+            degree_bound: other.info.degree_bound,
+        };
+        Self { info: other.info.clone(), polynomial: vec![(F::one(), polynomial)] }
     }
 }
 
@@ -271,7 +320,7 @@ impl<'a, F: PrimeField> From<&'a LabeledPolynomial<F>> for LabeledPolynomialWith
 pub enum PolynomialWithBasis<'a, F: PrimeField> {
     /// A polynomial in monomial basis, along with information about
     /// its degree bound (if any).
-    Monomial { polynomial: Cow<'a, DenseOrSparsePolynomial<'a, F>>, degree_bound: Option<usize> },
+    Monomial { polynomial: Cow<'a, Polynomial<'a, F>>, degree_bound: Option<usize> },
 
     /// A polynomial in Lagrange basis, along with information about
     /// its degree bound (if any).
@@ -279,31 +328,31 @@ pub enum PolynomialWithBasis<'a, F: PrimeField> {
 }
 
 impl<'a, F: PrimeField> PolynomialWithBasis<'a, F> {
-    pub fn new_monomial_basis_ref(polynomial: &'a DenseOrSparsePolynomial<F>, degree_bound: Option<usize>) -> Self {
+    pub fn new_monomial_basis_ref(polynomial: &'a Polynomial<F>, degree_bound: Option<usize>) -> Self {
         Self::Monomial { polynomial: Cow::Borrowed(polynomial), degree_bound }
     }
 
-    pub fn new_monomial_basis(polynomial: DenseOrSparsePolynomial<'a, F>, degree_bound: Option<usize>) -> Self {
+    pub fn new_monomial_basis(polynomial: Polynomial<'a, F>, degree_bound: Option<usize>) -> Self {
         Self::Monomial { polynomial: Cow::Owned(polynomial), degree_bound }
     }
 
     pub fn new_dense_monomial_basis_ref(polynomial: &'a DensePolynomial<F>, degree_bound: Option<usize>) -> Self {
-        let polynomial = DenseOrSparsePolynomial::DPolynomial(Cow::Borrowed(polynomial));
+        let polynomial = Polynomial::Dense(Cow::Borrowed(polynomial));
         Self::Monomial { polynomial: Cow::Owned(polynomial), degree_bound }
     }
 
     pub fn new_dense_monomial_basis(polynomial: DensePolynomial<F>, degree_bound: Option<usize>) -> Self {
-        let polynomial = DenseOrSparsePolynomial::from(polynomial);
+        let polynomial = Polynomial::from(polynomial);
         Self::Monomial { polynomial: Cow::Owned(polynomial), degree_bound }
     }
 
     pub fn new_sparse_monomial_basis_ref(polynomial: &'a SparsePolynomial<F>, degree_bound: Option<usize>) -> Self {
-        let polynomial = DenseOrSparsePolynomial::SPolynomial(Cow::Borrowed(polynomial));
+        let polynomial = Polynomial::Sparse(Cow::Borrowed(polynomial));
         Self::Monomial { polynomial: Cow::Owned(polynomial), degree_bound }
     }
 
     pub fn new_sparse_monomial_basis(polynomial: SparsePolynomial<F>, degree_bound: Option<usize>) -> Self {
-        let polynomial = DenseOrSparsePolynomial::from(polynomial);
+        let polynomial = Polynomial::from(polynomial);
         Self::Monomial { polynomial: Cow::Owned(polynomial), degree_bound }
     }
 
@@ -330,7 +379,7 @@ impl<'a, F: PrimeField> PolynomialWithBasis<'a, F> {
     /// Retrieve the degree bound in `self`.
     pub fn is_sparse(&self) -> bool {
         match self {
-            Self::Monomial { polynomial, .. } => matches!(polynomial.as_ref(), DenseOrSparsePolynomial::SPolynomial(_)),
+            Self::Monomial { polynomial, .. } => matches!(polynomial.as_ref(), Polynomial::Sparse(_)),
             _ => false,
         }
     }

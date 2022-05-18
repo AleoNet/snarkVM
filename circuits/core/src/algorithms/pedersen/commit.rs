@@ -18,40 +18,43 @@ use super::*;
 
 use snarkvm_circuits_types::prelude::*;
 
-impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CommitmentScheme
+impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Commit
     for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
 {
     type Input = Boolean<E>;
-    type Output = Group<E>;
-    type Randomness = Boolean<E>;
+    type Output = Field<E>;
+    type Randomness = Scalar<E>;
 
     /// Returns the Pedersen commitment of the given input with the given randomness
     /// as an affine group element.
-    fn commit(&self, input: &[Self::Input], randomness: &[Self::Randomness]) -> Self::Output {
-        let hash = self.hash_uncompressed(input);
-
-        // Compute h^r
-        randomness
-            .iter()
-            .zip_eq(&self.random_base)
-            .map(|(bit, power)| Group::ternary(bit, power, &Group::zero()))
-            .fold(hash, |acc, x| acc + x)
+    fn commit(&self, input: &[Self::Input], randomizer: &Self::Randomness) -> Self::Output {
+        self.commit_uncompressed(input, randomizer).to_x_coordinate()
     }
 }
 
 impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    Metadata<dyn CommitmentScheme<Input = Boolean<E>, Output = Group<E>, Randomness = Boolean<E>>>
+    Metadata<dyn Commit<Input = Boolean<E>, Output = Field<E>, Randomness = Scalar<E>>>
     for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
 {
-    type Case = (CircuitType<Vec<Boolean<E>>>, CircuitType<Vec<Boolean<E>>>);
-    type OutputType = CircuitType<Group<E>>;
+    type Case = (
+        Vec<Vec<CircuitType<Group<E>>>>,
+        Vec<CircuitType<Group<E>>>,
+        Vec<CircuitType<Boolean<E>>>,
+        CircuitType<Scalar<E>>,
+    );
+    type OutputType = CircuitType<Field<E>>;
 
     fn count(case: &Self::Case) -> Count {
-        todo!()
+        count!(Self, CommitUncompressed<Input = Boolean<E>, Output = Group<E>, Randomness = Scalar<E>>, case)
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        todo!()
+        let commit_uncompressed_type =
+            output_type!(Self, CommitUncompressed<Input = Boolean<E>, Output = Group<E>, Randomness = Scalar<E>>, case);
+        match commit_uncompressed_type.is_constant() {
+            true => CircuitType::from(commit_uncompressed_type.circuit().to_x_coordinate()),
+            false => CircuitType::Private,
+        }
     }
 }
 
@@ -64,7 +67,7 @@ mod tests {
     };
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_curves::AffineCurve;
-    use snarkvm_utilities::{test_rng, ToBits as NativeToBits, UniformRand};
+    use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 10;
     const MESSAGE: &str = "PedersenCommitmentCircuit0";
@@ -90,25 +93,29 @@ mod tests {
             // Prepare the circuit input.
             let circuit_input: Vec<Boolean<_>> = Inject::new(mode, input);
             // Prepare the circuit randomness.
-            let circuit_randomness: Vec<Boolean<_>> = Inject::new(mode, randomness.to_bits_le());
+            let circuit_randomness: Scalar<_> = Inject::new(mode, randomness);
 
             Circuit::scope(format!("Pedersen {mode} {i}"), || {
                 // Perform the hash operation.
                 let candidate = circuit.commit(&circuit_input, &circuit_randomness);
-                assert_eq!(expected, candidate.eject_value());
+                assert_eq!(expected.to_x_coordinate(), candidate.eject_value());
 
                 // Check constraint counts and output mode.
-                let input_modes = circuit_input.iter().map(|b| b.eject_mode()).collect::<Vec<_>>();
-                let randomness_modes = circuit_randomness.iter().map(|b| b.eject_mode()).collect::<Vec<_>>();
+                let bases: Vec<Vec<CircuitType<Group<Circuit>>>> =
+                    circuit.bases.into_iter().map(|b| b.into_iter().map(|b| CircuitType::from(b)).collect()).collect();
+                let random_base = circuit.random_base.into_iter().map(|b| CircuitType::from(b)).collect();
+                let input = circuit_input.into_iter().map(|b| CircuitType::from(b)).collect::<Vec<_>>();
+                let randomizer = CircuitType::from(circuit_randomness);
+                let case = (bases, random_base, input, randomizer);
                 assert_count!(
                     Pedersen<Circuit, NUM_WINDOWS, WINDOW_SIZE>,
-                    CommitmentScheme<Input = Boolean<Circuit>, Output = Group<Circuit>, Randomness = Boolean<Circuit>>,
-                    &(input_modes.clone(), randomness_modes.clone())
+                    Commit<Input = Boolean<Circuit>, Output = Field<Circuit>, Randomness = Scalar<Circuit>>,
+                    &case
                 );
                 assert_output_type!(
                     Pedersen<Circuit, NUM_WINDOWS, WINDOW_SIZE>,
-                    CommitmentScheme<Input = Boolean<Circuit>, Output = Group<Circuit>, Randomness = Boolean<Circuit>>,
-                    &(input_modes, randomness_modes),
+                    Commit<Input = Boolean<Circuit>, Output = Field<Circuit>, Randomness = Scalar<Circuit>>,
+                    case,
                     candidate
                 );
             });
@@ -166,8 +173,12 @@ mod tests {
         check_commitment::<5, WINDOW_SIZE_MULTIPLIER>(Mode::Private);
     }
 
-    fn check_homomorphic_addition<C: Display + Eject + Add<Output = C> + ToBits<Boolean = Boolean<Circuit>>>(
-        pedersen: &impl CommitmentScheme<Input = Boolean<Circuit>, Randomness = Boolean<Circuit>, Output = Group<Circuit>>,
+    fn check_homomorphic_addition<
+        C: Display + Eject + Add<Output = C> + ToBitsLE<Boolean = Boolean<Circuit>>,
+        P: Commit<Input = Boolean<Circuit>, Randomness = Scalar<Circuit>, Output = Field<Circuit>>
+            + CommitUncompressed<Input = Boolean<Circuit>, Randomness = Scalar<Circuit>, Output = Group<Circuit>>,
+    >(
+        pedersen: &P,
         first: C,
         second: C,
     ) {
@@ -177,16 +188,15 @@ mod tests {
         let first_randomness = ScalarField::rand(&mut test_rng());
         let second_randomness = ScalarField::rand(&mut test_rng());
         // Prepare the circuit randomness.
-        let first_circuit_randomness: Vec<Boolean<_>> = Inject::new(Mode::Private, first_randomness.to_bits_le());
-        let second_circuit_randomness: Vec<Boolean<_>> = Inject::new(Mode::Private, second_randomness.to_bits_le());
+        let first_circuit_randomness: Scalar<_> = Inject::new(Mode::Private, first_randomness);
+        let second_circuit_randomness: Scalar<_> = Inject::new(Mode::Private, second_randomness);
 
         // Compute the expected commitment, by committing them individually and summing their results.
-        let a = pedersen.commit(&first.to_bits_le(), &first_circuit_randomness);
-        let b = pedersen.commit(&second.to_bits_le(), &second_circuit_randomness);
-        let expected = a + b;
+        let a = pedersen.commit_uncompressed(&first.to_bits_le(), &first_circuit_randomness);
+        let b = pedersen.commit_uncompressed(&second.to_bits_le(), &second_circuit_randomness);
+        let expected = (a + b).to_x_coordinate();
 
-        let combined_randomness = first_randomness + second_randomness;
-        let circuit_combined_randomness: Vec<Boolean<_>> = Inject::new(Mode::Private, combined_randomness.to_bits_le());
+        let circuit_combined_randomness = first_circuit_randomness + second_circuit_randomness;
 
         // Sum the two integers, and then commit the sum.
         let candidate = pedersen.commit(&(first + second).to_bits_le(), &circuit_combined_randomness);
@@ -224,12 +234,11 @@ mod tests {
 
     #[test]
     fn test_pedersen_homomorphism_private() {
-        fn check_pedersen_homomorphism(
-            pedersen: &impl CommitmentScheme<
-                Input = Boolean<Circuit>,
-                Randomness = Boolean<Circuit>,
-                Output = Group<Circuit>,
-            >,
+        fn check_pedersen_homomorphism<
+            P: Commit<Input = Boolean<Circuit>, Randomness = Scalar<Circuit>, Output = Field<Circuit>>
+                + CommitUncompressed<Input = Boolean<Circuit>, Randomness = Scalar<Circuit>, Output = Group<Circuit>>,
+        >(
+            pedersen: &P,
         ) {
             for _ in 0..ITERATIONS {
                 // Sample two random unsigned integers, with the MSB set to 0.

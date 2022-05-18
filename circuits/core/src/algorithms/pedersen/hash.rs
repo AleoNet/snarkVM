@@ -32,7 +32,7 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Hash
 impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     Metadata<dyn Hash<Input = Boolean<E>, Output = Field<E>>> for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
 {
-    type Case = (Self, CircuitType<Vec<Boolean<E>>>);
+    type Case = (Vec<Vec<CircuitType<Group<E>>>>, Vec<CircuitType<Boolean<E>>>);
     type OutputType = CircuitType<Field<E>>;
 
     #[inline]
@@ -85,16 +85,19 @@ mod tests {
                 assert_eq!(expected, candidate.eject_value());
 
                 // Check constraint counts and output mode.
-                let modes = circuit_input.iter().map(|b| b.eject_mode()).collect::<Vec<_>>();
+                let bases: Vec<Vec<CircuitType<Group<Circuit>>>> =
+                    circuit.bases.into_iter().map(|b| b.into_iter().map(|b| CircuitType::from(b)).collect()).collect();
+                let input = circuit_input.iter().map(|b| CircuitType::from(b)).collect::<Vec<_>>();
+                let case = (bases, input);
                 assert_count!(
                     Pedersen<Circuit, NUM_WINDOWS, WINDOW_SIZE>,
-                    HashUncompressed<Input = Boolean<Circuit>, Output = Group<Circuit>>,
-                    &modes
+                    Hash<Input = Boolean<Circuit>, Output = Group<Circuit>>,
+                    &case
                 );
                 assert_output_type!(
                     Pedersen<Circuit, NUM_WINDOWS, WINDOW_SIZE>,
-                    HashUncompressed<Input = Boolean<Circuit>, Output = Group<Circuit>>,
-                    &modes,
+                    Hash<Input = Boolean<Circuit>, Output = Group<Circuit>>,
+                    case,
                     candidate
                 );
             });

@@ -52,76 +52,90 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> HashUnc
 impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     Metadata<dyn HashUncompressed<Input = Boolean<E>, Output = Group<E>>> for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
 {
-    type Case = (Self, Vec<CircuitType<Boolean<E>>>);
+    type Case = (Vec<Vec<CircuitType<Group<E>>>>, Vec<CircuitType<Boolean<E>>>);
     type OutputType = CircuitType<Group<E>>;
 
     #[inline]
     fn count(case: &Self::Case) -> Count {
-        let (pedersen, inputs) = case;
-        // Calculate the counts for constructing each of the individual group elements from the bits of the input.
-        let group_initialization_counts = inputs
-            .iter()
-            .map(|mode| {
-                count!(
-                    Group<E>,
-                    Ternary<Boolean = Boolean<E>, Output = Group<E>>,
-                    &(*mode, Mode::Constant, Mode::Constant)
-                )
-            })
-            .fold(Count::zero(), |cumulative, count| cumulative + count);
+        let (bases, mut input) = (&case.0, case.1.clone());
 
-        // Determine the modes of each of the group elements.
-        let modes = inputs
-            .iter()
-            .map(|mode| {
-                // The `first` and `second` inputs to `Group::ternary` are always constant so we can directly determine the mode instead of
-                // using the `output_mode` macro. This avoids the need to use `CircuitType` as a parameter, simplifying the logic of this function.
-                match mode.is_constant() {
-                    true => Mode::Constant,
-                    false => Mode::Private,
-                }
-            })
-            .collect::<Vec<_>>();
+        // Ensure the input is within the size bounds.
+        match input.len() <= WINDOW_SIZE * NUM_WINDOWS {
+            // Pad the input if it is under the required parameter size.
+            true => input.resize(WINDOW_SIZE * NUM_WINDOWS, CircuitType::from(Boolean::constant(false))),
+            // Ensure the input size is within the parameter size.
+            false => E::halt(format!("The Pedersen hash input cannot exceed {} bits.", WINDOW_SIZE * NUM_WINDOWS)),
+        }
 
-        // Calculate the cost of summing the group elements.
-        let sum_counts = match modes.split_first() {
-            Some((start_mode, modes)) => {
-                modes
-                    .iter()
-                    .fold((*start_mode, Count::zero()), |(prev_mode, cumulative), curr_mode| {
-                        let mode = output_mode!(Group<E>, Add<Group<E>, Output = Group<E>>, &(prev_mode, *curr_mode));
-                        let sum_count = count!(Group<E>, Add<Group<E>, Output = Group<E>>, &(prev_mode, *curr_mode));
-                        (mode, cumulative + sum_count)
+        // Compute the sum of base_i^{input_i} for all i.
+        input
+            .chunks(WINDOW_SIZE)
+            .zip_eq(bases)
+            .map(|(bits, powers)| {
+                bits.iter()
+                    .zip_eq(powers)
+                    .map(|(bit, base)| {
+                        let case = (bit.clone(), base.clone(), CircuitType::from(Group::zero()));
+                        let count = count!(Group<E>, Ternary<Boolean = Boolean<E>, Output = Group<E>>, &case);
+                        let output_type =
+                            output_type!(Group<E>, Ternary<Boolean = Boolean<E>, Output = Group<E>>, case);
+                        (count, output_type)
                     })
-                    .1
-            }
-            None => Count::zero(),
-        };
+                    .fold(
+                        (Count::zero(), CircuitType::from(Group::<E>::zero())),
+                        |(total_count, prev_type), (ternary_count, next_type)| {
+                            let case = (prev_type, next_type);
+                            let sum_count = count!(Group<E>, Add<Group<E>, Output = Group<E>>, &case);
+                            let output_type = output_type!(Group<E>, Add<Group<E>, Output = Group<E>>, case);
+                            (total_count + ternary_count + sum_count, output_type)
+                        },
+                    )
+            })
+            .fold(
+                (Count::zero(), CircuitType::from(Group::<E>::zero())),
+                |(total_count, prev_type), (partial_count, next_type)| {
+                    let case = (prev_type, next_type);
+                    let count = count!(Group<E>, Add<Group<E>, Output = Group<E>>, &case);
+                    let output_type = output_type!(Group<E>, Add<Group<E>, Output = Group<E>>, case);
 
-        group_initialization_counts + sum_counts
+                    (total_count + partial_count + count, output_type)
+                },
+            )
+            .0
     }
 
     #[inline]
     fn output_type(case: Self::Case) -> Self::OutputType {
-        let (pedersen, inputs) = case;
-        match inputs.is_constant() {
-            true => CircuitType::from(pedersen.hash_uncompressed(inputs.iter().map(|bit| bit.circuit()).collect())),
-            false => CircuitType::Private,
-        }
-    }
-}
+        let (bases, mut input) = case;
 
-impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
-    OutputMode<dyn HashUncompressed<Input = Boolean<E>, Output = Group<E>>> for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
-{
-    type Case = Vec<Mode>;
-
-    #[inline]
-    fn output_mode(parameter: &Self::Case) -> Mode {
-        match parameter.iter().all(|mode| mode.is_constant()) {
-            true => Mode::Constant,
-            false => Mode::Private,
+        // Ensure the input is within the size bounds.
+        match input.len() <= WINDOW_SIZE * NUM_WINDOWS {
+            // Pad the input if it is under the required parameter size.
+            true => input.resize(WINDOW_SIZE * NUM_WINDOWS, CircuitType::from(Boolean::constant(false))),
+            // Ensure the input size is within the parameter size.
+            false => E::halt(format!("The Pedersen hash input cannot exceed {} bits.", WINDOW_SIZE * NUM_WINDOWS)),
         }
+
+        // Compute the sum of base_i^{input_i} for all i.
+        input
+            .chunks(WINDOW_SIZE)
+            .zip_eq(bases)
+            .map(|(bits, powers)| {
+                bits.iter()
+                    .zip_eq(powers)
+                    .map(|(bit, base)| {
+                        let case = (bit.clone(), base, CircuitType::from(Group::zero()));
+                        output_type!(Group<E>, Ternary<Boolean = Boolean<E>, Output = Group<E>>, case)
+                    })
+                    .fold(CircuitType::from(Group::<E>::zero()), |prev_type, next_type| {
+                        let case = (prev_type, next_type);
+                        output_type!(Group<E>, Add<Group<E>, Output = Group<E>>, case)
+                    })
+            })
+            .fold(CircuitType::from(Group::<E>::zero()), |prev_type, next_type| {
+                let case = (prev_type, next_type);
+                output_type!(Group<E>, Add<Group<E>, Output = Group<E>>, case)
+            })
     }
 }
 
@@ -160,23 +174,26 @@ mod tests {
                 assert_eq!(expected, candidate.eject_value());
 
                 // Check constraint counts and output mode.
-                let modes = circuit_input.iter().map(|b| b.eject_mode()).collect::<Vec<_>>();
+                let bases: Vec<Vec<CircuitType<Group<Circuit>>>> =
+                    circuit.bases.into_iter().map(|b| b.into_iter().map(|b| CircuitType::from(b)).collect()).collect();
+                let input = circuit_input.into_iter().map(|b| CircuitType::from(b)).collect::<Vec<_>>();
+                let case = (bases, input);
                 assert_count!(
                     Pedersen<Circuit, NUM_WINDOWS, WINDOW_SIZE>,
                     HashUncompressed<Input = Boolean<Circuit>, Output = Group<Circuit>>,
-                    &modes
+                    &case
                 );
                 assert_output_type!(
                     Pedersen<Circuit, NUM_WINDOWS, WINDOW_SIZE>,
                     HashUncompressed<Input = Boolean<Circuit>, Output = Group<Circuit>>,
-                    &modes,
+                    case,
                     candidate
                 );
             });
         }
     }
 
-    fn check_homomorphic_addition<C: Display + Eject + Add<Output = C> + ToBits<Boolean = Boolean<Circuit>>>(
+    fn check_homomorphic_addition<C: Display + Eject + Add<Output = C> + ToBitsLE<Boolean = Boolean<Circuit>>>(
         pedersen: &impl HashUncompressed<Input = Boolean<Circuit>, Output = Group<Circuit>>,
         first: C,
         second: C,

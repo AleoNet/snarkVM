@@ -87,6 +87,12 @@ path = "../fields"
 version = "0.7.5"
 default-features = false
 
+[dependencies.snarkvm-parameters]
+path = "../parameters"
+version = "0.7.5"
+optional = true
+default-features = false
+
 [dependencies.snarkvm-r1cs]
 path = "../r1cs"
 version = "0.7.5"
@@ -238,7 +244,7 @@ full = [
   "fft",
   "merkle_tree",
   "msm",
-  "polycommit",
+  "polycommit_full",
   "prf",
   "signature",
   "snark"
@@ -251,7 +257,7 @@ wasm = [
   "fft",
   "merkle_tree",
   "msm",
-  "polycommit",
+  "polycommit_wasm",
   "prf",
   "signature",
   "snark",
@@ -272,6 +278,8 @@ fft = [ ]
 merkle_tree = [ ]
 msm = [ ]
 polycommit = [ "rand_core", "fft", "crh", "msm" ]
+polycommit_wasm = [ "polycommit", "snarkvm-parameters/wasm" ]
+polycommit_full = [ "polycommit", "snarkvm-parameters/default" ]
 prf = [ ]
 signature = [ "encryption", "crypto_hash" ]
 snark = [ "fft", "msm", "polycommit" ]

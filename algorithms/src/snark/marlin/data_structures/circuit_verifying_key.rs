@@ -14,11 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use super::MarlinMode;
 use crate::{
     fft::EvaluationDomain,
     polycommit::sonic_pc,
-    snark::marlin::{ahp::indexer::*, CircuitProvingKey, PreparedCircuitVerifyingKey},
+    snark::marlin::{ahp::indexer::*, CircuitProvingKey, MarlinMode, PreparedCircuitVerifyingKey},
     Prepare,
 };
 use snarkvm_curves::PairingEngine;
@@ -164,14 +163,14 @@ impl<E: PairingEngine, MM: MarlinMode> ToMinimalBits for CircuitVerifyingKey<E, 
 }
 
 impl<E: PairingEngine, MM: MarlinMode> FromBytes for CircuitVerifyingKey<E, MM> {
-    fn read_le<R: Read>(mut r: R) -> io::Result<Self> {
-        CanonicalDeserialize::deserialize(&mut r).map_err(|_| error("could not deserialize CircuitVerifyingKey"))
+    fn read_le<R: Read>(r: R) -> io::Result<Self> {
+        Self::deserialize_compressed(r).map_err(|_| error("could not deserialize CircuitVerifyingKey"))
     }
 }
 
 impl<E: PairingEngine, MM: MarlinMode> ToBytes for CircuitVerifyingKey<E, MM> {
-    fn write_le<W: Write>(&self, mut w: W) -> io::Result<()> {
-        CanonicalSerialize::serialize(self, &mut w).map_err(|_| error("could not serialize CircuitVerifyingKey"))
+    fn write_le<W: Write>(&self, w: W) -> io::Result<()> {
+        self.serialize_compressed(w).map_err(|_| error("could not serialize CircuitVerifyingKey"))
     }
 }
 

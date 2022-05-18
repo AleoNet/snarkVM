@@ -51,11 +51,6 @@ pub struct AleoSignature<TE: TwistedEdwardsParameters> {
 
 impl<TE: TwistedEdwardsParameters> AleoSignature<TE> {
     #[inline]
-    pub fn size() -> usize {
-        2 * TE::ScalarField::SERIALIZED_SIZE + 2 * TE::BaseField::SERIALIZED_SIZE
-    }
-
-    #[inline]
     pub fn root_public_key(&self) -> Result<TEAffine<TE>> {
         if let Some(element) = TEAffine::<TE>::from_x_coordinate(self.root_public_key, true) {
             if element.is_in_correct_subgroup_assuming_on_curve() {

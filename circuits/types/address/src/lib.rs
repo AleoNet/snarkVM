@@ -19,6 +19,7 @@
 mod helpers;
 
 pub mod equal;
+pub mod not_equal;
 
 #[cfg(test)]
 use snarkvm_circuits_environment::assert_scope;

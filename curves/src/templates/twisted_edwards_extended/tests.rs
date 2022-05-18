@@ -18,14 +18,19 @@ use super::{Affine, Projective};
 
 use snarkvm_utilities::{
     io::Cursor,
-    rand::{test_rng, UniformRand},
+    rand::UniformRand,
     serialize::{CanonicalDeserialize, CanonicalSerialize},
     to_bytes_le,
+    Compress,
     ToBytes,
+    Validate,
 };
 
 use crate::traits::{AffineCurve, MontgomeryParameters, ProjectiveCurve, TwistedEdwardsParameters};
 use snarkvm_fields::{Field, One, PrimeField, Zero};
+
+use rand::SeedableRng;
+use rand_xorshift::XorShiftRng;
 
 pub const ITERATIONS: usize = 10;
 
@@ -52,64 +57,102 @@ where
 }
 
 pub fn edwards_curve_serialization_test<P: TwistedEdwardsParameters>() {
-    let buf_size = Affine::<P>::zero().serialized_size();
+    let modes = [
+        (Compress::Yes, Validate::Yes),
+        (Compress::No, Validate::No),
+        (Compress::Yes, Validate::No),
+        (Compress::No, Validate::Yes),
+    ];
+    for (compress, validate) in modes {
+        let buf_size = Affine::<P>::zero().serialized_size(compress);
 
-    let mut rng = test_rng();
+        let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
-    for _ in 0..10 {
-        let a = Projective::<P>::rand(&mut rng);
-        let a = a.to_affine();
-        {
-            let mut serialized = vec![0; buf_size];
-            let mut cursor = Cursor::new(&mut serialized[..]);
-            a.serialize(&mut cursor).unwrap();
+        for _ in 0..10 {
+            let a = Projective::<P>::rand(&mut rng);
+            let a = a.to_affine();
+            {
+                let mut serialized = vec![0; buf_size];
+                let mut cursor = Cursor::new(&mut serialized[..]);
+                a.serialize_with_mode(&mut cursor, compress).unwrap();
 
-            let mut cursor = Cursor::new(&serialized[..]);
-            let b = Affine::<P>::deserialize(&mut cursor).unwrap();
-            assert_eq!(a, b);
-        }
+                let mut cursor = Cursor::new(&serialized[..]);
+                let b = Affine::<P>::deserialize_with_mode(&mut cursor, compress, validate).unwrap();
+                assert_eq!(a, b);
+            }
 
-        {
-            let a = Affine::<P>::zero();
-            let mut serialized = vec![0; buf_size];
-            let mut cursor = Cursor::new(&mut serialized[..]);
-            a.serialize(&mut cursor).unwrap();
-            let mut cursor = Cursor::new(&serialized[..]);
-            let b = Affine::<P>::deserialize(&mut cursor).unwrap();
-            assert_eq!(a, b);
-        }
+            {
+                let mut a_copy = a;
+                // If we negate the y-coordinate, the point is no longer in the prime-order subgroup,
+                // and so this should error when `validate == Validate::Yes`.
+                a_copy.y = -a.y;
+                let mut serialized = vec![0; buf_size];
+                let mut cursor = Cursor::new(&mut serialized[..]);
+                a_copy.serialize_with_mode(&mut cursor, compress).unwrap();
+                let mut cursor = Cursor::new(&serialized[..]);
 
-        {
-            let a = Affine::<P>::zero();
-            let mut serialized = vec![0; buf_size - 1];
-            let mut cursor = Cursor::new(&mut serialized[..]);
-            a.serialize(&mut cursor).unwrap_err();
-        }
+                let b = Affine::<P>::deserialize_with_mode(&mut cursor, compress, validate);
+                if validate == Validate::Yes {
+                    b.unwrap_err();
+                } else {
+                    assert_eq!(a_copy, b.unwrap());
+                }
+            }
 
-        {
-            let serialized = vec![0; buf_size - 1];
-            let mut cursor = Cursor::new(&serialized[..]);
-            Affine::<P>::deserialize(&mut cursor).unwrap_err();
-        }
+            {
+                let a = Affine::<P>::zero();
+                let mut serialized = vec![0; buf_size];
+                let mut cursor = Cursor::new(&mut serialized[..]);
+                a.serialize_with_mode(&mut cursor, compress).unwrap();
+                let mut cursor = Cursor::new(&serialized[..]);
+                let b = Affine::<P>::deserialize_with_mode(&mut cursor, compress, validate).unwrap();
+                assert_eq!(a, b);
+            }
 
-        {
-            let mut serialized = vec![0; a.uncompressed_size()];
-            let mut cursor = Cursor::new(&mut serialized[..]);
-            a.serialize_uncompressed(&mut cursor).unwrap();
+            {
+                let a = Affine::<P>::zero();
+                let mut serialized = vec![0; buf_size - 1];
+                let mut cursor = Cursor::new(&mut serialized[..]);
+                a.serialize_with_mode(&mut cursor, compress).unwrap_err();
+            }
 
-            let mut cursor = Cursor::new(&serialized[..]);
-            let b = Affine::<P>::deserialize_uncompressed(&mut cursor).unwrap();
-            assert_eq!(a, b);
-        }
+            {
+                let serialized = vec![0; buf_size - 1];
+                let mut cursor = Cursor::new(&serialized[..]);
+                Affine::<P>::deserialize_with_mode(&mut cursor, compress, validate).unwrap_err();
+            }
 
-        {
-            let a = Affine::<P>::zero();
-            let mut serialized = vec![0; a.uncompressed_size()];
-            let mut cursor = Cursor::new(&mut serialized[..]);
-            a.serialize_uncompressed(&mut cursor).unwrap();
-            let mut cursor = Cursor::new(&serialized[..]);
-            let b = Affine::<P>::deserialize_uncompressed(&mut cursor).unwrap();
-            assert_eq!(a, b);
+            {
+                let mut serialized = vec![0; a.uncompressed_size()];
+                let mut cursor = Cursor::new(&mut serialized[..]);
+                a.serialize_uncompressed(&mut cursor).unwrap();
+
+                let mut cursor = Cursor::new(&serialized[..]);
+                let b = Affine::<P>::deserialize_uncompressed(&mut cursor).unwrap();
+                assert_eq!(a, b);
+            }
+
+            {
+                let mut a_copy = a;
+                a_copy.y = -a.y;
+                let mut serialized = vec![0; a.uncompressed_size()];
+                let mut cursor = Cursor::new(&mut serialized[..]);
+                a_copy.serialize_uncompressed(&mut cursor).unwrap();
+                let mut cursor = Cursor::new(&serialized[..]);
+                let _ = Affine::<P>::deserialize_uncompressed(&mut cursor).unwrap_err();
+                let b = Affine::<P>::deserialize_uncompressed_unchecked(&*serialized).unwrap();
+                assert_eq!(a_copy, b);
+            }
+
+            {
+                let a = Affine::<P>::zero();
+                let mut serialized = vec![0; a.uncompressed_size()];
+                let mut cursor = Cursor::new(&mut serialized[..]);
+                a.serialize_uncompressed(&mut cursor).unwrap();
+                let mut cursor = Cursor::new(&serialized[..]);
+                let b = Affine::<P>::deserialize_uncompressed(&mut cursor).unwrap();
+                assert_eq!(a, b);
+            }
         }
     }
 }
@@ -118,9 +161,9 @@ pub fn edwards_from_random_bytes<P: TwistedEdwardsParameters>()
 where
     P::BaseField: PrimeField,
 {
-    let buf_size = Affine::<P>::zero().serialized_size();
+    let buf_size = Affine::<P>::zero().compressed_size();
 
-    let mut rng = test_rng();
+    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
     for _ in 0..ITERATIONS {
         let a = Projective::<P>::rand(&mut rng);
@@ -128,10 +171,10 @@ where
         {
             let mut serialized = vec![0; buf_size];
             let mut cursor = Cursor::new(&mut serialized[..]);
-            a.serialize(&mut cursor).unwrap();
+            a.serialize_compressed(&mut cursor).unwrap();
 
             let mut cursor = Cursor::new(&serialized[..]);
-            let p1 = Affine::<P>::deserialize(&mut cursor).unwrap();
+            let p1 = Affine::<P>::deserialize_compressed(&mut cursor).unwrap();
             let p2 = Affine::<P>::from_random_bytes(&serialized).unwrap();
             assert_eq!(p1, p2);
         }
@@ -153,7 +196,7 @@ pub fn edwards_from_x_and_y_coordinates<P: TwistedEdwardsParameters>()
 where
     P::BaseField: PrimeField,
 {
-    let mut rng = test_rng();
+    let mut rng = XorShiftRng::seed_from_u64(1231275789u64);
 
     for _ in 0..ITERATIONS {
         let a = Projective::<P>::rand(&mut rng);

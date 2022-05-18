@@ -14,22 +14,32 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_circuits_environment::{Eject, Inject, ScalarTrait, Ternary, ToBits};
+use snarkvm_circuits_environment::{Eject, Inject, ScalarTrait, Ternary, ToBitsBE, ToBitsLE};
 
 /// A trait for a commitment scheme.
-pub trait CommitmentScheme {
+pub trait Commit {
     type Input;
     type Output;
     type Randomness;
 
     /// Returns the commitment to the given input and randomness.
-    fn commit(&self, input: &[Self::Input], randomness: &[Self::Randomness]) -> Self::Output;
+    fn commit(&self, input: &[Self::Input], randomness: &Self::Randomness) -> Self::Output;
+}
+
+/// A trait for a commitment scheme.
+pub trait CommitUncompressed {
+    type Input;
+    type Output;
+    type Randomness;
+
+    /// Returns the commitment to the given input and randomness.
+    fn commit_uncompressed(&self, input: &[Self::Input], randomness: &Self::Randomness) -> Self::Output;
 }
 
 /// A trait for a hash function.
 pub trait Hash {
     type Input: Inject + Eject + Clone;
-    type Output: Inject + Eject + Ternary<Output = Self::Output> + ToBits + Clone;
+    type Output: Inject + Eject + Ternary<Output = Self::Output> + ToBitsBE + ToBitsLE + Clone;
 
     /// Returns the hash of the given input.
     fn hash(&self, input: &[Self::Input]) -> Self::Output;

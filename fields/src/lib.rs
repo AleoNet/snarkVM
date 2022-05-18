@@ -54,13 +54,7 @@ pub use traits::*;
 
 use snarkvm_utilities::{
     biginteger::*,
-    serialize::{
-        CanonicalDeserialize,
-        CanonicalDeserializeWithFlags,
-        CanonicalSerialize,
-        CanonicalSerializeWithFlags,
-        ConstantSerializedSize,
-    },
+    serialize::{CanonicalDeserialize, CanonicalDeserializeWithFlags, CanonicalSerialize, CanonicalSerializeWithFlags},
     FromBytes,
     ToBytes,
 };

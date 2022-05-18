@@ -14,15 +14,16 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-mod commitment;
-pub use commitment::*;
+mod commit;
+pub use commit::*;
+mod commit_uncompressed;
 mod hash;
 mod hash_uncompressed;
 
 #[cfg(test)]
 use snarkvm_circuits_environment::{assert_count, assert_output_type, assert_scope};
 
-use crate::{CommitmentScheme, Hash, HashUncompressed};
+use crate::{Commit, CommitUncompressed, Hash, HashUncompressed};
 use snarkvm_algorithms::crypto_hash::hash_to_curve;
 use snarkvm_circuits_types::prelude::*;
 
@@ -41,9 +42,9 @@ pub type Pedersen1024<E> = Pedersen<E, 8, 128>;
 /// The Pedersen hash function does *not* behave like a random oracle, see Poseidon for one.
 pub struct Pedersen<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
     /// The base windows for the Pedersen hash.
-    bases: Vec<Vec<Group<E>>>,
+    pub(crate) bases: Vec<Vec<Group<E>>>,
     /// A vector of random bases, used for computing the commitment.
-    random_base: Vec<Group<E>>,
+    pub(crate) random_base: Vec<Group<E>>,
 }
 
 impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Pedersen<E, NUM_WINDOWS, WINDOW_SIZE> {

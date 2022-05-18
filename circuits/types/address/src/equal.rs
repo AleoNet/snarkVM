@@ -23,11 +23,6 @@ impl<E: Environment> Equal<Self> for Address<E> {
     fn is_equal(&self, other: &Self) -> Self::Output {
         self.0.is_equal(&other.0)
     }
-
-    /// Returns `true` if `self` and `other` are *not* equal.
-    fn is_not_equal(&self, other: &Self) -> Self::Output {
-        self.0.is_not_equal(&other.0)
-    }
 }
 
 #[cfg(test)]
@@ -66,34 +61,6 @@ mod tests {
         }
     }
 
-    fn check_is_not_equal(
-        mode_a: Mode,
-        mode_b: Mode,
-        num_constants: u64,
-        num_public: u64,
-        num_private: u64,
-        num_constraints: u64,
-    ) {
-        let rng = &mut test_rng();
-
-        for i in 0..ITERATIONS {
-            // Sample two random elements.
-            let a = Address::<Circuit>::new(mode_a, UniformRand::rand(rng));
-            let b = Address::<Circuit>::new(mode_b, UniformRand::rand(rng));
-
-            Circuit::scope(&format!("{mode_a} {mode_a} {i}"), || {
-                let equals = a.is_not_equal(&a);
-                assert!(!equals.eject_value());
-            });
-
-            Circuit::scope(&format!("{mode_a} {mode_b} {i}"), || {
-                let equals = a.is_not_equal(&b);
-                assert!(equals.eject_value());
-                assert_scope!(num_constants, num_public, num_private, num_constraints);
-            });
-        }
-    }
-
     #[test]
     fn test_is_equal() {
         check_is_equal(Mode::Constant, Mode::Constant, 2, 0, 0, 0);
@@ -105,18 +72,5 @@ mod tests {
         check_is_equal(Mode::Public, Mode::Private, 0, 0, 5, 7);
         check_is_equal(Mode::Private, Mode::Public, 0, 0, 5, 7);
         check_is_equal(Mode::Private, Mode::Private, 0, 0, 5, 7);
-    }
-
-    #[test]
-    fn test_is_not_equal() {
-        check_is_not_equal(Mode::Constant, Mode::Constant, 2, 0, 0, 0);
-        check_is_not_equal(Mode::Constant, Mode::Public, 0, 0, 5, 7);
-        check_is_not_equal(Mode::Constant, Mode::Private, 0, 0, 5, 7);
-        check_is_not_equal(Mode::Public, Mode::Constant, 0, 0, 5, 7);
-        check_is_not_equal(Mode::Private, Mode::Constant, 0, 0, 5, 7);
-        check_is_not_equal(Mode::Public, Mode::Public, 0, 0, 5, 7);
-        check_is_not_equal(Mode::Public, Mode::Private, 0, 0, 5, 7);
-        check_is_not_equal(Mode::Private, Mode::Public, 0, 0, 5, 7);
-        check_is_not_equal(Mode::Private, Mode::Private, 0, 0, 5, 7);
     }
 }

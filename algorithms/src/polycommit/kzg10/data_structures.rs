@@ -16,20 +16,22 @@
 
 use crate::{
     fft::{DensePolynomial, EvaluationDomain},
-    polycommit::kzg10::PowersOfG,
     snark::marlin::{params::OptimizationType, FiatShamirError, FiatShamirRng},
 };
 use snarkvm_curves::{AffineCurve, PairingCurve, PairingEngine, ProjectiveCurve};
 use snarkvm_fields::{ConstraintFieldError, PrimeField, ToConstraintField, Zero};
+use snarkvm_parameters::testnet3::PowersOfG;
 use snarkvm_utilities::{
     borrow::Cow,
     error,
     io::{Read, Write},
     serialize::{CanonicalDeserialize, CanonicalSerialize},
+    Compress,
     FromBytes,
     SerializationError,
     ToBytes,
     ToMinimalBits,
+    Validate,
 };
 
 use anyhow::Result;
@@ -39,7 +41,7 @@ use rand_core::RngCore;
 use std::{collections::BTreeMap, io, sync::Arc};
 
 /// `UniversalParams` are the universal parameters for the KZG10 scheme.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct UniversalParams<E: PairingEngine> {
     /// Group elements of the form `{ \beta^i G }`, where `i` ranges from 0 to `degree`,
     /// and group elements of the form `{ \beta^i \gamma G }`, where `i` ranges from 0 to `degree`.
@@ -62,36 +64,56 @@ pub struct UniversalParams<E: PairingEngine> {
 }
 
 impl<E: PairingEngine> CanonicalSerialize for UniversalParams<E> {
-    fn serialize<W: Write>(&self, writer: &mut W) -> Result<(), SerializationError> {
-        self.powers.read().serialize(writer)?;
-        self.h.serialize(writer)?;
-        self.beta_h.serialize(writer)?;
-        self.supported_degree_bounds.serialize(writer)?;
-        self.inverse_neg_powers_of_beta_h.serialize(writer)?;
-        self.prepared_h.serialize(writer)?;
-        self.prepared_beta_h.serialize(writer)
+    fn serialize_with_mode<W: Write>(&self, mut writer: W, mode: Compress) -> Result<(), SerializationError> {
+        self.powers.read().serialize_with_mode(&mut writer, mode)?;
+        self.h.serialize_with_mode(&mut writer, mode)?;
+        self.beta_h.serialize_with_mode(&mut writer, mode)?;
+        self.supported_degree_bounds.serialize_with_mode(&mut writer, mode)?;
+        self.inverse_neg_powers_of_beta_h.serialize_with_mode(&mut writer, mode)?;
+        self.prepared_h.serialize_with_mode(&mut writer, mode)?;
+        self.prepared_beta_h.serialize_with_mode(&mut writer, mode)
     }
 
-    fn serialized_size(&self) -> usize {
-        self.powers.read().serialized_size()
-            + self.h.serialized_size()
-            + self.beta_h.serialized_size()
-            + self.supported_degree_bounds.serialized_size()
-            + self.inverse_neg_powers_of_beta_h.serialized_size()
-            + self.prepared_h.serialized_size()
-            + self.prepared_beta_h.serialized_size()
+    fn serialized_size(&self, mode: Compress) -> usize {
+        self.powers.read().serialized_size(mode)
+            + self.h.serialized_size(mode)
+            + self.beta_h.serialized_size(mode)
+            + self.supported_degree_bounds.serialized_size(mode)
+            + self.inverse_neg_powers_of_beta_h.serialized_size(mode)
+            + self.prepared_h.serialized_size(mode)
+            + self.prepared_beta_h.serialized_size(mode)
+    }
+}
+
+impl<E: PairingEngine> snarkvm_utilities::Valid for UniversalParams<E> {
+    fn check(&self) -> Result<(), SerializationError> {
+        self.powers.read().check()?;
+        self.h.check()?;
+        self.beta_h.check()?;
+        self.supported_degree_bounds.check()?;
+        self.inverse_neg_powers_of_beta_h.check()?;
+        self.prepared_h.check()?;
+        self.prepared_beta_h.check()
     }
 }
 
 impl<E: PairingEngine> CanonicalDeserialize for UniversalParams<E> {
-    fn deserialize<R: Read>(reader: &mut R) -> Result<Self, SerializationError> {
-        let powers: PowersOfG<E> = CanonicalDeserialize::deserialize(reader)?;
-        let h: E::G2Affine = CanonicalDeserialize::deserialize(reader)?;
-        let beta_h: E::G2Affine = CanonicalDeserialize::deserialize(reader)?;
-        let supported_degree_bounds: Vec<usize> = CanonicalDeserialize::deserialize(reader)?;
-        let inverse_neg_powers_of_beta_h: BTreeMap<usize, E::G2Affine> = CanonicalDeserialize::deserialize(reader)?;
-        let prepared_h: <E::G2Affine as PairingCurve>::Prepared = CanonicalDeserialize::deserialize(reader)?;
-        let prepared_beta_h: <E::G2Affine as PairingCurve>::Prepared = CanonicalDeserialize::deserialize(reader)?;
+    fn deserialize_with_mode<R: Read>(
+        mut reader: R,
+        compress: Compress,
+        validate: Validate,
+    ) -> Result<Self, SerializationError> {
+        let powers: PowersOfG<E> = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
+        let h: E::G2Affine = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
+        let beta_h: E::G2Affine = CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
+        let supported_degree_bounds: Vec<usize> =
+            CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
+        let inverse_neg_powers_of_beta_h: BTreeMap<usize, E::G2Affine> =
+            CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
+        let prepared_h: <E::G2Affine as PairingCurve>::Prepared =
+            CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
+        let prepared_beta_h: <E::G2Affine as PairingCurve>::Prepared =
+            CanonicalDeserialize::deserialize_with_mode(&mut reader, compress, validate)?;
 
         Ok(Self {
             powers: Arc::new(RwLock::new(powers)),
@@ -212,7 +234,7 @@ impl<E: PairingEngine> ToBytes for UniversalParams<E> {
 
 impl<E: PairingEngine> UniversalParams<E> {
     pub fn max_degree(&self) -> usize {
-        self.powers.read().len() - 1
+        self.powers.read().degree() - 1
     }
 
     pub fn supported_degree_bounds(&self) -> &[usize] {
@@ -277,13 +299,15 @@ pub struct VerifierKey<E: PairingEngine> {
 
 impl<E: PairingEngine> FromBytes for VerifierKey<E> {
     fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
-        CanonicalDeserialize::deserialize(&mut reader).map_err(|_| error("could not deserialize VerifierKey"))
+        CanonicalDeserialize::deserialize_compressed(&mut reader)
+            .map_err(|_| error("could not deserialize VerifierKey"))
     }
 }
 
 impl<E: PairingEngine> ToBytes for VerifierKey<E> {
     fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
-        CanonicalSerialize::serialize(self, &mut writer).map_err(|_| error("could not serialize VerifierKey"))
+        CanonicalSerialize::serialize_compressed(self, &mut writer)
+            .map_err(|_| error("could not serialize VerifierKey"))
     }
 }
 
@@ -351,13 +375,13 @@ pub struct Commitment<E: PairingEngine>(
 
 impl<E: PairingEngine> FromBytes for Commitment<E> {
     fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
-        CanonicalDeserialize::deserialize(&mut reader).map_err(|_| error("could not deserialize Commitment"))
+        CanonicalDeserialize::deserialize_compressed(&mut reader).map_err(|_| error("could not deserialize Commitment"))
     }
 }
 
 impl<E: PairingEngine> ToBytes for Commitment<E> {
     fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
-        CanonicalSerialize::serialize(self, &mut writer).map_err(|_| error("could not serialize Commitment"))
+        CanonicalSerialize::serialize_compressed(self, &mut writer).map_err(|_| error("could not serialize Commitment"))
     }
 }
 
@@ -420,13 +444,13 @@ pub struct Randomness<E: PairingEngine> {
 }
 impl<E: PairingEngine> FromBytes for Randomness<E> {
     fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
-        CanonicalDeserialize::deserialize(&mut reader).map_err(|_| error("could not deserialize Randomness"))
+        CanonicalDeserialize::deserialize_compressed(&mut reader).map_err(|_| error("could not deserialize Randomness"))
     }
 }
 
 impl<E: PairingEngine> ToBytes for Randomness<E> {
     fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
-        CanonicalSerialize::serialize(self, &mut writer).map_err(|_| error("could not serialize Randomness"))
+        CanonicalSerialize::serialize_compressed(self, &mut writer).map_err(|_| error("could not serialize Randomness"))
     }
 }
 
@@ -516,13 +540,13 @@ impl<E: PairingEngine> Proof<E> {
 
 impl<E: PairingEngine> FromBytes for Proof<E> {
     fn read_le<R: Read>(mut reader: R) -> io::Result<Self> {
-        CanonicalDeserialize::deserialize(&mut reader).map_err(|_| error("could not deserialize proof"))
+        CanonicalDeserialize::deserialize_compressed(&mut reader).map_err(|_| error("could not deserialize proof"))
     }
 }
 
 impl<E: PairingEngine> ToBytes for Proof<E> {
     fn write_le<W: Write>(&self, mut writer: W) -> io::Result<()> {
-        CanonicalSerialize::serialize(self, &mut writer).map_err(|_| error("could not serialize proof"))
+        CanonicalSerialize::serialize_compressed(self, &mut writer).map_err(|_| error("could not serialize proof"))
     }
 }
 

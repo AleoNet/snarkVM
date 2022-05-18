@@ -16,7 +16,7 @@
 
 use super::*;
 
-impl<E: Environment> PRF for Poseidon<E> {
+impl<E: Environment, const RATE: usize> PRF for Poseidon<E, RATE> {
     type Input = Field<E>;
     type Output = Field<E>;
     type Seed = Field<E>;
@@ -34,7 +34,9 @@ impl<E: Environment> PRF for Poseidon<E> {
     }
 }
 
-impl<E: Environment> Metadata<dyn PRF<Seed = Field<E>, Input = Field<E>, Output = Field<E>>> for Poseidon<E> {
+impl<E: Environment, const RATE: usize> Metadata<dyn PRF<Seed = Field<E>, Input = Field<E>, Output = Field<E>>>
+    for Poseidon<E, RATE>
+{
     type Case = ();
     type OutputType = CircuitType<Field<E>>;
 
@@ -42,7 +44,7 @@ impl<E: Environment> Metadata<dyn PRF<Seed = Field<E>, Input = Field<E>, Output 
         todo!()
     }
 
-    fn output_type(case: Self::Case) -> Self::OutputType {
+    fn output_type(_case: Self::Case) -> Self::OutputType {
         todo!()
     }
 }
@@ -54,7 +56,8 @@ mod tests {
     use snarkvm_circuits_types::environment::Circuit;
     use snarkvm_utilities::{test_rng, UniformRand};
 
-    const ITERATIONS: u64 = 10;
+    const ITERATIONS: usize = 10;
+    const RATE: usize = 4;
 
     fn check_prf(
         mode: Mode,
@@ -65,7 +68,7 @@ mod tests {
         num_constraints: u64,
     ) {
         let rng = &mut test_rng();
-        let poseidon = Poseidon::new();
+        let poseidon = Poseidon::<_, RATE>::new();
 
         for i in 0..ITERATIONS {
             // Prepare the seed.
