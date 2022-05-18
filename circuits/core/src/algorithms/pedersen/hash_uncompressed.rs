@@ -52,17 +52,76 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> HashUnc
 impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     Metadata<dyn HashUncompressed<Input = Boolean<E>, Output = Group<E>>> for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
 {
-    type Case = CircuitType<Vec<Boolean<E>>>;
+    type Case = (Self, Vec<CircuitType<Boolean<E>>>);
     type OutputType = CircuitType<Group<E>>;
 
     #[inline]
     fn count(case: &Self::Case) -> Count {
-        todo!()
+        let (pedersen, inputs) = case;
+        // Calculate the counts for constructing each of the individual group elements from the bits of the input.
+        let group_initialization_counts = inputs
+            .iter()
+            .map(|mode| {
+                count!(
+                    Group<E>,
+                    Ternary<Boolean = Boolean<E>, Output = Group<E>>,
+                    &(*mode, Mode::Constant, Mode::Constant)
+                )
+            })
+            .fold(Count::zero(), |cumulative, count| cumulative + count);
+
+        // Determine the modes of each of the group elements.
+        let modes = inputs
+            .iter()
+            .map(|mode| {
+                // The `first` and `second` inputs to `Group::ternary` are always constant so we can directly determine the mode instead of
+                // using the `output_mode` macro. This avoids the need to use `CircuitType` as a parameter, simplifying the logic of this function.
+                match mode.is_constant() {
+                    true => Mode::Constant,
+                    false => Mode::Private,
+                }
+            })
+            .collect::<Vec<_>>();
+
+        // Calculate the cost of summing the group elements.
+        let sum_counts = match modes.split_first() {
+            Some((start_mode, modes)) => {
+                modes
+                    .iter()
+                    .fold((*start_mode, Count::zero()), |(prev_mode, cumulative), curr_mode| {
+                        let mode = output_mode!(Group<E>, Add<Group<E>, Output = Group<E>>, &(prev_mode, *curr_mode));
+                        let sum_count = count!(Group<E>, Add<Group<E>, Output = Group<E>>, &(prev_mode, *curr_mode));
+                        (mode, cumulative + sum_count)
+                    })
+                    .1
+            }
+            None => Count::zero(),
+        };
+
+        group_initialization_counts + sum_counts
     }
 
     #[inline]
     fn output_type(case: Self::Case) -> Self::OutputType {
-        todo!()
+        let (pedersen, inputs) = case;
+        match inputs.is_constant() {
+            true => CircuitType::from(pedersen.hash_uncompressed(inputs.iter().map(|bit| bit.circuit()).collect())),
+            false => CircuitType::Private,
+        }
+    }
+}
+
+impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
+    OutputMode<dyn HashUncompressed<Input = Boolean<E>, Output = Group<E>>> for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
+{
+    type Case = Vec<Mode>;
+
+    #[inline]
+    fn output_mode(parameter: &Self::Case) -> Mode {
+        match parameter.iter().all(|mode| mode.is_constant()) {
+            true => Mode::Constant,
+            false => Mode::Private,
+        }
     }
 }
 

@@ -32,7 +32,7 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Hash
 impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     Metadata<dyn Hash<Input = Boolean<E>, Output = Field<E>>> for Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>
 {
-    type Case = CircuitType<Vec<Boolean<E>>>;
+    type Case = (Self, CircuitType<Vec<Boolean<E>>>);
     type OutputType = CircuitType<Field<E>>;
 
     #[inline]
@@ -42,7 +42,11 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
 
     #[inline]
     fn output_type(case: Self::Case) -> Self::OutputType {
-        todo!()
+        let hash_uncompressed_type = output_type!(Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>, HashUncompressed<Input = Boolean<E>, Output = Group<E>>, case);
+        match hash_uncompressed_type.is_constant() {
+            true => CircuitType::from(hash_uncompressed_type.circuit().to_x_coordinate()),
+            false => CircuitType::Private,
+        }
     }
 }
 
