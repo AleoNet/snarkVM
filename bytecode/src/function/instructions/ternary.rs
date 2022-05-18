@@ -66,7 +66,7 @@ impl<P: Program> Opcode for Ternary<P> {
     /// Returns the opcode as a string.
     #[inline]
     fn opcode() -> &'static str {
-        "ter"
+        "ternary"
     }
 }
 
@@ -204,7 +204,7 @@ mod tests {
 
     #[test]
     fn test_parse() {
-        let (_, instruction) = Instruction::<P>::parse("ter r0 r1 r2 into r3;").unwrap();
+        let (_, instruction) = Instruction::<P>::parse("ternary r0 r1 r2 into r3;").unwrap();
         assert!(matches!(instruction, Instruction::Ternary(_)));
     }
 
