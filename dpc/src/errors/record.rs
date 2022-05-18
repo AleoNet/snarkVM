@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::{CRHError, CommitmentError};
+use snarkvm_algorithms::CRHError;
 
 #[derive(Debug, Error)]
 pub enum RecordError {
@@ -23,9 +23,6 @@ pub enum RecordError {
 
     #[error("{}", _0)]
     AnyhowError(#[from] anyhow::Error),
-
-    #[error("{}", _0)]
-    CommitmentError(#[from] CommitmentError),
 
     #[error("{}: {}", _0, _1)]
     Crate(&'static str, String),

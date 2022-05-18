@@ -14,11 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{crh::PedersenCRH, crypto_hash::hash_to_curve, CommitmentError, CommitmentScheme, CRH};
+use crate::{crh::PedersenCRH, crypto_hash::hash_to_curve, CommitmentScheme, CRH};
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::BitIteratorLE;
 
+use anyhow::Result;
 use itertools::Itertools;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -53,7 +54,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Com
         Self { crh, random_base }
     }
 
-    fn commit(&self, input: &[bool], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError> {
+    fn commit(&self, input: &[bool], randomness: &Self::Randomness) -> Result<Self::Output> {
         let mut output = self.crh.hash(input)?.to_projective();
 
         // Compute h^r.

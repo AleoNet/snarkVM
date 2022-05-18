@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::{CRHError, CommitmentError, MerkleError, SNARKError};
+use snarkvm_algorithms::{CRHError, MerkleError, SNARKError};
 use snarkvm_fields::ConstraintFieldError;
 use snarkvm_parameters::ParameterError;
 
@@ -37,9 +37,6 @@ pub enum VMError {
 
     #[error("Cannot verify the provided record commitment")]
     CannotVerifyCommitment,
-
-    #[error("{}", _0)]
-    CommitmentError(#[from] CommitmentError),
 
     #[error("{}", _0)]
     ConstraintFieldError(#[from] ConstraintFieldError),

@@ -14,10 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::CommitmentError;
 use snarkvm_utilities::{FromBytes, ToBits, ToBytes, UniformRand};
 
-use std::{fmt::Debug, hash::Hash};
+use anyhow::Result;
+use core::{fmt::Debug, hash::Hash};
 
 pub trait CommitmentScheme: Sized + Clone {
     type Output: Clone + Debug + Default + Eq + Hash + ToBytes + FromBytes + Sync + Send;
@@ -26,9 +26,9 @@ pub trait CommitmentScheme: Sized + Clone {
 
     fn setup(message: &str) -> Self;
 
-    fn commit(&self, input: &[bool], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError>;
+    fn commit(&self, input: &[bool], randomness: &Self::Randomness) -> Result<Self::Output>;
 
-    fn commit_bytes(&self, input: &[u8], randomness: &Self::Randomness) -> Result<Self::Output, CommitmentError> {
+    fn commit_bytes(&self, input: &[u8], randomness: &Self::Randomness) -> Result<Self::Output> {
         self.commit(&input.to_bits_le(), randomness)
     }
 
