@@ -2061,6 +2061,7 @@ dependencies = [
  "snarkvm-algorithms",
  "snarkvm-circuits-environment",
  "snarkvm-circuits-types",
+ "snarkvm-console",
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-utilities",

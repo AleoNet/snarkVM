@@ -29,14 +29,13 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Hash fo
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_algorithms::{crh::BHPCRH, CRH};
     use snarkvm_circuits_environment::Circuit;
+    use snarkvm_console::algorithms::{Hash as H, BHP as NativeBHP};
     use snarkvm_curves::AffineCurve;
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 10;
     const MESSAGE: &str = "BHPCircuit0";
-    // const WINDOW_SIZE_MULTIPLIER: usize = 8;
 
     type Projective = <<Circuit as Environment>::Affine as AffineCurve>::Projective;
 
@@ -47,8 +46,8 @@ mod tests {
         num_private: u64,
         num_constraints: u64,
     ) {
-        // Initialize the BHP hash.
-        let native = BHPCRH::<Projective, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
+        // Initialize BHP.
+        let native = NativeBHP::<Projective, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
         let circuit = BHP::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
         // Determine the number of inputs.
         let num_input_bits = NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE;

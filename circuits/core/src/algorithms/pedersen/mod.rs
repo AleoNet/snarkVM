@@ -45,9 +45,9 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Pederse
     pub fn setup(message: &str) -> Self {
         Self {
             bases: (0..NUM_WINDOWS)
-                .map(|index| {
+                .map(|_| {
                     // Construct an indexed message to attempt to sample a base.
-                    let (generator, _, _) = hash_to_curve(&format!("{message} at {index}"));
+                    let (generator, _, _) = hash_to_curve(&format!("Aleo.Pedersen.Base.{message}"));
                     // Inject the new base.
                     let mut base = Group::constant(generator);
                     // Construct the window with the base.
@@ -61,7 +61,7 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Pederse
                 .collect(),
             random_base: {
                 // Compute the random base
-                let (generator, _, _) = hash_to_curve(&format!("{message} for random base"));
+                let (generator, _, _) = hash_to_curve(&format!("Aleo.Pedersen.RandomBase.{message}"));
                 let mut base = Group::constant(generator);
 
                 let num_scalar_bits = E::ScalarField::size_in_bits();
@@ -79,8 +79,8 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Pederse
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_algorithms::{commitment::PedersenCommitment, CommitmentScheme, CRH};
     use snarkvm_circuits_environment::Circuit;
+    use snarkvm_console::algorithms::Pedersen as NativePedersen;
     use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 
     const ITERATIONS: u64 = 10;
@@ -97,7 +97,7 @@ mod tests {
     ) {
         for _ in 0..ITERATIONS {
             // Initialize the native Pedersen hash.
-            let native = PedersenCommitment::<Projective, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
+            let native = NativePedersen::<Projective, WINDOW_SIZE>::setup(MESSAGE);
 
             Circuit::scope("Pedersen::setup", || {
                 // Perform the setup operation.
@@ -105,16 +105,16 @@ mod tests {
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
 
                 // Check for equivalency of the bases.
-                native.crh.parameters().iter().flatten().zip_eq(circuit.bases.iter().flatten()).for_each(
+                native.base_window().iter().zip_eq(circuit.bases.iter().flatten()).for_each(|(expected, candidate)| {
+                    assert_eq!(expected.to_affine(), candidate.eject_value());
+                });
+
+                // Check for equality of the random base.
+                native.random_base_window().iter().zip_eq(circuit.random_base.iter()).for_each(
                     |(expected, candidate)| {
                         assert_eq!(expected.to_affine(), candidate.eject_value());
                     },
                 );
-
-                // Check for equality of the random base.
-                native.random_base.iter().zip_eq(circuit.random_base.iter()).for_each(|(expected, candidate)| {
-                    assert_eq!(expected.to_affine(), candidate.eject_value());
-                });
             });
         }
     }
@@ -127,12 +127,5 @@ mod tests {
         check_setup::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(833, 0, 0, 0);
         check_setup::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(857, 0, 0, 0);
         check_setup::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(881, 0, 0, 0);
-
-        // Set the window size, and modulate the number of windows.
-        check_setup::<1, WINDOW_SIZE_MULTIPLIER>(785, 0, 0, 0);
-        check_setup::<2, WINDOW_SIZE_MULTIPLIER>(813, 0, 0, 0);
-        check_setup::<3, WINDOW_SIZE_MULTIPLIER>(841, 0, 0, 0);
-        check_setup::<4, WINDOW_SIZE_MULTIPLIER>(869, 0, 0, 0);
-        check_setup::<5, WINDOW_SIZE_MULTIPLIER>(897, 0, 0, 0);
     }
 }

@@ -54,8 +54,8 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_algorithms::{crh::PedersenCompressedCRH, CRH};
     use snarkvm_circuits_environment::Circuit;
+    use snarkvm_console::algorithms::{Hash as H, Pedersen as NativePedersen};
     use snarkvm_curves::AffineCurve;
     use snarkvm_utilities::{test_rng, UniformRand};
 
@@ -67,7 +67,7 @@ mod tests {
 
     fn check_hash<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(mode: Mode) {
         // Initialize the Pedersen hash.
-        let native = PedersenCompressedCRH::<Projective, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
+        let native = NativePedersen::<Projective, WINDOW_SIZE>::setup(MESSAGE);
         let circuit = Pedersen::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
         // Determine the number of inputs.
         let num_input_bits = NUM_WINDOWS * WINDOW_SIZE;
@@ -110,13 +110,6 @@ mod tests {
         check_hash::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
         check_hash::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
         check_hash::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
-
-        // Set the window size, and modulate the number of windows.
-        check_hash::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Constant);
-        check_hash::<2, WINDOW_SIZE_MULTIPLIER>(Mode::Constant);
-        check_hash::<3, WINDOW_SIZE_MULTIPLIER>(Mode::Constant);
-        check_hash::<4, WINDOW_SIZE_MULTIPLIER>(Mode::Constant);
-        check_hash::<5, WINDOW_SIZE_MULTIPLIER>(Mode::Constant);
     }
 
     #[test]
@@ -127,13 +120,6 @@ mod tests {
         check_hash::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
         check_hash::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
         check_hash::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
-
-        // Set the window size, and modulate the number of windows.
-        check_hash::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Public);
-        check_hash::<2, WINDOW_SIZE_MULTIPLIER>(Mode::Public);
-        check_hash::<3, WINDOW_SIZE_MULTIPLIER>(Mode::Public);
-        check_hash::<4, WINDOW_SIZE_MULTIPLIER>(Mode::Public);
-        check_hash::<5, WINDOW_SIZE_MULTIPLIER>(Mode::Public);
     }
 
     #[test]
@@ -144,12 +130,5 @@ mod tests {
         check_hash::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
         check_hash::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
         check_hash::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
-
-        // Set the window size, and modulate the number of windows.
-        check_hash::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Private);
-        check_hash::<2, WINDOW_SIZE_MULTIPLIER>(Mode::Private);
-        check_hash::<3, WINDOW_SIZE_MULTIPLIER>(Mode::Private);
-        check_hash::<4, WINDOW_SIZE_MULTIPLIER>(Mode::Private);
-        check_hash::<5, WINDOW_SIZE_MULTIPLIER>(Mode::Private);
     }
 }

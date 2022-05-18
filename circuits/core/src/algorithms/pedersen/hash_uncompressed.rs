@@ -117,8 +117,8 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_algorithms::{crh::PedersenCRH, CRH};
     use snarkvm_circuits_environment::{assert_count, assert_output_mode, Circuit};
+    use snarkvm_console::algorithms::{HashUncompressed as H, Pedersen as NativePedersen};
     use snarkvm_curves::AffineCurve;
     use snarkvm_utilities::{test_rng, UniformRand};
 
@@ -130,7 +130,7 @@ mod tests {
 
     fn check_hash_uncompressed<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(mode: Mode) {
         // Initialize the Pedersen hash.
-        let native = PedersenCRH::<Projective, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
+        let native = NativePedersen::<Projective, WINDOW_SIZE>::setup(MESSAGE);
         let circuit = Pedersen::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
         // Determine the number of inputs.
         let num_input_bits = NUM_WINDOWS * WINDOW_SIZE;
@@ -139,7 +139,7 @@ mod tests {
             // Sample a random input.
             let input = (0..num_input_bits).map(|_| bool::rand(&mut test_rng())).collect::<Vec<bool>>();
             // Compute the expected hash.
-            let expected = native.hash(&input).expect("Failed to hash native input");
+            let expected = native.hash_uncompressed(&input).expect("Failed to hash native input");
             // Prepare the circuit input.
             let circuit_input: Vec<Boolean<_>> = Inject::new(mode, input);
 
@@ -191,13 +191,6 @@ mod tests {
         check_hash_uncompressed::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
         check_hash_uncompressed::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
         check_hash_uncompressed::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
-
-        // Set the window size, and modulate the number of windows.
-        check_hash_uncompressed::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Constant);
-        check_hash_uncompressed::<2, WINDOW_SIZE_MULTIPLIER>(Mode::Constant);
-        check_hash_uncompressed::<3, WINDOW_SIZE_MULTIPLIER>(Mode::Constant);
-        check_hash_uncompressed::<4, WINDOW_SIZE_MULTIPLIER>(Mode::Constant);
-        check_hash_uncompressed::<5, WINDOW_SIZE_MULTIPLIER>(Mode::Constant);
     }
 
     #[test]
@@ -208,13 +201,6 @@ mod tests {
         check_hash_uncompressed::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
         check_hash_uncompressed::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
         check_hash_uncompressed::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
-
-        // Set the window size, and modulate the number of windows.
-        check_hash_uncompressed::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Public);
-        check_hash_uncompressed::<2, WINDOW_SIZE_MULTIPLIER>(Mode::Public);
-        check_hash_uncompressed::<3, WINDOW_SIZE_MULTIPLIER>(Mode::Public);
-        check_hash_uncompressed::<4, WINDOW_SIZE_MULTIPLIER>(Mode::Public);
-        check_hash_uncompressed::<5, WINDOW_SIZE_MULTIPLIER>(Mode::Public);
     }
 
     #[test]
@@ -225,13 +211,6 @@ mod tests {
         check_hash_uncompressed::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
         check_hash_uncompressed::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
         check_hash_uncompressed::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
-
-        // Set the window size, and modulate the number of windows.
-        check_hash_uncompressed::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Private);
-        check_hash_uncompressed::<2, WINDOW_SIZE_MULTIPLIER>(Mode::Private);
-        check_hash_uncompressed::<3, WINDOW_SIZE_MULTIPLIER>(Mode::Private);
-        check_hash_uncompressed::<4, WINDOW_SIZE_MULTIPLIER>(Mode::Private);
-        check_hash_uncompressed::<5, WINDOW_SIZE_MULTIPLIER>(Mode::Private);
     }
 
     #[test]

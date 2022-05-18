@@ -44,12 +44,12 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     type Case = (Vec<Mode>, Vec<Mode>);
 
     fn count(case: &Self::Case) -> Count {
-        let (input_modes, randomness_modes) = case;
+        let (input_modes, randomizer_modes) = case;
         let uncompressed_count = count!(Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>, HashUncompressed<Input = Boolean<E>, Output = Group<E>>, input_modes);
         let uncompressed_mode = output_mode!(Pedersen<E, NUM_WINDOWS, WINDOW_SIZE>, HashUncompressed<Input = Boolean<E>, Output = Group<E>>, input_modes);
 
         // Compute the const of constructing the group elements.
-        let group_initialize_count = randomness_modes
+        let group_initialize_count = randomizer_modes
             .iter()
             .map(|mode| {
                 count!(
@@ -61,7 +61,7 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
             .fold(Count::zero(), |cumulative, count| cumulative + count);
 
         // Determine the modes of each of the group elements.
-        let modes = randomness_modes.iter().map(|mode| {
+        let modes = randomizer_modes.iter().map(|mode| {
             // The `first` and `second` inputs to `Group::ternary` are always constant so we can directly determine the mode instead of
             // using the `output_mode` macro. This avoids the need to use `CircuitType` as a parameter, simplifying the logic of this function.
             match mode.is_constant() {
@@ -90,8 +90,8 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
     type Case = (Vec<Mode>, Vec<Mode>);
 
     fn output_mode(parameters: &Self::Case) -> Mode {
-        let (input_modes, randomness_modes) = parameters;
-        match input_modes.iter().all(|m| *m == Mode::Constant) && randomness_modes.iter().all(|m| *m == Mode::Constant)
+        let (input_modes, randomizer_modes) = parameters;
+        match input_modes.iter().all(|m| *m == Mode::Constant) && randomizer_modes.iter().all(|m| *m == Mode::Constant)
         {
             true => Mode::Constant,
             false => Mode::Private,
@@ -102,24 +102,20 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_algorithms::{
-        commitment::PedersenCommitment as NativePedersenCommitment,
-        CommitmentScheme as NativeCommitmentScheme,
-    };
     use snarkvm_circuits_environment::Circuit;
+    use snarkvm_console::algorithms::{CommitUncompressed as C, Pedersen as NativePedersen};
     use snarkvm_curves::AffineCurve;
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 10;
-    const MESSAGE: &str = "PedersenCommitmentCircuit0";
+    const MESSAGE: &str = "PedersenCircuit0";
     const WINDOW_SIZE_MULTIPLIER: usize = 8;
 
     type Projective = <<Circuit as Environment>::Affine as AffineCurve>::Projective;
-    type ScalarField = <Circuit as Environment>::ScalarField;
 
-    fn check_commitment<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(mode: Mode) {
-        // Initialize the Pedersen hash.
-        let native = NativePedersenCommitment::<Projective, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
+    fn check_commit_uncompressed<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(mode: Mode) {
+        // Initialize Pedersen.
+        let native = NativePedersen::<Projective, WINDOW_SIZE>::setup(MESSAGE);
         let circuit = Pedersen::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
         // Determine the number of inputs.
         let num_input_bits = NUM_WINDOWS * WINDOW_SIZE;
@@ -127,88 +123,37 @@ mod tests {
         for i in 0..ITERATIONS {
             // Sample a random input.
             let input = (0..num_input_bits).map(|_| bool::rand(&mut test_rng())).collect::<Vec<bool>>();
-            // Sample randomness
-            let randomness = ScalarField::rand(&mut test_rng());
-            // Compute the expected hash.
-            let expected = native.commit(&input, &randomness).expect("Failed to hash native input");
+            // Sample a randomizer.
+            let randomizer = UniformRand::rand(&mut test_rng());
+            // Compute the expected commitment.
+            let expected = native.commit_uncompressed(&input, &randomizer).expect("Failed to commit native input");
             // Prepare the circuit input.
             let circuit_input: Vec<Boolean<_>> = Inject::new(mode, input);
-            // Prepare the circuit randomness.
-            let circuit_randomness: Scalar<_> = Inject::new(mode, randomness);
+            // Prepare the circuit randomizer.
+            let circuit_randomizer: Scalar<_> = Inject::new(mode, randomizer);
 
             Circuit::scope(format!("Pedersen {mode} {i}"), || {
-                // Perform the hash operation.
-                let candidate = circuit.commit_uncompressed(&circuit_input, &circuit_randomness);
+                // Perform the commit operation.
+                let candidate = circuit.commit_uncompressed(&circuit_input, &circuit_randomizer);
                 assert_eq!(expected, candidate.eject_value());
 
                 // Check constraint counts and output mode.
                 let input_modes = circuit_input.iter().map(|b| b.eject_mode()).collect::<Vec<_>>();
-                let randomness_modes =
-                    circuit_randomness.to_bits_le().iter().map(|b| b.eject_mode()).collect::<Vec<_>>();
+                let randomizer_modes =
+                    circuit_randomizer.to_bits_le().iter().map(|b| b.eject_mode()).collect::<Vec<_>>();
                 assert_count!(
                     Pedersen<Circuit, NUM_WINDOWS, WINDOW_SIZE>,
                     CommitUncompressed<Input = Boolean<Circuit>, Output = Group<Circuit>, Randomizer = Scalar<Circuit>>,
-                    &(input_modes.clone(), randomness_modes.clone())
+                    &(input_modes.clone(), randomizer_modes.clone())
                 );
                 assert_output_mode!(
                     Pedersen<Circuit, NUM_WINDOWS, WINDOW_SIZE>,
                     CommitUncompressed<Input = Boolean<Circuit>, Output = Group<Circuit>, Randomizer = Scalar<Circuit>>,
-                    &(input_modes, randomness_modes),
+                    &(input_modes, randomizer_modes),
                     candidate
                 );
             });
         }
-    }
-
-    #[test]
-    fn test_commitment_constant() {
-        // Set the number of windows, and modulate the window size.
-        check_commitment::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Constant);
-        check_commitment::<1, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
-        check_commitment::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
-        check_commitment::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
-        check_commitment::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
-
-        // Set the window size, and modulate the number of windows.
-        check_commitment::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Constant);
-        check_commitment::<2, WINDOW_SIZE_MULTIPLIER>(Mode::Constant);
-        check_commitment::<3, WINDOW_SIZE_MULTIPLIER>(Mode::Constant);
-        check_commitment::<4, WINDOW_SIZE_MULTIPLIER>(Mode::Constant);
-        check_commitment::<5, WINDOW_SIZE_MULTIPLIER>(Mode::Constant);
-    }
-
-    #[test]
-    fn test_commitment_public() {
-        // Set the number of windows, and modulate the window size.
-        check_commitment::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Public);
-        check_commitment::<1, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
-        check_commitment::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
-        check_commitment::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
-        check_commitment::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
-
-        // Set the window size, and modulate the number of windows.
-        check_commitment::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Public);
-        check_commitment::<2, WINDOW_SIZE_MULTIPLIER>(Mode::Public);
-        check_commitment::<3, WINDOW_SIZE_MULTIPLIER>(Mode::Public);
-        check_commitment::<4, WINDOW_SIZE_MULTIPLIER>(Mode::Public);
-        check_commitment::<5, WINDOW_SIZE_MULTIPLIER>(Mode::Public);
-    }
-
-    #[test]
-    fn test_commitment_private() {
-        // Set the number of windows, and modulate the window size.
-        check_commitment::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Private);
-        check_commitment::<1, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
-        check_commitment::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
-        check_commitment::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
-        check_commitment::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
-
-        // Set the window size, and modulate the number of windows.
-        check_commitment::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Private);
-        check_commitment::<2, WINDOW_SIZE_MULTIPLIER>(Mode::Private);
-        check_commitment::<3, WINDOW_SIZE_MULTIPLIER>(Mode::Private);
-        check_commitment::<4, WINDOW_SIZE_MULTIPLIER>(Mode::Private);
-        check_commitment::<5, WINDOW_SIZE_MULTIPLIER>(Mode::Private);
     }
 
     fn check_homomorphic_addition<C: Display + Eject + Add<Output = C> + ToBits<Boolean = Boolean<Circuit>>>(
@@ -218,24 +163,54 @@ mod tests {
     ) {
         println!("Checking homomorphic addition on {} + {}", first, second);
 
-        // Sample randomness
-        let first_randomness = ScalarField::rand(&mut test_rng());
-        let second_randomness = ScalarField::rand(&mut test_rng());
-        // Prepare the circuit randomness.
-        let first_circuit_randomness: Scalar<_> = Inject::new(Mode::Private, first_randomness);
-        let second_circuit_randomness: Scalar<_> = Inject::new(Mode::Private, second_randomness);
+        // Sample randomizers.
+        let first_randomizer = UniformRand::rand(&mut test_rng());
+        let second_randomizer = UniformRand::rand(&mut test_rng());
+        // Prepare the circuit randomizers.
+        let first_circuit_randomizer: Scalar<_> = Inject::new(Mode::Private, first_randomizer);
+        let second_circuit_randomizer: Scalar<_> = Inject::new(Mode::Private, second_randomizer);
 
         // Compute the expected commitment, by committing them individually and summing their results.
-        let a = pedersen.commit_uncompressed(&first.to_bits_le(), &first_circuit_randomness);
-        let b = pedersen.commit_uncompressed(&second.to_bits_le(), &second_circuit_randomness);
+        let a = pedersen.commit_uncompressed(&first.to_bits_le(), &first_circuit_randomizer);
+        let b = pedersen.commit_uncompressed(&second.to_bits_le(), &second_circuit_randomizer);
         let expected = a + b;
 
-        let circuit_combined_randomness = first_circuit_randomness + second_circuit_randomness;
+        let circuit_combined_randomizer = first_circuit_randomizer + second_circuit_randomizer;
 
         // Sum the two integers, and then commit the sum.
-        let candidate = pedersen.commit_uncompressed(&(first + second).to_bits_le(), &circuit_combined_randomness);
+        let candidate = pedersen.commit_uncompressed(&(first + second).to_bits_le(), &circuit_combined_randomizer);
         assert_eq!(expected.eject(), candidate.eject());
         assert!(Circuit::is_satisfied());
+    }
+
+    #[test]
+    fn test_commit_uncompressed_constant() {
+        // Set the number of windows, and modulate the window size.
+        check_commit_uncompressed::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Constant);
+        check_commit_uncompressed::<1, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
+        check_commit_uncompressed::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
+        check_commit_uncompressed::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
+        check_commit_uncompressed::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Constant);
+    }
+
+    #[test]
+    fn test_commit_uncompressed_public() {
+        // Set the number of windows, and modulate the window size.
+        check_commit_uncompressed::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Public);
+        check_commit_uncompressed::<1, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
+        check_commit_uncompressed::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
+        check_commit_uncompressed::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
+        check_commit_uncompressed::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Public);
+    }
+
+    #[test]
+    fn test_commit_uncompressed_private() {
+        // Set the number of windows, and modulate the window size.
+        check_commit_uncompressed::<1, WINDOW_SIZE_MULTIPLIER>(Mode::Private);
+        check_commit_uncompressed::<1, { 2 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
+        check_commit_uncompressed::<1, { 3 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
+        check_commit_uncompressed::<1, { 4 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
+        check_commit_uncompressed::<1, { 5 * WINDOW_SIZE_MULTIPLIER }>(Mode::Private);
     }
 
     #[test]

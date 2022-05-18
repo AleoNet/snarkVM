@@ -69,7 +69,7 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP<E, 
         let bases = (0..NUM_WINDOWS)
             .map(|index| {
                 // Construct an indexed message to attempt to sample a base.
-                let (generator, _, _) = hash_to_curve(&format!("{message} at {index}"));
+                let (generator, _, _) = hash_to_curve(&format!("Aleo.BHP.Base.{message}.{index}"));
                 // Inject the new base.
                 let mut base = Group::constant(generator);
                 // Construct the window with the base.
@@ -101,7 +101,7 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP<E, 
 
         // Compute the random base.
         let random_base = {
-            let (generator, _, _) = hash_to_curve(&format!("{message} for random base"));
+            let (generator, _, _) = hash_to_curve(&format!("Aleo.BHP.RandomBase.{message}"));
             let mut base = Group::constant(generator);
 
             let num_scalar_bits = E::ScalarField::size_in_bits();
@@ -120,9 +120,9 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP<E, 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_algorithms::{crh::BHPCRH, CRH};
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_circuits_types::Eject;
+    use snarkvm_console::algorithms::BHP as NativeBHP;
     use snarkvm_curves::{edwards_bls12::EdwardsProjective, AffineCurve, ProjectiveCurve};
 
     const ITERATIONS: usize = 10;
@@ -131,10 +131,10 @@ mod tests {
     #[test]
     fn test_setup_constant() {
         for _ in 0..ITERATIONS {
-            let native = BHPCRH::<EdwardsProjective, 8, 32>::setup(MESSAGE);
+            let native = NativeBHP::<EdwardsProjective, 8, 32>::setup(MESSAGE);
             let circuit = BHP::<Circuit, 8, 32>::setup(MESSAGE);
 
-            native.parameters().iter().zip(circuit.bases.iter()).for_each(|(native_bases, circuit_bases)| {
+            native.bases().iter().zip(circuit.bases.iter()).for_each(|(native_bases, circuit_bases)| {
                 native_bases.iter().zip(circuit_bases).for_each(|(native_base, circuit_base_lookups)| {
                     // Check the first circuit base (when converted back to twisted Edwards) matches the native one.
                     let (circuit_x, circuit_y) = {

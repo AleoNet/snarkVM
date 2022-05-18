@@ -40,5 +40,8 @@ version = "7.1"
 path = "../../algorithms"
 version = "0.7.5"
 default-features = false
-features = ["commitment", "crh", "prf", "signature"]
+features = ["prf", "signature"]
 
+[dev-dependencies.snarkvm-console]
+path = "../../console"
+version = "0.7.5"

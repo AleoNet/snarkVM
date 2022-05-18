@@ -42,7 +42,7 @@ impl<G: ProjectiveCurve, const NUM_BITS: usize> Pedersen<G, NUM_BITS> {
     /// Initializes a new instance of Pedersen with the given setup message.
     pub fn setup(message: &str) -> Self {
         // Construct an indexed message to attempt to sample a base.
-        let (generator, _, _) = hash_to_curve::<G::Affine>(&format!("Pedersen.Base.{message}"));
+        let (generator, _, _) = hash_to_curve::<G::Affine>(&format!("Aleo.Pedersen.Base.{message}"));
         let mut base_power = generator.to_projective();
         let mut base_window = [G::zero(); NUM_BITS];
         for base in base_window.iter_mut().take(NUM_BITS) {
@@ -51,7 +51,7 @@ impl<G: ProjectiveCurve, const NUM_BITS: usize> Pedersen<G, NUM_BITS> {
         }
 
         // Next, compute the random base.
-        let (generator, _, _) = hash_to_curve::<G::Affine>(&format!("Pedersen.RandomBase.{message}"));
+        let (generator, _, _) = hash_to_curve::<G::Affine>(&format!("Aleo.Pedersen.RandomBase.{message}"));
         let mut base_power = generator.to_projective();
         let num_scalar_bits = G::ScalarField::size_in_bits();
         let mut random_base_window = Vec::with_capacity(num_scalar_bits);
@@ -62,5 +62,15 @@ impl<G: ProjectiveCurve, const NUM_BITS: usize> Pedersen<G, NUM_BITS> {
         assert_eq!(random_base_window.len(), num_scalar_bits);
 
         Self { base_window, random_base_window }
+    }
+
+    /// Returns the base window.
+    pub fn base_window(&self) -> &[G; NUM_BITS] {
+        &self.base_window
+    }
+
+    /// Returns the random base window.
+    pub fn random_base_window(&self) -> &[G] {
+        &self.random_base_window
     }
 }

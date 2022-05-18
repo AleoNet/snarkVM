@@ -171,14 +171,13 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> HashUnc
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_algorithms::{crh::BHPCRH, CRH};
     use snarkvm_circuits_environment::Circuit;
+    use snarkvm_console::algorithms::{HashUncompressed as H, BHP as NativeBHP};
     use snarkvm_curves::AffineCurve;
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 10;
     const MESSAGE: &str = "BHPCircuit0";
-    // const WINDOW_SIZE_MULTIPLIER: usize = 8;
 
     type Projective = <<Circuit as Environment>::Affine as AffineCurve>::Projective;
 
@@ -190,7 +189,7 @@ mod tests {
         num_constraints: u64,
     ) {
         // Initialize the BHP hash.
-        let native = BHPCRH::<Projective, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
+        let native = NativeBHP::<Projective, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
         let circuit = BHP::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
         // Determine the number of inputs.
         let num_input_bits = NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE;
@@ -199,7 +198,7 @@ mod tests {
             // Sample a random input.
             let input = (0..num_input_bits).map(|_| bool::rand(&mut test_rng())).collect::<Vec<bool>>();
             // Compute the expected hash.
-            let expected = native.hash(&input).expect("Failed to hash native input");
+            let expected = native.hash_uncompressed(&input).expect("Failed to hash native input");
             // Prepare the circuit input.
             let circuit_input: Vec<Boolean<_>> = Inject::new(mode, input);
 
@@ -207,7 +206,7 @@ mod tests {
                 // Perform the hash operation.
                 let candidate = circuit.hash_uncompressed(&circuit_input);
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
-                assert_eq!(Circuit::affine_from_x_coordinate(expected), candidate.eject_value());
+                assert_eq!(expected, candidate.eject_value());
             });
         }
     }

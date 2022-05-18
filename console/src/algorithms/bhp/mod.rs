@@ -43,6 +43,8 @@ pub type BHP1024<E> = BHP<E, 6, 57>;
 /// BHP is a collision-resistant hash function that takes a variable-length input.
 /// The BHP hash function does *not* behave like a random oracle, see Poseidon for one.
 pub struct BHP<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
+    /// The bases for the BHP hash.
+    bases: Vec<Vec<G>>,
     /// The bases lookup table for the BHP hash.
     bases_lookup: Vec<Vec<[G; BHP_LOOKUP_SIZE]>>,
     /// The random base for the BHP commitment.
@@ -66,7 +68,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP
         let bases = (0..NUM_WINDOWS)
             .map(|index| {
                 // Construct an indexed message to attempt to sample a base.
-                let (generator, _, _) = hash_to_curve::<G::Affine>(&format!("BHP.Base.{message}.{index}"));
+                let (generator, _, _) = hash_to_curve::<G::Affine>(&format!("Aleo.BHP.Base.{message}.{index}"));
                 let mut base = generator.to_projective();
                 // Compute the generators for the sampled base.
                 let mut powers = Vec::with_capacity(WINDOW_SIZE);
@@ -109,7 +111,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP
         bases_lookup.iter().for_each(|bases| debug_assert_eq!(bases.len(), WINDOW_SIZE));
 
         // Next, compute the random base.
-        let (generator, _, _) = hash_to_curve::<G::Affine>(&format!("BHP.RandomBase.{message}"));
+        let (generator, _, _) = hash_to_curve::<G::Affine>(&format!("Aleo.BHP.RandomBase.{message}"));
         let mut base_power = generator.to_projective();
         let num_scalar_bits = G::ScalarField::size_in_bits();
         let mut random_base = Vec::with_capacity(num_scalar_bits);
@@ -119,6 +121,16 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP
         }
         assert_eq!(random_base.len(), num_scalar_bits);
 
-        Self { bases_lookup, random_base }
+        Self { bases, bases_lookup, random_base }
+    }
+
+    /// Returns the bases.
+    pub fn bases(&self) -> &[Vec<G>] {
+        &self.bases
+    }
+
+    /// Returns the random base window.
+    pub fn random_base(&self) -> &[G] {
+        &self.random_base
     }
 }

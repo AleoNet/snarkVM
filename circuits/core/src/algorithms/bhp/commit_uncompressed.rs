@@ -40,8 +40,8 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CommitU
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_algorithms::{commitment::BHPCommitment, CommitmentScheme as NativeCommitmentScheme};
     use snarkvm_circuits_environment::Circuit;
+    use snarkvm_console::algorithms::{CommitUncompressed as C, BHP as NativeBHP};
     use snarkvm_curves::AffineCurve;
     use snarkvm_utilities::{test_rng, UniformRand};
 
@@ -49,17 +49,16 @@ mod tests {
     const MESSAGE: &str = "BHPCircuit0";
 
     type Projective = <<Circuit as Environment>::Affine as AffineCurve>::Projective;
-    type ScalarField = <Circuit as Environment>::ScalarField;
 
-    fn check_commitment<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(
+    fn check_commit_uncompressed<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(
         mode: Mode,
         num_constants: u64,
         num_public: u64,
         num_private: u64,
         num_constraints: u64,
     ) {
-        // Initialize the BHP hash.
-        let native = BHPCommitment::<Projective, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
+        // Initialize BHP.
+        let native = NativeBHP::<Projective, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
         let circuit = BHP::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
         // Determine the number of inputs.
         let num_input_bits = NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE;
@@ -67,36 +66,36 @@ mod tests {
         for i in 0..ITERATIONS {
             // Sample a random input.
             let input = (0..num_input_bits).map(|_| bool::rand(&mut test_rng())).collect::<Vec<bool>>();
-            // Sample randomness
-            let randomness = ScalarField::one();
-            // Compute the expected hash.
-            let expected = native.commit(&input, &randomness).expect("Failed to hash native input");
+            // Sample a randomizer.
+            let randomizer = UniformRand::rand(&mut test_rng());
+            // Compute the expected commitment.
+            let expected = native.commit_uncompressed(&input, &randomizer).expect("Failed to commit native input");
             // Prepare the circuit input.
             let circuit_input: Vec<Boolean<_>> = Inject::new(mode, input);
-            // Prepare the circuit randomness.
-            let circuit_randomness: Scalar<_> = Inject::new(mode, randomness);
+            // Prepare the circuit randomizer.
+            let circuit_randomizer: Scalar<_> = Inject::new(mode, randomizer);
 
             Circuit::scope(format!("BHP {mode} {i}"), || {
                 // Perform the hash operation.
-                let candidate = circuit.commit(&circuit_input, &circuit_randomness);
-                assert_scope!(num_constants, num_public, num_private, num_constraints);
+                let candidate = circuit.commit_uncompressed(&circuit_input, &circuit_randomizer);
+                assert_scope!(<=num_constants, num_public, num_private, num_constraints);
                 assert_eq!(expected, candidate.eject_value());
             });
         }
     }
 
     #[test]
-    fn test_commitment_constant() {
-        check_commitment::<32, 48>(Mode::Constant, 6307, 0, 0, 0);
+    fn test_commit_uncompressed_constant() {
+        check_commit_uncompressed::<32, 48>(Mode::Constant, 6879, 0, 0, 0);
     }
 
     #[test]
-    fn test_commitment_public() {
-        check_commitment::<32, 48>(Mode::Public, 631, 0, 9404, 9404);
+    fn test_commit_uncompressed_public() {
+        check_commit_uncompressed::<32, 48>(Mode::Public, 631, 0, 9404, 9404);
     }
 
     #[test]
-    fn test_commitment_private() {
-        check_commitment::<32, 48>(Mode::Private, 631, 0, 9404, 9404);
+    fn test_commit_uncompressed_private() {
+        check_commit_uncompressed::<32, 48>(Mode::Private, 631, 0, 9404, 9404);
     }
 }
