@@ -52,7 +52,7 @@ static ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT: &str = "AleoAccountEncryptionAndS
 
 thread_local! {
     /// The group bases for the Aleo signature and encryption schemes.
-    static BASES: Vec<Group<Devnet >> = Devnet::new_bases(ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT);
+    static BASES: Vec<Group<Devnet>> = Devnet::new_bases(ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT);
     /// The encryption domain as a constant field element.
     static ENCRYPTION_DOMAIN: Field<Devnet> = Field::constant(<Devnet as Environment>::BaseField::from_bytes_le_mod_order(b"AleoSymmetricEncryption0"));
     /// The MAC domain as a constant field element.
@@ -114,32 +114,32 @@ impl Devnet {
 }
 
 impl Aleo for Devnet {
-    /// Returns a BHP commitment for the given (up to) 256-bit input and randomness.
+    /// Returns a BHP commitment for the given (up to) 256-bit input and randomizer.
     fn commit_bhp256(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self> {
         BHP_256.with(|bhp| bhp.commit(input, randomizer))
     }
 
-    /// Returns a BHP commitment for the given (up to) 512-bit input and randomness.
+    /// Returns a BHP commitment for the given (up to) 512-bit input and randomizer.
     fn commit_bhp512(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self> {
         BHP_512.with(|bhp| bhp.commit(input, randomizer))
     }
 
-    /// Returns a BHP commitment for the given (up to) 768-bit input and randomness.
+    /// Returns a BHP commitment for the given (up to) 768-bit input and randomizer.
     fn commit_bhp768(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self> {
         BHP_768.with(|bhp| bhp.commit(input, randomizer))
     }
 
-    /// Returns a BHP commitment for the given (up to) 1024-bit input and randomness.
+    /// Returns a BHP commitment for the given (up to) 1024-bit input and randomizer.
     fn commit_bhp1024(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self> {
         BHP_1024.with(|bhp| bhp.commit(input, randomizer))
     }
 
-    /// Returns a Pedersen commitment for the given (up to) 64-bit input and randomness.
+    /// Returns a Pedersen commitment for the given (up to) 64-bit input and randomizer.
     fn commit_ped64(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self> {
         PEDERSEN_64.with(|pedersen| pedersen.commit(input, randomizer))
     }
 
-    /// Returns a Pedersen commitment for the given (up to) 128-bit input and randomness.
+    /// Returns a Pedersen commitment for the given (up to) 128-bit input and randomizer.
     fn commit_ped128(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self> {
         PEDERSEN_128.with(|pedersen| pedersen.commit(input, randomizer))
     }

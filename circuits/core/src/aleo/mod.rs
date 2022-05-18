@@ -26,22 +26,22 @@ pub use program::*;
 use snarkvm_circuits_types::{environment::Environment, Boolean, Field, Group, Scalar};
 
 pub trait Aleo: Environment {
-    /// Returns a BHP commitment for the given (up to) 256-bit input and randomness.
+    /// Returns a BHP commitment for the given (up to) 256-bit input and randomizer.
     fn commit_bhp256(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self>;
 
-    /// Returns a BHP commitment for the given (up to) 512-bit input and randomness.
+    /// Returns a BHP commitment for the given (up to) 512-bit input and randomizer.
     fn commit_bhp512(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self>;
 
-    /// Returns a BHP commitment for the given (up to) 768-bit input and randomness.
+    /// Returns a BHP commitment for the given (up to) 768-bit input and randomizer.
     fn commit_bhp768(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self>;
 
-    /// Returns a BHP commitment for the given (up to) 1024-bit input and randomness.
+    /// Returns a BHP commitment for the given (up to) 1024-bit input and randomizer.
     fn commit_bhp1024(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self>;
 
-    /// Returns a Pedersen commitment for the given (up to) 64-bit input and randomness.
+    /// Returns a Pedersen commitment for the given (up to) 64-bit input and randomizer.
     fn commit_ped64(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self>;
 
-    /// Returns a Pedersen commitment for the given (up to) 128-bit input and randomness.
+    /// Returns a Pedersen commitment for the given (up to) 128-bit input and randomizer.
     fn commit_ped128(input: &[Boolean<Self>], randomizer: &Scalar<Self>) -> Field<Self>;
 
     /// Returns the encryption domain as a constant field element.

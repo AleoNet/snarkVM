@@ -24,7 +24,7 @@ use snarkvm_circuits_types::{environment::prelude::*, Address, Scalar};
 
 use core::ops::Deref;
 
-/// The account view key is able to decrypt records and ciphertext messages.
+/// The account view key is able to decrypt records and ciphertext.
 pub struct ViewKey<A: Aleo>(Scalar<A>);
 
 impl<A: Aleo> Inject for ViewKey<A> {

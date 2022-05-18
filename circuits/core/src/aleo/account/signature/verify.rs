@@ -19,14 +19,14 @@ use super::*;
 impl<A: Aleo> Signature<A> {
     /// Returns `true` if the signature is valid for the given `address` and `message`.
     pub fn verify(&self, address: &Address<A>, message: &[Literal<A>]) -> Boolean<A> {
-        // Compute G^sk_sig^c.
-        let pk_sig_c = &self.pk_sig * &self.verifier_challenge;
+        // Compute G^sk_sig^challenge.
+        let pk_sig_challenge = &self.pk_sig * &self.challenge;
 
-        // Compute G^r := G^s G^sk_sig^c.
-        let g_r = A::g_scalar_multiply(&self.prover_response) + pk_sig_c;
+        // Compute G^r := G^s G^sk_sig^challenge.
+        let g_r = A::g_scalar_multiply(&self.response) + pk_sig_challenge;
 
         // Compute the candidate verifier challenge.
-        let candidate_verifier_challenge = {
+        let candidate_challenge = {
             // Convert the message into little-endian bits.
             let message_bits = message.to_bits_le();
             let message_elements =
@@ -55,10 +55,10 @@ impl<A: Aleo> Signature<A> {
             &self.pk_sig + &self.pr_sig + pk_prf
         };
 
-        let is_verifier_challenge_valid = self.verifier_challenge.is_equal(&candidate_verifier_challenge);
+        let is_challenge_valid = self.challenge.is_equal(&candidate_challenge);
         let is_address_valid = address.to_group().is_equal(&candidate_address);
 
-        is_verifier_challenge_valid & is_address_valid
+        is_challenge_valid & is_address_valid
     }
 }
 

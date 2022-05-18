@@ -14,113 +14,113 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{AccountError, Network, PrivateKey};
-use snarkvm_algorithms::SignatureSchemeOperations;
+use crate::aleo::{Network, PrivateKey};
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
-use snarkvm_utilities::{FromBytes, ToBytes};
-
-use rand::thread_rng;
-use std::{
-    fmt,
+use snarkvm_utilities::{
+    error,
     io::{Read, Result as IoResult, Write},
+    FromBytes,
+    ToBytes,
 };
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+use anyhow::{Error, Result};
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ComputeKey<N: Network> {
-    /// pk_sig := G^sk_sig.
+    /// The signature public key `pk_sig` := G^sk_sig.
     pk_sig: N::Affine,
-    /// pr_sig := G^r_sig.
+    /// The signature public randomizer `pr_sig` := G^r_sig.
     pr_sig: N::Affine,
-    /// pk_vrf := G^sk_vrf.
+    /// The VRF public key `pk_vrf` := G^sk_vrf.
     pk_vrf: N::Affine,
-    /// sk_prf := RO(G^sk_sig || G^r_sig || G^sk_vrf).
+    /// The PRF secret key `sk_prf` := HashToScalar(pk_sig || pr_sig || pk_vrf).
     sk_prf: N::Scalar,
 }
 
-impl<N: Network> ComputeKey<N> {
-    // /// Creates a new account compute key.
-    // ///
-    // /// This constructor is currently limited for internal use.
-    // /// The general convention for deriving a compute key should be from a private key.
-    // pub(crate) fn new(pk_sig: N::Affine, pr_sig: N::Affine) -> Self {
-    //     // Compute sk_prf := RO(G^sk_sig || G^r_sig).
-    //     let sk_prf =
-    //         N::account_signature_scheme().hash_to_scalar_field(&[pk_sig.to_x_coordinate(), pr_sig.to_x_coordinate()]);
-    //
-    //     // Initialize the compute key.
-    //     Self { pk_sig, pr_sig, sk_prf }
-    // }
+impl<N: Network> TryFrom<PrivateKey<N>> for ComputeKey<N> {
+    type Error = Error;
 
     /// Derives the account compute key from an account private key.
-    pub fn from_private_key(private_key: &PrivateKey<N>) -> Self {
-        // Compute G^sk_sig.
-        let pk_sig = N::account_signature_scheme().g_scalar_multiply(&private_key.sk_sig);
+    fn try_from(private_key: PrivateKey<N>) -> Result<Self, Self::Error> {
+        Self::try_from(&private_key)
+    }
+}
 
-        // Compute G^r_sig.
-        let pr_sig = N::account_signature_scheme().g_scalar_multiply(&private_key.r_sig);
+impl<N: Network> TryFrom<&PrivateKey<N>> for ComputeKey<N> {
+    type Error = Error;
 
-        let mut to_normalize = [pk_sig, pr_sig];
-        <N::Affine as AffineCurve>::Projective::batch_normalization(&mut to_normalize);
-        let [pk_sig, pr_sig] = to_normalize.map(|c| c.to_affine());
+    /// Derives the account compute key from an account private key.
+    fn try_from(private_key: &PrivateKey<N>) -> Result<Self, Self::Error> {
+        // Compute pk_sig := G^sk_sig.
+        let pk_sig = N::g_scalar_multiply(&private_key.sk_sig());
+        // Compute pr_sig := G^r_sig.
+        let pr_sig = N::g_scalar_multiply(&private_key.r_sig());
+        // Compute pk_vrf := G^sk_vrf.
+        let pk_vrf = N::g_scalar_multiply(&private_key.sk_vrf());
 
-        Self::new(pk_sig, pr_sig)
+        // Convert (pk_sig, pr_sig, pk_vrf) into affine coordinates.
+        let (pk_sig, pr_sig, pk_vrf) = {
+            let mut to_normalize = [pk_sig, pr_sig, pk_vrf];
+            <N::Affine as AffineCurve>::Projective::batch_normalization(&mut to_normalize);
+            let [pk_sig, pr_sig, pk_vrf] = to_normalize.map(|c| c.to_affine());
+            (pk_sig, pr_sig, pk_vrf)
+        };
+
+        // Output the compute key.
+        Self::new(pk_sig, pr_sig, pk_vrf)
+    }
+}
+
+impl<N: Network> ComputeKey<N> {
+    /// Initializes a new account compute key.
+    ///
+    /// This constructor is currently limited for internal use.
+    /// The general convention for deriving a compute key should be from a private key.
+    pub(crate) fn new(pk_sig: N::Affine, pr_sig: N::Affine, pk_vrf: N::Affine) -> Result<Self> {
+        // Compute sk_prf := HashToScalar(pk_sig || pr_sig || pk_vrf).
+        let sk_prf =
+            N::hash_to_scalar_psd4(&[pk_sig.to_x_coordinate(), pr_sig.to_x_coordinate(), pk_vrf.to_x_coordinate()])?;
+        // Output the compute key.
+        Ok(Self { pk_sig, pr_sig, pk_vrf, sk_prf })
     }
 
-    // pub fn from_signature(signature: &N::AccountSignature) -> Result<Self, AccountError> {
-    //     // Extract G^sk_sig.
-    //     let pk_sig = N::AccountSignatureScheme::pk_sig(signature)?;
-    //
-    //     // Extract G^r_sig.
-    //     let pr_sig = N::AccountSignatureScheme::pr_sig(signature)?;
-    //
-    //     Ok(Self::new(pk_sig, pr_sig))
-    // }
-    //
-    // /// Returns `true` if the compute key is well-formed. Otherwise, returns `false`.
-    // pub fn is_valid(&self) -> bool {
-    //     // Compute sk_prf := RO(G^sk_sig || G^r_sig).
-    //     let candidate_sk_prf = N::account_signature_scheme()
-    //         .hash_to_scalar_field(&[self.pk_sig.to_x_coordinate(), self.pr_sig.to_x_coordinate()]);
-    //
-    //     self.sk_prf == candidate_sk_prf
-    // }
+    /// Returns the signature public key.
+    pub fn pk_sig(&self) -> &N::Affine {
+        &self.pk_sig
+    }
+
+    /// Returns the signature public randomizer.
+    pub fn pr_sig(&self) -> &N::Affine {
+        &self.pr_sig
+    }
+
+    /// Returns the VRF public key.
+    pub fn pk_vrf(&self) -> &N::Affine {
+        &self.pk_vrf
+    }
 
     /// Returns a reference to the PRF secret key.
     pub fn sk_prf(&self) -> &N::Scalar {
         &self.sk_prf
     }
-
-    // /// Returns the encryption key.
-    // pub fn to_encryption_key(&self) -> N::Affine {
-    //     // Compute G^sk_prf.
-    //     let pk_prf = N::account_signature_scheme().g_scalar_multiply(&self.sk_prf);
-    //
-    //     (self.pk_sig.to_projective() + self.pr_sig.to_projective() + pk_prf).into()
-    // }
 }
 
 impl<N: Network> FromBytes for ComputeKey<N> {
     /// Reads an account compute key from a buffer.
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
-        let pk_sig = FromBytes::read_le(&mut reader)?;
-        let pr_sig = FromBytes::read_le(&mut reader)?;
-        let pk_vrf = FromBytes::read_le(&mut reader)?;
-        Ok(Self::new(pk_sig, pr_sig, pk_vrf))
+        let pk_sig = N::affine_from_x_coordinate(N::Field::read_le(&mut reader)?).map_err(|e| error(format!("{e}")))?;
+        let pr_sig = N::affine_from_x_coordinate(N::Field::read_le(&mut reader)?).map_err(|e| error(format!("{e}")))?;
+        let pk_vrf = N::affine_from_x_coordinate(N::Field::read_le(&mut reader)?).map_err(|e| error(format!("{e}")))?;
+        Ok(Self::new(pk_sig, pr_sig, pk_vrf).map_err(|e| error(format!("{e}")))?)
     }
 }
 
 impl<N: Network> ToBytes for ComputeKey<N> {
     /// Writes an account compute key to a buffer.
     fn write_le<W: Write>(&self, mut writer: W) -> IoResult<()> {
-        self.pk_sig.write_le(&mut writer)?;
-        self.pr_sig.write_le(&mut writer)?;
-        self.pk_vrf.write_le(&mut writer)
+        self.pk_sig.to_x_coordinate().write_le(&mut writer)?;
+        self.pr_sig.to_x_coordinate().write_le(&mut writer)?;
+        self.pk_vrf.to_x_coordinate().write_le(&mut writer)
     }
 }
-
-// impl<N: Network> Default for ComputeKey<N> {
-//     fn default() -> Self {
-//         PrivateKey::new(&mut thread_rng()).to_compute_key()
-//     }
-// }

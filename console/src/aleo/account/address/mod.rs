@@ -14,44 +14,85 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::Network;
-use snarkvm_curves::AffineCurve;
+use crate::aleo::{ComputeKey, Network, PrivateKey, ViewKey};
+use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::PrimeField;
-use snarkvm_utilities::{error, FromBytes, FromBytesDeserializer, ToBytes, ToBytesSerializer};
+use snarkvm_utilities::{
+    error,
+    io::{Read, Result as IoResult, Write},
+    FromBytes,
+    FromBytesDeserializer,
+    ToBytes,
+    ToBytesSerializer,
+};
 
 use anyhow::{bail, Error};
 use bech32::{self, FromBase32, ToBase32};
-use core::{fmt, str};
+use core::{fmt, ops::Deref, str::FromStr};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
-use std::io::{Read, Result as IoResult, Write};
 
 static ADDRESS_PREFIX: &str = "aleo";
 
-#[derive(Copy, Clone, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Address<N: Network>(N::Affine);
 
-// use crate::{account_format, AccountError, ComputeKey, PrivateKey, ViewKey};
-// use snarkvm_algorithms::{EncryptionScheme, SignatureScheme};
-// use snarkvm_curves::AffineCurve;
+impl<N: Network> TryFrom<PrivateKey<N>> for Address<N> {
+    type Error = Error;
 
-// impl<N: Network> Address<N> {
-// /// Derives the account address from an account private key.
-// pub fn from_private_key(private_key: &PrivateKey<N>) -> Self {
-//     Self::from_compute_key(&private_key.to_compute_key())
-// }
-//
-// /// Derives the account address from an account compute key.
-// pub fn from_compute_key(compute_key: &ComputeKey<N>) -> Self {
-//     Self(compute_key.to_encryption_key())
-// }
-//
-// /// Derives the account address from an account view key.
-// pub fn from_view_key(view_key: &ViewKey<N>) -> Self {
-//     // TODO (howardwu): This operation can be optimized by precomputing powers in ECIES native impl.
-//     //  Optimizing this will also speed up encryption.
-//     Self(N::account_encryption_scheme().generate_public_key(&*view_key))
-// }
-//
+    /// Derives the account address from an account private key.
+    fn try_from(private_key: PrivateKey<N>) -> Result<Self, Self::Error> {
+        Self::try_from(&private_key)
+    }
+}
+
+impl<N: Network> TryFrom<&PrivateKey<N>> for Address<N> {
+    type Error = Error;
+
+    /// Derives the account address from an account private key.
+    fn try_from(private_key: &PrivateKey<N>) -> Result<Self, Self::Error> {
+        Self::try_from(ViewKey::try_from(private_key)?)
+    }
+}
+
+impl<N: Network> TryFrom<ComputeKey<N>> for Address<N> {
+    type Error = Error;
+
+    /// Derives the account address from an account compute key.
+    fn try_from(compute_key: ComputeKey<N>) -> Result<Self, Self::Error> {
+        Self::try_from(&compute_key)
+    }
+}
+
+impl<N: Network> TryFrom<&ComputeKey<N>> for Address<N> {
+    type Error = Error;
+
+    /// Derives the account address from an account compute key.
+    fn try_from(compute_key: &ComputeKey<N>) -> Result<Self, Self::Error> {
+        // Compute pk_prf := G^sk_prf.
+        let pk_prf = N::g_scalar_multiply(compute_key.sk_prf());
+        // Compute the address := pk_sig + pr_sig + pk_prf.
+        Ok(Self((compute_key.pk_sig().to_projective() + compute_key.pr_sig().to_projective() + pk_prf).to_affine()))
+    }
+}
+
+impl<N: Network> TryFrom<ViewKey<N>> for Address<N> {
+    type Error = Error;
+
+    /// Derives the account address from an account view key.
+    fn try_from(view_key: ViewKey<N>) -> Result<Self, Self::Error> {
+        Self::try_from(&view_key)
+    }
+}
+
+impl<N: Network> TryFrom<&ViewKey<N>> for Address<N> {
+    type Error = Error;
+
+    /// Derives the account address from an account view key.
+    fn try_from(view_key: &ViewKey<N>) -> Result<Self, Self::Error> {
+        Ok(Self(N::g_scalar_multiply(&**view_key).to_affine()))
+    }
+}
+
 // /// Verifies a signature on a message signed by the account view key.
 // /// Returns `true` if the signature is valid. Otherwise, returns `false`.
 // pub fn verify_signature(&self, message: &[bool], signature: &N::AccountSignature) -> Result<bool, AccountError> {
@@ -59,49 +100,7 @@ pub struct Address<N: Network>(N::Affine);
 // }
 // }
 
-// impl<N: Network> From<PrivateKey<N>> for Address<N> {
-//     /// Derives the account address from an account private key.
-//     fn from(private_key: PrivateKey<N>) -> Self {
-//         Self::from(&private_key)
-//     }
-// }
-//
-// impl<N: Network> From<&PrivateKey<N>> for Address<N> {
-//     /// Derives the account address from an account private key.
-//     fn from(private_key: &PrivateKey<N>) -> Self {
-//         Self::from_private_key(private_key)
-//     }
-// }
-//
-// impl<N: Network> From<ComputeKey<N>> for Address<N> {
-//     /// Derives the account address from an account compute key.
-//     fn from(compute_key: ComputeKey<N>) -> Self {
-//         Self::from(&compute_key)
-//     }
-// }
-//
-// impl<N: Network> From<&ComputeKey<N>> for Address<N> {
-//     /// Derives the account address from an account compute key.
-//     fn from(compute_key: &ComputeKey<N>) -> Self {
-//         Self::from_compute_key(compute_key)
-//     }
-// }
-//
-// impl<N: Network> From<ViewKey<N>> for Address<N> {
-//     /// Derives the account address from an account view key.
-//     fn from(view_key: ViewKey<N>) -> Self {
-//         Self::from(&view_key)
-//     }
-// }
-//
-// impl<N: Network> From<&ViewKey<N>> for Address<N> {
-//     /// Derives the account address from an account view key.
-//     fn from(view_key: &ViewKey<N>) -> Self {
-//         Self::from_view_key(view_key)
-//     }
-// }
-
-impl<N: Network> str::FromStr for Address<N> {
+impl<N: Network> FromStr for Address<N> {
     type Err = Error;
 
     /// Reads in an account address string.
@@ -141,7 +140,7 @@ impl<N: Network> FromBytes for Address<N> {
     #[inline]
     fn read_le<R: Read>(mut reader: R) -> IoResult<Self> {
         let x_coordinate = N::Field::read_le(&mut reader)?;
-        Ok(Self(N::affine_from_x_coordinate(x_coordinate).map_err(|err| error(format!("{err}")))?))
+        Ok(Self(N::affine_from_x_coordinate(x_coordinate).map_err(|e| error(format!("{e}")))?))
     }
 }
 
@@ -164,11 +163,20 @@ impl<N: Network> Serialize for Address<N> {
 impl<'de, N: Network> Deserialize<'de> for Address<N> {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
-            true => str::FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
+            true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
             false => {
                 FromBytesDeserializer::<Self>::deserialize(deserializer, "address", (N::Field::size_in_bits() + 7) / 8)
             }
         }
+    }
+}
+
+impl<N: Network> Deref for Address<N> {
+    type Target = N::Affine;
+
+    /// Returns the address as an affine group element.
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 

@@ -17,11 +17,14 @@
 pub mod address;
 pub use address::*;
 
-// pub mod compute_key;
-// pub use compute_key::*;
+pub mod compute_key;
+pub use compute_key::*;
 
 pub mod private_key;
 pub use private_key::*;
 
-// pub mod view_key;
-// pub use view_key::*;
+pub mod signature;
+pub use signature::*;
+
+pub mod view_key;
+pub use view_key::*;

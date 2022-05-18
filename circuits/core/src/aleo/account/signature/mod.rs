@@ -23,10 +23,10 @@ use crate::aleo::Aleo;
 use snarkvm_circuits_types::{environment::prelude::*, Address, Boolean, Field, Group, Literal, Scalar};
 
 pub struct Signature<A: Aleo> {
-    /// The prover response to the challenge.
-    prover_response: Scalar<A>,
     /// The verifier challenge to check against.
-    verifier_challenge: Scalar<A>,
+    challenge: Scalar<A>,
+    /// The prover response to the challenge.
+    response: Scalar<A>,
     /// The x-coordinate of the signature public key `pk_sig` := G^sk_sig.
     pk_sig: Group<A>,
     /// The x-coordinate of the signature public randomizer `pr_sig` := G^r_sig.
@@ -36,11 +36,11 @@ pub struct Signature<A: Aleo> {
 impl<A: Aleo> Inject for Signature<A> {
     type Primitive = (A::ScalarField, A::ScalarField, A::BaseField, A::BaseField);
 
-    /// Initializes a signature from the given mode and `(prover_response, verifier_challenge, pk_sig, pr_sig)`.
-    fn new(mode: Mode, (prover_response, verifier_challenge, pk_sig, pr_sig): Self::Primitive) -> Signature<A> {
+    /// Initializes a signature from the given mode and `(challenge, response, pk_sig, pr_sig)`.
+    fn new(mode: Mode, (challenge, response, pk_sig, pr_sig): Self::Primitive) -> Signature<A> {
         Self {
-            prover_response: Scalar::new(mode, prover_response),
-            verifier_challenge: Scalar::new(mode, verifier_challenge),
+            challenge: Scalar::new(mode, challenge),
+            response: Scalar::new(mode, response),
             pk_sig: Group::from_x_coordinate(Field::new(mode, pk_sig)),
             pr_sig: Group::from_x_coordinate(Field::new(mode, pr_sig)),
         }
@@ -54,20 +54,14 @@ impl<A: Aleo> Eject for Signature<A> {
     /// Ejects the mode of the signature.
     ///
     fn eject_mode(&self) -> Mode {
-        (&self.prover_response, &self.verifier_challenge, &self.pk_sig, &self.pr_sig).eject_mode()
+        (&self.challenge, &self.response, &self.pk_sig, &self.pr_sig).eject_mode()
     }
 
     ///
-    /// Ejects the signature as `(prover_response, verifier_challenge, pk_sig, pr_sig)`.
+    /// Ejects the signature as `(challenge, response, pk_sig, pr_sig)`.
     ///
     fn eject_value(&self) -> Self::Primitive {
-        (
-            &self.prover_response,
-            &self.verifier_challenge,
-            &self.pk_sig.to_x_coordinate(),
-            &self.pr_sig.to_x_coordinate(),
-        )
-            .eject_value()
+        (&self.challenge, &self.response, &self.pk_sig.to_x_coordinate(), &self.pr_sig.to_x_coordinate()).eject_value()
     }
 }
 
@@ -84,14 +78,14 @@ mod tests {
         let rng = &mut test_rng();
 
         for _ in 0..ITERATIONS {
-            let prover_response = UniformRand::rand(rng);
-            let verifier_challenge = UniformRand::rand(rng);
+            let challenge = UniformRand::rand(rng);
+            let response = UniformRand::rand(rng);
             let pk_sig = <Circuit as Environment>::Affine::rand(rng).to_x_coordinate();
             let pr_sig = <Circuit as Environment>::Affine::rand(rng).to_x_coordinate();
 
             Circuit::scope(format!("New {mode}"), || {
-                let candidate = Signature::<Circuit>::new(mode, (prover_response, verifier_challenge, pk_sig, pr_sig));
-                assert_eq!((prover_response, verifier_challenge, pk_sig, pr_sig), candidate.eject_value());
+                let candidate = Signature::<Circuit>::new(mode, (challenge, response, pk_sig, pr_sig));
+                assert_eq!((challenge, response, pk_sig, pr_sig), candidate.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
             });
         }

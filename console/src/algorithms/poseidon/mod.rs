@@ -24,17 +24,17 @@ mod prf;
 use crate::algorithms::{poseidon::helpers::*, Hash, HashMany, HashToScalar, PRF};
 use snarkvm_fields::{PoseidonParameters, PrimeField};
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use std::sync::Arc;
 
 const CAPACITY: usize = 1;
 
 /// Poseidon2 is a cryptographic hash function of input rate 2.
-pub type Poseidon2<E> = Poseidon<E, 2>;
+pub type Poseidon2<F> = Poseidon<F, 2>;
 /// Poseidon4 is a cryptographic hash function of input rate 4.
-pub type Poseidon4<E> = Poseidon<E, 4>;
+pub type Poseidon4<F> = Poseidon<F, 4>;
 /// Poseidon8 is a cryptographic hash function of input rate 8.
-pub type Poseidon8<E> = Poseidon<E, 8>;
+pub type Poseidon8<F> = Poseidon<F, 8>;
 
 pub struct Poseidon<F: PrimeField, const RATE: usize> {
     /// The Poseidon parameters for hashing.
