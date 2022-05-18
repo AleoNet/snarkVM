@@ -16,9 +16,9 @@
 
 use super::*;
 
-impl<G: ProjectiveCurve, const NUM_BITS: usize> HashUncompressed for Pedersen<G, NUM_BITS> {
+impl<G: AffineCurve, const NUM_BITS: usize> HashUncompressed for Pedersen<G, NUM_BITS> {
     type Input = bool;
-    type Output = G::Affine;
+    type Output = G;
 
     /// Returns the Pedersen hash of the given input as an affine group element.
     fn hash_uncompressed(&self, input: &[Self::Input]) -> Result<Self::Output> {
@@ -38,7 +38,7 @@ impl<G: ProjectiveCurve, const NUM_BITS: usize> HashUncompressed for Pedersen<G,
                 true => Some(*base),
                 false => None,
             })
-            .sum::<G>()
+            .sum::<G::Projective>()
             .to_affine())
     }
 }

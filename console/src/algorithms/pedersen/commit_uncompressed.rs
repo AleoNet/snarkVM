@@ -16,9 +16,9 @@
 
 use super::*;
 
-impl<G: ProjectiveCurve, const NUM_BITS: usize> CommitUncompressed for Pedersen<G, NUM_BITS> {
+impl<G: AffineCurve, const NUM_BITS: usize> CommitUncompressed for Pedersen<G, NUM_BITS> {
     type Input = bool;
-    type Output = G::Affine;
+    type Output = G;
     type Randomizer = G::ScalarField;
 
     /// Returns the Pedersen commitment of the given input and randomizer as an affine group element.

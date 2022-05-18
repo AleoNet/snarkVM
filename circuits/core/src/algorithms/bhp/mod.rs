@@ -123,7 +123,7 @@ mod tests {
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_circuits_types::Eject;
     use snarkvm_console::algorithms::BHP as NativeBHP;
-    use snarkvm_curves::{edwards_bls12::EdwardsProjective, AffineCurve, ProjectiveCurve};
+    use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 
     const ITERATIONS: usize = 10;
     const MESSAGE: &str = "BHPCircuit0";
@@ -131,7 +131,7 @@ mod tests {
     #[test]
     fn test_setup_constant() {
         for _ in 0..ITERATIONS {
-            let native = NativeBHP::<EdwardsProjective, 8, 32>::setup(MESSAGE);
+            let native = NativeBHP::<<Circuit as Environment>::Affine, 8, 32>::setup(MESSAGE);
             let circuit = BHP::<Circuit, 8, 32>::setup(MESSAGE);
 
             native.bases().iter().zip(circuit.bases.iter()).for_each(|(native_bases, circuit_bases)| {

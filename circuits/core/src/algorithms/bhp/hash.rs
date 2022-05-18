@@ -31,13 +31,10 @@ mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_console::algorithms::{Hash as H, BHP as NativeBHP};
-    use snarkvm_curves::AffineCurve;
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 10;
     const MESSAGE: &str = "BHPCircuit0";
-
-    type Projective = <<Circuit as Environment>::Affine as AffineCurve>::Projective;
 
     fn check_hash<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(
         mode: Mode,
@@ -47,7 +44,7 @@ mod tests {
         num_constraints: u64,
     ) {
         // Initialize BHP.
-        let native = NativeBHP::<Projective, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
+        let native = NativeBHP::<<Circuit as Environment>::Affine, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
         let circuit = BHP::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
         // Determine the number of inputs.
         let num_input_bits = NUM_WINDOWS * WINDOW_SIZE * BHP_CHUNK_SIZE;

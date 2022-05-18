@@ -22,10 +22,11 @@ mod hash_uncompressed;
 use crate::algorithms::{Commit, CommitUncompressed, Hash, HashUncompressed};
 use snarkvm_algorithms::crypto_hash::hash_to_curve;
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
-use snarkvm_fields::PrimeField;
+use snarkvm_fields::{PrimeField, Zero};
 use snarkvm_utilities::{cfg_iter, BigInteger, ToBits};
 
 use anyhow::{bail, Result};
+use core::ops::Neg;
 use itertools::Itertools;
 
 pub const BHP_CHUNK_SIZE: usize = 3;
@@ -42,16 +43,16 @@ pub type BHP1024<G> = BHP<G, 6, 57>;
 
 /// BHP is a collision-resistant hash function that takes a variable-length input.
 /// The BHP hash function does *not* behave like a random oracle, see Poseidon for one.
-pub struct BHP<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
+pub struct BHP<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> {
     /// The bases for the BHP hash.
-    bases: Vec<Vec<G>>,
+    bases: Vec<Vec<G::Projective>>,
     /// The bases lookup table for the BHP hash.
-    bases_lookup: Vec<Vec<[G; BHP_LOOKUP_SIZE]>>,
+    bases_lookup: Vec<Vec<[G::Projective; BHP_LOOKUP_SIZE]>>,
     /// The random base for the BHP commitment.
-    random_base: Vec<G>,
+    random_base: Vec<G::Projective>,
 }
 
-impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP<G, NUM_WINDOWS, WINDOW_SIZE> {
+impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP<G, NUM_WINDOWS, WINDOW_SIZE> {
     /// Initializes a new instance of BHP with the given setup message.
     pub fn setup(message: &str) -> Self {
         // Calculate the maximum window size.
@@ -68,7 +69,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP
         let bases = (0..NUM_WINDOWS)
             .map(|index| {
                 // Construct an indexed message to attempt to sample a base.
-                let (generator, _, _) = hash_to_curve::<G::Affine>(&format!("Aleo.BHP.Base.{message}.{index}"));
+                let (generator, _, _) = hash_to_curve::<G>(&format!("Aleo.BHP.Base.{message}.{index}"));
                 let mut base = generator.to_projective();
                 // Compute the generators for the sampled base.
                 let mut powers = Vec::with_capacity(WINDOW_SIZE);
@@ -80,7 +81,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP
                 }
                 powers
             })
-            .collect::<Vec<Vec<G>>>();
+            .collect::<Vec<Vec<G::Projective>>>();
         debug_assert_eq!(bases.len(), NUM_WINDOWS, "Incorrect number of windows ({:?}) for BHP", bases.len());
         bases.iter().for_each(|window| debug_assert_eq!(window.len(), WINDOW_SIZE));
 
@@ -89,7 +90,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP
             .map(|x| {
                 x.iter()
                     .map(|g| {
-                        let mut lookup = [G::zero(); BHP_LOOKUP_SIZE];
+                        let mut lookup = [G::Projective::zero(); BHP_LOOKUP_SIZE];
                         for (i, element) in lookup.iter_mut().enumerate().take(BHP_LOOKUP_SIZE) {
                             *element = *g;
                             if (i & 0x01) != 0 {
@@ -106,12 +107,12 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP
                     })
                     .collect()
             })
-            .collect::<Vec<Vec<[G; BHP_LOOKUP_SIZE]>>>();
+            .collect::<Vec<Vec<[G::Projective; BHP_LOOKUP_SIZE]>>>();
         debug_assert_eq!(bases_lookup.len(), NUM_WINDOWS);
         bases_lookup.iter().for_each(|bases| debug_assert_eq!(bases.len(), WINDOW_SIZE));
 
         // Next, compute the random base.
-        let (generator, _, _) = hash_to_curve::<G::Affine>(&format!("Aleo.BHP.RandomBase.{message}"));
+        let (generator, _, _) = hash_to_curve::<G>(&format!("Aleo.BHP.RandomBase.{message}"));
         let mut base_power = generator.to_projective();
         let num_scalar_bits = G::ScalarField::size_in_bits();
         let mut random_base = Vec::with_capacity(num_scalar_bits);
@@ -125,12 +126,12 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP
     }
 
     /// Returns the bases.
-    pub fn bases(&self) -> &[Vec<G>] {
+    pub fn bases(&self) -> &[Vec<G::Projective>] {
         &self.bases
     }
 
     /// Returns the random base window.
-    pub fn random_base(&self) -> &[G] {
+    pub fn random_base(&self) -> &[G::Projective] {
         &self.random_base
     }
 }

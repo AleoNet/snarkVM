@@ -117,20 +117,17 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
 #[cfg(test)]
 mod tests {
     use super::*;
-    use snarkvm_circuits_environment::{assert_count, assert_output_mode, Circuit};
+    use snarkvm_circuits_environment::Circuit;
     use snarkvm_console::algorithms::{HashUncompressed as H, Pedersen as NativePedersen};
-    use snarkvm_curves::AffineCurve;
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 10;
     const MESSAGE: &str = "PedersenCircuit0";
     const WINDOW_SIZE_MULTIPLIER: usize = 8;
 
-    type Projective = <<Circuit as Environment>::Affine as AffineCurve>::Projective;
-
     fn check_hash_uncompressed<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(mode: Mode) {
         // Initialize the Pedersen hash.
-        let native = NativePedersen::<Projective, WINDOW_SIZE>::setup(MESSAGE);
+        let native = NativePedersen::<<Circuit as Environment>::Affine, WINDOW_SIZE>::setup(MESSAGE);
         let circuit = Pedersen::<Circuit, NUM_WINDOWS, WINDOW_SIZE>::setup(MESSAGE);
         // Determine the number of inputs.
         let num_input_bits = NUM_WINDOWS * WINDOW_SIZE;

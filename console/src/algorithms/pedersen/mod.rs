@@ -22,7 +22,7 @@ mod hash_uncompressed;
 use crate::algorithms::{Commit, CommitUncompressed, Hash, HashUncompressed};
 use snarkvm_algorithms::crypto_hash::hash_to_curve;
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
-use snarkvm_fields::PrimeField;
+use snarkvm_fields::{PrimeField, Zero};
 use snarkvm_utilities::ToBits;
 
 use anyhow::{bail, Result};
@@ -36,27 +36,27 @@ pub type Pedersen128<G> = Pedersen<G, 128>;
 
 /// Pedersen is a collision-resistant hash function that takes a variable-length input.
 /// The Pedersen hash function does *not* behave like a random oracle, see Poseidon for one.
-pub struct Pedersen<G: ProjectiveCurve, const NUM_BITS: usize> {
+pub struct Pedersen<G: AffineCurve, const NUM_BITS: usize> {
     /// The base window for the Pedersen hash.
-    base_window: [G; NUM_BITS],
+    base_window: [G::Projective; NUM_BITS],
     /// The random base window for the Pedersen commitment.
-    random_base_window: Vec<G>,
+    random_base_window: Vec<G::Projective>,
 }
 
-impl<G: ProjectiveCurve, const NUM_BITS: usize> Pedersen<G, NUM_BITS> {
+impl<G: AffineCurve, const NUM_BITS: usize> Pedersen<G, NUM_BITS> {
     /// Initializes a new instance of Pedersen with the given setup message.
     pub fn setup(message: &str) -> Self {
         // Construct an indexed message to attempt to sample a base.
-        let (generator, _, _) = hash_to_curve::<G::Affine>(&format!("Aleo.Pedersen.Base.{message}"));
+        let (generator, _, _) = hash_to_curve::<G>(&format!("Aleo.Pedersen.Base.{message}"));
         let mut base_power = generator.to_projective();
-        let mut base_window = [G::zero(); NUM_BITS];
+        let mut base_window = [G::Projective::zero(); NUM_BITS];
         for base in base_window.iter_mut().take(NUM_BITS) {
             *base = base_power;
             base_power.double_in_place();
         }
 
         // Next, compute the random base.
-        let (generator, _, _) = hash_to_curve::<G::Affine>(&format!("Aleo.Pedersen.RandomBase.{message}"));
+        let (generator, _, _) = hash_to_curve::<G>(&format!("Aleo.Pedersen.RandomBase.{message}"));
         let mut base_power = generator.to_projective();
         let num_scalar_bits = G::ScalarField::size_in_bits();
         let mut random_base_window = Vec::with_capacity(num_scalar_bits);
@@ -70,12 +70,12 @@ impl<G: ProjectiveCurve, const NUM_BITS: usize> Pedersen<G, NUM_BITS> {
     }
 
     /// Returns the base window.
-    pub fn base_window(&self) -> &[G; NUM_BITS] {
+    pub fn base_window(&self) -> &[G::Projective; NUM_BITS] {
         &self.base_window
     }
 
     /// Returns the random base window.
-    pub fn random_base_window(&self) -> &[G] {
+    pub fn random_base_window(&self) -> &[G::Projective] {
         &self.random_base_window
     }
 }

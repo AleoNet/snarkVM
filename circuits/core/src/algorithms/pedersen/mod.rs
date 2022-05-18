@@ -81,13 +81,11 @@ mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_console::algorithms::Pedersen as NativePedersen;
-    use snarkvm_curves::{AffineCurve, ProjectiveCurve};
+    use snarkvm_curves::ProjectiveCurve;
 
     const ITERATIONS: u64 = 10;
     const MESSAGE: &str = "PedersenCircuit0";
     const WINDOW_SIZE_MULTIPLIER: usize = 8;
-
-    type Projective = <<Circuit as Environment>::Affine as AffineCurve>::Projective;
 
     fn check_setup<const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>(
         num_constants: u64,
@@ -97,7 +95,7 @@ mod tests {
     ) {
         for _ in 0..ITERATIONS {
             // Initialize the native Pedersen hash.
-            let native = NativePedersen::<Projective, WINDOW_SIZE>::setup(MESSAGE);
+            let native = NativePedersen::<<Circuit as Environment>::Affine, WINDOW_SIZE>::setup(MESSAGE);
 
             Circuit::scope("Pedersen::setup", || {
                 // Perform the setup operation.

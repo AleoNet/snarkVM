@@ -16,9 +16,9 @@
 
 use super::*;
 
-impl<G: ProjectiveCurve, const NUM_BITS: usize> Hash for Pedersen<G, NUM_BITS> {
+impl<G: AffineCurve, const NUM_BITS: usize> Hash for Pedersen<G, NUM_BITS> {
     type Input = bool;
-    type Output = <G::Affine as AffineCurve>::BaseField;
+    type Output = G::BaseField;
 
     /// Returns the Pedersen hash of the given input as a field element.
     fn hash(&self, input: &[Self::Input]) -> Result<Self::Output> {

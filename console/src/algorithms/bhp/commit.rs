@@ -16,11 +16,9 @@
 
 use super::*;
 
-impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Commit
-    for BHP<G, NUM_WINDOWS, WINDOW_SIZE>
-{
+impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Commit for BHP<G, NUM_WINDOWS, WINDOW_SIZE> {
     type Input = bool;
-    type Output = <G::Affine as AffineCurve>::BaseField;
+    type Output = G::BaseField;
     type Randomizer = G::ScalarField;
 
     /// Returns the BHP commitment of the given input and randomizer as a field element.

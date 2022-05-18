@@ -16,11 +16,11 @@
 
 use super::*;
 
-impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> HashUncompressed
+impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> HashUncompressed
     for BHP<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     type Input = bool;
-    type Output = G::Affine;
+    type Output = G;
 
     /// Returns the BHP hash of the given input as an affine group element.
     ///
@@ -62,7 +62,7 @@ impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Has
                     base[(chunk_bits[0] as usize) | (chunk_bits[1] as usize) << 1 | (chunk_bits[2] as usize) << 2]
                 })
             })
-            .sum::<G>()
+            .sum::<G::Projective>()
             .to_affine())
     }
 }

@@ -16,9 +16,9 @@
 
 use super::*;
 
-impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Hash for BHP<G, NUM_WINDOWS, WINDOW_SIZE> {
+impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Hash for BHP<G, NUM_WINDOWS, WINDOW_SIZE> {
     type Input = bool;
-    type Output = <G::Affine as AffineCurve>::BaseField;
+    type Output = G::BaseField;
 
     /// Returns the BHP hash of the given input as a field element.
     fn hash(&self, input: &[Self::Input]) -> Result<Self::Output> {

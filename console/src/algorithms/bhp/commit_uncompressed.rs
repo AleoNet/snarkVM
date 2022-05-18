@@ -16,11 +16,11 @@
 
 use super::*;
 
-impl<G: ProjectiveCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CommitUncompressed
+impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> CommitUncompressed
     for BHP<G, NUM_WINDOWS, WINDOW_SIZE>
 {
     type Input = bool;
-    type Output = G::Affine;
+    type Output = G;
     type Randomizer = G::ScalarField;
 
     /// Returns the BHP commitment of the given input and randomizer as an affine group element.
