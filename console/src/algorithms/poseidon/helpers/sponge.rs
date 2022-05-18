@@ -220,7 +220,7 @@ impl<F: PrimeField, const RATE: usize, const CAPACITY: usize> PoseidonSponge<F, 
                     RATE,
                     rate_start
                 );
-                chunk.copy_from_slice(&self.state.rate_state(range));
+                chunk.copy_from_slice(self.state.rate_state(range));
                 // Are we in the last chunk?
                 // If so, let's wrap up.
                 if i == total_num_chunks - 1 {
