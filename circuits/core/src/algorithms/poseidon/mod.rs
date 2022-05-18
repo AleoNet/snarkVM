@@ -29,8 +29,11 @@ use snarkvm_fields::PoseidonDefaultField;
 
 const CAPACITY: usize = 1;
 
+/// Poseidon2 is a cryptographic hash function of input rate 2.
 pub type Poseidon2<E> = Poseidon<E, 2>;
+/// Poseidon4 is a cryptographic hash function of input rate 4.
 pub type Poseidon4<E> = Poseidon<E, 4>;
+/// Poseidon8 is a cryptographic hash function of input rate 8.
 pub type Poseidon8<E> = Poseidon<E, 8>;
 
 #[derive(Clone)]

@@ -2204,6 +2204,7 @@ dependencies = [
  "itertools",
  "serde",
  "serde_json",
+ "smallvec",
  "snarkvm-algorithms",
  "snarkvm-curves",
  "snarkvm-fields",

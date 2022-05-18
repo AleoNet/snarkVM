@@ -45,5 +45,10 @@ features = ["derive"]
 [dependencies.serde_json]
 version = "1.0"
 
+[dependencies.smallvec]
+version = "1.8"
+default-features = false
+features = [ "const_generics", "const_new" ]
+
 [dev-dependencies.bincode]
 version = "1.3"

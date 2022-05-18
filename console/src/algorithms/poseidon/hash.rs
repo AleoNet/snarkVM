@@ -14,14 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod bhp;
-pub use bhp::*;
+use super::*;
 
-pub mod pedersen;
-pub use pedersen::*;
+impl<F: PrimeField, const RATE: usize> Hash for Poseidon<F, RATE> {
+    type Input = F;
+    type Output = F;
 
-pub mod poseidon;
-pub use poseidon::*;
-
-pub mod traits;
-pub use traits::*;
+    /// Returns the cryptographic hash for a list of field elements as input.
+    #[inline]
+    fn hash(&self, input: &[Self::Input]) -> Result<Self::Output> {
+        Ok(self.hash_many(input, 1)[0])
+    }
+}

@@ -14,14 +14,22 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod bhp;
-pub use bhp::*;
+use super::*;
 
-pub mod pedersen;
-pub use pedersen::*;
+impl<F: PrimeField, const RATE: usize> PRF for Poseidon<F, RATE> {
+    type Input = F;
+    type Output = F;
+    type Seed = F;
 
-pub mod poseidon;
-pub use poseidon::*;
+    #[inline]
+    fn prf(&self, seed: &Self::Seed, input: &[Self::Input]) -> Result<Self::Output> {
+        // Construct the preimage: seed || length(input) || input.
+        let mut preimage = Vec::with_capacity(2 + input.len());
+        preimage.push(*seed);
+        preimage.push(F::from(input.len() as u128)); // Input length.
+        preimage.extend_from_slice(input);
 
-pub mod traits;
-pub use traits::*;
+        // Hash the preimage to derive the PRF output.
+        self.hash(&preimage)
+    }
+}

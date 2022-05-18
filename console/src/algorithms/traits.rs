@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
+use snarkvm_fields::PrimeField;
+use snarkvm_utilities::FromBits;
+
 use anyhow::Result;
 
 /// A trait for a commitment scheme.
@@ -57,10 +60,9 @@ pub trait HashMany {
 /// A trait for a hash function that projects the value to a scalar.
 pub trait HashToScalar {
     type Input;
-    type Scalar;
 
     /// Returns the hash of the given input.
-    fn hash_to_scalar(&self, input: &[Self::Input]) -> Self::Scalar;
+    fn hash_to_scalar<Scalar: PrimeField + FromBits>(&self, input: &[Self::Input]) -> Result<Scalar>;
 }
 
 /// A trait for a hash function of an uncompressed variant.
@@ -79,5 +81,5 @@ pub trait PRF {
     type Output;
 
     /// Returns the output for the given seed and input.
-    fn prf(&self, seed: &Self::Seed, input: &[Self::Input]) -> Self::Output;
+    fn prf(&self, seed: &Self::Seed, input: &[Self::Input]) -> Result<Self::Output>;
 }

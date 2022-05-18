@@ -29,6 +29,11 @@ use anyhow::{bail, Result};
 use itertools::Itertools;
 use std::borrow::Cow;
 
+/// Pedersen64 is an *additively-homomorphic* collision-resistant hash function that takes a 64-bit input.
+pub type Pedersen64<G> = Pedersen<G, 64>;
+/// Pedersen128 is an *additively-homomorphic* collision-resistant hash function that takes a 128-bit input.
+pub type Pedersen128<G> = Pedersen<G, 128>;
+
 /// Pedersen is a collision-resistant hash function that takes a variable-length input.
 /// The Pedersen hash function does *not* behave like a random oracle, see Poseidon for one.
 pub struct Pedersen<G: ProjectiveCurve, const NUM_BITS: usize> {

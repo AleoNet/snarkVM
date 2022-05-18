@@ -32,13 +32,13 @@ pub const BHP_CHUNK_SIZE: usize = 3;
 pub const BHP_LOOKUP_SIZE: usize = 2usize.pow(BHP_CHUNK_SIZE as u32);
 
 /// BHP256 is a collision-resistant hash function that takes a 256-bit input.
-pub type BHP256<E> = BHP<E, 2, 43>;
+pub type BHP256<G> = BHP<G, 2, 43>;
 /// BHP512 is a collision-resistant hash function that takes a 512-bit input.
-pub type BHP512<E> = BHP<E, 3, 57>;
+pub type BHP512<G> = BHP<G, 3, 57>;
 /// BHP768 is a collision-resistant hash function that takes a 768-bit input.
-pub type BHP768<E> = BHP<E, 6, 43>;
+pub type BHP768<G> = BHP<G, 6, 43>;
 /// BHP1024 is a collision-resistant hash function that takes a 1024-bit input.
-pub type BHP1024<E> = BHP<E, 6, 57>;
+pub type BHP1024<G> = BHP<G, 6, 57>;
 
 /// BHP is a collision-resistant hash function that takes a variable-length input.
 /// The BHP hash function does *not* behave like a random oracle, see Poseidon for one.
