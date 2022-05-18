@@ -73,13 +73,97 @@ impl<E: Environment, I: IntegerType> Metadata<dyn DivWrapped<Integer<E, I>, Outp
 
     fn count(case: &Self::Case) -> Count {
         match I::is_signed() {
-            true => match (case.0.eject_mode(), case.1.eject_mode()) {
-                (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-                (Mode::Constant, _) | (_, Mode::Constant) => {
-                    Count::less_than(6 * I::BITS, 0, (7 * I::BITS) + 10, (8 * I::BITS) + 16)
+            true => {
+                let (lhs, rhs) = case;
+
+                match lhs.is_constant() && rhs.is_constant() {
+                    true => Count::is(I::BITS, 0, 0, 0),
+                    false => {
+                        let mut total_count = Count::zero();
+
+                        // Determine the cost and output type of `let unsigned_dividend = self.abs_wrapped().cast_as_dual();`
+                        total_count = total_count + count!(Self, AbsWrapped<Output = Self>, &lhs);
+                        let self_abs_wrapped_type = output_type!(Self, AbsWrapped<Output = Self>, lhs.clone());
+                        let unsigned_dividend_type = IntegerCircuitType::<E, I::Dual> {
+                            bits_le: self_abs_wrapped_type.bits_le,
+                            phantom: Default::default(),
+                        };
+
+                        // Determine the cost and output type of `let unsigned_divisor = other.abs_wrapped().cast_as_dual();`
+                        total_count = total_count + count!(Self, AbsWrapped<Output = Self>, &rhs);
+                        let other_abs_wrapped_type = output_type!(Self, AbsWrapped<Output = Self>, rhs.clone());
+                        let unsigned_divisor_type = IntegerCircuitType::<E, I::Dual> {
+                            bits_le: other_abs_wrapped_type.bits_le,
+                            phantom: Default::default(),
+                        };
+
+                        // Determine the cost and output type of `let unsigned_quotient = unsigned_dividend.div_wrapped(unsigned_divisor);`
+                        let case = (unsigned_dividend_type, unsigned_divisor_type);
+                        total_count = total_count
+                            + count!(Integer<E, I::Dual>, DivWrapped<Integer<E, I::Dual>, Output = Integer<E, I::Dual>>, &case);
+                        let unsigned_quotient_type = output_type!(Integer<E, I::Dual>, DivWrapped<Integer<E, I::Dual>, Output = Integer<E, I::Dual>>, case);
+
+                        // Determine the cost and output type of `Self { bits_le: unsigned_quotient_type.bits_le, phantom: Default::default() }`
+                        let signed_quotient_type = IntegerCircuitType::<E, I> {
+                            bits_le: unsigned_quotient_type.bits_le,
+                            phantom: Default::default(),
+                        };
+
+                        // Determine the cost and output type of `let operands_same_sing = &self.msb().is_equal(other.msb());`
+                        total_count = total_count
+                            + count!(Self, MSB<Boolean = Boolean<E>>, &lhs)
+                            + count!(Self, MSB<Boolean = Boolean<E>>, &rhs);
+                        let self_msb_type = output_type!(Self, MSB<Boolean = Boolean<E>>, lhs.clone());
+                        let other_msb_type = output_type!(Self, MSB<Boolean = Boolean<E>>, rhs.clone());
+
+                        let case = (self_msb_type, other_msb_type);
+                        total_count = total_count + count!(Boolean<E>, Equal<Boolean<E>, Output = Boolean<E>>, &case);
+                        let operands_same_sign_type =
+                            output_type!(Boolean<E>, Equal<Boolean<E>, Output = Boolean<E>>, case);
+
+                        // Determine the cost and output type of `let signed_quotient =
+                        //                     Self::ternary(operands_same_sign, &signed_quotient, &Self::zero().sub_wrapped(&signed_quotient));`
+                        total_count = total_count + count!(Self, Zero<Boolean = Boolean<E>>, &());
+                        let zero_type = output_type!(Self, Zero<Boolean = Boolean<E>>, ());
+
+                        let case = (zero_type, signed_quotient_type.clone());
+                        total_count = total_count + count!(Self, SubWrapped<Self, Output = Self>, &case);
+                        let second_type = output_type!(Self, SubWrapped<Self, Output = Self>, case);
+
+                        let case = (operands_same_sign_type, signed_quotient_type, second_type);
+                        total_count = total_count + count!(Self, Ternary<Boolean = Boolean<E>, Output = Self>, &case);
+                        let signed_quotient_type =
+                            output_type!(Self, Ternary<Boolean = Boolean<E>, Output = Self>, case);
+
+                        // Determine the cost and output type of `let overflows = self.is_equal(&min) & other.is_equal(&neg_one);`.
+                        // `Self::constant(I::MIN)` produces I::BITS constant bits.
+                        total_count = total_count + Count::is(I::BITS, 0, 0, 0);
+                        let min_type = IntegerCircuitType::from(Self::constant(I::MIN));
+
+                        let case = (lhs.clone(), min_type.clone());
+                        total_count = total_count + count!(Self, Equal<Self, Output = Boolean<E>>, &case);
+                        let self_is_equal_min_type = output_type!(Self, Equal<Self, Output = Boolean<E>>, case);
+
+                        // `Self::constant(I::zero() - I::one())` produces I::BITS constant bits.
+                        total_count = total_count + Count::is(I::BITS, 0, 0, 0);
+                        let neg_one_type = IntegerCircuitType::from(Self::constant(I::zero() - I::one()));
+
+                        let case = (rhs.clone(), neg_one_type);
+                        total_count = total_count + count!(Self, Equal<Self, Output = Boolean<E>>, &case);
+                        let other_is_equal_neg_one_type = output_type!(Self, Equal<Self, Output = Boolean<E>>, case);
+
+                        let case = (self_is_equal_min_type, other_is_equal_neg_one_type);
+                        total_count = total_count + count!(Boolean<E>, BitAnd<Boolean<E>, Output = Boolean<E>>, &case);
+                        let overflows_type = output_type!(Boolean<E>, BitAnd<Boolean<E>, Output = Boolean<E>>, case);
+
+                        // Determine the cost and output type of `Self::ternary(overflows, &min, &signed_quotient)`
+                        let case = (overflows_type, min_type, signed_quotient_type);
+                        total_count = total_count + count!(Self, Ternary<Boolean = Boolean<E>, Output = Self>, &case);
+
+                        total_count
+                    }
                 }
-                (_, _) => Count::is(5 * I::BITS, 0, (9 * I::BITS) + 10, (9 * I::BITS) + 16),
-            },
+            }
             false => match (case.0.eject_mode(), case.1.eject_mode()) {
                 (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
                 (_, Mode::Constant) => Count::is(0, 0, 2 * I::BITS, (2 * I::BITS) + 1),
