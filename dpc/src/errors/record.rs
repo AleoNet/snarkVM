@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::{CRHError, CommitmentError, EncryptionError};
+use snarkvm_algorithms::{CRHError, CommitmentError};
 
 #[derive(Debug, Error)]
 pub enum RecordError {
@@ -32,9 +32,6 @@ pub enum RecordError {
 
     #[error("{}", _0)]
     CRHError(#[from] CRHError),
-
-    #[error("{}", _0)]
-    EncryptionError(#[from] EncryptionError),
 
     #[error("{}", _0)]
     FromHexError(#[from] hex::FromHexError),

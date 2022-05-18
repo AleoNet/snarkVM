@@ -14,8 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use snarkvm_algorithms::errors::EncryptionError;
-
 #[derive(Debug, Error)]
 pub enum AccountError {
     #[error("{}", _0)]
@@ -26,9 +24,6 @@ pub enum AccountError {
 
     #[error("{}: {}", _0, _1)]
     Crate(&'static str, String),
-
-    #[error("{}", _0)]
-    EncryptionError(#[from] EncryptionError),
 
     #[error("invalid byte length: {}", _0)]
     InvalidByteLength(usize),
