@@ -19,8 +19,7 @@ mod commit_uncompressed;
 mod hash;
 mod hash_uncompressed;
 
-use crate::algorithms::{Commit, CommitUncompressed, Hash, HashUncompressed};
-use snarkvm_algorithms::crypto_hash::hash_to_curve;
+use crate::algorithms::{Blake2Xs, Commit, CommitUncompressed, Hash, HashUncompressed};
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::{PrimeField, Zero};
 use snarkvm_utilities::{cfg_iter, BigInteger, ToBits};
@@ -69,7 +68,7 @@ impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP<G, 
         let bases = (0..NUM_WINDOWS)
             .map(|index| {
                 // Construct an indexed message to attempt to sample a base.
-                let (generator, _, _) = hash_to_curve::<G>(&format!("Aleo.BHP.Base.{message}.{index}"));
+                let (generator, _, _) = Blake2Xs::hash_to_curve::<G>(&format!("Aleo.BHP.Base.{message}.{index}"));
                 let mut base = generator.to_projective();
                 // Compute the generators for the sampled base.
                 let mut powers = Vec::with_capacity(WINDOW_SIZE);
@@ -112,7 +111,7 @@ impl<G: AffineCurve, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP<G, 
         bases_lookup.iter().for_each(|bases| debug_assert_eq!(bases.len(), WINDOW_SIZE));
 
         // Next, compute the random base.
-        let (generator, _, _) = hash_to_curve::<G>(&format!("Aleo.BHP.RandomBase.{message}"));
+        let (generator, _, _) = Blake2Xs::hash_to_curve::<G>(&format!("Aleo.BHP.RandomBase.{message}"));
         let mut base_power = generator.to_projective();
         let num_scalar_bits = G::ScalarField::size_in_bits();
         let mut random_base = Vec::with_capacity(num_scalar_bits);

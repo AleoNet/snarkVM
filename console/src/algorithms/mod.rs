@@ -17,6 +17,9 @@
 pub mod bhp;
 pub use bhp::*;
 
+pub mod blake2xs;
+pub use blake2xs::*;
+
 pub mod pedersen;
 pub use pedersen::*;
 

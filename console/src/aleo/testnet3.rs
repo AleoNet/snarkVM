@@ -17,6 +17,7 @@
 use super::*;
 use crate::algorithms::{
     traits::*,
+    Blake2Xs,
     Pedersen128,
     Pedersen64,
     Poseidon2,
@@ -27,7 +28,6 @@ use crate::algorithms::{
     BHP512,
     BHP768,
 };
-use snarkvm_algorithms::crypto_hash::hash_to_curve;
 use snarkvm_curves::{
     edwards_bls12::{EdwardsAffine, EdwardsParameters},
     AffineCurve,
@@ -76,7 +76,7 @@ impl Testnet3 {
     /// Initializes a new instance of group bases from a given input domain message.
     fn new_bases(message: &str) -> Vec<<Self as Network>::Projective> {
         // Hash the given message to a point on the curve, to initialize the starting base.
-        let (base, _, _) = hash_to_curve::<<Self as Network>::Affine>(message);
+        let (base, _, _) = Blake2Xs::hash_to_curve::<<Self as Network>::Affine>(message);
 
         // Compute the bases up to the size of the scalar field (in bits).
         let mut g = base.to_projective();

@@ -19,8 +19,7 @@ mod commit_uncompressed;
 mod hash;
 mod hash_uncompressed;
 
-use crate::algorithms::{Commit, CommitUncompressed, Hash, HashUncompressed};
-use snarkvm_algorithms::crypto_hash::hash_to_curve;
+use crate::algorithms::{Blake2Xs, Commit, CommitUncompressed, Hash, HashUncompressed};
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::{PrimeField, Zero};
 use snarkvm_utilities::ToBits;
@@ -47,7 +46,7 @@ impl<G: AffineCurve, const NUM_BITS: usize> Pedersen<G, NUM_BITS> {
     /// Initializes a new instance of Pedersen with the given setup message.
     pub fn setup(message: &str) -> Self {
         // Construct an indexed message to attempt to sample a base.
-        let (generator, _, _) = hash_to_curve::<G>(&format!("Aleo.Pedersen.Base.{message}"));
+        let (generator, _, _) = Blake2Xs::hash_to_curve::<G>(&format!("Aleo.Pedersen.Base.{message}"));
         let mut base_power = generator.to_projective();
         let mut base_window = [G::Projective::zero(); NUM_BITS];
         for base in base_window.iter_mut().take(NUM_BITS) {
@@ -56,7 +55,7 @@ impl<G: AffineCurve, const NUM_BITS: usize> Pedersen<G, NUM_BITS> {
         }
 
         // Next, compute the random base.
-        let (generator, _, _) = hash_to_curve::<G>(&format!("Aleo.Pedersen.RandomBase.{message}"));
+        let (generator, _, _) = Blake2Xs::hash_to_curve::<G>(&format!("Aleo.Pedersen.RandomBase.{message}"));
         let mut base_power = generator.to_projective();
         let num_scalar_bits = G::ScalarField::size_in_bits();
         let mut random_base_window = Vec::with_capacity(num_scalar_bits);
