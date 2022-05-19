@@ -123,24 +123,24 @@ mod tests {
     fn sign_and_verify(message: &[bool]) -> Result<()> {
         // Generate an address and a private key.
         let private_key = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
-        let public_key = Address::try_from(&private_key)?;
+        let address = Address::try_from(&private_key)?;
 
         // Generate a signature.
         let randomizer = UniformRand::rand(&mut test_crypto_rng());
         let signature = Signature::sign(&private_key, message, randomizer)?;
-        assert!(signature.verify(&public_key, message).unwrap());
+        assert!(signature.verify(&address, message).unwrap());
         Ok(())
     }
 
     fn failed_verification(message: &[bool], bad_message: &[bool]) -> Result<()> {
         // Generate an address and a private key.
         let private_key = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
-        let public_key = Address::try_from(&private_key)?;
+        let address = Address::try_from(&private_key)?;
 
         // Generate a signature.
         let randomizer = UniformRand::rand(&mut test_crypto_rng());
         let signature = Signature::sign(&private_key, message, randomizer)?;
-        assert!(!signature.verify(&public_key, bad_message).unwrap());
+        assert!(!signature.verify(&address, bad_message).unwrap());
         Ok(())
     }
 

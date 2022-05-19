@@ -20,6 +20,9 @@
 pub mod account;
 pub use account::*;
 
+pub mod program;
+pub use program::*;
+
 pub mod testnet3;
 pub use testnet3::*;
 
@@ -36,7 +39,7 @@ pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
         Coordinates = (Self::Field, Self::Field),
     >;
     type AffineParameters: TwistedEdwardsParameters<BaseField = Self::Field>;
-    type Projective: ProjectiveCurve<BaseField = Self::Field, ScalarField = Self::Scalar>;
+    type Projective: ProjectiveCurve<Affine = Self::Affine, BaseField = Self::Field, ScalarField = Self::Scalar>;
     type Field: PrimeField + Copy;
     type Scalar: PrimeField + Copy;
 
@@ -64,6 +67,15 @@ pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
 
     /// Returns a Pedersen commitment for the given (up to) 128-bit input and randomizer.
     fn commit_ped128(input: &[bool], randomizer: &Self::Scalar) -> Result<Self::Field>;
+
+    /// Returns the encryption domain as a constant field element.
+    fn encryption_domain() -> Self::Field;
+
+    /// Returns the MAC domain as a constant field element.
+    fn mac_domain() -> Self::Field;
+
+    /// Returns the randomizer domain as a constant field element.
+    fn randomizer_domain() -> Self::Field;
 
     /// Returns the scalar multiplication on the group bases.
     fn g_scalar_multiply(scalar: &Self::Scalar) -> <Self::Affine as AffineCurve>::Projective;

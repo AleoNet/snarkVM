@@ -146,6 +146,21 @@ impl Network for Testnet3 {
         PEDERSEN_128.with(|pedersen| pedersen.commit(input, randomizer))
     }
 
+    /// Returns the encryption domain as a constant field element.
+    fn encryption_domain() -> Self::Field {
+        ENCRYPTION_DOMAIN.with(|domain| *domain)
+    }
+
+    /// Returns the MAC domain as a constant field element.
+    fn mac_domain() -> Self::Field {
+        MAC_DOMAIN.with(|domain| *domain)
+    }
+
+    /// Returns the randomizer domain as a constant field element.
+    fn randomizer_domain() -> Self::Field {
+        RANDOMIZER_DOMAIN.with(|domain| *domain)
+    }
+
     /// Returns the scalar multiplication on the group bases.
     fn g_scalar_multiply(scalar: &Self::Scalar) -> Self::Projective {
         BASES.with(|bases| {
