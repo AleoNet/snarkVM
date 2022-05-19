@@ -141,7 +141,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metadata<dyn PowChecked<Integ
                         total_count = total_count + count!(Self, MSB<Boolean = Boolean<E>>, &result_type);
                         let result_msb_type = output_type!(Self, MSB<Boolean = Boolean<E>>, result_type.clone());
 
-                        total_count = total_count + count!(Self, MSB<Boolean = Boolean<E>>, &lhs);
+                        total_count = total_count + count!(Self, MSB<Boolean = Boolean<E>>, lhs);
                         let lhs_msb_type = output_type!(Self, MSB<Boolean = Boolean<E>>, lhs.clone());
 
                         let case = (result_msb_type, lhs_msb_type);
@@ -323,7 +323,7 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metadata<dyn PowChecked<Integ
 
         let mut result_type = output_type!(Integer<E, I>, One<Boolean = Boolean<E>>, ());
 
-        for bit in rhs.clone().bits_le.into_iter().rev() {
+        for bit in rhs.bits_le.into_iter().rev() {
             // Determine the output type of `result = (&result).mul_wrapped(&result);`.
             let case = (result_type.clone(), result_type);
             result_type = output_type!(Self, MulWrapped<Self, Output = Self>, case);

@@ -139,7 +139,7 @@ impl<E: Environment, I: IntegerType> Metadata<dyn DivChecked<Integer<E, I>, Outp
                         total_count = total_count + Count::is(I::BITS, 0, 0, 0);
                         let min_type = IntegerCircuitType::from(Self::constant(I::MIN));
 
-                        let case = (lhs.clone(), min_type.clone());
+                        let case = (lhs.clone(), min_type);
                         total_count = total_count + count!(Self, Equal<Self, Output = Boolean<E>>, &case);
                         let self_is_equal_min_type = output_type!(Self, Equal<Self, Output = Boolean<E>>, case);
 
@@ -162,7 +162,7 @@ impl<E: Environment, I: IntegerType> Metadata<dyn DivChecked<Integer<E, I>, Outp
                         }
 
                         // Determine the cost and output type of `let unsigned_dividend = self.abs_wrapped().cast_as_dual();`
-                        total_count = total_count + count!(Self, AbsWrapped<Output = Self>, &lhs);
+                        total_count = total_count + count!(Self, AbsWrapped<Output = Self>, lhs);
                         let self_abs_wrapped_type = output_type!(Self, AbsWrapped<Output = Self>, lhs.clone());
                         let unsigned_dividend_type = IntegerCircuitType::<E, I::Dual> {
                             bits_le: self_abs_wrapped_type.bits_le,
@@ -170,7 +170,7 @@ impl<E: Environment, I: IntegerType> Metadata<dyn DivChecked<Integer<E, I>, Outp
                         };
 
                         // Determine the cost and output type of `let unsigned_divisor = other.abs_wrapped().cast_as_dual();`
-                        total_count = total_count + count!(Self, AbsWrapped<Output = Self>, &rhs);
+                        total_count = total_count + count!(Self, AbsWrapped<Output = Self>, rhs);
                         let other_abs_wrapped_type = output_type!(Self, AbsWrapped<Output = Self>, rhs.clone());
                         let unsigned_divisor_type = IntegerCircuitType::<E, I::Dual> {
                             bits_le: other_abs_wrapped_type.bits_le,
@@ -191,8 +191,8 @@ impl<E: Environment, I: IntegerType> Metadata<dyn DivChecked<Integer<E, I>, Outp
 
                         // Determine the cost and output type of `let operands_same_sing = &self.msb().is_equal(other.msb());`
                         total_count = total_count
-                            + count!(Self, MSB<Boolean = Boolean<E>>, &lhs)
-                            + count!(Self, MSB<Boolean = Boolean<E>>, &rhs);
+                            + count!(Self, MSB<Boolean = Boolean<E>>, lhs)
+                            + count!(Self, MSB<Boolean = Boolean<E>>, rhs);
                         let self_msb_type = output_type!(Self, MSB<Boolean = Boolean<E>>, lhs.clone());
                         let other_msb_type = output_type!(Self, MSB<Boolean = Boolean<E>>, rhs.clone());
 

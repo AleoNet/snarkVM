@@ -130,7 +130,7 @@ impl<V: Copy + Debug + Ord + Add<Output = V> + Sub<Output = V> + Mul<Output = V>
     pub fn to_upper_bound(&self) -> Self {
         match self {
             Measurement::Exact(value) => Measurement::UpperBound(*value),
-            Measurement::Range(lower, upper) => Measurement::UpperBound(*upper),
+            Measurement::Range(_, upper) => Measurement::UpperBound(*upper),
             Measurement::UpperBound(bound) => Measurement::UpperBound(*bound),
         }
     }

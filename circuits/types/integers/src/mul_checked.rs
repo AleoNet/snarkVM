@@ -212,7 +212,7 @@ impl<E: Environment, I: IntegerType> Metadata<dyn MulChecked<Integer<E, I>, Outp
                         total_count = total_count
                             + count!(Boolean<E>, Not<Output = Boolean<E>>, &lower_product_bits_nonzero_type);
                         let lower_product_bits_nonzero_not_type =
-                            output_type!(Boolean<E>, Not<Output = Boolean<E>>, lower_product_bits_nonzero_type.clone());
+                            output_type!(Boolean<E>, Not<Output = Boolean<E>>, lower_product_bits_nonzero_type);
 
                         let case = (product_msb_type, lower_product_bits_nonzero_not_type);
                         total_count = total_count + count!(Boolean<E>, BitAnd<Boolean<E>, Output = Boolean<E>>, &case);
@@ -235,7 +235,7 @@ impl<E: Environment, I: IntegerType> Metadata<dyn MulChecked<Integer<E, I>, Outp
                         let negative_product_lt_or_eq_signed_min_not_type = output_type!(
                             Boolean<E>,
                             Not<Output = Boolean<E>>,
-                            negative_product_lt_or_eq_signed_min_type.clone()
+                            negative_product_lt_or_eq_signed_min_type
                         );
 
                         let case = (operands_same_sign_not_type, negative_product_lt_or_eq_signed_min_not_type);
@@ -316,8 +316,8 @@ impl<E: Environment, I: IntegerType> Metadata<dyn MulChecked<Integer<E, I>, Outp
                 output_type!(Self, MulWithCarry<Product = Self, Carry = Vec<Boolean<E>>>, case);
 
             // Determine the output type of `let operands_same_sign = &self.msb().is_equal(other.msb());`.
-            let self_msb_type = output_type!(Self, MSB<Boolean = Boolean<E>>, lhs.clone());
-            let other_msb_type = output_type!(Self, MSB<Boolean = Boolean<E>>, rhs.clone());
+            let self_msb_type = output_type!(Self, MSB<Boolean = Boolean<E>>, lhs);
+            let other_msb_type = output_type!(Self, MSB<Boolean = Boolean<E>>, rhs);
             let operands_same_sign_type =
                 output_type!(Boolean<E>, Equal<Boolean<E>, Output = Boolean<E>>, (self_msb_type, other_msb_type));
 

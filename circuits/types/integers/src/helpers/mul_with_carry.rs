@@ -206,7 +206,7 @@ impl<E: Environment, I: IntegerType> Metadata<dyn MulWithCarry<Product = Integer
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
-        let (lhs, rhs) = case.clone();
+        let (lhs, rhs) = case;
 
         if 2 * I::BITS < (E::BaseField::size_in_bits() - 1) as u64 {
             // Determine the output type of `let product = (this.to_field() * that.to_field()).to_lower_bits_le(2 * I::BITS as usize);`.
