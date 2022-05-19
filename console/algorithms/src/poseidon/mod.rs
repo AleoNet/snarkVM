@@ -60,9 +60,8 @@ mod tests {
     /// Returns the path to the `resources` folder for this module.
     fn resources_path() -> PathBuf {
         // Construct the path for the `resources` folder.
-        let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR").to_string());
+        let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         path.push("src");
-        path.push("algorithms");
         path.push("poseidon");
         path.push("resources");
 
