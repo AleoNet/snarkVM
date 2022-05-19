@@ -16,6 +16,8 @@
 
 use super::*;
 
+use crate::helpers::mul_with_carry::MulWithCarry;
+
 impl<E: Environment, I: IntegerType, M: Magnitude> PowChecked<Integer<E, M>> for Integer<E, I> {
     type Output = Self;
 
@@ -91,7 +93,31 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metadata<dyn PowChecked<Integ
     type OutputType = IntegerCircuitType<E, I>;
 
     fn count(case: &Self::Case) -> Count {
-        count!(Self, PowWrapped<Integer<E, M>, Output = Self>, case)
+        match (case.0.eject_mode(), case.1.eject_mode()) {
+            (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
+            _ => {
+                let (lhs, rhs) = case.clone();
+
+                let mut total_count = count!(Integer<E, I>, One<Boolean = Boolean<E>>, &());
+                let mut result_type = output_type!(Integer<E, I>, One<Boolean = Boolean<E>>, ());
+
+                for bit in rhs.bits_le.into_iter().rev() {
+                    // Determine the cost and output type of `result = (&result).mul_wrapped(&result);`.
+                    let case = (result_type.clone(), result_type);
+                    total_count = total_count + count!(Self, MulWrapped<Self, Output = Self>, &case);
+                    result_type = output_type!(Self, MulWrapped<Self, Output = Self>, case);
+
+                    // Determine the cost and output type of `result_times_self`. This differs for the the signed and usigned cases.
+                    let result_times_self_type = if I::is_signed() { todo!() } else { todo!() };
+
+                    // Determine the cost and output type of `result = Self::ternary(bit, &result_times_self, &result);`.
+                    let case = (bit, result_times_self_type, result_type);
+                    total_count = total_count + count!(Self, Ternary<Boolean = Boolean<E>, Output = Self>, &case);
+                    result_type = output_type!(Self, Ternary<Boolean = Boolean<E>, Output = Self>, case);
+                }
+                total_count
+            }
+        }
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {

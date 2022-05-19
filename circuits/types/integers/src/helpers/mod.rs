@@ -21,6 +21,7 @@ pub mod from_bits_le;
 pub mod integer_circuit_type;
 pub use integer_circuit_type::*;
 pub mod msb;
+pub mod mul_with_carry;
 pub mod one;
 pub mod to_bits_be;
 pub mod to_bits_le;

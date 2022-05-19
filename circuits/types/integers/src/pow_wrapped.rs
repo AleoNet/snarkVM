@@ -44,7 +44,6 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metadata<dyn PowWrapped<Integ
     type OutputType = IntegerCircuitType<E, I>;
 
     fn count(case: &Self::Case) -> Count {
-        // Note that we need to clone `case` so that we can pass it to `output_type!`.
         match (case.0.eject_mode(), case.1.eject_mode()) {
             (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
             _ => {
@@ -62,10 +61,10 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metadata<dyn PowWrapped<Integ
                     // Determine the cost and output type of `result.mul_wrapped(self)`.
                     let case = (result_type.clone(), lhs.clone());
                     total_count = total_count + count!(Self, MulWrapped<Self, Output = Self>, &case);
-                    let result_mul_self_type = output_type!(Self, MulWrapped<Self, Output = Self>, case);
+                    let result_times_self = output_type!(Self, MulWrapped<Self, Output = Self>, case);
 
                     // Determine the cost and output type of `result = Self::ternary(bit, &result.mul_wrapped(self), &result);`.
-                    let case = (bit, result_mul_self_type, result_type);
+                    let case = (bit, result_times_self, result_type);
                     total_count = total_count + count!(Self, Ternary<Boolean = Boolean<E>, Output = Self>, &case);
                     result_type = output_type!(Self, Ternary<Boolean = Boolean<E>, Output = Self>, case);
                 }
