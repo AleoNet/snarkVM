@@ -61,21 +61,137 @@ impl<E: Environment, I: IntegerType> Metadata<dyn MulWrapped<Integer<E, I>, Outp
     type OutputType = IntegerCircuitType<E, I>;
 
     fn count(case: &Self::Case) -> Count {
-        match (case.0.eject_mode(), case.1.eject_mode()) {
-            (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
-            (Mode::Constant, _) | (_, Mode::Constant) => {
-                Count::is(0, 0, I::BITS + (I::BITS / 2) + 1, I::BITS + (I::BITS / 2) + 2)
+        let (lhs, rhs) = case;
+        match lhs.is_constant() && rhs.is_constant() {
+            true => Count::is(I::BITS, 0, 0, 0),
+            false => {
+                let mut total_count = Count::zero();
+
+                // Determine the cost and output type of ` let x_1 = Field::from_bits_le(&self.bits_le[(I::BITS as usize / 2)..]);
+                let case = lhs.bits_le[(I::BITS as usize / 2)..].to_vec();
+                total_count = total_count + count!(Field<E>, FromBitsLE<Boolean = Boolean<E>>, &case);
+                let x_1_type = output_type!(Field<E>, FromBitsLE<Boolean = Boolean<E>>, case);
+
+                // Determine the cost and output type of ` let x_0 = Field::from_bits_le(&self.bits_le[..(I::BITS as usize / 2)]);
+                let case = lhs.bits_le[..(I::BITS as usize / 2)].to_vec();
+                total_count = total_count + count!(Field<E>, FromBitsLE<Boolean = Boolean<E>>, &case);
+                let x_0_type = output_type!(Field<E>, FromBitsLE<Boolean = Boolean<E>>, case);
+
+                // Determine the cost and output type of ` let y_1 = Field::from_bits_le(&other.bits_le[(I::BITS as usize / 2)..]);
+                let case = rhs.bits_le[(I::BITS as usize / 2)..].to_vec();
+                total_count = total_count + count!(Field<E>, FromBitsLE<Boolean = Boolean<E>>, &case);
+                let y_1_type = output_type!(Field<E>, FromBitsLE<Boolean = Boolean<E>>, case);
+
+                // Determine the cost and output type of `let y_0 = Field::from_bits_le(&other.bits_le[..(I::BITS as usize / 2)]);
+                let case = rhs.bits_le[..(I::BITS as usize / 2)].to_vec();
+                total_count = total_count + count!(Field<E>, FromBitsLE<Boolean = Boolean<E>>, &case);
+                let y_0_type = output_type!(Field<E>, FromBitsLE<Boolean = Boolean<E>>, case);
+
+                // Determine the cost and output type of `let z_0 = x_0 * y_0;`.
+                let case = (x_0_type.clone(), y_0_type.clone());
+                total_count = total_count + count!(Field<E>, Mul<Field<E>, Output = Field<E>>, &case);
+                let z_0_type = output_type!(Field<E>, Mul<Field<E>, Output = Field<E>>, case);
+
+                // Determine the cost and output type of `let z_1 = (x_1 * y_0) + (x_0 * y_1);`.
+                let case = (x_1_type, y_0_type);
+                total_count = total_count + count!(Field<E>, Mul<Field<E>, Output = Field<E>>, &case);
+                let x_1_times_y_0_type = output_type!(Field<E>, Mul<Field<E>, Output = Field<E>>, case);
+
+                let case = (x_0_type, y_1_type);
+                total_count = total_count + count!(Field<E>, Mul<Field<E>, Output = Field<E>>, &case);
+                let x_0_times_y_1_type = output_type!(Field<E>, Mul<Field<E>, Output = Field<E>>, case);
+
+                let case = (x_1_times_y_0_type, x_0_times_y_1_type);
+                total_count = total_count + count!(Field<E>, Add<Field<E>, Output = Field<E>>, &case);
+                let z_1_type = output_type!(Field<E>, Add<Field<E>, Output = Field<E>>, case);
+
+                // Determine the cost and output type of initializing `b_m_bits`. The source code is as follows:
+                // `let mut b_m_bits = vec![Boolean::constant(false); I::BITS as usize / 2];`
+                // `b_m_bits.push(Boolean::constant(true));`
+                //total_count = total_count + (I::BITS / 2 + 1) * Count::is(1, 0 , 0, 0);
+                let mut b_m_bits_type = vec![CircuitType::from(Boolean::constant(false)); I::BITS as usize / 2];
+                b_m_bits_type.push(CircuitType::from(Boolean::constant(true)));
+
+                // Determine the cost and output type of `let b_m = Field::from_bits_le(&b_m_bits);`.
+                total_count = total_count + count!(Field<E>, FromBitsLE<Boolean = Boolean<E>>, &b_m_bits_type);
+                let b_m_type = output_type!(Field<E>, FromBitsLE<Boolean = Boolean<E>>, b_m_bits_type);
+
+                // Determine the cost and output type of `let z_0_plus_z_1 = &z_0 + (&z_1 + &b_m);`.
+                let case = (z_1_type, b_m_type);
+                total_count = total_count + count!(Field<E>, Mul<Field<E>, Output = Field<E>>, &case);
+                let z_1_times_b_m_type = output_type!(Field<E>, Mul<Field<E>, Output = Field<E>>, case);
+
+                let case = (z_0_type, z_1_times_b_m_type);
+                total_count = total_count + count!(Field<E>, Add<Field<E>, Output = Field<E>>, &case);
+                let z_0_plus_z_1_type = output_type!(Field<E>, Add<Field<E>, Output = Field<E>>, case);
+
+                // Determine the cost and output type of `let mut bits_le = z_0_plus_z_1.to_lower_bits_le(I::BITS as usize + I::BITS as usize / 2 + 1);`.
+                let case = (z_0_plus_z_1_type, I::BITS as usize + I::BITS as usize / 2 + 1);
+                total_count = total_count + count!(Field<E>, ToLowerBitsLE<Boolean = Boolean<E>>, &case);
+
+                total_count
             }
-            (_, _) => Count::is(0, 0, I::BITS + (I::BITS / 2) + 4, I::BITS + (I::BITS / 2) + 5),
         }
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
         let (lhs, rhs) = case;
-        match lhs.is_constant() && rhs.is_constant() {
-            true => IntegerCircuitType::from(lhs.circuit().mul_wrapped(&rhs.circuit())),
-            false => IntegerCircuitType::private(),
-        }
+
+        // Determine the output type of ` let x_1 = Field::from_bits_le(&self.bits_le[(I::BITS as usize / 2)..]);
+        let case = lhs.bits_le[(I::BITS as usize / 2)..].to_vec();
+        let x_1_type = output_type!(Field<E>, FromBitsLE<Boolean = Boolean<E>>, case);
+
+        // Determine the output type of ` let x_0 = Field::from_bits_le(&self.bits_le[..(I::BITS as usize / 2)]);
+        let case = lhs.bits_le[..(I::BITS as usize / 2)].to_vec();
+        let x_0_type = output_type!(Field<E>, FromBitsLE<Boolean = Boolean<E>>, case);
+
+        // Determine the output type of ` let y_1 = Field::from_bits_le(&other.bits_le[(I::BITS as usize / 2)..]);
+        let case = rhs.bits_le[(I::BITS as usize / 2)..].to_vec();
+        let y_1_type = output_type!(Field<E>, FromBitsLE<Boolean = Boolean<E>>, case);
+
+        // Determine the output type of `let y_0 = Field::from_bits_le(&other.bits_le[..(I::BITS as usize / 2)]);
+        let case = rhs.bits_le[..(I::BITS as usize / 2)].to_vec();
+        let y_0_type = output_type!(Field<E>, FromBitsLE<Boolean = Boolean<E>>, case);
+
+        // Determine the output type of `let z_0 = x_0 * y_0;`.
+        let case = (x_0_type.clone(), y_0_type.clone());
+        let z_0_type = output_type!(Field<E>, Mul<Field<E>, Output = Field<E>>, case);
+
+        // Determine the output type of `let z_1 = (x_1 * y_0) + (x_0 * y_1);`.
+        let case = (x_1_type, y_0_type);
+        let x_1_times_y_0_type = output_type!(Field<E>, Mul<Field<E>, Output = Field<E>>, case);
+
+        let case = (x_0_type, y_1_type);
+        let x_0_times_y_1_type = output_type!(Field<E>, Mul<Field<E>, Output = Field<E>>, case);
+
+        let case = (x_1_times_y_0_type, x_0_times_y_1_type);
+        let z_1_type = output_type!(Field<E>, Add<Field<E>, Output = Field<E>>, case);
+
+        // Determine the output type of initializing `b_m_bits`. The source code is as follows:
+        // `let mut b_m_bits = vec![Boolean::constant(false); I::BITS as usize / 2];`
+        // `b_m_bits.push(Boolean::constant(true));`
+        let mut b_m_bits_type = vec![CircuitType::from(Boolean::constant(false)); I::BITS as usize / 2];
+        b_m_bits_type.push(CircuitType::from(Boolean::constant(true)));
+
+        // Determine the output type of `let b_m = Field::from_bits_le(&b_m_bits);`.
+        let b_m_type = output_type!(Field<E>, FromBitsLE<Boolean = Boolean<E>>, b_m_bits_type);
+
+        // Determine the output type of `let z_0_plus_z_1 = &z_0 + (&z_1 + &b_m);`.
+        let case = (z_1_type, b_m_type);
+        let z_1_times_b_m_type = output_type!(Field<E>, Mul<Field<E>, Output = Field<E>>, case);
+
+        let case = (z_0_type, z_1_times_b_m_type);
+        let z_0_plus_z_1_type = output_type!(Field<E>, Add<Field<E>, Output = Field<E>>, case);
+
+        // Determine the output type of `let mut bits_le = z_0_plus_z_1.to_lower_bits_le(I::BITS as usize + I::BITS as usize / 2 + 1);`.
+        let case = (z_0_plus_z_1_type, I::BITS as usize + I::BITS as usize / 2 + 1);
+        let mut bits_le_type = output_type!(Field<E>, ToLowerBitsLE<Boolean = Boolean<E>>, case);
+
+        // Remove any carry bits.
+        bits_le_type.truncate(I::BITS as usize);
+
+        // Return the product of `self` and `other`, without the carry bits.
+        IntegerCircuitType { bits_le: bits_le_type, phantom: Default::default() }
     }
 }
 

@@ -50,59 +50,49 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metadata<dyn PowWrapped<Integ
             _ => {
                 let (lhs, rhs) = case.clone();
 
-                let one_count = count!(Integer<E, I>, One<Boolean = Boolean<E>>, &());
-                let one_type = output_type!(Integer<E, I>, One<Boolean = Boolean<E>>, ());
+                let mut total_count = count!(Integer<E, I>, One<Boolean = Boolean<E>>, &());
+                let mut result_type = output_type!(Integer<E, I>, One<Boolean = Boolean<E>>, ());
 
-                (0..M::BITS)
-                    .rev()
-                    .fold((one_type, one_count), |(prev_type, prev_count), i| {
-                        let case = (prev_type.clone(), prev_type);
-                        let square_count = count!(Self, MulWrapped<Self, Output=Self>, &case);
-                        let square_type = output_type!(Self, MulWrapped<Self, Output = Self>, case);
+                for bit in rhs.bits_le.into_iter().rev() {
+                    // Determine the cost and output type of `result = (&result).mul_wrapped(&result);`.
+                    let case = (result_type.clone(), result_type);
+                    total_count = total_count + count!(Self, MulWrapped<Self, Output = Self>, &case);
+                    result_type = output_type!(Self, MulWrapped<Self, Output = Self>, case);
 
-                        let case = (square_type.clone(), lhs.clone());
-                        let mul_count = count!(Self, MulWrapped<Self, Output=Self>, &case);
-                        let mul_type = output_type!(Self, MulWrapped<Self, Output=Self>, case);
+                    // Determine the cost and output type of `result.mul_wrapped(self)`.
+                    let case = (result_type.clone(), lhs.clone());
+                    total_count = total_count + count!(Self, MulWrapped<Self, Output = Self>, &case);
+                    let result_mul_self_type = output_type!(Self, MulWrapped<Self, Output = Self>, case);
 
-                        let bit_type = match rhs.eject_mode() {
-                            Mode::Constant => rhs.bits_le[i as usize].clone(),
-                            Mode::Public => CircuitType::Public,
-                            Mode::Private => CircuitType::Private,
-                        };
-
-                        let case = (bit_type, mul_type, square_type);
-                        let result_count = count!(Self, Ternary<Boolean = Boolean<E>, Output = Self>, &case);
-                        let result_type = output_type!(Self, Ternary<Boolean = Boolean<E>, Output = Self>, case);
-
-                        (result_type, prev_count + square_count + mul_count + result_count)
-                    })
-                    .1
+                    // Determine the cost and output type of `result = Self::ternary(bit, &result.mul_wrapped(self), &result);`.
+                    let case = (bit, result_mul_self_type, result_type);
+                    total_count = total_count + count!(Self, Ternary<Boolean = Boolean<E>, Output = Self>, &case);
+                    result_type = output_type!(Self, Ternary<Boolean = Boolean<E>, Output = Self>, case);
+                }
+                total_count
             }
         }
     }
 
     fn output_type(case: Self::Case) -> Self::OutputType {
         let (lhs, rhs) = case;
-        let one_type = output_type!(Integer<E, I>, One<Boolean = Boolean<E>>, ());
 
-        (0..M::BITS).rev().fold(one_type, |prev_type, i| {
-            let case = (prev_type.clone(), prev_type);
-            let square_type = output_type!(Self, MulWrapped<Self, Output = Self>, case);
+        let mut result_type = output_type!(Integer<E, I>, One<Boolean = Boolean<E>>, ());
 
-            let case = (square_type.clone(), lhs.clone());
-            let mul_type = output_type!(Self, MulWrapped<Self, Output=Self>, case);
+        for bit in rhs.bits_le.into_iter().rev() {
+            // Determine the cost and output type of `result = (&result).mul_wrapped(&result);`.
+            let case = (result_type.clone(), result_type);
+            result_type = output_type!(Self, MulWrapped<Self, Output = Self>, case);
 
-            let bit_type = match rhs.eject_mode() {
-                Mode::Constant => rhs.bits_le[i as usize].clone(),
-                Mode::Public => CircuitType::Public,
-                Mode::Private => CircuitType::Private,
-            };
+            // Determine the cost and output type of `result.mul_wrapped(self)`.
+            let case = (result_type.clone(), lhs.clone());
+            let result_mul_type = output_type!(Self, MulWrapped<Self, Output = Self>, case);
 
-            let case = (bit_type, mul_type, square_type);
-            let result_type = output_type!(Self, Ternary<Boolean = Boolean<E>, Output = Self>, case);
-
-            result_type
-        })
+            // Determine the cost and output type of `result = Self::ternary(bit, &result.mul_wrapped(self), &result);`.
+            let case = (bit, result_mul_type, result_type);
+            result_type = output_type!(Self, Ternary<Boolean = Boolean<E>, Output = Self>, case);
+        }
+        result_type
     }
 }
 

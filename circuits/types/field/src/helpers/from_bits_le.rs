@@ -104,9 +104,22 @@ impl<E: Environment> Metadata<dyn FromBitsLE<Boolean = Boolean<E>>> for Field<E>
         match case.iter().all(|bit| bit.is_constant()) {
             true => Count::is(0, 0, 0, 0),
             false => {
-                let excess_constraints = case.len().saturating_sub(E::BaseField::size_in_bits()) as u64;
-                let excess_private = excess_constraints.saturating_sub(1);
-                Count::is(0, 0, 252 + excess_private, 418 + excess_constraints)
+                // Retrieve the data and field size.
+                let size_in_data_bits = E::BaseField::size_in_data_bits();
+                let size_in_bits = E::BaseField::size_in_bits();
+
+                let mut count = Count::zero();
+
+                let num_bits = case.len();
+                if num_bits > size_in_bits {
+                    let excess_constraints = case.len().saturating_sub(E::BaseField::size_in_bits()) as u64;
+                    let excess_private = excess_constraints.saturating_sub(1);
+                    count = count + Count::is(0, 0, excess_private, excess_constraints);
+                }
+                if num_bits > size_in_data_bits {
+                    count = count + Count::is(0, 0, 252, 418);
+                }
+                count
             }
         }
     }
