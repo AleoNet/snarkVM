@@ -47,3 +47,105 @@ impl<F: PrimeField, const RATE: usize> Poseidon<F, RATE> {
         Self { parameters: Arc::new(F::default_poseidon_parameters::<RATE>().unwrap()) }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use snarkvm_curves::edwards_bls12::Fq;
+    use snarkvm_fields::{PoseidonDefaultField, PoseidonGrainLFSR};
+
+    use core::fmt::Debug;
+    use std::{path::PathBuf, sync::Arc};
+
+    /// Returns the path to the `resources` folder for this module.
+    fn resources_path() -> PathBuf {
+        // Construct the path for the `resources` folder.
+        let mut path = PathBuf::from(env!("CARGO_MANIFEST_DIR").to_string());
+        path.push("src");
+        path.push("algorithms");
+        path.push("poseidon");
+        path.push("resources");
+
+        // Create the `resources` folder, if it does not exist.
+        if !path.exists() {
+            std::fs::create_dir_all(&path).expect(&format!("Failed to create resources folder: {:?}", path));
+        }
+        // Output the path.
+        path
+    }
+
+    /// Loads the given `test_folder/test_file` and asserts the given `candidate` matches the expected values.
+    #[track_caller]
+    fn assert_snapshot<S1: Into<String>, S2: Into<String>, C: Debug>(test_folder: S1, test_file: S2, candidate: C) {
+        // Construct the path for the test folder.
+        let mut path = resources_path();
+        path.push(test_folder.into());
+
+        // Create the test folder, if it does not exist.
+        if !path.exists() {
+            std::fs::create_dir(&path).expect(&format!("Failed to create test folder: {:?}", path));
+        }
+
+        // Construct the path for the test file.
+        path.push(test_file.into());
+        path.set_extension("snap");
+
+        // Create the test file, if it does not exist.
+        if !path.exists() {
+            std::fs::File::create(&path).expect(&format!("Failed to create file: {:?}", path));
+        }
+
+        // Assert the test file is equal to the expected value.
+        expect_test::expect_file![path].assert_eq(&format!("{:?}", candidate));
+    }
+
+    #[test]
+    fn test_grain_lfsr() {
+        let mut lfsr = PoseidonGrainLFSR::new(false, 253, 3, 8, 31);
+        assert_snapshot("test_grain_lfsr", "first_sample", lfsr.get_field_elements_rejection_sampling::<Fq>(1));
+        assert_snapshot("test_grain_lfsr", "second_sample", lfsr.get_field_elements_rejection_sampling::<Fq>(1));
+    }
+
+    #[test]
+    fn test_sponge() {
+        const RATE: usize = 2;
+        let parameters = Arc::new(Fq::default_poseidon_parameters::<RATE>().unwrap());
+
+        for absorb in 0..10 {
+            for squeeze in 0..10 {
+                let iteration = format!("absorb_{absorb}_squeeze_{squeeze}");
+
+                let mut sponge = PoseidonSponge::<Fq, RATE, CAPACITY>::new(&parameters);
+                sponge.absorb(&vec![Fq::from(1237812u64); absorb]);
+
+                let next_absorb_index = if absorb % RATE != 0 || absorb == 0 { absorb % RATE } else { RATE };
+                assert_eq!(sponge.mode, DuplexSpongeMode::Absorbing { next_absorb_index }, "{iteration}");
+
+                assert_snapshot("test_sponge", &iteration, sponge.squeeze(squeeze));
+
+                let next_squeeze_index = if squeeze % RATE != 0 || squeeze == 0 { squeeze % RATE } else { RATE };
+                match squeeze == 0 {
+                    true => assert_eq!(sponge.mode, DuplexSpongeMode::Absorbing { next_absorb_index }, "{iteration}"),
+                    false => assert_eq!(sponge.mode, DuplexSpongeMode::Squeezing { next_squeeze_index }, "{iteration}"),
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_parameters() {
+        fn single_rate_test<const RATE: usize>() {
+            let parameters = Fq::default_poseidon_parameters::<RATE>().unwrap();
+            assert_snapshot("test_parameters", format!("rate_{RATE}_ark"), parameters.ark);
+            assert_snapshot("test_parameters", format!("rate_{RATE}_mds"), parameters.mds);
+        }
+        // Optimized for constraints.
+        single_rate_test::<2>();
+        single_rate_test::<3>();
+        single_rate_test::<4>();
+        single_rate_test::<5>();
+        single_rate_test::<6>();
+        single_rate_test::<7>();
+        single_rate_test::<8>();
+    }
+}

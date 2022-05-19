@@ -36,7 +36,7 @@ pub struct PoseidonSponge<F: PrimeField, const RATE: usize, const CAPACITY: usiz
     /// Current sponge's state (current elements in the permutation block)
     state: State<F, RATE, CAPACITY>,
     /// Current mode (whether its absorbing or squeezing)
-    mode: DuplexSpongeMode,
+    pub(in crate::algorithms::poseidon) mode: DuplexSpongeMode,
 }
 
 impl<F: PrimeField, const RATE: usize> DefaultCapacityAlgebraicSponge<F, RATE> for PoseidonSponge<F, RATE, 1> {
