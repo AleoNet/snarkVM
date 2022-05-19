@@ -40,41 +40,6 @@ pub struct PrivateKey<N: Network> {
     sk_vrf: N::Scalar,
 }
 
-// impl<N: Network> TryFrom<N::Scalar> for PrivateKey<N> {
-//     type Error = Error;
-//
-//     /// Returns the account private key from an account seed.
-//     fn try_from(seed: N::Scalar) -> Result<Self, Self::Error> {
-//         Self::try_from(&seed)
-//     }
-// }
-
-// impl<N: Network> TryFrom<&N::Scalar> for PrivateKey<N> {
-//     type Error = Error;
-//
-//     /// Returns the account private key from an account seed.
-//     fn try_from(seed: &N::Scalar) -> Result<Self, Self::Error> {
-//         // Construct the sk_sig domain separator.
-//         let sk_sig_input = ACCOUNT_SK_SIG_DOMAIN;
-//         let sk_sig_domain = N::Scalar::from_bytes_le_mod_order(sk_sig_input.as_bytes());
-//
-//         // Construct the r_sig domain separator.
-//         let r_sig_input = format!("{}.{}", ACCOUNT_R_SIG_DOMAIN, 0);
-//         let r_sig_domain = N::Scalar::from_bytes_le_mod_order(r_sig_input.as_bytes());
-//
-//         // Construct the sk_vrf domain separator.
-//         let sk_vrf_input = format!("{}.{}", ACCOUNT_SK_VRF_DOMAIN, 0);
-//         let sk_vrf_domain = N::Scalar::from_bytes_le_mod_order(sk_vrf_input.as_bytes());
-//
-//         Ok(Self {
-//             seed: *seed,
-//             sk_sig: N::prf_psd2(seed, &[sk_sig_domain]),
-//             r_sig: N::prf_psd2(seed, &[r_sig_domain]),
-//             sk_vrf: N::prf_psd2(seed, &[sk_vrf_domain]),
-//         })
-//     }
-// }
-
 impl<N: Network> PrivateKey<N> {
     /// Samples a new random private key.
     #[inline]
@@ -123,11 +88,6 @@ impl<N: Network> PrivateKey<N> {
     pub fn sk_vrf(&self) -> &N::Scalar {
         &self.sk_vrf
     }
-
-    //     /// Signs a message using the account private key.
-    //     pub fn sign<R: Rng + CryptoRng>(&self, message: &[bool], rng: &mut R) -> Result<N::AccountSignature, AccountError> {
-    //         Ok(N::account_signature_scheme().sign(&(self.sk_sig, self.r_sig), message, rng)?.into())
-    //     }
 }
 
 impl<N: Network> FromStr for PrivateKey<N> {

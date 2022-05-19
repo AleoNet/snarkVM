@@ -93,13 +93,6 @@ impl<N: Network> TryFrom<&ViewKey<N>> for Address<N> {
     }
 }
 
-// /// Verifies a signature on a message signed by the account view key.
-// /// Returns `true` if the signature is valid. Otherwise, returns `false`.
-// pub fn verify_signature(&self, message: &[bool], signature: &N::AccountSignature) -> Result<bool, AccountError> {
-//     Ok(N::account_signature_scheme().verify(&self.0, message, signature)?)
-// }
-// }
-
 impl<N: Network> FromStr for Address<N> {
     type Err = Error;
 
