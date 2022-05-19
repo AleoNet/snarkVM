@@ -19,30 +19,12 @@ use crate::{
     Program,
     Value,
 };
-use snarkvm_circuits::{
-    count,
-    Count,
-    Field,
-    Group,
-    Literal,
-    LiteralType,
-    Metrics,
-    Parser,
-    ParserResult,
-    I128,
-    I16,
-    I32,
-    I64,
-    I8,
-};
+use snarkvm_circuits::{Literal, Parser, ParserResult};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
 use nom::combinator::map;
-use std::{
-    io::{Read, Result as IoResult, Write},
-    ops::Neg as NativeNeg,
-};
+use std::io::{Read, Result as IoResult, Write};
 
 /// Negates `first`, storing the outcome in `destination`.
 pub struct Neg<P: Program> {
@@ -92,37 +74,6 @@ impl<P: Program> Operation<P> for Neg<P> {
         };
 
         registers.assign(self.operation.destination(), result);
-    }
-}
-
-impl<P: Program> Metrics<Self> for Neg<P> {
-    type Case = LiteralType<P::Environment>;
-
-    fn count(case: &Self::Case) -> Count {
-        match case {
-            LiteralType::Field(mode) => {
-                count!(Field<P::Environment>, NativeNeg<Output = Field<P::Environment>>, mode)
-            }
-            LiteralType::Group(mode) => {
-                count!(Group<P::Environment>, NativeNeg<Output = Group<P::Environment>>, mode)
-            }
-            LiteralType::I8(mode) => {
-                count!(I8<P::Environment>, NativeNeg<Output = I8<P::Environment>>, mode)
-            }
-            LiteralType::I16(mode) => {
-                count!(I16<P::Environment>, NativeNeg<Output = I16<P::Environment>>, mode)
-            }
-            LiteralType::I32(mode) => {
-                count!(I32<P::Environment>, NativeNeg<Output = I32<P::Environment>>, mode)
-            }
-            LiteralType::I64(mode) => {
-                count!(I64<P::Environment>, NativeNeg<Output = I64<P::Environment>>, mode)
-            }
-            LiteralType::I128(mode) => {
-                count!(I128<P::Environment>, NativeNeg<Output = I128<P::Environment>>, mode)
-            }
-            _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
-        }
     }
 }
 

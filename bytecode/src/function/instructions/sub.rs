@@ -20,31 +20,10 @@ use crate::{
     Value,
 };
 
-use snarkvm_circuits::{
-    count,
-    Count,
-    Field,
-    Group,
-    Literal,
-    LiteralType,
-    Metrics,
-    Parser,
-    ParserResult,
-    SubChecked,
-    I128,
-    I16,
-    I32,
-    I64,
-    I8,
-    U128,
-    U16,
-    U32,
-    U64,
-    U8,
-};
+use snarkvm_circuits::{Literal, Parser, ParserResult, SubChecked};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
-use core::{fmt, ops::Sub as SubCircuit};
+use core::fmt;
 use nom::combinator::map;
 use std::io::{Read, Result as IoResult, Write};
 
@@ -105,27 +84,6 @@ impl<P: Program> Operation<P> for Sub<P> {
         };
 
         registers.assign(self.operation.destination(), result);
-    }
-}
-
-impl<P: Program> Metrics<Self> for Sub<P> {
-    type Case = (LiteralType<P::Environment>, LiteralType<P::Environment>);
-
-    fn count(case: &Self::Case) -> Count {
-        crate::match_count!(match SubCircuit::count(case) {
-            (Field, Field) => Field,
-            (Group, Group) => Group,
-            (I8, I8) => I8,
-            (I16, I16) => I16,
-            (I32, I32) => I32,
-            (I64, I64) => I64,
-            (I128, I128) => I128,
-            (U8, U8) => U8,
-            (U16, U16) => U16,
-            (U32, U32) => U32,
-            (U64, U64) => U64,
-            (U128, U128) => U128,
-        })
     }
 }
 

@@ -152,9 +152,9 @@ mod tests {
 
                 // Check constraint counts and output mode.
                 let bases: Vec<Vec<CircuitType<Group<Circuit>>>> =
-                    circuit.bases.iter().map(|b| b.iter().map(|b| CircuitType::from(b)).collect()).collect();
-                let random_base = circuit.random_base.iter().map(|b| CircuitType::from(b)).collect();
-                let input = circuit_input.into_iter().map(|b| CircuitType::from(b)).collect::<Vec<_>>();
+                    circuit.bases.iter().map(|b| b.iter().map(CircuitType::from).collect()).collect();
+                let random_base = circuit.random_base.iter().map(CircuitType::from).collect();
+                let input = circuit_input.into_iter().map(CircuitType::from).collect::<Vec<_>>();
                 let randomizer = CircuitType::from(circuit_randomness);
                 let case = (bases, random_base, input, randomizer);
                 assert_count!(

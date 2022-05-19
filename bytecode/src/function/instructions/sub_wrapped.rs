@@ -19,26 +19,7 @@ use crate::{
     Program,
     Value,
 };
-use snarkvm_circuits::{
-    count,
-    Count,
-    Literal,
-    LiteralType,
-    Metrics,
-    Parser,
-    ParserResult,
-    SubWrapped as SubWrappedCircuit,
-    I128,
-    I16,
-    I32,
-    I64,
-    I8,
-    U128,
-    U16,
-    U32,
-    U64,
-    U8,
-};
+use snarkvm_circuits::{Literal, Parser, ParserResult, SubWrapped as SubWrappedCircuit};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
@@ -100,25 +81,6 @@ impl<P: Program> Operation<P> for SubWrapped<P> {
         };
 
         registers.assign(self.operation.destination(), result);
-    }
-}
-
-impl<P: Program> Metrics<Self> for SubWrapped<P> {
-    type Case = (LiteralType<P::Environment>, LiteralType<P::Environment>);
-
-    fn count(case: &Self::Case) -> Count {
-        crate::match_count!(match SubWrappedCircuit::count(case) {
-            (I8, I8) => I8,
-            (I16, I16) => I16,
-            (I32, I32) => I32,
-            (I64, I64) => I64,
-            (I128, I128) => I128,
-            (U8, U8) => U8,
-            (U16, U16) => U16,
-            (U32, U32) => U32,
-            (U64, U64) => U64,
-            (U128, U128) => U128,
-        })
     }
 }
 

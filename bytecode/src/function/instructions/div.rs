@@ -19,30 +19,10 @@ use crate::{
     Program,
     Value,
 };
-use snarkvm_circuits::{
-    count,
-    Count,
-    DivChecked,
-    Field,
-    Literal,
-    LiteralType,
-    Metrics,
-    Parser,
-    ParserResult,
-    I128,
-    I16,
-    I32,
-    I64,
-    I8,
-    U128,
-    U16,
-    U32,
-    U64,
-    U8,
-};
+use snarkvm_circuits::{DivChecked, Literal, Parser, ParserResult};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
-use core::{fmt, ops::Div as DivCircuit};
+use core::fmt;
 use nom::combinator::map;
 use std::io::{Read, Result as IoResult, Write};
 
@@ -102,26 +82,6 @@ impl<P: Program> Operation<P> for Div<P> {
         };
 
         registers.assign(self.operation.destination(), result);
-    }
-}
-
-impl<P: Program> Metrics<Self> for Div<P> {
-    type Case = (LiteralType<P::Environment>, LiteralType<P::Environment>);
-
-    fn count(case: &Self::Case) -> Count {
-        crate::match_count!(match DivCircuit::count(case) {
-            (Field, Field) => Field,
-            (I8, I8) => I8,
-            (I16, I16) => I16,
-            (I32, I32) => I32,
-            (I64, I64) => I64,
-            (I128, I128) => I128,
-            (U8, U8) => U8,
-            (U16, U16) => U16,
-            (U32, U32) => U32,
-            (U64, U64) => U64,
-            (U128, U128) => U128,
-        })
     }
 }
 

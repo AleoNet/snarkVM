@@ -19,20 +19,7 @@ use crate::{
     Program,
     Value,
 };
-use snarkvm_circuits::{
-    count,
-    Boolean,
-    Count,
-    Equal as CircuitEqual,
-    Field,
-    Literal,
-    LiteralType,
-    Metrics,
-    Parser,
-    ParserResult,
-    I8,
-    U8,
-};
+use snarkvm_circuits::{Equal as CircuitEqual, Literal, Parser, ParserResult};
 use snarkvm_utilities::{FromBytes, ToBytes};
 
 use core::fmt;
@@ -99,35 +86,6 @@ impl<P: Program> Operation<P> for Equal<P> {
         };
 
         registers.assign(self.operation.destination(), result);
-    }
-}
-
-impl<P: Program> Metrics<Self> for Equal<P> {
-    type Case = (LiteralType<P::Environment>, LiteralType<P::Environment>);
-
-    fn count(case: &Self::Case) -> Count {
-        match case {
-            (LiteralType::Field(mode_a), LiteralType::Field(mode_b)) => count!(
-                Field<P::Environment>,
-                CircuitEqual<Field<P::Environment>, Output = Boolean<P::Environment>>,
-                &(*mode_a, *mode_b)
-            ),
-            (LiteralType::I8(mode_a), LiteralType::I8(mode_b)) => {
-                count!(
-                    I8<P::Environment>,
-                    CircuitEqual<I8<P::Environment>, Output = Boolean<P::Environment>>,
-                    &(*mode_a, *mode_b)
-                )
-            }
-            (LiteralType::U8(mode_a), LiteralType::U8(mode_b)) => {
-                count!(
-                    U8<P::Environment>,
-                    CircuitEqual<U8<P::Environment>, Output = Boolean<P::Environment>>,
-                    &(*mode_a, *mode_b)
-                )
-            }
-            _ => P::halt(format!("Invalid '{}' instruction", Self::opcode())),
-        }
     }
 }
 

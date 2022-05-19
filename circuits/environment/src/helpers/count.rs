@@ -119,7 +119,7 @@ impl<V: Copy + Debug + Ord + Add<Output = V> + Sub<Output = V> + Mul<Output = V>
         };
 
         if !outcome {
-            eprintln!("Metrics claims the count should be {:?}, found {:?} during synthesis", self, candidate);
+            eprintln!("Metadata claims the count should be {:?}, found {:?} during synthesis", self, candidate);
         }
 
         outcome

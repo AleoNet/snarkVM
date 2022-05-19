@@ -54,7 +54,7 @@ use crate::{
 use snarkvm_circuits::{
     Aleo,
     Environment,
-    FromBits,
+    FromBitsLE,
     Literal,
     Parser,
     ParserResult,
@@ -132,7 +132,7 @@ impl<P: Program, Op: HashOpcode> Operation<P> for Hash<P, Op> {
                 false => input
                     .to_bits_le()
                     .chunks(<P::Environment as Environment>::BaseField::size_in_data_bits())
-                    .map(FromBits::from_bits_le)
+                    .map(FromBitsLE::from_bits_le)
                     .collect::<Vec<_>>(),
             }
         };
