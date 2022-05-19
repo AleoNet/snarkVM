@@ -14,17 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-pub mod bhp;
-pub use bhp::*;
+#![forbid(unsafe_code)]
+#![allow(clippy::too_many_arguments)]
 
-pub mod blake2xs;
-pub use blake2xs::*;
+mod bhp;
+pub use bhp::{BHP, BHP1024, BHP256, BHP512, BHP768};
 
-pub mod pedersen;
-pub use pedersen::*;
+mod blake2xs;
+pub use blake2xs::Blake2Xs;
 
-pub mod poseidon;
-pub use poseidon::*;
+mod pedersen;
+pub use pedersen::{Pedersen, Pedersen128, Pedersen64};
+
+mod poseidon;
+pub use poseidon::{Poseidon, Poseidon2, Poseidon4, Poseidon8};
 
 pub mod traits;
 pub use traits::*;

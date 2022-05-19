@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::aleo::{Network, PrivateKey};
+use crate::{Network, PrivateKey};
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_utilities::{
     error,

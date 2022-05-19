@@ -17,6 +17,8 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::too_many_arguments)]
 
-pub mod aleo;
+#[cfg(feature = "aleo")]
+pub use snarkvm_console_aleo as aleo;
 
-pub mod algorithms;
+#[cfg(feature = "algorithms")]
+pub use snarkvm_console_algorithms as algorithms;

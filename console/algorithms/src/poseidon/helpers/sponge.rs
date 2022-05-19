@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::algorithms::poseidon::{
+use crate::poseidon::{
     helpers::{AlgebraicSponge, DefaultCapacityAlgebraicSponge, DuplexSpongeMode},
     State,
 };
@@ -36,7 +36,7 @@ pub struct PoseidonSponge<F: PrimeField, const RATE: usize, const CAPACITY: usiz
     /// Current sponge's state (current elements in the permutation block)
     state: State<F, RATE, CAPACITY>,
     /// Current mode (whether its absorbing or squeezing)
-    pub(in crate::algorithms::poseidon) mode: DuplexSpongeMode,
+    pub(in crate::poseidon) mode: DuplexSpongeMode,
 }
 
 impl<F: PrimeField, const RATE: usize> DefaultCapacityAlgebraicSponge<F, RATE> for PoseidonSponge<F, RATE, 1> {

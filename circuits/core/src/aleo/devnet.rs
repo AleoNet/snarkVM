@@ -33,7 +33,6 @@ use crate::{
         PRF,
     },
 };
-use snarkvm_algorithms::crypto_hash::hash_to_curve;
 use snarkvm_circuits_types::{
     environment::{prelude::*, Circuit},
     Boolean,
@@ -41,6 +40,7 @@ use snarkvm_circuits_types::{
     Group,
     Scalar,
 };
+use snarkvm_console_algorithms::Blake2Xs;
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 
 use core::fmt;
@@ -90,7 +90,7 @@ impl Devnet {
     #[inline]
     fn new_bases(message: &str) -> Vec<Group<Self>> {
         // Hash the given message to a point on the curve, to initialize the starting base.
-        let (base, _, _) = hash_to_curve::<<Self as Environment>::Affine>(message);
+        let (base, _, _) = Blake2Xs::hash_to_curve::<<Self as Environment>::Affine>(message);
 
         // Initialize the vector of bases.
         let size_in_bits = <Self as Environment>::ScalarField::size_in_bits();

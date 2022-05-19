@@ -262,6 +262,33 @@ jobs:
           workspace_member: circuits/types/string
           cache_key: snarkvm-circuits-types-string-cache
 
+  console:
+    docker:
+      - image: cimg/rust:1.59
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: console
+          cache_key: snarkvm-console-cache
+
+  console-aleo:
+    docker:
+      - image: cimg/rust:1.59
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: console/aleo
+          cache_key: snarkvm-console-aleo-cache
+
+  console-algorithms:
+    docker:
+      - image: cimg/rust:1.59
+    resource_class: xlarge
+    steps:
+      - run_serial:
+          workspace_member: console/algorithms
+          cache_key: snarkvm-console-algorithms-cache
+
   curves:
     docker:
       - image: cimg/rust:1.59
@@ -421,6 +448,9 @@ workflows:
       - circuits-types-integers
       - circuits-types-scalar
       - circuits-types-string
+      - console
+      - console-aleo
+      - console-algorithms
       - curves
       - dpc
       - fields
@@ -443,6 +473,7 @@ workflows:
                 algorithms,
                 bytecode,
                 circuits,
+                console,
                 curves,
                 dpc,
                 fields,

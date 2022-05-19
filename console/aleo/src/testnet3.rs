@@ -15,7 +15,7 @@
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
 use super::*;
-use crate::algorithms::{
+use snarkvm_console_algorithms::{
     traits::*,
     Blake2Xs,
     Pedersen128,

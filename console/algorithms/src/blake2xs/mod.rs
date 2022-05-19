@@ -74,7 +74,7 @@ impl Blake2Xs {
 
 #[cfg(test)]
 mod tests {
-    use crate::algorithms::Blake2Xs;
+    use crate::Blake2Xs;
     use serde::Deserialize;
 
     #[derive(Deserialize)]

@@ -2062,6 +2062,7 @@ dependencies = [
  "snarkvm-circuits-environment",
  "snarkvm-circuits-types",
  "snarkvm-console",
+ "snarkvm-console-algorithms",
  "snarkvm-curves",
  "snarkvm-fields",
  "snarkvm-utilities",
@@ -2197,11 +2198,34 @@ dependencies = [
 name = "snarkvm-console"
 version = "0.7.5"
 dependencies = [
+ "snarkvm-console-aleo",
+ "snarkvm-console-algorithms",
+]
+
+[[package]]
+name = "snarkvm-console-aleo"
+version = "0.7.5"
+dependencies = [
  "anyhow",
  "base58",
  "bech32",
  "bincode",
+ "itertools",
+ "serde",
+ "serde_json",
+ "snarkvm-console-algorithms",
+ "snarkvm-curves",
+ "snarkvm-fields",
+ "snarkvm-utilities",
+]
+
+[[package]]
+name = "snarkvm-console-algorithms"
+version = "0.7.5"
+dependencies = [
+ "anyhow",
  "blake2s_simd",
+ "expect-test",
  "hex",
  "itertools",
  "serde",

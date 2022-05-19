@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::aleo::{ComputeKey, Network, PrivateKey};
+use crate::{ComputeKey, Network, PrivateKey};
 use snarkvm_utilities::{
     error,
     io::{Read, Result as IoResult, Write},

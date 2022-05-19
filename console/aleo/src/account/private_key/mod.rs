@@ -14,11 +14,11 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::{aleo::Network, algorithms::PRF};
+use crate::Network;
+use snarkvm_console_algorithms::{Poseidon2, PRF};
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{error, CryptoRng, FromBytes, Rng, ToBytes, UniformRand};
 
-use crate::algorithms::Poseidon2;
 use anyhow::{anyhow, bail, Error, Result};
 use base58::{FromBase58, ToBase58};
 use core::{fmt, str::FromStr};

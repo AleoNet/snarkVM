@@ -21,7 +21,7 @@ mod hash_many;
 mod hash_to_scalar;
 mod prf;
 
-use crate::algorithms::{poseidon::helpers::*, Hash, HashMany, HashToScalar, PRF};
+use crate::{poseidon::helpers::*, Hash, HashMany, HashToScalar, PRF};
 use snarkvm_fields::{PoseidonParameters, PrimeField};
 
 use anyhow::{bail, Result};

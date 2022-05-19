@@ -23,8 +23,8 @@ mod hash_uncompressed;
 use snarkvm_circuits_environment::{assert_count, assert_output_mode, assert_scope};
 
 use crate::algorithms::{Commit, CommitUncompressed, Hash, HashUncompressed};
-use snarkvm_algorithms::crypto_hash::hash_to_curve;
 use snarkvm_circuits_types::prelude::*;
+use snarkvm_console_algorithms::Blake2Xs;
 
 /// Pedersen64 is an *additively-homomorphic* collision-resistant hash function that takes a 64-bit input.
 pub type Pedersen64<E> = Pedersen<E, 1, 64>;
@@ -47,7 +47,7 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Pederse
             bases: (0..NUM_WINDOWS)
                 .map(|_| {
                     // Construct an indexed message to attempt to sample a base.
-                    let (generator, _, _) = hash_to_curve(&format!("Aleo.Pedersen.Base.{message}"));
+                    let (generator, _, _) = Blake2Xs::hash_to_curve(&format!("Aleo.Pedersen.Base.{message}"));
                     // Inject the new base.
                     let mut base = Group::constant(generator);
                     // Construct the window with the base.
@@ -61,7 +61,7 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Pederse
                 .collect(),
             random_base: {
                 // Compute the random base
-                let (generator, _, _) = hash_to_curve(&format!("Aleo.Pedersen.RandomBase.{message}"));
+                let (generator, _, _) = Blake2Xs::hash_to_curve(&format!("Aleo.Pedersen.RandomBase.{message}"));
                 let mut base = Group::constant(generator);
 
                 let num_scalar_bits = E::ScalarField::size_in_bits();

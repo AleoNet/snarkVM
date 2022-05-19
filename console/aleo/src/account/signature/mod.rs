@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::aleo::{Address, ComputeKey, Network, PrivateKey};
+use crate::{Address, ComputeKey, Network, PrivateKey};
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::ToConstraintField;
 use snarkvm_utilities::{
@@ -115,7 +115,7 @@ impl<N: Network> ToBytes for Signature<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::aleo::Testnet3;
+    use crate::Testnet3;
     use snarkvm_utilities::{test_crypto_rng, ToBits, UniformRand};
 
     type CurrentNetwork = Testnet3;

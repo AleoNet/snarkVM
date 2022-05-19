@@ -35,6 +35,8 @@ members = [
   "circuits/types/scalar",
   "circuits/types/string",
   "console",
+  "console/aleo",
+  "console/algorithms",
   "curves",
   "dpc",
   "fields",

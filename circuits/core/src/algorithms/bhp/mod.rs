@@ -23,8 +23,8 @@ mod hash_uncompressed;
 use snarkvm_circuits_environment::assert_scope;
 
 use crate::algorithms::{Commit, CommitUncompressed, Hash, HashUncompressed};
-use snarkvm_algorithms::crypto_hash::hash_to_curve;
 use snarkvm_circuits_types::prelude::*;
+use snarkvm_console_algorithms::Blake2Xs;
 use snarkvm_curves::{MontgomeryParameters, TwistedEdwardsParameters};
 use snarkvm_utilities::BigInteger;
 
@@ -69,7 +69,7 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP<E, 
         let bases = (0..NUM_WINDOWS)
             .map(|index| {
                 // Construct an indexed message to attempt to sample a base.
-                let (generator, _, _) = hash_to_curve(&format!("Aleo.BHP.Base.{message}.{index}"));
+                let (generator, _, _) = Blake2Xs::hash_to_curve(&format!("Aleo.BHP.Base.{message}.{index}"));
                 // Inject the new base.
                 let mut base = Group::constant(generator);
                 // Construct the window with the base.
@@ -101,7 +101,7 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> BHP<E, 
 
         // Compute the random base.
         let random_base = {
-            let (generator, _, _) = hash_to_curve(&format!("Aleo.BHP.RandomBase.{message}"));
+            let (generator, _, _) = Blake2Xs::hash_to_curve(&format!("Aleo.BHP.RandomBase.{message}"));
             let mut base = Group::constant(generator);
 
             let num_scalar_bits = E::ScalarField::size_in_bits();

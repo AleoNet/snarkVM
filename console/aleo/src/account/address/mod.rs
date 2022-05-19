@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with the snarkVM library. If not, see <https://www.gnu.org/licenses/>.
 
-use crate::aleo::{ComputeKey, Network, PrivateKey, ViewKey};
+use crate::{ComputeKey, Network, PrivateKey, ViewKey};
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{
@@ -183,7 +183,7 @@ impl<N: Network> Deref for Address<N> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::aleo::{PrivateKey, Testnet3};
+    use crate::{PrivateKey, Testnet3};
     use snarkvm_utilities::test_crypto_rng;
 
     use anyhow::Result;

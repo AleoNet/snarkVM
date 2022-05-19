@@ -19,7 +19,7 @@ mod commit_uncompressed;
 mod hash;
 mod hash_uncompressed;
 
-use crate::algorithms::{Blake2Xs, Commit, CommitUncompressed, Hash, HashUncompressed};
+use crate::{Blake2Xs, Commit, CommitUncompressed, Hash, HashUncompressed};
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 use snarkvm_fields::{PrimeField, Zero};
 use snarkvm_utilities::{cfg_iter, BigInteger, ToBits};
