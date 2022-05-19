@@ -61,6 +61,12 @@ impl Count {
             && self.2.matches(num_private)
             && self.3.matches(num_constraints)
     }
+
+    /// Returns a new `Count` whose constituent `Measurement`s are all `UpperBound`.
+    /// All candidates that match the original `Count` must also match the new `Count`.
+    pub fn to_upper_bound(&self) -> Self {
+        Count(self.0.to_upper_bound(), self.1.to_upper_bound(), self.2.to_upper_bound(), self.3.to_upper_bound())
+    }
 }
 
 impl Add for Count {
@@ -117,6 +123,16 @@ impl<V: Copy + Debug + Ord + Add<Output = V> + Sub<Output = V> + Mul<Output = V>
         }
 
         outcome
+    }
+
+    /// Returns a new `Measurement` that is an upper bound of the current `Measurement`.
+    /// Any candidate that matches the original `Measurement` will also match the new `Measurement`.
+    pub fn to_upper_bound(&self) -> Self {
+        match self {
+            Measurement::Exact(value) => Measurement::UpperBound(*value),
+            Measurement::Range(lower, upper) => Measurement::UpperBound(*upper),
+            Measurement::UpperBound(bound) => Measurement::UpperBound(*bound),
+        }
     }
 }
 

@@ -96,33 +96,284 @@ impl<E: Environment, I: IntegerType, M: Magnitude> Metadata<dyn PowChecked<Integ
         match (case.0.eject_mode(), case.1.eject_mode()) {
             (Mode::Constant, Mode::Constant) => Count::is(I::BITS, 0, 0, 0),
             _ => {
-                let (lhs, rhs) = case.clone();
+                let (lhs, rhs) = case;
 
                 let mut total_count = count!(Integer<E, I>, One<Boolean = Boolean<E>>, &());
                 let mut result_type = output_type!(Integer<E, I>, One<Boolean = Boolean<E>>, ());
 
-                for bit in rhs.bits_le.into_iter().rev() {
-                    // Determine the cost and output type of `result = (&result).mul_wrapped(&result);`.
+                for bit in rhs.clone().bits_le.into_iter().rev() {
+                    // Determine the cost and output type of `result = (&result).mul_checked(&result);`.
                     let case = (result_type.clone(), result_type);
-                    total_count = total_count + count!(Self, MulWrapped<Self, Output = Self>, &case);
-                    result_type = output_type!(Self, MulWrapped<Self, Output = Self>, case);
+                    total_count = total_count + count!(Self, MulChecked<Self, Output = Self>, &case);
+                    result_type = output_type!(Self, MulChecked<Self, Output = Self>, case);
 
-                    // Determine the cost and output type of `result_times_self`. This differs for the the signed and usigned cases.
-                    let result_times_self_type = if I::is_signed() { todo!() } else { todo!() };
+                    // Determine the cost and output type of `result_times_self`. This differs for the the signed and unsigned cases.
+                    let result_times_self_type = if I::is_signed() {
+                        // Determine the count and output type  of `let (product, carry) = Self::mul_with_carry(&(&result).abs_wrapped(), &self.abs_wrapped());`
+                        total_count = total_count + count!(Self, AbsWrapped<Output = Self>, &result_type);
+                        let result_abs_wrapped_type =
+                            output_type!(Self, AbsWrapped<Output = Self>, result_type.clone());
+
+                        let case = lhs.clone();
+                        total_count = total_count + count!(Self, AbsWrapped<Output = Self>, &case);
+                        let lhs_abs_wrapped_type = output_type!(Self, AbsWrapped<Output = Self>, case);
+
+                        let case = (result_abs_wrapped_type, lhs_abs_wrapped_type);
+                        total_count =
+                            total_count + count!(Self, MulWithCarry<Product = Self, Carry = Vec<Boolean<E>>>, &case);
+                        let (product_type, carry_type) =
+                            output_type!(Self, MulWithCarry<Product = Self, Carry = Vec<Boolean<E>>>, case);
+
+                        // Determine the count and output type of `let carry_bits_nonzero = carry.iter().fold(Boolean::constant(false), |a, b| a | b);`.
+                        let (count, carry_bits_nonzero_type) = carry_type.into_iter().fold(
+                            (Count::zero(), CircuitType::from(Boolean::constant(false))),
+                            |(cummulative_count, prev_type), next_type| {
+                                let case = (prev_type, next_type);
+                                let count = count!(Boolean<E>, BitOr<Boolean<E>, Output = Boolean<E>>, &case);
+                                let output_type =
+                                    output_type!(Boolean<E>, BitOr<Boolean<E>, Output = Boolean<E>>, case);
+                                (cummulative_count + count, output_type)
+                            },
+                        );
+                        total_count = total_count + count;
+
+                        // Determine the count and output type of `let operands_same_sign = &result.msb().is_equal(self.msb());`.
+                        total_count = total_count + count!(Self, MSB<Boolean = Boolean<E>>, &result_type);
+                        let result_msb_type = output_type!(Self, MSB<Boolean = Boolean<E>>, result_type.clone());
+
+                        total_count = total_count + count!(Self, MSB<Boolean = Boolean<E>>, &lhs);
+                        let lhs_msb_type = output_type!(Self, MSB<Boolean = Boolean<E>>, lhs.clone());
+
+                        let case = (result_msb_type, lhs_msb_type);
+                        total_count = total_count + count!(Boolean<E>, Equal<Boolean<E>, Output = Boolean<E>>, &case);
+                        let operands_same_sign_type =
+                            output_type!(Boolean<E>, Equal<Boolean<E>, Output = Boolean<E>>, case);
+
+                        // Determine the count and output tupe of `let positive_product_overflows = operands_same_sign & product.msb();`.
+                        total_count = total_count + count!(Self, MSB<Boolean = Boolean<E>>, &product_type);
+                        let product_msb_type = output_type!(Self, MSB<Boolean = Boolean<E>>, product_type.clone());
+
+                        let case = (operands_same_sign_type.clone(), product_msb_type.clone());
+                        total_count = total_count + count!(Boolean<E>, BitAnd<Boolean<E>, Output = Boolean<E>>, &case);
+                        let positive_product_overflows_type =
+                            output_type!(Boolean<E>, BitAnd<Boolean<E>, Output = Boolean<E>>, case);
+
+                        // Determine the count and output type of `negative_product_underflows`.
+                        let negative_product_underflows_type = {
+                            // Determine the count and output type of `let lower_product_bits_nonzero = product.bits_le[..(I::BITS as usize - 1)].iter().fold(Boolean::constant(false), |a, b| a | b);`.
+                            let (count, lower_product_bits_nonzero_type) =
+                                product_type.bits_le[..(I::BITS as usize - 1)].iter().fold(
+                                    (Count::zero(), CircuitType::from(Boolean::constant(false))),
+                                    |(cummulative_count, prev_type), next_type| {
+                                        let case = (prev_type, next_type.clone());
+                                        let count = count!(Boolean<E>, BitOr<Boolean<E>, Output = Boolean<E>>, &case);
+                                        let output_type =
+                                            output_type!(Boolean<E>, BitOr<Boolean<E>, Output = Boolean<E>>, case);
+                                        (cummulative_count + count, output_type)
+                                    },
+                                );
+                            total_count = total_count + count;
+
+                            // Determine the count and output type of `let negative_product_lt_or_eq_signed_min = !product.msb() | (product.msb() & !lower_product_bits_nonzero);`.
+                            total_count = total_count + count!(Boolean<E>, Not<Output = Boolean<E>>, &product_msb_type);
+                            let product_msb_not_type =
+                                output_type!(Boolean<E>, Not<Output = Boolean<E>>, product_msb_type.clone());
+
+                            total_count = total_count
+                                + count!(Boolean<E>, Not<Output = Boolean<E>>, &lower_product_bits_nonzero_type);
+                            let lower_product_bits_nonzero_not_type = output_type!(
+                                Boolean<E>,
+                                Not<Output = Boolean<E>>,
+                                lower_product_bits_nonzero_type.clone()
+                            );
+
+                            let case = (product_msb_type, lower_product_bits_nonzero_not_type);
+                            total_count =
+                                total_count + count!(Boolean<E>, BitAnd<Boolean<E>, Output = Boolean<E>>, &case);
+                            let product_msb_or_not_lower_product_bits_nonzero_type =
+                                output_type!(Boolean<E>, BitAnd<Boolean<E>, Output = Boolean<E>>, case);
+
+                            let case = (product_msb_not_type, product_msb_or_not_lower_product_bits_nonzero_type);
+                            total_count =
+                                total_count + count!(Boolean<E>, BitOr<Boolean<E>, Output = Boolean<E>>, &case);
+                            let negative_product_lt_or_eq_signed_min_type =
+                                output_type!(Boolean<E>, BitOr<Boolean<E>, Output = Boolean<E>>, case);
+
+                            // Determine the count and output type of `!operands_same_sign & !negative_product_lt_or_eq_signed_min`.
+                            total_count =
+                                total_count + count!(Boolean<E>, Not<Output = Boolean<E>>, &operands_same_sign_type);
+                            let operands_same_sign_not_type =
+                                output_type!(Boolean<E>, Not<Output = Boolean<E>>, operands_same_sign_type.clone());
+
+                            total_count = total_count
+                                + count!(
+                                    Boolean<E>,
+                                    Not<Output = Boolean<E>>,
+                                    &negative_product_lt_or_eq_signed_min_type
+                                );
+                            let negative_product_lt_or_eq_signed_min_not_type = output_type!(
+                                Boolean<E>,
+                                Not<Output = Boolean<E>>,
+                                negative_product_lt_or_eq_signed_min_type.clone()
+                            );
+
+                            let case = (operands_same_sign_not_type, negative_product_lt_or_eq_signed_min_not_type);
+                            total_count =
+                                total_count + count!(Boolean<E>, BitAnd<Boolean<E>, Output = Boolean<E>>, &case);
+
+                            output_type!(Boolean<E>, BitAnd<Boolean<E>, Output = Boolean<E>>, case)
+                        };
+
+                        // Determine the count and cost of `let overflow = carry_bits_nonzero | positive_product_overflows | negative_product_underflows;`.
+                        let case = (carry_bits_nonzero_type, positive_product_overflows_type);
+                        total_count = total_count + count!(Boolean<E>, BitOr<Boolean<E>, Output = Boolean<E>>, &case);
+                        let carry_bits_nonzero_or_positive_product_overflows_type =
+                            output_type!(Boolean<E>, BitOr<Boolean<E>, Output = Boolean<E>>, case);
+
+                        let case =
+                            (carry_bits_nonzero_or_positive_product_overflows_type, negative_product_underflows_type);
+                        total_count = total_count + count!(Boolean<E>, BitOr<Boolean<E>, Output = Boolean<E>>, &case);
+                        let overflow_type = output_type!(Boolean<E>, BitOr<Boolean<E>, Output = Boolean<E>>, case);
+
+                        // Determine the cost of `E::assert_eq(overflow & bit, E::zero());`.
+                        let case = (overflow_type, bit.clone());
+                        total_count = total_count + count!(Boolean<E>, BitAnd<Boolean<E>, Output = Boolean<E>>, &case);
+                        let overflow_and_bit_type =
+                            output_type!(Boolean<E>, BitAnd<Boolean<E>, Output = Boolean<E>>, case);
+
+                        match overflow_and_bit_type.is_constant() {
+                            true => (), // Do nothing.
+                            false => total_count = total_count + Count::is(0, 0, 0, 1),
+                        }
+
+                        // Determine the count and output type of `Self::ternary(operands_same_sign, &product, &(!&product).add_wrapped(&Self::one()))`.
+                        total_count = total_count + count!(Self, One<Boolean = Boolean<E>>, &());
+                        let one_type = output_type!(Self, One<Boolean = Boolean<E>>, ());
+
+                        total_count = total_count + count!(Self, Not<Output = Self>, &product_type);
+                        let product_not_type = output_type!(Self, Not<Output = Self>, product_type.clone());
+
+                        let case = (product_not_type, one_type);
+                        total_count = total_count + count!(Self, AddWrapped<Self, Output = Self>, &case);
+                        let product_not_add_wrapped_one_type =
+                            output_type!(Self, AddWrapped<Self, Output = Self>, case);
+
+                        let case = (operands_same_sign_type, product_type, product_not_add_wrapped_one_type);
+                        total_count = total_count + count!(Self, Ternary<Boolean = Boolean<E>, Output = Self>, &case);
+
+                        output_type!(Self, Ternary<Boolean = Boolean<E>, Output = Self>, case)
+                    } else {
+                        // Determine the count and output type of `let (product, carry) = Self::mul_with_carry(&result, self);`.
+                        let case = (result_type.clone(), lhs.clone());
+                        total_count =
+                            total_count + count!(Self, MulWithCarry<Product = Self, Carry = Vec<Boolean<E>>>, &case);
+                        let (product_type, carry_type) =
+                            output_type!(Self, MulWithCarry<Product = Self, Carry = Vec<Boolean<E>>>, case);
+
+                        // Determine the count and output type of `let overflow = carry.iter().fold(Boolean::constant(false), |a, b| a | b);`.
+                        let (count, overflow_type) = carry_type.into_iter().fold(
+                            (Count::zero(), CircuitType::from(Boolean::constant(false))),
+                            |(cummulative_count, prev_type), next_type| {
+                                let case = (prev_type, next_type);
+                                let count = count!(Boolean<E>, BitOr<Boolean<E>, Output = Boolean<E>>, &case);
+                                let output_type =
+                                    output_type!(Boolean<E>, BitOr<Boolean<E>, Output = Boolean<E>>, case);
+                                (cummulative_count + count, output_type)
+                            },
+                        );
+                        total_count = total_count + count;
+
+                        // Determine the count and output type of `E::assert_eq(overflow & bit, E::zero());`.
+                        let case = (overflow_type, bit.clone());
+                        total_count = total_count + count!(Boolean<E>, BitAnd<Boolean<E>, Output = Boolean<E>>, &case);
+                        let overflow_and_bit_type =
+                            output_type!(Boolean<E>, BitAnd<Boolean<E>, Output = Boolean<E>>, case);
+                        match overflow_and_bit_type.is_constant() {
+                            true => (), // Do nothing.
+                            false => total_count = total_count + Count::is(0, 0, 0, 1),
+                        }
+
+                        // Return the product of `self` and `other`.
+                        product_type
+                    };
 
                     // Determine the cost and output type of `result = Self::ternary(bit, &result_times_self, &result);`.
                     let case = (bit, result_times_self_type, result_type);
                     total_count = total_count + count!(Self, Ternary<Boolean = Boolean<E>, Output = Self>, &case);
                     result_type = output_type!(Self, Ternary<Boolean = Boolean<E>, Output = Self>, case);
                 }
-                total_count
+
+                match (lhs.eject_mode(), rhs.eject_mode()) {
+                    (Mode::Constant, Mode::Public) | (Mode::Constant, Mode::Private) => {
+                        match I::is_signed() {
+                            // Note: We need to covert the `Count` to an upper bound since there are certain optimizations we cannot statically account for.
+                            true => total_count.to_upper_bound(),
+                            false => total_count,
+                        }
+                    }
+                    _ => total_count,
+                }
             }
         }
     }
 
+    // TODO: Check for overflow
     fn output_type(case: Self::Case) -> Self::OutputType {
-        // TODO: Check overflow.
-        output_type!(Self, PowWrapped<Integer<E, M>, Output = Self>, case)
+        let (lhs, rhs) = case;
+
+        let mut result_type = output_type!(Integer<E, I>, One<Boolean = Boolean<E>>, ());
+
+        for bit in rhs.clone().bits_le.into_iter().rev() {
+            // Determine the output type of `result = (&result).mul_wrapped(&result);`.
+            let case = (result_type.clone(), result_type);
+            result_type = output_type!(Self, MulWrapped<Self, Output = Self>, case);
+
+            // Determine the output type of `result_times_self`. This differs for the the signed and unsigned cases.
+            let result_times_self_type = if I::is_signed() {
+                // Determine the output type  of `let (product, carry) = Self::mul_with_carry(&(&result).abs_wrapped(), &self.abs_wrapped());`
+                let result_abs_wrapped_type = output_type!(Self, AbsWrapped<Output = Self>, result_type.clone());
+
+                let case = lhs.clone();
+                let lhs_abs_wrapped_type = output_type!(Self, AbsWrapped<Output = Self>, case);
+
+                let case = (result_abs_wrapped_type, lhs_abs_wrapped_type);
+                let (product_type, _carry_type) =
+                    output_type!(Self, MulWithCarry<Product = Self, Carry = Vec<Boolean<E>>>, case);
+
+                // Determine the output type of `let operands_same_sign = &result.msb().is_equal(self.msb());`.
+                let result_msb_type = output_type!(Self, MSB<Boolean = Boolean<E>>, result_type.clone());
+
+                let lhs_msb_type = output_type!(Self, MSB<Boolean = Boolean<E>>, lhs.clone());
+
+                let case = (result_msb_type, lhs_msb_type);
+                let operands_same_sign_type = output_type!(Boolean<E>, Equal<Boolean<E>, Output = Boolean<E>>, case);
+
+                // Determine the output type of `Self::ternary(operands_same_sign, &product, &(!&product).add_wrapped(&Self::one()))`.
+                let one_type = output_type!(Self, One<Boolean = Boolean<E>>, ());
+
+                let product_not_type = output_type!(Self, Not<Output = Self>, product_type.clone());
+
+                let case = (product_not_type, one_type);
+                let product_not_add_wrapped_one_type = output_type!(Self, AddWrapped<Self, Output = Self>, case);
+
+                let case = (operands_same_sign_type, product_type, product_not_add_wrapped_one_type);
+
+                output_type!(Self, Ternary<Boolean = Boolean<E>, Output = Self>, case)
+            } else {
+                // Determine the output type of `let (product, carry) = Self::mul_with_carry(&result, self);`.
+                let case = (result_type.clone(), lhs.clone());
+                let (product_type, _carry_type) =
+                    output_type!(Self, MulWithCarry<Product = Self, Carry = Vec<Boolean<E>>>, case);
+
+                // Return the product of `self` and `other`.
+                product_type
+            };
+
+            // Determine the output type of `result = Self::ternary(bit, &result_times_self, &result);`.
+            let case = (bit, result_times_self_type, result_type);
+            result_type = output_type!(Self, Ternary<Boolean = Boolean<E>, Output = Self>, case);
+        }
+        result_type
     }
 }
 
@@ -145,6 +396,8 @@ mod tests {
         mode_a: Mode,
         mode_b: Mode,
     ) {
+        println!("\n{}", name);
+        println!("{:?} ^ {:?}", first, second);
         let a = Integer::<Circuit, I>::new(mode_a, first);
         let b = Integer::<Circuit, M>::new(mode_b, second);
         match first.checked_pow(&second.to_u32().unwrap()) {
