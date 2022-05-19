@@ -68,7 +68,7 @@ mod tests {
 
         // Create the `resources` folder, if it does not exist.
         if !path.exists() {
-            std::fs::create_dir_all(&path).expect(&format!("Failed to create resources folder: {:?}", path));
+            std::fs::create_dir_all(&path).unwrap_or_else(|_| panic!("Failed to create resources folder: {:?}", path));
         }
         // Output the path.
         path
@@ -83,7 +83,7 @@ mod tests {
 
         // Create the test folder, if it does not exist.
         if !path.exists() {
-            std::fs::create_dir(&path).expect(&format!("Failed to create test folder: {:?}", path));
+            std::fs::create_dir(&path).unwrap_or_else(|_| panic!("Failed to create test folder: {:?}", path));
         }
 
         // Construct the path for the test file.
@@ -92,7 +92,7 @@ mod tests {
 
         // Create the test file, if it does not exist.
         if !path.exists() {
-            std::fs::File::create(&path).expect(&format!("Failed to create file: {:?}", path));
+            std::fs::File::create(&path).unwrap_or_else(|_| panic!("Failed to create file: {:?}", path));
         }
 
         // Assert the test file is equal to the expected value.
