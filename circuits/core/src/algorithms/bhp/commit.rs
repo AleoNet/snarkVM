@@ -31,7 +31,7 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Commit 
 mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
-    use snarkvm_console::algorithms::{Commit as C, BHP as NativeBHP};
+    use snarkvm_console_algorithms::{Commit as C, BHP as NativeBHP};
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 10;

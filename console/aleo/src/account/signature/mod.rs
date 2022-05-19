@@ -36,6 +36,21 @@ pub struct Signature<N: Network> {
 }
 
 impl<N: Network> Signature<N> {
+    /// Returns the verifier challenge.
+    pub fn challenge(&self) -> &N::Scalar {
+        &self.challenge
+    }
+
+    /// Returns the prover response.
+    pub fn response(&self) -> &N::Scalar {
+        &self.response
+    }
+
+    /// Returns the compute key.
+    pub fn compute_key(&self) -> &ComputeKey<N> {
+        &self.compute_key
+    }
+
     /// Returns a signature `(challenge, response, compute_key)` for a given message and randomizer, where:
     ///     challenge := HashToScalar(address, G^randomizer, message)
     ///     response := randomizer - challenge * private_key.sk_sig()

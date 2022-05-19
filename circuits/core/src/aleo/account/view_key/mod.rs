@@ -82,6 +82,7 @@ mod tests {
                 assert_eq!(view_key, candidate.eject_value());
                 assert_scope!(num_constants, num_public, num_private, num_constraints);
             });
+            Circuit::reset();
         }
     }
 

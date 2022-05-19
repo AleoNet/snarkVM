@@ -27,14 +27,16 @@ pub struct PrivateKey<A: Aleo> {
     sk_sig: Scalar<A>,
     /// The signature secret randomizer.
     r_sig: Scalar<A>,
+    /// The VRF secret key.
+    sk_vrf: Scalar<A>,
 }
 
 impl<A: Aleo> Inject for PrivateKey<A> {
-    type Primitive = (A::ScalarField, A::ScalarField);
+    type Primitive = (A::ScalarField, A::ScalarField, A::ScalarField);
 
-    /// Initializes an account private key from the given mode and `(sk_sig, r_sig)`.
-    fn new(mode: Mode, (sk_sig, r_sig): Self::Primitive) -> Self {
-        Self { sk_sig: Scalar::new(mode, sk_sig), r_sig: Scalar::new(mode, r_sig) }
+    /// Initializes an account private key from the given mode and `(sk_sig, r_sig, sk_vrf)`.
+    fn new(mode: Mode, (sk_sig, r_sig, sk_vrf): Self::Primitive) -> Self {
+        Self { sk_sig: Scalar::new(mode, sk_sig), r_sig: Scalar::new(mode, r_sig), sk_vrf: Scalar::new(mode, sk_vrf) }
     }
 }
 
@@ -48,22 +50,27 @@ impl<A: Aleo> PrivateKey<A> {
     pub fn r_sig(&self) -> &Scalar<A> {
         &self.r_sig
     }
+
+    /// Returns the VRF secret key.
+    pub fn sk_vrf(&self) -> &Scalar<A> {
+        &self.sk_vrf
+    }
 }
 
 impl<A: Aleo> Eject for PrivateKey<A> {
-    type Primitive = (A::ScalarField, A::ScalarField);
+    type Primitive = (A::ScalarField, A::ScalarField, A::ScalarField);
 
     ///
     /// Ejects the mode of the account private key.
     ///
     fn eject_mode(&self) -> Mode {
-        (&self.sk_sig, &self.r_sig).eject_mode()
+        (&self.sk_sig, &self.r_sig, &self.sk_vrf).eject_mode()
     }
 
     ///
-    /// Ejects the account private key as `(sk_sig, r_sig)`.
+    /// Ejects the account private key as `(sk_sig, r_sig, sk_vrf)`.
     ///
     fn eject_value(&self) -> Self::Primitive {
-        (&self.sk_sig, &self.r_sig).eject_value()
+        (&self.sk_sig, &self.r_sig, &self.sk_vrf).eject_value()
     }
 }

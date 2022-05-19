@@ -122,7 +122,7 @@ mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
     use snarkvm_circuits_types::Eject;
-    use snarkvm_console::algorithms::BHP as NativeBHP;
+    use snarkvm_console_algorithms::BHP as NativeBHP;
     use snarkvm_curves::{AffineCurve, ProjectiveCurve};
 
     const ITERATIONS: usize = 10;

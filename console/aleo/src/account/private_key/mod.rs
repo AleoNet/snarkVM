@@ -110,17 +110,17 @@ impl<N: Network> PrivateKey<N> {
     }
 
     /// Returns the signature secret key.
-    pub(super) fn sk_sig(&self) -> &N::Scalar {
+    pub fn sk_sig(&self) -> &N::Scalar {
         &self.sk_sig
     }
 
     /// Returns the signature randomizer.
-    pub(super) fn r_sig(&self) -> &N::Scalar {
+    pub fn r_sig(&self) -> &N::Scalar {
         &self.r_sig
     }
 
     /// Returns the VRF secret key.
-    pub(super) fn sk_vrf(&self) -> &N::Scalar {
+    pub fn sk_vrf(&self) -> &N::Scalar {
         &self.sk_vrf
     }
 

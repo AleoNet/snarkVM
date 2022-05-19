@@ -118,7 +118,7 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize>
 mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
-    use snarkvm_console::algorithms::{HashUncompressed as H, Pedersen as NativePedersen};
+    use snarkvm_console_algorithms::{HashUncompressed as H, Pedersen as NativePedersen};
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: u64 = 10;

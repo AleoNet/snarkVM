@@ -6,6 +6,14 @@ description = "Core circuits library for a decentralized virtual machine"
 license = "GPL-3.0"
 edition = "2021"
 
+[dependencies.snarkvm-circuits-environment]
+path = "../environment"
+version = "0.7.5"
+
+[dependencies.snarkvm-circuits-types]
+path = "../types"
+version = "0.7.5"
+
 [dependencies.snarkvm-console-algorithms]
 path = "../../console/algorithms"
 version = "0.7.5"
@@ -15,16 +23,8 @@ path = "../../curves"
 version = "0.7.5"
 default-features = false
 
-[dependencies.snarkvm-circuits-environment]
-path = "../environment"
-version = "0.7.5"
-
 [dependencies.snarkvm-fields]
 path = "../../fields"
-version = "0.7.5"
-
-[dependencies.snarkvm-circuits-types]
-path = "../types"
 version = "0.7.5"
 
 [dependencies.snarkvm-utilities]
@@ -40,6 +40,10 @@ version = "0.7.5"
 default-features = false
 features = ["signature", "crh", "merkle_tree"]
 
-[dev-dependencies.snarkvm-console]
-path = "../../console"
+[dev-dependencies.snarkvm-console-aleo]
+path = "../../console/aleo"
 version = "0.7.5"
+
+[dev-dependencies.anyhow]
+version = "1.0.57"
+

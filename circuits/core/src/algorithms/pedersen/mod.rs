@@ -80,7 +80,7 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> Pederse
 mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
-    use snarkvm_console::algorithms::Pedersen as NativePedersen;
+    use snarkvm_console_algorithms::Pedersen as NativePedersen;
     use snarkvm_curves::ProjectiveCurve;
 
     const ITERATIONS: u64 = 10;

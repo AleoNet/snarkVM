@@ -57,7 +57,7 @@ impl<E: Environment, const RATE: usize> OutputMode<dyn HashToScalar<Input = Fiel
 mod tests {
     use super::*;
     use snarkvm_circuits_types::environment::Circuit;
-    use snarkvm_console::algorithms::{HashToScalar as H, Poseidon as NativePoseidon};
+    use snarkvm_console_algorithms::{HashToScalar as H, Poseidon as NativePoseidon};
     use snarkvm_utilities::{test_rng, FromBits, ToBits, UniformRand};
 
     const ITERATIONS: usize = 10;

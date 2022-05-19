@@ -58,7 +58,7 @@ impl<E: Environment, const RATE: usize> OutputMode<dyn PRF<Seed = Field<E>, Inpu
 mod tests {
     use super::*;
     use snarkvm_circuits_types::environment::Circuit;
-    use snarkvm_console::algorithms::{Poseidon as NativePoseidon, PRF as P};
+    use snarkvm_console_algorithms::{Poseidon as NativePoseidon, PRF as P};
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 10;

@@ -216,7 +216,7 @@ impl<E: Environment, const RATE: usize> Poseidon<E, RATE> {
 mod tests {
     use super::*;
     use snarkvm_circuits_types::environment::Circuit;
-    use snarkvm_console::algorithms::{Hash as H, Poseidon as NativePoseidon};
+    use snarkvm_console_algorithms::{Hash as H, Poseidon as NativePoseidon};
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 10;

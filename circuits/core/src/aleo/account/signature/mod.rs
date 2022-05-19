@@ -19,82 +19,111 @@ pub mod verify;
 #[cfg(test)]
 use snarkvm_circuits_types::environment::assert_scope;
 
-use crate::aleo::Aleo;
-use snarkvm_circuits_types::{environment::prelude::*, Address, Boolean, Field, Group, Literal, Scalar};
+use crate::aleo::{Aleo, ComputeKey};
+use snarkvm_circuits_types::{environment::prelude::*, Address, Boolean, Field, Literal, Scalar, ToBits};
 
 pub struct Signature<A: Aleo> {
     /// The verifier challenge to check against.
     challenge: Scalar<A>,
     /// The prover response to the challenge.
     response: Scalar<A>,
-    /// The x-coordinate of the signature public key `pk_sig` := G^sk_sig.
-    pk_sig: Group<A>,
-    /// The x-coordinate of the signature public randomizer `pr_sig` := G^r_sig.
-    pr_sig: Group<A>,
+    /// The compute key of the prover.
+    compute_key: ComputeKey<A>,
 }
 
 impl<A: Aleo> Inject for Signature<A> {
-    type Primitive = (A::ScalarField, A::ScalarField, A::BaseField, A::BaseField);
+    type Primitive = (A::ScalarField, A::ScalarField, (A::Affine, A::Affine, A::Affine));
 
-    /// Initializes a signature from the given mode and `(challenge, response, pk_sig, pr_sig)`.
-    fn new(mode: Mode, (challenge, response, pk_sig, pr_sig): Self::Primitive) -> Signature<A> {
+    /// Initializes a signature from the given mode and `(challenge, response, (pk_sig, pr_sig, pk_vrf))`.
+    fn new(mode: Mode, (challenge, response, (pk_sig, pr_sig, pk_vrf)): Self::Primitive) -> Signature<A> {
         Self {
             challenge: Scalar::new(mode, challenge),
             response: Scalar::new(mode, response),
-            pk_sig: Group::from_x_coordinate(Field::new(mode, pk_sig)),
-            pr_sig: Group::from_x_coordinate(Field::new(mode, pr_sig)),
+            compute_key: ComputeKey::new(mode, (pk_sig, pr_sig, pk_vrf)),
         }
     }
 }
 
 impl<A: Aleo> Eject for Signature<A> {
-    type Primitive = (A::ScalarField, A::ScalarField, A::BaseField, A::BaseField);
+    type Primitive = (A::ScalarField, A::ScalarField, (A::Affine, A::Affine, A::Affine, A::ScalarField));
 
     ///
     /// Ejects the mode of the signature.
     ///
     fn eject_mode(&self) -> Mode {
-        (&self.challenge, &self.response, &self.pk_sig, &self.pr_sig).eject_mode()
+        (&self.challenge, &self.response, &self.compute_key).eject_mode()
     }
 
     ///
-    /// Ejects the signature as `(challenge, response, pk_sig, pr_sig)`.
+    /// Ejects the signature as `(challenge, response, (pk_sig, pr_sig, pk_vrf, sk_prf))`.
     ///
     fn eject_value(&self) -> Self::Primitive {
-        (&self.challenge, &self.response, &self.pk_sig.to_x_coordinate(), &self.pr_sig.to_x_coordinate()).eject_value()
+        (&self.challenge, &self.response, &self.compute_key).eject_value()
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::aleo::Devnet as Circuit;
-    use snarkvm_curves::AffineCurve;
-    use snarkvm_utilities::{test_rng, UniformRand};
+    use crate::aleo::{account::helpers::generate_account, Devnet as Circuit};
+    use snarkvm_console_aleo::Signature as NativeSignature;
+    use snarkvm_utilities::{test_crypto_rng, ToBits as T, UniformRand};
+
+    use anyhow::Result;
 
     const ITERATIONS: u64 = 1000;
 
-    fn check_new(mode: Mode, num_constants: u64, num_public: u64, num_private: u64, num_constraints: u64) {
-        let rng = &mut test_rng();
+    fn check_new(
+        mode: Mode,
+        num_constants: u64,
+        num_public: u64,
+        num_private: u64,
+        num_constraints: u64,
+    ) -> Result<()> {
+        // Generate a private key, compute key, view key, and address.
+        let (private_key, compute_key, _view_key, _address) = generate_account()?;
 
-        for _ in 0..ITERATIONS {
-            let challenge = UniformRand::rand(rng);
-            let response = UniformRand::rand(rng);
-            let pk_sig = <Circuit as Environment>::Affine::rand(rng).to_x_coordinate();
-            let pr_sig = <Circuit as Environment>::Affine::rand(rng).to_x_coordinate();
+        // Retrieve the native compute key components.
+        let pk_sig = *compute_key.pk_sig();
+        let pr_sig = *compute_key.pr_sig();
+        let pk_vrf = *compute_key.pk_vrf();
+        let sk_prf = *compute_key.sk_prf();
+
+        for i in 0..ITERATIONS {
+            // Generate a signature.
+            let message = "Hi, I am an Aleo signature!";
+            let randomizer = UniformRand::rand(&mut test_crypto_rng());
+            let signature = NativeSignature::sign(&private_key, &message.as_bytes().to_bits_le(), randomizer)?;
+
+            // Retrieve the challenge and response.
+            let challenge = *signature.challenge();
+            let response = *signature.response();
 
             Circuit::scope(format!("New {mode}"), || {
-                let candidate = Signature::<Circuit>::new(mode, (challenge, response, pk_sig, pr_sig));
-                assert_eq!((challenge, response, pk_sig, pr_sig), candidate.eject_value());
-                assert_scope!(num_constants, num_public, num_private, num_constraints);
+                let candidate = Signature::<Circuit>::new(mode, (challenge, response, (pk_sig, pr_sig, pk_vrf)));
+                assert_eq!((challenge, response, (pk_sig, pr_sig, pk_vrf, sk_prf)), candidate.eject_value());
+                // TODO (howardwu): Resolve skipping the cost count checks for the burn-in round.
+                if i > 0 {
+                    assert_scope!(num_constants, num_public, num_private, num_constraints);
+                }
             });
+            Circuit::reset();
         }
+        Ok(())
     }
 
     #[test]
-    fn test_signature_new() {
-        check_new(Mode::Constant, 510, 0, 0, 0);
-        check_new(Mode::Public, 4, 504, 6, 508);
-        check_new(Mode::Private, 4, 0, 510, 508);
+    fn test_signature_new_constant() -> Result<()> {
+        check_new(Mode::Constant, 767, 0, 0, 0)
+    }
+
+    #[test]
+    fn test_signature_new_public() -> Result<()> {
+        check_new(Mode::Public, 6, 508, 604, 1110)
+    }
+
+    #[test]
+    fn test_signature_new_private() -> Result<()> {
+        check_new(Mode::Private, 6, 0, 1112, 1110)
     }
 }

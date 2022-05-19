@@ -172,7 +172,7 @@ impl<E: Environment, const NUM_WINDOWS: usize, const WINDOW_SIZE: usize> HashUnc
 mod tests {
     use super::*;
     use snarkvm_circuits_environment::Circuit;
-    use snarkvm_console::algorithms::{HashUncompressed as H, BHP as NativeBHP};
+    use snarkvm_console_algorithms::{HashUncompressed as H, BHP as NativeBHP};
     use snarkvm_utilities::{test_rng, UniformRand};
 
     const ITERATIONS: usize = 10;
