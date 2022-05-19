@@ -45,10 +45,8 @@ impl<A: Aleo> Signature<A> {
 
         // Compute the candidate public key as (G^sk_sig G^r_sig G^sk_prf).
         let candidate_address = {
-            // Retrieve `sk_prf` from the compute key.
-            let sk_prf = self.compute_key.sk_prf();
             // Compute G^sk_prf.
-            let pk_prf = A::g_scalar_multiply(&sk_prf);
+            let pk_prf = A::g_scalar_multiply(self.compute_key.sk_prf());
             // Compute G^sk_sig G^r_sig G^sk_prf.
             self.compute_key.pk_sig() + self.compute_key.pr_sig() + pk_prf
         };

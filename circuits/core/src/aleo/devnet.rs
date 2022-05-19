@@ -104,13 +104,6 @@ impl Devnet {
         }
         bases
     }
-
-    /// Returns a native signature scheme.
-    #[cfg(test)]
-    pub fn native_signature_scheme()
-    -> snarkvm_algorithms::signature::AleoSignatureScheme<<E as Environment>::AffineParameters> {
-        snarkvm_algorithms::SignatureScheme::setup(ACCOUNT_ENCRYPTION_AND_SIGNATURE_INPUT)
-    }
 }
 
 impl Aleo for Devnet {
