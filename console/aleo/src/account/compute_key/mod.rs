@@ -16,14 +16,18 @@
 
 use crate::{Network, PrivateKey};
 use snarkvm_curves::{AffineCurve, ProjectiveCurve};
+use snarkvm_fields::PrimeField;
 use snarkvm_utilities::{
     error,
     io::{Read, Result as IoResult, Write},
     FromBytes,
+    FromBytesDeserializer,
     ToBytes,
+    ToBytesSerializer,
 };
 
 use anyhow::{Error, Result};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ComputeKey<N: Network> {
@@ -85,22 +89,22 @@ impl<N: Network> ComputeKey<N> {
     }
 
     /// Returns the signature public key.
-    pub fn pk_sig(&self) -> &N::Affine {
+    pub const fn pk_sig(&self) -> &N::Affine {
         &self.pk_sig
     }
 
     /// Returns the signature public randomizer.
-    pub fn pr_sig(&self) -> &N::Affine {
+    pub const fn pr_sig(&self) -> &N::Affine {
         &self.pr_sig
     }
 
     /// Returns the VRF public key.
-    pub fn pk_vrf(&self) -> &N::Affine {
+    pub const fn pk_vrf(&self) -> &N::Affine {
         &self.pk_vrf
     }
 
     /// Returns a reference to the PRF secret key.
-    pub fn sk_prf(&self) -> &N::Scalar {
+    pub const fn sk_prf(&self) -> &N::Scalar {
         &self.sk_prf
     }
 }
@@ -122,5 +126,54 @@ impl<N: Network> ToBytes for ComputeKey<N> {
         self.pk_sig.to_x_coordinate().write_le(&mut writer)?;
         self.pr_sig.to_x_coordinate().write_le(&mut writer)?;
         self.pk_vrf.to_x_coordinate().write_le(&mut writer)
+    }
+}
+
+impl<N: Network> Serialize for ComputeKey<N> {
+    /// Serializes an account compute key into bytes.
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        ToBytesSerializer::serialize(self, serializer)
+    }
+}
+
+impl<'de, N: Network> Deserialize<'de> for ComputeKey<N> {
+    /// Deserializes an account compute key from bytes.
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        FromBytesDeserializer::<Self>::deserialize(
+            deserializer,
+            "compute key",
+            3 * ((N::Field::size_in_bits() + 7) / 8),
+        )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{PrivateKey, Testnet3};
+    use snarkvm_utilities::test_crypto_rng;
+
+    use anyhow::Result;
+
+    type CurrentNetwork = Testnet3;
+
+    const ITERATIONS: u64 = 1000;
+
+    #[test]
+    fn test_bincode() -> Result<()> {
+        for _ in 0..ITERATIONS {
+            // Sample a new compute key.
+            let private_key = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
+            let expected = ComputeKey::try_from(private_key)?;
+
+            // Serialize
+            let expected_bytes = expected.to_bytes_le()?;
+            assert_eq!(&expected_bytes[..], &bincode::serialize(&expected)?[..]);
+
+            // Deserialize
+            assert_eq!(expected, ComputeKey::read_le(&expected_bytes[..])?);
+            assert_eq!(expected, bincode::deserialize(&expected_bytes[..])?);
+        }
+        Ok(())
     }
 }

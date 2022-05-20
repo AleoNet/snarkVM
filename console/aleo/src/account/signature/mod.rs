@@ -36,21 +36,6 @@ pub struct Signature<N: Network> {
 }
 
 impl<N: Network> Signature<N> {
-    /// Returns the verifier challenge.
-    pub fn challenge(&self) -> &N::Scalar {
-        &self.challenge
-    }
-
-    /// Returns the prover response.
-    pub fn response(&self) -> &N::Scalar {
-        &self.response
-    }
-
-    /// Returns the compute key.
-    pub fn compute_key(&self) -> &ComputeKey<N> {
-        &self.compute_key
-    }
-
     /// Returns a signature `(challenge, response, compute_key)` for a given message and randomizer, where:
     ///     challenge := HashToScalar(address, G^randomizer, message)
     ///     response := randomizer - challenge * private_key.sk_sig()
@@ -106,6 +91,21 @@ impl<N: Network> Signature<N> {
 
         Ok(self.challenge == candidate_challenge && *address == candidate_address)
     }
+
+    /// Returns the verifier challenge.
+    pub const fn challenge(&self) -> &N::Scalar {
+        &self.challenge
+    }
+
+    /// Returns the prover response.
+    pub const fn response(&self) -> &N::Scalar {
+        &self.response
+    }
+
+    /// Returns the compute key.
+    pub const fn compute_key(&self) -> &ComputeKey<N> {
+        &self.compute_key
+    }
 }
 
 impl<N: Network> FromBytes for Signature<N> {
@@ -135,7 +135,7 @@ mod tests {
 
     type CurrentNetwork = Testnet3;
 
-    fn sign_and_verify(message: &[bool]) -> Result<()> {
+    fn check_sign_and_verify(message: &[bool]) -> Result<()> {
         // Generate an address and a private key.
         let private_key = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
         let address = Address::try_from(&private_key)?;
@@ -147,7 +147,7 @@ mod tests {
         Ok(())
     }
 
-    fn failed_verification(message: &[bool], bad_message: &[bool]) -> Result<()> {
+    fn check_sign_and_verify_fails(message: &[bool], bad_message: &[bool]) -> Result<()> {
         // Generate an address and a private key.
         let private_key = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
         let address = Address::try_from(&private_key)?;
@@ -162,7 +162,7 @@ mod tests {
     #[test]
     fn test_sign_and_verify() -> Result<()> {
         let message = "Hi, I am an Aleo signature!";
-        sign_and_verify(&message.as_bytes().to_bits_le())?;
-        failed_verification(&message.as_bytes().to_bits_le(), &b"Bad message".to_bits_le())
+        check_sign_and_verify(&message.as_bytes().to_bits_le())?;
+        check_sign_and_verify_fails(&message.as_bytes().to_bits_le(), &b"Bad message".to_bits_le())
     }
 }

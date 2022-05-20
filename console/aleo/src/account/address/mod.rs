@@ -89,6 +89,7 @@ impl<N: Network> TryFrom<&ViewKey<N>> for Address<N> {
 
     /// Derives the account address from an account view key.
     fn try_from(view_key: &ViewKey<N>) -> Result<Self, Self::Error> {
+        // Compute G^view_key.
         Ok(Self(N::g_scalar_multiply(&**view_key).to_affine()))
     }
 }
@@ -145,6 +146,7 @@ impl<N: Network> ToBytes for Address<N> {
 }
 
 impl<N: Network> Serialize for Address<N> {
+    /// Serializes an account address into string or bytes.
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         match serializer.is_human_readable() {
             true => serializer.collect_str(self),
@@ -154,6 +156,7 @@ impl<N: Network> Serialize for Address<N> {
 }
 
 impl<'de, N: Network> Deserialize<'de> for Address<N> {
+    /// Deserializes an account address from a string or bytes.
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         match deserializer.is_human_readable() {
             true => FromStr::from_str(&String::deserialize(deserializer)?).map_err(de::Error::custom),
@@ -167,7 +170,7 @@ impl<'de, N: Network> Deserialize<'de> for Address<N> {
 impl<N: Network> Deref for Address<N> {
     type Target = N::Affine;
 
-    /// Returns the address as an affine group element.
+    /// Returns the account address as an affine group element.
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -180,40 +183,59 @@ mod tests {
     use snarkvm_utilities::test_crypto_rng;
 
     use anyhow::Result;
-    use core::str::FromStr;
 
     type CurrentNetwork = Testnet3;
 
+    const ITERATIONS: u64 = 1000;
+
+    #[test]
+    fn test_string() -> Result<()> {
+        for _ in 0..ITERATIONS {
+            // Sample a new address.
+            let private_key = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
+            let expected = Address::try_from(private_key)?;
+
+            // Check the string representation.
+            let candidate = format!("{expected}");
+            assert_eq!(expected, Address::from_str(&candidate)?);
+        }
+        Ok(())
+    }
+
     #[test]
     fn test_serde_json() -> Result<()> {
-        let private_key = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
-        let expected_address = Address::try_from(private_key)?;
+        for _ in 0..ITERATIONS {
+            // Sample a new address.
+            let private_key = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
+            let expected = Address::try_from(private_key)?;
 
-        // Serialize
-        let expected_string = &expected_address.to_string();
-        let candidate_string = serde_json::to_string(&expected_address)?;
-        assert_eq!(expected_string, serde_json::Value::from_str(&candidate_string)?.as_str().unwrap());
+            // Serialize
+            let expected_string = &expected.to_string();
+            let candidate_string = serde_json::to_string(&expected)?;
+            assert_eq!(expected_string, serde_json::Value::from_str(&candidate_string)?.as_str().unwrap());
 
-        // Deserialize
-        assert_eq!(expected_address, Address::from_str(expected_string)?);
-        assert_eq!(expected_address, serde_json::from_str(&candidate_string)?);
-
+            // Deserialize
+            assert_eq!(expected, Address::from_str(expected_string)?);
+            assert_eq!(expected, serde_json::from_str(&candidate_string)?);
+        }
         Ok(())
     }
 
     #[test]
     fn test_bincode() -> Result<()> {
-        let private_key = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
-        let expected_address = Address::try_from(private_key)?;
+        for _ in 0..ITERATIONS {
+            // Sample a new address.
+            let private_key = PrivateKey::<CurrentNetwork>::new(&mut test_crypto_rng())?;
+            let expected = Address::try_from(private_key)?;
 
-        // Serialize
-        let expected_bytes = expected_address.to_bytes_le()?;
-        assert_eq!(&expected_bytes[..], &bincode::serialize(&expected_address)?[..]);
+            // Serialize
+            let expected_bytes = expected.to_bytes_le()?;
+            assert_eq!(&expected_bytes[..], &bincode::serialize(&expected)?[..]);
 
-        // Deserialize
-        assert_eq!(expected_address, Address::read_le(&expected_bytes[..])?);
-        assert_eq!(expected_address, bincode::deserialize(&expected_bytes[..])?);
-
+            // Deserialize
+            assert_eq!(expected, Address::read_le(&expected_bytes[..])?);
+            assert_eq!(expected, bincode::deserialize(&expected_bytes[..])?);
+        }
         Ok(())
     }
 }
