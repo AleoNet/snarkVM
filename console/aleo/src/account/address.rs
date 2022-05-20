@@ -34,7 +34,7 @@ use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 static ADDRESS_PREFIX: &str = "aleo";
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Address<N: Network>(N::Affine);
+pub struct Address<N: Network>(pub(crate) N::Affine);
 
 impl<N: Network> TryFrom<PrivateKey<N>> for Address<N> {
     type Error = Error;

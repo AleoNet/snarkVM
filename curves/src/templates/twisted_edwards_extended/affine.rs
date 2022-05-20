@@ -59,11 +59,6 @@ impl<P: Parameters> Affine<P> {
     pub fn new(x: P::BaseField, y: P::BaseField) -> Self {
         Self { x, y }
     }
-
-    #[must_use]
-    pub fn scale_by_cofactor(&self) -> <Self as AffineCurve>::Projective {
-        self.mul_bits(BitIteratorBE::new(P::COFACTOR))
-    }
 }
 
 impl<P: Parameters> PartialEq<Projective<P>> for Affine<P> {
@@ -165,7 +160,7 @@ impl<P: Parameters> AffineCurve for Affine<P> {
     }
 
     fn mul_by_cofactor_to_projective(&self) -> Self::Projective {
-        self.scale_by_cofactor()
+        self.mul_bits(BitIteratorBE::new(P::COFACTOR))
     }
 
     fn mul_by_cofactor_inv(&self) -> Self {
@@ -290,7 +285,7 @@ impl<P: Parameters> Distribution<Affine<P>> for Standard {
             let greatest = rng.gen();
 
             if let Some(p) = Affine::from_x_coordinate(x, greatest) {
-                return p.scale_by_cofactor().into();
+                return p.mul_by_cofactor_to_projective().into();
             }
         }
     }

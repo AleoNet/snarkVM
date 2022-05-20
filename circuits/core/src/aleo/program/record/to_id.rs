@@ -18,7 +18,7 @@ use super::*;
 
 impl<A: Aleo> Record<A> {
     /// Returns the record ID.
-    pub fn to_record_id(&self) -> Field<A> {
+    pub fn to_id(&self) -> Field<A> {
         // TODO (howardwu): Abstraction - add support for a custom BHP hash size.
         // Compute the BHP hash of the program state.
         let left = A::hash_bhp1024(&[&self.program, &self.owner, &self.balance, &self.data].to_bits_le());

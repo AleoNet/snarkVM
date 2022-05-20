@@ -29,6 +29,8 @@ use snarkvm_utilities::{
 use anyhow::{Error, Result};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
+static _COMPUTE_KEY_PREFIX: [u8; 10] = [109, 249, 98, 224, 36, 15, 213, 187, 79, 190]; // AComputeKey1
+
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub struct ComputeKey<N: Network> {
     /// The signature public key `pk_sig` := G^sk_sig.

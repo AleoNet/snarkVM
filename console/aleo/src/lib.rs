@@ -34,6 +34,7 @@ use core::{fmt, hash};
 
 pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
     type Affine: AffineCurve<
+        Projective = Self::Projective,
         BaseField = Self::Field,
         ScalarField = Self::Scalar,
         Coordinates = (Self::Field, Self::Field),
@@ -78,7 +79,7 @@ pub trait Network: Copy + Clone + fmt::Debug + Eq + PartialEq + hash::Hash {
     fn randomizer_domain() -> Self::Field;
 
     /// Returns the scalar multiplication on the group bases.
-    fn g_scalar_multiply(scalar: &Self::Scalar) -> <Self::Affine as AffineCurve>::Projective;
+    fn g_scalar_multiply(scalar: &Self::Scalar) -> Self::Projective;
 
     /// Returns the BHP hash for a given (up to) 256-bit input.
     fn hash_bhp256(input: &[bool]) -> Result<Self::Field>;

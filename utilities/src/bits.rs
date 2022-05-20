@@ -16,27 +16,6 @@
 
 use crate::Vec;
 
-/// Takes as input a sequence of structs, and converts them to a series of little-endian bits.
-/// All traits that implement `ToBits` can be automatically converted to bits in this manner.
-#[macro_export]
-macro_rules! to_bits_le {
-    ($($x:expr),*) => ({
-        let mut buffer = $crate::vec![];
-        {$crate::push_bits_to_vec!(buffer, $($x),*)}.map(|_| buffer)
-    });
-}
-
-#[macro_export]
-macro_rules! push_bits_to_vec {
-    ($buffer:expr, $y:expr, $($x:expr),*) => ({
-        {ToBits::write_le(&$y, &mut $buffer)}.and({$crate::push_bits_to_vec!($buffer, $($x),*)})
-    });
-
-    ($buffer:expr, $x:expr) => ({
-        ToBits::write_le(&$x, &mut $buffer)
-    })
-}
-
 pub trait ToBits: Sized {
     /// Returns `self` as a boolean array in little-endian order.
     fn to_bits_le(&self) -> Vec<bool>;
@@ -68,38 +47,148 @@ impl<T: ToMinimalBits> ToMinimalBits for Vec<T> {
     }
 }
 
-impl<const N: usize> ToBits for [u8; N] {
-    #[doc = " Returns `self` as a vector of booleans in little-endian order, with trailing zeros."]
+/********************/
+/***** Integers *****/
+/********************/
+
+macro_rules! impl_bits_for_integer {
+    ($int:ty) => {
+        impl ToBits for $int {
+            /// Returns `self` as a boolean array in little-endian order.
+            #[inline]
+            fn to_bits_le(&self) -> Vec<bool> {
+                let mut bits_le = Vec::with_capacity(<$int>::BITS as usize);
+                let mut value = self.to_le();
+                for _ in 0..<$int>::BITS {
+                    bits_le.push(value & 1 == 1);
+                    value = value.wrapping_shr(1u32);
+                }
+                bits_le
+            }
+
+            /// Returns `self` as a boolean array in big-endian order.
+            #[inline]
+            fn to_bits_be(&self) -> Vec<bool> {
+                self.to_bits_le().into_iter().rev().collect()
+            }
+        }
+
+        impl FromBits for $int {
+            /// Reads `Self` from a boolean array in little-endian order.
+            #[inline]
+            fn from_bits_le(bits: &[bool]) -> Self {
+                bits.iter().rev().fold(0, |value, bit| match bit {
+                    true => (value.wrapping_shl(1)) ^ 1,
+                    false => (value.wrapping_shl(1)) ^ 0,
+                })
+            }
+
+            /// Reads `Self` from a boolean array in big-endian order.
+            #[inline]
+            fn from_bits_be(bits: &[bool]) -> Self {
+                Self::from_bits_le(&bits.iter().rev().copied().collect::<Vec<_>>())
+            }
+        }
+    };
+}
+
+impl_bits_for_integer!(u8);
+impl_bits_for_integer!(u16);
+impl_bits_for_integer!(u32);
+impl_bits_for_integer!(u64);
+impl_bits_for_integer!(u128);
+
+impl_bits_for_integer!(i8);
+impl_bits_for_integer!(i16);
+impl_bits_for_integer!(i32);
+impl_bits_for_integer!(i64);
+impl_bits_for_integer!(i128);
+
+/********************/
+/****** Arrays ******/
+/********************/
+
+impl<C: ToBits> ToBits for Vec<C> {
+    /// A helper method to return a concatenated list of little-endian bits.
+    #[inline]
     fn to_bits_le(&self) -> Vec<bool> {
-        crate::bits_from_bytes_le(self).collect()
+        // The vector is order-preserving, meaning the first variable in is the first variable bits out.
+        self.as_slice().to_bits_le()
     }
 
-    #[doc = " Returns `self` as a vector of booleans in big-endian order, with leading zeros."]
+    /// A helper method to return a concatenated list of big-endian bits.
+    #[inline]
     fn to_bits_be(&self) -> Vec<bool> {
-        crate::bits_from_bytes_le(self).rev().collect()
+        // The vector is order-preserving, meaning the first variable in is the first variable bits out.
+        self.as_slice().to_bits_be()
     }
 }
 
-impl ToBits for &[u8] {
-    #[doc = " Returns `self` as a boolean array in little-endian order, with trailing zeros."]
+impl<C: ToBits, const N: usize> ToBits for [C; N] {
+    /// A helper method to return a concatenated list of little-endian bits.
+    #[inline]
     fn to_bits_le(&self) -> Vec<bool> {
-        crate::bits_from_bytes_le(self).collect()
+        // The slice is order-preserving, meaning the first variable in is the first variable bits out.
+        self.as_slice().to_bits_le()
     }
 
-    #[doc = " Returns `self` as a boolean array in big-endian order, with leading zeros."]
+    /// A helper method to return a concatenated list of big-endian bits.
+    #[inline]
     fn to_bits_be(&self) -> Vec<bool> {
-        crate::bits_from_bytes_le(self).rev().collect()
+        // The slice is order-preserving, meaning the first variable in is the first variable bits out.
+        self.as_slice().to_bits_be()
     }
 }
 
-impl ToBits for Vec<u8> {
-    #[doc = " Returns `self` as a boolean array in little-endian order, with trailing zeros."]
+impl<C: ToBits> ToBits for &[C] {
+    /// A helper method to return a concatenated list of little-endian bits.
+    #[inline]
     fn to_bits_le(&self) -> Vec<bool> {
-        crate::bits_from_bytes_le(self).collect()
+        // The slice is order-preserving, meaning the first variable in is the first variable bits out.
+        self.iter().flat_map(|c| c.to_bits_le()).collect()
     }
 
-    #[doc = " Returns `self` as a boolean array in big-endian order, with leading zeros."]
+    /// A helper method to return a concatenated list of big-endian bits.
+    #[inline]
     fn to_bits_be(&self) -> Vec<bool> {
-        crate::bits_from_bytes_le(self).rev().collect()
+        // The slice is order-preserving, meaning the first variable in is the first variable bits out.
+        self.iter().flat_map(|c| c.to_bits_be()).collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{test_rng, UniformRand};
+
+    const ITERATIONS: u64 = 10000;
+
+    #[test]
+    fn test_integers() {
+        macro_rules! check_integer {
+            ($integer:tt) => {{
+                for _ in 0..ITERATIONS {
+                    let expected: $integer = UniformRand::rand(&mut test_rng());
+
+                    let bits_le = expected.to_bits_le();
+                    assert_eq!(expected, $integer::from_bits_le(&bits_le));
+
+                    let bits_be = expected.to_bits_be();
+                    assert_eq!(expected, $integer::from_bits_be(&bits_be));
+                }
+            }};
+        }
+
+        check_integer!(u8);
+        check_integer!(u16);
+        check_integer!(u32);
+        check_integer!(u64);
+        check_integer!(u128);
+
+        check_integer!(i8);
+        check_integer!(i16);
+        check_integer!(i32);
+        check_integer!(i64);
+        check_integer!(i128);
     }
 }

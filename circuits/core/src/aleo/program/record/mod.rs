@@ -20,7 +20,7 @@
 mod decrypt;
 mod encrypt;
 mod is_owner;
-mod to_record_id;
+mod to_id;
 
 use crate::aleo::{Aleo, State, ViewKey};
 use snarkvm_circuits_types::{environment::prelude::*, Address, Boolean, Field, Group, Scalar, U64};
